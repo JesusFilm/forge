@@ -1,6 +1,6 @@
 "use client"
 
-import { Captions, ChevronDown, Languages } from "lucide-react"
+import { Captions, ChevronDown, Languages, X } from "lucide-react"
 import { useTranslations } from "next-intl"
 import {
   useCallback,
@@ -42,8 +42,16 @@ export type LanguageComboboxProps = {
   onOpenChange?: (open: boolean) => void
   compact?: boolean
   triggerClassName?: string
+  triggerContent?: ReactNode
   triggerWrapper?: (trigger: ReactNode) => ReactNode
   popoverPortalContainer?: HTMLElement | null
+  takeoverRect?: {
+    height: number
+    left: number
+    top: number
+    width: number
+  } | null
+  takeoverDismissLabel?: string
 }
 
 const LISTBOX_MAX_HEIGHT_PX = 288
@@ -160,8 +168,11 @@ export function LanguageCombobox({
   onOpenChange,
   compact = false,
   triggerClassName: triggerClassNameOverride,
+  triggerContent,
   triggerWrapper,
   popoverPortalContainer,
+  takeoverRect,
+  takeoverDismissLabel,
 }: LanguageComboboxProps) {
   const t = useTranslations("LanguageCombobox")
   const comboboxId = useId()
@@ -254,6 +265,25 @@ export function LanguageCombobox({
     if (!open) return
 
     function updatePopoverLayout() {
+      const measuredSearchHeight =
+        searchFrameRef.current?.getBoundingClientRect().height ?? 0
+      const searchHeight =
+        measuredSearchHeight > 0
+          ? measuredSearchHeight
+          : POPOVER_SEARCH_FALLBACK_HEIGHT_PX
+      if (takeoverRect) {
+        setPopoverPlacement("below")
+        setListboxMaxHeight(
+          Math.max(1, Math.floor(takeoverRect.height - searchHeight)),
+        )
+        setPopoverRect({
+          left: takeoverRect.left,
+          top: takeoverRect.top,
+          width: takeoverRect.width,
+        })
+        return
+      }
+
       const trigger = triggerRef.current
       if (!trigger) return
 
@@ -266,12 +296,6 @@ export function LanguageCombobox({
       const viewportTop = visualViewport?.offsetTop ?? 0
       const viewportBottom =
         viewportTop + (visualViewport?.height ?? window.innerHeight)
-      const measuredSearchHeight =
-        searchFrameRef.current?.getBoundingClientRect().height ?? 0
-      const searchHeight =
-        measuredSearchHeight > 0
-          ? measuredSearchHeight
-          : POPOVER_SEARCH_FALLBACK_HEIGHT_PX
       const desiredPopoverHeight = searchHeight + LISTBOX_MAX_HEIGHT_PX
       const spaceBelow =
         viewportBottom -
@@ -333,7 +357,7 @@ export function LanguageCombobox({
         capture: true,
       })
     }
-  }, [open])
+  }, [open, takeoverRect])
 
   // Install the click-outside listener once at mount, gate its body on a
   // ref read so it remains a no-op while the popover is closed. Re-binding
@@ -529,44 +553,48 @@ export function LanguageCombobox({
       disabled={disabled}
       className={`${triggerClassName} ${triggerClassNameOverride ?? ""}`}
     >
-      <span
-        className={`flex min-w-0 items-center ${compact ? "gap-2.5" : "gap-3"}`}
-      >
-        {selected ? (
-          <LanguageCodeMarker
-            option={selected}
-            size={compact ? "triggerCompact" : "trigger"}
-          />
-        ) : (
-          <Icon
-            aria-hidden
-            className={`shrink-0 text-stone-400 ${
-              compact ? "h-4 w-4" : "h-5 w-5"
-            }`}
-          />
-        )}
-        <span className="grid min-w-0 content-center">
-          <span className="block truncate leading-tight">
-            {selected?.name ?? resolvedPlaceholder}
-          </span>
-          {selectedNativeName ? (
-            <span
-              data-testid="language-combobox-trigger-native"
-              className={`mt-0.5 block truncate leading-tight text-stone-400 ${
-                compact ? "text-[11px]" : "text-xs"
-              }`}
-            >
-              {selectedNativeName}
+      {triggerContent ?? (
+        <>
+          <span
+            className={`flex min-w-0 items-center ${compact ? "gap-2.5" : "gap-3"}`}
+          >
+            {selected ? (
+              <LanguageCodeMarker
+                option={selected}
+                size={compact ? "triggerCompact" : "trigger"}
+              />
+            ) : (
+              <Icon
+                aria-hidden
+                className={`shrink-0 text-stone-400 ${
+                  compact ? "h-4 w-4" : "h-5 w-5"
+                }`}
+              />
+            )}
+            <span className="grid min-w-0 content-center">
+              <span className="block truncate leading-tight">
+                {selected?.name ?? resolvedPlaceholder}
+              </span>
+              {selectedNativeName ? (
+                <span
+                  data-testid="language-combobox-trigger-native"
+                  className={`mt-0.5 block truncate leading-tight text-stone-400 ${
+                    compact ? "text-[11px]" : "text-xs"
+                  }`}
+                >
+                  {selectedNativeName}
+                </span>
+              ) : null}
             </span>
-          ) : null}
-        </span>
-      </span>
-      <ChevronDown
-        aria-hidden
-        className={`shrink-0 text-stone-500 transition-transform duration-200 ${
-          open ? "rotate-180" : "rotate-0"
-        } ${compact ? "h-4 w-4" : "h-5 w-5"}`}
-      />
+          </span>
+          <ChevronDown
+            aria-hidden
+            className={`shrink-0 text-stone-500 transition-transform duration-200 ${
+              open ? "rotate-180" : "rotate-0"
+            } ${compact ? "h-4 w-4" : "h-5 w-5"}`}
+          />
+        </>
+      )}
     </button>
   )
   const popoverContainer =
@@ -589,8 +617,11 @@ export function LanguageCombobox({
               // (the filled `<button>`) paints past the `rounded-2xl` corner.
               // `shadow-xl` is unaffected because box-shadow renders outside
               // the element's bounding box, not against its overflow rule.
-              className="fixed z-[1000] overflow-hidden rounded-2xl border border-white/10 bg-stone-950/95 shadow-2xl backdrop-blur-md"
+              className={`fixed overflow-hidden rounded-2xl border border-white/10 bg-stone-950/95 shadow-2xl backdrop-blur-md ${
+                takeoverRect ? "z-[1001] flex flex-col" : "z-[1000]"
+              }`}
               style={{
+                height: takeoverRect?.height,
                 left: popoverRect?.left ?? 0,
                 top: popoverRect?.top ?? 0,
                 width: popoverRect?.width ?? 0,
@@ -598,7 +629,7 @@ export function LanguageCombobox({
             >
               <div
                 ref={searchFrameRef}
-                className="border-b border-white/10 px-5 py-4"
+                className="flex shrink-0 items-center gap-3 border-b border-white/10 px-5 py-4"
               >
                 <input
                   ref={searchRef}
@@ -620,8 +651,18 @@ export function LanguageCombobox({
                   aria-haspopup="listbox"
                   aria-label={t("searchPlaceholder")}
                   aria-activedescendant={activeOptionId}
-                  className="w-full bg-transparent text-lg font-normal text-stone-100 placeholder:text-stone-500 focus:outline-none"
+                  className="min-w-0 flex-1 bg-transparent text-lg font-normal text-stone-100 placeholder:text-stone-500 focus:outline-none"
                 />
+                {takeoverRect && takeoverDismissLabel ? (
+                  <button
+                    type="button"
+                    aria-label={takeoverDismissLabel}
+                    onClick={() => setComboboxOpen(false)}
+                    className="grid size-11 shrink-0 cursor-pointer place-items-center rounded-full text-stone-400 transition hover:bg-white/10 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/50"
+                  >
+                    <X size={20} aria-hidden />
+                  </button>
+                ) : null}
               </div>
               {/* Large lists are windowed so the 2k+ language picker opens immediately. */}
               {/*
@@ -638,7 +679,11 @@ export function LanguageCombobox({
                 data-virtualized={shouldVirtualize ? "true" : "false"}
                 onScroll={handleListScroll}
                 style={{ maxHeight: listboxMaxHeight }}
-                className="overflow-y-auto py-1 [scrollbar-color:theme(colors.stone.700)_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-stone-700 hover:[&::-webkit-scrollbar-thumb]:bg-stone-600 [&::-webkit-scrollbar-track]:bg-transparent"
+                className={`overflow-y-auto py-1 ${
+                  takeoverRect
+                    ? "min-h-0 flex-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                    : "[scrollbar-color:theme(colors.stone.700)_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-stone-700 hover:[&::-webkit-scrollbar-thumb]:bg-stone-600 [&::-webkit-scrollbar-track]:bg-transparent"
+                }`}
               >
                 {filtered.length === 0 ? (
                   <li

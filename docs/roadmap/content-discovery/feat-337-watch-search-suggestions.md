@@ -69,6 +69,9 @@ rg -n "watch_search_lexical|languageIdentity|localeCodes" apps/admin/src/service
    quiet "Searching in" context control.
 7. Return up to six extracted query phrases before the existing six direct
    content matches.
+8. Render search language as one quiet “Searching in {language}” text action.
+   Opening it replaces the full suggestions panel with focused language search;
+   dismissing it restores cached suggestions without another request.
 
 ## Constraints
 

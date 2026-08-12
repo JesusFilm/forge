@@ -9,14 +9,13 @@ import {
   useRef,
   useState,
   type ChangeEvent,
-  type CSSProperties,
   type FocusEvent,
   type KeyboardEvent as ReactKeyboardEvent,
 } from "react"
 import { createPortal } from "react-dom"
 import { usePathname, useRouter } from "next/navigation"
 import { useTranslations } from "next-intl"
-import { BookOpen, Folder, PlaySquare, Search, X } from "lucide-react"
+import { BookOpen, Folder, PlaySquare, Search } from "lucide-react"
 
 import {
   useFloatingSearch,
@@ -80,10 +79,12 @@ const SEARCH_SUGGESTION_DESCRIPTION_LENGTH = 96
 const SEARCH_SUGGESTION_DESCRIPTION_CONTEXT_BEFORE = 18
 const MEANINGFUL_SEARCH_CHARACTER = /[\p{L}\p{N}]/u
 
-type SuggestionListPosition = Pick<
-  CSSProperties,
-  "height" | "left" | "top" | "width"
->
+type SuggestionListPosition = {
+  height: number
+  left: number
+  top: number
+  width: number
+}
 
 type SuggestionResult = {
   requestKey: string
@@ -185,6 +186,7 @@ const CATEGORY_TITLE_KEYS: Record<
 
 export function SearchOverlay() {
   const t = useTranslations("SearchOverlay")
+  const floatingSearchT = useTranslations("FloatingSearch")
   const videoLabels = useTranslations("VideoLabels")
   const pathname = usePathname()
   const router = useRouter()
@@ -225,7 +227,6 @@ export function SearchOverlay() {
     search,
     loadMore,
     selectSearchLanguage,
-    resetSearchLanguageToDefault,
   } = useFloatingSearch()
 
   const overlayRef = useRef<HTMLDivElement>(null)
@@ -315,7 +316,7 @@ export function SearchOverlay() {
     visibleSuggestionsLoading ||
     suggestions.length > 0
   const suggestionPanelHasContent =
-    suggestionPanelActive &&
+    (suggestionPanelActive || languageAutocompleteOpen) &&
     (searchLanguageControlVisible ||
       visibleSuggestionsLoading ||
       suggestions.length > 0)
@@ -686,6 +687,7 @@ export function SearchOverlay() {
 
       if (
         event.key === "ArrowDown" &&
+        !languageAutocompleteOpen &&
         suggestionPanelVisible &&
         suggestionNavigationOrder.length > 0
       ) {
@@ -704,6 +706,7 @@ export function SearchOverlay() {
 
       if (
         event.key === "ArrowUp" &&
+        !languageAutocompleteOpen &&
         suggestionPanelVisible &&
         suggestionNavigationOrder.length > 0
       ) {
@@ -723,6 +726,7 @@ export function SearchOverlay() {
 
       if (
         event.key === "Enter" &&
+        !languageAutocompleteOpen &&
         suggestionPanelVisible &&
         activeSuggestionIndex != null &&
         suggestions[activeSuggestionIndex]
@@ -757,6 +761,7 @@ export function SearchOverlay() {
       activateSuggestion,
       hideSuggestionPanel,
       isComposing,
+      languageAutocompleteOpen,
       suggestionPanelVisible,
       suggestionNavigationOrder,
       suggestions,
@@ -800,13 +805,6 @@ export function SearchOverlay() {
     [invalidateSuggestionRequest, selectSearchLanguage],
   )
 
-  const handleResetSearchLanguage = useCallback(() => {
-    setSuppressedSuggestionValue(null)
-    invalidateSuggestionRequest()
-    setLanguageAutocompleteOpen(false)
-    resetSearchLanguageToDefault()
-  }, [invalidateSuggestionRequest, resetSearchLanguageToDefault])
-
   const closeAfterResultNavigation = useCallback(() => {
     window.setTimeout(() => setOpen(false), 0)
   }, [setOpen])
@@ -823,14 +821,8 @@ export function SearchOverlay() {
     searchLanguageControlVisible && !suggestionPanelActive
       ? "top-56 md:top-44"
       : "top-44 md:top-32"
-  const semanticLanguageOverrideActive =
-    selectedSearchLanguageOption?.publicSlug != null
-  const semanticLanguageTriggerClassName = [
-    "!h-10 !min-h-10 !rounded-lg !border !border-white/10 !bg-white/[0.05] !px-2.5 !text-stone-200 !shadow-none hover:!border-white/20 hover:!bg-white/[0.09] focus-visible:!ring-white/35",
-    semanticLanguageOverrideActive ? "pr-14" : null,
-  ]
-    .filter(Boolean)
-    .join(" ")
+  const semanticLanguageTriggerClassName =
+    "!h-auto !min-h-11 !w-auto !justify-start !rounded-lg !border-0 !bg-transparent !px-2 !py-1 !text-xs !font-medium !text-stone-400 !shadow-none hover:!bg-white/[0.06] hover:!text-stone-200 focus-visible:!ring-white/35"
   const semanticLanguageComboboxOptions = useMemo<LanguageComboboxOption[]>(
     () =>
       languageOptions.flatMap((language) =>
@@ -862,6 +854,16 @@ export function SearchOverlay() {
     "inLanguage",
     { language: "" },
   ).trim()}`
+  const semanticLanguageName =
+    selectedSearchLanguageOption?.englishName ??
+    defaultSearchLanguageOption?.englishName ??
+    t("searchLanguageLabel")
+  const semanticLanguageTriggerContent = (
+    <span data-testid="searching-in-language-label" className="truncate">
+      {searchingInLabel}{" "}
+      <span className="text-stone-200">{semanticLanguageName}</span>
+    </span>
+  )
 
   const handleSemanticLanguageSlugChange = useCallback(
     (slug: string) => {
@@ -927,8 +929,14 @@ export function SearchOverlay() {
             aria-label={t("inputLabel")}
             role="combobox"
             aria-autocomplete="list"
-            aria-expanded={suggestionPanelVisible && suggestions.length > 0}
-            aria-controls={suggestionListId}
+            aria-expanded={
+              !languageAutocompleteOpen &&
+              suggestionPanelVisible &&
+              suggestions.length > 0
+            }
+            aria-controls={
+              languageAutocompleteOpen ? undefined : suggestionListId
+            }
             aria-busy={visibleSuggestionsLoading}
             aria-activedescendant={
               activeSuggestionIndex == null
@@ -940,40 +948,30 @@ export function SearchOverlay() {
             autoFocus
             wrapperClassName="w-full"
           />
-          {searchLanguageControlVisible && !suggestionPanelActive && (
-            <div
-              data-testid="search-language-context"
-              className="mt-2 flex min-h-12 w-full items-center gap-3 rounded-xl border border-white/10 bg-stone-950/70 px-3 py-1.5 backdrop-blur-md"
-            >
-              <span className="shrink-0 text-xs font-medium text-stone-500">
-                {searchingInLabel}
-              </span>
-              <div className="relative min-w-0 max-w-72 flex-1">
-                <LanguageCombobox
-                  options={semanticLanguageComboboxOptions}
-                  value={semanticLanguageComboboxValue}
-                  onChange={handleSemanticLanguageSlugChange}
-                  compact
-                  open={languageAutocompleteOpen}
-                  onOpenChange={setLanguageAutocompleteOpen}
-                  disabled={languageOptionsLoading}
-                  placeholder={t("searchLanguageLabel")}
-                  popoverPortalContainer={closePortalContainer}
-                  triggerClassName={semanticLanguageTriggerClassName}
-                />
-                {semanticLanguageOverrideActive && (
-                  <button
-                    type="button"
-                    aria-label={t("useWebsiteDefaultLanguage")}
-                    onClick={handleResetSearchLanguage}
-                    className="absolute right-0.5 top-1/2 z-10 inline-flex h-9 w-9 -translate-y-1/2 cursor-pointer items-center justify-center rounded-md text-stone-500 transition hover:bg-white/10 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/40"
-                  >
-                    <X size={15} aria-hidden />
-                  </button>
-                )}
+          {searchLanguageControlVisible &&
+            !suggestionPanelActive &&
+            !languageAutocompleteOpen && (
+              <div
+                data-testid="search-language-context"
+                className="mt-2 flex min-h-11 w-full items-center px-1"
+              >
+                <div className="relative min-w-0">
+                  <LanguageCombobox
+                    options={semanticLanguageComboboxOptions}
+                    value={semanticLanguageComboboxValue}
+                    onChange={handleSemanticLanguageSlugChange}
+                    compact
+                    open={languageAutocompleteOpen}
+                    onOpenChange={setLanguageAutocompleteOpen}
+                    disabled={languageOptionsLoading}
+                    placeholder={t("searchLanguageLabel")}
+                    popoverPortalContainer={closePortalContainer}
+                    triggerClassName={semanticLanguageTriggerClassName}
+                    triggerContent={semanticLanguageTriggerContent}
+                  />
+                </div>
               </div>
-            </div>
-          )}
+            )}
         </div>
         <div
           aria-hidden="true"
@@ -1014,12 +1012,9 @@ export function SearchOverlay() {
             {searchLanguageControlVisible && (
               <div
                 data-testid="search-suggestions-language-context"
-                className="flex min-h-14 shrink-0 items-center gap-3 border-b border-white/[0.08] px-3 py-2"
+                className="flex min-h-14 shrink-0 items-center border-b border-white/[0.08] px-3 py-1.5"
               >
-                <span className="shrink-0 text-xs font-medium text-stone-500">
-                  {searchingInLabel}
-                </span>
-                <div className="relative min-w-0 max-w-72 flex-1">
+                <div className="relative min-w-0">
                   <LanguageCombobox
                     options={semanticLanguageComboboxOptions}
                     value={semanticLanguageComboboxValue}
@@ -1031,21 +1026,14 @@ export function SearchOverlay() {
                     placeholder={t("searchLanguageLabel")}
                     popoverPortalContainer={closePortalContainer}
                     triggerClassName={semanticLanguageTriggerClassName}
+                    triggerContent={semanticLanguageTriggerContent}
+                    takeoverRect={suggestionListPosition}
+                    takeoverDismissLabel={floatingSearchT("closeSearch")}
                   />
-                  {semanticLanguageOverrideActive && (
-                    <button
-                      type="button"
-                      aria-label={t("useWebsiteDefaultLanguage")}
-                      onClick={handleResetSearchLanguage}
-                      className="absolute right-0.5 top-1/2 z-10 inline-flex h-9 w-9 -translate-y-1/2 cursor-pointer items-center justify-center rounded-md text-stone-500 transition hover:bg-white/10 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/40"
-                    >
-                      <X size={15} aria-hidden />
-                    </button>
-                  )}
                 </div>
               </div>
             )}
-            {suggestions.length > 0 && (
+            {!languageAutocompleteOpen && suggestions.length > 0 && (
               <div
                 ref={suggestionListRef}
                 id={suggestionListId}

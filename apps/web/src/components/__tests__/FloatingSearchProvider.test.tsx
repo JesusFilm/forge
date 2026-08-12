@@ -2658,8 +2658,14 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
     expect(suggestionList?.className).toContain("[scrollbar-width:none]")
     expect(suggestionList?.className).toContain("[&::-webkit-scrollbar]:hidden")
     expect(languageContext?.textContent).toContain("Searching in")
-    expect(languageTrigger?.textContent).toContain("English")
-    expect(languageTrigger?.className).toContain("!bg-white/[0.05]")
+    expect(languageTrigger?.textContent).toBe("Searching in English")
+    expect(
+      languageTrigger?.querySelector(
+        '[data-testid="language-combobox-option-code"]',
+      ),
+    ).toBeNull()
+    expect(languageTrigger?.querySelector("svg")).toBeNull()
+    expect(languageTrigger?.className).toContain("!bg-transparent")
     expect(languageTrigger?.className.split(/\s+/)).not.toContain("!bg-white")
     const suggestionOptions = Array.from(
       document.querySelectorAll('[role="option"]'),
@@ -2673,6 +2679,88 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
       "toward Jesus and His calling.",
     )
     expect(suggestionOptions[1]?.querySelector("mark")?.textContent).toBe("Je")
+  })
+
+  it("replaces suggestions with a full-panel language search", async () => {
+    vi.useFakeTimers()
+    mockEnglishAndSpanishSearchLanguages()
+    mockedFetchSuggestions.mockResolvedValueOnce([
+      watchSuggestion("Jesus miracles"),
+      watchContentMatch("JESUS", "FEATURE_FILM", "jesus"),
+    ])
+
+    const input = await openSearchOverlay()
+    act(() => setInputValue(input, "jes"))
+    await act(async () => {
+      vi.advanceTimersByTime(180)
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    const panel = document.querySelector(
+      '[data-testid="search-suggestions-panel"]',
+    ) as HTMLElement
+    const trigger = document.querySelector(
+      '[data-testid="language-combobox-trigger"]',
+    ) as HTMLButtonElement
+    expect(panel).not.toBeNull()
+
+    await act(async () => {
+      trigger.click()
+      await Promise.resolve()
+    })
+
+    const languagePopover = document.querySelector(
+      '[data-testid="language-combobox-popover"]',
+    ) as HTMLElement
+    expect(languagePopover).not.toBeNull()
+    expect(languagePopover.style.left).toBe(panel.style.left)
+    expect(languagePopover.style.top).toBe(panel.style.top)
+    expect(languagePopover.style.width).toBe(panel.style.width)
+    expect(languagePopover.style.height).toBe(panel.style.height)
+    expect(
+      document.querySelector(
+        '[role="listbox"][aria-label="Search Suggestions"]',
+      ),
+    ).toBeNull()
+    expect(document.activeElement).toBe(
+      document.querySelector('[data-testid="language-combobox-search"]'),
+    )
+
+    await act(async () => {
+      ;(
+        languagePopover.querySelector(
+          'button[aria-label="Close search"]',
+        ) as HTMLButtonElement
+      ).click()
+      await Promise.resolve()
+    })
+    expect(
+      document.querySelector(
+        '[role="listbox"][aria-label="Search Suggestions"]',
+      ),
+    ).not.toBeNull()
+    expect(mockedFetchSuggestions).toHaveBeenCalledTimes(1)
+
+    await act(async () => {
+      ;(
+        document.querySelector(
+          '[data-testid="language-combobox-trigger"]',
+        ) as HTMLButtonElement
+      ).click()
+      await Promise.resolve()
+      ;(
+        document.querySelector(
+          '[data-testid="language-combobox-option"][data-language-slug="spanish-castilian"]',
+        ) as HTMLButtonElement
+      ).click()
+      await Promise.resolve()
+    })
+
+    expect(
+      document.querySelector('[data-testid="language-combobox-popover"]'),
+    ).toBeNull()
+    expect(mockedRunSearch).not.toHaveBeenCalled()
   })
 
   it("restores cached suggestions after blur without another backend request", async () => {
