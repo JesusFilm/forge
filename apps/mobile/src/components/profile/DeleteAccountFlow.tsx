@@ -1,4 +1,4 @@
-import { useRef, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { Pressable, StyleSheet, Text, View } from "react-native"
 import Ionicons from "@expo/vector-icons/Ionicons"
 
@@ -24,6 +24,10 @@ export const REAUTH_PROMPT_MESSAGE =
 /** AE7: non-destructive — a different subject signed in, nothing ran. */
 export const WRONG_ACCOUNT_MESSAGE =
   "A different account signed in, so nothing was deleted. To delete the original account, sign in with it and try again."
+/** A client abort cannot tell whether the server finished the delete, so the
+ *  copy must not claim either outcome — a reopen reveals the true state. */
+export const DELETE_UNCONFIRMED_MESSAGE =
+  "We could not confirm whether your account was deleted. Reopen the app to check. If you are still signed in, nothing changed and you can try again."
 
 /** KTD5 machine: confirm → busy → (idle | needsReauth | error);
  *  needsReauth → sheetOpen → (busy retry | wrongAccount | needsReauth). */
@@ -39,6 +43,7 @@ type FlowState =
   | { phase: "sheetOpen"; capturedUserId: string | null }
   | { phase: "wrongAccount"; capturedUserId: string | null }
   | { phase: "error" }
+  | { phase: "unconfirmed" }
 
 function signedInUserId(): string | null {
   const snapshot = getAuthSession().getSnapshot()
@@ -59,6 +64,18 @@ export function DeleteAccountFlow() {
   // render, so phase checks alone cannot make the second call a no-op.
   const deleteInFlight = useRef(false)
   const reauthInFlight = useRef(false)
+  // The re-auth callback fires the irreversible delete on an id match; gate it
+  // on the flow still being mounted so a signed-out flip mid-sheet cannot
+  // delete silently off-screen. Setup restores the flag because StrictMode
+  // remounts the SAME instance (setup→cleanup→setup) — clearing without
+  // restoring would wedge it after a dev remount.
+  const alive = useRef(true)
+  useEffect(() => {
+    alive.current = true
+    return () => {
+      alive.current = false
+    }
+  }, [])
 
   const runDelete = () => {
     if (deleteInFlight.current) return
@@ -79,6 +96,9 @@ export function DeleteAccountFlow() {
             capturedUserId: signedInUserId(),
             signInFailed: false,
           })
+        } else if (outcome.status === "unconfirmed") {
+          // The request aborted; the server may or may not have finished.
+          setState({ phase: "unconfirmed" })
         } else {
           setState({ phase: "error" })
         }
@@ -107,7 +127,9 @@ export function DeleteAccountFlow() {
           signedInUserId: signedInUserId(),
         })
         if (next === "retry-deletion") {
-          runDelete()
+          // Only auto-delete if the flow is still mounted: an abandoned sheet
+          // (a signed-out flip unmounts this panel) must not delete silently.
+          if (alive.current) runDelete()
         } else if (next === "wrong-account") {
           setState({ phase: "wrongAccount", capturedUserId })
         } else {
@@ -290,6 +312,32 @@ export function DeleteAccountFlow() {
               accessibilityLabel="Try deleting again"
             >
               <Text style={styles.cancelLabel}>Try again</Text>
+            </Pressable>
+          </View>
+        </>
+      ) : null}
+
+      {state.phase === "unconfirmed" ? (
+        <>
+          <View style={styles.noticeRow}>
+            <Ionicons
+              name="information-circle"
+              size={18}
+              color={TEXT_PRIMARY}
+            />
+            <Text style={styles.panelBody}>{DELETE_UNCONFIRMED_MESSAGE}</Text>
+          </View>
+          <View style={styles.actionRow}>
+            <Pressable
+              onPress={() => setState({ phase: "idle" })}
+              style={({ pressed }) => [
+                styles.cancelButton,
+                pressed && feedback.pressed,
+              ]}
+              accessibilityRole="button"
+              accessibilityLabel="Close"
+            >
+              <Text style={styles.cancelLabel}>Close</Text>
             </Pressable>
           </View>
         </>

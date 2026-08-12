@@ -15,6 +15,7 @@ const mockAuthClient = {
 const mockSessionStore = {
   signOut: jest.fn(async () => {}),
   readSession: jest.fn(async (): Promise<unknown> => null),
+  refresh: jest.fn(async () => {}),
   getSnapshot: jest.fn(() => ({ status: "signedOut", user: null })),
 }
 
@@ -211,6 +212,9 @@ describe("signInWithHostedPage", () => {
     await expect(signInWithHostedPage()).resolves.toEqual({ status: "error" })
     expect(mockSessionStore.readSession).toHaveBeenCalledTimes(2)
     expect(reportDatadogAction).not.toHaveBeenCalled()
+    // Re-sync the snapshot so a stale baseline can't later read a cancel as
+    // success and delete the account (#3).
+    expect(mockSessionStore.refresh).toHaveBeenCalled()
   })
 
   it("classifies any thrown browser open as a retryable error, never a cancel", async () => {
@@ -331,14 +335,38 @@ describe("deleteAccount", () => {
     expect(mockAuthClient.deleteUser).toHaveBeenCalledWith(deleteFetchOptions())
   })
 
-  it("classifies a deleteUser timeout as a retryable error, never fresh-session-required", async () => {
-    // KTD5 guard: a timeout/abort must NOT route to fresh-session-required,
-    // or the auto-retry would mis-fire re-auth on a hung (not stale) session.
+  it("classifies a deleteUser timeout as an error when the session survives, never fresh-session-required", async () => {
+    // KTD5 guard: a timeout/abort must NOT route to fresh-session-required, or
+    // the auto-retry would mis-fire re-auth on a hung (not stale) session. With
+    // the account still present after the abort, it is a plain retryable error.
     mockAuthClient.deleteUser.mockRejectedValue(
       Object.assign(new Error("timeout"), { name: "TimeoutError" }),
     )
+    mockSessionStore.readSession.mockResolvedValue({ id: "user-1" })
 
     await expect(deleteAccount()).resolves.toEqual({ status: "error" })
+    expect(mockSessionStore.signOut).not.toHaveBeenCalled()
+  })
+
+  it("treats an abort as a completed deletion when the session is then gone", async () => {
+    // An abort does not cancel the server hook; a now-empty session means the
+    // delete likely finished, so clear locally instead of lying "nothing changed".
+    mockAuthClient.deleteUser.mockRejectedValue(
+      Object.assign(new Error("aborted"), { name: "AbortError" }),
+    )
+    mockSessionStore.readSession.mockResolvedValue(null)
+
+    await expect(deleteAccount()).resolves.toEqual({ status: "deleted" })
+    expect(mockSessionStore.signOut).toHaveBeenCalled()
+  })
+
+  it("reports unconfirmed when the post-abort session probe itself fails", async () => {
+    mockAuthClient.deleteUser.mockRejectedValue(
+      Object.assign(new Error("timeout"), { name: "TimeoutError" }),
+    )
+    mockSessionStore.readSession.mockRejectedValue(new Error("still offline"))
+
+    await expect(deleteAccount()).resolves.toEqual({ status: "unconfirmed" })
     expect(mockSessionStore.signOut).not.toHaveBeenCalled()
   })
 
@@ -364,8 +392,9 @@ describe("deleteAccount", () => {
     expect(mockSessionStore.signOut).not.toHaveBeenCalled()
   })
 
-  it("reports an error rather than throwing when the call rejects", async () => {
+  it("reports an error rather than throwing when the call rejects and the session survives", async () => {
     mockAuthClient.deleteUser.mockRejectedValue(new Error("offline"))
+    mockSessionStore.readSession.mockResolvedValue({ id: "user-1" })
 
     await expect(deleteAccount()).resolves.toEqual({ status: "error" })
     expect(mockSessionStore.signOut).not.toHaveBeenCalled()

@@ -73,6 +73,12 @@ async function runHostedSignIn(): Promise<SignInOutcome> {
     try {
       user = await store.readSession()
     } catch {
+      // Both reads failed, so the in-memory snapshot may now sit BEHIND the
+      // credential in SecureStore. Re-sync it before giving up: a NEXT attempt
+      // that classifies a cancel against a stale baseline could otherwise read
+      // as success and delete the account. refresh() swallows its own throw,
+      // so this cannot change the error outcome.
+      await store.refresh()
       return { status: "error" }
     }
   }
@@ -140,6 +146,7 @@ export async function signOut(): Promise<void> {
  * success clears local state via the normal signed-out transition.
  */
 export async function deleteAccount(): Promise<DeleteAccountOutcome> {
+  const store = getAuthSession()
   let outcome: DeleteAccountOutcome
   try {
     // A 20s ceiling (deleteFetchOptions) bounds the destructive mutation
@@ -150,7 +157,23 @@ export async function deleteAccount(): Promise<DeleteAccountOutcome> {
       await getAuthClient().deleteUser(deleteFetchOptions()),
     )
   } catch {
-    return { status: "error" }
+    // An abort/timeout does NOT cancel the server hook, so the account may
+    // already be gone — the client must not claim "nothing changed". Probe
+    // the session once: no session ⇒ the delete completed (clear locally); a
+    // live session ⇒ it survived (a true error); a failed probe ⇒ unknown.
+    let signedIn: boolean
+    try {
+      signedIn = (await store.readSession()) != null
+    } catch {
+      return { status: "unconfirmed" }
+    }
+    if (signedIn) return { status: "error" }
+    try {
+      await store.signOut()
+    } catch {
+      // Already gone; the next foreground refresh self-heals the snapshot.
+    }
+    return { status: "deleted" }
   }
   if (outcome.status === "deleted") {
     // The account is gone; signOut's remote leg fails harmlessly and the
@@ -158,7 +181,7 @@ export async function deleteAccount(): Promise<DeleteAccountOutcome> {
     // Guard it: commit() invokes subscribers synchronously, so a throwing
     // subscriber must not reject a deletion that already succeeded.
     try {
-      await getAuthSession().signOut()
+      await store.signOut()
     } catch {
       // Swallow — the account is already deleted; the next foreground refresh
       // self-heals the local snapshot to signed-out.

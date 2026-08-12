@@ -177,11 +177,23 @@ Client-side RUM + Logs via `@datadog/mobile-react-native`; helpers in
   classifies as a retryable error (`src/lib/authFlows.ts`).
 - **iOS auth session is EPHEMERAL** (`webBrowserOptions.preferEphemeralSession`
   on the expo client, iOS-only): no Safari cookie sharing, so no per-sign-in
-  "Wants to Use…to Sign In" consent alert and no hosted-session residual on a
-  shared device. This reverses the July KTD2 non-ephemeral choice; the accepted
-  cost is no one-tap reuse of an existing Safari IdP login (social users
-  re-authenticate with the provider each sign-in). Android (Custom Tabs) is
-  unaffected. Only observable at iOS runtime — verify in the simulator, not jest.
+  "Wants to Use…to Sign In" consent alert and no iOS shared-device residual.
+  This reverses the July KTD2 non-ephemeral choice; the accepted cost is no
+  one-tap reuse of an existing Safari IdP login (social users re-authenticate
+  each sign-in). SCOPE: the residual claim is iOS-only. On Android the Custom
+  Tab keeps the `auth.jesusfilm.org` cookie in Chrome after app sign-out (the
+  flag does not apply there); `prompt=login` still guards the in-app path.
+  Only observable at iOS runtime — verify in the simulator, not jest.
+- **Android callback scheme — accepted risk (2026-08-12)**: the session cookie
+  rides the `forgemobile://` custom scheme — the expo client reads `?cookie=`
+  off the callback and stores it. On Android a custom scheme is unverifiable, so
+  a co-installed app declaring `forgemobile` could intercept the session bearer.
+  feat-349 deleted the other flows, so this is now the ONLY mobile sign-in
+  channel. Accepted for now: short session lifetime + this-device-only
+  SecureStore. FOLLOW-UP before a wide Android production release: evaluate an
+  `https://auth.jesusfilm.org/…` App Link callback (`assetlinks.json`), gated on
+  `@better-auth/expo` accepting an https callback. iOS is unaffected —
+  `ASWebAuthenticationSession` binds the callback to the calling app.
 - **Session**: `src/lib/authSession.ts` owns the Better Auth Expo client
   (lazy getter, never module-scope) and a subscribable snapshot readable
   WITHOUT React — the Apollo link and recorder read it directly. Credentials

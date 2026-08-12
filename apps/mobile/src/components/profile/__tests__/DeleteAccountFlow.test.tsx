@@ -51,6 +51,7 @@ import { act } from "react"
 
 import {
   DELETE_FAILED_MESSAGE,
+  DELETE_UNCONFIRMED_MESSAGE,
   DeleteAccountFlow,
   REAUTH_FAILED_MESSAGE,
   REAUTH_PROMPT_MESSAGE,
@@ -306,5 +307,44 @@ describe("DeleteAccountFlow re-auth auto-retry (U4)", () => {
     await press(pressableByLabel(renderer, "Sign in again"))
     expect(mockedSignIn).toHaveBeenCalledTimes(2)
     await unmount(renderer)
+  })
+
+  it("shows the unconfirmed notice, distinct from the failed copy, and closes to idle", async () => {
+    mockedDelete.mockResolvedValueOnce({ status: "unconfirmed" })
+    const renderer = await renderFlow()
+
+    await press(pressableByLabel(renderer, "Delete account"))
+    await press(pressableByLabel(renderer, "Permanently delete account"))
+
+    expect(hasText(renderer, DELETE_UNCONFIRMED_MESSAGE)).toBe(true)
+    expect(hasText(renderer, DELETE_FAILED_MESSAGE)).toBe(false)
+    await press(pressableByLabel(renderer, "Close"))
+    expect(hasText(renderer, "Delete account")).toBe(true)
+    await unmount(renderer)
+  })
+
+  it("does not auto-delete after the panel unmounts mid-sheet", async () => {
+    let resolveSignIn!: (outcome: SignInOutcome) => void
+    mockedDelete.mockResolvedValueOnce({ status: "fresh-session-required" })
+    mockedSignIn.mockImplementationOnce(
+      () =>
+        new Promise<SignInOutcome>((resolve) => {
+          resolveSignIn = resolve
+        }),
+    )
+    const renderer = await renderFlow()
+
+    await driveToNeedsReauth(renderer)
+    await press(pressableByLabel(renderer, "Sign in again"))
+    expect(mockedDelete).toHaveBeenCalledTimes(1)
+
+    // A signed-out flip unmounts the panel while the sheet is still open.
+    await unmount(renderer)
+
+    // The sheet then resolves as the SAME subject. Without the alive guard the
+    // callback would fire the irreversible delete off-screen; it must not.
+    resolveSignIn({ status: "success" })
+    await act(async () => {})
+    expect(mockedDelete).toHaveBeenCalledTimes(1)
   })
 })

@@ -32,6 +32,10 @@ export type DeleteAccountOutcome =
   | { status: "deleted" }
   | { status: "fresh-session-required" }
   | { status: "error" }
+  // A client abort/timeout does not cancel the server hook, so the result is
+  // genuinely unknown — distinct from "error" ("nothing changed"), which the
+  // client cannot claim after an abort.
+  | { status: "unconfirmed" }
 
 export function outcomeFromDeleteResult(result: {
   error?: { code?: string | null; message?: string | null } | null
