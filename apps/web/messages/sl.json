@@ -205,12 +205,12 @@
     "categoryChristmas": "Božič",
     "searchLanguageLabel": "Jezik iskanja",
     "allLanguages": "Vsi jeziki",
-    "searchSuggestions": "Predlogi iskanja",
-    "directMatches": "Direct match",
+    "searchSuggestions": "Predlogi za iskanje",
+    "directMatches": "Neposredna ujemanja",
     "languages": "Jeziki",
     "recommendedLanguage": "Priporočen jezik",
-    "searchSuggestion": "Išči {suggestion}",
-    "searchSuggestionWithLanguage": "Išči {suggestion} v jeziku {language}",
+    "searchSuggestion": "Išči »{suggestion}«",
+    "searchSuggestionWithLanguage": "Išči »{suggestion}« v jeziku {language}",
     "inLanguage": "v jeziku {language}",
     "browseByRegion": "Brskaj po regiji",
     "clearLanguages": "Počisti",
@@ -219,7 +219,8 @@
     "tryDifferentKeywordsOrLanguage": "Poskusite z drugimi ključnimi besedami ali izberite drug jezik iskanja",
     "useWebsiteDefaultLanguage": "Uporabi privzeti jezik iskanja spletnega mesta",
     "removeLanguage": "Odstrani {language}",
-    "browseMode": "Način brskanja po iskanju"
+    "browseMode": "Način brskanja po iskanju",
+    "searchingInLanguage": "Rezultati v jeziku {language}"
   },
   "HeroPlayer": {
     "playWithSound": "Glej zdaj",

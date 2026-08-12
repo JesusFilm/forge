@@ -180,7 +180,7 @@
     "changeAudioLanguage": "Audio language jalb'ej",
     "home": "JesusFilm rochoch",
     "closeSearch": "Search tich'up'",
-    "submitSearch": "Ch'aw"
+    "submitSearch": "Chi ch'aw"
   },
   "SearchOverlay": {
     "dialogLabel": "Videos chi ch'aw yik'otz'ib'ej",
@@ -205,21 +205,22 @@
     "categoryChristmas": "Navidad",
     "searchLanguageLabel": "B'anob' tzij re search",
     "allLanguages": "Languages konob'äj",
-    "searchSuggestions": "K'utb'en re search",
-    "directMatches": "Direct match",
+    "searchSuggestions": "Taq k'utb'en re search",
+    "directMatches": "Taq k'ulb'en jik",
     "languages": "B'anob' tzij",
     "recommendedLanguage": "B'anob' tzij k'utb'en",
-    "searchSuggestion": "{suggestion} chi search",
-    "searchSuggestionWithLanguage": "{suggestion} chi search {language} chi",
+    "searchSuggestion": "{suggestion} chi ch'aw",
+    "searchSuggestionWithLanguage": "\"{suggestion}\" chi ch'aw {language} chi",
     "inLanguage": "{language} chi",
     "browseByRegion": "Region chi browse",
     "clearLanguages": "K'uch",
     "queryLanguageDetected": "{language} xk'ulb'ej",
-    "searchInLanguage": "{language} chi search",
+    "searchInLanguage": "Search {language} chi",
     "tryDifferentKeywordsOrLanguage": "Keywords jujun chi tqa o language chi ticha'j",
     "useWebsiteDefaultLanguage": "Website default search language tatz'ib'ej",
     "removeLanguage": "{language} tich'up'",
-    "browseMode": "Rub'eyal search browse"
+    "browseMode": "Rub'eyal search browse",
+    "searchingInLanguage": "Results {language} chi"
   },
   "HeroPlayer": {
     "playWithSound": "K'utun wakami",

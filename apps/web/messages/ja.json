@@ -206,11 +206,11 @@
     "searchLanguageLabel": "検索言語",
     "allLanguages": "すべての言語",
     "searchSuggestions": "検索候補",
-    "directMatches": "Direct match",
+    "directMatches": "一致するコンテンツ",
     "languages": "言語",
     "recommendedLanguage": "推奨言語",
-    "searchSuggestion": "{suggestion}を検索",
-    "searchSuggestionWithLanguage": "{language}で{suggestion}を検索",
+    "searchSuggestion": "「{suggestion}」を検索",
+    "searchSuggestionWithLanguage": "{language}で「{suggestion}」を検索",
     "inLanguage": "{language}で",
     "browseByRegion": "地域別に見る",
     "clearLanguages": "クリア",
@@ -219,7 +219,8 @@
     "tryDifferentKeywordsOrLanguage": "別のキーワードを試すか、別の検索言語を選択してください",
     "useWebsiteDefaultLanguage": "サイトの既定の検索言語を使用",
     "removeLanguage": "{language}を削除",
-    "browseMode": "検索閲覧モード"
+    "browseMode": "検索閲覧モード",
+    "searchingInLanguage": "{language}の検索結果"
   },
   "HeroPlayer": {
     "playWithSound": "今すぐ見る",

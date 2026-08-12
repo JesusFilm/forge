@@ -244,6 +244,14 @@ const japaneseSearchLanguage = {
   regionNames: ["Asia"],
 }
 
+const russianSearchLanguage = {
+  englishName: "Russian",
+  nativeName: "Русский",
+  bcp47: "ru",
+  publicSlug: "russian",
+  regionNames: ["Europe"],
+}
+
 const SPANISH_CONFIRMATION_QUERY = "películas bíblicas para niños cristianos"
 
 function mockEnglishAndSpanishSearchLanguages() {
@@ -2699,7 +2707,7 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
     const submittedLanguageContext = document.querySelector(
       '[data-testid="search-language-context"]',
     )
-    expect(submittedLanguageContext?.textContent).toBe("Searching inEnglish")
+    expect(submittedLanguageContext?.textContent).toBe("Searching in English")
     expect(
       submittedLanguageContext?.querySelector(
         '[data-testid="search-context-submit"]',
@@ -3480,6 +3488,24 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
 
   it("localizes the global search launcher and close control in Russian", async () => {
     setRequestLocale("ru")
+    mockedRunSearch.mockResolvedValueOnce(
+      searchResult("watch-search", {
+        resolvedLanguage: {
+          locale: "ru",
+          publicSlug: "russian",
+          englishName: "Russian",
+          source: "explicit-selection",
+        },
+      }),
+    )
+    mockedGetSearchLanguageOptions.mockResolvedValue({
+      ok: true,
+      options: [russianSearchLanguage],
+      countrySuggestion: null,
+      recommendedLanguage: russianSearchLanguage,
+      countryCode: null,
+      countryName: null,
+    })
     act(() => {
       root.render(
         <FloatingSearchProvider>
@@ -3505,6 +3531,40 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
     ).not.toBeNull()
     expect(document.querySelector('[aria-label="Search videos"]')).toBeNull()
     expect(document.querySelector('[aria-label="Close search"]')).toBeNull()
+
+    await flushSearchControllerMount()
+    expect(
+      document.querySelector('[data-testid="searching-in-language-label"]')
+        ?.textContent,
+    ).toBe("русский")
+    expect(
+      document.querySelector('[data-testid="search-language-context"]')
+        ?.textContent,
+    ).toBe("Язык поиска: русский")
+
+    const input = document.querySelector(
+      'input[aria-label="Искать видео по ключевым словам"]',
+    ) as HTMLInputElement
+    act(() => setInputValue(input, "иисус"))
+
+    const contextualSubmit = document.querySelector(
+      '[data-testid="search-context-submit"]',
+    ) as HTMLButtonElement
+    expect(contextualSubmit.getAttribute("aria-label")).toBe(
+      "Поиск на русском по запросу «иисус»",
+    )
+
+    await act(async () => {
+      contextualSubmit.click()
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+    await flushResolvedSearch()
+
+    expect(
+      document.querySelector('[data-testid="search-language-context"]')
+        ?.textContent,
+    ).toBe("Результаты на русском")
   })
 
   it("does not mount the full search overlay on initial render without query intent", () => {

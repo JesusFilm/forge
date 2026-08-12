@@ -205,12 +205,12 @@
     "categoryChristmas": "Milied",
     "searchLanguageLabel": "Fittex lingwa",
     "allLanguages": "Il-lingwi kollha",
-    "searchSuggestions": "Suġġerimenti ta' Tiftix",
-    "directMatches": "Direct match",
+    "searchSuggestions": "Suġġerimenti għat-tfittxija",
+    "directMatches": "Taqbiliet diretti",
     "languages": "Lingwi",
     "recommendedLanguage": "Lingwa rakkomandata",
-    "searchSuggestion": "Fittex {suggestion}",
-    "searchSuggestionWithLanguage": "Fittex {suggestion} bil-{language}",
+    "searchSuggestion": "Fittex “{suggestion}”",
+    "searchSuggestionWithLanguage": "Fittex “{suggestion}” bil-{language}",
     "inLanguage": "bil-{language}",
     "browseByRegion": "Ibrawżja skont ir-reġjun",
     "clearLanguages": "Naddaf",
@@ -219,7 +219,8 @@
     "tryDifferentKeywordsOrLanguage": "Ipprova kliem ewlieni differenti jew agħżel lingwa oħra għat-tfittxija",
     "useWebsiteDefaultLanguage": "Uża l-lingwa tat-tfittxija default tas-sit",
     "removeLanguage": "Neħħi {language}",
-    "browseMode": "Modalità ta' browsing tat-tfittxija"
+    "browseMode": "Modalità ta' browsing tat-tfittxija",
+    "searchingInLanguage": "Riżultati bil-{language}"
   },
   "HeroPlayer": {
     "playWithSound": "Ara issa",

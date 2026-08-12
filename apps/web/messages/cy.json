@@ -206,11 +206,11 @@
     "searchLanguageLabel": "Iaith chwilio",
     "allLanguages": "Pob iaith",
     "searchSuggestions": "Awgrymiadau chwilio",
-    "directMatches": "Direct match",
+    "directMatches": "Cyfatebiad uniongyrchol",
     "languages": "Ieithoedd",
     "recommendedLanguage": "Iaith a argymhellir",
-    "searchSuggestion": "Chwilio {suggestion}",
-    "searchSuggestionWithLanguage": "Chwilio {suggestion} yn {language}",
+    "searchSuggestion": "Chwilio am {suggestion}",
+    "searchSuggestionWithLanguage": "Chwilio am “{suggestion}” yn {language}",
     "inLanguage": "yn {language}",
     "browseByRegion": "Pori yn ôl rhanbarth",
     "clearLanguages": "Clirio",
@@ -219,7 +219,8 @@
     "tryDifferentKeywordsOrLanguage": "Rhowch gynnig ar eiriau allweddol gwahanol neu ddewis iaith chwilio arall",
     "useWebsiteDefaultLanguage": "Defnyddio iaith chwilio ddiofyn y wefan",
     "removeLanguage": "Tynnu {language}",
-    "browseMode": "Modd pori chwilio"
+    "browseMode": "Modd pori chwilio",
+    "searchingInLanguage": "Canlyniadau yn {language}"
   },
   "HeroPlayer": {
     "playWithSound": "Gwylio nawr",

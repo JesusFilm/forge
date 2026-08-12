@@ -206,11 +206,11 @@
     "searchLanguageLabel": "Gjuha e kërkimit",
     "allLanguages": "Të gjitha gjuhët",
     "searchSuggestions": "Sugjerime kërkimi",
-    "directMatches": "Direct match",
+    "directMatches": "Përputhje të drejtpërdrejta",
     "languages": "Gjuhë",
     "recommendedLanguage": "Gjuha e rekomanduar",
-    "searchSuggestion": "Kërko {suggestion}",
-    "searchSuggestionWithLanguage": "Kërko {suggestion} në {language}",
+    "searchSuggestion": "Kërko “{suggestion}”",
+    "searchSuggestionWithLanguage": "Kërko “{suggestion}” në {language}",
     "inLanguage": "në {language}",
     "browseByRegion": "Shfleto sipas rajonit",
     "clearLanguages": "Pastro",
@@ -219,7 +219,8 @@
     "tryDifferentKeywordsOrLanguage": "Provo fjalë kyçe të tjera ose zgjidh një gjuhë tjetër kërkimi",
     "useWebsiteDefaultLanguage": "Përdor gjuhën e parazgjedhur të kërkimit të faqes",
     "removeLanguage": "Hiq {language}",
-    "browseMode": "Modaliteti i shfletimit të kërkimit"
+    "browseMode": "Modaliteti i shfletimit të kërkimit",
+    "searchingInLanguage": "Rezultate në {language}"
   },
   "HeroPlayer": {
     "playWithSound": "Shiko tani",

@@ -205,12 +205,12 @@
     "categoryChristmas": "Ахәылԥазҭә",
     "searchLanguageLabel": "Аԥшаара бызшәа",
     "allLanguages": "Абызшәақәа зегьы",
-    "searchSuggestions": "Аԥшааратә ажәалагалақәа",
-    "directMatches": "Direct match",
+    "searchSuggestions": "Аԥшааразы абжьгарақәа",
+    "directMatches": "Иақәшәо алҵшәақәа",
     "languages": "Абызшәақәа",
     "recommendedLanguage": "Ирекомендуаз бызшәа",
-    "searchSuggestion": "{suggestion} аԥшаара",
-    "searchSuggestionWithLanguage": "{suggestion} {language} бызшәала аԥшаара",
+    "searchSuggestion": "«{suggestion}» аԥшаара",
+    "searchSuggestionWithLanguage": "{language} бызшәала «{suggestion}» аԥшаара",
     "inLanguage": "{language} бызшәала",
     "browseByRegion": "Арегион ала рыԥшаара",
     "clearLanguages": "Аӡбра",
@@ -219,7 +219,8 @@
     "tryDifferentKeywordsOrLanguage": "Егьырҭ ажәартә ажәақәа ма даҽа ԥшааратә бызшәак шәалырха",
     "useWebsiteDefaultLanguage": "Асаит аизышьҭра бызшәала аԥшаара",
     "removeLanguage": "{language} арыхра",
-    "browseMode": "Аԥшаара-броуз режим"
+    "browseMode": "Аԥшаара-броуз режим",
+    "searchingInLanguage": "Алҵшәақәа {language} бызшәала"
   },
   "HeroPlayer": {
     "playWithSound": "Уажәы азыԥхьақәа",

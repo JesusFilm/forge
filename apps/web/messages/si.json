@@ -180,7 +180,7 @@
     "changeAudioLanguage": "ශ්‍රව්‍ය භාෂාව වෙනස් කරන්න",
     "home": "JesusFilm මුල් පිටුව",
     "closeSearch": "සෙවීම වසන්න",
-    "submitSearch": "සෙවන්න"
+    "submitSearch": "සොයන්න"
   },
   "SearchOverlay": {
     "dialogLabel": "වීඩියෝ සෙවීම සහ බ්‍රවුස් කිරීම",
@@ -205,12 +205,12 @@
     "categoryChristmas": "නත්තල්",
     "searchLanguageLabel": "සෙවීමේ භාෂාව",
     "allLanguages": "සියලු භාෂා",
-    "searchSuggestions": "සෙවුම් යෝජනා",
-    "directMatches": "Direct match",
+    "searchSuggestions": "සෙවීම් යෝජනා",
+    "directMatches": "සෘජු ගැළපීම්",
     "languages": "භාෂා",
     "recommendedLanguage": "නිර්දේශිත භාෂාව",
-    "searchSuggestion": "{suggestion} සොයන්න",
-    "searchSuggestionWithLanguage": "{language} භාෂාවෙන් {suggestion} සොයන්න",
+    "searchSuggestion": "“{suggestion}” සොයන්න",
+    "searchSuggestionWithLanguage": "{language} භාෂාවෙන් “{suggestion}” සොයන්න",
     "inLanguage": "{language} භාෂාවෙන්",
     "browseByRegion": "කලාපය අනුව බ්‍රවුස් කරන්න",
     "clearLanguages": "හිස් කරන්න",
@@ -219,7 +219,8 @@
     "tryDifferentKeywordsOrLanguage": "වෙනත් මූලපද උත්සාහ කරන්න හෝ වෙනත් සෙවීමේ භාෂාවක් තෝරන්න",
     "useWebsiteDefaultLanguage": "වෙබ් අඩවියේ පෙරනිමි සෙවීමේ භාෂාව භාවිත කරන්න",
     "removeLanguage": "{language} ඉවත් කරන්න",
-    "browseMode": "සෙවීම් බ්‍රවුස් මාදිලිය"
+    "browseMode": "සෙවීම් බ්‍රවුස් මාදිලිය",
+    "searchingInLanguage": "ප්‍රතිඵල {language} භාෂාවට සීමා කර ඇත"
   },
   "HeroPlayer": {
     "playWithSound": "දැන් නරඹන්න",

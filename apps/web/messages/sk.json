@@ -206,11 +206,11 @@
     "searchLanguageLabel": "Vyhľadávací jazyk",
     "allLanguages": "Všetky jazyky",
     "searchSuggestions": "Návrhy vyhľadávania",
-    "directMatches": "Direct match",
+    "directMatches": "Priame zhody",
     "languages": "Jazyky",
     "recommendedLanguage": "Odporúčaný jazyk",
-    "searchSuggestion": "Hľadať {suggestion}",
-    "searchSuggestionWithLanguage": "Hľadať {suggestion} v jazyku {language}",
+    "searchSuggestion": "Vyhľadať „{suggestion}“",
+    "searchSuggestionWithLanguage": "Vyhľadať „{suggestion}“ v jazyku {language}",
     "inLanguage": "v jazyku {language}",
     "browseByRegion": "Prehliadať podľa regiónu",
     "clearLanguages": "Vymazať",
@@ -219,7 +219,8 @@
     "tryDifferentKeywordsOrLanguage": "Skúste iné kľúčové slová alebo vyberte iný vyhľadávací jazyk",
     "useWebsiteDefaultLanguage": "Použiť predvolený vyhľadávací jazyk webu",
     "removeLanguage": "Odstrániť {language}",
-    "browseMode": "Režim prehliadania vyhľadávania"
+    "browseMode": "Režim prehliadania vyhľadávania",
+    "searchingInLanguage": "Výsledky v jazyku {language}"
   },
   "HeroPlayer": {
     "playWithSound": "Sledovať teraz",

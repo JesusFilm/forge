@@ -205,12 +205,12 @@
     "categoryChristmas": "Pasko",
     "searchLanguageLabel": "Wika ng paghahanap",
     "allLanguages": "Lahat ng wika",
-    "searchSuggestions": "Mga Mungkahi sa Paghahanap",
-    "directMatches": "Direct match",
+    "searchSuggestions": "Mga mungkahing paghahanap",
+    "directMatches": "Mga direktang tugma",
     "languages": "Mga Wika",
     "recommendedLanguage": "Inirerekomendang wika",
-    "searchSuggestion": "Maghanap ng {suggestion}",
-    "searchSuggestionWithLanguage": "Maghanap ng {suggestion} sa {language}",
+    "searchSuggestion": "Hanapin ang {suggestion}",
+    "searchSuggestionWithLanguage": "Hanapin sa {language} ang “{suggestion}”",
     "inLanguage": "sa {language}",
     "browseByRegion": "Mag-browse ayon sa rehiyon",
     "clearLanguages": "I-clear",
@@ -219,7 +219,8 @@
     "tryDifferentKeywordsOrLanguage": "Subukan ang ibang mga keyword o pumili ng ibang wika ng paghahanap",
     "useWebsiteDefaultLanguage": "Gamitin ang default na wika ng paghahanap ng website",
     "removeLanguage": "Alisin ang {language}",
-    "browseMode": "Mode ng pag-browse sa paghahanap"
+    "browseMode": "Mode ng pag-browse sa paghahanap",
+    "searchingInLanguage": "Mga resulta sa {language}"
   },
   "HeroPlayer": {
     "playWithSound": "Panoorin ngayon",

@@ -206,11 +206,11 @@
     "searchLanguageLabel": "തിരച്ചിൽ ഭാഷ",
     "allLanguages": "എല്ലാ ഭാഷകളും",
     "searchSuggestions": "തിരച്ചിൽ നിർദ്ദേശങ്ങൾ",
-    "directMatches": "Direct match",
+    "directMatches": "നേരിട്ടുള്ള പൊരുത്തങ്ങൾ",
     "languages": "ഭാഷകൾ",
     "recommendedLanguage": "ശുപാർശ ചെയ്യുന്ന ഭാഷ",
-    "searchSuggestion": "{suggestion} തിരയുക",
-    "searchSuggestionWithLanguage": "{language} ൽ {suggestion} തിരയുക",
+    "searchSuggestion": "“{suggestion}” തിരയുക",
+    "searchSuggestionWithLanguage": "{language} ൽ “{suggestion}” തിരയുക",
     "inLanguage": "{language} ൽ",
     "browseByRegion": "പ്രദേശം പ്രകാരം ബ്രൗസ് ചെയ്യുക",
     "clearLanguages": "മായ്ക്കുക",
@@ -219,7 +219,8 @@
     "tryDifferentKeywordsOrLanguage": "മറ്റു കീവേഡുകൾ ശ്രമിക്കുക അല്ലെങ്കിൽ മറ്റൊരു തിരച്ചിൽ ഭാഷ തിരഞ്ഞെടുക്കുക",
     "useWebsiteDefaultLanguage": "വെബ്‌സൈറ്റിന്റെ ഡിഫോൾട്ട് തിരച്ചിൽ ഭാഷ ഉപയോഗിക്കുക",
     "removeLanguage": "{language} നീക്കം ചെയ്യുക",
-    "browseMode": "തിരച്ചിൽ ബ്രൗസ് മോഡ്"
+    "browseMode": "തിരച്ചിൽ ബ്രൗസ് മോഡ്",
+    "searchingInLanguage": "ഫലങ്ങൾ {language} ൽ"
   },
   "HeroPlayer": {
     "playWithSound": "ഇപ്പോൾ കാണുക",

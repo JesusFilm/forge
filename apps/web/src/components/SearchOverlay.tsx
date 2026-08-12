@@ -14,7 +14,7 @@ import {
 } from "react"
 import { createPortal } from "react-dom"
 import { usePathname, useRouter } from "next/navigation"
-import { useTranslations } from "next-intl"
+import { useLocale, useTranslations } from "next-intl"
 import {
   BookOpen,
   ChevronDown,
@@ -65,6 +65,7 @@ import {
 } from "@/lib/content-width"
 import type { CategorySearchTerm } from "@/lib/search-categories"
 import type { SearchLanguageOption } from "@/lib/search-language"
+import { localizedSearchLanguageName } from "@/lib/search-language-display-name"
 import {
   parseWatchPath,
   tryAsContentSlug,
@@ -202,6 +203,7 @@ export function SearchOverlay() {
   const t = useTranslations("SearchOverlay")
   const floatingSearchT = useTranslations("FloatingSearch")
   const videoLabels = useTranslations("VideoLabels")
+  const uiLocale = useLocale()
   const pathname = usePathname()
   const router = useRouter()
   const parsedPath = parseWatchPath(pathname)
@@ -911,18 +913,21 @@ export function SearchOverlay() {
     selectedSearchLanguageOption?.publicSlug ??
     defaultSearchLanguageOption?.publicSlug ??
     ""
-  const searchInLabel = t("searchInLanguage", { language: "" }).trim()
-  const searchingInLabel = `${t("searching").replace(/[.…]+$/u, "")} ${t(
-    "inLanguage",
-    { language: "" },
-  ).trim()}`
-  const languageContextLabel = searchIntentMatchesCompletedResults
-    ? searchingInLabel
-    : searchInLabel
-  const semanticLanguageName =
-    selectedSearchLanguageOption?.englishName ??
-    defaultSearchLanguageOption?.englishName ??
-    t("searchLanguageLabel")
+  const languageContextMessage = t.raw(
+    searchIntentMatchesCompletedResults
+      ? "searchingInLanguage"
+      : "searchInLanguage",
+  ) as string
+  const semanticLanguageOption =
+    selectedSearchLanguageOption ?? defaultSearchLanguageOption
+  const semanticLanguageName = localizedSearchLanguageName(
+    semanticLanguageOption,
+    uiLocale,
+    t("searchLanguageLabel"),
+    hasUnsubmittedSearchIntent || searchIntentMatchesCompletedResults
+      ? "search-prepositional"
+      : "standalone",
+  )
   const semanticLanguageTriggerContent = (
     <span
       data-testid="searching-in-language-label"
@@ -1005,12 +1010,19 @@ export function SearchOverlay() {
         <CornerDownLeft aria-hidden className="h-4 w-4 shrink-0" />
       </>
     ) : (
-      <>
-        <span className="shrink-0 text-[13px] sm:text-sm">
-          {languageContextLabel}
-        </span>
-        {renderSemanticLanguageCombobox(takeoverRect)}
-      </>
+      <span className="min-w-0 flex-1 truncate text-[13px] sm:text-sm">
+        {languageContextMessage
+          .split(/(\{language\})/u)
+          .map((part, index) =>
+            part === "{language}" ? (
+              <span key={`language-${index}`}>
+                {renderSemanticLanguageCombobox(takeoverRect)}
+              </span>
+            ) : (
+              <span key={`copy-${index}`}>{part}</span>
+            ),
+          )}
+      </span>
     )
   const headerTopClass = headerPinned
     ? FLOATING_HEADER_PINNED_TOP_CLASS

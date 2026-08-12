@@ -205,12 +205,12 @@
     "categoryChristmas": "Kerisimasi",
     "searchLanguageLabel": "Gagana e su'e ai",
     "allLanguages": "Gagana uma",
-    "searchSuggestions": "Fautuaga o le Su'esu'ega",
-    "directMatches": "Direct match",
+    "searchSuggestions": "Fautuaga mo le su'esu'ega",
+    "directMatches": "I'uga e fetaui tonu",
     "languages": "Gagana",
     "recommendedLanguage": "Gagana fautuaina",
     "searchSuggestion": "Su'e {suggestion}",
-    "searchSuggestionWithLanguage": "Su'e {suggestion} i le {language}",
+    "searchSuggestionWithLanguage": "Su'e “{suggestion}” i le {language}",
     "inLanguage": "i le {language}",
     "browseByRegion": "Su'esu'e e le itulagi",
     "clearLanguages": "Fa'amama",
@@ -219,7 +219,8 @@
     "tryDifferentKeywordsOrLanguage": "Taumafai i upu autū eseese po o le filifili i se isi gagana e su'e ai",
     "useWebsiteDefaultLanguage": "Fa'aoga le gagana su'esu'e fa'aletonu a le 'upega tafa'ilagi",
     "removeLanguage": "Ave'ese {language}",
-    "browseMode": "Faiga su'esu'e"
+    "browseMode": "Faiga su'esu'e",
+    "searchingInLanguage": "I'uga i le {language}"
   },
   "HeroPlayer": {
     "playWithSound": "Matamata nei",

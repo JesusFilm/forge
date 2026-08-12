@@ -205,12 +205,12 @@
     "categoryChristmas": "ख्रिसमस",
     "searchLanguageLabel": "शोधाचो भास",
     "allLanguages": "सगळे भास",
-    "searchSuggestions": "शोध सुचोवणी",
-    "directMatches": "Direct match",
+    "searchSuggestions": "शोधा खातीर सुचोवण्यो",
+    "directMatches": "थेट जुळपी निकाल",
     "languages": "भास",
     "recommendedLanguage": "शिफारस केल्लो भास",
-    "searchSuggestion": "{suggestion} सोदात",
-    "searchSuggestionWithLanguage": "{language} त {suggestion} सोदात",
+    "searchSuggestion": "“{suggestion}” सोदात",
+    "searchSuggestionWithLanguage": "{language} त “{suggestion}” सोदात",
     "inLanguage": "{language} त",
     "browseByRegion": "प्रदेशा प्रमाणे ब्राऊझ करात",
     "clearLanguages": "साफ करात",
@@ -219,7 +219,8 @@
     "tryDifferentKeywordsOrLanguage": "दुसरे कीवर्ड वापरात वा दुसरो शोध भास निवडात",
     "useWebsiteDefaultLanguage": "वेबसाइटाचो मूळ शोध भास वापरात",
     "removeLanguage": "{language} काडात",
-    "browseMode": "शोध ब्राऊझ मोड"
+    "browseMode": "शोध ब्राऊझ मोड",
+    "searchingInLanguage": "निकालांचो भास: {language}"
   },
   "HeroPlayer": {
     "playWithSound": "आतां पळयात",

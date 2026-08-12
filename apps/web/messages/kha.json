@@ -206,11 +206,11 @@
     "searchLanguageLabel": "Wad ktien",
     "allLanguages": "Ki ktien baroh",
     "searchSuggestions": "Ki jingai jingmut ban wad",
-    "directMatches": "Direct match",
+    "directMatches": "Ki result ba iadei beit",
     "languages": "Ki ktien",
     "recommendedLanguage": "Ktien ba la ai jingmut",
-    "searchSuggestion": "Wad {suggestion}",
-    "searchSuggestionWithLanguage": "Wad {suggestion} ha {language}",
+    "searchSuggestion": "Wad ia {suggestion}",
+    "searchSuggestionWithLanguage": "Wad ia \"{suggestion}\" ha {language}",
     "inLanguage": "ha {language}",
     "browseByRegion": "Peit katkum ka thaiñ",
     "clearLanguages": "Pynlait",
@@ -219,7 +219,8 @@
     "tryDifferentKeywordsOrLanguage": "Pyrshang ia ki kyntien ba pher lane jied ia kawei pat ka ktien search",
     "useWebsiteDefaultLanguage": "Pyndonkam ia ka ktien search by default jong ka website",
     "removeLanguage": "Pynlait ia {language}",
-    "browseMode": "Ka rukom peit search"
+    "browseMode": "Ka rukom peit search",
+    "searchingInLanguage": "Ki result ha {language}"
   },
   "HeroPlayer": {
     "playWithSound": "Peit mynta",

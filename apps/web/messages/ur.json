@@ -206,11 +206,11 @@
     "searchLanguageLabel": "تلاش کی زبان",
     "allLanguages": "تمام زبانیں",
     "searchSuggestions": "تلاش کی تجاویز",
-    "directMatches": "Direct match",
+    "directMatches": "براہِ راست نتائج",
     "languages": "زبانیں",
     "recommendedLanguage": "تجویز کردہ زبان",
     "searchSuggestion": "{suggestion} تلاش کریں",
-    "searchSuggestionWithLanguage": "{suggestion} کو {language} میں تلاش کریں",
+    "searchSuggestionWithLanguage": "{language} میں ”{suggestion}“ تلاش کریں",
     "inLanguage": "{language} میں",
     "browseByRegion": "علاقے کے لحاظ سے براؤز کریں",
     "clearLanguages": "صاف کریں",
@@ -219,7 +219,8 @@
     "tryDifferentKeywordsOrLanguage": "مختلف کلیدی الفاظ آزمائیں یا کوئی اور تلاش کی زبان منتخب کریں",
     "useWebsiteDefaultLanguage": "ویب سائٹ کی ڈیفالٹ تلاش زبان استعمال کریں",
     "removeLanguage": "{language} ہٹائیں",
-    "browseMode": "براؤز موڈ"
+    "browseMode": "براؤز موڈ",
+    "searchingInLanguage": "نتائج کی زبان: {language}"
   },
   "HeroPlayer": {
     "playWithSound": "ابھی دیکھیں",

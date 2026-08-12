@@ -205,12 +205,12 @@
     "categoryChristmas": "روزا پائالىيىتى",
     "searchLanguageLabel": "ئىزدەش تىلى",
     "allLanguages": "بارلىق تىللار",
-    "searchSuggestions": "ئىزدەش تەكلىپلىرى",
-    "directMatches": "Direct match",
+    "searchSuggestions": "ئىزدەش تەۋسىيەلىرى",
+    "directMatches": "بىۋاسىتە ماس كەلگەنلەر",
     "languages": "تىللەر",
     "recommendedLanguage": "تەۋسىيە قىلىنغان تىل",
-    "searchSuggestion": "{suggestion} نى ئىزدەش",
-    "searchSuggestionWithLanguage": "{language} دىكى {suggestion} نى ئىزدەش",
+    "searchSuggestion": "«{suggestion}» نى ئىزدەش",
+    "searchSuggestionWithLanguage": "{language} دا «{suggestion}» نى ئىزدەش",
     "inLanguage": "{language} دا",
     "browseByRegion": "رايون بويىچە كۆرۈش",
     "clearLanguages": "تازىلاش",
@@ -219,7 +219,8 @@
     "tryDifferentKeywordsOrLanguage": "باشقا ئاچقۇچلۇق سۆزلەرنى ياكى باشقا ئىزدەش تىلىنى تاللاڭ",
     "useWebsiteDefaultLanguage": "ۋېب بېكەتنىڭ سۈكۈتتىكى ئىزدەش تىلىنى ئىشلىتىش",
     "removeLanguage": "{language} نى چىقىرىۋېتىش",
-    "browseMode": "كۆرۈش ھالىتىدە ئىزدەش"
+    "browseMode": "كۆرۈش ھالىتىدە ئىزدەش",
+    "searchingInLanguage": "نەتىجىلەرنىڭ تىلى: {language}"
   },
   "HeroPlayer": {
     "playWithSound": "ھازىر كۆرۈش",

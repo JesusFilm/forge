@@ -205,12 +205,12 @@
     "categoryChristmas": "Kryst",
     "searchLanguageLabel": "Syktaal",
     "allLanguages": "Alle talen",
-    "searchSuggestions": "Sykfoarstellen",
-    "directMatches": "Direct match",
+    "searchSuggestions": "Syksuggestjes",
+    "directMatches": "Direkte oerienkomsten",
     "languages": "Talen",
     "recommendedLanguage": "Oanrikkemandearre taal",
-    "searchSuggestion": "Sykje {suggestion}",
-    "searchSuggestionWithLanguage": "Sykje {suggestion} yn {language}",
+    "searchSuggestion": "Sykje nei {suggestion}",
+    "searchSuggestionWithLanguage": "Sykje yn {language} nei \"{suggestion}\"",
     "inLanguage": "yn {language}",
     "browseByRegion": "Blêdzje op regio",
     "clearLanguages": "Wiskje",
@@ -219,7 +219,8 @@
     "tryDifferentKeywordsOrLanguage": "Besykje oare kaaiwurden of kies in oare syktaal",
     "useWebsiteDefaultLanguage": "Brûk de standert syktaal fan de webside",
     "removeLanguage": "{language} fuortsmite",
-    "browseMode": "Syk-blêdzjemodus"
+    "browseMode": "Syk-blêdzjemodus",
+    "searchingInLanguage": "Resultaten yn {language}"
   },
   "HeroPlayer": {
     "playWithSound": "Sjoch no",

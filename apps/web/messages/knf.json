@@ -206,11 +206,11 @@
     "searchLanguageLabel": "Search language dɔɔ",
     "allLanguages": "Languages kɛŋ",
     "searchSuggestions": "Search suggestions kɛŋ",
-    "directMatches": "Direct match",
+    "directMatches": "Result bɛnnen kɛŋ",
     "languages": "Languages kɛŋ",
     "recommendedLanguage": "Language dɔɔ",
-    "searchSuggestion": "{suggestion} search kɛ",
-    "searchSuggestionWithLanguage": "{suggestion} search kɛ {language} te",
+    "searchSuggestion": "«{suggestion}» search kɛ",
+    "searchSuggestionWithLanguage": "{language} te «{suggestion}» search kɛ",
     "inLanguage": "{language} te",
     "browseByRegion": "Region te browse kɛ",
     "clearLanguages": "Mɛ",
@@ -219,7 +219,8 @@
     "tryDifferentKeywordsOrLanguage": "Keyword dɔɔ kɛ o search language dɔɔ dɔɔ dɔɔ",
     "useWebsiteDefaultLanguage": "Website default search language kɛ",
     "removeLanguage": "{language} bɔ",
-    "browseMode": "Search browse mode i"
+    "browseMode": "Search browse mode i",
+    "searchingInLanguage": "Result kɛŋ {language} te"
   },
   "HeroPlayer": {
     "playWithSound": "Wa yɔrɔ watch",

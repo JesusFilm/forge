@@ -180,7 +180,7 @@
     "changeAudioLanguage": "Аудио тилин өзгөртүү",
     "home": "JesusFilm баш бети",
     "closeSearch": "Издөөнү жабуу",
-    "submitSearch": "Изде"
+    "submitSearch": "Изле"
   },
   "SearchOverlay": {
     "dialogLabel": "Видеолорду издөө жана карап чыгуу",
@@ -205,21 +205,22 @@
     "categoryChristmas": "Рождество",
     "searchLanguageLabel": "Издөө тили",
     "allLanguages": "Бардык тилдер",
-    "searchSuggestions": "Издөө сунуштары",
-    "directMatches": "Direct match",
+    "searchSuggestions": "Излев таклифлери",
+    "directMatches": "Тюз келишгенлер",
     "languages": "Тилдер",
     "recommendedLanguage": "Сунушталган тил",
-    "searchSuggestion": "{suggestion} издөө",
-    "searchSuggestionWithLanguage": "{language} тилинде {suggestion} издөө",
+    "searchSuggestion": "«{suggestion}» изле",
+    "searchSuggestionWithLanguage": "{language} тилде «{suggestion}» изле",
     "inLanguage": "{language} тилинде",
     "browseByRegion": "Аймак боюнча карап чыгуу",
     "clearLanguages": "Тазалоо",
     "queryLanguageDetected": "{language} аныкталды",
-    "searchInLanguage": "{language} тилинде издөө",
+    "searchInLanguage": "{language} тилде изле",
     "tryDifferentKeywordsOrLanguage": "Башка ачкыч сөздөрдү колдонуп көрүңүз же башка издөө тилин тандаңыз",
     "useWebsiteDefaultLanguage": "Сайттын демейки издөө тилин колдонуу",
     "removeLanguage": "{language} алып салуу",
-    "browseMode": "Карап чыгуу режими"
+    "browseMode": "Карап чыгуу режими",
+    "searchingInLanguage": "{language} тилдеги натижалар"
   },
   "HeroPlayer": {
     "playWithSound": "Азыр көрүү",

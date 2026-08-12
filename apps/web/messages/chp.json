@@ -180,7 +180,7 @@
     "changeAudioLanguage": "ᐊᐃᑕ ᓂᐱ ᐊᑐᕐᕕᒃ ᐊᓯᐊᒍᑦ",
     "home": "JesusFilm ᐅᒃᑯᐃᓯᕐᕕᒃ",
     "closeSearch": "ᓇᓂᓂᖅ ᒪᑐᐃᕐᓗᒍ",
-    "submitSearch": "ᓇᓂᓂᖅ"
+    "submitSearch": "Nánetʼį"
   },
   "SearchOverlay": {
     "dialogLabel": "ᓇᓂᓐᓂᖅ ᐊᒻᒪ ᐸᐃᕆᓂᖅ ᐊᓯᕈᑏᑦ",
@@ -205,21 +205,22 @@
     "categoryChristmas": "ᓄᑕᐅᓕᖅᐸᖅ",
     "searchLanguageLabel": "ᓇᓂᓐᓂᖅ ᓂᐱ",
     "allLanguages": "ᑕᒪᕐᒥᒃ ᓂᐱᑦ",
-    "searchSuggestions": "ᓇᓂᓂᖅ ᐊᓯᕈᑏᑦ",
-    "directMatches": "Direct match",
+    "searchSuggestions": "Tʼá nánetʼį ha",
+    "directMatches": "Tʼáh bekʼéchʼá",
     "languages": "ᓂᐱᑦ",
     "recommendedLanguage": "ᐊᐃᑕ ᓂᐱ",
-    "searchSuggestion": "ᓇᓂᓂᖅ {suggestion}",
-    "searchSuggestionWithLanguage": "ᓇᓂᓂᖅ {suggestion} ᓂᐱ {language}",
+    "searchSuggestion": "{suggestion} nánetʼį",
+    "searchSuggestionWithLanguage": "{language} yatıé kʼé {suggestion} nánetʼį",
     "inLanguage": "ᓂᐱ {language}",
     "browseByRegion": "ᐸᐃᕆᓂᖅ ᐃᓂᐅᔪᒧᑦ",
     "clearLanguages": "ᓇᓂᓂᖅ",
     "queryLanguageDetected": "{language} ᓇᓂᔭᐅᕗᖅ",
-    "searchInLanguage": "ᓇᓂᓂᖅ ᓂᐱ {language}",
+    "searchInLanguage": "{language} yatıé kʼé nánetʼį",
     "tryDifferentKeywordsOrLanguage": "ᐊᓯᐊᒍᑦ ᐊᐱᖅᑯᑏᑦ ᐅᕝᕙᓘᓐᓃᑦ ᐊᓯᐊᓂ ᓇᓂᓂᖅ ᓂᐱ ᓂᐱᐊ",
     "useWebsiteDefaultLanguage": "ᐊᑐᕐᓗᒍ ᐅᒃᑯᐃᓯᕐᕕᐅᑉ ᓂᐱᐊ ᓇᓂᓂᖅ",
     "removeLanguage": "ᑎᑎᖅᑲᖅ {language}",
-    "browseMode": "ᓇᓂᓂᖅ ᐸᐃᕆᓂᖅ"
+    "browseMode": "ᓇᓂᓂᖅ ᐸᐃᕆᓂᖅ",
+    "searchingInLanguage": "{language} yatıé kʼé tʼáh náhɂą́"
   },
   "HeroPlayer": {
     "playWithSound": "ᑕᑯᖃᑦᑕᕆ",

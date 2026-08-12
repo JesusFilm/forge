@@ -205,12 +205,12 @@
     "categoryChristmas": "Navidad",
     "searchLanguageLabel": "Eheka ñe'ẽ",
     "allLanguages": "Opaite ñe'ẽ",
-    "searchSuggestions": "Jeheka hag̃ua ñe'ẽporavo",
-    "directMatches": "Direct match",
+    "searchSuggestions": "Jeheka oñeikuave’ẽva",
+    "directMatches": "Ojojávaite",
     "languages": "Ñe'ẽnguéra",
     "recommendedLanguage": "Ñe'ẽ oñembojeroviáva",
     "searchSuggestion": "Eheka {suggestion}",
-    "searchSuggestionWithLanguage": "Eheka {suggestion} {language}-pe",
+    "searchSuggestionWithLanguage": "Eheka “{suggestion}” {language}-pe",
     "inLanguage": "{language}-pe",
     "browseByRegion": "Ehesa'ỹijo región rupive",
     "clearLanguages": "Embogue",
@@ -219,7 +219,8 @@
     "tryDifferentKeywordsOrLanguage": "Eiporu ambue ñe'ẽ clave térã eiporavo ambue ñe'ẽ jeheka hag̃ua",
     "useWebsiteDefaultLanguage": "Eipuru jeheka ñe'ẽ website por defecto",
     "removeLanguage": "Embogue {language}",
-    "browseMode": "Jeheka reikundaha hag̃ua"
+    "browseMode": "Jeheka reikundaha hag̃ua",
+    "searchingInLanguage": "Resultados {language}-pe"
   },
   "HeroPlayer": {
     "playWithSound": "Epytáke ko'ág̃a",

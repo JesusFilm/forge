@@ -206,11 +206,11 @@
     "searchLanguageLabel": "Arama dili",
     "allLanguages": "Tüm diller",
     "searchSuggestions": "Arama önerileri",
-    "directMatches": "Direct match",
+    "directMatches": "Doğrudan eşleşmeler",
     "languages": "Diller",
     "recommendedLanguage": "Önerilen dil",
-    "searchSuggestion": "{suggestion} ara",
-    "searchSuggestionWithLanguage": "{suggestion} için {language} içinde ara",
+    "searchSuggestion": "“{suggestion}” ifadesini ara",
+    "searchSuggestionWithLanguage": "{language} dilinde “{suggestion}” ifadesini ara",
     "inLanguage": "{language} dilinde",
     "browseByRegion": "Bölgeye göre göz at",
     "clearLanguages": "Temizle",
@@ -219,7 +219,8 @@
     "tryDifferentKeywordsOrLanguage": "Farklı anahtar kelimeler deneyin veya başka bir arama dili seçin",
     "useWebsiteDefaultLanguage": "Web sitesinin varsayılan arama dilini kullan",
     "removeLanguage": "{language} dilini kaldır",
-    "browseMode": "Arama gezinti modu"
+    "browseMode": "Arama gezinti modu",
+    "searchingInLanguage": "Sonuçlar {language} dilinde"
   },
   "HeroPlayer": {
     "playWithSound": "Şimdi izle",

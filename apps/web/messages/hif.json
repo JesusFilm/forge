@@ -180,7 +180,7 @@
     "changeAudioLanguage": "Audio bhasha badliye",
     "home": "JesusFilm ka home page",
     "closeSearch": "Search band kariye",
-    "submitSearch": "Search kariye"
+    "submitSearch": "Khojiye"
   },
   "SearchOverlay": {
     "dialogLabel": "Video khojiye aur browse kariye",
@@ -206,11 +206,11 @@
     "searchLanguageLabel": "Search bhasha",
     "allLanguages": "Sab bhashaein",
     "searchSuggestions": "Search ke sujhaav",
-    "directMatches": "Direct match",
+    "directMatches": "Seedha match",
     "languages": "Bhashaen",
     "recommendedLanguage": "Suparishit bhasha",
-    "searchSuggestion": "{suggestion} khojiye",
-    "searchSuggestionWithLanguage": "{suggestion} {language} me khojiye",
+    "searchSuggestion": "“{suggestion}” khojiye",
+    "searchSuggestionWithLanguage": "{language} me “{suggestion}” khojiye",
     "inLanguage": "{language} me",
     "browseByRegion": "Ilaaka ke hisaab se browse kariye",
     "clearLanguages": "Saaf kariye",
@@ -219,7 +219,8 @@
     "tryDifferentKeywordsOrLanguage": "Alag keywords try kariye ya dusri search bhasha chuniye",
     "useWebsiteDefaultLanguage": "Website ki default search bhasha use kariye",
     "removeLanguage": "{language} hataiye",
-    "browseMode": "Search browse karne ka tareeka"
+    "browseMode": "Search browse karne ka tareeka",
+    "searchingInLanguage": "Results sirf {language} me"
   },
   "HeroPlayer": {
     "playWithSound": "Abhi dekhiye",

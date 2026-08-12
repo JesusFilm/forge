@@ -206,11 +206,11 @@
     "searchLanguageLabel": "Langue de recherche",
     "allLanguages": "Toutes les langues",
     "searchSuggestions": "Suggestions de recherche",
-    "directMatches": "Direct match",
+    "directMatches": "Résultats directs",
     "languages": "Langues",
     "recommendedLanguage": "Langue recommandée",
-    "searchSuggestion": "Rechercher {suggestion}",
-    "searchSuggestionWithLanguage": "Rechercher {suggestion} en {language}",
+    "searchSuggestion": "Rechercher « {suggestion} »",
+    "searchSuggestionWithLanguage": "Rechercher « {suggestion} » en {language}",
     "inLanguage": "en {language}",
     "browseByRegion": "Parcourir par région",
     "clearLanguages": "Effacer",
@@ -219,7 +219,8 @@
     "tryDifferentKeywordsOrLanguage": "Essayez d’autres mots-clés ou choisissez une autre langue de recherche",
     "useWebsiteDefaultLanguage": "Utiliser la langue de recherche par défaut du site",
     "removeLanguage": "Supprimer {language}",
-    "browseMode": "Mode de navigation de recherche"
+    "browseMode": "Mode de navigation de recherche",
+    "searchingInLanguage": "Résultats en {language}"
   },
   "HeroPlayer": {
     "playWithSound": "Regarder",

@@ -180,7 +180,7 @@
     "changeAudioLanguage": "تغییر زبان صدا",
     "home": "صفحهٔ اصلی JesusFilm",
     "closeSearch": "بستن جست‌وجو",
-    "submitSearch": "جست‌وجو"
+    "submitSearch": "قیدیریش"
   },
   "SearchOverlay": {
     "dialogLabel": "جست‌وجو و مرور ویدیوها",
@@ -205,21 +205,22 @@
     "categoryChristmas": "کریسمس",
     "searchLanguageLabel": "جست‌وجوی زبان",
     "allLanguages": "همهٔ زبان‌ها",
-    "searchSuggestions": "پیشنهادهای جست‌وجو",
-    "directMatches": "Direct match",
+    "searchSuggestions": "قیدیریش تکلیف‌لری",
+    "directMatches": "انیق موسلیک‌لر",
     "languages": "زبان‌ها",
     "recommendedLanguage": "زبان پیشنهادی",
-    "searchSuggestion": "جست‌وجوی {suggestion}",
-    "searchSuggestionWithLanguage": "جست‌وجوی {suggestion} در {language}",
+    "searchSuggestion": "«{suggestion}»نی قیدیریش",
+    "searchSuggestionWithLanguage": "{language} تیلی‌ده «{suggestion}»نی قیدیریش",
     "inLanguage": "به {language}",
     "browseByRegion": "مرور بر اساس منطقه",
     "clearLanguages": "پاک کردن",
     "queryLanguageDetected": "{language} شناسایی شد",
-    "searchInLanguage": "جست‌وجو به {language}",
+    "searchInLanguage": "{language} تیلی‌ده قیدیریش",
     "tryDifferentKeywordsOrLanguage": "واژه‌های کلیدی دیگری را امتحان کنید یا زبان جست‌وجوی دیگری را انتخاب کنید",
     "useWebsiteDefaultLanguage": "استفاده از زبان پیش‌فرض جست‌وجوی وب‌سایت",
     "removeLanguage": "حذف {language}",
-    "browseMode": "حالت مرور جست‌وجو"
+    "browseMode": "حالت مرور جست‌وجو",
+    "searchingInLanguage": "نتیجه‌لر {language} تیلی‌ده"
   },
   "HeroPlayer": {
     "playWithSound": "اکنون تماشا کنید",

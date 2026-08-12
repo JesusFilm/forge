@@ -205,12 +205,12 @@
     "categoryChristmas": "Nollick",
     "searchLanguageLabel": "Çhengey shirrey",
     "allLanguages": "Ooilley ny çhengaghyn",
-    "searchSuggestions": "Soilshaghey shirrey",
-    "directMatches": "Direct match",
+    "searchSuggestions": "Molaidyn shirrey",
+    "directMatches": "Freggyrtyn jeeragh",
     "languages": "Çhengaghyn",
     "recommendedLanguage": "Çhengey scrutagit",
-    "searchSuggestion": "Shirrey {suggestion}",
-    "searchSuggestionWithLanguage": "Shirrey {suggestion} ayns {language}",
+    "searchSuggestion": "Shirrey son “{suggestion}”",
+    "searchSuggestionWithLanguage": "Shirrey ayns {language} son “{suggestion}”",
     "inLanguage": "ayns {language}",
     "browseByRegion": "Scrutaghey liorish rheynn",
     "clearLanguages": "Scughey",
@@ -219,7 +219,8 @@
     "tryDifferentKeywordsOrLanguage": "Jean ymmyd ass redaghyn elley ny reih çhengey shirrey elley",
     "useWebsiteDefaultLanguage": "Ymmyd ass çhengey shirrey rosc mot websayt",
     "removeLanguage": "Geddyn {language} magh",
-    "browseMode": "Modh scrutaghey shirrey"
+    "browseMode": "Modh scrutaghey shirrey",
+    "searchingInLanguage": "Freggyrtyn ayns {language}"
   },
   "HeroPlayer": {
     "playWithSound": "Jeeagh nish",

@@ -205,12 +205,12 @@
     "categoryChristmas": "Kūrjṃōj",
     "searchLanguageLabel": "Language in search",
     "allLanguages": "Languages kon jab",
-    "searchSuggestions": "Wāween ko rej rōjañ ñan search",
-    "directMatches": "Direct match",
+    "searchSuggestions": "Jibed ko kariki",
+    "directMatches": "Ko rej jejjet",
     "languages": "Kajin ko",
     "recommendedLanguage": "Language eo kariki",
     "searchSuggestion": "Jibed {suggestion}",
-    "searchSuggestionWithLanguage": "Jibed {suggestion} ilo {language}",
+    "searchSuggestionWithLanguage": "Jibed \"{suggestion}\" ilo {language}",
     "inLanguage": "ilo {language}",
     "browseByRegion": "Browse kijen region",
     "clearLanguages": "Kōjbarok",
@@ -219,7 +219,8 @@
     "tryDifferentKeywordsOrLanguage": "Jibed keywords tolak ak kōj language eo jet",
     "useWebsiteDefaultLanguage": "Jipan in website default search language",
     "removeLanguage": "Bōk jān {language}",
-    "browseMode": "Wāween browse ilo search"
+    "browseMode": "Wāween browse ilo search",
+    "searchingInLanguage": "Result ko ilo {language}"
   },
   "HeroPlayer": {
     "playWithSound": "Lale kio",

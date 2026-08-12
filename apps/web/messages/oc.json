@@ -205,12 +205,12 @@
     "categoryChristmas": "Noël",
     "searchLanguageLabel": "Lenga de recèrca",
     "allLanguages": "Totas las lengas",
-    "searchSuggestions": "Suggeriments de recèrca",
-    "directMatches": "Direct match",
+    "searchSuggestions": "Suggestions de recèrca",
+    "directMatches": "Correspondéncia dirècta",
     "languages": "Lengas",
     "recommendedLanguage": "Lenga recomandada",
-    "searchSuggestion": "Recercar {suggestion}",
-    "searchSuggestionWithLanguage": "Recercar {suggestion} en {language}",
+    "searchSuggestion": "Recercar « {suggestion} »",
+    "searchSuggestionWithLanguage": "Recercar « {suggestion} » en {language}",
     "inLanguage": "en {language}",
     "browseByRegion": "Navegar per region",
     "clearLanguages": "Escafar",
@@ -219,7 +219,8 @@
     "tryDifferentKeywordsOrLanguage": "Ensajatz d'autres mots-clau o causissètz una autra lenga de recèrca",
     "useWebsiteDefaultLanguage": "Utilizar la lenga de recèrca per defaut del site",
     "removeLanguage": "Quitar {language}",
-    "browseMode": "Mòde de navigacion de la recèrca"
+    "browseMode": "Mòde de navigacion de la recèrca",
+    "searchingInLanguage": "Resultats en {language}"
   },
   "HeroPlayer": {
     "playWithSound": "Veire ara",

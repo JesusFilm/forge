@@ -205,12 +205,12 @@
     "categoryChristmas": "Natal",
     "searchLanguageLabel": "Idioma da busca",
     "allLanguages": "Todos os idiomas",
-    "searchSuggestions": "Sugestões de busca",
-    "directMatches": "Direct match",
+    "searchSuggestions": "Sugestões de pesquisa",
+    "directMatches": "Correspondência direta",
     "languages": "Idiomas",
     "recommendedLanguage": "Idioma recomendado",
-    "searchSuggestion": "Buscar {suggestion}",
-    "searchSuggestionWithLanguage": "Buscar {suggestion} em {language}",
+    "searchSuggestion": "Pesquisar {suggestion}",
+    "searchSuggestionWithLanguage": "Pesquisar “{suggestion}” em {language}",
     "inLanguage": "em {language}",
     "browseByRegion": "Explorar por região",
     "clearLanguages": "Limpar",
@@ -219,7 +219,8 @@
     "tryDifferentKeywordsOrLanguage": "Tente outras palavras-chave ou escolha outro idioma de pesquisa",
     "useWebsiteDefaultLanguage": "Usar o idioma de pesquisa predefinido do site",
     "removeLanguage": "Remover {language}",
-    "browseMode": "Modo de navegação na pesquisa"
+    "browseMode": "Modo de navegação na pesquisa",
+    "searchingInLanguage": "Resultados em {language}"
   },
   "HeroPlayer": {
     "playWithSound": "Assistir agora",

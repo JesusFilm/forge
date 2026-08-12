@@ -205,12 +205,12 @@
     "categoryChristmas": "Nnayan",
     "searchLanguageLabel": "Nadi tutlayt",
     "allLanguages": "Meṛṛa tutlayin",
-    "searchSuggestions": "Isteqsiyen n unadi",
-    "directMatches": "Direct match",
+    "searchSuggestions": "Isumar n unadi",
+    "directMatches": "Amṣada usrid",
     "languages": "Tutlayin",
     "recommendedLanguage": "Tutlayt yettwassnen",
-    "searchSuggestion": "Nadi {suggestion}",
-    "searchSuggestionWithLanguage": "Nadi {suggestion} deg {language}",
+    "searchSuggestion": "Nadi “{suggestion}”",
+    "searchSuggestionWithLanguage": "Nadi “{suggestion}” deg {language}",
     "inLanguage": "deg {language}",
     "browseByRegion": "Brows s tamnaḍt",
     "clearLanguages": "Sfeḍ",
@@ -219,7 +219,8 @@
     "tryDifferentKeywordsOrLanguage": "Ɛreḍ awalen-nniḍen neɣ fren tutlayt-nniḍen n unadi",
     "useWebsiteDefaultLanguage": "Seqdec tutlayt n usmel amezwaru n web",
     "removeLanguage": "Kkes {language}",
-    "browseMode": "Askar n anadi brows"
+    "browseMode": "Askar n anadi brows",
+    "searchingInLanguage": "Iriken deg {language}"
   },
   "HeroPlayer": {
     "playWithSound": "Wali tura",

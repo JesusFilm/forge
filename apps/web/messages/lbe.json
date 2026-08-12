@@ -180,7 +180,7 @@
     "changeAudioLanguage": "Аудио кылсэ воштӥ",
     "home": "JesusFilm шоры",
     "closeSearch": "Уттонэз пыдаты",
-    "submitSearch": "Темаосэз утт"
+    "submitSearch": "Лахъин"
   },
   "SearchOverlay": {
     "dialogLabel": "Видеоосэз утт да кара",
@@ -205,21 +205,22 @@
     "categoryChristmas": "Рождество",
     "searchLanguageLabel": "Кыл уттон",
     "allLanguages": "Вань кылъёс",
-    "searchSuggestions": "Уттонлы сунушъёс",
-    "directMatches": "Direct match",
+    "searchSuggestions": "Лахъаврил таклифру",
+    "directMatches": "Дурус дандишаву",
     "languages": "Кылъёс",
     "recommendedLanguage": "Суныш кыл",
-    "searchSuggestion": "{suggestion} утт",
-    "searchSuggestionWithLanguage": "{suggestion} {language} кылын утт",
+    "searchSuggestion": "«{suggestion}» лахъин",
+    "searchSuggestionWithLanguage": "{language} мазрай «{suggestion}» лахъин",
     "inLanguage": "{language} кылын",
     "browseByRegion": "Регион пыр кара",
     "clearLanguages": "Кышт",
     "queryLanguageDetected": "{language} тодэм",
-    "searchInLanguage": "{language} кылын утт",
+    "searchInLanguage": "{language} мазрай лахъин",
     "tryDifferentKeywordsOrLanguage": "Ӧтӥ кывъёс пыр өлы кыл бӧр",
     "useWebsiteDefaultLanguage": "Сайтлы кылберган уттон кылэз пайдаланы",
     "removeLanguage": "{language} кышт",
-    "browseMode": "Уттӥсь-карон тып"
+    "browseMode": "Уттӥсь-карон тып",
+    "searchingInLanguage": "{language} мазрай лахъаврил натижру"
   },
   "HeroPlayer": {
     "playWithSound": "Нунияз кыт",

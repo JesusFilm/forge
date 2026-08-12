@@ -205,12 +205,12 @@
     "categoryChristmas": "Naatal Kiristmas",
     "searchLanguageLabel": "Yiylo ɗemngal",
     "allLanguages": "Kala ɗemɗe",
-    "searchSuggestions": "Nafoore ceɗɗitugol",
-    "directMatches": "Direct match",
+    "searchSuggestions": "Wasiyaji ceɗɗitugol",
+    "directMatches": "Jahduɗe tigi",
     "languages": "Ɗemɗe",
     "recommendedLanguage": "Ɗemngal waɗii",
     "searchSuggestion": "Yiylo {suggestion}",
-    "searchSuggestionWithLanguage": "Yiylo {suggestion} e {language}",
+    "searchSuggestionWithLanguage": "Yiylo “{suggestion}” e {language}",
     "inLanguage": "e {language}",
     "browseByRegion": "Naɓaade e noore",
     "clearLanguages": "Momtu",
@@ -219,7 +219,8 @@
     "tryDifferentKeywordsOrLanguage": "Huutor kaynde ɓurɗe ndee walla suɓo ɗemngal goɗɗngal",
     "useWebsiteDefaultLanguage": "Huutoro ɗemngal ceɗɗitugol e jayngol suudu",
     "removeLanguage": "Momtu {language}",
-    "browseMode": "Laawol ceɗɗitugol"
+    "browseMode": "Laawol ceɗɗitugol",
+    "searchingInLanguage": "Njiyndi e {language}"
   },
   "HeroPlayer": {
     "playWithSound": "Waɗ now",

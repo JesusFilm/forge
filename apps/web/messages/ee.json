@@ -205,12 +205,12 @@
     "categoryChristmas": "Krisimesi",
     "searchLanguageLabel": "Search ƒe gbegblẽ",
     "allLanguages": "Gbegblẽwo katã",
-    "searchSuggestions": "Search ƒe nuwo",
-    "directMatches": "Direct match",
+    "searchSuggestions": "Nusiwo woate ŋu ase",
+    "directMatches": "Nusiwo sɔ̃ tututu",
     "languages": "Gbegblẽwo",
     "recommendedLanguage": "Gbegblẽ si le amemefia",
     "searchSuggestion": "Se {suggestion}",
-    "searchSuggestionWithLanguage": "Se {suggestion} le {language} me",
+    "searchSuggestionWithLanguage": "Se “{suggestion}” le {language} me",
     "inLanguage": "le {language} me",
     "browseByRegion": "Kpɔ ɖe region me",
     "clearLanguages": "Tso",
@@ -219,7 +219,8 @@
     "tryDifferentKeywordsOrLanguage": "Kpɔ keywords bubu alo tia search gbegblẽ bubu",
     "useWebsiteDefaultLanguage": "Websaịtị ƒe default search gbegblẽ la ti",
     "removeLanguage": "Tso {language} ŋu",
-    "browseMode": "Nusiwo me didi ƒe nɔnɔme"
+    "browseMode": "Nusiwo me didi ƒe nɔnɔme",
+    "searchingInLanguage": "Se ƒe emetsonuwo le {language} me"
   },
   "HeroPlayer": {
     "playWithSound": "Kpɔ fifi laa",

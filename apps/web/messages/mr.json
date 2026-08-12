@@ -205,12 +205,12 @@
     "categoryChristmas": "ख्रिसमस",
     "searchLanguageLabel": "शोध भाषा",
     "allLanguages": "सर्व भाषा",
-    "searchSuggestions": "शोध सूचना",
-    "directMatches": "Direct match",
+    "searchSuggestions": "सुचवलेले शोध",
+    "directMatches": "थेट जुळणारे निकाल",
     "languages": "भाषा",
     "recommendedLanguage": "शिफारस केलेली भाषा",
     "searchSuggestion": "{suggestion} शोधा",
-    "searchSuggestionWithLanguage": "{language} मध्ये {suggestion} शोधा",
+    "searchSuggestionWithLanguage": "{language} मध्ये “{suggestion}” शोधा",
     "inLanguage": "{language} मध्ये",
     "browseByRegion": "प्रदेशानुसार ब्राउझ करा",
     "clearLanguages": "साफ करा",
@@ -219,7 +219,8 @@
     "tryDifferentKeywordsOrLanguage": "वेगवेगळे कीवर्ड वापरून पाहा किंवा दुसरी शोध भाषा निवडा",
     "useWebsiteDefaultLanguage": "वेबसाइटची मूळ शोध भाषा वापरा",
     "removeLanguage": "{language} काढा",
-    "browseMode": "शोध ब्राउझ मोड"
+    "browseMode": "शोध ब्राउझ मोड",
+    "searchingInLanguage": "{language} मधील निकाल"
   },
   "HeroPlayer": {
     "playWithSound": "आता पहा",

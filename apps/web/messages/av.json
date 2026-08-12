@@ -180,7 +180,7 @@
     "changeAudioLanguage": "Аудиоялъе миллат бади",
     "home": "JesusFilm хона",
     "closeSearch": "Кӏалъан бекьизе",
-    "submitSearch": "Кӏалъан бие"
+    "submitSearch": "Кӏалъе"
   },
   "SearchOverlay": {
     "dialogLabel": "Видео кӏалъе ва къадалъан бие",
@@ -205,21 +205,22 @@
     "categoryChristmas": "Рождество",
     "searchLanguageLabel": "Кӏалъан тил",
     "allLanguages": "Тӏолал тилал",
-    "searchSuggestions": "Кӏалъай суратал",
-    "directMatches": "Direct match",
+    "searchSuggestions": "Кӏалъан тавсиял",
+    "directMatches": "Тӏубараб дандекквей",
     "languages": "Тилал",
     "recommendedLanguage": "Тавсия гьабураб тил",
-    "searchSuggestion": "{suggestion} кӏалъе",
-    "searchSuggestionWithLanguage": "{suggestion} {language} лъайда кӏалъе",
+    "searchSuggestion": "«{suggestion}» кӏалъе",
+    "searchSuggestionWithLanguage": "{language} мацӏалда «{suggestion}» кӏалъе",
     "inLanguage": "{language} лъайда",
     "browseByRegion": "Регионниса кӏалъе",
     "clearLanguages": "Бекьизе",
     "queryLanguageDetected": "{language} цӏумена",
-    "searchInLanguage": "{language} лъайда кӏалъе",
+    "searchInLanguage": "{language} мацӏалда кӏалъе",
     "tryDifferentKeywordsOrLanguage": "Цӏияб ключевой сөзал гьабе или цӏияб search тил бие",
     "useWebsiteDefaultLanguage": "Сайт тӏадбухъараб search тил пайдалан гьабе",
     "removeLanguage": "{language} алып хъвазе",
-    "browseMode": "Кӏалъай browse режим"
+    "browseMode": "Кӏалъай browse режим",
+    "searchingInLanguage": "Нәтижал {language} мацӏалда"
   },
   "HeroPlayer": {
     "playWithSound": "Гьанжиде бец",

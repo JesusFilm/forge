@@ -206,11 +206,11 @@
     "searchLanguageLabel": "Език на търсенето",
     "allLanguages": "Всички езици",
     "searchSuggestions": "Предложения за търсене",
-    "directMatches": "Direct match",
+    "directMatches": "Точни съвпадения",
     "languages": "Езици",
     "recommendedLanguage": "Препоръчан език",
-    "searchSuggestion": "Търсете {suggestion}",
-    "searchSuggestionWithLanguage": "Търсете {suggestion} на {language}",
+    "searchSuggestion": "Потърси „{suggestion}“",
+    "searchSuggestionWithLanguage": "Потърси „{suggestion}“ на {language}",
     "inLanguage": "на {language}",
     "browseByRegion": "Разглеждане по регион",
     "clearLanguages": "Изчисти",
@@ -219,7 +219,8 @@
     "tryDifferentKeywordsOrLanguage": "Опитайте с други ключови думи или изберете друг език за търсене",
     "useWebsiteDefaultLanguage": "Използвай езика по подразбиране на сайта за търсене",
     "removeLanguage": "Премахни {language}",
-    "browseMode": "Режим на разглеждане при търсене"
+    "browseMode": "Режим на разглеждане при търсене",
+    "searchingInLanguage": "Резултати на {language}"
   },
   "HeroPlayer": {
     "playWithSound": "Гледайте сега",

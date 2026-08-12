@@ -180,7 +180,7 @@
     "changeAudioLanguage": "Changer la langue audio",
     "home": "Accueil de JesusFilm",
     "closeSearch": "Fermer la recherche",
-    "submitSearch": "Sëri"
+    "submitSearch": "Wut"
   },
   "SearchOverlay": {
     "dialogLabel": "Rechercher et parcourir des vidéos",
@@ -205,21 +205,22 @@
     "categoryChristmas": "Noël",
     "searchLanguageLabel": "Langue de recherche",
     "allLanguages": "Toutes les langues",
-    "searchSuggestions": "Suggestions de recherche",
-    "directMatches": "Direct match",
+    "searchSuggestions": "Xelali wut",
+    "directMatches": "Li méngoo",
     "languages": "Langues",
     "recommendedLanguage": "Langue recommandée",
-    "searchSuggestion": "Rechercher {suggestion}",
-    "searchSuggestionWithLanguage": "Rechercher {suggestion} en {language}",
+    "searchSuggestion": "Wut: {suggestion}",
+    "searchSuggestionWithLanguage": "Wut « {suggestion} » ci {language}",
     "inLanguage": "en {language}",
     "browseByRegion": "Parcourir par région",
     "clearLanguages": "Effacer",
     "queryLanguageDetected": "{language} détectée",
-    "searchInLanguage": "Rechercher en {language}",
+    "searchInLanguage": "Wut ci {language}",
     "tryDifferentKeywordsOrLanguage": "Essayez d'autres mots-clés ou choisissez une autre langue de recherche",
     "useWebsiteDefaultLanguage": "Utiliser la langue de recherche par défaut du site",
     "removeLanguage": "Supprimer {language}",
-    "browseMode": "Mode de navigation de recherche"
+    "browseMode": "Mode de navigation de recherche",
+    "searchingInLanguage": "Njureefi wut ci {language}"
   },
   "HeroPlayer": {
     "playWithSound": "Regarder maintenant",

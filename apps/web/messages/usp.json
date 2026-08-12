@@ -180,7 +180,7 @@
     "changeAudioLanguage": "Cambiar idioma del audio",
     "home": "Inicio de JesusFilm",
     "closeSearch": "Cerrar búsqueda",
-    "submitSearch": "K'ojoyïk"
+    "submitSearch": "Tzukuj"
   },
   "SearchOverlay": {
     "dialogLabel": "Buscar y explorar videos",
@@ -205,21 +205,22 @@
     "categoryChristmas": "Navidad",
     "searchLanguageLabel": "Idioma de búsqueda",
     "allLanguages": "Todos los idiomas",
-    "searchSuggestions": "Sugerencias de búsqueda",
-    "directMatches": "Direct match",
+    "searchSuggestions": "Taq na'oj rech tzukunem",
+    "directMatches": "Junam ri xiltaj",
     "languages": "Idiomas",
     "recommendedLanguage": "Idioma recomendado",
-    "searchSuggestion": "Buscar {suggestion}",
-    "searchSuggestionWithLanguage": "Buscar {suggestion} en {language}",
+    "searchSuggestion": "Tzukuj: {suggestion}",
+    "searchSuggestionWithLanguage": "Tzukuj pa {language}: «{suggestion}»",
     "inLanguage": "en {language}",
     "browseByRegion": "Explorar por región",
     "clearLanguages": "Borrar",
     "queryLanguageDetected": "Se detectó {language}",
-    "searchInLanguage": "Buscar en {language}",
+    "searchInLanguage": "Tzukuj pa {language}",
     "tryDifferentKeywordsOrLanguage": "Pruebe con otras palabras clave o elija otro idioma de búsqueda",
     "useWebsiteDefaultLanguage": "Usar el idioma de búsqueda predeterminado del sitio",
     "removeLanguage": "Quitar {language}",
-    "browseMode": "Modo de exploración de búsqueda"
+    "browseMode": "Modo de exploración de búsqueda",
+    "searchingInLanguage": "Taq xiltaj pa {language}"
   },
   "HeroPlayer": {
     "playWithSound": "Ver ahora",

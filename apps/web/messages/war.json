@@ -205,12 +205,12 @@
     "categoryChristmas": "Pasko",
     "searchLanguageLabel": "Yinaknan han search",
     "allLanguages": "Ngatanan nga yinaknan",
-    "searchSuggestions": "Mga Suhestyon ha Search",
-    "directMatches": "Direct match",
+    "searchSuggestions": "Mga suhestyon nga pamilngon",
+    "directMatches": "Direkta nga mga katugma",
     "languages": "Mga yinaknan",
     "recommendedLanguage": "Girekomendar nga yinaknan",
-    "searchSuggestion": "Pamilnga an {suggestion}",
-    "searchSuggestionWithLanguage": "Pamilnga an {suggestion} ha {language}",
+    "searchSuggestion": "Pamilnga an “{suggestion}”",
+    "searchSuggestionWithLanguage": "Pamilnga ha {language} an “{suggestion}”",
     "inLanguage": "ha {language}",
     "browseByRegion": "Usisa sumala han rehiyon",
     "clearLanguages": "Pura",
@@ -219,7 +219,8 @@
     "tryDifferentKeywordsOrLanguage": "Sulayi an iba nga keyword o pagpili hin iba nga yinaknan han search",
     "useWebsiteDefaultLanguage": "Gamita an default nga yinaknan han search han website",
     "removeLanguage": "Kuhaa an {language}",
-    "browseMode": "Mode han pag-usisa ha search"
+    "browseMode": "Mode han pag-usisa ha search",
+    "searchingInLanguage": "Mga resulta ha {language}"
   },
   "HeroPlayer": {
     "playWithSound": "Tara, tan-awa yana",

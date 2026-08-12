@@ -205,12 +205,12 @@
     "categoryChristmas": "Krismas",
     "searchLanguageLabel": "Sokem lanwis",
     "allLanguages": "Olgeta lanwis",
-    "searchSuggestions": "Ol search suggestion",
-    "directMatches": "Direct match",
+    "searchSuggestions": "Ol tingting blong search",
+    "directMatches": "Ol samting we oli stret wetem search",
     "languages": "Ol lanwis",
     "recommendedLanguage": "Lanwis we yumi rekomendem",
     "searchSuggestion": "Sokem {suggestion}",
-    "searchSuggestionWithLanguage": "Sokem {suggestion} long {language}",
+    "searchSuggestionWithLanguage": "Sokem “{suggestion}” long {language}",
     "inLanguage": "long {language}",
     "browseByRegion": "Browse long region",
     "clearLanguages": "Kliarem",
@@ -219,7 +219,8 @@
     "tryDifferentKeywordsOrLanguage": "Traem defren keyword o jusum narafala search lanwis",
     "useWebsiteDefaultLanguage": "Yusum defolt search lanwis blong website",
     "removeLanguage": "Removem {language}",
-    "browseMode": "Browse mode blong search"
+    "browseMode": "Browse mode blong search",
+    "searchingInLanguage": "Ol result long {language}"
   },
   "HeroPlayer": {
     "playWithSound": "Lukluk naoia",
