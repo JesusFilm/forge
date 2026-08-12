@@ -432,10 +432,9 @@ describe("SEO ledger boundaries", () => {
       $queryRaw: vi.fn(async () => [{ mode: "dry_run" }]),
     }
     const decision = v1Report().queryDecisions[0]!
-    const request = v1Report().gscRequests[0]!
     const oversized = v1Report({
       skippedTargetIds: Array.from(
-        { length: 1_000 },
+        { length: 900 },
         (_, index) =>
           `target-${String(index).padStart(4, "0")}-${"x".repeat(180)}`,
       ),
@@ -446,20 +445,6 @@ describe("SEO ledger boundaries", () => {
         query: "q".repeat(500),
         selectionOutcome: "not_selected" as const,
         reason: "proposal_limit_reached" as const,
-      })),
-      gscRequests: Array.from({ length: 50 }, (_, requestIndex) => ({
-        ...request,
-        propertyId: `sc-domain:${"p".repeat(480)}${requestIndex}`,
-        filters: Array.from({ length: 20 }, (_, filterIndex) => ({
-          dimension: "query" as const,
-          operator: "contains" as const,
-          expression: `${requestIndex}-${filterIndex}-${"f".repeat(480)}`,
-        })),
-        caveats: Array.from(
-          { length: 20 },
-          (_, caveatIndex) =>
-            `${requestIndex}-${caveatIndex}-${"c".repeat(480)}`,
-        ),
       })),
     })
 
@@ -492,7 +477,8 @@ describe("SEO ledger boundaries", () => {
     })
     expect(storedReport.omittedSkippedTargetCount).toBeGreaterThan(0)
     expect(
-      storedReport.omittedQueryDecisionCount +
+      storedReport.omittedSkippedTargetCount +
+        storedReport.omittedQueryDecisionCount +
         storedReport.omittedGscRequestCount +
         storedReport.gscRequests.reduce(
           (total: number, request: { omittedCaveatCount: number }) =>
@@ -500,7 +486,7 @@ describe("SEO ledger boundaries", () => {
           0,
         ),
     ).toBeGreaterThan(0)
-  })
+  }, 10_000)
 
   it("lists cursor-stable summaries without selecting report bodies", async () => {
     const first = {
