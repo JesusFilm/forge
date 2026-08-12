@@ -80,8 +80,8 @@ COMPLETENESS (past-wall records are un-erasable on this tier — the
 erasure runbook must carry the temporary tier-upgrade escape hatch with
 lead time inside the statutory deadline).
 
-**Post-ship findings (2026-08-11, first real-API contact — fixed same day;
-follow-up PR number filled at ship, mirroring the Shipped-line convention).**
+**Post-ship findings (2026-08-11, first real-API contact — fixed same day
+via [PR #1911](https://github.com/JesusFilm/forge/pull/1911)).**
 Running the opt-in smoke against the live API surfaced
 two defects the mocked suites could not: (1) the sweep inherited the
 prompt-tuned 3s `LANGFUSE_TIMEOUT_MS` while the live batch-DELETE measured
