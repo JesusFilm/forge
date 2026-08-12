@@ -53,4 +53,28 @@ describe("profile route wires the real account sync", () => {
   it("purges the account cache on sign-out", () => {
     expect(source).toContain("purgeAccountProgressCache()")
   })
+
+  // The handoff waits on the merge so Home paints an already-merged shelf.
+  // Dropping the awaits reverts to fire-and-forget, and Home would show the
+  // PRE-merge shelf until the next visit — invisible to every unit test,
+  // since the rules module has no idea whether its caller waited.
+  it("AWAITS the account sync/hydrate so the handoff can wait on it", () => {
+    expect(source).toContain("await syncContinueWatchingWithAccount()")
+    expect(source).toContain("await hydrateContinueWatchingFromAccount()")
+    expect(source).not.toContain("void syncContinueWatchingWithAccount()")
+    expect(source).not.toContain("void hydrateContinueWatchingFromAccount()")
+  })
+
+  it("signals the aftermath settled from a finally, not the happy path", () => {
+    // In `finally`, so a thrown identity lookup still hands off rather than
+    // stranding a signed-in viewer on the code screen until the cap expires.
+    expect(source).toMatch(
+      /finally\s*\{[^}]*aftermathSettledRef\.current\?\.\(\)/,
+    )
+  })
+
+  it("gates the handoff on a FRESH grant, never on being signed in alone", () => {
+    expect(source).toContain("shouldHandOffToHome({")
+    expect(source).toContain("grantCompleted: grantedAtMs != null")
+  })
 })
