@@ -25,7 +25,7 @@ import type {
 import { normalizeWatchSearchQuery } from "./watch-search-query"
 
 const WATCH_SEARCH_TIMEOUT_MS = 45_000
-const MAX_WATCH_SEARCH_AUTOCOMPLETE_ROWS = 9
+const MAX_WATCH_SEARCH_AUTOCOMPLETE_ROWS = 12
 const WATCH_SEARCH_SUGGESTIONS_TIMEOUT_MS = 3_500
 
 type WatchSearchGraphqlResult = AdminResultOf<typeof adminWatchSearchOperation>

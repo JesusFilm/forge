@@ -15,7 +15,15 @@ import {
 import { createPortal } from "react-dom"
 import { usePathname, useRouter } from "next/navigation"
 import { useTranslations } from "next-intl"
-import { BookOpen, Folder, PlaySquare, Search } from "lucide-react"
+import {
+  BookOpen,
+  ChevronDown,
+  CornerDownLeft,
+  Folder,
+  Languages,
+  PlaySquare,
+  Search,
+} from "lucide-react"
 
 import {
   useFloatingSearch,
@@ -294,6 +302,17 @@ export function SearchOverlay() {
   const normalizedSuggestionQuery = normalizeWatchSearchQuery(query)
   const normalizedSubmittedQuery =
     submittedQuery == null ? null : normalizeWatchSearchQuery(submittedQuery)
+  const submittedSearchLanguageMatchesSelection =
+    searchResultAnalytics != null &&
+    (searchResultAnalytics.searchLanguageSlug === suggestionLanguageSlug ||
+      (searchResultAnalytics.searchLanguageSlug == null &&
+        selectedSearchLanguageOption == null))
+  const searchIntentMatchesCompletedResults =
+    normalizedSuggestionQuery.length > 0 &&
+    normalizedSuggestionQuery === normalizedSubmittedQuery &&
+    submittedSearchLanguageMatchesSelection
+  const hasUnsubmittedSearchIntent =
+    normalizedSuggestionQuery.length > 0 && !searchIntentMatchesCompletedResults
   const suggestionRequestKey =
     open &&
     !closing &&
@@ -326,6 +345,8 @@ export function SearchOverlay() {
     (searchLanguageControlVisible ||
       visibleSuggestionsLoading ||
       suggestions.length > 0)
+  const languagePickerOwnedByContextRow =
+    languageAutocompleteOpen && !suggestionPanelActive
   const suggestionSections = useMemo<SuggestionSection[]>(() => {
     const indexed = suggestions.map((suggestion, index) => ({
       suggestion,
@@ -455,7 +476,12 @@ export function SearchOverlay() {
   ])
 
   useLayoutEffect(() => {
-    if (!open || !suggestionPanelVisible || !suggestionPanelHasContent) return
+    if (
+      !open ||
+      !suggestionPanelVisible ||
+      (!suggestionPanelHasContent && !searchLanguageControlVisible)
+    )
+      return
 
     const updatePosition = () => {
       const fieldShell = fieldShellRef.current
@@ -521,7 +547,12 @@ export function SearchOverlay() {
       visualViewport?.removeEventListener("resize", schedulePositionUpdate)
       visualViewport?.removeEventListener("scroll", schedulePositionUpdate)
     }
-  }, [open, suggestionPanelHasContent, suggestionPanelVisible])
+  }, [
+    open,
+    searchLanguageControlVisible,
+    suggestionPanelHasContent,
+    suggestionPanelVisible,
+  ])
 
   useEffect(() => {
     if (activeSuggestionIndex == null) return
@@ -668,6 +699,24 @@ export function SearchOverlay() {
     setSuggestionPanelVisible(true)
   }, [])
 
+  const handleSearchSubmit = useCallback(
+    (submittedQuery: string) => {
+      const normalizedQuery = normalizeWatchSearchQuery(submittedQuery)
+      if (!normalizedQuery) return
+      const submissionKey = `${suggestionLanguageSlug ?? ""}\0${normalizedQuery}`
+      if (activeSubmissionKeyRef.current === submissionKey) return
+      activeSubmissionKeyRef.current = submissionKey
+      setSuppressedSuggestionValue(submittedQuery)
+      invalidateSuggestionRequest()
+      void search(submittedQuery).finally(() => {
+        if (activeSubmissionKeyRef.current === submissionKey) {
+          activeSubmissionKeyRef.current = null
+        }
+      })
+    },
+    [invalidateSuggestionRequest, search, suggestionLanguageSlug],
+  )
+
   const selectSuggestion = useCallback(
     (suggestion: string) => {
       setQuery(suggestion)
@@ -682,6 +731,7 @@ export function SearchOverlay() {
     (suggestion: WatchSearchSuggestion) => {
       if (suggestion.kind === "query") {
         selectSuggestion(suggestion.title)
+        handleSearchSubmit(suggestion.title)
         return
       }
       const slug = suggestion.slug ? tryAsContentSlug(suggestion.slug) : null
@@ -695,6 +745,7 @@ export function SearchOverlay() {
       setOpen(false)
     },
     [
+      handleSearchSubmit,
       invalidateSuggestionRequest,
       router,
       selectSuggestion,
@@ -796,23 +847,6 @@ export function SearchOverlay() {
     ],
   )
 
-  const handleSearchSubmit = useCallback(
-    (submittedQuery: string) => {
-      const normalizedQuery = normalizeWatchSearchQuery(submittedQuery)
-      if (!normalizedQuery) return
-      const submissionKey = `${suggestionLanguageSlug ?? ""}\0${normalizedQuery}`
-      if (activeSubmissionKeyRef.current === submissionKey) return
-      activeSubmissionKeyRef.current = submissionKey
-      dismissSuggestions()
-      void search(submittedQuery).finally(() => {
-        if (activeSubmissionKeyRef.current === submissionKey) {
-          activeSubmissionKeyRef.current = null
-        }
-      })
-    },
-    [dismissSuggestions, search, suggestionLanguageSlug],
-  )
-
   const handleCategoryClick = useCallback(
     (searchTerm: string) => {
       dismissSuggestions()
@@ -849,7 +883,7 @@ export function SearchOverlay() {
       ? "top-56 md:top-44"
       : "top-44 md:top-32"
   const semanticLanguageTriggerClassName =
-    "!h-auto !min-h-11 !w-auto !justify-start !rounded-lg !border-0 !bg-transparent !px-2 !py-1 !text-xs !font-medium !text-stone-400 !shadow-none hover:!bg-white/[0.06] hover:!text-stone-200 focus-visible:!ring-white/35"
+    "!h-auto !min-h-8 !w-auto !justify-start !rounded-lg !border !border-white/20 !bg-transparent !px-1.5 !py-0.5 !text-sm !font-semibold !text-stone-100 !shadow-none hover:!border-white/40 hover:!bg-transparent focus-visible:!ring-white/45"
   const semanticLanguageComboboxOptions = useMemo<LanguageComboboxOption[]>(
     () =>
       languageOptions.flatMap((language) =>
@@ -877,18 +911,36 @@ export function SearchOverlay() {
     selectedSearchLanguageOption?.publicSlug ??
     defaultSearchLanguageOption?.publicSlug ??
     ""
+  const searchInLabel = t("searchInLanguage", { language: "" }).trim()
   const searchingInLabel = `${t("searching").replace(/[.…]+$/u, "")} ${t(
     "inLanguage",
     { language: "" },
   ).trim()}`
+  const languageContextLabel = searchIntentMatchesCompletedResults
+    ? searchingInLabel
+    : searchInLabel
   const semanticLanguageName =
     selectedSearchLanguageOption?.englishName ??
     defaultSearchLanguageOption?.englishName ??
     t("searchLanguageLabel")
   const semanticLanguageTriggerContent = (
-    <span data-testid="searching-in-language-label" className="truncate">
-      {searchingInLabel}{" "}
-      <span className="text-stone-200">{semanticLanguageName}</span>
+    <span
+      data-testid="searching-in-language-label"
+      className="flex min-w-0 items-center gap-1"
+    >
+      <Languages
+        aria-hidden
+        data-testid="search-language-icon"
+        className="h-3.5 w-3.5 shrink-0 text-stone-400"
+      />
+      <span className="truncate">{semanticLanguageName}</span>
+      <ChevronDown
+        aria-hidden
+        data-testid="search-language-chevron"
+        className={`h-3.5 w-3.5 shrink-0 text-stone-500 transition-transform duration-150 ${
+          languageAutocompleteOpen ? "rotate-180" : ""
+        }`}
+      />
     </span>
   )
 
@@ -900,6 +952,66 @@ export function SearchOverlay() {
     },
     [handleSemanticLanguageClick, semanticLanguageOptionBySlug],
   )
+  const renderSemanticLanguageCombobox = (
+    takeoverRect?: SuggestionListPosition,
+  ) => (
+    <span className="pointer-events-auto relative mx-1 inline-flex shrink-0">
+      <LanguageCombobox
+        options={semanticLanguageComboboxOptions}
+        value={semanticLanguageComboboxValue}
+        onChange={handleSemanticLanguageSlugChange}
+        compact
+        open={languageAutocompleteOpen}
+        onOpenChange={setLanguageAutocompleteOpen}
+        disabled={languageOptionsLoading}
+        placeholder={t("searchLanguageLabel")}
+        popoverPortalContainer={closePortalContainer}
+        triggerClassName={semanticLanguageTriggerClassName}
+        triggerContent={semanticLanguageTriggerContent}
+        takeoverRect={takeoverRect}
+        takeoverDismissLabel={floatingSearchT("closeSearch")}
+      />
+    </span>
+  )
+  const renderLanguageContextContent = (
+    takeoverRect?: SuggestionListPosition,
+  ) =>
+    hasUnsubmittedSearchIntent ? (
+      <>
+        <span className="min-w-0 flex-1 truncate">
+          {(t.raw("searchSuggestionWithLanguage") as string)
+            .split(/(\{language\}|\{suggestion\})/u)
+            .map((part, index) => {
+              if (part === "{language}") {
+                return (
+                  <span key={`language-${index}`}>
+                    {renderSemanticLanguageCombobox(takeoverRect)}
+                  </span>
+                )
+              }
+              if (part === "{suggestion}") {
+                return (
+                  <strong
+                    key={`suggestion-${index}`}
+                    className="font-semibold text-white"
+                  >
+                    <bdi dir="auto">{query.trim()}</bdi>
+                  </strong>
+                )
+              }
+              return <span key={`copy-${index}`}>{part}</span>
+            })}
+        </span>
+        <CornerDownLeft aria-hidden className="h-4 w-4 shrink-0" />
+      </>
+    ) : (
+      <>
+        <span className="shrink-0 text-[13px] sm:text-sm">
+          {languageContextLabel}
+        </span>
+        {renderSemanticLanguageCombobox(takeoverRect)}
+      </>
+    )
   const headerTopClass = headerPinned
     ? FLOATING_HEADER_PINNED_TOP_CLASS
     : FLOATING_HEADER_TOP_CLASS
@@ -973,32 +1085,33 @@ export function SearchOverlay() {
             dir="auto"
             iconTestId="search-overlay-input-icon"
             autoFocus
+            showSubmitButton={false}
             wrapperClassName="w-full"
           />
-          {searchLanguageControlVisible &&
-            !suggestionPanelActive &&
-            !languageAutocompleteOpen && (
-              <div
-                data-testid="search-language-context"
-                className="mt-2 flex min-h-11 w-full items-center px-1"
-              >
-                <div className="relative min-w-0">
-                  <LanguageCombobox
-                    options={semanticLanguageComboboxOptions}
-                    value={semanticLanguageComboboxValue}
-                    onChange={handleSemanticLanguageSlugChange}
-                    compact
-                    open={languageAutocompleteOpen}
-                    onOpenChange={setLanguageAutocompleteOpen}
-                    disabled={languageOptionsLoading}
-                    placeholder={t("searchLanguageLabel")}
-                    popoverPortalContainer={closePortalContainer}
-                    triggerClassName={semanticLanguageTriggerClassName}
-                    triggerContent={semanticLanguageTriggerContent}
-                  />
-                </div>
+          {searchLanguageControlVisible && !suggestionPanelActive && (
+            <div
+              data-testid="search-language-context"
+              className="relative mt-2 min-h-11 w-full min-w-0 overflow-hidden rounded-lg text-sm text-stone-400"
+            >
+              {hasUnsubmittedSearchIntent && (
+                <button
+                  type="button"
+                  data-testid="search-context-submit"
+                  aria-label={t("searchSuggestionWithLanguage", {
+                    suggestion: query.trim(),
+                    language: semanticLanguageName,
+                  })}
+                  onClick={() => handleSearchSubmit(query)}
+                  className="absolute inset-0 z-0 cursor-pointer rounded-lg transition hover:bg-white/[0.06] focus-visible:bg-white/[0.06] focus-visible:outline-2 focus-visible:outline-white/45 focus-visible:outline-offset-1"
+                />
+              )}
+              <div className="pointer-events-none relative z-10 flex min-h-11 min-w-0 items-center gap-0.5 px-1.5 min-[480px]:px-4">
+                {renderLanguageContextContent(
+                  suggestionListPosition ?? undefined,
+                )}
               </div>
-            )}
+            </div>
+          )}
         </div>
         <div
           aria-hidden="true"
@@ -1024,6 +1137,7 @@ export function SearchOverlay() {
         suggestionListPosition &&
         suggestionPanelVisible &&
         suggestionPanelHasContent &&
+        !languagePickerOwnedByContextRow &&
         createPortal(
           <div
             ref={suggestionPanelRef}
@@ -1039,24 +1153,22 @@ export function SearchOverlay() {
             {searchLanguageControlVisible && (
               <div
                 data-testid="search-suggestions-language-context"
-                className="flex min-h-14 shrink-0 items-center border-b border-white/[0.08] px-3 py-1.5"
+                className="relative min-h-14 shrink-0 min-w-0 overflow-hidden border-b border-white/[0.08] text-sm text-stone-400"
               >
-                <div className="relative min-w-0">
-                  <LanguageCombobox
-                    options={semanticLanguageComboboxOptions}
-                    value={semanticLanguageComboboxValue}
-                    onChange={handleSemanticLanguageSlugChange}
-                    compact
-                    open={languageAutocompleteOpen}
-                    onOpenChange={setLanguageAutocompleteOpen}
-                    disabled={languageOptionsLoading}
-                    placeholder={t("searchLanguageLabel")}
-                    popoverPortalContainer={closePortalContainer}
-                    triggerClassName={semanticLanguageTriggerClassName}
-                    triggerContent={semanticLanguageTriggerContent}
-                    takeoverRect={suggestionListPosition}
-                    takeoverDismissLabel={floatingSearchT("closeSearch")}
+                {hasUnsubmittedSearchIntent && (
+                  <button
+                    type="button"
+                    data-testid="search-context-submit"
+                    aria-label={t("searchSuggestionWithLanguage", {
+                      suggestion: query.trim(),
+                      language: semanticLanguageName,
+                    })}
+                    onClick={() => handleSearchSubmit(query)}
+                    className="absolute inset-0 z-0 cursor-pointer transition hover:bg-white/[0.06] focus-visible:bg-white/[0.06] focus-visible:outline-2 focus-visible:outline-white/45 focus-visible:-outline-offset-2"
                   />
+                )}
+                <div className="pointer-events-none relative z-10 flex min-h-14 min-w-0 items-center gap-0.5 px-1.5 py-2 min-[480px]:px-4">
+                  {renderLanguageContextContent(suggestionListPosition)}
                 </div>
               </div>
             )}
@@ -1142,7 +1254,6 @@ export function SearchOverlay() {
                                     event.pointerType === "mouse"
                                   ) {
                                     event.preventDefault()
-                                    activateSuggestion(suggestion)
                                     return
                                   }
                                   suggestionTouchGestureRef.current = {
@@ -1172,13 +1283,15 @@ export function SearchOverlay() {
                                   if (gesture?.pointerId !== event.pointerId)
                                     return
                                   suggestionTouchGestureRef.current = null
-                                  if (!gesture.moved) {
+                                  if (gesture.moved) {
                                     event.preventDefault()
-                                    activateSuggestion(suggestion)
                                   }
                                 }}
                                 onPointerCancel={() => {
                                   suggestionTouchGestureRef.current = null
+                                }}
+                                onClick={() => {
+                                  activateSuggestion(suggestion)
                                 }}
                                 className={`flex min-h-11 cursor-pointer items-start gap-3 rounded-xl px-3 py-2.5 text-left outline-none transition-colors ${
                                   active

@@ -2495,10 +2495,7 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
     expect(input.getAttribute("enterkeyhint")).toBe("search")
     expect(leadingIcon).not.toBeNull()
     expect(leadingIcon?.closest("button")).toBeNull()
-    expect(submitButton?.disabled).toBe(true)
-    expect(submitButton?.getAttribute("aria-hidden")).toBe("true")
-    expect(submitButton?.className).toContain("w-0")
-    expect(submitButton?.className).toContain("opacity-0")
+    expect(submitButton).toBeNull()
 
     act(() => {
       setInputValue(input, "jesus")
@@ -2508,27 +2505,10 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
     expect(mockedRunSearch).not.toHaveBeenCalled()
 
     expect(form?.getAttribute("aria-label")).toBe("Search videos")
-    expect(submitButton?.getAttribute("aria-label")).toBe("Search")
-    expect(submitButton?.getAttribute("aria-hidden")).toBe("false")
-    expect(submitButton?.className).toContain("h-11")
-    expect(submitButton?.className).toContain("min-w-11")
-    expect(submitButton?.className).toContain("opacity-100")
-    expect(submitButton?.className).toContain("border-stone-300")
-    expect(submitButton?.className).toContain("bg-transparent")
-    expect(submitButton?.className).not.toContain("bg-stone-950 text-white")
-    expect(submitButton?.disabled).toBe(false)
-    expect(submitButton?.textContent).toContain("Search")
-    expect(submitButton?.querySelector("svg")).not.toBeNull()
     expect(leadingIcon?.parentElement?.className).toContain("max-[359px]:w-0")
-    expect(submitButton?.querySelector("span")?.className).not.toContain(
-      "hidden",
-    )
-    expect(submitButton?.querySelector("span")?.className).toContain(
-      "max-w-[6ch]",
-    )
 
     await act(async () => {
-      submitButton?.click()
+      form?.requestSubmit()
       await Promise.resolve()
       await Promise.resolve()
     })
@@ -2609,6 +2589,7 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
         "description",
       ),
     ])
+    mockedRunSearch.mockResolvedValueOnce(searchResult("watch-search"))
 
     const input = await openSearchOverlay()
 
@@ -2657,16 +2638,42 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
     expect(suggestionPanel?.className).toContain("bg-stone-950/92")
     expect(suggestionList?.className).toContain("[scrollbar-width:none]")
     expect(suggestionList?.className).toContain("[&::-webkit-scrollbar]:hidden")
-    expect(languageContext?.textContent).toContain("Searching in")
-    expect(languageTrigger?.textContent).toBe("Searching in English")
+    expect(languageContext?.textContent).toContain("Search in")
+    expect(languageContext?.textContent).toContain('for "je"')
+    expect(languageContext?.querySelector("strong")?.textContent).toBe("je")
+    expect(languageContext?.querySelector("strong")?.className).toContain(
+      "font-semibold",
+    )
+    expect(languageTrigger?.textContent).toBe("English")
     expect(
       languageTrigger?.querySelector(
         '[data-testid="language-combobox-option-code"]',
       ),
     ).toBeNull()
-    expect(languageTrigger?.querySelector("svg")).toBeNull()
+    expect(
+      languageTrigger?.querySelector('[data-testid="search-language-icon"]'),
+    ).not.toBeNull()
+    expect(
+      languageTrigger?.querySelector('[data-testid="search-language-chevron"]'),
+    ).not.toBeNull()
+    expect(
+      languageTrigger
+        ?.querySelector('[data-testid="search-language-chevron"]')
+        ?.getAttribute("class"),
+    ).not.toContain("rotate-180")
+    expect(languageTrigger?.className).toContain("!border-white/20")
     expect(languageTrigger?.className).toContain("!bg-transparent")
-    expect(languageTrigger?.className.split(/\s+/)).not.toContain("!bg-white")
+    expect(languageTrigger?.className).toContain("!rounded-lg")
+    expect(languageTrigger?.className).not.toContain("!rounded-full")
+    const contextSubmit = document.querySelector(
+      '[data-testid="search-context-submit"]',
+    ) as HTMLButtonElement
+    expect(contextSubmit?.getAttribute("aria-label")).toBe(
+      'Search in English for "je"',
+    )
+    expect(contextSubmit?.className).toContain("absolute")
+    expect(contextSubmit?.className).toContain("inset-0")
+    expect(contextSubmit?.className).toContain("hover:bg-white/[0.06]")
     const suggestionOptions = Array.from(
       document.querySelectorAll('[role="option"]'),
     )
@@ -2679,6 +2686,51 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
       "toward Jesus and His calling.",
     )
     expect(suggestionOptions[1]?.querySelector("mark")?.textContent).toBe("Je")
+
+    await act(async () => {
+      contextSubmit.click()
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+    expect(mockedRunSearch).toHaveBeenCalledTimes(1)
+    expect(mockedRunSearch).toHaveBeenCalledWith(
+      expect.objectContaining({ query: "je" }),
+    )
+    const submittedLanguageContext = document.querySelector(
+      '[data-testid="search-language-context"]',
+    )
+    expect(submittedLanguageContext?.textContent).toBe("Searching inEnglish")
+    expect(
+      submittedLanguageContext?.querySelector(
+        '[data-testid="search-context-submit"]',
+      ),
+    ).toBeNull()
+
+    await act(async () => {
+      ;(
+        submittedLanguageContext?.querySelector(
+          '[data-testid="language-combobox-trigger"]',
+        ) as HTMLButtonElement
+      ).click()
+      await Promise.resolve()
+      ;(
+        document.querySelector(
+          '[data-language-slug="spanish-castilian"]',
+        ) as HTMLButtonElement
+      ).click()
+      await Promise.resolve()
+    })
+
+    const changedLanguageContext = document.querySelector(
+      '[data-testid="search-language-context"]',
+    )
+    expect(changedLanguageContext?.textContent).toContain('for "je"')
+    expect(
+      changedLanguageContext?.querySelector(
+        '[data-testid="search-context-submit"]',
+      ),
+    ).not.toBeNull()
+    expect(mockedRunSearch).toHaveBeenCalledTimes(1)
   })
 
   it("replaces suggestions with a full-panel language search", async () => {
@@ -2709,6 +2761,13 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
       trigger.click()
       await Promise.resolve()
     })
+
+    expect(mockedRunSearch).not.toHaveBeenCalled()
+    expect(
+      trigger
+        .querySelector('[data-testid="search-language-chevron"]')
+        ?.getAttribute("class"),
+    ).toContain("rotate-180")
 
     const languagePopover = document.querySelector(
       '[data-testid="language-combobox-popover"]',
@@ -2761,6 +2820,26 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
       document.querySelector('[data-testid="language-combobox-popover"]'),
     ).toBeNull()
     expect(mockedRunSearch).not.toHaveBeenCalled()
+  })
+
+  it("opens the language search on the first click before suggestions exist", async () => {
+    mockEnglishAndSpanishSearchLanguages()
+
+    await openSearchOverlay()
+    const trigger = document.querySelector(
+      '[data-testid="language-combobox-trigger"]',
+    ) as HTMLButtonElement
+
+    await act(async () => {
+      trigger.click()
+      await Promise.resolve()
+    })
+
+    expect(
+      document.querySelector('[data-testid="language-combobox-popover"]'),
+    ).not.toBeNull()
+    expect(trigger.isConnected).toBe(true)
+    expect(trigger.getAttribute("aria-expanded")).toBe("true")
   })
 
   it("restores cached suggestions after blur without another backend request", async () => {
@@ -2907,6 +2986,56 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
     expect(mockedRunSearch).not.toHaveBeenCalled()
   })
 
+  it.each([
+    ["FEATURE_FILM", "jesus"],
+    ["SEGMENT", "jesus-heals"],
+    ["COLLECTION", "jesus-collection"],
+  ] as const)(
+    "opens a tapped %s direct match only once after the compatibility click",
+    async (label, slug) => {
+      vi.useFakeTimers()
+      mockEnglishAndSpanishSearchLanguages()
+      mockedFetchSuggestions.mockResolvedValueOnce([
+        watchContentMatch("JESUS", label, slug),
+      ])
+
+      const input = await openSearchOverlay()
+      act(() => setInputValue(input, "jes"))
+      await act(async () => {
+        vi.advanceTimersByTime(180)
+        await Promise.resolve()
+        await Promise.resolve()
+      })
+
+      const option = document.querySelector('[role="option"]') as HTMLElement
+      const dispatchTouchPointer = (type: string) => {
+        const event = new MouseEvent(type, {
+          bubbles: true,
+          cancelable: true,
+          clientX: 10,
+          clientY: 10,
+        })
+        Object.defineProperties(event, {
+          pointerId: { value: 7 },
+          pointerType: { value: "touch" },
+        })
+        option.dispatchEvent(event)
+      }
+
+      act(() => {
+        dispatchTouchPointer("pointerdown")
+        dispatchTouchPointer("pointerup")
+        option.click()
+      })
+
+      expect(navigationMocks.push).toHaveBeenCalledTimes(1)
+      expect(navigationMocks.push).toHaveBeenCalledWith(
+        expect.stringContaining(slug),
+      )
+      expect(mockedRunSearch).not.toHaveBeenCalled()
+    },
+  )
+
   it("discards stale suggestions when the selected language changes", async () => {
     vi.useFakeTimers()
     mockedGetSearchLanguageOptions.mockResolvedValue({
@@ -2967,7 +3096,7 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
     expect(mockedRunSearch).not.toHaveBeenCalled()
   })
 
-  it("fills the draft from a keyboard suggestion without searching until explicit submit", async () => {
+  it("immediately searches a keyboard-selected query suggestion", async () => {
     vi.useFakeTimers()
     mockEnglishAndSpanishSearchLanguages()
     mockedFetchSuggestions.mockResolvedValueOnce([
@@ -2998,24 +3127,16 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
 
     expect(input.value).toBe("Jesus Wept")
     expect(document.querySelector('[role="listbox"]')).toBeNull()
-    expect(mockedRunSearch).not.toHaveBeenCalled()
+    expect(mockedRunSearch).toHaveBeenCalledTimes(1)
+    expect(mockedRunSearch).toHaveBeenCalledWith(
+      expect.objectContaining({ query: "Jesus Wept" }),
+    )
 
     await act(async () => {
       vi.advanceTimersByTime(500)
       await Promise.resolve()
     })
     expect(mockedFetchSuggestions).toHaveBeenCalledTimes(1)
-
-    await act(async () => {
-      input.form?.requestSubmit()
-      await Promise.resolve()
-      await Promise.resolve()
-    })
-
-    expect(mockedRunSearch).toHaveBeenCalledTimes(1)
-    expect(mockedRunSearch).toHaveBeenCalledWith(
-      expect.objectContaining({ query: "Jesus Wept" }),
-    )
   })
 
   it("aborts superseded suggestion requests and ignores stale responses", async () => {
@@ -3195,7 +3316,7 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
     ).toContain("animate-overlay-fade-out")
   })
 
-  it("selects a pointer suggestion without moving focus or submitting search", async () => {
+  it("immediately searches a pointer-selected query suggestion", async () => {
     vi.useFakeTimers()
     mockEnglishAndSpanishSearchLanguages()
     mockedFetchSuggestions.mockResolvedValueOnce([watchSuggestion("Jesus")])
@@ -3218,11 +3339,21 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
     act(() => {
       option?.dispatchEvent(pointerDown)
     })
+    expect(mockedRunSearch).not.toHaveBeenCalled()
+
+    await act(async () => {
+      option?.dispatchEvent(new MouseEvent("click", { bubbles: true }))
+      await Promise.resolve()
+      await Promise.resolve()
+    })
 
     expect(pointerDown.defaultPrevented).toBe(true)
     expect(document.activeElement).toBe(input)
     expect(input.value).toBe("Jesus")
-    expect(mockedRunSearch).not.toHaveBeenCalled()
+    expect(mockedRunSearch).toHaveBeenCalledTimes(1)
+    expect(mockedRunSearch).toHaveBeenCalledWith(
+      expect.objectContaining({ query: "Jesus" }),
+    )
   })
 
   it("lets touch users scroll suggestions before selecting a stationary tap", async () => {
@@ -3269,12 +3400,18 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
     expect(input.value).toBe("je")
     expect(document.querySelector('[role="listbox"]')).not.toBeNull()
 
-    act(() => {
+    await act(async () => {
       dispatchTouchPointer(options[1]!, "pointerdown", 60)
       dispatchTouchPointer(options[1]!, "pointerup", 60)
+      ;(options[1] as HTMLElement).click()
+      await Promise.resolve()
+      await Promise.resolve()
     })
     expect(input.value).toBe("Jesus Wept")
-    expect(mockedRunSearch).not.toHaveBeenCalled()
+    expect(mockedRunSearch).toHaveBeenCalledTimes(1)
+    expect(mockedRunSearch).toHaveBeenCalledWith(
+      expect.objectContaining({ query: "Jesus Wept" }),
+    )
   })
 
   it("keeps no-results copy tied to the last submitted query", async () => {

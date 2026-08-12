@@ -110,6 +110,48 @@ describe("fetchWatchSearchSuggestions", () => {
     })
   })
 
+  it("preserves all six query phrases and six direct matches", async () => {
+    const querySuggestions = Array.from({ length: 6 }, (_, index) => ({
+      kind: "QUERY",
+      title: `Phrase ${index + 1}`,
+      description: null,
+      matchSource: "TITLE",
+      id: null,
+      slug: null,
+      label: null,
+      childCount: null,
+    }))
+    const directMatches = Array.from({ length: 6 }, (_, index) => ({
+      kind: "CONTENT",
+      title: `Video ${index + 1}`,
+      description: null,
+      matchSource: "TITLE",
+      id: `video-${index + 1}`,
+      slug: `video-${index + 1}`,
+      label: "SEGMENT",
+      childCount: 0,
+    }))
+    fetchMock.mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          data: {
+            watchSearchSuggestions: [...querySuggestions, ...directMatches],
+          },
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      ),
+    )
+
+    const suggestions = await fetchWatchSearchSuggestions({
+      query: "video",
+      languageSlug: "english",
+    })
+
+    expect(suggestions).toHaveLength(12)
+    expect(suggestions.filter(({ kind }) => kind === "query")).toHaveLength(6)
+    expect(suggestions.filter(({ kind }) => kind === "content")).toHaveLength(6)
+  })
+
   it("forwards caller cancellation to fetch", async () => {
     fetchMock.mockImplementation(
       (_url: string, init: RequestInit) =>

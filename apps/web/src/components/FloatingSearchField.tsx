@@ -94,6 +94,7 @@ export const FloatingSearchFieldInput = forwardRef<
     wrapperClassName?: string
     inputClassName?: string
     iconTestId?: string
+    showSubmitButton?: boolean
   } & Omit<
     ComponentProps<"input">,
     "className" | "enterKeyHint" | "onChange" | "onSubmit" | "type" | "value"
@@ -107,6 +108,7 @@ export const FloatingSearchFieldInput = forwardRef<
     wrapperClassName,
     inputClassName,
     iconTestId = "floating-search-input-icon",
+    showSubmitButton = true,
     ...props
   },
   ref,
@@ -142,26 +144,28 @@ export const FloatingSearchFieldInput = forwardRef<
         className={`min-w-0 flex-1 cursor-text appearance-none bg-transparent text-base text-stone-950 outline-none placeholder:text-stone-500 [&::-webkit-search-cancel-button]:appearance-none ${inputClassName ?? ""}`}
         {...props}
       />
-      <button
-        type="submit"
-        aria-label={t("submitSearch")}
-        aria-hidden={!hasValue}
-        disabled={!hasValue}
-        tabIndex={hasValue ? 0 : -1}
-        className={`inline-flex h-11 shrink-0 cursor-pointer items-center justify-center gap-1.5 rounded-xl border border-stone-300 bg-transparent text-stone-600 transition-[width,opacity,padding,background-color,border-color,color,transform] duration-200 hover:border-stone-400 hover:bg-stone-950/5 hover:text-stone-950 active:scale-95 focus-visible:outline-2 focus-visible:outline-stone-950/50 focus-visible:outline-offset-2 ${
-          hasValue
-            ? "min-w-11 px-3 opacity-100"
-            : "w-0 overflow-hidden px-0 opacity-0"
-        }`}
-      >
-        <CornerDownLeft aria-hidden className="h-5 w-5 shrink-0" />
-        <span
-          aria-hidden
-          className="max-w-[6ch] truncate whitespace-nowrap text-sm font-medium sm:max-w-none"
+      {showSubmitButton ? (
+        <button
+          type="submit"
+          aria-label={t("submitSearch")}
+          aria-hidden={!hasValue}
+          disabled={!hasValue}
+          tabIndex={hasValue ? 0 : -1}
+          className={`inline-flex h-11 shrink-0 cursor-pointer items-center justify-center gap-1.5 rounded-xl border border-stone-300 bg-transparent text-stone-600 transition-[width,opacity,padding,background-color,border-color,color,transform] duration-200 hover:border-stone-400 hover:bg-stone-950/5 hover:text-stone-950 active:scale-95 focus-visible:outline-2 focus-visible:outline-stone-950/50 focus-visible:outline-offset-2 ${
+            hasValue
+              ? "min-w-11 px-3 opacity-100"
+              : "w-0 overflow-hidden px-0 opacity-0"
+          }`}
         >
-          {t("submitSearch")}
-        </span>
-      </button>
+          <CornerDownLeft aria-hidden className="h-5 w-5 shrink-0" />
+          <span
+            aria-hidden
+            className="max-w-[6ch] truncate whitespace-nowrap text-sm font-medium sm:max-w-none"
+          >
+            {t("submitSearch")}
+          </span>
+        </button>
+      ) : null}
       {hasValue && onClear ? (
         <button
           type="button"

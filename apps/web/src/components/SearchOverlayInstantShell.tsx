@@ -107,6 +107,7 @@ export function SearchOverlayInstantShell({
             aria-label={t("inputLabel")}
             iconTestId="search-overlay-instant-input-icon"
             autoFocus
+            showSubmitButton={false}
             wrapperClassName="w-full"
           />
         </div>

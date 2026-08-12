@@ -42,11 +42,13 @@ The durable boundary has three separate states:
 2. **Watch Title Suggestions** are optional, language-scoped completions for
    that draft.
 3. The **submitted query** changes only through Enter, the mobile keyboard
-   Search action, or the visible submit control.
+   Search action, the contextual query action, or deliberate suggestion
+   activation.
 
-Suggestion selection fills the draft; it does not cross the submission
-boundary. This distinction is the core pattern. Debounce belongs to the cheap
-suggestion lane, not to the full search action.
+Typing remains draft-only, but selecting an offered query suggestion is an
+explicit search action: it fills the draft and immediately crosses the same
+submission boundary as Enter or the Search button. Debounce belongs to the
+cheap suggestion lane, not to the full search action.
 
 ## Guidance
 
@@ -159,8 +161,8 @@ credential can silently disable suggestions.
 ### Use a manual-selection editable combobox
 
 No suggestion starts active. Arrow keys move the active descendant; Enter on an
-active option fills the draft and closes the popup; only a later Enter or submit
-activation searches.
+active query option fills the draft, closes the popup, and immediately searches
+through the shared submission path. Direct content options navigate directly.
 
 The interaction contract is:
 
@@ -168,7 +170,8 @@ The interaction contract is:
   `aria-controls`, `aria-busy`, and a mounted-only `aria-activedescendant` on
   the input;
 - stable listbox and option IDs with `aria-selected` on options;
-- mouse selection on `pointerdown` with its focus-changing default prevented;
+- mouse selection on `click`, with `pointerdown` preventing the focus-changing
+  default so removing the selected row cannot retarget the click beneath it;
 - touch and pen selection only after a stationary pointer gesture, so a drag
   can scroll an overflowed list before choosing a row;
 - Escape closes suggestions before it can close the modal;
@@ -181,23 +184,22 @@ The form remains native:
 ```tsx
 <form role="search" onSubmit={handleSubmit}>
   <input type="search" enterKeyHint="search" />
-  <button type="submit" disabled={!hasValue}>
-    <CornerDownLeft aria-hidden />
-    <span>Search</span>
-  </button>
 </form>
 ```
 
-On narrow screens, keep the short Search label beside the Enter icon so the
-action is discoverable without becoming a dominant CTA. Both submit and
-suggestion rows retain at least a 44 CSS-pixel touch target.
-Below 360 CSS pixels, the decorative leading magnifier may collapse so the
-editable query keeps usable space without shrinking either action target.
-Keep the full localized action as the accessible name and cap only the visible
-mobile label; this preserves meaning when a translation runs longer than the
-compact English copy.
-Use a dedicated compact submit message rather than shortening the descriptive
-search-region label shared by the form landmark.
+Keep the modal input free of a competing outlined submit button. Native form
+submission still handles desktop Enter and the mobile keyboard Search action.
+Place the pointer-visible action in the suggestion context row as `Search in
+[language] for "query" ↩`: the outlined language name opens the full-panel
+language picker, the query alone receives semibold emphasis, and the entire
+remaining row submits through the same guarded path.
+Implement them as sibling buttons rather than nested controls: an inset row
+button beneath pointer-transparent content, with the language button layered
+above as the only independent hit target. Give the language button a quiet
+language glyph and a trailing chevron that rotates with the full-panel picker.
+Give both controls explicit accessible names and at least a 44 CSS-pixel touch
+target. At narrow widths, tighten internal spacing before truncating the query;
+preserve the language chip and return-key cue.
 
 Keep the active search field as the modal's only bright surface. Render the
 language selector as a smaller dark-glass chip and the title suggestions as an
@@ -230,6 +232,23 @@ The first-open search shell exists only to paint and focus the input while the
 full controller loads. It must not create a second suggestion requester. A cold
 submit transfers one normalized intent to the controller exactly once; the
 controller then owns suggestions, results, pagination, and reset behavior.
+
+### Keep a controlled popover trigger mounted while it opens
+
+A controlled language combobox must not disappear from its own render branch
+when `open` becomes true. Doing so reconstructs the combobox between pointer
+down and focus transfer, which can make the first activation appear to do
+nothing. Measure the takeover surface before activation, keep the initiating
+combobox mounted for the transition, and let the suggestion-panel instance own
+the picker only when that panel already exists.
+
+### Render the contextual submit row only for an unsubmitted intent
+
+Once results correspond to the current normalized query and language, collapse
+the helper to the compact `Search in [language]` control. Restore the query and
+return-key action only after the viewer edits the query or explicitly changes
+the language. Treat a null submitted language slug as the implicit/default
+selection, not as a mismatch with the language displayed by the UI.
 
 ## Why This Matters
 
