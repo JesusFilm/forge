@@ -2647,11 +2647,19 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
     const languageTrigger = document.querySelector(
       '[data-testid="language-combobox-trigger"]',
     )
+    const suggestionPanel = document.querySelector(
+      '[data-testid="search-suggestions-panel"]',
+    )
+    const languageContext = document.querySelector(
+      '[data-testid="search-suggestions-language-context"]',
+    )
     expect(suggestionList).not.toBeNull()
-    expect(suggestionList?.className).toContain("bg-stone-950/92")
+    expect(suggestionPanel?.className).toContain("bg-stone-950/92")
     expect(suggestionList?.className).toContain("[scrollbar-width:none]")
     expect(suggestionList?.className).toContain("[&::-webkit-scrollbar]:hidden")
-    expect(languageTrigger?.className).toContain("!bg-white/[0.07]")
+    expect(languageContext?.textContent).toContain("Searching in")
+    expect(languageTrigger?.textContent).toContain("English")
+    expect(languageTrigger?.className).toContain("!bg-white/[0.05]")
     expect(languageTrigger?.className.split(/\s+/)).not.toContain("!bg-white")
     const suggestionOptions = Array.from(
       document.querySelectorAll('[role="option"]'),
@@ -2665,6 +2673,39 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
       "toward Jesus and His calling.",
     )
     expect(suggestionOptions[1]?.querySelector("mark")?.textContent).toBe("Je")
+  })
+
+  it("restores cached suggestions after blur without another backend request", async () => {
+    vi.useFakeTimers()
+    mockEnglishAndSpanishSearchLanguages()
+    mockedFetchSuggestions.mockResolvedValueOnce([
+      watchSuggestion("Jesus miracles"),
+      watchContentMatch("JESUS", "FEATURE_FILM", "jesus"),
+    ])
+
+    const input = await openSearchOverlay()
+    act(() => setInputValue(input, "jes"))
+    await act(async () => {
+      vi.advanceTimersByTime(180)
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(mockedFetchSuggestions).toHaveBeenCalledTimes(1)
+    expect(document.querySelector('[role="listbox"]')).not.toBeNull()
+
+    act(() => {
+      input.blur()
+    })
+    expect(document.querySelector('[role="listbox"]')).toBeNull()
+
+    act(() => {
+      input.focus()
+      vi.advanceTimersByTime(500)
+    })
+    expect(document.querySelector('[role="listbox"]')).not.toBeNull()
+    expect(document.body.textContent).toContain("Jesus miracles")
+    expect(mockedFetchSuggestions).toHaveBeenCalledTimes(1)
   })
 
   it("groups query suggestions before direct titles, collections, and scenes", async () => {

@@ -63,6 +63,10 @@ rg -n "watch_search_lexical|languageIdentity|localeCodes" apps/admin/src/service
 5. Keep the existing Search language control and use its exact public slug.
    Support IME composition, keyboard navigation, screen-reader relationships,
    mixed-direction titles, 44-pixel touch rows, and reduced mobile viewports.
+6. Keep the populated autocomplete state in memory across blur/refocus without
+   another backend request. Align the panel to the search field, stretch it to
+   the remaining visual viewport, and move Search language into the panel as a
+   quiet "Searching in" context control.
 
 ## Constraints
 
