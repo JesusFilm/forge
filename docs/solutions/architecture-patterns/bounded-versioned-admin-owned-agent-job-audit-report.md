@@ -72,6 +72,27 @@ A capped result remains partial. Missing provider rows are unknown, never zero.
 If evidence is trimmed, increment the matching omission counter so the visible
 prefix cannot be mistaken for the full evaluated set.
 
+### Preserve schema invariants through redaction
+
+Validation before sanitization is not enough. A generic redactor can turn a
+schema-valid value into an invalid one; for example, a phone-number pattern can
+mistake a whole ISO date for a phone number. Treat allowlisted ISO date and
+datetime values as typed scalars, keep them unchanged, and assert their exact
+stored representation in the same regression test that proves sensitive free
+text is still redacted.
+
+The durable invariant belongs after the last value-changing boundary:
+
+```ts
+const validated = RunReportSchema.parse(input)
+const sanitized = sanitizeRunReport(validated)
+const stored = StoredRunReportSchema.parse(sanitized)
+```
+
+If a report cannot satisfy the stored schema after sanitization, fail closed
+instead of committing a document that the read path can only classify as
+malformed.
+
 ### Retain selected evidence first
 
 Only candidates that reach the deterministic ranking stage need row-level

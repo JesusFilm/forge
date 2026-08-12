@@ -347,6 +347,14 @@ describe("SEO ledger boundaries", () => {
 
   it("reconstructs and redacts a v1 run report before storing it", async () => {
     const original = run("DRY_RUN")
+    const report = v1Report({
+      gscRequests: [
+        {
+          ...v1Report().gscRequests[0]!,
+          firstIncompleteDate: "2026-07-27",
+        },
+      ],
+    })
     const update = vi.fn(async ({ data }) => ({
       ...original,
       ...data,
@@ -373,7 +381,7 @@ describe("SEO ledger boundaries", () => {
         claimToken: "run-claim-token",
         status: "completed",
         providerCoverage: { gsc: "available" },
-        report: v1Report(),
+        report,
         eligibleCount: 1,
         selectedCount: 1,
         wouldProposeCount: 0,
@@ -387,6 +395,14 @@ describe("SEO ledger boundaries", () => {
     expect(storedReport).toMatchObject({
       schemaVersion: 1,
       detailState: "available",
+      generatedAt: "2026-08-01T00:00:00.000Z",
+      gscRequests: [
+        expect.objectContaining({
+          startDate: "2026-07-01",
+          endDate: "2026-07-28",
+          firstIncompleteDate: "2026-07-27",
+        }),
+      ],
       queryDecisions: [
         expect.objectContaining({
           query: "hope [redacted-url] [redacted-phone]",

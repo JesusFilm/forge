@@ -444,6 +444,8 @@ const IPV6_CANDIDATE =
 const PHONE_VALUE = /(?<!\w)(?:\+?\d[\d ().-]{7,}\d)(?!\w)/gu
 const EMBEDDED_URL = /https?:\/\/[^\s<>"']+/giu
 const TOKEN_LIKE = /\b[A-Za-z0-9_-]{40,}\b/gu
+const SeoIsoDateValue = z.string().date()
+const SeoIsoDateTimeValue = z.string().datetime()
 
 function redactIpv6Candidate(value: string): string {
   const bracketed = value.startsWith("[") && value.endsWith("]")
@@ -462,8 +464,14 @@ function isSensitiveSeoKey(key: string): boolean {
 }
 
 function redactSeoText(value: string): string {
-  return value
-    .slice(0, 10_000)
+  const bounded = value.slice(0, 10_000)
+  if (
+    SeoIsoDateValue.safeParse(bounded).success ||
+    SeoIsoDateTimeValue.safeParse(bounded).success
+  ) {
+    return bounded
+  }
+  return bounded
     .replace(CREDENTIAL_VALUE, "[redacted]")
     .replace(EMAIL_VALUE, "[redacted-email]")
     .replace(IPV6_CANDIDATE, redactIpv6Candidate)
@@ -579,7 +587,10 @@ function fitStoredSeoRunReport(
     queryDecisions: [...report.queryDecisions],
     proposalRefs: [...report.proposalRefs],
   }
-  const serialize = () => inputJson(SeoRunReportV1Stored.parse(bounded))
+  const serialize = () => {
+    const sanitized = inputJson(SeoRunReportV1Stored.parse(bounded))
+    return SeoRunReportV1Stored.parse(sanitized) as Prisma.InputJsonValue
+  }
   let stored = serialize()
   let storedBytes = storedSeoRunReportBytes(stored)
   const trimCount = (available: number) =>
