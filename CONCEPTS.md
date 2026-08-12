@@ -158,6 +158,15 @@ A Candidate Generation is recorded before its external collections are built,
 then moves through a guarded lifecycle. Failed or retired generations retain
 enough ownership evidence for safe cleanup without changing their identity.
 
+### Watch Search Candidate Application Revision
+
+The semantic compatibility identity that binds a Watch Search Candidate
+Generation to the candidate query, ranking, and index contract able to use it.
+
+It remains stable across unrelated application deployments. A change means
+existing generations require rebuilding and requalification; ordinary deploy
+identity is not Candidate compatibility identity.
+
 ### Watch Search Candidate Pointer
 
 A versioned control-plane reference that selects one Watch Search Candidate

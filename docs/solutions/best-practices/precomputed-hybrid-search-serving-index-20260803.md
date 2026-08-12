@@ -1,7 +1,7 @@
 ---
 title: Precomputed serving indexes for multilingual hybrid search
 date: 2026-08-03
-last_updated: 2026-08-10
+last_updated: 2026-08-12
 category: best-practices
 module: apps/admin watch search
 problem_type: best_practice
@@ -139,6 +139,15 @@ Deployment, private evaluation, and public serving are separate controls:
   same generation, then revalidates the exact application revision, transcript
   projection, current physical bindings, qrels revision, and passing
   qualification (`apps/admin/src/services/index.ts:46-98`).
+
+The application revision is a semantic Candidate-contract identity, not the
+Admin deployment SHA. It stays stable across unrelated deployments and changes
+only when the candidate query, ranking, or index contract requires a rebuilt
+and requalified generation
+(`apps/admin/src/services/typesense-watch-search-candidate-identity.ts:1-12`).
+Using a full deployment identity here makes a healthy generation incompatible
+after unrelated Admin changes; see
+[Keep Watch search Candidate generations compatible across unrelated Admin deploys](../integration-issues/watch-search-candidate-generation-stable-application-revision.md).
 
 The private page at `/dashboard/search/compare` runs one normalized query
 against frozen current and candidate profiles. Each side records its own result
