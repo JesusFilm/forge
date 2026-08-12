@@ -45,6 +45,12 @@ Live user search stays Admin-owned. Search services may generate live query
 embeddings for retrieval, but live search orchestration does not move to
 Mastra.
 
+Candidate Watch Search compatibility uses
+`TYPESENSE_WATCH_SEARCH_CANDIDATE_APPLICATION_REVISION`, not the Admin deploy
+commit. Indexing, private comparison, qualification, and candidate serving must
+use that one source. Bump it only when the candidate query, ranking, or index
+contract changes; a bump requires a fresh generation and qualification.
+
 ## AI experience draft generation — structural validity & gateway-trust gate
 
 The "create full experience draft" editor action
