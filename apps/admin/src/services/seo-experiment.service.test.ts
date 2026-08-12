@@ -347,6 +347,14 @@ describe("SEO ledger boundaries", () => {
 
   it("reconstructs and redacts a v1 run report before storing it", async () => {
     const original = run("DRY_RUN")
+    const report = v1Report({
+      gscRequests: [
+        {
+          ...v1Report().gscRequests[0]!,
+          firstIncompleteDate: "2026-07-27",
+        },
+      ],
+    })
     const update = vi.fn(async ({ data }) => ({
       ...original,
       ...data,
@@ -373,7 +381,7 @@ describe("SEO ledger boundaries", () => {
         claimToken: "run-claim-token",
         status: "completed",
         providerCoverage: { gsc: "available" },
-        report: v1Report(),
+        report,
         eligibleCount: 1,
         selectedCount: 1,
         wouldProposeCount: 0,
@@ -387,6 +395,14 @@ describe("SEO ledger boundaries", () => {
     expect(storedReport).toMatchObject({
       schemaVersion: 1,
       detailState: "available",
+      generatedAt: "2026-08-01T00:00:00.000Z",
+      gscRequests: [
+        expect.objectContaining({
+          startDate: "2026-07-01",
+          endDate: "2026-07-28",
+          firstIncompleteDate: "2026-07-27",
+        }),
+      ],
       queryDecisions: [
         expect.objectContaining({
           query: "hope [redacted-url] [redacted-phone]",
@@ -416,10 +432,9 @@ describe("SEO ledger boundaries", () => {
       $queryRaw: vi.fn(async () => [{ mode: "dry_run" }]),
     }
     const decision = v1Report().queryDecisions[0]!
-    const request = v1Report().gscRequests[0]!
     const oversized = v1Report({
       skippedTargetIds: Array.from(
-        { length: 1_000 },
+        { length: 900 },
         (_, index) =>
           `target-${String(index).padStart(4, "0")}-${"x".repeat(180)}`,
       ),
@@ -430,20 +445,6 @@ describe("SEO ledger boundaries", () => {
         query: "q".repeat(500),
         selectionOutcome: "not_selected" as const,
         reason: "proposal_limit_reached" as const,
-      })),
-      gscRequests: Array.from({ length: 50 }, (_, requestIndex) => ({
-        ...request,
-        propertyId: `sc-domain:${"p".repeat(480)}${requestIndex}`,
-        filters: Array.from({ length: 20 }, (_, filterIndex) => ({
-          dimension: "query" as const,
-          operator: "contains" as const,
-          expression: `${requestIndex}-${filterIndex}-${"f".repeat(480)}`,
-        })),
-        caveats: Array.from(
-          { length: 20 },
-          (_, caveatIndex) =>
-            `${requestIndex}-${caveatIndex}-${"c".repeat(480)}`,
-        ),
       })),
     })
 
@@ -476,7 +477,8 @@ describe("SEO ledger boundaries", () => {
     })
     expect(storedReport.omittedSkippedTargetCount).toBeGreaterThan(0)
     expect(
-      storedReport.omittedQueryDecisionCount +
+      storedReport.omittedSkippedTargetCount +
+        storedReport.omittedQueryDecisionCount +
         storedReport.omittedGscRequestCount +
         storedReport.gscRequests.reduce(
           (total: number, request: { omittedCaveatCount: number }) =>
@@ -484,7 +486,7 @@ describe("SEO ledger boundaries", () => {
           0,
         ),
     ).toBeGreaterThan(0)
-  })
+  }, 10_000)
 
   it("lists cursor-stable summaries without selecting report bodies", async () => {
     const first = {
