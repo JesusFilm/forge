@@ -6,9 +6,18 @@ import type { ReflectionCorpora } from "./reflection-corpus"
 
 const llm: DevotionalLlm = { model: "fake", complete: vi.fn() }
 
-// Stub corpora: Henry has Luke 8; Spurgeon has a peace/trust entry.
+// Stub corpora: Ryle (Luke's primary commentary — owner preference, the
+// JESUS film is Luke-only) covers the storm; Spurgeon has a peace/trust entry.
 const corpora: ReflectionCorpora = {
   ryleMatthew: [],
+  ryleLuke: [
+    {
+      source: "J.C. Ryle, Expository Thoughts on the Gospels: Luke",
+      reference: "Jesus Calms the Storm, Luke 8:22-25",
+      osisRef: "Luke.8.22-Luke.8.25",
+      text: "Ryle on Luke 8 (the storm).",
+    },
+  ],
   matthewHenry: [
     {
       source: "Matthew Henry, Commentary on the Whole Bible",
@@ -43,9 +52,11 @@ const deps = {
   })),
   writeCopy: vi.fn().mockResolvedValue({
     title: "Peace in the Storm",
-    conclusion: "The One who calms the sea is in your boat.",
     question: "What storm do you need to hand to Jesus today?",
     prayer: "Jesus, help me trust you.",
+  }),
+  writeConclusion: vi.fn().mockResolvedValue({
+    conclusion: "The One who calms the sea is in your boat.",
   }),
   pickSpurgeon: vi
     .fn()
@@ -68,33 +79,60 @@ describe("generateDevotional", () => {
     expect(d.question).toContain("storm")
   })
 
-  it("rotates: even seq → Henry commentary + Voice D; odd → Spurgeon + Voice E", async () => {
+  it("voice rotates by sequence (D→E); reflection stays Ryle commentary — on-passage commentary always wins when available, Spurgeon is a fallback only", async () => {
     const even = await generateDevotional(
       { chapterIndex: 19, sequence: 0, date: "d", llm },
       deps,
     )
     expect(even.reflection.flavor).toBe("commentary")
-    expect(even.reflection.source).toContain("Matthew Henry")
+    expect(even.reflection.source).toContain("Ryle")
     expect(even.voice).toBe("male-d")
 
     const odd = await generateDevotional(
       { chapterIndex: 19, sequence: 1, date: "d", llm },
       deps,
     )
-    expect(odd.reflection.flavor).toBe("spurgeon")
-    expect(odd.reflection.source).toContain("Spurgeon")
+    expect(odd.reflection.flavor).toBe("commentary")
+    expect(odd.reflection.source).toContain("Ryle")
     expect(odd.voice).toBe("male-e")
   })
 
-  it("falls back to commentary when the Spurgeon ranker finds no genuine fit", async () => {
-    const noFit = { ...deps, pickSpurgeon: vi.fn().mockResolvedValue(null) }
+  it("falls back to Spurgeon only when there is no commentary for the passage", async () => {
+    const noCommentary = {
+      ...deps,
+      corpora: { ...corpora, ryleMatthew: [], ryleLuke: [], matthewHenry: [] },
+    }
     const d = await generateDevotional(
-      { chapterIndex: 19, sequence: 1, date: "d", llm }, // seq 1 → prefers Spurgeon
-      noFit,
+      { chapterIndex: 19, sequence: 1, date: "d", llm },
+      noCommentary,
     )
-    expect(d.reflection.flavor).toBe("commentary")
-    expect(d.reflection.source).toContain("Matthew Henry")
+    expect(d.reflection.flavor).toBe("spurgeon")
+    expect(d.reflection.source).toContain("Spurgeon")
     expect(d.voice).toBe("male-e") // voice still rotates by sequence
+  })
+
+  it("throws when neither commentary nor a Spurgeon fit is available", async () => {
+    const noFit = {
+      ...deps,
+      // Clear every source, including Spurgeon — `selectReflection`'s own
+      // theme-scored fallback would otherwise still find the Isaiah entry
+      // even with pickSpurgeon mocked to null (that mock only gates the
+      // LLM-ranked shortlist path, not selectReflection's pure scoring).
+      corpora: {
+        ...corpora,
+        ryleMatthew: [],
+        ryleLuke: [],
+        matthewHenry: [],
+        spurgeon: [],
+      },
+      pickSpurgeon: vi.fn().mockResolvedValue(null),
+    }
+    await expect(
+      generateDevotional(
+        { chapterIndex: 19, sequence: 1, date: "d", llm },
+        noFit,
+      ),
+    ).rejects.toThrow(/no reflection source/)
   })
 
   it("throws for a chapter with no passage mapping", async () => {

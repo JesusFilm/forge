@@ -22,18 +22,28 @@ const PICK_JSON_SCHEMA = {
   schema: {
     type: "object",
     additionalProperties: false,
-    properties: { index: { type: "integer", minimum: -1 } },
+    // No `minimum` — see reflection-point-picker.ts: Anthropic rejects
+    // min/max on integers, and this agent fails open (returns null), so the
+    // breakage would be invisible after a model swap. zod enforces it.
+    properties: { index: { type: "integer" } },
     required: ["index"],
   },
 }
 
 export const SYSTEM_PROMPT = [
-  "You choose the single best devotional excerpt to pair with a Bible scene.",
-  "You are given the scene and a numbered list of candidate excerpts.",
-  "Pick the ONE that most directly fits and deepens THIS scene's meaning —",
-  "not merely one that shares a word.",
-  "If NONE genuinely fits the scene (only loose word-overlap, wrong focus),",
-  "return index -1. Be strict: a weak fit is worse than none. Return JSON: { index }.",
+  "You choose the single best devotional excerpt to pair with a Bible scene the",
+  "viewer WATCHES on video. You are given the scene and numbered candidates.",
+  "Pick the ONE that is genuinely about WHAT HAPPENS IN THIS SCENE — the same",
+  "event and its meaning — so a viewer feels the reflection is about what they",
+  "just saw.",
+  "CRITICAL: a shared abstract THEME is NOT a fit. Example: for 'Jesus feeds the",
+  "5,000' (a miracle of provision from little), a sermon about 'trusting God",
+  "instead of relying on human scheming and cleverness' must be REJECTED — it",
+  "shares the word 'trust/provision' but is about a different situation the",
+  "viewer does not see. If the reflection would make the viewer think about",
+  "something OTHER than the scene on screen, it does not fit.",
+  "If NONE is genuinely about this scene, return index -1. Be strict: a weak or",
+  "merely thematic fit is worse than none. Return JSON: { index }.",
 ].join("\n")
 
 const SNIPPET = 240

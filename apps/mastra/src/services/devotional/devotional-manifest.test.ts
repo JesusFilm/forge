@@ -90,23 +90,66 @@ describe("buildDevotionalManifest", () => {
     expect(conclusion.audioFile).toBe("05-conclusion.mp3")
   })
 
-  it("puts the single question + invitation-to-pray on one card, with dwell time", () => {
+  it("puts the single question + invitation-to-pray on one card, with dwell time (5s base + 5s owner rule for the LAST card = 10s)", () => {
     const m = buildDevotionalManifest(base)
     const q = m.cards.find((c) => c.kind === "questions")!
     expect(q.questions).toEqual([DEVO.question])
     expect(q.prayer).toBe(DEVO.prayer)
     expect(q.audioFile).toBe("06-questions.mp3")
-    expect(q.holdSec).toBe(5)
+    expect(q.holdSec).toBe(10)
+  })
+
+  it("gives the +5s owner-rule hold to whichever card ends up LAST, not a hardcoded kind — 'conclusion' when 'questions' narration wasn't produced", () => {
+    const withoutQuestions = base.segments.filter((s) => s.id !== "questions")
+    const m = buildDevotionalManifest({ ...base, segments: withoutQuestions })
+    expect(m.cards.map((c) => c.kind).at(-1)).toBe("conclusion")
+    const conclusion = m.cards.find((c) => c.kind === "conclusion")!
+    expect(conclusion.holdSec).toBe(7) // 2s base + 5s owner rule
+  })
+
+  it("attaches video captions to the video card, dropping any that start after it ends", () => {
+    const m = buildDevotionalManifest({
+      ...base,
+      videoCardSec: 10,
+      videoCaptions: [
+        { text: "inside", startSec: 1, endSec: 3 },
+        { text: "also inside", startSec: 9.5, endSec: 11 },
+        { text: "past the card", startSec: 12, endSec: 14 },
+      ],
+    })
+    const video = m.cards.find((c) => c.kind === "video")!
+    expect(video.subtitles).toEqual([
+      { text: "inside", startSec: 1, endSec: 3 },
+      { text: "also inside", startSec: 9.5, endSec: 11 },
+    ])
+  })
+
+  it("omits the subtitles field entirely when there are no captions", () => {
+    const m = buildDevotionalManifest(base)
+    const video = m.cards.find((c) => c.kind === "video")!
+    expect(video.subtitles).toBeUndefined()
   })
 
   it("labels 'Reflect' on the first reflection card only + accents the highlight phrase", () => {
     const m = buildDevotionalManifest(base)
     const refl = m.cards.filter((c) => c.kind === "reflection-focus")
     expect(refl[0].text).toBe("He is with you in the boat.")
-    expect(refl[0].sectionLabel).toBeUndefined() // first → default "Reflect"
+    expect(refl[0].sectionLabel).toBe("Reflect") // first → default English label
     expect(refl[0].highlight).toBe("with you in the boat") // accent phrase
     expect(refl[1].sectionLabel).toBe("") // rest → suppressed
     expect(refl[1].highlight).toBeUndefined() // "" → no accent
+  })
+
+  it("applies localized labels to the reflection + questions cards", () => {
+    const m = buildDevotionalManifest({
+      ...base,
+      labels: { reflect: "Подумай", askYourself: "Спроси себя", pray: "Помолись" },
+    })
+    const refl = m.cards.filter((c) => c.kind === "reflection-focus")
+    expect(refl[0].sectionLabel).toBe("Подумай")
+    const q = m.cards.find((c) => c.kind === "questions")
+    expect(q?.askLabel).toBe("Спроси себя")
+    expect(q?.prayLabel).toBe("Помолись")
   })
 
   it("wires each card's narration file + duration and the clip background", () => {
@@ -135,5 +178,65 @@ describe("buildDevotionalManifest", () => {
     expect(m.cards.some((c) => c.kind === "questions")).toBe(false)
     // video always present
     expect(m.cards.some((c) => c.kind === "video")).toBe(true)
+  })
+
+  it("TWO-ACT: plays act 2 BETWEEN the halves, so each half follows the act it comments on", () => {
+    const m = buildDevotionalManifest({
+      ...base,
+      segments: [
+        ...ALL,
+        { id: "reflection-3", file: "07-reflection-3.mp3", durationSec: 9, text: "And he stills it." },
+      ],
+      devotional: {
+        ...DEVO,
+        reflection: {
+          ...DEVO.reflection,
+          // half 1 = 2 sentences, half 2 = 1 → act 2 lands at index 2
+          parts: ["He is with you in the boat. Trust him.", "And he stills it."],
+        },
+      },
+      act2: { clipFile: "clip2.mp4", durationSec: 12 },
+    })
+    expect(m.cards.map((c) => c.kind)).toEqual([
+      "cover",
+      "scripture",
+      "video",
+      "reflection-focus",
+      "reflection-focus",
+      "video",
+      "reflection-focus",
+      "conclusion",
+      "questions",
+    ])
+    const videos = m.cards.filter((c) => c.kind === "video")
+    expect(videos[1].videoFile).toBe("clip2.mp4")
+    expect(videos[1].durationSec).toBe(12)
+    // Each half re-shows the "Reflect" label; the middle card suppresses it.
+    const refl = m.cards.filter((c) => c.kind === "reflection-focus")
+    expect(refl.map((c) => c.sectionLabel)).toEqual(["Reflect", "", "Reflect"])
+  })
+
+  it("TWO-ACT: never silently drops act 2 — a boundary past the last chunk is clamped inside the run", () => {
+    const m = buildDevotionalManifest({
+      ...base,
+      devotional: {
+        ...DEVO,
+        reflection: {
+          ...DEVO.reflection,
+          // 3 sentences in half 1 but only 2 narrated chunks exist
+          parts: ["One. Two. Three.", "Four."],
+        },
+      },
+      act2: { clipFile: "clip2.mp4", durationSec: 12 },
+    })
+    expect(m.cards.filter((c) => c.kind === "video")).toHaveLength(2)
+  })
+
+  it("TWO-ACT: falls back to the single-video layout when parts are absent", () => {
+    const m = buildDevotionalManifest({
+      ...base,
+      act2: { clipFile: "clip2.mp4", durationSec: 12 },
+    })
+    expect(m.cards.filter((c) => c.kind === "video")).toHaveLength(1)
   })
 })

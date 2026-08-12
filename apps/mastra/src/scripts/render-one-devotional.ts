@@ -8,7 +8,10 @@
 import { homedir } from "node:os"
 import path from "node:path"
 
-import { getDevotionalModel } from "../config/env"
+import {
+  getDevotionalModel,
+  getDevotionalTranslateModel,
+} from "../config/env"
 import { prepareAndRenderDevotional } from "../services/devotional/devotional-render"
 import { createDevotionalLlm } from "../services/devotional/llm"
 
@@ -23,29 +26,39 @@ async function main() {
   const style = arg("style", "splittone")
   const layout = arg("layout", "grounded")
   const aspect = arg("aspect", "portrait") as "portrait" | "wide"
+  const lang = arg("lang", "en") as "en" | "ru"
+  const voiceOverride = arg("voice") // experiment: force a specific voice id
   const outDir = arg(
     "out",
-    path.join(homedir(), "Desktop", "devotional-video"),
+    path.join(homedir(), "Desktop", "Devos", "Devotionals"),
   )!
-  const date = new Date().toISOString().slice(0, 10)
+  const date = arg("date", new Date().toISOString().slice(0, 10))!
 
   const llm = createDevotionalLlm({ model: getDevotionalModel() })
+  const translateLlm = createDevotionalLlm({
+    model: getDevotionalTranslateModel(),
+  })
   const { devotional, videoPath } = await prepareAndRenderDevotional({
     chapterIndex,
     sequence,
     date,
     llm,
+    translateLlm,
+    lang,
+    ...(voiceOverride ? { voiceOverride } : {}),
     outDir,
     style,
     layout,
     aspect,
     regenerate: process.argv.includes("--regenerate"),
     regenerateAudio: process.argv.includes("--regenerate-audio"),
+    ignoreQualityGate: process.argv.includes("--ignore-quality"),
     log: (m) => console.log(m),
   })
   console.log(
     `\n✅ DONE (${aspect}): "${devotional.title}" [${devotional.reflection.flavor}, voice ${devotional.voice}, ${devotional.mood}]\n   ${videoPath}`,
   )
+
 }
 
 main().catch((e) => {

@@ -3,6 +3,7 @@ import path from "node:path"
 
 import type { ProducedDevotionalAudio } from "./devotional-audio"
 import type { MusicMood } from "./elevenlabs-music"
+import type { DevotionalLang } from "./devotional-locale"
 import type { GeneratedDevotional } from "./generate-devotional"
 import { repoRoot } from "./repo-root"
 
@@ -19,8 +20,19 @@ import { repoRoot } from "./repo-root"
  *    Render loads them back by cache dir.
  */
 
-export function cacheDirFor(chapterIndex: number, sequence: number): string {
-  return path.join(repoRoot(), "devo/cache", `ch${chapterIndex}-seq${sequence}`)
+export function cacheDirFor(
+  chapterIndex: number,
+  sequence: number,
+  lang: DevotionalLang = "en",
+): string {
+  // English keeps the original path; other languages get a suffixed dir so a
+  // localized edition never collides with the English text/audio.
+  const suffix = lang === "en" ? "" : `-${lang}`
+  return path.join(
+    repoRoot(),
+    "devo/cache",
+    `ch${chapterIndex}-seq${sequence}${suffix}`,
+  )
 }
 
 export async function loadCachedDevo(
@@ -103,10 +115,59 @@ export async function loadCachedAudio(
         },
       }
     }
-    return { voice, segments, music, skipped: [] }
+    return { voice, segments, music, skipped: [], reused: [] }
   } catch {
     return null
   }
+}
+
+/**
+ * Cached narration keyed by WHAT IT SAYS, for per-segment reuse.
+ *
+ * `loadCachedAudio` is all-or-nothing: any text edit invalidates the whole
+ * devotional's audio, so a one-sentence change re-synthesised all ~21
+ * segments. That burned an entire ElevenLabs quota in a single afternoon
+ * (owner: "why are you re-rendering the narration, use the same one").
+ *
+ * The key deliberately ignores the segment's INDEX: inserting a sentence
+ * early renumbers every `reflection-N` after it, which would invalidate
+ * everything under an id-based key even though the words are identical. It
+ * does keep the segment's ROLE, because role changes the delivery — the first
+ * reflection card carries a spoken connector and the last one is paced
+ * slower, so the same words in a different role are genuinely different audio.
+ */
+export function audioReuseKey(
+  role: string,
+  displayText: string,
+  voice: string,
+): string {
+  return `${voice}::${role}::${displayText.trim()}`
+}
+
+/** Every cached segment, keyed for reuse. Empty map when nothing is cached. */
+export async function loadReusableAudio(
+  dir: string,
+  voice: GeneratedDevotional["voice"],
+): Promise<Map<string, ProducedDevotionalAudio["segments"][number]>> {
+  const out = new Map<string, ProducedDevotionalAudio["segments"][number]>()
+  const cached = await loadCachedAudio(dir, voice)
+  if (!cached) return out
+  const reflections = cached.segments.filter((s) =>
+    /^reflection-\d+$/.test(s.id),
+  )
+  const firstId = reflections[0]?.id
+  const lastId = reflections[reflections.length - 1]?.id
+  for (const s of cached.segments) {
+    const role = /^reflection-\d+$/.test(s.id)
+      ? s.id === firstId
+        ? "reflection-first"
+        : s.id === lastId
+          ? "reflection-last"
+          : "reflection-mid"
+      : s.id
+    out.set(audioReuseKey(role, s.text ?? "", voice), s)
+  }
+  return out
 }
 
 export async function saveCachedAudio(

@@ -23,6 +23,15 @@ const ryleMatthew: ReflectionEntry[] = [
   },
 ]
 
+const ryleLuke: ReflectionEntry[] = [
+  {
+    source: "J.C. Ryle, Expository Thoughts on the Gospels: Luke",
+    reference: "Jesus Calms the Storm, Luke 8:22-25",
+    osisRef: "Luke.8.22-Luke.8.25",
+    text: "Ryle on the storm, from the Luke volume.",
+  },
+]
+
 const matthewHenry: ReflectionEntry[] = [
   {
     source: "Matthew Henry, Commentary on the Whole Bible",
@@ -38,7 +47,7 @@ const matthewHenry: ReflectionEntry[] = [
   },
 ]
 
-const corpora = { ryleMatthew, matthewHenry }
+const corpora = { ryleMatthew, ryleLuke, matthewHenry }
 
 describe("parseOsis", () => {
   it("parses the start of a range", () => {
@@ -81,10 +90,13 @@ describe("matchReflection", () => {
     )
   })
 
-  it("routes Mark/Luke/John to the Matthew Henry chapter", () => {
-    expect(matchReflection("Luke.8.22-Luke.8.25", corpora)?.reference).toBe(
-      "Luke 8",
-    )
+  it("routes a Luke passage to the Ryle-Luke section that covers it (owner preference — the JESUS film is Luke-only)", () => {
+    const m = matchReflection("Luke.8.22-Luke.8.25", corpora)
+    expect(m?.source).toContain("Ryle")
+    expect(m?.reference).toBe("Jesus Calms the Storm, Luke 8:22-25")
+  })
+
+  it("routes Mark/John to the Matthew Henry chapter (no Ryle volume ingested)", () => {
     expect(matchReflection("John.11.1-John.11.44", corpora)?.source).toContain(
       "Matthew Henry",
     )
@@ -129,17 +141,22 @@ describe("matchSpurgeonTheme", () => {
 })
 
 describe("selectReflection (rotation)", () => {
-  const full: ReflectionCorpora = { ryleMatthew, matthewHenry, spurgeon }
+  const full: ReflectionCorpora = {
+    ryleMatthew,
+    ryleLuke,
+    matthewHenry,
+    spurgeon,
+  }
   const base = {
     passageOsis: "Luke.8.22-Luke.8.25",
     reference: "Luke 8:22-25",
     themes: ["storm", "peace", "trust"],
   }
 
-  it("even sequence → commentary (Matthew Henry on the passage)", () => {
+  it("even sequence → commentary (Ryle on the passage)", () => {
     const r = selectReflection({ ...base, sequence: 0 }, full)
     expect(r?.flavor).toBe("commentary")
-    expect(r?.source).toContain("Matthew Henry")
+    expect(r?.source).toContain("Ryle")
     expect(r?.focusReference).toBe("Luke 8:22-25")
   })
 

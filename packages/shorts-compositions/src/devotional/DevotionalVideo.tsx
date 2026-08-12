@@ -11,7 +11,7 @@ import {
   useVideoConfig,
 } from "remotion"
 
-import { APERCU_FAMILY, loadApercu } from "./apercu"
+import { loadShortFonts, SHORT_FONT_FAMILIES } from "../fonts"
 import type { DevotionalCard, DevotionalInputProps } from "./schema"
 import { resolveDevotionalStyle, type DevotionalStyle } from "./styles"
 import {
@@ -33,7 +33,8 @@ const TEXT_SHADOW = "0 2px 28px rgba(0,0,0,0.32)"
 // EXTENDS THE HOLD — it never slows the logo/headline/date animation. Owner
 // rule: don't stretch the animation to fill the card; just hold the last frame.
 const COVER_ANIM_SEC = 7
-const SANS = `'${APERCU_FAMILY}', -apple-system, system-ui, sans-serif`
+// Owner rule: Inter, after comparing mockups against Montserrat.
+const SANS = `'${SHORT_FONT_FAMILIES.inter}', -apple-system, system-ui, sans-serif`
 const SERIF = "Georgia, 'Times New Roman', serif"
 const BRAND_PATH =
   "M53,0H2.7A2.7,2.7,0,0,0,0,2.7V23.38A2.71,2.71,0,0,0,2,26L54.36,40.66a1,1,0,0,0,1.29-1V2.7A2.7,2.7,0,0,0,53,0Z"
@@ -128,6 +129,7 @@ type RevealType =
   | "left"
   | "growV"
   | "growLine"
+  | "popUp"
 
 function reveal(
   frame: number,
@@ -151,6 +153,14 @@ function reveal(
       return { transform: `scaleY(${t})`, transformOrigin: "top" }
     case "growLine":
       return { transform: `scaleX(${t})`, transformOrigin: "left" }
+    case "popUp":
+      // Gentle: a soft scale + tiny rise, both eased with the same cubic-out
+      // as everything else (no bounce/overshoot — owner: "не резко"). Reads
+      // as the whole block settling into place, not a sharp pop.
+      return {
+        opacity: t,
+        transform: `translateY(${(1 - t) * 10 * scale}px) scale(${0.96 + 0.04 * t})`,
+      }
     default:
       return { opacity: t, transform: `translateY(${(1 - t) * 28 * scale}px)` }
   }
@@ -203,24 +213,37 @@ function LetterReveal({
 }
 
 /**
- * Experimental subtitle bot: renders the video card's transcribed captions in
- * the dark band just below the fitted (contain) video window. The clip is
- * landscape (~16:9) letterboxed into the portrait frame, so its bottom edge
- * sits near 63% of the height — captions live in the strip beneath it. Each
- * cue whose [startSec, endSec] straddles the current time shows, with a quick
- * cross-fade so lines swap softly rather than snapping.
+ * Captions for the video card, timed against the EDITED clip (the pipeline
+ * remaps the film's own subtitle cues through the pause cuts + speed-up — see
+ * `mapCuesToEditedTimeline`).
+ *
+ * Placement: in PORTRAIT the clip plays in a centered 1:1 window spanning
+ * 21.9%–78.15% of the frame height (see the video-card branch of Background),
+ * so captions sit just INSIDE that window's bottom edge — over the picture,
+ * where subtitles belong — and are anchored from the bottom so extra lines
+ * grow UP. Owner rules: same typeface as the cards (SANS), and never low
+ * enough for a social app's caption/nav chrome to cover them; anchoring above
+ * the picture's bottom edge keeps them ~100px clear of the `igSafeBottom`
+ * line, and the right inset clears the action rail.
  */
+/** Portrait: bottom of the centered 1:1 video window, as a % of frame height. */
+const VIDEO_WINDOW_BOTTOM_PCT = 78.15
 function VideoSubtitles({
   cues,
   px,
   frame,
   fps,
+  isLandscape,
+  safeRight,
 }: {
   cues: NonNullable<DevotionalCard["subtitles"]>
   style: DevotionalStyle
   px: (n: number) => number
   frame: number
   fps: number
+  isLandscape: boolean
+  /** Right inset that keeps captions clear of the action rail. */
+  safeRight: number
 }) {
   const t = frame / fps
   const fade = 0.18
@@ -229,12 +252,20 @@ function VideoSubtitles({
       style={{
         position: "absolute",
         left: px(40),
-        right: px(40),
-        // Anchor just below the letterboxed video band. The band is a 16:9 clip
-        // fitted to 1080 wide → ~304px tall each side of centre; sitting the
-        // caption ~340px below centre clears it at ANY frame aspect (9:16, 9:19.5).
-        top: "calc(50% + 340px)",
-        height: px(140),
+        // Portrait: stop short of the right-hand action rail.
+        right: isLandscape ? px(40) : safeRight,
+        top: "45%",
+        // Portrait: sit just inside the 1:1 video window's bottom edge — over
+        // the picture, and ~100px clear of the social UI's safe line (which is
+        // `safeBottom`, further down). Landscape: a normal bottom inset.
+        bottom: isLandscape
+          ? px(28)
+          : `calc(${100 - VIDEO_WINDOW_BOTTOM_PCT}% + ${px(16)}px)`,
+        display: "flex",
+        // Anchored to the bottom: a 3-line cue grows UP toward the picture,
+        // never down toward the chrome.
+        alignItems: "flex-end",
+        justifyContent: "center",
         pointerEvents: "none",
       }}
     >
@@ -247,8 +278,8 @@ function VideoSubtitles({
           { extrapolateLeft: "clamp", extrapolateRight: "clamp" },
         )
         if (opacity <= 0) return null
-        // Each cue is a full-width row centered horizontally, all pinned to the
-        // same top — so adjacent cues cross-fade in place.
+        // Every cue is absolutely positioned in the SAME centered box, so
+        // adjacent lines cross-fade in place instead of shifting.
         return (
           <div
             key={i}
@@ -256,7 +287,7 @@ function VideoSubtitles({
               position: "absolute",
               left: 0,
               right: 0,
-              top: 0,
+              bottom: 0,
               display: "flex",
               justifyContent: "center",
               opacity,
@@ -265,21 +296,17 @@ function VideoSubtitles({
             <span
               style={{
                 display: "inline-block",
-                maxWidth: px(320),
+                maxWidth: px(300),
                 textAlign: "center",
                 fontFamily: SANS,
                 fontWeight: 600,
-                fontSize: px(21),
-                lineHeight: 1.32,
+                fontSize: px(20),
+                lineHeight: 1.34,
                 color: "#f4efe8",
-                // Legible over either the dark band or a bright frame edge.
+                // No pill/blur: matches the cards' plain-text treatment; the
+                // shadow alone carries legibility over moving footage.
                 textShadow:
-                  "0 2px 10px rgba(0,0,0,0.85), 0 0 2px rgba(0,0,0,0.9)",
-                padding: `${px(6)}px ${px(14)}px`,
-                borderRadius: px(10),
-                background: "rgba(8,8,10,0.42)",
-                backdropFilter: `blur(${px(6)}px)`,
-                WebkitBackdropFilter: `blur(${px(6)}px)`,
+                  "0 2px 12px rgba(0,0,0,0.9), 0 0 3px rgba(0,0,0,0.95)",
               }}
             >
               {c.text}
@@ -318,10 +345,10 @@ function BrandMark({ px }: { px: (n: number) => number }) {
 const BRAND_RED = "#ee3441"
 
 /**
- * Width (px) of a single line of Apercu text as Chrome lays it out, so the date
- * container can be sized to its EXACT content — no trailing empty space, so the
- * centered [symbol · date] row is truly centered for any date string. The font
- * is already loaded (loadApercu gates rendering via delayRender), so the canvas
+ * Width (px) of a single line of Montserrat text as Chrome lays it out, so the
+ * date container can be sized to its EXACT content — no trailing empty space, so
+ * the centered [symbol · date] row is truly centered for any date string. The
+ * font is already loaded (loadShortFonts gates rendering via delayRender), so the canvas
  * measures the real glyphs; letter-spacing is added per glyph (Chrome includes
  * the trailing one). Runs in the render browser only.
  */
@@ -334,7 +361,7 @@ function measureLineWidth(
   const canvas = document.createElement("canvas")
   const ctx = canvas.getContext("2d")
   if (!ctx) return text.length * fontPx * 0.62 + letterSpacingPx * text.length
-  ctx.font = `${weight} ${fontPx}px '${APERCU_FAMILY}', sans-serif`
+  ctx.font = `${weight} ${fontPx}px '${SHORT_FONT_FAMILIES.inter}', sans-serif`
   return ctx.measureText(text).width + letterSpacingPx * text.length
 }
 
@@ -436,19 +463,27 @@ function ProgressRing({
   durationInFrames,
   bottomPx,
   isLandscape,
+  inline = false,
+  size: sizeProp,
 }: {
   px: (n: number) => number
   fps: number
   frame: number
   startFrame: number
   durationInFrames: number
-  bottomPx: number
+  bottomPx?: number
   isLandscape: boolean
+  /** Inline (questions card): flow in the text column (relative), left-aligned,
+   *  small — rendered ABOVE the "Ask yourself" label. Default false = the
+   *  original full-frame overlay corner placement (kept for reuse). */
+  inline?: boolean
+  /** Explicit diameter override (px). Inline mode passes a small size. */
+  size?: number
 }) {
-  // Bigger + placed per aspect (owner): centered along the bottom on mobile
-  // (portrait, enlarged), tucked into the bottom-right corner on desktop
-  // (landscape) with EQUAL bottom + right margins.
-  const size = px(isLandscape ? 40 : 56)
+  // Overlay (default): bigger + placed per aspect — centered along the bottom on
+  // mobile, tucked into the bottom-right corner on desktop. Inline mode uses the
+  // caller's small `size` and flows left-aligned in the column instead.
+  const size = sizeProp ?? px(isLandscape ? 40 : 56)
   const R = 27
   const C = 2 * Math.PI * R // ≈ 169.6 (viewBox units)
   const p = Math.max(
@@ -466,16 +501,21 @@ function ProgressRing({
   return (
     <div
       style={{
-        position: "absolute",
-        bottom: bottomPx,
         width: size,
         height: size,
         opacity: appear,
-        // Landscape → bottom-right corner with the right margin EQUAL to the
-        // bottom margin (bottomPx); portrait → horizontally centered.
-        ...(isLandscape
-          ? { right: bottomPx }
-          : { left: "50%", marginLeft: -size / 2 }),
+        // Inline → flow in the column, left-aligned (no absolute placement).
+        // Overlay → landscape bottom-right corner (right margin EQUAL to the
+        // bottom margin); portrait → horizontally centered along the bottom.
+        ...(inline
+          ? { position: "relative" }
+          : {
+              position: "absolute",
+              bottom: bottomPx,
+              ...(isLandscape
+                ? { right: bottomPx }
+                : { left: "50%", marginLeft: -size / 2 }),
+            }),
       }}
     >
       <svg
@@ -534,39 +574,6 @@ function ProgressRing({
 }
 
 /**
- * Full-frame overlay host for the progress ring on the questions card. Rendered
- * at the composition level (not inside CardBody) so `right`/`bottom` are relative
- * to the FRAME edges — mobile centers it along the bottom, desktop tucks it into
- * the bottom-right corner with equal bottom + right margins.
- */
-function QuestionsProgressRing({
-  px,
-  fps,
-  durationInFrames,
-  isLandscape,
-}: {
-  px: (n: number) => number
-  fps: number
-  durationInFrames: number
-  isLandscape: boolean
-}) {
-  const frame = useCurrentFrame()
-  return (
-    <AbsoluteFill>
-      <ProgressRing
-        px={px}
-        fps={fps}
-        frame={frame}
-        startFrame={Math.round(3.5 * fps)}
-        durationInFrames={durationInFrames}
-        bottomPx={isLandscape ? px(20) : px(34)}
-        isLandscape={isLandscape}
-      />
-    </AbsoluteFill>
-  )
-}
-
-/**
  * The animated cover opening, reproduced from the Claude Design spec (a single
  * ~6.5s scene mapped onto the card's own runtime via a normalized progress p).
  * Beat map (fractions of the 7s scene): lockup stamps in 0→0.085; the wordmark
@@ -583,9 +590,14 @@ function CoverIntro({
   durationInFrames,
   title,
   date,
+  occasion,
+  eyebrowColor,
   staticCover,
   isLandscape,
   attribution,
+  hideDate,
+  textStatic,
+  secondaryLine,
 }: {
   px: (n: number) => number
   frame: number
@@ -593,9 +605,20 @@ function CoverIntro({
   durationInFrames: number
   title: ReactNode
   date: string
+  /** Fixed-date occasion tag (e.g. "World Humanitarian Day"); most days none. */
+  occasion?: string
+  eyebrowColor: string
   staticCover: boolean
   isLandscape: boolean
   attribution?: string
+  /** Skip the date box entirely — logo sits alone in the row. */
+  hideDate?: boolean
+  /** Title + attribution shown from frame 0 while the logo still animates
+   *  (unlike `staticCover`, which also freezes the logo). */
+  textStatic?: boolean
+  /** Short line under the title, same font treatment as the date. Fades in
+   *  once the logo settles (needs no date-wipe slot to wait for). */
+  secondaryLine?: string
 }) {
   // Progress runs over a FIXED span (COVER_ANIM_SEC), not the whole card — so a
   // long narration extends the settled HOLD instead of slowing the animation.
@@ -629,8 +652,9 @@ function CoverIntro({
   // so the settled [symbol · date] row has no trailing gap and centres cleanly
   // for any date string (measured, not a fixed 268px).
   const dateLeftPad = cpx(9.75) // 18px
-  const dateTargetW =
-    measureLineWidth(date.toUpperCase(), cpx(8.1), cpx(1.625)) + dateLeftPad
+  const dateTargetW = hideDate
+    ? 0
+    : measureLineWidth(date.toUpperCase(), cpx(8.1), cpx(1.625)) + dateLeftPad
 
   // ---- logo: stamp then morph -----------------------------------------------
   const logoOpacity = interpolate(p, [0, 0.04], [0, 1], clamp)
@@ -657,21 +681,30 @@ function CoverIntro({
 
   // ---- date: clip-wipes in beside the symbol (container width 0→target, the
   // SAME clip mechanism mirrored; easeInOutCubic, no fade — the text is revealed
-  // purely by the expanding clip, constant opacity).
-  const dateW = interpolate(p, [0.42, 0.58], [0, dateTargetW], {
-    ...clamp,
-    ...inOutCubic,
-  })
+  // purely by the expanding clip, constant opacity). Skipped entirely when
+  // hideDate (dateTargetW is already 0, so this just stays at 0).
+  const dateW = hideDate
+    ? 0
+    : interpolate(p, [0.42, 0.58], [0, dateTargetW], {
+        ...clamp,
+        ...inOutCubic,
+      })
 
-  // ---- headline: rises in below the row -------------------------------------
-  const headOpacity = interpolate(p, [0.72, 0.94], [0, 1], {
-    ...clamp,
-    ...outCubic,
-  })
-  const headY = interpolate(p, [0.72, 0.96], [cpx(10.8), 0], {
-    ...clamp,
-    ...outCubic,
-  })
+  // ---- headline: rises in below the row, UNLESS textStatic — social test
+  // cards want the title readable from frame 0 while the logo still animates.
+  const headOpacity = textStatic
+    ? 1
+    : interpolate(p, [0.72, 0.94], [0, 1], { ...clamp, ...outCubic })
+  const headY = textStatic
+    ? 0
+    : interpolate(p, [0.72, 0.96], [cpx(10.8), 0], { ...clamp, ...outCubic })
+
+  // ---- secondary line: reveals letter-by-letter once the logo settles (no
+  // date-wipe slot to wait for, so it can start right after the morph
+  // finishes at p≈0.35). Same per-char reveal mechanism as AttributionCredit.
+  const secStartSec = (animSpan * 0.42) / fps
+  const secFadeFrames = 0.32 * fps
+  const secPerCharSec = 0.018
 
   return (
     <AbsoluteFill
@@ -761,6 +794,25 @@ function CoverIntro({
         </div>
       </div>
 
+      {/* occasion tag (e.g. "World Humanitarian Day") — rises in with the
+          headline, on the same schedule, only present on configured dates. */}
+      {occasion ? (
+        <div
+          style={{
+            fontFamily: SANS,
+            fontWeight: 700,
+            fontSize: cpx(11), // ≈13px at 720
+            letterSpacing: cpx(1.625), // 3px
+            textTransform: "uppercase",
+            color: eyebrowColor,
+            opacity: headOpacity,
+            transform: `translateY(${headY}px)`,
+          }}
+        >
+          {occasion}
+        </div>
+      ) : null}
+
       {/* headline */}
       <div
         style={{
@@ -777,6 +829,37 @@ function CoverIntro({
       >
         {title}
       </div>
+      {secondaryLine ? (
+        <div
+          style={{
+            // Exactly the date's treatment (owner: "same font style as the
+            // date") — same size, weight, letter-spacing, uppercase, color.
+            fontFamily: SANS,
+            fontWeight: 700,
+            fontSize: cpx(8.1), // 15px, matches the date
+            letterSpacing: cpx(1.625), // 3px, matches the date
+            textTransform: "uppercase",
+            color: "rgba(214,217,224,0.82)",
+            maxWidth: cpx(420),
+            lineHeight: 1.5,
+            whiteSpace: "pre-wrap",
+          }}
+        >
+          {Array.from(secondaryLine).map((ch, i) => (
+            <span
+              key={i}
+              style={{
+                opacity: ease(
+                  (frame - (secStartSec + i * secPerCharSec) * fps) /
+                    secFadeFrames,
+                ),
+              }}
+            >
+              {ch}
+            </span>
+          ))}
+        </div>
+      ) : null}
       {attribution ? (
         <AttributionCredit
           px={px}
@@ -788,8 +871,9 @@ function CoverIntro({
           frame={frame}
           fps={fps}
           // Start once the headline has landed (headline finishes at p≈0.96).
+          // Static covers (staticCover or textStatic) skip the reveal entirely.
           delaySec={(animSpan * 0.96) / fps}
-          animate={!staticCover}
+          animate={!staticCover && !textStatic}
         />
       ) : null}
     </AbsoluteFill>
@@ -1001,6 +1085,9 @@ function CardBody({
   staticCover,
   wideText,
   attribution,
+  hideCoverDate,
+  coverTextStatic,
+  coverSecondaryLine,
 }: {
   card: DevotionalCard
   style: DevotionalStyle
@@ -1013,6 +1100,9 @@ function CardBody({
   staticCover: boolean
   wideText?: "bottom" | "right"
   attribution?: string
+  hideCoverDate?: boolean
+  coverTextStatic?: boolean
+  coverSecondaryLine?: string
 }) {
   const { width: vw, height: vh } = useVideoConfig()
   const isLandscape = vw > vh
@@ -1021,6 +1111,13 @@ function CardBody({
   // bottom text can sit LOWER — landscape 48px (px(17.35)), portrait ~78px
   // (px(28)) from the frame edge (was px(84) ≈ 232px, too high off the bottom).
   const padBottom = isLandscape ? px(17.35) : px(28)
+  // Instagram Reels safe-area (PORTRAIT only): keep the reflection/conclusion
+  // text clear of the right-edge action rail (~140px) and lift it above the
+  // caption block + bottom nav (text ends ~360px above the frame bottom). px()
+  // scales by the 1080 short side, so px(50.5)≈140px and px(130)≈360px at 1080w.
+  const igSafe = !isLandscape
+  const igSafeRight = px(50.5)
+  const igSafeBottom = px(130)
   const letters = anim === "letters"
 
   if (card.kind === "cover") {
@@ -1038,21 +1135,31 @@ function CardBody({
         durationInFrames={durationInFrames}
         title={title}
         date={headerDate}
+        occasion={card.occasion}
+        eyebrowColor={style.eyebrow}
         staticCover={staticCover}
         isLandscape={isLandscape}
         attribution={attribution}
+        hideDate={hideCoverDate}
+        textStatic={coverTextStatic}
+        secondaryLine={coverSecondaryLine}
       />
     )
   }
 
   if (card.kind === "scripture") {
+    // Reverted to the per-style-rotation layout (quoteCenter / grain-left-rule
+    // / frostedBottom-bar) — the owner preferred it back after trying the
+    // unified left-rule redesign. Font size trimmed a touch (32→27). The
+    // `igSafe` protection stays on every branch: the citation must clear the
+    // social app's own bottom UI regardless of which layout is showing.
     const verse = (
       <div
         style={{
           fontFamily: SANS,
           fontStyle: "italic",
           fontWeight: 400,
-          fontSize: px(32),
+          fontSize: px(27),
           lineHeight: 1.36,
           color: style.heading,
         }}
@@ -1095,6 +1202,8 @@ function CardBody({
             alignItems: "center",
             textAlign: "center",
             padding: `${px(40)}px ${px(34)}px`,
+            paddingBottom: igSafe ? igSafeBottom : px(40),
+            paddingRight: igSafe ? igSafeRight : px(34),
           }}
         >
           <div
@@ -1123,6 +1232,8 @@ function CardBody({
           padding: bottom
             ? `${px(48)}px ${px(28)}px ${padBottom}px`
             : `0 ${px(30)}px`,
+          paddingBottom: igSafe ? igSafeBottom : bottom ? padBottom : undefined,
+          paddingRight: igSafe ? igSafeRight : undefined,
         }}
       >
         {bottom ? (
@@ -1245,7 +1356,12 @@ function CardBody({
                 style={{
                   justifyContent: style.textBottom ? "flex-end" : "center",
                   padding: pad,
-                  paddingBottom: style.textBottom ? padBottom : undefined,
+                  paddingBottom: igSafe
+                    ? igSafeBottom
+                    : style.textBottom
+                      ? padBottom
+                      : undefined,
+                  paddingRight: igSafe ? igSafeRight : undefined,
                   opacity,
                   transform: `translateY(${lift}px)`,
                 }}
@@ -1261,9 +1377,9 @@ function CardBody({
               style={{
                 position: "absolute",
                 left: px(34),
-                right: px(34),
+                right: igSafe ? igSafeRight : px(34),
                 ...(anchor === "bottom"
-                  ? { bottom: padBottom }
+                  ? { bottom: igSafe ? igSafeBottom : padBottom }
                   : { top: px(120) }),
                 opacity,
                 transform: `translateY(${lift}px)`,
@@ -1328,53 +1444,68 @@ function CardBody({
                   : px(25),
             lineHeight: 1.46,
             color: style.body,
-            ...(letters ? {} : reveal(frame, fps, 0.35, 1, "up")),
+            // Owner rule: reflection text settles in as ONE gentle block (soft
+            // scale + fade + tiny rise) rather than a per-letter cascade —
+            // tried independent of the global `letters`/`anim` setting, which
+            // still drives every OTHER card kind (scripture, conclusion, cover).
+            ...reveal(frame, fps, 0.35, 1, "popUp"),
           }}
         >
-          {letters ? (
-            <LetterReveal
-              text={card.text ?? ""}
-              highlight={card.highlight}
-              style={style}
-              frame={frame}
-              fps={fps}
-              delaySec={0.5}
-            />
-          ) : (
-            withHighlight(card.text ?? "", card.highlight, style)
-          )}
+          {withHighlight(card.text ?? "", card.highlight, style)}
         </p>
       </>
     )
+    // Portrait experiment: the pipeline feeds ONE sentence per reflection card,
+    // so read them like stable subtitles — a FIXED TOP anchor (upper-middle of
+    // the frame) means every one-sentence card starts at the SAME Y and grows
+    // DOWNWARD, instead of the old bottom anchor (where a 1-line vs 3-line
+    // sentence jumped up/down). Only portrait, non-frosted; landscape keeps its
+    // bottom-band / right-panel behaviour and frosted styles keep their panel.
+    const stableTop = igSafe && !frosted
+    // Fixed offset from the top of the frame for the stable-subtitle anchor.
+    // px scales by the 1080 short side, so px(320) ≈ 886px ≈ 46% of the 1920
+    // portrait height — upper-middle: clears the top, and a multi-line sentence
+    // still grows down well inside the bottom safe inset (igSafeBottom).
+    const stableTopPad = px(320)
     // Landscape: the text sits ON the blur — bottom band → flex-end, right
     // panel → vertically centered (owner rule: never mid-frame off the blur).
     // Portrait: bottom → flex-end; paneled non-bottom → centered; plain
     // non-bottom → TOP (regular reflections never center without a panel).
     const topAnchored = !wideText && !style.textBottom && !frosted
-    const justify = wideText
-      ? wideText === "bottom"
-        ? "flex-end"
-        : "center"
-      : style.textBottom
-        ? "flex-end"
-        : topAnchored
-          ? "flex-start"
+    const justify = stableTop
+      ? "flex-start"
+      : wideText
+        ? wideText === "bottom"
+          ? "flex-end"
           : "center"
+        : style.textBottom
+          ? "flex-end"
+          : topAnchored
+            ? "flex-start"
+            : "center"
     return (
       <AbsoluteFill
         style={{
           justifyContent: justify,
           padding: pad,
-          paddingTop: topAnchored ? px(120) : undefined,
+          // Stable-subtitle top anchor (portrait): fixed Y; text grows downward.
+          paddingTop: stableTop
+            ? stableTopPad
+            : topAnchored
+              ? px(120)
+              : undefined,
           // Owner rule (bottom band): 48px from the last line to the frame
           // edge at 1080p — px(17.35) ≈ 48px. Reflection text is LEFT-aligned
           // (owner: centered reflection is hard to read) — ragged right.
           paddingBottom:
             wideText === "bottom"
               ? px(17.35)
-              : style.textBottom
-                ? padBottom
-                : undefined,
+              : igSafe
+                ? igSafeBottom
+                : style.textBottom
+                  ? padBottom
+                  : undefined,
+          paddingRight: igSafe ? igSafeRight : undefined,
           textAlign: wideText === "bottom" ? "left" : undefined,
         }}
       >
@@ -1470,6 +1601,10 @@ function CardBody({
           alignItems: "center",
           textAlign: "center",
           padding: pad,
+          // IG Reels safe-area (portrait): shrink the centered box off the
+          // right action rail and lift it above the caption/nav block.
+          paddingRight: igSafe ? igSafeRight : undefined,
+          paddingBottom: igSafe ? igSafeBottom : undefined,
         }}
       >
         {body}
@@ -1562,8 +1697,28 @@ function CardBody({
         padding: isLandscape ? `${px(64)}px ${px(34)}px ${px(28)}px` : pad,
       }}
     >
+      {/* Star-orbit progress ring: small, left-aligned in the text column,
+          sitting ABOVE the "Ask yourself" label (same left inset as the label +
+          questions). Same fill/orbit animation + timing as before — it just
+          flows inline here instead of the old bottom-corner overlay. */}
+      <div style={{ marginBottom: q(14) }}>
+        <ProgressRing
+          px={px}
+          fps={fps}
+          frame={frame}
+          startFrame={Math.round(3.5 * fps)}
+          durationInFrames={durationInFrames}
+          isLandscape={isLandscape}
+          inline
+          // Owner: was almost invisible at 22 — a little bigger, still small
+          // enough to read as an inline accent, not a focal element.
+          size={q(30)}
+        />
+      </div>
       <Eyebrow px={px} color={style.eyebrow} size={12}>
-        <span style={reveal(frame, fps, 0.15, 1, "down")}>Ask yourself</span>
+        <span style={reveal(frame, fps, 0.15, 1, "down")}>
+          {card.askLabel ?? "Ask yourself"}
+        </span>
       </Eyebrow>
       <div style={{ display: "flex", flexDirection: "column", gap: q(22) }}>
         {questions.map((text, i) => (
@@ -1622,12 +1777,13 @@ function CardBody({
             }}
           />
           <Eyebrow px={px} color={style.eyebrow} size={12} mb={14}>
-            Pray
+            {card.prayLabel ?? "Pray"}
           </Eyebrow>
           <p
             style={{
               margin: 0,
               fontFamily: SANS,
+              fontStyle: "italic",
               fontWeight: 400,
               fontSize: q(22),
               lineHeight: 1.56,
@@ -1638,10 +1794,6 @@ function CardBody({
           </p>
         </div>
       ) : null}
-      {/* The star-orbit progress ring is rendered as a FULL-FRAME overlay in the
-          main composition (QuestionsProgressRing), NOT here — inside this card it
-          would be trapped in the landscape text column and could never reach the
-          frame's bottom-right corner. */}
     </AbsoluteFill>
   )
 }
@@ -1793,15 +1945,20 @@ function Background({
           // Teaser (videoAudioLevel set): quiet + slow fade in/out so it eases
           // gently under the music bed.
           const slow = props.videoAudioLevel != null
-          const fin = Math.round((slow ? 2 : 0.6) * fps)
+          // 0.6s was too short AND linear, so the clip audio seemed to sit
+          // quiet and then jump (owner-reported). Loudness is perceived
+          // roughly logarithmically, so a linear ramp does most of its
+          // audible work at the very end. Longer ramp + square the curve:
+          // the gain rises slowly at first and arrives smoothly.
+          const fin = Math.round((slow ? 2 : 1.6) * fps)
           const fout = Math.round((slow ? 2 : 1.3) * fps)
-          return (
-            clipAudioLevel *
-            interpolate(f, [0, fin, clipEnd - fout, clipEnd], [0, 1, 1, 0], {
-              extrapolateLeft: "clamp",
-              extrapolateRight: "clamp",
-            })
+          const linear = interpolate(
+            f,
+            [0, fin, clipEnd - fout, clipEnd],
+            [0, 1, 1, 0],
+            { extrapolateLeft: "clamp", extrapolateRight: "clamp" },
           )
+          return clipAudioLevel * linear * linear
         }}
         style={
           isLandscape
@@ -2027,6 +2184,15 @@ function Background({
   )
 }
 
+/**
+ * How long the outgoing card's TEXT takes to fade away, inside that card's own
+ * trailing breath pad (CARD_TAIL_FRAMES) — i.e. BEFORE the next card's
+ * sequence starts. Owner: consecutive reflection sentences were visible at the
+ * same time during the cross-dissolve; clearing the text early leaves a real
+ * gap between blocks while the BACKGROUND still dissolves seamlessly.
+ */
+const TEXT_FADE_OUT_SEC = 0.55
+
 /** Fades a card in over its first `xfade` frames — with overlapping sequences
  * this dissolves the previous card into the next (a slow crossfade). */
 function CardFade({ xfade, children }: { xfade: number; children: ReactNode }) {
@@ -2039,7 +2205,7 @@ function CardFade({ xfade, children }: { xfade: number; children: ReactNode }) {
 }
 
 export function DevotionalVideo(props: DevotionalInputProps) {
-  loadApercu()
+  loadShortFonts()
   const { durationInFrames, fps, width, height } = useVideoConfig()
   const frame = useCurrentFrame()
   const style = resolveDevotionalStyle(props.style, props.layout)
@@ -2125,22 +2291,29 @@ export function DevotionalVideo(props: DevotionalInputProps) {
   // clip's own audio. Skip ducking only when the clip is muted, or in teasers
   // (bgAudio) where the bed plays straight through. A quiet video-card level
   // (videoAudioLevel) no longer disables the duck.
-  const videoIdx =
+  // EVERY video card, not just the first. The two-act layout plays a second
+  // clip later in the timeline; with `findIndex` the bed ducked only for act 1
+  // and then played straight through act 2, over the film's own dialogue
+  // (owner-reported).
+  const videoWindows =
     props.muteVideoAudio || props.bgAudio
-      ? -1
-      : props.cards.findIndex((c) => c.kind === "video")
-  const videoWindow =
-    videoIdx >= 0
-      ? {
-          start: frames[videoIdx].from,
-          // Keep the music muted through the trailing crossfade too — the clip's
-          // own audio plays until the video card fully dissolves into the next.
-          end:
-            frames[videoIdx].from +
-            frames[videoIdx].durationInFrames +
-            (videoIdx < lastIndex ? XFADE : 0),
-        }
-      : null
+      ? []
+      : props.cards.flatMap((c, i) =>
+          c.kind === "video"
+            ? [
+                {
+                  start: frames[i].from,
+                  // Keep the music muted through the trailing crossfade too —
+                  // the clip's own audio plays until the video card fully
+                  // dissolves into the next.
+                  end:
+                    frames[i].from +
+                    frames[i].durationInFrames +
+                    (i < lastIndex ? XFADE : 0),
+                },
+              ]
+            : [],
+        )
   const duckFade = Math.round(0.4 * fps)
 
   // Seamless background: every non-video card is a WINDOW into ONE shared,
@@ -2170,6 +2343,26 @@ export function DevotionalVideo(props: DevotionalInputProps) {
         const audioDelay = perCardAudio && i === 0 ? introFrames : 0
         const seqDuration =
           frames[i].durationInFrames + (i < lastIndex ? boundaryXfade(i) : 0)
+        // Clear this card's TEXT before the next card's text arrives. The fade
+        // runs inside the card's OWN duration (its trailing breath pad), so by
+        // the time the cross-dissolve starts the screen holds only background —
+        // no two sentences on screen at once. The LAST card never fades (it
+        // holds through the outro).
+        const textFadeFrames = Math.min(
+          Math.round(TEXT_FADE_OUT_SEC * fps),
+          Math.max(1, Math.round(frames[i].durationInFrames * 0.3)),
+        )
+        const textFadeStart =
+          frames[i].from + frames[i].durationInFrames - textFadeFrames
+        const textOpacity =
+          i < lastIndex
+            ? interpolate(
+                frame,
+                [textFadeStart, textFadeStart + textFadeFrames],
+                [1, 0],
+                { extrapolateLeft: "clamp", extrapolateRight: "clamp" },
+              )
+            : 1
         return (
           <Sequence
             key={i}
@@ -2200,6 +2393,9 @@ export function DevotionalVideo(props: DevotionalInputProps) {
                   // Slight shadow on all card text (inherited) for legibility
                   // over the lightly-blurred footage.
                   textShadow: TEXT_SHADOW,
+                  // Text clears before the next card's text fades in (the
+                  // background keeps cross-dissolving underneath).
+                  opacity: textOpacity,
                 }}
               >
                 <CardLayer
@@ -2214,18 +2410,11 @@ export function DevotionalVideo(props: DevotionalInputProps) {
                   staticCover={props.staticCover === true}
                   wideText={wideText}
                   attribution={props.attribution}
+                  hideCoverDate={props.hideCoverDate === true}
+                  coverTextStatic={props.coverTextStatic === true}
+                  coverSecondaryLine={props.coverSecondaryLine}
                 />
               </div>
-              {/* Progress ring as a FULL-FRAME overlay (outside the text column)
-                  so it can sit in the true bottom-right corner on desktop. */}
-              {card.kind === "questions" ? (
-                <QuestionsProgressRing
-                  px={px}
-                  fps={fps}
-                  durationInFrames={frames[i].durationInFrames}
-                  isLandscape={isLandscape}
-                />
-              ) : null}
             </CardFade>
             {card.audioFile ? (
               <Sequence from={audioDelay}>
@@ -2259,19 +2448,19 @@ export function DevotionalVideo(props: DevotionalInputProps) {
               ],
               { extrapolateLeft: "clamp", extrapolateRight: "clamp" },
             )
-            if (!videoWindow) return base
-            // 1 everywhere except 0 across the video card (short edge fades).
-            const duck = interpolate(
-              f,
-              [
-                videoWindow.start - duckFade,
-                videoWindow.start,
-                videoWindow.end,
-                videoWindow.end + duckFade,
-              ],
-              [1, 0, 0, 1],
-              { extrapolateLeft: "clamp", extrapolateRight: "clamp" },
-            )
+            if (videoWindows.length === 0) return base
+            // 1 everywhere except 0 across EACH video card (short edge fades).
+            // Take the lowest duck across all windows so overlapping fades
+            // never let the bed swell back up between adjacent acts.
+            const duck = videoWindows.reduce((lowest, w) => {
+              const d = interpolate(
+                f,
+                [w.start - duckFade, w.start, w.end, w.end + duckFade],
+                [1, 0, 0, 1],
+                { extrapolateLeft: "clamp", extrapolateRight: "clamp" },
+              )
+              return Math.min(lowest, d)
+            }, 1)
             return base * duck
           }}
         />
@@ -2299,6 +2488,9 @@ function CardLayer({
   staticCover,
   wideText,
   attribution,
+  hideCoverDate,
+  coverTextStatic,
+  coverSecondaryLine,
 }: {
   card: DevotionalCard
   style: DevotionalStyle
@@ -2311,8 +2503,13 @@ function CardLayer({
   staticCover: boolean
   wideText?: "bottom" | "right"
   attribution?: string
+  hideCoverDate?: boolean
+  coverTextStatic?: boolean
+  coverSecondaryLine?: string
 }) {
   const frame = useCurrentFrame()
+  const { width: layerW, height: layerH } = useVideoConfig()
+  const layerIsLandscape = layerW > layerH
   // Owner rules: NO logo anywhere; the date appears ONLY on the cover (above
   // the title) — so non-cover cards render no header at all.
   return (
@@ -2329,6 +2526,9 @@ function CardLayer({
         anim={anim}
         staticCover={staticCover}
         attribution={attribution}
+        hideCoverDate={hideCoverDate}
+        coverTextStatic={coverTextStatic}
+        coverSecondaryLine={coverSecondaryLine}
       />
       {card.kind === "video" && card.subtitles?.length ? (
         <VideoSubtitles
@@ -2337,6 +2537,11 @@ function CardLayer({
           px={px}
           frame={frame}
           fps={fps}
+          isLandscape={layerIsLandscape}
+          // Same Instagram Reels right inset the text cards use, so captions
+          // clear the action rail. (The bottom is handled by anchoring inside
+          // the video window, which already sits well above the chrome.)
+          safeRight={px(50.5)}
         />
       ) : null}
       {showMuteButton ? <MuteButton px={px} style={style} /> : null}

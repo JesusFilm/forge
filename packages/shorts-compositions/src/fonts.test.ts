@@ -2,6 +2,8 @@ import { afterEach, describe, expect, it, vi } from "vitest"
 
 import { loadShortFonts, SHORT_FONT_FAMILIES } from "./fonts"
 import {
+  INTER_CYRILLIC_EXT_WOFF2_BASE64,
+  INTER_CYRILLIC_WOFF2_BASE64,
   INTER_LATIN_WOFF2_BASE64,
   MONTSERRAT_LATIN_WOFF2_BASE64,
 } from "./fonts-data"
@@ -12,6 +14,8 @@ describe("fonts-data", () => {
   it.each([
     ["Montserrat", MONTSERRAT_LATIN_WOFF2_BASE64],
     ["Inter", INTER_LATIN_WOFF2_BASE64],
+    ["Inter cyrillic", INTER_CYRILLIC_WOFF2_BASE64],
+    ["Inter cyrillic-ext", INTER_CYRILLIC_EXT_WOFF2_BASE64],
   ])("embeds %s as non-empty base64 woff2 bytes", (_family, base64) => {
     expect(typeof base64).toBe("string")
     expect(base64.length).toBeGreaterThan(1000)
@@ -84,7 +88,7 @@ describe("loadShortFonts failure caching", () => {
     await expect(second).resolves.toBeUndefined()
     expect(delayRender).toHaveBeenCalledTimes(2)
     expect(continueRender).toHaveBeenCalledWith(7)
-    expect(fontsAdd).toHaveBeenCalledTimes(2) // both font families registered
+    expect(fontsAdd).toHaveBeenCalledTimes(6) // Montserrat latin+cyrillic+cyrillic-ext, Inter latin+cyrillic+cyrillic-ext
 
     // Success IS memoized: a third call returns the cached promise.
     expect(load()).toBe(second)

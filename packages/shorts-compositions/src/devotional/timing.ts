@@ -2,8 +2,14 @@ import type { DevotionalCard } from "./schema"
 
 export type CardFrames = { from: number; durationInFrames: number }
 
-/** Breath pad after each card's audio (~0.4s @ 30fps) so words aren't clipped. */
-export const CARD_TAIL_FRAMES = 12
+/**
+ * Breath pad after each card's audio (~0.8s @ 30fps) so words aren't clipped
+ * AND consecutive text blocks get a real gap between them. Owner: reflection
+ * sentences were overlapping during the cross-dissolve — the outgoing text now
+ * fades out inside this pad (see `TEXT_FADE_OUT_SEC` in DevotionalVideo), so
+ * one sentence clears the screen before the next appears.
+ */
+export const CARD_TAIL_FRAMES = 24
 
 /**
  * Extra hold on the FINAL card after its narration ends (~8s @ 30fps), so the

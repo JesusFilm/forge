@@ -9,9 +9,13 @@ import { getDevotionalCorpusDir } from "../../config/env"
  *
  * Given a clip's Bible passage (osis form, e.g. "Luke.8.22-Luke.8.25"), returns
  * the right public-domain source's text for the reflection step to adapt:
- *   - Matthew passages  → J.C. Ryle, Expository Thoughts (verse-range sections)
- *   - Mark/Luke/John    → Matthew Henry, Commentary (whole-chapter)
- * (Spurgeon is loaded for future thematic use but not part of passage routing.)
+ *   - Matthew/Luke passages → J.C. Ryle, Expository Thoughts (verse-range sections)
+ *   - Mark/John             → Matthew Henry, Commentary (whole-chapter)
+ * Owner preference: Ryle over Henry wherever a Ryle volume exists — the JESUS
+ * film (1979) follows Luke exclusively, so Luke is Ryle's, same as Matthew.
+ * Mark/John fall back to Henry only because no Ryle volume for them is
+ * ingested (CCEL/gracegems only host Ryle's Matthew + Luke in a parseable
+ * form). (Spurgeon is loaded for thematic fallback, not part of passage routing.)
  *
  * Matching (`matchReflection`) is pure and file-free so it is trivially tested;
  * loading is a thin fs wrapper. Corpora live in `devo/corpus` by default,
@@ -31,6 +35,7 @@ export type ReflectionEntry = {
 
 export type ReflectionCorpora = {
   ryleMatthew: ReflectionEntry[]
+  ryleLuke: ReflectionEntry[]
   matthewHenry: ReflectionEntry[]
   spurgeon: ReflectionEntry[]
 }
@@ -87,39 +92,56 @@ function rangeCovers(
 
 const OSIS_TO_BOOK = new Set(["Matt", "Mark", "Luke", "John"])
 
+/** Ryle sections are keyed by verse-range: prefer the section covering the
+ *  exact passage; else fall back to that chapter's first section. */
+function matchRyleSection(
+  ryle: ReflectionEntry[],
+  chapter: number,
+  verse: number | null,
+  passageOsis: string,
+): ReflectionMatch | null {
+  const covering = ryle.find((e) => rangeCovers(e.osisRef, chapter, verse))
+  const chapterFirst =
+    covering ?? ryle.find((e) => rangeCovers(e.osisRef, chapter, null))
+  if (!chapterFirst) return null
+  return {
+    source: chapterFirst.source,
+    reference: chapterFirst.reference,
+    osisRef: chapterFirst.osisRef,
+    text: chapterFirst.text,
+    focusReference: passageOsis,
+  }
+}
+
 /**
  * Match a passage to the best reflection source. Pure. Returns null when the
  * passage is outside the Gospels or nothing covers it.
  */
 export function matchReflection(
   passageOsis: string,
-  corpora: Pick<ReflectionCorpora, "ryleMatthew" | "matthewHenry">,
+  corpora: Pick<ReflectionCorpora, "ryleMatthew" | "ryleLuke" | "matthewHenry">,
 ): ReflectionMatch | null {
   const parts = parseOsis(passageOsis)
   if (!parts || !OSIS_TO_BOOK.has(parts.book)) return null
 
   if (parts.book === "Matt") {
-    // Prefer the section whose verse-range covers the passage; else the first
-    // section of that chapter.
-    const covering = corpora.ryleMatthew.find((e) =>
-      rangeCovers(e.osisRef, parts.chapter, parts.verse),
+    return matchRyleSection(
+      corpora.ryleMatthew,
+      parts.chapter,
+      parts.verse,
+      passageOsis,
     )
-    const chapterFirst =
-      covering ??
-      corpora.ryleMatthew.find((e) =>
-        rangeCovers(e.osisRef, parts.chapter, null),
-      )
-    if (!chapterFirst) return null
-    return {
-      source: chapterFirst.source,
-      reference: chapterFirst.reference,
-      osisRef: chapterFirst.osisRef,
-      text: chapterFirst.text,
-      focusReference: passageOsis,
-    }
+  }
+  if (parts.book === "Luke") {
+    return matchRyleSection(
+      corpora.ryleLuke,
+      parts.chapter,
+      parts.verse,
+      passageOsis,
+    )
   }
 
-  // Mark / Luke / John → Matthew Henry whole-chapter.
+  // Mark / John → Matthew Henry whole-chapter (no ingested Ryle volume).
   const chapterId = `${parts.book}.${parts.chapter}`
   const entry = corpora.matthewHenry.find((e) => e.osisRef === chapterId)
   if (!entry) return null
@@ -130,6 +152,29 @@ export function matchReflection(
     text: entry.text,
     focusReference: passageOsis,
   }
+}
+
+/**
+ * Can this passage produce a reflection AT ALL?
+ *
+ * `matchReflection` only covers the four Gospels — the ingested corpora are
+ * Ryle on Matthew/Luke and Matthew Henry on Mark/John. A JESUS-film chapter
+ * whose passage sits outside them (the film opens on GENESIS creation
+ * material, for instance) matches nothing, falls through the Spurgeon
+ * thematic fallback, and the run dies with "no reflection source". That has
+ * already happened in practice.
+ *
+ * Use this to FILTER a chapter pool before picking, so an unusable chapter is
+ * never chosen in the first place. Pure — no LLM, no IO. Deliberately checks
+ * only the deterministic commentary route: the Spurgeon fallback depends on
+ * an LLM fit judgment that can legitimately answer "none of these fit", so it
+ * cannot be relied on to rescue a non-Gospel passage.
+ */
+export function hasReflectionSource(
+  passageOsis: string,
+  corpora: Pick<ReflectionCorpora, "ryleMatthew" | "ryleLuke" | "matthewHenry">,
+): boolean {
+  return matchReflection(passageOsis, corpora) !== null
 }
 
 // ---- Spurgeon (thematic) + rotating selection ------------------------------
@@ -266,6 +311,7 @@ export function loadReflectionCorpora(dir?: string): ReflectionCorpora {
   if (cache && cache.dir === resolved) return cache.corpora
   const corpora: ReflectionCorpora = {
     ryleMatthew: readCorpus(resolved, "ryle-matthew.json"),
+    ryleLuke: readCorpus(resolved, "ryle-luke.json"),
     matthewHenry: readCorpus(resolved, "matthew-henry-gospels.json"),
     spurgeon: readCorpus(resolved, "spurgeon-morning-evening.json"),
   }

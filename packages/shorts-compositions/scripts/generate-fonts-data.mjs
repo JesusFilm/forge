@@ -13,9 +13,29 @@ const FONTS = [
     note: "Montserrat latin subset, variable wght axis (covers 700/900)",
   },
   {
+    constName: "MONTSERRAT_CYRILLIC_WOFF2_BASE64",
+    file: "montserrat-cyrillic.woff2",
+    note: "Montserrat cyrillic subset, variable wght axis (Russian copy)",
+  },
+  {
+    constName: "MONTSERRAT_CYRILLIC_EXT_WOFF2_BASE64",
+    file: "montserrat-cyrillic-ext.woff2",
+    note: "Montserrat cyrillic-ext subset, variable wght axis",
+  },
+  {
     constName: "INTER_LATIN_WOFF2_BASE64",
     file: "inter-latin.woff2",
     note: "Inter latin subset, variable wght axis (covers 400/600)",
+  },
+  {
+    constName: "INTER_CYRILLIC_WOFF2_BASE64",
+    file: "inter-cyrillic.woff2",
+    note: "Inter cyrillic subset, variable wght axis (Russian copy)",
+  },
+  {
+    constName: "INTER_CYRILLIC_EXT_WOFF2_BASE64",
+    file: "inter-cyrillic-ext.woff2",
+    note: "Inter cyrillic-ext subset, variable wght axis",
   },
 ]
 

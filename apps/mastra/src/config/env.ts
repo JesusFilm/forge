@@ -148,6 +148,11 @@ const envSchema = z.object({
   DEVOTIONAL_DEFAULT_VIDEO_ID: z.string().min(1).optional(),
   DEVOTIONAL_MODEL: z.string().min(1).default(DEFAULT_DEVOTIONAL_MODEL),
   DEVOTIONAL_SAFETY_MODEL: z.string().min(1).default(DEFAULT_DEVOTIONAL_MODEL),
+  // Optional stronger model for TRANSLATION/adaptation into natural target
+  // language (e.g. "openai/gpt-4o" — preserves full content + reads naturally;
+  // "openai/gpt-4.1" over-condensed in testing). Falls back to DEVOTIONAL_MODEL
+  // when unset, so default behavior is unchanged and no new env var is required.
+  DEVOTIONAL_TRANSLATE_MODEL: z.string().min(1).optional(),
   DEVOTIONAL_ARTIFACT_DIR: z.string().min(1).optional(),
   AZURE_SPEECH_KEY: z.string().min(1).optional(),
   AZURE_SPEECH_REGION: z.string().min(1).optional(),
@@ -359,6 +364,9 @@ export const env = envSchema.parse({
   DEVOTIONAL_MODEL: emptyToUndefined(process.env.DEVOTIONAL_MODEL),
   DEVOTIONAL_SAFETY_MODEL: emptyToUndefined(
     process.env.DEVOTIONAL_SAFETY_MODEL,
+  ),
+  DEVOTIONAL_TRANSLATE_MODEL: emptyToUndefined(
+    process.env.DEVOTIONAL_TRANSLATE_MODEL,
   ),
   DEVOTIONAL_ARTIFACT_DIR: emptyToUndefined(
     process.env.DEVOTIONAL_ARTIFACT_DIR,
@@ -619,6 +627,15 @@ export function getDevotionalVideoSearchConfig(): DevotionalVideoSearchConfig {
 
 export function getDevotionalModel(): string {
   return env.DEVOTIONAL_MODEL
+}
+
+/**
+ * Model for TRANSLATION/adaptation into the target language. A stronger model
+ * than the content model reads more naturally; falls back to DEVOTIONAL_MODEL
+ * when DEVOTIONAL_TRANSLATE_MODEL is unset (opt-in, no forced prod change).
+ */
+export function getDevotionalTranslateModel(): string {
+  return env.DEVOTIONAL_TRANSLATE_MODEL ?? env.DEVOTIONAL_MODEL
 }
 
 export function getDevotionalSafetyModel(): string {

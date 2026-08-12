@@ -37,6 +37,7 @@ import {
   chapterWithPassage,
   mappedChapterIndices,
 } from "../../services/devotional/jesus-film-passages"
+import { calendarEntryFor } from "../../services/devotional/devotional-calendar"
 import { evaluateSafety } from "../../services/devotional/safety-gate"
 import { pickReflectionHighlights } from "../../services/devotional/reflection-highlighter"
 import { modernizeReflection } from "../../services/devotional/reflection-modernizer"
@@ -203,24 +204,41 @@ const sourceStep = createStep({
   execute: async ({ inputData }) => {
     const date = inputData.date ?? new Date().toISOString().slice(0, 10)
     const store = createUsedClipsStore()
-
-    // AUTO sequence: one step per APPROVED devotional (sum of ledger counts),
-    // so voice, filter, and reflection-source rotation advance with each
-    // shipped video — no manual counter in the daily flow.
-    let sequence = inputData.sequence
-    if (sequence == null) {
-      const ledger = await store.read()
-      sequence = Object.values(ledger.used).reduce((s, e) => s + e.count, 0)
-    }
+    // Editorial calendar (e.g. the August plan): a specific date can pin a
+    // specific chapter. Only consulted when the caller didn't ALREADY pick a
+    // chapter explicitly — an explicit chapterIndex is a manual override.
+    const calendarEntry =
+      inputData.chapterIndex == null ? calendarEntryFor(date) : null
 
     let chapterIndex = inputData.chapterIndex
     if (chapterIndex == null) {
-      // Only chapters with a curated passage mapping are in the pool.
-      const pool = mappedChapterIndices()
-        .map((i) => JESUS_FILM_CHAPTERS[i - 1])
-        .filter(Boolean)
-      const picked = await store.pick(pool)
-      chapterIndex = picked.index
+      if (calendarEntry) {
+        chapterIndex = calendarEntry.chapterIndex
+      } else {
+        // Only chapters with a curated passage mapping are in the pool.
+        const pool = mappedChapterIndices()
+          .map((i) => JESUS_FILM_CHAPTERS[i - 1])
+          .filter(Boolean)
+        const picked = await store.pick(pool)
+        chapterIndex = picked.index
+      }
+    }
+
+    // AUTO sequence: one step per APPROVED devotional (sum of ledger counts),
+    // so voice, filter, and reflection-source rotation advance with each
+    // shipped video — no manual counter in the daily flow. A calendar day
+    // uses its PINNED sequence instead (stable regardless of how many OTHER
+    // devotionals get approved between now and that date), UNLESS the caller
+    // explicitly chose a different chapter than the calendar's for this date.
+    let sequence = inputData.sequence
+    if (sequence == null) {
+      sequence =
+        calendarEntry && chapterIndex === calendarEntry.chapterIndex
+          ? calendarEntry.sequence
+          : Object.values((await store.read()).used).reduce(
+              (s, e) => s + e.count,
+              0,
+            )
     }
 
     // Reuse the cached devotional's scripture when available (no LLM call);

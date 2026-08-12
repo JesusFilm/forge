@@ -208,6 +208,13 @@ async function main() {
   const videoAudioLevel = arg("video-audio", "")
   // Teasers: cover text shown from frame 0 (no entrance animation).
   const staticCover = arg("static-cover", "false") === "true"
+  // Social cover tests: skip the date entirely.
+  const hideCoverDate = arg("hide-cover-date", "false") === "true"
+  // Social cover tests: title + attribution shown from frame 0, but (unlike
+  // static-cover) the logo animation still plays.
+  const coverTextStatic = arg("cover-text-static", "false") === "true"
+  // Social cover tests: short line under the title, same font as the date.
+  const coverSecondaryLine = arg("cover-secondary", "")
   // Teasers: slower crossfade between non-video cards (seconds).
   const xfadeSec = arg("xfade", "")
   // Music bed level (0–1). Default matches the schema; raise for teasers where
@@ -273,6 +280,9 @@ async function main() {
         ? { videoAudioLevel: Number(videoAudioLevel) }
         : {}),
       ...(staticCover ? { staticCover: true } : {}),
+      ...(hideCoverDate ? { hideCoverDate: true } : {}),
+      ...(coverTextStatic ? { coverTextStatic: true } : {}),
+      ...(coverSecondaryLine ? { coverSecondaryLine } : {}),
       ...(xfadeSec !== "" ? { xfadeSec: Number(xfadeSec) } : {}),
       ...(musicVolume !== "" ? { musicVolume: Number(musicVolume) } : {}),
       ...(mediaFilterOverride ? { mediaFilterOverride } : {}),

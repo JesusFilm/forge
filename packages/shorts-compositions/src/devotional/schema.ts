@@ -64,6 +64,9 @@ export const devotionalCardSchema = z.object({
 
   // ---- semantic content (used per kind) ----
   title: z.string().optional(), // cover
+  /** Fixed-date occasion tag shown above the headline (e.g. "World
+   *  Humanitarian Day"). Cover only; most days have none. */
+  occasion: z.string().optional(), // cover
   verse: z.string().optional(), // scripture
   citation: z.string().optional(), // scripture
   paragraphs: z.array(z.string()).optional(), // reflection-full
@@ -72,6 +75,8 @@ export const devotionalCardSchema = z.object({
   highlight: z.string().optional(), // phrase within text/title to accent
   questions: z.array(z.string()).optional(), // questions card
   prayer: z.string().optional(), // questions card
+  askLabel: z.string().optional(), // questions card eyebrow (localized "Ask yourself")
+  prayLabel: z.string().optional(), // questions card prayer eyebrow (localized "Pray")
   ctaHeadline: z.string().optional(), // cta card, e.g. "Watch the full devotional"
   ctaHandle: z.string().optional(), // cta card, e.g. "@gospelmedialab"
   ctaUrl: z.string().optional(), // cta card, e.g. "jesusfilm.org/watch"
@@ -139,6 +144,17 @@ export const devotionalInputPropsSchema = z.object({
   /** Render the cover's text with NO entrance animation (shown from frame 0).
    *  Teasers use this so the hook + eyebrow are readable instantly. */
   staticCover: z.boolean().optional(),
+  /** Cover only: skip the date entirely — no date box, logo sits alone. Used
+   *  for social test cards where the date would be a distraction. */
+  hideCoverDate: z.boolean().optional(),
+  /** Cover only: show the title + attribution from frame 0 while the logo
+   *  animation still plays underneath (distinct from `staticCover`, which
+   *  freezes the logo too). Social test cards want the title readable
+   *  instantly but still want the logo stamp/morph to play. */
+  coverTextStatic: z.boolean().optional(),
+  /** Cover only: a short line shown under the title, same font treatment as
+   *  the date. Fades in once the logo settles. */
+  coverSecondaryLine: z.string().optional(),
   /** Override the crossfade between non-video cards (seconds). Teasers raise it
    *  (~1.4s) so the opening dissolves — and the verse blur ramps in — slowly. */
   xfadeSec: z.number().nonnegative().optional(),

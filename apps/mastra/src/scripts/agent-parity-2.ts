@@ -85,7 +85,6 @@ async function main() {
     ["AFTER ", copyAfter],
   ] as const) {
     console.log(`${tag}: hook="${c.title}"`)
-    console.log(`        conclusion="${c.conclusion}"`)
     console.log(`        question="${c.question}"`)
     console.log(`        prayer="${c.prayer}"`)
   }

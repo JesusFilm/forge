@@ -5,7 +5,11 @@
 import { cancelRender, continueRender, delayRender } from "remotion"
 
 import {
+  INTER_CYRILLIC_EXT_WOFF2_BASE64,
+  INTER_CYRILLIC_WOFF2_BASE64,
   INTER_LATIN_WOFF2_BASE64,
+  MONTSERRAT_CYRILLIC_EXT_WOFF2_BASE64,
+  MONTSERRAT_CYRILLIC_WOFF2_BASE64,
   MONTSERRAT_LATIN_WOFF2_BASE64,
 } from "./fonts-data"
 
@@ -14,22 +18,62 @@ export const SHORT_FONT_FAMILIES = {
   inter: "Inter",
 } as const
 
-// The vendored files are Google Fonts variable-font latin subsets covering
-// the full wght axis, so one FontFace per family serves every weight the
-// templates use (Montserrat 700/900, Inter 400/600).
-const FONT_SOURCES: ReadonlyArray<{ family: string; base64: string }> = [
+// Google Fonts unicode-ranges: Cyrillic copy (the devotional is Russian) needs
+// the Cyrillic subsets — the latin-only subset has NO Cyrillic glyphs, so
+// Cyrillic text would silently fall back to a system font.
+const CYRILLIC_RANGE =
+  "U+0301,U+0400-045F,U+0490-0491,U+04B0-04B1,U+2116"
+const CYRILLIC_EXT_RANGE =
+  "U+0460-052F,U+1C80-1C88,U+20B4,U+2DE0-2DFF,U+A640-A69F,U+FE2E-FE2F"
+
+// Variable-font subsets covering the full wght axis (Montserrat 700/900, Inter
+// 400/600). Multiple faces per family (latin + cyrillic) with unicode-range so
+// the browser picks the right subset per glyph.
+const FONT_SOURCES: ReadonlyArray<{
+  family: string
+  base64: string
+  unicodeRange?: string
+}> = [
   {
     family: SHORT_FONT_FAMILIES.montserrat,
     base64: MONTSERRAT_LATIN_WOFF2_BASE64,
   },
+  {
+    family: SHORT_FONT_FAMILIES.montserrat,
+    base64: MONTSERRAT_CYRILLIC_WOFF2_BASE64,
+    unicodeRange: CYRILLIC_RANGE,
+  },
+  {
+    family: SHORT_FONT_FAMILIES.montserrat,
+    base64: MONTSERRAT_CYRILLIC_EXT_WOFF2_BASE64,
+    unicodeRange: CYRILLIC_EXT_RANGE,
+  },
   { family: SHORT_FONT_FAMILIES.inter, base64: INTER_LATIN_WOFF2_BASE64 },
+  {
+    family: SHORT_FONT_FAMILIES.inter,
+    base64: INTER_CYRILLIC_WOFF2_BASE64,
+    unicodeRange: CYRILLIC_RANGE,
+  },
+  {
+    family: SHORT_FONT_FAMILIES.inter,
+    base64: INTER_CYRILLIC_EXT_WOFF2_BASE64,
+    unicodeRange: CYRILLIC_EXT_RANGE,
+  },
 ]
 
-const registerFont = async (family: string, base64: string): Promise<void> => {
+const registerFont = async (
+  family: string,
+  base64: string,
+  unicodeRange?: string,
+): Promise<void> => {
   const face = new FontFace(
     family,
     `url(data:font/woff2;base64,${base64}) format("woff2")`,
-    { weight: "100 900", style: "normal" },
+    {
+      weight: "100 900",
+      style: "normal",
+      ...(unicodeRange ? { unicodeRange } : {}),
+    },
   )
   await face.load()
   document.fonts.add(face)
@@ -41,7 +85,9 @@ export const loadShortFonts = (): Promise<void> => {
   if (fontsPromise) return fontsPromise
   const handle = delayRender("Loading @forge/shorts-compositions fonts")
   fontsPromise = Promise.all(
-    FONT_SOURCES.map(({ family, base64 }) => registerFont(family, base64)),
+    FONT_SOURCES.map(({ family, base64, unicodeRange }) =>
+      registerFont(family, base64, unicodeRange),
+    ),
   )
     .then(() => {
       continueRender(handle)

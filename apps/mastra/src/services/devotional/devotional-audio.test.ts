@@ -93,6 +93,20 @@ describe("buildNarrationSegments", () => {
     expect(s?.text?.match(/today/gi)?.length).toBe(1)
   })
 
+  it("speaks a configured occasion on its date, without doubling 'today'", () => {
+    const s = buildNarrationSegments({ ...DEVO, date: "2026-08-19" }).find(
+      (x) => x.id === "cover",
+    )
+    expect(s?.text).toMatch(
+      /^It's Wednesday, August 19\. Today is also World Humanitarian Day\. And today's devotional: /,
+    )
+  })
+
+  it("says nothing extra on a date with no configured occasion", () => {
+    const s = buildNarrationSegments(DEVO).find((x) => x.id === "cover")
+    expect(s?.text).not.toMatch(/Today is also/)
+  })
+
   it("includes the scripture connector and reference", () => {
     const s = buildNarrationSegments(DEVO).find((x) => x.id === "scripture")
     expect(s?.text).toMatch(/^Here's today's scripture\. Luke 8:24\. /)
@@ -122,11 +136,14 @@ describe("produceDevotionalAudio", () => {
     ])
     expect(voiceover).toHaveBeenCalledTimes(5)
     expect(voiceover.mock.calls[0][0].voice).toBe("male-d")
-    // cover uses the PLAIN (high-stability, no-style) delivery; the rest use the
-    // emotive default (no explicit voiceSettings).
-    expect(voiceover.mock.calls[0][0].voiceSettings?.stability).toBe(0.7)
-    expect(voiceover.mock.calls[0][0].voiceSettings?.style).toBe(0)
+    // cover uses the engaged story-opening delivery (steadier than the emotive
+    // default, a little style); reflection uses the emotive default (undefined);
+    // conclusion + questions use the weighty, settled delivery.
+    expect(voiceover.mock.calls[0][0].voiceSettings?.stability).toBe(0.45)
+    expect(voiceover.mock.calls[0][0].voiceSettings?.style).toBe(0.3)
     expect(voiceover.mock.calls[2][0].voiceSettings).toBeUndefined() // reflection-1
+    expect(voiceover.mock.calls[3][0].voiceSettings?.stability).toBe(0.78) // conclusion
+    expect(voiceover.mock.calls[4][0].voiceSettings?.stability).toBe(0.78) // questions
     expect(music.mock.calls[0][0].mood).toBe("peace")
     expect(out.music?.mood).toBe("peace")
     expect(out.skipped).toEqual([])

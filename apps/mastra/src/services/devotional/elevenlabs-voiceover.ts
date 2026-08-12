@@ -40,6 +40,11 @@ export const DEVOTIONAL_VOICES = {
   "male-d": "HKFOb9iktHA85uKXydRT",
   "male-e": "xLeLcqgjUx3wQJFSESKj",
   "female-c": "WonySogMOJVSOnlOGFQh",
+  // Russian-locale narration voice (owner pick "JFvoice_Rus"); selected in
+  // devotional-locale.ts. Good for Russian, NOT for English (owner-tested).
+  // (English uses the rotation above; a fixed English voice was a local
+  // experiment only — pass an explicit voice id per render if needed.)
+  russian: "JfyX9t7XtuhnbIirgQA7",
 } as const
 
 export type DevotionalVoiceName = keyof typeof DEVOTIONAL_VOICES

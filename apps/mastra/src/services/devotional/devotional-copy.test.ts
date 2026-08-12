@@ -1,10 +1,6 @@
 import { describe, expect, it, vi } from "vitest"
 
-import {
-  HOOK_STYLES,
-  hookStyleForSequence,
-  writeDevotionalCopy,
-} from "./devotional-copy"
+import { HOOK_STYLES, hookStyleForSequence, writeDevotionalCopy } from "./devotional-copy"
 import { DevotionalLlmError, type DevotionalLlm } from "./llm"
 
 const fakeLlm = (complete: DevotionalLlm["complete"]): DevotionalLlm => ({
@@ -16,7 +12,6 @@ describe("writeDevotionalCopy", () => {
   it("returns trimmed title/question/prayer and feeds the model the scene + verse + reflection", async () => {
     const complete = vi.fn().mockResolvedValue({
       title: "  Peace in the Storm  ",
-      conclusion: "The One who calms the sea is in your boat.",
       question:
         "What storm are you facing that you need to hand to Jesus today?",
       prayer: "Jesus, help me trust you in my storm.",
@@ -41,7 +36,6 @@ describe("writeDevotionalCopy", () => {
   it("passes the rotated hook style to the model when provided", async () => {
     const complete = vi.fn().mockResolvedValue({
       title: "You can stop performing for God.",
-      conclusion: "Grace is not earned.",
       question: "Where are you still trying to earn what is already given?",
       prayer: "Rest in what Christ has already done for you.",
     })

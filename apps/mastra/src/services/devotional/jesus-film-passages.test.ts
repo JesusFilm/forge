@@ -6,7 +6,11 @@ import {
   JESUS_FILM_PASSAGES,
   passageForChapter,
 } from "./jesus-film-passages"
-import { matchReflection, parseOsis } from "./reflection-corpus"
+import {
+  loadReflectionCorpora,
+  matchReflection,
+  parseOsis,
+} from "./reflection-corpus"
 
 const GOSPELS = new Set(["Matt", "Mark", "Luke", "John"])
 
@@ -53,17 +57,12 @@ describe("JESUS_FILM_PASSAGES", () => {
     }
   })
 
-  it("routes to a real reflection source for each passage", () => {
-    // Minimal fixtures: Henry has the Luke chapters our starter set uses.
-    const matthewHenry = [4, 7, 8, 9, 10, 19, 23, 24].map((ch) => ({
-      source: "Matthew Henry, Commentary on the Whole Bible",
-      reference: `Luke ${ch}`,
-      osisRef: `Luke.${ch}`,
-      text: `Henry on Luke ${ch}.`,
-    }))
+  it("routes to a real reflection source for each passage (against the ACTUAL ingested corpus — every curated Luke passage must have a Ryle section, since Ryle-Luke is now the primary source)", () => {
+    const corpora = loadReflectionCorpora()
     for (const p of JESUS_FILM_PASSAGES) {
-      const m = matchReflection(p.osisRef, { ryleMatthew: [], matthewHenry })
+      const m = matchReflection(p.osisRef, corpora)
       expect(m, p.reference).not.toBeNull()
+      expect(m?.source, p.reference).toContain("Ryle")
     }
   })
 })

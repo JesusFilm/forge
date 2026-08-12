@@ -1,4 +1,5 @@
 import type { GeneratedDevotional } from "./generate-devotional"
+import { splitReflection } from "./reflection-split"
 
 /**
  * Build the render manifest (the JSON the Remotion `devotional` composition +
@@ -27,6 +28,12 @@ export type DevotionalManifest = {
   bgFile?: string
   bgDurationSec?: number
   bgPlaybackRate?: number
+  /** Silent beat on the FIRST card before narration starts (s). Set by the
+   *  renderer so its background budget can't drift from the composition's
+   *  own default. */
+  introHoldSec?: number
+  /** Held beat on the LAST card after its narration ends (s). Same reason. */
+  outroHoldSec?: number
   cards: ManifestCard[]
 }
 
@@ -53,6 +60,29 @@ export type BuildManifestInput = {
   headerDate: string
   /** Cap for the clear video card (s). */
   videoCardSec?: number
+  /** Localized on-screen section labels (defaults to English). */
+  labels?: { reflect: string; askYourself: string; pray: string }
+  /** Fixed-date occasion tag for the cover (e.g. "World Humanitarian Day"),
+   *  from `devotional-occasions.ts`. Most days have none. */
+  occasion?: string
+  /** Captions for the video card, ALREADY timed against the edited clip
+   *  (pauses cut + speed applied) — see `mapCuesToEditedTimeline`. */
+  videoCaptions?: ReadonlyArray<{
+    text: string
+    startSec: number
+    endSec: number
+  }>
+  /** TWO-ACT LAYOUT (opt-in per chapter). The clip's second act, played after
+   *  the first half of the reflection. When set — together with
+   *  `devotional.reflection.parts` — the card order becomes
+   *  video act 1 → reflection half 1 → video act 2 → reflection half 2,
+   *  so each half comments on the act the viewer just watched. */
+  act2?: {
+    /** staticFile name of the second act's clip, e.g. "clip2.mp4". */
+    clipFile: string
+    durationSec: number
+    captions?: ReadonlyArray<{ text: string; startSec: number; endSec: number }>
+  }
 }
 
 export function buildDevotionalManifest(
@@ -60,6 +90,11 @@ export function buildDevotionalManifest(
 ): DevotionalManifest {
   const d = input.devotional
   const clip = input.clipFile
+  const labels = input.labels ?? {
+    reflect: "Reflect",
+    askYourself: "Ask yourself",
+    pray: "Pray",
+  }
   const byId = new Map(input.segments.map((s) => [s.id, s]))
   const cards: ManifestCard[] = []
 
@@ -74,7 +109,11 @@ export function buildDevotionalManifest(
     }
   }
 
-  const cover = withAudio("cover", { kind: "cover", title: d.title })
+  const cover = withAudio("cover", {
+    kind: "cover",
+    title: d.title,
+    ...(input.occasion ? { occasion: input.occasion } : {}),
+  })
   if (cover) cards.push(cover)
 
   const scripture = withAudio("scripture", {
@@ -87,11 +126,21 @@ export function buildDevotionalManifest(
   // The clip, played clear — narrated with its connector ("Let's watch") if
   // that segment was produced.
   const videoSeg = byId.get("video")
+  const videoDurationSec = Math.min(
+    input.clipDurationSec,
+    input.videoCardSec ?? 18,
+  )
+  // Only captions that actually START while the card is on screen — the clip
+  // file carries a few extra margin seconds past the card's own duration.
+  const captions = (input.videoCaptions ?? []).filter(
+    (c) => c.startSec < videoDurationSec,
+  )
   cards.push({
     kind: "video",
     videoFile: clip,
-    durationSec: Math.min(input.clipDurationSec, input.videoCardSec ?? 18),
+    durationSec: videoDurationSec,
     ...(videoSeg ? { audioFile: videoSeg.file } : {}),
+    ...(captions.length ? { subtitles: captions } : {}),
   })
 
   // One reflection card per narrated chunk — the on-screen text is exactly what
@@ -99,14 +148,49 @@ export function buildDevotionalManifest(
   const reflectionSegments = input.segments
     .filter((s) => /^reflection-\d+$/.test(s.id))
     .sort((a, b) => Number(a.id.split("-")[1]) - Number(b.id.split("-")[1]))
+
+  // TWO-ACT LAYOUT: where the second act's video card goes. The halves were
+  // written separately but `reflection.text` is their concatenation, so the
+  // narration chunks are already in order and act 2 slots in at the boundary.
+  // Count with `splitReflection` — the SAME function that produced the audio
+  // chunks — so the boundary can't drift from the cards it has to sit between.
+  const act2 = input.act2
+  const rawBoundary =
+    act2 && d.reflection.parts?.length === 2
+      ? splitReflection(d.reflection.parts[0]).length
+      : -1
+  // Clamp INTO the reflection run. Without this, a boundary at or past the
+  // last chunk means the loop never reaches it and act 2 is dropped from the
+  // video with no error at all — the exact kind of silent loss this pipeline
+  // has been bitten by before.
+  const act2At =
+    rawBoundary >= 0 && reflectionSegments.length > 1
+      ? Math.min(Math.max(rawBoundary, 1), reflectionSegments.length - 1)
+      : -1
+
   // Card text = the chunk, with the "Reflect on this." connector (narration
   // only) stripped, plus one accent phrase, aligned by index with the highlights.
   reflectionSegments.forEach((seg, k) => {
+    // Second act plays BEFORE the half that comments on it.
+    if (k === act2At && act2) {
+      const act2Captions = (act2.captions ?? []).filter(
+        (c) => c.startSec < act2.durationSec,
+      )
+      cards.push({
+        kind: "video",
+        videoFile: act2.clipFile,
+        durationSec: act2.durationSec,
+        ...(act2Captions.length ? { subtitles: act2Captions } : {}),
+      })
+    }
     const highlight = d.reflectionHighlights?.[k]
     cards.push({
       kind: "reflection-focus",
-      // "Reflect" shows on the FIRST card only; the rest pass "" to suppress it.
-      ...(k === 0 ? {} : { sectionLabel: "" }),
+      // The reflect label shows on the FIRST card of each half; the rest pass
+      // "" to suppress it.
+      ...(k === 0 || k === act2At
+        ? { sectionLabel: labels.reflect }
+        : { sectionLabel: "" }),
       text: (seg.text ?? "").replace(/^Reflect on this\.\s*/, ""),
       ...(highlight ? { highlight } : {}),
       audioFile: seg.file,
@@ -133,6 +217,8 @@ export function buildDevotionalManifest(
       kind: "questions",
       questions: [d.question],
       prayer: d.prayer,
+      askLabel: labels.askYourself,
+      prayLabel: labels.pray,
       audioFile: qp.file,
       durationSec: qp.durationSec,
       holdSec: 5,
@@ -142,6 +228,15 @@ export function buildDevotionalManifest(
 
   // No CTA card: this is the FULL devotional, not a teaser. (The "watch the
   // full devotional" end-card belongs only on teasers.)
+
+  // Owner rule: the VERY LAST card (normally "questions"; "conclusion" if the
+  // questions narration wasn't produced) holds 5s LONGER than its own base
+  // hold, so viewers have time to actually sit with the question/prayer
+  // before the video ends — not the specific kind, whichever card is last.
+  const finalCard = cards[cards.length - 1]
+  if (finalCard) {
+    finalCard.holdSec = (Number(finalCard.holdSec) || 0) + 5
+  }
 
   return {
     schemaVersion: "2",
