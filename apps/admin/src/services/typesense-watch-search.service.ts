@@ -12,6 +12,7 @@ import {
   type TypesenseSearchRequest,
   type TypesenseSearchResult,
 } from "./typesense-client"
+import { resolveTypesenseWatchSearchApiKey } from "./typesense-client-config"
 import { tokenizeForExactTitle } from "./hybrid-search-keyword-first-retrievers"
 import {
   type TypesenseWatchAudioOption,
@@ -2201,17 +2202,6 @@ export function createTypesenseWatchSearchService(
     prisma,
     new TypesenseClient({ host, apiKey, timeoutMs: 2_000 }),
     { profile },
-  )
-}
-
-export function resolveTypesenseWatchSearchApiKey(input: {
-  searchApiKey?: string
-  legacyApiKey?: string
-  allowLegacyFallback: boolean
-}): string | undefined {
-  return (
-    input.searchApiKey ??
-    (input.allowLegacyFallback ? input.legacyApiKey : undefined)
   )
 }
 

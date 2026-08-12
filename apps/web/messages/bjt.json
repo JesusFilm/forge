@@ -179,7 +179,8 @@
     "clearSearch": "Sɛrɛch bɔ",
     "changeAudioLanguage": "Audio language kɛlɛ",
     "home": "JesusFilm kɔnɔ",
-    "closeSearch": "Sɛrɛch lɔ"
+    "closeSearch": "Sɛrɛch lɔ",
+    "submitSearch": "Sɛrɛch"
   },
   "SearchOverlay": {
     "dialogLabel": "Video sɛrɛch kɔ browsɛ",
@@ -205,6 +206,7 @@
     "searchLanguageLabel": "Sɛrɛch language",
     "allLanguages": "Languages baara",
     "searchSuggestions": "Sɛrɛch tɔŋna",
+    "directMatches": "Direct match",
     "languages": "Languages baara",
     "recommendedLanguage": "Language dɔ kɔ",
     "searchSuggestion": "{suggestion} sɛrɛch",

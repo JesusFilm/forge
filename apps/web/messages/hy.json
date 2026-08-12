@@ -179,7 +179,8 @@
     "clearSearch": "Մաքրել որոնումը",
     "changeAudioLanguage": "Փոխել ձայնի լեզուն",
     "home": "JesusFilm գլխավոր էջ",
-    "closeSearch": "Փակել որոնումը"
+    "closeSearch": "Փակել որոնումը",
+    "submitSearch": "Որոնել"
   },
   "SearchOverlay": {
     "dialogLabel": "Որոնել և դիտել տեսանյութեր",
@@ -205,6 +206,7 @@
     "searchLanguageLabel": "Որոնման լեզու",
     "allLanguages": "Բոլոր լեզուները",
     "searchSuggestions": "Որոնման առաջարկներ",
+    "directMatches": "Direct match",
     "languages": "Լեզուներ",
     "recommendedLanguage": "Առաջարկվող լեզու",
     "searchSuggestion": "Որոնել {suggestion}",

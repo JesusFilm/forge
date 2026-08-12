@@ -179,7 +179,8 @@
     "clearSearch": "Betg pli tschertgar",
     "changeAudioLanguage": "Midar la lingua d'audio",
     "home": "Pagina principala da JesusFilm",
-    "closeSearch": "Serrar la tschertga"
+    "closeSearch": "Serrar la tschertga",
+    "submitSearch": "Tschertgar"
   },
   "SearchOverlay": {
     "dialogLabel": "Tschertgar e navigar tras videos",
@@ -205,6 +206,7 @@
     "searchLanguageLabel": "Lingua da tschertga",
     "allLanguages": "Tut las linguas",
     "searchSuggestions": "Propostas da tschertga",
+    "directMatches": "Direct match",
     "languages": "Linguas",
     "recommendedLanguage": "Lingua recumandada",
     "searchSuggestion": "Tschertgar {suggestion}",

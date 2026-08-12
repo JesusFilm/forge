@@ -179,7 +179,8 @@
     "clearSearch": "Sula usesho",
     "changeAudioLanguage": "Shintsha ulimi lomsindo",
     "home": "Ikhasi lasekhaya le-JesusFilm",
-    "closeSearch": "Vala usesho"
+    "closeSearch": "Vala usesho",
+    "submitSearch": "Sesha"
   },
   "SearchOverlay": {
     "dialogLabel": "Sesha futhi uphequlule amavidiyo",
@@ -205,6 +206,7 @@
     "searchLanguageLabel": "Ulimi lokusesha",
     "allLanguages": "Zonke izilimi",
     "searchSuggestions": "Iziphakamiso Zosesho",
+    "directMatches": "Direct match",
     "languages": "Izilimi",
     "recommendedLanguage": "Ulimi olunconyiwe",
     "searchSuggestion": "Sesha {suggestion}",

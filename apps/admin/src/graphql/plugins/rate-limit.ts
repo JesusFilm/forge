@@ -131,18 +131,28 @@ export const rateLimitConfigByField = [
   },
   {
     type: "Query",
-    field: "!(watchVideoRouteSnapshotBySlug)",
+    field: "watchSearchSuggestions",
+    max: 180,
+    window: "1m",
+  },
+  {
+    type: "Query",
+    field: "!(watchVideoRouteSnapshotBySlug|watchSearchSuggestions)",
     max: 60,
     window: "1m",
   },
   { type: "Mutation", field: "*", max: 30, window: "1m" },
 ]
 
-export const rateLimitPlugin = useRateLimiter({
-  identifyFn: (context) => identifyForRateLimit(context as ContextShape),
+export const rateLimitPluginOptions = {
+  identifyFn: (context: unknown) =>
+    identifyForRateLimit(context as ContextShape),
   store: createRateLimitStore(),
   configByField: rateLimitConfigByField,
-})
+  enableBatchRequestCache: true,
+}
+
+export const rateLimitPlugin = useRateLimiter(rateLimitPluginOptions)
 
 function createRateLimitStore() {
   if (!hasRedisConfig()) {

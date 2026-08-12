@@ -179,7 +179,8 @@
     "clearSearch": "ڳولا صاف ڪريو",
     "changeAudioLanguage": "آڊيو ٻولي تبديل ڪريو",
     "home": "JesusFilm هوم",
-    "closeSearch": "ڳولا بند ڪريو"
+    "closeSearch": "ڳولا بند ڪريو",
+    "submitSearch": "ڳولا ڪريو"
   },
   "SearchOverlay": {
     "dialogLabel": "وڊيوز ڳوليو ۽ براؤز ڪريو",
@@ -205,6 +206,7 @@
     "searchLanguageLabel": "ڳولا جي ٻولي",
     "allLanguages": "سڀ ٻوليون",
     "searchSuggestions": "ڳولا جون تجويزون",
+    "directMatches": "Direct match",
     "languages": "ٻوليون",
     "recommendedLanguage": "سفارش ڪيل ٻولي",
     "searchSuggestion": "{suggestion} ڳوليو",

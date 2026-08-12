@@ -179,7 +179,8 @@
     "clearSearch": "Dawz search",
     "changeAudioLanguage": "Gaeq language audio",
     "home": "Homepage JesusFilm",
-    "closeSearch": "Dej search"
+    "closeSearch": "Dej search",
+    "submitSearch": "Raeuz"
   },
   "SearchOverlay": {
     "dialogLabel": "Raeuz haeuj browse video",
@@ -205,6 +206,7 @@
     "searchLanguageLabel": "Language search",
     "allLanguages": "Languages cungj gyaeuj",
     "searchSuggestions": "Gij ndaej search",
+    "directMatches": "Direct match",
     "languages": "Gij languages",
     "recommendedLanguage": "Language recommended",
     "searchSuggestion": "Raeuz {suggestion}",

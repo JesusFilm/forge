@@ -179,7 +179,8 @@
     "clearSearch": "Fey seet bi",
     "changeAudioLanguage": "Soppi làkk bu audio bi",
     "home": "JesúsFilm home",
-    "closeSearch": "Tëj seet bi"
+    "closeSearch": "Tëj seet bi",
+    "submitSearch": "Seet"
   },
   "SearchOverlay": {
     "dialogLabel": "Seet ak dëkkuwaay vidéos",
@@ -205,6 +206,7 @@
     "searchLanguageLabel": "Seet làkk",
     "allLanguages": "Làkk yépp",
     "searchSuggestions": "Digal yu seet",
+    "directMatches": "Direct match",
     "languages": "Làkk yi",
     "recommendedLanguage": "Làkk bu tànneef",
     "searchSuggestion": "Seet {suggestion}",

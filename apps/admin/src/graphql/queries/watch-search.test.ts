@@ -4,7 +4,10 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
-import { resolveWatchSearchInputForRequest } from "@/graphql/queries/watch-search"
+import {
+  MAX_WATCH_SEARCH_SUGGESTION_FIELDS_PER_OPERATION,
+  resolveWatchSearchInputForRequest,
+} from "@/graphql/queries/watch-search"
 import { schema } from "@/graphql/schema"
 
 const { enqueueWatchSearchShadowMock, enqueueWatchSearchTraceMock } =
@@ -15,6 +18,7 @@ const { enqueueWatchSearchShadowMock, enqueueWatchSearchTraceMock } =
 
 const searchMock = vi.fn()
 const typesenseSearchMock = vi.fn()
+const suggestMock = vi.fn()
 
 vi.mock("@/services/search-trace.service", () => ({
   enqueueWatchSearchTrace: enqueueWatchSearchTraceMock,
@@ -27,6 +31,7 @@ vi.mock("@/services/watch-search-shadow.service", () => ({
 type ResolverArgs = {
   input: {
     query: string
+    languageSlug?: string
     mode?: "default" | "modern" | null
     shadowMode?: "default" | "modern" | null
     targetLanguageSlug?: string | null
@@ -48,6 +53,7 @@ type ResolverCtx = {
   services: {
     watchSearch: { search: typeof searchMock }
     typesenseWatchSearch: { search: typeof typesenseSearchMock } | null
+    typesenseWatchSearchSuggestions: { suggest: typeof suggestMock } | null
   }
 }
 type FieldWithResolve = {
@@ -59,9 +65,9 @@ type FieldWithResolve = {
   ) => unknown
 }
 
-function getResolver(): FieldWithResolve["resolve"] {
+function getResolver(name = "watchSearch"): FieldWithResolve["resolve"] {
   const fields = schema.getQueryType()!.getFields()
-  const field = fields.watchSearch as unknown as FieldWithResolve
+  const field = fields[name] as unknown as FieldWithResolve
   return field.resolve
 }
 
@@ -87,6 +93,30 @@ async function invoke(
       services: {
         watchSearch: { search: searchMock },
         typesenseWatchSearch,
+        typesenseWatchSearchSuggestions: { suggest: suggestMock },
+      },
+    },
+    {},
+  )
+}
+
+async function invokeSuggestions(
+  input: { query: string; languageSlug: string },
+  service: ResolverCtx["services"]["typesenseWatchSearchSuggestions"] = {
+    suggest: suggestMock,
+  },
+) {
+  return getResolver("watchSearchSuggestions")(
+    null,
+    { input },
+    {
+      user: null,
+      request: new Request("https://admin.jesusfilm.org/api/graphql"),
+      prisma: {},
+      services: {
+        watchSearch: { search: searchMock },
+        typesenseWatchSearch: { search: typesenseSearchMock },
+        typesenseWatchSearchSuggestions: service,
       },
     },
     {},
@@ -140,6 +170,72 @@ beforeEach(() => {
       acceptLanguage: null,
       acceptLanguageSlug: null,
     },
+  })
+  suggestMock.mockResolvedValue([
+    {
+      title: "Jesus",
+      description: "The story of Jesus.",
+      matchSource: "title",
+    },
+    { title: "Jesus Wept", description: null, matchSource: "title" },
+  ])
+})
+
+describe("watchSearchSuggestions resolver", () => {
+  it("delegates exact public input and returns bounded context without tracing", async () => {
+    const input = { query: "je", languageSlug: "english" }
+
+    await expect(invokeSuggestions(input)).resolves.toEqual([
+      {
+        title: "Jesus",
+        description: "The story of Jesus.",
+        matchSource: "title",
+      },
+      { title: "Jesus Wept", description: null, matchSource: "title" },
+    ])
+
+    expect(suggestMock).toHaveBeenCalledWith(input)
+    expect(searchMock).not.toHaveBeenCalled()
+    expect(typesenseSearchMock).not.toHaveBeenCalled()
+    expect(enqueueWatchSearchTraceMock).not.toHaveBeenCalled()
+  })
+
+  it("fails empty when the optional suggestion service is unavailable", async () => {
+    await expect(
+      invokeSuggestions({ query: "je", languageSlug: "english" }, null),
+    ).resolves.toEqual([])
+  })
+
+  it("bounds aliased suggestion fields within one GraphQL request", async () => {
+    const resolver = getResolver("watchSearchSuggestions")
+    const context: ResolverCtx = {
+      user: null,
+      request: new Request("https://admin.jesusfilm.org/api/graphql"),
+      prisma: {},
+      services: {
+        watchSearch: { search: searchMock },
+        typesenseWatchSearch: { search: typesenseSearchMock },
+        typesenseWatchSearchSuggestions: { suggest: suggestMock },
+      },
+    }
+
+    const results = await Promise.all(
+      Array.from(
+        { length: MAX_WATCH_SEARCH_SUGGESTION_FIELDS_PER_OPERATION + 1 },
+        () =>
+          resolver(
+            null,
+            { input: { query: "je", languageSlug: "english" } },
+            context,
+            {},
+          ),
+      ),
+    )
+
+    expect(suggestMock).toHaveBeenCalledTimes(
+      MAX_WATCH_SEARCH_SUGGESTION_FIELDS_PER_OPERATION,
+    )
+    expect(results.at(-1)).toEqual([])
   })
 })
 

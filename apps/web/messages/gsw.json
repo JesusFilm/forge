@@ -179,7 +179,8 @@
     "clearSearch": "Suechi lösche",
     "changeAudioLanguage": "Audiosprach wechsle",
     "home": "JesusFilm-Startsyte",
-    "closeSearch": "Suechi schliesse"
+    "closeSearch": "Suechi schliesse",
+    "submitSearch": "Sueche"
   },
   "SearchOverlay": {
     "dialogLabel": "Videos sueche und durstöbere",
@@ -205,6 +206,7 @@
     "searchLanguageLabel": "Sueschispräch",
     "allLanguages": "Alli Sprachen",
     "searchSuggestions": "Suechi-Vorschläg",
+    "directMatches": "Direct match",
     "languages": "Sprachen",
     "recommendedLanguage": "Empfohlni Sprach",
     "searchSuggestion": "Suche {suggestion}",

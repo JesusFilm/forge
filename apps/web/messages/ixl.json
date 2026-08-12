@@ -179,7 +179,8 @@
     "clearSearch": "Search tich'up'",
     "changeAudioLanguage": "Audio language jalb'ej",
     "home": "JesusFilm rochoch",
-    "closeSearch": "Search tich'up'"
+    "closeSearch": "Search tich'up'",
+    "submitSearch": "Ch'aw"
   },
   "SearchOverlay": {
     "dialogLabel": "Videos chi ch'aw yik'otz'ib'ej",
@@ -205,6 +206,7 @@
     "searchLanguageLabel": "B'anob' tzij re search",
     "allLanguages": "Languages konob'äj",
     "searchSuggestions": "K'utb'en re search",
+    "directMatches": "Direct match",
     "languages": "B'anob' tzij",
     "recommendedLanguage": "B'anob' tzij k'utb'en",
     "searchSuggestion": "{suggestion} chi search",

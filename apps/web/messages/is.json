@@ -179,7 +179,8 @@
     "clearSearch": "Hreinsa leit",
     "changeAudioLanguage": "Breyta tungumáli hljóðs",
     "home": "Forsíða JesusFilm",
-    "closeSearch": "Loka leit"
+    "closeSearch": "Loka leit",
+    "submitSearch": "Leita"
   },
   "SearchOverlay": {
     "dialogLabel": "Leita og fletta í myndböndum",
@@ -205,6 +206,7 @@
     "searchLanguageLabel": "Leitartungumál",
     "allLanguages": "Öll tungumál",
     "searchSuggestions": "Leitartillögur",
+    "directMatches": "Direct match",
     "languages": "Tungumál",
     "recommendedLanguage": "Mælt tungumál",
     "searchSuggestion": "Leita að {suggestion}",

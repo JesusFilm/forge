@@ -9,7 +9,8 @@ completed_date: "2026-07-13"
 duration: 1
 depends_on:
   - "feat-244"
-blocks: []
+blocks:
+  - "feat-336"
 tags:
   - "web"
   - "watch"

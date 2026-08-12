@@ -179,7 +179,8 @@
     "clearSearch": "ಹುಡುಕಾಟವನ್ನು ತೆರವುಗೊಳಿಸಿ",
     "changeAudioLanguage": "ಆಡಿಯೊ ಭಾಷೆ ಬದಲಾಯಿಸಿ",
     "home": "JesusFilm ಮುಖಪುಟ",
-    "closeSearch": "ಹುಡುಕಾಟ ಮುಚ್ಚಿ"
+    "closeSearch": "ಹುಡುಕಾಟ ಮುಚ್ಚಿ",
+    "submitSearch": "ಹುಡುಕಿ"
   },
   "SearchOverlay": {
     "dialogLabel": "ವೀಡಿಯೊಗಳನ್ನು ಹುಡುಕಿ ಮತ್ತು ಬ್ರೌಸ್ ಮಾಡಿ",
@@ -205,6 +206,7 @@
     "searchLanguageLabel": "ಹುಡುಕಾಟ ಭಾಷೆ",
     "allLanguages": "ಎಲ್ಲಾ ಭಾಷೆಗಳು",
     "searchSuggestions": "ಹುಡುಕಾಟ ಸಲಹೆಗಳು",
+    "directMatches": "Direct match",
     "languages": "ಭಾಷೆಗಳು",
     "recommendedLanguage": "ಶಿಫಾರಸು ಮಾಡಿದ ಭಾಷೆ",
     "searchSuggestion": "{suggestion} ಹುಡುಕಿ",

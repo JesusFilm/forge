@@ -179,7 +179,8 @@
     "clearSearch": "Strika leit",
     "changeAudioLanguage": "Broyt ljóðmál",
     "home": "JesusFilm forsíða",
-    "closeSearch": "Lat leit aftur"
+    "closeSearch": "Lat leit aftur",
+    "submitSearch": "Leita"
   },
   "SearchOverlay": {
     "dialogLabel": "Leita og blaða í videobrotum",
@@ -205,6 +206,7 @@
     "searchLanguageLabel": "Leitismál",
     "allLanguages": "Øll mál",
     "searchSuggestions": "Leititilboð",
+    "directMatches": "Direct match",
     "languages": "Mál",
     "recommendedLanguage": "Mælt mál",
     "searchSuggestion": "Leita eftir {suggestion}",

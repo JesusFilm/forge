@@ -179,7 +179,8 @@
     "clearSearch": "འཚོལ་ཞིབ་བསལ།",
     "changeAudioLanguage": "སྒྲ་སྐད་བསྒྱུར།",
     "home": "JesusFilm གཙོ་ཤོག",
-    "closeSearch": "འཚོལ་ཞིབ་ཁ་བསྡམ།"
+    "closeSearch": "འཚོལ་ཞིབ་ཁ་བསྡམ།",
+    "submitSearch": "འཚོལ།"
   },
   "SearchOverlay": {
     "dialogLabel": "བརྙན་སྡེ་འཚོལ་ཡང་ན་ལྟ་སྐོར།",
@@ -205,6 +206,7 @@
     "searchLanguageLabel": "འཚོལ་བའི་སྐད་ཡིག།",
     "allLanguages": "སྐད་ཡིག་ཚང་མ།",
     "searchSuggestions": "འཚོལ་ཞིབ་བསམ་འཆར།",
+    "directMatches": "Direct match",
     "languages": "སྐད་ཡིག།",
     "recommendedLanguage": "འོས་སྦྱོར་སྐད་ཡིག།",
     "searchSuggestion": "{suggestion} འཚོལ།",

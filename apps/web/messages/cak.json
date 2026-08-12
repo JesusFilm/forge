@@ -179,7 +179,8 @@
     "clearSearch": "Tijikib'äx ruto'ik",
     "changeAudioLanguage": "Tijäl ruk'ux ri ch'ab'äl audio",
     "home": "JesusFilm ruxaq alaxik",
-    "closeSearch": "Titz'apïx kanöxik"
+    "closeSearch": "Titz'apïx kanöxik",
+    "submitSearch": "Tikanöx"
   },
   "SearchOverlay": {
     "dialogLabel": "Tikanöx chuqa' tapeq videos",
@@ -205,6 +206,7 @@
     "searchLanguageLabel": "Tikanöx ch'ab'äl",
     "allLanguages": "Konojel ch'ab'äl",
     "searchSuggestions": "Taq rutz'etik kanöxik",
+    "directMatches": "Direct match",
     "languages": "Ch'ab'äl",
     "recommendedLanguage": "Ch'ab'äl ri nitz'aqatisäx",
     "searchSuggestion": "Tikanöx {suggestion}",

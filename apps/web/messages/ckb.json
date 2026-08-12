@@ -179,7 +179,8 @@
     "clearSearch": "سڕینەوەی گەڕان",
     "changeAudioLanguage": "گۆڕینی زمانی دەنگ",
     "home": "سەرەکیی JesusFilm",
-    "closeSearch": "داخستنی گەڕان"
+    "closeSearch": "داخستنی گەڕان",
+    "submitSearch": "گەڕان"
   },
   "SearchOverlay": {
     "dialogLabel": "گەڕان و گەڕان لە ویدۆکان",
@@ -205,6 +206,7 @@
     "searchLanguageLabel": "زمانی گەڕان",
     "allLanguages": "هەموو زمانەکان",
     "searchSuggestions": "پێشنیارەکانی گەڕان",
+    "directMatches": "Direct match",
     "languages": "زمانەکان",
     "recommendedLanguage": "زمانی پێشنیارکراو",
     "searchSuggestion": "گەڕان لە {suggestion}",

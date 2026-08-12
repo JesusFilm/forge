@@ -179,7 +179,8 @@
     "clearSearch": "Kosongkan carian",
     "changeAudioLanguage": "Tukar bahasa audio",
     "home": "Laman utama JesusFilm",
-    "closeSearch": "Tutup carian"
+    "closeSearch": "Tutup carian",
+    "submitSearch": "Cari"
   },
   "SearchOverlay": {
     "dialogLabel": "Cari dan teroka video",
@@ -205,6 +206,7 @@
     "searchLanguageLabel": "Bahasa carian",
     "allLanguages": "Semua bahasa",
     "searchSuggestions": "Cadangan carian",
+    "directMatches": "Direct match",
     "languages": "Bahasa",
     "recommendedLanguage": "Bahasa yang disyorkan",
     "searchSuggestion": "Cari {suggestion}",

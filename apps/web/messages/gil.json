@@ -179,7 +179,8 @@
     "clearSearch": "Tamatoa te kimotaki",
     "changeAudioLanguage": "Kangae te i-ki n te reo",
     "home": "Moan iteran JesusFilm",
-    "closeSearch": "Taiaki te kimotaki"
+    "closeSearch": "Taiaki te kimotaki",
+    "submitSearch": "Kimotaki"
   },
   "SearchOverlay": {
     "dialogLabel": "Kimotaki ao browse n te videos",
@@ -205,6 +206,7 @@
     "searchLanguageLabel": "Kimotaki n te i-ki",
     "allLanguages": "I-ki aei",
     "searchSuggestions": "Tera ni kimotaki",
+    "directMatches": "Direct match",
     "languages": "I-ki",
     "recommendedLanguage": "I-ki ni kamatoa",
     "searchSuggestion": "Kimotaki {suggestion}",

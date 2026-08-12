@@ -179,7 +179,8 @@
     "clearSearch": "Phumula nyakišišo",
     "changeAudioLanguage": "Fetola polelo ya modumo",
     "home": "Legae la JesusFilm",
-    "closeSearch": "Tswalela nyakišišo"
+    "closeSearch": "Tswalela nyakišišo",
+    "submitSearch": "Nyaka"
   },
   "SearchOverlay": {
     "dialogLabel": "Nyaka le go phetla divideo",
@@ -205,6 +206,7 @@
     "searchLanguageLabel": "Nyaka polelo",
     "allLanguages": "Dipolelo ka moka",
     "searchSuggestions": "Ditšhišinyo tša Nyakišišo",
+    "directMatches": "Direct match",
     "languages": "Dipolelo",
     "recommendedLanguage": "Polelo ye e šišintšwego",
     "searchSuggestion": "Nyaka {suggestion}",

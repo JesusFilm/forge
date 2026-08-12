@@ -7,6 +7,7 @@ import type {
   TypesenseSearchRequest,
 } from "./typesense-client"
 import { TypesenseRequestError } from "./typesense-client"
+import { resolveTypesenseWatchSearchApiKey } from "./typesense-client-config"
 import { resolveSearchLanguageSignals } from "./search-language-resolution"
 import { buildAvailabilityDocuments } from "./typesense-watch-search-indexer"
 import {
@@ -28,7 +29,6 @@ import {
   type TypesenseWatchSearchCollectionBinding,
 } from "./typesense-watch-search-profile"
 import {
-  resolveTypesenseWatchSearchApiKey,
   typesenseLexicalMatchQuality,
   TypesenseWatchSearchService,
 } from "./typesense-watch-search.service"

@@ -179,7 +179,8 @@
     "clearSearch": "Fafao ny fikarohana",
     "changeAudioLanguage": "Ovay ny fitenin'ny feo",
     "home": "Pejy fandraisana JesusFilm",
-    "closeSearch": "Hidio ny fikarohana"
+    "closeSearch": "Hidio ny fikarohana",
+    "submitSearch": "Karohy"
   },
   "SearchOverlay": {
     "dialogLabel": "Karohy sy zaha lahatsary",
@@ -205,6 +206,7 @@
     "searchLanguageLabel": "Fiteny hikarohana",
     "allLanguages": "Fiteny rehetra",
     "searchSuggestions": "Soso-kevitra fikarohana",
+    "directMatches": "Direct match",
     "languages": "Fiteny",
     "recommendedLanguage": "Fiteny soso-kevitra",
     "searchSuggestion": "Karohy {suggestion}",

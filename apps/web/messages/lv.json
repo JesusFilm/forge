@@ -179,7 +179,8 @@
     "clearSearch": "Notīrīt meklēšanu",
     "changeAudioLanguage": "Mainīt audio valodu",
     "home": "JesusFilm sākumlapa",
-    "closeSearch": "Aizvērt meklēšanu"
+    "closeSearch": "Aizvērt meklēšanu",
+    "submitSearch": "Meklēt"
   },
   "SearchOverlay": {
     "dialogLabel": "Meklēt un pārlūkot video",
@@ -205,6 +206,7 @@
     "searchLanguageLabel": "Meklēšanas valoda",
     "allLanguages": "Visas valodas",
     "searchSuggestions": "Meklēšanas ieteikumi",
+    "directMatches": "Direct match",
     "languages": "Valodas",
     "recommendedLanguage": "Ieteicamā valoda",
     "searchSuggestion": "Meklēt {suggestion}",

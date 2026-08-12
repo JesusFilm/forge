@@ -179,7 +179,8 @@
     "clearSearch": "Far seet bi",
     "changeAudioLanguage": "Soppi làkk bu audio bi",
     "home": "Kër JesusFilm",
-    "closeSearch": "Tëj seet bi"
+    "closeSearch": "Tëj seet bi",
+    "submitSearch": "Seet"
   },
   "SearchOverlay": {
     "dialogLabel": "Seet te xamlu videos",
@@ -205,6 +206,7 @@
     "searchLanguageLabel": "Seet làkk",
     "allLanguages": "Làkk yépp",
     "searchSuggestions": "Sàkk yu seet",
+    "directMatches": "Direct match",
     "languages": "Làkk yi",
     "recommendedLanguage": "Làkk bu ñu digal",
     "searchSuggestion": "Seet {suggestion}",

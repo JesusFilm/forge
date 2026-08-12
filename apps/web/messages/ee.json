@@ -179,7 +179,8 @@
     "clearSearch": "Tso se la me",
     "changeAudioLanguage": "Tɔ audio ƒe gbegblẽ",
     "home": "JesusFilm ƒe home",
-    "closeSearch": "Tso se la ŋu"
+    "closeSearch": "Tso se la ŋu",
+    "submitSearch": "Se"
   },
   "SearchOverlay": {
     "dialogLabel": "Se eye kpɔ video",
@@ -205,6 +206,7 @@
     "searchLanguageLabel": "Search ƒe gbegblẽ",
     "allLanguages": "Gbegblẽwo katã",
     "searchSuggestions": "Search ƒe nuwo",
+    "directMatches": "Direct match",
     "languages": "Gbegblẽwo",
     "recommendedLanguage": "Gbegblẽ si le amemefia",
     "searchSuggestion": "Se {suggestion}",

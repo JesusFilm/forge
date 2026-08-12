@@ -353,4 +353,27 @@ describe("TypesenseClient", () => {
 
     await expect(client.health()).rejects.toThrow("timed out after 5ms")
   })
+
+  it("allows a multi-search call to use a shorter timeout", async () => {
+    const fetchMock = vi.fn<typeof fetch>(
+      (_url, init) =>
+        new Promise((_resolve, reject) => {
+          init?.signal?.addEventListener("abort", () =>
+            reject(new DOMException("aborted", "AbortError")),
+          )
+        }),
+    )
+    const client = new TypesenseClient({
+      host: "http://localhost:8108",
+      apiKey: "test-key",
+      timeoutMs: 2_000,
+      fetch: fetchMock,
+    })
+
+    await expect(
+      client.multiSearch([{ collection: "watch", q: "jesus" }], {
+        timeoutMs: 5,
+      }),
+    ).rejects.toThrow("timed out after 5ms")
+  })
 })

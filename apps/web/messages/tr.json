@@ -179,7 +179,8 @@
     "clearSearch": "Aramayı temizle",
     "changeAudioLanguage": "Ses dilini değiştir",
     "home": "JesusFilm ana sayfası",
-    "closeSearch": "Aramayı kapat"
+    "closeSearch": "Aramayı kapat",
+    "submitSearch": "Ara"
   },
   "SearchOverlay": {
     "dialogLabel": "Videolarda ara ve keşfet",
@@ -205,6 +206,7 @@
     "searchLanguageLabel": "Arama dili",
     "allLanguages": "Tüm diller",
     "searchSuggestions": "Arama önerileri",
+    "directMatches": "Direct match",
     "languages": "Diller",
     "recommendedLanguage": "Önerilen dil",
     "searchSuggestion": "{suggestion} ara",

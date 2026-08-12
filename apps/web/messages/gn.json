@@ -179,7 +179,8 @@
     "clearSearch": "Embogue jeheka",
     "changeAudioLanguage": "Emoambue ñe'ẽ ayvu",
     "home": "JesusFilm óga",
-    "closeSearch": "Emboty jeheka"
+    "closeSearch": "Emboty jeheka",
+    "submitSearch": "Eheka"
   },
   "SearchOverlay": {
     "dialogLabel": "Eheka ha ehora videos",
@@ -205,6 +206,7 @@
     "searchLanguageLabel": "Eheka ñe'ẽ",
     "allLanguages": "Opaite ñe'ẽ",
     "searchSuggestions": "Jeheka hag̃ua ñe'ẽporavo",
+    "directMatches": "Direct match",
     "languages": "Ñe'ẽnguéra",
     "recommendedLanguage": "Ñe'ẽ oñembojeroviáva",
     "searchSuggestion": "Eheka {suggestion}",

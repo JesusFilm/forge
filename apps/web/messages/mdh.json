@@ -179,7 +179,8 @@
     "clearSearch": "Linisi so search",
     "changeAudioLanguage": "Iliso so wika sa audio",
     "home": "Homepage sa JesusFilm",
-    "closeSearch": "Sara search"
+    "closeSearch": "Sara search",
+    "submitSearch": "Pangita"
   },
   "SearchOverlay": {
     "dialogLabel": "Pangita ago browse video",
@@ -205,6 +206,7 @@
     "searchLanguageLabel": "Wika sa search",
     "allLanguages": "Tanan a wika",
     "searchSuggestions": "Mga suhestiyon sa search",
+    "directMatches": "Direct match",
     "languages": "Mga wika",
     "recommendedLanguage": "Inirerekomenda a wika",
     "searchSuggestion": "Pangitaa {suggestion}",

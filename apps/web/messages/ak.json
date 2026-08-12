@@ -179,7 +179,8 @@
     "clearSearch": "Yi search no fi hɔ",
     "changeAudioLanguage": "Sesa kasa a wɔde kasa no",
     "home": "JesusFilm fie",
-    "closeSearch": "Ka search no mu"
+    "closeSearch": "Ka search no mu",
+    "submitSearch": "Hwehwɛ"
   },
   "SearchOverlay": {
     "dialogLabel": "Hwehwɛ na hwehwɛ videos mu",
@@ -205,6 +206,7 @@
     "searchLanguageLabel": "Hwehwɛ kasa",
     "allLanguages": "Kasa nyinaa",
     "searchSuggestions": "Search nyansahyɛ",
+    "directMatches": "Direct match",
     "languages": "Kasa ahorow",
     "recommendedLanguage": "Kasa a wɔkamfo kyerɛ",
     "searchSuggestion": "Hwehwɛ {suggestion}",

@@ -179,7 +179,8 @@
     "clearSearch": "തിരച്ചിൽ മായ്ക്കുക",
     "changeAudioLanguage": "ഓഡിയോ ഭാഷ മാറ്റുക",
     "home": "JesusFilm ഹോം",
-    "closeSearch": "തിരച്ചിൽ അടയ്ക്കുക"
+    "closeSearch": "തിരച്ചിൽ അടയ്ക്കുക",
+    "submitSearch": "തിരയുക"
   },
   "SearchOverlay": {
     "dialogLabel": "വീഡിയോകൾ തിരയുകയും ബ്രൗസ് ചെയ്യുകയും ചെയ്യുക",
@@ -205,6 +206,7 @@
     "searchLanguageLabel": "തിരച്ചിൽ ഭാഷ",
     "allLanguages": "എല്ലാ ഭാഷകളും",
     "searchSuggestions": "തിരച്ചിൽ നിർദ്ദേശങ്ങൾ",
+    "directMatches": "Direct match",
     "languages": "ഭാഷകൾ",
     "recommendedLanguage": "ശുപാർശ ചെയ്യുന്ന ഭാഷ",
     "searchSuggestion": "{suggestion} തിരയുക",

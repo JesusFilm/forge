@@ -29,6 +29,7 @@ import {
 } from "@/lib/search-language"
 import { parseWatchPath } from "@/lib/routes"
 import { searchWatchDirect } from "@/lib/watch-search-client"
+import { normalizeWatchSearchQuery } from "@/lib/watch-search-query"
 import {
   FloatingSearchContext,
   type FloatingSearchContextValue,
@@ -74,6 +75,11 @@ type ActiveSearchSignature = {
   searchRequestId: string
 }
 
+export type PendingSearchSubmitIntent = {
+  id: number
+  query: string
+}
+
 export type FloatingSearchControllerProps = {
   open: boolean
   closing: boolean
@@ -84,6 +90,7 @@ export type FloatingSearchControllerProps = {
   headerLanguageCode?: string | null
   headerPinned?: boolean
   resetToken?: number
+  pendingSubmitIntent?: PendingSearchSubmitIntent | null
   onReady?: () => void
   children?: ReactNode
 }
@@ -98,6 +105,7 @@ export function FloatingSearchController({
   headerLanguageCode = null,
   headerPinned = false,
   resetToken = 0,
+  pendingSubmitIntent = null,
   onReady,
   children,
 }: FloatingSearchControllerProps) {
@@ -118,6 +126,7 @@ export function FloatingSearchController({
   const [loadingMore, setLoadingMore] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [searched, setSearched] = useState(false)
+  const [submittedQuery, setSubmittedQuery] = useState<string | null>(null)
   const [resultSource, setResultSource] =
     useState<SearchActionResultSource | null>(null)
   const [languageOptions, setLanguageOptions] = useState<
@@ -149,7 +158,6 @@ export function FloatingSearchController({
   const loadMoreRunIdRef = useRef(0)
   const displayResultsRef = useRef<SearchResult[]>([])
   const languageOptionsRef = useRef<SearchLanguageOption[]>([])
-  const queryRef = useRef("")
   const selectedLanguageEnglishNamesRef = useRef<string[]>([])
   const selectedSearchLanguageOptionRef = useRef<SearchLanguageOption | null>(
     null,
@@ -171,7 +179,6 @@ export function FloatingSearchController({
 
   const setQuery = useCallback(
     (nextQuery: string) => {
-      queryRef.current = nextQuery
       setQueryState(nextQuery)
     },
     [setQueryState],
@@ -343,10 +350,11 @@ export function FloatingSearchController({
         languageEnglishNames?: string[]
         languageSlug?: string | null
         languageSlugIsExplicit?: boolean
+        preserveDraft?: boolean
       },
     ): Promise<void> => {
       const trimmed = q.trim()
-      setQuery(q)
+      if (!options?.preserveDraft) setQuery(q)
 
       // Bump the request id immediately so any in-flight request (from a prior
       // call in any branch — exit-animation, Apollo, or clear) fails its
@@ -359,6 +367,7 @@ export function FloatingSearchController({
       setLoadingMore(false)
 
       if (!trimmed) {
+        setSubmittedQuery(null)
         if (displayResultsRef.current.length > 0) {
           setExiting(true)
           await new Promise<void>((resolve) => setTimeout(resolve, 200))
@@ -377,6 +386,9 @@ export function FloatingSearchController({
         clearLoadingForRequest(thisRequest)
         return
       }
+
+      const cappedQuery = normalizeWatchSearchQuery(trimmed)
+      setSubmittedQuery(cappedQuery)
 
       if (displayResultsRef.current.length > 0) {
         setExiting(true)
@@ -415,7 +427,6 @@ export function FloatingSearchController({
           options?.languageSlugIsExplicit ??
           (options?.languageSlug !== undefined ||
             searchLanguageSelectionUserSetRef.current)
-        const cappedQuery = trimmed.slice(0, 200)
         const searchRequestId = createSearchRequestId()
         const searchLanguageSlug =
           activeLanguageSlug ??
@@ -512,9 +523,7 @@ export function FloatingSearchController({
   const loadMore = useCallback(async (): Promise<void> => {
     const expectedSignature = activeSearchSignatureRef.current
     if (!expectedSignature) return
-    const currentQuery = queryRef.current.trim().slice(0, 200)
     if (
-      expectedSignature.query !== currentQuery ||
       expectedSignature.routeLanguageSlug !== routeLanguageSlug ||
       expectedSignature.resultSource !== resultSource
     ) {
@@ -531,6 +540,7 @@ export function FloatingSearchController({
     // new search supersedes us mid-fetch.
     const thisRequest = requestIdRef.current
     try {
+      const currentQuery = expectedSignature.query
       const acceptLanguage = readBrowserAcceptLanguage()
       const resolvedLanguage = resolveSearchLanguage({
         selectedEnglishNames: expectedSignature.languageEnglishNames,
@@ -626,9 +636,9 @@ export function FloatingSearchController({
       const nextQuery = selected
         ? query
         : stripLanguageFromSearchQuery(option.englishName, query)
-      void search(nextQuery, { languageEnglishNames: nextLanguages })
+      setQuery(nextQuery)
     },
-    [query, search],
+    [query, setQuery],
   )
 
   const selectSearchLanguage = useCallback(
@@ -655,33 +665,27 @@ export function FloatingSearchController({
     setSelectedSearchLanguageOption(null)
     setSelectedLanguageEnglishNames([])
     setSelectedLanguageRegionByName({})
-    if (query.trim().length > 0) {
-      void search(query, {
-        languageEnglishNames: [],
-        languageSlug: null,
-        languageSlugIsExplicit: false,
-      })
-    }
-  }, [query, search])
+  }, [])
 
   const clearSearchLanguages = useCallback((): void => {
     selectedLanguageEnglishNamesRef.current = []
     setSelectedLanguageEnglishNames([])
     setSelectedLanguageRegionByName({})
-    if (query.trim().length > 0) {
-      void search(query, { languageEnglishNames: [] })
-    }
-  }, [query, search])
+  }, [])
 
-  const initialShellQueryRef = useRef(query)
-  const initialShellQueryConsumedRef = useRef(false)
+  const consumedSubmitIntentIdRef = useRef(0)
   useEffect(() => {
-    if (initialShellQueryConsumedRef.current) return
-    const initialShellQuery = initialShellQueryRef.current
-    if (!open || searched || initialShellQuery.trim().length === 0) return
-    initialShellQueryConsumedRef.current = true
-    void search(initialShellQuery)
-  }, [open, search, searched])
+    if (
+      !open ||
+      pendingSubmitIntent == null ||
+      pendingSubmitIntent.id <= consumedSubmitIntentIdRef.current
+    ) {
+      return
+    }
+    consumedSubmitIntentIdRef.current = pendingSubmitIntent.id
+    if (pendingSubmitIntent.query.trim().length === 0) return
+    void search(pendingSubmitIntent.query, { preserveDraft: true })
+  }, [open, pendingSubmitIntent, search])
 
   const resetTokenRef = useRef(resetToken)
   useEffect(() => {
@@ -695,6 +699,7 @@ export function FloatingSearchController({
       open,
       closing,
       query,
+      submittedQuery,
       results,
       displayResults,
       exiting,
@@ -734,6 +739,7 @@ export function FloatingSearchController({
       open,
       closing,
       query,
+      submittedQuery,
       results,
       displayResults,
       exiting,

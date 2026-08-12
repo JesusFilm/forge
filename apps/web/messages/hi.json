@@ -179,7 +179,8 @@
     "clearSearch": "खोज साफ़ करें",
     "changeAudioLanguage": "ऑडियो भाषा बदलें",
     "home": "JesusFilm होम",
-    "closeSearch": "खोज बंद करें"
+    "closeSearch": "खोज बंद करें",
+    "submitSearch": "खोजें"
   },
   "SearchOverlay": {
     "dialogLabel": "वीडियो खोजें और ब्राउज़ करें",
@@ -205,6 +206,7 @@
     "searchLanguageLabel": "खोज भाषा",
     "allLanguages": "सभी भाषाएँ",
     "searchSuggestions": "खोज सुझाव",
+    "directMatches": "Direct match",
     "languages": "भाषाएँ",
     "recommendedLanguage": "अनुशंसित भाषा",
     "searchSuggestion": "{suggestion} खोजें",

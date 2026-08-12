@@ -4,6 +4,8 @@ import type { AdminResultOf, AdminVariablesOf } from "@forge/admin-graphql"
 import {
   adminWatchSearchOperation,
   adminWatchSearchQuery,
+  adminWatchSearchSuggestionsOperation,
+  adminWatchSearchSuggestionsQuery,
 } from "@forge/admin-graphql/operations"
 
 import { env } from "@/env"
@@ -20,9 +22,11 @@ import type {
   SearchResult,
   SearchVideosLanguageContext,
 } from "./search"
+import { normalizeWatchSearchQuery } from "./watch-search-query"
 
-const MAX_QUERY_LENGTH = 200
 const WATCH_SEARCH_TIMEOUT_MS = 45_000
+const MAX_WATCH_SEARCH_AUTOCOMPLETE_ROWS = 12
+const WATCH_SEARCH_SUGGESTIONS_TIMEOUT_MS = 3_500
 
 type WatchSearchGraphqlResult = AdminResultOf<typeof adminWatchSearchOperation>
 type WatchSearchGraphqlItem = NonNullable<
@@ -31,6 +35,9 @@ type WatchSearchGraphqlItem = NonNullable<
 type WatchSearchResultType = NonNullable<
   AdminVariablesOf<typeof adminWatchSearchOperation>["input"]["resultTypes"]
 >[number]
+type WatchSearchSuggestionsResult = AdminResultOf<
+  typeof adminWatchSearchSuggestionsOperation
+>
 
 type GraphqlResponse<TData> = {
   data?: TData
@@ -47,6 +54,164 @@ export type DirectWatchSearchInput = {
   resolvedLanguage?: SearchLanguageResolution
 }
 
+export type FetchWatchSearchSuggestionsInput = {
+  query: string
+  languageSlug: string
+  signal?: AbortSignal
+  timeoutMs?: number
+}
+
+export type WatchSearchSuggestion = {
+  kind: "query" | "content"
+  title: string
+  description: string | null
+  matchSource: "title" | "description"
+  id: string | null
+  slug: string | null
+  label: AdminVideoLabel | null
+  childCount: number | null
+}
+
+export class WatchSearchSuggestionsError extends Error {
+  constructor(
+    message: string,
+    readonly code: "http" | "graphql" | "malformed_response",
+  ) {
+    super(message)
+    this.name = "WatchSearchSuggestionsError"
+  }
+}
+
+function parseSuggestions(value: unknown): WatchSearchSuggestion[] {
+  if (!Array.isArray(value)) {
+    throw new WatchSearchSuggestionsError(
+      "Watch search suggestion response was empty",
+      "malformed_response",
+    )
+  }
+
+  const seen = new Set<string>()
+  const suggestions: WatchSearchSuggestion[] = []
+  for (const item of value) {
+    if (
+      typeof item !== "object" ||
+      item == null ||
+      !("kind" in item) ||
+      (item.kind !== "QUERY" && item.kind !== "CONTENT") ||
+      !("title" in item) ||
+      typeof item.title !== "string" ||
+      !("description" in item) ||
+      (item.description != null && typeof item.description !== "string") ||
+      !("matchSource" in item) ||
+      (item.matchSource !== "TITLE" && item.matchSource !== "DESCRIPTION") ||
+      !("id" in item) ||
+      (item.id != null && typeof item.id !== "string") ||
+      !("slug" in item) ||
+      (item.slug != null && typeof item.slug !== "string") ||
+      !("label" in item) ||
+      (item.label != null &&
+        ![
+          "BEHIND_THE_SCENES",
+          "COLLECTION",
+          "EPISODE",
+          "FEATURE_FILM",
+          "SEGMENT",
+          "SERIES",
+          "SHORT_FILM",
+          "TRAILER",
+        ].includes(item.label as string)) ||
+      !("childCount" in item) ||
+      (item.childCount != null && typeof item.childCount !== "number")
+    ) {
+      throw new WatchSearchSuggestionsError(
+        "Watch search suggestion response was malformed",
+        "malformed_response",
+      )
+    }
+    const title = item.title.trim()
+    if (!title) continue
+    if (
+      item.kind === "CONTENT" &&
+      (typeof item.id !== "string" || typeof item.slug !== "string")
+    ) {
+      throw new WatchSearchSuggestionsError(
+        "Watch search direct match was malformed",
+        "malformed_response",
+      )
+    }
+    const key = `${item.kind}:${title.normalize("NFC").toLocaleLowerCase()}`
+    if (seen.has(key)) continue
+    seen.add(key)
+    const description = item.description?.trim() || null
+    suggestions.push({
+      kind: item.kind === "CONTENT" ? "content" : "query",
+      title,
+      description,
+      matchSource: item.matchSource === "DESCRIPTION" ? "description" : "title",
+      id: item.id,
+      slug: item.slug,
+      label: item.label as AdminVideoLabel | null,
+      childCount: item.childCount,
+    })
+    if (suggestions.length === MAX_WATCH_SEARCH_AUTOCOMPLETE_ROWS) break
+  }
+  return suggestions
+}
+
+export async function fetchWatchSearchSuggestions({
+  query,
+  languageSlug,
+  signal,
+  timeoutMs = WATCH_SEARCH_SUGGESTIONS_TIMEOUT_MS,
+}: FetchWatchSearchSuggestionsInput): Promise<WatchSearchSuggestion[]> {
+  const controller = new AbortController()
+  const abortFromCaller = () => controller.abort()
+  if (signal?.aborted) controller.abort()
+  else signal?.addEventListener("abort", abortFromCaller, { once: true })
+  const timeout = setTimeout(() => controller.abort(), timeoutMs)
+  const variables: AdminVariablesOf<
+    typeof adminWatchSearchSuggestionsOperation
+  > = {
+    input: {
+      query: normalizeWatchSearchQuery(query),
+      languageSlug,
+    },
+  }
+
+  try {
+    const response = await fetch(env.NEXT_PUBLIC_ADMIN_GRAPHQL_URL, {
+      method: "POST",
+      credentials: "omit",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        query: adminWatchSearchSuggestionsQuery,
+        variables,
+      }),
+      signal: controller.signal,
+    })
+
+    if (!response.ok) {
+      throw new WatchSearchSuggestionsError(
+        `Watch search suggestions failed with HTTP ${response.status}`,
+        "http",
+      )
+    }
+
+    const payload =
+      (await response.json()) as GraphqlResponse<WatchSearchSuggestionsResult>
+    if (payload.errors?.length) {
+      throw new WatchSearchSuggestionsError(
+        payload.errors[0]?.message ?? "Watch search suggestions failed",
+        "graphql",
+      )
+    }
+    return parseSuggestions(payload.data?.watchSearchSuggestions)
+  } finally {
+    clearTimeout(timeout)
+    signal?.removeEventListener("abort", abortFromCaller)
+  }
+}
+
 export async function searchWatchDirect({
   query,
   limit = 20,
@@ -56,7 +221,7 @@ export async function searchWatchDirect({
   languageContext = {},
   resolvedLanguage,
 }: DirectWatchSearchInput): Promise<SearchResponse> {
-  const truncatedQuery = query.slice(0, MAX_QUERY_LENGTH)
+  const truncatedQuery = normalizeWatchSearchQuery(query)
   const resultTypes = toWatchSearchResultType(type)
   const variables: AdminVariablesOf<typeof adminWatchSearchOperation> = {
     input: {

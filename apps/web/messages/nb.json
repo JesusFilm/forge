@@ -179,7 +179,8 @@
     "clearSearch": "Tøm søk",
     "changeAudioLanguage": "Endre lydspråk",
     "home": "JesusFilm-startside",
-    "closeSearch": "Lukk søk"
+    "closeSearch": "Lukk søk",
+    "submitSearch": "Søk"
   },
   "SearchOverlay": {
     "dialogLabel": "Søk og bla i videoer",
@@ -205,6 +206,7 @@
     "searchLanguageLabel": "Søkespråk",
     "allLanguages": "Alle språk",
     "searchSuggestions": "Søkeforslag",
+    "directMatches": "Direct match",
     "languages": "Språk",
     "recommendedLanguage": "Anbefalt språk",
     "searchSuggestion": "Søk {suggestion}",

@@ -179,7 +179,8 @@
     "clearSearch": "Išvalyti paiešką",
     "changeAudioLanguage": "Keisti garso kalbą",
     "home": "JesusFilm pradžia",
-    "closeSearch": "Uždaryti paiešką"
+    "closeSearch": "Uždaryti paiešką",
+    "submitSearch": "Ieškoti"
   },
   "SearchOverlay": {
     "dialogLabel": "Ieškoti ir naršyti vaizdo įrašus",
@@ -205,6 +206,7 @@
     "searchLanguageLabel": "Paieškos kalba",
     "allLanguages": "Visos kalbos",
     "searchSuggestions": "Paieškos pasiūlymai",
+    "directMatches": "Direct match",
     "languages": "Kalbos",
     "recommendedLanguage": "Rekomenduojama kalba",
     "searchSuggestion": "Ieškoti {suggestion}",

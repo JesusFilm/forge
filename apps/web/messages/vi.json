@@ -179,7 +179,8 @@
     "clearSearch": "Xóa tìm kiếm",
     "changeAudioLanguage": "Đổi ngôn ngữ âm thanh",
     "home": "Trang chủ JesusFilm",
-    "closeSearch": "Đóng tìm kiếm"
+    "closeSearch": "Đóng tìm kiếm",
+    "submitSearch": "Tìm kiếm"
   },
   "SearchOverlay": {
     "dialogLabel": "Tìm kiếm và xem video",
@@ -205,6 +206,7 @@
     "searchLanguageLabel": "Ngôn ngữ tìm kiếm",
     "allLanguages": "Tất cả ngôn ngữ",
     "searchSuggestions": "Gợi ý tìm kiếm",
+    "directMatches": "Direct match",
     "languages": "Ngôn ngữ",
     "recommendedLanguage": "Ngôn ngữ được đề xuất",
     "searchSuggestion": "Tìm kiếm {suggestion}",

@@ -179,7 +179,8 @@
     "clearSearch": "Очистити пошук",
     "changeAudioLanguage": "Змінити мову аудіо",
     "home": "Головна JesusFilm",
-    "closeSearch": "Закрити пошук"
+    "closeSearch": "Закрити пошук",
+    "submitSearch": "Пошук"
   },
   "SearchOverlay": {
     "dialogLabel": "Пошук і перегляд відео",
@@ -205,6 +206,7 @@
     "searchLanguageLabel": "Мова пошуку",
     "allLanguages": "Усі мови",
     "searchSuggestions": "Підказки пошуку",
+    "directMatches": "Direct match",
     "languages": "Мови",
     "recommendedLanguage": "Рекомендована мова",
     "searchSuggestion": "Шукати {suggestion}",

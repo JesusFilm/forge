@@ -8,6 +8,7 @@ import {
   PermanentApiError,
   requestTranslations,
 } from "./openai-catalog-translator.mjs"
+import { catalogPolicyFor } from "./ui-catalog-policy.mjs"
 
 const scriptDir = dirname(fileURLToPath(import.meta.url))
 const appDir = join(scriptDir, "..")
@@ -351,8 +352,7 @@ function updateManifestAfterTranslation({
     metadata: {
       ...manifest.metadata,
       generatedOn,
-      policy:
-        "Every shipped UI catalog contains locale-specific copy. Existing authored translations are preserved; machineTranslatedLocales identifies catalogs completed or created with approved contextual AI translation and recommended for native-speaker review.",
+      policy: catalogPolicyFor(remainingProvisional.length),
       translation: {
         ...previousTranslationMetadata,
         method:

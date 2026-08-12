@@ -179,7 +179,8 @@
     "clearSearch": "Tamā te search",
     "changeAudioLanguage": "Fakafesuiaʻi te language o te leo",
     "home": "Te kāiga o JesusFilm",
-    "closeSearch": "Tapuni te search"
+    "closeSearch": "Tapuni te search",
+    "submitSearch": "Saili"
   },
   "SearchOverlay": {
     "dialogLabel": "Saili kae browse vitio",
@@ -205,6 +206,7 @@
     "searchLanguageLabel": "Language o te search",
     "allLanguages": "Languages katoa",
     "searchSuggestions": "Fautuaga mō te search",
+    "directMatches": "Direct match",
     "languages": "Gagana",
     "recommendedLanguage": "Language fakatonu",
     "searchSuggestion": "Saili {suggestion}",

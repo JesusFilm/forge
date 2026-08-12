@@ -179,7 +179,8 @@
     "clearSearch": "Pynlait ia ka search",
     "changeAudioLanguage": "Pynkylla ka ktien sur",
     "home": "Ka home JesusFilm",
-    "closeSearch": "Pynkhap ia ka search"
+    "closeSearch": "Pynkhap ia ka search",
+    "submitSearch": "Wad"
   },
   "SearchOverlay": {
     "dialogLabel": "Wad bad peit ia ki video",
@@ -205,6 +206,7 @@
     "searchLanguageLabel": "Wad ktien",
     "allLanguages": "Ki ktien baroh",
     "searchSuggestions": "Ki jingai jingmut ban wad",
+    "directMatches": "Direct match",
     "languages": "Ki ktien",
     "recommendedLanguage": "Ktien ba la ai jingmut",
     "searchSuggestion": "Wad {suggestion}",

@@ -179,7 +179,8 @@
     "clearSearch": "ፍለጋ አጥፋ",
     "changeAudioLanguage": "የድምጽ ቋንቋ ቀይር",
     "home": "JesusFilm መነሻ",
-    "closeSearch": "ፍለጋ ዝጋ"
+    "closeSearch": "ፍለጋ ዝጋ",
+    "submitSearch": "ፈልግ"
   },
   "SearchOverlay": {
     "dialogLabel": "ቪዲዮዎችን ፈልግ እና አስስ",
@@ -205,6 +206,7 @@
     "searchLanguageLabel": "የፍለጋ ቋንቋ",
     "allLanguages": "ሁሉም ቋንቋዎች",
     "searchSuggestions": "የፍለጋ ጥቆማዎች",
+    "directMatches": "Direct match",
     "languages": "ቋንቋዎች",
     "recommendedLanguage": "የተመከረ ቋንቋ",
     "searchSuggestion": "{suggestion} ፈልግ",

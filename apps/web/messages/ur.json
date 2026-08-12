@@ -179,7 +179,8 @@
     "clearSearch": "تلاش صاف کریں",
     "changeAudioLanguage": "آڈیو زبان تبدیل کریں",
     "home": "JesusFilm ہوم",
-    "closeSearch": "تلاش بند کریں"
+    "closeSearch": "تلاش بند کریں",
+    "submitSearch": "تلاش کریں"
   },
   "SearchOverlay": {
     "dialogLabel": "ویڈیوز تلاش اور براؤز کریں",
@@ -205,6 +206,7 @@
     "searchLanguageLabel": "تلاش کی زبان",
     "allLanguages": "تمام زبانیں",
     "searchSuggestions": "تلاش کی تجاویز",
+    "directMatches": "Direct match",
     "languages": "زبانیں",
     "recommendedLanguage": "تجویز کردہ زبان",
     "searchSuggestion": "{suggestion} تلاش کریں",

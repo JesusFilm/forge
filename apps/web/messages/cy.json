@@ -179,7 +179,8 @@
     "clearSearch": "Clirio chwilio",
     "changeAudioLanguage": "Newid iaith sain",
     "home": "Hafan JesusFilm",
-    "closeSearch": "Cau chwilio"
+    "closeSearch": "Cau chwilio",
+    "submitSearch": "Chwilio"
   },
   "SearchOverlay": {
     "dialogLabel": "Chwilio a phori fideos",
@@ -205,6 +206,7 @@
     "searchLanguageLabel": "Iaith chwilio",
     "allLanguages": "Pob iaith",
     "searchSuggestions": "Awgrymiadau chwilio",
+    "directMatches": "Direct match",
     "languages": "Ieithoedd",
     "recommendedLanguage": "Iaith a argymhellir",
     "searchSuggestion": "Chwilio {suggestion}",

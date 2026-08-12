@@ -179,7 +179,8 @@
     "clearSearch": "Scughey shirrey",
     "changeAudioLanguage": "Caghlaa çhengey yn chlashtyn",
     "home": "Cheead JesusFilm",
-    "closeSearch": "Doo shirrey"
+    "closeSearch": "Doo shirrey",
+    "submitSearch": "Shirrey"
   },
   "SearchOverlay": {
     "dialogLabel": "Shirrey as scrutaghey videoyn",
@@ -205,6 +206,7 @@
     "searchLanguageLabel": "Çhengey shirrey",
     "allLanguages": "Ooilley ny çhengaghyn",
     "searchSuggestions": "Soilshaghey shirrey",
+    "directMatches": "Direct match",
     "languages": "Çhengaghyn",
     "recommendedLanguage": "Çhengey scrutagit",
     "searchSuggestion": "Shirrey {suggestion}",

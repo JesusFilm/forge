@@ -179,7 +179,8 @@
     "clearSearch": "Tape le su'esu'ega",
     "changeAudioLanguage": "Suia le gagana o le leo",
     "home": "Itulau autū o JesusFilm",
-    "closeSearch": "Tapuni le su'esu'ega"
+    "closeSearch": "Tapuni le su'esu'ega",
+    "submitSearch": "Su'e"
   },
   "SearchOverlay": {
     "dialogLabel": "Su'e ma su'esu'e vitio",
@@ -205,6 +206,7 @@
     "searchLanguageLabel": "Gagana e su'e ai",
     "allLanguages": "Gagana uma",
     "searchSuggestions": "Fautuaga o le Su'esu'ega",
+    "directMatches": "Direct match",
     "languages": "Gagana",
     "recommendedLanguage": "Gagana fautuaina",
     "searchSuggestion": "Su'e {suggestion}",

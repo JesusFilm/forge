@@ -179,7 +179,8 @@
     "clearSearch": "Tiyuj ri kanoxïk",
     "changeAudioLanguage": "Tijaläx ri ch'ab'äl richin q'ojom",
     "home": "JesusFilm rupalaj q'ij",
-    "closeSearch": "Titz'apïx kanoxïk"
+    "closeSearch": "Titz'apïx kanoxïk",
+    "submitSearch": "Tikanöx"
   },
   "SearchOverlay": {
     "dialogLabel": "Tikanöx y tatz'eta' videos",
@@ -205,6 +206,7 @@
     "searchLanguageLabel": "Ch'ab'äl richin kanoxïk",
     "allLanguages": "Konojel taq ch'ab'äl",
     "searchSuggestions": "Taq rutzijol richin kanoxïk",
+    "directMatches": "Direct match",
     "languages": "Taq ch'ab'äl",
     "recommendedLanguage": "Ch'ab'äl kichin",
     "searchSuggestion": "Tikanöx {suggestion}",

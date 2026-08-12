@@ -179,7 +179,8 @@
     "clearSearch": "Search t’áh ɂáɂa",
     "changeAudioLanguage": "Audio yatı́ náke ɂekwé",
     "home": "JesusFilm kǫ́ę́",
-    "closeSearch": "Search t’áh ɂáɂa"
+    "closeSearch": "Search t’áh ɂáɂa",
+    "submitSearch": "Náɂa"
   },
   "SearchOverlay": {
     "dialogLabel": "Video náɂa ɂeyíle gho nats’edé",
@@ -205,6 +206,7 @@
     "searchLanguageLabel": "Search yatı́",
     "allLanguages": "Yatı́ t’áh kúlú",
     "searchSuggestions": "Search gha yatı́",
+    "directMatches": "Direct match",
     "languages": "Yatı́ t’áh kúlú",
     "recommendedLanguage": "Yatı́ nezų́ ɂekwé",
     "searchSuggestion": "{suggestion} náɂa",

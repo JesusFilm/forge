@@ -179,7 +179,8 @@
     "clearSearch": "Sula ku lava",
     "changeAudioLanguage": "Cinza ririmi ra mpfumawulo",
     "home": "Tluka ra le kaya ra JesusFilm",
-    "closeSearch": "Pfala ku lava"
+    "closeSearch": "Pfala ku lava",
+    "submitSearch": "Lava"
   },
   "SearchOverlay": {
     "dialogLabel": "Lava ni ku languta tivhidiyo",
@@ -205,6 +206,7 @@
     "searchLanguageLabel": "Ririmi ra ku lava",
     "allLanguages": "Tindzimi hinkwato",
     "searchSuggestions": "Switsundzuxo swa ku lava",
+    "directMatches": "Direct match",
     "languages": "Tindzimi",
     "recommendedLanguage": "Ririmi leri hlohloteriwaka",
     "searchSuggestion": "Lava {suggestion}",

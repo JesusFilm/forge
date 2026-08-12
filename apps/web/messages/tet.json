@@ -179,7 +179,8 @@
     "clearSearch": "Hamoos peskiza",
     "changeAudioLanguage": "Troka lingua audiu",
     "home": "JesusFilm uma",
-    "closeSearch": "Taka peskiza"
+    "closeSearch": "Taka peskiza",
+    "submitSearch": "Buka"
   },
   "SearchOverlay": {
     "dialogLabel": "Buka no haree vídeo sira",
@@ -205,6 +206,7 @@
     "searchLanguageLabel": "Buka língua",
     "allLanguages": "Língua hotu-hotu",
     "searchSuggestions": "Sugestaun peskiza",
+    "directMatches": "Direct match",
     "languages": "Língua sira",
     "recommendedLanguage": "Língua rekomendadu",
     "searchSuggestion": "Buka {suggestion}",

@@ -179,7 +179,8 @@
     "clearSearch": "清除搜尋",
     "changeAudioLanguage": "更改音訊語言",
     "home": "JesusFilm 首頁",
-    "closeSearch": "關閉搜尋"
+    "closeSearch": "關閉搜尋",
+    "submitSearch": "搜尋"
   },
   "SearchOverlay": {
     "dialogLabel": "搜尋與瀏覽影片",
@@ -205,6 +206,7 @@
     "searchLanguageLabel": "搜尋語言",
     "allLanguages": "所有語言",
     "searchSuggestions": "搜尋建議",
+    "directMatches": "Direct match",
     "languages": "語言",
     "recommendedLanguage": "推薦語言",
     "searchSuggestion": "搜尋 {suggestion}",

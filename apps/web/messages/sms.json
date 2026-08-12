@@ -179,7 +179,8 @@
     "clearSearch": "Pühhi haku",
     "changeAudioLanguage": "Vaihâta äänen kiel",
     "home": "JesusFilm-etusivu",
-    "closeSearch": "Peitt haku"
+    "closeSearch": "Peitt haku",
+    "submitSearch": "Etsi"
   },
   "SearchOverlay": {
     "dialogLabel": "Etsi ja selaa videoid",
@@ -205,6 +206,7 @@
     "searchLanguageLabel": "Hakukiel",
     "allLanguages": "Kõõll kielid",
     "searchSuggestions": "Hakuehdotõk",
+    "directMatches": "Direct match",
     "languages": "Kielid",
     "recommendedLanguage": "Suositeltu kiel",
     "searchSuggestion": "Etsi {suggestion}",

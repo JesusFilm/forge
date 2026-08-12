@@ -179,7 +179,8 @@
     "clearSearch": "Къахьа д1аяккха",
     "changeAudioLanguage": "Аудио мотт хулашха",
     "home": "JesusFilm хана",
-    "closeSearch": "Къахьа хьаяккха"
+    "closeSearch": "Къахьа хьаяккха",
+    "submitSearch": "Къахьа"
   },
   "SearchOverlay": {
     "dialogLabel": "Видео къахьа я browse хийла",
@@ -205,6 +206,7 @@
     "searchLanguageLabel": "Къахьа мотт",
     "allLanguages": "Бархьи мотт",
     "searchSuggestions": "Къахьа ұсыныш",
+    "directMatches": "Direct match",
     "languages": "Мотташ",
     "recommendedLanguage": "Хьехар мотт",
     "searchSuggestion": "{suggestion} къахьа",

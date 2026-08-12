@@ -179,7 +179,8 @@
     "clearSearch": "検索をクリア",
     "changeAudioLanguage": "音声言語を変更",
     "home": "JesusFilm ホーム",
-    "closeSearch": "検索を閉じる"
+    "closeSearch": "検索を閉じる",
+    "submitSearch": "検索"
   },
   "SearchOverlay": {
     "dialogLabel": "動画を検索・閲覧",
@@ -205,6 +206,7 @@
     "searchLanguageLabel": "検索言語",
     "allLanguages": "すべての言語",
     "searchSuggestions": "検索候補",
+    "directMatches": "Direct match",
     "languages": "言語",
     "recommendedLanguage": "推奨言語",
     "searchSuggestion": "{suggestion}を検索",

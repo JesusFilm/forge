@@ -21,6 +21,7 @@ import { VideoSearchSocialService } from "@/services/video-search-social.service
 import { WatchEventService } from "@/services/watch-events.service"
 import { WatchSearchEventService } from "@/services/watch-search-events.service"
 import { WatchSearchService } from "@/services/watch-search.service"
+import { createTypesenseWatchSearchSuggestionsService } from "@/services/typesense-watch-search-suggestions"
 import { TypesenseClient } from "@/services/typesense-client"
 import { TypesenseWatchSearchCandidateGenerationService } from "@/services/typesense-watch-search-candidate-generation"
 import { candidateWatchSearchApplicationRevision } from "@/services/typesense-watch-search-candidate-identity"
@@ -192,6 +193,8 @@ export function createServices(prisma: PrismaClient) {
     watchSearchEvent: new WatchSearchEventService(prisma),
     watchSearch: new WatchSearchService(prisma),
     typesenseWatchSearch: createServingTypesenseWatchSearchService(prisma),
+    typesenseWatchSearchSuggestions:
+      createTypesenseWatchSearchSuggestionsService(prisma),
     watchSetting: new WatchSettingService(prisma),
   }
 }

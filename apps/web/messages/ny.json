@@ -179,7 +179,8 @@
     "clearSearch": "Chotsani kusaka",
     "changeAudioLanguage": "Sinthani chinenero cha mawu",
     "home": "Tsamba loyambira la JesusFilm",
-    "closeSearch": "Tsekani kusaka"
+    "closeSearch": "Tsekani kusaka",
+    "submitSearch": "Sakani"
   },
   "SearchOverlay": {
     "dialogLabel": "Sakani ndi kufufuza mavidiyo",
@@ -205,6 +206,7 @@
     "searchLanguageLabel": "Chinenero chofufuza",
     "allLanguages": "Zinenero zonse",
     "searchSuggestions": "Malingaliro a kusaka",
+    "directMatches": "Direct match",
     "languages": "Zinenero",
     "recommendedLanguage": "Chinenero chovomerezeka",
     "searchSuggestion": "Sakani {suggestion}",

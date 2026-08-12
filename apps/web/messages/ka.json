@@ -179,7 +179,8 @@
     "clearSearch": "ძიების გასუფთავება",
     "changeAudioLanguage": "აუდიოენის შეცვლა",
     "home": "JesusFilm-ის მთავარი გვერდი",
-    "closeSearch": "ძიების დახურვა"
+    "closeSearch": "ძიების დახურვა",
+    "submitSearch": "ძიება"
   },
   "SearchOverlay": {
     "dialogLabel": "ვიდეოების ძიება და დათვალიერება",
@@ -205,6 +206,7 @@
     "searchLanguageLabel": "საძიებო ენა",
     "allLanguages": "ყველა ენა",
     "searchSuggestions": "ძიების შემოთავაზებები",
+    "directMatches": "Direct match",
     "languages": "ენები",
     "recommendedLanguage": "რეკომენდებული ენა",
     "searchSuggestion": "ძებნა: {suggestion}",

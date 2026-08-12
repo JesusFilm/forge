@@ -3,6 +3,7 @@ import { pathToFileURL } from "node:url"
 
 import { prisma } from "@/db/client"
 import { TypesenseWatchSearchCandidateGenerationService } from "@/services/typesense-watch-search-candidate-generation"
+import { resolveTypesenseWatchSearchApiKey } from "@/services/typesense-client-config"
 import { candidateWatchSearchApplicationRevision } from "@/services/typesense-watch-search-candidate-identity"
 import {
   assertQualificationProfilesMatchLease,
@@ -11,10 +12,7 @@ import {
   watchSearchBindingMembers,
   type TypesenseWatchSearchCollectionBinding,
 } from "@/services/typesense-watch-search-profile"
-import {
-  resolveTypesenseWatchSearchApiKey,
-  TypesenseWatchSearchService,
-} from "@/services/typesense-watch-search.service"
+import { TypesenseWatchSearchService } from "@/services/typesense-watch-search.service"
 import { TypesenseClient } from "@/services/typesense-client"
 import type { WatchSearchInput } from "@/services/watch-search.service"
 

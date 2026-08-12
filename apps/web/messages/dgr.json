@@ -179,7 +179,8 @@
     "clearSearch": "Search dè hòɂǫ",
     "changeAudioLanguage": "Audio language nàtł’ı̨",
     "home": "JesusFilm kǫ̀",
-    "closeSearch": "Search nàahdee"
+    "closeSearch": "Search nàahdee",
+    "submitSearch": "Search hòɂǫ"
   },
   "SearchOverlay": {
     "dialogLabel": "Video łè search hı̨la, weghàda",
@@ -205,6 +206,7 @@
     "searchLanguageLabel": "Search yatıı̀",
     "allLanguages": "Yatıı̀ t’àa łè",
     "searchSuggestions": "Search ghà nàowo łè",
+    "directMatches": "Direct match",
     "languages": "Yatıı̀ łè",
     "recommendedLanguage": "Yatıı̀ t’àa wèghà gı̨ı̨dè",
     "searchSuggestion": "{suggestion} search hòɂǫ",

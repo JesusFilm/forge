@@ -179,7 +179,8 @@
     "clearSearch": "Эҙләүҙе таҙартыу",
     "changeAudioLanguage": "Аудио телен үҙгәртеү",
     "home": "JesusFilm баш бите",
-    "closeSearch": "Эҙләүҙе ябыу"
+    "closeSearch": "Эҙләүҙе ябыу",
+    "submitSearch": "Эҙләү"
   },
   "SearchOverlay": {
     "dialogLabel": "Видеоларҙы эҙләү һәм ҡарау",
@@ -205,6 +206,7 @@
     "searchLanguageLabel": "Эҙләү теле",
     "allLanguages": "Бөтә телдәр",
     "searchSuggestions": "Эҙләү өсөн тәҡдимдәр",
+    "directMatches": "Direct match",
     "languages": "Телдәр",
     "recommendedLanguage": "Тәҡдим ителгән тел",
     "searchSuggestion": "{suggestion} эҙләү",

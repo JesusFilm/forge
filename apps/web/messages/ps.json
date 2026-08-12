@@ -179,7 +179,8 @@
     "clearSearch": "لټون پاک کړئ",
     "changeAudioLanguage": "د غږ ژبه بدله کړئ",
     "home": "د JesusFilm کورپاڼه",
-    "closeSearch": "لټون وتړئ"
+    "closeSearch": "لټون وتړئ",
+    "submitSearch": "ولټوئ"
   },
   "SearchOverlay": {
     "dialogLabel": "ویډیوګانې ولټوئ او وپلټئ",
@@ -205,6 +206,7 @@
     "searchLanguageLabel": "د لټون ژبه",
     "allLanguages": "ټولې ژبې",
     "searchSuggestions": "د لټون وړاندیزونه",
+    "directMatches": "Direct match",
     "languages": "ژبې",
     "recommendedLanguage": "وړاندیز شوې ژبه",
     "searchSuggestion": "{suggestion} ولټوئ",

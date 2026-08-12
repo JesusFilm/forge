@@ -179,7 +179,8 @@
     "clearSearch": "Кӏалъан бекьизе",
     "changeAudioLanguage": "Аудиоялъе миллат бади",
     "home": "JesusFilm хона",
-    "closeSearch": "Кӏалъан бекьизе"
+    "closeSearch": "Кӏалъан бекьизе",
+    "submitSearch": "Кӏалъан бие"
   },
   "SearchOverlay": {
     "dialogLabel": "Видео кӏалъе ва къадалъан бие",
@@ -205,6 +206,7 @@
     "searchLanguageLabel": "Кӏалъан тил",
     "allLanguages": "Тӏолал тилал",
     "searchSuggestions": "Кӏалъай суратал",
+    "directMatches": "Direct match",
     "languages": "Тилал",
     "recommendedLanguage": "Тавсия гьабураб тил",
     "searchSuggestion": "{suggestion} кӏалъе",

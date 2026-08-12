@@ -179,7 +179,8 @@
     "clearSearch": "Cancella ricerca",
     "changeAudioLanguage": "Cambia lingua audio",
     "home": "Home di JesusFilm",
-    "closeSearch": "Chiudi ricerca"
+    "closeSearch": "Chiudi ricerca",
+    "submitSearch": "Cerca"
   },
   "SearchOverlay": {
     "dialogLabel": "Cerca e sfoglia video",
@@ -205,6 +206,7 @@
     "searchLanguageLabel": "Lingua di ricerca",
     "allLanguages": "Tutte le lingue",
     "searchSuggestions": "Suggerimenti di ricerca",
+    "directMatches": "Direct match",
     "languages": "Lingue",
     "recommendedLanguage": "Lingua consigliata",
     "searchSuggestion": "Cerca {suggestion}",

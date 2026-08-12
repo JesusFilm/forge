@@ -179,7 +179,8 @@
     "clearSearch": "Корсьӧмӧс таскасны",
     "changeAudioLanguage": "Аудио кывсӧ вӧвны",
     "home": "JesusFilm оланнин",
-    "closeSearch": "Корсьӧмӧс вӧчны"
+    "closeSearch": "Корсьӧмӧс вӧчны",
+    "submitSearch": "Корсьны"
   },
   "SearchOverlay": {
     "dialogLabel": "Видеоӧс корсьны да лыддьыны",
@@ -205,6 +206,7 @@
     "searchLanguageLabel": "Корсьӧм кыв",
     "allLanguages": "Быдӧс кывъяс",
     "searchSuggestions": "Корсьӧм кывъяс",
+    "directMatches": "Direct match",
     "languages": "Кывъяс",
     "recommendedLanguage": "Кывалӧм",
     "searchSuggestion": "{suggestion} корсьны",

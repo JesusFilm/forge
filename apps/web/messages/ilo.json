@@ -179,7 +179,8 @@
     "clearSearch": "Buriasen ti panagsapul",
     "changeAudioLanguage": "Sukatan ti pagsasao ti audio",
     "home": "Balay ti JesusFilm",
-    "closeSearch": "Isarda ti panagsapul"
+    "closeSearch": "Isarda ti panagsapul",
+    "submitSearch": "Sapulen"
   },
   "SearchOverlay": {
     "dialogLabel": "Sapulen ken agsukisok kadagiti video",
@@ -205,6 +206,7 @@
     "searchLanguageLabel": "Pagsasao ti panagsapul",
     "allLanguages": "Amin a pagsasao",
     "searchSuggestions": "Dagiti suhestyon ti panagsapul",
+    "directMatches": "Direct match",
     "languages": "Dagiti pagsasao",
     "recommendedLanguage": "Naidalan a pagsasao",
     "searchSuggestion": "Sapulen ti {suggestion}",

@@ -179,7 +179,8 @@
     "clearSearch": "Mekoreor a search",
     "changeAudioLanguage": "Mesecher a audio language",
     "home": "Blil a JesusFilm",
-    "closeSearch": "Moes a search"
+    "closeSearch": "Moes a search",
+    "submitSearch": "Meses"
   },
   "SearchOverlay": {
     "dialogLabel": "Meses mar a browse a videos",
@@ -205,6 +206,7 @@
     "searchLanguageLabel": "Meses a language",
     "allLanguages": "Languages rokui",
     "searchSuggestions": "Omesik er a Search",
+    "directMatches": "Direct match",
     "languages": "Tekoi",
     "recommendedLanguage": "Language el omesik",
     "searchSuggestion": "Meses {suggestion}",

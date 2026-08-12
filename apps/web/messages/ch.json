@@ -179,7 +179,8 @@
     "clearSearch": "Na'guaha i search",
     "changeAudioLanguage": "Na'halom i lenguahe gi audio",
     "home": "Home gi JesusFilm",
-    "closeSearch": "Serrá search"
+    "closeSearch": "Serrá search",
+    "submitSearch": "Ekka"
   },
   "SearchOverlay": {
     "dialogLabel": "Ekka yan guiya video siha",
@@ -205,6 +206,7 @@
     "searchLanguageLabel": "Lenguahe para search",
     "allLanguages": "Todos na lenguahe",
     "searchSuggestions": "Mga suhestión gi search",
+    "directMatches": "Direct match",
     "languages": "Mga lenguahe",
     "recommendedLanguage": "Rekomenda na lenguahe",
     "searchSuggestion": "Ekka {suggestion}",

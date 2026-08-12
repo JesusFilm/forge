@@ -179,7 +179,8 @@
     "clearSearch": "Șterge căutarea",
     "changeAudioLanguage": "Schimbă limba audio",
     "home": "Pagina principală JesusFilm",
-    "closeSearch": "Închide căutarea"
+    "closeSearch": "Închide căutarea",
+    "submitSearch": "Caută"
   },
   "SearchOverlay": {
     "dialogLabel": "Caută și răsfoiește videoclipuri",
@@ -205,6 +206,7 @@
     "searchLanguageLabel": "Limba căutării",
     "allLanguages": "Toate limbile",
     "searchSuggestions": "Sugestii de căutare",
+    "directMatches": "Direct match",
     "languages": "Limbi",
     "recommendedLanguage": "Limbă recomandată",
     "searchSuggestion": "Caută {suggestion}",

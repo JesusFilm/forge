@@ -179,7 +179,8 @@
     "clearSearch": "अन्वेषणं पश्यतु",
     "changeAudioLanguage": "ध्वनि-भाषां परिवर्तयतु",
     "home": "JesusFilm गृहपृष्ठम्",
-    "closeSearch": "अन्वेषणं पिधाय"
+    "closeSearch": "अन्वेषणं पिधाय",
+    "submitSearch": "अन्वेषयतु"
   },
   "SearchOverlay": {
     "dialogLabel": "वीडियोनि अन्वेषयतु ब्राउज़् च कुर्वन्तु",
@@ -205,6 +206,7 @@
     "searchLanguageLabel": "अन्वेषण-भाषा",
     "allLanguages": "सर्वाः भाषाः",
     "searchSuggestions": "अन्वेषण-सूचनाः",
+    "directMatches": "Direct match",
     "languages": "भाषाः",
     "recommendedLanguage": "अनुशंसिता भाषा",
     "searchSuggestion": "{suggestion} अन्वेषयतु",

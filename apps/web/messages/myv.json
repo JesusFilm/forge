@@ -179,7 +179,8 @@
     "clearSearch": "Вешемась чистомс",
     "changeAudioLanguage": "Audio language-ть вастомс",
     "home": "JesusFilm прявт лопа",
-    "closeSearch": "Вешемась питнемс"
+    "closeSearch": "Вешемась питнемс",
+    "submitSearch": "Вешемс"
   },
   "SearchOverlay": {
     "dialogLabel": "Video-ть вешемс и вановтомс",
@@ -205,6 +206,7 @@
     "searchLanguageLabel": "Вешемань кель",
     "allLanguages": "Весе languages",
     "searchSuggestions": "Вешемань мельть яволявтомат",
+    "directMatches": "Direct match",
     "languages": "Кельть",
     "recommendedLanguage": "Кельсэ лемдевсь",
     "searchSuggestion": "{suggestion} вешемс",

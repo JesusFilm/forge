@@ -179,7 +179,8 @@
     "clearSearch": "Phumula nyakišišo",
     "changeAudioLanguage": "Fetola leleme la modumo",
     "home": "Letlakala la gae la JesusFilm",
-    "closeSearch": "Tswalela nyakišišo"
+    "closeSearch": "Tswalela nyakišišo",
+    "submitSearch": "Nyaka"
   },
   "SearchOverlay": {
     "dialogLabel": "Nyaka le go phetla dibidio",
@@ -205,6 +206,7 @@
     "searchLanguageLabel": "Leleme la nyakišišo",
     "allLanguages": "Maleme ka moka",
     "searchSuggestions": "Ditšhišinyo tša nyakišišo",
+    "directMatches": "Direct match",
     "languages": "Maleme",
     "recommendedLanguage": "Leleme leo le eletšwago",
     "searchSuggestion": "Nyaka {suggestion}",

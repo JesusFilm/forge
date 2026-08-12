@@ -179,7 +179,8 @@
     "clearSearch": "සෙවීම ඉවත් කරන්න",
     "changeAudioLanguage": "ශ්‍රව්‍ය භාෂාව වෙනස් කරන්න",
     "home": "JesusFilm මුල් පිටුව",
-    "closeSearch": "සෙවීම වසන්න"
+    "closeSearch": "සෙවීම වසන්න",
+    "submitSearch": "සෙවන්න"
   },
   "SearchOverlay": {
     "dialogLabel": "වීඩියෝ සෙවීම සහ බ්‍රවුස් කිරීම",
@@ -205,6 +206,7 @@
     "searchLanguageLabel": "සෙවීමේ භාෂාව",
     "allLanguages": "සියලු භාෂා",
     "searchSuggestions": "සෙවුම් යෝජනා",
+    "directMatches": "Direct match",
     "languages": "භාෂා",
     "recommendedLanguage": "නිර්දේශිත භාෂාව",
     "searchSuggestion": "{suggestion} සොයන්න",

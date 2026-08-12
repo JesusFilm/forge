@@ -179,7 +179,8 @@
     "clearSearch": "Издөөнү тазалоо",
     "changeAudioLanguage": "Аудио тилин өзгөртүү",
     "home": "JesusFilm баш бети",
-    "closeSearch": "Издөөнү жабуу"
+    "closeSearch": "Издөөнү жабуу",
+    "submitSearch": "Изде"
   },
   "SearchOverlay": {
     "dialogLabel": "Видеолорду издөө жана карап чыгуу",
@@ -205,6 +206,7 @@
     "searchLanguageLabel": "Издөө тили",
     "allLanguages": "Бардык тилдер",
     "searchSuggestions": "Издөө сунуштары",
+    "directMatches": "Direct match",
     "languages": "Тилдер",
     "recommendedLanguage": "Сунушталган тил",
     "searchSuggestion": "{suggestion} издөө",

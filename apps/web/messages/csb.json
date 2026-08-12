@@ -179,7 +179,8 @@
     "clearSearch": "Wëczëszczë szëkbã",
     "changeAudioLanguage": "Zmieni jãzëk audio",
     "home": "Strona domô JesusFilm",
-    "closeSearch": "Zatrzëmôj szëkbã"
+    "closeSearch": "Zatrzëmôj szëkbã",
+    "submitSearch": "Szëkôj"
   },
   "SearchOverlay": {
     "dialogLabel": "Szëkôj i przerëcëwôj wideo",
@@ -205,6 +206,7 @@
     "searchLanguageLabel": "Jãzëk szëkbë",
     "allLanguages": "Wszëtczé jãzëczi",
     "searchSuggestions": "Sugerowóné szëkbë",
+    "directMatches": "Direct match",
     "languages": "Jãzëczi",
     "recommendedLanguage": "Pòlecanë jãzëk",
     "searchSuggestion": "Szëkôj {suggestion}",

@@ -179,7 +179,8 @@
     "clearSearch": "Longola boluki",
     "changeAudioLanguage": "Bobongola monoko ya mongongo",
     "home": "Ndako ya JesusFilm",
-    "closeSearch": "Kanga boluki"
+    "closeSearch": "Kanga boluki",
+    "submitSearch": "Sosa"
   },
   "SearchOverlay": {
     "dialogLabel": "Sosa mpe tala ba video",
@@ -205,6 +206,7 @@
     "searchLanguageLabel": "Sosa monoko",
     "allLanguages": "Minoko nyonso",
     "searchSuggestions": "Bikundoli ya boluki",
+    "directMatches": "Direct match",
     "languages": "Minoko",
     "recommendedLanguage": "Monoko oyo epesami",
     "searchSuggestion": "Sosa {suggestion}",

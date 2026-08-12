@@ -179,7 +179,8 @@
     "clearSearch": "ସନ୍ଧାନ ସଫା କରନ୍ତୁ",
     "changeAudioLanguage": "ଅଡିଓ ଭାଷା ବଦଳାନ୍ତୁ",
     "home": "JesusFilm ହୋମ୍",
-    "closeSearch": "ସନ୍ଧାନ ବନ୍ଦ କରନ୍ତୁ"
+    "closeSearch": "ସନ୍ଧାନ ବନ୍ଦ କରନ୍ତୁ",
+    "submitSearch": "ସନ୍ଧାନ"
   },
   "SearchOverlay": {
     "dialogLabel": "ଭିଡିଓଗୁଡ଼ିକୁ ଖୋଜନ୍ତୁ ଓ ବ୍ରାଉଜ୍ କରନ୍ତୁ",
@@ -205,6 +206,7 @@
     "searchLanguageLabel": "ସନ୍ଧାନ ଭାଷା",
     "allLanguages": "ସମସ୍ତ ଭାଷା",
     "searchSuggestions": "ସନ୍ଧାନ ପ୍ରସ୍ତାବ",
+    "directMatches": "Direct match",
     "languages": "ଭାଷାଗୁଡ଼ିକ",
     "recommendedLanguage": "ସୁପାରିଶକୃତ ଭାଷା",
     "searchSuggestion": "{suggestion} ଖୋଜନ୍ତୁ",

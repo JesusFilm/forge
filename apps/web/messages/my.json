@@ -179,7 +179,8 @@
     "clearSearch": "ရှာဖွေမှု ရှင်းပါ",
     "changeAudioLanguage": "အသံဘာသာစကား ပြောင်းပါ",
     "home": "JesusFilm မူလစာမျက်နှာ",
-    "closeSearch": "ရှာဖွေမှု ပိတ်ပါ"
+    "closeSearch": "ရှာဖွေမှု ပိတ်ပါ",
+    "submitSearch": "ရှာဖွေပါ"
   },
   "SearchOverlay": {
     "dialogLabel": "ဗီဒီယိုများကို ရှာဖွေပြီး လေ့လာပါ",
@@ -205,6 +206,7 @@
     "searchLanguageLabel": "ရှာဖွေမှု ဘာသာစကား",
     "allLanguages": "ဘာသာစကားအားလုံး",
     "searchSuggestions": "ရှာဖွေမှု အကြံပြုချက်များ",
+    "directMatches": "Direct match",
     "languages": "ဘာသာစကားများ",
     "recommendedLanguage": "အကြံပြုထားသော ဘာသာစကား",
     "searchSuggestion": "{suggestion} ကို ရှာဖွေပါ",

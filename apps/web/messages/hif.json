@@ -179,7 +179,8 @@
     "clearSearch": "Search saaf kariye",
     "changeAudioLanguage": "Audio bhasha badliye",
     "home": "JesusFilm ka home page",
-    "closeSearch": "Search band kariye"
+    "closeSearch": "Search band kariye",
+    "submitSearch": "Search kariye"
   },
   "SearchOverlay": {
     "dialogLabel": "Video khojiye aur browse kariye",
@@ -205,6 +206,7 @@
     "searchLanguageLabel": "Search bhasha",
     "allLanguages": "Sab bhashaein",
     "searchSuggestions": "Search ke sujhaav",
+    "directMatches": "Direct match",
     "languages": "Bhashaen",
     "recommendedLanguage": "Suparishit bhasha",
     "searchSuggestion": "{suggestion} khojiye",

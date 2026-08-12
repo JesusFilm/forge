@@ -179,7 +179,8 @@
     "clearSearch": "Rausim painim",
     "changeAudioLanguage": "Senisim tokples bilong audio",
     "home": "JesusFilm hom",
-    "closeSearch": "Pasim painim"
+    "closeSearch": "Pasim painim",
+    "submitSearch": "Painim"
   },
   "SearchOverlay": {
     "dialogLabel": "Painim na brosim ol video",
@@ -205,6 +206,7 @@
     "searchLanguageLabel": "Tokples bilong painim",
     "allLanguages": "Olgeta tokples",
     "searchSuggestions": "Toksave bilong painim",
+    "directMatches": "Direct match",
     "languages": "Ol tokples",
     "recommendedLanguage": "Tokples i kamap strong",
     "searchSuggestion": "Painim {suggestion}",

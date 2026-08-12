@@ -179,7 +179,8 @@
     "clearSearch": "Исчисти пребарување",
     "changeAudioLanguage": "Промени јазик на аудио",
     "home": "Почетна страница на JesusFilm",
-    "closeSearch": "Затвори пребарување"
+    "closeSearch": "Затвори пребарување",
+    "submitSearch": "Пребарај"
   },
   "SearchOverlay": {
     "dialogLabel": "Пребарувај и прелистувај видеа",
@@ -205,6 +206,7 @@
     "searchLanguageLabel": "Јазик за пребарување",
     "allLanguages": "Сите јазици",
     "searchSuggestions": "Предлози за пребарување",
+    "directMatches": "Direct match",
     "languages": "Јазици",
     "recommendedLanguage": "Препорачан јазик",
     "searchSuggestion": "Пребарај {suggestion}",

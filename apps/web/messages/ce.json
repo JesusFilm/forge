@@ -179,7 +179,8 @@
     "clearSearch": "Ларх дӀахьа",
     "changeAudioLanguage": "Аудио мотт къобалдолла",
     "home": "JesusFilm коьрта",
-    "closeSearch": "Ларх дӀакхахьа"
+    "closeSearch": "Ларх дӀакхахьа",
+    "submitSearch": "Лаьц"
   },
   "SearchOverlay": {
     "dialogLabel": "Видео лар а хьажар а",
@@ -205,6 +206,7 @@
     "searchLanguageLabel": "Ларчаран мотт",
     "allLanguages": "ХӀора моттш",
     "searchSuggestions": "Ларчаран хьажарш",
+    "directMatches": "Direct match",
     "languages": "Моттш",
     "recommendedLanguage": "Дехар мотт",
     "searchSuggestion": "{suggestion} лар",

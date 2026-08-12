@@ -179,7 +179,8 @@
     "clearSearch": "Pa ìwádìí rẹ rẹ́",
     "changeAudioLanguage": "Yí èdè ohun padà",
     "home": "Ojú-ìbẹ̀rẹ̀ JesusFilm",
-    "closeSearch": "Pàdé ìwádìí"
+    "closeSearch": "Pàdé ìwádìí",
+    "submitSearch": "Wa"
   },
   "SearchOverlay": {
     "dialogLabel": "Wa kí o sì lọ kiri àwọn fídíò",
@@ -205,6 +206,7 @@
     "searchLanguageLabel": "Wa èdè",
     "allLanguages": "Gbogbo àwọn èdè",
     "searchSuggestions": "Àwọn àbá ìwádìí",
+    "directMatches": "Direct match",
     "languages": "Àwọn èdè",
     "recommendedLanguage": "Èdè tí a ṣàbáṣepọ̀",
     "searchSuggestion": "Wa {suggestion}",

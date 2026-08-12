@@ -3,15 +3,27 @@
 import {
   useCallback,
   useEffect,
+  useId,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
   type ChangeEvent,
+  type FocusEvent,
   type KeyboardEvent as ReactKeyboardEvent,
 } from "react"
-import { usePathname } from "next/navigation"
+import { createPortal } from "react-dom"
+import { usePathname, useRouter } from "next/navigation"
 import { useTranslations } from "next-intl"
-import { X } from "lucide-react"
+import {
+  BookOpen,
+  ChevronDown,
+  CornerDownLeft,
+  Folder,
+  Languages,
+  PlaySquare,
+  Search,
+} from "lucide-react"
 
 import {
   useFloatingSearch,
@@ -53,9 +65,121 @@ import {
 } from "@/lib/content-width"
 import type { CategorySearchTerm } from "@/lib/search-categories"
 import type { SearchLanguageOption } from "@/lib/search-language"
-import { parseWatchPath } from "@/lib/routes"
+import {
+  parseWatchPath,
+  tryAsContentSlug,
+  tryAsLocaleSlug,
+  watchVideoPath,
+} from "@/lib/routes"
+import { videoLabelMessageKey } from "@/lib/video-labels"
 import { WATCH_SEARCH_RUM_RESULT_CLICKED_ACTION } from "@/lib/watch-search-analytics-contract"
 import { buildWatchSearchResultClickRumContext } from "@/lib/watch-search-rum"
+import { normalizeWatchSearchQuery } from "@/lib/watch-search-query"
+import {
+  fetchWatchSearchSuggestions,
+  type WatchSearchSuggestion,
+} from "@/lib/watch-search-client"
+
+const SEARCH_SUGGESTIONS_DEBOUNCE_MS = 180
+const SEARCH_SUGGESTIONS_VIEWPORT_GAP = 8
+const SEARCH_SUGGESTIONS_VIEWPORT_PADDING = 16
+const SEARCH_SUGGESTION_DESCRIPTION_LENGTH = 96
+const SEARCH_SUGGESTION_DESCRIPTION_CONTEXT_BEFORE = 18
+const MEANINGFUL_SEARCH_CHARACTER = /[\p{L}\p{N}]/u
+
+type SuggestionListPosition = {
+  height: number
+  left: number
+  top: number
+  width: number
+}
+
+type SuggestionResult = {
+  requestKey: string
+  suggestions: WatchSearchSuggestion[]
+}
+
+type SuggestionDescriptionParts = {
+  before: string
+  match: string | null
+  after: string
+}
+
+type SuggestionSection = {
+  id: "query" | "titles" | "collections" | "scenes"
+  label: string
+  icon: typeof Search
+  rows: Array<{ suggestion: WatchSearchSuggestion; index: number }>
+}
+
+type SuggestionGroup = {
+  id: "suggestions" | "direct-matches"
+  label: string
+  sections: SuggestionSection[]
+}
+
+function suggestionContentSection(
+  label: WatchSearchSuggestion["label"],
+): Exclude<SuggestionSection["id"], "query"> {
+  if (label === "COLLECTION" || label === "SERIES") return "collections"
+  if (label === "SEGMENT" || label === "BEHIND_THE_SCENES") return "scenes"
+  return "titles"
+}
+
+function escapedRegularExpression(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+}
+
+function findSuggestionMatch(
+  value: string,
+  query: string,
+): RegExpExecArray | null {
+  const normalizedQuery = normalizeWatchSearchQuery(query)
+  if (!normalizedQuery) return null
+  return new RegExp(escapedRegularExpression(normalizedQuery), "iu").exec(value)
+}
+
+function suggestionDescriptionParts(
+  description: string,
+  query: string,
+): SuggestionDescriptionParts {
+  const initialMatch = findSuggestionMatch(description, query)
+  let start = 0
+  let end = Math.min(description.length, SEARCH_SUGGESTION_DESCRIPTION_LENGTH)
+  if (initialMatch) {
+    start = Math.max(
+      0,
+      initialMatch.index - SEARCH_SUGGESTION_DESCRIPTION_CONTEXT_BEFORE,
+    )
+    end = Math.min(
+      description.length,
+      Math.max(
+        initialMatch.index + initialMatch[0].length + 40,
+        start + SEARCH_SUGGESTION_DESCRIPTION_LENGTH,
+      ),
+    )
+  }
+  const excerpt = `${start > 0 ? "…" : ""}${description
+    .slice(start, end)
+    .trim()}${end < description.length ? "…" : ""}`
+  const match = findSuggestionMatch(excerpt, query)
+  if (!match) return { before: excerpt, match: null, after: "" }
+  return {
+    before: excerpt.slice(0, match.index),
+    match: match[0],
+    after: excerpt.slice(match.index + match[0].length),
+  }
+}
+
+function hasEnoughMeaningfulSearchCharacters(value: string): boolean {
+  let count = 0
+  for (const character of value) {
+    if (MEANINGFUL_SEARCH_CHARACTER.test(character) && ++count >= 2) {
+      return true
+    }
+  }
+  return false
+}
 
 const CATEGORY_TITLE_KEYS: Record<
   CategorySearchTerm,
@@ -74,11 +198,12 @@ const CATEGORY_TITLE_KEYS: Record<
   christmas: "categoryChristmas",
 }
 
-const SEARCH_LANGUAGE_METADATA_FALLBACK_MS = 1200
-
 export function SearchOverlay() {
   const t = useTranslations("SearchOverlay")
+  const floatingSearchT = useTranslations("FloatingSearch")
+  const videoLabels = useTranslations("VideoLabels")
   const pathname = usePathname()
+  const router = useRouter()
   const parsedPath = parseWatchPath(pathname)
   const routeSurface = useWatchRouteSurface()
   const isWatchHome =
@@ -92,6 +217,7 @@ export function SearchOverlay() {
     open,
     closing,
     query,
+    submittedQuery,
     displayResults,
     exiting,
     resultsKey,
@@ -102,10 +228,10 @@ export function SearchOverlay() {
     error,
     searched,
     languageOptions,
-    languageOptionsLoaded,
     languageOptionsLoading,
     languageOptionsError,
     selectedSearchLanguageOption,
+    defaultSearchLanguageOption,
     searchResultAnalytics,
     headerLanguageSwitcherVisible,
     headerLanguageCode,
@@ -115,23 +241,52 @@ export function SearchOverlay() {
     search,
     loadMore,
     selectSearchLanguage,
-    resetSearchLanguageToDefault,
   } = useFloatingSearch()
 
   const overlayRef = useRef<HTMLDivElement>(null)
   const [closePortalContainer, setClosePortalContainer] =
     useState<HTMLDivElement | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const pendingSearchAfterLanguageLoadRef = useRef<string | null>(null)
+  const fieldShellRef = useRef<HTMLDivElement>(null)
+  const suggestionPanelRef = useRef<HTMLDivElement>(null)
+  const suggestionListRef = useRef<HTMLDivElement>(null)
+  const suggestionListId = `${useId()}-search-suggestions`
   const recordedResultClickKeysRef = useRef<Set<string>>(new Set())
   const recordedResultsViewedKeysRef = useRef<Map<string, Set<string>>>(
     new Map(),
   )
   const [languageAutocompleteOpen, setLanguageAutocompleteOpen] =
     useState(false)
-  const [languageMetadataFallbackReady, setLanguageMetadataFallbackReady] =
-    useState(false)
+  const [suggestionResult, setSuggestionResult] =
+    useState<SuggestionResult | null>(null)
+  const [suggestionsLoading, setSuggestionsLoading] = useState(false)
+  const [suggestionPanelVisible, setSuggestionPanelVisible] = useState(true)
+  const [activeSuggestionIndex, setActiveSuggestionIndex] = useState<
+    number | null
+  >(null)
+  const [isComposing, setIsComposing] = useState(false)
+  const [suppressedSuggestionValue, setSuppressedSuggestionValue] = useState<
+    string | null
+  >(null)
+  const [suggestionListPosition, setSuggestionListPosition] =
+    useState<SuggestionListPosition | null>(null)
+  const suggestionGenerationRef = useRef(0)
+  const activeSubmissionKeyRef = useRef<string | null>(null)
+  const suggestionTouchGestureRef = useRef<{
+    pointerId: number
+    startX: number
+    startY: number
+    moved: boolean
+  } | null>(null)
+  const clearSuggestionRows = useCallback(() => {
+    setSuggestionResult((current) => (current == null ? current : null))
+  }, [])
+  const invalidateSuggestionRequest = useCallback(() => {
+    suggestionGenerationRef.current += 1
+    clearSuggestionRows()
+    setSuggestionsLoading(false)
+    setActiveSuggestionIndex(null)
+  }, [clearSuggestionRows])
 
   const setOverlayElement = useCallback((node: HTMLDivElement | null) => {
     overlayRef.current = node
@@ -140,15 +295,287 @@ export function SearchOverlay() {
 
   useFloatingSearchInputAutofocus(open, inputRef)
 
+  const suggestionLanguageSlug =
+    selectedSearchLanguageOption?.publicSlug ??
+    defaultSearchLanguageOption?.publicSlug ??
+    null
+  const normalizedSuggestionQuery = normalizeWatchSearchQuery(query)
+  const normalizedSubmittedQuery =
+    submittedQuery == null ? null : normalizeWatchSearchQuery(submittedQuery)
+  const submittedSearchLanguageMatchesSelection =
+    searchResultAnalytics != null &&
+    (searchResultAnalytics.searchLanguageSlug === suggestionLanguageSlug ||
+      (searchResultAnalytics.searchLanguageSlug == null &&
+        selectedSearchLanguageOption == null))
+  const searchIntentMatchesCompletedResults =
+    normalizedSuggestionQuery.length > 0 &&
+    normalizedSuggestionQuery === normalizedSubmittedQuery &&
+    submittedSearchLanguageMatchesSelection
+  const hasUnsubmittedSearchIntent =
+    normalizedSuggestionQuery.length > 0 && !searchIntentMatchesCompletedResults
+  const suggestionRequestKey =
+    open &&
+    !closing &&
+    !isComposing &&
+    suggestionLanguageSlug != null &&
+    hasEnoughMeaningfulSearchCharacters(normalizedSuggestionQuery) &&
+    normalizedSuggestionQuery !== normalizedSubmittedQuery &&
+    query !== suppressedSuggestionValue
+      ? `${suggestionLanguageSlug}\0${normalizedSuggestionQuery}`
+      : null
+  const suggestions = useMemo(
+    () =>
+      suggestionResult?.requestKey === suggestionRequestKey
+        ? suggestionResult.suggestions
+        : [],
+    [suggestionRequestKey, suggestionResult],
+  )
+  const visibleSuggestionsLoading =
+    suggestionRequestKey != null && suggestionsLoading
+  const searchLanguageControlVisible =
+    languageOptionsLoading ||
+    languageOptions.length > 0 ||
+    languageOptionsError != null
+  const suggestionPanelActive =
+    suggestionRequestKey != null ||
+    visibleSuggestionsLoading ||
+    suggestions.length > 0
+  const suggestionPanelHasContent =
+    (suggestionPanelActive || languageAutocompleteOpen) &&
+    (searchLanguageControlVisible ||
+      visibleSuggestionsLoading ||
+      suggestions.length > 0)
+  const languagePickerOwnedByContextRow =
+    languageAutocompleteOpen && !suggestionPanelActive
+  const suggestionSections = useMemo<SuggestionSection[]>(() => {
+    const indexed = suggestions.map((suggestion, index) => ({
+      suggestion,
+      index,
+    }))
+    const sections: SuggestionSection[] = [
+      {
+        id: "query",
+        label: t("searchSuggestions"),
+        icon: Search,
+        rows: indexed.filter(({ suggestion }) => suggestion.kind === "query"),
+      },
+      {
+        id: "titles",
+        label: videoLabels("video"),
+        icon: PlaySquare,
+        rows: indexed.filter(
+          ({ suggestion }) =>
+            suggestion.kind === "content" &&
+            suggestionContentSection(suggestion.label) === "titles",
+        ),
+      },
+      {
+        id: "collections",
+        label: videoLabels("collection"),
+        icon: Folder,
+        rows: indexed.filter(
+          ({ suggestion }) =>
+            suggestion.kind === "content" &&
+            suggestionContentSection(suggestion.label) === "collections",
+        ),
+      },
+      {
+        id: "scenes",
+        label: videoLabels("segment"),
+        icon: BookOpen,
+        rows: indexed.filter(
+          ({ suggestion }) =>
+            suggestion.kind === "content" &&
+            suggestionContentSection(suggestion.label) === "scenes",
+        ),
+      },
+    ]
+    return sections.filter((section) => section.rows.length > 0)
+  }, [suggestions, t, videoLabels])
+  const suggestionGroups = useMemo<SuggestionGroup[]>(() => {
+    const querySections = suggestionSections.filter(
+      (section) => section.id === "query",
+    )
+    const directMatchSections = suggestionSections.filter(
+      (section) => section.id !== "query",
+    )
+
+    return [
+      {
+        id: "suggestions",
+        label: t("searchSuggestions"),
+        sections: querySections,
+      },
+      {
+        id: "direct-matches",
+        label: t("directMatches"),
+        sections: directMatchSections,
+      },
+    ].filter((group) => group.sections.length > 0) as SuggestionGroup[]
+  }, [suggestionSections, t])
+  const suggestionNavigationOrder = useMemo(
+    () =>
+      suggestionSections.flatMap((section) =>
+        section.rows.map(({ index }) => index),
+      ),
+    [suggestionSections],
+  )
+
+  useEffect(() => {
+    activeSubmissionKeyRef.current = null
+  }, [query, suggestionLanguageSlug])
+
+  useLayoutEffect(() => {
+    suggestionGenerationRef.current += 1
+  }, [suggestionRequestKey])
+
+  useEffect(() => {
+    if (suggestionRequestKey == null || suggestionLanguageSlug == null) return
+
+    const controller = new AbortController()
+    let cancelled = false
+    const generation = suggestionGenerationRef.current
+    const timer = window.setTimeout(() => {
+      if (cancelled || generation !== suggestionGenerationRef.current) return
+      setSuggestionsLoading(true)
+      void fetchWatchSearchSuggestions({
+        query: normalizedSuggestionQuery,
+        languageSlug: suggestionLanguageSlug,
+        signal: controller.signal,
+      })
+        .then((nextSuggestions) => {
+          if (cancelled || generation !== suggestionGenerationRef.current)
+            return
+          setSuggestionResult({
+            requestKey: suggestionRequestKey,
+            suggestions: nextSuggestions,
+          })
+        })
+        .catch(() => {
+          if (cancelled || generation !== suggestionGenerationRef.current)
+            return
+          clearSuggestionRows()
+        })
+        .finally(() => {
+          if (cancelled || generation !== suggestionGenerationRef.current)
+            return
+          setSuggestionsLoading(false)
+        })
+    }, SEARCH_SUGGESTIONS_DEBOUNCE_MS)
+
+    return () => {
+      cancelled = true
+      window.clearTimeout(timer)
+      controller.abort()
+    }
+  }, [
+    clearSuggestionRows,
+    normalizedSuggestionQuery,
+    suggestionLanguageSlug,
+    suggestionRequestKey,
+  ])
+
+  useLayoutEffect(() => {
+    if (
+      !open ||
+      !suggestionPanelVisible ||
+      (!suggestionPanelHasContent && !searchLanguageControlVisible)
+    )
+      return
+
+    const updatePosition = () => {
+      const fieldShell = fieldShellRef.current
+      if (!fieldShell) return
+      const rect = fieldShell.getBoundingClientRect()
+      const visualViewport = window.visualViewport
+      const viewportLeft = visualViewport?.offsetLeft ?? 0
+      const viewportTop = visualViewport?.offsetTop ?? 0
+      const viewportWidth = visualViewport?.width ?? window.innerWidth
+      const viewportHeight = visualViewport?.height ?? window.innerHeight
+      const viewportRight = viewportLeft + viewportWidth
+      const viewportBottom = viewportTop + viewportHeight
+      const top = rect.bottom + SEARCH_SUGGESTIONS_VIEWPORT_GAP
+      const height = Math.max(
+        0,
+        viewportBottom - top - SEARCH_SUGGESTIONS_VIEWPORT_PADDING,
+      )
+      const width = Math.max(
+        0,
+        Math.min(
+          rect.width,
+          viewportWidth - SEARCH_SUGGESTIONS_VIEWPORT_PADDING * 2,
+        ),
+      )
+      const left = Math.min(
+        Math.max(rect.left, viewportLeft + SEARCH_SUGGESTIONS_VIEWPORT_PADDING),
+        viewportRight - width - SEARCH_SUGGESTIONS_VIEWPORT_PADDING,
+      )
+
+      setSuggestionListPosition((current) => {
+        if (
+          current?.left === left &&
+          current.top === top &&
+          current.width === width &&
+          current.height === height
+        ) {
+          return current
+        }
+        return { height, left, top, width }
+      })
+    }
+
+    updatePosition()
+    let animationFrame: number | null = null
+    const schedulePositionUpdate = () => {
+      if (animationFrame != null) return
+      animationFrame = window.requestAnimationFrame(() => {
+        animationFrame = null
+        updatePosition()
+      })
+    }
+    const visualViewport = window.visualViewport
+    window.addEventListener("resize", schedulePositionUpdate, { passive: true })
+    visualViewport?.addEventListener("resize", schedulePositionUpdate, {
+      passive: true,
+    })
+    visualViewport?.addEventListener("scroll", schedulePositionUpdate, {
+      passive: true,
+    })
+    return () => {
+      if (animationFrame != null) window.cancelAnimationFrame(animationFrame)
+      window.removeEventListener("resize", schedulePositionUpdate)
+      visualViewport?.removeEventListener("resize", schedulePositionUpdate)
+      visualViewport?.removeEventListener("scroll", schedulePositionUpdate)
+    }
+  }, [
+    open,
+    searchLanguageControlVisible,
+    suggestionPanelHasContent,
+    suggestionPanelVisible,
+  ])
+
+  useEffect(() => {
+    if (activeSuggestionIndex == null) return
+    const activeOption = suggestionListRef.current?.querySelector<HTMLElement>(
+      `[data-suggestion-index="${activeSuggestionIndex}"]`,
+    )
+    if (typeof activeOption?.scrollIntoView === "function") {
+      activeOption.scrollIntoView({ block: "nearest" })
+    }
+  }, [activeSuggestionIndex])
+
   // Escape closes the modal through the provider-owned reset boundary.
   useEffect(() => {
     if (!open) return
     function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape") setOpen(false)
+      if (e.key === "Escape") {
+        invalidateSuggestionRequest()
+        setOpen(false)
+      }
     }
     document.addEventListener("keydown", handleKeyDown)
     return () => document.removeEventListener("keydown", handleKeyDown)
-  }, [open, setOpen])
+  }, [invalidateSuggestionRequest, open, setOpen])
 
   // Body scroll lock — prevents the page behind from scrolling while modal open.
   useEffect(() => {
@@ -204,27 +631,6 @@ export function SearchOverlay() {
     return () => document.removeEventListener("keydown", handleTab)
   }, [open])
 
-  // Cleanup debounce timer on unmount.
-  useEffect(() => {
-    return () => {
-      if (debounceRef.current) clearTimeout(debounceRef.current)
-    }
-  }, [])
-
-  const languageOptionsReadyForSearch =
-    languageOptionsLoaded || languageMetadataFallbackReady
-
-  useEffect(() => {
-    if (!open || languageOptionsLoaded) return
-    const fallbackTimer = setTimeout(() => {
-      setLanguageMetadataFallbackReady(true)
-    }, SEARCH_LANGUAGE_METADATA_FALLBACK_MS)
-    return () => {
-      clearTimeout(fallbackTimer)
-      setLanguageMetadataFallbackReady(false)
-    }
-  }, [languageOptionsLoaded, open])
-
   const visibleResultIds = useMemo(
     () => displayResults.map((row) => row.id),
     [displayResults],
@@ -251,110 +657,233 @@ export function SearchOverlay() {
     })
   }, [searchResultAnalytics, visibleResultIds])
 
-  useEffect(() => {
-    if (!languageOptionsReadyForSearch) return
-    const pendingQuery = pendingSearchAfterLanguageLoadRef.current
-    if (pendingQuery == null || pendingQuery !== query) return
-    pendingSearchAfterLanguageLoadRef.current = null
-    if (debounceRef.current) clearTimeout(debounceRef.current)
-    if (pendingQuery.trim().length === 0) return
-    debounceRef.current = setTimeout(() => {
-      void search(pendingQuery)
-    }, 300)
-  }, [languageOptionsReadyForSearch, query, search])
-
   const handleInputChange = useCallback(
     (e: ChangeEvent<HTMLInputElement>) => {
-      const newValue = e.target.value
-      setQuery(newValue)
-      if (debounceRef.current) clearTimeout(debounceRef.current)
-      if (!languageOptionsReadyForSearch) {
-        pendingSearchAfterLanguageLoadRef.current = newValue
+      setSuggestionPanelVisible(true)
+      setSuppressedSuggestionValue(null)
+      invalidateSuggestionRequest()
+      setQuery(e.target.value)
+    },
+    [invalidateSuggestionRequest, setQuery],
+  )
+
+  const dismissSuggestions = useCallback(() => {
+    setSuppressedSuggestionValue(query)
+    invalidateSuggestionRequest()
+  }, [invalidateSuggestionRequest, query])
+
+  const hideSuggestionPanel = useCallback(() => {
+    setSuggestionPanelVisible(false)
+    setActiveSuggestionIndex(null)
+  }, [])
+
+  const handleInputBlur = useCallback(
+    (event: FocusEvent<HTMLInputElement>) => {
+      if (suggestionTouchGestureRef.current != null) return
+      const nextTarget = event.relatedTarget
+      if (
+        nextTarget instanceof Node &&
+        (suggestionPanelRef.current?.contains(nextTarget) ||
+          (nextTarget instanceof Element &&
+            nextTarget.closest('[data-testid="language-combobox-popover"]') !=
+              null))
+      ) {
         return
       }
-      pendingSearchAfterLanguageLoadRef.current = null
-      debounceRef.current = setTimeout(() => {
-        void search(newValue)
-      }, 300)
+      hideSuggestionPanel()
     },
-    [languageOptionsReadyForSearch, setQuery, search],
+    [hideSuggestionPanel],
+  )
+
+  const handleInputFocus = useCallback(() => {
+    setSuggestionPanelVisible(true)
+  }, [])
+
+  const handleSearchSubmit = useCallback(
+    (submittedQuery: string) => {
+      const normalizedQuery = normalizeWatchSearchQuery(submittedQuery)
+      if (!normalizedQuery) return
+      const submissionKey = `${suggestionLanguageSlug ?? ""}\0${normalizedQuery}`
+      if (activeSubmissionKeyRef.current === submissionKey) return
+      activeSubmissionKeyRef.current = submissionKey
+      setSuppressedSuggestionValue(submittedQuery)
+      invalidateSuggestionRequest()
+      void search(submittedQuery).finally(() => {
+        if (activeSubmissionKeyRef.current === submissionKey) {
+          activeSubmissionKeyRef.current = null
+        }
+      })
+    },
+    [invalidateSuggestionRequest, search, suggestionLanguageSlug],
+  )
+
+  const selectSuggestion = useCallback(
+    (suggestion: string) => {
+      setQuery(suggestion)
+      setSuppressedSuggestionValue(suggestion)
+      invalidateSuggestionRequest()
+      inputRef.current?.focus({ preventScroll: true })
+    },
+    [invalidateSuggestionRequest, setQuery],
+  )
+
+  const activateSuggestion = useCallback(
+    (suggestion: WatchSearchSuggestion) => {
+      if (suggestion.kind === "query") {
+        selectSuggestion(suggestion.title)
+        handleSearchSubmit(suggestion.title)
+        return
+      }
+      const slug = suggestion.slug ? tryAsContentSlug(suggestion.slug) : null
+      const language = tryAsLocaleSlug(suggestionLanguageSlug ?? "english")
+      if (!slug || !language) {
+        selectSuggestion(suggestion.title)
+        return
+      }
+      invalidateSuggestionRequest()
+      router.push(watchVideoPath(slug, language))
+      setOpen(false)
+    },
+    [
+      handleSearchSubmit,
+      invalidateSuggestionRequest,
+      router,
+      selectSuggestion,
+      setOpen,
+      suggestionLanguageSlug,
+    ],
   )
 
   const handleInputKeyDown = useCallback(
-    (e: ReactKeyboardEvent<HTMLInputElement>) => {
-      if (e.key !== "Enter") return
-      e.preventDefault()
-      if (debounceRef.current) clearTimeout(debounceRef.current)
-      if (!languageOptionsReadyForSearch) {
-        pendingSearchAfterLanguageLoadRef.current = query
+    (event: ReactKeyboardEvent<HTMLInputElement>) => {
+      const composing = isComposing || event.nativeEvent.isComposing
+      if (event.key === "Enter" && composing) {
+        event.preventDefault()
+        event.stopPropagation()
         return
       }
-      pendingSearchAfterLanguageLoadRef.current = null
-      void search(query)
+
+      if (
+        event.key === "ArrowDown" &&
+        !languageAutocompleteOpen &&
+        suggestionPanelVisible &&
+        suggestionNavigationOrder.length > 0
+      ) {
+        event.preventDefault()
+        setActiveSuggestionIndex((current) => {
+          const currentPosition =
+            current == null ? -1 : suggestionNavigationOrder.indexOf(current)
+          const nextPosition =
+            currentPosition < 0
+              ? 0
+              : (currentPosition + 1) % suggestionNavigationOrder.length
+          return suggestionNavigationOrder[nextPosition] ?? null
+        })
+        return
+      }
+
+      if (
+        event.key === "ArrowUp" &&
+        !languageAutocompleteOpen &&
+        suggestionPanelVisible &&
+        suggestionNavigationOrder.length > 0
+      ) {
+        event.preventDefault()
+        setActiveSuggestionIndex((current) => {
+          const currentPosition =
+            current == null ? -1 : suggestionNavigationOrder.indexOf(current)
+          const nextPosition =
+            currentPosition < 0
+              ? suggestionNavigationOrder.length - 1
+              : (currentPosition - 1 + suggestionNavigationOrder.length) %
+                suggestionNavigationOrder.length
+          return suggestionNavigationOrder[nextPosition] ?? null
+        })
+        return
+      }
+
+      if (
+        event.key === "Enter" &&
+        !languageAutocompleteOpen &&
+        suggestionPanelVisible &&
+        activeSuggestionIndex != null &&
+        suggestions[activeSuggestionIndex]
+      ) {
+        event.preventDefault()
+        event.stopPropagation()
+        activateSuggestion(suggestions[activeSuggestionIndex])
+        return
+      }
+
+      if (
+        event.key === "Escape" &&
+        suggestionPanelVisible &&
+        (suggestions.length > 0 || visibleSuggestionsLoading)
+      ) {
+        event.preventDefault()
+        event.stopPropagation()
+        hideSuggestionPanel()
+        return
+      }
+
+      if (
+        event.key === "Tab" &&
+        suggestionPanelVisible &&
+        (suggestions.length > 0 || visibleSuggestionsLoading)
+      ) {
+        hideSuggestionPanel()
+      }
     },
-    [languageOptionsReadyForSearch, query, search],
+    [
+      activeSuggestionIndex,
+      activateSuggestion,
+      hideSuggestionPanel,
+      isComposing,
+      languageAutocompleteOpen,
+      suggestionPanelVisible,
+      suggestionNavigationOrder,
+      suggestions,
+      visibleSuggestionsLoading,
+    ],
   )
 
   const handleCategoryClick = useCallback(
     (searchTerm: string) => {
-      if (debounceRef.current) clearTimeout(debounceRef.current)
-      pendingSearchAfterLanguageLoadRef.current = null
+      dismissSuggestions()
       void search(searchTerm)
     },
-    [search],
+    [dismissSuggestions, search],
   )
 
   const handleSemanticLanguageClick = useCallback(
     (language: SearchLanguageOption, regionName?: string) => {
       if (!language.publicSlug) return
-      if (debounceRef.current) clearTimeout(debounceRef.current)
-      pendingSearchAfterLanguageLoadRef.current = null
+      setSuppressedSuggestionValue(null)
+      invalidateSuggestionRequest()
       setLanguageAutocompleteOpen(false)
       selectSearchLanguage(language, regionName)
-      if (query.trim().length > 0) {
-        void search(query, {
-          languageEnglishNames: [language.englishName],
-          languageSlug: language.publicSlug,
-        })
-      }
     },
-    [query, search, selectSearchLanguage],
+    [invalidateSuggestionRequest, selectSearchLanguage],
   )
-
-  const handleResetSearchLanguage = useCallback(() => {
-    if (debounceRef.current) clearTimeout(debounceRef.current)
-    pendingSearchAfterLanguageLoadRef.current = null
-    setLanguageAutocompleteOpen(false)
-    resetSearchLanguageToDefault()
-  }, [resetSearchLanguageToDefault])
 
   const closeAfterResultNavigation = useCallback(() => {
     window.setTimeout(() => setOpen(false), 0)
   }, [setOpen])
 
   const handleClearInput = useCallback(() => {
-    if (debounceRef.current) clearTimeout(debounceRef.current)
-    pendingSearchAfterLanguageLoadRef.current = null
+    activeSubmissionKeyRef.current = null
+    dismissSuggestions()
     void search("")
     inputRef.current?.focus()
-  }, [search])
+  }, [dismissSuggestions, search])
 
   const showCategoryGrid = query.trim().length === 0 && !loading && !searched
-  const searchLanguageControlVisible =
-    languageOptionsLoading ||
-    languageOptions.length > 0 ||
-    languageOptionsError != null
-  const searchOverlayScrollTopClass = searchLanguageControlVisible
-    ? "top-60 md:top-48"
-    : "top-44 md:top-32"
-  const semanticLanguageOverrideActive =
-    selectedSearchLanguageOption?.publicSlug != null
-  const semanticLanguageTriggerClassName = [
-    "!h-[52px] !min-h-[52px] !rounded-[35px] !border-0 !bg-white !text-stone-950 shadow-xl hover:!bg-stone-50 focus-visible:ring-stone-950/20",
-    semanticLanguageOverrideActive ? "pr-14" : null,
-  ]
-    .filter(Boolean)
-    .join(" ")
+  const searchOverlayScrollTopClass =
+    searchLanguageControlVisible && !suggestionPanelActive
+      ? "top-56 md:top-44"
+      : "top-44 md:top-32"
+  const semanticLanguageTriggerClassName =
+    "!h-auto !min-h-8 !w-auto !justify-start !rounded-lg !border !border-white/20 !bg-transparent !px-1.5 !py-0.5 !text-sm !font-semibold !text-stone-100 !shadow-none hover:!border-white/40 hover:!bg-transparent focus-visible:!ring-white/45"
   const semanticLanguageComboboxOptions = useMemo<LanguageComboboxOption[]>(
     () =>
       languageOptions.flatMap((language) =>
@@ -379,7 +908,41 @@ export function SearchOverlay() {
     return bySlug
   }, [languageOptions])
   const semanticLanguageComboboxValue =
-    selectedSearchLanguageOption?.publicSlug ?? ""
+    selectedSearchLanguageOption?.publicSlug ??
+    defaultSearchLanguageOption?.publicSlug ??
+    ""
+  const searchInLabel = t("searchInLanguage", { language: "" }).trim()
+  const searchingInLabel = `${t("searching").replace(/[.…]+$/u, "")} ${t(
+    "inLanguage",
+    { language: "" },
+  ).trim()}`
+  const languageContextLabel = searchIntentMatchesCompletedResults
+    ? searchingInLabel
+    : searchInLabel
+  const semanticLanguageName =
+    selectedSearchLanguageOption?.englishName ??
+    defaultSearchLanguageOption?.englishName ??
+    t("searchLanguageLabel")
+  const semanticLanguageTriggerContent = (
+    <span
+      data-testid="searching-in-language-label"
+      className="flex min-w-0 items-center gap-1"
+    >
+      <Languages
+        aria-hidden
+        data-testid="search-language-icon"
+        className="h-3.5 w-3.5 shrink-0 text-stone-400"
+      />
+      <span className="truncate">{semanticLanguageName}</span>
+      <ChevronDown
+        aria-hidden
+        data-testid="search-language-chevron"
+        className={`h-3.5 w-3.5 shrink-0 text-stone-500 transition-transform duration-150 ${
+          languageAutocompleteOpen ? "rotate-180" : ""
+        }`}
+      />
+    </span>
+  )
 
   const handleSemanticLanguageSlugChange = useCallback(
     (slug: string) => {
@@ -389,6 +952,66 @@ export function SearchOverlay() {
     },
     [handleSemanticLanguageClick, semanticLanguageOptionBySlug],
   )
+  const renderSemanticLanguageCombobox = (
+    takeoverRect?: SuggestionListPosition,
+  ) => (
+    <span className="pointer-events-auto relative mx-1 inline-flex shrink-0">
+      <LanguageCombobox
+        options={semanticLanguageComboboxOptions}
+        value={semanticLanguageComboboxValue}
+        onChange={handleSemanticLanguageSlugChange}
+        compact
+        open={languageAutocompleteOpen}
+        onOpenChange={setLanguageAutocompleteOpen}
+        disabled={languageOptionsLoading}
+        placeholder={t("searchLanguageLabel")}
+        popoverPortalContainer={closePortalContainer}
+        triggerClassName={semanticLanguageTriggerClassName}
+        triggerContent={semanticLanguageTriggerContent}
+        takeoverRect={takeoverRect}
+        takeoverDismissLabel={floatingSearchT("closeSearch")}
+      />
+    </span>
+  )
+  const renderLanguageContextContent = (
+    takeoverRect?: SuggestionListPosition,
+  ) =>
+    hasUnsubmittedSearchIntent ? (
+      <>
+        <span className="min-w-0 flex-1 truncate">
+          {(t.raw("searchSuggestionWithLanguage") as string)
+            .split(/(\{language\}|\{suggestion\})/u)
+            .map((part, index) => {
+              if (part === "{language}") {
+                return (
+                  <span key={`language-${index}`}>
+                    {renderSemanticLanguageCombobox(takeoverRect)}
+                  </span>
+                )
+              }
+              if (part === "{suggestion}") {
+                return (
+                  <strong
+                    key={`suggestion-${index}`}
+                    className="font-semibold text-white"
+                  >
+                    <bdi dir="auto">{query.trim()}</bdi>
+                  </strong>
+                )
+              }
+              return <span key={`copy-${index}`}>{part}</span>
+            })}
+        </span>
+        <CornerDownLeft aria-hidden className="h-4 w-4 shrink-0" />
+      </>
+    ) : (
+      <>
+        <span className="shrink-0 text-[13px] sm:text-sm">
+          {languageContextLabel}
+        </span>
+        {renderSemanticLanguageCombobox(takeoverRect)}
+      </>
+    )
   const headerTopClass = headerPinned
     ? FLOATING_HEADER_PINNED_TOP_CLASS
     : FLOATING_HEADER_TOP_CLASS
@@ -420,6 +1043,7 @@ export function SearchOverlay() {
           className={`${logoSlotClass} ${FLOATING_MODAL_HEADER_LOGO_POSITION_CLASS}`}
         />
         <div
+          ref={fieldShellRef}
           data-testid="search-overlay-field-shell"
           onClick={(e) => e.stopPropagation()}
           className={`pointer-events-auto ${FLOATING_HEADER_FIELD_WIDTH_CLASS} ${FLOATING_MODAL_HEADER_FIELD_POSITION_CLASS} ${
@@ -430,38 +1054,62 @@ export function SearchOverlay() {
             ref={inputRef}
             value={query}
             onChange={handleInputChange}
-            onKeyDown={handleInputKeyDown}
+            onSubmit={handleSearchSubmit}
             onClear={handleClearInput}
+            onKeyDown={handleInputKeyDown}
+            onBlur={handleInputBlur}
+            onFocus={handleInputFocus}
+            onCompositionStart={() => {
+              setIsComposing(true)
+              invalidateSuggestionRequest()
+            }}
+            onCompositionEnd={() => setIsComposing(false)}
             placeholder={t("placeholder")}
             aria-label={t("inputLabel")}
+            role="combobox"
+            aria-autocomplete="list"
+            aria-expanded={
+              !languageAutocompleteOpen &&
+              suggestionPanelVisible &&
+              suggestions.length > 0
+            }
+            aria-controls={
+              languageAutocompleteOpen ? undefined : suggestionListId
+            }
+            aria-busy={visibleSuggestionsLoading}
+            aria-activedescendant={
+              activeSuggestionIndex == null
+                ? undefined
+                : `${suggestionListId}-option-${activeSuggestionIndex}`
+            }
+            dir="auto"
             iconTestId="search-overlay-input-icon"
             autoFocus
+            showSubmitButton={false}
             wrapperClassName="w-full"
           />
-          {searchLanguageControlVisible && (
-            <div className="relative mt-3 w-full md:w-72 lg:w-80">
-              <LanguageCombobox
-                options={semanticLanguageComboboxOptions}
-                value={semanticLanguageComboboxValue}
-                onChange={handleSemanticLanguageSlugChange}
-                compact
-                open={languageAutocompleteOpen}
-                onOpenChange={setLanguageAutocompleteOpen}
-                disabled={languageOptionsLoading}
-                placeholder={t("searchLanguageLabel")}
-                popoverPortalContainer={closePortalContainer}
-                triggerClassName={semanticLanguageTriggerClassName}
-              />
-              {semanticLanguageOverrideActive && (
+          {searchLanguageControlVisible && !suggestionPanelActive && (
+            <div
+              data-testid="search-language-context"
+              className="relative mt-2 min-h-11 w-full min-w-0 overflow-hidden rounded-lg text-sm text-stone-400"
+            >
+              {hasUnsubmittedSearchIntent && (
                 <button
                   type="button"
-                  aria-label={t("useWebsiteDefaultLanguage")}
-                  onClick={handleResetSearchLanguage}
-                  className="absolute right-1.5 top-1/2 z-10 inline-flex h-11 w-11 -translate-y-1/2 cursor-pointer items-center justify-center rounded-lg text-stone-500 transition hover:bg-stone-950/5 hover:text-stone-950 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-950/30"
-                >
-                  <X size={16} aria-hidden />
-                </button>
+                  data-testid="search-context-submit"
+                  aria-label={t("searchSuggestionWithLanguage", {
+                    suggestion: query.trim(),
+                    language: semanticLanguageName,
+                  })}
+                  onClick={() => handleSearchSubmit(query)}
+                  className="absolute inset-0 z-0 cursor-pointer rounded-lg transition hover:bg-white/[0.06] focus-visible:bg-white/[0.06] focus-visible:outline-2 focus-visible:outline-white/45 focus-visible:outline-offset-1"
+                />
               )}
+              <div className="pointer-events-none relative z-10 flex min-h-11 min-w-0 items-center gap-0.5 px-1.5 min-[480px]:px-4">
+                {renderLanguageContextContent(
+                  suggestionListPosition ?? undefined,
+                )}
+              </div>
             </div>
           )}
         </div>
@@ -484,6 +1132,223 @@ export function SearchOverlay() {
           />
         </div>
       </div>
+
+      {closePortalContainer &&
+        suggestionListPosition &&
+        suggestionPanelVisible &&
+        suggestionPanelHasContent &&
+        !languagePickerOwnedByContextRow &&
+        createPortal(
+          <div
+            ref={suggestionPanelRef}
+            data-testid="search-suggestions-panel"
+            className="fixed z-[1000] m-0 flex origin-top-left flex-col overflow-hidden rounded-2xl border border-white/10 bg-stone-950/92 text-stone-100 shadow-2xl shadow-black/40 backdrop-blur-xl duration-150 animate-in fade-in-0 zoom-in-95"
+            style={{
+              height: suggestionListPosition.height,
+              left: suggestionListPosition.left,
+              top: suggestionListPosition.top,
+              width: suggestionListPosition.width,
+            }}
+          >
+            {searchLanguageControlVisible && (
+              <div
+                data-testid="search-suggestions-language-context"
+                className="relative min-h-14 shrink-0 min-w-0 overflow-hidden border-b border-white/[0.08] text-sm text-stone-400"
+              >
+                {hasUnsubmittedSearchIntent && (
+                  <button
+                    type="button"
+                    data-testid="search-context-submit"
+                    aria-label={t("searchSuggestionWithLanguage", {
+                      suggestion: query.trim(),
+                      language: semanticLanguageName,
+                    })}
+                    onClick={() => handleSearchSubmit(query)}
+                    className="absolute inset-0 z-0 cursor-pointer transition hover:bg-white/[0.06] focus-visible:bg-white/[0.06] focus-visible:outline-2 focus-visible:outline-white/45 focus-visible:-outline-offset-2"
+                  />
+                )}
+                <div className="pointer-events-none relative z-10 flex min-h-14 min-w-0 items-center gap-0.5 px-1.5 py-2 min-[480px]:px-4">
+                  {renderLanguageContextContent(suggestionListPosition)}
+                </div>
+              </div>
+            )}
+            {!languageAutocompleteOpen && suggestions.length > 0 && (
+              <div
+                ref={suggestionListRef}
+                id={suggestionListId}
+                role="listbox"
+                aria-label={t("searchSuggestions")}
+                className="min-h-0 flex-1 overflow-y-auto p-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+              >
+                {suggestionGroups.map((group, groupIndex) => (
+                  <div
+                    key={group.id}
+                    role="presentation"
+                    data-testid={`search-suggestion-group-${group.id}`}
+                    className={
+                      groupIndex === 0
+                        ? ""
+                        : "mt-2 border-t border-white/[0.12] pt-2"
+                    }
+                  >
+                    <div
+                      id={`${suggestionListId}-${group.id}-heading`}
+                      className="px-3 pb-1 pt-2 text-[0.6875rem] font-semibold uppercase tracking-[0.12em] text-stone-400"
+                    >
+                      {group.label}
+                    </div>
+                    {group.sections.map((section, sectionIndex) => {
+                      const SectionIcon = section.icon
+                      const groupHeadingId = `${suggestionListId}-${group.id}-heading`
+                      const sectionHeadingId = `${suggestionListId}-${section.id}-heading`
+                      return (
+                        <div
+                          key={section.id}
+                          role="group"
+                          aria-label={
+                            group.id === "direct-matches"
+                              ? undefined
+                              : section.label
+                          }
+                          aria-labelledby={
+                            group.id === "direct-matches"
+                              ? `${groupHeadingId} ${sectionHeadingId}`
+                              : undefined
+                          }
+                          className={
+                            sectionIndex === 0
+                              ? ""
+                              : "mt-1 border-t border-white/[0.06] pt-1"
+                          }
+                        >
+                          {group.id === "direct-matches" && (
+                            <div
+                              id={sectionHeadingId}
+                              className="px-3 pb-1 pt-2 text-[0.625rem] font-semibold uppercase tracking-[0.12em] text-stone-600"
+                            >
+                              {section.label}
+                            </div>
+                          )}
+                          {section.rows.map(({ suggestion, index }) => {
+                            const active = activeSuggestionIndex === index
+                            const descriptionParts = suggestion.description
+                              ? suggestionDescriptionParts(
+                                  suggestion.description,
+                                  normalizedSuggestionQuery,
+                                )
+                              : null
+                            return (
+                              <div
+                                key={`${suggestion.kind}-${suggestion.id ?? suggestion.title}-${index}`}
+                                id={`${suggestionListId}-option-${index}`}
+                                role="option"
+                                aria-selected={active}
+                                data-suggestion-index={index}
+                                dir="auto"
+                                onMouseEnter={() =>
+                                  setActiveSuggestionIndex(index)
+                                }
+                                onPointerDown={(event) => {
+                                  if (
+                                    !event.pointerType ||
+                                    event.pointerType === "mouse"
+                                  ) {
+                                    event.preventDefault()
+                                    return
+                                  }
+                                  suggestionTouchGestureRef.current = {
+                                    pointerId: event.pointerId,
+                                    startX: event.clientX,
+                                    startY: event.clientY,
+                                    moved: false,
+                                  }
+                                }}
+                                onPointerMove={(event) => {
+                                  const gesture =
+                                    suggestionTouchGestureRef.current
+                                  if (gesture?.pointerId !== event.pointerId)
+                                    return
+                                  if (
+                                    Math.hypot(
+                                      event.clientX - gesture.startX,
+                                      event.clientY - gesture.startY,
+                                    ) > 8
+                                  ) {
+                                    gesture.moved = true
+                                  }
+                                }}
+                                onPointerUp={(event) => {
+                                  const gesture =
+                                    suggestionTouchGestureRef.current
+                                  if (gesture?.pointerId !== event.pointerId)
+                                    return
+                                  suggestionTouchGestureRef.current = null
+                                  if (gesture.moved) {
+                                    event.preventDefault()
+                                  }
+                                }}
+                                onPointerCancel={() => {
+                                  suggestionTouchGestureRef.current = null
+                                }}
+                                onClick={() => {
+                                  activateSuggestion(suggestion)
+                                }}
+                                className={`flex min-h-11 cursor-pointer items-start gap-3 rounded-xl px-3 py-2.5 text-left outline-none transition-colors ${
+                                  active
+                                    ? "bg-white/[0.11] text-white"
+                                    : "text-stone-200 hover:bg-white/[0.07] hover:text-white"
+                                }`}
+                              >
+                                <SectionIcon
+                                  size={17}
+                                  strokeWidth={1.8}
+                                  aria-hidden="true"
+                                  className={`mt-0.5 shrink-0 ${
+                                    active ? "text-stone-200" : "text-stone-500"
+                                  }`}
+                                />
+                                <span className="min-w-0 flex-1">
+                                  <bdi className="block truncate text-sm font-medium leading-5">
+                                    {suggestion.title}
+                                  </bdi>
+                                  {suggestion.kind === "content" && (
+                                    <span className="block truncate text-[0.6875rem] font-medium uppercase tracking-[0.08em] text-stone-500">
+                                      {videoLabels(
+                                        videoLabelMessageKey(suggestion.label),
+                                      )}
+                                    </span>
+                                  )}
+                                  {descriptionParts && (
+                                    <bdi
+                                      className={`line-clamp-1 text-xs leading-4 ${
+                                        active
+                                          ? "text-stone-300"
+                                          : "text-stone-500"
+                                      }`}
+                                    >
+                                      {descriptionParts.before}
+                                      {descriptionParts.match && (
+                                        <mark className="bg-transparent font-medium text-stone-200">
+                                          {descriptionParts.match}
+                                        </mark>
+                                      )}
+                                      {descriptionParts.after}
+                                    </bdi>
+                                  )}
+                                </span>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      )
+                    })}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>,
+          closePortalContainer,
+        )}
 
       {/* Body: category grid when empty, results grid when queried. Its top
           edge clears the floating search controls so cards cannot scroll under
@@ -569,7 +1434,7 @@ export function SearchOverlay() {
               </p>
               <button
                 type="button"
-                onClick={() => void search(query)}
+                onClick={() => void search(submittedQuery ?? query)}
                 className="mt-4 cursor-pointer rounded-lg bg-stone-700 px-4 py-2 text-sm text-stone-200 transition hover:bg-stone-600 focus-visible:outline-2 focus-visible:outline-white/80 focus-visible:outline-offset-2"
               >
                 {t("retrySearch")}
@@ -580,7 +1445,7 @@ export function SearchOverlay() {
           {!loading && searched && displayResults.length === 0 && !error && (
             <div className="flex flex-col items-center justify-center py-20 text-center">
               <h2 className="text-lg font-semibold text-stone-200">
-                {t("noResults", { query: query.trim() })}
+                {t("noResults", { query: submittedQuery ?? query.trim() })}
               </h2>
               <p className="mt-2 text-sm text-stone-500">
                 {t("tryDifferentKeywordsOrLanguage")}

@@ -179,7 +179,8 @@
     "clearSearch": "সন্ধান মচক",
     "changeAudioLanguage": "অডিঅ’ ভাষা সলনি কৰক",
     "home": "JesusFilm হোম",
-    "closeSearch": "সন্ধান বন্ধ কৰক"
+    "closeSearch": "সন্ধান বন্ধ কৰক",
+    "submitSearch": "সন্ধান কৰক"
   },
   "SearchOverlay": {
     "dialogLabel": "ভিডিঅ’ সন্ধান আৰু ব্ৰাউজ কৰক",
@@ -205,6 +206,7 @@
     "searchLanguageLabel": "সন্ধানৰ ভাষা",
     "allLanguages": "সকলো ভাষা",
     "searchSuggestions": "সন্ধান পৰামৰ্শ",
+    "directMatches": "Direct match",
     "languages": "ভাষাসমূহ",
     "recommendedLanguage": "পৰামৰ্শিত ভাষা",
     "searchSuggestion": "{suggestion} সন্ধান কৰক",

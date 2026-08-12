@@ -179,7 +179,8 @@
     "clearSearch": "Sich läschen",
     "changeAudioLanguage": "Audio-Sprooch änneren",
     "home": "JesusFilm-Startsäit",
-    "closeSearch": "Sich zoumaachen"
+    "closeSearch": "Sich zoumaachen",
+    "submitSearch": "Sichen"
   },
   "SearchOverlay": {
     "dialogLabel": "Videoen sichen a duerchkucken",
@@ -205,6 +206,7 @@
     "searchLanguageLabel": "Sichsprooch",
     "allLanguages": "All Sproochen",
     "searchSuggestions": "Sichvirschléi",
+    "directMatches": "Direct match",
     "languages": "Sproochen",
     "recommendedLanguage": "Recommandéiert Sprooch",
     "searchSuggestion": "{suggestion} sichen",

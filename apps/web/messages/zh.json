@@ -179,7 +179,8 @@
     "clearSearch": "清除搜索",
     "changeAudioLanguage": "更改音频语言",
     "home": "JesusFilm 主页",
-    "closeSearch": "关闭搜索"
+    "closeSearch": "关闭搜索",
+    "submitSearch": "搜索"
   },
   "SearchOverlay": {
     "dialogLabel": "搜索并浏览视频",
@@ -205,6 +206,7 @@
     "searchLanguageLabel": "搜索语言",
     "allLanguages": "所有语言",
     "searchSuggestions": "搜索建议",
+    "directMatches": "Direct match",
     "languages": "语言",
     "recommendedLanguage": "推荐语言",
     "searchSuggestion": "搜索 {suggestion}",

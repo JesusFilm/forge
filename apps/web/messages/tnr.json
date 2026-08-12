@@ -179,7 +179,8 @@
     "clearSearch": "Suŋ bɔ",
     "changeAudioLanguage": "Audio language laa",
     "home": "JesusFilm kɔŋ hɔn",
-    "closeSearch": "Suŋ dɔŋ"
+    "closeSearch": "Suŋ dɔŋ",
+    "submitSearch": "Suŋ kɛ"
   },
   "SearchOverlay": {
     "dialogLabel": "Video suŋ kɛ kɔ browse kɛ",
@@ -205,6 +206,7 @@
     "searchLanguageLabel": "Search ka language",
     "allLanguages": "Languages dɛmɛ",
     "searchSuggestions": "Search ka suggestions",
+    "directMatches": "Direct match",
     "languages": "Languages dɛmɛ",
     "recommendedLanguage": "Language wɛɛ",
     "searchSuggestion": "{suggestion} suŋ kɛ",

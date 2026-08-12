@@ -179,7 +179,8 @@
     "clearSearch": "검색 지우기",
     "changeAudioLanguage": "오디오 언어 변경",
     "home": "JesusFilm 홈",
-    "closeSearch": "검색 닫기"
+    "closeSearch": "검색 닫기",
+    "submitSearch": "검색"
   },
   "SearchOverlay": {
     "dialogLabel": "동영상 검색 및 둘러보기",
@@ -205,6 +206,7 @@
     "searchLanguageLabel": "검색 언어",
     "allLanguages": "모든 언어",
     "searchSuggestions": "검색 제안",
+    "directMatches": "Direct match",
     "languages": "언어",
     "recommendedLanguage": "추천 언어",
     "searchSuggestion": "{suggestion} 검색",

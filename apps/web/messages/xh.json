@@ -179,7 +179,8 @@
     "clearSearch": "Cima ukukhangela",
     "changeAudioLanguage": "Tshintsha ulwimi lweaudio",
     "home": "Ikhaya leJesusFilm",
-    "closeSearch": "Vala ukukhangela"
+    "closeSearch": "Vala ukukhangela",
+    "submitSearch": "Khangela"
   },
   "SearchOverlay": {
     "dialogLabel": "Khangela uze ubhrawuze iividiyo",
@@ -205,6 +206,7 @@
     "searchLanguageLabel": "Ulwimi lokukhangela",
     "allLanguages": "Zonke iilwimi",
     "searchSuggestions": "Iingcebiso zokukhangela",
+    "directMatches": "Direct match",
     "languages": "Iilwimi",
     "recommendedLanguage": "Ulwimi olucetyiswayo",
     "searchSuggestion": "Khangela {suggestion}",
