@@ -80,6 +80,28 @@ COMPLETENESS (past-wall records are un-erasable on this tier — the
 erasure runbook must carry the temporary tier-upgrade escape hatch with
 lead time inside the statutory deadline).
 
+**Post-ship findings (2026-08-11, first real-API contact — fixed same day;
+follow-up PR number filled at ship, mirroring the Shipped-line convention).**
+Running the opt-in smoke against the live API surfaced
+two defects the mocked suites could not: (1) the sweep inherited the
+prompt-tuned 3s `LANGFUSE_TIMEOUT_MS` while the live batch-DELETE measured
+~3.4s — every production delete leg would have timed out client-side (while
+still deleting server-side: deletion schedules on an aborted socket — the
+confusing half-broken state); fixed with the dedicated
+`LANGFUSE_TRACE_RETENTION_TIMEOUT_MS` (default 15s, cap 60s) consumed only
+by the sweep. (2) The smoke's synthetic-sentinel design was unsound:
+observations ingested via the legacy batch endpoint never materialize on
+the `GET /v2/observations` read surface (fresh AND backdated — the brief's
+"age IS fakeable" premise holds only for the trace read path), so its leg 1
+could never pass; redesigned around production-reachable rows (real recent
+observation as the negative control), with the sweep's exact QUERY SHAPE
+(single `toStartTime` parameter) separately proven against the live API —
+28 real July-29-era observations returned under a wider test cutoff
+(`toStartTime` = Aug 5); the sweep's own 25-day window correctly returns 0
+until the first traces expire ~Aug 23. The production listing path was
+never broken — real traces
+arrive via OTel and list correctly.
+
 **Unblocked.** feat-339 (seeker public-release readiness register) — its
 retention gate is satisfied by this ticket.
 
@@ -337,6 +359,13 @@ this ticket's parameter names.
   `describe.skipIf` pattern) covering LIST+DELETE+requery on a backdated
   sentinel — Langfuse ingestion accepts a client-supplied `timestamp` on
   `TraceBody`, so the window filter is smokeable directly. Written but left
-  unrun without credentials.
+  unrun without credentials. **[Superseded 2026-08-11 — see the Post-ship
+  findings in the Resolution: the backdated-sentinel technique was FALSIFIED
+  against the live API (legacy-batch-ingested observations never appear on
+  the v2 read surface, so the sentinel can never be listed); the shipped
+  smoke instead asserts `filterSkipped === 0` on the sweep's exact window,
+  uses a real recent observation as a raw-surface negative control, and
+  proves DELETE on a production-sized synthetic batch. Do not rebuild the
+  backdated-sentinel design.]**
 - `pnpm --filter @forge/mastra test` and `pnpm --filter @forge/chat test`
   green; typecheck + lint both.

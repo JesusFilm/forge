@@ -42,7 +42,12 @@
  *     land content here), base64 `cursor` pagination via `meta.cursor`, rows
  *     deduped to unique traceIds. This is the successor endpoint — the
  *     deprecated `GET /api/public/traces` (list) sits in the tightest rate
- *     bucket and must not be used. The endpoint exposes NO ordering
+ *     bucket and must not be used. Completeness is CONDITIONAL on the
+ *     ingestion path: only traces whose observations are indexed on the v2
+ *     read surface are sweepable, and legacy-batch-ingested traces never
+ *     appear there (verified 2026-08-11 — see the smoke header), so they are
+ *     invisible to this sweep; all production traces arrive via OTel, which
+ *     does index. The endpoint also exposes NO ordering
  *     parameter (checked 2026-08-10), so a bounded listing cannot guarantee
  *     oldest-first drain — the wall-risk metric below is the backstop, and
  *     the escape hatch for traces aging past the Hobby 30-day visibility
@@ -98,7 +103,16 @@
  * Langfuse client): Basic auth from the key pair, `redirect: "error"`,
  * `AbortSignal.timeout`, byte-capped streaming reads, no-throw result unions,
  * and leak control — log lines carry enums and counts ONLY, never trace ids,
- * user ids, conversation content, or exception text.
+ * user ids, conversation content, or exception text. ONE deliberate
+ * divergence (2026-08-11): this module's config comes EXCLUSIVELY from
+ * `getLangfuseTraceRetentionConfig()` — same config except `timeoutMs` comes
+ * from `LANGFUSE_TRACE_RETENTION_TIMEOUT_MS` (default 15 s), NOT the
+ * prompt-tuned `LANGFUSE_TIMEOUT_MS` (default 3 s) it originally inherited:
+ * the live batch-DELETE was MEASURED at ~3.4 s for a 2-id batch, so the
+ * inherited default would have timed out every production delete leg
+ * (deletion still schedules server-side on an aborted socket, so data would
+ * die while logs reported failure — the confusing half-broken state). The
+ * sweep's caller budget is the daily timer, not the 90 s chat turn.
  *
  * Single-instance assumption (same as the ai-chat purge): Mastra runs one
  * replica; add a leader guard before scaling out — two replicas would spend
@@ -108,7 +122,10 @@
 
 import { z } from "zod"
 
-import { getLangfuseConfig, type LangfuseConfig } from "../config/env"
+import {
+  getLangfuseTraceRetentionConfig,
+  type LangfuseConfig,
+} from "../config/env"
 
 import { AI_CHAT_RETENTION_DAYS } from "./ai-chat-retention"
 
@@ -235,7 +252,7 @@ export type LangfuseTraceRetentionSweepResult =
 
 /** The credential-trio gate — deliberately ignorant of LANGFUSE_TRACING_ENABLED. */
 export function isLangfuseTraceRetentionConfigured(
-  config: LangfuseConfig = getLangfuseConfig(),
+  config: LangfuseConfig = getLangfuseTraceRetentionConfig(),
 ): boolean {
   return Boolean(config.baseUrl && config.publicKey && config.secretKey)
 }
@@ -534,7 +551,7 @@ export async function deleteTraceBatch({
  * an enum the caller logs. See the module header for the full contract.
  */
 export async function runLangfuseTraceRetentionSweep({
-  config = getLangfuseConfig(),
+  config = getLangfuseTraceRetentionConfig(),
   fetchImpl = fetch,
   now = () => Date.now(),
 }: {
@@ -788,7 +805,7 @@ export function msUntilNextUtcFireHour(
  * header). The production-only gate lives at the call site in `index.ts`.
  */
 export function startLangfuseTraceRetention({
-  getConfig = getLangfuseConfig,
+  getConfig = getLangfuseTraceRetentionConfig,
   fetchImpl = fetch,
   fireHourUtc = LANGFUSE_TRACE_RETENTION_FIRE_HOUR_UTC,
   now = () => Date.now(),
