@@ -32,6 +32,12 @@ export type WatchSearchSuggestionInput = {
   languageSlug: string
 }
 
+export type WatchSearchSuggestion = {
+  title: string
+  description: string | null
+  matchSource: "title" | "description"
+}
+
 type SuggestionPrisma = Pick<PrismaClient, "language">
 type SuggestionTypesense = Pick<TypesenseClient, "multiSearch">
 type ResolvedSuggestionLanguage = {
@@ -142,7 +148,7 @@ function matchTier(title: string, prefix: string): number | null {
   return null
 }
 
-function matchingTitle(
+function matchingValue(
   document: TypesenseWatchLexicalDocument,
   fields: readonly string[],
   prefix: string,
@@ -167,18 +173,34 @@ function matchingTitle(
   return candidates.find((candidate) => candidate.tier != null)?.title ?? null
 }
 
+function firstValue(
+  document: TypesenseWatchLexicalDocument,
+  fields: readonly string[],
+): string | null {
+  for (const field of fields) {
+    const value = document[field]
+    const values = Array.isArray(value) ? value : value ? [value] : []
+    const first = values.find((candidate) => candidate.trim().length > 0)
+    if (first) return first
+  }
+  return null
+}
+
 function suggestionRequest(
   query: string,
-  fields: readonly string[],
+  titleFields: readonly string[],
+  metadataFields: readonly string[],
   languageIdentity: string,
 ): TypesenseSearchRequest {
+  const fields = [...titleFields, ...metadataFields]
   return {
     collection: TYPESENSE_WATCH_LEXICAL_ALIAS,
     q: query,
     query_by: fields.join(","),
-    query_by_weights: fields
-      .map((_field, index) => (index === 0 ? 4 : 1))
-      .join(","),
+    query_by_weights: [
+      ...titleFields.map((_field, index) => (index === 0 ? 8 : 4)),
+      ...metadataFields.map((_field, index) => (index === 0 ? 2 : 1)),
+    ].join(","),
     page: 1,
     per_page: TYPESENSE_SUGGESTION_CANDIDATE_LIMIT,
     group_by: "canonicalVideoId",
@@ -195,27 +217,53 @@ function suggestionRequest(
 
 function groupedHits(
   groups: readonly TypesenseSearchGroup<TypesenseWatchLexicalDocument>[],
-  fields: readonly string[],
+  titleFields: readonly string[],
+  metadataFields: readonly string[],
   prefix: string,
-): string[] {
-  const seenTitles = new Set<string>()
-  const titles: string[] = []
-  for (const group of groups) {
+): WatchSearchSuggestion[] {
+  const candidates = groups.flatMap((group, groupIndex) => {
     const document = group.hits[0]?.document
-    if (!document) continue
-    const title = matchingTitle(document, fields, prefix)
-    if (!title) continue
-    const key = comparableTitle(title)
+    if (!document) return []
+    const matchedTitle = matchingValue(document, titleFields, prefix)
+    const matchedDescription = matchingValue(document, metadataFields, prefix)
+    const title = matchedTitle ?? firstValue(document, titleFields)
+    if (!title || (!matchedTitle && !matchedDescription)) return []
+    return [
+      {
+        groupIndex,
+        suggestion: {
+          title,
+          description:
+            matchedDescription ?? firstValue(document, metadataFields),
+          matchSource: matchedTitle ? "title" : "description",
+        } satisfies WatchSearchSuggestion,
+      },
+    ]
+  })
+  candidates.sort(
+    (a, b) =>
+      (a.suggestion.matchSource === "title" ? 0 : 1) -
+        (b.suggestion.matchSource === "title" ? 0 : 1) ||
+      a.groupIndex - b.groupIndex,
+  )
+
+  const seenTitles = new Set<string>()
+  const suggestions: WatchSearchSuggestion[] = []
+  for (const { suggestion } of candidates) {
+    const key = comparableTitle(suggestion.title)
     if (seenTitles.has(key)) continue
     seenTitles.add(key)
-    titles.push(title)
-    if (titles.length === MAX_WATCH_SEARCH_SUGGESTIONS) break
+    suggestions.push(suggestion)
+    if (suggestions.length === MAX_WATCH_SEARCH_SUGGESTIONS) break
   }
-  return titles
+  return suggestions
 }
 
 export class TypesenseWatchSearchSuggestionsService {
-  private readonly inFlight = new Map<string, Promise<string[]>>()
+  private readonly inFlight = new Map<
+    string,
+    Promise<WatchSearchSuggestion[]>
+  >()
   private activeRequests = 0
 
   constructor(
@@ -224,7 +272,9 @@ export class TypesenseWatchSearchSuggestionsService {
     private readonly logger: Pick<Console, "warn"> = console,
   ) {}
 
-  async suggest(input: WatchSearchSuggestionInput): Promise<string[]> {
+  async suggest(
+    input: WatchSearchSuggestionInput,
+  ): Promise<WatchSearchSuggestion[]> {
     const query = normalizedPrefix(input.query)
     if (!hasEnoughMeaningfulCharacters(query)) return []
     const languageSlug = normalizedLanguageSlug(input.languageSlug)
@@ -253,7 +303,7 @@ export class TypesenseWatchSearchSuggestionsService {
   private async fetchSuggestions(
     query: string,
     languageSlug: string,
-  ): Promise<string[]> {
+  ): Promise<WatchSearchSuggestion[]> {
     try {
       const language = await resolveSuggestionLanguage(
         this.prisma,
@@ -261,15 +311,29 @@ export class TypesenseWatchSearchSuggestionsService {
       )
       if (!language) return []
 
-      const fields = watchLexicalQueryFields(language.locale, "title")
+      const titleFields = watchLexicalQueryFields(language.locale, "title")
+      const metadataFields = watchLexicalQueryFields(
+        language.locale,
+        "metadata",
+      )
       const [result] =
         await this.typesense.multiSearch<TypesenseWatchLexicalDocument>([
-          suggestionRequest(query, fields, language.languageIdentity),
+          suggestionRequest(
+            query,
+            titleFields,
+            metadataFields,
+            language.languageIdentity,
+          ),
         ])
       if (!result || !("grouped_hits" in result) || !result.grouped_hits) {
         return []
       }
-      return groupedHits(result.grouped_hits, fields, comparableTitle(query))
+      return groupedHits(
+        result.grouped_hits,
+        titleFields,
+        metadataFields,
+        comparableTitle(query),
+      )
     } catch {
       this.logger.warn("[watch-search-suggestions] event=typesense_unavailable")
       return []

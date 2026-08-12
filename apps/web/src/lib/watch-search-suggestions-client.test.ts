@@ -18,12 +18,28 @@ afterEach(() => {
 })
 
 describe("fetchWatchSearchSuggestions", () => {
-  it("posts the narrow public query and returns bounded title strings", async () => {
+  it("posts the narrow public query and returns bounded title context", async () => {
     fetchMock.mockResolvedValue(
       new Response(
         JSON.stringify({
           data: {
-            watchSearchSuggestions: ["Jesus", "Jesus Wept", "Jesus"],
+            watchSearchSuggestions: [
+              {
+                title: "Jesus",
+                description: "The story of Jesus.",
+                matchSource: "TITLE",
+              },
+              {
+                title: "Jesus Wept",
+                description: null,
+                matchSource: "TITLE",
+              },
+              {
+                title: "Jesus",
+                description: "Duplicate title.",
+                matchSource: "DESCRIPTION",
+              },
+            ],
           },
         }),
         { status: 200, headers: { "content-type": "application/json" } },
@@ -35,7 +51,18 @@ describe("fetchWatchSearchSuggestions", () => {
         query: "je",
         languageSlug: "english",
       }),
-    ).resolves.toEqual(["Jesus", "Jesus Wept"])
+    ).resolves.toEqual([
+      {
+        title: "Jesus",
+        description: "The story of Jesus.",
+        matchSource: "title",
+      },
+      {
+        title: "Jesus Wept",
+        description: null,
+        matchSource: "title",
+      },
+    ])
 
     expect(fetchMock).toHaveBeenCalledOnce()
     const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit]
@@ -50,6 +77,8 @@ describe("fetchWatchSearchSuggestions", () => {
       variables: unknown
     }
     expect(body.query).toContain("watchSearchSuggestions")
+    expect(body.query).toContain("description")
+    expect(body.query).toContain("matchSource")
     expect(body.query).not.toContain("watchSearch(input")
     expect(body.variables).toEqual({
       input: { query: "je", languageSlug: "english" },
@@ -110,7 +139,14 @@ describe("fetchWatchSearchSuggestions", () => {
       status: 200,
     }),
     new Response(
-      JSON.stringify({ data: { watchSearchSuggestions: ["Jesus", 42] } }),
+      JSON.stringify({
+        data: {
+          watchSearchSuggestions: [
+            { title: "Jesus", description: null, matchSource: "TITLE" },
+            42,
+          ],
+        },
+      }),
       { status: 200 },
     ),
   ])("rejects invalid HTTP or GraphQL responses", async (response) => {

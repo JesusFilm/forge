@@ -171,16 +171,27 @@ beforeEach(() => {
       acceptLanguageSlug: null,
     },
   })
-  suggestMock.mockResolvedValue(["Jesus", "Jesus Wept"])
+  suggestMock.mockResolvedValue([
+    {
+      title: "Jesus",
+      description: "The story of Jesus.",
+      matchSource: "title",
+    },
+    { title: "Jesus Wept", description: null, matchSource: "title" },
+  ])
 })
 
 describe("watchSearchSuggestions resolver", () => {
-  it("delegates exact public input and returns raw titles without tracing", async () => {
+  it("delegates exact public input and returns bounded context without tracing", async () => {
     const input = { query: "je", languageSlug: "english" }
 
     await expect(invokeSuggestions(input)).resolves.toEqual([
-      "Jesus",
-      "Jesus Wept",
+      {
+        title: "Jesus",
+        description: "The story of Jesus.",
+        matchSource: "title",
+      },
+      { title: "Jesus Wept", description: null, matchSource: "title" },
     ])
 
     expect(suggestMock).toHaveBeenCalledWith(input)

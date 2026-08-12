@@ -48,6 +48,7 @@ import { getSearchLanguageOptions } from "@/lib/search-language-actions"
 import {
   fetchWatchSearchSuggestions,
   searchWatchDirect,
+  type WatchSearchSuggestion,
 } from "@/lib/watch-search-client"
 import {
   __resetWatchInteractionLoaderForTests,
@@ -155,6 +156,14 @@ let root: Root
 const mockedRunSearch = vi.mocked(searchWatchDirect)
 const mockedFetchSuggestions = vi.mocked(fetchWatchSearchSuggestions)
 const mockedGetSearchLanguageOptions = vi.mocked(getSearchLanguageOptions)
+
+function watchSuggestion(
+  title: string,
+  description: string | null = null,
+  matchSource: "title" | "description" = "title",
+): WatchSearchSuggestion {
+  return { title, description, matchSource }
+}
 
 beforeEach(() => {
   setRequestLocale("en")
@@ -2563,7 +2572,14 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
   it("debounces title suggestions after two meaningful characters in the selected language", async () => {
     vi.useFakeTimers()
     mockEnglishAndSpanishSearchLanguages()
-    mockedFetchSuggestions.mockResolvedValueOnce(["Jesus", "Jesus Wept"])
+    mockedFetchSuggestions.mockResolvedValueOnce([
+      watchSuggestion("Jesus", "The story of Jesus and His ministry."),
+      watchSuggestion(
+        "The Life of Christ",
+        "A quiet opening follows the disciples before the story turns toward Jesus and His calling.",
+        "description",
+      ),
+    ])
 
     const input = await openSearchOverlay()
 
@@ -2608,11 +2624,16 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
     expect(suggestionList?.className).toContain("[&::-webkit-scrollbar]:hidden")
     expect(languageTrigger?.className).toContain("!bg-white/[0.07]")
     expect(languageTrigger?.className.split(/\s+/)).not.toContain("!bg-white")
+    const suggestionOptions = Array.from(
+      document.querySelectorAll('[role="option"]'),
+    )
     expect(
-      Array.from(document.querySelectorAll('[role="option"]')).map(
-        (option) => option.textContent,
-      ),
-    ).toEqual(["Jesus", "Jesus Wept"])
+      suggestionOptions.map((option) => option.firstElementChild?.textContent),
+    ).toEqual(["Jesus", "The Life of Christ"])
+    expect(suggestionOptions[1]?.textContent).toContain(
+      "toward Jesus and His calling.",
+    )
+    expect(suggestionOptions[1]?.querySelector("mark")?.textContent).toBe("Je")
   })
 
   it("discards stale suggestions when the selected language changes", async () => {
@@ -2625,10 +2646,10 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
       countryCode: null,
       countryName: null,
     })
-    const englishSuggestions = deferred<string[]>()
+    const englishSuggestions = deferred<WatchSearchSuggestion[]>()
     mockedFetchSuggestions
       .mockReturnValueOnce(englishSuggestions.promise)
-      .mockResolvedValueOnce(["Japanese Jesus"])
+      .mockResolvedValueOnce([watchSuggestion("Japanese Jesus")])
 
     const input = await openSearchOverlay()
     act(() => setInputValue(input, "je"))
@@ -2657,7 +2678,7 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
     })
 
     await act(async () => {
-      englishSuggestions.resolve(["English Jesus"])
+      englishSuggestions.resolve([watchSuggestion("English Jesus")])
       await englishSuggestions.promise
       await Promise.resolve()
     })
@@ -2678,7 +2699,9 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
   it("fills the draft from a keyboard suggestion without searching until explicit submit", async () => {
     vi.useFakeTimers()
     mockEnglishAndSpanishSearchLanguages()
-    mockedFetchSuggestions.mockResolvedValueOnce(["Jesus Wept"])
+    mockedFetchSuggestions.mockResolvedValueOnce([
+      watchSuggestion("Jesus Wept"),
+    ])
     mockedRunSearch.mockResolvedValueOnce(searchResult("watch-search"))
 
     const input = await openSearchOverlay()
@@ -2727,8 +2750,8 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
   it("aborts superseded suggestion requests and ignores stale responses", async () => {
     vi.useFakeTimers()
     mockEnglishAndSpanishSearchLanguages()
-    const first = deferred<string[]>()
-    const second = deferred<string[]>()
+    const first = deferred<WatchSearchSuggestion[]>()
+    const second = deferred<WatchSearchSuggestion[]>()
     mockedFetchSuggestions
       .mockReturnValueOnce(first.promise)
       .mockReturnValueOnce(second.promise)
@@ -2747,7 +2770,7 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
     expect(firstSignal?.aborted).toBe(true)
 
     await act(async () => {
-      first.resolve(["Jerusalem"])
+      first.resolve([watchSuggestion("Jerusalem")])
       await first.promise
       await Promise.resolve()
     })
@@ -2761,7 +2784,7 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
     expect(mockedFetchSuggestions).toHaveBeenCalledTimes(2)
 
     await act(async () => {
-      second.resolve(["Jesus"])
+      second.resolve([watchSuggestion("Jesus")])
       await second.promise
       await Promise.resolve()
     })
@@ -2772,7 +2795,9 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
     vi.useFakeTimers()
     mockEnglishAndSpanishSearchLanguages()
     mockedRunSearch.mockResolvedValueOnce(searchResult("watch-search"))
-    mockedFetchSuggestions.mockResolvedValueOnce(["Late suggestion"])
+    mockedFetchSuggestions.mockResolvedValueOnce([
+      watchSuggestion("Late suggestion"),
+    ])
     const longQuery = `${"j".repeat(200)}extra`
 
     const input = await openSearchOverlay()
@@ -2793,7 +2818,7 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
   it("keeps resolved suggestions hidden when close is immediately reversed", async () => {
     vi.useFakeTimers()
     mockEnglishAndSpanishSearchLanguages()
-    mockedFetchSuggestions.mockResolvedValueOnce(["Jesus"])
+    mockedFetchSuggestions.mockResolvedValueOnce([watchSuggestion("Jesus")])
 
     const input = await openSearchOverlay()
     act(() => setInputValue(input, "je"))
@@ -2831,7 +2856,7 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
       countryCode: null,
       countryName: null,
     })
-    mockedFetchSuggestions.mockResolvedValueOnce(["日本語"])
+    mockedFetchSuggestions.mockResolvedValueOnce([watchSuggestion("日本語")])
 
     const input = await openSearchOverlay()
     act(() => {
@@ -2902,7 +2927,7 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
   it("selects a pointer suggestion without moving focus or submitting search", async () => {
     vi.useFakeTimers()
     mockEnglishAndSpanishSearchLanguages()
-    mockedFetchSuggestions.mockResolvedValueOnce(["Jesus"])
+    mockedFetchSuggestions.mockResolvedValueOnce([watchSuggestion("Jesus")])
 
     const input = await openSearchOverlay()
     act(() => {
@@ -2932,7 +2957,10 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
   it("lets touch users scroll suggestions before selecting a stationary tap", async () => {
     vi.useFakeTimers()
     mockEnglishAndSpanishSearchLanguages()
-    mockedFetchSuggestions.mockResolvedValueOnce(["Jesus", "Jesus Wept"])
+    mockedFetchSuggestions.mockResolvedValueOnce([
+      watchSuggestion("Jesus"),
+      watchSuggestion("Jesus Wept"),
+    ])
 
     const input = await openSearchOverlay()
     act(() => setInputValue(input, "je"))

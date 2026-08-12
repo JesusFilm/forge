@@ -61,15 +61,20 @@ import { parseWatchPath } from "@/lib/routes"
 import { WATCH_SEARCH_RUM_RESULT_CLICKED_ACTION } from "@/lib/watch-search-analytics-contract"
 import { buildWatchSearchResultClickRumContext } from "@/lib/watch-search-rum"
 import { normalizeWatchSearchQuery } from "@/lib/watch-search-query"
-import { fetchWatchSearchSuggestions } from "@/lib/watch-search-client"
+import {
+  fetchWatchSearchSuggestions,
+  type WatchSearchSuggestion,
+} from "@/lib/watch-search-client"
 
 const SEARCH_SUGGESTIONS_DEBOUNCE_MS = 180
-const SEARCH_SUGGESTIONS_MAX_HEIGHT = 232
+const SEARCH_SUGGESTIONS_MAX_HEIGHT = 288
 const SEARCH_SUGGESTIONS_MAX_WIDTH = 560
 const SEARCH_SUGGESTIONS_HORIZONTAL_INSET = 8
 const SEARCH_SUGGESTIONS_MIN_ROW_HEIGHT = 44
 const SEARCH_SUGGESTIONS_VIEWPORT_GAP = 8
 const SEARCH_SUGGESTIONS_VIEWPORT_PADDING = 16
+const SEARCH_SUGGESTION_DESCRIPTION_LENGTH = 96
+const SEARCH_SUGGESTION_DESCRIPTION_CONTEXT_BEFORE = 18
 const MEANINGFUL_SEARCH_CHARACTER = /[\p{L}\p{N}]/u
 
 type SuggestionListPosition = Pick<
@@ -81,7 +86,58 @@ type SuggestionListPosition = Pick<
 
 type SuggestionResult = {
   requestKey: string
-  titles: string[]
+  suggestions: WatchSearchSuggestion[]
+}
+
+type SuggestionDescriptionParts = {
+  before: string
+  match: string | null
+  after: string
+}
+
+function escapedRegularExpression(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+}
+
+function findSuggestionMatch(
+  value: string,
+  query: string,
+): RegExpExecArray | null {
+  const normalizedQuery = normalizeWatchSearchQuery(query)
+  if (!normalizedQuery) return null
+  return new RegExp(escapedRegularExpression(normalizedQuery), "iu").exec(value)
+}
+
+function suggestionDescriptionParts(
+  description: string,
+  query: string,
+): SuggestionDescriptionParts {
+  const initialMatch = findSuggestionMatch(description, query)
+  let start = 0
+  let end = Math.min(description.length, SEARCH_SUGGESTION_DESCRIPTION_LENGTH)
+  if (initialMatch) {
+    start = Math.max(
+      0,
+      initialMatch.index - SEARCH_SUGGESTION_DESCRIPTION_CONTEXT_BEFORE,
+    )
+    end = Math.min(
+      description.length,
+      Math.max(
+        initialMatch.index + initialMatch[0].length + 40,
+        start + SEARCH_SUGGESTION_DESCRIPTION_LENGTH,
+      ),
+    )
+  }
+  const excerpt = `${start > 0 ? "…" : ""}${description
+    .slice(start, end)
+    .trim()}${end < description.length ? "…" : ""}`
+  const match = findSuggestionMatch(excerpt, query)
+  if (!match) return { before: excerpt, match: null, after: "" }
+  return {
+    before: excerpt.slice(0, match.index),
+    match: match[0],
+    after: excerpt.slice(match.index + match[0].length),
+  }
 }
 
 function hasEnoughMeaningfulSearchCharacters(value: string): boolean {
@@ -224,7 +280,7 @@ export function SearchOverlay() {
   const suggestions = useMemo(
     () =>
       suggestionResult?.requestKey === suggestionRequestKey
-        ? suggestionResult.titles
+        ? suggestionResult.suggestions
         : [],
     [suggestionRequestKey, suggestionResult],
   )
@@ -258,7 +314,7 @@ export function SearchOverlay() {
             return
           setSuggestionResult({
             requestKey: suggestionRequestKey,
-            titles: nextSuggestions,
+            suggestions: nextSuggestions,
           })
         })
         .catch(() => {
@@ -537,7 +593,7 @@ export function SearchOverlay() {
       ) {
         event.preventDefault()
         event.stopPropagation()
-        selectSuggestion(suggestions[activeSuggestionIndex])
+        selectSuggestion(suggestions[activeSuggestionIndex].title)
         return
       }
 
@@ -811,9 +867,15 @@ export function SearchOverlay() {
           >
             {suggestions.map((suggestion, index) => {
               const active = activeSuggestionIndex === index
+              const descriptionParts = suggestion.description
+                ? suggestionDescriptionParts(
+                    suggestion.description,
+                    normalizedSuggestionQuery,
+                  )
+                : null
               return (
                 <li
-                  key={`${suggestion}-${index}`}
+                  key={`${suggestion.title}-${index}`}
                   id={`${suggestionListId}-option-${index}`}
                   role="option"
                   aria-selected={active}
@@ -823,7 +885,7 @@ export function SearchOverlay() {
                   onPointerDown={(event) => {
                     if (!event.pointerType || event.pointerType === "mouse") {
                       event.preventDefault()
-                      selectSuggestion(suggestion)
+                      selectSuggestion(suggestion.title)
                       return
                     }
                     suggestionTouchGestureRef.current = {
@@ -851,19 +913,36 @@ export function SearchOverlay() {
                     suggestionTouchGestureRef.current = null
                     if (!gesture.moved) {
                       event.preventDefault()
-                      selectSuggestion(suggestion)
+                      selectSuggestion(suggestion.title)
                     }
                   }}
                   onPointerCancel={() => {
                     suggestionTouchGestureRef.current = null
                   }}
-                  className={`flex min-h-11 cursor-pointer items-center rounded-lg px-3 py-2 text-sm font-medium leading-5 outline-none transition-colors ${
+                  className={`flex min-h-11 cursor-pointer flex-col items-start justify-center rounded-lg px-3 py-2 text-left outline-none transition-colors ${
                     active
                       ? "bg-white/[0.12] text-white"
                       : "text-stone-200 hover:bg-white/[0.08] hover:text-white"
                   }`}
                 >
-                  <bdi>{suggestion}</bdi>
+                  <bdi className="text-sm font-medium leading-5">
+                    {suggestion.title}
+                  </bdi>
+                  {descriptionParts && (
+                    <bdi
+                      className={`line-clamp-1 text-xs leading-4 ${
+                        active ? "text-stone-300" : "text-stone-400"
+                      }`}
+                    >
+                      {descriptionParts.before}
+                      {descriptionParts.match && (
+                        <mark className="bg-transparent font-medium text-stone-200">
+                          {descriptionParts.match}
+                        </mark>
+                      )}
+                      {descriptionParts.after}
+                    </bdi>
+                  )}
                 </li>
               )
             })}

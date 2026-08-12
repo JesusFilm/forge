@@ -61,6 +61,12 @@ export type FetchWatchSearchSuggestionsInput = {
   timeoutMs?: number
 }
 
+export type WatchSearchSuggestion = {
+  title: string
+  description: string | null
+  matchSource: "title" | "description"
+}
+
 export class WatchSearchSuggestionsError extends Error {
   constructor(
     message: string,
@@ -71,7 +77,7 @@ export class WatchSearchSuggestionsError extends Error {
   }
 }
 
-function parseSuggestionTitles(value: unknown): string[] {
+function parseSuggestions(value: unknown): WatchSearchSuggestion[] {
   if (!Array.isArray(value)) {
     throw new WatchSearchSuggestionsError(
       "Watch search suggestion response was empty",
@@ -80,23 +86,37 @@ function parseSuggestionTitles(value: unknown): string[] {
   }
 
   const seen = new Set<string>()
-  const titles: string[] = []
+  const suggestions: WatchSearchSuggestion[] = []
   for (const item of value) {
-    if (typeof item !== "string") {
+    if (
+      typeof item !== "object" ||
+      item == null ||
+      !("title" in item) ||
+      typeof item.title !== "string" ||
+      !("description" in item) ||
+      (item.description != null && typeof item.description !== "string") ||
+      !("matchSource" in item) ||
+      (item.matchSource !== "TITLE" && item.matchSource !== "DESCRIPTION")
+    ) {
       throw new WatchSearchSuggestionsError(
         "Watch search suggestion response was malformed",
         "malformed_response",
       )
     }
-    const title = item.trim()
+    const title = item.title.trim()
     if (!title) continue
     const key = title.normalize("NFC").toLocaleLowerCase()
     if (seen.has(key)) continue
     seen.add(key)
-    titles.push(item)
-    if (titles.length === MAX_WATCH_SEARCH_SUGGESTIONS) break
+    const description = item.description?.trim() || null
+    suggestions.push({
+      title,
+      description,
+      matchSource: item.matchSource === "DESCRIPTION" ? "description" : "title",
+    })
+    if (suggestions.length === MAX_WATCH_SEARCH_SUGGESTIONS) break
   }
-  return titles
+  return suggestions
 }
 
 export async function fetchWatchSearchSuggestions({
@@ -104,7 +124,7 @@ export async function fetchWatchSearchSuggestions({
   languageSlug,
   signal,
   timeoutMs = WATCH_SEARCH_SUGGESTIONS_TIMEOUT_MS,
-}: FetchWatchSearchSuggestionsInput): Promise<string[]> {
+}: FetchWatchSearchSuggestionsInput): Promise<WatchSearchSuggestion[]> {
   const controller = new AbortController()
   const abortFromCaller = () => controller.abort()
   if (signal?.aborted) controller.abort()
@@ -146,7 +166,7 @@ export async function fetchWatchSearchSuggestions({
         "graphql",
       )
     }
-    return parseSuggestionTitles(payload.data?.watchSearchSuggestions)
+    return parseSuggestions(payload.data?.watchSearchSuggestions)
   } finally {
     clearTimeout(timeout)
     signal?.removeEventListener("abort", abortFromCaller)

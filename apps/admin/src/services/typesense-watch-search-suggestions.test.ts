@@ -21,6 +21,14 @@ function createService() {
   )
 }
 
+function suggestion(
+  title: string,
+  description: string | null = null,
+  matchSource: "title" | "description" = "title",
+) {
+  return { title, description, matchSource }
+}
+
 beforeEach(() => {
   vi.clearAllMocks()
 })
@@ -40,7 +48,7 @@ describe("TypesenseWatchSearchSuggestionsService", () => {
     },
   )
 
-  it("caps input before lookup and sends one localized title-only request", async () => {
+  it("caps input before lookup and sends one title-dominant localized request", async () => {
     const overlongQuery = `${"j".repeat(MAX_WATCH_SEARCH_SUGGESTION_PREFIX_CODE_POINTS)}extra`
     findFirstMock.mockResolvedValue({ bcp47: "en" })
     multiSearchMock.mockResolvedValue([
@@ -80,19 +88,21 @@ describe("TypesenseWatchSearchSuggestionsService", () => {
       expect.objectContaining({
         collection: "watch_search_lexical",
         q: overlongQuery.slice(0, 200),
-        query_by: "title_en,title_fallback",
+        query_by: "title_en,title_fallback,metadata_en,metadata_fallback",
+        query_by_weights: "8,4,2,1",
         filter_by: "languageIdentity:=[`slug:english`]",
-        include_fields: "canonicalVideoId,title_en,title_fallback",
+        include_fields:
+          "canonicalVideoId,title_en,title_fallback,metadata_en,metadata_fallback",
         per_page: 25,
         group_by: "canonicalVideoId",
         group_limit: 1,
         prefix: true,
-        num_typos: "0,0",
+        num_typos: "0,0,0,0",
         prioritize_exact_match: true,
         text_match_type: "max_weight",
       }),
     ])
-    expect(result).toEqual([overlongQuery.slice(0, 200)])
+    expect(result).toEqual([suggestion(overlongQuery.slice(0, 200))])
   })
 
   it("uses only the fallback title field for an unsupported tokenizer locale", async () => {
@@ -122,17 +132,18 @@ describe("TypesenseWatchSearchSuggestionsService", () => {
 
     await expect(
       createService().suggest({ query: "je", languageSlug: "hawaiian" }),
-    ).resolves.toEqual(["Jesus Film"])
+    ).resolves.toEqual([suggestion("Jesus Film")])
 
     expect(findFirstMock).toHaveBeenCalledWith(
       expect.objectContaining({ where: { deletedAt: null, slug: "hawaiian" } }),
     )
     expect(multiSearchMock).toHaveBeenCalledWith([
       expect.objectContaining({
-        query_by: "title_fallback",
+        query_by: "title_fallback,metadata_fallback",
+        query_by_weights: "8,2",
         filter_by: "languageIdentity:=[`slug:hawaiian`]",
-        include_fields: "canonicalVideoId,title_fallback",
-        num_typos: "0",
+        include_fields: "canonicalVideoId,title_fallback,metadata_fallback",
+        num_typos: "0,0",
       }),
     ])
   })
@@ -272,11 +283,11 @@ describe("TypesenseWatchSearchSuggestionsService", () => {
     await expect(
       createService().suggest({ query: "je", languageSlug: "english" }),
     ).resolves.toEqual([
-      "Jesus",
-      "Jesus Wept",
-      "Jesus Lives",
-      "Jesus Film",
-      "Jesus Messiah",
+      suggestion("Jesus"),
+      suggestion("Jesus Wept"),
+      suggestion("Jesus Lives"),
+      suggestion("Jesus Film"),
+      suggestion("Jesus Messiah"),
     ])
   })
 
@@ -311,14 +322,68 @@ describe("TypesenseWatchSearchSuggestionsService", () => {
         query: "je",
         languageSlug: "korean-sign-language",
       }),
-    ).resolves.toEqual(["Jesus Korean Sign Language"])
+    ).resolves.toEqual([suggestion("Jesus Korean Sign Language")])
 
     expect(multiSearchMock).toHaveBeenCalledWith([
       expect.objectContaining({
-        query_by: "title_ko,title_fallback",
+        query_by: "title_ko,title_fallback,metadata_ko,metadata_fallback",
         filter_by: "languageIdentity:=[`slug:korean-sign-language`]",
-        include_fields: "canonicalVideoId,title_ko,title_fallback",
+        include_fields:
+          "canonicalVideoId,title_ko,title_fallback,metadata_ko,metadata_fallback",
       }),
+    ])
+  })
+
+  it("returns description matches after title matches with localized context", async () => {
+    findFirstMock.mockResolvedValue({ bcp47: "en" })
+    multiSearchMock.mockResolvedValue([
+      {
+        found: 2,
+        out_of: 2,
+        page: 1,
+        search_time_ms: 1,
+        grouped_hits: [
+          {
+            group_key: ["canonical-description"],
+            found: 1,
+            hits: [
+              {
+                document: {
+                  canonicalVideoId: "canonical-description",
+                  title_en: ["The Life of Christ"],
+                  metadata_en: [
+                    "Discover the story of Jesus and His ministry.",
+                  ],
+                },
+              },
+            ],
+          },
+          {
+            group_key: ["canonical-title"],
+            found: 1,
+            hits: [
+              {
+                document: {
+                  canonicalVideoId: "canonical-title",
+                  title_en: ["Jesus Film"],
+                  metadata_en: ["A feature film."],
+                },
+              },
+            ],
+          },
+        ],
+      },
+    ])
+
+    await expect(
+      createService().suggest({ query: "jes", languageSlug: "english" }),
+    ).resolves.toEqual([
+      suggestion("Jesus Film", "A feature film."),
+      suggestion(
+        "The Life of Christ",
+        "Discover the story of Jesus and His ministry.",
+        "description",
+      ),
     ])
   })
 

@@ -47,10 +47,12 @@ rg -n "watch_search_lexical|languageIdentity|localeCodes" apps/admin/src/service
 ## What To Build
 
 1. Add a bounded Admin suggestion service that resolves the exact public
-   language slug and queries only localized `title_*` fields in
-   `watch_search_lexical`.
-2. Publish an additive public GraphQL query returning at most five raw title
-   strings without traces, embeddings, hydration, popularity, or history.
+   language slug and queries localized `title_*` and `metadata_*` fields in
+   `watch_search_lexical`, with title matches ranked ahead of description-only
+   matches.
+2. Publish an additive public GraphQL query returning at most five structured
+   title completions with optional description context and match source,
+   without traces, embeddings, hydration, popularity, or history.
 3. Add an abortable browser client with a 180 millisecond trailing debounce,
    two-meaningful-character threshold, timeout, and stale-response guard.
 4. Render a manual-selection editable combobox in the existing search modal.
@@ -66,21 +68,24 @@ rg -n "watch_search_lexical|languageIdentity|localeCodes" apps/admin/src/service
   query-log serving, or curated fallback.
 - No frontend query-language detection and no change to the Search language
   filter.
-- No result-card hydration, watchability lookup, metadata/transcript lane,
-  embedding call, full-search trace, or prefix analytics.
+- No result-card hydration, watchability lookup, transcript lane, embedding
+  call, full-search trace, or prefix analytics. Description context may come
+  only from the already-indexed lexical metadata lane.
 - Keep suggestions optional and fail empty without blocking explicit search.
 - Keep the full search controller lazy and the instant shell request-free.
 
 ## Verification
 
-- Admin service and resolver tests prove one title-only Typesense request,
-  fixed server caps, exact slug resolution, public-resolver registration, and
-  empty fallback when the optional backend is unavailable.
+- Admin service and resolver tests prove one title-dominant Typesense request,
+  fixed server caps, exact slug resolution, stable description context,
+  public-resolver registration, and empty fallback when the optional backend
+  is unavailable.
 - Web tests prove debounce timing, cancellation, stale-response suppression,
   draft-only selection, later explicit submission, close/reset behavior,
   ARIA relationships, IME safety, and mobile viewport placement.
 - Schema print, Admin GraphQL generation, affected typechecks, lint, formatting,
   and focused test suites pass.
 - Desktop and narrow-mobile browser proof shows the existing language filter,
+  quiet one-line description context with restrained match highlighting,
   usable suggestion rows, no full search before explicit submit, and no
   initial page-load request or bundle regression.

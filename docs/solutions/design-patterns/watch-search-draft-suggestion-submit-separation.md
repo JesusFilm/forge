@@ -190,6 +190,16 @@ inset, width-bounded dark menu with quieter type. The menu stays keyboard and
 touch scrollable, but hides its visual scrollbar so it reads as supporting
 guidance rather than a second content panel.
 
+Description completions can reuse the lexical index's localized `metadata_*`
+fields without adding hydration or a second request. Keep localized title
+fields weighted at least four times above metadata, sort all title matches
+ahead of description-only matches, and always use the title as the selectable
+draft value. A single-line description may sit beneath the title in subdued
+text; highlight only the literal matching phrase so the added context does not
+compete with the completion itself. Expose match source in the API contract for
+testing and future analytics, but do not add a visible source badge unless
+research shows viewers need it.
+
 ### Measure the viewport the viewer actually has
 
 The suggestion list is portaled so it is not clipped by overlay stacking

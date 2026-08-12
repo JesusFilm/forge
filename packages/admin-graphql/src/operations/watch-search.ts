@@ -55,7 +55,11 @@ export const adminWatchSearchOperation = adminGraphql(adminWatchSearchQuery)
 
 export const adminWatchSearchSuggestionsQuery = `
   query WatchSearchSuggestions($input: WatchSearchSuggestionsInput!) {
-    watchSearchSuggestions(input: $input)
+    watchSearchSuggestions(input: $input) {
+      title
+      description
+      matchSource
+    }
   }
 ` as const
 

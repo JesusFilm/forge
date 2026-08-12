@@ -13,7 +13,10 @@ import type {
 } from "@/services/watch-search.service"
 import { enqueueWatchSearchTrace } from "@/services/search-trace.service"
 import { TypesenseWatchSearchUnavailableError } from "@/services/typesense-watch-search.service"
-import type { WatchSearchSuggestionInput } from "@/services/typesense-watch-search-suggestions"
+import type {
+  WatchSearchSuggestion,
+  WatchSearchSuggestionInput,
+} from "@/services/typesense-watch-search-suggestions"
 import { enqueueWatchSearchShadow } from "@/services/watch-search-shadow.service"
 
 type WatchSearchRequestContext = {
@@ -343,12 +346,35 @@ const WatchSearchResponseRef = builder
     }),
   })
 
+const WatchSearchSuggestionMatchSourceEnum = builder.enumType(
+  "WatchSearchSuggestionMatchSource",
+  {
+    values: {
+      TITLE: { value: "title" },
+      DESCRIPTION: { value: "description" },
+    } as const,
+  },
+)
+
+const WatchSearchSuggestionRef = builder
+  .objectRef<WatchSearchSuggestion>("WatchSearchSuggestion")
+  .implement({
+    fields: (t) => ({
+      title: t.exposeString("title"),
+      description: t.exposeString("description", { nullable: true }),
+      matchSource: t.field({
+        type: WatchSearchSuggestionMatchSourceEnum,
+        resolve: (suggestion) => suggestion.matchSource,
+      }),
+    }),
+  })
+
 builder.queryFields((t) => ({
   watchSearchSuggestions: t.field({
-    type: ["String"],
+    type: [WatchSearchSuggestionRef],
     authScopes: { public: true },
     description:
-      "Return bounded language-aware Watch title completions without running full search.",
+      "Return bounded language-aware Watch title and description completions without running full search.",
     args: {
       input: t.arg({ type: WatchSearchSuggestionsInput, required: true }),
     },
