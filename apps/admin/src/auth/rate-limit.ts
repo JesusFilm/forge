@@ -17,6 +17,71 @@ const localWindow = new Map<string, number[]>()
 // ioredis `commandTimeout`: the shared client also backs the GraphQL rate-limit
 // store, which re-throws in prod — a global timeout would fail every query.
 const REDIS_COMMAND_TIMEOUT_MS = 250
+type RedisClient = NonNullable<ReturnType<typeof getRedisClient>>
+const redisReadiness = new WeakMap<RedisClient, Promise<void>>()
+
+function sharedRedisReadiness(redis: RedisClient): Promise<void> {
+  if (redis.status === "ready") return Promise.resolve()
+  if (
+    !["wait", "connecting", "connect", "reconnecting"].includes(redis.status)
+  ) {
+    return Promise.reject(new Error(`redis_not_ready_${redis.status}`))
+  }
+  const existing = redisReadiness.get(redis)
+  if (existing) return existing
+
+  const readiness = new Promise<void>((resolve, reject) => {
+    const cleanup = () => {
+      redis.off("ready", onReady)
+      redis.off("close", onUnavailable)
+      redis.off("end", onUnavailable)
+    }
+    const onReady = () => {
+      cleanup()
+      resolve()
+    }
+    const onUnavailable = () => {
+      cleanup()
+      reject(new Error(`redis_not_ready_${redis.status}`))
+    }
+
+    redis.once("ready", onReady)
+    redis.once("close", onUnavailable)
+    redis.once("end", onUnavailable)
+    if (redis.status === "ready") {
+      onReady()
+      return
+    }
+  })
+  redisReadiness.set(redis, readiness)
+  void readiness
+    .finally(() => {
+      if (redisReadiness.get(redis) === readiness) redisReadiness.delete(redis)
+    })
+    .catch(() => undefined)
+  return readiness
+}
+
+async function waitForRedisReady(
+  redis: RedisClient,
+  deadline: number,
+): Promise<void> {
+  if (redis.status === "ready") return
+  let timer: ReturnType<typeof setTimeout> | undefined
+  try {
+    await Promise.race([
+      sharedRedisReadiness(redis),
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(
+          () => reject(new Error("redis_command_timeout")),
+          Math.max(1, deadline - Date.now()),
+        )
+      }),
+    ])
+  } finally {
+    if (timer) clearTimeout(timer)
+  }
+}
 
 function getClientIp(request: Request): string {
   return (
@@ -67,13 +132,15 @@ export async function incrementFixedWindow(
   }
 
   let timer: ReturnType<typeof setTimeout> | undefined
+  const deadline = Date.now() + REDIS_COMMAND_TIMEOUT_MS
   try {
+    await waitForRedisReady(redis, deadline)
     const count = (await Promise.race([
       redis.eval(INCR_PEXPIRE_LUA, 1, key, windowMs),
       new Promise<never>((_, reject) => {
         timer = setTimeout(
           () => reject(new Error("redis_command_timeout")),
-          REDIS_COMMAND_TIMEOUT_MS,
+          Math.max(1, deadline - Date.now()),
         )
       }),
     ])) as number
