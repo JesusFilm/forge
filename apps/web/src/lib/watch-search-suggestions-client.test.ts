@@ -25,19 +25,34 @@ describe("fetchWatchSearchSuggestions", () => {
           data: {
             watchSearchSuggestions: [
               {
+                kind: "QUERY",
                 title: "Jesus",
                 description: "The story of Jesus.",
                 matchSource: "TITLE",
+                id: null,
+                slug: null,
+                label: null,
+                childCount: null,
               },
               {
+                kind: "CONTENT",
                 title: "Jesus Wept",
                 description: null,
                 matchSource: "TITLE",
+                id: "video-1",
+                slug: "jesus-wept",
+                label: "SEGMENT",
+                childCount: 0,
               },
               {
+                kind: "QUERY",
                 title: "Jesus",
                 description: "Duplicate title.",
                 matchSource: "DESCRIPTION",
+                id: null,
+                slug: null,
+                label: null,
+                childCount: null,
               },
             ],
           },
@@ -53,14 +68,24 @@ describe("fetchWatchSearchSuggestions", () => {
       }),
     ).resolves.toEqual([
       {
+        kind: "query",
         title: "Jesus",
         description: "The story of Jesus.",
         matchSource: "title",
+        id: null,
+        slug: null,
+        label: null,
+        childCount: null,
       },
       {
+        kind: "content",
         title: "Jesus Wept",
         description: null,
         matchSource: "title",
+        id: "video-1",
+        slug: "jesus-wept",
+        label: "SEGMENT",
+        childCount: 0,
       },
     ])
 

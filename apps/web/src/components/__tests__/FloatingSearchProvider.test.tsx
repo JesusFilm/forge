@@ -73,6 +73,7 @@ import { WATCH_SEARCH_RUM_RESULT_CLICKED_ACTION } from "@/lib/watch-search-analy
 
 const navigationMocks = vi.hoisted(() => ({
   pathname: "/",
+  push: vi.fn(),
   replace: vi.fn(),
 }))
 const { clearDatadogRumUser, identifyDatadogRumUser, reportDatadogRumAction } =
@@ -85,6 +86,7 @@ const { clearDatadogRumUser, identifyDatadogRumUser, reportDatadogRumAction } =
 vi.mock("next/navigation", () => ({
   usePathname: () => navigationMocks.pathname,
   useRouter: () => ({
+    push: navigationMocks.push,
     replace: navigationMocks.replace,
   }),
 }))
@@ -162,7 +164,34 @@ function watchSuggestion(
   description: string | null = null,
   matchSource: "title" | "description" = "title",
 ): WatchSearchSuggestion {
-  return { title, description, matchSource }
+  return {
+    kind: "query",
+    title,
+    description,
+    matchSource,
+    id: null,
+    slug: null,
+    label: null,
+    childCount: null,
+  }
+}
+
+function watchContentMatch(
+  title: string,
+  label: WatchSearchSuggestion["label"],
+  slug: string,
+  description: string | null = null,
+): WatchSearchSuggestion {
+  return {
+    kind: "content",
+    title,
+    description,
+    matchSource: "title",
+    id: `video-${slug}`,
+    slug,
+    label,
+    childCount: label === "COLLECTION" || label === "SERIES" ? 3 : 0,
+  }
 }
 
 beforeEach(() => {
@@ -2619,7 +2648,7 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
       '[data-testid="language-combobox-trigger"]',
     )
     expect(suggestionList).not.toBeNull()
-    expect(suggestionList?.className).toContain("bg-stone-950/90")
+    expect(suggestionList?.className).toContain("bg-stone-950/92")
     expect(suggestionList?.className).toContain("[scrollbar-width:none]")
     expect(suggestionList?.className).toContain("[&::-webkit-scrollbar]:hidden")
     expect(languageTrigger?.className).toContain("!bg-white/[0.07]")
@@ -2628,12 +2657,109 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
       document.querySelectorAll('[role="option"]'),
     )
     expect(
-      suggestionOptions.map((option) => option.firstElementChild?.textContent),
+      suggestionOptions.map(
+        (option) => option.querySelector("bdi")?.textContent,
+      ),
     ).toEqual(["Jesus", "The Life of Christ"])
     expect(suggestionOptions[1]?.textContent).toContain(
       "toward Jesus and His calling.",
     )
     expect(suggestionOptions[1]?.querySelector("mark")?.textContent).toBe("Je")
+  })
+
+  it("groups query suggestions before direct titles, collections, and scenes", async () => {
+    vi.useFakeTimers()
+    mockEnglishAndSpanishSearchLanguages()
+    mockedFetchSuggestions.mockResolvedValueOnce([
+      watchSuggestion("Jesus miracles"),
+      watchContentMatch("Jesus Heals the Paralytic", "SEGMENT", "jesus-heals"),
+      watchContentMatch(
+        "The Jesus Collection",
+        "COLLECTION",
+        "jesus-collection",
+      ),
+      watchContentMatch("JESUS", "FEATURE_FILM", "jesus"),
+    ])
+
+    const input = await openSearchOverlay()
+    act(() => setInputValue(input, "jes"))
+    await act(async () => {
+      vi.advanceTimersByTime(180)
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    const list = document.querySelector('[role="listbox"]')
+    const sectionLabels = Array.from(
+      list?.querySelectorAll('[role="group"] > div[id$="-heading"]') ?? [],
+    ).map((heading) => heading.textContent)
+    expect(sectionLabels).toEqual([
+      "Search Suggestions",
+      "Video",
+      "Collection",
+      "Segment",
+    ])
+    expect(
+      Array.from(list?.querySelectorAll('[role="option"] bdi') ?? []).map(
+        (row) => row.textContent,
+      ),
+    ).toEqual([
+      "Jesus miracles",
+      "JESUS",
+      "The Jesus Collection",
+      "Jesus Heals the Paralytic",
+    ])
+
+    act(() => {
+      input.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true }),
+      )
+      input.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true }),
+      )
+    })
+    expect(
+      list?.querySelector('[role="option"][aria-selected="true"] bdi')
+        ?.textContent,
+    ).toBe("JESUS")
+  })
+
+  it("opens a selected direct content match instead of submitting a search", async () => {
+    vi.useFakeTimers()
+    mockEnglishAndSpanishSearchLanguages()
+    mockedFetchSuggestions.mockResolvedValueOnce([
+      watchSuggestion("Jesus miracles"),
+      watchContentMatch("JESUS", "FEATURE_FILM", "jesus"),
+    ])
+
+    const input = await openSearchOverlay()
+    act(() => setInputValue(input, "jes"))
+    await act(async () => {
+      vi.advanceTimersByTime(180)
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    act(() => {
+      input.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true }),
+      )
+    })
+    act(() => {
+      input.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true }),
+      )
+    })
+    act(() => {
+      input.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "Enter", bubbles: true }),
+      )
+    })
+
+    expect(navigationMocks.push).toHaveBeenCalledWith(
+      expect.stringContaining("jesus"),
+    )
+    expect(mockedRunSearch).not.toHaveBeenCalled()
   })
 
   it("discards stale suggestions when the selected language changes", async () => {

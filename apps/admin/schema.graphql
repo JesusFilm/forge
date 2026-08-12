@@ -1216,7 +1216,7 @@ type Query {
   """
   watchSearch(input: WatchSearchInput!): WatchSearchResponse
   """
-  Return bounded language-aware Watch title and description completions without running full search.
+  Return bounded language-aware query phrases and direct Watch content matches without running full search.
   """
   watchSearchSuggestions(input: WatchSearchSuggestionsInput!): [WatchSearchSuggestion!]
   """
@@ -2266,9 +2266,19 @@ enum WatchSearchResultType {
 }
 
 type WatchSearchSuggestion {
+  childCount: Int
   description: String
+  id: ID
+  kind: WatchSearchSuggestionKind
+  label: String
   matchSource: WatchSearchSuggestionMatchSource
+  slug: String
   title: String
+}
+
+enum WatchSearchSuggestionKind {
+  CONTENT
+  QUERY
 }
 
 enum WatchSearchSuggestionMatchSource {

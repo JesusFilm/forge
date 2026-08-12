@@ -18,7 +18,8 @@ import {
 
 export const MAX_WATCH_SEARCH_SUGGESTION_PREFIX_CODE_POINTS = 200
 export const MAX_WATCH_SEARCH_SUGGESTION_LANGUAGE_SLUG_CODE_POINTS = 200
-export const MAX_WATCH_SEARCH_SUGGESTIONS = 5
+export const MAX_WATCH_SEARCH_QUERY_SUGGESTIONS = 3
+export const MAX_WATCH_SEARCH_CONTENT_MATCHES = 6
 export const MAX_CONCURRENT_WATCH_SEARCH_SUGGESTIONS = 24
 
 const TITLE_WORD_SEPARATOR = /[\s,.;:!?()[\]{}"'/\\|_-]+/u
@@ -26,6 +27,37 @@ const LANGUAGE_LOCALE_CACHE_TTL_MS = 5 * 60 * 1_000
 const MAX_CACHED_LANGUAGE_LOCALES = 256
 const TYPESENSE_SUGGESTION_CANDIDATE_LIMIT = 25
 const SAFE_BCP47_PATTERN = /^[A-Za-z0-9-]{1,64}$/
+const PHRASE_WORD = /[\p{L}\p{N}]+(?:['’’-][\p{L}\p{N}]+)*/gu
+const PHRASE_EDGE_STOP_WORDS = new Set([
+  "a",
+  "an",
+  "and",
+  "at",
+  "can",
+  "could",
+  "did",
+  "do",
+  "does",
+  "for",
+  "from",
+  "had",
+  "has",
+  "have",
+  "how",
+  "his",
+  "in",
+  "is",
+  "of",
+  "on",
+  "the",
+  "to",
+  "was",
+  "were",
+  "what",
+  "who",
+  "why",
+  "with",
+])
 
 export type WatchSearchSuggestionInput = {
   query: string
@@ -33,12 +65,17 @@ export type WatchSearchSuggestionInput = {
 }
 
 export type WatchSearchSuggestion = {
+  kind: "query" | "content"
   title: string
   description: string | null
   matchSource: "title" | "description"
+  id: string | null
+  slug: string | null
+  label: string | null
+  childCount: number | null
 }
 
-type SuggestionPrisma = Pick<PrismaClient, "language">
+type SuggestionPrisma = Pick<PrismaClient, "language" | "video">
 type SuggestionTypesense = Pick<TypesenseClient, "multiSearch">
 type ResolvedSuggestionLanguage = {
   locale: string
@@ -186,6 +223,137 @@ function firstValue(
   return null
 }
 
+function allValues(
+  document: TypesenseWatchLexicalDocument,
+  fields: readonly string[],
+): string[] {
+  return fields.flatMap((field) => {
+    const value = document[field]
+    return Array.isArray(value) ? value : value ? [value] : []
+  })
+}
+
+type PhraseCandidate = {
+  phrase: string
+  matchSource: "title" | "description"
+  score: number
+  firstSeen: number
+}
+
+function comparablePhrase(value: string): string {
+  return value.normalize("NFC").replace(/\s+/gu, " ").trim().toLocaleLowerCase()
+}
+
+function phraseWindows(
+  value: string,
+  query: string,
+  minimumMultiwordLength: number,
+): string[] {
+  const words = [...value.normalize("NFC").matchAll(PHRASE_WORD)].map(
+    (match) => match[0],
+  )
+  if (words.length === 0) return []
+  const comparableQuery = comparablePhrase(query)
+  const matches = words.flatMap((word, index) => {
+    const suffix = words
+      .slice(index, Math.min(words.length, index + 5))
+      .map((candidate) => candidate)
+      .join(" ")
+      .toLocaleLowerCase()
+    return suffix.startsWith(comparableQuery) ||
+      word.toLocaleLowerCase().startsWith(comparableQuery)
+      ? [index]
+      : []
+  })
+
+  const phrases = new Set<string>()
+  for (const matchIndex of matches) {
+    for (
+      let start = Math.max(0, matchIndex - 3);
+      start <= matchIndex;
+      start++
+    ) {
+      for (
+        let end = matchIndex;
+        end <= Math.min(words.length - 1, matchIndex + 3);
+        end++
+      ) {
+        const length = end - start + 1
+        if (length > 4) continue
+        if (length > 1 && length < minimumMultiwordLength) continue
+        const first = words[start]?.toLocaleLowerCase()
+        const last = words[end]?.toLocaleLowerCase()
+        if (!first || !last) continue
+        if (length > 1 && PHRASE_EDGE_STOP_WORDS.has(first)) continue
+        if (length > 1 && PHRASE_EDGE_STOP_WORDS.has(last)) continue
+        phrases.add(words.slice(start, end + 1).join(" "))
+      }
+    }
+  }
+  return [...phrases]
+}
+
+function extractedQuerySuggestions(
+  groups: readonly TypesenseSearchGroup<TypesenseWatchLexicalDocument>[],
+  titleFields: readonly string[],
+  metadataFields: readonly string[],
+  query: string,
+  excludedTitles: ReadonlySet<string>,
+): WatchSearchSuggestion[] {
+  const byPhrase = new Map<string, PhraseCandidate>()
+  let firstSeen = 0
+  const addText = (
+    value: string,
+    matchSource: PhraseCandidate["matchSource"],
+    sourceWeight: number,
+    minimumMultiwordLength: number,
+  ) => {
+    for (const phrase of phraseWindows(value, query, minimumMultiwordLength)) {
+      const key = comparablePhrase(phrase)
+      const wordCount = phrase.match(PHRASE_WORD)?.length ?? 0
+      if (!key || (wordCount > 1 && excludedTitles.has(key))) continue
+      const score = sourceWeight + (wordCount === 1 ? 12 : 8 - wordCount)
+      const existing = byPhrase.get(key)
+      if (existing) {
+        existing.score += score
+        if (matchSource === "title") existing.matchSource = "title"
+      } else {
+        byPhrase.set(key, {
+          phrase,
+          matchSource,
+          score,
+          firstSeen: firstSeen++,
+        })
+      }
+    }
+  }
+
+  for (const group of groups) {
+    const document = group.hits[0]?.document
+    if (!document) continue
+    for (const value of allValues(document, titleFields)) {
+      addText(value, "title", 8, 3)
+    }
+    for (const value of allValues(document, metadataFields)) {
+      addText(value, "description", 3, 3)
+    }
+  }
+
+  return [...byPhrase.values()]
+    .sort((a, b) => b.score - a.score || a.firstSeen - b.firstSeen)
+    .slice(0, MAX_WATCH_SEARCH_QUERY_SUGGESTIONS)
+    .map(({ phrase, matchSource }) => ({
+      kind: "query",
+      title: phrase,
+      description: null,
+      matchSource,
+      id: null,
+      slug: null,
+      label: null,
+      childCount: null,
+    }))
+}
+
 function suggestionRequest(
   query: string,
   titleFields: readonly string[],
@@ -211,16 +379,23 @@ function suggestionRequest(
     prioritize_exact_match: true,
     drop_tokens_threshold: 0,
     filter_by: `languageIdentity:=[\`${languageIdentity}\`]`,
-    include_fields: ["canonicalVideoId", ...fields].join(","),
+    include_fields: ["videoId", "canonicalVideoId", ...fields].join(","),
   }
 }
 
-function groupedHits(
+type DirectMatchCandidate = {
+  videoId: string
+  title: string
+  description: string | null
+  matchSource: "title" | "description"
+}
+
+function directMatchCandidates(
   groups: readonly TypesenseSearchGroup<TypesenseWatchLexicalDocument>[],
   titleFields: readonly string[],
   metadataFields: readonly string[],
   prefix: string,
-): WatchSearchSuggestion[] {
+): DirectMatchCandidate[] {
   const candidates = groups.flatMap((group, groupIndex) => {
     const document = group.hits[0]?.document
     if (!document) return []
@@ -232,11 +407,12 @@ function groupedHits(
       {
         groupIndex,
         suggestion: {
+          videoId: typeof document.videoId === "string" ? document.videoId : "",
           title,
           description:
             matchedDescription ?? firstValue(document, metadataFields),
           matchSource: matchedTitle ? "title" : "description",
-        } satisfies WatchSearchSuggestion,
+        } satisfies DirectMatchCandidate,
       },
     ]
   })
@@ -248,15 +424,56 @@ function groupedHits(
   )
 
   const seenTitles = new Set<string>()
-  const suggestions: WatchSearchSuggestion[] = []
+  const suggestions: DirectMatchCandidate[] = []
   for (const { suggestion } of candidates) {
+    if (!suggestion.videoId) continue
     const key = comparableTitle(suggestion.title)
     if (seenTitles.has(key)) continue
     seenTitles.add(key)
     suggestions.push(suggestion)
-    if (suggestions.length === MAX_WATCH_SEARCH_SUGGESTIONS) break
+    if (suggestions.length === MAX_WATCH_SEARCH_CONTENT_MATCHES) break
   }
   return suggestions
+}
+
+async function hydrateDirectMatches(
+  prisma: SuggestionPrisma,
+  candidates: readonly DirectMatchCandidate[],
+): Promise<WatchSearchSuggestion[]> {
+  const videos = await prisma.video.findMany({
+    where: {
+      id: { in: candidates.map((candidate) => candidate.videoId) },
+      deletedAt: null,
+      noIndex: false,
+    },
+    select: {
+      id: true,
+      slug: true,
+      label: true,
+      _count: {
+        select: {
+          children: { where: { child: { deletedAt: null } } },
+        },
+      },
+    },
+  })
+  const byId = new Map(videos.map((video) => [video.id, video]))
+  return candidates.flatMap((candidate) => {
+    const video = byId.get(candidate.videoId)
+    if (!video) return []
+    return [
+      {
+        kind: "content",
+        title: candidate.title,
+        description: candidate.description,
+        matchSource: candidate.matchSource,
+        id: video.id,
+        slug: video.slug,
+        label: video.label,
+        childCount: video._count.children,
+      } satisfies WatchSearchSuggestion,
+    ]
+  })
 }
 
 export class TypesenseWatchSearchSuggestionsService {
@@ -328,12 +545,26 @@ export class TypesenseWatchSearchSuggestionsService {
       if (!result || !("grouped_hits" in result) || !result.grouped_hits) {
         return []
       }
-      return groupedHits(
+      const candidates = directMatchCandidates(
         result.grouped_hits,
         titleFields,
         metadataFields,
         comparableTitle(query),
       )
+      const directMatches = await hydrateDirectMatches(this.prisma, candidates)
+      const directTitles = new Set(
+        directMatches.map((match) => comparablePhrase(match.title)),
+      )
+      return [
+        ...extractedQuerySuggestions(
+          result.grouped_hits,
+          titleFields,
+          metadataFields,
+          query,
+          directTitles,
+        ),
+        ...directMatches,
+      ]
     } catch {
       this.logger.warn("[watch-search-suggestions] event=typesense_unavailable")
       return []

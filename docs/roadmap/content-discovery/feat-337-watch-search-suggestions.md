@@ -23,9 +23,10 @@ tags:
 ## Problem
 
 Explicit Watch search submission prevents incomplete drafts from launching the
-full retrieval pipeline, but viewers receive no help completing known Watch
-titles. The modal needs inexpensive language-aware title suggestions that do
-not restore live result search or introduce popularity/history serving.
+full retrieval pipeline, but title-shaped autocomplete rows feel like search
+results rather than useful query suggestions. The modal needs inexpensive,
+language-aware query phrases followed by grouped direct content matches without
+restoring the full retrieval pipeline or introducing popularity/history serving.
 
 ## Entry Points - Read These First
 
@@ -46,18 +47,19 @@ rg -n "watch_search_lexical|languageIdentity|localeCodes" apps/admin/src/service
 
 ## What To Build
 
-1. Add a bounded Admin suggestion service that resolves the exact public
+1. Add a bounded Admin autocomplete service that resolves the exact public
    language slug and queries localized `title_*` and `metadata_*` fields in
-   `watch_search_lexical`, with title matches ranked ahead of description-only
-   matches.
-2. Publish an additive public GraphQL query returning at most five structured
-   title completions with optional description context and match source,
-   without traces, embeddings, hydration, popularity, or history.
+   `watch_search_lexical`. Extract useful word and phrase suggestions from both
+   lanes, then hydrate only the bounded direct video matches needed for links.
+2. Publish an additive public GraphQL query returning query suggestions first
+   and direct content matches second, with enough metadata to group direct
+   matches as Titles, Collections, and Scenes.
 3. Add an abortable browser client with a 180 millisecond trailing debounce,
    two-meaningful-character threshold, timeout, and stale-response guard.
 4. Render a manual-selection editable combobox in the existing search modal.
-   Pointer or active-option Enter fills the draft only; a later Enter/Search
-   key or visible search action performs the full search.
+   Query suggestions fill the draft only; direct content matches navigate to
+   the item. A later Enter/Search key or visible search action performs the full
+   search for typed query text.
 5. Keep the existing Search language control and use its exact public slug.
    Support IME composition, keyboard navigation, screen-reader relationships,
    mixed-direction titles, 44-pixel touch rows, and reduced mobile viewports.
@@ -68,9 +70,10 @@ rg -n "watch_search_lexical|languageIdentity|localeCodes" apps/admin/src/service
   query-log serving, or curated fallback.
 - No frontend query-language detection and no change to the Search language
   filter.
-- No result-card hydration, watchability lookup, transcript lane, embedding
-  call, full-search trace, or prefix analytics. Description context may come
-  only from the already-indexed lexical metadata lane.
+- No watchability lookup, transcript lane, embedding call, full-search trace,
+  or prefix analytics. Direct-match hydration is limited to indexed video IDs
+  and link/group metadata; phrase candidates come only from indexed lexical
+  title and description text.
 - Keep suggestions optional and fail empty without blocking explicit search.
 - Keep the full search controller lazy and the instant shell request-free.
 

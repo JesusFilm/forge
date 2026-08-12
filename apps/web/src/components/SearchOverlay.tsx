@@ -13,9 +13,9 @@ import {
   type KeyboardEvent as ReactKeyboardEvent,
 } from "react"
 import { createPortal } from "react-dom"
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import { useTranslations } from "next-intl"
-import { X } from "lucide-react"
+import { BookOpen, Folder, PlaySquare, Search, X } from "lucide-react"
 
 import {
   useFloatingSearch,
@@ -57,7 +57,13 @@ import {
 } from "@/lib/content-width"
 import type { CategorySearchTerm } from "@/lib/search-categories"
 import type { SearchLanguageOption } from "@/lib/search-language"
-import { parseWatchPath } from "@/lib/routes"
+import {
+  parseWatchPath,
+  tryAsContentSlug,
+  tryAsLocaleSlug,
+  watchVideoPath,
+} from "@/lib/routes"
+import { videoLabelMessageKey } from "@/lib/video-labels"
 import { WATCH_SEARCH_RUM_RESULT_CLICKED_ACTION } from "@/lib/watch-search-analytics-contract"
 import { buildWatchSearchResultClickRumContext } from "@/lib/watch-search-rum"
 import { normalizeWatchSearchQuery } from "@/lib/watch-search-query"
@@ -67,8 +73,8 @@ import {
 } from "@/lib/watch-search-client"
 
 const SEARCH_SUGGESTIONS_DEBOUNCE_MS = 180
-const SEARCH_SUGGESTIONS_MAX_HEIGHT = 288
-const SEARCH_SUGGESTIONS_MAX_WIDTH = 560
+const SEARCH_SUGGESTIONS_MAX_HEIGHT = 440
+const SEARCH_SUGGESTIONS_MAX_WIDTH = 640
 const SEARCH_SUGGESTIONS_HORIZONTAL_INSET = 8
 const SEARCH_SUGGESTIONS_MIN_ROW_HEIGHT = 44
 const SEARCH_SUGGESTIONS_VIEWPORT_GAP = 8
@@ -93,6 +99,21 @@ type SuggestionDescriptionParts = {
   before: string
   match: string | null
   after: string
+}
+
+type SuggestionSection = {
+  id: "query" | "titles" | "collections" | "scenes"
+  label: string
+  icon: typeof Search
+  rows: Array<{ suggestion: WatchSearchSuggestion; index: number }>
+}
+
+function suggestionContentSection(
+  label: WatchSearchSuggestion["label"],
+): Exclude<SuggestionSection["id"], "query"> {
+  if (label === "COLLECTION" || label === "SERIES") return "collections"
+  if (label === "SEGMENT" || label === "BEHIND_THE_SCENES") return "scenes"
+  return "titles"
 }
 
 function escapedRegularExpression(value: string): string {
@@ -169,7 +190,9 @@ const CATEGORY_TITLE_KEYS: Record<
 
 export function SearchOverlay() {
   const t = useTranslations("SearchOverlay")
+  const videoLabels = useTranslations("VideoLabels")
   const pathname = usePathname()
+  const router = useRouter()
   const parsedPath = parseWatchPath(pathname)
   const routeSurface = useWatchRouteSurface()
   const isWatchHome =
@@ -215,7 +238,7 @@ export function SearchOverlay() {
     useState<HTMLDivElement | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const fieldShellRef = useRef<HTMLDivElement>(null)
-  const suggestionListRef = useRef<HTMLUListElement>(null)
+  const suggestionListRef = useRef<HTMLDivElement>(null)
   const suggestionListId = `${useId()}-search-suggestions`
   const recordedResultClickKeysRef = useRef<Set<string>>(new Set())
   const recordedResultsViewedKeysRef = useRef<Map<string, Set<string>>>(
@@ -286,6 +309,58 @@ export function SearchOverlay() {
   )
   const visibleSuggestionsLoading =
     suggestionRequestKey != null && suggestionsLoading
+  const suggestionSections = useMemo<SuggestionSection[]>(() => {
+    const indexed = suggestions.map((suggestion, index) => ({
+      suggestion,
+      index,
+    }))
+    const sections: SuggestionSection[] = [
+      {
+        id: "query",
+        label: t("searchSuggestions"),
+        icon: Search,
+        rows: indexed.filter(({ suggestion }) => suggestion.kind === "query"),
+      },
+      {
+        id: "titles",
+        label: videoLabels("video"),
+        icon: PlaySquare,
+        rows: indexed.filter(
+          ({ suggestion }) =>
+            suggestion.kind === "content" &&
+            suggestionContentSection(suggestion.label) === "titles",
+        ),
+      },
+      {
+        id: "collections",
+        label: videoLabels("collection"),
+        icon: Folder,
+        rows: indexed.filter(
+          ({ suggestion }) =>
+            suggestion.kind === "content" &&
+            suggestionContentSection(suggestion.label) === "collections",
+        ),
+      },
+      {
+        id: "scenes",
+        label: videoLabels("segment"),
+        icon: BookOpen,
+        rows: indexed.filter(
+          ({ suggestion }) =>
+            suggestion.kind === "content" &&
+            suggestionContentSection(suggestion.label) === "scenes",
+        ),
+      },
+    ]
+    return sections.filter((section) => section.rows.length > 0)
+  }, [suggestions, t, videoLabels])
+  const suggestionNavigationOrder = useMemo(
+    () =>
+      suggestionSections.flatMap((section) =>
+        section.rows.map(({ index }) => index),
+      ),
+    [suggestionSections],
+  )
 
   useEffect(() => {
     activeSubmissionKeyRef.current = null
@@ -559,6 +634,31 @@ export function SearchOverlay() {
     [invalidateSuggestionRequest, setQuery],
   )
 
+  const activateSuggestion = useCallback(
+    (suggestion: WatchSearchSuggestion) => {
+      if (suggestion.kind === "query") {
+        selectSuggestion(suggestion.title)
+        return
+      }
+      const slug = suggestion.slug ? tryAsContentSlug(suggestion.slug) : null
+      const language = tryAsLocaleSlug(suggestionLanguageSlug ?? "english")
+      if (!slug || !language) {
+        selectSuggestion(suggestion.title)
+        return
+      }
+      invalidateSuggestionRequest()
+      router.push(watchVideoPath(slug, language))
+      setOpen(false)
+    },
+    [
+      invalidateSuggestionRequest,
+      router,
+      selectSuggestion,
+      setOpen,
+      suggestionLanguageSlug,
+    ],
+  )
+
   const handleInputKeyDown = useCallback(
     (event: ReactKeyboardEvent<HTMLInputElement>) => {
       const composing = isComposing || event.nativeEvent.isComposing
@@ -568,21 +668,32 @@ export function SearchOverlay() {
         return
       }
 
-      if (event.key === "ArrowDown" && suggestions.length > 0) {
+      if (event.key === "ArrowDown" && suggestionNavigationOrder.length > 0) {
         event.preventDefault()
-        setActiveSuggestionIndex((current) =>
-          current == null ? 0 : (current + 1) % suggestions.length,
-        )
+        setActiveSuggestionIndex((current) => {
+          const currentPosition =
+            current == null ? -1 : suggestionNavigationOrder.indexOf(current)
+          const nextPosition =
+            currentPosition < 0
+              ? 0
+              : (currentPosition + 1) % suggestionNavigationOrder.length
+          return suggestionNavigationOrder[nextPosition] ?? null
+        })
         return
       }
 
-      if (event.key === "ArrowUp" && suggestions.length > 0) {
+      if (event.key === "ArrowUp" && suggestionNavigationOrder.length > 0) {
         event.preventDefault()
-        setActiveSuggestionIndex((current) =>
-          current == null
-            ? suggestions.length - 1
-            : (current - 1 + suggestions.length) % suggestions.length,
-        )
+        setActiveSuggestionIndex((current) => {
+          const currentPosition =
+            current == null ? -1 : suggestionNavigationOrder.indexOf(current)
+          const nextPosition =
+            currentPosition < 0
+              ? suggestionNavigationOrder.length - 1
+              : (currentPosition - 1 + suggestionNavigationOrder.length) %
+                suggestionNavigationOrder.length
+          return suggestionNavigationOrder[nextPosition] ?? null
+        })
         return
       }
 
@@ -593,7 +704,7 @@ export function SearchOverlay() {
       ) {
         event.preventDefault()
         event.stopPropagation()
-        selectSuggestion(suggestions[activeSuggestionIndex].title)
+        activateSuggestion(suggestions[activeSuggestionIndex])
         return
       }
 
@@ -616,9 +727,10 @@ export function SearchOverlay() {
     },
     [
       activeSuggestionIndex,
+      activateSuggestion,
       dismissSuggestions,
       isComposing,
-      selectSuggestion,
+      suggestionNavigationOrder,
       suggestions,
       visibleSuggestionsLoading,
     ],
@@ -847,13 +959,13 @@ export function SearchOverlay() {
         suggestionListPosition &&
         suggestions.length > 0 &&
         createPortal(
-          <ul
+          <div
             ref={suggestionListRef}
             id={suggestionListId}
             role="listbox"
             aria-label={t("searchSuggestions")}
             data-placement={suggestionListPosition.placement}
-            className={`fixed z-[1000] m-0 overflow-y-auto rounded-xl border border-white/15 bg-stone-950/90 p-1 text-stone-100 shadow-xl shadow-black/30 backdrop-blur-xl [scrollbar-width:none] duration-150 animate-in fade-in-0 zoom-in-95 [&::-webkit-scrollbar]:hidden ${
+            className={`fixed z-[1000] m-0 overflow-y-auto rounded-2xl border border-white/10 bg-stone-950/92 p-2 text-stone-100 shadow-2xl shadow-black/40 backdrop-blur-xl [scrollbar-width:none] duration-150 animate-in fade-in-0 zoom-in-95 [&::-webkit-scrollbar]:hidden ${
               suggestionListPosition.placement === "below"
                 ? "origin-top-left"
                 : "origin-bottom-left"
@@ -865,88 +977,132 @@ export function SearchOverlay() {
               maxHeight: suggestionListPosition.maxHeight,
             }}
           >
-            {suggestions.map((suggestion, index) => {
-              const active = activeSuggestionIndex === index
-              const descriptionParts = suggestion.description
-                ? suggestionDescriptionParts(
-                    suggestion.description,
-                    normalizedSuggestionQuery,
-                  )
-                : null
+            {suggestionSections.map((section, sectionIndex) => {
+              const SectionIcon = section.icon
               return (
-                <li
-                  key={`${suggestion.title}-${index}`}
-                  id={`${suggestionListId}-option-${index}`}
-                  role="option"
-                  aria-selected={active}
-                  data-suggestion-index={index}
-                  dir="auto"
-                  onMouseEnter={() => setActiveSuggestionIndex(index)}
-                  onPointerDown={(event) => {
-                    if (!event.pointerType || event.pointerType === "mouse") {
-                      event.preventDefault()
-                      selectSuggestion(suggestion.title)
-                      return
-                    }
-                    suggestionTouchGestureRef.current = {
-                      pointerId: event.pointerId,
-                      startX: event.clientX,
-                      startY: event.clientY,
-                      moved: false,
-                    }
-                  }}
-                  onPointerMove={(event) => {
-                    const gesture = suggestionTouchGestureRef.current
-                    if (gesture?.pointerId !== event.pointerId) return
-                    if (
-                      Math.hypot(
-                        event.clientX - gesture.startX,
-                        event.clientY - gesture.startY,
-                      ) > 8
-                    ) {
-                      gesture.moved = true
-                    }
-                  }}
-                  onPointerUp={(event) => {
-                    const gesture = suggestionTouchGestureRef.current
-                    if (gesture?.pointerId !== event.pointerId) return
-                    suggestionTouchGestureRef.current = null
-                    if (!gesture.moved) {
-                      event.preventDefault()
-                      selectSuggestion(suggestion.title)
-                    }
-                  }}
-                  onPointerCancel={() => {
-                    suggestionTouchGestureRef.current = null
-                  }}
-                  className={`flex min-h-11 cursor-pointer flex-col items-start justify-center rounded-lg px-3 py-2 text-left outline-none transition-colors ${
-                    active
-                      ? "bg-white/[0.12] text-white"
-                      : "text-stone-200 hover:bg-white/[0.08] hover:text-white"
-                  }`}
+                <div
+                  key={section.id}
+                  role="group"
+                  aria-labelledby={`${suggestionListId}-${section.id}-heading`}
+                  className={
+                    sectionIndex === 0
+                      ? ""
+                      : "mt-1 border-t border-white/[0.08] pt-1"
+                  }
                 >
-                  <bdi className="text-sm font-medium leading-5">
-                    {suggestion.title}
-                  </bdi>
-                  {descriptionParts && (
-                    <bdi
-                      className={`line-clamp-1 text-xs leading-4 ${
-                        active ? "text-stone-300" : "text-stone-400"
-                      }`}
-                    >
-                      {descriptionParts.before}
-                      {descriptionParts.match && (
-                        <mark className="bg-transparent font-medium text-stone-200">
-                          {descriptionParts.match}
-                        </mark>
-                      )}
-                      {descriptionParts.after}
-                    </bdi>
-                  )}
-                </li>
+                  <div
+                    id={`${suggestionListId}-${section.id}-heading`}
+                    className="px-3 pb-1 pt-2 text-[0.6875rem] font-semibold uppercase tracking-[0.12em] text-stone-500"
+                  >
+                    {section.label}
+                  </div>
+                  <div role="presentation">
+                    {section.rows.map(({ suggestion, index }) => {
+                      const active = activeSuggestionIndex === index
+                      const descriptionParts = suggestion.description
+                        ? suggestionDescriptionParts(
+                            suggestion.description,
+                            normalizedSuggestionQuery,
+                          )
+                        : null
+                      return (
+                        <div
+                          key={`${suggestion.kind}-${suggestion.id ?? suggestion.title}-${index}`}
+                          id={`${suggestionListId}-option-${index}`}
+                          role="option"
+                          aria-selected={active}
+                          data-suggestion-index={index}
+                          dir="auto"
+                          onMouseEnter={() => setActiveSuggestionIndex(index)}
+                          onPointerDown={(event) => {
+                            if (
+                              !event.pointerType ||
+                              event.pointerType === "mouse"
+                            ) {
+                              event.preventDefault()
+                              activateSuggestion(suggestion)
+                              return
+                            }
+                            suggestionTouchGestureRef.current = {
+                              pointerId: event.pointerId,
+                              startX: event.clientX,
+                              startY: event.clientY,
+                              moved: false,
+                            }
+                          }}
+                          onPointerMove={(event) => {
+                            const gesture = suggestionTouchGestureRef.current
+                            if (gesture?.pointerId !== event.pointerId) return
+                            if (
+                              Math.hypot(
+                                event.clientX - gesture.startX,
+                                event.clientY - gesture.startY,
+                              ) > 8
+                            ) {
+                              gesture.moved = true
+                            }
+                          }}
+                          onPointerUp={(event) => {
+                            const gesture = suggestionTouchGestureRef.current
+                            if (gesture?.pointerId !== event.pointerId) return
+                            suggestionTouchGestureRef.current = null
+                            if (!gesture.moved) {
+                              event.preventDefault()
+                              activateSuggestion(suggestion)
+                            }
+                          }}
+                          onPointerCancel={() => {
+                            suggestionTouchGestureRef.current = null
+                          }}
+                          className={`flex min-h-11 cursor-pointer items-start gap-3 rounded-xl px-3 py-2.5 text-left outline-none transition-colors ${
+                            active
+                              ? "bg-white/[0.11] text-white"
+                              : "text-stone-200 hover:bg-white/[0.07] hover:text-white"
+                          }`}
+                        >
+                          <SectionIcon
+                            size={17}
+                            strokeWidth={1.8}
+                            aria-hidden="true"
+                            className={`mt-0.5 shrink-0 ${
+                              active ? "text-stone-200" : "text-stone-500"
+                            }`}
+                          />
+                          <span className="min-w-0 flex-1">
+                            <bdi className="block truncate text-sm font-medium leading-5">
+                              {suggestion.title}
+                            </bdi>
+                            {suggestion.kind === "content" && (
+                              <span className="block truncate text-[0.6875rem] font-medium uppercase tracking-[0.08em] text-stone-500">
+                                {videoLabels(
+                                  videoLabelMessageKey(suggestion.label),
+                                )}
+                              </span>
+                            )}
+                            {descriptionParts && (
+                              <bdi
+                                className={`line-clamp-1 text-xs leading-4 ${
+                                  active ? "text-stone-300" : "text-stone-500"
+                                }`}
+                              >
+                                {descriptionParts.before}
+                                {descriptionParts.match && (
+                                  <mark className="bg-transparent font-medium text-stone-200">
+                                    {descriptionParts.match}
+                                  </mark>
+                                )}
+                                {descriptionParts.after}
+                              </bdi>
+                            )}
+                          </span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
               )
             })}
-          </ul>,
+          </div>,
           closePortalContainer,
         )}
 

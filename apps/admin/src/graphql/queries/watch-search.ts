@@ -356,16 +356,34 @@ const WatchSearchSuggestionMatchSourceEnum = builder.enumType(
   },
 )
 
+const WatchSearchSuggestionKindEnum = builder.enumType(
+  "WatchSearchSuggestionKind",
+  {
+    values: {
+      QUERY: { value: "query" },
+      CONTENT: { value: "content" },
+    } as const,
+  },
+)
+
 const WatchSearchSuggestionRef = builder
   .objectRef<WatchSearchSuggestion>("WatchSearchSuggestion")
   .implement({
     fields: (t) => ({
+      kind: t.field({
+        type: WatchSearchSuggestionKindEnum,
+        resolve: (suggestion) => suggestion.kind,
+      }),
       title: t.exposeString("title"),
       description: t.exposeString("description", { nullable: true }),
       matchSource: t.field({
         type: WatchSearchSuggestionMatchSourceEnum,
         resolve: (suggestion) => suggestion.matchSource,
       }),
+      id: t.exposeID("id", { nullable: true }),
+      slug: t.exposeString("slug", { nullable: true }),
+      label: t.exposeString("label", { nullable: true }),
+      childCount: t.exposeInt("childCount", { nullable: true }),
     }),
   })
 
@@ -374,7 +392,7 @@ builder.queryFields((t) => ({
     type: [WatchSearchSuggestionRef],
     authScopes: { public: true },
     description:
-      "Return bounded language-aware Watch title and description completions without running full search.",
+      "Return bounded language-aware query phrases and direct Watch content matches without running full search.",
     args: {
       input: t.arg({ type: WatchSearchSuggestionsInput, required: true }),
     },

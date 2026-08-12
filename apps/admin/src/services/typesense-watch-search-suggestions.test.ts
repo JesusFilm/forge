@@ -8,6 +8,7 @@ import {
 } from "./typesense-watch-search-suggestions"
 
 const findFirstMock = vi.fn()
+const videoFindManyMock = vi.fn()
 const multiSearchMock = vi.fn()
 const warnMock = vi.fn()
 
@@ -15,22 +16,63 @@ function createService() {
   return new TypesenseWatchSearchSuggestionsService(
     {
       language: { findFirst: findFirstMock },
+      video: { findMany: videoFindManyMock },
     } as never,
     { multiSearch: multiSearchMock } as never,
     { warn: warnMock },
   )
 }
 
-function suggestion(
+function contentSuggestion(
   title: string,
   description: string | null = null,
   matchSource: "title" | "description" = "title",
+  id = `video-${title}`,
 ) {
-  return { title, description, matchSource }
+  return {
+    kind: "content",
+    title,
+    description,
+    matchSource,
+    id,
+    slug: id
+      .replace(/^video-/, "")
+      .toLocaleLowerCase()
+      .replace(/\s+/g, "-"),
+    label: "FEATURE_FILM",
+    childCount: 0,
+  }
+}
+
+function querySuggestion(title: string) {
+  return {
+    kind: "query",
+    title,
+    description: null,
+    matchSource: "title",
+    id: null,
+    slug: null,
+    label: null,
+    childCount: null,
+  }
 }
 
 beforeEach(() => {
   vi.clearAllMocks()
+  videoFindManyMock.mockImplementation(
+    ({ where }: { where: { id: { in: string[] } } }) =>
+      Promise.resolve(
+        where.id.in.map((id) => ({
+          id,
+          slug: id
+            .replace(/^video-/, "")
+            .toLocaleLowerCase()
+            .replace(/\s+/g, "-"),
+          label: "FEATURE_FILM",
+          _count: { children: 0 },
+        })),
+      ),
+  )
 })
 
 describe("TypesenseWatchSearchSuggestionsService", () => {
@@ -64,6 +106,7 @@ describe("TypesenseWatchSearchSuggestionsService", () => {
             hits: [
               {
                 document: {
+                  videoId: "video-long",
                   canonicalVideoId: "canonical-1",
                   title_en: ["Unrelated", overlongQuery.slice(0, 200)],
                   title_fallback: ["Fallback"],
@@ -92,7 +135,7 @@ describe("TypesenseWatchSearchSuggestionsService", () => {
         query_by_weights: "8,4,2,1",
         filter_by: "languageIdentity:=[`slug:english`]",
         include_fields:
-          "canonicalVideoId,title_en,title_fallback,metadata_en,metadata_fallback",
+          "videoId,canonicalVideoId,title_en,title_fallback,metadata_en,metadata_fallback",
         per_page: 25,
         group_by: "canonicalVideoId",
         group_limit: 1,
@@ -102,7 +145,15 @@ describe("TypesenseWatchSearchSuggestionsService", () => {
         text_match_type: "max_weight",
       }),
     ])
-    expect(result).toEqual([suggestion(overlongQuery.slice(0, 200))])
+    expect(result).toEqual([
+      querySuggestion(overlongQuery.slice(0, 200)),
+      contentSuggestion(
+        overlongQuery.slice(0, 200),
+        null,
+        "title",
+        "video-long",
+      ),
+    ])
   })
 
   it("uses only the fallback title field for an unsupported tokenizer locale", async () => {
@@ -120,6 +171,7 @@ describe("TypesenseWatchSearchSuggestionsService", () => {
             hits: [
               {
                 document: {
+                  videoId: "video-jesus-film",
                   canonicalVideoId: "canonical-1",
                   title_fallback: ["Jesus Film"],
                 },
@@ -132,7 +184,10 @@ describe("TypesenseWatchSearchSuggestionsService", () => {
 
     await expect(
       createService().suggest({ query: "je", languageSlug: "hawaiian" }),
-    ).resolves.toEqual([suggestion("Jesus Film")])
+    ).resolves.toEqual([
+      querySuggestion("Jesus"),
+      contentSuggestion("Jesus Film", null, "title", "video-jesus-film"),
+    ])
 
     expect(findFirstMock).toHaveBeenCalledWith(
       expect.objectContaining({ where: { deletedAt: null, slug: "hawaiian" } }),
@@ -142,7 +197,8 @@ describe("TypesenseWatchSearchSuggestionsService", () => {
         query_by: "title_fallback,metadata_fallback",
         query_by_weights: "8,2",
         filter_by: "languageIdentity:=[`slug:hawaiian`]",
-        include_fields: "canonicalVideoId,title_fallback,metadata_fallback",
+        include_fields:
+          "videoId,canonicalVideoId,title_fallback,metadata_fallback",
         num_typos: "0,0",
       }),
     ])
@@ -269,6 +325,7 @@ describe("TypesenseWatchSearchSuggestionsService", () => {
             hits: [
               {
                 document: {
+                  videoId: `video-${index}`,
                   canonicalVideoId: `canonical-${index}`,
                   title_en: [title],
                   title_fallback: [],
@@ -280,14 +337,25 @@ describe("TypesenseWatchSearchSuggestionsService", () => {
       },
     ])
 
-    await expect(
-      createService().suggest({ query: "je", languageSlug: "english" }),
-    ).resolves.toEqual([
-      suggestion("Jesus"),
-      suggestion("Jesus Wept"),
-      suggestion("Jesus Lives"),
-      suggestion("Jesus Film"),
-      suggestion("Jesus Messiah"),
+    const result = await createService().suggest({
+      query: "je",
+      languageSlug: "english",
+    })
+
+    expect(result[0]).toEqual(querySuggestion("Jesus"))
+    expect(
+      result.filter((row) => row.kind === "query").length,
+    ).toBeLessThanOrEqual(3)
+    expect(result.filter((row) => row.kind === "content")).toHaveLength(6)
+    expect(
+      result.filter((row) => row.kind === "content").map((row) => row.title),
+    ).toEqual([
+      "Jesus",
+      "Jesus Wept",
+      "Jesus Lives",
+      "Jesus Film",
+      "Jesus Messiah",
+      "Jesus Before Pilate",
     ])
   })
 
@@ -306,6 +374,7 @@ describe("TypesenseWatchSearchSuggestionsService", () => {
             hits: [
               {
                 document: {
+                  videoId: "video-korean",
                   canonicalVideoId: "canonical-1",
                   title_ko: ["Jesus Korean Sign Language"],
                   title_fallback: [],
@@ -317,19 +386,30 @@ describe("TypesenseWatchSearchSuggestionsService", () => {
       },
     ])
 
-    await expect(
-      createService().suggest({
-        query: "je",
-        languageSlug: "korean-sign-language",
-      }),
-    ).resolves.toEqual([suggestion("Jesus Korean Sign Language")])
+    const result = await createService().suggest({
+      query: "je",
+      languageSlug: "korean-sign-language",
+    })
+    expect(result.slice(0, 3).map((row) => row.title)).toEqual([
+      "Jesus",
+      "Jesus Korean Sign",
+      "Jesus Korean Sign Language",
+    ])
+    expect(result.at(-1)).toEqual(
+      contentSuggestion(
+        "Jesus Korean Sign Language",
+        null,
+        "title",
+        "video-korean",
+      ),
+    )
 
     expect(multiSearchMock).toHaveBeenCalledWith([
       expect.objectContaining({
         query_by: "title_ko,title_fallback,metadata_ko,metadata_fallback",
         filter_by: "languageIdentity:=[`slug:korean-sign-language`]",
         include_fields:
-          "canonicalVideoId,title_ko,title_fallback,metadata_ko,metadata_fallback",
+          "videoId,canonicalVideoId,title_ko,title_fallback,metadata_ko,metadata_fallback",
       }),
     ])
   })
@@ -349,6 +429,7 @@ describe("TypesenseWatchSearchSuggestionsService", () => {
             hits: [
               {
                 document: {
+                  videoId: "video-life",
                   canonicalVideoId: "canonical-description",
                   title_en: ["The Life of Christ"],
                   metadata_en: [
@@ -364,6 +445,7 @@ describe("TypesenseWatchSearchSuggestionsService", () => {
             hits: [
               {
                 document: {
+                  videoId: "video-jesus-film",
                   canonicalVideoId: "canonical-title",
                   title_en: ["Jesus Film"],
                   metadata_en: ["A feature film."],
@@ -375,14 +457,23 @@ describe("TypesenseWatchSearchSuggestionsService", () => {
       },
     ])
 
-    await expect(
-      createService().suggest({ query: "jes", languageSlug: "english" }),
-    ).resolves.toEqual([
-      suggestion("Jesus Film", "A feature film."),
-      suggestion(
+    const result = await createService().suggest({
+      query: "jes",
+      languageSlug: "english",
+    })
+    expect(result[0]).toEqual(querySuggestion("Jesus"))
+    expect(result.filter((row) => row.kind === "content")).toEqual([
+      contentSuggestion(
+        "Jesus Film",
+        "A feature film.",
+        "title",
+        "video-jesus-film",
+      ),
+      contentSuggestion(
         "The Life of Christ",
         "Discover the story of Jesus and His ministry.",
         "description",
+        "video-life",
       ),
     ])
   })

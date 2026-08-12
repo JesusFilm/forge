@@ -25,7 +25,7 @@ import type {
 import { normalizeWatchSearchQuery } from "./watch-search-query"
 
 const WATCH_SEARCH_TIMEOUT_MS = 45_000
-const MAX_WATCH_SEARCH_SUGGESTIONS = 5
+const MAX_WATCH_SEARCH_AUTOCOMPLETE_ROWS = 9
 const WATCH_SEARCH_SUGGESTIONS_TIMEOUT_MS = 3_500
 
 type WatchSearchGraphqlResult = AdminResultOf<typeof adminWatchSearchOperation>
@@ -62,9 +62,14 @@ export type FetchWatchSearchSuggestionsInput = {
 }
 
 export type WatchSearchSuggestion = {
+  kind: "query" | "content"
   title: string
   description: string | null
   matchSource: "title" | "description"
+  id: string | null
+  slug: string | null
+  label: AdminVideoLabel | null
+  childCount: number | null
 }
 
 export class WatchSearchSuggestionsError extends Error {
@@ -91,12 +96,32 @@ function parseSuggestions(value: unknown): WatchSearchSuggestion[] {
     if (
       typeof item !== "object" ||
       item == null ||
+      !("kind" in item) ||
+      (item.kind !== "QUERY" && item.kind !== "CONTENT") ||
       !("title" in item) ||
       typeof item.title !== "string" ||
       !("description" in item) ||
       (item.description != null && typeof item.description !== "string") ||
       !("matchSource" in item) ||
-      (item.matchSource !== "TITLE" && item.matchSource !== "DESCRIPTION")
+      (item.matchSource !== "TITLE" && item.matchSource !== "DESCRIPTION") ||
+      !("id" in item) ||
+      (item.id != null && typeof item.id !== "string") ||
+      !("slug" in item) ||
+      (item.slug != null && typeof item.slug !== "string") ||
+      !("label" in item) ||
+      (item.label != null &&
+        ![
+          "BEHIND_THE_SCENES",
+          "COLLECTION",
+          "EPISODE",
+          "FEATURE_FILM",
+          "SEGMENT",
+          "SERIES",
+          "SHORT_FILM",
+          "TRAILER",
+        ].includes(item.label as string)) ||
+      !("childCount" in item) ||
+      (item.childCount != null && typeof item.childCount !== "number")
     ) {
       throw new WatchSearchSuggestionsError(
         "Watch search suggestion response was malformed",
@@ -105,16 +130,30 @@ function parseSuggestions(value: unknown): WatchSearchSuggestion[] {
     }
     const title = item.title.trim()
     if (!title) continue
-    const key = title.normalize("NFC").toLocaleLowerCase()
+    if (
+      item.kind === "CONTENT" &&
+      (typeof item.id !== "string" || typeof item.slug !== "string")
+    ) {
+      throw new WatchSearchSuggestionsError(
+        "Watch search direct match was malformed",
+        "malformed_response",
+      )
+    }
+    const key = `${item.kind}:${title.normalize("NFC").toLocaleLowerCase()}`
     if (seen.has(key)) continue
     seen.add(key)
     const description = item.description?.trim() || null
     suggestions.push({
+      kind: item.kind === "CONTENT" ? "content" : "query",
       title,
       description,
       matchSource: item.matchSource === "DESCRIPTION" ? "description" : "title",
+      id: item.id,
+      slug: item.slug,
+      label: item.label as AdminVideoLabel | null,
+      childCount: item.childCount,
     })
-    if (suggestions.length === MAX_WATCH_SEARCH_SUGGESTIONS) break
+    if (suggestions.length === MAX_WATCH_SEARCH_AUTOCOMPLETE_ROWS) break
   }
   return suggestions
 }
