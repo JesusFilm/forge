@@ -319,6 +319,18 @@ Experiments become measuring only after objective activation, overlap becomes a
 confounder only when treatments are simultaneously live, and canonical drift
 forces an inconclusive outcome rather than a lesson or rollback.
 
+### SEO Run Audit Report
+
+The bounded, versioned explanation of one SEO Marketing Agent job: which safe
+provider scope reached evaluation, how candidates moved through the decision
+funnel, which actions were selected or rejected, and which proposal identities
+resulted.
+
+Unlike the SEO Experiment Ledger, the report freezes the machine decision at
+job completion and carries only short-lived provider/query detail. Later human
+decisions and experiment outcomes remain canonical in the ledger and are
+composed with the report when an operator reads it.
+
 ### Search Pipeline Mode
 
 A request-side selector that chooses which retrieval pipeline Admin search should run for a caller. A Search Pipeline Mode changes how candidates are gathered and fused; it is not a health signal.

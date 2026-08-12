@@ -550,6 +550,19 @@ in `x-forge-seo-assertion`, bound to environment, endpoint capability, exact
 request digest, and a replay-protected identifier. Provider configuration is
 optional at boot and unavailable lanes must remain explicit.
 
+Every claimed `seo-daily-audit` run terminalizes with a strict v1 audit report
+in both `dry_run` and `live`. The report is an allowlisted projection, not a
+runtime trace: it may contain normalized Search Console request scope, bounded
+ranked query decisions, proposal references/digests, provider coverage, and
+explicit omission counts, but never raw provider bodies, credentials, headers,
+cookies, signed URLs, or raw errors. Keep selected decisions before a bounded
+prefix of rejected decisions and project the serialized report below 220 KiB so
+Admin canonicalization and GraphQL envelopes retain headroom under the 256 KiB
+detail-response limit. A completion whose response is lost must replay the same
+fenced completion before attempting a sanitized failed terminalization; never
+leave a claimed run active merely because the completion response was
+ambiguous.
+
 ## Seeker agent
 
 `seekerAgent` (feat-198, feat-199) is the first conversational agent of the

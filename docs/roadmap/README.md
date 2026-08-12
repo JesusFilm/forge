@@ -6,8 +6,8 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 
 ## Status (August 11, 2026)
 
-- **Total tickets:** 511
-- **Complete:** 390
+- **Total tickets:** 512
+- **Complete:** 391
 - **In progress:** 37
 - **Not started:** 33
 - **Blocked:** 51
@@ -423,6 +423,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-336](platform/feat-336-admin-multi-client-token-introspection.md)                | Admin introspection for more than one client id                                  | unassigned | P1       | 2026-08-11 | 2    | 2026-08-12 | not-started |
 | [feat-353](platform/feat-353-mastra-seo-ipv6-value-redaction.md)                       | Redact IPv6 values from the SEO persistence boundary                             | codex      | P1       | 2026-08-11 | 1    | 2026-08-11 | complete    |
 | [feat-354](platform/feat-354-mastra-devotional-migration-readiness.md)                 | Make Mastra devotional migration readiness component-scoped                      | vlad       | P1       | 2026-08-11 | 1    | 2026-08-11 | complete    |
+| [feat-355](platform/feat-355-seo-run-audit-log.md)                                     | Add bounded SEO run audit log                                                    | codex      | P1       | 2026-08-11 | 1    | 2026-08-11 | complete    |
 | [feat-247](platform/feat-247-watch-nested-series-language-availability.md)             | Watch nested-series language availability                                        | vlad       | P2       | —          | —    | —          | complete    |
 | [feat-336](platform/feat-336-watch-homepage-seed-schema-drift.md)                      | Repair Watch homepage Experience seed schema drift                               | unassigned | P2       | —          | 1    | —          | not-started |
 | [feat-088](platform/feat-088-internal-tools-branding.md)                               | Internal Tools Branding                                                          | vlad       | P2       | 2026-03-30 | 14   | 2026-04-12 | complete    |

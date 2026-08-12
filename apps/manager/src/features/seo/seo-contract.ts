@@ -6,6 +6,7 @@ export const SEO_WORKSPACE_VIEWS = [
   "experiments",
   "learnings",
   "reconciliation",
+  "runs",
 ] as const
 
 export type SeoWorkspaceView = (typeof SEO_WORKSPACE_VIEWS)[number]
@@ -170,6 +171,181 @@ export type SeoWorkspace = {
   experiments: SeoExperiment[]
   lessons: SeoLesson[]
   ticketReconciliations: SeoTicketReconciliation[]
+}
+
+export type SeoRunReportAvailability =
+  | "running"
+  | "available"
+  | "legacy_unavailable"
+  | "malformed"
+  | "unsupported_version"
+  | "detail_expired"
+  | "detail_suppressed_retention_unhealthy"
+
+export type SeoRunSummary = {
+  id: string
+  mode: "OFF" | "DRY_RUN" | "LIVE"
+  status: "RUNNING" | "COMPLETED" | "PARTIAL" | "FAILED"
+  startedAt: string
+  completedAt: string | null
+  eligibleCount: number
+  selectedCount: number
+  wouldProposeCount: number
+  proposedCount: number
+  materializationCount: number
+  ticketCount: number
+  experimentCount: number
+  suppressedOperations: string[]
+  providerCoverage: Record<string, unknown>
+  reportAvailability: SeoRunReportAvailability
+  reclaimed: boolean
+}
+
+export type SeoRunPage = {
+  generatedAt: string
+  items: SeoRunSummary[]
+  hasNextPage: boolean
+  nextCursor: string | null
+}
+
+export type SeoRunProposalOutcome = {
+  proposalId: string
+  version: number
+  payloadDigest: string
+  originatingRunId: string
+  proposalStatus: string
+  humanDecision: {
+    action: string
+    actorId: string
+    reason: string | null
+    decidedAt: string
+  } | null
+  materializationStatus: string | null
+  experiment: {
+    id: string
+    status: string
+    latestEvaluation: {
+      kind: string
+      outcome: string
+      observedAt: string
+    } | null
+  } | null
+}
+
+export type SeoRunProposalReference = {
+  proposalId: string
+  payloadDigest: string
+  disposition: "would_propose" | "persisted_new" | "reused_existing"
+  version: number | null
+  originatingRunId: string | null
+}
+
+export type SeoRunProviderCoverage = {
+  provider: string
+  status: string
+}
+
+export type SeoRunGscFilter = {
+  dimension: string
+  operator: string
+  expression: string
+}
+
+export type SeoRunGscRequest = {
+  propertyId: string
+  startDate: string
+  endDate: string
+  dimensions: string[]
+  searchType: string
+  dataState: string
+  filters: SeoRunGscFilter[]
+  omittedFilterCount: number
+  timezone: string
+  configuredRowCap: number
+  returnedRowCount: number
+  pageCount: number
+  requestCount: number
+  capReached: boolean
+  responseAggregationType: string | null
+  firstIncompleteDate: string | null
+  status: string
+  caveats: string[]
+  omittedCaveatCount: number
+}
+
+export type SeoRunQueryFunnel = {
+  providerRows: number
+  malformedRows: number
+  unmatchedTargetRows: number
+  belowImpressionThresholdRows: number
+  ctrThresholdNotMetRows: number
+  rankedRows: number
+  selectedQueryRows: number
+  rejectedQueryRows: number
+}
+
+export type SeoRunQueryDecision = {
+  observationId: string
+  targetId: string
+  locale: string
+  query: string
+  canonicalUrl: string
+  clicks: number
+  impressions: number
+  ctr: number
+  position: number
+  score: number
+  selectionOutcome: string
+  reason: string
+}
+
+type SeoRunReportBase = {
+  schemaVersion: number
+  detailState: string
+  selectionPolicyId: string | null
+  eligibleCount: number
+  selectedCount: number
+  wouldProposeCount: number
+  persistedProposalCount: number
+  providerCoverage: SeoRunProviderCoverage[]
+  suppressedOperations: string[]
+  proposalRefs: SeoRunProposalReference[]
+}
+
+export type SeoRunReportAvailable = SeoRunReportBase & {
+  __typename: "ManagerSeoRunReportAvailable"
+  detailState: "available"
+  generatedAt: string
+  observedCount: number
+  skippedTargetIds: string[]
+  omittedSkippedTargetCount: number
+  gscRequests: SeoRunGscRequest[]
+  omittedGscRequestCount: number
+  queryFunnel: SeoRunQueryFunnel
+  queryDecisions: SeoRunQueryDecision[]
+  omittedQueryDecisionCount: number
+}
+
+export type SeoRunReportUnavailable = SeoRunReportBase & {
+  __typename: "ManagerSeoRunReportUnavailable"
+  observedCount: number | null
+}
+
+export type SeoRunReportCompacted = SeoRunReportBase & {
+  __typename: "ManagerSeoRunReportCompacted"
+  detailState: "detail_expired" | "detail_suppressed_retention_unhealthy"
+  detailExpiresAt: string | null
+  compactedAt: string
+}
+
+export type SeoRunReport =
+  | SeoRunReportAvailable
+  | SeoRunReportUnavailable
+  | SeoRunReportCompacted
+
+export type SeoRunDetail = SeoRunSummary & {
+  report: SeoRunReport | null
+  proposalOutcomes: SeoRunProposalOutcome[]
 }
 
 export type SeoProposalDecisionResult = {
@@ -524,6 +700,194 @@ export const seoWorkspaceSchema: z.ZodType<SeoWorkspace> = z.object({
   lessons: z.array(seoLessonSchema).max(100),
   ticketReconciliations: z.array(seoTicketReconciliationSchema).max(100),
 })
+
+export const seoRunReportAvailabilitySchema = z.enum([
+  "running",
+  "available",
+  "legacy_unavailable",
+  "malformed",
+  "unsupported_version",
+  "detail_expired",
+  "detail_suppressed_retention_unhealthy",
+])
+
+const rawSeoRunSummarySchema = z.object({
+  id: boundedString(200),
+  mode: z.enum(["OFF", "DRY_RUN", "LIVE"]),
+  status: z.enum(["RUNNING", "COMPLETED", "PARTIAL", "FAILED"]),
+  startedAt: boundedString(100),
+  completedAt: boundedString(100).nullable(),
+  eligibleCount: z.number().int().nonnegative(),
+  selectedCount: z.number().int().nonnegative(),
+  wouldProposeCount: z.number().int().nonnegative(),
+  proposedCount: z.number().int().nonnegative(),
+  materializationCount: z.number().int().nonnegative(),
+  ticketCount: z.number().int().nonnegative(),
+  experimentCount: z.number().int().nonnegative(),
+  suppressedOperations: z.array(boundedString(191)).max(100),
+  providerCoverage: z.record(z.string(), z.unknown()),
+  reportAvailability: seoRunReportAvailabilitySchema,
+  reclaimed: z.boolean(),
+})
+export const seoRunSummarySchema: z.ZodType<SeoRunSummary> =
+  rawSeoRunSummarySchema
+
+export const seoRunPageSchema: z.ZodType<SeoRunPage> = z.object({
+  generatedAt: boundedString(100),
+  items: z.array(seoRunSummarySchema).max(25),
+  hasNextPage: z.boolean(),
+  nextCursor: boundedString(1_000).nullable(),
+})
+
+const seoRunProposalOutcomeSchema: z.ZodType<SeoRunProposalOutcome> = z.object({
+  proposalId: boundedString(200),
+  version: z.number().int().positive(),
+  payloadDigest: boundedString(256),
+  originatingRunId: boundedString(200),
+  proposalStatus: boundedString(80),
+  humanDecision: z
+    .object({
+      action: boundedString(80),
+      actorId: boundedString(191),
+      reason: boundedString(2_000).nullable(),
+      decidedAt: boundedString(100),
+    })
+    .nullable(),
+  materializationStatus: boundedString(80).nullable(),
+  experiment: z
+    .object({
+      id: boundedString(200),
+      status: boundedString(80),
+      latestEvaluation: z
+        .object({
+          kind: boundedString(80),
+          outcome: boundedString(80),
+          observedAt: boundedString(100),
+        })
+        .nullable(),
+    })
+    .nullable(),
+})
+
+const seoRunProposalReferenceSchema: z.ZodType<SeoRunProposalReference> =
+  z.object({
+    proposalId: boundedString(200),
+    payloadDigest: boundedString(256),
+    disposition: z.enum(["would_propose", "persisted_new", "reused_existing"]),
+    version: z.number().int().positive().nullable(),
+    originatingRunId: boundedString(200).nullable(),
+  })
+
+const seoRunProviderCoverageSchema: z.ZodType<SeoRunProviderCoverage> =
+  z.object({ provider: boundedString(191), status: boundedString(80) })
+
+const seoRunGscFilterSchema: z.ZodType<SeoRunGscFilter> = z.object({
+  dimension: boundedString(50),
+  operator: boundedString(80),
+  expression: boundedString(500),
+})
+
+const seoRunGscRequestSchema: z.ZodType<SeoRunGscRequest> = z.object({
+  propertyId: boundedString(500),
+  startDate: boundedString(100),
+  endDate: boundedString(100),
+  dimensions: z.array(boundedString(50)).max(5),
+  searchType: boundedString(50),
+  dataState: boundedString(50),
+  filters: z.array(seoRunGscFilterSchema).max(20),
+  omittedFilterCount: z.number().int().nonnegative(),
+  timezone: boundedString(100),
+  configuredRowCap: z.number().int().nonnegative(),
+  returnedRowCount: z.number().int().nonnegative(),
+  pageCount: z.number().int().nonnegative(),
+  requestCount: z.number().int().nonnegative(),
+  capReached: z.boolean(),
+  responseAggregationType: boundedString(100).nullable(),
+  firstIncompleteDate: boundedString(100).nullable(),
+  status: boundedString(80),
+  caveats: z.array(boundedString(500)).max(20),
+  omittedCaveatCount: z.number().int().nonnegative(),
+})
+
+const seoRunQueryFunnelSchema: z.ZodType<SeoRunQueryFunnel> = z.object({
+  providerRows: z.number().int().nonnegative(),
+  malformedRows: z.number().int().nonnegative(),
+  unmatchedTargetRows: z.number().int().nonnegative(),
+  belowImpressionThresholdRows: z.number().int().nonnegative(),
+  ctrThresholdNotMetRows: z.number().int().nonnegative(),
+  rankedRows: z.number().int().nonnegative(),
+  selectedQueryRows: z.number().int().nonnegative(),
+  rejectedQueryRows: z.number().int().nonnegative(),
+})
+
+const seoRunQueryDecisionSchema: z.ZodType<SeoRunQueryDecision> = z.object({
+  observationId: boundedString(200),
+  targetId: boundedString(200),
+  locale: boundedString(35),
+  query: boundedString(1_000),
+  canonicalUrl: boundedString(2_048),
+  clicks: z.number().finite().nonnegative(),
+  impressions: z.number().finite().nonnegative(),
+  ctr: z.number().finite().nonnegative(),
+  position: z.number().finite().nonnegative(),
+  score: z.number().finite(),
+  selectionOutcome: boundedString(80),
+  reason: boundedString(191),
+})
+
+const seoRunReportBaseSchema = {
+  schemaVersion: z.number().int().positive(),
+  detailState: boundedString(80),
+  selectionPolicyId: boundedString(191).nullable(),
+  eligibleCount: z.number().int().nonnegative(),
+  selectedCount: z.number().int().nonnegative(),
+  wouldProposeCount: z.number().int().nonnegative(),
+  persistedProposalCount: z.number().int().nonnegative(),
+  providerCoverage: z.array(seoRunProviderCoverageSchema).max(20),
+  suppressedOperations: z.array(boundedString(191)).max(100),
+  proposalRefs: z.array(seoRunProposalReferenceSchema).max(50),
+}
+
+const seoRunReportSchema: z.ZodType<SeoRunReport> = z.discriminatedUnion(
+  "__typename",
+  [
+    z.object({
+      ...seoRunReportBaseSchema,
+      __typename: z.literal("ManagerSeoRunReportAvailable"),
+      detailState: z.literal("available"),
+      generatedAt: boundedString(100),
+      observedCount: z.number().int().nonnegative(),
+      skippedTargetIds: z.array(boundedString(200)).max(1_000),
+      omittedSkippedTargetCount: z.number().int().nonnegative(),
+      gscRequests: z.array(seoRunGscRequestSchema).max(50),
+      omittedGscRequestCount: z.number().int().nonnegative(),
+      queryFunnel: seoRunQueryFunnelSchema,
+      queryDecisions: z.array(seoRunQueryDecisionSchema).max(100),
+      omittedQueryDecisionCount: z.number().int().nonnegative(),
+    }),
+    z.object({
+      ...seoRunReportBaseSchema,
+      __typename: z.literal("ManagerSeoRunReportUnavailable"),
+      observedCount: z.number().int().nonnegative().nullable(),
+    }),
+    z.object({
+      ...seoRunReportBaseSchema,
+      __typename: z.literal("ManagerSeoRunReportCompacted"),
+      detailState: z.enum([
+        "detail_expired",
+        "detail_suppressed_retention_unhealthy",
+      ]),
+      detailExpiresAt: boundedString(100).nullable(),
+      compactedAt: boundedString(100),
+    }),
+  ],
+)
+
+export const seoRunDetailSchema: z.ZodType<SeoRunDetail> =
+  rawSeoRunSummarySchema.extend({
+    report: seoRunReportSchema.nullable(),
+    proposalOutcomes: z.array(seoRunProposalOutcomeSchema).max(50),
+  })
 
 export const seoProposalDecisionResultSchema: z.ZodType<SeoProposalDecisionResult> =
   z.object({

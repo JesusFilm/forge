@@ -3,6 +3,7 @@ import { z } from "zod"
 
 import { getSeoConfig } from "../../config/seo"
 import {
+  minimizeSeoQuery,
   minimizeSeoText,
   minimizeSeoUrl,
 } from "../../services/seo-data-minimization"
@@ -11,6 +12,10 @@ import {
   digestSeoValue,
 } from "../../services/seo-digest"
 import { SeoEvidenceObservationSchema } from "../../services/seo-evidence"
+import {
+  SEO_SELECTION_POLICY_ID,
+  SeoRunSelectionAuditSchema,
+} from "../../services/seo-run-report"
 
 export const SeoTargetSchema = z
   .object({
@@ -158,6 +163,7 @@ const AnalyzeOutputSchema = z
         skippedTargetIds: z.array(z.string()),
       })
       .strict(),
+    audit: SeoRunSelectionAuditSchema,
   })
   .strict()
 
@@ -181,11 +187,27 @@ function canonical(value: string): string | null {
 function gscCandidates(
   targets: SeoTarget[],
   observations: z.infer<typeof SeoEvidenceObservationSchema>[],
-): GscCandidate[] {
+): {
+  candidates: GscCandidate[]
+  funnel: {
+    providerRows: number
+    malformedRows: number
+    unmatchedTargetRows: number
+    belowImpressionThresholdRows: number
+    ctrThresholdNotMetRows: number
+  }
+} {
   const targetByUrl = new Map(
     targets.map((target) => [canonical(target.canonicalUrl), target]),
   )
   const candidates: GscCandidate[] = []
+  const funnel = {
+    providerRows: 0,
+    malformedRows: 0,
+    unmatchedTargetRows: 0,
+    belowImpressionThresholdRows: 0,
+    ctrThresholdNotMetRows: 0,
+  }
   for (const observation of observations) {
     if (observation.provider !== "gsc") continue
     const dimensions = Array.isArray(observation.data.dimensions)
@@ -200,7 +222,11 @@ function gscCandidates(
     const queryIndex = dimensions.indexOf("query")
     if (pageIndex < 0 || queryIndex < 0) continue
     for (const row of rows) {
-      if (!row || typeof row !== "object" || Array.isArray(row)) continue
+      funnel.providerRows += 1
+      if (!row || typeof row !== "object" || Array.isArray(row)) {
+        funnel.malformedRows += 1
+        continue
+      }
       const record = row as Record<string, unknown>
       const keys = Array.isArray(record.keys) ? record.keys : []
       const page = keys[pageIndex]
@@ -214,14 +240,26 @@ function gscCandidates(
         typeof query !== "string" ||
         ![impressions, clicks, ctr, position].every(Number.isFinite)
       ) {
+        funnel.malformedRows += 1
         continue
       }
       const target = targetByUrl.get(canonical(page))
-      if (!target || impressions < 10 || ctr >= 0.2) continue
+      if (!target) {
+        funnel.unmatchedTargetRows += 1
+        continue
+      }
+      if (impressions < 10) {
+        funnel.belowImpressionThresholdRows += 1
+        continue
+      }
+      if (ctr >= 0.2) {
+        funnel.ctrThresholdNotMetRows += 1
+        continue
+      }
       candidates.push({
         observationId: observation.id,
         target,
-        query: minimizeSeoText(query, 500),
+        query: minimizeSeoQuery(query, 500),
         impressions,
         clicks,
         ctr,
@@ -234,12 +272,15 @@ function gscCandidates(
       })
     }
   }
-  return candidates.sort(
-    (a, b) =>
-      b.score - a.score ||
-      b.impressions - a.impressions ||
-      a.query.localeCompare(b.query),
-  )
+  return {
+    candidates: candidates.sort(
+      (a, b) =>
+        b.score - a.score ||
+        b.impressions - a.impressions ||
+        a.query.localeCompare(b.query),
+    ),
+    funnel,
+  }
 }
 
 function editorialProposal(candidate: GscCandidate): SeoProposal {
@@ -359,7 +400,8 @@ export function analyzeSeoEvidence(
   const maxProposals = input.maxProposals ?? getSeoConfig().maxProposals
   const observed = new Set<string>()
   const proposals: SeoProposal[] = []
-  const candidates = gscCandidates(input.targets, input.observations)
+  const gsc = gscCandidates(input.targets, input.observations)
+  const candidates = gsc.candidates
   for (const candidate of candidates) {
     if (proposals.length >= maxProposals) break
     observed.add(candidate.target.targetId)
@@ -391,6 +433,36 @@ export function analyzeSeoEvidence(
       skippedTargetIds: input.targets
         .filter((target) => !observed.has(target.targetId))
         .map((target) => target.targetId),
+    },
+    audit: {
+      selectionPolicyId: SEO_SELECTION_POLICY_ID,
+      funnel: {
+        ...gsc.funnel,
+        rankedRows: candidates.length,
+        selectedQueryRows: Math.min(candidates.length, maxProposals),
+        rejectedQueryRows: Math.max(0, candidates.length - maxProposals),
+      },
+      queryDecisions: candidates.slice(0, 100).map((candidate, index) => ({
+        observationId: candidate.observationId,
+        targetId: candidate.target.targetId,
+        locale: candidate.target.locale,
+        canonicalUrl: candidate.target.canonicalUrl,
+        query: candidate.query,
+        clicks: candidate.clicks,
+        impressions: candidate.impressions,
+        ctr: candidate.ctr,
+        position: candidate.position,
+        score: candidate.score,
+        selectionOutcome:
+          index < maxProposals
+            ? ("selected" as const)
+            : ("not_selected" as const),
+        reason:
+          index < maxProposals
+            ? ("selected" as const)
+            : ("proposal_limit_reached" as const),
+      })),
+      omittedQueryDecisionCount: Math.max(0, candidates.length - 100),
     },
   })
 }

@@ -70,6 +70,96 @@ describe("SEO evidence analysis", () => {
     expect(wire.preChangeSnapshot).toEqual(target.preChangeSnapshot)
     expect(digestSeoValue(wire.payload)).toBe(wire.payloadDigest)
     expect(JSON.stringify(wire).toLowerCase()).not.toContain("meta keywords")
+    expect(result.audit).toMatchObject({
+      selectionPolicyId: "gsc-low-ctr-v1",
+      funnel: {
+        providerRows: 1,
+        rankedRows: 1,
+        selectedQueryRows: 1,
+        rejectedQueryRows: 0,
+      },
+      omittedQueryDecisionCount: 0,
+    })
+    expect(result.audit.queryDecisions[0]).toMatchObject({
+      query: "stories of hope",
+      clicks: 5,
+      impressions: 1_000,
+      ctr: 0.005,
+      position: 7,
+      selectionOutcome: "selected",
+      reason: "selected",
+    })
+  })
+
+  it("keeps pre-rank exclusions aggregate and bounds ranked rejections", () => {
+    const eligibleRows = Array.from({ length: 105 }, (_, index) => ({
+      keys: [target.canonicalUrl, `query ${String(index).padStart(3, "0")}`],
+      clicks: 0,
+      impressions: 100 + index,
+      ctr: 0.01,
+      position: 5,
+    }))
+    const result = analyzeSeoEvidence({
+      targets: [target],
+      observations: [
+        {
+          id: "gsc-funnel",
+          provider: "gsc",
+          status: "available",
+          retrievedAt: "2026-08-01T00:00:00.000Z",
+          scope: {},
+          data: {
+            dimensions: ["page", "query"],
+            rows: [
+              null,
+              {
+                keys: ["https://example.com/missing", "unmatched"],
+                clicks: 0,
+                impressions: 100,
+                ctr: 0.01,
+                position: 5,
+              },
+              {
+                keys: [target.canonicalUrl, "too small"],
+                clicks: 0,
+                impressions: 9,
+                ctr: 0.01,
+                position: 5,
+              },
+              {
+                keys: [target.canonicalUrl, "healthy ctr"],
+                clicks: 20,
+                impressions: 100,
+                ctr: 0.2,
+                position: 5,
+              },
+              ...eligibleRows,
+            ],
+          },
+          quality: { complete: true, truncated: false, caveats: [] },
+          sources: [],
+        },
+      ],
+      structuralFindings: [],
+      maxProposals: 1,
+    })
+
+    expect(result.audit.funnel).toEqual({
+      providerRows: 109,
+      malformedRows: 1,
+      unmatchedTargetRows: 1,
+      belowImpressionThresholdRows: 1,
+      ctrThresholdNotMetRows: 1,
+      rankedRows: 105,
+      selectedQueryRows: 1,
+      rejectedQueryRows: 104,
+    })
+    expect(result.audit.queryDecisions).toHaveLength(100)
+    expect(result.audit.queryDecisions[0]?.reason).toBe("selected")
+    expect(result.audit.queryDecisions[1]?.reason).toBe(
+      "proposal_limit_reached",
+    )
+    expect(result.audit.omittedQueryDecisionCount).toBe(5)
   })
 
   it("abstains when GSC evidence is absent", () => {

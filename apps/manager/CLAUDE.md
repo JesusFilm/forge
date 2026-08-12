@@ -512,6 +512,14 @@ adding the new public key to Admin first, switching Manager's key ID/private
 key, and removing the old verifier after the maximum assertion lifetime. With
 no approval key, the workspace remains read-only.
 
+The `Runs` view is the bounded audit log for this agent. Its index requests
+small run summaries only; `/dashboard/seo/runs/[runId]` lazily fetches one
+versioned report with the exact safe Search Console request scope, ranked query
+decisions, truncation counts, and current proposal outcomes. Provider response
+bodies, credentials, headers, and cookies never belong in the report. Query and
+request detail is compacted after 29 days by the existing Admin search-trace
+retention job, while run totals, report state, and proposal references remain.
+
 ## Standalone smoke
 
 The Railway standalone build copies `apps/manager/.next/static` into `apps/manager/.next/standalone/apps/manager/.next/static` and `apps/manager/public` into `apps/manager/.next/standalone/apps/manager/public` before starting `server.js`. Follow that same shape for local standalone smoke tests; without the copied static assets the login page HTML renders but the client JS does not hydrate, and without the copied public assets regional images 404 in standalone mode.

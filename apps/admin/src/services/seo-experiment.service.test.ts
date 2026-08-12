@@ -54,6 +54,74 @@ function run(mode: "OFF" | "DRY_RUN" | "LIVE") {
   }
 }
 
+function v1Report(overrides: Record<string, unknown> = {}) {
+  return {
+    schemaVersion: 1 as const,
+    detailState: "available" as const,
+    selectionPolicyId: "gsc-low-ctr-v1" as const,
+    generatedAt: "2026-08-01T00:00:00.000Z",
+    eligibleCount: 1,
+    observedCount: 1,
+    selectedCount: 1,
+    wouldProposeCount: 0,
+    persistedProposalCount: 0,
+    providerCoverage: { gsc: "available" as const },
+    skippedTargetIds: [],
+    suppressedOperations: [],
+    gscRequests: [
+      {
+        propertyId: "sc-domain:jesusfilm.org",
+        startDate: "2026-07-01",
+        endDate: "2026-07-28",
+        dimensions: ["query", "page"],
+        searchType: "web" as const,
+        dataState: "final" as const,
+        filters: [],
+        timezone: "UTC",
+        configuredRowCap: 25_000,
+        returnedRowCount: 1,
+        pageCount: 1,
+        requestCount: 1,
+        capReached: false,
+        responseAggregationType: "byPage",
+        firstIncompleteDate: null,
+        status: "available" as const,
+        caveats: [],
+      },
+    ],
+    queryFunnel: {
+      providerRows: 1,
+      malformedRows: 0,
+      unmatchedTargetRows: 0,
+      belowImpressionThresholdRows: 0,
+      ctrThresholdNotMetRows: 0,
+      rankedRows: 1,
+      selectedQueryRows: 1,
+      rejectedQueryRows: 0,
+    },
+    queryDecisions: [
+      {
+        observationId: "gsc-1",
+        targetId: "target-1",
+        locale: "en",
+        canonicalUrl: "https://www.jesusfilm.org/watch/hope.html",
+        query:
+          "hope https://private.example/path?token=secret-value +1 902 555 0199",
+        clicks: 1,
+        impressions: 100,
+        ctr: 0.01,
+        position: 5,
+        score: 95,
+        selectionOutcome: "selected" as const,
+        reason: "selected" as const,
+      },
+    ],
+    omittedQueryDecisionCount: 0,
+    proposalRefs: [],
+    ...overrides,
+  }
+}
+
 describe("SEO experiment eligibility", () => {
   it("keeps editorial activation hashes stable across volatile row changes", () => {
     const content = {
@@ -275,6 +343,251 @@ describe("SEO ledger boundaries", () => {
         }),
       }),
     )
+  })
+
+  it("reconstructs and redacts a v1 run report before storing it", async () => {
+    const original = run("DRY_RUN")
+    const update = vi.fn(async ({ data }) => ({
+      ...original,
+      ...data,
+      status: "COMPLETED",
+      completedAt: new Date(),
+    }))
+    const tx = {
+      seoWorkloadAssertion: { create: vi.fn() },
+      seoRun: {
+        findUnique: vi.fn(async () => original),
+        updateMany: vi.fn(async () => ({ count: 1 })),
+        update,
+      },
+      seoEvidenceObservation: { createMany: vi.fn() },
+      $queryRaw: vi.fn(async () => [{ mode: "dry_run" }]),
+    }
+
+    await serviceFor(tx).completeRun({
+      assertion,
+      input: {
+        action: "complete_run",
+        runId: "run-1",
+        claimGeneration: 1,
+        claimToken: "run-claim-token",
+        status: "completed",
+        providerCoverage: { gsc: "available" },
+        report: v1Report(),
+        eligibleCount: 1,
+        selectedCount: 1,
+        wouldProposeCount: 0,
+        suppressedOperations: [],
+        observations: [],
+        proposals: [],
+      },
+    })
+
+    const storedReport = update.mock.calls[0]?.[0].data.report
+    expect(storedReport).toMatchObject({
+      schemaVersion: 1,
+      detailState: "available",
+      queryDecisions: [
+        expect.objectContaining({
+          query: "hope [redacted-url] [redacted-phone]",
+        }),
+      ],
+    })
+    expect(JSON.stringify(storedReport)).not.toContain("secret-value")
+    expect(JSON.stringify(storedReport)).not.toContain("902 555 0199")
+  })
+
+  it("trims canonical report detail to the durable byte budget", async () => {
+    const original = run("DRY_RUN")
+    const update = vi.fn(async ({ data }) => ({
+      ...original,
+      ...data,
+      status: "COMPLETED",
+      completedAt: new Date(),
+    }))
+    const tx = {
+      seoWorkloadAssertion: { create: vi.fn() },
+      seoRun: {
+        findUnique: vi.fn(async () => original),
+        updateMany: vi.fn(async () => ({ count: 1 })),
+        update,
+      },
+      seoEvidenceObservation: { createMany: vi.fn() },
+      $queryRaw: vi.fn(async () => [{ mode: "dry_run" }]),
+    }
+    const decision = v1Report().queryDecisions[0]!
+    const request = v1Report().gscRequests[0]!
+    const oversized = v1Report({
+      skippedTargetIds: Array.from(
+        { length: 1_000 },
+        (_, index) =>
+          `target-${String(index).padStart(4, "0")}-${"x".repeat(180)}`,
+      ),
+      queryDecisions: Array.from({ length: 100 }, (_, index) => ({
+        ...decision,
+        observationId: `gsc-${index}`,
+        canonicalUrl: `https://example.com/${"a".repeat(1_950)}${index}`,
+        query: "q".repeat(500),
+        selectionOutcome: "not_selected" as const,
+        reason: "proposal_limit_reached" as const,
+      })),
+      gscRequests: Array.from({ length: 50 }, (_, requestIndex) => ({
+        ...request,
+        propertyId: `sc-domain:${"p".repeat(480)}${requestIndex}`,
+        filters: Array.from({ length: 20 }, (_, filterIndex) => ({
+          dimension: "query" as const,
+          operator: "contains" as const,
+          expression: `${requestIndex}-${filterIndex}-${"f".repeat(480)}`,
+        })),
+        caveats: Array.from(
+          { length: 20 },
+          (_, caveatIndex) =>
+            `${requestIndex}-${caveatIndex}-${"c".repeat(480)}`,
+        ),
+      })),
+    })
+
+    await serviceFor(tx).completeRun({
+      assertion,
+      input: {
+        action: "complete_run",
+        runId: "run-1",
+        claimGeneration: 1,
+        claimToken: "run-claim-token",
+        status: "completed",
+        providerCoverage: { gsc: "available" },
+        report: oversized,
+        eligibleCount: 1,
+        selectedCount: 1,
+        wouldProposeCount: 0,
+        suppressedOperations: [],
+        observations: [],
+        proposals: [],
+      },
+    })
+
+    const storedReport = update.mock.calls[0]?.[0].data.report
+    expect(
+      Buffer.byteLength(JSON.stringify(storedReport), "utf8"),
+    ).toBeLessThanOrEqual(220 * 1024)
+    expect(storedReport).toMatchObject({
+      omittedSkippedTargetCount: expect.any(Number),
+      omittedQueryDecisionCount: expect.any(Number),
+    })
+    expect(storedReport.omittedSkippedTargetCount).toBeGreaterThan(0)
+    expect(
+      storedReport.omittedQueryDecisionCount +
+        storedReport.omittedGscRequestCount +
+        storedReport.gscRequests.reduce(
+          (total: number, request: { omittedCaveatCount: number }) =>
+            total + request.omittedCaveatCount,
+          0,
+        ),
+    ).toBeGreaterThan(0)
+  })
+
+  it("lists cursor-stable summaries without selecting report bodies", async () => {
+    const first = {
+      ...run("LIVE"),
+      id: "run-2",
+      status: "COMPLETED",
+      completedAt: new Date("2026-08-02T00:01:00.000Z"),
+      startedAt: new Date("2026-08-02T00:00:00.000Z"),
+      executionFenceGeneration: 1,
+      reportJsonType: "object",
+      reportSchemaVersion: "1",
+      reportDetailState: "available",
+      reportV1ShapeCompatible: true,
+      reportLegacyCompatible: false,
+    }
+    const second = {
+      ...first,
+      id: "run-1",
+    }
+    const queryRaw = vi
+      .fn()
+      .mockResolvedValueOnce([first, second])
+      .mockResolvedValueOnce([second])
+    const service = new SeoExperimentService({
+      $queryRaw: queryRaw,
+    } as never)
+
+    const page = await service.listRuns({
+      user: { id: null, role: "MANAGER_BACKEND" },
+      limit: 1,
+    })
+
+    expect(page).toMatchObject({
+      items: [
+        expect.objectContaining({
+          id: "run-2",
+          reportAvailability: "available",
+        }),
+      ],
+      hasNextPage: true,
+      nextCursor: expect.any(String),
+    })
+    expect(page.items[0]).not.toHaveProperty("report")
+    const firstSql = (
+      queryRaw.mock.calls[0]?.[0] as { strings: string[] }
+    ).strings.join(" ")
+    expect(firstSql).toContain("report ->> 'detailState'")
+    expect(firstSql).not.toMatch(/SELECT\s+\*/u)
+    expect(firstSql).not.toMatch(/\n\s*report\s*(?:,|AS)/u)
+
+    const next = await service.listRuns({
+      user: { id: null, role: "MANAGER_BACKEND" },
+      limit: 1,
+      after: page.nextCursor,
+    })
+    expect(next.items.map((item) => item.id)).toEqual(["run-1"])
+    const secondQuery = queryRaw.mock.calls[1]?.[0] as {
+      strings: string[]
+      values: unknown[]
+    }
+    expect(secondQuery.strings.join(" ")).toMatch(/started_at = .* AND id </u)
+    expect(secondQuery.values).toContain("run-2")
+  })
+
+  it("returns a compacted run tombstone without query detail", async () => {
+    const row = {
+      ...run("LIVE"),
+      status: "COMPLETED",
+      completedAt: new Date("2026-05-01T00:00:00.000Z"),
+      executionFenceGeneration: 1,
+      report: {
+        schemaVersion: 1,
+        detailState: "detail_expired",
+        selectionPolicyId: "gsc-low-ctr-v1",
+        eligibleCount: 1,
+        selectedCount: 1,
+        wouldProposeCount: 0,
+        persistedProposalCount: 0,
+        providerCoverage: { gsc: "available" },
+        suppressedOperations: [],
+        proposalRefs: [],
+        detailExpiresAt: "2026-05-30T00:00:00.000Z",
+        compactedAt: "2026-05-30T00:00:00.000Z",
+      },
+    }
+    const service = new SeoExperimentService({
+      seoRun: { findUnique: vi.fn(async () => row) },
+    } as never)
+
+    const detail = await service.getRun({
+      user: { id: null, role: "MANAGER_BACKEND" },
+      id: "run-1",
+    })
+
+    expect(detail).toMatchObject({
+      reportAvailability: "detail_expired",
+      report: {
+        detailState: "detail_expired",
+        proposalRefs: [],
+      },
+      proposalOutcomes: [],
+    })
+    expect(JSON.stringify(detail)).not.toMatch(/queryDecisions|gscRequests/)
   })
 
   it("rejects completion after another recovery path terminalized the run", async () => {
