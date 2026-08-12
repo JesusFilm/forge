@@ -27,7 +27,12 @@ import {
   produceNarration,
   renderDevotionalVideo,
 } from "../../services/devotional/devotional-render"
-import { EN_LOCALE } from "../../services/devotional/devotional-locale"
+import { localeFor } from "../../services/devotional/devotional-locale"
+import { localizeDevotional } from "../../services/devotional/localize-devotional"
+import {
+  DevotionalQualityGateError,
+  reviewDevotionalText,
+} from "../../services/devotional/devotional-quality-gate"
 import {
   composeDevotionalContent,
   GeneratedDevotionalSchema,
@@ -97,6 +102,30 @@ const contentDeps: GenerateDevotionalDeps = {
 
 // ---- Schemas (the serializable seams between sub-workflows) -----------------
 
+/**
+ * Presentation choices, carried through every seam so the RENDER step can see
+ * what the CALLER asked for.
+ *
+ * These existed only as CLI flags, which meant an agent (or anyone driving the
+ * registered workflow) could not produce a Russian devotional or choose a grade
+ * at all — the workflow's input schema is `.strict()`, so there was no field to
+ * set even if the caller wanted to. Every field here is optional and falls back
+ * to the render's own default, so adding them changes no existing behaviour.
+ *
+ * Deliberately EXCLUDES the cover-card props (hideCoverDate / coverTextStatic /
+ * coverSecondaryLine): those are for local social-media experiments, not the
+ * daily pipeline, and are driven directly through the render script.
+ */
+const RenderPrefsSchema = z.object({
+  /** Localized edition. `en` renders from the English text as-is; `ru`
+   *  translates the copy, fetches the Synodal verse, and uses the RU voice. */
+  lang: z.enum(["en", "ru"]).default("en"),
+  /** Colour grade. Omit to keep the per-sequence rotation the render applies. */
+  style: z.string().optional(),
+  /** Text arrangement. Omit for the render's own default. */
+  layout: z.string().optional(),
+})
+
 const InputSchema = z
   .object({
     /** JESUS-film chapter to use; omit to pick the next UNUSED one (ledger). */
@@ -112,6 +141,10 @@ const InputSchema = z
     regenerate: z.boolean().default(false),
     /** Regenerate only the audio, keeping cached text. */
     regenerateAudio: z.boolean().default(false),
+    /** Skip the three text critics. Off by default; the gate exists to stop bad
+     *  text costing a narration and a render, so overriding it is deliberate. */
+    ignoreQualityGate: z.boolean().default(false),
+    prefs: RenderPrefsSchema.default({ lang: "en" }),
   })
   .strict()
 
@@ -142,6 +175,8 @@ const SourcedSchema = z.object({
   date: z.string(),
   regenerate: z.boolean(),
   regenerateAudio: z.boolean(),
+  ignoreQualityGate: z.boolean(),
+  prefs: RenderPrefsSchema,
 })
 
 const ContentSchema = z.object({
@@ -149,6 +184,7 @@ const ContentSchema = z.object({
   safety: SafetyVerdictSchema,
   regenerate: z.boolean(),
   regenerateAudio: z.boolean(),
+  prefs: RenderPrefsSchema,
 })
 
 const ProducedSchema = z.object({
@@ -156,6 +192,7 @@ const ProducedSchema = z.object({
   safety: SafetyVerdictSchema,
   /** Cache dir holding the produced audio; null when safety blocked. */
   cacheDir: z.string().nullable(),
+  prefs: RenderPrefsSchema,
 })
 
 const RenderedSchema = z.object({
@@ -260,6 +297,8 @@ const sourceStep = createStep({
         date,
         regenerate: inputData.regenerate,
         regenerateAudio: inputData.regenerateAudio,
+        ignoreQualityGate: inputData.ignoreQualityGate,
+        prefs: inputData.prefs,
       }
     }
 
@@ -275,6 +314,8 @@ const sourceStep = createStep({
       date,
       regenerate: inputData.regenerate,
       regenerateAudio: inputData.regenerateAudio,
+      ignoreQualityGate: inputData.ignoreQualityGate,
+      prefs: inputData.prefs,
     }
   },
 })
@@ -297,8 +338,9 @@ const contentStep = createStep({
   inputSchema: SourcedSchema,
   outputSchema: ContentSchema,
   execute: async ({ inputData }) => {
-    const cacheDir = cacheDirFor(inputData.chapter.index, inputData.sequence)
-    let devotional = inputData.fromCache ? await loadCachedDevo(cacheDir) : null
+    const { lang } = inputData.prefs
+    const enDir = cacheDirFor(inputData.chapter.index, inputData.sequence)
+    let devotional = inputData.fromCache ? await loadCachedDevo(enDir) : null
     if (!devotional) {
       devotional = await composeDevotionalContent(
         {
@@ -310,7 +352,28 @@ const contentStep = createStep({
         },
         contentDeps,
       )
-      await saveCachedDevo(cacheDir, devotional)
+      await saveCachedDevo(enDir, devotional)
+    }
+
+    // Localized edition: translate the copy, fetch the target-language verse,
+    // switch to the locale's voice. Cached under its own -<lang> dir so an
+    // English and a Russian edition of the same chapter never overwrite each
+    // other. This was CLI-only; the workflow had no `lang` at all.
+    if (lang !== "en") {
+      const langDir = cacheDirFor(inputData.chapter.index, inputData.sequence, lang)
+      const cachedLocalized = inputData.regenerate
+        ? null
+        : await loadCachedDevo(langDir)
+      if (cachedLocalized) {
+        devotional = cachedLocalized
+      } else {
+        devotional = await localizeDevotional({
+          devotional,
+          locale: localeFor(lang),
+          llm: createAgentLlm(modernizerAgent, getDevotionalModel()),
+        })
+        await saveCachedDevo(langDir, devotional)
+      }
     }
 
     // The gate runs on EVERY pass (cached text included) — fail closed.
@@ -319,11 +382,37 @@ const contentStep = createStep({
       llm: safetyLlm,
     })
 
+    // The THREE text critics (coherence, depth, source fidelity), before any
+    // audio or video work. This ran only on the CLI path, so an agent-driven run
+    // got no text-quality checking beyond the safety gate — and a coherence or
+    // depth problem surfaced only at the human approval step, after a full
+    // narration and two Remotion renders had already been paid for.
+    //
+    // Fidelity compares the adaptation against the ENGLISH source excerpt, so it
+    // is meaningless once the copy is translated.
+    if (safety.verdict === "pass") {
+      const review = await reviewDevotionalText({
+        devotional,
+        passageReference: inputData.chapter.reference,
+        checkFidelity: lang === "en",
+      })
+      if (review.blocking.length > 0) {
+        if (inputData.ignoreQualityGate) {
+          console.warn(
+            `[devotional] event=quality_gate_overridden reasons=${review.blocking.length}`,
+          )
+        } else {
+          throw new DevotionalQualityGateError(review.blocking)
+        }
+      }
+    }
+
     return {
       devotional,
       safety,
       regenerate: inputData.regenerate,
       regenerateAudio: inputData.regenerateAudio,
+      prefs: inputData.prefs,
     }
   },
 })
@@ -346,22 +435,29 @@ const produceStep = createStep({
   inputSchema: ContentSchema,
   outputSchema: ProducedSchema,
   execute: async ({ inputData }) => {
-    const { devotional, safety } = inputData
+    const { devotional, safety, prefs } = inputData
     if (safety.verdict !== "pass") {
-      return { devotional, safety, cacheDir: null }
+      return { devotional, safety, cacheDir: null, prefs }
     }
-    const cacheDir = cacheDirFor(devotional.clip.index, devotional.sequence)
+    // Localized audio lives in the -<lang> dir alongside its localized text;
+    // sharing the English dir would overwrite one edition's narration with the
+    // other's.
+    const cacheDir = cacheDirFor(
+      devotional.clip.index,
+      devotional.sequence,
+      prefs.lang,
+    )
     // Route through the SHARED narration producer. This step used to call
     // `produceDevotionalAudio(devotional)` bare, which silently cost it four
     // things the CLI path had — per-segment reuse, real-silence pauses between
     // sentences, card pacing, and the completeness guard — and then persisted
     // the result into the very cache the CLI path reads back. See
     // produceNarration's docstring for why this is one function.
-    await produceNarration(devotional, EN_LOCALE, {
+    await produceNarration(devotional, localeFor(prefs.lang), {
       cacheDir,
       reuse: !inputData.regenerate && !inputData.regenerateAudio,
     })
-    return { devotional, safety, cacheDir }
+    return { devotional, safety, cacheDir, prefs }
   },
 })
 
@@ -383,7 +479,7 @@ const renderStep = createStep({
   inputSchema: ProducedSchema,
   outputSchema: RenderedSchema,
   execute: async ({ inputData }) => {
-    const { devotional, safety, cacheDir } = inputData
+    const { devotional, safety, cacheDir, prefs } = inputData
     if (!cacheDir)
       return { devotional, safety, videoPath: null, wideVideoPath: null }
     const audio = await loadCachedAudio(cacheDir, devotional.voice)
@@ -394,17 +490,25 @@ const renderStep = createStep({
     // skipped its own conclusion and question card.
     assertNarrationComplete(audio)
     const outDir = path.join(devotionalArtifactRoot(), "video")
+    // Presentation choices now come from the caller. `style` and `layout` were
+    // reachable only as CLI flags, and the workflow's `.strict()` input schema
+    // had no field for them at all — so an agent-driven run could not pick a
+    // grade even deliberately. Omitted values fall through to the render's own
+    // defaults, so the existing per-sequence filter rotation is unchanged.
+    const renderOpts = {
+      outDir,
+      locale: localeFor(prefs.lang),
+      ...(prefs.style ? { style: prefs.style } : {}),
+      ...(prefs.layout ? { layout: prefs.layout } : {}),
+      log: () => {},
+    }
     // Owner rule: every run ships BOTH aspects — 9:16 (mobile) and 16:9
     // (desktop, text-on-blur bottom band). Sequential on purpose: two
     // concurrent Remotion renders starve the CPU and slow both down.
-    const videoPath = await renderDevotionalVideo(devotional, audio, {
-      outDir,
-      log: () => {},
-    })
+    const videoPath = await renderDevotionalVideo(devotional, audio, renderOpts)
     const wideVideoPath = await renderDevotionalVideo(devotional, audio, {
-      outDir,
+      ...renderOpts,
       aspect: "wide",
-      log: () => {},
     })
     return { devotional, safety, videoPath, wideVideoPath }
   },
