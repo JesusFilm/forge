@@ -222,7 +222,7 @@
     "languages": "Languages",
     "recommendedLanguage": "Recommended language",
     "searchSuggestion": "Search {suggestion}",
-    "searchSuggestionWithLanguage": "Search {suggestion} in {language}",
+    "searchSuggestionWithLanguage": "Search in {language} for \"{suggestion}\"",
     "inLanguage": "in {language}",
     "browseByRegion": "Browse by region",
     "clearLanguages": "Clear",
