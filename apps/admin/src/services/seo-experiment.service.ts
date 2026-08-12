@@ -19,6 +19,12 @@ import type { VerifiedSeoWorkloadAssertion } from "@/auth/seo-service-assertion"
 import { env } from "@/config/env"
 import { ForbiddenError } from "./errors"
 import {
+  compactExpiredSeoRunReportById,
+  readSearchTraceRetentionHealth,
+  sanitizeSeoProviderCoverage,
+  SEO_RUN_DETAIL_RETENTION_MS,
+} from "./search-trace-retention.service"
+import {
   SeoTargetConflictError,
   SeoTargetService,
   SeoTargetStaleError,
@@ -40,6 +46,115 @@ const Digest = z.string().regex(/^[a-f0-9]{64}$/)
 const BoundedId = z.string().trim().min(1).max(191)
 const BoundedText = z.string().trim().min(1).max(10_000)
 const JsonValue = z.unknown()
+const SeoCoverageValue = z.enum(["available", "partial", "unavailable"])
+const SEO_RUN_REPORT_MAX_BYTES = 220 * 1024
+const SeoLegacyRunReport = z
+  .object({
+    eligibleCount: z.number().int().nonnegative().optional(),
+    observedCount: z.number().int().nonnegative().optional(),
+    selectedCount: z.number().int().nonnegative().optional(),
+    wouldProposeCount: z.number().int().nonnegative().optional(),
+    persistedProposalCount: z.number().int().nonnegative().optional(),
+    providerCoverage: z.record(z.string(), SeoCoverageValue).optional(),
+    skippedTargetIds: z.array(z.string().max(200)).max(1_000).optional(),
+    suppressedOperations: z.array(z.string().max(191)).max(100).optional(),
+  })
+  .strict()
+const SeoRunQueryDecisionInput = z
+  .object({
+    observationId: BoundedId,
+    targetId: BoundedId,
+    locale: z.string().min(1).max(35),
+    canonicalUrl: z.string().url().max(2_000),
+    query: z.string().max(500),
+    clicks: z.number().finite().nonnegative(),
+    impressions: z.number().finite().nonnegative(),
+    ctr: z.number().finite().nonnegative(),
+    position: z.number().finite().nonnegative(),
+    score: z.number().finite().nonnegative(),
+    selectionOutcome: z.enum(["selected", "not_selected"]),
+    reason: z.enum(["selected", "proposal_limit_reached"]),
+  })
+  .strict()
+const SeoRunGscFilterInput = z
+  .object({
+    dimension: z.enum(["date", "query", "page", "country", "device"]),
+    operator: z.enum([
+      "equals",
+      "notEquals",
+      "contains",
+      "notContains",
+      "includingRegex",
+      "excludingRegex",
+    ]),
+    expression: z.string().max(500),
+  })
+  .strict()
+const SeoRunGscRequestInput = z
+  .object({
+    propertyId: z.string().min(1).max(500),
+    startDate: z.string().date(),
+    endDate: z.string().date(),
+    dimensions: z.array(z.string().max(50)).max(5),
+    searchType: z.literal("web"),
+    dataState: z.enum(["final", "all", "hourly_all"]),
+    filters: z.array(SeoRunGscFilterInput).max(20),
+    omittedFilterCount: z.number().int().nonnegative().default(0),
+    timezone: z.string().max(100),
+    configuredRowCap: z.number().int().nonnegative(),
+    returnedRowCount: z.number().int().nonnegative(),
+    pageCount: z.number().int().nonnegative(),
+    requestCount: z.number().int().nonnegative(),
+    capReached: z.boolean(),
+    responseAggregationType: z.string().max(100).nullable(),
+    firstIncompleteDate: z.string().date().nullable(),
+    status: SeoCoverageValue,
+    caveats: z.array(z.string().max(500)).max(20),
+    omittedCaveatCount: z.number().int().nonnegative().default(0),
+  })
+  .strict()
+const SeoRunProposalRefInput = z
+  .object({
+    proposalId: BoundedId,
+    payloadDigest: Digest,
+    disposition: z.enum(["would_propose", "pending_persistence"]),
+  })
+  .strict()
+const SeoRunReportV1Input = z
+  .object({
+    schemaVersion: z.literal(1),
+    detailState: z.literal("available"),
+    selectionPolicyId: z.literal("gsc-low-ctr-v1"),
+    generatedAt: z.string().datetime(),
+    eligibleCount: z.number().int().nonnegative(),
+    observedCount: z.number().int().nonnegative(),
+    selectedCount: z.number().int().nonnegative(),
+    wouldProposeCount: z.number().int().nonnegative(),
+    persistedProposalCount: z.number().int().nonnegative(),
+    providerCoverage: z.record(z.string(), SeoCoverageValue),
+    skippedTargetIds: z.array(z.string().max(200)).max(1_000),
+    omittedSkippedTargetCount: z.number().int().nonnegative().default(0),
+    suppressedOperations: z.array(z.string().max(191)).max(100),
+    gscRequests: z.array(SeoRunGscRequestInput).max(50),
+    omittedGscRequestCount: z.number().int().nonnegative().default(0),
+    queryFunnel: z
+      .object({
+        providerRows: z.number().int().nonnegative(),
+        malformedRows: z.number().int().nonnegative(),
+        unmatchedTargetRows: z.number().int().nonnegative(),
+        belowImpressionThresholdRows: z.number().int().nonnegative(),
+        ctrThresholdNotMetRows: z.number().int().nonnegative(),
+        rankedRows: z.number().int().nonnegative(),
+        selectedQueryRows: z.number().int().nonnegative(),
+        rejectedQueryRows: z.number().int().nonnegative(),
+      })
+      .strict(),
+    queryDecisions: z.array(SeoRunQueryDecisionInput).max(100),
+    omittedQueryDecisionCount: z.number().int().nonnegative(),
+    proposalRefs: z.array(SeoRunProposalRefInput).max(50),
+  })
+  .strict()
+const SeoRunReportInput = z.union([SeoRunReportV1Input, SeoLegacyRunReport])
 const ExperimentableEngineeringBrief = z
   .object({
     ticketOnly: z.literal(false),
@@ -123,7 +238,7 @@ export const SeoCompleteRunInput = z
     claimToken: BoundedId,
     status: SeoRunTerminalStatusInput,
     providerCoverage: JsonValue.default({}),
-    report: JsonValue.default({}),
+    report: SeoRunReportInput.default({}),
     eligibleCount: z.number().int().nonnegative().default(0),
     selectedCount: z.number().int().nonnegative().default(0),
     wouldProposeCount: z.number().int().nonnegative().default(0),
@@ -326,6 +441,11 @@ const EMAIL_VALUE = /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/giu
 const IP_VALUE = /\b(?:\d{1,3}\.){3}\d{1,3}\b/gu
 const IPV6_CANDIDATE =
   /\[[0-9A-Fa-f:.]{2,64}\]|(?<![0-9A-Fa-f:.])[0-9A-Fa-f:.]{2,64}(?![0-9A-Fa-f:.])/gu
+const PHONE_VALUE = /(?<!\w)(?:\+?\d[\d ().-]{7,}\d)(?!\w)/gu
+const EMBEDDED_URL = /https?:\/\/[^\s<>"']+/giu
+const TOKEN_LIKE = /\b[A-Za-z0-9_-]{40,}\b/gu
+const SeoIsoDateValue = z.string().date()
+const SeoIsoDateTimeValue = z.string().datetime()
 
 function redactIpv6Candidate(value: string): string {
   const bracketed = value.startsWith("[") && value.endsWith("]")
@@ -344,12 +464,27 @@ function isSensitiveSeoKey(key: string): boolean {
 }
 
 function redactSeoText(value: string): string {
-  return value
-    .slice(0, 10_000)
+  const bounded = value.slice(0, 10_000)
+  if (
+    SeoIsoDateValue.safeParse(bounded).success ||
+    SeoIsoDateTimeValue.safeParse(bounded).success
+  ) {
+    return bounded
+  }
+  return bounded
     .replace(CREDENTIAL_VALUE, "[redacted]")
     .replace(EMAIL_VALUE, "[redacted-email]")
     .replace(IPV6_CANDIDATE, redactIpv6Candidate)
     .replace(IP_VALUE, "[redacted-ip]")
+    .replace(PHONE_VALUE, "[redacted-phone]")
+}
+
+function redactSeoQuery(value: string): string {
+  return redactSeoText(
+    value
+      .replace(EMBEDDED_URL, "[redacted-url]")
+      .replace(TOKEN_LIKE, "[redacted-token]"),
+  ).slice(0, 500)
 }
 
 /** Bounded redaction seam shared by every SEO persistence operation. */
@@ -387,6 +522,237 @@ export function redactSeoJson(value: unknown, depth = 0): unknown {
     )
   }
   return value
+}
+
+const SeoRunStoredProposalRef = z
+  .object({
+    proposalId: BoundedId,
+    payloadDigest: Digest,
+    disposition: z.enum(["would_propose", "persisted_new", "reused_existing"]),
+    version: z.number().int().positive().nullable(),
+    originatingRunId: BoundedId.nullable(),
+  })
+  .strict()
+const SeoRunReportV1Stored = SeoRunReportV1Input.omit({
+  proposalRefs: true,
+}).extend({
+  proposalRefs: z.array(SeoRunStoredProposalRef).max(50),
+})
+const SeoRunCompactReport = z
+  .object({
+    schemaVersion: z.literal(1),
+    detailState: z.enum([
+      "detail_expired",
+      "detail_suppressed_retention_unhealthy",
+    ]),
+    selectionPolicyId: z.string().max(191).nullable(),
+    eligibleCount: z.number().int().nonnegative(),
+    selectedCount: z.number().int().nonnegative(),
+    wouldProposeCount: z.number().int().nonnegative(),
+    persistedProposalCount: z.number().int().nonnegative(),
+    providerCoverage: z.record(z.string(), SeoCoverageValue),
+    suppressedOperations: z.array(z.string().max(191)).max(100),
+    proposalRefs: z.array(SeoRunStoredProposalRef).max(50),
+    detailExpiresAt: z.string().datetime().nullable(),
+    compactedAt: z.string().datetime(),
+  })
+  .strict()
+type SeoRunStoredReport = z.infer<typeof SeoRunReportV1Stored>
+
+type PersistedProposalOutcome = {
+  proposalId: string
+  payloadDigest: string
+  disposition: "persisted_new" | "reused_existing"
+  version: number
+  originatingRunId: string
+}
+
+function storedSeoRunReportBytes(report: Prisma.InputJsonValue): number {
+  return Buffer.byteLength(JSON.stringify(report), "utf8")
+}
+
+function fitStoredSeoRunReport(
+  report: SeoRunStoredReport,
+): Prisma.InputJsonValue {
+  const skippedTargetIds = [...report.skippedTargetIds]
+  const bounded: SeoRunStoredReport = {
+    ...report,
+    skippedTargetIds,
+    omittedSkippedTargetCount: report.omittedSkippedTargetCount,
+    gscRequests: report.gscRequests.map((request) => ({
+      ...request,
+      filters: [...request.filters],
+      caveats: [...request.caveats],
+    })),
+    queryDecisions: [...report.queryDecisions],
+    proposalRefs: [...report.proposalRefs],
+  }
+  const serialize = () => {
+    const sanitized = inputJson(SeoRunReportV1Stored.parse(bounded))
+    return SeoRunReportV1Stored.parse(sanitized) as Prisma.InputJsonValue
+  }
+  let stored = serialize()
+  let storedBytes = storedSeoRunReportBytes(stored)
+  const trimCount = (available: number) =>
+    Math.min(
+      available,
+      Math.max(
+        1,
+        Math.ceil(
+          (available * (storedBytes - SEO_RUN_REPORT_MAX_BYTES)) / storedBytes,
+        ),
+      ),
+    )
+  while (storedBytes > SEO_RUN_REPORT_MAX_BYTES) {
+    if (bounded.skippedTargetIds.length > 0) {
+      const count = trimCount(bounded.skippedTargetIds.length)
+      bounded.skippedTargetIds.splice(-count, count)
+      bounded.omittedSkippedTargetCount += count
+    } else {
+      const rejectedIndexes = bounded.queryDecisions.flatMap(
+        (decision, index) =>
+          decision.selectionOutcome === "not_selected" ? [index] : [],
+      )
+      if (rejectedIndexes.length > 0) {
+        const count = trimCount(rejectedIndexes.length)
+        for (const index of rejectedIndexes.slice(-count).reverse()) {
+          bounded.queryDecisions.splice(index, 1)
+        }
+        bounded.omittedQueryDecisionCount += count
+      } else {
+        const caveatCount = bounded.gscRequests.reduce(
+          (total, request) => total + request.caveats.length,
+          0,
+        )
+        if (caveatCount > 0) {
+          let remaining = trimCount(caveatCount)
+          for (
+            let index = bounded.gscRequests.length - 1;
+            index >= 0 && remaining > 0;
+            index -= 1
+          ) {
+            const request = bounded.gscRequests[index]!
+            const count = Math.min(remaining, request.caveats.length)
+            request.caveats.splice(-count, count)
+            request.omittedCaveatCount += count
+            remaining -= count
+          }
+        } else {
+          const filterCount = bounded.gscRequests.reduce(
+            (total, request) => total + request.filters.length,
+            0,
+          )
+          if (filterCount > 0) {
+            let remaining = trimCount(filterCount)
+            for (
+              let index = bounded.gscRequests.length - 1;
+              index >= 0 && remaining > 0;
+              index -= 1
+            ) {
+              const request = bounded.gscRequests[index]!
+              const count = Math.min(remaining, request.filters.length)
+              request.filters.splice(-count, count)
+              request.omittedFilterCount += count
+              remaining -= count
+            }
+          } else if (bounded.gscRequests.length > 0) {
+            const count = trimCount(bounded.gscRequests.length)
+            bounded.gscRequests.splice(-count, count)
+            bounded.omittedGscRequestCount += count
+          } else if (bounded.queryDecisions.length > 0) {
+            const count = trimCount(bounded.queryDecisions.length)
+            bounded.queryDecisions.splice(-count, count)
+            bounded.omittedQueryDecisionCount += count
+          } else {
+            throw new SeoLedgerConflictError("report_size_limit_exceeded")
+          }
+        }
+      }
+    }
+    stored = serialize()
+    storedBytes = storedSeoRunReportBytes(stored)
+  }
+  return stored
+}
+
+function canonicalSeoRunReport(
+  report: z.infer<typeof SeoRunReportInput>,
+  mode: SeoAutomationMode,
+  proposalOutcomes: readonly PersistedProposalOutcome[],
+  retainDetail: boolean,
+): Prisma.InputJsonValue {
+  const v1 = SeoRunReportV1Input.safeParse(report)
+  if (!v1.success) return inputJson(SeoLegacyRunReport.parse(report))
+  const outcomeByIdentity = new Map(
+    proposalOutcomes.map((outcome) => [
+      `${outcome.proposalId}:${outcome.payloadDigest}`,
+      outcome,
+    ]),
+  )
+  const proposalRefs = v1.data.proposalRefs.map((reference) => {
+    if (mode !== "LIVE") {
+      return {
+        proposalId: reference.proposalId,
+        payloadDigest: reference.payloadDigest,
+        disposition: "would_propose" as const,
+        version: null,
+        originatingRunId: null,
+      }
+    }
+    const outcome = outcomeByIdentity.get(
+      `${reference.proposalId}:${reference.payloadDigest}`,
+    )
+    if (!outcome) {
+      throw new SeoLedgerConflictError("report_proposal_reference_missing")
+    }
+    return outcome
+  })
+  const normalized = SeoRunReportV1Stored.parse({
+    ...v1.data,
+    providerCoverage: sanitizeSeoProviderCoverage(v1.data.providerCoverage),
+    persistedProposalCount: mode === "LIVE" ? proposalOutcomes.length : 0,
+    queryDecisions: v1.data.queryDecisions.map((decision) => ({
+      ...decision,
+      query: redactSeoQuery(decision.query),
+      canonicalUrl: redactSeoJson(decision.canonicalUrl),
+    })),
+    gscRequests: v1.data.gscRequests.map((request) => ({
+      ...request,
+      propertyId: redactSeoText(request.propertyId).slice(0, 500),
+      filters: request.filters.map((filter) => ({
+        ...filter,
+        expression: redactSeoQuery(filter.expression),
+      })),
+      caveats: request.caveats.map((caveat) =>
+        redactSeoText(caveat).slice(0, 500),
+      ),
+    })),
+    proposalRefs,
+  })
+  if (!retainDetail) {
+    return inputJson(
+      SeoRunCompactReport.parse({
+        schemaVersion: 1,
+        detailState: "detail_suppressed_retention_unhealthy",
+        selectionPolicyId: normalized.selectionPolicyId,
+        eligibleCount: normalized.eligibleCount,
+        selectedCount: normalized.selectedCount,
+        wouldProposeCount: normalized.wouldProposeCount,
+        persistedProposalCount: normalized.persistedProposalCount,
+        providerCoverage: normalized.providerCoverage,
+        suppressedOperations: Array.from(
+          new Set([
+            ...normalized.suppressedOperations,
+            "query_detail_retention_unhealthy",
+          ]),
+        ),
+        proposalRefs: normalized.proposalRefs,
+        detailExpiresAt: null,
+        compactedAt: normalized.generatedAt,
+      }),
+    )
+  }
+  return fitStoredSeoRunReport(normalized)
 }
 
 function iso(value: Date | null | undefined) {
@@ -517,6 +883,140 @@ function proposalRecord(
 }
 
 export type ManagerSeoProposalRecord = ReturnType<typeof proposalRecord>
+
+type SeoRunCursor = { startedAt: string; id: string }
+type SeoRunReportAvailability =
+  | "running"
+  | "available"
+  | "legacy_unavailable"
+  | "malformed"
+  | "unsupported_version"
+  | "detail_expired"
+  | "detail_suppressed_retention_unhealthy"
+type SeoRunSummaryRow = {
+  id: string
+  mode: SeoAutomationMode
+  status: SeoRunStatus
+  startedAt: Date
+  completedAt: Date | null
+  eligibleCount: number
+  selectedCount: number
+  wouldProposeCount: number
+  proposedCount: number
+  materializationCount: number
+  ticketCount: number
+  experimentCount: number
+  suppressedOperations: string[]
+  providerCoverage: Prisma.JsonValue
+  executionFenceGeneration: number
+}
+type SeoRunSummaryProjectionRow = SeoRunSummaryRow & {
+  reportJsonType: string | null
+  reportSchemaVersion: string | null
+  reportDetailState: string | null
+  reportV1ShapeCompatible: boolean
+  reportLegacyCompatible: boolean
+}
+
+function encodeSeoRunCursor(cursor: SeoRunCursor): string {
+  return Buffer.from(JSON.stringify(cursor)).toString("base64url")
+}
+
+function decodeSeoRunCursor(
+  value: string | null | undefined,
+): SeoRunCursor | null {
+  if (!value) return null
+  try {
+    const parsed = JSON.parse(Buffer.from(value, "base64url").toString("utf8"))
+    if (
+      !parsed ||
+      typeof parsed !== "object" ||
+      typeof parsed.startedAt !== "string" ||
+      !Number.isFinite(new Date(parsed.startedAt).getTime()) ||
+      typeof parsed.id !== "string" ||
+      parsed.id.length === 0 ||
+      parsed.id.length > 191
+    ) {
+      throw new Error("invalid")
+    }
+    return { startedAt: parsed.startedAt, id: parsed.id }
+  } catch {
+    throw new SeoLedgerConflictError("run_cursor_invalid")
+  }
+}
+
+function seoRunReportAvailability(
+  report: Prisma.JsonValue,
+  completedAt: Date | null,
+  now: Date,
+): SeoRunReportAvailability {
+  if (!completedAt) return "running"
+  const value = record(report)
+  if (value.detailState === "detail_suppressed_retention_unhealthy") {
+    return "detail_suppressed_retention_unhealthy"
+  }
+  if (value.detailState === "detail_expired") return "detail_expired"
+  if (typeof value.schemaVersion === "number" && value.schemaVersion !== 1) {
+    return "unsupported_version"
+  }
+  if (SeoRunReportV1Stored.safeParse(report).success) {
+    return now.getTime() - completedAt.getTime() >= SEO_RUN_DETAIL_RETENTION_MS
+      ? "detail_expired"
+      : "available"
+  }
+  if (value.schemaVersion === 1) return "malformed"
+  return SeoLegacyRunReport.safeParse(report).success
+    ? "legacy_unavailable"
+    : "malformed"
+}
+
+function projectedSeoRunReportAvailability(
+  row: SeoRunSummaryProjectionRow,
+  now: Date,
+): SeoRunReportAvailability {
+  if (!row.completedAt) return "running"
+  if (row.reportDetailState === "detail_suppressed_retention_unhealthy") {
+    return "detail_suppressed_retention_unhealthy"
+  }
+  if (row.reportDetailState === "detail_expired") return "detail_expired"
+  if (row.reportSchemaVersion != null) {
+    if (Number(row.reportSchemaVersion) !== 1) return "unsupported_version"
+    if (!row.reportV1ShapeCompatible) return "malformed"
+    return now.getTime() - row.completedAt.getTime() >=
+      SEO_RUN_DETAIL_RETENTION_MS
+      ? "detail_expired"
+      : "available"
+  }
+  return row.reportJsonType === "object" && row.reportLegacyCompatible
+    ? "legacy_unavailable"
+    : "malformed"
+}
+
+function seoRunSummaryRecord(
+  row: SeoRunSummaryRow,
+  reportAvailability: SeoRunReportAvailability,
+) {
+  return {
+    id: row.id,
+    mode: row.mode,
+    status: row.status,
+    startedAt: row.startedAt.toISOString(),
+    completedAt: iso(row.completedAt),
+    eligibleCount: row.eligibleCount,
+    selectedCount: row.selectedCount,
+    wouldProposeCount: row.wouldProposeCount,
+    proposedCount: row.proposedCount,
+    materializationCount: row.materializationCount,
+    ticketCount: row.ticketCount,
+    experimentCount: row.experimentCount,
+    suppressedOperations: row.suppressedOperations,
+    providerCoverage: sanitizeSeoProviderCoverage(row.providerCoverage),
+    reportAvailability,
+    reclaimed: row.executionFenceGeneration > 1,
+  }
+}
+
+export type ManagerSeoRunSummaryRecord = ReturnType<typeof seoRunSummaryRecord>
 
 export class SeoExperimentService {
   private readonly targets = new SeoTargetService()
@@ -685,6 +1185,9 @@ export class SeoExperimentService {
     assertion: VerifiedSeoWorkloadAssertion
     input: z.infer<typeof SeoCompleteRunInput>
   }) {
+    const retentionHealth = await readSearchTraceRetentionHealth(
+      this.prisma,
+    ).catch(() => ({ healthy: false as const }))
     return this.prisma.$transaction(
       async (tx) => {
         await this.consumeWorkloadAssertion(tx, assertion)
@@ -736,20 +1239,34 @@ export class SeoExperimentService {
             })),
           })
         }
-        let proposedCount = 0
+        const proposalOutcomes: PersistedProposalOutcome[] = []
         if (effectiveMode === "LIVE") {
           for (const proposal of input.proposals) {
-            await this.persistProposal(tx, run.id, proposal)
-            proposedCount += 1
+            proposalOutcomes.push(
+              await this.persistProposal(tx, run.id, proposal),
+            )
           }
         }
+        const proposedCount = proposalOutcomes.filter(
+          (outcome) =>
+            outcome.disposition === "persisted_new" &&
+            outcome.originatingRunId === run.id,
+        ).length
+        const report = canonicalSeoRunReport(
+          input.report,
+          effectiveMode,
+          proposalOutcomes,
+          retentionHealth.healthy,
+        )
         const completed = await tx.seoRun.update({
           where: { id: run.id },
           data: {
             status: enumRunStatus(input.status),
             mode: effectiveMode,
-            providerCoverage: inputJson(input.providerCoverage),
-            report: inputJson(input.report),
+            providerCoverage: inputJson(
+              sanitizeSeoProviderCoverage(input.providerCoverage),
+            ),
+            report,
             eligibleCount: input.eligibleCount,
             selectedCount: input.selectedCount,
             wouldProposeCount: input.wouldProposeCount,
@@ -876,6 +1393,302 @@ export class SeoExperimentService {
       ticketReconciliations: reconciliations.map((row) =>
         this.ticketRecord(row),
       ),
+    }
+  }
+
+  async listRuns({
+    user,
+    limit = 25,
+    after,
+  }: {
+    user: Principal | null
+    limit?: number
+    after?: string | null
+  }) {
+    assertManagerSeoAccess(user)
+    const take = Math.min(25, Math.max(1, limit))
+    const cursor = decodeSeoRunCursor(after)
+    const cursorFilter = cursor
+      ? Prisma.sql`
+          WHERE started_at < ${new Date(cursor.startedAt)}
+             OR (started_at = ${new Date(cursor.startedAt)} AND id < ${cursor.id})
+        `
+      : Prisma.sql``
+    const rows = await this.prisma.$queryRaw<SeoRunSummaryProjectionRow[]>(
+      Prisma.sql`
+        SELECT
+          id,
+          UPPER(mode::text) AS mode,
+          UPPER(status::text) AS status,
+          started_at AS "startedAt",
+          completed_at AS "completedAt",
+          eligible_count AS "eligibleCount",
+          selected_count AS "selectedCount",
+          would_propose_count AS "wouldProposeCount",
+          proposed_count AS "proposedCount",
+          materialization_count AS "materializationCount",
+          ticket_count AS "ticketCount",
+          experiment_count AS "experimentCount",
+          suppressed_operations AS "suppressedOperations",
+          provider_coverage AS "providerCoverage",
+          execution_fence_generation AS "executionFenceGeneration",
+          jsonb_typeof(report) AS "reportJsonType",
+          CASE
+            WHEN jsonb_typeof(report -> 'schemaVersion') = 'number'
+              THEN report ->> 'schemaVersion'
+            ELSE NULL
+          END AS "reportSchemaVersion",
+          CASE
+            WHEN jsonb_typeof(report -> 'detailState') = 'string'
+              THEN report ->> 'detailState'
+            ELSE NULL
+          END AS "reportDetailState",
+          CASE
+            WHEN jsonb_typeof(report) <> 'object' THEN false
+            ELSE
+              report ?& ARRAY[
+                'schemaVersion', 'detailState', 'selectionPolicyId',
+                'generatedAt', 'eligibleCount', 'observedCount',
+                'selectedCount', 'wouldProposeCount',
+                'persistedProposalCount', 'providerCoverage',
+                'skippedTargetIds', 'suppressedOperations', 'gscRequests',
+                'queryFunnel', 'queryDecisions',
+                'omittedQueryDecisionCount', 'proposalRefs'
+              ]
+              AND NOT EXISTS (
+                SELECT 1
+                FROM jsonb_object_keys(report) AS report_keys(report_key)
+                WHERE report_key NOT IN (
+                  'schemaVersion', 'detailState', 'selectionPolicyId',
+                  'generatedAt', 'eligibleCount', 'observedCount',
+                  'selectedCount', 'wouldProposeCount',
+                  'persistedProposalCount', 'providerCoverage',
+                  'skippedTargetIds', 'omittedSkippedTargetCount',
+                  'suppressedOperations', 'gscRequests',
+                  'omittedGscRequestCount', 'queryFunnel', 'queryDecisions',
+                  'omittedQueryDecisionCount', 'proposalRefs'
+                )
+              )
+              AND jsonb_typeof(report -> 'schemaVersion') = 'number'
+              AND jsonb_typeof(report -> 'detailState') = 'string'
+              AND jsonb_typeof(report -> 'selectionPolicyId') = 'string'
+              AND jsonb_typeof(report -> 'generatedAt') = 'string'
+              AND jsonb_typeof(report -> 'eligibleCount') = 'number'
+              AND jsonb_typeof(report -> 'observedCount') = 'number'
+              AND jsonb_typeof(report -> 'selectedCount') = 'number'
+              AND jsonb_typeof(report -> 'wouldProposeCount') = 'number'
+              AND jsonb_typeof(report -> 'persistedProposalCount') = 'number'
+              AND jsonb_typeof(report -> 'providerCoverage') = 'object'
+              AND jsonb_typeof(report -> 'skippedTargetIds') = 'array'
+              AND (
+                NOT (report ? 'omittedSkippedTargetCount')
+                OR jsonb_typeof(report -> 'omittedSkippedTargetCount') = 'number'
+              )
+              AND jsonb_typeof(report -> 'suppressedOperations') = 'array'
+              AND jsonb_typeof(report -> 'gscRequests') = 'array'
+              AND (
+                NOT (report ? 'omittedGscRequestCount')
+                OR jsonb_typeof(report -> 'omittedGscRequestCount') = 'number'
+              )
+              AND jsonb_typeof(report -> 'queryFunnel') = 'object'
+              AND jsonb_typeof(report -> 'queryDecisions') = 'array'
+              AND jsonb_typeof(report -> 'omittedQueryDecisionCount') = 'number'
+              AND jsonb_typeof(report -> 'proposalRefs') = 'array'
+          END AS "reportV1ShapeCompatible",
+          CASE
+            WHEN jsonb_typeof(report) <> 'object' THEN false
+            ELSE
+              NOT (report ? 'schemaVersion')
+              AND NOT EXISTS (
+                SELECT 1
+                FROM jsonb_object_keys(report) AS report_keys(report_key)
+                WHERE report_key NOT IN (
+                  'eligibleCount', 'observedCount', 'selectedCount',
+                  'wouldProposeCount', 'persistedProposalCount',
+                  'providerCoverage', 'skippedTargetIds',
+                  'suppressedOperations'
+                )
+              )
+              AND (
+                NOT (report ? 'eligibleCount')
+                OR jsonb_typeof(report -> 'eligibleCount') = 'number'
+              )
+              AND (
+                NOT (report ? 'observedCount')
+                OR jsonb_typeof(report -> 'observedCount') = 'number'
+              )
+              AND (
+                NOT (report ? 'selectedCount')
+                OR jsonb_typeof(report -> 'selectedCount') = 'number'
+              )
+              AND (
+                NOT (report ? 'wouldProposeCount')
+                OR jsonb_typeof(report -> 'wouldProposeCount') = 'number'
+              )
+              AND (
+                NOT (report ? 'persistedProposalCount')
+                OR jsonb_typeof(report -> 'persistedProposalCount') = 'number'
+              )
+              AND (
+                NOT (report ? 'providerCoverage')
+                OR jsonb_typeof(report -> 'providerCoverage') = 'object'
+              )
+              AND (
+                NOT (report ? 'skippedTargetIds')
+                OR jsonb_typeof(report -> 'skippedTargetIds') = 'array'
+              )
+              AND (
+                NOT (report ? 'suppressedOperations')
+                OR jsonb_typeof(report -> 'suppressedOperations') = 'array'
+              )
+          END AS "reportLegacyCompatible"
+        FROM seo_run
+        ${cursorFilter}
+        ORDER BY started_at DESC, id DESC
+        LIMIT ${take + 1}
+      `,
+    )
+    const hasNextPage = rows.length > take
+    const pageRows = rows.slice(0, take)
+    const next = hasNextPage ? pageRows.at(-1) : null
+    const now = new Date()
+    return {
+      generatedAt: now.toISOString(),
+      items: pageRows.map((row) =>
+        seoRunSummaryRecord(row, projectedSeoRunReportAvailability(row, now)),
+      ),
+      hasNextPage,
+      nextCursor: next
+        ? encodeSeoRunCursor({
+            startedAt: next.startedAt.toISOString(),
+            id: next.id,
+          })
+        : null,
+    }
+  }
+
+  async getRun({ user, id }: { user: Principal | null; id: string }) {
+    assertManagerSeoAccess(user)
+    const row = await this.prisma.seoRun.findUnique({ where: { id } })
+    if (!row) return null
+    const now = new Date()
+    const summary = seoRunSummaryRecord(
+      row,
+      seoRunReportAvailability(row.report, row.completedAt, now),
+    )
+    const parsed = SeoRunReportV1Stored.safeParse(row.report)
+    const compacted = SeoRunCompactReport.safeParse(row.report)
+    if (parsed.success && summary.reportAvailability === "detail_expired") {
+      await compactExpiredSeoRunReportById(this.prisma, row.id, now).catch(
+        () => false,
+      )
+    }
+    const report = parsed.success
+      ? summary.reportAvailability === "available"
+        ? parsed.data
+        : {
+            schemaVersion: 1,
+            detailState: summary.reportAvailability,
+            selectionPolicyId: parsed.data.selectionPolicyId,
+            eligibleCount: parsed.data.eligibleCount,
+            observedCount: parsed.data.observedCount,
+            selectedCount: parsed.data.selectedCount,
+            wouldProposeCount: parsed.data.wouldProposeCount,
+            persistedProposalCount: parsed.data.persistedProposalCount,
+            providerCoverage: parsed.data.providerCoverage,
+            suppressedOperations: parsed.data.suppressedOperations,
+            proposalRefs: parsed.data.proposalRefs,
+          }
+      : compacted.success
+        ? compacted.data
+        : null
+    const reportRefs = parsed.success
+      ? parsed.data.proposalRefs
+      : compacted.success
+        ? compacted.data.proposalRefs
+        : []
+    const refs = reportRefs.filter(
+      (reference) =>
+        reference.version != null && reference.originatingRunId != null,
+    )
+    const versions =
+      refs.length === 0
+        ? []
+        : await this.prisma.seoProposalVersion.findMany({
+            where: {
+              OR: refs.map((reference) => ({
+                proposalId: reference.proposalId,
+                version: reference.version!,
+                payloadDigest: reference.payloadDigest,
+              })),
+            },
+            select: {
+              proposalId: true,
+              version: true,
+              payloadDigest: true,
+              runId: true,
+              proposal: { select: { status: true } },
+              decision: {
+                select: {
+                  action: true,
+                  actorId: true,
+                  reason: true,
+                  decidedAt: true,
+                },
+              },
+              materialization: { select: { status: true } },
+              experiment: {
+                select: {
+                  id: true,
+                  status: true,
+                  evaluations: {
+                    orderBy: { observedAt: "desc" },
+                    take: 1,
+                    select: {
+                      kind: true,
+                      outcome: true,
+                      observedAt: true,
+                    },
+                  },
+                },
+              },
+            },
+          })
+    return {
+      ...summary,
+      report,
+      proposalOutcomes: versions.map((version) => ({
+        proposalId: version.proposalId,
+        version: version.version,
+        payloadDigest: version.payloadDigest,
+        originatingRunId: version.runId,
+        proposalStatus: version.proposal.status,
+        humanDecision: version.decision
+          ? {
+              action: version.decision.action,
+              actorId: redactSeoText(version.decision.actorId).slice(0, 191),
+              reason: version.decision.reason
+                ? redactSeoText(version.decision.reason)
+                : null,
+              decidedAt: version.decision.decidedAt.toISOString(),
+            }
+          : null,
+        materializationStatus: version.materialization?.status ?? null,
+        experiment: version.experiment
+          ? {
+              id: version.experiment.id,
+              status: version.experiment.status,
+              latestEvaluation: version.experiment.evaluations[0]
+                ? {
+                    kind: version.experiment.evaluations[0].kind,
+                    outcome: version.experiment.evaluations[0].outcome,
+                    observedAt:
+                      version.experiment.evaluations[0].observedAt.toISOString(),
+                  }
+                : null,
+            }
+          : null,
+      })),
     }
   }
 
@@ -1789,7 +2602,16 @@ export class SeoExperimentService {
       if (existingRetry.payloadDigest !== input.payloadDigest) {
         throw new SeoLedgerConflictError("idempotency_digest_mismatch")
       }
-      return existingRetry
+      return {
+        proposalId: existingRetry.proposalId,
+        payloadDigest: existingRetry.payloadDigest,
+        disposition:
+          existingRetry.runId === runId
+            ? ("persisted_new" as const)
+            : ("reused_existing" as const),
+        version: existingRetry.version,
+        originatingRunId: existingRetry.runId,
+      }
     }
     const proposal = await tx.seoProposal.upsert({
       where: { id: input.proposalId },
@@ -1824,7 +2646,18 @@ export class SeoExperimentService {
         },
       },
     })
-    if (existingPayload) return existingPayload
+    if (existingPayload) {
+      return {
+        proposalId: existingPayload.proposalId,
+        payloadDigest: existingPayload.payloadDigest,
+        disposition:
+          existingPayload.runId === runId
+            ? ("persisted_new" as const)
+            : ("reused_existing" as const),
+        version: existingPayload.version,
+        originatingRunId: existingPayload.runId,
+      }
+    }
     const allocatedVersion = proposal.currentVersion + 1
     const version = await tx.seoProposalVersion.create({
       data: {
@@ -1864,7 +2697,13 @@ export class SeoExperimentService {
         expiresAt: new Date(input.expiresAt),
       },
     })
-    return version
+    return {
+      proposalId: version.proposalId,
+      payloadDigest: version.payloadDigest,
+      disposition: "persisted_new" as const,
+      version: version.version,
+      originatingRunId: version.runId,
+    }
   }
 
   private async persistFinalEvaluationArtifacts({

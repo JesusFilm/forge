@@ -392,6 +392,7 @@ function lexicalLaneRequest(
   languageIdentities: readonly string[] | null,
   candidateLimit: number,
   offset: number,
+  lane: "title" | "metadata",
 ): TypesenseSearchRequest {
   const perPage = Math.min(candidateLimit, MAX_FUSED_CANDIDATES)
   const isFallbackField = (field: string) => field.endsWith("_fallback")
@@ -416,7 +417,11 @@ function lexicalLaneRequest(
     split_join_tokens: "always",
     text_match_type: "max_weight",
     prioritize_exact_match: true,
-    drop_tokens_threshold: 1,
+    // Title hits must cover every query token: a dropped-token retry lets
+    // single-token title hits (lane weight 0.56) outrank full-phrase
+    // description matches (0.14) — the "World Cup" regression. The metadata
+    // lane keeps the retry as the long-query recall safety net.
+    drop_tokens_threshold: lane === "title" ? 0 : 1,
     include_fields: [
       "id",
       "videoId",
@@ -1356,6 +1361,7 @@ export class TypesenseWatchSearchService {
         globalCandidateRecall ? null : lexicalLanguageIdentities,
         candidateLimit,
         offset,
+        "title",
       ),
       lexicalLaneRequest(
         this.profile.binding.lexical,
@@ -1364,6 +1370,7 @@ export class TypesenseWatchSearchService {
         globalCandidateRecall ? null : lexicalLanguageIdentities,
         candidateLimit,
         offset,
+        "metadata",
       ),
       ...(embedding
         ? [

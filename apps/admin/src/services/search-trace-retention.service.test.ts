@@ -18,6 +18,7 @@ const envMutable = env as { NODE_ENV?: "development" | "test" | "production" }
 
 function buildPrisma() {
   return {
+    $queryRaw: vi.fn(async (): Promise<unknown[]> => []),
     searchTrace: {
       deleteMany: vi.fn(async () => ({ count: 0 })),
     },
@@ -52,6 +53,10 @@ function buildPrisma() {
       updateMany: vi.fn(async () => ({ count: 0 })),
     },
     seoExperiment: {
+      updateMany: vi.fn(async () => ({ count: 0 })),
+    },
+    seoRun: {
+      findMany: vi.fn(async (): Promise<unknown[]> => []),
       updateMany: vi.fn(async () => ({ count: 0 })),
     },
     workflowRun: {
@@ -92,6 +97,7 @@ describe("search trace retention service", () => {
       redactedSeoProposalVersionCount: 0,
       redactedSeoDecisionCount: 0,
       redactedSeoExperimentCount: 0,
+      compactedSeoRunReportCount: 0,
       purgedBefore: "2026-05-30T00:00:00.000Z",
       redactedBefore: "2019-05-30T00:00:00.000Z",
     })
@@ -155,6 +161,7 @@ describe("search trace retention service", () => {
       redactedSeoProposalVersionCount: 7,
       redactedSeoDecisionCount: 8,
       redactedSeoExperimentCount: 9,
+      compactedSeoRunReportCount: 0,
       redactedBefore: "2026-05-30T00:00:00.000Z",
     })
 
@@ -238,6 +245,94 @@ describe("search trace retention service", () => {
         confounders: [],
       },
     })
+  })
+
+  it("compacts expired SEO run detail while retaining safe totals and proposal links", async () => {
+    const prisma = buildPrisma()
+    const now = new Date("2026-05-30T00:00:00.000Z")
+    const report = {
+      schemaVersion: 1,
+      detailState: "available",
+      selectionPolicyId: "gsc-low-ctr-v1",
+      queryDecisions: [{ query: "sensitive query" }],
+      proposalRefs: [
+        {
+          proposalId: "proposal-reused",
+          payloadDigest: "a".repeat(64),
+          disposition: "reused_existing",
+          version: 2,
+          originatingRunId: "earlier-run",
+        },
+      ],
+    }
+    prisma.seoRun.findMany.mockResolvedValueOnce([
+      {
+        id: "run-1",
+        report,
+        updatedAt: new Date("2026-05-01T00:00:00.000Z"),
+        completedAt: new Date("2026-05-01T00:00:00.000Z"),
+        eligibleCount: 20,
+        selectedCount: 3,
+        wouldProposeCount: 2,
+        proposedCount: 1,
+        providerCoverage: { gsc: "available" },
+        suppressedOperations: [],
+        proposalVersions: [
+          {
+            proposalId: "proposal-new",
+            version: 1,
+            payloadDigest: "b".repeat(64),
+            runId: "run-1",
+          },
+        ],
+      },
+    ])
+    prisma.$queryRaw.mockResolvedValueOnce([{ id: "run-1" }])
+    prisma.seoRun.updateMany.mockResolvedValueOnce({ count: 1 })
+
+    await expect(
+      purgeExpiredSearchTraces(
+        prisma as unknown as Parameters<typeof purgeExpiredSearchTraces>[0],
+        now,
+      ),
+    ).resolves.toMatchObject({ compactedSeoRunReportCount: 1 })
+
+    expect(prisma.seoRun.updateMany).toHaveBeenCalledWith({
+      where: expect.objectContaining({
+        id: "run-1",
+        updatedAt: new Date("2026-05-01T00:00:00.000Z"),
+      }),
+      data: {
+        report: expect.objectContaining({
+          schemaVersion: 1,
+          detailState: "detail_expired",
+          eligibleCount: 20,
+          selectedCount: 3,
+          proposalRefs: expect.arrayContaining([
+            expect.objectContaining({ proposalId: "proposal-reused" }),
+            expect.objectContaining({ proposalId: "proposal-new" }),
+          ]),
+          detailExpiresAt: "2026-05-30T00:00:00.000Z",
+          compactedAt: "2026-05-30T00:00:00.000Z",
+        }),
+      },
+    })
+    expect(JSON.stringify(prisma.seoRun.updateMany.mock.calls)).not.toContain(
+      "sensitive query",
+    )
+  })
+
+  it("does not rewrite an already compacted SEO run report", async () => {
+    const prisma = buildPrisma()
+
+    await purgeExpiredSearchTraces(
+      prisma as unknown as Parameters<typeof purgeExpiredSearchTraces>[0],
+      new Date("2026-05-31T00:00:00.000Z"),
+    )
+
+    expect(prisma.seoRun.updateMany).not.toHaveBeenCalled()
+    expect(prisma.$queryRaw).toHaveBeenCalledOnce()
+    expect(prisma.seoRun.findMany).not.toHaveBeenCalled()
   })
 
   it("treats non-production retention as healthy for local/test capture", async () => {

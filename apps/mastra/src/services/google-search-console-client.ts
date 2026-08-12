@@ -112,6 +112,7 @@ export async function queryGoogleSearchConsole(input: {
   let aggregation: string | null = null
   let firstIncompleteDate: string | null = null
   let pageCount = 0
+  let requestCount = 0
   while (rows.length < config.maxGscRows) {
     const requestedPageSize = Math.min(
       pageSize,
@@ -149,6 +150,7 @@ export async function queryGoogleSearchConsole(input: {
       fetchImpl: input.fetchImpl,
       sleep: input.sleep,
     })
+    requestCount += response.attempts
     if (!response.ok) {
       if (response.reason === "response_too_large" && requestedPageSize > 1) {
         pageSize = Math.max(1, Math.floor(requestedPageSize / 2))
@@ -200,8 +202,12 @@ export async function queryGoogleSearchConsole(input: {
       filters: input.filters ?? [],
       dataState: input.dataState ?? "final",
       timezone: "America/Los_Angeles",
+      searchType: "web",
+      configuredRowCap: config.maxGscRows,
       rowCount: rows.length,
       pageCount,
+      requestCount,
+      capReached: capped,
       rows,
       responseAggregationType: aggregation,
       firstIncompleteDate,

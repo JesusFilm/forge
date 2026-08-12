@@ -148,6 +148,25 @@ An absent overlay inherits the selected locale's canonical copy and existing
 image fallback. Managed social art remains promotional: it does not become the
 Video's thumbnail truth.
 
+### Watch Search Candidate Generation
+
+An immutable set of candidate-owned search projections, with qualification
+evidence bound to it, built for private evaluation before it can become the
+public Watch search implementation.
+
+A Candidate Generation is recorded before its external collections are built,
+then moves through a guarded lifecycle. Failed or retired generations retain
+enough ownership evidence for safe cleanup without changing their identity.
+
+### Watch Search Candidate Pointer
+
+A versioned control-plane reference that selects one Watch Search Candidate
+Generation for either private evaluation or public serving.
+
+The Evaluation pointer can move without changing public Watch traffic. The
+Serving pointer is separate, so publishing a test candidate never promotes it
+implicitly.
+
 ## Video source mapper
 
 ### Video Source Mapper
@@ -299,6 +318,18 @@ take ownership, while generation and token fencing determine who may complete.
 Experiments become measuring only after objective activation, overlap becomes a
 confounder only when treatments are simultaneously live, and canonical drift
 forces an inconclusive outcome rather than a lesson or rollback.
+
+### SEO Run Audit Report
+
+The bounded, versioned explanation of one SEO Marketing Agent job: which safe
+provider scope reached evaluation, how candidates moved through the decision
+funnel, which actions were selected or rejected, and which proposal identities
+resulted.
+
+Unlike the SEO Experiment Ledger, the report freezes the machine decision at
+job completion and carries only short-lived provider/query detail. Later human
+decisions and experiment outcomes remain canonical in the ledger and are
+composed with the report when an operator reads it.
 
 ### Search Pipeline Mode
 

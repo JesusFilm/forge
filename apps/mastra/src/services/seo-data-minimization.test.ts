@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 
 import {
+  minimizeSeoQuery,
   minimizeSeoText,
   minimizeSeoUrl,
   minimizeSeoValue,
@@ -19,6 +20,16 @@ describe("SEO data minimization", () => {
     expect(minimizeSeoUrl("https://example.com/watch?a=signed#private")).toBe(
       "https://example.com/watch",
     )
+  })
+
+  it("redacts embedded URLs and token-like values from retained queries", () => {
+    const query = minimizeSeoQuery(
+      "open https://example.com/file?X-Amz-Signature=secret abcdefghijklmnopqrstuvwxyz0123456789TOKEN",
+    )
+    expect(query).toContain("[REDACTED_URL]")
+    expect(query).toContain("[REDACTED_TOKEN]")
+    expect(query).not.toContain("X-Amz-Signature")
+    expect(query).not.toContain("abcdefghijklmnopqrstuvwxyz")
   })
 
   it("drops sensitive object fields before persistence or prompts", () => {

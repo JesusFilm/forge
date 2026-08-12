@@ -15,14 +15,20 @@ import {
   seoLessonSchema,
   seoProposalDecisionResultSchema,
   seoProposalSchema,
+  seoRunDetailSchema,
+  seoRunPageSchema,
   seoTicketReconciliationSchema,
   seoWorkspaceSchema,
   type SeoLesson,
   type SeoProposal,
   type SeoProposalDecisionResult,
+  type SeoRunDetail,
+  type SeoRunPage,
   type SeoTicketReconciliation,
   type SeoWorkspace,
 } from "@/features/seo/seo-contract"
+import { print } from "@apollo/client/utilities"
+import { adminGraphql, type AdminResultOf } from "@forge/admin-graphql"
 import { z } from "zod"
 
 type FetchLike = typeof fetch
@@ -283,6 +289,182 @@ const SEO_PROPOSAL_SELECTION = `
   }
 `
 
+const MANAGER_SEO_RUNS_OPERATION = adminGraphql(`
+  query ManagerSeoRuns($limit: Int, $after: String) {
+    managerSeoRuns(limit: $limit, after: $after) {
+      generatedAt
+      items {
+        id
+        mode
+        status
+        startedAt
+        completedAt
+        eligibleCount
+        selectedCount
+        wouldProposeCount
+        proposedCount
+        materializationCount
+        ticketCount
+        experimentCount
+        suppressedOperations
+        providerCoverage
+        reportAvailability
+        reclaimed
+      }
+      hasNextPage
+      nextCursor
+    }
+  }
+`)
+
+const MANAGER_SEO_RUN_OPERATION = adminGraphql(`
+  query ManagerSeoRun($id: ID!) {
+    managerSeoRun(id: $id) {
+      id
+      mode
+      status
+      startedAt
+      completedAt
+      eligibleCount
+      selectedCount
+      wouldProposeCount
+      proposedCount
+      materializationCount
+      ticketCount
+      experimentCount
+      suppressedOperations
+      providerCoverage
+      reportAvailability
+      reclaimed
+      report {
+        __typename
+        ... on ManagerSeoRunReportAvailable {
+          schemaVersion
+          detailState
+          selectionPolicyId
+          generatedAt
+          eligibleCount
+          observedCount
+          selectedCount
+          wouldProposeCount
+          persistedProposalCount
+          providerCoverage { provider status }
+          suppressedOperations
+          skippedTargetIds
+          omittedSkippedTargetCount
+          gscRequests {
+            propertyId
+            startDate
+            endDate
+            dimensions
+            searchType
+            dataState
+            filters { dimension operator expression }
+            omittedFilterCount
+            timezone
+            configuredRowCap
+            returnedRowCount
+            pageCount
+            requestCount
+            capReached
+            responseAggregationType
+            firstIncompleteDate
+            status
+            caveats
+            omittedCaveatCount
+          }
+          omittedGscRequestCount
+          queryFunnel {
+            providerRows
+            malformedRows
+            unmatchedTargetRows
+            belowImpressionThresholdRows
+            ctrThresholdNotMetRows
+            rankedRows
+            selectedQueryRows
+            rejectedQueryRows
+          }
+          queryDecisions {
+            observationId
+            targetId
+            locale
+            query
+            canonicalUrl
+            clicks
+            impressions
+            ctr
+            position
+            score
+            selectionOutcome
+            reason
+          }
+          omittedQueryDecisionCount
+          proposalRefs {
+            proposalId
+            payloadDigest
+            disposition
+            version
+            originatingRunId
+          }
+        }
+        ... on ManagerSeoRunReportUnavailable {
+          schemaVersion
+          detailState
+          selectionPolicyId
+          eligibleCount
+          observedCount
+          selectedCount
+          wouldProposeCount
+          persistedProposalCount
+          providerCoverage { provider status }
+          suppressedOperations
+          proposalRefs {
+            proposalId
+            payloadDigest
+            disposition
+            version
+            originatingRunId
+          }
+        }
+        ... on ManagerSeoRunReportCompacted {
+          schemaVersion
+          detailState
+          selectionPolicyId
+          eligibleCount
+          selectedCount
+          wouldProposeCount
+          persistedProposalCount
+          providerCoverage { provider status }
+          suppressedOperations
+          proposalRefs {
+            proposalId
+            payloadDigest
+            disposition
+            version
+            originatingRunId
+          }
+          detailExpiresAt
+          compactedAt
+        }
+      }
+      proposalOutcomes {
+        proposalId
+        version
+        payloadDigest
+        originatingRunId
+        proposalStatus
+        humanDecision { action actorId reason decidedAt }
+        materializationStatus
+        experiment {
+          id
+          status
+          latestEvaluation { kind outcome observedAt }
+        }
+      }
+    }
+  }
+`)
+
 const SEO_EXPERIMENT_SELECTION = `
   id
   proposalId
@@ -508,6 +690,36 @@ export class AdminGraphqlClient {
     if (!parsed.success) {
       throw new Error(
         `Admin managerSeoWorkspace returned invalid SEO workspace payload: ${parsed.error.message}`,
+      )
+    }
+    return parsed.data
+  }
+
+  async getSeoRuns(limit = 25, after?: string): Promise<SeoRunPage> {
+    const data = await this.request<
+      AdminResultOf<typeof MANAGER_SEO_RUNS_OPERATION>
+    >(print(MANAGER_SEO_RUNS_OPERATION), { limit, after })
+    const parsed = seoRunPageSchema.safeParse(
+      readField<unknown>(data, "managerSeoRuns"),
+    )
+    if (!parsed.success) {
+      throw new Error(
+        `Admin managerSeoRuns returned invalid SEO run payload: ${parsed.error.message}`,
+      )
+    }
+    return parsed.data
+  }
+
+  async getSeoRun(id: string): Promise<SeoRunDetail | null> {
+    const data = await this.request<
+      AdminResultOf<typeof MANAGER_SEO_RUN_OPERATION>
+    >(print(MANAGER_SEO_RUN_OPERATION), { id })
+    const value = readField<unknown>(data, "managerSeoRun")
+    if (value == null) return null
+    const parsed = seoRunDetailSchema.safeParse(value)
+    if (!parsed.success) {
+      throw new Error(
+        `Admin managerSeoRun returned invalid SEO run detail: ${parsed.error.message}`,
       )
     }
     return parsed.data

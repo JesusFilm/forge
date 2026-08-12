@@ -10,6 +10,8 @@ const IPV6_CANDIDATE =
 const SECRET =
   /\b(?:bearer\s+\S+|(?:sk|ghp|github_pat|xox[baprs])-?[a-z0-9_-]{12,}|(?:api[_ -]?key|token|secret|password|cookie)\s*[:=]\s*\S+)/giu
 const CANARY = /\b(?:canary|honeytoken)[-_:\w]*/giu
+const EMBEDDED_URL = /https?:\/\/[^\s<>"']+/giu
+const TOKEN_LIKE = /\b[A-Za-z0-9_-]{40,}\b/gu
 
 const SENSITIVE_KEY =
   /token|secret|password|authorization|cookie|header|credential|api[_-]?key|prompt|rawbody/i
@@ -69,6 +71,15 @@ export function minimizeSeoText(value: string, maxCharacters = 4_000): string {
   return codepoints.length <= maxCharacters
     ? redacted
     : `${codepoints.slice(0, Math.max(0, maxCharacters - 3)).join("")}...`
+}
+
+export function minimizeSeoQuery(value: string, maxCharacters = 500): string {
+  return minimizeSeoText(
+    value
+      .replace(EMBEDDED_URL, "[REDACTED_URL]")
+      .replace(TOKEN_LIKE, "[REDACTED_TOKEN]"),
+    maxCharacters,
+  )
 }
 
 export function minimizeSeoUrl(value: string): string | null {
