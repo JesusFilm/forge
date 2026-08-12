@@ -8,12 +8,14 @@ import {
   assertQualificationProfilesMatchLease,
   createCandidateWatchSearchProfile,
   freezeCurrentWatchSearchProfile,
+  type ResolvedCandidateWatchSearchGeneration,
   type TypesenseWatchSearchProfile,
   type TypesenseWatchSearchQualificationLeaseIdentity,
   watchSearchBindingMembers,
 } from "./typesense-watch-search-profile"
 import { TypesenseClient } from "./typesense-client"
 import { TypesenseWatchSearchCandidateGenerationService } from "./typesense-watch-search-candidate-generation"
+import { candidateWatchSearchApplicationRevision } from "./typesense-watch-search-candidate-identity"
 import {
   recordSearchTraceSafely,
   recordWatchSearchTraceSafely,
@@ -281,14 +283,34 @@ const COMPARISON_LEASE_TTL_MS = 30_000
 const ACTOR_RATE_LIMIT = 10
 const ACTOR_RATE_WINDOW_MS = 60_000
 
-function applicationRevision(): string {
-  const revision =
-    process.env.NEXT_PUBLIC_DATADOG_VERSION ??
-    process.env.RAILWAY_GIT_COMMIT_SHA ??
-    process.env.VERCEL_GIT_COMMIT_SHA ??
-    process.env.GIT_COMMIT_SHA
-  if (!revision?.trim()) throw new ComparisonError("profile_unavailable")
-  return revision.trim()
+type EvaluationCandidateGenerationResolver = {
+  getPointer(kind: "EVALUATION"): Promise<{ generationId: string | null }>
+  getGeneration(generationId: string): Promise<{
+    id: string
+    transcriptCollection: string
+    transcriptProjectionRevision: bigint
+  }>
+  resolveGeneration(
+    input: Parameters<
+      TypesenseWatchSearchCandidateGenerationService["resolveGeneration"]
+    >[0],
+  ): Promise<ResolvedCandidateWatchSearchGeneration>
+}
+
+export async function resolveEvaluationCandidateWatchSearchProfile(
+  generations: EvaluationCandidateGenerationResolver,
+): Promise<TypesenseWatchSearchProfile> {
+  const pointer = await generations.getPointer("EVALUATION")
+  if (!pointer.generationId) throw new ComparisonError("profile_unavailable")
+  const generation = await generations.getGeneration(pointer.generationId)
+  const resolved = await generations.resolveGeneration({
+    generationId: generation.id,
+    applicationRevision: candidateWatchSearchApplicationRevision(),
+    transcriptCollection: generation.transcriptCollection,
+    transcriptProjectionRevision: generation.transcriptProjectionRevision,
+    requireQualified: false,
+  })
+  return createCandidateWatchSearchProfile(resolved)
 }
 
 /** Production fixed-semantics factory. Callers cannot provide profile identity. */
@@ -309,20 +331,8 @@ export function createTypesenseWatchSearchComparisonService(): TypesenseWatchSea
 
   return new TypesenseWatchSearchComparisonService({
     resolveCurrentProfile: () => freezeCurrentWatchSearchProfile(typesense),
-    resolveCandidateProfile: async () => {
-      const pointer = await generations.getPointer("EVALUATION")
-      if (!pointer.generationId)
-        throw new ComparisonError("profile_unavailable")
-      const generation = await generations.getGeneration(pointer.generationId)
-      const resolved = await generations.resolveGeneration({
-        generationId: generation.id,
-        applicationRevision: applicationRevision(),
-        transcriptCollection: generation.transcriptCollection,
-        transcriptProjectionRevision: generation.transcriptProjectionRevision,
-        requireQualified: false,
-      })
-      return createCandidateWatchSearchProfile(resolved)
-    },
+    resolveCandidateProfile: () =>
+      resolveEvaluationCandidateWatchSearchProfile(generations),
     createSearch: (profile) =>
       new TypesenseWatchSearchService(prisma, typesense, { profile }),
     acquireLease: async ({ comparisonId, current, candidate }) => {

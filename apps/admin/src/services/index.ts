@@ -23,6 +23,7 @@ import { WatchSearchEventService } from "@/services/watch-search-events.service"
 import { WatchSearchService } from "@/services/watch-search.service"
 import { TypesenseClient } from "@/services/typesense-client"
 import { TypesenseWatchSearchCandidateGenerationService } from "@/services/typesense-watch-search-candidate-generation"
+import { candidateWatchSearchApplicationRevision } from "@/services/typesense-watch-search-candidate-identity"
 import {
   createCandidateWatchSearchProfile,
   createCurrentWatchSearchProfile,
@@ -157,12 +158,7 @@ function createServingTypesenseWatchSearchService(prisma: PrismaClient) {
         )
         const profile = await resolveWatchSearchServingProfile({
           selector: env.WATCH_SEARCH_TYPESENSE_PROFILE,
-          applicationRevision:
-            env.NEXT_PUBLIC_DATADOG_VERSION ??
-            process.env.RAILWAY_GIT_COMMIT_SHA ??
-            process.env.VERCEL_GIT_COMMIT_SHA ??
-            process.env.GIT_COMMIT_SHA ??
-            null,
+          applicationRevision: candidateWatchSearchApplicationRevision(),
           transcriptProjectionRevision:
             env.WATCH_SEARCH_TRANSCRIPT_PROJECTION_REVISION ?? null,
           qrelsRevision: env.WATCH_SEARCH_SERVING_QRELS_REVISION ?? null,
