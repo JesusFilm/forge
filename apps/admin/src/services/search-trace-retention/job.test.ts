@@ -40,6 +40,7 @@ describe("search trace retention workflow job", () => {
       redactedSeoProposalVersionCount: 0,
       redactedSeoDecisionCount: 0,
       redactedSeoExperimentCount: 0,
+      compactedSeoRunReportCount: 0,
       purgedBefore: "2026-05-30T00:00:00.000Z",
       redactedBefore: "2019-05-30T00:00:00.000Z",
     })
@@ -194,6 +195,7 @@ describe("search trace retention workflow job", () => {
       redactedSeoProposalVersionCount: 6,
       redactedSeoDecisionCount: 7,
       redactedSeoExperimentCount: 8,
+      compactedSeoRunReportCount: 1,
       purgedBefore: "2026-05-30T00:00:00.000Z",
       redactedBefore: "2019-05-30T00:00:00.000Z",
     })
@@ -232,6 +234,7 @@ describe("search trace retention workflow job", () => {
           redactedSeoProposalVersionCount: 6,
           redactedSeoDecisionCount: 7,
           redactedSeoExperimentCount: 8,
+          compactedSeoRunReportCount: 1,
           purgedBefore: "2026-05-30T00:00:00.000Z",
           redactedBefore: "2019-05-30T00:00:00.000Z",
         },

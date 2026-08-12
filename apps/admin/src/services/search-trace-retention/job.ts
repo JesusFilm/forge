@@ -40,6 +40,7 @@ export type SearchTraceRetentionJobResult = {
   redactedSeoProposalVersionCount: number
   redactedSeoDecisionCount: number
   redactedSeoExperimentCount: number
+  compactedSeoRunReportCount: number
   purgedBefore: string
   redactedBefore: string
 }
@@ -152,6 +153,7 @@ export async function runSearchTraceRetentionJob(
               result.redactedSeoProposalVersionCount,
             redactedSeoDecisionCount: result.redactedSeoDecisionCount,
             redactedSeoExperimentCount: result.redactedSeoExperimentCount,
+            compactedSeoRunReportCount: result.compactedSeoRunReportCount,
             purgedBefore: result.purgedBefore,
             redactedBefore: result.redactedBefore,
           } satisfies Prisma.InputJsonValue,

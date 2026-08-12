@@ -16,11 +16,11 @@ function render(view: "overview" | "proposals" | "reconciliation") {
 }
 
 describe("SeoWorkspace", () => {
-  it("renders a top-level semantic workspace with all five keyboard tabs", () => {
+  it("renders a top-level semantic workspace with all six keyboard tabs", () => {
     const markup = render("overview")
     expect(markup).toContain("SEO workspace")
     expect(markup).toContain('aria-label="SEO workspace views"')
-    expect(markup.match(/role="tab"/g)).toHaveLength(5)
+    expect(markup.match(/role="tab"/g)).toHaveLength(6)
     expect(markup).toContain("What needs an operator now")
     expect(markup).toContain("Provider and coverage status")
     expect(markup).toContain("Grounded search")

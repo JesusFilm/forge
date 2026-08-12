@@ -218,6 +218,126 @@ describe("SEO daily audit workflow", () => {
     expect(completeRun).not.toHaveBeenCalled()
   })
 
+  it("best-effort terminalizes an unexpected post-claim failure", async () => {
+    const completeRun = vi.fn(async () => ({ ok: true, result: {} }))
+    const result = await runSeoDailyAudit(
+      { scheduledFor: "2026-08-01T02:00:00.000Z" },
+      {
+        config: getSeoConfig({
+          SEO_AUTOMATION_MODE: "live",
+          SEO_GSC_PROPERTY_IDS: "sc-domain:example.com",
+        }),
+        capabilities: {
+          gsc: true,
+          ga4: false,
+          firecrawl: false,
+          groundedSearch: false,
+          adminLedger: true,
+          linearDispatch: false,
+        },
+        startRun: vi.fn(async () => ({
+          ok: true,
+          result: {
+            run: {
+              id: "run-failed",
+              mode: "live",
+              deduplicated: false,
+              status: "RUNNING",
+              executionClaim: {
+                generation: 2,
+                token: "claim-failed",
+                expiresAt: "2026-08-01T02:15:00.000Z",
+              },
+            },
+            targets: [],
+            reviewedLessons: [],
+          },
+        })) as never,
+        queryGsc: vi.fn(async () => {
+          throw new Error("raw provider body token=must-not-escape")
+        }) as never,
+        completeRun: completeRun as never,
+        workflowRunId: "workflow-failed",
+        now: () => new Date("2026-08-01T02:00:00.000Z"),
+      },
+    )
+
+    expect(result).toMatchObject({ ok: false, reason: "admin_unavailable" })
+    expect(completeRun).toHaveBeenCalledWith(
+      expect.objectContaining({
+        runId: "run-failed",
+        claimGeneration: 2,
+        status: "failed",
+        observations: [],
+        proposals: [],
+      }),
+    )
+    expect(JSON.stringify(completeRun.mock.calls)).not.toContain(
+      "must-not-escape",
+    )
+  })
+
+  it("terminalizes a resolved completion rejection with a sanitized failed report", async () => {
+    const completeRun = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: false,
+        reason: "rejected",
+        retryable: false,
+        status: 400,
+      })
+      .mockResolvedValueOnce({ ok: true, result: {} })
+
+    const result = await runSeoDailyAudit(
+      { scheduledFor: "2026-08-01T02:00:00.000Z" },
+      interpretationDeps({ completeRun: completeRun as never }) as never,
+    )
+
+    expect(result).toMatchObject({
+      ok: false,
+      reason: "admin_unavailable",
+      report: {
+        providerCoverage: { workflow: "unavailable" },
+        suppressedOperations: expect.arrayContaining(["run_failed"]),
+      },
+    })
+    expect(completeRun).toHaveBeenCalledTimes(2)
+    expect(completeRun.mock.calls[0]?.[0]).toMatchObject({ status: "partial" })
+    expect(completeRun.mock.calls[1]?.[0]).toMatchObject({
+      status: "failed",
+      observations: [],
+      proposals: [],
+    })
+  })
+
+  it("replays the identical completion when the committed response is lost", async () => {
+    const completeRun = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: false,
+        reason: "timeout",
+        retryable: true,
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        result: { status: "PARTIAL", replayed: true },
+      })
+
+    const result = await runSeoDailyAudit(
+      { scheduledFor: "2026-08-01T02:00:00.000Z" },
+      interpretationDeps({ completeRun: completeRun as never }) as never,
+    )
+
+    expect(result).toMatchObject({ ok: true, reason: "partial" })
+    expect(completeRun).toHaveBeenCalledTimes(2)
+    expect(completeRun.mock.calls[1]?.[0]).toEqual(
+      completeRun.mock.calls[0]?.[0],
+    )
+    expect(
+      completeRun.mock.calls.map(([completion]) => completion.status),
+    ).toEqual(["partial", "partial"])
+  })
+
   it("invokes the registered agent and merges only its bounded interpretation", async () => {
     const generate = vi.fn(async () => ({
       object: {

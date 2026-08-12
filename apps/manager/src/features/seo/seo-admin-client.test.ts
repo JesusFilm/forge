@@ -3,6 +3,25 @@ import { AdminGraphqlClient } from "@/backend/admin-client"
 import { buildSeoDemoWorkspace } from "./seo-contract"
 
 describe("AdminGraphqlClient SEO contracts", () => {
+  const runSummary = {
+    id: "run-1",
+    mode: "LIVE",
+    status: "PARTIAL",
+    startedAt: "2026-08-01T00:00:00.000Z",
+    completedAt: "2026-08-01T00:01:00.000Z",
+    eligibleCount: 10,
+    selectedCount: 2,
+    wouldProposeCount: 2,
+    proposedCount: 2,
+    materializationCount: 0,
+    ticketCount: 0,
+    experimentCount: 0,
+    suppressedOperations: [],
+    providerCoverage: { gsc: "partial" },
+    reportAvailability: "available",
+    reclaimed: false,
+  }
+
   it("parses the bounded workspace and sends the existing Manager bearer pattern", async () => {
     const workspace = buildSeoDemoWorkspace()
     const fetchImpl = vi.fn<typeof fetch>(
@@ -230,5 +249,101 @@ describe("AdminGraphqlClient SEO contracts", () => {
         overlapAcknowledged: true,
       },
     })
+  })
+
+  it("loads the bounded run index without selecting report detail", async () => {
+    const fetchImpl = vi.fn<typeof fetch>(
+      async () =>
+        new Response(
+          JSON.stringify({
+            data: {
+              managerSeoRuns: {
+                generatedAt: "2026-08-01T00:02:00.000Z",
+                items: [runSummary],
+                hasNextPage: true,
+                nextCursor: "cursor-2",
+              },
+            },
+          }),
+          { status: 200 },
+        ),
+    )
+    const client = new AdminGraphqlClient({
+      graphqlUrl: "https://admin.example.test/api/graphql",
+      fetchImpl: fetchImpl as typeof fetch,
+    })
+
+    await expect(client.getSeoRuns(25, "cursor-1")).resolves.toMatchObject({
+      items: [expect.objectContaining({ id: "run-1" })],
+      nextCursor: "cursor-2",
+    })
+    const body = JSON.parse(
+      String((fetchImpl.mock.calls[0][1] as RequestInit).body),
+    ) as { query: string; variables: unknown }
+    expect(body.query).toContain("managerSeoRuns")
+    expect(body.query).not.toMatch(/\breport\b\s*\n/)
+    expect(body.variables).toEqual({ limit: 25, after: "cursor-1" })
+  })
+
+  it("loads one run detail and rejects an unbounded report shape", async () => {
+    const fetchImpl = vi.fn<typeof fetch>(
+      async () =>
+        new Response(
+          JSON.stringify({
+            data: {
+              managerSeoRun: {
+                ...runSummary,
+                report: {
+                  __typename: "ManagerSeoRunReportAvailable",
+                  schemaVersion: 1,
+                  detailState: "available",
+                  selectionPolicyId: "gsc-low-ctr-v1",
+                  generatedAt: "2026-08-01T00:01:00.000Z",
+                  eligibleCount: 10,
+                  observedCount: 5,
+                  selectedCount: 2,
+                  wouldProposeCount: 2,
+                  persistedProposalCount: 2,
+                  providerCoverage: [{ provider: "gsc", status: "partial" }],
+                  suppressedOperations: [],
+                  skippedTargetIds: [],
+                  omittedSkippedTargetCount: 0,
+                  gscRequests: [],
+                  omittedGscRequestCount: 0,
+                  queryFunnel: {
+                    providerRows: 5,
+                    malformedRows: 0,
+                    unmatchedTargetRows: 0,
+                    belowImpressionThresholdRows: 0,
+                    ctrThresholdNotMetRows: 0,
+                    rankedRows: 2,
+                    selectedQueryRows: 2,
+                    rejectedQueryRows: 0,
+                  },
+                  queryDecisions: [],
+                  omittedQueryDecisionCount: 0,
+                  proposalRefs: [],
+                },
+                proposalOutcomes: [],
+              },
+            },
+          }),
+          { status: 200 },
+        ),
+    )
+    const client = new AdminGraphqlClient({
+      graphqlUrl: "https://admin.example.test/api/graphql",
+      fetchImpl: fetchImpl as typeof fetch,
+    })
+
+    await expect(client.getSeoRun("run-1")).resolves.toMatchObject({
+      id: "run-1",
+      report: { detailState: "available" },
+    })
+    const body = JSON.parse(
+      String((fetchImpl.mock.calls[0][1] as RequestInit).body),
+    ) as { query: string; variables: unknown }
+    expect(body.query).toContain("managerSeoRun(id: $id)")
+    expect(body.variables).toEqual({ id: "run-1" })
   })
 })

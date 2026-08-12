@@ -61,6 +61,14 @@ describe("queryGoogleSearchConsole", () => {
       "absent row is unobserved",
     )
     expect(result.observation.quality.truncated).toBe(true)
+    expect(result.observation.data).toMatchObject({
+      searchType: "web",
+      configuredRowCap: 2,
+      rowCount: 2,
+      pageCount: 1,
+      requestCount: 1,
+      capReached: true,
+    })
   })
 
   it("rejects a property that is not an exact allowlist member", async () => {
@@ -73,6 +81,45 @@ describe("queryGoogleSearchConsole", () => {
         config,
       }),
     ).resolves.toEqual({ ok: false, reason: "not_allowed", retryable: false })
+  })
+
+  it("counts every provider attempt when a retry succeeds", async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(new Response("unavailable", { status: 503 }))
+      .mockResolvedValueOnce(
+        Response.json({
+          rows: [
+            {
+              keys: ["https://example.com/a", "hope"],
+              clicks: 0,
+              impressions: 10,
+              ctr: 0,
+              position: 8,
+            },
+          ],
+        }),
+      ) as unknown as typeof fetch
+
+    const result = await queryGoogleSearchConsole({
+      propertyId: "sc-domain:example.com",
+      startDate: "2026-07-01",
+      endDate: "2026-07-28",
+      dimensions: ["page", "query"],
+      config: getSeoConfig({
+        SEO_GSC_PROPERTY_IDS: "sc-domain:example.com",
+        SEO_MAX_GSC_ROWS: "1",
+        SEO_MAX_PROVIDER_ATTEMPTS: "2",
+      }),
+      tokenProvider: async () => ({ ok: true, accessToken: "access" }),
+      fetchImpl,
+      sleep: async () => undefined,
+    })
+
+    expect(result.ok).toBe(true)
+    if (!result.ok) throw new Error("expected success")
+    expect(fetchImpl).toHaveBeenCalledTimes(2)
+    expect(result.observation.data.requestCount).toBe(2)
   })
 
   it("shrinks oversized pages and preserves offsets and the total cap", async () => {
@@ -136,6 +183,7 @@ describe("queryGoogleSearchConsole", () => {
     expect(requests.map(({ startRow }) => startRow)).toEqual([0, 0, 3, 6])
     expect(result.rows).toHaveLength(7)
     expect(result.observation.quality.truncated).toBe(true)
+    expect(result.observation.data.requestCount).toBe(4)
   })
 
   it("fails closed after an oversized one-row page", async () => {
