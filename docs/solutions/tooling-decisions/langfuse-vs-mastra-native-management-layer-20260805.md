@@ -166,7 +166,9 @@ carries no local storage exporter, so enabled deployments write nothing raw
 to the DuckDB volume and Langfuse is the single store the retention/erasure
 work below governs. Retention: 30/180-day DIY sweep, tracked in
 `docs/roadmap/ai-chat/feat-336-langfuse-trace-retention-job.md` (no
-configurable-retention tier purchased). Per-user erasure across both stores
+configurable-retention tier purchased). _(Superseded 2026-08-10, feat-336:
+the shipped sweep enforces a flat 25-day window for every resource — the
+DIY-not-paid-tier decision stands.)_ Per-user erasure across both stores
 (Langfuse traces + `ai_chat` Postgres): `docs/roadmap/ai-chat/feat-337-per-user-erasure-capability.md`.
 `LANGFUSE_MEDIA_UPLOAD_ENABLED=false` is seeded as a code default (the SDK's
 media auto-upload defaults ON with no code-level override in

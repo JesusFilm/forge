@@ -148,6 +148,25 @@ An absent overlay inherits the selected locale's canonical copy and existing
 image fallback. Managed social art remains promotional: it does not become the
 Video's thumbnail truth.
 
+### Watch Search Candidate Generation
+
+An immutable set of candidate-owned search projections, with qualification
+evidence bound to it, built for private evaluation before it can become the
+public Watch search implementation.
+
+A Candidate Generation is recorded before its external collections are built,
+then moves through a guarded lifecycle. Failed or retired generations retain
+enough ownership evidence for safe cleanup without changing their identity.
+
+### Watch Search Candidate Pointer
+
+A versioned control-plane reference that selects one Watch Search Candidate
+Generation for either private evaluation or public serving.
+
+The Evaluation pointer can move without changing public Watch traffic. The
+Serving pointer is separate, so publishing a test candidate never promotes it
+implicitly.
+
 ## Video source mapper
 
 ### Video Source Mapper

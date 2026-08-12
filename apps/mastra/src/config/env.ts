@@ -72,6 +72,11 @@ const DEFAULT_JESUSFILM_RAG_MAX_RESPONSE_BYTES = 2_097_152
 const DEFAULT_ADMIN_AGENT_TOOLS_MAX_RESPONSE_BYTES = 2_097_152
 const DEFAULT_LANGFUSE_USER_AGENT = "forge-mastra-langfuse/1.0"
 const DEFAULT_LANGFUSE_TIMEOUT_MS = 3_000
+// Separate budget for the feat-336 trace-retention sweep: its caller is a
+// daily timer, not a chat turn, and the live DELETE was MEASURED at ~3.4 s
+// for a 2-id batch (2026-08-11) — over the prompt-tuned 3 s default the sweep
+// previously inherited. 15 s ≈ 4× observed; 50-id batches are unmeasured.
+const DEFAULT_LANGFUSE_TRACE_RETENTION_TIMEOUT_MS = 15_000
 // 256 KiB ceiling on the buffered Langfuse prompt response body. Prompt
 // payloads are small (a system prompt plus metadata), so this bounds the heap a
 // misbehaving upstream can claim before the byte-cap aborts the stream while
@@ -470,6 +475,17 @@ const envSchema = z.object({
     .positive()
     .max(10_000)
     .default(DEFAULT_LANGFUSE_TIMEOUT_MS),
+  // The trace-retention sweep's own single-attempt timeout (feat-336
+  // follow-up, 2026-08-11). Deliberately NOT the prompt timeout above: the
+  // sweep's caller budget is a daily timer, and the live batch-DELETE was
+  // measured at ~3.4 s — over the prompt-tuned default. The 60 s cap bounds
+  // an operator typo while staying trivially inside the daily interval.
+  LANGFUSE_TRACE_RETENTION_TIMEOUT_MS: z.coerce
+    .number()
+    .int()
+    .positive()
+    .max(60_000)
+    .default(DEFAULT_LANGFUSE_TRACE_RETENTION_TIMEOUT_MS),
   LANGFUSE_USER_AGENT: z.string().min(1).default(DEFAULT_LANGFUSE_USER_AGENT),
   // Byte-cap on the buffered Langfuse prompt response body. `.optional()` with
   // a runtime fallback in `getLangfuseConfig()` — mirrors
@@ -505,6 +521,10 @@ const envSchema = z.object({
   // Opt-in live smoke gate: only the literal "1" enables it. Any other
   // non-empty value fails loud at parse rather than silently half-enabling.
   LANGFUSE_PROMPT_SMOKE_TEST: z.enum(["1"]).optional(),
+  // Same posture for the feat-336 trace-retention smoke (list/delete/requery
+  // against the live API on a backdated sentinel — see
+  // langfuse-trace-retention.smoke.test.ts).
+  LANGFUSE_TRACE_RETENTION_SMOKE_TEST: z.enum(["1"]).optional(),
   SEARCH_EVAL_JUDGE_MODEL: z
     .string()
     .min(1)
@@ -902,6 +922,9 @@ export const env = envSchema.parse({
     process.env.LANGFUSE_TRACING_ENABLED,
   ),
   LANGFUSE_TIMEOUT_MS: emptyToUndefined(process.env.LANGFUSE_TIMEOUT_MS),
+  LANGFUSE_TRACE_RETENTION_TIMEOUT_MS: emptyToUndefined(
+    process.env.LANGFUSE_TRACE_RETENTION_TIMEOUT_MS,
+  ),
   LANGFUSE_USER_AGENT: emptyToUndefined(process.env.LANGFUSE_USER_AGENT),
   LANGFUSE_MAX_RESPONSE_BYTES: emptyToUndefined(
     process.env.LANGFUSE_MAX_RESPONSE_BYTES,
@@ -917,6 +940,9 @@ export const env = envSchema.parse({
   ),
   LANGFUSE_PROMPT_SMOKE_TEST: emptyToUndefined(
     process.env.LANGFUSE_PROMPT_SMOKE_TEST,
+  ),
+  LANGFUSE_TRACE_RETENTION_SMOKE_TEST: emptyToUndefined(
+    process.env.LANGFUSE_TRACE_RETENTION_SMOKE_TEST,
   ),
   SEARCH_EVAL_JUDGE_MODEL: emptyToUndefined(
     process.env.SEARCH_EVAL_JUDGE_MODEL,
@@ -1689,6 +1715,22 @@ export function getLangfuseConfig(): LangfuseConfig {
       env.LANGFUSE_PROMPT_FAILURE_COOLDOWN_MS,
       promptCacheTtlMs,
     ),
+  }
+}
+
+/**
+ * The trace-retention sweep's Langfuse config: identical to
+ * `getLangfuseConfig()` except `timeoutMs`, which comes from
+ * `LANGFUSE_TRACE_RETENTION_TIMEOUT_MS` (default 15 s) instead of the
+ * prompt-tuned `LANGFUSE_TIMEOUT_MS` (default 3 s). Same credential trio,
+ * same host posture, same byte cap — only the caller budget differs
+ * (outbound-timeout law: the sweep's ceiling is a daily timer, not a chat
+ * turn; the live DELETE was measured over the prompt default).
+ */
+export function getLangfuseTraceRetentionConfig(): LangfuseConfig {
+  return {
+    ...getLangfuseConfig(),
+    timeoutMs: env.LANGFUSE_TRACE_RETENTION_TIMEOUT_MS,
   }
 }
 

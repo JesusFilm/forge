@@ -40,7 +40,8 @@ with no release-level view.
 ### 1. Data & privacy
 
 - **Retention enforcement live:** feat-336 (Langfuse trace retention sweep,
-  30/180 days mirroring ai-chat Postgres) must be deployed and observed
+  flat 25 days matching ai-chat Postgres — owner decision 2026-08-10,
+  superseding the earlier 30/180 split) must be deployed and observed
   working before public traffic. Decided 2026-08-05: DIY sweep, not the paid
   Langfuse retention tier — revisit if the silent-failure risk bites.
 - **Erasure capability live:** feat-337 (per-user deletion across Langfuse +
@@ -57,7 +58,7 @@ with no release-level view.
   target jurisdictions, and whether a DPIA is warranted (likely yes for
   special-category data at scale).
 - **Data inventory to keep current:** conversations live in `ai_chat`
-  Postgres (30/180-day purge, feat-208); traces incl. full content in
+  Postgres (flat 25-day purge, feat-208/feat-336); traces incl. full content in
   Langfuse Cloud US when `LANGFUSE_TRACING_ENABLED=true` (feat-321,
   Langfuse-only — no raw local copies); prompt text in Langfuse; NO
   conversation content in logs (enum-only convention) or DuckDB (redacted).
