@@ -170,6 +170,15 @@ advertises a never-throws contract, this catch is what makes that contract true 
 than only for the leader. Fall through to re-deriving from settled entry state plus a terminal
 fallback, so the catch is not just a swallow but a route to a defined outcome.
 
+> **This is the defense most often dropped.** feat-349 (mobile hosted-auth) is a second in-repo
+> instance: it shipped defense (a) and (b) textbook-correct — `void flight.then(release, release)`
+> with an identity-checked release — but all THREE joiner call sites (`AccountSection`,
+> `SignInPrompt`, `DeleteAccountFlow`) did `void signInWithHostedPage().then(cb)` with no `.catch`.
+> The "designed to always resolve a typed outcome" framing is exactly what makes the joiner catch
+> look redundant — right up until a sync-prologue statement (see below) proves the contract isn't
+> airtight. When the leader's release is Shape B and correct, audit the joiners next: they are a
+> separate, easily-forgotten surface.
+
 ### The sync-prologue rule
 
 **Any synchronous statement placed before the guarded `try` is outside the guard.** This is the
