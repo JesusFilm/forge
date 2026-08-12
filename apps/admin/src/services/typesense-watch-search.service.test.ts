@@ -1516,11 +1516,11 @@ describe("TypesenseWatchSearchService", () => {
           title: [
             {
               videoId: multiLane.id,
-              textMatchInfo: { num_tokens_dropped: 0 },
+              textMatchInfo: { num_tokens_dropped: 1 },
             },
             {
               videoId: multiLane.id,
-              textMatchInfo: { num_tokens_dropped: 1 },
+              textMatchInfo: { num_tokens_dropped: 0 },
             },
             {
               videoId: titleOnly.id,
