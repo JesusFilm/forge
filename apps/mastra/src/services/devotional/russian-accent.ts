@@ -167,3 +167,5 @@ export async function accentRussianHybrid(
   }
   return resolved.join("")
 }
+
+export const _internal = { JSON_SCHEMA }

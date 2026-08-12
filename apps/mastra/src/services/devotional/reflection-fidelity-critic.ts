@@ -204,3 +204,5 @@ export async function critiqueReflectionFidelity(
     }
   }
 }
+
+export const _internal = { JSON_SCHEMA }

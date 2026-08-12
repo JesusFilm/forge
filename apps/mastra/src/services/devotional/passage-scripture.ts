@@ -113,3 +113,5 @@ export async function selectScriptureForPassage(
     needsCanonicalSource: exact == null,
   }
 }
+
+export const _internal = { JSON_SCHEMA: SCRIPTURE_JSON_SCHEMA }

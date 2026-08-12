@@ -87,12 +87,40 @@ export type VoiceoverResult =
         | "config_missing"
         | "invalid_input"
         | "auth_failed"
+        | "quota_exceeded"
         | "upstream_failed"
         | "transport"
       retryable: boolean
       status?: number
       details?: string
     }
+
+/**
+ * Marks a credit/quota exhaustion response, whatever status code carried it.
+ * ElevenLabs reports it as `detail.status` (`quota_exceeded`) with a message
+ * like "You have 4 credits remaining, while 22 credits are required for this
+ * request". Matched against the raw body so a plain-text or reshaped error
+ * still trips it.
+ */
+const QUOTA_MARKER = /quota_exceeded|credits remaining|quota exceeded/i
+
+/** Longest error body worth reading; these are short JSON envelopes. */
+const MAX_ERROR_BODY_CHARS = 2_000
+
+/**
+ * Read an error response's body for classification. Best-effort by design:
+ * a body that is unreadable, already consumed, or not JSON must never turn a
+ * clean "upstream failed" into a thrown exception, so every failure path here
+ * degrades to `null` and lets the caller fall back to status-based classing.
+ */
+async function readErrorDetail(response: Response): Promise<string | null> {
+  try {
+    const raw = (await response.text()).slice(0, MAX_ERROR_BODY_CHARS)
+    return raw.trim() || null
+  } catch {
+    return null
+  }
+}
 
 export type GenerateVoiceoverInput = {
   /** Explicit narration text. When omitted, `devotional` is required. */
@@ -174,11 +202,41 @@ export async function generateElevenVoiceover(
 
   if (!response.ok) {
     const status = response.status
+    // Classify by the PARSED REASON first, status second. ElevenLabs overloads
+    // its status codes across causes with opposite retry policies: credit
+    // exhaustion arrives as 401 on some plans and 429 on others, and a plain
+    // rate limit is also 429. Branching on status alone therefore retries a
+    // permanently-exhausted account — three attempts per segment across ~21
+    // segments, burning whatever credits are left on requests that cannot
+    // succeed until the account is topped up. (Same lesson as the S3
+    // NoSuchKey classification: match the typed reason, not the status.)
+    const detail = await readErrorDetail(response)
+    if (detail && QUOTA_MARKER.test(detail)) {
+      return {
+        ok: false,
+        reason: "quota_exceeded",
+        retryable: false,
+        status,
+        details: detail,
+      }
+    }
     if (status === 401 || status === 403) {
-      return { ok: false, reason: "auth_failed", retryable: false, status }
+      return {
+        ok: false,
+        reason: "auth_failed",
+        retryable: false,
+        status,
+        ...(detail ? { details: detail } : {}),
+      }
     }
     const retryable = status === 429 || status >= 500
-    return { ok: false, reason: "upstream_failed", retryable, status }
+    return {
+      ok: false,
+      reason: "upstream_failed",
+      retryable,
+      status,
+      ...(detail ? { details: detail } : {}),
+    }
   }
 
   let bytes: Uint8Array

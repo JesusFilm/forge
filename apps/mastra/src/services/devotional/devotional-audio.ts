@@ -245,6 +245,16 @@ export type ProducedSegment = {
   audio: VoiceoverAudio
 }
 
+/** WHY a segment was skipped, so a caller can tell "try again in a minute" from
+ *  "this will never succeed until the account is topped up". */
+export type SegmentFailure = {
+  id: string
+  reason: string
+  /** True only for genuinely transient causes (rate limit, 5xx, network). A
+   *  quota-exhausted or auth failure is false and must not drive a retry. */
+  retryable: boolean
+}
+
 export type ProducedDevotionalAudio = {
   voice: DevotionalVoiceName
   segments: ProducedSegment[]
@@ -253,6 +263,10 @@ export type ProducedDevotionalAudio = {
   skipped: string[]
   /** Segment ids reused verbatim from cache — no TTS credits spent on them. */
   reused: string[]
+  /** Per-segment failure detail behind `skipped`. `skipped` alone cannot tell a
+   *  caller whether retrying is worth anything, which is what a recovery pass
+   *  has to decide before spending more credits. */
+  failures: SegmentFailure[]
 }
 
 export type ProduceDevotionalAudioDeps = {
@@ -318,6 +332,9 @@ export async function produceDevotionalAudio(
   const skipped: string[] = []
   /** Segments reused verbatim from cache (no TTS spend). */
   const reused: string[] = []
+  /** Why each skipped segment failed — drives whether a recovery pass is worth
+   *  spending credits on. */
+  const failures: SegmentFailure[] = []
 
   // Cards read a touch slower (owner): scripture and the LAST reflection card.
   const segs = buildNarrationSegments(devotional, locale)
@@ -364,6 +381,7 @@ export async function produceDevotionalAudio(
 
     const audios: VoiceoverAudio[] = []
     let failed = false
+    let failure: SegmentFailure | null = null
     for (let ui = 0; ui < units.length; ui++) {
       const speak = () =>
         voiceover({
@@ -385,6 +403,14 @@ export async function produceDevotionalAudio(
       }
       if (!r.ok) {
         failed = true
+        failure = {
+          id: seg.id,
+          reason: r.reason,
+          // `retryable` after the loop above means the retries were already
+          // spent — so this records whether a LATER attempt (a recovery pass
+          // minutes from now) could plausibly differ, not whether to loop again.
+          retryable: r.retryable,
+        }
         break
       }
       // A short final phrase lands slower so it reads as a finished thought.
@@ -406,6 +432,9 @@ export async function produceDevotionalAudio(
     }
     if (failed || audios.length === 0) {
       skipped.push(seg.id)
+      failures.push(
+        failure ?? { id: seg.id, reason: "no_audio_produced", retryable: false },
+      )
       continue
     }
     const audio: VoiceoverAudio =
@@ -446,7 +475,17 @@ export async function produceDevotionalAudio(
     ...(deps.musicLengthMs != null ? { lengthMs: deps.musicLengthMs } : {}),
   })
   if (m.ok) musicOut = { mood: devotional.mood, audio: m.audio }
-  else skipped.push("music")
+  else {
+    skipped.push("music")
+    failures.push({ id: "music", reason: m.reason, retryable: m.retryable })
+  }
 
-  return { voice: devotional.voice, segments, music: musicOut, skipped, reused }
+  return {
+    voice: devotional.voice,
+    segments,
+    music: musicOut,
+    skipped,
+    reused,
+    failures,
+  }
 }

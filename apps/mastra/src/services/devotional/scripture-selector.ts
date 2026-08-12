@@ -137,4 +137,5 @@ export const _internal = {
   SYSTEM_PROMPT,
   normalizeReference,
   isWellFormedReference,
+  JSON_SCHEMA: SCRIPTURE_JSON_SCHEMA,
 }

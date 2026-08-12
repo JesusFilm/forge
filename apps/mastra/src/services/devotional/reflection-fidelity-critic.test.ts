@@ -69,5 +69,28 @@ describe("critiqueReflectionFidelity", () => {
     expect(r.faithful).toBe(true)
     expect(r.issues).toEqual([])
     expect(r.summary).toMatch(/skipped/i)
+    // THE load-bearing assertion. `faithful: true` here is a fallback, not a
+    // verdict, and devotional-quality-gate.ts reads exactly this flag to decide
+    // that "we couldn't check" must block. Without asserting it, deleting
+    // `skipped: true` from the production fallback would fail no test at all —
+    // and the gate would silently start treating an unrun check as a pass.
+    expect(r.skipped).toBe(true)
+  })
+
+  it("does NOT mark a genuine pass as skipped", async () => {
+    const complete = vi.fn().mockResolvedValue({
+      faithful: true,
+      issues: [],
+      summary: "faithful to the source",
+    })
+    const r = await critiqueReflectionFidelity({
+      sourceExcerpt: "source",
+      focusReference: "Luke 19:1-10",
+      adapted: "adapted",
+      llm: fakeLlm(complete as unknown as DevotionalLlm["complete"]),
+    })
+    // Pairs with the test above: both return `faithful: true`, so only the
+    // `skipped` flag distinguishes "checked and fine" from "never ran".
+    expect(r.skipped).toBeFalsy()
   })
 })

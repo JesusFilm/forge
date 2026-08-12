@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest"
 
 import {
   alignWindow,
+  findActBreak,
   mapCuesToEditedTimeline,
   parseSubtitles,
   removeInternalGaps,
@@ -255,5 +256,94 @@ Second line, after a cut.
     // Only 0.1s of the first cue survives — too short to flash on screen.
     const out = mapCuesToEditedTimeline(cues, [{ startSec: 13.9, lengthSec: 2 }])
     expect(out).toEqual([])
+  })
+})
+
+describe("findActBreak", () => {
+  const cue = (start: number, end: number, text = "line") => ({
+    start,
+    end,
+    text,
+  })
+
+  it("returns null when the window holds fewer than two cues", () => {
+    expect(findActBreak([cue(40, 45)], 39, 93)).toBeNull()
+  })
+
+  it("returns null when no gap reaches the minimum break length", () => {
+    const cues = [cue(40, 45), cue(48, 52), cue(55, 60)]
+    expect(findActBreak(cues, 39, 93, 8)).toBeNull()
+  })
+
+  it("prefers the gap nearest the window's MIDDLE over the longest gap", () => {
+    // THE regression this function exists for. On the Zacchaeus clip the longest
+    // silence sits after the pledge, so splitting there put the tree, the call
+    // AND the pledge in act 1 and left only the crowd's reaction for act 2 — the
+    // second half of the reflection then commented on something already seen.
+    // The nearer-the-middle gap is the real beat change.
+    const cues = [
+      cue(40, 50), // act 1 opens
+      cue(58, 63), // ...ends here; 16s gap follows (near the middle)
+      cue(79, 90), // act 2 opens
+      cue(95, 100), // ...ends here; 25s gap follows (longest, but late)
+      cue(125, 131),
+    ]
+    const r = findActBreak(cues, 39, 93, 8)
+    expect(r).not.toBeNull()
+    // Break at the 63→79 gap, NOT the 100→125 one.
+    expect(r!.act1EndSec).toBeCloseTo(64.5, 1)
+    expect(r!.act2StartSec).toBeCloseTo(76, 1)
+  })
+
+  it("keeps a beat after act 1 and starts act 2 slightly early", () => {
+    // Neither act should cut on a spoken word.
+    const cues = [cue(40, 50), cue(70, 80)]
+    const r = findActBreak(cues, 39, 60, 8, 3)
+    expect(r).not.toBeNull()
+    expect(r!.act1EndSec).toBeGreaterThan(50)
+    expect(r!.act2StartSec).toBeLessThan(70)
+  })
+
+  it("never lets the two acts OVERLAP on a gap barely over the minimum", () => {
+    // Trailing (+1.5s) and leading (-3s) buffers together exceed a 4s gap, so
+    // the naive clamps produce act1End=51.5 and act2Start=51 — the acts overlap
+    // and half a second of footage plays twice.
+    //
+    // The previous version of this test asserted
+    // `act1EndSec <= act2StartSec + 1.5`, whose tolerance absorbed exactly the
+    // crossing it was named after: it passed with both clamps deleted AND while
+    // the output really did overlap. The invariant has to be stated with no
+    // slack, or it is not an invariant.
+    const cues = [cue(40, 50), cue(54, 60)]
+    const r = findActBreak(cues, 39, 40, 4, 3)
+    expect(r).not.toBeNull()
+    expect(r!.act1EndSec).toBeLessThanOrEqual(r!.act2StartSec)
+    // Both ends stay inside the gap, so neither act cuts into a spoken line.
+    expect(r!.act1EndSec).toBeGreaterThanOrEqual(50)
+    expect(r!.act2StartSec).toBeLessThanOrEqual(54)
+  })
+
+  it("holds the no-overlap invariant across a range of gap widths and buffers", () => {
+    // A property sweep, because the failure above depended on one exact
+    // combination of gap width and buffer size.
+    for (const gap of [4, 5, 6, 8, 12, 20]) {
+      for (const lead of [0, 1, 3, 5]) {
+        const cues = [cue(40, 50), cue(50 + gap, 50 + gap + 6)]
+        const r = findActBreak(cues, 39, gap + 30, 4, lead)
+        if (!r) continue
+        expect(
+          r.act1EndSec,
+          `gap=${gap} lead=${lead} → act1End=${r.act1EndSec} act2Start=${r.act2StartSec}`,
+        ).toBeLessThanOrEqual(r.act2StartSec)
+      }
+    }
+  })
+
+  it("ignores cues outside the clip window", () => {
+    // A long silence before the window starts must not become the act break.
+    const cues = [cue(0, 5), cue(40, 50), cue(60, 70)]
+    const r = findActBreak(cues, 39, 40, 8)
+    expect(r).not.toBeNull()
+    expect(r!.act1EndSec).toBeGreaterThan(39)
   })
 })

@@ -204,3 +204,5 @@ export async function checkDevotionalCoherence(
     }
   }
 }
+
+export const _internal = { JSON_SCHEMA }

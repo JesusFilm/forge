@@ -190,3 +190,5 @@ export async function writeDevotionalCopy(
     prayer: result.prayer.trim(),
   }
 }
+
+export const _internal = { JSON_SCHEMA: COPY_JSON_SCHEMA }

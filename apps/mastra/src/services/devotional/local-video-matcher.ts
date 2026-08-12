@@ -146,4 +146,8 @@ export function createLocalVideoMatcher(
   }
 }
 
-export const _internal = { keywordFallback, renderCatalog }
+export const _internal = {
+  keywordFallback,
+  renderCatalog,
+  JSON_SCHEMA: PICK_JSON_SCHEMA,
+}

@@ -28,7 +28,20 @@ const MAX_POINTS = 2
 
 const Schema = z
   .object({
-    chosen: z.array(z.number().int().min(1)).min(1).max(MAX_POINTS),
+    // TRIMMED, not rejected. `.max(MAX_POINTS)` was a hard reject, and once the
+    // array bounds left the JSON schema (Anthropic rejects minItems/maxItems)
+    // nothing told the model the cap any more — so an over-long answer became a
+    // `validation` error, which this agent's fail-open path turned into "fall
+    // back to point 1". A model naming three points would silently collapse the
+    // devotional to one, with no error surfaced anywhere.
+    //
+    // The caller still filters, de-duplicates, orders and slices; this transform
+    // only stops a recoverable over-answer from being thrown away. Same reasoning
+    // as the depthScore clamp in devotional-reflection-critic.ts.
+    chosen: z
+      .array(z.number().int().min(1))
+      .min(1)
+      .transform((xs) => xs.slice(0, MAX_POINTS)),
     reason: z.string(),
   })
   .strict()
@@ -41,14 +54,18 @@ const JSON_SCHEMA = {
     properties: {
       chosen: {
         type: "array",
-        // No `minimum` — Anthropic's structured-output backend rejects it
-        // (400: "For 'integer' type, properties maximum, minimum are not
-        // supported"). Harmless on the OpenAI model used today, but this agent
-        // fails OPEN, so a model swap would break it silently. Range is
-        // enforced by the zod schema instead.
+        // NO validation keywords here — not `minimum` on the items, and not
+        // `minItems`/`maxItems` on the array. Anthropic's structured-output
+        // backend rejects each with a 400 ("For 'array' type, property
+        // 'maxItems' is not supported"). An earlier pass removed `minimum` and
+        // left the array bounds, which is precisely the half-fix that
+        // `anthropic-schema-compat.test.ts` now catches automatically.
+        //
+        // Harmless on the OpenAI model configured today, but this agent fails
+        // OPEN (falls back to point 1), so a model swap would quietly reduce
+        // every devotional to its first point with nothing surfaced. Bounds are
+        // enforced by the zod schema below and restated in the prompt.
         items: { type: "integer" },
-        minItems: 1,
-        maxItems: MAX_POINTS,
       },
       reason: { type: "string" },
     },
@@ -177,3 +194,5 @@ export async function pickReflectionPoints(
     throw error
   }
 }
+
+export const _internal = { JSON_SCHEMA, Schema }

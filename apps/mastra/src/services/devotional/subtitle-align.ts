@@ -238,13 +238,23 @@ export function findActBreak(
     prevEnd = Math.max(prevEnd, cue.end)
   }
   if (!best) return null
-  return {
-    // Keep a beat of silence after the last line of act 1 so it doesn't cut
-    // on the word; start act 2 slightly before its first line for the same
-    // reason at the other end.
-    act1EndSec: Math.min(best.prevEnd + 1.5, best.nextStart),
-    act2StartSec: Math.max(best.nextStart - leadingBufferSec, best.prevEnd),
+  // Keep a beat of silence after act 1's last line so it doesn't cut on the
+  // word, and start act 2 slightly before its first line for the same reason at
+  // the other end. Both buffers live INSIDE the gap.
+  //
+  // Clamping each end against the gap's own edges is not enough: with a gap
+  // barely wider than one buffer, `prevEnd + 1.5` and `nextStart - 3` cross, and
+  // act 1 then ends AFTER act 2 begins — half a second of footage playing twice.
+  // (Reachable with a 4s gap: 50→51.5 and 54→51.) So when they would cross, both
+  // acts meet at the gap's MIDPOINT instead, which keeps the split single-valued
+  // whatever the buffers ask for.
+  const wantAct1End = Math.min(best.prevEnd + 1.5, best.nextStart)
+  const wantAct2Start = Math.max(best.nextStart - leadingBufferSec, best.prevEnd)
+  if (wantAct1End <= wantAct2Start) {
+    return { act1EndSec: wantAct1End, act2StartSec: wantAct2Start }
   }
+  const midpoint = (best.prevEnd + best.nextStart) / 2
+  return { act1EndSec: midpoint, act2StartSec: midpoint }
 }
 
 export type FetchAlignedDeps = { fetchFn?: typeof fetch }

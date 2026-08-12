@@ -288,3 +288,5 @@ export async function editLocalizedCopy(
   // If the editor blanked anything, fall back to the pre-edit copy.
   return Object.values(out).some((v) => !v) ? { ...options.copy } : out
 }
+
+export const _internal = { JSON_SCHEMA: TRANSLATED_JSON_SCHEMA }

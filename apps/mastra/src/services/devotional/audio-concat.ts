@@ -10,12 +10,39 @@ import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import path from "node:path"
 
+/**
+ * Watchdog for every ffmpeg spawn here. These run dozens of times per render
+ * (one per inter-sentence gap, plus the concat itself), so a single wedged
+ * process hangs the whole devotional — and the unattended daily job would hang
+ * forever with no output. `devotional-render.ts`'s runFfmpeg has had this from
+ * the start; these calls did not, which was the gap.
+ *
+ * Generous relative to the work: joins are a few seconds of 44.1k audio, so a
+ * minute means something is genuinely stuck, not merely slow.
+ */
+const FFMPEG_TIMEOUT_MS = 60_000
+
 function run(cmd: string, args: string[]): Promise<void> {
   return new Promise((resolve, reject) => {
     const c = spawn(cmd, args, { stdio: ["ignore", "ignore", "inherit"] })
-    c.on("error", reject)
+    let settled = false
+    const finish = (fn: () => void) => {
+      if (settled) return
+      settled = true
+      clearTimeout(timer)
+      fn()
+    }
+    const timer = setTimeout(() => {
+      c.kill("SIGKILL")
+      finish(() =>
+        reject(new Error(`${cmd} timed out after ${FFMPEG_TIMEOUT_MS}ms`)),
+      )
+    }, FFMPEG_TIMEOUT_MS)
+    c.on("error", (e) => finish(() => reject(e)))
     c.on("close", (code) =>
-      code === 0 ? resolve() : reject(new Error(`${cmd} exit ${code}`)),
+      finish(() =>
+        code === 0 ? resolve() : reject(new Error(`${cmd} exit ${code}`)),
+      ),
     )
   })
 }

@@ -271,4 +271,6 @@ export const _internal = {
   NEWS_SYSTEM_PROMPT,
   QUESTION_SYSTEM_PROMPT,
   holidayKey,
+  NEWS_JSON_SCHEMA,
+  QUESTION_JSON_SCHEMA,
 }

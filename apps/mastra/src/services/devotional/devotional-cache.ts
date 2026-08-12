@@ -2,6 +2,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises"
 import path from "node:path"
 
 import type { ProducedDevotionalAudio } from "./devotional-audio"
+import { resolveVoiceId } from "./elevenlabs-voiceover"
 import type { MusicMood } from "./elevenlabs-music"
 import type { DevotionalLang } from "./devotional-locale"
 import type { GeneratedDevotional } from "./generate-devotional"
@@ -81,6 +82,10 @@ export async function loadCachedAudio(
         lengthMs: number
         model: string
       } | null
+      /** Segment ids that FAILED to synthesize when this cache was written.
+       *  Absent in caches written before it was persisted — treated as "none
+       *  reported", which is the honest reading: we cannot know retroactively. */
+      skipped?: string[]
     }
     const segments = []
     for (const s of index.segments) {
@@ -115,7 +120,25 @@ export async function loadCachedAudio(
         },
       }
     }
-    return { voice, segments, music, skipped: [], reused: [] }
+    // Rehydrate `skipped`. It used to be hardcoded to [], which made ANY cached
+    // audio look complete — so an incomplete run that got cached sailed past the
+    // completeness guard on every later render, forever.
+    return {
+      voice,
+      segments,
+      music,
+      skipped: index.skipped ?? [],
+      reused: [],
+      // The cache stores WHICH segments were missing, not why. Reconstructing a
+      // reason would be a guess, so a cached failure is reported as
+      // non-retryable: the completeness guard still blocks on it, and a recovery
+      // pass won't spend credits on a cause it cannot see.
+      failures: (index.skipped ?? []).map((id) => ({
+        id,
+        reason: "cached_incomplete",
+        retryable: false,
+      })),
+    }
   } catch {
     return null
   }
@@ -144,20 +167,33 @@ export function audioReuseKey(
   return `${voice}::${role}::${displayText.trim()}`
 }
 
-/** Every cached segment, keyed for reuse. Empty map when nothing is cached. */
-export async function loadReusableAudio(
-  dir: string,
+/**
+ * Build the reuse map from segments already in hand.
+ *
+ * Shared by the disk cache and by the in-run recovery pass, and it is the ONE
+ * place the role derivation lives — `devotional-audio.ts` derives the same
+ * first/mid/last roles when it looks a segment UP, and if the two ever disagreed
+ * the result would be silent cache misses (i.e. quota spent) rather than a loud
+ * failure.
+ *
+ * Segments whose stored `voiceId` doesn't match the requested voice are DROPPED.
+ * The key's `voice` component is the voice we ASKED for, while the bytes belong
+ * to whoever synthesized them — so without this check a `--voice=` audition
+ * silently replayed the previous voice under the new label.
+ */
+export function reuseMapFromSegments(
+  segments: ReadonlyArray<ProducedDevotionalAudio["segments"][number]>,
   voice: GeneratedDevotional["voice"],
-): Promise<Map<string, ProducedDevotionalAudio["segments"][number]>> {
+): Map<string, ProducedDevotionalAudio["segments"][number]> {
   const out = new Map<string, ProducedDevotionalAudio["segments"][number]>()
-  const cached = await loadCachedAudio(dir, voice)
-  if (!cached) return out
-  const reflections = cached.segments.filter((s) =>
-    /^reflection-\d+$/.test(s.id),
-  )
+  const wantVoiceId = resolveVoiceId(voice)
+  const usable = segments.filter((s) => s.audio.voiceId === wantVoiceId)
+  // Roles are derived over the USABLE set, so first/last mean what they will
+  // mean on THIS run rather than what they meant for another voice's cache.
+  const reflections = usable.filter((s) => /^reflection-\d+$/.test(s.id))
   const firstId = reflections[0]?.id
   const lastId = reflections[reflections.length - 1]?.id
-  for (const s of cached.segments) {
+  for (const s of usable) {
     const role = /^reflection-\d+$/.test(s.id)
       ? s.id === firstId
         ? "reflection-first"
@@ -168,6 +204,16 @@ export async function loadReusableAudio(
     out.set(audioReuseKey(role, s.text ?? "", voice), s)
   }
   return out
+}
+
+/** Every cached segment, keyed for reuse. Empty map when nothing is cached. */
+export async function loadReusableAudio(
+  dir: string,
+  voice: GeneratedDevotional["voice"],
+): Promise<Map<string, ProducedDevotionalAudio["segments"][number]>> {
+  const cached = await loadCachedAudio(dir, voice)
+  if (!cached) return new Map()
+  return reuseMapFromSegments(cached.segments, voice)
 }
 
 export async function saveCachedAudio(
@@ -204,6 +250,7 @@ export async function saveCachedAudio(
   }
   await writeFile(
     path.join(dir, "audio", "index.json"),
-    JSON.stringify({ segments: segs, music }, null, 2) + "\n",
+    JSON.stringify({ segments: segs, music, skipped: audio.skipped }, null, 2) +
+      "\n",
   )
 }

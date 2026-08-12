@@ -206,3 +206,5 @@ export async function critiqueReflection(
     }
   }
 }
+
+export const _internal = { JSON_SCHEMA, Schema }

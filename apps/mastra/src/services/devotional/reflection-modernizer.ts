@@ -497,3 +497,5 @@ export async function modernizeReflection(
     focusReference: options.focusReference,
   }
 }
+
+export const _internal = { JSON_SCHEMA: MODERNIZED_JSON_SCHEMA }

@@ -107,6 +107,21 @@ export async function localizeDevotional(
     : d.reflection.source.split(",")[0].trim()
   const author = locale.localizeAuthor ? locale.localizeAuthor(rawAuthor) : rawAuthor
 
+  // DROP the English `parts`. They are the two reflection halves used to place
+  // the act-2 video card, and the manifest derives that position by counting
+  // SENTENCES in parts[0] (`splitReflection(parts[0]).length`) against segments
+  // built from the TRANSLATED text. English and Russian sentence counts have no
+  // fixed relationship, so keeping them puts the second clip under the wrong
+  // sentence — chapter 33 already ships with `splitActs: true`, so this was
+  // reachable on the default `--lang=ru` path.
+  //
+  // Dropping them makes a localized devotional fall back to the single-clip
+  // layout: correct, just without the two-act treatment. Restoring two acts for
+  // a localized edition means translating each half and re-deriving the
+  // boundary from the translated halves, which is a change to the translation
+  // schema (TranslatableCopy) rather than something to fake here.
+  const { parts: _englishParts, ...reflectionWithoutParts } = d.reflection
+
   return {
     ...d,
     title: copy.title,
@@ -117,7 +132,7 @@ export async function localizeDevotional(
       needsCanonicalSource: false,
     },
     reflection: {
-      ...d.reflection,
+      ...reflectionWithoutParts,
       text: copy.reflection,
       attribution: `${locale.attributionPrefix} · ${author}`,
     },

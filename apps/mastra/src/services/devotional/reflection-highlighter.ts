@@ -78,3 +78,5 @@ export async function pickReflectionHighlights(
     return hit ?? ""
   })
 }
+
+export const _internal = { JSON_SCHEMA }

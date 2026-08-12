@@ -93,3 +93,5 @@ export async function pickBestSpurgeon(
     throw error
   }
 }
+
+export const _internal = { JSON_SCHEMA: PICK_JSON_SCHEMA }

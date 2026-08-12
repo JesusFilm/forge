@@ -10,6 +10,7 @@ import { repoRoot } from "./repo-root"
 import {
   produceDevotionalAudio,
   type ProducedDevotionalAudio,
+  type ProducedSegment,
 } from "./devotional-audio"
 import { joinAudioVarGaps, slowAndPad } from "./audio-concat"
 import {
@@ -865,6 +866,70 @@ export type RenderedDevotional = {
   videoPath: string
 }
 
+/**
+ * Refuse to render a devotional whose narration is incomplete.
+ *
+ * Narration failures were once invisible: produceDevotionalAudio collects
+ * failed segment ids in `skipped` and returns them, but only the standalone
+ * devo-audio-track script ever read it. When EVERY TTS call failed, the render
+ * carried on, produced a clip-only video with no text and no voice, and cached
+ * that empty audio as if it were valid. A later run lost 15 of 21 segments —
+ * including the conclusion and the whole question/prayer card — and still
+ * shipped a 110s video that simply skipped its own ending.
+ *
+ * Runs on BOTH the freshly-produced and the cache-loaded path. Checking only
+ * fresh audio left the worse hole open: an incomplete run that reached the
+ * cache would pass unexamined on every subsequent render, forever.
+ */
+export function assertNarrationComplete(audio: ProducedDevotionalAudio): void {
+  const missing = new Set(audio.skipped)
+  const structural = ["cover", "scripture", "conclusion", "questions"].filter(
+    (id) => missing.has(id),
+  )
+  const reflectionMissing = audio.skipped.filter((id) =>
+    /^reflection-\d+$/.test(id),
+  ).length
+  // ANY lost reflection sentence is fatal. The earlier test compared losses
+  // against SURVIVORS (`reflectionMissing > reflectionProduced`), so losing 5 of
+  // 10 sentences gave `5 > 5` — false — and shipped a devotional missing half
+  // its reflection behind a console warning. A skipped segment still renders its
+  // text card, so the viewer reads a sentence no voice speaks; and with retries
+  // upstream, reaching here means several attempts already failed.
+  if (
+    audio.segments.length === 0 ||
+    structural.length > 0 ||
+    reflectionMissing > 0
+  ) {
+    // Name the actual CAUSE per segment. The message used to end with a flat
+    // "usually a rate limit or quota — retry, or check the key", which is wrong
+    // guidance for the two causes that need a different action: a cache written
+    // by an incomplete earlier run (regenerate the audio, retrying changes
+    // nothing) and an exhausted quota (top up; retrying burns what is left).
+    const causes = audio.failures.length
+      ? audio.failures.map((f) => `${f.id}: ${f.reason}`).join(", ")
+      : "(no reasons recorded)"
+    const quota = audio.failures.some((f) => f.reason === "quota_exceeded")
+    const stale = audio.failures.some((f) => f.reason === "cached_incomplete")
+    throw new Error(
+      `narration is incomplete — refusing to render a devotional that would ` +
+        `be missing content. ` +
+        (structural.length
+          ? `Missing whole cards: ${structural.join(", ")}. `
+          : "") +
+        (reflectionMissing
+          ? `Missing ${reflectionMissing} reflection chunk(s). `
+          : "") +
+        `Causes — ${causes}. ` +
+        (quota
+          ? `The ElevenLabs quota is exhausted: top it up, retrying cannot succeed.`
+          : stale
+            ? `This came from a CACHED incomplete run: re-run with --regenerate-audio ` +
+              `(retrying as-is will read the same cache and fail identically).`
+            : `Usually an ElevenLabs rate limit — retry, or check the key.`),
+    )
+  }
+}
+
 export async function prepareAndRenderDevotional(
   input: PrepareAndRenderInput,
 ): Promise<RenderedDevotional> {
@@ -880,6 +945,14 @@ export async function prepareAndRenderDevotional(
   let devo = input.regenerate ? null : await loadCachedDevo(enDir)
   if (devo) {
     log("reusing cached devotional text")
+    // The cache key is (chapter, sequence) with NO date in it, so yesterday's
+    // cached text is a hit today — and `devo.date` is what the cover card both
+    // displays and narrates. Without this the daily job silently shipped a
+    // video captioned with the date of whenever the text was first generated.
+    if (input.date && devo.date !== input.date) {
+      log(`  ↳ restamping cached text ${devo.date} → ${input.date}`)
+      devo = { ...devo, date: input.date }
+    }
   } else {
     log(`generate (ch${input.chapterIndex}, seq${input.sequence})…`)
     devo = await generateDevotional({
@@ -952,6 +1025,11 @@ export async function prepareAndRenderDevotional(
   let audio = reuseAudio ? await loadCachedAudio(cacheDir, devo.voice) : null
   if (audio) {
     log("reusing cached audio")
+    // Cached audio gets the SAME completeness check as fresh audio; a cache
+    // written by an incomplete run must not be trusted just because it is on
+    // disk. (Caches written before `skipped` was persisted report none, which
+    // is the honest reading rather than a silent pass.)
+    assertNarrationComplete(audio)
   } else {
     // Reuse any cached narration whose words are IDENTICAL, so a text edit
     // only costs TTS credits for the sentences that actually changed. The
@@ -963,69 +1041,34 @@ export async function prepareAndRenderDevotional(
         ? `produce audio… (${reusable.size} cached segment(s) available for reuse)`
         : "produce audio…",
     )
-    audio = await produceDevotionalAudio(
-      devo,
-      {
-        reusable,
-        // Numbers are spelled deterministically in the connectors. Stress marks:
-        // ONLY the owner-curated overrides (spoken only). ElevenLabs' Russian
-        // voice stresses most words correctly on its own; marking EVERY word
-        // (dictionary blanket) degrades its delivery — mis-stress despite the
-        // mark, odd phonetics, lost terminal intonation. So mark selectively.
-        // The dictionary (ru-stress-dict) is the TOOL to get the correct mark
-        // for a word we add to the overrides, not a blanket pass.
-        speakify: (t) =>
-          Promise.resolve(applyStressOverrides(t, locale.stressOverrides ?? [])),
-        // Real-silence pauses at the connectors' paragraph breaks (cover date |
-        // lead-in | hook; before "Давайте посмотрим"; question | prayer).
-        // Real-silence pauses: short between sentences, longer between sections.
-        joinVarGaps: joinAudioVarGaps,
-        // Pace certain cards (scripture + last reflection slower; closing
-        // slower + padded so it doesn't end abruptly).
-        pace: slowAndPad,
-      },
-      locale,
-    )
-    // Narration failures were previously invisible here: produceDevotionalAudio
-    // collects failed segment ids in `skipped` and returns them, but only the
-    // standalone devo-audio-track script ever looked. When EVERY TTS call
-    // failed, the render carried on, produced a clip-only video with no text
-    // and no voice at all, and cached the empty audio as if it were valid.
-    // Treat missing narration as fatal, and never persist an empty result.
-    // PARTIAL loss is nearly as bad as total loss, and the first version of
-    // this guard only caught zero. A real run lost 15 of 21 segments —
-    // including the conclusion AND the whole question/prayer card — and still
-    // shipped a 110s video that just skipped its own ending. So fail on any
-    // missing STRUCTURAL card, and on losing a meaningful share of the
-    // reflection; `skipped` is no longer something we merely print.
-    const missing = new Set(audio.skipped)
-    const structural = ["cover", "scripture", "conclusion", "questions"].filter(
-      (id) => missing.has(id),
-    )
-    const reflectionTotal = audio.segments.filter((s) =>
-      /^reflection-\d+$/.test(s.id),
-    ).length
-    const reflectionMissing = audio.skipped.filter((id) =>
-      /^reflection-\d+$/.test(id),
-    ).length
-    if (
-      audio.segments.length === 0 ||
-      structural.length > 0 ||
-      reflectionMissing > reflectionTotal
-    ) {
-      throw new Error(
-        `narration is incomplete — refusing to render a devotional that would ` +
-          `be missing content. ` +
-          (structural.length
-            ? `Missing whole cards: ${structural.join(", ")}. `
-            : "") +
-          (reflectionMissing
-            ? `Missing ${reflectionMissing} reflection chunk(s). `
-            : "") +
-          `Skipped: ${audio.skipped.join(", ") || "(none reported)"}. ` +
-          `Usually an ElevenLabs rate limit or quota — retry, or check the key.`,
+    const produce = (carry: Map<string, ProducedSegment>) =>
+      produceDevotionalAudio(
+        devo,
+        {
+          reusable: carry,
+          // Numbers are spelled deterministically in the connectors. Stress
+          // marks: ONLY the owner-curated overrides (spoken only). ElevenLabs'
+          // Russian voice stresses most words correctly on its own; marking
+          // EVERY word (dictionary blanket) degrades its delivery — mis-stress
+          // despite the mark, odd phonetics, lost terminal intonation. So mark
+          // selectively. The dictionary (ru-stress-dict) is the TOOL to get the
+          // correct mark for a word we add to the overrides, not a blanket pass.
+          speakify: (t) =>
+            Promise.resolve(
+              applyStressOverrides(t, locale.stressOverrides ?? []),
+            ),
+          // Real-silence pauses at the connectors' paragraph breaks (cover date
+          // | lead-in | hook; before "Давайте посмотрим"; question | prayer).
+          // Short between sentences, longer between sections.
+          joinVarGaps: joinAudioVarGaps,
+          // Pace certain cards (scripture + last reflection slower; closing
+          // slower + padded so it doesn't end abruptly).
+          pace: slowAndPad,
+        },
+        locale,
       )
-    }
+    audio = await produce(reusable)
+    assertNarrationComplete(audio)
     if (audio.reused.length > 0) {
       log(
         `♻️  reused ${audio.reused.length} cached segment(s); synthesised ${audio.segments.length - audio.reused.length}`,

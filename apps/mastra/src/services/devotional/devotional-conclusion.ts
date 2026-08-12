@@ -218,3 +218,5 @@ export async function writeDevotionalConclusion(
 
   return { conclusion }
 }
+
+export const _internal = { JSON_SCHEMA: CONCLUSION_JSON_SCHEMA }
