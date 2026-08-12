@@ -19,22 +19,14 @@ export const StorageSummary = memo(function StorageSummary({
   summary,
 }: StorageSummaryProps) {
   const typography = useTypography()
-  const { count, combinedBytes, capacityBytes, usageFraction } = summary
+  const { count, combinedBytes, usageFraction } = summary
 
   return (
     <View style={styles.root}>
-      <View style={styles.row}>
-        <Text style={[styles.label, typography.bodySmall]}>
-          <Text style={styles.labelStrong}>{count} downloads</Text> ·{" "}
-          {formatLibraryBytes(combinedBytes)}
-        </Text>
-        {capacityBytes != null && (
-          <Text style={[styles.label, typography.bodySmall]}>
-            {formatLibraryBytes(combinedBytes)} of{" "}
-            {formatLibraryBytes(capacityBytes)}
-          </Text>
-        )}
-      </View>
+      <Text style={[styles.label, typography.bodySmall]}>
+        <Text style={styles.labelStrong}>{count} downloads</Text> ·{" "}
+        {formatLibraryBytes(combinedBytes)}
+      </Text>
       {usageFraction != null && (
         <View style={styles.track}>
           <View style={[styles.fill, { width: `${usageFraction * 100}%` }]} />
@@ -47,12 +39,6 @@ export const StorageSummary = memo(function StorageSummary({
 const styles = StyleSheet.create({
   root: {
     marginTop: 6,
-  },
-  row: {
-    flexDirection: "row",
-    alignItems: "baseline",
-    justifyContent: "space-between",
-    gap: 8,
   },
   label: {
     color: TEXT_SECONDARY,

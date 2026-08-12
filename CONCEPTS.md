@@ -858,6 +858,20 @@ The auto-hiding controls overlay on the watch video player — the play/pause, s
 
 The Chrome is visible when playback starts, auto-hides after a few idle seconds while playing, stays up while paused or buffering, and toggles on a tap of the video body. It fades rather than cutting, and is unmounted only after the fade-out completes so a fully-hidden Chrome stops intercepting touches. The home hero's controls are also Chrome; they fade with scroll position rather than idle time, but follow the same rule that hidden Chrome must stop intercepting touches.
 
+A video that starts by itself is the exception to "stays up while buffering": the Chrome is withheld until the first frame and an Autostart Veil stands in for it, because a play button and a zero scrubber offered for a video nobody asked to pause read as a stall. Because the Chrome is the player's only recovery affordance, that withholding is always bounded — see the Autostart Veil's release rule.
+
+### Autostart Veil
+
+The dimmed cover laid over a video's poster while a video that starts on its own is still loading — darkened artwork under a spinner, standing in for the withheld Chrome. It appears only for a video the viewer did not press play on; a video started by hand shows its Chrome throughout.
+
+The veil takes no touches, and while it is up a tap on the video body must not resolve to hiding the Chrome beneath it, or playback begins with no controls at all. It is released by the first frame, by a reported load failure, or by a time limit — whichever comes first. The time limit is not redundant: the other two releases depend on the player reporting something, and the case that strands a viewer is the one where it reports nothing, so a viewer who leaves the app mid-load and returns must also get the veil released. Releasing early only returns the controls sooner, while releasing late leaves the viewer with no way out, so the bound is set to err early.
+
+### Ambient Backdrop
+
+The soft blurred wash of colour that bleeds from the video's edges into the surrounding screen, filling what would otherwise be flat letterboxing around the player.
+
+It is derived from the video's still artwork rather than from the moving picture, so it is one colour field for the whole video and does not follow the footage from scene to scene. It sits behind every other layer, takes no touches, and fades in rather than appearing at once, so a slow artwork load never flashes.
+
 ### Watch Session
 
 The user's current watch state for one Video — which Dub is active, and whether subtitles are on and which track — shared between the video-details screen and the fullscreen player so the language/subtitle pickers and live playback read and write one source of truth.
