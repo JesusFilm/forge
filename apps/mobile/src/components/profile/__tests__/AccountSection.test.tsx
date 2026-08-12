@@ -135,4 +135,44 @@ describe("AccountSection hosted-auth wiring (U3)", () => {
     expect(pressableByLabel(renderer, "Sign in").props.disabled).toBe(false)
     await unmount(renderer)
   })
+
+  it("two taps in ONE render cycle still launch only one flow (ref guard)", async () => {
+    let resolveFlight!: (outcome: SignInOutcome) => void
+    mockedSignIn.mockReturnValue(
+      new Promise<SignInOutcome>((resolve) => {
+        resolveFlight = resolve
+      }),
+    )
+    const renderer = await renderSignedOut()
+    const cta = pressableByLabel(renderer, "Sign in")
+
+    // Both taps hit the SAME captured node inside ONE act — no re-render
+    // between them, so a state-based `phase === "busy"` guard would read the
+    // stale idle closure twice and fire twice. The ref guard makes the second
+    // tap a no-op.
+    await act(async () => {
+      cta.props.onPress?.()
+      cta.props.onPress?.()
+    })
+
+    expect(mockedSignIn).toHaveBeenCalledTimes(1)
+    resolveFlight({ status: "cancelled" })
+    await act(async () => {})
+    await unmount(renderer)
+  })
+
+  it("a rejected sign-in falls to the dismissible error, not a stuck CTA", async () => {
+    // The CTA reserves busy state before the call; a rejection must release it
+    // via the rejection handler, not pin the CTA on "Signing in…".
+    mockedSignIn.mockRejectedValueOnce(new Error("open threw"))
+    const renderer = await renderSignedOut()
+
+    await press(pressableByLabel(renderer, "Sign in"))
+
+    expect(hasText(renderer, "Signing in…")).toBe(false)
+    expect(hasText(renderer, "Something went wrong")).toBe(true)
+    await press(pressableByLabel(renderer, "Dismiss"))
+    expect(pressableByLabel(renderer, "Sign in").props.disabled).toBe(false)
+    await unmount(renderer)
+  })
 })

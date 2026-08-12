@@ -84,9 +84,14 @@ async function runHostedSignIn(): Promise<SignInOutcome> {
   // A cancel is an UNCHANGED session, not only an absent one: prompt=login
   // mints a NEW sessionCreatedAt on every real sign-in, so the pre-flight
   // stamp surviving the read-back means no sign-in happened (deletion re-auth).
+  // Require the pre-flight stamp to be PRESENT: if the payload ever omits it,
+  // `undefined === undefined` would misread every real re-auth as a cancel and
+  // wedge deletion forever, so an absent stamp falls through to success (the
+  // server still arbitrates freshness — the non-destructive direction).
   if (
     before.status === "signedIn" &&
     user.id === before.user.id &&
+    before.user.sessionCreatedAt != null &&
     user.sessionCreatedAt === before.user.sessionCreatedAt
   ) {
     return { status: "cancelled" }
@@ -150,7 +155,14 @@ export async function deleteAccount(): Promise<DeleteAccountOutcome> {
   if (outcome.status === "deleted") {
     // The account is gone; signOut's remote leg fails harmlessly and the
     // local clear + progress lifecycle run off the signed-out transition.
-    await getAuthSession().signOut()
+    // Guard it: commit() invokes subscribers synchronously, so a throwing
+    // subscriber must not reject a deletion that already succeeded.
+    try {
+      await getAuthSession().signOut()
+    } catch {
+      // Swallow — the account is already deleted; the next foreground refresh
+      // self-heals the local snapshot to signed-out.
+    }
   }
   return outcome
 }

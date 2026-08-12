@@ -1,4 +1,4 @@
-import { useEffect, useState, useSyncExternalStore } from "react"
+import { useEffect, useRef, useState, useSyncExternalStore } from "react"
 import { Pressable, StyleSheet, Text, View } from "react-native"
 import AsyncStorage from "@react-native-async-storage/async-storage"
 import Ionicons from "@expo/vector-icons/Ionicons"
@@ -50,6 +50,10 @@ export function SignInPrompt() {
   )
   const [visible, setVisible] = useState(false)
   const [phase, setPhase] = useState<PromptPhase>("idle")
+  // Ref guard for the double-tap race; dismissedRef stops a cancel that
+  // settles AFTER a Dismiss from undoing that dismiss via a re-arm (#10).
+  const signInFlight = useRef(false)
+  const dismissedRef = useRef(false)
 
   useEffect(() => {
     if (visible) return
@@ -80,25 +84,36 @@ export function SignInPrompt() {
   const busy = phase === "busy"
 
   const accept = () => {
-    if (busy) return
+    if (signInFlight.current) return
+    signInFlight.current = true
     setPhase("busy")
-    void signInWithHostedPage().then((outcome) => {
-      if (outcome.status === "cancelled") {
-        // Quiet return (R2): the banner stays put, and the session gets its
-        // shot back so a later remount can show it again.
-        rearmSignInPromptAfterCancel()
-        setPhase("idle")
-      } else if (outcome.status === "error") {
+    void signInWithHostedPage().then(
+      (outcome) => {
+        signInFlight.current = false
+        if (outcome.status === "cancelled") {
+          // Quiet return (R2): the banner stays put, and the session gets its
+          // shot back so a later remount can show it again — unless the user
+          // dismissed while the sheet was open, which must win.
+          if (!dismissedRef.current) rearmSignInPromptAfterCancel()
+          setPhase("idle")
+        } else if (outcome.status === "error") {
+          setPhase("error")
+        } else {
+          setPhase("idle")
+        }
+      },
+      () => {
+        signInFlight.current = false
         setPhase("error")
-      } else {
-        setPhase("idle")
-      }
-    })
+      },
+    )
   }
 
   const dismiss = () => {
     // Re-burn the session shot (a cancel may have re-armed it) — the async
-    // cooldown write below must not race the effect into a re-show.
+    // cooldown write below must not race the effect into a re-show. The ref
+    // makes a still-in-flight cancel skip its re-arm so this dismiss holds.
+    dismissedRef.current = true
     markSignInPromptShown()
     setVisible(false)
     void AsyncStorage.setItem(

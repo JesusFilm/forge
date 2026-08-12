@@ -183,6 +183,31 @@ describe("cancelled hosted attempt re-arms in-session (U3/R2)", () => {
     ).toBe(true)
   })
 
+  it("bounds re-arms per session — a second cancel does not re-open the cap", () => {
+    noteSignedOutPlaybackStop(PROMPT_MIN_WATCHED_SECONDS + 1)
+    markSignInPromptShown()
+
+    // First cancel re-arms so the banner can return.
+    rearmSignInPromptAfterCancel()
+    expect(isSignInPromptArmed()).toBe(true)
+
+    // The banner shows again and burns the one shot.
+    markSignInPromptShown()
+    expect(isSignInPromptArmed()).toBe(false)
+
+    // A second cancel must NOT re-arm — else each cancel resets the global
+    // per-session cap and the nudge returns without bound.
+    rearmSignInPromptAfterCancel()
+    expect(isSignInPromptArmed()).toBe(false)
+    expect(
+      shouldShowSignInPrompt({
+        signedIn: false,
+        dismissedAtRaw: null,
+        nowMs: NOW,
+      }),
+    ).toBe(false)
+  })
+
   it("notifies listeners so useSyncExternalStore re-renders", () => {
     noteSignedOutPlaybackStop(PROMPT_MIN_WATCHED_SECONDS + 1)
     markSignInPromptShown()

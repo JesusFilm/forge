@@ -161,7 +161,9 @@ const jfpMobileSelfProvider = {
   pkce: true,
   // R5 (feat-349): always show the login form, even with a live browser
   // session — sign-out must allow account switching on a shared device.
-  prompt: "login",
+  // `as const` keeps the literal from widening to `string`, which fails the
+  // GenericOAuthConfig.prompt union and breaks `@forge/auth` typecheck.
+  prompt: "login" as const,
 }
 
 const upstreamProviderPlugins = [

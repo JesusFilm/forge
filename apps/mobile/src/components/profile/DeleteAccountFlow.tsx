@@ -64,24 +64,32 @@ export function DeleteAccountFlow() {
     if (deleteInFlight.current) return
     deleteInFlight.current = true
     setState({ phase: "busy" })
-    void deleteAccount().then((outcome) => {
-      deleteInFlight.current = false
-      if (outcome.status === "deleted") {
-        // The signed-out transition has already cleared local state; the
-        // account section re-renders to the signed-out CTA.
-        setState({ phase: "idle" })
-      } else if (outcome.status === "fresh-session-required") {
-        // KTD5: capture WHO must re-authenticate now — the session is
-        // stale, but the snapshot still holds the user.
-        setState({
-          phase: "needsReauth",
-          capturedUserId: signedInUserId(),
-          signInFailed: false,
-        })
-      } else {
+    void deleteAccount().then(
+      (outcome) => {
+        deleteInFlight.current = false
+        if (outcome.status === "deleted") {
+          // The signed-out transition has already cleared local state; the
+          // account section re-renders to the signed-out CTA.
+          setState({ phase: "idle" })
+        } else if (outcome.status === "fresh-session-required") {
+          // KTD5: capture WHO must re-authenticate now — the session is
+          // stale, but the snapshot still holds the user.
+          setState({
+            phase: "needsReauth",
+            capturedUserId: signedInUserId(),
+            signInFailed: false,
+          })
+        } else {
+          setState({ phase: "error" })
+        }
+      },
+      // Release the latch on rejection too — deleteAccount is contracted to
+      // resolve, but a rejection must never leave the button inert forever.
+      () => {
+        deleteInFlight.current = false
         setState({ phase: "error" })
-      }
-    })
+      },
+    )
   }
 
   const runReauth = (capturedUserId: string | null) => {
@@ -90,25 +98,33 @@ export function DeleteAccountFlow() {
     setState({ phase: "sheetOpen", capturedUserId })
     // On success the refreshed user is committed to the session store
     // BEFORE this promise resolves (U2), so the snapshot read is settled.
-    void signInWithHostedPage().then((outcome) => {
-      reauthInFlight.current = false
-      const next = decidePostReauth({
-        capturedUserId,
-        outcome: outcome.status,
-        signedInUserId: signedInUserId(),
-      })
-      if (next === "retry-deletion") {
-        runDelete()
-      } else if (next === "wrong-account") {
-        setState({ phase: "wrongAccount", capturedUserId })
-      } else {
-        setState({
-          phase: "needsReauth",
+    void signInWithHostedPage().then(
+      (outcome) => {
+        reauthInFlight.current = false
+        const next = decidePostReauth({
           capturedUserId,
-          signInFailed: next === "needs-reauth-sign-in-failed",
+          outcome: outcome.status,
+          signedInUserId: signedInUserId(),
         })
-      }
-    })
+        if (next === "retry-deletion") {
+          runDelete()
+        } else if (next === "wrong-account") {
+          setState({ phase: "wrongAccount", capturedUserId })
+        } else {
+          setState({
+            phase: "needsReauth",
+            capturedUserId,
+            signInFailed: next === "needs-reauth-sign-in-failed",
+          })
+        }
+      },
+      // A rejected sheet must release the latch and surface a retry, not pin
+      // the panel on "Signing in…" forever.
+      () => {
+        reauthInFlight.current = false
+        setState({ phase: "needsReauth", capturedUserId, signInFailed: true })
+      },
+    )
   }
 
   if (state.phase === "idle") {
@@ -200,6 +216,20 @@ export function DeleteAccountFlow() {
                 {state.phase === "sheetOpen" ? "Signing in…" : "Sign in again"}
               </Text>
             </Pressable>
+            {/* A non-destructive exit: without it the only control auto-fires
+                the irreversible deletion on a same-subject sign-in. */}
+            <Pressable
+              onPress={() => setState({ phase: "idle" })}
+              disabled={state.phase === "sheetOpen"}
+              style={({ pressed }) => [
+                styles.cancelButton,
+                pressed && feedback.pressed,
+              ]}
+              accessibilityRole="button"
+              accessibilityLabel="Cancel deletion"
+            >
+              <Text style={styles.cancelLabel}>Cancel</Text>
+            </Pressable>
           </View>
         </>
       ) : null}
@@ -227,6 +257,17 @@ export function DeleteAccountFlow() {
               accessibilityLabel="Try signing in again"
             >
               <Text style={styles.cancelLabel}>Try again</Text>
+            </Pressable>
+            <Pressable
+              onPress={() => setState({ phase: "idle" })}
+              style={({ pressed }) => [
+                styles.cancelButton,
+                pressed && feedback.pressed,
+              ]}
+              accessibilityRole="button"
+              accessibilityLabel="Cancel deletion"
+            >
+              <Text style={styles.cancelLabel}>Cancel</Text>
             </Pressable>
           </View>
         </>

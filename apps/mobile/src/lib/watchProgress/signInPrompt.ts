@@ -28,6 +28,10 @@ export const SIGN_IN_PROMPT_COPY =
 // Session-local trigger state (in-memory only — resets on relaunch).
 let armed = false
 let shownThisSession = false
+// A cancel may re-arm the one shot, but only so many times per session — else
+// each cancel resets the global cap and the nudge returns without bound.
+let reArmsThisSession = 0
+export const MAX_REARMS_PER_SESSION = 1
 
 /**
  * The arming stop fires from the player's subtree, but the prompt renders as
@@ -58,6 +62,7 @@ function setArmed(next: boolean) {
 export function __resetSignInPromptSession() {
   armed = false
   shownThisSession = false
+  reArmsThisSession = 0
 }
 
 /**
@@ -112,9 +117,14 @@ export function markSignInPromptShown() {
 /**
  * A cancelled hosted attempt is a quiet return (R2), not a dismissal — give
  * the session its shot back so the banner can show again. The persisted
- * dismissal cooldown still gates in shouldShowSignInPrompt.
+ * dismissal cooldown still gates in shouldShowSignInPrompt. Bounded per
+ * session: resetting shownThisSession also re-opens noteSignedOutPlaybackStop,
+ * so an unbounded re-arm would let a repeatedly-cancelling user be nudged
+ * without limit.
  */
 export function rearmSignInPromptAfterCancel() {
+  if (reArmsThisSession >= MAX_REARMS_PER_SESSION) return
+  reArmsThisSession += 1
   shownThisSession = false
   setArmed(true)
 }

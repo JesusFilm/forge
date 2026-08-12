@@ -123,6 +123,24 @@ describe("signInWithHostedPage", () => {
     expect(getNewAccountNotice()).toBeNull()
   })
 
+  it("treats a same-user read-back with NO session stamps as success, not a cancel", async () => {
+    // If the payload ever omits sessionCreatedAt, `undefined === undefined`
+    // would misread every real re-auth as a cancel and loop deletion forever.
+    // The presence guard makes an absent pre-flight stamp fall through to
+    // success — deleting either OR-clause of that guard fails this test.
+    mockAuthClient.signIn.oauth2.mockResolvedValue(OAUTH_OK)
+    mockSessionStore.getSnapshot.mockReturnValue({
+      status: "signedIn",
+      user: { id: "user-1" },
+    } as never)
+    mockSessionStore.readSession.mockResolvedValue({ id: "user-1" })
+
+    await expect(signInWithHostedPage()).resolves.toEqual({
+      status: "success",
+    })
+    expect(reportDatadogAction).toHaveBeenCalledWith("sign_in_completed", {})
+  })
+
   it("classifies a NEW session stamp for the same user as a completed re-auth", async () => {
     mockAuthClient.signIn.oauth2.mockResolvedValue(OAUTH_OK)
     mockSessionStore.getSnapshot.mockReturnValue({
@@ -276,6 +294,19 @@ describe("signInWithHostedPage", () => {
 describe("deleteAccount", () => {
   it("clears local state once the account is gone", async () => {
     mockAuthClient.deleteUser.mockResolvedValue({})
+
+    await expect(deleteAccount()).resolves.toEqual({ status: "deleted" })
+    expect(mockSessionStore.signOut).toHaveBeenCalled()
+  })
+
+  it("still reports the account deleted when the post-delete signOut throws", async () => {
+    // signOut's commit() invokes subscribers synchronously; a throwing
+    // subscriber must not convert a completed deletion into a reported
+    // failure. Without the try around signOut, this resolves rejected.
+    mockAuthClient.deleteUser.mockResolvedValue({})
+    mockSessionStore.signOut.mockRejectedValueOnce(
+      new Error("subscriber threw"),
+    )
 
     await expect(deleteAccount()).resolves.toEqual({ status: "deleted" })
     expect(mockSessionStore.signOut).toHaveBeenCalled()

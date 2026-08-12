@@ -258,4 +258,53 @@ describe("DeleteAccountFlow re-auth auto-retry (U4)", () => {
     await act(async () => {})
     await unmount(renderer)
   })
+
+  it("Cancel in needsReauth exits to idle without deleting anything", async () => {
+    // The re-auth states used to offer only the button that deletes; a mis-tap
+    // or a change of mind now has a non-destructive exit.
+    mockedDelete.mockResolvedValueOnce({ status: "fresh-session-required" })
+    const renderer = await renderFlow()
+
+    await driveToNeedsReauth(renderer)
+    await press(pressableByLabel(renderer, "Cancel deletion"))
+
+    expect(hasText(renderer, "Delete account")).toBe(true)
+    expect(hasText(renderer, REAUTH_PROMPT_MESSAGE)).toBe(false)
+    expect(mockedDelete).toHaveBeenCalledTimes(1)
+    await unmount(renderer)
+  })
+
+  it("a rejected deletion surfaces the error state instead of a stuck panel", async () => {
+    // deleteAccount is contracted to resolve, but a rejection must release the
+    // ref guard and show the retry — not pin the panel on "Deleting…" forever.
+    mockedDelete.mockRejectedValueOnce(new Error("subscriber threw"))
+    const renderer = await renderFlow()
+
+    await press(pressableByLabel(renderer, "Delete account"))
+    await press(pressableByLabel(renderer, "Permanently delete account"))
+
+    expect(hasText(renderer, DELETE_FAILED_MESSAGE)).toBe(true)
+    // Latch released — the retry actually re-enters the confirm state.
+    await press(pressableByLabel(renderer, "Try deleting again"))
+    expect(hasText(renderer, "Delete this account?")).toBe(true)
+    await unmount(renderer)
+  })
+
+  it("a rejected re-auth sheet releases the latch and stays retryable", async () => {
+    mockedDelete.mockResolvedValueOnce({ status: "fresh-session-required" })
+    mockedSignIn
+      .mockRejectedValueOnce(new Error("open threw"))
+      .mockResolvedValueOnce({ status: "cancelled" })
+    const renderer = await renderFlow()
+
+    await driveToNeedsReauth(renderer)
+    await press(pressableByLabel(renderer, "Sign in again"))
+    expect(hasText(renderer, REAUTH_FAILED_MESSAGE)).toBe(true)
+
+    // The reauth ref released, so a second tap actually re-fires the sheet —
+    // without the rejection handler it would stay pinned on "Signing in…".
+    await press(pressableByLabel(renderer, "Sign in again"))
+    expect(mockedSignIn).toHaveBeenCalledTimes(2)
+    await unmount(renderer)
+  })
 })

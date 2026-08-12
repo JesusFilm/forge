@@ -1,4 +1,4 @@
-import { useState, useSyncExternalStore } from "react"
+import { useRef, useState, useSyncExternalStore } from "react"
 import { Pressable, StyleSheet, Text, View } from "react-native"
 import Ionicons from "@expo/vector-icons/Ionicons"
 import { SessionReplayView } from "@datadog/mobile-react-native-session-replay"
@@ -51,6 +51,9 @@ export function AccountSection() {
   const newAccountNotice = useNewAccountNotice()
   const [signingOut, setSigningOut] = useState(false)
   const [signInPhase, setSignInPhase] = useState<SignInPhase>("idle")
+  // Ref guard, not the phase: a press can fire twice off one stale render,
+  // which a state check alone cannot make a no-op (matches DeleteAccountFlow).
+  const signInFlight = useRef(false)
 
   if (snapshot.status !== "signedIn") {
     const signingIn = signInPhase === "busy"
@@ -73,13 +76,22 @@ export function AccountSection() {
         ) : null}
         <Pressable
           onPress={() => {
-            if (signInPhase === "busy") return
+            if (signInFlight.current) return
+            signInFlight.current = true
             setSignInPhase("busy")
             // Cancel returns quietly to the idle CTA (R2); success flips the
-            // section via the session snapshot.
-            void signInWithHostedPage().then((outcome) => {
-              setSignInPhase(outcome.status === "error" ? "error" : "idle")
-            })
+            // section via the session snapshot. Release on BOTH settlement
+            // paths so a rejection can never pin the CTA on "Signing in…".
+            void signInWithHostedPage().then(
+              (outcome) => {
+                signInFlight.current = false
+                setSignInPhase(outcome.status === "error" ? "error" : "idle")
+              },
+              () => {
+                signInFlight.current = false
+                setSignInPhase("error")
+              },
+            )
           }}
           disabled={signingIn}
           style={({ pressed }) => [
