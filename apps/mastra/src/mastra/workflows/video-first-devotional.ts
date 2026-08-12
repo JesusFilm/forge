@@ -15,16 +15,19 @@ import {
   devotionalArtifactRoot,
   SafetyVerdictSchema,
 } from "../../services/devotional/artifacts"
-import { produceDevotionalAudio } from "../../services/devotional/devotional-audio"
 import {
   cacheDirFor,
   loadCachedAudio,
   loadCachedDevo,
-  saveCachedAudio,
   saveCachedDevo,
 } from "../../services/devotional/devotional-cache"
 import { writeDevotionalCopy } from "../../services/devotional/devotional-copy"
-import { renderDevotionalVideo } from "../../services/devotional/devotional-render"
+import {
+  assertNarrationComplete,
+  produceNarration,
+  renderDevotionalVideo,
+} from "../../services/devotional/devotional-render"
+import { EN_LOCALE } from "../../services/devotional/devotional-locale"
 import {
   composeDevotionalContent,
   GeneratedDevotionalSchema,
@@ -348,12 +351,16 @@ const produceStep = createStep({
       return { devotional, safety, cacheDir: null }
     }
     const cacheDir = cacheDirFor(devotional.clip.index, devotional.sequence)
-    const reuse = !inputData.regenerate && !inputData.regenerateAudio
-    let audio = reuse ? await loadCachedAudio(cacheDir, devotional.voice) : null
-    if (!audio) {
-      audio = await produceDevotionalAudio(devotional)
-      await saveCachedAudio(cacheDir, audio)
-    }
+    // Route through the SHARED narration producer. This step used to call
+    // `produceDevotionalAudio(devotional)` bare, which silently cost it four
+    // things the CLI path had — per-segment reuse, real-silence pauses between
+    // sentences, card pacing, and the completeness guard — and then persisted
+    // the result into the very cache the CLI path reads back. See
+    // produceNarration's docstring for why this is one function.
+    await produceNarration(devotional, EN_LOCALE, {
+      cacheDir,
+      reuse: !inputData.regenerate && !inputData.regenerateAudio,
+    })
     return { devotional, safety, cacheDir }
   },
 })
@@ -381,6 +388,11 @@ const renderStep = createStep({
       return { devotional, safety, videoPath: null, wideVideoPath: null }
     const audio = await loadCachedAudio(cacheDir, devotional.voice)
     if (!audio) throw new Error(`no cached audio in ${cacheDir}`)
+    // The cache is a seam between steps, and three other callers write to it —
+    // so re-check completeness here rather than trusting that whoever filled it
+    // did. This is the check whose absence once shipped a 110s video that
+    // skipped its own conclusion and question card.
+    assertNarrationComplete(audio)
     const outDir = path.join(devotionalArtifactRoot(), "video")
     // Owner rule: every run ships BOTH aspects — 9:16 (mobile) and 16:9
     // (desktop, text-on-blur bottom band). Sequential on purpose: two

@@ -25,6 +25,7 @@ import {
   saveCachedDevo,
 } from "../services/devotional/devotional-cache"
 import { produceDevotionalAudio } from "../services/devotional/devotional-audio"
+import { assertNarrationComplete } from "../services/devotional/devotional-render"
 import { joinAudioVarGaps, slowAndPad } from "../services/devotional/audio-concat"
 import { localeFor, type DevotionalLang } from "../services/devotional/devotional-locale"
 import {
@@ -136,9 +137,11 @@ async function main() {
     },
     locale,
   )
-  if (!audio.segments.length) {
-    throw new Error(`no audio produced (skipped: ${audio.skipped.join(", ")})`)
-  }
+  // The FULL completeness check, not merely "did anything come back". This
+  // script writes into the same cache the render reads, so a partial take saved
+  // here becomes a video missing a card later — and refusing only on ZERO
+  // segments let exactly that through.
+  assertNarrationComplete(audio)
 
   // Save THIS take to the render cache so the video reuses the EXACT audio you
   // approve here (no regeneration → no different TTS take). Same dir the render

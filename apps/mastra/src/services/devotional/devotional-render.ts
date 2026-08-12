@@ -930,6 +930,95 @@ export function assertNarrationComplete(audio: ProducedDevotionalAudio): void {
   }
 }
 
+/**
+ * THE one way to obtain a devotional's narration. Every caller must come
+ * through here — the CLI scripts and the Mastra workflow alike.
+ *
+ * It exists because the two paths had silently diverged. The workflow called
+ * `produceDevotionalAudio(devotional)` with NO deps at all, which meant it got
+ * no per-segment reuse (so one edited sentence re-voiced everything and drained
+ * the quota), no real-silence pauses between sentences, no slowed scripture or
+ * closing card — measurably worse audio — and then wrote that straight to the
+ * shared cache with no completeness check. The CLI path, meanwhile, had all
+ * four. Keeping the deps in one function is what makes that divergence
+ * unrepresentable rather than merely fixed.
+ *
+ * On a cache hit that turns out to be INCOMPLETE, this falls through to
+ * production instead of throwing. Throwing there was a dead end: the render
+ * would fail identically on every future run until a human passed
+ * --regenerate-audio, and the incomplete cache could be written by any of three
+ * other callers. Falling through self-heals, and per-segment reuse means it pays
+ * only for the segments that are actually missing.
+ */
+export async function produceNarration(
+  devo: GeneratedDevotional,
+  locale: DevotionalLocale,
+  opts: { cacheDir: string; reuse: boolean; log?: (msg: string) => void },
+): Promise<ProducedDevotionalAudio> {
+  const log = opts.log ?? (() => {})
+  const { cacheDir } = opts
+
+  if (opts.reuse) {
+    const cached = await loadCachedAudio(cacheDir, devo.voice)
+    if (cached) {
+      try {
+        assertNarrationComplete(cached)
+        log("reusing cached audio")
+        return cached
+      } catch {
+        log(
+          "⚠️  cached audio is INCOMPLETE — re-producing the missing segments " +
+            "(the complete ones are reused, so only the gaps cost credits)",
+        )
+      }
+    }
+  }
+
+  // Reuse any cached narration whose words are IDENTICAL, so a text edit only
+  // costs TTS credits for the sentences that actually changed. The whole-
+  // devotional cache is all-or-nothing, which is how one edited sentence
+  // previously re-voiced all ~21 segments and drained the quota.
+  const reusable = await loadReusableAudio(cacheDir, devo.voice)
+  log(
+    reusable.size > 0
+      ? `produce audio… (${reusable.size} cached segment(s) available for reuse)`
+      : "produce audio…",
+  )
+  const audio = await produceDevotionalAudio(
+    devo,
+    {
+      reusable,
+      // Numbers are spelled deterministically in the connectors. Stress marks:
+      // ONLY the owner-curated overrides (spoken only). ElevenLabs' Russian
+      // voice stresses most words correctly on its own; marking EVERY word
+      // (dictionary blanket) degrades its delivery — mis-stress despite the
+      // mark, odd phonetics, lost terminal intonation. So mark selectively. The
+      // dictionary (ru-stress-dict) is the TOOL to get the correct mark for a
+      // word we add to the overrides, not a blanket pass.
+      speakify: (t) =>
+        Promise.resolve(applyStressOverrides(t, locale.stressOverrides ?? [])),
+      // Real-silence pauses at the connectors' paragraph breaks (cover date |
+      // lead-in | hook; before "Давайте посмотрим"; question | prayer). Short
+      // between sentences, longer between sections.
+      joinVarGaps: joinAudioVarGaps,
+      // Pace certain cards (scripture + last reflection slower; closing slower
+      // + padded so it doesn't end abruptly).
+      pace: slowAndPad,
+    },
+    locale,
+  )
+  if (audio.reused.length > 0) {
+    log(
+      `♻️  reused ${audio.reused.length} cached segment(s); synthesised ${audio.segments.length - audio.reused.length}`,
+    )
+  }
+  // Guard BEFORE persisting: an incomplete result must not reach the cache,
+  // where three other callers would later read it back as usable.
+  assertNarrationComplete(audio)
+  await saveCachedAudio(cacheDir, audio)
+  return audio
+}
+
 export async function prepareAndRenderDevotional(
   input: PrepareAndRenderInput,
 ): Promise<RenderedDevotional> {
@@ -1022,63 +1111,11 @@ export async function prepareAndRenderDevotional(
   // A voice override always regenerates audio (cached audio is a different voice).
   const reuseAudio =
     !input.regenerate && !input.regenerateAudio && !input.voiceOverride
-  let audio = reuseAudio ? await loadCachedAudio(cacheDir, devo.voice) : null
-  if (audio) {
-    log("reusing cached audio")
-    // Cached audio gets the SAME completeness check as fresh audio; a cache
-    // written by an incomplete run must not be trusted just because it is on
-    // disk. (Caches written before `skipped` was persisted report none, which
-    // is the honest reading rather than a silent pass.)
-    assertNarrationComplete(audio)
-  } else {
-    // Reuse any cached narration whose words are IDENTICAL, so a text edit
-    // only costs TTS credits for the sentences that actually changed. The
-    // whole-devotional cache is all-or-nothing, which is how one edited
-    // sentence previously re-voiced all ~21 segments and drained the quota.
-    const reusable = await loadReusableAudio(cacheDir, devo.voice)
-    log(
-      reusable.size > 0
-        ? `produce audio… (${reusable.size} cached segment(s) available for reuse)`
-        : "produce audio…",
-    )
-    const produce = (carry: Map<string, ProducedSegment>) =>
-      produceDevotionalAudio(
-        devo,
-        {
-          reusable: carry,
-          // Numbers are spelled deterministically in the connectors. Stress
-          // marks: ONLY the owner-curated overrides (spoken only). ElevenLabs'
-          // Russian voice stresses most words correctly on its own; marking
-          // EVERY word (dictionary blanket) degrades its delivery — mis-stress
-          // despite the mark, odd phonetics, lost terminal intonation. So mark
-          // selectively. The dictionary (ru-stress-dict) is the TOOL to get the
-          // correct mark for a word we add to the overrides, not a blanket pass.
-          speakify: (t) =>
-            Promise.resolve(
-              applyStressOverrides(t, locale.stressOverrides ?? []),
-            ),
-          // Real-silence pauses at the connectors' paragraph breaks (cover date
-          // | lead-in | hook; before "Давайте посмотрим"; question | prayer).
-          // Short between sentences, longer between sections.
-          joinVarGaps: joinAudioVarGaps,
-          // Pace certain cards (scripture + last reflection slower; closing
-          // slower + padded so it doesn't end abruptly).
-          pace: slowAndPad,
-        },
-        locale,
-      )
-    audio = await produce(reusable)
-    assertNarrationComplete(audio)
-    if (audio.reused.length > 0) {
-      log(
-        `♻️  reused ${audio.reused.length} cached segment(s); synthesised ${audio.segments.length - audio.reused.length}`,
-      )
-    }
-    if (audio.skipped.length > 0) {
-      log(`⚠️  narration incomplete — skipped: ${audio.skipped.join(", ")}`)
-    }
-    await saveCachedAudio(cacheDir, audio)
-  }
+  const audio = await produceNarration(devo, locale, {
+    cacheDir,
+    reuse: reuseAudio,
+    log,
+  })
 
   const videoPath = await renderDevotionalVideo(devo, audio, { ...input, locale })
   return { devotional: devo, videoPath }
