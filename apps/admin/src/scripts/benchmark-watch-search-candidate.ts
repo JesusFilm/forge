@@ -4,6 +4,7 @@ import { pathToFileURL } from "node:url"
 import { prisma } from "@/db/client"
 import { TypesenseWatchSearchCandidateGenerationService } from "@/services/typesense-watch-search-candidate-generation"
 import { resolveTypesenseWatchSearchApiKey } from "@/services/typesense-client-config"
+import { candidateWatchSearchApplicationRevision } from "@/services/typesense-watch-search-candidate-identity"
 import {
   assertQualificationProfilesMatchLease,
   createCandidateWatchSearchProfile,
@@ -630,16 +631,6 @@ const PRODUCTION_CASES: readonly CandidateBenchmarkCase[] = [
   },
 ] as const
 
-function requiredRevision() {
-  const revision =
-    process.env.NEXT_PUBLIC_DATADOG_VERSION ??
-    process.env.RAILWAY_GIT_COMMIT_SHA ??
-    process.env.VERCEL_GIT_COMMIT_SHA ??
-    process.env.GIT_COMMIT_SHA
-  if (!revision?.trim()) throw new Error("an application revision is required")
-  return revision.trim()
-}
-
 function evidenceFromEnvironment(): CandidateQualificationEvidence {
   const raw = process.env.WATCH_SEARCH_CANDIDATE_EVIDENCE_JSON
   if (!raw) return DEFAULT_EVIDENCE
@@ -742,7 +733,7 @@ async function main() {
     throw new Error("WATCH_SEARCH_CANDIDATE_PAIRS_PER_CASE must be 1..10000")
   }
 
-  const applicationRevision = requiredRevision()
+  const applicationRevision = candidateWatchSearchApplicationRevision()
   const typesense = new TypesenseClient({ host, apiKey, timeoutMs: 2_000 })
   const generations = new TypesenseWatchSearchCandidateGenerationService(
     prisma,

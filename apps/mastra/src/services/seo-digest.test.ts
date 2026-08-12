@@ -27,4 +27,22 @@ describe("SEO canonical digests", () => {
       }),
     ).toBe(digestSeoValue(payload))
   })
+
+  it("digests the persistence-safe proposal projection", () => {
+    const proposal = {
+      targetId: "experience-1",
+      snapshot: {
+        sourceUrl:
+          "http://editor:password@example.com/watch?token=private#private",
+        credentialHint: "ghp_abcdefghijklmnopqrstuvwxyz",
+      },
+    }
+
+    expect(digestSeoProposalPayload(proposal)).toBe(
+      digestSeoValue({
+        targetId: "experience-1",
+        snapshot: { sourceUrl: "http://example.com/watch" },
+      }),
+    )
+  })
 })

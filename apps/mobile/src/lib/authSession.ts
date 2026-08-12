@@ -22,6 +22,10 @@ export type AuthUser = {
   id: string
   email?: string
   name?: string
+  /** Server-clock creation stamps (ISO) for the R15 new-account check
+   *  (KTD3); absent when the session payload does not carry them. */
+  createdAt?: string
+  sessionCreatedAt?: string
 }
 
 export type AuthSessionSnapshot =
@@ -100,6 +104,27 @@ export function createAuthSessionStore(deps: AuthSessionDeps) {
     identityEpoch += 1
   }
 
+  /** The one commit policy behind refresh() and readSession(). */
+  function commitSessionRead(user: AuthUser | null): AuthUser | null {
+    if (user == null) {
+      invalidateJwt()
+      commit(SIGNED_OUT)
+    } else if (snapshot.status !== "signedIn" || snapshot.user.id !== user.id) {
+      // A different subject — the cached token belongs to the old one.
+      invalidateJwt()
+      commit({ status: "signedIn", user })
+    } else if (
+      snapshot.user.email !== user.email ||
+      snapshot.user.name !== user.name ||
+      snapshot.user.createdAt !== user.createdAt ||
+      snapshot.user.sessionCreatedAt !== user.sessionCreatedAt
+    ) {
+      // Same subject, edited profile or a new session: token still valid.
+      commit({ status: "signedIn", user })
+    }
+    return user
+  }
+
   return {
     getSnapshot(): AuthSessionSnapshot {
       return snapshot
@@ -119,33 +144,18 @@ export function createAuthSessionStore(deps: AuthSessionDeps) {
      */
     async refresh(): Promise<void> {
       try {
-        const user = await deps.fetchSession()
-        if (user == null) {
-          invalidateJwt()
-          commit(SIGNED_OUT)
-        } else if (
-          snapshot.status !== "signedIn" ||
-          snapshot.user.id !== user.id
-        ) {
-          // A different subject — the cached token belongs to the old one.
-          invalidateJwt()
-          commit({ status: "signedIn", user })
-        } else if (
-          snapshot.user.email !== user.email ||
-          snapshot.user.name !== user.name
-        ) {
-          // Same subject, edited profile: the token is still valid.
-          commit({ status: "signedIn", user })
-        }
+        commitSessionRead(await deps.fetchSession())
       } catch {
         // Keep the current snapshot; the next refresh self-heals.
       }
     },
 
-    /** Commit a completed sign-in immediately (U6 calls after the flow). */
-    applySignedIn(user: AuthUser) {
-      invalidateJwt()
-      commit({ status: "signedIn", user })
+    /**
+     * Outcome-reporting read (KTD6): commits exactly like refresh(), but a
+     * thrown fetch PROPAGATES so the hosted sign-in can classify it.
+     */
+    async readSession(): Promise<AuthUser | null> {
+      return commitSessionRead(await deps.fetchSession())
     },
 
     /**
@@ -241,59 +251,38 @@ export function createSecureStorageAdapter(
   }
 }
 
-export type SignedInUserPayload = {
-  id: string
-  email?: string | null
-  name?: string | null
-  createdAt?: string | Date | null
-}
-
 type BetterAuthExpoClient = {
   /** better-fetch returns a {data,error} envelope and does NOT throw on a
    *  non-2xx, so `error` is the only way to tell an outage from a sign-out. */
   getSession: (options?: { fetchOptions?: { timeout?: number } }) => Promise<{
     data: {
-      user: { id: string; email?: string | null; name?: string | null }
+      user: {
+        id: string
+        email?: string | null
+        name?: string | null
+        createdAt?: string | Date | null
+      }
+      session?: { createdAt?: string | Date | null } | null
     } | null
     error?: { status?: number | null; message?: string | null } | null
   }>
   signOut: (options?: {
     fetchOptions?: { timeout?: number }
   }) => Promise<unknown>
-  deleteUser: () => Promise<{
+  deleteUser: (options?: { fetchOptions?: { timeout?: number } }) => Promise<{
     data?: unknown
     error?: { code?: string | null; message?: string | null } | null
   }>
   signIn: {
-    /** Native sheets: verify the provider identity token server-side. */
-    social: (options: {
-      provider: "apple" | "google"
-      idToken: { token: string }
-    }) => Promise<{
-      data: { user: SignedInUserPayload } | null
-      error?: { message?: string } | null
-    }>
-    /** Native email/password (F2). The expo client stamps every request
-     *  with `expo-origin`, which is what marks the session as mobile. */
-    email: (options: { email: string; password: string }) => Promise<{
-      data: { user: SignedInUserPayload } | null
-      error?: { code?: string | null; message?: string | null } | null
-    }>
-    /** Hosted-page fallback: the jfp self-RP flow (browser sheet + expo
+    /** Hosted-page sign-in: the jfp self-RP flow (browser sheet + expo
      *  cookie handoff land the session in SecureStore). */
-    oauth2: (options: { providerId: string; callbackURL: string }) => Promise<{
+    oauth2: (options: {
+      providerId: string
+      callbackURL: string
+      fetchOptions?: { timeout?: number }
+    }) => Promise<{
       data: unknown
       error?: { message?: string } | null
-    }>
-  }
-  signUp: {
-    email: (options: {
-      email: string
-      password: string
-      name: string
-    }) => Promise<{
-      data: { user: SignedInUserPayload } | null
-      error?: { code?: string | null; message?: string | null } | null
     }>
   }
   $fetch: (
@@ -326,8 +315,12 @@ export function getAuthClient(): BetterAuthExpoClient {
           storage: createSecureStorageAdapter(SecureStore, {
             keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
           }),
+          // Ephemeral iOS auth session (iOS-only flag): no Safari cookie
+          // sharing, so no consent alert and no iOS shared-device residual.
+          // Android keeps the Chrome cookie; prompt=login guards the in-app path.
+          webBrowserOptions: { preferEphemeralSession: true },
         }),
-        // signIn.oauth2 for the hosted-page fallback (jfp self-RP).
+        // signIn.oauth2 for the hosted-page sign-in (jfp self-RP).
         genericOAuthClient(),
       ],
     }) as unknown as BetterAuthExpoClient
@@ -352,13 +345,26 @@ export class SessionFetchError extends Error {
   }
 }
 
+/** ISO-normalize a wire timestamp; an invalid Date degrades to undefined. */
+function toIsoStamp(
+  value: string | Date | null | undefined,
+): string | undefined {
+  if (value == null) return undefined
+  if (value instanceof Date) {
+    return Number.isFinite(value.getTime()) ? value.toISOString() : undefined
+  }
+  return value
+}
+
 export function userFromSessionResult(result: {
   data?: {
     user?: {
       id: string
       email?: string | null
       name?: string | null
+      createdAt?: string | Date | null
     } | null
+    session?: { createdAt?: string | Date | null } | null
   } | null
   error?: { status?: number | null; message?: string | null } | null
 }): AuthUser | null {
@@ -371,6 +377,8 @@ export function userFromSessionResult(result: {
     id: user.id,
     email: user.email ?? undefined,
     name: user.name ?? undefined,
+    createdAt: toIsoStamp(user.createdAt),
+    sessionCreatedAt: toIsoStamp(result.data?.session?.createdAt),
   }
 }
 
@@ -387,8 +395,23 @@ let store: AuthSessionStore | null = null
  */
 const AUTH_FETCH_TIMEOUT_MS = 5000
 
-function authFetchOptions() {
+export function authFetchOptions() {
   return { fetchOptions: { timeout: AUTH_FETCH_TIMEOUT_MS } }
+}
+
+/**
+ * Account deletion needs its OWN, larger ceiling: auth's beforeDelete hook
+ * runs two serial best-effort legs — Apple revoke (5s) then admin watch-data
+ * erasure (5s) — plus the DB delete, a compound worst-case near 10s. The
+ * outbound-timeout law requires the client budget strictly ABOVE the
+ * downstream worst-case, so the shared 5s (one leg) would abort a legitimate
+ * slow-but-succeeding deletion and falsely report "nothing was changed". 20s
+ * clears the compound budget while still bounding a genuinely hung connection.
+ */
+const AUTH_DELETE_TIMEOUT_MS = 20_000
+
+export function deleteFetchOptions() {
+  return { fetchOptions: { timeout: AUTH_DELETE_TIMEOUT_MS } }
 }
 
 /** The app-wide session store, wired to the real Better Auth client. */

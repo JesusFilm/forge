@@ -235,20 +235,45 @@ describe("TypesenseClient", () => {
     ).rejects.toMatchObject({ status: 400 })
   })
 
-  it("preserves grouped search hits for video-level retrieval", async () => {
+  it("preserves grouped search hits and optional lexical match metadata", async () => {
     const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
       jsonResponse({
         results: [
           {
-            found: 1,
-            out_of: 2,
+            found: 3,
+            out_of: 3,
             page: 1,
             search_time_ms: 3,
             grouped_hits: [
               {
                 group_key: ["video-1"],
-                found: 2,
-                hits: [{ document: { id: "chunk-1" } }],
+                found: 1,
+                hits: [
+                  {
+                    document: { id: "chunk-1" },
+                    text_match_info: {
+                      score: "578730123365187679",
+                      tokens_matched: 2,
+                      num_tokens_dropped: 1,
+                      typo_prefix_score: 3,
+                    },
+                  },
+                ],
+              },
+              {
+                group_key: ["video-2"],
+                found: 1,
+                hits: [
+                  {
+                    document: { id: "chunk-2" },
+                    text_match_info: { tokens_matched: 1 },
+                  },
+                ],
+              },
+              {
+                group_key: ["video-3"],
+                found: 1,
+                hits: [{ document: { id: "chunk-3" } }],
               },
             ],
           },
@@ -270,11 +295,44 @@ describe("TypesenseClient", () => {
       },
     ])
 
-    expect(result?.grouped_hits?.[0]).toMatchObject({
-      group_key: ["video-1"],
-      found: 2,
-      hits: [{ document: { id: "chunk-1" } }],
-    })
+    expect(result?.grouped_hits).toEqual([
+      {
+        group_key: ["video-1"],
+        found: 1,
+        hits: [
+          {
+            document: { id: "chunk-1" },
+            text_match_info: {
+              score: "578730123365187679",
+              tokens_matched: 2,
+              num_tokens_dropped: 1,
+              typo_prefix_score: 3,
+            },
+          },
+        ],
+      },
+      {
+        group_key: ["video-2"],
+        found: 1,
+        hits: [
+          {
+            document: { id: "chunk-2" },
+            text_match_info: { tokens_matched: 1 },
+          },
+        ],
+      },
+      {
+        group_key: ["video-3"],
+        found: 1,
+        hits: [{ document: { id: "chunk-3" } }],
+      },
+    ])
+
+    const fullMatchInfo = result?.grouped_hits?.[0]?.hits[0]?.text_match_info
+    expect(fullMatchInfo?.tokens_matched).toBe(2)
+    expect(fullMatchInfo?.num_tokens_dropped).toBe(1)
+    expect(fullMatchInfo?.typo_prefix_score).toBe(3)
+    expect(result?.grouped_hits?.[2]?.hits[0]?.text_match_info).toBeUndefined()
   })
 
   it("turns aborts into bounded timeout errors", async () => {

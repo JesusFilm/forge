@@ -167,9 +167,14 @@ export async function requestGoogleJson(options: {
   fetchImpl?: typeof fetch
   sleep?: (ms: number) => Promise<void>
 }): Promise<
-  | { ok: true; body: unknown }
-  | SeoProviderFailure
-  | { ok: false; reason: "response_too_large"; retryable: true }
+  | { ok: true; body: unknown; attempts: number }
+  | (SeoProviderFailure & { attempts: number })
+  | {
+      ok: false
+      reason: "response_too_large"
+      retryable: true
+      attempts: number
+    }
 > {
   const fetchImpl = options.fetchImpl ?? fetch
   const sleep =
@@ -207,7 +212,7 @@ export async function requestGoogleJson(options: {
         await sleep(Math.min(250 * 2 ** (attempt - 1), 2_000))
         continue
       }
-      return last
+      return { ...last, attempts: attempt }
     }
     if (!response.ok) {
       last = {
@@ -221,15 +226,25 @@ export async function requestGoogleJson(options: {
         )
         continue
       }
-      return last
+      return { ...last, attempts: attempt }
     }
     const body = await readSeoJsonResult(response, options.maxResponseBytes)
     if (!body.ok) {
       if (body.reason === "body_too_large") {
-        return { ok: false, reason: "response_too_large", retryable: true }
+        return {
+          ok: false,
+          reason: "response_too_large",
+          retryable: true,
+          attempts: attempt,
+        }
       }
       if (body.reason === "parse_error") {
-        return { ok: false, reason: "parse_error", retryable: true }
+        return {
+          ok: false,
+          reason: "parse_error",
+          retryable: true,
+          attempts: attempt,
+        }
       }
       last = {
         ok: false,
@@ -240,9 +255,9 @@ export async function requestGoogleJson(options: {
         await sleep(Math.min(250 * 2 ** (attempt - 1), 2_000))
         continue
       }
-      return last
+      return { ...last, attempts: attempt }
     }
-    return { ok: true, body: body.body }
+    return { ok: true, body: body.body, attempts: attempt }
   }
-  return last
+  return { ...last, attempts: options.maxAttempts }
 }

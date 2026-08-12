@@ -263,7 +263,7 @@ export function buildLibraryViewModel(
 export type LibraryStorageSummary = {
   count: number
   combinedBytes: number
-  /** null when capacityBytes<=0 (unreadable) — omit capacity text + usage bar. */
+  /** null when capacityBytes<=0 (unreadable) — omit the usage bar. */
   capacityBytes: number | null
   /** null alongside capacityBytes; else combinedBytes/capacityBytes clamped 0..1. */
   usageFraction: number | null

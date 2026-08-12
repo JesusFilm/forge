@@ -248,10 +248,40 @@ Client-side RUM + Logs via `@datadog/mobile-react-native`; helpers in
 - `contentParagraphs` is `string[]` (JSON field) — validate with `Array.isArray()`.
 - `Math.round()` all scaled font sizes on Android (sub-pixel = blurry).
 - Admin blocks use flat `videoId` — no nested `video { slug, images }` join. Use block-level `imageUrl`/`mediaUrl` for thumbnails, `deriveMuxThumbnailUrl()` for VideoHero poster.
+- Gating chrome — or any recovery affordance — behind a load: enumerate every path that fails to release the gate. "Playback started OR the player errored" misses "neither": backgrounding mid-load, and a source that wedges without ever erroring. Both leave the viewer with no controls and no way out, and neither logs anything. Always pair such a gate with an unconditional time-based release, and gate the tap target with the same predicate as the chrome it hides. See `docs/solutions/logic-errors/mobile-watch-autostart-veil-gate-missing-release-path.md`.
 - Search requires `EXPO_PUBLIC_ADMIN_GRAPHQL_TOKEN` (mobile's OWN dedicated fleet key — its own entry in admin's `FLEET_ADMIN_API_KEYS` CSV, NOT `WEB_ADMIN_API_KEYS`, and never the same value as TV's; provision in EAS Environments per profile, `.env.local` for dev). `watchSearch` is a PUBLIC resolver, so the bearer buys a per-device rate-limit bucket, not access; a missing/rotated key degrades to the shared `public:<ip>` bucket rather than an `UNAUTHENTICATED` error. The bearer rides ONLY on the `WatchSearch` operation — never attach it to public queries, or every public query also spends the fleet key's rate-limit budget. Admin buckets a fleet key per device (`consumer:<key>:v:<viewer_id>` from the `x-viewer-id` header, else `consumer:<key>:<ip>`), so the fleet doesn't collapse into one bucket. See `src/lib/authHeaders.ts`.
 
 ## Auth + watch progress (feat: mobile login & continue watching)
 
+- **Login is hosted-only (feat-349)**: every sign-in entry point calls
+  `signInWithHostedPage()` in `src/lib/authActions.ts`. It opens the hosted
+  auth login page in a system browser sheet (the Better Auth `jfp` self-RP
+  flow) and is single-flight — a second call joins the in-flight attempt.
+  The app renders no credential UI of its own; a new auth method reaches
+  mobile when the auth platform enables it, with no app release. The auth
+  side sets `prompt: "login"` on the `jfp` provider, so the sheet always
+  shows the login form after sign-out. A user cancel settles session-less —
+  the expo plugin never throws for it — so a thrown browser open always
+  classifies as a retryable error (`src/lib/authFlows.ts`).
+- **iOS auth session is EPHEMERAL** (`webBrowserOptions.preferEphemeralSession`
+  on the expo client, iOS-only): no Safari cookie sharing, so no per-sign-in
+  "Wants to Use…to Sign In" consent alert and no iOS shared-device residual.
+  This reverses the July KTD2 non-ephemeral choice; the accepted cost is no
+  one-tap reuse of an existing Safari IdP login (social users re-authenticate
+  each sign-in). SCOPE: the residual claim is iOS-only. On Android the Custom
+  Tab keeps the `auth.jesusfilm.org` cookie in Chrome after app sign-out (the
+  flag does not apply there); `prompt=login` still guards the in-app path.
+  Only observable at iOS runtime — verify in the simulator, not jest.
+- **Android callback scheme — accepted risk (2026-08-12)**: the session cookie
+  rides the `forgemobile://` custom scheme — the expo client reads `?cookie=`
+  off the callback and stores it. On Android a custom scheme is unverifiable, so
+  a co-installed app declaring `forgemobile` could intercept the session bearer.
+  feat-349 deleted the other flows, so this is now the ONLY mobile sign-in
+  channel. Accepted for now: short session lifetime + this-device-only
+  SecureStore. FOLLOW-UP before a wide Android production release: evaluate an
+  `https://auth.jesusfilm.org/…` App Link callback (`assetlinks.json`), gated on
+  `@better-auth/expo` accepting an https callback. iOS is unaffected —
+  `ASWebAuthenticationSession` binds the callback to the calling app.
 - **Session**: `src/lib/authSession.ts` owns the Better Auth Expo client
   (lazy getter, never module-scope) and a subscribable snapshot readable
   WITHOUT React — the Apollo link and recorder read it directly. Credentials
@@ -279,3 +309,13 @@ Client-side RUM + Logs via `@datadog/mobile-react-native`; helpers in
   `accessibilityLabel` via `progressAccessibilityText`.
 - **RUM identity**: `setDatadogRumUser` receives the opaque auth subject id
   only — never email or display name.
+
+## Component render tests
+
+Component render tests use the in-file react re-point pattern — see
+`src/components/profile/__tests__/AccountSection.test.tsx`. The app's
+tsconfig maps `react` to its `.d.ts`, and jest-expo mirrors tsconfig paths
+into jest's `moduleNameMapper`, so each render suite re-points `react` and
+`react/jsx-runtime` at the real package via `jest.mock`. No new test
+dependencies are needed; the renderer is jest-expo's own transitive
+react-test-renderer.

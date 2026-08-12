@@ -74,15 +74,86 @@ describe("session snapshot lifecycle", () => {
     await store.refresh()
     expect(listener).toHaveBeenCalledTimes(1)
   })
+})
 
-  it("applySignedIn commits immediately after a completed sign-in flow", () => {
-    const { store } = buildStore()
-    store.applySignedIn({ id: "user-2", email: "p@example.com" })
+describe("commitSessionRead re-commits on a changed creation stamp (KTD3)", () => {
+  it("re-commits and notifies when only sessionCreatedAt changed", async () => {
+    // Same subject, same profile, but prompt=login mints a NEW session stamp.
+    // Removing the sessionCreatedAt OR-clause makes this a no-op — the stamp
+    // stays "T1" and the listener never fires a second time.
+    const fetchSession = jest
+      .fn<
+        Promise<{
+          id: string
+          email?: string
+          name?: string
+          sessionCreatedAt?: string
+        } | null>,
+        []
+      >()
+      .mockResolvedValueOnce({
+        id: "user-1",
+        email: "p@example.com",
+        name: "Person",
+        sessionCreatedAt: "T1",
+      })
+      .mockResolvedValueOnce({
+        id: "user-1",
+        email: "p@example.com",
+        name: "Person",
+        sessionCreatedAt: "T2",
+      })
+    const { store } = buildStore({ fetchSession })
+    const listener = jest.fn()
+    store.subscribe(listener)
 
-    expect(store.getSnapshot()).toEqual({
+    await store.refresh()
+    await store.refresh()
+
+    expect(store.getSnapshot()).toMatchObject({
       status: "signedIn",
-      user: { id: "user-2", email: "p@example.com" },
+      user: { id: "user-1", sessionCreatedAt: "T2" },
     })
+    expect(listener).toHaveBeenCalledTimes(2)
+  })
+
+  it("re-commits and notifies when only createdAt changed", async () => {
+    // Guards the sibling OR-clause: same subject/profile/session stamp, only
+    // the account createdAt differs. It must re-commit and notify.
+    const fetchSession = jest
+      .fn<
+        Promise<{
+          id: string
+          email?: string
+          name?: string
+          createdAt?: string
+        } | null>,
+        []
+      >()
+      .mockResolvedValueOnce({
+        id: "user-1",
+        email: "p@example.com",
+        name: "Person",
+        createdAt: "C1",
+      })
+      .mockResolvedValueOnce({
+        id: "user-1",
+        email: "p@example.com",
+        name: "Person",
+        createdAt: "C2",
+      })
+    const { store } = buildStore({ fetchSession })
+    const listener = jest.fn()
+    store.subscribe(listener)
+
+    await store.refresh()
+    await store.refresh()
+
+    expect(store.getSnapshot()).toMatchObject({
+      status: "signedIn",
+      user: { id: "user-1", createdAt: "C2" },
+    })
+    expect(listener).toHaveBeenCalledTimes(2)
   })
 })
 
@@ -365,6 +436,118 @@ describe("userFromSessionResult (outage is not a sign-out)", () => {
   })
 })
 
+describe("readSession (KTD6 outcome-reporting read)", () => {
+  it("returns the user and commits the signed-in snapshot", async () => {
+    const { store } = buildStore()
+
+    await expect(store.readSession()).resolves.toEqual({ id: "user-1" })
+    expect(store.getSnapshot()).toEqual({
+      status: "signedIn",
+      user: { id: "user-1" },
+    })
+  })
+
+  it("returns null and signs out locally on a definitive signed-out read", async () => {
+    const fetchSession = jest
+      .fn<Promise<{ id: string } | null>, []>()
+      .mockResolvedValueOnce({ id: "user-1" })
+      .mockResolvedValueOnce(null)
+    const { store } = buildStore({ fetchSession })
+
+    await store.readSession()
+    await expect(store.readSession()).resolves.toBeNull()
+    expect(store.getSnapshot()).toEqual({ status: "signedOut", user: null })
+  })
+
+  it("PROPAGATES a thrown read and keeps the last snapshot", async () => {
+    // The one contract difference from refresh(): the hosted sign-in needs
+    // to SEE the failure to classify it, but local state still degrades.
+    const fetchSession = jest
+      .fn<Promise<{ id: string } | null>, []>()
+      .mockResolvedValueOnce({ id: "user-1" })
+      .mockRejectedValueOnce(new SessionFetchError(503))
+    const { store } = buildStore({ fetchSession })
+
+    await store.readSession()
+    await expect(store.readSession()).rejects.toThrow(SessionFetchError)
+    expect(store.getSnapshot()).toMatchObject({
+      status: "signedIn",
+      user: { id: "user-1" },
+    })
+  })
+
+  it("re-mints the JWT when the read reveals a different subject (R10)", async () => {
+    const fetchSession = jest
+      .fn<Promise<{ id: string } | null>, []>()
+      .mockResolvedValueOnce({ id: "user-1" })
+      .mockResolvedValueOnce({ id: "user-2" })
+    const fetchToken = jest
+      .fn<Promise<string | null>, []>()
+      .mockResolvedValueOnce(fakeJwt(2_000_000_000))
+      .mockResolvedValueOnce(fakeJwt(2_000_000_001))
+    const { store } = buildStore({ fetchSession, fetchToken })
+
+    await store.readSession()
+    const first = await store.getFreshJwt()
+    await store.readSession()
+    const second = await store.getFreshJwt()
+
+    expect(first).not.toBeNull()
+    expect(second).not.toBe(first)
+  })
+})
+
+describe("userFromSessionResult creation stamps (KTD3)", () => {
+  it("maps the user and session createdAt when the payload carries them", () => {
+    expect(
+      userFromSessionResult({
+        data: {
+          user: { id: "user-1", createdAt: "2026-08-11T01:00:00.000Z" },
+          session: { createdAt: "2026-08-11T01:00:05.000Z" },
+        },
+      }),
+    ).toMatchObject({
+      id: "user-1",
+      createdAt: "2026-08-11T01:00:00.000Z",
+      sessionCreatedAt: "2026-08-11T01:00:05.000Z",
+    })
+  })
+
+  it("normalizes Date instances to ISO strings", () => {
+    const user = userFromSessionResult({
+      data: {
+        user: {
+          id: "user-1",
+          createdAt: new Date("2026-08-11T01:00:00.000Z"),
+        },
+        session: { createdAt: new Date("2026-08-11T01:00:05.000Z") },
+      },
+    })
+
+    expect(user?.createdAt).toBe("2026-08-11T01:00:00.000Z")
+    expect(user?.sessionCreatedAt).toBe("2026-08-11T01:00:05.000Z")
+  })
+
+  it("omits the stamps when the payload lacks them", () => {
+    const user = userFromSessionResult({ data: { user: { id: "user-1" } } })
+
+    expect(user?.createdAt).toBeUndefined()
+    expect(user?.sessionCreatedAt).toBeUndefined()
+  })
+
+  it("drops an invalid Date rather than throwing", () => {
+    const user = userFromSessionResult({
+      data: {
+        user: { id: "user-1", createdAt: new Date(Number.NaN) },
+        session: { createdAt: new Date(Number.NaN) },
+      },
+    })
+
+    expect(user?.createdAt).toBeUndefined()
+    expect(user?.sessionCreatedAt).toBeUndefined()
+  })
+})
+
 describe("refresh() keeps the session through an outage", () => {
   it("does not sign out when the session read throws", async () => {
     const fetchSession = jest
@@ -379,6 +562,40 @@ describe("refresh() keeps the session through an outage", () => {
     expect(store.getSnapshot()).toMatchObject({
       status: "signedIn",
       user: { id: "user-1" },
+    })
+  })
+})
+
+describe("getAuthClient native wiring", () => {
+  // The ephemeral flag's EFFECT (no iOS consent alert / no shared-cookie
+  // residual) is only observable at iOS runtime; this pins the config so a
+  // getAuthClient refactor cannot silently drop it back to non-ephemeral.
+  it("configures the expo client for an ephemeral iOS auth session", () => {
+    jest.isolateModules(() => {
+      const expoClient = jest.fn(() => ({ id: "expo" }))
+      jest.doMock("@better-auth/expo/client", () => ({ expoClient }))
+      jest.doMock("better-auth/client", () => ({
+        createAuthClient: jest.fn(() => ({})),
+      }))
+      jest.doMock("better-auth/client/plugins", () => ({
+        genericOAuthClient: jest.fn(() => ({})),
+      }))
+      jest.doMock("expo-secure-store", () => ({
+        getItem: jest.fn(),
+        setItem: jest.fn(),
+        WHEN_UNLOCKED_THIS_DEVICE_ONLY: "device-only",
+      }))
+
+      // eslint-disable-next-line @typescript-eslint/no-require-imports -- isolateModules needs the mocked graph at require time
+      const required = require("../authSession")
+      const authSessionModule = required as typeof import("../authSession")
+      authSessionModule.getAuthClient()
+
+      expect(expoClient).toHaveBeenCalledWith(
+        expect.objectContaining({
+          webBrowserOptions: { preferEphemeralSession: true },
+        }),
+      )
     })
   })
 })

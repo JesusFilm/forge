@@ -1700,6 +1700,51 @@ describe("Mastra env", () => {
     await expect(import("./env")).rejects.toThrow()
   })
 
+  it("gives the trace-retention config its own 15s default timeout while everything else mirrors the prompt config", async () => {
+    // The sweep's caller budget is a daily timer, not a chat turn (feat-336
+    // follow-up, 2026-08-11: the live DELETE measured ~3.4s — over the
+    // prompt-tuned 3s default the sweep previously inherited). Assert the
+    // ONLY divergence is timeoutMs, so credential/host/byte-cap posture can
+    // never silently fork between the two accessors. The credential trio is
+    // STUBBED so the equality compares real values — undefined-to-undefined
+    // would keep this green if the retention accessor were ever re-pointed
+    // at different credential env vars (security-review nit, 2026-08-12).
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("LANGFUSE_BASE_URL", "https://langfuse.internal")
+    vi.stubEnv("LANGFUSE_PUBLIC_KEY", "pk-lf-test")
+    vi.stubEnv("LANGFUSE_SECRET_KEY", "sk-lf-test")
+
+    const { getLangfuseConfig, getLangfuseTraceRetentionConfig } =
+      await import("./env")
+
+    const prompt = getLangfuseConfig()
+    const retention = getLangfuseTraceRetentionConfig()
+    expect(retention.timeoutMs).toBe(15_000)
+    expect(prompt.timeoutMs).toBe(3_000)
+    expect(retention.baseUrl).toBe("https://langfuse.internal")
+    expect(retention.publicKey).toBe("pk-lf-test")
+    expect(retention.secretKey).toBe("sk-lf-test")
+    expect({ ...retention, timeoutMs: prompt.timeoutMs }).toEqual(prompt)
+  })
+
+  it("projects a retention-timeout override without touching the prompt timeout", async () => {
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("LANGFUSE_TRACE_RETENTION_TIMEOUT_MS", "30000")
+
+    const { getLangfuseConfig, getLangfuseTraceRetentionConfig } =
+      await import("./env")
+
+    expect(getLangfuseTraceRetentionConfig().timeoutMs).toBe(30_000)
+    expect(getLangfuseConfig().timeoutMs).toBe(3_000)
+  })
+
+  it("rejects a retention timeout above the 60s schema cap at parse", async () => {
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("LANGFUSE_TRACE_RETENTION_TIMEOUT_MS", "60001")
+
+    await expect(import("./env")).rejects.toThrow()
+  })
+
   it("rejects a Langfuse prompt cache TTL above the schema cap at parse", async () => {
     vi.stubEnv("NODE_ENV", "development")
     vi.stubEnv("LANGFUSE_PROMPT_CACHE_TTL_MS", "3600001")
@@ -1738,6 +1783,18 @@ describe("Mastra env", () => {
     vi.stubEnv("NODE_ENV", "development")
     vi.stubEnv("LANGFUSE_PROMPT_SMOKE_TEST", "true")
 
+    await expect(import("./env")).rejects.toThrow()
+  })
+
+  it('accepts LANGFUSE_TRACE_RETENTION_SMOKE_TEST="1" and rejects any other non-empty value', async () => {
+    // Same posture as the prompt smoke gate (feat-336).
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("LANGFUSE_TRACE_RETENTION_SMOKE_TEST", "1")
+    const { env } = await import("./env")
+    expect(env.LANGFUSE_TRACE_RETENTION_SMOKE_TEST).toBe("1")
+
+    vi.resetModules()
+    vi.stubEnv("LANGFUSE_TRACE_RETENTION_SMOKE_TEST", "true")
     await expect(import("./env")).rejects.toThrow()
   })
 

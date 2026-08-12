@@ -2,6 +2,7 @@ import type { PrismaClient } from "@prisma/client"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import type {
   TypesenseClient,
+  TypesenseSearchHit,
   TypesenseSearchResult,
   TypesenseSearchRequest,
 } from "./typesense-client"
@@ -9,7 +10,10 @@ import { TypesenseRequestError } from "./typesense-client"
 import { resolveTypesenseWatchSearchApiKey } from "./typesense-client-config"
 import { resolveSearchLanguageSignals } from "./search-language-resolution"
 import { buildAvailabilityDocuments } from "./typesense-watch-search-indexer"
-import { buildTypesenseWatchLexicalDocuments } from "./typesense-watch-search-lexical"
+import {
+  buildTypesenseWatchLexicalDocuments,
+  type TypesenseWatchLexicalDocument,
+} from "./typesense-watch-search-lexical"
 import {
   TYPESENSE_WATCH_AVAILABILITY_ALIAS,
   TYPESENSE_WATCH_CATALOG_ALIAS,
@@ -24,7 +28,10 @@ import {
   createCandidateWatchSearchProfile,
   type TypesenseWatchSearchCollectionBinding,
 } from "./typesense-watch-search-profile"
-import { TypesenseWatchSearchService } from "./typesense-watch-search.service"
+import {
+  typesenseLexicalMatchQuality,
+  TypesenseWatchSearchService,
+} from "./typesense-watch-search.service"
 
 vi.mock("./search-language-resolution", async (importOriginal) => {
   const actual =
@@ -241,6 +248,7 @@ function prismaFixture({
 
 function typesenseFixture({
   lexical = [catalogDocument],
+  lexicalLanes,
   semantic = [],
   hybrid,
   hybridError,
@@ -256,6 +264,15 @@ function typesenseFixture({
   },
 }: {
   lexical?: TypesenseWatchCatalogDocument[]
+  lexicalLanes?: Partial<
+    Record<
+      "title" | "metadata",
+      Array<{
+        videoId: string
+        textMatchInfo?: TypesenseSearchHit<TypesenseWatchLexicalDocument>["text_match_info"]
+      }>
+    >
+  >
   semantic?: Array<{
     videoId: string
     text: string
@@ -322,19 +339,46 @@ function typesenseFixture({
           const requestedFilterValues = [
             ...String(request.filter_by ?? "").matchAll(/`([^`]+)`/g),
           ].map((match) => match[1])
+          const filteredLexicalDocuments = lexicalDocuments.filter(
+            (document) =>
+              requestedFilterValues.length === 0 ||
+              requestedFilterValues.includes(document.languageIdentity),
+          )
+          const lexicalLane = String(request.query_by).startsWith("title_")
+            ? "title"
+            : String(request.query_by).startsWith("metadata_")
+              ? "metadata"
+              : null
+          const configuredLexicalHits = lexicalLane
+            ? lexicalLanes?.[lexicalLane]
+            : undefined
+          const lexicalEntries = configuredLexicalHits
+            ? configuredLexicalHits.flatMap(({ videoId, textMatchInfo }) => {
+                const document = filteredLexicalDocuments.find(
+                  (candidate) => candidate.videoId === videoId,
+                )
+                return document
+                  ? [
+                      {
+                        vectorDistance: undefined,
+                        textMatchInfo,
+                        document,
+                      },
+                    ]
+                  : []
+              })
+            : filteredLexicalDocuments.map((document) => ({
+                vectorDistance: undefined,
+                textMatchInfo: undefined,
+                document,
+              }))
           const entries =
             request.collection === binding.lexical
-              ? lexicalDocuments
-                  .filter(
-                    (document) =>
-                      requestedFilterValues.length === 0 ||
-                      requestedFilterValues.includes(document.languageIdentity),
-                  )
-                  .map((document) => ({
-                    vectorDistance: undefined,
-                    document,
-                  }))
-              : semanticEntries
+              ? lexicalEntries
+              : semanticEntries.map((entry) => ({
+                  ...entry,
+                  textMatchInfo: undefined,
+                }))
           const groups = new Map<string, Array<(typeof entries)[number]>>()
           for (const entry of entries) {
             const group = groups.get(entry.document.canonicalVideoId) ?? []
@@ -357,6 +401,7 @@ function typesenseFixture({
               found: group.length,
               hits: group.slice(0, groupLimit).map((entry) => ({
                 vector_distance: entry.vectorDistance,
+                text_match_info: entry.textMatchInfo,
                 document: projectDocument(entry.document, request),
               })),
             })),
@@ -440,6 +485,75 @@ function typesenseFixture({
     }),
   }
 }
+
+describe("typesenseLexicalMatchQuality", () => {
+  it("keeps exact and missing metadata at neutral quality", () => {
+    expect(typesenseLexicalMatchQuality(undefined)).toBe(1)
+    expect(
+      typesenseLexicalMatchQuality({
+        tokens_matched: 3,
+        num_tokens_dropped: 0,
+        typo_prefix_score: 0,
+      }),
+    ).toBe(1)
+    expect(
+      typesenseLexicalMatchQuality({
+        tokens_matched: -1,
+        num_tokens_dropped: Number.NaN,
+        typo_prefix_score: Number.POSITIVE_INFINITY,
+      }),
+    ).toBe(1)
+  })
+
+  it("reduces quality monotonically for dropped tokens and typo-prefix cost", () => {
+    const exact = typesenseLexicalMatchQuality({})
+    const oneDrop = typesenseLexicalMatchQuality({ num_tokens_dropped: 1 })
+    const twoDrops = typesenseLexicalMatchQuality({ num_tokens_dropped: 2 })
+    const oneTypoPrefixCost = typesenseLexicalMatchQuality({
+      typo_prefix_score: 1,
+    })
+    const twoTypoPrefixCosts = typesenseLexicalMatchQuality({
+      typo_prefix_score: 2,
+    })
+    const combined = typesenseLexicalMatchQuality({
+      num_tokens_dropped: 1,
+      typo_prefix_score: 1,
+    })
+
+    expect(exact).toBe(1)
+    expect(oneDrop).toBeCloseTo(0.2)
+    expect(twoDrops).toBeLessThan(oneDrop)
+    expect(oneTypoPrefixCost).toBeCloseTo(0.8)
+    expect(twoTypoPrefixCosts).toBeLessThan(oneTypoPrefixCost)
+    expect(combined).toBeLessThan(oneDrop)
+    for (const quality of [
+      exact,
+      oneDrop,
+      twoDrops,
+      oneTypoPrefixCost,
+      twoTypoPrefixCosts,
+      combined,
+    ]) {
+      expect(quality).toBeGreaterThanOrEqual(0)
+      expect(quality).toBeLessThanOrEqual(1)
+    }
+  })
+
+  it("guards the Typesense 30.2 matched-token encoding cap", () => {
+    expect(
+      typesenseLexicalMatchQuality({
+        tokens_matched: 15,
+        num_tokens_dropped: 5,
+      }),
+    ).toBe(1)
+    expect(
+      typesenseLexicalMatchQuality({
+        tokens_matched: 14,
+        num_tokens_dropped: 1,
+      }),
+    ).toBeCloseTo(0.2)
+  })
+})
 
 describe("TypesenseWatchSearchService", () => {
   it("requires the search-only key for candidates while preserving the current fallback", () => {
@@ -1123,11 +1237,335 @@ describe("TypesenseWatchSearchService", () => {
     expect(response.results[0]?.evidence.kind).toBe("exact_title")
   })
 
+  it("ranks a complete metadata match above a dropped-token title match", async () => {
+    const partialTitle: TypesenseWatchCatalogDocument = {
+      ...catalogDocument,
+      id: "partial-world-title",
+      coreId: "core-partial-world-title",
+      slug: "the-world",
+      titles: ["The World"],
+      descriptions: ["A story about the world."],
+      localesJson: JSON.stringify([
+        {
+          locale: "fr",
+          title: "The World",
+          description: "A story about the world.",
+        },
+      ]),
+    }
+    const completeMetadata: TypesenseWatchCatalogDocument = {
+      ...catalogDocument,
+      id: "complete-world-cup-metadata",
+      coreId: "core-complete-world-cup-metadata",
+      slug: "championship-stories",
+      titles: ["Championship Stories"],
+      descriptions: ["Stories from the World Cup."],
+      localesJson: JSON.stringify([
+        {
+          locale: "fr",
+          title: "Championship Stories",
+          description: "Stories from the World Cup.",
+        },
+      ]),
+    }
+    const catalog = [partialTitle, completeMetadata]
+    const service = new TypesenseWatchSearchService(
+      prismaFixture(),
+      typesenseFixture({
+        lexical: catalog,
+        catalog,
+        lexicalLanes: {
+          title: [
+            {
+              videoId: partialTitle.id,
+              textMatchInfo: {
+                tokens_matched: 1,
+                num_tokens_dropped: 1,
+                typo_prefix_score: 0,
+              },
+            },
+          ],
+          metadata: [
+            {
+              videoId: completeMetadata.id,
+              textMatchInfo: {
+                tokens_matched: 2,
+                num_tokens_dropped: 0,
+                typo_prefix_score: 0,
+              },
+            },
+          ],
+        },
+      }) as unknown as TypesenseClient,
+      { embedder: vi.fn(async () => embedding) },
+    )
+
+    const response = await service.search({
+      query: "World Cup",
+      targetLanguageSlug: "french",
+    })
+
+    expect(response.results.map((result) => result.id)).toEqual([
+      completeMetadata.id,
+      partialTitle.id,
+    ])
+  })
+
+  it("keeps an exact Bible Project brand title ahead of degraded title recall", async () => {
+    const degradedTitle: TypesenseWatchCatalogDocument = {
+      ...catalogDocument,
+      id: "partial-bible-title",
+      coreId: "core-partial-bible-title",
+      slug: "the-bible",
+      titles: ["The Bible"],
+      localesJson: JSON.stringify([
+        { locale: "fr", title: "The Bible", description: null },
+      ]),
+    }
+    const bibleProject: TypesenseWatchCatalogDocument = {
+      ...catalogDocument,
+      id: "the-bible-project",
+      coreId: "core-the-bible-project",
+      slug: "the-bible-project",
+      titles: ["The Bible Project"],
+      localesJson: JSON.stringify([
+        { locale: "fr", title: "The Bible Project", description: null },
+      ]),
+    }
+    const catalog = [degradedTitle, bibleProject]
+    const service = new TypesenseWatchSearchService(
+      prismaFixture(),
+      typesenseFixture({
+        lexical: catalog,
+        catalog,
+        lexicalLanes: {
+          title: [
+            {
+              videoId: degradedTitle.id,
+              textMatchInfo: {
+                tokens_matched: 2,
+                num_tokens_dropped: 1,
+                typo_prefix_score: 0,
+              },
+            },
+            {
+              videoId: bibleProject.id,
+              textMatchInfo: {
+                tokens_matched: 3,
+                num_tokens_dropped: 0,
+                typo_prefix_score: 0,
+              },
+            },
+          ],
+          metadata: [],
+        },
+      }) as unknown as TypesenseClient,
+      { embedder: vi.fn(async () => embedding) },
+    )
+
+    const response = await service.search({
+      query: "The Bible Project",
+      targetLanguageSlug: "french",
+    })
+
+    expect(response.results.map((result) => result.id)).toEqual([
+      bibleProject.id,
+      degradedTitle.id,
+    ])
+    expect(response.results[0]?.evidence.kind).toBe("exact_title")
+  })
+
+  it("keeps typo-prefix and dropped-token title results with lower scores", async () => {
+    const exactTitle: TypesenseWatchCatalogDocument = {
+      ...catalogDocument,
+      id: "exact-bible-title",
+      coreId: "core-exact-bible-title",
+      slug: "bible-study",
+      titles: ["Bible Study"],
+      localesJson: JSON.stringify([
+        { locale: "fr", title: "Bible Study", description: null },
+      ]),
+    }
+    const fuzzyTitle: TypesenseWatchCatalogDocument = {
+      ...catalogDocument,
+      id: "fuzzy-bibble-title",
+      coreId: "core-fuzzy-bibble-title",
+      slug: "bibble-stories",
+      titles: ["Bibble Stories"],
+      localesJson: JSON.stringify([
+        { locale: "fr", title: "Bibble Stories", description: null },
+      ]),
+    }
+    const oneDrop: TypesenseWatchCatalogDocument = {
+      ...catalogDocument,
+      id: "one-dropped-token",
+      coreId: "core-one-dropped-token",
+      slug: "alpha-beta",
+      titles: ["Alpha Beta"],
+      localesJson: JSON.stringify([
+        { locale: "fr", title: "Alpha Beta", description: null },
+      ]),
+    }
+    const twoDrops: TypesenseWatchCatalogDocument = {
+      ...catalogDocument,
+      id: "two-dropped-tokens",
+      coreId: "core-two-dropped-tokens",
+      slug: "alpha",
+      titles: ["Alpha"],
+      localesJson: JSON.stringify([
+        { locale: "fr", title: "Alpha", description: null },
+      ]),
+    }
+
+    const typoCatalog = [fuzzyTitle, exactTitle]
+    const typoService = new TypesenseWatchSearchService(
+      prismaFixture(),
+      typesenseFixture({
+        lexical: typoCatalog,
+        catalog: typoCatalog,
+        lexicalLanes: {
+          title: [
+            {
+              videoId: fuzzyTitle.id,
+              textMatchInfo: { typo_prefix_score: 1 },
+            },
+            {
+              videoId: exactTitle.id,
+              textMatchInfo: { typo_prefix_score: 0 },
+            },
+          ],
+          metadata: [],
+        },
+      }) as unknown as TypesenseClient,
+      { embedder: vi.fn(async () => embedding) },
+    )
+    const dropCatalog = [twoDrops, oneDrop]
+    const dropService = new TypesenseWatchSearchService(
+      prismaFixture(),
+      typesenseFixture({
+        lexical: dropCatalog,
+        catalog: dropCatalog,
+        lexicalLanes: {
+          title: [
+            {
+              videoId: twoDrops.id,
+              textMatchInfo: { num_tokens_dropped: 2 },
+            },
+            {
+              videoId: oneDrop.id,
+              textMatchInfo: { num_tokens_dropped: 1 },
+            },
+          ],
+          metadata: [],
+        },
+      }) as unknown as TypesenseClient,
+      { embedder: vi.fn(async () => embedding) },
+    )
+
+    const [typoResponse, dropResponse] = await Promise.all([
+      typoService.search({ query: "Bible", targetLanguageSlug: "french" }),
+      dropService.search({
+        query: "Alpha Beta Gamma",
+        targetLanguageSlug: "french",
+      }),
+    ])
+
+    expect(typoResponse.results.map((result) => result.id)).toEqual([
+      exactTitle.id,
+      fuzzyTitle.id,
+    ])
+    expect(dropResponse.results.map((result) => result.id)).toEqual([
+      oneDrop.id,
+      twoDrops.id,
+    ])
+  })
+
+  it("uses the best same-lane locale hit while summing separate lanes", async () => {
+    const titleOnly: TypesenseWatchCatalogDocument = {
+      ...catalogDocument,
+      id: "a-title-only",
+      coreId: "shared-canonical-video",
+      slug: "title-only",
+      titles: ["Community Stories"],
+      localesJson: JSON.stringify([
+        { locale: "fr", title: "Community Stories", description: null },
+      ]),
+    }
+    const multiLane: TypesenseWatchCatalogDocument = {
+      ...catalogDocument,
+      id: "z-multi-lane",
+      coreId: "shared-canonical-video",
+      slug: "multi-lane",
+      titles: ["Community Stories"],
+      descriptions: ["Community Stories"],
+      localesJson: JSON.stringify([
+        {
+          locale: "fr",
+          title: "Community Stories",
+          description: "Community Stories",
+        },
+      ]),
+    }
+    const catalog = [multiLane, titleOnly]
+    const service = new TypesenseWatchSearchService(
+      prismaFixture(),
+      typesenseFixture({
+        lexical: catalog,
+        catalog,
+        lexicalLanes: {
+          title: [
+            {
+              videoId: multiLane.id,
+              textMatchInfo: { num_tokens_dropped: 1 },
+            },
+            {
+              videoId: multiLane.id,
+              textMatchInfo: { num_tokens_dropped: 0 },
+            },
+            {
+              videoId: titleOnly.id,
+              textMatchInfo: { num_tokens_dropped: 0 },
+            },
+          ],
+          metadata: [
+            {
+              videoId: multiLane.id,
+              textMatchInfo: { num_tokens_dropped: 0 },
+            },
+          ],
+        },
+      }) as unknown as TypesenseClient,
+      { embedder: vi.fn(async () => embedding) },
+    )
+
+    const response = await service.search({
+      query: "Community",
+      targetLanguageSlug: "french",
+    })
+
+    expect(response.results.map((result) => result.id)).toEqual([multiLane.id])
+    expect(response.results[0]?.scoreBreakdown.sourceScore).toBeCloseTo(0.7)
+  })
+
   it("adds semantic evidence to a lexical candidate instead of discarding it", async () => {
+    const degradedLexicalLanes = {
+      title: [
+        {
+          videoId: catalogDocument.id,
+          textMatchInfo: {
+            tokens_matched: 1,
+            num_tokens_dropped: 1,
+            typo_prefix_score: 0,
+          },
+        },
+      ],
+      metadata: [],
+    }
     const lexicalOnly = new TypesenseWatchSearchService(
       prismaFixture(),
       typesenseFixture({
         lexical: [catalogDocument],
+        lexicalLanes: degradedLexicalLanes,
         semantic: [],
       }) as unknown as TypesenseClient,
       { embedder: vi.fn(async () => embedding) },
@@ -1136,6 +1574,7 @@ describe("TypesenseWatchSearchService", () => {
       prismaFixture(),
       typesenseFixture({
         lexical: [catalogDocument],
+        lexicalLanes: degradedLexicalLanes,
         semantic: [
           {
             videoId: catalogDocument.id,
@@ -1156,6 +1595,11 @@ describe("TypesenseWatchSearchService", () => {
     expect(hybridResponse.results[0]?.score).toBeGreaterThan(
       lexicalResponse.results[0]?.score ?? 0,
     )
+    expect(hybridResponse.results[0]).toMatchObject({
+      snippet: "The believers shared their lives.",
+      startSeconds: 42,
+      evidence: { kind: "exact_title", languageSlug: "french" },
+    })
   })
 
   it("ranks a whole-title match ahead of broader exact-title matches", async () => {
@@ -1271,6 +1715,9 @@ describe("TypesenseWatchSearchService", () => {
     expect(metadataRequest).toMatchObject({
       query_by: "metadata_fr,metadata_fallback",
       group_limit: 3,
+      // The metadata lane keeps the dropped-token retry as the long-query
+      // recall safety net.
+      drop_tokens_threshold: 1,
     })
     expect(titleRequest).not.toHaveProperty("validate_field_names")
     expect(semanticRequest?.q).toBe("*")

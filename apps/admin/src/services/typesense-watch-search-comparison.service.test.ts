@@ -1,7 +1,10 @@
-import { describe, expect, it, vi } from "vitest"
+import { afterEach, describe, expect, it, vi } from "vitest"
 
 import type { TypesenseWatchSearchProfile } from "./typesense-watch-search-profile"
-import { TypesenseWatchSearchComparisonService } from "./typesense-watch-search-comparison.service"
+import {
+  resolveEvaluationCandidateWatchSearchProfile,
+  TypesenseWatchSearchComparisonService,
+} from "./typesense-watch-search-comparison.service"
 import type { WatchSearchInput } from "./watch-search.service"
 
 const currentProfile = {
@@ -126,6 +129,48 @@ function fixture() {
 }
 
 describe("TypesenseWatchSearchComparisonService", () => {
+  afterEach(() => vi.unstubAllEnvs())
+
+  it("keeps an evaluation generation compatible across unrelated Admin deployments", async () => {
+    vi.stubEnv("RAILWAY_GIT_COMMIT_SHA", "unrelated-admin-deployment")
+    const generations = {
+      getPointer: vi.fn(async () => ({
+        kind: "EVALUATION" as const,
+        generationId: "generation-1",
+        version: 1,
+        updatedAt: new Date(),
+      })),
+      getGeneration: vi.fn(async () => ({
+        id: "generation-1",
+        applicationRevision: "watch-search-candidate/v1",
+        transcriptCollection: "watch_search_transcripts_physical",
+        transcriptProjectionRevision: 7n,
+      })),
+      resolveGeneration: vi.fn(async () => ({
+        generationId: "generation-1",
+        applicationRevision: "watch-search-candidate/v1",
+        transcriptProjectionRevision: 7n,
+        fieldManifests: candidateProfile.fieldManifests,
+        collections: candidateProfile.binding,
+      })),
+    }
+
+    await expect(
+      resolveEvaluationCandidateWatchSearchProfile(generations),
+    ).resolves.toMatchObject({
+      kind: "CANDIDATE",
+      generationId: "generation-1",
+      applicationRevision: "watch-search-candidate/v1",
+    })
+    expect(generations.resolveGeneration).toHaveBeenCalledWith({
+      generationId: "generation-1",
+      applicationRevision: "watch-search-candidate/v1",
+      transcriptCollection: "watch_search_transcripts_physical",
+      transcriptProjectionRevision: 7n,
+      requireQualified: false,
+    })
+  })
+
   it("rejects blank input with the typed comparison error", async () => {
     const { deps } = fixture()
     await expect(

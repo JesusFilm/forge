@@ -107,7 +107,7 @@ export type SeekerProxyHandlerInput = {
    */
   resourceId: string
   /** Serialized anon-id Set-Cookie to attach to the SSE response (rolling
-   * 30-day lifetime — re-issued on every anonymous send). */
+   * 25-day lifetime — re-issued on every anonymous send). */
   anonSetCookie?: string
   fetchImpl?: typeof fetch
   /** Inbound request signal — aborts the upstream fetch when the caller disconnects. */

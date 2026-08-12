@@ -33,6 +33,7 @@ Mobile has no login. A person who watches half a video on web while signed in st
 ### Key Decisions
 
 - **Native Apple and Google sign-in sheets; other providers via the hosted auth page.** (session-settled: user-directed — chosen over the hosted browser-sheet PKCE flow for all providers: the slicker native feel is worth the extra auth-side dependencies and per-provider release coupling it brings.)
+  > **Superseded 2026-08-11:** `docs/plans/2026-08-11-001-feat-mobile-hosted-auth-login-plan.md` replaces this decision. The hosted page is now the only mobile login; the native Apple/Google/email flows are removed. The session store, watch progress, and JWT machinery from this plan stay live.
 - **V1 bundles login with continue-watching.** (session-settled: user-approved — chosen over login-only groundwork: login alone has no visible perk on mobile, since downloads are ungated and no history UI exists.)
 - **Continue-watching means progress bar plus resume-from-position.** (session-settled: user-approved — chosen over bar-only display and over adding a Continue Watching home shelf: this completes the cross-device loop without new Home surface or a list-shaped read API.)
 - **Mobile downloads stay ungated.** (session-settled: user-directed — chosen over mirroring web's download gate: mobile downloads are offline in-app viewing, not raw MP4 access, so the divergence from web is intentional.)

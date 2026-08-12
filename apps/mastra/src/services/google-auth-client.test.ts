@@ -296,6 +296,7 @@ describe("requestGoogleJson", () => {
       ok: false,
       reason: "response_too_large",
       retryable: true,
+      attempts: 1,
     })
     await expect(
       request(vi.fn(async () => new Response("{")) as unknown as typeof fetch),
@@ -303,6 +304,7 @@ describe("requestGoogleJson", () => {
       ok: false,
       reason: "parse_error",
       retryable: true,
+      attempts: 1,
     })
   })
 
@@ -333,6 +335,7 @@ describe("requestGoogleJson", () => {
       ok: false,
       reason: "network_error",
       retryable: true,
+      attempts: 2,
     })
     expect(fetchImpl).toHaveBeenCalledTimes(2)
   })
@@ -364,6 +367,7 @@ describe("requestGoogleJson", () => {
       ok: false,
       reason: "timeout",
       retryable: true,
+      attempts: 2,
     })
     expect(fetchImpl).toHaveBeenCalledTimes(2)
   })

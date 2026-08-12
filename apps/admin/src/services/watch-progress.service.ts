@@ -259,7 +259,13 @@ async function writeNewestWins(
       position_seconds, duration_seconds, completed, last_watched_at
     )
     ON CONFLICT ("user_id", "video_id") DO UPDATE SET
-      "language_slug"    = EXCLUDED."language_slug",
+      -- COALESCE, not a bare overwrite: a writer that does not KNOW the audio
+      -- language sends null, and null must mean "leave it alone" rather than
+      -- "erase it". TV is exactly that writer — its Continue Watching shelf
+      -- carries no dub language — so a bare EXCLUDED wiped the language mobile
+      -- had recorded on every signed-in TV sync, permanently and for every
+      -- device. Clearing a language is not a use case any client has.
+      "language_slug"    = COALESCE(EXCLUDED."language_slug", "watch_progress"."language_slug"),
       "position_seconds" = EXCLUDED."position_seconds",
       "duration_seconds" = EXCLUDED."duration_seconds",
       "completed"        = EXCLUDED."completed",

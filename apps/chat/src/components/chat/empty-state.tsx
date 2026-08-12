@@ -32,11 +32,11 @@ export function EmptyState({
       </p>
       {/* Storage disclosure (feat-208): only when Seeker is live — the stub
           path persists nothing server-side. Retention wording must track the
-          ai-chat retention windows (30d anon / 180d signed-in). */}
+          flat ai-chat retention window (25 days for everyone, feat-336). */}
       {seekerEnabled ? (
         <p className="mt-2 max-w-[480px] text-[13px] leading-relaxed text-ash/80">
-          Conversations are saved to keep continuity between visits — anonymous
-          conversations are kept for 30 days.
+          Conversations are saved to keep continuity between visits and are kept
+          for 25 days.
         </p>
       ) : null}
       <div className="mt-10 border-t border-linen/5">

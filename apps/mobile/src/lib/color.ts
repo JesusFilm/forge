@@ -35,6 +35,9 @@ export const STATUS_DONE_COLOR = "#34d399"
 /** Failed-download status. */
 export const STATUS_FAILED_COLOR = "#fb7185"
 
+/** Inline warning cards and non-fatal error notices. */
+export const WARNING_COLOR = "#fbbf24"
+
 /** Text rendered on image/gradient overlays. */
 export const TEXT_ON_OVERLAY = "#ffffff"
 
