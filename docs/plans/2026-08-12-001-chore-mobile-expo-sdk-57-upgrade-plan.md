@@ -104,6 +104,7 @@ Deferred for later:
 Non-goals:
 
 - Any `apps/tv` change in this unit.
+  > **Superseded in part, 2026-08-13 (execution-time review finding 1).** Commit `488dcd95f` adds two protective pins to `apps/tv/package.json` (`@expo/metro-runtime ~6.1.2`, `react-native-safe-area-context ~5.6.2`). TV never declared these packages; it borrowed mobile's resolved instances, and mobile's SDK 57 pins re-keyed TV's lockfile graph. The pins restore the exact versions main resolved, serving this non-goal's intent (TV runtime unchanged) by breaking its letter. Residual drift main did not have: `@babel/core` keys 7.29.0 (build-time) and `@expo/dom-webview` / `masked-view` appear as resolved optional peers (inert under TV's SDK 54 classic autolinking). Drop that commit to choose verify-and-accept instead. This note also amends R3, U3's "TV pins verified untouched" gate, the "TV untouched" Verification Contract row, and the DoD's "byte-unchanged" clause: each now reads as "`apps/tv/package.json` carries only the two protective pins; all other TV pins byte-unchanged; `git diff main -- apps/tv` shows only those two lines."
 - Feature work riding the upgrade branch; the diff stays platform-only.
 - New Architecture work — the app is already New-Architecture-only; SDK 55's mandate is a no-op here.
 - Migrating the download engine off `expo-file-system/legacy` — the subpath still exists at SDK 57; migration is separate work.
@@ -255,7 +256,7 @@ flowchart TB
   - Datadog RUM session from the ladder appears with resource events and correct app version.
   - Session replay from the ladder shows the Account screen's identity block masked (the masking wrapper survived the replay-SDK and RN view-layer bumps).
   - The dev-refusal guard still fires when pointed at production admin (final repeat of the per-checkpoint check).
-- **Verification:** Ladder green; doctor clean; checkpoint commit created; TV pins verified untouched (`git diff main -- apps/tv` empty).
+- **Verification:** Ladder green; doctor clean; checkpoint commit created; TV pins verified untouched (`git diff main -- apps/tv` empty; amended 2026-08-13 — see the Non-goals supersession note: the diff now shows exactly the two protective pins).
 - **Execution note:** Prefer runtime smoke evidence over new unit coverage; the diff should stay dependency-and-config only.
 
 ### U4. Android PiP spike (throwaway)
@@ -307,20 +308,20 @@ flowchart TB
 
 ## Verification Contract
 
-| Gate               | Command / check                                                                                             | Applies                                                  |
-| ------------------ | ----------------------------------------------------------------------------------------------------------- | -------------------------------------------------------- |
-| Typecheck          | `pnpm --filter @forge/mobile typecheck`                                                                     | Every checkpoint (U1–U3)                                 |
-| Unit tests         | `pnpm --filter @forge/mobile test`                                                                          | Every checkpoint (U1–U3)                                 |
-| Lint               | `pnpm --filter @forge/mobile lint`                                                                          | Every checkpoint (U1–U3)                                 |
-| Expo doctor        | `npx expo-doctor` from `apps/mobile`                                                                        | Baseline before U1; clean at U3; blocking in CI after U5 |
-| Patch guard        | `node scripts/check-patched-deps.mjs`                                                                       | Baseline and after every dependency bump                 |
-| Mobile patch scope | `pnpm why @datadog/mobile-react-native --filter @forge/mobile`                                              | U3 — must show only 3.5.4                                |
-| Native boot        | `npx expo run:ios` and `npx expo run:android` from a clean prebuild (stale `ios/`/`android/` deleted first) | Every checkpoint (KTD2)                                  |
-| Device ladder      | R9 list, both platforms                                                                                     | U3                                                       |
-| Replay masking     | Signed-in Account screen recorded; replay in the dev Datadog org shows the identity block masked            | U3                                                       |
-| Admin refusal      | Dev build pointed at production admin refuses to start; local endpoint restored after                       | Every checkpoint (KTD2)                                  |
-| PiP evidence       | Screen recording, both layouts, Android                                                                     | U4                                                       |
-| TV untouched       | `git diff main -- apps/tv` empty; TV CI green if the matrix triggers it                                     | PR                                                       |
+| Gate               | Command / check                                                                                                                               | Applies                                                  |
+| ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------- |
+| Typecheck          | `pnpm --filter @forge/mobile typecheck`                                                                                                       | Every checkpoint (U1–U3)                                 |
+| Unit tests         | `pnpm --filter @forge/mobile test`                                                                                                            | Every checkpoint (U1–U3)                                 |
+| Lint               | `pnpm --filter @forge/mobile lint`                                                                                                            | Every checkpoint (U1–U3)                                 |
+| Expo doctor        | `npx expo-doctor` from `apps/mobile`                                                                                                          | Baseline before U1; clean at U3; blocking in CI after U5 |
+| Patch guard        | `node scripts/check-patched-deps.mjs`                                                                                                         | Baseline and after every dependency bump                 |
+| Mobile patch scope | `pnpm why @datadog/mobile-react-native --filter @forge/mobile`                                                                                | U3 — must show only 3.5.4                                |
+| Native boot        | `npx expo run:ios` and `npx expo run:android` from a clean prebuild (stale `ios/`/`android/` deleted first)                                   | Every checkpoint (KTD2)                                  |
+| Device ladder      | R9 list, both platforms                                                                                                                       | U3                                                       |
+| Replay masking     | Signed-in Account screen recorded; replay in the dev Datadog org shows the identity block masked                                              | U3                                                       |
+| Admin refusal      | Dev build pointed at production admin refuses to start; local endpoint restored after                                                         | Every checkpoint (KTD2)                                  |
+| PiP evidence       | Screen recording, both layouts, Android                                                                                                       | U4                                                       |
+| TV untouched       | `git diff main -- apps/tv` shows only the two protective pins (amended 2026-08-13, see Non-goals note); TV CI green if the matrix triggers it | PR                                                       |
 
 Watchman must be installed on the dev machine before any Metro-based verification (`docs/solutions/runtime-errors/metro-node-crawler-rangerror-missing-watchman-20260622.md`).
 
@@ -329,7 +330,7 @@ Watchman must be installed on the dev machine before any Metro-based verificatio
 ## Definition of Done
 
 - `apps/mobile/package.json` pins Expo SDK 57 / RN 0.86.x / React 19.2.x; every checkpoint commit is present and gated.
-- No `pnpm.patchedDependencies` entry applies to mobile's graph; the mobile-scoped `pnpm why` proof is recorded; the 3.5.2 patch file and all `apps/tv` pins are byte-unchanged.
+- No `pnpm.patchedDependencies` entry applies to mobile's graph; the mobile-scoped `pnpm why` proof is recorded; the 3.5.2 patch file is byte-unchanged, and `apps/tv/package.json` carries only the two protective pins (amended 2026-08-13, see Non-goals note).
 - PiP evidence covering both layouts is attached to the PR or follow-up ticket; no spike commit is merged.
 - The `expo-doctor` CI job is blocking and green; the full R9 ladder passed on both platforms.
 - `apps/mobile/CLAUDE.md` stack line names SDK 57.
