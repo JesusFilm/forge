@@ -133,9 +133,14 @@ export async function reviewDevotionalText(
     blocking.push("depth: high-severity issue")
   }
 
-  if (input.checkFidelity && d.reflection.sourceExcerpt) {
+  // Trimmed, not truthy. A whitespace-only excerpt is truthy, so the plain
+  // truthiness test sent a blank source to the critic, which then had nothing to
+  // compare against and reported the adaptation faithful — a false PASS. An
+  // absent excerpt is the safe direction (it warns, below); a blank one was not.
+  const sourceExcerpt = d.reflection.sourceExcerpt?.trim()
+  if (input.checkFidelity && sourceExcerpt) {
     const fidelity = await critiqueReflectionFidelity({
-      sourceExcerpt: d.reflection.sourceExcerpt,
+      sourceExcerpt,
       focusReference: input.passageReference ?? d.passage.reference,
       adapted: d.reflection.text,
       llm: buildFidelityCriticLlm(),
@@ -160,14 +165,25 @@ export async function reviewDevotionalText(
     // WARN, do not block. This is deliberately weaker than the `skipped` case
     // above, and the distinction matters: `skipped` means a check that SHOULD
     // have run failed, whereas this means the input it needs was never recorded.
-    // Every devo.json written before `sourceExcerpt` existed looks like this, and
-    // blocking would make those devotionals permanently unrenderable — there is
-    // no migration, `loadCachedDevo` is a raw JSON.parse, and the excerpt cannot
-    // be reconstructed after the fact. Refusing to render existing good work is a
-    // worse outcome than shipping it with one check unavailable.
+    // What reaches this branch in THIS runtime: a devotional read back from an
+    // attempt artifact written before the field existed. Blocking those would
+    // make already-approved work permanently unrenderable, and the excerpt cannot
+    // be reconstructed after the fact — refusing to render existing good work is
+    // worse than shipping it with one check unavailable.
     //
-    // Freshly generated text always carries the excerpt, so on the path that
+    // An earlier version of this comment justified the branch with "every
+    // devo.json written before sourceExcerpt existed" and named `loadCachedDevo`.
+    // Neither exists here: that was the old branch's on-disk cache, which this
+    // runtime is explicitly forbidden to have. The reasoning survived the port
+    // while its mechanism did not, so the branch looked better-founded than it
+    // was.
+    //
+    // Freshly composed text always carries the excerpt, so on the path that
     // matters this branch does not fire.
+    //
+    // KNOWN GAP: `DevotionalReview` is `{ blocking }` only, so "fidelity was not
+    // checked" reaches no caller — it lives in this log line and nowhere else. A
+    // caller that wanted to treat it as a soft signal could not.
     log(
       "📜 source fidelity: NOT CHECKED — this devotional has no stored source " +
         "excerpt (text generated before the field existed). Regenerate to enable " +

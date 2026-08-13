@@ -19,9 +19,15 @@ import { DevotionalLlmError, type DevotionalLlm } from "./llm"
  * Luke 19's Zacchaeus) both compressed the source down to its single most
  * comforting point, dropping load-bearing detail and — in the storm case —
  * echoing Ryle's own "living for them in Heaven" shorthand without the
- * Mediator/High-Priest framing that keeps it precise. See
- * reflection-modernizer.ts's PRESERVE BALANCE / heavenly-role guardrails, which
- * this critic checks were actually followed.
+ * Mediator/High-Priest framing that keeps it precise.
+ *
+ * This critic is the whole guard for that class today. An earlier version of
+ * this comment pointed at "reflection-modernizer.ts's PRESERVE BALANCE /
+ * heavenly-role guardrails" as the rules it verifies were followed. No such
+ * section exists in any file — the modernizer's instructions are authored
+ * Workspace data now, and neither phrase appears there either. So the critic
+ * checks against its own criteria below, not against a named upstream rule, and
+ * adding those rules to the authored modernizer prompt is still open work.
  */
 
 export type FidelityIssue = {

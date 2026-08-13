@@ -19,6 +19,21 @@ import { MAX_DEVOTIONAL_SHORT_TEXT } from "./types"
 const CopySchema = z
   .object({
     title: z.string().trim().min(1).max(MAX_DEVOTIONAL_SHORT_TEXT),
+    /**
+     * RETAINED BUT UNUSED. The shipped closing line comes from
+     * devotional-conclusion.ts, which runs after this copywriter so it can see
+     * the chosen title/question/prayer. `composeDevotionalContent` takes that
+     * agent's output and ignores this field, and a test pins that it is NOT what
+     * ships — so wiring this back in by habit is a silent downgrade, not a
+     * simplification.
+     *
+     * Still declared because the field is required in COPY_JSON_SCHEMA and asked
+     * for by the authored `copy` prompt; dropping it needs schema, JSON schema
+     * and prompt to move together, plus the one script that prints it
+     * (scripts/agent-parity-2.ts). Left for its own change rather than folded
+     * into a large one. The cost of keeping it is a short line of prose the model
+     * writes and nobody reads.
+     */
     conclusion: z.string().trim().min(1).max(MAX_DEVOTIONAL_SHORT_TEXT),
     question: z.string().trim().min(1).max(MAX_DEVOTIONAL_SHORT_TEXT),
     prayer: z.string().trim().min(1).max(MAX_DEVOTIONAL_SHORT_TEXT),

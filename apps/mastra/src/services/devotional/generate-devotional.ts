@@ -78,10 +78,13 @@ export type GeneratedDevotional = {
     attribution: string
     /** Which rotation flavor produced it. */
     flavor: ReflectionFlavor
-    /** The raw excerpt handed to the modernizer, kept for provenance so a
-     *  fidelity critic (or a human) can compare `text` against what the author
-     *  actually wrote. Optional: older cached devos predate this field, and a
-     *  localized/translated copy doesn't re-derive it. */
+    /** The excerpt actually HANDED TO the modernizer — already narrowed to the
+     *  chosen points, not the author's full passage. That is the right thing for
+     *  the fidelity critic to compare `text` against, since it judges whether
+     *  the adaptation kept what the writer was given; it is NOT a record of
+     *  everything the author wrote, and the pre-narrowing text is persisted
+     *  nowhere. Optional: a devotional generated before this field existed does
+     *  not carry it, and a localized copy does not re-derive it. */
     sourceExcerpt?: string
   }
   /** One phrase to accent per reflection chunk (verbatim substring, or ""),

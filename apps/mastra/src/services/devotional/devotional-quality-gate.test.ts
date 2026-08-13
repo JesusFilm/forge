@@ -283,8 +283,8 @@ describe("reviewDevotionalText", () => {
           source: "J.C. Ryle",
           attribution: "Adapted from a trusted classic · J.C. Ryle",
           flavor: "commentary",
-          // No sourceExcerpt — the shape of every devo.json cached before the
-          // field existed.
+          // No sourceExcerpt — the shape of a devotional read back from an
+          // attempt artifact written before the field existed.
         },
       })
       const lines: string[] = []
@@ -294,10 +294,35 @@ describe("reviewDevotionalText", () => {
         log: (m) => lines.push(m),
       })
       expect(critiqueReflectionFidelity).not.toHaveBeenCalled()
-      // Deliberately NOT blocking: there is no migration for old devo.json files
-      // and the excerpt cannot be reconstructed, so blocking would make existing
-      // devotionals permanently unrenderable. Distinct from a `skipped` critic,
-      // which DOES block — that is a check that failed, not one with no input.
+      // Deliberately NOT blocking: the excerpt cannot be reconstructed after
+      // the fact, so blocking would make already-approved devotionals
+      // permanently unrenderable. Distinct from a `skipped` critic, which DOES
+      // block — that is a check that failed, not one with no input.
+      expect(r.blocking).toEqual([])
+      expect(lines.join("\n")).toMatch(/NOT CHECKED/)
+    })
+
+    it("treats a BLANK excerpt as no excerpt rather than checking against nothing", async () => {
+      // A whitespace-only excerpt is truthy, so the plain truthiness test handed
+      // the critic a blank source. With nothing to compare against it reported
+      // the adaptation faithful, and the gate recorded a PASS on a check that
+      // never really happened — the one outcome this module exists to prevent.
+      const devo = devotional({
+        reflection: {
+          text: "Jesus came to seek and save the lost.",
+          source: "J.C. Ryle",
+          attribution: "Adapted from a trusted classic · J.C. Ryle",
+          flavor: "commentary",
+          sourceExcerpt: "   \n  ",
+        },
+      })
+      const lines: string[] = []
+      const r = await reviewDevotionalText({
+        devotional: devo,
+        checkFidelity: true,
+        log: (m) => lines.push(m),
+      })
+      expect(critiqueReflectionFidelity).not.toHaveBeenCalled()
       expect(r.blocking).toEqual([])
       expect(lines.join("\n")).toMatch(/NOT CHECKED/)
     })
