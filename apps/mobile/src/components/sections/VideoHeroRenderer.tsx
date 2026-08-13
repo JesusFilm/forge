@@ -170,6 +170,9 @@ export function VideoHeroRenderer({
             style={StyleSheet.absoluteFill}
             nativeControls={false}
             contentFit="cover"
+            // RN 0.86 Fabric: the default SurfaceView decodes but never
+            // composites under a layered hero stack — mirrors HomeHeroPager.
+            surfaceType={Platform.OS === "android" ? "textureView" : undefined}
           />
           {!hasStarted && thumbnailUrl != null && (
             <Image
