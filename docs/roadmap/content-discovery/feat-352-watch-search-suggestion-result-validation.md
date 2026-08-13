@@ -9,7 +9,8 @@ start_date: "2026-08-12"
 duration: 1
 depends_on:
   - "feat-337"
-blocks: []
+blocks:
+  - "feat-361"
 tags:
   - "admin"
   - "watch"
