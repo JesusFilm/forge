@@ -3,6 +3,7 @@ import type {
   TypesenseWatchCatalogDocument,
   TypesenseWatchLocale,
 } from "./typesense-watch-search-schema"
+import { TYPESENSE_WATCH_EXACT_TITLE_KEYS_FIELD } from "./typesense-watch-search-exact-title"
 import { typesenseWatchTokenizerLocale } from "./typesense-watch-search-lexical"
 
 export type TypesenseWatchLexicalLane = "title" | "metadata"
@@ -24,10 +25,30 @@ export function watchLexicalManifestQueryFields(
   const prefix = `${lane}_`
   return fields.flatMap((field) =>
     field.name.startsWith(prefix) &&
+    field.name !== TYPESENSE_WATCH_EXACT_TITLE_KEYS_FIELD &&
     field.index !== false &&
     (field.type === "string" || field.type === "string[]")
       ? [field.name]
       : [],
+  )
+}
+
+export function watchLexicalOrderedManifestQueryFields(
+  fields: readonly TypesenseCollectionField[],
+  lane: TypesenseWatchLexicalLane,
+  preferredLocales: readonly string[],
+): string[] {
+  const manifestFields = watchLexicalManifestQueryFields(fields, lane)
+  const availableFields = new Set(manifestFields)
+  const preferredFields = preferredLocales.flatMap((locale) => {
+    const tokenizerLocale = typesenseWatchTokenizerLocale(locale)
+    return tokenizerLocale ? [`${lane}_${tokenizerLocale}`] : []
+  })
+  const fallbackField = `${lane}_fallback`
+
+  return [...preferredFields, fallbackField, ...manifestFields].filter(
+    (field, index, all) =>
+      availableFields.has(field) && all.indexOf(field) === index,
   )
 }
 

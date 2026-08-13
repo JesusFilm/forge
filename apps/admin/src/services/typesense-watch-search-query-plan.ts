@@ -33,6 +33,7 @@ export type TypesenseWatchSearchQueryPlan = Readonly<{
   targetLanguageSlug: string
   targetLanguageSource: SearchLanguageSignalSource
   languageCandidates: readonly TypesenseWatchQueryLanguageCandidate[]
+  lexicalLocales: readonly string[]
 }>
 
 type LanguageAliasRow = {
@@ -362,6 +363,39 @@ export async function buildTypesenseWatchSearchQueryPlan({
     baseResolution.targetLanguageSource === "explicit_target"
       ? index.bySlug.get(baseResolution.targetLanguageSlug)
       : undefined
+  const queryLanguage = baseResolution.queryLanguageSlug
+    ? index.bySlug.get(baseResolution.queryLanguageSlug)
+    : undefined
+  const scriptLanguage =
+    baseResolution.targetLanguageSource === "query_script"
+      ? index.bySlug.get(baseResolution.targetLanguageSlug)
+      : undefined
+  const currentWatchLanguage = baseResolution.currentWatchLanguageSlug
+    ? index.bySlug.get(baseResolution.currentWatchLanguageSlug)
+    : undefined
+  const displayLanguage = baseResolution.displayLanguageSlug
+    ? index.bySlug.get(baseResolution.displayLanguageSlug)
+    : undefined
+  const routeLanguage = baseResolution.routeLanguageSlug
+    ? index.bySlug.get(baseResolution.routeLanguageSlug)
+    : undefined
+  const browserLanguage = baseResolution.acceptLanguageSlug
+    ? index.bySlug.get(baseResolution.acceptLanguageSlug)
+    : undefined
+  const lexicalLocales = [
+    explicitTarget,
+    ...orderedNamedLanguages,
+    queryLanguage,
+    scriptLanguage,
+    currentWatchLanguage,
+    displayLanguage,
+    routeLanguage,
+    browserLanguage,
+  ]
+    .flatMap((language) => (language?.bcp47 ? [language.bcp47] : []))
+    .filter(
+      (locale, candidateIndex, all) => all.indexOf(locale) === candidateIndex,
+    )
   const candidates: TypesenseWatchQueryLanguageCandidate[] = []
   for (const language of orderedNamedLanguages) {
     const matchedText =
@@ -384,8 +418,9 @@ export async function buildTypesenseWatchSearchQueryPlan({
       0.7,
     ],
     [baseResolution.currentWatchLanguageSlug, "context", 0.6],
-    [baseResolution.routeLanguageSlug, "context", 0.5],
     [baseResolution.displayLanguageSlug, "context", 0.45],
+    [baseResolution.routeLanguageSlug, "context", 0.5],
+    [baseResolution.acceptLanguageSlug, "context", 0.4],
   ] as const) {
     if (candidates.length === MAX_LANGUAGE_CANDIDATES) break
     addCandidate(
@@ -410,5 +445,6 @@ export async function buildTypesenseWatchSearchQueryPlan({
       ? "query_named_language"
       : baseResolution.targetLanguageSource,
     languageCandidates: Object.freeze(candidates),
+    lexicalLocales: Object.freeze(lexicalLocales),
   })
 }

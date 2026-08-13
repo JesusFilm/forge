@@ -1,9 +1,14 @@
 import { describe, expect, it, vi } from "vitest"
+import {
+  CandidateQualificationConfigurationError,
+  parseCandidateQualificationEvidence,
+} from "@/services/typesense-watch-search-candidate-qualification"
 
 import {
   evaluateCandidateQualification,
   normalizeCandidateBenchmarkDiagnostics,
   parseCandidateBenchmarkEnvironment,
+  PRODUCTION_CASES,
   runPairedCandidateBenchmark,
   type CandidateBenchmarkAttempt,
   type CandidateBenchmarkIdentity,
@@ -12,6 +17,12 @@ import {
 
 const allSlices = [
   "exact-title",
+  "partial-title",
+  "punctuation-title",
+  "typo-title",
+  "duplicate-title",
+  "no-result",
+  "language-correctness",
   "mixed-language",
   "native-title",
   "topical",
@@ -66,7 +77,7 @@ function successResponse(
           ? identity.candidateBindings
           : identity.currentBindings,
       retrievalCalls: 2,
-      logicalSubsearches: 5,
+      logicalSubsearches: profile === "CANDIDATE" ? 6 : 5,
       queryFieldCount: 8,
       queryByBytes: 120,
       requestBytes: 400,
@@ -124,7 +135,7 @@ function successfulAttempt(
         ? identity.candidateBindings
         : identity.currentBindings,
       retrievalCalls: 2,
-      logicalSubsearches: 5,
+      logicalSubsearches: candidate ? 6 : 5,
       queryFieldCount: 8,
       queryByBytes: 120,
       requestBytes: 400,
@@ -146,12 +157,63 @@ function successfulAttempt(
 const passingEvidence = {
   relevance: "PASS",
   fixedLoadResources: "PASS",
+  exactKeyRam: "PASS",
+  incrementalNonVectorDisk: "PASS",
+  steadyCapacity: "PASS",
+  peakCapacity: "PASS",
+  swapAndFreeDisk: "PASS",
+  buildImportDuration: "PASS",
   currentInterference: "PASS",
   operatorReview: "PASS",
-  artifacts: { reviewedReport: "artifact://candidate-qualification-1" },
+  artifacts: {
+    relevance: "artifact://candidate-qualification-1/relevance",
+    fixedLoadResources: "artifact://candidate-qualification-1/fixed-load",
+    exactKeyRam: "artifact://candidate-qualification-1/exact-key-ram",
+    incrementalNonVectorDisk:
+      "artifact://candidate-qualification-1/incremental-disk",
+    steadyCapacity: "artifact://candidate-qualification-1/steady-capacity",
+    peakCapacity: "artifact://candidate-qualification-1/peak-capacity",
+    swapAndFreeDisk: "artifact://candidate-qualification-1/swap-free-disk",
+    buildImportDuration: "artifact://candidate-qualification-1/build-duration",
+    currentInterference:
+      "artifact://candidate-qualification-1/current-interference",
+    operatorReview: "artifact://candidate-qualification-1/operator-review",
+  },
 } as const
 
+const evidenceGates = [
+  "relevance",
+  "fixedLoadResources",
+  "exactKeyRam",
+  "incrementalNonVectorDisk",
+  "steadyCapacity",
+  "peakCapacity",
+  "swapAndFreeDisk",
+  "buildImportDuration",
+  "currentInterference",
+  "operatorReview",
+] as const
+
 describe("paired candidate qualification benchmark", () => {
+  it("uses a typed configuration error for malformed evidence", () => {
+    expect(() => parseCandidateQualificationEvidence("not-json")).toThrow(
+      CandidateQualificationConfigurationError,
+    )
+    expect(() =>
+      parseCandidateQualificationEvidence(
+        JSON.stringify({ ...passingEvidence, operatorReview: "PASS" }),
+      ),
+    ).not.toThrow()
+  })
+  it("covers multilingual and adverse production query slices", () => {
+    const coveredSlices = new Set(
+      PRODUCTION_CASES.flatMap((benchmarkCase) => benchmarkCase.slices),
+    )
+    expect(coveredSlices).toEqual(new Set(allSlices))
+    expect(PRODUCTION_CASES.map(({ query }) => query)).toEqual(
+      expect.arrayContaining(["Иисус", "耶稣", "耶穌", "イエス", "يسوع"]),
+    )
+  })
   it("requires a dedicated search key and an explicit qrels revision", () => {
     expect(() =>
       parseCandidateBenchmarkEnvironment({
@@ -357,6 +419,12 @@ describe("paired candidate qualification benchmark", () => {
       evidence: {
         relevance: "NOT_RUN",
         fixedLoadResources: "NOT_RUN",
+        exactKeyRam: "NOT_RUN",
+        incrementalNonVectorDisk: "NOT_RUN",
+        steadyCapacity: "NOT_RUN",
+        peakCapacity: "NOT_RUN",
+        swapAndFreeDisk: "NOT_RUN",
+        buildImportDuration: "NOT_RUN",
         currentInterference: "NOT_RUN",
         operatorReview: "NOT_RUN",
       },
@@ -377,6 +445,12 @@ describe("paired candidate qualification benchmark", () => {
       expect.arrayContaining([
         "relevance_not_passed",
         "fixed_load_resources_not_passed",
+        "exact_key_ram_not_passed",
+        "incremental_non_vector_disk_not_passed",
+        "steady_capacity_not_passed",
+        "peak_capacity_not_passed",
+        "swap_and_free_disk_not_passed",
+        "build_import_duration_not_passed",
         "current_interference_not_passed",
         "operator_review_not_passed",
       ]),
@@ -396,28 +470,66 @@ describe("paired candidate qualification benchmark", () => {
     expect(evaluation.reasons).toEqual([])
   })
 
-  it("rejects Typesense p95 regressions even when application latency improves", () => {
-    const current = successfulAttempt("current")
-    const candidate = {
-      ...successfulAttempt("candidate"),
-      typesenseWallMs: 21,
-      typesenseServerMs: 11,
-    }
+  it.each(
+    (
+      [
+        ["callerObserved", "callerObservedMs"],
+        ["server", "serverMs"],
+        ["typesenseWall", "typesenseWallMs"],
+        ["typesenseServer", "typesenseServerMs"],
+      ] as const
+    ).flatMap(([surface, field]) =>
+      (["p50Ms", "p95Ms", "p99Ms"] as const).map(
+        (quantile) => [surface, field, quantile] as const,
+      ),
+    ),
+  )("rejects an isolated %s %s regression", (surface, field, quantile) => {
+    const attempts = Array.from({ length: 100 }, (_, pairIndex) => {
+      const currentValue =
+        pairIndex < 50 ? 10 : pairIndex < 95 ? 100 : pairIndex < 99 ? 200 : 300
+      const candidateValue =
+        (quantile === "p50Ms" && pairIndex < 50) ||
+        (quantile === "p95Ms" && pairIndex >= 50 && pairIndex < 95) ||
+        (quantile === "p99Ms" && pairIndex >= 95 && pairIndex < 99)
+          ? currentValue + 1
+          : currentValue
+      const order =
+        pairIndex % 2 === 0
+          ? ("current-first" as const)
+          : ("candidate-first" as const)
+      return [
+        {
+          ...successfulAttempt("current"),
+          pairIndex,
+          order,
+          [field]: currentValue,
+        },
+        {
+          ...successfulAttempt("candidate"),
+          pairIndex,
+          order,
+          [field]: candidateValue,
+        },
+      ]
+    }).flat()
     const evaluation = evaluateCandidateQualification({
       identity,
-      attempts: [current, candidate],
-      requiredPairs: 1,
+      attempts,
+      requiredPairs: 100,
       requiredSlices: allSlices,
       evidence: passingEvidence,
     })
 
     expect(evaluation.status).toBe("NOT_QUALIFIED")
-    expect(evaluation.reasons).toEqual(
-      expect.arrayContaining([
-        "aggregate_typesenseWall_p95Ms_regressed",
-        "aggregate_typesenseServer_p95Ms_regressed",
-      ]),
+    expect(evaluation.reasons).toContain(
+      `aggregate_${surface}_${quantile}_regressed`,
     )
+    for (const otherQuantile of ["p50Ms", "p95Ms", "p99Ms"] as const) {
+      if (otherQuantile === quantile) continue
+      expect(evaluation.reasons).not.toContain(
+        `aggregate_${surface}_${otherQuantile}_regressed`,
+      )
+    }
   })
 
   it("rejects a Candidate p95 at or above the one-second budget", () => {
@@ -458,14 +570,14 @@ describe("paired candidate qualification benchmark", () => {
     expect(JSON.stringify(normalized)).not.toContain("private sentinel query")
   })
 
-  it("requires candidate calls and logical subsearches to match Current", () => {
+  it("requires equal HTTP calls and exactly one extra Candidate subsearch", () => {
     const evaluation = evaluateCandidateQualification({
       identity,
       attempts: [
         successfulAttempt("current"),
         successfulAttempt("candidate", {
           retrievalCalls: 1,
-          logicalSubsearches: 4,
+          logicalSubsearches: 5,
         }),
       ],
       requiredPairs: 1,
@@ -481,11 +593,57 @@ describe("paired candidate qualification benchmark", () => {
     )
   })
 
+  it("allows exactly one extra Candidate subsearch and 256 KiB response growth", () => {
+    const current = successfulAttempt("current", {
+      retrievalCalls: 2,
+      logicalSubsearches: 5,
+      parsedResponseBytes: 800,
+    })
+    const candidate = successfulAttempt("candidate", {
+      retrievalCalls: 2,
+      logicalSubsearches: 6,
+      requestBytes: 32 * 1_024,
+      parsedResponseBytes: 800 + 256 * 1_024,
+    })
+
+    const evaluation = evaluateCandidateQualification({
+      identity,
+      attempts: [current, candidate],
+      requiredPairs: 1,
+      requiredSlices: allSlices,
+      evidence: passingEvidence,
+    })
+
+    expect(evaluation.status).toBe("QUALIFIED")
+    expect(evaluation.reasons).toEqual([])
+  })
+
+  it("rejects Candidate response growth above 256 KiB", () => {
+    const evaluation = evaluateCandidateQualification({
+      identity,
+      attempts: [
+        successfulAttempt("current", { parsedResponseBytes: 800 }),
+        successfulAttempt("candidate", {
+          parsedResponseBytes: 800 + 256 * 1_024 + 1,
+        }),
+      ],
+      requiredPairs: 1,
+      requiredSlices: allSlices,
+      evidence: passingEvidence,
+    })
+
+    expect(evaluation.status).toBe("NOT_QUALIFIED")
+    expect(evaluation.reasons).toContain("candidate_response_bytes")
+  })
+
   it.each([
-    ["logicalSubsearches", 6, "candidate_logical_subsearches"],
+    ["retrievalCalls", 3, "candidate_retrieval_calls"],
+    ["logicalSubsearches", 7, "candidate_logical_subsearches"],
     ["queryFieldCount", 65, "candidate_query_fields"],
     ["queryByBytes", 4_097, "candidate_query_by_bytes"],
     ["requestBytes", 32_769, "candidate_request_bytes"],
+    ["retryCount", 1, "candidate_retries"],
+    ["hydratedRecords", 251, "candidate_hydration"],
   ] as const)(
     "rejects candidate work beyond the %s bound",
     (field, value, reason) => {
@@ -502,6 +660,60 @@ describe("paired candidate qualification benchmark", () => {
 
       expect(evaluation.status).toBe("NOT_QUALIFIED")
       expect(evaluation.reasons).toContain(reason)
+    },
+  )
+
+  it("rejects Candidate hydration above its paired Current request", () => {
+    const evaluation = evaluateCandidateQualification({
+      identity,
+      attempts: [
+        successfulAttempt("current", { hydratedRecords: 1 }),
+        successfulAttempt("candidate", { hydratedRecords: 2 }),
+      ],
+      requiredPairs: 1,
+      requiredSlices: allSlices,
+      evidence: passingEvidence,
+    })
+
+    expect(evaluation.status).toBe("NOT_QUALIFIED")
+    expect(evaluation.reasons).toContain("candidate_hydrated_records")
+  })
+
+  it.each(evidenceGates)("fails closed when %s evidence fails", (gate) => {
+    const evaluation = evaluateCandidateQualification({
+      identity,
+      attempts: [successfulAttempt("current"), successfulAttempt("candidate")],
+      requiredPairs: 1,
+      requiredSlices: allSlices,
+      evidence: { ...passingEvidence, [gate]: "FAIL" },
+    })
+
+    expect(evaluation.status).toBe("NOT_QUALIFIED")
+    expect(evaluation.reasons).toContain(
+      `${gate.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`)}_not_passed`,
+    )
+  })
+
+  it.each(evidenceGates)(
+    "requires an artifact for passing %s evidence",
+    (gate) => {
+      const artifacts = { ...passingEvidence.artifacts }
+      delete artifacts[gate]
+      const evaluation = evaluateCandidateQualification({
+        identity,
+        attempts: [
+          successfulAttempt("current"),
+          successfulAttempt("candidate"),
+        ],
+        requiredPairs: 1,
+        requiredSlices: allSlices,
+        evidence: { ...passingEvidence, artifacts },
+      })
+
+      expect(evaluation.status).toBe("NOT_QUALIFIED")
+      expect(evaluation.reasons).toContain(
+        `${gate.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`)}_artifact_missing`,
+      )
     },
   )
 })

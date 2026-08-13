@@ -8,7 +8,7 @@ import { WATCH_SEARCH_TITLE_AND_BRAND_RANKING_IMPLEMENTATION } from "./typesense
  * rebuilt physical collections.
  */
 export const TYPESENSE_WATCH_SEARCH_CANDIDATE_APPLICATION_REVISION =
-  "watch-search-candidate/v1" as const
+  "watch-search-candidate/v2" as const
 
 /** Qualification identity for application-side candidate ranking behavior. */
 export const TYPESENSE_WATCH_SEARCH_CANDIDATE_RANKING_REVISION =

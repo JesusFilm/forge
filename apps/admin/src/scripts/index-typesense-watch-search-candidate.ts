@@ -18,6 +18,10 @@ import {
   type TypesenseWatchCandidateProjectionSnapshot,
 } from "@/services/typesense-watch-search-indexer"
 import {
+  TYPESENSE_WATCH_EXACT_TITLE_KEY_BYTES,
+  TYPESENSE_WATCH_EXACT_TITLE_KEYS_FIELD,
+} from "@/services/typesense-watch-search-exact-title"
+import {
   candidateWatchCollectionNames,
   candidateWatchCollectionSchemas,
   TYPESENSE_WATCH_AVAILABILITY_ALIAS,
@@ -299,6 +303,85 @@ async function validateDocumentCounts(
   })
 }
 
+function exactTitleProbe(
+  snapshot: TypesenseWatchCandidateProjectionSnapshot,
+): string | null {
+  const encoder = new TextEncoder()
+  let exactTitleKeyBytes = 0
+
+  for (const document of snapshot.lexical) {
+    const hasTitle = Object.entries(document).some(
+      ([field, values]) =>
+        field.startsWith("title_") &&
+        field !== TYPESENSE_WATCH_EXACT_TITLE_KEYS_FIELD &&
+        (Array.isArray(values) ? values : [values]).some(
+          (value) => value.trim().length > 0,
+        ),
+    )
+    const keys = document.title_exact_keys ?? []
+    if (hasTitle && keys.length === 0) {
+      throw new CandidateProjectionSafetyError(
+        `candidate lexical document ${document.id} has titles without exact keys`,
+      )
+    }
+    for (const key of keys) {
+      if (
+        !new RegExp(
+          `^[0-9a-f]{${TYPESENSE_WATCH_EXACT_TITLE_KEY_BYTES * 2}}$`,
+        ).test(key)
+      ) {
+        throw new CandidateProjectionSafetyError(
+          `candidate lexical document ${document.id} has a malformed exact title key`,
+        )
+      }
+      exactTitleKeyBytes += encoder.encode(key).byteLength
+    }
+  }
+
+  if (exactTitleKeyBytes !== snapshot.lexicalMemory.exactTitleKeyBytes) {
+    throw new CandidateProjectionSafetyError(
+      "candidate exact title key byte estimate does not match its projection",
+    )
+  }
+
+  const document = snapshot.lexical.find(
+    (entry) => (entry.title_exact_keys?.length ?? 0) > 0,
+  )
+  return document?.title_exact_keys?.[0] ?? null
+}
+
+async function validateExactTitleRead(
+  typesense: CandidateTypesense,
+  lexicalCollection: string,
+  probe: string | null,
+): Promise<void> {
+  if (!probe) return
+
+  const [result] = await typesense.multiSearch<{
+    id: string
+    title_exact_keys?: string[]
+  }>([
+    {
+      collection: lexicalCollection,
+      q: probe,
+      query_by: TYPESENSE_WATCH_EXACT_TITLE_KEYS_FIELD,
+      include_fields: `id,${TYPESENSE_WATCH_EXACT_TITLE_KEYS_FIELD}`,
+      num_typos: 0,
+      prefix: false,
+      drop_tokens_threshold: 0,
+      per_page: 1,
+    },
+  ])
+  const hit = result?.hits?.find(({ document }) =>
+    document.title_exact_keys?.includes(probe),
+  )
+  if (!hit) {
+    throw new CandidateProjectionSafetyError(
+      "candidate exact title key read smoke failed",
+    )
+  }
+}
+
 export async function publishTypesenseWatchSearchCandidate({
   prisma,
   typesense,
@@ -334,6 +417,7 @@ export async function publishTypesenseWatchSearchCandidate({
     generationId,
     snapshot.tokenizerLocales,
   )
+  const probe = exactTitleProbe(snapshot)
   const transcriptSchema = await typesense.getCollectionSchema(
     transcript.collection,
   )
@@ -371,6 +455,7 @@ export async function publishTypesenseWatchSearchCandidate({
     }
 
     await validateDocumentCounts(typesense, schemas, snapshot)
+    await validateExactTitleRead(typesense, schemas.lexical.name, probe)
     const [transcriptCount] = await typesense.multiSearch([
       {
         collection: transcript.collection,
@@ -396,6 +481,7 @@ export async function publishTypesenseWatchSearchCandidate({
           snapshot.lexicalMemory.estimatedRamLowBytes,
         estimatedKeywordMemoryHighBytes:
           snapshot.lexicalMemory.estimatedRamHighBytes,
+        exactTitleKeyBytes: snapshot.lexicalMemory.exactTitleKeyBytes,
         transcriptReused: true,
       },
     })
