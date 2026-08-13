@@ -98,6 +98,8 @@ async function startWorkflowWorld(): Promise<void> {
   const { getWorld } = await import("workflow/runtime")
   const { startWorkflowWorkerHeartbeat } =
     await import("@/services/workflow-worker-heartbeat.service")
+  const { ensureCoreSyncSchedulerStarted } =
+    await import("@/services/core-sync/job")
   const { ensureVideoDbBackupSchedulerStarted } =
     await import("@/services/video-db-backup/job")
   const { ensureSearchTraceRetentionSchedulerStarted } =
@@ -105,6 +107,7 @@ async function startWorkflowWorld(): Promise<void> {
   const world = getWorld()
   await world.start?.()
   await startWorkflowWorkerHeartbeat()
+  await ensureCoreSyncSchedulerStarted()
   await ensureVideoDbBackupSchedulerStarted()
   await ensureSearchTraceRetentionSchedulerStarted()
 }

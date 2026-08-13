@@ -8,6 +8,11 @@ const syncPrisma = vi.hoisted(() => ({ name: "sync-prisma" }))
 const runSync = vi.hoisted(() => vi.fn())
 const runSyncPhase = vi.hoisted(() => vi.fn())
 const start = vi.hoisted(() => vi.fn())
+const workflowRun = vi.hoisted(() => ({
+  findFirst: vi.fn(),
+  update: vi.fn(async (args) => args),
+}))
+const queryRaw = vi.hoisted(() => vi.fn())
 const workflowRunLog = vi.hoisted(() => ({
   createWorkflowRunLog: vi.fn(),
   attachWorkflowRuntimeRunId: vi.fn(),
@@ -17,7 +22,10 @@ const workflowRunLog = vi.hoisted(() => ({
   recordCoreSyncRunResult: vi.fn(),
 }))
 
-vi.mock("@/db/client", () => ({ syncPrisma }))
+vi.mock("@/db/client", () => ({
+  prisma: { $queryRaw: queryRaw, workflowRun },
+  syncPrisma,
+}))
 vi.mock("workflow/api", () => ({ start }))
 vi.mock("@/services/workflow-run-log.service", () => workflowRunLog)
 vi.mock("@/services/core-sync/orchestrator", async (importOriginal) => {
@@ -41,6 +49,8 @@ describe("core sync job", () => {
     workflowRunLog.markWorkflowRunStarted.mockResolvedValue(undefined)
     workflowRunLog.recordCoreSyncPhaseProgress.mockResolvedValue(undefined)
     workflowRunLog.recordCoreSyncRunResult.mockResolvedValue(undefined)
+    workflowRun.findFirst.mockResolvedValue(null)
+    queryRaw.mockResolvedValue([{ locked: true }])
   })
 
   it("normalizes scheduled input to incremental all-phase sync", async () => {
@@ -166,6 +176,104 @@ describe("core sync job", () => {
       "ledger-run-1",
       "run-core-sync-1",
     )
+  })
+
+  it("calculates the next daily UTC Core Sync time", async () => {
+    const { nextCoreSyncRunAt } = await import("./job")
+
+    expect(nextCoreSyncRunAt(new Date("2026-08-13T06:59:00.000Z"))).toEqual(
+      new Date("2026-08-13T07:00:00.000Z"),
+    )
+    expect(nextCoreSyncRunAt(new Date("2026-08-13T07:00:00.000Z"))).toEqual(
+      new Date("2026-08-14T07:00:00.000Z"),
+    )
+  })
+
+  it("starts one durable Core Sync scheduler workflow when none is running", async () => {
+    start.mockResolvedValueOnce({
+      runId: "scheduler-runtime-run-1",
+      returnValue: Promise.resolve(undefined),
+    })
+    const { ensureCoreSyncSchedulerStarted } = await import("./job")
+    const { runCoreSyncScheduler } = await import("@/workflows/coreSync")
+
+    await expect(ensureCoreSyncSchedulerStarted()).resolves.toEqual({
+      started: true,
+      runId: "scheduler-runtime-run-1",
+      ledgerRunId: "ledger-run-1",
+    })
+    expect(workflowRun.findFirst).toHaveBeenCalledWith({
+      where: {
+        workflowKey: "core-sync-scheduler",
+        status: { in: ["QUEUED", "RUNNING"] },
+      },
+      orderBy: { createdAt: "desc" },
+    })
+    expect(start).toHaveBeenCalledWith(runCoreSyncScheduler, [
+      { ledgerRunId: "ledger-run-1" },
+    ])
+    expect(workflowRunLog.createWorkflowRunLog).toHaveBeenCalledWith({
+      workflowKey: "core-sync-scheduler",
+      workflowName: "Core Sync Scheduler",
+      trigger: "system",
+      subjectType: "sync",
+      subjectId: "core",
+      summary: "Core Sync scheduler queued.",
+      details: {
+        schedule: "daily 07:00 UTC",
+        incremental: true,
+      },
+    })
+  })
+
+  it("does not start a duplicate Core Sync scheduler when one is already active", async () => {
+    workflowRun.findFirst.mockResolvedValueOnce({
+      id: "existing-ledger-run",
+      runtimeRunId: "existing-runtime-run",
+    })
+    const { ensureCoreSyncSchedulerStarted } = await import("./job")
+
+    await expect(ensureCoreSyncSchedulerStarted()).resolves.toEqual({
+      started: false,
+      reason: "already-running",
+      ledgerRunId: "existing-ledger-run",
+      runtimeRunId: "existing-runtime-run",
+    })
+    expect(start).not.toHaveBeenCalled()
+  })
+
+  it("replaces a stale Core Sync scheduler ledger row when the runtime already failed", async () => {
+    queryRaw
+      .mockResolvedValueOnce([{ locked: true }])
+      .mockResolvedValueOnce([
+        { status: "failed", error: "Workflow was not registered." },
+      ])
+      .mockResolvedValueOnce([{ unlocked: true }])
+    workflowRun.findFirst.mockResolvedValueOnce({
+      id: "stale-ledger-run",
+      runtimeRunId: "failed-runtime-run",
+    })
+    start.mockResolvedValueOnce({
+      runId: "scheduler-runtime-run-2",
+      returnValue: Promise.resolve(undefined),
+    })
+    const { ensureCoreSyncSchedulerStarted } = await import("./job")
+
+    await expect(ensureCoreSyncSchedulerStarted()).resolves.toEqual({
+      started: true,
+      runId: "scheduler-runtime-run-2",
+      ledgerRunId: "ledger-run-1",
+    })
+    expect(workflowRun.update).toHaveBeenCalledWith({
+      where: { id: "stale-ledger-run" },
+      data: expect.objectContaining({
+        status: "FAILED",
+        summary: "Core Sync scheduler runtime failed.",
+        error: "Workflow was not registered.",
+        finishedAt: expect.any(Date),
+      }),
+    })
+    expect(start).toHaveBeenCalledOnce()
   })
 
   it("marks the ledger failed when workflow dispatch fails", async () => {

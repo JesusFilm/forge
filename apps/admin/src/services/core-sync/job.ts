@@ -1,5 +1,6 @@
 import { start } from "workflow/api"
-import { syncPrisma } from "@/db/client"
+import { Prisma, WorkflowRunStatus } from "@prisma/client"
+import { prisma, syncPrisma } from "@/db/client"
 import {
   abortSyncRun,
   finishSyncRun,
@@ -20,7 +21,7 @@ import {
   recordCoreSyncPhaseProgress,
   recordCoreSyncRunResult,
 } from "@/services/workflow-run-log.service"
-import { runCoreSync } from "@/workflows/coreSync"
+import { runCoreSync, runCoreSyncScheduler } from "@/workflows/coreSync"
 
 export type CoreSyncTrigger = "manual" | "scheduled" | "graphql"
 
@@ -28,6 +29,10 @@ export type CoreSyncWorkflowInput = {
   scope?: string | string[]
   incremental?: boolean
   trigger?: CoreSyncTrigger
+  ledgerRunId?: string
+}
+
+export type CoreSyncSchedulerInput = {
   ledgerRunId?: string
 }
 
@@ -60,6 +65,56 @@ export type CoreSyncDispatchResult = {
   incremental: boolean
   trigger: CoreSyncTrigger
   status: "queued"
+}
+
+export type CoreSyncSchedulerStartResult =
+  | {
+      started: true
+      runId: string
+      ledgerRunId: string
+    }
+  | {
+      started: false
+      reason: "already-running" | "lock-not-acquired"
+      ledgerRunId?: string
+      runtimeRunId?: string | null
+    }
+
+export type CoreSyncSchedulerRunResult =
+  | {
+      ok: true
+      dispatch: CoreSyncDispatchResult
+    }
+  | {
+      ok: false
+      error: string
+    }
+
+const SCHEDULER_WORKFLOW_KEY = "core-sync-scheduler"
+const SCHEDULER_LOCK_ID = 426_083_110
+const CORE_SYNC_HOUR_UTC = 7
+const TERMINAL_RUNTIME_STATUSES = new Set(["completed", "failed", "cancelled"])
+
+type SchedulerLedgerRun = {
+  id: string
+  runtimeRunId: string | null
+}
+
+type RuntimeRunStatus = {
+  status: string
+  error: string | null
+}
+
+export function nextCoreSyncRunAt(
+  now: Date = new Date(),
+  hourUtc = CORE_SYNC_HOUR_UTC,
+): Date {
+  const next = new Date(now)
+  next.setUTCHours(hourUtc, 0, 0, 0)
+  if (next <= now) {
+    next.setUTCDate(next.getUTCDate() + 1)
+  }
+  return next
 }
 
 export function normalizeCoreSyncInput(
@@ -110,6 +165,170 @@ export async function dispatchCoreSync(
     await markWorkflowRunFailed(ledgerRun.id, error).catch(() => {})
     throw error
   }
+}
+
+export async function markCoreSyncSchedulerStarted(
+  input: CoreSyncSchedulerInput = {},
+): Promise<void> {
+  if (!input.ledgerRunId) return
+  await markWorkflowRunStarted(input.ledgerRunId)
+}
+
+export async function recordCoreSyncSchedulerHeartbeat(
+  input: CoreSyncSchedulerInput,
+  nextRunAt: Date,
+): Promise<void> {
+  if (!input.ledgerRunId) return
+  await prisma.workflowRun.update({
+    where: { id: input.ledgerRunId },
+    data: {
+      summary: `Core Sync scheduler sleeping until ${nextRunAt.toISOString()}.`,
+      details: {
+        nextRunAt: nextRunAt.toISOString(),
+        schedule: `daily ${String(CORE_SYNC_HOUR_UTC).padStart(2, "0")}:00 UTC`,
+        incremental: true,
+      } satisfies Prisma.InputJsonValue,
+    },
+  })
+}
+
+export async function runCoreSyncFromScheduler(): Promise<CoreSyncSchedulerRunResult> {
+  try {
+    const dispatch = await dispatchCoreSync({
+      incremental: true,
+      trigger: "scheduled",
+    })
+    return { ok: true, dispatch }
+  } catch (error) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : String(error),
+    }
+  }
+}
+
+async function withSchedulerStartLock<T>(
+  callback: () => Promise<T>,
+): Promise<T> {
+  const rows = await prisma.$queryRaw<{ locked: boolean }[]>`
+    SELECT pg_try_advisory_lock(${SCHEDULER_LOCK_ID}) AS locked
+  `
+  if (!rows[0]?.locked) {
+    return {
+      started: false,
+      reason: "lock-not-acquired",
+    } as T
+  }
+
+  try {
+    return await callback()
+  } finally {
+    await prisma.$queryRaw`
+      SELECT pg_advisory_unlock(${SCHEDULER_LOCK_ID})
+    `
+  }
+}
+
+async function loadRuntimeRunStatus(
+  runtimeRunId: string,
+): Promise<RuntimeRunStatus | null> {
+  try {
+    const rows = await prisma.$queryRaw<RuntimeRunStatus[]>`
+      SELECT status, error
+      FROM workflow.workflow_runs
+      WHERE id = ${runtimeRunId}
+      LIMIT 1
+    `
+    return rows[0] ?? null
+  } catch {
+    return null
+  }
+}
+
+async function reconcileStaleSchedulerRun(
+  existing: SchedulerLedgerRun,
+): Promise<boolean> {
+  if (!existing.runtimeRunId) return false
+
+  const runtimeRun = await loadRuntimeRunStatus(existing.runtimeRunId)
+  if (!runtimeRun || !TERMINAL_RUNTIME_STATUSES.has(runtimeRun.status)) {
+    return false
+  }
+
+  const status =
+    runtimeRun.status === "completed"
+      ? WorkflowRunStatus.SUCCEEDED
+      : WorkflowRunStatus.FAILED
+  const summary =
+    runtimeRun.status === "completed"
+      ? "Core Sync scheduler stopped after runtime completion."
+      : `Core Sync scheduler runtime ${runtimeRun.status}.`
+
+  await prisma.workflowRun.update({
+    where: { id: existing.id },
+    data: {
+      status,
+      finishedAt: new Date(),
+      summary,
+      error: runtimeRun.error,
+    },
+  })
+
+  return true
+}
+
+export async function ensureCoreSyncSchedulerStarted(): Promise<CoreSyncSchedulerStartResult> {
+  return withSchedulerStartLock(async () => {
+    const existing = await prisma.workflowRun.findFirst({
+      where: {
+        workflowKey: SCHEDULER_WORKFLOW_KEY,
+        status: {
+          in: [WorkflowRunStatus.QUEUED, WorkflowRunStatus.RUNNING],
+        },
+      },
+      orderBy: { createdAt: "desc" },
+    })
+
+    if (existing) {
+      const stale = await reconcileStaleSchedulerRun(existing)
+      if (!stale) {
+        return {
+          started: false,
+          reason: "already-running",
+          ledgerRunId: existing.id,
+          runtimeRunId: existing.runtimeRunId,
+        }
+      }
+    }
+
+    const ledgerRun = await createWorkflowRunLog({
+      workflowKey: SCHEDULER_WORKFLOW_KEY,
+      workflowName: "Core Sync Scheduler",
+      trigger: "system",
+      subjectType: "sync",
+      subjectId: "core",
+      summary: "Core Sync scheduler queued.",
+      details: {
+        schedule: `daily ${String(CORE_SYNC_HOUR_UTC).padStart(2, "0")}:00 UTC`,
+        incremental: true,
+      },
+    })
+
+    try {
+      const run = await start(runCoreSyncScheduler, [
+        { ledgerRunId: ledgerRun.id },
+      ])
+      await attachWorkflowRuntimeRunId(ledgerRun.id, run.runId)
+      return {
+        started: true,
+        runId: run.runId,
+        ledgerRunId: ledgerRun.id,
+      }
+    } catch (error) {
+      await markWorkflowRunFailed(ledgerRun.id, error).catch(() => {})
+      throw error
+    }
+  })
 }
 
 export async function runCoreSyncJob(
