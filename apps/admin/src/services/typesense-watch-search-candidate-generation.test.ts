@@ -135,7 +135,10 @@ function memoryPrisma() {
               row.qrelsRevision === where.qrelsRevision) &&
             (where.currentBindings === undefined ||
               JSON.stringify(row.currentBindings) ===
-                JSON.stringify(where.currentBindings.equals)),
+                JSON.stringify(where.currentBindings.equals)) &&
+            (where.evidence === undefined ||
+              row.evidence?.identity?.rankingRevision ===
+                where.evidence.equals),
         ),
       ),
     },
@@ -623,17 +626,19 @@ describe("TypesenseWatchSearchCandidateGenerationService", () => {
       generationId: "candidate-1",
       status: "PASSED",
       applicationRevision: "admin-app-sha-1",
+      rankingRevision: "title-and-brand-v1",
       transcriptCollection: "watch_search_transcripts_active",
       transcriptProjectionRevision: 17n,
       qrelsRevision: "qrels-reviewed-1",
       currentBindings,
       evidence: {
-        schemaVersion: "watch-search-candidate-qualification/v1",
+        schemaVersion: "watch-search-candidate-qualification/v2",
         status: "QUALIFIED",
         reasons: [],
         identity: {
           generationId: "candidate-1",
           applicationRevision: "admin-app-sha-1",
+          rankingRevision: "title-and-brand-v1",
           transcriptCollection: "watch_search_transcripts_active",
           transcriptProjectionRevision: "17",
           qrelsRevision: "qrels-reviewed-1",
@@ -648,6 +653,18 @@ describe("TypesenseWatchSearchCandidateGenerationService", () => {
         },
       },
     })
+    await expect(
+      service.resolveGeneration({
+        generationId: "candidate-1",
+        applicationRevision: "admin-app-sha-1",
+        transcriptCollection: "watch_search_transcripts_active",
+        transcriptProjectionRevision: 17n,
+        requireQualified: true,
+        currentBindings,
+        qrelsRevision: "qrels-reviewed-1",
+        rankingRevision: "title-and-brand-v1",
+      }),
+    ).resolves.toMatchObject({ generationId: "candidate-1" })
     db.prisma.$queryRaw.mockResolvedValueOnce([{ acquired: false }])
     await expect(
       service.pinServingGeneration({
@@ -655,6 +672,7 @@ describe("TypesenseWatchSearchCandidateGenerationService", () => {
         expectedPointerVersion: 0,
         currentBindings,
         qrelsRevision: "qrels-reviewed-1",
+        rankingRevision: "title-and-brand-v1",
       }),
     ).rejects.toBeInstanceOf(CandidateGenerationLeaseError)
     expect(db.pointers.get("SERVING")?.generationId).toBeNull()
@@ -664,6 +682,7 @@ describe("TypesenseWatchSearchCandidateGenerationService", () => {
         expectedPointerVersion: 0,
         currentBindings: ["new-current-binding"],
         qrelsRevision: "qrels-reviewed-1",
+        rankingRevision: "title-and-brand-v1",
       }),
     ).rejects.toBeInstanceOf(CandidateGenerationValidationError)
     await expect(
@@ -672,6 +691,7 @@ describe("TypesenseWatchSearchCandidateGenerationService", () => {
         expectedPointerVersion: 0,
         currentBindings,
         qrelsRevision: "stale-qrels",
+        rankingRevision: "title-and-brand-v1",
       }),
     ).rejects.toBeInstanceOf(CandidateGenerationValidationError)
     await service.pinServingGeneration({
@@ -679,6 +699,7 @@ describe("TypesenseWatchSearchCandidateGenerationService", () => {
       expectedPointerVersion: 0,
       currentBindings,
       qrelsRevision: "qrels-reviewed-1",
+      rankingRevision: "title-and-brand-v1",
     })
 
     await ready("candidate-2")
@@ -695,6 +716,7 @@ describe("TypesenseWatchSearchCandidateGenerationService", () => {
         expectedPointerVersion: 1,
         currentBindings: ["watch_catalog_current", "watch_transcripts_current"],
         qrelsRevision: "qrels-reviewed-1",
+        rankingRevision: "title-and-brand-v1",
       }),
     ).rejects.toBeInstanceOf(CandidateGenerationValidationError)
   })
@@ -706,6 +728,7 @@ describe("TypesenseWatchSearchCandidateGenerationService", () => {
         generationId: "candidate-1",
         status: "PASSED",
         applicationRevision: "admin-app-sha-1",
+        rankingRevision: "title-and-brand-v1",
         transcriptCollection: "watch_search_transcripts_active",
         transcriptProjectionRevision: 17n,
         qrelsRevision: "qrels-reviewed-1",
@@ -715,6 +738,87 @@ describe("TypesenseWatchSearchCandidateGenerationService", () => {
     ).rejects.toBeInstanceOf(CandidateGenerationValidationError)
   })
 
+  it("rejects qualification evidence relabeled to another ranking revision", async () => {
+    await ready()
+    const currentBindings = ["watch_catalog_current"]
+    await expect(
+      service.recordQualification({
+        generationId: "candidate-1",
+        status: "PASSED",
+        applicationRevision: "admin-app-sha-1",
+        rankingRevision: "title-and-brand-v1",
+        transcriptCollection: "watch_search_transcripts_active",
+        transcriptProjectionRevision: 17n,
+        qrelsRevision: "qrels-reviewed-1",
+        currentBindings,
+        evidence: {
+          schemaVersion: "watch-search-candidate-qualification/v2",
+          status: "QUALIFIED",
+          reasons: [],
+          identity: {
+            generationId: "candidate-1",
+            applicationRevision: "admin-app-sha-1",
+            rankingRevision: "previous-ranker-v1",
+            transcriptCollection: "watch_search_transcripts_active",
+            transcriptProjectionRevision: "17",
+            qrelsRevision: "qrels-reviewed-1",
+            currentBindings,
+          },
+          evidence: {
+            relevance: "PASS",
+            fixedLoadResources: "PASS",
+            currentInterference: "PASS",
+            operatorReview: "PASS",
+            artifacts: { report: "s3://reviewed/report.json" },
+          },
+        },
+      }),
+    ).rejects.toBeInstanceOf(CandidateGenerationValidationError)
+  })
+
+  it("does not let a qualification for the previous ranker authorize serving", async () => {
+    await ready()
+    const currentBindings = ["watch_catalog_current"]
+    db.qualifications.push({
+      id: "legacy-qualification",
+      generationId: "candidate-1",
+      status: "PASSED",
+      applicationRevision: "admin-app-sha-1",
+      transcriptCollection: "watch_search_transcripts_active",
+      transcriptProjectionRevision: 17n,
+      qrelsRevision: "qrels-reviewed-1",
+      currentBindings,
+      evidence: {
+        schemaVersion: "watch-search-candidate-qualification/v1",
+        identity: { applicationRevision: "admin-app-sha-1" },
+      },
+    })
+
+    await expect(
+      service.resolveGeneration({
+        generationId: "candidate-1",
+        applicationRevision: "admin-app-sha-1",
+        transcriptCollection: "watch_search_transcripts_active",
+        transcriptProjectionRevision: 17n,
+        requireQualified: true,
+        currentBindings,
+        qrelsRevision: "qrels-reviewed-1",
+        rankingRevision: "title-and-brand-v1",
+      }),
+    ).rejects.toBeInstanceOf(CandidateGenerationValidationError)
+
+    await expect(
+      service.pinServingGeneration({
+        generationId: "candidate-1",
+        expectedPointerVersion: 0,
+        currentBindings,
+        qrelsRevision: "qrels-reviewed-1",
+        rankingRevision: "title-and-brand-v1",
+      }),
+    ).rejects.toBeInstanceOf(CandidateGenerationValidationError)
+    expect(db.pointers.get("SERVING")?.generationId).toBeNull()
+  })
+
   it("rejects qualification evidence relabeled to another qrels revision", async () => {
     await ready()
     await expect(
@@ -722,17 +826,19 @@ describe("TypesenseWatchSearchCandidateGenerationService", () => {
         generationId: "candidate-1",
         status: "PASSED",
         applicationRevision: "admin-app-sha-1",
+        rankingRevision: "title-and-brand-v1",
         transcriptCollection: "watch_search_transcripts_active",
         transcriptProjectionRevision: 17n,
         qrelsRevision: "qrels-reviewed-2",
         currentBindings: ["watch_catalog_current"],
         evidence: {
-          schemaVersion: "watch-search-candidate-qualification/v1",
+          schemaVersion: "watch-search-candidate-qualification/v2",
           status: "QUALIFIED",
           reasons: [],
           identity: {
             generationId: "candidate-1",
             applicationRevision: "admin-app-sha-1",
+            rankingRevision: "title-and-brand-v1",
             transcriptCollection: "watch_search_transcripts_active",
             transcriptProjectionRevision: "17",
             qrelsRevision: "qrels-reviewed-1",

@@ -168,6 +168,7 @@ describe("Typesense Watch search profiles", () => {
       requireQualified: true,
       currentBindings: ["current-catalog", "current-transcript"],
       qrelsRevision: "qrels-1",
+      rankingRevision: "title-and-brand-v1",
     })
 
     expect(resolveGeneration).toHaveBeenCalledWith({
@@ -178,6 +179,7 @@ describe("Typesense Watch search profiles", () => {
       requireQualified: true,
       currentBindings: ["current-catalog", "current-transcript"],
       qrelsRevision: "qrels-1",
+      rankingRevision: "title-and-brand-v1",
     })
     expect(profile.generationId).toBe("generation-1")
   })
