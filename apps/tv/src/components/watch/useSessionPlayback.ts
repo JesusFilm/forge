@@ -18,7 +18,7 @@ import { inPlayerMenuVisible, shouldReplaceSource } from "./playerSwitch"
 import { validateStreamingUrl } from "../../lib/validateUrl"
 
 /** The two sections of the in-player menu (split pills, U8). */
-export type InPlayerMenuSection = "language" | "subtitles"
+export type InPlayerMenuSection = "language" | "subtitles" | "moments"
 
 export type UseSessionPlaybackParams = {
   /**
