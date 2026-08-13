@@ -160,12 +160,19 @@ enough ownership evidence for safe cleanup without changing their identity.
 
 ### Watch Search Candidate Application Revision
 
-The semantic compatibility identity that binds a Watch Search Candidate
-Generation to the candidate query, ranking, and index contract able to use it.
+The physical compatibility identity that binds a Watch Search Candidate
+Generation to the schema, projection, and retrieval-field contract able to use
+its collections.
 
 It remains stable across unrelated application deployments. A change means
-existing generations require rebuilding and requalification; ordinary deploy
-identity is not Candidate compatibility identity.
+existing generations require rebuilding; ordinary deploy identity and
+application-side ranking behavior are not Candidate collection compatibility.
+
+### Watch Search Candidate Ranking Revision
+
+The application-side ranking identity included in Candidate qualification
+evidence. It changes when Candidate ordering behavior changes, invalidating old
+qualification without rebuilding compatible Typesense collections.
 
 ### Watch Search Candidate Pointer
 
@@ -561,6 +568,18 @@ primary search action.
 ### Keyword-First Search
 
 A Search Pipeline Mode that keeps semantic retrieval available while strengthening lexical and title-driven retrieval so exact or near-title matches are not diluted by broad semantic similarity.
+
+### Title-and-Brand Mode
+
+The automatic final-ranking behavior used when a strong normalized title-lane anchor identifies a known title, brand, series, or collection. It keeps hybrid retrieval active but places strong title and metadata evidence before unrelated transcript-only matches; a query that also includes a concept may use semantic evidence to order the strongly matched content before generic semantic fill.
+
+Title-and-Brand Mode is inferred from the existing query evidence. It is not a Search Pipeline Mode, a user-facing selector, or a separate search surface.
+
+### Semantic Mode
+
+The automatic final-ranking behavior used when a Watch search query has no eligible normalized title-lane anchor. It preserves transcript-driven hybrid discovery for themes, feelings, and natural-language questions.
+
+Semantic Mode retains the normal hybrid Typesense retrieval lanes and is distinct from the separately defined Semantic-Only Search concept.
 
 ### Semantic-Only Search
 

@@ -132,6 +132,7 @@ function assertPassingQualificationEvidence(
   input: {
     generationId: string
     applicationRevision: string
+    rankingRevision: string
     transcriptCollection: string
     transcriptProjectionRevision: bigint
     qrelsRevision: string
@@ -152,12 +153,13 @@ function assertPassingQualificationEvidence(
     "operatorReview",
   ].every((gate) => gates?.[gate] === "PASS")
   if (
-    evidence.schemaVersion !== "watch-search-candidate-qualification/v1" ||
+    evidence.schemaVersion !== "watch-search-candidate-qualification/v2" ||
     evidence.status !== "QUALIFIED" ||
     !Array.isArray(evidence.reasons) ||
     evidence.reasons.length !== 0 ||
     identity?.generationId !== input.generationId ||
     identity?.applicationRevision !== input.applicationRevision ||
+    identity?.rankingRevision !== input.rankingRevision ||
     identity?.transcriptCollection !== input.transcriptCollection ||
     identity?.transcriptProjectionRevision !==
       input.transcriptProjectionRevision.toString() ||
@@ -603,6 +605,7 @@ export class TypesenseWatchSearchCandidateGenerationService {
     expectedPointerVersion: number
     currentBindings: readonly string[]
     qrelsRevision: string
+    rankingRevision: string
   }) {
     return this.movePointer("SERVING", input, true)
   }
@@ -615,6 +618,7 @@ export class TypesenseWatchSearchCandidateGenerationService {
     requireQualified?: boolean
     currentBindings?: readonly string[]
     qrelsRevision?: string
+    rankingRevision?: string
   }) {
     const generation = await this.requireGeneration(input.generationId)
     assertGenerationReady(generation)
@@ -645,15 +649,20 @@ export class TypesenseWatchSearchCandidateGenerationService {
     assertExactIdentity(generation, input)
 
     if (input.requireQualified) {
-      if (!input.currentBindings || !input.qrelsRevision) {
+      if (
+        !input.currentBindings ||
+        !input.qrelsRevision ||
+        !input.rankingRevision
+      ) {
         throw new CandidateGenerationValidationError(
-          "qualified resolution requires current bindings and qrels revision",
+          "qualified resolution requires current bindings, qrels revision, and ranking revision",
         )
       }
       const qualification = await this.findExactPassedQualification(
         generation,
         input.currentBindings,
         input.qrelsRevision,
+        input.rankingRevision,
       )
       if (!qualification) {
         throw new CandidateGenerationValidationError(
@@ -740,6 +749,7 @@ export class TypesenseWatchSearchCandidateGenerationService {
     generationId: string
     status: WatchSearchCandidateQualificationStatus
     applicationRevision: string
+    rankingRevision: string
     transcriptCollection: string
     transcriptProjectionRevision: bigint
     qrelsRevision: string
@@ -1199,6 +1209,7 @@ export class TypesenseWatchSearchCandidateGenerationService {
       expectedPointerVersion: number
       currentBindings?: readonly string[]
       qrelsRevision?: string
+      rankingRevision?: string
     },
     requireQualification: boolean,
   ) {
@@ -1226,9 +1237,13 @@ export class TypesenseWatchSearchCandidateGenerationService {
         }
         assertGenerationReady(generation)
         if (requireQualification) {
-          if (!input.currentBindings || !input.qrelsRevision) {
+          if (
+            !input.currentBindings ||
+            !input.qrelsRevision ||
+            !input.rankingRevision
+          ) {
             throw new CandidateGenerationValidationError(
-              "serving promotion requires current bindings and qrels revision",
+              "serving promotion requires current bindings, qrels revision, and ranking revision",
             )
           }
           const currentBindings = normalizedBindings(input.currentBindings)
@@ -1247,6 +1262,10 @@ export class TypesenseWatchSearchCandidateGenerationService {
                   generation.transcriptProjectionRevision,
                 qrelsRevision,
                 currentBindings: { equals: asJson(currentBindings) },
+                evidence: {
+                  path: ["identity", "rankingRevision"],
+                  equals: input.rankingRevision,
+                },
               },
               select: { id: true },
             })
@@ -1287,6 +1306,7 @@ export class TypesenseWatchSearchCandidateGenerationService {
     generation: StoredGeneration,
     currentBindings: readonly string[],
     qrelsRevision: string,
+    rankingRevision: string,
   ) {
     return this.prisma.watchSearchCandidateQualification.findFirst({
       where: {
@@ -1298,6 +1318,10 @@ export class TypesenseWatchSearchCandidateGenerationService {
         qrelsRevision: requiredString(qrelsRevision, "qrels revision"),
         currentBindings: {
           equals: asJson(normalizedBindings(currentBindings)),
+        },
+        evidence: {
+          path: ["identity", "rankingRevision"],
+          equals: requiredString(rankingRevision, "ranking revision"),
         },
       },
       select: { id: true },

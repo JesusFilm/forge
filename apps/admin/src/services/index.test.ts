@@ -114,6 +114,7 @@ describe("resolveWatchSearchServingProfile", () => {
     const profile = await resolveWatchSearchServingProfile({
       selector: "CURRENT",
       applicationRevision: null,
+      rankingRevision: null,
       transcriptProjectionRevision: null,
       qrelsRevision: null,
       typesense: { getAlias },
@@ -139,6 +140,7 @@ describe("resolveWatchSearchServingProfile", () => {
     const profile = await resolveWatchSearchServingProfile({
       selector: "CANDIDATE:generation-a",
       applicationRevision: "revision-a",
+      rankingRevision: "title-and-brand-v1",
       transcriptProjectionRevision: 17n,
       qrelsRevision: "qrels-1",
       typesense: { getAlias },
@@ -148,6 +150,7 @@ describe("resolveWatchSearchServingProfile", () => {
     expect(resolveGeneration).toHaveBeenCalledWith({
       generationId: "generation-a",
       applicationRevision: "revision-a",
+      rankingRevision: "title-and-brand-v1",
       transcriptCollection: "watch_search_transcripts_20260810",
       transcriptProjectionRevision: 17n,
       requireQualified: true,
@@ -171,6 +174,7 @@ describe("resolveWatchSearchServingProfile", () => {
       resolveWatchSearchServingProfile({
         selector: "CANDIDATE:generation-a",
         applicationRevision: null,
+        rankingRevision: "title-and-brand-v1",
         transcriptProjectionRevision: 17n,
         qrelsRevision: "qrels-1",
         typesense: { getAlias: first.getAlias },
@@ -189,6 +193,7 @@ describe("resolveWatchSearchServingProfile", () => {
       resolveWatchSearchServingProfile({
         selector: "CANDIDATE:generation-a",
         applicationRevision: "revision-a",
+        rankingRevision: "title-and-brand-v1",
         transcriptProjectionRevision: 17n,
         qrelsRevision: "qrels-1",
         typesense: { getAlias: second.getAlias },
@@ -213,6 +218,7 @@ describe("resolveWatchSearchServingProfile", () => {
       resolveWatchSearchServingProfile({
         selector: "CANDIDATE:generation-a",
         applicationRevision: "revision-a",
+        rankingRevision: "title-and-brand-v1",
         transcriptProjectionRevision: 17n,
         qrelsRevision: "qrels-1",
         typesense: { getAlias: fixtureValue.getAlias },

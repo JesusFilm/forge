@@ -1,6 +1,7 @@
 ---
 title: Keep Watch search Candidate generations compatible across unrelated Admin deploys
 date: 2026-08-12
+last_updated: 2026-08-12
 category: integration-issues
 module: admin_watch_search_candidate
 problem_type: integration_issue
@@ -32,9 +33,9 @@ tags:
 The private Watch search comparison could stop resolving its Candidate profile
 after an unrelated Admin deployment. Candidate compatibility was coupled to the
 Admin deployment revision even though a deployment can change without changing
-the candidate query, ranking, or index contract. The generation resolver
-intentionally rejects an application-revision mismatch
-(`apps/admin/src/services/typesense-watch-search-candidate-generation.ts:330`),
+the candidate physical schema, projection, or retrieval-field contract. The
+generation resolver intentionally rejects an application-revision mismatch
+(`apps/admin/src/services/typesense-watch-search-candidate-generation.ts:332`),
 so using a deploy SHA as that identity made a healthy generation appear
 incompatible.
 
@@ -83,9 +84,20 @@ export const TYPESENSE_WATCH_SEARCH_CANDIDATE_APPLICATION_REVISION =
 ```
 
 The source documents its lifecycle: keep this value stable across unrelated
-Admin deployments and bump it when a candidate query, ranking, or index-contract
-change requires rebuilding and requalifying the generation
-(`apps/admin/src/services/typesense-watch-search-candidate-identity.ts:1`).
+Admin deployments and application-only ranking changes, and bump it when a
+schema, projection, or retrieval-field change requires rebuilding the generation
+(`apps/admin/src/services/typesense-watch-search-candidate-identity.ts:3`).
+
+Application-side ordering has an independent identity:
+
+```ts
+export const TYPESENSE_WATCH_SEARCH_CANDIDATE_RANKING_REVISION =
+  "title-and-brand-v1"
+```
+
+The benchmark stores this revision in qualification evidence. Candidate serving
+requires an exact match, so old ranking evidence cannot authorize the new
+ranker even when the same physical generation is reused.
 
 Every Candidate boundary obtains its application revision from the shared
 helper:
@@ -97,9 +109,9 @@ helper:
   revision
   (`apps/admin/src/services/typesense-watch-search-comparison.service.ts:300`).
 - Candidate benchmarking and qualification resolve and record the same identity
-  (`apps/admin/src/scripts/benchmark-watch-search-candidate.ts:738`).
+  (`apps/admin/src/scripts/benchmark-watch-search-candidate.ts:813`).
 - Candidate serving passes the same revision to serving-profile resolution
-  (`apps/admin/src/services/index.ts:150`).
+  (`apps/admin/src/services/index.ts:170`).
 
 After deployment, a fresh Candidate generation was built with
 `watch-search-candidate/v1` and selected for Evaluation. During authenticated
@@ -113,14 +125,19 @@ Japanese and Russian ranking than Current.
 
 ## Why This Works
 
-`applicationRevision` represents Candidate contract compatibility, not the
-currently deployed Admin build. Unrelated deployments now keep
-`watch-search-candidate/v1`, so they continue to match generations built for
-that contract. A deliberate Candidate contract change still requires changing
-the constant, which makes the existing strict generation check reject stale
-generations until a compatible generation is rebuilt
+`applicationRevision` represents Candidate collection compatibility, not the
+currently deployed Admin build or application-side ordering. Unrelated
+deployments and ranking changes keep `watch-search-candidate/v1`, so they can
+continue using collections built for that physical contract. A deliberate
+physical-contract change still requires changing the constant, which makes the
+existing strict generation check reject stale generations until compatible
+collections are rebuilt
 (`apps/admin/src/services/typesense-watch-search-candidate-identity.ts:4`,
-`apps/admin/src/services/typesense-watch-search-candidate-generation.ts:338`).
+`apps/admin/src/services/typesense-watch-search-candidate-generation.ts:332`).
+
+Ranking qualification remains fail-closed: passing evidence uses the v2
+qualification envelope, carries the exact ranking revision, and serving
+resolution rejects legacy evidence that lacks that identity.
 
 The safety model remains intact. Candidate identity must still match its lease
 on generation ID, application revision, transcript collection, and transcript
@@ -142,11 +159,12 @@ and lease checks were not bypassed.
 - Retain an end-to-end profile-resolution test across an unrelated Admin
   deployment
   (`apps/admin/src/services/typesense-watch-search-comparison.service.test.ts:134`).
-- When the candidate query, ranking, schema, or index contract changes,
-  deliberately bump
-  `TYPESENSE_WATCH_SEARCH_CANDIDATE_APPLICATION_REVISION`, rebuild and requalify
-  the generation, and then move the Evaluation or Serving pointer as
-  appropriate. Do not bump it for ordinary Admin deployments.
+- When the physical schema, projection, or retrieval-field contract changes,
+  deliberately bump `TYPESENSE_WATCH_SEARCH_CANDIDATE_APPLICATION_REVISION`
+  and rebuild the generation. For application-side ranking changes, bump the
+  Candidate ranking revision and rerun qualification without rebuilding
+  compatible collections. Do not bump either identity for ordinary Admin
+  deployments.
 - Verify the deployed comparison through the authenticated production UI before
   declaring the availability bug fixed. Require both panes to complete across
   multiple scripts, while recording ranking defects separately as relevance
