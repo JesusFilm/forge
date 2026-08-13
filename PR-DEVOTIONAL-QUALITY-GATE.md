@@ -83,11 +83,17 @@ the rules.
 Each of these turned out to be entangled with something `main` replaced, so each
 wants its own PR rather than being folded in here:
 
-- **The cover-card and visual work** (~2200 lines in `DevotionalVideo.tsx`).
-  `main` made `renderConfig` a required prop sourced from Workspace-authored
-  brand tokens, with no compiled palette fallback; the branch version predates
-  that and its styles file diverges by 393 lines. Porting it wholesale would
-  remove the Workspace styling model.
+- **The social cover switches**: `hideCoverDate`, `coverTextStatic`,
+  `coverSecondaryLine`. These three props, plus the `occasion` cover tag, are
+  the only devotional composition props `main` does not already have. Small in
+  themselves, but they land in a package where `main` has moved on twice over:
+  the visual components were split out of the monolithic `DevotionalVideo.tsx`
+  into `visual-primitives.tsx` / `card-body.tsx` / `card-chrome.tsx` /
+  `background.tsx`, and `renderConfig` became a required prop sourced from
+  Workspace-authored brand tokens with no compiled palette fallback. So this is
+  a re-implementation against the current shape, not a port, and the styles
+  file diverges by 393 lines. Worth doing on its own once someone decides
+  whether the social cards are still wanted.
 - **The two-act layout.** The clip split that produces the second act lives in
   the render, and the render moved into the shorts-worker container. The
   worker's render has no notion of acts yet, so this spans the Workspace
