@@ -42,16 +42,23 @@ import { critiqueReflectionFidelity } from "./reflection-fidelity-critic"
  *  that the viewer carries nothing away", which is not shippable. */
 const DEPTH_SCORE_FLOOR = 2
 
-export class DevotionalQualityGateError extends Error {
-  readonly code = "quality_gate_failed"
-  constructor(readonly reasons: string[]) {
-    super(
-      `devotional text failed the quality gate before audio/video: ${reasons.join("; ")}`,
-    )
-    this.name = "DevotionalQualityGateError"
-  }
-}
-
+/**
+ * HOW THIS BLOCKS. It returns a verdict; it does not throw. The caller short
+ * circuits, exactly as it already does for the safety gate: the workflow's
+ * produce step refuses to hand off to the paid steps while `blocking` is
+ * non-empty, and a blocked devotional is a successful run that did not publish
+ * rather than a failed one.
+ *
+ * A throwing entry point was considered and rejected. It would have to be
+ * ignorable to be useful (a report-only surface still needs the plain verdict),
+ * and nothing in this runtime wants the throw — an unused throwing wrapper is
+ * just another exported symbol that looks like enforcement. The enforcement is
+ * at the call site, and there is a source-level test pinning it there.
+ *
+ * An earlier version of this module also exported a
+ * `DevotionalQualityGateError` that was constructed nowhere, which read as if
+ * the gate could stop a render by itself. It could not, and it did not.
+ */
 export type DevotionalReview = {
   /** Human-readable reasons the text should not ship. Empty = clean. */
   blocking: string[]

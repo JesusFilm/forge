@@ -9,8 +9,22 @@
  *     creative quality — these drive reflection accuracy and the title/hook).
  *
  * Translation/adaptation is configured separately (DEVOTIONAL_TRANSLATE_MODEL,
- * default openai/gpt-4o). Safety is DEVOTIONAL_SAFETY_MODEL. Change a choice by
- * editing this map. Falls back to DEVOTIONAL_MODEL for any unset entry.
+ * default openai/gpt-4o). Safety is DEVOTIONAL_SAFETY_MODEL. Falls back to
+ * DEVOTIONAL_MODEL for any unset entry.
+ *
+ * WHICH ENTRIES ACTUALLY APPLY. Only `coherence`, `reflectionCritic` and
+ * `fidelityCritic` are consulted today, through the three builders below. The
+ * content seams (scripture, modernizer, copywriter, highlighter, spurgeonRanker)
+ * get their model from the workflow instead, which pairs each with a Mastra agent
+ * — see contentDependencies in video-first-devotional.ts. `pointPicker` and
+ * `conclusionWriter` are consulted by NOBODY: those two seams currently run on
+ * the caller's shared LLM, so editing either line here changes nothing until
+ * they are given agents of their own. Recorded rather than deleted because the
+ * choices are owner decisions with reasons, not defaults.
+ *
+ * A `buildDevotionalAgentLlms()` that built one LLM per content seam used to sit
+ * here. Nothing ever called it, and it read as if this map drove the content
+ * pipeline. Removed.
  */
 import { getDevotionalModel } from "../../config/env"
 import { createDevotionalLlm, type DevotionalLlm } from "./llm"
@@ -50,32 +64,8 @@ export const DEVOTIONAL_AGENT_MODELS: Record<DevotionalAgent, string> = {
   fidelityCritic: "anthropic/claude-sonnet-4.5",
 }
 
-/** LLM instances keyed to the seams `composeDevotionalContent` uses. */
-export type DevotionalAgentLlms = {
-  scripture?: DevotionalLlm
-  spurgeon?: DevotionalLlm
-  modernize?: DevotionalLlm
-  pointPicker?: DevotionalLlm
-  copy?: DevotionalLlm
-  conclusion?: DevotionalLlm
-  highlights?: DevotionalLlm
-}
-
 function modelFor(agent: DevotionalAgent): string {
   return DEVOTIONAL_AGENT_MODELS[agent] || getDevotionalModel()
-}
-
-/** Build one LLM per content agent from the model map (shared OpenRouter key). */
-export function buildDevotionalAgentLlms(): Required<DevotionalAgentLlms> {
-  return {
-    scripture: createDevotionalLlm({ model: modelFor("scripture") }),
-    spurgeon: createDevotionalLlm({ model: modelFor("spurgeonRanker") }),
-    modernize: createDevotionalLlm({ model: modelFor("modernizer") }),
-    pointPicker: createDevotionalLlm({ model: modelFor("pointPicker") }),
-    copy: createDevotionalLlm({ model: modelFor("copywriter") }),
-    conclusion: createDevotionalLlm({ model: modelFor("conclusionWriter") }),
-    highlights: createDevotionalLlm({ model: modelFor("highlighter") }),
-  }
 }
 
 /** LLM for the whole-message coherence checker. */

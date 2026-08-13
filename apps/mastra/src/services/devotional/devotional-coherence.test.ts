@@ -132,8 +132,12 @@ describe("checkDevotionalCoherence", () => {
     const pending = checkDevotionalCoherence(
       input(fakeLlm(complete as unknown as DevotionalLlm["complete"])),
     )
+    // Attach the rejection handler BEFORE advancing timers. Advancing first lets
+    // the retry reject while nothing is listening, and vitest reports that as an
+    // unhandled rejection — every test still green, whole run exit code 1.
+    const rejects = expect(pending).rejects.toThrow(boom)
     await vi.advanceTimersByTimeAsync(2_000)
-    await expect(pending).rejects.toThrow(boom)
+    await rejects
     expect(complete).toHaveBeenCalledTimes(2)
   })
 })
