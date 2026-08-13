@@ -33,6 +33,7 @@ import { lookupVerse } from "../../services/devotional/web-bible"
 import { generateMusic } from "../../services/devotional/elevenlabs-music"
 import { rotateFilter } from "../../services/devotional/voice-rotation"
 import { evaluateSafety } from "../../services/devotional/safety-gate"
+import { reviewDevotionalText } from "../../services/devotional/devotional-quality-gate"
 import { pickReflectionHighlights } from "../../services/devotional/reflection-highlighter"
 import { modernizeReflection } from "../../services/devotional/reflection-modernizer"
 import { pickBestSpurgeon } from "../../services/devotional/spurgeon-ranker"
@@ -180,10 +181,18 @@ const SourcedSchema = z
   })
   .extend(AttemptContextSchema.shape)
 
+/** Coherence + depth + fidelity verdict. Empty `blocking` means clean. Skipped
+ *  (and left null) when safety already blocked, since three more model calls
+ *  cannot change an outcome that is already "do not publish". */
+const QualityReviewSchema = z
+  .object({ blocking: z.array(z.string()) })
+  .nullable()
+
 const ContentSchema = z
   .object({
     devotional: GeneratedDevotionalSchema,
     safety: SafetyVerdictSchema,
+    quality: QualityReviewSchema,
     reservationId: z.string().uuid(),
   })
   .extend(AttemptContextSchema.shape)
@@ -192,6 +201,7 @@ const ProducedSchema = z
   .object({
     devotional: GeneratedDevotionalSchema,
     safety: SafetyVerdictSchema,
+    quality: QualityReviewSchema,
     reservationId: z.string().uuid(),
     readyForRender: z.boolean(),
   })
@@ -416,19 +426,38 @@ const contentStep = createStep({
         minConfidence: authored.safety.effectiveMinimumConfidence,
       })
 
+      // Quality is a SECOND gate, on a different axis: safety asks whether the
+      // text is doctrinally and tonally safe to publish, quality asks whether it
+      // is worth publishing (coherent with its verse, deep enough to carry
+      // something away, faithful to the source it adapts). It runs only when
+      // safety passed — three further model calls cannot change an outcome that
+      // is already "do not publish". Like safety it runs on every pass, cached
+      // text included, and fails closed: a critic that cannot run is a block.
+      const quality =
+        safety.verdict === "pass"
+          ? await reviewDevotionalText({
+              devotional,
+              passageReference: inputData.chapter.reference,
+              // The composed text here is English; the localized path that
+              // makes fidelity meaningless was not carried into this runtime.
+              checkFidelity: true,
+            })
+          : null
+
       const filesystem = mastra.getWorkspace()?.filesystem
       if (!filesystem) throw new Error("Devotional Workspace is unavailable")
       await writeAttemptJsonArtifact({
         filesystem,
         runId,
         name: "content",
-        value: { devotional, safety },
+        value: { devotional, safety, quality },
       })
 
       return {
         ...attemptContext(inputData),
         devotional,
         safety,
+        quality,
         reservationId: inputData.reservationId,
       }
     } catch (error) {
@@ -452,18 +481,26 @@ export const devotionalContentWorkflow = createWorkflow({
 const produceStep = createStep({
   id: "prepare-media",
   description:
-    "Validate the exact authored media policy before the transient Worker handoff. Skipped when safety blocked.",
+    "Validate the exact authored media policy before the transient Worker handoff. Skipped when safety or quality blocked.",
   inputSchema: ContentSchema,
   outputSchema: ProducedSchema,
   execute: async ({ inputData, mastra }) => {
     try {
       await verifyWorkflowWorkspaceSources(mastra, inputData.selectedSources)
-      const { devotional, safety } = inputData
-      if (safety.verdict !== "pass") {
+      const { devotional, safety, quality } = inputData
+      // Both gates stand between composed text and money: ElevenLabs narration
+      // and the Worker render are downstream of here. A null quality verdict
+      // means safety already blocked, so it is not a pass by omission.
+      const blocked =
+        safety.verdict !== "pass" ||
+        quality === null ||
+        quality.blocking.length > 0
+      if (blocked) {
         return {
           ...attemptContext(inputData),
           devotional,
           safety,
+          quality,
           reservationId: inputData.reservationId,
           readyForRender: false,
         }
@@ -473,6 +510,7 @@ const produceStep = createStep({
         ...attemptContext(inputData),
         devotional,
         safety,
+        quality,
         reservationId: inputData.reservationId,
         readyForRender: true,
       }

@@ -61,6 +61,18 @@ vi.mock("../../services/devotional/safety-gate", async (importActual) => ({
   evaluateSafety: async () => SAFETY,
 }))
 
+// The quality gate's three critics build their own LLMs from authored model
+// config, so without this the suite would attempt real provider calls and the
+// gate would fail closed on every run — blocking before the approval suspension
+// these tests are about. Mutable so one case can flip it to a blocking verdict.
+vi.mock(
+  "../../services/devotional/devotional-quality-gate",
+  async (importActual) => ({
+    ...(await importActual()),
+    reviewDevotionalText: async () => ({ blocking: qualityBlocking }),
+  }),
+)
+
 vi.mock("../../services/devotional/workspace/attempt-data", () => ({
   loadDevotionalAttemptAuthoredData: async () => ({
     prompts: {
@@ -188,6 +200,9 @@ const SAFETY = {
   reasons: [],
 }
 
+/** Quality-gate verdict for the run under test. Empty = clean. */
+let qualityBlocking: string[] = []
+
 const PORTRAIT = {
   assetId: "devo_run_1",
   artifactType: "devotional-output-portrait-v1" as const,
@@ -282,6 +297,7 @@ async function startAndResume(approved: boolean, runId: string) {
 
 describe("video-first devotional workflow", () => {
   beforeEach(() => {
+    qualityBlocking = []
     vi.clearAllMocks()
     mocks.reserve.mockResolvedValue({
       chapter: CHAPTER,
@@ -335,6 +351,50 @@ describe("video-first devotional workflow", () => {
     expect(mocks.publish).not.toHaveBeenCalled()
     expect(mocks.record).not.toHaveBeenCalled()
     expect(mocks.release).toHaveBeenCalledWith(CHAPTER.id, RESERVATION_ID)
+  })
+
+  // The quality gate sits with the safety gate between composed text and money:
+  // ElevenLabs narration and the Worker render are both downstream. This case is
+  // the one that would have caught the gate shipping unwired — it fails if the
+  // reviewDevotionalText call is removed from contentStep, or if produceStep
+  // stops consulting its verdict.
+  it("does not render or narrate when the quality gate blocks", async () => {
+    qualityBlocking = ["coherence: the reflection never touches the verse"]
+    registeredWorkflow ??= registerWorkflow()
+    const runId = "workflow-quality-blocked"
+    const run = await registeredWorkflow.createRun({ runId })
+    await run.startAsync({ inputData: workflowInput(runId) })
+
+    // Wait for a TERMINAL state. Without this the assertions below pass whether
+    // or not the gate is consulted, because the paid steps simply have not run
+    // yet when startAsync resolves — the failure mode this test exists to catch
+    // would sail through. Verified by removing the produceStep quality check:
+    // that must turn this case red.
+    let state = await registeredWorkflow.getWorkflowRunById(runId)
+    for (
+      let attempt = 0;
+      attempt < 100 &&
+      state?.status !== "success" &&
+      state?.status !== "failed" &&
+      state?.status !== "suspended";
+      attempt++
+    ) {
+      await new Promise((resolve) => setTimeout(resolve, 5))
+      state = await registeredWorkflow.getWorkflowRunById(runId)
+    }
+
+    // No approval suspension: there is nothing to approve when nothing rendered.
+    expect(state?.status).not.toBe("suspended")
+    expect(mocks.render).not.toHaveBeenCalled()
+    expect(mocks.publish).not.toHaveBeenCalled()
+    // Not burned: a blocked devotional must not consume the clip.
+    expect(mocks.record).not.toHaveBeenCalled()
+    // NOTE deliberately not asserted: whether the reservation is RELEASED here.
+    // It is not, on this path — the blocked run ends holding the clip. That is
+    // the pre-existing safety-block behaviour too (produceStep returns
+    // readyForRender:false without releasing), so it is not introduced here, and
+    // pinning it either way would encode a decision nobody has made. Recorded as
+    // a review finding instead.
   })
 
   it("returns publish_skipped and does not burn the clip when config is absent", async () => {
