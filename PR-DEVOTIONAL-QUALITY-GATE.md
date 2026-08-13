@@ -9,9 +9,12 @@ Four things now hold that did not before:
 
 1. **A quality gate runs before any paid narration or render.** It composes three
    critics — coherence, depth, and fidelity of the adaptation against its source
-   — in the workflow's content step, and the produce step refuses to hand off to
-   the paid steps on a blocking verdict. A critic that could not RUN counts as
-   blocking: "we didn't check" is never treated as "it passed".
+   — in the workflow's content step. It ships in REPORT-ONLY mode: the verdict is
+   recorded on every run, and enforcement is a separate flip of
+   `DEVOTIONAL_QUALITY_GATE_ENFORCED` once the recorded runs say it is safe (see
+   the deployment checklist). Once enforced, the produce step refuses to hand off
+   to the paid steps on a blocking verdict, and a critic that could not RUN counts
+   as blocking: "we didn't check" is never treated as "it passed".
 2. **At most two of the author's points per devotional.** A commentary excerpt
    often carries several ordinal points ("we learn, firstly ... secondly ...
    thirdly"). The source is narrowed BEFORE the writer sees it, so the rule is
@@ -97,7 +100,48 @@ lint    clean
 tests   2415 passed, 5 skipped, exit 0
 ```
 
-## Operator step this PR does NOT do
+## Deployment checklist
+
+Both items are conditions, not suggestions — the PR stays a draft until they are
+covered.
+
+**1. Roll out report-only, enforce separately.**
+
+- [ ] Deploy with `DEVOTIONAL_QUALITY_GATE_ENFORCED` unset or `false`. That is the
+      schema default, so no action is needed to get report-only; the variable
+      exists so that ENABLING enforcement is the act that requires intent.
+- [ ] Let a few days of runs accumulate. Every run records
+      `quality: { blocking, enforced }` in its attempt artifact and in the
+      publication artifact, in both modes, so the numbers to read are: how often
+      `blocking` is non-empty, and how much of that is the critics being wrong
+      versus the text being bad.
+- [ ] Only then set `DEVOTIONAL_QUALITY_GATE_ENFORCED=true`. From that point a
+      blocking verdict stops the paid narration and render, and the run reports
+      `status: "blocked"` with `blockedBy: "quality"`.
+- [ ] Rollback is the same variable set back to `false`. No deploy, no code change.
+
+What the mode does and does not change: the critics run either way, and a gate
+that CRASHES is recorded as "could not run" either way. Only the consequence
+differs. Under enforcement that verdict blocks — fail closed, because "we did not
+check" must never read as "it passed". In report-only it is recorded and the run
+continues, which is the point: an OpenRouter outage cannot cost a day's devotional
+while the false-positive rate is still unknown.
+
+**2. Update AND verify the live Workspace prompt.**
+
+- [ ] Apply the two owner content rules (audience, describe-don't-command) to the
+      live Railway Workspace document at `/inputs/prompts/generation.json`.
+- [ ] Add the two relocated prompts, `conclusion` and `pointPicker`, to the same
+      document.
+- [ ] Verify by reading the live document back and confirming it contains
+      `DO NOT REDIRECT THE AUTHOR'S AUDIENCE` and `DESCRIBE, DON'T COMMAND`.
+      A green CI run is NOT that proof — see below.
+- [ ] Until the live document carries `conclusion` and `pointPicker`, those two
+      services fall back to their in-code copy. That fallback is transitional; once
+      the document has both keys, the `.optional()` on them in `authored-data.ts`
+      can go, and the fallback with it.
+
+## Why a green merge is not proof of item 2
 
 **The deployed Workspace prompt is not updated by merging this.** In Railway the
 writable S3 Workspace is authoritative, and the migration script reports a
@@ -117,7 +161,8 @@ green run is not mistaken for proof that production carries the rules.
 - **The critics run sequentially behind two retry layers with no abort signal.**
   Three independent reads of the same immutable text, so they could run
   concurrently; the worst case is long and cannot be cancelled, and the render
-  step already threads a signal.
+  step already threads a signal. Agreed as follow-up work — report-only mode
+  removes the availability consequence during rollout, but not the latency.
 - **"Fidelity was not checked" reaches no caller.** The review shape is
   `{ blocking }` only, so the absent-excerpt case lives in a log line.
 - **`pointPicker` and `conclusionWriter` do not consult their model entries.**

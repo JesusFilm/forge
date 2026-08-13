@@ -1,7 +1,11 @@
 import { createStep, createWorkflow } from "@mastra/core/workflows"
 import { z } from "zod"
 
-import { getDevotionalModel, getDevotionalSafetyModel } from "../../config/env"
+import {
+  getDevotionalModel,
+  getDevotionalSafetyModel,
+  isDevotionalQualityGateEnforced,
+} from "../../config/env"
 import { createAgentLlm } from "../agents/devotional/agent-llm"
 import { copyAgent } from "../agents/devotional/copy-agent"
 import { highlighterAgent } from "../agents/devotional/highlighter-agent"
@@ -206,13 +210,19 @@ const SourcedSchema = z
  *  safety already blocked, since three more model calls cannot change an outcome
  *  that is already "do not publish".
  *
+ *  `enforced` records whether this run's verdict was ACTED ON, so a stored
+ *  verdict is never ambiguous after the fact: a report-only run carries its
+ *  findings with `enforced: false`, which is what makes the critics' false
+ *  positive rate and the provider's reliability observable BEFORE enforcement is
+ *  turned on.
+ *
  *  `.optional()` as well as `.nullable()` is about DEPLOY, not about the happy
  *  path: this workflow suspends for human approval, so a run persisted before
  *  this key existed can resume after the deploy that added it. Without optional,
  *  that resume fails schema validation. With it, the key is simply absent, which
  *  the consumer must treat as "no verdict" — never as a pass. */
 const QualityReviewSchema = z
-  .object({ blocking: z.array(z.string()) })
+  .object({ blocking: z.array(z.string()), enforced: z.boolean() })
   .nullable()
   .optional()
 
@@ -481,17 +491,45 @@ const contentStep = createStep({
       // safety passed — three further model calls cannot change an outcome that
       // is already "do not publish". Like safety it runs on every pass, cached
       // text included, and fails closed: a critic that cannot run is a block.
+      // The critics run in BOTH modes. Report-only changes what happens to the
+      // verdict, never whether it is produced — a mode that skipped the calls
+      // would observe nothing, which is the opposite of the point.
+      const enforced = isDevotionalQualityGateEnforced()
       const quality =
         safety.verdict === "pass"
-          ? await reviewDevotionalText({
-              devotional,
-              log,
-              passageReference: inputData.chapter.reference,
-              // The composed text here is English; the localized path that
-              // makes fidelity meaningless was not carried into this runtime.
-              checkFidelity: true,
-            })
+          ? { ...(await reviewQuality()), enforced }
           : null
+
+      // The gate CRASHING is the same class of fact as a critic that could not
+      // run: we did not check. Turning it into a verdict rather than letting it
+      // escape is what makes report-only mean what it says — a provider outage
+      // must not cost the day's devotional while the false-positive rate is still
+      // unknown. Under enforcement the same verdict blocks, which is the fail
+      // closed posture; only the consequence differs, never the record.
+      async function reviewQuality(): Promise<{ blocking: string[] }> {
+        try {
+          return await reviewDevotionalText({
+            devotional,
+            log,
+            passageReference: inputData.chapter.reference,
+            // The composed text here is English; the localized path that makes
+            // fidelity meaningless was not carried into this runtime.
+            checkFidelity: true,
+          })
+        } catch (error) {
+          const reason = error instanceof Error ? error.message : String(error)
+          log(
+            `[devotional] event=quality_gate_crashed enforced=${enforced} reason=${reason}`,
+          )
+          return { blocking: [`quality gate could not run: ${reason}`] }
+        }
+      }
+      if (quality && quality.blocking.length > 0 && !enforced) {
+        log(
+          `[devotional] event=quality_gate_report_only blocking=${quality.blocking.length} ` +
+            `reasons=${JSON.stringify(quality.blocking)}`,
+        )
+      }
 
       const filesystem = mastra.getWorkspace()?.filesystem
       if (!filesystem) throw new Error("Devotional Workspace is unavailable")
@@ -545,10 +583,17 @@ const produceStep = createStep({
       // deploy that added it). Absent evidence is not a pass: blocking such a run
       // costs a missed publish, letting it through costs unreviewed text on the
       // site.
-      const blocked =
-        safety.verdict !== "pass" ||
-        quality == null ||
-        quality.blocking.length > 0
+      //
+      // In report-only mode the verdict is recorded and NOT acted on, so a critic
+      // outage cannot cost a day's devotional while the false-positive rate is
+      // still unknown. `enforced` travels with the verdict rather than being
+      // re-read from env here, so a run's decision matches the mode it actually
+      // ran under even if the flag flips mid-flight.
+      const qualityBlocks =
+        quality == null
+          ? safety.verdict !== "pass"
+          : quality.enforced && quality.blocking.length > 0
+      const blocked = safety.verdict !== "pass" || qualityBlocks
       if (blocked) {
         return {
           ...attemptContext(inputData),
@@ -808,7 +853,10 @@ const publishStep = createStep({
     if (safety.verdict !== "pass") {
       status = "blocked"
       blockedBy = "safety"
-    } else if (quality == null || quality.blocking.length > 0) {
+    } else if (
+      quality == null ||
+      (quality.enforced && quality.blocking.length > 0)
+    ) {
       status = "blocked"
       blockedBy = "quality"
     } else if (!approved) {

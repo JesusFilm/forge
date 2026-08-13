@@ -56,6 +56,13 @@ vi.mock("../../services/devotional/workspace/provenance", () => ({
   writeAttemptJsonArtifact: vi.fn(async () => "/runs/test/artifact.json"),
 }))
 
+vi.mock("../../config/env", async (importActual) => ({
+  ...(await importActual()),
+  // `env` is parsed once at module load, so setting process.env in a hook cannot
+  // move it. Overriding the getter is what lets one suite cover both modes.
+  isDevotionalQualityGateEnforced: () => qualityEnforced,
+}))
+
 vi.mock("../../services/devotional/safety-gate", async (importActual) => ({
   ...(await importActual()),
   evaluateSafety: async () => SAFETY,
@@ -69,7 +76,10 @@ vi.mock(
   "../../services/devotional/devotional-quality-gate",
   async (importActual) => ({
     ...(await importActual()),
-    reviewDevotionalText: async () => ({ blocking: qualityBlocking }),
+    reviewDevotionalText: async () => {
+      if (qualityThrows) throw qualityThrows
+      return { blocking: qualityBlocking }
+    },
   }),
 )
 
@@ -202,6 +212,12 @@ const SAFETY = {
 
 /** Quality-gate verdict for the run under test. Empty = clean. */
 let qualityBlocking: string[] = []
+/** Set to simulate the gate itself failing (provider outage past its retries). */
+let qualityThrows: Error | undefined
+/** Enforcement mode for the run under test. Production defaults to report-only;
+ *  these cases default to enforced so the blocking paths are exercised, and the
+ *  report-only cases set it back explicitly. */
+let qualityEnforced = true
 
 const PORTRAIT = {
   assetId: "devo_run_1",
@@ -298,6 +314,8 @@ async function startAndResume(approved: boolean, runId: string) {
 describe("video-first devotional workflow", () => {
   beforeEach(() => {
     qualityBlocking = []
+    qualityThrows = undefined
+    qualityEnforced = true
     vi.clearAllMocks()
     mocks.reserve.mockResolvedValue({
       chapter: CHAPTER,
@@ -410,6 +428,76 @@ describe("video-first devotional workflow", () => {
     // readyForRender:false without releasing), so it is not introduced here, and
     // pinning it either way would encode a decision nobody has made. Recorded as
     // a review finding instead.
+  })
+
+  // Vlad's rollout condition: the critics ship observing, not enforcing. A
+  // finding must be recorded either way, and only enforcement may stop the paid
+  // work — otherwise a provider outage costs a day's devotional before anyone
+  // knows the false-positive rate.
+  describe("report-only mode", () => {
+    it("records the finding and still renders", async () => {
+      qualityEnforced = false
+      qualityBlocking = ["coherence: the reflection never touches the verse"]
+      const result = await startAndResume(true, "workflow-report-only")
+
+      // The paid work went ahead...
+      expect(mocks.render).toHaveBeenCalled()
+      // ...and the verdict is on the record with the mode it ran under, so the
+      // finding is countable later without guessing whether it was acted on.
+      expect(result).toMatchObject({
+        status: "success",
+        result: {
+          status: "published",
+          quality: {
+            enforced: false,
+            blocking: ["coherence: the reflection never touches the verse"],
+          },
+        },
+      })
+      // Narrowed rather than optional-chained: the union includes a failed shape
+      // with no `result` at all, and `?.` on that would quietly assert nothing.
+      expect(result.status).toBe("success")
+      if (result.status !== "success") throw new Error("expected success")
+      expect(result.result.blockedBy).toBeUndefined()
+    })
+
+    it("still renders when the gate itself fails, so an outage costs nothing", async () => {
+      // The gate throwing is the provider-outage shape: past its own retries,
+      // every critic gone. Under enforcement that is a block by design; in
+      // report-only it must not be, which is the whole reason for the mode.
+      qualityEnforced = false
+      qualityThrows = new Error("openrouter unavailable")
+      const result = await startAndResume(true, "workflow-report-only-outage")
+      expect(mocks.render).toHaveBeenCalled()
+      expect(result).toMatchObject({
+        status: "success",
+        result: { status: "published" },
+      })
+    })
+  })
+
+  it("blocks when the gate itself fails under enforcement", async () => {
+    // Same outage, enforcement on: fail closed. "We could not check" must never
+    // read as "it passed", so the paid work does not start.
+    qualityThrows = new Error("openrouter unavailable")
+    registeredWorkflow ??= registerWorkflow()
+    const runId = "workflow-enforced-outage"
+    const run = await registeredWorkflow.createRun({ runId })
+    await run.startAsync({ inputData: workflowInput(runId) })
+    let state = await registeredWorkflow.getWorkflowRunById(runId)
+    for (
+      let attempt = 0;
+      attempt < 100 &&
+      state?.status !== "success" &&
+      state?.status !== "failed" &&
+      state?.status !== "suspended";
+      attempt++
+    ) {
+      await new Promise((resolve) => setTimeout(resolve, 5))
+      state = await registeredWorkflow.getWorkflowRunById(runId)
+    }
+    expect(mocks.render).not.toHaveBeenCalled()
+    expect(state?.status).not.toBe("suspended")
   })
 
   it("returns publish_skipped and does not burn the clip when config is absent", async () => {
