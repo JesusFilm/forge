@@ -75,6 +75,11 @@ export type GeneratedDevotional = {
     attribution: string
     /** Which rotation flavor produced it. */
     flavor: ReflectionFlavor
+    /** The raw excerpt handed to the modernizer, kept for provenance so a
+     *  fidelity critic (or a human) can compare `text` against what the author
+     *  actually wrote. Optional: older cached devos predate this field, and a
+     *  localized/translated copy doesn't re-derive it. */
+    sourceExcerpt?: string
   }
   /** One phrase to accent per reflection chunk (verbatim substring, or ""),
    *  aligned with splitReflection(reflection.text). */
@@ -112,6 +117,7 @@ export const GeneratedDevotionalSchema = z.object({
     source: z.string(),
     attribution: z.string(),
     flavor: z.enum(["commentary", "spurgeon"]),
+    sourceExcerpt: z.string().optional(),
   }),
   reflectionHighlights: z.array(z.string()),
   conclusion: z.string(),
