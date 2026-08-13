@@ -124,8 +124,10 @@ green run is not mistaken for proof that production carries the rules.
   Both run on the caller's shared LLM, so those two lines in the model map change
   nothing until each seam gets an agent of its own.
 - **The CLI path does not forward its log**, so the picker's rationale is still
-  dropped there. That file is imported by nothing outside its own test now that
-  the render runs on the worker, so wiring it is part of deciding its future.
+  dropped there. `services/devotional/devotional-render.ts` is imported by
+  `scripts/render-one-devotional.ts` — an earlier note in this file said nothing
+  outside its own test imported it, which was wrong: the grep pattern missed the
+  scripts directory. It is out of the workflow's path, not unreachable.
 - **`DevotionalCopy.conclusion` is generated and discarded.** Documented in place
   rather than removed: dropping it needs the zod schema, the JSON schema and the
   authored prompt to move together, plus the one script that prints it.
@@ -156,10 +158,11 @@ green run is not mistaken for proof that production carries the rules.
   the worker, the manifest, and content composition. Landing any one layer alone
   would land something inert.
 - **Narration reuse** (`produceNarration`, `assertNarrationComplete`,
-  `trimClipSegments`). These live in mastra's `devotional-render.ts`, which
-  nothing imports upstream except its own test now that the render runs on the
-  worker. If they are wanted, they belong in the worker rather than ported into a
-  dead file.
+  `trimClipSegments`). These live in mastra's `devotional-render.ts`, which the
+  workflow no longer uses — the render runs on the worker — though
+  `scripts/render-one-devotional.ts` still drives it. If they are wanted in the
+  deployed pipeline they belong in the worker, not in a module only a local script
+  reaches.
 - **The Russian localization layer**, on the owner's instruction. It is not
   active, and `devotional-occasions` was deferred with it rather than partially
   ported, since its only coupling to that layer is a language type.
