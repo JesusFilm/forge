@@ -1,86 +1,92 @@
-# Devotional: что привязано к машине владельца
+# Devotional: what ties the pipeline to one machine
 
-Составлено 2026-08-12 для цели из `DEVOTIONAL-HANDOFF.md` §6a: «держать файлы не
-локально, чтобы пайплайн запускала не только я». Последняя сверка с `main`:
-2026-08-13.
+Written 2026-08-12 for the goal in `DEVOTIONAL-HANDOFF.md` §6a: keep the files off
+one laptop so someone other than the owner can run the pipeline. Last reconciled
+against `main`: 2026-08-13.
 
-Это опись, а не план. Решения принимает владелец.
+This is an inventory, not a plan. The owner makes the calls.
 
-## Как читать этот документ
+## How to read this document
 
-В нём два вида содержимого, и живут они по-разному.
+It holds two kinds of content, and they age differently.
 
-**Факты о расположении** (разделы 1–4, 6, 9) — что где лежит, кто это читает, по
-каким адресам. Устаревают только вместе с самими файлами. Раздел 9 — такие же
-факты, но про `main`, а не про эту ветку, поэтому у него своя дата сверки.
+**Location facts** (sections 1–4, 6, 9) — what sits where, who reads it, at which
+addresses. These go stale only when the files themselves change. Section 9 is the
+same kind of fact but about `main` rather than this branch, so it carries its own
+reconciliation date.
 
-**Выводы и рекомендации** (разделы 5, 7, 8) — что из этого следует делать.
-Устаревают, как только работа сделана, в том числе кем-то другим и выше по
-течению.
+**Conclusions and recommendations** (sections 5, 7, 8) — what to do about all
+that. These go stale the moment the work is done, including when someone else
+does it upstream.
 
-Поэтому выводы здесь помечаются датой и ссылкой на то, что их закрыло, а не
-удаляются. Удалённый вывод выглядит как «этого никто не рассматривал», и следующий
-реализует его заново. Уже случилось с разделом 5: он рекомендовал вариант, поверх
-которого в `main` уже лежало готовое решение.
+So superseded conclusions here get a dated note pointing at whatever closed them,
+rather than being deleted. A deleted conclusion reads as "nobody considered this",
+and the next reader implements it again. That already happened with section 5: it
+recommended an approach that `main` had already solved a different way.
 
-Четыре категории:
+Four categories:
 
-- **НЕЗАМЕНИМО** — пересоздать нельзя, либо это стоило денег, либо это утверждённая работа
-- **ПРОИСХОЖДЕНИЕ НЕИЗВЕСТНО** — кода, который это создаёт или скачивает, в репозитории
-  нет. До выяснения считается незаменимым
-- **ВОСПРОИЗВОДИМО** — переносить не обязательно, пересоздаётся кодом
-- **УДАЛЯЕТСЯ** — существует только как обход локальных ограничений или как след экспериментов
+- **IRREPLACEABLE** — cannot be recreated, either because it cost money or because
+  it is approved work
+- **ORIGIN UNKNOWN** — no code in the repo creates or downloads it. Treated as
+  irreplaceable until the origin is established
+- **REPRODUCIBLE** — no need to move it, code recreates it
+- **DELETE** — exists only to work around running locally, or as residue from
+  experiments
 
 ---
 
-## 1. Файлы: `devo/` = 3.0 ГБ
+## 1. Files: `devo/` = 3.0 GB
 
-Вся папка в `.gitignore` (строка 67), то есть существует ровно на одной машине.
+The whole directory is gitignored (line 67), so it exists on exactly one machine.
 
-### НЕЗАМЕНИМО: ~60 МБ
+### IRREPLACEABLE: ~60 MB
 
-| Путь | Размер | Почему нельзя потерять |
+| Path | Size | Why it cannot be lost |
 |---|---|---|
-| `devo/cache/` | 27 МБ | Утверждённые тексты (`devo.json`) и оплаченная озвучка ElevenLabs. 9 наполненных каталогов, включая утверждённый `ch33-seq0`. Повторная озвучка стоит денег. |
-| `devo/assets/music/` (20 дорожек + манифест) | ~10 МБ | `awe-1..5`, `hope-1..5`, `lament-1..5`, `peace-1..5` и `manifest.json`. Их создаёт `apps/shorts-worker/scripts/generate-music-library.mjs` через платный ElevenLabs Music. Скрипт существует, но комментарий в нём говорит прямо: библиотека сделана один раз, чтобы не платить музыкальный кредит на каждом прогоне. Подтверждено владельцем 2026-08-12: платная. |
-| `devo/assets/symbol.svg`, `symbol-red.svg` | 8 КБ | Вектор бренд-знака. Runtime его не читает (см. «Файлы, которых никто не читает»), но из него взят путь, вшитый в код. Это исходник значения, а не ресурс. |
-| `devo/corpus/` | 8 МБ | Формально воспроизводимо (см. ниже), но перенести дешевле. |
+| `devo/cache/` | 27 MB | Approved texts (`devo.json`) and paid ElevenLabs narration. 9 populated directories, including the approved `ch33-seq0`. Re-synthesizing narration costs money. |
+| `devo/assets/music/` (20 tracks + manifest) | ~10 MB | `awe-1..5`, `hope-1..5`, `lament-1..5`, `peace-1..5`, and `manifest.json`. Produced by `apps/shorts-worker/scripts/generate-music-library.mjs` through the paid ElevenLabs Music API. The generator exists, but its own comment is explicit: the library was built once so a music credit is not spent on every run. Owner-confirmed 2026-08-12 as paid. |
+| `devo/assets/symbol.svg`, `symbol-red.svg` | 8 KB | Vector of the brand mark. Runtime never reads it (see "Files nobody reads"), but the path baked into the code was taken from it. This is the source of a value, not a runtime asset. |
+| `devo/corpus/` | 8 MB | Technically reproducible (see below), but moving it is cheaper. |
 
-### ПРОИСХОЖДЕНИЕ НЕИЗВЕСТНО: ~105 МБ. Проверить
+### ORIGIN UNKNOWN: ~105 MB. Needs checking
 
-Кода, который эти файлы создаёт или скачивает, в репозитории **нет**. Скрипты
-только читают их и ожидают уже на месте. До выяснения происхождения считаются
-незаменимыми.
+**No code** in the repo creates or downloads these files. Scripts only read them
+and expect them to be in place already. Treated as irreplaceable until the origin
+is established.
 
-| Путь | Размер | Что известно |
+| Path | Size | What is known |
 |---|---|---|
-| `devo/assets/jfp-storm.mp4` | 58 МБ | Читается в `build-refuge-devotional.ts:232` и `build-weary-devotional.ts:221` |
-| `devo/assets/jfp-resurrection.mp4` | 29 МБ | Читается в `build-hope-devotional.ts:220` |
-| `devo/assets/ambient.mp4` | 12 МБ | Потребителей в коде не найдено |
-| `devo/assets/ambient-pad.m4a` | 2.1 МБ | Потребителей в коде не найдено |
-| `devo/assets/ambient-calm.m4a` | 2.1 МБ | Читается в `build-weary-devotional.ts:222`, `build-design-devotional.ts:170` |
-| `devo/assets/bg-boj.mp4` | 1.6 МБ | Потребителей в коде не найдено |
-| `devo/assets/jesus.png` | 2.3 МБ | Потребителей в коде не найдено |
-| `devo/assets/manger.png` | 224 КБ | Потребителей в коде не найдено |
-| `devo/assets/music/`: `calm-soundore.mp3`, `nature.mp3`, `spring.m4a`, `piano-ambient.m4a` | ~11 МБ | НЕ выходы `generate-music-library.mjs` (тот пишет только `<mood>-<n>.mp3`). Положены руками. `nature.mp3` и `spring.m4a` читаются в `build-refuge-devotional.ts:234` и `build-hope-devotional.ts:223` |
+| `devo/assets/jfp-storm.mp4` | 58 MB | Read by `build-refuge-devotional.ts:232` and `build-weary-devotional.ts:221` |
+| `devo/assets/jfp-resurrection.mp4` | 29 MB | Read by `build-hope-devotional.ts:220` |
+| `devo/assets/ambient.mp4` | 12 MB | No consumer found in code |
+| `devo/assets/ambient-pad.m4a` | 2.1 MB | No consumer found in code |
+| `devo/assets/ambient-calm.m4a` | 2.1 MB | Read by `build-weary-devotional.ts:222`, `build-design-devotional.ts:170` |
+| `devo/assets/bg-boj.mp4` | 1.6 MB | No consumer found in code |
+| `devo/assets/jesus.png` | 2.3 MB | No consumer found in code |
+| `devo/assets/manger.png` | 224 KB | No consumer found in code |
+| `devo/assets/music/`: `calm-soundore.mp3`, `nature.mp3`, `spring.m4a`, `piano-ambient.m4a` | ~11 MB | NOT outputs of `generate-music-library.mjs` (that writes only `<mood>-<n>.mp3`). Placed by hand. `nature.mp3` and `spring.m4a` are read by `build-refuge-devotional.ts:234` and `build-hope-devotional.ts:223` |
 
-**Почему это не Arclight, хотя комментарии так говорят.** В `build-refuge-*.ts` и
-`build-hope-*.ts` рядом с путями стоят комментарии «(Arclight)». Но это проза, а
-не код: ни одной строки, которая бы их скачивала, в репозитории нет. Плюс у
-Arclight файлы адресуются media id вида `1_jf6133-0-0`, и скачанное попадает в
-`devo/artifacts`, а не в `devo/assets`. Имена здесь другие. Комментарий, скорее
-всего, описывает, откуда владелец взяла материал руками, а не то, что делает код.
+**Why this is not Arclight, despite what the comments say.** In
+`build-refuge-*.ts` and `build-hope-*.ts` the paths carry "(Arclight)" comments.
+That is prose, not code: no line anywhere in the repo fetches these files. Arclight
+content is also addressed by media ids shaped like `1_jf6133-0-0`, and what gets
+downloaded lands in `devo/artifacts`, not `devo/assets`. The names here are
+different. The comment most likely records where the owner got the material by
+hand, not what the code does.
 
-**Про `corpus` отдельно.** Технически он воспроизводим: в `apps/mastra/src/scripts/`
-лежат `ingest-ryle-luke.mjs`, `ingest-ryle-matthew.mjs`,
-`ingest-spurgeon-morning-evening.mjs`, `ingest-matthew-henry-gospels.mjs`,
-`ingest-web-bible.mjs`. Но пересоздание зависит от того, что внешние источники
-всё ещё доступны и отдают тот же текст. При 8 МБ спорить не о чем: перенести.
+**On `corpus` specifically.** It is technically reproducible:
+`apps/mastra/src/scripts/` holds `ingest-ryle-luke.mjs`,
+`ingest-ryle-matthew.mjs`, `ingest-spurgeon-morning-evening.mjs`,
+`ingest-matthew-henry-gospels.mjs`, and `ingest-web-bible.mjs`. But recreating it
+depends on the external sources still being reachable and still serving the same
+text. At 8 MB there is nothing to argue about: move it.
 
-### Файлы, которых никто не читает
+### Files nobody reads
 
-Отдельная пометка, потому что это меняет не размер, а понимание. Восемь файлов в
-`devo/assets` не упомянуты в коде ни разу: ни в `apps`, ни в `packages`.
+Called out separately because it changes understanding rather than size. Eight
+files in `devo/assets` are never named anywhere in the code, neither in `apps` nor
+in `packages`.
 
 ```
 ambient.mp4  ambient-pad.m4a  bg-boj.mp4
@@ -88,105 +94,108 @@ jesus.png    manger.png
 symbol.svg   symbol-red.svg
 ```
 
-По бренд-графике причина установлена: composition не открывает файл, а рисует
-знак inline SVG-путём. Всё в
-`packages/shorts-compositions/src/devotional/DevotionalVideo.tsx`: `BRAND_PATH`
-на строке 39, `BRAND_RED` на 345, отрисовка на 338 и 383 (вторая внутри
-`BrandSymbol`, строка 369). То есть `symbol.svg` не ресурс времени выполнения, а
-исходник, из которого этот путь однажды достали руками.
+For the brand graphics the reason is established: the composition never opens a
+file, it draws the mark as an inline SVG path. All of it is in
+`packages/shorts-compositions/src/devotional/DevotionalVideo.tsx`: `BRAND_PATH` at
+line 39, `BRAND_RED` at 345, rendered at 338 and 383 (the second inside
+`BrandSymbol`, line 369). So `symbol.svg` is not a runtime asset but the source
+that path was once extracted from by hand.
 
-Осторожно с этими адресами: в других worktree того же репозитория девоушнальная
-composition разложена по нескольким файлам (`visual-primitives.tsx`,
-`card-body.tsx`, `card-chrome.tsx`), которых здесь нет. Если строка не совпала,
-скорее всего открыт не тот worktree, а не сдвинулся код.
+Careful with those addresses: in other worktrees of this repo the devotional
+composition is split across several files (`visual-primitives.tsx`,
+`card-body.tsx`, `card-chrome.tsx`) that do not exist here. If a line number does
+not match, the likely cause is the wrong worktree rather than moved code.
 
-Отсюда различие, которое стоит удержать при переезде: **«не читается кодом» не
-равно «не нужно»**. У `symbol.svg` нет потребителя, но если знак когда-нибудь
-изменится, править `BRAND_PATH` без вектора нечем. Поэтому векторы остаются в
-незаменимом, а `jesus.png`, `manger.png` и три безымянных фоновых файла лежат в
-невыясненном происхождении: у них нет ни потребителя, ни известного источника, и
-это скорее всего просто остатки проб. Но «скорее всего» тут не основание удалять.
+Hence a distinction worth keeping through the migration: **"not read by code" is
+not the same as "not needed"**. `symbol.svg` has no consumer, but if the mark ever
+changes there is nothing to edit `BRAND_PATH` from without the vector. So the
+vectors stay under irreplaceable, while `jesus.png`, `manger.png`, and three
+unnamed background files sit under unknown origin: they have neither a consumer
+nor a known source, and they are most likely just experiment residue. But "most
+likely" is not grounds for deleting.
 
-### ВОСПРОИЗВОДИМО: ~2.8 ГБ
+### REPRODUCIBLE: ~2.8 GB
 
-| Путь | Размер | Чем пересоздаётся |
+| Path | Size | What recreates it |
 |---|---|---|
-| `devo/artifacts/` | 2.8 ГБ | Рендеры и промежуточные файлы. Внутри: `video` 2.3 ГБ, `teasers` 177 МБ, `cover-tests` 122 МБ, далее по мелочи. Всё это выход пайплайна. Сюда же попадают клипы, скачанные из Arclight по media id. |
-| `devo/transcripts/` | 32 КБ | 8 файлов, результат whisper по главам. |
+| `devo/artifacts/` | 2.8 GB | Renders and intermediate files. Inside: `video` 2.3 GB, `teasers` 177 MB, `cover-tests` 122 MB, then smaller items. All of it is pipeline output. Clips downloaded from Arclight by media id also land here. |
+| `devo/transcripts/` | 32 KB | 8 files, whisper output per chapter. |
 
-### УДАЛЯЕТСЯ
+### DELETE
 
-| Путь | Размер | Почему |
+| Path | Size | Why |
 |---|---|---|
-| `devo/baseline/` | 36 КБ | Пишется только одноразовыми скриптами (`agent-parity.ts`, `agent-parity-2.ts`, `safety-negative-test.ts`). Ни один тест это не читает (проверено). Уходит вместе со скриптами. |
+| `devo/baseline/` | 36 KB | Written only by one-off scripts (`agent-parity.ts`, `agent-parity-2.ts`, `safety-negative-test.ts`). No test reads it (verified). Goes when those scripts go. |
 
 ---
 
-## 2. Код: где путь вшит в машину
+## 2. Code: where a path is pinned to the machine
 
-### Общий корень: `repoRoot()`
+### The shared root: `repoRoot()`
 
-`apps/mastra/src/services/devotional/repo-root.ts` идёт вверх по дереву в поисках
-`pnpm-workspace.yaml`. То есть все пути ниже репо-относительные и локальные.
-Это ядро привязки, 7 потребителей:
+`apps/mastra/src/services/devotional/repo-root.ts` walks up the tree looking for
+`pnpm-workspace.yaml`. Every path below it is therefore repo-relative and local.
+This is the core of the coupling, with 7 consumers:
 
-| Файл | Куда указывает | Категория |
+| File | What it points at | Category |
 |---|---|---|
-| `devotional-cache.ts:33` | `devo/cache/ch{N}-seq{M}` | незаменимо, в хранилище |
-| `reflection-corpus.ts:294` | `devo/corpus` | незаменимо, в хранилище |
-| `web-bible.ts:74` | `devo/corpus` | то же |
-| `accent-cache.ts:20` | `devo/cache/ru-accent-cache.json` | незаменимо (RU, сейчас не активно) |
-| `artifacts.ts:152` | отчёты под storage-каталогом | уже умеет абсолютный путь через `DEVOTIONAL_ARTIFACT_DIR` |
-| `devotional-render.ts:69` | корень + путь к рендер-скрипту | воспроизводимо |
-| `transcribe-window.ts:88` | одноразовый скрипт | удаляется |
+| `devotional-cache.ts:33` | `devo/cache/ch{N}-seq{M}` | irreplaceable, belongs in storage |
+| `reflection-corpus.ts:294` | `devo/corpus` | irreplaceable, belongs in storage |
+| `web-bible.ts:74` | `devo/corpus` | same |
+| `accent-cache.ts:20` | `devo/cache/ru-accent-cache.json` | irreplaceable (RU, currently inactive) |
+| `artifacts.ts:152` | reports under the storage directory | already accepts an absolute path via `DEVOTIONAL_ARTIFACT_DIR` |
+| `devotional-render.ts:69` | root plus the path to the render script | reproducible |
+| `transcribe-window.ts:88` | one-off script | delete |
 
-`artifacts.ts` тут единственный, кто уже сделан правильно: есть env-переменная,
-абсолютный путь берётся как есть. Это готовый образец для остальных.
+`artifacts.ts` is the only one already done right: it has an env var and takes an
+absolute path as-is. It is the working model for the rest.
 
-### Выходные каталоги: `homedir()`
+### Output directories: `homedir()`
 
-9 мест пишут прямо на Рабочий стол владельца. Из них в пайплайне только два:
+9 places write straight to the owner's Desktop. Only two of them are in the
+pipeline:
 
 - `render-one-devotional.ts:33` → `~/Desktop/Devos/Devotionals`
 - `render-daily-devotional.ts:49` → `~/Desktop/Devos/Devotionals`
 
-Остальные 7 (`elevenlabs-*`, `ru-*`, `devo-audio-track`, `devo-localize-text`)
-принадлежат экспериментам, см. раздел 4.
+The other 7 (`elevenlabs-*`, `ru-*`, `devo-audio-track`, `devo-localize-text`)
+belong to experiments, see section 4.
 
-### Личные пути прямо в коммите
+### Personal paths committed to the repo
 
-`apps/mastra/src/scripts/build-design-devotional.ts`, строки 155 и 161:
-`/Users/mac/Desktop/Devos/Birth of Jesus.mp4` и `… - detected.mp4`.
-У другого человека скрипт падает сразу.
+`apps/mastra/src/scripts/build-design-devotional.ts`, lines 155 and 161:
+`/Users/mac/Desktop/Devos/Birth of Jesus.mp4` and `… - detected.mp4`. On anyone
+else's machine the script fails immediately.
 
 ---
 
-## 3. Программы: то, что workspaces не решают
+## 3. Programs: what a Workspace does not solve
 
-Пайплайн вызывает установленные на Маке бинарники:
+The pipeline shells out to binaries installed on the owner's Mac:
 
-| Программа | Где вызывается | Зачем |
+| Program | Where it is invoked | What for |
 |---|---|---|
-| `ffmpeg` | `devotional-render.ts:284`, `video-assembler.ts:359` | нарезка, склейка, звук |
-| `ffprobe` | `devotional-render.ts:177`, `video-assembler.ts:245` | измерение длительности |
-| `node` + Remotion + Chromium | `devotional-render.ts:411` спавнит `apps/shorts-worker/scripts/render-devotional-video.mjs` | сам рендер видео |
-| whisper + модели | `.cache/`, тоже в `.gitignore` | сверка реплик по клипам |
+| `ffmpeg` | `devotional-render.ts:284`, `video-assembler.ts:359` | trimming, concatenation, audio |
+| `ffprobe` | `devotional-render.ts:177`, `video-assembler.ts:245` | measuring duration |
+| `node` + Remotion + Chromium | `devotional-render.ts:411` spawns `apps/shorts-worker/scripts/render-devotional-video.mjs` | the video render itself |
+| whisper + models | `.cache/`, also gitignored | verifying spoken lines against clips |
 
-**Это главный пункт.** Ни одна из этих программ не переезжает вместе с файлами.
-Нужен контейнер. Образец уже есть в этом же репозитории: `apps/shorts-worker`
-имеет `Dockerfile`, где Remotion-бандл, модель whisper и chrome-headless-shell
-впечены в слои сборки, а не ставятся при запуске.
+**This is the main obstacle.** None of these programs travel with the files. It
+needs a container, and the pattern already exists in this repo:
+`apps/shorts-worker` has a `Dockerfile` where the Remotion bundle, the whisper
+model, and chrome-headless-shell are baked into build layers rather than installed
+at runtime.
 
-Показательная деталь: devotional уже сейчас вызывает скрипт **внутри**
-`apps/shorts-worker`. То есть половина пути пройдена случайно, просто вызов идёт
-через локальный `spawn`, а не через HTTP к задеплоенному сервису.
+A telling detail: devotional already invokes a script **inside**
+`apps/shorts-worker`. Half the path has been walked by accident; the call just goes
+through a local `spawn` instead of HTTP to a deployed service.
 
 ---
 
-## 4. Одноразовые эксперименты в коммите
+## 4. One-off experiments committed as part of the feature
 
-Это прослушивания голосов и пробы цветокоррекции, попавшие в фичу.
-Многие пишут на `~/Desktop`. Решение владельца, но по умолчанию: удалить.
+These are voice auditions and color-grade trials that ended up inside the feature.
+Many write to `~/Desktop`. The owner's call, but the default is: delete.
 
 ```
 agent-parity.ts            agent-parity-2.ts          safety-negative-test.ts
@@ -197,200 +206,202 @@ build-refuge-devotional.ts build-weary-devotional.ts
 ru-voice-audition.ts       ru-cover-sample.ts         transcribe-window.ts
 ```
 
-Ingest-скрипты корпуса (`ingest-*.mjs`) сюда НЕ входят: они воспроизводят
-`devo/corpus` и должны остаться.
+The corpus ingest scripts (`ingest-*.mjs`) are NOT in this list: they reproduce
+`devo/corpus` and should stay.
 
 ---
 
-## 5. Захардкоженный каталог JESUS: УЖЕ СДЕЛАНО в `main`
+## 5. The hardcoded JESUS catalog: ALREADY DONE in `main`
 
-**Статус: закрыто выше по течению.** PR
-[#1796](https://github.com/JesusFilm/forge/pull/1796) от 2026-08-01,
-«add devotional Workspace data plane». Сверено с `origin/main` 2026-08-13.
+**Status: closed upstream.** PR
+[#1796](https://github.com/JesusFilm/forge/pull/1796), 2026-08-01, "add devotional
+Workspace data plane". Reconciled against `origin/main` 2026-08-13.
 
-В `main` файл `apps/mastra/src/services/devotional/jesus-film-catalog.ts` — это
-54 строки zod-схемы, которая ВАЛИДИРУЕТ каталог, прочитанный из Workspace.
-Вшитого списка 61 главы там нет. Сам каталог лежит по контрактному пути
+In `main`, `apps/mastra/src/services/devotional/jesus-film-catalog.ts` is 54 lines
+of zod schema that VALIDATES a catalog read from the Workspace. The hardcoded
+61-chapter list is gone. The catalog itself lives at the contract path
 `/inputs/video/jesus-film-catalog.json`.
 
-Схема проверяет непрерывность и упорядоченность индексов, уникальность индексов и
-id, формат `start` как `H:MM:SS`, и падает с `<path>: invalid JESUS-film catalog`.
-Экспортирует `parseJesusFilmCatalogDocument`.
+The schema checks that chapter indices are contiguous and ordered, that indices and
+ids are unique, and that `start` matches `H:MM:SS`; it throws
+`<path>: invalid JESUS-film catalog`. It exports
+`parseJesusFilmCatalogDocument`.
 
-### Не реализуйте вариант через admin search API
+### Do not implement the admin search API approach
 
-Опись в первой редакции рекомендовала снять костыль так: список существует, чтобы
-обойтись без admin search API, «недостижимого в local dev», значит в общей среде
-надо звонить в admin. **Эта рекомендация устарела и выполнять её не надо.**
-Выбран другой путь: каталог стал данными в Workspace, а код — валидатором этих
-данных. Это решает и локальную достижимость, и редактируемость каталога без
-деплоя.
+The first revision of this inventory recommended removing the workaround like this:
+the list exists to avoid the admin search API that is "unreachable in local dev",
+therefore a shared environment should call admin. **That recommendation is
+superseded and must not be carried out.** A different path was chosen: the catalog
+became data in the Workspace, and the code became a validator of that data. That
+solves both local reachability and editing the catalog without a deploy.
 
-Рекомендация оставлена здесь зачёркнутой намеренно. Удалить её значило бы стереть
-след того, что этот вариант рассматривали и отклонили, и следующий предложил бы
-его снова.
+The recommendation is deliberately left here, struck through. Deleting it would
+erase the record that the option was considered and rejected, and the next reader
+would propose it again.
 
-В ветке `feat/daily-devotional-generator` файл всё ещё старый, 100 строк со вшитым
-списком, и `devo/jesus-film-chapter-titles.txt` рядом. При сверке с `main` они
-уходят — но как результат слияния, а не как отдельная задача.
-
----
-
-## 6. Секреты
-
-Уже сделано правильно, ничего переносить не надо. `apps/mastra/src/config/env.ts`
-читает `ELEVENLABS_API_KEY`, `OPENROUTER_API_PAID_KEY` / `OPENROUTER_API_KEY` из
-окружения, все `.optional()`. В файлы ключи не пишутся. При переезде это просто
-переменные Railway.
+On the `feat/daily-devotional-generator` branch the file is still the old
+100-line version with the hardcoded list, with
+`devo/jesus-film-chapter-titles.txt` beside it. Reconciling with `main` removes
+both, as a merge outcome rather than a task of its own.
 
 ---
 
-## 7. Что из этого следует
+## 6. Secrets
 
-Считая по категориям, переезжает около **160 МБ из 3 ГБ**: 60 МБ незаменимого
-плюс 105 МБ с невыясненным происхождением. Остальное либо пересоздаётся, либо
-удаляется. Объём никогда не был проблемой.
-
-Настоящих препятствий три, и только два из них технические:
-
-1. ~~**Файлы.** Семь мест, где `repoRoot()` даёт локальный путь, и два, где
-   `homedir()` даёт Рабочий стол. Лечится общим хранилищем.~~
-   **ЗАКРЫТО выше по течению**, PR
-   [#1796](https://github.com/JesusFilm/forge/pull/1796) от 2026-08-01. Подробно
-   ниже, раздел 9. Нам осталась не реализация, а сверка ветки с `main`.
-
-2. **Программы.** ffmpeg, whisper, Chromium. Хранилище тут не помогает вообще.
-   Помогает контейнер по образцу `apps/shorts-worker`, тем более что devotional
-   уже вызывает скрипт из этого приложения.
-
-3. **Знание о происхождении материала.** Десять файлов положены руками, и как их
-   получить заново, не записано нигде. Это не решается ни хранилищем, ни
-   контейнером: перенести можно то, что есть, но не способ добыть следующее.
-   Раздел 8.
-
-Из трёх препятствий закрыто одно, первое. Второе — работа. Третье — вопрос к
-владельцу, и без него переезд закроет привязку к машине, но оставит привязку к
-человеку.
-
-**Оценка про workspaces, которую надо исправить.** Первая редакция утверждала:
-«Mastra workspaces не закрывают ни один из этих пунктов напрямую, они лишь дают
-агенту руки». Это оказалось неверно применительно к тому, что было построено.
-В `main` Workspace используется не как руки для агента, а как **плоскость
-данных**: авторитетное S3-backed хранилище входных данных и состояния, с
-валидацией на чтении. Именно это и закрыло пункт 1.
-
-Ошибка была в том, что я вывела назначение механизма из его описания в
-документации, а не из того, как его применили в этом репозитории.
+Already done right, nothing to move. `apps/mastra/src/config/env.ts` reads
+`ELEVENLABS_API_KEY` and `OPENROUTER_API_PAID_KEY` / `OPENROUTER_API_KEY` from the
+environment, all `.optional()`. Keys are never written to files. In a shared
+environment these are just Railway variables.
 
 ---
 
-## 8. Происхождение: главный открытый вопрос
+## 7. What follows from all this
 
-Это не сноска к разделу про файлы, а отдельная привязка, и она важнее объёма.
+By category, roughly **160 MB of the 3 GB** has to move: 60 MB irreplaceable plus
+105 MB of unknown origin. The rest is either recreated or deleted. Volume was never
+the problem.
 
-Десять файлов в `devo/assets` (шесть видео/аудио, четыре музыкальных, ~105 МБ)
-не создаются и не скачиваются ни одной строкой кода в репозитории. Скрипты
-ожидают их уже на месте. Значит их положил человек, и как именно, знает только
-этот человек.
+There are three real obstacles, and only two of them are technical:
 
-**Почему это не про 105 МБ.** Место ничего не стоит. Вопрос в другом: что делать,
-когда понадобится одиннадцатый такой файл. Пока ответ звучит «спросить у
-владельца», пайплайн привязан к ней ровно так же, как был привязан к её
-ноутбуку, просто привязка не техническая и её не снимает ни хранилище, ни
-контейнер. Новый человек может запустить всё, что уже есть, и остановиться на
-первом же новом фоне.
+1. ~~**Files.** Seven places where `repoRoot()` yields a local path and two where
+   `homedir()` yields the Desktop. Shared storage fixes this.~~
+   **CLOSED upstream**, PR
+   [#1796](https://github.com/JesusFilm/forge/pull/1796), 2026-08-01. Details in
+   section 9. What is left for us is reconciliation, not implementation.
 
-**Три исхода, у каждого своё следствие:**
+2. **Programs.** ffmpeg, whisper, Chromium. Storage does not help here at all. A
+   container on the `apps/shorts-worker` pattern does, all the more so because
+   devotional already invokes a script from that app.
 
-1. Материал взят из Arclight или другого нашего источника по известному адресу.
-   Тогда нужен скрипт скачивания, как `ingest-*` для корпуса, и файлы уезжают в
-   воспроизводимое.
-2. Материал куплен или скачан со стороннего сервиса. Тогда нужна запись, где и на
-   каких условиях, иначе через год лицензия неизвестна. Имя `calm-soundore.mp3`
-   намекает на сторонний сервис.
-3. Материал сделан руками и повторить его нельзя. Тогда он незаменим по-настоящему,
-   и это надо просто зафиксировать, чтобы никто не удалил его как «непонятный
-   файл без потребителей».
+3. **Knowledge of where the material came from.** Ten files were placed by hand and
+   how to obtain them again is written down nowhere. Neither storage nor a container
+   fixes this: what exists can be moved, but not the means of getting the next one.
+   Section 8.
 
-Разделять эти три случая по именам файлов бессмысленно, ответ есть только у
-владельца. Поэтому это вопрос к ней, а не задача на исследование.
+One of the three is closed. The second is work. The third is a question for the
+owner, and without it the migration removes the tie to a machine while leaving the
+tie to a person.
 
-**До ответа все десять считаются незаменимыми.** Цена ошибки несимметрична:
-лишние 105 МБ в хранилище не стоят ничего, а потерянный исходник, который никто
-не умеет получить заново, останавливает пайплайн.
+**A judgment in the first revision that needs correcting.** It claimed: "Mastra
+workspaces close none of these directly, they only give an agent hands." That
+turned out to be wrong about what was actually built. In `main` the Workspace is
+used not as hands for an agent but as a **data plane**: authoritative S3-backed
+storage for inputs and state, validated on read. That is precisely what closed
+obstacle one.
 
-Работа в `main` (раздел 9) эту привязку не снимает: Workspace хранит в `media/`
-текстовые манифесты, ссылающиеся на одобренные исходные медиа, а автоматический
-приём бинарников из v1 исключён. То есть манифест сможет сослаться на файл, но
-на вопрос «откуда взять следующий» по-прежнему отвечает только владелец.
+The mistake was deriving the mechanism's purpose from its description in the
+upstream documentation rather than from how it was applied in this repo.
 
 ---
 
-## 9. Что уже сделано в `main`: Workspace как плоскость данных
+## 8. Provenance: the main open question
 
-Сверено с `origin/main` 2026-08-13. PR
-[#1796](https://github.com/JesusFilm/forge/pull/1796) от 2026-08-01, «add
-devotional Workspace data plane». Рядом: #1800 (изоляция кредов),
+This is not a footnote to the files section but a separate form of coupling, and it
+matters more than volume.
+
+Ten files in `devo/assets` (six video/audio, four music, ~105 MB) are not created
+or downloaded by any line of code in the repo. Scripts expect them to be in place.
+So a person put them there, and only that person knows how.
+
+**Why this is not about 105 MB.** Storage costs nothing. The real question is what
+to do when an eleventh such file is needed. While the answer is "ask the owner",
+the pipeline is tied to her exactly as it was tied to her laptop, except the tie is
+not technical and neither storage nor a container removes it. A new person can run
+everything that already exists and then stop at the first new background.
+
+**Three possible outcomes, each with its own consequence:**
+
+1. The material came from Arclight or another of our sources at a known address.
+   Then it needs a download script, like `ingest-*` for the corpus, and the files
+   move to reproducible.
+2. The material was bought or downloaded from a third-party service. Then it needs a
+   record of where and under what terms, or in a year the license is unknown. The
+   name `calm-soundore.mp3` hints at a third-party service.
+3. The material was made by hand and cannot be repeated. Then it is genuinely
+   irreplaceable, and that just needs recording so nobody deletes it as an
+   "unexplained file with no consumers".
+
+Separating these three cases by filename is pointless; only the owner has the
+answer. So this is a question for her, not a research task.
+
+**Until it is answered, all ten count as irreplaceable.** The cost of being wrong
+is asymmetric: 105 MB of spare bytes in storage costs nothing, while a lost source
+nobody knows how to fetch again stops the pipeline.
+
+The work in `main` (section 9) does not remove this coupling: the Workspace keeps
+text manifests in `media/` that reference approved source media, and automatic
+binary ingestion is excluded from v1. So a manifest can point at a file, but "where
+does the next one come from" is still answered only by the owner.
+
+---
+
+## 9. What already shipped in `main`: the Workspace as a data plane
+
+Reconciled against `origin/main` 2026-08-13. PR
+[#1796](https://github.com/JesusFilm/forge/pull/1796), 2026-08-01, "add devotional
+Workspace data plane". Alongside it: #1800 (credential isolation) and
 [#1901](https://github.com/JesusFilm/forge/issues/1901) (migration readiness).
 
-Формулировка имеет значение. Направление не «снято» и не «отложено»: оно
-**реализовано выше по течению**, и нашей ветке осталась сверка, а не разработка.
-«Снято» прочтётся как «идея плохая», «отложено» — как «спланировать позже», и оба
-чтения отправят следующего делать не то.
+The wording matters. The direction was not dropped and not deferred: it **shipped
+upstream**, and what is left for this branch is reconciliation, not development.
+"Dropped" reads as "the idea was bad" and "deferred" reads as "plan it later", and
+either reading sends the next reader to do the wrong thing.
 
-### Что есть в `main`
+### What exists in `main`
 
 ```
 apps/mastra/devotional-workspace/
   README.md
   inputs/{scripture,reflections,video,prompts,safety,calendar,voices,music,render,brand,media}/
-apps/mastra/src/services/devotional/workspace/     (35 файлов)
+apps/mastra/src/services/devotional/workspace/     (35 files)
   config, database, postgres-catalog, media-store, audited-filesystem,
   authority-boundary, inventory, reconciler, provenance, publication,
   state, attempt-data, verified-read, source-verification, …
 apps/mastra/src/scripts/migrate-devotional-workspace.ts
 ```
 
-Плюс отдельный пакет `@forge/devotional-workspace` со схемами.
+Plus a separate `@forge/devotional-workspace` package holding the schemas.
 
-`README.md` формулирует авторитет прямо: в Railway авторитетен доступный на
-запись S3-backed Workspace, а закоммиченные файлы — входные данные миграции и
-фикстуры контракта, **не** runtime-fallback. Десять singleton-путей
+The `README.md` states authority directly: in Railway the writable S3-backed
+Workspace is authoritative, and the checked-in files are migration inputs and
+contract fixtures, **not** a runtime fallback. Ten singleton paths
 (`/inputs/prompts/generation.json`, `/inputs/safety/rubric.json`,
-`/inputs/video/jesus-film-catalog.json` и остальные) — часть рантайм-контракта:
-переименование без деплоя логики роняет readiness.
+`/inputs/video/jesus-film-catalog.json`, and the rest) are part of the runtime
+contract: renaming one without deploying matching logic makes readiness fail.
 
-### Граница: что закрыто, а что нет
+### The boundary: what is closed and what is not
 
-Это главное, что стоит удержать, иначе «пункт 1 закрыт» прочтётся шире, чем есть.
+This is the part worth holding onto, or "obstacle one is closed" will be read more
+broadly than it is true.
 
-**Закрыто — текст и состояние.** Тексты, корпус, промпты, каталог, календарь,
-голоса, музыкальные промпты, render-токены, бренд-метаданные. Читаются из
-Workspace с валидацией. Сюда же бинарные ВЫХОДНЫЕ артефакты видео: `media-store.ts`
-кладёт их в S3 с проверкой sha256 и подписанными ссылками, типы
-`devotional-output-portrait-v1` и `devotional-output-wide-v1`.
+**Closed — text and state.** Texts, corpus, prompts, catalog, calendar, voices,
+music prompts, render tokens, brand metadata. All read from the Workspace with
+validation. Binary video *outputs* too: `media-store.ts` puts them in S3 with
+sha256 verification and signed URLs, artifact types
+`devotional-output-portrait-v1` and `devotional-output-wide-v1`.
 
-**Не закрыто — бинарные ИСХОДНЫЕ медиа.** Явно вне v1: «Binary auto-ingestion is
-outside v1», а `inputs/media/` содержит один README и ни одного файла. Значит без
-дома пока остаются:
+**Not closed — binary *source* media.** Explicitly outside v1: "Binary
+auto-ingestion is outside v1", and `inputs/media/` contains one README and no
+files. So the following still have no home:
 
-- шесть фоновых видео/аудио из раздела «происхождение неизвестно»
-- оплаченная музыкальная библиотека, 20 дорожек плюс 4 положенных руками
-- бренд-растр и векторы
-- оплаченная озвучка в `devo/cache/*/audio/`
+- the six background video/audio files from the unknown-origin section
+- the paid music library, 20 tracks plus the 4 placed by hand
+- the brand raster and vectors
+- the paid narration in `devo/cache/*/audio/`
 
-По озвучке отдельно: в контракте Workspace `narration` — это ПОЛИТИКА
-(шаблоны), а не байты. Артефактных типов для аудио в `media-store` нет, только два
-видео-типа. Так что кешированная оплаченная озвучка под действующий контракт не
-попадает.
+On narration specifically: in the Workspace contract `narration` is the *policy*
+(templates), not the bytes. `media-store` has no audio artifact types at all, only
+the two video ones. So cached paid narration does not fall under the current
+contract.
 
-Это уточняет раздел 1, но не отменяет его: из ~160 МБ, которые надо перенести,
-плоскость данных забирает текстовую часть, а бинарная остаётся открытой.
+This narrows section 1 without invalidating it: of the ~160 MB that has to move,
+the data plane takes the text portion and the binary portion stays open.
 
-### Что делать нашей ветке
+### What this branch should do
 
-Не реализовывать заново, а сверять. `feat/daily-devotional-generator` отошла от
-`main` до #1796, поэтому в ней ещё старый каталог со вшитым списком и семь
-локальных путей через `repoRoot()`. Порядок разумной сверки: сначала посмотреть,
-что из наработок ветки уже перекрыто плоскостью данных, и только потом сливать —
-иначе конфликты будут разрешаться в пользу устаревшей стороны.
+Reconcile rather than rebuild. `feat/daily-devotional-generator` diverged from
+`main` before #1796, so it still carries the old catalog with the hardcoded list
+and seven local paths through `repoRoot()`. A sensible order: first work out which
+of the branch's work is already superseded by the data plane, and only then merge,
+otherwise conflicts get resolved in favor of the stale side.
