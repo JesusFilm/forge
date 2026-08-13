@@ -1,6 +1,6 @@
 import { z } from "zod"
 
-import { DevotionalLlmError, type DevotionalLlm } from "./llm"
+import { DevotionalLlmError, isWorthRetrying, type DevotionalLlm } from "./llm"
 
 /**
  * Coherence checker: verifies the whole devotional tells ONE grounded message.
@@ -17,11 +17,23 @@ import { DevotionalLlmError, type DevotionalLlm } from "./llm"
  */
 
 /**
- * Wait before the single retry. The first retry used to fire IMMEDIATELY,
- * which is useless against the most likely cause of a `request_failed` — a
- * provider rate limit. The depth critic failed twice in a row on three
- * consecutive renders because of it, which meant every render printed
- * "REVIEW BEFORE PUBLISHING" and the gate stopped meaning anything.
+ * Wait before the single retry, which used to fire IMMEDIATELY. The depth critic
+ * failed twice in a row on three consecutive renders because of it, so every
+ * render printed "REVIEW BEFORE PUBLISHING" and the gate stopped meaning
+ * anything.
+ *
+ * The original note here blamed "a provider rate limit". That diagnosis does not
+ * survive reading one layer down: createDevotionalLlm already retries 429 and
+ * 5xx itself, honouring Retry-After, before it ever throws to this caller — so a
+ * rate limit is the one cause that CANNOT reach here unresolved. What actually
+ * reaches here is post-exhaustion network trouble, an upstream unhealthy for the
+ * whole window, or a deterministic rejection. Only the first two are retried now
+ * (see isWorthRetrying); the delay helps them, and the third no longer pays for a
+ * second identical call.
+ *
+ * The measured cause of that incident was a deterministic one: the provider
+ * rejecting a JSON-schema keyword, which failed on every call. A delay was never
+ * going to fix it.
  */
 const RETRY_DELAY_MS = 2_000
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
@@ -188,26 +200,37 @@ export async function checkDevotionalCoherence(
       maxTokens: 1200,
     })
 
+  /**
+   * The degraded result, shared by both give-up paths so a non-retryable failure
+   * and a failed retry cannot drift into different shapes.
+   *
+   * Advisory step: never block a render on a checker failure — but mark it
+   * `skipped`, so this is never confused with a genuine `coherent: true`
+   * verdict. The check did not run; it did not pass.
+   */
+  const skipped = (cause: DevotionalLlmError) => ({
+    coherent: true,
+    issues: [],
+    summary: `coherence check skipped: ${cause.code}`,
+    suggestedScriptureReference: null,
+    skipped: true,
+  })
+
   try {
     return await attempt()
   } catch (firstError) {
     if (!(firstError instanceof DevotionalLlmError)) throw firstError
+    // Only pay for a second attempt when one could differ. `validation` and
+    // `missing_credentials` are deterministic for a given prompt and schema, and
+    // the transient cases were already retried inside createDevotionalLlm — see
+    // isWorthRetrying. Degrade immediately instead: same outcome the gate turns
+    // into a block, minus a call that could not have helped and minus the 2s.
+    if (!isWorthRetrying(firstError)) return skipped(firstError)
     await sleep(RETRY_DELAY_MS)
     try {
       return await attempt()
     } catch (error) {
-      if (error instanceof DevotionalLlmError) {
-        // Advisory step: never block a render on a checker failure — but mark
-        // it `skipped` so this is never confused with a genuine coherent=true
-        // verdict (the check simply did not run after a retry also failed).
-        return {
-          coherent: true,
-          issues: [],
-          summary: `coherence check skipped after retry: ${error.code}`,
-          suggestedScriptureReference: null,
-          skipped: true,
-        }
-      }
+      if (error instanceof DevotionalLlmError) return skipped(error)
       throw error
     }
   }

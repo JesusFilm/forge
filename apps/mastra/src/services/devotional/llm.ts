@@ -39,6 +39,33 @@ export class DevotionalLlmError extends Error {
   }
 }
 
+/**
+ * Is a second attempt by an OUTER caller worth paying for?
+ *
+ * `createDevotionalLlm` already retries the transient cases itself — 429 and
+ * 5xx, up to `maxAttempts` (3 by default), honouring Retry-After. So an error
+ * that reaches a caller has already survived the layer built for rate limits,
+ * and the remaining codes divide cleanly:
+ *
+ *   transport / request_failed — retry. Post-exhaustion network trouble or an
+ *     upstream that was unhealthy for the whole window; a later attempt can
+ *     genuinely differ.
+ *   validation — do NOT retry. The reply parsed but did not match the schema, or
+ *     the provider rejected the schema itself. Both are deterministic for a
+ *     given prompt and schema: the second attempt sends the identical request and
+ *     fails identically, so it only costs money and delay. The provider
+ *     rejecting a JSON-schema keyword is exactly this shape, and it failed on
+ *     EVERY call when it happened here.
+ *   missing_credentials — do NOT retry. Configuration does not change mid-run.
+ *
+ * The critics that use this treat a non-retryable failure as a check that did
+ * not run, which their gate turns into a block. So skipping the retry loses no
+ * safety; it removes a paid call that could not have helped.
+ */
+export function isWorthRetrying(error: DevotionalLlmError): boolean {
+  return error.code === "transport" || error.code === "request_failed"
+}
+
 export type DevotionalLlmCompletion<TResult> = {
   system: string
   user: string

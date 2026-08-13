@@ -109,6 +109,31 @@ describe("checkDevotionalCoherence", () => {
     expect(r.suggestedScriptureReference).toBeNull()
   })
 
+  it.each([
+    { code: "validation" as const, why: "deterministic for the same schema" },
+    {
+      code: "missing_credentials" as const,
+      why: "config does not change mid-run",
+    },
+  ])("does not pay for a retry on $code ($why)", async ({ code }) => {
+    // createDevotionalLlm already retried the transient cases before throwing
+    // here, so a second identical call cannot differ for these two. The result
+    // is the same degraded report the gate blocks on — only the wasted call and
+    // the 2s delay are gone. Real timers on purpose: with the guard removed
+    // this case fails on the call count after sleeping the real 2s, which is
+    // both the proof and a reminder of what the guard saves.
+    const complete = vi
+      .fn()
+      .mockRejectedValue(new DevotionalLlmError(code, "nope"))
+    const r = await checkDevotionalCoherence(
+      input(fakeLlm(complete as unknown as DevotionalLlm["complete"])),
+    )
+    expect(complete).toHaveBeenCalledTimes(1)
+    expect(r.skipped).toBe(true)
+    expect(r.coherent).toBe(true)
+    expect(r.summary).toContain(code)
+  })
+
   it("rethrows a non-LLM error instead of degrading to skipped", async () => {
     // A bug in our own code must not be laundered into "the check did not run",
     // which the gate turns into a block with a misleading reason.
