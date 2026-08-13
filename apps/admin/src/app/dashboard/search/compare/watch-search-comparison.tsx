@@ -3,6 +3,7 @@
 import { useActionState } from "react"
 
 import { PrimaryButton, StatusPill } from "@/components/admin-ui"
+import type { WatchSearchRankingMode } from "@/services/typesense-watch-search-ranking"
 import type { WatchSearchLanguageOption } from "@/services/watch-search-language-options.service"
 
 import {
@@ -15,6 +16,10 @@ const initialState: WatchSearchComparisonActionState = { status: "idle" }
 
 function displayToken(value: string | null | undefined) {
   return value?.replaceAll("_", " ").replaceAll("-", " ") ?? "None"
+}
+
+export function rankingModeLabel(mode: WatchSearchRankingMode) {
+  return mode === "TITLE_AND_BRAND" ? "Title / brand" : "Semantic"
 }
 
 export function comparisonThumbnailUrl(result: {
@@ -77,6 +82,10 @@ function ResultPane({
           <Metric
             label="Target"
             value={response.languageInterpretation.targetLanguageSlug}
+          />
+          <Metric
+            label="Ranking mode"
+            value={rankingModeLabel(diagnostics.rankingMode)}
           />
           <Metric
             label="Latency"

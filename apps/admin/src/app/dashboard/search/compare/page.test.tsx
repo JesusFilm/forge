@@ -28,6 +28,7 @@ const {
   WatchSearchComparison,
   WatchSearchComparisonPanes,
   comparisonThumbnailUrl,
+  rankingModeLabel,
 } = await import("./watch-search-comparison")
 
 const previousServerFormSchema = z
@@ -212,6 +213,11 @@ describe("search comparison page", () => {
     ).toBeNull()
   })
 
+  it("labels the automatic ranking mode for operators", () => {
+    expect(rankingModeLabel("SEMANTIC")).toBe("Semantic")
+    expect(rankingModeLabel("TITLE_AND_BRAND")).toBe("Title / brand")
+  })
+
   it("keeps the successful pane visible beside an independently failed pane", () => {
     const html = renderToStaticMarkup(
       <WatchSearchComparisonPanes
@@ -308,6 +314,8 @@ describe("search comparison page", () => {
     expect(html).toContain('decoding="async"')
     expect(html).toContain("Japanese")
     expect(html).toContain("target audio")
+    expect(html).toContain("Ranking mode")
+    expect(html).toContain("Semantic")
     expect(html).toContain("Candidate search failed")
   })
 })
