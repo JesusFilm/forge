@@ -1,5 +1,5 @@
-import { start } from "workflow/api"
 import { Prisma, WorkflowRunStatus } from "@prisma/client"
+import { start } from "workflow/api"
 import { prisma, syncPrisma } from "@/db/client"
 import {
   abortSyncRun,
@@ -21,7 +21,7 @@ import {
   recordCoreSyncPhaseProgress,
   recordCoreSyncRunResult,
 } from "@/services/workflow-run-log.service"
-import { runCoreSync, runCoreSyncScheduler } from "@/workflows/coreSync"
+import { runCoreSync } from "@/workflows/coreSync"
 
 export type CoreSyncTrigger = "manual" | "scheduled" | "graphql"
 
@@ -70,14 +70,14 @@ export type CoreSyncDispatchResult = {
 export type CoreSyncSchedulerStartResult =
   | {
       started: true
-      runId: string
       ledgerRunId: string
+      nextRunAt: string
     }
   | {
       started: false
       reason: "already-running" | "lock-not-acquired"
       ledgerRunId?: string
-      runtimeRunId?: string | null
+      nextRunAt?: string
     }
 
 export type CoreSyncSchedulerRunResult =
@@ -93,16 +93,20 @@ export type CoreSyncSchedulerRunResult =
 const SCHEDULER_WORKFLOW_KEY = "core-sync-scheduler"
 const SCHEDULER_LOCK_ID = 426_083_110
 const CORE_SYNC_HOUR_UTC = 7
-const TERMINAL_RUNTIME_STATUSES = new Set(["completed", "failed", "cancelled"])
+const SCHEDULER_HEALTH_WINDOW_MS = 36 * 60 * 60 * 1000
 
 type SchedulerLedgerRun = {
   id: string
-  runtimeRunId: string | null
+  details: Prisma.JsonValue | null
+  updatedAt: Date
 }
 
-type RuntimeRunStatus = {
-  status: string
-  error: string | null
+type CoreSyncSchedulerGlobal = typeof globalThis & {
+  __forgeAdminCoreSyncScheduler?: {
+    ledgerRunId: string
+    nextRunAt: string
+    timer: ReturnType<typeof setTimeout> | null
+  }
 }
 
 export function nextCoreSyncRunAt(
@@ -115,6 +119,33 @@ export function nextCoreSyncRunAt(
     next.setUTCDate(next.getUTCDate() + 1)
   }
   return next
+}
+
+function coreSyncSchedulerGlobal() {
+  return globalThis as CoreSyncSchedulerGlobal
+}
+
+function readSchedulerNextRunAt(
+  details: Prisma.JsonValue | null,
+): string | undefined {
+  if (
+    details &&
+    typeof details === "object" &&
+    !Array.isArray(details) &&
+    "nextRunAt" in details
+  ) {
+    const value = details.nextRunAt
+    if (typeof value === "string") return value
+  }
+  return undefined
+}
+
+function schedulerRunIsFresh(
+  run: Pick<SchedulerLedgerRun, "updatedAt">,
+  now = new Date(),
+): boolean {
+  const ageMs = now.getTime() - run.updatedAt.getTime()
+  return ageMs >= 0 && ageMs <= SCHEDULER_HEALTH_WINDOW_MS
 }
 
 export function normalizeCoreSyncInput(
@@ -207,6 +238,44 @@ export async function runCoreSyncFromScheduler(): Promise<CoreSyncSchedulerRunRe
   }
 }
 
+function clearCoreSyncSchedulerTimer(): void {
+  const state = coreSyncSchedulerGlobal().__forgeAdminCoreSyncScheduler
+  if (!state?.timer) return
+  clearTimeout(state.timer)
+  state.timer = null
+}
+
+function scheduleCoreSyncTimer(ledgerRunId: string, nextRunAt: Date): void {
+  const global = coreSyncSchedulerGlobal()
+  clearCoreSyncSchedulerTimer()
+
+  const delayMs = Math.max(0, nextRunAt.getTime() - Date.now())
+  const timer = setTimeout(() => {
+    void runCoreSyncSchedulerTick(ledgerRunId).catch((error) => {
+      console.error(
+        `[core-sync-scheduler] event=tick_failure ledgerRunId=${ledgerRunId} error=${error instanceof Error ? error.message : String(error)}`,
+      )
+    })
+  }, delayMs)
+  timer.unref?.()
+
+  global.__forgeAdminCoreSyncScheduler = {
+    ledgerRunId,
+    nextRunAt: nextRunAt.toISOString(),
+    timer,
+  }
+}
+
+export async function runCoreSyncSchedulerTick(
+  ledgerRunId: string,
+): Promise<void> {
+  await runCoreSyncFromScheduler()
+
+  const nextRunAt = nextCoreSyncRunAt()
+  await recordCoreSyncSchedulerHeartbeat({ ledgerRunId }, nextRunAt)
+  scheduleCoreSyncTimer(ledgerRunId, nextRunAt)
+}
+
 async function withSchedulerStartLock<T>(
   callback: () => Promise<T>,
 ): Promise<T> {
@@ -229,54 +298,6 @@ async function withSchedulerStartLock<T>(
   }
 }
 
-async function loadRuntimeRunStatus(
-  runtimeRunId: string,
-): Promise<RuntimeRunStatus | null> {
-  try {
-    const rows = await prisma.$queryRaw<RuntimeRunStatus[]>`
-      SELECT status, error
-      FROM workflow.workflow_runs
-      WHERE id = ${runtimeRunId}
-      LIMIT 1
-    `
-    return rows[0] ?? null
-  } catch {
-    return null
-  }
-}
-
-async function reconcileStaleSchedulerRun(
-  existing: SchedulerLedgerRun,
-): Promise<boolean> {
-  if (!existing.runtimeRunId) return false
-
-  const runtimeRun = await loadRuntimeRunStatus(existing.runtimeRunId)
-  if (!runtimeRun || !TERMINAL_RUNTIME_STATUSES.has(runtimeRun.status)) {
-    return false
-  }
-
-  const status =
-    runtimeRun.status === "completed"
-      ? WorkflowRunStatus.SUCCEEDED
-      : WorkflowRunStatus.FAILED
-  const summary =
-    runtimeRun.status === "completed"
-      ? "Core Sync scheduler stopped after runtime completion."
-      : `Core Sync scheduler runtime ${runtimeRun.status}.`
-
-  await prisma.workflowRun.update({
-    where: { id: existing.id },
-    data: {
-      status,
-      finishedAt: new Date(),
-      summary,
-      error: runtimeRun.error,
-    },
-  })
-
-  return true
-}
-
 export async function ensureCoreSyncSchedulerStarted(): Promise<CoreSyncSchedulerStartResult> {
   return withSchedulerStartLock(async () => {
     const existing = await prisma.workflowRun.findFirst({
@@ -289,16 +310,39 @@ export async function ensureCoreSyncSchedulerStarted(): Promise<CoreSyncSchedule
       orderBy: { createdAt: "desc" },
     })
 
-    if (existing) {
-      const stale = await reconcileStaleSchedulerRun(existing)
-      if (!stale) {
+    const currentState = coreSyncSchedulerGlobal().__forgeAdminCoreSyncScheduler
+    if (currentState) {
+      return {
+        started: false,
+        reason: "already-running",
+        ledgerRunId: currentState.ledgerRunId,
+        nextRunAt: currentState.nextRunAt,
+      }
+    }
+
+    if (existing && schedulerRunIsFresh(existing)) {
+      const nextRunAt = readSchedulerNextRunAt(existing.details)
+      if (nextRunAt) {
+        scheduleCoreSyncTimer(existing.id, new Date(nextRunAt))
         return {
           started: false,
           reason: "already-running",
           ledgerRunId: existing.id,
-          runtimeRunId: existing.runtimeRunId,
+          nextRunAt,
         }
       }
+    }
+
+    if (existing) {
+      await prisma.workflowRun.update({
+        where: { id: existing.id },
+        data: {
+          status: WorkflowRunStatus.FAILED,
+          finishedAt: new Date(),
+          summary: "Core Sync scheduler stale; starting a replacement.",
+          error: "scheduler_stale",
+        },
+      })
     }
 
     const ledgerRun = await createWorkflowRunLog({
@@ -315,14 +359,17 @@ export async function ensureCoreSyncSchedulerStarted(): Promise<CoreSyncSchedule
     })
 
     try {
-      const run = await start(runCoreSyncScheduler, [
+      await markCoreSyncSchedulerStarted({ ledgerRunId: ledgerRun.id })
+      const nextRunAt = nextCoreSyncRunAt()
+      await recordCoreSyncSchedulerHeartbeat(
         { ledgerRunId: ledgerRun.id },
-      ])
-      await attachWorkflowRuntimeRunId(ledgerRun.id, run.runId)
+        nextRunAt,
+      )
+      scheduleCoreSyncTimer(ledgerRun.id, nextRunAt)
       return {
         started: true,
-        runId: run.runId,
         ledgerRunId: ledgerRun.id,
+        nextRunAt: nextRunAt.toISOString(),
       }
     } catch (error) {
       await markWorkflowRunFailed(ledgerRun.id, error).catch(() => {})
