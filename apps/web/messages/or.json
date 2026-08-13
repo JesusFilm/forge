@@ -536,5 +536,18 @@
     "start": "ସବୁ ଡାଉନଲୋଡ୍ କରନ୍ତୁ",
     "downloadAgain": "ପୁଣି ଡାଉନଲୋଡ୍ କରନ୍ତୁ",
     "retryFailed": "ବିଫଳ ଡାଉନଲୋଡ୍‌ଗୁଡ଼ିକୁ ପୁଣି ଚେଷ୍ଟା କରନ୍ତୁ"
+  },
+  "WatchUnavailableLanguage": {
+    "metadataTitle": "Language version unavailable",
+    "eyebrow": "Language version unavailable",
+    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
+    "actionsLabel": "Available viewing options",
+    "browseInLanguage": "Browse videos in {language}",
+    "backToSearch": "Back to search",
+    "audioVersionsTitle": "Other audio versions",
+    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
+    "languageVersionLabel": "Audio language",
+    "selectLanguageVersion": "Select a language version",
+    "watchSelectedVersion": "Watch selected version"
   }
 }

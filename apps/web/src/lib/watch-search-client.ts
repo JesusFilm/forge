@@ -280,6 +280,8 @@ export async function searchWatchDirect({
     query: watchSearch.query ?? truncatedQuery,
     searchMode: watchSearch.searchMode ?? "watch-search",
     latencyMs: watchSearch.latencyMs ?? 0,
+    targetLanguageSlug:
+      watchSearch.languageInterpretation?.targetLanguageSlug ?? null,
     nextOffset: watchSearch.nextOffset ?? offset,
     requestId: watchSearch.requestId ?? null,
     degraded: watchSearch.degraded ?? false,
@@ -375,7 +377,8 @@ function withResolvedLanguageSlug(
 ): SearchResult {
   if (
     result.type !== "video" ||
-    result.availabilityKind === "target_subtitle"
+    result.availabilityKind === "target_subtitle" ||
+    result.availabilityKind === "unavailable"
   ) {
     return result
   }

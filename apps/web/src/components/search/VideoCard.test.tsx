@@ -12,9 +12,11 @@ import { buildWatchSearchResultClickRumContext } from "@/lib/watch-search-rum"
 import {
   defaultHrefBuilder,
   formatVideoLabel,
+  isUnmodifiedPrimaryNavigation,
   pickCardPill,
   VideoCard,
 } from "./VideoCard"
+import { WATCH_UNAVAILABLE_RECOVERY_STORAGE_KEY } from "@/lib/watch-unavailable-recovery-context"
 
 vi.mock("next-intl", () => ({
   useTranslations: () => (key: string, values?: Record<string, number>) => {
@@ -61,6 +63,7 @@ afterEach(() => {
   container?.remove()
   root = null
   container = null
+  sessionStorage.clear()
 })
 
 function makeResult(overrides: Partial<SearchResult> = {}): SearchResult {
@@ -175,6 +178,29 @@ describe("defaultHrefBuilder", () => {
         }),
       ),
     ).toBe("/")
+  })
+
+  it("routes unavailable results through a separate requested language", () => {
+    expect(
+      defaultHrefBuilder(
+        makeResult({
+          slug: "good-friday-live",
+          languageSlug: null,
+          availabilityKind: "unavailable",
+        }),
+        "chinese-simplified",
+      ),
+    ).toBe("/good-friday-live.html/chinese-simplified.html")
+  })
+
+  it("fails closed when an unavailable result has no valid requested language", () => {
+    const unavailable = makeResult({
+      slug: "good-friday-live",
+      languageSlug: null,
+      availabilityKind: "unavailable",
+    })
+    expect(defaultHrefBuilder(unavailable)).toBe("/")
+    expect(defaultHrefBuilder(unavailable, "Chinese!")).toBe("/")
   })
 
   it("keeps English explicit for a public language-home collision", () => {
@@ -296,6 +322,56 @@ describe("pickCardPill", () => {
 })
 
 describe("VideoCard", () => {
+  it("writes recovery context only for an unmodified unavailable navigation", () => {
+    container = document.createElement("div")
+    document.body.appendChild(container)
+    root = createRoot(container)
+    const unavailable = makeResult({
+      slug: "good-friday-live",
+      title: "Good Friday: Live",
+      availabilityKind: "unavailable",
+      languageSlug: null,
+    })
+
+    act(() => {
+      root?.render(
+        <VideoCard
+          result={unavailable}
+          requestedLanguageSlug="chinese-simplified"
+          onResultClick={(_result, event) => event.preventDefault()}
+        />,
+      )
+    })
+
+    act(() => {
+      container?.querySelector("a")?.dispatchEvent(
+        new MouseEvent("click", {
+          bubbles: true,
+          cancelable: true,
+          button: 0,
+        }),
+      )
+    })
+    expect(
+      sessionStorage.getItem(WATCH_UNAVAILABLE_RECOVERY_STORAGE_KEY),
+    ).not.toBeNull()
+
+    sessionStorage.clear()
+    act(() => {
+      container?.querySelector("a")?.dispatchEvent(
+        new MouseEvent("click", {
+          bubbles: true,
+          cancelable: true,
+          button: 0,
+          metaKey: true,
+        }),
+      )
+    })
+    expect(
+      sessionStorage.getItem(WATCH_UNAVAILABLE_RECOVERY_STORAGE_KEY),
+    ).toBeNull()
+  })
+
   it("does not render a generic Video badge when the search result has no catalog label", () => {
     container = document.createElement("div")
     document.body.appendChild(container)
@@ -458,6 +534,41 @@ describe("VideoCard", () => {
     expect(thumbnailFrame?.style.backgroundImage).toContain(
       "data:image/jpeg;base64,AQIDBA==",
     )
+  })
+})
+
+describe("isUnmodifiedPrimaryNavigation", () => {
+  it("accepts mouse and keyboard primary activation without modifiers", () => {
+    expect(
+      isUnmodifiedPrimaryNavigation({
+        button: 0,
+        altKey: false,
+        ctrlKey: false,
+        metaKey: false,
+        shiftKey: false,
+      }),
+    ).toBe(true)
+  })
+
+  it("rejects modified and non-primary activation", () => {
+    expect(
+      isUnmodifiedPrimaryNavigation({
+        button: 0,
+        altKey: false,
+        ctrlKey: false,
+        metaKey: true,
+        shiftKey: false,
+      }),
+    ).toBe(false)
+    expect(
+      isUnmodifiedPrimaryNavigation({
+        button: 1,
+        altKey: false,
+        ctrlKey: false,
+        metaKey: false,
+        shiftKey: false,
+      }),
+    ).toBe(false)
   })
 })
 

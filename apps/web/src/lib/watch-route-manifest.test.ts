@@ -9,6 +9,7 @@ import {
   isWatchParentAdmittedByNestedContainer,
   isWatchRouteAdmittedByManifest,
   parseWatchRouteManifest,
+  proveWatchContentAudioLanguageByManifest,
   type WatchRouteManifest,
 } from "./watch-route-manifest"
 
@@ -199,6 +200,31 @@ describe("isWatchRouteAdmittedByManifest", () => {
         audioLanguageSlug: "english",
       }),
     ).toBe(false)
+  })
+})
+
+describe("proveWatchContentAudioLanguageByManifest", () => {
+  it("distinguishes exact admission, a known gap, unknown content, and legacy uncertainty", () => {
+    expect(
+      proveWatchContentAudioLanguageByManifest(manifest, "jesus", "english"),
+    ).toEqual({ kind: "admitted" })
+    expect(
+      proveWatchContentAudioLanguageByManifest(
+        manifest,
+        "jesus",
+        "spanish-latin-american",
+      ),
+    ).toEqual({ kind: "known-missing" })
+    expect(
+      proveWatchContentAudioLanguageByManifest(manifest, "unknown", "english"),
+    ).toEqual({ kind: "unknown-content" })
+    expect(
+      proveWatchContentAudioLanguageByManifest(
+        { ...manifest, audioLanguageIndexesByContent: undefined },
+        "jesus",
+        "english",
+      ),
+    ).toEqual({ kind: "inconclusive" })
   })
 })
 

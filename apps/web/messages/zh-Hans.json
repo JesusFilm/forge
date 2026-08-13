@@ -373,6 +373,19 @@
     "backToWatch": "返回观看页",
     "browseVideos": "浏览视频"
   },
+  "WatchUnavailableLanguage": {
+    "metadataTitle": "暂无此语言版本",
+    "eyebrow": "暂无此语言版本",
+    "title": "<contentTitle>{title}</contentTitle>暂无<languageName>{language}</languageName>版本",
+    "actionsLabel": "可用的观看选项",
+    "browseInLanguage": "浏览{language}视频",
+    "backToSearch": "返回搜索",
+    "audioVersionsTitle": "其他音频版本",
+    "audioVersionsDescription": "选择一种音频语言，继续观看这个视频。",
+    "languageVersionLabel": "音频语言",
+    "selectLanguageVersion": "选择语言版本",
+    "watchSelectedVersion": "观看所选版本"
+  },
   "WatchFooter": {
     "home": "Jesus Film Project 首页",
     "navigation": "页脚导航",

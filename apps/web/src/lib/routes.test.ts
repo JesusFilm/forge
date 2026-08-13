@@ -23,6 +23,7 @@ import {
   watchVideoAbsolute,
   watchVideoExplicitLanguagePath,
   watchVideoPath,
+  watchUnavailableLanguagePath,
 } from "./routes"
 
 const jesus = asContentSlug("jesus")
@@ -191,6 +192,14 @@ describe("watchVideoExplicitLanguagePath", () => {
         subtitleLanguage: russian,
       }),
     ).toBe("/jesus.html/english.html?t=42&autoplay=1&_lr=1&subtitles=russian")
+  })
+})
+
+describe("watchUnavailableLanguagePath", () => {
+  it("keeps the requested language explicit without claiming playability", () => {
+    expect(watchUnavailableLanguagePath(jesus, russian)).toBe(
+      "/jesus.html/russian.html",
+    )
   })
 })
 

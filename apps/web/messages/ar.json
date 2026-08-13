@@ -536,5 +536,18 @@
     "start": "تنزيل الكل",
     "downloadAgain": "التنزيل مرة أخرى",
     "retryFailed": "إعادة تنزيل الحلقات الفاشلة"
+  },
+  "WatchUnavailableLanguage": {
+    "metadataTitle": "إصدار اللغة غير متاح",
+    "eyebrow": "إصدار اللغة غير متاح",
+    "title": "<contentTitle>{title}</contentTitle> غير متاح باللغة <languageName>{language}</languageName>",
+    "actionsLabel": "خيارات المشاهدة المتاحة",
+    "browseInLanguage": "تصفح الفيديوهات باللغة {language}",
+    "backToSearch": "العودة إلى البحث",
+    "audioVersionsTitle": "إصدارات صوتية أخرى",
+    "audioVersionsDescription": "اختر لغة صوتية لمتابعة مشاهدة هذا الفيديو.",
+    "languageVersionLabel": "لغة الصوت",
+    "selectLanguageVersion": "اختر إصدارًا لغويًا",
+    "watchSelectedVersion": "شاهد الإصدار المحدد"
   }
 }

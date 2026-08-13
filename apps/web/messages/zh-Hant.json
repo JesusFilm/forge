@@ -373,6 +373,19 @@
     "backToWatch": "返回 Watch",
     "browseVideos": "瀏覽影片"
   },
+  "WatchUnavailableLanguage": {
+    "metadataTitle": "暫無此語言版本",
+    "eyebrow": "暫無此語言版本",
+    "title": "<contentTitle>{title}</contentTitle>暫無<languageName>{language}</languageName>版本",
+    "actionsLabel": "可用的觀看選項",
+    "browseInLanguage": "瀏覽{language}影片",
+    "backToSearch": "返回搜尋",
+    "audioVersionsTitle": "其他音訊版本",
+    "audioVersionsDescription": "選擇一種音訊語言，繼續觀看這部影片。",
+    "languageVersionLabel": "音訊語言",
+    "selectLanguageVersion": "選擇語言版本",
+    "watchSelectedVersion": "觀看所選版本"
+  },
   "WatchFooter": {
     "home": "Jesus Film Project 首頁",
     "navigation": "頁尾導覽",
