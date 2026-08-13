@@ -119,6 +119,11 @@ import {
 } from "../../test-utils/rnTestRenderer"
 import { createProgressRecorder } from "../../lib/watchProgress/recorder"
 import { createVideoQoeSession } from "../../lib/videoQoe"
+import { useManagedVideoPlayer } from "../useManagedVideoPlayer"
+import {
+  resetPictureInPictureLatch,
+  setPictureInPictureActive,
+} from "../../lib/miniPlayer/pipLatch"
 
 type RecorderSpy = { flush: jest.Mock; onTick: jest.Mock }
 type QoeSpy = { finalize: jest.Mock }
@@ -174,11 +179,41 @@ async function render(
   return { renderer, player: lastFakePlayer() }
 }
 
+type Handle = ReturnType<typeof useManagedVideoPlayer>
+
+/**
+ * Renders the adapter alone, so a test can call the explicit end signal the
+ * hook returns. VideoPlayer does not expose it — the surfaces that drive it
+ * are the root host and the window, which arrive in U6 and U7.
+ */
+async function renderWithHandle(): Promise<{
+  renderer: TestInstance
+  hook: { current: Handle | null }
+}> {
+  const hook: { current: Handle | null } = { current: null }
+  const Probe = () => {
+    hook.current = useManagedVideoPlayer(EPISODE_ONE, undefined, {
+      progress: { videoId: "video-1", languageSlug: "english" },
+    })
+    return null
+  }
+
+  let renderer!: TestInstance
+  await act(async () => {
+    renderer = TestRenderer.create(<Probe />)
+  })
+  liveRenderers.push(renderer)
+  return { renderer, hook }
+}
+
 beforeEach(() => {
   jest.clearAllMocks()
   resetExpoVideoMock()
   appStateHandlers = []
   liveRenderers = []
+  // Module scope: the latch outlives any one render, so a test that sets it
+  // would otherwise leak into the next.
+  resetPictureInPictureLatch()
   jest
     .spyOn(AppState, "addEventListener")
     .mockImplementation((event, handler) => {
@@ -240,13 +275,56 @@ describe("useManagedVideoPlayer lifecycle", () => {
       )
     })
 
-    // TODAY the departing flush is attributed to "unmount" because it rides the
-    // recorder re-key's effect cleanup. That misattribution is exactly what U5
-    // re-keys onto an explicit signal — this pins the current reason so the
-    // change is deliberate rather than incidental.
-    expect(flushTriggers()).toEqual(["unmount"])
+    // U2 recorded "unmount" here, because the departing flush rides the
+    // recorder re-key's effect cleanup and that was the only word available.
+    // U5 gives the cleanup the reason that actually applies. The flush still
+    // happens THERE — only the departing recorder holds the departing
+    // position — but it now says what really happened.
+    expect(flushTriggers()).toEqual(["swap"])
     expect(qoeSessions()).toHaveLength(2)
-    expect(qoeSessions()[0].finalize).toHaveBeenCalledWith("abandoned")
+    expect(qoeSessions()[0].finalize).toHaveBeenCalledWith("replaced")
+  })
+
+  it("reports a dismiss as dismissed, not abandoned", async () => {
+    const { renderer, hook } = await renderWithHandle()
+
+    await act(async () => {
+      hook.current?.endSession("dismissed")
+    })
+
+    expect(flushTriggers()).toEqual(["dismiss"])
+    expect(qoeSessions()[0].finalize).toHaveBeenCalledWith("dismissed")
+
+    // The teardown net must not overwrite the named reason afterwards. This is
+    // the whole point of R16/R17: before U5, unmounting after a dismiss filed
+    // the session as an abandonment.
+    await act(async () => {
+      renderer.unmount()
+    })
+    expect(flushTriggers()).toEqual(["dismiss"])
+    expect(qoeSessions()[0].finalize).toHaveBeenCalledTimes(1)
+  })
+
+  it("maps each named end onto its own progress trigger", async () => {
+    for (const [reason, trigger] of [
+      ["ended", "end"],
+      ["dismissed", "dismiss"],
+      ["signout", "signout"],
+      ["failed", "dismiss"],
+    ] as const) {
+      jest.clearAllMocks()
+      resetExpoVideoMock()
+      appStateHandlers = []
+      liveRenderers = []
+      const { hook } = await renderWithHandle()
+
+      await act(async () => {
+        hook.current?.endSession(reason)
+      })
+
+      expect(flushTriggers()).toEqual([trigger])
+      expect(qoeSessions()[0].finalize).toHaveBeenCalledWith(reason)
+    }
   })
 
   it("flushes with 'background' and pauses when the app backgrounds", async () => {
@@ -258,18 +336,47 @@ describe("useManagedVideoPlayer lifecycle", () => {
     expect(player.pause).toHaveBeenCalledTimes(1)
   })
 
-  it("pauses on an 'inactive' transition", async () => {
+  it("does NOT pause on an 'inactive' transition (U5 inverted this)", async () => {
     const { player } = await render()
 
     await sendAppState("inactive")
 
-    // The discriminating case. 'inactive' is iOS's control-centre/app-switcher
-    // state AND, on Android, is NOT what picture-in-picture reports — entering
-    // picture-in-picture arrives as 'background'. After U5 this pause must
-    // become conditional on the picture-in-picture latch; today it is
-    // unconditional, and this is the only scenario that separates the two.
+    // U2 recorded the opposite, because the adapter paused on anything that
+    // was not "active". 'inactive' is iOS's app-switcher / control-centre /
+    // call-banner blip, which the viewer swipes straight back out of.
+    expect(player.pause).not.toHaveBeenCalled()
+    expect(flushTriggers()).toEqual([])
+  })
+
+  it("does NOT pause on 'inactive' while picture-in-picture is active", async () => {
+    setPictureInPictureActive(true)
+    const { player } = await render()
+
+    await sendAppState("inactive")
+
+    expect(player.pause).not.toHaveBeenCalled()
+  })
+
+  it("does NOT pause on 'background' while picture-in-picture is active (R13)", async () => {
+    // The case that matters on Android, which reports picture-in-picture ENTRY
+    // as 'background'. Pausing here stops the video the system just handed to
+    // the floating OS window.
+    setPictureInPictureActive(true)
+    const { player } = await render()
+
+    await sendAppState("background")
+
+    expect(player.pause).not.toHaveBeenCalled()
+    expect(flushTriggers()).toEqual([])
+  })
+
+  it("still pauses on 'background' when picture-in-picture is not active", async () => {
+    setPictureInPictureActive(false)
+    const { player } = await render()
+
+    await sendAppState("background")
+
     expect(player.pause).toHaveBeenCalledTimes(1)
-    expect(flushTriggers()).toEqual(["background"])
   })
 
   it("flushes with 'end' when playback reaches the end", async () => {

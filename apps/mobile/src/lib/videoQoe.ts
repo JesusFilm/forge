@@ -11,13 +11,18 @@
  * - `replaced`  a different video took the player over
  * - `dismissed` the viewer closed the mini player
  * - `failed`    an unrecoverable stream error closed it (R22)
+ * - `signout`   the signed-in subject changed under it (R25)
  * - `abandoned` teardown with no explicit signal
+ *
+ * `SessionEndReason` in lib/miniPlayer/types.ts is this list minus
+ * `abandoned`, so the two vocabularies cannot drift apart.
  */
 export type VideoQoeReason =
   | "ended"
   | "replaced"
   | "dismissed"
   | "failed"
+  | "signout"
   | "abandoned"
 
 /** Numbers/strings/bools only — never a title or other high-cardinality PII. */

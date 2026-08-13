@@ -25,6 +25,26 @@ import {
   type VideoQoeReason,
   type VideoQoeSession,
 } from "../lib/videoQoe"
+import { shouldPauseOnAppStateChange } from "../lib/pipPolicy"
+import { isPictureInPictureActive } from "../lib/miniPlayer/pipLatch"
+import type { SessionEndReason } from "../lib/miniPlayer/types"
+import type { FlushTrigger } from "../lib/watchProgress/recorder"
+
+/**
+ * The progress trigger each named end reports (R16). Explicit rather than
+ * derived, so a new reason has to state what it means for the saved position.
+ *
+ * `failed` writes the position the stream died at, which is what a dismissal
+ * writes too — the difference between them is the telemetry reason, not the
+ * bookmark.
+ */
+const FLUSH_TRIGGER_FOR_END: Record<SessionEndReason, FlushTrigger> = {
+  ended: "end",
+  replaced: "swap",
+  dismissed: "dismiss",
+  failed: "dismiss",
+  signout: "signout",
+}
 
 // Playhead watchdog (R39): poll currentTime while the player reports playing and
 // is NOT buffering; if it stays frozen this long, emit one stall. 3s (not sub-1s)
@@ -79,6 +99,11 @@ export function useManagedVideoPlayer(
   // Rebuffer gate: has playback begun, and is a source swap mid-flight.
   const hasStartedRef = useRef(false)
   const isSwappingRef = useRef(false)
+  // Has a NAMED end already run for the live session? The teardown cleanups
+  // stay as safety nets (KTD13) and must not overwrite a real reason with
+  // "abandoned" or "unmount" — the defect being fixed is attribution, not
+  // double-fire. Declared before startQoeSession, which resets it.
+  const explicitEndRef = useRef(false)
 
   const emitQoeSummary = useCallback((reason: VideoQoeReason) => {
     const summary = qoeRef.current?.finalize(reason)
@@ -99,6 +124,9 @@ export function useManagedVideoPlayer(
   }, [])
 
   const startQoeSession = useCallback((url: string | null) => {
+    // A new session has its own end, so the previous session's named end must
+    // not suppress it.
+    explicitEndRef.current = false
     sessionContentIdRef.current = extractMuxPlaybackId(url)
     // R38: a completed download plays from file://, a stream from https.
     sessionSourceRef.current =
@@ -128,6 +156,18 @@ export function useManagedVideoPlayer(
     : null
   const identityRef = useRef(progressIdentity)
   identityRef.current = progressIdentity
+
+  // Is the next recorder cleanup a RE-KEY (episode swap) or a real unmount?
+  // React does not say, and only the departing recorder holds the departing
+  // position — so the flush has to happen in that cleanup, and only a
+  // render-time key comparison can tell it which trigger to use. A true
+  // unmount runs no render first, so this stays false there.
+  const previousRecorderKeyRef = useRef(recorderKey)
+  const recorderIsRekeyingRef = useRef(false)
+  if (previousRecorderKeyRef.current !== recorderKey) {
+    previousRecorderKeyRef.current = recorderKey
+    recorderIsRekeyingRef.current = true
+  }
   // Effect, not render: flush() buffers an intent and dispatches a network
   // drain, so the departing video's write must not fire mid-render.
   useEffect(() => {
@@ -143,11 +183,38 @@ export function useManagedVideoPlayer(
         })
       : null
     return () => {
-      // Re-key (episode swap) or unmount: record the departing position.
-      recorderRef.current?.flush("unmount")
+      // Record the departing position under the reason that actually applies.
+      // A named end (dismiss, sign-out, playback end) has already written it,
+      // and this net must not overwrite that attribution with "unmount" —
+      // which is the misreporting R16 exists to fix.
+      const rekeying = recorderIsRekeyingRef.current
+      recorderIsRekeyingRef.current = false
+      if (!explicitEndRef.current) {
+        recorderRef.current?.flush(rekeying ? "swap" : "unmount")
+      }
       recorderRef.current = null
     }
   }, [recorderKey])
+
+  /**
+   * The explicit session boundary (R16/R17). One entry point, so no call site
+   * has to remember to stop the previous session first: it flushes the
+   * departing position under the reason's own trigger and closes the quality
+   * session with that reason, then re-arms for whatever plays next.
+   *
+   * Idempotent per session. A named end followed by React teardown reports
+   * once, under the name — which is the whole point, because teardown's
+   * "abandoned" is what used to overwrite it.
+   */
+  const endSession = useCallback(
+    (reason: SessionEndReason) => {
+      if (explicitEndRef.current) return
+      explicitEndRef.current = true
+      recorderRef.current?.flush(FLUSH_TRIGGER_FOR_END[reason])
+      emitQoeSummary(reason)
+    },
+    [emitQoeSummary],
+  )
 
   useEffect(() => {
     if (!sourceUrl || sourceUrl === loadedUrlRef.current) return
@@ -162,7 +229,11 @@ export function useManagedVideoPlayer(
 
     // A genuine cross-asset swap ends this QoE session and opens a new one so
     // watched_ms/rebuffers/source attribute to the right asset (R36/R38).
-    emitQoeSummary("abandoned")
+    // "replaced" rather than "abandoned": the viewer changed episode, they did
+    // not walk away (R17). Only the telemetry side is closed here — the
+    // departing POSITION belongs to the departing recorder, which this effect
+    // can no longer reach, so the re-key cleanup above flushes it under "swap".
+    emitQoeSummary("replaced")
     startQoeSession(sourceUrl)
     isSwappingRef.current = true
 
@@ -245,7 +316,9 @@ export function useManagedVideoPlayer(
             })
           }
         }
-      } else {
+      } else if (
+        shouldPauseOnAppStateChange(nextState, isPictureInPictureActive())
+      ) {
         isForegroundRef.current = false
         wasPlayingRef.current = isPlayingRef.current
         recorderRef.current?.flush("background")
@@ -255,6 +328,11 @@ export function useManagedVideoPlayer(
           // Already released
         }
       }
+      // Everything else deliberately falls through without pausing: an
+      // 'inactive' blip (app switcher, control centre, a call banner), and a
+      // 'background' that is picture-in-picture ENTRY rather than a real
+      // departure — Android reports it as 'background', not 'inactive' (R13).
+      // isForegroundRef stays true there, so a swap's resume still fires.
     })
     return () => subscription.remove()
   }, [player])
@@ -350,5 +428,5 @@ export function useManagedVideoPlayer(
     return () => emitQoeSummary("abandoned")
   }, [emitQoeSummary])
 
-  return { player, isPlaying }
+  return { player, isPlaying, endSession }
 }
