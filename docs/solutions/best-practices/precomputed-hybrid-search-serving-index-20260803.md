@@ -138,13 +138,15 @@ Deployment, private evaluation, and public serving are separate controls:
 - Candidate serving requires the selector and `SERVING` pointer to name the
   same generation, then revalidates the exact application revision, transcript
   projection, current physical bindings, qrels revision, and passing
-  qualification (`apps/admin/src/services/index.ts:46-98`).
+  qualification (`apps/admin/src/services/index.ts:52-110`).
 
-The application revision is a semantic Candidate-contract identity, not the
-Admin deployment SHA. It stays stable across unrelated deployments and changes
-only when the candidate query, ranking, or index contract requires a rebuilt
-and requalified generation
-(`apps/admin/src/services/typesense-watch-search-candidate-identity.ts:1-12`).
+The application revision is the physical Candidate-collection compatibility
+identity, not the Admin deployment SHA. It stays stable across unrelated
+deployments and application-only ranking changes, and changes only when the
+schema, projection, or retrieval-field contract requires rebuilt collections.
+Ranking behavior has a separate qualification revision, so a new ranker must
+be requalified but can reuse compatible physical collections
+(`apps/admin/src/services/typesense-watch-search-candidate-identity.ts:3-22`).
 Using a full deployment identity here makes a healthy generation incompatible
 after unrelated Admin changes; see
 [Keep Watch search Candidate generations compatible across unrelated Admin deploys](../integration-issues/watch-search-candidate-generation-stable-application-revision.md).

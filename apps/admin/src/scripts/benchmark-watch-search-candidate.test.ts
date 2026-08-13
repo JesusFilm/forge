@@ -22,6 +22,7 @@ const allSlices = [
 const identity: CandidateBenchmarkIdentity = {
   generationId: "generation-a",
   applicationRevision: "revision-a",
+  rankingRevision: "title-and-brand-v1",
   transcriptCollection: "watch_search_transcripts_1",
   transcriptProjectionRevision: "7",
   qrelsRevision: "qrels-1",

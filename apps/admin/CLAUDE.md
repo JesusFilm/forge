@@ -48,8 +48,11 @@ Mastra.
 Candidate Watch Search compatibility uses
 `TYPESENSE_WATCH_SEARCH_CANDIDATE_APPLICATION_REVISION`, not the Admin deploy
 commit. Indexing, private comparison, qualification, and candidate serving must
-use that one source. Bump it only when the candidate query, ranking, or index
-contract changes; a bump requires a fresh generation and qualification.
+use that one source. Bump it only when the physical schema, projection, or
+retrieval-field contract changes; a bump requires a fresh generation.
+Application-side ranking uses the separate Candidate ranking revision: a
+ranking change requires fresh qualification but can reuse compatible physical
+collections.
 
 ## AI experience draft generation — structural validity & gateway-trust gate
 

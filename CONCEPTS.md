@@ -160,12 +160,19 @@ enough ownership evidence for safe cleanup without changing their identity.
 
 ### Watch Search Candidate Application Revision
 
-The semantic compatibility identity that binds a Watch Search Candidate
-Generation to the candidate query, ranking, and index contract able to use it.
+The physical compatibility identity that binds a Watch Search Candidate
+Generation to the schema, projection, and retrieval-field contract able to use
+its collections.
 
 It remains stable across unrelated application deployments. A change means
-existing generations require rebuilding and requalification; ordinary deploy
-identity is not Candidate compatibility identity.
+existing generations require rebuilding; ordinary deploy identity and
+application-side ranking behavior are not Candidate collection compatibility.
+
+### Watch Search Candidate Ranking Revision
+
+The application-side ranking identity included in Candidate qualification
+evidence. It changes when Candidate ordering behavior changes, invalidating old
+qualification without rebuilding compatible Typesense collections.
 
 ### Watch Search Candidate Pointer
 

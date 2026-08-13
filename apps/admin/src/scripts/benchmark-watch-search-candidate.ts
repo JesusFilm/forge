@@ -4,7 +4,10 @@ import { pathToFileURL } from "node:url"
 import { prisma } from "@/db/client"
 import { TypesenseWatchSearchCandidateGenerationService } from "@/services/typesense-watch-search-candidate-generation"
 import { resolveTypesenseWatchSearchApiKey } from "@/services/typesense-client-config"
-import { candidateWatchSearchApplicationRevision } from "@/services/typesense-watch-search-candidate-identity"
+import {
+  candidateWatchSearchApplicationRevision,
+  candidateWatchSearchRankingRevision,
+} from "@/services/typesense-watch-search-candidate-identity"
 import {
   assertQualificationProfilesMatchLease,
   createCandidateWatchSearchProfile,
@@ -40,6 +43,7 @@ type EvidenceStatus = "PASS" | "FAIL" | "NOT_RUN"
 export type CandidateBenchmarkIdentity = {
   generationId: string
   applicationRevision: string
+  rankingRevision: "title-and-brand-v1"
   transcriptCollection: string
   transcriptProjectionRevision: string
   qrelsRevision: string
@@ -201,7 +205,7 @@ function sideIdentityMatches(
   }
   return (
     side.diagnostics.profile === "CANDIDATE" &&
-    side.diagnostics.rankingImplementation === "title-and-brand-v1" &&
+    side.diagnostics.rankingImplementation === identity.rankingRevision &&
     side.diagnostics.generationId === identity.generationId &&
     side.diagnostics.applicationRevision === identity.applicationRevision &&
     side.diagnostics.transcriptProjectionRevision ===
@@ -807,6 +811,7 @@ async function main() {
   }
 
   const applicationRevision = candidateWatchSearchApplicationRevision()
+  const rankingRevision = candidateWatchSearchRankingRevision()
   const typesense = new TypesenseClient({ host, apiKey, timeoutMs: 2_000 })
   const generations = new TypesenseWatchSearchCandidateGenerationService(
     prisma,
@@ -828,6 +833,7 @@ async function main() {
   const identity: CandidateBenchmarkIdentity = {
     generationId: generation.id,
     applicationRevision,
+    rankingRevision,
     transcriptCollection: candidate.binding.transcript,
     transcriptProjectionRevision:
       candidate.transcriptProjectionRevision!.toString(),
@@ -930,7 +936,7 @@ async function main() {
   process.stdout.write(
     `${JSON.stringify(
       {
-        schemaVersion: "watch-search-candidate-qualification/v1",
+        schemaVersion: "watch-search-candidate-qualification/v2",
         generatedAt: new Date().toISOString(),
         ...report,
       },
