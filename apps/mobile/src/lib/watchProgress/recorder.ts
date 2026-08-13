@@ -24,7 +24,26 @@ export type ProgressIdentity = {
   languageSlug?: string | null
 }
 
-export type FlushTrigger = "pause" | "background" | "unmount" | "end"
+/**
+ * What forced this write (R16). `unmount` used to double as "the source was
+ * swapped", because the swap rides the recorder re-key's effect cleanup — so
+ * the reason said "the component went away" when the truth was "the viewer
+ * changed episode". `swap`, `dismiss` and `signout` name those explicitly;
+ * `unmount` stays as the teardown safety net (KTD13).
+ */
+export type FlushTrigger =
+  | "pause"
+  | "background"
+  | "unmount"
+  | "end"
+  | "swap"
+  | "dismiss"
+  | "signout"
+
+// A stop worth prompting "sign in to save your place" over. Playback end has
+// nothing left to save, and a sign-out is the viewer's own decision — prompting
+// there is nagging, not help.
+const NON_PROMPTING_TRIGGERS = new Set<FlushTrigger>(["end", "signout"])
 
 export type RecorderDeps = {
   getAccountId: () => string | null
@@ -111,7 +130,10 @@ export function createProgressRecorder(
         trigger === "end" ? lastObserved.duration : lastObserved.position
       if (record(position, lastObserved.duration)) {
         deps.requestDrain({ forced: true })
-      } else if (deps.getAccountId() == null && trigger !== "end") {
+      } else if (
+        deps.getAccountId() == null &&
+        !NON_PROMPTING_TRIGGERS.has(trigger)
+      ) {
         // Mid-video stop while signed out: the prompt's moment (R17).
         deps.onSignedOutStop?.(lastObserved.position)
       }

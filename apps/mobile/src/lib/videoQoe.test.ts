@@ -106,6 +106,28 @@ describe("shouldCountRebuffer", () => {
   })
 })
 
+describe("session end reasons (R17)", () => {
+  // R17 asks telemetry to distinguish ended, replaced, dismissed and abandoned;
+  // R22 adds a failure close. Before this widening only two were representable,
+  // so a dismissal was either silent or reported as an abandonment.
+  it.each(["ended", "abandoned", "replaced", "dismissed", "failed"] as const)(
+    "round-trips %s into the emitted summary",
+    (reason) => {
+      const session = createVideoQoeSession({ contentId: "abc" })
+      expect(session.finalize(reason)?.reason).toBe(reason)
+    },
+  )
+
+  it("keeps every reason distinguishable from abandoned", () => {
+    // The falsification this pins: a dismiss path that forgets to pass its
+    // reason falls back to "abandoned" and becomes invisible in the dashboard.
+    for (const reason of ["replaced", "dismissed", "failed"] as const) {
+      const session = createVideoQoeSession({ contentId: "abc" })
+      expect(session.finalize(reason)?.reason).not.toBe("abandoned")
+    }
+  })
+})
+
 describe("sanitizeVideoErrorMessage", () => {
   it("collapses newlines to spaces", () => {
     expect(sanitizeVideoErrorMessage("line1\nline2\r\nline3")).toBe(
