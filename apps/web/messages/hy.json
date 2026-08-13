@@ -179,7 +179,8 @@
     "clearSearch": "Մաքրել որոնումը",
     "changeAudioLanguage": "Փոխել ձայնի լեզուն",
     "home": "JesusFilm գլխավոր էջ",
-    "closeSearch": "Փակել որոնումը"
+    "closeSearch": "Փակել որոնումը",
+    "submitSearch": "Որոնել"
   },
   "SearchOverlay": {
     "dialogLabel": "Որոնել և դիտել տեսանյութեր",
@@ -205,10 +206,11 @@
     "searchLanguageLabel": "Որոնման լեզու",
     "allLanguages": "Բոլոր լեզուները",
     "searchSuggestions": "Որոնման առաջարկներ",
+    "directMatches": "Ուղիղ համընկնումներ",
     "languages": "Լեզուներ",
     "recommendedLanguage": "Առաջարկվող լեզու",
-    "searchSuggestion": "Որոնել {suggestion}",
-    "searchSuggestionWithLanguage": "Որոնել {suggestion}՝ {language}-ով",
+    "searchSuggestion": "Որոնել «{suggestion}»",
+    "searchSuggestionWithLanguage": "{language}-ով որոնել «{suggestion}»",
     "inLanguage": "{language}-ով",
     "browseByRegion": "Դիտել ըստ տարածաշրջանի",
     "clearLanguages": "Մաքրել",
@@ -217,7 +219,8 @@
     "tryDifferentKeywordsOrLanguage": "Փորձեք այլ հիմնաբառեր կամ ընտրեք այլ որոնման լեզու",
     "useWebsiteDefaultLanguage": "Օգտագործել կայքի լռելյայն որոնման լեզուն",
     "removeLanguage": "Հեռացնել {language}",
-    "browseMode": "Դիտման որոնման ռեժիմ"
+    "browseMode": "Դիտման որոնման ռեժիմ",
+    "searchingInLanguage": "Արդյունքները՝ {language}-ով"
   },
   "HeroPlayer": {
     "playWithSound": "Դիտել հիմա",

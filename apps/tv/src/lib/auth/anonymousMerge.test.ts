@@ -359,6 +359,45 @@ describe("account isolation between family members", () => {
     expect(await readLocalUserMarker()).toEqual({ userId: "user-b" })
   })
 
+  it("does NOT claim the buckets for B when the reset's wipe fails", async () => {
+    // Same shape as the case above, but the wipe is refused. Advancing the
+    // marker to B here would tell the NEXT sign-in that A's surviving shelf
+    // belongs to B — and since the shelf is now UPLOADED, not merely
+    // displayed, that is A's history landing in B's account.
+    await seedAnonymousState({
+      viewerId: "viewer-anon",
+      entries: [entry("a-only")],
+      events: [queued("a-only")],
+    })
+    await promoteAnonymousStateToAccount({
+      userId: "user-a",
+      submitProgress: async () => true,
+    })
+
+    const storage = getStorage()
+    const removeItem = jest
+      .spyOn(storage, "removeItem")
+      .mockImplementationOnce(async () => {
+        throw new Error("storage full")
+      })
+    const submitB = jest.fn<Promise<boolean>, [AccountMergePayload]>(
+      async () => true,
+    )
+    const outcome = await promoteAnonymousStateToAccount({
+      userId: "user-b",
+      submitProgress: submitB,
+    })
+    removeItem.mockRestore()
+
+    expect(outcome).toEqual({ status: "failed" })
+    expect(submitB).not.toHaveBeenCalled()
+    expect(await readLocalUserMarker()).toEqual({ userId: "user-a" })
+    // Still armed: B's next attempt resets rather than promoting.
+    expect(decideMergeAction(await readLocalUserMarker(), "user-b")).toBe(
+      "reset",
+    )
+  })
+
   it("leaves nothing of user A's behind for B to inherit after A signs out", async () => {
     // Deliberately no re-seed afterwards: overwriting the shelf key would hide
     // a leak, since B's own write replaces whatever A left there. B's payload
@@ -513,10 +552,19 @@ describe("clearAnonymousWatchState", () => {
         throw new Error("storage full")
       })
 
-    await expect(clearAnonymousWatchState()).resolves.toBeUndefined()
+    await expect(clearAnonymousWatchState()).resolves.toBe(false)
 
     expect(removeItem).toHaveBeenCalledTimes(ANONYMOUS_STATE_KEYS.length)
     removeItem.mockRestore()
+  })
+
+  it("reports true only when every key is confirmed gone", async () => {
+    await seedAnonymousState({
+      viewerId: "viewer-anon",
+      entries: [entry("v1")],
+      events: [queued("v1")],
+    })
+    await expect(clearAnonymousWatchState()).resolves.toBe(true)
   })
 })
 
@@ -534,6 +582,34 @@ describe("releaseLocalUserOnSignOut", () => {
     expect(await readAllAnonymousKeys()).toEqual([null, null, null])
     expect(await readLocalUserMarker()).toEqual(UNOWNED_LOCAL_USER)
     expect(await getStorage().getItem(LOCAL_USER_STORAGE_KEY)).toBeNull()
+  })
+
+  it("KEEPS the marker when a bucket survives the wipe", async () => {
+    // Fail-closed. A released marker plus a surviving shelf reads as
+    // `promote` to the next viewer, so their sign-in would upload the
+    // departing viewer's history into THEIR account — the marker staying put
+    // makes that sign-in take `reset` and wipe again instead.
+    await seedAnonymousState({
+      viewerId: "viewer-anon",
+      entries: [entry("v1")],
+      events: [queued("v1")],
+    })
+    await writeLocalUserMarker("user-a")
+    const storage = getStorage()
+    const removeItem = jest
+      .spyOn(storage, "removeItem")
+      .mockImplementationOnce(async () => {
+        throw new Error("storage full")
+      })
+
+    await releaseLocalUserOnSignOut()
+    removeItem.mockRestore()
+
+    expect(await readLocalUserMarker()).toEqual({ userId: "user-a" })
+    // …and that marker is what makes the next viewer's sign-in a reset.
+    expect(decideMergeAction(await readLocalUserMarker(), "user-b")).toBe(
+      "reset",
+    )
   })
 })
 

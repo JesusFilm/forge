@@ -179,7 +179,8 @@
     "clearSearch": "Rausim painim",
     "changeAudioLanguage": "Senisim tokples bilong audio",
     "home": "JesusFilm hom",
-    "closeSearch": "Pasim painim"
+    "closeSearch": "Pasim painim",
+    "submitSearch": "Tahua"
   },
   "SearchOverlay": {
     "dialogLabel": "Painim na brosim ol video",
@@ -204,20 +205,22 @@
     "categoryChristmas": "Krismas",
     "searchLanguageLabel": "Tokples bilong painim",
     "allLanguages": "Olgeta tokples",
-    "searchSuggestions": "Toksave bilong painim",
+    "searchSuggestions": "Tahua dalana haida",
+    "directMatches": "Hegeregere momokani",
     "languages": "Ol tokples",
     "recommendedLanguage": "Tokples i kamap strong",
-    "searchSuggestion": "Painim {suggestion}",
-    "searchSuggestionWithLanguage": "Painim {suggestion} long {language}",
+    "searchSuggestion": "{suggestion} tahua",
+    "searchSuggestionWithLanguage": "{language} dekenai “{suggestion}” tahua",
     "inLanguage": "long {language}",
     "browseByRegion": "Brosim long hap",
     "clearLanguages": "Rausim",
     "queryLanguageDetected": "I painim {language}",
-    "searchInLanguage": "Painim long {language}",
+    "searchInLanguage": "{language} dekenai tahua",
     "tryDifferentKeywordsOrLanguage": "Traim narapela keyword o makim narapela tokples bilong painim",
     "useWebsiteDefaultLanguage": "Yusim website default search tokples",
     "removeLanguage": "Rausim {language}",
-    "browseMode": "Tahua bona raraia mode"
+    "browseMode": "Tahua bona raraia mode",
+    "searchingInLanguage": "Gaudia idia hedinarai be {language} dekenai"
   },
   "HeroPlayer": {
     "playWithSound": "Lukluk nau",

@@ -179,7 +179,8 @@
     "clearSearch": "Chotsani kusaka",
     "changeAudioLanguage": "Sinthani chinenero cha mawu",
     "home": "Tsamba loyambira la JesusFilm",
-    "closeSearch": "Tsekani kusaka"
+    "closeSearch": "Tsekani kusaka",
+    "submitSearch": "Sakani"
   },
   "SearchOverlay": {
     "dialogLabel": "Sakani ndi kufufuza mavidiyo",
@@ -205,10 +206,11 @@
     "searchLanguageLabel": "Chinenero chofufuza",
     "allLanguages": "Zinenero zonse",
     "searchSuggestions": "Malingaliro a kusaka",
+    "directMatches": "Zofanana ndendende",
     "languages": "Zinenero",
     "recommendedLanguage": "Chinenero chovomerezeka",
     "searchSuggestion": "Sakani {suggestion}",
-    "searchSuggestionWithLanguage": "Sakani {suggestion} mu {language}",
+    "searchSuggestionWithLanguage": "Sakani “{suggestion}” mu {language}",
     "inLanguage": "mu {language}",
     "browseByRegion": "Fufuzani ndi dera",
     "clearLanguages": "Chotsani",
@@ -217,7 +219,8 @@
     "tryDifferentKeywordsOrLanguage": "Yesani mawu ena ofunika kapena sankhani chinenero china chofufuza",
     "useWebsiteDefaultLanguage": "Gwiritsani ntchito chinenero chokhazikika cha webusaiti kufufuza",
     "removeLanguage": "Chotsani {language}",
-    "browseMode": "Njira yofufuzira kusakatula"
+    "browseMode": "Njira yofufuzira kusakatula",
+    "searchingInLanguage": "Zotsatira zili mu {language}"
   },
   "HeroPlayer": {
     "playWithSound": "Onerani tsopano",

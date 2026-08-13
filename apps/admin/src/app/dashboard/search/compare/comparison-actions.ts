@@ -10,41 +10,48 @@ import { env } from "@/config/env"
 import { prisma } from "@/db/client"
 import { projectWatchSearchComparisonResult } from "@/services/search-trace-privacy"
 import { createTypesenseWatchSearchComparisonService } from "@/services/typesense-watch-search-comparison.service"
+import { resolveWatchSearchLanguageSelection } from "@/services/watch-search-language-options.service"
 
-const optionalLocale = z
-  .union([
-    z.literal(""),
-    z
-      .string()
-      .trim()
-      .max(32)
-      .regex(/^[A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8})*$/),
-  ])
-  .optional()
-  .transform((value) => value || undefined)
-
-const optionalLanguageSlug = z
-  .union([
-    z.literal(""),
-    z
-      .string()
-      .trim()
-      .max(128)
-      .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
-  ])
+const optionalLanguageSelection = z
+  .union([z.literal(""), z.string().trim().min(1)])
   .optional()
   .transform((value) => value || undefined)
 
 const ComparisonFormSchema = z
   .object({
     query: z.string().trim().min(1).max(200),
-    locale: optionalLocale,
-    targetLanguageSlug: optionalLanguageSlug,
+    targetLanguageSlug: optionalLanguageSelection,
+    languageSelection: optionalLanguageSelection,
+    locale: z.string().trim().max(32).optional(),
     page: z.coerce.number().int().min(1).max(1_000).default(1),
     perPage: z.coerce.number().int().min(1).max(50).default(10),
     contentType: z.enum(["all", "video", "experience"]).default("all"),
   })
   .strict()
+  .superRefine((values, context) => {
+    if (
+      values.targetLanguageSlug &&
+      values.languageSelection &&
+      values.targetLanguageSlug !== values.languageSelection
+    ) {
+      context.addIssue({
+        code: "custom",
+        path: ["languageSelection"],
+        message: "Conflicting language selections",
+      })
+    }
+  })
+  .transform(
+    ({
+      targetLanguageSlug,
+      languageSelection,
+      locale: _locale,
+      ...values
+    }) => ({
+      ...values,
+      selectedLanguageSlug: targetLanguageSlug ?? languageSelection,
+    }),
+  )
 
 export type WatchSearchComparisonView = ReturnType<
   typeof projectWatchSearchComparisonResult
@@ -57,6 +64,12 @@ export type WatchSearchComparisonActionState =
 
 function comparisonEnabled() {
   return env.WATCH_SEARCH_CANDIDATE_COMPARISON_ENABLED
+}
+
+function comparisonFormValues(formData: FormData) {
+  return Object.fromEntries(
+    [...formData.entries()].filter(([key]) => !key.startsWith("$ACTION_")),
+  )
 }
 
 function actorFingerprint(id: string) {
@@ -91,9 +104,7 @@ export async function runWatchSearchComparison(
     }
   }
 
-  const parsed = ComparisonFormSchema.safeParse(
-    Object.fromEntries(formData.entries()),
-  )
+  const parsed = ComparisonFormSchema.safeParse(comparisonFormValues(formData))
   if (!parsed.success) {
     return {
       status: "error",
@@ -104,14 +115,23 @@ export async function runWatchSearchComparison(
   const values = parsed.data
   const actorKey = actorFingerprint(principal.id!)
   try {
+    const languageSelection = values.selectedLanguageSlug
+      ? await resolveWatchSearchLanguageSelection(values.selectedLanguageSlug)
+      : undefined
+    if (values.selectedLanguageSlug && languageSelection === null) {
+      return {
+        status: "error",
+        message: "Check the comparison inputs and try again",
+      }
+    }
     const comparison =
       await createTypesenseWatchSearchComparisonService().compare({
         actorKey,
         input: {
           query: values.query,
-          targetLanguageSlug: values.targetLanguageSlug,
-          displayLanguageSlug: values.targetLanguageSlug,
-          acceptLanguage: values.locale,
+          targetLanguageSlug: languageSelection?.targetLanguageSlug,
+          displayLanguageSlug: languageSelection?.targetLanguageSlug,
+          acceptLanguage: languageSelection?.locale,
           limit: values.perPage,
           offset: (values.page - 1) * values.perPage,
           resultTypes:

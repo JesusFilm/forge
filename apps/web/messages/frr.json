@@ -179,7 +179,8 @@
     "clearSearch": "Sook leegd maken",
     "changeAudioLanguage": "Audiosprak ännern",
     "home": "JesusFilm-hooftside",
-    "closeSearch": "Sook sluten"
+    "closeSearch": "Sook sluten",
+    "submitSearch": "Soken"
   },
   "SearchOverlay": {
     "dialogLabel": "Video's soken un bruken",
@@ -204,20 +205,22 @@
     "categoryChristmas": "Kryst",
     "searchLanguageLabel": "Sook-sprak",
     "allLanguages": "Alle spraken",
-    "searchSuggestions": "Sook-foarslaggen",
+    "searchSuggestions": "Sookfoarslagen",
+    "directMatches": "Direkte Treffer",
     "languages": "Spraken",
     "recommendedLanguage": "Empfohlen språk",
-    "searchSuggestion": "Sook {suggestion}",
-    "searchSuggestionWithLanguage": "Sook {suggestion} in {language}",
+    "searchSuggestion": "Efter „{suggestion}“ soken",
+    "searchSuggestionWithLanguage": "Op {language} efter „{suggestion}“ soken",
     "inLanguage": "op {language}",
     "browseByRegion": "Na Regioon bruken",
     "clearLanguages": "Lääg maken",
     "queryLanguageDetected": "{language} detekteerd",
-    "searchInLanguage": "In {language} soken",
+    "searchInLanguage": "Op {language} soken",
     "tryDifferentKeywordsOrLanguage": "Versök annere Steekwöör of wähl en anner Sookspraak",
     "useWebsiteDefaultLanguage": "Bruk de website-standaard-sookspraak",
     "removeLanguage": "{language} wegnim",
-    "browseMode": "Sook-blaadmodus"
+    "browseMode": "Sook-blaadmodus",
+    "searchingInLanguage": "Resultaten op {language}"
   },
   "HeroPlayer": {
     "playWithSound": "Nu kieken",

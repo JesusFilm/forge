@@ -179,7 +179,8 @@
     "clearSearch": "Ларх дӀахьа",
     "changeAudioLanguage": "Аудио мотт къобалдолла",
     "home": "JesusFilm коьрта",
-    "closeSearch": "Ларх дӀакхахьа"
+    "closeSearch": "Ларх дӀакхахьа",
+    "submitSearch": "Лар"
   },
   "SearchOverlay": {
     "dialogLabel": "Видео лар а хьажар а",
@@ -204,20 +205,22 @@
     "categoryChristmas": "Кристмас",
     "searchLanguageLabel": "Ларчаран мотт",
     "allLanguages": "ХӀора моттш",
-    "searchSuggestions": "Ларчаран хьажарш",
+    "searchSuggestions": "Ларчаран хьехамаш",
+    "directMatches": "Нийса тӀекхачар",
     "languages": "Моттш",
     "recommendedLanguage": "Дехар мотт",
     "searchSuggestion": "{suggestion} лар",
-    "searchSuggestionWithLanguage": "{suggestion} {language} тӀехь лар",
+    "searchSuggestionWithLanguage": "«{suggestion}» лар — мотт: {language}",
     "inLanguage": "{language} тӀехь",
     "browseByRegion": "Регион тӀехь лар",
     "clearLanguages": "ДӀахьа",
     "queryLanguageDetected": "{language} кхийтина",
-    "searchInLanguage": "{language} тӀехь лар",
+    "searchInLanguage": "Ларчаран мотт: {language}",
     "tryDifferentKeywordsOrLanguage": "Кхин ключовой сөзаш я ларчаран мотт кхиийла",
     "useWebsiteDefaultLanguage": "Сайт шорта ларчаран мотт пайдалла",
     "removeLanguage": "{language} дӀахьа",
-    "browseMode": "Ларчан режим"
+    "browseMode": "Ларчан режим",
+    "searchingInLanguage": "ЖамӀийн мотт: {language}"
   },
   "HeroPlayer": {
     "playWithSound": "ХӀинца хьажа",

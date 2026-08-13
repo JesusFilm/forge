@@ -179,7 +179,8 @@
     "clearSearch": "Утчалонез вань",
     "changeAudioLanguage": "Аудио кылез воштӥл",
     "home": "JesusFilm шӧр",
-    "closeSearch": "Утчалонез пыдӥл"
+    "closeSearch": "Утчалонез пыдӥл",
+    "submitSearch": "Утчалы"
   },
   "SearchOverlay": {
     "dialogLabel": "Видеоос утчалы но выжыты",
@@ -204,11 +205,12 @@
     "categoryChristmas": "Рождество",
     "searchLanguageLabel": "Кыллысь утчало",
     "allLanguages": "Вань кылъёс",
-    "searchSuggestions": "Утчалон пум",
+    "searchSuggestions": "Утчалонлы сӥземъёс",
+    "directMatches": "Тупась материалъёс",
     "languages": "Кылъёс",
     "recommendedLanguage": "Сӥньыл кыл",
-    "searchSuggestion": "{suggestion} утчалы",
-    "searchSuggestionWithLanguage": "{language} вылын {suggestion} утчалы",
+    "searchSuggestion": "«{suggestion}» утчалы",
+    "searchSuggestionWithLanguage": "{language} кылын «{suggestion}» утчалы",
     "inLanguage": "{language} кылын",
     "browseByRegion": "Регион пыр выжыты",
     "clearLanguages": "Вань",
@@ -217,7 +219,8 @@
     "tryDifferentKeywordsOrLanguage": "Башка кылъёсез нырыз пукты яа мумык кылез суйыл",
     "useWebsiteDefaultLanguage": "Сайтлысь тӧлкызык кылез пайдаланыл",
     "removeLanguage": "{language} вань",
-    "browseMode": "Утчало режим"
+    "browseMode": "Утчало режим",
+    "searchingInLanguage": "{language} кылын результатъёс"
   },
   "HeroPlayer": {
     "playWithSound": "Тагьыр ӧтӥл",

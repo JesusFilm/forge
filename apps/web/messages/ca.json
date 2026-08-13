@@ -179,7 +179,8 @@
     "clearSearch": "Esborra la cerca",
     "changeAudioLanguage": "Canvia l’idioma de l’àudio",
     "home": "Inici de JesusFilm",
-    "closeSearch": "Tanca la cerca"
+    "closeSearch": "Tanca la cerca",
+    "submitSearch": "Cerca"
   },
   "SearchOverlay": {
     "dialogLabel": "Cerca i navega pels vídeos",
@@ -205,10 +206,11 @@
     "searchLanguageLabel": "Idioma de cerca",
     "allLanguages": "Tots els idiomes",
     "searchSuggestions": "Suggeriments de cerca",
+    "directMatches": "Coincidències directes",
     "languages": "Idiomes",
     "recommendedLanguage": "Idioma recomanat",
-    "searchSuggestion": "Cerca {suggestion}",
-    "searchSuggestionWithLanguage": "Cerca {suggestion} en {language}",
+    "searchSuggestion": "Cerca «{suggestion}»",
+    "searchSuggestionWithLanguage": "Cerca «{suggestion}» en {language}",
     "inLanguage": "en {language}",
     "browseByRegion": "Navega per regió",
     "clearLanguages": "Esborra",
@@ -217,7 +219,8 @@
     "tryDifferentKeywordsOrLanguage": "Prova paraules clau diferents o tria un altre idioma de cerca",
     "useWebsiteDefaultLanguage": "Utilitza l’idioma de cerca per defecte del lloc web",
     "removeLanguage": "Elimina {language}",
-    "browseMode": "Mode de navegació de cerca"
+    "browseMode": "Mode de navegació de cerca",
+    "searchingInLanguage": "Resultats en {language}"
   },
   "HeroPlayer": {
     "playWithSound": "Mira ara",

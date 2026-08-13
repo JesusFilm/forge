@@ -86,7 +86,7 @@ A cut/edition of a Video that owns the subtitle tracks. Subtitles hang off the E
 
 ### Language
 
-A language a Video is offered in: every Dub is for one Language, and subtitle tracks are per-Language. A Language has two identifiers that are easy to conflate — a unique, stable slug that is its identity (e.g. korean, kurmanji-standard), and a BCP-47 tag that is a locale label (e.g. ko, ko-kmr) and is deliberately not unique per language, so distinct Languages can share a tag or its prefix. Identity comparisons and cross-system transport key on the slug; the BCP-47 tag is for locale negotiation and locale-sensitive search execution.
+A language a Video is offered in: every Dub is for one Language, and subtitle tracks are per-Language. A Language has two identifiers that are easy to conflate — a unique, stable slug that is its identity (e.g. korean, kurmanji-standard), and a BCP-47 tag that is a locale label (e.g. ko, ko-kmr) and is deliberately not unique per language, so distinct Languages can share a tag or its prefix. Identity comparisons and cross-system transport key on the slug; the BCP-47 tag is for locale negotiation and locale-sensitive search execution. The slug is unique when it is present, but it is not guaranteed to exist — a Language can carry no slug at all. A consumer must treat a missing slug as an unusable identity and drop that option, never substitute an empty string, because downstream code reads an empty string as "nothing selected".
 
 ### Watch Language Inventory
 
@@ -147,6 +147,41 @@ viewer-visible Video identity, canonical route, or structured media identity.
 An absent overlay inherits the selected locale's canonical copy and existing
 image fallback. Managed social art remains promotional: it does not become the
 Video's thumbnail truth.
+
+### Watch Search Candidate Generation
+
+An immutable set of candidate-owned search projections, with qualification
+evidence bound to it, built for private evaluation before it can become the
+public Watch search implementation.
+
+A Candidate Generation is recorded before its external collections are built,
+then moves through a guarded lifecycle. Failed or retired generations retain
+enough ownership evidence for safe cleanup without changing their identity.
+
+### Watch Search Candidate Application Revision
+
+The physical compatibility identity that binds a Watch Search Candidate
+Generation to the schema, projection, and retrieval-field contract able to use
+its collections.
+
+It remains stable across unrelated application deployments. A change means
+existing generations require rebuilding; ordinary deploy identity and
+application-side ranking behavior are not Candidate collection compatibility.
+
+### Watch Search Candidate Ranking Revision
+
+The application-side ranking identity included in Candidate qualification
+evidence. It changes when Candidate ordering behavior changes, invalidating old
+qualification without rebuilding compatible Typesense collections.
+
+### Watch Search Candidate Pointer
+
+A versioned control-plane reference that selects one Watch Search Candidate
+Generation for either private evaluation or public serving.
+
+The Evaluation pointer can move without changing public Watch traffic. The
+Serving pointer is separate, so publishing a test candidate never promotes it
+implicitly.
 
 ## Video source mapper
 
@@ -299,6 +334,18 @@ take ownership, while generation and token fencing determine who may complete.
 Experiments become measuring only after objective activation, overlap becomes a
 confounder only when treatments are simultaneously live, and canonical drift
 forces an inconclusive outcome rather than a lesson or rollback.
+
+### SEO Run Audit Report
+
+The bounded, versioned explanation of one SEO Marketing Agent job: which safe
+provider scope reached evaluation, how candidates moved through the decision
+funnel, which actions were selected or rejected, and which proposal identities
+resulted.
+
+Unlike the SEO Experiment Ledger, the report freezes the machine decision at
+job completion and carries only short-lived provider/query detail. Later human
+decisions and experiment outcomes remain canonical in the ledger and are
+composed with the report when an operator reads it.
 
 ### Search Pipeline Mode
 
@@ -506,9 +553,33 @@ Target-audio and related-language states carry a playable Dub directly. A target
 
 A visible search-bar suggestion produced when the typed query appears to be in a supported language different from the current Search Language. The suggestion can be generous because it is confirm-gated: it does not change Search Language until the viewer accepts it, and unsupported or unrecognized queries leave the current Search Language in control.
 
+### Watch Title Suggestion
+
+A transient, language-scoped completion of a typed Watch title that helps edit
+the search draft without becoming a submitted search. Selecting one fills the
+draft only; Enter, the mobile Search action, or the visible submit control must
+still commit the full search.
+
+Watch Title Suggestions are optional serving responses rather than Watch Search
+Analytics: partial prefixes and suggestion selections do not create submitted
+search traces or popularity data, and suggestion failure never blocks the
+primary search action.
+
 ### Keyword-First Search
 
 A Search Pipeline Mode that keeps semantic retrieval available while strengthening lexical and title-driven retrieval so exact or near-title matches are not diluted by broad semantic similarity.
+
+### Title-and-Brand Mode
+
+The automatic final-ranking behavior used when a strong normalized title-lane anchor identifies a known title, brand, series, or collection. It keeps hybrid retrieval active but places strong title and metadata evidence before unrelated transcript-only matches; a query that also includes a concept may use semantic evidence to order the strongly matched content before generic semantic fill.
+
+Title-and-Brand Mode is inferred from the existing query evidence. It is not a Search Pipeline Mode, a user-facing selector, or a separate search surface.
+
+### Semantic Mode
+
+The automatic final-ranking behavior used when a Watch search query has no eligible normalized title-lane anchor. It preserves transcript-driven hybrid discovery for themes, feelings, and natural-language questions.
+
+Semantic Mode retains the normal hybrid Typesense retrieval lanes and is distinct from the separately defined Semantic-Only Search concept.
 
 ### Semantic-Only Search
 
@@ -826,6 +897,20 @@ Activity begins when the first owner opens and ends only after the final owner r
 The auto-hiding controls overlay on the watch video player — the play/pause, scrubber, skip, mute, and fullscreen affordances layered over the footage. Distinct from the captions, which are a separate, always-visible layer that does not hide with it — captions instead reposition to stay clear of the Chrome while it is visible and return when it hides.
 
 The Chrome is visible when playback starts, auto-hides after a few idle seconds while playing, stays up while paused or buffering, and toggles on a tap of the video body. It fades rather than cutting, and is unmounted only after the fade-out completes so a fully-hidden Chrome stops intercepting touches. The home hero's controls are also Chrome; they fade with scroll position rather than idle time, but follow the same rule that hidden Chrome must stop intercepting touches.
+
+A video that starts by itself is the exception to "stays up while buffering": the Chrome is withheld until the first frame and an Autostart Veil stands in for it, because a play button and a zero scrubber offered for a video nobody asked to pause read as a stall. Because the Chrome is the player's only recovery affordance, that withholding is always bounded — see the Autostart Veil's release rule.
+
+### Autostart Veil
+
+The dimmed cover laid over a video's poster while a video that starts on its own is still loading — darkened artwork under a spinner, standing in for the withheld Chrome. It appears only for a video the viewer did not press play on; a video started by hand shows its Chrome throughout.
+
+The veil takes no touches, and while it is up a tap on the video body must not resolve to hiding the Chrome beneath it, or playback begins with no controls at all. It is released by the first frame, by a reported load failure, or by a time limit — whichever comes first. The time limit is not redundant: the other two releases depend on the player reporting something, and the case that strands a viewer is the one where it reports nothing, so a viewer who leaves the app mid-load and returns must also get the veil released. Releasing early only returns the controls sooner, while releasing late leaves the viewer with no way out, so the bound is set to err early.
+
+### Ambient Backdrop
+
+The soft blurred wash of colour that bleeds from the video's edges into the surrounding screen, filling what would otherwise be flat letterboxing around the player.
+
+It is derived from the video's still artwork rather than from the moving picture, so it is one colour field for the whole video and does not follow the footage from scene to scene. It sits behind every other layer, takes no touches, and fades in rather than appearing at once, so a slow artwork load never flashes.
 
 ### Watch Session
 

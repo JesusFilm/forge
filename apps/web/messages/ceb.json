@@ -179,7 +179,8 @@
     "clearSearch": "Panghinlo sa pagpangita",
     "changeAudioLanguage": "Usba ang pinulongan sa audio",
     "home": "Panid sa balay sa JesusFilm",
-    "closeSearch": "Sirad-i ang pagpangita"
+    "closeSearch": "Sirad-i ang pagpangita",
+    "submitSearch": "Pangitaa"
   },
   "SearchOverlay": {
     "dialogLabel": "Pangitaa ug i-browse ang mga video",
@@ -204,11 +205,12 @@
     "categoryChristmas": "Pasko",
     "searchLanguageLabel": "Pangitaa ang pinulongan",
     "allLanguages": "Tanang pinulongan",
-    "searchSuggestions": "Mga Suhestiyon sa Pagpangita",
+    "searchSuggestions": "Gisugyot nga mga pagpangita",
+    "directMatches": "Direktang mga katugma",
     "languages": "Mga pinulongan",
     "recommendedLanguage": "Girekomendar nga pinulongan",
     "searchSuggestion": "Pangitaa ang {suggestion}",
-    "searchSuggestionWithLanguage": "Pangitaa ang {suggestion} sa {language}",
+    "searchSuggestionWithLanguage": "Pangitaa ang “{suggestion}” sa {language}",
     "inLanguage": "sa {language}",
     "browseByRegion": "I-browse sumala sa rehiyon",
     "clearLanguages": "Panghinlo",
@@ -217,7 +219,8 @@
     "tryDifferentKeywordsOrLanguage": "Sulayi ang laing mga keyword o pilia ang lain nga pinulongan sa pagpangita",
     "useWebsiteDefaultLanguage": "Gamita ang default nga pinulongan sa pagpangita sa website",
     "removeLanguage": "Kuhaa ang {language}",
-    "browseMode": "Mode sa pag-browse sa pagpangita"
+    "browseMode": "Mode sa pag-browse sa pagpangita",
+    "searchingInLanguage": "Mga resulta sa {language}"
   },
   "HeroPlayer": {
     "playWithSound": "Tan-awa karon",

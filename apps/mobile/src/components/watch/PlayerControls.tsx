@@ -1,14 +1,27 @@
-import { useCallback, useEffect, useRef, useState } from "react"
-import { Pressable, StyleSheet, Text, View } from "react-native"
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react"
+import {
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+  type StyleProp,
+  type ViewStyle,
+} from "react-native"
 import Ionicons from "@expo/vector-icons/Ionicons"
 import type { VideoPlayer } from "expo-video"
 import { useEvent } from "expo"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 
-import { BLACK, TEXT_ON_OVERLAY, hexToRgba } from "../../lib/color"
+import {
+  BLACK,
+  SURFACE_COLOR,
+  TEXT_ON_OVERLAY,
+  hexToRgba,
+} from "../../lib/color"
 import { useTypography } from "../../hooks/useTypography"
 import { applySkip } from "../../lib/scrubber"
 import { SKIP_SECONDS } from "../../lib/tapSeek"
+import { PlatformBlur } from "../ui/PlatformBlur"
 import { Scrubber } from "./Scrubber"
 
 type PlayerControlsProps = {
@@ -23,10 +36,34 @@ type PlayerControlsProps = {
   seekSignal?: { time: number; n: number } | null
 }
 
+// Side inset for the bar's text and icons. The inline seek bar cancels it so
+// the track reaches the player's edges.
+const BAR_PADDING_H = 12
+
 function formatTime(seconds: number): string {
   const mins = Math.floor(seconds / 60)
   const secs = Math.floor(seconds % 60)
   return `${mins}:${secs.toString().padStart(2, "0")}`
+}
+
+// Frosted backplate for every chrome control. Lighter than the hero blurs so a
+// 44pt control does not read as a solid block.
+function Frosted({
+  style,
+  children,
+}: {
+  style: StyleProp<ViewStyle>
+  children: ReactNode
+}) {
+  return (
+    <PlatformBlur
+      style={style}
+      intensity={40}
+      androidDim={hexToRgba(SURFACE_COLOR, 0.6)}
+    >
+      {children}
+    </PlatformBlur>
+  )
 }
 
 export function PlayerControls({
@@ -40,7 +77,6 @@ export function PlayerControls({
   const insets = useSafeAreaInsets()
   const [currentTime, setCurrentTime] = useState(0)
   const [duration, setDuration] = useState(0)
-  const [isMuted, setIsMuted] = useState(false)
   const [scrubPreview, setScrubPreview] = useState<number | null>(null)
   // True once playback reaches the end — the center control becomes Replay.
   const [ended, setEnded] = useState(false)
@@ -102,10 +138,7 @@ export function PlayerControls({
   // without this, re-showing resets to 0:00/play, losing a paused or ended
   // video's position and replay state (poll only runs while playing).
   useEffect(() => {
-    // Mute is read first, unconditionally: it persists across chrome hide/show,
-    // but this mount's useState(false) would show an un-muted icon over muted
-    // audio. (HLS duration may be 0 here, so time/ended seed stays guarded below.)
-    setIsMuted(player.muted)
+    // HLS duration may be 0 here, so the time/ended seed stays guarded.
     const d = player.duration
     if (!Number.isFinite(d) || d <= 0) return
     const t = player.currentTime
@@ -132,13 +165,6 @@ export function PlayerControls({
     }
     player.play()
   }, [player, onInteract])
-
-  const toggleMute = useCallback(() => {
-    onInteract?.()
-    const newMuted = !isMuted
-    player.muted = newMuted
-    setIsMuted(newMuted)
-  }, [player, isMuted, onInteract])
 
   const skip = useCallback(
     (delta: number) => {
@@ -173,123 +199,133 @@ export function PlayerControls({
 
   const displayedTime = scrubPreview != null ? scrubPreview : currentTime
 
+  // Inline (portrait) docks the seek bar on the player's bottom edge, full
+  // width, with the labels and the fullscreen control in the corners above it.
+  // Fullscreen keeps the original centered bar above its button row.
+  const scrubber = (
+    <Scrubber
+      currentTime={displayedTime}
+      duration={duration}
+      onSeek={handleSeek}
+      onScrubChange={handleScrubChange}
+      flush={!fullscreen}
+    />
+  )
+
+  const timeLabel = (
+    <Text
+      style={[styles.timeText, typography.caption]}
+      accessibilityLabel={`Elapsed ${formatTime(displayedTime)} of ${formatTime(duration)}`}
+    >
+      {formatTime(displayedTime)} / {formatTime(duration)}
+    </Text>
+  )
+
+  // The pill sits where the chrome scrim has already faded out, so the backplate
+  // is what keeps it legible over bright footage.
+  const timePill = <Frosted style={styles.timePill}>{timeLabel}</Frosted>
+
+  const fullscreenButton = (
+    <Pressable
+      onPress={() => {
+        onInteract?.()
+        onFullscreen?.()
+      }}
+      accessibilityRole="button"
+      accessibilityLabel={fullscreen ? "Exit fullscreen" : "Fullscreen"}
+    >
+      <Frosted style={styles.iconButton}>
+        <Ionicons
+          name={fullscreen ? "contract" : "expand"}
+          size={20}
+          color={TEXT_ON_OVERLAY}
+        />
+      </Frosted>
+    </Pressable>
+  )
+
   return (
     <View style={styles.container} pointerEvents="box-none">
       <View style={styles.controlsRow}>
         <Pressable
           onPress={() => skip(-SKIP_SECONDS)}
-          style={styles.skipButton}
           accessibilityRole="button"
           accessibilityLabel={`Back ${SKIP_SECONDS} seconds`}
         >
-          <Ionicons
-            name="play-back"
-            size={24}
-            color={TEXT_ON_OVERLAY}
-            style={styles.centerIcon}
-          />
+          <Frosted style={styles.skipButton}>
+            <Ionicons
+              name="play-back"
+              size={24}
+              color={TEXT_ON_OVERLAY}
+              style={styles.centerIcon}
+            />
+          </Frosted>
         </Pressable>
 
         <Pressable
           onPress={togglePlayPause}
-          style={styles.playButton}
           accessibilityRole="button"
           accessibilityLabel={ended ? "Replay" : isPlaying ? "Pause" : "Play"}
         >
-          <Ionicons
-            name={ended ? "reload" : isPlaying ? "pause" : "play"}
-            size={24}
-            color={TEXT_ON_OVERLAY}
-            // Ionicons' style prop takes a single object, not an array.
-            style={StyleSheet.flatten([
-              styles.centerIcon,
-              !ended && !isPlaying ? styles.playGlyphNudge : null,
-            ])}
-          />
+          <Frosted style={styles.playButton}>
+            <Ionicons
+              name={ended ? "reload" : isPlaying ? "pause" : "play"}
+              size={24}
+              color={TEXT_ON_OVERLAY}
+              // Ionicons' style prop takes a single object, not an array.
+              style={StyleSheet.flatten([
+                styles.centerIcon,
+                !ended && !isPlaying ? styles.playGlyphNudge : null,
+              ])}
+            />
+          </Frosted>
         </Pressable>
 
         <Pressable
           onPress={() => skip(SKIP_SECONDS)}
-          style={styles.skipButton}
           accessibilityRole="button"
           accessibilityLabel={`Forward ${SKIP_SECONDS} seconds`}
         >
-          <Ionicons
-            name="play-forward"
-            size={24}
-            color={TEXT_ON_OVERLAY}
-            style={styles.centerIcon}
-          />
+          <Frosted style={styles.skipButton}>
+            <Ionicons
+              name="play-forward"
+              size={24}
+              color={TEXT_ON_OVERLAY}
+              style={styles.centerIcon}
+            />
+          </Frosted>
         </Pressable>
       </View>
 
-      <View
-        style={[
-          styles.bottomBar,
-          // In landscape fullscreen the bar would otherwise sit under the side
-          // notch and the home indicator. Inline (16:9 box) needs no insets.
-          fullscreen && {
-            paddingBottom: Math.max(insets.bottom, 8),
-            paddingLeft: Math.max(insets.left, 12),
-            paddingRight: Math.max(insets.right, 12),
-          },
-        ]}
-      >
-        <View style={styles.timeRow}>
-          <Text
-            style={[styles.timeText, typography.caption]}
-            accessibilityLabel={`Elapsed ${formatTime(displayedTime)} of ${formatTime(duration)}`}
-          >
-            {formatTime(displayedTime)}
-          </Text>
-          {/* The total is already spoken in the elapsed label above; hide this
-              duplicate from screen readers so the position isn't announced twice. */}
-          <Text
-            style={[styles.timeText, typography.caption]}
-            accessibilityElementsHidden
-            importantForAccessibility="no"
-          >
-            {formatTime(duration)}
-          </Text>
+      {fullscreen ? (
+        <View
+          style={[
+            styles.bottomBar,
+            // In landscape the bar would otherwise sit under the side notch and
+            // the home indicator.
+            {
+              paddingBottom: Math.max(insets.bottom, 8),
+              paddingLeft: Math.max(insets.left, 12),
+              paddingRight: Math.max(insets.right, 12),
+            },
+          ]}
+        >
+          <View style={styles.timeRow}>{timePill}</View>
+          {scrubber}
+          <View style={styles.iconRow}>{fullscreenButton}</View>
         </View>
-        <Scrubber
-          currentTime={displayedTime}
-          duration={duration}
-          onSeek={handleSeek}
-          onScrubChange={handleScrubChange}
-        />
-        <View style={styles.iconRow}>
-          <Pressable
-            onPress={toggleMute}
-            style={styles.iconButton}
-            accessibilityRole="button"
-            accessibilityLabel={isMuted ? "Unmute" : "Mute"}
-          >
-            <Ionicons
-              name={isMuted ? "volume-mute" : "volume-high"}
-              size={20}
-              color={TEXT_ON_OVERLAY}
-            />
-          </Pressable>
-          <View style={styles.rightIconGroup}>
-            <Pressable
-              onPress={() => {
-                onInteract?.()
-                onFullscreen?.()
-              }}
-              style={styles.iconButton}
-              accessibilityRole="button"
-              accessibilityLabel={fullscreen ? "Exit fullscreen" : "Fullscreen"}
-            >
-              <Ionicons
-                name={fullscreen ? "contract" : "expand"}
-                size={20}
-                color={TEXT_ON_OVERLAY}
-              />
-            </Pressable>
+      ) : (
+        <View style={styles.bottomBar} pointerEvents="box-none">
+          {/* Docked at the player's bottom edge and rendered FIRST, so the
+              corner row's button wins taps where the 44pt grab area reaches up
+              behind it. box-none keeps the labels from swallowing a drag. */}
+          <View style={styles.scrubberDock}>{scrubber}</View>
+          <View style={styles.cornerRow} pointerEvents="box-none">
+            <View pointerEvents="none">{timePill}</View>
+            {fullscreenButton}
           </View>
         </View>
-      </View>
+      )}
     </View>
   )
 }
@@ -310,12 +346,14 @@ const styles = StyleSheet.create({
   skipButton: {
     width: 48,
     height: 48,
+    borderRadius: 24,
     justifyContent: "center",
     alignItems: "center",
+    overflow: "hidden",
   },
-  // The center cluster sits above the scrim, so white glyphs need own contrast
-  // over bright frames. Skip glyphs lean on this shadow halo (like the captions)
-  // to clear WCAG 1.4.11's 3:1 bar against any footage; the play button has a backplate.
+  // Every glyph now sits on a frosted backplate. The shadow halo stays as a
+  // second line of defence for WCAG 1.4.11's 3:1 bar, since blur only softens
+  // bright footage rather than guaranteeing contrast against it.
   centerIcon: {
     textShadowColor: hexToRgba(BLACK, 0.6),
     textShadowOffset: { width: 0, height: 1 },
@@ -328,17 +366,42 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: hexToRgba(BLACK, 0.5),
     justifyContent: "center",
     alignItems: "center",
+    overflow: "hidden",
   },
+  // Side and bottom insets live on the rows, not here: the inline seek bar
+  // needs the full width and the player's very bottom edge. Fullscreen adds its
+  // own safe-area padding.
   bottomBar: {
     position: "absolute",
     bottom: 0,
     left: 0,
     right: 0,
-    paddingHorizontal: 12,
-    paddingBottom: 8,
+  },
+  scrubberDock: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
+  // Time pill at the bottom-left, fullscreen at the bottom-right. The margin
+  // clears the docked track and the thumb sitting on it.
+  cornerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: BAR_PADDING_H,
+    marginBottom: 12,
+  },
+  // overflow clips the blur to the pill's radius.
+  timePill: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 999,
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
   },
   timeRow: {
     flexDirection: "row",
@@ -353,17 +416,14 @@ const styles = StyleSheet.create({
   iconRow: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
-  },
-  rightIconGroup: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 16,
+    justifyContent: "flex-end",
   },
   iconButton: {
     width: 44,
     height: 44,
+    borderRadius: 22,
     justifyContent: "center",
     alignItems: "center",
+    overflow: "hidden",
   },
 })

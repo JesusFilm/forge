@@ -179,7 +179,8 @@
     "clearSearch": "Longola boluki",
     "changeAudioLanguage": "Bongola monoko ya mongongo",
     "home": "Ndako ya JesusFilm",
-    "closeSearch": "Kokanga boluki"
+    "closeSearch": "Kokanga boluki",
+    "submitSearch": "Luka"
   },
   "SearchOverlay": {
     "dialogLabel": "Luka mpe tala ba vidéo",
@@ -205,10 +206,11 @@
     "searchLanguageLabel": "Luka monoko",
     "allLanguages": "Minoko nyonso",
     "searchSuggestions": "Makanisi ya boluki",
+    "directMatches": "Ba résultat oyo ekokani mpenza",
     "languages": "Minoko",
     "recommendedLanguage": "Monoko oyo epesami likebi",
-    "searchSuggestion": "Luka {suggestion}",
-    "searchSuggestionWithLanguage": "Luka {suggestion} na {language}",
+    "searchSuggestion": "Luka «{suggestion}»",
+    "searchSuggestionWithLanguage": "Luka «{suggestion}» na {language}",
     "inLanguage": "na {language}",
     "browseByRegion": "Tala na etúká",
     "clearLanguages": "Longola",
@@ -217,7 +219,8 @@
     "tryDifferentKeywordsOrLanguage": "Meka maloba mosusu to pona monoko mosusu ya boluki",
     "useWebsiteDefaultLanguage": "Salela monoko ya boluki ya liboso ya site",
     "removeLanguage": "Longola {language}",
-    "browseMode": "Mode ya kotala na boluki"
+    "browseMode": "Mode ya kotala na boluki",
+    "searchingInLanguage": "Ba résultat na {language}"
   },
   "HeroPlayer": {
     "playWithSound": "Tala sikoyo",

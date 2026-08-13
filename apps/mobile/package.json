@@ -13,7 +13,8 @@
     "build": "echo 'Expo app has no production bundle step; use expo export or EAS when needed.'",
     "eas-build-pre-install": "bash scripts/eas-build-pre-install.sh",
     "eas-build-on-success": "bash scripts/eas-build-on-success.sh",
-    "update:preview": "bash -c 'cp .env.local .env.local.bak 2>/dev/null; trap \"mv .env.local.bak .env.local 2>/dev/null\" EXIT; cp .env.production .env.local && touch src/env.ts && eas update --channel preview --message \"preview update\"'",
+    "update:preview": "touch src/env.ts && EXPO_NO_DOTENV=1 eas update --channel preview --environment preview --message \"preview update\"",
+    "update:production": "touch src/env.ts && EXPO_NO_DOTENV=1 eas update --channel production --environment production --message \"production update\"",
     "icons:generate": "node scripts/generate-app-icon.mjs"
   },
   "dependencies": {
@@ -26,12 +27,10 @@
     "@hebcal/hdate": "^0.21.1",
     "@kesha-antonov/react-native-background-downloader": "^4.5.5",
     "@react-native-async-storage/async-storage": "^2.2.0",
-    "@react-native-google-signin/google-signin": "^16.1.4",
     "@shopify/flash-list": "2.0.2",
     "@t3-oss/env-core": "^0.13.11",
     "better-auth": "1.6.2",
     "expo": "~54.0.36",
-    "expo-apple-authentication": "~8.0.8",
     "expo-blur": "~15.0.8",
     "expo-constants": "~18.0.13",
     "expo-dev-client": "~6.0.21",

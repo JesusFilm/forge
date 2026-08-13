@@ -179,7 +179,8 @@
     "clearSearch": "Katula kusaka",
     "changeAudioLanguage": "Sakula lulaka lwa audio",
     "home": "Tshikupu tsha JesusFilm",
-    "closeSearch": "Vuala kusaka"
+    "closeSearch": "Vuala kusaka",
+    "submitSearch": "Saka"
   },
   "SearchOverlay": {
     "dialogLabel": "Saka ne sebele mavidiyo",
@@ -204,11 +205,12 @@
     "categoryChristmas": "Noeli",
     "searchLanguageLabel": "Saka lulaka",
     "allLanguages": "Malulaka onso",
-    "searchSuggestions": "Mayele a kusaka",
+    "searchSuggestions": "Mifuango ya kusaka",
+    "directMatches": "Bikwata sebele",
     "languages": "Malulaka",
     "recommendedLanguage": "Lulaka lwa kuludila",
     "searchSuggestion": "Saka {suggestion}",
-    "searchSuggestionWithLanguage": "Saka {suggestion} mu {language}",
+    "searchSuggestionWithLanguage": "Saka “{suggestion}” mu {language}",
     "inLanguage": "mu {language}",
     "browseByRegion": "Selebula na ekanda",
     "clearLanguages": "Katula",
@@ -217,7 +219,8 @@
     "tryDifferentKeywordsOrLanguage": "Linga mfuango wina todi sankula lulaka lukwata",
     "useWebsiteDefaultLanguage": "Sebedisha lulaka lwa kusaka lwa website",
     "removeLanguage": "Katula {language}",
-    "browseMode": "Lulengo lwa kusebula kusaka"
+    "browseMode": "Lulengo lwa kusebula kusaka",
+    "searchingInLanguage": "Mayele a mu {language}"
   },
   "HeroPlayer": {
     "playWithSound": "Talala sikila",

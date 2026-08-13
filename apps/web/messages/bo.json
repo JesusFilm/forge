@@ -179,7 +179,8 @@
     "clearSearch": "འཚོལ་བཤེར་གཙང་སེལ",
     "changeAudioLanguage": "སྒྲ་གདངས་སྐད་ཡིག་བསྒྱུར",
     "home": "JesusFilm གཙོ་ངོས",
-    "closeSearch": "འཚོལ་བཤེར་སྒོ་རྒྱབ།"
+    "closeSearch": "འཚོལ་བཤེར་སྒོ་རྒྱབ།",
+    "submitSearch": "འཚོལ་བཤེར"
   },
   "SearchOverlay": {
     "dialogLabel": "བརྙན་འཕྲིན་འཚོལ་བཤེར་དང་ནང་འཚོལ",
@@ -204,20 +205,22 @@
     "categoryChristmas": "སྐྱེས་མཆོད",
     "searchLanguageLabel": "འཚོལ་བཤེར་སྐད་ཡིག",
     "allLanguages": "སྐད་ཡིག་ཚང་མ",
-    "searchSuggestions": "འཚོལ་བཤེར་གྲོས་འདོན",
+    "searchSuggestions": "འཚོལ་ཚིག་གྲོས་འཆར",
+    "directMatches": "ཐད་ཀར་མཐུན་པའི་འབྲས་བུ",
     "languages": "སྐད་ཡིག",
     "recommendedLanguage": "འོས་སྦྱོར་སྐད་ཡིག",
-    "searchSuggestion": "{suggestion} འཚོལ",
-    "searchSuggestionWithLanguage": "{language} ནང་ {suggestion} འཚོལ",
+    "searchSuggestion": "“{suggestion}” འཚོལ་བཤེར",
+    "searchSuggestionWithLanguage": "{language} ནང་ “{suggestion}” འཚོལ་བཤེར",
     "inLanguage": "{language} ནང",
     "browseByRegion": "ས་ཁུལ་ལྟར་ནང་འཚོལ",
     "clearLanguages": "གཙང་སེལ",
     "queryLanguageDetected": "{language} རྙེད",
-    "searchInLanguage": "{language} ནང་འཚོལ",
+    "searchInLanguage": "{language} ནང་འཚོལ་བཤེར",
     "tryDifferentKeywordsOrLanguage": "གཙོ་ཚིག་གཞན་ཚོད་ལྟ་གནོངས་སམ་ཡང་ན་འཚོལ་བཤེར་སྐད་ཡིག་གཞན་འདེམས",
     "useWebsiteDefaultLanguage": "དྲ་ཚིགས་སྔོན་སྒྲིག་འཚོལ་བཤེར་སྐད་ཡིག་སྤྱོད",
     "removeLanguage": "{language} སེལ",
-    "browseMode": "ནང་འཚོལ་རྣམ་པ"
+    "browseMode": "ནང་འཚོལ་རྣམ་པ",
+    "searchingInLanguage": "{language} ནང་གི་འབྲས་བུ"
   },
   "HeroPlayer": {
     "playWithSound": "ད་ལྟ་ལྟོས",

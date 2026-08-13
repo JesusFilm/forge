@@ -179,7 +179,8 @@
     "clearSearch": "Ujartorneq piiaruk",
     "changeAudioLanguage": "Oqalussinermut oqaatsit allanngortigit",
     "home": "JesusFilm aallartiffia",
-    "closeSearch": "Ujarlerfik matuuk"
+    "closeSearch": "Ujarlerfik matuuk",
+    "submitSearch": "Ujarlerit"
   },
   "SearchOverlay": {
     "dialogLabel": "Videonik ujarlerit takusaqarlutillu",
@@ -205,19 +206,21 @@
     "searchLanguageLabel": "Oqaatsit ujarneqartut",
     "allLanguages": "Oqaatsit tamarmik",
     "searchSuggestions": "Ujartuinissamut siunnersuutit",
+    "directMatches": "Toqqaannartumik naleqquttut",
     "languages": "Oqaatsit",
     "recommendedLanguage": "Oqaatsit innersuussat",
-    "searchSuggestion": "{suggestion} ujaruk",
-    "searchSuggestionWithLanguage": "{suggestion} {language}-imi ujaruk",
+    "searchSuggestion": "Ujarlerit: {suggestion}",
+    "searchSuggestionWithLanguage": "{language}-imi ujarlerit: “{suggestion}”",
     "inLanguage": "{language}-imi",
     "browseByRegion": "Sumiiffik naapertorlugu takusassiarit",
     "clearLanguages": "Piiaruk",
     "queryLanguageDetected": "{language} paasineqarpoq",
-    "searchInLanguage": "{language}-imi ujaruk",
+    "searchInLanguage": "{language}-imi ujarlerit",
     "tryDifferentKeywordsOrLanguage": "Oqaatsit allaanerusut atukkit imaluunniit oqaatsit allat toqqarlugit",
     "useWebsiteDefaultLanguage": "Nittartakkami aalajangersimasumik oqaatsit atorneqartut atukkit",
     "removeLanguage": "{language} piiaruk",
-    "browseMode": "Ujaasinerit ungaluusaattut"
+    "browseMode": "Ujaasinerit ungaluusaattut",
+    "searchingInLanguage": "Takussutissat {language}-imiittut"
   },
   "HeroPlayer": {
     "playWithSound": "Maanna takuguk",

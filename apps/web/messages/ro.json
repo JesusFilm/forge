@@ -179,7 +179,8 @@
     "clearSearch": "Șterge căutarea",
     "changeAudioLanguage": "Schimbă limba audio",
     "home": "Pagina principală JesusFilm",
-    "closeSearch": "Închide căutarea"
+    "closeSearch": "Închide căutarea",
+    "submitSearch": "Caută"
   },
   "SearchOverlay": {
     "dialogLabel": "Caută și răsfoiește videoclipuri",
@@ -205,10 +206,11 @@
     "searchLanguageLabel": "Limba căutării",
     "allLanguages": "Toate limbile",
     "searchSuggestions": "Sugestii de căutare",
+    "directMatches": "Rezultate directe",
     "languages": "Limbi",
     "recommendedLanguage": "Limbă recomandată",
-    "searchSuggestion": "Caută {suggestion}",
-    "searchSuggestionWithLanguage": "Caută {suggestion} în {language}",
+    "searchSuggestion": "Caută „{suggestion}”",
+    "searchSuggestionWithLanguage": "Caută „{suggestion}” în {language}",
     "inLanguage": "în {language}",
     "browseByRegion": "Răsfoiește după regiune",
     "clearLanguages": "Șterge",
@@ -217,7 +219,8 @@
     "tryDifferentKeywordsOrLanguage": "Încearcă alte cuvinte-cheie sau alege o altă limbă de căutare",
     "useWebsiteDefaultLanguage": "Folosește limba implicită de căutare a site-ului",
     "removeLanguage": "Elimină {language}",
-    "browseMode": "Mod de răsfoire a căutării"
+    "browseMode": "Mod de răsfoire a căutării",
+    "searchingInLanguage": "Rezultate în {language}"
   },
   "HeroPlayer": {
     "playWithSound": "Urmărește acum",

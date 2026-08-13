@@ -179,7 +179,8 @@
     "clearSearch": "پاک کردن جستجو",
     "changeAudioLanguage": "تغییر زبان صدا",
     "home": "صفحهٔ اصلی JesusFilm",
-    "closeSearch": "بستن جستجو"
+    "closeSearch": "بستن جستجو",
+    "submitSearch": "جستجو"
   },
   "SearchOverlay": {
     "dialogLabel": "جستجو و مرور ویدیوها",
@@ -205,10 +206,11 @@
     "searchLanguageLabel": "زبان جستجو",
     "allLanguages": "همهٔ زبان‌ها",
     "searchSuggestions": "پیشنهادهای جستجو",
+    "directMatches": "نتایج مرتبط",
     "languages": "زبان‌ها",
     "recommendedLanguage": "زبان پیشنهادی",
-    "searchSuggestion": "جستجوی {suggestion}",
-    "searchSuggestionWithLanguage": "جستجوی {suggestion} به زبان {language}",
+    "searchSuggestion": "جستجوی «{suggestion}»",
+    "searchSuggestionWithLanguage": "جستجوی «{suggestion}» به زبان {language}",
     "inLanguage": "به زبان {language}",
     "browseByRegion": "مرور بر اساس منطقه",
     "clearLanguages": "پاک کردن",
@@ -217,7 +219,8 @@
     "tryDifferentKeywordsOrLanguage": "کلیدواژه‌های دیگری را امتحان کنید یا زبان جستجوی دیگری را انتخاب کنید",
     "useWebsiteDefaultLanguage": "استفاده از زبان پیش‌فرض جستجوی وب‌سایت",
     "removeLanguage": "حذف {language}",
-    "browseMode": "حالت مرور جستجو"
+    "browseMode": "حالت مرور جستجو",
+    "searchingInLanguage": "نتایج به زبان {language}"
   },
   "HeroPlayer": {
     "playWithSound": "اکنون تماشا کنید",

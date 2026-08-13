@@ -179,7 +179,8 @@
     "clearSearch": "ፍለጋ አጥፋ",
     "changeAudioLanguage": "የድምጽ ቋንቋ ቀይር",
     "home": "JesusFilm መነሻ",
-    "closeSearch": "ፍለጋ ዝጋ"
+    "closeSearch": "ፍለጋ ዝጋ",
+    "submitSearch": "ፈልግ"
   },
   "SearchOverlay": {
     "dialogLabel": "ቪዲዮዎችን ፈልግ እና አስስ",
@@ -205,10 +206,11 @@
     "searchLanguageLabel": "የፍለጋ ቋንቋ",
     "allLanguages": "ሁሉም ቋንቋዎች",
     "searchSuggestions": "የፍለጋ ጥቆማዎች",
+    "directMatches": "ቀጥተኛ ተዛማጆች",
     "languages": "ቋንቋዎች",
     "recommendedLanguage": "የተመከረ ቋንቋ",
-    "searchSuggestion": "{suggestion} ፈልግ",
-    "searchSuggestionWithLanguage": "{suggestion}ን በ{language} ፈልግ",
+    "searchSuggestion": "{suggestion}ን ፈልግ",
+    "searchSuggestionWithLanguage": "በ{language} «{suggestion}»ን ፈልግ",
     "inLanguage": "በ{language}",
     "browseByRegion": "በክልል አስስ",
     "clearLanguages": "አጥፋ",
@@ -217,7 +219,8 @@
     "tryDifferentKeywordsOrLanguage": "ሌሎች ቁልፍ ቃላትን ይሞክሩ ወይም ሌላ የፍለጋ ቋንቋ ይምረጡ",
     "useWebsiteDefaultLanguage": "የድረ-ገጹን ነባሪ የፍለጋ ቋንቋ ተጠቀም",
     "removeLanguage": "{language} አስወግድ",
-    "browseMode": "የፍለጋ ማሰስ ሁኔታ"
+    "browseMode": "የፍለጋ ማሰስ ሁኔታ",
+    "searchingInLanguage": "ውጤቶች በ{language} ተወስነዋል"
   },
   "HeroPlayer": {
     "playWithSound": "አሁን ይመልከቱ",

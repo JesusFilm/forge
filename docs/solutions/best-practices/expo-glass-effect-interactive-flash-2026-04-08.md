@@ -2,7 +2,7 @@
 title: "expo-glass-effect GlassView: isInteractive flash bug and cross-platform integration"
 date: "2026-04-08"
 category: best-practices
-module: apps/mobile-v2
+module: apps/mobile
 problem_type: best_practice
 component: tooling
 severity: medium
@@ -28,7 +28,7 @@ tags:
 
 ## Context
 
-Adding iOS liquid glass effect buttons to `HomeHeader.tsx` in `apps/mobile-v2` using `expo-glass-effect` (~0.1.9) on Expo SDK 54 / React Native 0.81. The work required: installing the library, wrapping interactive elements correctly, providing an Android fallback, integrating with the three-layer hero z-index architecture, and fixing a white flash bug caused by `isInteractive`.
+Adding iOS liquid glass effect buttons to `HomeHeader.tsx` in `apps/mobile` using `expo-glass-effect` (~0.1.9; ~0.1.10 today) on Expo SDK 54 / React Native 0.81. The work required: installing the library, wrapping interactive elements correctly, providing an Android fallback, integrating with the three-layer hero z-index architecture, and fixing a white flash bug caused by `isInteractive`.
 
 ## Guidance
 
@@ -68,9 +68,18 @@ Place `GlassView` as the child of `Pressable`, not as the wrapper. `Pressable` o
 <GlassView style={styles.glassButton} glassEffectStyle="regular" colorScheme="dark">
 ```
 
+### Do NOT place `GlassView` inside a layer whose opacity animates
+
+`GlassView` renders no material at all when an ancestor animates opacity —
+invisible, not subtle, and nothing logs. Conditional mount does not help, because
+there is nothing to fade. Use `PlatformBlur`
+(`apps/mobile/src/components/ui/PlatformBlur.tsx`) for any frosted surface inside
+fading chrome. Opacity applied to the `GlassView` itself is a separate defect with
+a separate fix; both are linked under Related.
+
 ### Android fallback via Platform.select spread
 
-`GlassView` falls back to a plain `<View {...props}/>` on non-iOS (verified in `node_modules/expo-glass-effect/build/GlassView.js`), so it is safe to render unconditionally on all platforms without a `Platform.OS` guard around the component itself.
+`GlassView` falls back to a plain `<View {...props}/>` on non-iOS, so it is safe to render unconditionally on all platforms without a `Platform.OS` guard around the component itself. This was read directly out of the installed package's compiled GlassView module, and re-verified there at 0.1.10. Under pnpm that file sits inside the virtual store (the .pnpm directory, keyed by exact version) rather than at a flat per-package path, so look it up through the virtual store.
 
 Use `Platform.select` in the style to add background color and overflow clipping only on Android:
 
@@ -95,6 +104,12 @@ const styles = StyleSheet.create({
 `Platform.select({ android: {...} })` returns `undefined` on iOS; spreading `...undefined` is a no-op in `StyleSheet.create`.
 
 ### z-index layering for scroll-over behavior
+
+> **Superseded 2026-04-09 — `HomeHeader` sits at `zIndex: 10` today, not 1.** At
+> zIndex 1 the FlashList intercepted touches in the header's padding, so the
+> buttons rendered but never fired. The table and example below record the
+> 2026-04-08 state. See
+> [HomeHeader z-index touch interception](../ui-bugs/homeheader-zindex-touch-interception-glassview-opacity-2026-04-09.md).
 
 The three-layer hero architecture in `CuratedHomeLayout`:
 
@@ -124,13 +139,13 @@ Import color values from `../../lib/color` — never hardcode hex strings. Avail
 ## Why This Matters
 
 - The `isInteractive` flash is non-obvious: it only manifests on tab navigation (remount), not during normal tap testing on first load. It will silently regress if `isInteractive` is re-added.
-- `GlassView`'s non-iOS fallback being a plain `<View>` is not documented in the library — it was confirmed by reading `build/GlassView.js` directly. This means no conditional rendering is needed.
+- `GlassView`'s non-iOS fallback being a plain `<View>` is not documented in the library — it was confirmed by reading the installed package's compiled GlassView module directly. This means no conditional rendering is needed.
 - The `Platform.select` spread pattern is the idiomatic way to apply platform-specific styles without branching component render logic.
 - The z-index layering contract is implicit across `HomeHeader.tsx` and `CuratedHomeLayout.tsx` — a change to either file's zIndex without updating the other will break hit-testing or scroll-over behavior.
 
 ## When to Apply
 
-- Any `apps/mobile-v2` component that uses `GlassView` from `expo-glass-effect`
+- Any `apps/mobile` component that uses `GlassView` from `expo-glass-effect`
 - Any `GlassView` used inside a `Pressable` or `TouchableOpacity` — never set `isInteractive` in that context
 - Any header or overlay component that needs to float above a hero layer but allow list content to scroll over it
 - Any third-party native component whose press-state animation is driven by the native layer rather than React state
@@ -227,6 +242,8 @@ const styles = StyleSheet.create({
 
 ## Related
 
+- [`homeheader-zindex-touch-interception-glassview-opacity-2026-04-09.md`](../ui-bugs/homeheader-zindex-touch-interception-glassview-opacity-2026-04-09.md) — same component. `GlassView` ignores an `opacity` value set on itself on iOS, so mount/unmount is the reliable show-hide. Also raises this doc's `zIndex: 1` to 10.
+- [`expo-glass-effect-glassview-invisible-under-animated-opacity-ancestor.md`](./expo-glass-effect-glassview-invisible-under-animated-opacity-ancestor.md) — same component, third failure mode. `GlassView` renders nothing inside a layer whose opacity an ancestor animates; use `PlatformBlur` there.
 - [`hero-mute-button-hybrid-overlay-touch-target.md`](../mobile/hero-mute-button-hybrid-overlay-touch-target.md) — Documents the three-layer hero architecture (zIndex 0/2) that HomeHeader integrates with at zIndex 1
 - [`full-bleed-video-hero-with-scroll-over-content.md`](../mobile/full-bleed-video-hero-with-scroll-over-content.md) — Foundational doc for the absolutely-positioned hero behind FlashList pattern
 - [`flashlist-hero-bleed-through-feed-background.md`](../mobile/flashlist-hero-bleed-through-feed-background.md) — Color token system and `hexToRgba` conventions

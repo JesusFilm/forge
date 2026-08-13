@@ -21,8 +21,13 @@ import { VideoSearchSocialService } from "@/services/video-search-social.service
 import { WatchEventService } from "@/services/watch-events.service"
 import { WatchSearchEventService } from "@/services/watch-search-events.service"
 import { WatchSearchService } from "@/services/watch-search.service"
+import { createTypesenseWatchSearchSuggestionsService } from "@/services/typesense-watch-search-suggestions"
 import { TypesenseClient } from "@/services/typesense-client"
 import { TypesenseWatchSearchCandidateGenerationService } from "@/services/typesense-watch-search-candidate-generation"
+import {
+  candidateWatchSearchApplicationRevision,
+  candidateWatchSearchRankingRevision,
+} from "@/services/typesense-watch-search-candidate-identity"
 import {
   createCandidateWatchSearchProfile,
   createCurrentWatchSearchProfile,
@@ -47,6 +52,7 @@ type ServingProfileResolver = Pick<
 export async function resolveWatchSearchServingProfile(input: {
   selector: string
   applicationRevision: string | null
+  rankingRevision: string | null
   transcriptProjectionRevision: bigint | null
   qrelsRevision: string | null
   typesense: Pick<TypesenseClient, "getAlias">
@@ -64,6 +70,11 @@ export async function resolveWatchSearchServingProfile(input: {
   if (!input.applicationRevision) {
     throw new TypesenseWatchSearchUnavailableError(
       "Candidate serving requires an application revision",
+    )
+  }
+  if (!input.rankingRevision) {
+    throw new TypesenseWatchSearchUnavailableError(
+      "Candidate serving requires a ranking revision",
     )
   }
   if (input.transcriptProjectionRevision == null) {
@@ -95,6 +106,7 @@ export async function resolveWatchSearchServingProfile(input: {
     requireQualified: true,
     currentBindings: watchSearchBindingMembers(currentProfile),
     qrelsRevision: input.qrelsRevision,
+    rankingRevision: input.rankingRevision,
   })
   return createCandidateWatchSearchProfile(generation)
 }
@@ -157,12 +169,8 @@ function createServingTypesenseWatchSearchService(prisma: PrismaClient) {
         )
         const profile = await resolveWatchSearchServingProfile({
           selector: env.WATCH_SEARCH_TYPESENSE_PROFILE,
-          applicationRevision:
-            env.NEXT_PUBLIC_DATADOG_VERSION ??
-            process.env.RAILWAY_GIT_COMMIT_SHA ??
-            process.env.VERCEL_GIT_COMMIT_SHA ??
-            process.env.GIT_COMMIT_SHA ??
-            null,
+          applicationRevision: candidateWatchSearchApplicationRevision(),
+          rankingRevision: candidateWatchSearchRankingRevision(),
           transcriptProjectionRevision:
             env.WATCH_SEARCH_TRANSCRIPT_PROJECTION_REVISION ?? null,
           qrelsRevision: env.WATCH_SEARCH_SERVING_QRELS_REVISION ?? null,
@@ -196,6 +204,8 @@ export function createServices(prisma: PrismaClient) {
     watchSearchEvent: new WatchSearchEventService(prisma),
     watchSearch: new WatchSearchService(prisma),
     typesenseWatchSearch: createServingTypesenseWatchSearchService(prisma),
+    typesenseWatchSearchSuggestions:
+      createTypesenseWatchSearchSuggestionsService(prisma),
     watchSetting: new WatchSettingService(prisma),
   }
 }

@@ -1,12 +1,12 @@
-import { useState, useSyncExternalStore } from "react"
+import { useRef, useState, useSyncExternalStore } from "react"
 import { Pressable, StyleSheet, Text, View } from "react-native"
 import Ionicons from "@expo/vector-icons/Ionicons"
 import { SessionReplayView } from "@datadog/mobile-react-native-session-replay"
-import { useRouter } from "expo-router"
 
 import { useTypography } from "../../hooks/useTypography"
 import { DeleteAccountFlow } from "./DeleteAccountFlow"
-import { signOut } from "../../lib/authActions"
+import { signInWithHostedPage, signOut } from "../../lib/authActions"
+import { SIGN_IN_ERROR_MESSAGE } from "../../lib/authCopy"
 import { getAuthSession } from "../../lib/authSession"
 import {
   clearNewAccountNotice,
@@ -18,6 +18,7 @@ import {
   SURFACE_COLOR,
   TEXT_PRIMARY,
   TEXT_SECONDARY,
+  WARNING_COLOR,
 } from "../../lib/color"
 import {
   CARD_BORDER_RADIUS,
@@ -36,24 +37,63 @@ function useAuthSnapshot() {
   )
 }
 
+type SignInPhase = "idle" | "busy" | "error"
+
 /**
- * Profile-tab account section (U6): signed-out CTA opening the sign-in
- * sheet; signed-in identity + sign out. Sign-out revokes at auth then
- * clears local state (R4); the progress lifecycle reacts to the session
- * transition (store/snapshot/queue reset).
+ * Profile-tab account section: signed-out CTA opening the hosted auth
+ * sheet directly (R2); signed-in identity + sign out. Sign-out revokes at
+ * auth then clears local state (R4); the progress lifecycle reacts to the
+ * session transition (store/snapshot/queue reset).
  */
 export function AccountSection() {
   const typography = useTypography()
-  const router = useRouter()
   const snapshot = useAuthSnapshot()
   const newAccountNotice = useNewAccountNotice()
   const [signingOut, setSigningOut] = useState(false)
+  const [signInPhase, setSignInPhase] = useState<SignInPhase>("idle")
+  // Ref guard, not the phase: a press can fire twice off one stale render,
+  // which a state check alone cannot make a no-op (matches DeleteAccountFlow).
+  const signInFlight = useRef(false)
 
   if (snapshot.status !== "signedIn") {
+    const signingIn = signInPhase === "busy"
     return (
       <View style={styles.container}>
+        {signInPhase === "error" ? (
+          <View style={styles.errorCard}>
+            <Ionicons name="warning" size={20} color={WARNING_COLOR} />
+            <Text style={styles.errorText}>{SIGN_IN_ERROR_MESSAGE}</Text>
+            <Pressable
+              onPress={() => setSignInPhase("idle")}
+              hitSlop={12}
+              accessibilityRole="button"
+              accessibilityLabel="Dismiss"
+              style={({ pressed }) => [pressed && feedback.pressed]}
+            >
+              <Ionicons name="close" size={20} color={TEXT_SECONDARY} />
+            </Pressable>
+          </View>
+        ) : null}
         <Pressable
-          onPress={() => router.push("/sign-in")}
+          onPress={() => {
+            if (signInFlight.current) return
+            signInFlight.current = true
+            setSignInPhase("busy")
+            // Cancel returns quietly to the idle CTA (R2); success flips the
+            // section via the session snapshot. Release on BOTH settlement
+            // paths so a rejection can never pin the CTA on "Signing in…".
+            void signInWithHostedPage().then(
+              (outcome) => {
+                signInFlight.current = false
+                setSignInPhase(outcome.status === "error" ? "error" : "idle")
+              },
+              () => {
+                signInFlight.current = false
+                setSignInPhase("error")
+              },
+            )
+          }}
+          disabled={signingIn}
           style={({ pressed }) => [
             styles.signInCta,
             pressed && feedback.pressed,
@@ -65,7 +105,7 @@ export function AccountSection() {
           <Ionicons name="person-circle-outline" size={28} color={ACCENT} />
           <View style={styles.signInTextBlock}>
             <Text style={[styles.signInTitle, typography.titleSmall]}>
-              Sign in
+              {signingIn ? "Signing in…" : "Sign in"}
             </Text>
             <Text style={styles.signInSubtitle}>
               Keep your place across devices
@@ -171,6 +211,22 @@ const styles = StyleSheet.create({
   container: {
     paddingHorizontal: HORIZONTAL_PADDING,
     marginBottom: 24,
+  },
+  errorCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    backgroundColor: SURFACE_COLOR,
+    borderRadius: CARD_BORDER_RADIUS,
+    padding: 12,
+    marginBottom: 12,
+  },
+  errorText: {
+    flex: 1,
+    color: TEXT_PRIMARY,
+    fontFamily: "System",
+    fontSize: 13,
+    lineHeight: 18,
   },
   signInCta: {
     flexDirection: "row",

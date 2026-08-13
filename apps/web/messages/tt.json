@@ -179,7 +179,8 @@
     "clearSearch": "Эзләүне чистарту",
     "changeAudioLanguage": "Аудио телен үзгәртү",
     "home": "JesusFilm баш бите",
-    "closeSearch": "Эзләүне ябу"
+    "closeSearch": "Эзләүне ябу",
+    "submitSearch": "Эзләү"
   },
   "SearchOverlay": {
     "dialogLabel": "Видеоларны эзләү һәм карау",
@@ -205,10 +206,11 @@
     "searchLanguageLabel": "Эзләү теле",
     "allLanguages": "Барлык телләр",
     "searchSuggestions": "Эзләү тәкъдимнәре",
+    "directMatches": "Туры килгән нәтиҗәләр",
     "languages": "Телләр",
     "recommendedLanguage": "Тәкъдим ителгән тел",
-    "searchSuggestion": "{suggestion} эзләү",
-    "searchSuggestionWithLanguage": "{suggestion} {language} телендә эзләү",
+    "searchSuggestion": "«{suggestion}» дип эзләү",
+    "searchSuggestionWithLanguage": "{language} телендә «{suggestion}» дип эзләү",
     "inLanguage": "{language} телендә",
     "browseByRegion": "Төбәк буенча карау",
     "clearLanguages": "Чистарту",
@@ -217,7 +219,8 @@
     "tryDifferentKeywordsOrLanguage": "Башка ачкыч сүзләрне кулланыгыз яки башка эзләү телен сайлагыз",
     "useWebsiteDefaultLanguage": "Сайтның килешү эзләү телен куллану",
     "removeLanguage": "{language} бетерү",
-    "browseMode": "Эзләп карау режимы"
+    "browseMode": "Эзләп карау режимы",
+    "searchingInLanguage": "{language} телендәге нәтиҗәләр"
   },
   "HeroPlayer": {
     "playWithSound": "Хәзер карау",

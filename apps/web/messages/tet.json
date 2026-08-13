@@ -179,7 +179,8 @@
     "clearSearch": "Hamoos peskiza",
     "changeAudioLanguage": "Troka lingua audiu",
     "home": "JesusFilm uma",
-    "closeSearch": "Taka peskiza"
+    "closeSearch": "Taka peskiza",
+    "submitSearch": "Buka"
   },
   "SearchOverlay": {
     "dialogLabel": "Buka no haree vídeo sira",
@@ -204,11 +205,12 @@
     "categoryChristmas": "Natal",
     "searchLanguageLabel": "Buka língua",
     "allLanguages": "Língua hotu-hotu",
-    "searchSuggestions": "Sugestaun peskiza",
+    "searchSuggestions": "Sugestaun peskiza sira",
+    "directMatches": "Rezultadu exatu",
     "languages": "Língua sira",
     "recommendedLanguage": "Língua rekomendadu",
     "searchSuggestion": "Buka {suggestion}",
-    "searchSuggestionWithLanguage": "Buka {suggestion} iha {language}",
+    "searchSuggestionWithLanguage": "Buka “{suggestion}” iha {language}",
     "inLanguage": "iha {language}",
     "browseByRegion": "Haree tuir rejiaun",
     "clearLanguages": "Hamoos",
@@ -217,7 +219,8 @@
     "tryDifferentKeywordsOrLanguage": "Tenta liafuan chave seluk ka hili língua peskiza seluk",
     "useWebsiteDefaultLanguage": "Uza língua peskiza padraun husi website",
     "removeLanguage": "Hasai {language}",
-    "browseMode": "Modo peskiza"
+    "browseMode": "Modo peskiza",
+    "searchingInLanguage": "Rezultadu iha {language}"
   },
   "HeroPlayer": {
     "playWithSound": "Haree agora",

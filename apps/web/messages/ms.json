@@ -179,7 +179,8 @@
     "clearSearch": "Kosongkan carian",
     "changeAudioLanguage": "Tukar bahasa audio",
     "home": "Laman utama JesusFilm",
-    "closeSearch": "Tutup carian"
+    "closeSearch": "Tutup carian",
+    "submitSearch": "Cari"
   },
   "SearchOverlay": {
     "dialogLabel": "Cari dan teroka video",
@@ -205,10 +206,11 @@
     "searchLanguageLabel": "Bahasa carian",
     "allLanguages": "Semua bahasa",
     "searchSuggestions": "Cadangan carian",
+    "directMatches": "Padanan langsung",
     "languages": "Bahasa",
     "recommendedLanguage": "Bahasa yang disyorkan",
     "searchSuggestion": "Cari {suggestion}",
-    "searchSuggestionWithLanguage": "Cari {suggestion} dalam {language}",
+    "searchSuggestionWithLanguage": "Cari “{suggestion}” dalam {language}",
     "inLanguage": "dalam {language}",
     "browseByRegion": "Semak imbas mengikut wilayah",
     "clearLanguages": "Kosongkan",
@@ -217,7 +219,8 @@
     "tryDifferentKeywordsOrLanguage": "Cuba kata kunci lain atau pilih bahasa carian yang lain",
     "useWebsiteDefaultLanguage": "Gunakan bahasa carian lalai laman web",
     "removeLanguage": "Buang {language}",
-    "browseMode": "Mod pelayaran carian"
+    "browseMode": "Mod pelayaran carian",
+    "searchingInLanguage": "Hasil dalam {language}"
   },
   "HeroPlayer": {
     "playWithSound": "Tonton sekarang",

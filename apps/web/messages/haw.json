@@ -179,7 +179,8 @@
     "clearSearch": "Holoi huli",
     "changeAudioLanguage": "Hoʻololi i ka ʻōlelo leo",
     "home": "ʻAoʻao home o JesusFilm",
-    "closeSearch": "Pani i ka huli"
+    "closeSearch": "Pani i ka huli",
+    "submitSearch": "Huli"
   },
   "SearchOverlay": {
     "dialogLabel": "Huli a nānā i nā wikiō",
@@ -204,11 +205,12 @@
     "categoryChristmas": "Kalikimaka",
     "searchLanguageLabel": "ʻŌlelo huli",
     "allLanguages": "Nā ʻōlelo a pau",
-    "searchSuggestions": "Nā Manaʻo Huli",
+    "searchSuggestions": "Nā manaʻo huli",
+    "directMatches": "Nā hopena kūlike loa",
     "languages": "Nā ʻōlelo",
     "recommendedLanguage": "ʻŌlelo paipai ʻia",
-    "searchSuggestion": "Huli i {suggestion}",
-    "searchSuggestionWithLanguage": "Huli i {suggestion} ma {language}",
+    "searchSuggestion": "E huli iā “{suggestion}”",
+    "searchSuggestionWithLanguage": "E huli iā “{suggestion}” ma {language}",
     "inLanguage": "ma {language}",
     "browseByRegion": "Nānā ma ka ʻāina",
     "clearLanguages": "Holoi",
@@ -217,7 +219,8 @@
     "tryDifferentKeywordsOrLanguage": "E hoʻāʻo i nā huaʻōlelo ʻē aʻe a i ʻole e koho i kekahi ʻōlelo huli ʻē aʻe",
     "useWebsiteDefaultLanguage": "E hoʻohana i ka ʻōlelo huli paʻamau o ka pūnaewele",
     "removeLanguage": "Wehe {language}",
-    "browseMode": "ʻAno nānā huli"
+    "browseMode": "ʻAno nānā huli",
+    "searchingInLanguage": "Nā hopena ma {language}"
   },
   "HeroPlayer": {
     "playWithSound": "Nānā i kēia manawa",

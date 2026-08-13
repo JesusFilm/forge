@@ -179,7 +179,8 @@
     "clearSearch": "Haw-ani an search",
     "changeAudioLanguage": "Usba an yinaknan han audio",
     "home": "Homan han JesusFilm",
-    "closeSearch": "Isira an search"
+    "closeSearch": "Isira an search",
+    "submitSearch": "Haapa"
   },
   "SearchOverlay": {
     "dialogLabel": "Pamiling ngan mag-browse hin mga video",
@@ -204,20 +205,22 @@
     "categoryChristmas": "Pasko",
     "searchLanguageLabel": "Yinaknan han search",
     "allLanguages": "Tanang Yinaknan",
-    "searchSuggestions": "Mga Suhestiyon han Search",
+    "searchSuggestions": "Mga suhestiyun ha paghaap",
+    "directMatches": "Mga saktu nga katūp",
     "languages": "Mga Yinaknan",
     "recommendedLanguage": "Girekomendar nga yinaknan",
-    "searchSuggestion": "Pamiling hin {suggestion}",
-    "searchSuggestionWithLanguage": "Pamiling hin {suggestion} ha {language}",
+    "searchSuggestion": "Haapa in {suggestion}",
+    "searchSuggestionWithLanguage": "Haapa in “{suggestion}” ha bahasa {language}",
     "inLanguage": "ha {language}",
     "browseByRegion": "Mag-browse pinaagi ha rehiyon",
     "clearLanguages": "Haw-ani",
     "queryLanguageDetected": "Nabatyagan an {language}",
-    "searchInLanguage": "Pamiling ha {language}",
+    "searchInLanguage": "Maghaap ha bahasa {language}",
     "tryDifferentKeywordsOrLanguage": "Sulayi an iba nga mga keyword o pagpili hin iba nga search language",
     "useWebsiteDefaultLanguage": "Gamita an default nga search language han website",
     "removeLanguage": "Kuhaa an {language}",
-    "browseMode": "Browse mode han search"
+    "browseMode": "Browse mode han search",
+    "searchingInLanguage": "Mga resulta ha bahasa {language}"
   },
   "HeroPlayer": {
     "playWithSound": "Tananaon yana",

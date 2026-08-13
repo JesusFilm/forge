@@ -179,7 +179,8 @@
     "clearSearch": "Sula ku lava",
     "changeAudioLanguage": "Cinza ririmi ra mpfumawulo",
     "home": "Tluka ra le kaya ra JesusFilm",
-    "closeSearch": "Pfala ku lava"
+    "closeSearch": "Pfala ku lava",
+    "submitSearch": "Lava"
   },
   "SearchOverlay": {
     "dialogLabel": "Lava ni ku languta tivhidiyo",
@@ -204,11 +205,12 @@
     "categoryChristmas": "Khisimusi",
     "searchLanguageLabel": "Ririmi ra ku lava",
     "allLanguages": "Tindzimi hinkwato",
-    "searchSuggestions": "Switsundzuxo swa ku lava",
+    "searchSuggestions": "Swiringanyeto swa ku lava",
+    "directMatches": "Leswi fambelanaka hi ku kongoma",
     "languages": "Tindzimi",
     "recommendedLanguage": "Ririmi leri hlohloteriwaka",
-    "searchSuggestion": "Lava {suggestion}",
-    "searchSuggestionWithLanguage": "Lava {suggestion} hi {language}",
+    "searchSuggestion": "Lava “{suggestion}”",
+    "searchSuggestionWithLanguage": "Lava “{suggestion}” hi {language}",
     "inLanguage": "hi {language}",
     "browseByRegion": "Languta hi xifundzha",
     "clearLanguages": "Sula",
@@ -217,7 +219,8 @@
     "tryDifferentKeywordsOrLanguage": "Ringeta marito man’wana kumbe hlawula ririmi rin’wana ra ku lava",
     "useWebsiteDefaultLanguage": "Tirhisa ririmi ra ku lava ra xiviri ra website",
     "removeLanguage": "Susa {language}",
-    "browseMode": "Maitiro ya ku languta"
+    "browseMode": "Maitiro ya ku languta",
+    "searchingInLanguage": "Mimbuyelo leyi nga hi {language}"
   },
   "HeroPlayer": {
     "playWithSound": "Languta sweswi",

@@ -9,6 +9,7 @@ import {
   getDevotionalSchemaReadiness,
   hasDevotionalVectorCapability,
   MAX_DEVOTIONAL_DATABASE_POOL_SIZE,
+  REQUIRED_DEVOTIONAL_MIGRATION,
   runDevotionalTransaction,
   type QueryExecutor,
 } from "./database"
@@ -24,6 +25,33 @@ function executorWithRows(rows: QueryResultRow[]): QueryExecutor {
         fields: [],
       }
     },
+  }
+}
+
+function executorWithMigrations(
+  migrations: Array<{ version: number; name: string; sha256: string }>,
+): QueryExecutor & { query: ReturnType<typeof vi.fn> } {
+  const query = vi.fn(
+    async (text: string, values?: readonly unknown[]): Promise<QueryResult> => {
+      const row = migrations.find(
+        (migration) =>
+          migration.version === values?.[0] &&
+          migration.name === values?.[1] &&
+          migration.sha256 === values?.[2],
+      )
+      const rows = row ? [{ version: row.version }] : []
+      return {
+        rows,
+        command: "SELECT",
+        rowCount: rows.length,
+        oid: 0,
+        fields: [],
+      }
+    },
+  )
+  return {
+    query: query as unknown as QueryExecutor["query"] &
+      ReturnType<typeof vi.fn>,
   }
 }
 
@@ -53,13 +81,107 @@ describe("devotional Workspace database", () => {
     ).toThrow(/2-3 connections/)
   })
 
-  it("requires exactly the expected migration version before starts", async () => {
+  it("requires the exact devotional migration before starts", async () => {
     await expect(
-      getDevotionalSchemaReadiness(executorWithRows([{ version: 1 }])),
+      getDevotionalSchemaReadiness(
+        executorWithMigrations([{ ...REQUIRED_DEVOTIONAL_MIGRATION }]),
+      ),
     ).resolves.toEqual({ ready: true, version: 1 })
     await expect(
-      assertDevotionalSchemaReady(executorWithRows([{ version: 0 }])),
-    ).rejects.toThrow(/expected devotional schema version 1, found 0/)
+      assertDevotionalSchemaReady(executorWithMigrations([])),
+    ).rejects.toThrow(/required devotional migration 1 is unavailable/)
+  })
+
+  it("stays ready when support research has a later shared-ledger migration", async () => {
+    const executor = executorWithMigrations([
+      { ...REQUIRED_DEVOTIONAL_MIGRATION },
+      {
+        version: 2,
+        name: "002-support-research.sql",
+        sha256: "a".repeat(64),
+      },
+      {
+        version: 99,
+        name: "099-future-component.sql",
+        sha256: "b".repeat(64),
+      },
+    ])
+
+    await expect(getDevotionalSchemaReadiness(executor)).resolves.toEqual({
+      ready: true,
+      version: 1,
+    })
+    expect(executor.query).toHaveBeenCalledWith(
+      expect.not.stringMatching(/order by/u),
+      [
+        REQUIRED_DEVOTIONAL_MIGRATION.version,
+        REQUIRED_DEVOTIONAL_MIGRATION.name,
+        REQUIRED_DEVOTIONAL_MIGRATION.sha256,
+      ],
+    )
+    expect(executor.query).toHaveBeenCalledWith(
+      expect.stringMatching(
+        /where version = \$1\s+and name = \$2\s+and sha256 = \$3/u,
+      ),
+      [
+        REQUIRED_DEVOTIONAL_MIGRATION.version,
+        REQUIRED_DEVOTIONAL_MIGRATION.name,
+        REQUIRED_DEVOTIONAL_MIGRATION.sha256,
+      ],
+    )
+  })
+
+  it.each([
+    ["an empty ledger", []],
+    [
+      "only a later migration",
+      [
+        {
+          version: 2,
+          name: "002-support-research.sql",
+          sha256: "a".repeat(64),
+        },
+      ],
+    ],
+    [
+      "the wrong filename",
+      [
+        {
+          ...REQUIRED_DEVOTIONAL_MIGRATION,
+          name: "001-renamed.sql",
+        },
+      ],
+    ],
+    [
+      "the wrong checksum",
+      [
+        {
+          ...REQUIRED_DEVOTIONAL_MIGRATION,
+          sha256: "0".repeat(64),
+        },
+      ],
+    ],
+  ])("fails closed for %s", async (_label, migrations) => {
+    await expect(
+      getDevotionalSchemaReadiness(executorWithMigrations(migrations)),
+    ).resolves.toEqual({
+      ready: false,
+      version: 0,
+      reason: "required devotional migration 1 is unavailable",
+    })
+  })
+
+  it("fails closed when the migration ledger cannot be queried", async () => {
+    const query = vi.fn().mockRejectedValue(new Error("connection refused"))
+
+    await expect(
+      getDevotionalSchemaReadiness({
+        query: query as unknown as QueryExecutor["query"],
+      }),
+    ).resolves.toEqual({
+      ready: false,
+      reason: "devotional workspace schema is unavailable",
+    })
   })
 
   it("detects the pgvector extension independently from migration version", async () => {

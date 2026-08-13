@@ -179,7 +179,8 @@
     "clearSearch": "سڕینەوەی گەڕان",
     "changeAudioLanguage": "گۆڕینی زمانی دەنگ",
     "home": "سەرەکیی JesusFilm",
-    "closeSearch": "داخستنی گەڕان"
+    "closeSearch": "داخستنی گەڕان",
+    "submitSearch": "بگەڕێ"
   },
   "SearchOverlay": {
     "dialogLabel": "گەڕان و گەڕان لە ویدۆکان",
@@ -205,19 +206,21 @@
     "searchLanguageLabel": "زمانی گەڕان",
     "allLanguages": "هەموو زمانەکان",
     "searchSuggestions": "پێشنیارەکانی گەڕان",
+    "directMatches": "هاوتاکانی ڕاستەوخۆ",
     "languages": "زمانەکان",
     "recommendedLanguage": "زمانی پێشنیارکراو",
-    "searchSuggestion": "گەڕان لە {suggestion}",
-    "searchSuggestionWithLanguage": "گەڕان لە {suggestion} بە {language}",
+    "searchSuggestion": "بۆ «{suggestion}» بگەڕێ",
+    "searchSuggestionWithLanguage": "بە {language} بۆ «{suggestion}» بگەڕێ",
     "inLanguage": "بە {language}",
     "browseByRegion": "گەڕان بە پێی ناوچە",
     "clearLanguages": "پاککردنەوە",
     "queryLanguageDetected": "{language} دۆزرایەوە",
-    "searchInLanguage": "گەڕان بە {language}",
+    "searchInLanguage": "بە {language} بگەڕێ",
     "tryDifferentKeywordsOrLanguage": "وشە کلیلیی جیاواز تاقی بکەرەوە یان زمانێکی تر هەڵبژێرە",
     "useWebsiteDefaultLanguage": "بەکارهێنانی زمانی بنەڕەتی ماڵپەڕ بۆ گەڕان",
     "removeLanguage": "لابردنی {language}",
-    "browseMode": "دۆخی گەڕانی بڕۆس"
+    "browseMode": "دۆخی گەڕانی بڕۆس",
+    "searchingInLanguage": "ئەنجامەکانی زمانی {language}"
   },
   "HeroPlayer": {
     "playWithSound": "ئێستا ببینە",

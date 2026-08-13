@@ -179,7 +179,8 @@
     "clearSearch": "Išvalyti paiešką",
     "changeAudioLanguage": "Keisti garso kalbą",
     "home": "JesusFilm pradžia",
-    "closeSearch": "Uždaryti paiešką"
+    "closeSearch": "Uždaryti paiešką",
+    "submitSearch": "Ieškoti"
   },
   "SearchOverlay": {
     "dialogLabel": "Ieškoti ir naršyti vaizdo įrašus",
@@ -205,19 +206,21 @@
     "searchLanguageLabel": "Paieškos kalba",
     "allLanguages": "Visos kalbos",
     "searchSuggestions": "Paieškos pasiūlymai",
+    "directMatches": "Tikslūs atitikmenys",
     "languages": "Kalbos",
     "recommendedLanguage": "Rekomenduojama kalba",
-    "searchSuggestion": "Ieškoti {suggestion}",
-    "searchSuggestionWithLanguage": "Ieškoti {suggestion} {language} kalba",
+    "searchSuggestion": "Ieškoti „{suggestion}“",
+    "searchSuggestionWithLanguage": "Ieškoti „{suggestion}“ šia kalba: {language}",
     "inLanguage": "{language} kalba",
     "browseByRegion": "Naršyti pagal regioną",
     "clearLanguages": "Išvalyti",
     "queryLanguageDetected": "Aptikta {language} kalba",
-    "searchInLanguage": "Ieškoti {language} kalba",
+    "searchInLanguage": "Ieškoti šia kalba: {language}",
     "tryDifferentKeywordsOrLanguage": "Išbandykite kitus raktažodžius arba pasirinkite kitą paieškos kalbą",
     "useWebsiteDefaultLanguage": "Naudoti svetainės numatytąją paieškos kalbą",
     "removeLanguage": "Pašalinti {language}",
-    "browseMode": "Naršymo paieškos režimas"
+    "browseMode": "Naršymo paieškos režimas",
+    "searchingInLanguage": "Rodomi rezultatai šia kalba: {language}"
   },
   "HeroPlayer": {
     "playWithSound": "Žiūrėti dabar",

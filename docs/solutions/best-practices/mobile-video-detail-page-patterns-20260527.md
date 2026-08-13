@@ -54,6 +54,13 @@ Check the admin SDL or a live query response before writing discriminator logic 
 
 ### 2. expo-video language switching: replace, don't reinitialize — and FREEZE the source
 
+> **Superseded as a recipe (2026-08-12).** Do not hand-roll this in a new
+> screen. `apps/mobile/src/hooks/useManagedVideoPlayer.ts` (todo 016) now owns
+> the frozen creation source, the `replaceAsync` swap with resume, and the
+> AppState handling, and every player screen consumes it. The reasoning below
+> is still correct and is the best explanation of WHY the source must be
+> frozen — read it to understand the adapter, not to reimplement it.
+
 When a user switches the audio language, swap the stream URL via `player.replaceAsync(newUrl)` rather than re-creating the `useVideoPlayer` instance. Reinitializing destroys the decoder slot, causes a blank frame, buffering delay, and lost playback position.
 
 **Critically, the source passed to `useVideoPlayer` must be frozen.** `useVideoPlayer` recreates AND releases the native player whenever its source argument _value_ changes (its internal dependency is `JSON.stringify(source)`). Passing a ref value you then mutate — which an earlier version of this pattern did (`initialUrl.current = streamingUrl`) — defeats `replaceAsync`: the next render hands `useVideoPlayer` the new value, so it tears down the playing player and builds a fresh paused one on the new asset while the in-flight `replaceAsync` runs against the just-released instance. Symptom: black/stuck frame on language switch, controls showing "playing" while nothing plays. Track the loaded URL in a **separate** ref.

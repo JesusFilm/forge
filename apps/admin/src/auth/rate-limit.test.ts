@@ -1,3 +1,5 @@
+import { EventEmitter } from "node:events"
+
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 describe("rateLimitAuthRoute", () => {
@@ -97,7 +99,7 @@ describe("incrementFixedWindow (redis path)", () => {
   it("returns source=redis with the INCR count from a live Redis eval", async () => {
     const evalMock = vi.fn().mockResolvedValue(7)
     vi.doMock("@/infra/redis", () => ({
-      getRedisClient: () => ({ eval: evalMock }),
+      getRedisClient: () => ({ status: "ready", eval: evalMock }),
     }))
     const { incrementFixedWindow } = await import("./rate-limit")
 
@@ -109,10 +111,68 @@ describe("incrementFixedWindow (redis path)", () => {
     ).resolves.toEqual({ allowed: false, source: "redis", count: 7 })
   })
 
+  it("waits for a connecting Redis client before evaluating the window", async () => {
+    const client = Object.assign(new EventEmitter(), {
+      status: "connecting",
+      eval: vi.fn(async () => {
+        if (client.status !== "ready") {
+          throw new Error(
+            "Stream isn't writeable and enableOfflineQueue options is false",
+          )
+        }
+        return 1
+      }),
+    })
+    vi.doMock("@/infra/redis", () => ({
+      getRedisClient: () => client,
+    }))
+    const { incrementFixedWindow } = await import("./rate-limit")
+
+    const first = incrementFixedWindow("candidate:first", 10, 60_000)
+    const second = incrementFixedWindow("candidate:second", 10, 60_000)
+    expect(client.listenerCount("ready")).toBe(1)
+    client.status = "ready"
+    client.emit("ready")
+
+    await expect(Promise.all([first, second])).resolves.toEqual([
+      { allowed: true, source: "redis", count: 1 },
+      { allowed: true, source: "redis", count: 1 },
+    ])
+    expect(client.eval).toHaveBeenCalledTimes(2)
+    expect(client.listenerCount("ready")).toBe(0)
+    expect(client.listenerCount("close")).toBe(0)
+    expect(client.listenerCount("end")).toBe(0)
+  })
+
+  it("shares one deadline between Redis readiness and command execution", async () => {
+    vi.useFakeTimers()
+    vi.spyOn(console, "warn").mockImplementation(() => {})
+    const client = Object.assign(new EventEmitter(), {
+      status: "connecting",
+      eval: vi.fn(() => new Promise(() => {})),
+    })
+    vi.doMock("@/infra/redis", () => ({
+      getRedisClient: () => client,
+    }))
+    const { incrementFixedWindow } = await import("./rate-limit")
+
+    const admission = incrementFixedWindow("candidate:deadline", 10, 60_000)
+    await vi.advanceTimersByTimeAsync(200)
+    expect(client.eval).not.toHaveBeenCalled()
+
+    client.status = "ready"
+    client.emit("ready")
+    await vi.advanceTimersByTimeAsync(50)
+
+    await expect(admission).resolves.toMatchObject({ source: "local" })
+    expect(client.eval).toHaveBeenCalledOnce()
+  })
+
   it("falls back to local with a plain-string warn on a redis command error", async () => {
     const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
     vi.doMock("@/infra/redis", () => ({
       getRedisClient: () => ({
+        status: "ready",
         eval: vi.fn().mockRejectedValue(new Error("boom")),
       }),
     }))
@@ -137,7 +197,10 @@ describe("incrementFixedWindow (redis path)", () => {
     vi.useFakeTimers()
     vi.spyOn(console, "warn").mockImplementation(() => {})
     vi.doMock("@/infra/redis", () => ({
-      getRedisClient: () => ({ eval: () => new Promise(() => {}) }),
+      getRedisClient: () => ({
+        status: "ready",
+        eval: () => new Promise(() => {}),
+      }),
     }))
     const { incrementFixedWindow } = await import("./rate-limit")
 

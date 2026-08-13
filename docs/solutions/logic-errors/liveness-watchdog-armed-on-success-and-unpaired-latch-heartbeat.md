@@ -227,5 +227,10 @@ a guard, the seam is where it arms.
   tests prove branch shape, not production contract. This is that law applied to a guard's
   _arming_: complete coverage of a pure classifier says nothing about whether its caller can ever
   supply the input that matters.
+- `docs/solutions/logic-errors/mobile-watch-autostart-veil-gate-missing-release-path.md` — the same
+  meta-pattern one step later in the lifecycle, in `apps/mobile`. Here the watchdog's _arming_
+  condition was suppressed by the fault; there a gate's _release_ conditions were incomplete
+  ("success OR error" missing "neither"). That fix follows this doc's lesson rather than repeating
+  it: its timeout arms unconditionally on the waiting state, not on a readiness signal.
 - Code: `apps/tv/src/components/showcaseMode/reelWatchdog.ts`, `reelPlayerGate.ts`,
   `ReelPlayer.tsx`.

@@ -179,7 +179,8 @@
     "clearSearch": "Ryd søgning",
     "changeAudioLanguage": "Skift lydsprog",
     "home": "JesusFilm forside",
-    "closeSearch": "Luk søgning"
+    "closeSearch": "Luk søgning",
+    "submitSearch": "Søg"
   },
   "SearchOverlay": {
     "dialogLabel": "Søg og browse videoer",
@@ -205,10 +206,11 @@
     "searchLanguageLabel": "Søgesprog",
     "allLanguages": "Alle sprog",
     "searchSuggestions": "Søgeforslag",
+    "directMatches": "Direkte resultater",
     "languages": "Sprog",
     "recommendedLanguage": "Anbefalet sprog",
     "searchSuggestion": "Søg efter {suggestion}",
-    "searchSuggestionWithLanguage": "Søg efter {suggestion} på {language}",
+    "searchSuggestionWithLanguage": "Søg efter »{suggestion}« på {language}",
     "inLanguage": "på {language}",
     "browseByRegion": "Browse efter region",
     "clearLanguages": "Ryd",
@@ -217,7 +219,8 @@
     "tryDifferentKeywordsOrLanguage": "Prøv andre nøgleord eller vælg et andet søgesprog",
     "useWebsiteDefaultLanguage": "Brug websitets standardsøgesprog",
     "removeLanguage": "Fjern {language}",
-    "browseMode": "Søg browse-tilstand"
+    "browseMode": "Søg browse-tilstand",
+    "searchingInLanguage": "Resultater på {language}"
   },
   "HeroPlayer": {
     "playWithSound": "Se nu",

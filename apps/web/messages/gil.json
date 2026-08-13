@@ -179,7 +179,8 @@
     "clearSearch": "Tamatoa te kimotaki",
     "changeAudioLanguage": "Kangae te i-ki n te reo",
     "home": "Moan iteran JesusFilm",
-    "closeSearch": "Taiaki te kimotaki"
+    "closeSearch": "Taiaki te kimotaki",
+    "submitSearch": "Kimotaki"
   },
   "SearchOverlay": {
     "dialogLabel": "Kimotaki ao browse n te videos",
@@ -204,11 +205,12 @@
     "categoryChristmas": "Kiritimati",
     "searchLanguageLabel": "Kimotaki n te i-ki",
     "allLanguages": "I-ki aei",
-    "searchSuggestions": "Tera ni kimotaki",
+    "searchSuggestions": "Iango ni kimotaki",
+    "directMatches": "Bwaai aika titebo raoi",
     "languages": "I-ki",
     "recommendedLanguage": "I-ki ni kamatoa",
-    "searchSuggestion": "Kimotaki {suggestion}",
-    "searchSuggestionWithLanguage": "Kimotaki {suggestion} n {language}",
+    "searchSuggestion": "Kimotaki “{suggestion}”",
+    "searchSuggestionWithLanguage": "Kimotaki “{suggestion}” n {language}",
     "inLanguage": "n {language}",
     "browseByRegion": "Browse ma te reeraki",
     "clearLanguages": "Tamatoa",
@@ -217,7 +219,8 @@
     "tryDifferentKeywordsOrLanguage": "Karoa i-ki ni keyword me karoa te i-ki ni kimotaki ke naba",
     "useWebsiteDefaultLanguage": "Karoa te website default search i-ki",
     "removeLanguage": "Tamatoa {language}",
-    "browseMode": "Browse mode n te kimotaki"
+    "browseMode": "Browse mode n te kimotaki",
+    "searchingInLanguage": "Results aika n {language}"
   },
   "HeroPlayer": {
     "playWithSound": "Karaoaki iou",

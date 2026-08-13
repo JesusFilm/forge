@@ -179,7 +179,8 @@
     "clearSearch": "Na'guaha i search",
     "changeAudioLanguage": "Na'halom i lenguahe gi audio",
     "home": "Home gi JesusFilm",
-    "closeSearch": "Serrá search"
+    "closeSearch": "Serrá search",
+    "submitSearch": "Ekka"
   },
   "SearchOverlay": {
     "dialogLabel": "Ekka yan guiya video siha",
@@ -204,11 +205,12 @@
     "categoryChristmas": "Pasko",
     "searchLanguageLabel": "Lenguahe para search",
     "allLanguages": "Todos na lenguahe",
-    "searchSuggestions": "Mga suhestión gi search",
+    "searchSuggestions": "Suhestión siha para i search",
+    "directMatches": "Eksåkto na resulta siha",
     "languages": "Mga lenguahe",
     "recommendedLanguage": "Rekomenda na lenguahe",
     "searchSuggestion": "Ekka {suggestion}",
-    "searchSuggestionWithLanguage": "Ekka {suggestion} gi {language}",
+    "searchSuggestionWithLanguage": "Ekka \"{suggestion}\" gi {language}",
     "inLanguage": "gi {language}",
     "browseByRegion": "Guiya segun i region",
     "clearLanguages": "Na'guaha",
@@ -217,7 +219,8 @@
     "tryDifferentKeywordsOrLanguage": "Pruweba diferente na keywords pat pili' otro search language",
     "useWebsiteDefaultLanguage": "Ufa'i i website default search language",
     "removeLanguage": "Na'kåta {language}",
-    "browseMode": "Modo gi search browse"
+    "browseMode": "Modo gi search browse",
+    "searchingInLanguage": "Resulta siha gi {language}"
   },
   "HeroPlayer": {
     "playWithSound": "Atan ni' ahora",

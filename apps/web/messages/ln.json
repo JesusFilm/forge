@@ -179,7 +179,8 @@
     "clearSearch": "Longola boluki",
     "changeAudioLanguage": "Bobongola monoko ya mongongo",
     "home": "Ndako ya JesusFilm",
-    "closeSearch": "Kanga boluki"
+    "closeSearch": "Kanga boluki",
+    "submitSearch": "Sosa"
   },
   "SearchOverlay": {
     "dialogLabel": "Sosa mpe tala ba video",
@@ -204,11 +205,12 @@
     "categoryChristmas": "Noël",
     "searchLanguageLabel": "Sosa monoko",
     "allLanguages": "Minoko nyonso",
-    "searchSuggestions": "Bikundoli ya boluki",
+    "searchSuggestions": "Makanisi ya boluki",
+    "directMatches": "Oyo ekokani mpenza",
     "languages": "Minoko",
     "recommendedLanguage": "Monoko oyo epesami",
-    "searchSuggestion": "Sosa {suggestion}",
-    "searchSuggestionWithLanguage": "Sosa {suggestion} na {language}",
+    "searchSuggestion": "Sosa «{suggestion}»",
+    "searchSuggestionWithLanguage": "Sosa «{suggestion}» na {language}",
     "inLanguage": "na {language}",
     "browseByRegion": "Tala na etúká",
     "clearLanguages": "Longola",
@@ -217,7 +219,8 @@
     "tryDifferentKeywordsOrLanguage": "Meka maloba mosusu to pona monoko mosusu ya boluki",
     "useWebsiteDefaultLanguage": "Salela monoko ya boluki ya liboso ya site",
     "removeLanguage": "Longola {language}",
-    "browseMode": "Mode ya kotala boluki"
+    "browseMode": "Mode ya kotala boluki",
+    "searchingInLanguage": "Matomba ya boluki na {language}"
   },
   "HeroPlayer": {
     "playWithSound": "Tala sikoyo",

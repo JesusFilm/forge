@@ -3,6 +3,11 @@ import { pathToFileURL } from "node:url"
 
 import { prisma } from "@/db/client"
 import { TypesenseWatchSearchCandidateGenerationService } from "@/services/typesense-watch-search-candidate-generation"
+import { resolveTypesenseWatchSearchApiKey } from "@/services/typesense-client-config"
+import {
+  candidateWatchSearchApplicationRevision,
+  candidateWatchSearchRankingRevision,
+} from "@/services/typesense-watch-search-candidate-identity"
 import {
   assertQualificationProfilesMatchLease,
   createCandidateWatchSearchProfile,
@@ -10,10 +15,7 @@ import {
   watchSearchBindingMembers,
   type TypesenseWatchSearchCollectionBinding,
 } from "@/services/typesense-watch-search-profile"
-import {
-  resolveTypesenseWatchSearchApiKey,
-  TypesenseWatchSearchService,
-} from "@/services/typesense-watch-search.service"
+import { TypesenseWatchSearchService } from "@/services/typesense-watch-search.service"
 import { TypesenseClient } from "@/services/typesense-client"
 import type { WatchSearchInput } from "@/services/watch-search.service"
 
@@ -24,6 +26,7 @@ const MAX_CANDIDATE_LOGICAL_SUBSEARCHES = 5
 const MAX_CANDIDATE_QUERY_FIELDS = 64
 const MAX_CANDIDATE_QUERY_BY_BYTES = 4_096
 const MAX_CANDIDATE_REQUEST_BYTES = 32 * 1_024
+const MAX_CANDIDATE_CALLER_P95_MS = 1_000
 
 const REQUIRED_SLICES = [
   "exact-title",
@@ -40,6 +43,7 @@ type EvidenceStatus = "PASS" | "FAIL" | "NOT_RUN"
 export type CandidateBenchmarkIdentity = {
   generationId: string
   applicationRevision: string
+  rankingRevision: "title-and-brand-v1"
   transcriptCollection: string
   transcriptProjectionRevision: string
   qrelsRevision: string
@@ -73,6 +77,8 @@ type CandidateDiagnostics = {
   groupedHits: number
   candidates: number
   hydratedRecords: number
+  rankingImplementation: "legacy-rrf" | "title-and-brand-v1"
+  rankingMode: "TITLE_AND_BRAND" | "SEMANTIC"
 }
 
 type CandidateCompareSuccess = {
@@ -114,6 +120,8 @@ export type CandidateBenchmarkAttempt = {
   outcome: "success" | "error"
   callerObservedMs: number
   serverMs: number | null
+  typesenseWallMs: number | null
+  typesenseServerMs: number | null
   degraded: boolean | null
   error: { code: string; errorClass: string } | null
   resultSignature: string | null
@@ -190,12 +198,14 @@ function sideIdentityMatches(
   if (expectedSide === "current") {
     return (
       side.diagnostics.profile === "CURRENT" &&
+      side.diagnostics.rankingImplementation === "legacy-rrf" &&
       side.diagnostics.generationId == null &&
       sameBindings(side.diagnostics.binding, identity.currentBindings)
     )
   }
   return (
     side.diagnostics.profile === "CANDIDATE" &&
+    side.diagnostics.rankingImplementation === identity.rankingRevision &&
     side.diagnostics.generationId === identity.generationId &&
     side.diagnostics.applicationRevision === identity.applicationRevision &&
     side.diagnostics.transcriptProjectionRevision ===
@@ -226,6 +236,8 @@ function attemptFromSide(input: {
       outcome: "error",
       callerObservedMs: input.side.callerObservedMs ?? 0,
       serverMs: null,
+      typesenseWallMs: null,
+      typesenseServerMs: null,
       degraded: null,
       error: input.side.error,
       resultSignature: null,
@@ -238,6 +250,8 @@ function attemptFromSide(input: {
       outcome: "error",
       callerObservedMs: input.side.callerObservedMs ?? 0,
       serverMs: input.side.response.latencyMs,
+      typesenseWallMs: input.side.diagnostics.typesenseWallTimeMs,
+      typesenseServerMs: input.side.diagnostics.typesenseSearchTimeMs,
       degraded: input.side.response.degraded,
       error: { code: "identity_mismatch", errorClass: "IdentityDriftError" },
       resultSignature: null,
@@ -250,6 +264,8 @@ function attemptFromSide(input: {
     callerObservedMs:
       input.side.callerObservedMs ?? input.side.response.latencyMs,
     serverMs: input.side.response.latencyMs,
+    typesenseWallMs: input.side.diagnostics.typesenseWallTimeMs,
+    typesenseServerMs: input.side.diagnostics.typesenseSearchTimeMs,
     degraded: input.side.response.degraded,
     error: null,
     resultSignature: resultSignature(input.side.response.results),
@@ -278,6 +294,16 @@ function latencyFor(attempts: readonly CandidateBenchmarkAttempt[]) {
           entry.serverMs == null ? [] : [entry.serverMs],
         ),
       ),
+      typesenseWall: percentiles(
+        entries.flatMap((entry) =>
+          entry.typesenseWallMs == null ? [] : [entry.typesenseWallMs],
+        ),
+      ),
+      typesenseServer: percentiles(
+        entries.flatMap((entry) =>
+          entry.typesenseServerMs == null ? [] : [entry.typesenseServerMs],
+        ),
+      ),
     }
   }
   return {
@@ -302,7 +328,11 @@ function completePairCount(attempts: readonly CandidateBenchmarkAttempt[]) {
 
 function pairedUpperRatio95(
   attempts: readonly CandidateBenchmarkAttempt[],
-  metric: "callerObservedMs" | "serverMs",
+  metric:
+    | "callerObservedMs"
+    | "serverMs"
+    | "typesenseWallMs"
+    | "typesenseServerMs",
 ) {
   const pairs = new Map<
     string,
@@ -335,7 +365,12 @@ function latencyRegressionReasons(
 ) {
   const reasons: string[] = []
   const summary = latencyFor(attempts)
-  for (const surface of ["callerObserved", "server"] as const) {
+  for (const surface of [
+    "callerObserved",
+    "server",
+    "typesenseWall",
+    "typesenseServer",
+  ] as const) {
     for (const quantile of ["p50Ms", "p95Ms", "p99Ms"] as const) {
       if (
         summary.candidate[surface][quantile] >
@@ -345,13 +380,24 @@ function latencyRegressionReasons(
       }
     }
   }
+  if (summary.candidate.callerObserved.p95Ms >= MAX_CANDIDATE_CALLER_P95_MS) {
+    reasons.push(`${label}_callerObserved_p95Ms_budget_exceeded`)
+  }
   const callerUpper = pairedUpperRatio95(attempts, "callerObservedMs")
   const serverUpper = pairedUpperRatio95(attempts, "serverMs")
+  const typesenseWallUpper = pairedUpperRatio95(attempts, "typesenseWallMs")
+  const typesenseServerUpper = pairedUpperRatio95(attempts, "typesenseServerMs")
   if (callerUpper == null || callerUpper > 1.05) {
     reasons.push(`${label}_callerObserved_confidence_regressed`)
   }
   if (serverUpper == null || serverUpper > 1.05) {
     reasons.push(`${label}_server_confidence_regressed`)
+  }
+  if (typesenseWallUpper == null || typesenseWallUpper > 1.05) {
+    reasons.push(`${label}_typesenseWall_confidence_regressed`)
+  }
+  if (typesenseServerUpper == null || typesenseServerUpper > 1.05) {
+    reasons.push(`${label}_typesenseServer_confidence_regressed`)
   }
   return reasons
 }
@@ -389,6 +435,12 @@ function boundedWorkReasons(attempts: readonly CandidateBenchmarkAttempt[]) {
     const current = pair.current?.diagnostics
     const candidate = pair.candidate?.diagnostics
     if (!current || !candidate) continue
+    if (candidate.retrievalCalls !== current.retrievalCalls) {
+      reasons.add("candidate_retrieval_calls_mismatch")
+    }
+    if (candidate.logicalSubsearches !== current.logicalSubsearches) {
+      reasons.add("candidate_logical_subsearches_mismatch")
+    }
     if (candidate.parsedResponseBytes > current.parsedResponseBytes) {
       reasons.add("candidate_response_bytes")
     }
@@ -438,6 +490,8 @@ export function evaluateCandidateQualification(input: {
           pairedUpperRatio95: {
             callerObserved: pairedUpperRatio95(attempts, "callerObservedMs"),
             server: pairedUpperRatio95(attempts, "serverMs"),
+            typesenseWall: pairedUpperRatio95(attempts, "typesenseWallMs"),
+            typesenseServer: pairedUpperRatio95(attempts, "typesenseServerMs"),
           },
         },
       ]
@@ -486,6 +540,11 @@ export function evaluateCandidateQualification(input: {
             "callerObservedMs",
           ),
           server: pairedUpperRatio95(input.attempts, "serverMs"),
+          typesenseWall: pairedUpperRatio95(input.attempts, "typesenseWallMs"),
+          typesenseServer: pairedUpperRatio95(
+            input.attempts,
+            "typesenseServerMs",
+          ),
         },
       },
       slices,
@@ -632,16 +691,6 @@ const PRODUCTION_CASES: readonly CandidateBenchmarkCase[] = [
   },
 ] as const
 
-function requiredRevision() {
-  const revision =
-    process.env.NEXT_PUBLIC_DATADOG_VERSION ??
-    process.env.RAILWAY_GIT_COMMIT_SHA ??
-    process.env.VERCEL_GIT_COMMIT_SHA ??
-    process.env.GIT_COMMIT_SHA
-  if (!revision?.trim()) throw new Error("an application revision is required")
-  return revision.trim()
-}
-
 function evidenceFromEnvironment(): CandidateQualificationEvidence {
   const raw = process.env.WATCH_SEARCH_CANDIDATE_EVIDENCE_JSON
   if (!raw) return DEFAULT_EVIDENCE
@@ -665,15 +714,32 @@ function evidenceFromEnvironment(): CandidateQualificationEvidence {
   return parsed
 }
 
-function normalizeDiagnostics(
+export function normalizeCandidateBenchmarkDiagnostics(
   diagnostics: Awaited<
     ReturnType<TypesenseWatchSearchService["searchWithDiagnostics"]>
   >["diagnostics"],
 ): CandidateDiagnostics {
   return {
-    ...diagnostics,
+    profile: diagnostics.profile,
+    generationId: diagnostics.generationId,
+    applicationRevision: diagnostics.applicationRevision,
     transcriptProjectionRevision:
       diagnostics.transcriptProjectionRevision?.toString() ?? null,
+    binding: diagnostics.binding,
+    retrievalCalls: diagnostics.retrievalCalls,
+    logicalSubsearches: diagnostics.logicalSubsearches,
+    queryFieldCount: diagnostics.queryFieldCount,
+    queryByBytes: diagnostics.queryByBytes,
+    requestBytes: diagnostics.requestBytes,
+    parsedResponseBytes: diagnostics.parsedResponseBytes,
+    typesenseSearchTimeMs: diagnostics.typesenseSearchTimeMs,
+    typesenseWallTimeMs: diagnostics.typesenseWallTimeMs,
+    retryCount: diagnostics.retryCount,
+    groupedHits: diagnostics.groupedHits,
+    candidates: diagnostics.candidates,
+    hydratedRecords: diagnostics.hydratedRecords,
+    rankingImplementation: diagnostics.rankingImplementation,
+    rankingMode: diagnostics.rankingMode,
   }
 }
 
@@ -696,7 +762,7 @@ async function executeProfile(
           playbackId: entry.playbackId,
         })),
       },
-      diagnostics: normalizeDiagnostics(result.diagnostics),
+      diagnostics: normalizeCandidateBenchmarkDiagnostics(result.diagnostics),
     }
   } catch (error) {
     return {
@@ -744,7 +810,8 @@ async function main() {
     throw new Error("WATCH_SEARCH_CANDIDATE_PAIRS_PER_CASE must be 1..10000")
   }
 
-  const applicationRevision = requiredRevision()
+  const applicationRevision = candidateWatchSearchApplicationRevision()
+  const rankingRevision = candidateWatchSearchRankingRevision()
   const typesense = new TypesenseClient({ host, apiKey, timeoutMs: 2_000 })
   const generations = new TypesenseWatchSearchCandidateGenerationService(
     prisma,
@@ -766,6 +833,7 @@ async function main() {
   const identity: CandidateBenchmarkIdentity = {
     generationId: generation.id,
     applicationRevision,
+    rankingRevision,
     transcriptCollection: candidate.binding.transcript,
     transcriptProjectionRevision:
       candidate.transcriptProjectionRevision!.toString(),
@@ -868,7 +936,7 @@ async function main() {
   process.stdout.write(
     `${JSON.stringify(
       {
-        schemaVersion: "watch-search-candidate-qualification/v1",
+        schemaVersion: "watch-search-candidate-qualification/v2",
         generatedAt: new Date().toISOString(),
         ...report,
       },

@@ -179,7 +179,8 @@
     "clearSearch": "সার্চ মুছুন",
     "changeAudioLanguage": "অডিও ভাষা পরিবর্তন করুন",
     "home": "JesusFilm হোম",
-    "closeSearch": "সার্চ বন্ধ করুন"
+    "closeSearch": "সার্চ বন্ধ করুন",
+    "submitSearch": "সার্চ করুন"
   },
   "SearchOverlay": {
     "dialogLabel": "ভিডিও সার্চ ও ব্রাউজ করুন",
@@ -204,11 +205,12 @@
     "categoryChristmas": "ক্রিসমাস",
     "searchLanguageLabel": "সার্চের ভাষা",
     "allLanguages": "সব ভাষা",
-    "searchSuggestions": "সার্চের পরামর্শ",
+    "searchSuggestions": "সার্চের প্রস্তাবনা",
+    "directMatches": "সরাসরি মিলে যাওয়া ফলাফল",
     "languages": "ভাষাসমূহ",
     "recommendedLanguage": "প্রস্তাবিত ভাষা",
     "searchSuggestion": "{suggestion} সার্চ করুন",
-    "searchSuggestionWithLanguage": "{language} ভাষায় {suggestion} সার্চ করুন",
+    "searchSuggestionWithLanguage": "{language} ভাষায় “{suggestion}” সার্চ করুন",
     "inLanguage": "{language} ভাষায়",
     "browseByRegion": "অঞ্চল অনুযায়ী ব্রাউজ করুন",
     "clearLanguages": "মুছুন",
@@ -217,7 +219,8 @@
     "tryDifferentKeywordsOrLanguage": "অন্য কীওয়ার্ড চেষ্টা করুন বা আরেকটি সার্চ ভাষা বেছে নিন",
     "useWebsiteDefaultLanguage": "ওয়েবসাইটের ডিফল্ট সার্চ ভাষা ব্যবহার করুন",
     "removeLanguage": "{language} সরান",
-    "browseMode": "সার্চ ব্রাউজ মোড"
+    "browseMode": "সার্চ ব্রাউজ মোড",
+    "searchingInLanguage": "ফলাফল শুধু {language} ভাষায়"
   },
   "HeroPlayer": {
     "playWithSound": "এখন দেখুন",

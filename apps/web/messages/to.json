@@ -179,7 +179,8 @@
     "clearSearch": "Tamateʻi ʻa e fekumí",
     "changeAudioLanguage": "Liliu ʻa e lea ʻo e ongo",
     "home": "Peesi kamata ʻo e JesusFilm",
-    "closeSearch": "Katia ʻa e fekumí"
+    "closeSearch": "Katia ʻa e fekumí",
+    "submitSearch": "Fekumi"
   },
   "SearchOverlay": {
     "dialogLabel": "Fekumi mo vakaiʻi ngaahi vitio",
@@ -204,11 +205,12 @@
     "categoryChristmas": "Kilisimasi",
     "searchLanguageLabel": "Lea fekumi",
     "allLanguages": "Ngaahi lea kotoa",
-    "searchSuggestions": "Ngaahi fokotuʻutuʻu fekumi",
+    "searchSuggestions": "Ngaahi fokotuʻu ki he fekumí",
+    "directMatches": "Ngaahi ola fehoanaki tonu",
     "languages": "Ngaahi Lea",
     "recommendedLanguage": "Lea fokotuʻu",
-    "searchSuggestion": "Fekumi {suggestion}",
-    "searchSuggestionWithLanguage": "Fekumi {suggestion} ʻi he {language}",
+    "searchSuggestion": "Fekumi ki he “{suggestion}”",
+    "searchSuggestionWithLanguage": "Fekumi ki he “{suggestion}” ʻi he {language}",
     "inLanguage": "ʻi he {language}",
     "browseByRegion": "Vakaiʻi ʻi he vahefonua",
     "clearLanguages": "Tamateʻi",
@@ -217,7 +219,8 @@
     "tryDifferentKeywordsOrLanguage": "Feinga ki ha ngaahi kupuʻi lea kehe pe fili ha lea fekumi kehe",
     "useWebsiteDefaultLanguage": "Ngaueʻaki ʻa e lea fekumi tuʻufonua ʻo e uepisaiti",
     "removeLanguage": "Toʻo {language}",
-    "browseMode": "Fōtunga vakaiʻi fekumi"
+    "browseMode": "Fōtunga vakaiʻi fekumi",
+    "searchingInLanguage": "Ngaahi ola ʻi he {language}"
   },
   "HeroPlayer": {
     "playWithSound": "Sio he taimí ni",

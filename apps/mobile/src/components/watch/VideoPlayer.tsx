@@ -14,7 +14,7 @@ import {
 import { Image } from "expo-image"
 import Ionicons from "@expo/vector-icons/Ionicons"
 import { LinearGradient } from "expo-linear-gradient"
-import { VideoView } from "expo-video"
+import { VideoView, type VideoPlayerStatus } from "expo-video"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { BLACK, TEXT_ON_OVERLAY, hexToRgba } from "../../lib/color"
 import { resolveImageUrl } from "../../lib/resolveImageUrl"
@@ -34,6 +34,7 @@ import {
 import { useControlsVisibility } from "../../hooks/useControlsVisibility"
 import { PLAYER_HEIGHT_RATIO } from "../../lib/playerLayout"
 import { PlayerControls } from "./PlayerControls"
+import { PlayerLoadingVeil } from "./PlayerLoadingVeil"
 import { SubtitleOverlay } from "./SubtitleOverlay"
 
 // Caption distance above the bottom edge (px). In fullscreen the caption lifts
@@ -42,6 +43,9 @@ import { SubtitleOverlay } from "./SubtitleOverlay"
 const SUBTITLE_OFFSET_FS_CHROME_VISIBLE = 92
 const SUBTITLE_OFFSET_FS_CHROME_HIDDEN = 12
 const SUBTITLE_OFFSET_INLINE = 14
+
+// How long the pre-autostart veil may hold before it gives the chrome back.
+const AUTOSTART_VEIL_TIMEOUT_MS = 12000
 
 type VideoPlayerProps = {
   streamingUrl: string | null
@@ -130,6 +134,69 @@ export function VideoPlayer({
     onPlayingChange?.(isPlaying)
   }, [isPlaying, hasStarted, onPlayingChange])
 
+  // Both release the pre-autostart chrome suppression below. Without them a
+  // viewer whose playback never starts is stranded on a spinner with no
+  // controls: `loadFailed` covers a source that errors, `loadTimedOut` covers
+  // one that simply wedges (no watchdog upstream arms before playback).
+  const [loadFailed, setLoadFailed] = useState(false)
+  const [loadTimedOut, setLoadTimedOut] = useState(false)
+
+  // Subscribed once per PLAYER, not per source. Resubscribing on every
+  // streamingUrl change tears down and rebuilds across the seed -> canonical
+  // swap while replaceAsync is still in flight, which can attribute a
+  // pre-swap error to the new source (the adapter's QoE listener avoids this
+  // the same way).
+  useEffect(() => {
+    const sub = player.addListener(
+      "statusChange",
+      ({ status }: { status: VideoPlayerStatus }) => {
+        setLoadFailed(status === "error")
+      },
+    )
+    return () => {
+      try {
+        sub.remove()
+      } catch {
+        // Player already released
+      }
+    }
+  }, [player])
+
+  // New source: clear both stop conditions. Seeding from the CURRENT status
+  // rather than a bare false covers a source that already failed before this
+  // effect ran, which a listener alone never sees.
+  useEffect(() => {
+    let current: VideoPlayerStatus | null = null
+    try {
+      current = player.status
+    } catch {
+      // Player already released
+    }
+    setLoadFailed(current === "error")
+    setLoadTimedOut(false)
+  }, [player, streamingUrl])
+
+  // An autostarting player opens on its poster, not on transport chrome: a play
+  // button and a 0:00 scrubber for a video about to start itself reads as
+  // broken. Suppress chrome until the first frame plays. `hasStarted` never
+  // resets, so this covers the initial load only — a later language swap keeps
+  // the chrome it already had.
+  const awaitingAutostart =
+    autostart &&
+    !hasStarted &&
+    streamingUrl != null &&
+    !loadFailed &&
+    !loadTimedOut
+
+  // Backstop for a load that neither starts nor errors. Releasing early only
+  // reveals chrome sooner, so a false positive on a slow network is harmless —
+  // being stuck with no controls is not.
+  useEffect(() => {
+    if (!awaitingAutostart) return
+    const t = setTimeout(() => setLoadTimedOut(true), AUTOSTART_VEIL_TIMEOUT_MS)
+    return () => clearTimeout(t)
+  }, [awaitingAutostart])
+
   const controls = useControlsVisibility(player)
 
   // Tap disambiguation (U4): single tap toggles chrome (revealed on press-in
@@ -157,9 +224,13 @@ export function VideoPlayer({
   // seek and let playback from 0 overwrite the saved position.
   const autoPlayedRef = useRef(false)
   const resumeSeekedRef = useRef(false)
+  // Gates the foreground retry below: retrying before the source has loaded
+  // would call play() on an item that is not ready.
+  const sourceLoadedRef = useRef(false)
   useEffect(() => {
     autoPlayedRef.current = false
     resumeSeekedRef.current = false
+    sourceLoadedRef.current = false
   }, [streamingUrl])
   useEffect(() => {
     if (!autostart) return
@@ -198,15 +269,29 @@ export function VideoPlayer({
     }
 
     const onSourceLoad = () => {
+      sourceLoadedRef.current = true
       applySeek()
       applyPlay()
     }
     const sub = player.addListener("sourceLoad", onSourceLoad)
+    // applyPlay bails without latching while backgrounded, sourceLoad fires
+    // once per source, and the adapter's foreground resume only replays a
+    // video that was ALREADY playing — so nothing else retries this. Without
+    // the retry, backgrounding through the load window leaves the veil up for
+    // good.
+    const appSub = AppState.addEventListener("change", (next) => {
+      if (next !== "active" || !sourceLoadedRef.current) return
+      applySeek()
+      applyPlay()
+    })
     // A resume position can hydrate after the source already loaded — seek
     // then, rather than losing it. Guarded on having played so this never
     // fires against a previous, still-loaded source mid-swap.
     if (autoPlayedRef.current) applySeek()
-    return () => sub.remove()
+    return () => {
+      sub.remove()
+      appSub.remove()
+    }
   }, [player, resumeAtSeconds, streamingUrl, autostart])
 
   useEffect(() => {
@@ -267,10 +352,14 @@ export function VideoPlayer({
         singleTapTimerRef.current = null
         // Single tap resolved: hide only if chrome was already up; if it was
         // hidden it was just revealed on press-in, so leave it visible (R3).
+        // Skipped while the veil is up: the chrome is unmounted, so this would
+        // hide something invisible and playback would then start with no
+        // controls until the viewer taps again.
+        if (awaitingAutostart) return
         if (singleTapAction(wasVisible) === "hide") controls.hide()
       }, DOUBLE_TAP_MS)
     },
-    [controls, doSideSeek],
+    [awaitingAutostart, controls, doSideSeek],
   )
 
   // Caption offset: inline = fixed on the button row; fullscreen = lifts above
@@ -307,6 +396,10 @@ export function VideoPlayer({
         player={player}
         style={StyleSheet.absoluteFill}
         nativeControls={false}
+        // iOS 16+ defaults this TRUE, which floats a Live Text "scan" button
+        // over a paused/ended frame that contains text — a system control we
+        // do not own, inside chrome we do.
+        allowsVideoFrameAnalysis={false}
         contentFit="contain"
         allowsPictureInPicture
         // textureView composites in the RN view hierarchy on Android so the
@@ -324,6 +417,8 @@ export function VideoPlayer({
           accessibilityLabel="Video thumbnail"
         />
       )}
+
+      {awaitingAutostart && <PlayerLoadingVeil />}
 
       {/* Full-bleed tap target behind the chrome (controls layer is box-none,
           subtitle overlay is pointerEvents none, so empty-area taps fall here).
@@ -360,7 +455,7 @@ export function VideoPlayer({
 
       {/* Chrome scrim — fades with the chrome and sits BELOW the subtitle so it
           never dims the caption. */}
-      {controls.mounted && (
+      {controls.mounted && !awaitingAutostart && (
         <Animated.View
           pointerEvents="none"
           style={[styles.chromeScrim, { opacity: controls.opacityAnim }]}
@@ -394,7 +489,7 @@ export function VideoPlayer({
       {/* Chrome controls — fade with the chrome and layer OVER the subtitle, so
           the timeline/buttons are always on top of the captions (R: timeline
           must stay visible). */}
-      {controls.mounted && (
+      {controls.mounted && !awaitingAutostart && (
         <Animated.View
           style={[StyleSheet.absoluteFill, { opacity: controls.opacityAnim }]}
           pointerEvents="box-none"

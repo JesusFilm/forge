@@ -382,8 +382,9 @@ export default function SeriesScreen() {
     )
   }
 
-  // Hero dock: top safe edge + side inset, matching the watch player. Shared by
-  // the pinned trailer player and the poster-only hero so both share the offset.
+  // Hero dock: top safe edge + side inset, keeping the trailer clear of the
+  // grid edges. The /watch player is full-bleed; this dock stays inset by
+  // design. Shared by the pinned trailer player and the poster-only hero.
   const heroDock = {
     paddingTop: insets.top,
     paddingHorizontal: PLAYER_SIDE_PADDING,

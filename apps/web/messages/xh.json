@@ -179,7 +179,8 @@
     "clearSearch": "Cima ukukhangela",
     "changeAudioLanguage": "Tshintsha ulwimi lweaudio",
     "home": "Ikhaya leJesusFilm",
-    "closeSearch": "Vala ukukhangela"
+    "closeSearch": "Vala ukukhangela",
+    "submitSearch": "Khangela"
   },
   "SearchOverlay": {
     "dialogLabel": "Khangela uze ubhrawuze iividiyo",
@@ -205,19 +206,21 @@
     "searchLanguageLabel": "Ulwimi lokukhangela",
     "allLanguages": "Zonke iilwimi",
     "searchSuggestions": "Iingcebiso zokukhangela",
+    "directMatches": "Iziphumo ezihambelana ngqo",
     "languages": "Iilwimi",
     "recommendedLanguage": "Ulwimi olucetyiswayo",
-    "searchSuggestion": "Khangela {suggestion}",
-    "searchSuggestionWithLanguage": "Khangela {suggestion} ku {language}",
+    "searchSuggestion": "Khangela: {suggestion}",
+    "searchSuggestionWithLanguage": "Khangela “{suggestion}” ngolwimi: {language}",
     "inLanguage": "ku {language}",
     "browseByRegion": "Bhrawuza ngokwengingqi",
     "clearLanguages": "Cima",
     "queryLanguageDetected": "Kufunyenwe {language}",
-    "searchInLanguage": "Khangela ku {language}",
+    "searchInLanguage": "Khangela ngolwimi: {language}",
     "tryDifferentKeywordsOrLanguage": "Zama amagama angundoqo ahlukeneyo okanye khetha olunye ulwimi lokukhangela",
     "useWebsiteDefaultLanguage": "Sebenzisa ulwimi olungagqibekanga lokukhangela lwewebhusayithi",
     "removeLanguage": "Susa {language}",
-    "browseMode": "Imo yokubhrawuza yokukhangela"
+    "browseMode": "Imo yokubhrawuza yokukhangela",
+    "searchingInLanguage": "Ulwimi lweziphumo: {language}"
   },
   "HeroPlayer": {
     "playWithSound": "Bukela ngoku",

@@ -27,8 +27,7 @@
           "UIInterfaceOrientationLandscapeLeft",
           "UIInterfaceOrientationLandscapeRight"
         ]
-      },
-      "usesAppleSignIn": true
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -55,7 +54,6 @@
     },
     "plugins": [
       "expo-router",
-      "expo-apple-authentication",
       [
         "expo-video",
         {

@@ -179,7 +179,8 @@
     "clearSearch": "Linisi so search",
     "changeAudioLanguage": "Iliso so wika sa audio",
     "home": "Homepage sa JesusFilm",
-    "closeSearch": "Sara search"
+    "closeSearch": "Sara search",
+    "submitSearch": "Pangita"
   },
   "SearchOverlay": {
     "dialogLabel": "Pangita ago browse video",
@@ -205,10 +206,11 @@
     "searchLanguageLabel": "Wika sa search",
     "allLanguages": "Tanan a wika",
     "searchSuggestions": "Mga suhestiyon sa search",
+    "directMatches": "Direkta a mga katugma",
     "languages": "Mga wika",
     "recommendedLanguage": "Inirerekomenda a wika",
-    "searchSuggestion": "Pangitaa {suggestion}",
-    "searchSuggestionWithLanguage": "Pangitaa {suggestion} sa {language}",
+    "searchSuggestion": "Pangita so {suggestion}",
+    "searchSuggestionWithLanguage": "Pangita so “{suggestion}” sa {language}",
     "inLanguage": "sa {language}",
     "browseByRegion": "Browse ayon sa rehiyon",
     "clearLanguages": "Linisi",
@@ -217,7 +219,8 @@
     "tryDifferentKeywordsOrLanguage": "Subukan ibang keywords o pumili ibang wika sa search",
     "useWebsiteDefaultLanguage": "Gamita so default search language sa website",
     "removeLanguage": "Tanggalon {language}",
-    "browseMode": "Mode sa search browse"
+    "browseMode": "Mode sa search browse",
+    "searchingInLanguage": "Mga result sa {language}"
   },
   "HeroPlayer": {
     "playWithSound": "Panonood na",

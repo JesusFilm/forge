@@ -179,7 +179,8 @@
     "clearSearch": "Zoekopdracht wissen",
     "changeAudioLanguage": "Audiotaal wijzigen",
     "home": "JesusFilm-startpagina",
-    "closeSearch": "Zoeken sluiten"
+    "closeSearch": "Zoeken sluiten",
+    "submitSearch": "Zoeken"
   },
   "SearchOverlay": {
     "dialogLabel": "Video's zoeken en doorbladeren",
@@ -205,19 +206,21 @@
     "searchLanguageLabel": "Zoektaal",
     "allLanguages": "Alle talen",
     "searchSuggestions": "Zoeksuggesties",
+    "directMatches": "Directe resultaten",
     "languages": "Talen",
     "recommendedLanguage": "Aanbevolen taal",
-    "searchSuggestion": "Zoek {suggestion}",
-    "searchSuggestionWithLanguage": "Zoek {suggestion} in {language}",
+    "searchSuggestion": "Zoeken naar ‘{suggestion}’",
+    "searchSuggestionWithLanguage": "In {language} zoeken naar ‘{suggestion}’",
     "inLanguage": "in de taal: {language}",
     "browseByRegion": "Bladeren op regio",
     "clearLanguages": "Wissen",
     "queryLanguageDetected": "{language} gedetecteerd",
-    "searchInLanguage": "Zoeken in {language}",
+    "searchInLanguage": "Zoeken in de taal: {language}",
     "tryDifferentKeywordsOrLanguage": "Probeer andere trefwoorden of kies een andere zoektaal",
     "useWebsiteDefaultLanguage": "Standaardzoektaal van de website gebruiken",
     "removeLanguage": "{language} verwijderen",
-    "browseMode": "Zoek- en bladermodus"
+    "browseMode": "Zoek- en bladermodus",
+    "searchingInLanguage": "Resultaten in de taal: {language}"
   },
   "HeroPlayer": {
     "playWithSound": "Nu kijken",

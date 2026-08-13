@@ -337,6 +337,9 @@ describe("mobile login configuration", () => {
       redirectURI: "http://localhost:3004/api/auth/oauth2/callback/jfp",
       pkce: true,
       scopes: ["openid", "profile:read", "email:read"],
+      // R5: prompt=login forces the hosted form even with a live browser
+      // session; a revert must fail this exact-value pin.
+      prompt: "login",
     })
     expect(jfp).not.toHaveProperty("clientSecret")
   })

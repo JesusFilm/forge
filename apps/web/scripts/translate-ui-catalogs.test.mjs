@@ -18,12 +18,95 @@ import {
   validateCatalogIntegrity,
 } from "./translate-ui-catalogs.mjs"
 import {
+  buildUserPrompt,
+  explicitScriptContractError,
   isSourceEquivalent,
+  messageContractError,
   requestTranslations,
 } from "./openai-catalog-translator.mjs"
+import {
+  COMPLETED_CATALOG_POLICY,
+  PROVISIONAL_CATALOG_POLICY,
+} from "./ui-catalog-policy.mjs"
 
 const MODEL = "gpt-5.4-mini-2026-03-17"
 const temporaryDirectories = []
+
+describe("Watch search contextual translation contract", () => {
+  it("supplies the model with action, status, heading, and language-chip context", () => {
+    const prompt = JSON.parse(
+      buildUserPrompt({
+        locale: "ru",
+        inventoryEntry: { countries: [{ name: "Russia" }] },
+        messages: {
+          "SearchOverlay.searchSuggestionWithLanguage":
+            'Search in {language} for "{suggestion}"',
+        },
+        references: {},
+      }),
+    )
+
+    expect(prompt.contextualInstructions).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining("heading above proposed search phrases"),
+        expect.stringContaining("clickable action"),
+        expect.stringContaining("static scope label"),
+        expect.stringContaining("must not say that a search is active"),
+        expect.stringContaining("natural native-language interface writing"),
+        expect.stringContaining("Case particles, postpositions"),
+      ]),
+    )
+  })
+
+  it("rejects loading-style copy for the completed-results status", () => {
+    expect(
+      messageContractError(
+        "SearchOverlay.searchingInLanguage",
+        "Searching in {language}",
+        "Результаты поиска. Язык: {language}",
+      ),
+    ).toBeNull()
+    expect(
+      messageContractError(
+        "SearchOverlay.searchingInLanguage",
+        "Searching in {language}",
+        "Searching in {language}…",
+      ),
+    ).toContain("must not look like loading copy")
+  })
+
+  it("allows target-language grammar immediately around the language chip", () => {
+    const source = "Search in {language}"
+
+    expect(
+      messageContractError(
+        "SearchOverlay.searchInLanguage",
+        source,
+        "Язык поиска: {language}",
+      ),
+    ).toBeNull()
+    expect(
+      messageContractError(
+        "SearchOverlay.searchInLanguage",
+        source,
+        "{language}ত সন্ধান কৰক",
+      ),
+    ).toBeNull()
+  })
+
+  it("rejects translations that ignore an explicit script subtag", () => {
+    expect(
+      explicitScriptContractError("az-Cyrl", {
+        "SearchOverlay.searchSuggestions": "Axtarış təklifləri",
+      }),
+    ).toContain("Explicit Cyrl script mismatch")
+    expect(
+      explicitScriptContractError("az-Cyrl", {
+        "SearchOverlay.searchSuggestions": "Ахтарыш теклифлери",
+      }),
+    ).toBeNull()
+  })
+})
 
 function writeJson(path, value) {
   writeFileSync(path, `${JSON.stringify(value, null, 2)}\n`)
@@ -525,6 +608,47 @@ describe("translate UI catalogs", () => {
     expect(waitForRetry).toHaveBeenCalledTimes(1)
   })
 
+  it("retries explicit-script mismatches before accepting the requested script", async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(
+        chatCompletion([
+          {
+            key: "SearchOverlay.searchSuggestions",
+            value: "Axtarış təklifləri",
+          },
+        ]),
+      )
+      .mockResolvedValueOnce(
+        chatCompletion([
+          {
+            key: "SearchOverlay.searchSuggestions",
+            value: "Ахтарыш теклифлери",
+          },
+        ]),
+      )
+    const waitForRetry = vi.fn().mockResolvedValue(undefined)
+
+    const result = await requestTranslations({
+      apiKey: "test-api-key",
+      locale: "az-Cyrl",
+      inventoryEntry: { countries: [{ name: "Azerbaijan" }] },
+      messages: { "SearchOverlay.searchSuggestions": "Search Suggestions" },
+      references: {},
+      model: MODEL,
+      maxAttempts: 2,
+      minimumChangeRatio: 1,
+      fetchImpl,
+      waitForRetry,
+    })
+
+    expect(result.translations).toEqual({
+      "SearchOverlay.searchSuggestions": "Ахтарыш теклифлери",
+    })
+    expect(fetchImpl).toHaveBeenCalledTimes(2)
+    expect(waitForRetry).toHaveBeenCalledTimes(1)
+  })
+
   it("retries a malformed HTTP 200 body before accepting valid JSON", async () => {
     const fetchImpl = vi
       .fn()
@@ -824,6 +948,7 @@ describe("translate UI catalogs", () => {
     expect(noFetch).not.toHaveBeenCalled()
     expect(manifest.machineTranslatedLocales).toEqual(["es"])
     expect(manifest.provisionalLocales).toEqual(["fr"])
+    expect(manifest.metadata.policy).toBe(PROVISIONAL_CATALOG_POLICY)
   })
 
   it("rejects drifted completed provisional catalogs before promotion", async () => {
@@ -881,6 +1006,7 @@ describe("translate UI catalogs", () => {
     )
     expect(promotedManifest.provisionalLocales).toEqual([])
     expect(promotedManifest.machineTranslatedLocales).toEqual(["es", "fr"])
+    expect(promotedManifest.metadata.policy).toBe(COMPLETED_CATALOG_POLICY)
   })
 
   it("translates only newly added source keys and restores catalog parity", async () => {
@@ -1150,6 +1276,53 @@ describe("translate UI catalogs", () => {
     expect(manifest.metadata.translation.fallbackModels).toEqual({
       [MODEL]: ["es"],
     })
+  })
+
+  it("records scoped revisions without replacing whole-catalog model provenance", () => {
+    const manifest = updateManifestAfterTranslation({
+      manifest: {
+        metadata: {
+          translation: {
+            model: "gpt-base",
+            localeProvenance: {
+              es: {
+                model: "gpt-base",
+                sourceDigest: "old-source",
+                catalogDigest: "old-es",
+                generatedOn: "2026-07-01",
+              },
+            },
+          },
+        },
+        machineTranslatedLocales: ["es"],
+        provisionalLocales: [],
+        existingNonInventoryLocales: [],
+        missingCatalogs: [],
+      },
+      inventory: { languages: [{ tag: "es" }] },
+      completedLocales: ["es"],
+      generatedLocales: ["es"],
+      model: MODEL,
+      sourceDigest: "current-source",
+      catalogDigests: { es: "current-es" },
+      scopeMessagePaths: ["SearchOverlay.searchInLanguage"],
+      generatedOn: "2026-08-12",
+    })
+
+    expect(manifest.metadata.translation.localeProvenance.es).toEqual({
+      model: "gpt-base",
+      sourceDigest: "current-source",
+      catalogDigest: "current-es",
+      generatedOn: "2026-08-12",
+      scopedRevisions: [
+        {
+          model: MODEL,
+          messagePaths: ["SearchOverlay.searchInLanguage"],
+          generatedOn: "2026-08-12",
+        },
+      ],
+    })
+    expect(manifest.metadata.translation.model).toBe("gpt-base")
   })
 
   it("preserves human-reviewed catalog ownership after scoped generation", () => {

@@ -179,7 +179,8 @@
     "clearSearch": "Thaqhaña q’umachaña",
     "changeAudioLanguage": "Arsuwin arup mayjt’ayaña",
     "home": "JesusFilm uta",
-    "closeSearch": "Thaqhaña llawuña"
+    "closeSearch": "Thaqhaña llawuña",
+    "submitSearch": "Thaqhaña"
   },
   "SearchOverlay": {
     "dialogLabel": "Video-naka thaqhaña ukhamaraki uñakipaña",
@@ -204,11 +205,12 @@
     "categoryChristmas": "Cristmas",
     "searchLanguageLabel": "Aru thaqhaña",
     "allLanguages": "Taqi arunaka",
-    "searchSuggestions": "Thaqhañatak yäwiñanaka",
+    "searchSuggestions": "Thaqhañ amtanaka",
+    "directMatches": "Chiqpach jikxatäwinaka",
     "languages": "Arunaka",
     "recommendedLanguage": "Aski arupa",
-    "searchSuggestion": "{suggestion} thaqhaña",
-    "searchSuggestionWithLanguage": "{suggestion} thaqhaña {language} arun",
+    "searchSuggestion": "“{suggestion}” thaqhaña",
+    "searchSuggestionWithLanguage": "“{suggestion}” uk {language} arun thaqhaña",
     "inLanguage": "{language} arun",
     "browseByRegion": "Región tuqit uñakipaña",
     "clearLanguages": "Q’umachaña",
@@ -217,7 +219,8 @@
     "tryDifferentKeywordsOrLanguage": "Yaqha sutinakampi thaqhaña jan ukax yaqha thaqhañ arut ajlliña",
     "useWebsiteDefaultLanguage": "Sitio web ukan sapüru thaqhañ arup apnaqaña",
     "removeLanguage": "{language} apsuña",
-    "browseMode": "Thaqhañat uñakipaña modo"
+    "browseMode": "Thaqhañat uñakipaña modo",
+    "searchingInLanguage": "{language} arun jikxatäwinaka"
   },
   "HeroPlayer": {
     "playWithSound": "Jichhax uñch’ukiña",

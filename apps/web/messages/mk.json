@@ -179,7 +179,8 @@
     "clearSearch": "Исчисти пребарување",
     "changeAudioLanguage": "Промени јазик на аудио",
     "home": "Почетна страница на JesusFilm",
-    "closeSearch": "Затвори пребарување"
+    "closeSearch": "Затвори пребарување",
+    "submitSearch": "Пребарај"
   },
   "SearchOverlay": {
     "dialogLabel": "Пребарувај и прелистувај видеа",
@@ -205,19 +206,21 @@
     "searchLanguageLabel": "Јазик за пребарување",
     "allLanguages": "Сите јазици",
     "searchSuggestions": "Предлози за пребарување",
+    "directMatches": "Директни совпаѓања",
     "languages": "Јазици",
     "recommendedLanguage": "Препорачан јазик",
-    "searchSuggestion": "Пребарај {suggestion}",
-    "searchSuggestionWithLanguage": "Пребарај {suggestion} на {language}",
+    "searchSuggestion": "Пребарај: „{suggestion}“",
+    "searchSuggestionWithLanguage": "Пребарај на {language}: „{suggestion}“",
     "inLanguage": "на {language}",
     "browseByRegion": "Прелистувај по регион",
     "clearLanguages": "Исчисти",
     "queryLanguageDetected": "Детектиран е {language}",
-    "searchInLanguage": "Пребарај на {language}",
+    "searchInLanguage": "Пребарувај на {language}",
     "tryDifferentKeywordsOrLanguage": "Обидете се со други клучни зборови или изберете друг јазик за пребарување",
     "useWebsiteDefaultLanguage": "Користи стандарден јазик за пребарување на веб-локацијата",
     "removeLanguage": "Отстрани {language}",
-    "browseMode": "Режим на прелистување за пребарување"
+    "browseMode": "Режим на прелистување за пребарување",
+    "searchingInLanguage": "Прикажани се резултати на {language}"
   },
   "HeroPlayer": {
     "playWithSound": "Гледај сега",

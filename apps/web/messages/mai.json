@@ -179,7 +179,8 @@
     "clearSearch": "खोज साफ करू",
     "changeAudioLanguage": "ऑडियो भाषा बदलू",
     "home": "JesusFilm होम",
-    "closeSearch": "खोज बन्द करू"
+    "closeSearch": "खोज बन्द करू",
+    "submitSearch": "खोजू"
   },
   "SearchOverlay": {
     "dialogLabel": "वीडियो खोजू आ ब्राउज़ करू",
@@ -204,11 +205,12 @@
     "categoryChristmas": "क्रिसमस",
     "searchLanguageLabel": "खोज भाषा",
     "allLanguages": "सभ भाषा",
-    "searchSuggestions": "खोज सुझाव",
+    "searchSuggestions": "खोजक सुझाव सभ",
+    "directMatches": "सीधा मेल खाइत परिणाम",
     "languages": "भाषा सभ",
     "recommendedLanguage": "सुझाओल भाषा",
-    "searchSuggestion": "{suggestion} खोजू",
-    "searchSuggestionWithLanguage": "{language} मे {suggestion} खोजू",
+    "searchSuggestion": "“{suggestion}” खोजू",
+    "searchSuggestionWithLanguage": "{language} मे “{suggestion}” खोजू",
     "inLanguage": "{language} मे",
     "browseByRegion": "क्षेत्र अनुसार ब्राउज़ करू",
     "clearLanguages": "साफ करू",
@@ -217,7 +219,8 @@
     "tryDifferentKeywordsOrLanguage": "अलग कीवर्ड आजमाउ वा दोसर खोज भाषा चुनू",
     "useWebsiteDefaultLanguage": "वेबसाइटक डिफ़ॉल्ट खोज भाषा उपयोग करू",
     "removeLanguage": "{language} हटाउ",
-    "browseMode": "ब्राउज़ मोडमे खोज"
+    "browseMode": "ब्राउज़ मोडमे खोज",
+    "searchingInLanguage": "{language} मे परिणाम"
   },
   "HeroPlayer": {
     "playWithSound": "अहिने देखू",

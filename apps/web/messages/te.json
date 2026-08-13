@@ -179,7 +179,8 @@
     "clearSearch": "శోధనను క్లియర్ చేయండి",
     "changeAudioLanguage": "ఆడియో భాషను మార్చండి",
     "home": "JesusFilm హోమ్",
-    "closeSearch": "శోధనను మూసివేయండి"
+    "closeSearch": "శోధనను మూసివేయండి",
+    "submitSearch": "శోధించండి"
   },
   "SearchOverlay": {
     "dialogLabel": "వీడియోలను శోధించి బ్రౌజ్ చేయండి",
@@ -205,19 +206,21 @@
     "searchLanguageLabel": "శోధన భాష",
     "allLanguages": "అన్ని భాషలు",
     "searchSuggestions": "శోధన సూచనలు",
+    "directMatches": "నేరుగా సరిపోలినవి",
     "languages": "భాషలు",
     "recommendedLanguage": "సిఫార్సు చేసిన భాష",
-    "searchSuggestion": "{suggestion} శోధించండి",
-    "searchSuggestionWithLanguage": "{language} లో {suggestion} శోధించండి",
+    "searchSuggestion": "{suggestion} కోసం శోధించండి",
+    "searchSuggestionWithLanguage": "{language}లో “{suggestion}” కోసం శోధించండి",
     "inLanguage": "{language} లో",
     "browseByRegion": "ప్రాంతం వారీగా బ్రౌజ్ చేయండి",
     "clearLanguages": "తొలగించు",
     "queryLanguageDetected": "{language} గుర్తించబడింది",
-    "searchInLanguage": "{language} లో శోధించండి",
+    "searchInLanguage": "{language}లో శోధించండి",
     "tryDifferentKeywordsOrLanguage": "వేరే కీవర్డ్స్ ప్రయత్నించండి లేదా మరో శోధన భాషను ఎంచుకోండి",
     "useWebsiteDefaultLanguage": "వెబ్‌సైట్ డిఫాల్ట్ శోధన భాషను ఉపయోగించండి",
     "removeLanguage": "{language} తీసివేయండి",
-    "browseMode": "శోధన బ్రౌజ్ మోడ్"
+    "browseMode": "శోధన బ్రౌజ్ మోడ్",
+    "searchingInLanguage": "ఫలితాలు {language}లో మాత్రమే"
   },
   "HeroPlayer": {
     "playWithSound": "ఇప్పుడే చూడండి",

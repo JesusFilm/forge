@@ -179,7 +179,8 @@
     "clearSearch": "Tijikib'äx ruto'ik",
     "changeAudioLanguage": "Tijäl ruk'ux ri ch'ab'äl audio",
     "home": "JesusFilm ruxaq alaxik",
-    "closeSearch": "Titz'apïx kanöxik"
+    "closeSearch": "Titz'apïx kanöxik",
+    "submitSearch": "Tikanöx"
   },
   "SearchOverlay": {
     "dialogLabel": "Tikanöx chuqa' tapeq videos",
@@ -204,11 +205,12 @@
     "categoryChristmas": "Navidad",
     "searchLanguageLabel": "Tikanöx ch'ab'äl",
     "allLanguages": "Konojel ch'ab'äl",
-    "searchSuggestions": "Taq rutz'etik kanöxik",
+    "searchSuggestions": "Taq chilab'enïk richin kanöxik",
+    "directMatches": "Jikïl nütz'ik",
     "languages": "Ch'ab'äl",
     "recommendedLanguage": "Ch'ab'äl ri nitz'aqatisäx",
     "searchSuggestion": "Tikanöx {suggestion}",
-    "searchSuggestionWithLanguage": "Tikanöx {suggestion} pa {language}",
+    "searchSuggestionWithLanguage": "Tikanöx “{suggestion}” pa {language}",
     "inLanguage": "pa {language}",
     "browseByRegion": "Tanik'oj ruma región",
     "clearLanguages": "Tijikïx",
@@ -217,7 +219,8 @@
     "tryDifferentKeywordsOrLanguage": "Tajin ch'aqa' chik keywords o tacha' jun chik ch'ab'äl richin kanöxik",
     "useWebsiteDefaultLanguage": "Tawokisaj ri ri q'atal ch'ab'äl richin ri web",
     "removeLanguage": "Tijikïx {language}",
-    "browseMode": "Ruwäch kanöxik"
+    "browseMode": "Ruwäch kanöxik",
+    "searchingInLanguage": "Resultados pa {language}"
   },
   "HeroPlayer": {
     "playWithSound": "Tatz'eta' wakami",

@@ -280,6 +280,9 @@ export const env = createEnv({
     FIREWORKS_EMBEDDING_MODEL: z.string().min(1).optional(),
     FIREWORKS_EMBEDDING_BASE_URL: z.string().url().optional(),
     QUERY_EMBEDDING_PROVIDER: z.enum(["openrouter", "fireworks"]).optional(),
+    TYPESENSE_HOST: z.string().url().optional(),
+    TYPESENSE_API_KEY: z.string().min(1).optional(),
+    WATCH_SEARCH_SUGGESTIONS_ENABLED: z.enum(["true", "false"]).optional(),
     OPENROUTER_IMAGE_TEXT_MODEL: z.string().min(1).optional(),
     OPENROUTER_IMAGE_TEXT_MODELS: z.string().min(1).optional(),
     OPENAI_API_KEY: z.string().min(1).optional(),
@@ -733,6 +736,11 @@ export const env = createEnv({
     ),
     QUERY_EMBEDDING_PROVIDER: emptyToUndefined(
       process.env.QUERY_EMBEDDING_PROVIDER,
+    ),
+    TYPESENSE_HOST: emptyToUndefined(process.env.TYPESENSE_HOST),
+    TYPESENSE_API_KEY: emptyToUndefined(process.env.TYPESENSE_API_KEY),
+    WATCH_SEARCH_SUGGESTIONS_ENABLED: emptyToUndefined(
+      process.env.WATCH_SEARCH_SUGGESTIONS_ENABLED,
     ),
     OPENROUTER_IMAGE_TEXT_MODEL: emptyToUndefined(
       process.env.OPENROUTER_IMAGE_TEXT_MODEL,

@@ -179,7 +179,8 @@
     "clearSearch": "Culuma na vakasaqaqara",
     "changeAudioLanguage": "Veisautaka na vagalalataka ni domo",
     "home": "Tabana levu ni JesusFilm",
-    "closeSearch": "Tauri na vakasaqaqara"
+    "closeSearch": "Tauri na vakasaqaqara",
+    "submitSearch": "Vakasaqara"
   },
   "SearchOverlay": {
     "dialogLabel": "Vakasaqara ka vakadikeva na vidio",
@@ -204,20 +205,22 @@
     "categoryChristmas": "Kirisimasi",
     "searchLanguageLabel": "Vakasaqaqara na vosa",
     "allLanguages": "Vosa kece",
-    "searchSuggestions": "Vakasaqaqara iDusidusi",
+    "searchSuggestions": "Vakatutu ni ka me vakasaqarai",
+    "directMatches": "Veika e veiganiti sara",
     "languages": "Vosa",
     "recommendedLanguage": "Vosa e vakaturi",
-    "searchSuggestion": "Vakasaqara {suggestion}",
-    "searchSuggestionWithLanguage": "Vakasaqara {suggestion} ena {language}",
+    "searchSuggestion": "Vakasaqara “{suggestion}”",
+    "searchSuggestionWithLanguage": "Vakasaqara ena vosa: {language} — “{suggestion}”",
     "inLanguage": "ena {language}",
     "browseByRegion": "Vakadikeva ena vanua",
     "clearLanguages": "Culuma",
     "queryLanguageDetected": "Sa kilai na {language}",
-    "searchInLanguage": "Vakasaqara ena {language}",
+    "searchInLanguage": "Vakasaqara ena vosa: {language}",
     "tryDifferentKeywordsOrLanguage": "Tovolea eso tale na vosa bibi se digitaka e dua tale na vosa ni vakasaqaqara",
     "useWebsiteDefaultLanguage": "Vakayagataka na vosa ni vakasaqaqara ni mataveilawa vakataki-kina",
     "removeLanguage": "Kauta tani {language}",
-    "browseMode": "iVakarau ni vakadikevi ni vakasaqaqara"
+    "browseMode": "iVakarau ni vakadikevi ni vakasaqaqara",
+    "searchingInLanguage": "Na macala ena vosa: {language}"
   },
   "HeroPlayer": {
     "playWithSound": "Raica oqo",

@@ -179,7 +179,8 @@
     "clearSearch": "Гъарун кьатӏ",
     "changeAudioLanguage": "Аудио чӏал эгечӏ",
     "home": "JesusFilm ксар",
-    "closeSearch": "Гъарун кьепь"
+    "closeSearch": "Гъарун кьепь",
+    "submitSearch": "Гъарун"
   },
   "SearchOverlay": {
     "dialogLabel": "Видеолар гъарун ва къарагъун",
@@ -204,20 +205,22 @@
     "categoryChristmas": "Рождество",
     "searchLanguageLabel": "Чӏал гъарун",
     "allLanguages": "Гьар са чӏал",
-    "searchSuggestions": "Гъарундан суал",
+    "searchSuggestions": "Гъарун патал теклифлар",
+    "directMatches": "Дуьз кьадайбур",
     "languages": "Чӏалар",
     "recommendedLanguage": "Тавсия авун чӏал",
-    "searchSuggestion": "{suggestion} гъарун",
-    "searchSuggestionWithLanguage": "{suggestion} {language}-да гъарун",
+    "searchSuggestion": "«{suggestion}» гъарун",
+    "searchSuggestionWithLanguage": "«{suggestion}» {language} чӏалал гъарун",
     "inLanguage": "{language}-да",
     "browseByRegion": "Региондалди къарагъ",
     "clearLanguages": "Кьатӏ",
     "queryLanguageDetected": "{language} таб хьана",
-    "searchInLanguage": "{language}-да гъарун",
+    "searchInLanguage": "{language} чӏалал гъарун",
     "tryDifferentKeywordsOrLanguage": "Эхирин гьарфар я са цӏийи гъарун чӏал кьабул",
     "useWebsiteDefaultLanguage": "Сайтдин асла чӏалдалди гъарун",
     "removeLanguage": "{language} хьунун",
-    "browseMode": "Гъарун режим"
+    "browseMode": "Гъарун режим",
+    "searchingInLanguage": "{language} чӏалал натижаяр"
   },
   "HeroPlayer": {
     "playWithSound": "Азиздик къарагъун",

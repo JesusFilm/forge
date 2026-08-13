@@ -179,7 +179,8 @@
     "clearSearch": "Phumula nyakišišo",
     "changeAudioLanguage": "Fetola leleme la modumo",
     "home": "Letlakala la gae la JesusFilm",
-    "closeSearch": "Tswalela nyakišišo"
+    "closeSearch": "Tswalela nyakišišo",
+    "submitSearch": "Batla"
   },
   "SearchOverlay": {
     "dialogLabel": "Nyaka le go phetla dibidio",
@@ -204,20 +205,22 @@
     "categoryChristmas": "Krismose",
     "searchLanguageLabel": "Leleme la nyakišišo",
     "allLanguages": "Maleme ka moka",
-    "searchSuggestions": "Ditšhišinyo tša nyakišišo",
+    "searchSuggestions": "Dikakantsho tsa go batla",
+    "directMatches": "Tse di nyalanang ka tlhamalalo",
     "languages": "Maleme",
     "recommendedLanguage": "Leleme leo le eletšwago",
-    "searchSuggestion": "Nyaka {suggestion}",
-    "searchSuggestionWithLanguage": "Nyaka {suggestion} ka {language}",
+    "searchSuggestion": "Batla {suggestion}",
+    "searchSuggestionWithLanguage": "Batla “{suggestion}” ka {language}",
     "inLanguage": "ka {language}",
     "browseByRegion": "Phetla ka selete",
     "clearLanguages": "Phumula",
     "queryLanguageDetected": "{language} e lemogilwe",
-    "searchInLanguage": "Nyaka ka {language}",
+    "searchInLanguage": "Batla ka {language}",
     "tryDifferentKeywordsOrLanguage": "Leka mantšu a mangwe goba o kgethe leleme le lengwe la nyakišišo",
     "useWebsiteDefaultLanguage": "Šomiša leleme la nyakišišo la motheo la weposaete",
     "removeLanguage": "Tloša {language}",
-    "browseMode": "Mokgwa wa go phetla nyakišišo"
+    "browseMode": "Mokgwa wa go phetla nyakišišo",
+    "searchingInLanguage": "Dipholo ka {language}"
   },
   "HeroPlayer": {
     "playWithSound": "Bogela bjale",

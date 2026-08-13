@@ -179,7 +179,8 @@
     "clearSearch": "Far seetlu bi",
     "changeAudioLanguage": "Soppi làkku audio bi",
     "home": "Kër Jesus Film Project",
-    "closeSearch": "Tëj seetlu bi"
+    "closeSearch": "Tëj seetlu bi",
+    "submitSearch": "Seet"
   },
   "SearchOverlay": {
     "dialogLabel": "Seet te gëstu wideo yi",
@@ -204,11 +205,12 @@
     "categoryChristmas": "Noël",
     "searchLanguageLabel": "Seet làkk",
     "allLanguages": "Làkk yépp",
-    "searchSuggestions": "Aar bu seetlu",
+    "searchSuggestions": "Tegtal yu seetlu",
+    "directMatches": "Yi méngoo ci saa si",
     "languages": "Làkk yi",
     "recommendedLanguage": "Làkk bu ñu jàngal",
     "searchSuggestion": "Seet {suggestion}",
-    "searchSuggestionWithLanguage": "Seet {suggestion} ci {language}",
+    "searchSuggestionWithLanguage": "Seet «{suggestion}» ci {language}",
     "inLanguage": "ci {language}",
     "browseByRegion": "Gëstu ci reew",
     "clearLanguages": "Far",
@@ -217,7 +219,8 @@
     "tryDifferentKeywordsOrLanguage": "Jéemaatal ak baat yu wuute walla tann beneen làkk bu seetlu",
     "useWebsiteDefaultLanguage": "Jëfandikoo làkk bu ñu def ci sit bi",
     "removeLanguage": "Faj {language}",
-    "browseMode": "Modu gëstu seet"
+    "browseMode": "Modu gëstu seet",
+    "searchingInLanguage": "Njureefu seetlu yi ci {language}"
   },
   "HeroPlayer": {
     "playWithSound": "Seet léegi",

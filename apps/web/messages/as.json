@@ -179,7 +179,8 @@
     "clearSearch": "সন্ধান মচক",
     "changeAudioLanguage": "অডিঅ’ ভাষা সলনি কৰক",
     "home": "JesusFilm হোম",
-    "closeSearch": "সন্ধান বন্ধ কৰক"
+    "closeSearch": "সন্ধান বন্ধ কৰক",
+    "submitSearch": "সন্ধান কৰক"
   },
   "SearchOverlay": {
     "dialogLabel": "ভিডিঅ’ সন্ধান আৰু ব্ৰাউজ কৰক",
@@ -204,11 +205,12 @@
     "categoryChristmas": "খ্ৰীষ্টমাছ",
     "searchLanguageLabel": "সন্ধানৰ ভাষা",
     "allLanguages": "সকলো ভাষা",
-    "searchSuggestions": "সন্ধান পৰামৰ্শ",
+    "searchSuggestions": "সন্ধানৰ পৰামৰ্শসমূহ",
+    "directMatches": "পোনপটীয়া মিল",
     "languages": "ভাষাসমূহ",
     "recommendedLanguage": "পৰামৰ্শিত ভাষা",
-    "searchSuggestion": "{suggestion} সন্ধান কৰক",
-    "searchSuggestionWithLanguage": "{language} ভাষাত {suggestion} সন্ধান কৰক",
+    "searchSuggestion": "“{suggestion}” সন্ধান কৰক",
+    "searchSuggestionWithLanguage": "{language} ভাষাত “{suggestion}” সন্ধান কৰক",
     "inLanguage": "{language} ভাষাত",
     "browseByRegion": "অঞ্চল অনুসৰি ব্ৰাউজ কৰক",
     "clearLanguages": "মচক",
@@ -217,7 +219,8 @@
     "tryDifferentKeywordsOrLanguage": "অন্য কীৱৰ্ড চেষ্টা কৰক বা আন এটা সন্ধান ভাষা বাছক",
     "useWebsiteDefaultLanguage": "ৱেবছাইটৰ ডিফ’ল্ট সন্ধান ভাষা ব্যৱহাৰ কৰক",
     "removeLanguage": "{language} আঁতৰাওক",
-    "browseMode": "ব্ৰাউজ সন্ধান ম’ড"
+    "browseMode": "ব্ৰাউজ সন্ধান ম’ড",
+    "searchingInLanguage": "{language} ভাষাৰ ফলাফল"
   },
   "HeroPlayer": {
     "playWithSound": "এতিয়া চাওক",

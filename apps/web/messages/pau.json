@@ -179,7 +179,8 @@
     "clearSearch": "Mekoreor a search",
     "changeAudioLanguage": "Mesecher a audio language",
     "home": "Blil a JesusFilm",
-    "closeSearch": "Moes a search"
+    "closeSearch": "Moes a search",
+    "submitSearch": "Meses"
   },
   "SearchOverlay": {
     "dialogLabel": "Meses mar a browse a videos",
@@ -204,11 +205,12 @@
     "categoryChristmas": "Kismas",
     "searchLanguageLabel": "Meses a language",
     "allLanguages": "Languages rokui",
-    "searchSuggestions": "Omesik er a Search",
+    "searchSuggestions": "A tekoi el omesik el meses",
+    "directMatches": "A results el osisiu",
     "languages": "Tekoi",
     "recommendedLanguage": "Language el omesik",
-    "searchSuggestion": "Meses {suggestion}",
-    "searchSuggestionWithLanguage": "Meses {suggestion} er a {language}",
+    "searchSuggestion": "Meses er a {suggestion}",
+    "searchSuggestionWithLanguage": "Meses er a \"{suggestion}\" er a {language}",
     "inLanguage": "er a {language}",
     "browseByRegion": "Browse er a region",
     "clearLanguages": "Mekoreor",
@@ -217,7 +219,8 @@
     "tryDifferentKeywordsOrLanguage": "Onger a keywords el dmoel ke omeked a language el ngii a dmoel",
     "useWebsiteDefaultLanguage": "Onger a website default search language",
     "removeLanguage": "Mesek {language}",
-    "browseMode": "Browse mode er a search"
+    "browseMode": "Browse mode er a search",
+    "searchingInLanguage": "A results er a {language}"
   },
   "HeroPlayer": {
     "playWithSound": "Omes ngii",

@@ -118,15 +118,10 @@ describe("myWatchProgress", () => {
     })
   })
 
-  it("denies anonymous, consumer-bearer, and web-user callers at the scope-auth gate", async () => {
+  it("denies anonymous, consumer-bearer, and workflow callers at the scope-auth gate", async () => {
     const deniedPrincipals: Array<Principal | null> = [
       null,
       { id: null, role: "CONSUMER_BEARER", rateLimitBucketKey: "consumer" },
-      {
-        id: "auth-user-9",
-        role: "WEB_USER",
-        rateLimitBucketKey: "auth-user-9",
-      },
       { id: null, role: "WORKFLOW_TRIGGER" },
     ]
     for (const user of deniedPrincipals) {
@@ -135,6 +130,28 @@ describe("myWatchProgress", () => {
       ).rejects.toThrow(/not authorized/i)
     }
     expect(listWatchProgress).not.toHaveBeenCalled()
+  })
+
+  it("resolves for a WEB_USER with that principal's own subject (feat-322 TV merge)", async () => {
+    // TV device-grant tokens introspect as WEB_USER; the own-data grant
+    // means this caller reads exactly their own rows — the userId must be
+    // the principal's verified subject, never an argument.
+    listWatchProgress.mockResolvedValueOnce([])
+
+    await queryField("myWatchProgress").resolve(
+      null,
+      {},
+      {
+        user: {
+          id: "tv-user-7",
+          role: "WEB_USER",
+          rateLimitBucketKey: "tv-user-7",
+        },
+      },
+      {},
+    )
+
+    expect(listWatchProgress).toHaveBeenCalledWith({ userId: "tv-user-7" })
   })
 })
 

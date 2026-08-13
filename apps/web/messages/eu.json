@@ -179,7 +179,8 @@
     "clearSearch": "Garbitu bilaketa",
     "changeAudioLanguage": "Aldatu audio-hizkuntza",
     "home": "JesusFilm hasiera",
-    "closeSearch": "Itxi bilaketa"
+    "closeSearch": "Itxi bilaketa",
+    "submitSearch": "Bilatu"
   },
   "SearchOverlay": {
     "dialogLabel": "Bilatu eta arakatu bideoak",
@@ -205,10 +206,11 @@
     "searchLanguageLabel": "Bilaketa-hizkuntza",
     "allLanguages": "Hizkuntza guztiak",
     "searchSuggestions": "Bilaketa-iradokizunak",
+    "directMatches": "Bat-etortze zuzena",
     "languages": "Hizkuntzak",
     "recommendedLanguage": "Gomendatutako hizkuntza",
-    "searchSuggestion": "Bilatu {suggestion}",
-    "searchSuggestionWithLanguage": "Bilatu {suggestion} {language} hizkuntzan",
+    "searchSuggestion": "Bilatu «{suggestion}»",
+    "searchSuggestionWithLanguage": "Bilatu «{suggestion}» {language} hizkuntzan",
     "inLanguage": "{language} hizkuntzan",
     "browseByRegion": "Arakatu eskualdearen arabera",
     "clearLanguages": "Garbitu",
@@ -217,7 +219,8 @@
     "tryDifferentKeywordsOrLanguage": "Saiatu gako-hitz desberdinekin edo aukeratu beste bilaketa-hizkuntza bat",
     "useWebsiteDefaultLanguage": "Erabili webgunearen bilaketa-hizkuntza lehenetsia",
     "removeLanguage": "Kendu {language}",
-    "browseMode": "Bilaketa-arakatze modua"
+    "browseMode": "Bilaketa-arakatze modua",
+    "searchingInLanguage": "Emaitzak {language} hizkuntzan"
   },
   "HeroPlayer": {
     "playWithSound": "Ikusi orain",

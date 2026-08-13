@@ -179,7 +179,8 @@
     "clearSearch": "Betg pli tschertgar",
     "changeAudioLanguage": "Midar la lingua d'audio",
     "home": "Pagina principala da JesusFilm",
-    "closeSearch": "Serrar la tschertga"
+    "closeSearch": "Serrar la tschertga",
+    "submitSearch": "Tschertgar"
   },
   "SearchOverlay": {
     "dialogLabel": "Tschertgar e navigar tras videos",
@@ -205,10 +206,11 @@
     "searchLanguageLabel": "Lingua da tschertga",
     "allLanguages": "Tut las linguas",
     "searchSuggestions": "Propostas da tschertga",
+    "directMatches": "Resultats directs",
     "languages": "Linguas",
     "recommendedLanguage": "Lingua recumandada",
-    "searchSuggestion": "Tschertgar {suggestion}",
-    "searchSuggestionWithLanguage": "Tschertgar {suggestion} en {language}",
+    "searchSuggestion": "Tschertgar «{suggestion}»",
+    "searchSuggestionWithLanguage": "Tschertgar «{suggestion}» en {language}",
     "inLanguage": "en {language}",
     "browseByRegion": "Navigar tenor regiun",
     "clearLanguages": "Sfurzar",
@@ -217,7 +219,8 @@
     "tryDifferentKeywordsOrLanguage": "Empruvai auters pleds clav u tschernai ina autra lingua da tschertga",
     "useWebsiteDefaultLanguage": "Utilisar la lingua da tschertga predefinida dal website",
     "removeLanguage": "Allontanar {language}",
-    "browseMode": "Modus da navigaziun da tschertga"
+    "browseMode": "Modus da navigaziun da tschertga",
+    "searchingInLanguage": "Resultats en {language}"
   },
   "HeroPlayer": {
     "playWithSound": "Guardar ussa",

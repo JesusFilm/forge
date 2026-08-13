@@ -179,7 +179,8 @@
     "clearSearch": "Қидирувни тозалаш",
     "changeAudioLanguage": "Овоз тилини ўзгартириш",
     "home": "JesusFilm бош саҳифаси",
-    "closeSearch": "Қидирувни ёпиш"
+    "closeSearch": "Қидирувни ёпиш",
+    "submitSearch": "Қидириш"
   },
   "SearchOverlay": {
     "dialogLabel": "Видеоларни қидириш ва кўриб чиқиш",
@@ -205,10 +206,11 @@
     "searchLanguageLabel": "Қидирув тили",
     "allLanguages": "Барча тиллар",
     "searchSuggestions": "Қидирув таклифлари",
+    "directMatches": "Мос келган натижалар",
     "languages": "Тиллар",
     "recommendedLanguage": "Тавсия этилган тил",
-    "searchSuggestion": "{suggestion} ни қидириш",
-    "searchSuggestionWithLanguage": "{language} тилида {suggestion} ни қидириш",
+    "searchSuggestion": "«{suggestion}»ни қидириш",
+    "searchSuggestionWithLanguage": "{language} тилида «{suggestion}»ни қидириш",
     "inLanguage": "{language} тилида",
     "browseByRegion": "Ҳудуд бўйича кўриш",
     "clearLanguages": "Тозалаш",
@@ -217,7 +219,8 @@
     "tryDifferentKeywordsOrLanguage": "Бошқа калит сўзларни синаб кўринг ёки бошқа қидирув тилини танланг",
     "useWebsiteDefaultLanguage": "Сайтнинг стандарт қидирув тилидан фойдаланиш",
     "removeLanguage": "{language} ни олиб ташлаш",
-    "browseMode": "Кўриш қидирув режими"
+    "browseMode": "Кўриш қидирув режими",
+    "searchingInLanguage": "{language} тилидаги натижалар"
   },
   "HeroPlayer": {
     "playWithSound": "Ҳозир кўриш",

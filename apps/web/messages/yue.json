@@ -179,7 +179,8 @@
     "clearSearch": "清除搜尋",
     "changeAudioLanguage": "更改音訊語言",
     "home": "JesusFilm 首頁",
-    "closeSearch": "關閉搜尋"
+    "closeSearch": "關閉搜尋",
+    "submitSearch": "搜尋"
   },
   "SearchOverlay": {
     "dialogLabel": "搜尋及瀏覽影片",
@@ -205,10 +206,11 @@
     "searchLanguageLabel": "搜尋語言",
     "allLanguages": "所有語言",
     "searchSuggestions": "搜尋建議",
+    "directMatches": "直接相符結果",
     "languages": "語言",
     "recommendedLanguage": "推薦語言",
-    "searchSuggestion": "搜尋 {suggestion}",
-    "searchSuggestionWithLanguage": "喺 {language} 搜尋 {suggestion}",
+    "searchSuggestion": "搜尋「{suggestion}」",
+    "searchSuggestionWithLanguage": "以 {language} 搜尋「{suggestion}」",
     "inLanguage": "以 {language}",
     "browseByRegion": "按地區瀏覽",
     "clearLanguages": "清除",
@@ -217,7 +219,8 @@
     "tryDifferentKeywordsOrLanguage": "試吓其他關鍵字，或者揀另一種搜尋語言",
     "useWebsiteDefaultLanguage": "使用網站預設搜尋語言",
     "removeLanguage": "移除 {language}",
-    "browseMode": "搜尋瀏覽模式"
+    "browseMode": "搜尋瀏覽模式",
+    "searchingInLanguage": "搜尋結果只限 {language}"
   },
   "HeroPlayer": {
     "playWithSound": "立即觀看",

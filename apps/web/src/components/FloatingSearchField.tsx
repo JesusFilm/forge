@@ -5,19 +5,14 @@ import {
   useLayoutEffect,
   type ChangeEventHandler,
   type ComponentProps,
+  type FormEvent,
   type MouseEventHandler,
   type RefObject,
 } from "react"
-import { Search } from "lucide-react"
+import { CornerDownLeft, Search } from "lucide-react"
 import { useTranslations } from "next-intl"
 
 import { GLASS_OUTLINE_CLASS } from "@/lib/glass-outline"
-
-function iconClassName(variant: "glass" | "solid") {
-  return variant === "solid"
-    ? "h-6 w-6 shrink-0 text-stone-950"
-    : "h-6 w-6 shrink-0 text-white/85 transition-colors duration-300 group-hover:text-stone-950"
-}
 
 const FIELD_BASE_CLASS = `group flex h-[52px] min-w-0 cursor-text items-center gap-3 rounded-[35px] px-6 py-3 text-left shadow-xl ${GLASS_OUTLINE_CLASS} transition-[top,opacity,background-color,color] duration-300 ease-out focus-visible:outline-2 focus-visible:outline-white/80 focus-visible:outline-offset-2`
 
@@ -75,7 +70,7 @@ export function FloatingSearchFieldButton({
       <Search
         aria-hidden
         data-testid={iconTestId}
-        className={iconClassName("glass")}
+        className="h-6 w-6 shrink-0 text-white/85 transition-colors duration-300 group-hover:text-stone-950"
       />
       {mobileDisplay ? (
         <>
@@ -94,51 +89,89 @@ export const FloatingSearchFieldInput = forwardRef<
   {
     value: string
     onChange: ChangeEventHandler<HTMLInputElement>
+    onSubmit: (query: string) => void
     onClear?: MouseEventHandler<HTMLButtonElement>
     wrapperClassName?: string
     inputClassName?: string
     iconTestId?: string
-  } & Omit<ComponentProps<"input">, "className" | "onChange" | "value">
+    showSubmitButton?: boolean
+  } & Omit<
+    ComponentProps<"input">,
+    "className" | "enterKeyHint" | "onChange" | "onSubmit" | "type" | "value"
+  >
 >(function FloatingSearchFieldInput(
   {
     value,
     onChange,
+    onSubmit,
     onClear,
     wrapperClassName,
     inputClassName,
     iconTestId = "floating-search-input-icon",
+    showSubmitButton = true,
     ...props
   },
   ref,
 ) {
   const t = useTranslations("FloatingSearch")
   const hasValue = value.trim().length > 0
+  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    if (!hasValue) return
+    onSubmit(value)
+  }
 
   return (
-    <div
+    <form
       role="search"
       aria-label={t("searchRegion")}
-      className={`${FIELD_BASE_CLASS} ${FIELD_SOLID_CLASS} ${wrapperClassName ?? ""}`}
+      onSubmit={handleSubmit}
+      className={`${FIELD_BASE_CLASS} ${FIELD_SOLID_CLASS} !gap-1 !px-2 !py-1 ${wrapperClassName ?? ""}`}
     >
-      <Search
-        aria-hidden
-        data-testid={iconTestId}
-        className={iconClassName("solid")}
-      />
+      <span className="inline-flex h-11 w-10 shrink-0 items-center justify-center text-stone-400 max-[359px]:w-0 max-[359px]:overflow-hidden">
+        <Search
+          aria-hidden
+          data-testid={iconTestId}
+          className="h-5 w-5 shrink-0"
+        />
+      </span>
       <input
         ref={ref}
-        type="text"
+        type="search"
+        enterKeyHint="search"
         value={value}
         onChange={onChange}
-        className={`min-w-0 flex-1 cursor-text bg-transparent text-base text-stone-950 outline-none placeholder:text-stone-500 ${inputClassName ?? ""}`}
+        className={`min-w-0 flex-1 cursor-text appearance-none bg-transparent text-base text-stone-950 outline-none placeholder:text-stone-500 [&::-webkit-search-cancel-button]:appearance-none ${inputClassName ?? ""}`}
         {...props}
       />
+      {showSubmitButton ? (
+        <button
+          type="submit"
+          aria-label={t("submitSearch")}
+          aria-hidden={!hasValue}
+          disabled={!hasValue}
+          tabIndex={hasValue ? 0 : -1}
+          className={`inline-flex h-11 shrink-0 cursor-pointer items-center justify-center gap-1.5 rounded-xl border border-stone-300 bg-transparent text-stone-600 transition-[width,opacity,padding,background-color,border-color,color,transform] duration-200 hover:border-stone-400 hover:bg-stone-950/5 hover:text-stone-950 active:scale-95 focus-visible:outline-2 focus-visible:outline-stone-950/50 focus-visible:outline-offset-2 ${
+            hasValue
+              ? "min-w-11 px-3 opacity-100"
+              : "w-0 overflow-hidden px-0 opacity-0"
+          }`}
+        >
+          <CornerDownLeft aria-hidden className="h-5 w-5 shrink-0" />
+          <span
+            aria-hidden
+            className="max-w-[6ch] truncate whitespace-nowrap text-sm font-medium sm:max-w-none"
+          >
+            {t("submitSearch")}
+          </span>
+        </button>
+      ) : null}
       {hasValue && onClear ? (
         <button
           type="button"
           onClick={onClear}
           aria-label={t("clearSearch")}
-          className="-mr-2 inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-full text-stone-500 transition hover:text-stone-950 focus-visible:outline-2 focus-visible:outline-stone-950/50 focus-visible:outline-offset-2"
+          className="inline-flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-full text-stone-500 transition hover:bg-stone-950/5 hover:text-stone-950 focus-visible:outline-2 focus-visible:outline-stone-950/50 focus-visible:outline-offset-2"
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -156,6 +189,6 @@ export const FloatingSearchFieldInput = forwardRef<
           </svg>
         </button>
       ) : null}
-    </div>
+    </form>
   )
 })

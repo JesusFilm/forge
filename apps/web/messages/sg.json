@@ -179,7 +179,8 @@
     "clearSearch": "Longola boluki",
     "changeAudioLanguage": "Bongola monoko ya mongongo",
     "home": "Ndako ya JesusFilm",
-    "closeSearch": "Kanga boluki"
+    "closeSearch": "Kanga boluki",
+    "submitSearch": "Gi"
   },
   "SearchOverlay": {
     "dialogLabel": "Luka mpe tala bavideo",
@@ -204,20 +205,22 @@
     "categoryChristmas": "Noeli",
     "searchLanguageLabel": "Luka monoko",
     "allLanguages": "Minoko nyonso",
-    "searchSuggestions": "Mayebisi ya boluki",
+    "searchSuggestions": "Atene so a lingbi gi",
+    "directMatches": "Aye so alingbi mbilimbili",
     "languages": "Minoko",
     "recommendedLanguage": "Monoko oyo epesameli",
-    "searchSuggestion": "Luka {suggestion}",
-    "searchSuggestionWithLanguage": "Luka {suggestion} na {language}",
+    "searchSuggestion": "Gi «{suggestion}»",
+    "searchSuggestionWithLanguage": "Gi «{suggestion}» na yanga: {language}",
     "inLanguage": "na {language}",
     "browseByRegion": "Tala na etuka",
     "clearLanguages": "Longola",
     "queryLanguageDetected": "{language} ezwami",
-    "searchInLanguage": "Luka na {language}",
+    "searchInLanguage": "Gi na yanga: {language}",
     "tryDifferentKeywordsOrLanguage": "Meka maloba mosusu to pona monoko mosusu ya boluki",
     "useWebsiteDefaultLanguage": "Salela monoko ya boluki ya ndenge nyonso ya site",
     "removeLanguage": "Longola {language}",
-    "browseMode": "Mode ya kotala boluki"
+    "browseMode": "Mode ya kotala boluki",
+    "searchingInLanguage": "Aye so awara na yanga: {language}"
   },
   "HeroPlayer": {
     "playWithSound": "Tala sikoyo",

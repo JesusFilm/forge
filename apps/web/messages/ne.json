@@ -179,7 +179,8 @@
     "clearSearch": "खोज खाली गर्नुहोस्",
     "changeAudioLanguage": "अडियो भाषा परिवर्तन गर्नुहोस्",
     "home": "JesusFilm गृहपृष्ठ",
-    "closeSearch": "खोज बन्द गर्नुहोस्"
+    "closeSearch": "खोज बन्द गर्नुहोस्",
+    "submitSearch": "खोज्नुहोस्"
   },
   "SearchOverlay": {
     "dialogLabel": "भिडियो खोज्नुहोस् र हेर्नुहोस्",
@@ -205,10 +206,11 @@
     "searchLanguageLabel": "खोज भाषा",
     "allLanguages": "सबै भाषाहरू",
     "searchSuggestions": "खोज सुझावहरू",
+    "directMatches": "ठ्याक्कै मिल्ने नतिजा",
     "languages": "भाषाहरू",
     "recommendedLanguage": "सिफारिस गरिएको भाषा",
-    "searchSuggestion": "{suggestion} खोज्नुहोस्",
-    "searchSuggestionWithLanguage": "{language} मा {suggestion} खोज्नुहोस्",
+    "searchSuggestion": "“{suggestion}” खोज्नुहोस्",
+    "searchSuggestionWithLanguage": "{language} मा “{suggestion}” खोज्नुहोस्",
     "inLanguage": "{language} मा",
     "browseByRegion": "क्षेत्रअनुसार ब्राउज गर्नुहोस्",
     "clearLanguages": "खाली गर्नुहोस्",
@@ -217,7 +219,8 @@
     "tryDifferentKeywordsOrLanguage": "अर्का किवर्डहरू प्रयास गर्नुहोस् वा अर्को खोज भाषा छान्नुहोस्",
     "useWebsiteDefaultLanguage": "वेबसाइटको पूर्वनिर्धारित खोज भाषा प्रयोग गर्नुहोस्",
     "removeLanguage": "{language} हटाउनुहोस्",
-    "browseMode": "ब्राउज खोज मोड"
+    "browseMode": "ब्राउज खोज मोड",
+    "searchingInLanguage": "{language} का नतिजाहरू"
   },
   "HeroPlayer": {
     "playWithSound": "अहिले हेर्नुहोस्",

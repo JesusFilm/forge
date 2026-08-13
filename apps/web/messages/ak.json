@@ -179,7 +179,8 @@
     "clearSearch": "Yi search no fi hɔ",
     "changeAudioLanguage": "Sesa kasa a wɔde kasa no",
     "home": "JesusFilm fie",
-    "closeSearch": "Ka search no mu"
+    "closeSearch": "Ka search no mu",
+    "submitSearch": "Hwehwɛ"
   },
   "SearchOverlay": {
     "dialogLabel": "Hwehwɛ na hwehwɛ videos mu",
@@ -204,11 +205,12 @@
     "categoryChristmas": "Kristmas",
     "searchLanguageLabel": "Hwehwɛ kasa",
     "allLanguages": "Kasa nyinaa",
-    "searchSuggestions": "Search nyansahyɛ",
+    "searchSuggestions": "Nsɛm a wɔkamfo sɛ hwehwɛ",
+    "directMatches": "Nea ɛhyia pɛpɛɛpɛ",
     "languages": "Kasa ahorow",
     "recommendedLanguage": "Kasa a wɔkamfo kyerɛ",
     "searchSuggestion": "Hwehwɛ {suggestion}",
-    "searchSuggestionWithLanguage": "Hwehwɛ {suggestion} wɔ {language} mu",
+    "searchSuggestionWithLanguage": "Hwehwɛ “{suggestion}” wɔ {language} mu",
     "inLanguage": "wɔ {language} mu",
     "browseByRegion": "Hwehwɛ denam mantam so",
     "clearLanguages": "Yi fi hɔ",
@@ -217,7 +219,8 @@
     "tryDifferentKeywordsOrLanguage": "Sɔ kasamu foforo anaa paw search kasa foforo",
     "useWebsiteDefaultLanguage": "Fa website no default search kasa di dwuma",
     "removeLanguage": "Yi {language} fi hɔ",
-    "browseMode": "Search a wɔde hwehwɛ mu no"
+    "browseMode": "Search a wɔde hwehwɛ mu no",
+    "searchingInLanguage": "Nea wɔahu wɔ {language} mu"
   },
   "HeroPlayer": {
     "playWithSound": "Hwɛ seesei",

@@ -179,7 +179,8 @@
     "clearSearch": "Æрхæссын æфæлдис",
     "changeAudioLanguage": "Аудио æвзаг æрхæсс",
     "home": "JesusFilm æрмæст",
-    "closeSearch": "Æрхæссын сæйгæ"
+    "closeSearch": "Æрхæссын сæйгæ",
+    "submitSearch": "Æрхæсс"
   },
   "SearchOverlay": {
     "dialogLabel": "Видео æрхæсс æмæ куыд æрхæсс",
@@ -204,20 +205,22 @@
     "categoryChristmas": "Къуырисæр",
     "searchLanguageLabel": "Æвзаг æрхæсс",
     "allLanguages": "Æппæт æвзæгтæ",
-    "searchSuggestions": "Æрхæссын æмæстæгтæ",
+    "searchSuggestions": "Æрхæссын фæндтæ",
+    "directMatches": "Раст æмæстæг",
     "languages": "Æвзæгтæ",
     "recommendedLanguage": "Рекомендæг æвзаг",
-    "searchSuggestion": "Æрхæсс {suggestion}",
-    "searchSuggestionWithLanguage": "Æрхæсс {suggestion} {language} æвзагмæ",
+    "searchSuggestion": "«{suggestion}» æрхæсс",
+    "searchSuggestionWithLanguage": "{language} æвзагыл «{suggestion}» æрхæсс",
     "inLanguage": "{language} æвзагмæ",
     "browseByRegion": "Регионæй æрхæсс",
     "clearLanguages": "Æфæлдис",
     "queryLanguageDetected": "{language} æмæст",
-    "searchInLanguage": "{language} æвзагмæ æрхæсс",
+    "searchInLanguage": "{language} æвзагыл æрхæсс",
     "tryDifferentKeywordsOrLanguage": "Æнæ фыццæгæн æмæстæгтæ æмæу æнæ фидæр æвзаг сæвæрд",
     "useWebsiteDefaultLanguage": "Сайтйы æрмæст æвзаг æрхæсс",
     "removeLanguage": "{language} æфтæ",
-    "browseMode": "Æрхæссын режим"
+    "browseMode": "Æрхæссын режим",
+    "searchingInLanguage": "Æмæстæгтæ {language} æвзагыл"
   },
   "HeroPlayer": {
     "playWithSound": "Æрмæст уæд æххæст",

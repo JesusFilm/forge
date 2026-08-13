@@ -1,6 +1,7 @@
 ---
 title: "Preserve canonical language identity and ranking precision in Watch search"
 date: "2026-07-23"
+last_updated: "2026-08-10"
 category: "logic-errors"
 module: "apps/web and apps/admin Watch search"
 problem_type: "logic_error"
@@ -64,7 +65,33 @@ const displayLocale =
   "en"
 ```
 
-### 2. Rank with an explicit lexicographic tuple
+### 2. Keep Admin language selectors canonical
+
+For private Admin selectors, apply the same boundary rule in the form itself:
+show a friendly language name and BCP-47 tag, but submit only the unique
+`Language.slug`. The comparison page now builds its selector from active
+Language rows and uses the slug as each option value
+(`apps/admin/src/services/watch-search-language-options.service.ts:55-89`,
+`apps/admin/src/app/dashboard/search/compare/watch-search-comparison.tsx:238-251`).
+
+Cache the display catalog, not submit-time authority. The option list uses a
+bounded five-minute cache, while each explicit submission re-queries the active
+Language row and derives its current BCP-47 value on the server
+(`apps/admin/src/services/watch-search-language-options.service.ts:92-127`). If
+the catalog cannot load, the private page keeps the blank Auto-detect option. If
+an explicit slug is unknown or cannot be resolved, the action rejects the
+comparison instead of silently changing the evaluator's intent to Auto-detect
+(`apps/admin/src/app/dashboard/search/compare/page.tsx:12-30`,
+`apps/admin/src/app/dashboard/search/compare/comparison-actions.ts:85-127`).
+
+This selector is isolated to `/dashboard/search/compare`; it does not change
+the normal Admin search analytics page or the public Watch request path. A
+representative 2,300-option render is also guarded below 300 KB so the private
+tool has a rendered-payload regression budget at the current expected catalog
+scale
+(`apps/admin/src/app/dashboard/search/compare/page.test.tsx:89-100`).
+
+### 3. Rank with an explicit lexicographic tuple
 
 The final comparator now expresses product intent directly:
 
@@ -96,6 +123,11 @@ Regression tests prove `en` and `english` produce the same canonical target and 
 
 - Give every language-bearing field one declared semantic type: canonical product slug, BCP-47 locale, or raw header. Convert only at an owned boundary.
 - Make ambiguous BCP-47 matches fail closed instead of choosing the first Language row.
+- In language selectors, submit one canonical slug and derive locale metadata
+  at the server boundary; never let the browser author a slug/BCP-47 pair.
+- Cache catalog discovery separately from authoritative submit-time resolution.
+- Keep private evaluator controls scoped to their private route and guard large
+  data-derived option lists with a rendered-payload budget.
 - Keep ranking policy as named comparator keys in priority order. Do not encode categorical product rules only as additive boosts.
 - Sort on full-precision internal values and round only the response or observability projection.
 - Test equivalence classes across boundaries (`en` versus `english`) and adversarial ordering cases where rounded values tie.
@@ -105,6 +137,8 @@ Regression tests prove `en` and `english` produce the same canonical target and 
 
 - [Key language identity on the unique slug, not BCP-47](../best-practices/language-identity-on-slug-not-bcp47-20260605.md)
 - [Admin Watch search production rollout checklist](../best-practices/admin-watch-search-production-rollout-20260720.md)
+- [Derive prototype and internal-tool enumerations from canonical data](../best-practices/prototype-defaults-vs-data-derived-enumeration-20260422.md)
+- [Verify page-load performance for frontend changes](../conventions/frontend-change-page-load-performance-verification.md)
 - [Stable Admin search dub hydration ordering](../database-issues/stable-admin-search-dub-hydration-ordering.md)
 - [Admin hybrid search R4 pattern](../platform/admin-hybrid-search-r4-pattern.md)
 - `docs/plans/2026-07-22-001-fix-watch-search-language-ranking-plan.md`

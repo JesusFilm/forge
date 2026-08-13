@@ -179,7 +179,8 @@
     "clearSearch": "Search къыхэ",
     "changeAudioLanguage": "Audio language къыщызэIэт",
     "home": "JesusFilm ипэ бзылъфыгъэ",
-    "closeSearch": "Search къыхэ"
+    "closeSearch": "Search къыхэ",
+    "submitSearch": "Лъыхъу"
   },
   "SearchOverlay": {
     "dialogLabel": "Videos search е browse",
@@ -204,20 +205,22 @@
     "categoryChristmas": "Къристмас",
     "searchLanguageLabel": "Search бзэ",
     "allLanguages": "Languages зыри",
-    "searchSuggestions": "Search-м и гущыIэхэр",
+    "searchSuggestions": "Лъыхъоныгъэм и къэӏущӏыкӏхэр",
+    "directMatches": "Зэхэфэу щытхэр",
     "languages": "Бзэхэр",
     "recommendedLanguage": "Бзэ къыпщыIу",
-    "searchSuggestion": "{suggestion} къыжьыжьы",
-    "searchSuggestionWithLanguage": "{language}-м {suggestion} къыжьыжьы",
+    "searchSuggestion": "«{suggestion}» лъыхъу",
+    "searchSuggestionWithLanguage": "{language}-мкӏэ «{suggestion}» лъыхъу",
     "inLanguage": "{language}-м",
     "browseByRegion": "Region-м къыжьыбжь",
     "clearLanguages": "Къыхэ",
     "queryLanguageDetected": "{language} къызэIэщт",
-    "searchInLanguage": "{language}-м къыжьыжьы",
+    "searchInLanguage": "{language}-мкӏэ лъыхъу",
     "tryDifferentKeywordsOrLanguage": "Keywords зышIыкIэу е language зымыбжьэу къыбжь",
     "useWebsiteDefaultLanguage": "Website default search language къыплъэкIэ",
     "removeLanguage": "{language} къыхэ",
-    "browseMode": "Search къыжьыбжьыным и режим"
+    "browseMode": "Search къыжьыбжьыным и режим",
+    "searchingInLanguage": "Къэгъотыгъохэр {language}-мкӏэ"
   },
   "HeroPlayer": {
     "playWithSound": "Ары къыщыбжь",

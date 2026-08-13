@@ -179,7 +179,8 @@
     "clearSearch": "Эҙләүҙе таҙартыу",
     "changeAudioLanguage": "Аудио телен үҙгәртеү",
     "home": "JesusFilm баш бите",
-    "closeSearch": "Эҙләүҙе ябыу"
+    "closeSearch": "Эҙләүҙе ябыу",
+    "submitSearch": "Эҙләү"
   },
   "SearchOverlay": {
     "dialogLabel": "Видеоларҙы эҙләү һәм ҡарау",
@@ -204,11 +205,12 @@
     "categoryChristmas": "Раштыуа",
     "searchLanguageLabel": "Эҙләү теле",
     "allLanguages": "Бөтә телдәр",
-    "searchSuggestions": "Эҙләү өсөн тәҡдимдәр",
+    "searchSuggestions": "Эҙләү тәҡдимдәре",
+    "directMatches": "Тура тап килгәндәр",
     "languages": "Телдәр",
     "recommendedLanguage": "Тәҡдим ителгән тел",
-    "searchSuggestion": "{suggestion} эҙләү",
-    "searchSuggestionWithLanguage": "{language} телендә {suggestion} эҙләү",
+    "searchSuggestion": "{suggestion} буйынса эҙләү",
+    "searchSuggestionWithLanguage": "{language} телендә «{suggestion}» буйынса эҙләү",
     "inLanguage": "{language} телендә",
     "browseByRegion": "Төбәк буйынса ҡарау",
     "clearLanguages": "Таҙартыу",
@@ -217,7 +219,8 @@
     "tryDifferentKeywordsOrLanguage": "Башҡа төп һүҙҙәрҙе һынағыҙ йәки башҡа эҙләү телен һайлағыҙ",
     "useWebsiteDefaultLanguage": "Сайттың ғәҙәти эҙләү телен ҡулланыу",
     "removeLanguage": "{language} телен алып ташлау",
-    "browseMode": "Эҙләп ҡарау режимы"
+    "browseMode": "Эҙләп ҡарау режимы",
+    "searchingInLanguage": "Һөҙөмтәләр: {language} телендә"
   },
   "HeroPlayer": {
     "playWithSound": "Хәҙер ҡарағыҙ",

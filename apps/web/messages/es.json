@@ -179,7 +179,8 @@
     "clearSearch": "Borrar búsqueda",
     "changeAudioLanguage": "Cambiar idioma de audio",
     "home": "Inicio de JesusFilm",
-    "closeSearch": "Cerrar búsqueda"
+    "closeSearch": "Cerrar búsqueda",
+    "submitSearch": "Buscar"
   },
   "SearchOverlay": {
     "dialogLabel": "Buscar y explorar videos",
@@ -205,10 +206,11 @@
     "searchLanguageLabel": "Idioma de búsqueda",
     "allLanguages": "Todos los idiomas",
     "searchSuggestions": "Sugerencias de búsqueda",
+    "directMatches": "Coincidencias directas",
     "languages": "Idiomas",
     "recommendedLanguage": "Idioma recomendado",
-    "searchSuggestion": "Buscar {suggestion}",
-    "searchSuggestionWithLanguage": "Buscar {suggestion} en {language}",
+    "searchSuggestion": "Buscar «{suggestion}»",
+    "searchSuggestionWithLanguage": "Buscar «{suggestion}» en {language}",
     "inLanguage": "en {language}",
     "browseByRegion": "Explorar por región",
     "clearLanguages": "Borrar",
@@ -217,7 +219,8 @@
     "tryDifferentKeywordsOrLanguage": "Prueba otras palabras clave o elige otro idioma de búsqueda",
     "useWebsiteDefaultLanguage": "Usar el idioma de búsqueda predeterminado del sitio",
     "removeLanguage": "Eliminar {language}",
-    "browseMode": "Modo de exploración"
+    "browseMode": "Modo de exploración",
+    "searchingInLanguage": "Resultados en {language}"
   },
   "HeroPlayer": {
     "playWithSound": "Ver ahora",

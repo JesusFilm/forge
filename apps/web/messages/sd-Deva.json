@@ -179,7 +179,8 @@
     "clearSearch": "ڳولا صاف ڪريو",
     "changeAudioLanguage": "آڊيو ٻولي تبديل ڪريو",
     "home": "JesusFilm هوم",
-    "closeSearch": "ڳولا بند ڪريو"
+    "closeSearch": "ڳولا بند ڪريو",
+    "submitSearch": "ॻोलियो"
   },
   "SearchOverlay": {
     "dialogLabel": "وڊيوز ڳوليو ۽ براؤز ڪريو",
@@ -204,20 +205,22 @@
     "categoryChristmas": "ڪرسمس",
     "searchLanguageLabel": "ڳولا جي ٻولي",
     "allLanguages": "سڀ ٻوليون",
-    "searchSuggestions": "ڳولا جون تجويزون",
+    "searchSuggestions": "ॻोला जूं तजवीज़ूं",
+    "directMatches": "सिधा मिलंदड़ नतीजा",
     "languages": "ٻوليون",
     "recommendedLanguage": "سفارش ٿيل ٻولي",
-    "searchSuggestion": "{suggestion} ڳوليو",
-    "searchSuggestionWithLanguage": "{suggestion} کي {language} ۾ ڳوليو",
+    "searchSuggestion": "{suggestion} ॻोलियो",
+    "searchSuggestionWithLanguage": "{language} में “{suggestion}” ॻोलियो",
     "inLanguage": "{language} ۾",
     "browseByRegion": "علائقي موجب براؤز ڪريو",
     "clearLanguages": "صاف ڪريو",
     "queryLanguageDetected": "{language} سڃاتي وئي",
-    "searchInLanguage": "{language} ۾ ڳوليو",
+    "searchInLanguage": "{language} में ॻोलियो",
     "tryDifferentKeywordsOrLanguage": "ٻيا ڪي ورڊ آزمايو يا ٻي ڳولا ٻولي چونڊيو",
     "useWebsiteDefaultLanguage": "ويب سائيٽ جي ڊفالٽ ڳولا ٻولي استعمال ڪريو",
     "removeLanguage": "{language} هٽايو",
-    "browseMode": "براؤز سرچ موڊ"
+    "browseMode": "براؤز سرچ موڊ",
+    "searchingInLanguage": "{language} में नतीजा"
   },
   "HeroPlayer": {
     "playWithSound": "هاڻي ڏسو",

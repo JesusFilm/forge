@@ -656,6 +656,203 @@ input ManagerSeoRejectInput {
   version: Int!
 }
 
+type ManagerSeoRunDetail {
+  completedAt: String
+  eligibleCount: Int
+  experimentCount: Int
+  id: ID
+  materializationCount: Int
+  mode: String
+  proposalOutcomes: [ManagerSeoRunProposalOutcome!]
+  proposedCount: Int
+  providerCoverage: JSON
+  reclaimed: Boolean
+  report: ManagerSeoRunReport
+  reportAvailability: String
+  selectedCount: Int
+  startedAt: String
+  status: String
+  suppressedOperations: [String!]
+  ticketCount: Int
+  wouldProposeCount: Int
+}
+
+type ManagerSeoRunGscFilter {
+  dimension: String
+  expression: String
+  operator: String
+}
+
+type ManagerSeoRunGscRequest {
+  capReached: Boolean
+  caveats: [String!]
+  configuredRowCap: Int
+  dataState: String
+  dimensions: [String!]
+  endDate: String
+  filters: [ManagerSeoRunGscFilter!]
+  firstIncompleteDate: String
+  omittedCaveatCount: Int
+  omittedFilterCount: Int
+  pageCount: Int
+  propertyId: String
+  requestCount: Int
+  responseAggregationType: String
+  returnedRowCount: Int
+  searchType: String
+  startDate: String
+  status: String
+  timezone: String
+}
+
+type ManagerSeoRunHumanDecision {
+  action: String
+  actorId: String
+  decidedAt: String
+  reason: String
+}
+
+type ManagerSeoRunLatestEvaluation {
+  kind: String
+  observedAt: String
+  outcome: String
+}
+
+type ManagerSeoRunOutcomeExperiment {
+  id: ID
+  latestEvaluation: ManagerSeoRunLatestEvaluation
+  status: String
+}
+
+type ManagerSeoRunPage {
+  generatedAt: String
+  hasNextPage: Boolean
+  items: [ManagerSeoRunSummary!]
+  nextCursor: String
+}
+
+type ManagerSeoRunProposalOutcome {
+  experiment: ManagerSeoRunOutcomeExperiment
+  humanDecision: ManagerSeoRunHumanDecision
+  materializationStatus: String
+  originatingRunId: ID
+  payloadDigest: String
+  proposalId: ID
+  proposalStatus: String
+  version: Int
+}
+
+type ManagerSeoRunProposalReference {
+  disposition: String
+  originatingRunId: ID
+  payloadDigest: String
+  proposalId: ID
+  version: Int
+}
+
+type ManagerSeoRunProviderCoverage {
+  provider: String
+  status: String
+}
+
+type ManagerSeoRunQueryDecision {
+  canonicalUrl: String
+  clicks: Float
+  ctr: Float
+  impressions: Float
+  locale: String
+  observationId: ID
+  position: Float
+  query: String
+  reason: String
+  score: Float
+  selectionOutcome: String
+  targetId: ID
+}
+
+type ManagerSeoRunQueryFunnel {
+  belowImpressionThresholdRows: Int
+  ctrThresholdNotMetRows: Int
+  malformedRows: Int
+  providerRows: Int
+  rankedRows: Int
+  rejectedQueryRows: Int
+  selectedQueryRows: Int
+  unmatchedTargetRows: Int
+}
+
+union ManagerSeoRunReport = ManagerSeoRunReportAvailable | ManagerSeoRunReportCompacted | ManagerSeoRunReportUnavailable
+
+type ManagerSeoRunReportAvailable {
+  detailState: String
+  eligibleCount: Int
+  generatedAt: String
+  gscRequests: [ManagerSeoRunGscRequest!]
+  observedCount: Int
+  omittedGscRequestCount: Int
+  omittedQueryDecisionCount: Int
+  omittedSkippedTargetCount: Int
+  persistedProposalCount: Int
+  proposalRefs: [ManagerSeoRunProposalReference!]
+  providerCoverage: [ManagerSeoRunProviderCoverage!]
+  queryDecisions: [ManagerSeoRunQueryDecision!]
+  queryFunnel: ManagerSeoRunQueryFunnel
+  schemaVersion: Int
+  selectedCount: Int
+  selectionPolicyId: String
+  skippedTargetIds: [String!]
+  suppressedOperations: [String!]
+  wouldProposeCount: Int
+}
+
+type ManagerSeoRunReportCompacted {
+  compactedAt: String
+  detailExpiresAt: String
+  detailState: String
+  eligibleCount: Int
+  persistedProposalCount: Int
+  proposalRefs: [ManagerSeoRunProposalReference!]
+  providerCoverage: [ManagerSeoRunProviderCoverage!]
+  schemaVersion: Int
+  selectedCount: Int
+  selectionPolicyId: String
+  suppressedOperations: [String!]
+  wouldProposeCount: Int
+}
+
+type ManagerSeoRunReportUnavailable {
+  detailState: String
+  eligibleCount: Int
+  observedCount: Int
+  persistedProposalCount: Int
+  proposalRefs: [ManagerSeoRunProposalReference!]
+  providerCoverage: [ManagerSeoRunProviderCoverage!]
+  schemaVersion: Int
+  selectedCount: Int
+  selectionPolicyId: String
+  suppressedOperations: [String!]
+  wouldProposeCount: Int
+}
+
+type ManagerSeoRunSummary {
+  completedAt: String
+  eligibleCount: Int
+  experimentCount: Int
+  id: ID
+  materializationCount: Int
+  mode: String
+  proposedCount: Int
+  providerCoverage: JSON
+  reclaimed: Boolean
+  reportAvailability: String
+  selectedCount: Int
+  startedAt: String
+  status: String
+  suppressedOperations: [String!]
+  ticketCount: Int
+  wouldProposeCount: Int
+}
+
 input ManagerSeoTicketReconcileInput {
   action: String!
   assertion: String!
@@ -1141,6 +1338,8 @@ type Query {
   managerJobsTotal: Int
   managerLanguageGeo: ManagerLanguageGeo
   managerSeoProposal(id: ID!): ManagerSeoProposal
+  managerSeoRun(id: ID!): ManagerSeoRunDetail
+  managerSeoRuns(after: String, limit: Int = 25): ManagerSeoRunPage!
   managerSeoWorkspace(limit: Int = 50): ManagerSeoWorkspace!
   managerVideoCoverage(languageIds: [String!]): [ManagerVideoCoverage!]
   managerVideosForEnrichment(ids: [String!]!): [ManagerVideoForEnrichment!]
@@ -1215,6 +1414,10 @@ type Query {
   Search Watch content using separated query, target language, display language, evidence, and availability signals.
   """
   watchSearch(input: WatchSearchInput!): WatchSearchResponse
+  """
+  Return bounded language-aware query phrases and direct Watch content matches without running full search.
+  """
+  watchSearchSuggestions(input: WatchSearchSuggestionsInput!): [WatchSearchSuggestion!]
   """
   Per-locale homepage configuration. Replaces Strapi's `watchSetting` (consumer-migration U2, 2026-05-11). Locale-fallback is STRICT NULL.
   """
@@ -2259,6 +2462,32 @@ type WatchSearchResult {
 enum WatchSearchResultType {
   EXPERIENCE
   VIDEO
+}
+
+type WatchSearchSuggestion {
+  childCount: Int
+  description: String
+  id: ID
+  kind: WatchSearchSuggestionKind
+  label: String
+  matchSource: WatchSearchSuggestionMatchSource
+  slug: String
+  title: String
+}
+
+enum WatchSearchSuggestionKind {
+  CONTENT
+  QUERY
+}
+
+enum WatchSearchSuggestionMatchSource {
+  DESCRIPTION
+  TITLE
+}
+
+input WatchSearchSuggestionsInput {
+  languageSlug: String!
+  query: String!
 }
 
 """Per-locale homepage configuration for PUBLIC consumer apps."""

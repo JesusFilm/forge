@@ -179,7 +179,8 @@
     "clearSearch": "I-clear so saliksik",
     "changeAudioLanguage": "Pabalian so lengguahe na audio",
     "home": "Home na JesusFilm",
-    "closeSearch": "Isara so saliksik"
+    "closeSearch": "Isara so saliksik",
+    "submitSearch": "Saliksiken"
   },
   "SearchOverlay": {
     "dialogLabel": "Saliksiken tan liboten so mga video",
@@ -204,11 +205,12 @@
     "categoryChristmas": "Pasko",
     "searchLanguageLabel": "Saliksik a lengguahe",
     "allLanguages": "Lahat a lengguahe",
-    "searchSuggestions": "Mga suhestyon na saliksik",
+    "searchSuggestions": "Mga suhestyon ed saliksik",
+    "directMatches": "Eksakton resulta",
     "languages": "Mga lengguahe",
     "recommendedLanguage": "Inirekomenda a lengguahe",
-    "searchSuggestion": "Saliksiken so {suggestion}",
-    "searchSuggestionWithLanguage": "Saliksiken so {suggestion} ed {language}",
+    "searchSuggestion": "Saliksiken so “{suggestion}”",
+    "searchSuggestionWithLanguage": "Saliksiken ed {language} so “{suggestion}”",
     "inLanguage": "ed {language}",
     "browseByRegion": "Liboten alinsunod ed rehiyon",
     "clearLanguages": "I-clear",
@@ -217,7 +219,8 @@
     "tryDifferentKeywordsOrLanguage": "Suboken so aliwan keyword o pilihen so anto a lengguahe para ed saliksik",
     "useWebsiteDefaultLanguage": "Gamiten so default a lengguahe na saliksik na website",
     "removeLanguage": "Alisen so {language}",
-    "browseMode": "Browse mode na saliksik"
+    "browseMode": "Browse mode na saliksik",
+    "searchingInLanguage": "Mga resulta ed {language}"
   },
   "HeroPlayer": {
     "playWithSound": "Panooren na ngatan",

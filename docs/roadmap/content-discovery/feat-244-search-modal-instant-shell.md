@@ -11,6 +11,7 @@ depends_on:
   - "feat-172"
 blocks:
   - "feat-250"
+  - "feat-336"
 tags:
   - "web"
   - "watch"

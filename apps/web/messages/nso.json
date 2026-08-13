@@ -179,7 +179,8 @@
     "clearSearch": "Phumula nyakišišo",
     "changeAudioLanguage": "Fetola polelo ya modumo",
     "home": "Legae la JesusFilm",
-    "closeSearch": "Tswalela nyakišišo"
+    "closeSearch": "Tswalela nyakišišo",
+    "submitSearch": "Nyaka"
   },
   "SearchOverlay": {
     "dialogLabel": "Nyaka le go phetla divideo",
@@ -204,11 +205,12 @@
     "categoryChristmas": "Keresemose",
     "searchLanguageLabel": "Nyaka polelo",
     "allLanguages": "Dipolelo ka moka",
-    "searchSuggestions": "Ditšhišinyo tša Nyakišišo",
+    "searchSuggestions": "Ditšhišinyo tša nyakišišo",
+    "directMatches": "Dipoelo tše di swanago thwii",
     "languages": "Dipolelo",
     "recommendedLanguage": "Polelo ye e šišintšwego",
     "searchSuggestion": "Nyaka {suggestion}",
-    "searchSuggestionWithLanguage": "Nyaka {suggestion} ka {language}",
+    "searchSuggestionWithLanguage": "Nyaka “{suggestion}” ka {language}",
     "inLanguage": "ka {language}",
     "browseByRegion": "Phetla ka selete",
     "clearLanguages": "Phumula",
@@ -217,7 +219,8 @@
     "tryDifferentKeywordsOrLanguage": "Leka mantšu a mangwe goba o kgethe polelo ye nngwe ya go nyaka",
     "useWebsiteDefaultLanguage": "Diriša polelo ya go nyaka ya sefala ka tlwaelo",
     "removeLanguage": "Tloša {language}",
-    "browseMode": "Mokgwa wa go phetla nyakišišo"
+    "browseMode": "Mokgwa wa go phetla nyakišišo",
+    "searchingInLanguage": "Dipoelo ka {language}"
   },
   "HeroPlayer": {
     "playWithSound": "Bogela bjale",

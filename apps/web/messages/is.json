@@ -179,7 +179,8 @@
     "clearSearch": "Hreinsa leit",
     "changeAudioLanguage": "Breyta tungumáli hljóðs",
     "home": "Forsíða JesusFilm",
-    "closeSearch": "Loka leit"
+    "closeSearch": "Loka leit",
+    "submitSearch": "Leita"
   },
   "SearchOverlay": {
     "dialogLabel": "Leita og fletta í myndböndum",
@@ -205,19 +206,21 @@
     "searchLanguageLabel": "Leitartungumál",
     "allLanguages": "Öll tungumál",
     "searchSuggestions": "Leitartillögur",
+    "directMatches": "Nákvæmar samsvaranir",
     "languages": "Tungumál",
     "recommendedLanguage": "Mælt tungumál",
     "searchSuggestion": "Leita að {suggestion}",
-    "searchSuggestionWithLanguage": "Leita að {suggestion} á {language}",
+    "searchSuggestionWithLanguage": "Leita að „{suggestion}“ á völdu tungumáli: {language}",
     "inLanguage": "á {language}",
     "browseByRegion": "Fletta eftir svæði",
     "clearLanguages": "Hreinsa",
     "queryLanguageDetected": "{language} greint",
-    "searchInLanguage": "Leita á {language}",
+    "searchInLanguage": "Leita á völdu tungumáli: {language}",
     "tryDifferentKeywordsOrLanguage": "Reyndu önnur leitarorð eða veldu annað leitartungumál",
     "useWebsiteDefaultLanguage": "Nota sjálfgefið leitartungumál vefsvæðis",
     "removeLanguage": "Fjarlægja {language}",
-    "browseMode": "Vafurleit"
+    "browseMode": "Vafurleit",
+    "searchingInLanguage": "Niðurstöður á völdu tungumáli: {language}"
   },
   "HeroPlayer": {
     "playWithSound": "Horfa núna",

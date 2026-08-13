@@ -1,5 +1,6 @@
 import {
   classifyDeleteFailure,
+  decidePostReauth,
   outcomeFromDeleteResult,
 } from "../accountDeletion"
 
@@ -42,5 +43,69 @@ describe("outcomeFromDeleteResult", () => {
     expect(outcomeFromDeleteResult({ error: { message: "boom" } })).toEqual({
       status: "error",
     })
+  })
+})
+
+describe("decidePostReauth (KTD5)", () => {
+  it("a cancelled sheet returns quietly to needsReauth", () => {
+    // Same ids on purpose: success here would retry, so only the
+    // cancelled branch can produce this result.
+    expect(
+      decidePostReauth({
+        capturedUserId: "user-a",
+        outcome: "cancelled",
+        signedInUserId: "user-a",
+      }),
+    ).toBe("needs-reauth")
+  })
+
+  it("a retryable sign-in failure keeps needsReauth with the sign-in message", () => {
+    expect(
+      decidePostReauth({
+        capturedUserId: "user-a",
+        outcome: "error",
+        signedInUserId: "user-a",
+      }),
+    ).toBe("needs-reauth-sign-in-failed")
+  })
+
+  it("the same subject signed in again — retry the deletion (AE4)", () => {
+    expect(
+      decidePostReauth({
+        capturedUserId: "user-a",
+        outcome: "success",
+        signedInUserId: "user-a",
+      }),
+    ).toBe("retry-deletion")
+  })
+
+  it("a different subject signed in — non-destructive wrong-account (AE7)", () => {
+    expect(
+      decidePostReauth({
+        capturedUserId: "user-a",
+        outcome: "success",
+        signedInUserId: "user-b",
+      }),
+    ).toBe("wrong-account")
+  })
+
+  it("success with no signed-in snapshot cannot verify identity — sign-in failed", () => {
+    expect(
+      decidePostReauth({
+        capturedUserId: "user-a",
+        outcome: "success",
+        signedInUserId: null,
+      }),
+    ).toBe("needs-reauth-sign-in-failed")
+  })
+
+  it("an uncaptured subject never authorizes a retry", () => {
+    expect(
+      decidePostReauth({
+        capturedUserId: null,
+        outcome: "success",
+        signedInUserId: "user-a",
+      }),
+    ).toBe("wrong-account")
   })
 })

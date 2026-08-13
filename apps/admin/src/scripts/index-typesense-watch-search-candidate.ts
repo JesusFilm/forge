@@ -12,6 +12,7 @@ import {
   type CandidateGenerationState,
   TypesenseWatchSearchCandidateGenerationService,
 } from "@/services/typesense-watch-search-candidate-generation"
+import { candidateWatchSearchApplicationRevision } from "@/services/typesense-watch-search-candidate-identity"
 import {
   buildTypesenseWatchCandidateProjectionSnapshot,
   type TypesenseWatchCandidateProjectionSnapshot,
@@ -599,7 +600,7 @@ async function main(argv: readonly string[] = process.argv.slice(2)) {
       typesense,
       generations,
       generationId: requiredEnv("WATCH_SEARCH_CANDIDATE_GENERATION_ID"),
-      applicationRevision: requiredEnv("APPLICATION_REVISION"),
+      applicationRevision: candidateWatchSearchApplicationRevision(),
       sourceEpoch: requiredEnv("WATCH_SEARCH_CANDIDATE_SOURCE_EPOCH"),
       transcript: {
         collection: requiredEnv("WATCH_SEARCH_TRANSCRIPT_COLLECTION"),

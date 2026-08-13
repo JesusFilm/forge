@@ -179,7 +179,8 @@
     "clearSearch": "Thuthani ṱhoḓisiso",
     "changeAudioLanguage": "Shandukisani luambo lwa mudumo",
     "home": "Muhuri wa JesusFilm",
-    "closeSearch": "Valani ṱhoḓisiso"
+    "closeSearch": "Valani ṱhoḓisiso",
+    "submitSearch": "Ṱolani"
   },
   "SearchOverlay": {
     "dialogLabel": "Ṱolani na u browse video",
@@ -204,11 +205,12 @@
     "categoryChristmas": "Keresemusi",
     "searchLanguageLabel": "Luambo lwa u ṱola",
     "allLanguages": "Luambo lwoṱhe",
-    "searchSuggestions": "Mbonalo dza ṱhoḓisiso",
+    "searchSuggestions": "Nyeletshedzo dza ṱhoḓisiso",
+    "directMatches": "Zwi fanaho kokotolo",
     "languages": "Luambo",
     "recommendedLanguage": "Luambo lu gudiswaho",
     "searchSuggestion": "Ṱolani {suggestion}",
-    "searchSuggestionWithLanguage": "Ṱolani {suggestion} kha {language}",
+    "searchSuggestionWithLanguage": "Ṱolani “{suggestion}” kha {language}",
     "inLanguage": "kha {language}",
     "browseByRegion": "Ṱolangani nga tshiṱiriki",
     "clearLanguages": "Thuthani",
@@ -217,7 +219,8 @@
     "tryDifferentKeywordsOrLanguage": "Lingedzani maipfi a fhiraho kana nange iṅwe luambo lwa u ṱola",
     "useWebsiteDefaultLanguage": "Shumisani luambo lwa u ṱola lwa website nga default",
     "removeLanguage": "Bvisani {language}",
-    "browseMode": "Mode ya u browse ṱhoḓisiso"
+    "browseMode": "Mode ya u browse ṱhoḓisiso",
+    "searchingInLanguage": "Mvelelo dzi kha {language}"
   },
   "HeroPlayer": {
     "playWithSound": "Lavhelani zwino",

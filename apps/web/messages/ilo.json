@@ -179,7 +179,8 @@
     "clearSearch": "Buriasen ti panagsapul",
     "changeAudioLanguage": "Sukatan ti pagsasao ti audio",
     "home": "Balay ti JesusFilm",
-    "closeSearch": "Isarda ti panagsapul"
+    "closeSearch": "Isarda ti panagsapul",
+    "submitSearch": "Sapulen"
   },
   "SearchOverlay": {
     "dialogLabel": "Sapulen ken agsukisok kadagiti video",
@@ -204,20 +205,22 @@
     "categoryChristmas": "Paskua",
     "searchLanguageLabel": "Pagsasao ti panagsapul",
     "allLanguages": "Amin a pagsasao",
-    "searchSuggestions": "Dagiti suhestyon ti panagsapul",
+    "searchSuggestions": "Dagiti singasing iti panagsapul",
+    "directMatches": "Dagiti direkta a katupag",
     "languages": "Dagiti pagsasao",
     "recommendedLanguage": "Naidalan a pagsasao",
-    "searchSuggestion": "Sapulen ti {suggestion}",
-    "searchSuggestionWithLanguage": "Sapulen ti {suggestion} idiay {language}",
+    "searchSuggestion": "Sapulen: {suggestion}",
+    "searchSuggestionWithLanguage": "Sapulen iti {language}: “{suggestion}”",
     "inLanguage": "iti {language}",
     "browseByRegion": "Agsukisok babaen iti rehion",
     "clearLanguages": "Buriasen",
     "queryLanguageDetected": "Naduktalan ti {language}",
-    "searchInLanguage": "Sapulen iti {language}",
+    "searchInLanguage": "Agsapul iti {language}",
     "tryDifferentKeywordsOrLanguage": "Subuken dagiti sabali a keyword wenno pumili ti sabali a pagsasao ti panagsapul",
     "useWebsiteDefaultLanguage": "Usaren ti default a pagsasao ti panagsapul ti website",
     "removeLanguage": "Ikkaten {language}",
-    "browseMode": "Mode ti panagsapul ken panagsukisok"
+    "browseMode": "Mode ti panagsapul ken panagsukisok",
+    "searchingInLanguage": "Dagiti resulta iti {language}"
   },
   "HeroPlayer": {
     "playWithSound": "Kitaen ita",

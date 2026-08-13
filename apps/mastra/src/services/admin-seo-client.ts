@@ -7,9 +7,14 @@ import {
   type SeoWorkloadCapability,
 } from "./admin-seo-assertion"
 import { minimizeSeoValue } from "./seo-data-minimization"
-import { digestSeoValue, seoProposalPayload } from "./seo-digest"
+import {
+  digestSeoProposalPayload,
+  digestSeoValue,
+  seoPersistenceProposalPayload,
+} from "./seo-digest"
 import type { SeoEvidenceObservation } from "./seo-evidence"
 import { classifySeoHttpStatus, readSeoJson, validateSeoUrl } from "./seo-http"
+import { SeoRunReportSchema } from "./seo-run-report"
 
 const DigestSchema = z.string().regex(/^[a-f0-9]{64}$/u)
 const BoundedIdSchema = z.string().trim().min(1).max(191)
@@ -102,23 +107,6 @@ const AdminProposalSchema = z
   })
   .strict()
 
-export const SeoRunReportSchema = z
-  .object({
-    eligibleCount: z.number().int().nonnegative(),
-    observedCount: z.number().int().nonnegative(),
-    selectedCount: z.number().int().nonnegative(),
-    wouldProposeCount: z.number().int().nonnegative(),
-    persistedProposalCount: z.number().int().nonnegative(),
-    providerCoverage: z.record(
-      z.string(),
-      z.enum(["available", "partial", "unavailable"]),
-    ),
-    skippedTargetIds: z.array(z.string()).max(10_000),
-    suppressedOperations: z.array(z.string()).max(100),
-  })
-  .strict()
-export type SeoRunReport = z.infer<typeof SeoRunReportSchema>
-
 const CompleteRunRequestSchema = z
   .object({
     action: z.literal("complete_run"),
@@ -127,7 +115,7 @@ const CompleteRunRequestSchema = z
     claimToken: BoundedIdSchema,
     status: z.enum(["completed", "partial", "failed"]),
     providerCoverage: z.unknown().default({}),
-    report: z.unknown().default({}),
+    report: SeoRunReportSchema,
     eligibleCount: z.number().int().nonnegative().default(0),
     selectedCount: z.number().int().nonnegative().default(0),
     wouldProposeCount: z.number().int().nonnegative().default(0),
@@ -393,8 +381,8 @@ export function toAdminSeoProposal(
   proposal: SeoProposal,
   now = new Date(),
 ): z.infer<typeof AdminProposalSchema> {
-  const immutablePayload = seoProposalPayload(proposal)
-  const immutablePayloadDigest = digestSeoValue(immutablePayload)
+  const immutablePayload = seoPersistenceProposalPayload(proposal)
+  const immutablePayloadDigest = digestSeoProposalPayload(proposal)
   const common = {
     proposalId: proposal.proposalId,
     version: 1,

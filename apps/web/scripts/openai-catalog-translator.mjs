@@ -85,6 +85,12 @@ function messageContractError(key, source, value) {
   ) {
     return `Plural substitution marker missing: ${key}`
   }
+  if (
+    key === "SearchOverlay.searchingInLanguage" &&
+    /(?:\.{3}|…)[\s\p{P}]*$/u.test(value)
+  ) {
+    return `Completed-results status must not look like loading copy: ${key}`
+  }
   return null
 }
 
@@ -99,7 +105,38 @@ function isSourceEquivalent(source, value) {
   return sourceComparable(source) === sourceComparable(value)
 }
 
-function validateTranslation(sourceMessages, translations, minimumChangeRatio) {
+const SCRIPT_PROPERTY_BY_SUBTAG = {
+  Arab: "Arabic",
+  Cyrl: "Cyrillic",
+  Deva: "Devanagari",
+  Latn: "Latin",
+  Mong: "Mongolian",
+}
+
+function explicitScriptContractError(locale, translations) {
+  const explicitScript = new Intl.Locale(locale).script
+  const scriptProperty = SCRIPT_PROPERTY_BY_SUBTAG[explicitScript]
+  if (!scriptProperty) return null
+
+  const expectedScript = new RegExp(`\\p{Script=${scriptProperty}}`, "gu")
+  for (const [key, value] of Object.entries(translations)) {
+    const prose = value.replace(/\{[^{}]+\}/gu, "")
+    const letters = prose.match(/\p{L}/gu) ?? []
+    if (letters.length === 0) continue
+    const expectedLetters = prose.match(expectedScript)?.length ?? 0
+    if (expectedLetters / letters.length < 0.5) {
+      return `Explicit ${explicitScript} script mismatch: ${key}`
+    }
+  }
+  return null
+}
+
+function validateTranslation(
+  sourceMessages,
+  translations,
+  minimumChangeRatio,
+  locale,
+) {
   if (!Array.isArray(translations)) {
     throw new TranslationApiError(
       "INVALID_TRANSLATION_RESPONSE",
@@ -147,6 +184,14 @@ function validateTranslation(sourceMessages, translations, minimumChangeRatio) {
     if (error) {
       throw new TranslationApiError("TRANSLATION_CONTRACT_MISMATCH", error)
     }
+  }
+
+  const scriptError = explicitScriptContractError(
+    locale,
+    Object.fromEntries(translated),
+  )
+  if (scriptError) {
+    throw new TranslationApiError("TRANSLATION_SCRIPT_MISMATCH", scriptError)
   }
 
   const changedMessages = Object.entries(sourceMessages).filter(
@@ -218,6 +263,13 @@ function buildUserPrompt({ locale, inventoryEntry, messages, references }) {
       contextualInstructions: [
         "Translate only the message values; return dotted keys unchanged.",
         "Headings, buttons, aria labels, errors, metadata, and promotional copy should fit their named UI context.",
+        "Prioritize natural native-language interface writing over similarity to English. Translate the intended action or state, not the English syntax. Reorder concepts, change parts of speech, split clauses, and use idiomatic target-language patterns whenever that reads more naturally.",
+        "Do not preserve English punctuation, capitalization, quotation style, or word order unless those conventions are also natural in the target language.",
+        "SearchOverlay.searchSuggestions is a heading above proposed search phrases. SearchOverlay.directMatches is a heading above matching videos, scenes, and collections.",
+        "SearchOverlay.searchSuggestionWithLanguage is a clickable action that immediately searches for {suggestion} in {language}; use natural action wording, not disconnected field labels.",
+        "SearchOverlay.searchInLanguage names the language scope before a query is submitted. SearchOverlay.searchingInLanguage is a static scope label shown after results have loaded. Translate it with the meaning 'Results are scoped to {language}'. It must not say that a search is active, loading, or in progress, and must not end with an ellipsis.",
+        "The {language} value in these SearchOverlay messages is an interactive UI chip. Write the surrounding sentence according to target-language grammar. Case particles, postpositions, and other grammatical material may immediately precede or follow the placeholder and will render outside the clickable chip. Never rename or alter the placeholder token itself.",
+        "When the language name itself must inflect internally, use a construction natural to the target language that accepts a citation-form language name, unless the supplied reference already demonstrates a runtime contextual form. Do not fall back to disconnected English-style labels merely to avoid target-language grammar.",
         "Existing non-English reference translations show preferred terminology; do not rewrite them.",
       ],
       existingReferenceTranslations: references,
@@ -405,6 +457,7 @@ async function requestTranslations({
           messages,
           parsed.translations,
           minimumChangeRatio,
+          locale,
         ),
         usage: useResponsesApi
           ? {
@@ -428,6 +481,8 @@ async function requestTranslations({
 }
 
 export {
+  buildUserPrompt,
+  explicitScriptContractError,
   isSourceEquivalent,
   messageContractError,
   PermanentApiError,

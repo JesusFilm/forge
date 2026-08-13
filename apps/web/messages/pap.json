@@ -179,7 +179,8 @@
     "clearSearch": "Kita buskeda limpi",
     "changeAudioLanguage": "Muda idioma di audio",
     "home": "Página prome di JesusFilm",
-    "closeSearch": "Sera buskeda"
+    "closeSearch": "Sera buskeda",
+    "submitSearch": "Buska"
   },
   "SearchOverlay": {
     "dialogLabel": "Buska i eksplora video",
@@ -205,10 +206,11 @@
     "searchLanguageLabel": "Buska idioma",
     "allLanguages": "Tur idioma",
     "searchSuggestions": "Sugerensianan di buskeda",
+    "directMatches": "Resultadonan direkto",
     "languages": "Idiomanan",
     "recommendedLanguage": "Idioma rekomendá",
     "searchSuggestion": "Buska {suggestion}",
-    "searchSuggestionWithLanguage": "Buska {suggestion} den {language}",
+    "searchSuggestionWithLanguage": "Buska \"{suggestion}\" den {language}",
     "inLanguage": "den {language}",
     "browseByRegion": "Eksplora segun region",
     "clearLanguages": "Kita",
@@ -217,7 +219,8 @@
     "tryDifferentKeywordsOrLanguage": "Purba otro palabra di buskeda òf skohe un otro idioma pa buska",
     "useWebsiteDefaultLanguage": "Usa idioma di buskeda por defecto di website",
     "removeLanguage": "Kita {language}",
-    "browseMode": "Modo di eksplorashon di buskeda"
+    "browseMode": "Modo di eksplorashon di buskeda",
+    "searchingInLanguage": "Resultadonan den {language}"
   },
   "HeroPlayer": {
     "playWithSound": "Warda aworaki",

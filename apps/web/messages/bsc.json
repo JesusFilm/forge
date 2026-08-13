@@ -179,7 +179,8 @@
     "clearSearch": "Search bɔ",
     "changeAudioLanguage": "Audio language sɛ change",
     "home": "JesusFilm paj akɛ home",
-    "closeSearch": "Search lɛɛ"
+    "closeSearch": "Search lɛɛ",
+    "submitSearch": "Search kɛ"
   },
   "SearchOverlay": {
     "dialogLabel": "Video mɛ search kɛ browse kɛ",
@@ -204,11 +205,12 @@
     "categoryChristmas": "Christmas mɛ",
     "searchLanguageLabel": "Search language yɛ",
     "allLanguages": "Languages mɛ kpa",
-    "searchSuggestions": "Search suggestions mɛ",
+    "searchSuggestions": "Search suggestion mɛ",
+    "directMatches": "Direct result mɛ",
     "languages": "Language mɛ",
     "recommendedLanguage": "Language mɛ kpa",
     "searchSuggestion": "{suggestion} search kɛ",
-    "searchSuggestionWithLanguage": "Search {suggestion} kɛ {language}",
+    "searchSuggestionWithLanguage": "“{suggestion}” {language} kɛ search kɛ",
     "inLanguage": "{language} kɛ",
     "browseByRegion": "Region kɛ browse kɛ",
     "clearLanguages": "Bɔ",
@@ -217,7 +219,8 @@
     "tryDifferentKeywordsOrLanguage": "Keyword mɛ kɛrɛ bɔ search language mɛ kɛɛ",
     "useWebsiteDefaultLanguage": "Website default search language yɛ",
     "removeLanguage": "{language} bɔ",
-    "browseMode": "Search browse mode a"
+    "browseMode": "Search browse mode a",
+    "searchingInLanguage": "Result mɛ {language} kɛ"
   },
   "HeroPlayer": {
     "playWithSound": "Nɛa watch kɛ",

@@ -2,18 +2,20 @@
  * Retention purge for the ai-chat lane's persisted memory (feat-208).
  *
  * Seeker conversations can carry deeply personal spiritual content, so
- * persistence ships WITH a retention position: anonymous threads (resource
- * `anon:*`, the dogfood fallback, and anything else un-prefixed) are deleted
- * 30 days after last activity; signed-in threads (`user:*`) after 180 days.
- * Thread `updatedAt` is a true rolling last-activity key — @mastra/pg's
- * saveMessages bumps it transactionally with every message insert.
+ * persistence ships WITH a retention position: a FLAT 25-day window for every
+ * resource — `anon:*`, `user:*`, the dogfood fallback, and anything else —
+ * (owner decision 2026-08-10, feat-336; supersedes the original 30/180-day
+ * anon/signed-in split). The Langfuse trace sweep imports the same constant,
+ * so one number governs both stores. Thread `updatedAt` is a true rolling
+ * last-activity key — @mastra/pg's saveMessages bumps it transactionally with
+ * every message insert.
  *
  * A run DRAINS the expired backlog: bounded sweeps (500 deletes each) repeat
  * until a sweep comes back non-full, capped at 20 sweeps per run so one run
  * cannot monopolize the small ai-chat pool (the remainder carries over to the
  * next tick). Each sweep scans oldest-first (`orderBy updatedAt ASC`) with an
- * early stop once rows are inside the shortest (30-day) window — nothing
- * younger can be expired under either window — and re-checks recency
+ * early stop once rows are inside the 25-day window — nothing younger can be
+ * expired under the flat policy — and re-checks recency
  * immediately before every delete so a thread resumed mid-sweep is never
  * deleted. Deletes go through Memory.deleteThread (which also removes
  * messages + orphaned vectors).
@@ -37,11 +39,17 @@ import { Memory } from "@mastra/memory"
 
 import { canAiChatDataPersist } from "../config/env"
 
-import { USER_RESOURCE_PREFIX } from "./ai-chat-thread-ownership"
 import { getAiChatStorage } from "./ai-chat-memory"
 
-export const AI_CHAT_ANON_RETENTION_DAYS = 30
-export const AI_CHAT_USER_RETENTION_DAYS = 180
+/**
+ * THE retention policy, in days — flat across every resource shape and BOTH
+ * stores: this module's Postgres purge and the feat-336 Langfuse trace sweep
+ * (`langfuse-trace-retention.ts`) import this one constant, so a policy change
+ * is a one-line edit that moves both. 25 (not 30): Langfuse's Hobby tier hides
+ * data older than 30 days from the API, so the sweep can only delete what it
+ * can still list — 25 keeps every target visible with a 5-day outage margin.
+ */
+export const AI_CHAT_RETENTION_DAYS = 25
 export const AI_CHAT_PURGE_INTERVAL_MS = 24 * 60 * 60 * 1000
 const PURGE_PAGE_SIZE = 100
 /** Per-sweep delete bound so one sweep cannot monopolize the pool. */
@@ -85,17 +93,16 @@ export type AiChatRetentionMemory = {
 }
 
 /**
- * Retention window for a resource key. Prefix-check only — NEVER split on ":"
- * (an OIDC sub may contain anything). Non-`user:` resources (anon:*, the
- * seeker-dogfood fallback, unknown callers) get the short anonymous window.
+ * Retention window for a resource key. Deliberately resource-INDEPENDENT
+ * since feat-336's flat policy (the old `user:` prefix branch is gone); the
+ * parameter is kept so the anti-vacuous tests can pin every resource shape
+ * (`user:*`, `anon:*`, `seeker-dogfood`) to the same window — a reintroduced
+ * split fails those pins loudly instead of shipping silently.
  */
 export function retentionWindowMsFor(
-  resourceId: string | null | undefined,
+  _resourceId: string | null | undefined,
 ): number {
-  return typeof resourceId === "string" &&
-    resourceId.startsWith(USER_RESOURCE_PREFIX)
-    ? AI_CHAT_USER_RETENTION_DAYS * DAY_MS
-    : AI_CHAT_ANON_RETENTION_DAYS * DAY_MS
+  return AI_CHAT_RETENTION_DAYS * DAY_MS
 }
 
 function toEpochMs(value: Date | string | null | undefined): number {
@@ -105,7 +112,7 @@ function toEpochMs(value: Date | string | null | undefined): number {
 
 /**
  * One bounded sweep: page oldest-first with an early stop once rows are
- * inside the shortest window (ASC ⇒ everything after is younger), collect up
+ * inside the flat window (ASC ⇒ everything after is younger), collect up
  * to the per-sweep bound, then delete — re-checking recency per thread first
  * so a conversation resumed between scan and delete survives. Collect-then-
  * delete so deletions cannot shift pagination mid-scan. Throws only if the
@@ -117,7 +124,7 @@ async function sweepOnce(
   memory: AiChatRetentionMemory,
   nowMs: number,
 ): Promise<{ scanned: number; deleted: number; collected: number }> {
-  const shortestWindowMs = AI_CHAT_ANON_RETENTION_DAYS * DAY_MS
+  const windowMs = AI_CHAT_RETENTION_DAYS * DAY_MS
   const expired: string[] = []
   let scanned = 0
   let page = 0
@@ -135,16 +142,14 @@ async function sweepOnce(
       // under ASC, so these only trail the early-stop point anyway.)
       if (Number.isNaN(updatedAtMs)) continue
       const ageMs = nowMs - updatedAtMs
-      if (ageMs <= shortestWindowMs) {
+      if (ageMs <= windowMs) {
         // Early stop: this row — and by ASC order every row after it — is too
-        // young to be expired under either window.
+        // young to be expired under the flat window.
         hasMore = false
         break
       }
-      if (ageMs > retentionWindowMsFor(thread.resourceId)) {
-        expired.push(thread.id)
-        if (expired.length >= PURGE_MAX_DELETES_PER_SWEEP) break
-      }
+      expired.push(thread.id)
+      if (expired.length >= PURGE_MAX_DELETES_PER_SWEEP) break
     }
     hasMore = hasMore && result.hasMore
     page += 1

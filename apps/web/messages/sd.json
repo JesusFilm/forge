@@ -179,7 +179,8 @@
     "clearSearch": "ڳولا صاف ڪريو",
     "changeAudioLanguage": "آڊيو ٻولي تبديل ڪريو",
     "home": "JesusFilm هوم",
-    "closeSearch": "ڳولا بند ڪريو"
+    "closeSearch": "ڳولا بند ڪريو",
+    "submitSearch": "ڳوليو"
   },
   "SearchOverlay": {
     "dialogLabel": "وڊيوز ڳوليو ۽ براؤز ڪريو",
@@ -205,10 +206,11 @@
     "searchLanguageLabel": "ڳولا جي ٻولي",
     "allLanguages": "سڀ ٻوليون",
     "searchSuggestions": "ڳولا جون تجويزون",
+    "directMatches": "سڌا ملندڙ نتيجا",
     "languages": "ٻوليون",
     "recommendedLanguage": "سفارش ڪيل ٻولي",
-    "searchSuggestion": "{suggestion} ڳوليو",
-    "searchSuggestionWithLanguage": "{language} ۾ {suggestion} ڳوليو",
+    "searchSuggestion": "“{suggestion}” ڳوليو",
+    "searchSuggestionWithLanguage": "{language} ۾ “{suggestion}” ڳوليو",
     "inLanguage": "{language} ۾",
     "browseByRegion": "علائقي موجب براؤز ڪريو",
     "clearLanguages": "صاف ڪريو",
@@ -217,7 +219,8 @@
     "tryDifferentKeywordsOrLanguage": "ٻيا لفظ آزمايو يا ٻي ڳولا ٻولي چونڊيو",
     "useWebsiteDefaultLanguage": "ويب سائيٽ جي ڊفالٽ ڳولا ٻولي استعمال ڪريو",
     "removeLanguage": "{language} هٽايو",
-    "browseMode": "ڳولا براؤز موڊ"
+    "browseMode": "ڳولا براؤز موڊ",
+    "searchingInLanguage": "{language} ۾ نتيجا"
   },
   "HeroPlayer": {
     "playWithSound": "هاڻي ڏسو",

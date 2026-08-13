@@ -18,7 +18,10 @@ import { usePathname } from "next/navigation"
 import { Globe, X } from "lucide-react"
 import { useTranslations } from "next-intl"
 
-import type { FloatingSearchControllerProps } from "./FloatingSearchController"
+import type {
+  FloatingSearchControllerProps,
+  PendingSearchSubmitIntent,
+} from "./FloatingSearchController"
 import { FloatingSearchBar } from "./FloatingSearchBar"
 import { SearchOverlayInstantShell } from "./SearchOverlayInstantShell"
 import {
@@ -262,6 +265,8 @@ export function FloatingSearchProvider({
   const [searchControllerEnabled, setSearchControllerEnabled] = useState(false)
   const [searchControllerReady, setSearchControllerReady] = useState(false)
   const [searchResetToken, setSearchResetToken] = useState(0)
+  const [pendingSearchSubmitIntent, setPendingSearchSubmitIntent] =
+    useState<PendingSearchSubmitIntent | null>(null)
   const [pinned, setPinned] = useState<boolean>(false)
   const [playerChromeVisible, setPlayerChromeVisible] = useState(true)
   const [playerChromeOpacity, setPlayerChromeOpacity] = useState(1)
@@ -291,6 +296,7 @@ export function FloatingSearchProvider({
   const closingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const lastScrollYRef = useRef(0)
   const globalLanguageIntentRef = useRef(0)
+  const nextSearchSubmitIntentIdRef = useRef(0)
   const globalLanguagePendingRouteRef = useRef<RouteIdentity | null>(null)
   const globalLanguageTriggerRef = useRef<HTMLButtonElement>(null)
   const pendingPageLanguageOpenRef = useRef<PendingPageLanguageOpen | null>(
@@ -306,6 +312,7 @@ export function FloatingSearchProvider({
 
   const resetSearch = useCallback(() => {
     setQuery("")
+    setPendingSearchSubmitIntent(null)
     setSearchResetToken((token) => token + 1)
   }, [])
 
@@ -360,6 +367,15 @@ export function FloatingSearchProvider({
     enableSearchController()
     setOpen(true)
   }, [enableSearchController, setOpen])
+
+  const submitInstantSearch = useCallback((submittedQuery: string) => {
+    if (submittedQuery.trim().length === 0) return
+    nextSearchSubmitIntentIdRef.current += 1
+    setPendingSearchSubmitIntent({
+      id: nextSearchSubmitIntentIdRef.current,
+      query: submittedQuery,
+    })
+  }, [])
 
   const markSearchControllerReady = useCallback(() => {
     setSearchControllerReady(true)
@@ -935,6 +951,7 @@ export function FloatingSearchProvider({
             headerLanguageCode={headerLanguageCode}
             headerPinned={pinned}
             resetToken={searchResetToken}
+            pendingSubmitIntent={pendingSearchSubmitIntent}
             onReady={markSearchControllerReady}
           />
         ) : null}
@@ -945,6 +962,7 @@ export function FloatingSearchProvider({
             query={query}
             setOpen={setOpen}
             setQuery={setQuery}
+            onSubmit={submitInstantSearch}
             headerTopClass={headerTopClass}
             logoSlotClass={logoSlotClass}
             headerLanguageControlVisible={headerLanguageControlVisible}

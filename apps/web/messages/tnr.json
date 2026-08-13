@@ -179,7 +179,8 @@
     "clearSearch": "Suŋ bɔ",
     "changeAudioLanguage": "Audio language laa",
     "home": "JesusFilm kɔŋ hɔn",
-    "closeSearch": "Suŋ dɔŋ"
+    "closeSearch": "Suŋ dɔŋ",
+    "submitSearch": "Suŋ kɛ"
   },
   "SearchOverlay": {
     "dialogLabel": "Video suŋ kɛ kɔ browse kɛ",
@@ -204,20 +205,22 @@
     "categoryChristmas": "Christmas ka",
     "searchLanguageLabel": "Search ka language",
     "allLanguages": "Languages dɛmɛ",
-    "searchSuggestions": "Search ka suggestions",
+    "searchSuggestions": "Suŋ kɛ ka waara",
+    "directMatches": "Yé find kɛ",
     "languages": "Languages dɛmɛ",
     "recommendedLanguage": "Language wɛɛ",
-    "searchSuggestion": "{suggestion} suŋ kɛ",
-    "searchSuggestionWithLanguage": "{language} ka {suggestion} suŋ kɛ",
+    "searchSuggestion": "“{suggestion}” suŋ kɛ",
+    "searchSuggestionWithLanguage": "{language} ka “{suggestion}” suŋ kɛ",
     "inLanguage": "{language} ka",
     "browseByRegion": "Region ka browse kɛ",
     "clearLanguages": "Bɔ",
     "queryLanguageDetected": "{language} yé find kɛ",
-    "searchInLanguage": "{language} ka search kɛ",
+    "searchInLanguage": "{language} ka suŋ kɛ",
     "tryDifferentKeywordsOrLanguage": "Keywords dɔŋ lɛŋa kɔ language dɔŋ waara",
     "useWebsiteDefaultLanguage": "Website default search language kɛ",
     "removeLanguage": "{language} bɔ",
-    "browseMode": "Search kɔ browse mode"
+    "browseMode": "Search kɔ browse mode",
+    "searchingInLanguage": "{language} ka results"
   },
   "HeroPlayer": {
     "playWithSound": "Kɔnɔŋa",

@@ -179,7 +179,8 @@
     "clearSearch": "Tyhjennä haku",
     "changeAudioLanguage": "Vaihda äänikieltä",
     "home": "JesusFilm-etusivu",
-    "closeSearch": "Sulje haku"
+    "closeSearch": "Sulje haku",
+    "submitSearch": "Hae"
   },
   "SearchOverlay": {
     "dialogLabel": "Hae ja selaa videoita",
@@ -205,19 +206,21 @@
     "searchLanguageLabel": "Hakukieli",
     "allLanguages": "Kaikki kielet",
     "searchSuggestions": "Hakuehdotukset",
+    "directMatches": "Suorat osumat",
     "languages": "Kielet",
     "recommendedLanguage": "Suositeltu kieli",
-    "searchSuggestion": "Hae: {suggestion}",
-    "searchSuggestionWithLanguage": "Hae: {suggestion} kielellä {language}",
+    "searchSuggestion": "Hae ”{suggestion}”",
+    "searchSuggestionWithLanguage": "{language} – hae ”{suggestion}”",
     "inLanguage": "kielellä {language}",
     "browseByRegion": "Selaa alueen mukaan",
     "clearLanguages": "Tyhjennä",
     "queryLanguageDetected": "Havaittu kieli: {language}",
-    "searchInLanguage": "Hae kielellä {language}",
+    "searchInLanguage": "Hakukieli: {language}",
     "tryDifferentKeywordsOrLanguage": "Kokeile eri hakusanoja tai valitse toinen hakukieli",
     "useWebsiteDefaultLanguage": "Käytä sivuston oletushakukieltä",
     "removeLanguage": "Poista {language}",
-    "browseMode": "Hakuselailutila"
+    "browseMode": "Hakuselailutila",
+    "searchingInLanguage": "Tulosten kieli: {language}"
   },
   "HeroPlayer": {
     "playWithSound": "Katso nyt",

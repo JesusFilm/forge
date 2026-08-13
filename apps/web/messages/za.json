@@ -179,7 +179,8 @@
     "clearSearch": "Dawz search",
     "changeAudioLanguage": "Gaeq language audio",
     "home": "Homepage JesusFilm",
-    "closeSearch": "Dej search"
+    "closeSearch": "Dej search",
+    "submitSearch": "Raeuz"
   },
   "SearchOverlay": {
     "dialogLabel": "Raeuz haeuj browse video",
@@ -204,20 +205,22 @@
     "categoryChristmas": "Nin Christmas",
     "searchLanguageLabel": "Language search",
     "allLanguages": "Languages cungj gyaeuj",
-    "searchSuggestions": "Gij ndaej search",
+    "searchSuggestions": "Gij gienqyiq raeuz",
+    "directMatches": "Gij doiqndeiq cihjeh",
     "languages": "Gij languages",
     "recommendedLanguage": "Language recommended",
     "searchSuggestion": "Raeuz {suggestion}",
-    "searchSuggestionWithLanguage": "Raeuz {suggestion} ndaw {language}",
+    "searchSuggestionWithLanguage": "Ndaw {language} raeuz “{suggestion}”",
     "inLanguage": "ndaw {language}",
     "browseByRegion": "Browse aeu region",
     "clearLanguages": "Dawz",
     "queryLanguageDetected": "{language} gyaeuq daeuj",
-    "searchInLanguage": "Raeuz ndaw {language}",
+    "searchInLanguage": "Ndaw {language} raeuz",
     "tryDifferentKeywordsOrLanguage": "Gyaeuq keywords lai rox gyaeuq search language lai",
     "useWebsiteDefaultLanguage": "Aeu website default search language",
     "removeLanguage": "Luk {language}",
-    "browseMode": "Mode browse search"
+    "browseMode": "Mode browse search",
+    "searchingInLanguage": "Gij results ndaw {language}"
   },
   "HeroPlayer": {
     "playWithSound": "Doengh gwn",

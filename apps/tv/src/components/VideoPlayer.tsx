@@ -316,14 +316,17 @@ function PlayCircle({
   onFocusActivity,
   focusable,
   dimmed,
-  hasTVPreferredFocus,
+  // Optional since the reveal's focus claim moved to the scrubber; kept on the
+  // props so a future surface (a paused-at-start hero, say) can re-claim it
+  // here without re-plumbing the component.
+  hasTVPreferredFocus = false,
 }: {
   isPaused: boolean
   onPress: () => void
   onFocusActivity: () => void
   focusable: boolean
   dimmed: boolean
-  hasTVPreferredFocus: boolean
+  hasTVPreferredFocus?: boolean
 }) {
   const { setFocused, progress, transform } = useFocusVisual("pill", {
     nativeDriver: false,
@@ -465,6 +468,7 @@ function PlayerScrubber({
   bubbleText,
   onPress,
   onFocusChange,
+  hasTVPreferredFocus,
   focusable,
   dimmed,
 }: {
@@ -473,6 +477,7 @@ function PlayerScrubber({
   bubbleText: string
   onPress: () => void
   onFocusChange: (focused: boolean) => void
+  hasTVPreferredFocus: boolean
   focusable: boolean
   dimmed: boolean
 }) {
@@ -528,6 +533,7 @@ function PlayerScrubber({
           setFocused(false)
           onFocusChange(false)
         }}
+        hasTVPreferredFocus={hasTVPreferredFocus}
         focusable={focusable}
         accessibilityLabel={`Seek bar, ${bubbleText}`}
         accessibilityRole="adjustable"
@@ -1705,8 +1711,11 @@ export function VideoPlayer({
             </View>
 
             {/* Transport: −10 / play-pause / +10. On hasError (U5) all are ghosted
-                + unfocusable (Back is the only action). U4 focus-restore: each reveal
-                flips controlsFocusable false→true so hasTVPreferredFocus re-fires per cycle. */}
+                + unfocusable (Back is the only action). One Up-press from the
+                scrubber, which is where a reveal now lands focus — see the
+                scrubber's own note. U4 focus-restore: each reveal flips
+                controlsFocusable false→true so the scrubber's
+                hasTVPreferredFocus re-fires per cycle. */}
             <View style={styles.transport}>
               <CircleControl
                 icon="replay-10"
@@ -1726,7 +1735,6 @@ export function VideoPlayer({
                   scheduleHide()
                 }}
                 onFocusActivity={scheduleHide}
-                hasTVPreferredFocus={shouldRequestFocus || revealFocusPending}
                 focusable={controlsFocusable && !hasError}
                 dimmed={hasError}
               />
@@ -1773,9 +1781,17 @@ export function VideoPlayer({
             </View>
           </View>
 
-          {/* Scrubber + times. The scrubber is focusable (Down from the
-              transport lands here); while it owns focus, left/right are
-              seeks (host TV-event listener) and Select toggles play. */}
+          {/* Scrubber + times. While it owns focus, left/right are seeks (host
+              TV-event listener) and Select toggles play.
+
+              It is also the DEFAULT focus target on every reveal, deliberately:
+              scrubbing is the action a viewer reaches for mid-playback, and
+              landing here makes left/right seek immediately instead of costing
+              a Down press first. Nothing is lost — Select still toggles
+              play/pause, so the transport row (Up) is only needed for the ±10s
+              jumps. The error path keeps its own claim on Back, and
+              `focusable` is false while `hasError`, so this never competes
+              with it. */}
           <PlayerScrubber
             progressPct={progress}
             bufferedPct={bufferedPct}
@@ -1788,6 +1804,7 @@ export function VideoPlayer({
               scrubFocusedRef.current = focused
               if (focused) scheduleHide()
             }}
+            hasTVPreferredFocus={shouldRequestFocus || revealFocusPending}
             focusable={controlsFocusable && !hasError}
             dimmed={hasError}
           />

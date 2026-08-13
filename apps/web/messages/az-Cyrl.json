@@ -179,7 +179,8 @@
     "clearSearch": "Axtarışı təmizlə",
     "changeAudioLanguage": "Səs dilini dəyişin",
     "home": "JesusFilm ana səhifəsi",
-    "closeSearch": "Axtarışı bağla"
+    "closeSearch": "Axtarışı bağla",
+    "submitSearch": "Ахтар"
   },
   "SearchOverlay": {
     "dialogLabel": "Videoları axtarın və gözdən keçirin",
@@ -204,20 +205,22 @@
     "categoryChristmas": "Milad",
     "searchLanguageLabel": "Axtarış dili",
     "allLanguages": "Bütün dillər",
-    "searchSuggestions": "Axtarış təklifləri",
+    "searchSuggestions": "Ахтарыш тәклифләри",
+    "directMatches": "Бирбаша уйғунлуқлар",
     "languages": "Dillər",
     "recommendedLanguage": "Tövsiyə olunan dil",
-    "searchSuggestion": "{suggestion} axtarın",
-    "searchSuggestionWithLanguage": "{suggestion} — {language} dilində axtarın",
+    "searchSuggestion": "«{suggestion}» ахтар",
+    "searchSuggestionWithLanguage": "{language} дилиндә «{suggestion}» ахтар",
     "inLanguage": "{language} dilində",
     "browseByRegion": "Region üzrə baxın",
     "clearLanguages": "Təmizlə",
     "queryLanguageDetected": "{language} aşkar edildi",
-    "searchInLanguage": "{language} dilində axtarın",
+    "searchInLanguage": "{language} дилиндә ахтар",
     "tryDifferentKeywordsOrLanguage": "Başqa açar sözlər sınayın və ya başqa axtarış dili seçin",
     "useWebsiteDefaultLanguage": "Saytın defolt axtarış dilindən istifadə edin",
     "removeLanguage": "{language} sil",
-    "browseMode": "Axtarış-gözdən keçirmə rejimi"
+    "browseMode": "Axtarış-gözdən keçirmə rejimi",
+    "searchingInLanguage": "{language} дили үзрә нәтиҹәләр"
   },
   "HeroPlayer": {
     "playWithSound": "İndi baxın",

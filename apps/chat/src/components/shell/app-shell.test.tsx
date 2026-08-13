@@ -383,6 +383,14 @@ describe("Seeker wiring (flag on)", () => {
     expect(container).not.toHaveTextContent("no agent is connected yet")
   })
 
+  it("flag on: the storage disclosure states the flat 25-day retention with no anonymous qualifier", () => {
+    // Pins the feat-336 policy copy: the wording must track
+    // AI_CHAT_RETENTION_DAYS in apps/mastra's ai-chat-retention.ts.
+    renderSeeker(() => [])
+    expect(container).toHaveTextContent("kept for 25 days")
+    expect(container).not.toHaveTextContent("anonymous")
+  })
+
   // AE1
   it("flag OFF makes no fetch (the stub path never reaches Mastra)", async () => {
     const fetchMock = vi.fn()

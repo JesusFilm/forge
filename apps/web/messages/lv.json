@@ -179,7 +179,8 @@
     "clearSearch": "Notīrīt meklēšanu",
     "changeAudioLanguage": "Mainīt audio valodu",
     "home": "JesusFilm sākumlapa",
-    "closeSearch": "Aizvērt meklēšanu"
+    "closeSearch": "Aizvērt meklēšanu",
+    "submitSearch": "Meklēt"
   },
   "SearchOverlay": {
     "dialogLabel": "Meklēt un pārlūkot video",
@@ -205,10 +206,11 @@
     "searchLanguageLabel": "Meklēšanas valoda",
     "allLanguages": "Visas valodas",
     "searchSuggestions": "Meklēšanas ieteikumi",
+    "directMatches": "Tiešā atbilstība",
     "languages": "Valodas",
     "recommendedLanguage": "Ieteicamā valoda",
-    "searchSuggestion": "Meklēt {suggestion}",
-    "searchSuggestionWithLanguage": "Meklēt {suggestion} valodā {language}",
+    "searchSuggestion": "Meklēt “{suggestion}”",
+    "searchSuggestionWithLanguage": "Meklēt “{suggestion}” valodā {language}",
     "inLanguage": "valodā {language}",
     "browseByRegion": "Pārlūkot pēc reģiona",
     "clearLanguages": "Notīrīt",
@@ -217,7 +219,8 @@
     "tryDifferentKeywordsOrLanguage": "Mēģiniet citus atslēgvārdus vai izvēlieties citu meklēšanas valodu",
     "useWebsiteDefaultLanguage": "Izmantot vietnes noklusējuma meklēšanas valodu",
     "removeLanguage": "Noņemt {language}",
-    "browseMode": "Meklēšanas pārlūkošanas režīms"
+    "browseMode": "Meklēšanas pārlūkošanas režīms",
+    "searchingInLanguage": "Rezultātu valoda: {language}"
   },
   "HeroPlayer": {
     "playWithSound": "Skatīties tagad",

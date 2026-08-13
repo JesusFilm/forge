@@ -46,12 +46,21 @@ export const SEARCH_OPERATION_NAME = "WatchSearch"
  */
 export const WATCH_EVENT_OPERATION_NAME = "RecordWatchEvent"
 
+/** Viewer-scoped watch-progress ops (feat-322 Continue Watching account
+ *  merge). MUST equal the `query`/`mutation` names in
+ *  `watchEvents/watchProgressDocuments.ts` — pinned there by contract test,
+ *  same rename trap as the watch-event op above. */
+export const PROGRESS_QUERY_OPERATION_NAME = "MyWatchProgress"
+export const PROGRESS_UPSERT_OPERATION_NAME = "UpsertMyWatchProgress"
+
 /** Operations that may carry the baked-in FLEET token. */
 export const FLEET_TOKEN_OPERATIONS: readonly string[] = [SEARCH_OPERATION_NAME]
 
 /**
- * Operations that may carry the SIGNED-IN USER's access token — watch-event
- * WRITES only, which is exactly what the `web:watch-events:write` scope is for.
+ * Operations that may carry the SIGNED-IN USER's access token — the viewer's
+ * OWN watch data only: the watch-event write plus the two watch-progress ops
+ * (admin resolves the account from the introspected token, so these can only
+ * ever touch the signed-in viewer's rows).
  *
  * `WatchSearch` is deliberately absent and must stay absent: admin buckets
  * search by the credential presented, so a user bearer there would move the
@@ -60,6 +69,8 @@ export const FLEET_TOKEN_OPERATIONS: readonly string[] = [SEARCH_OPERATION_NAME]
  */
 export const USER_TOKEN_OPERATIONS: readonly string[] = [
   WATCH_EVENT_OPERATION_NAME,
+  PROGRESS_QUERY_OPERATION_NAME,
+  PROGRESS_UPSERT_OPERATION_NAME,
 ]
 
 /**

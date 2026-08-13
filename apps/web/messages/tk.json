@@ -179,7 +179,8 @@
     "clearSearch": "Gözlegi arassala",
     "changeAudioLanguage": "Ses dilini üýtget",
     "home": "JesusFilm baş sahypasy",
-    "closeSearch": "Gözlegi ýap"
+    "closeSearch": "Gözlegi ýap",
+    "submitSearch": "Gözle"
   },
   "SearchOverlay": {
     "dialogLabel": "Wideolary gözläň we gözden geçiriň",
@@ -205,10 +206,11 @@
     "searchLanguageLabel": "Gözleg dili",
     "allLanguages": "Ähli diller",
     "searchSuggestions": "Gözleg teklipleri",
+    "directMatches": "Takyk gabat gelýänler",
     "languages": "Diller",
     "recommendedLanguage": "Maslahat berilýän dil",
-    "searchSuggestion": "{suggestion} gözle",
-    "searchSuggestionWithLanguage": "{suggestion} -y {language} dilinde gözle",
+    "searchSuggestion": "«{suggestion}» boýunça gözle",
+    "searchSuggestionWithLanguage": "«{suggestion}» boýunça {language} dilinde gözle",
     "inLanguage": "{language} dilinde",
     "browseByRegion": "Sebit boýunça gözden geçir",
     "clearLanguages": "Arassala",
@@ -217,7 +219,8 @@
     "tryDifferentKeywordsOrLanguage": "Dürli açar sözleri synap görüň ýa-da başga bir gözleg dilini saýlaň",
     "useWebsiteDefaultLanguage": "Websaýtyň deslapky gözleg dilini ulanyň",
     "removeLanguage": "{language} aýyr",
-    "browseMode": "Gözden geçiriş tertibi"
+    "browseMode": "Gözden geçiriş tertibi",
+    "searchingInLanguage": "Netijeler {language} dilinde"
   },
   "HeroPlayer": {
     "playWithSound": "Häzir seret",

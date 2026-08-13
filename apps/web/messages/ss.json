@@ -179,7 +179,8 @@
     "clearSearch": "Susa usesho",
     "changeAudioLanguage": "Shintsha ulimi lomsindo",
     "home": "Ikhasi lasekhaya le-JesusFilm",
-    "closeSearch": "Vala usesho"
+    "closeSearch": "Vala usesho",
+    "submitSearch": "Sesha"
   },
   "SearchOverlay": {
     "dialogLabel": "Sesha futhi uphequlule amavidiyo",
@@ -204,20 +205,22 @@
     "categoryChristmas": "UKhisimusi",
     "searchLanguageLabel": "Ulimi lokusesha",
     "allLanguages": "Zonke izilimi",
-    "searchSuggestions": "Iziphakamiso Zosesho",
+    "searchSuggestions": "Tiphakamiso tekusesha",
+    "directMatches": "Lokuhambelana ngco",
     "languages": "Izilimi",
     "recommendedLanguage": "Ulimi olunconyiwe",
-    "searchSuggestion": "Sesha {suggestion}",
-    "searchSuggestionWithLanguage": "Sesha {suggestion} nge-{language}",
+    "searchSuggestion": "Sesha: {suggestion}",
+    "searchSuggestionWithLanguage": "Sesha “{suggestion}” ngelulwimi: {language}",
     "inLanguage": "nge-{language}",
     "browseByRegion": "Phequlula ngokwesifunda",
     "clearLanguages": "Susa",
     "queryLanguageDetected": "Kutholwe {language}",
-    "searchInLanguage": "Sesha nge-{language}",
+    "searchInLanguage": "Sesha ngelulwimi: {language}",
     "tryDifferentKeywordsOrLanguage": "Zama amanye amagama angukhiye noma khetha olunye ulimi lokusesha",
     "useWebsiteDefaultLanguage": "Sebenzisa ulimi olujwayelekile lokusesha lwewebhusayithi",
     "removeLanguage": "Susa {language}",
-    "browseMode": "Imodi yokuphequlula usesho"
+    "browseMode": "Imodi yokuphequlula usesho",
+    "searchingInLanguage": "Imiphumela ngelulwimi: {language}"
   },
   "HeroPlayer": {
     "playWithSound": "Buka manje",

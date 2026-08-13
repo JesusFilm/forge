@@ -179,7 +179,8 @@
     "clearSearch": "Εκκαθάριση αναζήτησης",
     "changeAudioLanguage": "Αλλαγή γλώσσας ήχου",
     "home": "Αρχική JesusFilm",
-    "closeSearch": "Κλείσιμο αναζήτησης"
+    "closeSearch": "Κλείσιμο αναζήτησης",
+    "submitSearch": "Αναζήτηση"
   },
   "SearchOverlay": {
     "dialogLabel": "Αναζήτηση και περιήγηση σε βίντεο",
@@ -204,11 +205,12 @@
     "categoryChristmas": "Χριστούγεννα",
     "searchLanguageLabel": "Γλώσσα αναζήτησης",
     "allLanguages": "Όλες οι γλώσσες",
-    "searchSuggestions": "Προτάσεις αναζήτησης",
+    "searchSuggestions": "Προτεινόμενες αναζητήσεις",
+    "directMatches": "Άμεσα αποτελέσματα",
     "languages": "Γλώσσες",
     "recommendedLanguage": "Προτεινόμενη γλώσσα",
-    "searchSuggestion": "Αναζήτηση {suggestion}",
-    "searchSuggestionWithLanguage": "Αναζήτηση {suggestion} στα {language}",
+    "searchSuggestion": "Αναζήτηση για «{suggestion}»",
+    "searchSuggestionWithLanguage": "Αναζήτηση για «{suggestion}» στα {language}",
     "inLanguage": "στα {language}",
     "browseByRegion": "Περιήγηση ανά περιοχή",
     "clearLanguages": "Εκκαθάριση",
@@ -217,7 +219,8 @@
     "tryDifferentKeywordsOrLanguage": "Δοκιμάστε διαφορετικές λέξεις-κλειδιά ή επιλέξτε άλλη γλώσσα αναζήτησης",
     "useWebsiteDefaultLanguage": "Χρήση της προεπιλεγμένης γλώσσας αναζήτησης του ιστότοπου",
     "removeLanguage": "Αφαίρεση {language}",
-    "browseMode": "Λειτουργία περιήγησης αναζήτησης"
+    "browseMode": "Λειτουργία περιήγησης αναζήτησης",
+    "searchingInLanguage": "Αποτελέσματα στα {language}"
   },
   "HeroPlayer": {
     "playWithSound": "Παρακολουθήστε τώρα",

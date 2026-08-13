@@ -56,7 +56,7 @@ Passed a `MutableRefObject` from `FixedHeroLayout` to `VideoHeroRenderer`, writi
 
 ### Architecture
 
-> **Update (2026-04-08):** This two-layer pattern has been extended to a **three-layer** model in `apps/mobile-v2`. The third layer is an interactive overlay (zIndex 2, `pointerEvents="box-none"`) that hosts invisible touch targets for hero elements (e.g., mute button). See [hero-mute-button-hybrid-overlay-touch-target.md](hero-mute-button-hybrid-overlay-touch-target.md) for the full pattern.
+> **Update (2026-04-08):** This two-layer pattern has been extended to a **three-layer** model in `apps/mobile`. The third layer is an interactive overlay (zIndex 2, `pointerEvents="box-none"`) that hosts invisible touch targets for hero elements (e.g., mute button). See [hero-mute-button-hybrid-overlay-touch-target.md](hero-mute-button-hybrid-overlay-touch-target.md) for the full pattern.
 >
 > **Update (2026-06-11):** The invisible-touch-target variant is only valid for **non-paged** heroes — inside a paged FlatList, `measureLayout` rects carry the page offset and the targets drift off-screen past slide 0. Paged heroes (Home's hero pager) render visible chrome directly in the overlay and claim swipes via a capture-phase PanResponder. See [paged-hero-overlay-chrome-touch-architecture.md](../ui-bugs/paged-hero-overlay-chrome-touch-architecture.md).
 
@@ -124,21 +124,26 @@ const handleScroll = useCallback(
     <View
       style={[StyleSheet.absoluteFill, { opacity: blurOpacity }]}
       pointerEvents="none"
+      importantForAccessibility="no-hide-descendants"
+      accessibilityElementsHidden
     >
-      {Platform.OS === "ios" ? (
-        <BlurView intensity={50} tint="dark" style={StyleSheet.absoluteFill} />
-      ) : (
-        <View
-          style={[
-            StyleSheet.absoluteFill,
-            { backgroundColor: "rgba(0,0,0,0.6)" },
-          ]}
-        />
-      )}
+      <PlatformBlur intensity={50} style={StyleSheet.absoluteFill} />
     </View>
   )
 }
 ```
+
+The inline `Platform.OS === "ios" ? <BlurView …> : <View dim />` split this doc
+originally carried now lives in one shared component,
+`apps/mobile/src/components/ui/PlatformBlur.tsx`. The behaviour is unchanged —
+real blur on iOS, a flat dim on Android — but the branch has one owner instead of
+one copy per hero.
+
+Note the wrapper: the blur sits under a `View` whose `opacity` is driven by
+scroll. That is exactly the ancestor shape that makes `expo-glass-effect`'s
+`GlassView` render nothing at all, which is why this surface uses `expo-blur` and
+not Liquid Glass — see
+[GlassView renders no material under an animated-opacity ancestor](../best-practices/expo-glass-effect-glassview-invisible-under-animated-opacity-ancestor.md).
 
 **Overscroll prevention (both platforms):**
 

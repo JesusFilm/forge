@@ -179,7 +179,8 @@
     "clearSearch": "Ачысціць пошук",
     "changeAudioLanguage": "Змяніць мову аўдыё",
     "home": "Галоўная JesusFilm",
-    "closeSearch": "Закрыць пошук"
+    "closeSearch": "Закрыць пошук",
+    "submitSearch": "Шукаць"
   },
   "SearchOverlay": {
     "dialogLabel": "Пошук і прагляд відэа",
@@ -204,20 +205,22 @@
     "categoryChristmas": "Каляды",
     "searchLanguageLabel": "Мова пошуку",
     "allLanguages": "Усе мовы",
-    "searchSuggestions": "Прапановы пошуку",
+    "searchSuggestions": "Пошукавыя падказкі",
+    "directMatches": "Дакладныя супадзенні",
     "languages": "Мовы",
     "recommendedLanguage": "Рэкамендаваная мова",
-    "searchSuggestion": "Шукаць {suggestion}",
-    "searchSuggestionWithLanguage": "Шукаць {suggestion} на {language}",
+    "searchSuggestion": "Шукаць «{suggestion}»",
+    "searchSuggestionWithLanguage": "Шукаць «{suggestion}» — мова: {language}",
     "inLanguage": "на {language}",
     "browseByRegion": "Праглядаць па рэгіёне",
     "clearLanguages": "Ачысціць",
     "queryLanguageDetected": "Выяўлена мова: {language}",
-    "searchInLanguage": "Шукаць на {language}",
+    "searchInLanguage": "Мова пошуку: {language}",
     "tryDifferentKeywordsOrLanguage": "Паспрабуйце іншыя ключавыя словы або выберыце іншую мову пошуку",
     "useWebsiteDefaultLanguage": "Выкарыстоўваць мову пошуку сайта па змаўчанні",
     "removeLanguage": "Выдаліць {language}",
-    "browseMode": "Рэжым агляду пошуку"
+    "browseMode": "Рэжым агляду пошуку",
+    "searchingInLanguage": "Мова вынікаў: {language}"
   },
   "HeroPlayer": {
     "playWithSound": "Глядзець зараз",

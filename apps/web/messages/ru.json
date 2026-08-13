@@ -188,7 +188,8 @@
     "clearSearch": "Очистить поиск",
     "changeAudioLanguage": "Изменить язык аудио",
     "closeSearch": "Закрыть поиск",
-    "home": "Главная JesusFilm"
+    "home": "Главная JesusFilm",
+    "submitSearch": "Найти"
   },
   "SearchOverlay": {
     "dialogLabel": "Поиск и просмотр видео",
@@ -213,20 +214,22 @@
     "categoryChristmas": "Рождество",
     "searchLanguageLabel": "Язык поиска",
     "allLanguages": "Все языки",
-    "searchSuggestions": "Подсказки для поиска",
+    "searchSuggestions": "Поисковые подсказки",
+    "directMatches": "Совпадения по запросу",
     "languages": "Языки",
     "recommendedLanguage": "Рекомендуемый язык",
-    "searchSuggestion": "Искать «{suggestion}»",
-    "searchSuggestionWithLanguage": "Искать «{suggestion}». Язык: {language}",
+    "searchSuggestion": "Найти «{suggestion}»",
+    "searchSuggestionWithLanguage": "Поиск на {language} по запросу «{suggestion}»",
     "inLanguage": "Язык: {language}",
     "browseByRegion": "Просмотр по регионам",
     "clearLanguages": "Очистить",
     "queryLanguageDetected": "Определен язык: {language}",
-    "searchInLanguage": "Искать. Язык: {language}",
+    "searchInLanguage": "Язык поиска: {language}",
     "tryDifferentKeywordsOrLanguage": "Попробуйте другие слова или выберите другой язык поиска",
     "useWebsiteDefaultLanguage": "Использовать язык поиска сайта по умолчанию",
     "removeLanguage": "Удалить язык: {language}",
-    "browseMode": "Режим просмотра поиска"
+    "browseMode": "Режим просмотра поиска",
+    "searchingInLanguage": "Результаты на {language}"
   },
   "HeroPlayer": {
     "playWithSound": "Смотреть",

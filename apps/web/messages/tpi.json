@@ -179,7 +179,8 @@
     "clearSearch": "Rausim painim",
     "changeAudioLanguage": "Senisim tokples bilong audio",
     "home": "JesusFilm hom pes",
-    "closeSearch": "Pasim painim"
+    "closeSearch": "Pasim painim",
+    "submitSearch": "Painim"
   },
   "SearchOverlay": {
     "dialogLabel": "Painim na browseim ol video",
@@ -204,11 +205,12 @@
     "categoryChristmas": "Krismas",
     "searchLanguageLabel": "Painim tokples",
     "allLanguages": "Olgeta tokples",
-    "searchSuggestions": "Ol askim bilong search",
+    "searchSuggestions": "Ol tok yu ken painim",
+    "directMatches": "Ol samting i stret wantaim",
     "languages": "Ol tokples",
     "recommendedLanguage": "Tokples i go pas",
-    "searchSuggestion": "Painim {suggestion}",
-    "searchSuggestionWithLanguage": "Painim {suggestion} long {language}",
+    "searchSuggestion": "Painim “{suggestion}”",
+    "searchSuggestionWithLanguage": "Painim “{suggestion}” long {language}",
     "inLanguage": "long {language}",
     "browseByRegion": "Browseim long region",
     "clearLanguages": "Rausim",
@@ -217,7 +219,8 @@
     "tryDifferentKeywordsOrLanguage": "Traim narapela keyword o makim narapela search tokples",
     "useWebsiteDefaultLanguage": "Yusim default search tokples bilong website",
     "removeLanguage": "Rausim {language}",
-    "browseMode": "Rot bilong painim na browseim"
+    "browseMode": "Rot bilong painim na browseim",
+    "searchingInLanguage": "Ol result long {language}"
   },
   "HeroPlayer": {
     "playWithSound": "Lukluk nau",

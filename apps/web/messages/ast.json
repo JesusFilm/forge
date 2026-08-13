@@ -179,7 +179,8 @@
     "clearSearch": "Borrar busca",
     "changeAudioLanguage": "Cambiar llingua del audiu",
     "home": "páxina d'inici de JesusFilm",
-    "closeSearch": "Zarrar busca"
+    "closeSearch": "Zarrar busca",
+    "submitSearch": "Buscar"
   },
   "SearchOverlay": {
     "dialogLabel": "Buscar y navegar per vídeos",
@@ -205,10 +206,11 @@
     "searchLanguageLabel": "Llingua de busca",
     "allLanguages": "Toles llingües",
     "searchSuggestions": "Suxerencies de busca",
+    "directMatches": "Coincidencies direutes",
     "languages": "Llingües",
     "recommendedLanguage": "Llingua recomendada",
-    "searchSuggestion": "Buscar {suggestion}",
-    "searchSuggestionWithLanguage": "Buscar {suggestion} en {language}",
+    "searchSuggestion": "Buscar «{suggestion}»",
+    "searchSuggestionWithLanguage": "Buscar «{suggestion}» en {language}",
     "inLanguage": "en {language}",
     "browseByRegion": "Navegar per rexón",
     "clearLanguages": "Borrar",
@@ -217,7 +219,8 @@
     "tryDifferentKeywordsOrLanguage": "Prueba con otros términos o escueye otra llingua de busca",
     "useWebsiteDefaultLanguage": "Usar la llingua de busca predeterminada del sitiu web",
     "removeLanguage": "Quitar {language}",
-    "browseMode": "Mou de navegación de la busca"
+    "browseMode": "Mou de navegación de la busca",
+    "searchingInLanguage": "Resultaos en {language}"
   },
   "HeroPlayer": {
     "playWithSound": "Ver agora",

@@ -179,7 +179,8 @@
     "clearSearch": "Хайлтыг арилгах",
     "changeAudioLanguage": "Дууны хэлийг өөрчлөх",
     "home": "JesusFilm нүүр хуудас",
-    "closeSearch": "Хайлтыг хаах"
+    "closeSearch": "Хайлтыг хаах",
+    "submitSearch": "ᠬᠠᠢᠬᠤ"
   },
   "SearchOverlay": {
     "dialogLabel": "Видео хайх, үзэх",
@@ -204,20 +205,22 @@
     "categoryChristmas": "Зул сар",
     "searchLanguageLabel": "Хайлтын хэл",
     "allLanguages": "Бүх хэл",
-    "searchSuggestions": "Хайлтын санал",
+    "searchSuggestions": "ᠬᠠᠢᠯᠲᠠ ᠶᠢᠨ ᠰᠠᠨᠠᠯ",
+    "directMatches": "ᠰᠢᠭᠤᠳ ᠲᠣᠬᠢᠷᠠᠯ",
     "languages": "Хэлүүд",
     "recommendedLanguage": "Зөвлөмж болгосон хэл",
-    "searchSuggestion": "{suggestion} хайх",
-    "searchSuggestionWithLanguage": "{suggestion}-г {language} дээр хайх",
+    "searchSuggestion": "{suggestion} ᠭᠡᠵᠦ ᠬᠠᠢᠬᠤ",
+    "searchSuggestionWithLanguage": "{language} ᠬᠡᠯᠡ ᠪᠡᠷ {suggestion} ᠭᠡᠵᠦ ᠬᠠᠢᠬᠤ",
     "inLanguage": "{language} дээр",
     "browseByRegion": "Бүс нутгаар үзэх",
     "clearLanguages": "Цэвэрлэх",
     "queryLanguageDetected": "{language} илэрлээ",
-    "searchInLanguage": "{language} дээр хайх",
+    "searchInLanguage": "{language} ᠬᠡᠯᠡ ᠪᠡᠷ ᠬᠠᠢᠬᠤ",
     "tryDifferentKeywordsOrLanguage": "Өөр түлхүүр үг эсвэл өөр хайлтын хэл сонгоно уу",
     "useWebsiteDefaultLanguage": "Вэбсайтын анхны хайлтын хэлийг ашиглах",
     "removeLanguage": "{language} устгах",
-    "browseMode": "Хайх горим"
+    "browseMode": "Хайх горим",
+    "searchingInLanguage": "ᠦᠷ᠎ᠡ ᠳ᠋ᠦᠩ ᠨᠢ {language} ᠬᠡᠯᠡ ᠪᠡᠷ"
   },
   "HeroPlayer": {
     "playWithSound": "Одоо үзэх",

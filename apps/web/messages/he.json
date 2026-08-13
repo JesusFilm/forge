@@ -179,7 +179,8 @@
     "clearSearch": "ניקוי חיפוש",
     "changeAudioLanguage": "שנו שפת שמע",
     "home": "דף הבית של JesusFilm",
-    "closeSearch": "סגירת החיפוש"
+    "closeSearch": "סגירת החיפוש",
+    "submitSearch": "חיפוש"
   },
   "SearchOverlay": {
     "dialogLabel": "חיפוש ועיון בסרטונים",
@@ -204,11 +205,12 @@
     "categoryChristmas": "חג המולד",
     "searchLanguageLabel": "שפת חיפוש",
     "allLanguages": "כל השפות",
-    "searchSuggestions": "הצעות חיפוש",
+    "searchSuggestions": "הצעות לחיפוש",
+    "directMatches": "התאמות ישירות",
     "languages": "שפות",
     "recommendedLanguage": "שפה מומלצת",
-    "searchSuggestion": "חיפוש {suggestion}",
-    "searchSuggestionWithLanguage": "חיפוש {suggestion} ב־{language}",
+    "searchSuggestion": "חפשו ״{suggestion}״",
+    "searchSuggestionWithLanguage": "חפשו ב־{language} את ״{suggestion}״",
     "inLanguage": "ב־{language}",
     "browseByRegion": "עיון לפי אזור",
     "clearLanguages": "ניקוי",
@@ -217,7 +219,8 @@
     "tryDifferentKeywordsOrLanguage": "נסו מילות מפתח אחרות או בחרו שפת חיפוש אחרת",
     "useWebsiteDefaultLanguage": "השתמשו בשפת החיפוש ברירת המחדל של האתר",
     "removeLanguage": "הסירו {language}",
-    "browseMode": "מצב עיון בחיפוש"
+    "browseMode": "מצב עיון בחיפוש",
+    "searchingInLanguage": "תוצאות ב־{language}"
   },
   "HeroPlayer": {
     "playWithSound": "צפו עכשיו",

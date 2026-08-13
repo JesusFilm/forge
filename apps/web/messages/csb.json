@@ -179,7 +179,8 @@
     "clearSearch": "Wëczëszczë szëkbã",
     "changeAudioLanguage": "Zmieni jãzëk audio",
     "home": "Strona domô JesusFilm",
-    "closeSearch": "Zatrzëmôj szëkbã"
+    "closeSearch": "Zatrzëmôj szëkbã",
+    "submitSearch": "Szëkôj"
   },
   "SearchOverlay": {
     "dialogLabel": "Szëkôj i przerëcëwôj wideo",
@@ -204,11 +205,12 @@
     "categoryChristmas": "Bòżé Narodzenié",
     "searchLanguageLabel": "Jãzëk szëkbë",
     "allLanguages": "Wszëtczé jãzëczi",
-    "searchSuggestions": "Sugerowóné szëkbë",
+    "searchSuggestions": "Pòdpòwiescë szëkbë",
+    "directMatches": "Bezestrzédné dopasowania",
     "languages": "Jãzëczi",
     "recommendedLanguage": "Pòlecanë jãzëk",
-    "searchSuggestion": "Szëkôj {suggestion}",
-    "searchSuggestionWithLanguage": "Szëkôj {suggestion} pò {language}",
+    "searchSuggestion": "Szëkôj „{suggestion}”",
+    "searchSuggestionWithLanguage": "Szëkôj „{suggestion}” pò {language}",
     "inLanguage": "pò {language}",
     "browseByRegion": "Przerëcëwôj pò régiónie",
     "clearLanguages": "Wëczëszczë",
@@ -217,7 +219,8 @@
     "tryDifferentKeywordsOrLanguage": "Spróbùj jinëch słów abò wëbiérz jinë jãzëk szëkbë",
     "useWebsiteDefaultLanguage": "Ùżëjë domëslnegò jãzëka szëkbë stronë",
     "removeLanguage": "Ùsóni {language}",
-    "browseMode": "Mòd òglądaniô szëkbë"
+    "browseMode": "Mòd òglądaniô szëkbë",
+    "searchingInLanguage": "Rezùltatë pò {language}"
   },
   "HeroPlayer": {
     "playWithSound": "Òglądôj terôz",

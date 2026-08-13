@@ -179,7 +179,8 @@
     "clearSearch": "Tz'aku' sa'j",
     "changeAudioLanguage": "Tjalpa' rutzij ta audio",
     "home": "Ruwotot JesusFilm",
-    "closeSearch": "Tatz'apka' sa'j"
+    "closeSearch": "Tatz'apka' sa'j",
+    "submitSearch": "Sa'j"
   },
   "SearchOverlay": {
     "dialogLabel": "Sa'j y k'axpa' videos",
@@ -204,11 +205,12 @@
     "categoryChristmas": "Navidad",
     "searchLanguageLabel": "Ch'ab'äl ta sa'j",
     "allLanguages": "Katak' ch'ab'äl",
-    "searchSuggestions": "Na'oj ta sa'j",
+    "searchSuggestions": "K'utb'il ta sa'j",
+    "directMatches": "K'ulb'enik directo",
     "languages": "Ch'ab'äl",
     "recommendedLanguage": "Ch'ab'äl ta k'utb'il",
     "searchSuggestion": "Sa'j {suggestion}",
-    "searchSuggestionWithLanguage": "Sa'j {suggestion} ta {language}",
+    "searchSuggestionWithLanguage": "Sa'j \"{suggestion}\" ta {language}",
     "inLanguage": "ta {language}",
     "browseByRegion": "K'axpa' yoj región",
     "clearLanguages": "Tz'aku'",
@@ -217,7 +219,8 @@
     "tryDifferentKeywordsOrLanguage": "Tawila' palabras clave chik o chak'uxpa' jun ch'ab'äl chik ta sa'j",
     "useWebsiteDefaultLanguage": "Tajb'ej ch'ab'äl ta sa'j default ta web",
     "removeLanguage": "Tz'aku' {language}",
-    "browseMode": "Modo ta k'axpa' sa'j"
+    "browseMode": "Modo ta k'axpa' sa'j",
+    "searchingInLanguage": "Resultados ta {language}"
   },
   "HeroPlayer": {
     "playWithSound": "Watz'otz' chanim",

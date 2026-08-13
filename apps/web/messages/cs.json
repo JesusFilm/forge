@@ -179,7 +179,8 @@
     "clearSearch": "Vymazat hledání",
     "changeAudioLanguage": "Změnit jazyk zvuku",
     "home": "Domovská stránka JesusFilm",
-    "closeSearch": "Zavřít hledání"
+    "closeSearch": "Zavřít hledání",
+    "submitSearch": "Hledat"
   },
   "SearchOverlay": {
     "dialogLabel": "Hledat a procházet videa",
@@ -204,20 +205,22 @@
     "categoryChristmas": "Vánoce",
     "searchLanguageLabel": "Hledat jazyk",
     "allLanguages": "Všechny jazyky",
-    "searchSuggestions": "Návrhy vyhledávání",
+    "searchSuggestions": "Návrhy hledání",
+    "directMatches": "Přímé shody",
     "languages": "Jazyky",
     "recommendedLanguage": "Doporučený jazyk",
-    "searchSuggestion": "Hledat {suggestion}",
-    "searchSuggestionWithLanguage": "Hledat {suggestion} v jazyce {language}",
+    "searchSuggestion": "Vyhledat „{suggestion}“",
+    "searchSuggestionWithLanguage": "Vyhledat „{suggestion}“ v jazyce: {language}",
     "inLanguage": "v jazyce {language}",
     "browseByRegion": "Procházet podle regionu",
     "clearLanguages": "Vymazat",
     "queryLanguageDetected": "Zjištěn jazyk {language}",
-    "searchInLanguage": "Hledat v jazyce {language}",
+    "searchInLanguage": "Hledat v jazyce: {language}",
     "tryDifferentKeywordsOrLanguage": "Zkuste jiná klíčová slova nebo vyberte jiný jazyk vyhledávání",
     "useWebsiteDefaultLanguage": "Použít výchozí jazyk vyhledávání webu",
     "removeLanguage": "Odebrat {language}",
-    "browseMode": "Režim procházení vyhledávání"
+    "browseMode": "Režim procházení vyhledávání",
+    "searchingInLanguage": "Výsledky pro jazyk: {language}"
   },
   "HeroPlayer": {
     "playWithSound": "Sledovat nyní",

@@ -26,6 +26,8 @@ import {
   hexToRgba,
 } from "../src/lib/color"
 import { openExternalUrl } from "../src/lib/openExternalUrl"
+import { FloatingBackButton } from "../src/components/ui/FloatingBackButton"
+import { BACK_BUTTON_PROPS } from "../src/lib/playerLayout"
 import {
   CARD_BORDER_RADIUS,
   HORIZONTAL_PADDING,
@@ -49,6 +51,10 @@ import {
   MISSION_WASH,
 } from "../src/components/home/missionContent"
 
+// Floating back button (top 10 + 40pt tall) plus breathing room, so the
+// eyebrow clears it now that no native header reserves that space.
+const BACK_BUTTON_CLEARANCE = BACK_BUTTON_PROPS.topOffset + 40 + 14
+
 export default function MissionScreen() {
   const typography = useTypography()
   const insets = useSafeAreaInsets()
@@ -70,10 +76,16 @@ export default function MissionScreen() {
     (event: LayoutChangeEvent) => {
       if (section !== "roadmap" || didScrollToSectionRef.current) return
       didScrollToSectionRef.current = true
-      const y = Math.max(0, event.nativeEvent.layout.y - 12)
+      // layout.y includes the content padding. With no native header the
+      // viewport top is screen y=0, so subtract the padding back off or the
+      // heading lands under the status bar and the floating back button.
+      const y = Math.max(
+        0,
+        event.nativeEvent.layout.y - (insets.top + BACK_BUTTON_CLEARANCE),
+      )
       scrollRef.current?.scrollTo({ y, animated: false })
     },
-    [section],
+    [section, insets.top],
   )
 
   const handleBetaPress = () => {
@@ -97,7 +109,12 @@ export default function MissionScreen() {
         ref={scrollRef}
         contentContainerStyle={[
           styles.content,
-          { paddingBottom: insets.bottom + 48 },
+          {
+            // No native header now, so the screen owns the safe area: clear it
+            // plus the floating back button before the first line of prose.
+            paddingTop: insets.top + BACK_BUTTON_CLEARANCE,
+            paddingBottom: insets.bottom + 48,
+          },
         ]}
         showsVerticalScrollIndicator={false}
       >
@@ -196,6 +213,8 @@ export default function MissionScreen() {
           </Pressable>
         </View>
       </ScrollView>
+
+      <FloatingBackButton {...BACK_BUTTON_PROPS} />
     </View>
   )
 }
@@ -207,7 +226,6 @@ const styles = StyleSheet.create({
   },
   content: {
     paddingHorizontal: HORIZONTAL_PADDING,
-    paddingTop: 24,
   },
   // Local overrides on the shared text.eyebrow base (warm tint, wider
   // tracking, page-scale margin).

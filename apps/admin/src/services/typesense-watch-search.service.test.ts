@@ -2,13 +2,18 @@ import type { PrismaClient } from "@prisma/client"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import type {
   TypesenseClient,
+  TypesenseSearchHit,
   TypesenseSearchResult,
   TypesenseSearchRequest,
 } from "./typesense-client"
 import { TypesenseRequestError } from "./typesense-client"
+import { resolveTypesenseWatchSearchApiKey } from "./typesense-client-config"
 import { resolveSearchLanguageSignals } from "./search-language-resolution"
 import { buildAvailabilityDocuments } from "./typesense-watch-search-indexer"
-import { buildTypesenseWatchLexicalDocuments } from "./typesense-watch-search-lexical"
+import {
+  buildTypesenseWatchLexicalDocuments,
+  type TypesenseWatchLexicalDocument,
+} from "./typesense-watch-search-lexical"
 import {
   TYPESENSE_WATCH_AVAILABILITY_ALIAS,
   TYPESENSE_WATCH_CATALOG_ALIAS,
@@ -24,9 +29,10 @@ import {
   type TypesenseWatchSearchCollectionBinding,
 } from "./typesense-watch-search-profile"
 import {
-  resolveTypesenseWatchSearchApiKey,
+  typesenseLexicalMatchQuality,
   TypesenseWatchSearchService,
 } from "./typesense-watch-search.service"
+import { WATCH_SEARCH_TITLE_AND_BRAND_RANKING_IMPLEMENTATION } from "./typesense-watch-search-ranking"
 
 vi.mock("./search-language-resolution", async (importOriginal) => {
   const actual =
@@ -175,12 +181,14 @@ const candidateFieldManifests = {
     { name: "title_fr", type: "string[]" },
     { name: "title_ja", type: "string[]" },
     { name: "title_ru", type: "string[]" },
+    { name: "title_tr", type: "string[]" },
     { name: "title_zh", type: "string[]" },
     { name: "title_fallback", type: "string[]" },
     { name: "metadata_en", type: "string[]" },
     { name: "metadata_fr", type: "string[]" },
     { name: "metadata_ja", type: "string[]" },
     { name: "metadata_ru", type: "string[]" },
+    { name: "metadata_tr", type: "string[]" },
     { name: "metadata_zh", type: "string[]" },
     { name: "metadata_fallback", type: "string[]" },
   ],
@@ -243,6 +251,9 @@ function prismaFixture({
 
 function typesenseFixture({
   lexical = [catalogDocument],
+  lexicalLanes,
+  titleLexical = lexical,
+  metadataLexical = lexical,
   semantic = [],
   hybrid,
   hybridError,
@@ -258,6 +269,17 @@ function typesenseFixture({
   },
 }: {
   lexical?: TypesenseWatchCatalogDocument[]
+  lexicalLanes?: Partial<
+    Record<
+      "title" | "metadata",
+      Array<{
+        videoId: string
+        textMatchInfo?: TypesenseSearchHit<TypesenseWatchLexicalDocument>["text_match_info"]
+      }>
+    >
+  >
+  titleLexical?: TypesenseWatchCatalogDocument[]
+  metadataLexical?: TypesenseWatchCatalogDocument[]
   semantic?: Array<{
     videoId: string
     text: string
@@ -319,24 +341,58 @@ function typesenseFixture({
             entry.document.documentKind === "transcript" &&
             String(entry.document.language) === "fr",
         )
-        const lexicalDocuments = buildTypesenseWatchLexicalDocuments(lexical)
         return searches.map((request) => {
           const requestedFilterValues = [
             ...String(request.filter_by ?? "").matchAll(/`([^`]+)`/g),
           ].map((match) => match[1])
+          const lexicalLane = String(request.query_by).startsWith("title_")
+            ? "title"
+            : String(request.query_by).startsWith("metadata_")
+              ? "metadata"
+              : null
+          const laneCatalogDocuments =
+            lexicalLane === "title"
+              ? titleLexical
+              : lexicalLane === "metadata"
+                ? metadataLexical
+                : lexical
+          const filteredLexicalDocuments = buildTypesenseWatchLexicalDocuments(
+            laneCatalogDocuments,
+          ).filter(
+            (document) =>
+              requestedFilterValues.length === 0 ||
+              requestedFilterValues.includes(document.languageIdentity),
+          )
+          const configuredLexicalHits = lexicalLane
+            ? lexicalLanes?.[lexicalLane]
+            : undefined
+          const lexicalEntries = configuredLexicalHits
+            ? configuredLexicalHits.flatMap(({ videoId, textMatchInfo }) => {
+                const document = filteredLexicalDocuments.find(
+                  (candidate) => candidate.videoId === videoId,
+                )
+                return document
+                  ? [
+                      {
+                        vectorDistance: undefined,
+                        textMatchInfo,
+                        document,
+                      },
+                    ]
+                  : []
+              })
+            : filteredLexicalDocuments.map((document) => ({
+                vectorDistance: undefined,
+                textMatchInfo: undefined,
+                document,
+              }))
           const entries =
             request.collection === binding.lexical
-              ? lexicalDocuments
-                  .filter(
-                    (document) =>
-                      requestedFilterValues.length === 0 ||
-                      requestedFilterValues.includes(document.languageIdentity),
-                  )
-                  .map((document) => ({
-                    vectorDistance: undefined,
-                    document,
-                  }))
-              : semanticEntries
+              ? lexicalEntries
+              : semanticEntries.map((entry) => ({
+                  ...entry,
+                  textMatchInfo: undefined,
+                }))
           const groups = new Map<string, Array<(typeof entries)[number]>>()
           for (const entry of entries) {
             const group = groups.get(entry.document.canonicalVideoId) ?? []
@@ -359,6 +415,7 @@ function typesenseFixture({
               found: group.length,
               hits: group.slice(0, groupLimit).map((entry) => ({
                 vector_distance: entry.vectorDistance,
+                text_match_info: entry.textMatchInfo,
                 document: projectDocument(entry.document, request),
               })),
             })),
@@ -443,6 +500,75 @@ function typesenseFixture({
   }
 }
 
+describe("typesenseLexicalMatchQuality", () => {
+  it("keeps exact and missing metadata at neutral quality", () => {
+    expect(typesenseLexicalMatchQuality(undefined)).toBe(1)
+    expect(
+      typesenseLexicalMatchQuality({
+        tokens_matched: 3,
+        num_tokens_dropped: 0,
+        typo_prefix_score: 0,
+      }),
+    ).toBe(1)
+    expect(
+      typesenseLexicalMatchQuality({
+        tokens_matched: -1,
+        num_tokens_dropped: Number.NaN,
+        typo_prefix_score: Number.POSITIVE_INFINITY,
+      }),
+    ).toBe(1)
+  })
+
+  it("reduces quality monotonically for dropped tokens and typo-prefix cost", () => {
+    const exact = typesenseLexicalMatchQuality({})
+    const oneDrop = typesenseLexicalMatchQuality({ num_tokens_dropped: 1 })
+    const twoDrops = typesenseLexicalMatchQuality({ num_tokens_dropped: 2 })
+    const oneTypoPrefixCost = typesenseLexicalMatchQuality({
+      typo_prefix_score: 1,
+    })
+    const twoTypoPrefixCosts = typesenseLexicalMatchQuality({
+      typo_prefix_score: 2,
+    })
+    const combined = typesenseLexicalMatchQuality({
+      num_tokens_dropped: 1,
+      typo_prefix_score: 1,
+    })
+
+    expect(exact).toBe(1)
+    expect(oneDrop).toBeCloseTo(0.2)
+    expect(twoDrops).toBeLessThan(oneDrop)
+    expect(oneTypoPrefixCost).toBeCloseTo(0.8)
+    expect(twoTypoPrefixCosts).toBeLessThan(oneTypoPrefixCost)
+    expect(combined).toBeLessThan(oneDrop)
+    for (const quality of [
+      exact,
+      oneDrop,
+      twoDrops,
+      oneTypoPrefixCost,
+      twoTypoPrefixCosts,
+      combined,
+    ]) {
+      expect(quality).toBeGreaterThanOrEqual(0)
+      expect(quality).toBeLessThanOrEqual(1)
+    }
+  })
+
+  it("guards the Typesense 30.2 matched-token encoding cap", () => {
+    expect(
+      typesenseLexicalMatchQuality({
+        tokens_matched: 15,
+        num_tokens_dropped: 5,
+      }),
+    ).toBe(1)
+    expect(
+      typesenseLexicalMatchQuality({
+        tokens_matched: 14,
+        num_tokens_dropped: 1,
+      }),
+    ).toBeCloseTo(0.2)
+  })
+})
+
 describe("TypesenseWatchSearchService", () => {
   it("requires the search-only key for candidates while preserving the current fallback", () => {
     const legacyOnly = {
@@ -513,12 +639,13 @@ describe("TypesenseWatchSearchService", () => {
     ])
     expect(typesense.multiSearch.mock.calls[0]?.[0]).toEqual([
       expect.objectContaining({
-        query_by: "title_en,title_fr,title_ja,title_ru,title_zh,title_fallback",
+        query_by:
+          "title_en,title_fr,title_ja,title_ru,title_tr,title_zh,title_fallback",
         filter_by: undefined,
       }),
       expect.objectContaining({
         query_by:
-          "metadata_en,metadata_fr,metadata_ja,metadata_ru,metadata_zh,metadata_fallback",
+          "metadata_en,metadata_fr,metadata_ja,metadata_ru,metadata_tr,metadata_zh,metadata_fallback",
         filter_by: undefined,
       }),
       expect.objectContaining({
@@ -580,6 +707,49 @@ describe("TypesenseWatchSearchService", () => {
       profile.binding.lexical,
     )
     expect(typesense.multiSearch).toHaveBeenCalledTimes(1)
+  })
+
+  it("activates title-and-brand ranking only for the candidate profile", async () => {
+    const bibleProjectCollection: TypesenseWatchCatalogDocument = {
+      ...catalogDocument,
+      id: "candidate-bibleproject-collection",
+      coreId: "core-candidate-bibleproject-collection",
+      slug: "candidate-bibleproject-collection",
+      titles: ["The BibleProject Collection"],
+      localeCodes: ["fr"],
+      localesJson: JSON.stringify([
+        {
+          locale: "fr",
+          languageSlug: "french",
+          title: "The BibleProject Collection",
+          description: null,
+        },
+      ]),
+    }
+    const profile = candidateProfile()
+    const service = new TypesenseWatchSearchService(
+      prismaFixture(),
+      typesenseFixture({
+        lexical: [bibleProjectCollection],
+        catalog: [bibleProjectCollection],
+        binding: profile.binding,
+      }) as unknown as TypesenseClient,
+      { profile, embedder: vi.fn(async () => embedding) },
+    )
+
+    const { diagnostics } = await service.searchWithDiagnostics({
+      query: "BibleProject",
+      targetLanguageSlug: "french",
+    })
+
+    expect(diagnostics).toMatchObject({
+      profile: "CANDIDATE",
+      rankingImplementation: "title-and-brand-v1",
+      rankingMode: "TITLE_AND_BRAND",
+      rankingAnchor: {
+        compactCore: "bibleproject",
+      },
+    })
   })
 
   it("uses retrieved lexical Language evidence to choose candidate playback", async () => {
@@ -718,6 +888,297 @@ describe("TypesenseWatchSearchService", () => {
     })
   })
 
+  it("uses Title-and-brand mode to keep precise metadata ahead of semantic-only results", async () => {
+    const bibleProjectCollection: TypesenseWatchCatalogDocument = {
+      ...catalogDocument,
+      id: "bibleproject-collection",
+      coreId: "core-bibleproject-collection",
+      slug: "bibleproject-collection",
+      titles: ["The BibleProject Collection"],
+      descriptions: ["The complete BibleProject collection."],
+      localeCodes: ["fr"],
+      localesJson: JSON.stringify([
+        {
+          locale: "fr",
+          languageSlug: "french",
+          title: "The BibleProject Collection",
+          description: "The complete BibleProject collection.",
+        },
+      ]),
+    }
+    const bibleProjectVideo: TypesenseWatchCatalogDocument = {
+      ...catalogDocument,
+      id: "bibleproject-video",
+      coreId: "core-bibleproject-video",
+      slug: "bibleproject-gospel",
+      titles: ["Gospel"],
+      descriptions: ["A BibleProject animation about the biblical story."],
+      localeCodes: ["fr"],
+      localesJson: JSON.stringify([
+        {
+          locale: "fr",
+          languageSlug: "french",
+          title: "Gospel",
+          description: "A BibleProject animation about the biblical story.",
+        },
+      ]),
+    }
+    const unrelatedSemantic: TypesenseWatchCatalogDocument = {
+      ...catalogDocument,
+      id: "semantic-gospel-part-4",
+      coreId: "core-semantic-gospel-part-4",
+      slug: "gospel-part-4",
+      titles: ["Gospel Part 4"],
+      descriptions: ["A transcript-semantic result."],
+      localeCodes: ["fr"],
+      localesJson: JSON.stringify([
+        {
+          locale: "fr",
+          languageSlug: "french",
+          title: "Gospel Part 4",
+          description: "A transcript-semantic result.",
+        },
+      ]),
+    }
+    const catalog = [
+      bibleProjectCollection,
+      bibleProjectVideo,
+      unrelatedSemantic,
+    ]
+    const fixtureInput = {
+      lexical: catalog,
+      titleLexical: [bibleProjectCollection],
+      metadataLexical: [bibleProjectVideo],
+      hybrid: [
+        {
+          document: {
+            id: "chunk-semantic-gospel-part-4",
+            documentKind: "transcript",
+            videoId: unrelatedSemantic.id,
+            videoEditionId: "edition-semantic-gospel-part-4",
+            canonicalVideoId: "core:core-semantic-gospel-part-4",
+            language: "fr",
+            publiclyVisible: true,
+            text: "A semantically similar transcript about a gospel project.",
+            startSeconds: 42,
+          },
+          vectorDistance: 0.1,
+        },
+      ],
+      catalog,
+    } satisfies Parameters<typeof typesenseFixture>[0]
+    const currentTypesense = typesenseFixture(fixtureInput)
+    const legacyService = new TypesenseWatchSearchService(
+      prismaFixture(),
+      currentTypesense as unknown as TypesenseClient,
+      { embedder: vi.fn(async () => embedding) },
+    )
+    const legacy = await legacyService.searchWithDiagnostics({
+      query: "the bible project",
+      targetLanguageSlug: "french",
+    })
+
+    expect(legacy.response.results.map((result) => result.id)).toEqual([
+      bibleProjectCollection.id,
+      unrelatedSemantic.id,
+      bibleProjectVideo.id,
+    ])
+    expect(legacy.diagnostics).toMatchObject({
+      rankingImplementation: "legacy-rrf",
+      rankingMode: "SEMANTIC",
+      rankingAnchor: null,
+    })
+
+    const profile = candidateProfile()
+    const candidateTypesense = typesenseFixture({
+      ...fixtureInput,
+      binding: profile.binding,
+    })
+    const service = new TypesenseWatchSearchService(
+      prismaFixture(),
+      candidateTypesense as unknown as TypesenseClient,
+      {
+        embedder: vi.fn(async () => embedding),
+        profile,
+      },
+    )
+
+    const { response, diagnostics } = await service.searchWithDiagnostics({
+      query: "the bible project",
+      targetLanguageSlug: "french",
+    })
+
+    expect(response.results.map((result) => result.id)).toEqual([
+      bibleProjectCollection.id,
+      bibleProjectVideo.id,
+      unrelatedSemantic.id,
+    ])
+    expect(response).not.toHaveProperty("rankingMode")
+    expect(diagnostics.rankingImplementation).toBe(
+      WATCH_SEARCH_TITLE_AND_BRAND_RANKING_IMPLEMENTATION,
+    )
+    expect(diagnostics.rankingMode).toBe("TITLE_AND_BRAND")
+    expect(diagnostics.rankingAnchor).toMatchObject({
+      compactCore: "bibleproject",
+      sourceCanonicalVideoId: "core:core-bibleproject-collection",
+    })
+    expect(diagnostics.rankingTrace).toEqual([
+      expect.objectContaining({
+        canonicalVideoId: "core:core-bibleproject-collection",
+        evidenceTier: "UNIQUE_TITLE_CORE",
+        finalRank: 1,
+        selectedVideoId: bibleProjectCollection.id,
+        titleRank: 1,
+        titleContribution: 0.56 / 61,
+        metadataRank: null,
+        semanticRank: null,
+        watchabilityOutcome: "target_audio",
+      }),
+      expect.objectContaining({
+        canonicalVideoId: "core:core-bibleproject-video",
+        evidenceTier: "ANCHOR_METADATA",
+        finalRank: 2,
+        selectedVideoId: bibleProjectVideo.id,
+        titleRank: null,
+        metadataRank: 1,
+        metadataContribution: 0.14 / 61,
+        semanticRank: null,
+        watchabilityOutcome: "target_audio",
+      }),
+      expect.objectContaining({
+        canonicalVideoId: "core:core-semantic-gospel-part-4",
+        evidenceTier: "SEMANTIC_FILL",
+        finalRank: 3,
+        selectedVideoId: unrelatedSemantic.id,
+        titleRank: null,
+        metadataRank: null,
+        semanticRank: 1,
+        semanticContribution: 0.3 / 61,
+        watchabilityOutcome: "target_audio",
+      }),
+    ])
+    expect(candidateTypesense.multiSearch.mock.calls[0]?.[0]).toHaveLength(3)
+
+    const pageOne = await service.search({
+      query: "the bible project",
+      targetLanguageSlug: "french",
+      limit: 2,
+    })
+    const pageTwo = await service.search({
+      query: "the bible project",
+      targetLanguageSlug: "french",
+      offset: 2,
+      limit: 1,
+    })
+    expect(
+      [...pageOne.results, ...pageTwo.results].map(({ id }) => id),
+    ).toEqual(response.results.map(({ id }) => id))
+  })
+
+  it("does not apply normalized title-core boosts when an anchor is ambiguous", async () => {
+    const titles = [
+      {
+        ...catalogDocument,
+        id: "bibleproject-series",
+        coreId: "core-bibleproject-series",
+        slug: "bibleproject-series",
+        titles: ["BibleProject Series"],
+      },
+      {
+        ...catalogDocument,
+        id: "bibleproject-collection",
+        coreId: "core-bibleproject-collection",
+        slug: "bibleproject-collection",
+        titles: ["BibleProject Collection"],
+      },
+    ]
+    const profile = candidateProfile()
+    const service = new TypesenseWatchSearchService(
+      prismaFixture(),
+      typesenseFixture({
+        lexical: titles,
+        titleLexical: titles,
+        metadataLexical: [],
+        catalog: titles,
+        binding: profile.binding,
+      }) as unknown as TypesenseClient,
+      { profile, embedder: vi.fn(async () => embedding) },
+    )
+
+    const { diagnostics } = await service.searchWithDiagnostics({
+      query: "the bible project series",
+      targetLanguageSlug: "french",
+    })
+
+    expect(diagnostics.rankingMode).toBe("SEMANTIC")
+    expect(diagnostics.rankingAnchor).toBeNull()
+    expect(diagnostics.rankingTrace).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ wholeTitleMatch: false }),
+        expect.objectContaining({ wholeTitleMatch: false }),
+      ]),
+    )
+  })
+
+  it("keeps conceptual searches in Semantic mode with the existing fused order", async () => {
+    const first: TypesenseWatchCatalogDocument = {
+      ...catalogDocument,
+      id: "semantic-first",
+      coreId: "core-semantic-first",
+      slug: "comfort-after-loss",
+      titles: ["Comfort After Loss"],
+    }
+    const second: TypesenseWatchCatalogDocument = {
+      ...catalogDocument,
+      id: "semantic-second",
+      coreId: "core-semantic-second",
+      slug: "starting-again",
+      titles: ["Starting Again"],
+    }
+    const catalog = [first, second]
+    const profile = candidateProfile()
+    const service = new TypesenseWatchSearchService(
+      prismaFixture(),
+      typesenseFixture({
+        lexical: catalog,
+        titleLexical: [],
+        metadataLexical: [],
+        hybrid: catalog.map((document, index) => ({
+          document: {
+            id: `semantic-chunk-${index}`,
+            documentKind: "transcript" as const,
+            videoId: document.id,
+            videoEditionId: `edition-${index}`,
+            canonicalVideoId: `core:${document.coreId}`,
+            language: "fr",
+            publiclyVisible: true,
+            text: `Conceptual transcript ${index}`,
+            startSeconds: index,
+          },
+          vectorDistance: 0.1 + index / 10,
+        })),
+        catalog,
+        binding: profile.binding,
+      }) as unknown as TypesenseClient,
+      {
+        embedder: vi.fn(async () => embedding),
+        profile,
+      },
+    )
+
+    const { response, diagnostics } = await service.searchWithDiagnostics({
+      query: "hope after divorce",
+      targetLanguageSlug: "french",
+    })
+
+    expect(diagnostics.rankingMode).toBe("SEMANTIC")
+    expect(diagnostics.rankingAnchor).toBeNull()
+    expect(response.results.map((result) => result.id)).toEqual([
+      first.id,
+      second.id,
+    ])
+  })
+
   it("gives every candidate locale field equal authority and lowers only fallback", async () => {
     const typesense = typesenseFixture({ lexical: [catalogDocument] })
     const service = new TypesenseWatchSearchService(
@@ -735,15 +1196,15 @@ describe("TypesenseWatchSearchService", () => {
       expect.arrayContaining([
         expect.objectContaining({
           query_by:
-            "title_en,title_fr,title_ja,title_ru,title_zh,title_fallback",
-          query_by_weights: "4,4,4,4,4,1",
-          num_typos: "2,2,2,2,2,1",
+            "title_en,title_fr,title_ja,title_ru,title_tr,title_zh,title_fallback",
+          query_by_weights: "4,4,4,4,4,4,1",
+          num_typos: "2,2,2,2,2,2,1",
         }),
         expect.objectContaining({
           query_by:
-            "metadata_en,metadata_fr,metadata_ja,metadata_ru,metadata_zh,metadata_fallback",
-          query_by_weights: "4,4,4,4,4,1",
-          num_typos: "2,2,2,2,2,1",
+            "metadata_en,metadata_fr,metadata_ja,metadata_ru,metadata_tr,metadata_zh,metadata_fallback",
+          query_by_weights: "4,4,4,4,4,4,1",
+          num_typos: "2,2,2,2,2,2,1",
         }),
       ]),
     )
@@ -1125,11 +1586,335 @@ describe("TypesenseWatchSearchService", () => {
     expect(response.results[0]?.evidence.kind).toBe("exact_title")
   })
 
+  it("ranks a complete metadata match above a dropped-token title match", async () => {
+    const partialTitle: TypesenseWatchCatalogDocument = {
+      ...catalogDocument,
+      id: "partial-world-title",
+      coreId: "core-partial-world-title",
+      slug: "the-world",
+      titles: ["The World"],
+      descriptions: ["A story about the world."],
+      localesJson: JSON.stringify([
+        {
+          locale: "fr",
+          title: "The World",
+          description: "A story about the world.",
+        },
+      ]),
+    }
+    const completeMetadata: TypesenseWatchCatalogDocument = {
+      ...catalogDocument,
+      id: "complete-world-cup-metadata",
+      coreId: "core-complete-world-cup-metadata",
+      slug: "championship-stories",
+      titles: ["Championship Stories"],
+      descriptions: ["Stories from the World Cup."],
+      localesJson: JSON.stringify([
+        {
+          locale: "fr",
+          title: "Championship Stories",
+          description: "Stories from the World Cup.",
+        },
+      ]),
+    }
+    const catalog = [partialTitle, completeMetadata]
+    const service = new TypesenseWatchSearchService(
+      prismaFixture(),
+      typesenseFixture({
+        lexical: catalog,
+        catalog,
+        lexicalLanes: {
+          title: [
+            {
+              videoId: partialTitle.id,
+              textMatchInfo: {
+                tokens_matched: 1,
+                num_tokens_dropped: 1,
+                typo_prefix_score: 0,
+              },
+            },
+          ],
+          metadata: [
+            {
+              videoId: completeMetadata.id,
+              textMatchInfo: {
+                tokens_matched: 2,
+                num_tokens_dropped: 0,
+                typo_prefix_score: 0,
+              },
+            },
+          ],
+        },
+      }) as unknown as TypesenseClient,
+      { embedder: vi.fn(async () => embedding) },
+    )
+
+    const response = await service.search({
+      query: "World Cup",
+      targetLanguageSlug: "french",
+    })
+
+    expect(response.results.map((result) => result.id)).toEqual([
+      completeMetadata.id,
+      partialTitle.id,
+    ])
+  })
+
+  it("keeps an exact Bible Project brand title ahead of degraded title recall", async () => {
+    const degradedTitle: TypesenseWatchCatalogDocument = {
+      ...catalogDocument,
+      id: "partial-bible-title",
+      coreId: "core-partial-bible-title",
+      slug: "the-bible",
+      titles: ["The Bible"],
+      localesJson: JSON.stringify([
+        { locale: "fr", title: "The Bible", description: null },
+      ]),
+    }
+    const bibleProject: TypesenseWatchCatalogDocument = {
+      ...catalogDocument,
+      id: "the-bible-project",
+      coreId: "core-the-bible-project",
+      slug: "the-bible-project",
+      titles: ["The Bible Project"],
+      localesJson: JSON.stringify([
+        { locale: "fr", title: "The Bible Project", description: null },
+      ]),
+    }
+    const catalog = [degradedTitle, bibleProject]
+    const service = new TypesenseWatchSearchService(
+      prismaFixture(),
+      typesenseFixture({
+        lexical: catalog,
+        catalog,
+        lexicalLanes: {
+          title: [
+            {
+              videoId: degradedTitle.id,
+              textMatchInfo: {
+                tokens_matched: 2,
+                num_tokens_dropped: 1,
+                typo_prefix_score: 0,
+              },
+            },
+            {
+              videoId: bibleProject.id,
+              textMatchInfo: {
+                tokens_matched: 3,
+                num_tokens_dropped: 0,
+                typo_prefix_score: 0,
+              },
+            },
+          ],
+          metadata: [],
+        },
+      }) as unknown as TypesenseClient,
+      { embedder: vi.fn(async () => embedding) },
+    )
+
+    const response = await service.search({
+      query: "The Bible Project",
+      targetLanguageSlug: "french",
+    })
+
+    expect(response.results.map((result) => result.id)).toEqual([
+      bibleProject.id,
+      degradedTitle.id,
+    ])
+    expect(response.results[0]?.evidence.kind).toBe("exact_title")
+  })
+
+  it("keeps typo-prefix and dropped-token title results with lower scores", async () => {
+    const exactTitle: TypesenseWatchCatalogDocument = {
+      ...catalogDocument,
+      id: "exact-bible-title",
+      coreId: "core-exact-bible-title",
+      slug: "bible-study",
+      titles: ["Bible Study"],
+      localesJson: JSON.stringify([
+        { locale: "fr", title: "Bible Study", description: null },
+      ]),
+    }
+    const fuzzyTitle: TypesenseWatchCatalogDocument = {
+      ...catalogDocument,
+      id: "fuzzy-bibble-title",
+      coreId: "core-fuzzy-bibble-title",
+      slug: "bibble-stories",
+      titles: ["Bibble Stories"],
+      localesJson: JSON.stringify([
+        { locale: "fr", title: "Bibble Stories", description: null },
+      ]),
+    }
+    const oneDrop: TypesenseWatchCatalogDocument = {
+      ...catalogDocument,
+      id: "one-dropped-token",
+      coreId: "core-one-dropped-token",
+      slug: "alpha-beta",
+      titles: ["Alpha Beta"],
+      localesJson: JSON.stringify([
+        { locale: "fr", title: "Alpha Beta", description: null },
+      ]),
+    }
+    const twoDrops: TypesenseWatchCatalogDocument = {
+      ...catalogDocument,
+      id: "two-dropped-tokens",
+      coreId: "core-two-dropped-tokens",
+      slug: "alpha",
+      titles: ["Alpha"],
+      localesJson: JSON.stringify([
+        { locale: "fr", title: "Alpha", description: null },
+      ]),
+    }
+
+    const typoCatalog = [fuzzyTitle, exactTitle]
+    const typoService = new TypesenseWatchSearchService(
+      prismaFixture(),
+      typesenseFixture({
+        lexical: typoCatalog,
+        catalog: typoCatalog,
+        lexicalLanes: {
+          title: [
+            {
+              videoId: fuzzyTitle.id,
+              textMatchInfo: { typo_prefix_score: 1 },
+            },
+            {
+              videoId: exactTitle.id,
+              textMatchInfo: { typo_prefix_score: 0 },
+            },
+          ],
+          metadata: [],
+        },
+      }) as unknown as TypesenseClient,
+      { embedder: vi.fn(async () => embedding) },
+    )
+    const dropCatalog = [twoDrops, oneDrop]
+    const dropService = new TypesenseWatchSearchService(
+      prismaFixture(),
+      typesenseFixture({
+        lexical: dropCatalog,
+        catalog: dropCatalog,
+        lexicalLanes: {
+          title: [
+            {
+              videoId: twoDrops.id,
+              textMatchInfo: { num_tokens_dropped: 2 },
+            },
+            {
+              videoId: oneDrop.id,
+              textMatchInfo: { num_tokens_dropped: 1 },
+            },
+          ],
+          metadata: [],
+        },
+      }) as unknown as TypesenseClient,
+      { embedder: vi.fn(async () => embedding) },
+    )
+
+    const [typoResponse, dropResponse] = await Promise.all([
+      typoService.search({ query: "Bible", targetLanguageSlug: "french" }),
+      dropService.search({
+        query: "Alpha Beta Gamma",
+        targetLanguageSlug: "french",
+      }),
+    ])
+
+    expect(typoResponse.results.map((result) => result.id)).toEqual([
+      exactTitle.id,
+      fuzzyTitle.id,
+    ])
+    expect(dropResponse.results.map((result) => result.id)).toEqual([
+      oneDrop.id,
+      twoDrops.id,
+    ])
+  })
+
+  it("uses the best same-lane locale hit while summing separate lanes", async () => {
+    const titleOnly: TypesenseWatchCatalogDocument = {
+      ...catalogDocument,
+      id: "a-title-only",
+      coreId: "shared-canonical-video",
+      slug: "title-only",
+      titles: ["Community Stories"],
+      localesJson: JSON.stringify([
+        { locale: "fr", title: "Community Stories", description: null },
+      ]),
+    }
+    const multiLane: TypesenseWatchCatalogDocument = {
+      ...catalogDocument,
+      id: "z-multi-lane",
+      coreId: "shared-canonical-video",
+      slug: "multi-lane",
+      titles: ["Community Stories"],
+      descriptions: ["Community Stories"],
+      localesJson: JSON.stringify([
+        {
+          locale: "fr",
+          title: "Community Stories",
+          description: "Community Stories",
+        },
+      ]),
+    }
+    const catalog = [multiLane, titleOnly]
+    const service = new TypesenseWatchSearchService(
+      prismaFixture(),
+      typesenseFixture({
+        lexical: catalog,
+        catalog,
+        lexicalLanes: {
+          title: [
+            {
+              videoId: multiLane.id,
+              textMatchInfo: { num_tokens_dropped: 1 },
+            },
+            {
+              videoId: multiLane.id,
+              textMatchInfo: { num_tokens_dropped: 0 },
+            },
+            {
+              videoId: titleOnly.id,
+              textMatchInfo: { num_tokens_dropped: 0 },
+            },
+          ],
+          metadata: [
+            {
+              videoId: multiLane.id,
+              textMatchInfo: { num_tokens_dropped: 0 },
+            },
+          ],
+        },
+      }) as unknown as TypesenseClient,
+      { embedder: vi.fn(async () => embedding) },
+    )
+
+    const response = await service.search({
+      query: "Community",
+      targetLanguageSlug: "french",
+    })
+
+    expect(response.results.map((result) => result.id)).toEqual([multiLane.id])
+    expect(response.results[0]?.scoreBreakdown.sourceScore).toBeCloseTo(0.7)
+  })
+
   it("adds semantic evidence to a lexical candidate instead of discarding it", async () => {
+    const degradedLexicalLanes = {
+      title: [
+        {
+          videoId: catalogDocument.id,
+          textMatchInfo: {
+            tokens_matched: 1,
+            num_tokens_dropped: 1,
+            typo_prefix_score: 0,
+          },
+        },
+      ],
+      metadata: [],
+    }
     const lexicalOnly = new TypesenseWatchSearchService(
       prismaFixture(),
       typesenseFixture({
         lexical: [catalogDocument],
+        lexicalLanes: degradedLexicalLanes,
         semantic: [],
       }) as unknown as TypesenseClient,
       { embedder: vi.fn(async () => embedding) },
@@ -1138,6 +1923,7 @@ describe("TypesenseWatchSearchService", () => {
       prismaFixture(),
       typesenseFixture({
         lexical: [catalogDocument],
+        lexicalLanes: degradedLexicalLanes,
         semantic: [
           {
             videoId: catalogDocument.id,
@@ -1158,6 +1944,11 @@ describe("TypesenseWatchSearchService", () => {
     expect(hybridResponse.results[0]?.score).toBeGreaterThan(
       lexicalResponse.results[0]?.score ?? 0,
     )
+    expect(hybridResponse.results[0]).toMatchObject({
+      snippet: "The believers shared their lives.",
+      startSeconds: 42,
+      evidence: { kind: "exact_title", languageSlug: "french" },
+    })
   })
 
   it("ranks a whole-title match ahead of broader exact-title matches", async () => {
@@ -1273,6 +2064,9 @@ describe("TypesenseWatchSearchService", () => {
     expect(metadataRequest).toMatchObject({
       query_by: "metadata_fr,metadata_fallback",
       group_limit: 3,
+      // The metadata lane keeps the dropped-token retry as the long-query
+      // recall safety net.
+      drop_tokens_threshold: 1,
     })
     expect(titleRequest).not.toHaveProperty("validate_field_names")
     expect(semanticRequest?.q).toBe("*")
@@ -2479,7 +3273,7 @@ describe("TypesenseWatchSearchService", () => {
       },
     )
 
-    const response = await service.search({
+    const { response, diagnostics } = await service.searchWithDiagnostics({
       query: "communion",
       targetLanguageSlug: "french",
     })
@@ -2503,6 +3297,12 @@ describe("TypesenseWatchSearchService", () => {
       embeddingLanes[0]?.startedOffsetMs ?? 0,
     )
     expect(embedder).toHaveBeenCalledTimes(1)
+    expect(diagnostics).toMatchObject({
+      profile: "CURRENT",
+      rankingImplementation: "legacy-rrf",
+      rankingMode: "SEMANTIC",
+      rankingAnchor: null,
+    })
   })
 
   it("reserves one multi-search slot for legacy semantic retrieval", async () => {

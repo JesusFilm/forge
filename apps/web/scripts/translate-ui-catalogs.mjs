@@ -8,6 +8,7 @@ import {
   PermanentApiError,
   requestTranslations,
 } from "./openai-catalog-translator.mjs"
+import { catalogPolicyFor } from "./ui-catalog-policy.mjs"
 
 const scriptDir = dirname(fileURLToPath(import.meta.url))
 const appDir = join(scriptDir, "..")
@@ -271,6 +272,7 @@ function updateManifestAfterTranslation({
   model,
   sourceDigest,
   catalogDigests,
+  scopeMessagePaths = [],
   generatedOn = new Date().toISOString().slice(0, 10),
 }) {
   const completed = new Set(completedLocales)
@@ -299,6 +301,22 @@ function updateManifestAfterTranslation({
       }
 
       if (generated.has(locale)) {
+        const previous = previousLocaleProvenance[locale]
+        if (scopeMessagePaths.length > 0 && previous) {
+          return [
+            locale,
+            {
+              ...previous,
+              sourceDigest,
+              catalogDigest,
+              generatedOn,
+              scopedRevisions: [
+                ...(previous.scopedRevisions ?? []),
+                { model, messagePaths: scopeMessagePaths, generatedOn },
+              ],
+            },
+          ]
+        }
         return [locale, { model, sourceDigest, catalogDigest, generatedOn }]
       }
 
@@ -351,8 +369,7 @@ function updateManifestAfterTranslation({
     metadata: {
       ...manifest.metadata,
       generatedOn,
-      policy:
-        "Every shipped UI catalog contains locale-specific copy. Existing authored translations are preserved; machineTranslatedLocales identifies catalogs completed or created with approved contextual AI translation and recommended for native-speaker review.",
+      policy: catalogPolicyFor(remainingProvisional.length),
       translation: {
         ...previousTranslationMetadata,
         method:
@@ -753,6 +770,9 @@ async function main({ args = process.argv, environment = process.env } = {}) {
       model,
       sourceDigest,
       catalogDigests,
+      scopeMessagePaths: [...scopedKeys].sort((left, right) =>
+        left.localeCompare(right),
+      ),
     })
     const staleProvenanceLocales = nextManifest.machineTranslatedLocales.filter(
       (locale) =>

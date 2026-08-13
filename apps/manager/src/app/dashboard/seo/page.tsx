@@ -4,9 +4,11 @@ import {
   buildSeoDemoWorkspace,
   seoWorkspaceViewSchema,
   type SeoWorkspace,
+  type SeoRunPage,
 } from "@/features/seo/seo-contract"
 import { createSeoAdminClient } from "@/features/seo/seo-admin-client"
 import { SeoWorkspace as SeoWorkspaceView } from "@/features/seo/seo-workspace"
+import { SeoRunsPage } from "@/features/seo/seo-runs-page"
 import { requireAuth } from "@/lib/require-auth"
 import { issueSeoCsrfToken } from "@/lib/seo-csrf"
 
@@ -26,18 +28,56 @@ function emptyWorkspace(): SeoWorkspace {
   }
 }
 
+function emptyRunPage(): SeoRunPage {
+  return {
+    generatedAt: new Date().toISOString(),
+    items: [],
+    hasNextPage: false,
+    nextCursor: null,
+  }
+}
+
 export default async function SeoDashboardPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ view?: string }>
+  searchParams?: Promise<{ view?: string; cursor?: string }>
 }) {
   const user = await requireAuth()
   const params = await searchParams
   const initialView = seoWorkspaceViewSchema
     .catch("overview")
     .parse(params?.view)
-  const csrfToken = issueSeoCsrfToken(user.id)
   const isDemo = env.MANAGER_DATA_MODE === "mock"
+  if (initialView === "runs") {
+    let runs = emptyRunPage()
+    let runsLoadError: string | undefined
+    if (isDemo) {
+      runsLoadError = "Run history is available only from the Admin ledger."
+    } else {
+      try {
+        runs = await (
+          await createSeoAdminClient()
+        ).getSeoRuns(25, params?.cursor)
+      } catch (error) {
+        runsLoadError =
+          error instanceof Error
+            ? error.message
+            : "Admin SEO run history could not be loaded."
+      }
+    }
+    return (
+      <div className="studio-page studio-page--seo">
+        <SeoRunsPage
+          page={runs}
+          loadError={runsLoadError}
+          cursor={params?.cursor}
+          isDemo={isDemo}
+        />
+      </div>
+    )
+  }
+
+  const csrfToken = issueSeoCsrfToken(user.id)
   let workspace: SeoWorkspace
   let loadError: string | undefined
 

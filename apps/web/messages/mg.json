@@ -179,7 +179,8 @@
     "clearSearch": "Fafao ny fikarohana",
     "changeAudioLanguage": "Ovay ny fitenin'ny feo",
     "home": "Pejy fandraisana JesusFilm",
-    "closeSearch": "Hidio ny fikarohana"
+    "closeSearch": "Hidio ny fikarohana",
+    "submitSearch": "Karohy"
   },
   "SearchOverlay": {
     "dialogLabel": "Karohy sy zaha lahatsary",
@@ -205,10 +206,11 @@
     "searchLanguageLabel": "Fiteny hikarohana",
     "allLanguages": "Fiteny rehetra",
     "searchSuggestions": "Soso-kevitra fikarohana",
+    "directMatches": "Valiny mifanaraka mivantana",
     "languages": "Fiteny",
     "recommendedLanguage": "Fiteny soso-kevitra",
-    "searchSuggestion": "Karohy {suggestion}",
-    "searchSuggestionWithLanguage": "Karohy {suggestion} amin'ny {language}",
+    "searchSuggestion": "Karohy ny “{suggestion}”",
+    "searchSuggestionWithLanguage": "Karohy amin'ny {language} ny “{suggestion}”",
     "inLanguage": "amin'ny {language}",
     "browseByRegion": "Zaha araka ny faritra",
     "clearLanguages": "Fafao",
@@ -217,7 +219,8 @@
     "tryDifferentKeywordsOrLanguage": "Andramo teny fanalahidy hafa na mifidiana fiteny fikarohana hafa",
     "useWebsiteDefaultLanguage": "Ampiasao ny fiteny fikarohana mahazatra an'ny tranonkala",
     "removeLanguage": "Esory {language}",
-    "browseMode": "Fomba fijerena fikarohana"
+    "browseMode": "Fomba fijerena fikarohana",
+    "searchingInLanguage": "Valiny amin'ny {language}"
   },
   "HeroPlayer": {
     "playWithSound": "Jereo izao",

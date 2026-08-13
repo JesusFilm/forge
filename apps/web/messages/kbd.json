@@ -179,7 +179,8 @@
     "clearSearch": "КъэщIэн къыхэу",
     "changeAudioLanguage": "Аудио бызэм къэщIэн",
     "home": "JesusFilm IэIэ",
-    "closeSearch": "КъыщIэн къэгъэпщыкIын"
+    "closeSearch": "КъыщIэн къэгъэпщыкIын",
+    "submitSearch": "КъыщIэн"
   },
   "SearchOverlay": {
     "dialogLabel": "Видео къыщIэн да зэбгъэзэхъуэжь",
@@ -204,11 +205,12 @@
     "categoryChristmas": "Рождество",
     "searchLanguageLabel": "Бызэ къыщIэн",
     "allLanguages": "Бызэхэм псори",
-    "searchSuggestions": "КъыщIэну сунуш",
+    "searchSuggestions": "КъыщIэн вариантхэр",
+    "directMatches": "Зэхуэдэ результатхэр",
     "languages": "Бызэхэр",
     "recommendedLanguage": "Рекомендовану бызэ",
-    "searchSuggestion": "{suggestion} къыщIэн",
-    "searchSuggestionWithLanguage": "{suggestion} {language}-м къыщIэн",
+    "searchSuggestion": "«{suggestion}» къыщIэн",
+    "searchSuggestionWithLanguage": "{language}-м «{suggestion}» къыщIэн",
     "inLanguage": "{language}-м",
     "browseByRegion": "РегионымкIэ еплъэн",
     "clearLanguages": "Къыхэу",
@@ -217,7 +219,8 @@
     "tryDifferentKeywordsOrLanguage": "НэгъуэщI ключ словэхэр къыщIэн е башка search language къыхэхын",
     "useWebsiteDefaultLanguage": "Сайтым и еплъыкIэ къыщIэну pшыну",
     "removeLanguage": "{language} къыхэу",
-    "browseMode": "КъыщIэн режим"
+    "browseMode": "КъыщIэн режим",
+    "searchingInLanguage": "Результатхэр {language}-м"
   },
   "HeroPlayer": {
     "playWithSound": "Ащ къыдэплъэн",

@@ -179,7 +179,8 @@
     "clearSearch": "Strika leit",
     "changeAudioLanguage": "Broyt ljóðmál",
     "home": "JesusFilm forsíða",
-    "closeSearch": "Lat leit aftur"
+    "closeSearch": "Lat leit aftur",
+    "submitSearch": "Leita"
   },
   "SearchOverlay": {
     "dialogLabel": "Leita og blaða í videobrotum",
@@ -204,11 +205,12 @@
     "categoryChristmas": "Jól",
     "searchLanguageLabel": "Leitismál",
     "allLanguages": "Øll mál",
-    "searchSuggestions": "Leititilboð",
+    "searchSuggestions": "Uppskot til leit",
+    "directMatches": "Beinleiðis úrslit",
     "languages": "Mál",
     "recommendedLanguage": "Mælt mál",
-    "searchSuggestion": "Leita eftir {suggestion}",
-    "searchSuggestionWithLanguage": "Leita eftir {suggestion} á {language}",
+    "searchSuggestion": "Leita eftir „{suggestion}“",
+    "searchSuggestionWithLanguage": "Leita á {language} eftir „{suggestion}“",
     "inLanguage": "á {language}",
     "browseByRegion": "Blaða eftir øki",
     "clearLanguages": "Strika",
@@ -217,7 +219,8 @@
     "tryDifferentKeywordsOrLanguage": "Royn onnur lyklaorð ella vel eitt annað leitismál",
     "useWebsiteDefaultLanguage": "Brúka standard leitismál á heimasíðuni",
     "removeLanguage": "Tak {language} burtur",
-    "browseMode": "Leita-blaðingarháttur"
+    "browseMode": "Leita-blaðingarháttur",
+    "searchingInLanguage": "Úrslit á {language}"
   },
   "HeroPlayer": {
     "playWithSound": "Hygg nú",

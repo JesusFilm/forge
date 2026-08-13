@@ -179,7 +179,8 @@
     "clearSearch": "Издөөнү тазалоо",
     "changeAudioLanguage": "Аудио тилди өзгөртүү",
     "home": "JesusFilm башкы барагы",
-    "closeSearch": "Издөөнү жабуу"
+    "closeSearch": "Издөөнү жабуу",
+    "submitSearch": "Издөө"
   },
   "SearchOverlay": {
     "dialogLabel": "Видеолорду издөө жана карап чыгуу",
@@ -205,10 +206,11 @@
     "searchLanguageLabel": "Издөө тили",
     "allLanguages": "Бардык тилдер",
     "searchSuggestions": "Издөө сунуштары",
+    "directMatches": "Так дал келгендер",
     "languages": "Тилдер",
     "recommendedLanguage": "Сунушталган тил",
-    "searchSuggestion": "{suggestion} издөө",
-    "searchSuggestionWithLanguage": "{suggestion} издөө, {language} тилинде",
+    "searchSuggestion": "«{suggestion}» деп издөө",
+    "searchSuggestionWithLanguage": "{language} тилинде «{suggestion}» деп издөө",
     "inLanguage": "{language} тилинде",
     "browseByRegion": "Аймак боюнча карап чыгуу",
     "clearLanguages": "Тазалоо",
@@ -217,7 +219,8 @@
     "tryDifferentKeywordsOrLanguage": "Башка ачкыч сөздөрдү же башка издөө тилин тандап көрүңүз",
     "useWebsiteDefaultLanguage": "Вебсайттын демейки издөө тилин колдонуу",
     "removeLanguage": "{language} тилин алып салуу",
-    "browseMode": "Издөө-баралоо режими"
+    "browseMode": "Издөө-баралоо режими",
+    "searchingInLanguage": "{language} тилиндеги жыйынтыктар"
   },
   "HeroPlayer": {
     "playWithSound": "Азыр көрүү",

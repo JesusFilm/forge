@@ -179,7 +179,8 @@
     "clearSearch": "Qidiruvni tozalash",
     "changeAudioLanguage": "Audio tilini o‘zgartirish",
     "home": "JesusFilm bosh sahifasi",
-    "closeSearch": "Qidiruvni yopish"
+    "closeSearch": "Qidiruvni yopish",
+    "submitSearch": "Qidirish"
   },
   "SearchOverlay": {
     "dialogLabel": "Videolarni qidirish va ko‘rish",
@@ -205,10 +206,11 @@
     "searchLanguageLabel": "Qidiruv tili",
     "allLanguages": "Barcha tillar",
     "searchSuggestions": "Qidiruv takliflari",
+    "directMatches": "Mos natijalar",
     "languages": "Tillar",
     "recommendedLanguage": "Tavsiya etilgan til",
     "searchSuggestion": "{suggestion}ni qidirish",
-    "searchSuggestionWithLanguage": "{suggestion}ni {language} tilida qidirish",
+    "searchSuggestionWithLanguage": "{language} tilida «{suggestion}»ni qidirish",
     "inLanguage": "{language} tilida",
     "browseByRegion": "Mintaqa bo‘yicha ko‘rish",
     "clearLanguages": "Tozalash",
@@ -217,7 +219,8 @@
     "tryDifferentKeywordsOrLanguage": "Boshqa kalit so‘zlarni sinab ko‘ring yoki boshqa qidiruv tilini tanlang",
     "useWebsiteDefaultLanguage": "Saytning standart qidiruv tilidan foydalanish",
     "removeLanguage": "{language}ni olib tashlash",
-    "browseMode": "Ko‘rib chiqish rejimi"
+    "browseMode": "Ko‘rib chiqish rejimi",
+    "searchingInLanguage": "Natijalar {language} tili bo‘yicha"
   },
   "HeroPlayer": {
     "playWithSound": "Hozir tomosha qiling",

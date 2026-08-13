@@ -179,7 +179,8 @@
     "clearSearch": "Bvisa kutsvaga",
     "changeAudioLanguage": "Chinja mutauro wekuteerera",
     "home": "Peji guru reJesusFilm",
-    "closeSearch": "Vhara kutsvaga"
+    "closeSearch": "Vhara kutsvaga",
+    "submitSearch": "Tsvaga"
   },
   "SearchOverlay": {
     "dialogLabel": "Tsvaga uye browse mavhidhiyo",
@@ -205,19 +206,21 @@
     "searchLanguageLabel": "Mutauro wekutsvaga",
     "allLanguages": "Mitauro yese",
     "searchSuggestions": "Mazano ekutsvaga",
+    "directMatches": "Zvakanyatsoenderana",
     "languages": "Mitauro",
     "recommendedLanguage": "Mutauro wakakurudzirwa",
     "searchSuggestion": "Tsvaga {suggestion}",
-    "searchSuggestionWithLanguage": "Tsvaga {suggestion} mu {language}",
+    "searchSuggestionWithLanguage": "Tsvaga “{suggestion}” mumutauro uyu: {language}",
     "inLanguage": "mu {language}",
     "browseByRegion": "Browse nenzvimbo",
     "clearLanguages": "Bvisa",
     "queryLanguageDetected": "{language} yawanikwa",
-    "searchInLanguage": "Tsvaga mu {language}",
+    "searchInLanguage": "Tsvaga mumutauro uyu: {language}",
     "tryDifferentKeywordsOrLanguage": "Edzai mazwi akasiyana kana sarudza mumwe mutauro wekutsvaga",
     "useWebsiteDefaultLanguage": "Shandisa mutauro wekutanga wekutsvaga wewebsite",
     "removeLanguage": "Bvisa {language}",
-    "browseMode": "Nzira yekutsvaga browsing"
+    "browseMode": "Nzira yekutsvaga browsing",
+    "searchingInLanguage": "Mhedzisiro iri mumutauro uyu: {language}"
   },
   "HeroPlayer": {
     "playWithSound": "Tarisa zvino",

@@ -179,7 +179,8 @@
     "clearSearch": "Search dè hòɂǫ",
     "changeAudioLanguage": "Audio language nàtł’ı̨",
     "home": "JesusFilm kǫ̀",
-    "closeSearch": "Search nàahdee"
+    "closeSearch": "Search nàahdee",
+    "submitSearch": "Search hòɂǫ"
   },
   "SearchOverlay": {
     "dialogLabel": "Video łè search hı̨la, weghàda",
@@ -204,20 +205,22 @@
     "categoryChristmas": "Christmas eghàlats’èeda łè",
     "searchLanguageLabel": "Search yatıı̀",
     "allLanguages": "Yatıı̀ t’àa łè",
-    "searchSuggestions": "Search ghà nàowo łè",
+    "searchSuggestions": "Search hòɂǫ ghà nàowo łè",
+    "directMatches": "Ełexè nàt’è asìı̀ łè",
     "languages": "Yatıı̀ łè",
     "recommendedLanguage": "Yatıı̀ t’àa wèghà gı̨ı̨dè",
     "searchSuggestion": "{suggestion} search hòɂǫ",
-    "searchSuggestionWithLanguage": "{language}: {suggestion} search hòɂǫ",
+    "searchSuggestionWithLanguage": "{language} k’èè “{suggestion}” search hòɂǫ",
     "inLanguage": "{language} k’èè",
     "browseByRegion": "Nàowo dèè k’èè weghàda",
     "clearLanguages": "Dè hòɂǫ",
     "queryLanguageDetected": "Yatıı̀ hòɂǫ: {language}",
-    "searchInLanguage": "{language}: search hòɂǫ",
+    "searchInLanguage": "{language} k’èè search hòɂǫ",
     "tryDifferentKeywordsOrLanguage": "Keyword łǫ hı̨t’àa, kǫ search yatıı̀ łǫ select hı̨la",
     "useWebsiteDefaultLanguage": "Website default search yatıı̀ wet’àa hòɂǫ",
     "removeLanguage": "{language} gots’ǫ̀ hòɂǫ",
-    "browseMode": "Search weghàda mode"
+    "browseMode": "Search weghàda mode",
+    "searchingInLanguage": "{language} k’èè result łè"
   },
   "HeroPlayer": {
     "playWithSound": "Dı̀ı̀ k’e eghàeda",

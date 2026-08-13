@@ -179,7 +179,8 @@
     "clearSearch": "Hlakola patlo",
     "changeAudioLanguage": "Fetola puo ea molumo",
     "home": "Lehae la JesusFilm",
-    "closeSearch": "Koala patlo"
+    "closeSearch": "Koala patlo",
+    "submitSearch": "Batla"
   },
   "SearchOverlay": {
     "dialogLabel": "Batla le ho sheba livideo",
@@ -205,10 +206,11 @@
     "searchLanguageLabel": "Batla puo",
     "allLanguages": "Lipuo tsohle",
     "searchSuggestions": "Litlhahiso tsa patlo",
+    "directMatches": "Tse lumellanang ka ho toba",
     "languages": "Lipuo",
     "recommendedLanguage": "Puo e khothalletsoang",
     "searchSuggestion": "Batla {suggestion}",
-    "searchSuggestionWithLanguage": "Batla {suggestion} ka {language}",
+    "searchSuggestionWithLanguage": "Batla “{suggestion}” ka {language}",
     "inLanguage": "ka {language}",
     "browseByRegion": "Sheba ka sebaka",
     "clearLanguages": "Hlakola",
@@ -217,7 +219,8 @@
     "tryDifferentKeywordsOrLanguage": "Leka mantsoe a mang kapa khetha puo e ’ngoe ea patlo",
     "useWebsiteDefaultLanguage": "Sebelisa puo ea patlo ea kamehla ea sebaka sa marang-rang",
     "removeLanguage": "Tlosa {language}",
-    "browseMode": "Mokhoa oa ho sheba patlo"
+    "browseMode": "Mokhoa oa ho sheba patlo",
+    "searchingInLanguage": "Liphetho ka {language}"
   },
   "HeroPlayer": {
     "playWithSound": "Shebella hona joale",

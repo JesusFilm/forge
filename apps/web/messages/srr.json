@@ -179,7 +179,8 @@
     "clearSearch": "Effas seet bi",
     "changeAudioLanguage": "Waññi làkk bu baat bi",
     "home": "JesusFilm kër",
-    "closeSearch": "Tëj seet bi"
+    "closeSearch": "Tëj seet bi",
+    "submitSearch": "Seet"
   },
   "SearchOverlay": {
     "dialogLabel": "Seet ak xool videos",
@@ -204,11 +205,12 @@
     "categoryChristmas": "Noël",
     "searchLanguageLabel": "Seet làkk",
     "allLanguages": "Làkk yépp",
-    "searchSuggestions": "Xelal yu seet",
+    "searchSuggestions": "Suqalikat yu seet bi",
+    "directMatches": "Njureef yu méngoo",
     "languages": "Làkk yi",
     "recommendedLanguage": "Làkk bu ñu daje",
     "searchSuggestion": "Seet {suggestion}",
-    "searchSuggestionWithLanguage": "Seet {suggestion} ci {language}",
+    "searchSuggestionWithLanguage": "Seet «{suggestion}» ci {language}",
     "inLanguage": "ci {language}",
     "browseByRegion": "Xool ci wàll bu néew",
     "clearLanguages": "Effas",
@@ -217,7 +219,8 @@
     "tryDifferentKeywordsOrLanguage": "Jéem yeneen baatu-clé walla tann beneen làkk bu seet",
     "useWebsiteDefaultLanguage": "Jëfandikoo làkk bu website bi mu jëfandikoo ci seet bi",
     "removeLanguage": "Dañal {language}",
-    "browseMode": "Modo bu seet"
+    "browseMode": "Modo bu seet",
+    "searchingInLanguage": "Njureef yi ci {language}"
   },
   "HeroPlayer": {
     "playWithSound": "Wone léegi",

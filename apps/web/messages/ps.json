@@ -179,7 +179,8 @@
     "clearSearch": "لټون پاک کړئ",
     "changeAudioLanguage": "د غږ ژبه بدله کړئ",
     "home": "د JesusFilm کورپاڼه",
-    "closeSearch": "لټون وتړئ"
+    "closeSearch": "لټون وتړئ",
+    "submitSearch": "ولټوئ"
   },
   "SearchOverlay": {
     "dialogLabel": "ویډیوګانې ولټوئ او وپلټئ",
@@ -205,10 +206,11 @@
     "searchLanguageLabel": "د لټون ژبه",
     "allLanguages": "ټولې ژبې",
     "searchSuggestions": "د لټون وړاندیزونه",
+    "directMatches": "سمون لرونکې پایلې",
     "languages": "ژبې",
     "recommendedLanguage": "وړاندیز شوې ژبه",
-    "searchSuggestion": "{suggestion} ولټوئ",
-    "searchSuggestionWithLanguage": "{suggestion} په {language} کې ولټوئ",
+    "searchSuggestion": "د «{suggestion}» لټون وکړئ",
+    "searchSuggestionWithLanguage": "په {language} کې د «{suggestion}» لټون وکړئ",
     "inLanguage": "په {language} کې",
     "browseByRegion": "د سیمې له مخې وپلټئ",
     "clearLanguages": "پاک کړئ",
@@ -217,7 +219,8 @@
     "tryDifferentKeywordsOrLanguage": "بېلابېل کلیدي ټکي وکاروئ یا بله د لټون ژبه وټاکئ",
     "useWebsiteDefaultLanguage": "د وېبپاڼې د لټون اصلي ژبه وکاروئ",
     "removeLanguage": "{language} لرې کړئ",
-    "browseMode": "د لټون د پلټنې بڼه"
+    "browseMode": "د لټون د پلټنې بڼه",
+    "searchingInLanguage": "پایلې په {language} کې دي"
   },
   "HeroPlayer": {
     "playWithSound": "اوس یې وګورئ",

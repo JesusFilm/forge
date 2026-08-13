@@ -179,7 +179,8 @@
     "clearSearch": "Корсьӧмӧс таскасны",
     "changeAudioLanguage": "Аудио кывсӧ вӧвны",
     "home": "JesusFilm оланнин",
-    "closeSearch": "Корсьӧмӧс вӧчны"
+    "closeSearch": "Корсьӧмӧс вӧчны",
+    "submitSearch": "Корсьны"
   },
   "SearchOverlay": {
     "dialogLabel": "Видеоӧс корсьны да лыддьыны",
@@ -204,20 +205,22 @@
     "categoryChristmas": "Рождество",
     "searchLanguageLabel": "Корсьӧм кыв",
     "allLanguages": "Быдӧс кывъяс",
-    "searchSuggestions": "Корсьӧм кывъяс",
+    "searchSuggestions": "Корсьӧм вылӧ сӧветъяс",
+    "directMatches": "Веськыд лӧсялӧмъяс",
     "languages": "Кывъяс",
     "recommendedLanguage": "Кывалӧм",
-    "searchSuggestion": "{suggestion} корсьны",
-    "searchSuggestionWithLanguage": "{suggestion} {language} вылын корсьны",
+    "searchSuggestion": "«{suggestion}» корсьны",
+    "searchSuggestionWithLanguage": "{language} кыв вылын «{suggestion}» корсьны",
     "inLanguage": "{language} вылын",
     "browseByRegion": "Регион сайын лыддьыны",
     "clearLanguages": "Вакыт",
     "queryLanguageDetected": "{language} тӧдӧм",
-    "searchInLanguage": "{language} вылын корсьны",
+    "searchInLanguage": "Корсьӧм кыв: {language}",
     "tryDifferentKeywordsOrLanguage": "Мӧд кывъяс вӧчны либӧ мӧд корсьӧм кыв бӧрлыны",
     "useWebsiteDefaultLanguage": "Сайтӧс стандартной корсьӧм кывсӧ вӧчны",
     "removeLanguage": "{language} вештыны",
-    "browseMode": "Корсьӧм лыддьыны режим"
+    "browseMode": "Корсьӧм лыддьыны режим",
+    "searchingInLanguage": "Корсьӧмлӧн результатъяс. Кыв: {language}"
   },
   "HeroPlayer": {
     "playWithSound": "Ӧні вӧтны",

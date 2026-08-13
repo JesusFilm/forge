@@ -179,7 +179,8 @@
     "clearSearch": "Glan cuardach",
     "changeAudioLanguage": "Athraigh teanga an fhuaime",
     "home": "Baile JesusFilm",
-    "closeSearch": "Dún an cuardach"
+    "closeSearch": "Dún an cuardach",
+    "submitSearch": "Cuardaigh"
   },
   "SearchOverlay": {
     "dialogLabel": "Cuardaigh agus brabhsáil físeáin",
@@ -205,10 +206,11 @@
     "searchLanguageLabel": "Teanga chuardaigh",
     "allLanguages": "Gach teanga",
     "searchSuggestions": "Moltaí cuardaigh",
+    "directMatches": "Torthaí díreacha",
     "languages": "Teangacha",
     "recommendedLanguage": "Teanga mholta",
-    "searchSuggestion": "Cuardaigh {suggestion}",
-    "searchSuggestionWithLanguage": "Cuardaigh {suggestion} i {language}",
+    "searchSuggestion": "Cuardaigh “{suggestion}”",
+    "searchSuggestionWithLanguage": "Cuardaigh “{suggestion}” i {language}",
     "inLanguage": "i {language}",
     "browseByRegion": "Brabhsáil de réir réigiúin",
     "clearLanguages": "Glan",
@@ -217,7 +219,8 @@
     "tryDifferentKeywordsOrLanguage": "Bain triail as eochairfhocail eile nó roghnaigh teanga chuardaigh eile",
     "useWebsiteDefaultLanguage": "Úsáid teanga réamhshocraithe chuardaigh an tsuímhéasáin",
     "removeLanguage": "Bain {language}",
-    "browseMode": "Mód brabhsála cuardaigh"
+    "browseMode": "Mód brabhsála cuardaigh",
+    "searchingInLanguage": "Torthaí i {language}"
   },
   "HeroPlayer": {
     "playWithSound": "Féach anois",

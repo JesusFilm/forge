@@ -179,7 +179,8 @@
     "clearSearch": "Obriši pretragu",
     "changeAudioLanguage": "Promeni jezik zvuka",
     "home": "Početna stranica JesusFilm",
-    "closeSearch": "Zatvori pretragu"
+    "closeSearch": "Zatvori pretragu",
+    "submitSearch": "Pretraži"
   },
   "SearchOverlay": {
     "dialogLabel": "Pretraži i pregledaj video zapise",
@@ -204,20 +205,22 @@
     "categoryChristmas": "Božić",
     "searchLanguageLabel": "Jezik pretrage",
     "allLanguages": "Svi jezici",
-    "searchSuggestions": "Predlozi pretrage",
+    "searchSuggestions": "Predlozi za pretragu",
+    "directMatches": "Direktna podudaranja",
     "languages": "Jezici",
     "recommendedLanguage": "Preporučeni jezik",
-    "searchSuggestion": "Pretraži {suggestion}",
-    "searchSuggestionWithLanguage": "Pretraži {suggestion} na jeziku {language}",
+    "searchSuggestion": "Pretraži „{suggestion}“",
+    "searchSuggestionWithLanguage": "Pretraži „{suggestion}“ na sledećem jeziku: {language}",
     "inLanguage": "na jeziku {language}",
     "browseByRegion": "Pregledaj po regionu",
     "clearLanguages": "Obriši",
     "queryLanguageDetected": "Detektovan jezik {language}",
-    "searchInLanguage": "Pretraži na jeziku {language}",
+    "searchInLanguage": "Pretraži na sledećem jeziku: {language}",
     "tryDifferentKeywordsOrLanguage": "Pokušajte sa drugim ključnim rečima ili izaberite drugi jezik pretrage",
     "useWebsiteDefaultLanguage": "Koristi podrazumevani jezik pretrage sajta",
     "removeLanguage": "Ukloni {language}",
-    "browseMode": "Režim pregledavanja pretrage"
+    "browseMode": "Režim pregledavanja pretrage",
+    "searchingInLanguage": "Rezultati na sledećem jeziku: {language}"
   },
   "HeroPlayer": {
     "playWithSound": "Gledaj sada",

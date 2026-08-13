@@ -179,7 +179,8 @@
     "clearSearch": "Search e kar",
     "changeAudioLanguage": "Audio language bu",
     "home": "JesusFilm home eo",
-    "closeSearch": "Search e kar"
+    "closeSearch": "Search e kar",
+    "submitSearch": "Bika"
   },
   "SearchOverlay": {
     "dialogLabel": "Video ae buata me bika",
@@ -204,11 +205,12 @@
     "categoryChristmas": "Christmas eo",
     "searchLanguageLabel": "Search language eo",
     "allLanguages": "Languages minde",
-    "searchSuggestions": "Search suggestions re",
+    "searchSuggestions": "Bika ae recommended re",
+    "directMatches": "Result ae match re",
     "languages": "Languages re",
     "recommendedLanguage": "Language e recommended",
-    "searchSuggestion": "{suggestion} e buata",
-    "searchSuggestionWithLanguage": "{suggestion} {language} ne buata",
+    "searchSuggestion": "“{suggestion}” ae bika",
+    "searchSuggestionWithLanguage": "{language} ne “{suggestion}” ae bika",
     "inLanguage": "{language} ne",
     "browseByRegion": "Region ne bika",
     "clearLanguages": "E kar",
@@ -217,7 +219,8 @@
     "tryDifferentKeywordsOrLanguage": "Keyword mweinaud me search language mweinaud e ere",
     "useWebsiteDefaultLanguage": "Website default search language e ka",
     "removeLanguage": "{language} e kar",
-    "browseMode": "Search browse mode eo"
+    "browseMode": "Search browse mode eo",
+    "searchingInLanguage": "Result re: {language}"
   },
   "HeroPlayer": {
     "playWithSound": "Kare e bitaei",

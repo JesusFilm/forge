@@ -179,7 +179,8 @@
     "clearSearch": "Kuraho ubushakashatsi",
     "changeAudioLanguage": "Hindura ururimi rw’amajwi",
     "home": "Urugo rwa JesusFilm",
-    "closeSearch": "Funga ubushakashatsi"
+    "closeSearch": "Funga ubushakashatsi",
+    "submitSearch": "Rondera"
   },
   "SearchOverlay": {
     "dialogLabel": "Rondera kandi ucukure muri videwo",
@@ -204,11 +205,12 @@
     "categoryChristmas": "Noheri",
     "searchLanguageLabel": "Ururimi rwo kuronderamwo",
     "allLanguages": "Indimi zose",
-    "searchSuggestions": "Ibisubizo vyiyemeje",
+    "searchSuggestions": "Ivyiyumviro vyo kurondera",
+    "directMatches": "Ibihuye neza",
     "languages": "Indimi",
     "recommendedLanguage": "Ururimi rurasabwa",
     "searchSuggestion": "Rondera {suggestion}",
-    "searchSuggestionWithLanguage": "Rondera {suggestion} mu {language}",
+    "searchSuggestionWithLanguage": "Rondera “{suggestion}” mu {language}",
     "inLanguage": "mu {language}",
     "browseByRegion": "Gucukura hakurikijwe intara",
     "clearLanguages": "Siba",
@@ -217,7 +219,8 @@
     "tryDifferentKeywordsOrLanguage": "Gerageza amajambo atandukanye canke uhitemwo urundi rurimi rwo kuronderamwo",
     "useWebsiteDefaultLanguage": "Koresha ururimi rusanzwe rw’urubuga rwo kurondera",
     "removeLanguage": "Kuraho {language}",
-    "browseMode": "Uburyo bwo gushakisha"
+    "browseMode": "Uburyo bwo gushakisha",
+    "searchingInLanguage": "Ibisubizo vyo mu {language}"
   },
   "HeroPlayer": {
     "playWithSound": "Raba ubu",

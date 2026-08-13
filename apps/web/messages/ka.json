@@ -179,7 +179,8 @@
     "clearSearch": "ძიების გასუფთავება",
     "changeAudioLanguage": "აუდიოენის შეცვლა",
     "home": "JesusFilm-ის მთავარი გვერდი",
-    "closeSearch": "ძიების დახურვა"
+    "closeSearch": "ძიების დახურვა",
+    "submitSearch": "ძიება"
   },
   "SearchOverlay": {
     "dialogLabel": "ვიდეოების ძიება და დათვალიერება",
@@ -205,19 +206,21 @@
     "searchLanguageLabel": "საძიებო ენა",
     "allLanguages": "ყველა ენა",
     "searchSuggestions": "ძიების შემოთავაზებები",
+    "directMatches": "ზუსტი დამთხვევები",
     "languages": "ენები",
     "recommendedLanguage": "რეკომენდებული ენა",
-    "searchSuggestion": "ძებნა: {suggestion}",
-    "searchSuggestionWithLanguage": "ძებნა {suggestion} ენის მიხედვით: {language}",
+    "searchSuggestion": "მოძებნეთ „{suggestion}“",
+    "searchSuggestionWithLanguage": "მოძებნეთ „{suggestion}“ ამ ენაზე: {language}",
     "inLanguage": "ენაზე: {language}",
     "browseByRegion": "რეგიონის მიხედვით დათვალიერება",
     "clearLanguages": "გასუფთავება",
     "queryLanguageDetected": "ნაპოვნია ენა: {language}",
-    "searchInLanguage": "ძებნა ენაზე: {language}",
+    "searchInLanguage": "ძიება ენაზე: {language}",
     "tryDifferentKeywordsOrLanguage": "სცადეთ სხვა საკვანძო სიტყვები ან აირჩიეთ სხვა საძიებო ენა",
     "useWebsiteDefaultLanguage": "გამოიყენეთ ვებსაიტის ნაგულისხმევი საძიებო ენა",
     "removeLanguage": "წაშალეთ {language}",
-    "browseMode": "დათვალიერების რეჟიმი"
+    "browseMode": "დათვალიერების რეჟიმი",
+    "searchingInLanguage": "შედეგები ენაზე: {language}"
   },
   "HeroPlayer": {
     "playWithSound": "უყურეთ ახლა",

@@ -179,7 +179,8 @@
     "clearSearch": "Halinon ang search",
     "changeAudioLanguage": "Suksua ang idioma sang audio",
     "home": "Panguna nga pahina sang JesusFilm",
-    "closeSearch": "Sirad-an ang search"
+    "closeSearch": "Sirad-an ang search",
+    "submitSearch": "Pangitaa"
   },
   "SearchOverlay": {
     "dialogLabel": "Pangitaa kag i-browse ang mga video",
@@ -204,20 +205,22 @@
     "categoryChristmas": "Pasko",
     "searchLanguageLabel": "Lenguahe sang search",
     "allLanguages": "Tanan nga lenguahe",
-    "searchSuggestions": "Mga Suhestyon sa Search",
+    "searchSuggestions": "Mga ginapanugyan nga pangitaon",
+    "directMatches": "Direkta nga mga resulta",
     "languages": "Mga lenguahe",
     "recommendedLanguage": "Gina-rekomenda nga lenguahe",
-    "searchSuggestion": "Pangitaa ang {suggestion}",
-    "searchSuggestionWithLanguage": "Pangitaa ang {suggestion} sa {language}",
+    "searchSuggestion": "Pangitaa ang “{suggestion}”",
+    "searchSuggestionWithLanguage": "Pangitaa sa {language} ang “{suggestion}”",
     "inLanguage": "sa {language}",
     "browseByRegion": "Mag-browse paagi sa rehiyon",
     "clearLanguages": "Halinon",
     "queryLanguageDetected": "Nadetect ang {language}",
-    "searchInLanguage": "Pangitaa sa {language}",
+    "searchInLanguage": "Mag-search sa {language}",
     "tryDifferentKeywordsOrLanguage": "Sulayi ang lain nga keyword ukon magpili sang lain nga search language",
     "useWebsiteDefaultLanguage": "Gamita ang default nga lenguahe sang website para sa search",
     "removeLanguage": "Kuhaa ang {language}",
-    "browseMode": "Browse mode sang search"
+    "browseMode": "Browse mode sang search",
+    "searchingInLanguage": "Mga resulta sa {language}"
   },
   "HeroPlayer": {
     "playWithSound": "Tan-awon subong",

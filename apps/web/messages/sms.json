@@ -179,7 +179,8 @@
     "clearSearch": "Pühhi haku",
     "changeAudioLanguage": "Vaihâta äänen kiel",
     "home": "JesusFilm-etusivu",
-    "closeSearch": "Peitt haku"
+    "closeSearch": "Peitt haku",
+    "submitSearch": "Etsi"
   },
   "SearchOverlay": {
     "dialogLabel": "Etsi ja selaa videoid",
@@ -204,20 +205,22 @@
     "categoryChristmas": "Jõlku",
     "searchLanguageLabel": "Hakukiel",
     "allLanguages": "Kõõll kielid",
-    "searchSuggestions": "Hakuehdotõk",
+    "searchSuggestions": "Hakuehdotukset",
+    "directMatches": "Suorat osumat",
     "languages": "Kielid",
     "recommendedLanguage": "Suositeltu kiel",
-    "searchSuggestion": "Etsi {suggestion}",
-    "searchSuggestionWithLanguage": "Etsi {suggestion} kielessä {language}",
+    "searchSuggestion": "Etsi ”{suggestion}”",
+    "searchSuggestionWithLanguage": "Etsi kielessä {language}: ”{suggestion}”",
     "inLanguage": "kielessä {language}",
     "browseByRegion": "Selaa alueen perusteella",
     "clearLanguages": "Tyhjennä",
     "queryLanguageDetected": "{language} havaittu",
-    "searchInLanguage": "Etsi kielellä {language}",
+    "searchInLanguage": "Etsi kielessä {language}",
     "tryDifferentKeywordsOrLanguage": "Kokeile jeeʹres hakusanoja vai vali toin hakukiel",
     "useWebsiteDefaultLanguage": "Käytä sivuston ominaista hakukiel",
     "removeLanguage": "Poista {language}",
-    "browseMode": "Selaus-tila"
+    "browseMode": "Selaus-tila",
+    "searchingInLanguage": "Tulõõk kielessä {language}"
   },
   "HeroPlayer": {
     "playWithSound": "Kattso nyt",

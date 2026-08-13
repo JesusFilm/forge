@@ -179,7 +179,8 @@
     "clearSearch": "ਖੋਜ ਸਾਫ਼ ਕਰੋ",
     "changeAudioLanguage": "ਆਡੀਓ ਭਾਸ਼ਾ ਬਦਲੋ",
     "home": "JesusFilm ਹੋਮ",
-    "closeSearch": "ਖੋਜ ਬੰਦ ਕਰੋ"
+    "closeSearch": "ਖੋਜ ਬੰਦ ਕਰੋ",
+    "submitSearch": "ਖੋਜੋ"
   },
   "SearchOverlay": {
     "dialogLabel": "ਵੀਡੀਓਜ਼ ਖੋਜੋ ਅਤੇ ਬ੍ਰਾਊਜ਼ ਕਰੋ",
@@ -204,11 +205,12 @@
     "categoryChristmas": "ਕ੍ਰਿਸਮਸ",
     "searchLanguageLabel": "ਖੋਜ ਭਾਸ਼ਾ",
     "allLanguages": "ਸਭ ਭਾਸ਼ਾਵਾਂ",
-    "searchSuggestions": "ਖੋਜ ਸੁਝਾਅ",
+    "searchSuggestions": "ਸੁਝਾਈਆਂ ਖੋਜਾਂ",
+    "directMatches": "ਸਿੱਧੇ ਮਿਲਦੇ ਨਤੀਜੇ",
     "languages": "ਭਾਸ਼ਾਵਾਂ",
     "recommendedLanguage": "ਸਿਫ਼ਾਰਸ਼ੀ ਭਾਸ਼ਾ",
-    "searchSuggestion": "{suggestion} ਖੋਜੋ",
-    "searchSuggestionWithLanguage": "{language} ਵਿੱਚ {suggestion} ਖੋਜੋ",
+    "searchSuggestion": "“{suggestion}” ਖੋਜੋ",
+    "searchSuggestionWithLanguage": "{language} ਵਿੱਚ “{suggestion}” ਖੋਜੋ",
     "inLanguage": "{language} ਵਿੱਚ",
     "browseByRegion": "ਖੇਤਰ ਅਨੁਸਾਰ ਬ੍ਰਾਊਜ਼ ਕਰੋ",
     "clearLanguages": "ਸਾਫ਼ ਕਰੋ",
@@ -217,7 +219,8 @@
     "tryDifferentKeywordsOrLanguage": "ਵੱਖਰੇ ਕੀਵਰਡ ਆਜ਼ਮਾਓ ਜਾਂ ਕੋਈ ਹੋਰ ਖੋਜ ਭਾਸ਼ਾ ਚੁਣੋ",
     "useWebsiteDefaultLanguage": "ਵੈੱਬਸਾਈਟ ਦੀ ਮੂਲ ਖੋਜ ਭਾਸ਼ਾ ਵਰਤੋ",
     "removeLanguage": "{language} ਹਟਾਓ",
-    "browseMode": "ਖੋਜ ਬ੍ਰਾਊਜ਼ ਮੋਡ"
+    "browseMode": "ਖੋਜ ਬ੍ਰਾਊਜ਼ ਮੋਡ",
+    "searchingInLanguage": "ਨਤੀਜੇ ਸਿਰਫ਼ {language} ਵਿੱਚ"
   },
   "HeroPlayer": {
     "playWithSound": "ਹੁਣ ਦੇਖੋ",
