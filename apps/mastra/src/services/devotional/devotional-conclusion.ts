@@ -127,6 +127,9 @@ export type WriteDevotionalConclusionInput = {
   question: string
   prayer: string
   llm: DevotionalLlm
+  /** Workspace-authored prompt. Falls back to the in-code SYSTEM_PROMPT while
+   *  the deployed document predates the `conclusion` key. */
+  systemPrompt?: string
 }
 
 export class DevotionalConclusionError extends Error {
@@ -157,11 +160,12 @@ function buildUser(input: WriteDevotionalConclusionInput): string {
 async function requestConclusion(
   llm: DevotionalLlm,
   user: string,
+  systemPrompt: string,
 ): Promise<string> {
   let result: z.infer<typeof ConclusionSchema>
   try {
     result = await llm.complete({
-      system: SYSTEM_PROMPT,
+      system: systemPrompt,
       user,
       jsonSchema: CONCLUSION_JSON_SCHEMA,
       schema: ConclusionSchema,
@@ -185,7 +189,11 @@ export async function writeDevotionalConclusion(
   input: WriteDevotionalConclusionInput,
 ): Promise<{ conclusion: string }> {
   const user = buildUser(input)
-  let conclusion = await requestConclusion(input.llm, user)
+  let conclusion = await requestConclusion(
+    input.llm,
+    user,
+    input.systemPrompt ?? SYSTEM_PROMPT,
+  )
   if (!conclusion) {
     throw new DevotionalConclusionError(
       "empty_output",
@@ -207,7 +215,11 @@ export async function writeDevotionalConclusion(
       "same core truth, in genuinely new words, not a copy of an existing",
       "sentence.",
     ].join("\n")
-    conclusion = await requestConclusion(input.llm, retryUser)
+    conclusion = await requestConclusion(
+      input.llm,
+      retryUser,
+      input.systemPrompt ?? SYSTEM_PROMPT,
+    )
     if (!conclusion) {
       throw new DevotionalConclusionError(
         "empty_output",

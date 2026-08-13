@@ -120,6 +120,9 @@ export type PickReflectionPointsInput = {
    *  whether two points can honestly fit. */
   approxWords?: number
   llm: DevotionalLlm
+  /** Workspace-authored prompt. Falls back to the in-code SYSTEM_PROMPT while
+   *  the deployed document predates the `pointPicker` key. */
+  systemPrompt?: string
 }
 
 function countWords(text: string): number {
@@ -175,7 +178,7 @@ export async function pickReflectionPoints(
 
   try {
     const result = await input.llm.complete({
-      system: SYSTEM_PROMPT,
+      system: input.systemPrompt ?? SYSTEM_PROMPT,
       user,
       jsonSchema: JSON_SCHEMA,
       schema: Schema,

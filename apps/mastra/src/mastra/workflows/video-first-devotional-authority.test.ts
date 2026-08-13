@@ -18,6 +18,23 @@ const mastraRegistrationSource = readFileSync(
 )
 
 describe("video-first devotional runtime authority", () => {
+  // Both seams shipped unwired once: production ran them on in-code prompts
+  // while every sibling read its prompt from the Workspace, which quietly took
+  // the owner's closing-line and point-selection rules off the surface she can
+  // edit without a deploy. Nothing failed, because no test looked at the call
+  // site. This pins the SOURCE of each prompt, so dropping either override
+  // turns this red rather than silently changing what the pipeline writes.
+  it("threads authored prompts into the point picker and the conclusion writer", () => {
+    for (const required of [
+      "authored.prompts.prompts.pointPicker",
+      "authored.prompts.prompts.conclusion",
+      "pickPoints: (options)",
+      "writeConclusion: (options)",
+    ]) {
+      expect(workflowSource, required).toContain(required)
+    }
+  })
+
   it("does not import compiled corpora, catalogs, or default prompts", () => {
     for (const forbidden of [
       "JESUS_FILM_CHAPTERS",

@@ -34,6 +34,8 @@ import { generateMusic } from "../../services/devotional/elevenlabs-music"
 import { rotateFilter } from "../../services/devotional/voice-rotation"
 import { evaluateSafety } from "../../services/devotional/safety-gate"
 import { reviewDevotionalText } from "../../services/devotional/devotional-quality-gate"
+import { pickReflectionPoints } from "../../services/devotional/reflection-point-picker"
+import { writeDevotionalConclusion } from "../../services/devotional/devotional-conclusion"
 import { pickReflectionHighlights } from "../../services/devotional/reflection-highlighter"
 import { modernizeReflection } from "../../services/devotional/reflection-modernizer"
 import { pickBestSpurgeon } from "../../services/devotional/spurgeon-ranker"
@@ -131,6 +133,25 @@ function contentDependencies(
         ...options,
         systemPrompt: authored.prompts.prompts.highlighter,
         llm: createAgentLlm(highlighterAgent, getDevotionalModel()),
+      }),
+    // These two were left unwired when they were added, so production ran them
+    // on in-code prompts while every sibling seam above reads its prompt from
+    // the Workspace. That silently took the owner's closing-line and
+    // point-selection rules off the surface she can edit without a deploy, which
+    // is the whole point of the authored plane.
+    //
+    // `systemPrompt` stays undefined when the deployed document predates the
+    // key, and the service then falls back to its in-code copy — see the
+    // `.optional()` note on those keys in authored-data.ts.
+    pickPoints: (options) =>
+      pickReflectionPoints({
+        ...options,
+        systemPrompt: authored.prompts.prompts.pointPicker,
+      }),
+    writeConclusion: (options) =>
+      writeDevotionalConclusion({
+        ...options,
+        systemPrompt: authored.prompts.prompts.conclusion,
       }),
   }
 }

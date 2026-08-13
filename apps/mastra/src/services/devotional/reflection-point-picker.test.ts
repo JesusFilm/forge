@@ -134,6 +134,40 @@ describe("pickReflectionPoints", () => {
     })
   })
 
+  it("prefers the authored prompt over the in-code fallback", async () => {
+    // The Workspace copy is the one the owner can edit without a deploy. If this
+    // stops being honoured, her point-selection rules go back to being
+    // deploy-only with nothing else noticing.
+    const complete = vi
+      .fn()
+      .mockResolvedValue({ chosen: [2, 4], reason: "authored" })
+    await pickReflectionPoints({
+      points: points(5),
+      sceneTitle: "scene",
+      systemPrompt: "AUTHORED PROMPT FROM THE WORKSPACE",
+      llm: fakeLlm(complete as unknown as DevotionalLlm["complete"]),
+    })
+    expect(complete.mock.calls[0][0].system).toBe(
+      "AUTHORED PROMPT FROM THE WORKSPACE",
+    )
+  })
+
+  it("falls back to the in-code prompt when the authored key is absent", async () => {
+    // Transitional: the deployed document predates the pointPicker key, so an
+    // absent prompt must still produce a working call rather than an empty one.
+    const complete = vi
+      .fn()
+      .mockResolvedValue({ chosen: [2, 4], reason: "fallback" })
+    await pickReflectionPoints({
+      points: points(5),
+      sceneTitle: "scene",
+      llm: fakeLlm(complete as unknown as DevotionalLlm["complete"]),
+    })
+    const used = complete.mock.calls[0][0].system
+    expect(used).toBeTruthy()
+    expect(used).toContain("point")
+  })
+
   it("drops hallucinated indices outside the author's range", async () => {
     const complete = vi
       .fn()
