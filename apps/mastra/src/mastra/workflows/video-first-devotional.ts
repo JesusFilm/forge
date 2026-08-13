@@ -181,12 +181,19 @@ const SourcedSchema = z
   })
   .extend(AttemptContextSchema.shape)
 
-/** Coherence + depth + fidelity verdict. Empty `blocking` means clean. Skipped
- *  (and left null) when safety already blocked, since three more model calls
- *  cannot change an outcome that is already "do not publish". */
+/** Coherence + depth + fidelity verdict. Empty `blocking` means clean. Null when
+ *  safety already blocked, since three more model calls cannot change an outcome
+ *  that is already "do not publish".
+ *
+ *  `.optional()` as well as `.nullable()` is about DEPLOY, not about the happy
+ *  path: this workflow suspends for human approval, so a run persisted before
+ *  this key existed can resume after the deploy that added it. Without optional,
+ *  that resume fails schema validation. With it, the key is simply absent, which
+ *  the consumer must treat as "no verdict" — never as a pass. */
 const QualityReviewSchema = z
   .object({ blocking: z.array(z.string()) })
   .nullable()
+  .optional()
 
 const ContentSchema = z
   .object({
@@ -491,9 +498,14 @@ const produceStep = createStep({
       // Both gates stand between composed text and money: ElevenLabs narration
       // and the Worker render are downstream of here. A null quality verdict
       // means safety already blocked, so it is not a pass by omission.
+      // `== null` catches BOTH null (safety blocked, so quality never ran) and
+      // undefined (a run persisted before this key existed, resuming across the
+      // deploy that added it). Absent evidence is not a pass: blocking such a run
+      // costs a missed publish, letting it through costs unreviewed text on the
+      // site.
       const blocked =
         safety.verdict !== "pass" ||
-        quality === null ||
+        quality == null ||
         quality.blocking.length > 0
       if (blocked) {
         return {

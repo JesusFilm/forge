@@ -71,13 +71,40 @@ describe("pickReflectionPoints", () => {
     // this test, and it hid a real regression — the schema used to REJECT an
     // over-long answer outright, which the agent's fail-open path turned into
     // "silently use point 1 only".)
-    it("trims an over-long answer instead of rejecting it", () => {
+    it("accepts an over-long answer instead of rejecting it", () => {
       const r = _internal.Schema.safeParse({
         chosen: [1, 2, 3, 4],
         reason: "all of them",
       })
       expect(r.success).toBe(true)
-      expect(r.success && r.data.chosen).toEqual([1, 2])
+      // Passed through UNCHANGED. The cap belongs to the caller, which
+      // de-duplicates and drops out-of-range indices BEFORE slicing. Capping
+      // here first destroyed valid candidates hiding behind a bad index — see
+      // the two collapse cases below, which is the bug this ordering fixes.
+      expect(r.success && r.data.chosen).toEqual([1, 2, 3, 4])
+    })
+
+    // Verified by running the schema, not by reading it: with the cap applied to
+    // the RAW answer, [3,3,5] became [3,3] became [3] — one point, the exact
+    // collapse the old comment claimed to prevent.
+    it.each([
+      { answer: [3, 3, 5], expected: [3, 5], why: "a repeated index" },
+      { answer: [99, 2, 4], expected: [2, 4], why: "a hallucinated index" },
+    ])("still yields TWO points past $why", async ({ answer, expected }) => {
+      const { chosen } = await pickReflectionPoints({
+        points: points(5),
+        sceneTitle: "scene",
+        // Parse through the REAL schema, the way llm.complete() does in
+        // production. A fake that hands the object back verbatim would skip
+        // the schema entirely and pass whatever it does — which is how this
+        // very collapse stayed hidden.
+        llm: fakeLlm((async () =>
+          _internal.Schema.parse({
+            chosen: answer,
+            reason: "r",
+          })) as unknown as DevotionalLlm["complete"]),
+      })
+      expect(chosen).toEqual(expected)
     })
 
     it("still rejects an EMPTY choice, which is not recoverable", () => {

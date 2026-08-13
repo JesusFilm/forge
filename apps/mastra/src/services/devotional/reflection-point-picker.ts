@@ -35,13 +35,14 @@ const Schema = z
     // back to point 1". A model naming three points would silently collapse the
     // devotional to one, with no error surfaced anywhere.
     //
-    // The caller still filters, de-duplicates, orders and slices; this transform
-    // only stops a recoverable over-answer from being thrown away. Same reasoning
-    // as the depthScore clamp in devotional-reflection-critic.ts.
-    chosen: z
-      .array(z.number().int().min(1))
-      .min(1)
-      .transform((xs) => xs.slice(0, MAX_POINTS)),
+    // Deliberately NOT capped here. The caller de-duplicates, drops
+    // out-of-range indices, orders, and only then slices to MAX_POINTS, which is
+    // the sequence that yields two real points. Capping the RAW answer first
+    // destroys valid candidates behind a repeated or hallucinated index:
+    // [3,3,5] became [3,3] became [3], and [99,2,4] became [99,2] became [2] —
+    // one point, which is the exact collapse this schema's previous comment
+    // claimed to prevent. Verified by running the schema, not by reading it.
+    chosen: z.array(z.number().int().min(1)).min(1),
     reason: z.string(),
   })
   .strict()
