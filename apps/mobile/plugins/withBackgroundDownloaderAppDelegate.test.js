@@ -3,25 +3,34 @@ const {
   insertIntoAppDelegate,
 } = require("./withBackgroundDownloaderAppDelegate")
 
-// A representative Expo SDK 54 AppDelegate.swift: the real @UIApplicationMain
-// AppDelegate class followed by the ReactNativeDelegate class.
-const APP_DELEGATE = `import Expo
+// The Expo SDK 57 AppDelegate.swift template, captured from a real
+// `expo prebuild` output (expo ~57.0.12) with the relocated handler removed.
+// Note the 57 shape: "internal import Expo", "@main", non-public class.
+const APP_DELEGATE = `internal import Expo
 import React
 import ReactAppDependencyProvider
 
-@UIApplicationMain
-public class AppDelegate: ExpoAppDelegate {
+@main
+class AppDelegate: ExpoAppDelegate {
+  var window: UIWindow?
+
+  var reactNativeDelegate: ExpoReactNativeFactoryDelegate?
+  var reactNativeFactory: RCTReactNativeFactory?
+
   public override func application(
     _ application: UIApplication,
-    didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
+    didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
   ) -> Bool {
-    return true
+    return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }
 }
 
 class ReactNativeDelegate: ExpoReactNativeFactoryDelegate {
+  // Extension point for config-plugins
+
   override func sourceURL(for bridge: RCTBridge) -> URL? {
-    return bundleURL()
+    // needed to return the correct URL for expo-dev-client.
+    bridge.bundleURL ?? bundleURL()
   }
 }
 `

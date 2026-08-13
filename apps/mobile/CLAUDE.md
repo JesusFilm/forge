@@ -2,7 +2,7 @@
 
 ## Stack
 
-- React Native with Expo (SDK 54, managed workflow)
+- React Native with Expo (SDK 57, managed workflow)
 - Expo Router for file-based navigation
 - @forge/admin-graphql with gql.tada for typed GraphQL operations
 - Apollo Client (InMemoryCache, no persistence)
