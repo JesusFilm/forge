@@ -70,6 +70,7 @@ import {
   type WatchPlayerPlaybackStateDetail,
 } from "@/lib/watch-player-chrome-events"
 import { WATCH_SEARCH_RUM_RESULT_CLICKED_ACTION } from "@/lib/watch-search-analytics-contract"
+import { WATCH_UNAVAILABLE_RECOVERY_STORAGE_KEY } from "@/lib/watch-unavailable-recovery-context"
 
 const navigationMocks = vi.hoisted(() => ({
   pathname: "/",
@@ -203,6 +204,7 @@ beforeEach(() => {
   navigationMocks.pathname = "/"
   setScrollY(0)
   window.history.replaceState(null, "", "/")
+  window.sessionStorage.clear()
   container = document.createElement("div")
   document.body.appendChild(container)
   root = createRoot(container)
@@ -4191,6 +4193,74 @@ describe("FloatingSearchProvider — search language selection", () => {
       }),
     )
     expect(document.body.textContent).toContain("Japanese Result")
+  })
+
+  it("keeps an unavailable result bound to the completed target language", async () => {
+    vi.useFakeTimers()
+    mockedGetSearchLanguageOptions.mockResolvedValue({
+      ok: true,
+      options: [
+        englishSearchLanguage,
+        spanishSearchLanguage,
+        japaneseSearchLanguage,
+      ],
+      countrySuggestion: null,
+      recommendedLanguage: englishSearchLanguage,
+      countryCode: null,
+      countryName: null,
+    })
+    mockedRunSearch.mockResolvedValueOnce({
+      ...makeSearchResponse(
+        [
+          {
+            ...makeSearchResult("unavailable-result", "Unavailable Result"),
+            availabilityKind: "unavailable",
+            languageSlug: null,
+          },
+        ],
+        false,
+      ),
+      targetLanguageSlug: "spanish-castilian",
+    })
+
+    const input = await openSearchOverlay()
+    await submitSearch(input, "jesus")
+
+    const resultLink = Array.from(document.querySelectorAll("a")).find(
+      (anchor) => anchor.textContent?.includes("Unavailable Result") ?? false,
+    ) as HTMLAnchorElement
+    expect(resultLink.getAttribute("href")).toBe(
+      "/unavailable-result-slug.html/spanish-castilian.html",
+    )
+
+    const languageTrigger = document.querySelector(
+      '[data-testid="language-combobox-trigger"]',
+    ) as HTMLButtonElement
+    await act(async () => {
+      languageTrigger.click()
+      await Promise.resolve()
+    })
+    const japaneseOption = document.querySelector(
+      '[data-language-slug="japanese"]',
+    ) as HTMLButtonElement
+    await act(async () => {
+      japaneseOption.click()
+      await Promise.resolve()
+    })
+
+    expect(resultLink.getAttribute("href")).toBe(
+      "/unavailable-result-slug.html/spanish-castilian.html",
+    )
+    act(() => {
+      resultLink.dispatchEvent(
+        new MouseEvent("click", { bubbles: true, cancelable: true }),
+      )
+    })
+    const stored = JSON.parse(
+      window.sessionStorage.getItem(WATCH_UNAVAILABLE_RECOVERY_STORAGE_KEY) ??
+        "null",
+    ) as { target?: { requestedLanguageSlug?: string } } | null
+    expect(stored?.target?.requestedLanguageSlug).toBe("spanish-castilian")
   })
 
   it("keeps language changes draft-only until explicit submit", async () => {

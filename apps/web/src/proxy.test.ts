@@ -18,6 +18,7 @@ const TEST_MANIFEST: WatchRouteManifest = {
   generatedAt: "2026-05-29T12:00:00.000Z",
   contentSlugs: [
     "easter",
+    "good-friday-live",
     "jesus",
     "lumo-the-gospel-of-john",
     "parable-of-the-sower-and-the-seed",
@@ -43,6 +44,7 @@ const TEST_MANIFEST: WatchRouteManifest = {
     "zulu",
   ],
   audioLanguageIndexesByContent: {
+    "good-friday-live": [2],
     jesus: [0, 1, 2, 3, 4, 5, 6, 7],
     "perfect-2": [2],
   },
@@ -114,6 +116,18 @@ function expectNotFoundRewrite(response: Response): void {
   expect(
     rewrittenRequestHeaders(response).get(WATCH_INTERNAL_REWRITE_HEADER),
   ).toBe("/404")
+}
+
+function expectUnavailableLanguageRewrite(
+  response: Response,
+  expectedPublicPathname: string,
+  expectedInternalPathname: string,
+): void {
+  expect(response.status).toBe(200)
+  expect(rewritePath(response)).toBe(expectedInternalPathname)
+  expect(
+    rewrittenRequestHeaders(response).get(WATCH_INTERNAL_REWRITE_HEADER),
+  ).toBe(expectedPublicPathname)
 }
 
 function rewrittenRequestHeaders(response: Response): Headers {
@@ -484,7 +498,7 @@ describe("proxy — internal locale/htmlLang rewrites", () => {
     expect(rewritePath(response)).toBe("/en/en/jesus.html")
   })
 
-  it("404s a language-less video without an admitted English dub", async () => {
+  it("routes a known language-less English gap to the recovery sentinel", async () => {
     resetManifestSource?.()
     resetManifestSource = setWatchRouteManifestSourceForTest(async () => ({
       ...TEST_MANIFEST,
@@ -495,7 +509,40 @@ describe("proxy — internal locale/htmlLang rewrites", () => {
     }))
 
     const response = await proxy(makeRequest("/jesus.html"))
-    expectNotFoundRewrite(response)
+    expectUnavailableLanguageRewrite(
+      response,
+      "/jesus.html",
+      "/en/en/unavailable/404",
+    )
+  })
+
+  it("routes an exact non-English content-language gap to the localized recovery sentinel", async () => {
+    const response = await proxy(
+      makeRequest("/good-friday-live.html/chinese-simplified.html"),
+    )
+
+    expectUnavailableLanguageRewrite(
+      response,
+      "/good-friday-live.html/chinese-simplified.html",
+      "/zh-Hans/zh-Hans/unavailable/404",
+    )
+  })
+
+  it("keeps unknown content and legacy manifests on the ordinary 404", async () => {
+    const unknown = await proxy(
+      makeRequest("/unknown-video.html/chinese-simplified.html"),
+    )
+    expectNotFoundRewrite(unknown)
+
+    resetManifestSource?.()
+    resetManifestSource = setWatchRouteManifestSourceForTest(async () => ({
+      ...TEST_MANIFEST,
+      audioLanguageIndexesByContent: undefined,
+    }))
+    const inconclusive = await proxy(
+      makeRequest("/good-friday-live.html/chinese-simplified.html"),
+    )
+    expectNotFoundRewrite(inconclusive)
   })
 
   it("admits canonical and explicit English parent routes through an English nested collection", async () => {
@@ -539,7 +586,11 @@ describe("proxy — internal locale/htmlLang rewrites", () => {
 
     const response = await proxy(makeRequest("/discipleship.html"))
 
-    expectNotFoundRewrite(response)
+    expectUnavailableLanguageRewrite(
+      response,
+      "/discipleship.html",
+      "/en/en/unavailable/404",
+    )
   })
 
   it("keeps language-less non-collection routes closed when the manifest is unavailable", async () => {
@@ -1045,6 +1096,51 @@ describe("proxy — internal locale/htmlLang rewrites", () => {
 })
 
 describe("proxy — visible internal-prefix policy", () => {
+  it("allows only a re-proven unavailable sentinel rewrite to re-enter", async () => {
+    const publicPath = "/good-friday-live.html/chinese-simplified.html"
+    const first = await proxy(makeRequest(publicPath))
+    const internalPath = rewritePath(first)
+
+    expect(internalPath).toBe("/zh-Hans/zh-Hans/unavailable/404")
+    const admitted = await proxy(
+      makeRequest(internalPath ?? "", {
+        headers: rewrittenRequestHeaders(first),
+      }),
+    )
+    expect(admitted.status).toBe(200)
+    expect(rewritePath(admitted)).toBeNull()
+
+    const forged = await proxy(
+      makeRequest("/zh-Hans/zh-Hans/unavailable/404", {
+        headers: new Headers([
+          [
+            WATCH_INTERNAL_REWRITE_HEADER,
+            "/unknown-video.html/chinese-simplified.html",
+          ],
+        ]),
+      }),
+    )
+    expectNotFoundRewrite(forged)
+  })
+
+  it("keeps an unavailable sentinel admitted when the public URL had subtitle intent", async () => {
+    const publicPath =
+      "/good-friday-live.html/chinese-simplified.html?subtitles=english"
+    const first = await proxy(makeRequest(publicPath))
+    const rewrite = new URL(first.headers.get("x-middleware-rewrite") ?? "")
+
+    expect(rewrite.pathname).toBe("/zh-Hans/zh-Hans/unavailable/404")
+    expect(rewrite.search).toBe("?subtitles=english")
+    const admitted = await proxy(
+      makeRequest(`${rewrite.pathname}${rewrite.search}`, {
+        headers: rewrittenRequestHeaders(first),
+      }),
+    )
+
+    expect(admitted.status).toBe(200)
+    expect(rewritePath(admitted)).toBeNull()
+  })
+
   it("allows proxy-originated internal rewrites without redirecting back to public URL", async () => {
     const first = await proxy(makeRequest("/jesus.html?ref=printed"))
     const internalPath = rewritePath(first)

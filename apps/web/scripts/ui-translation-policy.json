@@ -1,6 +1,18 @@
 {
   "humanReviewedLocales": ["en", "ru"],
-  "pendingTranslationPaths": [],
+  "pendingTranslationPaths": [
+    "WatchUnavailableLanguage.actionsLabel",
+    "WatchUnavailableLanguage.audioVersionsDescription",
+    "WatchUnavailableLanguage.audioVersionsTitle",
+    "WatchUnavailableLanguage.backToSearch",
+    "WatchUnavailableLanguage.browseInLanguage",
+    "WatchUnavailableLanguage.eyebrow",
+    "WatchUnavailableLanguage.languageVersionLabel",
+    "WatchUnavailableLanguage.metadataTitle",
+    "WatchUnavailableLanguage.selectLanguageVersion",
+    "WatchUnavailableLanguage.title",
+    "WatchUnavailableLanguage.watchSelectedVersion"
+  ],
   "intentionallyLocaleNeutral": [
     "DownloadModal.termsAgreementSuffix",
     "LanguageInventory.bibleProject",

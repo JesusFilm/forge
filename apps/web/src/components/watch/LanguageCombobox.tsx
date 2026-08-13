@@ -56,6 +56,7 @@ export type LanguageComboboxProps = {
 
 const LISTBOX_MAX_HEIGHT_PX = 288
 const OPTION_ROW_HEIGHT_PX = 72
+const LISTBOX_VERTICAL_PADDING_PX = 8
 const POPOVER_GAP_PX = 8
 const POPOVER_VIEWPORT_PADDING_PX = 24
 const POPOVER_SEARCH_FALLBACK_HEIGHT_PX = 65
@@ -204,6 +205,7 @@ export function LanguageCombobox({
   const searchFrameRef = useRef<HTMLDivElement | null>(null)
   const searchRef = useRef<HTMLInputElement | null>(null)
   const listboxRef = useRef<HTMLUListElement | null>(null)
+  const updatePopoverLayoutRef = useRef<() => void>(() => {})
 
   // Memoised: options is up to ~2000 items and re-renders fire on every
   // setActiveIndex (hover, keyboard nav). The find call shouldn't run on
@@ -262,9 +264,7 @@ export function LanguageCombobox({
   }, [open])
 
   useLayoutEffect(() => {
-    if (!open) return
-
-    function updatePopoverLayout() {
+    updatePopoverLayoutRef.current = () => {
       const measuredSearchHeight =
         searchFrameRef.current?.getBoundingClientRect().height ?? 0
       const searchHeight =
@@ -296,7 +296,14 @@ export function LanguageCombobox({
       const viewportTop = visualViewport?.offsetTop ?? 0
       const viewportBottom =
         viewportTop + (visualViewport?.height ?? window.innerHeight)
-      const desiredPopoverHeight = searchHeight + LISTBOX_MAX_HEIGHT_PX
+      const desiredListboxHeight = Math.min(
+        LISTBOX_MAX_HEIGHT_PX,
+        Math.max(OPTION_ROW_HEIGHT_PX, filtered.length * OPTION_ROW_HEIGHT_PX) +
+          LISTBOX_VERTICAL_PADDING_PX,
+      )
+      // Decide above/below against the stable maximum size so filtering the
+      // list cannot make the popover jump across the trigger while typing.
+      const placementDecisionHeight = searchHeight + LISTBOX_MAX_HEIGHT_PX
       const spaceBelow =
         viewportBottom -
         triggerRect.bottom -
@@ -308,14 +315,14 @@ export function LanguageCombobox({
         POPOVER_GAP_PX -
         POPOVER_VIEWPORT_PADDING_PX
       const nextPlacement =
-        spaceBelow < desiredPopoverHeight && spaceAbove > spaceBelow
+        spaceBelow < placementDecisionHeight && spaceAbove > spaceBelow
           ? "above"
           : "below"
       const availableSpace = nextPlacement === "above" ? spaceAbove : spaceBelow
       const nextMaxHeight = Math.max(
         1,
         Math.min(
-          LISTBOX_MAX_HEIGHT_PX,
+          desiredListboxHeight,
           Math.floor(availableSpace - searchHeight),
         ),
       )
@@ -335,6 +342,14 @@ export function LanguageCombobox({
         width: triggerRect.width,
       })
     }
+
+    if (open) updatePopoverLayoutRef.current()
+  }, [filtered.length, open, takeoverRect])
+
+  useLayoutEffect(() => {
+    if (!open) return
+
+    const updatePopoverLayout = () => updatePopoverLayoutRef.current()
 
     updatePopoverLayout()
     const visualViewport = window.visualViewport
@@ -357,7 +372,7 @@ export function LanguageCombobox({
         capture: true,
       })
     }
-  }, [open, takeoverRect])
+  }, [open])
 
   // Install the click-outside listener once at mount, gate its body on a
   // ref read so it remains a no-op while the popover is closed. Re-binding

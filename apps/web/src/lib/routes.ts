@@ -102,6 +102,7 @@ type WatchVideoPathname = `/${string}.html` | `/${string}.html/${string}.html`
 type WatchVideoRoute = `${WatchVideoPathname}${"" | `?${string}`}`
 type WatchVideoExplicitLanguageRoute =
   `/${string}.html/${string}.html${"" | `?${string}`}`
+type WatchUnavailableLanguageRoute = `/${string}.html/${string}.html`
 type WatchEpisodePathname =
   | `/${string}.html/${string}.html`
   | `/${string}.html/${string}/${string}.html`
@@ -164,6 +165,19 @@ export function watchVideoExplicitLanguagePath(
 ): WatchVideoExplicitLanguageRoute & Route {
   const path = buildExplicitWatchVideoPath(slug, lang)
   return appendQueryString(path, opts) as WatchVideoExplicitLanguageRoute &
+    Route
+}
+
+/**
+ * Build the intentional public URL for known content that is unavailable in
+ * the requested language. This has the same wire shape as an explicit video
+ * route, but must never be treated as proof that the language is playable.
+ */
+export function watchUnavailableLanguagePath(
+  slug: ContentSlug,
+  requestedLanguage: LocaleSlug,
+): WatchUnavailableLanguageRoute & Route {
+  return `/${appendHtmlSuffix(slug)}/${appendHtmlSuffix(requestedLanguage)}` as WatchUnavailableLanguageRoute &
     Route
 }
 

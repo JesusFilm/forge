@@ -37,6 +37,7 @@ import {
   isWatchEpisodeRouteExactlyAdmittedByManifest,
   isWatchParentAdmittedByNestedContainer,
   isWatchRouteAdmittedByManifest,
+  proveWatchContentAudioLanguageByManifest,
   type WatchRouteManifest,
   type WatchRouteManifestRoute,
 } from "@/lib/watch-route-manifest"
@@ -56,6 +57,7 @@ const REDIRECT_CACHE_CONTROL = "private, max-age=0"
 const MAX_PATH_LEN = 2048
 const SAFE_PUBLIC_PATH = /^\/[A-Za-z0-9._\-/]+$/
 const DEMO_PREFIXES = new Set(["demo-search", "demo-recommendations"])
+const WATCH_UNAVAILABLE_SENTINEL_PATH = "/unavailable/404"
 export const WATCH_INTERNAL_REWRITE_HEADER = "x-forge-watch-internal-rewrite"
 export const WATCH_SUBTITLE_INTENT_REWRITE_HEADER =
   "x-forge-watch-subtitle-intent-rewrite"
@@ -82,6 +84,7 @@ type RewriteDecision =
 type ManifestAdmissionDecision =
   | { kind: "admit"; internalPathname?: string }
   | { kind: "redirect"; pathname: string; status?: 301 | 307 }
+  | { kind: "known-content-language-gap" }
   | { kind: "not-found" }
 
 function defaultLanguageVideoAdmission(
@@ -466,6 +469,16 @@ function buildNotFound(request: ProxyRequest): NextResponse {
   })
 }
 
+function buildUnavailableLanguageNotFound(
+  request: ProxyRequest,
+  decision: Extract<RewriteDecision, { kind: "rewrite" }>,
+): NextResponse {
+  return rewriteToInternal(request, {
+    ...decision,
+    internalPathname: WATCH_UNAVAILABLE_SENTINEL_PATH,
+  })
+}
+
 async function classifyManifestAdmission(
   decision: Extract<RewriteDecision, { kind: "rewrite" }>,
 ): Promise<ManifestAdmissionDecision> {
@@ -520,7 +533,20 @@ async function classifyManifestAdmission(
     // Video only when the manifest proves its exact language availability;
     // otherwise preserve the one-segment Experience route.
     if (hasExactVideoLanguages) {
-      return defaultVideoAdmission ?? { kind: "not-found" }
+      if (defaultVideoAdmission) return defaultVideoAdmission
+      const defaultAudioLanguageSlug =
+        publicWatchAudioLanguageSlugForLocale(DEFAULT_LOCALE)
+      if (
+        defaultAudioLanguageSlug &&
+        proveWatchContentAudioLanguageByManifest(
+          manifest,
+          slug,
+          defaultAudioLanguageSlug,
+        ).kind === "known-missing"
+      ) {
+        return { kind: "known-content-language-gap" }
+      }
+      return { kind: "not-found" }
     }
     if (isWatchRouteAdmittedByManifest(manifest, decision.manifestRoute)) {
       return { kind: "admit" }
@@ -579,6 +605,17 @@ async function classifyManifestAdmission(
     }
   }
 
+  if (
+    decision.manifestRoute.kind === "video" &&
+    proveWatchContentAudioLanguageByManifest(
+      manifest,
+      decision.manifestRoute.contentSlug,
+      decision.manifestRoute.audioLanguageSlug,
+    ).kind === "known-missing"
+  ) {
+    return { kind: "known-content-language-gap" }
+  }
+
   return { kind: "not-found" }
 }
 
@@ -606,6 +643,19 @@ async function isAdmittedInternalRewrite(
   const rewrite = classifyRewrite(claimedPublicPathname)
   if (rewrite.kind !== "rewrite") return false
   const admission = await classifyManifestAdmission(rewrite)
+  if (admission.kind === "known-content-language-gap") {
+    if (request.headers.get(WATCH_SUBTITLE_INTENT_REWRITE_HEADER) != null) {
+      return false
+    }
+    const unavailableRewrite = {
+      ...rewrite,
+      internalPathname: WATCH_UNAVAILABLE_SENTINEL_PATH,
+    }
+    if (subtitleIntentForRewrite(request, unavailableRewrite) != null) {
+      return false
+    }
+    return internalRewritePathname(unavailableRewrite) === pathname
+  }
   if (admission.kind !== "admit") return false
 
   const admittedRewrite = {
@@ -676,6 +726,9 @@ export async function proxy(request: ProxyRequest): Promise<NextResponse> {
   const admission = await classifyManifestAdmission(rewrite)
   if (admission.kind === "not-found") {
     return buildNotFound(request)
+  }
+  if (admission.kind === "known-content-language-gap") {
+    return buildUnavailableLanguageNotFound(request, rewrite)
   }
   if (admission.kind === "redirect") {
     const url = request.nextUrl.clone()
