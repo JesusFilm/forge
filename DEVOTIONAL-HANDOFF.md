@@ -276,6 +276,9 @@ Workspaces становятся осмысленны, если цель — чт
 То есть класс B ниже (бинарники) и класс A (файлы) ещё открыты, но КОД больше не является
 препятствием — им остаётся только среда.
 
+Пофайловая опись привязок с категориями и адресами: [`DEVOTIONAL-INVENTORY.md`](DEVOTIONAL-INVENTORY.md).
+Там же живут актуальные размеры и адреса — здесь они сознательно не повторяются.
+
 ### A. Состояние и файлы → это workspaces (mounts на S3/GCS)
 
 - весь `devo/` (кеш текста + аудио, артефакты, транскрипты, baseline) в `.gitignore` →
@@ -362,6 +365,7 @@ ElevenLabs, OpenRouter. См. `apps/mastra/src/config/env.ts`.
 
 ```
 worktree     /Users/mac/Forge/.claude/worktrees/flamboyant-perlman-4a3e73
+опись        DEVOTIONAL-INVENTORY.md                              (что привязано к машине)
 текст        devo/cache/ch33-seq0/devo.json
 промпты      apps/mastra/src/services/devotional/
 рендер       apps/mastra/src/scripts/render-one-devotional.ts     (style/layout дефолты)

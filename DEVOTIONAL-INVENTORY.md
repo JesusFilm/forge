@@ -71,10 +71,16 @@ symbol.svg   symbol-red.svg
 ```
 
 По бренд-графике причина установлена: composition не открывает файл, а рисует
-знак inline SVG-путём. `BRAND_PATH` и `BRAND_RED` вшиты в
-`packages/shorts-compositions/src/devotional/visual-primitives.tsx:323`
-(`BrandSymbol`). То есть `symbol.svg` не ресурс времени выполнения, а исходник,
-из которого этот путь однажды достали руками.
+знак inline SVG-путём. Всё в
+`packages/shorts-compositions/src/devotional/DevotionalVideo.tsx`: `BRAND_PATH`
+на строке 39, `BRAND_RED` на 345, отрисовка на 338 и 383 (вторая внутри
+`BrandSymbol`, строка 369). То есть `symbol.svg` не ресурс времени выполнения, а
+исходник, из которого этот путь однажды достали руками.
+
+Осторожно с этими адресами: в других worktree того же репозитория девоушнальная
+composition разложена по нескольким файлам (`visual-primitives.tsx`,
+`card-body.tsx`, `card-chrome.tsx`), которых здесь нет. Если строка не совпала,
+скорее всего открыт не тот worktree, а не сдвинулся код.
 
 Отсюда различие, которое стоит удержать при переезде: **«не читается кодом» не
 равно «не нужно»**. У `symbol.svg` нет потребителя, но если знак когда-нибудь
