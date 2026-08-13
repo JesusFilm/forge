@@ -24,8 +24,9 @@ grain, and music mood. Pick the video look and the whole devotional inherits it.
   News (Firecrawl) → holiday → intriguing question. Always a curiosity hook.
 - **feat-287 Scripture** — canonical NASB text via API.Bible (not model memory);
   styled card (left accent rule, distinct serif). Multilingual-ready.
-- **feat-288 Audio** — 3–4 Azure voices, one per devo (never mid-devo); ambient
-  music bed, ducked under narration.
+- **feat-288 Audio** — owner-approved update: ElevenLabs D → E → C rotation,
+  one voice per devotional; pre-generated reusable 20-track ambient library,
+  mood-matched and ducked under narration. See the 2026-07-10 video-first plan.
 - **feat-289 Video sourcing & trim** — match JF chapter; pull real clip (prod:
   Mux); transcript-based moment detection; fade in/out on the card.
 - **feat-290 Style / theme system** — B&W / sepia / grain / cinematic filters;
@@ -39,8 +40,9 @@ grain, and music mood. Pick the video look and the whole devotional inherits it.
 
 ## Challenges (decide early)
 
-- **Licensing:** NASB (Lockman) reuse terms; each music track's license +
-  attribution; partner-devotional reuse. Store provenance per devo.
+- **Licensing:** NASB (Lockman) reuse terms; partner-devotional reuse; and
+  explicit ElevenLabs account/license approval for music generation, storage,
+  reuse, and distribution. Store provenance, but do not call it legal clearance.
 - **Style consistency:** one style must read coherently across video, cards,
   and music — favor a small set of fixed presets over free-form.
 - **Narration vs visual offset:** spoken line precedes its matching footage
@@ -55,7 +57,7 @@ grain, and music mood. Pick the video look and the whole devotional inherits it.
 
 ## Already built (local prototype, branch `feat/daily-devotional-generator`)
 
-Hook/scripture/reflection/safety LLM pipeline, Azure voiceover, local JF-chapter
-matcher, partner (Cru) fetcher, per-card audio sync, Remotion render with blurred
-background + video card + outro hold, and a transcript-based snippet detector.
-See `devo/README.md`.
+Hook/scripture/reflection/safety LLM pipeline, ElevenLabs voiceover and reusable
+music-library selection, local JF-chapter matcher, partner (Cru) fetcher,
+per-card audio sync, Remotion render with blurred background + video card +
+outro hold, and a transcript-based snippet detector. See `devo/README.md`.
