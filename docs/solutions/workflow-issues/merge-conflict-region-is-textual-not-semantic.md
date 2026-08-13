@@ -256,6 +256,10 @@ at time of writing; it is not merged to `main`.
 - [Resolving a main-merge conflict on a migrated route](launchdarkly-watch-route-migration-conflict-resolution-20260528.md)
   — the complement: a conflict git _did_ mark, resolved the wrong way. Together
   these cover both halves of merge risk (marked-and-mishandled, unmarked-and-wrong).
+- [A clean, marker-free merge can still not compile](clean-merge-unused-import-removed-vs-new-usage-added.md)
+  — the third shape: no conflict region exists at all. One side removes an import
+  as unused, the other adds a new use in a different hunk; git merges silently and
+  only typechecking the merged head catches it.
 - [Turborepo's affected gate hides type errors between PRs](turborepo-affected-gate-hides-type-errors-between-prs.md)
   — same moment in the workflow (a main-merge breaking something the PR's own diff
   never touched), different mechanism: CI gating rather than git auto-merge.

@@ -23,7 +23,7 @@ export function PlayerLoadingVeil() {
 
 const styles = StyleSheet.create({
   veil: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: hexToRgba(BLACK, 0.45),

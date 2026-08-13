@@ -769,7 +769,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   browseLayer: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
   },
   inputContainer: {
     paddingHorizontal: 16,

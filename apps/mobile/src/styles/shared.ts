@@ -162,7 +162,7 @@ export const feedback = StyleSheet.create({
 
 export const overlay = StyleSheet.create({
   playOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     justifyContent: "center",
     alignItems: "center",
   },

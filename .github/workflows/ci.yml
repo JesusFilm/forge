@@ -270,9 +270,8 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
       - name: Run Expo Doctor
-        continue-on-error: true # advisory-only until 2026-05-01, then remove to make blocking
         working-directory: apps/mobile
-        run: npx expo-doctor@1.18.17
+        run: npx expo-doctor@1.20.1
 
   build:
     runs-on: ubuntu-latest

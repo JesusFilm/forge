@@ -2,7 +2,7 @@
 
 ## Stack
 
-- React Native with Expo (SDK 54, managed workflow)
+- React Native with Expo (SDK 57, managed workflow)
 - Expo Router for file-based navigation
 - @forge/admin-graphql with gql.tada for typed GraphQL operations
 - Apollo Client (InMemoryCache, no persistence)
@@ -134,7 +134,7 @@ PNGs or `assets/AppIcon.icon/` — regenerate.** The script borrows `apps/admin`
 `sharp` on purpose; adding it here would ship a native binary into every EAS build.
 
 - **iOS** uses a real Icon Composer bundle (`ios.icon: "./assets/AppIcon.icon"`),
-  supported by Expo SDK 54's `withIosIcons`. Layers stay FLAT — iOS 26 applies the
+  supported by Expo's `withIosIcons` (SDK 54+). Layers stay FLAT — iOS 26 applies the
   specular highlight and drop shadow itself, so baking them in double-applies them.
 - `icon.json` is hand-authored against a schema recovered from Xcode 26's
   `IconComposerFoundation` (verified 2026-08-07, Xcode 26.5). Two rules it
@@ -319,3 +319,9 @@ into jest's `moduleNameMapper`, so each render suite re-points `react` and
 `react/jsx-runtime` at the real package via `jest.mock`. No new test
 dependencies are needed; the renderer is jest-expo's own transitive
 react-test-renderer.
+
+Since SDK 57, the package.json jest config ALSO pins `^react$` and the two
+jsx runtimes globally in `moduleNameMapper` (load-bearing: 104/108 suites
+fail without them — jest-expo's tsconfig mirror otherwise sends `react` to
+`@types/react`). The per-suite `jest.mock` re-points remain valid and take
+precedence for the suites that use them.
