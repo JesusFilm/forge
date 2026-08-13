@@ -146,6 +146,7 @@ pnpm --filter @forge/mobile exec node -e "console.log(require.resolve('react'))"
 ## Related Documentation
 
 - [`docs/solutions/architecture-patterns/pnpm-workspace-optional-peer-dependency-silent-borrowing.md`](../architecture-patterns/pnpm-workspace-optional-peer-dependency-silent-borrowing.md) — The sibling LOCKFILE-time layer: pnpm peer resolution silently re-keying importers that never declared the package; fixed with per-importer package.json pins, not Metro config
+- [`docs/solutions/build-errors/pnpm-hidden-hoist-phantom-dependency-worklets-babel-metro-bundle-failure.md`](../build-errors/pnpm-hidden-hoist-phantom-dependency-worklets-babel-metro-bundle-failure.md) — The third sibling, also Metro BUNDLE-time but a different mechanism: an undeclared (phantom) `require` resolving through pnpm's hidden hoist to an incompatible major after a lockfile dedupe; fixed with root `pnpm.packageExtensions`, not Metro config
 - [`docs/solutions/mobile/mobile-v2-sdui-app-scaffold-and-review-findings.md`](mobile-v2-sdui-app-scaffold-and-review-findings.md) — Documents Metro resolution failures during mobile-v2 scaffold
 - [`docs/solutions/mobile/expo-env-file-handling.md`](expo-env-file-handling.md) — Metro's role in env var inlining and `.env` file priority
 - [`docs/solutions/deployment/nextjs-pnpm-monorepo-railway-standalone.md`](../deployment/nextjs-pnpm-monorepo-railway-standalone.md) — Same class of problem (pnpm path assumptions) in deployment context

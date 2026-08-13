@@ -266,6 +266,13 @@ crossover.
   BUNDLER-time resolution picking the wrong React copy, fixed in
   `metro.config.js`. This doc's hazard is LOCKFILE-time peer resolution;
   fixing one layer does not fix the other.
+- `docs/solutions/build-errors/pnpm-hidden-hoist-phantom-dependency-worklets-babel-metro-bundle-failure.md`
+  — the third sibling: an UNDECLARED (phantom) dependency resolving through
+  pnpm's hidden hoist, re-keyed by a lockfile dedupe and surfacing only at
+  Metro bundle time; fixed with root `pnpm.packageExtensions`. Together the
+  three docs cover peer borrowing (lockfile time), symlink duplicates
+  (bundle time, declared deps), and hidden-hoist phantoms (bundle time,
+  undeclared deps).
 - `docs/solutions/security-issues/dependabot-pnpm-transitive-remediation-20260416.md`
   — the `pnpm.overrides` alternative and its scope caveats.
 - `docs/solutions/best-practices/shared-predicate-partial-rollout-gap-20260810.md`
