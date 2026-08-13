@@ -16,6 +16,7 @@ const mockEnv = vi.hoisted(() => ({
 const worldStart = vi.hoisted(() => vi.fn())
 const getWorld = vi.hoisted(() => vi.fn(() => ({ start: worldStart })))
 const startWorkflowWorkerHeartbeat = vi.hoisted(() => vi.fn())
+const ensureCoreSyncSchedulerStarted = vi.hoisted(() => vi.fn())
 const ensureVideoDbBackupSchedulerStarted = vi.hoisted(() => vi.fn())
 const ensureSearchTraceRetentionSchedulerStarted = vi.hoisted(() => vi.fn())
 const prewarmWatchSearchQueryEmbeddings = vi.hoisted(() => vi.fn())
@@ -40,6 +41,9 @@ vi.mock("workflow/runtime", () => ({ getWorld }))
 vi.mock("@/services/workflow-worker-heartbeat.service", () => ({
   startWorkflowWorkerHeartbeat,
 }))
+vi.mock("@/services/core-sync/job", () => ({
+  ensureCoreSyncSchedulerStarted,
+}))
 vi.mock("@/services/video-db-backup/job", () => ({
   ensureVideoDbBackupSchedulerStarted,
 }))
@@ -59,6 +63,7 @@ describe("workflow instrumentation", () => {
     getWorld.mockReset()
     getWorld.mockImplementation(() => ({ start: worldStart }))
     startWorkflowWorkerHeartbeat.mockReset()
+    ensureCoreSyncSchedulerStarted.mockReset()
     ensureVideoDbBackupSchedulerStarted.mockReset()
     ensureSearchTraceRetentionSchedulerStarted.mockReset()
     prewarmWatchSearchQueryEmbeddings.mockReset()
@@ -87,6 +92,7 @@ describe("workflow instrumentation", () => {
     expect(getWorld).not.toHaveBeenCalled()
     expect(worldStart).not.toHaveBeenCalled()
     expect(startWorkflowWorkerHeartbeat).not.toHaveBeenCalled()
+    expect(ensureCoreSyncSchedulerStarted).not.toHaveBeenCalled()
     expect(ensureVideoDbBackupSchedulerStarted).not.toHaveBeenCalled()
     expect(ensureSearchTraceRetentionSchedulerStarted).not.toHaveBeenCalled()
     await new Promise((resolve) => setTimeout(resolve, 0))
@@ -116,6 +122,7 @@ describe("workflow instrumentation", () => {
     expect(getWorld).not.toHaveBeenCalled()
     expect(worldStart).not.toHaveBeenCalled()
     expect(startWorkflowWorkerHeartbeat).not.toHaveBeenCalled()
+    expect(ensureCoreSyncSchedulerStarted).not.toHaveBeenCalled()
     expect(ensureVideoDbBackupSchedulerStarted).not.toHaveBeenCalled()
     expect(ensureSearchTraceRetentionSchedulerStarted).not.toHaveBeenCalled()
   })
@@ -133,6 +140,7 @@ describe("workflow instrumentation", () => {
     expect(getWorld).not.toHaveBeenCalled()
     expect(worldStart).not.toHaveBeenCalled()
     expect(startWorkflowWorkerHeartbeat).not.toHaveBeenCalled()
+    expect(ensureCoreSyncSchedulerStarted).not.toHaveBeenCalled()
     expect(ensureVideoDbBackupSchedulerStarted).not.toHaveBeenCalled()
     expect(ensureSearchTraceRetentionSchedulerStarted).not.toHaveBeenCalled()
   })
@@ -149,6 +157,7 @@ describe("workflow instrumentation", () => {
     expect(getWorld).toHaveBeenCalledTimes(1)
     expect(worldStart).toHaveBeenCalledTimes(1)
     expect(startWorkflowWorkerHeartbeat).toHaveBeenCalledTimes(1)
+    expect(ensureCoreSyncSchedulerStarted).toHaveBeenCalledTimes(1)
     expect(ensureVideoDbBackupSchedulerStarted).toHaveBeenCalledTimes(1)
     expect(ensureSearchTraceRetentionSchedulerStarted).toHaveBeenCalledTimes(1)
   })
@@ -175,6 +184,7 @@ describe("workflow instrumentation", () => {
 
     expect(worldStart).toHaveBeenCalledTimes(2)
     expect(startWorkflowWorkerHeartbeat).toHaveBeenCalledTimes(1)
+    expect(ensureCoreSyncSchedulerStarted).toHaveBeenCalledTimes(1)
     expect(ensureVideoDbBackupSchedulerStarted).toHaveBeenCalledTimes(1)
     expect(ensureSearchTraceRetentionSchedulerStarted).toHaveBeenCalledTimes(1)
   })
@@ -192,5 +202,6 @@ describe("workflow instrumentation", () => {
 
     expect(worldStart).toHaveBeenCalledTimes(1)
     expect(startWorkflowWorkerHeartbeat).not.toHaveBeenCalled()
+    expect(ensureCoreSyncSchedulerStarted).not.toHaveBeenCalled()
   })
 })

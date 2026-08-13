@@ -1,5 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
-import { loadWorkflowWorkerStatusRows } from "./workflow-worker-heartbeat.service"
+import {
+  loadWorkflowWorkerStatusRows,
+  startWorkflowWorkerHeartbeat,
+} from "./workflow-worker-heartbeat.service"
 
 const queryRaw = vi.hoisted(() => vi.fn())
 const executeRaw = vi.hoisted(() => vi.fn())
@@ -34,9 +37,37 @@ const heartbeatRow = {
   currentRunId: null,
 }
 
+function clearHeartbeatState() {
+  const heartbeatGlobal = globalThis as typeof globalThis & {
+    __forgeAdminWorkflowWorkerHeartbeat?: {
+      interval: NodeJS.Timeout | null
+    }
+  }
+  if (heartbeatGlobal.__forgeAdminWorkflowWorkerHeartbeat?.interval) {
+    clearInterval(heartbeatGlobal.__forgeAdminWorkflowWorkerHeartbeat.interval)
+  }
+  delete heartbeatGlobal.__forgeAdminWorkflowWorkerHeartbeat
+}
+
 describe("loadWorkflowWorkerStatusRows", () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    clearHeartbeatState()
+  })
+
+  it("records heartbeat details as explicitly typed jsonb", async () => {
+    executeRaw.mockResolvedValueOnce(1)
+
+    await startWorkflowWorkerHeartbeat()
+
+    const [query, , details] = executeRaw.mock.calls[0]
+    const heartbeatQuery = sqlText(query)
+    expect(heartbeatQuery).toContain("CAST(")
+    expect(heartbeatQuery).toContain(" AS jsonb)")
+    expect(JSON.parse(String(details))).toEqual({
+      pid: process.pid,
+      host: expect.any(String),
+    })
   })
 
   it("keeps heartbeat rows available when Graphile jobs are not initialized", async () => {

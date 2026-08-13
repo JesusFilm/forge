@@ -62,6 +62,7 @@ type CandidateGenerationResolver = {
     requireQualified?: boolean
     currentBindings?: readonly string[]
     qrelsRevision?: string
+    rankingRevision?: string
   }): Promise<ResolvedCandidateWatchSearchGeneration>
 }
 
@@ -189,6 +190,7 @@ export async function resolveCandidateWatchSearchProfile(input: {
   requireQualified?: boolean
   currentBindings?: readonly string[]
   qrelsRevision?: string
+  rankingRevision?: string
 }): Promise<TypesenseWatchSearchProfile> {
   const generation = await input.generations.resolveGeneration({
     generationId: input.generationId,
@@ -198,6 +200,7 @@ export async function resolveCandidateWatchSearchProfile(input: {
     requireQualified: input.requireQualified,
     currentBindings: input.currentBindings,
     qrelsRevision: input.qrelsRevision,
+    rankingRevision: input.rankingRevision,
   })
   return createCandidateWatchSearchProfile(generation)
 }
