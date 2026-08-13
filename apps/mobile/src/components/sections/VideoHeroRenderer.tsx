@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import {
   AppState,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
