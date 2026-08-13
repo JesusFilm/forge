@@ -53,6 +53,7 @@ import {
   WATCH_PAGE_LEFT_EDGE_CLASSES,
   WATCH_PAGE_RIGHT_EDGE_CLASSES,
 } from "@/lib/content-width"
+import { languageCodeFor } from "@/lib/language-code"
 import { isPublicWatchHomeLanguageSlug } from "@/lib/locale"
 import {
   localizedHomePath,
@@ -148,6 +149,20 @@ function resolveCurrentWatchLanguageSlug(
   return defaultLanguageSlug
 }
 
+function resolveHeaderLanguageSlug(
+  parsed: ParsedWatchPath,
+  currentLanguageSlug: string,
+): string {
+  if (
+    parsed.kind === "language-videos" ||
+    parsed.kind === "localized-languages" ||
+    parsed.kind === "localized-history"
+  ) {
+    return parsed.lang
+  }
+  return currentLanguageSlug
+}
+
 export function FloatingSearchProvider({
   children,
   defaultLanguageSlug = "english",
@@ -225,6 +240,10 @@ export function FloatingSearchProvider({
     routeSurface,
     defaultLanguageSlug,
   )
+  const currentLanguageCode =
+    languageCodeFor({
+      slug: resolveHeaderLanguageSlug(parsedPath, currentLanguageSlug),
+    }) ?? languageCodeFor({ slug: currentLanguageSlug })
   const isWatchHome =
     routeSurface === "language-home" || routeSurface === "experience"
   const currentLocaleSlug = tryAsLocaleSlug(currentLanguageSlug)
@@ -650,8 +669,8 @@ export function FloatingSearchProvider({
     : openGlobalLanguage
   const headerLanguageControlVisible = true
   const headerLanguageCode = pageSpecificLanguageSwitcherActive
-    ? headerLanguageSwitcher.languageCode
-    : null
+    ? (headerLanguageSwitcher.languageCode ?? currentLanguageCode)
+    : currentLanguageCode
   const headerLanguageBusy =
     !pageSpecificLanguageSwitcherActive &&
     globalLanguageLoadingRoute === routeIdentity
