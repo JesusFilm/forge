@@ -23,6 +23,10 @@ type PlayerControlsProps = {
   seekSignal?: { time: number; n: number } | null
 }
 
+// Side inset for the bar's text and icons. The inline seek bar cancels it so
+// the track reaches the player's edges.
+const BAR_PADDING_H = 12
+
 function formatTime(seconds: number): string {
   const mins = Math.floor(seconds / 60)
   const secs = Math.floor(seconds % 60)
@@ -173,6 +177,20 @@ export function PlayerControls({
 
   const displayedTime = scrubPreview != null ? scrubPreview : currentTime
 
+  // Inline (portrait) puts the seek bar last with its track bottom-aligned, so
+  // the track sits ON the player's bottom edge; fullscreen keeps the original
+  // centered bar above the icon row. Only one of the two slots renders.
+  const scrubber = (
+    <Scrubber
+      currentTime={displayedTime}
+      duration={duration}
+      onSeek={handleSeek}
+      onScrubChange={handleScrubChange}
+      alignBottom={!fullscreen}
+      edgeToEdge={fullscreen ? 0 : BAR_PADDING_H}
+    />
+  )
+
   return (
     <View style={styles.container} pointerEvents="box-none">
       <View style={styles.controlsRow}>
@@ -252,12 +270,7 @@ export function PlayerControls({
             {formatTime(duration)}
           </Text>
         </View>
-        <Scrubber
-          currentTime={displayedTime}
-          duration={duration}
-          onSeek={handleSeek}
-          onScrubChange={handleScrubChange}
-        />
+        {fullscreen && scrubber}
         <View style={styles.iconRow}>
           <Pressable
             onPress={toggleMute}
@@ -289,6 +302,7 @@ export function PlayerControls({
             </Pressable>
           </View>
         </View>
+        {!fullscreen && scrubber}
       </View>
     </View>
   )
@@ -337,8 +351,10 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    paddingHorizontal: 12,
-    paddingBottom: 8,
+    paddingHorizontal: BAR_PADDING_H,
+    // No bottom inset inline: the seek bar's track IS the player's bottom edge.
+    // Fullscreen overrides this with its own safe-area padding.
+    paddingBottom: 0,
   },
   timeRow: {
     flexDirection: "row",

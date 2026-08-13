@@ -27,6 +27,14 @@ type ScrubberProps = {
    *  active=false on release/terminate. Lets the parent suppress its poll and
    *  show the dragged time live. */
   onScrubChange?: (active: boolean, previewTime: number | null) => void
+  /** Bottom-align the visible track inside the hit area instead of centering
+   *  it, so the bar can sit flush with the player's bottom edge while the 44px
+   *  touch target keeps its full height by extending upward. */
+  alignBottom?: boolean
+  /** Widen the bar past this many px of the parent's horizontal padding on each
+   *  side, so the track runs to the player's edges. The thumb's travel insets by
+   *  its own radius so it never half-leaves the screen at 0% or 100%. */
+  edgeToEdge?: number
 }
 
 const THUMB = 14
@@ -43,6 +51,8 @@ export function Scrubber({
   duration,
   onSeek,
   onScrubChange,
+  alignBottom = false,
+  edgeToEdge = 0,
 }: ScrubberProps) {
   const containerRef = useRef<View>(null)
   const trackRef = useRef({ x: 0, width: 0 })
@@ -153,17 +163,23 @@ export function Scrubber({
     }),
   ).current
 
-  // 0..1 → [0, trackWidth] px. Rebuilt when the track is (re)measured, not per
-  // frame; the thumb is centered on the position via the static marginLeft.
+  // 0..1 → px. Rebuilt when the track is (re)measured, not per frame; the thumb
+  // is centered on the position via the static marginLeft. An edge-to-edge bar
+  // insets both ends by the radius so the thumb stays wholly on screen.
+  const thumbInset = edgeToEdge > 0 ? THUMB / 2 : 0
   const thumbTranslateX = progress.interpolate({
     inputRange: [0, 1],
-    outputRange: [0, trackWidth],
+    outputRange: [thumbInset, Math.max(trackWidth - thumbInset, thumbInset)],
   })
 
   return (
     <View
       ref={containerRef}
-      style={styles.hitArea}
+      style={[
+        styles.hitArea,
+        alignBottom && styles.hitAreaBottom,
+        edgeToEdge > 0 && { marginHorizontal: -edgeToEdge },
+      ]}
       onLayout={(e: LayoutChangeEvent) => {
         measure()
         setTrackWidth(e.nativeEvent.layout.width)
@@ -207,6 +223,7 @@ export function Scrubber({
         <Animated.View
           style={[
             styles.thumb,
+            alignBottom && styles.thumbBottom,
             {
               transform: [
                 { translateX: thumbTranslateX },
@@ -226,6 +243,9 @@ const styles = StyleSheet.create({
   hitArea: {
     height: HIT_HEIGHT,
     justifyContent: "center",
+  },
+  hitAreaBottom: {
+    justifyContent: "flex-end",
   },
   track: {
     height: TRACK_HEIGHT,
@@ -250,5 +270,10 @@ const styles = StyleSheet.create({
     top: (HIT_HEIGHT - THUMB) / 2,
     left: 0,
     marginLeft: -THUMB / 2,
+  },
+  // Centered on a bottom-aligned track. The track touches the player's edge, so
+  // the lower half draws past it — the caller must not clip its overflow.
+  thumbBottom: {
+    top: HIT_HEIGHT - TRACK_HEIGHT / 2 - THUMB / 2,
   },
 })
