@@ -20,21 +20,21 @@ grain, and music mood. Pick the video look and the whole devotional inherits it.
 
 ## Blocks (→ roadmap tickets)
 
-- **feat-202 Hook** — dedicated short-copy skill (≤~12 words, captivating).
+- **feat-286 Hook** — dedicated short-copy skill (≤~12 words, captivating).
   News (Firecrawl) → holiday → intriguing question. Always a curiosity hook.
-- **feat-203 Scripture** — canonical NASB text via API.Bible (not model memory);
+- **feat-287 Scripture** — canonical NASB text via API.Bible (not model memory);
   styled card (left accent rule, distinct serif). Multilingual-ready.
-- **feat-204 Audio** — 3–4 Azure voices, one per devo (never mid-devo); ambient
+- **feat-288 Audio** — 3–4 Azure voices, one per devo (never mid-devo); ambient
   music bed, ducked under narration.
-- **feat-205 Video sourcing & trim** — match JF chapter; pull real clip (prod:
+- **feat-289 Video sourcing & trim** — match JF chapter; pull real clip (prod:
   Mux); transcript-based moment detection; fade in/out on the card.
-- **feat-206 Style / theme system** — B&W / sepia / grain / cinematic filters;
+- **feat-290 Style / theme system** — B&W / sepia / grain / cinematic filters;
   the chosen look drives card theme + music mood. Its own art-direction bot.
-- **feat-207 Reflection** — Cru-sourced, adapted in our voice; varied per-card
+- **feat-291 Reflection** — Cru-sourced, adapted in our voice; varied per-card
   layouts (3-para → 1-para centered, highlighted phrases, bigger font), left-aligned.
-- **feat-208 Questions + guided prayer** — strong open questions; a short guided
+- **feat-292 Questions + guided prayer** — strong open questions; a short guided
   prayer inviting the reader to talk to God about the topic.
-- **feat-209 Assembly & distribution** — Remotion render, per-card audio sync,
+- **feat-293 Assembly & distribution** — Remotion render, per-card audio sync,
   outro hold; emit full (2–3 min) + social-short cuts.
 
 ## Challenges (decide early)
