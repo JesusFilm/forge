@@ -9,6 +9,7 @@ import {
   estimateTypesenseVectorMemoryBytes,
   parseTypesenseVector,
   rebuildTypesenseWatchSearchIndex,
+  typesenseDocumentImportBatches,
   TypesenseWatchSearchIndexError,
 } from "./typesense-watch-search-indexer"
 import {
@@ -36,6 +37,17 @@ function viewerSafeVideo(title: string) {
     dubs: [],
     images: [],
     children: [],
+    keywords: [] as Array<{
+      keyword: {
+        value: string
+        deletedAt: Date | null
+        language: {
+          slug: string | null
+          bcp47: string | null
+          deletedAt: Date | null
+        } | null
+      }
+    }>,
   }
 }
 
@@ -90,6 +102,19 @@ describe("Typesense Watch Search indexer", () => {
           },
         ],
         children: [{ childId: "child-1" }],
+        keywords: [
+          {
+            keyword: {
+              value: "Court m\u00e9trage",
+              deletedAt: null,
+              language: {
+                slug: "french",
+                bcp47: "fr",
+                deletedAt: null,
+              },
+            },
+          },
+        ],
       },
     ])
     const queryRaw = vi.fn(async (_query: unknown) => [
@@ -123,6 +148,9 @@ describe("Typesense Watch Search indexer", () => {
           NOT: { restrictViewPlatforms: { has: "watch" } },
         },
         select: expect.objectContaining({
+          keywords: expect.objectContaining({
+            where: expect.objectContaining({ keyword: expect.any(Object) }),
+          }),
           dubs: expect.objectContaining({
             where: expect.objectContaining({
               deletedAt: null,
@@ -163,6 +191,7 @@ describe("Typesense Watch Search indexer", () => {
             languageSlug: "french",
             title: "La communion",
             description: "Description française",
+            taxonomy: ["Court m\u00e9trage"],
           },
         ]),
         imageUrl: "https://example.com/preferred.jpg",
@@ -212,6 +241,92 @@ describe("Typesense Watch Search indexer", () => {
         actionPriority: null,
       },
     ])
+  })
+
+  it("attaches only safe keywords with the exact language slug despite BCP-47 collisions", async () => {
+    const video = viewerSafeVideo("Korean")
+    video.locales = [
+      {
+        locale: "ko",
+        languageSlug: "korean",
+        title: "Korean",
+        description: "Korean description",
+      },
+      {
+        locale: "ko",
+        languageSlug: "korean-sign-language",
+        title: "Korean Sign Language",
+        description: "KSL description",
+      },
+    ]
+    video.keywords = [
+      {
+        keyword: {
+          value: "Short film",
+          deletedAt: null,
+          language: { slug: "korean", bcp47: "ko", deletedAt: null },
+        },
+      },
+      {
+        keyword: {
+          value: "Sign story",
+          deletedAt: null,
+          language: {
+            slug: "korean-sign-language",
+            bcp47: "ko",
+            deletedAt: null,
+          },
+        },
+      },
+      {
+        keyword: {
+          value: "Deleted keyword",
+          deletedAt: new Date(),
+          language: { slug: "korean", bcp47: "ko", deletedAt: null },
+        },
+      },
+      {
+        keyword: {
+          value: "Deleted language",
+          deletedAt: null,
+          language: { slug: "korean", bcp47: "ko", deletedAt: new Date() },
+        },
+      },
+      {
+        keyword: {
+          value: "Unsafe identity",
+          deletedAt: null,
+          language: {
+            slug: "korean`,languageIdentity:=slug:korean",
+            bcp47: "ko",
+            deletedAt: null,
+          },
+        },
+      },
+    ]
+    const prisma = {
+      video: { findMany: vi.fn(async () => [video]) },
+      $queryRaw: vi.fn(async () => []),
+    } as unknown as PrismaClient
+
+    const [document] = await buildCatalogDocuments(prisma)
+    const locales = JSON.parse(document?.localesJson ?? "[]") as Array<{
+      languageSlug: string
+      taxonomy: string[]
+    }>
+
+    expect(locales).toEqual([
+      expect.objectContaining({
+        languageSlug: "korean",
+        taxonomy: ["Short film"],
+      }),
+      expect.objectContaining({
+        languageSlug: "korean-sign-language",
+        taxonomy: ["Sign story"],
+      }),
+    ])
+    expect(prisma.video.findMany).toHaveBeenCalledTimes(1)
+    expect(prisma.$queryRaw).toHaveBeenCalledTimes(1)
   })
 
   it("stores a same-edition playable action on compact subtitle availability", () => {
@@ -320,6 +435,80 @@ describe("Typesense Watch Search indexer", () => {
     expect(after.digests.combined).not.toBe(before.digests.combined)
   })
 
+  it("changes the deterministic projection digest when taxonomy changes", async () => {
+    let sourceTaxonomy = "Short Film"
+    const transaction = vi.fn(
+      async (
+        run: (tx: unknown) => Promise<unknown>,
+        _options: { isolationLevel: string; timeout: number },
+      ) => {
+        const video = viewerSafeVideo("Stable title")
+        video.keywords = [
+          {
+            keyword: {
+              value: sourceTaxonomy,
+              deletedAt: null,
+              language: {
+                slug: "english",
+                bcp47: "en",
+                deletedAt: null,
+              },
+            },
+          },
+        ]
+        return run({
+          video: { findMany: vi.fn(async () => [video]) },
+          $queryRaw: vi.fn(async () => []),
+        })
+      },
+    )
+    const prisma = { $transaction: transaction } as unknown as PrismaClient
+
+    const before = await buildTypesenseWatchCandidateProjectionSnapshot(prisma)
+    const repeated =
+      await buildTypesenseWatchCandidateProjectionSnapshot(prisma)
+    sourceTaxonomy = "Youth"
+    const after = await buildTypesenseWatchCandidateProjectionSnapshot(prisma)
+
+    expect(repeated.digests).toEqual(before.digests)
+    expect(before.lexical[0]).toMatchObject({
+      taxonomy_en: ["Short Film"],
+      taxonomy_stem_en: ["Short Film"],
+    })
+    expect(after.digests.lexical).not.toBe(before.digests.lexical)
+    expect(after.digests.combined).not.toBe(before.digests.combined)
+  })
+
+  it("bounds imports by both document count and serialized JSONL bytes", () => {
+    const smallDocuments = Array.from({ length: 101 }, (_, index) => ({
+      id: `document-${index}`,
+    }))
+    const countBatches = typesenseDocumentImportBatches(smallDocuments, 250)
+    expect(countBatches.map((batch) => batch.length)).toEqual([100, 1])
+
+    const byteBatches = typesenseDocumentImportBatches(
+      [
+        { id: "large-1", value: "a".repeat(600_000) },
+        { id: "large-2", value: "b".repeat(600_000) },
+      ],
+      100,
+    )
+    expect(byteBatches).toHaveLength(2)
+    for (const batch of byteBatches) {
+      expect(
+        new TextEncoder().encode(
+          batch.map((document) => JSON.stringify(document)).join("\n"),
+        ).byteLength,
+      ).toBeLessThanOrEqual(1024 * 1024)
+    }
+    expect(() =>
+      typesenseDocumentImportBatches(
+        [{ id: "oversized", value: "x".repeat(1024 * 1024) }],
+        100,
+      ),
+    ).toThrow("serialized JSONL bytes")
+  })
+
   it("estimates vector RAM using the Typesense sizing formula", () => {
     expect(estimateTypesenseVectorMemoryBytes(17_118)).toBe(184_052_736)
     expect(() => estimateTypesenseVectorMemoryBytes(-1)).toThrow(
@@ -410,6 +599,7 @@ describe("Typesense Watch Search indexer", () => {
             dubs: [],
             images: [],
             children: [],
+            keywords: [],
           },
         ]),
       },

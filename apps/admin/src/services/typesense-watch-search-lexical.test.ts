@@ -3,8 +3,12 @@ import type { TypesenseWatchCatalogDocument } from "./typesense-watch-search-sch
 import {
   buildTypesenseWatchLexicalDocuments,
   estimateTypesenseKeywordMemory,
+  normalizeTypesenseWatchTaxonomy,
+  TYPESENSE_WATCH_TAXONOMY_MAX_BYTES,
+  TYPESENSE_WATCH_TAXONOMY_MAX_TERMS,
   typesenseWatchLanguageIdentity,
   typesenseWatchLocaleCodes,
+  typesenseWatchTokenizerLocale,
 } from "./typesense-watch-search-lexical"
 
 function catalogDocument(): TypesenseWatchCatalogDocument {
@@ -21,6 +25,7 @@ function catalogDocument(): TypesenseWatchCatalogDocument {
         languageSlug: "english",
         title: "JESUS",
         description: "The life of Jesus",
+        taxonomy: ["Short Film"],
       },
       {
         locale: "zh-Hans",
@@ -51,6 +56,7 @@ function catalogDocument(): TypesenseWatchCatalogDocument {
         languageSlug: "maori",
         title: "Ihu",
         description: "Te oranga o Ihu",
+        taxonomy: ["Kiriata poto"],
       },
       {
         locale: "fil",
@@ -91,7 +97,11 @@ describe("Typesense Watch lexical projection", () => {
       languageIdentity: "slug:english",
       localeCodes: ["en"],
       title_en: ["JESUS"],
+      title_stem_en: ["JESUS"],
       metadata_en: ["The life of Jesus"],
+      metadata_stem_en: ["The life of Jesus"],
+      taxonomy_en: ["Short Film"],
+      taxonomy_stem_en: ["Short Film"],
     })
     expect(byLocale.get("zh-hans")).toMatchObject({
       languageIdentity: "slug:mandarin-chinese",
@@ -106,9 +116,12 @@ describe("Typesense Watch lexical projection", () => {
     })
     expect(byLocale.get("mi")).toMatchObject({
       localeCodes: ["mi"],
-      title_mi: ["Ihu"],
-      metadata_mi: ["Te oranga o Ihu"],
+      title_fallback: ["Ihu"],
+      metadata_fallback: ["Te oranga o Ihu"],
+      taxonomy_fallback: ["Kiriata poto"],
     })
+    expect(byLocale.get("mi")).not.toHaveProperty("taxonomy_mi")
+    expect(byLocale.get("mi")).not.toHaveProperty("taxonomy_stem_mi")
     expect(byLocale.get("fil")).toMatchObject({
       localeCodes: ["fil"],
       title_fallback: ["Hesus"],
@@ -123,7 +136,9 @@ describe("Typesense Watch lexical projection", () => {
     const searchableValues = documents.flatMap((document) =>
       Object.entries(document)
         .filter(
-          ([name]) => name.startsWith("title_") || name.startsWith("metadata_"),
+          ([name]) =>
+            !name.includes("_stem_") &&
+            (name.startsWith("title_") || name.startsWith("metadata_")),
         )
         .flatMap(([, values]) => values as string[]),
     )
@@ -180,16 +195,79 @@ describe("Typesense Watch lexical projection", () => {
       (total, value) => total + new TextEncoder().encode(value).byteLength,
       0,
     )
+    const stemBytes = documents
+      .flatMap((document) =>
+        Object.entries(document)
+          .filter(
+            ([name]) =>
+              name.startsWith("title_stem_") ||
+              name.startsWith("metadata_stem_"),
+          )
+          .flatMap(([, values]) => values as string[]),
+      )
+      .reduce(
+        (total, value) => total + new TextEncoder().encode(value).byteLength,
+        0,
+      )
+    const taxonomyBytes = new TextEncoder().encode("Short Film").byteLength
+    const fallbackTaxonomyBytes = new TextEncoder().encode(
+      "Kiriata poto",
+    ).byteLength
+    const exactTaxonomyBytes = taxonomyBytes + fallbackTaxonomyBytes
+    const searchableBytes =
+      expectedBytes + stemBytes + exactTaxonomyBytes + taxonomyBytes
 
     expect(estimate).toEqual({
-      searchableBytes: expectedBytes,
-      estimatedRamLowBytes: expectedBytes * 2,
-      estimatedRamHighBytes: expectedBytes * 3,
+      searchableBytes,
+      searchableBytesByFamily: {
+        baselineTitleMetadata: expectedBytes,
+        stemTitleMetadata: stemBytes,
+        exactTaxonomy: exactTaxonomyBytes,
+        stemTaxonomy: taxonomyBytes,
+      },
+      estimatedRamLowBytes: searchableBytes * 2,
+      estimatedRamHighBytes: searchableBytes * 3,
     })
+  })
+
+  it("normalizes, deduplicates, orders, and caps taxonomy deterministically", () => {
+    const values = [
+      "  zeta  ",
+      "cafe\u0301",
+      "caf\u00e9",
+      "alpha   term",
+      ...Array.from(
+        { length: 40 },
+        (_, index) => `term-${String(index).padStart(2, "0")}`,
+      ),
+    ]
+
+    const first = normalizeTypesenseWatchTaxonomy(values)
+    const second = normalizeTypesenseWatchTaxonomy([...values].reverse())
+
+    expect(first).toEqual(second)
+    expect(first).toHaveLength(TYPESENSE_WATCH_TAXONOMY_MAX_TERMS)
+    expect(first).toContain("alpha term")
+    expect(first.filter((value) => value === "caf\u00e9")).toHaveLength(1)
+    expect(first).toEqual([...first].sort())
+  })
+
+  it("keeps taxonomy at or below the exact UTF-8 byte ceiling", () => {
+    const atLimit = "a".repeat(TYPESENSE_WATCH_TAXONOMY_MAX_BYTES)
+    const values = normalizeTypesenseWatchTaxonomy([atLimit, "z"])
+
+    expect(values).toEqual([atLimit])
+    expect(
+      values.reduce(
+        (total, value) => total + new TextEncoder().encode(value).byteLength,
+        0,
+      ),
+    ).toBe(TYPESENSE_WATCH_TAXONOMY_MAX_BYTES)
   })
 
   it("normalizes valid language tags without accepting filter syntax", () => {
     expect(typesenseWatchLocaleCodes("zh_Hans")).toEqual(["zh-hans"])
+    expect(typesenseWatchTokenizerLocale("zh_Hans")).toBe("zh")
     expect(typesenseWatchLocaleCodes("x-private")).toEqual(["x-private"])
     expect(typesenseWatchLocaleCodes("en`,localeCodes:=fr")).toEqual([])
     expect(

@@ -13,6 +13,7 @@ export type TypesenseWatchLocale = {
   languageSlug?: string | null
   title: string
   description: string | null
+  taxonomy?: string[]
 }
 
 export type TypesenseWatchAudioOption = {
@@ -113,7 +114,7 @@ export function candidateWatchCollectionNames(generationId: string) {
 
 export function candidateWatchCollectionSchemas(
   generationId: string,
-  tokenizerLocales: readonly string[] = TYPESENSE_WATCH_TOKENIZER_LOCALES,
+  _tokenizerLocales: readonly string[] = TYPESENSE_WATCH_TOKENIZER_LOCALES,
 ) {
   const names = candidateWatchCollectionNames(generationId)
   return {
@@ -126,7 +127,7 @@ export function candidateWatchCollectionSchemas(
       name: names.availability,
     },
     lexical: {
-      ...watchLexicalCollectionSchema("candidate", tokenizerLocales),
+      ...watchLexicalCollectionSchema("candidate"),
       name: names.lexical,
     },
   } satisfies Record<
@@ -206,14 +207,22 @@ export function watchAvailabilityCollectionSchema(
 
 export function watchLexicalCollectionSchema(
   buildId: string,
-  tokenizerLocales: readonly string[] = TYPESENSE_WATCH_TOKENIZER_LOCALES,
+  _tokenizerLocales: readonly string[] = TYPESENSE_WATCH_TOKENIZER_LOCALES,
 ): TypesenseCollectionSchema {
-  const localizedFields = [...new Set(tokenizerLocales)].flatMap((locale) =>
-    ["title", "metadata"].map((lane) => ({
-      name: `${lane}_${locale}`,
+  const localizedFields = TYPESENSE_WATCH_TOKENIZER_LOCALES.flatMap((locale) =>
+    [
+      { name: `title_${locale}`, stem: false },
+      { name: `title_stem_${locale}`, stem: true },
+      { name: `metadata_${locale}`, stem: false },
+      { name: `metadata_stem_${locale}`, stem: true },
+      { name: `taxonomy_${locale}`, stem: false },
+      { name: `taxonomy_stem_${locale}`, stem: true },
+    ].map(({ name, stem }) => ({
+      name,
       type: "string[]",
       locale,
       optional: true,
+      ...(stem ? { stem: true } : {}),
     })),
   )
   return {
@@ -226,6 +235,7 @@ export function watchLexicalCollectionSchema(
       ...localizedFields,
       { name: "title_fallback", type: "string[]", optional: true },
       { name: "metadata_fallback", type: "string[]", optional: true },
+      { name: "taxonomy_fallback", type: "string[]", optional: true },
     ],
   }
 }

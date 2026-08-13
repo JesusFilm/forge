@@ -6,6 +6,9 @@ import { canonicalTypesenseVideoId } from "./typesense-watch-search-identifiers"
 import {
   buildTypesenseWatchLexicalDocuments,
   estimateTypesenseKeywordMemory,
+  normalizeTypesenseWatchTaxonomy,
+  type TypesenseKeywordMemoryEstimate,
+  typesenseWatchLanguageSlugIdentity,
   typesenseWatchTokenizerLocales,
 } from "./typesense-watch-search-lexical"
 import {
@@ -27,7 +30,47 @@ import {
 } from "./typesense-watch-search-schema"
 
 const DEFAULT_BATCH_SIZE = 100
+const MAX_IMPORT_DOCUMENTS = 100
+const MAX_IMPORT_JSONL_BYTES = 1024 * 1024
 const TYPESENSE_VECTOR_BYTES_PER_DIMENSION = 7
+
+export function typesenseDocumentImportBatches<T extends object>(
+  documents: readonly T[],
+  requestedBatchSize: number,
+): T[][] {
+  if (!Number.isInteger(requestedBatchSize) || requestedBatchSize <= 0) {
+    throw new TypesenseWatchSearchIndexError(
+      "Typesense index batch size must be a positive integer",
+    )
+  }
+  const documentLimit = Math.min(requestedBatchSize, MAX_IMPORT_DOCUMENTS)
+  const batches: T[][] = []
+  let batch: T[] = []
+  let batchBytes = 0
+  for (const document of documents) {
+    const documentBytes = new TextEncoder().encode(
+      JSON.stringify(document),
+    ).byteLength
+    if (documentBytes > MAX_IMPORT_JSONL_BYTES) {
+      throw new TypesenseWatchSearchIndexError(
+        `Typesense import document exceeds ${MAX_IMPORT_JSONL_BYTES} serialized JSONL bytes`,
+      )
+    }
+    const separatorBytes = batch.length === 0 ? 0 : 1
+    if (
+      batch.length >= documentLimit ||
+      batchBytes + separatorBytes + documentBytes > MAX_IMPORT_JSONL_BYTES
+    ) {
+      batches.push(batch)
+      batch = []
+      batchBytes = 0
+    }
+    batch.push(document)
+    batchBytes += (batch.length === 1 ? 0 : 1) + documentBytes
+  }
+  if (batch.length > 0) batches.push(batch)
+  return batches
+}
 
 type SubtitleIndexRow = {
   id: string
@@ -60,6 +103,7 @@ export type TypesenseWatchSearchIndexStats = {
   availabilityDocuments: number
   lexicalDocuments: number
   lexicalSearchableBytes: number
+  lexicalSearchableBytesByFamily: TypesenseKeywordMemoryEstimate["searchableBytesByFamily"]
   estimatedKeywordMemoryLowBytes: number
   estimatedKeywordMemoryHighBytes: number
   videoDocuments: number
@@ -319,6 +363,30 @@ export async function buildCatalogDocuments(
             description: true,
           },
         },
+        keywords: {
+          where: {
+            keyword: {
+              deletedAt: null,
+              language: { deletedAt: null, slug: { not: null } },
+            },
+          },
+          orderBy: { keywordId: "asc" },
+          select: {
+            keyword: {
+              select: {
+                value: true,
+                deletedAt: true,
+                language: {
+                  select: {
+                    slug: true,
+                    bcp47: true,
+                    deletedAt: true,
+                  },
+                },
+              },
+            },
+          },
+        },
         dubs: {
           where: {
             deletedAt: null,
@@ -362,6 +430,23 @@ export async function buildCatalogDocuments(
   const subtitlesByVideo = subtitleOptionsByVideo(subtitleRows)
 
   return videos.flatMap((video) => {
+    const taxonomyByLanguageIdentity = new Map<string, string[]>()
+    for (const link of video.keywords ?? []) {
+      const keyword = link.keyword
+      const language = keyword.language
+      if (keyword.deletedAt || !language || language.deletedAt) continue
+      const languageIdentity = typesenseWatchLanguageSlugIdentity(language.slug)
+      if (!languageIdentity) continue
+      const values = taxonomyByLanguageIdentity.get(languageIdentity) ?? []
+      values.push(keyword.value)
+      taxonomyByLanguageIdentity.set(languageIdentity, values)
+    }
+    for (const [languageIdentity, values] of taxonomyByLanguageIdentity) {
+      taxonomyByLanguageIdentity.set(
+        languageIdentity,
+        normalizeTypesenseWatchTaxonomy(values),
+      )
+    }
     const locales: TypesenseWatchLocale[] = video.locales.flatMap((locale) =>
       locale.locale && locale.title
         ? [
@@ -370,6 +455,10 @@ export async function buildCatalogDocuments(
               languageSlug: locale.languageSlug,
               title: locale.title,
               description: locale.description,
+              taxonomy:
+                taxonomyByLanguageIdentity.get(
+                  typesenseWatchLanguageSlugIdentity(locale.languageSlug) ?? "",
+                ) ?? [],
             },
           ]
         : [],
@@ -696,6 +785,7 @@ export async function rebuildTypesenseWatchSearchIndex({
   let availabilityDocuments = 0
   let lexicalDocuments = 0
   const lexicalSearchableBytes = keywordMemory.searchableBytes
+  const lexicalSearchableBytesByFamily = keywordMemory.searchableBytesByFamily
   const estimatedKeywordMemoryLowBytes = keywordMemory.estimatedRamLowBytes
   const estimatedKeywordMemoryHighBytes = keywordMemory.estimatedRamHighBytes
   const videoDocuments = 0
@@ -736,8 +826,7 @@ export async function rebuildTypesenseWatchSearchIndex({
     if (!transcriptReused) {
       await typesense.createCollection(transcriptSchema)
     }
-    for (let index = 0; index < catalog.length; index += batchSize) {
-      const batch = catalog.slice(index, index + batchSize)
+    for (const batch of typesenseDocumentImportBatches(catalog, batchSize)) {
       await typesense.importDocuments(catalogSchema.name, batch)
       catalogDocuments += batch.length
       onProgress?.({
@@ -749,8 +838,10 @@ export async function rebuildTypesenseWatchSearchIndex({
         transcriptReused,
       })
     }
-    for (let index = 0; index < availability.length; index += batchSize) {
-      const batch = availability.slice(index, index + batchSize)
+    for (const batch of typesenseDocumentImportBatches(
+      availability,
+      batchSize,
+    )) {
       await typesense.importDocuments(availabilitySchema.name, batch)
       availabilityDocuments += batch.length
       onProgress?.({
@@ -762,8 +853,7 @@ export async function rebuildTypesenseWatchSearchIndex({
         transcriptReused,
       })
     }
-    for (let index = 0; index < lexical.length; index += batchSize) {
-      const batch = lexical.slice(index, index + batchSize)
+    for (const batch of typesenseDocumentImportBatches(lexical, batchSize)) {
       await typesense.importDocuments(lexicalSchema.name, batch)
       lexicalDocuments += batch.length
       onProgress?.({
@@ -779,7 +869,11 @@ export async function rebuildTypesenseWatchSearchIndex({
     if (!transcriptReused) {
       let afterId: string | null = null
       for (;;) {
-        const rows = await loadTranscriptBatch(prisma, afterId, batchSize)
+        const rows = await loadTranscriptBatch(
+          prisma,
+          afterId,
+          Math.min(batchSize, MAX_IMPORT_DOCUMENTS),
+        )
         if (rows.length === 0) break
         const documents: TypesenseWatchTranscriptDocument[] = rows.map(
           (row) => ({
@@ -799,7 +893,12 @@ export async function rebuildTypesenseWatchSearchIndex({
             embedding: parseTypesenseVector(row.embeddingText),
           }),
         )
-        await typesense.importDocuments(transcriptSchema.name, documents)
+        for (const batch of typesenseDocumentImportBatches(
+          documents,
+          batchSize,
+        )) {
+          await typesense.importDocuments(transcriptSchema.name, batch)
+        }
         transcriptDocuments += documents.length
         for (const document of documents) {
           if (document.publiclyVisible) publicTranscriptDocuments += 1
@@ -937,6 +1036,7 @@ export async function rebuildTypesenseWatchSearchIndex({
     availabilityDocuments,
     lexicalDocuments,
     lexicalSearchableBytes,
+    lexicalSearchableBytesByFamily,
     estimatedKeywordMemoryLowBytes,
     estimatedKeywordMemoryHighBytes,
     videoDocuments,

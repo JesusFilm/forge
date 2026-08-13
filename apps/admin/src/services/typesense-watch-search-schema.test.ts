@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest"
+import { TYPESENSE_WATCH_TOKENIZER_LOCALES } from "./typesense-watch-search-lexical"
 import {
   candidateWatchCollectionSchemas,
   TYPESENSE_WATCH_AVAILABILITY_ALIAS,
@@ -19,10 +20,7 @@ describe("Typesense Watch Search schemas", () => {
   })
 
   it("uses candidate-only collision-proof physical names and all tokenizer fields", () => {
-    const schemas = candidateWatchCollectionSchemas("candidate_01", [
-      "en",
-      "zh",
-    ])
+    const schemas = candidateWatchCollectionSchemas("candidate_01", ["mi"])
 
     expect(schemas.catalog.name).toBe(
       `${TYPESENSE_WATCH_CANDIDATE_PREFIX}_candidate_01_catalog`,
@@ -37,9 +35,18 @@ describe("Typesense Watch Search schemas", () => {
       expect.arrayContaining([
         expect.objectContaining({ name: "title_en", locale: "en" }),
         expect.objectContaining({ name: "metadata_zh", locale: "zh" }),
+        expect.objectContaining({
+          name: "taxonomy_stem_ko",
+          locale: "ko",
+          stem: true,
+        }),
         expect.objectContaining({ name: "title_fallback" }),
         expect.objectContaining({ name: "metadata_fallback" }),
+        expect.objectContaining({ name: "taxonomy_fallback" }),
       ]),
+    )
+    expect(schemas.lexical.fields).not.toEqual(
+      expect.arrayContaining([expect.objectContaining({ name: "title_mi" })]),
     )
     expect(
       Object.values(schemas).every(
@@ -126,15 +133,56 @@ describe("Typesense Watch Search schemas", () => {
           optional: true,
         },
         {
-          name: "title_mi",
+          name: "title_stem_zh",
           type: "string[]",
-          locale: "mi",
+          locale: "zh",
           optional: true,
+          stem: true,
+        },
+        {
+          name: "taxonomy_zh",
+          type: "string[]",
+          locale: "zh",
+          optional: true,
+        },
+        {
+          name: "taxonomy_stem_zh",
+          type: "string[]",
+          locale: "zh",
+          optional: true,
+          stem: true,
         },
         { name: "title_fallback", type: "string[]", optional: true },
         { name: "metadata_fallback", type: "string[]", optional: true },
+        { name: "taxonomy_fallback", type: "string[]", optional: true },
       ]),
     )
+    expect(schema.fields).not.toEqual(
+      expect.arrayContaining([expect.objectContaining({ name: "title_mi" })]),
+    )
+  })
+
+  it("declares the exact fixed 153-field searchable lexical manifest", () => {
+    const schema = watchLexicalCollectionSchema("build")
+    const expectedNames = [
+      ...TYPESENSE_WATCH_TOKENIZER_LOCALES.flatMap((locale) => [
+        `title_${locale}`,
+        `title_stem_${locale}`,
+        `metadata_${locale}`,
+        `metadata_stem_${locale}`,
+        `taxonomy_${locale}`,
+        `taxonomy_stem_${locale}`,
+      ]),
+      "title_fallback",
+      "metadata_fallback",
+      "taxonomy_fallback",
+    ]
+    const searchableNames = schema.fields
+      .map((field) => field.name)
+      .filter((name) => expectedNames.includes(name))
+
+    expect(searchableNames).toEqual(expectedNames)
+    expect(searchableNames).toHaveLength(153)
   })
 
   it("keeps transcript vectors at the existing embedding dimensions", () => {

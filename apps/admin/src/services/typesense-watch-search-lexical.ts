@@ -32,6 +32,13 @@ export const TYPESENSE_WATCH_TOKENIZER_LOCALES = [
   "pl",
 ] as const
 
+const TYPESENSE_WATCH_TOKENIZER_LOCALE_SET = new Set<string>(
+  TYPESENSE_WATCH_TOKENIZER_LOCALES,
+)
+
+export const TYPESENSE_WATCH_TAXONOMY_MAX_TERMS = 32
+export const TYPESENSE_WATCH_TAXONOMY_MAX_BYTES = 4_096
+
 export type TypesenseWatchLexicalDocument = {
   id: string
   videoId: string
@@ -42,13 +49,23 @@ export type TypesenseWatchLexicalDocument = {
 
 export type TypesenseKeywordMemoryEstimate = {
   searchableBytes: number
+  searchableBytesByFamily: {
+    baselineTitleMetadata: number
+    stemTitleMetadata: number
+    exactTaxonomy: number
+    stemTaxonomy: number
+  }
   estimatedRamLowBytes: number
   estimatedRamHighBytes: number
 }
 
 export function typesenseWatchTokenizerLocale(locale: string): string | null {
-  const base = locale.trim().toLocaleLowerCase().split("-")[0]
-  return base && /^[a-z]{2}$/.test(base) ? base : null
+  const base = locale
+    .trim()
+    .toLocaleLowerCase()
+    .replace(/_/g, "-")
+    .split("-")[0]
+  return base && TYPESENSE_WATCH_TOKENIZER_LOCALE_SET.has(base) ? base : null
 }
 
 export function typesenseWatchLocaleCodes(locale: string): string[] {
@@ -62,12 +79,46 @@ export function typesenseWatchLanguageIdentity({
   languageSlug,
   locale,
 }: Pick<TypesenseWatchLocale, "languageSlug" | "locale">): string | null {
-  const normalizedSlug = languageSlug?.trim().toLocaleLowerCase()
-  if (normalizedSlug && /^[a-z0-9]+(?:[-_][a-z0-9]+)*$/.test(normalizedSlug)) {
-    return `slug:${normalizedSlug}`
-  }
+  const slugIdentity = typesenseWatchLanguageSlugIdentity(languageSlug)
+  if (slugIdentity) return slugIdentity
   const [normalizedLocale] = typesenseWatchLocaleCodes(locale)
   return normalizedLocale ? `locale:${normalizedLocale}` : null
+}
+
+export function typesenseWatchLanguageSlugIdentity(
+  languageSlug: string | null | undefined,
+): string | null {
+  const normalizedSlug = languageSlug?.trim().toLocaleLowerCase()
+  return normalizedSlug && /^[a-z0-9]+(?:[-_][a-z0-9]+)*$/.test(normalizedSlug)
+    ? `slug:${normalizedSlug}`
+    : null
+}
+
+function compareNormalizedText(left: string, right: string): number {
+  return left < right ? -1 : left > right ? 1 : 0
+}
+
+export function normalizeTypesenseWatchTaxonomy(
+  values: readonly string[],
+): string[] {
+  const normalized = [
+    ...new Set(
+      values.flatMap((value) => {
+        const term = value.normalize("NFKC").replace(/\s+/gu, " ").trim()
+        return term ? [term] : []
+      }),
+    ),
+  ].sort(compareNormalizedText)
+  const result: string[] = []
+  let bytes = 0
+  for (const term of normalized) {
+    if (result.length >= TYPESENSE_WATCH_TAXONOMY_MAX_TERMS) break
+    const termBytes = new TextEncoder().encode(term).byteLength
+    if (bytes + termBytes > TYPESENSE_WATCH_TAXONOMY_MAX_BYTES) break
+    result.push(term)
+    bytes += termBytes
+  }
+  return result
 }
 
 function appendUnique(
@@ -127,6 +178,18 @@ export function buildTypesenseWatchLexicalDocuments(
       const suffix = tokenizerLocale ?? "fallback"
       appendUnique(document, `title_${suffix}`, locale.title)
       appendUnique(document, `metadata_${suffix}`, locale.description)
+      if (tokenizerLocale) {
+        appendUnique(document, `title_stem_${suffix}`, locale.title)
+        appendUnique(document, `metadata_stem_${suffix}`, locale.description)
+      }
+      for (const term of normalizeTypesenseWatchTaxonomy(
+        locale.taxonomy ?? [],
+      )) {
+        appendUnique(document, `taxonomy_${suffix}`, term)
+        if (tokenizerLocale) {
+          appendUnique(document, `taxonomy_stem_${suffix}`, term)
+        }
+      }
       documents.set(languageIdentity, document)
     }
     return [...documents.values()]
@@ -136,34 +199,47 @@ export function buildTypesenseWatchLexicalDocuments(
 export function estimateTypesenseKeywordMemory(
   documents: readonly TypesenseWatchLexicalDocument[],
 ): TypesenseKeywordMemoryEstimate {
-  let searchableBytes = 0
+  const searchableBytesByFamily = {
+    baselineTitleMetadata: 0,
+    stemTitleMetadata: 0,
+    exactTaxonomy: 0,
+    stemTaxonomy: 0,
+  }
   for (const document of documents) {
     for (const [field, value] of Object.entries(document)) {
-      if (!field.startsWith("title_") && !field.startsWith("metadata_")) {
-        continue
-      }
+      const family =
+        field.startsWith("title_stem_") || field.startsWith("metadata_stem_")
+          ? "stemTitleMetadata"
+          : field.startsWith("title_") || field.startsWith("metadata_")
+            ? "baselineTitleMetadata"
+            : field.startsWith("taxonomy_stem_")
+              ? "stemTaxonomy"
+              : field.startsWith("taxonomy_")
+                ? "exactTaxonomy"
+                : null
+      if (!family) continue
       const values = Array.isArray(value) ? value : [value]
       for (const text of values) {
-        searchableBytes += new TextEncoder().encode(text).byteLength
+        searchableBytesByFamily[family] += new TextEncoder().encode(
+          text,
+        ).byteLength
       }
     }
   }
+  const searchableBytes = Object.values(searchableBytesByFamily).reduce(
+    (total, value) => total + value,
+    0,
+  )
   return {
     searchableBytes,
+    searchableBytesByFamily,
     estimatedRamLowBytes: searchableBytes * 2,
     estimatedRamHighBytes: searchableBytes * 3,
   }
 }
 
 export function typesenseWatchTokenizerLocales(
-  documents: readonly TypesenseWatchLexicalDocument[],
+  _documents: readonly TypesenseWatchLexicalDocument[],
 ): string[] {
-  const locales = new Set<string>(TYPESENSE_WATCH_TOKENIZER_LOCALES)
-  for (const document of documents) {
-    for (const field of Object.keys(document)) {
-      const match = /^(?:title|metadata)_([a-z]{2})$/.exec(field)
-      if (match?.[1]) locales.add(match[1])
-    }
-  }
-  return [...locales].sort()
+  return [...TYPESENSE_WATCH_TOKENIZER_LOCALES]
 }

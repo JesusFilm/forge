@@ -13,6 +13,7 @@ export type TypesenseCollectionField = {
   locale?: string
   optional?: boolean
   sort?: boolean
+  stem?: boolean
   num_dim?: number
 }
 

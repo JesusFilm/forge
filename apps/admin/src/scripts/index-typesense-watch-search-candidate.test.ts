@@ -71,6 +71,12 @@ const snapshot: TypesenseWatchCandidateProjectionSnapshot = {
   },
   lexicalMemory: {
     searchableBytes: 64,
+    searchableBytesByFamily: {
+      baselineTitleMetadata: 32,
+      stemTitleMetadata: 32,
+      exactTaxonomy: 0,
+      stemTaxonomy: 0,
+    },
     estimatedRamLowBytes: 128,
     estimatedRamHighBytes: 192,
   },
