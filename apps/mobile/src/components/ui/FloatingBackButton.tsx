@@ -16,7 +16,7 @@ type FloatingBackButtonProps = {
 
 // Back button floating over full-bleed content; mirrors HomeHeader's glass button.
 // `isInteractive` intentionally NOT set — inside a Pressable it flashes white on
-// remount. See docs/solutions/best-practices/expo-glass-effect-interactive-flash.
+// remount. See docs/solutions/best-practices/expo-glass-effect-interactive-flash-2026-04-08.md.
 export function FloatingBackButton({
   topOffset = 4,
   sideOffset = HORIZONTAL_PADDING,

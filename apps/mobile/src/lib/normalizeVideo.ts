@@ -226,7 +226,10 @@ export function normalizeDubMedia(
         url: d.url,
       })),
     subtitles: (raw.videoEdition?.subtitles ?? [])
-      .filter((s) => s.vttSrc != null && s.language != null)
+      // Admin's Language.slug is nullable. A slug-less track can't be keyed —
+      // it collapses to "", which is falsy, so a genuine pick reads downstream
+      // as "nothing selected" and shows no captions under its own name.
+      .filter((s) => s.vttSrc != null && !!s.language?.slug)
       .map((s) => ({
         documentId: s.documentId ?? "",
         languageSlug: s.language?.slug ?? "",

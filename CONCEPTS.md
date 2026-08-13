@@ -86,7 +86,7 @@ A cut/edition of a Video that owns the subtitle tracks. Subtitles hang off the E
 
 ### Language
 
-A language a Video is offered in: every Dub is for one Language, and subtitle tracks are per-Language. A Language has two identifiers that are easy to conflate — a unique, stable slug that is its identity (e.g. korean, kurmanji-standard), and a BCP-47 tag that is a locale label (e.g. ko, ko-kmr) and is deliberately not unique per language, so distinct Languages can share a tag or its prefix. Identity comparisons and cross-system transport key on the slug; the BCP-47 tag is for locale negotiation and locale-sensitive search execution.
+A language a Video is offered in: every Dub is for one Language, and subtitle tracks are per-Language. A Language has two identifiers that are easy to conflate — a unique, stable slug that is its identity (e.g. korean, kurmanji-standard), and a BCP-47 tag that is a locale label (e.g. ko, ko-kmr) and is deliberately not unique per language, so distinct Languages can share a tag or its prefix. Identity comparisons and cross-system transport key on the slug; the BCP-47 tag is for locale negotiation and locale-sensitive search execution. The slug is unique when it is present, but it is not guaranteed to exist — a Language can carry no slug at all. A consumer must treat a missing slug as an unusable identity and drop that option, never substitute an empty string, because downstream code reads an empty string as "nothing selected".
 
 ### Watch Language Inventory
 

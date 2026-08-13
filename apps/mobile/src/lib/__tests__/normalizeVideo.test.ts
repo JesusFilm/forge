@@ -477,6 +477,37 @@ describe("normalizeVideo", () => {
       expect(media.subtitles[1].aiGenerated).toBe(true)
     })
 
+    // Admin's Language.slug is nullable and real rows hit it (a French track on
+    // considering-christmas, 2026-08-13). A slug-less track cannot be selected:
+    // it keys as "" everywhere, and "" is falsy, so the watch route's
+    // `!activeSubtitleSlug` guard reads a genuine pick as "nothing selected" and
+    // silently renders no captions while the control still names the language.
+    it("drops a subtitle whose language has no slug", () => {
+      const media = normalizeDubMedia(
+        makeRawDub({
+          videoEdition: {
+            subtitles: [
+              {
+                documentId: "sub-1",
+                language: { slug: "english", name: "English", bcp47: "en" },
+                vttSrc: "https://subs.example.com/en.vtt",
+                primary: true,
+                aiGenerated: false,
+              },
+              {
+                documentId: "sub-fr",
+                language: { slug: null, name: { en: "French" }, bcp47: "fr" },
+                vttSrc: "https://subs.example.com/fr.vtt",
+                primary: false,
+                aiGenerated: false,
+              },
+            ],
+          },
+        }),
+      )
+      expect(media.subtitles.map((s) => s.languageSlug)).toEqual(["english"])
+    })
+
     it("returns empty media for a missing dub", () => {
       expect(normalizeDubMedia(null)).toEqual({ downloads: [], subtitles: [] })
     })

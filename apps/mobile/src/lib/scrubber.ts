@@ -50,3 +50,18 @@ export function progressFraction(
   if (!hasUsableDuration(duration)) return 0
   return clamp(currentTime / duration, 0, 1)
 }
+
+/**
+ * Pixel range the thumb's center travels across, for a 0..1 progress input.
+ * A flush (edge-to-edge) bar insets both ends by the thumb's radius, so the
+ * thumb never half-leaves the screen at 0% or 100%. Collapses to a point until
+ * the track is measured — the caller hides the thumb at width 0.
+ */
+export function thumbOutputRange(
+  trackWidth: number,
+  thumbSize: number,
+  flush: boolean,
+): [number, number] {
+  const inset = flush ? thumbSize / 2 : 0
+  return [inset, Math.max(trackWidth - inset, inset)]
+}

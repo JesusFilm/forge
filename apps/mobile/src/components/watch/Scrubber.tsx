@@ -15,6 +15,7 @@ import {
   clamp,
   fractionToTime,
   progressFraction,
+  thumbOutputRange,
 } from "../../lib/scrubber"
 import { SKIP_SECONDS } from "../../lib/tapSeek"
 
@@ -27,6 +28,12 @@ type ScrubberProps = {
    *  active=false on release/terminate. Lets the parent suppress its poll and
    *  show the dragged time live. */
   onScrubChange?: (active: boolean, previewTime: number | null) => void
+  /** Dock the bar on the player's bottom edge: the visible track bottom-aligns
+   *  inside the hit area (which keeps its full height by extending upward), and
+   *  the thumb's travel insets by its own radius so it never half-leaves the
+   *  screen at 0% and 100%. The two move together — a bottom-aligned track with
+   *  centered thumb travel is not a state this component supports. */
+  flush?: boolean
 }
 
 const THUMB = 14
@@ -43,6 +50,7 @@ export function Scrubber({
   duration,
   onSeek,
   onScrubChange,
+  flush = false,
 }: ScrubberProps) {
   const containerRef = useRef<View>(null)
   const trackRef = useRef({ x: 0, width: 0 })
@@ -153,17 +161,17 @@ export function Scrubber({
     }),
   ).current
 
-  // 0..1 → [0, trackWidth] px. Rebuilt when the track is (re)measured, not per
-  // frame; the thumb is centered on the position via the static marginLeft.
+  // 0..1 → px. Rebuilt when the track is (re)measured, not per frame; the thumb
+  // is centered on the position via the static marginLeft.
   const thumbTranslateX = progress.interpolate({
     inputRange: [0, 1],
-    outputRange: [0, trackWidth],
+    outputRange: thumbOutputRange(trackWidth, THUMB, flush),
   })
 
   return (
     <View
       ref={containerRef}
-      style={styles.hitArea}
+      style={[styles.hitArea, flush && styles.hitAreaBottom]}
       onLayout={(e: LayoutChangeEvent) => {
         measure()
         setTrackWidth(e.nativeEvent.layout.width)
@@ -207,6 +215,7 @@ export function Scrubber({
         <Animated.View
           style={[
             styles.thumb,
+            flush && styles.thumbBottom,
             {
               transform: [
                 { translateX: thumbTranslateX },
@@ -226,6 +235,9 @@ const styles = StyleSheet.create({
   hitArea: {
     height: HIT_HEIGHT,
     justifyContent: "center",
+  },
+  hitAreaBottom: {
+    justifyContent: "flex-end",
   },
   track: {
     height: TRACK_HEIGHT,
@@ -250,5 +262,10 @@ const styles = StyleSheet.create({
     top: (HIT_HEIGHT - THUMB) / 2,
     left: 0,
     marginLeft: -THUMB / 2,
+  },
+  // Centered on a bottom-aligned track. The track touches the player's edge, so
+  // the lower half draws past it — the caller must not clip its overflow.
+  thumbBottom: {
+    top: HIT_HEIGHT - TRACK_HEIGHT / 2 - THUMB / 2,
   },
 })
