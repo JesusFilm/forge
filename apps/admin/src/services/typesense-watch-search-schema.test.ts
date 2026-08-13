@@ -37,6 +37,11 @@ describe("Typesense Watch Search schemas", () => {
       expect.arrayContaining([
         expect.objectContaining({ name: "title_en", locale: "en" }),
         expect.objectContaining({ name: "metadata_zh", locale: "zh" }),
+        {
+          name: "title_exact_keys",
+          type: "string[]",
+          optional: true,
+        },
         expect.objectContaining({ name: "title_fallback" }),
         expect.objectContaining({ name: "metadata_fallback" }),
       ]),
@@ -134,6 +139,9 @@ describe("Typesense Watch Search schemas", () => {
         { name: "title_fallback", type: "string[]", optional: true },
         { name: "metadata_fallback", type: "string[]", optional: true },
       ]),
+    )
+    expect(schema.fields).not.toContainEqual(
+      expect.objectContaining({ name: "title_exact_keys" }),
     )
   })
 

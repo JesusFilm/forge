@@ -113,6 +113,13 @@ remains first-order precedence. `group_by=canonicalVideoId` and
 consuming the result page while retaining enough members for target-audio,
 subtitle, and fallback hydration.
 
+The private Candidate evaluation profile adds one global exact-title-key
+subsearch to that same first multi-search request. Current remains at three
+logical searches in the first request; Candidate must report exactly one more
+logical subsearch overall and the same number of HTTP retrieval calls. The
+exact path is not qualified merely because the request is batched: all latency,
+payload, and capacity gates in the native-language section below still apply.
+
 Semantic retrieval has not been removed. Modern still generates one query
 embedding and supplies it to the transcript-vector lane. If embedding
 generation misses its deadline, the same multi-search contains only title and
@@ -558,6 +565,23 @@ GraphQL contract cannot select a candidate.
 
 Run three separate matched production experiments against the same frozen
 identity. Do not substitute UI timings or local unit tests for these results.
+The exact-title Candidate starts **not qualified**; record the following hard
+limits before inspecting its measurements and do not relax them after a run:
+
+| Evidence gate              | Pre-registered hard limit                                                                                                             |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| `exactKeyRam`              | Each distinct normalized title contributes at most 32 searchable ASCII bytes; estimated exact-key RAM is at most 3 times those bytes. |
+| `incrementalNonVectorDisk` | Candidate adds at most 1 GiB of non-vector disk versus the matched Current projection.                                                |
+| `steadyCapacity`           | Typesense steady memory and disk are each below 70% of provisioned capacity.                                                          |
+| `peakCapacity`             | Build/import peak memory and disk are each below 80% of provisioned capacity.                                                         |
+| `swapAndFreeDisk`          | Swap use is exactly zero and free disk never falls below 10 GiB during build/import and fixed load.                                   |
+| `buildImportDuration`      | Candidate build/import duration is at most 1.10 times the matched Current projection build.                                           |
+
+Each capacity gate needs a reviewed measurement artifact tied to the same
+Candidate generation and Current bindings as the latency run. A summary marked
+`PASS` without its own artifact reference fails qualification. Do not infer a
+pass from the indexer's estimate alone, and do not copy evidence from an older
+application revision or generation.
 
 1. Run alternating single-flight latency pairs from the Admin production
    region. The command acquires and renews the exact `EVALUATION` lease, fails
@@ -570,6 +594,15 @@ identity. Do not substitute UI timings or local unit tests for these results.
      pnpm --filter @forge/admin benchmark:watch-search-candidate \
      > /secure-evidence/watch-search-candidate-paired.json
    ```
+
+   Candidate must use the same HTTP retrieval-call count as Current and
+   exactly Current plus one logical subsearch, with no retries or larger
+   hydration window. Candidate allows at most six logical subsearches total.
+   The diagnostic request-byte counter covers all Typesense requests, so its
+   32 KiB limit conservatively guarantees that the first request is no larger
+   than 32 KiB. Parsed responses may grow by at most 256 KiB per query above
+   the paired Current response. Equality at either byte limit passes; one byte
+   over fails.
 
 2. Run equal-duration, equal-offered-load current-only and candidate-only
    epochs. Export per-replica Admin CPU/RSS and throughput/errors plus
@@ -593,8 +626,32 @@ inconclusive; never restart to discard bad attempts.
 
 The benchmark defaults every external evidence gate to `NOT_RUN` and exits
 non-zero. `WATCH_SEARCH_CANDIDATE_EVIDENCE_JSON` may describe reviewed gate
-statuses and artifact references only after those experiments exist. A report
-is evidence for an operator review; it is not itself permission to promote.
+statuses and artifact references only after those experiments exist. It must
+contain `relevance`, `fixedLoadResources`, `exactKeyRam`,
+`incrementalNonVectorDisk`, `steadyCapacity`, `peakCapacity`,
+`swapAndFreeDisk`, `buildImportDuration`, `currentInterference`, and
+`operatorReview`. Every `PASS` gate must have a non-empty artifact value under
+the same key in `artifacts`; missing statuses or references fail closed. A
+report is evidence for an operator review; it is not itself permission to
+promote. For example, the shape is:
+
+```json
+{
+  "relevance": "NOT_RUN",
+  "fixedLoadResources": "NOT_RUN",
+  "exactKeyRam": "NOT_RUN",
+  "incrementalNonVectorDisk": "NOT_RUN",
+  "steadyCapacity": "NOT_RUN",
+  "peakCapacity": "NOT_RUN",
+  "swapAndFreeDisk": "NOT_RUN",
+  "buildImportDuration": "NOT_RUN",
+  "currentInterference": "NOT_RUN",
+  "operatorReview": "NOT_RUN",
+  "artifacts": {}
+}
+```
+
+This example intentionally cannot qualify and is not production evidence.
 
 ### Promote and roll back
 

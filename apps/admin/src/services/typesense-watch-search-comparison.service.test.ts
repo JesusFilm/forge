@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
 
+import { candidateWatchSearchApplicationRevision } from "./typesense-watch-search-candidate-identity"
 import type { TypesenseWatchSearchProfile } from "./typesense-watch-search-profile"
 import {
   resolveEvaluationCandidateWatchSearchProfile,
@@ -146,13 +147,13 @@ describe("TypesenseWatchSearchComparisonService", () => {
       })),
       getGeneration: vi.fn(async () => ({
         id: "generation-1",
-        applicationRevision: "watch-search-candidate/v1",
+        applicationRevision: candidateWatchSearchApplicationRevision(),
         transcriptCollection: "watch_search_transcripts_physical",
         transcriptProjectionRevision: 7n,
       })),
       resolveGeneration: vi.fn(async () => ({
         generationId: "generation-1",
-        applicationRevision: "watch-search-candidate/v1",
+        applicationRevision: candidateWatchSearchApplicationRevision(),
         transcriptProjectionRevision: 7n,
         fieldManifests: candidateProfile.fieldManifests,
         collections: candidateProfile.binding,
@@ -164,11 +165,11 @@ describe("TypesenseWatchSearchComparisonService", () => {
     ).resolves.toMatchObject({
       kind: "CANDIDATE",
       generationId: "generation-1",
-      applicationRevision: "watch-search-candidate/v1",
+      applicationRevision: candidateWatchSearchApplicationRevision(),
     })
     expect(generations.resolveGeneration).toHaveBeenCalledWith({
       generationId: "generation-1",
-      applicationRevision: "watch-search-candidate/v1",
+      applicationRevision: candidateWatchSearchApplicationRevision(),
       transcriptCollection: "watch_search_transcripts_physical",
       transcriptProjectionRevision: 7n,
       requireQualified: false,

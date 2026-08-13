@@ -4,8 +4,11 @@ import { notRestrictedFromWatchWhere } from "./search-watchability"
 import { TypesenseClient } from "./typesense-client"
 import { canonicalTypesenseVideoId } from "./typesense-watch-search-identifiers"
 import {
+  buildTypesenseWatchCandidateLexicalDocuments,
   buildTypesenseWatchLexicalDocuments,
+  estimateTypesenseCandidateKeywordMemory,
   estimateTypesenseKeywordMemory,
+  type TypesenseCandidateKeywordMemoryEstimate,
   typesenseWatchTokenizerLocales,
 } from "./typesense-watch-search-lexical"
 import {
@@ -485,7 +488,7 @@ export function buildAvailabilityDocuments(
 export type TypesenseWatchCandidateProjectionSnapshot = {
   catalog: TypesenseWatchCatalogDocument[]
   availability: TypesenseWatchAvailabilityDocument[]
-  lexical: ReturnType<typeof buildTypesenseWatchLexicalDocuments>
+  lexical: ReturnType<typeof buildTypesenseWatchCandidateLexicalDocuments>
   tokenizerLocales: string[]
   counts: { catalog: number; availability: number; lexical: number }
   digests: {
@@ -494,7 +497,7 @@ export type TypesenseWatchCandidateProjectionSnapshot = {
     lexical: string
     combined: string
   }
-  lexicalMemory: ReturnType<typeof estimateTypesenseKeywordMemory>
+  lexicalMemory: TypesenseCandidateKeywordMemoryEstimate
 }
 
 const CANDIDATE_SNAPSHOT_TRANSACTION_TIMEOUT_MS = 60_000
@@ -530,9 +533,9 @@ export async function buildTypesenseWatchCandidateProjectionSnapshot(
       const availability = buildAvailabilityDocuments(catalog).sort(
         (left, right) => left.id.localeCompare(right.id),
       )
-      const lexical = buildTypesenseWatchLexicalDocuments(catalog).sort(
-        (left, right) => left.id.localeCompare(right.id),
-      )
+      const lexical = buildTypesenseWatchCandidateLexicalDocuments(
+        catalog,
+      ).sort((left, right) => left.id.localeCompare(right.id))
       const tokenizerLocales = typesenseWatchTokenizerLocales(lexical)
       const catalogDigest = projectionDigest(catalog)
       const availabilityDigest = projectionDigest(availability)
@@ -558,7 +561,7 @@ export async function buildTypesenseWatchCandidateProjectionSnapshot(
           lexical: lexical.length,
         },
         digests,
-        lexicalMemory: estimateTypesenseKeywordMemory(lexical),
+        lexicalMemory: estimateTypesenseCandidateKeywordMemory(lexical),
       }
     },
     {

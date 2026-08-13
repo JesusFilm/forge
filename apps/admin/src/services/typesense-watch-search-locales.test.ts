@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 import {
   displayPreviewLocale,
+  watchLexicalOrderedManifestQueryFields,
   watchLexicalManifestQueryFields,
   watchLexicalQueryFields,
   type TypesenseWatchCatalogPreviewDocument,
@@ -102,6 +103,27 @@ describe("watchLexicalQueryFields", () => {
     expect(watchLexicalManifestQueryFields(fields, "metadata")).toEqual([
       "metadata_en",
       "metadata_fallback",
+    ])
+  })
+
+  it("orders preferred tokenizer fields, fallback, then the complete remainder", () => {
+    const fields = [
+      { name: "title_en", type: "string[]" },
+      { name: "title_ja", type: "string[]" },
+      { name: "title_ru", type: "string[]" },
+      { name: "title_zh", type: "string[]" },
+      { name: "title_fallback", type: "string[]" },
+      { name: "title_exact_keys", type: "string[]" },
+    ]
+
+    expect(
+      watchLexicalOrderedManifestQueryFields(fields, "title", ["ru-RU", "ja"]),
+    ).toEqual([
+      "title_ru",
+      "title_ja",
+      "title_fallback",
+      "title_en",
+      "title_zh",
     ])
   })
 })
