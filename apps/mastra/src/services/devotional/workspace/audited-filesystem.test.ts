@@ -180,4 +180,20 @@ describe("AuditedFilesystem", () => {
     expect(records).toHaveLength(1)
     expect(records[0]).toMatchObject({ phase: "intent", action: "write" })
   })
+
+  it("suppresses delegate prompt instructions", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "devo-audit-"))
+    temporaryDirectories.push(directory)
+    const delegate = new LocalFilesystem({
+      basePath: directory,
+      contained: true,
+    })
+    const filesystem = new AuditedFilesystem(delegate, async () => undefined)
+
+    // Anti-vacuous guard: the delegate DOES describe itself, so only the
+    // wrapper's suppression can make the result empty. A non-empty result
+    // would be auto-injected as a second system message into every agent.
+    expect(delegate.getInstructions?.()).toBeTruthy()
+    expect(filesystem.getInstructions()).toBe("")
+  })
 })

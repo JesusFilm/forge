@@ -20,6 +20,13 @@ When media execution crosses into Shorts Worker, the Devotional Workspace owner
 issues attempt-scoped temporary capabilities. The Worker may transfer the
 authorized bytes but never receives durable Workspace credentials or ownership.
 
+Although registered as the Mastra runtime's single global workspace, it is
+deliberately inert toward conversational agents: inherited file tools are
+disabled and its storage self-description is suppressed, so no agent's prompt or
+tool set ever advertises the Workspace. Devotional business logic reaches it
+only through typed devotional repository code — digest-verified reads and
+audited writes — never through agent tools.
+
 ### Devotional Catalog Generation
 
 An atomic, committed projection of the Devotional Workspace inputs used to

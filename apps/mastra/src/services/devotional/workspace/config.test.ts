@@ -3,6 +3,13 @@ import { createServer, type Socket } from "node:net"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 
+import { MessageList } from "@mastra/core/agent/message-list"
+import {
+  WorkspaceInstructionsProcessor,
+  type ProcessInputStepArgs,
+} from "@mastra/core/processors"
+import { RequestContext } from "@mastra/core/request-context"
+import { LocalFilesystem, Workspace } from "@mastra/core/workspace"
 import { afterEach, describe, expect, it } from "vitest"
 import type { QueryResult, QueryResultRow } from "pg"
 
@@ -103,6 +110,13 @@ describe("devotional Workspace configuration", () => {
     })
     expect(resolved.issues).toEqual([])
     expect(runtime.filesystem.provider).toBe("s3")
+    // The raw S3 delegate WOULD emit the bucket name into agent prompts; the
+    // wrapper suppresses it on this branch too — the production composition
+    // the 2026-08-12 incident actually leaked through.
+    expect(runtime.filesystem.delegate.getInstructions?.()).toContain(
+      "devotional-content",
+    )
+    expect(runtime.workspace.getInstructions()).toBe("")
     expect(runtime.filesystem.readOnly).toBe(false)
     expect(runtime.filesystem.getMountConfig()).toMatchObject({
       type: "s3",
@@ -271,5 +285,66 @@ describe("devotional Workspace configuration", () => {
         reason: "devotional Workspace filesystem health check failed",
       },
     })
+  })
+
+  it("yields no Workspace instructions on either resolution path", async () => {
+    const runtime = createDevotionalWorkspaceRuntime({
+      environment: environment(),
+      auditSink: async () => undefined,
+    })
+
+    // @mastra/core's auto-added WorkspaceInstructionsProcessor reads exactly
+    // these two surfaces and skips its addSystem call on empty text. The local
+    // backend's delegate has non-empty default instructions (pinned in
+    // audited-filesystem.test.ts), so an empty result here proves the
+    // suppression holds through the whole Workspace composition — no agent
+    // receives a second system message describing this Workspace's storage.
+    expect(runtime.workspace.getInstructions()).toBe("")
+    await expect(runtime.workspace.getInstructionsAsync()).resolves.toBe("")
+  })
+
+  it("adds no system message through the real workspace-instructions processor", async () => {
+    // Pinned dist fact (verified @mastra/core 1.55.0 — re-verify on
+    // `@mastra/*` bumps): the processor auto-added for a global Workspace
+    // guards its addSystem with a plain truthiness check on the composed
+    // instructions, and its runtime reads only { messageList, requestContext }
+    // from its args. This pin drives the REAL processor on both sides of that
+    // guard, so a bump that composes a default description on empty text (or
+    // injects unconditionally) goes red here instead of resurfacing as a
+    // production gateway 400 with a green suite.
+    const directory = await mkdtemp(join(tmpdir(), "devo-workspace-processor-"))
+    temporaryDirectories.push(directory)
+    const processorArgs = (messageList: MessageList) =>
+      // The interface declares agent-loop members the processor never touches;
+      // the narrow cast mirrors the verified runtime destructuring above.
+      ({
+        messageList,
+        requestContext: new RequestContext(),
+      }) as unknown as ProcessInputStepArgs
+
+    // Positive control: a raw, unwrapped filesystem still injects — proving
+    // the processor mechanism is live and this test can discriminate.
+    const rawWorkspace = new Workspace({
+      id: "raw-instructions-control",
+      name: "Raw Instructions Control",
+      filesystem: new LocalFilesystem({ basePath: directory, contained: true }),
+    })
+    const controlMessages = new MessageList()
+    await new WorkspaceInstructionsProcessor({
+      workspace: rawWorkspace,
+    }).processInputStep(processorArgs(controlMessages))
+    expect(controlMessages.getSystemMessages()).toHaveLength(1)
+
+    // The protective outcome: the devotional runtime's suppression means the
+    // processor contributes nothing — zero system messages, not a blank one.
+    const runtime = createDevotionalWorkspaceRuntime({
+      environment: environment(),
+      auditSink: async () => undefined,
+    })
+    const suppressedMessages = new MessageList()
+    await new WorkspaceInstructionsProcessor({
+      workspace: runtime.workspace,
+    }).processInputStep(processorArgs(suppressedMessages))
+    expect(suppressedMessages.getSystemMessages()).toHaveLength(0)
   })
 })
