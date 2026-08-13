@@ -15,6 +15,7 @@ import {
   clamp,
   fractionToTime,
   progressFraction,
+  thumbOutputRange,
 } from "../../lib/scrubber"
 import { SKIP_SECONDS } from "../../lib/tapSeek"
 
@@ -27,14 +28,12 @@ type ScrubberProps = {
    *  active=false on release/terminate. Lets the parent suppress its poll and
    *  show the dragged time live. */
   onScrubChange?: (active: boolean, previewTime: number | null) => void
-  /** Bottom-align the visible track inside the hit area instead of centering
-   *  it, so the bar can sit flush with the player's bottom edge while the 44px
-   *  touch target keeps its full height by extending upward. */
-  alignBottom?: boolean
-  /** Widen the bar past this many px of the parent's horizontal padding on each
-   *  side, so the track runs to the player's edges. The thumb's travel insets by
-   *  its own radius so it never half-leaves the screen at 0% or 100%. */
-  edgeToEdge?: number
+  /** Dock the bar on the player's bottom edge: the visible track bottom-aligns
+   *  inside the hit area (which keeps its full height by extending upward), and
+   *  the thumb's travel insets by its own radius so it never half-leaves the
+   *  screen at 0% and 100%. The two move together — a bottom-aligned track with
+   *  centered thumb travel is not a state this component supports. */
+  flush?: boolean
 }
 
 const THUMB = 14
@@ -51,8 +50,7 @@ export function Scrubber({
   duration,
   onSeek,
   onScrubChange,
-  alignBottom = false,
-  edgeToEdge = 0,
+  flush = false,
 }: ScrubberProps) {
   const containerRef = useRef<View>(null)
   const trackRef = useRef({ x: 0, width: 0 })
@@ -164,22 +162,16 @@ export function Scrubber({
   ).current
 
   // 0..1 → px. Rebuilt when the track is (re)measured, not per frame; the thumb
-  // is centered on the position via the static marginLeft. An edge-to-edge bar
-  // insets both ends by the radius so the thumb stays wholly on screen.
-  const thumbInset = edgeToEdge > 0 ? THUMB / 2 : 0
+  // is centered on the position via the static marginLeft.
   const thumbTranslateX = progress.interpolate({
     inputRange: [0, 1],
-    outputRange: [thumbInset, Math.max(trackWidth - thumbInset, thumbInset)],
+    outputRange: thumbOutputRange(trackWidth, THUMB, flush),
   })
 
   return (
     <View
       ref={containerRef}
-      style={[
-        styles.hitArea,
-        alignBottom && styles.hitAreaBottom,
-        edgeToEdge > 0 && { marginHorizontal: -edgeToEdge },
-      ]}
+      style={[styles.hitArea, flush && styles.hitAreaBottom]}
       onLayout={(e: LayoutChangeEvent) => {
         measure()
         setTrackWidth(e.nativeEvent.layout.width)
@@ -223,7 +215,7 @@ export function Scrubber({
         <Animated.View
           style={[
             styles.thumb,
-            alignBottom && styles.thumbBottom,
+            flush && styles.thumbBottom,
             {
               transform: [
                 { translateX: thumbTranslateX },

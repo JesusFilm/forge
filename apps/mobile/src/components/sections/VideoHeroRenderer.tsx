@@ -1,14 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import {
   AppState,
-  Platform,
   Pressable,
   StyleSheet,
   Text,
   View,
   useWindowDimensions,
 } from "react-native"
-import { BlurView } from "expo-blur"
 import { Image } from "expo-image"
 import { LinearGradient } from "expo-linear-gradient"
 import { useEvent } from "expo"
@@ -27,6 +25,7 @@ import {
 import { feedback } from "../../styles/shared"
 import { resolveThumbnailUrl } from "../../lib/resolveThumbnailUrl"
 import { validateStreamingUrl } from "../../lib/validateUrl"
+import { PlatformBlur } from "../ui/PlatformBlur"
 import { useTypography } from "../../hooks/useTypography"
 import type { AdminBlock } from "../../lib/queries"
 import { useVideoThumbnail } from "../../contexts/ExperienceProvider"
@@ -200,15 +199,7 @@ export function VideoHeroRenderer({
           importantForAccessibility="no-hide-descendants"
           accessibilityElementsHidden
         >
-          {Platform.OS === "ios" ? (
-            <BlurView
-              intensity={50}
-              tint="dark"
-              style={StyleSheet.absoluteFill}
-            />
-          ) : (
-            <View style={[StyleSheet.absoluteFill, styles.androidDim]} />
-          )}
+          <PlatformBlur intensity={50} style={StyleSheet.absoluteFill} />
         </View>
       )}
 
@@ -275,9 +266,6 @@ const styles = StyleSheet.create({
   },
   fallback: {
     backgroundColor: BG_COLOR,
-  },
-  androidDim: {
-    backgroundColor: "rgba(0, 0, 0, 0.6)",
   },
   textContent: {
     paddingHorizontal: 16,
