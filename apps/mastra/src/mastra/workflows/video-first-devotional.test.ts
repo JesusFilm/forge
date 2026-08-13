@@ -389,6 +389,21 @@ describe("video-first devotional workflow", () => {
     expect(mocks.publish).not.toHaveBeenCalled()
     // Not burned: a blocked devotional must not consume the clip.
     expect(mocks.record).not.toHaveBeenCalled()
+
+    // WHY it was blocked has to survive to the result. Safety reads "pass" on a
+    // quality block, so without `blockedBy` this run reported publish_failed /
+    // rendered_assets_missing — a quality problem dressed as a render bug, which
+    // is the wrong thing to hand an approver. The reasons ride along too.
+    expect(state).toMatchObject({
+      status: "success",
+      result: {
+        status: "blocked",
+        blockedBy: "quality",
+        quality: {
+          blocking: ["coherence: the reflection never touches the verse"],
+        },
+      },
+    })
     // NOTE deliberately not asserted: whether the reservation is RELEASED here.
     // It is not, on this path — the blocked run ends holding the clip. That is
     // the pre-existing safety-block behaviour too (produceStep returns

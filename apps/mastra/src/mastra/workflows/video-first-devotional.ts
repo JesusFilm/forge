@@ -266,6 +266,7 @@ const RenderedSchema = z
   .object({
     devotional: GeneratedDevotionalSchema,
     safety: SafetyVerdictSchema,
+    quality: QualityReviewSchema,
     reservationId: z.string().uuid(),
     /** Durable 9:16 worker artifact; null when safety blocked. */
     portraitAsset: VideoArtifactSchema.nullable(),
@@ -309,8 +310,14 @@ const ResultSchema = z.object({
     "publish_skipped",
     "publish_failed",
   ]),
+  /** Which gate blocked, when `status` is "blocked". Without it a quality block
+   *  and a safety block are indistinguishable to the approver, and a quality
+   *  block used to fall through to `publish_failed` /
+   *  `rendered_assets_missing` — a quality problem reported as a render bug. */
+  blockedBy: z.enum(["safety", "quality"]).optional(),
   devotional: GeneratedDevotionalSchema,
   safety: SafetyVerdictSchema,
+  quality: QualityReviewSchema,
   portraitAsset: VideoArtifactSchema.nullable(),
   wideAsset: VideoArtifactSchema.nullable(),
   clipRecorded: z.boolean(),
@@ -577,12 +584,13 @@ const renderStep = createStep({
   execute: async ({ inputData, runId, abortSignal, mastra }) => {
     try {
       await verifyWorkflowWorkspaceSources(mastra, inputData.selectedSources)
-      const { devotional, safety, readyForRender } = inputData
+      const { devotional, safety, quality, readyForRender } = inputData
       if (!readyForRender)
         return {
           ...attemptContext(inputData),
           devotional,
           safety,
+          quality,
           reservationId: inputData.reservationId,
           portraitAsset: null,
           wideAsset: null,
@@ -648,6 +656,7 @@ const renderStep = createStep({
         ...attemptContext(inputData),
         devotional,
         safety,
+        quality,
         reservationId: inputData.reservationId,
         portraitAsset: rendered.portrait,
         wideAsset: rendered.wide,
@@ -749,6 +758,7 @@ const publishStep = createStep({
     const {
       devotional,
       safety,
+      quality,
       reservationId,
       portraitAsset,
       wideAsset,
@@ -757,6 +767,7 @@ const publishStep = createStep({
       approvedBy,
     } = inputData
     let status: z.infer<typeof ResultSchema>["status"]
+    let blockedBy: z.infer<typeof ResultSchema>["blockedBy"]
     let publishReason: string | undefined
     let publishRetryable: boolean | undefined
     let clipRecorded = false
@@ -775,8 +786,17 @@ const publishStep = createStep({
     }
 
     let publicationIntentOwnsReservation = false
+    // Quality is checked here too, not only in produceStep. produceStep stops the
+    // paid work; this decides what the run REPORTS. Without the second branch a
+    // quality-blocked run has safety "pass" and no rendered assets, so it fell
+    // through to publish_failed / rendered_assets_missing and read as a render
+    // bug. A null verdict means safety blocked, which the first branch owns.
     if (safety.verdict !== "pass") {
       status = "blocked"
+      blockedBy = "safety"
+    } else if (quality == null || quality.blocking.length > 0) {
+      status = "blocked"
+      blockedBy = "quality"
     } else if (!approved) {
       status = "rejected"
     } else if (!portraitAsset || !wideAsset) {
@@ -831,8 +851,14 @@ const publishStep = createStep({
     }
     const result = {
       status,
+      // Both optional in ResultSchema, so tsc stays quiet when they are
+      // forgotten. They are the only way an operator can tell a quality block
+      // from a safety block, and they also land in the publication artifact
+      // below, so a run's reason survives past the logs.
+      blockedBy,
       devotional,
       safety,
+      quality,
       portraitAsset,
       wideAsset,
       clipRecorded,
