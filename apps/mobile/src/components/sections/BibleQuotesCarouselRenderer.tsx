@@ -310,7 +310,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   gradient: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     top: "20%",
   },
   cardContent: {

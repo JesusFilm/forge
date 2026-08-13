@@ -54,7 +54,7 @@ export function ExperienceFallback({ slug, title }: Props) {
 
 const styles = StyleSheet.create({
   center: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: 12,
