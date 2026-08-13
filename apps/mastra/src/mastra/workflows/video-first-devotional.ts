@@ -442,6 +442,18 @@ const contentStep = createStep({
     try {
       await verifyWorkflowWorkspaceSources(mastra, inputData.selectedSources)
       const authored = await loadAttemptData(mastra, inputData.selectedSources)
+
+      // Both the picker and the critics EXPLAIN themselves — which of the
+      // author's points were kept and why, each critic's issues and suggestions,
+      // the better-fitting verse when the chosen one is a poor match. None of it
+      // fits the devotional's own shape, and both call sites used to omit this
+      // seam entirely, so all of it was computed and dropped. Collected here and
+      // written into the attempt artifact, so a run's reasoning outlives it.
+      const notes: string[] = []
+      const log = (message: string) => {
+        notes.push(message)
+      }
+
       const devotional = await composeDevotionalContent(
         {
           chapter: inputData.chapter,
@@ -449,6 +461,7 @@ const contentStep = createStep({
           sequence: inputData.sequence,
           date: inputData.date,
           llm: scriptureLlm,
+          log,
         },
         contentDependencies(authored),
       )
@@ -472,6 +485,7 @@ const contentStep = createStep({
         safety.verdict === "pass"
           ? await reviewDevotionalText({
               devotional,
+              log,
               passageReference: inputData.chapter.reference,
               // The composed text here is English; the localized path that
               // makes fidelity meaningless was not carried into this runtime.
@@ -485,7 +499,7 @@ const contentStep = createStep({
         filesystem,
         runId,
         name: "content",
-        value: { devotional, safety, quality },
+        value: { devotional, safety, quality, notes },
       })
 
       return {

@@ -30,9 +30,18 @@ describe("video-first devotional runtime authority", () => {
       "authored.prompts.prompts.conclusion",
       "pickPoints: (options)",
       "writeConclusion: (options)",
+      "value: { devotional, safety, quality, notes },",
     ]) {
       expect(workflowSource, required).toContain(required)
     }
+
+    // The explaining seam. Both the picker's chosen-points rationale and every
+    // critic's issues/suggestions are produced through it, and with no caller
+    // passing it they were computed and dropped. COUNTED, not merely present:
+    // there are two call sites (content composition and the quality gate), and a
+    // `toContain("log,")` still passes when one of them loses it — which is how
+    // the first version of this pin failed its own falsification.
+    expect(workflowSource.match(/^\s+log,$/gm) ?? []).toHaveLength(2)
   })
 
   it("does not import compiled corpora, catalogs, or default prompts", () => {
