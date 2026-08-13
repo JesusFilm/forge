@@ -15,13 +15,11 @@ import {
   FlatList,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
-  Platform,
   StyleSheet,
   Text,
   View,
   useWindowDimensions,
 } from "react-native"
-import { BlurView } from "expo-blur"
 import { Image } from "expo-image"
 import { LinearGradient } from "expo-linear-gradient"
 import { useEvent } from "expo"
@@ -37,6 +35,7 @@ import {
 import { useTypography, type TypographyScale } from "../../hooks/useTypography"
 import { prefetchHeroStream, useHeroStream } from "../../hooks/useHeroStream"
 import { datadogLog } from "../../lib/datadog"
+import { PlatformBlur } from "../ui/PlatformBlur"
 import { resolveImageUrl } from "../../lib/resolveImageUrl"
 import { sanitizeVideoErrorMessage } from "../../lib/videoQoe"
 import {
@@ -595,15 +594,7 @@ export function HomeHeroPager({
           importantForAccessibility="no-hide-descendants"
           accessibilityElementsHidden
         >
-          {Platform.OS === "ios" ? (
-            <BlurView
-              intensity={50}
-              tint="dark"
-              style={StyleSheet.absoluteFill}
-            />
-          ) : (
-            <View style={[StyleSheet.absoluteFill, styles.androidDim]} />
-          )}
+          <PlatformBlur intensity={50} style={StyleSheet.absoluteFill} />
         </View>
       )}
 
@@ -774,9 +765,6 @@ const HeroPage = memo(function HeroPage({
 const styles = StyleSheet.create({
   container: {
     width: "100%",
-  },
-  androidDim: {
-    backgroundColor: "rgba(0, 0, 0, 0.6)",
   },
   posterFallback: {
     backgroundColor: SURFACE_COLOR,

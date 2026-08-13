@@ -4,6 +4,7 @@ import {
   applySkip,
   fractionToTime,
   progressFraction,
+  thumbOutputRange,
 } from "../scrubber"
 
 describe("clamp", () => {
@@ -69,5 +70,29 @@ describe("progressFraction", () => {
   })
   it("computes a mid value", () => {
     expect(progressFraction(60, 120)).toBe(0.5)
+  })
+})
+
+describe("thumbOutputRange", () => {
+  it("spans the whole track when not flush", () => {
+    expect(thumbOutputRange(300, 14, false)).toEqual([0, 300])
+  })
+
+  // A flush bar runs to the screen edges, so an un-inset thumb would render
+  // half off-screen at both ends.
+  it("insets both ends by the thumb radius when flush", () => {
+    expect(thumbOutputRange(300, 14, true)).toEqual([7, 293])
+  })
+
+  // The track measures 0 until onLayout; the range must stay ordered rather
+  // than inverting, or the interpolation runs backwards on the first frame.
+  it("collapses to a point at track width 0", () => {
+    expect(thumbOutputRange(0, 14, true)).toEqual([7, 7])
+    expect(thumbOutputRange(0, 14, false)).toEqual([0, 0])
+  })
+
+  it("never inverts when the track is narrower than the thumb", () => {
+    const [start, end] = thumbOutputRange(10, 14, true)
+    expect(end).toBeGreaterThanOrEqual(start)
   })
 })
