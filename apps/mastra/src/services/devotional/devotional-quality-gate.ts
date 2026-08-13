@@ -86,7 +86,9 @@ export async function reviewDevotionalText(
     passageReference: input.passageReference,
     llm: buildCoherenceLlm(),
   })
-  log(`🔎 coherence: ${coherence.coherent ? "OK" : "ISSUES FOUND"} — ${coherence.summary}`)
+  log(
+    `🔎 coherence: ${coherence.coherent ? "OK" : "ISSUES FOUND"} — ${coherence.summary}`,
+  )
   for (const i of coherence.issues) {
     log(`   ⚠️ [${i.severity}/${i.area}] ${i.problem}\n      → ${i.suggestion}`)
   }
@@ -94,7 +96,9 @@ export async function reviewDevotionalText(
   // match. It used to be computed and dropped on the floor; surface it, since
   // it is the one piece of advice that tells the operator WHAT to change.
   if (coherence.suggestedScriptureReference) {
-    log(`   💡 better-fitting scripture: ${coherence.suggestedScriptureReference}`)
+    log(
+      `   💡 better-fitting scripture: ${coherence.suggestedScriptureReference}`,
+    )
   }
   if (coherence.skipped) blocking.push("coherence check could not run")
   else if (!coherence.coherent) {
@@ -129,9 +133,13 @@ export async function reviewDevotionalText(
       adapted: d.reflection.text,
       llm: buildFidelityCriticLlm(),
     })
-    log(`📜 source fidelity: ${fidelity.faithful ? "OK" : "ISSUES FOUND"} — ${fidelity.summary}`)
+    log(
+      `📜 source fidelity: ${fidelity.faithful ? "OK" : "ISSUES FOUND"} — ${fidelity.summary}`,
+    )
     for (const i of fidelity.issues) {
-      log(`   ⚠️ [${i.severity}/${i.kind}] ${i.problem}\n      → ${i.suggestion}`)
+      log(
+        `   ⚠️ [${i.severity}/${i.kind}] ${i.problem}\n      → ${i.suggestion}`,
+      )
     }
     if (fidelity.skipped) blocking.push("fidelity check could not run")
     else if (!fidelity.faithful) {

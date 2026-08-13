@@ -82,9 +82,9 @@ describe("pickReflectionPoints", () => {
 
     it("still rejects an EMPTY choice, which is not recoverable", () => {
       // Nothing to trim toward: an empty array means the model answered nothing.
-      expect(_internal.Schema.safeParse({ chosen: [], reason: "none" }).success).toBe(
-        false,
-      )
+      expect(
+        _internal.Schema.safeParse({ chosen: [], reason: "none" }).success,
+      ).toBe(false)
     })
 
     it("leaves a within-cap answer untouched", () => {
@@ -173,9 +173,7 @@ describe("pickReflectionPoints", () => {
   })
 
   it("shows the model the verse and the word budget so it can judge what fits", async () => {
-    const complete = vi
-      .fn()
-      .mockResolvedValue({ chosen: [1, 2], reason: "ok" })
+    const complete = vi.fn().mockResolvedValue({ chosen: [1, 2], reason: "ok" })
     await pickReflectionPoints({
       points: points(4),
       sceneTitle: "Jesus and Zaccheus",
@@ -194,9 +192,7 @@ describe("pickReflectionPoints", () => {
     // A point's register is inherited by the whole reflection, so audience fit
     // is the picker's FIRST rule — the readers already follow Jesus, and a
     // seeker-facing point makes the entire devotional seeker-facing.
-    const complete = vi
-      .fn()
-      .mockResolvedValue({ chosen: [1, 2], reason: "ok" })
+    const complete = vi.fn().mockResolvedValue({ chosen: [1, 2], reason: "ok" })
     await pickReflectionPoints({
       points: points(4),
       sceneTitle: "scene",

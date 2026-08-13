@@ -49,7 +49,10 @@ export function splitCommentaryPoints(text: string): CommentaryPoint[] {
   const points: CommentaryPoint[] = []
   for (let i = 0; i < matches.length; i++) {
     const start = matches[i].index ?? 0
-    const end = i + 1 < matches.length ? (matches[i + 1].index ?? text.length) : text.length
+    const end =
+      i + 1 < matches.length
+        ? (matches[i + 1].index ?? text.length)
+        : text.length
     const slice = text.slice(start, end).trim()
     if (!slice) continue
     points.push({

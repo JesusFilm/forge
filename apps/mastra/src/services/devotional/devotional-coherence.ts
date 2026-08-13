@@ -28,7 +28,13 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
 export type CoherenceIssue = {
   severity: "high" | "medium" | "low"
-  area: "scripture" | "title" | "reflection" | "conclusion" | "video" | "overall"
+  area:
+    | "scripture"
+    | "title"
+    | "reflection"
+    | "conclusion"
+    | "video"
+    | "overall"
   problem: string
   suggestion: string
 }
@@ -155,7 +161,9 @@ export async function checkDevotionalCoherence(
 ): Promise<CoherenceReport> {
   const user = [
     `VIDEO SCENE (what the viewer watches): ${input.sceneTitle}`,
-    input.passageReference ? `PASSAGE the clip covers: ${input.passageReference}` : "",
+    input.passageReference
+      ? `PASSAGE the clip covers: ${input.passageReference}`
+      : "",
     "",
     `SCRIPTURE VERSE shown (${input.scriptureReference}): ${input.scriptureText}`,
     "",

@@ -55,7 +55,10 @@ const Schema = z
     // `validation` error, silently skipping the whole check. An out-of-range
     // score is a scale misread, not a reason to lose the critique, so pull it
     // back into range and keep the issues the critic actually found.
-    depthScore: z.number().int().transform((n) => Math.min(5, Math.max(1, n))),
+    depthScore: z
+      .number()
+      .int()
+      .transform((n) => Math.min(5, Math.max(1, n))),
     issues: z.array(
       z.object({
         kind: z.enum([

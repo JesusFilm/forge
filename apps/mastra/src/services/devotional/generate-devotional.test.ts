@@ -73,12 +73,10 @@ const deps = {
   // Keeps every point, so these fixtures exercise the unnarrowed path. The
   // narrowing itself is covered in reflection-point-picker.test.ts and by the
   // dedicated cases below.
-  pickPoints: vi
-    .fn()
-    .mockImplementation(async ({ points }) => ({
-      chosen: points.map((p: { index: number }) => p.index),
-      reason: "test keeps every point",
-    })),
+  pickPoints: vi.fn().mockImplementation(async ({ points }) => ({
+    chosen: points.map((p: { index: number }) => p.index),
+    reason: "test keeps every point",
+  })),
   writeConclusion: vi
     .fn()
     .mockResolvedValue({ conclusion: "Grace that finds you keeps you." }),
@@ -162,9 +160,7 @@ describe("generateDevotional", () => {
       expect(log).toHaveBeenCalledWith(
         expect.stringContaining("reflection points 1+3 of 3"),
       )
-      expect(log).toHaveBeenCalledWith(
-        expect.stringContaining("fit the verse"),
-      )
+      expect(log).toHaveBeenCalledWith(expect.stringContaining("fit the verse"))
     })
 
     it("passes an excerpt with no ordinal structure through whole", async () => {

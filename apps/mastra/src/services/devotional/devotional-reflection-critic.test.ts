@@ -1,9 +1,6 @@
 import { describe, expect, it, vi } from "vitest"
 
-import {
-  _internal,
-  critiqueReflection,
-} from "./devotional-reflection-critic"
+import { _internal, critiqueReflection } from "./devotional-reflection-critic"
 import { DevotionalLlmError, type DevotionalLlm } from "./llm"
 
 /**

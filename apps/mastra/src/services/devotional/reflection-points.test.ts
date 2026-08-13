@@ -1,9 +1,6 @@
 import { describe, expect, it } from "vitest"
 
-import {
-  commentaryPreamble,
-  splitCommentaryPoints,
-} from "./reflection-points"
+import { commentaryPreamble, splitCommentaryPoints } from "./reflection-points"
 
 const FOUR_POINT = `These verses describe the conversion of a soul. The Lord Jesus never changes.
 
@@ -44,12 +41,14 @@ describe("splitCommentaryPoints", () => {
   })
 
   it("returns an empty array for continuous exposition (no ordinal structure)", () => {
-    const prose = "The Gospel of Luke contains many precious things. We see the goodness of God in every chapter."
+    const prose =
+      "The Gospel of Luke contains many precious things. We see the goodness of God in every chapter."
     expect(splitCommentaryPoints(prose)).toEqual([])
   })
 
   it("returns an empty array when only ONE ordinal appears (not a multi-point piece)", () => {
-    const single = "We learn, firstly, that God is patient. There is nothing more to add here."
+    const single =
+      "We learn, firstly, that God is patient. There is nothing more to add here."
     expect(splitCommentaryPoints(single)).toEqual([])
   })
 })

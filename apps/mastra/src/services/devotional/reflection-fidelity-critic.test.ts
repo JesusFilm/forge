@@ -15,7 +15,8 @@ describe("critiqueReflectionFidelity", () => {
       summary: "keeps the author's balance",
     })
     const r = await critiqueReflectionFidelity({
-      sourceExcerpt: "Firstly... secondly... thirdly, Zacchaeus climbed the tree.",
+      sourceExcerpt:
+        "Firstly... secondly... thirdly, Zacchaeus climbed the tree.",
       focusReference: "Luke 19:1-10",
       adapted: "Grace found Zacchaeus without him doing anything.",
       llm: fakeLlm(complete as unknown as DevotionalLlm["complete"]),

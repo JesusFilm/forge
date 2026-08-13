@@ -156,10 +156,14 @@ export async function pickReflectionPoints(
   const user = [
     `Scene the viewer just watched: ${input.sceneTitle}`,
     ...(input.scriptureReference && input.scriptureText
-      ? [`Verse shown on screen (${input.scriptureReference}): ${input.scriptureText}`]
+      ? [
+          `Verse shown on screen (${input.scriptureReference}): ${input.scriptureText}`,
+        ]
       : []),
     ...(input.approxWords
-      ? [`Budget for the finished reflection: about ${input.approxWords} words TOTAL.`]
+      ? [
+          `Budget for the finished reflection: about ${input.approxWords} words TOTAL.`,
+        ]
       : []),
     "",
     "The author's points (source length shown — compare it to the budget):",
@@ -184,12 +188,18 @@ export async function pickReflectionPoints(
       .sort((a, b) => a - b)
       .slice(0, MAX_POINTS)
     if (valid.length === 0) {
-      return { chosen: [points[0].index], reason: "picker returned no valid index" }
+      return {
+        chosen: [points[0].index],
+        reason: "picker returned no valid index",
+      }
     }
     return { chosen: valid, reason: result.reason }
   } catch (error) {
     if (error instanceof DevotionalLlmError) {
-      return { chosen: [points[0].index], reason: `picker skipped: ${error.code}` }
+      return {
+        chosen: [points[0].index],
+        reason: `picker skipped: ${error.code}`,
+      }
     }
     throw error
   }
