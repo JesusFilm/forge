@@ -22,6 +22,7 @@
     "@better-auth/expo": "1.6.2",
     "@datadog/mobile-react-native": "3.5.4",
     "@datadog/mobile-react-native-session-replay": "3.5.4",
+    "@expo/metro-runtime": "~57.0.9",
     "@expo/vector-icons": "^15.0.2",
     "@forge/admin-graphql": "workspace:*",
     "@forge/watch-url-policy": "workspace:*",
