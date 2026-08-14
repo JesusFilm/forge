@@ -3,7 +3,9 @@ import type { PrismaClient } from "@prisma/client"
 import type {
   TypesenseClient,
   TypesenseSearchGroup,
+  TypesenseSearchHit,
   TypesenseSearchRequest,
+  TypesenseSettledSearchResult,
 } from "./typesense-client"
 import {
   cachedBoundedTtlBatchValues,
@@ -17,8 +19,10 @@ import { watchLexicalQueryFields } from "./typesense-watch-search-locales"
 import { TYPESENSE_WATCH_LEXICAL_ALIAS } from "./typesense-watch-search-schema"
 import {
   typesenseWatchLanguageIdentity,
+  typesenseWatchTokenizerLocale,
   type TypesenseWatchLexicalDocument,
 } from "./typesense-watch-search-lexical"
+import { TYPESENSE_WATCH_SEARCH_CANDIDATE_APPLICATION_REVISION } from "./typesense-watch-search-candidate-identity"
 
 export const MAX_WATCH_SEARCH_SUGGESTION_PREFIX_CODE_POINTS = 200
 export const MAX_WATCH_SEARCH_SUGGESTION_LANGUAGE_SLUG_CODE_POINTS = 200
@@ -34,6 +38,10 @@ const PHRASE_VALIDATION_CACHE_TTL_MS = 60 * 1_000
 const MAX_CACHED_PHRASE_VALIDATIONS = 512
 const PHRASE_VALIDATION_CONTRACT_VERSION = "v1"
 const TYPESENSE_SUGGESTION_CANDIDATE_LIMIT = 25
+const MAX_BASELINE_QUERY_FIELDS = 4
+const MAX_EXPANSION_QUERY_FIELDS = 5
+const MAX_RETRIEVAL_QUERY_BY_BYTES = 4_096
+const MAX_RETRIEVAL_REQUEST_BYTES = 32_768
 const SAFE_BCP47_PATTERN = /^[A-Za-z0-9-]{1,64}$/
 const PHRASE_WORD = /[\p{L}\p{N}]+(?:['’’-][\p{L}\p{N}]+)*/gu
 const PHRASE_EDGE_STOP_WORDS = new Set([
@@ -84,7 +92,10 @@ export type WatchSearchSuggestion = {
 }
 
 type SuggestionPrisma = Pick<PrismaClient, "language" | "video">
-type SuggestionTypesense = Pick<TypesenseClient, "multiSearch">
+type SuggestionTypesense = Pick<
+  TypesenseClient,
+  "multiSearch" | "multiSearchSettled"
+>
 type ResolvedSuggestionLanguage = {
   locale: string
   languageIdentity: string
@@ -371,7 +382,26 @@ function extractedQuerySuggestions(
     }))
 }
 
-function suggestionRequest(
+function lexicalSearchRequestBase(
+  query: string,
+  fields: readonly string[],
+  weights: readonly number[],
+  languageIdentity: string,
+): TypesenseSearchRequest {
+  return {
+    collection: TYPESENSE_WATCH_LEXICAL_ALIAS,
+    q: query,
+    query_by: fields.join(","),
+    query_by_weights: weights.join(","),
+    num_typos: fields.map(() => 0).join(","),
+    text_match_type: "max_weight",
+    prioritize_exact_match: true,
+    drop_tokens_threshold: 0,
+    filter_by: `languageIdentity:=[\`${languageIdentity}\`]`,
+  }
+}
+
+function baselineSuggestionRequest(
   query: string,
   titleFields: readonly string[],
   metadataFields: readonly string[],
@@ -379,10 +409,13 @@ function suggestionRequest(
 ): TypesenseSearchRequest {
   const fields = [...titleFields, ...metadataFields]
   return {
-    ...lexicalSuggestionRequestBase(
+    ...lexicalSearchRequestBase(
       query,
-      titleFields,
-      metadataFields,
+      fields,
+      [
+        ...titleFields.map((_field, index) => (index === 0 ? 8 : 4)),
+        ...metadataFields.map((_field, index) => (index === 0 ? 2 : 1)),
+      ],
       languageIdentity,
     ),
     page: 1,
@@ -390,7 +423,13 @@ function suggestionRequest(
     group_by: "canonicalVideoId",
     group_limit: 1,
     prefix: true,
-    include_fields: ["videoId", "canonicalVideoId", ...fields].join(","),
+    include_fields: [
+      "videoId",
+      "canonicalVideoId",
+      "languageIdentity",
+      ...fields,
+    ].join(","),
+    highlight_fields: fields.join(","),
   }
 }
 
@@ -401,20 +440,88 @@ function lexicalSuggestionRequestBase(
   languageIdentity: string,
 ): TypesenseSearchRequest {
   const fields = [...titleFields, ...metadataFields]
-  return {
-    collection: TYPESENSE_WATCH_LEXICAL_ALIAS,
-    q: query,
-    query_by: fields.join(","),
-    query_by_weights: [
+  return lexicalSearchRequestBase(
+    query,
+    fields,
+    [
       ...titleFields.map((_field, index) => (index === 0 ? 8 : 4)),
       ...metadataFields.map((_field, index) => (index === 0 ? 2 : 1)),
-    ].join(","),
-    num_typos: fields.map(() => 0).join(","),
-    text_match_type: "max_weight",
-    prioritize_exact_match: true,
-    drop_tokens_threshold: 0,
-    filter_by: `languageIdentity:=[\`${languageIdentity}\`]`,
+    ],
+    languageIdentity,
+  )
+}
+
+function expansionSuggestionRequest(
+  query: string,
+  exactTitleFields: readonly string[],
+  exactMetadataFields: readonly string[],
+  exactTaxonomyFields: readonly string[],
+  stemTitleFields: readonly string[],
+  stemMetadataFields: readonly string[],
+  stemTaxonomyFields: readonly string[],
+  languageIdentity: string,
+): TypesenseSearchRequest {
+  const queryFields = [
+    ...exactTaxonomyFields,
+    ...stemTitleFields,
+    ...stemMetadataFields,
+    ...stemTaxonomyFields,
+  ]
+  const includeFields = [
+    ...new Set([
+      "videoId",
+      "canonicalVideoId",
+      "languageIdentity",
+      ...exactTitleFields,
+      ...exactMetadataFields,
+      ...queryFields,
+    ]),
+  ]
+  return {
+    ...lexicalSearchRequestBase(
+      query,
+      queryFields,
+      [
+        ...exactTaxonomyFields.map((_field, index) => (index === 0 ? 6 : 3)),
+        ...stemTitleFields.map(() => 5),
+        ...stemMetadataFields.map(() => 1),
+        ...stemTaxonomyFields.map(() => 2),
+      ],
+      languageIdentity,
+    ),
+    page: 1,
+    per_page: TYPESENSE_SUGGESTION_CANDIDATE_LIMIT,
+    group_by: "canonicalVideoId",
+    group_limit: 1,
+    prefix: true,
+    include_fields: includeFields.join(","),
+    highlight_fields: queryFields.join(","),
   }
+}
+
+function boundedSuggestionRetrievalRequests(
+  baseline: TypesenseSearchRequest,
+  expansion: TypesenseSearchRequest,
+): readonly [TypesenseSearchRequest, TypesenseSearchRequest] | null {
+  const baselineFields = String(baseline.query_by).split(",").filter(Boolean)
+  const expansionFields = String(expansion.query_by).split(",").filter(Boolean)
+  if (
+    baselineFields.length > MAX_BASELINE_QUERY_FIELDS ||
+    expansionFields.length > MAX_EXPANSION_QUERY_FIELDS
+  ) {
+    return null
+  }
+  const searches = [baseline, expansion] as const
+  const queryByBytes = searches.reduce(
+    (bytes, search) =>
+      bytes + new TextEncoder().encode(String(search.query_by)).byteLength,
+    0,
+  )
+  if (queryByBytes > MAX_RETRIEVAL_QUERY_BY_BYTES) return null
+  const requestBytes = new TextEncoder().encode(
+    JSON.stringify({ searches }),
+  ).byteLength
+  return requestBytes <= MAX_RETRIEVAL_REQUEST_BYTES ? searches : null
 }
 
 function phraseValidationRequest(
@@ -513,52 +620,186 @@ function suggestionRequestState(prisma: SuggestionPrisma) {
 }
 
 type DirectMatchCandidate = {
+  canonicalVideoId: string
   videoId: string
   title: string
   description: string | null
   matchSource: "title" | "description"
+  tier: 0 | 1 | 2 | 3 | 4 | 5
+  rawTextScore: bigint
+  groupOrder: number
 }
 
-function directMatchCandidates(
+function languageScopedGroups(
+  groups: readonly TypesenseSearchGroup<TypesenseWatchLexicalDocument>[],
+  languageIdentity: string,
+): TypesenseSearchGroup<TypesenseWatchLexicalDocument>[] {
+  return groups
+    .slice(0, TYPESENSE_SUGGESTION_CANDIDATE_LIMIT)
+    .flatMap((group) => {
+      const hits = group.hits
+        .slice(0, 1)
+        .filter((hit) => hit.document.languageIdentity === languageIdentity)
+      return hits.length > 0 ? [{ ...group, hits }] : []
+    })
+}
+
+function matchedFieldNames(
+  hit: TypesenseSearchHit<TypesenseWatchLexicalDocument>,
+): Set<string> {
+  return new Set(
+    (hit.highlights ?? []).flatMap((highlight) =>
+      Array.isArray(highlight.matched_tokens) &&
+      highlight.matched_tokens.length > 0
+        ? [highlight.field]
+        : [],
+    ),
+  )
+}
+
+function rawTextScore(
+  hit: TypesenseSearchHit<TypesenseWatchLexicalDocument>,
+): bigint {
+  const exactScore = hit.text_match_info?.score
+  if (exactScore && /^\d+$/.test(exactScore)) {
+    try {
+      return BigInt(exactScore)
+    } catch {
+      return 0n
+    }
+  }
+  return Number.isFinite(hit.text_match)
+    ? BigInt(Math.max(0, Math.trunc(hit.text_match ?? 0)))
+    : 0n
+}
+
+function hitIdentity(
+  hit: TypesenseSearchHit<TypesenseWatchLexicalDocument>,
+): { canonicalVideoId: string; videoId: string } | null {
+  const { canonicalVideoId, videoId } = hit.document
+  return typeof canonicalVideoId === "string" &&
+    canonicalVideoId.length > 0 &&
+    typeof videoId === "string" &&
+    videoId.length > 0
+    ? { canonicalVideoId, videoId }
+    : null
+}
+
+function baselineDirectMatchCandidates(
   groups: readonly TypesenseSearchGroup<TypesenseWatchLexicalDocument>[],
   titleFields: readonly string[],
   metadataFields: readonly string[],
   prefix: string,
 ): DirectMatchCandidate[] {
-  const candidates = groups.flatMap((group, groupIndex) => {
-    const document = group.hits[0]?.document
-    if (!document) return []
-    const matchedTitle = matchingValue(document, titleFields, prefix)
-    const matchedDescription = matchingValue(document, metadataFields, prefix)
-    const title = matchedTitle ?? firstValue(document, titleFields)
-    if (!title || (!matchedTitle && !matchedDescription)) return []
-    return [
-      {
-        groupIndex,
-        suggestion: {
-          videoId: typeof document.videoId === "string" ? document.videoId : "",
+  return groups.flatMap((group, groupIndex) => {
+    for (const hit of group.hits) {
+      const identity = hitIdentity(hit)
+      if (!identity) continue
+      const evidenceFields = matchedFieldNames(hit)
+      const evidencedTitleFields =
+        evidenceFields.size > 0
+          ? titleFields.filter((field) => evidenceFields.has(field))
+          : titleFields
+      const evidencedMetadataFields =
+        evidenceFields.size > 0
+          ? metadataFields.filter((field) => evidenceFields.has(field))
+          : metadataFields
+      const matchedTitle = matchingValue(
+        hit.document,
+        evidencedTitleFields,
+        prefix,
+      )
+      const matchedDescription = matchingValue(
+        hit.document,
+        evidencedMetadataFields,
+        prefix,
+      )
+      const title = matchedTitle ?? firstValue(hit.document, titleFields)
+      if (!title || (!matchedTitle && !matchedDescription)) continue
+      return [
+        {
+          ...identity,
           title,
           description:
-            matchedDescription ?? firstValue(document, metadataFields),
+            matchedDescription ?? firstValue(hit.document, metadataFields),
           matchSource: matchedTitle ? "title" : "description",
+          tier: matchedTitle ? 0 : 3,
+          rawTextScore: rawTextScore(hit),
+          groupOrder: groupIndex,
         } satisfies DirectMatchCandidate,
-      },
-    ]
+      ]
+    }
+    return []
   })
-  candidates.sort(
-    (a, b) =>
-      (a.suggestion.matchSource === "title" ? 0 : 1) -
-        (b.suggestion.matchSource === "title" ? 0 : 1) ||
-      a.groupIndex - b.groupIndex,
+}
+
+function expansionDirectMatchCandidates(
+  groups: readonly TypesenseSearchGroup<TypesenseWatchLexicalDocument>[],
+  exactTitleFields: readonly string[],
+  exactMetadataFields: readonly string[],
+  exactTaxonomyFields: readonly string[],
+  stemTitleFields: readonly string[],
+  stemMetadataFields: readonly string[],
+  stemTaxonomyFields: readonly string[],
+): DirectMatchCandidate[] {
+  const tierByField = new Map<string, DirectMatchCandidate["tier"]>([
+    ...exactTaxonomyFields.map((field) => [field, 1] as const),
+    ...stemTitleFields.map((field) => [field, 2] as const),
+    ...stemTaxonomyFields.map((field) => [field, 4] as const),
+    ...stemMetadataFields.map((field) => [field, 5] as const),
+  ])
+  return groups.flatMap((group, groupIndex) => {
+    for (const hit of group.hits) {
+      const identity = hitIdentity(hit)
+      if (!identity) continue
+      const tiers = [...matchedFieldNames(hit)].flatMap((field) => {
+        const tier = tierByField.get(field)
+        return tier == null ? [] : [tier]
+      })
+      if (tiers.length === 0) continue
+      const tier = Math.min(...tiers) as DirectMatchCandidate["tier"]
+      const title =
+        firstValue(hit.document, exactTitleFields) ??
+        firstValue(hit.document, stemTitleFields)
+      if (!title) continue
+      return [
+        {
+          ...identity,
+          title,
+          description:
+            firstValue(hit.document, exactMetadataFields) ??
+            firstValue(hit.document, stemMetadataFields),
+          matchSource: tier === 5 ? "description" : "title",
+          tier,
+          rawTextScore: rawTextScore(hit),
+          groupOrder: TYPESENSE_SUGGESTION_CANDIDATE_LIMIT + groupIndex,
+        } satisfies DirectMatchCandidate,
+      ]
+    }
+    return []
+  })
+}
+
+function mergedDirectMatchCandidates(
+  candidates: readonly DirectMatchCandidate[],
+): DirectMatchCandidate[] {
+  const sorted = [...candidates].sort(
+    (left, right) =>
+      left.tier - right.tier ||
+      (left.rawTextScore > right.rawTextScore
+        ? -1
+        : left.rawTextScore < right.rawTextScore
+          ? 1
+          : 0) ||
+      left.groupOrder - right.groupOrder ||
+      left.canonicalVideoId.localeCompare(right.canonicalVideoId),
   )
 
-  const seenTitles = new Set<string>()
+  const seenCanonicalIds = new Set<string>()
   const suggestions: DirectMatchCandidate[] = []
-  for (const { suggestion } of candidates) {
-    if (!suggestion.videoId) continue
-    const key = comparableTitle(suggestion.title)
-    if (seenTitles.has(key)) continue
-    seenTitles.add(key)
+  for (const suggestion of sorted) {
+    if (seenCanonicalIds.has(suggestion.canonicalVideoId)) continue
+    seenCanonicalIds.add(suggestion.canonicalVideoId)
     suggestions.push(suggestion)
     if (suggestions.length === MAX_WATCH_SEARCH_CONTENT_MATCHES) break
   }
@@ -569,6 +810,7 @@ async function hydrateDirectMatches(
   prisma: SuggestionPrisma,
   candidates: readonly DirectMatchCandidate[],
 ): Promise<WatchSearchSuggestion[]> {
+  if (candidates.length === 0) return []
   const videos = await prisma.video.findMany({
     where: {
       id: { in: candidates.map((candidate) => candidate.videoId) },
@@ -603,6 +845,48 @@ async function hydrateDirectMatches(
       } satisfies WatchSearchSuggestion,
     ]
   })
+}
+
+type SuggestionRetrievalLane = {
+  available: boolean
+  groups: TypesenseSearchGroup<TypesenseWatchLexicalDocument>[]
+}
+
+function suggestionRetrievalLane(
+  result:
+    | TypesenseSettledSearchResult<TypesenseWatchLexicalDocument>
+    | undefined,
+): SuggestionRetrievalLane {
+  if (result?.status !== "fulfilled") {
+    return { available: false, groups: [] }
+  }
+  const value = result.value
+  if (
+    !Number.isFinite(value.found) ||
+    value.found < 0 ||
+    !("grouped_hits" in value) ||
+    !Array.isArray(value.grouped_hits)
+  ) {
+    return { available: false, groups: [] }
+  }
+  return { available: true, groups: value.grouped_hits }
+}
+
+function retrievalLaneEvent(
+  logger: Pick<Console, "warn">,
+  lane: "baseline" | "expansion" | "total",
+  outcome:
+    | "baseline_empty"
+    | "baseline_unavailable"
+    | "expansion_empty"
+    | "expansion_unavailable"
+    | "total_unavailable",
+  analyzer: string,
+  reason?: "malformed_results" | "request_error" | "request_invariant",
+): void {
+  logger.warn(
+    `[watch-search-suggestions] event=${lane === "total" ? "typesense_unavailable" : "lane_outcome"} lane=${lane} outcome=${outcome} revision=${TYPESENSE_WATCH_SEARCH_CANDIDATE_APPLICATION_REVISION} analyzer=${analyzer}${reason ? ` reason=${reason}` : ""}`,
+  )
 }
 
 export class TypesenseWatchSearchSuggestionsService {
@@ -647,6 +931,7 @@ export class TypesenseWatchSearchSuggestionsService {
     query: string,
     languageSlug: string,
   ): Promise<WatchSearchSuggestion[]> {
+    let analyzer = "unknown"
     try {
       const language = await resolveSuggestionLanguage(
         this.prisma,
@@ -654,35 +939,151 @@ export class TypesenseWatchSearchSuggestionsService {
       )
       if (!language) return []
 
-      const titleFields = watchLexicalQueryFields(language.locale, "title")
+      analyzer = typesenseWatchTokenizerLocale(language.locale) ?? "fallback"
+      const titleFields = watchLexicalQueryFields(
+        language.locale,
+        "title",
+        "exact",
+      )
       const metadataFields = watchLexicalQueryFields(
         language.locale,
         "metadata",
+        "exact",
       )
-      const [result] =
-        await this.typesense.multiSearch<TypesenseWatchLexicalDocument>([
-          suggestionRequest(
-            query,
-            titleFields,
-            metadataFields,
-            language.languageIdentity,
-          ),
-        ])
-      if (!result || !("grouped_hits" in result) || !result.grouped_hits) {
+      const taxonomyFields = watchLexicalQueryFields(
+        language.locale,
+        "taxonomy",
+        "exact",
+      )
+      const stemTitleFields = watchLexicalQueryFields(
+        language.locale,
+        "title",
+        "stem",
+      )
+      const stemMetadataFields = watchLexicalQueryFields(
+        language.locale,
+        "metadata",
+        "stem",
+      )
+      const stemTaxonomyFields = watchLexicalQueryFields(
+        language.locale,
+        "taxonomy",
+        "stem",
+      )
+      const searches = boundedSuggestionRetrievalRequests(
+        baselineSuggestionRequest(
+          query,
+          titleFields,
+          metadataFields,
+          language.languageIdentity,
+        ),
+        expansionSuggestionRequest(
+          query,
+          titleFields,
+          metadataFields,
+          taxonomyFields,
+          stemTitleFields,
+          stemMetadataFields,
+          stemTaxonomyFields,
+          language.languageIdentity,
+        ),
+      )
+      if (!searches) {
+        retrievalLaneEvent(
+          this.logger,
+          "total",
+          "total_unavailable",
+          analyzer,
+          "request_invariant",
+        )
         return []
       }
-      const candidates = directMatchCandidates(
-        result.grouped_hits,
-        titleFields,
-        metadataFields,
-        comparableTitle(query),
-      )
+      const results =
+        await this.typesense.multiSearchSettled<TypesenseWatchLexicalDocument>(
+          searches,
+        )
+      if (results.length !== 2) {
+        retrievalLaneEvent(
+          this.logger,
+          "total",
+          "total_unavailable",
+          analyzer,
+          "malformed_results",
+        )
+        return []
+      }
+      const baseline = suggestionRetrievalLane(results[0])
+      const expansion = suggestionRetrievalLane(results[1])
+      if (!baseline.available) {
+        retrievalLaneEvent(
+          this.logger,
+          "baseline",
+          "baseline_unavailable",
+          analyzer,
+        )
+      }
+      if (!expansion.available) {
+        retrievalLaneEvent(
+          this.logger,
+          "expansion",
+          "expansion_unavailable",
+          analyzer,
+        )
+      }
+      if (!baseline.available && !expansion.available) {
+        retrievalLaneEvent(
+          this.logger,
+          "total",
+          "total_unavailable",
+          analyzer,
+          "malformed_results",
+        )
+        return []
+      }
+
+      const baselineGroups = baseline.available
+        ? languageScopedGroups(baseline.groups, language.languageIdentity)
+        : []
+      const expansionGroups = expansion.available
+        ? languageScopedGroups(expansion.groups, language.languageIdentity)
+        : []
+      if (baseline.available && baselineGroups.length === 0) {
+        retrievalLaneEvent(this.logger, "baseline", "baseline_empty", analyzer)
+      }
+      if (expansion.available && expansionGroups.length === 0) {
+        retrievalLaneEvent(
+          this.logger,
+          "expansion",
+          "expansion_empty",
+          analyzer,
+        )
+      }
+
+      const candidates = mergedDirectMatchCandidates([
+        ...baselineDirectMatchCandidates(
+          baselineGroups,
+          titleFields,
+          metadataFields,
+          comparableTitle(query),
+        ),
+        ...expansionDirectMatchCandidates(
+          expansionGroups,
+          titleFields,
+          metadataFields,
+          taxonomyFields,
+          stemTitleFields,
+          stemMetadataFields,
+          stemTaxonomyFields,
+        ),
+      ])
       const directMatches = await hydrateDirectMatches(this.prisma, candidates)
+      if (!baseline.available) return directMatches
+
       const directTitles = new Set(
         directMatches.map((match) => comparablePhrase(match.title)),
       )
       const extractedSuggestions = extractedQuerySuggestions(
-        result.grouped_hits,
+        baselineGroups,
         titleFields,
         metadataFields,
         query,
@@ -705,7 +1106,13 @@ export class TypesenseWatchSearchSuggestionsService {
       }
       return [...querySuggestions, ...directMatches]
     } catch {
-      this.logger.warn("[watch-search-suggestions] event=typesense_unavailable")
+      retrievalLaneEvent(
+        this.logger,
+        "total",
+        "total_unavailable",
+        analyzer,
+        "request_error",
+      )
       return []
     }
   }

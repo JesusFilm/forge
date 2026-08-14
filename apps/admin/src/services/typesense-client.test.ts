@@ -1,5 +1,9 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
-import { TypesenseClient, TypesenseImportError } from "./typesense-client"
+import {
+  TypesenseClient,
+  TypesenseImportError,
+  TypesenseSearchResultError,
+} from "./typesense-client"
 
 afterEach(() => vi.restoreAllMocks())
 
@@ -235,6 +239,70 @@ describe("TypesenseClient", () => {
     ).rejects.toMatchObject({ status: 400 })
   })
 
+  it("settles multi-search sub-results independently while the strict wrapper remains compatible", async () => {
+    const responseBody = {
+      results: [
+        {
+          found: 1,
+          out_of: 1,
+          page: 1,
+          search_time_ms: 2,
+          hits: [{ document: { id: "healthy" } }],
+        },
+        { error: "field not found: taxonomy_en", code: 404 },
+      ],
+    }
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockImplementation(async () => jsonResponse(responseBody))
+    const client = new TypesenseClient({
+      host: "http://localhost:8108",
+      apiKey: "test-key",
+      fetch: fetchMock,
+    })
+    const searches = [
+      { collection: "watch", q: "shorts", query_by: "title_en" },
+      { collection: "watch", q: "shorts", query_by: "taxonomy_en" },
+    ]
+
+    await expect(
+      client.multiSearchSettled<{ id: string }>(searches),
+    ).resolves.toEqual([
+      {
+        status: "fulfilled",
+        value: expect.objectContaining({ found: 1 }),
+      },
+      {
+        status: "rejected",
+        reason: expect.objectContaining({
+          name: "TypesenseSearchResultError",
+          status: 404,
+          resultIndex: 1,
+          typesenseError: "field not found: taxonomy_en",
+        }),
+      },
+    ])
+    const settledFailure = await client.multiSearchSettled(searches)
+    expect(settledFailure[1]).toMatchObject({
+      status: "rejected",
+      reason: expect.any(TypesenseSearchResultError),
+    })
+    await expect(client.multiSearch(searches)).rejects.toMatchObject({
+      name: "TypesenseSearchResultError",
+      status: 404,
+      resultIndex: 1,
+    })
+    expect(fetchMock).toHaveBeenCalledTimes(3)
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      1,
+      "http://localhost:8108/multi_search",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({ searches }),
+      }),
+    )
+  })
+
   it("preserves grouped search hits and optional lexical match metadata", async () => {
     const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
       jsonResponse({
@@ -251,6 +319,14 @@ describe("TypesenseClient", () => {
                 hits: [
                   {
                     document: { id: "chunk-1" },
+                    highlights: [
+                      {
+                        field: "title_en",
+                        matched_tokens: ["communion"],
+                        snippet: "<mark>Communion</mark>",
+                        indices: [0],
+                      },
+                    ],
                     text_match_info: {
                       score: "578730123365187679",
                       tokens_matched: 2,
@@ -302,6 +378,14 @@ describe("TypesenseClient", () => {
         hits: [
           {
             document: { id: "chunk-1" },
+            highlights: [
+              {
+                field: "title_en",
+                matched_tokens: ["communion"],
+                snippet: "<mark>Communion</mark>",
+                indices: [0],
+              },
+            ],
             text_match_info: {
               score: "578730123365187679",
               tokens_matched: 2,
@@ -332,6 +416,9 @@ describe("TypesenseClient", () => {
     expect(fullMatchInfo?.tokens_matched).toBe(2)
     expect(fullMatchInfo?.num_tokens_dropped).toBe(1)
     expect(fullMatchInfo?.typo_prefix_score).toBe(3)
+    expect(
+      result?.grouped_hits?.[0]?.hits[0]?.highlights?.[0]?.matched_tokens,
+    ).toEqual(["communion"])
     expect(result?.grouped_hits?.[2]?.hits[0]?.text_match_info).toBeUndefined()
   })
 

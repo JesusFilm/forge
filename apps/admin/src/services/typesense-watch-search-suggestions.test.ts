@@ -7,10 +7,12 @@ import {
   MAX_WATCH_SEARCH_SUGGESTION_PREFIX_CODE_POINTS,
   TypesenseWatchSearchSuggestionsService,
 } from "./typesense-watch-search-suggestions"
+import { TypesenseSearchResultError } from "./typesense-client"
 
 const findFirstMock = vi.fn()
 const videoFindManyMock = vi.fn()
 const multiSearchMock = vi.fn()
+const multiSearchSettledMock = vi.fn()
 const warnMock = vi.fn()
 
 function createService() {
@@ -23,9 +25,56 @@ function createService() {
 function createServiceWithPrisma(prisma: unknown) {
   return new TypesenseWatchSearchSuggestionsService(
     prisma as never,
-    { multiSearch: multiSearchMock } as never,
+    {
+      multiSearch: multiSearchMock,
+      multiSearchSettled: multiSearchSettledMock,
+    } as never,
     { warn: warnMock },
   )
+}
+
+function languageIdentityFromRequest(request: { filter_by?: string }): string {
+  return request.filter_by?.match(/`([^`]+)`/)?.[1] ?? "slug:english"
+}
+
+function withTestLanguageIdentity(
+  result: unknown,
+  request: { filter_by?: string },
+): unknown {
+  if (!result || typeof result !== "object" || !("grouped_hits" in result)) {
+    return result
+  }
+  const groupedHits = (result as { grouped_hits?: unknown[] }).grouped_hits
+  if (!Array.isArray(groupedHits)) return result
+  return {
+    ...result,
+    grouped_hits: groupedHits.map((group) => {
+      if (!group || typeof group !== "object" || !("hits" in group)) {
+        return group
+      }
+      const hits = (group as { hits?: unknown[] }).hits
+      return {
+        ...group,
+        hits: Array.isArray(hits)
+          ? hits.map((hit) => {
+              if (!hit || typeof hit !== "object" || !("document" in hit)) {
+                return hit
+              }
+              const document = (hit as { document?: unknown }).document
+              return document && typeof document === "object"
+                ? {
+                    ...hit,
+                    document: {
+                      languageIdentity: languageIdentityFromRequest(request),
+                      ...document,
+                    },
+                  }
+                : hit
+            })
+          : hits,
+      }
+    }),
+  }
 }
 
 function contentSuggestion(
@@ -64,6 +113,30 @@ function querySuggestion(title: string) {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  multiSearchSettledMock.mockImplementation(
+    async (searches: Array<{ filter_by?: string }>, options?: unknown) => {
+      const resolved = (await (options === undefined
+        ? multiSearchMock(searches)
+        : multiSearchMock(searches, options))) as unknown[]
+      const results =
+        searches.length === 2 && resolved.length === 1
+          ? [
+              ...resolved,
+              {
+                found: 0,
+                out_of: 0,
+                page: 1,
+                search_time_ms: 1,
+                grouped_hits: [],
+              },
+            ]
+          : resolved
+      return results.map((result, index) => ({
+        status: "fulfilled",
+        value: withTestLanguageIdentity(result, searches[index] ?? {}),
+      }))
+    },
+  )
   videoFindManyMock.mockImplementation(
     ({ where }: { where: { id: { in: string[] } } }) =>
       Promise.resolve(
@@ -100,30 +173,40 @@ describe("TypesenseWatchSearchSuggestionsService", () => {
   it("caps input before lookup and sends one title-dominant localized request", async () => {
     const overlongQuery = `${"j".repeat(MAX_WATCH_SEARCH_SUGGESTION_PREFIX_CODE_POINTS)}extra`
     findFirstMock.mockResolvedValue({ bcp47: "en" })
-    multiSearchMock.mockResolvedValue([
-      {
-        found: 1,
-        out_of: 1,
-        page: 1,
-        search_time_ms: 2,
-        grouped_hits: [
-          {
-            group_key: ["canonical-1"],
-            found: 1,
-            hits: [
-              {
-                document: {
-                  videoId: "video-long",
-                  canonicalVideoId: "canonical-1",
-                  title_en: ["Unrelated", overlongQuery.slice(0, 200)],
-                  title_fallback: ["Fallback"],
+    multiSearchMock
+      .mockResolvedValueOnce([
+        {
+          found: 1,
+          out_of: 1,
+          page: 1,
+          search_time_ms: 2,
+          grouped_hits: [
+            {
+              group_key: ["canonical-1"],
+              found: 1,
+              hits: [
+                {
+                  document: {
+                    videoId: "video-long",
+                    canonicalVideoId: "canonical-1",
+                    title_en: ["Unrelated", overlongQuery.slice(0, 200)],
+                    title_fallback: ["Fallback"],
+                  },
                 },
-              },
-            ],
-          },
-        ],
-      },
-    ])
+              ],
+            },
+          ],
+        },
+      ])
+      .mockImplementation(async (searches: unknown[]) =>
+        searches.map(() => ({
+          found: 1,
+          out_of: 1,
+          page: 1,
+          search_time_ms: 1,
+          hits: [{ document: { id: "validated" } }],
+        })),
+      )
 
     const result = await createService().suggest({
       query: overlongQuery,
@@ -134,24 +217,26 @@ describe("TypesenseWatchSearchSuggestionsService", () => {
       where: { deletedAt: null, slug: "english" },
       select: { bcp47: true },
     })
-    expect(multiSearchMock).toHaveBeenCalledWith([
-      expect.objectContaining({
-        collection: "watch_search_lexical",
-        q: overlongQuery.slice(0, 200),
-        query_by: "title_en,title_fallback,metadata_en,metadata_fallback",
-        query_by_weights: "8,4,2,1",
-        filter_by: "languageIdentity:=[`slug:english`]",
-        include_fields:
-          "videoId,canonicalVideoId,title_en,title_fallback,metadata_en,metadata_fallback",
-        per_page: 25,
-        group_by: "canonicalVideoId",
-        group_limit: 1,
-        prefix: true,
-        num_typos: "0,0,0,0",
-        prioritize_exact_match: true,
-        text_match_type: "max_weight",
-      }),
-    ])
+    expect(multiSearchMock).toHaveBeenCalledWith(
+      expect.arrayContaining([
+        expect.objectContaining({
+          collection: "watch_search_lexical",
+          q: overlongQuery.slice(0, 200),
+          query_by: "title_en,title_fallback,metadata_en,metadata_fallback",
+          query_by_weights: "8,4,2,1",
+          filter_by: "languageIdentity:=[`slug:english`]",
+          include_fields:
+            "videoId,canonicalVideoId,languageIdentity,title_en,title_fallback,metadata_en,metadata_fallback",
+          per_page: 25,
+          group_by: "canonicalVideoId",
+          group_limit: 1,
+          prefix: true,
+          num_typos: "0,0,0,0",
+          prioritize_exact_match: true,
+          text_match_type: "max_weight",
+        }),
+      ]),
+    )
     expect(result).toEqual([
       querySuggestion(overlongQuery.slice(0, 200)),
       contentSuggestion(
@@ -161,6 +246,314 @@ describe("TypesenseWatchSearchSuggestionsService", () => {
         "video-long",
       ),
     ])
+  })
+
+  it("sends exactly one bounded settled retrieval with baseline and expansion lanes", async () => {
+    findFirstMock.mockResolvedValue({ bcp47: "en" })
+    multiSearchSettledMock.mockResolvedValueOnce([
+      {
+        status: "fulfilled",
+        value: {
+          found: 0,
+          out_of: 0,
+          page: 1,
+          search_time_ms: 1,
+          grouped_hits: [],
+        },
+      },
+      {
+        status: "fulfilled",
+        value: {
+          found: 0,
+          out_of: 0,
+          page: 1,
+          search_time_ms: 1,
+          grouped_hits: [],
+        },
+      },
+    ])
+
+    await expect(
+      createService().suggest({ query: "shorts", languageSlug: "english" }),
+    ).resolves.toEqual([])
+
+    expect(multiSearchSettledMock).toHaveBeenCalledTimes(1)
+    const [searches] = multiSearchSettledMock.mock.calls[0] as [
+      Array<Record<string, unknown>>,
+    ]
+    expect(searches).toHaveLength(2)
+    expect(searches[0]).toEqual(
+      expect.objectContaining({
+        collection: "watch_search_lexical",
+        query_by: "title_en,title_fallback,metadata_en,metadata_fallback",
+        query_by_weights: "8,4,2,1",
+        filter_by: "languageIdentity:=[`slug:english`]",
+        per_page: 25,
+        group_by: "canonicalVideoId",
+        group_limit: 1,
+        prefix: true,
+        num_typos: "0,0,0,0",
+      }),
+    )
+    expect(searches[1]).toEqual(
+      expect.objectContaining({
+        collection: "watch_search_lexical",
+        query_by:
+          "taxonomy_en,taxonomy_fallback,title_stem_en,metadata_stem_en,taxonomy_stem_en",
+        filter_by: "languageIdentity:=[`slug:english`]",
+        per_page: 25,
+        group_by: "canonicalVideoId",
+        group_limit: 1,
+        prefix: true,
+        num_typos: "0,0,0,0,0",
+      }),
+    )
+    expect(
+      searches.reduce(
+        (bytes, search) =>
+          bytes + new TextEncoder().encode(String(search.query_by)).byteLength,
+        0,
+      ),
+    ).toBeLessThanOrEqual(4_096)
+    expect(
+      new TextEncoder().encode(JSON.stringify({ searches })).byteLength,
+    ).toBeLessThanOrEqual(32_768)
+  })
+
+  it("admits English shorts through title-stem evidence without a raw prefix", async () => {
+    findFirstMock.mockResolvedValue({ bcp47: "en" })
+    multiSearchSettledMock.mockResolvedValueOnce([
+      {
+        status: "fulfilled",
+        value: {
+          found: 0,
+          out_of: 0,
+          page: 1,
+          search_time_ms: 1,
+          grouped_hits: [],
+        },
+      },
+      {
+        status: "fulfilled",
+        value: {
+          found: 1,
+          out_of: 1,
+          page: 1,
+          search_time_ms: 1,
+          grouped_hits: [
+            {
+              group_key: ["canonical-short-film"],
+              found: 1,
+              hits: [
+                {
+                  document: {
+                    videoId: "video-short-film",
+                    canonicalVideoId: "canonical-short-film",
+                    languageIdentity: "slug:english",
+                    title_en: ["Short Film"],
+                    title_stem_en: ["Short Film"],
+                  },
+                  highlights: [
+                    {
+                      field: "title_stem_en",
+                      matched_tokens: ["short"],
+                    },
+                  ],
+                  text_match_info: { score: "120" },
+                },
+              ],
+            },
+          ],
+        },
+      },
+    ])
+
+    await expect(
+      createService().suggest({ query: "shorts", languageSlug: "english" }),
+    ).resolves.toEqual([
+      contentSuggestion("Short Film", null, "title", "video-short-film"),
+    ])
+    expect(multiSearchMock).not.toHaveBeenCalled()
+  })
+
+  it("admits a localized taxonomy-only hit without fabricating phrase rows", async () => {
+    findFirstMock.mockResolvedValue({ bcp47: "es" })
+    multiSearchSettledMock.mockResolvedValueOnce([
+      {
+        status: "fulfilled",
+        value: {
+          found: 0,
+          out_of: 0,
+          page: 1,
+          search_time_ms: 1,
+          grouped_hits: [],
+        },
+      },
+      {
+        status: "fulfilled",
+        value: {
+          found: 1,
+          out_of: 1,
+          page: 1,
+          search_time_ms: 1,
+          grouped_hits: [
+            {
+              group_key: ["canonical-corto"],
+              found: 1,
+              hits: [
+                {
+                  document: {
+                    videoId: "video-corto",
+                    canonicalVideoId: "canonical-corto",
+                    languageIdentity: "slug:spanish-castilian",
+                    title_es: ["La historia de Ana"],
+                    metadata_es: ["Una historia de esperanza"],
+                    taxonomy_es: ["Cortometrajes"],
+                  },
+                  highlights: [
+                    {
+                      field: "taxonomy_es",
+                      matched_tokens: ["cortometrajes"],
+                    },
+                  ],
+                  text_match_info: { score: "99" },
+                },
+              ],
+            },
+          ],
+        },
+      },
+    ])
+
+    const result = await createService().suggest({
+      query: "cortometrajes",
+      languageSlug: "spanish-castilian",
+    })
+
+    expect(result).toEqual([
+      contentSuggestion(
+        "La historia de Ana",
+        "Una historia de esperanza",
+        "title",
+        "video-corto",
+      ),
+    ])
+    expect(result.every((row) => row.kind === "content")).toBe(true)
+    expect(multiSearchMock).not.toHaveBeenCalled()
+  })
+
+  it("preserves the baseline when the expansion sub-result fails", async () => {
+    findFirstMock.mockResolvedValue({ bcp47: "en" })
+    multiSearchSettledMock.mockResolvedValueOnce([
+      {
+        status: "fulfilled",
+        value: {
+          found: 1,
+          out_of: 1,
+          page: 1,
+          search_time_ms: 1,
+          grouped_hits: [
+            {
+              group_key: ["canonical-jesus"],
+              found: 1,
+              hits: [
+                {
+                  document: {
+                    videoId: "video-jesus",
+                    canonicalVideoId: "canonical-jesus",
+                    languageIdentity: "slug:english",
+                    title_en: ["Jesus Film"],
+                  },
+                  highlights: [{ field: "title_en", matched_tokens: ["jes"] }],
+                  text_match_info: { score: "10" },
+                },
+              ],
+            },
+          ],
+        },
+      },
+      {
+        status: "rejected",
+        reason: new TypesenseSearchResultError(
+          "field not found: taxonomy_en",
+          404,
+          1,
+        ),
+      },
+    ])
+    multiSearchMock.mockImplementation(async (searches: unknown[]) =>
+      searches.map(() => ({
+        found: 0,
+        out_of: 0,
+        page: 1,
+        search_time_ms: 1,
+        hits: [],
+      })),
+    )
+
+    await expect(
+      createService().suggest({ query: "jes", languageSlug: "english" }),
+    ).resolves.toEqual([
+      contentSuggestion("Jesus Film", null, "title", "video-jesus"),
+    ])
+    expect(warnMock).toHaveBeenCalledWith(
+      expect.stringContaining(
+        "event=lane_outcome lane=expansion outcome=expansion_unavailable",
+      ),
+    )
+  })
+
+  it("returns expanded direct matches without phrases when the baseline fails", async () => {
+    findFirstMock.mockResolvedValue({ bcp47: "en" })
+    multiSearchSettledMock.mockResolvedValueOnce([
+      {
+        status: "rejected",
+        reason: new TypesenseSearchResultError("baseline failed", 500, 0),
+      },
+      {
+        status: "fulfilled",
+        value: {
+          found: 1,
+          out_of: 1,
+          page: 1,
+          search_time_ms: 1,
+          grouped_hits: [
+            {
+              group_key: ["canonical-short"],
+              found: 1,
+              hits: [
+                {
+                  document: {
+                    videoId: "video-short",
+                    canonicalVideoId: "canonical-short",
+                    languageIdentity: "slug:english",
+                    title_en: ["Short Film"],
+                    taxonomy_stem_en: ["Short Film"],
+                  },
+                  highlights: [
+                    {
+                      field: "taxonomy_stem_en",
+                      matched_tokens: ["short"],
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      },
+    ])
+
+    const result = await createService().suggest({
+      query: "shorts",
+      languageSlug: "english",
+    })
+
+    expect(result).toEqual([
+      contentSuggestion("Short Film", null, "title", "video-short"),
+    ])
+    expect(result.every((row) => row.kind === "content")).toBe(true)
+    expect(multiSearchMock).not.toHaveBeenCalled()
   })
 
   it("uses only the fallback title field for an unsupported tokenizer locale", async () => {
@@ -199,16 +592,18 @@ describe("TypesenseWatchSearchSuggestionsService", () => {
     expect(findFirstMock).toHaveBeenCalledWith(
       expect.objectContaining({ where: { deletedAt: null, slug: "hawaiian" } }),
     )
-    expect(multiSearchMock).toHaveBeenCalledWith([
-      expect.objectContaining({
-        query_by: "title_fallback,metadata_fallback",
-        query_by_weights: "8,2",
-        filter_by: "languageIdentity:=[`slug:hawaiian`]",
-        include_fields:
-          "videoId,canonicalVideoId,title_fallback,metadata_fallback",
-        num_typos: "0,0",
-      }),
-    ])
+    expect(multiSearchMock).toHaveBeenCalledWith(
+      expect.arrayContaining([
+        expect.objectContaining({
+          query_by: "title_fallback,metadata_fallback",
+          query_by_weights: "8,2",
+          filter_by: "languageIdentity:=[`slug:hawaiian`]",
+          include_fields:
+            "videoId,canonicalVideoId,languageIdentity,title_fallback,metadata_fallback",
+          num_typos: "0,0",
+        }),
+      ]),
+    )
   })
 
   it("reuses the resolved locale while the language slug stays active", async () => {
@@ -326,38 +721,48 @@ describe("TypesenseWatchSearchSuggestionsService", () => {
 
   it("returns stable unique direct matches within the configured caps", async () => {
     findFirstMock.mockResolvedValue({ bcp47: "en" })
-    multiSearchMock.mockResolvedValue([
-      {
-        found: 7,
-        out_of: 7,
-        page: 1,
-        search_time_ms: 1,
-        grouped_hits: [
-          [
-            "Jesus",
-            "JESUS",
-            "Jesus Wept",
-            "Jesus Lives",
-            "Jesus Film",
-            "Jesus Messiah",
-            "Jesus Before Pilate",
-          ].map((title, index) => ({
-            group_key: [`canonical-${index}`],
-            found: 1,
-            hits: [
-              {
-                document: {
-                  videoId: `video-${index}`,
-                  canonicalVideoId: `canonical-${index}`,
-                  title_en: [title],
-                  title_fallback: [],
+    multiSearchMock
+      .mockResolvedValueOnce([
+        {
+          found: 7,
+          out_of: 7,
+          page: 1,
+          search_time_ms: 1,
+          grouped_hits: [
+            [
+              "Jesus",
+              "JESUS",
+              "Jesus Wept",
+              "Jesus Lives",
+              "Jesus Film",
+              "Jesus Messiah",
+              "Jesus Before Pilate",
+            ].map((title, index) => ({
+              group_key: [`canonical-${index}`],
+              found: 1,
+              hits: [
+                {
+                  document: {
+                    videoId: `video-${index}`,
+                    canonicalVideoId: `canonical-${index}`,
+                    title_en: [title],
+                    title_fallback: [],
+                  },
                 },
-              },
-            ],
-          })),
-        ].flat(),
-      },
-    ])
+              ],
+            })),
+          ].flat(),
+        },
+      ])
+      .mockImplementation(async (searches: unknown[]) =>
+        searches.map(() => ({
+          found: 1,
+          out_of: 1,
+          page: 1,
+          search_time_ms: 1,
+          hits: [{ document: { id: "validated" } }],
+        })),
+      )
 
     const result = await createService().suggest({
       query: "je",
@@ -373,11 +778,11 @@ describe("TypesenseWatchSearchSuggestionsService", () => {
       result.filter((row) => row.kind === "content").map((row) => row.title),
     ).toEqual([
       "Jesus",
+      "JESUS",
       "Jesus Wept",
       "Jesus Lives",
       "Jesus Film",
       "Jesus Messiah",
-      "Jesus Before Pilate",
     ])
   })
 
@@ -435,14 +840,16 @@ describe("TypesenseWatchSearchSuggestionsService", () => {
       ),
     )
 
-    expect(multiSearchMock).toHaveBeenCalledWith([
-      expect.objectContaining({
-        query_by: "title_ko,title_fallback,metadata_ko,metadata_fallback",
-        filter_by: "languageIdentity:=[`slug:korean-sign-language`]",
-        include_fields:
-          "videoId,canonicalVideoId,title_ko,title_fallback,metadata_ko,metadata_fallback",
-      }),
-    ])
+    expect(multiSearchMock).toHaveBeenCalledWith(
+      expect.arrayContaining([
+        expect.objectContaining({
+          query_by: "title_ko,title_fallback,metadata_ko,metadata_fallback",
+          filter_by: "languageIdentity:=[`slug:korean-sign-language`]",
+          include_fields:
+            "videoId,canonicalVideoId,languageIdentity,title_ko,title_fallback,metadata_ko,metadata_fallback",
+        }),
+      ]),
+    )
   })
 
   it("returns description matches after title matches with localized context", async () => {
@@ -518,6 +925,347 @@ describe("TypesenseWatchSearchSuggestionsService", () => {
     ])
   })
 
+  it("orders evidence tiers deterministically and deduplicates canonical videos", async () => {
+    findFirstMock.mockResolvedValue({ bcp47: "en" })
+    const hit = ({
+      videoId,
+      canonicalVideoId,
+      title,
+      field,
+      fieldValue,
+      score,
+    }: {
+      videoId: string
+      canonicalVideoId: string
+      title: string
+      field: string
+      fieldValue: string
+      score: string
+    }) => ({
+      document: {
+        videoId,
+        canonicalVideoId,
+        languageIdentity: "slug:english",
+        title_en: [title],
+        [field]: [fieldValue],
+      },
+      highlights: [{ field, matched_tokens: ["jes"] }],
+      text_match_info: { score },
+    })
+    const group = (canonicalVideoId: string, value: unknown) => ({
+      group_key: [canonicalVideoId],
+      found: 1,
+      hits: [value],
+    })
+    multiSearchSettledMock.mockResolvedValueOnce([
+      {
+        status: "fulfilled",
+        value: {
+          found: 2,
+          out_of: 2,
+          page: 1,
+          search_time_ms: 1,
+          grouped_hits: [
+            group(
+              "canonical-metadata",
+              hit({
+                videoId: "video-metadata",
+                canonicalVideoId: "canonical-metadata",
+                title: "Metadata result",
+                field: "metadata_en",
+                fieldValue: "Jesus story",
+                score: "999",
+              }),
+            ),
+            group(
+              "canonical-title",
+              hit({
+                videoId: "video-title",
+                canonicalVideoId: "canonical-title",
+                title: "Jesus literal title",
+                field: "title_en",
+                fieldValue: "Jesus literal title",
+                score: "1",
+              }),
+            ),
+          ],
+        },
+      },
+      {
+        status: "fulfilled",
+        value: {
+          found: 5,
+          out_of: 5,
+          page: 1,
+          search_time_ms: 1,
+          grouped_hits: [
+            group(
+              "canonical-title",
+              hit({
+                videoId: "video-title-duplicate",
+                canonicalVideoId: "canonical-title",
+                title: "Duplicate lower evidence",
+                field: "title_stem_en",
+                fieldValue: "Jesus duplicate",
+                score: "999999",
+              }),
+            ),
+            group(
+              "canonical-stem-metadata",
+              hit({
+                videoId: "video-stem-metadata",
+                canonicalVideoId: "canonical-stem-metadata",
+                title: "Stem metadata",
+                field: "metadata_stem_en",
+                fieldValue: "Jesus metadata",
+                score: "900",
+              }),
+            ),
+            group(
+              "canonical-stem-taxonomy",
+              hit({
+                videoId: "video-stem-taxonomy",
+                canonicalVideoId: "canonical-stem-taxonomy",
+                title: "Stem taxonomy",
+                field: "taxonomy_stem_en",
+                fieldValue: "Jesus taxonomy",
+                score: "800",
+              }),
+            ),
+            group(
+              "canonical-stem-title",
+              hit({
+                videoId: "video-stem-title",
+                canonicalVideoId: "canonical-stem-title",
+                title: "Stem title",
+                field: "title_stem_en",
+                fieldValue: "Jesus title",
+                score: "2",
+              }),
+            ),
+            group(
+              "canonical-taxonomy",
+              hit({
+                videoId: "video-taxonomy",
+                canonicalVideoId: "canonical-taxonomy",
+                title: "Literal taxonomy",
+                field: "taxonomy_en",
+                fieldValue: "Jesus category",
+                score: "1",
+              }),
+            ),
+          ],
+        },
+      },
+    ])
+    multiSearchMock.mockImplementation(async (searches: unknown[]) =>
+      searches.map(() => ({
+        found: 0,
+        out_of: 0,
+        page: 1,
+        search_time_ms: 1,
+        hits: [],
+      })),
+    )
+
+    const result = await createService().suggest({
+      query: "jes",
+      languageSlug: "english",
+    })
+
+    expect(
+      result.filter((row) => row.kind === "content").map((row) => row.title),
+    ).toEqual([
+      "Jesus literal title",
+      "Literal taxonomy",
+      "Stem title",
+      "Metadata result",
+      "Stem taxonomy",
+      "Stem metadata",
+    ])
+    expect(videoFindManyMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          id: {
+            in: [
+              "video-title",
+              "video-taxonomy",
+              "video-stem-title",
+              "video-metadata",
+              "video-stem-taxonomy",
+              "video-stem-metadata",
+            ],
+          },
+        }),
+      }),
+    )
+  })
+
+  it("rejects a wrong exact-slug sibling before bounded hydration even when it is first", async () => {
+    findFirstMock.mockResolvedValue({ bcp47: "ko" })
+    multiSearchSettledMock.mockResolvedValueOnce([
+      {
+        status: "fulfilled",
+        value: {
+          found: 2,
+          out_of: 2,
+          page: 1,
+          search_time_ms: 1,
+          grouped_hits: [
+            {
+              group_key: ["canonical-wrong"],
+              found: 1,
+              hits: [
+                {
+                  document: {
+                    videoId: "video-wrong-korean",
+                    canonicalVideoId: "canonical-wrong",
+                    languageIdentity: "slug:korean",
+                    title_ko: ["Jesus wrong sibling"],
+                  },
+                  highlights: [{ field: "title_ko", matched_tokens: ["jes"] }],
+                },
+              ],
+            },
+            {
+              group_key: ["canonical-right"],
+              found: 1,
+              hits: [
+                {
+                  document: {
+                    videoId: "video-right-ksl",
+                    canonicalVideoId: "canonical-right",
+                    languageIdentity: "slug:korean-sign-language",
+                    title_ko: ["Jesus Korean Sign Language"],
+                  },
+                  highlights: [{ field: "title_ko", matched_tokens: ["jes"] }],
+                },
+              ],
+            },
+          ],
+        },
+      },
+      {
+        status: "fulfilled",
+        value: {
+          found: 0,
+          out_of: 0,
+          page: 1,
+          search_time_ms: 1,
+          grouped_hits: [],
+        },
+      },
+    ])
+    multiSearchMock.mockImplementation(async (searches: unknown[]) =>
+      searches.map(() => ({
+        found: 0,
+        out_of: 0,
+        page: 1,
+        search_time_ms: 1,
+        hits: [],
+      })),
+    )
+
+    const result = await createService().suggest({
+      query: "jes",
+      languageSlug: "korean-sign-language",
+    })
+
+    expect(result.filter((row) => row.kind === "content")).toEqual([
+      contentSuggestion(
+        "Jesus Korean Sign Language",
+        null,
+        "title",
+        "video-right-ksl",
+      ),
+    ])
+    expect(videoFindManyMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ id: { in: ["video-right-ksl"] } }),
+      }),
+    )
+  })
+
+  it("bounds and merges maximal 25-group baseline and expansion results", async () => {
+    findFirstMock.mockResolvedValue({ bcp47: "en" })
+    const baselineGroups = Array.from({ length: 25 }, (_, index) => ({
+      group_key: [`canonical-baseline-${index}`],
+      found: 1,
+      hits: [
+        {
+          document: {
+            videoId: `video-baseline-${index}`,
+            canonicalVideoId: `canonical-baseline-${index}`,
+            languageIdentity: "slug:english",
+            title_en: [`Baseline ${index}`],
+          },
+          highlights: [{ field: "title_en", matched_tokens: ["baseline"] }],
+        },
+      ],
+    }))
+    const expansionGroups = Array.from({ length: 25 }, (_, index) => ({
+      group_key: [`canonical-expansion-${index}`],
+      found: 1,
+      hits: [
+        {
+          document: {
+            videoId: `video-expansion-${index}`,
+            canonicalVideoId: `canonical-expansion-${index}`,
+            languageIdentity: "slug:english",
+            title_en: [`Short Film ${index}`],
+            title_stem_en: [`Short Film ${index}`],
+          },
+          highlights: [{ field: "title_stem_en", matched_tokens: ["short"] }],
+          text_match: 100 - index,
+        },
+      ],
+    }))
+    multiSearchSettledMock.mockResolvedValueOnce([
+      {
+        status: "fulfilled",
+        value: {
+          found: 25,
+          out_of: 25,
+          page: 1,
+          search_time_ms: 2,
+          grouped_hits: baselineGroups,
+        },
+      },
+      {
+        status: "fulfilled",
+        value: {
+          found: 25,
+          out_of: 25,
+          page: 1,
+          search_time_ms: 2,
+          grouped_hits: expansionGroups,
+        },
+      },
+    ])
+
+    const result = await createService().suggest({
+      query: "shorts",
+      languageSlug: "english",
+    })
+
+    expect(multiSearchSettledMock).toHaveBeenCalledTimes(1)
+    expect(result.filter((row) => row.kind === "content")).toHaveLength(6)
+    expect(new Set(result.map((row) => row.id)).size).toBe(result.length)
+    expect(videoFindManyMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          id: {
+            in: Array.from(
+              { length: 6 },
+              (_, index) => `video-expansion-${index}`,
+            ),
+          },
+        }),
+      }),
+    )
+    expect(multiSearchMock).not.toHaveBeenCalled()
+  })
+
   it("rejects an oversized public language slug before cache or Prisma work", async () => {
     const oversizedSlug = "s".repeat(
       MAX_WATCH_SEARCH_SUGGESTION_LANGUAGE_SLUG_CODE_POINTS + 1,
@@ -544,7 +1292,9 @@ describe("TypesenseWatchSearchSuggestionsService", () => {
       createService().suggest({ query: "je", languageSlug: "english" }),
     ).resolves.toEqual([])
     expect(warnMock).toHaveBeenCalledWith(
-      "[watch-search-suggestions] event=typesense_unavailable",
+      expect.stringContaining(
+        "event=typesense_unavailable lane=total outcome=total_unavailable revision=watch-search-candidate/v2",
+      ),
     )
   })
 
@@ -631,7 +1381,10 @@ describe("TypesenseWatchSearchSuggestionsService", () => {
       language: { findFirst: findFirstMock },
       video: { findMany: videoFindManyMock },
     }
-    const typesense = { multiSearch: multiSearchMock }
+    const typesense = {
+      multiSearch: multiSearchMock,
+      multiSearchSettled: multiSearchSettledMock,
+    }
     const createSharedService = () =>
       new TypesenseWatchSearchSuggestionsService(
         prisma as never,

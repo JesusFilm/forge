@@ -5,13 +5,18 @@ import type {
 } from "./typesense-watch-search-schema"
 import { typesenseWatchTokenizerLocale } from "./typesense-watch-search-lexical"
 
-export type TypesenseWatchLexicalLane = "title" | "metadata"
+export type TypesenseWatchLexicalLane = "title" | "metadata" | "taxonomy"
+export type TypesenseWatchLexicalVariant = "exact" | "stem"
 
 export function watchLexicalQueryFields(
   locale: string,
   lane: TypesenseWatchLexicalLane,
+  variant: TypesenseWatchLexicalVariant = "exact",
 ): string[] {
   const tokenizerLocale = typesenseWatchTokenizerLocale(locale)
+  if (variant === "stem") {
+    return tokenizerLocale ? [`${lane}_stem_${tokenizerLocale}`] : []
+  }
   return tokenizerLocale
     ? [`${lane}_${tokenizerLocale}`, `${lane}_fallback`]
     : [`${lane}_fallback`]
@@ -20,10 +25,13 @@ export function watchLexicalQueryFields(
 export function watchLexicalManifestQueryFields(
   fields: readonly TypesenseCollectionField[],
   lane: TypesenseWatchLexicalLane,
+  variant: TypesenseWatchLexicalVariant = "exact",
 ): string[] {
-  const prefix = `${lane}_`
+  const prefix = variant === "stem" ? `${lane}_stem_` : `${lane}_`
+  const excludedPrefix = `${lane}_stem_`
   return fields.flatMap((field) =>
     field.name.startsWith(prefix) &&
+    (variant === "stem" || !field.name.startsWith(excludedPrefix)) &&
     field.index !== false &&
     (field.type === "string" || field.type === "string[]")
       ? [field.name]

@@ -72,24 +72,36 @@ describe("displayPreviewLocale", () => {
 
 describe("watchLexicalQueryFields", () => {
   it.each([
-    ["en", "title", ["title_en", "title_fallback"]],
-    ["zh-Hans", "title", ["title_zh", "title_fallback"]],
-    ["th-TH", "metadata", ["metadata_th", "metadata_fallback"]],
-    ["fil", "title", ["title_fallback"]],
-    ["unknown", "metadata", ["metadata_fallback"]],
-  ] as const)("bounds %s %s retrieval fields", (locale, lane, expected) => {
-    expect(watchLexicalQueryFields(locale, lane)).toEqual(expected)
-  })
+    ["en", "title", "exact", ["title_en", "title_fallback"]],
+    ["zh-Hans", "title", "stem", ["title_stem_zh"]],
+    ["th-TH", "metadata", "exact", ["metadata_th", "metadata_fallback"]],
+    ["es-MX", "taxonomy", "exact", ["taxonomy_es", "taxonomy_fallback"]],
+    ["es-MX", "taxonomy", "stem", ["taxonomy_stem_es"]],
+    ["mi", "title", "exact", ["title_fallback"]],
+    ["mi", "metadata", "stem", []],
+    ["unknown", "taxonomy", "exact", ["taxonomy_fallback"]],
+  ] as const)(
+    "bounds %s %s %s retrieval fields",
+    (locale, lane, variant, expected) => {
+      expect(watchLexicalQueryFields(locale, lane, variant)).toEqual(expected)
+    },
+  )
 
   it("uses every searchable manifest field for a candidate lane", () => {
     const fields = [
       { name: "languageIdentity", type: "string", facet: true },
       { name: "title_en", type: "string[]" },
+      { name: "title_stem_en", type: "string[]" },
       { name: "title_ja", type: "string[]" },
+      { name: "title_stem_ja", type: "string[]" },
       { name: "title_zh", type: "string[]" },
       { name: "title_fallback", type: "string[]" },
       { name: "metadata_en", type: "string[]" },
+      { name: "metadata_stem_en", type: "string[]" },
       { name: "metadata_fallback", type: "string[]" },
+      { name: "taxonomy_en", type: "string[]" },
+      { name: "taxonomy_stem_en", type: "string[]" },
+      { name: "taxonomy_fallback", type: "string[]" },
       { name: "title_legacy", type: "string[]", index: false },
     ]
 
@@ -103,5 +115,12 @@ describe("watchLexicalQueryFields", () => {
       "metadata_en",
       "metadata_fallback",
     ])
+    expect(watchLexicalManifestQueryFields(fields, "title", "stem")).toEqual([
+      "title_stem_en",
+      "title_stem_ja",
+    ])
+    expect(
+      watchLexicalManifestQueryFields(fields, "taxonomy", "exact"),
+    ).toEqual(["taxonomy_en", "taxonomy_fallback"])
   })
 })

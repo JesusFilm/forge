@@ -38,6 +38,14 @@ export type TypesenseSearchRequest = Record<
 
 export type TypesenseSearchHit<T> = {
   document: T
+  highlights?: Array<{
+    field: string
+    matched_tokens?: string[]
+    snippet?: string
+    snippets?: string[]
+    value?: string
+    indices?: number[]
+  }>
   text_match?: number
   text_match_info?: {
     score?: string
@@ -76,6 +84,10 @@ type TypesenseMultiSearchResponse<T> = {
   results: Array<TypesenseSearchResult<T> | { error: string; code?: number }>
 }
 
+export type TypesenseSettledSearchResult<T> =
+  | { status: "fulfilled"; value: TypesenseSearchResult<T> }
+  | { status: "rejected"; reason: TypesenseSearchResultError }
+
 type TypesenseRequestOptions = {
   acceptedStatuses?: readonly number[]
   responseType?: "json" | "text"
@@ -89,6 +101,17 @@ export class TypesenseRequestError extends Error {
   ) {
     super(message)
     this.name = "TypesenseRequestError"
+  }
+}
+
+export class TypesenseSearchResultError extends TypesenseRequestError {
+  constructor(
+    readonly typesenseError: string,
+    status: number | null,
+    readonly resultIndex: number,
+  ) {
+    super(`Typesense search failed: ${typesenseError}`, status)
+    this.name = "TypesenseSearchResultError"
   }
 }
 
@@ -283,10 +306,10 @@ export class TypesenseClient {
     return result.num_updated ?? 0
   }
 
-  async multiSearch<T>(
+  async multiSearchSettled<T>(
     searches: readonly TypesenseSearchRequest[],
     options: { timeoutMs?: number } = {},
-  ): Promise<TypesenseSearchResult<T>[]> {
+  ): Promise<TypesenseSettledSearchResult<T>[]> {
     const response = await this.request<TypesenseMultiSearchResponse<T>>(
       "/multi_search",
       {
@@ -296,15 +319,46 @@ export class TypesenseClient {
       },
       { timeoutMs: options.timeoutMs },
     )
-    const failed = response.results.find(
-      (result): result is { error: string; code?: number } => "error" in result,
-    )
-    if (failed) {
+    if (!response || !Array.isArray(response.results)) {
       throw new TypesenseRequestError(
-        `Typesense search failed: ${failed.error}`,
-        failed.code ?? null,
+        "Typesense multi-search response is malformed",
       )
     }
-    return response.results as TypesenseSearchResult<T>[]
+    return response.results.map((result, resultIndex) =>
+      "error" in result
+        ? {
+            status: "rejected",
+            reason: new TypesenseSearchResultError(
+              result.error,
+              result.code ?? null,
+              resultIndex,
+            ),
+          }
+        : { status: "fulfilled", value: result },
+    )
+  }
+
+  async multiSearch<T>(
+    searches: readonly TypesenseSearchRequest[],
+    options: { timeoutMs?: number } = {},
+  ): Promise<TypesenseSearchResult<T>[]> {
+    const results = await this.multiSearchSettled<T>(searches, options)
+    const failed = results.find(
+      (
+        result,
+      ): result is {
+        status: "rejected"
+        reason: TypesenseSearchResultError
+      } => result.status === "rejected",
+    )
+    if (failed) {
+      throw failed.reason
+    }
+    return results.map((result) => {
+      if (result.status !== "fulfilled") {
+        throw result.reason
+      }
+      return result.value
+    })
   }
 }
