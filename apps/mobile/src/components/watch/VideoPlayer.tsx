@@ -80,9 +80,9 @@ type VideoPlayerProps = {
 // U7 must not make the series trailer borrow: it passes no progressIdentity,
 // so a shared session player would move an unrelated video's bookmark and a
 // 90% tick would mark it complete, with nothing on that screen able to notice.
-/** Owns its player plus the chrome. Still the form EVERY production caller
- *  uses — U6 mounted a host that can own one, but nothing publishes a session
- *  to it, so the watch route owns the only player a viewer sees. */
+/** Owns its player plus the chrome. The series-detail trailer is now its only
+ *  production caller: the watch route borrows the root host's player through
+ *  `VideoPlayerSurface` below, so one video is never decoded twice. */
 export function VideoPlayer({
   progressIdentity = null,
   ...surface
@@ -98,8 +98,8 @@ export function VideoPlayer({
 }
 
 /** The chrome, captions and tap handling around a player somebody else owns.
- *  Nothing borrows one in production yet: the split exists so U7's window and
- *  the watch route can share the root host's player without a second copy. */
+ *  The watch route renders this over the root host's player, so the full view
+ *  and the floating window are two surfaces on one decoder. */
 export type VideoPlayerSurfaceProps = Omit<
   VideoPlayerProps,
   "progressIdentity"

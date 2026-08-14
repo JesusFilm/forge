@@ -125,6 +125,17 @@ describe("sessionIdentityKey", () => {
       sessionIdentityKey({ videoSlug: "x" }),
     )
   })
+
+  it("is unchanged when a videoId arrives mid-session", () => {
+    // THE reason the key names one field. The watch route publishes from the
+    // route param, then the query resolves a documentId a second later. A key
+    // over both would re-key the host's player under running video.
+    const beforeQuery = { videoSlug: "birth-of-jesus" }
+    const afterQuery = { videoSlug: "birth-of-jesus", videoId: "video-1" }
+    expect(sessionIdentityKey(afterQuery)).toBe(sessionIdentityKey(beforeQuery))
+    expect(isSameSession(beforeQuery, afterQuery)).toBe(true)
+    expect(sessionActionFor(beforeQuery, afterQuery)).toBe("update")
+  })
 })
 
 describe("sessionActionFor", () => {

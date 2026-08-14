@@ -39,7 +39,8 @@ import {
   hexToRgba,
 } from "../../src/lib/color"
 import { layout, text } from "../../src/styles/shared"
-import { VideoPlayer } from "../../src/components/watch/VideoPlayer"
+import { VideoPlayerSurface } from "../../src/components/watch/VideoPlayer"
+import { useHostPlayback } from "../../src/hooks/useHostPlayback"
 import { useFullscreenPresentation } from "../../src/hooks/useFullscreenPresentation"
 import { buildWatchShareUrl } from "../../src/lib/watchShareUrl"
 import { VideoDetailSkeleton } from "../../src/components/watch/VideoDetailSkeleton"
@@ -291,6 +292,29 @@ export default function WatchVideoPage() {
     video?.streamingUrl ??
     seedStreamingUrl
 
+  // decodedSlug, never video.slug: the two diverge while a new slug's record
+  // is still loading, and the window's expand target is a route param.
+  const playbackClaim = useMemo(
+    () =>
+      playerSource == null
+        ? null
+        : {
+            videoId: video?.documentId,
+            videoSlug: decodedSlug,
+            languageSlug: activeVariant?.languageSlug ?? null,
+            streamingUrl: playerSource,
+          },
+    [playerSource, video?.documentId, decodedSlug, activeVariant?.languageSlug],
+  )
+
+  // Borrowed, never created: the root host owns the one player so it can
+  // outlive this route, and a second player here is a second decoder (R10).
+  const { player: hostPlayer, onPlayingChange } = useHostPlayback({
+    claim: playbackClaim,
+    posterUrl: displayPoster,
+    title: displayTitle,
+  })
+
   const handleScroll = useCallback(
     (e: NativeSyntheticEvent<NativeScrollEvent>) => {
       const scrollY = e.nativeEvent.contentOffset.y
@@ -491,38 +515,29 @@ export default function WatchVideoPage() {
             : { paddingTop: insets.top }
         }
       >
-        {playerSource == null ? (
+        {hostPlayer == null ? (
           // No stream yet (series/collection pre-redirect, or no variant in the
           // target language). Paint the artwork, not transport chrome for
           // something unplayable.
           <PlayerPoster
             posterUrl={displayPoster}
-            // Spin only while the stream is still being resolved — once the
-            // query settles, a null source means unplayable, not pending.
-            loading={loading && error == null}
+            // A source with no borrowed player yet is the root host building
+            // one, which is still pending. Once the query settles with no
+            // source at all, a null source means unplayable.
+            loading={playerSource != null || (loading && error == null)}
           />
         ) : (
-          <VideoPlayer
+          <VideoPlayerSurface
             streamingUrl={playerSource}
             posterUrl={displayPoster}
             subtitleVttSrc={subtitleVttSrc}
-            onPlayingChange={undefined}
+            onPlayingChange={onPlayingChange}
             fullscreen={isFullscreen}
             onToggleFullscreen={toggleFullscreen}
-            progressIdentity={
-              // Offline playback may predate the record load — the slug is
-              // the on-device key admin resolves server-side (KTD8).
-              video?.documentId
-                ? {
-                    videoId: video.documentId,
-                    languageSlug: activeVariant?.languageSlug ?? null,
-                  }
-                : offlineSource
-                  ? { videoSlug: decodedSlug, languageSlug: null }
-                  : null
-            }
             resumeAtSeconds={resumeAtSeconds}
             autostart
+            player={hostPlayer.player}
+            isPlaying={hostPlayer.isPlaying}
           />
         )}
       </View>

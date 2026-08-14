@@ -121,6 +121,11 @@ import {
   type SheetCounter,
 } from "../../../lib/miniPlayer/suppression"
 import {
+  resetHostPlayerBridge,
+  setPlaybackClaim,
+  type PlaybackClaim,
+} from "../../../lib/miniPlayer/hostPlayer"
+import {
   resetPictureInPictureLatch,
   setPictureInPictureActive,
 } from "../../../lib/miniPlayer/pipLatch"
@@ -303,6 +308,7 @@ beforeEach(() => {
   jest.useFakeTimers()
   resetExpoVideoMock()
   resetPictureInPictureLatch()
+  resetHostPlayerBridge()
   sheets = createSheetCounter()
   registry = createSessionEndRegistry()
   segmentReads = 0
@@ -840,11 +846,15 @@ describe("PlaybackHost presentation", () => {
  * never two, because two surfaces on one player is the other failure.
  */
 describe("PlaybackHost video surface", () => {
-  async function mountPlaying(segments: readonly string[] = HOME_SEGMENTS) {
+  async function mountPlaying(
+    segments: readonly string[] = HOME_SEGMENTS,
+    claim: PlaybackClaim | null = null,
+  ) {
     const store = makeStore()
     const renderer = await mount(store, segments)
     await act(async () => {
       store.start({ videoId: "video-1", streamingUrl: EPISODE_ONE })
+      if (claim != null) setPlaybackClaim(claim)
     })
     return { renderer, store }
   }
@@ -900,15 +910,45 @@ describe("PlaybackHost video surface", () => {
     expect(createdFakePlayers()).toHaveLength(1)
   })
 
-  it("mounts NO surface on the watch route", async () => {
-    // The watch route builds and autostarts its own player on its own surface.
-    // A keep-alive surface here is a SECOND mounted surface for the same video,
-    // which is two decoders and two audio streams on the expand flow.
-    const { renderer } = await mountPlaying(WATCH_SEGMENTS)
+  it("mounts NO surface on the watch route while that route claims it", async () => {
+    // The watch route renders the full-screen surface over this same player. A
+    // keep-alive surface here would be a SECOND view owning one player, which
+    // is what Android asserts against.
+    const { renderer } = await mountPlaying(WATCH_SEGMENTS, {
+      videoId: "video-1",
+      streamingUrl: EPISODE_ONE,
+    })
 
     expect(hasWindowSlot(renderer)).toBe(false)
     expect(hasKeepAliveSlot(renderer)).toBe(false)
     expect(videoSurfaces(renderer)).toHaveLength(0)
+  })
+
+  it("keeps a surface on the watch route when no route claims one", async () => {
+    // The reachable hazard: segments still say `watch` for the commit after the
+    // route released its claim. A player left with NO surface while it plays is
+    // permanently video-dead on Android, and only a new player recovers it.
+    const { renderer } = await mountPlaying(WATCH_SEGMENTS)
+
+    expect(hasKeepAliveSlot(renderer)).toBe(true)
+    expect(videoSurfaces(renderer)).toHaveLength(1)
+  })
+
+  it("hands the surface back the instant the route's claim goes", async () => {
+    const { renderer } = await mountPlaying(WATCH_SEGMENTS, {
+      videoId: "video-1",
+      streamingUrl: EPISODE_ONE,
+    })
+    expect(videoSurfaces(renderer)).toHaveLength(0)
+
+    await act(async () => {
+      setPlaybackClaim(null)
+    })
+
+    expect(videoSurfaces(renderer)).toHaveLength(1)
+    // Still the same player: a handoff that recreated it would restart the
+    // video, which is the audible gap R1 forbids.
+    expect(createdFakePlayers()).toHaveLength(1)
   })
 
   it("hides the suppressed surface and takes no touches", async () => {

@@ -2,10 +2,10 @@
  * The root-owned playback host (U6/KTD2).
  *
  * It owns the ONE expo-video player for whatever the mini player store says is
- * playing, so the player outlives the watch route. Off the watch route it
- * mounts exactly one VideoView for that player and never fewer, visible or
- * suppressed (see MiniPlayerWindowSlot). ON the watch route it mounts none:
- * that screen still builds its own player and its own surface.
+ * playing OR the watch route has claimed, so the player outlives that route.
+ * Exactly one VideoView is mounted for it at all times, visible or suppressed
+ * — this host's own (see MiniPlayerWindowSlot) unless the watch route holds
+ * the claim, in which case that route renders the only surface.
  *
  * Everything testable lives here or in the pure modules under
  * `src/lib/miniPlayer/` — expo-router cannot be imported unmounted under this
@@ -40,10 +40,20 @@ import {
 } from "../../lib/miniPlayer"
 import type { SessionEndListener } from "../../lib/miniPlayer/endRegistry"
 import {
+  getPlaybackClaim,
+  resolveActivePlayback,
+  setHostPlayer,
+  setPlaybackClaim,
+  subscribeToPlaybackClaim,
+} from "../../lib/miniPlayer/hostPlayer"
+import {
   isPictureInPictureActive,
   subscribeToPictureInPicture,
 } from "../../lib/miniPlayer/pipLatch"
-import { presentationFor } from "../../lib/miniPlayer/presentation"
+import {
+  presentationFor,
+  type MiniPlayerPresentation,
+} from "../../lib/miniPlayer/presentation"
 import {
   normalizeSessionIdentity,
   sessionIdentityKey,
@@ -112,6 +122,9 @@ export function PlaybackHost({
   navigateToVideo = expoRouterNavigateToVideo,
 }: PlaybackHostProps = {}) {
   const session = useSyncExternalStore(store.subscribe, store.getSnapshot)
+  // The watch route's claim on the one player, which is what stops that route
+  // creating a second one for the same video.
+  const claim = useSyncExternalStore(subscribeToPlaybackClaim, getPlaybackClaim)
 
   const handleError = useCallback(
     (error: Error) => {
@@ -120,21 +133,23 @@ export function PlaybackHost({
       } catch {
         // Telemetry must never widen a render failure.
       }
-      // Ending the session unmounts this subtree, which IS the reset path: the
-      // root boundary above has none, so a throw there costs an app relaunch.
+      // Both, or the subtree never unmounts: the root boundary above has no
+      // reset path, so a throw there costs an app relaunch.
       store.end("failed")
+      setPlaybackClaim(null)
     },
     [store],
   )
 
-  if (session == null) return null
+  const active = resolveActivePlayback(claim, session)
+  if (active == null) return null
 
   // Keyed by the session module, not a local field list: two definitions of
   // "same session" that must stay in step by hand is the divergence that
   // module exists to prevent.
   return (
     <PlaybackHostBoundary
-      key={sessionIdentityKey(session)}
+      key={sessionIdentityKey(active)}
       onError={handleError}
     >
       <PlaybackSession
@@ -144,10 +159,11 @@ export function PlaybackHost({
         useRouteSegments={useRouteSegments}
         canGoBack={canGoBack}
         navigateToVideo={navigateToVideo}
-        streamingUrl={session.streamingUrl}
-        videoId={session.videoId}
-        videoSlug={session.videoSlug}
-        languageSlug={session.languageSlug ?? null}
+        routeOwnsSurface={claim != null}
+        streamingUrl={active.streamingUrl}
+        videoId={active.videoId}
+        videoSlug={active.videoSlug}
+        languageSlug={active.languageSlug}
       />
     </PlaybackHostBoundary>
   )
@@ -160,6 +176,8 @@ type PlaybackSessionProps = {
   useRouteSegments: () => readonly string[]
   canGoBack: () => boolean
   navigateToVideo: (video: MiniPlayerWindowVideo) => void
+  /** The watch route is mounted and holds the one video surface. */
+  routeOwnsSurface: boolean
   streamingUrl: string
   videoId?: string
   videoSlug?: string
@@ -178,6 +196,7 @@ const PlaybackSession = memo(function PlaybackSession({
   useRouteSegments,
   canGoBack,
   navigateToVideo,
+  routeOwnsSurface,
   streamingUrl,
   videoId,
   videoSlug,
@@ -255,6 +274,7 @@ const PlaybackSession = memo(function PlaybackSession({
       useRouteSegments={useRouteSegments}
       canGoBack={canGoBack}
       navigateToVideo={navigateToVideo}
+      routeOwnsSurface={routeOwnsSurface}
       onPlayPause={handlePlayPause}
       onDismiss={handleDismiss}
       onEnded={handleEnded}
@@ -273,6 +293,7 @@ type MiniPlayerWindowSlotProps = {
   useRouteSegments: () => readonly string[]
   canGoBack: () => boolean
   navigateToVideo: (video: MiniPlayerWindowVideo) => void
+  routeOwnsSurface: boolean
   onPlayPause: () => void
   onDismiss: () => void
   onEnded: () => void
@@ -297,6 +318,7 @@ function MiniPlayerWindowSlot({
   useRouteSegments,
   canGoBack,
   navigateToVideo,
+  routeOwnsSurface,
   onPlayPause,
   onDismiss,
   onEnded,
@@ -318,6 +340,27 @@ function MiniPlayerWindowSlot({
     sheetCount,
     pipActive,
   })
+
+  // The route and this window must never both hold a video view: Android
+  // asserts on two views owning one player. The claim, not the route's own
+  // views, decides who owns it — it outlives them by one commit either way.
+  const windowPresentation: MiniPlayerPresentation = routeOwnsSurface
+    ? "full"
+    : presentation === "full"
+      ? "hidden"
+      : presentation
+  const surfaceFree =
+    windowPresentation === "full" || windowPresentation === "none"
+
+  const identityKey = sessionIdentityKey({ videoId, videoSlug })
+  // Published AFTER the commit that mounted or unmounted this window's surface,
+  // which is what makes `surfaceFree` a promise rather than an intention.
+  useEffect(() => {
+    setHostPlayer({ player, identityKey, isPlaying, surfaceFree })
+  }, [player, identityKey, isPlaying, surfaceFree])
+  // Unmount only. Clearing it from the effect above would blank the borrowed
+  // player on every play/pause and unmount the route's surface with it.
+  useEffect(() => () => setHostPlayer(null), [])
 
   useEffect(() => {
     // R23, the ONE deliberate exception to "back is never intercepted", and it
@@ -345,12 +388,12 @@ function MiniPlayerWindowSlot({
   )
 
   // Measured on Android: a VideoView that FIRST attaches to an already-playing
-  // surfaceless player gets a permanently DEAD surface, and only a new player
-  // recovers it. The window owns that ONE surface through every suppression.
+  // surfaceless player is permanently DEAD, and only a new player recovers it.
+  // Every presentation but `full` mounts one, and `full` means the route does.
   return (
     <MiniPlayerWindowSurface
       store={store}
-      presentation={presentation}
+      presentation={windowPresentation}
       player={player}
       isPlaying={isPlaying}
       screen={screen}

@@ -27,6 +27,7 @@ import { feedback } from "../../styles/shared"
 import { resolveThumbnailUrl } from "../../lib/resolveThumbnailUrl"
 import { validateStreamingUrl } from "../../lib/validateUrl"
 import { PlatformBlur } from "../ui/PlatformBlur"
+import { useMiniPlayerActive } from "../../hooks/useMiniPlayerActive"
 import { useTypography } from "../../hooks/useTypography"
 import type { AdminBlock } from "../../lib/queries"
 import { useVideoThumbnail } from "../../contexts/ExperienceProvider"
@@ -76,6 +77,10 @@ export function VideoHeroRenderer({
   const appActiveRef = useRef(true)
 
   const [hasStarted, setHasStarted] = useState(false)
+  // R9/R10: this hero competes for the one decoder even though R19 keeps it
+  // out of the mini player. It yields the surface AND the transport.
+  const miniPlayerActive = useMiniPlayerActive()
+  const showVideoSurface = hasValidStream && !miniPlayerActive
 
   const player = useVideoPlayer(hasValidStream ? streamingUrl : null, (p) => {
     p.muted = true
@@ -104,13 +109,13 @@ export function VideoHeroRenderer({
   }, [isPlaying, hasStarted])
 
   useEffect(() => {
-    if (paused == null) return
-    if (paused) {
-      player.pause()
-    } else if (appActiveRef.current) {
-      player.play()
+    try {
+      if (miniPlayerActive || paused === true) player.pause()
+      else if (appActiveRef.current) player.play()
+    } catch {
+      // Native player already released
     }
-  }, [paused, player])
+  }, [miniPlayerActive, paused, player])
 
   useEffect(() => {
     player.muted = mutedProp
@@ -163,7 +168,7 @@ export function VideoHeroRenderer({
       ref={containerRef}
       style={[styles.container, { height: computedHeight }]}
     >
-      {hasValidStream ? (
+      {showVideoSurface ? (
         <>
           <VideoView
             player={player}

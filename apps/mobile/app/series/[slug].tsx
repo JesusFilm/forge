@@ -23,6 +23,11 @@ import { decodeWatchSeed, encodeWatchSeed } from "../../src/lib/watchSeed"
 import { resolveImageUrl } from "../../src/lib/resolveImageUrl"
 import { ACCENT, SURFACE_COLOR } from "../../src/lib/color"
 import { layout, text } from "../../src/styles/shared"
+import {
+  showsSeriesPosterHero,
+  showsSeriesTrailer,
+} from "../../src/lib/seriesHero"
+import { useMiniPlayerActive } from "../../src/hooks/useMiniPlayerActive"
 import { useTypography } from "../../src/hooks/useTypography"
 import { VideoPlayer } from "../../src/components/watch/VideoPlayer"
 import { useFullscreenPresentation } from "../../src/hooks/useFullscreenPresentation"
@@ -191,6 +196,12 @@ export default function SeriesScreen() {
 
   const hasSeries = series != null
   const hasTrailer = trailerHls != null
+  // R9/R10: the mini player wins the one decoder, so the trailer neither
+  // autostarts nor mounts a video view while a session is live. The poster
+  // hero takes its place, or the screen would have no hero at all.
+  const miniPlayerActive = useMiniPlayerActive()
+  const heroInput = { hasSeries, hasTrailer, miniPlayerActive }
+  const showTrailer = showsSeriesTrailer(heroInput)
 
   const handleShare = useCallback(() => {
     if (!series) return
@@ -422,7 +433,7 @@ export default function SeriesScreen() {
       {/* Trailer plays → pin the player at the top so scrolling the list never
           obscures playback. Fullscreen lifts the dock above the grid via zIndex
           (RN zIndex is sibling-scoped, so the player's own can't clear it). */}
-      {hasSeries && hasTrailer && (
+      {showTrailer && (
         <View style={isFullscreen ? styles.heroDockFullscreen : heroDock}>
           <VideoPlayer
             streamingUrl={trailerHls}
@@ -441,7 +452,7 @@ export default function SeriesScreen() {
         badgeBySlug={badgeBySlug}
         header={
           <>
-            {!hasTrailer && posterHero}
+            {showsSeriesPosterHero(heroInput) && posterHero}
             <VideoMetadata
               label={series?.label ?? "SERIES"}
               title={displayTitle}

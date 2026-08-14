@@ -52,9 +52,20 @@ export function normalizeSessionIdentity(
  * Every consumer that needs a same-session decision derives it from here —
  * `isSameSession` below, and the host's player key. A second field list kept
  * in step by hand is exactly the divergence this module exists to prevent.
+ *
+ * ONE field, slug first. The watch route knows its slug from the route param
+ * but learns `videoId` from a query that can resolve after playback starts, so
+ * a key naming both would change mid-session: the host would re-key its player
+ * (the audible gap R1 forbids) and tapping the window to expand would file a
+ * `replaced` against the session it is expanding.
+ *
+ * The prefix is what keeps the single field from colliding a videoId with an
+ * identically-spelled slug.
  */
 export function sessionIdentityKey(identity: SessionIdentity): string {
-  return [identity.videoId ?? "", identity.videoSlug ?? ""].join("|")
+  if (identity.videoSlug != null) return `slug:${identity.videoSlug}`
+  if (identity.videoId != null) return `id:${identity.videoId}`
+  return ""
 }
 
 /**

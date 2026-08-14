@@ -92,6 +92,12 @@ export type HomeHeroPagerProps = {
    * Mirrors VideoHeroRenderer's prop surface so U7 reuses the same wiring.
    */
   paused?: boolean
+  /**
+   * R10: yield the DECODER, not just the transport. `paused` suspends the
+   * reducer but leaves `videoReady` set, so the video view stays mounted and
+   * holds its surface — a second decoder beside the mini player's.
+   */
+  videoSuppressed?: boolean
   blurOpacity?: number
   /**
    * CONTROLLED: HomeScreen owns the state and the mute button (the pager
@@ -110,6 +116,7 @@ export function HomeHeroPager({
   slides,
   heroHeight,
   paused,
+  videoSuppressed = false,
   blurOpacity = 0,
   muted = true,
   onSlideChange,
@@ -541,7 +548,7 @@ export function HomeHeroPager({
       return (
         <HeroPage
           slide={item}
-          showVideo={showVideo}
+          showVideo={showVideo && !videoSuppressed}
           posterHidden={posterHidden}
           player={player}
           width={screenWidth}
@@ -555,6 +562,7 @@ export function HomeHeroPager({
       state.phase,
       state.videoReady,
       state.transitionFromId,
+      videoSuppressed,
       player,
       screenWidth,
       pageHeight,
@@ -573,7 +581,7 @@ export function HomeHeroPager({
         data={state.slides}
         renderItem={renderItem}
         keyExtractor={keyExtractor}
-        extraData={`${state.currentIndex}|${state.phase}|${state.videoReady}|${state.transitionFromId ?? ""}`}
+        extraData={`${state.currentIndex}|${state.phase}|${state.videoReady}|${state.transitionFromId ?? ""}|${videoSuppressed}`}
         horizontal
         pagingEnabled
         showsHorizontalScrollIndicator={false}

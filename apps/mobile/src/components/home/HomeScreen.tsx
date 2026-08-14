@@ -22,6 +22,7 @@ import { useNavigation, useRouter } from "expo-router"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import Ionicons from "@expo/vector-icons/Ionicons"
 
+import { useMiniPlayerActive } from "../../hooks/useMiniPlayerActive"
 import { useTypography } from "../../hooks/useTypography"
 import { useWatchHome } from "../../hooks/useWatchHome"
 import { useWatchHomeCarouselMemory } from "../../hooks/useWatchHomeCarouselMemory"
@@ -39,6 +40,7 @@ import {
   muxSlideDisplayCopy,
   type WatchHomeSlide,
 } from "../../lib/watchHome/carouselSequence"
+import { heroPausedFor } from "../../lib/watchHome/heroPlayback"
 import type { WatchHomeSection } from "../../lib/watchHome/model"
 import { slideRouteArgs } from "../../lib/watchHome/slideRouteArgs"
 import { encodeWatchSeed } from "../../lib/watchSeed"
@@ -258,6 +260,10 @@ export function HomeScreen() {
   const handleMuteToggle = useCallback(() => setMuted((m) => !m), [])
 
   const [focused, setFocused] = useState(true)
+  // R9/R10: the mini player wins the one decoder. Composed into `paused`, not
+  // added as a pager suspend reason — that union holds one slot and clears
+  // unconditionally, so a scroll back to the top would drop this.
+  const miniPlayerActive = useMiniPlayerActive()
   useEffect(() => {
     // CuratedHomeLayout session-mute rule: blur resets to muted; an unmute
     // persists across slide advances while focused. The focus flag also suspends
@@ -437,7 +443,12 @@ export function HomeScreen() {
             ref={pagerRef}
             slides={heroSlides}
             heroHeight={heroHeight}
-            paused={heroPaused || !focused}
+            paused={heroPausedFor({
+              scrolledAway: heroPaused,
+              focused,
+              miniPlayerActive,
+            })}
+            videoSuppressed={miniPlayerActive}
             blurOpacity={heroBlurOpacity}
             muted={muted}
             onSlideChange={handleSlideChange}
