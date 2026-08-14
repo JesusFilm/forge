@@ -33,37 +33,30 @@ export class DevotionalLlmError extends Error {
       | "validation",
     message: string,
     readonly cause?: unknown,
+    /**
+     * Upstream HTTP status when there was one, and whether an OUTER layer should
+     * try again.
+     *
+     * `code` alone could not answer that: `request_failed` covered both a
+     * permanent 400 (unsupported schema keyword, bad model id — identical on
+     * every attempt) and a 429 that had already exhausted this client's own
+     * retries. A caller reading only the code retried both, which turned three
+     * critics behind their own single retry into up to eighteen requests, and
+     * retried a deterministic 400 for nothing.
+     *
+     * This client OWNS the attempt budget: it retries 429/5xx up to
+     * `maxAttempts` honouring Retry-After, and transport failures with backoff.
+     * By the time it throws, that budget is spent, so no caller should add its
+     * own — the three critics used to, which made a worst case of eighteen
+     * requests for one gate. `status` is kept because it is the one thing a
+     * caller genuinely needs and cannot recover: it tells an operator whether an
+     * outage was a 429, a 500, or a permanent 400.
+     */
+    readonly status?: number,
   ) {
     super(message)
     this.name = "DevotionalLlmError"
   }
-}
-
-/**
- * Is a second attempt by an OUTER caller worth paying for?
- *
- * `createDevotionalLlm` already retries the transient cases itself — 429 and
- * 5xx, up to `maxAttempts` (3 by default), honouring Retry-After. So an error
- * that reaches a caller has already survived the layer built for rate limits,
- * and the remaining codes divide cleanly:
- *
- *   transport / request_failed — retry. Post-exhaustion network trouble or an
- *     upstream that was unhealthy for the whole window; a later attempt can
- *     genuinely differ.
- *   validation — do NOT retry. The reply parsed but did not match the schema, or
- *     the provider rejected the schema itself. Both are deterministic for a
- *     given prompt and schema: the second attempt sends the identical request and
- *     fails identically, so it only costs money and delay. The provider
- *     rejecting a JSON-schema keyword is exactly this shape, and it failed on
- *     EVERY call when it happened here.
- *   missing_credentials — do NOT retry. Configuration does not change mid-run.
- *
- * The critics that use this treat a non-retryable failure as a check that did
- * not run, which their gate turns into a block. So skipping the retry loses no
- * safety; it removes a paid call that could not have helped.
- */
-export function isWorthRetrying(error: DevotionalLlmError): boolean {
-  return error.code === "transport" || error.code === "request_failed"
 }
 
 export type DevotionalLlmCompletion<TResult> = {
@@ -207,6 +200,8 @@ export function createDevotionalLlm(options: {
         throw new DevotionalLlmError(
           "request_failed",
           `devotional model request failed with ${response.status}: ${body.slice(0, 500)}`,
+          undefined,
+          response.status,
         )
       }
 

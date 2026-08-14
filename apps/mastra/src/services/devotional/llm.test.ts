@@ -120,6 +120,44 @@ describe("createDevotionalLlm", () => {
     })
   })
 
+  // This client OWNS the attempt budget, and callers used to re-derive
+  // retryability from `code` alone. `request_failed` covers both a permanent 400
+  // and a 429 that already exhausted these retries, so a caller retrying on the
+  // code retried a deterministic failure and doubled a spent budget — three
+  // critics each adding one retry made a worst case of eighteen requests. The
+  // status is what distinguishes them, and it has to survive the throw.
+  it("carries the status of a permanent 4xx, and spends only one attempt", async () => {
+    const fetchImpl = vi.fn(async () => chatResponse("", 400))
+    const llm = makeLlm(fetchImpl)
+    await expect(llm.complete(complete)).rejects.toMatchObject({
+      code: "request_failed",
+      status: 400,
+    })
+    expect(fetchImpl).toHaveBeenCalledTimes(1)
+  })
+
+  it("carries the status of a FINAL 429, after spending the whole budget", async () => {
+    const fetchImpl = vi.fn(async () => chatResponse("", 429))
+    const llm = makeLlm(fetchImpl)
+    await expect(llm.complete(complete)).rejects.toMatchObject({
+      code: "request_failed",
+      status: 429,
+    })
+    // Three attempts, not one: the same code as the 400 above, reached a totally
+    // different way. Only `status` plus the call count tell them apart.
+    expect(fetchImpl).toHaveBeenCalledTimes(3)
+  })
+
+  it("leaves status undefined on a malformed 200, which is not an HTTP failure", async () => {
+    const fetchImpl = vi.fn(async () => chatResponse("not json at all"))
+    const llm = makeLlm(fetchImpl)
+    await expect(llm.complete(complete)).rejects.toMatchObject({
+      code: "validation",
+      status: undefined,
+    })
+    expect(fetchImpl).toHaveBeenCalledTimes(1)
+  })
+
   it("throws validation when the response has no text content", async () => {
     const llm = makeLlm(
       async () =>

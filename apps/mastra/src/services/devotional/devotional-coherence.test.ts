@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from "vitest"
+import { describe, expect, it, vi } from "vitest"
 
 import { checkDevotionalCoherence } from "./devotional-coherence"
 import { DevotionalLlmError, type DevotionalLlm } from "./llm"
@@ -6,13 +6,15 @@ import { DevotionalLlmError, type DevotionalLlm } from "./llm"
 /**
  * This critic shipped with no tests, and it is the one the quality gate consults
  * FIRST: the gate blocks on `skipped` before it looks at `coherent`. That makes
- * the fail-open shape load-bearing — on a double failure the critic returns
+ * the fail-open shape load-bearing — on a provider failure the critic returns
  * `coherent: true` so a checker outage never blocks a render, and `skipped: true`
  * is the ONLY thing distinguishing that from a genuine pass. Delete the flag and
  * the gate reads a provider outage as "this devotional is fine".
  *
- * Fake timers rather than sleeping the real 2s retry delay, which is what the
- * sibling critic suites do and what makes them slow.
+ * ONE attempt per critic. `createDevotionalLlm` owns the retry budget (429/5xx up
+ * to three attempts, honouring Retry-After), so a retry here would double a
+ * budget already spent — which is how three critics reached a worst case of
+ * eighteen requests for one gate. Nothing to fake, no second call to assert.
  */
 
 const REPORT = {
@@ -47,9 +49,9 @@ function fakeLlm(complete: DevotionalLlm["complete"]): DevotionalLlm {
   return { model: "fake", complete }
 }
 
-afterEach(() => {
-  vi.useRealTimers()
-})
+function failing(error: Error) {
+  return vi.fn().mockRejectedValue(error)
+}
 
 describe("checkDevotionalCoherence", () => {
   it("passes the critic's verdict through, including the better-fitting verse", async () => {
@@ -67,102 +69,60 @@ describe("checkDevotionalCoherence", () => {
     expect(complete).toHaveBeenCalledTimes(1)
   })
 
-  it("retries once and returns the second attempt's verdict, unskipped", async () => {
-    vi.useFakeTimers()
-    const complete = vi
-      .fn()
-      .mockRejectedValueOnce(
-        new DevotionalLlmError("request_failed", "transient"),
-      )
-      .mockResolvedValue({ ...REPORT, coherent: true, issues: [] })
-    const pending = checkDevotionalCoherence(
+  it("degrades on the FIRST provider failure, with no second attempt", async () => {
+    const complete = failing(
+      new DevotionalLlmError("request_failed", "down", undefined, 503),
+    )
+    const r = await checkDevotionalCoherence(
       input(fakeLlm(complete as unknown as DevotionalLlm["complete"])),
     )
-    await vi.advanceTimersByTimeAsync(2_000)
-    const r = await pending
-    expect(complete).toHaveBeenCalledTimes(2)
-    expect(r.coherent).toBe(true)
-    // A recovered call is a REAL verdict, so it must not be marked skipped —
-    // otherwise the gate blocks every devotional that had one flaky attempt.
-    expect(r.skipped).toBeFalsy()
-  })
-
-  it("marks the report skipped when both attempts fail, and says which code", async () => {
-    vi.useFakeTimers()
-    const complete = vi
-      .fn()
-      .mockRejectedValue(new DevotionalLlmError("request_failed", "down"))
-    const pending = checkDevotionalCoherence(
-      input(fakeLlm(complete as unknown as DevotionalLlm["complete"])),
-    )
-    await vi.advanceTimersByTimeAsync(2_000)
-    const r = await pending
-    expect(complete).toHaveBeenCalledTimes(2)
-    // THE load-bearing pair. `coherent: true` keeps a checker outage from
-    // blocking a render, and `skipped` is what stops the gate reading that
-    // fail-open as a pass. Asserting them together is the point: either one
-    // alone would pass with the other deleted.
+    expect(complete).toHaveBeenCalledTimes(1)
+    // THE load-bearing pair, asserted together on purpose: either one alone still
+    // passes with the other deleted. `coherent: true` keeps a checker outage from
+    // blocking a render; `skipped` stops the gate reading that fail-open as a pass.
     expect(r.coherent).toBe(true)
     expect(r.skipped).toBe(true)
-    expect(r.summary).toContain("request_failed")
     expect(r.issues).toEqual([])
     expect(r.suggestedScriptureReference).toBeNull()
   })
 
   it.each([
-    { code: "validation" as const, why: "deterministic for the same schema" },
+    { code: "transport" as const, status: undefined, shown: "transport" },
+    { code: "request_failed" as const, status: 400, shown: "400" },
+    { code: "validation" as const, status: undefined, shown: "validation" },
     {
       code: "missing_credentials" as const,
-      why: "config does not change mid-run",
+      status: undefined,
+      shown: "missing_credentials",
     },
-  ])("does not pay for a retry on $code ($why)", async ({ code }) => {
-    // createDevotionalLlm already retried the transient cases before throwing
-    // here, so a second identical call cannot differ for these two. The result
-    // is the same degraded report the gate blocks on — only the wasted call and
-    // the 2s delay are gone. Real timers on purpose: with the guard removed
-    // this case fails on the call count after sleeping the real 2s, which is
-    // both the proof and a reminder of what the guard saves.
-    const complete = vi
-      .fn()
-      .mockRejectedValue(new DevotionalLlmError(code, "nope"))
-    const r = await checkDevotionalCoherence(
-      input(fakeLlm(complete as unknown as DevotionalLlm["complete"])),
-    )
-    expect(complete).toHaveBeenCalledTimes(1)
-    expect(r.skipped).toBe(true)
-    expect(r.coherent).toBe(true)
-    expect(r.summary).toContain(code)
-  })
+  ])(
+    "degrades once on $code and names $shown in the summary",
+    async ({ code, status, shown }) => {
+      // Every failure code takes the same single-attempt path now. The status is
+      // the one thing a caller cannot recover on its own, and it is what tells an
+      // operator whether an outage was a 429, a 500, or a permanent 400.
+      const complete = failing(
+        new DevotionalLlmError(code, "nope", undefined, status),
+      )
+      const r = await checkDevotionalCoherence(
+        input(fakeLlm(complete as unknown as DevotionalLlm["complete"])),
+      )
+      expect(complete).toHaveBeenCalledTimes(1)
+      expect(r.skipped).toBe(true)
+      expect(r.summary).toContain(shown)
+    },
+  )
 
   it("rethrows a non-LLM error instead of degrading to skipped", async () => {
     // A bug in our own code must not be laundered into "the check did not run",
     // which the gate turns into a block with a misleading reason.
     const boom = new TypeError("cannot read properties of undefined")
-    const complete = vi.fn().mockRejectedValue(boom)
+    const complete = failing(boom)
     await expect(
       checkDevotionalCoherence(
         input(fakeLlm(complete as unknown as DevotionalLlm["complete"])),
       ),
     ).rejects.toThrow(boom)
     expect(complete).toHaveBeenCalledTimes(1)
-  })
-
-  it("rethrows a non-LLM error raised on the RETRY", async () => {
-    vi.useFakeTimers()
-    const boom = new TypeError("second attempt exploded")
-    const complete = vi
-      .fn()
-      .mockRejectedValueOnce(new DevotionalLlmError("request_failed", "first"))
-      .mockRejectedValue(boom)
-    const pending = checkDevotionalCoherence(
-      input(fakeLlm(complete as unknown as DevotionalLlm["complete"])),
-    )
-    // Attach the rejection handler BEFORE advancing timers. Advancing first lets
-    // the retry reject while nothing is listening, and vitest reports that as an
-    // unhandled rejection — every test still green, whole run exit code 1.
-    const rejects = expect(pending).rejects.toThrow(boom)
-    await vi.advanceTimersByTimeAsync(2_000)
-    await rejects
-    expect(complete).toHaveBeenCalledTimes(2)
   })
 })

@@ -1,6 +1,6 @@
 import { z } from "zod"
 
-import { DevotionalLlmError, isWorthRetrying, type DevotionalLlm } from "./llm"
+import { DevotionalLlmError, type DevotionalLlm } from "./llm"
 
 /**
  * Reflection fidelity critic — checks the MODERNIZED text against the actual
@@ -71,8 +71,6 @@ export type ReflectionFidelityCritique = {
  * rejecting a JSON-schema keyword, which failed on every call. A delay was never
  * going to fix it.
  */
-const RETRY_DELAY_MS = 2_000
-const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
 const Schema = z
   .object({
@@ -205,8 +203,7 @@ export async function critiqueReflectionFidelity(
   // Degraded result shared by both give-up paths, so a non-retryable failure and
   // a failed retry cannot drift into different shapes.
   /**
-   * The degraded result, shared by both give-up paths so a non-retryable failure
-   * and a failed retry cannot drift into different shapes.
+   * The degraded result.
    *
    * Advisory step: never block a render on a checker failure — but mark it
    * `skipped`, so this is never confused with a genuine `faithful: true`
@@ -215,27 +212,22 @@ export async function critiqueReflectionFidelity(
   const skipped = (cause: DevotionalLlmError) => ({
     faithful: true,
     issues: [],
-    summary: `fidelity critique skipped: ${cause.code}`,
+    summary: `fidelity critique skipped: ${cause.code}${cause.status ? ` (${cause.status})` : ""}`,
     skipped: true,
   })
 
   try {
     return await attempt()
-  } catch (firstError) {
-    if (!(firstError instanceof DevotionalLlmError)) throw firstError
-    // Only pay for a second attempt when one could differ. `validation` and
-    // `missing_credentials` are deterministic for a given prompt and schema, and
-    // the transient cases were already retried inside createDevotionalLlm — see
-    // isWorthRetrying. Degrade immediately instead: same outcome the gate turns
-    // into a block, minus a call that could not have helped and minus the 2s.
-    if (!isWorthRetrying(firstError)) return skipped(firstError)
-    await sleep(RETRY_DELAY_MS)
-    try {
-      return await attempt()
-    } catch (error) {
-      if (error instanceof DevotionalLlmError) return skipped(error)
-      throw error
-    }
+  } catch (error) {
+    // ONE attempt. The client below owns the retry budget — 429/5xx up to three
+    // attempts honouring Retry-After — so by the time it throws, trying again
+    // here just doubles a budget that is already spent. A previous version added
+    // a retry plus a 2s delay, justified by "the most likely cause is a provider
+    // rate limit"; that is the one cause the client cannot pass through
+    // unresolved, and the incident behind it was a deterministic schema
+    // rejection that failed identically on every call.
+    if (error instanceof DevotionalLlmError) return skipped(error)
+    throw error
   }
 }
 

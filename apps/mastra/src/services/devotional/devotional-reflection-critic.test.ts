@@ -89,33 +89,35 @@ describe("critiqueReflection", () => {
     })
   })
 
-  it("retries once before giving up", async () => {
-    const complete = vi
-      .fn()
-      .mockRejectedValueOnce(new DevotionalLlmError("request_failed", "boom"))
-      .mockResolvedValueOnce(clean)
+  it("succeeds on its single attempt", async () => {
+    // ONE attempt: createDevotionalLlm owns the retry budget (429/5xx up to three
+    // attempts, honouring Retry-After). A retry here doubled a spent budget, which
+    // is how three critics reached a worst case of eighteen requests for one gate.
+    const complete = vi.fn().mockResolvedValueOnce(clean)
     const r = await critiqueReflection({
       sceneTitle: "scene",
       reflection: "text",
       conclusion: "c",
       llm: fakeLlm(complete as unknown as DevotionalLlm["complete"]),
     })
-    expect(complete).toHaveBeenCalledTimes(2)
+    expect(complete).toHaveBeenCalledTimes(1)
     expect(r.skipped).toBeFalsy()
     expect(r.depthScore).toBe(4)
   })
 
-  it("marks skipped after the retry also fails — the flag the gate reads", async () => {
+  it("marks skipped on a provider failure — the flag the gate reads", async () => {
     const complete = vi
       .fn()
-      .mockRejectedValue(new DevotionalLlmError("request_failed", "boom"))
+      .mockRejectedValue(
+        new DevotionalLlmError("request_failed", "boom", undefined, 503),
+      )
     const r = await critiqueReflection({
       sceneTitle: "scene",
       reflection: "text",
       conclusion: "c",
       llm: fakeLlm(complete as unknown as DevotionalLlm["complete"]),
     })
-    expect(complete).toHaveBeenCalledTimes(2)
+    expect(complete).toHaveBeenCalledTimes(1)
     // `solid: true` / `depthScore: 3` are FALLBACKS, not a judgment. Only
     // `skipped` distinguishes them from a real pass, and
     // devotional-quality-gate.ts blocks on exactly this flag. Asserting the
