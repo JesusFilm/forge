@@ -395,6 +395,29 @@ describe("TypesenseWatchSearchCandidateGenerationService", () => {
     expect(db.pointers.get("EVALUATION")?.generationId).toBeNull()
   })
 
+  it("rejects unexpected stemming when the manifest relies on the exact-field default", async () => {
+    await service.createBuildingGeneration(generationInput())
+    typesense.getCollectionSchema.mockImplementation(async (collection) => {
+      if (collection.endsWith("_lexical")) {
+        return {
+          name: collection,
+          fields: [{ name: "title", type: "string", locale: "zh", stem: true }],
+        }
+      }
+      return schemaClient().getCollectionSchema(collection)
+    })
+
+    await expect(
+      service.validateAndMarkReady({
+        generationId: "candidate-1",
+        expectedVersion: 0,
+        documentCounts: { catalog: 1 },
+        capacityEvidence: { residentMemoryBytes: 1 },
+      }),
+    ).rejects.toBeInstanceOf(CandidateGenerationValidationError)
+    expect(db.generations.get("candidate-1")?.state).toBe("BUILDING")
+  })
+
   it("rejects stale lifecycle updates, illegal reactivation, and concurrent pointer races", async () => {
     await ready()
 

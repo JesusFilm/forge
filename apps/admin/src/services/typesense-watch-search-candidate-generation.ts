@@ -8,6 +8,7 @@ import {
 } from "@prisma/client"
 import {
   TYPESENSE_COLLECTION_FIELD_CONTRACT_KEYS,
+  typesenseCollectionFieldContractValue,
   type TypesenseClient,
   type TypesenseCollectionField,
   type TypesenseCollectionSchema,
@@ -306,7 +307,11 @@ function assertSchemaMatches(
       )
     }
     for (const key of TYPESENSE_COLLECTION_FIELD_CONTRACT_KEYS) {
-      if (expected[key] !== undefined && observed[key] !== expected[key]) {
+      const expectedValue = typesenseCollectionFieldContractValue(expected, key)
+      if (
+        expectedValue !== undefined &&
+        typesenseCollectionFieldContractValue(observed, key) !== expectedValue
+      ) {
         throw new CandidateGenerationValidationError(
           `Typesense collection ${expectedCollection} field ${expected.name} does not match its manifest`,
         )

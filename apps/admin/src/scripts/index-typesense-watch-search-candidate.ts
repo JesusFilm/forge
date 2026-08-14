@@ -4,6 +4,7 @@ import type { PrismaClient } from "@prisma/client"
 import { prisma } from "@/db/client"
 import {
   TYPESENSE_COLLECTION_FIELD_CONTRACT_KEYS,
+  typesenseCollectionFieldContractValue,
   TypesenseClient,
   type TypesenseCollectionField,
   type TypesenseCollectionSchema,
@@ -299,9 +300,15 @@ async function validateDocumentCounts(
           ["name", observedField.name],
           ["type", observedField.type],
           ...TYPESENSE_COLLECTION_FIELD_CONTRACT_KEYS.flatMap((key) =>
-            expectedField[key] === undefined
+            typesenseCollectionFieldContractValue(expectedField, key) ===
+            undefined
               ? []
-              : ([[key, observedField[key]]] as const),
+              : ([
+                  [
+                    key,
+                    typesenseCollectionFieldContractValue(observedField, key),
+                  ],
+                ] as const),
           ),
         ])
       }),

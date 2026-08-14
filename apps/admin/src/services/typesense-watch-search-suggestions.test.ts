@@ -718,6 +718,42 @@ describe("TypesenseWatchSearchSuggestionsService", () => {
     })
   })
 
+  it("does not coalesce identical requests across physical collections", async () => {
+    const pendingSearch = new Promise<never>(() => undefined)
+    findFirstMock.mockResolvedValue({ bcp47: "en" })
+    multiSearchMock.mockReturnValue(pendingSearch)
+    const prisma = {
+      language: { findFirst: findFirstMock },
+      video: { findMany: videoFindManyMock },
+    }
+    const serviceForCollection = (lexicalCollection: string) =>
+      new TypesenseWatchSearchSuggestionsService(
+        prisma as never,
+        {
+          multiSearch: multiSearchMock,
+          multiSearchSettled: multiSearchSettledMock,
+        } as never,
+        {
+          logger: { warn: warnMock },
+          applicationRevision: "watch-search-candidate/v2",
+          lexicalCollection,
+        },
+      )
+
+    void serviceForCollection("watch_search_candidate_a_lexical").suggest({
+      query: "je",
+      languageSlug: "english",
+    })
+    void serviceForCollection("watch_search_candidate_b_lexical").suggest({
+      query: "je",
+      languageSlug: "english",
+    })
+
+    await vi.waitFor(() => {
+      expect(multiSearchMock).toHaveBeenCalledTimes(2)
+    })
+  })
+
   it("retries language lookup after an in-flight failure", async () => {
     findFirstMock
       .mockRejectedValueOnce(new Error("database unavailable"))
@@ -1679,6 +1715,80 @@ describe("TypesenseWatchSearchSuggestionsService", () => {
       languageSlug: "english",
     })
     await serviceForRevision("watch-search-candidate/revision-b").suggest({
+      query: "jesu",
+      languageSlug: "english",
+    })
+
+    expect(validationAttempts).toBe(2)
+  })
+
+  it("isolates phrase verdicts by physical collection", async () => {
+    const prisma = {
+      language: { findFirst: findFirstMock },
+      video: { findMany: videoFindManyMock },
+    }
+    findFirstMock.mockResolvedValue({ bcp47: "en" })
+    let validationAttempts = 0
+    multiSearchMock.mockImplementation(
+      async (searches: Array<{ per_page?: number }>) => {
+        if (searches[0]?.per_page === 25) {
+          return [
+            {
+              found: 1,
+              out_of: 1,
+              page: 1,
+              search_time_ms: 1,
+              grouped_hits: [
+                {
+                  group_key: ["canonical-collection"],
+                  found: 1,
+                  hits: [
+                    {
+                      document: {
+                        videoId: "video-collection",
+                        canonicalVideoId: "canonical-collection",
+                        title_en: ["Jesus Film"],
+                      },
+                    },
+                  ],
+                },
+              ],
+            },
+          ]
+        }
+        validationAttempts += 1
+        return searches.map(() => ({
+          found: 1,
+          out_of: 1,
+          page: 1,
+          search_time_ms: 1,
+          hits: [{ document: { id: "validated" } }],
+        }))
+      },
+    )
+    const serviceForCollection = (lexicalCollection: string) =>
+      new TypesenseWatchSearchSuggestionsService(
+        prisma as never,
+        {
+          multiSearch: multiSearchMock,
+          multiSearchSettled: multiSearchSettledMock,
+        } as never,
+        {
+          logger: { warn: warnMock },
+          applicationRevision: "watch-search-candidate/v2",
+          lexicalCollection,
+        },
+      )
+
+    await serviceForCollection("watch_search_candidate_a_lexical").suggest({
+      query: "je",
+      languageSlug: "english",
+    })
+    await serviceForCollection("watch_search_candidate_b_lexical").suggest({
+      query: "jes",
+      languageSlug: "english",
+    })
+    await serviceForCollection("watch_search_candidate_b_lexical").suggest({
       query: "jesu",
       languageSlug: "english",
     })

@@ -503,6 +503,42 @@ describe("Typesense Watch candidate index CLI", () => {
     expect(generation.lifecycle.validateAndMarkReady).not.toHaveBeenCalled()
   })
 
+  it("rejects unexpected stemming on an exact lexical field before READY", async () => {
+    const generation = lifecycleDouble()
+    const typesense = typesenseDouble()
+    typesense.client.importDocuments.mockImplementation(
+      async (collection: string, batch: unknown[], action: string) => {
+        expect(action).toBe("upsert")
+        typesense.documents.set(collection, batch)
+        if (collection.endsWith("_lexical")) {
+          const schema = typesense.schemas.get(collection)
+          const exactField = schema?.fields.find(
+            (field) => (field as { name?: string }).name === "title_fallback",
+          ) as { stem?: boolean } | undefined
+          if (exactField) exactField.stem = true
+        }
+      },
+    )
+
+    await expect(
+      publishTypesenseWatchSearchCandidate({
+        prisma: {} as PrismaClient,
+        typesense: typesense.client as never,
+        generations: generation.lifecycle as never,
+        generationId: generation.generationId,
+        applicationRevision: "app-sha-1",
+        sourceEpoch: "source-42",
+        transcript: {
+          collection: "watch_search_transcripts_active",
+          projectionRevision: 17n,
+        },
+        loadSnapshot: async () => snapshot,
+      }),
+    ).rejects.toThrow(/schema manifest mismatch/i)
+
+    expect(generation.lifecycle.validateAndMarkReady).not.toHaveBeenCalled()
+  })
+
   it("leaves a durable BUILDING owner when external publication fails", async () => {
     const generation = lifecycleDouble()
     const typesense = typesenseDouble()

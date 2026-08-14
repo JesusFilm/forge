@@ -27,6 +27,29 @@ export const TYPESENSE_COLLECTION_FIELD_CONTRACT_KEYS = [
   "num_dim",
 ] as const satisfies readonly (keyof TypesenseCollectionField)[]
 
+export type TypesenseCollectionFieldContractKey =
+  (typeof TYPESENSE_COLLECTION_FIELD_CONTRACT_KEYS)[number]
+
+export function typesenseCollectionFieldContractValue(
+  field: TypesenseCollectionField,
+  key: TypesenseCollectionFieldContractKey,
+): TypesenseCollectionField[TypesenseCollectionFieldContractKey] {
+  const value = field[key]
+  if (value !== undefined) return value
+
+  switch (key) {
+    case "facet":
+    case "optional":
+    case "stem":
+      return false
+    case "index":
+    case "sort":
+      return true
+    default:
+      return undefined
+  }
+}
+
 export type TypesenseCollectionSchema = {
   name: string
   fields: TypesenseCollectionField[]

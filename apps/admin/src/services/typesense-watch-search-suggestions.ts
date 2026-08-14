@@ -579,9 +579,11 @@ function phraseValidationCacheKey(
   languageIdentity: string,
   fields: readonly string[],
   applicationRevision: string,
+  lexicalCollection: string,
 ): string {
   return [
     applicationRevision,
+    lexicalCollection,
     languageIdentity,
     fields.join(","),
     comparablePhrase(suggestion.title),
@@ -607,6 +609,7 @@ async function validateQuerySuggestions(
       languageIdentity,
       fields,
       applicationRevision,
+      lexicalCollection,
     ),
   )
   const suggestionByKey = new Map(
@@ -966,7 +969,12 @@ export class TypesenseWatchSearchSuggestionsService {
     if (!languageSlug) return []
 
     const requestState = suggestionRequestState(this.prisma)
-    const requestKey = `${languageSlug}\0${query}`
+    const requestKey = [
+      this.applicationRevision,
+      this.lexicalCollection,
+      languageSlug,
+      query,
+    ].join("\0")
     const existing = requestState.inFlight.get(requestKey)
     if (existing) return existing
     if (
