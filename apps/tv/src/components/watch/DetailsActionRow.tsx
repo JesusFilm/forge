@@ -12,6 +12,8 @@ import { TVFocusGuideView } from "../TVFocusGuideView"
 import { LinkModal } from "../LinkModal"
 import { scale } from "../../lib/scale"
 import { validateActionUrl, validateStreamingUrl } from "../../lib/validateUrl"
+import { isInMyList, toggleMyList } from "../../lib/myList/myList"
+import { toMyListEntry } from "../../lib/myList/myListEntry"
 import { getResumePosition } from "../../lib/watchEvents/continueWatching"
 import { buildShareUrl, shouldOfferResumeChoice } from "./detailsHelpers"
 import { ResumeChoicePanel } from "./ResumeChoicePanel"
@@ -119,6 +121,33 @@ export function DetailsActionRow({
     startPlayback(undefined)
   }
 
+  // My List: membership is read from storage (never assumed), so the pill
+  // paints saved state on arrival — including for a video saved on another
+  // screen or, later, on another device.
+  const [savedToMyList, setSavedToMyList] = useState(false)
+  useEffect(() => {
+    let cancelled = false
+    const id = video?.documentId
+    if (!id) {
+      setSavedToMyList(false)
+      return
+    }
+    void isInMyList(id).then((saved) => {
+      if (!cancelled) setSavedToMyList(saved)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [video?.documentId])
+
+  const handleToggleMyList = () => {
+    const entry = toMyListEntry(video, new Date().toISOString())
+    if (entry == null) return
+    // Painted from what STORAGE reports, not from an optimistic flip: a failed
+    // write must not leave the pill claiming the video is saved.
+    void toggleMyList(entry).then(setSavedToMyList)
+  }
+
   // Share continuation URL → QR fallback: the public watch URL, validated
   // before use so the phone can pick the video up.
   const shareUrl = buildShareUrl(video, activeVariant?.languageSlug ?? null)
@@ -175,6 +204,16 @@ export function DetailsActionRow({
           onFocus={() => onRowFocus?.("subtitles")}
           onBlur={() => onRowBlur?.("subtitles")}
         />
+        {video != null ? (
+          <SecondaryPill
+            icon={savedToMyList ? "checkmark" : "add"}
+            label="My List"
+            sub={savedToMyList ? "Saved" : null}
+            onPress={handleToggleMyList}
+            onFocus={() => onRowFocus?.("mylist")}
+            onBlur={() => onRowBlur?.("mylist")}
+          />
+        ) : null}
         {canShare ? (
           <SecondaryPill
             icon="share-outline"

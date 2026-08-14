@@ -24,6 +24,7 @@
 //     and account B's profile.
 
 import { getStorage } from "../safeStorage"
+import { MY_LIST_STORAGE_KEY, clearMyList } from "../myList/myList"
 import {
   CONTINUE_WATCHING_STORAGE_KEY,
   PENDING_COMPLETIONS_STORAGE_KEY,
@@ -51,6 +52,7 @@ export const ANONYMOUS_STATE_KEYS = [
   CONTINUE_WATCHING_STORAGE_KEY,
   PENDING_COMPLETIONS_STORAGE_KEY,
   QUEUE_STORAGE_KEY,
+  MY_LIST_STORAGE_KEY,
 ] as const
 
 export type LocalUserMarker = {
@@ -233,6 +235,14 @@ export async function clearAnonymousWatchState(): Promise<boolean> {
       continue
     }
     if (key === PENDING_COMPLETIONS_STORAGE_KEY) continue // handled above
+    if (key === MY_LIST_STORAGE_KEY) {
+      // Through its own module for the same reason as the shelf: the erase has
+      // to take that module's lock, or a bare removeItem can land mid-toggle
+      // and be re-materialized by the pending write — leaving the departing
+      // viewer's saved titles on a shared TV.
+      if (!(await clearMyList())) cleared = false
+      continue
+    }
     try {
       await storage.removeItem(key)
     } catch {

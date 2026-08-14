@@ -40,6 +40,15 @@ import {
   CONTINUE_WATCHING_SECTION_ID,
   buildContinueWatchingSection,
 } from "../src/components/home/continueWatchingSection"
+import {
+  MY_LIST_SECTION_ID,
+  buildMyListSection,
+} from "../src/components/home/myListSection"
+import {
+  loadMyList,
+  removeFromMyList,
+  type MyListEntry,
+} from "../src/lib/myList/myList"
 import { isProfileSurfaceEnabled } from "../src/lib/auth/profileFlag"
 import {
   loadContinueWatching,
@@ -100,11 +109,17 @@ export default function HomeScreen() {
   const [continueEntries, setContinueEntries] = useState<
     ContinueWatchingEntry[]
   >([])
+  const [myListEntries, setMyListEntries] = useState<MyListEntry[]>([])
   useFocusEffect(
     useCallback(() => {
       let cancelled = false
       void loadContinueWatching().then((entries) => {
         if (!cancelled) setContinueEntries(entries)
+      })
+      // Same focus pass: a video saved on the details screen must be on the
+      // rail by the time Back lands here.
+      void loadMyList().then((entries) => {
+        if (!cancelled) setMyListEntries(entries)
       })
       return () => {
         cancelled = true
@@ -116,10 +131,14 @@ export default function HomeScreen() {
   const renderSections = useMemo(() => {
     if (model == null) return null
     const continueSection = buildContinueWatchingSection(continueEntries)
-    return continueSection
-      ? [continueSection, ...model.sections]
-      : model.sections
-  }, [model, continueEntries])
+    const myListSection = buildMyListSection(myListEntries)
+    // Resume first, then the saved list, then the curated rails: an
+    // interrupted video is a stronger intent than a saved-for-later one.
+    // Both builders return null when empty, so neither renders a bare header.
+    return [continueSection, myListSection, ...model.sections].filter(
+      (section) => section != null,
+    )
+  }, [model, continueEntries, myListEntries])
 
   // tvos#852: a stack pop doesn't restore the previously focused view (falls to
   // the top-left default). Remember the focused node (every focusable reports it)
@@ -385,6 +404,13 @@ export default function HomeScreen() {
     )
   }, [])
 
+  // Long-press on a My List card removes it, mirroring the shelf gesture.
+  const handleMyListCardLongPress = useCallback((card: WatchHomeCard) => {
+    void removeFromMyList(card.sourceId).then(() =>
+      loadMyList().then(setMyListEntries),
+    )
+  }, [])
+
   const handleSearchPress = useCallback(() => {
     router.push("/search")
   }, [router])
@@ -580,7 +606,9 @@ export default function HomeScreen() {
               onCardLongPress={
                 section.id === CONTINUE_WATCHING_SECTION_ID
                   ? handleResumeCardLongPress
-                  : undefined
+                  : section.id === MY_LIST_SECTION_ID
+                    ? handleMyListCardLongPress
+                    : undefined
               }
               // The topmost rail (sectionIndex 0) sits under the hero, whose CTA
               // is on the LEFT — wire every card's D-pad-up to the CTA node
