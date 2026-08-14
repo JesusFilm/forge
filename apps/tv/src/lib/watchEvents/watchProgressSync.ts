@@ -34,6 +34,7 @@ import {
   type AccountWatchProgressRow,
 } from "./watchProgressMerge"
 import {
+  CLEAR_MY_WATCH_PROGRESS,
   GET_MY_WATCH_PROGRESS,
   UPSERT_MY_WATCH_PROGRESS,
 } from "./watchProgressDocuments"
@@ -112,6 +113,37 @@ export async function fetchAccountWatchProgress(): Promise<
     return parseAccountProgressRows(result.data?.myWatchProgress)
   } catch {
     return null
+  }
+}
+
+/**
+ * Remove one video from Continue Watching, everywhere it lives (QoL long-press).
+ *
+ * Local removal is unconditional and first — the card disappears immediately
+ * whatever the network does. The account row clear is best-effort when signed
+ * in; a failure leaves the row server-side, where the next hydrate skips it
+ * anyway unless it is further along (in which case the viewer probably wants
+ * it back). Removing a card is NOT un-finishing: pending completions are left
+ * untouched — a completion has no card by construction.
+ */
+export async function removeFromContinueWatching(
+  videoId: string,
+): Promise<void> {
+  await updateContinueWatching((entries) =>
+    entries.filter((entry) => entry.videoId !== videoId),
+  )
+  try {
+    const userAccessToken = await getValidAccessToken()
+    if (userAccessToken == null) return
+    await getApolloClient().mutate({
+      mutation: CLEAR_MY_WATCH_PROGRESS,
+      variables: { videoId },
+      context: { userAccessToken },
+      errorPolicy: "all",
+    })
+  } catch {
+    // Best-effort: the local card is already gone, which is what the viewer
+    // asked for; the account row lingers harmlessly until a later clear.
   }
 }
 

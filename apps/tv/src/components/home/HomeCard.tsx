@@ -55,6 +55,9 @@ type HomeCardProps = {
    *  remember the exact element to re-focus after a nav push/pop. */
   onFocus: (card: WatchHomeCard, node: ViewType | null) => void
   onPress: (card: WatchHomeCard) => void
+  /** Long-press (hold Select), for row-specific actions — the Continue
+   *  Watching shelf uses it for "remove". Omitted on rails without one. */
+  onLongPress?: (card: WatchHomeCard) => void
   index: number
   /**
    * Forced D-pad-up destination (featured rail wires the Search tab here so
@@ -82,6 +85,7 @@ export const HomeCard = memo(function HomeCard({
   card,
   onFocus,
   onPress,
+  onLongPress,
   index,
   loadImage = true,
   nextFocusUp,
@@ -134,6 +138,7 @@ export const HomeCard = memo(function HomeCard({
     <Pressable
       ref={setRef}
       onPress={() => onPress(card)}
+      onLongPress={onLongPress ? () => onLongPress(card) : undefined}
       onFocus={() => {
         setFocused(true)
         onFocus(card, localRef.current)

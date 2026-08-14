@@ -133,6 +133,7 @@ describe("credential separation", () => {
       WATCH_EVENT_OPERATION_NAME,
       "MyWatchProgress",
       "UpsertMyWatchProgress",
+      "ClearMyWatchProgress",
     ])
   })
 

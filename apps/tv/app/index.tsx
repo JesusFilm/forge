@@ -45,6 +45,7 @@ import {
   loadContinueWatching,
   type ContinueWatchingEntry,
 } from "../src/lib/watchEvents/continueWatching"
+import { removeFromContinueWatching } from "../src/lib/watchEvents/watchProgressSync"
 import { MissionSection } from "../src/components/home/MissionSection"
 import { TVFocusGuideView } from "../src/components/TVFocusGuideView"
 import {
@@ -374,6 +375,16 @@ export default function HomeScreen() {
     [router],
   )
 
+  // Long-press on a Continue Watching card removes it — locally first (the
+  // card disappears whatever the network does), then best-effort from the
+  // account. The shelf state refreshes from storage so the rail re-renders
+  // without waiting for the next focus pass.
+  const handleResumeCardLongPress = useCallback((card: WatchHomeCard) => {
+    void removeFromContinueWatching(card.sourceId).then(() =>
+      loadContinueWatching().then(setContinueEntries),
+    )
+  }, [])
+
   const handleSearchPress = useCallback(() => {
     router.push("/search")
   }, [router])
@@ -565,6 +576,11 @@ export default function HomeScreen() {
                 section.id === CONTINUE_WATCHING_SECTION_ID
                   ? handleResumeCardPress
                   : handleCardPress
+              }
+              onCardLongPress={
+                section.id === CONTINUE_WATCHING_SECTION_ID
+                  ? handleResumeCardLongPress
+                  : undefined
               }
               // The topmost rail (sectionIndex 0) sits under the hero, whose CTA
               // is on the LEFT — wire every card's D-pad-up to the CTA node
