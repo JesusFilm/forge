@@ -164,16 +164,22 @@ export async function removeFromMyList(videoId: string): Promise<void> {
  * both observe "not saved" and both add.
  *
  * Returns whether the video is saved after the toggle, so the caller can paint
- * from the persisted truth instead of assuming its optimistic guess landed. A
- * storage failure reports the UNCHANGED state — the button must not claim a
- * save that did not happen.
+ * from the persisted truth instead of assuming its optimistic guess landed.
+ *
+ * A storage failure reports the UNCHANGED state, which is `wasSaved` — NOT
+ * `false`. Returning a blanket false is wrong in one direction that matters: a
+ * REMOVE that fails on an already-saved video would paint the pill "not saved"
+ * while the row is still in storage, so the next Home visit shows a card the
+ * viewer was just told they had removed. When the read itself fails there is no
+ * known state, and false (the empty-list reading) is the only answer available.
  */
 export async function toggleMyList(entry: MyListEntry): Promise<boolean> {
   return withListLock(async () => {
+    let wasSaved = false
     try {
       const storage = getStorage()
       const current = parseMyList(await storage.getItem(MY_LIST_STORAGE_KEY))
-      const wasSaved = containsEntry(current, entry.videoId)
+      wasSaved = containsEntry(current, entry.videoId)
       await writeLocked(
         wasSaved
           ? applyRemove(current, entry.videoId)
@@ -181,7 +187,7 @@ export async function toggleMyList(entry: MyListEntry): Promise<boolean> {
       )
       return !wasSaved
     } catch {
-      return false
+      return wasSaved
     }
   })
 }

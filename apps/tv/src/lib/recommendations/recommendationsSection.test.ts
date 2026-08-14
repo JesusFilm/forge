@@ -56,6 +56,35 @@ describe("pickRecommendationSeed", () => {
     })
   })
 
+  it("orders by PARSED time, not string order, across ISO spellings", () => {
+    // The shelf mixes locally-written stamps (always toISOString(), UTC) with
+    // account-hydrated ones from the server, which may carry an offset. This
+    // pair is chosen so the two comparisons DISAGREE: "…T11:00:00+05:00" is
+    // 06:00 UTC — earlier in time than 09:00Z — yet sorts after it as a string.
+    // A lexicographic compare therefore seeds the rail off the older video.
+    expect(
+      pickRecommendationSeed([
+        shelfEntry({
+          videoId: "latest-in-time",
+          updatedAt: "2026-08-14T09:00:00.000Z",
+        }),
+        shelfEntry({
+          videoId: "greatest-as-string",
+          updatedAt: "2026-08-14T11:00:00+05:00",
+        }),
+      ]),
+    ).toMatchObject({ videoId: "latest-in-time" })
+  })
+
+  it("still orders sanely when a stamp is unparseable", () => {
+    expect(
+      pickRecommendationSeed([
+        shelfEntry({ videoId: "junk", updatedAt: "not a date" }),
+        shelfEntry({ videoId: "real", updatedAt: "2026-08-14T11:00:00.000Z" }),
+      ]),
+    ).not.toBeNull()
+  })
+
   it("skips entries with no videoId — there is nothing to seed on", () => {
     expect(
       pickRecommendationSeed([

@@ -150,6 +150,10 @@ export default function HomeScreen() {
       return
     }
     let cancelled = false
+    // Drop the previous seed's rows immediately. The rail is TITLED from the
+    // seed, so keeping them would render "Because you watched <new title>"
+    // above the old video's cards until the fetch lands.
+    setRecommendationRows([])
     void fetchRecommendations(seedVideoId).then((rows) => {
       if (!cancelled) setRecommendationRows(rows)
     })

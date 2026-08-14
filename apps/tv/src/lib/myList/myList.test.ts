@@ -162,7 +162,7 @@ describe("toggleMyList", () => {
     expect(await loadMyList()).toEqual([])
   })
 
-  it("reports NOT-saved when the write fails, rather than claiming a save", async () => {
+  it("reports NOT-saved when the ADD write fails, rather than claiming a save", async () => {
     const storage = getStorage()
     const setItem = jest
       .spyOn(storage, "setItem")
@@ -172,5 +172,38 @@ describe("toggleMyList", () => {
     expect(await loadMyList()).toEqual([])
 
     setItem.mockRestore()
+  })
+
+  it("reports STILL-saved when the REMOVE write fails", async () => {
+    // The direction that actually misleads a viewer: reporting false here says
+    // "removed" while the row is still in storage, so the next Home visit shows
+    // a card they were just told was gone. The honest answer to a failed toggle
+    // is the UNCHANGED state, not a blanket false.
+    // TWO entries on purpose: removing the LAST one deletes the whole key via
+    // removeItem, which would route around a setItem failure and make this test
+    // pass for the wrong reason.
+    await addToMyList(entry({ videoId: "keeper", slug: "keeper" }))
+    await addToMyList(entry())
+    const storage = getStorage()
+    const setItem = jest
+      .spyOn(storage, "setItem")
+      .mockRejectedValueOnce(new Error("disk full"))
+
+    await expect(toggleMyList(entry())).resolves.toBe(true)
+    // ...and the claim matches storage: the row really is still there.
+    expect(await isInMyList("video-1")).toBe(true)
+
+    setItem.mockRestore()
+  })
+
+  it("reports not-saved when the READ fails — no state is knowable", async () => {
+    const storage = getStorage()
+    const getItem = jest
+      .spyOn(storage, "getItem")
+      .mockRejectedValueOnce(new Error("unreadable"))
+
+    await expect(toggleMyList(entry())).resolves.toBe(false)
+
+    getItem.mockRestore()
   })
 })

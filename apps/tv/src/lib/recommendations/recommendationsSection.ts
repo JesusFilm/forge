@@ -42,10 +42,30 @@ export function pickRecommendationSeed(
   let newest: ContinueWatchingEntry | null = null
   for (const entry of entries) {
     if (!entry.videoId) continue
-    if (newest == null || entry.updatedAt > newest.updatedAt) newest = entry
+    if (newest == null || isNewerStamp(entry.updatedAt, newest.updatedAt)) {
+      newest = entry
+    }
   }
   if (newest == null) return null
   return { videoId: newest.videoId, title: newest.title ?? newest.slug }
+}
+
+/**
+ * Stamp comparison by PARSED time, with a lexicographic fallback.
+ *
+ * Locally written stamps are always `new Date().toISOString()` — fixed-width
+ * UTC, where string order equals time order. But the shelf is also hydrated
+ * from the ACCOUNT, whose stamps come from the server: any other valid ISO
+ * spelling (an `+00:00` offset, or seconds without milliseconds) breaks the
+ * string comparison while parsing fine. Parsing first makes the mixed-source
+ * shelf safe; the fallback keeps a malformed stamp from throwing the ordering
+ * away entirely.
+ */
+function isNewerStamp(candidate: string, incumbent: string): boolean {
+  const a = Date.parse(candidate)
+  const b = Date.parse(incumbent)
+  if (Number.isNaN(a) || Number.isNaN(b)) return candidate > incumbent
+  return a > b
 }
 
 function toCard(row: RecommendationRow): WatchHomeCard {

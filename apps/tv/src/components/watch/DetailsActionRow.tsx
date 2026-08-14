@@ -125,19 +125,23 @@ export function DetailsActionRow({
   // paints saved state on arrival — including for a video saved on another
   // screen or, later, on another device.
   const [savedToMyList, setSavedToMyList] = useState(false)
+  // The video this screen is CURRENTLY showing. Both async paths below check it
+  // before painting: the language/dub panels and Up Next can swap the session's
+  // video while a storage read or a toggle is still in flight, and neither
+  // result belongs to the new video. (An effect's `cancelled` flag cannot cover
+  // the toggle — it is fired from a press handler, not an effect.)
+  const shownVideoIdRef = useRef<string | null>(video?.documentId ?? null)
+  shownVideoIdRef.current = video?.documentId ?? null
+
   useEffect(() => {
-    let cancelled = false
     const id = video?.documentId
     if (!id) {
       setSavedToMyList(false)
       return
     }
     void isInMyList(id).then((saved) => {
-      if (!cancelled) setSavedToMyList(saved)
+      if (shownVideoIdRef.current === id) setSavedToMyList(saved)
     })
-    return () => {
-      cancelled = true
-    }
   }, [video?.documentId])
 
   const handleToggleMyList = () => {
@@ -145,7 +149,9 @@ export function DetailsActionRow({
     if (entry == null) return
     // Painted from what STORAGE reports, not from an optimistic flip: a failed
     // write must not leave the pill claiming the video is saved.
-    void toggleMyList(entry).then(setSavedToMyList)
+    void toggleMyList(entry).then((saved) => {
+      if (shownVideoIdRef.current === entry.videoId) setSavedToMyList(saved)
+    })
   }
 
   // Share continuation URL → QR fallback: the public watch URL, validated
