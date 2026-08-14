@@ -1,7 +1,7 @@
 // Plain JS (like the adapter guard): the RN tsconfig has no Node types, and
 // this guard needs fs/path to walk the module graph.
 /* eslint-disable @typescript-eslint/no-require-imports */
-/* global describe, expect, it, require */
+/* global describe, expect, it, jest, require */
 const fs = require("fs")
 const path = require("path")
 
@@ -21,12 +21,17 @@ const FORBIDDEN_LOCAL = [
 // Measured, not assumed. `@expo/vector-icons` sat here while the walk started
 // at the host; the layout imports Ionicons directly for its header back
 // buttons, so at cold-launch scope asserting it would be theatre.
-const FORBIDDEN_PACKAGES = ["expo-blur", "expo-image", "expo-linear-gradient"]
+//
+// `expo-image` is not here because the walk counts a deferred `require()` like
+// an eager import, and the window's poster require is deferred. Its rule is the
+// pair of expo-image cases at the bottom of this file.
+const FORBIDDEN_PACKAGES = ["expo-blur", "expo-linear-gradient"]
 
 // Modules the host genuinely needs. Asserting they ARE present is what stops a
 // broken walker from passing the two forbidden checks with an empty graph.
 const REQUIRED_LOCAL = [
   "src/components/watch/PlaybackHost.tsx",
+  "src/components/watch/MiniPlayerWindow.tsx",
   "src/hooks/useManagedVideoPlayer.ts",
   "src/lib/playerBufferOptions.ts",
   "src/lib/miniPlayer/store.ts",
@@ -40,10 +45,13 @@ const EXTENSIONS = [".ts", ".tsx", ".js", ".jsx"]
  * free — but app/_layout.tsx resolves every dependency through `require()`
  * inside one try/catch, so an import-only parser is blind to the whole layout.
  */
-function valueSpecifiers(source) {
-  const withoutComments = source
-    .replace(/\/\*[\s\S]*?\*\//g, "")
-    .replace(/^\s*\/\/.*$/gm, "")
+function stripComments(source) {
+  return source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "")
+}
+
+/** Value `import`/`export … from` specifiers — the EAGER half of the graph. */
+function importSpecifiers(source) {
+  const withoutComments = stripComments(source)
   const found = []
   const importPattern =
     /(?:^|\n)\s*(?:import|export)\s+([\s\S]*?)from\s*["']([^"']+)["']|(?:^|\n)\s*import\s*["']([^"']+)["']/g
@@ -55,11 +63,22 @@ function valueSpecifiers(source) {
       found.push(match[2])
     }
   }
+  return found
+}
+
+function requireSpecifiers(source) {
+  const withoutComments = stripComments(source)
+  const found = []
   const requirePattern = /\brequire\s*\(\s*["']([^"']+)["']\s*\)/g
+  let match
   while ((match = requirePattern.exec(withoutComments)) != null) {
     found.push(match[1])
   }
   return found
+}
+
+function valueSpecifiers(source) {
+  return [...importSpecifiers(source), ...requireSpecifiers(source)]
 }
 
 function resolveLocal(fromFile, specifier) {
@@ -160,6 +179,65 @@ describe("cold-launch module graph", () => {
       "../src/components/watch/PlaybackHost",
     )
     expect(locals).toContain("src/components/watch/PlaybackHost.tsx")
+  })
+
+  it("never IMPORTS expo-image anywhere in the graph", () => {
+    // expo-image cannot sit in FORBIDDEN_PACKAGES: the walk counts a deferred
+    // require the same as an eager import, and the window's poster require is
+    // deferred on purpose. So the rule is stated on the eager half alone.
+    const { locals } = walkGraph(ROOT, ENTRY)
+
+    const eager = locals.filter((file) =>
+      importSpecifiers(fs.readFileSync(path.resolve(ROOT, file), "utf8")).some(
+        (specifier) => packageName(specifier) === "expo-image",
+      ),
+    )
+
+    expect(eager).toEqual([])
+  })
+
+  it("positive control: an eager expo-image import IS detected", () => {
+    // PlayerPoster is outside the layout's graph and imports expo-image at the
+    // top. Without this the check above passes on a detector that finds
+    // nothing anywhere.
+    const source = fs.readFileSync(
+      path.resolve(ROOT, "src/components/watch/PlayerPoster.tsx"),
+      "utf8",
+    )
+
+    expect(importSpecifiers(source)).toContain("expo-image")
+  })
+
+  it("loading the window does not evaluate expo-image", () => {
+    // The mechanism half: the deferral has to actually hold at runtime, not
+    // just read that way. Only expo-video is stubbed — its module scope
+    // reaches native and throws under jest.
+    let evaluated = false
+    jest.isolateModules(() => {
+      jest.doMock("expo-image", () => {
+        evaluated = true
+        return { Image: () => null }
+      })
+      jest.doMock("expo-video", () =>
+        require("../../../test-utils/expoVideoMock").expoVideoModuleMock(),
+      )
+      require("../MiniPlayerWindow")
+    })
+
+    expect(evaluated).toBe(false)
+  })
+
+  it("positive control: the runtime probe fires for a module that imports it", () => {
+    let evaluated = false
+    jest.isolateModules(() => {
+      jest.doMock("expo-image", () => {
+        evaluated = true
+        return { Image: () => null }
+      })
+      require("../PlayerPoster")
+    })
+
+    expect(evaluated).toBe(true)
   })
 
   it("positive control: type-only imports are skipped, value imports are not", () => {

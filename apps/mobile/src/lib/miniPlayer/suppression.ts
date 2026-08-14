@@ -31,6 +31,7 @@ export function isSheetRoute(segments: readonly string[]): boolean {
  */
 export function createSheetCounter() {
   let open = 0
+  let resetGeneration = 0
   const listeners = new Set<() => void>()
 
   const notify = () => {
@@ -45,6 +46,11 @@ export function createSheetCounter() {
       }
     },
     getCount: () => open,
+    /**
+     * Bumped by every reset. Only a claimant knows whether its own claim is
+     * still live, so this is what lets one re-assert after a reset dropped it.
+     */
+    getResetGeneration: () => resetGeneration,
     openSheet() {
       open += 1
       notify()
@@ -58,6 +64,7 @@ export function createSheetCounter() {
     reset() {
       if (open === 0) return
       open = 0
+      resetGeneration += 1
       notify()
     },
   }

@@ -21,6 +21,7 @@ import { StorageSummary } from "../../src/components/library/StorageSummary"
 import { Snackbar } from "../../src/components/ui/Snackbar"
 import { useDownloads } from "../../src/contexts/DownloadsProvider"
 import { useWatchPreferences } from "../../src/contexts/WatchPreferencesProvider"
+import { useMiniPlayerSheet } from "../../src/hooks/useMiniPlayerSheet"
 import { useTypography } from "../../src/hooks/useTypography"
 import {
   SURFACE_COLOR,
@@ -141,6 +142,10 @@ export default function LibraryScreen() {
       setSelectionState(pruned.state)
     }
   }, [offlineRecords])
+
+  // R11: this sheet owns no route, so the mini player window cannot see it
+  // from the segments. Balanced by the hook's cleanup, not by the handlers.
+  useMiniPlayerSheet(confirmVisible)
 
   // The confirm sheet only makes sense mid-selection — force it closed if
   // selection exits out from under it (Cancel, back, or a live prune to empty).

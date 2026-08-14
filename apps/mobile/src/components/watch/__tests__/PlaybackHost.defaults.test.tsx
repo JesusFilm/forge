@@ -85,6 +85,17 @@ jest.mock("../../../lib/miniPlayer", () => {
     registerSessionEnd: registry.register,
   }
 })
+jest.mock("expo-image", () => {
+  const { View } = require("react-native")
+  return { Image: View }
+})
+jest.mock("@expo/vector-icons/Ionicons", () => ({
+  __esModule: true,
+  default: () => null,
+}))
+jest.mock("react-native-safe-area-context", () => ({
+  useSafeAreaInsets: () => ({ top: 47, bottom: 34, left: 0, right: 0 }),
+}))
 jest.mock("../../../lib/datadog", () => ({
   datadogLog: { info: jest.fn(), warn: jest.fn(), error: jest.fn() },
   reportDatadogAction: jest.fn(),

@@ -41,8 +41,20 @@ jest.mock("expo", () => {
     },
   }
 })
-// No expo-blur / expo-image / expo-linear-gradient / vector-icons mocks: the
-// host reaches none of them. PlaybackHost.coldLaunch.guard.test.js holds that.
+// expo-image and the icon set arrive through MiniPlayerWindow (U7). expo-blur
+// and expo-linear-gradient stay unmocked on purpose: the host still reaches
+// neither, and PlaybackHost.coldLaunch.guard.test.js holds that.
+jest.mock("expo-image", () => {
+  const { View } = require("react-native")
+  return { Image: View }
+})
+jest.mock("@expo/vector-icons/Ionicons", () => ({
+  __esModule: true,
+  default: () => null,
+}))
+jest.mock("react-native-safe-area-context", () => ({
+  useSafeAreaInsets: () => ({ top: 47, bottom: 34, left: 0, right: 0 }),
+}))
 jest.mock("../../../lib/datadog", () => ({
   datadogLog: { info: jest.fn(), warn: jest.fn(), error: jest.fn() },
   reportDatadogAction: jest.fn(),
@@ -88,7 +100,7 @@ jest.mock("../../../lib/miniPlayer", () => ({
 }))
 
 import { act } from "react"
-import { Platform, StyleSheet } from "react-native"
+import { Platform, StyleSheet, View } from "react-native"
 import type { VideoPlayer as ExpoVideoPlayer } from "expo-video"
 
 import {
@@ -96,6 +108,7 @@ import {
   MINI_PLAYER_WINDOW_SLOT,
   PlaybackHost,
 } from "../PlaybackHost"
+import { useMiniPlayerSheet } from "../../../hooks/useMiniPlayerSheet"
 import { applyWatchBufferOptions } from "../../../lib/playerBufferOptions"
 import { createSessionEndRegistry } from "../../../lib/miniPlayer/endRegistry"
 import {
@@ -210,6 +223,12 @@ function leafBufferOptions(): unknown {
   return probe.bufferOptions
 }
 
+/** A live non-route sheet, exactly as the two real call sites declare one. */
+function OpenSheet({ sheets }: { sheets: SheetCounter }) {
+  useMiniPlayerSheet(true, sheets)
+  return null
+}
+
 /** How many times the leaf read the route this test. */
 let segmentReads = 0
 
@@ -253,6 +272,14 @@ function hasWindowSlot(renderer: TestInstance): boolean {
   return (
     renderer.root.findAll(
       (node) => node.props.testID === MINI_PLAYER_WINDOW_SLOT,
+    ).length > 0
+  )
+}
+
+function hasKeepAliveSlot(renderer: TestInstance): boolean {
+  return (
+    renderer.root.findAll(
+      (node) => node.props.testID === MINI_PLAYER_KEEPALIVE_SLOT,
     ).length > 0
   )
 }
@@ -712,6 +739,44 @@ describe("PlaybackHost presentation", () => {
     expect(hasWindowSlot(renderer)).toBe(false)
   })
 
+  it("keeps a STILL-OPEN non-route sheet suppressing the next session", async () => {
+    // The other half of the reset. It cannot tell a stranded count from a live
+    // claim, so it zeroes both — and a tab screen stays mounted with its sheet
+    // on screen, which is where the next window would float over it.
+    const store = makeStore()
+    let renderer!: TestInstance
+    await act(async () => {
+      renderer = TestRenderer.create(
+        // A View, not a fragment: the shared node helpers read `props.testID`,
+        // and a fragment puts a props-less node in front of them.
+        <View>
+          <OpenSheet sheets={sheets} />
+          <PlaybackHost
+            store={store}
+            sheets={sheets}
+            registerEnd={registry.register}
+            useRouteSegments={() => HOME_SEGMENTS}
+          />
+        </View>,
+      )
+    })
+    live.push(renderer)
+    await act(async () => {
+      store.start({ videoId: "video-1", streamingUrl: EPISODE_ONE })
+    })
+    expect(hasWindowSlot(renderer)).toBe(false)
+
+    await act(async () => {
+      store.end("dismissed")
+    })
+    await act(async () => {
+      store.start({ videoId: "video-2", streamingUrl: EPISODE_TWO })
+    })
+
+    expect(sheets.getCount()).toBe(1)
+    expect(hasWindowSlot(renderer)).toBe(false)
+  })
+
   it("an unbalanced sheet open does not wedge the next session hidden", async () => {
     // closeSheet() floors at zero, so it cannot undo a SURPLUS open — one
     // stranded openSheet() would suppress the window for the rest of the app's
@@ -835,13 +900,15 @@ describe("PlaybackHost video surface", () => {
     expect(createdFakePlayers()).toHaveLength(1)
   })
 
-  it("keeps its surface on the watch route too", async () => {
-    // `full` is the other pre-window presentation. A session that starts there
-    // and floats later would otherwise attach its first surface after playback.
+  it("mounts NO surface on the watch route", async () => {
+    // The watch route builds and autostarts its own player on its own surface.
+    // A keep-alive surface here is a SECOND mounted surface for the same video,
+    // which is two decoders and two audio streams on the expand flow.
     const { renderer } = await mountPlaying(WATCH_SEGMENTS)
 
     expect(hasWindowSlot(renderer)).toBe(false)
-    expect(videoSurfaces(renderer)).toHaveLength(1)
+    expect(hasKeepAliveSlot(renderer)).toBe(false)
+    expect(videoSurfaces(renderer)).toHaveLength(0)
   })
 
   it("hides the suppressed surface and takes no touches", async () => {

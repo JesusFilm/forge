@@ -2,9 +2,10 @@
  * The root-owned playback host (U6/KTD2).
  *
  * It owns the ONE expo-video player for whatever the mini player store says is
- * playing, so the player outlives the watch route. It mounts exactly one
- * VideoView for that player and never fewer: the window chrome is still U7's,
- * but the SURFACE cannot wait for it (see MiniPlayerWindowSlot).
+ * playing, so the player outlives the watch route. Off the watch route it
+ * mounts exactly one VideoView for that player and never fewer, visible or
+ * suppressed (see MiniPlayerWindowSlot). ON the watch route it mounts none:
+ * that screen still builds its own player and its own surface.
  *
  * Everything testable lives here or in the pure modules under
  * `src/lib/miniPlayer/` — expo-router cannot be imported unmounted under this
@@ -20,11 +21,16 @@ import {
   useMemo,
   useSyncExternalStore,
 } from "react"
-import { Platform, StyleSheet, View } from "react-native"
-import { VideoView } from "expo-video"
+import { BackHandler, Platform, useWindowDimensions } from "react-native"
+import { useSafeAreaInsets } from "react-native-safe-area-context"
 import type { ErrorInfo, ReactNode } from "react"
 import type { VideoPlayer } from "expo-video"
 
+import {
+  MiniPlayerWindow,
+  type MiniPlayerWindowProps,
+  type MiniPlayerWindowVideo,
+} from "./MiniPlayerWindow"
 import { useManagedVideoPlayer } from "../../hooks/useManagedVideoPlayer"
 import { reportDatadogError } from "../../lib/datadog"
 import {
@@ -50,11 +56,17 @@ import type { SessionEndReason } from "../../lib/miniPlayer/types"
 // the cold-launch graph.
 import { applyWatchBufferOptions } from "../../lib/playerBufferOptions"
 
-/** The node U7 replaces with the floating window. */
-export const MINI_PLAYER_WINDOW_SLOT = "mini-player-window-slot"
+export {
+  MINI_PLAYER_KEEPALIVE_SLOT,
+  MINI_PLAYER_WINDOW_SLOT,
+} from "./MiniPlayerWindow"
 
-/** The same surface while the window is suppressed — see MiniPlayerWindowSlot. */
-export const MINI_PLAYER_KEEPALIVE_SLOT = "mini-player-keepalive-slot"
+/**
+ * Bottom chrome the window insets inside on a tab route. The tab bar is drawn
+ * by the navigator, which this host cannot measure, so the platform default
+ * height stands in for it (R7).
+ */
+const TAB_BAR_HEIGHT = Platform.OS === "ios" ? 49 : 56
 
 type RegisterSessionEnd = (listener: SessionEndListener) => () => void
 
@@ -63,6 +75,10 @@ export type PlaybackHostProps = {
   sheets?: SheetCounter
   registerEnd?: RegisterSessionEnd
   useRouteSegments?: () => readonly string[]
+  /** R23: does the navigator have somewhere to go back to? */
+  canGoBack?: () => boolean
+  /** R4/KTD11: injected, because the window must not import the router. */
+  navigateToVideo?: (video: MiniPlayerWindowVideo) => void
 }
 
 /* eslint-disable @typescript-eslint/no-require-imports */
@@ -71,6 +87,20 @@ export type PlaybackHostProps = {
 function useExpoRouterSegments(): readonly string[] {
   return (require("expo-router") as typeof import("expo-router")).useSegments()
 }
+
+function expoRouterCanGoBack(): boolean {
+  return (
+    require("expo-router") as typeof import("expo-router")
+  ).router.canGoBack()
+}
+
+function expoRouterNavigateToVideo(video: MiniPlayerWindowVideo): void {
+  const slug = video.videoSlug
+  if (slug == null || slug === "") return
+  ;(require("expo-router") as typeof import("expo-router")).router.push(
+    `/watch/${encodeURIComponent(slug)}` as never,
+  )
+}
 /* eslint-enable @typescript-eslint/no-require-imports */
 
 export function PlaybackHost({
@@ -78,6 +108,8 @@ export function PlaybackHost({
   sheets = getMiniPlayerSheets(),
   registerEnd = registerSessionEnd,
   useRouteSegments = useExpoRouterSegments,
+  canGoBack = expoRouterCanGoBack,
+  navigateToVideo = expoRouterNavigateToVideo,
 }: PlaybackHostProps = {}) {
   const session = useSyncExternalStore(store.subscribe, store.getSnapshot)
 
@@ -110,6 +142,8 @@ export function PlaybackHost({
         sheets={sheets}
         registerEnd={registerEnd}
         useRouteSegments={useRouteSegments}
+        canGoBack={canGoBack}
+        navigateToVideo={navigateToVideo}
         streamingUrl={session.streamingUrl}
         videoId={session.videoId}
         videoSlug={session.videoSlug}
@@ -124,6 +158,8 @@ type PlaybackSessionProps = {
   sheets: SheetCounter
   registerEnd: RegisterSessionEnd
   useRouteSegments: () => readonly string[]
+  canGoBack: () => boolean
+  navigateToVideo: (video: MiniPlayerWindowVideo) => void
   streamingUrl: string
   videoId?: string
   videoSlug?: string
@@ -140,6 +176,8 @@ const PlaybackSession = memo(function PlaybackSession({
   sheets,
   registerEnd,
   useRouteSegments,
+  canGoBack,
+  navigateToVideo,
   streamingUrl,
   videoId,
   videoSlug,
@@ -166,7 +204,7 @@ const PlaybackSession = memo(function PlaybackSession({
     [store],
   )
 
-  const { player, endSession } = useManagedVideoPlayer(
+  const { player, isPlaying, endSession } = useManagedVideoPlayer(
     streamingUrl,
     applyWatchBufferOptions,
     { progress, onProgress: handleProgress },
@@ -192,11 +230,35 @@ const PlaybackSession = memo(function PlaybackSession({
     [registerEnd, endAndClearSheets],
   )
 
+  const handlePlayPause = useCallback(() => {
+    try {
+      if (player.playing) player.pause()
+      else player.play()
+    } catch {
+      // Player already released. Dismiss stays the viewer's way out.
+    }
+  }, [player])
+
+  const handleDismiss = useCallback(() => store.end("dismissed"), [store])
+  const handleEnded = useCallback(() => store.end("ended"), [store])
+
+  // R22 closes the QUALITY session, not the mini player session: ending the
+  // latter unmounts the window, and the failure state must stay operable.
+  const handleFailure = useCallback(() => endSession("failed"), [endSession])
+
   return (
     <MiniPlayerWindowSlot
+      store={store}
       player={player}
+      isPlaying={isPlaying}
       sheets={sheets}
       useRouteSegments={useRouteSegments}
+      canGoBack={canGoBack}
+      navigateToVideo={navigateToVideo}
+      onPlayPause={handlePlayPause}
+      onDismiss={handleDismiss}
+      onEnded={handleEnded}
+      onFailure={handleFailure}
       videoId={videoId}
       videoSlug={videoSlug}
     />
@@ -204,9 +266,17 @@ const PlaybackSession = memo(function PlaybackSession({
 })
 
 type MiniPlayerWindowSlotProps = {
+  store: MiniPlayerStore
   player: VideoPlayer
+  isPlaying: boolean
   sheets: SheetCounter
   useRouteSegments: () => readonly string[]
+  canGoBack: () => boolean
+  navigateToVideo: (video: MiniPlayerWindowVideo) => void
+  onPlayPause: () => void
+  onDismiss: () => void
+  onEnded: () => void
+  onFailure: () => void
   videoId?: string
   videoSlug?: string
 }
@@ -216,13 +286,21 @@ type MiniPlayerWindowSlotProps = {
  * subscribing the root to the router store re-renders ApolloProvider, every
  * context and the whole Stack on each navigation.
  *
- * It also owns the host's ONE video surface, which stays mounted through every
- * suppression — see the render below.
+ * It also arms R23's back handler, and hands the window the live screen and
+ * chrome so the window itself stays free of react-native-safe-area-context.
  */
 function MiniPlayerWindowSlot({
+  store,
   player,
+  isPlaying,
   sheets,
   useRouteSegments,
+  canGoBack,
+  navigateToVideo,
+  onPlayPause,
+  onDismiss,
+  onEnded,
+  onFailure,
   videoId,
   videoSlug,
 }: MiniPlayerWindowSlotProps) {
@@ -233,41 +311,104 @@ function MiniPlayerWindowSlot({
     isPictureInPictureActive,
   )
   const view = useMemo(() => ({ videoId, videoSlug }), [videoId, videoSlug])
+  const { width, height } = useWindowDimensions()
+  const insets = useSafeAreaInsets()
 
   const presentation = presentationFor(view, segments, {
     sheetCount,
     pipActive,
   })
 
+  useEffect(() => {
+    // R23, the ONE deliberate exception to "back is never intercepted", and it
+    // is armed only here — this leaf exists only while a session does.
+    const subscription = BackHandler.addEventListener(
+      "hardwareBackPress",
+      () => {
+        if (canGoBack()) return false
+        onDismiss()
+        return true
+      },
+    )
+    return () => subscription.remove()
+  }, [canGoBack, onDismiss])
+
+  const screen = useMemo(() => ({ width, height }), [width, height])
+  const chrome = useMemo(
+    () => ({
+      top: insets.top,
+      bottom: insets.bottom + (segments[0] === "(tabs)" ? TAB_BAR_HEIGHT : 0),
+      left: insets.left,
+      right: insets.right,
+    }),
+    [insets.top, insets.bottom, insets.left, insets.right, segments],
+  )
+
   // Measured on Android: a VideoView that FIRST attaches to an already-playing
   // surfaceless player gets a permanently DEAD surface, and only a new player
-  // recovers it. So the surface outlives every suppression; U7 owns the chrome.
+  // recovers it. The window owns that ONE surface through every suppression.
   return (
-    <View
-      testID={
-        presentation === "floating"
-          ? MINI_PLAYER_WINDOW_SLOT
-          : MINI_PLAYER_KEEPALIVE_SLOT
-      }
-      style={styles.slot}
-      // On the CONTAINER, never on the video view — the plan forbids that, and
-      // U7's tap-to-expand target lives on this surface.
-      pointerEvents="none"
-    >
-      <VideoView
-        player={player}
-        style={StyleSheet.absoluteFill}
-        nativeControls={false}
-        contentFit="contain"
-        // iOS 16+ defaults this TRUE, which floats a Live Text "scan" button
-        // over any frame with text in it — a system control we do not own.
-        allowsVideoFrameAnalysis={false}
-        // textureView composites inside the RN hierarchy; an Android
-        // SurfaceView punches through whatever is layered over it.
-        surfaceType={Platform.OS === "android" ? "textureView" : undefined}
-      />
-    </View>
+    <MiniPlayerWindowSurface
+      store={store}
+      presentation={presentation}
+      player={player}
+      isPlaying={isPlaying}
+      screen={screen}
+      chrome={chrome}
+      onExpand={navigateToVideo}
+      onDismiss={onDismiss}
+      onPlayPause={onPlayPause}
+      onEnded={onEnded}
+      onFailure={onFailure}
+      videoId={videoId}
+      videoSlug={videoSlug}
+    />
   )
+}
+
+type MiniPlayerWindowSurfaceProps = Omit<
+  MiniPlayerWindowProps,
+  "video" | "player"
+> & {
+  store: MiniPlayerStore
+  player: VideoPlayer
+  videoId?: string
+  videoSlug?: string
+}
+
+/**
+ * The only node that re-renders at the one-second position cadence (KTD2).
+ * The route read stays in its parent on purpose: a tick must not re-read the
+ * router, and a navigation must not re-read the position.
+ */
+function MiniPlayerWindowSurface({
+  store,
+  videoId,
+  videoSlug,
+  ...windowProps
+}: MiniPlayerWindowSurfaceProps) {
+  const session = useSyncExternalStore(store.subscribe, store.getSnapshot)
+
+  const video = useMemo(
+    () => ({
+      videoId,
+      videoSlug,
+      title: session?.title ?? null,
+      posterUrl: session?.posterUrl ?? null,
+      positionSeconds: session?.positionSeconds ?? 0,
+      durationSeconds: session?.durationSeconds ?? 0,
+    }),
+    [
+      videoId,
+      videoSlug,
+      session?.title,
+      session?.posterUrl,
+      session?.positionSeconds,
+      session?.durationSeconds,
+    ],
+  )
+
+  return <MiniPlayerWindow {...windowProps} video={video} />
 }
 
 /**
@@ -294,17 +435,3 @@ class PlaybackHostBoundary extends Component<
     return this.state.failed ? null : this.props.children
   }
 }
-
-const styles = StyleSheet.create({
-  // 1x1 and fully transparent, not 0x0: a zero-size view can be laid out
-  // without ever creating the native surface, which is the exact state the
-  // keep-alive mount exists to prevent. U7 sizes and reveals the window.
-  slot: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    width: 1,
-    height: 1,
-    opacity: 0,
-  },
-})

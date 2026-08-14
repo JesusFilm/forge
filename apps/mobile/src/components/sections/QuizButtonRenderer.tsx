@@ -13,6 +13,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { WebView } from "react-native-webview"
 import { LinearGradient } from "expo-linear-gradient"
 
+import { useMiniPlayerSheet } from "../../hooks/useMiniPlayerSheet"
 import { useTypography } from "../../hooks/useTypography"
 import { QUIZ_GRADIENT } from "../../lib/color"
 import { layout, feedback } from "../../styles/shared"
@@ -117,6 +118,10 @@ export interface QuizButtonRendererProps {
 export function QuizButtonRenderer({ section }: QuizButtonRendererProps) {
   const typography = useTypography()
   const [modalVisible, setModalVisible] = useState(false)
+
+  // R11: this modal owns no route, so the mini player window cannot see it
+  // from the segments. Declared above the early return below, as hooks must be.
+  useMiniPlayerSheet(modalVisible)
 
   const s = section as Record<string, unknown>
   const buttonText = s.buttonText as string | null

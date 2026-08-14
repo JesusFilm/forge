@@ -45,6 +45,17 @@ describe("Android hero VideoViews opt into textureView", () => {
     )
     expect(videoView).toContain(SURFACE_TYPE_LITERAL)
   })
+
+  it("the floating mini player's VideoView carries it too", () => {
+    // The window layers its poster and controls OVER the video, which is the
+    // exact case an Android SurfaceView punches through.
+    const source = readSource("..", "..", "watch", "MiniPlayerWindow.tsx")
+    const videoView = source.slice(
+      at(source, "<VideoView"),
+      at(source, "/>", at(source, "<VideoView")),
+    )
+    expect(videoView).toContain(SURFACE_TYPE_LITERAL)
+  })
 })
 
 describe("Home RefreshControl stays transparent over the z-0 hero layer", () => {
