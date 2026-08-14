@@ -29,6 +29,7 @@ import {
   initialMeaningfulState,
   type PlaybackSnapshot,
 } from "../lib/watchEvents/watchEvents"
+import type { UpNextTarget } from "../contexts/VideoPlayerContext"
 import {
   createVideoQoeSession,
   sanitizeVideoErrorMessage,
@@ -36,6 +37,7 @@ import {
 } from "../lib/videoQoe"
 import { SubtitleOverlay } from "./watch/SubtitleOverlay"
 import { InPlayerMenu } from "./watch/InPlayerMenu"
+import { UpNextOverlay } from "./watch/UpNextOverlay"
 import { useSessionPlayback } from "./watch/useSessionPlayback"
 import { WATCH_THEME } from "./watch/watchDetailTheme"
 import { useFocusAnimation, useFocusVisual } from "./focus/useFocusVisual"
@@ -628,6 +630,12 @@ export type VideoPlayerProps = {
   /** Periodic playback position for the Continue Watching shelf: every ~10s
    *  during playback, on natural completion, and on unmount (Back). */
   onPlaybackPosition?: (snapshot: PlaybackSnapshot) => void
+  /** The next episode to offer when playback ends, or null/omitted (standalone
+   *  film, last episode, experience-card playback). */
+  upNextTarget?: UpNextTarget | null
+  /** Play the offered episode — fired by "Play now" or countdown expiry. The
+   *  host owns the navigation; this component only ends the countdown. */
+  onPlayNext?: (slug: string) => void
 }
 
 /** Emission cadence for onPlaybackPosition during playback. */
@@ -644,6 +652,8 @@ export function VideoPlayer({
   meaningfulResetKey,
   startAtSeconds,
   onPlaybackPosition,
+  upNextTarget,
+  onPlayNext,
 }: VideoPlayerProps) {
   const [isPaused, setIsPaused] = useState(false)
   const [currentTime, setCurrentTime] = useState(0)
@@ -691,6 +701,21 @@ export function VideoPlayer({
   useEffect(() => {
     if (errorFocusPending) setErrorFocusPending(false)
   }, [errorFocusPending])
+
+  // ── Up Next (QoL) ────────────────────────────────────────────────────
+  // Offer state flips on at playToEnd when a target exists; the overlay owns
+  // the countdown, this host owns what confirm/cancel DO. Refs mirror the
+  // props because the playToEnd listener's effect deps are [player] — reading
+  // props directly there would close over the mount-time values.
+  const [upNextOffer, setUpNextOffer] = useState<UpNextTarget | null>(null)
+  const upNextOfferRef = useRef<UpNextTarget | null>(null)
+  useEffect(() => {
+    upNextOfferRef.current = upNextOffer
+  }, [upNextOffer])
+  const upNextTargetRef = useRef<UpNextTarget | null>(upNextTarget ?? null)
+  upNextTargetRef.current = upNextTarget ?? null
+  const onPlayNextRef = useRef<((slug: string) => void) | undefined>(onPlayNext)
+  onPlayNextRef.current = onPlayNext
 
   // Inactivity timer (I3) + shared Animated.Value for chrome opacity. Timer is
   // a ref so rapid D-pad resets don't re-render; opacityAnim is driven
@@ -929,6 +954,13 @@ export function VideoPlayer({
         closeMenu()
         return true
       }
+      // Up Next countdown: Back declines the offer. The video already ended,
+      // so the normal end-of-playback path (dismiss) is the right landing.
+      if (upNextOfferRef.current != null) {
+        setUpNextOffer(null)
+        onDismissRef.current()
+        return true
+      }
       if (!controlsVisibleRef.current && !isScreenReaderEnabledRef.current) {
         revealControlsRef.current()
         return true
@@ -1077,6 +1109,17 @@ export function VideoPlayer({
         lastPositionRef.current = null
       }
       if (!isMountedRef.current) return
+      // Up Next: when a next episode exists (session playback only — the
+      // target is threaded from the details screen), offer it instead of
+      // dismissing. The overlay's countdown then either plays it or falls
+      // back to the normal dismissal below via "Not now"/Back.
+      if (upNextTargetRef.current != null && onPlayNextRef.current != null) {
+        setControlsVisible(true)
+        setControlsFocusable(true)
+        opacityAnim.setValue(1)
+        setUpNextOffer(upNextTargetRef.current)
+        return
+      }
       if (!controlsVisibleRef.current) {
         setControlsVisible(true)
         setControlsFocusable(true)
@@ -1830,6 +1873,25 @@ export function VideoPlayer({
             overlay's focus trap; mounts only when a session drives this overlay AND open. */}
         {menuActive && menuOpen && (
           <InPlayerMenu section={menuSection} onClose={closeMenu} />
+        )}
+
+        {/* ── Up Next countdown (QoL) ─────────────────────────────────
+            Inside the overlay's focus trap like the menu (never a Modal).
+            Confirm/expiry hands the next slug to the host; Not now runs the
+            normal end-of-playback dismissal the offer intercepted. */}
+        {upNextOffer != null && (
+          <UpNextOverlay
+            title={upNextOffer.title}
+            onPlayNow={() => {
+              const slug = upNextOffer.slug
+              setUpNextOffer(null)
+              onPlayNextRef.current?.(slug)
+            }}
+            onCancel={() => {
+              setUpNextOffer(null)
+              onDismissRef.current()
+            }}
+          />
         )}
       </TVFocusGuideView>
 

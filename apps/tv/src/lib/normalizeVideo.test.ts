@@ -2,6 +2,7 @@ import {
   normalizeVideo,
   normalizeSeries,
   normalizeDubMedia,
+  pickUpNextSibling,
 } from "./normalizeVideo"
 
 // ── Builders ────────────────────────────────────────────────────────
@@ -750,5 +751,52 @@ describe("normalizeDubMedia (lazy per-dub media)", () => {
       makeRawDub({ downloads: [], videoEdition: null }),
     )
     expect(media).toEqual({ downloads: [], subtitles: [] })
+  })
+})
+
+describe("pickUpNextSibling (Up Next)", () => {
+  const child = (documentId: string, slug = `${documentId}-slug`) => ({
+    documentId,
+    slug,
+    label: "SHORT_FILM",
+    locales: [{ title: `Title ${documentId}` }],
+    images: [],
+    muxPlaybackId: null,
+  })
+
+  it("picks the child immediately after self, preserving list order", () => {
+    const next = pickUpNextSibling([child("a"), child("b"), child("c")], "b")
+    expect(next?.documentId).toBe("c")
+    expect(next?.slug).toBe("c-slug")
+    expect(next?.title).toBe("Title c")
+  })
+
+  it("returns null when self is the last child", () => {
+    expect(pickUpNextSibling([child("a"), child("b")], "b")).toBeNull()
+  })
+
+  it("returns null when self is not among the children (standalone film)", () => {
+    expect(pickUpNextSibling([child("a"), child("b")], "zz")).toBeNull()
+  })
+
+  it("returns null for an empty list or a missing self id", () => {
+    expect(pickUpNextSibling([], "a")).toBeNull()
+    expect(pickUpNextSibling([child("a")], null)).toBeNull()
+    expect(pickUpNextSibling([child("a")], "")).toBeNull()
+  })
+
+  it("skips a broken next entry rather than stopping at it", () => {
+    // One malformed row (no slug) must not kill autoplay for the series.
+    const broken = { ...child("b"), slug: "" }
+    const next = pickUpNextSibling([child("a"), broken, child("c")], "a")
+    expect(next?.documentId).toBe("c")
+  })
+
+  it("skips null children and duplicate self entries", () => {
+    const next = pickUpNextSibling(
+      [child("a"), null, child("a"), child("b")],
+      "a",
+    )
+    expect(next?.documentId).toBe("b")
   })
 })

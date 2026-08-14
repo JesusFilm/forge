@@ -9,6 +9,15 @@ import type { ReactNode } from "react"
 
 import type { WatchEventIdentity } from "../lib/watchEvents/watchEvents"
 
+/** What autoplays when the current video ends: the parent's next child.
+ *  Threaded from the details screen (which owns the record) so the overlay
+ *  host can offer it at playToEnd. */
+export type UpNextTarget = {
+  slug: string
+  title: string | null
+  posterUrl: string | null
+}
+
 // ── Types ───────────────────────────────────────────────────────────────────
 
 type VideoPlayerState = {
@@ -21,6 +30,8 @@ type VideoPlayerState = {
   currentIdentity: WatchEventIdentity | null
   /** Continue Watching resume point for this playback, or null. */
   currentStartAtSeconds: number | null
+  /** Up Next autoplay target for this playback, or null (nothing follows). */
+  currentUpNext: UpNextTarget | null
   isVisible: boolean
 }
 
@@ -31,6 +42,7 @@ type VideoPlayerContextValue = {
     subtitle?: string,
     identity?: WatchEventIdentity,
     startAtSeconds?: number,
+    upNext?: UpNextTarget | null,
   ) => void
   dismissVideo: () => void
   state: VideoPlayerState
@@ -51,6 +63,7 @@ const INITIAL_STATE: VideoPlayerState = {
   currentSubtitle: null,
   currentIdentity: null,
   currentStartAtSeconds: null,
+  currentUpNext: null,
   isVisible: false,
 }
 
@@ -67,6 +80,7 @@ export function VideoPlayerProvider({ children }: { children: ReactNode }) {
       subtitle?: string,
       identity?: WatchEventIdentity,
       startAtSeconds?: number,
+      upNext?: UpNextTarget | null,
     ) => {
       setState({
         currentUrl: streamingUrl,
@@ -75,6 +89,7 @@ export function VideoPlayerProvider({ children }: { children: ReactNode }) {
         currentIdentity: identity ?? null,
         currentStartAtSeconds:
           startAtSeconds != null && startAtSeconds > 0 ? startAtSeconds : null,
+        currentUpNext: upNext ?? null,
         isVisible: true,
       })
     },

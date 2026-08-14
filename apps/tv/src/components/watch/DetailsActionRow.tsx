@@ -95,6 +95,14 @@ export function DetailsActionRow({
           }
         : undefined,
       startAtSeconds,
+      // Up Next target for the end-of-playback offer (null when nothing follows).
+      video?.upNext != null
+        ? {
+            slug: video.upNext.slug,
+            title: video.upNext.title,
+            posterUrl: video.upNext.posterUrl,
+          }
+        : null,
     )
   }
 

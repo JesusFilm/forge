@@ -214,6 +214,15 @@ export default function WatchVideoScreen() {
         undefined,
         { videoId, videoDubId: activeVariant?.documentId ?? null },
         position ?? undefined,
+        // Up Next: the parent's next child, threaded so the overlay can
+        // offer it at playToEnd (null = standalone film / last episode).
+        video?.upNext != null
+          ? {
+              slug: video.upNext.slug,
+              title: video.upNext.title,
+              posterUrl: video.upNext.posterUrl,
+            }
+          : null,
       )
     })()
     return () => {
