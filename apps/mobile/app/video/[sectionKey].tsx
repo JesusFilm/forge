@@ -14,6 +14,7 @@ import { VideoView } from "expo-video"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 
 import { useManagedVideoPlayer } from "../../src/hooks/useManagedVideoPlayer"
+import { useEndMiniPlayerOnPlayback } from "../../src/hooks/useEndMiniPlayerOnPlayback"
 
 import { useSectionByKey } from "../../src/contexts/ExperienceProvider"
 import { ContentDispatcher } from "../../src/components/sections/ContentDispatcher"
@@ -128,6 +129,10 @@ function VideoDetailContent({
     // KTD5 opt-in: this SDUI block carries the admin video id.
     { progress: blockVideoId ? { videoId: blockVideoId } : null },
   )
+
+  // R9/R10: this route owns its own decoder, so the floating window and this
+  // video cannot both play. The viewer's newest choice wins.
+  useEndMiniPlayerOnPlayback(isPlaying)
 
   useEffect(() => {
     if (isPlaying && !hasStarted) {

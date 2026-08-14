@@ -15,6 +15,7 @@ import Ionicons from "@expo/vector-icons/Ionicons"
 
 import { useSectionByKey } from "../../src/contexts/ExperienceProvider"
 import { useManagedVideoPlayer } from "../../src/hooks/useManagedVideoPlayer"
+import { useEndMiniPlayerOnPlayback } from "../../src/hooks/useEndMiniPlayerOnPlayback"
 import {
   ACCENT,
   BLACK,
@@ -138,11 +139,19 @@ function CollectionPlayerContent({
   }, [currentIndex, items])
 
   const activeVideoId = items[currentIndex]?.videoId ?? null
-  const { player } = useManagedVideoPlayer(activeStreamingUrl, undefined, {
-    // KTD5 opt-in: identity re-keys with the active pager item, flushing
-    // the departing episode inside the adapter.
-    progress: activeVideoId ? { videoId: activeVideoId } : null,
-  })
+  const { player, isPlaying } = useManagedVideoPlayer(
+    activeStreamingUrl,
+    undefined,
+    {
+      // KTD5 opt-in: identity re-keys with the active pager item, flushing
+      // the departing episode inside the adapter.
+      progress: activeVideoId ? { videoId: activeVideoId } : null,
+    },
+  )
+
+  // R9/R10: this route owns its own decoder, so the floating window and this
+  // playlist cannot both play. The viewer's newest choice wins.
+  useEndMiniPlayerOnPlayback(isPlaying)
 
   const flatListRef = useRef<FlatList<CollectionItem>>(null)
 
