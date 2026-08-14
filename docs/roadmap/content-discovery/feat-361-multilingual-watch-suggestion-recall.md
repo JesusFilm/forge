@@ -12,6 +12,10 @@ depends_on:
   - "feat-352"
 blocks:
   - "feat-362"
+  - "feat-363"
+  - "feat-364"
+  - "feat-365"
+  - "feat-366"
 tags:
   - "admin"
   - "watch"
