@@ -141,7 +141,14 @@ export async function reviewDevotionalText(
   if (input.checkFidelity && sourceExcerpt) {
     const fidelity = await critiqueReflectionFidelity({
       sourceExcerpt,
-      focusReference: input.passageReference ?? d.passage.reference,
+      // The SOURCE's own passage, not the film's. A Spurgeon selection is picked
+      // by theme, so its reference can be a different book entirely — this critic
+      // was being asked whether an adaptation of Isaiah was faithful to Luke.
+      // Coherence above keeps the film passage, which is the verse on screen.
+      focusReference:
+        d.reflection.sourceReference ??
+        input.passageReference ??
+        d.passage.reference,
       adapted: d.reflection.text,
       llm: buildFidelityCriticLlm(),
     })

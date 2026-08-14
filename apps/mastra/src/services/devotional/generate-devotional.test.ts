@@ -227,6 +227,28 @@ describe("generateDevotional", () => {
     expect(odd.voice).toBe("male-e")
   })
 
+  it("records the SOURCE's own passage, which a Spurgeon pick does not share with the film", async () => {
+    // Spurgeon entries are chosen by theme, so the reflection can be about a
+    // different book than the clip. The fidelity critic judges the adaptation
+    // against its source, so that reference has to survive onto the devotional —
+    // without it the critic is asked whether an adaptation of Isaiah is faithful
+    // to Luke.
+    const spurgeon = await generateDevotional(
+      { chapterIndex: 19, sequence: 1, date: "d", llm }, // odd seq → Spurgeon
+      deps,
+    )
+    expect(spurgeon.reflection.flavor).toBe("spurgeon")
+    expect(spurgeon.reflection.sourceReference).toBe("Isaiah 26:3")
+    expect(spurgeon.passage.reference).toBe("Luke 8:22-25")
+
+    // Commentary sits ON the film's passage, so the two agree there.
+    const commentary = await generateDevotional(
+      { chapterIndex: 19, sequence: 0, date: "d", llm },
+      deps,
+    )
+    expect(commentary.reflection.sourceReference).toBe("Luke 8:22-25")
+  })
+
   it("falls back to commentary when the Spurgeon ranker finds no genuine fit", async () => {
     const noFit = { ...deps, pickSpurgeon: vi.fn().mockResolvedValue(null) }
     const d = await generateDevotional(

@@ -78,6 +78,14 @@ export type GeneratedDevotional = {
     attribution: string
     /** Which rotation flavor produced it. */
     flavor: ReflectionFlavor
+    /** The passage the SOURCE is about, which is not always the film's passage.
+     *  A Spurgeon selection is chosen by theme, so its own reference (say
+     *  Isaiah 26:3) can differ from the clip's (Luke 8:22-25). The fidelity
+     *  critic judges the adaptation against its SOURCE, so it needs this one;
+     *  coherence judges the finished devotional against the verse on screen, so
+     *  it needs the film's. Optional: a devotional generated before this field
+     *  existed does not carry it. */
+    sourceReference?: string
     /** The excerpt actually HANDED TO the modernizer — already narrowed to the
      *  chosen points, not the author's full passage. That is the right thing for
      *  the fidelity critic to compare `text` against, since it judges whether
@@ -123,6 +131,7 @@ export const GeneratedDevotionalSchema = z.object({
     source: z.string(),
     attribution: z.string(),
     flavor: z.enum(["commentary", "spurgeon"]),
+    sourceReference: z.string().optional(),
     sourceExcerpt: z.string().optional(),
   }),
   reflectionHighlights: z.array(z.string()),
@@ -385,6 +394,7 @@ export async function composeDevotionalContent(
       source: selection.source,
       attribution: modern.attribution,
       flavor: selection.flavor,
+      sourceReference: selection.focusReference,
       sourceExcerpt: focusedSource,
     },
     reflectionHighlights,

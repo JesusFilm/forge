@@ -302,6 +302,57 @@ describe("reviewDevotionalText", () => {
       expect(lines.join("\n")).toMatch(/NOT CHECKED/)
     })
 
+    it("judges fidelity against the SOURCE's passage, not the film's", async () => {
+      // A Spurgeon selection is picked by theme, so its own reference can be a
+      // different book entirely. Asking this critic whether an adaptation of
+      // Isaiah is faithful to Luke is a question it cannot answer usefully, and
+      // it was the question being asked.
+      const devo = devotional({
+        passage: { reference: "Luke 8:22-25", osisRef: "Luke.8.22-Luke.8.25" },
+        reflection: {
+          text: "Peace comes from a mind stayed on God.",
+          source: "Charles Spurgeon, Morning and Evening",
+          attribution: "Adapted from a trusted classic · Charles Spurgeon",
+          flavor: "spurgeon",
+          sourceReference: "Isaiah 26:3",
+          sourceExcerpt: "You keep him in perfect peace whose mind is stayed.",
+        },
+      })
+      await reviewDevotionalText({
+        devotional: devo,
+        checkFidelity: true,
+        passageReference: "Luke 8:22-25",
+      })
+      expect(critiqueReflectionFidelity).toHaveBeenCalledWith(
+        expect.objectContaining({ focusReference: "Isaiah 26:3" }),
+      )
+      // Coherence still gets the film's passage: it judges the finished
+      // devotional against the verse on screen.
+      expect(checkDevotionalCoherence).toHaveBeenCalledWith(
+        expect.objectContaining({ passageReference: "Luke 8:22-25" }),
+      )
+    })
+
+    it("falls back to the film passage when the source reference is absent", async () => {
+      const devo = devotional({
+        reflection: {
+          text: "Jesus came to seek and save the lost.",
+          source: "J.C. Ryle",
+          attribution: "Adapted from a trusted classic · J.C. Ryle",
+          flavor: "commentary",
+          sourceExcerpt: "Unasked, our Lord stops and speaks to Zacchaeus.",
+        },
+      })
+      await reviewDevotionalText({
+        devotional: devo,
+        checkFidelity: true,
+        passageReference: "Luke 19:1-10",
+      })
+      expect(critiqueReflectionFidelity).toHaveBeenCalledWith(
+        expect.objectContaining({ focusReference: "Luke 19:1-10" }),
+      )
+    })
+
     it("treats a BLANK excerpt as no excerpt rather than checking against nothing", async () => {
       // A whitespace-only excerpt is truthy, so the plain truthiness test handed
       // the critic a blank source. With nothing to compare against it reported
