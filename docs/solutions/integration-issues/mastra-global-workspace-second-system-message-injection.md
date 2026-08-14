@@ -84,7 +84,7 @@ first. The injection was **latent for the first week**: Langfuse traces from
 550 output tokens, usage-verified) with the duplicate system message present.
 Between 2026-08-07 06:07 UTC and 2026-08-09 19:50 UTC (the next traced turn)
 the slot's model was swapped (per the teammate's 2026-08-12 gateway diagnosis:
-to Qwen3.6-35B on the team GPU box; the box's model changes over time, so
+to Qwen3.6-35B-A3B on the team GPU box; the box's model changes over time, so
 tracked repo references to the slot's model may lag). The new model enforces a
 one-system-message chat template and rejects the request outright — after the
 swap, not a single `coding` generation appears in any trace. Because feat-237
