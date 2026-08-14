@@ -664,3 +664,94 @@ Model new suites on `apps/mobile/src/components/watch/__tests__/PlayerControls.t
 - U8: only one video surface is mounted while the window is over Home.
 - U9: the generated Android manifest carries the attribute, and a hardware run restores the interface on return.
 - U10: the deleted component has no remaining references and the prose sweep is complete.
+
+---
+
+## Implementation Findings (added 2026-08-14, after U1-U6)
+
+This section is additive and records what execution learned. It does not rewrite the units above. Where a finding CONTRADICTS a unit, that is stated explicitly — the finding wins, because it was measured.
+
+### Status
+
+U1-U6 are shipped on branch `worktree-mobile-pip-mini-player`, draft PR #1937, CI green at commit `49b9c2df7`. Tests went from 110 suites / 1567 to 126 / 1806. U7-U10 remain.
+
+**The feature is INERT.** Nothing calls `store.start()`, so `PlaybackHost` renders null and the watch screen is unchanged. Confirmed at runtime on the Android emulator by media-session count: 1 on Home (hero), 2 on the watch screen (hero paused + watch playing), 0 after leaving. A host-owned player would have added a third.
+
+### U6 deliberately stops short of the route wiring
+
+The plan lists the watch route's publish under U6. It is NOT done, on purpose. Publishing a session while the watch route still owns its own player creates two players on one HLS URL, each prebuffering 8 seconds on every watch open. The route-side publish and the surface swap must land together, in U7. Wiring only the publish half ships the double decoder.
+
+### U7 GATE: CLEARED, and it changed the design
+
+U7's execution note required proving the Android first frame before building the chrome. A throwaway spike answered it on the emulator on 2026-08-14.
+
+**Both arms survive.** A floating VideoView paints live frames: 90.8-93.3% pixel delta between consecutive captures, against a static control swatch that read exactly 0.00% across all 20+ measurements. The expo-image poster paints fully opaque over it, and its sampled mean RGB matched the host-fetched thumbnail, so the actual image is on screen. **Issue #1928 did NOT reproduce** in the floating window. R18's Android arm is viable.
+
+**But attach order is a hard constraint.** A VideoView that FIRST attaches to a player which has already been playing surfaceless gets a permanently DEAD surface: 0.00% delta AND 100% black, while `player.currentTime` keeps advancing one second per wall-clock second. That is dead, not frozen — a frozen last frame would be 0% and NON-black. Every recovery lever failed: `pause()` then `play()`, seek then `play()`, `replaceAsync()`, and unmount then remount (one transient bright frame, then black again). `textureView` versus `SurfaceView` made no difference to this. Only creating a new player recovers it.
+
+Unmount then remount of a view that once attached correctly is fine (93.1%), so U7's happy path — watch route, back, window — is safe.
+
+**The reachable hazard.** `presentationFor` returns `hidden` for open sheets and for active picture-in-picture, and `none` before any surface exists. So a session that STARTS with no surface mounted — resuming a Continue Watching item straight into the mini window, or starting one while a sheet is open — leaves the player surfaceless. The window then mounts onto a permanently video-dead player: audio playing, black rectangle, unrecoverable.
+
+**This contradicts what U6 shipped.** Today's `floating` slot in `PlaybackHost.tsx` is a zero-size invisible View that mounts NO VideoView at all. U7 must reconcile that. Two fixes, (a) is smaller:
+
+- (a) Keep a 1x1 or opacity-0 VideoView mounted in the host for the `hidden` and `none` presentations, so the player is never surfaceless.
+- (b) Make session start require a mounted surface, and recreate the player when the window mounts onto one that never had a surface.
+
+Wire the poster regardless. It paints over a dead surface, so it covers the black-rectangle mode while video state resolves.
+
+Keep `surfaceType={Platform.OS === "android" ? "textureView" : undefined}` on every floating surface. It cost nothing in the spike, and an emulator's SurfaceFlinger is the weakest possible evidence that SurfaceView layering is safe on real hardware.
+
+**Still owed: a HARDWARE run.** The attach-order finding is ExoPlayer lifecycle behaviour and is likely portable. The SurfaceView LAYERING result specifically must not be trusted off-emulator.
+
+### Sequencing correction: land U8's trailer suppression WITH U7
+
+The plan sequences U8 after U7. That ordering is wrong. `presentationFor` returns `floating` for `["series","[slug]"]`, and the series trailer's `autostart` is unconditional. The day the window ships, opening any series with a trailer over a live session gives two decoders and two simultaneous audio streams. U7's and U6's test-scenario lists both omit this; only U8 covers it.
+
+Related pre-existing defect, not introduced by this work: the series trailer keeps PLAYING under a pushed watch route today. Native-stack keeps the previous screen mounted and neither `app/series/[slug].tsx` nor the player component has any focus handling — a repo-wide grep for `useIsFocused`/`useFocusEffect` returns zero hits, and `addListener("blur")` exists only in `HomeScreen.tsx` and `app/collection/[sectionKey].tsx`.
+
+### Close before the U7 publisher lands
+
+`MiniPlayerStore.update()` has an asymmetric merge. Spreading session then input protects `durationSeconds` from an omitted input but nothing else, so a publisher that builds one input object per render with an explicitly-`undefined` `posterUrl`, `title` or `languageSlug` wipes that field on a re-point. Tests are the only callers today; the U7 publisher is exactly what hits it.
+
+### Decisions made during execution (do not re-litigate without new evidence)
+
+- **The series trailer keeps its OWN player.** It passes no `progressIdentity`, so borrowing the session's player would advance the saved bookmark of an unrelated episode through the shared recorder, and a 90% tick would mark that episode complete. Nothing on that screen asserts progress, so no test could catch it. `VideoPlayer` therefore keeps its self-owning form; `VideoPlayerSurface` is the injectable one. U8 governs the decoder by unmounting the trailer's surface, not by sharing a player.
+- **`languageSlug` does NOT key the player.** A language switch is a `replaceAsync` swap inside one player, and the adapter already re-keys only the progress recorder. Keying the player boundary on language releases and recreates the player — the audible gap R1 forbids.
+- **The streaming URL is NOT part of session identity.** One session legitimately changes URL twice: the downloads manifest hydrates a `file://` copy after cold launch, and a seed URL resolves to the canonical one. Re-publishing on either emits a bogus `replaced` record and a spurious swap flush.
+- **Admission is a one-way latch on FIRST playback, not source existence.** The watch route has seven distinct pre-playback states that accept a back press, and three of them look identical to a healthy player (chrome up, scrubber at 0:00): a load that errored, a load that hit the 12s watchdog, and an autostart declined because the app was backgrounded through the load window. Reading the instantaneous playing state is wrong in the other direction — it is false after any pause, which is the commonest way anyone reaches a mini player.
+
+### Constraints discovered by reading the real files
+
+- `app/_layout.tsx` resolves EVERY dependency through `require()` inside one try/catch, deliberately, so a module-level throw degrades to a Startup Error panel instead of a white screen. Do not add a static top-level import there.
+- Hooks in `RootLayout` must be declared BEFORE the `if (!hydrated)` early return. `hydrated` starts TRUE on every default dev run because `EXPO_PUBLIC_FORGE_CACHE_PERSIST` is unset, so a misplaced hook is INVISIBLE in the simulator and only crashes in an EAS build.
+- Do not call `useSegments()` in `RootLayout`; it subscribes the root to the router store and re-renders every provider on each navigation. Keep it in a leaf.
+- iOS native `formSheet` screens present ABOVE the RN root view, so an absolutely-positioned sibling of the Stack CANNOT paint over them. The suppression rules in `presentation.ts` are structural, not cosmetic.
+- There are THREE production adapter consumers besides the watch surface: `app/video/[sectionKey].tsx`, `app/collection/[sectionKey].tsx`, and `PlaybackHost.tsx`. "One player above the screens" is true only when scoped to the watch session.
+- `pipLatch` has NO production feeder yet, and there are three `allowsPictureInPicture` sites. U9's wiring is a three-site job.
+- The auth store starts SIGNED_OUT and commits a real user only after an async refresh. A session started in that cold-launch window is stamped with a null subject; the store now ADOPTS it when auth resolves rather than ending it.
+
+### Verification still owed
+
+- **Cold-launch timing is UNMEASURED, not measured-as-fine.** Root CLAUDE.md requires load-timing evidence for changes to client-side initialization, and the root layout now evaluates expo-video at boot. Only the static graph was measured: moving `applyWatchBufferOptions` to a leaf took the boot graph from 52 to 32 local modules and 16 to 10 native packages, pinned by `PlaybackHost.coldLaunch.guard.test.js`. TIMING could not be measured: a dev client cold launch has a plus/minus 6 second noise floor (five runs: 19.8s, 31.6s, 27.0s, 28.8s, 27.8s to `home_feed_ready`), which is two orders of magnitude above the expected effect. A real answer needs a RELEASE build and the Datadog `js_tti` RUM timing the app already emits.
+- **iOS picture-in-picture has NEVER been verified** on this app and cannot be on an iPhone simulator. U9's precondition is an iPad simulator or hardware.
+- **Android hardware** for U7 and U9, per the Verification Contract.
+
+### Roadmap id correction
+
+Commits on this branch cite `feat-357`, which is already claimed by a different feature. U10 above names `feat-361` — also taken, as is `feat-362`. **The next free id is `feat-363`.** Re-check at creation time; the worktree can be behind main, which is how the wrong id was derived in the first place.
+
+### Environment notes for the next session
+
+- Run `bash scripts/setup-sim-env.sh mobile` BEFORE starting Metro. Expo inlines `EXPO_PUBLIC_*` at bundler startup, so seeding afterwards needs a restart.
+- Launch the Android emulator with `-memory 4096`. The default lets Android's lowmemorykiller silently sweep a React Native dev build.
+- **Port trap, cost real time twice.** Port 8081 is often owned by the MAIN checkout's Metro, and `expo run:android` silently auto-attaches to it. The app boots and looks perfect while running main's bundle, so a worktree smoke test verifies the wrong branch and reports PASS. Run this worktree's Metro on its own port, `adb reverse --remove tcp:8081` so no fallback exists, and confirm `Starting project at <worktree path>` plus a fresh `Android Bundled` line in that Metro's log before believing any result. Restore the reverse afterwards.
+- Before diagnosing black video, check `adb shell date` against the host. Snapshot clock skew causes `CertificateNotYetValid`, which kills all HLS.
+
+### Residual accepted
+
+Roughly 55 JSDoc blocks in branch-authored files exceed the repo's 3-line inline-comment cap. Left as-is: rewriting them risked damaging the explanations, and untouched mobile files carry around 350 of the same shape.
+
+### Review coverage caveat
+
+An eight-persona review ran over this branch and all actionable findings are fixed. Its adversarial lens ran same-family rather than cross-model — the peer route was available but skipped for context budget — so treat the adversarial findings as less independent than the rest.
