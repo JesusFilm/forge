@@ -3,8 +3,9 @@ id: "feat-361"
 title: "Add multilingual morphology and taxonomy Watch suggestions"
 owner: "urim"
 priority: "P1"
-status: "in-progress"
+status: "complete"
 start_date: "2026-08-13"
+completed_date: "2026-08-13"
 duration: 2
 depends_on:
   - "feat-337"
@@ -102,3 +103,15 @@ rg -n "model Keyword|model VideoKeyword|keywords:" apps/admin/prisma apps/admin/
   current-index publisher may build and publish that serving revision.
 - Focused Admin tests, typecheck, lint, format checks, and a Watch modal browser
   smoke pass without changing Web behavior or page-loading performance.
+
+## Completion Evidence — 2026-08-13
+
+- Local Admin verification passed for immutable candidate validation, exact
+  language identity isolation, candidate-bound suggestion requests, the exact
+  v2 qualification guard on the current publisher, and pure latency, request,
+  and capacity gates.
+- Focused Admin tests, typecheck, lint, formatting, and diff checks passed. No
+  serving alias was moved and no external Typesense or database state changed.
+- The credentialed production candidate benchmark and post-alias Watch smoke
+  remain deployment gates. They were not run locally and must pass through the
+  normal PR-to-main publication flow before production promotion.

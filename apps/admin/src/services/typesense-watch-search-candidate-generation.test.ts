@@ -125,12 +125,15 @@ function memoryPrisma() {
       findFirst: vi.fn(async ({ where }: Row) =>
         qualifications.find(
           (row) =>
-            row.generationId === where.generationId &&
+            (where.generationId === undefined ||
+              row.generationId === where.generationId) &&
             row.status === where.status &&
             row.applicationRevision === where.applicationRevision &&
-            row.transcriptCollection === where.transcriptCollection &&
-            row.transcriptProjectionRevision ===
-              where.transcriptProjectionRevision &&
+            (where.transcriptCollection === undefined ||
+              row.transcriptCollection === where.transcriptCollection) &&
+            (where.transcriptProjectionRevision === undefined ||
+              row.transcriptProjectionRevision ===
+                where.transcriptProjectionRevision) &&
             (where.qrelsRevision === undefined ||
               row.qrelsRevision === where.qrelsRevision) &&
             (where.currentBindings === undefined ||
@@ -138,7 +141,32 @@ function memoryPrisma() {
                 JSON.stringify(where.currentBindings.equals)) &&
             (where.evidence === undefined ||
               row.evidence?.identity?.rankingRevision ===
-                where.evidence.equals),
+                where.evidence.equals) &&
+            (where.AND === undefined ||
+              where.AND.every((condition: Row) => {
+                const path = condition.evidence.path as string[]
+                const value = path.reduce(
+                  (current: unknown, key: string) =>
+                    current && typeof current === "object"
+                      ? (current as Row)[key]
+                      : undefined,
+                  row.evidence,
+                )
+                return (
+                  JSON.stringify(value) ===
+                  JSON.stringify(condition.evidence.equals)
+                )
+              })) &&
+            (where.generation === undefined ||
+              (() => {
+                const generation = generations.get(row.generationId)
+                const expected = where.generation.is
+                return (
+                  generation?.state === expected.state &&
+                  generation?.applicationRevision ===
+                    expected.applicationRevision
+                )
+              })()),
         ),
       ),
     },
@@ -193,9 +221,12 @@ function memoryPrisma() {
   return { prisma, generations, pointers, qualifications, leases }
 }
 
-const generationInput = (id = "candidate-1") => ({
+const generationInput = (
+  id = "candidate-1",
+  applicationRevision = "admin-app-sha-1",
+) => ({
   id,
-  applicationRevision: "admin-app-sha-1",
+  applicationRevision,
   sourceEpoch: "catalog-revision-42",
   sourceDigests: { catalog: "sha256:catalog" },
   transcriptProjectionRevision: 17n,
@@ -266,13 +297,40 @@ describe("TypesenseWatchSearchCandidateGenerationService", () => {
     )
   })
 
-  async function ready(id = "candidate-1") {
-    await service.createBuildingGeneration(generationInput(id))
+  async function ready(
+    id = "candidate-1",
+    applicationRevision = "admin-app-sha-1",
+  ) {
+    await service.createBuildingGeneration(
+      generationInput(id, applicationRevision),
+    )
     return service.validateAndMarkReady({
       generationId: id,
       expectedVersion: 0,
       documentCounts: { catalog: 1_070, transcript: 280_107 },
       capacityEvidence: { residentMemoryBytes: 5_000_000_000 },
+    })
+  }
+
+  async function publicationQualification(
+    applicationRevision = "watch-search-candidate/v2",
+    evidenceApplicationRevision = applicationRevision,
+  ) {
+    const generation = await ready("publication-candidate", applicationRevision)
+    db.qualifications.push({
+      id: "publication-qualification",
+      generationId: generation.id,
+      status: "PASSED",
+      applicationRevision,
+      evidence: {
+        schemaVersion: "watch-search-candidate-qualification/v2",
+        status: "QUALIFIED",
+        reasons: [],
+        identity: {
+          generationId: generation.id,
+          applicationRevision: evidenceApplicationRevision,
+        },
+      },
     })
   }
 
@@ -576,19 +634,63 @@ describe("TypesenseWatchSearchCandidateGenerationService", () => {
     })
 
     await expect(
-      service.assertCurrentPublicationAllowed({ rebuildTranscripts: false }),
+      service.assertCurrentPublicationAllowed({
+        rebuildTranscripts: false,
+        applicationRevision: "watch-search-candidate/v2",
+      }),
     ).rejects.toBeInstanceOf(CandidateGenerationLeaseError)
     await expect(
-      service.assertCurrentPublicationAllowed({ rebuildTranscripts: true }),
+      service.assertCurrentPublicationAllowed({
+        rebuildTranscripts: true,
+        applicationRevision: "watch-search-candidate/v2",
+      }),
     ).rejects.toBeInstanceOf(CandidateGenerationLeaseError)
 
     now = new Date("2026-08-10T00:01:00.000Z")
+    await publicationQualification()
     await expect(
-      service.assertCurrentPublicationAllowed({ rebuildTranscripts: false }),
+      service.assertCurrentPublicationAllowed({
+        rebuildTranscripts: false,
+        applicationRevision: "watch-search-candidate/v2",
+      }),
     ).resolves.toBe(undefined)
     await expect(
-      service.assertCurrentPublicationAllowed({ rebuildTranscripts: true }),
+      service.assertCurrentPublicationAllowed({
+        rebuildTranscripts: true,
+        applicationRevision: "watch-search-candidate/v2",
+      }),
+    ).rejects.toBeInstanceOf(CandidateGenerationLeaseError)
+  })
+
+  it("admits current publication only for an exact PASSED v2 qualification", async () => {
+    await publicationQualification()
+
+    await expect(
+      service.assertCurrentPublicationAllowed({
+        rebuildTranscripts: false,
+        applicationRevision: "watch-search-candidate/v2",
+      }),
     ).resolves.toBe(undefined)
+  })
+
+  it("rejects absent or mismatched v2 qualification before publication", async () => {
+    await expect(
+      service.assertCurrentPublicationAllowed({
+        rebuildTranscripts: false,
+        applicationRevision: "watch-search-candidate/v2",
+      }),
+    ).rejects.toBeInstanceOf(CandidateGenerationValidationError)
+
+    await publicationQualification(
+      "watch-search-candidate/v2",
+      "watch-search-candidate/v1",
+    )
+    await expect(
+      service.assertCurrentPublicationAllowed({
+        rebuildTranscripts: false,
+        applicationRevision: "watch-search-candidate/v2",
+      }),
+    ).rejects.toBeInstanceOf(CandidateGenerationValidationError)
   })
 
   it("blocks current publication while a candidate is serving", async () => {
@@ -599,20 +701,33 @@ describe("TypesenseWatchSearchCandidateGenerationService", () => {
     })
 
     await expect(
-      service.assertCurrentPublicationAllowed({ rebuildTranscripts: false }),
+      service.assertCurrentPublicationAllowed({
+        rebuildTranscripts: false,
+        applicationRevision: "watch-search-candidate/v2",
+      }),
     ).rejects.toThrow(/serving candidate generation candidate-1/)
     await expect(
-      service.assertCurrentPublicationAllowed({ rebuildTranscripts: true }),
+      service.assertCurrentPublicationAllowed({
+        rebuildTranscripts: true,
+        applicationRevision: "watch-search-candidate/v2",
+      }),
     ).rejects.toThrow(/serving candidate generation candidate-1/)
   })
 
   it("blocks transcript rebuilds while a live candidate can reference them", async () => {
     await ready()
+    await publicationQualification()
     await expect(
-      service.assertCurrentPublicationAllowed({ rebuildTranscripts: true }),
+      service.assertCurrentPublicationAllowed({
+        rebuildTranscripts: true,
+        applicationRevision: "watch-search-candidate/v2",
+      }),
     ).rejects.toBeInstanceOf(CandidateGenerationLeaseError)
     await expect(
-      service.assertCurrentPublicationAllowed({ rebuildTranscripts: false }),
+      service.assertCurrentPublicationAllowed({
+        rebuildTranscripts: false,
+        applicationRevision: "watch-search-candidate/v2",
+      }),
     ).resolves.toBe(undefined)
   })
 

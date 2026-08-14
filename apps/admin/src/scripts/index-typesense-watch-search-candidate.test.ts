@@ -221,11 +221,21 @@ function typesenseDouble() {
       getCollectionSchema: vi.fn(async (name: string) => {
         const schema = schemas.get(name)
         if (!schema) throw Object.assign(new Error("missing"), { status: 404 })
-        return schema
+        return {
+          ...schema,
+          fields: schema.fields.map((field) => ({
+            facet: false,
+            index: true,
+            optional: false,
+            sort: true,
+            stem: false,
+            ...(field as object),
+          })),
+        }
       }),
       createCollection: vi.fn(
         async (schema: { name: string; fields: unknown[] }) => {
-          schemas.set(schema.name, schema)
+          schemas.set(schema.name, structuredClone(schema))
           return schema
         },
       ),
@@ -235,14 +245,60 @@ function typesenseDouble() {
           documents.set(collection, batch)
         },
       ),
-      multiSearch: vi.fn(async (searches: Array<{ collection: string }>) =>
-        searches.map((search) => ({
-          found: documents.get(search.collection)?.length ?? 0,
-          out_of: documents.get(search.collection)?.length ?? 0,
-          page: 1,
-          search_time_ms: 1,
-          hits: [],
-        })),
+      multiSearch: vi.fn(
+        async (
+          searches: Array<{
+            collection: string
+            filter_by?: string
+            group_by?: string
+            group_limit?: number
+            page?: number
+            per_page?: number
+          }>,
+        ) =>
+          searches.map((search) => {
+            const collectionDocuments = (documents.get(search.collection) ??
+              []) as Array<Record<string, unknown>>
+            const identity = search.filter_by?.match(/`([^`]+)`/)?.[1]
+            const filteredDocuments = identity
+              ? collectionDocuments.filter(
+                  (document) => document.languageIdentity === identity,
+                )
+              : collectionDocuments
+            if (search.group_by === "languageIdentity,canonicalVideoId") {
+              const groups = new Map<string, Array<Record<string, unknown>>>()
+              for (const document of filteredDocuments) {
+                const key = `${String(document.languageIdentity)}\0${String(document.canonicalVideoId)}`
+                groups.set(key, [...(groups.get(key) ?? []), document])
+              }
+              const page = search.page ?? 1
+              const perPage = search.per_page ?? 10
+              const pageGroups = [...groups.entries()].slice(
+                (page - 1) * perPage,
+                page * perPage,
+              )
+              return {
+                found: groups.size,
+                out_of: groups.size,
+                page,
+                search_time_ms: 1,
+                grouped_hits: pageGroups.map(([key, groupDocuments]) => ({
+                  group_key: key.split("\0"),
+                  found: groupDocuments.length,
+                  hits: groupDocuments
+                    .slice(0, search.group_limit ?? 1)
+                    .map((document) => ({ document })),
+                })),
+              }
+            }
+            return {
+              found: filteredDocuments.length,
+              out_of: filteredDocuments.length,
+              page: 1,
+              search_time_ms: 1,
+              hits: [],
+            }
+          }),
       ),
       getAlias: vi.fn(async (alias: string) => ({
         name: alias,
@@ -314,6 +370,128 @@ describe("Typesense Watch candidate index CLI", () => {
       transcriptReused: true,
       counts: snapshot.counts,
     })
+    expect(generation.lifecycle.validateAndMarkReady).toHaveBeenCalledWith(
+      expect.objectContaining({
+        documentCounts: expect.objectContaining({
+          lexicalByLanguageIdentity: {
+            "slug:english": 1,
+            "slug:mandarin-chinese": 1,
+          },
+          lexicalCanonicalVideos: 1,
+          lexicalDuplicateIdentityCanonicalPairs: 0,
+        }),
+        capacityEvidence: expect.objectContaining({
+          applicationRevision: "app-sha-1",
+          schemaManifestHash: expect.stringMatching(/^sha256:[a-f0-9]{64}$/),
+          lexicalSearchableBytesByFamily:
+            snapshot.lexicalMemory.searchableBytesByFamily,
+        }),
+      }),
+    )
+  })
+
+  it("rejects a per-languageIdentity count mismatch before READY", async () => {
+    const generation = lifecycleDouble()
+    const typesense = typesenseDouble()
+    const baseMultiSearch = typesense.client.multiSearch.getMockImplementation()
+    typesense.client.multiSearch.mockImplementation(async (searches) => {
+      const results = await baseMultiSearch!(searches)
+      return results.map((result, index) =>
+        searches[index]?.filter_by?.includes("slug:english")
+          ? { ...result, found: 0 }
+          : result,
+      ) as never
+    })
+
+    await expect(
+      publishTypesenseWatchSearchCandidate({
+        prisma: {} as PrismaClient,
+        typesense: typesense.client as never,
+        generations: generation.lifecycle as never,
+        generationId: generation.generationId,
+        applicationRevision: "app-sha-1",
+        sourceEpoch: "source-42",
+        transcript: {
+          collection: "watch_search_transcripts_active",
+          projectionRevision: 17n,
+        },
+        loadSnapshot: async () => snapshot,
+      }),
+    ).rejects.toThrow(/languageIdentity.*count mismatch/i)
+
+    expect(generation.lifecycle.validateAndMarkReady).not.toHaveBeenCalled()
+  })
+
+  it("rejects duplicate identity/canonical groups before READY", async () => {
+    const generation = lifecycleDouble()
+    const typesense = typesenseDouble()
+    const baseMultiSearch = typesense.client.multiSearch.getMockImplementation()
+    typesense.client.multiSearch.mockImplementation(async (searches) => {
+      const results = await baseMultiSearch!(searches)
+      return results.map((result, index) => {
+        if (
+          searches[index]?.group_by !== "languageIdentity,canonicalVideoId" ||
+          !("grouped_hits" in result) ||
+          !Array.isArray(result.grouped_hits)
+        ) {
+          return result
+        }
+        const groupedHits = [...result.grouped_hits]
+        if (groupedHits[0]) groupedHits[0] = { ...groupedHits[0], found: 2 }
+        return { ...result, grouped_hits: groupedHits }
+      }) as never
+    })
+
+    await expect(
+      publishTypesenseWatchSearchCandidate({
+        prisma: {} as PrismaClient,
+        typesense: typesense.client as never,
+        generations: generation.lifecycle as never,
+        generationId: generation.generationId,
+        applicationRevision: "app-sha-1",
+        sourceEpoch: "source-42",
+        transcript: {
+          collection: "watch_search_transcripts_active",
+          projectionRevision: 17n,
+        },
+        loadSnapshot: async () => snapshot,
+      }),
+    ).rejects.toThrow(/duplicate canonical/i)
+
+    expect(generation.lifecycle.validateAndMarkReady).not.toHaveBeenCalled()
+  })
+
+  it("rejects physical schema drift before READY", async () => {
+    const generation = lifecycleDouble()
+    const typesense = typesenseDouble()
+    typesense.client.importDocuments.mockImplementation(
+      async (collection: string, batch: unknown[], action: string) => {
+        expect(action).toBe("upsert")
+        typesense.documents.set(collection, batch)
+        if (collection.endsWith("_lexical")) {
+          const schema = typesense.schemas.get(collection)
+          if (schema) schema.fields = schema.fields.slice(1)
+        }
+      },
+    )
+
+    await expect(
+      publishTypesenseWatchSearchCandidate({
+        prisma: {} as PrismaClient,
+        typesense: typesense.client as never,
+        generations: generation.lifecycle as never,
+        generationId: generation.generationId,
+        applicationRevision: "app-sha-1",
+        sourceEpoch: "source-42",
+        transcript: {
+          collection: "watch_search_transcripts_active",
+          projectionRevision: 17n,
+        },
+        loadSnapshot: async () => snapshot,
+      }),
+    ).rejects.toThrow(/schema manifest mismatch/i)
+
+    expect(generation.lifecycle.validateAndMarkReady).not.toHaveBeenCalled()
   })
 
   it("leaves a durable BUILDING owner when external publication fails", async () => {

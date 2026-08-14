@@ -55,13 +55,15 @@ cheap suggestion lane, not to the full search action.
 ### Keep the suggestion lane structurally cheaper than search
 
 Admin exposes a separate additive `watchSearchSuggestions` query backed only by
-the lexical title and description projection. The service should:
+the lexical title, metadata, and language-bound taxonomy projection. The
+service should:
 
 - normalize the prefix with NFC, trim it, and cap it by Unicode code points
   before cache, database, or Typesense work;
 - require at least two Unicode letters or numbers;
-- query only localized `title_*` and `metadata_*` fields plus their fallback
-  fields;
+- query unchanged exact `title_*` and `metadata_*` fields plus their fallback
+  fields for the baseline lane, and query separate taxonomy and locale-stemmed
+  recall fields for the expansion lane;
 - use prefix matching, zero typo tolerance, exact-first ranking, canonical-video
   grouping, a small candidate pool, and a hard response cap;
 - extract bounded query phrases, validate that each displayed phrase has a
@@ -93,9 +95,13 @@ an inline GraphQL contract.
 
 ### Separate language identity from tokenization
 
-The viewer-selected public language slug is the exact identity across the Web,
-GraphQL, and Typesense boundaries. Admin resolves its BCP-47 value only to pick
-the tokenizer-specific title and metadata fields.
+The viewer-selected public `Language.slug` is the exact identity across the
+Web, GraphQL, Typesense filter, merge, deduplication, and hydration boundaries.
+Admin resolves its BCP-47 value only to select a supported tokenizer/analyzer
+for title, metadata, and taxonomy fields. BCP-47 never admits a sibling public
+language, even when two public languages select the same analyzer. Unsupported
+analyzers keep Unicode exact fallback fields and never inherit English
+stemming, stop words, or taxonomy.
 
 Each lexical document carries a faceted `languageIdentity`, and suggestion
 requests filter it before grouping:
@@ -120,6 +126,79 @@ share the same BCP-47 value. The per-language lexical projection plus exact
 `languageIdentity` filter prevents that collision. See
 `../best-practices/language-identity-on-slug-not-bcp47-20260605.md` for the
 general identity rule.
+
+### Rank exact evidence ahead of expanded evidence
+
+Keep literal and recall fields separate so morphology cannot silently replace
+proper-name and exact-prefix behavior. Retrieve baseline and expansion as two
+bounded results inside one Typesense multi-search request, retain Typesense
+matched-field evidence, then sort direct candidates by this explicit policy:
+
+1. literal title;
+2. literal taxonomy;
+3. stemmed title;
+4. literal metadata;
+5. stemmed taxonomy; and
+6. stemmed metadata.
+
+Within a class, preserve Typesense relevance and use canonical video ID only as
+the final deterministic tie-break. Deduplicate by canonical video before the
+six-result cap. Raw prefix checks classify literal evidence; they must not
+discard a valid morphology or taxonomy hit. Visible phrase suggestions remain
+literal: derive them only from localized title/description values and validate
+them against the same exact `languageIdentity`. Taxonomy aliases and stemmed
+tokens retrieve content but never become displayed query phrases.
+
+### Make mixed-version requests fail soft
+
+New Admin code can run while the serving alias still points at the previous
+lexical schema. Send the exact baseline and expansion lanes in one tolerant
+multi-search request. If v1 lacks v2 expansion fields, Typesense rejects only
+that sub-result; consume the healthy baseline, emit the versioned
+`expansion_unavailable` outcome, and keep phrase validation and direct-match
+hydration bounded. A baseline failure may return identity-scoped expanded
+direct matches but no phrase rows. Only a total retrieval failure falls back to
+the existing optional empty suggestion list, so Enter/Search remains usable.
+
+The production service defaults to the stable `watch_search_lexical` alias.
+Candidate qualification may inject an exact physical lexical collection only
+through an internal constructor/binding; GraphQL and Web never accept a
+collection selector.
+
+### Keep candidate construction separate from serving publication
+
+The morphology/taxonomy schema is an immutable application revision. The
+candidate builder creates fresh physical catalog, availability, and lexical
+collections, validates their exact schema manifest/hash, total and per-public-
+language counts, canonical coverage, duplicate identity/canonical pairs,
+source digests, and import success, then publishes evaluation/qualification
+state only. It never upserts a serving alias.
+
+The existing current-index publisher is the sole alias owner. Before building
+the new current generation it requires an exact `PASSED` qualification for the
+v2 application revision. It holds the shared PostgreSQL advisory lock for the
+entire rebuild/import/publication session, captures the previous alias set,
+performs the coordinated alias move, and uses that captured set for
+compensating rollback.
+
+Operational evidence and rollback checklist:
+
+- benchmark the exact candidate physical collection with alternating v1/v2
+  order and cold/warm validation cache; record retrieval, validation,
+  hydration, and total p50/p95/p99 plus requests, fields, bytes, caps, and
+  retries;
+- fail for any p50/p95/p99 regression or total p99 at or above the Web
+  3,500-millisecond timeout;
+- record current/candidate physical collections, searchable bytes by field
+  family, predicted/imported delta (at most 10%), settled RSS, v1+v2 peak RSS
+  (at least 40% free), settled headroom (at least 50% free), and publication
+  lock duration;
+- after publication, rerun the frozen multilingual smoke through the aliases
+  and verify the served application revision; and
+- on any identity, baseline, latency, memory, or relevance breach, restore the
+  captured v1 aliases, verify baseline suggestions and explicit Enter/Search,
+  confirm expansion is unavailable rather than influential, and retain both v1
+  and failed v2 artifacts through the rollback window.
 
 ### Make async freshness explicit
 
@@ -283,8 +362,10 @@ ability to submit a full search.
 The discriminating regression tests are:
 
 - `apps/admin/src/services/typesense-watch-search-suggestions.test.ts` for
-  title-only request shape, bounds, exact slug identity despite a shared
-  locale, cache reuse, and empty failure;
+  bounded baseline/expansion request shape, physical candidate binding, exact
+  slug identity despite a shared locale, cache reuse, and fail-soft behavior;
+- `apps/admin/src/scripts/benchmark-watch-search-suggestions-candidate.test.ts`
+  for local percentile, request-envelope, capacity, and qualification gates;
 - `apps/web/src/components/__tests__/FloatingSearchProvider.test.tsx` for no
   full search while typing, draft-only keyboard and pointer selection,
   repeated-submit coalescing, stale-response suppression, long-query

@@ -310,6 +310,7 @@ function assertSchemaMatches(
       "locale",
       "optional",
       "sort",
+      "stem",
       "num_dim",
     ] as const) {
       if (expected[key] !== undefined && observed[key] !== expected[key]) {
@@ -1166,6 +1167,7 @@ export class TypesenseWatchSearchCandidateGenerationService {
 
   async assertCurrentPublicationAllowed(input: {
     rebuildTranscripts: boolean
+    applicationRevision: string
   }): Promise<void> {
     const now = this.now()
     const [activeLease, transcriptCandidate, servingPointer] =
@@ -1198,6 +1200,54 @@ export class TypesenseWatchSearchCandidateGenerationService {
     if (transcriptCandidate) {
       throw new CandidateGenerationLeaseError(
         `transcript rebuild is blocked by candidate generation ${transcriptCandidate.id}`,
+      )
+    }
+    await this.assertPassedQualificationForApplicationRevision(
+      input.applicationRevision,
+    )
+  }
+
+  async assertPassedQualificationForApplicationRevision(
+    applicationRevision: string,
+  ): Promise<void> {
+    const exactRevision = requiredString(
+      applicationRevision,
+      "current publication application revision",
+    )
+    const qualification =
+      await this.prisma.watchSearchCandidateQualification.findFirst({
+        where: {
+          status: "PASSED",
+          applicationRevision: exactRevision,
+          generation: {
+            is: { state: "READY", applicationRevision: exactRevision },
+          },
+          AND: [
+            {
+              evidence: {
+                path: ["schemaVersion"],
+                equals: "watch-search-candidate-qualification/v2",
+              },
+            },
+            {
+              evidence: { path: ["status"], equals: "QUALIFIED" },
+            },
+            {
+              evidence: { path: ["reasons"], equals: [] },
+            },
+            {
+              evidence: {
+                path: ["identity", "applicationRevision"],
+                equals: exactRevision,
+              },
+            },
+          ],
+        },
+        select: { id: true },
+      })
+    if (!qualification) {
+      throw new CandidateGenerationValidationError(
+        `current publication requires an exact PASSED qualification for application revision ${exactRevision}`,
       )
     }
   }

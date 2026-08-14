@@ -1,7 +1,7 @@
 ---
 title: Precomputed serving indexes for multilingual hybrid search
 date: 2026-08-03
-last_updated: 2026-08-12
+last_updated: 2026-08-13
 category: best-practices
 module: apps/admin watch search
 problem_type: best_practice
@@ -198,6 +198,52 @@ candidate leases or a serving candidate
 `apps/admin/src/services/typesense-watch-search-candidate-generation.ts:1207-1275`).
 Candidate runtime, comparison, and qualification require a dedicated search
 key, while publication and deletion use a separate operator key.
+
+Suggestion morphology/taxonomy rollout is deliberately narrower than the
+general candidate-serving selector above. Its public identity is the selected
+`Language.slug`; BCP-47 chooses a tokenizer/analyzer only and never admits a
+sibling language. Exact title/metadata fields remain the v1-compatible
+baseline. Separate exact taxonomy and stemmed title/taxonomy/metadata fields
+form the v2 expansion lane, ranked in this order: literal title, literal
+taxonomy, stemmed title, literal metadata, stemmed taxonomy, stemmed metadata.
+Only literal title/description evidence can produce a visible phrase row.
+
+The suggestion request sends baseline and expansion together through tolerant
+multi-search. During a code-first/schema-later overlap, a missing v2 field
+rejects only the expansion sub-result and the baseline remains usable. Candidate
+qualification binds the suggestion service internally to the exact physical v2
+lexical collection; the public GraphQL contract has no collection override.
+
+For this immutable suggestion revision, the candidate builder is
+qualification-only: it creates physical members, proves exact source digests,
+schema manifest/hash, total and per-`languageIdentity` counts, canonical
+coverage, duplicate absence, and imports, then updates evaluation and evidence
+state. It does not move current aliases. The existing current-index publisher
+alone rebuilds the serving generation and moves aliases, and it refuses to
+start without an exact `PASSED` qualification for the v2 application revision.
+This publication guard does not use the candidate `SERVING` pointer as an alias
+promotion mechanism. The publisher retains the full-session advisory lock,
+captured prior aliases, coordinated swap, and compensating rollback.
+
+Suggestion-specific operational evidence must name both physical lexical
+collections and record:
+
+- alternating v1/v2, cold/warm retrieval, validation, hydration, and total
+  p50/p95/p99, failing on any regression or total p99 at/above 3,500 ms;
+- request/sub-search counts, field counts, query/request bytes, candidate and
+  response caps, hydration calls, and retries;
+- searchable bytes per baseline/stem/taxonomy family and predicted versus
+  imported bytes with at most 10% delta;
+- v1+v2 peak RSS with at least 40% of the 16 GiB service free, settled RSS with
+  at least 50% free, and the observed full publication-lock duration; and
+- the post-alias frozen multilingual smoke and served v2 revision.
+
+Rollback uses only the current publisher's captured alias set. Restore v1,
+verify exact baseline suggestions and explicit full-search submission, confirm
+v2 expansion no longer influences results, and retain the failed v2 physical
+collection through the observation window. These measurements and alias smoke
+are deployment gates; local unit tests validate the mechanisms but cannot
+substitute for production evidence.
 
 Rollback to `CURRENT` does not rebuild or delete anything. Candidate service
 resolution is coalesced and cached for at most 30 seconds, with immediate

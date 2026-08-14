@@ -320,6 +320,72 @@ describe("TypesenseWatchSearchSuggestionsService", () => {
     ).toBeLessThanOrEqual(32_768)
   })
 
+  it("binds both bounded lanes to an injected candidate physical collection", async () => {
+    findFirstMock.mockResolvedValue({ bcp47: "en" })
+    multiSearchSettledMock.mockResolvedValueOnce([
+      {
+        status: "fulfilled",
+        value: {
+          found: 0,
+          out_of: 0,
+          page: 1,
+          search_time_ms: 1,
+          grouped_hits: [],
+        },
+      },
+      {
+        status: "fulfilled",
+        value: {
+          found: 0,
+          out_of: 0,
+          page: 1,
+          search_time_ms: 1,
+          grouped_hits: [],
+        },
+      },
+    ])
+
+    const service = new TypesenseWatchSearchSuggestionsService(
+      {
+        language: { findFirst: findFirstMock },
+        video: { findMany: videoFindManyMock },
+      } as never,
+      {
+        multiSearch: multiSearchMock,
+        multiSearchSettled: multiSearchSettledMock,
+      } as never,
+      { warn: warnMock },
+      "watch-search-candidate/v2",
+      "watch_search_candidate_generation_01_lexical",
+    )
+
+    await expect(
+      service.suggest({ query: "shorts", languageSlug: "english" }),
+    ).resolves.toEqual([])
+
+    const [searches] = multiSearchSettledMock.mock.calls[0] as [
+      Array<Record<string, unknown>>,
+    ]
+    expect(searches).toHaveLength(2)
+    expect(searches).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          collection: "watch_search_candidate_generation_01_lexical",
+          filter_by: "languageIdentity:=[`slug:english`]",
+          per_page: 25,
+          group_by: "canonicalVideoId",
+          group_limit: 1,
+        }),
+      ]),
+    )
+    expect(
+      searches.every(
+        (search) =>
+          search.collection === "watch_search_candidate_generation_01_lexical",
+      ),
+    ).toBe(true)
+  })
+
   it("admits English shorts through title-stem evidence without a raw prefix", async () => {
     findFirstMock.mockResolvedValue({ bcp47: "en" })
     multiSearchSettledMock.mockResolvedValueOnce([

@@ -399,9 +399,10 @@ function lexicalSearchRequestBase(
   fields: readonly string[],
   weights: readonly number[],
   languageIdentity: string,
+  lexicalCollection: string,
 ): TypesenseSearchRequest {
   return {
-    collection: TYPESENSE_WATCH_LEXICAL_ALIAS,
+    collection: lexicalCollection,
     q: query,
     query_by: fields.join(","),
     query_by_weights: weights.join(","),
@@ -418,6 +419,7 @@ function baselineSuggestionRequest(
   titleFields: readonly string[],
   metadataFields: readonly string[],
   languageIdentity: string,
+  lexicalCollection: string,
 ): TypesenseSearchRequest {
   const fields = [...titleFields, ...metadataFields]
   return {
@@ -429,6 +431,7 @@ function baselineSuggestionRequest(
         ...metadataFields.map((_field, index) => (index === 0 ? 2 : 1)),
       ],
       languageIdentity,
+      lexicalCollection,
     ),
     page: 1,
     per_page: TYPESENSE_SUGGESTION_CANDIDATE_LIMIT,
@@ -450,6 +453,7 @@ function lexicalSuggestionRequestBase(
   titleFields: readonly string[],
   metadataFields: readonly string[],
   languageIdentity: string,
+  lexicalCollection: string,
 ): TypesenseSearchRequest {
   const fields = [...titleFields, ...metadataFields]
   return lexicalSearchRequestBase(
@@ -460,6 +464,7 @@ function lexicalSuggestionRequestBase(
       ...metadataFields.map((_field, index) => (index === 0 ? 2 : 1)),
     ],
     languageIdentity,
+    lexicalCollection,
   )
 }
 
@@ -472,6 +477,7 @@ function expansionSuggestionRequest(
   stemMetadataFields: readonly string[],
   stemTaxonomyFields: readonly string[],
   languageIdentity: string,
+  lexicalCollection: string,
 ): TypesenseSearchRequest {
   const queryFields = [
     ...exactTaxonomyFields,
@@ -500,6 +506,7 @@ function expansionSuggestionRequest(
         ...stemTaxonomyFields.map(() => 2),
       ],
       languageIdentity,
+      lexicalCollection,
     ),
     page: 1,
     per_page: TYPESENSE_SUGGESTION_CANDIDATE_LIMIT,
@@ -541,6 +548,7 @@ function phraseValidationRequest(
   titleFields: readonly string[],
   metadataFields: readonly string[],
   languageIdentity: string,
+  lexicalCollection: string,
 ): TypesenseSearchRequest {
   return {
     ...lexicalSuggestionRequestBase(
@@ -548,6 +556,7 @@ function phraseValidationRequest(
       titleFields,
       metadataFields,
       languageIdentity,
+      lexicalCollection,
     ),
     page: 1,
     per_page: 1,
@@ -578,6 +587,7 @@ async function validateQuerySuggestions(
   metadataFields: readonly string[],
   languageIdentity: string,
   applicationRevision: string,
+  lexicalCollection: string,
 ): Promise<WatchSearchSuggestion[]> {
   if (suggestions.length === 0) return []
 
@@ -611,6 +621,7 @@ async function validateQuerySuggestions(
             titleFields,
             metadataFields,
             languageIdentity,
+            lexicalCollection,
           )
         }),
         { timeoutMs: WATCH_SEARCH_PHRASE_VALIDATION_TIMEOUT_MS },
@@ -914,6 +925,7 @@ export class TypesenseWatchSearchSuggestionsService {
     private readonly typesense: SuggestionTypesense,
     private readonly logger: Pick<Console, "warn"> = console,
     private readonly applicationRevision: string = TYPESENSE_WATCH_SEARCH_CANDIDATE_APPLICATION_REVISION,
+    private readonly lexicalCollection: string = TYPESENSE_WATCH_LEXICAL_ALIAS,
   ) {}
 
   async suggest(
@@ -997,6 +1009,7 @@ export class TypesenseWatchSearchSuggestionsService {
           titleFields,
           metadataFields,
           language.languageIdentity,
+          this.lexicalCollection,
         ),
         expansionSuggestionRequest(
           query,
@@ -1007,6 +1020,7 @@ export class TypesenseWatchSearchSuggestionsService {
           stemMetadataFields,
           stemTaxonomyFields,
           language.languageIdentity,
+          this.lexicalCollection,
         ),
       )
       if (!searches) {
@@ -1121,6 +1135,7 @@ export class TypesenseWatchSearchSuggestionsService {
           metadataFields,
           language.languageIdentity,
           this.applicationRevision,
+          this.lexicalCollection,
         )
       } catch {
         this.logger.warn(

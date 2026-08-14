@@ -3,6 +3,7 @@ import { Client } from "pg"
 import { prisma } from "@/db/client"
 import { TypesenseClient } from "@/services/typesense-client"
 import { TypesenseWatchSearchCandidateGenerationService } from "@/services/typesense-watch-search-candidate-generation"
+import { candidateWatchSearchApplicationRevision } from "@/services/typesense-watch-search-candidate-identity"
 import { TYPESENSE_WATCH_SEARCH_PUBLICATION_LOCK_ID } from "@/services/typesense-watch-search-publication-lock"
 import {
   rebuildTypesenseWatchSearchIndex,
@@ -121,12 +122,14 @@ export async function runGuardedTypesenseWatchSearchPublication<T>(
   deps: {
     assertCurrentPublicationAllowed(input: {
       rebuildTranscripts: boolean
+      applicationRevision: string
     }): Promise<void>
     publish(): Promise<T>
   },
 ): Promise<T> {
   await deps.assertCurrentPublicationAllowed({
     rebuildTranscripts: transcriptStrategy === "rebuild",
+    applicationRevision: candidateWatchSearchApplicationRevision(),
   })
   return deps.publish()
 }

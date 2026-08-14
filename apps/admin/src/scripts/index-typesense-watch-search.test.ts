@@ -46,6 +46,26 @@ describe("Typesense Watch Search index CLI", () => {
     expect(publish).not.toHaveBeenCalled()
   })
 
+  it("requires the exact v2 application qualification before publishing", async () => {
+    const assertCurrentPublicationAllowed = vi.fn(async () => undefined)
+    const publish = vi.fn(async () => "published")
+
+    await expect(
+      runGuardedTypesenseWatchSearchPublication("reuse", {
+        assertCurrentPublicationAllowed,
+        publish,
+      }),
+    ).resolves.toBe("published")
+
+    expect(assertCurrentPublicationAllowed).toHaveBeenCalledWith({
+      rebuildTranscripts: false,
+      applicationRevision: "watch-search-candidate/v2",
+    })
+    expect(
+      assertCurrentPublicationAllowed.mock.invocationCallOrder[0],
+    ).toBeLessThan(publish.mock.invocationCallOrder[0]!)
+  })
+
   it.each([
     { argv: ["--rebuild-transcript"] },
     { argv: ["--rebuild-transcripts=true"] },

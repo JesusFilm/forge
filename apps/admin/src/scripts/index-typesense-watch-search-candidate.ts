@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto"
 import { pathToFileURL } from "node:url"
 import type { PrismaClient } from "@prisma/client"
 import { prisma } from "@/db/client"
@@ -28,6 +29,8 @@ import {
 import { withTypesenseWatchSearchIndexLock } from "./index-typesense-watch-search"
 
 const DEFAULT_BATCH_SIZE = 100
+const VALIDATION_SEARCH_BATCH_SIZE = 50
+const VALIDATION_GROUP_PAGE_SIZE = 250
 
 type CandidateGenerationRecord = {
   id: string
@@ -275,7 +278,75 @@ async function validateDocumentCounts(
   typesense: CandidateTypesense,
   schemas: ReturnType<typeof candidateWatchCollectionSchemas>,
   snapshot: TypesenseWatchCandidateProjectionSnapshot,
-): Promise<void> {
+  applicationRevision: string,
+): Promise<{
+  lexicalByLanguageIdentity: Record<string, number>
+  lexicalCanonicalVideos: number
+  lexicalDuplicateIdentityCanonicalPairs: 0
+  schemaManifestHash: string
+}> {
+  const schemaFieldKeys = [
+    "facet",
+    "index",
+    "locale",
+    "optional",
+    "sort",
+    "stem",
+    "num_dim",
+  ] as const
+  const schemaManifest = (
+    observed: TypesenseCollectionSchema,
+    expected: TypesenseCollectionSchema,
+  ) => {
+    const observedByName = new Map(
+      observed.fields.map((field) => [field.name, field]),
+    )
+    return {
+      name: observed.name,
+      fields: expected.fields.map((expectedField) => {
+        const observedField = observedByName.get(expectedField.name)
+        if (!observedField) return null
+        return Object.fromEntries([
+          ["name", observedField.name],
+          ["type", observedField.type],
+          ...schemaFieldKeys.flatMap((key) =>
+            expectedField[key] === undefined
+              ? []
+              : ([[key, observedField[key]]] as const),
+          ),
+        ])
+      }),
+      fieldCount: observed.fields.length,
+      ...(expected.default_sorting_field == null
+        ? {}
+        : { default_sorting_field: observed.default_sorting_field }),
+      ...(expected.enable_nested_fields == null
+        ? {}
+        : { enable_nested_fields: observed.enable_nested_fields }),
+    }
+  }
+  const expectedSchemaManifests = Object.values(schemas).map((schema) =>
+    schemaManifest(schema, schema),
+  )
+  const actualSchemaManifests = await Promise.all(
+    Object.values(schemas).map(async (schema) =>
+      schemaManifest(await typesense.getCollectionSchema(schema.name), schema),
+    ),
+  )
+  if (!jsonEqual(actualSchemaManifests, expectedSchemaManifests)) {
+    throw new CandidateProjectionSafetyError(
+      "candidate physical schema manifest mismatch",
+    )
+  }
+  const schemaManifestHash = `sha256:${createHash("sha256")
+    .update(
+      JSON.stringify({
+        applicationRevision,
+        schemas: expectedSchemaManifests,
+      }),
+    )
+    .digest("hex")}`
+
   const requests = Object.values(schemas).map(
     (schema) =>
       ({
@@ -285,6 +356,11 @@ async function validateDocumentCounts(
       }) satisfies TypesenseSearchRequest,
   )
   const results = await typesense.multiSearch(requests)
+  if (results.length !== requests.length) {
+    throw new CandidateProjectionSafetyError(
+      "candidate collection count result mismatch",
+    )
+  }
   const expected = [
     snapshot.counts.catalog,
     snapshot.counts.availability,
@@ -297,6 +373,156 @@ async function validateDocumentCounts(
       )
     }
   })
+
+  const lexicalByLanguageIdentity = new Map<string, number>()
+  const expectedPairs = new Map<
+    string,
+    { languageIdentity: string; canonicalVideoId: string; id: string }
+  >()
+  const expectedCanonicalVideos = new Set<string>()
+  for (const document of snapshot.lexical) {
+    const languageIdentity = document.languageIdentity
+    const canonicalVideoId = document.canonicalVideoId
+    if (
+      !/^[A-Za-z0-9:._-]+$/.test(languageIdentity) ||
+      !canonicalVideoId.trim()
+    ) {
+      throw new CandidateProjectionSafetyError(
+        "candidate lexical snapshot contains an unsafe identity",
+      )
+    }
+    lexicalByLanguageIdentity.set(
+      languageIdentity,
+      (lexicalByLanguageIdentity.get(languageIdentity) ?? 0) + 1,
+    )
+    const pairKey = `${languageIdentity}\0${canonicalVideoId}`
+    if (expectedPairs.has(pairKey)) {
+      throw new CandidateProjectionSafetyError(
+        "candidate lexical snapshot contains a duplicate canonical identity pair",
+      )
+    }
+    expectedPairs.set(pairKey, {
+      languageIdentity,
+      canonicalVideoId,
+      id: document.id,
+    })
+    expectedCanonicalVideos.add(canonicalVideoId)
+  }
+
+  const boundedSearch = async (searches: readonly TypesenseSearchRequest[]) => {
+    const boundedResults = []
+    for (
+      let index = 0;
+      index < searches.length;
+      index += VALIDATION_SEARCH_BATCH_SIZE
+    ) {
+      const batch = searches.slice(index, index + VALIDATION_SEARCH_BATCH_SIZE)
+      const batchResults = await typesense.multiSearch(batch)
+      if (batchResults.length !== batch.length) {
+        throw new CandidateProjectionSafetyError(
+          "candidate validation search result mismatch",
+        )
+      }
+      boundedResults.push(...batchResults)
+    }
+    return boundedResults
+  }
+
+  const identityEntries = [...lexicalByLanguageIdentity.entries()].sort(
+    ([left], [right]) => left.localeCompare(right),
+  )
+  const identityResults = await boundedSearch(
+    identityEntries.map(
+      ([languageIdentity]) =>
+        ({
+          collection: schemas.lexical.name,
+          q: "*",
+          filter_by: `languageIdentity:=[\`${languageIdentity}\`]`,
+          per_page: 1,
+          include_fields: "id",
+        }) satisfies TypesenseSearchRequest,
+    ),
+  )
+  identityResults.forEach((result, index) => {
+    const [languageIdentity, expected] = identityEntries[index]!
+    if (result.found !== expected) {
+      throw new CandidateProjectionSafetyError(
+        `candidate languageIdentity ${languageIdentity} count mismatch: expected ${expected}, found ${result.found}`,
+      )
+    }
+  })
+
+  const groupPages = Math.ceil(expectedPairs.size / VALIDATION_GROUP_PAGE_SIZE)
+  const groupResults = await boundedSearch(
+    Array.from({ length: groupPages }, (_value, index) => ({
+      collection: schemas.lexical.name,
+      q: "*",
+      page: index + 1,
+      per_page: VALIDATION_GROUP_PAGE_SIZE,
+      group_by: "languageIdentity,canonicalVideoId",
+      group_limit: 1,
+      include_fields: "id,languageIdentity,canonicalVideoId",
+    })),
+  )
+  const observedPairs = new Set<string>()
+  const observedCanonicalVideos = new Set<string>()
+  for (const result of groupResults) {
+    if (!("grouped_hits" in result) || !Array.isArray(result.grouped_hits)) {
+      throw new CandidateProjectionSafetyError(
+        "candidate canonical coverage validation is malformed",
+      )
+    }
+    if (result.found !== expectedPairs.size) {
+      throw new CandidateProjectionSafetyError(
+        `candidate canonical coverage mismatch: expected ${expectedPairs.size}, found ${result.found}`,
+      )
+    }
+    for (const group of result.grouped_hits) {
+      const [languageIdentity, canonicalVideoId] = group.group_key
+      const pairKey = `${languageIdentity}\0${canonicalVideoId}`
+      if (group.found !== 1) {
+        throw new CandidateProjectionSafetyError(
+          `candidate duplicate canonical identity pair ${languageIdentity}/${canonicalVideoId}`,
+        )
+      }
+      const expected = expectedPairs.get(pairKey)
+      const document = group.hits[0]?.document as
+        | {
+            id?: unknown
+            languageIdentity?: unknown
+            canonicalVideoId?: unknown
+          }
+        | undefined
+      if (
+        !expected ||
+        observedPairs.has(pairKey) ||
+        document?.id !== expected.id ||
+        document.languageIdentity !== languageIdentity ||
+        document.canonicalVideoId !== canonicalVideoId
+      ) {
+        throw new CandidateProjectionSafetyError(
+          "candidate canonical coverage contains an unexpected identity pair",
+        )
+      }
+      observedPairs.add(pairKey)
+      observedCanonicalVideos.add(canonicalVideoId!)
+    }
+  }
+  if (
+    observedPairs.size !== expectedPairs.size ||
+    observedCanonicalVideos.size !== expectedCanonicalVideos.size
+  ) {
+    throw new CandidateProjectionSafetyError(
+      "candidate canonical coverage is incomplete",
+    )
+  }
+
+  return {
+    lexicalByLanguageIdentity: Object.fromEntries(identityEntries),
+    lexicalCanonicalVideos: observedCanonicalVideos.size,
+    lexicalDuplicateIdentityCanonicalPairs: 0,
+    schemaManifestHash,
+  }
 }
 
 export async function publishTypesenseWatchSearchCandidate({
@@ -370,7 +596,12 @@ export async function publishTypesenseWatchSearchCandidate({
       await failpoint?.(`${name}:imported`)
     }
 
-    await validateDocumentCounts(typesense, schemas, snapshot)
+    const validation = await validateDocumentCounts(
+      typesense,
+      schemas,
+      snapshot,
+      applicationRevision,
+    )
     const [transcriptCount] = await typesense.multiSearch([
       {
         collection: transcript.collection,
@@ -386,12 +617,20 @@ export async function publishTypesenseWatchSearchCandidate({
       expectedVersion: generation.version,
       documentCounts: {
         ...snapshot.counts,
+        lexicalByLanguageIdentity: validation.lexicalByLanguageIdentity,
+        lexicalCanonicalVideos: validation.lexicalCanonicalVideos,
+        lexicalDuplicateIdentityCanonicalPairs:
+          validation.lexicalDuplicateIdentityCanonicalPairs,
         transcript: transcriptCount?.found ?? 0,
       },
       capacityEvidence: {
+        applicationRevision,
+        schemaManifestHash: validation.schemaManifestHash,
         preBuildRssBytes,
         postBuildRssBytes: process.memoryUsage().rss,
         lexicalSearchableBytes: snapshot.lexicalMemory.searchableBytes,
+        lexicalSearchableBytesByFamily:
+          snapshot.lexicalMemory.searchableBytesByFamily,
         estimatedKeywordMemoryLowBytes:
           snapshot.lexicalMemory.estimatedRamLowBytes,
         estimatedKeywordMemoryHighBytes:
