@@ -226,6 +226,35 @@ const QualityReviewSchema = z
   .nullable()
   .optional()
 
+type QualityVerdict = z.infer<typeof QualityReviewSchema>
+
+/**
+ * Does the quality verdict stop this run? ONE function, because the two callers
+ * (produce and publish) previously each answered it and disagreed: a legacy run
+ * rendered — paying for narration and Remotion — and was then refused at
+ * publication, so the money was spent and nothing shipped.
+ *
+ * Three states that must not be conflated:
+ *
+ *   `undefined` — LEGACY. Persisted before this key existed, so it is resuming
+ *     across the deploy that added it. Policy: treat as report-only, i.e. do NOT
+ *     block. The run was composed when no gate existed; refusing to publish it
+ *     now punishes it for a check it could never have had, and under this
+ *     rollout the gate is not enforcing anyway. Recomputing instead was the other
+ *     option, and it is worse here: the critics would judge text a human may
+ *     already have approved, at three model calls, to reach a verdict this
+ *     rollout would not act on.
+ *   `null` — safety blocked, so quality deliberately never ran. Blocks. Callers
+ *     reach their own safety clause first, so this is the belt to that braces:
+ *     absent evidence is never a pass.
+ *   present — a real verdict. Blocks only if it was ENFORCED when produced.
+ */
+export function qualityBlocksRun(quality: QualityVerdict): boolean {
+  if (quality === undefined) return false
+  if (quality === null) return true
+  return quality.enforced && quality.blocking.length > 0
+}
+
 const ContentSchema = z
   .object({
     devotional: GeneratedDevotionalSchema,
@@ -589,11 +618,7 @@ const produceStep = createStep({
       // still unknown. `enforced` travels with the verdict rather than being
       // re-read from env here, so a run's decision matches the mode it actually
       // ran under even if the flag flips mid-flight.
-      const qualityBlocks =
-        quality == null
-          ? safety.verdict !== "pass"
-          : quality.enforced && quality.blocking.length > 0
-      const blocked = safety.verdict !== "pass" || qualityBlocks
+      const blocked = safety.verdict !== "pass" || qualityBlocksRun(quality)
       if (blocked) {
         return {
           ...attemptContext(inputData),
@@ -853,10 +878,7 @@ const publishStep = createStep({
     if (safety.verdict !== "pass") {
       status = "blocked"
       blockedBy = "safety"
-    } else if (
-      quality == null ||
-      (quality.enforced && quality.blocking.length > 0)
-    ) {
+    } else if (qualityBlocksRun(quality)) {
       status = "blocked"
       blockedBy = "quality"
     } else if (!approved) {
