@@ -42,6 +42,20 @@ function isUnchanged(a: MiniPlayerSession, b: MiniPlayerSession): boolean {
   return keys.every((key) => a[key] === b[key])
 }
 
+/**
+ * Absent and explicitly-`undefined` must mean the same thing. A publisher that
+ * builds one input object per render names every field, so a plain spread
+ * would wipe a real poster, title or language the moment one is unresolved.
+ * Generic, not a field list: a field added later is covered without an edit.
+ */
+function definedFieldsOf(
+  input: MiniPlayerSessionInput,
+): Partial<MiniPlayerSessionInput> {
+  return Object.fromEntries(
+    Object.entries(input).filter(([, value]) => value !== undefined),
+  ) as Partial<MiniPlayerSessionInput>
+}
+
 export function createMiniPlayerStore(deps: MiniPlayerStoreDeps) {
   let session: MiniPlayerSession | null = null
   let ownerSubjectId: string | null = deps.getSubjectId()
@@ -132,11 +146,7 @@ export function createMiniPlayerStore(deps: MiniPlayerStoreDeps) {
      */
     update(input: MiniPlayerSessionInput) {
       if (session == null || !isSameSession(session, input)) return
-      const next: MiniPlayerSession = {
-        ...session,
-        ...input,
-        durationSeconds: input.durationSeconds ?? session.durationSeconds,
-      }
+      const next: MiniPlayerSession = { ...session, ...definedFieldsOf(input) }
       if (isUnchanged(session, next)) return
       session = next
       notify()

@@ -2,9 +2,9 @@
  * The root-owned playback host (U6/KTD2).
  *
  * It owns the ONE expo-video player for whatever the mini player store says is
- * playing, so the player outlives the watch route. It renders no surface yet:
- * the watch route still mounts the only player a viewer sees, and U7 fills the
- * floating slot below.
+ * playing, so the player outlives the watch route. It mounts exactly one
+ * VideoView for that player and never fewer: the window chrome is still U7's,
+ * but the SURFACE cannot wait for it (see MiniPlayerWindowSlot).
  *
  * Everything testable lives here or in the pure modules under
  * `src/lib/miniPlayer/` — expo-router cannot be imported unmounted under this
@@ -20,8 +20,10 @@ import {
   useMemo,
   useSyncExternalStore,
 } from "react"
-import { StyleSheet, View } from "react-native"
+import { Platform, StyleSheet, View } from "react-native"
+import { VideoView } from "expo-video"
 import type { ErrorInfo, ReactNode } from "react"
+import type { VideoPlayer } from "expo-video"
 
 import { useManagedVideoPlayer } from "../../hooks/useManagedVideoPlayer"
 import { reportDatadogError } from "../../lib/datadog"
@@ -50,6 +52,9 @@ import { applyWatchBufferOptions } from "../../lib/playerBufferOptions"
 
 /** The node U7 replaces with the floating window. */
 export const MINI_PLAYER_WINDOW_SLOT = "mini-player-window-slot"
+
+/** The same surface while the window is suppressed — see MiniPlayerWindowSlot. */
+export const MINI_PLAYER_KEEPALIVE_SLOT = "mini-player-keepalive-slot"
 
 type RegisterSessionEnd = (listener: SessionEndListener) => () => void
 
@@ -161,7 +166,7 @@ const PlaybackSession = memo(function PlaybackSession({
     [store],
   )
 
-  const { endSession } = useManagedVideoPlayer(
+  const { player, endSession } = useManagedVideoPlayer(
     streamingUrl,
     applyWatchBufferOptions,
     { progress, onProgress: handleProgress },
@@ -189,6 +194,7 @@ const PlaybackSession = memo(function PlaybackSession({
 
   return (
     <MiniPlayerWindowSlot
+      player={player}
       sheets={sheets}
       useRouteSegments={useRouteSegments}
       videoId={videoId}
@@ -198,6 +204,7 @@ const PlaybackSession = memo(function PlaybackSession({
 })
 
 type MiniPlayerWindowSlotProps = {
+  player: VideoPlayer
   sheets: SheetCounter
   useRouteSegments: () => readonly string[]
   videoId?: string
@@ -208,8 +215,12 @@ type MiniPlayerWindowSlotProps = {
  * The leaf that reads the route. It is deliberately the innermost component:
  * subscribing the root to the router store re-renders ApolloProvider, every
  * context and the whole Stack on each navigation.
+ *
+ * It also owns the host's ONE video surface, which stays mounted through every
+ * suppression — see the render below.
  */
 function MiniPlayerWindowSlot({
+  player,
   sheets,
   useRouteSegments,
   videoId,
@@ -228,16 +239,34 @@ function MiniPlayerWindowSlot({
     pipActive,
   })
 
-  // U7 mounts the floating window here. It stays empty in U6 on purpose: the
-  // watch route still renders the only surface, and a stand-in player over
-  // Home would be full-width chrome with no way to close it.
-  if (presentation !== "floating") return null
+  // Measured on Android: a VideoView that FIRST attaches to an already-playing
+  // surfaceless player gets a permanently DEAD surface, and only a new player
+  // recovers it. So the surface outlives every suppression; U7 owns the chrome.
   return (
     <View
-      testID={MINI_PLAYER_WINDOW_SLOT}
+      testID={
+        presentation === "floating"
+          ? MINI_PLAYER_WINDOW_SLOT
+          : MINI_PLAYER_KEEPALIVE_SLOT
+      }
       style={styles.slot}
+      // On the CONTAINER, never on the video view — the plan forbids that, and
+      // U7's tap-to-expand target lives on this surface.
       pointerEvents="none"
-    />
+    >
+      <VideoView
+        player={player}
+        style={StyleSheet.absoluteFill}
+        nativeControls={false}
+        contentFit="contain"
+        // iOS 16+ defaults this TRUE, which floats a Live Text "scan" button
+        // over any frame with text in it — a system control we do not own.
+        allowsVideoFrameAnalysis={false}
+        // textureView composites inside the RN hierarchy; an Android
+        // SurfaceView punches through whatever is layered over it.
+        surfaceType={Platform.OS === "android" ? "textureView" : undefined}
+      />
+    </View>
   )
 }
 
@@ -267,9 +296,15 @@ class PlaybackHostBoundary extends Component<
 }
 
 const styles = StyleSheet.create({
+  // 1x1 and fully transparent, not 0x0: a zero-size view can be laid out
+  // without ever creating the native surface, which is the exact state the
+  // keep-alive mount exists to prevent. U7 sizes and reveals the window.
   slot: {
     position: "absolute",
-    width: 0,
-    height: 0,
+    top: 0,
+    left: 0,
+    width: 1,
+    height: 1,
+    opacity: 0,
   },
 })

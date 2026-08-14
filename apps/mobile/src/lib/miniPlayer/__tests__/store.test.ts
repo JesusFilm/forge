@@ -190,6 +190,57 @@ describe("createMiniPlayerStore", () => {
     expect(store.getSnapshot()).toMatchObject({ durationSeconds: 600 })
   })
 
+  it("keeps known fields when the update names them as undefined", () => {
+    // The whole point, and the reason this looks like the case above: the
+    // publisher builds ONE input object per render, so an unresolved poster
+    // arrives as an EXPLICIT undefined, which a plain spread copies over.
+    const { store } = build()
+    store.start({
+      ...VIDEO_ONE,
+      posterUrl: "https://images.test/one.jpg",
+      title: "Birth of Jesus",
+      languageSlug: "english",
+    })
+
+    store.update({
+      ...VIDEO_ONE,
+      streamingUrl: "file:///offline/one.m3u8",
+      posterUrl: undefined,
+      title: undefined,
+      languageSlug: undefined,
+    })
+
+    expect(store.getSnapshot()).toMatchObject({
+      streamingUrl: "file:///offline/one.m3u8",
+      posterUrl: "https://images.test/one.jpg",
+      title: "Birth of Jesus",
+      languageSlug: "english",
+    })
+  })
+
+  it("still replaces a field the update names with a NEW value", () => {
+    // The anti-vacuous companion: an update that merged nothing at all would
+    // satisfy the case above by never writing a field.
+    const { store } = build()
+    store.start({ ...VIDEO_ONE, posterUrl: "https://images.test/one.jpg" })
+
+    store.update({ ...VIDEO_ONE, posterUrl: "https://images.test/two.jpg" })
+
+    expect(store.getSnapshot()).toMatchObject({
+      posterUrl: "https://images.test/two.jpg",
+    })
+  })
+
+  it("clears a field the update names as null", () => {
+    // null is a VALUE, not an omission — "this video has no poster" must land.
+    const { store } = build()
+    store.start({ ...VIDEO_ONE, posterUrl: "https://images.test/one.jpg" })
+
+    store.update({ ...VIDEO_ONE, posterUrl: null })
+
+    expect(store.getSnapshot()).toMatchObject({ posterUrl: null })
+  })
+
   it("ignores an update naming a different video", () => {
     // Merging it would hand video-2 video-1's position and owner under a verb
     // that promises to touch neither.

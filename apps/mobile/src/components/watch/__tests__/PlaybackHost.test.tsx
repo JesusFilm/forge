@@ -88,9 +88,14 @@ jest.mock("../../../lib/miniPlayer", () => ({
 }))
 
 import { act } from "react"
+import { Platform, StyleSheet } from "react-native"
 import type { VideoPlayer as ExpoVideoPlayer } from "expo-video"
 
-import { MINI_PLAYER_WINDOW_SLOT, PlaybackHost } from "../PlaybackHost"
+import {
+  MINI_PLAYER_KEEPALIVE_SLOT,
+  MINI_PLAYER_WINDOW_SLOT,
+  PlaybackHost,
+} from "../PlaybackHost"
 import { applyWatchBufferOptions } from "../../../lib/playerBufferOptions"
 import { createSessionEndRegistry } from "../../../lib/miniPlayer/endRegistry"
 import {
@@ -250,6 +255,20 @@ function hasWindowSlot(renderer: TestInstance): boolean {
       (node) => node.props.testID === MINI_PLAYER_WINDOW_SLOT,
     ).length > 0
   )
+}
+
+/** Every mounted video surface. The one-decoder invariant is a COUNT here. */
+function videoSurfaces(renderer: TestInstance) {
+  return renderer.root.findAll(
+    (node) => node.props.testID === "expo-video-view",
+  )
+}
+
+/** The outermost node carrying a slot testID — the container the host styles. */
+function slotContainer(renderer: TestInstance, testID: string) {
+  const matches = renderer.root.findAll((node) => node.props.testID === testID)
+  expect(matches.length).toBeGreaterThan(0)
+  return matches[0]
 }
 
 beforeEach(() => {
@@ -743,6 +762,133 @@ describe("PlaybackHost presentation", () => {
 
     expect(sheets.getCount()).toBe(0)
     expect(hasWindowSlot(renderer)).toBe(true)
+  })
+})
+
+/**
+ * The player must never be surfaceless. Measured on Android: a VideoView that
+ * FIRST attaches to a player which has already played with no surface gets a
+ * permanently dead one — audio runs, the rectangle stays black, and pause/play,
+ * seek, replaceAsync and remount all fail to revive it.
+ *
+ * So the count is the whole assertion: never zero while a session is live, and
+ * never two, because two surfaces on one player is the other failure.
+ */
+describe("PlaybackHost video surface", () => {
+  async function mountPlaying(segments: readonly string[] = HOME_SEGMENTS) {
+    const store = makeStore()
+    const renderer = await mount(store, segments)
+    await act(async () => {
+      store.start({ videoId: "video-1", streamingUrl: EPISODE_ONE })
+    })
+    return { renderer, store }
+  }
+
+  it("mounts no surface while there is no session", async () => {
+    // `none` is the no-session case, and the host owns no player to strand.
+    const renderer = await mount(makeStore())
+
+    expect(videoSurfaces(renderer)).toHaveLength(0)
+  })
+
+  it("mounts no surface once the session ends", async () => {
+    const { renderer, store } = await mountPlaying()
+
+    await act(async () => {
+      store.end("dismissed")
+    })
+
+    expect(videoSurfaces(renderer)).toHaveLength(0)
+  })
+
+  it("keeps exactly one surface while the window is hidden", async () => {
+    const { renderer } = await mountPlaying()
+
+    await act(async () => {
+      sheets.openSheet()
+    })
+
+    expect(hasWindowSlot(renderer)).toBe(false)
+    expect(videoSurfaces(renderer)).toHaveLength(1)
+  })
+
+  it("keeps exactly one surface through hidden, floating and hidden", async () => {
+    const { renderer } = await mountPlaying()
+    expect(videoSurfaces(renderer)).toHaveLength(1)
+
+    await act(async () => {
+      sheets.openSheet()
+    })
+    expect(videoSurfaces(renderer)).toHaveLength(1)
+
+    await act(async () => {
+      sheets.closeSheet()
+    })
+    expect(videoSurfaces(renderer)).toHaveLength(1)
+
+    await act(async () => {
+      sheets.openSheet()
+    })
+    expect(videoSurfaces(renderer)).toHaveLength(1)
+    // One player throughout: a surface that came back on a NEW player would
+    // satisfy the counts above and still be the bug this guards.
+    expect(createdFakePlayers()).toHaveLength(1)
+  })
+
+  it("keeps its surface on the watch route too", async () => {
+    // `full` is the other pre-window presentation. A session that starts there
+    // and floats later would otherwise attach its first surface after playback.
+    const { renderer } = await mountPlaying(WATCH_SEGMENTS)
+
+    expect(hasWindowSlot(renderer)).toBe(false)
+    expect(videoSurfaces(renderer)).toHaveLength(1)
+  })
+
+  it("hides the suppressed surface and takes no touches", async () => {
+    const { renderer } = await mountPlaying()
+    await act(async () => {
+      sheets.openSheet()
+    })
+
+    const container = slotContainer(renderer, MINI_PLAYER_KEEPALIVE_SLOT)
+    const style = StyleSheet.flatten(container.props.style) as {
+      width: number
+      height: number
+      opacity: number
+    }
+    expect(container.props.pointerEvents).toBe("none")
+    expect(style.width).toBeLessThanOrEqual(1)
+    expect(style.height).toBeLessThanOrEqual(1)
+    expect(style.opacity).toBe(0)
+  })
+
+  it("never puts pointerEvents on the video view itself", async () => {
+    // The plan forbids it there: U7's tap-to-expand target lives on this
+    // surface, and the container already blocks the suppressed touches.
+    const { renderer } = await mountPlaying()
+
+    expect(videoSurfaces(renderer)[0].props.pointerEvents).toBeUndefined()
+  })
+
+  it("opts the surface into textureView on Android", async () => {
+    // An Android SurfaceView punches through whatever is layered over it, so
+    // the window would render behind Home. jest cannot see native compositing;
+    // this pins that the prop is still passed.
+    const original = Platform.OS
+    Object.defineProperty(Platform, "OS", { value: "android", writable: true })
+    try {
+      const { renderer } = await mountPlaying()
+
+      expect(videoSurfaces(renderer)[0].props.surfaceType).toBe("textureView")
+    } finally {
+      Object.defineProperty(Platform, "OS", { value: original, writable: true })
+    }
+  })
+
+  it("passes no surfaceType on iOS", async () => {
+    const { renderer } = await mountPlaying()
+
+    expect(videoSurfaces(renderer)[0].props.surfaceType).toBeUndefined()
   })
 })
 
