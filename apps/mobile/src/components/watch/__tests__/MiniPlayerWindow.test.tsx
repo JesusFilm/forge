@@ -1005,7 +1005,11 @@ describe("MiniPlayerWindow lifecycle edges", () => {
     expect(hostsWithTestID(renderer, MINI_PLAYER_POSTER)).toHaveLength(1)
   })
 
-  it("swaps the surface for the poster on an unrecoverable failure (R22)", async () => {
+  it("keeps the surface UNDER the poster on an unrecoverable failure (R22)", async () => {
+    // R22 keeps the session alive so the failure UI stays operable, so this is
+    // a live player. Dropping its view leaves it playing surfaceless, which is
+    // permanently video-dead on Android — the poster hides the dead frame
+    // instead.
     const { renderer, player } = await renderWindow()
     await firstFrame(renderer)
 
@@ -1013,7 +1017,7 @@ describe("MiniPlayerWindow lifecycle edges", () => {
       player.emit("statusChange", { status: "error" })
     })
 
-    expect(videoSurfaces(renderer)).toHaveLength(0)
+    expect(videoSurfaces(renderer)).toHaveLength(1)
     expect(hostsWithTestID(renderer, MINI_PLAYER_POSTER)).toHaveLength(1)
     expect(onFailure).toHaveBeenCalledTimes(1)
   })
@@ -1043,12 +1047,16 @@ describe("MiniPlayerWindow lifecycle edges", () => {
     await act(async () => {
       player.emit("statusChange", { status: "error" })
     })
-    expect(videoSurfaces(renderer)).toHaveLength(0)
+    expect(
+      findAll(renderer, (node) => node.props.children === FAILURE_LABEL),
+    ).not.toHaveLength(0)
 
     await act(async () => {
       player.emit("statusChange", { status: "readyToPlay" })
     })
 
+    // Never dropped, so the recovered stream paints into the view it always
+    // had rather than into a fresh one attached to an already-playing player.
     expect(videoSurfaces(renderer)).toHaveLength(1)
     expect(
       findAll(renderer, (node) => node.props.children === FAILURE_LABEL),
@@ -1061,13 +1069,17 @@ describe("MiniPlayerWindow lifecycle edges", () => {
     const { renderer, update } = await renderWindow({
       player: makeFakePlayer({ status: "error" }) as never,
     })
-    expect(videoSurfaces(renderer)).toHaveLength(0)
+    expect(
+      findAll(renderer, (node) => node.props.children === FAILURE_LABEL),
+    ).not.toHaveLength(0)
 
     await update({
       player: makeFakePlayer({ status: "readyToPlay" }) as never,
     })
 
-    expect(videoSurfaces(renderer)).toHaveLength(1)
+    expect(
+      findAll(renderer, (node) => node.props.children === FAILURE_LABEL),
+    ).toHaveLength(0)
   })
 
   it("seeds the failure from a player that already errored", async () => {
@@ -1077,7 +1089,7 @@ describe("MiniPlayerWindow lifecycle edges", () => {
       player: makeFakePlayer({ status: "error" }) as never,
     })
 
-    expect(videoSurfaces(renderer)).toHaveLength(0)
+    expect(videoSurfaces(renderer)).toHaveLength(1)
     expect(
       findAll(renderer, (node) => node.props.children === FAILURE_LABEL),
     ).not.toHaveLength(0)

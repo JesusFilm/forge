@@ -13,7 +13,7 @@
  * suite can reach `lastFakePlayer()` for the instance the component created.
  */
 
-import { createElement, useMemo, useRef } from "react"
+import { createElement, useEffect, useMemo, useRef } from "react"
 
 export type FakePlayerListener = (payload?: never) => void
 
@@ -96,9 +96,53 @@ export function lastFakePlayer(): FakePlayer {
   return player
 }
 
+/**
+ * Live surface counts, kept by the stub's own mount effect.
+ *
+ * A tree inspected after `act` shows only the LAST commit, so a second surface
+ * that lives for one commit — the whole shape of a decoder handoff bug — is
+ * invisible to a testID count. React flushes every passive destroy of a commit
+ * before any passive create, so a same-commit handoff peaks at one and a real
+ * double-attach peaks at two.
+ */
+let mountedSurfaces = 0
+let peakSurfaces = 0
+const surfacesPerPlayer = new Map<unknown, number>()
+let peakPerPlayer = 0
+
+/** The most surfaces mounted at once, over every commit since the reset. */
+export function peakMountedSurfaces(): number {
+  return peakSurfaces
+}
+
+/** The most surfaces mounted at once on ONE player. Two is what Android
+ *  asserts against. */
+export function peakSurfacesPerPlayer(): number {
+  return peakPerPlayer
+}
+
 /** Call from `beforeEach`; the registry is module-scope and survives tests. */
 export function resetExpoVideoMock() {
   created.length = 0
+  mountedSurfaces = 0
+  peakSurfaces = 0
+  peakPerPlayer = 0
+  surfacesPerPlayer.clear()
+}
+
+function trackSurface(player: unknown): () => void {
+  mountedSurfaces += 1
+  peakSurfaces = Math.max(peakSurfaces, mountedSurfaces)
+  const onPlayer = (surfacesPerPlayer.get(player) ?? 0) + 1
+  surfacesPerPlayer.set(player, onPlayer)
+  peakPerPlayer = Math.max(peakPerPlayer, onPlayer)
+  return () => {
+    mountedSurfaces = Math.max(0, mountedSurfaces - 1)
+    surfacesPerPlayer.set(
+      player,
+      Math.max(0, (surfacesPerPlayer.get(player) ?? 0) - 1),
+    )
+  }
 }
 
 /** The module body `jest.mock("expo-video", …)` returns. */
@@ -110,12 +154,17 @@ export function expoVideoModuleMock() {
     return player
   }
 
+  // A host element under a tracking component, so a suite can count mounted
+  // surfaces by testID AND read the peak across commits — the one-decoder
+  // invariant is asserted by counting these, not by inspecting the player.
+  const VideoView = (props: Record<string, unknown>) => {
+    const player = props.player
+    useEffect(() => trackSurface(player), [player])
+    return createElement("VideoView", { testID: "expo-video-view", ...props })
+  }
+
   return {
-    // A host element, so a suite can count mounted surfaces by testID — the
-    // one-decoder invariant is asserted by counting these, not by inspecting
-    // the player.
-    VideoView: (props: Record<string, unknown>) =>
-      createElement("VideoView", { testID: "expo-video-view", ...props }),
+    VideoView,
     // Memoized on the source exactly as the real hook is (its dep is
     // JSON.stringify(source)). Returning a fresh player per render would churn
     // every `[player]` effect in the adapter and prove nothing about the app.

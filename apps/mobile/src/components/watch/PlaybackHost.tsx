@@ -42,8 +42,8 @@ import type { SessionEndListener } from "../../lib/miniPlayer/endRegistry"
 import {
   getPlaybackClaim,
   resolveActivePlayback,
+  revokePlaybackClaims,
   setHostPlayer,
-  setPlaybackClaim,
   subscribeToPlaybackClaim,
 } from "../../lib/miniPlayer/hostPlayer"
 import {
@@ -52,6 +52,7 @@ import {
 } from "../../lib/miniPlayer/pipLatch"
 import {
   presentationFor,
+  windowHoldsSurface,
   type MiniPlayerPresentation,
 } from "../../lib/miniPlayer/presentation"
 import {
@@ -134,9 +135,10 @@ export function PlaybackHost({
         // Telemetry must never widen a render failure.
       }
       // Both, or the subtree never unmounts: the root boundary above has no
-      // reset path, so a throw there costs an app relaunch.
+      // reset path, so a throw there costs an app relaunch. The route puts its
+      // claim back on its own bounded budget — see `useHostPlayback`.
       store.end("failed")
-      setPlaybackClaim(null)
+      revokePlaybackClaims()
     },
     [store],
   )
@@ -349,8 +351,10 @@ function MiniPlayerWindowSlot({
     : presentation === "full"
       ? "hidden"
       : presentation
-  const surfaceFree =
-    windowPresentation === "full" || windowPresentation === "none"
+  // The window's OWN render gate, not a second enumeration beside it: the two
+  // drifting apart is how the published signal decays into a restatement of
+  // "some route claimed the player".
+  const surfaceFree = !windowHoldsSurface(windowPresentation)
 
   const identityKey = sessionIdentityKey({ videoId, videoSlug })
   // Published AFTER the commit that mounted or unmounted this window's surface,

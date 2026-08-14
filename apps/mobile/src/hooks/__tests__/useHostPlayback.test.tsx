@@ -106,6 +106,7 @@ import { useHostPlayback } from "../useHostPlayback"
 import { PlaybackHost } from "../../components/watch/PlaybackHost"
 import { createSessionEndRegistry } from "../../lib/miniPlayer/endRegistry"
 import {
+  getPlaybackClaim,
   resetHostPlayerBridge,
   type PlaybackClaim,
 } from "../../lib/miniPlayer/hostPlayer"
@@ -114,11 +115,14 @@ import {
   type MiniPlayerStore,
 } from "../../lib/miniPlayer/store"
 import { createSheetCounter } from "../../lib/miniPlayer/suppression"
+import { reportDatadogError } from "../../lib/datadog"
 import { createProgressRecorder } from "../../lib/watchProgress/recorder"
 import { createVideoQoeSession } from "../../lib/videoQoe"
 import {
   createdFakePlayers,
   lastFakePlayer,
+  peakMountedSurfaces,
+  peakSurfacesPerPlayer,
   resetExpoVideoMock,
   type FakePlayer,
 } from "../../test-utils/expoVideoMock"
@@ -206,6 +210,9 @@ let routeHandles: ((isPlaying: boolean) => void)[] = []
 type HarnessProps = {
   store: MiniPlayerStore
   route: RouteProps | null
+  /** A second watch route pushed OVER `route`, which a native stack keeps
+   *  mounted underneath. Rendered later, so it is the foreground one. */
+  pushed?: RouteProps | null
   segments: readonly string[]
 }
 
@@ -213,15 +220,16 @@ type HarnessProps = {
  * Route first, host second — the real tree's order (the host mounts after
  * `</ExperienceShell>`), and effect order is what sequences the handoff.
  */
-function Harness({ store, route, segments }: HarnessProps) {
+function Harness({ store, route, pushed, segments }: HarnessProps) {
   return (
     <>
-      {route != null && <FakeWatchRoute {...route} />}
+      {route != null && <FakeWatchRoute key="under" {...route} />}
+      {pushed != null && <FakeWatchRoute key="over" {...pushed} />}
       <PlaybackHost
         store={store}
         sheets={sheets}
         registerEnd={registry.register}
-        useRouteSegments={() => segments}
+        useRouteSegments={() => readSegments(segments)}
         canGoBack={() => true}
         navigateToVideo={() => {}}
       />
@@ -232,6 +240,38 @@ function Harness({ store, route, segments }: HarnessProps) {
 let live: TestInstance[] = []
 let sheets: ReturnType<typeof createSheetCounter>
 let registry: ReturnType<typeof createSessionEndRegistry>
+
+/** How many times the host's boundary should still be made to catch. */
+let crashesWanted = 0
+
+/** Every catch runs `handleError`, whose first act is this report. */
+function crashesCaught(): number {
+  return (reportDatadogError as jest.Mock).mock.calls.length
+}
+
+/**
+ * The segments read runs during `MiniPlayerWindowSlot`'s render, the deepest
+ * point inside `PlaybackHostBoundary`, and a RENDER throw is the only path that
+ * reaches `handleError`: `useSyncExternalStore` swallows a throwing snapshot
+ * read and just forces a re-render.
+ *
+ * Keyed on catches rather than on a throw count because React retries a failed
+ * render once and SWALLOWS the error if the retry succeeds — a one-shot rig
+ * arms nothing at all.
+ */
+function readSegments(segments: readonly string[]): readonly string[] {
+  if (crashesCaught() < crashesWanted)
+    throw new Error("playback host subtree failed")
+  return segments
+}
+
+/** Arms `crashes` failures, then re-renders the leaf that reads the segments. */
+async function crashHost(crashes = 1) {
+  crashesWanted = crashes
+  await act(async () => {
+    sheets.openSheet()
+  })
+}
 
 function makeStore(): MiniPlayerStore {
   return createMiniPlayerStore({
@@ -289,6 +329,7 @@ beforeEach(() => {
   resetExpoVideoMock()
   resetHostPlayerBridge()
   sheets = createSheetCounter()
+  crashesWanted = 0
   registry = createSessionEndRegistry()
   storeEndReasons = []
   routeHandles = []
@@ -684,5 +725,199 @@ describe("the surface handoff", () => {
     const surface = videoSurfaces(renderer)
     expect(surface).toHaveLength(1)
     expect(surface[0].props.player).toBe(lastFakePlayer())
+  })
+
+  it("never attaches two views to one player, in ANY commit of the expand", async () => {
+    // The peak across commits, not the tree after `act`. The route claims and
+    // the window drops its view in the SAME commit, so a count taken at the
+    // end cannot see a route that borrowed before the host published the
+    // release — which is the whole job of `surfaceFree`.
+    const store = makeStore()
+    const renderer = await render({
+      store,
+      segments: WATCH_SEGMENTS,
+      route: { store, streamingUrl: SEED_URL, videoId: "v1", videoSlug: SLUG },
+    })
+    await startPlaying(lastFakePlayer())
+    await update(renderer, { store, segments: HOME_SEGMENTS, route: null })
+
+    await update(renderer, {
+      store,
+      segments: WATCH_SEGMENTS,
+      route: { store, streamingUrl: SEED_URL, videoId: "v1", videoSlug: SLUG },
+    })
+
+    expect(peakSurfacesPerPlayer()).toBe(1)
+    expect(peakMountedSurfaces()).toBe(1)
+  })
+})
+
+/**
+ * The host's error boundary exists because a throw in the player subtree would
+ * otherwise cost an app relaunch. Its recovery revokes every claim, so the route
+ * that was watching is the one thing left holding nothing.
+ */
+describe("recovering from a host crash", () => {
+  let consoleError: jest.SpyInstance
+
+  beforeEach(() => {
+    // React prints the caught error and its component stack. The throw is the
+    // point of these tests, so the noise is not a signal.
+    consoleError = jest.spyOn(console, "error").mockImplementation(() => {})
+  })
+
+  afterEach(() => {
+    consoleError.mockRestore()
+  })
+
+  it("puts the route's claim back after the host drops it", async () => {
+    // `claim` is unchanged by the revoke, so the effect that first set it can
+    // never re-run. Without a re-assertion the screen sits there for the rest
+    // of the session with no player and no surface.
+    const store = makeStore()
+    const renderer = await render({
+      store,
+      segments: WATCH_SEGMENTS,
+      route: { store, streamingUrl: SEED_URL, videoId: "v1", videoSlug: SLUG },
+    })
+    expect(videoSurfaces(renderer)).toHaveLength(1)
+
+    await crashHost()
+
+    // Anti-vacuous: a rig that armed nothing would leave the tree untouched
+    // and every assertion below would pass for the wrong reason.
+    expect(crashesCaught()).toBe(1)
+    const surface = videoSurfaces(renderer)
+    expect(surface).toHaveLength(1)
+    expect(surface[0].props.player).toBe(lastFakePlayer())
+  })
+
+  it("stops re-asserting instead of looping the crash", async () => {
+    // A deterministic throw plus an unbounded re-assert is mount, throw,
+    // revoke, re-claim, for as long as the screen is open.
+    const store = makeStore()
+    await render({
+      store,
+      segments: WATCH_SEGMENTS,
+      route: { store, streamingUrl: SEED_URL, videoId: "v1", videoSlug: SLUG },
+    })
+
+    await crashHost(5)
+
+    // The first failure, plus exactly one recovery attempt that failed too.
+    // Unbounded, this reaches React's maximum update depth instead.
+    expect(crashesCaught()).toBe(2)
+  })
+
+  it("does NOT re-claim for a route that has already gone", async () => {
+    // Anti-vacuous companion. The re-assertion belongs to a mounted route, not
+    // to a remembered claim: a departed screen taking the player back would
+    // put the viewer's video behind a screen nobody is looking at.
+    const store = makeStore()
+    const renderer = await render({
+      store,
+      segments: WATCH_SEGMENTS,
+      route: { store, streamingUrl: SEED_URL, videoId: "v1", videoSlug: SLUG },
+    })
+    await startPlaying(lastFakePlayer())
+    await update(renderer, { store, segments: HOME_SEGMENTS, route: null })
+
+    await crashHost()
+
+    expect(crashesCaught()).toBe(1)
+    expect(getPlaybackClaim()).toBeNull()
+    expect(videoSurfaces(renderer)).toHaveLength(0)
+  })
+})
+
+/**
+ * A native stack keeps `/watch/A` mounted under `/watch/B`. Both routes run
+ * `useHostPlayback`, so the claim is not one anonymous slot.
+ */
+describe("two watch routes on the stack", () => {
+  function under(store: MiniPlayerStore): RouteProps {
+    return { store, streamingUrl: SEED_URL, videoId: "v1", videoSlug: SLUG }
+  }
+
+  function over(store: MiniPlayerStore): RouteProps {
+    return {
+      store,
+      streamingUrl: OTHER_URL,
+      videoId: "v2",
+      videoSlug: OTHER_SLUG,
+    }
+  }
+
+  it("gives the pushed route the player and the one below none", async () => {
+    const store = makeStore()
+    const renderer = await render({
+      store,
+      segments: WATCH_SEGMENTS,
+      route: under(store),
+    })
+
+    await update(renderer, {
+      store,
+      segments: WATCH_SEGMENTS,
+      route: under(store),
+      pushed: over(store),
+    })
+
+    expect(getPlaybackClaim()?.videoSlug).toBe(OTHER_SLUG)
+    expect(videoSurfaces(renderer)).toHaveLength(1)
+    expect(peakSurfacesPerPlayer()).toBe(1)
+  })
+
+  it("hands the player back to the route underneath when the pushed one pops", async () => {
+    const store = makeStore()
+    const renderer = await render({
+      store,
+      segments: WATCH_SEGMENTS,
+      route: under(store),
+      pushed: over(store),
+    })
+
+    await update(renderer, {
+      store,
+      segments: WATCH_SEGMENTS,
+      route: under(store),
+      pushed: null,
+    })
+
+    expect(getPlaybackClaim()?.videoSlug).toBe(SLUG)
+    const surface = videoSurfaces(renderer)
+    expect(surface).toHaveLength(1)
+    expect(surface[0].props.player).toBe(lastFakePlayer())
+  })
+
+  it("keeps handing it back over repeated pushes and pops", async () => {
+    // The discriminating case. A bounded re-assertion recovers the FIRST pop
+    // and then has nothing left, so the screen underneath goes dead on the
+    // second — open an episode, back out, open another, back out.
+    const store = makeStore()
+    const renderer = await render({
+      store,
+      segments: WATCH_SEGMENTS,
+      route: under(store),
+    })
+
+    for (let cycle = 0; cycle < 3; cycle += 1) {
+      await update(renderer, {
+        store,
+        segments: WATCH_SEGMENTS,
+        route: under(store),
+        pushed: over(store),
+      })
+      await update(renderer, {
+        store,
+        segments: WATCH_SEGMENTS,
+        route: under(store),
+        pushed: null,
+      })
+      expect(getPlaybackClaim()?.videoSlug).toBe(SLUG)
+      expect(videoSurfaces(renderer)).toHaveLength(1)
+    }
+
+    expect(peakSurfacesPerPlayer()).toBe(1)
   })
 })

@@ -44,7 +44,10 @@ import {
   type Point,
   type Size,
 } from "../../lib/miniPlayer/layout"
-import type { MiniPlayerPresentation } from "../../lib/miniPlayer/presentation"
+import {
+  windowHoldsSurface,
+  type MiniPlayerPresentation,
+} from "../../lib/miniPlayer/presentation"
 import { resolveImageUrl } from "../../lib/resolveImageUrl"
 
 /** The floating window itself. */
@@ -458,12 +461,15 @@ export function MiniPlayerWindow({
     [handlePlayPause, onDismiss, handleMoveToCorner],
   )
 
-  // `full` mounts nothing: the watch route owns its own player AND its own
-  // surface, so the host's player is deliberately surfaceless there. Part 3's
-  // route borrow is what removes that second player.
-  if (presentation === "none" || presentation === "full") return null
+  // `full` mounts nothing: the watch route owns the one surface there. The
+  // host publishes `surfaceFree` off this same predicate, so a claimant never
+  // borrows into a commit where this window still holds a view.
+  if (!windowHoldsSurface(presentation)) return null
 
-  const surfaceMounted = !failed && !ended
+  // Failure does NOT drop the view. R22 keeps that session alive, and a player
+  // that plays surfaceless is permanently video-dead on Android — a recovered
+  // stream would come back to a black rectangle. The poster covers it.
+  const surfaceMounted = !ended
   const PosterImage =
     floating && posterMounted && resolvedPoster != null
       ? loadPosterImage()

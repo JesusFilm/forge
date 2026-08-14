@@ -81,11 +81,18 @@ export function VideoHeroRenderer({
   // out of the mini player. It yields the surface AND the transport.
   const miniPlayerActive = useMiniPlayerActive()
   const showVideoSurface = hasValidStream && !miniPlayerActive
+  // Read by the two callbacks below, which both run outside the render that
+  // knows the live value: the creation setup fires once, and the AppState
+  // listener is not re-subscribed on suppression.
+  const suppressedRef = useRef(miniPlayerActive)
+  suppressedRef.current = miniPlayerActive
 
   const player = useVideoPlayer(hasValidStream ? streamingUrl : null, (p) => {
     p.muted = true
     p.loop = true
-    p.play()
+    // Opening a page while the window floats over it must not start a second
+    // transport: the surface is suppressed, so this is audio with no video.
+    if (!suppressedRef.current) p.play()
   })
 
   useEffect(() => {
@@ -124,7 +131,9 @@ export function VideoHeroRenderer({
   useEffect(() => {
     const subscription = AppState.addEventListener("change", (nextState) => {
       appActiveRef.current = nextState === "active"
-      if (appActiveRef.current && !paused) {
+      // Suppression outranks the foreground: returning to a page the window
+      // floats over would otherwise resume this hero's audio with no video.
+      if (appActiveRef.current && !paused && !suppressedRef.current) {
         player.play()
       } else {
         try {

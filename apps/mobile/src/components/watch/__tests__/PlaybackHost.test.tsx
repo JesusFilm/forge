@@ -121,8 +121,10 @@ import {
   type SheetCounter,
 } from "../../../lib/miniPlayer/suppression"
 import {
+  claimPlayback,
+  createClaimToken,
+  releasePlaybackClaim,
   resetHostPlayerBridge,
-  setPlaybackClaim,
   type PlaybackClaim,
 } from "../../../lib/miniPlayer/hostPlayer"
 import {
@@ -303,12 +305,16 @@ function slotContainer(renderer: TestInstance, testID: string) {
   return matches[0]
 }
 
+/** Stands in for the watch route's token — this suite renders the host alone. */
+let routeToken = createClaimToken()
+
 beforeEach(() => {
   jest.clearAllMocks()
   jest.useFakeTimers()
   resetExpoVideoMock()
   resetPictureInPictureLatch()
   resetHostPlayerBridge()
+  routeToken = createClaimToken()
   sheets = createSheetCounter()
   registry = createSessionEndRegistry()
   segmentReads = 0
@@ -854,7 +860,7 @@ describe("PlaybackHost video surface", () => {
     const renderer = await mount(store, segments)
     await act(async () => {
       store.start({ videoId: "video-1", streamingUrl: EPISODE_ONE })
-      if (claim != null) setPlaybackClaim(claim)
+      if (claim != null) claimPlayback(routeToken, claim)
     })
     return { renderer, store }
   }
@@ -942,7 +948,7 @@ describe("PlaybackHost video surface", () => {
     expect(videoSurfaces(renderer)).toHaveLength(0)
 
     await act(async () => {
-      setPlaybackClaim(null)
+      releasePlaybackClaim(routeToken)
     })
 
     expect(videoSurfaces(renderer)).toHaveLength(1)

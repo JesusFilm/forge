@@ -1,4 +1,8 @@
-import { presentationFor, type MiniPlayerSessionView } from "../presentation"
+import {
+  presentationFor,
+  windowHoldsSurface,
+  type MiniPlayerSessionView,
+} from "../presentation"
 
 const SESSION: MiniPlayerSessionView = {
   videoId: "video-1",
@@ -107,5 +111,28 @@ describe("presentationFor", () => {
     // full for the Discover tab and never show the window there.
     expect(presentationFor(SESSION, ["(tabs)", "watch"])).toBe("floating")
     expect(presentationFor(SESSION, ["watch", "[slug]"])).toBe("full")
+  })
+})
+
+describe("windowHoldsSurface", () => {
+  // The window's render gate and the host's `surfaceFree` publish read this
+  // ONE function. A table, so a presentation added later cannot be answered by
+  // omission on either side.
+  it.each([
+    ["floating", true],
+    ["hidden", true],
+    ["full", false],
+    ["none", false],
+  ] as const)("answers %s with %s", (presentation, holds) => {
+    expect(windowHoldsSurface(presentation)).toBe(holds)
+  })
+
+  it("is false for exactly the presentations that mount no view", () => {
+    // `full` hands the surface to the watch route and `none` has no session,
+    // so those are the two the claimant may borrow into.
+    const free = (["full", "floating", "hidden", "none"] as const).filter(
+      (presentation) => !windowHoldsSurface(presentation),
+    )
+    expect(free).toEqual(["full", "none"])
   })
 })

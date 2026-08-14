@@ -1,11 +1,15 @@
 import {
   borrowedPlayer,
+  claimPlayback,
+  createClaimToken,
   getHostPlayer,
   getPlaybackClaim,
+  isPlaybackClaimant,
+  releasePlaybackClaim,
   resetHostPlayerBridge,
   resolveActivePlayback,
+  revokePlaybackClaims,
   setHostPlayer,
-  setPlaybackClaim,
   subscribeToHostPlayer,
   subscribeToPlaybackClaim,
   type HostPlayerEntry,
@@ -32,13 +36,16 @@ function entry(overrides: Partial<HostPlayerEntry> = {}): HostPlayerEntry {
   }
 }
 
+let route: ReturnType<typeof createClaimToken>
+
 beforeEach(() => {
   resetHostPlayerBridge()
+  route = createClaimToken()
 })
 
 describe("the claim channel", () => {
   it("publishes a claim and reads it back", () => {
-    setPlaybackClaim(CLAIM)
+    claimPlayback(route, CLAIM)
 
     expect(getPlaybackClaim()).toEqual(CLAIM)
   })
@@ -47,7 +54,7 @@ describe("the claim channel", () => {
     const listener = jest.fn()
     subscribeToPlaybackClaim(listener)
 
-    setPlaybackClaim(CLAIM)
+    claimPlayback(route, CLAIM)
 
     expect(listener).toHaveBeenCalledTimes(1)
   })
@@ -55,21 +62,21 @@ describe("the claim channel", () => {
   it("does NOT notify when nothing changed", () => {
     // useSyncExternalStore compares by identity, so a fresh object per write is
     // a render loop rather than a performance note.
-    setPlaybackClaim(CLAIM)
+    claimPlayback(route, CLAIM)
     const listener = jest.fn()
     subscribeToPlaybackClaim(listener)
 
-    setPlaybackClaim({ ...CLAIM })
+    claimPlayback(route, { ...CLAIM })
 
     expect(listener).not.toHaveBeenCalled()
   })
 
   it("notifies when only the source re-points", () => {
-    setPlaybackClaim(CLAIM)
+    claimPlayback(route, CLAIM)
     const listener = jest.fn()
     subscribeToPlaybackClaim(listener)
 
-    setPlaybackClaim({ ...CLAIM, streamingUrl: "file:///offline/one.m3u8" })
+    claimPlayback(route, { ...CLAIM, streamingUrl: "file:///offline/one.m3u8" })
 
     expect(listener).toHaveBeenCalledTimes(1)
   })
@@ -78,7 +85,7 @@ describe("the claim channel", () => {
     const listener = jest.fn()
     subscribeToPlaybackClaim(listener)()
 
-    setPlaybackClaim(CLAIM)
+    claimPlayback(route, CLAIM)
 
     expect(listener).not.toHaveBeenCalled()
   })
@@ -209,5 +216,80 @@ describe("resolveActivePlayback", () => {
     }
 
     expect(resolveActivePlayback(slugOnly, null)?.languageSlug).toBeNull()
+  })
+})
+
+describe("the claim registry", () => {
+  const OTHER: PlaybackClaim = {
+    videoId: "video-2",
+    videoSlug: "the-last-supper",
+    streamingUrl: "https://stream.test/two.m3u8",
+  }
+
+  it("gives the player to the claimant that registered LAST", () => {
+    // A native stack mounts the newest screen on top, so that one is the
+    // foreground and the one the viewer is looking at.
+    const pushed = createClaimToken()
+    claimPlayback(route, CLAIM)
+
+    claimPlayback(pushed, OTHER)
+
+    expect(getPlaybackClaim()).toEqual(OTHER)
+  })
+
+  it("hands it back to the one underneath when the newest releases", () => {
+    const pushed = createClaimToken()
+    claimPlayback(route, CLAIM)
+    claimPlayback(pushed, OTHER)
+
+    releasePlaybackClaim(pushed)
+
+    expect(getPlaybackClaim()).toEqual(CLAIM)
+    expect(isPlaybackClaimant(route)).toBe(true)
+  })
+
+  it("ignores a release from a claimant that does not own the player", () => {
+    // The route underneath unmounting must not strip the foreground screen.
+    const pushed = createClaimToken()
+    claimPlayback(route, CLAIM)
+    claimPlayback(pushed, OTHER)
+
+    releasePlaybackClaim(route)
+
+    expect(getPlaybackClaim()).toEqual(OTHER)
+  })
+
+  it("keeps a re-pointing claimant in its PLACE", () => {
+    // The downloads manifest hydrates a file:// copy long after the screen
+    // opened. Promoting the background route on that would move the player
+    // behind the screen the viewer is looking at.
+    const pushed = createClaimToken()
+    claimPlayback(route, CLAIM)
+    claimPlayback(pushed, OTHER)
+
+    claimPlayback(route, { ...CLAIM, streamingUrl: "file:///offline/one.m3u8" })
+
+    expect(getPlaybackClaim()).toEqual(OTHER)
+  })
+
+  it("drops every claimant on a revoke", () => {
+    const pushed = createClaimToken()
+    claimPlayback(route, CLAIM)
+    claimPlayback(pushed, OTHER)
+
+    revokePlaybackClaims()
+
+    expect(getPlaybackClaim()).toBeNull()
+    expect(isPlaybackClaimant(route)).toBe(false)
+    expect(isPlaybackClaimant(pushed)).toBe(false)
+  })
+
+  it("lets a revoked claimant register again", () => {
+    claimPlayback(route, CLAIM)
+    revokePlaybackClaims()
+
+    claimPlayback(route, CLAIM)
+
+    expect(getPlaybackClaim()).toEqual(CLAIM)
   })
 })

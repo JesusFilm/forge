@@ -21,6 +21,19 @@ export type MiniPlayerSessionView = {
  */
 export type MiniPlayerPresentation = "full" | "floating" | "hidden" | "none"
 
+/**
+ * Does the mini player window mount a video view in this presentation?
+ *
+ * ONE definition, read by the window's render gate AND by the host when it
+ * publishes `surfaceFree`. Two hand-kept enumerations is how the published
+ * signal drifts into a restatement of "a route claimed the player".
+ */
+export function windowHoldsSurface(
+  presentation: MiniPlayerPresentation,
+): boolean {
+  return presentation === "floating" || presentation === "hidden"
+}
+
 export type PresentationOptions = {
   /** Open non-route sheets (R11's two modal components that own no route). */
   sheetCount?: number

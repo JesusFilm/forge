@@ -18,9 +18,15 @@ import {
 import { getMiniPlayerStore } from "../lib/miniPlayer"
 import {
   borrowedPlayer,
+  claimPlayback,
+  createClaimToken,
   getHostPlayer,
-  setPlaybackClaim,
+  getPlaybackClaim,
+  isPlaybackClaimant,
+  releasePlaybackClaim,
   subscribeToHostPlayer,
+  subscribeToPlaybackClaim,
+  type ClaimToken,
   type HostPlayerEntry,
   type PlaybackClaim,
 } from "../lib/miniPlayer/hostPlayer"
@@ -35,6 +41,16 @@ import type {
   MiniPlayerSessionInput,
   MiniPlayerStore,
 } from "../lib/miniPlayer/store"
+
+/**
+ * How many times one route may put its claim back after the host revoked it.
+ *
+ * One. A host crash is usually deterministic, so this buys the transient case
+ * a recovery and costs the deterministic case one extra failed mount. Zero
+ * strands the screen with no player; unbounded locks the app in a
+ * mount-throw-revoke loop.
+ */
+const MAX_CLAIM_REASSERTS = 1
 
 export type HostPlaybackOptions = {
   /**
@@ -81,9 +97,15 @@ export function useHostPlayback({
   }, [])
   const hasPlaybackStarted = startedKey != null && startedKey === claimKey
 
+  // One token for this route instance's whole life. Lazy: the argument to
+  // useRef is evaluated on every render and thrown away.
+  const tokenRef = useRef<ClaimToken | null>(null)
+  if (tokenRef.current == null) tokenRef.current = createClaimToken()
+  const token = tokenRef.current
+
   useEffect(() => {
     if (claim == null) {
-      setPlaybackClaim(null)
+      releasePlaybackClaim(token)
       return
     }
     // R12/AE3: opening a different video replaces what the window is playing.
@@ -91,12 +113,36 @@ export function useHostPlayback({
     // session closes while its own player is still mounted to flush it.
     const live = store.getSnapshot()
     if (live != null && !isSameSession(live, claim)) store.end("replaced")
-    setPlaybackClaim(claim)
-  }, [claim, store])
+    claimPlayback(token, claim)
+  }, [claim, store, token])
 
   // Unmount only. Releasing the claim on every change would drop the host to
   // its session for a commit, which is a surface handoff nothing asked for.
-  useEffect(() => () => setPlaybackClaim(null), [])
+  useEffect(() => () => releasePlaybackClaim(token), [token])
+
+  // The host's error boundary revokes every claim when its subtree throws, and
+  // nothing else would put this route's claim back: `claim` is unchanged by
+  // that, so the effect above can never re-run.
+  const liveClaim = useSyncExternalStore(
+    subscribeToPlaybackClaim,
+    getPlaybackClaim,
+  )
+  const reassertsRef = useRef({ key: claimKey, left: MAX_CLAIM_REASSERTS })
+  useEffect(() => {
+    if (claim == null) return
+    // Registered but not in front means another watch route is on top. It owns
+    // the player, this one gets it back when that route pops, and re-asserting
+    // here would steal the surface out from under the foreground screen.
+    if (isPlaybackClaimant(token)) return
+    // Bounded, not idempotent: the throw that revoked the claim is usually
+    // deterministic, so an unbounded re-assert is a mount-throw-revoke loop.
+    // A different video is a fresh problem, so it gets a fresh budget.
+    const budget = reassertsRef.current
+    const left = budget.key === claimKey ? budget.left : MAX_CLAIM_REASSERTS
+    if (left <= 0) return
+    reassertsRef.current = { key: claimKey, left: left - 1 }
+    claimPlayback(token, claim)
+  }, [claim, claimKey, liveClaim, token])
 
   useEffect(() => {
     if (claim == null) return

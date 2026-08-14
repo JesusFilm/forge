@@ -22,6 +22,22 @@ import {
  */
 export type PlaybackClaim = SessionIdentity & { streamingUrl: string }
 
+/**
+ * One claimant's identity. A route instance mints exactly one and holds it for
+ * its whole life.
+ *
+ * A native stack keeps `/watch/A` mounted under `/watch/B`, so the claim is not
+ * one anonymous slot: without a token, B's unmount clears A's claim and A is
+ * left with no player at all.
+ */
+export type ClaimToken = { readonly id: number }
+
+let nextClaimTokenId = 1
+
+export function createClaimToken(): ClaimToken {
+  return { id: nextClaimTokenId++ }
+}
+
 /** The host's live player, handed back to whoever claimed it. */
 export type HostPlayerEntry = {
   player: VideoPlayer
@@ -29,9 +45,15 @@ export type HostPlayerEntry = {
   identityKey: string
   isPlaying: boolean
   /**
-   * The host's own window holds NO video surface right now, so the claimant
-   * may mount one. Android asserts on two views owning one player, so the
-   * handoff is sequential in both directions rather than a cross-fade.
+   * The commit in which the host's window mounted NO video view has landed, so
+   * the claimant may mount one.
+   *
+   * An ORDERING signal, not an independent one. It reads `windowHoldsSurface`,
+   * the predicate the window itself renders on, and the host publishes it from
+   * an effect — one commit behind the claim that caused it. That lag IS the
+   * guarantee: Android asserts on two views owning one player, and a route that
+   * borrows on the claim it just made lands its view in the window's last
+   * commit.
    */
   surfaceFree: boolean
 }
@@ -59,6 +81,12 @@ function sameEntry(
   )
 }
 
+type ClaimRegistration = { token: ClaimToken; claim: PlaybackClaim }
+
+/** Registration order, oldest first. The LAST one owns the player: a native
+ *  stack mounts the newest screen on top, and that is the foreground. */
+let registrations: ClaimRegistration[] = []
+
 let claim: PlaybackClaim | null = null
 const claimListeners = new Set<() => void>()
 
@@ -71,10 +99,59 @@ function notify(listeners: Set<() => void>) {
 
 /** Stable while nothing changed: `useSyncExternalStore` compares by identity,
  *  so a fresh object per write is a render loop, not a performance note. */
-export function setPlaybackClaim(next: PlaybackClaim | null): void {
+function publishClaim(): void {
+  const next = registrations.at(-1)?.claim ?? null
   if (sameClaim(claim, next)) return
   claim = next
   notify(claimListeners)
+}
+
+/**
+ * This claimant wants the host's player for `next`.
+ *
+ * A token already in the registry keeps its PLACE. A source that hydrates late
+ * — the downloads manifest swapping in a `file://` copy — must not promote a
+ * background route over the screen the viewer is looking at.
+ */
+export function claimPlayback(token: ClaimToken, next: PlaybackClaim): void {
+  registrations = registrations.some(
+    (registration) => registration.token === token,
+  )
+    ? registrations.map((registration) =>
+        registration.token === token ? { token, claim: next } : registration,
+      )
+    : [...registrations, { token, claim: next }]
+  publishClaim()
+}
+
+/** This claimant is done. The claimant below it takes the player back with no
+ *  re-assertion of its own. */
+export function releasePlaybackClaim(token: ClaimToken): void {
+  const next = registrations.filter(
+    (registration) => registration.token !== token,
+  )
+  if (next.length === registrations.length) return
+  registrations = next
+  publishClaim()
+}
+
+/**
+ * The host drops EVERY claim.
+ *
+ * Only the host's error boundary calls this: its subtree threw, so the player
+ * behind every registration is gone. Claimants re-assert on their own budget —
+ * see `useHostPlayback` — which is what stops a deterministic throw looping.
+ */
+export function revokePlaybackClaims(): void {
+  if (registrations.length === 0) return
+  registrations = []
+  publishClaim()
+}
+
+/** Is this claimant still in the registry? False after a revoke, and the
+ *  question a claimant asks before it re-asserts. */
+export function isPlaybackClaimant(token: ClaimToken): boolean {
+  return registrations.some((registration) => registration.token === token)
 }
 
 export function getPlaybackClaim(): PlaybackClaim | null {
@@ -112,8 +189,9 @@ export function subscribeToHostPlayer(listener: () => void): () => void {
  * a second video the host is still holding the first one's player, and
  * attaching the new route's surface to it would show the previous video.
  *
- * A player whose surface the host's own window still holds also reads as null.
- * The claimant must wait for that surface to go, not race it.
+ * An entry published from a commit in which the window still mounted its view
+ * also reads as null — see `surfaceFree`. The claimant waits for the host to
+ * publish the release rather than acting on the claim it just made.
  */
 export function borrowedPlayer(
   entryNow: HostPlayerEntry | null,
@@ -164,6 +242,7 @@ export function resolveActivePlayback(
 
 /** Test and teardown only. */
 export function resetHostPlayerBridge(): void {
+  registrations = []
   claim = null
   entry = null
   claimListeners.clear()
