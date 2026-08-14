@@ -48,3 +48,4 @@ envelopes on the physical suggestion candidate.
 - Reviewer(s): correctness, security, adversarial
 - Finding ID: `typesense-watch-search-candidate-generation.ts:1218:suggestion-qualification`
 - Source: `feat/multilingual-watch-suggestions` at `8acbcd1c`
+- Pull request: https://github.com/JesusFilm/forge/pull/1938

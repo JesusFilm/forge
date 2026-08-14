@@ -42,3 +42,4 @@ can therefore be rejected before READY despite complete observed-pair coverage.
 - Reviewer(s): correctness
 - Finding ID: `index-typesense-watch-search-candidate.ts:446:grouped-count`
 - Source: `feat/multilingual-watch-suggestions` at `8acbcd1c`
+- Pull request: https://github.com/JesusFilm/forge/pull/1938

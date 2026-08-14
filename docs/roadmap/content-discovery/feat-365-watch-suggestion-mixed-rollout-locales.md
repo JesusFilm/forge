@@ -45,3 +45,4 @@ return no exact suggestions or submitted-search results.
 - Reviewer(s): adversarial
 - Finding ID: `typesense-watch-search-lexical.ts:84:mixed-rollout`
 - Source: `feat/multilingual-watch-suggestions` at `8acbcd1c`
+- Pull request: https://github.com/JesusFilm/forge/pull/1938
