@@ -755,3 +755,130 @@ Roughly 55 JSDoc blocks in branch-authored files exceed the repo's 3-line inline
 ### Review coverage caveat
 
 An eight-persona review ran over this branch and all actionable findings are fixed. Its adversarial lens ran same-family rather than cross-model — the peer route was available but skipped for context budget — so treat the adversarial findings as less independent than the rest.
+
+---
+
+## Implementation Findings, update 2 (added 2026-08-14, after U7 and U8)
+
+Supersedes parts of update 1 above. Where the two disagree, this one wins.
+
+### Status
+
+U1-U8 are shipped on branch `worktree-mobile-pip-mini-player`, draft PR #1937.
+Tests went from 110 suites / 1567 at the start to **138 / 2017**. U9 (native
+picture-in-picture) and U10 (cleanup, docs, roadmap ticket) remain.
+
+**The feature is now LIVE, not inert.** The watch route publishes a session on
+first playback and borrows the hoisted player, so the window appears on back.
+
+### Corrections to update 1
+
+- The `store.update()` asymmetric-merge trap is FIXED. Undefined-valued keys are
+  dropped generically; `null` still writes through.
+- The keep-alive description is stale. The host does not mount a zero-size view
+  for `floating` only. See the next section.
+- `sessionIdentityKey` now names ONE field, `slug:` first, `id:` second. With
+  the old two-field key the route's claim starts slug-only and gains `videoId`
+  when the query resolves, so the key changed under running video and expanding
+  filed a `replaced` against the session being expanded.
+
+### The architecture, as built
+
+**A claim is not a session.** This is the load-bearing distinction. The route
+must borrow a player BEFORE playback starts, or playback cannot start; but
+`admitsSession` must not publish until it HAS started. So `hostPlayer.ts` carries
+two channels and no position:
+
+- claim (route to host): "the foreground route wants the host to own a player
+  for this video"
+- player handle (host to route)
+
+`store.start` still fires only on the admission latch. The claim is a TOKEN
+REGISTRY, not a single slot: the last registration owns the player, a re-point
+keeps its place, and a release hands the player back. A single anonymous slot
+let two mounted watch routes clobber each other, and a stale route's unmount
+clobbered the foreground claim.
+
+`PlaybackHost` mounts as a sibling of `<Stack>` (KTD1), so it cannot provide a
+React context any route can read. That is why the seam is a module-scope
+subscribable, matching `store.ts` / `pipLatch.ts` / `endRegistry.ts`.
+
+**Surface ownership.** The window and the keep-alive slot are ONE root whose
+testID, style and pan handlers switch on presentation, with the VideoView as the
+first child in every branch, so React reconciles it in place rather than
+detaching and re-attaching. `windowHoldsSurface(presentation)` is the single
+predicate, read by the window's render gate and by the host when it publishes.
+
+### Attach order: still the constraint that shapes everything
+
+The spike's finding stands: a VideoView that FIRST attaches to a player already
+playing with no surface is permanently dead. Nine paths were traced in the
+render tree (cold open, back with and without a session, expand, second video
+over a floating one, sheets, watch-group sheet, source going null, session
+ending while mounted). The claim outlives the route's own views by one commit in
+each direction, so the handoff is sequential rather than a cross-fade.
+
+**Residual: paths "back with a session" and "expand" rely on React committing
+the release before the acquire. Proven in the render tree; the native Android
+mount ordering is still a hardware claim.**
+
+### Verification technique worth keeping
+
+A tree inspected after `act()` shows only the LAST commit, so a second surface
+that lives for ONE commit — the exact shape of a decoder handoff bug — is
+invisible to a testID count. The expo-video stub now tracks mount and unmount
+and exposes `peakMountedSurfaces()` and `peakSurfacesPerPlayer()`. React flushes
+every passive destroy of a commit before any passive create, so a same-commit
+handoff peaks at one and a real double-attach peaks at two.
+
+Equally important: **decoder assertions must render the host and the route
+together.** Every assertion in the repo was scoped to a single renderer, which is
+structurally blind to a second subtree — and that is how the two-decoder states
+survived review.
+
+### Two React behaviours found while building the crash rig
+
+- `useSyncExternalStore` SWALLOWS a throwing snapshot read, so a rigged store
+  never reaches an error boundary. The throw must come from render.
+- React RETRIES a failed render once and swallows the error if the retry
+  succeeds, so a rig armed with a throw COUNT arms nothing. Key it on catches
+  actually observed.
+
+### Owner decision recorded: SDUI section routes
+
+`app/video/[sectionKey].tsx` and `app/collection/[sectionKey].tsx` each build
+their own player. Playing one of those videos now ENDS the mini player session
+("replaced"). One decoder always; the viewer's most recent explicit choice wins.
+The accepted cost is that the window does not survive those two routes.
+
+Keyed on the TRANSITION into playing, not a lifetime latch: a native stack keeps
+these routes mounted under a pushed watch route, so a lifetime latch would let a
+second decoder back on a return visit.
+
+Honest about the counts: the peak is 2 surfaces BEFORE playback starts, because
+both routes mount their VideoView unconditionally on arrival. That overlap is
+structural and is the accepted cost. What the change guarantees is one surface
+per player and one live surface after the yield.
+
+### Still owed before this ships to anyone
+
+1. **Android hardware.** Everything above is jest evidence plus one emulator
+   spike. The Verification Contract wants a live first frame after a cold
+   relaunch, sampled on a motion-rich part of the video. The SurfaceView
+   LAYERING result specifically must not be trusted off-emulator.
+2. **iOS.** Picture-in-picture has never been verified on this app and cannot be
+   on an iPhone simulator. U9's precondition is an iPad simulator or hardware.
+3. **Cold-launch timing.** Still unmeasured, not measured-as-fine. The dev
+   client has a plus/minus 6 second noise floor; a real answer needs a release
+   build and the Datadog `js_tti` the app already emits.
+4. **U9 and U10.** `pipLatch` still has no production feeder, and there are
+   THREE `allowsPictureInPicture` sites, so U9's wiring is a three-site job.
+5. **The roadmap ticket.** `feat-357`, `feat-361` and `feat-362` are all taken.
+   Next free is `feat-363`. Re-check at creation; a worktree behind main is how
+   the wrong id was derived the first time.
+
+### Residual accepted
+
+Roughly 55 JSDoc blocks in branch-authored files exceed the repo's 3-line
+inline-comment cap. Left deliberately: rewriting them risked damaging the
+explanations, and untouched mobile files carry around 350 of the same shape.
