@@ -1045,3 +1045,125 @@ Unchanged from update 2, plus:
   screen (AE12). The emulator spike covered entry, not the R24 hold.
 - **iOS end to end.** iPad simulator or hardware. Nothing about iOS
   picture-in-picture in this app has ever been observed running.
+
+---
+
+## Implementation Findings, update 3 (added 2026-08-15, after U9 and U10)
+
+**All ten units are shipped.** Branch `worktree-mobile-pip-mini-player`, draft
+PR #1937. Tests went from 110 suites / 1567 at the start to **142 / 2065**.
+
+What remains is not code. It is three verification debts, listed at the end.
+
+### U9 settled two questions this plan had left open
+
+**The Android manifest question, which three research passes disagreed on.**
+`expo prebuild --platform android --clean` on expo 57.0.12 / expo-video 57.0.2 /
+RN 0.86.2 generates:
+
+    android:supportsPictureInPicture="true"        on .MainActivity
+    android:configChanges="keyboard|keyboardHidden|orientation|screenSize|
+      screenLayout|uiMode|smallestScreenSize|assetsPaths"
+
+`smallestScreenSize` IS present. All four entries Android needs are there, so
+**no local config plugin is required.** The Outstanding Question is closed.
+
+**`staysActiveInBackground`: do NOT set it.** The Product Contract deferred
+whether setting it on the hoisted player produces automatic iOS entry. It does
+not, and setting it would be actively wrong. Read from installed expo-video
+57.0.2:
+
+- iOS auto-entry is `canStartPictureInPictureAutomaticallyFromInline`, set only
+  from the VIEW prop `startsPictureInPictureAutomatically`.
+- `staysActiveInBackground` is a PLAYER property. It flips a branch to
+  `audiovisualBackgroundPlaybackPolicy = .continuesIfPossible` INSTEAD of
+  pausing — headless background video, the opposite of R13.
+- With it false, expo-video already checks `!isInPictureInPicture` before
+  pausing, which is exactly the behaviour R13 wants.
+- The timing is wrong anyway: the latch arms from `onPictureInPictureStart`,
+  i.e. after the OS window has already opened.
+
+Home's hero audio session is unchanged: there is no per-player session, and U9
+alters none of the aggregate's inputs. What source cannot settle is whether the
+extra `setAppropriateAudioSession` recomputes cause an audible duck blip on real
+iOS hardware.
+
+### R24 was a comment with nothing implementing it
+
+`pipLatch` documented "while the latch is set, no view mounts, unmounts or
+changes owner" and nothing enforced it. It is now a pure rule plus a hook,
+applied at the three decisions that mount, unmount or hand over a video view.
+The hold governs WHICH VIEWS EXIST and never the look or the bookkeeping —
+`presentationFor` still returns `hidden`, and the session still ends and flushes
+on time.
+
+**The gap the hold cannot close:** it governs the host and the window. It cannot
+hold a ROUTE, so a navigation that unmounts the watch screen while the OS window
+is showing is still outside it. Treat that as unverified rather than handled.
+
+### The picture-in-picture call-site guard is stronger than "adopt the helper"
+
+No file outside `src/lib/miniPlayer/pictureInPicture.ts` may NAME any of the
+four VideoView props. That catches the spread-then-override-one-callback revert,
+which an "adopted the helper" check passes. The revert is in the guard's own
+positive-control fixture.
+
+Four surfaces are wired, not the three this plan listed: `VideoPlayer.tsx`
+(which backs the watch screen AND the series trailer), `MiniPlayerWindow.tsx`,
+`app/video/[sectionKey].tsx`, `app/collection/[sectionKey].tsx`. The floating
+window needed it because AE5 leaves the app FROM the window.
+
+### U10: the prose sweep found more than this plan estimated
+
+Sixteen statements asserting this app has no component-render testing are now
+stamped with dated supersession notes. They were true when written and false
+since this branch. That is why the unit says to DERIVE the list rather than
+trust a count.
+
+Classified by content, not by document type. `apps/tv` statements are untouched
+and remain true because TV stays on SDK 54. Two screen-scoped claims stay true
+(a screen that reaches Apollo, the downloads provider and expo-router still has
+no render suite). Two hits were a different sense of "no render" entirely. The
+strongest false claim was a solutions doc calling `react-test-renderer@19` under
+jest and pnpm "unsupported here" — this branch is the counterexample.
+
+`MiniPlayerBar.tsx` is deleted. Its fade-then-unmount pattern was deliberately
+NOT carried into the window: a fade there would hold a second `VideoView` on one
+player for the fade's duration, which is the exact double-decoder hazard the
+feature exists to prevent.
+
+### Roadmap
+
+The ticket is `docs/roadmap/platform/feat-363-mobile-mini-player.md`. The
+worktree-behind-main trap was real and measured: scanning this worktree gives a
+max of `feat-360`; scanning `origin/main` gives `362`. Always scan the remote.
+
+Pre-existing and not caused by this work: **`feat-357` is DOUBLE-CLAIMED on
+`origin/main`** by `content-discovery/feat-357-watch-search-suggestion-immediate-submit.md`
+and `platform/feat-357-watch-global-language-code-indicator.md`.
+
+### THE THREE DEBTS — everything below is unverified on a device
+
+Every claim in this branch is jest evidence, source reading, one Android
+emulator spike, and one generated-manifest read. None of it is a device
+acceptance run.
+
+1. **Android hardware.** The Verification Contract wants a live first frame in
+   the floating window after a cold relaunch, sampled on a motion-rich part of
+   the video, plus a picture-in-picture round trip that restores the interface
+   on return. The emulator spike's SurfaceView LAYERING result specifically must
+   not be trusted off-emulator.
+2. **iOS.** Picture-in-picture has NEVER been verified on this app. It cannot be
+   on an iPhone simulator. iPad simulators ARE available on this machine
+   (verified 2026-08-15), so this is now doable — it simply has not been done.
+   The open empirical question is whether the extra audio-session recomputes
+   cause an audible duck blip.
+3. **Cold-launch timing.** Still unmeasured, not measured-as-fine. A dev-client
+   cold launch has a plus/minus 6 second noise floor, two orders of magnitude
+   above the effect. A real answer needs a RELEASE build and the Datadog
+   `js_tti` the app already emits.
+
+Also unverified: the two attach-order paths (back-with-a-session, and expand)
+rely on React committing the surface release before the acquire. Proven in the
+render tree; the native Android mount ordering is a hardware claim, and a player
+that plays surfaceless is permanently unrecoverable.
