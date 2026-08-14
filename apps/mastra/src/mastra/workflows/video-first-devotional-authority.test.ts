@@ -24,23 +24,24 @@ describe("video-first devotional runtime authority", () => {
   // edit without a deploy. Nothing failed, because no test looked at the call
   // site. This pins the SOURCE of each prompt, so dropping either override
   // turns this red rather than silently changing what the pipeline writes.
-  it("threads authored prompts into the point picker and the conclusion writer", () => {
-    for (const required of [
-      "authored.prompts.prompts.pointPicker",
-      "authored.prompts.prompts.conclusion",
-      "pickPoints: (options)",
-      "writeConclusion: (options)",
+  // The prompt WIRING is asserted behaviourally in
+  // video-first-devotional-authored-prompts.test.ts, which runs the real content
+  // composition and checks what each service receives. Source-text assertions
+  // used to stand in for that and were a poor substitute: they pass for a mention
+  // in a comment and say nothing about what reaches a model.
+  //
+  // What stays here is what behaviour cannot see. The explaining seam produces
+  // the picker's rationale and every critic's issues, and both used to be
+  // computed and dropped because no caller passed it. A behavioural test would
+  // have to assert on stdout to catch that; the durable end of it is the artifact
+  // write, which is asserted directly. The seam is COUNTED, not merely present:
+  // there are two call sites, and `toContain("log,")` still passed when one of
+  // them lost it — which is how the first version of this pin failed its own
+  // falsification.
+  it("persists the run's reasoning and passes the log seam at both call sites", () => {
+    expect(workflowSource).toContain(
       "value: { devotional, safety, quality, notes },",
-    ]) {
-      expect(workflowSource, required).toContain(required)
-    }
-
-    // The explaining seam. Both the picker's chosen-points rationale and every
-    // critic's issues/suggestions are produced through it, and with no caller
-    // passing it they were computed and dropped. COUNTED, not merely present:
-    // there are two call sites (content composition and the quality gate), and a
-    // `toContain("log,")` still passes when one of them loses it — which is how
-    // the first version of this pin failed its own falsification.
+    )
     expect(workflowSource.match(/^\s+log,$/gm) ?? []).toHaveLength(2)
   })
 
