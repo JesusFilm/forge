@@ -182,7 +182,6 @@ green run is not mistaken for proof that production carries the rules.
 - **The lead-in regex does not match every form** J.C. Ryle uses, so some
   multi-point excerpts are not detected as multi-point and reach the writer whole,
   silently.
-- **No roadmap ticket** covers this work, which the repo's own rules ask for.
 
 ## Deliberately not included
 
@@ -211,6 +210,15 @@ green run is not mistaken for proof that production carries the rules.
 - **The Russian localization layer**, on the owner's instruction. It is not
   active, and `devotional-occasions` was deferred with it rather than partially
   ported, since its only coupling to that layer is a language type.
+
+## Roadmap
+
+`docs/roadmap/media-generation/feat-363-devotional-quality-gate-rollout.md`,
+marked complete, depending on feat-322 (the Workspace data plane) with the reverse
+`blocks` link added there per the bidirectional rule. Its Constraints section
+records the four things that must not be undone: the gate must not throw, no retry
+around a critic, a missing `quality` key is not a block, and report-only stays the
+default.
 
 ## Origin
 
