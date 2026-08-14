@@ -106,8 +106,10 @@ jest.mock("../../lib/videoQoe", () => ({
 
 import { act } from "react"
 import { AppState, type AppStateStatus } from "react-native"
+import type { VideoPlayer as ExpoVideoPlayer } from "expo-video"
 
 import { VideoPlayer } from "../../components/watch/VideoPlayer"
+import { applyWatchBufferOptions } from "../../lib/playerBufferOptions"
 import {
   lastFakePlayer,
   resetExpoVideoMock,
@@ -171,6 +173,18 @@ function element(props: { streamingUrl: string; videoId: string }) {
       progressIdentity={{ videoId: props.videoId, languageSlug: "english" }}
     />
   )
+}
+
+/**
+ * What the shared leaf writes, read from the leaf itself. Pinning the numbers
+ * here instead would go red on a deliberate tuning change, when the claim is
+ * only that this call site still passes the setup through.
+ */
+function leafBufferOptions(): unknown {
+  const probe = {} as ExpoVideoPlayer
+  applyWatchBufferOptions(probe)
+  expect(probe.bufferOptions).toBeDefined()
+  return probe.bufferOptions
 }
 
 /** Rendered this test, so afterEach can tear down the adapter's timers. */
@@ -253,6 +267,15 @@ afterEach(async () => {
 })
 
 describe("useManagedVideoPlayer lifecycle", () => {
+  it("applies the shared buffer setup to the player it creates", async () => {
+    // The buffer options moved into a leaf so the root host could reuse them
+    // without dragging the player UI into cold launch. Nothing asserted they
+    // still ARRIVE: dropping the argument only costs a slower first frame.
+    const { player } = await render()
+
+    expect(player.bufferOptions).toEqual(leafBufferOptions())
+  })
+
   it("registers both AppState listeners, so a broadcast reaches the adapter", async () => {
     await render()
     // Pins the premise the other AppState assertions rest on. If this drops to
@@ -283,11 +306,9 @@ describe("useManagedVideoPlayer lifecycle", () => {
       )
     })
 
-    // U2 recorded "unmount" here, because the departing flush rides the
-    // recorder re-key's effect cleanup and that was the only word available.
-    // U5 gives the cleanup the reason that actually applies. The flush still
-    // happens THERE — only the departing recorder holds the departing
-    // position — but it now says what really happened.
+    // U2 recorded "unmount" here: the departing flush rides the recorder re-key's
+    // cleanup and that was the only word available. U5 gives it the reason that
+    // applies. The flush still happens THERE — only that recorder holds it.
     expect(flushTriggers()).toEqual(["swap"])
     expect(qoeSessions()).toHaveLength(2)
     expect(qoeSessions()[0].finalize).toHaveBeenCalledWith("replaced")
@@ -316,6 +337,9 @@ describe("useManagedVideoPlayer lifecycle", () => {
   it("maps each named end onto its own progress trigger", async () => {
     for (const [reason, trigger] of [
       ["ended", "end"],
+      // The store's replace reaches the player only through this named end, so
+      // nothing else in the suite pins the row it maps to.
+      ["replaced", "swap"],
       ["dismissed", "dismiss"],
       ["signout", "signout"],
       ["failed", "dismiss"],

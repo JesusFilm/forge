@@ -1,12 +1,8 @@
-// A leaf on purpose. The root layout mounts the playback host, so anything the
-// host imports is parsed and evaluated before the first paint. Reaching into
-// VideoPlayer.tsx for these six lines pulled the whole player UI — the
-// controls, scrubber, caption overlay, spinner and blur, plus expo-blur,
-// expo-image and expo-linear-gradient — into the cold-launch graph, on an
-// audience this very setting exists because they are on low-bandwidth devices.
-//
-// The expo-video import is type-only, so this module adds no native package.
+// A leaf on purpose: the root layout mounts the playback host, so taking these
+// six lines from VideoPlayer.tsx dragged the whole player UI plus expo-blur,
+// expo-image and expo-linear-gradient into the cold-launch graph.
 
+// Type-only, so this module still adds no native package.
 import type { VideoPlayer } from "expo-video"
 
 /**

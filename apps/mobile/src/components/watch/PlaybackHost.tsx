@@ -171,10 +171,14 @@ const PlaybackSession = memo(function PlaybackSession({
   // this subtree unmounts, or teardown files the session as an abandonment.
   const endAndClearSheets = useCallback(
     (reason: SessionEndReason) => {
-      endSession(reason)
-      // closeSheet() floors at zero, so it cannot undo a SURPLUS open: one
-      // unbalanced openSheet() would hide every later window until relaunch.
-      sheets.reset()
+      // The WHOLE body: the registry swallows a throw, so a failing flush would
+      // skip the release in silence — and closeSheet() floors at zero, so one
+      // stranded count hides every later window until relaunch.
+      try {
+        endSession(reason)
+      } finally {
+        sheets.reset()
+      }
     },
     [endSession, sheets],
   )

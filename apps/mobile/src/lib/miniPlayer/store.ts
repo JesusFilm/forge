@@ -1,9 +1,8 @@
-// The mini player session store (KTD2). Module-scope and subscribable rather
-// than React context: the window shows a position updating at the adapter's
-// one-second poll, and a root context would re-render every consumer beneath it
-// on each tick — including Home's list. It is also readable WITHOUT React,
-// which the picture-in-picture latch and the AppState handler both need.
+// The mini player session store (KTD2). Module scope, not React context: a
+// root context would re-render every consumer — Home's list included — at the
+// window's 1s position tick, and the pip latch must read this WITHOUT React.
 
+import { isSameSession } from "./session"
 import type { SessionEndReason } from "./types"
 
 export type { SessionEndReason }
@@ -34,6 +33,13 @@ export type MiniPlayerStoreDeps = {
   ) => () => void
   /** Fired as a session ends, so the host can flush progress and close QoE. */
   onEnd?: (session: MiniPlayerSession, reason: SessionEndReason) => void
+}
+
+/** A no-change update must not publish: a new snapshot object per call turns a
+ *  store-reading publisher into a render loop. */
+function isUnchanged(a: MiniPlayerSession, b: MiniPlayerSession): boolean {
+  const keys = Object.keys(b) as (keyof MiniPlayerSession)[]
+  return keys.every((key) => a[key] === b[key])
 }
 
 export function createMiniPlayerStore(deps: MiniPlayerStoreDeps) {
@@ -89,8 +95,21 @@ export function createMiniPlayerStore(deps: MiniPlayerStoreDeps) {
      */
     getSnapshot: (): MiniPlayerSession | null => session,
 
-    /** R12: starting a different video replaces what the window is playing. */
+    /**
+     * R12: starting a DIFFERENT video replaces what the window is playing.
+     *
+     * A redundant republish — same video, same source — returns untouched. The
+     * host keys its player on the identity alone, so nothing below re-renders
+     * and the replace would strand the live player with its session already
+     * ended: no quality record, and a later dismissal saving no position.
+     */
     start(input: MiniPlayerSessionInput) {
+      if (
+        session != null &&
+        isSameSession(session, input) &&
+        session.streamingUrl === input.streamingUrl
+      )
+        return
       if (session != null) endSilently("replaced")
       session = {
         ...input,
@@ -99,6 +118,27 @@ export function createMiniPlayerStore(deps: MiniPlayerStoreDeps) {
         subjectId: deps.getSubjectId(),
       }
       ownerSubjectId = session.subjectId
+      notify()
+    },
+
+    /**
+     * Re-point the LIVE session in place: the downloads manifest hydrating a
+     * `file://` copy, a seed URL resolving to the canonical one, an audio
+     * switch. `start` would reset the position to zero and file a `replaced`
+     * that never happened, so those jumps need their own verb.
+     *
+     * A different video is ignored rather than replaced — silently inheriting
+     * the previous session's position is worse than doing nothing.
+     */
+    update(input: MiniPlayerSessionInput) {
+      if (session == null || !isSameSession(session, input)) return
+      const next: MiniPlayerSession = {
+        ...session,
+        ...input,
+        durationSeconds: input.durationSeconds ?? session.durationSeconds,
+      }
+      if (isUnchanged(session, next)) return
+      session = next
       notify()
     },
 

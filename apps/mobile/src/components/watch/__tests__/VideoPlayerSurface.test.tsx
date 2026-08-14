@@ -157,17 +157,9 @@ describe("VideoPlayerSurface over an already-playing player", () => {
   })
 
   it("clears the veil from the PLAYER when isPlaying arrives false", async () => {
-    // The case the seed exists for, and the only one that discriminates.
-    //
-    // When isPlaying arrives true the post-mount effect flips the latch anyway,
-    // so the seed is invisible to any assertion taken after act() flushes. The
-    // seed only decides the outcome when the two DISAGREE: the player is
-    // playing but the flag says otherwise — a host threading isPlaying from a
-    // store snapshot or a useState that begins false.
-    //
-    // Without the seed that mount re-arms the veil over running video, and
-    // there is no event left to clear it: an already-playing player emits no
-    // new playingChange. The 12-second watchdog becomes the only exit.
+    // The only case that discriminates: a true isPlaying makes the post-mount
+    // effect flip the latch anyway, so the seed decides only when the two
+    // DISAGREE — a playing player whose isPlaying prop begins false.
     const renderer = await mount(makeFakePlayer({ playing: true }), {
       isPlaying: false,
     })
@@ -210,12 +202,9 @@ describe("VideoPlayerSurface over an already-playing player", () => {
     expect(hasVeil(renderer)).toBe(true)
   })
 
-  // NOT TESTED, deliberately: surviving a RELEASED player at mount. The seed's
-  // try/catch degrades to "not started", but `useControlsVisibility(player)`
-  // (VideoPlayer.tsx:257 -> useControlsVisibility.ts:183) reads `player.playing`
-  // unguarded a few lines later and throws anyway. That is pre-existing and
-  // out of U6's scope; a test here would assert a safety the component does
-  // not have.
+  // NOT TESTED on purpose: a RELEASED player at mount. The seed's try/catch
+  // degrades to "not started", but useControlsVisibility reads player.playing
+  // unguarded just below and throws anyway — pre-existing, outside U6.
 })
 
 describe("VideoPlayerSurface decoder surface", () => {

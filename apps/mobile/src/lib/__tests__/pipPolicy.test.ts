@@ -7,9 +7,8 @@ describe("shouldPauseOnAppStateChange (R13, KTD12)", () => {
 
   it("does NOT pause on background while picture-in-picture is active", () => {
     // The whole point of R13. Android reports picture-in-picture ENTRY as
-    // 'background', not 'inactive' — so the pre-existing unconditional
-    // pause-on-background would stop the video the system just handed to the
-    // picture-in-picture window.
+    // 'background', so the pre-existing unconditional pause-on-background
+    // stopped the video the system had just handed to the floating window.
     expect(shouldPauseOnAppStateChange("background", true)).toBe(false)
   })
 

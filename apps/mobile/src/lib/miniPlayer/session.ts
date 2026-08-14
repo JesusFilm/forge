@@ -88,9 +88,9 @@ export type SessionAction = "start" | "update" | "none"
  * What the publisher should do with the next snapshot: open a new session,
  * update the live one in place, or nothing.
  *
- * TODO: "update" has no store method behind it — `MiniPlayerStore` can start,
- * end and move the position, but cannot re-point a live session's source. Not
- * reachable until the route publisher lands, which is what will need it.
+ * Each verb has a store method behind it — `start` and `update`. They are NOT
+ * interchangeable: `start` on a live session resets the position and files a
+ * `replaced`, which is wrong for a source that merely re-pointed.
  */
 export function sessionActionFor(
   current: SessionIdentity | null,

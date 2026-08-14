@@ -26,6 +26,9 @@ export type FakePlayer = {
   duration: number
   status: string
   subtitleTrack: unknown
+  /** Written by the creation `setup` callback, so a suite can prove the buffer
+   *  leaf reached the player it was passed to. */
+  bufferOptions?: unknown
   play: jest.Mock<void, []>
   pause: jest.Mock<void, []>
   replace: jest.Mock<void, [string, boolean?]>
@@ -119,10 +122,9 @@ export function expoVideoModuleMock() {
     useVideoPlayer: jest.fn(
       (source: unknown, setup?: (player: FakePlayer) => void) => {
         const key = JSON.stringify(source ?? null)
-        // Source only. `setup` is deliberately not a dep: callers pass an
-        // inline arrow, so depending on it would re-create the player every
-        // render — the churn this memo exists to prevent. The real hook runs
-        // setup once at creation too.
+        // Source only. `setup` is deliberately not a dep: callers pass an inline
+        // arrow, so depending on it re-creates the player every render. The real
+        // hook also runs setup once, at creation.
         const setupOnce = useRef(setup)
         return useMemo(() => register(setupOnce.current), [key])
       },

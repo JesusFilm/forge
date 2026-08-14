@@ -86,11 +86,9 @@ describe("createProgressRecorder", () => {
   })
 
   it("swap/dismiss/signout force an immediate drain with the latest position", () => {
-    // R16: the departing video's position must flush on an explicit signal.
-    // Before this widening the only word available for a swap was "unmount",
-    // which is what the adapter's effect cleanup already reports — so the
-    // reason said "the component went away" when the truth was "the viewer
-    // changed episode" or "the viewer dismissed the window".
+    // R16: the departing position must flush on an explicit signal. Before this
+    // widening the only word for a swap was "unmount" — the reason said "the
+    // component went away" when the truth was "the viewer changed episode".
     for (const trigger of ["swap", "dismiss", "signout"] as const) {
       const { deps, buffered, drains } = buildDeps()
       const recorder = createProgressRecorder({ videoId: "video-1" }, deps)
@@ -105,25 +103,28 @@ describe("createProgressRecorder", () => {
     }
   })
 
-  it("a deliberate sign-out is not a sign-in prompt moment", () => {
-    // The other signed-out stops mean "you were watching and we could not save
-    // it" — worth a prompt. A sign-out is the viewer's own decision, so the
-    // same prompt would be nagging. R25 ends the session on that path.
-    const stops: number[] = []
-    const { deps } = buildDeps({
-      getAccountId: () => null,
-      onSignedOutStop: (position) => stops.push(position),
-    })
-    const recorder = createProgressRecorder({ videoId: "video-1" }, deps)
-    recorder.onTick(41, 100)
+  it.each(["signout", "end"] as const)(
+    "a %s stop is not a sign-in prompt moment",
+    (trigger) => {
+      // The other signed-out stops mean "we could not save it" — worth a prompt.
+      // A sign-out is the viewer's choice and playback end has nothing left to
+      // save. Both live in one Set, and a Set drops a member in silence.
+      const stops: number[] = []
+      const { deps } = buildDeps({
+        getAccountId: () => null,
+        onSignedOutStop: (position) => stops.push(position),
+      })
+      const recorder = createProgressRecorder({ videoId: "video-1" }, deps)
+      recorder.onTick(41, 100)
 
-    recorder.flush("signout")
-    expect(stops).toEqual([])
+      recorder.flush(trigger)
+      expect(stops).toEqual([])
 
-    // The contrast case: the same signed-out state on a pause still prompts.
-    recorder.flush("pause")
-    expect(stops).toEqual([41])
-  })
+      // The contrast case: the same signed-out state on a pause still prompts.
+      recorder.flush("pause")
+      expect(stops).toEqual([41])
+    },
+  )
 
   it("playback end records the completed range", () => {
     const { deps, buffered } = buildDeps()

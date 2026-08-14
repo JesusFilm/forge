@@ -1,12 +1,6 @@
-// The picture-in-picture hold state (KTD12). Module scope and readable WITHOUT
-// React, because the AppState handler inside the player adapter consults it
-// from a plain callback, not from a render.
-//
-// It is fed from the video view's onPictureInPictureStart / onPictureInPictureStop
-// props rather than from player events: those are VIEW props, so every surface
-// that can enter picture-in-picture feeds the same latch.
-//
-// While the latch is set, no view mounts, unmounts or changes owner (R24).
+// The picture-in-picture hold state (KTD12). Module scope: the adapter's
+// AppState handler reads it from a plain callback, not a render. Fed from the
+// VIEW's onPictureInPictureStart/Stop, so every such surface shares one latch.
 
 let active = false
 const listeners = new Set<() => void>()
@@ -19,6 +13,7 @@ export function isPictureInPictureActive(): boolean {
   return active
 }
 
+/** R24: while this is set, no view mounts, unmounts or changes owner. */
 export function setPictureInPictureActive(next: boolean) {
   if (active === next) return
   active = next

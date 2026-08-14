@@ -71,12 +71,9 @@ describe("isSameSession", () => {
   })
 
   it("treats an audio-language switch as the SAME session", () => {
-    // INVERTED on purpose, and the inversion is the fix — this case used to
-    // assert `false`. Two different keys were being conflated: languageSlug
-    // keys the progress RECORDER, which `useManagedVideoPlayer` already
-    // re-keys on its own. An audio switch is a replaceAsync swap inside one
-    // player, so making it a new session here would release and recreate that
-    // player instead — the audible gap R1 forbids.
+    // INVERTED on purpose, and the inversion IS the fix — this asserted `false`.
+    // languageSlug keys the progress RECORDER, which the adapter re-keys itself;
+    // a new session here would recreate the player, the audible gap R1 forbids.
     expect(
       isSameSession(EPISODE, { ...EPISODE, languageSlug: "spanish" }),
     ).toBe(true)
@@ -136,12 +133,9 @@ describe("sessionActionFor", () => {
   })
 
   it("updates in place when only the source changed", () => {
-    // THE hazard this module exists for. The downloads manifest hydrates after
-    // cold launch, so one session's URL legitimately jumps from the network
-    // stream to file://, and a seed URL later resolves to the canonical one.
-    // Re-starting on either jump emits a bogus "replaced" telemetry record and
-    // a swap-triggered progress write. The identity is unchanged, so is the
-    // session.
+    // THE hazard this module exists for: one session's URL legitimately jumps to
+    // file:// once the downloads manifest hydrates, and a seed URL resolves to
+    // the canonical one. Re-starting emits a bogus "replaced" and a swap write.
     expect(sessionActionFor(EPISODE, { ...EPISODE })).toBe("update")
   })
 

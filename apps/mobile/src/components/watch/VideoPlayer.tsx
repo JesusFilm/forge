@@ -77,20 +77,12 @@ type VideoPlayerProps = {
   autostart?: boolean
 }
 
-/**
- * A player of its own, plus the chrome around it — the shape this component
- * has always had.
- *
- * Kept deliberately after U6 hoisted the watch player to the root. The
- * series-detail trailer MUST NOT borrow the session's player: it passes no
- * `progressIdentity`, so every trailer tick would advance the saved bookmark of
- * an unrelated episode and a 90% tick would mark it complete, with nothing on
- * that screen able to notice. Its own player is the correct answer; U8 governs
- * the decoder by unmounting its surface while a session is live.
- *
- * This is also the harness the adapter's behavioural suite renders, so the
- * self-owning path stays under test rather than becoming dead code.
- */
+// U7 must not make the series trailer borrow: it passes no progressIdentity,
+// so a shared session player would move an unrelated video's bookmark and a
+// 90% tick would mark it complete, with nothing on that screen able to notice.
+/** Owns its player plus the chrome. Still the form EVERY production caller
+ *  uses — U6 mounted a host that can own one, but nothing publishes a session
+ *  to it, so the watch route owns the only player a viewer sees. */
 export function VideoPlayer({
   progressIdentity = null,
   ...surface
@@ -105,15 +97,9 @@ export function VideoPlayer({
   )
 }
 
-/**
- * The chrome, captions and tap handling around a player somebody else owns.
- *
- * Split out for U6: once the player is hoisted to the root it outlives this
- * route, so the surface has to be able to BORROW one. `VideoPlayer` below keeps
- * the self-owning form for the two callers that still need their own player —
- * the series-detail trailer, which must never share the watch session's player,
- * and the adapter's own test harness.
- */
+/** The chrome, captions and tap handling around a player somebody else owns.
+ *  Nothing borrows one in production yet: the split exists so U7's window and
+ *  the watch route can share the root host's player without a second copy. */
 export type VideoPlayerSurfaceProps = Omit<
   VideoPlayerProps,
   "progressIdentity"
@@ -137,16 +123,14 @@ export function VideoPlayerSurface({
 }: VideoPlayerSurfaceProps) {
   const { width: screenWidth, height: screenHeight } = useWindowDimensions()
 
-  // Seeded from the live player, NOT from a bare false. A surface remounting
-  // over an already-playing hoisted player (expanding the mini window) receives
-  // no new `playingChange`, so a false seed would re-arm the autostart veil and
-  // paint the poster over running video — with the 12s watchdog as its only
-  // exit. There is no event to wait for; the current state is the only signal.
+  // Seeded from the player, not from a bare false, ready for the U7 borrow: a
+  // mount over an ALREADY-playing player gets no `playingChange`, so a false
+  // seed paints the veil over running video until the 12s watchdog clears it.
   const [hasStarted, setHasStarted] = useState(() => {
     try {
-      // Expanding a PAUSED floating window is the same mount with `playing`
-      // false, so a played-past-zero position is the only remaining evidence.
-      // Status is deliberately not read: a loaded video reads ready at 0:00.
+      // A paused borrowed player is the same mount with `playing` false, so a
+      // position past zero is the only other evidence. Status is not read: a
+      // loaded video reads ready at 0:00.
       return player.playing || player.currentTime > 0
     } catch {
       return false

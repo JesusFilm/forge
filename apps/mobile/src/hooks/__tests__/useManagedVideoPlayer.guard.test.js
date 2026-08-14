@@ -16,11 +16,9 @@ const ALLOWED = new Set([
   "src/components/sections/VideoHeroRenderer.tsx",
 ])
 
-// Match the bare identifier, not `useVideoPlayer(` — an aliased import
-// (`import { useVideoPlayer as useVP }`) mentions the identifier on its import
-// line, so word-boundary matching flags the file even when the call is aliased.
-// createVideoPlayer is included because it is the API a "the player must
-// outlive the route" change reaches for, and it escapes the adapter identically.
+// Match the bare identifier, not `useVideoPlayer(`: an aliased import names
+// it on the import line, so the file is flagged even when the call is
+// aliased. createVideoPlayer escapes the adapter identically.
 const RAW_USAGE = /\b(?:useVideoPlayer|createVideoPlayer)\b/
 
 // Pure detector over [{ relative, content }] so a positive-control fixture can
@@ -39,9 +37,8 @@ function findRawUsage(entries) {
 }
 
 // The adapter's OWN call sites (U6). The scan above matches only the bare
-// expo-video identifiers, so it is structurally blind to a decoder created
-// THROUGH the adapter — which is every legitimate one. Nothing else caps them.
-// Each entry says why that surface is allowed its own decoder.
+// expo-video identifiers, so it is blind to a decoder created THROUGH the
+// adapter — every legitimate one. Each entry says why that surface may.
 const ADAPTER_CALL_SITES = {
   "src/hooks/useManagedVideoPlayer.ts": "the adapter itself",
   // Mounted by app/watch/[slug].tsx and app/series/[slug].tsx — the feature

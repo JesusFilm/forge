@@ -105,10 +105,9 @@ export function useManagedVideoPlayer(
   // Rebuffer gate: has playback begun, and is a source swap mid-flight.
   const hasStartedRef = useRef(false)
   const isSwappingRef = useRef(false)
-  // Has a NAMED end already run for the live session? The teardown cleanups
-  // stay as safety nets (KTD13) and must not overwrite a real reason with
-  // "abandoned" or "unmount" — the defect being fixed is attribution, not
-  // double-fire. Declared before startQoeSession, which resets it.
+  // Has a NAMED end already run? Teardown stays a safety net (KTD13) but must
+  // not overwrite a real reason with "abandoned"/"unmount" — the defect is
+  // attribution, not double-fire. Declared before startQoeSession resets it.
   const explicitEndRef = useRef(false)
 
   const emitQoeSummary = useCallback((reason: VideoQoeReason) => {
@@ -169,11 +168,9 @@ export function useManagedVideoPlayer(
   const onProgressRef = useRef(options?.onProgress)
   onProgressRef.current = options?.onProgress
 
-  // Is the next recorder cleanup a RE-KEY (episode swap) or a real unmount?
-  // React does not say, and only the departing recorder holds the departing
-  // position — so the flush has to happen in that cleanup, and only a
-  // render-time key comparison can tell it which trigger to use. A true
-  // unmount runs no render first, so this stays false there.
+  // Re-key (episode swap) or real unmount? React does not say, and only the
+  // departing recorder holds the departing position, so its cleanup must
+  // flush. A true unmount runs no render first, so this stays false there.
   const previousRecorderKeyRef = useRef(recorderKey)
   const recorderIsRekeyingRef = useRef(false)
   if (previousRecorderKeyRef.current !== recorderKey) {
@@ -195,10 +192,9 @@ export function useManagedVideoPlayer(
         })
       : null
     return () => {
-      // Record the departing position under the reason that actually applies.
-      // A named end (dismiss, sign-out, playback end) has already written it,
-      // and this net must not overwrite that attribution with "unmount" —
-      // which is the misreporting R16 exists to fix.
+      // A named end (dismiss, sign-out, playback end) already wrote the position,
+      // and this net must not overwrite that attribution with "unmount" — the
+      // misreporting R16 exists to fix.
       const rekeying = recorderIsRekeyingRef.current
       recorderIsRekeyingRef.current = false
       if (!explicitEndRef.current) {
@@ -239,12 +235,9 @@ export function useManagedVideoPlayer(
     loadedUrlRef.current = sourceUrl
     if (currentId != null && nextId != null && currentId === nextId) return
 
-    // A genuine cross-asset swap ends this QoE session and opens a new one so
-    // watched_ms/rebuffers/source attribute to the right asset (R36/R38).
-    // "replaced" rather than "abandoned": the viewer changed episode, they did
-    // not walk away (R17). Only the telemetry side is closed here — the
-    // departing POSITION belongs to the departing recorder, which this effect
-    // can no longer reach, so the re-key cleanup above flushes it under "swap".
+    // A cross-asset swap closes this QoE session so watched_ms/rebuffers
+    // attribute to the right asset (R36/R38); "replaced", not "abandoned" — the
+    // viewer changed episode (R17). The POSITION flushes in the re-key cleanup.
     emitQoeSummary("replaced")
     startQoeSession(sourceUrl)
     isSwappingRef.current = true

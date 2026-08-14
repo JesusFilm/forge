@@ -1,16 +1,9 @@
-// The one app-owned wrapper over the router's navigation-action stream (KTD4).
-//
-// Presentation is derived from route state, so swipe-back, deep links and tab
-// changes all behave the same; this stream exists only to ARM the window before
-// a pop commits, which is what orders the Android ownership move.
-//
-// The underlying listener is React Navigation's `__unsafe_action__` event. The
-// name is a deliberate warning, so it is named in exactly one place — here —
-// and the caller passes the container ref in rather than this module importing
-// expo-router. That keeps the module unit-testable: expo-router cannot be
-// imported unmocked under this repo's jest setup.
+// The one wrapper over React Navigation's `__unsafe_action__` stream (KTD4),
+// named here ONLY: presentation derives from route state, so this exists just
+// to ARM the window before a pop commits, which orders the Android handoff.
 
-/** The shape of the container ref we need, structurally typed. */
+/** The caller passes the ref in so this module never imports expo-router,
+ *  which cannot be imported unmocked under this repo's jest setup. */
 export type NavigationActionSource = {
   addListener: (
     event: "__unsafe_action__",

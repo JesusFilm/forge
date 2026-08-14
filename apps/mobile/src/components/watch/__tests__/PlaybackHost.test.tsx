@@ -88,8 +88,10 @@ jest.mock("../../../lib/miniPlayer", () => ({
 }))
 
 import { act } from "react"
+import type { VideoPlayer as ExpoVideoPlayer } from "expo-video"
 
 import { MINI_PLAYER_WINDOW_SLOT, PlaybackHost } from "../PlaybackHost"
+import { applyWatchBufferOptions } from "../../../lib/playerBufferOptions"
 import { createSessionEndRegistry } from "../../../lib/miniPlayer/endRegistry"
 import {
   createMiniPlayerStore,
@@ -191,6 +193,18 @@ function makeSwappableStore(initial: MiniPlayerSession) {
   return { store, push }
 }
 
+/**
+ * What the shared buffer leaf writes, read from the leaf itself. Pinning the
+ * numbers here instead would go red on a deliberate tuning change, when the
+ * claim is only that this call site still passes the setup through.
+ */
+function leafBufferOptions(): unknown {
+  const probe = {} as ExpoVideoPlayer
+  applyWatchBufferOptions(probe)
+  expect(probe.bufferOptions).toBeDefined()
+  return probe.bufferOptions
+}
+
 /** How many times the leaf read the route this test. */
 let segmentReads = 0
 
@@ -281,6 +295,20 @@ describe("PlaybackHost player lifetime", () => {
     expect(createdFakePlayers()).toHaveLength(1)
   })
 
+  it("applies the shared buffer setup to the player it creates", async () => {
+    // The other half of the leaf extraction. The host was the reason the
+    // options left VideoPlayer.tsx, and dropping the argument here is silent:
+    // it compiles, typechecks, and only costs a slower first frame.
+    const store = makeStore()
+    await mount(store)
+
+    await act(async () => {
+      store.start({ videoId: "video-1", streamingUrl: EPISODE_ONE })
+    })
+
+    expect(lastFakePlayer().bufferOptions).toEqual(leafBufferOptions())
+  })
+
   it("keeps the same player across a one-second position write", async () => {
     // The store replaces its snapshot object every tick. Without the memo on
     // the session subtree, each tick would re-render the player owner.
@@ -347,11 +375,28 @@ describe("PlaybackHost player lifetime", () => {
     expect(player.replaceAsync).toHaveBeenCalledWith(OFFLINE_ONE)
   })
 
+  it("swaps in place through the REAL store's update verb", async () => {
+    // The swappable stand-in above replaces a snapshot the app has no method
+    // to produce. This runs the same re-point through the store the app ships.
+    const store = makeStore()
+    await mount(store)
+    await act(async () => {
+      store.start({ videoId: "video-1", streamingUrl: EPISODE_ONE })
+    })
+    const player = lastFakePlayer()
+
+    await act(async () => {
+      store.update({ videoId: "video-1", streamingUrl: OFFLINE_ONE })
+    })
+
+    expect(createdFakePlayers()).toHaveLength(1)
+    expect(player.replaceAsync).toHaveBeenCalledWith(OFFLINE_ONE)
+  })
+
   it("keeps the same player across an audio-language switch", async () => {
-    // R1: playback continues without a pause, a gap or a black frame. The host
-    // keys its subtree on the session module, which deliberately leaves
-    // language out — a key that included it would release and recreate the
-    // player here, and the viewer would hear the gap.
+    // R1: playback continues with no pause, gap or black frame. The host keys
+    // its subtree on the session module, which leaves language out — a key that
+    // included it would recreate the player here and the viewer would hear it.
     const { store, push } = makeSwappableStore(LIVE_SESSION)
     await mount(store)
     const player = lastFakePlayer()
@@ -480,6 +525,49 @@ describe("PlaybackHost session end", () => {
     expect(qoeSessions()[0].finalize).toHaveBeenCalledTimes(1)
   })
 
+  it("still reports the end after a redundant republish", async () => {
+    // A republish of the SAME video from the SAME source changes neither the
+    // boundary key nor the memo's props, so the adapter never re-renders. A
+    // replace would strand the live player with its session already ended.
+    const store = makeStore()
+    await mount(store)
+    await act(async () => {
+      store.start({ videoId: "video-1", streamingUrl: EPISODE_ONE })
+    })
+    await act(async () => {
+      store.start({ videoId: "video-1", streamingUrl: EPISODE_ONE })
+    })
+
+    await act(async () => {
+      store.end("dismissed")
+    })
+
+    expect(createdFakePlayers()).toHaveLength(1)
+    expect(flushTriggers()).toEqual(["dismiss"])
+    expect(qoeSessions()[0].finalize).toHaveBeenCalledWith("dismissed")
+  })
+
+  it("a genuinely different video still replaces and stays reportable", async () => {
+    // The anti-vacuous companion: a start() that no-opped on everything would
+    // satisfy the case above by never replacing at all.
+    const store = makeStore()
+    await mount(store)
+    await act(async () => {
+      store.start({ videoId: "video-1", streamingUrl: EPISODE_ONE })
+    })
+    await act(async () => {
+      store.start({ videoId: "video-2", streamingUrl: EPISODE_TWO })
+    })
+
+    await act(async () => {
+      store.end("dismissed")
+    })
+
+    expect(createdFakePlayers()).toHaveLength(2)
+    expect(qoeSessions()[0].finalize).toHaveBeenCalledWith("replaced")
+    expect(qoeSessions()[1].finalize).toHaveBeenCalledWith("dismissed")
+  })
+
   it("routes the end to the live player after a session swap", async () => {
     const store = makeStore()
     await mount(store)
@@ -503,10 +591,9 @@ describe("PlaybackHost session end", () => {
 
 describe("PlaybackHost progress identity", () => {
   it("keeps an empty-string videoId off the progress wire", async () => {
-    // syncClient sends whatever the recorder was keyed on, and "" is not
-    // nullish — so an unnormalized identity posts videoId:"" to admin AND
-    // defeats the "one identity key per intent" guard, which only checks
-    // presence.
+    // syncClient sends whatever the recorder was keyed on, and "" is not nullish
+    // — so an unnormalized identity posts videoId:"" to admin AND defeats the
+    // "one identity key per intent" guard, which only checks presence.
     const store = makeStore()
     await mount(store)
 
@@ -612,6 +699,35 @@ describe("PlaybackHost presentation", () => {
     // life, recoverable only by relaunching. Session end is the reset point.
     const store = makeStore()
     const renderer = await mount(store, HOME_SEGMENTS)
+    await act(async () => {
+      store.start({ videoId: "video-1", streamingUrl: EPISODE_ONE })
+      sheets.openSheet()
+    })
+    expect(hasWindowSlot(renderer)).toBe(false)
+
+    await act(async () => {
+      store.end("dismissed")
+    })
+    await act(async () => {
+      store.start({ videoId: "video-2", streamingUrl: EPISODE_TWO })
+    })
+
+    expect(sheets.getCount()).toBe(0)
+    expect(hasWindowSlot(renderer)).toBe(true)
+  })
+
+  it("releases the sheet count even when the named end throws", async () => {
+    // The end registry swallows this throw, so without a `finally` the release
+    // is skipped in silence and every later window stays hidden until relaunch.
+    // Synchronous, not a rejection: the flush buffers an intent before it awaits.
+    const store = makeStore()
+    const renderer = await mount(store, HOME_SEGMENTS)
+    createRecorderMock.mockImplementationOnce(() => ({
+      flush: jest.fn(() => {
+        throw new Error("flush blew up")
+      }),
+      onTick: jest.fn(),
+    }))
     await act(async () => {
       store.start({ videoId: "video-1", streamingUrl: EPISODE_ONE })
       sheets.openSheet()

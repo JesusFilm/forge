@@ -1,9 +1,6 @@
-// The app-wide mini player singletons (U6).
-//
-// Wired to the auth session module directly, NOT through React context: the
-// store is module scope so the picture-in-picture latch, the AppState handler
-// and the watch route can all reach it without a provider having mounted.
-// Lazy getters, never module-scope construction (the apolloClient convention).
+// The app-wide mini player singletons (U6). Wired to auth directly, not via
+// React context, so the pip latch, the AppState handler and the watch route
+// reach them with no provider mounted. Lazy getters (apolloClient rule).
 
 import { getAuthSession } from "../authSession"
 import { createSessionEndRegistry } from "./endRegistry"

@@ -97,6 +97,34 @@ describe("createMiniPlayerStore", () => {
     expect(ends[0].session.videoId).toBe("video-1")
   })
 
+  it("ignores a republish of the same video from the same source", () => {
+    // The host keys its player on the identity alone, so this republish
+    // re-renders nothing. Replacing would end the LIVE player's session and
+    // leave it running with no quality record and no forced progress write.
+    const { store, ends } = build()
+    store.start(VIDEO_ONE)
+    store.updateProgress(120, 600)
+    const listener = jest.fn()
+    store.subscribe(listener)
+
+    store.start(VIDEO_ONE)
+
+    expect(ends).toEqual([])
+    expect(listener).not.toHaveBeenCalled()
+    expect(store.getSnapshot()).toMatchObject({ positionSeconds: 120 })
+  })
+
+  it("still replaces when the same identity arrives with a new source", () => {
+    // The anti-vacuous companion for the URL half of the no-op guard: a bare
+    // identity compare would swallow this too.
+    const { store, ends } = build()
+    store.start(VIDEO_ONE)
+
+    store.start({ ...VIDEO_ONE, streamingUrl: "https://stream.test/hd.m3u8" })
+
+    expect(ends.map((e) => e.reason)).toEqual(["replaced"])
+  })
+
   it("publishes exactly one change for a replace", () => {
     // A replace that ended and then started would publish a null frame in
     // between, which the window renders for one tick as a dismissal.
@@ -108,6 +136,80 @@ describe("createMiniPlayerStore", () => {
     store.start(VIDEO_TWO)
 
     expect(seen).toEqual(["video-2"])
+  })
+
+  it("re-points the source in place without ending the session", () => {
+    // The downloads manifest hydrates a file:// copy mid-session. A start()
+    // here would file a bogus `replaced` and send the position back to zero.
+    const { store, ends } = build()
+    store.start({ ...VIDEO_ONE, durationSeconds: 600 })
+    store.updateProgress(120)
+
+    store.update({ ...VIDEO_ONE, streamingUrl: "file:///offline/one.m3u8" })
+
+    expect(ends).toEqual([])
+    expect(store.getSnapshot()).toMatchObject({
+      streamingUrl: "file:///offline/one.m3u8",
+      positionSeconds: 120,
+      durationSeconds: 600,
+      subjectId: "subject-a",
+    })
+  })
+
+  it("publishes an update so the window redraws", () => {
+    const { store } = build()
+    store.start(VIDEO_ONE)
+    const listener = jest.fn()
+    store.subscribe(listener)
+
+    store.update({ ...VIDEO_ONE, languageSlug: "spanish" })
+
+    expect(listener).toHaveBeenCalledTimes(1)
+    expect(store.getSnapshot()).toMatchObject({ languageSlug: "spanish" })
+  })
+
+  it("does not publish an update that changes nothing", () => {
+    // A publisher that reads the snapshot and calls update() from the same
+    // effect would loop if every call produced a fresh snapshot object.
+    const { store } = build()
+    store.start(VIDEO_ONE)
+    const listener = jest.fn()
+    store.subscribe(listener)
+
+    store.update(VIDEO_ONE)
+
+    expect(listener).not.toHaveBeenCalled()
+  })
+
+  it("keeps a known duration when the update omits one", () => {
+    const { store } = build()
+    store.start({ ...VIDEO_ONE, durationSeconds: 600 })
+
+    store.update({ ...VIDEO_ONE, streamingUrl: "file:///offline/one.m3u8" })
+
+    expect(store.getSnapshot()).toMatchObject({ durationSeconds: 600 })
+  })
+
+  it("ignores an update naming a different video", () => {
+    // Merging it would hand video-2 video-1's position and owner under a verb
+    // that promises to touch neither.
+    const { store } = build()
+    store.start(VIDEO_ONE)
+
+    store.update(VIDEO_TWO)
+
+    expect(store.getSnapshot()).toMatchObject({ videoId: "video-1" })
+  })
+
+  it("ignores an update when no session is live", () => {
+    const { store } = build()
+    const listener = jest.fn()
+    store.subscribe(listener)
+
+    store.update(VIDEO_ONE)
+
+    expect(store.getSnapshot()).toBeNull()
+    expect(listener).not.toHaveBeenCalled()
   })
 
   it("carries the end reason to the host", () => {
