@@ -139,9 +139,10 @@ describe("the auth subject wire", () => {
     expect(reasons).toEqual(["signout"])
   })
 
-  it("reads the signed-out subject as null and stamps it on the session", async () => {
-    // currentSubjectId's other branch. Signing IN is a subject change too, so
-    // a session opened signed-out dies rather than being re-attributed.
+  it("reads the signed-out subject as null and adopts the session on sign-in", async () => {
+    // currentSubjectId's other branch. This case PINNED THE OPPOSITE until an
+    // adversarial review: it asserted that signing in ends the session, which
+    // stops playback exactly when the viewer acts to keep their place.
     const { auth, miniPlayer } = loadModules()
     const { reasons } = collectEnds(miniPlayer)
     const store = miniPlayer.getMiniPlayerStore()
@@ -150,8 +151,8 @@ describe("the auth subject wire", () => {
 
     await signedInStore(auth, "user-1")
 
-    expect(store.getSnapshot()).toBeNull()
-    expect(reasons).toEqual(["signout"])
+    expect(store.getSnapshot()?.subjectId).toBe("user-1")
+    expect(reasons).toEqual([])
   })
 
   it("stamps the signed-in subject on a session it starts", async () => {

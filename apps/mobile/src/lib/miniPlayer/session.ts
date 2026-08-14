@@ -87,6 +87,10 @@ export type SessionAction = "start" | "update" | "none"
 /**
  * What the publisher should do with the next snapshot: open a new session,
  * update the live one in place, or nothing.
+ *
+ * TODO: "update" has no store method behind it — `MiniPlayerStore` can start,
+ * end and move the position, but cannot re-point a live session's source. Not
+ * reachable until the route publisher lands, which is what will need it.
  */
 export function sessionActionFor(
   current: SessionIdentity | null,

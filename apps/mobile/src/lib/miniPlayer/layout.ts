@@ -111,9 +111,16 @@ export function cornerHasClearance(
 
 /**
  * Corners the window may settle in. `excluded` is the caller's override — KTD6
- * reserves it for a corner with a control the geometry cannot see. If every
- * corner is excluded the list falls back to the default, because a window with
- * nowhere to go is worse than one in a poor corner.
+ * reserves it for a corner with a control the geometry cannot see.
+ *
+ * With nothing left the list falls back, because a window with nowhere to go is
+ * worse than one in a poor corner. Clearance is all-or-nothing (it compares the
+ * window against the chrome box, which no corner changes), so that fallback
+ * fires on any screen too short for the window — routinely, in landscape with a
+ * tall keyboard or sheet. It must therefore respect `excluded`: handing back a
+ * corner the caller reserved parks the window on the control they protected,
+ * and that corner's own origin can be off-screen. Only a caller who excluded
+ * ALL FOUR gets the default.
  */
 export function allowedCorners(
   screen: Size,
@@ -127,7 +134,9 @@ export function allowedCorners(
       !excludedSet.has(corner) &&
       cornerHasClearance(corner, screen, window, chrome),
   )
-  return allowed.length > 0 ? allowed : [DEFAULT_CORNER]
+  if (allowed.length > 0) return allowed
+  if (!excludedSet.has(DEFAULT_CORNER)) return [DEFAULT_CORNER]
+  return [CORNERS.find((corner) => !excludedSet.has(corner)) ?? DEFAULT_CORNER]
 }
 
 /**

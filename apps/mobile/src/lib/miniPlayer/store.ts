@@ -62,6 +62,14 @@ export function createMiniPlayerStore(deps: MiniPlayerStoreDeps) {
     // session dies with the subject that owned it — carrying it across would
     // attribute the next account's progress to the previous viewer.
     if (session == null) return
+    // Signing IN is the exception: an unowned session has no previous viewer
+    // to mis-attribute, so it is ADOPTED. Ending it would stop playback at the
+    // moment the viewer accepted the prompt that offers to save their place.
+    if (session.subjectId == null && subjectId != null) {
+      session = { ...session, subjectId }
+      notify()
+      return
+    }
     endSilently("signout")
     notify()
   })

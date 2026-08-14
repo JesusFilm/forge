@@ -144,7 +144,10 @@ export function VideoPlayerSurface({
   // exit. There is no event to wait for; the current state is the only signal.
   const [hasStarted, setHasStarted] = useState(() => {
     try {
-      return player.playing
+      // Expanding a PAUSED floating window is the same mount with `playing`
+      // false, so a played-past-zero position is the only remaining evidence.
+      // Status is deliberately not read: a loaded video reads ready at 0:00.
+      return player.playing || player.currentTime > 0
     } catch {
       return false
     }

@@ -139,6 +139,50 @@ describe("createMiniPlayerStore", () => {
     expect(ends[0].reason).toBe("signout")
   })
 
+  it("adopts a signed-out session when the viewer signs IN", () => {
+    // Two reachable paths end here: the app's own "sign in to save your place"
+    // prompt, and cold launch, where auth starts signed out and only commits a
+    // user after an async refresh. Ending is the opposite of what both mean.
+    const { auth, store, ends } = build(null)
+    store.start(VIDEO_ONE)
+
+    auth.signInAs("subject-a")
+
+    expect(store.getSnapshot()).toMatchObject({
+      videoId: "video-1",
+      subjectId: "subject-a",
+    })
+    expect(ends).toEqual([])
+  })
+
+  it("publishes the adoption so a subscriber sees the new owner", () => {
+    const { auth, store } = build(null)
+    store.start(VIDEO_ONE)
+    const seen: (string | null | undefined)[] = []
+    store.subscribe(() => seen.push(store.getSnapshot()?.subjectId))
+
+    auth.signInAs("subject-a")
+
+    expect(seen).toEqual(["subject-a"])
+  })
+
+  it("still ends when an ADOPTED session's account then switches", () => {
+    // The adoption must not make the session permanently immune: once it has
+    // an owner, the R25 rule applies to it like any other.
+    const { auth, store, ends } = build(null)
+    store.start(VIDEO_ONE)
+    auth.signInAs("subject-a")
+
+    auth.signInAs("subject-b")
+
+    expect(store.getSnapshot()).toBeNull()
+    expect(ends).toHaveLength(1)
+    expect(ends[0].reason).toBe("signout")
+    // The owner it ends UNDER proves the adoption happened first — without it
+    // this case passes on a store that ended the session back at sign-in.
+    expect(ends[0].session.subjectId).toBe("subject-a")
+  })
+
   it("accepts no write for the previous subject after the change (R25)", () => {
     const { auth, store } = build("subject-a")
     store.start(VIDEO_ONE)

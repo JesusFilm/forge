@@ -144,6 +144,14 @@ async function sendAppState(state: AppStateStatus) {
   })
 }
 
+/** Drive the adapter's playing state, which it mirrors into its resume latch. */
+async function setPlaying(player: FakePlayer, isPlaying: boolean) {
+  await act(async () => {
+    player.playing = isPlaying
+    player.emit("playingChange", { isPlaying })
+  })
+}
+
 function qoeSessions(): QoeSpy[] {
   return createQoeMock.mock.results.map((result) => result.value as QoeSpy)
 }
@@ -377,6 +385,53 @@ describe("useManagedVideoPlayer lifecycle", () => {
     await sendAppState("background")
 
     expect(player.pause).toHaveBeenCalledTimes(1)
+  })
+
+  it("resumes on the following 'active' when the app left while playing", async () => {
+    // The anti-vacuous companion for the two cases below: without it, an
+    // adapter that never resumed at all would satisfy both of them.
+    const { player } = await render()
+    await setPlaying(player, true)
+
+    await sendAppState("background")
+    await sendAppState("active")
+
+    expect(player.play).toHaveBeenCalledTimes(1)
+  })
+
+  it("does NOT resume a video the viewer paused after the last departure", async () => {
+    const { player } = await render()
+    await setPlaying(player, true)
+    // The first round trip stamps the resume latch true.
+    await sendAppState("background")
+    await sendAppState("active")
+    expect(player.play).toHaveBeenCalledTimes(1)
+
+    // The viewer pauses, then an 'inactive' blip arrives (control centre, a
+    // call banner, Face ID). It does not pause, but it IS a departure, so it
+    // must re-stamp the latch — 'active' trusts the latch unconditionally.
+    await setPlaying(player, false)
+    await sendAppState("inactive")
+    await sendAppState("active")
+
+    expect(player.play).toHaveBeenCalledTimes(1)
+  })
+
+  it("does NOT resume a paused video after a picture-in-picture departure (R13)", async () => {
+    // Same defect through the other non-pausing branch. Android reports
+    // picture-in-picture ENTRY as 'background', which never reaches the pause.
+    setPictureInPictureActive(true)
+    const { player } = await render()
+    await setPlaying(player, true)
+    await sendAppState("background")
+    await sendAppState("active")
+    expect(player.play).toHaveBeenCalledTimes(1)
+
+    await setPlaying(player, false)
+    await sendAppState("background")
+    await sendAppState("active")
+
+    expect(player.play).toHaveBeenCalledTimes(1)
   })
 
   it("flushes with 'end' when playback reaches the end", async () => {

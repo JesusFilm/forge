@@ -190,6 +190,26 @@ describe("VideoPlayerSurface over an already-playing player", () => {
     expect(hasPoster(renderer)).toBe(true)
   })
 
+  it("does not re-arm the veil over a player that already played and is PAUSED", async () => {
+    // The commonest expand of all: pause the floating window, then tap it. The
+    // player is loaded and parked past 0:00, so `playing` alone reads false and
+    // seeds the veil over a video with nothing left to load.
+    const renderer = await mount(
+      makeFakePlayer({ playing: false, currentTime: 42 }),
+    )
+    expect(hasVeil(renderer)).toBe(false)
+    expect(hasPoster(renderer)).toBe(false)
+  })
+
+  it("still shows the veil for a loaded player parked at 0:00", async () => {
+    // The genuine never-played case, and the reason the seed cannot read
+    // `status`: this player reports readyToPlay and has never run a frame.
+    const renderer = await mount(
+      makeFakePlayer({ playing: false, currentTime: 0, status: "readyToPlay" }),
+    )
+    expect(hasVeil(renderer)).toBe(true)
+  })
+
   // NOT TESTED, deliberately: surviving a RELEASED player at mount. The seed's
   // try/catch degrades to "not started", but `useControlsVisibility(player)`
   // (VideoPlayer.tsx:257 -> useControlsVisibility.ts:183) reads `player.playing`

@@ -91,8 +91,8 @@ export function useManagedVideoPlayer(
   const loadedUrlRef = useRef(sourceUrl)
 
   // Whether the app is foregrounded right now. A swap's replaceAsync can outlive
-  // a background transition; resume() reads this so it never force-plays into
-  // the background after the AppState listener already paused.
+  // any departure, so resume() reads this and never force-plays into a state the
+  // viewer left; the 'active' handler restores playback from wasPlayingRef.
   const isForegroundRef = useRef(true)
 
   // Playback QoE (R36/R38): pure accumulator fed by the listeners below,
@@ -328,23 +328,26 @@ export function useManagedVideoPlayer(
             })
           }
         }
-      } else if (
-        shouldPauseOnAppStateChange(nextState, isPictureInPictureActive())
-      ) {
-        isForegroundRef.current = false
-        wasPlayingRef.current = isPlayingRef.current
-        recorderRef.current?.flush("background")
-        try {
-          player.pause()
-        } catch {
-          // Already released
-        }
+        return
       }
-      // Everything else deliberately falls through without pausing: an
-      // 'inactive' blip (app switcher, control centre, a call banner), and a
-      // 'background' that is picture-in-picture ENTRY rather than a real
-      // departure — Android reports it as 'background', not 'inactive' (R13).
-      // isForegroundRef stays true there, so a swap's resume still fires.
+
+      // Every departure re-stamps the latch, even one this app does not pause
+      // for: 'active' resumes from it unconditionally, so a latch left over
+      // from an earlier departure resumes a video the viewer paused since.
+      isForegroundRef.current = false
+      wasPlayingRef.current = isPlayingRef.current
+
+      // Only the PAUSE is conditional. An 'inactive' blip (app switcher,
+      // control centre, a call banner) and picture-in-picture ENTRY — which
+      // Android reports as 'background', not 'inactive' (R13) — keep playing.
+      if (!shouldPauseOnAppStateChange(nextState, isPictureInPictureActive()))
+        return
+      recorderRef.current?.flush("background")
+      try {
+        player.pause()
+      } catch {
+        // Already released
+      }
     })
     return () => subscription.remove()
   }, [player])

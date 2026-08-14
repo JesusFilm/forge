@@ -19,6 +19,12 @@ const CHROME: Chrome = { top: 59, bottom: 83, left: 0, right: 0 }
 
 const WINDOW = miniPlayerSize(SCREEN.width)
 
+// The same phone on its side, under chrome tall enough that NO corner clears —
+// a bottom sheet or keyboard over a landscape player.
+const LANDSCAPE: Size = { width: 852, height: 393 }
+const TALL_BOTTOM: Chrome = { top: 24, bottom: 300, left: 0, right: 0 }
+const WIDE_WINDOW = miniPlayerSize(LANDSCAPE.width)
+
 describe("miniPlayerSize (KTD6)", () => {
   it("never goes below the width its two controls need", () => {
     // The floor is derived, not chosen: two accessibility-minimum targets plus
@@ -136,5 +142,42 @@ describe("allowedCorners (R7)", () => {
     expect(allowedCorners(SCREEN, WINDOW, CHROME, [...CORNERS])).toEqual([
       DEFAULT_CORNER,
     ])
+  })
+
+  it("does not fall back onto an EXCLUDED corner when no corner has clearance", () => {
+    // Landscape with a tall bottom sheet: 393 - 24 - 300 leaves 69 points for a
+    // 124-point window, so clearance fails everywhere at once and the fallback
+    // fires. Returning the one corner the caller reserved is the whole defect.
+    expect(
+      cornerHasClearance("topLeft", LANDSCAPE, WIDE_WINDOW, TALL_BOTTOM),
+    ).toBe(false)
+
+    const allowed = allowedCorners(LANDSCAPE, WIDE_WINDOW, TALL_BOTTOM, [
+      "bottomRight",
+    ])
+    expect(allowed).not.toContain("bottomRight")
+    expect(allowed).toHaveLength(1)
+  })
+
+  it("still prefers the default corner in that fallback when it is free", () => {
+    // Anti-vacuous companion: the fix must not swap one arbitrary corner for
+    // another. DEFAULT_CORNER clears the back button and the hero call to
+    // action, so it stays the choice whenever the caller has not reserved it.
+    expect(
+      allowedCorners(LANDSCAPE, WIDE_WINDOW, TALL_BOTTOM, ["topLeft"]),
+    ).toEqual([DEFAULT_CORNER])
+  })
+})
+
+describe("snapCorner with no clearance anywhere (R7 + KTD6)", () => {
+  it("never settles on the corner the caller excluded", () => {
+    const corner = snapCorner(
+      cornerOrigin("bottomRight", LANDSCAPE, WIDE_WINDOW, TALL_BOTTOM),
+      LANDSCAPE,
+      WIDE_WINDOW,
+      TALL_BOTTOM,
+      ["bottomRight"],
+    )
+    expect(corner).not.toBe("bottomRight")
   })
 })
