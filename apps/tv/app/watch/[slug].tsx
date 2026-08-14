@@ -99,6 +99,7 @@ export default function WatchVideoScreen() {
     state: playerState,
     decoderClaimed,
     playVideo,
+    consumeUpNextChain,
   } = useVideoPlayerContext()
 
   const { data, error, loading, refetch } = useQuery(GET_VIDEO_BY_SLUG, {
@@ -231,6 +232,11 @@ export default function WatchVideoScreen() {
   }, [autoplayPhase, activeVariant, video, playVideo, loading, error])
 
   // Player closed on an autoplay pass-through → pop straight back to Home.
+  // Unless the close IS an Up Next hop: the overlay host marks the chain
+  // before dismiss+replace, and consuming that mark here keeps this effect
+  // from popping the freshly-replaced next episode (which stranded hop 2+
+  // on Home — hop 1's route has no autoplay param, so only chained hops hit
+  // this path).
   const playerWasVisibleRef = useRef(false)
   useEffect(() => {
     if (playerState.isVisible) {
@@ -239,8 +245,10 @@ export default function WatchVideoScreen() {
     }
     if (!playerWasVisibleRef.current) return
     playerWasVisibleRef.current = false
-    if (autoplayPhase === "playing" && router.canGoBack()) router.back()
-  }, [playerState.isVisible, autoplayPhase, router])
+    if (autoplayPhase !== "playing") return
+    if (consumeUpNextChain()) return
+    if (router.canGoBack()) router.back()
+  }, [playerState.isVisible, autoplayPhase, router, consumeUpNextChain])
 
   const [activePanel, setActivePanel] = useState<ActivePanel>("none")
   // Stable identity: this lands in the panels' renderRow useCallback deps —

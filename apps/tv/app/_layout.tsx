@@ -55,7 +55,7 @@ try {
 
 /** Renders the full-screen video player overlay when a video is active. */
 function VideoPlayerOverlay() {
-  const { state, dismissVideo } = useVideoPlayerContext()
+  const { state, dismissVideo, markUpNextChain } = useVideoPlayerContext()
   // Live dub attribution: the in-player language menu swaps dubs via
   // replaceAsync WITHOUT a new playVideo, so currentIdentity's videoDubId is
   // frozen at Play-press. When the watch session still owns this playback
@@ -152,6 +152,11 @@ function VideoPlayerOverlay() {
       // same path a Continue Watching card takes, so playback opens without
       // painting the details page first.
       onPlayNext={(slug) => {
+        // Mark BEFORE dismissing: the pass-through screen's pop-back effect
+        // observes the dismiss and must know this close is a hop, not a
+        // viewer exit — otherwise hop 2+ (autoplay-entered routes) pops the
+        // replaced next episode and the binge chain dies on Home.
+        markUpNextChain()
         dismissVideo()
         router.replace(`/watch/${encodeURIComponent(slug)}?autoplay=1`)
       }}

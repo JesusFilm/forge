@@ -3,11 +3,13 @@ import {
   useCallback,
   useContext,
   useMemo,
+  useRef,
   useState,
 } from "react"
 import type { ReactNode } from "react"
 
 import type { WatchEventIdentity } from "../lib/watchEvents/watchEvents"
+import { createUpNextChainLatch } from "./upNextChain"
 
 /** What autoplays when the current video ends: the parent's next child.
  *  Threaded from the details screen (which owns the record) so the overlay
@@ -45,6 +47,17 @@ type VideoPlayerContextValue = {
     upNext?: UpNextTarget | null,
   ) => void
   dismissVideo: () => void
+  /** Flag that the coming dismissVideo is an Up Next hop, not a viewer exit.
+   *  Set by the overlay host right before it dismisses + replaces the route;
+   *  the autoplay pass-through screen consumes it to skip its pop-back-to-Home
+   *  effect. Without this, the SECOND consecutive hop (whose route is itself
+   *  autoplay-entered) pops the freshly-replaced next episode and strands the
+   *  viewer on Home — the chain breaks after exactly one episode. */
+  markUpNextChain: () => void
+  /** True exactly once per markUpNextChain call, then false. playVideo also
+   *  clears the mark, so a hop whose screen unmounted before consuming cannot
+   *  poison the next genuine back-out. */
+  consumeUpNextChain: () => boolean
   state: VideoPlayerState
   /** Showcase Mode holds the app's only decode slot while it runs (KTD-1). Kept out
    *  of VideoPlayerState because dismissVideo resets that object wholesale and would
@@ -73,6 +86,18 @@ export function VideoPlayerProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<VideoPlayerState>(INITIAL_STATE)
   const [decoderClaimed, setDecoderClaimed] = useState(false)
 
+  // Latch in a ref, not state: the mark must be readable synchronously inside
+  // the same effect pass that observes the player hiding, without scheduling
+  // renders. Semantics live in the pure module (jest-covered).
+  const upNextChainRef = useRef(createUpNextChainLatch())
+  const markUpNextChain = useCallback(() => {
+    upNextChainRef.current.mark()
+  }, [])
+  const consumeUpNextChain = useCallback(
+    () => upNextChainRef.current.consume(),
+    [],
+  )
+
   const playVideo = useCallback(
     (
       streamingUrl: string,
@@ -82,6 +107,8 @@ export function VideoPlayerProvider({ children }: { children: ReactNode }) {
       startAtSeconds?: number,
       upNext?: UpNextTarget | null,
     ) => {
+      // The next playback starting means any pending hop has landed.
+      upNextChainRef.current.clear()
       setState({
         currentUrl: streamingUrl,
         currentTitle: title ?? null,
@@ -104,11 +131,20 @@ export function VideoPlayerProvider({ children }: { children: ReactNode }) {
     () => ({
       playVideo,
       dismissVideo,
+      markUpNextChain,
+      consumeUpNextChain,
       state,
       decoderClaimed,
       setDecoderClaimed,
     }),
-    [playVideo, dismissVideo, state, decoderClaimed],
+    [
+      playVideo,
+      dismissVideo,
+      markUpNextChain,
+      consumeUpNextChain,
+      state,
+      decoderClaimed,
+    ],
   )
 
   return (
