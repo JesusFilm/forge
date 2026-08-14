@@ -113,6 +113,33 @@ describe("createDevotionalLlm", () => {
     expect(fetchImpl).toHaveBeenCalledTimes(2)
   })
 
+  it("does not start another attempt once the caller cancels", async () => {
+    // The backoff between attempts is up to 30s. A cancelled workflow must not
+    // sit in it, and must not fire the next request when it ends.
+    const controller = new AbortController()
+    const fetchImpl = vi.fn(async () => {
+      controller.abort()
+      return chatResponse("", 503)
+    })
+    const llm = makeLlm(fetchImpl)
+    await expect(
+      llm.complete({ ...complete, abortSignal: controller.signal }),
+    ).rejects.toMatchObject({ code: "transport" })
+    // One request, not three: the retry loop saw the cancellation.
+    expect(fetchImpl).toHaveBeenCalledTimes(1)
+  })
+
+  it("refuses before the first request when already cancelled", async () => {
+    const controller = new AbortController()
+    controller.abort()
+    const fetchImpl = vi.fn(async () => chatResponse("{}"))
+    const llm = makeLlm(fetchImpl)
+    await expect(
+      llm.complete({ ...complete, abortSignal: controller.signal }),
+    ).rejects.toMatchObject({ code: "transport" })
+    expect(fetchImpl).not.toHaveBeenCalled()
+  })
+
   it("throws request_failed on a non-retryable 4xx", async () => {
     const llm = makeLlm(async () => chatResponse("", 400))
     await expect(llm.complete(complete)).rejects.toMatchObject({

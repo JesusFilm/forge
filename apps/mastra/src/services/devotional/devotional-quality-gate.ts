@@ -72,6 +72,10 @@ export type ReviewDevotionalTextInput = {
    *  it is meaningless for a localized devotional. */
   checkFidelity: boolean
   log?: (msg: string) => void
+  /** Cancellation from the workflow step, forwarded to every critic. The three
+   *  run in sequence, so without it a cancelled run keeps paying for the two that
+   *  had not started yet. */
+  abortSignal?: AbortSignal
 }
 
 export async function reviewDevotionalText(
@@ -91,6 +95,7 @@ export async function reviewDevotionalText(
     question: d.question,
     prayer: d.prayer,
     passageReference: input.passageReference,
+    abortSignal: input.abortSignal,
     llm: buildCoherenceLlm(),
   })
   log(
@@ -118,6 +123,7 @@ export async function reviewDevotionalText(
     sceneTitle: d.clip.title,
     reflection: d.reflection.text,
     conclusion: d.conclusion,
+    abortSignal: input.abortSignal,
     llm: buildReflectionCriticLlm(),
   })
   log(
@@ -150,6 +156,7 @@ export async function reviewDevotionalText(
         input.passageReference ??
         d.passage.reference,
       adapted: d.reflection.text,
+      abortSignal: input.abortSignal,
       llm: buildFidelityCriticLlm(),
     })
     log(

@@ -477,7 +477,7 @@ const contentStep = createStep({
     "Reflection (rotated source, modernized) + highlights + copy, then the safety gate.",
   inputSchema: SourcedSchema,
   outputSchema: ContentSchema,
-  execute: async ({ inputData, mastra, runId }) => {
+  execute: async ({ inputData, mastra, runId, abortSignal }) => {
     try {
       await verifyWorkflowWorkspaceSources(mastra, inputData.selectedSources)
       const authored = await loadAttemptData(mastra, inputData.selectedSources)
@@ -540,6 +540,7 @@ const contentStep = createStep({
           return await reviewDevotionalText({
             devotional,
             log,
+            abortSignal,
             passageReference: inputData.chapter.reference,
             // The composed text here is English; the localized path that makes
             // fidelity meaningless was not carried into this runtime.

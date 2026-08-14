@@ -98,6 +98,59 @@ beforeEach(() => {
 })
 
 describe("reviewDevotionalText", () => {
+  it("stops after the critic that was running when the caller cancelled", async () => {
+    // The three run in SEQUENCE, so a cancelled run would otherwise keep paying
+    // for the two that had not started. The signal is what the client checks
+    // before each attempt and what cuts its backoff short.
+    const controller = new AbortController()
+    checkDevotionalCoherence.mockImplementation(async () => {
+      controller.abort()
+      return {
+        coherent: true,
+        issues: [],
+        summary: "ok",
+        suggestedScriptureReference: null,
+      }
+    })
+    critiqueReflection.mockImplementation(
+      async (args: { abortSignal?: AbortSignal }) => {
+        // The real client throws on an aborted signal; this stands in for it so the
+        // assertion is about the gate's threading, not the client's internals.
+        if (args.abortSignal?.aborted) throw new Error("cancelled")
+        return { solid: true, depthScore: 4, issues: [], summary: "ok" }
+      },
+    )
+
+    await expect(
+      reviewDevotionalText({
+        devotional: devotional(),
+        checkFidelity: true,
+        abortSignal: controller.signal,
+      }),
+    ).rejects.toThrow(/cancelled/)
+
+    // The third critic never started.
+    expect(critiqueReflectionFidelity).not.toHaveBeenCalled()
+  })
+
+  it("passes the caller's signal to every critic", async () => {
+    const controller = new AbortController()
+    await reviewDevotionalText({
+      devotional: devotional(),
+      checkFidelity: true,
+      abortSignal: controller.signal,
+    })
+    for (const critic of [
+      checkDevotionalCoherence,
+      critiqueReflection,
+      critiqueReflectionFidelity,
+    ]) {
+      expect(critic).toHaveBeenCalledWith(
+        expect.objectContaining({ abortSignal: controller.signal }),
+      )
+    }
+  })
+
   it("passes clean text with nothing blocking", async () => {
     const r = await reviewDevotionalText({
       devotional: devotional(),

@@ -68,6 +68,10 @@ export type DevotionalLlmCompletion<TResult> = {
   schema: z.ZodType<TResult>
   maxTokens?: number
   temperature?: number
+  /** Caller's cancellation. Combined with this client's own per-request timeout,
+   *  and it also cuts the wait BETWEEN retries short — a cancelled workflow
+   *  should not sit in a 30s backoff before noticing. */
+  abortSignal?: AbortSignal
 }
 
 export type DevotionalLlm = {
@@ -124,7 +128,30 @@ export function createDevotionalLlm(options: {
     async complete(input) {
       let response: Response | null = null
       let lastTransportError: unknown
+
+      const aborted = () =>
+        new DevotionalLlmError("transport", "request cancelled by caller")
+
+      /** Wait, unless the caller cancels first. */
+      async function backoff(ms: number): Promise<void> {
+        if (!input.abortSignal) return sleep(ms)
+        if (input.abortSignal.aborted) throw aborted()
+        await Promise.race([
+          sleep(ms),
+          new Promise<never>((_resolve, reject) => {
+            input.abortSignal?.addEventListener(
+              "abort",
+              () => reject(aborted()),
+              { once: true },
+            )
+          }),
+        ])
+      }
+
       for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+        // Checked before EVERY attempt, not only before the first: a cancellation
+        // that lands mid-backoff must not be followed by another request.
+        if (input.abortSignal?.aborted) throw aborted()
         try {
           response = await fetchImpl(OPENROUTER_CHAT_COMPLETIONS_URL, {
             method: "POST",
@@ -151,12 +178,17 @@ export function createDevotionalLlm(options: {
               max_tokens: input.maxTokens ?? 1200,
               temperature: input.temperature ?? 0.4,
             }),
-            signal: AbortSignal.timeout(timeoutMs),
+            signal: input.abortSignal
+              ? AbortSignal.any([
+                  input.abortSignal,
+                  AbortSignal.timeout(timeoutMs),
+                ])
+              : AbortSignal.timeout(timeoutMs),
           })
         } catch (cause) {
           lastTransportError = cause
           if (attempt < maxAttempts) {
-            await sleep(Math.min(500 * 2 ** (attempt - 1), 30_000))
+            await backoff(Math.min(500 * 2 ** (attempt - 1), 30_000))
             continue
           }
           throw new DevotionalLlmError(
@@ -172,7 +204,7 @@ export function createDevotionalLlm(options: {
           attempt < maxAttempts
         ) {
           await discardResponseBody(response)
-          await sleep(retryAfterMs(response, attempt))
+          await backoff(retryAfterMs(response, attempt))
           continue
         }
         break

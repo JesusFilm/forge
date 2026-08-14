@@ -176,6 +176,9 @@ export type CritiqueReflectionInput = {
   reflection: string
   conclusion: string
   llm: DevotionalLlm
+  /** Cancellation from the workflow step. Without it a cancelled run keeps
+   *  paying for critics nobody will read. */
+  abortSignal?: AbortSignal
 }
 
 export async function critiqueReflection(
@@ -190,6 +193,7 @@ export async function critiqueReflection(
   ].join("\n")
   const attempt = () =>
     input.llm.complete({
+      abortSignal: input.abortSignal,
       system: SYSTEM_PROMPT,
       user,
       jsonSchema: JSON_SCHEMA,

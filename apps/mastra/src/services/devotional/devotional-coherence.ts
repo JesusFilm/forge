@@ -164,6 +164,9 @@ export type CheckCoherenceInput = {
   /** The full passage the clip covers, so it can suggest a better verse within it. */
   passageReference?: string
   llm: DevotionalLlm
+  /** Cancellation from the workflow step. Without it a cancelled run keeps
+   *  paying for critics nobody will read. */
+  abortSignal?: AbortSignal
 }
 
 export async function checkDevotionalCoherence(
@@ -190,6 +193,7 @@ export async function checkDevotionalCoherence(
 
   const attempt = () =>
     input.llm.complete({
+      abortSignal: input.abortSignal,
       system: SYSTEM_PROMPT,
       user,
       jsonSchema: JSON_SCHEMA,

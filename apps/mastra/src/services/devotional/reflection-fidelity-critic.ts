@@ -174,6 +174,9 @@ export type CritiqueReflectionFidelityInput = {
   /** The modernized reflection text actually shipped. */
   adapted: string
   llm: DevotionalLlm
+  /** Cancellation from the workflow step. Without it a cancelled run keeps
+   *  paying for critics nobody will read. */
+  abortSignal?: AbortSignal
 }
 
 export async function critiqueReflectionFidelity(
@@ -188,6 +191,7 @@ export async function critiqueReflectionFidelity(
   ].join("\n")
   const attempt = () =>
     input.llm.complete({
+      abortSignal: input.abortSignal,
       system: SYSTEM_PROMPT,
       user,
       jsonSchema: JSON_SCHEMA,
