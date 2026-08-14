@@ -70,6 +70,7 @@ import {
   type WatchPlayerPlaybackStateDetail,
 } from "@/lib/watch-player-chrome-events"
 import { WATCH_SEARCH_RUM_RESULT_CLICKED_ACTION } from "@/lib/watch-search-analytics-contract"
+import { WATCH_UNAVAILABLE_RECOVERY_STORAGE_KEY } from "@/lib/watch-unavailable-recovery-context"
 
 const navigationMocks = vi.hoisted(() => ({
   pathname: "/",
@@ -203,6 +204,7 @@ beforeEach(() => {
   navigationMocks.pathname = "/"
   setScrollY(0)
   window.history.replaceState(null, "", "/")
+  window.sessionStorage.clear()
   container = document.createElement("div")
   document.body.appendChild(container)
   root = createRoot(container)
@@ -1469,33 +1471,87 @@ describe("FloatingSearchProvider — watch playback chrome", () => {
 
 describe("FloatingSearchProvider — language switcher chrome", () => {
   it.each([
-    ["root home", "/"],
-    ["localized home", "/spanish-castilian.html"],
-    ["legacy videos index", "/videos"],
-    ["authored experience", "/easter.html"],
-    ["languages index", "/languages"],
-    ["localized languages", "/french.html/languages"],
-    ["language inventory", "/russian.html/videos"],
-    ["history", "/history"],
-    ["localized history", "/french.html/history"],
-    ["unknown route", "/not/a/valid/watch/route"],
-    ["content without alternatives", "/jesus.html/english.html"],
-  ])("renders one global fallback on %s", (_label, pathname) => {
-    navigationMocks.pathname = pathname
-    act(() => {
-      root.render(
-        <FloatingSearchProvider>
-          <main>Page</main>
-        </FloatingSearchProvider>,
-      )
-    })
+    ["root home", "/", "english", "EN"],
+    ["localized home", "/spanish-castilian.html", "spanish-castilian", "ES"],
+    ["legacy videos index", "/videos", "english", "EN"],
+    ["authored experience", "/easter.html", "english", "EN"],
+    ["languages index", "/languages", "english", "EN"],
+    ["localized languages", "/aari.html/languages", "english", "AIW"],
+    ["language inventory", "/aari.html/videos", "english", "AIW"],
+    ["history", "/history", "english", "EN"],
+    ["localized history", "/aari.html/history", "english", "AIW"],
+    ["unknown route", "/not/a/valid/watch/route", "english", "EN"],
+    [
+      "content without alternatives",
+      "/jesus.html/english.html",
+      "english",
+      "EN",
+    ],
+  ])(
+    "renders one global fallback with the active code on %s",
+    (_label, pathname, defaultLanguageSlug, expectedCode) => {
+      navigationMocks.pathname = pathname
+      act(() => {
+        root.render(
+          <FloatingSearchProvider defaultLanguageSlug={defaultLanguageSlug}>
+            <main>Page</main>
+          </FloatingSearchProvider>,
+        )
+      })
 
-    expect(
-      document.querySelectorAll(
+      const languageButtons = document.querySelectorAll(
         '[data-testid="floating-header-language-button"]',
-      ),
-    ).toHaveLength(1)
-  })
+      )
+      expect(languageButtons).toHaveLength(1)
+      expect(
+        languageButtons[0]?.querySelector(
+          '[data-testid="floating-header-language-code"]',
+        )?.textContent,
+      ).toBe(expectedCode)
+    },
+  )
+
+  it.each([
+    ["uses the page-specific code", "PT", "PT"],
+    ["falls back to the route code", undefined, "RU"],
+  ])(
+    "%s for a page-specific language switcher",
+    (_label, languageCode, expectedCode) => {
+      const onLanguageClick = vi.fn()
+      navigationMocks.pathname = "/jesus.html/russian.html"
+      act(() => {
+        root.render(
+          <FloatingSearchProvider defaultLanguageSlug="russian">
+            <main>Russian video</main>
+          </FloatingSearchProvider>,
+        )
+      })
+
+      act(() => {
+        dispatchLanguageSwitcher({
+          visible: true,
+          onClick: onLanguageClick,
+          languageCode,
+        })
+      })
+
+      const languageButton = document.querySelector(
+        '[data-testid="floating-header-language-button"]',
+      ) as HTMLButtonElement
+      expect(
+        languageButton.querySelector(
+          '[data-testid="floating-header-language-code"]',
+        )?.textContent,
+      ).toBe(expectedCode)
+
+      act(() => languageButton.click())
+
+      expect(onLanguageClick).toHaveBeenCalledTimes(1)
+      expect(
+        document.querySelector('[data-testid="global-language-picker-modal"]'),
+      ).toBeNull()
+    },
+  )
 
   it("marks the global trigger busy during lazy loading and blocks duplicate activation", async () => {
     const moduleLoad = deferred<unknown>()
@@ -4191,6 +4247,74 @@ describe("FloatingSearchProvider — search language selection", () => {
       }),
     )
     expect(document.body.textContent).toContain("Japanese Result")
+  })
+
+  it("keeps an unavailable result bound to the completed target language", async () => {
+    vi.useFakeTimers()
+    mockedGetSearchLanguageOptions.mockResolvedValue({
+      ok: true,
+      options: [
+        englishSearchLanguage,
+        spanishSearchLanguage,
+        japaneseSearchLanguage,
+      ],
+      countrySuggestion: null,
+      recommendedLanguage: englishSearchLanguage,
+      countryCode: null,
+      countryName: null,
+    })
+    mockedRunSearch.mockResolvedValueOnce({
+      ...makeSearchResponse(
+        [
+          {
+            ...makeSearchResult("unavailable-result", "Unavailable Result"),
+            availabilityKind: "unavailable",
+            languageSlug: null,
+          },
+        ],
+        false,
+      ),
+      targetLanguageSlug: "spanish-castilian",
+    })
+
+    const input = await openSearchOverlay()
+    await submitSearch(input, "jesus")
+
+    const resultLink = Array.from(document.querySelectorAll("a")).find(
+      (anchor) => anchor.textContent?.includes("Unavailable Result") ?? false,
+    ) as HTMLAnchorElement
+    expect(resultLink.getAttribute("href")).toBe(
+      "/unavailable-result-slug.html/spanish-castilian.html",
+    )
+
+    const languageTrigger = document.querySelector(
+      '[data-testid="language-combobox-trigger"]',
+    ) as HTMLButtonElement
+    await act(async () => {
+      languageTrigger.click()
+      await Promise.resolve()
+    })
+    const japaneseOption = document.querySelector(
+      '[data-language-slug="japanese"]',
+    ) as HTMLButtonElement
+    await act(async () => {
+      japaneseOption.click()
+      await Promise.resolve()
+    })
+
+    expect(resultLink.getAttribute("href")).toBe(
+      "/unavailable-result-slug.html/spanish-castilian.html",
+    )
+    act(() => {
+      resultLink.dispatchEvent(
+        new MouseEvent("click", { bubbles: true, cancelable: true }),
+      )
+    })
+    const stored = JSON.parse(
+      window.sessionStorage.getItem(WATCH_UNAVAILABLE_RECOVERY_STORAGE_KEY) ??
+        "null",
+    ) as { target?: { requestedLanguageSlug?: string } } | null
+    expect(stored?.target?.requestedLanguageSlug).toBe("spanish-castilian")
   })
 
   it("keeps language changes draft-only until explicit submit", async () => {

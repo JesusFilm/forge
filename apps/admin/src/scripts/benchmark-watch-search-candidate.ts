@@ -3,6 +3,14 @@ import { pathToFileURL } from "node:url"
 
 import { prisma } from "@/db/client"
 import { TypesenseWatchSearchCandidateGenerationService } from "@/services/typesense-watch-search-candidate-generation"
+import {
+  DEFAULT_CANDIDATE_QUALIFICATION_EVIDENCE,
+  WATCH_SEARCH_CANDIDATE_REQUIRED_EVIDENCE_GATES,
+  candidateQualificationEvidenceReason,
+  hasCandidateQualificationEvidenceArtifact,
+  parseCandidateQualificationEvidence,
+  type CandidateQualificationEvidence,
+} from "@/services/typesense-watch-search-candidate-qualification"
 import { resolveTypesenseWatchSearchApiKey } from "@/services/typesense-client-config"
 import {
   candidateWatchSearchApplicationRevision,
@@ -18,28 +26,30 @@ import {
 import { TypesenseWatchSearchService } from "@/services/typesense-watch-search.service"
 import { TypesenseClient } from "@/services/typesense-client"
 import type { WatchSearchInput } from "@/services/watch-search.service"
+import {
+  PRODUCTION_CANDIDATE_BENCHMARK_CASES,
+  REQUIRED_CANDIDATE_BENCHMARK_SLICES,
+  type CandidateBenchmarkCase,
+  type CandidateBenchmarkSlice,
+} from "./watch-search-candidate-benchmark-cases"
+
+export {
+  PRODUCTION_CANDIDATE_BENCHMARK_CASES as PRODUCTION_CASES,
+  type CandidateBenchmarkCase,
+  type CandidateBenchmarkSlice,
+}
 
 const DEFAULT_PAIRS_PER_CASE = 1_000
 const EVALUATION_LEASE_RESOURCE = "watch-search-candidate-qualification"
 const EVALUATION_LEASE_TTL_MS = 60_000
-const MAX_CANDIDATE_LOGICAL_SUBSEARCHES = 5
+const MAX_CANDIDATE_LOGICAL_SUBSEARCHES = 6
 const MAX_CANDIDATE_QUERY_FIELDS = 64
 const MAX_CANDIDATE_QUERY_BY_BYTES = 4_096
 const MAX_CANDIDATE_REQUEST_BYTES = 32 * 1_024
+const MAX_CANDIDATE_ADDITIONAL_PARSED_RESPONSE_BYTES = 256 * 1_024
 const MAX_CANDIDATE_CALLER_P95_MS = 1_000
 
-const REQUIRED_SLICES = [
-  "exact-title",
-  "mixed-language",
-  "native-title",
-  "topical",
-  "semantic",
-  "broad-title",
-] as const
-
-type CandidateBenchmarkSlice = (typeof REQUIRED_SLICES)[number]
-type EvidenceStatus = "PASS" | "FAIL" | "NOT_RUN"
-
+const REQUIRED_SLICES = REQUIRED_CANDIDATE_BENCHMARK_SLICES
 export type CandidateBenchmarkIdentity = {
   generationId: string
   applicationRevision: string
@@ -49,14 +59,6 @@ export type CandidateBenchmarkIdentity = {
   qrelsRevision: string
   currentBindings: TypesenseWatchSearchCollectionBinding
   candidateBindings: TypesenseWatchSearchCollectionBinding
-}
-
-export type CandidateBenchmarkCase = {
-  id: string
-  query: string
-  locale?: string
-  languageSlug?: string
-  slices: readonly CandidateBenchmarkSlice[]
 }
 
 type CandidateDiagnostics = {
@@ -129,13 +131,7 @@ export type CandidateBenchmarkAttempt = {
   identity: CandidateBenchmarkIdentity
 }
 
-export type CandidateQualificationEvidence = {
-  relevance: EvidenceStatus
-  fixedLoadResources: EvidenceStatus
-  currentInterference: EvidenceStatus
-  operatorReview: EvidenceStatus
-  artifacts?: Readonly<Record<string, string>>
-}
+export type { CandidateQualificationEvidence }
 
 type CandidateBenchmarkDeps = {
   acquireLease(): Promise<{ expiresAt: Date } | null>
@@ -147,13 +143,6 @@ type CandidateBenchmarkDeps = {
     order: "current-first" | "candidate-first"
   }): Promise<CandidateCompareResponse>
   now?: () => Date
-}
-
-const DEFAULT_EVIDENCE: CandidateQualificationEvidence = {
-  relevance: "NOT_RUN",
-  fixedLoadResources: "NOT_RUN",
-  currentInterference: "NOT_RUN",
-  operatorReview: "NOT_RUN",
 }
 
 function percentile(values: readonly number[], quantile: number): number {
@@ -438,10 +427,14 @@ function boundedWorkReasons(attempts: readonly CandidateBenchmarkAttempt[]) {
     if (candidate.retrievalCalls !== current.retrievalCalls) {
       reasons.add("candidate_retrieval_calls_mismatch")
     }
-    if (candidate.logicalSubsearches !== current.logicalSubsearches) {
+    if (candidate.logicalSubsearches !== current.logicalSubsearches + 1) {
       reasons.add("candidate_logical_subsearches_mismatch")
     }
-    if (candidate.parsedResponseBytes > current.parsedResponseBytes) {
+    if (
+      candidate.parsedResponseBytes >
+      current.parsedResponseBytes +
+        MAX_CANDIDATE_ADDITIONAL_PARSED_RESPONSE_BYTES
+    ) {
       reasons.add("candidate_response_bytes")
     }
     if (candidate.hydratedRecords > current.hydratedRecords) {
@@ -502,12 +495,16 @@ export function evaluateCandidateQualification(input: {
     reasons.add(reason)
   }
   for (const reason of boundedWorkReasons(input.attempts)) reasons.add(reason)
-  for (const [gate, status] of Object.entries(input.evidence)) {
-    if (gate === "artifacts") continue
-    if (status !== "PASS")
+  for (const gate of WATCH_SEARCH_CANDIDATE_REQUIRED_EVIDENCE_GATES) {
+    if (input.evidence[gate] !== "PASS") {
+      reasons.add(`${candidateQualificationEvidenceReason(gate)}_not_passed`)
+      continue
+    }
+    if (!hasCandidateQualificationEvidenceArtifact(input.evidence, gate)) {
       reasons.add(
-        `${gate.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`)}_not_passed`,
+        `${candidateQualificationEvidenceReason(gate)}_artifact_missing`,
       )
+    }
   }
 
   const invalid = [...reasons].some((reason) =>
@@ -648,70 +645,15 @@ export async function runPairedCandidateBenchmark(
     attempts,
     requiredPairs: input.pairsPerCase,
     requiredSlices: REQUIRED_SLICES,
-    evidence: input.evidence ?? DEFAULT_EVIDENCE,
+    evidence: input.evidence ?? DEFAULT_CANDIDATE_QUALIFICATION_EVIDENCE,
     invalidReasons,
   })
 }
 
-const PRODUCTION_CASES: readonly CandidateBenchmarkCase[] = [
-  {
-    id: "jesus-japanese-mixed",
-    query: "Jesus Japanese",
-    locale: "ja",
-    languageSlug: "japanese",
-    slices: ["exact-title", "mixed-language", "broad-title"],
-  },
-  {
-    id: "jesus-chinese-native",
-    query: "耶稣",
-    locale: "zh-Hans",
-    languageSlug: "mandarin-china",
-    slices: ["exact-title", "native-title", "broad-title"],
-  },
-  {
-    id: "jesus-arabic-native",
-    query: "يسوع",
-    locale: "ar",
-    languageSlug: "arabic-modern-standard",
-    slices: ["native-title", "broad-title"],
-  },
-  {
-    id: "forgiveness-spanish-topic",
-    query: "perdón después del fracaso",
-    locale: "es",
-    languageSlug: "spanish-latin-america",
-    slices: ["topical"],
-  },
-  {
-    id: "hope-when-heavy-semantic",
-    query: "finding hope when life feels heavy",
-    locale: "en",
-    languageSlug: "english",
-    slices: ["semantic"],
-  },
-] as const
-
 function evidenceFromEnvironment(): CandidateQualificationEvidence {
-  const raw = process.env.WATCH_SEARCH_CANDIDATE_EVIDENCE_JSON
-  if (!raw) return DEFAULT_EVIDENCE
-  const parsed = JSON.parse(raw) as CandidateQualificationEvidence
-  for (const key of [
-    "relevance",
-    "fixedLoadResources",
-    "currentInterference",
-    "operatorReview",
-  ] as const) {
-    if (!["PASS", "FAIL", "NOT_RUN"].includes(parsed[key])) {
-      throw new Error(`invalid evidence status for ${key}`)
-    }
-  }
-  if (
-    Object.values(parsed).some((value) => value === "PASS") &&
-    (!parsed.artifacts || Object.keys(parsed.artifacts).length === 0)
-  ) {
-    throw new Error("PASS evidence requires artifact references")
-  }
-  return parsed
+  return parseCandidateQualificationEvidence(
+    process.env.WATCH_SEARCH_CANDIDATE_EVIDENCE_JSON,
+  )
 }
 
 export function normalizeCandidateBenchmarkDiagnostics(
@@ -853,7 +795,7 @@ async function main() {
   const report = await runPairedCandidateBenchmark(
     {
       identity,
-      cases: PRODUCTION_CASES,
+      cases: PRODUCTION_CANDIDATE_BENCHMARK_CASES,
       pairsPerCase,
       evidence: evidenceFromEnvironment(),
     },

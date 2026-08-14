@@ -1,4 +1,5 @@
 import type { TypesenseCollectionSchema } from "./typesense-client"
+import { TYPESENSE_WATCH_EXACT_TITLE_KEYS_FIELD } from "./typesense-watch-search-exact-title"
 import { TYPESENSE_WATCH_TOKENIZER_LOCALES } from "./typesense-watch-search-lexical"
 
 export const TYPESENSE_WATCH_CATALOG_ALIAS = "watch_search_catalog"
@@ -112,7 +113,10 @@ export function candidateWatchCollectionNames(generationId: string) {
   } as const
 }
 
-export function candidateWatchCollectionSchemas(generationId: string) {
+export function candidateWatchCollectionSchemas(
+  generationId: string,
+  tokenizerLocales: readonly string[] = TYPESENSE_WATCH_TOKENIZER_LOCALES,
+) {
   const names = candidateWatchCollectionNames(generationId)
   return {
     catalog: {
@@ -124,13 +128,31 @@ export function candidateWatchCollectionSchemas(generationId: string) {
       name: names.availability,
     },
     lexical: {
-      ...watchLexicalCollectionSchema("candidate"),
+      ...candidateWatchLexicalCollectionSchema("candidate", tokenizerLocales),
       name: names.lexical,
     },
   } satisfies Record<
     keyof ReturnType<typeof candidateWatchCollectionNames>,
     TypesenseCollectionSchema
   >
+}
+
+export function candidateWatchLexicalCollectionSchema(
+  buildId: string,
+  tokenizerLocales: readonly string[] = TYPESENSE_WATCH_TOKENIZER_LOCALES,
+): TypesenseCollectionSchema {
+  const schema = watchLexicalCollectionSchema(buildId, tokenizerLocales)
+  return {
+    ...schema,
+    fields: [
+      ...schema.fields,
+      {
+        name: TYPESENSE_WATCH_EXACT_TITLE_KEYS_FIELD,
+        type: "string[]",
+        optional: true,
+      },
+    ],
+  }
 }
 
 export function watchCatalogCollectionSchema(
@@ -204,21 +226,28 @@ export function watchAvailabilityCollectionSchema(
 
 export function watchLexicalCollectionSchema(
   buildId: string,
+  tokenizerLocales: readonly string[] = TYPESENSE_WATCH_TOKENIZER_LOCALES,
 ): TypesenseCollectionSchema {
-  const localizedFields = TYPESENSE_WATCH_TOKENIZER_LOCALES.flatMap((locale) =>
+  const exactFields = [...new Set(tokenizerLocales)].flatMap((locale) =>
+    ["title", "metadata"].map((lane) => ({
+      name: `${lane}_${locale}`,
+      type: "string[]",
+      locale,
+      optional: true,
+    })),
+  )
+  const expansionFields = TYPESENSE_WATCH_TOKENIZER_LOCALES.flatMap((locale) =>
     [
-      { name: `title_${locale}`, stem: false },
-      { name: `title_stem_${locale}`, stem: true },
-      { name: `metadata_${locale}`, stem: false },
-      { name: `metadata_stem_${locale}`, stem: true },
-      { name: `taxonomy_${locale}`, stem: false },
-      { name: `taxonomy_stem_${locale}`, stem: true },
-    ].map(({ name, stem }) => ({
+      `title_stem_${locale}`,
+      `metadata_stem_${locale}`,
+      `taxonomy_${locale}`,
+      `taxonomy_stem_${locale}`,
+    ].map((name) => ({
       name,
       type: "string[]",
       locale,
       optional: true,
-      ...(stem ? { stem: true } : {}),
+      ...(name.includes("_stem_") ? { stem: true } : {}),
     })),
   )
   return {
@@ -228,7 +257,8 @@ export function watchLexicalCollectionSchema(
       { name: "canonicalVideoId", type: "string", facet: true },
       { name: "languageIdentity", type: "string", facet: true },
       { name: "localeCodes", type: "string[]", facet: true },
-      ...localizedFields,
+      ...exactFields,
+      ...expansionFields,
       { name: "title_fallback", type: "string[]", optional: true },
       { name: "metadata_fallback", type: "string[]", optional: true },
       { name: "taxonomy_fallback", type: "string[]", optional: true },

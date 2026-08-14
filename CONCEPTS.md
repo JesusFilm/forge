@@ -20,6 +20,13 @@ When media execution crosses into Shorts Worker, the Devotional Workspace owner
 issues attempt-scoped temporary capabilities. The Worker may transfer the
 authorized bytes but never receives durable Workspace credentials or ownership.
 
+Although registered as the Mastra runtime's single global workspace, it is
+deliberately inert toward conversational agents: inherited file tools are
+disabled and its storage self-description is suppressed, so no agent's prompt or
+tool set ever advertises the Workspace. Devotional business logic reaches it
+only through typed devotional repository code — digest-verified reads and
+audited writes — never through agent tools.
+
 ### Devotional Catalog Generation
 
 An atomic, committed projection of the Devotional Workspace inputs used to
@@ -547,7 +554,7 @@ Search Language identity should travel as the public language slug selected or c
 
 The target-language playback state attached to a Watch search candidate, distinguishing playable target audio, target subtitles, related-language audio, and no qualifying playback option. Search Watchability describes what the viewer can play and where the result should link; it refines ordering only after textual match and relevance.
 
-Target-audio and related-language states carry a playable Dub directly. A target-subtitle state keeps the requested subtitle language as availability truth while carrying a deterministic playable Dub action on the compatible Video Edition; the public route uses that action language and passes the subtitle language as explicit intent. A no-option state carries no playable action.
+Target-audio and related-language states carry a playable Dub directly. A target-subtitle state keeps the requested subtitle language as availability truth while carrying a deterministic playable Dub action on the compatible Video Edition; the public route uses that action language and passes the subtitle language as explicit intent. A no-option state carries no playable action, so its Search Language remains request context and must not be promoted into a playback identity.
 
 ### Query Language Suggestion
 

@@ -339,7 +339,7 @@ function CollectionPlayerContent({
           player={player}
           style={StyleSheet.absoluteFill}
           nativeControls
-          allowsFullscreen
+          fullscreenOptions={{ enable: true }}
           allowsPictureInPicture
           contentFit="contain"
         />

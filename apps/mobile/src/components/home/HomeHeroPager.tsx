@@ -15,6 +15,7 @@ import {
   FlatList,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
+  Platform,
   StyleSheet,
   Text,
   View,
@@ -690,6 +691,9 @@ const HeroPage = memo(function HeroPage({
           style={StyleSheet.absoluteFill}
           nativeControls={false}
           contentFit="cover"
+          // RN 0.86 Fabric: the default SurfaceView decodes but never
+          // composites under the layered home stack — hero shows black.
+          surfaceType={Platform.OS === "android" ? "textureView" : undefined}
         />
       )}
 

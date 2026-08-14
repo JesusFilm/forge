@@ -1,14 +1,14 @@
 ---
-id: "feat-363"
+id: "feat-365"
 title: "Reject empty Watch suggestion qualification workloads"
 owner: "urim"
 priority: "P1"
 status: "not-started"
 duration: 1
 depends_on:
-  - "feat-361"
+  - "feat-363"
 blocks:
-  - "feat-364"
+  - "feat-366"
 tags:
   - "admin"
   - "watch"

@@ -1,12 +1,12 @@
 ---
-id: "feat-362"
+id: "feat-364"
 title: "Add script-aware multilingual Watch query phrases"
 owner: "urim"
 priority: "P2"
 status: "not-started"
 duration: 2
 depends_on:
-  - "feat-361"
+  - "feat-363"
 blocks: []
 tags:
   - "admin"

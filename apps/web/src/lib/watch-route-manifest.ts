@@ -49,6 +49,12 @@ type WatchRouteManifestIndex = {
   hasEpisodeAudioLanguageIndex: boolean
 }
 
+export type WatchContentAudioLanguageProof =
+  | { kind: "admitted" }
+  | { kind: "known-missing" }
+  | { kind: "unknown-content" }
+  | { kind: "inconclusive" }
+
 type WatchRouteManifestCache = {
   etag: string | null
   expiresAt: number
@@ -312,6 +318,25 @@ export function isWatchRouteAdmittedByManifest(
       route.audioLanguageSlug,
     )
   )
+}
+
+/**
+ * Prove an exact standalone content/audio combination without falling back to
+ * the manifest-wide language corpus. A missing per-content entry is
+ * inconclusive, not evidence that the requested language is unavailable.
+ */
+export function proveWatchContentAudioLanguageByManifest(
+  manifest: WatchRouteManifest,
+  contentSlug: string,
+  audioLanguageSlug: string,
+): WatchContentAudioLanguageProof {
+  const index = getManifestIndex(manifest)
+  if (!index.contentSlugs.has(contentSlug)) return { kind: "unknown-content" }
+  const exactLanguages = index.audioLanguageSlugsByContent.get(contentSlug)
+  if (!exactLanguages) return { kind: "inconclusive" }
+  return exactLanguages.has(audioLanguageSlug)
+    ? { kind: "admitted" }
+    : { kind: "known-missing" }
 }
 
 /** Whether the manifest proves the exact parent-child relationship. */

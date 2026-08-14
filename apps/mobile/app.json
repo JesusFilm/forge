@@ -7,12 +7,6 @@
     "icon": "./assets/icon.png",
     "scheme": "forgemobile",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
-    "splash": {
-      "image": "./assets/splash-icon.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#1c1917"
-    },
     "ios": {
       "icon": "./assets/AppIcon.icon",
       "supportsTablet": true,
@@ -36,7 +30,6 @@
         "monochromeImage": "./assets/adaptive-icon-monochrome.png",
         "backgroundColor": "#191513"
       },
-      "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "package": "org.jesusfilm.forgewatch",
       "allowBackup": false
@@ -63,7 +56,19 @@
       "@kesha-antonov/react-native-background-downloader",
       "./plugins/withBackgroundDownloaderAppDelegate",
       "expo-secure-store",
-      "expo-web-browser"
+      "expo-web-browser",
+      "expo-image",
+      "expo-font",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "resizeMode": "contain",
+          "backgroundColor": "#1c1917",
+          "enableFullScreenImage_legacy": true
+        }
+      ],
+      "expo-status-bar"
     ],
     "extra": {
       "router": {

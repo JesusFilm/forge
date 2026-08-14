@@ -4,11 +4,15 @@ import { notRestrictedFromWatchWhere } from "./search-watchability"
 import { TypesenseClient } from "./typesense-client"
 import { canonicalTypesenseVideoId } from "./typesense-watch-search-identifiers"
 import {
+  buildTypesenseWatchCandidateLexicalDocuments,
   buildTypesenseWatchLexicalDocuments,
+  estimateTypesenseCandidateKeywordMemory,
   estimateTypesenseKeywordMemory,
   normalizeTypesenseWatchTaxonomy,
+  type TypesenseCandidateKeywordMemoryEstimate,
   type TypesenseKeywordMemoryEstimate,
   typesenseWatchLanguageSlugIdentity,
+  typesenseWatchTokenizerLocales,
 } from "./typesense-watch-search-lexical"
 import {
   TYPESENSE_WATCH_AVAILABILITY_ALIAS,
@@ -578,7 +582,8 @@ export function buildAvailabilityDocuments(
 export type TypesenseWatchCandidateProjectionSnapshot = {
   catalog: TypesenseWatchCatalogDocument[]
   availability: TypesenseWatchAvailabilityDocument[]
-  lexical: ReturnType<typeof buildTypesenseWatchLexicalDocuments>
+  lexical: ReturnType<typeof buildTypesenseWatchCandidateLexicalDocuments>
+  tokenizerLocales: string[]
   counts: { catalog: number; availability: number; lexical: number }
   digests: {
     catalog: string
@@ -586,7 +591,7 @@ export type TypesenseWatchCandidateProjectionSnapshot = {
     lexical: string
     combined: string
   }
-  lexicalMemory: ReturnType<typeof estimateTypesenseKeywordMemory>
+  lexicalMemory: TypesenseCandidateKeywordMemoryEstimate
 }
 
 const CANDIDATE_SNAPSHOT_TRANSACTION_TIMEOUT_MS = 60_000
@@ -622,9 +627,10 @@ export async function buildTypesenseWatchCandidateProjectionSnapshot(
       const availability = buildAvailabilityDocuments(catalog).sort(
         (left, right) => left.id.localeCompare(right.id),
       )
-      const lexical = buildTypesenseWatchLexicalDocuments(catalog).sort(
-        (left, right) => left.id.localeCompare(right.id),
-      )
+      const lexical = buildTypesenseWatchCandidateLexicalDocuments(
+        catalog,
+      ).sort((left, right) => left.id.localeCompare(right.id))
+      const tokenizerLocales = typesenseWatchTokenizerLocales(lexical)
       const catalogDigest = projectionDigest(catalog)
       const availabilityDigest = projectionDigest(availability)
       const lexicalDigest = projectionDigest(lexical)
@@ -642,13 +648,14 @@ export async function buildTypesenseWatchCandidateProjectionSnapshot(
         catalog,
         availability,
         lexical,
+        tokenizerLocales,
         counts: {
           catalog: catalog.length,
           availability: availability.length,
           lexical: lexical.length,
         },
         digests,
-        lexicalMemory: estimateTypesenseKeywordMemory(lexical),
+        lexicalMemory: estimateTypesenseCandidateKeywordMemory(lexical),
       }
     },
     {
@@ -777,7 +784,10 @@ export async function rebuildTypesenseWatchSearchIndex({
   const catalog = await buildCatalogDocuments(prisma)
   const availability = buildAvailabilityDocuments(catalog)
   const lexical = buildTypesenseWatchLexicalDocuments(catalog)
-  const lexicalSchema = watchLexicalCollectionSchema(buildId)
+  const lexicalSchema = watchLexicalCollectionSchema(
+    buildId,
+    typesenseWatchTokenizerLocales(lexical),
+  )
   const keywordMemory = estimateTypesenseKeywordMemory(lexical)
   let catalogDocuments = 0
   let availabilityDocuments = 0

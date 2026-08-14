@@ -14,6 +14,7 @@ import {
   type TypesenseCollectionSchema,
 } from "./typesense-client"
 import { TYPESENSE_WATCH_SEARCH_PUBLICATION_LOCK_ID } from "./typesense-watch-search-publication-lock"
+import { hasPassingCandidateQualificationEvidence } from "./typesense-watch-search-candidate-qualification"
 
 export type CandidateGenerationState = WatchSearchCandidateGenerationState
 
@@ -143,17 +144,10 @@ function assertPassingQualificationEvidence(
 ): void {
   const identity = recordValue(evidence.identity)
   const gates = recordValue(evidence.evidence)
-  const artifacts = recordValue(gates?.artifacts)
   const storedBindings = recordValue(identity?.currentBindings)
   const identityBindings = storedBindings
     ? Object.values(storedBindings)
     : identity?.currentBindings
-  const gatesPassed = [
-    "relevance",
-    "fixedLoadResources",
-    "currentInterference",
-    "operatorReview",
-  ].every((gate) => gates?.[gate] === "PASS")
   if (
     evidence.schemaVersion !== "watch-search-candidate-qualification/v2" ||
     evidence.status !== "QUALIFIED" ||
@@ -169,9 +163,7 @@ function assertPassingQualificationEvidence(
     !Array.isArray(identityBindings) ||
     JSON.stringify(identityBindings) !==
       JSON.stringify(input.currentBindings) ||
-    !gatesPassed ||
-    !artifacts ||
-    Object.keys(artifacts).length === 0
+    !hasPassingCandidateQualificationEvidence(gates)
   ) {
     throw new CandidateGenerationValidationError(
       "passing qualification requires an exact QUALIFIED report with reviewed evidence",

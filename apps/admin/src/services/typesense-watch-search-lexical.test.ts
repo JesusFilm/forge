@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest"
 import type { TypesenseWatchCatalogDocument } from "./typesense-watch-search-schema"
 import {
+  buildTypesenseWatchCandidateLexicalDocuments,
   buildTypesenseWatchLexicalDocuments,
+  estimateTypesenseCandidateKeywordMemory,
   estimateTypesenseKeywordMemory,
   normalizeTypesenseWatchTaxonomy,
   TYPESENSE_WATCH_TAXONOMY_MAX_BYTES,
@@ -116,8 +118,8 @@ describe("Typesense Watch lexical projection", () => {
     })
     expect(byLocale.get("mi")).toMatchObject({
       localeCodes: ["mi"],
-      title_fallback: ["Ihu"],
-      metadata_fallback: ["Te oranga o Ihu"],
+      title_mi: ["Ihu"],
+      metadata_mi: ["Te oranga o Ihu"],
       taxonomy_fallback: ["Kiriata poto"],
     })
     expect(byLocale.get("mi")).not.toHaveProperty("taxonomy_mi")
@@ -143,6 +145,76 @@ describe("Typesense Watch lexical projection", () => {
         .flatMap(([, values]) => values as string[]),
     )
     expect(searchableValues).toHaveLength(new Set(searchableValues).size)
+  })
+
+  it("decorates Candidate documents with exact keys without changing Current documents", () => {
+    const current = buildTypesenseWatchLexicalDocuments([catalogDocument()])
+    const candidate = buildTypesenseWatchCandidateLexicalDocuments([
+      catalogDocument(),
+    ])
+
+    expect(current).toEqual(
+      buildTypesenseWatchLexicalDocuments([catalogDocument()]),
+    )
+    expect(current.every((document) => !("title_exact_keys" in document))).toBe(
+      true,
+    )
+    expect(candidate).toHaveLength(current.length)
+    expect(
+      candidate.every((document) =>
+        document.title_exact_keys?.every((key) => /^[a-f0-9]{32}$/.test(key)),
+      ),
+    ).toBe(true)
+    expect(
+      candidate.map(({ title_exact_keys: _keys, ...document }) => document),
+    ).toEqual(current)
+  })
+
+  it("keeps Candidate exact keys deterministic across localized-title input order", () => {
+    const document = catalogDocument()
+    const locales = [
+      {
+        locale: "en-US",
+        languageSlug: "english",
+        title: "JESUS",
+        description: null,
+      },
+      {
+        locale: "en-GB",
+        languageSlug: "english",
+        title: "The Story of Jesus",
+        description: null,
+      },
+    ]
+    document.localesJson = JSON.stringify(locales)
+    const reversed = {
+      ...document,
+      localesJson: JSON.stringify([...locales].reverse()),
+    }
+
+    expect(
+      buildTypesenseWatchCandidateLexicalDocuments([document])[0]
+        ?.title_exact_keys,
+    ).toEqual(
+      buildTypesenseWatchCandidateLexicalDocuments([reversed])[0]
+        ?.title_exact_keys,
+    )
+  })
+
+  it("retains fail-closed validation for malformed Candidate locale rows", () => {
+    const malformed = catalogDocument()
+    malformed.localesJson = JSON.stringify({ locale: "en" })
+    expect(() =>
+      buildTypesenseWatchCandidateLexicalDocuments([malformed]),
+    ).toThrow("Catalog locales are malformed")
+
+    const identityLess = catalogDocument()
+    identityLess.localesJson = JSON.stringify([
+      { locale: "not a locale", title: "Jesus", description: null },
+    ])
+    expect(() =>
+      buildTypesenseWatchCandidateLexicalDocuments([identityLess]),
+    ).toThrow("no safe language identity")
   })
 
   it("keeps distinct languages isolated when they share a BCP-47 tag", () => {
@@ -263,6 +335,30 @@ describe("Typesense Watch lexical projection", () => {
         0,
       ),
     ).toBe(TYPESENSE_WATCH_TAXONOMY_MAX_BYTES)
+  })
+
+  it("reports Candidate exact-key bytes explicitly in keyword memory", () => {
+    const documents = buildTypesenseWatchCandidateLexicalDocuments([
+      catalogDocument(),
+    ])
+    const estimate = estimateTypesenseCandidateKeywordMemory(documents)
+    const exactTitleKeyBytes = documents.reduce(
+      (total, document) =>
+        total +
+        (document.title_exact_keys ?? []).reduce(
+          (keyTotal, key) =>
+            keyTotal + new TextEncoder().encode(key).byteLength,
+          0,
+        ),
+      0,
+    )
+
+    expect(exactTitleKeyBytes).toBe(8 * 32)
+    expect(estimate.exactTitleKeyBytes).toBe(exactTitleKeyBytes)
+    expect(estimate.searchableBytes).toBe(
+      estimateTypesenseKeywordMemory(documents).searchableBytes,
+    )
+    expect(estimate.estimatedRamHighBytes).toBe(estimate.searchableBytes * 3)
   })
 
   it("normalizes valid language tags without accepting filter syntax", () => {

@@ -28,12 +28,14 @@ export default function TabLayout() {
         },
       }}
     >
+      {/* `color as string`: expo-router hands ColorValue, but pnpm peer-instancing
+          resolves this Ionicons' props to string-only color. Values are theme strings. */}
       <Tabs.Screen
         name="index"
         options={{
           title: "Home",
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="home" size={size} color={color} />
+            <Ionicons name="home" size={size} color={color as string} />
           ),
         }}
       />
@@ -47,7 +49,7 @@ export default function TabLayout() {
           headerTintColor: "#f5f5f4",
           headerShadowVisible: false,
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="compass" size={size} color={color} />
+            <Ionicons name="compass" size={size} color={color as string} />
           ),
         }}
       />
@@ -56,7 +58,11 @@ export default function TabLayout() {
         options={{
           title: "Library",
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="albums-outline" size={size} color={color} />
+            <Ionicons
+              name="albums-outline"
+              size={size}
+              color={color as string}
+            />
           ),
         }}
       />
@@ -65,7 +71,7 @@ export default function TabLayout() {
         options={{
           title: "Profile",
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="person" size={size} color={color} />
+            <Ionicons name="person" size={size} color={color as string} />
           ),
         }}
       />

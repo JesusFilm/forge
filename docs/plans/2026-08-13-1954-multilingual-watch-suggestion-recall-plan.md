@@ -6,7 +6,7 @@ artifact_contract: "ce-unified-plan/v1"
 artifact_readiness: "implementation-ready"
 product_contract_source: "ce-plan-bootstrap"
 execution: "code"
-roadmap: "feat-361"
+roadmap: "feat-363"
 deepened: "2026-08-13"
 ---
 
@@ -38,7 +38,7 @@ unchanged.
   English-only special case.
 - User approval: include both grammatical/morphological matching and localized
   taxonomy vocabulary.
-- Roadmap owner: `docs/roadmap/content-discovery/feat-361-multilingual-watch-suggestion-recall.md`.
+- Roadmap owner: `docs/roadmap/content-discovery/feat-363-multilingual-watch-suggestion-recall.md`.
 - Existing architecture: Watch suggestions are an Admin-owned, bounded lexical
   lane over the Typesense `watch_search_lexical` alias.
 
@@ -46,12 +46,12 @@ unchanged.
 
 ### Session-settled decisions
 
-- **Use a locale-selected analyzer pipeline.** *(session-settled: user-directed —
+- **Use a locale-selected analyzer pipeline.** _(session-settled: user-directed —
   chosen over an English-only `shorts -> short` rewrite because the reported bug
-  is one instance of a multilingual recall problem.)* Governs R1-R4 and R8.
-- **Include morphology and localized taxonomy.** *(session-settled:
+  is one instance of a multilingual recall problem.)_ Governs R1-R4 and R8.
+- **Include morphology and localized taxonomy.** _(session-settled:
   user-approved — chosen over morphology alone because category intent may not
-  be present in localized titles or descriptions.)* Governs R2-R5 and R9.
+  be present in localized titles or descriptions.)_ Governs R2-R5 and R9.
 
 ### Requirements
 
@@ -181,27 +181,27 @@ Out of scope:
 
 ### Key technical decisions
 
-- **KTD1 — Keep exact and recall fields separate.** *(inherits the
-  session-settled user-directed analyzer decision; R2, R4-R6.)* Add
+- **KTD1 — Keep exact and recall fields separate.** _(inherits the
+  session-settled user-directed analyzer decision; R2, R4-R6.)_ Add
   `title_stem_<locale>` and `metadata_stem_<locale>` fields with the same locale
   plus `stem: true`; retain `title_<locale>` and `metadata_<locale>` unchanged.
   Add exact `taxonomy_<locale>` and stemmed `taxonomy_stem_<locale>` fields.
   Unsupported locales use `taxonomy_fallback` only.
-- **KTD2 — Project taxonomy at the owned indexing boundary.** *(inherits the
-  session-settled user-approved taxonomy decision; R3-R4, R9.)* Extend the
+- **KTD2 — Project taxonomy at the owned indexing boundary.** _(inherits the
+  session-settled user-approved taxonomy decision; R3-R4, R9.)_ Extend the
   indexer’s `Video` query with published `VideoKeyword -> Keyword -> Language`
   data, normalize/dedupe values by Unicode text, and add them to the matching
   locale entry inside `localesJson`. The catalog field shape remains stable; the
   lexical projection consumes the richer JSON.
-- **KTD3 — Keep reviewed aliases data-driven and exact-slug scoped.** *(inherits
-  the session-settled user-approved taxonomy decision; R3, R9.)* Add an
+- **KTD3 — Keep reviewed aliases data-driven and exact-slug scoped.** _(inherits
+  the session-settled user-approved taxonomy decision; R3, R9.)_ Add an
   Admin-owned taxonomy module only for structural gaps demonstrated after Core
   keyword projection. Its registry key is `languageIdentity` and values map
   `VideoLabel` to reviewed localized aliases for the qualification cohort. The
   API accepts any safe exact slug, so later reviewed languages are data-only.
   Never import `apps/web` message catalogs and never fall back from a selected
   language to English.
-- **KTD4 — Add a tolerant multi-search result API.** *(R9-R10.)* Preserve the
+- **KTD4 — Add a tolerant multi-search result API.** _(R9-R10.)_ Preserve the
   existing strict `TypesenseClient.multiSearch()` behavior for current callers
   and add a settled variant returning each result as success or typed error. The
   suggestions service sends baseline and expanded searches in one HTTP request,
@@ -210,17 +210,17 @@ Out of scope:
   invalid sub-search result when v1 lacks v2 fields, so the baseline sub-search
   is the compatibility mechanism; no request-time schema lookup or second
   retrieval HTTP call is required.
-- **KTD5 — Classify with Typesense match evidence.** *(R5-R7.)* Extend the local
+- **KTD5 — Classify with Typesense match evidence.** _(R5-R7.)_ Extend the local
   hit type for Typesense `highlights`/`matched_tokens`, map matched field names to
   internal provenance, use raw-prefix comparison only for literal tiers, and
   choose the localized title as the display value for taxonomy hits. Do not add
   provenance to the public GraphQL type.
-- **KTD6 — Merge by policy, not compensating boosts.** *(R5-R6, R10.)* Convert
+- **KTD6 — Merge by policy, not compensating boosts.** _(R5-R6, R10.)_ Convert
   baseline/expanded hits into canonical candidates with a match-class ordinal,
   raw text score, original grouped order, and canonical ID. Sort lexicographically
   by those values and deduplicate on canonical video ID before applying the
   existing six-row cap.
-- **KTD7 — Version the analyzer contract.** *(R7-R8, R11.)* Increment phrase
+- **KTD7 — Version the analyzer contract.** _(R7-R8, R11.)_ Increment phrase
   validation cache keys from the fixed `v1` token to the new lexical analyzer
   revision, include that revision and lane outcome in structured logs, and bump
   `TYPESENSE_WATCH_SEARCH_CANDIDATE_APPLICATION_REVISION` so a candidate is
@@ -276,23 +276,23 @@ sequenceDiagram
 
 **Files**
 
-- `docs/roadmap/content-discovery/feat-361-multilingual-watch-suggestion-recall.md`
+- `docs/roadmap/content-discovery/feat-363-multilingual-watch-suggestion-recall.md`
 - `docs/roadmap/content-discovery/feat-337-watch-search-suggestions.md`
 - `docs/roadmap/content-discovery/feat-352-watch-search-suggestion-result-validation.md`
 - `docs/roadmap/README.md`
 
 **Work**
 
-1. Keep `feat-361` `in-progress` while implementation is active.
+1. Keep `feat-363` `in-progress` while implementation is active.
 2. Record `feat-337` and `feat-352` as dependencies and add reverse `blocks`
    entries.
-3. At completion, mark `feat-361` `complete`, add `completed_date`, update the
+3. At completion, mark `feat-363` `complete`, add `completed_date`, update the
    README status, and record concise completion evidence.
 
 **Verification**
 
 - Frontmatter parses and dependencies are bidirectional.
-- `rg -n 'feat-361' docs/roadmap` returns the ticket, README row, and both reverse
+- `rg -n 'feat-363' docs/roadmap` returns the ticket, README row, and both reverse
   dependency entries.
 
 ### U2 — Add language-bound taxonomy to the lexical projection
@@ -464,7 +464,7 @@ sequenceDiagram
   corpus cannot express morphology/taxonomy provenance.
 - `docs/solutions/design-patterns/watch-search-draft-suggestion-submit-separation.md`
 - `docs/solutions/best-practices/precomputed-hybrid-search-serving-index-20260803.md`
-- `docs/roadmap/content-discovery/feat-361-multilingual-watch-suggestion-recall.md`
+- `docs/roadmap/content-discovery/feat-363-multilingual-watch-suggestion-recall.md`
 
 **Work**
 
@@ -506,9 +506,9 @@ sequenceDiagram
 9. After the current publisher moves the aliases, immediately rerun the frozen
    smoke set through the aliases and verify the served revision is v2.
 10. Update durable solution documentation with the dual identity/analyzer model,
-   literal-versus-expanded ranking policy, and mixed-version fail-soft pattern.
+    literal-versus-expanded ranking policy, and mixed-version fail-soft pattern.
 11. Mark the roadmap ticket complete only after focused validation and browser
-   smoke evidence are recorded.
+    smoke evidence are recorded.
 
 **Tests and operational checks**
 
@@ -578,16 +578,16 @@ duration. Do not record full free-form query text in a new logging surface.
 
 ## Risks and Mitigations
 
-| Risk | Impact | Mitigation |
-| --- | --- | --- |
-| Stemming causes proper-name or broad false positives | Relevance regression | Duplicate into lower-ranked recall fields; keep literal lanes and negative fixtures |
-| Taxonomy leaks between languages sharing BCP-47 | Wrong-language content | Project/filter by exact slug identity; registry is exact-slug keyed; collision tests |
-| Query code reaches v1 alias before reindex | Suggestions fail empty | Tolerant per-result multi-search; baseline fields remain a healthy sub-search |
-| Expanded hit is retrieved then discarded in JavaScript | Original bug persists | Use matched-field evidence; raw prefix only classifies literal tiers |
-| Global English token rules corrupt other languages | Missing/malformed phrases | Apply the existing English stop-word list only to the English analyzer; use no implicit English suppression elsewhere; track script-aware segmentation in `feat-362` |
-| Taxonomy data is unreviewed or incomplete | Misleading category matches | Core language-bound keywords first; reviewed registry only; no automated Web catalog import |
-| Larger lexical projection increases memory/latency | Serving cost/regression | Census before constants; cap terms/bytes/import batches; compare predicted/imported size; enforce v1/v2 p50/p95/p99 and rebuild-peak headroom gates |
-| One bad expansion result erases exact matches | Empty panel during incidents | Consume baseline/expansion as settled results and expose versioned degradation metrics |
+| Risk                                                   | Impact                       | Mitigation                                                                                                                                                           |
+| ------------------------------------------------------ | ---------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Stemming causes proper-name or broad false positives   | Relevance regression         | Duplicate into lower-ranked recall fields; keep literal lanes and negative fixtures                                                                                  |
+| Taxonomy leaks between languages sharing BCP-47        | Wrong-language content       | Project/filter by exact slug identity; registry is exact-slug keyed; collision tests                                                                                 |
+| Query code reaches v1 alias before reindex             | Suggestions fail empty       | Tolerant per-result multi-search; baseline fields remain a healthy sub-search                                                                                        |
+| Expanded hit is retrieved then discarded in JavaScript | Original bug persists        | Use matched-field evidence; raw prefix only classifies literal tiers                                                                                                 |
+| Global English token rules corrupt other languages     | Missing/malformed phrases    | Apply the existing English stop-word list only to the English analyzer; use no implicit English suppression elsewhere; track script-aware segmentation in `feat-364` |
+| Taxonomy data is unreviewed or incomplete              | Misleading category matches  | Core language-bound keywords first; reviewed registry only; no automated Web catalog import                                                                          |
+| Larger lexical projection increases memory/latency     | Serving cost/regression      | Census before constants; cap terms/bytes/import batches; compare predicted/imported size; enforce v1/v2 p50/p95/p99 and rebuild-peak headroom gates                  |
+| One bad expansion result erases exact matches          | Empty panel during incidents | Consume baseline/expansion as settled results and expose versioned degradation metrics                                                                               |
 
 ## Verification Plan
 
@@ -597,7 +597,7 @@ duration. Do not record full free-form query text in a new logging surface.
 pnpm --filter @forge/admin test -- src/services/typesense-client.test.ts src/services/typesense-watch-search-schema.test.ts src/services/typesense-watch-search-lexical.test.ts src/services/typesense-watch-search-indexer.test.ts src/services/typesense-watch-search-taxonomy.test.ts src/services/typesense-watch-search-suggestions.test.ts src/services/bounded-ttl-promise-cache.test.ts
 pnpm --filter @forge/admin typecheck
 pnpm --filter @forge/admin lint
-pnpm exec prettier --check apps/admin/src/services/typesense-client.ts apps/admin/src/services/typesense-client.test.ts apps/admin/src/services/typesense-watch-search-schema.ts apps/admin/src/services/typesense-watch-search-schema.test.ts apps/admin/src/services/typesense-watch-search-lexical.ts apps/admin/src/services/typesense-watch-search-lexical.test.ts apps/admin/src/services/typesense-watch-search-indexer.ts apps/admin/src/services/typesense-watch-search-indexer.test.ts apps/admin/src/services/typesense-watch-search-locales.ts apps/admin/src/services/typesense-watch-search-taxonomy.ts apps/admin/src/services/typesense-watch-search-taxonomy.test.ts apps/admin/src/services/typesense-watch-search-suggestions.ts apps/admin/src/services/typesense-watch-search-suggestions.test.ts docs/plans/2026-08-13-1954-multilingual-watch-suggestion-recall-plan.md docs/roadmap/README.md docs/roadmap/content-discovery/feat-337-watch-search-suggestions.md docs/roadmap/content-discovery/feat-352-watch-search-suggestion-result-validation.md docs/roadmap/content-discovery/feat-361-multilingual-watch-suggestion-recall.md
+pnpm exec prettier --check apps/admin/src/services/typesense-client.ts apps/admin/src/services/typesense-client.test.ts apps/admin/src/services/typesense-watch-search-schema.ts apps/admin/src/services/typesense-watch-search-schema.test.ts apps/admin/src/services/typesense-watch-search-lexical.ts apps/admin/src/services/typesense-watch-search-lexical.test.ts apps/admin/src/services/typesense-watch-search-indexer.ts apps/admin/src/services/typesense-watch-search-indexer.test.ts apps/admin/src/services/typesense-watch-search-locales.ts apps/admin/src/services/typesense-watch-search-taxonomy.ts apps/admin/src/services/typesense-watch-search-taxonomy.test.ts apps/admin/src/services/typesense-watch-search-suggestions.ts apps/admin/src/services/typesense-watch-search-suggestions.test.ts docs/plans/2026-08-13-1954-multilingual-watch-suggestion-recall-plan.md docs/roadmap/README.md docs/roadmap/content-discovery/feat-337-watch-search-suggestions.md docs/roadmap/content-discovery/feat-352-watch-search-suggestion-result-validation.md docs/roadmap/content-discovery/feat-363-multilingual-watch-suggestion-recall.md
 ```
 
 ### Candidate qualification

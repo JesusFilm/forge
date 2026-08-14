@@ -1,6 +1,6 @@
 {
   "metadata": {
-    "generatedOn": "2026-08-12",
+    "generatedOn": "2026-08-13",
     "sourceInventory": "docs/i18n/watch-ui-official-language-inventory.json",
     "sourceCatalog": "apps/web/messages/en.json",
     "policy": "Missing inventory locales are provisional UI catalogs seeded from the English source catalog. Existing authored catalogs are preserved and are not marked provisional. Before authoring a listed provisional locale, remove it from provisionalLocales and run the generator without --refresh-provisional to promote its ownership; --refresh-provisional overwrites every locale that remains listed.",

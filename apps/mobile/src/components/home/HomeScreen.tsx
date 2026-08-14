@@ -462,6 +462,9 @@ export function HomeScreen() {
             refreshing={refreshing}
             onRefresh={refetch}
             tintColor={TEXT_SECONDARY}
+            // RN 0.86: Android's SwipeRefreshLayout host paints opaque by
+            // default, which hides the z-0 hero layer under the list.
+            style={styles.refreshControl}
           />
         }
       />
@@ -584,6 +587,9 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     zIndex: 0,
+  },
+  refreshControl: {
+    backgroundColor: "transparent",
   },
   heroInteractiveLayer: {
     position: "absolute",

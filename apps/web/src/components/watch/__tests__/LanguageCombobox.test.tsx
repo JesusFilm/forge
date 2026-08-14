@@ -270,6 +270,71 @@ describe("LanguageCombobox", () => {
     }
   })
 
+  it("keeps a short filtered list beside the trigger without changing placement", () => {
+    const originalInnerHeight = window.innerHeight
+    Object.defineProperty(window, "innerHeight", {
+      configurable: true,
+      value: 800,
+    })
+    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(
+      function getBoundingClientRectMock(this: HTMLElement) {
+        if (this.getAttribute("data-testid") === "language-combobox-trigger") {
+          return makeRect({
+            bottom: 714,
+            height: 64,
+            right: 400,
+            top: 650,
+            width: 400,
+          })
+        }
+        if (
+          this === $('[data-testid="language-combobox-search"]')?.parentElement
+        ) {
+          return makeRect({ bottom: 65, height: 65, right: 400, width: 400 })
+        }
+        return makeRect()
+      },
+    )
+
+    try {
+      act(() => {
+        root.render(
+          <LanguageCombobox
+            options={OPTIONS}
+            value="spanish"
+            onChange={vi.fn()}
+          />,
+        )
+      })
+      act(() => {
+        $('[data-testid="language-combobox-trigger"]')?.click()
+      })
+
+      const popover = $('[data-testid="language-combobox-popover"]')
+      const listbox = $('[role="listbox"]') as HTMLUListElement
+      expect(popover?.getAttribute("data-placement")).toBe("above")
+      expect(popover?.style.top).toBe("289px")
+      expect(listbox.style.maxHeight).toBe("288px")
+
+      const input = $(
+        '[data-testid="language-combobox-search"]',
+      ) as HTMLInputElement
+      act(() => {
+        input.value = "Spanish"
+        input.dispatchEvent(new Event("input", { bubbles: true }))
+      })
+
+      expect(popover?.getAttribute("data-placement")).toBe("above")
+      expect(popover?.style.top).toBe("497px")
+      expect(listbox.style.maxHeight).toBe("80px")
+    } finally {
+      Object.defineProperty(window, "innerHeight", {
+        configurable: true,
+        value: originalInnerHeight,
+      })
+    }
+  })
+
   it("caps the scrollable listbox when the popover must open in limited space", () => {
     const originalInnerHeight = window.innerHeight
     Object.defineProperty(window, "innerHeight", {

@@ -1,13 +1,13 @@
 ---
-id: "feat-364"
+id: "feat-366"
 title: "Require executable Watch suggestion qualification before publication"
 owner: "urim"
 priority: "P1"
 status: "not-started"
 duration: 2
 depends_on:
-  - "feat-361"
   - "feat-363"
+  - "feat-365"
 blocks: []
 tags:
   - "admin"

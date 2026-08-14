@@ -3,10 +3,12 @@
   "compilerOptions": {
     "strict": true,
     "skipLibCheck": true,
+    "types": ["jest"],
     "paths": {
       "@/*": ["./src/*"],
       "react": ["./node_modules/@types/react/index.d.ts"],
-      "react/jsx-runtime": ["./node_modules/@types/react/jsx-runtime.d.ts"]
+      "react/jsx-runtime": ["./node_modules/@types/react/jsx-runtime.d.ts"],
+      "react-native": ["./node_modules/react-native"]
     }
   },
   "include": ["**/*.ts", "**/*.tsx"]

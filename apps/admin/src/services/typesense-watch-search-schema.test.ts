@@ -40,6 +40,11 @@ describe("Typesense Watch Search schemas", () => {
           locale: "ko",
           stem: true,
         }),
+        {
+          name: "title_exact_keys",
+          type: "string[]",
+          optional: true,
+        },
         expect.objectContaining({ name: "title_fallback" }),
         expect.objectContaining({ name: "metadata_fallback" }),
         expect.objectContaining({ name: "taxonomy_fallback" }),
@@ -167,8 +172,10 @@ describe("Typesense Watch Search schemas", () => {
     const expectedNames = [
       ...TYPESENSE_WATCH_TOKENIZER_LOCALES.flatMap((locale) => [
         `title_${locale}`,
-        `title_stem_${locale}`,
         `metadata_${locale}`,
+      ]),
+      ...TYPESENSE_WATCH_TOKENIZER_LOCALES.flatMap((locale) => [
+        `title_stem_${locale}`,
         `metadata_stem_${locale}`,
         `taxonomy_${locale}`,
         `taxonomy_stem_${locale}`,
@@ -183,6 +190,9 @@ describe("Typesense Watch Search schemas", () => {
 
     expect(searchableNames).toEqual(expectedNames)
     expect(searchableNames).toHaveLength(153)
+    expect(schema.fields).not.toContainEqual(
+      expect.objectContaining({ name: "title_exact_keys" }),
+    )
   })
 
   it("keeps transcript vectors at the existing embedding dimensions", () => {

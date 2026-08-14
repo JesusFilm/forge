@@ -1,5 +1,9 @@
 import type { PrismaClient } from "@prisma/client"
 import { describe, expect, it, vi } from "vitest"
+import {
+  TYPESENSE_WATCH_EXACT_TITLE_KEYS_FIELD,
+  typesenseWatchExactTitleKey,
+} from "@/services/typesense-watch-search-exact-title"
 import type { TypesenseWatchCandidateProjectionSnapshot } from "@/services/typesense-watch-search-indexer"
 import {
   CandidateProjectionSafetyError,
@@ -41,6 +45,7 @@ const snapshot: TypesenseWatchCandidateProjectionSnapshot = {
     },
   ],
   availability: [],
+  tokenizerLocales: ["en", "zh"],
   lexical: [
     {
       id: "video-1:slug:english",
@@ -48,6 +53,7 @@ const snapshot: TypesenseWatchCandidateProjectionSnapshot = {
       canonicalVideoId: "core:core-1",
       languageIdentity: "slug:english",
       localeCodes: ["en"],
+      title_exact_keys: [typesenseWatchExactTitleKey("JESUS")!],
       title_en: ["JESUS"],
       metadata_en: ["The life of Jesus"],
     },
@@ -57,6 +63,7 @@ const snapshot: TypesenseWatchCandidateProjectionSnapshot = {
       canonicalVideoId: "core:core-1",
       languageIdentity: "slug:mandarin-chinese",
       localeCodes: ["zh-hans"],
+      title_exact_keys: [typesenseWatchExactTitleKey("耶稣传")!],
       title_zh: ["耶稣传"],
       metadata_zh: ["耶稣的一生"],
     },
@@ -78,6 +85,7 @@ const snapshot: TypesenseWatchCandidateProjectionSnapshot = {
     },
     estimatedRamLowBytes: 128,
     estimatedRamHighBytes: 192,
+    exactTitleKeyBytes: 64,
   },
 }
 
@@ -88,6 +96,7 @@ function lifecycleDouble(generationId = "generation_01") {
     // The double accepts the production service's heterogeneous Prisma input.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     createBuildingGeneration: vi.fn(async (input: Record<string, any>) => {
+      if (row) throw Object.assign(new Error("duplicate"), { code: "P2002" })
       row = {
         ...input,
         state: "BUILDING",
@@ -241,7 +250,10 @@ function typesenseDouble() {
       importDocuments: vi.fn(
         async (collection: string, batch: unknown[], action: string) => {
           expect(action).toBe("upsert")
-          documents.set(collection, batch)
+          documents.set(collection, [
+            ...(documents.get(collection) ?? []),
+            ...batch,
+          ])
         },
       ),
       multiSearch: vi.fn(
@@ -253,11 +265,29 @@ function typesenseDouble() {
             group_limit?: number
             page?: number
             per_page?: number
+            q?: string
+            query_by?: string
           }>,
         ) =>
           searches.map((search) => {
             const collectionDocuments = (documents.get(search.collection) ??
               []) as Array<Record<string, unknown>>
+            if (search.query_by === TYPESENSE_WATCH_EXACT_TITLE_KEYS_FIELD) {
+              const hits = collectionDocuments
+                .filter((document) =>
+                  (document.title_exact_keys as string[] | undefined)?.includes(
+                    search.q ?? "",
+                  ),
+                )
+                .map((document) => ({ document }))
+              return {
+                found: hits.length,
+                out_of: collectionDocuments.length,
+                page: 1,
+                search_time_ms: 1,
+                hits,
+              }
+            }
             const identity = search.filter_by?.match(/`([^`]+)`/)?.[1]
             const filteredDocuments = identity
               ? collectionDocuments.filter(
@@ -348,6 +378,14 @@ describe("Typesense Watch candidate index CLI", () => {
       expect.objectContaining({
         sourceDigests: snapshot.digests,
         members: expect.objectContaining({
+          lexical: expect.objectContaining({
+            fields: expect.arrayContaining([
+              expect.objectContaining({
+                name: TYPESENSE_WATCH_EXACT_TITLE_KEYS_FIELD,
+                type: "string[]",
+              }),
+            ]),
+          }),
           transcript: expect.objectContaining({
             collection: "watch_search_transcripts_active",
             ownership: "SHARED",
@@ -356,6 +394,9 @@ describe("Typesense Watch candidate index CLI", () => {
       }),
     )
     expect(typesense.client.importDocuments).toHaveBeenCalledTimes(3)
+    expect(
+      typesense.documents.get("watch_search_candidate_generation_01_lexical"),
+    ).toEqual(snapshot.lexical)
     expect(typesense.client.importDocuments).not.toHaveBeenCalledWith(
       "watch_search_transcripts_active",
       expect.anything(),
@@ -364,6 +405,31 @@ describe("Typesense Watch candidate index CLI", () => {
     expect(typesense.client.upsertAlias).not.toHaveBeenCalled()
     expect(typesense.client.deleteAlias).not.toHaveBeenCalled()
     expect(currentCanary).toHaveBeenCalledTimes(2)
+    expect(generation.lifecycle.validateAndMarkReady).toHaveBeenCalledWith(
+      expect.objectContaining({
+        documentCounts: expect.objectContaining({
+          ...snapshot.counts,
+          transcript: 0,
+        }),
+        capacityEvidence: expect.objectContaining({
+          exactTitleKeyBytes: 64,
+          lexicalSearchableBytes: 64,
+          transcriptReused: true,
+        }),
+      }),
+    )
+    expect(typesense.client.multiSearch).toHaveBeenCalledWith([
+      expect.objectContaining({
+        collection: "watch_search_candidate_generation_01_lexical",
+        q: typesenseWatchExactTitleKey("JESUS"),
+        query_by: TYPESENSE_WATCH_EXACT_TITLE_KEYS_FIELD,
+        num_typos: 0,
+        prefix: false,
+      }),
+    ])
+    expect(generation.lifecycle.getPointer).toHaveBeenCalledTimes(1)
+    expect(generation.lifecycle.getPointer).toHaveBeenCalledWith("EVALUATION")
+    expect(generation.lifecycle.publishEvaluationGeneration).toHaveBeenCalled()
     expect(result).toMatchObject({
       generationId: "generation_01",
       transcriptReused: true,
@@ -537,6 +603,153 @@ describe("Typesense Watch candidate index CLI", () => {
     ).rejects.toThrow(/schema manifest mismatch/i)
 
     expect(generation.lifecycle.validateAndMarkReady).not.toHaveBeenCalled()
+  })
+
+  it("rejects a previous projection revision instead of reusing it", async () => {
+    const generation = lifecycleDouble()
+    const typesense = typesenseDouble()
+    const input = {
+      prisma: {} as PrismaClient,
+      typesense: typesense.client as never,
+      generations: generation.lifecycle as never,
+      generationId: generation.generationId,
+      sourceEpoch: "source-42",
+      transcript: {
+        collection: "watch_search_transcripts_active",
+        projectionRevision: 17n,
+      },
+      loadSnapshot: async () => snapshot,
+    }
+
+    await publishTypesenseWatchSearchCandidate({
+      ...input,
+      applicationRevision: "watch-search-candidate/v1",
+    })
+
+    await expect(
+      publishTypesenseWatchSearchCandidate({
+        ...input,
+        applicationRevision: "watch-search-candidate/v2",
+      }),
+    ).rejects.toThrow(/immutable publication input/)
+    expect(generation.lifecycle.createBuildingGeneration).toHaveBeenCalledTimes(
+      2,
+    )
+    expect(
+      generation.lifecycle.publishEvaluationGeneration,
+    ).toHaveBeenCalledTimes(1)
+  })
+
+  it("fails before publication when exact key bytes do not match the projection", async () => {
+    const generation = lifecycleDouble()
+    const typesense = typesenseDouble()
+
+    await expect(
+      publishTypesenseWatchSearchCandidate({
+        prisma: {} as PrismaClient,
+        typesense: typesense.client as never,
+        generations: generation.lifecycle as never,
+        generationId: generation.generationId,
+        applicationRevision: "watch-search-candidate/v2",
+        sourceEpoch: "source-42",
+        transcript: {
+          collection: "watch_search_transcripts_active",
+          projectionRevision: 17n,
+        },
+        loadSnapshot: async () => ({
+          ...snapshot,
+          lexicalMemory: { ...snapshot.lexicalMemory, exactTitleKeyBytes: 0 },
+        }),
+      }),
+    ).rejects.toThrow(/exact title key byte estimate/)
+
+    expect(generation.lifecycle.createBuildingGeneration).not.toHaveBeenCalled()
+    expect(typesense.client.createCollection).not.toHaveBeenCalled()
+    expect(
+      generation.lifecycle.publishEvaluationGeneration,
+    ).not.toHaveBeenCalled()
+  })
+
+  it("fails before publication when a titled document has no exact key", async () => {
+    const generation = lifecycleDouble()
+    const typesense = typesenseDouble()
+    const [english, ...remaining] = snapshot.lexical
+    const withoutExactKeys = { ...english! }
+    delete withoutExactKeys.title_exact_keys
+
+    await expect(
+      publishTypesenseWatchSearchCandidate({
+        prisma: {} as PrismaClient,
+        typesense: typesense.client as never,
+        generations: generation.lifecycle as never,
+        generationId: generation.generationId,
+        applicationRevision: "watch-search-candidate/v2",
+        sourceEpoch: "source-42",
+        transcript: {
+          collection: "watch_search_transcripts_active",
+          projectionRevision: 17n,
+        },
+        loadSnapshot: async () => ({
+          ...snapshot,
+          lexical: [withoutExactKeys, ...remaining],
+          lexicalMemory: {
+            ...snapshot.lexicalMemory,
+            exactTitleKeyBytes: 32,
+          },
+        }),
+      }),
+    ).rejects.toThrow(/titles without exact keys/)
+
+    expect(generation.lifecycle.createBuildingGeneration).not.toHaveBeenCalled()
+    expect(
+      generation.lifecycle.publishEvaluationGeneration,
+    ).not.toHaveBeenCalled()
+  })
+
+  it("fails closed when an imported exact key cannot be read back", async () => {
+    const generation = lifecycleDouble()
+    const typesense = typesenseDouble()
+    const multiSearch = typesense.client.multiSearch.getMockImplementation()
+    if (multiSearch == null) throw new Error("multiSearch mock missing")
+    typesense.client.multiSearch.mockImplementation(async (searches) => {
+      const results = await multiSearch(searches)
+      return results.map((result, index) => {
+        if (
+          searches[index]?.query_by !== TYPESENSE_WATCH_EXACT_TITLE_KEYS_FIELD
+        ) {
+          return result
+        }
+        return {
+          found: 0,
+          out_of: result.out_of,
+          page: result.page,
+          search_time_ms: result.search_time_ms,
+          hits: [] as Array<{ document: Record<string, unknown> }>,
+        }
+      })
+    })
+
+    await expect(
+      publishTypesenseWatchSearchCandidate({
+        prisma: {} as PrismaClient,
+        typesense: typesense.client as never,
+        generations: generation.lifecycle as never,
+        generationId: generation.generationId,
+        applicationRevision: "watch-search-candidate/v2",
+        sourceEpoch: "source-42",
+        transcript: {
+          collection: "watch_search_transcripts_active",
+          projectionRevision: 17n,
+        },
+        loadSnapshot: async () => snapshot,
+      }),
+    ).rejects.toThrow(/exact title key read smoke/)
+
+    expect(generation.row).toMatchObject({ state: "BUILDING" })
+    expect(generation.lifecycle.validateAndMarkReady).not.toHaveBeenCalled()
+    expect(
+      generation.lifecycle.publishEvaluationGeneration,
+    ).not.toHaveBeenCalled()
   })
 
   it("leaves a durable BUILDING owner when external publication fails", async () => {

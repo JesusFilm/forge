@@ -242,7 +242,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
   },
   loadingContainer: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     alignItems: "center",
     justifyContent: "center",
   },

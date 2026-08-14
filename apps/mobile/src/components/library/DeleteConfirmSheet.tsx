@@ -147,7 +147,7 @@ export function DeleteConfirmSheet({
 
 const styles = StyleSheet.create({
   scrim: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: SCRIM_BG,
     zIndex: 20,
   },

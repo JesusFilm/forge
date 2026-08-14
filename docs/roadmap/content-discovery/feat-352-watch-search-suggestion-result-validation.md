@@ -10,7 +10,7 @@ duration: 1
 depends_on:
   - "feat-337"
 blocks:
-  - "feat-361"
+  - "feat-363"
 tags:
   - "admin"
   - "watch"

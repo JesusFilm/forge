@@ -1,4 +1,8 @@
 import { canonicalTypesenseVideoId } from "./typesense-watch-search-identifiers"
+import {
+  TYPESENSE_WATCH_EXACT_TITLE_KEYS_FIELD,
+  typesenseWatchExactTitleKey,
+} from "./typesense-watch-search-exact-title"
 import type {
   TypesenseWatchCatalogDocument,
   TypesenseWatchLocale,
@@ -54,6 +58,11 @@ export type TypesenseSearchableBytesByFamily = {
   stemTaxonomy: number
 }
 
+export type TypesenseWatchCandidateLexicalDocument =
+  TypesenseWatchLexicalDocument & {
+    title_exact_keys?: string[]
+  }
+
 export type TypesenseKeywordMemoryEstimate = {
   searchableBytes: number
   searchableBytesByFamily: TypesenseSearchableBytesByFamily
@@ -75,13 +84,26 @@ function searchableFieldFamily(
   return null
 }
 
+export type TypesenseCandidateKeywordMemoryEstimate =
+  TypesenseKeywordMemoryEstimate & {
+    exactTitleKeyBytes: number
+  }
+
 export function typesenseWatchTokenizerLocale(locale: string): string | null {
   const base = locale
     .trim()
     .toLocaleLowerCase()
     .replace(/_/g, "-")
     .split("-")[0]
-  return base && TYPESENSE_WATCH_TOKENIZER_LOCALE_SET.has(base) ? base : null
+  return base && /^[a-z]{2}$/.test(base) ? base : null
+}
+
+export function typesenseWatchStemmerLocale(locale: string): string | null {
+  const tokenizerLocale = typesenseWatchTokenizerLocale(locale)
+  return tokenizerLocale &&
+    TYPESENSE_WATCH_TOKENIZER_LOCALE_SET.has(tokenizerLocale)
+    ? tokenizerLocale
+    : null
 }
 
 export function typesenseWatchLocaleCodes(locale: string): string[] {
@@ -190,25 +212,57 @@ export function buildTypesenseWatchLexicalDocuments(
           document.localeCodes.push(localeCode)
         }
       }
-      const tokenizerLocale = typesenseWatchTokenizerLocale(locale.locale)
-      const suffix = tokenizerLocale ?? "fallback"
-      appendUnique(document, `title_${suffix}`, locale.title)
-      appendUnique(document, `metadata_${suffix}`, locale.description)
-      if (tokenizerLocale) {
-        appendUnique(document, `title_stem_${suffix}`, locale.title)
-        appendUnique(document, `metadata_stem_${suffix}`, locale.description)
+      const exactLocale = typesenseWatchTokenizerLocale(locale.locale)
+      const stemmerLocale = typesenseWatchStemmerLocale(locale.locale)
+      const exactSuffix = exactLocale ?? "fallback"
+      const expansionSuffix = stemmerLocale ?? "fallback"
+      appendUnique(document, `title_${exactSuffix}`, locale.title)
+      appendUnique(document, `metadata_${exactSuffix}`, locale.description)
+      if (stemmerLocale) {
+        appendUnique(document, `title_stem_${stemmerLocale}`, locale.title)
+        appendUnique(
+          document,
+          `metadata_stem_${stemmerLocale}`,
+          locale.description,
+        )
       }
       for (const term of normalizeTypesenseWatchTaxonomy(
         locale.taxonomy ?? [],
       )) {
-        appendUnique(document, `taxonomy_${suffix}`, term)
-        if (tokenizerLocale) {
-          appendUnique(document, `taxonomy_stem_${suffix}`, term)
+        appendUnique(document, `taxonomy_${expansionSuffix}`, term)
+        if (stemmerLocale) {
+          appendUnique(document, `taxonomy_stem_${stemmerLocale}`, term)
         }
       }
       documents.set(languageIdentity, document)
     }
     return [...documents.values()]
+  })
+}
+
+export function buildTypesenseWatchCandidateLexicalDocuments(
+  catalog: readonly TypesenseWatchCatalogDocument[],
+): TypesenseWatchCandidateLexicalDocument[] {
+  return buildTypesenseWatchLexicalDocuments(catalog).map((document) => {
+    const exactTitleKeys = new Set<string>()
+    for (const [field, values] of Object.entries(document)) {
+      if (
+        !field.startsWith("title_") ||
+        field.startsWith("title_stem_") ||
+        field === TYPESENSE_WATCH_EXACT_TITLE_KEYS_FIELD
+      ) {
+        continue
+      }
+      for (const title of Array.isArray(values) ? values : [values]) {
+        const key = typesenseWatchExactTitleKey(title)
+        if (key) exactTitleKeys.add(key)
+      }
+    }
+    if (exactTitleKeys.size === 0) return document
+    return {
+      ...document,
+      [TYPESENSE_WATCH_EXACT_TITLE_KEYS_FIELD]: [...exactTitleKeys].sort(),
+    }
   })
 }
 
@@ -243,4 +297,34 @@ export function estimateTypesenseKeywordMemory(
     estimatedRamLowBytes: searchableBytes * 2,
     estimatedRamHighBytes: searchableBytes * 3,
   }
+}
+
+export function estimateTypesenseCandidateKeywordMemory(
+  documents: readonly TypesenseWatchCandidateLexicalDocument[],
+): TypesenseCandidateKeywordMemoryEstimate {
+  const estimate = estimateTypesenseKeywordMemory(documents)
+  const encoder = new TextEncoder()
+  const exactTitleKeyBytes = documents.reduce(
+    (total, document) =>
+      total +
+      (document.title_exact_keys ?? []).reduce(
+        (keyTotal, key) => keyTotal + encoder.encode(key).byteLength,
+        0,
+      ),
+    0,
+  )
+  return { ...estimate, exactTitleKeyBytes }
+}
+
+export function typesenseWatchTokenizerLocales(
+  documents: readonly TypesenseWatchLexicalDocument[],
+): string[] {
+  const locales = new Set<string>(TYPESENSE_WATCH_TOKENIZER_LOCALES)
+  for (const document of documents) {
+    for (const field of Object.keys(document)) {
+      const match = /^(?:title|metadata)_([a-z]{2})$/.exec(field)
+      if (match?.[1]) locales.add(match[1])
+    }
+  }
+  return [...locales].sort()
 }

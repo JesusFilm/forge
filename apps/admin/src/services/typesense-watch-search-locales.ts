@@ -3,7 +3,11 @@ import type {
   TypesenseWatchCatalogDocument,
   TypesenseWatchLocale,
 } from "./typesense-watch-search-schema"
-import { typesenseWatchTokenizerLocale } from "./typesense-watch-search-lexical"
+import { TYPESENSE_WATCH_EXACT_TITLE_KEYS_FIELD } from "./typesense-watch-search-exact-title"
+import {
+  typesenseWatchStemmerLocale,
+  typesenseWatchTokenizerLocale,
+} from "./typesense-watch-search-lexical"
 
 export type TypesenseWatchLexicalLane = "title" | "metadata" | "taxonomy"
 export type TypesenseWatchLexicalVariant = "exact" | "stem"
@@ -13,7 +17,10 @@ export function watchLexicalQueryFields(
   lane: TypesenseWatchLexicalLane,
   variant: TypesenseWatchLexicalVariant = "exact",
 ): string[] {
-  const tokenizerLocale = typesenseWatchTokenizerLocale(locale)
+  const tokenizerLocale =
+    variant === "stem" || lane === "taxonomy"
+      ? typesenseWatchStemmerLocale(locale)
+      : typesenseWatchTokenizerLocale(locale)
   if (variant === "stem") {
     return tokenizerLocale ? [`${lane}_stem_${tokenizerLocale}`] : []
   }
@@ -32,10 +39,30 @@ export function watchLexicalManifestQueryFields(
   return fields.flatMap((field) =>
     field.name.startsWith(prefix) &&
     (variant === "stem" || !field.name.startsWith(excludedPrefix)) &&
+    field.name !== TYPESENSE_WATCH_EXACT_TITLE_KEYS_FIELD &&
     field.index !== false &&
     (field.type === "string" || field.type === "string[]")
       ? [field.name]
       : [],
+  )
+}
+
+export function watchLexicalOrderedManifestQueryFields(
+  fields: readonly TypesenseCollectionField[],
+  lane: TypesenseWatchLexicalLane,
+  preferredLocales: readonly string[],
+): string[] {
+  const manifestFields = watchLexicalManifestQueryFields(fields, lane)
+  const availableFields = new Set(manifestFields)
+  const preferredFields = preferredLocales.flatMap((locale) => {
+    const tokenizerLocale = typesenseWatchTokenizerLocale(locale)
+    return tokenizerLocale ? [`${lane}_${tokenizerLocale}`] : []
+  })
+  const fallbackField = `${lane}_fallback`
+
+  return [...preferredFields, fallbackField, ...manifestFields].filter(
+    (field, index, all) =>
+      availableFields.has(field) && all.indexOf(field) === index,
   )
 }
 

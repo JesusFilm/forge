@@ -13,7 +13,7 @@ depends_on:
 blocks:
   - "feat-352"
   - "feat-357"
-  - "feat-361"
+  - "feat-363"
 tags:
   - "admin"
   - "web"

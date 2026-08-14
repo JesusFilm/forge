@@ -1,5 +1,5 @@
 ---
-id: "feat-361"
+id: "feat-363"
 title: "Add multilingual morphology and taxonomy Watch suggestions"
 owner: "urim"
 priority: "P1"
@@ -11,11 +11,11 @@ depends_on:
   - "feat-337"
   - "feat-352"
 blocks:
-  - "feat-362"
-  - "feat-363"
   - "feat-364"
   - "feat-365"
   - "feat-366"
+  - "feat-367"
+  - "feat-368"
 tags:
   - "admin"
   - "watch"
@@ -67,7 +67,7 @@ rg -n "model Keyword|model VideoKeyword|keywords:" apps/admin/prisma apps/admin/
 4. Generate visible query phrases only from literal localized title/description
    evidence. Keep the current bounded Unicode tokenization, but apply the English
    edge-stop-word list only to the English analyzer. Script-aware phrase
-   segmentation is tracked separately in `feat-362`.
+   segmentation is tracked separately in `feat-364`.
 5. Keep phrase validation, direct-match hydration, exact language filtering,
    canonical-video deduplication, visible caps, and explicit full-search submit
    behavior intact. Expanded-lane failure must degrade to baseline suggestions.

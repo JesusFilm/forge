@@ -13,6 +13,9 @@ export const adminWatchSearchQuery = `
         resultCount
         reason
       }
+      languageInterpretation {
+        targetLanguageSlug
+      }
       results {
         type
         id

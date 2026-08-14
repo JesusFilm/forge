@@ -6,8 +6,8 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 
 ## Status (August 12, 2026)
 
-- **Total tickets:** 525
-- **Complete:** 398
+- **Total tickets:** 527
+- **Complete:** 400
 - **In progress:** 38
 - **Not started:** 38
 - **Blocked:** 51
@@ -115,12 +115,14 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-358](content-discovery/feat-358-watch-search-contextual-submit-row.md)                                   | Move Watch search submission into the suggestion context row                                    | urim       | P1       | 2026-08-12 | 1    | 2026-08-12 | complete    |
 | [feat-359](content-discovery/feat-359-watch-search-contextual-translations.md)                                 | Correct contextual Watch search translations                                                    | urim       | P1       | 2026-08-12 | 1    | 2026-08-12 | complete    |
 | [feat-360](content-discovery/feat-360-watch-search-low-resource-native-review.md)                              | Native-review low-resource Watch search translations                                            | urim       | P1       | 2026-08-13 | 2    | 2026-08-14 | not-started |
-| [feat-361](content-discovery/feat-361-multilingual-watch-suggestion-recall.md)                                 | Add multilingual morphology and taxonomy Watch suggestions                                      | urim       | P1       | 2026-08-13 | 2    | 2026-08-13 | complete    |
-| [feat-363](content-discovery/feat-363-watch-suggestion-qualification-minimum-work.md)                          | Reject empty Watch suggestion qualification workloads                                           | urim       | P1       | —          | 1    | —          | not-started |
-| [feat-364](content-discovery/feat-364-watch-suggestion-publication-qualification.md)                           | Require executable Watch suggestion qualification before publication                            | urim       | P1       | —          | 2    | —          | not-started |
-| [feat-365](content-discovery/feat-365-watch-suggestion-mixed-rollout-locales.md)                               | Keep unsupported Watch locales compatible during rollout                                        | urim       | P1       | —          | 1    | —          | not-started |
-| [feat-366](content-discovery/feat-366-watch-candidate-exact-group-counts.md)                                   | Make candidate grouped coverage counts exact                                                    | urim       | P1       | —          | 1    | —          | not-started |
-| [feat-362](content-discovery/feat-362-watch-suggestion-script-aware-phrases.md)                                | Add script-aware multilingual Watch query phrases                                               | urim       | P2       | —          | 2    | —          | not-started |
+| [feat-361](content-discovery/feat-361-watch-search-unavailable-language-recovery.md)                           | Recover unavailable-language Watch search results                                               | urim       | P1       | 2026-08-13 | 4    | —          | complete    |
+| [feat-362](content-discovery/feat-362-watch-search-native-language-candidate-recall.md)                        | Watch search native-language Candidate recall                                                   | codex      | P1       | 2026-08-13 | 2    | 2026-08-14 | in-progress |
+| [feat-363](content-discovery/feat-363-multilingual-watch-suggestion-recall.md)                                 | Add multilingual morphology and taxonomy Watch suggestions                                      | urim       | P1       | 2026-08-13 | 2    | 2026-08-13 | complete    |
+| [feat-365](content-discovery/feat-365-watch-suggestion-qualification-minimum-work.md)                          | Reject empty Watch suggestion qualification workloads                                           | urim       | P1       | —          | 1    | —          | not-started |
+| [feat-366](content-discovery/feat-366-watch-suggestion-publication-qualification.md)                           | Require executable Watch suggestion qualification before publication                            | urim       | P1       | —          | 2    | —          | not-started |
+| [feat-367](content-discovery/feat-367-watch-suggestion-mixed-rollout-locales.md)                               | Keep unsupported Watch locales compatible during rollout                                        | urim       | P1       | 2026-08-14 | 1    | 2026-08-14 | complete    |
+| [feat-368](content-discovery/feat-368-watch-candidate-exact-group-counts.md)                                   | Make candidate grouped coverage counts exact                                                    | urim       | P1       | —          | 1    | —          | not-started |
+| [feat-364](content-discovery/feat-364-watch-suggestion-script-aware-phrases.md)                                | Add script-aware multilingual Watch query phrases                                               | urim       | P2       | —          | 2    | —          | not-started |
 | [feat-080](content-discovery/feat-080-transcript-embedding-table-rename.md)                                    | Transcript Embedding Table Rename                                                               | nisal      | P2       | 2026-04-10 | 2    | 2026-04-11 | complete    |
 | [feat-119](content-discovery/feat-119-embed-backfill-artifact-missing-classification-and-opt-in-enrichment.md) | Embed Backfill — Classify NoSuchKey + emit missingArtifacts list + decoupled enrichment trigger | nisal      | P2       | 2026-05-06 | 4    | 2026-05-09 | complete    |
 | [feat-143](content-discovery/feat-143-drop-legacy-search-trace-aggregate-unique-key.md)                        | Drop legacy search trace aggregate unique key                                                   | nisal      | P2       | 2026-05-26 | 1    | 2026-05-26 | not-started |

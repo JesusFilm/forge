@@ -1,6 +1,7 @@
 ---
 title: A new shared visibility predicate must be audited against every duplicate hand-rolled block, not just the call sites the PR already touched
 date: 2026-08-10
+last_updated: 2026-08-13
 problem_type: best_practice
 category: best-practices
 component: apps_admin
@@ -128,6 +129,32 @@ existing ad-hoc pattern repeated across a codebase:
    explicitly absent (`expect(...).toBeUndefined()`) for the
    editor/admin bypass path — this is the shape of test that would have
    failed before this fix and would catch a future regression.
+
+## Worked instance (2026-08-13): Android hero surfaceType rollout in apps/mobile
+
+The same gap recurred outside Prisma predicates, on a one-line native prop.
+A PR #1926 commit fixed the RN 0.86 Android black-hero bug by
+adding `surfaceType={Platform.OS === "android" ? "textureView" : undefined}`
+to the home hero VideoView — the two sites the investigation had touched
+(`HomeHeroPager.tsx`, plus the pre-existing `VideoPlayer.tsx:408` precedent).
+The structurally identical third site, `VideoHeroRenderer.tsx` (the SDUI
+experience hero, mounted in the same zIndex-0-behind-FlashList stack by
+`CuratedHomeLayout`), was missed — by the commit's own diagnosis it would
+still render black on Android.
+
+The reviewer found it by applying rule 1 above: grep for the **shape** (all
+`VideoView` render sites), not the diff's files. A validator confirmed
+`VideoHeroRenderer` was the only unfixed render site and that the surface is
+production-reachable at `/experience/[slug]`. The mirror fix landed with a
+source-shape guard test
+(`apps/mobile/src/components/home/__tests__/homeHeroAndroidCompositing.guard.test.ts`)
+pinning all three props, falsified once before landing. Full write-up:
+`docs/solutions/ui-bugs/android-home-hero-black-refreshcontrol-surfaceview-compositing.md`.
+
+The instance extends the law beyond shared predicates: any repeated FIX
+(a prop, a style, a guard) applied to some instances of a structural shape
+leaves the untouched siblings silently stale — grep the shape before
+claiming the area covered.
 
 ## Cross-references
 

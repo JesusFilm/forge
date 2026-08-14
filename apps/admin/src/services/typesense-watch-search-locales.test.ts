@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 import {
   displayPreviewLocale,
+  watchLexicalOrderedManifestQueryFields,
   watchLexicalManifestQueryFields,
   watchLexicalQueryFields,
   type TypesenseWatchCatalogPreviewDocument,
@@ -77,7 +78,7 @@ describe("watchLexicalQueryFields", () => {
     ["th-TH", "metadata", "exact", ["metadata_th", "metadata_fallback"]],
     ["es-MX", "taxonomy", "exact", ["taxonomy_es", "taxonomy_fallback"]],
     ["es-MX", "taxonomy", "stem", ["taxonomy_stem_es"]],
-    ["mi", "title", "exact", ["title_fallback"]],
+    ["mi", "title", "exact", ["title_mi", "title_fallback"]],
     ["mi", "metadata", "stem", []],
     ["unknown", "taxonomy", "exact", ["taxonomy_fallback"]],
   ] as const)(
@@ -122,5 +123,26 @@ describe("watchLexicalQueryFields", () => {
     expect(
       watchLexicalManifestQueryFields(fields, "taxonomy", "exact"),
     ).toEqual(["taxonomy_en", "taxonomy_fallback"])
+  })
+
+  it("orders preferred tokenizer fields, fallback, then the complete remainder", () => {
+    const fields = [
+      { name: "title_en", type: "string[]" },
+      { name: "title_ja", type: "string[]" },
+      { name: "title_ru", type: "string[]" },
+      { name: "title_zh", type: "string[]" },
+      { name: "title_fallback", type: "string[]" },
+      { name: "title_exact_keys", type: "string[]" },
+    ]
+
+    expect(
+      watchLexicalOrderedManifestQueryFields(fields, "title", ["ru-RU", "ja"]),
+    ).toEqual([
+      "title_ru",
+      "title_ja",
+      "title_fallback",
+      "title_en",
+      "title_zh",
+    ])
   })
 })

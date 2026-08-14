@@ -1,12 +1,12 @@
 ---
-id: "feat-366"
+id: "feat-368"
 title: "Make candidate grouped coverage counts exact"
 owner: "urim"
 priority: "P1"
 status: "not-started"
 duration: 1
 depends_on:
-  - "feat-361"
+  - "feat-363"
 blocks: []
 tags:
   - "admin"
