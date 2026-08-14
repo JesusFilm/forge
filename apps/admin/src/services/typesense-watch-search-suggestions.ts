@@ -36,7 +36,6 @@ const LANGUAGE_LOCALE_CACHE_TTL_MS = 5 * 60 * 1_000
 const MAX_CACHED_LANGUAGE_LOCALES = 256
 const PHRASE_VALIDATION_CACHE_TTL_MS = 60 * 1_000
 const MAX_CACHED_PHRASE_VALIDATIONS = 512
-const PHRASE_VALIDATION_CONTRACT_VERSION = "v1"
 const TYPESENSE_SUGGESTION_CANDIDATE_LIMIT = 25
 const MAX_BASELINE_QUERY_FIELDS = 4
 const MAX_EXPANSION_QUERY_FIELDS = 5
@@ -276,6 +275,7 @@ function phraseWindows(
   value: string,
   query: string,
   minimumMultiwordLength: number,
+  tokenizerLocale: string | null,
 ): string[] {
   const words = [...value.normalize("NFC").matchAll(PHRASE_WORD)].map(
     (match) => match[0],
@@ -312,8 +312,14 @@ function phraseWindows(
         const first = words[start]?.toLocaleLowerCase()
         const last = words[end]?.toLocaleLowerCase()
         if (!first || !last) continue
-        if (length > 1 && PHRASE_EDGE_STOP_WORDS.has(first)) continue
-        if (length > 1 && PHRASE_EDGE_STOP_WORDS.has(last)) continue
+        if (
+          tokenizerLocale === "en" &&
+          length > 1 &&
+          (PHRASE_EDGE_STOP_WORDS.has(first) ||
+            PHRASE_EDGE_STOP_WORDS.has(last))
+        ) {
+          continue
+        }
         phrases.add(words.slice(start, end + 1).join(" "))
       }
     }
@@ -327,6 +333,7 @@ function extractedQuerySuggestions(
   metadataFields: readonly string[],
   query: string,
   excludedTitles: ReadonlySet<string>,
+  tokenizerLocale: string | null,
 ): WatchSearchSuggestion[] {
   const byPhrase = new Map<string, PhraseCandidate>()
   let firstSeen = 0
@@ -336,7 +343,12 @@ function extractedQuerySuggestions(
     sourceWeight: number,
     minimumMultiwordLength: number,
   ) => {
-    for (const phrase of phraseWindows(value, query, minimumMultiwordLength)) {
+    for (const phrase of phraseWindows(
+      value,
+      query,
+      minimumMultiwordLength,
+      tokenizerLocale,
+    )) {
       const key = comparablePhrase(phrase)
       const wordCount = phrase.match(PHRASE_WORD)?.length ?? 0
       if (!key || (wordCount > 1 && excludedTitles.has(key))) continue
@@ -548,9 +560,10 @@ function phraseValidationCacheKey(
   suggestion: WatchSearchSuggestion,
   languageIdentity: string,
   fields: readonly string[],
+  applicationRevision: string,
 ): string {
   return [
-    PHRASE_VALIDATION_CONTRACT_VERSION,
+    applicationRevision,
     languageIdentity,
     fields.join(","),
     comparablePhrase(suggestion.title),
@@ -564,12 +577,18 @@ async function validateQuerySuggestions(
   titleFields: readonly string[],
   metadataFields: readonly string[],
   languageIdentity: string,
+  applicationRevision: string,
 ): Promise<WatchSearchSuggestion[]> {
   if (suggestions.length === 0) return []
 
   const fields = [...titleFields, ...metadataFields]
   const keys = suggestions.map((suggestion) =>
-    phraseValidationCacheKey(suggestion, languageIdentity, fields),
+    phraseValidationCacheKey(
+      suggestion,
+      languageIdentity,
+      fields,
+      applicationRevision,
+    ),
   )
   const suggestionByKey = new Map(
     suggestions.map((suggestion, index) => [keys[index], suggestion]),
@@ -894,6 +913,7 @@ export class TypesenseWatchSearchSuggestionsService {
     private readonly prisma: SuggestionPrisma,
     private readonly typesense: SuggestionTypesense,
     private readonly logger: Pick<Console, "warn"> = console,
+    private readonly applicationRevision: string = TYPESENSE_WATCH_SEARCH_CANDIDATE_APPLICATION_REVISION,
   ) {}
 
   async suggest(
@@ -939,7 +959,8 @@ export class TypesenseWatchSearchSuggestionsService {
       )
       if (!language) return []
 
-      analyzer = typesenseWatchTokenizerLocale(language.locale) ?? "fallback"
+      const tokenizerLocale = typesenseWatchTokenizerLocale(language.locale)
+      analyzer = tokenizerLocale ?? "fallback"
       const titleFields = watchLexicalQueryFields(
         language.locale,
         "title",
@@ -1088,6 +1109,7 @@ export class TypesenseWatchSearchSuggestionsService {
         metadataFields,
         query,
         directTitles,
+        tokenizerLocale,
       )
       let querySuggestions: WatchSearchSuggestion[] = []
       try {
@@ -1098,6 +1120,7 @@ export class TypesenseWatchSearchSuggestionsService {
           titleFields,
           metadataFields,
           language.languageIdentity,
+          this.applicationRevision,
         )
       } catch {
         this.logger.warn(

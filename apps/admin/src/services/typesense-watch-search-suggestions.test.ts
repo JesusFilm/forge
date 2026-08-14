@@ -1374,6 +1374,251 @@ describe("TypesenseWatchSearchSuggestionsService", () => {
     )
   })
 
+  it.each([
+    {
+      label: "English",
+      bcp47: "en",
+      languageSlug: "english",
+      field: "title_en",
+      query: "blind",
+      title: "Jesus Heals the Blind Man",
+      expected: [
+        "Blind",
+        "Heals the Blind",
+        "Jesus Heals the Blind",
+        "Heals the Blind Man",
+      ],
+    },
+    {
+      label: "accented Latin",
+      bcp47: "es",
+      languageSlug: "spanish-castilian",
+      field: "title_es",
+      query: "cie",
+      title: "Jes\u00fas sana al ciego",
+      expected: ["ciego", "sana al ciego"],
+    },
+    {
+      label: "apostrophes and hyphens",
+      bcp47: "en",
+      languageSlug: "english",
+      field: "title_en",
+      query: "nev",
+      title: "God's Love - Never-Ending Hope",
+      expected: [
+        "Never-Ending",
+        "God's Love Never-Ending",
+        "Love Never-Ending Hope",
+        "God's Love Never-Ending Hope",
+      ],
+    },
+    {
+      label: "CJK without spaces",
+      bcp47: "zh",
+      languageSlug: "mandarin-chinese",
+      field: "title_zh",
+      query: "\u8036\u7a23",
+      title: "\u8036\u7a23\u533b\u6cbb\u76f2\u4eba",
+      expected: ["\u8036\u7a23\u533b\u6cbb\u76f2\u4eba"],
+    },
+    {
+      label: "RTL",
+      bcp47: "ar",
+      languageSlug: "arabic-modern-standard",
+      field: "title_ar",
+      query: "\u0627\u0644\u0623\u0639",
+      title:
+        "\u064a\u0633\u0648\u0639 \u064a\u0634\u0641\u064a \u0627\u0644\u0631\u062c\u0644 \u0627\u0644\u0623\u0639\u0645\u0649",
+      expected: [
+        "\u0627\u0644\u0623\u0639\u0645\u0649",
+        "\u064a\u0634\u0641\u064a \u0627\u0644\u0631\u062c\u0644 \u0627\u0644\u0623\u0639\u0645\u0649",
+      ],
+    },
+  ])(
+    "preserves the bounded $label literal phrase windows",
+    async ({ bcp47, languageSlug, field, query, title, expected }) => {
+      findFirstMock.mockResolvedValue({ bcp47 })
+      multiSearchMock.mockImplementation(
+        async (searches: Array<{ per_page?: number }>) =>
+          searches[0]?.per_page === 25
+            ? [
+                {
+                  found: 1,
+                  out_of: 1,
+                  page: 1,
+                  search_time_ms: 1,
+                  grouped_hits: [
+                    {
+                      group_key: ["canonical-phrase"],
+                      found: 1,
+                      hits: [
+                        {
+                          document: {
+                            videoId: "video-phrase",
+                            canonicalVideoId: "canonical-phrase",
+                            [field]: [title],
+                          },
+                        },
+                      ],
+                    },
+                  ],
+                },
+              ]
+            : searches.map(() => ({
+                found: 1,
+                out_of: 1,
+                page: 1,
+                search_time_ms: 1,
+                hits: [{ document: { id: "validated" } }],
+              })),
+      )
+
+      const result = await createService().suggest({ query, languageSlug })
+
+      expect(
+        result.filter((row) => row.kind === "query").map((row) => row.title),
+      ).toEqual(expected)
+    },
+  )
+
+  it("applies English edge stop words only under the English analyzer", async () => {
+    findFirstMock.mockImplementation(
+      async ({ where }: { where: { slug: string } }) => ({
+        bcp47: where.slug === "english" ? "en" : "es",
+      }),
+    )
+    multiSearchMock.mockImplementation(
+      async (searches: Array<{ per_page?: number; query_by?: string }>) =>
+        searches[0]?.per_page === 25
+          ? [
+              {
+                found: 1,
+                out_of: 1,
+                page: 1,
+                search_time_ms: 1,
+                grouped_hits: [
+                  {
+                    group_key: ["canonical-stop-word"],
+                    found: 1,
+                    hits: [
+                      {
+                        document: {
+                          videoId: "video-stop-word",
+                          canonicalVideoId: "canonical-stop-word",
+                          [searches[0]?.query_by?.startsWith("title_en")
+                            ? "title_en"
+                            : "title_es"]: ["A Story"],
+                          [searches[0]?.query_by?.startsWith("title_en")
+                            ? "metadata_en"
+                            : "metadata_es"]: ["Hope for the"],
+                        },
+                      },
+                    ],
+                  },
+                ],
+              },
+            ]
+          : searches.map(() => ({
+              found: 1,
+              out_of: 1,
+              page: 1,
+              search_time_ms: 1,
+              hits: [{ document: { id: "validated" } }],
+            })),
+    )
+    const prisma = {
+      language: { findFirst: findFirstMock },
+      video: { findMany: videoFindManyMock },
+    }
+
+    const english = await createServiceWithPrisma(prisma).suggest({
+      query: "the",
+      languageSlug: "english",
+    })
+    const spanish = await createServiceWithPrisma(prisma).suggest({
+      query: "the",
+      languageSlug: "spanish-castilian",
+    })
+
+    expect(
+      english.filter((row) => row.kind === "query").map((row) => row.title),
+    ).toEqual(["the"])
+    expect(
+      spanish.filter((row) => row.kind === "query").map((row) => row.title),
+    ).toEqual(["the", "Hope for the"])
+  })
+
+  it("isolates phrase verdicts by application revision", async () => {
+    const prisma = {
+      language: { findFirst: findFirstMock },
+      video: { findMany: videoFindManyMock },
+    }
+    findFirstMock.mockResolvedValue({ bcp47: "en" })
+    let validationAttempts = 0
+    multiSearchMock.mockImplementation(
+      async (searches: Array<{ per_page?: number }>) => {
+        if (searches[0]?.per_page === 25) {
+          return [
+            {
+              found: 1,
+              out_of: 1,
+              page: 1,
+              search_time_ms: 1,
+              grouped_hits: [
+                {
+                  group_key: ["canonical-revision"],
+                  found: 1,
+                  hits: [
+                    {
+                      document: {
+                        videoId: "video-revision",
+                        canonicalVideoId: "canonical-revision",
+                        title_en: ["Jesus Film"],
+                      },
+                    },
+                  ],
+                },
+              ],
+            },
+          ]
+        }
+        validationAttempts += 1
+        return searches.map(() => ({
+          found: 1,
+          out_of: 1,
+          page: 1,
+          search_time_ms: 1,
+          hits: [{ document: { id: "validated" } }],
+        }))
+      },
+    )
+    const serviceForRevision = (revision: string) =>
+      new TypesenseWatchSearchSuggestionsService(
+        prisma as never,
+        {
+          multiSearch: multiSearchMock,
+          multiSearchSettled: multiSearchSettledMock,
+        } as never,
+        { warn: warnMock },
+        revision,
+      )
+
+    await serviceForRevision("watch-search-candidate/revision-a").suggest({
+      query: "je",
+      languageSlug: "english",
+    })
+    await serviceForRevision("watch-search-candidate/revision-b").suggest({
+      query: "jes",
+      languageSlug: "english",
+    })
+    await serviceForRevision("watch-search-candidate/revision-b").suggest({
+      query: "jesu",
+      languageSlug: "english",
+    })
+
+    expect(validationAttempts).toBe(2)
+  })
+
   it("reuses positive phrase verdicts across service instances and revalidates after expiry", async () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date("2026-08-12T12:00:00.000Z"))
