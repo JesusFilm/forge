@@ -26,6 +26,7 @@
 import { getStorage } from "../safeStorage"
 import {
   CONTINUE_WATCHING_STORAGE_KEY,
+  PENDING_COMPLETIONS_STORAGE_KEY,
   clearContinueWatching,
   parseContinueWatching,
   type ContinueWatchingEntry,
@@ -41,10 +42,14 @@ import {
 export const LOCAL_USER_STORAGE_KEY = "forge.auth.local_user"
 
 /** Every key holding anonymous watch state. The ONLY enumeration in this
- *  module, and it is a fixed list — never a storage-key scan. */
+ *  module, and it is a fixed list — never a storage-key scan.
+ *  PENDING_COMPLETIONS rides the shelf's locked clear (both are wiped by
+ *  `clearContinueWatching`) but is listed so the enumeration stays the
+ *  complete, auditable inventory of what a wipe erases. */
 export const ANONYMOUS_STATE_KEYS = [
   VIEWER_ID_STORAGE_KEY,
   CONTINUE_WATCHING_STORAGE_KEY,
+  PENDING_COMPLETIONS_STORAGE_KEY,
   QUEUE_STORAGE_KEY,
 ] as const
 
@@ -221,9 +226,13 @@ export async function clearAnonymousWatchState(): Promise<boolean> {
   let cleared = true
   for (const key of ANONYMOUS_STATE_KEYS) {
     if (key === CONTINUE_WATCHING_STORAGE_KEY) {
+      // Clears the shelf AND the pending-completions bucket under the shelf
+      // lock (both are that module's storage; a bare removeItem could land
+      // mid-save and be re-materialized).
       if (!(await clearContinueWatching())) cleared = false
       continue
     }
+    if (key === PENDING_COMPLETIONS_STORAGE_KEY) continue // handled above
     try {
       await storage.removeItem(key)
     } catch {

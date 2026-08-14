@@ -20,10 +20,13 @@ import { readLocalUserMarker } from "../auth/anonymousMerge"
 import { withTimeout } from "../withTimeout"
 import {
   loadContinueWatching,
+  readPendingCompletions,
+  removePendingCompletions,
   updateContinueWatching,
   type ContinueWatchingEntry,
 } from "./continueWatching"
 import {
+  completionsToUpsertEntries,
   mayFlushShelfToAccount,
   mergeAccountRowsIntoShelf,
   parseAccountProgressRows,
@@ -57,7 +60,15 @@ export async function submitContinueWatchingToAccount(
   entries: readonly ContinueWatchingEntry[],
 ): Promise<boolean> {
   try {
-    const mapped = toWatchProgressUpsertEntries(entries)
+    // Pending completions ride every push (todo 025): finishing a video
+    // removed its shelf entry, so the shelf alone under-reports — without
+    // these the account keeps a stale partial position forever, on every
+    // device. Position == duration, so admin derives completed=true.
+    const completions = await readPendingCompletions()
+    const mapped = [
+      ...completionsToUpsertEntries(completions),
+      ...toWatchProgressUpsertEntries(entries),
+    ]
     if (mapped.length === 0) return true
     const userAccessToken = await getValidAccessToken()
     if (userAccessToken == null) return false
@@ -70,7 +81,14 @@ export async function submitContinueWatchingToAccount(
       context: { userAccessToken },
       errorPolicy: "all",
     })
-    return result.data?.upsertMyWatchProgress != null
+    const accepted = result.data?.upsertMyWatchProgress != null
+    if (accepted && completions.length > 0) {
+      // Cleared only AFTER the server accepted the batch; a failed push
+      // retains them for the next sync (retry is harmless — the server's
+      // newest-wins guard dedupes).
+      await removePendingCompletions(completions.map((c) => c.videoId))
+    }
+    return accepted
   } catch {
     return false
   }

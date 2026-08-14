@@ -2,6 +2,8 @@ import { _resetStorageForTests, getStorage } from "../safeStorage"
 import {
   CONTINUE_WATCHING_STORAGE_KEY,
   MAX_CONTINUE_WATCHING,
+  MAX_PENDING_COMPLETIONS,
+  PENDING_COMPLETIONS_STORAGE_KEY,
   RESUME_FINISHED_PROGRESS,
   RESUME_MIN_SECONDS,
   applyResumeSnapshot,
@@ -11,6 +13,9 @@ import {
   isResumeWorthy,
   loadContinueWatching,
   parseContinueWatching,
+  parsePendingCompletions,
+  readPendingCompletions,
+  removePendingCompletions,
   saveResumeSnapshot,
   updateContinueWatching,
   type ContinueWatchingEntry,
@@ -175,6 +180,124 @@ describe("locked reads", () => {
     expect(entries).toHaveLength(1)
     expect(entries[0]!.positionSeconds).toBe(62)
     await save
+  })
+})
+
+describe("pending completions (todo 025)", () => {
+  it("records a terminal completion when a video finishes", async () => {
+    await saveResumeSnapshot(CARD, {
+      positionSeconds: 598,
+      durationSeconds: 600,
+    })
+    const completions = await readPendingCompletions()
+    expect(completions).toEqual([
+      {
+        videoId: "video-1",
+        slug: "stunned",
+        // Terminal by construction — position == duration, so the server
+        // derives completed=true.
+        positionSeconds: 600,
+        durationSeconds: 600,
+        updatedAt: CARD.updatedAt,
+      },
+    ])
+    // …and the shelf entry is gone, as before.
+    expect(await loadContinueWatching()).toEqual([])
+  })
+
+  it("a rewatch supersedes an unsent completion for the same video", async () => {
+    // Without this, the stale completion re-sends on EVERY sync and the
+    // server's staleness guard rejects it forever.
+    await saveResumeSnapshot(CARD, {
+      positionSeconds: 598,
+      durationSeconds: 600,
+    })
+    await saveResumeSnapshot(CARD, {
+      positionSeconds: 120,
+      durationSeconds: 600,
+    })
+    expect(await readPendingCompletions()).toEqual([])
+    expect(await loadContinueWatching()).toHaveLength(1)
+  })
+
+  it("a sub-floor snapshot does NOT supersede a completion", async () => {
+    // Backing out at 5s on a rewatch is noise (below the resume floor); the
+    // completion is still the truest known state.
+    await saveResumeSnapshot(CARD, {
+      positionSeconds: 598,
+      durationSeconds: 600,
+    })
+    await saveResumeSnapshot(CARD, { positionSeconds: 5, durationSeconds: 600 })
+    expect(await readPendingCompletions()).toHaveLength(1)
+  })
+
+  it("re-finishing replaces rather than duplicates, and the bucket is capped", async () => {
+    for (let i = 0; i < MAX_PENDING_COMPLETIONS + 3; i++) {
+      await saveResumeSnapshot(
+        { ...CARD, videoId: `video-${i}`, slug: `slug-${i}` },
+        { positionSeconds: 599, durationSeconds: 600 },
+      )
+    }
+    await saveResumeSnapshot(
+      { ...CARD, videoId: `video-${MAX_PENDING_COMPLETIONS + 2}` },
+      { positionSeconds: 600, durationSeconds: 600 },
+    )
+    const completions = await readPendingCompletions()
+    expect(completions).toHaveLength(MAX_PENDING_COMPLETIONS)
+    expect(
+      completions.filter(
+        (c) => c.videoId === `video-${MAX_PENDING_COMPLETIONS + 2}`,
+      ),
+    ).toHaveLength(1)
+  })
+
+  it("removePendingCompletions drops only the named videos", async () => {
+    await saveResumeSnapshot(
+      { ...CARD, videoId: "a" },
+      { positionSeconds: 600, durationSeconds: 600 },
+    )
+    await saveResumeSnapshot(
+      { ...CARD, videoId: "b" },
+      { positionSeconds: 600, durationSeconds: 600 },
+    )
+    await removePendingCompletions(["a"])
+    expect((await readPendingCompletions()).map((c) => c.videoId)).toEqual([
+      "b",
+    ])
+    // Clearing the last one removes the storage key entirely.
+    await removePendingCompletions(["b"])
+    expect(
+      await getStorage().getItem(PENDING_COMPLETIONS_STORAGE_KEY),
+    ).toBeNull()
+  })
+
+  it("parsePendingCompletions drops malformed payloads and entries", () => {
+    expect(parsePendingCompletions(null)).toEqual([])
+    expect(parsePendingCompletions("{bad")).toEqual([])
+    const raw = JSON.stringify([
+      {
+        videoId: "v",
+        slug: "s",
+        positionSeconds: 600,
+        durationSeconds: 600,
+        updatedAt: "t",
+      },
+      { videoId: 1 },
+      "junk",
+    ])
+    expect(parsePendingCompletions(raw)).toHaveLength(1)
+  })
+
+  it("clearContinueWatching wipes the completions bucket too", async () => {
+    // The bucket is UPLOADED into whichever account signs in next, so the
+    // sign-out wipe must cover it — same cross-account hazard as the shelf.
+    await saveResumeSnapshot(CARD, {
+      positionSeconds: 600,
+      durationSeconds: 600,
+    })
+    expect(await readPendingCompletions()).toHaveLength(1)
+    expect(await clearContinueWatching()).toBe(true)
+    expect(await readPendingCompletions()).toEqual([])
   })
 })
 

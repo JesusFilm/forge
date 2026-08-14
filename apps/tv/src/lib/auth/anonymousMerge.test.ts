@@ -15,7 +15,9 @@ import {
 } from "./anonymousMerge"
 import {
   CONTINUE_WATCHING_STORAGE_KEY,
+  PENDING_COMPLETIONS_STORAGE_KEY,
   type ContinueWatchingEntry,
+  type PendingCompletion,
 } from "../watchEvents/continueWatching"
 import {
   QUEUE_STORAGE_KEY,
@@ -64,6 +66,7 @@ async function seedAnonymousState(input: {
   viewerId?: string
   entries?: ContinueWatchingEntry[]
   events?: QueuedWatchEvent[]
+  completions?: PendingCompletion[]
 }): Promise<void> {
   const storage = getStorage()
   if (input.viewerId != null) {
@@ -73,6 +76,12 @@ async function seedAnonymousState(input: {
     await storage.setItem(
       CONTINUE_WATCHING_STORAGE_KEY,
       JSON.stringify(input.entries),
+    )
+  }
+  if (input.completions != null) {
+    await storage.setItem(
+      PENDING_COMPLETIONS_STORAGE_KEY,
+      JSON.stringify(input.completions),
     )
   }
   if (input.events != null) {
@@ -335,6 +344,15 @@ describe("account isolation between family members", () => {
       viewerId: "viewer-anon",
       entries: [entry("a-only")],
       events: [queued("a-only")],
+      completions: [
+        {
+          videoId: "v1",
+          slug: "v1-slug",
+          positionSeconds: 1000,
+          durationSeconds: 1000,
+          updatedAt: "2026-08-10T00:00:00.000Z",
+        },
+      ],
     })
     const submitA = jest.fn(async () => true)
     await promoteAnonymousStateToAccount({
@@ -355,7 +373,7 @@ describe("account isolation between family members", () => {
 
     expect(outcome).toEqual({ status: "reset_for_other_user" })
     expect(submitB).not.toHaveBeenCalled()
-    expect(await readAllAnonymousKeys()).toEqual([null, null, null])
+    expect(await readAllAnonymousKeys()).toEqual([null, null, null, null])
     expect(await readLocalUserMarker()).toEqual({ userId: "user-b" })
   })
 
@@ -520,21 +538,33 @@ describe("clearAnonymousWatchState", () => {
       viewerId: "viewer-anon",
       entries: [entry("v1")],
       events: [queued("v1")],
+      completions: [
+        {
+          videoId: "v1",
+          slug: "v1-slug",
+          positionSeconds: 1000,
+          durationSeconds: 1000,
+          updatedAt: "2026-08-10T00:00:00.000Z",
+        },
+      ],
     })
     expect(await readAllAnonymousKeys()).not.toContain(null)
 
     await clearAnonymousWatchState()
 
-    expect(await readAllAnonymousKeys()).toEqual([null, null, null])
+    expect(await readAllAnonymousKeys()).toEqual([null, null, null, null])
   })
 
-  it("covers the viewer id, the shelf and the event queue — nothing else", () => {
+  it("covers the viewer id, the shelf, pending completions and the event queue — nothing else", () => {
     // Pinned as a list, not a scan: a storage-key scan is exactly the bug this
     // module exists to avoid. A new anonymous bucket must be added here
     // deliberately, and this assertion is where that decision surfaces.
+    // pending_completions joined for todo 025 — it is UPLOADED into the
+    // signed-in account, so it must be part of every wipe.
     expect([...ANONYMOUS_STATE_KEYS]).toEqual([
       "forge.watch.viewer_id",
       "forge.watch.continue_watching",
+      "forge.watch.pending_completions",
       "forge.watch.pending_events",
     ])
   })
@@ -579,7 +609,7 @@ describe("releaseLocalUserOnSignOut", () => {
 
     await releaseLocalUserOnSignOut()
 
-    expect(await readAllAnonymousKeys()).toEqual([null, null, null])
+    expect(await readAllAnonymousKeys()).toEqual([null, null, null, null])
     expect(await readLocalUserMarker()).toEqual(UNOWNED_LOCAL_USER)
     expect(await getStorage().getItem(LOCAL_USER_STORAGE_KEY)).toBeNull()
   })
