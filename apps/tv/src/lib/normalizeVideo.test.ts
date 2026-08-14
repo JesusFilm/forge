@@ -352,6 +352,16 @@ describe("normalizeVideo — Up Next siblings", () => {
       "the-ascension",
     ])
     expect(result.siblings.map((s) => s.documentId)).toEqual(["vid-2", "vid-3"])
+    // The RECORD-level Up Next pin (not just the exported helper): the wiring
+    // must feed the RAW children (self still holding its position). Feeding
+    // the self-filtered `siblings` typechecks and returns null for every
+    // video — this assertion is the one place that refactor goes red.
+    expect(result.upNext?.documentId).toBe("vid-2")
+    expect(result.upNext?.slug).toBe("the-resurrection")
+  })
+
+  it("upNext is null when the children are only self-references (current schema)", () => {
+    expect(normalizeVideo(makeRawVideo())!.upNext).toBeNull()
   })
 
   it("returns empty siblings for orphan videos (no parents)", () => {

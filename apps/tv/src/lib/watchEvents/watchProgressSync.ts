@@ -132,19 +132,28 @@ export async function removeFromContinueWatching(
   await updateContinueWatching((entries) =>
     entries.filter((entry) => entry.videoId !== videoId),
   )
-  try {
-    const userAccessToken = await getValidAccessToken()
-    if (userAccessToken == null) return
-    await getApolloClient().mutate({
-      mutation: CLEAR_MY_WATCH_PROGRESS,
-      variables: { videoId },
-      context: { userAccessToken },
-      errorPolicy: "all",
-    })
-  } catch {
-    // Best-effort: the local card is already gone, which is what the viewer
-    // asked for; the account row lingers harmlessly until a later clear.
-  }
+  // The account clear is DETACHED: this promise resolves after the local
+  // write, so the caller's shelf refresh never waits on the network — an
+  // awaited mutate here left the pressed card on screen for the transport's
+  // worst case (review P2). Gated on an OWNED marker, like the sign-out
+  // flush: an unowned shelf is a previous viewer's leftovers, and clearing
+  // MY account's row because of THEIR card is the wrong direction.
+  void (async () => {
+    try {
+      if ((await readLocalUserMarker()).userId == null) return
+      const userAccessToken = await getValidAccessToken()
+      if (userAccessToken == null) return
+      await getApolloClient().mutate({
+        mutation: CLEAR_MY_WATCH_PROGRESS,
+        variables: { videoId },
+        context: { userAccessToken },
+        errorPolicy: "all",
+      })
+    } catch {
+      // Best-effort: the local card is already gone, which is what the viewer
+      // asked for; the account row lingers harmlessly until a later clear.
+    }
+  })()
 }
 
 /** Pull the account's rows down and fold them into the local shelf. */

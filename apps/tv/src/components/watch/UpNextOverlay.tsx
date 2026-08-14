@@ -36,19 +36,25 @@ export function UpNextOverlay({
   // (re-registering resets the cadence and can skip a tick under load).
   const onPlayNowRef = useRef(onPlayNow)
   onPlayNowRef.current = onPlayNow
+
+  // The updater stays PURE — React may invoke updaters more than once
+  // (StrictMode, interrupted renders), so a navigation side effect inside one
+  // can double-fire. Expiry is observed in an effect instead, latched by a
+  // ref so remounts and re-renders at 0 cannot re-navigate.
   useEffect(() => {
-    const id = setInterval(() => {
-      setRemaining((current) => {
-        if (current <= 1) {
-          clearInterval(id)
-          onPlayNowRef.current()
-          return 0
-        }
-        return current - 1
-      })
-    }, 1000)
+    const id = setInterval(
+      () => setRemaining((current) => Math.max(0, current - 1)),
+      1000,
+    )
     return () => clearInterval(id)
   }, [])
+
+  const firedRef = useRef(false)
+  useEffect(() => {
+    if (remaining > 0 || firedRef.current) return
+    firedRef.current = true
+    onPlayNowRef.current()
+  }, [remaining])
 
   return (
     <View style={styles.scrim}>
