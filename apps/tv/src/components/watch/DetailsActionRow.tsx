@@ -13,7 +13,8 @@ import { LinkModal } from "../LinkModal"
 import { scale } from "../../lib/scale"
 import { validateActionUrl, validateStreamingUrl } from "../../lib/validateUrl"
 import { getResumePosition } from "../../lib/watchEvents/continueWatching"
-import { buildShareUrl } from "./detailsHelpers"
+import { buildShareUrl, shouldOfferResumeChoice } from "./detailsHelpers"
+import { ResumeChoicePanel } from "./ResumeChoicePanel"
 import { WATCH_THEME } from "./watchDetailTheme"
 import type { ActionRowPill } from "./actionRowScrollGlide"
 import { useFocusVisual } from "../focus/useFocusVisual"
@@ -78,7 +79,7 @@ export function DetailsActionRow({
     }
   }, [video?.documentId, state.isVisible])
 
-  const handlePlay = () => {
+  const startPlayback = (startAtSeconds: number | undefined) => {
     const hls = activeVariant?.hls
     if (!hls || !validateStreamingUrl(hls)) return
     // Identity rides along for anonymous watch-event capture (feat-322):
@@ -93,8 +94,21 @@ export function DetailsActionRow({
             videoDubId: activeVariant?.documentId ?? null,
           }
         : undefined,
-      resumeAtSeconds ?? undefined,
+      startAtSeconds,
     )
+  }
+
+  // Resume / Start over (QoL): a saved position turns Play into a CHOICE
+  // rather than a forced resume — the demo "oops" moment, fixed. Continue
+  // Watching cards keep direct resume (the shelf IS the resume affordance);
+  // this chooser exists only on the details page's Play pill.
+  const [resumeChoiceOpen, setResumeChoiceOpen] = useState(false)
+  const handlePlay = () => {
+    if (shouldOfferResumeChoice(resumeAtSeconds)) {
+      setResumeChoiceOpen(true)
+      return
+    }
+    startPlayback(undefined)
   }
 
   // Share continuation URL → QR fallback: the public watch URL, validated
@@ -173,6 +187,20 @@ export function DetailsActionRow({
           qrHeading={modalHeading}
         />
       ) : null}
+
+      <ResumeChoicePanel
+        visible={resumeChoiceOpen}
+        resumeAtSeconds={resumeAtSeconds ?? 0}
+        onResume={() => {
+          setResumeChoiceOpen(false)
+          startPlayback(resumeAtSeconds ?? undefined)
+        }}
+        onStartOver={() => {
+          setResumeChoiceOpen(false)
+          startPlayback(undefined)
+        }}
+        onClose={() => setResumeChoiceOpen(false)}
+      />
     </>
   )
 }
