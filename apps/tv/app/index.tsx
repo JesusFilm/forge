@@ -49,6 +49,12 @@ import {
   removeFromMyList,
   type MyListEntry,
 } from "../src/lib/myList/myList"
+import { fetchRecommendations } from "../src/lib/recommendations/fetchRecommendations"
+import {
+  buildRecommendationsSection,
+  pickRecommendationSeed,
+  type RecommendationRow,
+} from "../src/lib/recommendations/recommendationsSection"
 import { isProfileSurfaceEnabled } from "../src/lib/auth/profileFlag"
 import {
   loadContinueWatching,
@@ -126,19 +132,58 @@ export default function HomeScreen() {
       }
     }, []),
   )
+  // "Because you watched": seeded from the freshest shelf entry, refetched only
+  // when that seed CHANGES (not on every focus pass) — the rail is an
+  // enhancement, and re-querying on each Home visit would spend a network call
+  // to render the same cards.
+  const recommendationSeed = useMemo(
+    () => pickRecommendationSeed(continueEntries),
+    [continueEntries],
+  )
+  const [recommendationRows, setRecommendationRows] = useState<
+    RecommendationRow[]
+  >([])
+  const seedVideoId = recommendationSeed?.videoId ?? null
+  useEffect(() => {
+    if (seedVideoId == null) {
+      setRecommendationRows([])
+      return
+    }
+    let cancelled = false
+    void fetchRecommendations(seedVideoId).then((rows) => {
+      if (!cancelled) setRecommendationRows(rows)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [seedVideoId])
+
   // Client-owned section spliced ABOVE the curated sections (Netflix places
   // Continue Watching among the top rows); empty shelf renders nothing.
   const renderSections = useMemo(() => {
     if (model == null) return null
     const continueSection = buildContinueWatchingSection(continueEntries)
     const myListSection = buildMyListSection(myListEntries)
-    // Resume first, then the saved list, then the curated rails: an
-    // interrupted video is a stronger intent than a saved-for-later one.
-    // Both builders return null when empty, so neither renders a bare header.
-    return [continueSection, myListSection, ...model.sections].filter(
-      (section) => section != null,
+    const recommendationsSection = buildRecommendationsSection(
+      recommendationSeed,
+      recommendationRows,
     )
-  }, [model, continueEntries, myListEntries])
+    // Resume, then what the viewer saved, then what we think they'd like, then
+    // the curated rails: descending order of how explicit the intent is. Every
+    // builder returns null when it has nothing, so none renders a bare header.
+    return [
+      continueSection,
+      myListSection,
+      recommendationsSection,
+      ...model.sections,
+    ].filter((section) => section != null)
+  }, [
+    model,
+    continueEntries,
+    myListEntries,
+    recommendationSeed,
+    recommendationRows,
+  ])
 
   // tvos#852: a stack pop doesn't restore the previously focused view (falls to
   // the top-left default). Remember the focused node (every focusable reports it)
