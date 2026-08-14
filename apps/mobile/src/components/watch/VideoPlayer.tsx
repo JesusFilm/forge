@@ -14,7 +14,11 @@ import {
 import { Image } from "expo-image"
 import Ionicons from "@expo/vector-icons/Ionicons"
 import { LinearGradient } from "expo-linear-gradient"
-import { VideoView, type VideoPlayerStatus } from "expo-video"
+import {
+  VideoView,
+  type VideoPlayer as ExpoVideoPlayer,
+  type VideoPlayerStatus,
+} from "expo-video"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { BLACK, TEXT_ON_OVERLAY, hexToRgba } from "../../lib/color"
 import { resolveImageUrl } from "../../lib/resolveImageUrl"
@@ -72,7 +76,67 @@ type VideoPlayerProps = {
   autostart?: boolean
 }
 
+/**
+ * A player of its own, plus the chrome around it — the shape this component
+ * has always had.
+ *
+ * Kept deliberately after U6 hoisted the watch player to the root. The
+ * series-detail trailer MUST NOT borrow the session's player: it passes no
+ * `progressIdentity`, so every trailer tick would advance the saved bookmark of
+ * an unrelated episode and a 90% tick would mark it complete, with nothing on
+ * that screen able to notice. Its own player is the correct answer; U8 governs
+ * the decoder by unmounting its surface while a session is live.
+ *
+ * This is also the harness the adapter's behavioural suite renders, so the
+ * self-owning path stays under test rather than becoming dead code.
+ */
 export function VideoPlayer({
+  progressIdentity = null,
+  ...surface
+}: VideoPlayerProps) {
+  const { player, isPlaying } = useManagedVideoPlayer(
+    surface.streamingUrl,
+    applyWatchBufferOptions,
+    { progress: progressIdentity },
+  )
+  return (
+    <VideoPlayerSurface {...surface} player={player} isPlaying={isPlaying} />
+  )
+}
+
+/**
+ * Favor a fast first frame over deep prebuffer — the JFP audience skews to
+ * low-bandwidth networks. (Android-only fields are ignored on iOS.) Hoisted out
+ * of the hook call so the root-owned player is tuned identically; losing it is
+ * invisible, because nothing errors — the first frame just arrives later on
+ * exactly the networks it was written for.
+ */
+export function applyWatchBufferOptions(p: ExpoVideoPlayer) {
+  p.bufferOptions = {
+    minBufferForPlayback: 1,
+    preferredForwardBufferDuration: 8,
+    prioritizeTimeOverSizeThreshold: true,
+  }
+}
+
+/**
+ * The chrome, captions and tap handling around a player somebody else owns.
+ *
+ * Split out for U6: once the player is hoisted to the root it outlives this
+ * route, so the surface has to be able to BORROW one. `VideoPlayer` below keeps
+ * the self-owning form for the two callers that still need their own player —
+ * the series-detail trailer, which must never share the watch session's player,
+ * and the adapter's own test harness.
+ */
+export type VideoPlayerSurfaceProps = Omit<
+  VideoPlayerProps,
+  "progressIdentity"
+> & {
+  player: ExpoVideoPlayer
+  isPlaying: boolean
+}
+
+export function VideoPlayerSurface({
   streamingUrl,
   posterUrl,
   subtitleVttSrc = null,
@@ -80,33 +144,28 @@ export function VideoPlayer({
   fullscreen = false,
   onToggleFullscreen,
   horizontalInset = 0,
-  progressIdentity = null,
   resumeAtSeconds = null,
   autostart = false,
-}: VideoPlayerProps) {
+  player,
+  isPlaying,
+}: VideoPlayerSurfaceProps) {
   const { width: screenWidth, height: screenHeight } = useWindowDimensions()
 
-  const [hasStarted, setHasStarted] = useState(false)
+  // Seeded from the live player, NOT from a bare false. A surface remounting
+  // over an already-playing hoisted player (expanding the mini window) receives
+  // no new `playingChange`, so a false seed would re-arm the autostart veil and
+  // paint the poster over running video — with the 12s watchdog as its only
+  // exit. There is no event to wait for; the current state is the only signal.
+  const [hasStarted, setHasStarted] = useState(() => {
+    try {
+      return player.playing
+    } catch {
+      return false
+    }
+  })
   const resolvedPoster = resolveImageUrl(posterUrl)
   const playerHeight = Math.round(
     (screenWidth - horizontalInset * 2) * PLAYER_HEIGHT_RATIO,
-  )
-
-  // Player lifecycle (frozen source, replaceAsync swap, AppState, unmount
-  // pause) lives in the shared adapter (todo 016); this component owns the
-  // chrome, captions, and tap handling.
-  const { player, isPlaying } = useManagedVideoPlayer(
-    streamingUrl,
-    (p) => {
-      // Favor a fast first frame over deep prebuffer — JFP audience skews to
-      // low-bandwidth networks. (Android-only fields are ignored on iOS.)
-      p.bufferOptions = {
-        minBufferForPlayback: 1,
-        preferredForwardBufferDuration: 8,
-        prioritizeTimeOverSizeThreshold: true,
-      }
-    },
-    { progress: progressIdentity },
   )
 
   // Disable Mux's HLS subtitle tracks (SubtitleOverlay renders admin VTT
