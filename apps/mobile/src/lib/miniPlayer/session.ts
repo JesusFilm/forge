@@ -47,7 +47,18 @@ export function normalizeSessionIdentity(
 }
 
 /**
- * Same video, same audio language?
+ * The one definition of "which video is playing".
+ *
+ * Every consumer that needs a same-session decision derives it from here —
+ * `isSameSession` below, and the host's player key. A second field list kept
+ * in step by hand is exactly the divergence this module exists to prevent.
+ */
+export function sessionIdentityKey(identity: SessionIdentity): string {
+  return [identity.videoId ?? "", identity.videoSlug ?? ""].join("|")
+}
+
+/**
+ * Same video?
  *
  * The streaming URL is deliberately NOT part of this. One session legitimately
  * changes URL twice: the downloads manifest hydrates after cold launch, so the
@@ -56,20 +67,19 @@ export function normalizeSessionIdentity(
  * session emits a bogus `replaced` telemetry record and a swap-triggered
  * progress write per jump.
  *
- * The language IS part of it: it keys the progress recorder, so a mid-playback
- * audio switch must re-key or the departing position is stamped with a
- * language it was never watched in.
+ * The audio language is NOT part of it either, though it stays on
+ * `SessionIdentity` because it still travels to the recorder. An audio switch
+ * is a `replaceAsync` swap inside ONE player, and `useManagedVideoPlayer`
+ * already re-keys the progress recorder alone on `languageSlug` — duplicating
+ * that decision here would instead release and recreate the player, which is
+ * the audible gap R1 forbids.
  */
 export function isSameSession(
   a: SessionIdentity | null,
   b: SessionIdentity | null,
 ): boolean {
   if (a == null || b == null) return false
-  return (
-    a.videoId === b.videoId &&
-    a.videoSlug === b.videoSlug &&
-    (a.languageSlug ?? null) === (b.languageSlug ?? null)
-  )
+  return sessionIdentityKey(a) === sessionIdentityKey(b)
 }
 
 export type SessionAction = "start" | "update" | "none"

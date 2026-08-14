@@ -3,6 +3,7 @@ import {
   isSameSession,
   normalizeSessionIdentity,
   sessionActionFor,
+  sessionIdentityKey,
 } from "../session"
 
 const EPISODE = { videoId: "video-1", languageSlug: "english" }
@@ -69,11 +70,27 @@ describe("isSameSession", () => {
     )
   })
 
-  it("treats an audio-language switch as a different session", () => {
-    // languageSlug keys the progress recorder: sharing one session across a
-    // switch stamps the departing position with a language never watched.
+  it("treats an audio-language switch as the SAME session", () => {
+    // INVERTED on purpose, and the inversion is the fix — this case used to
+    // assert `false`. Two different keys were being conflated: languageSlug
+    // keys the progress RECORDER, which `useManagedVideoPlayer` already
+    // re-keys on its own. An audio switch is a replaceAsync swap inside one
+    // player, so making it a new session here would release and recreate that
+    // player instead — the audible gap R1 forbids.
     expect(
       isSameSession(EPISODE, { ...EPISODE, languageSlug: "spanish" }),
+    ).toBe(true)
+  })
+
+  it("still separates two videos that differ only by slug", () => {
+    // Dropping language must not collapse the key onto videoId alone: offline
+    // playback has no documentId, so the slug is the only thing telling two
+    // downloaded episodes apart.
+    expect(
+      isSameSession(
+        { videoSlug: "birth-of-jesus" },
+        { videoSlug: "the-last-supper" },
+      ),
     ).toBe(false)
   })
 
@@ -87,6 +104,29 @@ describe("isSameSession", () => {
     expect(isSameSession(null, EPISODE)).toBe(false)
     expect(isSameSession(EPISODE, null)).toBe(false)
     expect(isSameSession(null, null)).toBe(false)
+  })
+})
+
+describe("sessionIdentityKey", () => {
+  it("is the single definition isSameSession compares", () => {
+    // The host keys its player subtree on this. If the two ever disagreed, a
+    // change one of them called "the same session" would tear down the player.
+    const spanish = { ...EPISODE, languageSlug: "spanish" }
+    expect(sessionIdentityKey(EPISODE)).toBe(sessionIdentityKey(spanish))
+    expect(isSameSession(EPISODE, spanish)).toBe(true)
+  })
+
+  it("separates a different video", () => {
+    expect(sessionIdentityKey(EPISODE)).not.toBe(
+      sessionIdentityKey({ ...EPISODE, videoId: "video-2" }),
+    )
+  })
+
+  it("does not collide an id-only identity with a slug-only one", () => {
+    // A single-field key ("x") would make videoId "x" and videoSlug "x" equal.
+    expect(sessionIdentityKey({ videoId: "x" })).not.toBe(
+      sessionIdentityKey({ videoSlug: "x" }),
+    )
   })
 })
 
@@ -109,10 +149,13 @@ describe("sessionActionFor", () => {
     expect(sessionActionFor(EPISODE, { videoId: "video-2" })).toBe("start")
   })
 
-  it("starts a new session on an audio-language switch", () => {
+  it("updates in place on an audio-language switch, never starts", () => {
+    // "start" is what tears the player down. The adapter swaps the audio track
+    // on the live player and re-keys only its recorder, so the publisher must
+    // hand the same session forward.
     expect(
       sessionActionFor(EPISODE, { ...EPISODE, languageSlug: "spanish" }),
-    ).toBe("start")
+    ).toBe("update")
   })
 
   it("does nothing when there is no next identity", () => {

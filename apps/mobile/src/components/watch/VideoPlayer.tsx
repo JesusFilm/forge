@@ -23,6 +23,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { BLACK, TEXT_ON_OVERLAY, hexToRgba } from "../../lib/color"
 import { resolveImageUrl } from "../../lib/resolveImageUrl"
 import { useManagedVideoPlayer } from "../../hooks/useManagedVideoPlayer"
+import { applyWatchBufferOptions } from "../../lib/playerBufferOptions"
 import { reportDatadogAction } from "../../lib/datadog"
 import type { ProgressIdentity } from "../../lib/watchProgress/recorder"
 import { applySkip } from "../../lib/scrubber"
@@ -102,21 +103,6 @@ export function VideoPlayer({
   return (
     <VideoPlayerSurface {...surface} player={player} isPlaying={isPlaying} />
   )
-}
-
-/**
- * Favor a fast first frame over deep prebuffer — the JFP audience skews to
- * low-bandwidth networks. (Android-only fields are ignored on iOS.) Hoisted out
- * of the hook call so the root-owned player is tuned identically; losing it is
- * invisible, because nothing errors — the first frame just arrives later on
- * exactly the networks it was written for.
- */
-export function applyWatchBufferOptions(p: ExpoVideoPlayer) {
-  p.bufferOptions = {
-    minBufferForPlayback: 1,
-    preferredForwardBufferDuration: 8,
-    prioritizeTimeOverSizeThreshold: true,
-  }
 }
 
 /**

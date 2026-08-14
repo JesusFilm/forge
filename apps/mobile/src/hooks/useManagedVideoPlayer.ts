@@ -67,7 +67,13 @@ const POSITION_EPSILON_S = 0.25
 export function useManagedVideoPlayer(
   sourceUrl: string | null,
   setup?: (player: VideoPlayer) => void,
-  options?: { progress?: ProgressIdentity | null },
+  options?: {
+    progress?: ProgressIdentity | null
+    /** The same 1s poll the recorder samples, handed to the caller (U6). A
+     *  second interval over the same native player would double the reads and
+     *  drift against this one. */
+    onProgress?: (positionSeconds: number, durationSeconds: number) => void
+  },
 ) {
   // Source MUST be frozen: useVideoPlayer recreates/releases the player on any
   // change (dep is JSON.stringify(source)). Swap via replaceAsync on the same
@@ -156,6 +162,12 @@ export function useManagedVideoPlayer(
     : null
   const identityRef = useRef(progressIdentity)
   identityRef.current = progressIdentity
+
+  // Through a ref: the poll below is keyed on [player, isPlaying], so a caller
+  // passing a fresh closure per render would tear down and re-arm the interval
+  // on every tick.
+  const onProgressRef = useRef(options?.onProgress)
+  onProgressRef.current = options?.onProgress
 
   // Is the next recorder cleanup a RE-KEY (episode swap) or a real unmount?
   // React does not say, and only the departing recorder holds the departing
@@ -398,6 +410,7 @@ export function useManagedVideoPlayer(
       qoeRef.current?.onTimeUpdate(position)
       // The recorder samples this same 1s signal at 2s granularity (KTD5).
       recorderRef.current?.onTick(position, duration)
+      onProgressRef.current?.(position, duration)
 
       const now = Date.now()
       const advanced =

@@ -38,6 +38,53 @@ function findRawUsage(entries) {
     .map((entry) => entry.relative)
 }
 
+// The adapter's OWN call sites (U6). The scan above matches only the bare
+// expo-video identifiers, so it is structurally blind to a decoder created
+// THROUGH the adapter — which is every legitimate one. Nothing else caps them.
+// Each entry says why that surface is allowed its own decoder.
+const ADAPTER_CALL_SITES = {
+  "src/hooks/useManagedVideoPlayer.ts": "the adapter itself",
+  // Mounted by app/watch/[slug].tsx and app/series/[slug].tsx — the feature
+  // and the trailer — so this one call site accounts for two live decoders.
+  "src/components/watch/VideoPlayer.tsx": "the watch surface",
+  "app/video/[sectionKey].tsx": "the SDUI single-video route",
+  "app/collection/[sectionKey].tsx": "the SDUI collection route",
+  // U6: the root layout mounts this, so its decoder outlives the watch route.
+  "src/components/watch/PlaybackHost.tsx": "the root-owned playback host",
+}
+
+const UNLISTED_CALL_SITE_MESSAGE = [
+  "A new expo-video decoder was added through useManagedVideoPlayer.",
+  "",
+  "This is not a list to update on the way past. Every entry is a decoder the",
+  "device may have to hold at once, and the audience for this app is on low-end",
+  "hardware where a second concurrent decoder is a black frame, not a slow one.",
+  "",
+  "Before adding the file below to ADAPTER_CALL_SITES, answer in the PR:",
+  "  1. Can this surface reuse an existing player (PlaybackHost owns one that",
+  "     outlives the route) instead of creating its own?",
+  "  2. If not, what unmounts it, and can it overlap with any other entry?",
+  "  3. Add the file WITH a one-line reason, the way the others carry one.",
+].join("\n")
+
+// Bare identifier, same discipline as RAW_USAGE above: an aliased import names
+// it on the import line, so word-boundary matching still flags the file.
+const ADAPTER_USAGE = /\buseManagedVideoPlayer\b/
+
+function findAdapterCallSites(entries) {
+  return entries
+    .filter((entry) =>
+      entry.content
+        .split("\n")
+        .some(
+          (line) =>
+            !/^\s*(\/\/|\*|\/\*)/.test(line) && ADAPTER_USAGE.test(line),
+        ),
+    )
+    .map((entry) => entry.relative)
+    .sort()
+}
+
 // test-utils is skipped alongside __tests__: the shared expo-video stub names
 // both identifiers by definition, and mocking them is not escaping the adapter.
 const SKIP_DIRS = new Set(["__tests__", "node_modules", "test-utils"])
@@ -52,20 +99,24 @@ function collectSourceFiles(dir, acc = []) {
   return acc
 }
 
+function collectEntries() {
+  const root = path.resolve(__dirname, "../../..")
+  const files = [
+    ...collectSourceFiles(path.join(root, "src")),
+    ...collectSourceFiles(path.join(root, "app")),
+  ]
+  return files.map((file) => ({
+    relative: path.relative(root, file),
+    content: fs.readFileSync(file, "utf8"),
+  }))
+}
+
 describe("single expo-video adapter", () => {
   it("no raw useVideoPlayer usage outside the adapter + allowlist", () => {
-    const root = path.resolve(__dirname, "../../..")
-    const files = [
-      ...collectSourceFiles(path.join(root, "src")),
-      ...collectSourceFiles(path.join(root, "app")),
-    ]
+    const entries = collectEntries()
     // A broken root resolution or empty scan must not vacuously pass — the real
     // tree has hundreds of source files; assert we actually walked them.
-    expect(files.length).toBeGreaterThan(50)
-    const entries = files.map((file) => ({
-      relative: path.relative(root, file),
-      content: fs.readFileSync(file, "utf8"),
-    }))
+    expect(entries.length).toBeGreaterThan(50)
     expect(findRawUsage(entries)).toEqual([])
   })
 
@@ -122,6 +173,64 @@ describe("single expo-video adapter", () => {
     expect(offenders).toEqual([
       "src/components/watch/Detached.tsx",
       "src/lib/miniPlayer/Aliased.ts",
+    ])
+  })
+})
+
+describe("adapter call-site budget", () => {
+  it("no adapter call site outside the enumerated set", () => {
+    const entries = collectEntries()
+    expect(entries.length).toBeGreaterThan(50)
+    const found = findAdapterCallSites(entries)
+
+    const unlisted = found.filter((file) => !(file in ADAPTER_CALL_SITES))
+    if (unlisted.length > 0) {
+      throw new Error(
+        `${UNLISTED_CALL_SITE_MESSAGE}\n\n  ${unlisted.join("\n  ")}\n`,
+      )
+    }
+    // Both directions: a stale entry left behind after a surface was deleted
+    // silently raises the ceiling for whoever adds the next one.
+    expect(found).toEqual(Object.keys(ADAPTER_CALL_SITES).sort())
+  })
+
+  it("the set has not grown", () => {
+    // Separate from the scan so the number itself shows up in the diff. Adding
+    // a decoder is then two deliberate edits, not one line slipped into a list.
+    expect(Object.keys(ADAPTER_CALL_SITES)).toHaveLength(5)
+  })
+
+  it("positive control: the detector flags an unlisted call site", () => {
+    // Without this, a broken regex would make the real-tree assertion above
+    // pass while detecting nothing at all.
+    const found = findAdapterCallSites([
+      {
+        relative: "src/components/watch/Rogue.tsx",
+        content: "useManagedVideoPlayer(url)",
+      },
+      {
+        relative: "app/experiment/Aliased.tsx",
+        content:
+          'import { useManagedVideoPlayer as useMVP } from "../../src/hooks/useManagedVideoPlayer"\nuseMVP(url)',
+      },
+      {
+        relative: "src/lib/miniPlayer/session.ts",
+        content: " * useManagedVideoPlayer already re-keys its own recorder",
+      },
+      {
+        relative: "src/components/watch/PlaybackHost.tsx",
+        content: "useManagedVideoPlayer(streamingUrl)",
+      },
+    ])
+
+    expect(found).toEqual([
+      "app/experiment/Aliased.tsx",
+      "src/components/watch/PlaybackHost.tsx",
+      "src/components/watch/Rogue.tsx",
+    ])
+    expect(found.filter((file) => !(file in ADAPTER_CALL_SITES))).toEqual([
+      "app/experiment/Aliased.tsx",
+      "src/components/watch/Rogue.tsx",
     ])
   })
 })

@@ -18,6 +18,7 @@ let ExperienceSelectionProvider: typeof import("../src/contexts/ExperienceSelect
 let WatchPreferencesProvider: typeof import("../src/contexts/WatchPreferencesProvider").WatchPreferencesProvider
 let DownloadsProvider: typeof import("../src/contexts/DownloadsProvider").DownloadsProvider
 let AuthProvider: typeof import("../src/contexts/AuthProvider").AuthProvider
+let PlaybackHost: typeof import("../src/components/watch/PlaybackHost").PlaybackHost
 let isCachePersistenceEnabled: typeof import("../src/lib/cachePersistence").isCachePersistenceEnabled
 let restoreApolloCache: typeof import("../src/lib/cachePersistence").restoreApolloCache
 let startCachePersistence: typeof import("../src/lib/cachePersistence").startCachePersistence
@@ -63,6 +64,7 @@ try {
   DownloadsProvider =
     require("../src/contexts/DownloadsProvider").DownloadsProvider
   AuthProvider = require("../src/contexts/AuthProvider").AuthProvider
+  PlaybackHost = require("../src/components/watch/PlaybackHost").PlaybackHost
   const cachePersistence = require("../src/lib/cachePersistence")
   isCachePersistenceEnabled = cachePersistence.isCachePersistenceEnabled
   restoreApolloCache = cachePersistence.restoreApolloCache
@@ -357,6 +359,10 @@ export default function RootLayout() {
                           />
                         </Stack>
                       </ExperienceShell>
+                      {/* Outside ExperienceShell on purpose: it returns a
+                          different element type once its slug resolves, which
+                          remounts everything inside it once per cold launch. */}
+                      <PlaybackHost />
                     </DownloadsProvider>
                   </AuthProvider>
                 </WatchPreferencesProvider>
