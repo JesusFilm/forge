@@ -17,6 +17,16 @@ export type TypesenseCollectionField = {
   num_dim?: number
 }
 
+export const TYPESENSE_COLLECTION_FIELD_CONTRACT_KEYS = [
+  "facet",
+  "index",
+  "locale",
+  "optional",
+  "sort",
+  "stem",
+  "num_dim",
+] as const satisfies readonly (keyof TypesenseCollectionField)[]
+
 export type TypesenseCollectionSchema = {
   name: string
   fields: TypesenseCollectionField[]

@@ -2,11 +2,12 @@ import type { PrismaClient } from "@prisma/client"
 
 import type { TypesenseClient } from "@/services/typesense-client"
 import { TYPESENSE_WATCH_SEARCH_CANDIDATE_APPLICATION_REVISION } from "@/services/typesense-watch-search-candidate-identity"
+import type { TypesenseSearchableBytesByFamily } from "@/services/typesense-watch-search-lexical"
 import { TypesenseWatchSearchSuggestionsService } from "@/services/typesense-watch-search-suggestions"
 
-export type SuggestionBenchmarkVersion = "v1" | "v2"
+export type SuggestionBenchmarkVersion = "current" | "candidate"
 export type SuggestionBenchmarkCacheState = "cold" | "warm"
-export type SuggestionBenchmarkOrder = "v1-first" | "v2-first"
+export type SuggestionBenchmarkOrder = "current-first" | "candidate-first"
 export type SuggestionBenchmarkPhase =
   | "retrieval"
   | "validation"
@@ -37,22 +38,15 @@ export type SuggestionBenchmarkSample = {
   request: SuggestionRequestEnvelope
 }
 
-type SearchableBytesByFamily = {
-  baselineTitleMetadata: number
-  stemTitleMetadata: number
-  exactTaxonomy: number
-  stemTaxonomy: number
-}
-
 export type SuggestionCapacityEvidence = {
   currentPhysicalCollection: string
   candidatePhysicalCollection: string
-  currentSearchableBytesByFamily: SearchableBytesByFamily
-  candidateSearchableBytesByFamily: SearchableBytesByFamily
+  currentSearchableBytesByFamily: TypesenseSearchableBytesByFamily
+  candidateSearchableBytesByFamily: TypesenseSearchableBytesByFamily
   predictedCandidateSearchableBytes: number
   importedCandidateSearchableBytes: number
   serviceLimitBytes: number
-  v1V2PeakRssBytes: number
+  coexistencePeakRssBytes: number
   settledRssBytes: number
   publicationLockDurationMs: number
 }
@@ -63,9 +57,9 @@ export type SuggestionPercentiles = {
   p99: number
 }
 
-const VERSIONS = ["v1", "v2"] as const
+const VERSIONS = ["current", "candidate"] as const
 const CACHE_STATES = ["cold", "warm"] as const
-const ORDERS = ["v1-first", "v2-first"] as const
+const ORDERS = ["current-first", "candidate-first"] as const
 const PHASES = ["retrieval", "validation", "hydration", "total"] as const
 const PERCENTILES = ["p50", "p95", "p99"] as const
 const WEB_SUGGESTION_TIMEOUT_MS = 3_500
@@ -102,10 +96,11 @@ const REQUEST_LABELS: Record<keyof SuggestionRequestEnvelope, string> = {
   retries: "retries",
 }
 
-function percentile(values: readonly number[], quantile: number): number {
-  if (values.length === 0) return 0
-  const sorted = [...values].sort((left, right) => left - right)
-  return sorted[Math.max(0, Math.ceil(sorted.length * quantile) - 1)]!
+function percentile(sortedValues: readonly number[], quantile: number): number {
+  if (sortedValues.length === 0) return 0
+  return sortedValues[
+    Math.max(0, Math.ceil(sortedValues.length * quantile) - 1)
+  ]!
 }
 
 export function suggestionPercentiles(
@@ -116,10 +111,11 @@ export function suggestionPercentiles(
       "suggestion benchmark durations must be finite and non-negative",
     )
   }
+  const sorted = [...values].sort((left, right) => left - right)
   return {
-    p50: percentile(values, 0.5),
-    p95: percentile(values, 0.95),
-    p99: percentile(values, 0.99),
+    p50: percentile(sorted, 0.5),
+    p95: percentile(sorted, 0.95),
+    p99: percentile(sorted, 0.99),
   }
 }
 
@@ -237,19 +233,19 @@ export function evaluateSuggestionCandidateQualification(input: {
   for (const cacheState of CACHE_STATES) {
     for (const phase of PHASES) {
       for (const key of PERCENTILES) {
-        const baseline = latency.v1[cacheState][phase][key]
-        const candidate = latency.v2[cacheState][phase][key]
+        const baseline = latency.current[cacheState][phase][key]
+        const candidate = latency.candidate[cacheState][phase][key]
         if (candidate > baseline) {
           reasons.add(
-            `v2 ${cacheState} ${phase} ${key} regressed from ${baseline}ms to ${candidate}ms`,
+            `candidate ${cacheState} ${phase} ${key} regressed from ${baseline}ms to ${candidate}ms`,
           )
         }
       }
     }
-    const totalP99 = latency.v2[cacheState].total.p99
+    const totalP99 = latency.candidate[cacheState].total.p99
     if (totalP99 >= WEB_SUGGESTION_TIMEOUT_MS) {
       reasons.add(
-        `v2 ${cacheState} total p99 ${totalP99}ms reaches the ${WEB_SUGGESTION_TIMEOUT_MS}ms Web timeout`,
+        `candidate ${cacheState} total p99 ${totalP99}ms reaches the ${WEB_SUGGESTION_TIMEOUT_MS}ms Web timeout`,
       )
     }
   }
@@ -260,7 +256,7 @@ export function evaluateSuggestionCandidateQualification(input: {
     input.capacity.predictedCandidateSearchableBytes,
     input.capacity.importedCandidateSearchableBytes,
     input.capacity.serviceLimitBytes,
-    input.capacity.v1V2PeakRssBytes,
+    input.capacity.coexistencePeakRssBytes,
     input.capacity.settledRssBytes,
     input.capacity.publicationLockDurationMs,
   ]
@@ -291,9 +287,12 @@ export function evaluateSuggestionCandidateQualification(input: {
     reasons.add("predicted/imported searchable bytes differ by more than 10%")
   }
   const peakFreeRatio =
-    1 - input.capacity.v1V2PeakRssBytes / input.capacity.serviceLimitBytes
+    1 -
+    input.capacity.coexistencePeakRssBytes / input.capacity.serviceLimitBytes
   if (peakFreeRatio < 0.4) {
-    reasons.add("v1+v2 peak RSS leaves less than 40% service memory free")
+    reasons.add(
+      "current+candidate peak RSS leaves less than 40% service memory free",
+    )
   }
   const settledFreeRatio =
     1 - input.capacity.settledRssBytes / input.capacity.serviceLimitBytes
@@ -336,8 +335,11 @@ export function bindCandidateWatchSearchSuggestionsService(input: {
   return new TypesenseWatchSearchSuggestionsService(
     input.prisma,
     input.typesense,
-    input.logger,
-    TYPESENSE_WATCH_SEARCH_CANDIDATE_APPLICATION_REVISION,
-    input.candidateLexicalCollection,
+    {
+      logger: input.logger,
+      applicationRevision:
+        TYPESENSE_WATCH_SEARCH_CANDIDATE_APPLICATION_REVISION,
+      lexicalCollection: input.candidateLexicalCollection,
+    },
   )
 }

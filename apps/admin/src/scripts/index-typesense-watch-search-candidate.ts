@@ -3,6 +3,7 @@ import { pathToFileURL } from "node:url"
 import type { PrismaClient } from "@prisma/client"
 import { prisma } from "@/db/client"
 import {
+  TYPESENSE_COLLECTION_FIELD_CONTRACT_KEYS,
   TypesenseClient,
   type TypesenseCollectionField,
   type TypesenseCollectionSchema,
@@ -17,6 +18,7 @@ import { candidateWatchSearchApplicationRevision } from "@/services/typesense-wa
 import {
   buildTypesenseWatchCandidateProjectionSnapshot,
   type TypesenseWatchCandidateProjectionSnapshot,
+  typesenseDocumentImportBatches,
 } from "@/services/typesense-watch-search-indexer"
 import {
   candidateWatchCollectionNames,
@@ -265,12 +267,8 @@ async function importProjection(
     await typesense.importDocuments(collection, [], "upsert")
     return
   }
-  for (let index = 0; index < documents.length; index += batchSize) {
-    await typesense.importDocuments(
-      collection,
-      documents.slice(index, index + batchSize),
-      "upsert",
-    )
+  for (const batch of typesenseDocumentImportBatches(documents, batchSize)) {
+    await typesense.importDocuments(collection, batch, "upsert")
   }
 }
 
@@ -285,15 +283,6 @@ async function validateDocumentCounts(
   lexicalDuplicateIdentityCanonicalPairs: 0
   schemaManifestHash: string
 }> {
-  const schemaFieldKeys = [
-    "facet",
-    "index",
-    "locale",
-    "optional",
-    "sort",
-    "stem",
-    "num_dim",
-  ] as const
   const schemaManifest = (
     observed: TypesenseCollectionSchema,
     expected: TypesenseCollectionSchema,
@@ -309,7 +298,7 @@ async function validateDocumentCounts(
         return Object.fromEntries([
           ["name", observedField.name],
           ["type", observedField.type],
-          ...schemaFieldKeys.flatMap((key) =>
+          ...TYPESENSE_COLLECTION_FIELD_CONTRACT_KEYS.flatMap((key) =>
             expectedField[key] === undefined
               ? []
               : ([[key, observedField[key]]] as const),
@@ -409,8 +398,12 @@ async function validateDocumentCounts(
     expectedCanonicalVideos.add(canonicalVideoId)
   }
 
-  const boundedSearch = async (searches: readonly TypesenseSearchRequest[]) => {
-    const boundedResults = []
+  const forEachBoundedSearchResult = async (
+    searches: readonly TypesenseSearchRequest[],
+    consume: (
+      result: Awaited<ReturnType<CandidateTypesense["multiSearch"]>>[number],
+    ) => void,
+  ) => {
     for (
       let index = 0;
       index < searches.length;
@@ -423,37 +416,18 @@ async function validateDocumentCounts(
           "candidate validation search result mismatch",
         )
       }
-      boundedResults.push(...batchResults)
+      batchResults.forEach(consume)
     }
-    return boundedResults
   }
 
   const identityEntries = [...lexicalByLanguageIdentity.entries()].sort(
     ([left], [right]) => left.localeCompare(right),
   )
-  const identityResults = await boundedSearch(
-    identityEntries.map(
-      ([languageIdentity]) =>
-        ({
-          collection: schemas.lexical.name,
-          q: "*",
-          filter_by: `languageIdentity:=[\`${languageIdentity}\`]`,
-          per_page: 1,
-          include_fields: "id",
-        }) satisfies TypesenseSearchRequest,
-    ),
-  )
-  identityResults.forEach((result, index) => {
-    const [languageIdentity, expected] = identityEntries[index]!
-    if (result.found !== expected) {
-      throw new CandidateProjectionSafetyError(
-        `candidate languageIdentity ${languageIdentity} count mismatch: expected ${expected}, found ${result.found}`,
-      )
-    }
-  })
-
   const groupPages = Math.ceil(expectedPairs.size / VALIDATION_GROUP_PAGE_SIZE)
-  const groupResults = await boundedSearch(
+  const observedPairs = new Set<string>()
+  const observedCanonicalVideos = new Set<string>()
+  const observedByLanguageIdentity = new Map<string, number>()
+  await forEachBoundedSearchResult(
     Array.from({ length: groupPages }, (_value, index) => ({
       collection: schemas.lexical.name,
       q: "*",
@@ -463,49 +437,59 @@ async function validateDocumentCounts(
       group_limit: 1,
       include_fields: "id,languageIdentity,canonicalVideoId",
     })),
+    (result) => {
+      if (!("grouped_hits" in result) || !Array.isArray(result.grouped_hits)) {
+        throw new CandidateProjectionSafetyError(
+          "candidate canonical coverage validation is malformed",
+        )
+      }
+      if (result.found !== expectedPairs.size) {
+        throw new CandidateProjectionSafetyError(
+          `candidate canonical coverage mismatch: expected ${expectedPairs.size}, found ${result.found}`,
+        )
+      }
+      for (const group of result.grouped_hits) {
+        const [languageIdentity, canonicalVideoId] = group.group_key
+        const pairKey = `${languageIdentity}\0${canonicalVideoId}`
+        if (group.found !== 1) {
+          throw new CandidateProjectionSafetyError(
+            `candidate duplicate canonical identity pair ${languageIdentity}/${canonicalVideoId}`,
+          )
+        }
+        const expected = expectedPairs.get(pairKey)
+        const document = group.hits[0]?.document as
+          | {
+              id?: unknown
+              languageIdentity?: unknown
+              canonicalVideoId?: unknown
+            }
+          | undefined
+        if (
+          !expected ||
+          observedPairs.has(pairKey) ||
+          document?.id !== expected.id ||
+          document.languageIdentity !== languageIdentity ||
+          document.canonicalVideoId !== canonicalVideoId
+        ) {
+          throw new CandidateProjectionSafetyError(
+            "candidate canonical coverage contains an unexpected identity pair",
+          )
+        }
+        observedPairs.add(pairKey)
+        observedCanonicalVideos.add(canonicalVideoId!)
+        observedByLanguageIdentity.set(
+          languageIdentity!,
+          (observedByLanguageIdentity.get(languageIdentity!) ?? 0) + 1,
+        )
+      }
+    },
   )
-  const observedPairs = new Set<string>()
-  const observedCanonicalVideos = new Set<string>()
-  for (const result of groupResults) {
-    if (!("grouped_hits" in result) || !Array.isArray(result.grouped_hits)) {
+  for (const [languageIdentity, expected] of identityEntries) {
+    const observed = observedByLanguageIdentity.get(languageIdentity) ?? 0
+    if (observed !== expected) {
       throw new CandidateProjectionSafetyError(
-        "candidate canonical coverage validation is malformed",
+        `candidate languageIdentity ${languageIdentity} count mismatch: expected ${expected}, found ${observed}`,
       )
-    }
-    if (result.found !== expectedPairs.size) {
-      throw new CandidateProjectionSafetyError(
-        `candidate canonical coverage mismatch: expected ${expectedPairs.size}, found ${result.found}`,
-      )
-    }
-    for (const group of result.grouped_hits) {
-      const [languageIdentity, canonicalVideoId] = group.group_key
-      const pairKey = `${languageIdentity}\0${canonicalVideoId}`
-      if (group.found !== 1) {
-        throw new CandidateProjectionSafetyError(
-          `candidate duplicate canonical identity pair ${languageIdentity}/${canonicalVideoId}`,
-        )
-      }
-      const expected = expectedPairs.get(pairKey)
-      const document = group.hits[0]?.document as
-        | {
-            id?: unknown
-            languageIdentity?: unknown
-            canonicalVideoId?: unknown
-          }
-        | undefined
-      if (
-        !expected ||
-        observedPairs.has(pairKey) ||
-        document?.id !== expected.id ||
-        document.languageIdentity !== languageIdentity ||
-        document.canonicalVideoId !== canonicalVideoId
-      ) {
-        throw new CandidateProjectionSafetyError(
-          "candidate canonical coverage contains an unexpected identity pair",
-        )
-      }
-      observedPairs.add(pairKey)
-      observedCanonicalVideos.add(canonicalVideoId!)
     }
   }
   if (
@@ -556,10 +540,7 @@ export async function publishTypesenseWatchSearchCandidate({
   const preBuildRssBytes = process.memoryUsage().rss
   await runCurrentCanary()
   const snapshot = await loadSnapshot()
-  const schemas = candidateWatchCollectionSchemas(
-    generationId,
-    snapshot.tokenizerLocales,
-  )
+  const schemas = candidateWatchCollectionSchemas(generationId)
   const transcriptSchema = await typesense.getCollectionSchema(
     transcript.collection,
   )

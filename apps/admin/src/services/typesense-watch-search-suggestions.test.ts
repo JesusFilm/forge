@@ -29,7 +29,7 @@ function createServiceWithPrisma(prisma: unknown) {
       multiSearch: multiSearchMock,
       multiSearchSettled: multiSearchSettledMock,
     } as never,
-    { warn: warnMock },
+    { logger: { warn: warnMock } },
   )
 }
 
@@ -354,9 +354,11 @@ describe("TypesenseWatchSearchSuggestionsService", () => {
         multiSearch: multiSearchMock,
         multiSearchSettled: multiSearchSettledMock,
       } as never,
-      { warn: warnMock },
-      "watch-search-candidate/v2",
-      "watch_search_candidate_generation_01_lexical",
+      {
+        logger: { warn: warnMock },
+        applicationRevision: "watch-search-candidate/v2",
+        lexicalCollection: "watch_search_candidate_generation_01_lexical",
+      },
     )
 
     await expect(
@@ -1665,8 +1667,7 @@ describe("TypesenseWatchSearchSuggestionsService", () => {
           multiSearch: multiSearchMock,
           multiSearchSettled: multiSearchSettledMock,
         } as never,
-        { warn: warnMock },
-        revision,
+        { logger: { warn: warnMock }, applicationRevision: revision },
       )
 
     await serviceForRevision("watch-search-candidate/revision-a").suggest({
@@ -1700,7 +1701,7 @@ describe("TypesenseWatchSearchSuggestionsService", () => {
       new TypesenseWatchSearchSuggestionsService(
         prisma as never,
         typesense as never,
-        { warn: warnMock },
+        { logger: { warn: warnMock } },
       )
     findFirstMock.mockResolvedValue({ bcp47: "en" })
     multiSearchMock.mockImplementation(

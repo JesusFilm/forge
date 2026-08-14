@@ -61,7 +61,6 @@ const snapshot: TypesenseWatchCandidateProjectionSnapshot = {
       metadata_zh: ["耶稣的一生"],
     },
   ],
-  tokenizerLocales: ["en", "zh"],
   counts: { catalog: 1, availability: 0, lexical: 2 },
   digests: {
     catalog: `sha256:${"a".repeat(64)}`,
@@ -396,11 +395,21 @@ describe("Typesense Watch candidate index CLI", () => {
     const baseMultiSearch = typesense.client.multiSearch.getMockImplementation()
     typesense.client.multiSearch.mockImplementation(async (searches) => {
       const results = await baseMultiSearch!(searches)
-      return results.map((result, index) =>
-        searches[index]?.filter_by?.includes("slug:english")
-          ? { ...result, found: 0 }
-          : result,
-      ) as never
+      return results.map((result, index) => {
+        if (
+          searches[index]?.group_by !== "languageIdentity,canonicalVideoId" ||
+          !("grouped_hits" in result) ||
+          !Array.isArray(result.grouped_hits)
+        ) {
+          return result
+        }
+        return {
+          ...result,
+          grouped_hits: result.grouped_hits.filter(
+            (group) => group.group_key[0] !== "slug:english",
+          ),
+        }
+      }) as never
     })
 
     await expect(

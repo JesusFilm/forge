@@ -6,10 +6,11 @@ import {
   type WatchSearchCandidatePointerKind,
   type WatchSearchCandidateQualificationStatus,
 } from "@prisma/client"
-import type {
-  TypesenseClient,
-  TypesenseCollectionField,
-  TypesenseCollectionSchema,
+import {
+  TYPESENSE_COLLECTION_FIELD_CONTRACT_KEYS,
+  type TypesenseClient,
+  type TypesenseCollectionField,
+  type TypesenseCollectionSchema,
 } from "./typesense-client"
 import { TYPESENSE_WATCH_SEARCH_PUBLICATION_LOCK_ID } from "./typesense-watch-search-publication-lock"
 
@@ -304,15 +305,7 @@ function assertSchemaMatches(
         `Typesense collection ${expectedCollection} field ${expected.name} does not match its manifest`,
       )
     }
-    for (const key of [
-      "facet",
-      "index",
-      "locale",
-      "optional",
-      "sort",
-      "stem",
-      "num_dim",
-    ] as const) {
+    for (const key of TYPESENSE_COLLECTION_FIELD_CONTRACT_KEYS) {
       if (expected[key] !== undefined && observed[key] !== expected[key]) {
         throw new CandidateGenerationValidationError(
           `Typesense collection ${expectedCollection} field ${expected.name} does not match its manifest`,
@@ -1207,7 +1200,7 @@ export class TypesenseWatchSearchCandidateGenerationService {
     )
   }
 
-  async assertPassedQualificationForApplicationRevision(
+  private async assertPassedQualificationForApplicationRevision(
     applicationRevision: string,
   ): Promise<void> {
     const exactRevision = requiredString(

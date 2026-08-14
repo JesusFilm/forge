@@ -20,7 +20,7 @@ describe("Typesense Watch Search schemas", () => {
   })
 
   it("uses candidate-only collision-proof physical names and all tokenizer fields", () => {
-    const schemas = candidateWatchCollectionSchemas("candidate_01", ["mi"])
+    const schemas = candidateWatchCollectionSchemas("candidate_01")
 
     expect(schemas.catalog.name).toBe(
       `${TYPESENSE_WATCH_CANDIDATE_PREFIX}_candidate_01_catalog`,
@@ -56,7 +56,7 @@ describe("Typesense Watch Search schemas", () => {
   })
 
   it("rejects candidate generation ids that could collide after sanitization", () => {
-    expect(() => candidateWatchCollectionSchemas("unsafe:id", ["en"])).toThrow(
+    expect(() => candidateWatchCollectionSchemas("unsafe:id")).toThrow(
       "candidate generation id",
     )
   })
@@ -111,7 +111,7 @@ describe("Typesense Watch Search schemas", () => {
   })
 
   it("defines locale-aware lexical fields and faceted canonical identity", () => {
-    const schema = watchLexicalCollectionSchema("build", ["mi", "th", "zh"])
+    const schema = watchLexicalCollectionSchema("build")
 
     expect(schema.name).toBe(`${TYPESENSE_WATCH_LEXICAL_ALIAS}_build`)
     expect(schema.fields).toEqual(

@@ -99,6 +99,20 @@ type ResolvedSuggestionLanguage = {
   locale: string
   languageIdentity: string
 }
+type LexicalSuggestionFieldFamily = {
+  title: readonly string[]
+  metadata: readonly string[]
+  taxonomy: readonly string[]
+}
+type LexicalSuggestionFields = {
+  exact: LexicalSuggestionFieldFamily
+  stem: LexicalSuggestionFieldFamily
+}
+type TypesenseWatchSearchSuggestionsServiceOptions = {
+  logger?: Pick<Console, "warn">
+  applicationRevision?: string
+  lexicalCollection?: string
+}
 type CachedSuggestionLanguage = {
   promise: Promise<ResolvedSuggestionLanguage | null>
   expiresAt: number
@@ -470,28 +484,23 @@ function lexicalSuggestionRequestBase(
 
 function expansionSuggestionRequest(
   query: string,
-  exactTitleFields: readonly string[],
-  exactMetadataFields: readonly string[],
-  exactTaxonomyFields: readonly string[],
-  stemTitleFields: readonly string[],
-  stemMetadataFields: readonly string[],
-  stemTaxonomyFields: readonly string[],
+  fields: LexicalSuggestionFields,
   languageIdentity: string,
   lexicalCollection: string,
 ): TypesenseSearchRequest {
   const queryFields = [
-    ...exactTaxonomyFields,
-    ...stemTitleFields,
-    ...stemMetadataFields,
-    ...stemTaxonomyFields,
+    ...fields.exact.taxonomy,
+    ...fields.stem.title,
+    ...fields.stem.metadata,
+    ...fields.stem.taxonomy,
   ]
   const includeFields = [
     ...new Set([
       "videoId",
       "canonicalVideoId",
       "languageIdentity",
-      ...exactTitleFields,
-      ...exactMetadataFields,
+      ...fields.exact.title,
+      ...fields.exact.metadata,
       ...queryFields,
     ]),
   ]
@@ -500,10 +509,10 @@ function expansionSuggestionRequest(
       query,
       queryFields,
       [
-        ...exactTaxonomyFields.map((_field, index) => (index === 0 ? 6 : 3)),
-        ...stemTitleFields.map(() => 5),
-        ...stemMetadataFields.map(() => 1),
-        ...stemTaxonomyFields.map(() => 2),
+        ...fields.exact.taxonomy.map((_field, index) => (index === 0 ? 6 : 3)),
+        ...fields.stem.title.map(() => 5),
+        ...fields.stem.metadata.map(() => 1),
+        ...fields.stem.taxonomy.map(() => 2),
       ],
       languageIdentity,
       lexicalCollection,
@@ -649,13 +658,24 @@ function suggestionRequestState(prisma: SuggestionPrisma) {
   return state
 }
 
+const DIRECT_MATCH_CLASS_RANK = {
+  exactTitlePrefix: 0,
+  exactTaxonomy: 1,
+  stemTitle: 2,
+  exactMetadata: 3,
+  stemTaxonomy: 4,
+  stemMetadata: 5,
+} as const
+
+type DirectMatchClass = keyof typeof DIRECT_MATCH_CLASS_RANK
+
 type DirectMatchCandidate = {
   canonicalVideoId: string
   videoId: string
   title: string
   description: string | null
   matchSource: "title" | "description"
-  tier: 0 | 1 | 2 | 3 | 4 | 5
+  matchClass: DirectMatchClass
   rawTextScore: bigint
   groupOrder: number
 }
@@ -753,7 +773,7 @@ function baselineDirectMatchCandidates(
           description:
             matchedDescription ?? firstValue(hit.document, metadataFields),
           matchSource: matchedTitle ? "title" : "description",
-          tier: matchedTitle ? 0 : 3,
+          matchClass: matchedTitle ? "exactTitlePrefix" : "exactMetadata",
           rawTextScore: rawTextScore(hit),
           groupOrder: groupIndex,
         } satisfies DirectMatchCandidate,
@@ -765,42 +785,41 @@ function baselineDirectMatchCandidates(
 
 function expansionDirectMatchCandidates(
   groups: readonly TypesenseSearchGroup<TypesenseWatchLexicalDocument>[],
-  exactTitleFields: readonly string[],
-  exactMetadataFields: readonly string[],
-  exactTaxonomyFields: readonly string[],
-  stemTitleFields: readonly string[],
-  stemMetadataFields: readonly string[],
-  stemTaxonomyFields: readonly string[],
+  fields: LexicalSuggestionFields,
 ): DirectMatchCandidate[] {
-  const tierByField = new Map<string, DirectMatchCandidate["tier"]>([
-    ...exactTaxonomyFields.map((field) => [field, 1] as const),
-    ...stemTitleFields.map((field) => [field, 2] as const),
-    ...stemTaxonomyFields.map((field) => [field, 4] as const),
-    ...stemMetadataFields.map((field) => [field, 5] as const),
+  const matchClassByField = new Map<string, DirectMatchClass>([
+    ...fields.exact.taxonomy.map((field) => [field, "exactTaxonomy"] as const),
+    ...fields.stem.title.map((field) => [field, "stemTitle"] as const),
+    ...fields.stem.taxonomy.map((field) => [field, "stemTaxonomy"] as const),
+    ...fields.stem.metadata.map((field) => [field, "stemMetadata"] as const),
   ])
   return groups.flatMap((group, groupIndex) => {
     for (const hit of group.hits) {
       const identity = hitIdentity(hit)
       if (!identity) continue
-      const tiers = [...matchedFieldNames(hit)].flatMap((field) => {
-        const tier = tierByField.get(field)
-        return tier == null ? [] : [tier]
+      const matchClasses = [...matchedFieldNames(hit)].flatMap((field) => {
+        const matchClass = matchClassByField.get(field)
+        return matchClass == null ? [] : [matchClass]
       })
-      if (tiers.length === 0) continue
-      const tier = Math.min(...tiers) as DirectMatchCandidate["tier"]
+      if (matchClasses.length === 0) continue
+      matchClasses.sort(
+        (left, right) =>
+          DIRECT_MATCH_CLASS_RANK[left] - DIRECT_MATCH_CLASS_RANK[right],
+      )
+      const matchClass = matchClasses[0]
       const title =
-        firstValue(hit.document, exactTitleFields) ??
-        firstValue(hit.document, stemTitleFields)
+        firstValue(hit.document, fields.exact.title) ??
+        firstValue(hit.document, fields.stem.title)
       if (!title) continue
       return [
         {
           ...identity,
           title,
           description:
-            firstValue(hit.document, exactMetadataFields) ??
-            firstValue(hit.document, stemMetadataFields),
-          matchSource: tier === 5 ? "description" : "title",
-          tier,
+            firstValue(hit.document, fields.exact.metadata) ??
+            firstValue(hit.document, fields.stem.metadata),
+          matchSource: matchClass === "stemMetadata" ? "description" : "title",
+          matchClass,
           rawTextScore: rawTextScore(hit),
           groupOrder: TYPESENSE_SUGGESTION_CANDIDATE_LIMIT + groupIndex,
         } satisfies DirectMatchCandidate,
@@ -815,7 +834,8 @@ function mergedDirectMatchCandidates(
 ): DirectMatchCandidate[] {
   const sorted = [...candidates].sort(
     (left, right) =>
-      left.tier - right.tier ||
+      DIRECT_MATCH_CLASS_RANK[left.matchClass] -
+        DIRECT_MATCH_CLASS_RANK[right.matchClass] ||
       (left.rawTextScore > right.rawTextScore
         ? -1
         : left.rawTextScore < right.rawTextScore
@@ -920,13 +940,22 @@ function retrievalLaneEvent(
 }
 
 export class TypesenseWatchSearchSuggestionsService {
+  private readonly logger: Pick<Console, "warn">
+  private readonly applicationRevision: string
+  private readonly lexicalCollection: string
+
   constructor(
     private readonly prisma: SuggestionPrisma,
     private readonly typesense: SuggestionTypesense,
-    private readonly logger: Pick<Console, "warn"> = console,
-    private readonly applicationRevision: string = TYPESENSE_WATCH_SEARCH_CANDIDATE_APPLICATION_REVISION,
-    private readonly lexicalCollection: string = TYPESENSE_WATCH_LEXICAL_ALIAS,
-  ) {}
+    options: TypesenseWatchSearchSuggestionsServiceOptions = {},
+  ) {
+    this.logger = options.logger ?? console
+    this.applicationRevision =
+      options.applicationRevision ??
+      TYPESENSE_WATCH_SEARCH_CANDIDATE_APPLICATION_REVISION
+    this.lexicalCollection =
+      options.lexicalCollection ?? TYPESENSE_WATCH_LEXICAL_ALIAS
+  }
 
   async suggest(
     input: WatchSearchSuggestionInput,
@@ -973,52 +1002,45 @@ export class TypesenseWatchSearchSuggestionsService {
 
       const tokenizerLocale = typesenseWatchTokenizerLocale(language.locale)
       analyzer = tokenizerLocale ?? "fallback"
-      const titleFields = watchLexicalQueryFields(
-        language.locale,
-        "title",
-        "exact",
-      )
-      const metadataFields = watchLexicalQueryFields(
-        language.locale,
-        "metadata",
-        "exact",
-      )
-      const taxonomyFields = watchLexicalQueryFields(
-        language.locale,
-        "taxonomy",
-        "exact",
-      )
-      const stemTitleFields = watchLexicalQueryFields(
-        language.locale,
-        "title",
-        "stem",
-      )
-      const stemMetadataFields = watchLexicalQueryFields(
-        language.locale,
-        "metadata",
-        "stem",
-      )
-      const stemTaxonomyFields = watchLexicalQueryFields(
-        language.locale,
-        "taxonomy",
-        "stem",
-      )
+      const fields: LexicalSuggestionFields = {
+        exact: {
+          title: watchLexicalQueryFields(language.locale, "title", "exact"),
+          metadata: watchLexicalQueryFields(
+            language.locale,
+            "metadata",
+            "exact",
+          ),
+          taxonomy: watchLexicalQueryFields(
+            language.locale,
+            "taxonomy",
+            "exact",
+          ),
+        },
+        stem: {
+          title: watchLexicalQueryFields(language.locale, "title", "stem"),
+          metadata: watchLexicalQueryFields(
+            language.locale,
+            "metadata",
+            "stem",
+          ),
+          taxonomy: watchLexicalQueryFields(
+            language.locale,
+            "taxonomy",
+            "stem",
+          ),
+        },
+      }
       const searches = boundedSuggestionRetrievalRequests(
         baselineSuggestionRequest(
           query,
-          titleFields,
-          metadataFields,
+          fields.exact.title,
+          fields.exact.metadata,
           language.languageIdentity,
           this.lexicalCollection,
         ),
         expansionSuggestionRequest(
           query,
-          titleFields,
-          metadataFields,
-          taxonomyFields,
-          stemTitleFields,
-          stemMetadataFields,
-          stemTaxonomyFields,
+          fields,
           language.languageIdentity,
           this.lexicalCollection,
         ),
@@ -1097,19 +1119,11 @@ export class TypesenseWatchSearchSuggestionsService {
       const candidates = mergedDirectMatchCandidates([
         ...baselineDirectMatchCandidates(
           baselineGroups,
-          titleFields,
-          metadataFields,
+          fields.exact.title,
+          fields.exact.metadata,
           comparableTitle(query),
         ),
-        ...expansionDirectMatchCandidates(
-          expansionGroups,
-          titleFields,
-          metadataFields,
-          taxonomyFields,
-          stemTitleFields,
-          stemMetadataFields,
-          stemTaxonomyFields,
-        ),
+        ...expansionDirectMatchCandidates(expansionGroups, fields),
       ])
       const directMatches = await hydrateDirectMatches(this.prisma, candidates)
       if (!baseline.available) return directMatches
@@ -1119,8 +1133,8 @@ export class TypesenseWatchSearchSuggestionsService {
       )
       const extractedSuggestions = extractedQuerySuggestions(
         baselineGroups,
-        titleFields,
-        metadataFields,
+        fields.exact.title,
+        fields.exact.metadata,
         query,
         directTitles,
         tokenizerLocale,
@@ -1131,8 +1145,8 @@ export class TypesenseWatchSearchSuggestionsService {
           this.prisma,
           this.typesense,
           extractedSuggestions,
-          titleFields,
-          metadataFields,
+          fields.exact.title,
+          fields.exact.metadata,
           language.languageIdentity,
           this.applicationRevision,
           this.lexicalCollection,

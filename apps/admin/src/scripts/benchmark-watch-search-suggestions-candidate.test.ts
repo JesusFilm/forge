@@ -26,19 +26,22 @@ const request: SuggestionRequestEnvelope = {
 }
 
 function samples(
-  v2Durations: Partial<SuggestionBenchmarkSample["durationMs"]> = {},
+  candidateDurations: Partial<SuggestionBenchmarkSample["durationMs"]> = {},
 ): SuggestionBenchmarkSample[] {
   return (["cold", "warm"] as const).flatMap((cacheState) =>
-    (["v1-first", "v2-first"] as const).flatMap((order) =>
-      (["v1", "v2"] as const).map((version) => ({
+    (["current-first", "candidate-first"] as const).flatMap((order) =>
+      (["current", "candidate"] as const).map((version) => ({
         version,
         cacheState,
         order,
         durationMs: {
-          retrieval: version === "v1" ? 20 : (v2Durations.retrieval ?? 19),
-          validation: version === "v1" ? 10 : (v2Durations.validation ?? 9),
-          hydration: version === "v1" ? 15 : (v2Durations.hydration ?? 14),
-          total: version === "v1" ? 50 : (v2Durations.total ?? 48),
+          retrieval:
+            version === "current" ? 20 : (candidateDurations.retrieval ?? 19),
+          validation:
+            version === "current" ? 10 : (candidateDurations.validation ?? 9),
+          hydration:
+            version === "current" ? 15 : (candidateDurations.hydration ?? 14),
+          total: version === "current" ? 50 : (candidateDurations.total ?? 48),
         },
         request,
       })),
@@ -64,7 +67,7 @@ const capacity: SuggestionCapacityEvidence = {
   predictedCandidateSearchableBytes: 1_500,
   importedCandidateSearchableBytes: 1_575,
   serviceLimitBytes: 16_000,
-  v1V2PeakRssBytes: 9_600,
+  coexistencePeakRssBytes: 9_600,
   settledRssBytes: 8_000,
   publicationLockDurationMs: 12_000,
 }
@@ -97,7 +100,7 @@ describe("suggestion candidate qualification", () => {
         publicationLockDurationMs: 12_000,
       },
     })
-    expect(report.latency.v2.cold.total).toEqual({
+    expect(report.latency.candidate.cold.total).toEqual({
       p50: 48,
       p95: 48,
       p99: 48,
@@ -106,12 +109,12 @@ describe("suggestion candidate qualification", () => {
 
   it("fails closed for missing alternation, any percentile regression, or total p99 at the Web timeout", () => {
     const missing = evaluateSuggestionCandidateQualification({
-      samples: samples().filter((sample) => sample.order === "v1-first"),
+      samples: samples().filter((sample) => sample.order === "current-first"),
       capacity,
     })
     expect(missing.status).toBe("REJECTED")
     expect(missing.reasons).toContain(
-      "missing v2/cold/v2-first benchmark sample",
+      "missing candidate/cold/candidate-first benchmark sample",
     )
 
     const regression = evaluateSuggestionCandidateQualification({
@@ -120,7 +123,7 @@ describe("suggestion candidate qualification", () => {
     })
     expect(regression.status).toBe("REJECTED")
     expect(regression.reasons).toContain(
-      "v2 cold validation p50 regressed from 10ms to 11ms",
+      "candidate cold validation p50 regressed from 10ms to 11ms",
     )
 
     const timeout = evaluateSuggestionCandidateQualification({
@@ -129,7 +132,7 @@ describe("suggestion candidate qualification", () => {
     })
     expect(timeout.status).toBe("REJECTED")
     expect(timeout.reasons).toContain(
-      "v2 cold total p99 3500ms reaches the 3500ms Web timeout",
+      "candidate cold total p99 3500ms reaches the 3500ms Web timeout",
     )
   })
 
@@ -145,8 +148,8 @@ describe("suggestion candidate qualification", () => {
     })
     expect(requestReport.reasons).toEqual(
       expect.arrayContaining([
-        "v1/cold/v1-first expansion query fields 6 exceed 5",
-        "v1/cold/v1-first retries 1 exceed 0",
+        "current/cold/current-first expansion query fields 6 exceed 5",
+        "current/cold/current-first retries 1 exceed 0",
       ]),
     )
 
@@ -155,14 +158,14 @@ describe("suggestion candidate qualification", () => {
       capacity: {
         ...capacity,
         importedCandidateSearchableBytes: 1_700,
-        v1V2PeakRssBytes: 9_601,
+        coexistencePeakRssBytes: 9_601,
         settledRssBytes: 8_001,
       },
     })
     expect(capacityReport.reasons).toEqual(
       expect.arrayContaining([
         "predicted/imported searchable bytes differ by more than 10%",
-        "v1+v2 peak RSS leaves less than 40% service memory free",
+        "current+candidate peak RSS leaves less than 40% service memory free",
         "settled RSS leaves less than 50% service memory free",
       ]),
     )

@@ -112,10 +112,7 @@ export function candidateWatchCollectionNames(generationId: string) {
   } as const
 }
 
-export function candidateWatchCollectionSchemas(
-  generationId: string,
-  _tokenizerLocales: readonly string[] = TYPESENSE_WATCH_TOKENIZER_LOCALES,
-) {
+export function candidateWatchCollectionSchemas(generationId: string) {
   const names = candidateWatchCollectionNames(generationId)
   return {
     catalog: {
@@ -207,7 +204,6 @@ export function watchAvailabilityCollectionSchema(
 
 export function watchLexicalCollectionSchema(
   buildId: string,
-  _tokenizerLocales: readonly string[] = TYPESENSE_WATCH_TOKENIZER_LOCALES,
 ): TypesenseCollectionSchema {
   const localizedFields = TYPESENSE_WATCH_TOKENIZER_LOCALES.flatMap((locale) =>
     [

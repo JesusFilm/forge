@@ -47,16 +47,32 @@ export type TypesenseWatchLexicalDocument = {
   localeCodes: string[]
 } & Record<string, string | string[]>
 
+export type TypesenseSearchableBytesByFamily = {
+  baselineTitleMetadata: number
+  stemTitleMetadata: number
+  exactTaxonomy: number
+  stemTaxonomy: number
+}
+
 export type TypesenseKeywordMemoryEstimate = {
   searchableBytes: number
-  searchableBytesByFamily: {
-    baselineTitleMetadata: number
-    stemTitleMetadata: number
-    exactTaxonomy: number
-    stemTaxonomy: number
-  }
+  searchableBytesByFamily: TypesenseSearchableBytesByFamily
   estimatedRamLowBytes: number
   estimatedRamHighBytes: number
+}
+
+function searchableFieldFamily(
+  field: string,
+): keyof TypesenseSearchableBytesByFamily | null {
+  if (field.startsWith("title_stem_") || field.startsWith("metadata_stem_")) {
+    return "stemTitleMetadata"
+  }
+  if (field.startsWith("title_") || field.startsWith("metadata_")) {
+    return "baselineTitleMetadata"
+  }
+  if (field.startsWith("taxonomy_stem_")) return "stemTaxonomy"
+  if (field.startsWith("taxonomy_")) return "exactTaxonomy"
+  return null
 }
 
 export function typesenseWatchTokenizerLocale(locale: string): string | null {
@@ -207,16 +223,7 @@ export function estimateTypesenseKeywordMemory(
   }
   for (const document of documents) {
     for (const [field, value] of Object.entries(document)) {
-      const family =
-        field.startsWith("title_stem_") || field.startsWith("metadata_stem_")
-          ? "stemTitleMetadata"
-          : field.startsWith("title_") || field.startsWith("metadata_")
-            ? "baselineTitleMetadata"
-            : field.startsWith("taxonomy_stem_")
-              ? "stemTaxonomy"
-              : field.startsWith("taxonomy_")
-                ? "exactTaxonomy"
-                : null
+      const family = searchableFieldFamily(field)
       if (!family) continue
       const values = Array.isArray(value) ? value : [value]
       for (const text of values) {
@@ -236,10 +243,4 @@ export function estimateTypesenseKeywordMemory(
     estimatedRamLowBytes: searchableBytes * 2,
     estimatedRamHighBytes: searchableBytes * 3,
   }
-}
-
-export function typesenseWatchTokenizerLocales(
-  _documents: readonly TypesenseWatchLexicalDocument[],
-): string[] {
-  return [...TYPESENSE_WATCH_TOKENIZER_LOCALES]
 }
