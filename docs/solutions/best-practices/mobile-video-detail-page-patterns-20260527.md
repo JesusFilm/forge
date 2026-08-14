@@ -114,6 +114,8 @@ const bookSlug = book.replace(/ /g, "") // "1corinthians"
 
 For any animated floating bar (MiniPlayerBar, toast, snackbar), use a `mounted` boolean that stays `true` until the exit animation completes. A bare `if (!visible) return null` unmounts the component immediately, killing the exit animation mid-frame.
 
+**Note added 2026-08-15.** `MiniPlayerBar.tsx` was deleted — it never had an import site. The pattern is unchanged and the snippet below still reads correctly. Live examples are `apps/mobile/src/components/library/DeleteConfirmSheet.tsx` and `apps/mobile/src/hooks/useControlsVisibility.ts`. Do not copy it onto a layer that holds a video surface: `MiniPlayerWindow.tsx` returns `null` at once on purpose, because a fade-out there would keep a second decoder attached.
+
 ```typescript
 function MiniPlayerBar({ visible }: { visible: boolean }) {
   const [mounted, setMounted] = useState(false)

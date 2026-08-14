@@ -16,6 +16,7 @@ import Ionicons from "@expo/vector-icons/Ionicons"
 import { useSectionByKey } from "../../src/contexts/ExperienceProvider"
 import { useManagedVideoPlayer } from "../../src/hooks/useManagedVideoPlayer"
 import { useEndMiniPlayerOnPlayback } from "../../src/hooks/useEndMiniPlayerOnPlayback"
+import { pictureInPictureViewProps } from "../../src/lib/miniPlayer/pictureInPicture"
 import {
   ACCENT,
   BLACK,
@@ -349,7 +350,10 @@ function CollectionPlayerContent({
           style={StyleSheet.absoluteFill}
           nativeControls
           fullscreenOptions={{ enable: true }}
-          allowsPictureInPicture
+          // R14/R15: native controls put the platform's own picture-in-picture
+          // button here, so this surface must behave like the watch player and
+          // feed the same latch.
+          {...pictureInPictureViewProps()}
           contentFit="contain"
         />
       </View>

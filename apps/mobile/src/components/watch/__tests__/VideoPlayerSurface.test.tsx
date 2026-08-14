@@ -68,6 +68,11 @@ import { Platform } from "react-native"
 
 import { VideoPlayerSurface } from "../VideoPlayer"
 import {
+  isPictureInPictureActive,
+  resetPictureInPictureLatch,
+} from "../../../lib/miniPlayer/pipLatch"
+import { shouldPauseOnAppStateChange } from "../../../lib/pipPolicy"
+import {
   makeFakePlayer,
   type FakePlayer,
 } from "../../../test-utils/expoVideoMock"
@@ -239,5 +244,54 @@ describe("VideoPlayerSurface decoder surface", () => {
   it("passes no surfaceType on iOS", async () => {
     const renderer = await mount(makeFakePlayer({ playing: true }))
     expect(videoSurfaces(renderer)[0].props.surfaceType).toBeUndefined()
+  })
+})
+
+describe("VideoPlayerSurface picture-in-picture (U9)", () => {
+  beforeEach(() => {
+    resetPictureInPictureLatch()
+  })
+  afterEach(() => {
+    resetPictureInPictureLatch()
+  })
+
+  it("carries the shared wiring on the watch surface AND the trailer", async () => {
+    // One component backs both, so this is the pair R14 covers on Android.
+    const renderer = await mount(makeFakePlayer({ playing: true }))
+
+    const surface = videoSurfaces(renderer)[0]
+    expect(surface.props.allowsPictureInPicture).toBe(true)
+    expect(surface.props.startsPictureInPictureAutomatically).toBe(true)
+  })
+
+  it("arms R13's background-pause exemption end to end", async () => {
+    // The whole chain, and the reason U9 exists: until this landed nothing set
+    // the latch, so `shouldPauseOnAppStateChange`'s picture-in-picture arm had
+    // never fired outside its own unit test.
+    const renderer = await mount(makeFakePlayer({ playing: true }))
+    const surface = videoSurfaces(renderer)[0]
+
+    await act(async () => {
+      ;(surface.props.onPictureInPictureStart as () => void)()
+    })
+
+    expect(isPictureInPictureActive()).toBe(true)
+    expect(shouldPauseOnAppStateChange("background", true)).toBe(false)
+  })
+
+  it("disarms it again when the OS window closes", async () => {
+    // Without the stop half the app never pauses on background again, for the
+    // rest of the session.
+    const renderer = await mount(makeFakePlayer({ playing: true }))
+    const surface = videoSurfaces(renderer)[0]
+    await act(async () => {
+      ;(surface.props.onPictureInPictureStart as () => void)()
+    })
+
+    await act(async () => {
+      ;(surface.props.onPictureInPictureStop as () => void)()
+    })
+
+    expect(isPictureInPictureActive()).toBe(false)
   })
 })

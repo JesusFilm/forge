@@ -123,6 +123,7 @@ import {
 import {
   claimPlayback,
   createClaimToken,
+  getHostPlayer,
   releasePlaybackClaim,
   resetHostPlayerBridge,
   type PlaybackClaim,
@@ -1002,6 +1003,139 @@ describe("PlaybackHost video surface", () => {
     const { renderer } = await mountPlaying()
 
     expect(videoSurfaces(renderer)[0].props.surfaceType).toBeUndefined()
+  })
+})
+
+/**
+ * R24/AE12: while the operating system's picture-in-picture window is showing,
+ * the app performs NO video-view mount, unmount or handoff.
+ *
+ * The rule exists because expo-video's Android `PictureInPictureManager` does
+ * not guard the unregister that follows an unmount, and because the app is
+ * backgrounded — the viewer sees a blank interface on return, not the change.
+ * Every case here goes green without the hold, which is what makes the hold
+ * invisible to the rest of the suite.
+ */
+describe("PlaybackHost picture-in-picture hold", () => {
+  async function mountFloating() {
+    const store = makeStore()
+    const renderer = await mount(store, HOME_SEGMENTS)
+    await act(async () => {
+      store.start({ videoId: "video-1", streamingUrl: EPISODE_ONE })
+    })
+    await act(async () => {
+      setPictureInPictureActive(true)
+    })
+    expect(videoSurfaces(renderer)).toHaveLength(1)
+    return { renderer, store }
+  }
+
+  it("keeps the surface when the session is dismissed (AE12)", async () => {
+    const { renderer, store } = await mountFloating()
+
+    await act(async () => {
+      store.end("dismissed")
+    })
+
+    expect(videoSurfaces(renderer)).toHaveLength(1)
+  })
+
+  it("still ends the session, so only the VIEW is held", async () => {
+    const { store } = await mountFloating()
+
+    await act(async () => {
+      store.end("dismissed")
+    })
+
+    expect(store.getSnapshot()).toBeNull()
+  })
+
+  it("unmounts the moment picture-in-picture stops", async () => {
+    const { renderer, store } = await mountFloating()
+    await act(async () => {
+      store.end("dismissed")
+    })
+
+    await act(async () => {
+      setPictureInPictureActive(false)
+    })
+
+    expect(videoSurfaces(renderer)).toHaveLength(0)
+  })
+
+  it("keeps the same player when a DIFFERENT video starts", async () => {
+    // The other unmount the host owns: a new identity re-keys the boundary and
+    // rebuilds the whole subtree, which releases the player the OS window is
+    // showing.
+    const { renderer, store } = await mountFloating()
+
+    await act(async () => {
+      store.start({ videoId: "video-2", streamingUrl: EPISODE_TWO })
+    })
+
+    expect(createdFakePlayers()).toHaveLength(1)
+    expect(videoSurfaces(renderer)).toHaveLength(1)
+  })
+
+  it("hands nothing over when a route claims the player", async () => {
+    // The handoff half. Without the hold the window drops its view and
+    // publishes `surfaceFree`, so the claiming route mounts one instead — a
+    // move of the native surface underneath a live OS window.
+    const { renderer } = await mountFloating()
+
+    await act(async () => {
+      claimPlayback(routeToken, {
+        videoId: "video-1",
+        streamingUrl: EPISODE_ONE,
+      })
+    })
+
+    expect(videoSurfaces(renderer)).toHaveLength(1)
+    expect(getHostPlayer()?.surfaceFree).toBe(false)
+  })
+
+  it("completes that handoff once picture-in-picture stops", async () => {
+    // The release, and the anti-vacuous companion to the case above: a hold
+    // that never released would pass that one and strand the watch route with
+    // no player forever.
+    const { renderer } = await mountFloating()
+    await act(async () => {
+      claimPlayback(routeToken, {
+        videoId: "video-1",
+        streamingUrl: EPISODE_ONE,
+      })
+    })
+
+    await act(async () => {
+      setPictureInPictureActive(false)
+    })
+
+    expect(videoSurfaces(renderer)).toHaveLength(0)
+    expect(getHostPlayer()?.surfaceFree).toBe(true)
+  })
+
+  it("does not take the surface back when a route's claim goes", async () => {
+    // The mirror image: the route owns the view, so mounting one here is the
+    // second view on one player that Android asserts against.
+    const store = makeStore()
+    const renderer = await mount(store, WATCH_SEGMENTS)
+    await act(async () => {
+      store.start({ videoId: "video-1", streamingUrl: EPISODE_ONE })
+      claimPlayback(routeToken, {
+        videoId: "video-1",
+        streamingUrl: EPISODE_ONE,
+      })
+    })
+    expect(videoSurfaces(renderer)).toHaveLength(0)
+    await act(async () => {
+      setPictureInPictureActive(true)
+    })
+
+    await act(async () => {
+      releasePlaybackClaim(routeToken)
+    })
+
+    expect(videoSurfaces(renderer)).toHaveLength(0)
   })
 })
 

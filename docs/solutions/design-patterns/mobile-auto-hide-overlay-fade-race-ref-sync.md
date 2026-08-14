@@ -157,6 +157,8 @@ The underlying mechanism is the recurring one for this screen: **React state lag
 
 What makes the race pernicious is that it is invisible to any timer-free test: no sequence of synchronous transitions places the hook in the "mid-fade" state without an actual `Animated.timing` in flight on a device. That is decisive in this repo, which **deliberately has no render-test infrastructure — `react-test-renderer@19` + jest + pnpm is unsupported here, and every test is a pure-function test under `src/lib/__tests__/` / `src/hooks/__tests__/`** (session history). So extracting the invariants into a pure reducer is not a nicety — it is the _only_ way to get the fade-race under CI. The pure reducer plus simulator verification (R19) is the testing contract for this whole class of hook.
 
+**Superseded 2026-08-15 (`apps/mobile` only).** `apps/mobile` now has a component-render harness, and it needed no new dependency — the renderer is jest-expo's own transitive `react-test-renderer`, and `@testing-library/react-native` is still absent. See `apps/mobile/CLAUDE.md`, section "Component render tests". Read the sentence above as history, not as a live constraint: "`react-test-renderer@19` + jest + pnpm is unsupported here" is no longer true. The pure-reducer advice still stands on its own merit — a render suite cannot run a real `Animated.timing`, so the mid-fade state is still only reachable on a device. `apps/tv` statements of the same shape remain true, because TV stays on SDK 54.
+
 ## When to Apply
 
 Apply all five techniques together whenever:

@@ -33,6 +33,14 @@ The `apply` path is pure enough to lift into a standalone function and test
 with a mocked player (`currentTime` setter, `play()` / `addListener` spies).
 KTD11 blocks rendering JSX, not testing extracted plain functions.
 
+**Superseded 2026-08-15 (`apps/mobile` only).** KTD11 no longer blocks
+rendering JSX. `apps/mobile` has a component-render harness, and it needed no
+new dependency — `@testing-library/react-native` is still absent. See
+`apps/mobile/CLAUDE.md`, section "Component render tests". So this follow-up
+now has two routes: extract the `apply` path as described above, or drive
+`VideoPlayer` through a render suite with the shared `expo-video` stub. The
+paragraph above stays as the record of what was true when it was written.
+
 **Trigger:** the next time autostart or auto-resume changes.
 
 ## 2. `prompt=select_account` / ephemeral web session on re-sign-in

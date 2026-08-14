@@ -134,6 +134,14 @@ Each item below looked like cover for the gap. None of it was.
   `apps/mobile/src/components/watch/__tests__/videoPlayerAutostart.test.ts:1-14`.
   Those assertions pin structure. They cannot execute a release path, so a
   missing release path is invisible to them by construction.
+
+  **Superseded 2026-08-15 (`apps/mobile` only).** `apps/mobile` now has a
+  component-render harness, and it needed no new dependency —
+  `@testing-library/react-native` is still absent. See `apps/mobile/CLAUDE.md`,
+  section "Component render tests". A release path like this one is now
+  provable in CI. The paragraph above stays as the record of why the defect
+  reached a device.
+
 - **Subscribing `statusChange` per source.** The first version keyed the
   listener on `[player, streamingUrl]` and reset `loadFailed` inside the same
   effect. That tears the listener down and rebuilds it across the seed to

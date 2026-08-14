@@ -23,6 +23,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { BLACK, TEXT_ON_OVERLAY, hexToRgba } from "../../lib/color"
 import { resolveImageUrl } from "../../lib/resolveImageUrl"
 import { useManagedVideoPlayer } from "../../hooks/useManagedVideoPlayer"
+import { pictureInPictureViewProps } from "../../lib/miniPlayer/pictureInPicture"
 import { applyWatchBufferOptions } from "../../lib/playerBufferOptions"
 import { reportDatadogAction } from "../../lib/datadog"
 import type { ProgressIdentity } from "../../lib/watchProgress/recorder"
@@ -433,7 +434,9 @@ export function VideoPlayerSurface({
         // do not own, inside chrome we do.
         allowsVideoFrameAnalysis={false}
         contentFit="contain"
-        allowsPictureInPicture
+        // R13-R15, one wiring for all four capable surfaces. This one backs
+        // both the watch screen and the series-detail trailer.
+        {...pictureInPictureViewProps()}
         // textureView composites in the RN view hierarchy on Android so the
         // controls/captions overlay reliably renders above the video surface
         // (SurfaceView otherwise punches through). No-op on iOS.

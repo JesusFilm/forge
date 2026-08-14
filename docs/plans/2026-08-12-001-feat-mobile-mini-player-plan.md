@@ -882,3 +882,166 @@ per player and one live surface after the yield.
 Roughly 55 JSDoc blocks in branch-authored files exceed the repo's 3-line
 inline-comment cap. Left deliberately: rewriting them risked damaging the
 explanations, and untouched mobile files carry around 350 of the same shape.
+
+---
+
+## Implementation Findings, update 3 (added 2026-08-15, after U9)
+
+Supersedes parts of updates 1 and 2. Where they disagree, this one wins.
+
+### Status
+
+U1-U9 are shipped on branch `worktree-mobile-pip-mini-player`. Tests went from
+138 suites / 2017 at the start of U9 to **142 / 2065**; `tsc` and `eslint` clean.
+U10 (cleanup, docs, roadmap ticket) remains.
+
+`pipLatch` now HAS production feeders. Before U9 it had none, so two consumers
+were dead in production — `presentationFor`'s `pipActive` branch, and the R13
+"do not pause during picture-in-picture" rule inside the player adapter. Both
+are live.
+
+### Correction to update 2: there are FOUR sites, not three
+
+Updates 1 and 2 both say "three `allowsPictureInPicture` sites". That counted
+the sites that already had the prop. The floating window needed one too — AE5
+leaves the app FROM the window — so the wiring is a FOUR-site job:
+`VideoPlayer.tsx` (which backs both the watch screen and the series-detail
+trailer), `MiniPlayerWindow.tsx`, and the two `[sectionKey]` screens.
+
+### The wiring is one helper, and the guard is stronger than "adopt it"
+
+`src/lib/miniPlayer/pictureInPicture.ts` owns all four `VideoView` props. No
+other file in `src` or `app` may NAME any of them —
+`pictureInPictureCallSites.guard.test.js` enforces that, so a hand-rolled site
+cannot get past the scan even by spreading the helper and overriding one
+callback after it. That override is the revert a plain "does it adopt the
+helper" scan misses, and it is in the guard's positive-control fixture.
+
+### The Android manifest, read rather than trusted
+
+`npx expo prebuild --platform android --clean`, 2026-08-15, expo 57.0.12 /
+expo-video 57.0.2 / react-native 0.86.2. From
+`android/app/src/main/AndroidManifest.xml`, verbatim:
+
+- `android:supportsPictureInPicture="true"` on `.MainActivity`.
+- `android:configChanges="keyboard|keyboardHidden|orientation|screenSize|screenLayout|uiMode|smallestScreenSize|assetsPaths"`
+
+**This settles the Outstanding Question: `smallestScreenSize` IS present.** All
+four entries Android requires before it will keep an activity across the mode —
+`orientation`, `screenSize`, `screenLayout`, `smallestScreenSize` — are in the
+generated list. **No local config plugin is needed.**
+
+`android/` is gitignored, so the guard test cannot read it and still be honest
+on CI. What it asserts instead: the app.json flag (the one-line revert), and the
+REAL expo-video plugin driven by the REAL app.json options writing the attribute
+onto a template activity, with two negative controls. The `configChanges` string
+is RECORDED in the test with the date and command that produced it, and
+cross-checked against the generated file only when one is present — that half is
+labelled as skipped on CI, so a green CI run is never mistaken for evidence that
+the generated artifact was read.
+
+The same test measures the plan's iOS claim rather than believing it: the
+expo-video plugin derives the iOS `audio` background mode from EITHER flag, and
+`supportsBackgroundPlayback` was already true, so `UIBackgroundModes` is
+byte-identical with and without picture-in-picture. A positive control (both
+flags off) proves that case is not passing on a mod that does nothing.
+
+### `staysActiveInBackground`: DO NOT set it. Answer recorded.
+
+The plan asked whether setting it on the hoisted player when the latch arms
+produces automatic iOS entry, and whether the muted Home hero's audio session is
+unchanged. Read from the installed expo-video 57.0.2 native source:
+
+- **It does not produce automatic entry, and it cannot.** iOS auto-entry is
+  `AVPlayerViewController.canStartPictureInPictureAutomaticallyFromInline`,
+  which expo-video sets ONLY from the VIEW prop
+  `startsPictureInPictureAutomatically` (`ios/VideoView.swift:20-24`,
+  `ios/VideoModule.swift:89-93`). `staysActiveInBackground` is a PLAYER
+  property; its only effects are an audio-session recompute
+  (`ios/VideoPlayer.swift:62-68`) and a branch in
+  `VideoManager.onAppBackgrounded()` (`ios/VideoManager.swift:93-106`).
+- **Setting it would be actively wrong.** That branch sets
+  `audiovisualBackgroundPlaybackPolicy = .continuesIfPossible` INSTEAD of
+  pausing — headless background playback, not the operating system's window,
+  which is the opposite of R13. With it false, expo-video's else-branch already
+  checks `!playerViewController.isInPictureInPicture` before pausing, so a view
+  in the mode is not paused by the library either way.
+- **The timing is wrong too.** The latch arms from `onPictureInPictureStart`,
+  which fires AFTER the OS window has opened. Nothing set at that moment could
+  cause the entry that just happened.
+- Android agrees: `staysActiveInBackground` is read only when NO
+  picture-in-picture candidate was elected
+  (`android/.../PictureInPictureManager.kt:304-323`), and U9's props are exactly
+  what elects one.
+
+**The hero's audio session.** There is no per-player audio session. iOS has ONE
+`AVAudioSession` for the process, recomputed by
+`VideoManager.setAudioSession()` (`ios/VideoManager.swift:117-166`) from an
+aggregate over every registered player: `isPlaying && !isMuted`,
+`showNowPlayingNotification`, and `audioMixingMode`. U9 changes none of those
+inputs, adds no player and unmutes nothing, so the computed category and options
+are identical. What U9 does add is more OCCASIONS for the recompute — the
+`allowPictureInPicture` setter calls `setAppropriateAudioSessionOrWarn()` on
+every mount (`ios/VideoView.swift:27-32`), and the window is now such a mount.
+The recompute is a no-op when nothing differs, because `setCategory` is guarded
+by a comparison.
+
+**What this does NOT settle, and cannot without a device:** whether those extra
+recomputes produce an audible artefact — a duck or unduck blip, or a momentary
+interruption of another app's audio — on real iOS hardware. That is empirical
+`AVAudioSession` behaviour, not something the source states. iOS
+picture-in-picture has never been verified on this app at all, and cannot be on
+an iPhone simulator, so this rides with the iOS acceptance run.
+
+### R24 is a hold on VIEWS, not on state
+
+R24 was previously a comment on the latch with nothing implementing it. It is
+now one pure rule, `pictureInPictureHold(next, held, pipActive)`, applied at the
+three decisions that can mount, unmount or hand over a video view:
+
+1. `PlaybackHost`'s resolved playback — otherwise a dismiss, an end, a sign-out
+   or a different video unmounts the whole subtree under a live OS window
+   (AE12), or re-keys the boundary and rebuilds it.
+2. The host's `holdsSurface`, which is now ONE value read by both the window's
+   render gate and the published `surfaceFree`. The window no longer re-derives
+   it; a second derivation is how one of the two silently loses the hold.
+3. The window's end-of-playback surface release (R21).
+
+The hold covers WHICH VIEWS EXIST and nothing else. `presentationFor` still
+returns `hidden` while the mode is showing, and the session still ends, flushes
+and closes its quality record on time — Android shrinks the whole activity into
+the picture-in-picture window, so a floating window drawn inside that one is a
+window in a window. Holding the look as well as the views would be wrong.
+
+Held values release automatically: the hold returns what the SAME decision
+returned last render, so the first render after the latch clears returns the
+live value with no unwind. Each of the three has a test that goes red when its
+hold is deleted, and each has a companion proving the release.
+
+### The one R24 gap this cannot close
+
+The hold governs the host and the window. It cannot hold a route's OWN unmount:
+that is expo-router's, and if the watch route pops while the mode is showing the
+player is left with no surface — which the U7 spike proved is permanently
+video-dead on Android. There is no app code that pops a route while the app is
+backgrounded, and the viewer cannot navigate the shrunken activity, so the state
+is believed unreachable. It is not proven unreachable.
+
+### The spike evidence is now in the repo
+
+`docs/solutions/integration-issues/mobile-android-picture-in-picture-spike-20260813.md`
+carries the findings verbatim plus the whole spike diff, so the local-only
+branch `spike/mobile-pip-evidence` is no longer load-bearing. The nine emulator
+screenshots are NOT copied in — around 12 MB of captures — and the file says so
+in place and names each one, so a claim that rests on a screenshot reads as a
+claim from a spike that was run rather than one this repo can re-check.
+
+### Verification still owed
+
+Unchanged from update 2, plus:
+
+- **The Android hardware run for U9 specifically:** enter picture-in-picture,
+  background, return, confirm the interface restores rather than showing a blank
+  screen (AE12). The emulator spike covered entry, not the R24 hold.
+- **iOS end to end.** iPad simulator or hardware. Nothing about iOS
+  picture-in-picture in this app has ever been observed running.

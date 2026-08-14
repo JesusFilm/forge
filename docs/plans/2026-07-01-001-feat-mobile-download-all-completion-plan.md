@@ -154,6 +154,9 @@ Series-grid corner badge, mapped from the derived record state (R7, R8):
 - Static episode card and grid (badge target): `apps/mobile/src/components/series/SeriesEpisodeCard.tsx`, `apps/mobile/src/components/series/SeriesEpisodesGrid.tsx`.
 - Series action row and aggregate derivation (batch-control target): `apps/mobile/src/components/watch/SeriesActionRow.tsx`, `apps/mobile/app/series/[slug].tsx`.
 - Pure-logic tests, no RN render harness (`@testing-library/react-native` absent): `apps/mobile/app/series/__tests__/download.test.tsx`, `apps/mobile/package.json`.
+
+  **Superseded 2026-08-15 (`apps/mobile` only).** `apps/mobile` now has a component-render harness, and it needed no new dependency — `@testing-library/react-native` is still absent. See `apps/mobile/CLAUDE.md`, section "Component render tests". This applies to every "no render harness" statement in this plan, including U11 below. The statements stay as the record of what was true when they were written.
+
 - Transfer library API: `apps/mobile/node_modules/@kesha-antonov/react-native-background-downloader/lib/DownloadTask.d.ts`.
 - Reusable v1 learnings: `docs/solutions/best-practices/language-identity-on-slug-not-bcp47-20260605.md`, `docs/solutions/runtime-errors/apollo-inmemorycache-frozen-array-sort-crash-20260616.md`, `docs/solutions/developer-experience/verifying-mobile-expo-worktree-changes-in-simulator-20260608.md`.
 

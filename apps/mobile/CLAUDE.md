@@ -310,6 +310,57 @@ Client-side RUM + Logs via `@datadog/mobile-react-native`; helpers in
 - **RUM identity**: `setDatadogRumUser` receives the opaque auth subject id
   only — never email or display name.
 
+## Mini player and the root-owned playback session (feat-363)
+
+- **One player lives above the screens; the watch route BORROWS it.**
+  `PlaybackHost` mounts as a sibling of `<Stack>` in `app/_layout.tsx`, so it
+  can provide no React context. The seam is module scope —
+  `src/lib/miniPlayer/hostPlayer.ts` — with two channels: a claim (route to
+  host) and a player handle (host to route). Never put the one-second position
+  on either channel; it re-renders every screen under the root on each tick.
+  **A claim is not a session.** The route claims BEFORE playback, because
+  playback cannot start without a player; `store.start()` fires only when
+  `admitsSession(hasPlaybackStarted)` latches on FIRST playback. The claim is a
+  TOKEN REGISTRY (`createClaimToken`), not one slot: a native stack keeps
+  `/watch/A` mounted under `/watch/B`, so an anonymous slot lets B's unmount
+  clear A's claim. Identity is one field, `slug:` first and `id:` second
+  (`sessionIdentityKey`) — a two-field key changes under running video when the
+  query resolves `videoId`.
+- **Every floating video surface carries `surfaceType="textureView"` on
+  Android.** An Android `SurfaceView` punches through whatever is layered over
+  it, so the poster, the controls and the app behind all lose. Keep the ternary
+  form (`Platform.OS === "android" ? "textureView" : undefined`); iOS wants the
+  default. An emulator's SurfaceFlinger is the weakest possible evidence that
+  layering is safe, so a layering change needs Android hardware.
+- **Sheets suppress the window on BOTH platforms; only the hazard is
+  Android-only.** `presentationFor` returns `hidden` for every open sheet, and
+  `hidden` is not `none` — playback continues, only the surface goes away. The
+  reason differs per platform, so do not "fix" one and drop the other. On iOS a
+  native `formSheet` presents ABOVE the RN root view, so a sibling of the Stack
+  cannot paint over it at all. On Android the window paints THROUGH the sheet.
+  Two independent inputs feed it: route sheets read from expo-router segments
+  (`isSheetRoute`, kept in step with `app/watch/_layout.tsx` and
+  `app/series/_layout.tsx`) and a counter for the two modal components that own
+  no route (`createSheetCounter` — a counter, not a boolean, because they
+  overlap).
+- **A decoder assertion must render the host AND the route in one tree.** Every
+  earlier assertion in this app scoped one renderer, which is structurally blind
+  to a second subtree — that is how two-decoder states passed review. A tree
+  inspected after `act()` shows only the LAST commit, so a second surface that
+  lives for ONE commit (the exact shape of a handoff bug) is invisible to a
+  testID count. Assert on `peakMountedSurfaces()` and `peakSurfacesPerPlayer()`
+  from `src/test-utils/expoVideoMock.ts` instead: React flushes every passive
+  destroy of a commit before any passive create, so a correct handoff peaks at
+  one and a real double-attach peaks at two. **Attach order is the constraint
+  underneath all of this.** On Android a `VideoView` that FIRST attaches to a
+  player already playing with no surface is permanently video-dead — audio
+  plays, `currentTime` advances, the rectangle stays black, and no `pause`,
+  `seek`, `replaceAsync` or remount recovers it. Only a new player does. This is
+  why the `hidden` presentation still mounts a 1x1 transparent keep-alive
+  surface (1x1 and not 0x0 — a zero-size view can lay out without ever creating
+  the native surface), and why `windowHoldsSurface()` is ONE predicate read by
+  both the window's render gate and the host's `surfaceFree` publish.
+
 ## Component render tests
 
 Component render tests use the in-file react re-point pattern — see

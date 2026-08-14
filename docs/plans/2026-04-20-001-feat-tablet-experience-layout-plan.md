@@ -43,6 +43,9 @@ The app is portrait-locked and phone-shaped. On iPad it runs at 2× scale, cards
 
 - **Tablet redesigns of Discover / Library / Profile**: Deferred. Those tabs scale up as-is. Library has a strong list-detail opportunity — treat as a follow-up brainstorm + plan.
 - **Component test infrastructure for `apps/mobile`**: No `*.test.{ts,tsx}` files and no `__tests__` directories exist today (`jest --passWithNoTests` is the CI check). Adding `@testing-library/react-native` + breakpoint snapshot coverage is a separate chore, not a blocker for this plan. This plan calls out the test scenarios an implementer should cover **if** tests are wired up; otherwise verification leans on EAS preview builds on real devices and simulators (also the existing de-facto QA path).
+
+  **Superseded 2026-08-15 (`apps/mobile` only).** `apps/mobile` now has a component-render harness, and it needed no new dependency. See `apps/mobile/CLAUDE.md`, section "Component render tests". The paragraph above stays as the record of what was true when it was written. `apps/tv` statements of the same shape remain true, because TV stays on SDK 54.
+
 - **Raising `useTypography` `MAX_FACTOR` globally**: Current cap is 1.15×, clipping on iPad so body text is the same size as on a 6.5" phone. Considered during planning but not required for this feature — heading / hero scale is handled per-component. Track as a separate typography pass.
 
 ## Context & Research

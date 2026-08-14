@@ -139,7 +139,12 @@ import {
 } from "../../../lib/miniPlayer/layout"
 import { createVideoQoeSession } from "../../../lib/videoQoe"
 import { createSessionEndRegistry } from "../../../lib/miniPlayer/endRegistry"
-import { resetPictureInPictureLatch } from "../../../lib/miniPlayer/pipLatch"
+import {
+  isPictureInPictureActive,
+  resetPictureInPictureLatch,
+  setPictureInPictureActive,
+} from "../../../lib/miniPlayer/pipLatch"
+import { windowHoldsSurface } from "../../../lib/miniPlayer/presentation"
 import {
   createMiniPlayerStore,
   type MiniPlayerStore,
@@ -378,23 +383,30 @@ async function renderWindow(overrides: Partial<MiniPlayerWindowProps> = {}) {
   const { player: injected, ...rest } = overrides
   const player = (injected ??
     makeFakePlayer({ playing: true })) as unknown as FakePlayer
-  const element = (extra: Partial<MiniPlayerWindowProps>) => (
-    <MiniPlayerWindow
-      presentation="floating"
-      player={player as never}
-      video={VIDEO}
-      isPlaying
-      screen={SCREEN}
-      chrome={CHROME}
-      onExpand={onExpand}
-      onDismiss={onDismiss}
-      onPlayPause={onPlayPause}
-      onEnded={onEnded}
-      onFailure={onFailure}
-      {...rest}
-      {...extra}
-    />
-  )
+  // Defaulted from the presentation, which is what the host publishes when
+  // picture-in-picture is not holding it. A test that needs the two to disagree
+  // passes `holdsSurface` explicitly.
+  const element = (extra: Partial<MiniPlayerWindowProps>) => {
+    const presentation = extra.presentation ?? rest.presentation ?? "floating"
+    return (
+      <MiniPlayerWindow
+        presentation={presentation}
+        holdsSurface={windowHoldsSurface(presentation)}
+        player={player as never}
+        video={VIDEO}
+        isPlaying
+        screen={SCREEN}
+        chrome={CHROME}
+        onExpand={onExpand}
+        onDismiss={onDismiss}
+        onPlayPause={onPlayPause}
+        onEnded={onEnded}
+        onFailure={onFailure}
+        {...rest}
+        {...extra}
+      />
+    )
+  }
   let renderer!: TestInstance
   await act(async () => {
     renderer = TestRenderer.create(element({}))
@@ -976,6 +988,31 @@ describe("MiniPlayerWindow Android compositing", () => {
 
     expect(videoSurfaces(renderer)[0].props.surfaceType).toBeUndefined()
   })
+
+  it("carries the shared picture-in-picture wiring (AE5)", async () => {
+    // Without this the viewer can only reach the operating system's window
+    // from the full-screen view, and AE5 leaves the app FROM the window.
+    const { renderer } = await renderWindow()
+
+    const surface = videoSurfaces(renderer)[0]
+    expect(surface.props.allowsPictureInPicture).toBe(true)
+    expect(surface.props.startsPictureInPictureAutomatically).toBe(true)
+  })
+
+  it("feeds the latch from its own view callbacks", async () => {
+    const { renderer } = await renderWindow()
+    const surface = videoSurfaces(renderer)[0]
+
+    await act(async () => {
+      ;(surface.props.onPictureInPictureStart as () => void)()
+    })
+    expect(isPictureInPictureActive()).toBe(true)
+
+    await act(async () => {
+      ;(surface.props.onPictureInPictureStop as () => void)()
+    })
+    expect(isPictureInPictureActive()).toBe(false)
+  })
 })
 
 describe("MiniPlayerWindow lifecycle edges", () => {
@@ -990,6 +1027,43 @@ describe("MiniPlayerWindow lifecycle edges", () => {
 
     expect(videoSurfaces(renderer)).toHaveLength(0)
     expect(onEnded).toHaveBeenCalledTimes(1)
+  })
+
+  it("keeps the surface at the end of playback during picture-in-picture (R24)", async () => {
+    // R21's release IS an unmount, and expo-video does not guard the
+    // unregister that follows it while the operating system's window holds
+    // this view.
+    const { renderer, player } = await renderWindow()
+    await firstFrame(renderer)
+    await act(async () => {
+      setPictureInPictureActive(true)
+    })
+
+    await act(async () => {
+      player.emit("playToEnd")
+    })
+
+    expect(videoSurfaces(renderer)).toHaveLength(1)
+    // Held VIEWS, never held bookkeeping: the session still closes as ended.
+    expect(onEnded).toHaveBeenCalledTimes(1)
+  })
+
+  it("releases that surface once picture-in-picture stops", async () => {
+    const { renderer, player } = await renderWindow()
+    await firstFrame(renderer)
+    await act(async () => {
+      setPictureInPictureActive(true)
+    })
+    await act(async () => {
+      player.emit("playToEnd")
+    })
+    expect(videoSurfaces(renderer)).toHaveLength(1)
+
+    await act(async () => {
+      setPictureInPictureActive(false)
+    })
+
+    expect(videoSurfaces(renderer)).toHaveLength(0)
   })
 
   it("shows the poster again when playback ends", async () => {

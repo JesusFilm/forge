@@ -44,10 +44,9 @@ import {
   type Point,
   type Size,
 } from "../../lib/miniPlayer/layout"
-import {
-  windowHoldsSurface,
-  type MiniPlayerPresentation,
-} from "../../lib/miniPlayer/presentation"
+import { pictureInPictureViewProps } from "../../lib/miniPlayer/pictureInPicture"
+import type { MiniPlayerPresentation } from "../../lib/miniPlayer/presentation"
+import { usePictureInPictureHold } from "../../hooks/usePictureInPictureHold"
 import { resolveImageUrl } from "../../lib/resolveImageUrl"
 
 /** The floating window itself. */
@@ -100,6 +99,12 @@ export type MiniPlayerWindowVideo = {
 export type MiniPlayerWindowProps = {
   /** Which surface hosts the player, straight from `presentationFor`. */
   presentation: MiniPlayerPresentation
+  /**
+   * Does this window mount the one video view? From the host, not derived
+   * here: the host publishes `surfaceFree` off the same value, and it carries
+   * R24's hold, which a second derivation would silently drop.
+   */
+  holdsSurface: boolean
   player: VideoPlayer
   video: MiniPlayerWindowVideo
   /** The host's live playing flag. Read only as the fallback seed below. */
@@ -153,6 +158,7 @@ function progressPercent(positionSeconds: number, duration: number): number {
 
 export function MiniPlayerWindow({
   presentation,
+  holdsSurface,
   player,
   video,
   isPlaying,
@@ -365,6 +371,10 @@ export function MiniPlayerWindow({
     if (ended) onEnded?.()
   }, [ended, onEnded])
 
+  // R24 holds the VIEW, never the bookkeeping: the effect above still closes
+  // the session while the operating system's window is showing.
+  const heldEnded = usePictureInPictureHold(ended)
+
   useEffect(() => {
     // Unconditional, and the reason this gate cannot strand anyone: a surface
     // that never paints and never errors would otherwise hide dismiss forever.
@@ -462,14 +472,17 @@ export function MiniPlayerWindow({
   )
 
   // `full` mounts nothing: the watch route owns the one surface there. The
-  // host publishes `surfaceFree` off this same predicate, so a claimant never
+  // host publishes `surfaceFree` off this same value, so a claimant never
   // borrows into a commit where this window still holds a view.
-  if (!windowHoldsSurface(presentation)) return null
+  if (!holdsSurface) return null
 
   // Failure does NOT drop the view. R22 keeps that session alive, and a player
   // that plays surfaceless is permanently video-dead on Android — a recovered
   // stream would come back to a black rectangle. The poster covers it.
-  const surfaceMounted = !ended
+  //
+  // R21's release at the end of playback IS a drop, so it is held: the OS is
+  // showing this surface, and expo-video does not guard that unregister.
+  const surfaceMounted = !heldEnded
   const PosterImage =
     floating && posterMounted && resolvedPoster != null
       ? loadPosterImage()
@@ -514,6 +527,9 @@ export function MiniPlayerWindow({
           // iOS 16+ defaults this TRUE, which floats a Live Text "scan" button
           // over any frame with text in it — a system control we do not own.
           allowsVideoFrameAnalysis={false}
+          // AE5: the viewer leaves the app FROM the floating window, so this
+          // surface needs the same wiring the full view has.
+          {...pictureInPictureViewProps()}
           // textureView composites inside the RN hierarchy; an Android
           // SurfaceView punches through whatever is layered over it.
           surfaceType={Platform.OS === "android" ? "textureView" : undefined}

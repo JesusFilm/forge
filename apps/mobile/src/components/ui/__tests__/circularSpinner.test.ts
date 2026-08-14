@@ -9,6 +9,10 @@
  * See docs — apps/mobile/src/hooks/useShimmerOpacity.ts carries the same pair.
  */
 
+// Superseded 2026-08-15: apps/mobile HAS a component-render harness now — see
+// apps/mobile/CLAUDE.md "Component render tests". The assertions below still
+// stand; only the "no harness" reason above is stale.
+
 declare const __dirname: string
 declare const require: (moduleName: string) => {
   readFileSync: (path: string, encoding: string) => string

@@ -14,6 +14,8 @@ import type {
 // Pure enqueue orchestration: storage gate, request builder, capped enqueue loop,
 // result-derived outcome buckets. I/O-free via injected provider primitives so it
 // unit-tests without rendering the route (no RN render harness).
+// Superseded 2026-08-15: a render harness now exists — see apps/mobile/CLAUDE.md
+// "Component render tests". The pure shape here stays; only the reason is stale.
 
 // Concurrent enqueue cap. Small so concurrent swaps don't put many old+new
 // copies in flight at once — their transient footprint must stay within the

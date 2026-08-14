@@ -16,6 +16,9 @@ execution: code
 - **Objective:** Rebuild the mobile app's Library tab as the downloads manager defined by the Claude Design mockup, rendered in the app's existing color tokens, with the additive record metadata that makes series grouping possible offline.
 - **Product authority:** The imported mockup (`apps/mobile/design-mockups/library/Forge Mobile Library.html` + `library.jsx`, untracked local copies; canonical source is the claude.ai/design project `d27a9ac5-a583-4d18-88ae-43bfc139f789`, file `Forge Mobile Library.html`) governs structure and behavior. The Key Decisions and Requirements below override it on palette, undo, and the engine states it omits.
 - **Execution profile:** Five dependency-ordered units; pure-logic jest coverage plus simulator verification (apps/mobile has no component render harness — that is the repo's established pattern, not a gap to fix here).
+
+  **Superseded 2026-08-15 (`apps/mobile` only).** `apps/mobile` now has a component-render harness, and it needed no new dependency — `@testing-library/react-native` is still absent. See `apps/mobile/CLAUDE.md`, section "Component render tests". This applies to every "no component render harness" statement in this plan, including the one under Scope Boundaries and the one in U4's test scenarios. The statements stay as the record of what was true when they were written.
+
 - **Stop conditions:** Surface as a blocker any need to bump the offline manifest version (it drops user downloads), any admin GraphQL schema change (none is expected — `durationSeconds` already exists on the schema), or any change to download engine semantics beyond the two additive seams named in the Planning Contract.
 - **Tail ownership:** Implementer owns simulator verification on iOS (plus an Android emulator smoke), the design-conformance check against the mockup, and the roadmap ticket update per `AGENTS.md`.
 

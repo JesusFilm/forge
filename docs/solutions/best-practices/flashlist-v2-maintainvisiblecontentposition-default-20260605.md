@@ -87,6 +87,8 @@ It bites silently: no warning, no error — just a jump that looks like a layout
 
 There is no unit test — this repo has no render-test infra for FlashList. **Verification is the simulator:** open the language (or subtitle) sheet → type gibberish until the list is empty ("No languages/subtitles found") → press X to clear → confirm the list is stable at the top with no scroll-up/settle. Comparing screenshot frames at 0s and ~1s after the clear (they should be identical in list position) is enough to lock it.
 
+**Superseded 2026-08-15 (`apps/mobile` only).** `apps/mobile` now has a component-render harness, and it needed no new dependency — `@testing-library/react-native` is still absent. See `apps/mobile/CLAUDE.md`, section "Component render tests". A render suite can now pin the MVCP prop on these sheets. It still cannot reproduce a native scroll settle, so the simulator check above stays the acceptance evidence. The paragraph above stays as the record of what was true when it was written.
+
 ## Related
 
 - `bottom-sheet-migration-expo-sdk54-pitfalls-20260527.md` — same two sheets (`LanguageSheet`, `SubtitleSheet`), sibling hazards (gesture-handler bootstrap, snap-point remount, snap-vs-scroll). Different root cause. Its §9 list guidance prescribes `BottomSheetFlatList` with `initialNumToRender/windowSize`; these sheets have since moved to FlashList v2, so that section's list-lib advice is partially superseded here.

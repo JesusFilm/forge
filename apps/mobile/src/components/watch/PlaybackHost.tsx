@@ -32,6 +32,7 @@ import {
   type MiniPlayerWindowVideo,
 } from "./MiniPlayerWindow"
 import { useManagedVideoPlayer } from "../../hooks/useManagedVideoPlayer"
+import { usePictureInPictureHold } from "../../hooks/usePictureInPictureHold"
 import { reportDatadogError } from "../../lib/datadog"
 import {
   getMiniPlayerSheets,
@@ -143,7 +144,10 @@ export function PlaybackHost({
     [store],
   )
 
-  const active = resolveActivePlayback(claim, session)
+  // R24/AE12: a dismiss, an end or a sign-out while the operating system's
+  // window is showing would unmount this whole subtree under it. The hold
+  // defers that to the first render after picture-in-picture stops.
+  const active = usePictureInPictureHold(resolveActivePlayback(claim, session))
   if (active == null) return null
 
   // Keyed by the session module, not a local field list: two definitions of
@@ -351,10 +355,14 @@ function MiniPlayerWindowSlot({
     : presentation === "full"
       ? "hidden"
       : presentation
-  // The window's OWN render gate, not a second enumeration beside it: the two
-  // drifting apart is how the published signal decays into a restatement of
-  // "some route claimed the player".
-  const surfaceFree = !windowHoldsSurface(windowPresentation)
+  // ONE value, held for R24 and then read by both the window's render gate and
+  // the published `surfaceFree`. Two derivations is how the published signal
+  // decays into a restatement of "some route claimed the player", and it is
+  // also how one of the two silently loses the hold.
+  const holdsSurface = usePictureInPictureHold(
+    windowHoldsSurface(windowPresentation),
+  )
+  const surfaceFree = !holdsSurface
 
   const identityKey = sessionIdentityKey({ videoId, videoSlug })
   // Published AFTER the commit that mounted or unmounted this window's surface,
@@ -398,6 +406,7 @@ function MiniPlayerWindowSlot({
     <MiniPlayerWindowSurface
       store={store}
       presentation={windowPresentation}
+      holdsSurface={holdsSurface}
       player={player}
       isPlaying={isPlaying}
       screen={screen}

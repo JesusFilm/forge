@@ -78,7 +78,8 @@ export function useControlsVisibility(player: VideoPlayer): ControlsVisibility {
     }
     // hideDone: unmount only if still logically hidden. A reveal/interaction
     // during the fade flips the ref back true, making this completion stale —
-    // it then keeps the chrome mounted (mount-after-fade, mirrors MiniPlayerBar).
+    // it then keeps the chrome mounted (mount-after-fade, mirrors
+    // DeleteConfirmSheet).
     const finishHide = () => {
       const next = nextControlsState(
         { visible: controlsVisibleRef.current, mounted: true },
