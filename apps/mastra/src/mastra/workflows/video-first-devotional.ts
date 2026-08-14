@@ -783,8 +783,18 @@ const approveStep = createStep({
       throw error
     }
     if (inputData.portraitAsset == null || inputData.wideAsset == null) {
-      // Safety blocked upstream — nothing to approve.
-      return { ...inputData, approved: false, notes: "skipped: safety blocked" }
+      // Nothing to approve. The REASON is derived, not assumed: this note used to
+      // say "safety blocked" unconditionally, so a quality-blocked run told the
+      // approver the wrong gate stopped it. The third case matters too — assets
+      // can be missing because a render failed, and naming a gate then would be
+      // just as wrong.
+      const reason =
+        inputData.safety.verdict !== "pass"
+          ? "safety blocked"
+          : qualityBlocksRun(inputData.quality)
+            ? "quality blocked"
+            : "no rendered assets"
+      return { ...inputData, approved: false, notes: `skipped: ${reason}` }
     }
     try {
       await verifyDevotionalWorkerArtifacts({

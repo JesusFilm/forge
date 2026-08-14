@@ -408,6 +408,13 @@ describe("video-first devotional workflow", () => {
     // Not burned: a blocked devotional must not consume the clip.
     expect(mocks.record).not.toHaveBeenCalled()
 
+    // The approver is told which gate stopped it. This note used to say "safety
+    // blocked" unconditionally, so a quality block arrived attributed to the
+    // wrong gate.
+    expect(state).toMatchObject({
+      result: { notes: "skipped: quality blocked" },
+    })
+
     // WHY it was blocked has to survive to the result. Safety reads "pass" on a
     // quality block, so without `blockedBy` this run reported publish_failed /
     // rendered_assets_missing — a quality problem dressed as a render bug, which
