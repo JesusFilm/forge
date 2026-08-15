@@ -351,6 +351,15 @@ Apply this checklist to any gate of that kind:
    evidence is a simulator run with the interruption applied, and it must be
    recorded as such.
 
+   **Superseded in part, 2026-08-15.** The premise changed: `apps/mobile` now
+   has a component-render harness, and it needed no new dependency. See
+   `apps/mobile/CLAUDE.md`, section "Component render tests". A release path
+   like this one is provable in CI, so write that test rather than skip it. The
+   lesson itself still holds — a suite that cannot execute the path says nothing
+   about the path, and a simulator run stays the acceptance evidence for
+   anything with real timing in it. This is the same note as the one on "The
+   tests would have caught it" above.
+
 This is the same shape as the repo's mocked-shape-versus-real-contract
 discipline: a test that asserts the presence of a branch says nothing about
 whether the branches cover the input space. Here the input space is the set of

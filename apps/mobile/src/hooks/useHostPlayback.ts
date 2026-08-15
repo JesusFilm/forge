@@ -84,6 +84,14 @@ export function useHostPlayback({
 }: HostPlaybackOptions): HostPlayback {
   const claimKey = claim == null ? null : sessionIdentityKey(claim)
 
+  // WHICH session is live, never the session itself: the store rewrites its
+  // snapshot every second with the position, and subscribing this screen to
+  // that object re-renders the whole watch route at the same cadence.
+  const liveSessionKey = useSyncExternalStore(store.subscribe, () => {
+    const live = store.getSnapshot()
+    return live == null ? null : sessionIdentityKey(live)
+  })
+
   // Admission (AE10). A one-way latch on the FIRST true, keyed by video so a
   // re-point inside this screen cannot inherit the previous video's latch.
   const [startedKey, setStartedKey] = useState<string | null>(null)
@@ -168,6 +176,18 @@ export function useHostPlayback({
     if (action === "start") store.start(input)
     else store.update(input)
   }, [claim, hasPlaybackStarted, posterUrl, title, store])
+
+  // A latch that is never cleared admits ONE session per route instance, so a
+  // dismissal or a playToEnd left this screen unable to publish ever again. The
+  // re-arm needs a fresh onPlayingChange, which is why it does not resurrect.
+  useEffect(() => {
+    if (startedKey == null) return
+    // Read the store LIVE. The publish effect above runs in this same commit,
+    // so the rendered snapshot is still the pre-publish one and would clear the
+    // latch that publish just used.
+    if (isSameSession(store.getSnapshot(), claim)) return
+    setStartedKey(null)
+  }, [claim, liveSessionKey, startedKey, store])
 
   const entry = useSyncExternalStore(subscribeToHostPlayer, getHostPlayer)
   return { player: borrowedPlayer(entry, claim), onPlayingChange }

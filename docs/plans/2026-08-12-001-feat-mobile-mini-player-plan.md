@@ -667,6 +667,24 @@ Model new suites on `apps/mobile/src/components/watch/__tests__/PlayerControls.t
 
 ---
 
+## The findings record: reading order and precedence (added 2026-08-15)
+
+Five sections follow. Execution appended them one at a time, and they appear in the order they were written.
+
+**The precedence rule for the whole record: a LATER section supersedes an EARLIER one wherever the two disagree.** Read them in file order. This rule is stated here once and governs every section below, including the sections that also declare precedence in their own words.
+
+| Section                                 | Added      | Records                                          |
+| --------------------------------------- | ---------- | ------------------------------------------------ |
+| 1. Implementation Findings              | 2026-08-14 | U1-U6                                            |
+| 2. Implementation Findings, update 2    | 2026-08-14 | U7 and U8                                        |
+| 3. Implementation Findings, update 3    | 2026-08-15 | U9                                               |
+| 4. Implementation Findings, update 4    | 2026-08-15 | U10, and a summary of U9                         |
+| 5. Verification: iOS picture-in-picture | 2026-08-15 | the first device run; closes debt 2 of the three |
+
+Sections 3 and 4 both cover U9. Section 3 carries the detail; section 4 is the shorter summary written after U10. They agree, and where they do not, section 4 wins.
+
+---
+
 ## Implementation Findings (added 2026-08-14, after U1-U6)
 
 This section is additive and records what execution learned. It does not rewrite the units above. Where a finding CONTRADICTS a unit, that is stated explicitly — the finding wins, because it was measured.
@@ -1048,7 +1066,9 @@ Unchanged from update 2, plus:
 
 ---
 
-## Implementation Findings, update 3 (added 2026-08-15, after U9 and U10)
+## Implementation Findings, update 4 (added 2026-08-15, after U10)
+
+Supersedes parts of updates 1, 2 and 3. Where they disagree, this one wins. It also summarises U9, which update 3 records in more detail.
 
 **All ten units are shipped.** Branch `worktree-mobile-pip-mini-player`, draft
 PR #1937. Tests went from 110 suites / 1567 at the start to **142 / 2065**.

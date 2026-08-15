@@ -639,6 +639,74 @@ describe("publishing the session", () => {
     expect(storeEndReasons).toEqual([])
   })
 
+  it("publishes again when the SAME video plays after its session ended", async () => {
+    // The admission latch is one-way, so without a re-arm this route could
+    // admit exactly one session for its whole life. Reachable twice over: the
+    // viewer dismisses the window with this route still on the stack, and the
+    // video reaches its end. After either one the mini player never returned.
+    const store = makeStore()
+    await render({
+      store,
+      segments: WATCH_SEGMENTS,
+      route: { store, streamingUrl: SEED_URL, videoId: "v1", videoSlug: SLUG },
+    })
+    await startPlaying(lastFakePlayer())
+    await act(async () => {
+      store.end("dismissed")
+    })
+    expect(store.getSnapshot()).toBeNull()
+
+    await act(async () => {
+      routeOnPlayingChange(true)
+    })
+
+    expect(store.getSnapshot()).toMatchObject({ videoSlug: SLUG })
+  })
+
+  it("does not re-render the route at the one-second position cadence", async () => {
+    // The store replaces its snapshot object on every position write. The hook
+    // reads only WHICH session is live for exactly this reason: subscribing the
+    // watch screen to that object re-renders it once a second for a whole film.
+    const store = makeStore()
+    await render({
+      store,
+      segments: WATCH_SEGMENTS,
+      route: { store, streamingUrl: SEED_URL, videoId: "v1", videoSlug: SLUG },
+    })
+    const player = lastFakePlayer()
+    await startPlaying(player)
+    const rendersBefore = routeHandles.length
+
+    player.currentTime = 42
+    player.duration = 120
+    await tick()
+    player.currentTime = 43
+    await tick()
+
+    expect(store.getSnapshot()).toMatchObject({ positionSeconds: 43 })
+    expect(routeHandles).toHaveLength(rendersBefore)
+  })
+
+  it("does NOT undo the dismissal that ended it", async () => {
+    // The other half, and the reason the re-arm is not simply "re-run the
+    // publish when the store changes": that store change IS the dismissal, so
+    // the window would come straight back over the screen the viewer is on.
+    const store = makeStore()
+    await render({
+      store,
+      segments: WATCH_SEGMENTS,
+      route: { store, streamingUrl: SEED_URL, videoId: "v1", videoSlug: SLUG },
+    })
+    await startPlaying(lastFakePlayer())
+
+    await act(async () => {
+      store.end("dismissed")
+    })
+
+    expect(store.getSnapshot()).toBeNull()
+    expect(storeEndReasons).toEqual(["dismissed"])
+  })
+
   it("publishes a slug-keyed local file the same way as a stream", async () => {
     // AE8/R20. Downloaded playback has no documentId on device, so the slug is
     // the only key — and the shape the window reads must not differ.

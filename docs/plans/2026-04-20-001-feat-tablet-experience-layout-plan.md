@@ -46,6 +46,8 @@ The app is portrait-locked and phone-shaped. On iPad it runs at 2× scale, cards
 
   **Superseded 2026-08-15 (`apps/mobile` only).** `apps/mobile` now has a component-render harness, and it needed no new dependency. See `apps/mobile/CLAUDE.md`, section "Component render tests". The paragraph above stays as the record of what was true when it was written. `apps/tv` statements of the same shape remain true, because TV stays on SDK 54.
 
+  **This note covers the whole plan, not this paragraph alone.** Every later "no component test infra" and "no infra to host unit tests" line in this document is superseded on the same date and for the same reason — Unit 1 (two lines), Unit 2, Unit 3, Unit 4 and Unit 5. Each of those lines carries the same stamp in place. Read each one as history, and write the component test it says to skip. The lines stay as the record of what was true when they were written.
+
 - **Raising `useTypography` `MAX_FACTOR` globally**: Current cap is 1.15×, clipping on iPad so body text is the same size as on a 6.5" phone. Considered during planning but not required for this feature — heading / hero scale is handled per-component. Track as a separate typography pass.
 
 ## Context & Research
@@ -156,6 +158,8 @@ Three orthogonal concerns:
 - Modify: `apps/mobile/src/styles/shared.ts`
 - Test: none — `apps/mobile` has no component test infra today (`jest --passWithNoTests`). Hook is exercised transitively by every subsequent unit's device verification.
 
+  **Superseded 2026-08-15.** `apps/mobile` now has a component-render harness (`src/test-utils/rnTestRenderer.ts`) and it needed no new dependency, so this test IS writable. See the note under "Deferred to Separate Tasks" above.
+
 **Approach:**
 
 - `useBreakpoint()` consults `useWindowDimensions()` and returns `'phone' | 'tablet' | 'tabletLandscape'` using the ≥ 768 / ≥ 1024 thresholds. No module-scope `Dimensions.get` (canonical `responsive-typography-hook` anti-pattern).
@@ -173,6 +177,8 @@ Three orthogonal concerns:
 <!-- useBreakpoint is a pure function of useWindowDimensions; its correctness is observable downstream. -->
 
 - Test expectation: none — pure width-to-enum mapping with no infra to host unit tests in this repo today. The 3 return values are exercised by Units 2, 3, and 5 on device.
+
+  **Superseded 2026-08-15.** The infra exists. A pure width-to-enum mapping is a plain unit test, and the hook itself is now renderable. See the note under "Deferred to Separate Tasks" above.
 
 **Verification:**
 
@@ -195,6 +201,8 @@ Three orthogonal concerns:
 - Create: `apps/mobile/src/components/navigation/TabletSidebar.tsx`
 - Modify: `apps/mobile/app/(tabs)/_layout.tsx`
 - Test: none (no component test infra). Device verification below.
+
+  **Superseded 2026-08-15.** `apps/mobile` now has a component-render harness (`src/test-utils/rnTestRenderer.ts`) and it needed no new dependency, so this test IS writable. Device verification stays the acceptance evidence for layout. See the note under "Deferred to Separate Tasks" above.
 
 **Approach:**
 
@@ -250,6 +258,8 @@ Three orthogonal concerns:
 - Modify: `apps/mobile/src/components/sections/CuratedHomeLayout.tsx`
 - Test: none (no component test infra).
 
+  **Superseded 2026-08-15.** `apps/mobile` now has a component-render harness (`src/test-utils/rnTestRenderer.ts`) and it needed no new dependency, so this test IS writable. See the note under "Deferred to Separate Tasks" above.
+
 **Approach:**
 
 - Import `useBreakpoint()`. Replace the single `heroHeight = screenWidth * 1.2` with a breakpoint switch:
@@ -304,6 +314,8 @@ Three orthogonal concerns:
 - Modify: `apps/mobile/src/components/sections/MediaCollectionRenderer.tsx`
 - Test: none (no component test infra).
 
+  **Superseded 2026-08-15.** `apps/mobile` now has a component-render harness (`src/test-utils/rnTestRenderer.ts`) and it needed no new dependency, so this test IS writable. See the note under "Deferred to Separate Tasks" above.
+
 **Approach:**
 
 - Each renderer imports `useBreakpoint()` and picks card-width constants by breakpoint. Starting values (subject to device-testing iteration per Deferred open question):
@@ -347,6 +359,8 @@ Three orthogonal concerns:
 - Modify: `apps/mobile/app/video/[sectionKey].tsx`
 - Modify: `apps/mobile/src/components/sections/BibleQuotesCarouselRenderer.tsx`
 - Test: none (no component test infra).
+
+  **Superseded 2026-08-15.** `apps/mobile` now has a component-render harness (`src/test-utils/rnTestRenderer.ts`) and it needed no new dependency, so this test IS writable. See the note under "Deferred to Separate Tasks" above.
 
 **Approach:**
 

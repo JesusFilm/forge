@@ -55,6 +55,18 @@ describe("device support (R15, runtime half)", () => {
     expect(isPictureInPictureAvailable()).toBe(false)
   })
 
+  it("caches a SUCCESSFUL probe only, so one throw cannot disable the mode", () => {
+    // The probe can throw for a reason that is not the device — no activity
+    // yet at cold launch. Caching that answer turned one unlucky call into a
+    // process-wide loss of picture-in-picture, on a capable device.
+    supportedMock.mockImplementationOnce(() => {
+      throw new Error("no activity")
+    })
+
+    expect(isPictureInPictureAvailable()).toBe(false)
+    expect(isPictureInPictureAvailable()).toBe(true)
+  })
+
   it("asks the device once, not once per render", () => {
     // Every capable surface calls this on every render, at the window's
     // one-second position cadence. Native support cannot change at runtime.

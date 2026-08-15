@@ -536,6 +536,7 @@ export default function WatchVideoPage() {
             onToggleFullscreen={toggleFullscreen}
             resumeAtSeconds={resumeAtSeconds}
             autostart
+            pictureInPicture
             player={hostPlayer.player}
             isPlaying={hostPlayer.isPlaying}
           />

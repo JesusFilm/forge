@@ -25,8 +25,14 @@ import {
   type VideoQoeReason,
   type VideoQoeSession,
 } from "../lib/videoQoe"
-import { shouldPauseOnAppStateChange } from "../lib/pipPolicy"
-import { isPictureInPictureActive } from "../lib/miniPlayer/pipLatch"
+import {
+  shouldPauseOnAppStateChange,
+  shouldResumeOnPictureInPictureStart,
+} from "../lib/pipPolicy"
+import {
+  isPictureInPictureActive,
+  subscribeToPictureInPicture,
+} from "../lib/miniPlayer/pipLatch"
 import type { SessionEndReason } from "../lib/miniPlayer/types"
 import type { FlushTrigger } from "../lib/watchProgress/recorder"
 
@@ -305,10 +311,15 @@ export function useManagedVideoPlayer(
   // Background pauses; foreground resumes ONLY if playback was active when the
   // app left — never starts a video the user had paused or never played.
   const wasPlayingRef = useRef(false)
+  // Did THIS departure stop running video? Android opens the picture-in-picture
+  // window after it reports 'background', so the pause below has already fired
+  // and only this flag says the window is owed a resume.
+  const pausedOnDepartureRef = useRef(false)
   useEffect(() => {
     const subscription = AppState.addEventListener("change", (nextState) => {
       if (nextState === "active") {
         isForegroundRef.current = true
+        pausedOnDepartureRef.current = false
         if (wasPlayingRef.current) {
           try {
             player.play()
@@ -336,6 +347,7 @@ export function useManagedVideoPlayer(
       if (!shouldPauseOnAppStateChange(nextState, isPictureInPictureActive()))
         return
       recorderRef.current?.flush("background")
+      pausedOnDepartureRef.current = wasPlayingRef.current
       try {
         player.pause()
       } catch {
@@ -343,6 +355,26 @@ export function useManagedVideoPlayer(
       }
     })
     return () => subscription.remove()
+  }, [player])
+
+  // The Android half of R13. Its 'background' arrives BEFORE the window opens,
+  // so the pause above has already run and nothing else would undo it — the
+  // window would play a frozen frame with no audio for its whole life.
+  useEffect(() => {
+    return subscribeToPictureInPicture(() => {
+      if (!isPictureInPictureActive()) return
+      if (!shouldResumeOnPictureInPictureStart(pausedOnDepartureRef.current))
+        return
+      pausedOnDepartureRef.current = false
+      try {
+        player.play()
+      } catch {
+        datadogLog.warn("video.resume_failed", {
+          content_id: extractMuxPlaybackId(loadedUrlRef.current),
+          surface: "picture_in_picture",
+        })
+      }
+    })
   }, [player])
 
   useEffect(() => {

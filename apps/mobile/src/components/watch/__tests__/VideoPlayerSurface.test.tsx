@@ -66,7 +66,7 @@ jest.mock("../../../lib/watchProgress/syncClient", () => ({
 import { act } from "react"
 import { Platform } from "react-native"
 
-import { VideoPlayerSurface } from "../VideoPlayer"
+import { VideoPlayer, VideoPlayerSurface } from "../VideoPlayer"
 import {
   isPictureInPictureActive,
   resetPictureInPictureLatch,
@@ -86,24 +86,45 @@ const POSTER = "https://images.test/poster.jpg"
 
 let live: TestInstance[] = []
 
-async function mount(
-  player: FakePlayer,
-  props: Partial<{ isPlaying: boolean; autostart: boolean }> = {},
-) {
+type SurfaceProps = Partial<{
+  isPlaying: boolean
+  autostart: boolean
+  pictureInPicture: boolean
+  onPlayingChange: (isPlaying: boolean) => void
+}>
+
+function element(player: FakePlayer, props: SurfaceProps) {
+  return (
+    <VideoPlayerSurface
+      streamingUrl={STREAM}
+      posterUrl={POSTER}
+      autostart={props.autostart ?? true}
+      pictureInPicture={props.pictureInPicture ?? false}
+      onPlayingChange={props.onPlayingChange}
+      player={player as never}
+      isPlaying={props.isPlaying ?? player.playing}
+    />
+  )
+}
+
+async function mount(player: FakePlayer, props: SurfaceProps = {}) {
   let renderer!: TestInstance
   await act(async () => {
-    renderer = TestRenderer.create(
-      <VideoPlayerSurface
-        streamingUrl={STREAM}
-        posterUrl={POSTER}
-        autostart={props.autostart ?? true}
-        player={player as never}
-        isPlaying={props.isPlaying ?? player.playing}
-      />,
-    )
+    renderer = TestRenderer.create(element(player, props))
   })
   live.push(renderer)
   return renderer
+}
+
+/** Re-render the SAME surface with changed props. */
+async function update(
+  renderer: TestInstance,
+  player: FakePlayer,
+  props: SurfaceProps,
+) {
+  await act(async () => {
+    renderer.update(element(player, props))
+  })
 }
 
 /**
@@ -212,6 +233,38 @@ describe("VideoPlayerSurface over an already-playing player", () => {
   // unguarded just below and throws anyway — pre-existing, outside U6.
 })
 
+/**
+ * The ONLY production feeder of the admission latch (`useHostPlayback`'s
+ * `onPlayingChange`). The hook's own suite re-implements this call in its route
+ * stand-in, so nothing else executes the real wiring: dropping the prop from
+ * this component leaves the whole suite green while the session is never
+ * published, the mini player never appears, and no error is raised anywhere.
+ */
+describe("VideoPlayerSurface reports playback to its owner", () => {
+  it("calls the prop on the transition into playing", async () => {
+    const onPlayingChange = jest.fn()
+    const player = makeFakePlayer({ playing: false })
+    const renderer = await mount(player, { isPlaying: false, onPlayingChange })
+
+    await update(renderer, player, { isPlaying: true, onPlayingChange })
+
+    expect(onPlayingChange).toHaveBeenCalledWith(true)
+  })
+
+  it("reports nothing playing while the player has not started", async () => {
+    // The anti-vacuous companion: a surface that called the prop with `true`
+    // unconditionally would satisfy the case above and admit every session
+    // before a frame of it played, which is the defect AE10 exists to prevent.
+    const onPlayingChange = jest.fn()
+    const player = makeFakePlayer({ playing: false })
+
+    await mount(player, { isPlaying: false, onPlayingChange })
+
+    expect(onPlayingChange).toHaveBeenCalledWith(false)
+    expect(onPlayingChange).not.toHaveBeenCalledWith(true)
+  })
+})
+
 describe("VideoPlayerSurface decoder surface", () => {
   it("mounts exactly one video view", async () => {
     const renderer = await mount(makeFakePlayer({ playing: true }))
@@ -255,13 +308,33 @@ describe("VideoPlayerSurface picture-in-picture (U9)", () => {
     resetPictureInPictureLatch()
   })
 
-  it("carries the shared wiring on the watch surface AND the trailer", async () => {
-    // One component backs both, so this is the pair R14 covers on Android.
-    const renderer = await mount(makeFakePlayer({ playing: true }))
+  it("makes the WATCH SCREEN capable", async () => {
+    const renderer = await mount(makeFakePlayer({ playing: true }), {
+      pictureInPicture: true,
+    })
 
     const surface = videoSurfaces(renderer)[0]
     expect(surface.props.allowsPictureInPicture).toBe(true)
+    // R14: Android auto-enters on HOME for any eligible view; setting this is
+    // what makes iOS behave the same way.
     expect(surface.props.startsPictureInPictureAutomatically).toBe(true)
+  })
+
+  it("leaves the SERIES TRAILER incapable", async () => {
+    // Rendered through the self-owning wrapper, which is the trailer's own
+    // production shape. That screen autostarts with sound while the viewer is
+    // browsing, so a HOME press must not float a video nobody chose to watch.
+    let renderer!: TestInstance
+    await act(async () => {
+      renderer = TestRenderer.create(
+        <VideoPlayer streamingUrl={STREAM} posterUrl={POSTER} autostart />,
+      )
+    })
+    live.push(renderer)
+
+    const surface = videoSurfaces(renderer)[0]
+    expect(surface.props.allowsPictureInPicture).toBe(false)
+    expect(surface.props.startsPictureInPictureAutomatically).toBe(false)
   })
 
   it("arms R13's background-pause exemption end to end", async () => {

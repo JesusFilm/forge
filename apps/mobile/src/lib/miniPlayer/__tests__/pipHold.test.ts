@@ -35,12 +35,29 @@ describe("pictureInPictureHold", () => {
     expect(held).toBe("floating")
   })
 
-  it("holds null as a value, not as an absence", () => {
-    // The host holds `resolveActivePlayback(...)`, whose end state IS null.
-    // A nullish-coalescing implementation would let that unmount through.
+  it("holds a live value against a null successor", () => {
+    // The host holds `resolveActivePlayback(...)`, whose end state IS null, so
+    // the hold has to survive a `next` of null.
     expect(pictureInPictureHold(null, { videoId: "a" }, true)).toEqual({
       videoId: "a",
     })
-    expect(pictureInPictureHold({ videoId: "b" }, null, true)).toBeNull()
+  })
+
+  it("never freezes the ABSENCE of a value", () => {
+    // Picture-in-picture can start from the FOREGROUND, where the host owns no
+    // player yet. Holding that `null` pinned "no session" and every later claim
+    // was discarded: no player, no surface, a loading poster with no way out.
+    expect(pictureInPictureHold({ videoId: "b" }, null, true)).toEqual({
+      videoId: "b",
+    })
+    expect(pictureInPictureHold({ videoId: "b" }, undefined, true)).toEqual({
+      videoId: "b",
+    })
+  })
+
+  it("still holds `false`, which is a value and not an absence", () => {
+    // The window's surface decisions are booleans, and `false` there means
+    // "another surface owns the view" — a live state worth protecting.
+    expect(pictureInPictureHold(true, false, true)).toBe(false)
   })
 })

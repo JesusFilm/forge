@@ -107,6 +107,10 @@ export type VideoPlayerSurfaceProps = Omit<
 > & {
   player: ExpoVideoPlayer
   isPlaying: boolean
+  /** May the OS take this surface into its floating window? Absent from
+   *  `VideoPlayerProps` on purpose, so the self-owning wrapper above — the
+   *  series-detail trailer, which nobody chose to watch — cannot forward it. */
+  pictureInPicture?: boolean
 }
 
 export function VideoPlayerSurface({
@@ -119,6 +123,7 @@ export function VideoPlayerSurface({
   horizontalInset = 0,
   resumeAtSeconds = null,
   autostart = false,
+  pictureInPicture = false,
   player,
   isPlaying,
 }: VideoPlayerSurfaceProps) {
@@ -434,9 +439,10 @@ export function VideoPlayerSurface({
         // do not own, inside chrome we do.
         allowsVideoFrameAnalysis={false}
         contentFit="contain"
-        // R13-R15, one wiring for all four capable surfaces. This one backs
-        // both the watch screen and the series-detail trailer.
-        {...pictureInPictureViewProps()}
+        // R13-R15, one wiring for all four capable surfaces. This component
+        // backs the watch screen AND the series-detail trailer, so the
+        // affordance is per call site — the trailer opts out.
+        {...pictureInPictureViewProps(pictureInPicture)}
         // textureView composites in the RN view hierarchy on Android so the
         // controls/captions overlay reliably renders above the video surface
         // (SurfaceView otherwise punches through). No-op on iOS.

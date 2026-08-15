@@ -24,16 +24,23 @@ browsing. Every other streaming app keeps the video in a small floating window.
 
 The obstacle is architectural, not cosmetic. Each screen builds its own
 `expo-video` player, so a video cannot outlive its route. Two players on one
-HLS URL is the failure this work exists to prevent: each one prebuffers, each
-one holds an Android decoder, and on Android a second surface on one player
-throws.
+HLS URL is the failure this work exists to prevent: each one prebuffers and each
+one holds an Android decoder. Android carries a second hazard on ONE player, and
+the emulator spike measured it: a `VideoView` that FIRST attaches to a player
+that has already played with no surface is permanently video-dead — audio plays,
+`currentTime` advances, the rectangle stays black, and only a new player
+recovers it.
 
 ## Entry Points — Read These First
 
 1. `docs/plans/2026-08-12-001-feat-mobile-mini-player-plan.md` — the plan, plus
-   TWO "Implementation Findings" sections at the end that record what actually
-   shipped. Read update 2 first; where it disagrees with update 1, update 2
-   wins.
+   FIVE dated records at the end that say what actually shipped: four
+   "Implementation Findings" sections (updates 1 to 4) and one iOS verification
+   record. The section "The findings record: reading order and precedence"
+   opens that run and carries the rule. **Read the five in file order. Where two
+   disagree, the LATER one wins.** Update 4 (after U10) plus the iOS
+   verification record (2026-08-15) are the current state; update 2 is NOT the
+   latest. Update 3 holds the U9 detail that update 4 only summarises.
 2. `apps/mobile/CLAUDE.md`, section "Mini player and the root-owned playback
    session" — the four standing rules. Read this before changing any player
    file.
@@ -57,7 +64,11 @@ throws.
    `apps/mobile/src/lib/miniPlayer/pictureInPicture.ts`. `pipHold.ts` carries
    R24's hold rule.
 9. `apps/mobile/src/test-utils/expoVideoMock.ts` — the shared `expo-video` stub,
-   plus `peakMountedSurfaces()` and `peakSurfacesPerPlayer()`.
+   plus `peakMountedSurfaces()` and `peakSurfacesPerPlayer()`. Its sibling
+   `rnTestRenderer.ts` is the component-render harness this branch added; it
+   needed no new dependency. `apps/mobile/CLAUDE.md`, section "Component render
+   tests", is the reference. Older mobile docs still say this app has no render
+   harness — those statements carry dated supersession notes.
 
 ## Grep These
 
@@ -85,23 +96,24 @@ grep -rln "peakMountedSurfaces\|peakSurfacesPerPlayer" apps/mobile/src
 
 ## What To Build
 
-Ten units, U1 to U10. U1 to U9 are shipped on branch
-`worktree-mobile-pip-mini-player` (draft PR #1937); U10 is in progress. The
-feature is LIVE: the watch route publishes a session on first playback and
-borrows the hoisted player, so the window appears on back.
+Ten units, U1 to U10. All ten are shipped on branch
+`worktree-mobile-pip-mini-player` (draft PR #1937). The feature is LIVE: the
+watch route publishes a session on first playback and borrows the hoisted
+player, so the window appears on back. This ticket stays `in-progress` because
+the device acceptance below is not done, not because code is missing.
 
-| Unit | Scope                                         | State       |
-| ---- | --------------------------------------------- | ----------- |
-| U1   | Player-creation guard and shared test harness | shipped     |
-| U2   | Behavioural test net over the player adapter  | shipped     |
-| U3   | Widen session-end and flush vocabularies      | shipped     |
-| U4   | Pure mini-player modules                      | shipped     |
-| U5   | Re-key lifecycle onto explicit signals        | shipped     |
-| U6   | Hoist the player to the root                  | shipped     |
-| U7   | The floating window                           | shipped     |
-| U8   | Hero and decoder coordination                 | shipped     |
-| U9   | Native picture-in-picture                     | shipped     |
-| U10  | Cleanup, guards and documentation             | in progress |
+| Unit | Scope                                         | State   |
+| ---- | --------------------------------------------- | ------- |
+| U1   | Player-creation guard and shared test harness | shipped |
+| U2   | Behavioural test net over the player adapter  | shipped |
+| U3   | Widen session-end and flush vocabularies      | shipped |
+| U4   | Pure mini-player modules                      | shipped |
+| U5   | Re-key lifecycle onto explicit signals        | shipped |
+| U6   | Hoist the player to the root                  | shipped |
+| U7   | The floating window                           | shipped |
+| U8   | Hero and decoder coordination                 | shipped |
+| U9   | Native picture-in-picture                     | shipped |
+| U10  | Cleanup, guards and documentation             | shipped |
 
 **U9 — native picture-in-picture.** `supportsPictureInPicture` is on the
 `expo-video` plugin block in `apps/mobile/app.json`. All FOUR render sites that
@@ -115,9 +127,11 @@ hand-rolled copy, is a failure this repo has recorded. R24's hold rule is pure
 in `src/lib/miniPlayer/pipHold.ts`: while the latch is set, no decision may
 mount, unmount or hand over a video view.
 
-**U10 — remaining work.** The dead `MiniPlayerBar.tsx` is deleted, the prose
-sweep is done, and `apps/mobile/CLAUDE.md` carries the four standing rules. This
-ticket is the last item. Everything else outstanding is hardware acceptance.
+**U10 — cleanup, guards and documentation.** The dead `MiniPlayerBar.tsx` is
+deleted, the prose sweep is done, `apps/mobile/CLAUDE.md` carries the four
+standing rules under "Mini player and the root-owned playback session", and this
+ticket exists. U10 is complete. Everything still outstanding is device
+acceptance.
 
 ## Constraints
 
@@ -149,7 +163,7 @@ ticket is the last item. Everything else outstanding is hardware acceptance.
 ## Verification
 
 ```bash
-# From apps/mobile — the per-unit gates.
+# From the repo root. Every command below assumes that. The per-unit gates:
 pnpm --filter @forge/mobile test
 pnpm --filter @forge/mobile typecheck
 pnpm --filter @forge/mobile lint
@@ -159,30 +173,39 @@ pnpm --filter @forge/mobile lint
 npx prettier --check 'docs/**/*.md'
 
 # U9 only. Never trust the plugin alone — read the generated manifest.
+# `android/` is gitignored, so the guard test cannot read it on CI.
 pnpm --filter @forge/mobile exec expo prebuild --platform android --clean
-grep -n "supportsPictureInPicture\|configChanges" android/app/src/main/AndroidManifest.xml
+grep -n "supportsPictureInPicture\|configChanges" apps/mobile/android/app/src/main/AndroidManifest.xml
 
 # Simulator. Seed the env BEFORE Metro starts; Expo inlines EXPO_PUBLIC_* at
 # bundler startup.
 bash scripts/setup-sim-env.sh mobile
 ```
 
-Baseline on this branch after U8: **138 suites / 2017 tests green**, `tsc` and
-`eslint` clean. The test script passes with no tests, so a suite that never
-loads exits zero — a suite count that did not rise is the only detector that a
-new file is not being collected.
+Baseline on this branch after U10: **142 suites / 2065 tests green** (run
+2026-08-15), `tsc` and `eslint` clean. The test script passes with no tests, so
+a suite that never loads exits zero — a suite count that did not rise is the
+only detector that a new file is not being collected.
 
-**Outstanding acceptance, both hardware:**
+**Outstanding acceptance — two debts, one of them not hardware:**
 
 1. **Android hardware.** A live first frame in the floating window after a cold
    relaunch, sampled on a motion-rich part of the video. Then picture-in-picture
    entry, background, return, and the interface restores. Everything so far is
-   jest evidence plus one emulator spike.
-2. **iOS hardware or an iPad simulator.** Picture-in-picture has never been
-   verified on this app and cannot be verified on an iPhone simulator.
-3. **Cold-launch timing.** Unmeasured, not measured-as-fine. The dev client has
+   jest evidence plus one emulator spike. This is the highest-value check,
+   because only hardware can validate the attach-order handoff and the
+   SurfaceView layering.
+2. **Cold-launch timing.** Unmeasured, not measured-as-fine. The dev client has
    a plus-or-minus 6 second noise floor. A real answer needs a release build and
    the Datadog `js_tti` the app already emits.
+
+**Closed 2026-08-15: iOS picture-in-picture.** Verified on an iPad Pro 11-inch
+(M5) simulator, iOS 26.5, over three complete cycles — the latch arms and
+releases, R13 keeps the video playing in the background, R24 admits no surface
+change inside a latched interval, and the interface restores with playback
+continuous. The record is the last section of the plan. One empirical question
+stays open and needs iOS HARDWARE, not a simulator: whether the extra
+`AVAudioSession` recomputes make an audible duck blip.
 
 **Two false-positive twins to rule out before believing any device failure.** A
 long-running Android emulator reproduces identical black video with correct

@@ -971,7 +971,11 @@ describe("PlaybackHost video surface", () => {
       opacity: number
     }
     expect(container.props.pointerEvents).toBe("none")
+    // Small, and NOT zero. A zero-size view can lay out without ever creating
+    // the native surface, which is the state this slot exists to prevent.
+    expect(style.width).toBeGreaterThan(0)
     expect(style.width).toBeLessThanOrEqual(1)
+    expect(style.height).toBeGreaterThan(0)
     expect(style.height).toBeLessThanOrEqual(1)
     expect(style.opacity).toBe(0)
   })
@@ -1029,6 +1033,29 @@ describe("PlaybackHost picture-in-picture hold", () => {
     expect(videoSurfaces(renderer)).toHaveLength(1)
     return { renderer, store }
   }
+
+  it("builds a player for a claim that arrives AFTER the latch armed", async () => {
+    // The foreground start. The SDUI routes render native controls, so the
+    // viewer can open the operating system's window with the app on screen —
+    // at a moment when there is no session and no claim to hold. A hold that
+    // pinned that `null` discarded every later claim: no player, no surface,
+    // and `/watch/<slug>` on its loading poster for good.
+    const store = makeStore()
+    await mount(store, WATCH_SEGMENTS)
+    await act(async () => {
+      setPictureInPictureActive(true)
+    })
+
+    await act(async () => {
+      claimPlayback(routeToken, {
+        videoId: "video-1",
+        streamingUrl: EPISODE_ONE,
+      })
+    })
+
+    expect(createdFakePlayers()).toHaveLength(1)
+    expect(getHostPlayer()).not.toBeNull()
+  })
 
   it("keeps the surface when the session is dismissed (AE12)", async () => {
     const { renderer, store } = await mountFloating()

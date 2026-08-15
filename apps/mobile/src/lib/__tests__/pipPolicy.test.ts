@@ -1,4 +1,7 @@
-import { shouldPauseOnAppStateChange } from "../pipPolicy"
+import {
+  shouldPauseOnAppStateChange,
+  shouldResumeOnPictureInPictureStart,
+} from "../pipPolicy"
 
 describe("shouldPauseOnAppStateChange (R13, KTD12)", () => {
   it("pauses on background when picture-in-picture is not carrying playback", () => {
@@ -30,5 +33,19 @@ describe("shouldPauseOnAppStateChange (R13, KTD12)", () => {
     // on an unrecognised string is the destructive default.
     expect(shouldPauseOnAppStateChange("extension", false)).toBe(false)
     expect(shouldPauseOnAppStateChange("unknown", false)).toBe(false)
+  })
+})
+
+describe("shouldResumeOnPictureInPictureStart (the Android order)", () => {
+  it("puts back a departure that stopped running video", () => {
+    // Android reports 'background' BEFORE the window opens, so the pause has
+    // already fired and only this resume gives the window its audio back.
+    expect(shouldResumeOnPictureInPictureStart(true)).toBe(true)
+  })
+
+  it("starts nothing when the departure paused nothing", () => {
+    // Two states arrive here: iOS, whose latch is set before any pause, and a
+    // video the viewer had already paused. Neither may begin to play.
+    expect(shouldResumeOnPictureInPictureStart(false)).toBe(false)
   })
 })

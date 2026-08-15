@@ -389,10 +389,9 @@ describe("useManagedVideoPlayer lifecycle", () => {
     expect(player.pause).not.toHaveBeenCalled()
   })
 
-  it("does NOT pause on 'background' while picture-in-picture is active (R13)", async () => {
-    // The case that matters on Android, which reports picture-in-picture ENTRY
-    // as 'background'. Pausing here stops the video the system just handed to
-    // the floating OS window.
+  it("iOS ORDER — start, then 'background' — never pauses at all (R13)", async () => {
+    // iOS sends `inactive` → onPictureInPictureStart → `background`, so the
+    // latch is already set when the pause decision runs.
     setPictureInPictureActive(true)
     const { player } = await render()
 
@@ -402,6 +401,37 @@ describe("useManagedVideoPlayer lifecycle", () => {
     expect(flushTriggers()).toEqual([])
   })
 
+  it("ANDROID ORDER — 'background', then start — leaves the window playing (R13)", async () => {
+    // The opposite order, traced through the installed sources: RN's
+    // AppStateModule emits "background" from onHostPause, and expo-video's
+    // PictureInPictureManager says in-source that it gets that event "before
+    // any info on app entering PiP". So the pause fires first, and without a
+    // resume the window opens on a frozen frame with no audio.
+    const { player } = await render()
+    await setPlaying(player, true)
+
+    await sendAppState("background")
+    expect(player.pause).toHaveBeenCalledTimes(1)
+    await act(async () => {
+      setPictureInPictureActive(true)
+    })
+
+    expect(player.play).toHaveBeenCalledTimes(1)
+  })
+
+  it("resumes NOTHING into the window for a video the viewer had paused", async () => {
+    // The risk the resume introduces. A paused video that the departure never
+    // stopped must not begin to play because the window opened.
+    const { player } = await render()
+
+    await sendAppState("background")
+    await act(async () => {
+      setPictureInPictureActive(true)
+    })
+
+    expect(player.play).not.toHaveBeenCalled()
+  })
+
   it("still pauses on 'background' when picture-in-picture is not active", async () => {
     setPictureInPictureActive(false)
     const { player } = await render()
@@ -409,6 +439,25 @@ describe("useManagedVideoPlayer lifecycle", () => {
     await sendAppState("background")
 
     expect(player.pause).toHaveBeenCalledTimes(1)
+  })
+
+  it("resumes on the START only, never on the STOP of that window", async () => {
+    // The anti-vacuous companion to the Android order: a resume that fired on
+    // any latch write would put a video back the moment the viewer closed the
+    // window to be rid of it, and would do it while the app is still away.
+    const { player } = await render()
+    await setPlaying(player, true)
+    await sendAppState("background")
+    await act(async () => {
+      setPictureInPictureActive(true)
+    })
+    expect(player.play).toHaveBeenCalledTimes(1)
+
+    await act(async () => {
+      setPictureInPictureActive(false)
+    })
+
+    expect(player.play).toHaveBeenCalledTimes(1)
   })
 
   it("resumes on the following 'active' when the app left while playing", async () => {

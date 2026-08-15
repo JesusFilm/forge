@@ -101,6 +101,7 @@ import {
   Dimensions,
   PanResponder,
   Platform,
+  StyleSheet,
 } from "react-native"
 import type {
   GestureResponderEvent,
@@ -803,6 +804,34 @@ describe("MiniPlayerWindow root wiring", () => {
     expect(keepAliveNodes(renderer)[0].props.pointerEvents).toBe("none")
   })
 
+  it("gives the suppressed slot a NON-ZERO size", async () => {
+    // The whole reason the slot exists. A zero-size view can be laid out
+    // without ever creating the native surface, and a player that then plays
+    // surfaceless is permanently video-dead on Android — so shrinking this to
+    // 0x0 costs the viewer their video with every other assertion still green.
+    const { renderer } = await renderWindow({ presentation: "hidden" })
+
+    const style = StyleSheet.flatten(
+      keepAliveNodes(renderer)[0].props.style as never,
+    ) as { width: number; height: number; opacity: number }
+    expect(style.width).toBeGreaterThan(0)
+    expect(style.height).toBeGreaterThan(0)
+    // Invisible all the same: it must not draw over the screen it sits on.
+    expect(style.opacity).toBe(0)
+  })
+
+  it("keeps the suppressed slot out of the accessibility order", async () => {
+    // It is a 1x1 transparent rectangle. Announcing it puts an unlabeled stop
+    // in the VoiceOver order of whatever screen the viewer is actually on.
+    const { renderer } = await renderWindow({ presentation: "hidden" })
+
+    const root = keepAliveNodes(renderer)[0]
+    expect(root.props.accessible).toBeUndefined()
+    expect(root.props.accessibilityRole).toBeUndefined()
+    expect(root.props.accessibilityLabel).toBeUndefined()
+    expect(root.props.accessibilityActions).toBeUndefined()
+  })
+
   it("builds the responder and the poster opacity once per session", async () => {
     // Both are `useRef(expression)`, whose argument runs on EVERY render. The
     // host re-renders this window once a second for the position indicator.
@@ -1094,6 +1123,20 @@ describe("MiniPlayerWindow lifecycle edges", () => {
     expect(videoSurfaces(renderer)).toHaveLength(1)
     expect(hostsWithTestID(renderer, MINI_PLAYER_POSTER)).toHaveLength(1)
     expect(onFailure).toHaveBeenCalledTimes(1)
+  })
+
+  it("reports NO failure while the watch route owns the surface", async () => {
+    // One player, two surfaces. On the watch route this window renders nothing
+    // and the route's own chrome owns the error, but this effect still ran —
+    // and R22's report disarms that session's named end permanently, so the
+    // viewer's later dismissal saved no position and filed no reason.
+    const { player } = await renderWindow({ presentation: "full" })
+
+    await act(async () => {
+      player.emit("statusChange", { status: "error" })
+    })
+
+    expect(onFailure).not.toHaveBeenCalled()
   })
 
   it("shows the failure label and keeps dismiss and expand operable", async () => {

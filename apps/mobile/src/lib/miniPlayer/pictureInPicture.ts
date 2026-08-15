@@ -41,15 +41,16 @@ let supported: boolean | null = null
  * flag that puts `android:supportsPictureInPicture` on the activity.
  */
 export function isPictureInPictureAvailable(): boolean {
-  if (supported == null) {
-    try {
-      supported = isPictureInPictureSupported()
-    } catch {
-      // No native module, or a platform that has none. No affordance.
-      supported = false
-    }
+  if (supported != null) return supported
+  try {
+    supported = isPictureInPictureSupported()
+    return supported
+  } catch {
+    // Answer no, but CACHE nothing: the probe can throw for a reason that is
+    // not the device (no activity yet at cold launch), and one such call would
+    // otherwise disable picture-in-picture everywhere for the whole process.
+    return false
   }
-  return supported
 }
 
 /** Test teardown only: native support cannot change over an app's lifetime. */
@@ -67,14 +68,24 @@ const handleStop = () => setPictureInPictureActive(false)
  * The callbacks are the VIEW's, not the player's, deliberately: one player is
  * shared between the full view and the floating window, so only the view knows
  * which surface the operating system took.
+ *
+ * `enabled` is how a surface opts OUT and still keeps the latch wired. The
+ * series-detail trailer is the one that must: it autostarts with sound on a
+ * browsing screen, so a viewer who presses HOME there would get a floating
+ * window playing something they never chose to watch.
  */
-export function pictureInPictureViewProps(): PictureInPictureViewProps {
-  const available = isPictureInPictureAvailable()
+export function pictureInPictureViewProps(
+  enabled = true,
+): PictureInPictureViewProps {
+  const available = enabled && isPictureInPictureAvailable()
   return {
     allowsPictureInPicture: available,
     // R14: one behaviour across surfaces. Android auto-enters on HOME for any
     // eligible view without this; setting it is what makes iOS match.
     startsPictureInPictureAutomatically: available,
+    // Wired even when the affordance is off: expo-video can put a view into the
+    // mode by routes this app does not drive, and a latch that never arms
+    // pauses the video the system just handed to the floating window.
     onPictureInPictureStart: handleStart,
     onPictureInPictureStop: handleStop,
   }

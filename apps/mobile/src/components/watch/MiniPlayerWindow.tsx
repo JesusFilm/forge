@@ -363,9 +363,12 @@ export function MiniPlayerWindow({
     setFailed(readErrored(player))
   }, [player])
 
+  // Only the surface holding the view reports a failure: this window shares one
+  // player with the watch route, and R22's report closes the session's named
+  // end for good, so a blip the route recovers from must not reach it.
   useEffect(() => {
-    if (failed) onFailure?.()
-  }, [failed, onFailure])
+    if (failed && holdsSurface) onFailure?.()
+  }, [failed, holdsSurface, onFailure])
 
   useEffect(() => {
     if (ended) onEnded?.()
