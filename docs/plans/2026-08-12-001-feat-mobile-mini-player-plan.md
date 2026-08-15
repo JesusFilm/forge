@@ -1280,3 +1280,96 @@ on iPad and is byte-equivalent for iOS picture-in-picture.
 2. ~~iOS picture-in-picture~~ — CLOSED by this run.
 3. **Cold-launch timing** from a release build via Datadog `js_tti` — still
    unmeasured.
+
+---
+
+## Verification: Android picture-in-picture ordering, 2026-08-15 (EMULATOR — debt 1 still OPEN)
+
+Supersedes nothing; adds to the record. Later sections still win over earlier
+ones, per the precedence section above.
+
+**This is NOT the hardware acceptance run.** No physical Android device was
+attached — `adb devices` listed only `emulator-5554`. Debt 1 remains OPEN. What
+this settles is the JS-observable half, which the emulator reproduces faithfully
+because it is the same native code emitting the same events.
+
+Environment: AVD `Pixel_9a_API_35`, Android 15 / API 35, **cold-booted** with
+`-memory 4096` (the previous instance had 13 h uptime and was killed first).
+Clock in sync with the host. APK built fresh; the old package uninstalled first.
+The **built binary manifest** was verified with `aapt2 dump xmltree` rather than
+the source file: `android:supportsPictureInPicture=true` on `.MainActivity`, and
+`configChanges=0x80000fb0`, which decodes to all four entries Android requires —
+in the shipped artifact, not the plugin's intent.
+
+### The reversed event order is CONFIRMED, empirically
+
+Five independent entries, one JS clock, and entry 1 corroborated by logcat's own
+kernel clock agreeing to 1 ms:
+
+| context                    | `background`  | latch armed   | gap        |
+| -------------------------- | ------------- | ------------- | ---------- |
+| watch route, playing       | 1786783559025 | 1786783559546 | **521 ms** |
+| watch route, viewer-paused | 1786783973325 | 1786783974088 | **763 ms** |
+| floating window (AE5)      | 1786784300718 | 1786784301261 | **543 ms** |
+| falsified build            | 1786784958855 | 1786784959363 | **508 ms** |
+| fix restored               | 1786785162057 | 1786785162590 | **533 ms** |
+
+`onHostPause` fires 1 ms after `onActivityPinned`; `onPictureInPictureStart`
+only after `entered-pip`, half a second later. **The pause really does fire
+before the OS window opens.** Source corroboration — the Android twin of the
+iOS comment the review cited, in `PictureInPictureManager.kt:172-178`:
+
+> `override fun onAppBackgrounded() { // At this point a view can know that it
+will enter PiP only if enterPictureInPicture method was called manually on it.`
+
+### The fix works, and is proven load-bearing
+
+Video keeps playing in the window: 43.5 / 50.4 / 41.7 mean absolute byte delta
+(87-94 % of pixels changed) against a static control reading **exactly 0.000**
+in the same frame pairs. Corroborated by `dumpsys media_session`:
+`state=PLAYING(3)` with an advancing position. Non-black luma rules out the
+dead-surface mode; ~94 % change rules out frozen.
+
+**Falsified:** forcing `shouldResumeOnPictureInPictureStart` to return false and
+repeating the run left `pausedOnDeparture` correctly true while the policy said
+no — and the window froze. The fix is what keeps it playing.
+
+**The anti-vacuous half is STRONGER here than on iOS.** A video the viewer had
+paused before backgrounding was NOT resumed: 0.000 delta, non-black, and
+`media_session` held `PAUSED(2), position=489580` for the window's whole life,
+restoring to the watch screen still paused at 8:09. The iOS run could only prove
+the DECISION because `pause()` was a no-op there; on Android the stop is
+observable.
+
+### R24: strong pass
+
+Five latched intervals across three app processes, and the complete surface
+ledger shows **zero** mount, unmount or owner change inside any of them.
+
+### Android has NO foreground picture-in-picture — a negative worth keeping
+
+The pre-merge review's P1-A scenario (a viewer starting picture-in-picture with
+the app on screen, via the SDUI route's native controls) is **iOS-only**:
+
+- Entry IS the activity being pinned; every measurement shows `onActivityPinned`
+  and `onHostPause` before any picture-in-picture signal.
+- expo-video 57.0.2's Android layouts contain no picture-in-picture button. The
+  only Android entry points are `VideoView.enterPictureInPicture()` and the
+  automatic candidate election inside `onAppBackgrounded()`.
+- `startPictureInPicture()` has no production caller in this app.
+
+So the P1-A fix is still correct and still needed — on iOS. **Its `held == null`
+bail-out in `pipHold.ts` remains UNEXERCISED at runtime on Android, and cannot
+be exercised there.** After 3 and then 5 latch cycles a new watch route built a
+new player and played; nothing loaded forever. But in every run the hold's input
+was non-null, so that specific branch was never entered.
+
+### What still needs real hardware, and why
+
+- **SurfaceView layering.** An emulator's SurfaceFlinger is the weakest possible
+  evidence that the floating window composites correctly over app content.
+- **Real first-frame paint** in the floating window after a cold relaunch,
+  sampled on a motion-rich part of the video.
+- **Decoder contention** under real hardware limits.
+- The attach-order handoff on a real GPU, where a player that plays surfaceless
+  is permanently unrecoverable.
