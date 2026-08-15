@@ -113,6 +113,40 @@ describe("checkDevotionalCoherence", () => {
     },
   )
 
+  it("rethrows a cancellation instead of degrading to skipped", async () => {
+    // The client reports a caller abort as DevotionalLlmError("transport"),
+    // which is exactly what a real network fault looks like — and this critic
+    // degrades that to a `skipped` verdict. Degrading a CANCELLATION produces
+    // ordinary workflow data, so in report-only mode the run carried on as if
+    // nothing had happened. The aborted signal is the only thing that separates
+    // the two, and it has to be read here rather than upstream: the gate mocks
+    // these critics out, so its own suite cannot see this branch.
+    const controller = new AbortController()
+    controller.abort()
+    const complete = failing(
+      new DevotionalLlmError("transport", "request cancelled by caller"),
+    )
+    await expect(
+      checkDevotionalCoherence({
+        ...input(fakeLlm(complete as unknown as DevotionalLlm["complete"])),
+        abortSignal: controller.signal,
+      }),
+    ).rejects.toBeInstanceOf(DevotionalLlmError)
+  })
+
+  it("still degrades the SAME error when nothing was cancelled", async () => {
+    // The anti-vacuous half: identical error, no abort. If the critic simply
+    // stopped degrading transport failures, the case above would pass for the
+    // wrong reason.
+    const complete = failing(
+      new DevotionalLlmError("transport", "request cancelled by caller"),
+    )
+    const r = await checkDevotionalCoherence(
+      input(fakeLlm(complete as unknown as DevotionalLlm["complete"])),
+    )
+    expect(r.skipped).toBe(true)
+  })
+
   it("rethrows a non-LLM error instead of degrading to skipped", async () => {
     // A bug in our own code must not be laundered into "the check did not run",
     // which the gate turns into a block with a misleading reason.

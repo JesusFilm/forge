@@ -158,11 +158,11 @@ green run is not mistaken for proof that production carries the rules.
 
 ## Known gaps, deliberately left
 
-- **The critics run sequentially behind two retry layers with no abort signal.**
-  Three independent reads of the same immutable text, so they could run
-  concurrently; the worst case is long and cannot be cancelled, and the render
-  step already threads a signal. Agreed as follow-up work — report-only mode
-  removes the availability consequence during rollout, but not the latency.
+- **The critics run sequentially.** Three independent reads of the same immutable
+  text, so they could run concurrently. The two retry layers are gone (the client
+  owns the budget) and cancellation is threaded end to end, so a cancelled run
+  stops at the critic that was running — what remains is the latency of the happy
+  path, agreed as follow-up work.
 - **"Fidelity was not checked" reaches no caller.** The review shape is
   `{ blocking }` only, so the absent-excerpt case lives in a log line.
 - **`pointPicker` and `conclusionWriter` do not consult their model entries.**
@@ -177,8 +177,9 @@ green run is not mistaken for proof that production carries the rules.
   rather than removed: dropping it needs the zod schema, the JSON schema and the
   authored prompt to move together, plus the one script that prints it.
 - **A blocked run keeps its clip reservation** rather than returning it to the
-  pool. Pre-existing for safety blocks too, so not introduced here, and pinning
-  it either way would encode a decision nobody has made.
+  pool. Pre-existing for safety blocks too, so not introduced here, and pinning it
+  either way would encode a decision nobody has made. A CANCELLED run does release
+  it, and that is asserted.
 - **The lead-in regex does not match every form** J.C. Ryle uses, so some
   multi-point excerpts are not detected as multi-point and reach the writer whole,
   silently.

@@ -215,7 +215,11 @@ describe("qualityBlocksRun", () => {
 describe("a legacy run resuming across the deploy", () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mocks.durablePublish.mockResolvedValue({ ok: true, clipRecorded: true })
+    // Production checks `published.ok && published.published`. The earlier shape
+    // here had `ok` and `clipRecorded` but no `published`, so it fell through to
+    // publish_skipped / not_accepted — which still satisfies "not blocked". The
+    // test claimed more than it proved.
+    mocks.durablePublish.mockResolvedValue({ ok: true, published: true })
   })
 
   it("is still renderable at the pre-render point", async () => {
@@ -254,7 +258,12 @@ describe("a legacy run resuming across the deploy", () => {
     // state, and `?.` on it would quietly assert nothing at all.
     const result = state.result
     if (!result) throw new Error("expected a result")
-    expect(result.status).not.toBe("blocked")
+    // PUBLISHED, not merely "not blocked". The weaker assertion passed while the
+    // run was actually reaching publish_skipped, so it proved the legacy policy
+    // did not block without proving the run completed.
+    expect(result.status).toBe("published")
+    expect(result.clipRecorded).toBe(true)
     expect(result.blockedBy).toBeUndefined()
+    expect(mocks.durablePublish).toHaveBeenCalledTimes(1)
   })
 })

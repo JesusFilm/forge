@@ -547,6 +547,11 @@ const contentStep = createStep({
             checkFidelity: true,
           })
         } catch (error) {
+          // Cancellation must NOT become a verdict. Turning it into a blocking
+          // reason produces ordinary workflow data, and in report-only mode
+          // blocking does not block — so a cancelled run continued to the paid
+          // steps, which is the opposite of what threading the signal was for.
+          if (abortSignal?.aborted) throw error
           const reason = error instanceof Error ? error.message : String(error)
           log(
             `[devotional] event=quality_gate_crashed enforced=${enforced} reason=${reason}`,

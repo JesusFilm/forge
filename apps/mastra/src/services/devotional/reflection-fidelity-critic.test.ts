@@ -94,4 +94,42 @@ describe("critiqueReflectionFidelity", () => {
     // `skipped` flag distinguishes "checked and fine" from "never ran".
     expect(r.skipped).toBeFalsy()
   })
+  it("rethrows a cancellation instead of degrading to skipped", async () => {
+    // Same shape as the sibling critics: a caller abort arrives as
+    // DevotionalLlmError("transport") and would otherwise become a `skipped`
+    // verdict, which is ordinary workflow data. The gate mocks these out, so
+    // only a test here can see this branch.
+    const controller = new AbortController()
+    controller.abort()
+    const complete = vi
+      .fn()
+      .mockRejectedValue(
+        new DevotionalLlmError("transport", "request cancelled by caller"),
+      )
+    await expect(
+      critiqueReflectionFidelity({
+        sourceExcerpt: "source",
+        focusReference: "Luke 19:1-10",
+        adapted: "adapted",
+        abortSignal: controller.signal,
+        llm: fakeLlm(complete as unknown as DevotionalLlm["complete"]),
+      }),
+    ).rejects.toBeInstanceOf(DevotionalLlmError)
+  })
+
+  it("still degrades the SAME error when nothing was cancelled", async () => {
+    // Anti-vacuous half: identical error, no abort.
+    const complete = vi
+      .fn()
+      .mockRejectedValue(
+        new DevotionalLlmError("transport", "request cancelled by caller"),
+      )
+    const r = await critiqueReflectionFidelity({
+      sourceExcerpt: "source",
+      focusReference: "Luke 19:1-10",
+      adapted: "adapted",
+      llm: fakeLlm(complete as unknown as DevotionalLlm["complete"]),
+    })
+    expect(r.skipped).toBe(true)
+  })
 })

@@ -71,9 +71,15 @@ follows Jesus, and that the narration must describe rather than command.
 
 ## Constraints
 
-- Do NOT make the gate throw. It returns a verdict and the caller short-circuits,
-  matching the safety gate. An unused throwing wrapper reads as enforcement while
-  enforcing nothing, and this module already shipped one such symbol.
+- Do NOT make the gate throw ON A PROVIDER FAILURE. It returns a verdict and the
+  caller short-circuits, matching the safety gate. An unused throwing wrapper
+  reads as enforcement while enforcing nothing, and this module already shipped
+  one such symbol.
+- DO rethrow on cancellation, at every layer that degrades a provider failure.
+  The client reports a caller abort as `DevotionalLlmError("transport")`, the
+  same shape as a real fault, so degrading it turns a cancelled run into ordinary
+  workflow data — and in report-only mode that data blocks nothing, so the run
+  reached the paid steps.
 - Do NOT add a retry around a critic. One layer owns the attempt budget; three
   critics each adding one made a worst case of eighteen requests for one gate.
 - Do NOT treat a missing `quality` key as blocking. That is a legacy run, and
@@ -104,9 +110,12 @@ Deployment, in this order:
 ## Follow-ups Not In Scope
 
 - The three critics run sequentially; they are independent reads of the same text
-  and could be concurrent.
+  and could be concurrent. Cancellation is threaded now, so a cancelled run stops
+  at the critic that was running — but the latency of the happy path is unchanged.
 - `pointPicker` and `conclusionWriter` do not consult `DEVOTIONAL_AGENT_MODELS`.
-- Content composition's own model calls are not yet cancellable.
+- Content composition's own model calls are not yet cancellable. The client
+  accepts a signal, so wiring them is small; it is a different call path with its
+  own tests.
 - `DevotionalCopy.conclusion` is generated and discarded.
 - The ordinal lead-in regex does not match every form J.C. Ryle uses, so some
   multi-point excerpts reach the writer whole.

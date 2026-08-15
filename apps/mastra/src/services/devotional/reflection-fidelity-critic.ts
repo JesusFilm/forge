@@ -230,6 +230,12 @@ export async function critiqueReflectionFidelity(
     // rate limit"; that is the one cause the client cannot pass through
     // unresolved, and the incident behind it was a deterministic schema
     // rejection that failed identically on every call.
+    // Cancellation is NOT a provider failure. The client reports an abort as
+    // DevotionalLlmError("transport"), which is indistinguishable here from a
+    // real network fault — and degrading it to `skipped` produces ordinary
+    // workflow data, so in report-only mode a cancelled run carried on as if
+    // nothing had happened. The signal is the only thing that separates them.
+    if (input.abortSignal?.aborted) throw error
     if (error instanceof DevotionalLlmError) return skipped(error)
     throw error
   }

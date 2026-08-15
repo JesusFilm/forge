@@ -43,11 +43,19 @@ import { critiqueReflectionFidelity } from "./reflection-fidelity-critic"
 const DEPTH_SCORE_FLOOR = 2
 
 /**
- * HOW THIS BLOCKS. It returns a verdict; it does not throw. The caller short
- * circuits, exactly as it already does for the safety gate: the workflow's
- * produce step refuses to hand off to the paid steps while `blocking` is
- * non-empty, and a blocked devotional is a successful run that did not publish
- * rather than a failed one.
+ * HOW THIS BLOCKS. It returns a verdict; it does not throw ON A PROVIDER
+ * FAILURE. The caller short circuits, exactly as it already does for the safety
+ * gate: the workflow's produce step refuses to hand off to the paid steps while
+ * `blocking` is non-empty, and a blocked devotional is a successful run that did
+ * not publish rather than a failed one.
+ *
+ * CANCELLATION IS THE EXCEPTION, and it is not a detail. The client reports a
+ * caller abort as `DevotionalLlmError("transport")` — the same shape as a real
+ * network fault — so degrading it produces ordinary workflow data, and in
+ * report-only mode that data does not block anything. A cancelled run therefore
+ * carried on to the paid steps. Every layer that degrades a provider failure
+ * must rethrow when the caller's signal is aborted: all three critics, and the
+ * workflow's own wrapper around this call.
  *
  * A throwing entry point was considered and rejected. It would have to be
  * ignorable to be useful (a report-only surface still needs the plain verdict),

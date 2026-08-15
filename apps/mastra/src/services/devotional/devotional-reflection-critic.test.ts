@@ -89,6 +89,46 @@ describe("critiqueReflection", () => {
     })
   })
 
+  it("rethrows a cancellation instead of degrading to skipped", async () => {
+    // The client reports a caller abort as DevotionalLlmError("transport"),
+    // indistinguishable from a real fault, which this critic degrades to a
+    // `skipped` verdict. Degrading a CANCELLATION produces ordinary workflow
+    // data and the run carries on. The gate mocks these critics out, so only a
+    // test here can see this branch.
+    const controller = new AbortController()
+    controller.abort()
+    const complete = vi
+      .fn()
+      .mockRejectedValue(
+        new DevotionalLlmError("transport", "request cancelled by caller"),
+      )
+    await expect(
+      critiqueReflection({
+        sceneTitle: "scene",
+        reflection: "text",
+        conclusion: "c",
+        abortSignal: controller.signal,
+        llm: fakeLlm(complete as unknown as DevotionalLlm["complete"]),
+      }),
+    ).rejects.toBeInstanceOf(DevotionalLlmError)
+  })
+
+  it("still degrades the SAME error when nothing was cancelled", async () => {
+    // Anti-vacuous half: identical error, no abort.
+    const complete = vi
+      .fn()
+      .mockRejectedValue(
+        new DevotionalLlmError("transport", "request cancelled by caller"),
+      )
+    const r = await critiqueReflection({
+      sceneTitle: "scene",
+      reflection: "text",
+      conclusion: "c",
+      llm: fakeLlm(complete as unknown as DevotionalLlm["complete"]),
+    })
+    expect(r.skipped).toBe(true)
+  })
+
   it("succeeds on its single attempt", async () => {
     // ONE attempt: createDevotionalLlm owns the retry budget (429/5xx up to three
     // attempts, honouring Retry-After). A retry here doubled a spent budget, which

@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
+import { DevotionalLlmError } from "./llm"
+
 /**
  * The gate is the one place that decides whether text is allowed to cost money
  * (ElevenLabs narration) and minutes (Remotion render). It shipped with NO
@@ -114,9 +116,18 @@ describe("reviewDevotionalText", () => {
     })
     critiqueReflection.mockImplementation(
       async (args: { abortSignal?: AbortSignal }) => {
-        // The real client throws on an aborted signal; this stands in for it so the
-        // assertion is about the gate's threading, not the client's internals.
-        if (args.abortSignal?.aborted) throw new Error("cancelled")
+        // The REAL typed path. createDevotionalLlm reports a caller abort as
+        // DevotionalLlmError("transport") — indistinguishable from a genuine
+        // network fault, which each critic degrades to a `skipped` verdict. A
+        // generic Error here would bypass that fallback entirely and prove the
+        // opposite control flow. The aborted signal is the ONLY thing separating
+        // the two, which is exactly what this asserts.
+        if (args.abortSignal?.aborted) {
+          throw new DevotionalLlmError(
+            "transport",
+            "request cancelled by caller",
+          )
+        }
         return { solid: true, depthScore: 4, issues: [], summary: "ok" }
       },
     )
@@ -127,7 +138,7 @@ describe("reviewDevotionalText", () => {
         checkFidelity: true,
         abortSignal: controller.signal,
       }),
-    ).rejects.toThrow(/cancelled/)
+    ).rejects.toBeInstanceOf(DevotionalLlmError)
 
     // The third critic never started.
     expect(critiqueReflectionFidelity).not.toHaveBeenCalled()

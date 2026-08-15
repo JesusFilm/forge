@@ -7,6 +7,7 @@ import type { ProducedDevotionalAudio } from "../../services/devotional/devotion
 import type { GeneratedDevotional } from "../../services/devotional/generate-devotional"
 import { videoFirstDevotionalWorkflow } from "./video-first-devotional"
 import { VideoFirstDevotionalWorkflowInputSchema } from "./video-first-devotional-schema"
+import { DevotionalLlmError } from "../../services/devotional/llm"
 
 const mocks = vi.hoisted(() => ({
   reserve: vi.fn(),
@@ -76,7 +77,18 @@ vi.mock(
   "../../services/devotional/devotional-quality-gate",
   async (importActual) => ({
     ...(await importActual()),
-    reviewDevotionalText: async () => {
+    reviewDevotionalText: async (args: { abortSignal?: AbortSignal }) => {
+      // Cancel WHILE the gate is running, which is the real shape: the clip is
+      // already reserved by then, so the release path is reachable. Cancelling
+      // before the run starts aborts ahead of the reservation and proves nothing
+      // about it.
+      if (cancelDuringGate) {
+        cancelDuringGate()
+        throw new DevotionalLlmError("transport", "request cancelled by caller")
+      }
+      if (args.abortSignal?.aborted) {
+        throw new DevotionalLlmError("transport", "request cancelled by caller")
+      }
       if (qualityThrows) throw qualityThrows
       return { blocking: qualityBlocking }
     },
@@ -214,6 +226,9 @@ const SAFETY = {
 let qualityBlocking: string[] = []
 /** Set to simulate the gate itself failing (provider outage past its retries). */
 let qualityThrows: Error | undefined
+/** Set by the cancellation case: aborts the run from inside the gate call, so
+ *  the cancellation lands after the clip is reserved. */
+let cancelDuringGate: (() => void) | undefined
 /** Enforcement mode for the run under test. Production defaults to report-only;
  *  these cases default to enforced so the blocking paths are exercised, and the
  *  report-only cases set it back explicitly. */
@@ -315,6 +330,7 @@ describe("video-first devotional workflow", () => {
   beforeEach(() => {
     qualityBlocking = []
     qualityThrows = undefined
+    cancelDuringGate = undefined
     qualityEnforced = true
     vi.clearAllMocks()
     mocks.reserve.mockResolvedValue({
@@ -505,6 +521,46 @@ describe("video-first devotional workflow", () => {
     }
     expect(mocks.render).not.toHaveBeenCalled()
     expect(state?.status).not.toBe("suspended")
+  })
+
+  it("stops the run and releases the clip when the caller cancels", async () => {
+    // A cancelled run used to keep going: the client reports an abort as a
+    // transport error, each critic degraded that to "skipped", and the wrapper
+    // turned it into a blocking verdict — which in report-only mode does not
+    // block. So the paid steps ran anyway, which is the opposite of what
+    // threading the signal was for.
+    qualityEnforced = false
+    registeredWorkflow ??= registerWorkflow()
+    const runId = "workflow-cancelled"
+    const run = await registeredWorkflow.createRun({ runId })
+    // Mastra cancels through the run's own controller — `startAsync` takes no
+    // abortSignal, which a probe of the run API confirmed. Fired from inside the
+    // gate so the clip is already reserved when it lands.
+    cancelDuringGate = () => run.abortController.abort()
+    await run
+      .startAsync({ inputData: workflowInput(runId) })
+      .catch(() => undefined)
+
+    let state = await registeredWorkflow.getWorkflowRunById(runId)
+    for (
+      let attempt = 0;
+      attempt < 100 &&
+      state?.status !== "success" &&
+      state?.status !== "failed" &&
+      state?.status !== "suspended";
+      attempt++
+    ) {
+      await new Promise((resolve) => setTimeout(resolve, 5))
+      state = await registeredWorkflow.getWorkflowRunById(runId)
+    }
+
+    // No paid work, and the clip goes back to the pool rather than being spent
+    // on a run nobody asked to finish.
+    expect(state?.status).not.toBe("success")
+    expect(mocks.render).not.toHaveBeenCalled()
+    expect(mocks.publish).not.toHaveBeenCalled()
+    expect(mocks.record).not.toHaveBeenCalled()
+    expect(mocks.release).toHaveBeenCalledWith(CHAPTER.id, RESERVATION_ID)
   })
 
   it("returns publish_skipped and does not burn the clip when config is absent", async () => {
