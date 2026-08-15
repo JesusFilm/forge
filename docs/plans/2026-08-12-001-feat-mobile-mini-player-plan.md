@@ -1167,3 +1167,96 @@ Also unverified: the two attach-order paths (back-with-a-session, and expand)
 rely on React committing the surface release before the acquire. Proven in the
 render tree; the native Android mount ordering is a hardware claim, and a player
 that plays surfaceless is permanently unrecoverable.
+
+---
+
+## Verification: iOS picture-in-picture, 2026-08-15 — DEBT 2 CLOSED
+
+iPad Pro 11-inch (M5), iOS 26.5, simulator. First time picture-in-picture has
+ever been verified on this app. Three complete cycles: two from the full-screen
+watch surface, one from the floating mini player window. **Everything downstream
+of `pipLatch` executed on a device for the first time.**
+
+Instrumentation was temporary (`console.log` in the latch, the pause decision,
+and a mount/unmount probe) and was removed; the tree was clean at `a9eccfab6`
+afterwards.
+
+### Results
+
+- **The latch ARMS.** `setPictureInPictureActive next=true prev=false`, three
+  times, one per entry. `isPictureInPictureSupported=true` on this simulator.
+- **It RELEASES.** Three matching `next=false prev=true`, via the OS window's
+  Restore full-screen button. Not sticky.
+- **R13 holds, and it has now actually fired.**
+  `appstate=background pipActive=true pause=false` — the video keeps playing.
+  Measured over paired screenshots ~4 s apart: 52.2 / 57.7 / 31.4 mean absolute
+  byte difference inside the window, against a static wallpaper control reading
+  **0.000 in every pair**. The control at exactly zero is what makes those
+  numbers mean "moving video" rather than capture noise.
+- **R24 is a strong pass.** The complete mount/unmount ledger across the whole
+  verification window contains four events, and **zero** fall inside any of the
+  three latched intervals. The two surface changes that exist are both outside,
+  both with the latch false — exactly what the hold permits.
+- **The interface restores and playback is continuous.** Position advanced 189 s
+  against 176-196 s of wall clock across a full-screen picture-in-picture round
+  trip. No reset, no stall, no black frame.
+- **AE5 passes.** Entering picture-in-picture FROM the floating window works.
+  During it the window logged `floating=false holdsSurface=true` — the look
+  suppressed while the surface was held, which is update 2's design observed at
+  runtime rather than argued from source.
+
+### Two behaviours worth knowing
+
+**The iOS event ordering removes a race this design worried about.** iOS emits
+`inactive` FIRST, then the OS window opens and `onPictureInPictureStart` fires,
+and only THEN does `background` arrive:
+
+    appstate=inactive  pipActive=false  pause=false
+    setPictureInPictureActive next=true prev=false
+    appstate=background pipActive=true  pause=false
+
+So on iOS the latch is always already set when the pause decision is made. Do
+not assume the same ordering on Android, which reports picture-in-picture entry
+as `background` directly.
+
+**Foregrounding the app by tapping its icon does NOT stop picture-in-picture.**
+iOS keeps the window up, the inline surface shows the system's "This video is
+playing in picture in picture." placeholder, and the latch correctly stays true
+— because picture-in-picture genuinely is still active. That is correct
+behaviour, but it means **"the viewer came back" and "the latch released" are
+different events**, and code must not treat one as the other.
+
+Operational note for repeating this: the Restore full-screen button needs one
+tap to reveal the controls and a second within about 2 s to hit it.
+`idb ui describe-point 780 61` returns `AXUniqueId: "Restore full-screen"`, so a
+failed attempt is control auto-hide rather than a bad coordinate.
+
+### Honest limit on the anti-vacuous half
+
+R13's second direction (`pipActive=false` must still pause) was obtained with
+playback already PAUSED, so `player.pause()` was a no-op — the DECISION was
+proven, not an observable stop. With `startsPictureInPictureAutomatically` true,
+a playing video on this app always enters picture-in-picture on background, and
+this simulator's Settings exposes no "Start PiP Automatically" toggle to defeat
+that. Combined with three `next=true prev=false` transitions — each proving the
+latch was false beforehand — R13 is considered verified in both directions with
+that caveat stated.
+
+### Why no native rebuild was needed
+
+Justified rather than assumed. The branch's only native-manifest change against
+`main` is `app.json` gaining `supportsPictureInPicture: true` on the expo-video
+plugin. Reading `node_modules/expo-video/plugin/build/withExpoVideo.js`, that
+option's ONLY iOS effect is adding `audio` to `UIBackgroundModes`, which
+`supportsBackgroundPlayback: true` already produced. The existing dev client
+carries `UIBackgroundModes = [audio]` and `UIDeviceFamily = [1,2]`, so it runs
+on iPad and is byte-equivalent for iOS picture-in-picture.
+
+### Debts remaining after this
+
+1. **Android hardware** — still owed, and still the highest-value check, because
+   it is the only thing that can validate the attach-order handoff and the
+   SurfaceView layering an emulator cannot speak to.
+2. ~~iOS picture-in-picture~~ — CLOSED by this run.
+3. **Cold-launch timing** from a release build via Datadog `js_tti` — still
+   unmeasured.
