@@ -321,7 +321,15 @@ export function createDevotionalWorkspaceRuntime(options?: {
     searchIndexName: DEVOTIONAL_WORKSPACE_SEARCH_INDEX,
     // Studio uses native Workspace endpoints. Agents and workflows do not
     // inherit filesystem tools; devotional business logic reads via its typed
-    // repository instead.
+    // repository instead. Coupled suppression: AuditedFilesystem's
+    // getInstructions also returns "" so no agent's prompt advertises storage
+    // it has no tools to reach (a global Workspace otherwise injects a second
+    // system message into every agent's turns). Enabling tools here means
+    // revisiting that suppression in the same change — but note restoring the
+    // description is NOT automatically safe then: strict one-system-message
+    // gateway models reject a second system message regardless of tools, so
+    // that change needs a gateway-safe composition or a per-agent workspace
+    // (see AuditedFilesystem.getInstructions).
     tools: { enabled: false },
   })
 

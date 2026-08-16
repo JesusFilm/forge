@@ -478,7 +478,19 @@ export function FloatingSearchController({
         const signatureLanguageSlug = activeLanguageSlugIsExplicit
           ? resolvedLanguage.publicSlug
           : null
-        const searchLanguageEnglishName = activeLanguageEnglishNames[0] ?? null
+        const completedTargetLanguageSlug =
+          data.targetLanguageSlug ?? searchLanguageSlug ?? signatureLanguageSlug
+        const completedTargetLanguageOption = completedTargetLanguageSlug
+          ? findSearchLanguageOptionByPublicSlug(
+              completedTargetLanguageSlug,
+              currentLanguageOptions,
+            )
+          : null
+        const searchLanguageEnglishName =
+          completedTargetLanguageOption?.englishName ??
+          (completedTargetLanguageSlug === resolvedLanguage.publicSlug
+            ? resolvedLanguage.englishName
+            : null)
         activeSearchSignatureRef.current = {
           query: cappedQuery,
           languageEnglishNames: [...activeLanguageEnglishNames],
@@ -488,14 +500,14 @@ export function FloatingSearchController({
           resultSource: WATCH_SEARCH_RESULT_SOURCE,
           nextOffset: data.nextOffset ?? newResults.length,
           searchLanguageEnglishName,
-          searchLanguageSlug: searchLanguageSlug ?? signatureLanguageSlug,
+          searchLanguageSlug: completedTargetLanguageSlug,
           searchRequestId: responseSearchRequestId,
         }
         setSearchResultAnalytics({
           resultSource: WATCH_SEARCH_RESULT_SOURCE,
           routeLanguageSlug,
           searchLanguageEnglishName,
-          searchLanguageSlug: searchLanguageSlug ?? signatureLanguageSlug,
+          searchLanguageSlug: completedTargetLanguageSlug,
           searchRequestId: responseSearchRequestId,
         })
       } catch {

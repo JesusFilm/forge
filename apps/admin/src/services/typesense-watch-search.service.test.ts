@@ -11,6 +11,7 @@ import { resolveTypesenseWatchSearchApiKey } from "./typesense-client-config"
 import { resolveSearchLanguageSignals } from "./search-language-resolution"
 import { buildAvailabilityDocuments } from "./typesense-watch-search-indexer"
 import {
+  buildTypesenseWatchCandidateLexicalDocuments,
   buildTypesenseWatchLexicalDocuments,
   type TypesenseWatchLexicalDocument,
 } from "./typesense-watch-search-lexical"
@@ -177,6 +178,7 @@ const candidateFieldManifests = {
   catalog: [{ name: "slug", type: "string" }],
   availability: [{ name: "videoId", type: "string" }],
   lexical: [
+    { name: "title_exact_keys", type: "string[]" },
     { name: "title_en", type: "string[]" },
     { name: "title_fr", type: "string[]" },
     { name: "title_ja", type: "string[]" },
@@ -253,6 +255,8 @@ function typesenseFixture({
   lexical = [catalogDocument],
   lexicalLanes,
   titleLexical = lexical,
+  exactLexical = titleLexical,
+  allowUnverifiedExactHits = false,
   metadataLexical = lexical,
   semantic = [],
   hybrid,
@@ -279,6 +283,8 @@ function typesenseFixture({
     >
   >
   titleLexical?: TypesenseWatchCatalogDocument[]
+  exactLexical?: TypesenseWatchCatalogDocument[]
+  allowUnverifiedExactHits?: boolean
   metadataLexical?: TypesenseWatchCatalogDocument[]
   semantic?: Array<{
     videoId: string
@@ -345,27 +351,40 @@ function typesenseFixture({
           const requestedFilterValues = [
             ...String(request.filter_by ?? "").matchAll(/`([^`]+)`/g),
           ].map((match) => match[1])
-          const lexicalLane = String(request.query_by).startsWith("title_")
-            ? "title"
-            : String(request.query_by).startsWith("metadata_")
-              ? "metadata"
-              : null
+          const lexicalLane =
+            String(request.query_by) === "title_exact_keys"
+              ? "exact"
+              : String(request.query_by).startsWith("title_")
+                ? "title"
+                : String(request.query_by).startsWith("metadata_")
+                  ? "metadata"
+                  : null
           const laneCatalogDocuments =
-            lexicalLane === "title"
-              ? titleLexical
-              : lexicalLane === "metadata"
-                ? metadataLexical
-                : lexical
-          const filteredLexicalDocuments = buildTypesenseWatchLexicalDocuments(
-            laneCatalogDocuments,
+            lexicalLane === "exact"
+              ? exactLexical
+              : lexicalLane === "title"
+                ? titleLexical
+                : lexicalLane === "metadata"
+                  ? metadataLexical
+                  : lexical
+          const filteredLexicalDocuments = (
+            lexicalLane === "exact"
+              ? buildTypesenseWatchCandidateLexicalDocuments(
+                  laneCatalogDocuments,
+                )
+              : buildTypesenseWatchLexicalDocuments(laneCatalogDocuments)
           ).filter(
             (document) =>
-              requestedFilterValues.length === 0 ||
-              requestedFilterValues.includes(document.languageIdentity),
+              (lexicalLane !== "exact" ||
+                allowUnverifiedExactHits ||
+                document.title_exact_keys?.includes(String(request.q))) &&
+              (requestedFilterValues.length === 0 ||
+                requestedFilterValues.includes(document.languageIdentity)),
           )
-          const configuredLexicalHits = lexicalLane
-            ? lexicalLanes?.[lexicalLane]
-            : undefined
+          const configuredLexicalHits =
+            lexicalLane === "title" || lexicalLane === "metadata"
+              ? lexicalLanes?.[lexicalLane]
+              : undefined
           const lexicalEntries = configuredLexicalHits
             ? configuredLexicalHits.flatMap(({ videoId, textMatchInfo }) => {
                 const document = filteredLexicalDocuments.find(
@@ -635,17 +654,23 @@ describe("TypesenseWatchSearchService", () => {
     ).toEqual([
       profile.binding.lexical,
       profile.binding.lexical,
+      profile.binding.lexical,
       profile.binding.transcript,
     ])
     expect(typesense.multiSearch.mock.calls[0]?.[0]).toEqual([
       expect.objectContaining({
+        query_by: "title_exact_keys",
+        prefix: false,
+        num_typos: 0,
+      }),
+      expect.objectContaining({
         query_by:
-          "title_en,title_fr,title_ja,title_ru,title_tr,title_zh,title_fallback",
+          "title_fr,title_fallback,title_en,title_ja,title_ru,title_tr,title_zh",
         filter_by: undefined,
       }),
       expect.objectContaining({
         query_by:
-          "metadata_en,metadata_fr,metadata_ja,metadata_ru,metadata_tr,metadata_zh,metadata_fallback",
+          "metadata_fr,metadata_fallback,metadata_en,metadata_ja,metadata_ru,metadata_tr,metadata_zh",
         filter_by: undefined,
       }),
       expect.objectContaining({
@@ -657,6 +682,7 @@ describe("TypesenseWatchSearchService", () => {
         searches.map((request) => request.collection),
       ),
     ).toEqual([
+      profile.binding.lexical,
       profile.binding.lexical,
       profile.binding.lexical,
       profile.binding.transcript,
@@ -672,8 +698,376 @@ describe("TypesenseWatchSearchService", () => {
       transcriptProjectionRevision: 7n,
       binding: profile.binding,
       retrievalCalls: 2,
-      logicalSubsearches: 5,
+      logicalSubsearches: 6,
     })
+  })
+
+  it("reports all retrieval sources without double-counting title contribution", async () => {
+    const russian: TypesenseWatchCatalogDocument = {
+      ...catalogDocument,
+      id: "video-jesus-russian",
+      coreId: "core-jesus",
+      slug: "jesus-russian",
+      titles: ["Иисус"],
+      localeCodes: ["ru"],
+      localesJson: JSON.stringify([
+        {
+          locale: "ru",
+          languageSlug: "russian",
+          title: "Иисус",
+          description: null,
+        },
+      ]),
+    }
+    const profile = candidateProfile()
+    const typesense = typesenseFixture({
+      lexical: [russian],
+      exactLexical: [russian],
+      titleLexical: [russian],
+      metadataLexical: [russian],
+      semantic: [
+        {
+          videoId: russian.id,
+          text: "The life of Jesus",
+          vectorDistance: 0.1,
+        },
+      ],
+      catalog: [russian],
+      binding: profile.binding,
+    })
+    const service = new TypesenseWatchSearchService(
+      prismaFixture({ evidenceLanguages: [{ slug: "russian", bcp47: "ru" }] }),
+      typesense as unknown as TypesenseClient,
+      { profile, embedder: vi.fn(async () => embedding) },
+    )
+
+    const { response, diagnostics } = await service.searchWithDiagnostics({
+      query: "Иисус",
+    })
+
+    expect(response.results.map(({ id }) => id)).toEqual([russian.id])
+    expect(response.languageInterpretation.targetLanguageSlug).toBe("french")
+    expect(diagnostics.rankingMode).toBe("TITLE_AND_BRAND")
+    expect(diagnostics.rankingTrace).toEqual([
+      expect.objectContaining({
+        canonicalVideoId: "core:core-jesus",
+        evidenceTier: "NORMALIZED_WHOLE_TITLE",
+        retrievalSources: [
+          "global_exact_title",
+          "localized_title",
+          "metadata",
+          "semantic",
+        ],
+        titleRank: 1,
+        titleContribution: 0.56 / 61,
+      }),
+    ])
+  })
+
+  it("reports exact-title provenance when playback selects a canonical sibling", async () => {
+    const exactButUnavailable: TypesenseWatchCatalogDocument = {
+      ...catalogDocument,
+      id: "video-jesus-russian-unavailable",
+      coreId: "core-jesus-siblings",
+      slug: "jesus-russian-unavailable",
+      titles: ["Иисус"],
+      localeCodes: ["ru"],
+      localesJson: JSON.stringify([
+        {
+          locale: "ru",
+          languageSlug: "russian",
+          title: "Иисус",
+          description: null,
+        },
+      ]),
+      audioLanguageSlugs: [],
+      subtitleLanguageSlugs: [],
+      audioOptionsJson: "[]",
+      subtitleOptionsJson: "[]",
+    }
+    const playableSibling: TypesenseWatchCatalogDocument = {
+      ...catalogDocument,
+      id: "video-jesus-playable-sibling",
+      coreId: "core-jesus-siblings",
+      slug: "jesus-playable-sibling",
+      titles: ["Иисус — история"],
+    }
+    const profile = candidateProfile()
+    const service = new TypesenseWatchSearchService(
+      prismaFixture(),
+      typesenseFixture({
+        exactLexical: [exactButUnavailable],
+        titleLexical: [playableSibling],
+        metadataLexical: [],
+        catalog: [exactButUnavailable, playableSibling],
+        binding: profile.binding,
+      }) as unknown as TypesenseClient,
+      { profile, embedder: vi.fn(async () => []) },
+    )
+
+    const { response, diagnostics } = await service.searchWithDiagnostics({
+      query: "Иисус",
+    })
+
+    expect(response.results.map(({ id }) => id)).toEqual([playableSibling.id])
+    expect(diagnostics.rankingTrace[0]).toMatchObject({
+      selectedVideoId: playableSibling.id,
+      retrievalSources: ["global_exact_title", "localized_title"],
+    })
+  })
+
+  it("leaves a partial-only group at one contribution beside an exact group", async () => {
+    const exact: TypesenseWatchCatalogDocument = {
+      ...catalogDocument,
+      id: "video-exact-jesus",
+      coreId: "core-exact-jesus",
+      titles: ["Jesus"],
+      localesJson: JSON.stringify([
+        {
+          locale: "en",
+          languageSlug: "english",
+          title: "Jesus",
+          description: null,
+        },
+      ]),
+    }
+    const partial: TypesenseWatchCatalogDocument = {
+      ...catalogDocument,
+      id: "video-partial-jesus",
+      coreId: "core-partial-jesus",
+      titles: ["Jesus Film Collection"],
+      localesJson: JSON.stringify([
+        {
+          locale: "en",
+          languageSlug: "english",
+          title: "Jesus Film Collection",
+          description: null,
+        },
+      ]),
+    }
+    const profile = candidateProfile()
+    const service = new TypesenseWatchSearchService(
+      prismaFixture(),
+      typesenseFixture({
+        exactLexical: [exact],
+        titleLexical: [exact, partial],
+        metadataLexical: [],
+        catalog: [exact, partial],
+        binding: profile.binding,
+      }) as unknown as TypesenseClient,
+      { profile, embedder: vi.fn(async () => []) },
+    )
+
+    const { diagnostics } = await service.searchWithDiagnostics({
+      query: "Jesus",
+      limit: 2,
+    })
+    const partialTrace = diagnostics.rankingTrace.find(
+      ({ canonicalVideoId }) => canonicalVideoId === "core:core-partial-jesus",
+    )
+
+    expect(partialTrace).toMatchObject({
+      retrievalSources: ["localized_title"],
+      titleRank: 2,
+      titleContribution: 0.56 / 62,
+    })
+  })
+
+  it.each([
+    ["Cyrillic", "Иисус", "ru"],
+    ["Han", "耶稣", "zh"],
+    ["Kana", "イエス", "ja"],
+    ["Arabic", "يسوع", "fil"],
+    ["Latin", "JESUS", "en"],
+  ])(
+    "retrieves an exact %s title globally and verifies it before ranking",
+    async (_script, title, locale) => {
+      const localized: TypesenseWatchCatalogDocument = {
+        ...catalogDocument,
+        id: `video-${locale}-${title}`,
+        coreId: `core-${locale}-${title}`,
+        titles: [title],
+        localeCodes: [locale],
+        localesJson: JSON.stringify([
+          {
+            locale,
+            languageSlug: `language-${locale}`,
+            title,
+            description: null,
+          },
+        ]),
+      }
+      const profile = candidateProfile()
+      const service = new TypesenseWatchSearchService(
+        prismaFixture(),
+        typesenseFixture({
+          lexical: [localized],
+          exactLexical: [localized],
+          titleLexical: [],
+          metadataLexical: [],
+          catalog: [localized],
+          binding: profile.binding,
+        }) as unknown as TypesenseClient,
+        { profile, embedder: vi.fn(async () => embedding) },
+      )
+
+      const { response, diagnostics } = await service.searchWithDiagnostics({
+        query: title,
+      })
+
+      expect(response.results.map(({ id }) => id)).toEqual([localized.id])
+      expect(diagnostics.rankingTrace[0]).toMatchObject({
+        evidenceTier: "NORMALIZED_WHOLE_TITLE",
+        retrievalSources: ["global_exact_title"],
+        wholeTitleMatch: true,
+        titleContribution: 0.56 / 61,
+      })
+    },
+  )
+
+  it("discards an exact-key hit when its localized title does not verify", async () => {
+    const staleDocument: TypesenseWatchCatalogDocument = {
+      ...catalogDocument,
+      id: "video-stale-exact-key",
+      coreId: "core-stale-exact-key",
+      titles: ["Not the query"],
+      localeCodes: ["ru"],
+      localesJson: JSON.stringify([
+        {
+          locale: "ru",
+          languageSlug: "russian",
+          title: "Not the query",
+          description: null,
+        },
+      ]),
+    }
+    const profile = candidateProfile()
+    const service = new TypesenseWatchSearchService(
+      prismaFixture(),
+      typesenseFixture({
+        exactLexical: [staleDocument],
+        allowUnverifiedExactHits: true,
+        titleLexical: [],
+        metadataLexical: [],
+        catalog: [staleDocument],
+        binding: profile.binding,
+      }) as unknown as TypesenseClient,
+      { profile, embedder: vi.fn(async () => []) },
+    )
+
+    const { response, diagnostics } = await service.searchWithDiagnostics({
+      query: "Иисус",
+    })
+
+    expect(response.results).toEqual([])
+    expect(diagnostics.rankingTrace).toEqual([])
+  })
+
+  it("uses locale-aware verification before accepting an exact key", async () => {
+    const turkishCollision: TypesenseWatchCatalogDocument = {
+      ...catalogDocument,
+      id: "video-turkish-case-collision",
+      coreId: "core-turkish-case-collision",
+      titles: ["i"],
+      localeCodes: ["tr"],
+      localesJson: JSON.stringify([
+        {
+          locale: "tr",
+          languageSlug: "turkish",
+          title: "i",
+          description: null,
+        },
+      ]),
+    }
+    const profile = candidateProfile()
+    const service = new TypesenseWatchSearchService(
+      prismaFixture({
+        targetLanguage: {
+          id: "language-tr",
+          slug: "turkish",
+          name: { en: "Turkish" },
+        },
+        evidenceLanguages: [{ slug: "turkish", bcp47: "tr" }],
+      }),
+      typesenseFixture({
+        exactLexical: [turkishCollision],
+        titleLexical: [],
+        metadataLexical: [],
+        catalog: [turkishCollision],
+        binding: profile.binding,
+      }) as unknown as TypesenseClient,
+      { profile, embedder: vi.fn(async () => []) },
+    )
+
+    const { response, diagnostics } = await service.searchWithDiagnostics({
+      query: "I",
+      queryLanguageSlug: "turkish",
+      displayLanguageSlug: "turkish",
+    })
+
+    expect(response.results).toEqual([])
+    expect(diagnostics.rankingTrace).toEqual([])
+  })
+
+  it("does not let Typesense order break ties between duplicate exact titles", async () => {
+    const duplicates = ["alpha", "beta"].map(
+      (suffix): TypesenseWatchCatalogDocument => ({
+        ...catalogDocument,
+        id: `video-${suffix}`,
+        coreId: `core-${suffix}`,
+        titles: ["Jesus"],
+        localesJson: JSON.stringify([
+          {
+            locale: "en",
+            languageSlug: "english",
+            title: "Jesus",
+            description: null,
+          },
+        ]),
+      }),
+    )
+    const profile = candidateProfile()
+    const search = async (exactLexical: TypesenseWatchCatalogDocument[]) => {
+      const service = new TypesenseWatchSearchService(
+        prismaFixture(),
+        typesenseFixture({
+          exactLexical,
+          titleLexical: [],
+          metadataLexical: [],
+          catalog: duplicates,
+          binding: profile.binding,
+        }) as unknown as TypesenseClient,
+        { profile, embedder: vi.fn(async () => []) },
+      )
+      return service.searchWithDiagnostics({ query: "Jesus", limit: 2 })
+    }
+
+    const forward = await search(duplicates)
+    const reversed = await search([...duplicates].reverse())
+
+    expect(forward.response.results.map(({ id }) => id)).toEqual(
+      reversed.response.results.map(({ id }) => id),
+    )
+    expect(
+      forward.diagnostics.rankingTrace.map(
+        ({ canonicalVideoId, titleRank, titleContribution }) => ({
+          canonicalVideoId,
+          titleRank,
+          titleContribution,
+        }),
+      ),
+    ).toEqual(
+      reversed.diagnostics.rankingTrace.map(
+        ({ canonicalVideoId, titleRank, titleContribution }) => ({
+          canonicalVideoId,
+          titleRank,
+          titleContribution,
+        }),
+      ),
+    )
+    expect(
+      forward.diagnostics.rankingTrace.map(({ titleRank }) => titleRank),
+    ).toEqual([1, 1])
   })
 
   it("never retries a missing candidate projection through current aliases", async () => {
@@ -1026,6 +1420,7 @@ describe("TypesenseWatchSearchService", () => {
       expect.objectContaining({
         canonicalVideoId: "core:core-bibleproject-collection",
         evidenceTier: "UNIQUE_TITLE_CORE",
+        retrievalSources: ["localized_title"],
         finalRank: 1,
         selectedVideoId: bibleProjectCollection.id,
         titleRank: 1,
@@ -1037,6 +1432,7 @@ describe("TypesenseWatchSearchService", () => {
       expect.objectContaining({
         canonicalVideoId: "core:core-bibleproject-video",
         evidenceTier: "ANCHOR_METADATA",
+        retrievalSources: ["metadata"],
         finalRank: 2,
         selectedVideoId: bibleProjectVideo.id,
         titleRank: null,
@@ -1048,6 +1444,7 @@ describe("TypesenseWatchSearchService", () => {
       expect.objectContaining({
         canonicalVideoId: "core:core-semantic-gospel-part-4",
         evidenceTier: "SEMANTIC_FILL",
+        retrievalSources: ["semantic"],
         finalRank: 3,
         selectedVideoId: unrelatedSemantic.id,
         titleRank: null,
@@ -1057,7 +1454,7 @@ describe("TypesenseWatchSearchService", () => {
         watchabilityOutcome: "target_audio",
       }),
     ])
-    expect(candidateTypesense.multiSearch.mock.calls[0]?.[0]).toHaveLength(3)
+    expect(candidateTypesense.multiSearch.mock.calls[0]?.[0]).toHaveLength(4)
 
     const pageOne = await service.search({
       query: "the bible project",
@@ -1179,7 +1576,7 @@ describe("TypesenseWatchSearchService", () => {
     ])
   })
 
-  it("gives every candidate locale field equal authority and lowers only fallback", async () => {
+  it("orders candidate locale fields from language evidence without removing any", async () => {
     const typesense = typesenseFixture({ lexical: [catalogDocument] })
     const service = new TypesenseWatchSearchService(
       prismaFixture(),
@@ -1196,15 +1593,15 @@ describe("TypesenseWatchSearchService", () => {
       expect.arrayContaining([
         expect.objectContaining({
           query_by:
-            "title_en,title_fr,title_ja,title_ru,title_tr,title_zh,title_fallback",
-          query_by_weights: "4,4,4,4,4,4,1",
-          num_typos: "2,2,2,2,2,2,1",
+            "title_fr,title_fallback,title_en,title_ja,title_ru,title_tr,title_zh",
+          query_by_weights: "4,1,4,4,4,4,4",
+          num_typos: "2,1,2,2,2,2,2",
         }),
         expect.objectContaining({
           query_by:
-            "metadata_en,metadata_fr,metadata_ja,metadata_ru,metadata_tr,metadata_zh,metadata_fallback",
-          query_by_weights: "4,4,4,4,4,4,1",
-          num_typos: "2,2,2,2,2,2,1",
+            "metadata_fr,metadata_fallback,metadata_en,metadata_ja,metadata_ru,metadata_tr,metadata_zh",
+          query_by_weights: "4,1,4,4,4,4,4",
+          num_typos: "2,1,2,2,2,2,2",
         }),
       ]),
     )
@@ -3262,6 +3659,13 @@ describe("TypesenseWatchSearchService", () => {
       prismaFixture(),
       typesenseFixture({
         lexical: [catalogDocument],
+        semantic: [
+          {
+            videoId: catalogDocument.id,
+            text: "Communion with Jesus",
+            vectorDistance: 0.1,
+          },
+        ],
         hybridError: new TypesenseRequestError(
           "Field canonicalVideoId not found",
           400,
@@ -3302,6 +3706,10 @@ describe("TypesenseWatchSearchService", () => {
       rankingImplementation: "legacy-rrf",
       rankingMode: "SEMANTIC",
       rankingAnchor: null,
+    })
+    expect(diagnostics.rankingTrace[0]).toMatchObject({
+      selectedVideoId: catalogDocument.id,
+      retrievalSources: ["semantic"],
     })
   })
 

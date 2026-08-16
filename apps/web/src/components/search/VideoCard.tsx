@@ -3,6 +3,7 @@ import Link from "next/link"
 import type { Route } from "next"
 import { useTranslations } from "next-intl"
 import { Play } from "lucide-react"
+import type { MouseEvent as ReactMouseEvent } from "react"
 import {
   VideoThumbnailCaption,
   VideoThumbnailDescription,
@@ -23,24 +24,37 @@ import {
   tryAsContentSlug,
   tryAsLocaleSlug,
   watchVideoPath,
+  watchUnavailableLanguagePath,
 } from "@/lib/routes"
 import type { AdminVideoLabel, SearchResult } from "@/lib/search"
 import { resolveMuxAnimatedPreviewUrl } from "@/lib/url"
 import { videoLabelMessageKey } from "@/lib/video-labels"
+import { writeWatchUnavailableRecoveryContext } from "@/lib/watch-unavailable-recovery-context"
 import { cn } from "@/lib/utils"
 
 type VideoCardProps = {
   result: SearchResult
   index?: number
-  hrefBuilder?: (result: SearchResult) => Route
-  onResultClick?: (result: SearchResult) => void
+  requestedLanguageSlug?: string | null
+  requestedLanguageName?: string | null
+  hrefBuilder?: (
+    result: SearchResult,
+    requestedLanguageSlug?: string | null,
+  ) => Route
+  onResultClick?: (
+    result: SearchResult,
+    event: ReactMouseEvent<HTMLAnchorElement>,
+  ) => void
 }
 
 // English is the default UI locale for search-result deep links. Hoisted to
 // module scope so the throwing constructor runs once at load, not per render.
 const ENGLISH_LOCALE = asLocaleSlug("english")
 
-export const defaultHrefBuilder = (result: SearchResult): Route => {
+export const defaultHrefBuilder = (
+  result: SearchResult,
+  requestedLanguageSlug?: string | null,
+): Route => {
   const slug = tryAsContentSlug(result.slug)
   const resultLanguage = result.languageSlug
     ? tryAsLocaleSlug(result.languageSlug)
@@ -51,6 +65,14 @@ export const defaultHrefBuilder = (result: SearchResult): Route => {
   // On a malformed slug, fall back to the modal-capable watch home rather than
   // emitting a broken deep link or resurrecting the deprecated /search page.
   if (!slug) return searchPath()
+  if (result.availabilityKind === "unavailable") {
+    const requestedLanguage = requestedLanguageSlug
+      ? tryAsLocaleSlug(requestedLanguageSlug)
+      : null
+    return requestedLanguage
+      ? watchUnavailableLanguagePath(slug, requestedLanguage)
+      : searchPath()
+  }
   if (result.availabilityKind === "target_subtitle") {
     if (!resultLanguage || !subtitleLanguage) return searchPath()
     return watchVideoPath(slug, resultLanguage, { subtitleLanguage })
@@ -146,6 +168,8 @@ export function pickCardPill(
 export function VideoCard({
   result,
   index = 0,
+  requestedLanguageSlug,
+  requestedLanguageName,
   hrefBuilder = defaultHrefBuilder,
   onResultClick,
 }: VideoCardProps) {
@@ -185,8 +209,22 @@ export function VideoCard({
 
   return (
     <Link
-      href={hrefBuilder(result)}
-      onClick={() => onResultClick?.(result)}
+      href={hrefBuilder(result, requestedLanguageSlug)}
+      prefetch={result.availabilityKind === "unavailable" ? false : undefined}
+      onClick={(event) => {
+        if (
+          result.availabilityKind === "unavailable" &&
+          requestedLanguageSlug &&
+          isUnmodifiedPrimaryNavigation(event)
+        ) {
+          writeWatchUnavailableRecoveryContext({
+            target: result,
+            requestedLanguageSlug,
+            requestedLanguageName,
+          })
+        }
+        onResultClick?.(result, event)
+      }}
       className={cn(
         "group animate-card-enter relative flex cursor-pointer flex-col overflow-hidden rounded-lg transition-shadow hover:shadow-2xl hover:shadow-black/40",
         VIDEO_THUMBNAIL_FOCUS_TARGET_CLASS,
@@ -310,5 +348,20 @@ export function VideoCard({
       </div>
       <VideoThumbnailInteractionFrame data-testid="search-card-hover-outline" />
     </Link>
+  )
+}
+
+export function isUnmodifiedPrimaryNavigation(
+  event: Pick<
+    ReactMouseEvent<HTMLAnchorElement>,
+    "button" | "metaKey" | "ctrlKey" | "shiftKey" | "altKey"
+  >,
+): boolean {
+  return (
+    event.button === 0 &&
+    !event.metaKey &&
+    !event.ctrlKey &&
+    !event.shiftKey &&
+    !event.altKey
   )
 }

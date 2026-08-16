@@ -307,6 +307,7 @@ describe("Typesense Watch Search indexer", () => {
     expect(before.lexical[0]).toMatchObject({
       title_en: ["Before snapshot"],
       metadata_en: ["Before snapshot description"],
+      title_exact_keys: [expect.stringMatching(/^[a-f0-9]{32}$/)],
     })
     expect(before.counts).toEqual({ catalog: 1, availability: 0, lexical: 1 })
     expect(before.digests).toEqual(
@@ -318,6 +319,11 @@ describe("Typesense Watch Search indexer", () => {
       }),
     )
     expect(after.digests.combined).not.toBe(before.digests.combined)
+    const exactTitleKeyBytes = before.lexicalMemory.exactTitleKeyBytes ?? 0
+    expect(exactTitleKeyBytes).toBe(32)
+    expect(before.lexicalMemory.searchableBytes).toBeGreaterThan(
+      exactTitleKeyBytes,
+    )
   })
 
   it("estimates vector RAM using the Typesense sizing formula", () => {

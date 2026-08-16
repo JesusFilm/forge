@@ -121,12 +121,24 @@ export class AuditedFilesystem implements WorkspaceFilesystem {
     this.delegate.error = value
   }
 
-  getInstructions(
-    options?: Parameters<
-      NonNullable<WorkspaceFilesystem["getInstructions"]>
-    >[0],
-  ) {
-    return this.delegate.getInstructions?.(options) ?? ""
+  getInstructions() {
+    // Deliberately suppressed — the wrapper's one divergence from its
+    // delegate's contract. A non-empty description here becomes a SECOND
+    // system message auto-injected into every registered agent's turns (the
+    // global-Workspace fallback in @mastra/core adds a
+    // WorkspaceInstructionsProcessor), which one-system-message models behind
+    // the AI Gateway reject with 400 (seeker incident, 2026-08-12) and which
+    // sends the bucket name to every model provider on every turn. No agent
+    // can act on the description anyway: the Workspace disables inherited
+    // file tools (config.ts `tools: { enabled: false }` — the coupled half of
+    // this suppression). The protection rests on the processor's truthiness
+    // guard skipping addSystem on "" (pinned dist fact, verified @mastra/core
+    // 1.55.0 — re-verify on `@mastra/*` bumps; the processor-level pin in
+    // config.test.ts is the CI guard). Restoring delegation is NOT made safe
+    // by enabling tools — the one-system-message gateway constraint is
+    // independent of tools — so any re-description of storage needs a
+    // gateway-safe composition or a per-agent workspace, decided deliberately.
+    return ""
   }
 
   getMountConfig(): FilesystemMountConfig {

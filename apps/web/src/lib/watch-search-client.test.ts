@@ -23,6 +23,9 @@ describe("searchWatchDirect", () => {
               query: "Jesus",
               degraded: false,
               laneStatuses: [],
+              languageInterpretation: {
+                targetLanguageSlug: "english",
+              },
               results: [],
               hasMore: false,
               searchMode: "watch-search-typesense",
@@ -39,9 +42,11 @@ describe("searchWatchDirect", () => {
     )
     vi.stubGlobal("fetch", fetchMock)
 
-    await searchWatchDirect({
+    const result = await searchWatchDirect({
       query: "Jesus",
     })
+
+    expect(result.targetLanguageSlug).toBe("english")
 
     expect(fetchMock).toHaveBeenCalledOnce()
     expect(fetchMock.mock.calls[0]?.[0]).toBe("https://admin.test/api/graphql")
@@ -166,6 +171,54 @@ describe("searchWatchDirect", () => {
     expect(result.results[0]).toMatchObject({
       languageSlug: null,
       subtitleLanguageSlug: "russian",
+    })
+  })
+
+  it("keeps unavailable rows without a playable audio language", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          data: {
+            watchSearch: {
+              results: [
+                {
+                  type: "VIDEO",
+                  id: "video-good-friday-live",
+                  slug: "good-friday-live",
+                  title: "Good Friday: Live",
+                  languageSlug: null,
+                  availability: {
+                    kind: "UNAVAILABLE",
+                    languageSlug: null,
+                  },
+                  action: { hrefLanguageSlug: null },
+                },
+              ],
+              hasMore: false,
+              query: "耶稣",
+              searchMode: "watch-search",
+              latencyMs: 8,
+              nextOffset: 0,
+            },
+          },
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      ),
+    )
+
+    const result = await searchWatchDirect({
+      query: "耶稣",
+      resolvedLanguage: {
+        locale: "zh-Hans",
+        publicSlug: "chinese-simplified",
+        englishName: "Chinese, Simplified",
+        source: "explicit-selection",
+      },
+    })
+
+    expect(result.results[0]).toMatchObject({
+      availabilityKind: "unavailable",
+      languageSlug: null,
     })
   })
 })

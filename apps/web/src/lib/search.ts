@@ -87,6 +87,8 @@ export type SearchResponse = {
   query: string
   searchMode: string
   latencyMs: number
+  /** Admin's authoritative target language for this completed result set. */
+  targetLanguageSlug?: string | null
   nextOffset?: number
   requestId?: string | null
   degraded?: boolean

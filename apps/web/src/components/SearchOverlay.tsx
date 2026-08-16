@@ -909,6 +909,19 @@ export function SearchOverlay() {
     }
     return bySlug
   }, [languageOptions])
+  const completedSearchLanguageSlug =
+    searchResultAnalytics?.searchLanguageSlug ?? null
+  const completedSearchLanguageOption = completedSearchLanguageSlug
+    ? (semanticLanguageOptionBySlug.get(completedSearchLanguageSlug) ?? null)
+    : null
+  const completedSearchLanguageName = completedSearchLanguageOption
+    ? localizedSearchLanguageName(
+        completedSearchLanguageOption,
+        uiLocale,
+        t("searchLanguageLabel"),
+        "standalone",
+      )
+    : (searchResultAnalytics?.searchLanguageEnglishName ?? null)
   const semanticLanguageComboboxValue =
     selectedSearchLanguageOption?.publicSlug ??
     defaultSearchLanguageOption?.publicSlug ??
@@ -1476,6 +1489,8 @@ export function SearchOverlay() {
                     key={`${result.id}-${index}`}
                     result={result}
                     index={exiting ? 0 : index}
+                    requestedLanguageSlug={completedSearchLanguageSlug}
+                    requestedLanguageName={completedSearchLanguageName}
                     onResultClick={
                       searchResultAnalytics
                         ? (clickedResult) => {

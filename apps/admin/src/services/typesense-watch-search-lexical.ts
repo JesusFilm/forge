@@ -1,4 +1,8 @@
 import { canonicalTypesenseVideoId } from "./typesense-watch-search-identifiers"
+import {
+  TYPESENSE_WATCH_EXACT_TITLE_KEYS_FIELD,
+  typesenseWatchExactTitleKey,
+} from "./typesense-watch-search-exact-title"
 import type {
   TypesenseWatchCatalogDocument,
   TypesenseWatchLocale,
@@ -40,11 +44,21 @@ export type TypesenseWatchLexicalDocument = {
   localeCodes: string[]
 } & Record<string, string | string[]>
 
+export type TypesenseWatchCandidateLexicalDocument =
+  TypesenseWatchLexicalDocument & {
+    title_exact_keys?: string[]
+  }
+
 export type TypesenseKeywordMemoryEstimate = {
   searchableBytes: number
   estimatedRamLowBytes: number
   estimatedRamHighBytes: number
 }
+
+export type TypesenseCandidateKeywordMemoryEstimate =
+  TypesenseKeywordMemoryEstimate & {
+    exactTitleKeyBytes: number
+  }
 
 export function typesenseWatchTokenizerLocale(locale: string): string | null {
   const base = locale.trim().toLocaleLowerCase().split("-")[0]
@@ -133,6 +147,31 @@ export function buildTypesenseWatchLexicalDocuments(
   })
 }
 
+export function buildTypesenseWatchCandidateLexicalDocuments(
+  catalog: readonly TypesenseWatchCatalogDocument[],
+): TypesenseWatchCandidateLexicalDocument[] {
+  return buildTypesenseWatchLexicalDocuments(catalog).map((document) => {
+    const exactTitleKeys = new Set<string>()
+    for (const [field, values] of Object.entries(document)) {
+      if (
+        !field.startsWith("title_") ||
+        field === TYPESENSE_WATCH_EXACT_TITLE_KEYS_FIELD
+      ) {
+        continue
+      }
+      for (const title of Array.isArray(values) ? values : [values]) {
+        const key = typesenseWatchExactTitleKey(title)
+        if (key) exactTitleKeys.add(key)
+      }
+    }
+    if (exactTitleKeys.size === 0) return document
+    return {
+      ...document,
+      [TYPESENSE_WATCH_EXACT_TITLE_KEYS_FIELD]: [...exactTitleKeys].sort(),
+    }
+  })
+}
+
 export function estimateTypesenseKeywordMemory(
   documents: readonly TypesenseWatchLexicalDocument[],
 ): TypesenseKeywordMemoryEstimate {
@@ -153,6 +192,23 @@ export function estimateTypesenseKeywordMemory(
     estimatedRamLowBytes: searchableBytes * 2,
     estimatedRamHighBytes: searchableBytes * 3,
   }
+}
+
+export function estimateTypesenseCandidateKeywordMemory(
+  documents: readonly TypesenseWatchCandidateLexicalDocument[],
+): TypesenseCandidateKeywordMemoryEstimate {
+  const estimate = estimateTypesenseKeywordMemory(documents)
+  const encoder = new TextEncoder()
+  const exactTitleKeyBytes = documents.reduce(
+    (total, document) =>
+      total +
+      (document.title_exact_keys ?? []).reduce(
+        (keyTotal, key) => keyTotal + encoder.encode(key).byteLength,
+        0,
+      ),
+    0,
+  )
+  return { ...estimate, exactTitleKeyBytes }
 }
 
 export function typesenseWatchTokenizerLocales(

@@ -1507,7 +1507,16 @@ uses the complete dedicated `DEVOTIONAL_WORKSPACE_S3_*` tuple with
 only when that tuple is entirely absent. A partial tuple never falls back to
 local storage. The Workspace keeps native Studio CRUD/search available, but
 its inherited agent tools are disabled; workflows read it programmatically
-through typed devotional repository code. Native search is an eventual Studio
+through typed devotional repository code. Its filesystem prompt instructions
+are suppressed too (`AuditedFilesystem.getInstructions` returns `""`) — a
+global Workspace otherwise auto-injects a second system message describing its
+storage into EVERY registered agent's turns, which one-system-message gateway
+models reject with 400 (seeker incident, 2026-08-12; see
+`docs/solutions/integration-issues/mastra-global-workspace-second-system-message-injection.md`).
+The suppression rests on the injection sites' truthiness guards skipping
+`addSystem` on empty text — a pinned dist fact (verified `@mastra/core`
+1.55.0; **re-verify on `@mastra/*` bumps**), CI-guarded by the
+processor-level pin in `config.test.ts`. Native search is an eventual Studio
 browsing aid. Devotional generation remains fail-closed until filesystem,
 embedder, PgVector, the exact immutable identity of
 `001-devotional-workspace.sql`, and the authoritative PostgreSQL cutover row

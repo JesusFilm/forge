@@ -7,6 +7,10 @@ import {
   projectWatchSearchComparisonResult,
 } from "./search-trace-privacy"
 import type { WatchSearchComparisonResult } from "./typesense-watch-search-comparison.service"
+import type {
+  TypesenseWatchSearchRankingTrace,
+  TypesenseWatchSearchRetrievalSource,
+} from "./typesense-watch-search.service"
 import type { WatchSearchResult } from "./watch-search.service"
 
 const now = new Date("2026-05-26T00:00:00.000Z")
@@ -247,7 +251,27 @@ describe("projectWatchSearchComparisonResult", () => {
           sourceCanonicalVideoId: "core:safe-id",
           matchKind: "NORMALIZED_WHOLE_TITLE" as const,
         },
-        rankingTrace: [],
+        rankingTrace: [
+          {
+            canonicalVideoId: "core:safe-id",
+            retrievalSources: [
+              "global_exact_title",
+              "localized_title",
+            ] satisfies TypesenseWatchSearchRetrievalSource[],
+            evidenceTier: "NORMALIZED_WHOLE_TITLE",
+            fusedScore: 1,
+            wholeTitleMatch: true,
+            titleRank: 1,
+            titleContribution: 1,
+            metadataRank: null,
+            metadataContribution: 0,
+            semanticRank: null,
+            semanticContribution: 0,
+            selectedVideoId: "video-1",
+            watchabilityOutcome: "target_audio",
+            finalRank: 1,
+          } satisfies TypesenseWatchSearchRankingTrace,
+        ],
       },
     }
     const result: WatchSearchComparisonResult = {
@@ -274,6 +298,11 @@ describe("projectWatchSearchComparisonResult", () => {
           sourceCanonicalVideoId: "core:safe-id",
           matchKind: "NORMALIZED_WHOLE_TITLE",
         },
+        rankingTrace: [
+          expect.objectContaining({
+            retrievalSources: ["global_exact_title", "localized_title"],
+          }),
+        ],
       },
     })
   })

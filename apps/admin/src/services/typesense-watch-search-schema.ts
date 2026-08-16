@@ -1,4 +1,5 @@
 import type { TypesenseCollectionSchema } from "./typesense-client"
+import { TYPESENSE_WATCH_EXACT_TITLE_KEYS_FIELD } from "./typesense-watch-search-exact-title"
 import { TYPESENSE_WATCH_TOKENIZER_LOCALES } from "./typesense-watch-search-lexical"
 
 export const TYPESENSE_WATCH_CATALOG_ALIAS = "watch_search_catalog"
@@ -126,13 +127,31 @@ export function candidateWatchCollectionSchemas(
       name: names.availability,
     },
     lexical: {
-      ...watchLexicalCollectionSchema("candidate", tokenizerLocales),
+      ...candidateWatchLexicalCollectionSchema("candidate", tokenizerLocales),
       name: names.lexical,
     },
   } satisfies Record<
     keyof ReturnType<typeof candidateWatchCollectionNames>,
     TypesenseCollectionSchema
   >
+}
+
+export function candidateWatchLexicalCollectionSchema(
+  buildId: string,
+  tokenizerLocales: readonly string[] = TYPESENSE_WATCH_TOKENIZER_LOCALES,
+): TypesenseCollectionSchema {
+  const schema = watchLexicalCollectionSchema(buildId, tokenizerLocales)
+  return {
+    ...schema,
+    fields: [
+      ...schema.fields,
+      {
+        name: TYPESENSE_WATCH_EXACT_TITLE_KEYS_FIELD,
+        type: "string[]",
+        optional: true,
+      },
+    ],
+  }
 }
 
 export function watchCatalogCollectionSchema(

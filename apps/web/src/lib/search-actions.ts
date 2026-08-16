@@ -547,7 +547,9 @@ function withResolvedLanguageSlug(
     return [...results]
   }
   return results.map((result) =>
-    result.type === "video"
+    result.type === "video" &&
+    result.availabilityKind !== "target_subtitle" &&
+    result.availabilityKind !== "unavailable"
       ? {
           ...result,
           languageSlug: result.languageSlug ?? resolvedLanguage.publicSlug,

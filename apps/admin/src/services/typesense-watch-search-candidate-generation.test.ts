@@ -6,6 +6,7 @@ import {
   CandidateGenerationValidationError,
   TypesenseWatchSearchCandidateGenerationService,
 } from "./typesense-watch-search-candidate-generation"
+import { WATCH_SEARCH_CANDIDATE_REQUIRED_EVIDENCE_GATES } from "./typesense-watch-search-candidate-qualification"
 
 // The in-memory Prisma double intentionally accepts the delegates' heterogeneous shapes.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -274,6 +275,48 @@ describe("TypesenseWatchSearchCandidateGenerationService", () => {
       documentCounts: { catalog: 1_070, transcript: 280_107 },
       capacityEvidence: { residentMemoryBytes: 5_000_000_000 },
     })
+  }
+
+  function passingQualificationReport(input: {
+    generationId?: string
+    currentBindings: readonly string[]
+    qrelsRevision?: string
+    identityPatch?: Row
+    evidencePatch?: Row
+    artifactPatch?: Row
+  }) {
+    const evidence = Object.fromEntries(
+      WATCH_SEARCH_CANDIDATE_REQUIRED_EVIDENCE_GATES.map((gate) => [
+        gate,
+        "PASS",
+      ]),
+    )
+    const artifacts = Object.fromEntries(
+      WATCH_SEARCH_CANDIDATE_REQUIRED_EVIDENCE_GATES.map((gate) => [
+        gate,
+        `s3://reviewed/${gate}.json`,
+      ]),
+    )
+    return {
+      schemaVersion: "watch-search-candidate-qualification/v2",
+      status: "QUALIFIED",
+      reasons: [],
+      identity: {
+        generationId: input.generationId ?? "candidate-1",
+        applicationRevision: "admin-app-sha-1",
+        rankingRevision: "title-and-brand-v1",
+        transcriptCollection: "watch_search_transcripts_active",
+        transcriptProjectionRevision: "17",
+        qrelsRevision: input.qrelsRevision ?? "qrels-reviewed-1",
+        currentBindings: input.currentBindings,
+        ...input.identityPatch,
+      },
+      evidence: {
+        ...evidence,
+        ...input.evidencePatch,
+        artifacts: { ...artifacts, ...input.artifactPatch },
+      },
+    }
   }
 
   it("creates the BUILDING owner before validation and publishes only a complete READY tuple", async () => {
@@ -631,27 +674,7 @@ describe("TypesenseWatchSearchCandidateGenerationService", () => {
       transcriptProjectionRevision: 17n,
       qrelsRevision: "qrels-reviewed-1",
       currentBindings,
-      evidence: {
-        schemaVersion: "watch-search-candidate-qualification/v2",
-        status: "QUALIFIED",
-        reasons: [],
-        identity: {
-          generationId: "candidate-1",
-          applicationRevision: "admin-app-sha-1",
-          rankingRevision: "title-and-brand-v1",
-          transcriptCollection: "watch_search_transcripts_active",
-          transcriptProjectionRevision: "17",
-          qrelsRevision: "qrels-reviewed-1",
-          currentBindings,
-        },
-        evidence: {
-          relevance: "PASS",
-          fixedLoadResources: "PASS",
-          currentInterference: "PASS",
-          operatorReview: "PASS",
-          artifacts: { report: "s3://reviewed/report.json" },
-        },
-      },
+      evidence: passingQualificationReport({ currentBindings }),
     })
     await expect(
       service.resolveGeneration({
@@ -738,6 +761,54 @@ describe("TypesenseWatchSearchCandidateGenerationService", () => {
     ).rejects.toBeInstanceOf(CandidateGenerationValidationError)
   })
 
+  it.each(WATCH_SEARCH_CANDIDATE_REQUIRED_EVIDENCE_GATES)(
+    "rejects a passing report when %s did not pass",
+    async (gate) => {
+      await ready()
+      const currentBindings = ["watch_catalog_current"]
+      await expect(
+        service.recordQualification({
+          generationId: "candidate-1",
+          status: "PASSED",
+          applicationRevision: "admin-app-sha-1",
+          rankingRevision: "title-and-brand-v1",
+          transcriptCollection: "watch_search_transcripts_active",
+          transcriptProjectionRevision: 17n,
+          qrelsRevision: "qrels-reviewed-1",
+          currentBindings,
+          evidence: passingQualificationReport({
+            currentBindings,
+            evidencePatch: { [gate]: "FAIL" },
+          }),
+        }),
+      ).rejects.toBeInstanceOf(CandidateGenerationValidationError)
+    },
+  )
+
+  it.each(WATCH_SEARCH_CANDIDATE_REQUIRED_EVIDENCE_GATES)(
+    "rejects a passing report when %s has no artifact",
+    async (gate) => {
+      await ready()
+      const currentBindings = ["watch_catalog_current"]
+      await expect(
+        service.recordQualification({
+          generationId: "candidate-1",
+          status: "PASSED",
+          applicationRevision: "admin-app-sha-1",
+          rankingRevision: "title-and-brand-v1",
+          transcriptCollection: "watch_search_transcripts_active",
+          transcriptProjectionRevision: 17n,
+          qrelsRevision: "qrels-reviewed-1",
+          currentBindings,
+          evidence: passingQualificationReport({
+            currentBindings,
+            artifactPatch: { [gate]: " " },
+          }),
+        }),
+      ).rejects.toBeInstanceOf(CandidateGenerationValidationError)
+    },
+  )
+
   it("rejects qualification evidence relabeled to another ranking revision", async () => {
     await ready()
     const currentBindings = ["watch_catalog_current"]
@@ -751,27 +822,10 @@ describe("TypesenseWatchSearchCandidateGenerationService", () => {
         transcriptProjectionRevision: 17n,
         qrelsRevision: "qrels-reviewed-1",
         currentBindings,
-        evidence: {
-          schemaVersion: "watch-search-candidate-qualification/v2",
-          status: "QUALIFIED",
-          reasons: [],
-          identity: {
-            generationId: "candidate-1",
-            applicationRevision: "admin-app-sha-1",
-            rankingRevision: "previous-ranker-v1",
-            transcriptCollection: "watch_search_transcripts_active",
-            transcriptProjectionRevision: "17",
-            qrelsRevision: "qrels-reviewed-1",
-            currentBindings,
-          },
-          evidence: {
-            relevance: "PASS",
-            fixedLoadResources: "PASS",
-            currentInterference: "PASS",
-            operatorReview: "PASS",
-            artifacts: { report: "s3://reviewed/report.json" },
-          },
-        },
+        evidence: passingQualificationReport({
+          currentBindings,
+          identityPatch: { rankingRevision: "previous-ranker-v1" },
+        }),
       }),
     ).rejects.toBeInstanceOf(CandidateGenerationValidationError)
   })
@@ -831,27 +885,10 @@ describe("TypesenseWatchSearchCandidateGenerationService", () => {
         transcriptProjectionRevision: 17n,
         qrelsRevision: "qrels-reviewed-2",
         currentBindings: ["watch_catalog_current"],
-        evidence: {
-          schemaVersion: "watch-search-candidate-qualification/v2",
-          status: "QUALIFIED",
-          reasons: [],
-          identity: {
-            generationId: "candidate-1",
-            applicationRevision: "admin-app-sha-1",
-            rankingRevision: "title-and-brand-v1",
-            transcriptCollection: "watch_search_transcripts_active",
-            transcriptProjectionRevision: "17",
-            qrelsRevision: "qrels-reviewed-1",
-            currentBindings: ["watch_catalog_current"],
-          },
-          evidence: {
-            relevance: "PASS",
-            fixedLoadResources: "PASS",
-            currentInterference: "PASS",
-            operatorReview: "PASS",
-            artifacts: { report: "s3://reviewed/report.json" },
-          },
-        },
+        evidence: passingQualificationReport({
+          currentBindings: ["watch_catalog_current"],
+          identityPatch: { qrelsRevision: "qrels-reviewed-1" },
+        }),
       }),
     ).rejects.toBeInstanceOf(CandidateGenerationValidationError)
     expect(db.qualifications).toHaveLength(0)

@@ -11,6 +11,18 @@ const languages = [
     locales: [{ locale: "ja", value: "日本語", primary: true }],
   },
   {
+    slug: "russian",
+    bcp47: "ru",
+    name: { en: "Russian" },
+    locales: [{ locale: "ru", value: "Русский", primary: true }],
+  },
+  {
+    slug: "english",
+    bcp47: "en",
+    name: { en: "English" },
+    locales: [{ locale: "en", value: "English", primary: true }],
+  },
+  {
     slug: "spanish-castilian",
     bcp47: "es",
     name: { en: "Spanish" },
@@ -94,6 +106,24 @@ describe("buildTypesenseWatchSearchQueryPlan", () => {
       "japanese",
       "spanish-castilian",
     ])
+    expect(plan.lexicalLocales).toEqual(["es", "ja"])
+  })
+
+  it("orders query evidence ahead of UI and browser context without filtering", async () => {
+    const plan = await buildTypesenseWatchSearchQueryPlan({
+      prisma: prismaFixture(),
+      query: "Иисус",
+      baseResolution: baseResolution({
+        targetLanguageSlug: "russian",
+        targetLanguageSource: "query_script",
+        queryLanguageSlug: "russian",
+        displayLanguageSlug: "english",
+        routeLanguageSlug: "english",
+        acceptLanguageSlug: "japanese",
+      }),
+    })
+
+    expect(plan.lexicalLocales).toEqual(["ru", "en", "ja"])
   })
 
   it("preserves duplicate localized names as deterministic top-three evidence", async () => {
