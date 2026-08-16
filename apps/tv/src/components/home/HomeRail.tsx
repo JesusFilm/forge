@@ -133,6 +133,9 @@ type HomeRailProps = {
    *  screen's row-anchored scrolling and deep/browse chrome state. */
   onRowFocus?: (rowIndex: number) => void
   onCardPress: (card: WatchHomeCard) => void
+  /** Long-press per card (hold Select) — threaded to HomeCard; the Continue
+   *  Watching shelf wires "remove" here. */
+  onCardLongPress?: (card: WatchHomeCard) => void
   /**
    * D-pad-up destination for this rail's cards. The featured rail passes the
    * Search tab's node so its edge cards reach the top bar; section rails leave
@@ -164,6 +167,7 @@ export const HomeRail = memo(function HomeRail({
   onCardFocus,
   onRowFocus,
   onCardPress,
+  onCardLongPress,
   upFocusTarget,
   restoreLastFocus,
   active = true,
@@ -207,6 +211,7 @@ export const HomeRail = memo(function HomeRail({
             index={index}
             onFocus={handleCardFocus}
             onPress={onCardPress}
+            onLongPress={onCardLongPress}
             // Coalesce null -> undefined: a null nextFocusUp (search node not
             // captured yet) should fall back to geometry, not wire to nothing.
             nextFocusUp={upFocusTarget ?? undefined}
@@ -225,6 +230,7 @@ export const HomeRail = memo(function HomeRail({
       items.length,
       handleCardFocus,
       onCardPress,
+      onCardLongPress,
       upFocusTarget,
       lastCardNode,
       active,

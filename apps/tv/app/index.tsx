@@ -40,11 +40,27 @@ import {
   CONTINUE_WATCHING_SECTION_ID,
   buildContinueWatchingSection,
 } from "../src/components/home/continueWatchingSection"
+import {
+  MY_LIST_SECTION_ID,
+  buildMyListSection,
+} from "../src/components/home/myListSection"
+import {
+  loadMyList,
+  removeFromMyList,
+  type MyListEntry,
+} from "../src/lib/myList/myList"
+import { fetchRecommendations } from "../src/lib/recommendations/fetchRecommendations"
+import {
+  buildRecommendationsSection,
+  pickRecommendationSeed,
+  type RecommendationRow,
+} from "../src/lib/recommendations/recommendationsSection"
 import { isProfileSurfaceEnabled } from "../src/lib/auth/profileFlag"
 import {
   loadContinueWatching,
   type ContinueWatchingEntry,
 } from "../src/lib/watchEvents/continueWatching"
+import { removeFromContinueWatching } from "../src/lib/watchEvents/watchProgressSync"
 import { MissionSection } from "../src/components/home/MissionSection"
 import { TVFocusGuideView } from "../src/components/TVFocusGuideView"
 import {
@@ -99,26 +115,79 @@ export default function HomeScreen() {
   const [continueEntries, setContinueEntries] = useState<
     ContinueWatchingEntry[]
   >([])
+  const [myListEntries, setMyListEntries] = useState<MyListEntry[]>([])
   useFocusEffect(
     useCallback(() => {
       let cancelled = false
       void loadContinueWatching().then((entries) => {
         if (!cancelled) setContinueEntries(entries)
       })
+      // Same focus pass: a video saved on the details screen must be on the
+      // rail by the time Back lands here.
+      void loadMyList().then((entries) => {
+        if (!cancelled) setMyListEntries(entries)
+      })
       return () => {
         cancelled = true
       }
     }, []),
   )
+  // "Because you watched": seeded from the freshest shelf entry, refetched only
+  // when that seed CHANGES (not on every focus pass) — the rail is an
+  // enhancement, and re-querying on each Home visit would spend a network call
+  // to render the same cards.
+  const recommendationSeed = useMemo(
+    () => pickRecommendationSeed(continueEntries),
+    [continueEntries],
+  )
+  const [recommendationRows, setRecommendationRows] = useState<
+    RecommendationRow[]
+  >([])
+  const seedVideoId = recommendationSeed?.videoId ?? null
+  useEffect(() => {
+    if (seedVideoId == null) {
+      setRecommendationRows([])
+      return
+    }
+    let cancelled = false
+    // Drop the previous seed's rows immediately. The rail is TITLED from the
+    // seed, so keeping them would render "Because you watched <new title>"
+    // above the old video's cards until the fetch lands.
+    setRecommendationRows([])
+    void fetchRecommendations(seedVideoId).then((rows) => {
+      if (!cancelled) setRecommendationRows(rows)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [seedVideoId])
+
   // Client-owned section spliced ABOVE the curated sections (Netflix places
   // Continue Watching among the top rows); empty shelf renders nothing.
   const renderSections = useMemo(() => {
     if (model == null) return null
     const continueSection = buildContinueWatchingSection(continueEntries)
-    return continueSection
-      ? [continueSection, ...model.sections]
-      : model.sections
-  }, [model, continueEntries])
+    const myListSection = buildMyListSection(myListEntries)
+    const recommendationsSection = buildRecommendationsSection(
+      recommendationSeed,
+      recommendationRows,
+    )
+    // Resume, then what the viewer saved, then what we think they'd like, then
+    // the curated rails: descending order of how explicit the intent is. Every
+    // builder returns null when it has nothing, so none renders a bare header.
+    return [
+      continueSection,
+      myListSection,
+      recommendationsSection,
+      ...model.sections,
+    ].filter((section) => section != null)
+  }, [
+    model,
+    continueEntries,
+    myListEntries,
+    recommendationSeed,
+    recommendationRows,
+  ])
 
   // tvos#852: a stack pop doesn't restore the previously focused view (falls to
   // the top-left default). Remember the focused node (every focusable reports it)
@@ -374,6 +443,23 @@ export default function HomeScreen() {
     [router],
   )
 
+  // Long-press on a Continue Watching card removes it — locally first (the
+  // card disappears whatever the network does), then best-effort from the
+  // account. The shelf state refreshes from storage so the rail re-renders
+  // without waiting for the next focus pass.
+  const handleResumeCardLongPress = useCallback((card: WatchHomeCard) => {
+    void removeFromContinueWatching(card.sourceId).then(() =>
+      loadContinueWatching().then(setContinueEntries),
+    )
+  }, [])
+
+  // Long-press on a My List card removes it, mirroring the shelf gesture.
+  const handleMyListCardLongPress = useCallback((card: WatchHomeCard) => {
+    void removeFromMyList(card.sourceId).then(() =>
+      loadMyList().then(setMyListEntries),
+    )
+  }, [])
+
   const handleSearchPress = useCallback(() => {
     router.push("/search")
   }, [router])
@@ -565,6 +651,13 @@ export default function HomeScreen() {
                 section.id === CONTINUE_WATCHING_SECTION_ID
                   ? handleResumeCardPress
                   : handleCardPress
+              }
+              onCardLongPress={
+                section.id === CONTINUE_WATCHING_SECTION_ID
+                  ? handleResumeCardLongPress
+                  : section.id === MY_LIST_SECTION_ID
+                    ? handleMyListCardLongPress
+                    : undefined
               }
               // The topmost rail (sectionIndex 0) sits under the hero, whose CTA
               // is on the LEFT — wire every card's D-pad-up to the CTA node

@@ -51,6 +51,7 @@ function makeVideo(
     duration: null,
     primaryLanguageBcp47: "en",
     siblings: [],
+    upNext: null,
     chapters: [],
     variants,
     studyQuestions: [],

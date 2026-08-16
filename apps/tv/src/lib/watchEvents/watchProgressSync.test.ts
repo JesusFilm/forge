@@ -10,13 +10,17 @@ import {
   PROGRESS_UPSERT_OPERATION_NAME,
   USER_TOKEN_OPERATIONS,
   overlappingAllowlistOperations,
+  PROGRESS_CLEAR_OPERATION_NAME,
 } from "../authHeaders"
+
 import { type ContinueWatchingEntry } from "./continueWatching"
 import {
+  CLEAR_MY_WATCH_PROGRESS,
   GET_MY_WATCH_PROGRESS,
   UPSERT_MY_WATCH_PROGRESS,
 } from "./watchProgressDocuments"
 import {
+  completionsToUpsertEntries,
   mayFlushShelfToAccount,
   mergeAccountRowsIntoShelf,
   parseAccountProgressRows,
@@ -70,6 +74,9 @@ describe("document contract", () => {
     )
     expect(operationNameOf(UPSERT_MY_WATCH_PROGRESS)).toBe(
       PROGRESS_UPSERT_OPERATION_NAME,
+    )
+    expect(operationNameOf(CLEAR_MY_WATCH_PROGRESS)).toBe(
+      PROGRESS_CLEAR_OPERATION_NAME,
     )
     // Falsify the pin itself: a superstring rename must NOT satisfy it.
     expect(operationNameOf(GET_MY_WATCH_PROGRESS)).not.toBe(
@@ -364,5 +371,37 @@ describe("mayFlushShelfToAccount", () => {
         userId as string | null | undefined,
       ),
     ).toBe(false)
+  })
+})
+
+describe("completionsToUpsertEntries (todo 025)", () => {
+  const completion = {
+    videoId: "video-1",
+    slug: "stunned",
+    positionSeconds: 600,
+    durationSeconds: 600,
+    updatedAt: "2026-08-10T00:00:00.000Z",
+  }
+
+  it("maps a completion onto the same wire field set, slug as videoSlug", () => {
+    expect(completionsToUpsertEntries([completion])).toEqual([
+      {
+        videoId: "video-1",
+        videoSlug: "stunned",
+        positionSeconds: 600,
+        durationSeconds: 600,
+        updatedAt: "2026-08-10T00:00:00.000Z",
+      },
+    ])
+  })
+
+  // Per-clause rejections, mirroring the shelf mapper's discipline.
+  it.each([
+    ["zero duration", { ...completion, durationSeconds: 0 }],
+    ["NaN duration", { ...completion, durationSeconds: Number.NaN }],
+    ["negative position", { ...completion, positionSeconds: -1 }],
+    ["empty stamp", { ...completion, updatedAt: "" }],
+  ])("drops a completion with a %s", (_label, bad) => {
+    expect(completionsToUpsertEntries([bad])).toEqual([])
   })
 })
