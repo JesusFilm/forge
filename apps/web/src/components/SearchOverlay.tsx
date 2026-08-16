@@ -850,9 +850,9 @@ export function SearchOverlay() {
   )
 
   const handleCategoryClick = useCallback(
-    (searchTerm: string) => {
+    (query: string) => {
       dismissSuggestions()
-      void search(searchTerm)
+      void search(query)
     },
     [dismissSuggestions, search],
   )
@@ -1395,7 +1395,7 @@ export function SearchOverlay() {
                   <button
                     key={cat.searchTerm}
                     type="button"
-                    onClick={() => handleCategoryClick(cat.searchTerm)}
+                    onClick={() => handleCategoryClick(title)}
                     aria-label={title}
                     data-testid={`search-overlay-category-${cat.searchTerm.replace(/\s+/g, "-")}`}
                     className="group relative isolate aspect-video w-full cursor-pointer overflow-hidden rounded-lg p-3 text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/80 sm:p-6"
