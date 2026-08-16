@@ -408,14 +408,16 @@ describe("Langfuse-managed instructions wiring (feat-272)", () => {
   })
 
   it("requests the repository-pinned exact version and validates its hash", async () => {
+    const logSink = vi.fn()
+    const mismatchedManaged = `${SEEKER_SYSTEM_PROMPT_FALLBACK}\nhash-mismatch-marker`
     const fetchImpl = vi.fn<typeof fetch>(() =>
       Promise.resolve(
         new Response(
           JSON.stringify({
             name: SEEKER_SYSTEM_PROMPT_NAME,
-            version: SEEKER_PRODUCTION_PROMPT.revision,
+            version: Number(SEEKER_PRODUCTION_PROMPT.revision),
             type: "text",
-            prompt: SEEKER_SYSTEM_PROMPT_FALLBACK,
+            prompt: mismatchedManaged,
             labels: ["development"],
           }),
           { status: 200, headers: { "content-type": "application/json" } },
@@ -425,10 +427,17 @@ describe("Langfuse-managed instructions wiring (feat-272)", () => {
     const resolve = createSeekerInstructionsResolver({
       config: wiringConfig,
       fetchImpl,
-      logSink: () => {},
+      logSink,
     })
 
     await expect(resolve()).resolves.toBe(SEEKER_SYSTEM_PROMPT_FALLBACK)
+    expect(logSink).toHaveBeenCalledTimes(1)
+    expect(logSink).toHaveBeenCalledWith(
+      expect.stringMatching(
+        /severity=critical.*state=degraded_fallback.*reason=rejected/,
+      ),
+    )
+    expect(logSink.mock.calls[0]?.[0]).not.toContain(mismatchedManaged)
     expect(String(fetchImpl.mock.calls[0]?.[0])).toBe(
       `https://langfuse.internal/api/public/v2/prompts/seeker-system?version=${SEEKER_PRODUCTION_PROMPT.revision}`,
     )
