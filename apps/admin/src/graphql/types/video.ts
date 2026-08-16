@@ -17,6 +17,10 @@ import {
 import type { Passage } from "@/services/scripture-passage.service"
 import { notRestrictedFromWatchWhere } from "@/services/search-watchability"
 import {
+  listVideoMoments,
+  type VideoMomentView,
+} from "@/services/video-moments.service"
+import {
   VIDEO_MAPPER_CATALOG_NON_INDEXABLE_REASONS,
   VideoLookupValidationError as VideoLookupValidationErrorClass,
 } from "@/services/video.service"
@@ -380,6 +384,20 @@ builder.prismaObject("VideoDub", {
 })
 
 /** @classification public-shape */
+const VideoMomentRef = builder.objectRef<VideoMomentView>("VideoMoment")
+
+VideoMomentRef.implement({
+  description:
+    "A transcript-derived moment of this video: timing (null when the transcript chunker had no timecodes — clients must treat untimed rows as list items, never as second 0), an enriched summary of the span, and the Bible references the enrichment attached to it. The lean projection behind TV's in-player companion panel; the chunk's text and embedding stay backend-only.",
+  fields: (t) => ({
+    startSeconds: t.exposeFloat("startSeconds", { nullable: true }),
+    endSeconds: t.exposeFloat("endSeconds", { nullable: true }),
+    summary: t.exposeString("summary", { nullable: true }),
+    bibleVerses: t.exposeStringList("bibleVerses"),
+  }),
+})
+
+/** @classification public-shape */
 const PassageRef = builder.objectRef<Passage>("Passage")
 
 PassageRef.implement({
@@ -735,6 +753,21 @@ builder.prismaObject("Video", {
       nullable: true,
       resolve: (video, _args, ctx) =>
         ctx.loaders.videoBibleCitationsByVideoId.load(video.id),
+    }),
+    moments: t.field({
+      type: [VideoMomentRef],
+      description:
+        "Transcript-derived moments in chunk order, capped server-side. Requested language falls back to English; [] when no transcript exists. Direct service call rather than a loader — the consumer (TV's watch record) asks for one video at a time, so there is nothing to batch.",
+      args: {
+        languageSlug: t.arg.string({ required: false }),
+        limit: t.arg.int({ required: false }),
+      },
+      resolve: (video, args) =>
+        listVideoMoments({
+          videoId: video.id,
+          languageSlug: args.languageSlug ?? null,
+          limit: args.limit ?? null,
+        }),
     }),
     parents: t.field({
       type: [VideoRelationRef],

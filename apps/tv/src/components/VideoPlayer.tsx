@@ -1516,6 +1516,19 @@ export function VideoPlayer({
     setCurrentTime(newTime)
   }
 
+  // Jump-to-scene from the moments panel. Same guarded path as the ±10s
+  // seeks: clear any pending resume, arm seekTargetRef so a stale timeUpdate
+  // cannot bounce the position back, clamp shy of the end (Fix #8).
+  const seekToSeconds = (seconds: number) => {
+    if (!Number.isFinite(seconds)) return
+    const ceiling = duration > 0 ? Math.max(0, duration - 0.5) : seconds
+    const newTime = Math.min(Math.max(0, seconds), ceiling)
+    pendingStartAtRef.current = null
+    seekTargetRef.current = newTime
+    player.currentTime = newTime
+    setCurrentTime(newTime)
+  }
+
   const progress = duration > 0 ? (currentTime / duration) * 100 : 0
   const bufferedPct =
     duration > 0 ? Math.min(100, (buffered / duration) * 100) : 0
@@ -1802,6 +1815,15 @@ export function VideoPlayer({
               {menuActive && (
                 <>
                   <MenuPill
+                    icon="book-outline"
+                    label="Explore"
+                    sub="Scripture & scenes"
+                    onPress={() => openMenu("moments")}
+                    onFocusActivity={scheduleHide}
+                    focusable={controlsFocusable && !hasError}
+                    dimmed={hasError}
+                  />
+                  <MenuPill
                     icon="globe-outline"
                     label="Language"
                     sub={audioLabel}
@@ -1872,7 +1894,15 @@ export function VideoPlayer({
             within the menu. Inside the content layer (not a Modal) to share the
             overlay's focus trap; mounts only when a session drives this overlay AND open. */}
         {menuActive && menuOpen && (
-          <InPlayerMenu section={menuSection} onClose={closeMenu} />
+          <InPlayerMenu
+            section={menuSection}
+            onClose={closeMenu}
+            getCurrentTime={() => player.currentTime}
+            onSeekTo={(seconds) => {
+              seekToSeconds(seconds)
+              closeMenu()
+            }}
+          />
         )}
 
         {/* ── Up Next countdown (QoL) ─────────────────────────────────
