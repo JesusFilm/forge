@@ -217,6 +217,16 @@ describe("preparePromotion", () => {
     expect(
       JSON.parse(await readFile(join(output, "answers.json"), "utf8")),
     ).toMatchObject({ sourcePromotion: result.source })
+    expect(
+      ResolvedIdentitySchema.parse(
+        JSON.parse(
+          await readFile(join(output, "resolved-identity.json"), "utf8"),
+        ),
+      ),
+    ).toEqual(identity)
+    expect(result.materializedFiles).toContain(
+      join(output, "resolved-identity.json"),
+    )
   })
 
   it.each([

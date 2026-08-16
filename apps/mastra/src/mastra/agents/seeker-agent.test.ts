@@ -367,10 +367,14 @@ describe("Langfuse-managed instructions wiring (feat-272)", () => {
     secretKey: undefined,
   }
 
-  it("pins the compiled fallback bytes to the production content hash", () => {
-    expect(
-      createHash("sha256").update(SEEKER_SYSTEM_PROMPT_FALLBACK).digest("hex"),
-    ).toBe(SEEKER_PRODUCTION_PROMPT.contentHash)
+  it("pins the reviewed fallback independently from the promoted managed prompt", () => {
+    const fallbackHash = createHash("sha256")
+      .update(SEEKER_SYSTEM_PROMPT_FALLBACK)
+      .digest("hex")
+
+    expect(fallbackHash).toBe(
+      "bdc09456d558f2853604adff70655ee850730ccc8f2b18881780590c657b76ee",
+    )
   })
 
   it("returns matching managed text rather than vacuously falling back", async () => {
@@ -457,6 +461,11 @@ describe("Langfuse-managed instructions wiring (feat-272)", () => {
   })
 
   it("serves the pinned managed prompt verbatim when Langfuse is configured", async () => {
+    const managed = `${SEEKER_SYSTEM_PROMPT_FALLBACK}\nproduction-managed-marker`
+    const pinned = {
+      ...SEEKER_PRODUCTION_PROMPT,
+      contentHash: createHash("sha256").update(managed).digest("hex"),
+    }
     const fetchImpl = vi.fn<typeof fetch>(() =>
       Promise.resolve(
         new Response(
@@ -464,7 +473,7 @@ describe("Langfuse-managed instructions wiring (feat-272)", () => {
             name: SEEKER_SYSTEM_PROMPT_NAME,
             version: Number(SEEKER_PRODUCTION_PROMPT.revision),
             type: "text",
-            prompt: SEEKER_SYSTEM_PROMPT_FALLBACK,
+            prompt: managed,
             labels: ["production"],
           }),
           { status: 200, headers: { "content-type": "application/json" } },
@@ -475,10 +484,11 @@ describe("Langfuse-managed instructions wiring (feat-272)", () => {
     const resolve = createSeekerInstructionsResolver({
       config: wiringConfig,
       fetchImpl,
+      pinned,
     })
 
-    await expect(resolve()).resolves.toBe(SEEKER_SYSTEM_PROMPT_FALLBACK)
-    await expect(resolve()).resolves.toBe(SEEKER_SYSTEM_PROMPT_FALLBACK)
+    await expect(resolve()).resolves.toBe(managed)
+    await expect(resolve()).resolves.toBe(managed)
     expect(fetchImpl).toHaveBeenCalledTimes(1)
     // The movable production label is marker-only and never selects traffic.
     const calledUrl = String(fetchImpl.mock.calls[0]?.[0])
@@ -525,8 +535,6 @@ describe("Langfuse-managed instructions wiring (feat-272)", () => {
     // emptiness guard, so non-emptiness must be pinned at the wiring.
     expect(SEEKER_SYSTEM_PROMPT_FALLBACK.length).toBeGreaterThan(0)
     expect(SEEKER_SYSTEM_PROMPT_FALLBACK.trim().length).toBeGreaterThan(0)
-    // The LAST line, not just any line (`/^SAFETY: /m` would pass with the
-    // SAFETY line displaced into the middle of the prompt).
     const lines = SEEKER_SYSTEM_PROMPT_FALLBACK.split("\n")
     expect(lines[lines.length - 1]).toMatch(/^SAFETY: /)
   })

@@ -579,9 +579,10 @@ nothing. When the RAG env vars are unset (or the service is unreachable), the
 tool returns an explicit `unavailable` status and the agent says it cannot
 ground an answer; retrieval is never required for the app to boot. Since
 feat-272 the system prompt is **Langfuse-managed** (prompt `seeker-system`,
-whole prompt — no composition split) with the full working text kept as the
-compiled-in fallback, served byte-identically when Langfuse is unconfigured
-or unreachable — see "Langfuse prompt management" below. Model is an
+whole prompt — no composition split) with a full reviewed outage prompt kept
+as the compiled-in fallback when Langfuse is unconfigured or unreachable. The
+managed production pin and fallback carry independent hashes; promotion does
+not copy managed prompt text into Git. See "Langfuse prompt management" below. Model is an
 env-gated fallback chain built by `buildSeekerModelList()` (feat-237). Default:
 the two free Gemma 4 OpenRouter models —
 `openrouter/google/gemma-4-31b-it:free` (primary, 1 retry) then
@@ -1121,11 +1122,12 @@ and there is **no technical control over who may move it**: protected labels
 are a Team/Enterprise feature this organisation is not on, and they work by
 blocking `viewer`/`member` while permitting `admin`/`owner`, so they would be
 inert here regardless (feat-296). **Whole-prompt decision (owner,
-2026-07-29, feat-272 item 2 — supersedes the composition split this paragraph
+2026-07-29, amended 2026-08-17 — supersedes the composition split this paragraph
 previously prescribed):** the ENTIRE seeker instruction set — SAFETY line and
 `retrieveAnswer`-coupled citation wording included — is Langfuse-managed as
-one prompt; nothing is code-owned beyond the byte-identical fallback
-constant, so a label move can change every line. What bounds it: the small
+one prompt; the compiled fallback is a separate full reviewed outage prompt,
+not a runtime-composed prompt portion and not automatically synchronized by a
+managed promotion. What bounds managed changes: the small
 all-developer roster (a snapshot) and the PR-reviewed fallback as known-good
 rollback text. NO control DETECTS a label move to valid-but-wrong text — it
 resolves as a healthy fresh `source: "langfuse"` serve, invisible to

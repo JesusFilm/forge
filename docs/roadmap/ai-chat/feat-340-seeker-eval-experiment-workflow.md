@@ -3,7 +3,7 @@ id: "feat-340"
 title: "Seeker eval experiment workflow"
 owner: "jaco"
 priority: "P2"
-status: "in-progress"
+status: "complete"
 start_date: "2026-08-17"
 duration: 5
 depends_on: []
@@ -12,6 +12,14 @@ tags:
   - "ai-pipeline"
   - "infrastructure"
 ---
+
+## Resolution
+
+**Shipped:** 2026-08-17 via [PR #1884](https://github.com/JesusFilm/forge/pull/1884) (`feat(mastra): add seeker eval experiment workflow`) and the promotion PR (this PR; link added after opening).
+
+**What landed.** Forge now retains immutable Seeker experiment attempts, validates promotion eligibility against committed evidence, and promotes an accepted candidate into both the exact managed production pin and canonical benchmark. The accepted `source-attribution-prompt-v3` evidence comes from commit `9fb378ed`; its managed prompt body remains in Langfuse, while Git retains exact identity and output provenance plus a separately reviewed outage fallback.
+
+**Residual risk / follow-ups.** After merge and deployment, move the Langfuse `seeker-system` `production` label to version 3 and verify `[seeker-prompt-health] event=recovered`. Exact-version traffic does not depend on the movable label; any exact-resolution failure emits the critical degraded-fallback alert and serves the reviewed fallback.
 
 ## Problem
 

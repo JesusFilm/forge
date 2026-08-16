@@ -28,6 +28,7 @@ const BENCHMARK_FILES = [
   "judged.json",
   "score.json",
 ] as const
+const BENCHMARK_IDENTITY_FILE = "resolved-identity.json"
 
 export type PromotionInput = {
   repositoryRoot: string
@@ -281,6 +282,11 @@ export async function preparePromotion(
   }
   await mkdir(temporary, { recursive: true })
   try {
+    await writeFile(
+      join(temporary, BENCHMARK_IDENTITY_FILE),
+      `${JSON.stringify(accepted, null, 2)}\n`,
+      "utf8",
+    )
     for (const [index, name] of BENCHMARK_FILES.entries()) {
       const aggregate = JSON.parse(committed.get(paths[index + 4])!) as {
         candidates?: Record<string, unknown>
@@ -320,6 +326,8 @@ export async function preparePromotion(
     requiresFreshRun: false,
     mismatches: [],
     source,
-    materializedFiles: BENCHMARK_FILES.map((name) => join(benchmarkPath, name)),
+    materializedFiles: [BENCHMARK_IDENTITY_FILE, ...BENCHMARK_FILES].map(
+      (name) => join(benchmarkPath, name),
+    ),
   }
 }

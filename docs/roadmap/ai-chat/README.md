@@ -11,11 +11,11 @@ from the main DS Year 1 roadmap.
 > index, and nothing regenerates or overwrites it. See `CLAUDE.md` in this
 > folder for the maintenance rules and why the lane is unregistered.
 
-## Status (August 11, 2026)
+## Status (August 17, 2026)
 
 - **Total tickets:** 54
-- ✅ **Complete:** 45
-- 🟡 **In progress:** 1
+- ✅ **Complete:** 46
+- 🟡 **In progress:** 0
 - 🔵 **Not started:** 8
 - 🔴 **Blocked:** 0
 
@@ -76,4 +76,4 @@ from the main DS Year 1 roadmap.
 | [feat-337](feat-337-per-user-erasure-capability.md)                    | Per-user erasure across Langfuse traces and ai_chat Postgres                 | jian wei | P2       | 2026-08-10 | 3    | 🔵 not-started | —                                                                                                            |
 | [feat-338](feat-338-seeker-eval-whole-prompt-alignment-audit.md)       | Seeker eval whole-prompt alignment audit                                     | jaco     | P1       | 2026-08-07 | 1    | ✅ complete    | [#1856](https://github.com/JesusFilm/forge/pull/1856)                                                        |
 | [feat-339](feat-339-seeker-public-release-register.md)                 | Seeker public-release readiness register (living decision capture)           | jian wei | P1       | 2026-09-01 | 1    | 🔵 not-started | —                                                                                                            |
-| [feat-340](feat-340-seeker-eval-experiment-workflow.md)                | Seeker eval experiment workflow                                              | jaco     | P2       | 2026-08-17 | 5    | 🟡 in-progress | —                                                                                                            |
+| [feat-340](feat-340-seeker-eval-experiment-workflow.md)                | Seeker eval experiment workflow                                              | jaco     | P2       | 2026-08-17 | 5    | ✅ complete    | [#1884](https://github.com/JesusFilm/forge/pull/1884)                                                        |
