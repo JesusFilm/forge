@@ -1,7 +1,7 @@
 ---
 title: "Mocked-shape-vs-real-contract testing discipline — mocks prove BRANCH SHAPE; real fixtures prove PRODUCTION CONTRACT"
 date: 2026-05-06
-last_updated: 2026-08-10
+last_updated: 2026-08-17
 problem_type: best_practice
 component: testing_framework
 root_cause: inadequate_documentation
@@ -26,6 +26,7 @@ related:
   - "docs/solutions/best-practices/llm-comment-mass-edit-deterministic-verification-20260623.md"
   - "docs/solutions/integration-issues/watch-runtime-feature-flag-static-route-cache.md"
   - "docs/solutions/best-practices/icon-composer-schema-recovery-and-actool-silent-validation-20260810.md"
+  - "docs/solutions/tooling-decisions/langfuse-prompt-api-contract-and-sdk-rejection.md"
 ---
 
 # Mocked-shape-vs-real-contract testing discipline
@@ -326,6 +327,39 @@ narrower than its name.)
     proposed in review of that change and declined, because the region was a
     prompt whose readability as one contiguous block was the point — record
     the reason when you decline it, so the next arc does not re-derive it.
+
+### Langfuse exact-version/hash rejection (PR #1944)
+
+A Seeker test named `requests the repository-pinned exact version and validates
+its hash` was green without proving the hash check. Its mocked Langfuse response
+used the repository revision string as `version`, although the external response
+contract is numeric, and used the compiled fallback as the alleged managed
+prompt body. The resolver could reject the fixture during response parsing and
+still return the fallback the assertion expected. Even after correcting the
+response shape, accepting or rejecting the managed body would remain
+indistinguishable while both paths returned byte-identical text.
+
+The corrected fixture makes each gate and outcome observable:
+
+1. Use `Number(SEEKER_PRODUCTION_PROMPT.revision)` so the fixture satisfies the
+   real Langfuse response shape and reaches exact-identity validation.
+2. Supply managed bytes that differ from both the fallback and the pinned hash.
+3. Assert the compiled fallback is returned and exactly one critical
+   `state=degraded_fallback reason=rejected` alert is emitted.
+4. Assert the alert does not contain the rejected prompt body.
+
+The complementary success test computes a matching content hash for distinct
+managed bytes and asserts those bytes are returned. Together, the two tests
+prove both sides of the boundary. The rejection test cannot pass through an
+earlier parse failure, and neither test can pass through the other branch.
+
+**General rule:** a test named for a downstream validation gate must first make
+its fixture pass every upstream transport and parsing gate. It must then give
+success and fallback paths distinguishable values and assert a branch-specific
+side effect. A return value shared by both paths cannot prove which path ran.
+
+The external response shape and the same distinguishability test are documented
+in [Langfuse prompt API contract and SDK rejection](../tooling-decisions/langfuse-prompt-api-contract-and-sdk-rejection.md).
 
 ## Why a META doc, not just cross-references
 
