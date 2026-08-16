@@ -393,8 +393,9 @@ function setInputValue(input: HTMLInputElement, value: string) {
   input.dispatchEvent(new Event("input", { bubbles: true }))
 }
 
-async function openSearchOverlay(): Promise<HTMLInputElement> {
+async function openSearchOverlay(locale?: string): Promise<HTMLInputElement> {
   act(() => {
+    if (locale) setRequestLocale(locale)
     root.render(
       <FloatingSearchProvider>
         <main>Page</main>
@@ -406,7 +407,7 @@ async function openSearchOverlay(): Promise<HTMLInputElement> {
   })
 
   const searchButton = document.querySelector(
-    '[aria-label="Search videos"]',
+    '[data-testid="floating-search-desktop-button"]',
   ) as HTMLButtonElement
   await act(async () => {
     searchButton.click()
@@ -417,7 +418,7 @@ async function openSearchOverlay(): Promise<HTMLInputElement> {
   await flushSearchControllerMount()
 
   const input = document.querySelector(
-    'input[aria-label="Search videos by keyword"]',
+    'input[type="search"]',
   ) as HTMLInputElement | null
   if (input === null) {
     throw new Error("Expected search overlay input to render")
@@ -2541,6 +2542,40 @@ describe("FloatingSearchProvider — language switcher chrome", () => {
 })
 
 describe("FloatingSearchProvider — search overlay chrome", () => {
+  it.each([
+    { locale: "ar", label: "قصص الكتاب المقدس" },
+    { locale: "en", label: "Bible Stories" },
+    { locale: "ru", label: "Библейские истории" },
+    { locale: "zh-Hans", label: "圣经故事" },
+  ])(
+    "submits the localized Bible Stories topic in $locale",
+    async ({ locale, label }) => {
+      mockedRunSearch.mockResolvedValueOnce(
+        searchResult("watch-search", { query: label }),
+      )
+
+      const input = await openSearchOverlay(locale)
+
+      const category = document.querySelector(
+        '[data-testid="search-overlay-category-bible-stories"]',
+      ) as HTMLButtonElement
+      expect(category.getAttribute("aria-label")).toBe(label)
+
+      await act(async () => {
+        category.click()
+        await Promise.resolve()
+        await Promise.resolve()
+      })
+      await flushResolvedSearch()
+
+      expect(input.value).toBe(label)
+      expect(mockedRunSearch).toHaveBeenCalledTimes(1)
+      expect(mockedRunSearch).toHaveBeenCalledWith(
+        expect.objectContaining({ query: label }),
+      )
+    },
+  )
+
   it("keeps keyword edits local until the search form is submitted", async () => {
     vi.useFakeTimers()
     mockedRunSearch.mockResolvedValueOnce(searchResult("watch-search"))

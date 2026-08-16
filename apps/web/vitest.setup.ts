@@ -1,6 +1,8 @@
 import { vi } from "vitest"
+import arMessages from "./messages/ar.json"
 import enMessages from "./messages/en.json"
 import ruMessages from "./messages/ru.json"
+import zhHansMessages from "./messages/zh-Hans.json"
 
 const { createTranslator } =
   await vi.importActual<typeof import("next-intl")>("next-intl")
@@ -15,8 +17,10 @@ process.env.WEB_ADMIN_API_KEYS ??= "test-admin-bearer-key"
 // production translator so the hook/server mocks still exercise real ICU and
 // rich-text behavior without wrapping every test in a provider.
 const catalogs: Record<string, Record<string, Record<string, string>>> = {
+  ar: arMessages,
   en: enMessages,
   ru: ruMessages,
+  "zh-Hans": zhHansMessages,
 }
 let activeLocale = "en"
 
