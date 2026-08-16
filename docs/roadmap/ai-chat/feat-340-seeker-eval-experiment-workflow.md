@@ -15,7 +15,7 @@ tags:
 
 ## Resolution
 
-**Shipped:** 2026-08-17 via [PR #1884](https://github.com/JesusFilm/forge/pull/1884) (`feat(mastra): add seeker eval experiment workflow`) and the promotion PR (this PR; link added after opening).
+**Shipped:** 2026-08-17 via [PR #1884](https://github.com/JesusFilm/forge/pull/1884) (`feat(mastra): add seeker eval experiment workflow`) and [PR #1944](https://github.com/JesusFilm/forge/pull/1944) (`feat(mastra): promote seeker prompt v3`).
 
 **What landed.** Forge now retains immutable Seeker experiment attempts, validates promotion eligibility against committed evidence, and promotes an accepted candidate into both the exact managed production pin and canonical benchmark. The accepted `source-attribution-prompt-v3` evidence comes from commit `9fb378ed`; its managed prompt body remains in Langfuse, while Git retains exact identity and output provenance plus a separately reviewed outage fallback.
 
