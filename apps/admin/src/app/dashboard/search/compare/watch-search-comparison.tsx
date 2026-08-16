@@ -3,6 +3,7 @@
 import { useActionState } from "react"
 
 import { PrimaryButton, StatusPill } from "@/components/admin-ui"
+import type { TypesenseWatchSearchRetrievalSource } from "@/services/typesense-watch-search.service"
 import type { WatchSearchRankingMode } from "@/services/typesense-watch-search-ranking"
 import type { WatchSearchLanguageOption } from "@/services/watch-search-language-options.service"
 
@@ -20,6 +21,20 @@ function displayToken(value: string | null | undefined) {
 
 export function rankingModeLabel(mode: WatchSearchRankingMode) {
   return mode === "TITLE_AND_BRAND" ? "Title / brand" : "Semantic"
+}
+
+const retrievalSourceLabels: Record<
+  TypesenseWatchSearchRetrievalSource,
+  string
+> = {
+  global_exact_title: "Global exact title",
+  localized_title: "Localized title",
+  metadata: "Metadata",
+  semantic: "Semantic",
+}
+
+function retrievalSourceLabel(source: TypesenseWatchSearchRetrievalSource) {
+  return retrievalSourceLabels[source]
 }
 
 export function comparisonThumbnailUrl(result: {
@@ -60,6 +75,11 @@ function ResultPane({
   }
 
   const { response, diagnostics } = side
+  const rankingTraceBySelectedVideoId = new Map(
+    diagnostics.rankingTrace.flatMap((entry) =>
+      entry.selectedVideoId ? [[entry.selectedVideoId, entry] as const] : [],
+    ),
+  )
   return (
     <div className="min-w-0 rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface)]">
       <div className="border-b border-[var(--color-hairline)] p-4">
@@ -157,6 +177,12 @@ function ResultPane({
         ) : (
           response.results.map((result, index) => {
             const thumbnailUrl = comparisonThumbnailUrl(result)
+            const trace = rankingTraceBySelectedVideoId.get(result.id)
+            const retrievalSources = trace?.retrievalSources ?? []
+            const retrievalUnavailableLabel =
+              trace == null && diagnostics.rankingTraceTruncated
+                ? "Not captured — trace truncated"
+                : "Not captured"
             return (
               <article key={`${result.type}-${result.id}`} className="p-4">
                 <div className="flex flex-col gap-4 sm:flex-row">
@@ -199,7 +225,7 @@ function ResultPane({
                         }
                       />
                       <Metric
-                        label="Evidence"
+                        label="Winning evidence"
                         value={`${displayToken(result.evidence.kind)} / ${displayToken(result.evidence.languageSlug)}`}
                       />
                       <Metric
@@ -215,6 +241,27 @@ function ResultPane({
                         value={result.playbackId ?? "Unavailable"}
                       />
                     </dl>
+                    <div className="mt-3">
+                      <div className="font-mono text-xs uppercase text-[var(--color-text-muted)]">
+                        Found by
+                      </div>
+                      <div
+                        aria-label="Retrieval sources"
+                        className="mt-2 flex flex-wrap gap-2"
+                      >
+                        {retrievalSources.length > 0 ? (
+                          retrievalSources.map((source) => (
+                            <StatusPill key={source} tone="info">
+                              {retrievalSourceLabel(source)}
+                            </StatusPill>
+                          ))
+                        ) : (
+                          <StatusPill tone="muted">
+                            {retrievalUnavailableLabel}
+                          </StatusPill>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 </div>
               </article>

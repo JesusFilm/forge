@@ -289,7 +289,47 @@ describe("search comparison page", () => {
                 rankingImplementation: "legacy-rrf",
                 rankingMode: "SEMANTIC",
                 rankingAnchor: null,
-                rankingTrace: [],
+                rankingTrace: [
+                  {
+                    canonicalVideoId: "core:jesus",
+                    retrievalSources: [
+                      "global_exact_title",
+                      "localized_title",
+                      "metadata",
+                      "semantic",
+                    ],
+                    evidenceTier: "NORMALIZED_WHOLE_TITLE",
+                    fusedScore: 1,
+                    wholeTitleMatch: true,
+                    titleRank: 1,
+                    titleContribution: 1,
+                    metadataRank: null,
+                    metadataContribution: 0,
+                    semanticRank: null,
+                    semanticContribution: 0,
+                    selectedVideoId: "video-current",
+                    watchabilityOutcome: "target_audio",
+                    finalRank: 1,
+                  },
+                  {
+                    canonicalVideoId: "core:compatibility",
+                    retrievalSources: [],
+                    evidenceTier: "SEMANTIC_FILL",
+                    fusedScore: 0.5,
+                    wholeTitleMatch: false,
+                    titleRank: 2,
+                    titleContribution: 0.5,
+                    metadataRank: null,
+                    metadataContribution: 0,
+                    semanticRank: null,
+                    semanticContribution: 0,
+                    selectedVideoId: "video-fallback",
+                    watchabilityOutcome: "target_audio",
+                    finalRank: 2,
+                  },
+                ],
+                rankingTraceTotal: 3,
+                rankingTraceTruncated: true,
               },
             },
             candidate: {
@@ -316,6 +356,14 @@ describe("search comparison page", () => {
     expect(html).toContain("target audio")
     expect(html).toContain("Ranking mode")
     expect(html).toContain("Semantic")
+    expect(html).toContain("Found by")
+    expect(html).toContain("Global exact title")
+    expect(html).toContain("Localized title")
+    expect(html).toContain(">Metadata</span>")
+    expect(html).toContain(">Semantic</span>")
+    expect(html).toContain("Winning evidence")
+    expect(html).toContain(">Not captured</span>")
+    expect(html).toContain("Not captured — trace truncated")
     expect(html).toContain("Candidate search failed")
   })
 })

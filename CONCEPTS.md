@@ -190,6 +190,10 @@ The Evaluation pointer can move without changing public Watch traffic. The
 Serving pointer is separate, so publishing a test candidate never promotes it
 implicitly.
 
+### Watch Search Retrieval Source
+
+A diagnostic label identifying which retrieval lane recalled a canonical Watch search result before ranking and playback-member selection. One result can have several retrieval sources; the labels explain candidate recall and do not themselves determine the winning rank.
+
 ## Video source mapper
 
 ### Video Source Mapper
