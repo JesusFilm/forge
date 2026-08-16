@@ -1,6 +1,7 @@
 ---
 title: "Combine global exact-title recall with localized Typesense tokenizers"
 date: "2026-08-13"
+last_updated: "2026-08-14"
 category: "architecture-patterns"
 module: "apps/admin Watch Search Candidate retrieval"
 problem_type: "architecture_pattern"
@@ -68,6 +69,23 @@ Verified exact proof feeds the existing title lane as the strongest whole-title 
 
 That gives one video one title contribution even when both exact and partial retrieval found it. Duplicate canonical videos with the same exact title receive equal title evidence; existing ranking signals break their tie. Metadata and semantic lanes retain their existing weights and behavior, including semantic fallback when there is no trustworthy title anchor.
 
+### Report retrieval provenance separately from ranking evidence
+
+Private Candidate diagnostics should record every retrieval lane that recalled a result: global exact title, localized title, metadata, and semantic. A canonical result can carry more than one source because several physical members or lanes may recall the same video before deduplication.
+
+Retrieval provenance answers "how did this result enter the candidate set?" It does not answer "why did this result win?" Keep the latter in the ranking evidence fields. The Admin comparison card therefore shows `Found by` source badges separately from `Winning evidence`.
+
+Collect this provenance only for diagnostic requests. Merge sources while candidates and canonical groups are deduplicated, use a fixed display order, and leave public search response construction unchanged. This adds no Typesense subsearch or network round trip and does not change title, metadata, or semantic contributions.
+
+Compatibility fallback cannot reliably separate its combined lexical query into localized-title and metadata sources. Report only the source that is provable there, such as semantic overlap, and show `Not captured` when no source can be distinguished. Do not invent a label from the final ranking tier.
+
+The diagnostic contract and private comparison UI live in:
+
+- `apps/admin/src/services/typesense-watch-search.service.ts`
+- `apps/admin/src/app/dashboard/search/compare/watch-search-comparison.tsx`
+
+Regression coverage must include one result recalled by every native lane, canonical-sibling playback selection, and lexical-plus-semantic overlap in the compatibility fallback. These cases protect source union without changing scoring.
+
 ### Make activation a measured decision
 
 Because the schema and retrieval contract changed, Candidate uses a new application revision and must be rebuilt as an immutable Evaluation generation. Candidate fails closed when its compatible generation is unavailable; it does not retry against Current aliases.
@@ -95,6 +113,7 @@ The split-lane design gives equality a tokenizer-independent path while retainin
 - One inferred query language is not reliable enough to hard-filter a multilingual catalog.
 - Partial and typo matching still need locale-specific analysis.
 - An existing hybrid ranker already distinguishes strong title intent from conceptual semantic intent.
+- Operators need to distinguish candidate recall from the evidence that determined final rank.
 - The system has private Candidate and public Serving boundaries that can keep an unqualified projection dark.
 
 ## Examples

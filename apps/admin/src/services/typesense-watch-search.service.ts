@@ -177,6 +177,7 @@ export type TypesenseWatchSearchDiagnostics = {
 
 export type TypesenseWatchSearchRankingTrace = {
   canonicalVideoId: string
+  retrievalSources: TypesenseWatchSearchRetrievalSource[]
   evidenceTier: WatchSearchRankingEvidenceTier
   fusedScore: number
   wholeTitleMatch: boolean
@@ -191,6 +192,36 @@ export type TypesenseWatchSearchRankingTrace = {
   finalRank: number | null
 }
 
+export type TypesenseWatchSearchRetrievalSource =
+  | "global_exact_title"
+  | "localized_title"
+  | "metadata"
+  | "semantic"
+
+const WATCH_SEARCH_RETRIEVAL_SOURCE_ORDER = [
+  "global_exact_title",
+  "localized_title",
+  "metadata",
+  "semantic",
+] as const satisfies readonly TypesenseWatchSearchRetrievalSource[]
+
+function orderedRetrievalSources(
+  sources: Iterable<TypesenseWatchSearchRetrievalSource>,
+): TypesenseWatchSearchRetrievalSource[] {
+  const sourceSet = new Set(sources)
+  return WATCH_SEARCH_RETRIEVAL_SOURCE_ORDER.filter((source) =>
+    sourceSet.has(source),
+  )
+}
+
+function mergeRetrievalSources(
+  left?: TypesenseWatchSearchRetrievalSource[],
+  right?: TypesenseWatchSearchRetrievalSource[],
+): TypesenseWatchSearchRetrievalSource[] | undefined {
+  if (left == null && right == null) return undefined
+  return orderedRetrievalSources([...(left ?? []), ...(right ?? [])])
+}
+
 type MutableSearchDiagnostics = Omit<
   TypesenseWatchSearchDiagnostics,
   "queryFieldCount"
@@ -202,6 +233,7 @@ type Candidate = {
   videoId: string
   videoEditionId: string | null
   kind: "exact" | "metadata" | "semantic"
+  retrievalSources?: TypesenseWatchSearchRetrievalSource[]
   wholeTitleMatch: boolean
   sourceScore: number
   evidenceLanguageSlug: string | null
@@ -1422,6 +1454,11 @@ export class TypesenseWatchSearchService {
             : undefined
           return {
             canonicalVideoId: group.canonicalVideoId,
+            retrievalSources: orderedRetrievalSources(
+              group.members.flatMap(
+                (candidate) => candidate.retrievalSources ?? [],
+              ),
+            ),
             evidenceTier: group.evidenceTier,
             fusedScore: group.fusedScore,
             wholeTitleMatch: group.wholeTitleMatch,
@@ -1869,15 +1906,27 @@ export class TypesenseWatchSearchService {
       })
       return hits.length > 0 ? [{ ...group, found: hits.length, hits }] : []
     })
-    const exactMemberKey = (canonicalVideoId: string, videoId: string) =>
+    const candidateMemberKey = (canonicalVideoId: string, videoId: string) =>
       `${canonicalVideoId}\u0000${videoId}`
     const verifiedExactMembers = new Set(
       verifiedExactGroups.flatMap((group) =>
         group.hits.map((hit) =>
-          exactMemberKey(group.group_key[0] ?? "", hit.document.videoId),
+          candidateMemberKey(group.group_key[0] ?? "", hit.document.videoId),
         ),
       ),
     )
+    const localizedTitleMembers = collectDiagnostics
+      ? new Set(
+          titleGroups.flatMap((group) =>
+            group.hits.map((hit) =>
+              candidateMemberKey(
+                group.group_key[0] ?? "",
+                hit.document.videoId,
+              ),
+            ),
+          ),
+        )
+      : null
     const partialTitleGroupsById = new Map(
       titleGroups.map((group) => [group.group_key[0], group]),
     )
@@ -1921,6 +1970,10 @@ export class TypesenseWatchSearchService {
             : null
       state.members.set(candidate.videoId, {
         ...preferred,
+        retrievalSources: mergeRetrievalSources(
+          existing.retrievalSources,
+          candidate.retrievalSources,
+        ),
         wholeTitleMatch: existing.wholeTitleMatch || candidate.wholeTitleMatch,
         sourceScore: existing.sourceScore + contribution,
         ...(semanticEvidence
@@ -1993,16 +2046,28 @@ export class TypesenseWatchSearchService {
             lane === "title"
               ? classifyTitleMatch(values)
               : { exact: false, wholeTitleMatch: false }
+          const memberKey = candidateMemberKey(
+            canonicalVideoId,
+            hit.document.videoId,
+          )
           const verifiedExact =
-            lane === "title" &&
-            verifiedExactMembers.has(
-              exactMemberKey(canonicalVideoId, hit.document.videoId),
-            )
+            lane === "title" && verifiedExactMembers.has(memberKey)
+          const retrievalSources = collectDiagnostics
+            ? lane === "metadata"
+              ? (["metadata"] satisfies TypesenseWatchSearchRetrievalSource[])
+              : orderedRetrievalSources([
+                  ...(verifiedExact ? (["global_exact_title"] as const) : []),
+                  ...(localizedTitleMembers?.has(memberKey)
+                    ? (["localized_title"] as const)
+                    : []),
+                ])
+            : undefined
           state.wholeTitleMatch ||= wholeTitleMatch || verifiedExact
           const candidate: Candidate = {
             videoId: hit.document.videoId,
             videoEditionId: null,
             kind: exact || verifiedExact ? "exact" : "metadata",
+            retrievalSources,
             wholeTitleMatch: wholeTitleMatch || verifiedExact,
             sourceScore: 0,
             evidenceLanguageSlug: lexicalEvidenceLanguageSlug(
@@ -2029,6 +2094,10 @@ export class TypesenseWatchSearchService {
                   : "metadata",
               wholeTitleMatch:
                 existing.candidate.wholeTitleMatch || candidate.wholeTitleMatch,
+              retrievalSources: mergeRetrievalSources(
+                existing.candidate.retrievalSources,
+                candidate.retrievalSources,
+              ),
             },
           })
         }
@@ -2107,6 +2176,9 @@ export class TypesenseWatchSearchService {
             videoId: hit.document.videoId,
             videoEditionId: hit.document.videoEditionId ?? null,
             kind: "semantic",
+            ...(collectDiagnostics
+              ? { retrievalSources: ["semantic"] as const }
+              : {}),
             wholeTitleMatch: false,
             sourceScore: 0,
             evidenceLanguageSlug:
@@ -2195,6 +2267,7 @@ export class TypesenseWatchSearchService {
         videoId: hit.document.id,
         videoEditionId: null,
         kind: exact ? "exact" : "metadata",
+        ...(collectDiagnostics ? { retrievalSources: [] } : {}),
         wholeTitleMatch,
         sourceScore: exact
           ? 1
@@ -2208,7 +2281,17 @@ export class TypesenseWatchSearchService {
       const similarity = 1 - (hit.vector_distance ?? 1)
       if (similarity < MIN_SEMANTIC_SIMILARITY) return
       const existing = candidates.get(hit.document.videoId)
-      if (existing && existing.kind !== "semantic") return
+      if (existing && existing.kind !== "semantic") {
+        if (collectDiagnostics) {
+          candidates.set(hit.document.videoId, {
+            ...existing,
+            retrievalSources: mergeRetrievalSources(existing.retrievalSources, [
+              "semantic",
+            ]),
+          })
+        }
+        return
+      }
       if (existing && existing.sourceScore >= similarity) return
       if (collectDiagnostics) {
         semanticRankByVideoId.set(hit.document.videoId, index + 1)
@@ -2217,6 +2300,9 @@ export class TypesenseWatchSearchService {
         videoId: hit.document.videoId,
         videoEditionId: hit.document.videoEditionId ?? null,
         kind: "semantic",
+        ...(collectDiagnostics
+          ? { retrievalSources: ["semantic"] as const }
+          : {}),
         wholeTitleMatch: false,
         sourceScore: Math.max(0, Math.min(1, similarity)),
         evidenceLanguageSlug:

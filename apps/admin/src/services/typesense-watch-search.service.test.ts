@@ -702,7 +702,7 @@ describe("TypesenseWatchSearchService", () => {
     })
   })
 
-  it("merges global exact proof into one title contribution", async () => {
+  it("reports all retrieval sources without double-counting title contribution", async () => {
     const russian: TypesenseWatchCatalogDocument = {
       ...catalogDocument,
       id: "video-jesus-russian",
@@ -724,7 +724,14 @@ describe("TypesenseWatchSearchService", () => {
       lexical: [russian],
       exactLexical: [russian],
       titleLexical: [russian],
-      metadataLexical: [],
+      metadataLexical: [russian],
+      semantic: [
+        {
+          videoId: russian.id,
+          text: "The life of Jesus",
+          vectorDistance: 0.1,
+        },
+      ],
       catalog: [russian],
       binding: profile.binding,
     })
@@ -745,10 +752,68 @@ describe("TypesenseWatchSearchService", () => {
       expect.objectContaining({
         canonicalVideoId: "core:core-jesus",
         evidenceTier: "NORMALIZED_WHOLE_TITLE",
+        retrievalSources: [
+          "global_exact_title",
+          "localized_title",
+          "metadata",
+          "semantic",
+        ],
         titleRank: 1,
         titleContribution: 0.56 / 61,
       }),
     ])
+  })
+
+  it("reports exact-title provenance when playback selects a canonical sibling", async () => {
+    const exactButUnavailable: TypesenseWatchCatalogDocument = {
+      ...catalogDocument,
+      id: "video-jesus-russian-unavailable",
+      coreId: "core-jesus-siblings",
+      slug: "jesus-russian-unavailable",
+      titles: ["Иисус"],
+      localeCodes: ["ru"],
+      localesJson: JSON.stringify([
+        {
+          locale: "ru",
+          languageSlug: "russian",
+          title: "Иисус",
+          description: null,
+        },
+      ]),
+      audioLanguageSlugs: [],
+      subtitleLanguageSlugs: [],
+      audioOptionsJson: "[]",
+      subtitleOptionsJson: "[]",
+    }
+    const playableSibling: TypesenseWatchCatalogDocument = {
+      ...catalogDocument,
+      id: "video-jesus-playable-sibling",
+      coreId: "core-jesus-siblings",
+      slug: "jesus-playable-sibling",
+      titles: ["Иисус — история"],
+    }
+    const profile = candidateProfile()
+    const service = new TypesenseWatchSearchService(
+      prismaFixture(),
+      typesenseFixture({
+        exactLexical: [exactButUnavailable],
+        titleLexical: [playableSibling],
+        metadataLexical: [],
+        catalog: [exactButUnavailable, playableSibling],
+        binding: profile.binding,
+      }) as unknown as TypesenseClient,
+      { profile, embedder: vi.fn(async () => []) },
+    )
+
+    const { response, diagnostics } = await service.searchWithDiagnostics({
+      query: "Иисус",
+    })
+
+    expect(response.results.map(({ id }) => id)).toEqual([playableSibling.id])
+    expect(diagnostics.rankingTrace[0]).toMatchObject({
+      selectedVideoId: playableSibling.id,
+      retrievalSources: ["global_exact_title", "localized_title"],
+    })
   })
 
   it("leaves a partial-only group at one contribution beside an exact group", async () => {
@@ -802,6 +867,7 @@ describe("TypesenseWatchSearchService", () => {
     )
 
     expect(partialTrace).toMatchObject({
+      retrievalSources: ["localized_title"],
       titleRank: 2,
       titleContribution: 0.56 / 62,
     })
@@ -852,6 +918,7 @@ describe("TypesenseWatchSearchService", () => {
       expect(response.results.map(({ id }) => id)).toEqual([localized.id])
       expect(diagnostics.rankingTrace[0]).toMatchObject({
         evidenceTier: "NORMALIZED_WHOLE_TITLE",
+        retrievalSources: ["global_exact_title"],
         wholeTitleMatch: true,
         titleContribution: 0.56 / 61,
       })
@@ -1353,6 +1420,7 @@ describe("TypesenseWatchSearchService", () => {
       expect.objectContaining({
         canonicalVideoId: "core:core-bibleproject-collection",
         evidenceTier: "UNIQUE_TITLE_CORE",
+        retrievalSources: ["localized_title"],
         finalRank: 1,
         selectedVideoId: bibleProjectCollection.id,
         titleRank: 1,
@@ -1364,6 +1432,7 @@ describe("TypesenseWatchSearchService", () => {
       expect.objectContaining({
         canonicalVideoId: "core:core-bibleproject-video",
         evidenceTier: "ANCHOR_METADATA",
+        retrievalSources: ["metadata"],
         finalRank: 2,
         selectedVideoId: bibleProjectVideo.id,
         titleRank: null,
@@ -1375,6 +1444,7 @@ describe("TypesenseWatchSearchService", () => {
       expect.objectContaining({
         canonicalVideoId: "core:core-semantic-gospel-part-4",
         evidenceTier: "SEMANTIC_FILL",
+        retrievalSources: ["semantic"],
         finalRank: 3,
         selectedVideoId: unrelatedSemantic.id,
         titleRank: null,
@@ -3589,6 +3659,13 @@ describe("TypesenseWatchSearchService", () => {
       prismaFixture(),
       typesenseFixture({
         lexical: [catalogDocument],
+        semantic: [
+          {
+            videoId: catalogDocument.id,
+            text: "Communion with Jesus",
+            vectorDistance: 0.1,
+          },
+        ],
         hybridError: new TypesenseRequestError(
           "Field canonicalVideoId not found",
           400,
@@ -3629,6 +3706,10 @@ describe("TypesenseWatchSearchService", () => {
       rankingImplementation: "legacy-rrf",
       rankingMode: "SEMANTIC",
       rankingAnchor: null,
+    })
+    expect(diagnostics.rankingTrace[0]).toMatchObject({
+      selectedVideoId: catalogDocument.id,
+      retrievalSources: ["semantic"],
     })
   })
 
