@@ -144,6 +144,9 @@ flowchart TB
 - No backfill of series metadata onto existing download records; they stay standalone until re-downloaded.
 - No series-level pause-all/resume-all controls in the Library (they exist on the series detail page).
 - No component render harness (`@testing-library/react-native`) is introduced; view logic is tested as pure libs per the repo's established pattern.
+
+  > **Superseded, 2026-08-18 (feat-367).** `apps/mobile` now HAS a component-render harness — jest-expo's transitive `react-test-renderer` via a `react` re-point, still with no `@testing-library/react-native` and no new dependency. See `apps/mobile/CLAUDE.md`, section "Component render tests". The scope decisions above stand as the record of this plan; do not carry the "no harness exists" premise into new work. The same correction applies to the two other statements of it in this file (the Execution profile bullet and U-level test scenarios).
+
 - The mockup's device chrome (status bar, dynamic island, home indicator) is presentation framing, not product surface.
 
 ### Dependencies / Assumptions

@@ -3,7 +3,8 @@
  * from the player adapter's 1-second poll, samples at web's 2-second
  * granularity into buffered intents, and requests a drain after every
  * sample — the sync cadence (one send per 30s, forced on pause/background/
- * unmount/end) is what turns those requests into actual mutations.
+ * unmount/end plus the explicit dismiss/replace endings) is what turns those
+ * requests into actual mutations.
  *
  * No-ops without an identity (the hero surfaces never pass one) and drops
  * signed-out ticks at this boundary (R10). Every write takes the same path;

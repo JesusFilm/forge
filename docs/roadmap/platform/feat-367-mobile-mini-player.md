@@ -1,5 +1,5 @@
 ---
-id: "feat-363"
+id: "feat-367"
 title: "Mobile mini player and native picture-in-picture"
 owner: "urim"
 priority: "P1"
@@ -33,42 +33,41 @@ recovers it.
 
 ## Entry Points — Read These First
 
-1. `docs/plans/2026-08-12-001-feat-mobile-mini-player-plan.md` — the plan, plus
-   FIVE dated records at the end that say what actually shipped: four
-   "Implementation Findings" sections (updates 1 to 4) and one iOS verification
-   record. The section "The findings record: reading order and precedence"
-   opens that run and carries the rule. **Read the five in file order. Where two
-   disagree, the LATER one wins.** Update 4 (after U10) plus the iOS
-   verification record (2026-08-15) are the current state; update 2 is NOT the
-   latest. Update 3 holds the U9 detail that update 4 only summarises.
-2. `apps/mobile/CLAUDE.md`, section "Mini player and the root-owned playback
-   session" — the four standing rules. Read this before changing any player
-   file.
-3. `apps/mobile/src/lib/miniPlayer/hostPlayer.ts` — the module-scope seam
-   between the watch route and the root-owned player. Two channels: a claim
-   (route to host) and a player handle (host to route).
-4. `apps/mobile/src/lib/miniPlayer/session.ts` — `admitsSession` (the
-   first-playback latch), `sessionIdentityKey` (ONE field, `slug:` then `id:`),
-   and `sessionActionFor`.
-5. `apps/mobile/src/lib/miniPlayer/presentation.ts` — `presentationFor` returns
-   `full` / `floating` / `hidden` / `none`, and `windowHoldsSurface` is the one
-   predicate the window and the host both read.
-6. `apps/mobile/src/components/watch/PlaybackHost.tsx` — mounts as a SIBLING of
-   `<Stack>` in `apps/mobile/app/_layout.tsx:365`, which is why the seam cannot
-   be a React context.
-7. `apps/mobile/src/components/watch/MiniPlayerWindow.tsx` — the floating window
-   and the 1x1 keep-alive slot are ONE root whose style and handlers switch on
-   presentation, with the `VideoView` first in every branch.
-8. `apps/mobile/src/lib/miniPlayer/pipLatch.ts` — the picture-in-picture latch,
-   fed by the one shared props object in
-   `apps/mobile/src/lib/miniPlayer/pictureInPicture.ts`. `pipHold.ts` carries
-   R24's hold rule.
-9. `apps/mobile/src/test-utils/expoVideoMock.ts` — the shared `expo-video` stub,
-   plus `peakMountedSurfaces()` and `peakSurfacesPerPlayer()`. Its sibling
-   `rnTestRenderer.ts` is the component-render harness this branch added; it
-   needed no new dependency. `apps/mobile/CLAUDE.md`, section "Component render
-   tests", is the reference. Older mobile docs still say this app has no render
-   harness — those statements carry dated supersession notes.
+1. `apps/mobile/CLAUDE.md`, section "Mini player and the root-owned playback
+   session" — the standing rules. Read this before changing any player file.
+2. `docs/plans/2026-08-12-001-feat-mobile-mini-player-plan.md` — the plan. It is
+   the plan as written BEFORE implementation and carries no findings record, so
+   where it and the shipped code disagree, the code wins. Its U-level file lists
+   are the best index of intent, not of what exists.
+3. `apps/mobile/src/components/watch/PlaybackHost.tsx` — the root host. It owns
+   the app's ONE `useManagedVideoPlayer` adapter and its ONE `VideoView`, and
+   mounts as a SIBLING of `<Stack>` in `apps/mobile/app/_layout.tsx:365`, which
+   is why the seam cannot be a React context.
+4. `apps/mobile/src/components/watch/PlayerSlot.tsx` — the surface-side half. A
+   transparent box that reserves the layout, measures itself in WINDOW
+   coordinates, and publishes a playback request. It renders no video and
+   creates no player.
+5. `apps/mobile/src/lib/miniPlayer/playbackRequest.ts` — the module-scope
+   slot-to-host channel: `attachSlot` / `updateSlot` / `setSlotRect` /
+   `detachSlot`, plus the playback-facts source the host installs.
+6. `apps/mobile/src/lib/miniPlayer/store.ts` — the session store.
+   `sessionIdentityKey` is ONE field (`slug:` then `id:`); `markEnded`,
+   `requestDismiss`, `reportExitComplete` and `end` are the endings.
+7. `apps/mobile/src/lib/miniPlayer/presentation.ts` — `miniPlayerPresentation`
+   returns `full` / `floating` / `hidden` / `exiting` / `none`, and
+   `canOriginateSession` carries R19's exclusion.
+8. `apps/mobile/src/components/watch/MiniPlayerWindow.tsx` — the floating
+   window's chrome, drag and accessibility. It hosts NO video view: the host
+   animates its one view into this window's frame and this component draws over
+   it.
+9. `apps/mobile/src/lib/miniPlayer/pictureInPicture.ts` — the ONE shared props
+   object every PiP-capable view spreads. It feeds the `setPipHold` latch on
+   `store.ts`; R24's hold is read off that latch, not a separate module.
+10. `apps/mobile/src/test-utils/expoVideoMock.ts` — the shared `expo-video`
+    stub. Its sibling `rnTestRenderer.ts` is the component-render harness this
+    branch added; it needed no new dependency. `apps/mobile/CLAUDE.md`, section
+    "Component render tests", is the reference. Older mobile docs still say this
+    app has no render harness — those statements carry dated supersession notes.
 
 ## Grep These
 
@@ -76,31 +75,34 @@ recovers it.
 # Every player-creation site. The adapter is the only sanctioned one.
 grep -rn "useVideoPlayer(\|createVideoPlayer(" apps/mobile/src apps/mobile/app
 
-# The four picture-in-picture render sites. Each spreads the ONE shared props
-# object; a hand-rolled copy at any site is the regression the guard catches.
+# The three picture-in-picture render sites: the root host (whose one view
+# serves the watch screen, the trailer AND the floating window) and the two
+# SDUI [sectionKey] screens. Each spreads the ONE shared props object; a
+# hand-rolled copy at any site is the regression the guard catches.
 grep -rn "pictureInPictureViewProps\|allowsPictureInPicture" apps/mobile
 
-# Android layering. Every floating surface needs the textureView ternary.
+# Android layering. Every video surface needs the textureView ternary.
 grep -rn "surfaceType" apps/mobile
 
-# The claim/session seam and its consumers.
-grep -rn "claimPlayback\|releasePlaybackClaim\|borrowedPlayer\|surfaceFree" apps/mobile
+# The slot/host seam and its consumers.
+grep -rn "attachSlot\|detachSlot\|setSlotRect\|getPlaybackRequestStore" apps/mobile
 
-# Sheet suppression. Keep isSheetRoute in step with the two _layout files.
-grep -rn "isSheetRoute\|createSheetCounter\|SHEET_SCREENS" apps/mobile
+# Sheet suppression. Keep both halves in step with the two _layout files.
+grep -rn "IN_APP_SHEET_ROUTE_PATTERNS\|getNonRouteSheetCounter\|isSuppressedBySheet" apps/mobile
 grep -n "formSheet" apps/mobile/app/watch/_layout.tsx apps/mobile/app/series/_layout.tsx
 
-# Decoder assertions that render the host AND a route in one tree.
-grep -rln "peakMountedSurfaces\|peakSurfacesPerPlayer" apps/mobile/src
+# The guards that hold the architecture in place.
+ls apps/mobile/src/**/__tests__/*.guard.test.*
 ```
 
 ## What To Build
 
-Ten units, U1 to U10. All ten are shipped on branch
-`worktree-mobile-pip-mini-player` (draft PR #1937). The feature is LIVE: the
-watch route publishes a session on first playback and borrows the hoisted
-player, so the window appears on back. This ticket stays `in-progress` because
-the device acceptance below is not done, not because code is missing.
+Ten units, U1 to U10, all landed on branch
+`worktree-mobile-pip-mini-player-v2` (draft PR #1937). The feature is LIVE in
+code: the watch route publishes a session on first playback and the hoisted
+player keeps drawing, so the window appears on back. This ticket stays
+`in-progress` because the device acceptance below is not done, not because code
+is missing.
 
 | Unit | Scope                                         | State   |
 | ---- | --------------------------------------------- | ------- |
@@ -116,22 +118,22 @@ the device acceptance below is not done, not because code is missing.
 | U10  | Cleanup, guards and documentation             | shipped |
 
 **U9 — native picture-in-picture.** `supportsPictureInPicture` is on the
-`expo-video` plugin block in `apps/mobile/app.json`. All FOUR render sites that
+`expo-video` plugin block in `apps/mobile/app.json`. All THREE render sites that
 can hand a player to the OS window spread ONE props object from
-`src/lib/miniPlayer/pictureInPicture.ts`, so all four feed one latch: the shared
-watch surface (which backs the watch screen AND the series-detail trailer), the
-floating window, and the two SDUI `[sectionKey]` screens.
-`pictureInPictureCallSites.guard.test.js` holds the other half — a predicate
-that reaches only the sites a change already touched, while a sibling keeps a
-hand-rolled copy, is a failure this repo has recorded. R24's hold rule is pure
-in `src/lib/miniPlayer/pipHold.ts`: while the latch is set, no decision may
-mount, unmount or hand over a video view.
+`src/lib/miniPlayer/pictureInPicture.ts`, so all three feed one latch: the root
+host's single view (which serves the watch screen, the series-detail trailer AND
+the floating window) and the two SDUI `[sectionKey]` screens.
+`pictureInPictureWiring.guard.test.js` holds the other half — a predicate that
+reaches only the sites a change already touched, while a sibling keeps a
+hand-rolled copy, is a failure this repo has recorded. R24's hold rule reads the
+`pipHold` latch on `src/lib/miniPlayer/store.ts`: while it is set, the host
+suppresses CHROME only and never unmounts the video view, because unregistering
+the view fires expo-video's unguarded native path.
 
 **U10 — cleanup, guards and documentation.** The dead `MiniPlayerBar.tsx` is
-deleted, the prose sweep is done, `apps/mobile/CLAUDE.md` carries the four
-standing rules under "Mini player and the root-owned playback session", and this
-ticket exists. U10 is complete. Everything still outstanding is device
-acceptance.
+deleted, the prose sweep is done, `apps/mobile/CLAUDE.md` carries the standing
+rules under "Mini player and the root-owned playback session", and this ticket
+exists. Everything still outstanding is device acceptance.
 
 ## Constraints
 
@@ -182,30 +184,32 @@ grep -n "supportsPictureInPicture\|configChanges" apps/mobile/android/app/src/ma
 bash scripts/setup-sim-env.sh mobile
 ```
 
-Baseline on this branch after U10: **142 suites / 2065 tests green** (run
-2026-08-15), `tsc` and `eslint` clean. The test script passes with no tests, so
-a suite that never loads exits zero — a suite count that did not rise is the
-only detector that a new file is not being collected.
+Baseline on this branch after U10: **131 suites / 1857 tests green** (run
+2026-08-18), `tsc` clean. The test script passes with no tests, so a suite that
+never loads exits zero — a suite count that did not rise is the only detector
+that a new file is not being collected. A jest worker segfaulted once on
+`src/lib/__tests__/queries.test.ts` during one run and passed on a re-run and in
+isolation; treat a lone SIGSEGV as a worker flake, not a failing assertion.
 
-**Outstanding acceptance — two debts, one of them not hardware:**
+**Outstanding acceptance — everything below is still owed. All evidence to date
+is jest plus one Android emulator spike; no device run is recorded anywhere.**
 
 1. **Android hardware.** A live first frame in the floating window after a cold
    relaunch, sampled on a motion-rich part of the video. Then picture-in-picture
-   entry, background, return, and the interface restores. Everything so far is
-   jest evidence plus one emulator spike. This is the highest-value check,
-   because only hardware can validate the attach-order handoff and the
-   SurfaceView layering.
-2. **Cold-launch timing.** Unmeasured, not measured-as-fine. The dev client has
+   entry, background, return, and the interface restores. This is the
+   highest-value check, because only hardware can validate the attach-order
+   handoff and the SurfaceView layering.
+2. **iOS picture-in-picture.** The latch arming and releasing, R13 keeping the
+   video playing in the background, R24 admitting no surface change inside a
+   latched interval, and the interface restoring with playback continuous. A
+   simulator run covers the first pass; whether the extra `AVAudioSession`
+   recomputes make an audible duck blip needs iOS HARDWARE.
+3. **Simulator smoke.** The whole flow end to end on one platform: publish a
+   session on first playback, back out, window appears, drag, sheet suppression,
+   dismiss.
+4. **Cold-launch timing.** Unmeasured, not measured-as-fine. The dev client has
    a plus-or-minus 6 second noise floor. A real answer needs a release build and
    the Datadog `js_tti` the app already emits.
-
-**Closed 2026-08-15: iOS picture-in-picture.** Verified on an iPad Pro 11-inch
-(M5) simulator, iOS 26.5, over three complete cycles — the latch arms and
-releases, R13 keeps the video playing in the background, R24 admits no surface
-change inside a latched interval, and the interface restores with playback
-continuous. The record is the last section of the plan. One empirical question
-stays open and needs iOS HARDWARE, not a simulator: whether the extra
-`AVAudioSession` recomputes make an audible duck blip.
 
 **Two false-positive twins to rule out before believing any device failure.** A
 long-running Android emulator reproduces identical black video with correct
