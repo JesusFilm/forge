@@ -13,7 +13,13 @@ const mockEnv = vi.hoisted(() => ({
   WATCH_SEARCH_CANDIDATE_COMPARISON_ENABLED: true,
 }))
 
-vi.mock("@/config/env", () => ({ env: mockEnv }))
+vi.mock("@/config/env", () => ({
+  env: mockEnv,
+  resolveWatchSearchRuntimeEnv: () => ({
+    candidateComparisonEnabled:
+      mockEnv.WATCH_SEARCH_CANDIDATE_COMPARISON_ENABLED,
+  }),
+}))
 vi.mock("./comparison-actions", () => ({
   requireCurrentAdminEvaluator,
   runWatchSearchComparison: vi.fn(),

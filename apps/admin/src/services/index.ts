@@ -6,7 +6,7 @@
 // for mutations.
 
 import type { PrismaClient } from "@prisma/client"
-import { env } from "@/config/env"
+import { env, resolveWatchSearchRuntimeEnv } from "@/config/env"
 import { ExperienceService } from "@/services/experience.service"
 import { ExperienceSearchService } from "@/services/experience.search"
 import { ManagerJobService } from "@/services/manager-job.service"
@@ -161,6 +161,7 @@ function createServingTypesenseWatchSearchService(prisma: PrismaClient) {
     resolveCachedCandidateServingService({
       prisma,
       create: async () => {
+        const runtimeSearchEnv = resolveWatchSearchRuntimeEnv()
         const typesense = new TypesenseClient({
           host,
           apiKey,
@@ -175,7 +176,7 @@ function createServingTypesenseWatchSearchService(prisma: PrismaClient) {
           applicationRevision: candidateWatchSearchApplicationRevision(),
           rankingRevision: candidateWatchSearchRankingRevision(),
           transcriptProjectionRevision:
-            env.WATCH_SEARCH_TRANSCRIPT_PROJECTION_REVISION ?? null,
+            runtimeSearchEnv.transcriptProjectionRevision ?? null,
           qrelsRevision: env.WATCH_SEARCH_SERVING_QRELS_REVISION ?? null,
           typesense,
           generations,

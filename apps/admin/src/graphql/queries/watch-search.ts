@@ -1,5 +1,5 @@
 import { builder } from "@/graphql/builder"
-import { env } from "@/config/env"
+import { env, resolveWatchSearchRuntimeEnv } from "@/config/env"
 import type {
   WatchSearchAction,
   WatchSearchAvailability,
@@ -55,11 +55,14 @@ function isAuthenticatedFleetRequest(ctx: WatchSearchRequestContext): boolean {
 export function resolveWatchSearchInputForRequest(
   input: WatchSearchServiceInput,
   ctx: WatchSearchRequestContext,
-  policy: WatchSearchRoutingPolicy = {
-    primaryMode: env.WATCH_SEARCH_PRIMARY_MODE,
-    defaultShadowEnabled: env.WATCH_SEARCH_DEFAULT_SHADOW_ENABLED,
-    fleetPrimaryEnabled: env.WATCH_SEARCH_FLEET_PRIMARY_ENABLED,
-  },
+  policy: WatchSearchRoutingPolicy = (() => {
+    const runtimeSearchEnv = resolveWatchSearchRuntimeEnv()
+    return {
+      primaryMode: env.WATCH_SEARCH_PRIMARY_MODE,
+      defaultShadowEnabled: runtimeSearchEnv.defaultShadowEnabled,
+      fleetPrimaryEnabled: runtimeSearchEnv.fleetPrimaryEnabled,
+    }
+  })(),
 ): WatchSearchServiceInput {
   const mode = policy.primaryMode === "MODERN" ? "modern" : "default"
   if (!isCanonicalWebBrowserRequest(ctx)) {

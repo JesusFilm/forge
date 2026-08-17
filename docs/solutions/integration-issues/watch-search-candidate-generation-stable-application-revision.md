@@ -1,7 +1,7 @@
 ---
 title: Keep Watch search Candidate generations compatible across unrelated Admin deploys
 date: 2026-08-12
-last_updated: 2026-08-12
+last_updated: 2026-08-17
 category: integration-issues
 module: admin_watch_search_candidate
 problem_type: integration_issue
@@ -10,13 +10,16 @@ symptoms:
   - "The production Admin comparison page kept Current search valid while Candidate failed with profile_unavailable or search_failed."
   - "An unrelated Admin deployment made an otherwise unchanged evaluation candidate generation incompatible with the running application."
   - "Restoring Candidate comparison required rebuilding and repointing the evaluation generation even when the candidate query and index contracts had not changed."
+  - "Evaluation could resolve a READY Candidate while Serving invalidated it even though both transcript projection revisions displayed as 1."
+  - "Railway's CI=true runtime exposed a configured revision as the string '1' while the stored generation identity was bigint 1n."
 root_cause: logic_error
 resolution_type: code_fix
-severity: medium
+severity: high
 related_components:
   - "candidate generation lifecycle"
   - "Typesense Watch search comparison"
   - "candidate benchmark and indexing scripts"
+  - "Admin runtime environment"
 tags:
   - "watch-search"
   - "typesense"
@@ -24,6 +27,8 @@ tags:
   - "application-revision"
   - "admin-comparison"
   - "deployment-compatibility"
+  - "runtime-env"
+  - "skip-validation"
 ---
 
 # Keep Watch search Candidate generations compatible across unrelated Admin deploys
@@ -35,13 +40,27 @@ after an unrelated Admin deployment. Candidate compatibility was coupled to the
 Admin deployment revision even though a deployment can change without changing
 the candidate physical schema, projection, or retrieval-field contract. The
 generation resolver intentionally rejects an application-revision mismatch
-(`apps/admin/src/services/typesense-watch-search-candidate-generation.ts:332`),
+(`apps/admin/src/services/typesense-watch-search-candidate-generation.ts:459`),
 so using a deploy SHA as that identity made a healthy generation appear
 incompatible.
 
-This availability bug was fixed in [PR #1919](https://github.com/JesusFilm/forge/pull/1919).
-It is separate from multilingual relevance: a Candidate pane that completes can
-still rank the desired video poorly.
+A second false-compatibility mechanism surfaced on 2026-08-17. Admin configures
+`createEnv` with `skipValidation: !!process.env.CI`
+(`apps/admin/src/config/env.ts:696`). When Admin ran with `CI=true`, as observed
+in Railway during this incident, the Watch search schemas did not transform
+string flags to booleans or coerce the transcript projection revision to
+`bigint` (`apps/admin/src/config/env.ts:75`,
+`apps/admin/src/config/env.ts:101`). With validation skipped, Serving received
+the raw string `"1"` while the generation stored `1n`, according to the
+production incident evidence. The strict transcript identity check correctly
+treated those values as different and invalidated the generation
+(`apps/admin/src/services/typesense-watch-search-candidate-generation.ts:756`).
+
+The deploy-revision coupling bug was fixed in
+[PR #1919](https://github.com/JesusFilm/forge/pull/1919). The raw runtime-type
+bug required the later hotfix described below. Both availability failures are
+separate from multilingual relevance: a Candidate pane that completes can still
+rank the desired video poorly.
 
 ## Symptoms
 
@@ -55,6 +74,12 @@ still rank the desired video poorly.
   projection had not changed.
 - Rebuilding and repointing the Evaluation generation restored Candidate only
   until another unrelated deployment changed the compatibility identity.
+- Evaluation could resolve the generation while Serving failed because
+  Evaluation reused the generation's stored transcript identity, whereas
+  Serving used the unnormalized configured revision.
+- Rebuilding the same indexed data did not fix the runtime type mismatch; each
+  fresh generation could be invalidated again when Serving compared `"1"` with
+  `1n`.
 
 ## What Didn't Work
 
@@ -65,8 +90,14 @@ could produce another identity mismatch.
 Weakening the compatibility check was also the wrong repair. The strict check
 prevents genuinely incompatible generations from being used and also protects
 the transcript collection and projection identity
-(`apps/admin/src/services/typesense-watch-search-candidate-generation.ts:330`).
+(`apps/admin/src/services/typesense-watch-search-candidate-generation.ts:459`,
+`apps/admin/src/services/typesense-watch-search-candidate-generation.ts:756`).
 The identity needed a more accurate source, not less validation.
+
+The same principle applied to the raw revision incident. Rebuilding Candidate
+only replaced a valid generation; it did not change the CI-skipped environment
+value. Removing the strict transcript comparison would have hidden the bad
+runtime contract and weakened the guard against genuinely stale projections.
 
 Treating each visible failure code as an isolated UI or admission problem also
 missed the lifecycle issue. Current remaining successful was expected
@@ -104,14 +135,42 @@ helper:
 
 - Candidate indexing and publication store the stable revision with the
   generation
-  (`apps/admin/src/scripts/index-typesense-watch-search-candidate.ts:598`).
+  (`apps/admin/src/scripts/index-typesense-watch-search-candidate.ts:689`).
 - The private comparison resolves the Evaluation generation with the same
   revision
-  (`apps/admin/src/services/typesense-watch-search-comparison.service.ts:300`).
+  (`apps/admin/src/services/typesense-watch-search-comparison.service.ts:306`).
 - Candidate benchmarking and qualification resolve and record the same identity
-  (`apps/admin/src/scripts/benchmark-watch-search-candidate.ts:813`).
+  (`apps/admin/src/scripts/benchmark-watch-search-candidate.ts:755`).
+- Candidate evaluation resolves both Evaluation and Serving sources with the
+  shared compatibility identity
+  (`apps/admin/src/services/typesense-watch-search-candidate-evaluation.service.ts:360`).
 - Candidate serving passes the same revision to serving-profile resolution
-  (`apps/admin/src/services/index.ts:170`).
+  (`apps/admin/src/services/index.ts:176`).
+
+### Normalize transform-dependent runtime controls
+
+The later hotfix adds `resolveWatchSearchRuntimeEnv` as the runtime boundary for
+Watch search values whose schemas rely on transforms. It accepts raw strings or
+already validated values, converts them to the downstream boolean and `bigint`
+types, freezes the result, and caches the zero-argument production result once
+per module instance (`apps/admin/src/config/env.ts:106`). Invalid values fail
+closed: default shadow stays enabled, fleet-primary and private comparison stay
+disabled, and an invalid projection revision becomes unavailable
+(`apps/admin/src/config/env.ts:122`).
+
+Public routing, Candidate Serving, Evaluation, and comparison consumers use the
+same normalized boundary. The strict generation identity guard remains in
+place and now logs a non-secret `candidate_transcript_identity_mismatch`
+breadcrumb, including the requested revision's runtime type, before
+invalidation
+(`apps/admin/src/services/typesense-watch-search-candidate-generation.ts:756`).
+
+The regression test imports the real environment module with `CI=true` and raw
+Railway-shaped strings. It verifies boolean and `bigint` normalization and that
+repeated zero-argument resolution reuses the cached object
+(`apps/admin/src/config/env.test.ts:39`). This is materially different from
+testing only the normalizer's explicit-input helper because it exercises the
+same module-loading path that failed in production.
 
 After deployment, a fresh Candidate generation was built with
 `watch-search-candidate/v1` and selected for Evaluation. During authenticated
@@ -127,13 +186,13 @@ Japanese and Russian ranking than Current.
 
 `applicationRevision` represents Candidate collection compatibility, not the
 currently deployed Admin build or application-side ordering. Unrelated
-deployments and ranking changes keep `watch-search-candidate/v1`, so they can
-continue using collections built for that physical contract. A deliberate
-physical-contract change still requires changing the constant, which makes the
-existing strict generation check reject stale generations until compatible
-collections are rebuilt
-(`apps/admin/src/services/typesense-watch-search-candidate-identity.ts:4`,
-`apps/admin/src/services/typesense-watch-search-candidate-generation.ts:332`).
+deployments and ranking changes keep the shared compatibility revision stable,
+so they can continue using collections built for that physical contract. A
+deliberate physical-contract change still requires changing the constant, which
+makes the existing strict generation check reject stale generations until
+compatible collections are rebuilt
+(`apps/admin/src/services/typesense-watch-search-candidate-identity.ts:3`,
+`apps/admin/src/services/typesense-watch-search-candidate-generation.ts:459`).
 
 Ranking qualification remains fail-closed: passing evidence uses the v2
 qualification envelope, carries the exact ranking revision, and serving
@@ -145,20 +204,37 @@ projection revision (`apps/admin/src/services/typesense-watch-search-profile.ts:
 Only the unstable source of the application revision changed; compatibility
 and lease checks were not bypassed.
 
+Runtime normalization extends that same safety model. Serving now compares a
+configured `bigint` revision with the stored `bigint` identity instead of
+comparing a raw string with a transformed database value. Caching avoids
+re-parsing unchanged process configuration on every search request, and
+fail-closed defaults prevent malformed string controls from becoming truthy
+feature switches (`apps/admin/src/config/env.ts:120`).
+
 ## Prevention
 
 - Keep one source of truth for Candidate compatibility. The regression test
   changes `RAILWAY_GIT_COMMIT_SHA` and proves the Candidate revision remains
-  `watch-search-candidate/v1`
+  unchanged across unrelated deployment commits
   (`apps/admin/src/services/typesense-watch-search-candidate-identity.test.ts:10`).
 - Guard every Candidate boundary against reintroducing deploy-SHA coupling.
-  The focused test reads indexing, benchmark, comparison, and serving sources,
-  requires the shared helper, and rejects known deployment-revision environment
-  variables
+  The focused test reads indexing, benchmark, comparison, evaluation, and
+  serving sources, requires the shared helper, and rejects known
+  deployment-revision environment variables
   (`apps/admin/src/services/typesense-watch-search-candidate-identity.test.ts:20`).
 - Retain an end-to-end profile-resolution test across an unrelated Admin
   deployment
-  (`apps/admin/src/services/typesense-watch-search-comparison.service.test.ts:134`).
+  (`apps/admin/src/services/typesense-watch-search-comparison.service.test.ts:139`).
+- For any environment schema that uses `.transform()` or coercion while
+  `skipValidation` can be active, test the real zero-argument runtime consumer
+  under `CI=true`; a typed export does not prove the deployed value was
+  transformed.
+- Normalize safety-critical configuration once at its consumer boundary and
+  preserve fail-closed defaults. Do not rely on JavaScript truthiness for raw
+  string flags.
+- Keep the type-aware identity-mismatch breadcrumb adjacent to the invalidating
+  transition. It distinguishes an actually stale projection from a value that
+  only differs by runtime type.
 - When the physical schema, projection, or retrieval-field contract changes,
   deliberately bump `TYPESENSE_WATCH_SEARCH_CANDIDATE_APPLICATION_REVISION`
   and rebuild the generation. For application-side ranking changes, bump the
@@ -179,3 +255,6 @@ and lease checks were not bypassed.
   `profile_unavailable` symptom.
 - [Admin Watch search production rollout](../best-practices/admin-watch-search-production-rollout-20260720.md)
   covers the broader production-verification discipline.
+- [Mastra launch timeout environment string handling](../runtime-errors/mastra-launch-timeout-env-string-network-error.md)
+  documents the same consumer-boundary normalization rule for a different
+  Railway runtime value.

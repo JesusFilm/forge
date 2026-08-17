@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import {
   CandidateGenerationCompatibilityError,
   CandidateGenerationConflictError,
@@ -31,6 +31,10 @@ describe("TypesenseWatchSearchCandidateGenerationService", () => {
     service = harness.service
     ready = harness.ready
     setNow = harness.setNow
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
   })
 
   it("creates the BUILDING owner before validation and publishes only a complete READY tuple", async () => {
@@ -204,6 +208,7 @@ describe("TypesenseWatchSearchCandidateGenerationService", () => {
 
   it("invalidates stale transcript identities and rejects application incompatibility", async () => {
     await ready()
+    const warning = vi.spyOn(console, "warn").mockImplementation(() => {})
 
     await expect(
       service.resolveGeneration({
@@ -224,6 +229,10 @@ describe("TypesenseWatchSearchCandidateGenerationService", () => {
       }),
     ).rejects.toBeInstanceOf(CandidateGenerationCompatibilityError)
     expect(db.generations.get("candidate-1")?.state).toBe("INVALIDATED")
+    expect(warning).toHaveBeenCalledWith(
+      expect.stringContaining("event=candidate_transcript_identity_mismatch"),
+    )
+    warning.mockRestore()
   })
 
   it("acquires, renews, expires, releases, and enforces leases without waiting", async () => {

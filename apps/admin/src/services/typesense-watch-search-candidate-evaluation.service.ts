@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from "node:crypto"
 
-import { env } from "@/config/env"
+import { env, resolveWatchSearchRuntimeEnv } from "@/config/env"
 import { prisma } from "@/db/client"
 
 import { TypesenseClient } from "./typesense-client"
@@ -330,6 +330,7 @@ export class TypesenseWatchSearchCandidateEvaluationService {
 export function createTypesenseWatchSearchCandidateEvaluationService(
   source: CandidateSearchEvaluationSource,
 ): TypesenseWatchSearchCandidateEvaluationService {
+  const runtimeSearchEnv = resolveWatchSearchRuntimeEnv()
   const host = env.TYPESENSE_HOST
   const apiKey = resolveTypesenseWatchSearchApiKey({
     searchApiKey: env.TYPESENSE_SEARCH_API_KEY,
@@ -359,7 +360,7 @@ export function createTypesenseWatchSearchCandidateEvaluationService(
               applicationRevision: candidateWatchSearchApplicationRevision(),
               rankingRevision: candidateWatchSearchRankingRevision(),
               transcriptProjectionRevision:
-                env.WATCH_SEARCH_TRANSCRIPT_PROJECTION_REVISION ?? null,
+                runtimeSearchEnv.transcriptProjectionRevision ?? null,
               qrelsRevision: env.WATCH_SEARCH_SERVING_QRELS_REVISION ?? null,
             })
       if (
