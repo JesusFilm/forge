@@ -38,6 +38,10 @@ describe("candidateWatchSearchApplicationRevision", () => {
         "./typesense-watch-search-comparison.service.ts",
         import.meta.url,
       ),
+      new URL(
+        "./typesense-watch-search-candidate-evaluation.service.ts",
+        import.meta.url,
+      ),
       new URL("./index.ts", import.meta.url),
     ]
 

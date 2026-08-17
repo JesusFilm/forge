@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto"
 
-import { env } from "../../config/env"
+import { env, getServingSearchEvalConfig } from "../../config/env"
 import {
   callAdminCandidateList,
   callAdminEvalSearch,
@@ -102,8 +102,11 @@ export type OfflineSearchEvalResult =
   | OfflineSearchEvalFailure
 
 type RunnerOptions = {
+  /** Shared Admin bearer used only by candidate-list reads. */
   adminBearer?: string
-  searchUrl?: string
+  /** Dedicated fixed-Serving search target. */
+  servingBearer?: string
+  servingUrl?: string
   candidateListUrl?: string
   timeoutMs?: number
   fetchImpl?: typeof fetch
@@ -235,6 +238,7 @@ function metadataFor({
   promptSetVersion = SEARCH_EVAL_SEED_PROMPT_SET_VERSION,
   searchLimit,
   searchUrl,
+  servingRevision = null,
   startedAt,
 }: {
   baselineName: string
@@ -247,6 +251,7 @@ function metadataFor({
   promptSetVersion?: string
   searchLimit: number
   searchUrl: string | undefined
+  servingRevision?: string | null
   startedAt: Date
 }): SearchEvalMetadata {
   return {
@@ -257,6 +262,7 @@ function metadataFor({
     callerTrack,
     promptSetVersion,
     adminSearchUrl: sanitizeAdminSearchUrl(searchUrl),
+    servingRevision,
     judgeModel,
     search: {
       limit: searchLimit,
@@ -341,9 +347,10 @@ async function searchAdmin(
   timing?: SearchTiming,
 ): Promise<AdminSearchEvalClientResult<AdminSearchResponse>> {
   const startedAt = Date.now()
+  const serving = getServingSearchEvalConfig()
   const result = await (options.searchClient ?? callAdminEvalSearch)({
-    url: options.searchUrl ?? env.ADMIN_SEARCH_EVAL_SEARCH_URL,
-    bearer: options.adminBearer ?? env.ADMIN_SEARCH_EVAL_API_KEY,
+    url: options.servingUrl ?? serving.url,
+    bearer: options.servingBearer ?? serving.bearer,
     payload: {
       query: prompt.queryText,
       locale: prompt.locale,
@@ -381,11 +388,38 @@ async function searchSeedCases(
       callerTrack: input.callerTrack,
       tags: prompt.tags,
       operatorNotes: prompt.operatorNotes,
+      ...(result.result.revision
+        ? { serverRevision: result.result.revision }
+        : {}),
       results: result.ok ? result.result.results : [],
       ...(result.ok ? {} : { searchFailure: searchFailure(result) }),
     })
   }
   return cases
+}
+
+function servingRevisionForBaseline(
+  cases: readonly BaselineCase[],
+): string | OfflineSearchEvalFailure {
+  const revisions = cases.map((entry) => entry.serverRevision)
+  if (revisions.some((revision) => revision == null || revision.length === 0)) {
+    return failure("admin_read_rejected", {
+      retryable: false,
+      adminReason: "Serving search response omitted its revision",
+    })
+  }
+
+  const servingRevision = revisions[0]
+  if (
+    servingRevision == null ||
+    revisions.some((revision) => revision !== servingRevision)
+  ) {
+    return failure("admin_read_rejected", {
+      retryable: false,
+      adminReason: "Serving search responses used mixed revisions",
+    })
+  }
+  return servingRevision
 }
 
 function baselineReportOutcomes(
@@ -763,9 +797,10 @@ export async function runOfflineSearchEval(
   const mastraRunId = options.runId ?? randomUUID()
   const baselineName = prepared.baselineName
   const artifactStore = options.artifactStore ?? createSearchEvalArtifactStore()
-  const searchUrl = options.searchUrl ?? env.ADMIN_SEARCH_EVAL_SEARCH_URL
-  const adminBearer = options.adminBearer ?? env.ADMIN_SEARCH_EVAL_API_KEY
-  if (!searchUrl || !adminBearer) {
+  const serving = getServingSearchEvalConfig()
+  const searchUrl = options.servingUrl ?? serving.url
+  const servingBearer = options.servingBearer ?? serving.bearer
+  if (!searchUrl || !servingBearer) {
     return failure("admin_config_missing", { retryable: false })
   }
   const searchTiming: SearchTiming = { ms: 0 }
@@ -797,6 +832,8 @@ export async function runOfflineSearchEval(
     if (failedSeedCase?.searchFailure) {
       return searchFailureToOfflineFailure(failedSeedCase.searchFailure)
     }
+    const servingRevision = servingRevisionForBaseline(cases)
+    if (typeof servingRevision !== "string") return servingRevision
     const generated = await readGeneratedCases(prepared, options)
     const exploratory = await exploratoryGeneratedOutcomes(
       generated.cases,
@@ -815,6 +852,7 @@ export async function runOfflineSearchEval(
       mode: prepared.searchMode,
       searchLimit: input.searchLimit ?? DEFAULT_SEARCH_LIMIT,
       searchUrl,
+      servingRevision,
       startedAt,
     })
     const baseline: BaselineArtifact = {
@@ -848,17 +886,13 @@ export async function runOfflineSearchEval(
       exploratoryGenerated: exploratory,
       generatedCandidateReadFailure: generated.readFailure,
     })
-    let reportPath: Awaited<ReturnType<SearchEvalArtifactStore["writeReport"]>>
-    try {
-      reportPath = await artifactStore.writeReport(report)
-    } catch (error) {
-      return artifactFailure(error)
+    const writeBaselineCapture = artifactStore.writeBaselineCapture
+    if (!writeBaselineCapture) {
+      return failure("artifact_write_failed", { retryable: false })
     }
-    let baselinePath: Awaited<
-      ReturnType<SearchEvalArtifactStore["writeBaseline"]>
-    >
+    let capture: Awaited<ReturnType<typeof writeBaselineCapture>>
     try {
-      baselinePath = await artifactStore.writeBaseline(baseline)
+      capture = await writeBaselineCapture(baseline, report)
     } catch (error) {
       return artifactFailure(error)
     }
@@ -867,8 +901,8 @@ export async function runOfflineSearchEval(
       mode: input.mode,
       mastraRunId,
       baselineName,
-      baselinePath: baselinePath.path,
-      reportPath: reportPath.path,
+      baselinePath: capture.baselinePath,
+      reportPath: capture.reportPath,
       report,
     }
   }

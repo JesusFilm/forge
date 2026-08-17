@@ -1,6 +1,6 @@
 import type { Route } from "next"
 import Link from "next/link"
-import { env } from "@/config/env"
+import { resolveWatchSearchRuntimeEnv } from "@/config/env"
 import { ChevronLeft, ChevronRight } from "lucide-react"
 import {
   DashboardPageHeader,
@@ -64,6 +64,7 @@ export default async function SearchPage({
   searchParams,
 }: SearchPageProps = {}) {
   const principal = await requireSession()
+  const runtimeSearchEnv = resolveWatchSearchRuntimeEnv()
   const messages = await getAdminMessages()
   const page = messages.pages.search
   const params = (await searchParams) ?? {}
@@ -86,7 +87,7 @@ export default async function SearchPage({
         action={
           <div className="flex flex-wrap items-center gap-2">
             {principal.role === "ADMIN" &&
-            env.WATCH_SEARCH_CANDIDATE_COMPARISON_ENABLED ? (
+            runtimeSearchEnv.candidateComparisonEnabled ? (
               <Link
                 href={"/dashboard/search/compare" as Route}
                 className="rounded-sm border border-[var(--color-hairline)] px-3 py-2 font-mono text-[11px] uppercase text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-raised)]"

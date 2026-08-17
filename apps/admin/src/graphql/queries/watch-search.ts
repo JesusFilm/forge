@@ -1,5 +1,5 @@
 import { builder } from "@/graphql/builder"
-import { env } from "@/config/env"
+import { env, resolveWatchSearchRuntimeEnv } from "@/config/env"
 import type {
   WatchSearchAction,
   WatchSearchAvailability,
@@ -24,9 +24,10 @@ type WatchSearchRequestContext = {
   user: { role: string; fleet?: boolean } | null
 }
 
-type WatchSearchWebRoutingPolicy = {
+type WatchSearchRoutingPolicy = {
   primaryMode: "DEFAULT" | "MODERN"
   defaultShadowEnabled: boolean
+  fleetPrimaryEnabled: boolean
 }
 
 export const MAX_WATCH_SEARCH_SUGGESTION_FIELDS_PER_OPERATION = 10
@@ -47,17 +48,34 @@ function isCanonicalWebBrowserRequest(ctx: WatchSearchRequestContext): boolean {
   )
 }
 
+function isAuthenticatedFleetRequest(ctx: WatchSearchRequestContext): boolean {
+  return ctx.user?.role === "CONSUMER_BEARER" && ctx.user.fleet === true
+}
+
 export function resolveWatchSearchInputForRequest(
   input: WatchSearchServiceInput,
   ctx: WatchSearchRequestContext,
-  policy: WatchSearchWebRoutingPolicy = {
-    primaryMode: env.WATCH_SEARCH_PRIMARY_MODE,
-    defaultShadowEnabled: env.WATCH_SEARCH_DEFAULT_SHADOW_ENABLED,
-  },
+  policy: WatchSearchRoutingPolicy = (() => {
+    const runtimeSearchEnv = resolveWatchSearchRuntimeEnv()
+    return {
+      primaryMode: env.WATCH_SEARCH_PRIMARY_MODE,
+      defaultShadowEnabled: runtimeSearchEnv.defaultShadowEnabled,
+      fleetPrimaryEnabled: runtimeSearchEnv.fleetPrimaryEnabled,
+    }
+  })(),
 ): WatchSearchServiceInput {
-  if (!isCanonicalWebBrowserRequest(ctx)) return input
-
   const mode = policy.primaryMode === "MODERN" ? "modern" : "default"
+  if (!isCanonicalWebBrowserRequest(ctx)) {
+    if (
+      !policy.fleetPrimaryEnabled ||
+      !isAuthenticatedFleetRequest(ctx) ||
+      input.mode != null
+    ) {
+      return input
+    }
+    return { ...input, mode, shadowMode: undefined }
+  }
+
   return {
     ...input,
     mode,

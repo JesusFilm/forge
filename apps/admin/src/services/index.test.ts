@@ -165,6 +165,7 @@ describe("resolveWatchSearchServingProfile", () => {
     expect(profile).toMatchObject({
       kind: "CANDIDATE",
       generationId: "generation-a",
+      qrelsRevision: "qrels-1",
     })
   })
 

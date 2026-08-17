@@ -50,6 +50,7 @@ function baseline(): BaselineArtifact {
       callerTrack: "public-watch",
       promptSetVersion: SEARCH_EVAL_SEED_PROMPT_SET_VERSION,
       adminSearchUrl: "https://admin.internal/api/internal/search-eval/search",
+      servingRevision: null,
       judgeModel: null,
       search: { limit: 20, mode: "hybrid", contentType: null },
     },

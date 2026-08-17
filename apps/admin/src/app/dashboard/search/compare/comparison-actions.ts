@@ -6,7 +6,7 @@ import { redirect } from "next/navigation"
 import { z } from "zod"
 
 import { requireAdminSession } from "@/auth/session"
-import { env } from "@/config/env"
+import { env, resolveWatchSearchRuntimeEnv } from "@/config/env"
 import { prisma } from "@/db/client"
 import { projectWatchSearchComparisonResult } from "@/services/search-trace-privacy"
 import { createTypesenseWatchSearchComparisonService } from "@/services/typesense-watch-search-comparison.service"
@@ -63,7 +63,7 @@ export type WatchSearchComparisonActionState =
   | { status: "success"; result: WatchSearchComparisonView }
 
 function comparisonEnabled() {
-  return env.WATCH_SEARCH_CANDIDATE_COMPARISON_ENABLED
+  return resolveWatchSearchRuntimeEnv().candidateComparisonEnabled
 }
 
 function comparisonFormValues(formData: FormData) {

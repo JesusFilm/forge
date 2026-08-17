@@ -1,5 +1,10 @@
 import { _resetStorageForTests, getStorage } from "../safeStorage"
 import {
+  MY_LIST_STORAGE_KEY,
+  toggleMyList,
+  type MyListEntry,
+} from "../myList/myList"
+import {
   ANONYMOUS_STATE_KEYS,
   LOCAL_USER_STORAGE_KEY,
   UNOWNED_LOCAL_USER,
@@ -15,7 +20,10 @@ import {
 } from "./anonymousMerge"
 import {
   CONTINUE_WATCHING_STORAGE_KEY,
+  PENDING_COMPLETIONS_STORAGE_KEY,
+  saveResumeSnapshot,
   type ContinueWatchingEntry,
+  type PendingCompletion,
 } from "../watchEvents/continueWatching"
 import {
   QUEUE_STORAGE_KEY,
@@ -64,15 +72,26 @@ async function seedAnonymousState(input: {
   viewerId?: string
   entries?: ContinueWatchingEntry[]
   events?: QueuedWatchEvent[]
+  completions?: PendingCompletion[]
+  myList?: MyListEntry[]
 }): Promise<void> {
   const storage = getStorage()
   if (input.viewerId != null) {
     await storage.setItem(VIEWER_ID_STORAGE_KEY, input.viewerId)
   }
+  if (input.myList != null) {
+    await storage.setItem(MY_LIST_STORAGE_KEY, JSON.stringify(input.myList))
+  }
   if (input.entries != null) {
     await storage.setItem(
       CONTINUE_WATCHING_STORAGE_KEY,
       JSON.stringify(input.entries),
+    )
+  }
+  if (input.completions != null) {
+    await storage.setItem(
+      PENDING_COMPLETIONS_STORAGE_KEY,
+      JSON.stringify(input.completions),
     )
   }
   if (input.events != null) {
@@ -335,6 +354,15 @@ describe("account isolation between family members", () => {
       viewerId: "viewer-anon",
       entries: [entry("a-only")],
       events: [queued("a-only")],
+      completions: [
+        {
+          videoId: "v1",
+          slug: "v1-slug",
+          positionSeconds: 1000,
+          durationSeconds: 1000,
+          updatedAt: "2026-08-10T00:00:00.000Z",
+        },
+      ],
     })
     const submitA = jest.fn(async () => true)
     await promoteAnonymousStateToAccount({
@@ -355,7 +383,7 @@ describe("account isolation between family members", () => {
 
     expect(outcome).toEqual({ status: "reset_for_other_user" })
     expect(submitB).not.toHaveBeenCalled()
-    expect(await readAllAnonymousKeys()).toEqual([null, null, null])
+    expect(await readAllAnonymousKeys()).toEqual([null, null, null, null, null])
     expect(await readLocalUserMarker()).toEqual({ userId: "user-b" })
   })
 
@@ -515,27 +543,122 @@ describe("account isolation between family members", () => {
 })
 
 describe("clearAnonymousWatchState", () => {
+  // Both modules' prose says the wipe must go through their own lock, because
+  // a bare removeItem can land between an in-flight save's read and its write —
+  // and that pending write then re-materializes what was just erased, handing
+  // the departing viewer's data to the next person on a shared TV. Nothing
+  // tested it: routing the wipe through a plain removeItem still clears the
+  // key, so key-enumeration assertions stay green either way. These do the
+  // interleave for real, one per locked bucket.
+  it.each([
+    [
+      "my list",
+      MY_LIST_STORAGE_KEY,
+      async () =>
+        void (await toggleMyList({
+          videoId: "v1",
+          slug: "v1-slug",
+          title: "V1",
+          imageUrl: null,
+          rawLabel: "FEATURE_FILM",
+          addedAt: "2026-08-10T00:00:00.000Z",
+        })),
+    ],
+    [
+      "the continue watching shelf",
+      CONTINUE_WATCHING_STORAGE_KEY,
+      async () =>
+        await saveResumeSnapshot(
+          {
+            videoId: "v1",
+            slug: "v1-slug",
+            title: "V1",
+            imageUrl: null,
+            updatedAt: "2026-08-10T00:00:00.000Z",
+          },
+          { positionSeconds: 120, durationSeconds: 1000 },
+        ),
+    ],
+  ])(
+    "a wipe racing an in-flight %s save leaves nothing behind",
+    async (_label, key, save) => {
+      const storage = getStorage()
+      const realSetItem = storage.setItem.bind(storage)
+      let releaseWrite: () => void = () => {}
+      const writeHeld = new Promise<void>((resolve) => {
+        releaseWrite = resolve
+      })
+      // Hold the save's write open, so the save is provably still mid
+      // read-modify-write while the wipe runs.
+      jest
+        .spyOn(storage, "setItem")
+        .mockImplementationOnce(async (k: string, v: string) => {
+          await writeHeld
+          return realSetItem(k, v)
+        })
+
+      const saving = save()
+      const wiping = clearAnonymousWatchState()
+      // Yield a full macrotask BEFORE letting the write land. The wipe walks
+      // its keys sequentially, so this is what guarantees it has already
+      // reached this bucket — an unlocked removeItem has therefore definitely
+      // fired, and the released write lands AFTER it and resurrects the data.
+      // With the lock the wipe is instead queued behind the save and removes
+      // last, which is the whole point. (Deliberately not awaiting `wiping`
+      // first: under the correct implementation that deadlocks, since the wipe
+      // cannot finish until the write it is queued behind completes.)
+      await new Promise((resolve) => setTimeout(resolve, 0))
+      releaseWrite()
+      await Promise.all([saving, wiping])
+
+      expect(await storage.getItem(key)).toBeNull()
+    },
+  )
+
   it("clears every anonymous key from the fixed list", async () => {
     await seedAnonymousState({
       viewerId: "viewer-anon",
       entries: [entry("v1")],
       events: [queued("v1")],
+      completions: [
+        {
+          videoId: "v1",
+          slug: "v1-slug",
+          positionSeconds: 1000,
+          durationSeconds: 1000,
+          updatedAt: "2026-08-10T00:00:00.000Z",
+        },
+      ],
+      myList: [
+        {
+          videoId: "v1",
+          slug: "v1-slug",
+          title: "V1",
+          imageUrl: null,
+          rawLabel: "FEATURE_FILM",
+          addedAt: "2026-08-10T00:00:00.000Z",
+        },
+      ],
     })
     expect(await readAllAnonymousKeys()).not.toContain(null)
 
     await clearAnonymousWatchState()
 
-    expect(await readAllAnonymousKeys()).toEqual([null, null, null])
+    expect(await readAllAnonymousKeys()).toEqual([null, null, null, null, null])
   })
 
-  it("covers the viewer id, the shelf and the event queue — nothing else", () => {
+  it("covers the viewer id, the shelf, pending completions and the event queue — nothing else", () => {
     // Pinned as a list, not a scan: a storage-key scan is exactly the bug this
     // module exists to avoid. A new anonymous bucket must be added here
     // deliberately, and this assertion is where that decision surfaces.
+    // pending_completions joined for todo 025 — it is UPLOADED into the
+    // signed-in account, so it must be part of every wipe.
     expect([...ANONYMOUS_STATE_KEYS]).toEqual([
       "forge.watch.viewer_id",
       "forge.watch.continue_watching",
+      "forge.watch.pending_completions",
       "forge.watch.pending_events",
+      "forge.watch.my_list",
     ])
   })
 
@@ -574,12 +697,22 @@ describe("releaseLocalUserOnSignOut", () => {
       viewerId: "viewer-anon",
       entries: [entry("v1")],
       events: [queued("v1")],
+      myList: [
+        {
+          videoId: "v1",
+          slug: "v1-slug",
+          title: "V1",
+          imageUrl: null,
+          rawLabel: "FEATURE_FILM",
+          addedAt: "2026-08-10T00:00:00.000Z",
+        },
+      ],
     })
     await writeLocalUserMarker("user-a")
 
     await releaseLocalUserOnSignOut()
 
-    expect(await readAllAnonymousKeys()).toEqual([null, null, null])
+    expect(await readAllAnonymousKeys()).toEqual([null, null, null, null, null])
     expect(await readLocalUserMarker()).toEqual(UNOWNED_LOCAL_USER)
     expect(await getStorage().getItem(LOCAL_USER_STORAGE_KEY)).toBeNull()
   })
