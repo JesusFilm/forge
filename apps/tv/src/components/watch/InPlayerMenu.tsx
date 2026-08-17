@@ -15,6 +15,7 @@ import {
   isSubtitleRowActive,
 } from "./panelState"
 import { useVariantList } from "./useVariantList"
+import { MomentsPanel } from "./MomentsPanel"
 import { MENU_HEADING_HEIGHT } from "./watchMenuLayout"
 import { WatchOptionRow } from "./WatchOptionRow"
 import { watchMenuStyles } from "./watchMenuStyles"
@@ -23,9 +24,15 @@ import type { InPlayerMenuSection } from "./useSessionPlayback"
 export function InPlayerMenu({
   section,
   onClose,
+  getCurrentTime,
+  onSeekTo,
 }: {
   section: InPlayerMenuSection
   onClose: () => void
+  /** Playhead read for the moments section — panel-open lifetime, passive. */
+  getCurrentTime: () => number
+  /** Jump-to-scene seek, via the host's guarded seek path. */
+  onSeekTo: (seconds: number) => void
 }) {
   const {
     video,
@@ -74,7 +81,10 @@ export function InPlayerMenu({
         trapFocusRight
         style={watchMenuStyles.panel}
       >
-        {section === "language" ? (
+        {section === "moments" ? (
+          // ── Moments: "this moment" + scenes + questions (X-Ray cousin) ──
+          <MomentsPanel getCurrentTime={getCurrentTime} onSeekTo={onSeekTo} />
+        ) : section === "language" ? (
           // ── Language: virtualized dub list (opens AT the active dub) ────
           <FlatList
             ref={listRef}
