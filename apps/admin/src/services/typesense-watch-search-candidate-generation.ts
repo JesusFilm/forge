@@ -758,6 +758,9 @@ export class TypesenseWatchSearchCandidateGenerationService {
       generation.transcriptProjectionRevision !==
         input.transcriptProjectionRevision
     ) {
+      console.warn(
+        `[watch-search-candidate] event=candidate_transcript_identity_mismatch generation_id=${generation.id} stored_collection=${generation.transcriptCollection} requested_collection=${input.transcriptCollection} stored_revision=${generation.transcriptProjectionRevision.toString()} requested_revision=${String(input.transcriptProjectionRevision)} requested_revision_type=${typeof input.transcriptProjectionRevision}`,
+      )
       await this.prisma.watchSearchCandidateGeneration.updateMany({
         where: {
           id: generation.id,

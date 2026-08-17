@@ -103,6 +103,73 @@ export const watchSearchTranscriptProjectionRevisionEnvSchema = z.coerce
   .nonnegative()
   .optional()
 
+type WatchSearchRuntimeEnvInput = Readonly<{
+  defaultShadowEnabled: unknown
+  fleetPrimaryEnabled: unknown
+  candidateComparisonEnabled: unknown
+  transcriptProjectionRevision: unknown
+}>
+
+type WatchSearchRuntimeEnv = Readonly<{
+  defaultShadowEnabled: boolean
+  fleetPrimaryEnabled: boolean
+  candidateComparisonEnabled: boolean
+  transcriptProjectionRevision: bigint | undefined
+}>
+
+let cachedWatchSearchRuntimeEnv: WatchSearchRuntimeEnv | undefined
+
+function runtimeWatchSearchFlag(
+  value: unknown,
+  schema: z.ZodType<boolean>,
+): boolean {
+  return z.boolean().or(schema).catch(schema.parse(undefined)).parse(value)
+}
+
+function normalizeWatchSearchRuntimeEnv(
+  source: WatchSearchRuntimeEnvInput,
+): WatchSearchRuntimeEnv {
+  return Object.freeze({
+    defaultShadowEnabled: runtimeWatchSearchFlag(
+      source.defaultShadowEnabled,
+      watchSearchDefaultShadowEnabledEnvSchema,
+    ),
+    fleetPrimaryEnabled: runtimeWatchSearchFlag(
+      source.fleetPrimaryEnabled,
+      watchSearchFleetPrimaryEnabledEnvSchema,
+    ),
+    candidateComparisonEnabled: runtimeWatchSearchFlag(
+      source.candidateComparisonEnabled,
+      watchSearchCandidateComparisonEnabledEnvSchema,
+    ),
+    transcriptProjectionRevision:
+      watchSearchTranscriptProjectionRevisionEnvSchema
+        .catch(undefined)
+        .parse(source.transcriptProjectionRevision),
+  })
+}
+
+/**
+ * `createEnv` deliberately skips transforms while CI builds. Normalize the
+ * search controls again at runtime so Railway's raw strings cannot become
+ * truthy booleans or fail bigint identity checks.
+ */
+export function resolveWatchSearchRuntimeEnv(
+  input?: WatchSearchRuntimeEnvInput,
+): WatchSearchRuntimeEnv {
+  if (input) return normalizeWatchSearchRuntimeEnv(input)
+  if (cachedWatchSearchRuntimeEnv) return cachedWatchSearchRuntimeEnv
+
+  cachedWatchSearchRuntimeEnv = normalizeWatchSearchRuntimeEnv({
+    defaultShadowEnabled: env.WATCH_SEARCH_DEFAULT_SHADOW_ENABLED,
+    fleetPrimaryEnabled: env.WATCH_SEARCH_FLEET_PRIMARY_ENABLED,
+    candidateComparisonEnabled: env.WATCH_SEARCH_CANDIDATE_COMPARISON_ENABLED,
+    transcriptProjectionRevision:
+      env.WATCH_SEARCH_TRANSCRIPT_PROJECTION_REVISION,
+  })
+  return cachedWatchSearchRuntimeEnv
+}
+
 /**
  * Shared schema fragment for env vars representing a positive-int
  * concurrency cap (e.g. `TRANSCRIPT_EMBEDDING_CONCURRENCY`). Exported so

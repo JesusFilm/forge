@@ -1,7 +1,7 @@
 // Minimal smoke test confirming vitest + tsconfig + alias wiring.
 // Later units extend this with env-validation behavior tests.
 
-import { describe, expect, it } from "vitest"
+import { describe, expect, it, vi } from "vitest"
 import {
   assertBearerCsvsDisjoint,
   assertTypesenseCredentialsDisjoint,
@@ -13,6 +13,7 @@ import {
   fleetSearchCeilingEnforceEnvSchema,
   fleetSearchGlobalCeilingPerMinEnvSchema,
   searchTraceRawRetentionDaysEnvSchema,
+  resolveWatchSearchRuntimeEnv,
   watchSearchDefaultShadowEnabledEnvSchema,
   watchSearchFleetPrimaryEnabledEnvSchema,
   watchSearchPrimaryModeEnvSchema,
@@ -35,6 +36,76 @@ describe("env", () => {
   })
 
   describe("Watch search Web routing", () => {
+    it("normalizes and caches the production resolver path under CI", async () => {
+      vi.resetModules()
+      vi.stubEnv("CI", "true")
+      vi.stubEnv("WATCH_SEARCH_DEFAULT_SHADOW_ENABLED", "false")
+      vi.stubEnv("WATCH_SEARCH_FLEET_PRIMARY_ENABLED", "true")
+      vi.stubEnv("WATCH_SEARCH_CANDIDATE_COMPARISON_ENABLED", "false")
+      vi.stubEnv("WATCH_SEARCH_TRANSCRIPT_PROJECTION_REVISION", "1")
+
+      try {
+        const runtimeConfig = await import("@/config/env")
+        const first = runtimeConfig.resolveWatchSearchRuntimeEnv()
+
+        expect(first).toEqual({
+          defaultShadowEnabled: false,
+          fleetPrimaryEnabled: true,
+          candidateComparisonEnabled: false,
+          transcriptProjectionRevision: 1n,
+        })
+        expect(runtimeConfig.resolveWatchSearchRuntimeEnv()).toBe(first)
+      } finally {
+        vi.unstubAllEnvs()
+        vi.resetModules()
+      }
+    })
+
+    it("normalizes raw CI runtime values before search safety checks", () => {
+      expect(
+        resolveWatchSearchRuntimeEnv({
+          defaultShadowEnabled: "true",
+          fleetPrimaryEnabled: "false",
+          candidateComparisonEnabled: "false",
+          transcriptProjectionRevision: "1",
+        }),
+      ).toEqual({
+        defaultShadowEnabled: true,
+        fleetPrimaryEnabled: false,
+        candidateComparisonEnabled: false,
+        transcriptProjectionRevision: 1n,
+      })
+    })
+
+    it("preserves validated values and fails invalid raw controls closed", () => {
+      expect(
+        resolveWatchSearchRuntimeEnv({
+          defaultShadowEnabled: false,
+          fleetPrimaryEnabled: true,
+          candidateComparisonEnabled: true,
+          transcriptProjectionRevision: 2n,
+        }),
+      ).toMatchObject({
+        defaultShadowEnabled: false,
+        fleetPrimaryEnabled: true,
+        candidateComparisonEnabled: true,
+        transcriptProjectionRevision: 2n,
+      })
+      expect(
+        resolveWatchSearchRuntimeEnv({
+          defaultShadowEnabled: "invalid",
+          fleetPrimaryEnabled: "invalid",
+          candidateComparisonEnabled: "invalid",
+          transcriptProjectionRevision: "invalid",
+        }),
+      ).toEqual({
+        defaultShadowEnabled: true,
+        fleetPrimaryEnabled: false,
+        candidateComparisonEnabled: false,
+        transcriptProjectionRevision: undefined,
+      })
+    })
+
     it("defaults canonical browser traffic to MODERN with DEFAULT shadow enabled", () => {
       expect(watchSearchPrimaryModeEnvSchema.parse(undefined)).toBe("MODERN")
       expect(watchSearchDefaultShadowEnabledEnvSchema.parse(undefined)).toBe(

@@ -16,7 +16,13 @@ const mockEnv = vi.hoisted(() => ({
   WATCH_SEARCH_CANDIDATE_COMPARISON_ENABLED: true,
 }))
 
-vi.mock("@/config/env", () => ({ env: mockEnv }))
+vi.mock("@/config/env", () => ({
+  env: mockEnv,
+  resolveWatchSearchRuntimeEnv: () => ({
+    candidateComparisonEnabled:
+      mockEnv.WATCH_SEARCH_CANDIDATE_COMPARISON_ENABLED,
+  }),
+}))
 vi.mock("@/auth/session", () => ({ requireAdminSession }))
 vi.mock("@/db/client", () => ({ prisma: { user: { findUnique } } }))
 vi.mock("next/navigation", () => ({ redirect }))
