@@ -98,6 +98,39 @@ describe("createProgressRecorder", () => {
     })
   })
 
+  // Falsification: `positionSeconds: 41` (not the duration) goes red if a new
+  // trigger is folded into the completed-range branch that only "end" takes.
+  it("dismiss and replace force a drain at the latest position, not the duration", () => {
+    for (const trigger of ["dismiss", "replace"] as const) {
+      const { deps, buffered, drains } = buildDeps()
+      const recorder = createProgressRecorder({ videoId: "video-1" }, deps)
+
+      recorder.onTick(41, 100)
+      recorder.flush(trigger)
+
+      expect(drains.at(-1)).toEqual({ forced: true })
+      expect(buffered.at(-1)).toMatchObject({
+        positionSeconds: 41,
+        durationSeconds: 100,
+      })
+    }
+  })
+
+  it("a signed-out dismiss writes nothing and arms the sign-in prompt (R10)", () => {
+    const onSignedOutStop = jest.fn()
+    const { deps, buffered } = buildDeps({
+      getAccountId: () => null,
+      onSignedOutStop,
+    })
+    const recorder = createProgressRecorder({ videoId: "video-1" }, deps)
+
+    recorder.onTick(41, 100)
+    recorder.flush("dismiss")
+
+    expect(buffered).toEqual([])
+    expect(onSignedOutStop).toHaveBeenCalledWith(41)
+  })
+
   it("a slug-only identity records a slug-keyed intent with its timestamp", () => {
     // Downloaded playback has no admin video id on device (KTD8), so the
     // slug is the key admin resolves server-side. It takes the same path as

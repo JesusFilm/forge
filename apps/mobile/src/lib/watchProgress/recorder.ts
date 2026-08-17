@@ -24,7 +24,16 @@ export type ProgressIdentity = {
   languageSlug?: string | null
 }
 
-export type FlushTrigger = "pause" | "background" | "unmount" | "end"
+// "dismiss" and "replace" split what "unmount" conflated: a viewer closing the
+// player and new content taking the player over are different endings, and
+// progress attribution needs them apart (R16).
+export type FlushTrigger =
+  | "pause"
+  | "background"
+  | "unmount"
+  | "end"
+  | "dismiss"
+  | "replace"
 
 export type RecorderDeps = {
   getAccountId: () => string | null
@@ -101,9 +110,9 @@ export function createProgressRecorder(
     },
 
     /**
-     * Forced write: pause, background, unmount, and playback end each
-     * record the latest observed position immediately (KTD5). Playback end
-     * records the completed range (position = duration).
+     * Forced write: every trigger records the latest observed position
+     * immediately (KTD5). Playback end is the one exception — it records the
+     * completed range (position = duration).
      */
     flush(trigger: FlushTrigger) {
       if (!identity || lastObserved == null) return
