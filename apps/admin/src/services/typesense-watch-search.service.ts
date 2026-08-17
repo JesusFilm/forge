@@ -242,6 +242,21 @@ type Candidate = {
   startSeconds: number | null
 }
 
+function candidateCardSnippet(
+  candidate: Candidate,
+  localizedDescription: string | null,
+  allowedLanguageSlugs: ReadonlySet<string>,
+): string | null {
+  if (
+    candidate.snippet == null ||
+    candidate.evidenceLanguageSlug == null ||
+    !allowedLanguageSlugs.has(candidate.evidenceLanguageSlug)
+  ) {
+    return localizedDescription
+  }
+  return candidate.snippet
+}
+
 type CandidateHydrationScope = Pick<
   Candidate,
   "videoId" | "videoEditionId" | "kind"
@@ -1394,6 +1409,17 @@ export class TypesenseWatchSearchService {
       }),
     )
 
+    const candidateCardLanguageSlugs =
+      this.profile.kind === "CANDIDATE"
+        ? new Set(
+            [
+              languageInterpretation.displayLanguageSlug ??
+                languageInterpretation.routeLanguageSlug,
+              languageInterpretation.targetLanguageSlug,
+            ].filter((slug): slug is string => slug != null),
+          )
+        : null
+
     const page = pageCandidates.flatMap(({ candidate }) => {
       const hydrated = hydratedById.get(candidate.videoId)
       if (!hydrated) return []
@@ -1406,7 +1432,14 @@ export class TypesenseWatchSearchService {
         slug: document.slug,
         title: locale.title,
         description: locale.description,
-        snippet: candidate.snippet ?? locale.description,
+        snippet:
+          candidateCardLanguageSlugs != null
+            ? candidateCardSnippet(
+                candidate,
+                locale.description,
+                candidateCardLanguageSlugs,
+              )
+            : (candidate.snippet ?? locale.description),
         imageUrl: document.imageUrl,
         imageBlurDataUrl: document.imageBlurDataUrl,
         muxThumbnailBlurDataUrl: null,
