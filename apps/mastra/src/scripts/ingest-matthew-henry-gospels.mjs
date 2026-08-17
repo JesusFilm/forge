@@ -8,9 +8,22 @@
  *
  * Granularity: ONE entry per chapter (commentary flows as paragraphs within a
  * chapter with no sub-verse divs). The pipeline pulls the chapter for a clip's
- * passage and the reflection step excerpts the relevant verses. Output:
- * devo/corpus/matthew-henry-gospels.json — { id, book, chapter, reference,
- * osisRef, text, source }. Committed so it ships wherever the app runs.
+ * passage and the reflection step excerpts the relevant verses.
+ *
+ * Output: one file per book under
+ * apps/mastra/devotional-workspace/inputs/reflections/matthew-henry-<book>.json.
+ * Split by book deliberately: a single combined file is ~4.2 MB, larger than
+ * anything else committed in this repo and close enough to the Workspace's
+ * 8 MB per-text-file inventory limit to be worth avoiding. Every filename keeps
+ * "henry" because `addReflection` (`workspace/attempt-data.ts`) routes by the
+ * source path, and reconcile concatenates all reflection files anyway.
+ *
+ * The document shape is exactly ReflectionEntriesSchema
+ * (`reflection-corpus.ts`): top-level `{ entries }`, per-entry keys only from
+ * { source, reference, osisRef, text, verse, book, chapter }. Both are
+ * `.strict()` and the Workspace validates every reflections file on reconcile,
+ * so an extra key makes the corpus ineligible. Provenance goes to stdout;
+ * licence and source URL are recorded in that folder's README.
  *
  *   node apps/mastra/src/scripts/ingest-matthew-henry-gospels.mjs [--file=/tmp/mhc5.xml]
  */
@@ -21,7 +34,11 @@ import { fileURLToPath } from "node:url"
 const HERE = path.dirname(fileURLToPath(import.meta.url))
 const REPO_ROOT = path.resolve(HERE, "../../../..")
 const SOURCE_URL = "https://ccel.org/ccel/henry/mhc5.xml"
-const OUT = path.join(REPO_ROOT, "devo/corpus/matthew-henry-gospels.json")
+const OUT_DIR = path.join(
+  REPO_ROOT,
+  "apps/mastra/devotional-workspace/inputs/reflections",
+)
+const SOURCE_LABEL = "Matthew Henry, Commentary on the Whole Bible"
 const BOOKS = ["Matthew", "Mark", "Luke", "John"]
 const TARGET = new Set(["Mark", "Luke", "John"]) // Matthew → Ryle
 
@@ -95,41 +112,36 @@ async function main() {
         .join("\n\n")
       if (!chapter || !text) continue
       entries.push({
-        id: `${book}.${chapter}`,
         book,
         chapter,
         reference: `${book} ${chapter}`,
         osisRef: `${book}.${chapter}`,
         text,
-        source: "Matthew Henry, Commentary on the Whole Bible",
+        source: SOURCE_LABEL,
       })
     }
   }
 
-  const corpus = {
-    source:
-      "Matthew Henry, Commentary on the Whole Bible (Gospels: Mark, Luke, John)",
-    sourceUrl: SOURCE_URL,
-    license: "public-domain",
-    ingestedFrom: "CCEL ThML",
-    count: entries.length,
-    entries,
+  await mkdir(OUT_DIR, { recursive: true })
+  for (const book of BOOKS) {
+    if (!TARGET.has(book)) continue
+    const bookEntries = entries.filter((e) => e.book === book)
+    if (bookEntries.length === 0) continue
+    const out = path.join(OUT_DIR, `matthew-henry-${book.toLowerCase()}.json`)
+    await writeFile(
+      out,
+      JSON.stringify({ entries: bookEntries }, null, 2) + "\n",
+      "utf8",
+    )
+    const avg = Math.round(
+      bookEntries.reduce((s, e) => s + e.text.length, 0) / bookEntries.length,
+    )
+    console.log(
+      `✅ ${bookEntries.length} chapters → ${path.relative(REPO_ROOT, out)} · avg ${avg} chars`,
+    )
   }
-  await mkdir(path.dirname(OUT), { recursive: true })
-  await writeFile(OUT, JSON.stringify(corpus, null, 2) + "\n", "utf8")
-
-  const byBook = {}
-  for (const e of entries) byBook[e.book] = (byBook[e.book] || 0) + 1
-  const avg = Math.round(
-    entries.reduce((s, e) => s + e.text.length, 0) / (entries.length || 1),
-  )
   console.log(
-    `✅ ${entries.length} chapters → ${path.relative(REPO_ROOT, OUT)}`,
-  )
-  console.log(
-    `   ${Object.entries(byBook)
-      .map(([b, n]) => `${b}:${n}`)
-      .join("  ")} · avg ${avg} chars`,
+    `   provenance: ${SOURCE_LABEL} · public domain · CCEL ThML · ${SOURCE_URL}`,
   )
 }
 
