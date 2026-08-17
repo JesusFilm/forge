@@ -10,7 +10,6 @@ import {
   StyleSheet,
   Text,
   View,
-  // @ts-expect-error useTVEventHandler is provided by react-native-tvos but not in the base RN types CI type-checks against.
   useTVEventHandler,
 } from "react-native"
 import type { View as ViewType } from "react-native"
