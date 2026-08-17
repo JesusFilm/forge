@@ -72,7 +72,11 @@ jest.mock("expo-router", () => ({
     back: jest.fn(),
     canGoBack: () => true,
     replace: jest.fn(),
+    push: jest.fn(),
   }),
+  // A route none of the presentation tables name, so a published session
+  // floats. U7's own suite owns the window's behaviour there.
+  useSegments: () => [],
 }))
 jest.mock("@expo/vector-icons/Ionicons", () => ({
   __esModule: true,
@@ -322,9 +326,10 @@ describe("the hoisted player drives the full view", () => {
     await startPlayback()
     expect(hasVeil(renderer)).toBe(false)
 
-    // Back: the surface goes, the player does not.
+    // Back: the screen goes, the player does not. Since U7 the one view goes
+    // with it into the floating window, so it is still exactly one.
     await detach(first)
-    expect(videoViews(renderer)).toHaveLength(0)
+    expect(videoViews(renderer)).toHaveLength(1)
     expect(video.__player.playing).toBe(true)
 
     // Expand: the same video takes a fresh surface.

@@ -95,7 +95,12 @@ jest.mock("expo-router", () => ({
     back: jest.fn(),
     canGoBack: () => true,
     replace: jest.fn(),
+    push: jest.fn(),
   }),
+  // The host derives the mini player's presentation from route state (U7). No
+  // pattern here, so a published session floats, which is what the adapter's
+  // session boundaries are characterized against.
+  useSegments: () => [],
 }))
 jest.mock("@expo/vector-icons/Ionicons", () => ({
   __esModule: true,

@@ -1,36 +1,152 @@
 /**
- * The root playback host (U6, KTD1/KTD17). It owns the app's ONE player and
- * its ONE video view, mounted above the stack and absolutely positioned at the
- * rect the current surface measured for it.
+ * The root playback host (U6, KTD17). It owns the app's ONE player and its ONE
+ * video view, mounted above the stack and absolutely positioned at the rect the
+ * current surface measured for it — or, once no surface owns it, at the
+ * floating window's corner (U7).
  *
  * The chrome rides in this layer too, not in the route. The host paints above
  * the stack by construction (KTD1), and the screens behind it are opaque
  * (`layout.screenContainer` in `src/styles/shared.ts`, plus the Stack's own
  * `contentStyle`), so a video view under the stack would be hidden and a video
  * view over it would cover the controls. One frame holding both preserves the
- * exact layering the component had before the hoist, and leaves U7 the bare
- * video view KTD17 asks for.
+ * exact layering the component had before the hoist.
+ *
+ * The video view keeps ONE position in this tree in every state (KTD17): the
+ * full view and the window differ only in the frame's geometry and in which
+ * chrome renders beside it. Moving it would remount the surface, which is the
+ * black flash R1 forbids.
  */
 
-import { useEffect, useMemo, useRef, useSyncExternalStore } from "react"
-import { Platform, StyleSheet, View } from "react-native"
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react"
+import {
+  Animated,
+  BackHandler,
+  Platform,
+  StyleSheet,
+  View,
+  useWindowDimensions,
+} from "react-native"
+import { useRouter, useSegments } from "expo-router"
 import { VideoView, type VideoPlayerStatus } from "expo-video"
+import { useSafeAreaInsets } from "react-native-safe-area-context"
 
 import { useManagedVideoPlayer } from "../../hooks/useManagedVideoPlayer"
 import { getAuthSession } from "../../lib/authSession"
 import { BLACK } from "../../lib/color"
 import {
+  DEFAULT_CORNER,
+  defaultCornerFrame,
+  miniPlayerCornerFrame,
+  type MiniPlayerCorner,
+  type MiniPlayerLayoutConfig,
+} from "../../lib/miniPlayer/layout"
+import {
   getPlaybackRequestStore,
+  type PlaybackRect,
   type PlaybackRequest,
   type PlaybackRequestSnapshot,
 } from "../../lib/miniPlayer/playbackRequest"
-import { getMiniPlayerStore } from "../../lib/miniPlayer/store"
+import {
+  isTabRootRoute,
+  miniPlayerPresentation,
+} from "../../lib/miniPlayer/presentation"
+import {
+  getMiniPlayerStore,
+  type MiniPlayerSession,
+} from "../../lib/miniPlayer/store"
+import {
+  getNonRouteSheetCounter,
+  routePattern,
+} from "../../lib/miniPlayer/suppression"
 import { BACK_BUTTON_PROPS } from "../../lib/playerLayout"
 import type { ProgressIdentity } from "../../lib/watchProgress/recorder"
 import { FloatingBackButton } from "../ui/FloatingBackButton"
+import { MiniPlayerWindow } from "./MiniPlayerWindow"
 import { VideoPlayer } from "./VideoPlayer"
 
+/** KTD17's shrink: fixed duration, started when the pop commits. */
+export const SHRINK_DURATION_MS = 260
+
+/** R6's downward exit. */
+export const EXIT_DURATION_MS = 220
+
+/** Past the bottom edge, so the last frame of the exit is off screen. */
+const EXIT_CLEARANCE = 24
+
+/** The chrome gate's unconditional release — an interrupted shrink must never
+ *  leave a window with no controls and no way out. */
+const CHROME_RELEASE_SLACK_MS = 250
+
+/** Live chrome the window may not cover (R7), read from `app/_layout.tsx` and
+ *  `app/(tabs)/_layout.tsx`. Both exclude the safe-area inset, which the corner
+ *  geometry already subtracts. */
+const TAB_BAR_CONTENT_HEIGHT = Platform.select({
+  ios: 49,
+  android: 56,
+  default: 49,
+})
+const NATIVE_HEADER_HEIGHT = Platform.select({
+  ios: 44,
+  android: 56,
+  default: 44,
+})
+
+/** The two routes `app/_layout.tsx` gives a native header. */
+const HEADER_ROUTE_PATTERNS: ReadonlySet<string> = new Set([
+  "video/[sectionKey]",
+  "collection/[sectionKey]",
+])
+
+/**
+ * The router bridge. Everything below it is router-free so the window's target
+ * and its back answer are injected rather than imported (KTD11, KTD4).
+ */
 export function PlaybackHost() {
+  const segments = useSegments()
+  const router = useRouter()
+
+  const canGoBack = useCallback(() => {
+    try {
+      return router.canGoBack()
+    } catch {
+      return false
+    }
+  }, [router])
+
+  const onExpand = useCallback(
+    (session: MiniPlayerSession) => {
+      router.push(`/watch/${encodeURIComponent(session.videoSlug)}` as never)
+    },
+    [router],
+  )
+
+  return (
+    <PlaybackHostView
+      segments={segments}
+      canGoBack={canGoBack}
+      onExpand={onExpand}
+    />
+  )
+}
+
+export type PlaybackHostViewProps = {
+  segments: readonly string[]
+  canGoBack: () => boolean
+  onExpand: (session: MiniPlayerSession) => void
+}
+
+export function PlaybackHostView({
+  segments,
+  canGoBack,
+  onExpand,
+}: PlaybackHostViewProps) {
   const store = getPlaybackRequestStore()
   const snapshot = useSyncExternalStore(store.subscribe, store.getSnapshot)
 
@@ -43,17 +159,33 @@ export function PlaybackHost() {
   // cost) until a surface asks for one, and releasing it is how a dismissed
   // session gives the decoder back.
   if (snapshot.request == null) return null
-  return <ActivePlaybackHost snapshot={snapshot} request={snapshot.request} />
+  return (
+    <ActivePlaybackHost
+      snapshot={snapshot}
+      request={snapshot.request}
+      segments={segments}
+      canGoBack={canGoBack}
+      onExpand={onExpand}
+    />
+  )
 }
 
 function ActivePlaybackHost({
   snapshot,
   request,
+  segments,
+  canGoBack,
+  onExpand,
 }: {
   snapshot: PlaybackRequestSnapshot
   request: PlaybackRequest
+  segments: readonly string[]
+  canGoBack: () => boolean
+  onExpand: (session: MiniPlayerSession) => void
 }) {
   const store = getPlaybackRequestStore()
+  const sessionStore = getMiniPlayerStore()
+  const sheetCounter = getNonRouteSheetCounter()
   const progressIdentity = useMemo<ProgressIdentity | null>(() => {
     if (request.progressVideoId != null)
       return {
@@ -85,6 +217,23 @@ function ActivePlaybackHost({
     },
     { progress: progressIdentity, ownsSession: true },
   )
+
+  const sessionSnapshot = useSyncExternalStore(
+    sessionStore.subscribe,
+    sessionStore.getSnapshot,
+  )
+  const openSheetCount = useSyncExternalStore(
+    sheetCounter.subscribe,
+    sheetCounter.count,
+  )
+  const presentation = miniPlayerPresentation(
+    sessionSnapshot,
+    segments,
+    openSheetCount,
+  )
+  const session = sessionSnapshot.session
+  const hasSession = session != null
+  const rect = snapshot.rect
 
   // Admission's first half (R1): has THIS video played at all. Reset per video,
   // because a window for a video that never started is AE10's regression.
@@ -130,12 +279,12 @@ function ActivePlaybackHost({
     return () => store.setPlaybackFactsSource(null)
   }, [store, player])
 
-  // R25: a change of signed-in subject stops playback. The store reports that
-  // ending as "abandoned" and emits it from no other path, and the pause is not
-  // covered by the teardown — an expanded screen keeps this host mounted.
+  // R25 stops playback on a subject change, R6 on a dismissal. Neither is
+  // covered by the teardown — an expanded screen keeps this host mounted, and a
+  // dismissed window is exactly the case where nothing unmounts.
   useEffect(() => {
     return getMiniPlayerStore().onEnd((event) => {
-      if (event.reason !== "abandoned") return
+      if (event.reason !== "abandoned" && event.reason !== "dismissed") return
       try {
         player.pause()
       } catch {
@@ -196,55 +345,313 @@ function ActivePlaybackHost({
     store.setLoadFailed(current === "error")
   }, [store, player, request.streamingUrl])
 
-  const rect = snapshot.rect
-  // Detached: the surface that was drawing this video is gone. U7 gives the
-  // view the corner frame here; until then the player keeps running with no
-  // view, which is audio-only rather than a released decoder.
-  if (rect == null) return null
+  // ── The floating window (U7) ──────────────────────────────────────────────
+
+  const { width: screenWidth, height: screenHeight } = useWindowDimensions()
+  const insets = useSafeAreaInsets()
+  const pattern = routePattern(segments)
+  const atTabRoot = isTabRootRoute(segments)
+  const underHeader = HEADER_ROUTE_PATTERNS.has(pattern)
+  const layoutConfig = useMemo<MiniPlayerLayoutConfig>(
+    () => ({
+      screen: { width: screenWidth, height: screenHeight },
+      insets: {
+        top: insets.top,
+        right: insets.right,
+        bottom: insets.bottom,
+        left: insets.left,
+      },
+      chrome: {
+        top: underHeader ? NATIVE_HEADER_HEIGHT : 0,
+        bottom: atTabRoot ? TAB_BAR_CONTENT_HEIGHT : 0,
+      },
+    }),
+    [
+      screenWidth,
+      screenHeight,
+      insets.top,
+      insets.right,
+      insets.bottom,
+      insets.left,
+      underHeader,
+      atTabRoot,
+    ],
+  )
+  const windowFrame = useMemo(
+    () => defaultCornerFrame(layoutConfig),
+    [layoutConfig],
+  )
+
+  // KTD5: the drag writes THIS node and never takes the native driver; the
+  // shrink and the exit write the wrapper below it and always do.
+  const drag = useRef(new Animated.ValueXY({ x: 0, y: 0 })).current
+  const shrink = useRef(new Animated.Value(1)).current
+  const exitY = useRef(new Animated.Value(0)).current
+
+  const [corner, setCorner] = useState<MiniPlayerCorner>(DEFAULT_CORNER)
+  const cornerRef = useRef(corner)
+  cornerRef.current = corner
+  const [shrinkFrom, setShrinkFrom] = useState<PlaybackRect | null>(null)
+  const [chromeReady, setChromeReady] = useState(true)
+  const [surfaceReleased, setSurfaceReleased] = useState(false)
+  const lastRectRef = useRef<PlaybackRect | null>(null)
+  const chromeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    return () => {
+      if (chromeTimerRef.current != null) clearTimeout(chromeTimerRef.current)
+    }
+  }, [])
+
+  // One effect owns the drag node's resting offset, so a rotation, a handover
+  // and a shrink can never race each other over the same value.
+  useEffect(() => {
+    if (rect != null) {
+      lastRectRef.current = rect
+      drag.setValue({ x: 0, y: 0 })
+      return
+    }
+    const from = lastRectRef.current
+    lastRectRef.current = null
+    if (from == null || !hasSession) {
+      const target = miniPlayerCornerFrame(layoutConfig, cornerRef.current)
+      drag.setValue({
+        x: target.x - windowFrame.x,
+        y: target.y - windowFrame.y,
+      })
+      return
+    }
+    // A new window opens in the default corner, which is also what makes the
+    // shrink arithmetic exact: there is no drag offset to subtract.
+    setCorner(DEFAULT_CORNER)
+    drag.setValue({ x: 0, y: 0 })
+    setShrinkFrom(from)
+    setChromeReady(false)
+    shrink.setValue(0)
+    Animated.timing(shrink, {
+      toValue: 1,
+      duration: SHRINK_DURATION_MS,
+      useNativeDriver: true,
+    }).start(() => {
+      setShrinkFrom(null)
+      setChromeReady(true)
+    })
+    if (chromeTimerRef.current != null) clearTimeout(chromeTimerRef.current)
+    chromeTimerRef.current = setTimeout(
+      () => setChromeReady(true),
+      SHRINK_DURATION_MS + CHROME_RELEASE_SLACK_MS,
+    )
+  }, [rect, hasSession, layoutConfig, windowFrame, drag, shrink])
+
+  useEffect(() => {
+    if (presentation !== "exiting") return
+    const distance = screenHeight - windowFrame.y + EXIT_CLEARANCE
+    // Runs on completion whether or not it finished: an interrupted exit that
+    // never cleared the store would strand the window off screen forever.
+    Animated.timing(exitY, {
+      toValue: distance,
+      duration: EXIT_DURATION_MS,
+      useNativeDriver: true,
+    }).start(() => getMiniPlayerStore().reportExitComplete())
+  }, [presentation, exitY, screenHeight, windowFrame])
+
+  // R21/R22 re-arm: a replay puts the surface back before anything else reads it.
+  const endedCause = session?.endedCause ?? null
+  useEffect(() => {
+    if (endedCause == null) setSurfaceReleased(false)
+  }, [endedCause])
+
+  // Read through a ref: these listeners are keyed on the player, and
+  // re-subscribing per navigation would rebuild them mid-swap.
+  const floatingRef = useRef(false)
+  floatingRef.current = rect == null && hasSession
+
+  useEffect(() => {
+    const sub = player.addListener("playToEnd", () => {
+      if (!floatingRef.current) return
+      getMiniPlayerStore().markEnded("playToEnd")
+    })
+    return () => sub.remove()
+  }, [player])
+
+  useEffect(() => {
+    if (!snapshot.loadFailed || rect != null || !hasSession) return
+    getMiniPlayerStore().markEnded("failure")
+  }, [snapshot.loadFailed, rect, hasSession])
+
+  // R23, KTD4's single deliberate exception. Armed only while a session is
+  // active, and claims the press only when the navigator cannot go back.
+  const canGoBackRef = useRef(canGoBack)
+  canGoBackRef.current = canGoBack
+  useEffect(() => {
+    if (!hasSession) return
+    // Registered on both platforms: iOS has no hardware back and RN's handler
+    // is inert there, so the arming rule stays in one place.
+    const subscription = BackHandler.addEventListener(
+      "hardwareBackPress",
+      () => {
+        if (canGoBackRef.current()) return false
+        getMiniPlayerStore().requestDismiss()
+        return true
+      },
+    )
+    return () => subscription.remove()
+  }, [hasSession])
+
+  const handlePlayPause = useCallback(() => {
+    try {
+      if (player.playing) player.pause()
+      else player.play()
+    } catch {
+      // Native player already released
+    }
+  }, [player])
+
+  const handleReplay = useCallback(() => {
+    try {
+      player.currentTime = 0
+      player.play()
+    } catch {
+      // Native player already released
+    }
+    getMiniPlayerStore().markPlaying()
+  }, [player])
+
+  const handleDismiss = useCallback(() => {
+    getMiniPlayerStore().requestDismiss()
+  }, [])
+
+  const handleExpand = useCallback(() => {
+    const current = getMiniPlayerStore().getSnapshot().session
+    if (current != null) onExpand(current)
+  }, [onExpand])
+
+  const showWindow =
+    hasSession && (presentation === "floating" || presentation === "exiting")
+  const suppressed = hasSession && presentation === "hidden"
+  const floating = rect == null && hasSession
+  const geometry = rect ?? windowFrame
+
+  // Both rects share the video's aspect ratio, so this is translate plus scale
+  // only (KTD17).
+  const shrinkStyle = useMemo(() => {
+    if (shrinkFrom == null) return null
+    const half = (r: PlaybackRect) => ({
+      x: r.x + r.width / 2,
+      y: r.y + r.height / 2,
+    })
+    const from = half(shrinkFrom)
+    const to = half(windowFrame)
+    const ramp = (a: number, b: number) =>
+      shrink.interpolate({ inputRange: [0, 1], outputRange: [a, b] })
+    return {
+      transform: [
+        { translateX: ramp(from.x - to.x, 0) },
+        { translateY: ramp(from.y - to.y, 0) },
+        { scale: ramp(shrinkFrom.width / windowFrame.width, 1) },
+      ],
+    }
+  }, [shrink, shrinkFrom, windowFrame])
+
+  // Detached with no session: the surface that was drawing this video is gone
+  // and no window is owed. The player keeps running with no view, which is
+  // audio-only rather than a released decoder.
+  if (rect == null && !hasSession) return null
 
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
-      <View
+      <Animated.View
+        testID="playback-frame"
         style={[
           styles.frame,
           {
-            left: rect.x,
-            top: rect.y,
-            width: rect.width,
-            height: rect.height,
+            left: geometry.x,
+            top: geometry.y,
+            width: geometry.width,
+            height: geometry.height,
           },
+          // The shrink draws the video larger than this box, so it cannot clip
+          // until the window has settled into its corner.
+          shrinkFrom != null && styles.unclipped,
+          floating && chromeReady && styles.rounded,
+          suppressed && styles.suppressed,
+          { transform: [{ translateX: drag.x }, { translateY: drag.y }] },
         ]}
-        pointerEvents="box-none"
+        // Invisible over a sheet, so it must not take that sheet's touches.
+        pointerEvents={suppressed ? "none" : "box-none"}
       >
-        <VideoView
-          player={player}
-          style={StyleSheet.absoluteFill}
-          nativeControls={false}
-          // iOS 16+ defaults this TRUE, which floats a Live Text "scan" button
-          // over a paused/ended frame that contains text — a system control we
-          // do not own, inside chrome we do.
-          allowsVideoFrameAnalysis={false}
-          contentFit="contain"
-          allowsPictureInPicture
-          // textureView composites in the RN view hierarchy on Android so the
-          // controls/captions overlay reliably renders above the video surface
-          // (SurfaceView otherwise punches through). No-op on iOS.
-          surfaceType={Platform.OS === "android" ? "textureView" : undefined}
-        />
+        <Animated.View
+          testID="playback-exit"
+          style={[
+            StyleSheet.absoluteFill,
+            { transform: [{ translateY: exitY }] },
+          ]}
+          pointerEvents="box-none"
+        >
+          <Animated.View
+            testID="playback-motion"
+            style={[StyleSheet.absoluteFill, shrinkStyle]}
+            pointerEvents="box-none"
+          >
+            {(rect != null || !surfaceReleased) && (
+              <VideoView
+                player={player}
+                style={StyleSheet.absoluteFill}
+                nativeControls={false}
+                // iOS 16+ defaults this TRUE, which floats a Live Text "scan"
+                // button over a paused/ended frame that contains text — a system
+                // control we do not own, inside chrome we do.
+                allowsVideoFrameAnalysis={false}
+                contentFit="contain"
+                allowsPictureInPicture
+                // textureView composites in the RN view hierarchy on Android so
+                // the controls/captions overlay reliably renders above the video
+                // surface (SurfaceView otherwise punches through). No-op on iOS.
+                surfaceType={
+                  Platform.OS === "android" ? "textureView" : undefined
+                }
+              />
+            )}
+          </Animated.View>
 
-        <VideoPlayer
-          player={player}
-          isPlaying={isPlaying}
-          loadFailed={snapshot.loadFailed}
-          streamingUrl={request.streamingUrl}
-          posterUrl={request.posterUrl}
-          subtitleVttSrc={request.subtitleVttSrc}
-          fullscreen={request.fullscreen}
-          onToggleFullscreen={request.onToggleFullscreen ?? undefined}
-          resumeAtSeconds={request.resumeAtSeconds}
-          autostart={request.autostart}
-        />
-      </View>
+          {rect != null && (
+            <VideoPlayer
+              player={player}
+              isPlaying={isPlaying}
+              loadFailed={snapshot.loadFailed}
+              streamingUrl={request.streamingUrl}
+              posterUrl={request.posterUrl}
+              subtitleVttSrc={request.subtitleVttSrc}
+              fullscreen={request.fullscreen}
+              onToggleFullscreen={request.onToggleFullscreen ?? undefined}
+              resumeAtSeconds={request.resumeAtSeconds}
+              autostart={request.autostart}
+            />
+          )}
+
+          {showWindow && session != null && (
+            <MiniPlayerWindow
+              frame={windowFrame}
+              layout={layoutConfig}
+              drag={drag}
+              corner={corner}
+              onCornerChange={setCorner}
+              title={session.title}
+              posterUrl={session.posterUrl}
+              positionSeconds={session.positionSeconds}
+              durationSeconds={session.durationSeconds}
+              isPlaying={isPlaying}
+              endedCause={session.endedCause}
+              ready={chromeReady}
+              onPlayPause={handlePlayPause}
+              onReplay={handleReplay}
+              onDismiss={handleDismiss}
+              onExpand={handleExpand}
+              onEndedFadeComplete={() => setSurfaceReleased(true)}
+            />
+          )}
+        </Animated.View>
+      </Animated.View>
 
       {/* The screen's back affordance sits OVER the player, so it moves up with
           the video — outside the frame, so its safe-area maths still resolves
@@ -261,5 +668,14 @@ const styles = StyleSheet.create({
     position: "absolute",
     backgroundColor: BLACK,
     overflow: "hidden",
+  },
+  unclipped: {
+    overflow: "visible",
+  },
+  rounded: {
+    borderRadius: 10,
+  },
+  suppressed: {
+    opacity: 0,
   },
 })

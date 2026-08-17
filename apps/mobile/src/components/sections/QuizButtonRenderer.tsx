@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import {
   ActivityIndicator,
   Modal,
@@ -15,6 +15,7 @@ import { LinearGradient } from "expo-linear-gradient"
 
 import { useTypography } from "../../hooks/useTypography"
 import { QUIZ_GRADIENT } from "../../lib/color"
+import { getNonRouteSheetCounter } from "../../lib/miniPlayer/suppression"
 import { layout, feedback } from "../../styles/shared"
 import type { AdminBlock } from "../../lib/queries"
 
@@ -117,6 +118,16 @@ export interface QuizButtonRendererProps {
 export function QuizButtonRenderer({ section }: QuizButtonRendererProps) {
   const typography = useTypography()
   const [modalVisible, setModalVisible] = useState(false)
+
+  // R11: this sheet is component state rather than a route, so the floating
+  // window cannot see it without being told. The cleanup releases it, which
+  // also covers navigating away with the quiz open.
+  useEffect(() => {
+    if (!modalVisible) return
+    const counter = getNonRouteSheetCounter()
+    counter.open("sduiQuiz")
+    return () => counter.close("sduiQuiz")
+  }, [modalVisible])
 
   const s = section as Record<string, unknown>
   const buttonText = s.buttonText as string | null
