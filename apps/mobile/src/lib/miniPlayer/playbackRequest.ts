@@ -190,6 +190,21 @@ export function createPlaybackRequestStore(deps: {
     return best
   }
 
+  /**
+   * The surface that would take the player back on a detach, for admission
+   * only. It must carry a session: a session-less surface beneath (the series
+   * trailer) is admissible only while no session exists, so counting it would
+   * swallow the window the departing video just earned (R1).
+   */
+  function successorSlotId(): number | null {
+    let best: number | null = null
+    for (const [id, slot] of slots) {
+      if (slot.request.session == null) continue
+      if (best == null || id > best) best = id
+    }
+    return best
+  }
+
   function build(): PlaybackRequestSnapshot {
     const id = currentSlotId()
     if (id != null) {
@@ -306,10 +321,9 @@ export function createPlaybackRequestStore(deps: {
       const wasCurrent = currentSlotId() === id
       slots.delete(id)
       if (wasCurrent) {
-        // Another mounted surface is waiting to take the player back (a stacked
-        // watch screen). No window is owed there — the screen beneath resumes,
-        // exactly as it does today.
-        const successor = currentSlotId()
+        // A stacked watch screen is waiting to take the player back. No window
+        // is owed there — the screen beneath resumes, exactly as it does today.
+        const successor = successorSlotId()
         if (
           successor == null &&
           shouldOriginateSession({

@@ -366,6 +366,51 @@ describe("admission on detach", () => {
     })
   })
 
+  it("publishes a session when the surface beneath cannot originate one", () => {
+    // The series page's trailer sits beneath the episode the viewer opened. It
+    // is admissible only because no session exists YET, so counting it as a
+    // successor would swallow the window the episode just earned (R1).
+    const { store, sessionStore } = makeStores({
+      started: true,
+      position: 42,
+      duration: 600,
+    })
+    const trailer = store.attachSlot(
+      makeRequest({ session: null, streamingUrl: "https://trailer.m3u8" }),
+    )
+    const watch = store.attachSlot(makeRequest())
+
+    store.detachSlot(watch)
+
+    expect(sessionStore.getSnapshot().session?.videoId).toBe("video-a")
+    // And the trailer is refused the moment that session exists, so the window
+    // keeps the player rather than handing it straight back.
+    expect(store.getSnapshot().slotId).toBeNull()
+    expect(store.getSnapshot().request?.streamingUrl).toContain("assetAAA111")
+    expect(trailer).toBeLessThan(watch)
+  })
+
+  it("hands the player to the trailer beneath only once the session has exited", () => {
+    const { store, sessionStore } = makeStores({
+      started: true,
+      position: 42,
+      duration: 600,
+    })
+    const trailer = store.attachSlot(
+      makeRequest({ session: null, streamingUrl: "https://trailer.m3u8" }),
+    )
+    store.detachSlot(store.attachSlot(makeRequest()))
+    expect(store.getSnapshot().slotId).toBeNull()
+
+    sessionStore.requestDismiss()
+    sessionStore.reportExitComplete()
+
+    expect(store.getSnapshot().slotId).toBe(trailer)
+    expect(store.getSnapshot().request?.streamingUrl).toBe(
+      "https://trailer.m3u8",
+    )
+  })
+
   it("publishes no session when another surface is waiting to take the player back", () => {
     const { store, sessionStore } = makeStores({
       started: true,
