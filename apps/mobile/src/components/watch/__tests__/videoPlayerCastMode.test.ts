@@ -56,11 +56,56 @@ describe("cast remote mode (U4)", () => {
   it("resumes local playback when a connect never goes active", () => {
     // Connecting -> failed (snackbar says playback continues) and
     // Connecting -> idle (dialog cancel) both hand back a paused player.
-    const edge = at('if (previous !== "connecting"')
-    const body = SOURCE.slice(edge, at("}, [castPhase, player])", edge))
-    expect(body).toContain('castPhase === "active"')
-    expect(body).toContain("if (!wasPlayingBeforeCastRef.current) return")
+    const edge = at("const prevCastPhaseRef")
+    const body = SOURCE.slice(
+      edge,
+      at("}, [castPhase, player, autostart])", edge),
+    )
+    expect(body).toContain('if (previous !== "connecting") return')
+    expect(body).toContain("if (isRemoteCastPhase(castPhase)) return")
+    expect(body).toContain("if (wasPlayingBeforeCastRef.current) {")
     expect(body).toContain("player.play()")
+  })
+
+  it("burns the pre-session capture once the session goes active", () => {
+    // A later in-session reconnect (active -> connecting -> failed) must not
+    // consume the ORIGINAL session's flag and resume at the pre-session
+    // position; after the burn a dead reconnect leaves a paused player.
+    const edge = at("const prevCastPhaseRef")
+    const body = SOURCE.slice(
+      edge,
+      at('if (previous !== "connecting") return', edge),
+    )
+    expect(body).toContain('if (castPhase === "active")')
+    expect(body).toContain("wasPlayingBeforeCastRef.current = false")
+  })
+
+  it("foreground-gates the connect-abort resume", () => {
+    // Mirrors applyPlay: never start audio the viewer cannot see.
+    const branch = at("if (wasPlayingBeforeCastRef.current) {")
+    const body = SOURCE.slice(
+      branch,
+      at("}, [castPhase, player, autostart])", branch),
+    )
+    const gate = body.indexOf('if (AppState.currentState !== "active") return')
+    const play = body.indexOf("player.play()")
+    expect(gate).toBeGreaterThan(-1)
+    expect(play).toBeGreaterThan(gate)
+  })
+
+  it("re-attempts a suppressed autostart when the connect aborts (veil cast)", () => {
+    // The viewer cast before local playback ever started; without the retry
+    // a cancelled/failed connect strands a paused player behind the poster.
+    const branch = at("if (wasPlayingBeforeCastRef.current) {")
+    const body = SOURCE.slice(
+      branch,
+      at("}, [castPhase, player, autostart])", branch),
+    )
+    expect(body).toContain("autostart &&")
+    expect(body).toContain("!autoPlayedRef.current")
+    expect(body).toContain("sourceLoadedRef.current")
+    expect(body).toContain('AppState.currentState === "active"')
+    expect(body).toContain("autoPlayedRef.current = true")
   })
 
   it("suppresses local autostart while a session owns playback", () => {
@@ -120,6 +165,16 @@ describe("cast remote mode (U4)", () => {
       at("// Backstop for a load that neither starts nor errors."),
     )
     expect(gate).toContain("!castRemoteActive")
+    expect(gate).toContain("!castTouchedRef.current")
+  })
+
+  it("keeps the veil down after any cast session (castTouched latch)", () => {
+    // Render-time latch (the castRemoteActiveRef idiom): once a session has
+    // owned the player area, the chrome and route buttons are the recovery
+    // surface — never a re-engaged 12s dead veil.
+    expect(SOURCE).toContain(
+      "if (castRemoteActive) castTouchedRef.current = true",
+    )
   })
 
   it("keeps the route buttons reachable under the veil (R14)", () => {
@@ -175,11 +230,26 @@ describe("cast remote mode (U4)", () => {
     const apply = at("const applyCastRecovery = useCallback(")
     const body = SOURCE.slice(apply, at("}, [player])", apply))
     expect(body).toContain("player.currentTime = pending.positionSeconds")
-    expect(body).toContain("if (pending.resume) player.play()")
+    // The seek is unconditional; only the resume play is foreground-gated.
+    expect(body).toContain(
+      'if (pending.resume && AppState.currentState === "active")',
+    )
     expect(body).toContain("setSeekSignal(")
     expect(SOURCE).toContain(
       'player.addListener("sourceLoad", () => applyCastRecovery())',
     )
+  })
+
+  it("logs a failed recovery instead of swallowing it", () => {
+    // Mirrors the adapter's swap/foreground video.resume_failed shape so one
+    // monitor covers every local resume path.
+    const apply = at("const applyCastRecovery = useCallback(")
+    const body = SOURCE.slice(apply, at("}, [player])", apply))
+    expect(body).toContain('datadogLog.warn("video.resume_failed", {')
+    expect(body).toContain(
+      "content_id: extractMuxPlaybackId(streamingUrlRef.current)",
+    )
+    expect(body).toContain('surface: "cast_recovery"')
   })
 
   it("burns the autostart latches when a recovery lands", () => {

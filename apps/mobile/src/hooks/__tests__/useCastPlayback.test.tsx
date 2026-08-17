@@ -455,6 +455,18 @@ describe("imperative glue (load / transport / end / reset)", () => {
 })
 
 describe("session callbacks (adapter -> reducer)", () => {
+  it("a native session start lands in Connecting from Idle", async () => {
+    // Native callbacks can outrun `connect`: onSessionStarted alone must
+    // enter Connecting. The adapter passes deviceName null (castAdapter.ts).
+    const renderer = await render("jesus")
+    expect(latest.state.phase).toBe("idle")
+    await act(async () => {
+      mockSessionCallbacks.started?.()
+    })
+    expect(latest.state).toEqual({ phase: "connecting", deviceName: null })
+    await act(async () => renderer.unmount())
+  })
+
   it("a start failure fails as connect_error with a warn log", async () => {
     const renderer = await render("jesus")
     await startConnecting()

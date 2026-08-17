@@ -22,7 +22,8 @@ import {
   useManagedVideoPlayer,
   type ProgressFeed,
 } from "../../hooks/useManagedVideoPlayer"
-import { reportDatadogAction } from "../../lib/datadog"
+import { datadogLog, reportDatadogAction } from "../../lib/datadog"
+import { extractMuxPlaybackId } from "../../lib/muxThumbnail"
 import type { ProgressIdentity } from "../../lib/watchProgress/recorder"
 import { applySkip } from "../../lib/scrubber"
 import {
@@ -136,6 +137,14 @@ export function VideoPlayer({
   const castRemoteActive = castPlayback != null && isRemoteCastPhase(castPhase)
   const castRemoteActiveRef = useRef(castRemoteActive)
   castRemoteActiveRef.current = castRemoteActive
+  // Latched for the whole mount: after any session the chrome — not the
+  // autostart veil — is the recovery surface (see awaitingAutostart).
+  const castTouchedRef = useRef(false)
+  if (castRemoteActive) castTouchedRef.current = true
+  // Render-time mirror for the recovery log below: applyCastRecovery keys on
+  // [player] only, so the raw prop would be a stale closure there.
+  const streamingUrlRef = useRef(streamingUrl)
+  streamingUrlRef.current = streamingUrl
   const resolvedPoster = resolveImageUrl(posterUrl)
   const playerHeight = Math.round(
     (screenWidth - horizontalInset * 2) * PLAYER_HEIGHT_RATIO,
@@ -241,7 +250,10 @@ export function VideoPlayer({
     !loadTimedOut &&
     // A cast session replaces the veil with its own R16/R7 states — the
     // chrome must mount so the held transport and Cast button are reachable.
-    !castRemoteActive
+    !castRemoteActive &&
+    // Latched: once a session ended, the chrome and route buttons stay the
+    // recovery surface — never a re-engaged 12s dead veil.
+    !castTouchedRef.current
 
   // Backstop for a load that neither starts nor errors. Releasing early only
   // reveals chrome sooner, so a false positive on a slow network is harmless —
@@ -428,21 +440,45 @@ export function VideoPlayer({
 
   // A session that leaves Connecting without going Active (dialog cancel,
   // connect failure) hands playback back — the failure recovery carries
-  // resume=false (no remote media ever played), so resume here instead.
+  // resume=false (no remote media ever played), so recover here instead.
   const prevCastPhaseRef = useRef(castPhase)
   useEffect(() => {
     const previous = prevCastPhaseRef.current
     prevCastPhaseRef.current = castPhase
-    if (previous !== "connecting") return
-    if (castPhase === "connecting" || castPhase === "active") return
-    if (!wasPlayingBeforeCastRef.current) return
-    wasPlayingBeforeCastRef.current = false
-    try {
-      player.play()
-    } catch {
-      // Player already released
+    // A live session burns the capture: an in-session reconnect must not
+    // consume the ORIGINAL flag and resume at the pre-session position.
+    if (castPhase === "active") {
+      wasPlayingBeforeCastRef.current = false
     }
-  }, [castPhase, player])
+    if (previous !== "connecting") return
+    if (isRemoteCastPhase(castPhase)) return
+    if (wasPlayingBeforeCastRef.current) {
+      wasPlayingBeforeCastRef.current = false
+      // Mirrors applyPlay: never start audio the viewer cannot see.
+      if (AppState.currentState !== "active") return
+      try {
+        player.play()
+      } catch {
+        // Player already released
+      }
+      return
+    }
+    // The viewer cast under the veil, so the session suppressed the
+    // autostart; a dead connect must restore it, under applyPlay's guards.
+    if (
+      autostart &&
+      !autoPlayedRef.current &&
+      sourceLoadedRef.current &&
+      AppState.currentState === "active"
+    ) {
+      try {
+        player.play()
+        autoPlayedRef.current = true
+      } catch {
+        // Player already released
+      }
+    }
+  }, [castPhase, player, autostart])
 
   const castPosition = castPlayback?.position ?? null
   useEffect(() => {
@@ -506,9 +542,18 @@ export function VideoPlayer({
       if (pending.positionSeconds != null) {
         player.currentTime = pending.positionSeconds
       }
-      // R10: the local player keeps the session's play/pause state.
-      if (pending.resume) player.play()
+      // R10: the local player keeps the session's play/pause state — but
+      // never starts audio into a backgrounded app (mirrors applyPlay).
+      if (pending.resume && AppState.currentState === "active") {
+        player.play()
+      }
     } catch {
+      // R16 shape (adapter's swap/foreground): a silent recovery failure is
+      // the "came back and it was frozen" bug.
+      datadogLog.warn("video.resume_failed", {
+        content_id: extractMuxPlaybackId(streamingUrlRef.current),
+        surface: "cast_recovery",
+      })
       return
     }
     if (pending.positionSeconds != null) {
