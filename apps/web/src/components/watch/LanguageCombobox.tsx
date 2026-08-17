@@ -123,12 +123,6 @@ function searchMatchTierForOption(
   searchAliasAuthority?: LanguageComboboxSearchAliasAuthority,
   exactAliasQuery = false,
 ): number | null {
-  const directTiers = [
-    searchMatchTierForText(option.name, query),
-    searchMatchTierForText(nativeNameForOption(option), query),
-  ].filter((tier): tier is number => tier != null)
-  const directTier = directTiers.length > 0 ? Math.min(...directTiers) : null
-
   const aliases =
     searchAliasAuthority &&
     Object.hasOwn(searchAliasAuthority.aliasesBySlug, option.slug)
@@ -139,6 +133,12 @@ function searchMatchTierForOption(
   )
 
   if (exactAliasQuery && (option.disabled || !ownsExactAlias)) return null
+
+  const directTiers = [
+    searchMatchTierForText(option.name, query),
+    searchMatchTierForText(nativeNameForOption(option), query),
+  ].filter((tier): tier is number => tier != null)
+  const directTier = directTiers.length > 0 ? Math.min(...directTiers) : null
 
   const aliasTiers = option.disabled
     ? []
