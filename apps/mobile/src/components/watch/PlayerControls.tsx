@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react"
 import {
+  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -8,7 +9,8 @@ import {
   type ViewStyle,
 } from "react-native"
 import Ionicons from "@expo/vector-icons/Ionicons"
-import type { VideoPlayer } from "expo-video"
+import MaterialIcons from "@expo/vector-icons/MaterialIcons"
+import { VideoAirPlayButton, type VideoPlayer } from "expo-video"
 import { useEvent } from "expo"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 
@@ -20,9 +22,21 @@ import {
 } from "../../lib/color"
 import { useTypography } from "../../hooks/useTypography"
 import { applySkip } from "../../lib/scrubber"
+import type { PlaybackTarget } from "../../lib/playbackTarget"
 import { SKIP_SECONDS } from "../../lib/tapSeek"
 import { PlatformBlur } from "../ui/PlatformBlur"
 import { Scrubber } from "./Scrubber"
+
+/** Cast button state (R1/R2) — derived by VideoPlayer, rendered here. */
+export type PlayerControlsCastUi = {
+  /** R2: at least one Cast device is reachable — the button hides otherwise. */
+  available: boolean
+  /** True during a session — flips the glyph to its connected variant. */
+  connected: boolean
+  /** State-aware accessibility label ("Cast" / "Casting to <device>"). */
+  label: string
+  onPress: () => void
+}
 
 type PlayerControlsProps = {
   player: VideoPlayer
@@ -34,6 +48,14 @@ type PlayerControlsProps = {
   /** A seek performed outside this component (double-tap-the-sides). The bumped
    *  nonce updates the displayed time immediately, even while paused. */
   seekSignal?: { time: number; n: number } | null
+  /** True while the player routes video to an external device (AirPlay).
+   *  Drives the AirPlay button's state-aware accessibility label. */
+  externalPlaybackActive?: boolean
+  /** Null on surfaces without cast wiring (series trailer dock). */
+  castUi?: PlayerControlsCastUi | null
+  /** KTD4: non-null while a cast session is remote-controlling — the
+   *  transport reads and writes this target, never the local player. */
+  castTarget?: PlaybackTarget | null
 }
 
 // Side inset for the bar's text and icons. The inline seek bar cancels it so
@@ -66,12 +88,75 @@ function Frosted({
   )
 }
 
+/**
+ * The external-route buttons (Cast + AirPlay), shared by both chrome layouts
+ * AND VideoPlayer's pre-autostart veil overlay — R14 keeps both usable before
+ * local playback starts, so they cannot live only in the veil-gated chrome.
+ */
+export function RouteButtons({
+  onInteract,
+  externalPlaybackActive = false,
+  castUi = null,
+}: {
+  onInteract?: () => void
+  externalPlaybackActive?: boolean
+  castUi?: PlayerControlsCastUi | null
+}) {
+  const castButton =
+    castUi != null && castUi.available ? (
+      <Pressable
+        onPress={() => {
+          onInteract?.()
+          castUi.onPress()
+        }}
+        accessibilityRole="button"
+        accessibilityLabel={castUi.label}
+      >
+        <Frosted style={styles.iconButton}>
+          <MaterialIcons
+            name={castUi.connected ? "cast-connected" : "cast"}
+            size={22}
+            color={TEXT_ON_OVERLAY}
+          />
+        </Frosted>
+      </Pressable>
+    ) : null
+
+  // Native AVRoutePickerView (iOS only) — it owns the press, so no Pressable
+  // wrapper; the Frosted backplate matches the sibling icon buttons.
+  const airPlayButton =
+    Platform.OS === "ios" ? (
+      <Frosted style={styles.iconButton}>
+        <VideoAirPlayButton
+          style={styles.airPlayPicker}
+          tint={TEXT_ON_OVERLAY}
+          activeTint={TEXT_ON_OVERLAY}
+          onBeginPresentingRoutes={onInteract}
+          accessibilityRole="button"
+          accessibilityLabel={
+            externalPlaybackActive ? "AirPlay: connected" : "AirPlay"
+          }
+        />
+      </Frosted>
+    ) : null
+
+  return (
+    <>
+      {castButton}
+      {airPlayButton}
+    </>
+  )
+}
+
 export function PlayerControls({
   player,
   fullscreen = false,
   onFullscreen,
   onInteract,
   seekSignal,
+  externalPlaybackActive = false,
+  castUi = null,
+  castTarget = null,
 }: PlayerControlsProps) {
   const typography = useTypography()
   const insets = useSafeAreaInsets()
@@ -89,8 +174,19 @@ export function PlayerControls({
     isPlaying: player.playing,
   })
 
+  // KTD4 remote mode: while a session is active, every transport read and
+  // write goes to the cast target; the local player stays paused untouched.
+  const remote = castTarget
+  const remoteMode = remote != null
+  const remoteTime = remote?.currentTime
+  const remoteDuration = remote?.duration
+  const effectiveIsPlaying = remote != null ? remote.isPlaying : isPlaying
+  const effectiveEnded = remote != null ? remote.ended : ended
+
   useEffect(() => {
-    if (isPlaying) {
+    // remoteMode gate: the session's pause can lag playingChange, and a poll
+    // tick landing then would overwrite the remote time with the local one.
+    if (isPlaying && !remoteMode) {
       intervalRef.current = setInterval(() => {
         // Don't let the poll fight the finger while scrubbing (R8).
         if (scrubbingRef.current) return
@@ -106,7 +202,7 @@ export function PlayerControls({
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current)
     }
-  }, [isPlaying, player])
+  }, [isPlaying, player, remoteMode])
 
   // Reflect an external seek (double-tap-sides) at once — the poll is idle while
   // paused. Clear `ended` when it lands before the end (mirrors skip/handleSeek),
@@ -147,8 +243,29 @@ export function PlayerControls({
     setEnded(!player.playing && t >= d - 0.5)
   }, [player])
 
+  // Remote mode: adopt the receiver's ~1s status as truth, except while the
+  // finger owns the scrubber — an optimistic seek reconciles on the next tick.
+  // Declared AFTER the local seed effect so a remote-mode mount reads the TV.
+  useEffect(() => {
+    if (!remoteMode || remoteTime == null || remoteDuration == null) return
+    if (scrubbingRef.current) return
+    setCurrentTime(remoteTime)
+    setDuration(remoteDuration)
+  }, [remoteMode, remoteTime, remoteDuration])
+
   const togglePlayPause = useCallback(() => {
     onInteract?.()
+    if (remote != null) {
+      if (remote.held) return
+      if (remote.isPlaying) {
+        remote.pause()
+        return
+      }
+      // Replay on the TV: back to the start, then play (target ended).
+      if (remote.ended) remote.seekTo(0)
+      remote.play()
+      return
+    }
     // Read live player state, NOT the React `isPlaying` snapshot: a source swap
     // (e.g. mid-play language switch) can pause expo-video without a
     // playingChange, so the stale-true snapshot would wedge controls until remount.
@@ -164,28 +281,44 @@ export function PlayerControls({
       setCurrentTime(0)
     }
     player.play()
-  }, [player, onInteract])
+  }, [player, onInteract, remote])
 
   const skip = useCallback(
     (delta: number) => {
       onInteract?.()
+      if (remote != null) {
+        if (remote.held) return
+        // Skip from the displayed (optimistic) time — the receiver's status
+        // lags by up to a second and would swallow rapid repeat presses.
+        const target = applySkip(currentTime, delta, remote.duration)
+        if (target == null) return
+        remote.seekTo(target)
+        setCurrentTime(target)
+        return
+      }
       const target = applySkip(player.currentTime, delta, player.duration)
       if (target == null) return
       player.currentTime = target
       setCurrentTime(target)
       if (target < player.duration - 0.5) setEnded(false)
     },
-    [player, onInteract],
+    [player, onInteract, remote, currentTime],
   )
 
   const handleSeek = useCallback(
     (time: number) => {
       onInteract?.()
+      if (remote != null) {
+        if (remote.held) return
+        remote.seekTo(time)
+        setCurrentTime(time)
+        return
+      }
       player.currentTime = time
       setCurrentTime(time)
       if (time < player.duration - 0.5) setEnded(false)
     },
-    [player, onInteract],
+    [player, onInteract, remote],
   )
 
   const handleScrubChange = useCallback(
@@ -244,8 +377,31 @@ export function PlayerControls({
     </Pressable>
   )
 
+  const routeButtons = (
+    <RouteButtons
+      onInteract={onInteract}
+      externalPlaybackActive={externalPlaybackActive}
+      castUi={castUi}
+    />
+  )
+
   return (
     <View style={styles.container} pointerEvents="box-none">
+      {/* External routes live at the top-right corner, clear of the
+          bottom transport rows; fullscreen clears the notch and side inset. */}
+      <View
+        style={[
+          styles.routeRow,
+          fullscreen && {
+            top: Math.max(insets.top, 8),
+            right: Math.max(insets.right, 12),
+          },
+        ]}
+        pointerEvents="box-none"
+      >
+        {routeButtons}
+      </View>
+
       <View style={styles.controlsRow}>
         <Pressable
           onPress={() => skip(-SKIP_SECONDS)}
@@ -265,17 +421,27 @@ export function PlayerControls({
         <Pressable
           onPress={togglePlayPause}
           accessibilityRole="button"
-          accessibilityLabel={ended ? "Replay" : isPlaying ? "Pause" : "Play"}
+          accessibilityLabel={
+            effectiveEnded ? "Replay" : effectiveIsPlaying ? "Pause" : "Play"
+          }
         >
           <Frosted style={styles.playButton}>
             <Ionicons
-              name={ended ? "reload" : isPlaying ? "pause" : "play"}
+              name={
+                effectiveEnded
+                  ? "reload"
+                  : effectiveIsPlaying
+                    ? "pause"
+                    : "play"
+              }
               size={24}
               color={TEXT_ON_OVERLAY}
               // Ionicons' style prop takes a single object, not an array.
               style={StyleSheet.flatten([
                 styles.centerIcon,
-                !ended && !isPlaying ? styles.playGlyphNudge : null,
+                !effectiveEnded && !effectiveIsPlaying
+                  ? styles.playGlyphNudge
+                  : null,
               ])}
             />
           </Frosted>
@@ -322,7 +488,7 @@ export function PlayerControls({
           <View style={styles.scrubberDock}>{scrubber}</View>
           <View style={styles.cornerRow} pointerEvents="box-none">
             <View pointerEvents="none">{timePill}</View>
-            {fullscreenButton}
+            <View style={styles.cornerButtons}>{fullscreenButton}</View>
           </View>
         </View>
       )}
@@ -394,6 +560,24 @@ const styles = StyleSheet.create({
     paddingHorizontal: BAR_PADDING_H,
     marginBottom: 12,
   },
+  cornerButtons: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  routeRow: {
+    position: "absolute",
+    top: 8,
+    right: BAR_PADDING_H,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  // Fill the frosted circle so the native tap target is the whole control.
+  airPlayPicker: {
+    width: 44,
+    height: 44,
+  },
   // overflow clips the blur to the pill's radius.
   timePill: {
     paddingHorizontal: 10,
@@ -417,6 +601,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "flex-end",
+    gap: 12,
   },
   iconButton: {
     width: 44,

@@ -3,10 +3,11 @@ import { AppState } from "react-native"
 import { useEvent } from "expo"
 import { useVideoPlayer, type VideoPlayer } from "expo-video"
 
-import { extractMuxPlaybackId } from "../lib/muxThumbnail"
+import { extractMuxPlaybackId, isSameMuxAsset } from "../lib/muxThumbnail"
 import { datadogLog } from "../lib/datadog"
 import {
   createProgressRecorder,
+  type FlushTrigger,
   type ProgressIdentity,
   type ProgressRecorder,
 } from "../lib/watchProgress/recorder"
@@ -34,6 +35,13 @@ const STALL_THRESHOLD_MS = 3000
 // Float jitter: an advance under this counts as "not moving".
 const POSITION_EPSILON_S = 0.25
 
+/** KTD6: the hook's ref-stable progress facade. Cast-side callers drive the
+ *  recorder through it without ever holding a recorder instance. */
+export type ProgressFeed = {
+  onTick: (positionSeconds: number, durationSeconds: number) => void
+  flush: (trigger: FlushTrigger) => void
+}
+
 /**
  * The one adapter over expo-video's player lifecycle (todo 016): frozen
  * creation source, replaceAsync swap with Mux-ID compare + resume, AppState
@@ -47,7 +55,13 @@ const POSITION_EPSILON_S = 0.25
 export function useManagedVideoPlayer(
   sourceUrl: string | null,
   setup?: (player: VideoPlayer) => void,
-  options?: { progress?: ProgressIdentity | null },
+  options?: {
+    progress?: ProgressIdentity | null
+    /** KTD4: true while a cast session drives playback. Suppresses the
+     *  AppState play/pause pair and the stall watchdog; the background
+     *  progress flush stays on. */
+    castActive?: boolean
+  },
 ) {
   // Source MUST be frozen: useVideoPlayer recreates/releases the player on any
   // change (dep is JSON.stringify(source)). Swap via replaceAsync on the same
@@ -63,6 +77,11 @@ export function useManagedVideoPlayer(
   // The source currently loaded into the player, tracked separately from the
   // frozen creationSource so swap decisions can compare against it.
   const loadedUrlRef = useRef(sourceUrl)
+
+  // Ref-mirrored (KTD4): the AppState effect registers once per player, so a
+  // plain option in its closure would be stale by the time a session starts.
+  const castActiveRef = useRef(options?.castActive === true)
+  castActiveRef.current = options?.castActive === true
 
   // Whether the app is foregrounded right now. A swap's replaceAsync can outlive
   // a background transition; resume() reads this so it never force-plays into
@@ -149,16 +168,26 @@ export function useManagedVideoPlayer(
     }
   }, [recorderKey])
 
+  // KTD6: ref-stable facade — dereferences the CURRENT recorder at call
+  // time, so a dub switch's rebuild cannot strand cast-side writes in the
+  // flushed, dead instance.
+  const progressFeed = useRef<ProgressFeed>({
+    onTick: (positionSeconds, durationSeconds) =>
+      recorderRef.current?.onTick(positionSeconds, durationSeconds),
+    flush: (trigger) => recorderRef.current?.flush(trigger),
+  }).current
+
   useEffect(() => {
     if (!sourceUrl || sourceUrl === loadedUrlRef.current) return
 
     // Compare by Mux playback ID, not raw URL: two URL strings can name one
     // asset (seed URL vs resolved variant); reloading it would needlessly
     // restart playback.
-    const currentId = extractMuxPlaybackId(loadedUrlRef.current)
-    const nextId = extractMuxPlaybackId(sourceUrl)
+    const sameAsset = isSameMuxAsset(loadedUrlRef.current, sourceUrl)
     loadedUrlRef.current = sourceUrl
-    if (currentId != null && nextId != null && currentId === nextId) return
+    if (sameAsset) return
+    // Swap-log content id (the QoE session id below tracks it separately).
+    const nextId = extractMuxPlaybackId(sourceUrl)
 
     // A genuine cross-asset swap ends this QoE session and opens a new one so
     // watched_ms/rebuffers/source attribute to the right asset (R36/R38).
@@ -233,7 +262,7 @@ export function useManagedVideoPlayer(
     const subscription = AppState.addEventListener("change", (nextState) => {
       if (nextState === "active") {
         isForegroundRef.current = true
-        if (wasPlayingRef.current) {
+        if (wasPlayingRef.current && !castActiveRef.current) {
           try {
             player.play()
           } catch {
@@ -247,12 +276,19 @@ export function useManagedVideoPlayer(
         }
       } else {
         isForegroundRef.current = false
-        wasPlayingRef.current = isPlayingRef.current
+        // The load-bearing race (KTD4): cast starts, the pause has not landed
+        // in playingChange yet, the viewer backgrounds — capturing wasPlaying
+        // here would resume local audio over the TV on foreground.
+        wasPlayingRef.current = castActiveRef.current
+          ? false
+          : isPlayingRef.current
         recorderRef.current?.flush("background")
-        try {
-          player.pause()
-        } catch {
-          // Already released
+        if (!castActiveRef.current) {
+          try {
+            player.pause()
+          } catch {
+            // Already released
+          }
         }
       }
     })
@@ -272,9 +308,11 @@ export function useManagedVideoPlayer(
   // R36: statusChange feeds the QoE session — 'error' is a sanitized error, and
   // a post-start 'loading' that is not a seek/swap is a genuine rebuffer.
   useEffect(() => {
-    // Playback end records the completed range (KTD5/KTD6).
+    // Playback end records the completed range (KTD5/KTD6). Gated: while a
+    // session owns playback, the frozen local player must not mark the
+    // video completed — the receiver's finished status owns that flush.
     const endSub = player.addListener("playToEnd", () => {
-      recorderRef.current?.flush("end")
+      if (!castActiveRef.current) recorderRef.current?.flush("end")
     })
     return () => endSub.remove()
   }, [player])
@@ -319,9 +357,20 @@ export function useManagedVideoPlayer(
       // Same poll feeds watched_ms, so no native timeUpdate event is needed.
       qoeRef.current?.onTimeUpdate(position)
       // The recorder samples this same 1s signal at 2s granularity (KTD5).
-      recorderRef.current?.onTick(position, duration)
+      // Under a cast session the feed owns the recorder — skipping the local
+      // tick makes double-write prevention structural (KTD6).
+      if (!castActiveRef.current) {
+        recorderRef.current?.onTick(position, duration)
+      }
 
       const now = Date.now()
+      // KTD4: a frozen local playhead is expected while the chrome drives the
+      // TV — keep the watchdog disarmed and clean so it re-arms on return.
+      if (castActiveRef.current) {
+        lastAdvanceAtRef.current = now
+        stallEmittedRef.current = false
+        return
+      }
       const advanced =
         position - lastPollPositionRef.current > POSITION_EPSILON_S
       lastPollPositionRef.current = position
@@ -350,5 +399,5 @@ export function useManagedVideoPlayer(
     return () => emitQoeSummary("abandoned")
   }, [emitQoeSummary])
 
-  return { player, isPlaying }
+  return { player, isPlaying, progressFeed }
 }

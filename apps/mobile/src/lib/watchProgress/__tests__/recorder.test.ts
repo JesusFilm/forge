@@ -70,8 +70,13 @@ describe("createProgressRecorder", () => {
     expect(drains).toEqual([])
   })
 
-  it("pause/background/unmount force an immediate drain with the latest position", () => {
-    for (const trigger of ["pause", "background", "unmount"] as const) {
+  it("pause/background/unmount/foreground force an immediate drain with the latest position", () => {
+    for (const trigger of [
+      "pause",
+      "background",
+      "unmount",
+      "foreground",
+    ] as const) {
       const { deps, buffered, drains } = buildDeps()
       const recorder = createProgressRecorder({ videoId: "video-1" }, deps)
 
@@ -83,6 +88,38 @@ describe("createProgressRecorder", () => {
         (buffered.at(-1) as { positionSeconds: number }).positionSeconds,
       ).toBe(41)
     }
+  })
+
+  it("flush writes nothing until at least one tick has landed (U5 pin)", () => {
+    // The cast feed relies on this: a forced flush that beats the first
+    // position report must not fabricate a write.
+    const { deps, buffered, drains } = buildDeps()
+    const recorder = createProgressRecorder({ videoId: "video-1" }, deps)
+
+    recorder.flush("pause")
+    recorder.flush("end")
+
+    expect(buffered).toEqual([])
+    expect(drains).toEqual([])
+  })
+
+  it("a signed-out foreground reconcile never arms the sign-in prompt", () => {
+    // U5: the cast foreground reconcile is a forced write, not a playback
+    // stop — R17's prompt moment is a stop.
+    const onSignedOutStop = jest.fn()
+    const { deps } = buildDeps({
+      getAccountId: () => null,
+      onSignedOutStop,
+    })
+    const recorder = createProgressRecorder({ videoId: "video-1" }, deps)
+
+    recorder.onTick(60, 100)
+    recorder.flush("foreground")
+    expect(onSignedOutStop).not.toHaveBeenCalled()
+
+    // Control: a real stop still arms it.
+    recorder.flush("pause")
+    expect(onSignedOutStop).toHaveBeenCalledWith(60)
   })
 
   it("playback end records the completed range", () => {

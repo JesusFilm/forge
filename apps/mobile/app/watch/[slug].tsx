@@ -40,6 +40,20 @@ import {
 } from "../../src/lib/color"
 import { layout, text } from "../../src/styles/shared"
 import { VideoPlayer } from "../../src/components/watch/VideoPlayer"
+import { useCastPlayback } from "../../src/hooks/useCastPlayback"
+import { useCastProgressRecording } from "../../src/hooks/useCastProgressRecording"
+import type { ProgressFeed } from "../../src/hooks/useManagedVideoPlayer"
+import { showCastDialog } from "../../src/lib/cast/castAdapter"
+import {
+  resolveCastMedia,
+  type CastMedia,
+} from "../../src/lib/cast/castMediaResolver"
+import {
+  isRemoteCastPhase,
+  isRemotePlayingState,
+  releaseTriggersSwap,
+  type CastRecovery,
+} from "../../src/lib/playbackTarget"
 import { useFullscreenPresentation } from "../../src/hooks/useFullscreenPresentation"
 import { buildWatchShareUrl } from "../../src/lib/watchShareUrl"
 import { VideoDetailSkeleton } from "../../src/components/watch/VideoDetailSkeleton"
@@ -291,6 +305,130 @@ export default function WatchVideoPage() {
     video?.streamingUrl ??
     seedStreamingUrl
 
+  // ---- Cast session lifecycle (U4: KTD4/KTD7) ----
+  // The hook owns the KTD7 end triggers (slug change + unmount) internally.
+  const cast = useCastPlayback({ videoSlug: decodedSlug || null })
+  const castSessionState = cast.state
+  const castRemoteActive = isRemoteCastPhase(castSessionState.phase)
+
+  // Caller-side source freeze (KTD4): pin the player's source to the
+  // pre-session URL, so a dub chosen mid-session replays through the
+  // existing swap machinery when the pin releases at session end.
+  const pinnedCastSourceRef = useRef<string | null>(null)
+  const releasedCastSourceRef = useRef<string | null>(null)
+  if (castRemoteActive) {
+    if (pinnedCastSourceRef.current == null) {
+      pinnedCastSourceRef.current = playerSource
+    }
+  } else if (pinnedCastSourceRef.current != null) {
+    releasedCastSourceRef.current = pinnedCastSourceRef.current
+    pinnedCastSourceRef.current = null
+  }
+  const effectivePlayerSource = castRemoteActive
+    ? pinnedCastSourceRef.current
+    : playerSource
+
+  // KTD5: the resolver input is this screen's source chain MINUS the
+  // offlineSource prefix — a receiver can only fetch remote https.
+  // U5: the last load's start position seeds the load-time progress tick
+  // before the receiver's first position report.
+  const castLoadStartRef = useRef<number | null>(null)
+  const resolveCastMediaAt = useCallback(
+    (startPositionSeconds: number | null): CastMedia | null => {
+      const media = resolveCastMedia({
+        activeVariant,
+        video,
+        seedStreamingUrl,
+        title: displayTitle,
+        posterUrl: displayPoster,
+        startPositionSeconds,
+      })
+      if (media != null) castLoadStartRef.current = media.startPositionSeconds
+      return media
+    },
+    [activeVariant, video, seedStreamingUrl, displayTitle, displayPoster],
+  )
+
+  const handleCastPress = useCallback(() => {
+    // The SDK dialog also carries "Stop casting" during a session (R10).
+    void showCastDialog().catch(() => {})
+  }, [])
+
+  // Last known remote position and play state: the Failed state carries
+  // neither, and Ended's position can be null if the client tore down first.
+  const lastCastPositionRef = useRef<number | null>(null)
+  const lastRemotePlayingRef = useRef(false)
+  useEffect(() => {
+    if (castSessionState.phase === "connecting") {
+      lastCastPositionRef.current = null
+      lastRemotePlayingRef.current = false
+    }
+  }, [castSessionState.phase])
+  useEffect(() => {
+    if (cast.position != null) lastCastPositionRef.current = cast.position
+  }, [cast.position])
+  useEffect(() => {
+    if (cast.remotePlayerState != null) {
+      lastRemotePlayingRef.current = isRemotePlayingState(
+        cast.remotePlayerState,
+      )
+    }
+  }, [cast.remotePlayerState])
+
+  // U5 (KTD6/R11): cast positions feed the watch-progress recorder through
+  // the adapter's ref-stable facade (filled in by VideoPlayer). Registered
+  // BEFORE the epilogue below so terminal flushes land before reset().
+  const progressFeedRef = useRef<ProgressFeed | null>(null)
+  useCastProgressRecording({
+    state: castSessionState,
+    position: cast.position,
+    duration: cast.duration,
+    feedRef: progressFeedRef,
+    getLoadStartPosition: () => castLoadStartRef.current,
+  })
+
+  // Derived in the SAME render as the terminal state: child (VideoPlayer)
+  // effects run before this screen's, so the recovery is latched before the
+  // reset below clears the terminal state.
+  const castRecovery = useMemo<CastRecovery | null>(() => {
+    if (castSessionState.phase === "ended") {
+      // videoChanged/unmount: the player belongs to another video (KTD7) —
+      // no seek may land on it.
+      if (castSessionState.trigger !== "userEnd") return null
+      return {
+        positionSeconds:
+          castSessionState.lastPositionSeconds ?? lastCastPositionRef.current,
+        resume: lastRemotePlayingRef.current,
+        sourceSwapped: releaseTriggersSwap(
+          releasedCastSourceRef.current,
+          playerSource,
+        ),
+      }
+    }
+    if (castSessionState.phase === "failed") {
+      return {
+        positionSeconds: lastCastPositionRef.current,
+        resume: lastRemotePlayingRef.current,
+        sourceSwapped: releaseTriggersSwap(
+          releasedCastSourceRef.current,
+          playerSource,
+        ),
+      }
+    }
+    return null
+  }, [castSessionState, playerSource])
+
+  // R13/R10 epilogue: snackbar on failure, then return the reducer to Idle.
+  const castReset = cast.reset
+  useEffect(() => {
+    if (castSessionState.phase === "failed") {
+      setSnackbarMessage("Casting failed. Playback continues on your phone.")
+      castReset()
+    } else if (castSessionState.phase === "ended") {
+      castReset()
+    }
+  }, [castSessionState, castReset, setSnackbarMessage])
+
   const handleScroll = useCallback(
     (e: NativeSyntheticEvent<NativeScrollEvent>) => {
       const scrollY = e.nativeEvent.contentOffset.y
@@ -503,12 +641,19 @@ export default function WatchVideoPage() {
           />
         ) : (
           <VideoPlayer
-            streamingUrl={playerSource}
+            streamingUrl={effectivePlayerSource}
             posterUrl={displayPoster}
             subtitleVttSrc={subtitleVttSrc}
             onPlayingChange={undefined}
             fullscreen={isFullscreen}
             onToggleFullscreen={toggleFullscreen}
+            cast={{
+              playback: cast,
+              onCastPress: handleCastPress,
+              resolveMediaAt: resolveCastMediaAt,
+              recovery: castRecovery,
+              progressFeedRef,
+            }}
             progressIdentity={
               // Offline playback may predate the record load — the slug is
               // the on-device key admin resolves server-side (KTD8).
