@@ -78,3 +78,36 @@ describe("profile route wires the real account sync", () => {
     expect(source).toContain("grantCompleted: grantedAtMs != null")
   })
 })
+
+// ── VideoPlayer's playToEnd ordering ────────────────────────────────────────
+// The Up Next offer INTERCEPTS the end-of-playback dismissal — but the QoE
+// "ended" summary and the Continue Watching completion report must have fired
+// BEFORE the interception, or offering (then abandoning) an episode would
+// silently drop the completion that feeds the account sync (todo 025). No
+// render harness can pin listener internals, so the ordering is pinned as
+// source-token order inside the playToEnd listener.
+describe("VideoPlayer playToEnd keeps reporting before the Up Next offer", () => {
+  const playerSource = fs.readFileSync(
+    path.resolve(__dirname, "../../components/VideoPlayer.tsx"),
+    "utf8",
+  )
+  const listenerStart = playerSource.indexOf('addListener("playToEnd"')
+  // One listener, generously sliced — the whole callback is well under this.
+  const listener = playerSource.slice(listenerStart, listenerStart + 3000)
+
+  it("has exactly one playToEnd listener", () => {
+    expect(listenerStart).toBeGreaterThan(-1)
+    expect(
+      playerSource.indexOf('addListener("playToEnd"', listenerStart + 1),
+    ).toBe(-1)
+  })
+
+  it("finalizes QoE, then reports completion, then offers Up Next", () => {
+    const qoeAt = listener.indexOf('finalize("ended")')
+    const completionAt = listener.indexOf("onPlaybackPositionRef.current?.(")
+    const offerAt = listener.indexOf("upNextTargetRef.current != null")
+    expect(qoeAt).toBeGreaterThan(-1)
+    expect(completionAt).toBeGreaterThan(qoeAt)
+    expect(offerAt).toBeGreaterThan(completionAt)
+  })
+})

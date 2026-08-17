@@ -26,6 +26,7 @@ const BG_COLOR = "#161311"
 let moduleError: string | null = null
 
 let Stack: typeof import("expo-router").Stack
+let router: typeof import("expo-router").router
 let StatusBar: typeof import("expo-status-bar").StatusBar
 let ApolloProvider: typeof import("@apollo/client/react").ApolloProvider
 let getApolloClient: typeof import("../src/lib/apolloClient").getApolloClient
@@ -38,6 +39,7 @@ let reportDatadogError: typeof import("../src/lib/datadog").reportDatadogError
 /* eslint-disable @typescript-eslint/no-require-imports */
 try {
   Stack = require("expo-router").Stack
+  router = require("expo-router").router
   StatusBar = require("expo-status-bar").StatusBar
   ApolloProvider = require("@apollo/client/react").ApolloProvider
   getApolloClient = require("../src/lib/apolloClient").getApolloClient
@@ -53,7 +55,7 @@ try {
 
 /** Renders the full-screen video player overlay when a video is active. */
 function VideoPlayerOverlay() {
-  const { state, dismissVideo } = useVideoPlayerContext()
+  const { state, dismissVideo, markUpNextChain } = useVideoPlayerContext()
   // Live dub attribution: the in-player language menu swaps dubs via
   // replaceAsync WITHOUT a new playVideo, so currentIdentity's videoDubId is
   // frozen at Play-press. When the watch session still owns this playback
@@ -144,6 +146,20 @@ function VideoPlayerOverlay() {
       meaningfulResetKey={liveDubId}
       startAtSeconds={state.currentStartAtSeconds}
       onPlaybackPosition={handlePlaybackPosition}
+      upNextTarget={state.currentUpNext}
+      // Up Next confirm/expiry: end THIS playback, then replace the details
+      // route with the next episode's in autoplay pass-through mode — the
+      // same path a Continue Watching card takes, so playback opens without
+      // painting the details page first.
+      onPlayNext={(slug) => {
+        // Mark BEFORE dismissing: the pass-through screen's pop-back effect
+        // observes the dismiss and must know this close is a hop, not a
+        // viewer exit — otherwise hop 2+ (autoplay-entered routes) pops the
+        // replaced next episode and the binge chain dies on Home.
+        markUpNextChain()
+        dismissVideo()
+        router.replace(`/watch/${encodeURIComponent(slug)}?autoplay=1`)
+      }}
     />
   )
 }

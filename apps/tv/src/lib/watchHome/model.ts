@@ -141,7 +141,10 @@ const LABEL_TEXT: Record<string, string> = {
   TRAILER: "Trailer",
 }
 
-function labelText(label: string | null | undefined): string {
+/** Display text for a raw wire label. Exported so client-owned sections (My
+ *  List) show the same noun as curated rails instead of a second copy of the
+ *  map that drifts the first time a label is added. */
+export function labelText(label: string | null | undefined): string {
   return label ? (LABEL_TEXT[label] ?? "Video") : "Video"
 }
 

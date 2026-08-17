@@ -50,6 +50,38 @@ with no release-level view.
   users — anonymous erasure requires the user to still hold their
   `anon:<uuid>` (cookie), which may be a documented limitation rather than a
   solved problem.
+- **Durable erasure record — decide before release (added 2026-08-12,
+  feat-337):** feat-337 ships terminal output only and writes NO durable log
+  of who was erased, when, or with what result (owner decision KD5:
+  completion is recorded wherever the erasure REQUEST is tracked, and the
+  compensating actor record is the operator's session log at the execution
+  locus — see the `apps/mastra/CLAUDE.md` runbook). That is proportionate at
+  allowlisted-dogfood scale with one operator. Investigate before public
+  release whether a durable, count-only erasure record is needed — GDPR
+  accountability (Art. 5(2)) wants demonstrable evidence a request was
+  honored, and a session log at an operator's workstation is neither durable
+  nor attributable at volume.
+- **apps/mobile deletion copy overstates Seeker erasure — must be resolved
+  before release (added 2026-08-12, feat-337):**
+  `apps/mobile/src/components/profile/DeleteAccountFlow.tsx` tells the user
+  "This permanently deletes your Jesus Film account everywhere — including
+  your watch history and saved progress." It does not: account deletion does
+  not currently cascade to the Seeker stores at all (that cascade is
+  feat-356), so Seeker threads and Langfuse traces survive and age out over
+  ≤25 days. The copy sits outside this lane and is deliberately NOT softened
+  now (owner decision 2026-08-11, KD11) — but this gate must not pass with
+  the claim still overstated. Resolve by softening the copy, by landing
+  feat-356, or by an explicit owner acceptance recorded here.
+- **feat-356 cascade — decide whether it is release-gating (added
+  2026-08-12, feat-337):** feat-356 (apps/auth account-deletion → Seeker
+  cascade) is deferred out of feat-337 and blocked by it. Its absence leaves
+  two bounded gaps: a deleted account's Seeker data ages out over ≤25 days
+  rather than immediately, and once the auth account is gone the `sub` is
+  unrecoverable so a LATER erasure request for that person cannot be
+  serviced at all. Decide before release whether that is acceptable for a
+  public audience or whether feat-356 becomes a hard gate. Coupled to the
+  copy item above and to the self-serve-deletion decision already recorded
+  under "Erasure capability live".
 - **Legal review of the data flows (open, undecided):** EU GDPR analysis for
   special-category data — lawful basis (explicit consent wording at the chat
   surface?), the Langfuse Cloud US processor relationship (DPA is available

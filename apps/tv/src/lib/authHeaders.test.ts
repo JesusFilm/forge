@@ -9,6 +9,14 @@ import {
   userAuthHeadersForOperation,
   WATCH_EVENT_OPERATION_NAME,
 } from "./authHeaders"
+import { getOperationAST, type DocumentNode } from "graphql"
+import { GET_BECAUSE_YOU_WATCHED } from "./recommendations/recommendationsDocument"
+
+/** Read from the AST, not matched in printed text: a substring assertion also
+ *  passes for a renamed superstring, which is the trap the allowlists live in. */
+function getOperationName(document: DocumentNode): string {
+  return getOperationAST(document)?.name?.value ?? ""
+}
 
 const FLEET = "fleet-key"
 const USER = "user-access-token"
@@ -133,7 +141,29 @@ describe("credential separation", () => {
       WATCH_EVENT_OPERATION_NAME,
       "MyWatchProgress",
       "UpsertMyWatchProgress",
+      "ClearMyWatchProgress",
     ])
+  })
+
+  it("sends no credential on BecauseYouWatched, deliberately", () => {
+    // sceneRecommendations is a PUBLIC admin field, so anonymous is correct and
+    // is not a 401. This is pinned because both ways of "fixing" it are wrong
+    // and tempting: the USER bearer would attach identity to a rail that needs
+    // none, and the FLEET key would silently MOVE this surface's rate-limit
+    // identity from per-IP to per-install — a policy change authHeaders.ts
+    // documents as scoped to search on purpose.
+    const name = getOperationName(GET_BECAUSE_YOU_WATCHED)
+    expect(name).toBe("BecauseYouWatched")
+    expect(FLEET_TOKEN_OPERATIONS).not.toContain(name)
+    expect(USER_TOKEN_OPERATIONS).not.toContain(name)
+    expect(
+      headersForOperation({
+        operationName: name,
+        fleetToken: FLEET,
+        userAccessToken: USER,
+        viewerId: "viewer-1",
+      }),
+    ).toEqual({})
   })
 
   it("sends only the fleet bearer on search, even fully signed in", () => {

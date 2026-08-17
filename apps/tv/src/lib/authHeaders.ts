@@ -52,13 +52,14 @@ export const WATCH_EVENT_OPERATION_NAME = "RecordWatchEvent"
  *  same rename trap as the watch-event op above. */
 export const PROGRESS_QUERY_OPERATION_NAME = "MyWatchProgress"
 export const PROGRESS_UPSERT_OPERATION_NAME = "UpsertMyWatchProgress"
+export const PROGRESS_CLEAR_OPERATION_NAME = "ClearMyWatchProgress"
 
 /** Operations that may carry the baked-in FLEET token. */
 export const FLEET_TOKEN_OPERATIONS: readonly string[] = [SEARCH_OPERATION_NAME]
 
 /**
  * Operations that may carry the SIGNED-IN USER's access token — the viewer's
- * OWN watch data only: the watch-event write plus the two watch-progress ops
+ * OWN watch data only: the watch-event write plus the three watch-progress ops
  * (admin resolves the account from the introspected token, so these can only
  * ever touch the signed-in viewer's rows).
  *
@@ -71,6 +72,7 @@ export const USER_TOKEN_OPERATIONS: readonly string[] = [
   WATCH_EVENT_OPERATION_NAME,
   PROGRESS_QUERY_OPERATION_NAME,
   PROGRESS_UPSERT_OPERATION_NAME,
+  PROGRESS_CLEAR_OPERATION_NAME,
 ]
 
 /**

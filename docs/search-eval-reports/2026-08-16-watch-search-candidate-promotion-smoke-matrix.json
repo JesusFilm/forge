@@ -1,0 +1,56 @@
+{
+  "schemaVersion": 1,
+  "registeredAt": "2026-08-16",
+  "purpose": "Pre-registered production smoke checks for the cumulative Watch Search Candidate promotion.",
+  "profile": "CANDIDATE",
+  "cases": [
+    {
+      "id": "jesus-chinese-simplified",
+      "query": "耶稣",
+      "locale": "zh-Hans",
+      "languageSlug": "mandarin-china",
+      "expectedCanonicalVideoId": "core:1_jf-0-0",
+      "maximumRank": 1
+    },
+    {
+      "id": "jesus-chinese-traditional",
+      "query": "耶穌",
+      "locale": "zh-Hant",
+      "languageSlug": "mandarin-china",
+      "expectedCanonicalVideoId": "core:1_jf-0-0",
+      "maximumRank": 1
+    },
+    {
+      "id": "jesus-japanese",
+      "query": "イエス",
+      "locale": "ja",
+      "languageSlug": "japanese",
+      "expectedCanonicalVideoId": "core:1_jf-0-0",
+      "maximumRank": 1
+    },
+    {
+      "id": "jesus-russian",
+      "query": "Иисус",
+      "locale": "ru",
+      "languageSlug": "russian",
+      "expectedCanonicalVideoId": "core:1_jf-0-0",
+      "maximumRank": 1
+    },
+    {
+      "id": "jesus-arabic",
+      "query": "يسوع",
+      "locale": "ar",
+      "languageSlug": "arabic-modern-standard",
+      "expectedCanonicalVideoId": "core:1_jf-0-0",
+      "maximumRank": 1
+    },
+    {
+      "id": "hope-when-life-feels-heavy",
+      "query": "finding hope when life feels heavy",
+      "locale": "en",
+      "languageSlug": "english",
+      "expectedCanonicalVideoId": "core:10_darkroom12mission",
+      "maximumRank": 3
+    }
+  ]
+}

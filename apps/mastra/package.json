@@ -14,6 +14,7 @@
     "devo:workspace:migrate": "pnpm --dir ../.. exec tsx apps/mastra/src/scripts/migrate-devotional-workspace.ts",
     "devo:run": "pnpm --dir ../.. exec tsx apps/mastra/src/scripts/run-daily-devotional.ts",
     "devo:segments": "pnpm --dir ../.. exec tsx apps/mastra/src/scripts/build-devotional-video-manifest.ts",
+    "erase-user": "pnpm --dir ../.. exec tsx apps/mastra/src/scripts/erase-user.ts",
     "eval:content-embedding-gate": "pnpm --dir ../.. exec tsx apps/mastra/src/scripts/run-content-embedding-search-eval.ts",
     "eval:seeker:answers": "pnpm --dir ../.. exec tsx apps/mastra/src/evals/seeker/run-answers.ts",
     "eval:seeker:judge": "pnpm --dir ../.. exec tsx apps/mastra/src/evals/seeker/run-judge.ts",

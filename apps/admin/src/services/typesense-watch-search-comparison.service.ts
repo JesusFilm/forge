@@ -2,7 +2,7 @@ import { createHash, randomUUID } from "node:crypto"
 
 import { prisma } from "@/db/client"
 import { incrementFixedWindow } from "@/auth/rate-limit"
-import { env } from "@/config/env"
+import { env, resolveWatchSearchRuntimeEnv } from "@/config/env"
 
 import {
   assertQualificationProfilesMatchLease,
@@ -314,6 +314,7 @@ export async function resolveEvaluationCandidateWatchSearchProfile(
 /** Production fixed-semantics factory. Callers cannot provide profile identity. */
 export function createTypesenseWatchSearchComparisonService(): TypesenseWatchSearchComparisonService {
   const host = process.env.TYPESENSE_HOST
+  const runtimeSearchEnv = resolveWatchSearchRuntimeEnv()
   const apiKey = resolveTypesenseWatchSearchApiKey({
     searchApiKey: env.TYPESENSE_SEARCH_API_KEY,
     legacyApiKey: process.env.TYPESENSE_API_KEY,
@@ -374,7 +375,7 @@ export function createTypesenseWatchSearchComparisonService(): TypesenseWatchSea
         resourceKey: COMPARISON_RESOURCE_KEY,
         holderToken: lease.holderToken,
       }),
-    candidateEnabled: () => env.WATCH_SEARCH_CANDIDATE_COMPARISON_ENABLED,
+    candidateEnabled: () => runtimeSearchEnv.candidateComparisonEnabled,
     admitActor: async (actorKey) => {
       const admission = await incrementFixedWindow(
         `watch-search-candidate-comparison:${actorKey}`,

@@ -181,6 +181,18 @@ The application-side ranking identity included in Candidate qualification
 evidence. It changes when Candidate ordering behavior changes, invalidating old
 qualification without rebuilding compatible Typesense collections.
 
+### Watch Search Candidate Qualification
+
+An immutable authorization record binding one Watch Search Candidate Generation
+and its serving revisions to the evidence reviewed for production use.
+
+An automatic Pass means the release gates succeeded. Operator Accepted means a
+reviewer knowingly accepted recorded failed or unrun gates; it authorizes the
+measured exception without relabeling those gates as successful. Promotion to
+the Serving pointer must match the qualification's exact identity and audit
+evidence. Runtime resolution then revalidates an authorizing status and the
+serving identity.
+
 ### Watch Search Candidate Pointer
 
 A versioned control-plane reference that selects one Watch Search Candidate

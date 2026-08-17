@@ -3,7 +3,7 @@ import Link from "next/link"
 import { notFound } from "next/navigation"
 
 import { DashboardPageHeader, PageSection } from "@/components/admin-ui"
-import { env } from "@/config/env"
+import { resolveWatchSearchRuntimeEnv } from "@/config/env"
 import { loadWatchSearchLanguageOptions } from "@/services/watch-search-language-options.service"
 
 import { requireCurrentAdminEvaluator } from "./comparison-actions"
@@ -24,7 +24,7 @@ async function loadLanguageOptions() {
 
 export default async function CompareWatchSearchPage() {
   await requireCurrentAdminEvaluator()
-  if (!env.WATCH_SEARCH_CANDIDATE_COMPARISON_ENABLED) {
+  if (!resolveWatchSearchRuntimeEnv().candidateComparisonEnabled) {
     notFound()
   }
   const languageOptions = await loadLanguageOptions()

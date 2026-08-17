@@ -142,6 +142,7 @@ export function HomeHeroPager({
     // Reset swap key: after pull-to-refresh a same-slug slide 0 would match
     // the stale key and skip its re-issued swap without this reset.
     lastSwapKeyRef.current = null
+    lastSettledKeyRef.current = null
     dispatch({ type: "SLIDES_SET", slides })
   }, [slides])
 
@@ -283,6 +284,9 @@ export function HomeHeroPager({
   const streamSlugRef = useRef<string | null>(null)
   const failedSlugRef = useRef<string | null>(null)
   const lastSwapKeyRef = useRef<string | null>(null)
+  // The key of the last swap that SETTLED for a still-current slide — a
+  // pendingSwap marker matching it is satisfied by playing, not re-issuing.
+  const lastSettledKeyRef = useRef<string | null>(null)
 
   useEffect(() => {
     // useHeroStream's state lags one render behind a slug change (its reset
@@ -315,24 +319,44 @@ export function HomeHeroPager({
     // a swap now would flash the new source there mid-animation. The settle
     // clears the hold and re-runs this effect.
     if (state.transitionFromId != null) return
-    if (state.suspended !== null) {
-      // Remember the ready stream; RESUME re-issues the swap (AE6).
-      dispatch({ type: "STREAM_READY" })
-      return
-    }
-
     // One swap per slide visit: the epoch key stops the finished-swap effect
     // re-run from swapping the same source forever, while a pendingSwap
     // (interrupted swap) always re-issues.
     const swapKey = `${slideEpochRef.current}:${activeId}:${url}`
-    if (lastSwapKeyRef.current === swapKey && !state.pendingSwap) return
+    const keyMatched = lastSwapKeyRef.current === swapKey
+
+    if (state.suspended !== null) {
+      // Mark any stream not loaded AND revealed so RESUME has a start path
+      // (AE6 + the settle-to-PLAY_STARTED gap). A revealed source must not be
+      // marked: expo-video 57 reloads a replaced item at zero on re-issue.
+      if (!keyMatched || state.phase !== "playing")
+        dispatch({ type: "STREAM_READY" })
+      return
+    }
+
+    if (
+      keyMatched &&
+      state.pendingSwap &&
+      lastSettledKeyRef.current === swapKey
+    ) {
+      // The marked swap already settled for this exact source: play it —
+      // a re-issue would reload the item at zero (expo-video 57).
+      dispatch({ type: "PENDING_SWAP_SATISFIED" })
+      if (state.phase !== "playing") {
+        try {
+          player.play()
+        } catch {
+          // Native player already released.
+        }
+      }
+      return
+    }
+
+    if (keyMatched && !state.pendingSwap) return
     lastSwapKeyRef.current = swapKey
 
     dispatch({ type: "SWAP_STARTED" })
     const epochAtSwap = slideEpochRef.current
-    // Capture suspended synchronously: stateRef can be one commit behind the
-    // epoch guard by the time the replaceAsync .then() fires.
-    const suspendedAtSwap = stateRef.current.suspended
     player
       .replaceAsync(url)
       .then(() => {
@@ -340,7 +364,11 @@ export function HomeHeroPager({
         // Stale settle: the pager moved on mid-swap — pendingSwap re-issues
         // for the new slide; don't start the old source under its poster.
         if (slideEpochRef.current !== epochAtSwap) return
-        if (suspendedAtSwap !== null) return
+        lastSettledKeyRef.current = swapKey
+        // Suspension is re-read at settle time: a scroll-down landing between
+        // issue and settle must not start playback behind the feed (nothing
+        // re-pauses it once phase is already "playing").
+        if (stateRef.current.suspended !== null) return
         try {
           player.play()
         } catch {
@@ -364,6 +392,7 @@ export function HomeHeroPager({
     state.swapInFlight,
     state.suspended,
     state.pendingSwap,
+    state.phase,
     state.transitionFromId,
     player,
   ])

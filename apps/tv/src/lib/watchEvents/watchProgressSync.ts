@@ -20,10 +20,13 @@ import { readLocalUserMarker } from "../auth/anonymousMerge"
 import { withTimeout } from "../withTimeout"
 import {
   loadContinueWatching,
+  readPendingCompletions,
+  removePendingCompletions,
   updateContinueWatching,
   type ContinueWatchingEntry,
 } from "./continueWatching"
 import {
+  completionsToUpsertEntries,
   mayFlushShelfToAccount,
   mergeAccountRowsIntoShelf,
   parseAccountProgressRows,
@@ -31,6 +34,7 @@ import {
   type AccountWatchProgressRow,
 } from "./watchProgressMerge"
 import {
+  CLEAR_MY_WATCH_PROGRESS,
   GET_MY_WATCH_PROGRESS,
   UPSERT_MY_WATCH_PROGRESS,
 } from "./watchProgressDocuments"
@@ -57,7 +61,15 @@ export async function submitContinueWatchingToAccount(
   entries: readonly ContinueWatchingEntry[],
 ): Promise<boolean> {
   try {
-    const mapped = toWatchProgressUpsertEntries(entries)
+    // Pending completions ride every push (todo 025): finishing a video
+    // removed its shelf entry, so the shelf alone under-reports — without
+    // these the account keeps a stale partial position forever, on every
+    // device. Position == duration, so admin derives completed=true.
+    const completions = await readPendingCompletions()
+    const mapped = [
+      ...completionsToUpsertEntries(completions),
+      ...toWatchProgressUpsertEntries(entries),
+    ]
     if (mapped.length === 0) return true
     const userAccessToken = await getValidAccessToken()
     if (userAccessToken == null) return false
@@ -70,7 +82,14 @@ export async function submitContinueWatchingToAccount(
       context: { userAccessToken },
       errorPolicy: "all",
     })
-    return result.data?.upsertMyWatchProgress != null
+    const accepted = result.data?.upsertMyWatchProgress != null
+    if (accepted && completions.length > 0) {
+      // Cleared only AFTER the server accepted the batch; a failed push
+      // retains them for the next sync (retry is harmless — the server's
+      // newest-wins guard dedupes).
+      await removePendingCompletions(completions.map((c) => c.videoId))
+    }
+    return accepted
   } catch {
     return false
   }
@@ -95,6 +114,46 @@ export async function fetchAccountWatchProgress(): Promise<
   } catch {
     return null
   }
+}
+
+/**
+ * Remove one video from Continue Watching, everywhere it lives (QoL long-press).
+ *
+ * Local removal is unconditional and first — the card disappears immediately
+ * whatever the network does. The account row clear is best-effort when signed
+ * in; a failure leaves the row server-side, where the next hydrate skips it
+ * anyway unless it is further along (in which case the viewer probably wants
+ * it back). Removing a card is NOT un-finishing: pending completions are left
+ * untouched — a completion has no card by construction.
+ */
+export async function removeFromContinueWatching(
+  videoId: string,
+): Promise<void> {
+  await updateContinueWatching((entries) =>
+    entries.filter((entry) => entry.videoId !== videoId),
+  )
+  // The account clear is DETACHED: this promise resolves after the local
+  // write, so the caller's shelf refresh never waits on the network — an
+  // awaited mutate here left the pressed card on screen for the transport's
+  // worst case (review P2). Gated on an OWNED marker, like the sign-out
+  // flush: an unowned shelf is a previous viewer's leftovers, and clearing
+  // MY account's row because of THEIR card is the wrong direction.
+  void (async () => {
+    try {
+      if ((await readLocalUserMarker()).userId == null) return
+      const userAccessToken = await getValidAccessToken()
+      if (userAccessToken == null) return
+      await getApolloClient().mutate({
+        mutation: CLEAR_MY_WATCH_PROGRESS,
+        variables: { videoId },
+        context: { userAccessToken },
+        errorPolicy: "all",
+      })
+    } catch {
+      // Best-effort: the local card is already gone, which is what the viewer
+      // asked for; the account row lingers harmlessly until a later clear.
+    }
+  })()
 }
 
 /** Pull the account's rows down and fold them into the local shelf. */

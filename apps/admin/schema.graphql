@@ -1567,6 +1567,10 @@ type Video {
   locales(languageSlug: String, locale: String): [VideoLocale!]
   locked: Boolean
   """
+  Transcript-derived moments in chunk order, capped server-side. Requested language falls back to English; [] when no transcript exists. Direct service call rather than a loader — the consumer (TV's watch record) asks for one video at a time, so there is nothing to batch.
+  """
+  moments(languageSlug: String, limit: Int): [VideoMoment!]
+  """
   Base64 blur data URL for the Watch hero poster Mux thumbnail recipe. Lazily generated and stored in mux_image_derivative by playback id + recipe.
   """
   muxHeroPosterBlurDataUrl(languageSlug: String): String
@@ -1904,6 +1908,16 @@ type VideoMapperCatalogPageInfo {
   endCursor: String
   hasNextPage: Boolean!
   startCursor: String
+}
+
+"""
+A transcript-derived moment of this video: timing (null when the transcript chunker had no timecodes — clients must treat untimed rows as list items, never as second 0), an enriched summary of the span, and the Bible references the enrichment attached to it. The lean projection behind TV's in-player companion panel; the chunk's text and embedding stay backend-only.
+"""
+type VideoMoment {
+  bibleVerses: [String!]
+  endSeconds: Float
+  startSeconds: Float
+  summary: String
 }
 
 type VideoOrigin {

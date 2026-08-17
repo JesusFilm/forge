@@ -330,8 +330,9 @@ enum WatchSearchCandidatePointerKind {
 }
 
 enum WatchSearchCandidateQualificationStatus {
-  PASSED   @map("passed")
-  REJECTED @map("rejected")
+  PASSED            @map("passed")
+  OPERATOR_ACCEPTED @map("operator_accepted")
+  REJECTED          @map("rejected")
 }
 
 enum WatchSearchCandidateLeaseKind {

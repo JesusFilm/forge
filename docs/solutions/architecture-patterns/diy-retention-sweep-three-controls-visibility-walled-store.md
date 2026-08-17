@@ -227,6 +227,48 @@ still reachable.
   hatch in the erasure runbook with a lead time inside the statutory
   deadline, not as a footnote about the retention job.
 
+### Amendment (2026-08-12, feat-337 PR 1): a probe must also guard the REPORT of an absent result
+
+A connectivity probe exists because the listing call SWALLOWS store faults into
+an empty result, so a zero is ambiguous between "no data" and "no store". The
+natural placement — probe before the operation — is not sufficient on a read
+path, because **the zero itself is an output someone acts on.**
+
+feat-337's erasure module probed before the counts and again before the
+deletes, and still shipped the gap: the read-only preview returned its zero
+count straight from the collect phase. A store that died _after_ the first
+probe, during the listing, produced a confident "no data found for this exact
+key" — and that runbook's own instruction for that outcome is "re-derive the
+key before recording anything", i.e. the operator is told the subject's key is
+wrong when in fact the subject's data is fine and the store is down. Nothing
+was deleted, so it never looked like a safety bug; it was a correctness bug in
+the one output the read path produces.
+
+The asymmetry was invisible precisely _because_ the execute path had the guard.
+Reviewing the destructive path's probe placement and finding it correct is not
+evidence about the read path.
+
+Rule: probe before the operation **and** before reporting an absent result.
+Only the zero case pays for the extra read, so the cost is bounded to the
+branch that needs it:
+
+```ts
+if (collected.threadIds.length > 0) return completed({ kind: "counted", … })
+if (!(await probeStore(memory))) {
+  sink.warn("[ai-chat-erasure] event=probe_failed stage=post_count")
+  return completed({ kind: "unreachable" })
+}
+return completed({ kind: "no_data" })
+```
+
+Generalizes to any read whose empty result is operator-actionable and whose
+underlying call swallows faults — not just deletion sweeps.
+
+Stated residual: the probe NARROWS the window rather than closing it. A fault
+that opens during the listing and clears before the probe still yields a
+healthy probe over a swallowed empty result, so a post-probe zero is a much
+stronger signal of absence — not a proof of it.
+
 ## Examples
 
 `apps/mastra/src/mastra/langfuse-trace-retention.ts` (feat-336) implements
@@ -242,6 +284,7 @@ control 2).
 
 ## Related
 
+- `docs/solutions/best-practices/single-upstream-predicate-bounding-irreversible-blast-radius-20260812.md` (feat-337 PR 1: control 1's discipline generalized to any operation where one dependency-interpreted predicate is the only bound on a cross-subject blast radius, plus the confirm-token axis-coverage rule. It also records why THIS sweep correctly skips-and-continues where a one-shot erasure rejects. Same PR as the post-count probe amendment above, which lives in this doc.)
 - `docs/solutions/architecture-patterns/kill-switch-completeness-follows-data-lifetime.md`
 - `docs/solutions/best-practices/per-run-caps-vs-per-day-quota-claims-restart-refreshed-jobs.md`
 - `docs/solutions/conventions/single-service-http-client-result-union-convention.md` (owns the credentialed-egress client posture)

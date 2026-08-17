@@ -44,6 +44,19 @@ export function resolveImageUrl(url: string | null | undefined): string | null {
 }
 
 /**
+ * Thumbnail URL for a Mux playback id. Exported for callers that already hold
+ * the bare id rather than a stream URL (admin's recommendation rows expose
+ * `playbackId` and hardcode `imageUrl` to null), so the image template lives in
+ * exactly one place.
+ */
+export function getMuxThumbnailUrlFromPlaybackId(
+  playbackId: string | null | undefined,
+): string | null {
+  if (!playbackId || !/^[a-zA-Z0-9_-]+$/.test(playbackId)) return null
+  return `https://image.mux.com/${playbackId}/thumbnail.jpg?width=1920&height=1080&fit_mode=smartcrop`
+}
+
+/**
  * Derive a thumbnail URL from a Mux HLS stream (`stream.mux.com/{ID}.m3u8` →
  * `image.mux.com/{ID}/thumbnail.jpg`). Returns null for non-Mux URLs.
  */
@@ -54,9 +67,9 @@ export function getMuxThumbnailUrl(
   try {
     const parsed = new URL(streamingUrl)
     if (parsed.hostname !== "stream.mux.com") return null
-    const playbackId = parsed.pathname.replace(/^\//, "").replace(/\.m3u8$/, "")
-    if (!playbackId || !/^[a-zA-Z0-9_-]+$/.test(playbackId)) return null
-    return `https://image.mux.com/${playbackId}/thumbnail.jpg?width=1920&height=1080&fit_mode=smartcrop`
+    return getMuxThumbnailUrlFromPlaybackId(
+      parsed.pathname.replace(/^\//, "").replace(/\.m3u8$/, ""),
+    )
   } catch {
     return null
   }

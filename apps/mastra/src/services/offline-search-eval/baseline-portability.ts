@@ -4,7 +4,7 @@ import path from "node:path"
 
 import { z } from "zod"
 
-import { env } from "../../config/env"
+import { env, getServingSearchEvalConfig } from "../../config/env"
 import {
   BaselineArtifactSchema,
   SearchEvalArtifactError,
@@ -85,6 +85,8 @@ export type SearchEvalReadinessCheck = {
   name:
     | "admin_search_url"
     | "admin_search_bearer"
+    | "admin_serving_search_url"
+    | "admin_serving_search_bearer"
     | "mastra_service_keys"
     | "runtime_storage"
     | "database_url"
@@ -144,6 +146,7 @@ export async function checkSearchEvalBaselineReadiness(
   } = {},
 ): Promise<SearchEvalBaselineReadiness> {
   const rootDir = options.artifactRoot ?? searchEvalArtifactRoot()
+  const serving = getServingSearchEvalConfig()
   const checks: SearchEvalReadinessCheck[] = [
     env.ADMIN_SEARCH_EVAL_SEARCH_URL
       ? pass("admin_search_url")
@@ -151,6 +154,18 @@ export async function checkSearchEvalBaselineReadiness(
     env.ADMIN_SEARCH_EVAL_API_KEY
       ? pass("admin_search_bearer")
       : fail("admin_search_bearer", "missing_admin_search_eval_api_key"),
+    serving.url
+      ? pass("admin_serving_search_url")
+      : fail(
+          "admin_serving_search_url",
+          "missing_admin_search_eval_serving_url",
+        ),
+    serving.bearer
+      ? pass("admin_serving_search_bearer")
+      : fail(
+          "admin_serving_search_bearer",
+          "missing_admin_search_eval_serving_api_key",
+        ),
     env.MASTRA_SERVICE_API_KEYS
       ? pass("mastra_service_keys")
       : fail("mastra_service_keys", "missing_mastra_service_api_keys"),
