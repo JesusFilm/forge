@@ -12,7 +12,7 @@ const SPECIFIC_CHINESE_ALIASES = {
   "chinese-simplified": ["简体", "簡體", "简体中文", "簡體中文"],
   "chinese-traditional": ["繁体", "繁體", "繁体中文", "繁體中文"],
   "mandarin-china": ["普通话", "普通話"],
-  "mandarin-taiwan": ["国语", "國語", "台湾华语", "臺灣華語"],
+  "mandarin-taiwan": ["国语", "國語", "台湾华语", "台灣華語", "臺灣華語"],
 } as const
 
 const BROAD_CHINESE_LANGUAGE_SLUGS = [

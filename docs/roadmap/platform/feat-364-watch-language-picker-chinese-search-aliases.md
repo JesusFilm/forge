@@ -1,9 +1,9 @@
 ---
 id: "feat-364"
 title: "Watch language picker Chinese search aliases"
-owner: "codex"
+owner: "vlad"
 priority: "P1"
-status: "in-progress"
+status: "complete"
 start_date: "2026-08-17"
 duration: 1
 depends_on: []

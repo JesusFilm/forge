@@ -61,13 +61,13 @@ That component also has other consumers, so Chinese aliases must be enabled expl
 
 **Minimum Chinese alias coverage**
 
-| ID  | Exact language slug   | Required accepted input                |
-| --- | --------------------- | -------------------------------------- |
-| R6  | `mandarin-china`      | `普通话`, `普通話`                     |
-| R7  | `mandarin-taiwan`     | `国语`, `國語`, `台湾华语`, `臺灣華語` |
-| R8  | `cantonese`           | `粤语`, `粵語`                         |
-| R9  | `chinese-simplified`  | `简体`, `簡體`, `简体中文`, `簡體中文` |
-| R10 | `chinese-traditional` | `繁体`, `繁體`, `繁体中文`, `繁體中文` |
+| ID  | Exact language slug   | Required accepted input                            |
+| --- | --------------------- | -------------------------------------------------- |
+| R6  | `mandarin-china`      | `普通话`, `普通話`                                 |
+| R7  | `mandarin-taiwan`     | `国语`, `國語`, `台湾华语`, `台灣華語`, `臺灣華語` |
+| R8  | `cantonese`           | `粤语`, `粵語`                                     |
+| R9  | `chinese-simplified`  | `简体`, `簡體`, `简体中文`, `簡體中文`             |
+| R10 | `chinese-traditional` | `繁体`, `繁體`, `繁体中文`, `繁體中文`             |
 
 **Broad Chinese discovery and accuracy**
 

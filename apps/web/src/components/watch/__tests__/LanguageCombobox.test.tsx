@@ -1488,6 +1488,40 @@ describe("LanguageCombobox", () => {
     ).toEqual(["mandarin-china"])
   })
 
+  it("ranks direct Chinese matches before broad aliases and preserves alias order", () => {
+    act(() => {
+      root.render(
+        <LanguageCombobox
+          options={[
+            { slug: "chinese-simplified", name: "Simplified Chinese" },
+            { slug: "cantonese", name: "中文 Cantonese" },
+            { slug: "mandarin-china", name: "Mandarin China" },
+          ]}
+          value="mandarin-china"
+          onChange={vi.fn()}
+          searchAliasAuthority={WATCH_LANGUAGE_SEARCH_ALIAS_AUTHORITY}
+        />,
+      )
+    })
+    act(() => {
+      $('[data-testid="language-combobox-trigger"]')?.click()
+    })
+
+    const input = $(
+      '[data-testid="language-combobox-search"]',
+    ) as HTMLInputElement
+    act(() => {
+      input.value = "中文"
+      input.dispatchEvent(new Event("input", { bubbles: true }))
+    })
+
+    expect(
+      $$('[data-testid="language-combobox-option"]').map((item) =>
+        item.getAttribute("data-language-slug"),
+      ),
+    ).toEqual(["cantonese", "chinese-simplified", "mandarin-china"])
+  })
+
   it("keeps disabled context rows available to direct search but not alias search", () => {
     act(() => {
       root.render(

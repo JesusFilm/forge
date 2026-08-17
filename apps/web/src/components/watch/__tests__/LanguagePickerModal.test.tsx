@@ -1589,6 +1589,32 @@ describe("LanguagePickerModal — selective language prefetch", () => {
     expect($$('[data-testid="language-combobox-option"]')).toHaveLength(0)
   })
 
+  it("does not expose an alias whose audio option is unavailable", () => {
+    renderModal({
+      open: true,
+      variants: [
+        makeVariant({ documentId: "v1", languageSlug: "english" }),
+        makeVariant({
+          documentId: "v2",
+          languageSlug: "mandarin-china",
+        }),
+      ],
+    })
+
+    act(() => {
+      $('[data-testid="language-combobox-trigger"]')?.click()
+    })
+    const input = $(
+      '[data-testid="language-combobox-search"]',
+    ) as HTMLInputElement
+    act(() => {
+      input.value = "粤语"
+      input.dispatchEvent(new Event("input", { bubbles: true }))
+    })
+
+    expect($$('[data-testid="language-combobox-option"]')).toHaveLength(0)
+  })
+
   it("filters real subtitles by alias without exposing a disabled audio-language row", () => {
     renderModal({
       open: true,
