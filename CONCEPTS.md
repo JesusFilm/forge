@@ -566,6 +566,14 @@ The language semantic search uses to interpret and match a query. Search Languag
 
 Search Language identity should travel as the public language slug selected or confirmed by the viewer. Locale tags are useful for fallback negotiation and search execution, but they are not the exact identity of the viewer's chosen search language.
 
+### Watch Search Evidence Language
+
+The Language of the indexed title, metadata, or transcript text that supplied a
+Watch search result's winning relevance evidence. It records why the result
+matched; it is not automatically the Search Language, UI display language, or
+playback identity, and evidence text may become visible card copy only when its
+language is appropriate for that result's display or target context.
+
 ### Search Watchability
 
 The target-language playback state attached to a Watch search candidate, distinguishing playable target audio, target subtitles, related-language audio, and no qualifying playback option. Search Watchability describes what the viewer can play and where the result should link; it refines ordering only after textual match and relevance.

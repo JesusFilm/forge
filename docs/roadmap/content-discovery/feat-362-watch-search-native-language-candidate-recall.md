@@ -3,7 +3,7 @@ id: "feat-362"
 title: "Watch search native-language Candidate recall"
 owner: "codex"
 priority: "P1"
-status: "in-progress"
+status: "complete"
 start_date: "2026-08-13"
 duration: 2
 depends_on: []
@@ -68,9 +68,15 @@ when the correct localized title is indexed.
 - Qualify the exact Evaluation generation with the paired production-shaped
   benchmark and private Admin comparison page.
 
-## Remaining qualification
+## Completion
 
-The bounded dual representation is implemented locally. A fresh Candidate v2
-generation must still be built and evaluated with the private comparison page,
-paired latency benchmark, and reviewed capacity evidence before any separate
-Serving decision.
+- Candidate global exact-title recall, localized partial matching, and the
+  existing title/metadata/semantic ranker were qualified and promoted through
+  the guarded Serving pointer.
+- Candidate result projection now keeps visible card evidence inside the
+  display-or-target language boundary and falls back to localized catalog copy
+  for unrelated or unknown evidence languages.
+- The presentation correction adds no search request, embedding, schema field,
+  index rebuild, or ranking change. Focused service tests pin mismatch,
+  unknown-language, and selected-target evidence behavior alongside the
+  existing Typesense request count.
