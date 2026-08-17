@@ -19,7 +19,7 @@
 //                 operators without a production DATABASE_URL; the sheet
 //                 records sourceTranscriptId: null in that case.
 
-import { mkdirSync, writeFileSync } from "node:fs"
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 
 import {
@@ -254,19 +254,32 @@ async function main() {
   const raw = await callLlm(args.model, system, user)
   const parsed = extractJsonArray(raw)
   if (!Array.isArray(parsed)) throw new Error("model output is not an array")
+  // Positional pairing is only sound when the lengths MATCH — a shorter or
+  // longer model output silently misattributes neighbors' timecodes.
+  if (parsed.length !== segments.length) {
+    throw new Error(
+      `model returned ${parsed.length} beats for ${segments.length} segments — refusing to pair positionally`,
+    )
+  }
 
+  const missingTimes: number[] = []
   const beats = parsed.map((item, index) => {
     const row = item as Record<string, unknown>
+    // Timing comes from the model or the source segment — NEVER fabricated.
+    // An index-as-seconds fallback passes every validation gate (strictly
+    // increasing!) while placing every jump target at second N (Tier-2 P2).
+    const startSeconds =
+      typeof row.startSeconds === "number"
+        ? row.startSeconds
+        : segments[index]!.startSeconds
+    if (startSeconds == null) missingTimes.push(index)
     return {
       beatIndex: index,
-      startSeconds:
-        typeof row.startSeconds === "number"
-          ? row.startSeconds
-          : (segments[index]?.startSeconds ?? index),
+      startSeconds: startSeconds ?? -1,
       endSeconds:
         typeof row.endSeconds === "number"
           ? row.endSeconds
-          : (segments[index]?.endSeconds ?? null),
+          : (segments[index]!.endSeconds ?? null),
       summary: typeof row.summary === "string" ? row.summary.trim() : "",
       bibleVerses: Array.isArray(row.bibleVerses)
         ? row.bibleVerses.filter((v): v is string => typeof v === "string")
@@ -277,6 +290,11 @@ async function main() {
           : null,
     }
   })
+  if (missingTimes.length > 0) {
+    throw new Error(
+      `no startSeconds available (model or source) for beats ${missingTimes.join(", ")} — cannot produce a timed sheet`,
+    )
+  }
 
   const sheet: BeatSheet = {
     version: BEAT_SHEET_VERSION,
@@ -309,6 +327,28 @@ async function main() {
 
   mkdirSync(args.outDir, { recursive: true })
   const base = join(args.outDir, `${args.slug}.${args.language}.beat-sheet`)
+  // Never clobber a sheet a human has already SIGNED — that review work is
+  // unrecoverable. Unsigned drafts are fair game to regenerate over.
+  if (existsSync(`${base}.json`)) {
+    try {
+      const prior = JSON.parse(readFileSync(`${base}.json`, "utf8")) as {
+        reviewedBy?: unknown
+      }
+      if (
+        typeof prior.reviewedBy === "string" &&
+        prior.reviewedBy.trim().length > 0
+      ) {
+        throw new Error(
+          `${base}.json is already SIGNED by "${prior.reviewedBy}" — move or load it before regenerating`,
+        )
+      }
+    } catch (error) {
+      if (error instanceof Error && error.message.includes("already SIGNED")) {
+        throw error
+      }
+      // Unreadable prior file: fall through and overwrite the corrupt draft.
+    }
+  }
   writeFileSync(`${base}.json`, JSON.stringify(sheet, null, 2))
   writeFileSync(`${base}.md`, renderBeatSheetMarkdown(sheet))
 

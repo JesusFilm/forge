@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest"
 
 import {
   BEAT_SHEET_VERSION,
+  classifyDatabaseHost,
   renderBeatSheetMarkdown,
   validateBeatSheet,
   validateBibleReference,
@@ -191,5 +192,80 @@ describe("renderBeatSheetMarkdown", () => {
   it("labels an unsigned sheet loudly", () => {
     const md = renderBeatSheetMarkdown(sheet({ reviewedBy: "" }))
     expect(md).toContain("UNSIGNED")
+  })
+})
+
+describe("review-hardening rules (Tier-2 findings)", () => {
+  it("rejects a non-ISO reviewedAt — free text must not survive to the transaction", () => {
+    const result = validateBeatSheet(sheet({ reviewedAt: "last Tuesday" }), {
+      requireSigned: true,
+    })
+    expect(result.ok).toBe(false)
+    expect(result.issues[0]).toMatchObject({ kind: "schema" })
+  })
+
+  it("refuses a SIGNED sheet whose reviewedAt is null — no fabricated provenance", () => {
+    const result = validateBeatSheet(sheet({ reviewedAt: null }), {
+      requireSigned: true,
+    })
+    expect(result.ok).toBe(false)
+    expect(result.issues).toContainEqual(
+      expect.objectContaining({ kind: "unsigned" }),
+    )
+  })
+
+  it.each(["EN", "en-US", "english", "En"])(
+    "rejects languageSlug %s — only lowercase BCP-47 rows are ever served",
+    (languageSlug) => {
+      const result = validateBeatSheet(sheet({ languageSlug }), {
+        requireSigned: true,
+      })
+      expect(result.ok).toBe(false)
+    },
+  )
+
+  it("accepts lowercase region tags like pt-br", () => {
+    expect(
+      validateBeatSheet(sheet({ languageSlug: "pt-br" }), {
+        requireSigned: true,
+      }).ok,
+    ).toBe(true)
+  })
+
+  it("rejects a 1-beat sheet (TV timed mode needs two distinct anchors)", () => {
+    const one = sheet()
+    one.beats = [one.beats[0]!]
+    expect(validateBeatSheet(one, { requireSigned: true }).ok).toBe(false)
+  })
+
+  it("rejects a sheet larger than the server's default take (150)", () => {
+    const big = sheet()
+    big.beats = Array.from({ length: 151 }, (_, i) => ({
+      beatIndex: i,
+      startSeconds: i * 10,
+      endSeconds: null,
+      summary: `Beat ${i}`,
+      bibleVerses: [],
+      question: null,
+    }))
+    expect(validateBeatSheet(big, { requireSigned: true }).ok).toBe(false)
+  })
+})
+
+describe("classifyDatabaseHost", () => {
+  it.each([
+    ["pg.railway.app", "known-production"],
+    ["postgres.railway.internal", "known-production"],
+    ["db.jesusfilm.org", "known-production"],
+    ["monorail.proxy.rlwy.net", "known-production"],
+    ["localhost", "local"],
+    ["127.0.0.1", "local"],
+    ["db", "local"],
+    // FAIL CLOSED: anything unrecognized is treated as potentially prod.
+    ["10.0.0.12", "unknown"],
+    ["ep-cool-star.neon.tech", "unknown"],
+    ["pooler.supabase.com", "unknown"],
+  ])("classifies %s as %s", (host, expected) => {
+    expect(classifyDatabaseHost(host)).toBe(expected)
   })
 })

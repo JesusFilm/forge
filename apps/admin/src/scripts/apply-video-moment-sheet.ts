@@ -21,6 +21,7 @@
 import { readFileSync, writeFileSync } from "node:fs"
 
 import {
+  classifyDatabaseHost,
   validateBeatSheet,
   type BeatSheet,
 } from "@/services/video-moment-sheet"
@@ -61,8 +62,13 @@ function usage(): never {
   process.exit(2)
 }
 
-/** A production-looking DATABASE_URL must be declared as such, and executing
- *  against it needs the explicit unlock — one axis per flag, all required. */
+/** The interlock FAILS CLOSED (Tier-2 P2): only a provably-local host may
+ *  execute as development. Railway's in-network `*.railway.internal`, IP
+ *  literals, tunnels on odd hosts, and unrecognized managed-PG providers all
+ *  classify "unknown" and must be declared production (with the full unlock)
+ *  to execute. Residual: a tunnel forwarding prod onto localhost defeats any
+ *  host check — the signed-sheet gate + dry-run-first workflow remain the
+ *  controls there. */
 function assertTargetConsistency(args: Args): void {
   const url = process.env.DATABASE_URL ?? ""
   let host = ""
@@ -72,13 +78,10 @@ function assertTargetConsistency(args: Args): void {
     console.error("refusing: DATABASE_URL is missing or unparseable")
     process.exit(2)
   }
-  const looksProd =
-    host.endsWith(".railway.app") ||
-    host.endsWith(".jesusfilm.org") ||
-    host.includes("rlwy.net")
-  if (looksProd && args.targetEnv !== "production") {
+  const hostClass = classifyDatabaseHost(host)
+  if (hostClass !== "local" && args.targetEnv !== "production") {
     console.error(
-      `refusing: DATABASE_URL host "${host}" looks like production but --target-env=${args.targetEnv ?? "(unset)"}`,
+      `refusing: DATABASE_URL host "${host}" is ${hostClass === "known-production" ? "production" : "not a recognized local host"} but --target-env=${args.targetEnv ?? "(unset)"} — declare --target-env=production (with the unlock flags to execute), or point at a local database`,
     )
     process.exit(2)
   }
@@ -151,6 +154,43 @@ async function main() {
       process.exit(1)
     }
     const videoId = videos[0]!.id
+
+    // Provenance cross-checks (Tier-2): slugs are mutable and Core-owned, so
+    // a sheet authored days ago can resolve to a DIFFERENT video today. When
+    // the sheet names its source transcript, that transcript must belong to
+    // the video the slug resolves to NOW — otherwise every timecode is cut
+    // against the wrong film.
+    if (sheet.sourceTranscriptId != null) {
+      const transcript = await prisma.videoTranscript.findFirst({
+        where: { id: sheet.sourceTranscriptId, videoId },
+        select: { id: true },
+      })
+      if (transcript == null) {
+        console.error(
+          JSON.stringify({
+            event: "apply-video-moment-sheet.provenance-mismatch",
+            message: `sourceTranscriptId ${sheet.sourceTranscriptId} does not belong to the video "${sheet.videoSlug}" resolves to today (${videoId}) — the slug may have been re-pointed since generation; regenerate the sheet`,
+          }),
+        )
+        process.exit(1)
+      }
+    }
+    // A language with no transcript is almost certainly a tag typo: the
+    // panel would serve these rows exclusively, so refuse rather than let a
+    // stray tag write an unreachable-or-wrong set.
+    const languageTranscript = await prisma.videoTranscript.findFirst({
+      where: { videoId, language: sheet.languageSlug },
+      select: { id: true },
+    })
+    if (languageTranscript == null) {
+      console.error(
+        JSON.stringify({
+          event: "apply-video-moment-sheet.language-mismatch",
+          message: `video ${videoId} has no "${sheet.languageSlug}" transcript — check the sheet's languageSlug against video_transcript.language`,
+        }),
+      )
+      process.exit(1)
+    }
 
     const existing = await prisma.videoMomentEditorial.count({
       where: { videoId, languageSlug: sheet.languageSlug },

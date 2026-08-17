@@ -1762,7 +1762,7 @@ model VideoMomentEditorial {
   startSeconds       Float     @map("start_seconds")
   endSeconds         Float?    @map("end_seconds")
   summary            String
-  bibleVerses        String[]  @map("bible_verses")
+  bibleVerses        String[]  @default([]) @map("bible_verses")
   /// Loaded with phase 1; exposed on the GraphQL type and rendered by TV in
   /// phase 2 (plan R3).
   question           String?

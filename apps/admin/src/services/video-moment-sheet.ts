@@ -155,15 +155,34 @@ export const BeatSheetSchema = z
   .object({
     version: z.literal(BEAT_SHEET_VERSION),
     videoSlug: z.string().trim().min(1),
-    /** BCP-47, matching video_transcript.language — NOT the "english" slug. */
-    languageSlug: z.string().trim().min(1),
+    /** BCP-47, matching video_transcript.language — NOT the "english" slug.
+     *  Shape-enforced and lowercase: a case/region variant ("EN", "en-US"
+     *  where transcripts use "en") loads rows NO reader can ever serve —
+     *  the moments ladder matches exactly — while "replace" misses the live
+     *  set. Family slugs ("english") fail the length bound. */
+    languageSlug: z
+      .string()
+      .trim()
+      .regex(
+        /^[a-z]{2,3}(-[a-z0-9]{2,8})*$/,
+        "must be a lowercase BCP-47 tag like 'en' (video_transcript.language convention)",
+      ),
     sourceModel: z.string().nullable(),
     sourceTranscriptId: z.string().nullable(),
     /** Empty until a human signs the sheet. The loader refuses "" — the R4
      *  review gate is structural, not procedural. */
     reviewedBy: z.string(),
-    reviewedAt: z.string().nullable(),
-    beats: z.array(BeatSchema).min(1),
+    /** ISO-8601 when present. Free-text here passes a green dry-run and then
+     *  detonates as Invalid Date INSIDE the execute transaction. */
+    reviewedAt: z.string().datetime().nullable(),
+    beats: z
+      .array(BeatSchema)
+      // ≥2: the TV panel's timed mode needs two distinct anchors — a 1-beat
+      // editorial set would DOWNGRADE a chunk-timed film to a static list.
+      // ≤150: the server serves DEFAULT_VIDEO_MOMENTS=150 when the consumer
+      // passes no limit (TV passes none) — a longer sheet silently truncates.
+      .min(2)
+      .max(150),
   })
   .strict()
 
@@ -236,12 +255,21 @@ export function validateBeatSheet(
     }
   }
 
-  if (requireSigned && sheet.reviewedBy.trim().length === 0) {
-    issues.push({
-      kind: "unsigned",
-      message:
-        "reviewedBy is empty — a human must review and sign the sheet before it can be loaded (plan R4)",
-    })
+  if (requireSigned) {
+    if (sheet.reviewedBy.trim().length === 0) {
+      issues.push({
+        kind: "unsigned",
+        message:
+          "reviewedBy is empty — a human must review and sign the sheet before it can be loaded (plan R4)",
+      })
+    }
+    if (sheet.reviewedAt == null) {
+      issues.push({
+        kind: "unsigned",
+        message:
+          "reviewedAt is null — signing means filling BOTH fields; the loader must never fabricate the review timestamp",
+      })
+    }
   }
 
   return issues.length === 0
@@ -279,4 +307,35 @@ export function renderBeatSheetMarkdown(sheet: BeatSheet): string {
     "",
   ]
   return lines.join("\n")
+}
+
+/** Hosts that are provably THIS machine / the dev container. Everything else
+ *  is treated as potentially-production: Railway's in-network shape is
+ *  `*.railway.internal`, tunnels and IP literals are indistinguishable from
+ *  prod, and new managed-PG hosts appear without warning — so the interlock
+ *  FAILS CLOSED on anything unrecognized. (Residual: a tunnel that forwards
+ *  prod onto localhost defeats any host check; the signed-sheet gate and
+ *  dry-run-first workflow are the remaining controls there.) */
+const LOCAL_DB_HOSTS = new Set([
+  "localhost",
+  "127.0.0.1",
+  "::1",
+  "db",
+  "postgres",
+  "host.docker.internal",
+])
+
+export type DatabaseHostClass = "known-production" | "local" | "unknown"
+
+export function classifyDatabaseHost(host: string): DatabaseHostClass {
+  const lower = host.toLowerCase()
+  if (
+    lower.endsWith(".railway.app") ||
+    lower.endsWith(".railway.internal") ||
+    lower.endsWith(".jesusfilm.org") ||
+    lower.includes("rlwy.net")
+  ) {
+    return "known-production"
+  }
+  return LOCAL_DB_HOSTS.has(lower) ? "local" : "unknown"
 }
