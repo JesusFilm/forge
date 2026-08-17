@@ -1,8 +1,9 @@
 /**
- * Shared scaffolding for component render suites. Import ONLY from a test
- * file that carries the per-file `jest.mock("react", …)` re-point preamble
- * (see apps/mobile/CLAUDE.md "Component render tests") — this module reads
- * `react` and react-test-renderer through that re-pointed registry.
+ * Shared scaffolding for component render suites. Since SDK 57 the package.json
+ * jest config pins `^react$` and both jsx runtimes in `moduleNameMapper`, so a
+ * suite needs NO per-file `jest.mock("react", …)` preamble to import this. The
+ * existing per-suite re-points stay valid and take precedence (see
+ * apps/mobile/CLAUDE.md "Component render tests").
  */
 
 import { act, type ReactElement } from "react"
