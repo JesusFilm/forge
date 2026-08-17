@@ -10,7 +10,9 @@ import {
   Platform,
   Pressable,
   StyleSheet,
+  // @ts-expect-error TVEventControl is provided by react-native-tvos but not in the base RN types that CI type-checks against.
   TVEventControl,
+  // @ts-expect-error useTVEventHandler is provided by react-native-tvos but not in the base RN types that CI type-checks against.
   useTVEventHandler,
 } from "react-native"
 
