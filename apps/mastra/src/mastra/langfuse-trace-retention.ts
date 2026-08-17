@@ -118,6 +118,15 @@
  * replica; add a leader guard before scaling out — two replicas would spend
  * the ORG-wide delete quota twice. The production-only gate lives at the
  * CALL SITE in `src/mastra/index.ts`, mirroring `startAiChatRetentionPurge`.
+ *
+ * SECOND CONSUMER — feat-337 per-user erasure (KTD4): the erasure module
+ * reuses this module's Langfuse client surface — `listObservationsByUserIdPage`
+ * (the by-userId listing primitive below) plus the existing `deleteTraceBatch`
+ * — rather than growing its own HTTP copy. The listing requests
+ * `fields=core,basic`: `userId` rides the `basic` field group, which (like
+ * `core`) carries identifiers and metadata only — the `io` group (raw
+ * conversation text) is still NEVER requested, and the strip-mode row schema
+ * remains the leak control either way.
  */
 
 import { z } from "zod"
@@ -159,10 +168,32 @@ export const MAX_TRACE_IDS_PER_DELETE_REQUEST = 50
 export const MAX_DELETE_REQUESTS_PER_RUN = 40
 
 /**
- * Listing page size. 500 core-fields rows are ~150 KB — comfortably under
- * the house byte cap (`LANGFUSE_MAX_RESPONSE_BYTES`, default 256 KiB).
+ * Listing page size. Measured 2026-08-17 (read-only probe against the
+ * production project): ~356 B per `fields=core` row, so a full 500-row page
+ * projects to ~178 KB — under the house byte cap
+ * (`LANGFUSE_MAX_RESPONSE_BYTES`, default 256 KiB) with ~1.5× headroom.
+ * (Observed live pages returned ≤250 rows for limit=500, so real pages sit
+ * well below the projection.) The opt-in retention smoke re-measures and
+ * asserts this when run (note: its delete leg spends one org delete-quota
+ * request per run) — trust the measurement over any estimate here.
  */
 export const LANGFUSE_RETENTION_LIST_PAGE_SIZE = 500
+
+/**
+ * Page size for the feat-337 by-userId erasure listing — deliberately
+ * SEPARATE from the sweep's constant above, which was sized for the SMALLER
+ * `fields=core` row (measured ~356 B/row, 2026-08-17). The erasure listing
+ * requests `fields=core,basic`, whose rows carry the basic metadata group on
+ * top of core. Real measurement (opt-in read smoke, 2026-08-17): 63,323 B
+ * per 100-row `fields=core,basic` page — ~633 B/row, so 500 such rows
+ * (~316 KB) would breach the 256 KiB `LANGFUSE_MAX_RESPONSE_BYTES` cap and
+ * turn a heavy-subject listing into a deterministic `parse_error`. 100 rows
+ * keeps the measured page at ~4× headroom under the cap, and 20 pages × 100
+ * rows still far exceeds any single subject's plausible trace volume. The
+ * smoke re-measures and asserts this on every run — trust the measurement
+ * over any estimate here.
+ */
+export const LANGFUSE_ERASURE_LIST_PAGE_SIZE = 100
 
 /**
  * Per-run listing bound so a pathological backlog cannot spin the general
@@ -190,9 +221,22 @@ export type LangfuseTraceRetentionFailureReason =
   | "rejected"
   | "parse_error"
 
+/**
+ * The COMPOSED per-call failure vocabulary — every reason a single Langfuse
+ * HTTP call in this module can fail with, `rate_limited` included. Exported
+ * for the feat-337 erasure module (KTD5): the sweep's own
+ * `LangfuseTraceRetentionFailureReason` alias deliberately excludes
+ * `rate_limited` (the sweep reports 429 as a first-class OUTCOME, not a
+ * failure reason), so the alias alone cannot type the erasure module's
+ * per-call classification.
+ */
+export type LangfuseErasureListFailureReason =
+  | LangfuseTraceRetentionFailureReason
+  | "rate_limited"
+
 type LangfuseHttpFailure = {
   ok: false
-  reason: LangfuseTraceRetentionFailureReason | "rate_limited"
+  reason: LangfuseErasureListFailureReason
   status?: number
   /** Parsed from `Retry-After` on a 429 (seconds form only). */
   retryAfterSeconds?: number
@@ -389,9 +433,19 @@ function failureForThrow(error: unknown): LangfuseHttpFailure {
 // `fields=core` and returns the io group cannot land conversation text in
 // this module's memory beyond the transient body buffer. The envelope and
 // meta keep passthrough for additive contract evolution.
+// Row fields widened by exactly `userId` for the feat-337 by-userId listing
+// (KTD4). `z.unknown()` keys are effectively optional, so the retention
+// listing (which never requests `basic`) parses identically — its rows just
+// carry `userId: undefined`, which it never reads.
 const ObservationsPageSchema = z
   .object({
-    data: z.array(z.object({ traceId: z.unknown(), startTime: z.unknown() })),
+    data: z.array(
+      z.object({
+        traceId: z.unknown(),
+        startTime: z.unknown(),
+        userId: z.unknown(),
+      }),
+    ),
     meta: z
       .object({ cursor: z.string().nullable().optional() })
       .passthrough()
@@ -495,6 +549,143 @@ export async function listExpiredObservationsPage({
     observationCount: parsed.data.data.length,
     filterSkipped,
     ...(oldestStartTimeMs !== undefined ? { oldestStartTimeMs } : {}),
+    ...(nextCursor ? { nextCursor } : {}),
+  }
+}
+
+/** One readable listed row of the feat-337 by-userId listing. */
+export type LangfuseUserObservationRow = {
+  traceId: string
+  userId: string
+}
+
+export type LangfuseListObservationsByUserIdResult =
+  | {
+      ok: true
+      /**
+       * Every row with a readable non-empty string `traceId` AND `userId`,
+       * projected field-by-field to exactly those two fields, in server
+       * order. Deliberately NOT deduped and NOT filtered to the requested
+       * userId — the caller (feat-337 U6) re-checks `userId === target`
+       * per row, then dedupes to unique trace ids (list → re-check → dedupe).
+       */
+      rows: LangfuseUserObservationRow[]
+      /** Raw row count on this page, readable or not. */
+      observationCount: number
+      /**
+       * Rows WITHOUT a readable non-empty string `userId` — the R7 refusal
+       * signal: a non-zero count (or `observationCount` exceeding
+       * `rows.length + missingTraceIdCount`) means the listing cannot prove
+       * per-row ownership, and the erasure caller must refuse the Langfuse
+       * half rather than delete unproven rows. Never silently dropped.
+       */
+      missingUserIdCount: number
+      /**
+       * Rows whose `userId` IS readable but whose `traceId` is not — visible
+       * (undeletable) rather than vanished. Counted separately so the caller
+       * can tell "ownership unprovable" from "target unaddressable".
+       */
+      missingTraceIdCount: number
+      nextCursor?: string
+    }
+  | LangfuseHttpFailure
+
+/**
+ * One page of `GET /api/public/v2/observations` filtered by the `userId`
+ * QUERY param (never the structured `filter` param, which would take
+ * precedence) with `fields=core,basic` — `userId` rides the `basic` field
+ * group; the `io` group (raw conversation text) is never requested, and the
+ * strip-mode row schema drops it even from a misbehaving upstream. The R7
+ * listing primitive for the feat-337 erasure module (KTD4); see the result
+ * type above for the list → re-check → dedupe contract split with the caller.
+ *
+ * EMPIRICAL (2026-08-17, one-call read-only probe against the real
+ * `forge-mastra` project): `GET /api/public/v2/observations?fields=core,basic&limit=10`
+ * returned 200 with 10 rows, every row carrying a non-empty string `userId` —
+ * the typings' claim that `basic` serves `userId` is confirmed real.
+ *
+ * A blank `userId` is refused BEFORE any request: an empty filter would list
+ * the whole project, failing the erasure guard OPEN (mirrors the sibling's
+ * NaN-cutoff refusal).
+ */
+export async function listObservationsByUserIdPage({
+  config,
+  userId,
+  cursor,
+  fetchImpl = fetch,
+}: {
+  config: LangfuseConfig
+  userId: string
+  cursor?: string
+  fetchImpl?: typeof fetch
+}): Promise<LangfuseListObservationsByUserIdResult> {
+  if (userId.trim().length === 0) return { ok: false, reason: "parse_error" }
+  const url = endpoint(config.baseUrl ?? "", "api/public/v2/observations")
+  url.searchParams.set("userId", userId)
+  url.searchParams.set("fields", "core,basic")
+  url.searchParams.set("limit", String(LANGFUSE_ERASURE_LIST_PAGE_SIZE))
+  if (cursor !== undefined) url.searchParams.set("cursor", cursor)
+
+  let response: Response
+  try {
+    response = await fetchImpl(url, {
+      method: "GET",
+      headers: {
+        authorization: basicAuthHeader(config),
+        "user-agent": config.userAgent,
+      },
+      // No legitimate redirect exists; following one would re-send the
+      // full-project-access Basic credentials to an unvetted host.
+      redirect: "error",
+      signal: AbortSignal.timeout(config.timeoutMs),
+    })
+  } catch (error) {
+    return failureForThrow(error)
+  }
+
+  if (!response.ok) {
+    await drainBody(response)
+    return failureForStatus(response)
+  }
+
+  let body: unknown
+  try {
+    body = await readJsonBodyCapped(response, config.maxResponseBytes)
+  } catch (error) {
+    // A mid-body-read timeout/abort is a latency incident, not a parse
+    // failure — see the readJsonBodyCapped divergence note.
+    return failureForThrow(error)
+  }
+  const parsed = ObservationsPageSchema.safeParse(body)
+  if (!parsed.success) {
+    return { ok: false, reason: "parse_error", status: response.status }
+  }
+
+  const rows: LangfuseUserObservationRow[] = []
+  let missingUserIdCount = 0
+  let missingTraceIdCount = 0
+  for (const row of parsed.data.data) {
+    const { traceId, userId: rowUserId } = row
+    // Ownership readability first: a row whose userId cannot be read is the
+    // refusal signal regardless of its traceId's shape.
+    if (typeof rowUserId !== "string" || rowUserId.length === 0) {
+      missingUserIdCount += 1
+      continue
+    }
+    if (typeof traceId !== "string" || traceId.length === 0) {
+      missingTraceIdCount += 1
+      continue
+    }
+    // Field-by-field projection — never the parsed row object itself.
+    rows.push({ traceId, userId: rowUserId })
+  }
+  const nextCursor = parsed.data.meta?.cursor ?? undefined
+  return {
+    ok: true,
+    rows,
+    observationCount: parsed.data.data.length,
+    missingUserIdCount,
+    missingTraceIdCount,
     ...(nextCursor ? { nextCursor } : {}),
   }
 }

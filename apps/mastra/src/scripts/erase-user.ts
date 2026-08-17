@@ -35,10 +35,12 @@
  *     *Emitted on the preview path only.* An execute run never prints the
  *     token, not even on refusal — see the comment at the emit site for why
  *     echoing it would reduce the subject pin to one extra keystroke.
- *     *PR 1 scope:* the Langfuse component is the configured HOST. The
- *     resolved-project component lands in PR 2 alongside the project-identity
- *     probe (KTD11), which changes the hash — operators re-read it from the
- *     preview, which is the flow anyway.
+ *     The Langfuse component is the configured HOST, and stays exactly that:
+ *     Langfuse keys are project-scoped, so the environment's key pair itself
+ *     determines WHICH project the half operates on — there is no resolved
+ *     project id to pin and no project-identity probe (owner ruling,
+ *     2026-08-17; the workstation-hygiene assumption is recorded in R14 and
+ *     the runbook's accepted limitations).
  *  4. **`DATABASE_URL` is read from `env.DATABASE_URL`** (post-
  *     `emptyToUndefined`, so a blank sourced value is `undefined`), never
  *     `getMastraDatabaseUrl()` — whose silent localhost fallback would let a
@@ -46,14 +48,25 @@
  *
  * Exit codes (KTD5):
  *   0 — the run completed and claimed nothing it cannot support: any clean
- *       read-only preview.
- *   2 — incomplete but safe to rerun. In THIS build every `--execute` run ends
- *       here even when Postgres erased cleanly, because the Langfuse half is
- *       `not_implemented`: traces may still exist and no run may imply
- *       otherwise. PR 2 makes a fully-erased key exit 0.
+ *       read-only preview (a trio-absent preview included — it claims
+ *       nothing); a no-data-found run (BOTH stores empty for this exact
+ *       key); and a full-submission execute — including "deletes submitted;
+ *       N still visible", R15's non-failure state (Langfuse deletion is
+ *       ~15 min async; the later preview rerun is the completion evidence).
+ *   2 — incomplete but safe to rerun (exact-key deletes are idempotent):
+ *       a Langfuse rate-limit or daily-quota hit, a per-run cap hit, any
+ *       classified Langfuse failure after the Postgres half, a Postgres
+ *       partial failure, or an execute with the Langfuse trio absent
+ *       (`skipped_unconfigured` — the store's state is unknowable, so the
+ *       run must not imply "erased everywhere"). Every exit-2 report names
+ *       the per-store state and the rerun-safe note.
  *   1 — hard refusal or fault: bad arguments, a refused resourceId, absent
- *       `DATABASE_URL`, a missing/mismatched confirm hash, or a store
- *       connectivity-probe failure (never a zero count).
+ *       `DATABASE_URL`, a missing/mismatched confirm hash, a store
+ *       connectivity-probe failure (never a zero count), a Langfuse
+ *       egress-pin refusal (KTD11 — zero requests issued), or a listing
+ *       that cannot return `userId` (R7 — ownership unprovable) or per-row
+ *       trace ids (matching rows visible yet unaddressable) — both refuse
+ *       the Langfuse half with zero deletes.
  *
  * Output is enum-and-count only (R4): `[erase-user] event=… key=value` plain
  * strings — never conversation text, thread ids, the resource key, or caught
@@ -69,6 +82,7 @@ import { env } from "../config/env"
 import {
   closeAiChatErasureStore,
   executeAiChatErasure,
+  formatLangfuseOutcome,
   formatPostgresOutcome,
   previewAiChatErasure,
   type AiChatErasureResult,
@@ -214,7 +228,9 @@ export function eraseUserTargetIdentity({
       database: url.pathname.replace(/^\/+/, ""),
       params,
     },
-    // PR 1: host only. PR 2 adds the RESOLVED project id beside it (KTD11).
+    // Host only, by design (owner ruling 2026-08-17): Langfuse keys are
+    // project-scoped, so the env's key pair determines the project — no
+    // resolved-project component exists (R14 records the assumption).
     langfuse: { host: langfuseHost },
     resource: createHash("sha256").update(resourceId).digest("hex"),
   })
@@ -240,15 +256,41 @@ export type EraseUserDeps = {
  */
 export function exitCodeFor(result: AiChatErasureResult): 0 | 1 | 2 {
   if (result.kind === "refused") return 1
+  // Hard faults outrank incompleteness, whichever store they came from: a
+  // Postgres probe fault, the KTD11 egress-pin refusal (zero requests were
+  // issued — never a zero count), and the R7 unprovable-ownership refusal.
   if (result.postgres.kind === "unreachable") return 1
+  if (result.langfuse.kind === "egress_refused") return 1
+  if (result.langfuse.kind === "refused_unreadable_user_ids") return 1
+  // Same anomaly class, same posture: matching rows whose trace ids cannot
+  // be read are undeletable-by-id, no rerun fixes it — escalate.
+  if (result.langfuse.kind === "refused_unaddressable_rows") return 1
   if (result.postgres.kind === "failed") return 2
-  // A read-only preview claims nothing about either store's final state, so a
-  // clean one exits 0 even with the Langfuse half unbuilt.
-  if (result.mode === "preview") return 0
-  // Execute: the Langfuse half is `not_implemented` in this build, so traces
-  // may still exist for this key. Exiting 0 here would read as "erased
-  // everywhere" — the one claim PR 1 cannot make.
-  return result.langfuse.kind === "not_implemented" ? 2 : 0
+  if (result.mode === "preview") {
+    // A read-only preview claims nothing about either store's final state,
+    // so a clean count — or a trio-absent skip — exits 0. A preview whose
+    // Langfuse listing failed, throttled, or capped is still incomplete
+    // information the operator must not record: exit 2.
+    switch (result.langfuse.kind) {
+      case "skipped_unconfigured":
+      case "counted":
+      case "no_data":
+        return 0
+      default:
+        return 2
+    }
+  }
+  // Execute: exit 0 only for a full submission ("submitted; N still visible"
+  // included — R15's non-failure) or a genuinely empty store. Everything
+  // else — trio absent (state unknowable), rate-limit/quota, cap hits,
+  // classified failures — is incomplete-but-rerun-safe: exit 2.
+  switch (result.langfuse.kind) {
+    case "submitted":
+    case "no_data":
+      return 0
+    default:
+      return 2
+  }
 }
 
 export async function runEraseUserCli(
@@ -354,17 +396,28 @@ export async function runEraseUserCli(
     return 1
   }
 
+  // Both halves render through the modules' single formatters, so the CLI
+  // report and the module log can never drift (R4: enums and counts only).
   emit(
-    `event=${result.mode}_report ${formatPostgresOutcome(result.postgres)} langfuse=${result.langfuse.kind}`,
+    `event=${result.mode}_report ${formatPostgresOutcome(result.postgres)} ${formatLangfuseOutcome(result.langfuse)}`,
   )
-  if (result.postgres.kind === "no_data") {
-    // AE7: a distinct outcome, never reported as a successful erasure. A 0/0
-    // preview means re-derive the key before recording anything (runbook).
+  // AE7: a distinct outcome, never reported as a successful erasure. A 0/0
+  // preview means re-derive the key before recording anything (runbook).
+  if (
+    result.postgres.kind === "no_data" &&
+    result.langfuse.kind === "no_data"
+  ) {
+    emit("event=no_data_for_key stores=postgres+langfuse")
+  } else if (result.postgres.kind === "no_data") {
     emit("event=no_data_for_key store=postgres")
+  } else if (result.langfuse.kind === "no_data") {
+    emit("event=no_data_for_key store=langfuse")
   }
-  if (result.langfuse.kind === "not_implemented") {
+  if (result.langfuse.kind === "skipped_unconfigured") {
+    // The trio is absent, so this run says NOTHING about traces — the
+    // runbook's console bulk-delete covers the Langfuse half.
     emit(
-      "event=langfuse_half_unavailable reason=not_implemented fallback=langfuse_console_bulk_delete",
+      "event=langfuse_half_unavailable reason=skipped_unconfigured fallback=langfuse_console_bulk_delete",
     )
   }
 
