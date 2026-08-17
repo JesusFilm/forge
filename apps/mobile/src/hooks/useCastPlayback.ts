@@ -21,7 +21,7 @@ import {
   type CastSessionState,
 } from "../lib/cast/castSessionReducer"
 import { capErrorMessage, datadogLog } from "../lib/datadog"
-import { castDevicesAvailable } from "../lib/playbackTarget"
+import { castDevicesAvailable, isRemoteCastPhase } from "../lib/playbackTarget"
 
 export type CastPlayback = {
   /** The reducer state — the single source of truth for the session phase. */
@@ -51,7 +51,15 @@ export type CastPlayback = {
   reset: () => void
 }
 
-const REMOTE_PHASES: ReadonlySet<CastPhase> = new Set(["connecting", "active"])
+/** Teardown ends (slug change / unmount) log like the user-end runCommand. */
+function endCastSessionLogged(): void {
+  void endCastSession(true).catch((error: unknown) => {
+    datadogLog.warn("cast.command_failed", {
+      cast_command: "end_session",
+      error_message: capErrorMessage(String(error)),
+    })
+  })
+}
 
 export function useCastPlayback({
   videoSlug,
@@ -162,17 +170,18 @@ export function useCastPlayback({
     const previous = slugRef.current
     slugRef.current = videoSlug
     if (previous == null || videoSlug == null || previous === videoSlug) return
-    if (!REMOTE_PHASES.has(phaseRef.current)) return
+    if (!isRemoteCastPhase(phaseRef.current)) return
     dispatch({ type: "videoChanged", positionSeconds: positionRef.current })
-    void endCastSession(true).catch(() => undefined)
+    endCastSessionLogged()
   }, [videoSlug])
 
   // KTD7 unmount: leaving the player screen ends the session. StrictMode's
   // mount-time cleanup sees phase "idle" (no state landed yet), so it no-ops.
   useEffect(() => {
     return () => {
-      if (!REMOTE_PHASES.has(phaseRef.current)) return
-      void endCastSession(true).catch(() => undefined)
+      if (!isRemoteCastPhase(phaseRef.current)) return
+      // Runs after unmount — safe: datadogLog is not React state.
+      endCastSessionLogged()
     }
   }, [])
 

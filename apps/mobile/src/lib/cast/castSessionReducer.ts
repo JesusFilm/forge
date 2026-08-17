@@ -151,9 +151,47 @@ export function castSessionReducer(
           return state
       }
 
+    case "finished":
+      // Still a LIVE session (the chrome shows Replay), unlike failed/ended
+      // below — disconnects and a successful replay must keep transitioning.
+      switch (event.type) {
+        case "mediaLoaded":
+          return { phase: "active", deviceName: state.deviceName }
+        case "sessionEnded":
+          return event.errorMessage != null
+            ? {
+                phase: "failed",
+                reason: "device_drop",
+                deviceName: state.deviceName,
+              }
+            : {
+                phase: "ended",
+                trigger: "userEnd",
+                deviceName: state.deviceName,
+                lastPositionSeconds: event.positionSeconds,
+              }
+        case "userEnd":
+        case "videoChanged":
+        case "unmount":
+          return {
+            phase: "ended",
+            trigger: event.type,
+            deviceName: state.deviceName,
+            lastPositionSeconds: event.positionSeconds,
+          }
+        case "reset":
+          return castSessionInitialState
+        case "connect":
+        case "sessionStarted":
+          return { phase: "connecting", deviceName: event.deviceName }
+        default:
+          // mediaFailed/mediaFinished/timeout: stale — Finished shows Replay
+          // either way, and every exit above still works.
+          return state
+      }
+
     case "failed":
     case "ended":
-    case "finished":
       if (event.type === "reset") return castSessionInitialState
       if (event.type === "connect" || event.type === "sessionStarted") {
         return { phase: "connecting", deviceName: event.deviceName }

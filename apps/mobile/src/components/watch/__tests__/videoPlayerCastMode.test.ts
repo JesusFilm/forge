@@ -41,6 +41,28 @@ describe("cast remote mode (U4)", () => {
     expect(depClose).toBeGreaterThan(pause)
   })
 
+  it("captures the pre-session play state BEFORE the session pause", () => {
+    // A connect that never goes active must know whether to resume: the
+    // failure recovery carries resume=false (no remote media ever played),
+    // and a dialog cancel has no recovery at all.
+    const start = at("if (!castRemoteActive) return")
+    const capture = at("wasPlaying = player.playing === true", start)
+    const pause = at("player.pause()", capture)
+    const store = at("wasPlayingBeforeCastRef.current = wasPlaying", capture)
+    expect(pause).toBeGreaterThan(capture)
+    expect(store).toBeGreaterThan(pause)
+  })
+
+  it("resumes local playback when a connect never goes active", () => {
+    // Connecting -> failed (snackbar says playback continues) and
+    // Connecting -> idle (dialog cancel) both hand back a paused player.
+    const edge = at('if (previous !== "connecting"')
+    const body = SOURCE.slice(edge, at("}, [castPhase, player])", edge))
+    expect(body).toContain('castPhase === "active"')
+    expect(body).toContain("if (!wasPlayingBeforeCastRef.current) return")
+    expect(body).toContain("player.play()")
+  })
+
   it("suppresses local autostart while a session owns playback", () => {
     // Without both guards a sourceLoad landing mid-session starts local
     // audio under the TV (the veil-window cast case).

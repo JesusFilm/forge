@@ -254,7 +254,7 @@ describe("castSessionReducer", () => {
     })
   })
 
-  describe("terminal states (Failed / Ended / Finished)", () => {
+  describe("Failed / Ended traps + shared reset/reconnect exits", () => {
     const failed = castSessionReducer(connecting(), { type: "timeout" })
     const ended = castSessionReducer(active(), {
       type: "userEnd",
@@ -284,7 +284,7 @@ describe("castSessionReducer", () => {
       }
     })
 
-    it("media and end events do not transition", () => {
+    it("media and end events do not transition Failed / Ended", () => {
       const events: CastSessionEvent[] = [
         { type: "mediaLoaded" },
         { type: "mediaFailed" },
@@ -293,10 +293,74 @@ describe("castSessionReducer", () => {
         { type: "userEnd", positionSeconds: 1 },
         { type: "sessionEnded", errorMessage: "x", positionSeconds: 1 },
       ]
-      for (const state of [failed, ended, finished]) {
+      for (const state of [failed, ended]) {
         for (const event of events) {
           expect(castSessionReducer(state, event)).toEqual(state)
         }
+      }
+    })
+  })
+
+  describe("Finished (live session, receiver at end of media)", () => {
+    const finished = castSessionReducer(active(), { type: "mediaFinished" })
+
+    it("mediaLoaded re-enters Active (successful replay)", () => {
+      expect(castSessionReducer(finished, { type: "mediaLoaded" })).toEqual({
+        phase: "active",
+        deviceName: "Living Room",
+      })
+    })
+
+    it("sessionEnded without an error ends gracefully", () => {
+      expect(
+        castSessionReducer(finished, {
+          type: "sessionEnded",
+          errorMessage: null,
+          positionSeconds: 120,
+        }),
+      ).toEqual({
+        phase: "ended",
+        trigger: "userEnd",
+        deviceName: "Living Room",
+        lastPositionSeconds: 120,
+      })
+    })
+
+    it("sessionEnded with an error fails as device_drop", () => {
+      expect(
+        castSessionReducer(finished, {
+          type: "sessionEnded",
+          errorMessage: "device went away",
+          positionSeconds: null,
+        }),
+      ).toEqual({
+        phase: "failed",
+        reason: "device_drop",
+        deviceName: "Living Room",
+      })
+    })
+
+    it("userEnd / videoChanged / unmount end with the matching trigger", () => {
+      for (const type of ["userEnd", "videoChanged", "unmount"] as const) {
+        expect(
+          castSessionReducer(finished, { type, positionSeconds: 7 }),
+        ).toEqual({
+          phase: "ended",
+          trigger: type,
+          deviceName: "Living Room",
+          lastPositionSeconds: 7,
+        })
+      }
+    })
+
+    it("stale mediaFailed / mediaFinished / timeout do not transition", () => {
+      const events: CastSessionEvent[] = [
+        { type: "mediaFailed" },
+        { type: "mediaFinished" },
+        { type: "timeout" },
+      ]
+      for (const event of events) {
+        expect(castSessionReducer(finished, event)).toEqual(finished)
       }
     })
   })

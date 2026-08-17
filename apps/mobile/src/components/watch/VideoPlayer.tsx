@@ -411,15 +411,38 @@ export function VideoPlayer({
 
   // Session start: pause the local player (the screen's source pin keeps it
   // frozen on the pre-session URL).
+  const wasPlayingBeforeCastRef = useRef(false)
   useEffect(() => {
     if (!castRemoteActive) return
     castPositionRef.current = null
+    // Captured before the pause: a connect that never goes active restores it.
+    let wasPlaying = false
     try {
+      wasPlaying = player.playing === true
       player.pause()
     } catch {
       // Player already released
     }
+    wasPlayingBeforeCastRef.current = wasPlaying
   }, [castRemoteActive, player])
+
+  // A session that leaves Connecting without going Active (dialog cancel,
+  // connect failure) hands playback back — the failure recovery carries
+  // resume=false (no remote media ever played), so resume here instead.
+  const prevCastPhaseRef = useRef(castPhase)
+  useEffect(() => {
+    const previous = prevCastPhaseRef.current
+    prevCastPhaseRef.current = castPhase
+    if (previous !== "connecting") return
+    if (castPhase === "connecting" || castPhase === "active") return
+    if (!wasPlayingBeforeCastRef.current) return
+    wasPlayingBeforeCastRef.current = false
+    try {
+      player.play()
+    } catch {
+      // Player already released
+    }
+  }, [castPhase, player])
 
   const castPosition = castPlayback?.position ?? null
   useEffect(() => {
