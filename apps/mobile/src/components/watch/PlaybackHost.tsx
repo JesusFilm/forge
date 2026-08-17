@@ -53,6 +53,7 @@ import {
   type PlaybackRequest,
   type PlaybackRequestSnapshot,
 } from "../../lib/miniPlayer/playbackRequest"
+import { pictureInPictureViewProps } from "../../lib/miniPlayer/pictureInPicture"
 import {
   isTabRootRoute,
   miniPlayerPresentation,
@@ -233,7 +234,13 @@ function ActivePlaybackHost({
   )
   const session = sessionSnapshot.session
   const hasSession = session != null
+  const pipHeld = sessionSnapshot.pipHold
   const rect = snapshot.rect
+
+  // The latch is fed by this view's own callbacks, so a teardown that takes the
+  // view with it would strand the latch set — and a stuck hold exempts EVERY
+  // adapter from the background pause (R13's decision reads one store field).
+  useEffect(() => () => getMiniPlayerStore().setPipHold(false), [])
 
   // Admission's first half (R1): has THIS video played at all. Reset per video,
   // because a window for a video that never started is AE10's regression.
@@ -553,6 +560,11 @@ function ActivePlaybackHost({
     }
   }, [shrink, shrinkFrom, windowFrame])
 
+  // Armed only while this video actually runs, so pressing Home over a paused
+  // video opens no window — and kept armed through the hold, because expo-video
+  // re-elects on every params change and only the elected view is re-parented.
+  const automaticPip = isPlaying || pipHeld
+
   // Detached with no session: the surface that was drawing this video is gone
   // and no window is owed. The player keeps running with no view, which is
   // audio-only rather than a released decoder.
@@ -593,7 +605,10 @@ function ActivePlaybackHost({
             style={[StyleSheet.absoluteFill, shrinkStyle]}
             pointerEvents="box-none"
           >
-            {(rect != null || !surfaceReleased) && (
+            {/* R24: the ended fade's completion callback survives the chrome
+                unmounting, so the hold is what keeps it from releasing this
+                surface out from under a live OS window. */}
+            {(rect != null || !surfaceReleased || pipHeld) && (
               <VideoView
                 player={player}
                 style={StyleSheet.absoluteFill}
@@ -603,7 +618,7 @@ function ActivePlaybackHost({
                 // control we do not own, inside chrome we do.
                 allowsVideoFrameAnalysis={false}
                 contentFit="contain"
-                allowsPictureInPicture
+                {...pictureInPictureViewProps({ automatic: automaticPip })}
                 // textureView composites in the RN view hierarchy on Android so
                 // the controls/captions overlay reliably renders above the video
                 // surface (SurfaceView otherwise punches through). No-op on iOS.

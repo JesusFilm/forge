@@ -102,19 +102,66 @@ would have disabled the background pause for every video in the app.
 
 ## What shipped instead, and where each finding landed
 
-- Finding 6 became R13 and the `pipPolicy` / `pipLatch` pair. The latch is fed
+- Finding 6 became R13: `src/lib/pipPolicy.ts` decides the AppState branch, and
+  the latch it reads is `setPipHold` on the mini-player store. The latch is fed
   from the VIEW's `onPictureInPictureStart` / `onPictureInPictureStop`, exactly
   as the spike recommended, so the pause is skipped only while the operating
-  system's window is actually showing.
-- Finding 4 became R14. The trailer surfaces were KEPT deliberately: the shared
-  watch component backs both the watch screen and the series-detail trailer, so
-  one prop covers that pair, and the two SDUI `[sectionKey]` screens carry the
-  same wiring. All four spread one helper —
-  `apps/mobile/src/lib/miniPlayer/pictureInPicture.ts`.
+  system's window is actually showing. See the open Android ordering question
+  under "Still unproven".
+- Finding 4 became R14. The trailer surfaces were KEPT deliberately. Since the
+  root playback host landed, the watch screen and the series-detail trailer
+  share the app's ONE video view, so the host covers that pair; the two SDUI
+  `[sectionKey]` screens keep views of their own. Three call sites, four
+  surfaces, one helper —
+  `apps/mobile/src/lib/miniPlayer/pictureInPicture.ts`. Read the correction
+  below before relying on finding 4's stated mechanism.
 - Finding 3 still holds by construction. Home's hero views never reach the
   player adapter and carry no picture-in-picture prop.
 - Finding 1 and 2 are the reason KD4 chose SDK 57. Neither has been re-run on
   hardware; the emulator remains the only Android evidence.
+
+## Correction to finding 4's mechanism (2026-08-18, during U9)
+
+Finding 4 says an eligible Android `VideoView` auto-enters on HOME **without**
+`startsPictureInPictureAutomatically`. The installed expo-video (57.0.2,
+released 2026-07-22 — the same version the spike ran on) contradicts that:
+
+- Android has **no `allowsPictureInPicture` prop at all**. Its `VideoModule.kt`
+  declares eight view props and that is not one of them, so the prop the spike
+  named on `app/video/[sectionKey].tsx` and `app/collection/[sectionKey].tsx`
+  cannot have been what armed anything on Android. It is an iOS and web prop.
+- `PictureInPictureManager.findAutoPiPViewCandidate` filters on
+  `pipParams.autoEnter`, and the only writer of `autoEnter` is the
+  `startsPictureInPictureAutomatically` prop.
+
+The likelier explanation for the observation: the spike's own diff added
+`startsPictureInPictureAutomatically` to the shared watch `VideoPlayer`
+component, and that component rendered the series-detail trailer the screenshot
+captured. The observation stands; the attribution does not.
+
+**What this changes.** `allowsPictureInPicture` remains correct on all three
+call sites — it is what puts a picture-in-picture button in iOS's native
+transport controls, and the two SDUI screens run with native controls enabled.
+Only the host arms `startsPictureInPictureAutomatically`; expo-video elects one
+candidate across every view carrying it and warns when it finds more.
+
+## Configuration evidence (2026-08-18, during U9)
+
+Two Android prebuilds of the same tree, differing only in the plugin flag:
+
+- **With `supportsPictureInPicture: true`** — the generated
+  `android/app/src/main/AndroidManifest.xml` carries
+  `android:supportsPictureInPicture="true"` on `.MainActivity`.
+- **Without it** — the attribute is absent. Everything else on the line is
+  unchanged.
+- `android:configChanges` is
+  `keyboard|keyboardHidden|orientation|screenSize|screenLayout|uiMode|smallestScreenSize|assetsPaths`
+  in **both** runs. `smallestScreenSize` is present, and it comes from the Expo
+  template, not from this plugin — so no extra `configChanges` work is owed.
+- The iOS `Info.plist` is **identical** across both runs (`expo config --type
+introspect`, 1584 bytes either way, `UIBackgroundModes: ["audio"]`). The
+  plugin adds the `audio` background mode when EITHER option is set, and
+  `supportsBackgroundPlayback` already set it.
 
 ## Still unproven
 
@@ -122,3 +169,16 @@ would have disabled the background pause for every video in the app.
 - **iOS.** Picture-in-picture has never been verified on this app on any iOS
   target, and it cannot be verified on an iPhone simulator. It needs an iPad
   simulator or hardware.
+- **Whether the latch beats the AppState pause on Android.** Finding 6's pause
+  is now exempted by the picture-in-picture latch, and the latch is fed from
+  `onPictureInPictureModeChanged`. React Native reports AppState `background`
+  from `Activity.onPause`, and Android's own guidance ("the system calls
+  onPause(); your activity should not stop playback") implies the pause arrives
+  FIRST — which would leave the latch unset at the moment the decision is read,
+  and reproduce finding 6's frozen window. iOS is safe by construction: it
+  reports `inactive` first, which decides nothing, and automatic entry has
+  already fired by the time `background` arrives. **Android hardware must check
+  whether the picture-in-picture window shows live frames or a frozen one.** If
+  it freezes, the fix is a second store field for "armed for automatic entry"
+  threaded into `appStateBranchDecision` beside the latch — never a widening of
+  the pause exemption itself.

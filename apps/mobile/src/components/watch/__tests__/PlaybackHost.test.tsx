@@ -134,7 +134,9 @@ jest.mock("../../../lib/authSession", () => {
 })
 
 import { StrictMode, act } from "react"
+import { StyleSheet } from "react-native"
 
+import { ENDED_FADE_DURATION_MS } from "../MiniPlayerWindow"
 import { PlaybackHost } from "../PlaybackHost"
 import {
   getPlaybackRequestStore,
@@ -258,6 +260,34 @@ function backButtons(renderer: TestInstance) {
       node.props.accessibilityLabel === "Go back" &&
       typeof node.props.onPress === "function",
   )
+}
+
+/** The one video view's props, which is where U9's picture-in-picture wiring
+ *  lives. Throws rather than returning undefined when no view is mounted. */
+function videoViewProps(renderer: TestInstance) {
+  const views = videoViews(renderer)
+  if (views.length !== 1)
+    throw new Error(`expected exactly one video view, found ${views.length}`)
+  return views[0].props as {
+    allowsPictureInPicture: boolean
+    startsPictureInPictureAutomatically: boolean
+    onPictureInPictureStart: () => void
+    onPictureInPictureStop: () => void
+  }
+}
+
+function hasWindowChrome(renderer: TestInstance): boolean {
+  return (
+    renderer.root.findAll((node) => node.props.testID === "mini-player-window")
+      .length > 0
+  )
+}
+
+function frameStyle(renderer: TestInstance) {
+  const frame = renderer.root.findAll(
+    (node) => node.props.testID === "playback-frame",
+  )[0]
+  return StyleSheet.flatten(frame.props.style) as { opacity?: number }
 }
 
 function hasVeil(renderer: TestInstance): boolean {
@@ -521,6 +551,175 @@ describe("a change of signed-in subject (R25)", () => {
     expect(requestStore.getSnapshot().request).toBeNull()
     expect(videoViews(renderer)).toHaveLength(0)
     expect(video.__player.playing).toBe(false)
+  })
+})
+
+describe("native picture-in-picture (U9: R13, R15, R24)", () => {
+  /** The floating state: playback started, the surface went away. */
+  async function floatingWindow() {
+    const id = attachSlot()
+    const renderer = await renderHost()
+    await startPlayback()
+    await detach(id)
+    return renderer
+  }
+
+  async function enterPip(renderer: TestInstance) {
+    await act(async () => {
+      videoViewProps(renderer).onPictureInPictureStart()
+    })
+  }
+
+  async function exitPip(renderer: TestInstance) {
+    await act(async () => {
+      videoViewProps(renderer).onPictureInPictureStop()
+    })
+  }
+
+  it("wires the view's own callbacks to the latch, both ways", async () => {
+    const renderer = await floatingWindow()
+    expect(videoViewProps(renderer).allowsPictureInPicture).toBe(true)
+    expect(sessionStore.getSnapshot().pipHold).toBe(false)
+
+    await enterPip(renderer)
+    expect(sessionStore.getSnapshot().pipHold).toBe(true)
+
+    await exitPip(renderer)
+    expect(sessionStore.getSnapshot().pipHold).toBe(false)
+  })
+
+  it("arms automatic entry only while playing, and keeps it armed under the hold", async () => {
+    attachSlot()
+    const renderer = await renderHost()
+    // R13 is about playback CONTINUING: pressing Home over a video that never
+    // started must not open an OS window at all.
+    expect(videoViewProps(renderer).startsPictureInPictureAutomatically).toBe(
+      false,
+    )
+
+    await startPlayback()
+    expect(videoViewProps(renderer).startsPictureInPictureAutomatically).toBe(
+      true,
+    )
+
+    // Paused INSIDE the OS window: expo-video re-elects a candidate on every
+    // params change, and an unelected view is never re-parented back out.
+    await enterPip(renderer)
+    await act(async () => {
+      video.__player.pause()
+    })
+    expect(videoViewProps(renderer).startsPictureInPictureAutomatically).toBe(
+      true,
+    )
+  })
+
+  it("hides the window's chrome without unmounting its video view", async () => {
+    const renderer = await floatingWindow()
+    expect(hasWindowChrome(renderer)).toBe(true)
+    expect(videoViews(renderer)).toHaveLength(1)
+
+    await enterPip(renderer)
+
+    // KTD16: chrome-only. The view stays mounted, in the same one position.
+    expect(hasWindowChrome(renderer)).toBe(false)
+    expect(videoViews(renderer)).toHaveLength(1)
+    expect(frameStyle(renderer).opacity).toBe(0)
+
+    await exitPip(renderer)
+    expect(hasWindowChrome(renderer)).toBe(true)
+    expect(videoViews(renderer)).toHaveLength(1)
+  })
+
+  it("issues no unmount for a dismiss requested under the hold, and promotes it on release", async () => {
+    const renderer = await floatingWindow()
+    await enterPip(renderer)
+
+    await act(async () => {
+      sessionStore.requestDismiss()
+    })
+
+    // AE12: the dismissal is recorded, and nothing about the view changes.
+    expect(sessionStore.getSnapshot().dismissal).toBe("deferred")
+    expect(videoViews(renderer)).toHaveLength(1)
+    expect(videoViews(renderer)[0].props.player).toBe(video.__player)
+    expect(hasWindowChrome(renderer)).toBe(false)
+
+    await exitPip(renderer)
+
+    expect(sessionStore.getSnapshot().dismissal).toBe("exiting")
+    expect(videoViews(renderer)).toHaveLength(1)
+  })
+
+  it("holds the surface through a fade that completes mid-window", async () => {
+    jest.useFakeTimers()
+    const renderer = await floatingWindow()
+
+    // R21's crossfade starts here, on the mounted chrome, and its Animated
+    // completion keeps running after the hold unmounts that chrome.
+    await act(async () => {
+      video.__player.__emit("playToEnd")
+    })
+    expect(sessionStore.getSnapshot().session?.endedCause).toBe("playToEnd")
+
+    await enterPip(renderer)
+    await act(async () => {
+      jest.advanceTimersByTime(ENDED_FADE_DURATION_MS + 100)
+    })
+
+    // The completion landed, and the surface it would release is still up.
+    expect(videoViews(renderer)).toHaveLength(1)
+
+    // Released now, not mid-window: the remounted chrome reports the fade it
+    // was mounted already-ended for.
+    await exitPip(renderer)
+    expect(videoViews(renderer)).toHaveLength(0)
+  })
+
+  it("holds the surface through a failure that arrives mid-window", async () => {
+    const renderer = await floatingWindow()
+    await enterPip(renderer)
+
+    await act(async () => {
+      video.__player.__emit("statusChange", { status: "error" })
+    })
+
+    expect(sessionStore.getSnapshot().session?.endedCause).toBe("failure")
+    expect(videoViews(renderer)).toHaveLength(1)
+
+    // R22 swaps to the poster outright, so the release lands the moment the
+    // chrome comes back — after the window is gone, never during it.
+    await exitPip(renderer)
+    expect(videoViews(renderer)).toHaveLength(0)
+  })
+
+  it("an ended window has no video view, so nothing can arm the latch", async () => {
+    const renderer = await floatingWindow()
+
+    await act(async () => {
+      video.__player.__emit("statusChange", { status: "error" })
+    })
+
+    // Structural: the window persists as a thumbnail (R22) with no surface, so
+    // there is no view to carry the props or fire the start callback.
+    expect(sessionStore.getSnapshot().session).not.toBeNull()
+    expect(hasWindowChrome(renderer)).toBe(true)
+    expect(videoViews(renderer)).toHaveLength(0)
+    expect(sessionStore.getSnapshot().pipHold).toBe(false)
+  })
+
+  it("releases the latch when the host tears the view down", async () => {
+    const renderer = await floatingWindow()
+    await enterPip(renderer)
+    expect(sessionStore.getSnapshot().pipHold).toBe(true)
+
+    await act(async () => {
+      renderer.unmount()
+    })
+    mounted = null
+
+    // A stranded hold would exempt every adapter in the app from the
+    // background pause, with no view left to ever release it.
+    expect(sessionStore.getSnapshot().pipHold).toBe(false)
   })
 })
 

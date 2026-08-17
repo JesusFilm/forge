@@ -25,6 +25,10 @@ import {
   TEXT_ON_OVERLAY,
 } from "../../src/lib/color"
 import { layout, text, overlay, button } from "../../src/styles/shared"
+import {
+  endSessionForViewerInitiatedPlayback,
+  pictureInPictureViewProps,
+} from "../../src/lib/miniPlayer/pictureInPicture"
 import { resolveImageUrl } from "../../src/lib/resolveImageUrl"
 import { validateStreamingUrl } from "../../src/lib/validateUrl"
 import { useTypography } from "../../src/hooks/useTypography"
@@ -135,6 +139,12 @@ function VideoDetailContent({
     }
   }, [isPlaying, hasStarted])
 
+  // R10/R12: this screen originates no session (R19) but it does start a second
+  // decoder, so the floating window gives its own back first.
+  useEffect(() => {
+    if (isPlaying) endSessionForViewerInitiatedPlayback()
+  }, [isPlaying])
+
   const handlePlay = useCallback(() => {
     player.play()
   }, [player])
@@ -154,7 +164,10 @@ function VideoDetailContent({
               style={StyleSheet.absoluteFill}
               nativeControls
               fullscreenOptions={{ enable: true }}
-              allowsPictureInPicture
+              // Native controls carry a picture-in-picture button on iOS, so
+              // this view feeds the same latch the host does. `automatic` is
+              // the host's alone — expo-video elects only one view.
+              {...pictureInPictureViewProps({ automatic: false })}
               contentFit="contain"
             />
             {!hasStarted && thumbnailUrl != null && (

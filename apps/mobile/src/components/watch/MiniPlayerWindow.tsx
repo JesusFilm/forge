@@ -209,6 +209,14 @@ export function MiniPlayerWindow({
   const onEndedFadeCompleteRef = useRef(onEndedFadeComplete)
   onEndedFadeCompleteRef.current = onEndedFadeComplete
 
+  // Mounted ALREADY ended, so the fade above is skipped and its completion
+  // never fires: the thumbnail is at full opacity from the first frame, and the
+  // surface beneath it is owed no more frames (a hold held it, U9).
+  const mountedEndedRef = useRef(endedCause)
+  useEffect(() => {
+    if (mountedEndedRef.current != null) onEndedFadeCompleteRef.current()
+  }, [])
+
   useEffect(() => {
     const previous = previousEndedRef.current
     previousEndedRef.current = endedCause
