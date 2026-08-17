@@ -45,9 +45,16 @@ describe("external playback (AirPlay, U1)", () => {
     expect(SOURCE).toContain("player.isExternalPlaybackActive")
   })
 
-  it("derives the route through the shared predicate (U4 extends it)", () => {
+  it("derives the route through the shared predicate (extended by U4)", () => {
     expect(SOURCE).toContain('from "../../lib/externalRoute"')
-    expect(SOURCE).toContain("isExternalRouteActive({ airPlayActive })")
+    // Operands asserted independently (format-safe): both routes feed the
+    // ONE predicate — no parallel flag may bypass it.
+    const call = SOURCE.slice(
+      at("isExternalRouteActive({"),
+      at("})", at("isExternalRouteActive({")),
+    )
+    expect(call).toContain("airPlayActive")
+    expect(call).toContain("castActive: castRemoteActive")
   })
 
   it("hides the subtitle overlay while an external route is active (KTD9)", () => {
@@ -66,8 +73,16 @@ describe("external playback (AirPlay, U1)", () => {
     expect(indicator).toContain('pointerEvents="none"')
   })
 
-  it("does not statically set allowsExternalPlayback (defaults true; U4 toggles it)", () => {
-    expect(SOURCE).not.toContain("allowsExternalPlayback")
+  it("toggles allowsExternalPlayback off during a cast session (KTD9)", () => {
+    // REPLACES U1's absence assertion ("defaults true; U4 toggles it"):
+    // clearing the flag is the only lever expo-video exposes to end an
+    // active AirPlay route; the same effect restores it at session end.
+    expect(SOURCE).toContain(
+      "player.allowsExternalPlayback = !castRemoteActive",
+    )
+    const toggle = at("player.allowsExternalPlayback")
+    const depClose = at("}, [castRemoteActive, player])", toggle)
+    expect(depClose).toBeGreaterThan(toggle)
   })
 
   it("threads the route state into the chrome with no source-kind gate (AE4)", () => {

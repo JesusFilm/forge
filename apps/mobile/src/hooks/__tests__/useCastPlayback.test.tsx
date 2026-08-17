@@ -1,0 +1,270 @@
+/**
+ * Behavioral suite for useCastPlayback (deferred from U3 to U4): connect
+ * timeout, slug-change and unmount end triggers, devicesAvailable, and the
+ * remotePlayerState the U4 playback target derives isPlaying from.
+ *
+ * Rendered under <StrictMode> (element wrap doubles the effect cycle — the
+ * repo's remount-safety discipline for hook-lifetime refs).
+ */
+
+jest.mock("react", () => {
+  const r = require as unknown as NodeRequireLike
+  const path = r("path") as NodePath
+  return jest.requireActual(path.dirname(r.resolve("react/package.json")))
+})
+jest.mock("react/jsx-runtime", () => {
+  const r = require as unknown as NodeRequireLike
+  const path = r("path") as NodePath
+  return jest.requireActual(
+    path.join(path.dirname(r.resolve("react/package.json")), "jsx-runtime.js"),
+  )
+})
+// datadog.ts touches the native Datadog SDK at import time under jest.
+jest.mock("../../lib/datadog", () => ({
+  capErrorMessage: (message: string) => message,
+  datadogLog: { info: jest.fn(), warn: jest.fn(), error: jest.fn() },
+}))
+// Mounting the hook constructs a NativeEventEmitter via the SessionManager
+// subscription; the mock captures the adapter's callbacks instead.
+jest.mock("react-native-google-cast", () => ({
+  CastState: {
+    NO_DEVICES_AVAILABLE: "noDevicesAvailable",
+    NOT_CONNECTED: "notConnected",
+    CONNECTING: "connecting",
+    CONNECTED: "connected",
+  },
+  MediaStreamType: { BUFFERED: "buffered" },
+  useCastState: () => mockCastState,
+  useCastSession: () => mockCastSession,
+  useMediaStatus: () => mockMediaStatus,
+  useStreamPosition: () => mockStreamPosition,
+  CastContext: {
+    getSessionManager: () => ({
+      onSessionStarting: (cb: () => void) => {
+        mockSessionCallbacks.starting = cb
+        return { remove: () => {} }
+      },
+      onSessionStarted: (cb: () => void) => {
+        mockSessionCallbacks.started = cb
+        return { remove: () => {} }
+      },
+      onSessionStartFailed: (cb: (s: unknown, e: string) => void) => {
+        mockSessionCallbacks.startFailed = cb
+        return { remove: () => {} }
+      },
+      onSessionEnded: (cb: (s: unknown, e?: string) => void) => {
+        mockSessionCallbacks.ended = cb
+        return { remove: () => {} }
+      },
+      endCurrentSession: mockEndCurrentSession,
+    }),
+    showCastDialog: jest.fn(),
+  },
+}))
+
+import { StrictMode, act, type ReactElement } from "react"
+
+import { useCastPlayback, type CastPlayback } from "../useCastPlayback"
+import { CAST_CONNECT_TIMEOUT_MS } from "../../lib/cast/castSessionReducer"
+import {
+  TestRenderer,
+  type NodePath,
+  type NodeRequireLike,
+  type TestInstance,
+} from "../../test-utils/rnTestRenderer"
+
+type MockMediaStatus = {
+  playerState?: string | null
+  idleReason?: string | null
+  mediaInfo?: { streamDuration?: number | null }
+} | null
+
+let mockCastState: string | null = null
+let mockCastSession: { getCastDevice: () => Promise<unknown> } | null = null
+let mockMediaStatus: MockMediaStatus = null
+let mockStreamPosition: number | null = null
+const mockEndCurrentSession = jest.fn(() => Promise.resolve())
+const mockSessionCallbacks: {
+  starting?: () => void
+  started?: () => void
+  startFailed?: (s: unknown, e: string) => void
+  ended?: (s: unknown, e?: string) => void
+} = {}
+
+let latest: CastPlayback
+
+function Harness({ slug }: { slug: string | null }) {
+  latest = useCastPlayback({ videoSlug: slug })
+  return null
+}
+
+type UpdatableRenderer = TestInstance & { update(element: ReactElement): void }
+
+async function render(slug: string | null): Promise<UpdatableRenderer> {
+  let renderer!: UpdatableRenderer
+  await act(async () => {
+    renderer = TestRenderer.create(
+      <StrictMode>
+        <Harness slug={slug} />
+      </StrictMode>,
+    ) as UpdatableRenderer
+  })
+  return renderer
+}
+
+async function update(renderer: UpdatableRenderer, slug: string | null) {
+  await act(async () => {
+    renderer.update(
+      <StrictMode>
+        <Harness slug={slug} />
+      </StrictMode>,
+    )
+  })
+}
+
+/** Drives the session to Connecting via the adapter's captured callback. */
+async function startConnecting() {
+  await act(async () => {
+    mockSessionCallbacks.starting?.()
+  })
+}
+
+/** Receiver confirms media: Connecting -> Active. */
+async function confirmMedia(renderer: UpdatableRenderer, slug: string | null) {
+  mockMediaStatus = {
+    playerState: "playing",
+    mediaInfo: { streamDuration: 120 },
+  }
+  await update(renderer, slug)
+}
+
+beforeEach(() => {
+  mockCastState = null
+  mockCastSession = null
+  mockMediaStatus = null
+  mockStreamPosition = null
+  mockEndCurrentSession.mockClear()
+  delete mockSessionCallbacks.starting
+  delete mockSessionCallbacks.started
+  delete mockSessionCallbacks.startFailed
+  delete mockSessionCallbacks.ended
+})
+
+afterEach(() => {
+  jest.useRealTimers()
+})
+
+describe("devicesAvailable (R2)", () => {
+  it("is false with no cast state and with no devices", async () => {
+    const renderer = await render("jesus")
+    expect(latest.devicesAvailable).toBe(false)
+    mockCastState = "noDevicesAvailable"
+    await update(renderer, "jesus")
+    expect(latest.devicesAvailable).toBe(false)
+    await act(async () => renderer.unmount())
+  })
+
+  it("is true whenever the SDK reports a reachable receiver", async () => {
+    mockCastState = "notConnected"
+    const renderer = await render("jesus")
+    expect(latest.devicesAvailable).toBe(true)
+    mockCastState = "connected"
+    await update(renderer, "jesus")
+    expect(latest.devicesAvailable).toBe(true)
+    await act(async () => renderer.unmount())
+  })
+})
+
+describe("connect timeout (R13 unconditional release)", () => {
+  it("fails a hanging connect after the budget", async () => {
+    jest.useFakeTimers()
+    const renderer = await render("jesus")
+    await startConnecting()
+    expect(latest.state.phase).toBe("connecting")
+    await act(async () => {
+      jest.advanceTimersByTime(CAST_CONNECT_TIMEOUT_MS)
+    })
+    expect(latest.state).toMatchObject({
+      phase: "failed",
+      reason: "connect_timeout",
+    })
+    await act(async () => renderer.unmount())
+  })
+
+  it("does not time out once the receiver confirmed media", async () => {
+    jest.useFakeTimers()
+    const renderer = await render("jesus")
+    await startConnecting()
+    await confirmMedia(renderer, "jesus")
+    expect(latest.state.phase).toBe("active")
+    await act(async () => {
+      jest.advanceTimersByTime(CAST_CONNECT_TIMEOUT_MS)
+    })
+    expect(latest.state.phase).toBe("active")
+    await act(async () => renderer.unmount())
+  })
+})
+
+describe("remotePlayerState (U4 target input)", () => {
+  it("exposes the receiver's raw player state", async () => {
+    const renderer = await render("jesus")
+    await startConnecting()
+    await confirmMedia(renderer, "jesus")
+    expect(latest.remotePlayerState).toBe("playing")
+    mockMediaStatus = { playerState: "paused" }
+    await update(renderer, "jesus")
+    expect(latest.remotePlayerState).toBe("paused")
+    await act(async () => renderer.unmount())
+  })
+
+  it("is null with no remote media", async () => {
+    const renderer = await render("jesus")
+    expect(latest.remotePlayerState).toBeNull()
+    await act(async () => renderer.unmount())
+  })
+})
+
+describe("end triggers (KTD7)", () => {
+  it("ends the session when the video identity (decoded slug) changes", async () => {
+    const renderer = await render("jesus")
+    await startConnecting()
+    await confirmMedia(renderer, "jesus")
+    mockStreamPosition = 42
+    await update(renderer, "jesus")
+    await update(renderer, "magdalena")
+    expect(mockEndCurrentSession).toHaveBeenCalledWith(true)
+    expect(latest.state).toMatchObject({
+      phase: "ended",
+      trigger: "videoChanged",
+      lastPositionSeconds: 42,
+    })
+    await act(async () => renderer.unmount())
+  })
+
+  it("keeps the session across re-renders with the same slug (dub switch)", async () => {
+    // KTD7: a dub switch changes the source URL but not the video identity,
+    // and the hook never sees URLs at all — only the decoded slug may end it.
+    const renderer = await render("jesus")
+    await startConnecting()
+    await confirmMedia(renderer, "jesus")
+    await update(renderer, "jesus")
+    await update(renderer, "jesus")
+    expect(mockEndCurrentSession).not.toHaveBeenCalled()
+    expect(latest.state.phase).toBe("active")
+    await act(async () => renderer.unmount())
+  })
+
+  it("ends the session on unmount (leaving the player screen)", async () => {
+    const renderer = await render("jesus")
+    await startConnecting()
+    await confirmMedia(renderer, "jesus")
+    await act(async () => renderer.unmount())
+    expect(mockEndCurrentSession).toHaveBeenCalledWith(true)
+  })
+
+  it("does not end anything on unmount with no session (StrictMode-safe)", async () => {
+    const renderer = await render("jesus")
+    await act(async () => renderer.unmount())
+    expect(mockEndCurrentSession).not.toHaveBeenCalled()
+  })
+})

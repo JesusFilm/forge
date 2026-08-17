@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useReducer, useRef } from "react"
 import {
-  CastState,
+  type CastState,
   useCastSession,
   useCastState,
   useMediaStatus,
@@ -22,6 +22,7 @@ import {
   type CastSessionState,
 } from "../lib/cast/castSessionReducer"
 import { capErrorMessage, datadogLog } from "../lib/datadog"
+import { castDevicesAvailable } from "../lib/playbackTarget"
 
 export type CastPlayback = {
   /** The reducer state — the single source of truth for the session phase. */
@@ -29,13 +30,15 @@ export type CastPlayback = {
   /** Friendly name of the connected device, null in Idle or when unknown. */
   deviceName: string | null
   /**
-   * R2: true when the SDK reports at least one reachable receiver. The SDK
-   * cannot distinguish "no devices" from a denied local-network permission —
-   * both surface as NO_DEVICES_AVAILABLE; `castState` is exposed raw so U4
-   * owns whatever derivation it settles on.
+   * R2: true when the SDK reports at least one reachable receiver. Derived
+   * by `castDevicesAvailable` in src/lib/playbackTarget.ts — the seam that
+   * documents the no-devices vs denied-permission ambiguity.
    */
   devicesAvailable: boolean
   castState: CastState | null
+  /** Raw receiver player state ("playing" | "paused" | ...), null with no
+   *  remote media. The U4 playback target derives isPlaying from it. */
+  remotePlayerState: string | null
   /** Receiver playhead in seconds (~1s cadence), null with no remote media. */
   position: number | null
   /** Remote stream duration in seconds, null until the receiver reports it. */
@@ -252,9 +255,9 @@ export function useCastPlayback({
   return {
     state,
     deviceName: state.phase === "idle" ? null : state.deviceName,
-    devicesAvailable:
-      castState != null && castState !== CastState.NO_DEVICES_AVAILABLE,
+    devicesAvailable: castDevicesAvailable(castState),
     castState,
+    remotePlayerState: mediaStatus?.playerState ?? null,
     position: streamPosition,
     duration: mediaStatus?.mediaInfo?.streamDuration ?? null,
     load,

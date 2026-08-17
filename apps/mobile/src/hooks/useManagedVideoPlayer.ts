@@ -47,7 +47,13 @@ const POSITION_EPSILON_S = 0.25
 export function useManagedVideoPlayer(
   sourceUrl: string | null,
   setup?: (player: VideoPlayer) => void,
-  options?: { progress?: ProgressIdentity | null },
+  options?: {
+    progress?: ProgressIdentity | null
+    /** KTD4: true while a cast session drives playback. Suppresses the
+     *  AppState play/pause pair and the stall watchdog; the background
+     *  progress flush stays on. */
+    castActive?: boolean
+  },
 ) {
   // Source MUST be frozen: useVideoPlayer recreates/releases the player on any
   // change (dep is JSON.stringify(source)). Swap via replaceAsync on the same
@@ -63,6 +69,11 @@ export function useManagedVideoPlayer(
   // The source currently loaded into the player, tracked separately from the
   // frozen creationSource so swap decisions can compare against it.
   const loadedUrlRef = useRef(sourceUrl)
+
+  // Ref-mirrored (KTD4): the AppState effect registers once per player, so a
+  // plain option in its closure would be stale by the time a session starts.
+  const castActiveRef = useRef(options?.castActive === true)
+  castActiveRef.current = options?.castActive === true
 
   // Whether the app is foregrounded right now. A swap's replaceAsync can outlive
   // a background transition; resume() reads this so it never force-plays into
@@ -233,7 +244,7 @@ export function useManagedVideoPlayer(
     const subscription = AppState.addEventListener("change", (nextState) => {
       if (nextState === "active") {
         isForegroundRef.current = true
-        if (wasPlayingRef.current) {
+        if (wasPlayingRef.current && !castActiveRef.current) {
           try {
             player.play()
           } catch {
@@ -247,12 +258,19 @@ export function useManagedVideoPlayer(
         }
       } else {
         isForegroundRef.current = false
-        wasPlayingRef.current = isPlayingRef.current
+        // The load-bearing race (KTD4): cast starts, the pause has not landed
+        // in playingChange yet, the viewer backgrounds — capturing wasPlaying
+        // here would resume local audio over the TV on foreground.
+        wasPlayingRef.current = castActiveRef.current
+          ? false
+          : isPlayingRef.current
         recorderRef.current?.flush("background")
-        try {
-          player.pause()
-        } catch {
-          // Already released
+        if (!castActiveRef.current) {
+          try {
+            player.pause()
+          } catch {
+            // Already released
+          }
         }
       }
     })
@@ -322,6 +340,13 @@ export function useManagedVideoPlayer(
       recorderRef.current?.onTick(position, duration)
 
       const now = Date.now()
+      // KTD4: a frozen local playhead is expected while the chrome drives the
+      // TV — keep the watchdog disarmed and clean so it re-arms on return.
+      if (castActiveRef.current) {
+        lastAdvanceAtRef.current = now
+        stallEmittedRef.current = false
+        return
+      }
       const advanced =
         position - lastPollPositionRef.current > POSITION_EPSILON_S
       lastPollPositionRef.current = position

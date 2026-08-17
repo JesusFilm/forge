@@ -6,10 +6,12 @@
 export type ExternalRouteState = {
   /** True while the player sends video to an AirPlay device (iOS only). */
   airPlayActive: boolean
-  // U4 adds the cast-session flag here; extend this state, never fork it.
+  /** True while a cast session occupies the player area (connecting,
+   *  active, or finished — the KTD4 remote phases). */
+  castActive: boolean
 }
 
 /** The indicator and the subtitle-overlay gate read this, never a raw flag. */
 export function isExternalRouteActive(state: ExternalRouteState): boolean {
-  return state.airPlayActive
+  return state.airPlayActive || state.castActive
 }

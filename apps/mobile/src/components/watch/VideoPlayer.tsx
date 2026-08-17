@@ -32,9 +32,23 @@ import {
   type SeekSide,
 } from "../../lib/tapSeek"
 import { useControlsVisibility } from "../../hooks/useControlsVisibility"
+import type { CastPlayback } from "../../hooks/useCastPlayback"
+import type { CastMedia } from "../../lib/cast/castMediaResolver"
 import { isExternalRouteActive } from "../../lib/externalRoute"
+import {
+  castButtonLabel,
+  castIndicatorLabel,
+  isRemoteCastPhase,
+  selectPlaybackTarget,
+  type CastRecovery,
+  type PlaybackTarget,
+} from "../../lib/playbackTarget"
 import { PLAYER_HEIGHT_RATIO } from "../../lib/playerLayout"
-import { PlayerControls } from "./PlayerControls"
+import {
+  PlayerControls,
+  RouteButtons,
+  type PlayerControlsCastUi,
+} from "./PlayerControls"
 import { PlayerLoadingVeil } from "./PlayerLoadingVeil"
 import { SubtitleOverlay } from "./SubtitleOverlay"
 
@@ -71,6 +85,17 @@ type VideoPlayerProps = {
    *  site: this player also backs the series-detail trailer dock, so an
    *  implicit default would autoplay surfaces that never asked for it. */
   autostart?: boolean
+  /** U3 cast session (watch screen only); null on surfaces without cast. */
+  castPlayback?: CastPlayback | null
+  /** Opens the SDK device dialog — screen-owned (KTD4). */
+  onCastPress?: (() => void) | null
+  /** Screen-owned remote-only resolver (KTD5), closed over the variant,
+   *  video, and seed — the offline source never reaches it. */
+  resolveCastMediaAt?:
+    | ((startPositionSeconds: number | null) => CastMedia | null)
+    | null
+  /** Screen-derived recovery instruction after a terminal session state. */
+  castRecovery?: CastRecovery | null
 }
 
 export function VideoPlayer({
@@ -84,10 +109,21 @@ export function VideoPlayer({
   progressIdentity = null,
   resumeAtSeconds = null,
   autostart = false,
+  castPlayback = null,
+  onCastPress = null,
+  resolveCastMediaAt = null,
+  castRecovery = null,
 }: VideoPlayerProps) {
   const { width: screenWidth, height: screenHeight } = useWindowDimensions()
 
   const [hasStarted, setHasStarted] = useState(false)
+
+  // KTD4: the remote phases where the session owns the player area. Mirrored
+  // into a ref for the once-per-player listeners below.
+  const castPhase = castPlayback?.state.phase ?? "idle"
+  const castRemoteActive = castPlayback != null && isRemoteCastPhase(castPhase)
+  const castRemoteActiveRef = useRef(castRemoteActive)
+  castRemoteActiveRef.current = castRemoteActive
   const resolvedPoster = resolveImageUrl(posterUrl)
   const playerHeight = Math.round(
     (screenWidth - horizontalInset * 2) * PLAYER_HEIGHT_RATIO,
@@ -107,7 +143,7 @@ export function VideoPlayer({
         prioritizeTimeOverSizeThreshold: true,
       }
     },
-    { progress: progressIdentity },
+    { progress: progressIdentity, castActive: castRemoteActive },
   )
 
   // Disable Mux's HLS subtitle tracks (SubtitleOverlay renders admin VTT
@@ -187,7 +223,10 @@ export function VideoPlayer({
     !hasStarted &&
     streamingUrl != null &&
     !loadFailed &&
-    !loadTimedOut
+    !loadTimedOut &&
+    // A cast session replaces the veil with its own R16/R7 states — the
+    // chrome must mount so the held transport and Cast button are reachable.
+    !castRemoteActive
 
   // Backstop for a load that neither starts nor errors. Releasing early only
   // reveals chrome sooner, so a false positive on a slow network is harmless —
@@ -222,8 +261,11 @@ export function VideoPlayer({
       }
     }
   }, [player])
-  // U4 folds the cast-session flag into this same predicate (KTD9).
-  const externalRouteActive = isExternalRouteActive({ airPlayActive })
+  // KTD9: one predicate for the indicator and the subtitle gate.
+  const externalRouteActive = isExternalRouteActive({
+    airPlayActive,
+    castActive: castRemoteActive,
+  })
 
   const controls = useControlsVisibility(player)
 
@@ -264,6 +306,8 @@ export function VideoPlayer({
     if (!autostart) return
 
     const applySeek = () => {
+      // A session owns playback (KTD4); the cast recovery is the resume.
+      if (castRemoteActiveRef.current) return
       if (resumeSeekedRef.current || resumeAtSeconds == null) return
       try {
         player.currentTime = resumeAtSeconds
@@ -278,6 +322,8 @@ export function VideoPlayer({
     }
 
     const applyPlay = () => {
+      // Never start local audio under an active session (KTD4).
+      if (castRemoteActiveRef.current) return
       if (autoPlayedRef.current) return
       // Never start audio the viewer cannot see. The adapter owns AppState
       // resume and has no way to observe or undo a play issued from here
@@ -322,6 +368,180 @@ export function VideoPlayer({
     }
   }, [player, resumeAtSeconds, streamingUrl, autostart])
 
+  // ---- Cast session (U4, KTD4) ----
+
+  const hasStartedRef = useRef(false)
+  useEffect(() => {
+    hasStartedRef.current = hasStarted
+  }, [hasStarted])
+  const resumeAtRef = useRef(resumeAtSeconds)
+  resumeAtRef.current = resumeAtSeconds
+
+  // Start position for the receiver (KTD5): the local playhead once one
+  // exists, else the pending resume position — never the untouched 0:00.
+  const readCastStartPosition = useCallback(() => {
+    if (!hasStartedRef.current && !resumeSeekedRef.current) {
+      return resumeAtRef.current
+    }
+    try {
+      return player.currentTime
+    } catch {
+      return null
+    }
+  }, [player])
+
+  // Live receiver position for mid-session reloads; cleared per session so a
+  // previous session's playhead cannot seed the next one's first load.
+  const castPositionRef = useRef<number | null>(null)
+
+  // Session start: pause the local player (the screen's source pin keeps it
+  // frozen on the pre-session URL).
+  useEffect(() => {
+    if (!castRemoteActive) return
+    castPositionRef.current = null
+    try {
+      player.pause()
+    } catch {
+      // Player already released
+    }
+  }, [castRemoteActive, player])
+
+  const castPosition = castPlayback?.position ?? null
+  useEffect(() => {
+    if (castPosition != null) castPositionRef.current = castPosition
+  }, [castPosition])
+
+  // KTD9: cast start routes AirPlay back to the phone — allowsExternalPlayback
+  // is the only lever expo-video exposes to end an active AirPlay route.
+  // Session end restores it.
+  useEffect(() => {
+    try {
+      player.allowsExternalPlayback = !castRemoteActive
+    } catch {
+      // Player already released
+    }
+  }, [castRemoteActive, player])
+
+  // KTD9, other direction: AirPlay activation while casting ends the session.
+  const castEndRef = useRef<(() => void) | null>(null)
+  castEndRef.current = castPlayback?.end ?? null
+  useEffect(() => {
+    if (airPlayActive && castRemoteActiveRef.current) castEndRef.current?.()
+  }, [airPlayActive])
+
+  // Media sync: load on connect, reload on dub switch (R9). Also keyed on the
+  // load identity — it changes when the SDK client becomes available, which
+  // retries the load a null client swallowed while connecting.
+  const castLoad = castPlayback?.load ?? null
+  const lastCastLoadRef = useRef<{ load: unknown; url: string } | null>(null)
+  useEffect(() => {
+    if (!castRemoteActive || castLoad == null || resolveCastMediaAt == null) {
+      lastCastLoadRef.current = null
+      return
+    }
+    const media = resolveCastMediaAt(
+      castPositionRef.current ?? readCastStartPosition(),
+    )
+    if (media == null) return
+    const previous = lastCastLoadRef.current
+    if (
+      previous != null &&
+      previous.load === castLoad &&
+      previous.url === media.contentUrl
+    ) {
+      return
+    }
+    lastCastLoadRef.current = { load: castLoad, url: media.contentUrl }
+    castLoad(media)
+  }, [castRemoteActive, castLoad, resolveCastMediaAt, readCastStartPosition])
+
+  // End recovery (R10/R13): one latch per terminal state. The recovery seek
+  // supersedes the autostart resume for this source, so burn those latches.
+  const lastCastRecoveryRef = useRef<CastRecovery | null>(null)
+  const pendingCastRecoveryRef = useRef<CastRecovery | null>(null)
+
+  const applyCastRecovery = useCallback(() => {
+    const pending = pendingCastRecoveryRef.current
+    if (pending == null) return
+    pendingCastRecoveryRef.current = null
+    try {
+      if (pending.positionSeconds != null) {
+        player.currentTime = pending.positionSeconds
+      }
+      // R10: the local player keeps the session's play/pause state.
+      if (pending.resume) player.play()
+    } catch {
+      return
+    }
+    if (pending.positionSeconds != null) {
+      seekNonceRef.current += 1
+      setSeekSignal({ time: pending.positionSeconds, n: seekNonceRef.current })
+    }
+  }, [player])
+
+  useEffect(() => {
+    if (castRecovery == null || castRecovery === lastCastRecoveryRef.current) {
+      return
+    }
+    lastCastRecoveryRef.current = castRecovery
+    pendingCastRecoveryRef.current = castRecovery
+    autoPlayedRef.current = true
+    resumeSeekedRef.current = true
+    // A swapped or still-loading source applies on its sourceLoad instead —
+    // a seek set before the item loads is discarded with it.
+    if (!castRecovery.sourceSwapped && sourceLoadedRef.current) {
+      applyCastRecovery()
+    }
+  }, [castRecovery, applyCastRecovery])
+
+  // Persistent listener (never resubscribed mid-flight): applies a pending
+  // recovery once the released pin's swap finishes loading.
+  useEffect(() => {
+    const sub = player.addListener("sourceLoad", () => applyCastRecovery())
+    return () => {
+      try {
+        sub.remove()
+      } catch {
+        // Player already released
+      }
+    }
+  }, [player, applyCastRecovery])
+
+  // KTD4: ONE target for the transport and the double-tap seek; null keeps
+  // the live local player.
+  let castTarget: PlaybackTarget | null = null
+  if (castPlayback != null && castRemoteActive) {
+    let fallbackPositionSeconds = 0
+    let fallbackDurationSeconds = 0
+    try {
+      fallbackPositionSeconds = player.currentTime
+      fallbackDurationSeconds = player.duration
+    } catch {
+      // Player already released
+    }
+    castTarget = selectPlaybackTarget({
+      phase: castPhase,
+      position: castPlayback.position,
+      duration: castPlayback.duration,
+      remotePlayerState: castPlayback.remotePlayerState,
+      play: castPlayback.play,
+      pause: castPlayback.pause,
+      seekTo: castPlayback.seekTo,
+      fallbackPositionSeconds,
+      fallbackDurationSeconds,
+    })
+  }
+
+  const castUi: PlayerControlsCastUi | null =
+    castPlayback != null && onCastPress != null
+      ? {
+          available: castPlayback.devicesAvailable,
+          connected: castRemoteActive,
+          label: castButtonLabel(castPhase, castPlayback.deviceName),
+          onPress: onCastPress,
+        }
+      : null
+
   useEffect(() => {
     return () => {
       if (singleTapTimerRef.current) clearTimeout(singleTapTimerRef.current)
@@ -343,6 +563,23 @@ export function VideoPlayer({
         SKIP_SECONDS,
       )
       if (delta === 0) return
+      // KTD4: a session routes the side seek to the cast target; a held
+      // transport (R16, connecting) accepts no seeks at all.
+      if (castTarget != null) {
+        if (castTarget.held) return
+        const target = applySkip(
+          castTarget.currentTime,
+          delta,
+          castTarget.duration,
+        )
+        if (target == null) return
+        castTarget.seekTo(target)
+        seekNonceRef.current += 1
+        setSeekSignal({ time: target, n: seekNonceRef.current })
+        const side = seekSideForTap(locationX, tapWidthRef.current)
+        if (side) showSeekFlash(side, delta)
+        return
+      }
       const target = applySkip(player.currentTime, delta, player.duration)
       if (target == null) return
       player.currentTime = target
@@ -351,7 +588,7 @@ export function VideoPlayer({
       const side = seekSideForTap(locationX, tapWidthRef.current)
       if (side) showSeekFlash(side, delta)
     },
-    [player, showSeekFlash],
+    [player, showSeekFlash, castTarget],
   )
 
   const handleTapPressIn = useCallback(() => {
@@ -436,7 +673,9 @@ export function VideoPlayer({
         surfaceType={Platform.OS === "android" ? "textureView" : undefined}
       />
 
-      {!hasStarted && resolvedPoster != null && (
+      {/* R7: the phone shows the poster while the TV plays — the paused
+          local frame would read as a broken player. */}
+      {(!hasStarted || castRemoteActive) && resolvedPoster != null && (
         <Image
           source={resolvedPoster}
           style={StyleSheet.absoluteFill}
@@ -447,6 +686,10 @@ export function VideoPlayer({
       )}
 
       {awaitingAutostart && <PlayerLoadingVeil />}
+
+      {/* R16: distinct connecting state — dim + spinner under the chrome,
+          named by the indicator band below. */}
+      {castPhase === "connecting" && <PlayerLoadingVeil />}
 
       {/* Full-bleed tap target behind the chrome (controls layer is box-none,
           subtitle overlay is pointerEvents none, so empty-area taps fall here).
@@ -481,13 +724,28 @@ export function VideoPlayer({
         </View>
       )}
 
-      {/* External-route indicator — the phone shows no video while AirPlay
+      {/* R14: the route buttons stay reachable while the veil suppresses the
+          chrome — a viewer may cast before local playback ever starts. */}
+      {awaitingAutostart && (
+        <View style={styles.veilRouteRow} pointerEvents="box-none">
+          <RouteButtons
+            externalPlaybackActive={airPlayActive}
+            castUi={castUi}
+          />
+        </View>
+      )}
+
+      {/* External-route indicator — the phone shows no video while the route
           plays it, so name where playback went. Top band, clear of the
           transport row; pointerEvents none keeps every control usable (R5). */}
       {externalRouteActive && (
         <View pointerEvents="none" style={styles.externalRouteIndicator}>
           <Ionicons name="tv-outline" size={28} color={TEXT_ON_OVERLAY} />
-          <Text style={styles.externalRouteText}>Playing on AirPlay</Text>
+          <Text style={styles.externalRouteText}>
+            {castRemoteActive
+              ? castIndicatorLabel(castPhase, castPlayback?.deviceName ?? null)
+              : "Playing on AirPlay"}
+          </Text>
         </View>
       )}
 
@@ -540,6 +798,8 @@ export function VideoPlayer({
             onInteract={controls.noteInteraction}
             seekSignal={seekSignal}
             externalPlaybackActive={airPlayActive}
+            castUi={castUi}
+            castTarget={castTarget}
           />
         </Animated.View>
       )}
@@ -558,6 +818,16 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     height: 160,
+  },
+  // Mirrors the chrome's corner-button placement so the route buttons do not
+  // jump when the veil hands over to the full chrome.
+  veilRouteRow: {
+    position: "absolute",
+    right: 12,
+    bottom: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
   },
   // Top band: stays clear of the centered transport row and the bottom bar.
   externalRouteIndicator: {

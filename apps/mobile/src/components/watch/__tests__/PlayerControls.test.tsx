@@ -27,6 +27,11 @@ jest.mock("@expo/vector-icons/Ionicons", () => ({
   __esModule: true,
   default: () => null,
 }))
+// Same for the Cast glyph's icon set.
+jest.mock("@expo/vector-icons/MaterialIcons", () => ({
+  __esModule: true,
+  default: () => null,
+}))
 // The blur backplate is a native view; render its children so the controls it
 // wraps stay findable.
 jest.mock("expo-blur", () => {
@@ -50,9 +55,12 @@ jest.mock("react-native-safe-area-context", () => ({
 import { act } from "react"
 import { Platform } from "react-native"
 
-import { PlayerControls } from "../PlayerControls"
+import { PlayerControls, type PlayerControlsCastUi } from "../PlayerControls"
+import type { PlaybackTarget } from "../../../lib/playbackTarget"
 import {
   TestRenderer,
+  press,
+  pressableByLabel,
   unmount,
   type NodePath,
   type NodeRequireLike,
@@ -72,15 +80,48 @@ function makePlayer() {
   }
 }
 
+function makeCastUi(
+  overrides: Partial<PlayerControlsCastUi> = {},
+): PlayerControlsCastUi {
+  return {
+    available: true,
+    connected: false,
+    label: "Cast",
+    onPress: jest.fn(),
+    ...overrides,
+  }
+}
+
+function makeCastTarget(
+  overrides: Partial<PlaybackTarget> = {},
+): PlaybackTarget {
+  return {
+    isPlaying: false,
+    currentTime: 30,
+    duration: 120,
+    ended: false,
+    held: false,
+    play: jest.fn(),
+    pause: jest.fn(),
+    seekTo: jest.fn(),
+    ...overrides,
+  }
+}
+
 async function render(
   fullscreen: boolean,
-  props: { externalPlaybackActive?: boolean } = {},
+  props: {
+    externalPlaybackActive?: boolean
+    castUi?: PlayerControlsCastUi | null
+    castTarget?: PlaybackTarget | null
+  } = {},
+  player: ReturnType<typeof makePlayer> = makePlayer(),
 ): Promise<TestInstance> {
   let renderer!: TestInstance
   await act(async () => {
     renderer = TestRenderer.create(
       <PlayerControls
-        player={makePlayer() as never}
+        player={player as never}
         fullscreen={fullscreen}
         onFullscreen={() => {}}
         {...props}
@@ -215,6 +256,130 @@ describe("AirPlay button (U1)", () => {
     expect(hasLabel(renderer, "Back 10 seconds")).toBe(true)
     expect(hasLabel(renderer, "Forward 10 seconds")).toBe(true)
     expect(hasLabel(renderer, "Exit fullscreen")).toBe(true)
+    await unmount(renderer)
+  })
+})
+
+describe("Cast button (U4)", () => {
+  it.each([
+    ["inline", false],
+    ["fullscreen", true],
+  ])(
+    "renders the Cast button while devices are reachable (%s)",
+    async (_name, fullscreen) => {
+      const renderer = await render(fullscreen as boolean, {
+        castUi: makeCastUi(),
+      })
+      expect(hasLabel(renderer, "Cast")).toBe(true)
+      await unmount(renderer)
+    },
+  )
+
+  it("renders on Android too (R1 — cast is both platforms)", async () => {
+    setPlatform("android")
+    const renderer = await render(false, { castUi: makeCastUi() })
+    expect(hasLabel(renderer, "Cast")).toBe(true)
+    expect(labelCount(renderer, "AirPlay")).toBe(0)
+    await unmount(renderer)
+  })
+
+  it("hides while no device is reachable (R2)", async () => {
+    const renderer = await render(false, {
+      castUi: makeCastUi({ available: false }),
+    })
+    expect(labelCount(renderer, "Cast")).toBe(0)
+    await unmount(renderer)
+  })
+
+  it("does not render on surfaces without cast wiring (series dock)", async () => {
+    const renderer = await render(false)
+    expect(labelCount(renderer, "Cast")).toBe(0)
+    await unmount(renderer)
+  })
+
+  it("opens the device dialog on press", async () => {
+    const castUi = makeCastUi()
+    const renderer = await render(false, { castUi })
+    await press(pressableByLabel(renderer, "Cast"))
+    expect(castUi.onPress).toHaveBeenCalledTimes(1)
+    await unmount(renderer)
+  })
+
+  it("labels the active session (state-aware label)", async () => {
+    const renderer = await render(false, {
+      castUi: makeCastUi({
+        connected: true,
+        label: "Casting to Living Room TV",
+      }),
+    })
+    expect(hasLabel(renderer, "Casting to Living Room TV")).toBe(true)
+    // Exact-match count: the idle label must not linger beside the active one.
+    expect(labelCount(renderer, "Cast")).toBe(0)
+    await unmount(renderer)
+  })
+})
+
+describe("Cast remote mode (KTD4)", () => {
+  it("routes pause to the cast target and never the local player", async () => {
+    const player = makePlayer()
+    const castTarget = makeCastTarget({ isPlaying: true })
+    const renderer = await render(false, { castTarget }, player)
+    await press(pressableByLabel(renderer, "Pause"))
+    expect(castTarget.pause).toHaveBeenCalledTimes(1)
+    expect(player.pause).not.toHaveBeenCalled()
+    expect(player.play).not.toHaveBeenCalled()
+    await unmount(renderer)
+  })
+
+  it("routes play to the cast target and never the local player", async () => {
+    const player = makePlayer()
+    const castTarget = makeCastTarget({ isPlaying: false })
+    const renderer = await render(false, { castTarget }, player)
+    await press(pressableByLabel(renderer, "Play"))
+    expect(castTarget.play).toHaveBeenCalledTimes(1)
+    expect(player.play).not.toHaveBeenCalled()
+    await unmount(renderer)
+  })
+
+  it("routes the skip buttons to the cast target", async () => {
+    const player = makePlayer()
+    const castTarget = makeCastTarget({ currentTime: 30, duration: 120 })
+    const renderer = await render(false, { castTarget }, player)
+    await press(pressableByLabel(renderer, "Forward 10 seconds"))
+    expect(castTarget.seekTo).toHaveBeenCalledWith(40)
+    expect(player.play).not.toHaveBeenCalled()
+    expect(player.pause).not.toHaveBeenCalled()
+    await unmount(renderer)
+  })
+
+  it("shows the remote position in the time pill", async () => {
+    const renderer = await render(false, {
+      castTarget: makeCastTarget({ currentTime: 30, duration: 120 }),
+    })
+    expect(hasJoinedText(renderer, "0:30 / 2:00")).toBe(true)
+    await unmount(renderer)
+  })
+
+  it("shows Replay when the receiver reports finished (target ended)", async () => {
+    const castTarget = makeCastTarget({ ended: true })
+    const renderer = await render(false, { castTarget })
+    expect(hasLabel(renderer, "Replay")).toBe(true)
+    await press(pressableByLabel(renderer, "Replay"))
+    // Replay restarts the TV: back to 0, then play — on the session.
+    expect(castTarget.seekTo).toHaveBeenCalledWith(0)
+    expect(castTarget.play).toHaveBeenCalledTimes(1)
+    await unmount(renderer)
+  })
+
+  it("holds the transport while connecting (R16)", async () => {
+    const player = makePlayer()
+    const castTarget = makeCastTarget({ held: true })
+    const renderer = await render(false, { castTarget }, player)
+    await press(pressableByLabel(renderer, "Play"))
+    await press(pressableByLabel(renderer, "Forward 10 seconds"))
+    expect(castTarget.play).not.toHaveBeenCalled()
+    expect(castTarget.seekTo).not.toHaveBeenCalled()
+    expect(player.play).not.toHaveBeenCalled()
     await unmount(renderer)
   })
 })
