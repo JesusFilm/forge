@@ -18,7 +18,7 @@ tags:
 
 ## Resolution
 
-**Shipped:** 2026-08-17 via [PR #1946](https://github.com/JesusFilm/forge/pull/1946) (`feat(mastra): per-user erasure CLI — Postgres half + operator runbook`) and [#TBD-PR2](https://github.com/JesusFilm/forge/pull/TBD-PR2) (**placeholder — replace with the real PR 2 number at landing**; the Langfuse half).
+**Shipped:** 2026-08-17 via [PR #1946](https://github.com/JesusFilm/forge/pull/1946) (`feat(mastra): per-user erasure CLI — Postgres half + operator runbook`) and [#1951](https://github.com/JesusFilm/forge/pull/1951) (`feat(mastra): per-user erasure CLI — Langfuse half + completion docs`).
 
 **What landed.** The proposed one-ticket/two-PR arc, as planned. PR 1: the
 `erase-user` CLI over the reusable `ai-chat-erasure.ts` module — key-equality
