@@ -171,8 +171,15 @@ describe("autostart / auto-resume", () => {
 
   it("releases the suppression when the source errors", () => {
     // Playback never starts on an error, so without this the viewer is stuck
-    // on a spinner with no controls and no way to retry.
-    expect(SOURCE).toContain('setLoadFailed(status === "error")')
+    // on a spinner with no controls and no way to retry. U6 moved the listener
+    // onto the playback host — one player, one failure state, read by the full
+    // view and the floating window alike — so the release now spans two files.
+    const host = fs.readFileSync(
+      path.join(__dirname, "..", "PlaybackHost.tsx"),
+      "utf8",
+    )
+    expect(host).toContain('store.setLoadFailed(status === "error")')
+    expect(host).toContain("loadFailed={snapshot.loadFailed}")
   })
 
   it("reports the adoption metric only once playback actually started", () => {

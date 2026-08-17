@@ -24,8 +24,9 @@ import { resolveImageUrl } from "../../src/lib/resolveImageUrl"
 import { ACCENT, SURFACE_COLOR } from "../../src/lib/color"
 import { layout, text } from "../../src/styles/shared"
 import { useTypography } from "../../src/hooks/useTypography"
-import { VideoPlayer } from "../../src/components/watch/VideoPlayer"
+import { PlayerSlot } from "../../src/components/watch/PlayerSlot"
 import { useFullscreenPresentation } from "../../src/hooks/useFullscreenPresentation"
+import { usePlaybackFrameVisible } from "../../src/hooks/usePlaybackFrame"
 import {
   BACK_BUTTON_PROPS,
   PLAYER_SIDE_PADDING,
@@ -63,6 +64,7 @@ export default function SeriesScreen() {
 
   const router = useRouter()
   const { isFullscreen, toggleFullscreen } = useFullscreenPresentation()
+  const playerFrameVisible = usePlaybackFrameVisible()
   const typography = useTypography()
   const insets = useSafeAreaInsets()
 
@@ -424,7 +426,9 @@ export default function SeriesScreen() {
           (RN zIndex is sibling-scoped, so the player's own can't clear it). */}
       {hasSeries && hasTrailer && (
         <View style={isFullscreen ? styles.heroDockFullscreen : heroDock}>
-          <VideoPlayer
+          {/* No `session`: a trailer never originates a mini-player session,
+              and it yields the root player to one that is already live (AE14). */}
+          <PlayerSlot
             streamingUrl={trailerHls}
             posterUrl={displayPoster}
             fullscreen={isFullscreen}
@@ -511,8 +515,12 @@ export default function SeriesScreen() {
       />
 
       {/* Floating back button overlaid on the hero's top-left corner — replaces
-          the native header back. Hidden in fullscreen (the player owns chrome). */}
-      {!isFullscreen && <FloatingBackButton {...BACK_BUTTON_PROPS} />}
+          the native header back. Hidden in fullscreen (the player owns chrome),
+          and while the playback host draws over this dock: the host paints above
+          the stack, so it renders this button. */}
+      {!isFullscreen && !playerFrameVisible && (
+        <FloatingBackButton {...BACK_BUTTON_PROPS} />
+      )}
 
       <Snackbar
         message={seriesSnackbar ?? ""}

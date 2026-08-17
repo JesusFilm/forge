@@ -60,8 +60,18 @@ const FLUSH_TRIGGER_BY_END_REASON: Partial<
 export function useManagedVideoPlayer(
   sourceUrl: string | null,
   setup?: (player: VideoPlayer) => void,
-  options?: { progress?: ProgressIdentity | null },
+  options?: {
+    progress?: ProgressIdentity | null
+    /**
+     * Only the root playback host owns the mini-player session. The session's
+     * end event carries no adapter identity, so a second adapter (the two
+     * `[sectionKey]` screens) would flush ITS recorder and close ITS quality
+     * session on someone else's ending.
+     */
+    ownsSession?: boolean
+  },
 ) {
+  const ownsSession = options?.ownsSession === true
   // Source MUST be frozen: useVideoPlayer recreates/releases the player on any
   // change (dep is JSON.stringify(source)). Swap via replaceAsync on the same
   // player; a changing source = "black screen, stuck on language switch" bug.
@@ -183,8 +193,9 @@ export function useManagedVideoPlayer(
   // no call site has to remember to stop the previous video. With no session
   // open it reports nothing, which is every surface until the window ships.
   useEffect(() => {
+    if (!ownsSession) return
     return getMiniPlayerStore().onEnd((event) => endSession(event.reason))
-  }, [endSession])
+  }, [endSession, ownsSession])
 
   useEffect(() => {
     if (!sourceUrl || sourceUrl === loadedUrlRef.current) return
@@ -387,11 +398,13 @@ export function useManagedVideoPlayer(
       // The recorder samples this same 1s signal at 2s granularity (KTD5).
       recorderRef.current?.onTick(position, duration)
       // The floating window reads its scrubber from the same tick (KTD2), and
-      // the store drops it when no session is open.
-      getMiniPlayerStore().publishPosition({
-        positionSeconds: position,
-        durationSeconds: duration,
-      })
+      // the store drops it when no session is open. Owner-gated for the same
+      // reason as the end subscription above.
+      if (ownsSession)
+        getMiniPlayerStore().publishPosition({
+          positionSeconds: position,
+          durationSeconds: duration,
+        })
 
       const now = Date.now()
       const advanced =
@@ -414,7 +427,7 @@ export function useManagedVideoPlayer(
       }
     }, STALL_POLL_MS)
     return () => clearInterval(id)
-  }, [player, isPlaying])
+  }, [player, isPlaying, ownsSession])
 
   // R36: emit the QoE summary on session end. Distinct from the pause try/catch
   // above — that catch is unmount noise and stays silent (KTD4).

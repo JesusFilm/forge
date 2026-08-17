@@ -39,8 +39,9 @@ import {
   hexToRgba,
 } from "../../src/lib/color"
 import { layout, text } from "../../src/styles/shared"
-import { VideoPlayer } from "../../src/components/watch/VideoPlayer"
+import { PlayerSlot } from "../../src/components/watch/PlayerSlot"
 import { useFullscreenPresentation } from "../../src/hooks/useFullscreenPresentation"
+import { usePlaybackFrameVisible } from "../../src/hooks/usePlaybackFrame"
 import { buildWatchShareUrl } from "../../src/lib/watchShareUrl"
 import { VideoDetailSkeleton } from "../../src/components/watch/VideoDetailSkeleton"
 import { PlayerPoster } from "../../src/components/watch/PlayerPoster"
@@ -98,6 +99,7 @@ export default function WatchVideoPage() {
   const [showScrollTop, setShowScrollTop] = useState(false)
   const scrollTopOpacity = useRef(new Animated.Value(0)).current
   const { isFullscreen, toggleFullscreen } = useFullscreenPresentation()
+  const playerFrameVisible = usePlaybackFrameVisible()
   const insets = useSafeAreaInsets()
   // Honor reduce-motion for the scroll-to-top FAB, the way the player's
   // chrome/subtitles already do — snap instead of fading.
@@ -502,13 +504,22 @@ export default function WatchVideoPage() {
             loading={loading && error == null}
           />
         ) : (
-          <VideoPlayer
+          <PlayerSlot
             streamingUrl={playerSource}
             posterUrl={displayPoster}
             subtitleVttSrc={subtitleVttSrc}
-            onPlayingChange={undefined}
             fullscreen={isFullscreen}
             onToggleFullscreen={toggleFullscreen}
+            // The window needs its own copy of what it is playing: the watch
+            // session provider is group-scoped and dies with the route.
+            session={{
+              videoId: video?.documentId ?? null,
+              videoSlug: decodedSlug,
+              title: displayTitle ?? "",
+              posterUrl: displayPoster,
+              languageSlug: activeVariant?.languageSlug ?? null,
+              originPattern: "watch/[slug]",
+            }}
             progressIdentity={
               // Offline playback may predate the record load — the slug is
               // the on-device key admin resolves server-side (KTD8).
@@ -666,10 +677,13 @@ export default function WatchVideoPage() {
         )}
       </ScrollView>
 
-      {/* Floating back button overlaid on the player's top-right corner —
+      {/* Floating back button overlaid on the player's top-left corner —
           replaces the native header back. Hidden in fullscreen (the player owns
-          its own chrome there). */}
-      {!isFullscreen && <FloatingBackButton {...BACK_BUTTON_PROPS} />}
+          its own chrome there), and while the playback host draws over this
+          dock: the host paints above the stack, so it renders this button. */}
+      {!isFullscreen && !playerFrameVisible && (
+        <FloatingBackButton {...BACK_BUTTON_PROPS} />
+      )}
 
       {showScrollTop && (
         <Animated.View

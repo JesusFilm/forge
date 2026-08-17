@@ -5,8 +5,9 @@
  * for the `inactive` transition, which U5 inverted on purpose — see the comment
  * on that case.
  *
- * The adapter runs for real inside the real `VideoPlayer`, so the two behaviours
- * U5 re-keys are observed where the app produces them:
+ * The adapter runs for real inside the real `PlaybackHost` — U6 moved the one
+ * adapter instance there from `VideoPlayer` — so the two behaviours U5 re-keys
+ * are observed where the app produces them:
  *
  * - R16 — the watch-progress flush: which video it lands against, and on what
  *   trigger.
@@ -86,6 +87,16 @@ jest.mock("expo", () => {
 // Visual leaves — none participate in either behaviour under test.
 jest.mock("expo-image", () => ({ Image: () => null }))
 jest.mock("expo-linear-gradient", () => ({ LinearGradient: () => null }))
+jest.mock("expo-glass-effect", () => ({ GlassView: () => null }))
+// U6 moved the screen's back affordance into the host's layer; it owns the
+// router, which is never imported unmocked in this repo.
+jest.mock("expo-router", () => ({
+  useRouter: () => ({
+    back: jest.fn(),
+    canGoBack: () => true,
+    replace: jest.fn(),
+  }),
+}))
 jest.mock("@expo/vector-icons/Ionicons", () => ({
   __esModule: true,
   default: () => null,
@@ -179,11 +190,15 @@ jest.mock("../../lib/videoQoe", () => {
   return mock
 })
 
-import { act, type ReactElement } from "react"
+import { act } from "react"
 import { AppState } from "react-native"
 
-import { VideoPlayer } from "../../components/watch/VideoPlayer"
+import { PlaybackHost } from "../../components/watch/PlaybackHost"
 import { getMiniPlayerStore } from "../../lib/miniPlayer/store"
+import {
+  getPlaybackRequestStore,
+  type PlaybackRequest,
+} from "../../lib/miniPlayer/playbackRequest"
 import type { ProgressIdentity } from "../../lib/watchProgress/recorder"
 import type { ExpoVideoMock } from "../../test-utils/expoVideoMock"
 import {
@@ -219,14 +234,11 @@ type QoeMock = {
   __reset: () => void
 }
 
-// react-test-renderer can re-render in place; the shared TestInstance type does
-// not declare it, so widen locally rather than editing the shared helper.
-type UpdatableInstance = TestInstance & { update(element: ReactElement): void }
-
 // The full VideoPlayer + chrome transform is paid on this suite's first render.
 jest.setTimeout(20_000)
 
 const video = jest.requireMock("expo-video") as ExpoVideoMock
+const requestStore = getPlaybackRequestStore()
 const recorderMock = jest.requireMock(
   "../../lib/watchProgress/recorder",
 ) as RecorderMock
@@ -259,36 +271,56 @@ let appStateHandlers: Array<(state: string) => void> = []
 
 // Unmounted by afterEach unless a test already did it. The chrome arms real
 // timers (auto-hide, mount fallback), so a render left standing keeps jest alive.
-let mounted: UpdatableInstance | null = null
+let mounted: TestInstance | null = null
+// The slot the host draws into. The screen-side component measures this rect
+// from a real layout pass; here it is seeded so the chrome mounts.
+let slotId: number | null = null
+const SLOT_RECT = { x: 0, y: 0, width: 390, height: 219 }
 
-function element(props: {
-  streamingUrl: string | null
-  progressIdentity: ProgressIdentity | null
-}): ReactElement {
-  return (
-    <VideoPlayer
-      streamingUrl={props.streamingUrl}
-      posterUrl={null}
-      progressIdentity={props.progressIdentity}
-    />
-  )
+function request(
+  streamingUrl: string | null,
+  progressIdentity: ProgressIdentity | null,
+): PlaybackRequest {
+  return {
+    streamingUrl,
+    posterUrl: null,
+    subtitleVttSrc: null,
+    fullscreen: false,
+    autostart: false,
+    resumeAtSeconds: null,
+    progressVideoId: progressIdentity?.videoId ?? null,
+    progressVideoSlug: progressIdentity?.videoSlug ?? null,
+    progressLanguageSlug: progressIdentity?.languageSlug ?? null,
+    onToggleFullscreen: null,
+    session:
+      progressIdentity == null
+        ? null
+        : {
+            videoId: progressIdentity.videoId ?? null,
+            videoSlug: progressIdentity.videoSlug ?? "video-a-slug",
+            title: "A video",
+            posterUrl: null,
+            languageSlug: progressIdentity.languageSlug ?? null,
+            originPattern: "watch/[slug]",
+          },
+  }
 }
 
 async function renderPlayer(
   streamingUrl: string | null = URL_A,
   progressIdentity: ProgressIdentity | null = IDENTITY_A,
-): Promise<UpdatableInstance> {
-  let renderer!: UpdatableInstance
+): Promise<TestInstance> {
+  slotId = requestStore.attachSlot(request(streamingUrl, progressIdentity))
+  requestStore.setSlotRect(slotId, SLOT_RECT)
+  let renderer!: TestInstance
   await act(async () => {
-    renderer = TestRenderer.create(
-      element({ streamingUrl, progressIdentity }),
-    ) as UpdatableInstance
+    renderer = TestRenderer.create(<PlaybackHost />)
   })
   mounted = renderer
   return renderer
 }
 
-async function unmountPlayer(renderer: UpdatableInstance) {
+async function unmountPlayer(renderer: TestInstance) {
   await act(async () => {
     renderer.unmount()
   })
@@ -296,12 +328,13 @@ async function unmountPlayer(renderer: UpdatableInstance) {
 }
 
 async function rerender(
-  renderer: UpdatableInstance,
+  _renderer: TestInstance,
   streamingUrl: string | null,
   progressIdentity: ProgressIdentity | null,
 ) {
   await act(async () => {
-    renderer.update(element({ streamingUrl, progressIdentity }))
+    if (slotId != null)
+      requestStore.updateSlot(slotId, request(streamingUrl, progressIdentity))
   })
 }
 
@@ -311,9 +344,11 @@ async function emitAppState(state: string) {
   })
 }
 
-// The mini-player store is a module singleton, so a session or a latch left by
-// one case would leak into the next.
+// Both mini-player stores are module singletons, so a session, a latch or a
+// mounted slot left by one case would leak into the next.
 function resetMiniPlayerStore() {
+  requestStore.reset()
+  slotId = null
   const store = getMiniPlayerStore()
   store.setPipHold(false)
   store.end("abandoned")
@@ -394,7 +429,12 @@ describe("useManagedVideoPlayer — current session boundaries (characterization
       { index: 0, trigger: "unmount" },
     ])
     expect(recorderMock.__recorders).toHaveLength(2)
-    expect(recorderMock.__recorders[1].identity).toEqual(IDENTITY_B)
+    // Id-keyed OR slug-keyed, never both: the host projects the identity the
+    // recorder itself contracts for (the slug is offline playback's only key).
+    expect(recorderMock.__recorders[1].identity).toEqual({
+      videoId: IDENTITY_B.videoId,
+      languageSlug: IDENTITY_B.languageSlug,
+    })
     // The re-key alone does not touch the quality session.
     expect(qoeMock.createVideoQoeSession).toHaveBeenCalledTimes(2)
   })
