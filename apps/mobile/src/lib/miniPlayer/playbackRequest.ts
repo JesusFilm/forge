@@ -111,6 +111,50 @@ export function shouldOriginateSession(input: {
   return canOriginateRoutePattern(input.session.originPattern)
 }
 
+/**
+ * Same video, whichever key each side happens to carry. A remounted screen can
+ * name a video by slug before its record lands and by id afterwards, so an
+ * id-only compare reads one video as two.
+ */
+export function sameSessionContent(
+  a: Pick<PlaybackSessionDescriptor, "videoId" | "videoSlug">,
+  b: Pick<PlaybackSessionDescriptor, "videoId" | "videoSlug">,
+): boolean {
+  if (a.videoId != null && b.videoId != null) return a.videoId === b.videoId
+  return a.videoSlug === b.videoSlug
+}
+
+/** What the player currently holds, and for which dub. */
+export type LoadedSource = { url: string; languageSlug: string | null }
+
+/**
+ * R4: which URL the player should hold for an incoming request.
+ *
+ * A screen that remounts onto a video already playing resolves its source chain
+ * (`offlineSource ?? activeVariant?.hls ?? video?.streamingUrl ?? seed`) from a
+ * different starting state, so it can name the SAME video with a different URL.
+ * Handing that to the player reloads it, which restarts playback from zero —
+ * the opposite of expanding back to where playback had reached.
+ *
+ * A dub switch is the case that must still reach the player, and it is
+ * distinguishable: it NAMES a language, and a different one. A request that
+ * names none is a half-resolved remount, never a choice the viewer made.
+ */
+export function sourceForRequest(input: {
+  requested: string | null
+  loaded: LoadedSource | null
+  language: string | null
+  /** A live session already owns this content — the expand case, and the only
+   *  one where the player is guaranteed to hold this video already. */
+  adoptable: boolean
+}): string | null {
+  if (!input.adoptable) return input.requested
+  if (input.loaded == null || input.requested == null) return input.requested
+  if (input.language != null && input.language !== input.loaded.languageSlug)
+    return input.requested
+  return input.loaded.url
+}
+
 /** Field-wise equality, so a screen that re-renders does not re-publish. */
 export function samePlaybackRequest(
   a: PlaybackRequest,

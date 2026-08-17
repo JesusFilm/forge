@@ -49,6 +49,9 @@ import {
 } from "../../lib/miniPlayer/layout"
 import {
   getPlaybackRequestStore,
+  sameSessionContent,
+  sourceForRequest,
+  type LoadedSource,
   type PlaybackRect,
   type PlaybackRequest,
   type PlaybackRequestSnapshot,
@@ -205,8 +208,37 @@ function ActivePlaybackHost({
     request.progressLanguageSlug,
   ])
 
+  const sessionSnapshot = useSyncExternalStore(
+    sessionStore.subscribe,
+    sessionStore.getSnapshot,
+  )
+
+  // R4: what the player already holds, so a screen remounting onto the video it
+  // is playing adopts it rather than reloading it from zero.
+  const loadedSourceRef = useRef<LoadedSource | null>(null)
+  const requestLanguage =
+    request.session?.languageSlug ?? request.progressLanguageSlug ?? null
+  const sourceUrl = sourceForRequest({
+    requested: request.streamingUrl,
+    loaded: loadedSourceRef.current,
+    language: requestLanguage,
+    adoptable:
+      sessionSnapshot.session != null &&
+      request.session != null &&
+      sameSessionContent(request.session, sessionSnapshot.session),
+  })
+  if (sourceUrl != null && sourceUrl === request.streamingUrl) {
+    // Handed to the player, so it becomes what the player holds. A known dub is
+    // never downgraded to null by a remount that has not resolved one yet.
+    loadedSourceRef.current = {
+      url: sourceUrl,
+      languageSlug:
+        requestLanguage ?? loadedSourceRef.current?.languageSlug ?? null,
+    }
+  }
+
   const { player, isPlaying } = useManagedVideoPlayer(
-    request.streamingUrl,
+    sourceUrl,
     (p) => {
       // Favor a fast first frame over deep prebuffer — JFP audience skews to
       // low-bandwidth networks. (Android-only fields are ignored on iOS.)
@@ -219,10 +251,6 @@ function ActivePlaybackHost({
     { progress: progressIdentity, ownsSession: true },
   )
 
-  const sessionSnapshot = useSyncExternalStore(
-    sessionStore.subscribe,
-    sessionStore.getSnapshot,
-  )
   const openSheetCount = useSyncExternalStore(
     sheetCounter.subscribe,
     sheetCounter.count,

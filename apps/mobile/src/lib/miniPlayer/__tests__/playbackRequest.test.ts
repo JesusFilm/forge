@@ -6,7 +6,9 @@
 import {
   createPlaybackRequestStore,
   samePlaybackRequest,
+  sameSessionContent,
   shouldOriginateSession,
+  sourceForRequest,
   type PlaybackRequest,
   type PlaybackSessionDescriptor,
 } from "../playbackRequest"
@@ -104,6 +106,85 @@ describe("shouldOriginateSession (the admission predicate)", () => {
     expect(
       shouldOriginateSession({ hasPlaybackStarted: true, session: SESSION_A }),
     ).toBe(true)
+  })
+})
+
+describe("the source an incoming request should play (R4)", () => {
+  const LOADED = {
+    url: "https://stream.mux.com/loaded.m3u8",
+    languageSlug: "english",
+  }
+  const REQUESTED = "https://cdn.example.org/other-form.m3u8"
+
+  it("keeps what the player holds when a live session names the same video", () => {
+    expect(
+      sourceForRequest({
+        requested: REQUESTED,
+        loaded: LOADED,
+        language: null,
+        adoptable: true,
+      }),
+    ).toBe(LOADED.url)
+  })
+
+  it("keeps it when the request names the dub already playing", () => {
+    expect(
+      sourceForRequest({
+        requested: REQUESTED,
+        loaded: LOADED,
+        language: "english",
+        adoptable: true,
+      }),
+    ).toBe(LOADED.url)
+  })
+
+  it("hands over a dub the viewer actually changed to", () => {
+    expect(
+      sourceForRequest({
+        requested: REQUESTED,
+        loaded: LOADED,
+        language: "spanish",
+        adoptable: true,
+      }),
+    ).toBe(REQUESTED)
+  })
+
+  it("hands over anything when no live session owns this content", () => {
+    expect(
+      sourceForRequest({
+        requested: REQUESTED,
+        loaded: LOADED,
+        language: null,
+        adoptable: false,
+      }),
+    ).toBe(REQUESTED)
+  })
+
+  it("hands over the request when the player holds nothing yet", () => {
+    expect(
+      sourceForRequest({
+        requested: REQUESTED,
+        loaded: null,
+        language: null,
+        adoptable: true,
+      }),
+    ).toBe(REQUESTED)
+  })
+
+  it("matches one video across the keys a remount happens to carry", () => {
+    const byId = { videoId: "video-a", videoSlug: "life-of-jesus" }
+    expect(sameSessionContent(byId, { ...byId })).toBe(true)
+    // Before its record lands a screen has only the slug; after, only the id
+    // compare would call this a different video and replace the session.
+    expect(
+      sameSessionContent({ videoId: null, videoSlug: "life-of-jesus" }, byId),
+    ).toBe(true)
+    expect(
+      sameSessionContent({ videoId: "video-b", videoSlug: "other" }, byId),
+    ).toBe(false)
+    expect(
+      sameSessionContent({ videoId: null, videoSlug: "other" }, byId),
+    ).toBe(false)
   })
 })
 

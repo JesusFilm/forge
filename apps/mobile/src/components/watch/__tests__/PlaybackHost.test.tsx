@@ -158,6 +158,10 @@ import {
 jest.setTimeout(20_000)
 
 const video = jest.requireMock("expo-video") as ExpoVideoMock
+const datadog = jest.requireMock("../../../lib/datadog") as {
+  datadogLog: { info: jest.Mock; warn: jest.Mock; error: jest.Mock }
+  reportDatadogAction: jest.Mock
+}
 const auth = jest.requireMock("../../../lib/authSession") as {
   __setSnapshot: (next: unknown) => void
   __reset: () => void
@@ -471,6 +475,123 @@ describe("admission (R1, R20)", () => {
     await detach(id)
 
     expect(sessionStore.getSnapshot().session?.videoId).toBe("video-a")
+  })
+})
+
+describe("expanding back onto the floating video (R4)", () => {
+  // The URL the watch route publishes on a FRESH mount is not always the string
+  // the player already holds: `playerSource` walks
+  // `offlineSource ?? activeVariant?.hls ?? video?.streamingUrl ?? seedStreamingUrl`,
+  // and a remounted screen resolves that chain from a different starting state
+  // (group-scoped session provider gone, `returnPartialData` cache entry, no
+  // seed on the window's push). Two different strings, one video.
+  const VARIANT_URL = "https://stream.mux.com/assetAAA111.m3u8"
+  const CANONICAL_URL = "https://cdn.example.org/life-of-jesus/en/master.m3u8"
+
+  function watchRequest(
+    overrides: Partial<PlaybackRequest> = {},
+  ): Partial<PlaybackRequest> {
+    return {
+      streamingUrl: VARIANT_URL,
+      progressVideoId: "video-a",
+      progressLanguageSlug: "english",
+      session: {
+        videoId: "video-a",
+        videoSlug: "life-of-jesus-gospel-of-john",
+        title: "Life of Jesus",
+        posterUrl: null,
+        languageSlug: "english",
+        originPattern: "watch/[slug]",
+      },
+      ...overrides,
+    }
+  }
+
+  async function floatOneVideo() {
+    const first = attachSlot(watchRequest())
+    const renderer = await renderHost()
+    await startPlayback()
+    video.__player.currentTime = 30
+    video.__player.duration = 11000
+    await detach(first)
+    expect(sessionStore.getSnapshot().session?.videoId).toBe("video-a")
+    return renderer
+  }
+
+  it("adopts the live player when the expanded screen names the same video", async () => {
+    await floatOneVideo()
+    const replacesBefore = video.__player.replaceAsync.mock.calls.length
+    datadog.datadogLog.info.mockClear()
+    datadog.reportDatadogAction.mockClear()
+
+    // The expand: same video, a source string the Mux-id compare cannot absorb,
+    // and no language yet because the fresh provider has not picked a variant.
+    await attachSlotInAct(
+      watchRequest({
+        streamingUrl: CANONICAL_URL,
+        progressLanguageSlug: null,
+        session: {
+          ...(watchRequest().session as PlaybackSessionDescriptor),
+          languageSlug: null,
+        },
+      }),
+    )
+
+    // No reload: position survives, and neither of the two signals a reload
+    // leaves behind (a closed quality session, a re-applied autostart) fires.
+    expect(video.__player.replaceAsync).toHaveBeenCalledTimes(replacesBefore)
+    expect(video.__player.currentTime).toBe(30)
+    expect(video.__player.playing).toBe(true)
+    expect(datadog.datadogLog.info).not.toHaveBeenCalledWith(
+      "video.qoe",
+      expect.anything(),
+    )
+    expect(datadog.reportDatadogAction).not.toHaveBeenCalledWith(
+      "autostart_applied",
+      expect.anything(),
+    )
+    // And the session it expanded onto is still the one playing.
+    expect(sessionStore.getSnapshot().session?.videoId).toBe("video-a")
+  })
+
+  it("still swaps when the viewer changes the dub on the expanded screen", async () => {
+    await floatOneVideo()
+    const replacesBefore = video.__player.replaceAsync.mock.calls.length
+    await attachSlotInAct(
+      watchRequest({
+        streamingUrl: CANONICAL_URL,
+        progressLanguageSlug: null,
+        session: {
+          ...(watchRequest().session as PlaybackSessionDescriptor),
+          languageSlug: null,
+        },
+      }),
+    )
+
+    // A named language that differs is a real dub switch, not a remount's
+    // half-resolved guess: it must reach the player.
+    await act(async () => {
+      requestStore.updateSlot(
+        requestStore.getSnapshot().slotId as number,
+        makeRequest(
+          watchRequest({
+            streamingUrl: "https://stream.mux.com/assetSPA999.m3u8",
+            progressLanguageSlug: "spanish",
+            session: {
+              ...(watchRequest().session as PlaybackSessionDescriptor),
+              languageSlug: "spanish",
+            },
+          }),
+        ),
+      )
+    })
+
+    expect(video.__player.replaceAsync).toHaveBeenCalledTimes(
+      replacesBefore + 1,
+    )
+    expect(video.__player.replaceAsync).toHaveBeenLastCalledWith(
+      "https://stream.mux.com/assetSPA999.m3u8",
+    )
   })
 })
 
