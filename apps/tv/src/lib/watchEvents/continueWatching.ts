@@ -169,6 +169,21 @@ export async function saveResumeSnapshot(
         entry,
         snapshot,
       )
+
+      // Completion bookkeeping, in the SAME locked write as the shelf change
+      // it mirrors (todo 025): finishing a video REMOVES its shelf entry, and
+      // the shelf is the only thing the account sync pushes — so without this
+      // bucket a film finished on the TV never reaches the account, and every
+      // other device keeps a stale partial progress bar forever.
+      if (isFinished(snapshot)) {
+        await recordPendingCompletionLocked(storage, entry, snapshot)
+      } else if (isResumeWorthy(snapshot)) {
+        // A rewatch supersedes an unsent completion. Keeping it would re-send
+        // an entry the server's staleness guard rejects on EVERY sync — the
+        // new shelf entry carries the newer stamp and the real state.
+        await removePendingCompletionsLocked(storage, [entry.videoId])
+      }
+
       if (next.length === 0) {
         await storage.removeItem(CONTINUE_WATCHING_STORAGE_KEY)
         return
@@ -189,6 +204,130 @@ export async function getResumePosition(
   return entry ? entry.positionSeconds : null
 }
 
+// ── Pending completions (todo 025) ──────────────────────────────────────────
+// Videos watched to the END on this device, awaiting a push to the account.
+// Lives beside the shelf because finishing REMOVES the shelf entry — the
+// account sync drains this bucket alongside the shelf and clears entries only
+// after the server accepts them.
+
+export const PENDING_COMPLETIONS_STORAGE_KEY = "forge.watch.pending_completions"
+/** Same order of magnitude as the shelf: enough for a binge, never unbounded. */
+export const MAX_PENDING_COMPLETIONS = 10
+
+export type PendingCompletion = {
+  videoId: string
+  slug: string
+  /** Terminal by construction: position == duration, so admin derives
+   *  completed=true and the row reads "finished" on every device. */
+  positionSeconds: number
+  durationSeconds: number
+  updatedAt: string
+}
+
+export function parsePendingCompletions(
+  raw: string | null,
+): PendingCompletion[] {
+  if (!raw) return []
+  try {
+    const parsed: unknown = JSON.parse(raw)
+    if (!Array.isArray(parsed)) return []
+    return parsed
+      .filter(
+        (e): e is PendingCompletion =>
+          typeof e === "object" &&
+          e !== null &&
+          typeof (e as { videoId?: unknown }).videoId === "string" &&
+          typeof (e as { slug?: unknown }).slug === "string" &&
+          typeof (e as { positionSeconds?: unknown }).positionSeconds ===
+            "number" &&
+          typeof (e as { durationSeconds?: unknown }).durationSeconds ===
+            "number" &&
+          typeof (e as { updatedAt?: unknown }).updatedAt === "string",
+      )
+      .slice(0, MAX_PENDING_COMPLETIONS)
+  } catch {
+    return []
+  }
+}
+
+/** Locked read of the bucket — same interleave rules as the shelf. */
+export async function readPendingCompletions(): Promise<PendingCompletion[]> {
+  return withShelfLock(async () => {
+    try {
+      return parsePendingCompletions(
+        await getStorage().getItem(PENDING_COMPLETIONS_STORAGE_KEY),
+      )
+    } catch {
+      return []
+    }
+  })
+}
+
+/** Drop completions the server has accepted (or a shelf rewatch superseded). */
+export async function removePendingCompletions(
+  videoIds: readonly string[],
+): Promise<void> {
+  if (videoIds.length === 0) return
+  await withShelfLock(async () => {
+    try {
+      await removePendingCompletionsLocked(getStorage(), videoIds)
+    } catch {
+      // Best-effort: an unremoved completion re-sends and the server's
+      // newest-wins guard makes the retry harmless.
+    }
+  })
+}
+
+// Callee helpers — run INSIDE the shelf lock only (no locking of their own).
+
+async function recordPendingCompletionLocked(
+  storage: ReturnType<typeof getStorage>,
+  entry: Omit<
+    ContinueWatchingEntry,
+    "positionSeconds" | "durationSeconds" | "progress"
+  >,
+  snapshot: ResumeSnapshot,
+): Promise<void> {
+  const duration =
+    snapshot.durationSeconds != null &&
+    Number.isFinite(snapshot.durationSeconds) &&
+    snapshot.durationSeconds > 0
+      ? Math.floor(snapshot.durationSeconds)
+      : null
+  if (duration == null || duration < 1) return
+  const completion: PendingCompletion = {
+    videoId: entry.videoId,
+    slug: entry.slug,
+    positionSeconds: duration,
+    durationSeconds: duration,
+    updatedAt: entry.updatedAt,
+  }
+  const others = parsePendingCompletions(
+    await storage.getItem(PENDING_COMPLETIONS_STORAGE_KEY),
+  ).filter((c) => c.videoId !== completion.videoId)
+  await storage.setItem(
+    PENDING_COMPLETIONS_STORAGE_KEY,
+    JSON.stringify([completion, ...others].slice(0, MAX_PENDING_COMPLETIONS)),
+  )
+}
+
+async function removePendingCompletionsLocked(
+  storage: ReturnType<typeof getStorage>,
+  videoIds: readonly string[],
+): Promise<void> {
+  const remaining = parsePendingCompletions(
+    await storage.getItem(PENDING_COMPLETIONS_STORAGE_KEY),
+  ).filter((c) => !videoIds.includes(c.videoId))
+  if (remaining.length === 0) {
+    await storage.removeItem(PENDING_COMPLETIONS_STORAGE_KEY)
+    return
+  }
+  await storage.setItem(
+    PENDING_COMPLETIONS_STORAGE_KEY,
+    JSON.stringify(remaining),
+  )
+}
+
 /**
  * Erase the shelf, inside the lock.
  *
@@ -200,12 +339,22 @@ export async function getResumePosition(
  */
 export async function clearContinueWatching(): Promise<boolean> {
   return withShelfLock(async () => {
+    let cleared = true
+    // Both watch-state buckets this module owns, wiped under the one lock.
+    // The pending-completions bucket is UPLOADED into whichever account signs
+    // in next, so leaving it behind is the same cross-account hazard as the
+    // shelf — see anonymousMerge.ts rule 1.
     try {
       await getStorage().removeItem(CONTINUE_WATCHING_STORAGE_KEY)
-      return true
     } catch {
-      return false
+      cleared = false
     }
+    try {
+      await getStorage().removeItem(PENDING_COMPLETIONS_STORAGE_KEY)
+    } catch {
+      cleared = false
+    }
+    return cleared
   })
 }
 

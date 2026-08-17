@@ -58,6 +58,47 @@ export function toWatchProgressUpsertEntries(
   return mapped
 }
 
+/**
+ * Pending completions → wire entries (todo 025). Same field contract as
+ * `toWatchProgressUpsertEntries`; separate because completions are terminal
+ * by construction (position == duration) and come from their own bucket.
+ * Defensive on the same clauses — the bucket is parsed storage.
+ */
+export function completionsToUpsertEntries(
+  completions: readonly {
+    videoId: string
+    slug: string
+    positionSeconds: number
+    durationSeconds: number
+    updatedAt: string
+  }[],
+): WatchProgressUpsertEntry[] {
+  const mapped: WatchProgressUpsertEntry[] = []
+  for (const completion of completions) {
+    if (
+      !Number.isFinite(completion.durationSeconds) ||
+      completion.durationSeconds <= 0
+    ) {
+      continue
+    }
+    if (
+      !Number.isFinite(completion.positionSeconds) ||
+      completion.positionSeconds < 0
+    ) {
+      continue
+    }
+    if (completion.updatedAt.length === 0) continue
+    mapped.push({
+      videoId: completion.videoId,
+      videoSlug: completion.slug,
+      positionSeconds: completion.positionSeconds,
+      durationSeconds: completion.durationSeconds,
+      updatedAt: completion.updatedAt,
+    })
+  }
+  return mapped
+}
+
 /** A defensively-narrowed `myWatchProgress` row. Every field is nullable on
  *  the wire; a row that cannot anchor a merge (no id, no usable numbers) is
  *  dropped at parse rather than guessed at. */

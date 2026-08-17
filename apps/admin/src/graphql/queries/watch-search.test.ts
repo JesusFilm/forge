@@ -251,7 +251,93 @@ describe("watchSearch mode routing", () => {
     const values =
       "getValues" in mode! ? mode.getValues().map((row) => row.name) : []
     expect(values).toEqual(["DEFAULT", "MODERN"])
+
+    const response = schema.getType("WatchSearchResponse")
+    const responseFields = "getFields" in response! ? response.getFields() : {}
+    expect(responseFields).not.toHaveProperty("retrievalIdentity")
   })
+
+  it("covers every caller, flag, primary, and requested-mode routing combination", () => {
+    const callers: Array<{
+      name: string
+      kind: "canonical" | "fleet" | "unchanged"
+      user: ResolverCtx["user"]
+      origin?: string
+    }> = [
+      {
+        name: "canonical Web",
+        kind: "canonical",
+        user: null,
+        origin: "https://www.jesusfilm.org",
+      },
+      {
+        name: "authenticated fleet",
+        kind: "fleet",
+        user: { id: null, role: "CONSUMER_BEARER", fleet: true },
+      },
+      {
+        name: "authenticated non-fleet",
+        kind: "unchanged",
+        user: { id: null, role: "CONSUMER_BEARER", fleet: false },
+      },
+      { name: "anonymous noncanonical", kind: "unchanged", user: null },
+      {
+        name: "non-consumer principal",
+        kind: "unchanged",
+        user: { id: "user-1", role: "PUBLIC", fleet: true },
+      },
+    ]
+    const requestedModes = [undefined, "default", "modern"] as const
+    const primaryModes = ["DEFAULT", "MODERN"] as const
+
+    for (const caller of callers) {
+      for (const fleetPrimaryEnabled of [false, true]) {
+        for (const primaryMode of primaryModes) {
+          for (const requestedMode of requestedModes) {
+            const input: ResolverArgs["input"] = {
+              query: "communion",
+              ...(requestedMode == null ? {} : { mode: requestedMode }),
+            }
+            const inheritedMode =
+              primaryMode === "MODERN" ? "modern" : "default"
+            const expected =
+              caller.kind === "canonical"
+                ? {
+                    ...input,
+                    mode: inheritedMode,
+                    shadowMode:
+                      inheritedMode === "modern" ? "default" : undefined,
+                  }
+                : caller.kind === "fleet" &&
+                    fleetPrimaryEnabled &&
+                    requestedMode == null
+                  ? { ...input, mode: inheritedMode, shadowMode: undefined }
+                  : input
+            const request = new Request(
+              "https://admin.jesusfilm.org/api/graphql",
+              {
+                headers: caller.origin ? { origin: caller.origin } : undefined,
+              },
+            )
+
+            expect(
+              resolveWatchSearchInputForRequest(
+                input,
+                { user: caller.user, request },
+                {
+                  primaryMode,
+                  defaultShadowEnabled: true,
+                  fleetPrimaryEnabled,
+                },
+              ),
+              `${caller.name}; flag=${fleetPrimaryEnabled}; primary=${primaryMode}; requested=${requestedMode ?? "omitted"}`,
+            ).toEqual(expected)
+          }
+        }
+      }
+    }
+  })
+
   it("uses the modern service when mode is MODERN", async () => {
     const input = {
       query: "communion",
@@ -381,6 +467,7 @@ describe("watchSearch mode routing", () => {
       resolveWatchSearchInputForRequest(staleClientInput, requestContext, {
         primaryMode: "DEFAULT",
         defaultShadowEnabled: false,
+        fleetPrimaryEnabled: false,
       }),
     ).toEqual({
       query: "communion",
@@ -404,6 +491,7 @@ describe("watchSearch mode routing", () => {
         {
           primaryMode: "MODERN",
           defaultShadowEnabled: false,
+          fleetPrimaryEnabled: false,
         },
       ),
     ).toEqual({

@@ -66,6 +66,7 @@ function baseline(): BaselineArtifact {
       callerTrack: "public-watch",
       promptSetVersion: SEARCH_EVAL_SEED_PROMPT_SET_VERSION,
       adminSearchUrl: "https://admin.internal/api/internal/search-eval/search",
+      servingRevision: null,
       judgeModel: null,
       search: { limit: 20, mode: "hybrid", contentType: null },
     },
@@ -318,6 +319,11 @@ describe("search eval baseline portability service", () => {
       "https://admin.internal/api/internal/search-eval/search",
     )
     vi.stubEnv("ADMIN_SEARCH_EVAL_API_KEY", "search-key")
+    vi.stubEnv(
+      "ADMIN_SEARCH_EVAL_SERVING_URL",
+      "https://admin.internal/api/internal/search-eval/serving-search",
+    )
+    vi.stubEnv("ADMIN_SEARCH_EVAL_SERVING_API_KEY", "serving-search-key")
     vi.stubEnv("MASTRA_SERVICE_API_KEYS", "service-key")
     vi.stubEnv("MASTRA_STORAGE_BACKEND", "postgres")
     vi.stubEnv(
@@ -335,5 +341,27 @@ describe("search eval baseline portability service", () => {
       ok: true,
       artifactRoot: rootDir,
     })
+  })
+
+  it("fails baseline readiness when dedicated Serving config is missing", async () => {
+    const readiness = await checkSearchEvalBaselineReadiness({
+      artifactRoot: rootDir,
+      probe: false,
+    })
+
+    expect(readiness.checks).toEqual(
+      expect.arrayContaining([
+        {
+          name: "admin_serving_search_url",
+          status: "fail",
+          reason: "missing_admin_search_eval_serving_url",
+        },
+        {
+          name: "admin_serving_search_bearer",
+          status: "fail",
+          reason: "missing_admin_search_eval_serving_api_key",
+        },
+      ]),
+    )
   })
 })

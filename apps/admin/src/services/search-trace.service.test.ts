@@ -279,7 +279,15 @@ describe("search trace service", () => {
         response: {
           query: "Should I pray to God?",
           requestId: "watch_req_123456",
-          searchMode: "watch-search",
+          searchMode: "watch-search-typesense",
+          retrievalIdentity: {
+            profile: "CANDIDATE",
+            generationId: "generation-17",
+            applicationRevision: "watch-search-candidate/v2",
+            rankingRevision: "title-and-brand-v1",
+            transcriptProjectionRevision: "42",
+            evaluationRevision: "none:operator-accepted:launch-1",
+          },
           degraded: true,
           latencyMs: 123.4,
           hasMore: false,
@@ -370,7 +378,7 @@ describe("search trace service", () => {
       locale: "russian",
       routeSource: "GRAPHQL",
       requestedMode: "default",
-      searchMode: "watch-search",
+      searchMode: "watch-search-typesense",
       resultCount: 1,
       outcome: "DEGRADED",
       traceClass: expect.stringContaining("semantic_retrieval_degraded"),
@@ -383,6 +391,14 @@ describe("search trace service", () => {
       queryLength: "Should I pray to God?".length,
       resultCount: 1,
       degraded: true,
+      retrievalIdentity: {
+        profile: "CANDIDATE",
+        generationId: "generation-17",
+        applicationRevision: "watch-search-candidate/v2",
+        rankingRevision: "title-and-brand-v1",
+        transcriptProjectionRevision: "42",
+        evaluationRevision: "none:operator-accepted:launch-1",
+      },
       language: {
         targetLanguageSlug: "russian",
         queryNamedLanguageSlug: "russian",
@@ -429,6 +445,46 @@ describe("search trace service", () => {
     expect(JSON.stringify(aggregateCreate)).not.toContain(
       "Should I pray to God?",
     )
+  })
+
+  it("does not claim Typesense retrieval identity for PostgreSQL responses", async () => {
+    const prisma = buildPrisma()
+
+    await recordWatchSearchTraceSafely(
+      {
+        input: { query: "Jesus", mode: "default" },
+        response: {
+          query: "Jesus",
+          requestId: "watch_postgres_123456",
+          searchMode: "watch-search",
+          degraded: false,
+          latencyMs: 20,
+          hasMore: false,
+          nextOffset: 20,
+          languageInterpretation: {
+            queryLanguageSlug: "english",
+            queryNamedLanguageSlug: null,
+            targetLanguageSlug: "english",
+            targetLanguageSource: "explicit_target",
+            displayLanguageSlug: "english",
+            routeLanguageSlug: null,
+            currentWatchLanguageSlug: null,
+            acceptLanguage: null,
+            acceptLanguageSlug: null,
+          },
+          laneStatuses: [],
+          results: [],
+        },
+        startedAt: new Date("2026-05-01T00:00:00.000Z"),
+        completedAt: new Date("2026-05-01T00:00:00.020Z"),
+        now: new Date("2026-05-01T00:00:00.020Z"),
+      },
+      prisma as unknown as Parameters<typeof recordWatchSearchTraceSafely>[1],
+    )
+
+    expect(
+      prisma.searchTrace.create.mock.calls[0]?.[0]?.data.metadata,
+    ).toMatchObject({ retrievalIdentity: null })
   })
 
   it.each(["shadow", "comparison_current", "comparison_candidate"] as const)(

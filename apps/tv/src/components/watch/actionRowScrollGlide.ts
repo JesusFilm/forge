@@ -12,6 +12,7 @@ export const ACTION_ROW_PILLS = [
   "play",
   "language",
   "subtitles",
+  "mylist",
   "share",
 ] as const
 

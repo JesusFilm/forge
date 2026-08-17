@@ -108,7 +108,10 @@ export async function resolveWatchSearchServingProfile(input: {
     qrelsRevision: input.qrelsRevision,
     rankingRevision: input.rankingRevision,
   })
-  return createCandidateWatchSearchProfile(generation)
+  return createCandidateWatchSearchProfile(
+    generation,
+    input.qrelsRevision.trim(),
+  )
 }
 
 export const CANDIDATE_SERVING_SERVICE_CACHE_TTL_MS = 30_000

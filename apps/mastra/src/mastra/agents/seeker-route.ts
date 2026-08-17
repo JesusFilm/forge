@@ -65,6 +65,7 @@ import {
 import { settleWithinBudget, TIME_BUDGET_MS, STEP_CAPS } from "../budgets"
 import {
   authorizeAiChatThreadAccess,
+  SEEKER_DEFAULT_RESOURCE_ID,
   type AiChatOwnershipMemory,
 } from "../ai-chat-thread-ownership"
 import { aiChatMemoryConfigFor, getAiChatMemory } from "../ai-chat-memory"
@@ -158,8 +159,14 @@ const SEEKER_AGENT_ID = "seekerAgent"
 /**
  * Constant `resourceId` supplied whenever a caller omits one (KTD3). Keeps
  * `resourceId` optional to callers while satisfying the runtime memory guard.
+ *
+ * Relocated to `../ai-chat-thread-ownership` (feat-337 U1) — the module that
+ * owns the resource contract — so `ai-chat-erasure.ts` can refuse this exact
+ * key without importing THIS module (whose module-scope `buildSeekerAgent()`
+ * would eagerly construct the seeker agent and its kill-switch-resolved
+ * Memory). Re-exported here so existing importers and test pins are unchanged.
  */
-export const SEEKER_DEFAULT_RESOURCE_ID = "seeker-dogfood"
+export { SEEKER_DEFAULT_RESOURCE_ID }
 
 function sseFrame(event: string, data: unknown): string {
   return `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`

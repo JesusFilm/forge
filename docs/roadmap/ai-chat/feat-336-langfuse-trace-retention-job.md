@@ -53,8 +53,7 @@ costs ~2 requests at steady state and threatens quota only against a
 spend-claim ledger in Postgres (single conditional claim-BEFORE-spend
 statement — a read-then-write counter reintroduces the race), build
 triggers: audience widening, replicas > 1, or an observed sweep/erasure
-quota collision; feat-337 should design any erasure-side spend recording
-as its first consumer. Detection posture, stated honestly: the 28-day wall
+quota collision. Detection posture, stated honestly: the 28-day wall
 warn detects sustained deletion failure ~3 days after traces overstay the
 window, leaving a 2-day reaction margin — a margin of operator attention
 (log lines, unalerted), conditioned on a run happening with an untruncated

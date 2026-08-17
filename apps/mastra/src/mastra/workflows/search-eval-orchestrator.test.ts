@@ -118,6 +118,7 @@ function report(
       callerTrack: "public-watch",
       promptSetVersion: "seed:v1",
       adminSearchUrl: "https://admin.internal/api/internal/search-eval/search",
+      servingRevision: null,
       judgeModel:
         options.judgeModel === undefined ? "judge-model" : options.judgeModel,
       search: {

@@ -427,6 +427,7 @@ export function createSampleSearchEvalReport(input: {
       baselineName,
       promptSetVersion: SAMPLE_PROMPT_SET_VERSION,
       adminSearchUrl: null,
+      servingRevision: null,
       judgeModel: "sample-fixture",
       callerTrack: DEFAULT_SEARCH_EVAL_CALLER_TRACK,
       search: { limit: 5, mode: "hybrid", contentType: null },

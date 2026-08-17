@@ -12,8 +12,11 @@ import { TVFocusGuideView } from "../TVFocusGuideView"
 import { LinkModal } from "../LinkModal"
 import { scale } from "../../lib/scale"
 import { validateActionUrl, validateStreamingUrl } from "../../lib/validateUrl"
+import { isInMyList, toggleMyList } from "../../lib/myList/myList"
+import { toMyListEntry } from "../../lib/myList/myListEntry"
 import { getResumePosition } from "../../lib/watchEvents/continueWatching"
-import { buildShareUrl } from "./detailsHelpers"
+import { buildShareUrl, shouldOfferResumeChoice } from "./detailsHelpers"
+import { ResumeChoicePanel } from "./ResumeChoicePanel"
 import { WATCH_THEME } from "./watchDetailTheme"
 import type { ActionRowPill } from "./actionRowScrollGlide"
 import { useFocusVisual } from "../focus/useFocusVisual"
@@ -78,7 +81,7 @@ export function DetailsActionRow({
     }
   }, [video?.documentId, state.isVisible])
 
-  const handlePlay = () => {
+  const startPlayback = (startAtSeconds: number | undefined) => {
     const hls = activeVariant?.hls
     if (!hls || !validateStreamingUrl(hls)) return
     // Identity rides along for anonymous watch-event capture (feat-322):
@@ -93,8 +96,62 @@ export function DetailsActionRow({
             videoDubId: activeVariant?.documentId ?? null,
           }
         : undefined,
-      resumeAtSeconds ?? undefined,
+      startAtSeconds,
+      // Up Next target for the end-of-playback offer (null when nothing follows).
+      video?.upNext != null
+        ? {
+            slug: video.upNext.slug,
+            title: video.upNext.title,
+            posterUrl: video.upNext.posterUrl,
+          }
+        : null,
     )
+  }
+
+  // Resume / Start over (QoL): a saved position turns Play into a CHOICE
+  // rather than a forced resume — the demo "oops" moment, fixed. Continue
+  // Watching cards keep direct resume (the shelf IS the resume affordance);
+  // this chooser exists only on the details page's Play pill.
+  const [resumeChoiceOpen, setResumeChoiceOpen] = useState(false)
+  const handlePlay = () => {
+    if (shouldOfferResumeChoice(resumeAtSeconds)) {
+      setResumeChoiceOpen(true)
+      return
+    }
+    startPlayback(undefined)
+  }
+
+  // My List: membership is read from storage (never assumed), so the pill
+  // paints saved state on arrival — including for a video saved on another
+  // screen or, later, on another device.
+  const [savedToMyList, setSavedToMyList] = useState(false)
+  // The video this screen is CURRENTLY showing. Both async paths below check it
+  // before painting: the language/dub panels and Up Next can swap the session's
+  // video while a storage read or a toggle is still in flight, and neither
+  // result belongs to the new video. (An effect's `cancelled` flag cannot cover
+  // the toggle — it is fired from a press handler, not an effect.)
+  const shownVideoIdRef = useRef<string | null>(video?.documentId ?? null)
+  shownVideoIdRef.current = video?.documentId ?? null
+
+  useEffect(() => {
+    const id = video?.documentId
+    if (!id) {
+      setSavedToMyList(false)
+      return
+    }
+    void isInMyList(id).then((saved) => {
+      if (shownVideoIdRef.current === id) setSavedToMyList(saved)
+    })
+  }, [video?.documentId])
+
+  const handleToggleMyList = () => {
+    const entry = toMyListEntry(video, new Date().toISOString())
+    if (entry == null) return
+    // Painted from what STORAGE reports, not from an optimistic flip: a failed
+    // write must not leave the pill claiming the video is saved.
+    void toggleMyList(entry).then((saved) => {
+      if (shownVideoIdRef.current === entry.videoId) setSavedToMyList(saved)
+    })
   }
 
   // Share continuation URL → QR fallback: the public watch URL, validated
@@ -153,6 +210,16 @@ export function DetailsActionRow({
           onFocus={() => onRowFocus?.("subtitles")}
           onBlur={() => onRowBlur?.("subtitles")}
         />
+        {video != null ? (
+          <SecondaryPill
+            icon={savedToMyList ? "checkmark" : "add"}
+            label="My List"
+            sub={savedToMyList ? "Saved" : null}
+            onPress={handleToggleMyList}
+            onFocus={() => onRowFocus?.("mylist")}
+            onBlur={() => onRowBlur?.("mylist")}
+          />
+        ) : null}
         {canShare ? (
           <SecondaryPill
             icon="share-outline"
@@ -173,6 +240,20 @@ export function DetailsActionRow({
           qrHeading={modalHeading}
         />
       ) : null}
+
+      <ResumeChoicePanel
+        visible={resumeChoiceOpen}
+        resumeAtSeconds={resumeAtSeconds ?? 0}
+        onResume={() => {
+          setResumeChoiceOpen(false)
+          startPlayback(resumeAtSeconds ?? undefined)
+        }}
+        onStartOver={() => {
+          setResumeChoiceOpen(false)
+          startPlayback(undefined)
+        }}
+        onClose={() => setResumeChoiceOpen(false)}
+      />
     </>
   )
 }

@@ -70,6 +70,7 @@ import {
   type WatchSearchLaneStatus,
   type WatchSearchLanguageInterpretation,
   type WatchSearchQueryEmbedder,
+  type WatchSearchRetrievalIdentity,
   type WatchSearchResponse,
   type WatchSearchResult,
   WatchSearchValidationError,
@@ -996,6 +997,18 @@ export class TypesenseWatchSearchService {
   private readonly profile: TypesenseWatchSearchProfile
   private readonly rankingImplementation: WatchSearchRankingImplementation
 
+  private retrievalIdentity(): WatchSearchRetrievalIdentity {
+    return {
+      profile: this.profile.kind,
+      generationId: this.profile.generationId,
+      applicationRevision: this.profile.applicationRevision,
+      rankingRevision: this.rankingImplementation,
+      transcriptProjectionRevision:
+        this.profile.transcriptProjectionRevision?.toString() ?? null,
+      evaluationRevision: this.profile.qrelsRevision ?? null,
+    }
+  }
+
   constructor(
     private readonly prisma: PrismaClient,
     private readonly typesense: TypesenseSearchClient,
@@ -1507,6 +1520,7 @@ export class TypesenseWatchSearchService {
       latencyMs: performance.now() - startedAt,
       laneStatuses,
       languageInterpretation,
+      retrievalIdentity: this.retrievalIdentity(),
     }
   }
 
@@ -2701,6 +2715,7 @@ export class TypesenseWatchSearchService {
       latencyMs: performance.now() - startedAt,
       laneStatuses: [],
       languageInterpretation,
+      retrievalIdentity: this.retrievalIdentity(),
     }
   }
 }

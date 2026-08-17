@@ -95,3 +95,31 @@ export function buildShareUrl(
   )
   return `https://www.jesusfilm.org/watch${path}`
 }
+
+/**
+ * Whether the details Play pill should offer Resume / Start over rather than
+ * force-resuming. A choice needs a real saved position; zero and garbage read
+ * as "no resume point" and play from the start with no chooser.
+ */
+export function shouldOfferResumeChoice(
+  resumeAtSeconds: number | null | undefined,
+): boolean {
+  return (
+    resumeAtSeconds != null &&
+    Number.isFinite(resumeAtSeconds) &&
+    resumeAtSeconds > 0
+  )
+}
+
+/** "Resume from 12:34" (h:mm:ss past the hour) for the chooser's default row. */
+export function formatResumeLabel(resumeAtSeconds: number): string {
+  const total = Math.max(0, Math.floor(resumeAtSeconds))
+  const hours = Math.floor(total / 3600)
+  const minutes = Math.floor((total % 3600) / 60)
+  const seconds = total % 60
+  const clock =
+    hours > 0
+      ? `${hours}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`
+      : `${minutes}:${String(seconds).padStart(2, "0")}`
+  return `Resume from ${clock}`
+}

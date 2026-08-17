@@ -34,6 +34,23 @@ export const AI_CHAT_MAX_THREADS_PER_RESOURCE = 200
  */
 export const USER_RESOURCE_PREFIX = "user:"
 
+/**
+ * The SHARED fallback resource key stamped on every internal caller that omits
+ * a `resourceId` (feat-204 KTD3). It lives here — the module that owns the
+ * resource contract — rather than in `agents/seeker-route.ts`, because
+ * `ai-chat-erasure.ts` (feat-337) must refuse this exact key without importing
+ * the route module: that module runs `buildSeekerAgent()` at module scope, so
+ * importing it would eagerly construct the whole seeker agent (including the
+ * kill-switch-resolved Memory the erasure module deliberately bypasses) just to
+ * read a string. `seeker-route.ts` re-exports it, so existing importers and
+ * test pins are unaffected.
+ *
+ * Erasure boundary (feat-337 R2): key equality does NOT bound this key's blast
+ * radius to one subject — many individuals' turns share it — so the erasure
+ * tool refuses it outright. Retention is that data's only deletion path.
+ */
+export const SEEKER_DEFAULT_RESOURCE_ID = "seeker-dogfood"
+
 /** The narrow Memory surface the gate needs — structural so tests fake it. */
 export type AiChatOwnershipMemory = {
   getThreadById: (args: {

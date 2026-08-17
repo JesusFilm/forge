@@ -5,6 +5,7 @@ import {
   type CandidateSearchEvaluationDeps,
   CandidateSearchEvaluationError,
   candidateSearchEvaluationRevision,
+  resolveServingCandidateWatchSearchProfile,
   TypesenseWatchSearchCandidateEvaluationService,
 } from "./typesense-watch-search-candidate-evaluation.service"
 import type { TypesenseWatchSearchDiagnostics } from "./typesense-watch-search.service"
@@ -36,6 +37,7 @@ const candidateProfile = {
   generationId: "generation-1",
   applicationRevision: "watch-search-candidate/v2",
   transcriptProjectionRevision: 7n,
+  qrelsRevision: "qrels-reviewed-1",
   fieldManifests: {
     catalog: [{ name: "slug", type: "string" }],
     availability: [{ name: "videoId", type: "string" }],
@@ -125,8 +127,8 @@ function fixture() {
     searchResult(),
   )
   const acquireLease = vi.fn<CandidateSearchEvaluationDeps["acquireLease"]>(
-    async ({ evaluationId }) => ({
-      resourceKey: `watch-search-candidate-eval:${evaluationId}`,
+    async ({ source, evaluationId }) => ({
+      resourceKey: `watch-search-candidate-eval:${source.toLowerCase()}:${evaluationId}`,
       holderToken: `holder-${evaluationId}`,
       generationId: "generation-1",
       applicationRevision: "watch-search-candidate/v2",
@@ -137,13 +139,17 @@ function fixture() {
     }),
   )
   const deps = {
+    source: "EVALUATION" as const,
     resolveCurrentProfile: vi.fn(async () => currentProfile),
     resolveCandidateProfile: vi.fn(async () => candidateProfile),
     createSearch: vi.fn(() => ({ searchWithDiagnostics })),
     acquireLease,
     renewLease: vi.fn(async () => true),
     releaseLease: vi.fn(async () => true),
+    verifyCandidateProfile: vi.fn(async () => true),
     rankingRevision: vi.fn(() => "title-and-brand-v1"),
+    leaseReleaseTimeoutMs: 10,
+    onCleanupFailure: vi.fn(),
   }
   return { deps, searchWithDiagnostics }
 }
@@ -161,6 +167,11 @@ describe("TypesenseWatchSearchCandidateEvaluationService", () => {
 
     expect(searchWithDiagnostics).toHaveBeenCalledTimes(4)
     expect(deps.acquireLease).toHaveBeenCalledTimes(4)
+    expect(deps.acquireLease).toHaveBeenCalledWith(
+      expect.objectContaining({ source: "EVALUATION" }),
+    )
+    expect(deps.renewLease).toHaveBeenCalledTimes(8)
+    expect(deps.verifyCandidateProfile).toHaveBeenCalledTimes(4)
     expect(deps.releaseLease).toHaveBeenCalledTimes(4)
     expect(
       new Set(deps.acquireLease.mock.calls.map(([input]) => input.evaluationId))
@@ -210,6 +221,69 @@ describe("TypesenseWatchSearchCandidateEvaluationService", () => {
       }),
     ).rejects.toMatchObject({ code: "lease_lost" })
     expect(lost.deps.releaseLease).toHaveBeenCalledOnce()
+  })
+
+  it("fails closed when the lease is lost after search completion", async () => {
+    const lost = fixture()
+    lost.deps.renewLease
+      .mockResolvedValueOnce(true)
+      .mockResolvedValueOnce(false)
+
+    await expect(
+      new TypesenseWatchSearchCandidateEvaluationService(lost.deps).search({
+        query: "Jesus",
+      }),
+    ).rejects.toMatchObject({ code: "lease_lost" })
+    expect(lost.searchWithDiagnostics).toHaveBeenCalledOnce()
+    expect(lost.deps.releaseLease).toHaveBeenCalledOnce()
+  })
+
+  it("fails closed when the selected pointer moves during the search", async () => {
+    const moved = fixture()
+    moved.deps.verifyCandidateProfile.mockResolvedValueOnce(false)
+
+    await expect(
+      new TypesenseWatchSearchCandidateEvaluationService(moved.deps).search({
+        query: "Jesus",
+      }),
+    ).rejects.toMatchObject({ code: "identity_mismatch" })
+    expect(moved.searchWithDiagnostics).toHaveBeenCalledOnce()
+    expect(moved.deps.releaseLease).toHaveBeenCalledOnce()
+  })
+
+  it("reports lease cleanup failures without masking a successful search", async () => {
+    const failed = fixture()
+    failed.deps.releaseLease.mockRejectedValueOnce(
+      new Error("database unavailable"),
+    )
+
+    await expect(
+      new TypesenseWatchSearchCandidateEvaluationService(failed.deps).search({
+        query: "Jesus",
+      }),
+    ).resolves.toMatchObject({ response: { requestId: "candidate-request-1" } })
+    expect(failed.deps.onCleanupFailure).toHaveBeenCalledWith(
+      expect.objectContaining({
+        resourceKey: expect.stringMatching(/^watch-search-candidate-eval:/),
+        reason: "release_failed",
+      }),
+    )
+  })
+
+  it("bounds a stalled lease cleanup and reports its timeout", async () => {
+    const stalled = fixture()
+    stalled.deps.releaseLease.mockImplementationOnce(
+      () => new Promise<boolean>(() => undefined),
+    )
+
+    await expect(
+      new TypesenseWatchSearchCandidateEvaluationService(stalled.deps).search({
+        query: "Jesus",
+      }),
+    ).resolves.toMatchObject({ response: { requestId: "candidate-request-1" } })
+    expect(stalled.deps.onCleanupFailure).toHaveBeenCalledWith(
+      expect.objectContaining({ reason: "release_timeout" }),
+    )
   })
 
   it("rejects lease or runtime identity drift before returning results", async () => {
@@ -279,6 +353,11 @@ describe("TypesenseWatchSearchCandidateEvaluationService", () => {
         rankingRevision: "title-and-brand-v1",
       }),
       candidateSearchEvaluationRevision({
+        profile: { ...candidateProfile, qrelsRevision: "qrels-reviewed-2" },
+        currentProfile,
+        rankingRevision: "title-and-brand-v1",
+      }),
+      candidateSearchEvaluationRevision({
         profile: {
           ...candidateProfile,
           binding: {
@@ -324,4 +403,84 @@ describe("TypesenseWatchSearchCandidateEvaluationService", () => {
       }),
     ).toThrow(CandidateSearchEvaluationError)
   })
+
+  it("resolves only the Serving pointer and requires exact accepted identity", async () => {
+    const generations = {
+      getPointer: vi.fn(async (kind: "EVALUATION" | "SERVING") => ({
+        generationId:
+          kind === "SERVING" ? "generation-serving" : "generation-evaluation",
+      })),
+      resolveGeneration: vi.fn(async (input) => ({
+        generationId: input.generationId,
+        applicationRevision: input.applicationRevision,
+        transcriptProjectionRevision: input.transcriptProjectionRevision,
+        collections: {
+          catalog: `watch_search_candidate_${input.generationId}_catalog`,
+          availability: `watch_search_candidate_${input.generationId}_availability`,
+          lexical: `watch_search_candidate_${input.generationId}_lexical`,
+          transcript: input.transcriptCollection,
+        },
+        fieldManifests: candidateProfile.fieldManifests!,
+      })),
+    }
+
+    const profile = await resolveServingCandidateWatchSearchProfile({
+      generations,
+      currentProfile,
+      applicationRevision: "watch-search-candidate/v2",
+      rankingRevision: "title-and-brand-v1",
+      transcriptProjectionRevision: 7n,
+      qrelsRevision: "qrels-reviewed-1",
+    })
+
+    expect(profile.generationId).toBe("generation-serving")
+    expect(profile.qrelsRevision).toBe("qrels-reviewed-1")
+    expect(generations.getPointer).toHaveBeenCalledOnce()
+    expect(generations.getPointer).toHaveBeenCalledWith("SERVING")
+    expect(generations.resolveGeneration).toHaveBeenCalledWith({
+      generationId: "generation-serving",
+      applicationRevision: "watch-search-candidate/v2",
+      transcriptCollection: currentProfile.binding.transcript,
+      transcriptProjectionRevision: 7n,
+      requireQualified: true,
+      currentBindings: Object.values(currentProfile.binding),
+      qrelsRevision: "qrels-reviewed-1",
+      rankingRevision: "title-and-brand-v1",
+    })
+  })
+
+  it.each([
+    ["missing Serving pointer", { generationId: null }, null],
+    [
+      "missing accepted qualification",
+      { generationId: "generation-serving" },
+      new Error("no exact passing qualification"),
+    ],
+    [
+      "runtime identity drift",
+      { generationId: "generation-serving" },
+      new Error("candidate generation identity is stale"),
+    ],
+  ])(
+    "fails closed for Serving profile: %s",
+    async (_name, pointer, failure) => {
+      const generations = {
+        getPointer: vi.fn(async () => pointer),
+        resolveGeneration: vi.fn(async () => {
+          throw failure
+        }),
+      }
+
+      await expect(
+        resolveServingCandidateWatchSearchProfile({
+          generations,
+          currentProfile,
+          applicationRevision: "watch-search-candidate/v2",
+          rankingRevision: "title-and-brand-v1",
+          transcriptProjectionRevision: 7n,
+          qrelsRevision: "qrels-reviewed-1",
+        }),
+      ).rejects.toBeInstanceOf(CandidateSearchEvaluationError)
+    },
+  )
 })
