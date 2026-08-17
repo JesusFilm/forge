@@ -1,6 +1,10 @@
 import { describe, expect, it, vi } from "vitest"
 
-import type { AiChatErasureResult } from "../mastra/ai-chat-erasure"
+import type {
+  AiChatErasureResult,
+  LangfuseErasureCounts,
+  LangfuseErasureOutcome,
+} from "../mastra/ai-chat-erasure"
 import { SEEKER_DEFAULT_RESOURCE_ID } from "../mastra/ai-chat-thread-ownership"
 
 import {
@@ -23,10 +27,31 @@ function completed(
     kind: "completed",
     mode: "preview",
     postgres: { kind: "counted", threadCount: 2 },
-    langfuse: { kind: "not_implemented" },
+    langfuse: { kind: "skipped_unconfigured" },
     ...overrides,
   }
 }
+
+/** Count block for Langfuse outcome fixtures — zeros unless a test overrides. */
+function lfCounts(
+  overrides: Partial<LangfuseErasureCounts> = {},
+): LangfuseErasureCounts {
+  return {
+    listedObservations: 0,
+    uniqueTraces: 0,
+    mismatchedRowsSkipped: 0,
+    missingTraceIdRows: 0,
+    deleteRequests: 0,
+    tracesSubmitted: 0,
+    ...overrides,
+  }
+}
+
+const langfuseSubmitted = (stillVisibleTraces = 0): LangfuseErasureOutcome => ({
+  kind: "submitted",
+  requery: { ok: true, stillVisibleTraces },
+  ...lfCounts({ uniqueTraces: 3, deleteRequests: 1, tracesSubmitted: 3 }),
+})
 
 function harness(
   result: AiChatErasureResult = completed(),
@@ -213,11 +238,11 @@ describe("erase-user — preview path (AE2)", () => {
     expect(execute).not.toHaveBeenCalled()
     const output = lines.join("\n")
     expect(output).toContain(
-      "event=preview_report postgres=counted threads=2 langfuse=not_implemented",
+      "event=preview_report postgres=counted threads=2 langfuse=skipped_unconfigured",
     )
     expect(output).toContain(`confirm_database=${identity().hash}`)
     expect(output).toContain(
-      "event=langfuse_half_unavailable reason=not_implemented fallback=langfuse_console_bulk_delete",
+      "event=langfuse_half_unavailable reason=skipped_unconfigured fallback=langfuse_console_bulk_delete",
     )
   })
 
@@ -390,7 +415,8 @@ describe("erase-user — confirm gate (KTD3)", () => {
     expect(lines.join("\n")).toContain(
       "event=execute_report postgres=erased threads_deleted=7",
     )
-    // PR 1: the Langfuse half is unbuilt, so no run may claim a clean key.
+    // The fixture's Langfuse half is trio-absent (`skipped_unconfigured`), so
+    // traces may still exist: incomplete-but-rerun-safe, never exit 0 (AE5).
     expect(code).toBe(2)
   })
 })
@@ -540,7 +566,41 @@ describe("erase-user — exit-code map (KTD5)", () => {
     ],
     ["probe fault", completed({ postgres: { kind: "unreachable" } }), 1],
     [
-      "list failure",
+      "Langfuse egress-pin refusal (KTD11: fault, never incomplete)",
+      completed({
+        mode: "execute",
+        postgres: { kind: "erased", threadsDeleted: 1 },
+        langfuse: { kind: "egress_refused" },
+      }),
+      1,
+    ],
+    [
+      "unreadable-userId listing refusal (R7)",
+      completed({
+        mode: "execute",
+        postgres: { kind: "erased", threadsDeleted: 1 },
+        langfuse: {
+          kind: "refused_unreadable_user_ids",
+          missingUserIdRows: 2,
+          ...lfCounts(),
+        },
+      }),
+      1,
+    ],
+    [
+      "unaddressable-rows listing refusal (matching rows without trace ids)",
+      completed({
+        mode: "execute",
+        postgres: { kind: "erased", threadsDeleted: 1 },
+        langfuse: {
+          kind: "refused_unaddressable_rows",
+          ...lfCounts({ listedObservations: 2, missingTraceIdRows: 2 }),
+        },
+      }),
+      1,
+    ],
+    [
+      "Postgres list failure",
       completed({
         postgres: {
           kind: "failed",
@@ -551,9 +611,75 @@ describe("erase-user — exit-code map (KTD5)", () => {
       }),
       2,
     ],
-    ["clean preview", completed(), 0],
+    ["clean preview (trio absent — claims nothing)", completed(), 0],
     [
-      "clean execute with the Langfuse half unbuilt",
+      "clean preview with a Langfuse trace count",
+      completed({
+        langfuse: {
+          kind: "counted",
+          ...lfCounts({ listedObservations: 3, uniqueTraces: 3 }),
+        },
+      }),
+      0,
+    ],
+    [
+      "preview whose Langfuse listing was rate-limited",
+      completed({
+        langfuse: {
+          kind: "rate_limited",
+          stage: "list",
+          retryAfterSeconds: 30,
+          ...lfCounts(),
+        },
+      }),
+      2,
+    ],
+    [
+      "full-submission execute, requery already clean",
+      completed({
+        mode: "execute",
+        postgres: { kind: "erased", threadsDeleted: 1 },
+        langfuse: langfuseSubmitted(0),
+      }),
+      0,
+    ],
+    [
+      "full-submission execute, not yet converged (R15 non-failure)",
+      completed({
+        mode: "execute",
+        postgres: { kind: "erased", threadsDeleted: 1 },
+        langfuse: langfuseSubmitted(3),
+      }),
+      0,
+    ],
+    [
+      "full-submission execute whose requery itself failed",
+      completed({
+        mode: "execute",
+        postgres: { kind: "erased", threadsDeleted: 1 },
+        langfuse: {
+          kind: "submitted",
+          requery: { ok: false, reason: "network_error" },
+          ...lfCounts({
+            uniqueTraces: 1,
+            deleteRequests: 1,
+            tracesSubmitted: 1,
+          }),
+        },
+      }),
+      0,
+    ],
+    [
+      "no data in BOTH stores on execute (AE7)",
+      completed({
+        mode: "execute",
+        postgres: { kind: "no_data" },
+        langfuse: { kind: "no_data", ...lfCounts() },
+      }),
+      0,
+    ],
+    [
+      "execute with the Langfuse trio absent (state unknowable, AE5)",
       completed({
         mode: "execute",
         postgres: { kind: "erased", threadsDeleted: 1 },
@@ -561,11 +687,242 @@ describe("erase-user — exit-code map (KTD5)", () => {
       2,
     ],
     [
-      "execute over a key with no Postgres data",
+      "execute over a key with no Postgres data but the trio absent",
       completed({ mode: "execute", postgres: { kind: "no_data" } }),
+      2,
+    ],
+    [
+      "delete-stage quota hit (AE3)",
+      completed({
+        mode: "execute",
+        postgres: { kind: "erased", threadsDeleted: 1 },
+        langfuse: {
+          kind: "quota_exhausted",
+          remainingTraces: 600,
+          impliedDaysToComplete: 2,
+          ...lfCounts({ uniqueTraces: 600, deleteRequests: 1 }),
+        },
+      }),
+      2,
+    ],
+    [
+      "delete-request cap hit",
+      completed({
+        mode: "execute",
+        postgres: { kind: "erased", threadsDeleted: 1 },
+        langfuse: {
+          kind: "cap_exceeded",
+          cap: "delete_requests",
+          remainingTraces: 20,
+          ...lfCounts({
+            uniqueTraces: 520,
+            deleteRequests: 10,
+            tracesSubmitted: 500,
+          }),
+        },
+      }),
+      2,
+    ],
+    [
+      "classified Langfuse failure after the Postgres half",
+      completed({
+        mode: "execute",
+        postgres: { kind: "erased", threadsDeleted: 1 },
+        langfuse: {
+          kind: "failed",
+          stage: "delete",
+          reason: "auth_failed",
+          status: 401,
+          ...lfCounts({ uniqueTraces: 1, deleteRequests: 1 }),
+        },
+      }),
       2,
     ],
   ])("maps %s to exit %i", (_label, result, expected) => {
     expect(exitCodeFor(result as AiChatErasureResult)).toBe(expected)
+  })
+})
+
+describe("erase-user — Langfuse report wiring (R5/AE3/AE4/AE7)", () => {
+  const executeArgs = [
+    "--resource=user:abc",
+    "--execute",
+    `--confirm-database=${identity().hash}`,
+  ]
+
+  it("prints the quota outcome with remaining count and implied-days horizon (AE3/F2)", async () => {
+    const { deps, lines } = harness(
+      completed({
+        mode: "execute",
+        postgres: { kind: "erased", threadsDeleted: 2 },
+        langfuse: {
+          kind: "quota_exhausted",
+          remainingTraces: 600,
+          impliedDaysToComplete: 2,
+          ...lfCounts({ uniqueTraces: 600, deleteRequests: 1 }),
+        },
+      }),
+    )
+
+    const code = await runEraseUserCli(executeArgs, deps)
+
+    expect(code).toBe(2)
+    const output = lines.join("\n")
+    expect(output).toContain("langfuse=quota_exhausted")
+    expect(output).toContain("remaining_traces=600")
+    expect(output).toContain("implied_days_to_complete=2")
+    expect(output).toContain("guidance=daily_delete_quota_rerun_tomorrow")
+    expect(output).toContain(
+      "event=exit code=2 rerun_safe=1 note=exact_key_deletes_are_idempotent",
+    )
+  })
+
+  it("prints retry-shortly with seconds on a list-stage 429 — and NEVER the daily-quota wording", async () => {
+    const { deps, lines } = harness(
+      completed({
+        langfuse: {
+          kind: "rate_limited",
+          stage: "list",
+          retryAfterSeconds: 30,
+          ...lfCounts(),
+        },
+      }),
+    )
+
+    const code = await runEraseUserCli(["--resource=user:abc"], deps)
+
+    expect(code).toBe(2)
+    const output = lines.join("\n")
+    expect(output).toContain("langfuse=rate_limited stage=list")
+    expect(output).toContain("retry_after_s=30")
+    expect(output).toContain("guidance=retry_shortly")
+    // A read-bucket throttle must not steer the operator at the delete quota.
+    expect(output).not.toContain("quota")
+    expect(output).not.toContain("tomorrow")
+  })
+
+  it("names BOTH per-store states with the rerun-safe note on a partial run", async () => {
+    const { deps, lines } = harness(
+      completed({
+        mode: "execute",
+        postgres: { kind: "erased", threadsDeleted: 4 },
+        langfuse: {
+          kind: "failed",
+          stage: "list",
+          reason: "auth_failed",
+          status: 401,
+          ...lfCounts(),
+        },
+      }),
+    )
+
+    const code = await runEraseUserCli(executeArgs, deps)
+
+    expect(code).toBe(2)
+    const output = lines.join("\n")
+    expect(output).toContain("postgres=erased threads_deleted=4")
+    expect(output).toContain(
+      "langfuse=failed stage=list reason=auth_failed status=401",
+    )
+    expect(output).toContain(
+      "event=exit code=2 rerun_safe=1 note=exact_key_deletes_are_idempotent",
+    )
+  })
+
+  it("reports the both-stores no-data case as one distinct line (AE7)", async () => {
+    const { deps, lines } = harness(
+      completed({
+        mode: "execute",
+        postgres: { kind: "no_data" },
+        langfuse: { kind: "no_data", ...lfCounts() },
+      }),
+    )
+
+    const code = await runEraseUserCli(executeArgs, deps)
+
+    expect(code).toBe(0)
+    const output = lines.join("\n")
+    expect(output).toContain("event=no_data_for_key stores=postgres+langfuse")
+    expect(output).not.toContain("event=no_data_for_key store=postgres\n")
+  })
+
+  it("exits 1 on an egress-pin refusal and never renders it as a zero count", async () => {
+    const { deps, lines } = harness(
+      completed({
+        mode: "execute",
+        postgres: { kind: "erased", threadsDeleted: 1 },
+        langfuse: { kind: "egress_refused" },
+      }),
+    )
+
+    const code = await runEraseUserCli(executeArgs, deps)
+
+    expect(code).toBe(1)
+    const output = lines.join("\n")
+    expect(output).toContain("langfuse=egress_refused")
+    expect(output).not.toContain("no_data")
+  })
+
+  it("exits 1 on an unaddressable-rows refusal, naming the count and zero deletes", async () => {
+    // Matching rows without readable trace ids: a hard fault to escalate —
+    // no rerun fixes it, so the report must never read as incomplete-rerun.
+    const { deps, lines } = harness(
+      completed({
+        mode: "execute",
+        postgres: { kind: "erased", threadsDeleted: 1 },
+        langfuse: {
+          kind: "refused_unaddressable_rows",
+          ...lfCounts({ listedObservations: 3, missingTraceIdRows: 3 }),
+        },
+      }),
+    )
+
+    const code = await runEraseUserCli(executeArgs, deps)
+
+    expect(code).toBe(1)
+    const output = lines.join("\n")
+    expect(output).toContain(
+      "langfuse=refused_unaddressable_rows missing_trace_id_rows=3",
+    )
+    expect(output).not.toContain("rerun_safe=1")
+  })
+
+  it("prints settle-first guidance on a delete-request cap hit, rerun guidance on a page-cap hit", async () => {
+    const capOutcome = (cap: "delete_requests" | "list_pages") =>
+      completed({
+        mode: "execute",
+        postgres: { kind: "erased", threadsDeleted: 1 },
+        langfuse: {
+          kind: "cap_exceeded",
+          cap,
+          ...lfCounts({ uniqueTraces: 520, deleteRequests: 10 }),
+        },
+      })
+    const deleteCap = harness(capOutcome("delete_requests"))
+    await runEraseUserCli(executeArgs, deleteCap.deps)
+    expect(deleteCap.lines.join("\n")).toContain(
+      "guidance=rerun_after_async_deletion_settles wait_minutes=15",
+    )
+    const pageCap = harness(capOutcome("list_pages"))
+    await runEraseUserCli(executeArgs, pageCap.deps)
+    expect(pageCap.lines.join("\n")).toContain("guidance=rerun_to_continue")
+  })
+
+  it("reports submitted-not-converged as a clean exit with the still-visible count (AE4)", async () => {
+    const { deps, lines } = harness(
+      completed({
+        mode: "execute",
+        postgres: { kind: "erased", threadsDeleted: 1 },
+        langfuse: langfuseSubmitted(3),
+      }),
+    )
+
+    const code = await runEraseUserCli(executeArgs, deps)
+
+    expect(code).toBe(0)
+    const output = lines.join("\n")
+    expect(output).toContain("langfuse=submitted")
+    expect(output).toContain("still_visible=3")
+    expect(output).toContain("verify_via_later_preview")
   })
 })

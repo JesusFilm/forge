@@ -7,6 +7,7 @@ import { env, getLangfuseTraceRetentionConfig } from "../config/env"
 import { AI_CHAT_RETENTION_DAYS } from "./ai-chat-retention"
 import {
   deleteTraceBatch,
+  LANGFUSE_RETENTION_LIST_PAGE_SIZE,
   listExpiredObservationsPage,
   MAX_TRACE_IDS_PER_DELETE_REQUEST,
 } from "./langfuse-trace-retention"
@@ -198,6 +199,57 @@ describe.skipIf(!RUN_SMOKE)(
           ).toBe(false)
           console.info(
             "[langfuse-retention-smoke] event=negative_control_ok basis=recent_production_row surface=raw",
+          )
+        }
+
+        // ── Leg 2b: PAGE-BYTE MEASUREMENT at the sweep's own page size ──────
+        // A page-size constant is an estimate until a real page is measured
+        // (feat-337 corollary in buffered-http-response-byte-cap-oom-guard).
+        // Read-only, general bucket, counts-only logging. Projects a FULL
+        // page from measured row width because the live page may return
+        // fewer rows than requested.
+        const measureUrl = new URL("api/public/v2/observations", base)
+        measureUrl.searchParams.set("fields", "core")
+        measureUrl.searchParams.set(
+          "limit",
+          String(LANGFUSE_RETENTION_LIST_PAGE_SIZE),
+        )
+        const measureResponse = await fetch(measureUrl, {
+          headers: coreHeaders,
+          redirect: "error",
+          signal: AbortSignal.timeout(config.timeoutMs),
+        })
+        expect(measureResponse.status).toBe(200)
+        const measureText = await measureResponse.text()
+        const measuredPageBytes = Buffer.byteLength(measureText, "utf8")
+        let measuredRows = 0
+        try {
+          measuredRows =
+            (JSON.parse(measureText) as { data?: unknown[] }).data?.length ?? 0
+        } catch {
+          measuredRows = 0
+        }
+        if (measuredRows === 0) {
+          // Loud, honest skip — zero rows would make the projection 0 and the
+          // assertion below vacuously green while measuring nothing (the
+          // silent-observation shape rule 3 of the byte-cap doc exists to
+          // kill). Mirrors the erasure smoke's empty-project skip.
+          console.warn(
+            "[langfuse-retention-smoke] event=page_bytes_measure_skipped reason=empty_listing",
+          )
+        } else {
+          const measuredBytesPerRow = Math.ceil(
+            measuredPageBytes / measuredRows,
+          )
+          const projectedFullPageBytes =
+            measuredBytesPerRow * LANGFUSE_RETENTION_LIST_PAGE_SIZE
+          expect(
+            projectedFullPageBytes,
+            "a full sweep page projected from measured row bytes would breach " +
+              "the response byte cap — shrink LANGFUSE_RETENTION_LIST_PAGE_SIZE",
+          ).toBeLessThan(config.maxResponseBytes)
+          console.info(
+            `[langfuse-retention-smoke] event=page_bytes_measured rows=${measuredRows} page_bytes=${measuredPageBytes} bytes_per_row=${measuredBytesPerRow} projected_full_page=${projectedFullPageBytes} cap=${config.maxResponseBytes}`,
           )
         }
 

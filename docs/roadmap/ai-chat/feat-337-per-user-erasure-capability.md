@@ -3,7 +3,7 @@ id: "feat-337"
 title: "Per-user erasure across Langfuse traces and ai_chat Postgres"
 owner: "jian wei"
 priority: "P2"
-status: "in-progress"
+status: "complete"
 start_date: "2026-08-10"
 duration: 3
 depends_on:
@@ -15,6 +15,56 @@ tags:
   - "ai-pipeline"
   - "infrastructure"
 ---
+
+## Resolution
+
+**Shipped:** 2026-08-17 via [PR #1946](https://github.com/JesusFilm/forge/pull/1946) (`feat(mastra): per-user erasure CLI — Postgres half + operator runbook`) and [#1951](https://github.com/JesusFilm/forge/pull/1951) (`feat(mastra): per-user erasure CLI — Langfuse half + completion docs`).
+
+**What landed.** The proposed one-ticket/two-PR arc, as planned. PR 1: the
+`erase-user` CLI over the reusable `ai-chat-erasure.ts` module — key-equality
+Postgres erasure with per-row ownership re-checks failing closed
+(`filter_mismatch`/`unreadable_rows`), collect-then-delete, connectivity
+probes so a store fault can never read as "no data", the
+`--execute --confirm-database=<hash>` gate pinning both stores AND the
+subject (sha256, preview-only emission), the rewritten request-lifecycle
+runbook in `apps/mastra/CLAUDE.md`, and the opt-in real-Postgres smoke
+(`AI_CHAT_ERASURE_SMOKE_TEST`). PR 2: the Langfuse half —
+list→re-check→dedupe→batch-delete (≤10 requests/run, the erasure headroom
+share of the org's 50/day quota) →ONE read-only requery, the KTD11 egress pin
+(https + allowlisted host, pinned `cloud.langfuse.com` fallback), the full
+exit-code map (0 clean incl. "submitted; N still visible" and both-stores
+no-data; 2 incomplete-safe-rerun incl. quota/cap/trio-absent; 1 hard
+refusal/fault), the runbook end-state sweep, and the read-only Langfuse smoke
+(`AI_CHAT_ERASURE_LANGFUSE_SMOKE_TEST`). Notable deviations from the brief:
+no project-identity probe (owner ruling 2026-08-17 — Langfuse keys are
+project-scoped, so the confirm hash pins the HOST only and the key-pair
+assumption is an accepted limitation); a LIST-stage Langfuse failure deletes
+NOTHING (divergent from the retention sweep, which deletes what it collected
+— documented at the decision site in `ai-chat-erasure.ts`: erasure's scarce
+delete headroom must not be spent into a currently-failing upstream). Measured
+traces-per-userId spread from the credentialed read smoke (2026-08-17, 3
+users / 185 observations sampled): `traces_per_user_max=9`,
+`traces_per_user_p95=9` — two orders of magnitude under one run's
+500-trace headroom, so F2's completion horizon at dogfood volume is a
+single run, quota permitting.
+
+**Residual risk / follow-ups.** The accepted limitations recorded in the
+runbook (`apps/mastra/CLAUDE.md` § "Operator erasure runbook" → "Accepted
+limitations"): erasure is per KEY, never per person (multi-resource subjects,
+unreachable `anon:*` keys, the refused shared `seeker-dogfood` fallback);
+deleted-account `sub`s are unrecoverable; the DuckDB store retains redacted
+identifier/timing spans; the Langfuse half sees only v2-indexed observations;
+and the environment's key pair determines the target project (workstation
+hygiene assumption). feat-339 owns the processing-register lines; the
+apps/auth account-deletion cascade is deferred to feat-356, which calls this
+module's typed per-store outcomes. Two owner-decided deferrals (2026-08-17):
+the mismatched-row counter coexists with `no_data` by design (revisit only on
+a resource-key format migration — noted at the claim site in
+`ai-chat-erasure.ts`), and the module/test files' passing of the
+1000-line-split threshold is accepted as-is — split only as a follow-up if it
+becomes real friction, never as a drive-by.
+
+**Unblocked.** feat-339, feat-356.
 
 ## Problem
 

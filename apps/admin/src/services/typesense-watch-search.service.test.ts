@@ -1259,6 +1259,167 @@ describe("TypesenseWatchSearchService", () => {
     expect(prisma.language.findFirst).toHaveBeenCalledTimes(1)
   })
 
+  it.each([
+    {
+      evidenceCase: "unrelated",
+      queryLanguageSlug: "french",
+      expectedEvidenceLanguageSlug: "french",
+    },
+    {
+      evidenceCase: "unknown",
+      queryLanguageSlug: null,
+      expectedEvidenceLanguageSlug: null,
+    },
+  ])(
+    "keeps $evidenceCase Candidate evidence out of the public card snippet",
+    async ({ queryLanguageSlug, expectedEvidenceLanguageSlug }) => {
+      vi.mocked(resolveSearchLanguageSignals).mockResolvedValueOnce({
+        queryLanguageSlug,
+        queryNamedLanguageSlug: null,
+        targetLanguageSlug: "english",
+        targetLanguageSource: "explicit_target",
+        displayLanguageSlug: "english",
+        displayLanguageBcp47: "en",
+        routeLanguageSlug: "english",
+        routeLanguageBcp47: "en",
+        currentWatchLanguageSlug: null,
+        acceptLanguage: null,
+        acceptLanguageSlug: null,
+      })
+      const englishCatalog: TypesenseWatchCatalogDocument = {
+        ...catalogDocument,
+        titles: ["JESUS"],
+        localeCodes: ["en"],
+        localesJson: JSON.stringify([
+          {
+            locale: "en",
+            languageSlug: "english",
+            title: "JESUS",
+            description: "The life of Jesus.",
+          },
+        ]),
+        audioLanguageSlugs: ["english"],
+        audioOptionsJson: JSON.stringify([
+          {
+            id: "dub-en",
+            languageId: "language-en",
+            languageSlug: "english",
+            languageEnglishName: "English",
+            playbackId: "playback-en",
+            durationSeconds: 180,
+          },
+        ]),
+      }
+      const profile = candidateProfile()
+      const typesense = typesenseFixture({
+        lexical: [englishCatalog],
+        semantic: [
+          {
+            videoId: englishCatalog.id,
+            text: "La vie de Jésus.",
+            vectorDistance: 0.1,
+          },
+        ],
+        catalog: [englishCatalog],
+        binding: profile.binding,
+      })
+      const service = new TypesenseWatchSearchService(
+        prismaFixture({
+          targetLanguage: {
+            id: "language-en",
+            slug: "english",
+            name: { en: "English" },
+          },
+          evidenceLanguages: [
+            { slug: "english", bcp47: "en" },
+            { slug: "french", bcp47: "fr" },
+          ],
+        }),
+        typesense as unknown as TypesenseClient,
+        { profile, embedder: vi.fn(async () => embedding) },
+      )
+
+      const response = await service.search({
+        query: "jesus",
+        displayLanguageSlug: "english",
+        targetLanguageSlug: "english",
+      })
+
+      expect(response.results).toHaveLength(1)
+      expect(response.results[0]).toMatchObject({
+        title: "JESUS",
+        description: "The life of Jesus.",
+        snippet: "The life of Jesus.",
+        playbackId: "playback-en",
+        startSeconds: 42,
+        evidence: {
+          kind: "exact_title",
+          languageSlug: expectedEvidenceLanguageSlug,
+        },
+        availability: {
+          kind: "target_audio",
+          languageSlug: "english",
+        },
+      })
+      expect(typesense.multiSearch).toHaveBeenCalledTimes(2)
+    },
+  )
+
+  it("keeps Candidate evidence that matches the selected target language", async () => {
+    vi.mocked(resolveSearchLanguageSignals).mockResolvedValueOnce({
+      queryLanguageSlug: "french",
+      queryNamedLanguageSlug: null,
+      targetLanguageSlug: "french",
+      targetLanguageSource: "explicit_target",
+      displayLanguageSlug: "english",
+      displayLanguageBcp47: "en",
+      routeLanguageSlug: "english",
+      routeLanguageBcp47: "en",
+      currentWatchLanguageSlug: null,
+      acceptLanguage: null,
+      acceptLanguageSlug: null,
+    })
+    const profile = candidateProfile()
+    const typesense = typesenseFixture({
+      lexical: [catalogDocument],
+      semantic: [
+        {
+          videoId: catalogDocument.id,
+          text: "Les croyants partagent leur vie.",
+          vectorDistance: 0.1,
+        },
+      ],
+      binding: profile.binding,
+    })
+    const service = new TypesenseWatchSearchService(
+      prismaFixture(),
+      typesense as unknown as TypesenseClient,
+      { profile, embedder: vi.fn(async () => embedding) },
+    )
+
+    const response = await service.search({
+      query: "community",
+      displayLanguageSlug: "english",
+      targetLanguageSlug: "french",
+    })
+
+    expect(response.results[0]).toMatchObject({
+      title: "The Fellowship of the Believers",
+      description: "The believers share their lives.",
+      snippet: "Les croyants partagent leur vie.",
+      playbackId: "playback-fr",
+      evidence: {
+        kind: "transcript_semantic",
+        languageSlug: "french",
+      },
+      availability: {
+        kind: "target_audio",
+        languageSlug: "french",
+      },
+    })
+    expect(typesense.multiSearch).toHaveBeenCalledTimes(2)
+  })
+
   it("returns internal work diagnostics without changing the public response", async () => {
     const typesense = typesenseFixture({ lexical: [catalogDocument] })
     const service = new TypesenseWatchSearchService(

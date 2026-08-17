@@ -268,6 +268,7 @@ of the defaults and validation contract.
 | `LANGFUSE_PROMPT_SMOKE_TEST`                 | Opt-in gate for the real-credential Langfuse smoke suite (`langfuse-prompt-client.smoke.test.ts`). Only the literal `"1"` enables it; any other non-empty value fails env parse — loud, never half-enabled.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
 | `LANGFUSE_TRACE_RETENTION_SMOKE_TEST`        | Opt-in gate for the feat-336 trace-retention smoke suite (`langfuse-trace-retention.smoke.test.ts`, redesigned 2026-08-11 — backdated synthetic sentinels are UNREACHABLE on the v2 observations read surface, so the suite now asserts the list contract + `filterSkipped === 0` on the sweep's exact expired window, uses a REAL recent production observation as the raw-surface negative control, and proves the DELETE contract on a production-sized 50-id synthetic batch with measured latency; NOTE each run still spends one of the org's 50/day Hobby trace-delete requests). Same posture as `LANGFUSE_PROMPT_SMOKE_TEST`: only the literal `"1"` enables it.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
 | `AI_CHAT_ERASURE_SMOKE_TEST`                 | Opt-in gate for the feat-337 real-Postgres erasure smoke (`ai-chat-erasure.smoke.test.ts`) — seeds two prefix-adjacent throwaway resources against a CALLER-SUPPLIED throwaway `DATABASE_URL`, erases one, and asserts the neighbour intact (the exact-match-filter proof mocked stores cannot give). Test-only gate, never runtime configuration; the suite is deliberately out of CI because it WRITES AND DELETES rows. Same posture as the two Langfuse smoke gates: only the literal `"1"` enables it.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| `AI_CHAT_ERASURE_LANGFUSE_SMOKE_TEST`        | Opt-in gate for the feat-337 Langfuse READ smoke (`ai-chat-erasure.langfuse.smoke.test.ts`) — a strictly read-only listing suite against the real `forge-mastra` project: pins that `fields=core,basic` genuinely returns per-row `userId` (runtime-discovered subject, never a committed literal), proves the nonexistent-key zero-rows path, and reports the traces-per-userId spread (max/p95, counts only). GET requests only by construction — zero delete-quota spend, safe to re-run. Test-only gate, never runtime configuration. Same posture as the sibling smoke gates: only the literal `"1"` enables it.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
 | `PORT`                                       | Railway-provided runtime port. Mastra defaults to `4111` locally.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
 | `MASTRA_STUDIO_PATH`                         | Set to `.mastra/output/studio` when starting the built server with Studio assets.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
 
@@ -580,9 +581,10 @@ nothing. When the RAG env vars are unset (or the service is unreachable), the
 tool returns an explicit `unavailable` status and the agent says it cannot
 ground an answer; retrieval is never required for the app to boot. Since
 feat-272 the system prompt is **Langfuse-managed** (prompt `seeker-system`,
-whole prompt — no composition split) with the full working text kept as the
-compiled-in fallback, served byte-identically when Langfuse is unconfigured
-or unreachable — see "Langfuse prompt management" below. Model is an
+whole prompt — no composition split) with a full reviewed outage prompt kept
+as the compiled-in fallback when Langfuse is unconfigured or unreachable. The
+managed production pin and fallback carry independent hashes; promotion does
+not copy managed prompt text into Git. See "Langfuse prompt management" below. Model is an
 env-gated fallback chain built by `buildSeekerModelList()` (feat-237). Default:
 the two free Gemma 4 OpenRouter models —
 `openrouter/google/gemma-4-31b-it:free` (primary, 1 retry) then
@@ -925,8 +927,11 @@ pnpm --filter @forge/mastra erase-user -- --resource=user:<auth user.id>
 ```
 
 Read-only. It prints the targets it would act on (redacted Postgres identity,
-Langfuse host), the per-store counts, and the `confirm_database=<hash>` token
-step 4 needs. Exit 0 means the preview itself ran cleanly.
+Langfuse host), BOTH stores' counts — the `ai_chat` thread count and the
+Langfuse visible-trace count when the credential trio is configured
+(`langfuse=skipped_unconfigured` otherwise; at the console locus the trio is
+always present) — and the `confirm_database=<hash>` token step 4 needs. Exit 0
+means the preview itself ran cleanly.
 
 **The preview is the ONLY place that token is printed.** An execute run never
 emits it — not even when refusing a mismatch — because the token is computed
@@ -947,7 +952,13 @@ resource, or a row whose ownership could not be proven (including a row with
 no usable id, or a thread whose own `resourceId` is absent). That is a
 `@mastra/*` contract regression, not an operator error: **stop, do not retry,
 and escalate to engineering.** The tool refuses rather than deleting what it
-cannot prove belongs to the subject.
+cannot prove belongs to the subject. The Langfuse half has the same class of
+refusal: `langfuse=refused_unreadable_user_ids` or
+`langfuse=refused_unaddressable_rows` (exit 1, zero deletes) means the
+Langfuse listing returned rows whose ownership or trace id could not be read
+— the same routing applies: **stop, do not retry, and escalate to
+engineering**, with the §7 break-glass console path remaining the deadline
+cover.
 
 Because that refusal has no bounded completion and the request is on a
 statutory clock, it does NOT mean the erasure waits indefinitely: the §7
@@ -978,17 +989,42 @@ the service's own `forge-mastra` pair by construction; at the workstation
 fallback it is an operator-hygiene assumption (owner-accepted, 2026-08-17,
 recorded in the accepted limitations).
 
-Exit codes: `0` clean · `2` incomplete but safe to rerun (exact-key deletes
-are idempotent — the report names each store's state) · `1` hard refusal or
-fault. **Until PR 2 lands, every `--execute` run exits 2** with
-`langfuse=not_implemented`: the Postgres half is done, the Langfuse half must
-be covered by the console fallback in §7.
+Exit codes, and what each actually covers:
+
+- **`0` — the run claimed nothing it cannot support.** A clean preview; a
+  no-data run (BOTH stores empty for this exact key — still `no_data_for_key`,
+  never "erased"); and a full-submission execute, INCLUDING
+  `langfuse=submitted … still_visible=N` — R15's non-failure state (Langfuse
+  deletion is ~15 min async; §6's preview rerun is the completion evidence).
+- **`2` — incomplete but safe to rerun** (exact-key deletes are idempotent;
+  the report names each store's state and the rerun-safe note). Covers a
+  Langfuse rate-limit, quota hit, or per-run cap hit; any classified Langfuse
+  failure after the Postgres half; a Postgres partial failure; and an execute
+  with the trio absent (`skipped_unconfigured` — the store's state is
+  unknowable, so the run must not imply "erased everywhere"). Two 429s to keep
+  apart: `langfuse=quota_exhausted` is the org's DAILY delete quota — it
+  prints the remaining trace count and the implied days-to-complete at the
+  ≥10-requests/day erasure headroom rate, so you see the real horizon against
+  the statutory deadline — while a LIST-stage `rate_limited` is a transient
+  read-bucket throttle (retry after the printed seconds), never the daily
+  quota. After a delete-request cap hit, wait ~15 minutes for async deletion
+  to settle before rerunning, or the rerun re-submits the same traces.
+- **`1` — hard refusal or fault.** Bad arguments, a refused resourceId, absent
+  `DATABASE_URL`, a missing/mismatched confirm hash, a store
+  connectivity-probe failure (never reported as a zero count), a Langfuse
+  egress-pin refusal (non-https or non-allowlisted host — zero requests
+  issued), or a listing that cannot return `userId` or trace ids per row —
+  `langfuse=refused_unreadable_user_ids` (ownership unprovable) or
+  `langfuse=refused_unaddressable_rows` (matching rows unaddressable); for
+  both, the Langfuse half refuses with zero deletes.
 
 #### 5. Credentials at the execution locus
 
 Scripts here are **process-env only** — no dotenv loading. They need
 `DATABASE_URL` (asserted explicitly; there is no localhost fallback for this
-tool) and, once PR 2 lands, the Langfuse trio.
+tool) and the Langfuse trio for the Langfuse half — an absent trio means
+`langfuse=skipped_unconfigured` (and exit 2 on `--execute`, because the
+store's state is then unknowable).
 
 **Normal path — the Railway service console** (owner decision, verified in
 the production console 2026-08-13: pnpm, the workspace, and tsx are all
@@ -1024,14 +1060,11 @@ whichever `DATABASE_URL` the Postgres half points at.
 Postgres reports synchronously. Langfuse deletion is **~15 minutes
 asynchronous with no completion receipt**, so the normal terminal state is
 "deletes submitted; N still visible" — a non-failure. The completion evidence
-is re-running the **preview** minutes later and seeing zero visible traces.
-
-> **Until PR 2 lands, that paragraph's second half does not apply.** The CLI's
-> preview says nothing about Langfuse at all (`langfuse=not_implemented`), so
-> re-running it can never show "zero visible traces". The Langfuse-half
-> evidence is the §7 console traces table, filtered by exact-equality User ID,
-> showing zero rows — and the requester-facing sentence below must not claim
-> traces were confirmed removed until you have actually looked.
+is re-running the **preview** minutes later and seeing zero visible traces
+(`langfuse=no_data` for the key). The §7 console traces table, filtered by
+exact-equality User ID and showing zero rows, remains equivalent alternative
+evidence — and the requester-facing sentence below must not claim traces were
+confirmed removed until one of the two has actually shown zero.
 
 Record completion in the intake channel. **KD5 ships no in-tool ledger, so
 something outside the tool has to answer "who ran this, and when".** On the
@@ -1058,13 +1091,15 @@ duration of the run.
 
 #### 7. Break-glass fallbacks
 
-**Langfuse console bulk-delete** (the cover for the Langfuse half until PR 2,
-and the fallback after it). In the traces table, filter on User ID with an
+**Langfuse console bulk-delete** (break-glass only — the CLI is the normal
+path for both stores). In the traces table, filter on User ID with an
 **exact-equality** operator — never contains/starts-with, which would delete
 other subjects' traces — and check the filtered count against the CLI
 preview's count before confirming. This path is **unaudited and open to
-anyone with Langfuse project access**; prefer the CLI once its Langfuse half
-exists (PR 2 — the Postgres half already ships).
+anyone with Langfuse project access**; reach for it only when the CLI's
+Langfuse half cannot complete inside the response deadline (e.g. the §3
+`filter_mismatch`-class refusals, or an exhausted daily delete quota with no
+days left).
 
 **Raw SQL** (Postgres half). Superseded by the CLI, which also removes
 orphaned vectors this misses:
@@ -1125,9 +1160,9 @@ These bound what may honestly be claimed. Erasure completion is claimed
 bounds). **Never claim trace removal you have not visually confirmed** — pick
 the variant that matches what you actually did.
 
-**Variant A — PR-1 build, or any run where you have NOT looked at the Langfuse
-console.** The CLI's Langfuse half is `not_implemented`, so the tool tells you
-nothing about traces:
+**Variant A — you have NOT yet confirmed zero traces** (deletes submitted but
+not yet re-checked, a `skipped_unconfigured` run, or any run where you have
+not looked at either evidence surface):
 
 > We have deleted the conversation data held against your account. The
 > associated diagnostic records age out automatically within 25 days. Two limits we want to be straight about: this
@@ -1138,8 +1173,8 @@ nothing about traces:
 > content) may also remain in our internal logs.
 
 **Variant B — you have confirmed zero traces yourself**, either via the §7
-console traces table filtered by exact-equality User ID, or (once PR 2 lands)
-via a preview rerun showing zero visible traces:
+console traces table filtered by exact-equality User ID, or via a preview
+rerun showing zero visible traces:
 
 > We have deleted the conversation data held against your account, and the
 > associated diagnostic traces have been removed. Two limits we want to be
@@ -1149,8 +1184,8 @@ via a preview rerun showing zero visible traces:
 > it is deleted automatically within 25 days. A diagnostic record of when
 > conversations happened (no content) may also remain in our internal logs.
 
-If you submitted deletes but have not yet seen them land, you are in neither
-variant: wait and look, then send B — or send A, which is true regardless.
+If you submitted deletes but have not yet seen them land, prefer to wait and
+look, then send B — or send A now, which is true regardless.
 
 ### ai-chat history read surface (feat-241)
 
@@ -1474,11 +1509,12 @@ and there is **no technical control over who may move it**: protected labels
 are a Team/Enterprise feature this organisation is not on, and they work by
 blocking `viewer`/`member` while permitting `admin`/`owner`, so they would be
 inert here regardless (feat-296). **Whole-prompt decision (owner,
-2026-07-29, feat-272 item 2 — supersedes the composition split this paragraph
+2026-07-29, amended 2026-08-17 — supersedes the composition split this paragraph
 previously prescribed):** the ENTIRE seeker instruction set — SAFETY line and
 `retrieveAnswer`-coupled citation wording included — is Langfuse-managed as
-one prompt; nothing is code-owned beyond the byte-identical fallback
-constant, so a label move can change every line. What bounds it: the small
+one prompt; the compiled fallback is a separate full reviewed outage prompt,
+not a runtime-composed prompt portion and not automatically synchronized by a
+managed promotion. What bounds managed changes: the small
 all-developer roster (a snapshot) and the PR-reviewed fallback as known-good
 rollback text. NO control DETECTS a label move to valid-but-wrong text — it
 resolves as a healthy fresh `source: "langfuse"` serve, invisible to
@@ -1527,8 +1563,9 @@ allowlisted and tiny, manual Langfuse deletion covers the interim, and the
 sweep drains backlog retroactively. Superseded 2026-08-12 (feat-337): the
 "Operator erasure runbook" above now covers BOTH stores end to end — the
 request lifecycle, the email→resourceId bridge, the `erase-user` CLI, and the
-accepted limitations. Its Langfuse half is the documented console
-bulk-delete until feat-337's PR 2 automates it. Platform rationale and
+accepted limitations. The CLI covers both stores (Postgres synchronously,
+Langfuse via list→re-check→batch-delete→read-only requery); the console
+bulk-delete is the break-glass fallback only. Platform rationale and
 flip triggers:
 `docs/solutions/tooling-decisions/langfuse-vs-mastra-native-management-layer-20260805.md`.
 
@@ -1541,27 +1578,24 @@ the full working prompt served byte-identically whenever exact resolution is
 unavailable or mismatched, stamped as degraded fallback with one critical
 alert per resolver. The WHOLE
 prompt is Langfuse-managed (no composition split — see the whole-prompt
-decision above), so editing the fallback, `retrieve-answer.ts`'s status
-literals, or its message constants requires updating the `seeker-system`
-prompt in the Langfuse UI (every label) in the same change — the pinning
-test in `seeker-agent.test.ts` makes that loud. Since feat-330 that managed
-text also carries the `VIDEO FEATURING` section (see "Video featuring"
-above), so the same coupling now governs the video guidance: the seeker's
-video behavior is a Langfuse edit away in either direction, with no PR.
-**Seeding (operator, Langfuse
-UI):** the `seeker-system` prompt must be created manually — version 1 body
-byte-identical to `SEEKER_SYSTEM_PROMPT_FALLBACK`, labels `production` AND
-`development`, and it must never carry secrets (the resolved prompt is
-served verbatim over `/api/agents*` — see Containment); until then every
-environment serves the byte-identical
-fallback (`reason=rejected`/404, one log line per cooldown window).
-**A coupled prompt+code change lands Langfuse-first (feat-330).** Edit the
-`seeker-system` prompt on EVERY label, then merge and deploy the code side.
-Merge-first is never acceptable: it leaves the flag-on agent serving live
-tools with no guidance behind them. The reverse order does leave a brief
-window in which the old deployed code still appends its superseded interim
-block after the new managed text — a contradictory overlap, not a benign
-duplicate — and that is a knowingly accepted cost at dogfood scale.
+decision above). The managed prompt and compiled outage fallback are reviewed
+and pinned independently: a managed-prompt promotion does not rewrite the
+fallback, and a fallback-only safety fix does not require copying its bytes to
+Langfuse. Changes to either prompt must still preserve the agent's live tool
+contract, including `retrieve-answer.ts` status literals, message constants,
+the `VIDEO FEATURING` section, citation behavior, and the final SAFETY line.
+Tests pin the fallback's own reviewed hash and separately prove that managed
+prompt resolution enforces the repository-pinned version and content hash.
+**Historical seeding note (operator, Langfuse UI):** `seeker-system` version 1
+was initially created byte-identical to `SEEKER_SYSTEM_PROMPT_FALLBACK` with
+`production` and `development` labels. Later managed versions may intentionally
+diverge after experiment review and promotion. Managed prompt text must never
+carry secrets because it is served verbatim over `/api/agents*` (see
+Containment). Until a pinned managed version exists, each environment serves
+the byte-identical fallback (`reason=rejected`/404, one log line per cooldown
+window). Promote managed changes through the experiment workflow, then deploy
+the reviewed exact version/hash pin; align the alert-only `production` label
+after deployment.
 **Retraction semantics (decided at wiring, feat-272):** deleting the prompt,
 removing its label, or revoking the key does NOT retract text already cached
 in a running process (serve-stale is the outage protection). Per-trigger:
