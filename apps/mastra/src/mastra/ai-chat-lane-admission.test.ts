@@ -141,7 +141,9 @@ describe("default key sourcing (discriminating key-source test)", () => {
     // admitted through the default source without touching the agent.
     const lane = await handleSeekerRouteRequest(input("Bearer lane-only-key"))
     expect(lane.status).toBe(400)
-  })
+    // 15s: the cold seeker-agent-graph import inside vi.resetModules exceeds
+    // vitest's 5s default under full-suite parallelism (timing, not logic).
+  }, 15_000)
 
   it("all three handlers refuse 404 through the DEFAULT flag when it is unset", async () => {
     vi.stubEnv("MASTRA_SERVICE_API_KEYS", "pool-only-key")
