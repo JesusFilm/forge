@@ -11,11 +11,11 @@ from the main DS Year 1 roadmap.
 > index, and nothing regenerates or overwrites it. See `CLAUDE.md` in this
 > folder for the maintenance rules and why the lane is unregistered.
 
-## Status (August 13, 2026)
+## Status (August 17, 2026)
 
 - **Total tickets:** 56
-- ✅ **Complete:** 45
-- 🟡 **In progress:** 2
+- ✅ **Complete:** 46
+- 🟡 **In progress:** 1
 - 🔵 **Not started:** 9
 - 🔴 **Blocked:** 0
 
@@ -76,6 +76,6 @@ from the main DS Year 1 roadmap.
 | [feat-337](feat-337-per-user-erasure-capability.md)                    | Per-user erasure across Langfuse traces and ai_chat Postgres                 | jian wei | P2       | 2026-08-10 | 3    | 🟡 in-progress | —                                                                                                            |
 | [feat-338](feat-338-seeker-eval-whole-prompt-alignment-audit.md)       | Seeker eval whole-prompt alignment audit                                     | jaco     | P1       | 2026-08-07 | 1    | ✅ complete    | [#1856](https://github.com/JesusFilm/forge/pull/1856)                                                        |
 | [feat-339](feat-339-seeker-public-release-register.md)                 | Seeker public-release readiness register (living decision capture)           | jian wei | P1       | 2026-09-01 | 1    | 🔵 not-started | —                                                                                                            |
-| [feat-340](feat-340-seeker-eval-experiment-workflow.md)                | Seeker eval experiment workflow                                              | jaco     | P2       | 2026-08-17 | 5    | 🟡 in-progress | —                                                                                                            |
+| [feat-340](feat-340-seeker-eval-experiment-workflow.md)                | Seeker eval experiment workflow                                              | jaco     | P2       | 2026-08-17 | 5    | ✅ complete    | [#1884](https://github.com/JesusFilm/forge/pull/1884), [#1944](https://github.com/JesusFilm/forge/pull/1944) |
 | [feat-356](feat-356-auth-account-deletion-seeker-cascade.md)           | apps/auth account-deletion cascade to the Seeker stores                      | jian wei | P2       | 2026-09-01 | 3    | 🔵 not-started | —                                                                                                            |
 | [feat-363](feat-363-history-route-resourceid-recheck.md)               | Chat history read path: client-side re-check of the resourceId filter        | jian wei | P2       | 2026-08-24 | 1    | 🔵 not-started | —                                                                                                            |

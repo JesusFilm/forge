@@ -6,9 +6,9 @@ import {
 export const SEEKER_PRODUCTION_PROMPT = {
   provider: "langfuse",
   name: "seeker-system",
-  revision: "2",
+  revision: "3",
   contentHash:
-    "bdc09456d558f2853604adff70655ee850730ccc8f2b18881780590c657b76ee",
+    "fb79743a2a6068cb2ec030694ec73f025a6a74ae617ef5e0bdd8ddc2e81099d2",
 } as const
 
 export const SEEKER_PRODUCTION_GATEWAY_TIMEOUT_MS = 55_000
