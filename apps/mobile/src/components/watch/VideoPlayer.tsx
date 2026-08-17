@@ -902,12 +902,12 @@ const styles = StyleSheet.create({
     bottom: 0,
     height: 160,
   },
-  // Mirrors the chrome's corner-button placement so the route buttons do not
-  // jump when the veil hands over to the full chrome.
+  // Mirrors the chrome's top-right route-button placement so the buttons do
+  // not jump when the veil hands over to the full chrome.
   veilRouteRow: {
     position: "absolute",
+    top: 8,
     right: 12,
-    bottom: 12,
     flexDirection: "row",
     alignItems: "center",
     gap: 12,

@@ -387,6 +387,21 @@ export function PlayerControls({
 
   return (
     <View style={styles.container} pointerEvents="box-none">
+      {/* External routes live at the top-right corner, clear of the
+          bottom transport rows; fullscreen clears the notch and side inset. */}
+      <View
+        style={[
+          styles.routeRow,
+          fullscreen && {
+            top: Math.max(insets.top, 8),
+            right: Math.max(insets.right, 12),
+          },
+        ]}
+        pointerEvents="box-none"
+      >
+        {routeButtons}
+      </View>
+
       <View style={styles.controlsRow}>
         <Pressable
           onPress={() => skip(-SKIP_SECONDS)}
@@ -463,10 +478,7 @@ export function PlayerControls({
         >
           <View style={styles.timeRow}>{timePill}</View>
           {scrubber}
-          <View style={styles.iconRow}>
-            {routeButtons}
-            {fullscreenButton}
-          </View>
+          <View style={styles.iconRow}>{fullscreenButton}</View>
         </View>
       ) : (
         <View style={styles.bottomBar} pointerEvents="box-none">
@@ -476,10 +488,7 @@ export function PlayerControls({
           <View style={styles.scrubberDock}>{scrubber}</View>
           <View style={styles.cornerRow} pointerEvents="box-none">
             <View pointerEvents="none">{timePill}</View>
-            <View style={styles.cornerButtons}>
-              {routeButtons}
-              {fullscreenButton}
-            </View>
+            <View style={styles.cornerButtons}>{fullscreenButton}</View>
           </View>
         </View>
       )}
@@ -552,6 +561,14 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   cornerButtons: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  routeRow: {
+    position: "absolute",
+    top: 8,
+    right: BAR_PADDING_H,
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
