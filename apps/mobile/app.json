@@ -13,6 +13,7 @@
       "bundleIdentifier": "org.jesusfilm.forgewatch",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
+        "NSLocalNetworkUsageDescription": "The app uses your local network to find Cast devices, so you can play videos on your TV.",
         "NSAppTransportSecurity": {
           "NSAllowsLocalNetworking": true
         },
@@ -43,7 +44,7 @@
       "url": "https://u.expo.dev/e8e41dde-3482-4571-a499-3b82673cdb39"
     },
     "runtimeVersion": {
-      "policy": "sdkVersion"
+      "policy": "fingerprint"
     },
     "plugins": [
       "expo-router",
@@ -55,6 +56,23 @@
       ],
       "@kesha-antonov/react-native-background-downloader",
       "./plugins/withBackgroundDownloaderAppDelegate",
+      "./plugins/withCastOptionsVolume",
+      [
+        "react-native-google-cast",
+        {
+          "iosSuspendSessionsWhenBackgrounded": false,
+          "iosStartDiscoveryAfterFirstTapOnCastButton": false,
+          "androidPlayServicesCastFrameworkVersion": "22.3.1"
+        }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "deploymentTarget": "16.4"
+          }
+        }
+      ],
       "expo-secure-store",
       "expo-web-browser",
       "expo-image",
