@@ -356,7 +356,7 @@ async function searchAdmin(
       locale: prompt.locale,
       ...(prompt.languageSlug ? { languageSlug: prompt.languageSlug } : {}),
       limit: input.searchLimit ?? DEFAULT_SEARCH_LIMIT,
-      mode: input.searchMode,
+      mode: "modern",
       contentType: input.contentType ?? null,
     },
     timeoutMs: options.timeoutMs,
