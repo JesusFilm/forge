@@ -7,6 +7,7 @@ import { extractMuxPlaybackId } from "../lib/muxThumbnail"
 import { datadogLog } from "../lib/datadog"
 import {
   createProgressRecorder,
+  type FlushTrigger,
   type ProgressIdentity,
   type ProgressRecorder,
 } from "../lib/watchProgress/recorder"
@@ -33,6 +34,13 @@ const STALL_POLL_MS = 1000
 const STALL_THRESHOLD_MS = 3000
 // Float jitter: an advance under this counts as "not moving".
 const POSITION_EPSILON_S = 0.25
+
+/** KTD6: the hook's ref-stable progress facade. Cast-side callers drive the
+ *  recorder through it without ever holding a recorder instance. */
+export type ProgressFeed = {
+  onTick: (positionSeconds: number, durationSeconds: number) => void
+  flush: (trigger: FlushTrigger) => void
+}
 
 /**
  * The one adapter over expo-video's player lifecycle (todo 016): frozen
@@ -159,6 +167,15 @@ export function useManagedVideoPlayer(
       recorderRef.current = null
     }
   }, [recorderKey])
+
+  // KTD6: ref-stable facade — dereferences the CURRENT recorder at call
+  // time, so a dub switch's rebuild cannot strand cast-side writes in the
+  // flushed, dead instance.
+  const progressFeed = useRef<ProgressFeed>({
+    onTick: (positionSeconds, durationSeconds) =>
+      recorderRef.current?.onTick(positionSeconds, durationSeconds),
+    flush: (trigger) => recorderRef.current?.flush(trigger),
+  }).current
 
   useEffect(() => {
     if (!sourceUrl || sourceUrl === loadedUrlRef.current) return
@@ -290,9 +307,11 @@ export function useManagedVideoPlayer(
   // R36: statusChange feeds the QoE session — 'error' is a sanitized error, and
   // a post-start 'loading' that is not a seek/swap is a genuine rebuffer.
   useEffect(() => {
-    // Playback end records the completed range (KTD5/KTD6).
+    // Playback end records the completed range (KTD5/KTD6). Gated: while a
+    // session owns playback, the frozen local player must not mark the
+    // video completed — the receiver's finished status owns that flush.
     const endSub = player.addListener("playToEnd", () => {
-      recorderRef.current?.flush("end")
+      if (!castActiveRef.current) recorderRef.current?.flush("end")
     })
     return () => endSub.remove()
   }, [player])
@@ -337,7 +356,11 @@ export function useManagedVideoPlayer(
       // Same poll feeds watched_ms, so no native timeUpdate event is needed.
       qoeRef.current?.onTimeUpdate(position)
       // The recorder samples this same 1s signal at 2s granularity (KTD5).
-      recorderRef.current?.onTick(position, duration)
+      // Under a cast session the feed owns the recorder — skipping the local
+      // tick makes double-write prevention structural (KTD6).
+      if (!castActiveRef.current) {
+        recorderRef.current?.onTick(position, duration)
+      }
 
       const now = Date.now()
       // KTD4: a frozen local playhead is expected while the chrome drives the
@@ -375,5 +398,5 @@ export function useManagedVideoPlayer(
     return () => emitQoeSummary("abandoned")
   }, [emitQoeSummary])
 
-  return { player, isPlaying }
+  return { player, isPlaying, progressFeed }
 }

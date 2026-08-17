@@ -18,7 +18,10 @@ import { VideoView, type VideoPlayerStatus } from "expo-video"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { BLACK, TEXT_ON_OVERLAY, hexToRgba } from "../../lib/color"
 import { resolveImageUrl } from "../../lib/resolveImageUrl"
-import { useManagedVideoPlayer } from "../../hooks/useManagedVideoPlayer"
+import {
+  useManagedVideoPlayer,
+  type ProgressFeed,
+} from "../../hooks/useManagedVideoPlayer"
 import { reportDatadogAction } from "../../lib/datadog"
 import type { ProgressIdentity } from "../../lib/watchProgress/recorder"
 import { applySkip } from "../../lib/scrubber"
@@ -96,6 +99,9 @@ type VideoPlayerProps = {
     | null
   /** Screen-derived recovery instruction after a terminal session state. */
   castRecovery?: CastRecovery | null
+  /** U5 (KTD6): receives the adapter's ref-stable progress feed so the
+   *  screen can drive cast positions into the recorder. */
+  progressFeedRef?: { current: ProgressFeed | null } | null
 }
 
 export function VideoPlayer({
@@ -113,6 +119,7 @@ export function VideoPlayer({
   onCastPress = null,
   resolveCastMediaAt = null,
   castRecovery = null,
+  progressFeedRef = null,
 }: VideoPlayerProps) {
   const { width: screenWidth, height: screenHeight } = useWindowDimensions()
 
@@ -132,7 +139,7 @@ export function VideoPlayer({
   // Player lifecycle (frozen source, replaceAsync swap, AppState, unmount
   // pause) lives in the shared adapter (todo 016); this component owns the
   // chrome, captions, and tap handling.
-  const { player, isPlaying } = useManagedVideoPlayer(
+  const { player, isPlaying, progressFeed } = useManagedVideoPlayer(
     streamingUrl,
     (p) => {
       // Favor a fast first frame over deep prebuffer — JFP audience skews to
@@ -145,6 +152,9 @@ export function VideoPlayer({
     },
     { progress: progressIdentity, castActive: castRemoteActive },
   )
+  // Render-time mirror (same pattern as castRemoteActiveRef): the feed is
+  // identity-stable, so repeated assignment is idempotent.
+  if (progressFeedRef != null) progressFeedRef.current = progressFeed
 
   // Disable Mux's HLS subtitle tracks (SubtitleOverlay renders admin VTT
   // instead). These three events cover every AVPlayer auto-select; a fourth

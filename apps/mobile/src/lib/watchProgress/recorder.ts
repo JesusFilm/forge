@@ -2,8 +2,8 @@
  * Progress recorder (KTD5): receives (identity, position, duration) ticks
  * from the player adapter's 1-second poll, samples at web's 2-second
  * granularity into buffered intents, and requests a drain after every
- * sample — the sync cadence (one send per 30s, forced on pause/background/
- * unmount/end) is what turns those requests into actual mutations.
+ * sample — the sync cadence (one send per 30s, forced on every FlushTrigger)
+ * is what turns those requests into actual mutations.
  *
  * No-ops without an identity (the hero surfaces never pass one) and drops
  * signed-out ticks at this boundary (R10). Every write takes the same path;
@@ -24,7 +24,14 @@ export type ProgressIdentity = {
   languageSlug?: string | null
 }
 
-export type FlushTrigger = "pause" | "background" | "unmount" | "end"
+// "foreground" is U5's cast reconcile after a suspension — a forced write,
+// but not a playback stop, so it never arms the sign-in prompt.
+export type FlushTrigger =
+  | "pause"
+  | "background"
+  | "unmount"
+  | "end"
+  | "foreground"
 
 export type RecorderDeps = {
   getAccountId: () => string | null
@@ -101,9 +108,9 @@ export function createProgressRecorder(
     },
 
     /**
-     * Forced write: pause, background, unmount, and playback end each
-     * record the latest observed position immediately (KTD5). Playback end
-     * records the completed range (position = duration).
+     * Forced write: every trigger records the latest observed position
+     * immediately (KTD5). Playback end records the completed range
+     * (position = duration).
      */
     flush(trigger: FlushTrigger) {
       if (!identity || lastObserved == null) return
@@ -111,7 +118,11 @@ export function createProgressRecorder(
         trigger === "end" ? lastObserved.duration : lastObserved.position
       if (record(position, lastObserved.duration)) {
         deps.requestDrain({ forced: true })
-      } else if (deps.getAccountId() == null && trigger !== "end") {
+      } else if (
+        deps.getAccountId() == null &&
+        trigger !== "end" &&
+        trigger !== "foreground"
+      ) {
         // Mid-video stop while signed out: the prompt's moment (R17).
         deps.onSignedOutStop?.(lastObserved.position)
       }

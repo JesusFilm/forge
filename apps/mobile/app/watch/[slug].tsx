@@ -41,6 +41,8 @@ import {
 import { layout, text } from "../../src/styles/shared"
 import { VideoPlayer } from "../../src/components/watch/VideoPlayer"
 import { useCastPlayback } from "../../src/hooks/useCastPlayback"
+import { useCastProgressRecording } from "../../src/hooks/useCastProgressRecording"
+import type { ProgressFeed } from "../../src/hooks/useManagedVideoPlayer"
 import { showCastDialog } from "../../src/lib/cast/castAdapter"
 import {
   resolveCastMedia,
@@ -328,16 +330,22 @@ export default function WatchVideoPage() {
 
   // KTD5: the resolver input is this screen's source chain MINUS the
   // offlineSource prefix — a receiver can only fetch remote https.
+  // U5: the last load's start position seeds the load-time progress tick
+  // before the receiver's first position report.
+  const castLoadStartRef = useRef<number | null>(null)
   const resolveCastMediaAt = useCallback(
-    (startPositionSeconds: number | null): CastMedia | null =>
-      resolveCastMedia({
+    (startPositionSeconds: number | null): CastMedia | null => {
+      const media = resolveCastMedia({
         activeVariant,
         video,
         seedStreamingUrl,
         title: video?.title ?? seed?.title ?? null,
         posterUrl: video?.posterUrl ?? seed?.imageUrl ?? null,
         startPositionSeconds,
-      }),
+      })
+      if (media != null) castLoadStartRef.current = media.startPositionSeconds
+      return media
+    },
     [activeVariant, video, seedStreamingUrl, seed],
   )
 
@@ -366,6 +374,18 @@ export default function WatchVideoPage() {
       )
     }
   }, [cast.remotePlayerState])
+
+  // U5 (KTD6/R11): cast positions feed the watch-progress recorder through
+  // the adapter's ref-stable facade (filled in by VideoPlayer). Registered
+  // BEFORE the epilogue below so terminal flushes land before reset().
+  const progressFeedRef = useRef<ProgressFeed | null>(null)
+  useCastProgressRecording({
+    state: castSessionState,
+    position: cast.position,
+    duration: cast.duration,
+    feedRef: progressFeedRef,
+    getLoadStartPosition: () => castLoadStartRef.current,
+  })
 
   // Derived in the SAME render as the terminal state: child (VideoPlayer)
   // effects run before this screen's, so the recovery is latched before the
@@ -631,6 +651,7 @@ export default function WatchVideoPage() {
             onCastPress={handleCastPress}
             resolveCastMediaAt={resolveCastMediaAt}
             castRecovery={castRecovery}
+            progressFeedRef={progressFeedRef}
             progressIdentity={
               // Offline playback may predate the record load — the slug is
               // the on-device key admin resolves server-side (KTD8).
