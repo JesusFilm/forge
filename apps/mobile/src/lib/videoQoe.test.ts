@@ -85,7 +85,7 @@ describe("createVideoQoeSession", () => {
     })
   })
 
-  it.each(["ended", "replaced", "dismissed", "abandoned"] as const)(
+  it.each(["ended", "replaced", "dismissed", "failed", "abandoned"] as const)(
     "round-trips reason %s into the emitted summary",
     (reason) => {
       const session = createVideoQoeSession({ contentId: "abc", now: () => 0 })

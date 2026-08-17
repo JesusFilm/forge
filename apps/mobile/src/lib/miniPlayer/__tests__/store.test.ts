@@ -157,9 +157,10 @@ describe("ended phase", () => {
     expect(ends[0].endedCause).toBe("playToEnd")
   })
 
-  it("reports a failure through the same phase with its own cause (R22)", () => {
+  it("reports a failure as its own quality reason (R22)", () => {
     const { store, ends } = startedStore()
     store.markEnded("failure")
+    expect(ends[0].reason).toBe("failed")
     expect(ends[0].endedCause).toBe("failure")
   })
 

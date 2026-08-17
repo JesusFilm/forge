@@ -127,7 +127,8 @@ export function createMiniPlayerStore() {
     const event: MiniPlayerEndEvent = {
       session,
       reason,
-      endedCause: reason === "ended" ? session.endedCause : null,
+      endedCause:
+        reason === "ended" || reason === "failed" ? session.endedCause : null,
     }
     for (const listener of endListeners) listener(event)
   }
@@ -246,7 +247,7 @@ export function createMiniPlayerStore() {
         endedCause: cause,
       }
       commit(withSession(ended))
-      emitEnd(ended, "ended")
+      emitEnd(ended, cause === "failure" ? "failed" : "ended")
     },
 
     /** Replay from the ended state (R27) — the window is already mounted. */
