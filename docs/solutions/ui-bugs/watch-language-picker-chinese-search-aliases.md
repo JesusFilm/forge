@@ -1,6 +1,7 @@
 ---
 title: "Bind Watch language-picker aliases to exact public slugs"
 date: "2026-08-17"
+last_updated: "2026-08-17"
 category: "ui-bugs"
 module: "apps/web/watch"
 problem_type: "ui_bug"
@@ -69,14 +70,27 @@ must never turn an absent language into a selectable result.
 `WATCH_LANGUAGE_SEARCH_ALIASES` is a small leaf table keyed by exact public
 language slug. The code explicitly rejects BCP-47 family inference and requires
 review before a new language identity becomes searchable
-(`apps/web/src/lib/watch-language-search-aliases.ts:8-42`). The same module
+(`apps/web/src/lib/watch-language-search-aliases.ts:8-48`). The same module
 publishes the normalized exact-alias vocabulary and returns an empty list for an
-unknown slug (`apps/web/src/lib/watch-language-search-aliases.ts:44-63`).
+unknown slug (`apps/web/src/lib/watch-language-search-aliases.ts:50-69`).
 
 `中文` is intentionally a broad discovery term, but its members remain an
-explicit reviewed slug group. `台語` and `臺語` remain unmapped because Taiwan
-Mandarin and the available Hokkien slugs do not accurately represent that
-request (`apps/web/src/lib/watch-language-search-aliases.test.ts:18-64`).
+explicit reviewed group of 19 exact slugs
+(`apps/web/src/lib/watch-language-search-aliases.ts:15-48`). The frontend does
+not maintain a popularity or "common Chinese" order for that group. Exact slug
+ownership controls eligibility, direct display-name and native-name matches rank
+before supplemental alias-only matches, and backend or caller order resolves
+same-tier ties. A structural test asserts the complete 19-slug membership, so a
+later edit cannot silently add or omit a language
+(`apps/web/src/lib/watch-language-search-aliases.test.ts:24-68`). `台語` and
+`臺語` remain unmapped because Taiwan Mandarin and the available Hokkien slugs
+do not accurately represent that request
+(`apps/web/src/lib/watch-language-search-aliases.test.ts:70-76`).
+
+Native names remain owned by Core language metadata. The alias table does not
+fill a missing visible subtitle: when Core has no native name, the picker shows
+no native-name subtitle. Search synonyms and canonical language metadata stay
+separate, so Web does not invent content that should be curated upstream.
 
 ### Make alias matching opt-in
 
@@ -112,14 +126,16 @@ This preserves each surface's authority:
 ### Keep exact aliases strict and partial aliases lower-ranked
 
 When the query exactly equals a configured alias, only a non-disabled supplied
-option whose exact slug owns that alias is eligible. This prevents a
-BCP-47-derived label or unavailable context row from bypassing the authority
-(`apps/web/src/components/watch/LanguageCombobox.tsx:120-152`).
+option whose exact slug owns that alias is eligible. Direct display/native-name
+matches then rank before supplemental alias-only matches, while backend or
+caller order breaks same-tier ties. This prevents a BCP-47-derived label or
+unavailable context row from bypassing the authority
+(`apps/web/src/components/watch/LanguageCombobox.tsx:120-150`).
 
 For partial queries, existing direct-name tiers remain `0..2`, alias tiers are
 shifted to `3..5`, and original option order breaks ties. Direct display or
 native-name matches therefore continue to rank before alias-only matches
-(`apps/web/src/components/watch/LanguageCombobox.tsx:137-152`,
+(`apps/web/src/components/watch/LanguageCombobox.tsx:135-150`,
 `apps/web/src/components/watch/LanguageCombobox.tsx:249-275`).
 
 ## Why This Works
@@ -139,19 +155,24 @@ exists, and find it in the subtitle picker only when that subtitle exists.
 
 - Bind any new search synonym to a reviewed exact public slug. Do not infer
   ownership from a BCP-47 prefix, locale family, geography, or script.
-- Keep search vocabulary separate from URL-canonicalization aliases and visible
-  translated labels.
+- Keep search vocabulary separate from URL-canonicalization aliases, visible
+  translated UI copy, and Core-owned native names. Do not use search metadata
+  to fill a missing native-name subtitle.
 - Apply alias matching only to the intended consumers, and always filter the
   options already supplied by the caller.
-- Test a real selectable result and the matching unavailable case. The player
-  tests prove that `粤语` finds Cantonese only when Cantonese audio is present
-  (`apps/web/src/components/watch/__tests__/LanguagePickerModal.test.tsx:1555-1616`).
+- Test a real selectable result and the matching unavailable case. An earlier
+  review found that the positive audio case alone did not prove the availability
+  boundary (session history); the final player tests now prove that `粤语` finds
+  Cantonese only when playable Cantonese audio is present and returns no row
+  when it is absent
+  (`apps/web/src/components/watch/LanguagePickerModal.aliases.test.tsx:147-231`).
 - Keep a collision fixture in which an unconfigured `zh`-family option has a
   BCP-47-derived native label but cannot enter an exact `中文` result
-  (`apps/web/src/components/watch/__tests__/LanguageCombobox.test.tsx:1454-1489`).
+  (`apps/web/src/components/watch/LanguageCombobox.aliases.test.tsx:125-159`).
 - Protect ranking and stable order with both partial-alias and broad-`中文`
-  cases (`apps/web/src/components/watch/__tests__/LanguageCombobox.test.tsx:1413-1452`,
-  `apps/web/src/components/watch/__tests__/LanguageCombobox.test.tsx:1491-1523`).
+  cases. The broad-query test proves a direct `中文` native-name match ranks
+  first, while supplemental alias-only owners preserve backend or caller order
+  (`apps/web/src/components/watch/LanguageCombobox.aliases.test.tsx:84-239`).
 - Keep non-Chinese regression coverage. Russian native-name search still uses
   the original direct matching path
   (`apps/web/src/components/watch/__tests__/LanguageCombobox.test.tsx:1359-1369`).
