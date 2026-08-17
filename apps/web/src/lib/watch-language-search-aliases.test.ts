@@ -2,6 +2,7 @@ import { PUBLIC_WATCH_LANGUAGE_SLUGS } from "@forge/watch-url-policy/routes"
 import { describe, expect, it } from "vitest"
 
 import {
+  WATCH_LANGUAGE_SEARCH_EXACT_ALIASES,
   WATCH_LANGUAGE_SEARCH_ALIASES,
   watchLanguageSearchAliasesFor,
 } from "./watch-language-search-aliases"
@@ -72,5 +73,13 @@ describe("Watch language search aliases", () => {
     for (const slug of Object.keys(WATCH_LANGUAGE_SEARCH_ALIASES)) {
       expect(publicSlugs.has(slug)).toBe(true)
     }
+  })
+
+  it("publishes the normalized exact-alias vocabulary with the authority", () => {
+    const configuredAliases = new Set(
+      Object.values(WATCH_LANGUAGE_SEARCH_ALIASES).flat(),
+    )
+
+    expect(WATCH_LANGUAGE_SEARCH_EXACT_ALIASES).toEqual(configuredAliases)
   })
 })

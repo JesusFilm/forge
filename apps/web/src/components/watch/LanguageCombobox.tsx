@@ -31,6 +31,11 @@ export type LanguageComboboxOption = {
   chipLabel?: string | null
 }
 
+export type LanguageComboboxSearchAliasAuthority = {
+  readonly aliasesBySlug: Readonly<Record<string, readonly string[]>>
+  readonly exactAliases: ReadonlySet<string>
+}
+
 export type LanguageComboboxProps = {
   options: LanguageComboboxOption[]
   value: string
@@ -52,6 +57,7 @@ export type LanguageComboboxProps = {
     width: number
   } | null
   takeoverDismissLabel?: string
+  searchAliasAuthority?: LanguageComboboxSearchAliasAuthority
 }
 
 const LISTBOX_MAX_HEIGHT_PX = 288
@@ -114,13 +120,36 @@ function searchMatchTierForText(
 function searchMatchTierForOption(
   option: LanguageComboboxOption,
   query: string,
+  searchAliasAuthority?: LanguageComboboxSearchAliasAuthority,
+  exactAliasQuery = false,
 ): number | null {
-  const tiers = [
+  const directTiers = [
     searchMatchTierForText(option.name, query),
     searchMatchTierForText(nativeNameForOption(option), query),
   ].filter((tier): tier is number => tier != null)
+  const directTier = directTiers.length > 0 ? Math.min(...directTiers) : null
 
-  return tiers.length > 0 ? Math.min(...tiers) : null
+  const aliases =
+    searchAliasAuthority &&
+    Object.hasOwn(searchAliasAuthority.aliasesBySlug, option.slug)
+      ? searchAliasAuthority.aliasesBySlug[option.slug]
+      : undefined
+  const ownsExactAlias = aliases?.some(
+    (alias) => alias.trim().toLowerCase() === query,
+  )
+
+  if (exactAliasQuery && (option.disabled || !ownsExactAlias)) return null
+
+  const aliasTiers = option.disabled
+    ? []
+    : (aliases ?? [])
+        .map((alias) => searchMatchTierForText(alias, query))
+        .filter((tier): tier is number => tier != null)
+  const aliasTier = aliasTiers.length > 0 ? Math.min(...aliasTiers) + 3 : null
+
+  if (directTier == null) return aliasTier
+  if (aliasTier == null) return directTier
+  return Math.min(directTier, aliasTier)
 }
 
 function initialsForOption(option: LanguageComboboxOption): string {
@@ -174,6 +203,7 @@ export function LanguageCombobox({
   popoverPortalContainer,
   takeoverRect,
   takeoverDismissLabel,
+  searchAliasAuthority,
 }: LanguageComboboxProps) {
   const t = useTranslations("LanguageCombobox")
   const comboboxId = useId()
@@ -219,11 +249,17 @@ export function LanguageCombobox({
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
     if (!q) return options
+    const exactAliasQuery = searchAliasAuthority?.exactAliases.has(q) ?? false
     return options
       .map((option, index) => ({
         option,
         index,
-        tier: searchMatchTierForOption(option, q),
+        tier: searchMatchTierForOption(
+          option,
+          q,
+          searchAliasAuthority,
+          exactAliasQuery,
+        ),
       }))
       .filter(
         (
@@ -236,7 +272,7 @@ export function LanguageCombobox({
       )
       .sort((a, b) => a.tier - b.tier || a.index - b.index)
       .map((entry) => entry.option)
-  }, [options, query])
+  }, [options, query, searchAliasAuthority])
   // Keep ref in sync with state
   useEffect(() => {
     activeIndexRef.current = activeIndex

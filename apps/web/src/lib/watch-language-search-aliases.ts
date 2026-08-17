@@ -1,5 +1,6 @@
 export type WatchLanguageSearchAliasAuthority = {
   readonly aliasesBySlug: Readonly<Record<string, readonly string[]>>
+  readonly exactAliases: ReadonlySet<string>
 }
 
 const EMPTY_LANGUAGE_SEARCH_ALIASES: readonly string[] = []
@@ -33,8 +34,15 @@ export const WATCH_LANGUAGE_SEARCH_ALIASES = {
   xiang: ["中文"],
 } as const satisfies Readonly<Record<string, readonly string[]>>
 
+export const WATCH_LANGUAGE_SEARCH_EXACT_ALIASES: ReadonlySet<string> = new Set(
+  Object.values(WATCH_LANGUAGE_SEARCH_ALIASES)
+    .flat()
+    .map((alias) => alias.trim().toLowerCase()),
+)
+
 export const WATCH_LANGUAGE_SEARCH_ALIAS_AUTHORITY = {
   aliasesBySlug: WATCH_LANGUAGE_SEARCH_ALIASES,
+  exactAliases: WATCH_LANGUAGE_SEARCH_EXACT_ALIASES,
 } as const satisfies WatchLanguageSearchAliasAuthority
 
 export function watchLanguageSearchAliasesFor(slug: string): readonly string[] {
