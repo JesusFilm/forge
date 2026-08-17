@@ -69,3 +69,52 @@ describe("Home focus seam", () => {
     expect(write).toBeGreaterThan(read)
   })
 })
+
+// First-mount focus ownership (2026-08-18): the app opens with the top bar's
+// Search tab focused. hasTVPreferredFocus is one-shot mount-only, so exactly
+// ONE node on Home may carry it — two claims race and the loser is silent.
+const TOP_BAR_SOURCE = fs.readFileSync(
+  path.resolve(__dirname, "HomeTopBar.tsx"),
+  "utf8",
+)
+const HERO_SOURCE = fs.readFileSync(
+  path.resolve(__dirname, "HomeHeroCarousel.tsx"),
+  "utf8",
+)
+
+/** The one TopBarTab JSX block with this testID, up to its closing `/>`. */
+function tabBlock(testID) {
+  const start = TOP_BAR_SOURCE.indexOf(`testID="${testID}"`)
+  expect(start).toBeGreaterThan(-1)
+  return TOP_BAR_SOURCE.slice(start, TOP_BAR_SOURCE.indexOf("/>", start))
+}
+
+// Matches the prop as a JSX attribute on its own line; deliberately does NOT
+// match prose mentions inside // comments (those lines start with non-space
+// tokens before the word).
+const PREFERRED_FOCUS_PROP = /^\s*hasTVPreferredFocus\b/m
+
+describe("Home initial focus ownership", () => {
+  it("the Search tab claims first-mount focus", () => {
+    expect(tabBlock("home-topbar-search-tab")).toContain("hasTVPreferredFocus")
+  })
+
+  it.each([
+    "home-topbar-home-tab",
+    "home-topbar-profile-tab",
+    "home-topbar-settings-tab",
+  ])("%s does not claim it", (testID) => {
+    expect(tabBlock(testID)).not.toContain("hasTVPreferredFocus")
+  })
+
+  it("neither the hero carousel nor the screen claims it", () => {
+    expect(HERO_SOURCE).not.toMatch(PREFERRED_FOCUS_PROP)
+    expect(SOURCE).not.toMatch(PREFERRED_FOCUS_PROP)
+  })
+
+  // Anti-vacuous: the prop-shape regex must be able to match at all — the
+  // TopBarTab claim itself is written in exactly that shape.
+  it("the prop-shape regex is live", () => {
+    expect(TOP_BAR_SOURCE).toMatch(PREFERRED_FOCUS_PROP)
+  })
+})
