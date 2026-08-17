@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react"
 import {
+  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -8,7 +9,7 @@ import {
   type ViewStyle,
 } from "react-native"
 import Ionicons from "@expo/vector-icons/Ionicons"
-import type { VideoPlayer } from "expo-video"
+import { VideoAirPlayButton, type VideoPlayer } from "expo-video"
 import { useEvent } from "expo"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 
@@ -34,6 +35,9 @@ type PlayerControlsProps = {
   /** A seek performed outside this component (double-tap-the-sides). The bumped
    *  nonce updates the displayed time immediately, even while paused. */
   seekSignal?: { time: number; n: number } | null
+  /** True while the player routes video to an external device (AirPlay).
+   *  Drives the AirPlay button's state-aware accessibility label. */
+  externalPlaybackActive?: boolean
 }
 
 // Side inset for the bar's text and icons. The inline seek bar cancels it so
@@ -72,6 +76,7 @@ export function PlayerControls({
   onFullscreen,
   onInteract,
   seekSignal,
+  externalPlaybackActive = false,
 }: PlayerControlsProps) {
   const typography = useTypography()
   const insets = useSafeAreaInsets()
@@ -244,6 +249,24 @@ export function PlayerControls({
     </Pressable>
   )
 
+  // Native AVRoutePickerView (iOS only) — it owns the press, so no Pressable
+  // wrapper; the Frosted backplate matches the sibling icon buttons.
+  const airPlayButton =
+    Platform.OS === "ios" ? (
+      <Frosted style={styles.iconButton}>
+        <VideoAirPlayButton
+          style={styles.airPlayPicker}
+          tint={TEXT_ON_OVERLAY}
+          activeTint={TEXT_ON_OVERLAY}
+          onBeginPresentingRoutes={onInteract}
+          accessibilityRole="button"
+          accessibilityLabel={
+            externalPlaybackActive ? "AirPlay: connected" : "AirPlay"
+          }
+        />
+      </Frosted>
+    ) : null
+
   return (
     <View style={styles.container} pointerEvents="box-none">
       <View style={styles.controlsRow}>
@@ -312,7 +335,10 @@ export function PlayerControls({
         >
           <View style={styles.timeRow}>{timePill}</View>
           {scrubber}
-          <View style={styles.iconRow}>{fullscreenButton}</View>
+          <View style={styles.iconRow}>
+            {airPlayButton}
+            {fullscreenButton}
+          </View>
         </View>
       ) : (
         <View style={styles.bottomBar} pointerEvents="box-none">
@@ -322,7 +348,10 @@ export function PlayerControls({
           <View style={styles.scrubberDock}>{scrubber}</View>
           <View style={styles.cornerRow} pointerEvents="box-none">
             <View pointerEvents="none">{timePill}</View>
-            {fullscreenButton}
+            <View style={styles.cornerButtons}>
+              {airPlayButton}
+              {fullscreenButton}
+            </View>
           </View>
         </View>
       )}
@@ -394,6 +423,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: BAR_PADDING_H,
     marginBottom: 12,
   },
+  cornerButtons: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  // Fill the frosted circle so the native tap target is the whole control.
+  airPlayPicker: {
+    width: 44,
+    height: 44,
+  },
   // overflow clips the blur to the pill's radius.
   timePill: {
     paddingHorizontal: 10,
@@ -417,6 +456,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "flex-end",
+    gap: 12,
   },
   iconButton: {
     width: 44,

@@ -37,11 +37,18 @@ jest.mock("expo-blur", () => {
 jest.mock("expo", () => ({
   useEvent: (_player: unknown, _name: string, initial: unknown) => initial,
 }))
+// The AirPlay button is a native AVRoutePickerView; a View keeps its
+// accessibility props findable.
+jest.mock("expo-video", () => {
+  const { View } = require("react-native")
+  return { VideoAirPlayButton: View }
+})
 jest.mock("react-native-safe-area-context", () => ({
   useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
 }))
 
 import { act } from "react"
+import { Platform } from "react-native"
 
 import { PlayerControls } from "../PlayerControls"
 import {
@@ -65,7 +72,10 @@ function makePlayer() {
   }
 }
 
-async function render(fullscreen: boolean): Promise<TestInstance> {
+async function render(
+  fullscreen: boolean,
+  props: { externalPlaybackActive?: boolean } = {},
+): Promise<TestInstance> {
   let renderer!: TestInstance
   await act(async () => {
     renderer = TestRenderer.create(
@@ -73,11 +83,22 @@ async function render(fullscreen: boolean): Promise<TestInstance> {
         player={makePlayer() as never}
         fullscreen={fullscreen}
         onFullscreen={() => {}}
+        {...props}
       />,
     )
   })
   return renderer
 }
+
+// Platform.OS is an object-literal getter (configurable), so a data-property
+// override works; the saved descriptor restores the real getter after each test.
+const platformOsDescriptor = Object.getOwnPropertyDescriptor(Platform, "OS")!
+function setPlatform(os: "ios" | "android") {
+  Object.defineProperty(Platform, "OS", { value: os, configurable: true })
+}
+afterEach(() => {
+  Object.defineProperty(Platform, "OS", platformOsDescriptor)
+})
 
 // A Pressable and its host view both carry the label, so a present control
 // matches more than one node — presence is "any", absence is "none".
@@ -144,6 +165,56 @@ describe("PlayerControls chrome", () => {
     const renderer = await render(true)
     expect(hasLabel(renderer, "Exit fullscreen")).toBe(true)
     expect(labelCount(renderer, "Fullscreen")).toBe(0)
+    await unmount(renderer)
+  })
+})
+
+describe("AirPlay button (U1)", () => {
+  it.each([
+    ["inline", false],
+    ["fullscreen", true],
+  ])("renders the AirPlay button on iOS (%s)", async (_name, fullscreen) => {
+    const renderer = await render(fullscreen as boolean)
+    expect(hasLabel(renderer, "AirPlay")).toBe(true)
+    await unmount(renderer)
+  })
+
+  it.each([
+    ["inline", false],
+    ["fullscreen", true],
+  ])("renders no AirPlay button on Android (%s)", async (_name, fullscreen) => {
+    setPlatform("android")
+    const renderer = await render(fullscreen as boolean)
+    expect(labelCount(renderer, "AirPlay")).toBe(0)
+    expect(labelCount(renderer, "AirPlay: connected")).toBe(0)
+    await unmount(renderer)
+  })
+
+  it("carries a button role like every other chrome control", async () => {
+    const renderer = await render(false)
+    const buttons = renderer.root.findAll(
+      (n) =>
+        n.props.accessibilityLabel === "AirPlay" &&
+        n.props.accessibilityRole === "button",
+    )
+    expect(buttons.length).toBeGreaterThan(0)
+    await unmount(renderer)
+  })
+
+  it("labels the active external route (state-aware label)", async () => {
+    const renderer = await render(false, { externalPlaybackActive: true })
+    expect(hasLabel(renderer, "AirPlay: connected")).toBe(true)
+    // Exact-match count: the idle label must not linger beside the active one.
+    expect(labelCount(renderer, "AirPlay")).toBe(0)
+    await unmount(renderer)
+  })
+
+  it("stays present while external playback is active (controls unchanged, R5)", async () => {
+    const renderer = await render(true, { externalPlaybackActive: true })
+    expect(hasLabel(renderer, "Play")).toBe(true)
+    expect(hasLabel(renderer, "Back 10 seconds")).toBe(true)
+    expect(hasLabel(renderer, "Forward 10 seconds")).toBe(true)
+    expect(hasLabel(renderer, "Exit fullscreen")).toBe(true)
     await unmount(renderer)
   })
 })

@@ -32,6 +32,7 @@ import {
   type SeekSide,
 } from "../../lib/tapSeek"
 import { useControlsVisibility } from "../../hooks/useControlsVisibility"
+import { isExternalRouteActive } from "../../lib/externalRoute"
 import { PLAYER_HEIGHT_RATIO } from "../../lib/playerLayout"
 import { PlayerControls } from "./PlayerControls"
 import { PlayerLoadingVeil } from "./PlayerLoadingVeil"
@@ -196,6 +197,33 @@ export function VideoPlayer({
     const t = setTimeout(() => setLoadTimedOut(true), AUTOSTART_VEIL_TIMEOUT_MS)
     return () => clearTimeout(t)
   }, [awaitingAutostart])
+
+  // AirPlay (iOS): track native external playback. Subscribed once per
+  // PLAYER so a source swap on the same player cannot drop an active route.
+  const [airPlayActive, setAirPlayActive] = useState(false)
+  useEffect(() => {
+    const sub = player.addListener(
+      "isExternalPlaybackActiveChange",
+      ({ isExternalPlaybackActive }: { isExternalPlaybackActive: boolean }) =>
+        setAirPlayActive(isExternalPlaybackActive),
+    )
+    // Seed from the live player — a player handed over already routing
+    // never re-fires the change event.
+    try {
+      setAirPlayActive(player.isExternalPlaybackActive === true)
+    } catch {
+      // Player already released
+    }
+    return () => {
+      try {
+        sub.remove()
+      } catch {
+        // Player already released
+      }
+    }
+  }, [player])
+  // U4 folds the cast-session flag into this same predicate (KTD9).
+  const externalRouteActive = isExternalRouteActive({ airPlayActive })
 
   const controls = useControlsVisibility(player)
 
@@ -453,6 +481,16 @@ export function VideoPlayer({
         </View>
       )}
 
+      {/* External-route indicator — the phone shows no video while AirPlay
+          plays it, so name where playback went. Top band, clear of the
+          transport row; pointerEvents none keeps every control usable (R5). */}
+      {externalRouteActive && (
+        <View pointerEvents="none" style={styles.externalRouteIndicator}>
+          <Ionicons name="tv-outline" size={28} color={TEXT_ON_OVERLAY} />
+          <Text style={styles.externalRouteText}>Playing on AirPlay</Text>
+        </View>
+      )}
+
       {/* Chrome scrim — fades with the chrome and sits BELOW the subtitle so it
           never dims the caption. */}
       {controls.mounted && !awaitingAutostart && (
@@ -479,7 +517,8 @@ export function VideoPlayer({
           paint over the un-started poster), then persist through pauses. */}
       <SubtitleOverlay
         player={player}
-        vttSrc={hasStarted ? subtitleVttSrc : null}
+        // No video on the phone during an external route, so no caption (KTD9).
+        vttSrc={hasStarted && !externalRouteActive ? subtitleVttSrc : null}
         bottomOffset={subtitleBottomOffset}
         horizontalInset={subtitleHorizontalInset}
         fontSize={subtitleFontSize}
@@ -500,6 +539,7 @@ export function VideoPlayer({
             onFullscreen={onToggleFullscreen}
             onInteract={controls.noteInteraction}
             seekSignal={seekSignal}
+            externalPlaybackActive={airPlayActive}
           />
         </Animated.View>
       )}
@@ -518,6 +558,22 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     height: 160,
+  },
+  // Top band: stays clear of the centered transport row and the bottom bar.
+  externalRouteIndicator: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    alignItems: "center",
+    paddingTop: 20,
+    gap: 4,
+  },
+  externalRouteText: {
+    color: TEXT_ON_OVERLAY,
+    fontFamily: "System",
+    fontSize: 13,
+    fontWeight: "600",
   },
   seekFlash: {
     position: "absolute",
