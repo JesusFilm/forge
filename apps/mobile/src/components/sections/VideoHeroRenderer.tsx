@@ -27,6 +27,7 @@ import { feedback } from "../../styles/shared"
 import { resolveThumbnailUrl } from "../../lib/resolveThumbnailUrl"
 import { validateStreamingUrl } from "../../lib/validateUrl"
 import { PlatformBlur } from "../ui/PlatformBlur"
+import { useMiniPlayerHoldsVideo } from "../../hooks/useMiniPlayerHoldsVideo"
 import { useTypography } from "../../hooks/useTypography"
 import type { AdminBlock } from "../../lib/queries"
 import { useVideoThumbnail } from "../../contexts/ExperienceProvider"
@@ -74,6 +75,10 @@ export function VideoHeroRenderer({
   const typography = useTypography()
   const router = useRouter()
   const appActiveRef = useRef(true)
+  // R19 keeps this hero out of the mini player, but it still competes for the
+  // one decoder (R10), so it yields to a window that holds a live video.
+  const windowHoldsVideo = useMiniPlayerHoldsVideo()
+  const suspended = windowHoldsVideo || paused === true
 
   const [hasStarted, setHasStarted] = useState(false)
 
@@ -104,13 +109,16 @@ export function VideoHeroRenderer({
   }, [isPlaying, hasStarted])
 
   useEffect(() => {
-    if (paused == null) return
-    if (paused) {
-      player.pause()
-    } else if (appActiveRef.current) {
-      player.play()
+    try {
+      if (suspended) {
+        player.pause()
+      } else if (appActiveRef.current) {
+        player.play()
+      }
+    } catch {
+      // Native player already released
     }
-  }, [paused, player])
+  }, [suspended, player])
 
   useEffect(() => {
     player.muted = mutedProp
@@ -119,7 +127,7 @@ export function VideoHeroRenderer({
   useEffect(() => {
     const subscription = AppState.addEventListener("change", (nextState) => {
       appActiveRef.current = nextState === "active"
-      if (appActiveRef.current && !paused) {
+      if (appActiveRef.current && !suspended) {
         player.play()
       } else {
         try {
@@ -130,7 +138,7 @@ export function VideoHeroRenderer({
       }
     })
     return () => subscription.remove()
-  }, [player, paused])
+  }, [player, suspended])
 
   const containerRef = useRef<View>(null)
   const muteButtonRef = useRef<View>(null)
@@ -165,16 +173,22 @@ export function VideoHeroRenderer({
     >
       {hasValidStream ? (
         <>
-          <VideoView
-            player={player}
-            style={StyleSheet.absoluteFill}
-            nativeControls={false}
-            contentFit="cover"
-            // RN 0.86 Fabric: the default SurfaceView decodes but never
-            // composites under a layered hero stack — mirrors HomeHeroPager.
-            surfaceType={Platform.OS === "android" ? "textureView" : undefined}
-          />
-          {!hasStarted && thumbnailUrl != null && (
+          {/* R10: a paused player keeps its surface, so the yield unmounts the
+              view and the thumbnail below takes the hero back. */}
+          {!windowHoldsVideo && (
+            <VideoView
+              player={player}
+              style={StyleSheet.absoluteFill}
+              nativeControls={false}
+              contentFit="cover"
+              // RN 0.86 Fabric: the default SurfaceView decodes but never
+              // composites under a layered hero stack — mirrors HomeHeroPager.
+              surfaceType={
+                Platform.OS === "android" ? "textureView" : undefined
+              }
+            />
+          )}
+          {(!hasStarted || windowHoldsVideo) && thumbnailUrl != null && (
             <Image
               source={thumbnailUrl}
               style={StyleSheet.absoluteFill}

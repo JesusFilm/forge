@@ -200,6 +200,54 @@ describe("a surface that never originates a session (the series trailer)", () =>
     expect(store.getSnapshot().request?.streamingUrl).toContain("assetAAA111")
     expect(sessionStore.getSnapshot().session?.videoId).toBe("video-a")
   })
+
+  /**
+   * The heroes yield only while the window holds a LIVE video (R9), because
+   * each owns a decoder of its own. The trailer's rule is stricter: it shares
+   * the ONE hoisted player, and an ended window still needs it to offer a
+   * replay (R27), so the trailer stays refused for as long as the session does.
+   */
+  it("stays refused while the window's session is ENDED, so a replay still has its player", () => {
+    const { store, sessionStore } = makeStores({
+      started: true,
+      position: 61,
+      duration: 600,
+    })
+    store.detachSlot(store.attachSlot(makeRequest()))
+    sessionStore.markEnded("playToEnd")
+
+    store.attachSlot(
+      makeRequest({ session: null, streamingUrl: "https://trailer.m3u8" }),
+    )
+
+    expect(store.getSnapshot().slotId).toBeNull()
+    expect(store.getSnapshot().request?.streamingUrl).toContain("assetAAA111")
+    expect(sessionStore.getSnapshot().session?.videoId).toBe("video-a")
+  })
+
+  it("takes the player, and its autostart, once the dismissed window has gone", () => {
+    const { store, sessionStore } = makeStores({
+      started: true,
+      position: 61,
+      duration: 600,
+    })
+    store.detachSlot(store.attachSlot(makeRequest()))
+    const trailer = store.attachSlot(
+      makeRequest({ session: null, streamingUrl: "https://trailer.m3u8" }),
+    )
+    expect(store.getSnapshot().slotId).toBeNull()
+
+    sessionStore.requestDismiss()
+    // Mid-exit the window still owns the player.
+    expect(store.getSnapshot().slotId).toBeNull()
+    sessionStore.reportExitComplete()
+
+    expect(store.getSnapshot().slotId).toBe(trailer)
+    expect(store.getSnapshot().request).toMatchObject({
+      streamingUrl: "https://trailer.m3u8",
+      autostart: true,
+    })
+  })
 })
 
 describe("replacement (R12)", () => {
