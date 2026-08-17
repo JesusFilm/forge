@@ -840,6 +840,46 @@ describe("Mastra env", () => {
     expect(getDevotionalSafetyModel()).toBe("anthropic/claude-haiku-4-5")
   })
 
+  it("keeps the Serving eval target on dedicated URL and bearer variables", async () => {
+    vi.stubEnv(
+      "ADMIN_SEARCH_EVAL_SEARCH_URL",
+      "https://admin.internal/api/internal/search-eval/search",
+    )
+    vi.stubEnv("ADMIN_SEARCH_EVAL_API_KEY", "shared-eval-key")
+    vi.stubEnv(
+      "ADMIN_SEARCH_EVAL_SERVING_URL",
+      "https://admin.internal/api/internal/search-eval/serving-search",
+    )
+    vi.stubEnv("ADMIN_SEARCH_EVAL_SERVING_API_KEY", "serving-eval-key")
+
+    const { getDevotionalVideoSearchConfig, getServingSearchEvalConfig } =
+      await import("./env")
+
+    expect(getServingSearchEvalConfig()).toEqual({
+      url: "https://admin.internal/api/internal/search-eval/serving-search",
+      bearer: "serving-eval-key",
+    })
+    expect(getDevotionalVideoSearchConfig()).toMatchObject({
+      url: "https://admin.internal/api/internal/search-eval/search",
+      bearer: "shared-eval-key",
+    })
+  })
+
+  it("does not fall back to shared eval credentials for Serving", async () => {
+    vi.stubEnv("ADMIN_SEARCH_EVAL_API_KEY", "shared-eval-key")
+    vi.stubEnv(
+      "ADMIN_SEARCH_EVAL_SEARCH_URL",
+      "https://admin.internal/api/internal/search-eval/search",
+    )
+
+    const { getServingSearchEvalConfig } = await import("./env")
+
+    expect(getServingSearchEvalConfig()).toEqual({
+      url: undefined,
+      bearer: undefined,
+    })
+  })
+
   // --- feat-199: JESUSFILM_RAG_* optional config + production host guard ---
 
   // Stub the full required production set so RAG-guard tests isolate the RAG

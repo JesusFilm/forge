@@ -42,6 +42,7 @@ describe("Typesense Watch search profiles", () => {
       generationId: null,
       applicationRevision: null,
       transcriptProjectionRevision: null,
+      qrelsRevision: null,
       fieldManifests: null,
       allowCompatibilityFallback: true,
     })

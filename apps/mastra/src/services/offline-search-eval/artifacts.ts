@@ -88,6 +88,7 @@ const SearchEvalMetadataSchema = z
     ),
     promptSetVersion: z.string(),
     adminSearchUrl: z.string().max(512).nullable(),
+    servingRevision: z.string().min(1).max(128).nullable().default(null),
     judgeModel: z.string().nullable(),
     search: z
       .object({
@@ -112,6 +113,7 @@ const BaselineCaseSchema = z
     ),
     tags: z.array(z.string().max(64)).max(MAX_TAGS),
     operatorNotes: z.string().max(MAX_SAFE_TEXT).optional(),
+    serverRevision: z.string().min(1).max(128).optional(),
     results: z.array(SearchEvalResultSchema).max(MAX_RESULT_COUNT),
     searchFailure: SearchFailureSchema.optional(),
   })
@@ -127,6 +129,20 @@ export const BaselineArtifactSchema = z
     cases: z.array(BaselineCaseSchema).min(1).max(MAX_BASELINE_CASES),
   })
   .strict()
+  .superRefine((baseline, context) => {
+    const servingRevision = baseline.metadata.servingRevision
+    if (servingRevision == null) return
+
+    baseline.cases.forEach((entry, index) => {
+      if (entry.serverRevision !== servingRevision) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["cases", index, "serverRevision"],
+          message: "baseline case revision must match metadata servingRevision",
+        })
+      }
+    })
+  })
 
 const ArtifactOnlyMastraEvaluationProjectionSchema = z
   .object({
@@ -541,6 +557,10 @@ export class SearchEvalArtifactError extends Error {
 export type SearchEvalArtifactStore = {
   readonly rootDir: string
   writeBaseline: (baseline: BaselineArtifact) => Promise<{ path: string }>
+  writeBaselineCapture?: (
+    baseline: BaselineArtifact,
+    report: SearchEvalReport,
+  ) => Promise<{ baselinePath: string; reportPath: string }>
   readBaseline: (name: string) => Promise<BaselineArtifact>
   writeReport: (report: SearchEvalReport) => Promise<{ path: string }>
   readReport: (reportId: string) => Promise<SearchEvalReport>
@@ -623,6 +643,55 @@ export function createSearchEvalArtifactStore(
       const filePath = baselinePath(rootDir, baseline.name)
       await writeJson(filePath, parsed.data)
       return { path: filePath }
+    },
+    async writeBaselineCapture(baseline, report) {
+      const parsedBaseline = BaselineArtifactSchema.safeParse(baseline)
+      const parsedReport = SearchEvalReportSchema.safeParse(report)
+      if (!parsedBaseline.success || !parsedReport.success) {
+        throw new SearchEvalArtifactError(
+          "invalid_artifact",
+          "search eval baseline capture failed artifact validation",
+          parsedBaseline.success ? parsedReport.error : parsedBaseline.error,
+        )
+      }
+      const baselineFilePath = baselinePath(rootDir, baseline.name)
+      const reportFilePath = reportPath(rootDir, report.reportId)
+      let previousReport: string | null = null
+      try {
+        previousReport = await readFile(reportFilePath, "utf8")
+      } catch (cause) {
+        if (!isNodeErrorCode(cause, "ENOENT")) {
+          throw new SearchEvalArtifactError(
+            "read_failed",
+            "existing search eval report could not be preserved",
+            cause,
+          )
+        }
+      }
+
+      await writeJson(reportFilePath, parsedReport.data)
+      try {
+        await writeJson(baselineFilePath, parsedBaseline.data)
+      } catch (cause) {
+        try {
+          if (previousReport == null) {
+            await rm(reportFilePath, { force: true })
+          } else {
+            await writeFile(reportFilePath, previousReport, "utf8")
+          }
+        } catch (rollbackCause) {
+          throw new SearchEvalArtifactError(
+            "write_failed",
+            "baseline capture failed and its report rollback also failed",
+            { cause, rollbackCause },
+          )
+        }
+        throw cause
+      }
+      return {
+        baselinePath: baselineFilePath,
+        reportPath: reportFilePath,
+      }
     },
     async readBaseline(name) {
       const filePath = baselinePath(rootDir, name)

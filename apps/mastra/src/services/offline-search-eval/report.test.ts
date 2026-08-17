@@ -18,6 +18,7 @@ const metadata = {
   callerTrack: "public-watch",
   promptSetVersion: "seed/v1",
   adminSearchUrl: "https://admin.internal/api/internal/search-eval/search",
+  servingRevision: null,
   judgeModel: "judge",
   search: { limit: 20, mode: null, contentType: null },
 } satisfies SearchEvalReport["metadata"]

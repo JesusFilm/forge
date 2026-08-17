@@ -348,6 +348,7 @@ function watchSearchTraceMetadata(
     hasMore: response.hasMore,
     noResult: response.results.length === 0,
     degraded: response.degraded,
+    retrievalIdentity: response.retrievalIdentity ?? null,
     latencyMs: response.latencyMs,
     nextOffset: response.nextOffset,
     language: {

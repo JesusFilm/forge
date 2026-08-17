@@ -6,16 +6,29 @@ import {
   _internal,
 } from "./absolute-search-eval"
 
+const candidateIdentity = {
+  revision: "abcdef123456",
+  collections: {
+    catalog: "watch_search_catalog_candidate",
+    availability: "watch_search_availability_candidate",
+    lexical: "watch_search_lexical_candidate",
+    transcripts: "watch_search_transcripts_active",
+  },
+} as const
+
 describe("absolute search eval workflow", () => {
   it("is registered with release-safe development defaults", () => {
     expect(absoluteSearchEvalWorkflow.id).toBe("absolute-search-eval")
-    expect(_internal.AbsoluteSearchEvalInputSchema.parse({})).toEqual({
+    expect(
+      _internal.AbsoluteSearchEvalInputSchema.parse({ candidateIdentity }),
+    ).toEqual({
       split: "development",
       backendMode: "modern",
       locales: undefined,
       searchLimit: 10,
       runPointwiseJudge: true,
       acknowledgeHeldOutReleaseGate: false,
+      candidateIdentity,
     })
   })
 
@@ -27,15 +40,7 @@ describe("absolute search eval workflow", () => {
           querySetVersion: "public-watch-absolute/v2",
           judgments: { "seed-jesus": { "core:4_jesus": 3 } },
         },
-        candidateIdentity: {
-          revision: "abcdef123456",
-          collections: {
-            catalog: "watch_search_catalog_candidate",
-            availability: "watch_search_availability_candidate",
-            lexical: "watch_search_lexical_candidate",
-            transcripts: "watch_search_transcripts_active",
-          },
-        },
+        candidateIdentity,
         operatorReview: {
           approved: true,
           reviewer: "search-owner",
@@ -64,6 +69,7 @@ describe("absolute search eval workflow", () => {
           split: "held-out",
           backendMode: "modern",
           acknowledgeHeldOutReleaseGate: true,
+          candidateIdentity,
         },
         { runner },
       ),
@@ -77,6 +83,7 @@ describe("absolute search eval workflow", () => {
         split: "held-out",
         backendMode: "modern",
         acknowledgeHeldOutReleaseGate: true,
+        candidateIdentity,
       }),
       expect.any(Object),
     )
