@@ -23,10 +23,8 @@ import {
   TEXT_SECONDARY,
 } from "../../src/lib/color"
 import { layout, text } from "../../src/styles/shared"
-import {
-  endSessionForViewerInitiatedPlayback,
-  pictureInPictureViewProps,
-} from "../../src/lib/miniPlayer/pictureInPicture"
+import { useEndSessionOnViewerInitiatedPlayback } from "../../src/hooks/useEndSessionOnViewerInitiatedPlayback"
+import { pictureInPictureViewProps } from "../../src/lib/miniPlayer/pictureInPicture"
 import { resolveImageUrl } from "../../src/lib/resolveImageUrl"
 import { validateStreamingUrl } from "../../src/lib/validateUrl"
 import { parseSectionKey } from "../../src/lib/parseSectionKey"
@@ -152,11 +150,7 @@ function CollectionPlayerContent({
     },
   )
 
-  // R10/R12: this screen originates no session (R19) but it does start a second
-  // decoder, so the floating window gives its own back first.
-  useEffect(() => {
-    if (isPlaying) endSessionForViewerInitiatedPlayback()
-  }, [isPlaying])
+  useEndSessionOnViewerInitiatedPlayback(isPlaying)
 
   const flatListRef = useRef<FlatList<CollectionItem>>(null)
 

@@ -11,6 +11,7 @@ import {
 
 import { env } from "../env"
 import { getGraphQLUrl } from "./config"
+import { IN_APP_SHEET_ROUTE_PATTERNS } from "./miniPlayer/suppression"
 
 /** Datadog service name for the mobile app (mirrors web `forge-web` / tv `forge-tv`). */
 export const DATADOG_SERVICE = "forge-mobile"
@@ -117,14 +118,11 @@ export function resolveViewName(
  * playback into many short views. Matched on the route PATTERN, so a video
  * slugged literally "language" still resolves as "watch/[slug]".
  */
-const SHEET_VIEW_PATTERNS: ReadonlySet<string> = new Set([
-  "watch/language",
-  "watch/subtitle",
-  "watch/download",
-  "series/language",
-  "series/subtitle",
-  "series/download",
-])
+const SHEET_VIEW_PATTERNS: ReadonlySet<string> = new Set(
+  // One source for the sheet-route list: RUM view naming and the mini player's
+  // R11 suppression must agree on this set, or a new sheet route drifts.
+  IN_APP_SHEET_ROUTE_PATTERNS,
+)
 
 export function isSheetViewRoute(segments: readonly string[]): boolean {
   return SHEET_VIEW_PATTERNS.has(segments.filter(Boolean).join("/"))

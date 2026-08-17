@@ -38,6 +38,7 @@ import {
   type MiniPlayerLayoutConfig,
 } from "../../lib/miniPlayer/layout"
 import type { MiniPlayerEndedCause } from "../../lib/miniPlayer/store"
+import { progressFraction } from "../../lib/scrubber"
 import { resolveImageUrl } from "../../lib/resolveImageUrl"
 
 /** Travel before a touch reads as a drag rather than a tap. */
@@ -259,10 +260,7 @@ export function MiniPlayerWindow({
     }
   }
 
-  const ratio =
-    durationSeconds > 0
-      ? Math.min(1, Math.max(0, positionSeconds / durationSeconds))
-      : 0
+  const ratio = progressFraction(positionSeconds, durationSeconds)
   const resolvedPoster = resolveImageUrl(posterUrl)
   const playPauseLabel = ended ? "Replay" : isPlaying ? "Pause" : "Play"
   const stateText = failed

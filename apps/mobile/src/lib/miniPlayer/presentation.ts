@@ -76,12 +76,7 @@ export function isTabRootRoute(segments: readonly string[]): boolean {
   return TAB_ROOT_ROUTES.has(routePattern(segments))
 }
 
-/** R19: may a session be created from this route? */
-export function canOriginateSession(segments: readonly string[]): boolean {
-  return canOriginateRoutePattern(routePattern(segments))
-}
-
-/** The same rule for a caller that already holds a pattern — a published
+/** R19: may a session be created from a route with this pattern? A published
  *  session carries `originPattern`, not the segments it was built from. */
 export function canOriginateRoutePattern(pattern: string): boolean {
   return !EXCLUDED_ORIGIN_ROUTES.has(pattern)

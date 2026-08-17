@@ -13,6 +13,10 @@ import { getMiniPlayerStore } from "../lib/miniPlayer/store"
  */
 export function useMiniPlayerHoldsVideo(): boolean {
   const store = getMiniPlayerStore()
-  const snapshot = useSyncExternalStore(store.subscribe, store.getSnapshot)
-  return miniPlayerHoldsVideo(snapshot)
+  // Derive INSIDE the selector: the raw snapshot changes identity on every 1s
+  // position tick, and this hook sits on Home's list root — comparing the
+  // primitive keeps those trees from re-rendering once per second.
+  return useSyncExternalStore(store.subscribe, () =>
+    miniPlayerHoldsVideo(store.getSnapshot()),
+  )
 }

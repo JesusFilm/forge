@@ -1,10 +1,11 @@
 import {
-  canOriginateSession,
+  canOriginateRoutePattern,
   isFullScreenRoute,
   isTabRootRoute,
   miniPlayerPresentation,
   type MiniPlayerPresentation,
 } from "../presentation"
+import { routePattern } from "../suppression"
 import { createMiniPlayerStore } from "../store"
 
 function storeWithSession() {
@@ -100,7 +101,7 @@ describe("R19 origination exclusion", () => {
     ["video", "[sectionKey]"],
     ["collection", "[sectionKey]"],
   ])("refuses a session originating on %s/%s", (...segments) => {
-    expect(canOriginateSession(segments)).toBe(false)
+    expect(canOriginateRoutePattern(routePattern(segments))).toBe(false)
   })
 
   it.each([
@@ -109,14 +110,14 @@ describe("R19 origination exclusion", () => {
     [["(tabs)"]],
     [["mission"]],
   ])("allows a session originating on %s", (segments) => {
-    expect(canOriginateSession(segments)).toBe(true)
+    expect(canOriginateRoutePattern(routePattern(segments))).toBe(true)
   })
 
   it("presents none on an excluded route when admission published nothing", () => {
     const store = createMiniPlayerStore()
     const segments = ["experience", "[slug]"]
     // What the excluded route produces: no session, so nothing to present.
-    expect(canOriginateSession(segments)).toBe(false)
+    expect(canOriginateRoutePattern(routePattern(segments))).toBe(false)
     expect(miniPlayerPresentation(store.getSnapshot(), segments)).toBe("none")
   })
 

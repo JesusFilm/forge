@@ -25,10 +25,8 @@ import {
   TEXT_ON_OVERLAY,
 } from "../../src/lib/color"
 import { layout, text, overlay, button } from "../../src/styles/shared"
-import {
-  endSessionForViewerInitiatedPlayback,
-  pictureInPictureViewProps,
-} from "../../src/lib/miniPlayer/pictureInPicture"
+import { useEndSessionOnViewerInitiatedPlayback } from "../../src/hooks/useEndSessionOnViewerInitiatedPlayback"
+import { pictureInPictureViewProps } from "../../src/lib/miniPlayer/pictureInPicture"
 import { resolveImageUrl } from "../../src/lib/resolveImageUrl"
 import { validateStreamingUrl } from "../../src/lib/validateUrl"
 import { useTypography } from "../../src/hooks/useTypography"
@@ -139,11 +137,7 @@ function VideoDetailContent({
     }
   }, [isPlaying, hasStarted])
 
-  // R10/R12: this screen originates no session (R19) but it does start a second
-  // decoder, so the floating window gives its own back first.
-  useEffect(() => {
-    if (isPlaying) endSessionForViewerInitiatedPlayback()
-  }, [isPlaying])
+  useEndSessionOnViewerInitiatedPlayback(isPlaying)
 
   const handlePlay = useCallback(() => {
     player.play()

@@ -564,6 +564,10 @@ function ActivePlaybackHost({
   // video opens no window — and kept armed through the hold, because expo-video
   // re-elects on every params change and only the elected view is re-parented.
   const automaticPip = isPlaying || pipHeld
+  const pipViewProps = useMemo(
+    () => pictureInPictureViewProps({ automatic: automaticPip }),
+    [automaticPip],
+  )
 
   // Detached with no session: the surface that was drawing this video is gone
   // and no window is owed. The player keeps running with no view, which is
@@ -618,7 +622,7 @@ function ActivePlaybackHost({
                 // control we do not own, inside chrome we do.
                 allowsVideoFrameAnalysis={false}
                 contentFit="contain"
-                {...pictureInPictureViewProps({ automatic: automaticPip })}
+                {...pipViewProps}
                 // textureView composites in the RN view hierarchy on Android so
                 // the controls/captions overlay reliably renders above the video
                 // surface (SurfaceView otherwise punches through). No-op on iOS.

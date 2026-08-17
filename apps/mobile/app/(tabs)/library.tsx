@@ -37,7 +37,7 @@ import {
   formatLibraryBytes,
   storageSummary,
 } from "../../src/lib/libraryDownloads"
-import { getNonRouteSheetCounter } from "../../src/lib/miniPlayer/suppression"
+import { useNonRouteSheetSuppression } from "../../src/hooks/useNonRouteSheetSuppression"
 import {
   INITIAL_SELECTION_STATE,
   deselectAll,
@@ -149,15 +149,7 @@ export default function LibraryScreen() {
     if (!selecting) setConfirmVisible(false)
   }, [selecting])
 
-  // R11: this sheet is component state rather than a route, so the floating
-  // window cannot see it without being told. The cleanup releases it, which
-  // also covers leaving the tab with the sheet open.
-  useEffect(() => {
-    if (!confirmVisible) return
-    const counter = getNonRouteSheetCounter()
-    counter.open("libraryDeleteConfirm")
-    return () => counter.close("libraryDeleteConfirm")
-  }, [confirmVisible])
+  useNonRouteSheetSuppression(confirmVisible, "libraryDeleteConfirm")
 
   // Android back: close the confirm sheet first, else exit selection, before
   // falling through to default navigation. Registered only while selecting,
