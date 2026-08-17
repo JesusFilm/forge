@@ -620,18 +620,21 @@ describe("TypesenseWatchSearchService", () => {
   beforeEach(() => vi.clearAllMocks())
 
   it("uses one exact candidate binding for every retrieval lane", async () => {
-    const profile = createCandidateWatchSearchProfile({
-      generationId: "generation-1",
-      applicationRevision: "revision-1",
-      transcriptProjectionRevision: 7n,
-      fieldManifests: candidateFieldManifests,
-      collections: {
-        catalog: "watch_search_candidate_generation-1_catalog",
-        availability: "watch_search_candidate_generation-1_availability",
-        lexical: "watch_search_candidate_generation-1_lexical",
-        transcript: "watch_search_transcripts_20260809",
+    const profile = createCandidateWatchSearchProfile(
+      {
+        generationId: "generation-1",
+        applicationRevision: "revision-1",
+        transcriptProjectionRevision: 7n,
+        fieldManifests: candidateFieldManifests,
+        collections: {
+          catalog: "watch_search_candidate_generation-1_catalog",
+          availability: "watch_search_candidate_generation-1_availability",
+          lexical: "watch_search_candidate_generation-1_lexical",
+          transcript: "watch_search_transcripts_20260809",
+        },
       },
-    })
+      "none:operator-accepted:launch-1",
+    )
     const typesense = typesenseFixture({
       lexical: [catalogDocument],
       binding: profile.binding,
@@ -691,6 +694,14 @@ describe("TypesenseWatchSearchService", () => {
     ])
     expect(response.results[0]?.id).toBe(catalogDocument.id)
     expect(response).not.toHaveProperty("diagnostics")
+    expect(response.retrievalIdentity).toEqual({
+      profile: "CANDIDATE",
+      generationId: "generation-1",
+      applicationRevision: "revision-1",
+      rankingRevision: "title-and-brand-v1",
+      transcriptProjectionRevision: "7",
+      evaluationRevision: "none:operator-accepted:launch-1",
+    })
     expect(diagnostics).toMatchObject({
       profile: "CANDIDATE",
       generationId: "generation-1",
@@ -1261,6 +1272,14 @@ describe("TypesenseWatchSearchService", () => {
     })
 
     expect(response).not.toHaveProperty("diagnostics")
+    expect(response.retrievalIdentity).toEqual({
+      profile: "CURRENT",
+      generationId: null,
+      applicationRevision: null,
+      rankingRevision: "legacy-rrf",
+      transcriptProjectionRevision: null,
+      evaluationRevision: null,
+    })
     expect(diagnostics).toMatchObject({
       profile: "CURRENT",
       generationId: null,

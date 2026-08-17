@@ -581,9 +581,10 @@ nothing. When the RAG env vars are unset (or the service is unreachable), the
 tool returns an explicit `unavailable` status and the agent says it cannot
 ground an answer; retrieval is never required for the app to boot. Since
 feat-272 the system prompt is **Langfuse-managed** (prompt `seeker-system`,
-whole prompt — no composition split) with the full working text kept as the
-compiled-in fallback, served byte-identically when Langfuse is unconfigured
-or unreachable — see "Langfuse prompt management" below. Model is an
+whole prompt — no composition split) with a full reviewed outage prompt kept
+as the compiled-in fallback when Langfuse is unconfigured or unreachable. The
+managed production pin and fallback carry independent hashes; promotion does
+not copy managed prompt text into Git. See "Langfuse prompt management" below. Model is an
 env-gated fallback chain built by `buildSeekerModelList()` (feat-237). Default:
 the two free Gemma 4 OpenRouter models —
 `openrouter/google/gemma-4-31b-it:free` (primary, 1 retry) then
@@ -1508,11 +1509,12 @@ and there is **no technical control over who may move it**: protected labels
 are a Team/Enterprise feature this organisation is not on, and they work by
 blocking `viewer`/`member` while permitting `admin`/`owner`, so they would be
 inert here regardless (feat-296). **Whole-prompt decision (owner,
-2026-07-29, feat-272 item 2 — supersedes the composition split this paragraph
+2026-07-29, amended 2026-08-17 — supersedes the composition split this paragraph
 previously prescribed):** the ENTIRE seeker instruction set — SAFETY line and
 `retrieveAnswer`-coupled citation wording included — is Langfuse-managed as
-one prompt; nothing is code-owned beyond the byte-identical fallback
-constant, so a label move can change every line. What bounds it: the small
+one prompt; the compiled fallback is a separate full reviewed outage prompt,
+not a runtime-composed prompt portion and not automatically synchronized by a
+managed promotion. What bounds managed changes: the small
 all-developer roster (a snapshot) and the PR-reviewed fallback as known-good
 rollback text. NO control DETECTS a label move to valid-but-wrong text — it
 resolves as a healthy fresh `source: "langfuse"` serve, invisible to
@@ -1576,27 +1578,24 @@ the full working prompt served byte-identically whenever exact resolution is
 unavailable or mismatched, stamped as degraded fallback with one critical
 alert per resolver. The WHOLE
 prompt is Langfuse-managed (no composition split — see the whole-prompt
-decision above), so editing the fallback, `retrieve-answer.ts`'s status
-literals, or its message constants requires updating the `seeker-system`
-prompt in the Langfuse UI (every label) in the same change — the pinning
-test in `seeker-agent.test.ts` makes that loud. Since feat-330 that managed
-text also carries the `VIDEO FEATURING` section (see "Video featuring"
-above), so the same coupling now governs the video guidance: the seeker's
-video behavior is a Langfuse edit away in either direction, with no PR.
-**Seeding (operator, Langfuse
-UI):** the `seeker-system` prompt must be created manually — version 1 body
-byte-identical to `SEEKER_SYSTEM_PROMPT_FALLBACK`, labels `production` AND
-`development`, and it must never carry secrets (the resolved prompt is
-served verbatim over `/api/agents*` — see Containment); until then every
-environment serves the byte-identical
-fallback (`reason=rejected`/404, one log line per cooldown window).
-**A coupled prompt+code change lands Langfuse-first (feat-330).** Edit the
-`seeker-system` prompt on EVERY label, then merge and deploy the code side.
-Merge-first is never acceptable: it leaves the flag-on agent serving live
-tools with no guidance behind them. The reverse order does leave a brief
-window in which the old deployed code still appends its superseded interim
-block after the new managed text — a contradictory overlap, not a benign
-duplicate — and that is a knowingly accepted cost at dogfood scale.
+decision above). The managed prompt and compiled outage fallback are reviewed
+and pinned independently: a managed-prompt promotion does not rewrite the
+fallback, and a fallback-only safety fix does not require copying its bytes to
+Langfuse. Changes to either prompt must still preserve the agent's live tool
+contract, including `retrieve-answer.ts` status literals, message constants,
+the `VIDEO FEATURING` section, citation behavior, and the final SAFETY line.
+Tests pin the fallback's own reviewed hash and separately prove that managed
+prompt resolution enforces the repository-pinned version and content hash.
+**Historical seeding note (operator, Langfuse UI):** `seeker-system` version 1
+was initially created byte-identical to `SEEKER_SYSTEM_PROMPT_FALLBACK` with
+`production` and `development` labels. Later managed versions may intentionally
+diverge after experiment review and promotion. Managed prompt text must never
+carry secrets because it is served verbatim over `/api/agents*` (see
+Containment). Until a pinned managed version exists, each environment serves
+the byte-identical fallback (`reason=rejected`/404, one log line per cooldown
+window). Promote managed changes through the experiment workflow, then deploy
+the reviewed exact version/hash pin; align the alert-only `production` label
+after deployment.
 **Retraction semantics (decided at wiring, feat-272):** deleting the prompt,
 removing its label, or revoking the key does NOT retract text already cached
 in a running process (serve-stale is the outage protection). Per-trigger:

@@ -10,11 +10,12 @@ const mockUnlockAsync = jest.fn<Promise<void>, []>()
 
 const PORTRAIT_UP = 3
 const LANDSCAPE = 5
+const LANDSCAPE_RIGHT = 7
 
 jest.mock("expo-screen-orientation", () => ({
   lockAsync: (lock: number) => mockLockAsync(lock),
   unlockAsync: () => mockUnlockAsync(),
-  OrientationLock: { PORTRAIT_UP: 3, LANDSCAPE: 5 },
+  OrientationLock: { PORTRAIT_UP: 3, LANDSCAPE: 5, LANDSCAPE_RIGHT: 7 },
 }))
 
 beforeEach(() => {
@@ -28,11 +29,16 @@ describe("orientation helper", () => {
     expect(mockLockAsync).toHaveBeenCalledWith(PORTRAIT_UP)
   })
 
-  it("enterFullscreenLandscape locks LANDSCAPE and does NOT unlock", async () => {
+  it("enterFullscreenLandscape forces the single LANDSCAPE_RIGHT orientation", async () => {
+    // A multi-orientation mask (LANDSCAPE) only PERMITS landscape: on iOS 16+
+    // hardware the geometry request defers to the physical sensor and the UI
+    // stays portrait until the user tilts. Only a single-orientation mask
+    // rotates immediately (the simulator rotates for both, hiding this).
+    await enterFullscreenLandscape()
+    expect(mockLockAsync).toHaveBeenCalledWith(LANDSCAPE_RIGHT)
+    expect(mockLockAsync).not.toHaveBeenCalledWith(LANDSCAPE)
     // Unlock would immediately follow the device back to portrait on iOS, so
     // the lock must stand on its own.
-    await enterFullscreenLandscape()
-    expect(mockLockAsync).toHaveBeenCalledWith(LANDSCAPE)
     expect(mockUnlockAsync).not.toHaveBeenCalled()
   })
 

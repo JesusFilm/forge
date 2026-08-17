@@ -36,6 +36,7 @@ function baseline(): BaselineArtifact {
       callerTrack: "public-watch",
       promptSetVersion: "seed/v1",
       adminSearchUrl: "https://admin.internal/api/internal/search-eval/search",
+      servingRevision: null,
       judgeModel: null,
       search: { limit: 20, mode: null, contentType: null },
     },
@@ -85,6 +86,19 @@ describe("search eval artifact store", () => {
     await expect(store.writeReport(report())).resolves.toMatchObject({
       path: expect.stringContaining(join("reports", "run-1.json")),
     })
+    await expect(store.readReport("run-1")).resolves.toEqual(report())
+  })
+
+  it("publishes a baseline and its report through one capture operation", async () => {
+    const store = createSearchEvalArtifactStore(rootDir)
+
+    await expect(
+      store.writeBaselineCapture?.(baseline(), report()),
+    ).resolves.toEqual({
+      baselinePath: expect.stringContaining(join("baselines", "default.json")),
+      reportPath: expect.stringContaining(join("reports", "run-1.json")),
+    })
+    await expect(store.readBaseline("default")).resolves.toEqual(baseline())
     await expect(store.readReport("run-1")).resolves.toEqual(report())
   })
 
@@ -165,6 +179,39 @@ describe("search eval artifact store", () => {
     const store = createSearchEvalArtifactStore(rootDir)
 
     await expect(store.readBaseline("default")).rejects.toMatchObject({
+      code: "invalid_artifact",
+    })
+  })
+
+  it("reads legacy baselines without a Serving revision as null", async () => {
+    const { writeFile, mkdir } = await import("node:fs/promises")
+    const legacy = baseline()
+    const legacyMetadata: Record<string, unknown> = { ...legacy.metadata }
+    delete legacyMetadata.servingRevision
+    await mkdir(join(rootDir, "baselines"), { recursive: true })
+    await writeFile(
+      join(rootDir, "baselines", "default.json"),
+      JSON.stringify({ ...legacy, metadata: legacyMetadata }),
+      "utf8",
+    )
+
+    await expect(
+      createSearchEvalArtifactStore(rootDir).readBaseline("default"),
+    ).resolves.toMatchObject({
+      metadata: { servingRevision: null },
+    })
+  })
+
+  it("rejects a Serving baseline whose case revision does not match metadata", async () => {
+    const store = createSearchEvalArtifactStore(rootDir)
+    const mismatched = baseline()
+    mismatched.metadata.servingRevision = "serving-a"
+    mismatched.cases[0] = {
+      ...mismatched.cases[0]!,
+      serverRevision: "serving-b",
+    }
+
+    await expect(store.writeBaseline(mismatched)).rejects.toMatchObject({
       code: "invalid_artifact",
     })
   })

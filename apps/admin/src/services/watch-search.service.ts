@@ -189,6 +189,15 @@ export type WatchSearchLaneStatus = {
   detail: WatchSearchLaneDetail | null
 }
 
+export type WatchSearchRetrievalIdentity = {
+  profile: "CURRENT" | "CANDIDATE"
+  generationId: string | null
+  applicationRevision: string | null
+  rankingRevision: string
+  transcriptProjectionRevision: string | null
+  evaluationRevision: string | null
+}
+
 export type WatchSearchResponse = {
   query: string
   results: WatchSearchResult[]
@@ -200,6 +209,8 @@ export type WatchSearchResponse = {
   latencyMs: number
   laneStatuses: WatchSearchLaneStatus[]
   languageInterpretation: WatchSearchLanguageInterpretation
+  /** Server-only Typesense identity. GraphQL intentionally does not expose it. */
+  retrievalIdentity?: WatchSearchRetrievalIdentity
 }
 
 export class WatchSearchValidationError extends Error {

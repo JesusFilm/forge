@@ -109,6 +109,13 @@ export type WatchVideoRecord = {
   duration: number | null
   primaryLanguageBcp47: string | null
   siblings: WatchSibling[]
+  /**
+   * The parent's child immediately AFTER this video, or null (last episode,
+   * standalone film, self not among the parent's children). Computed here
+   * because `siblings` EXCLUDES self, so consumers cannot derive position
+   * from it — this is the Up Next autoplay target.
+   */
+  upNext: WatchSibling | null
   // This video's OWN children. A feature film's chapter clips — distinct from
   // `siblings`, which is the PARENT's other children.
   chapters: WatchEpisode[]
@@ -241,6 +248,46 @@ function dedupeByDocumentId<T extends { documentId: string | null }>(
   })
 }
 
+/** Structural subset of a raw sibling child — what the Up Next pick needs. */
+type RawUpNextChild = {
+  documentId?: string | null
+  slug?: string | null
+  label?: string | null
+  locales?: Parameters<typeof pickFirstLocale>[0]
+  images?: Parameters<typeof pickPosterUrl>[0]
+  muxPlaybackId?: string | null
+}
+
+/**
+ * The child immediately AFTER self in the parent's ordered children — the Up
+ * Next autoplay target. Exported for tests. Null when self is last, absent
+ * from the list (a standalone film), or no later child is routable (a card
+ * needs a documentId AND a slug). Skips broken entries rather than stopping
+ * at them, so one malformed row cannot kill autoplay for the whole series.
+ */
+export function pickUpNextSibling(
+  children: readonly (RawUpNextChild | null | undefined)[],
+  selfId: string | null | undefined,
+): WatchSibling | null {
+  if (!selfId) return null
+  const selfIndex = children.findIndex((child) => child?.documentId === selfId)
+  if (selfIndex < 0) return null
+  for (let i = selfIndex + 1; i < children.length; i++) {
+    const child = children[i]
+    if (child?.documentId == null || child.documentId === selfId) continue
+    if (!child.slug) continue
+    return {
+      documentId: child.documentId,
+      slug: child.slug,
+      label: child.label ?? null,
+      title: pickFirstLocale(child.locales).title,
+      posterUrl: pickPosterUrl(child.images),
+      muxPlaybackId: child.muxPlaybackId ?? null,
+    }
+  }
+  return null
+}
+
 // ── Per-dub media (lazy path) ──────────────────────────────────────
 
 type RawDub = NonNullable<WatchDubData["videoDub"]>
@@ -329,7 +376,7 @@ function buildWatchVideoRecord(raw: NormalizableVideo): WatchVideoRecord {
   // Siblings: parents[0].parent.children minus self. KTD5: the inverted admin
   // relation returns only self-references today (EMPTY list on main); self-filter
   // + dedupe make the rail correct the moment it's fixed, no further change here.
-  const selfId = raw.documentId
+  const selfId: string | null | undefined = raw.documentId
   const rawSiblings =
     raw.parents?.[0]?.parent?.children
       ?.map((rel) => rel.child)
@@ -346,6 +393,14 @@ function buildWatchVideoRecord(raw: NormalizableVideo): WatchVideoRecord {
         muxPlaybackId: child.muxPlaybackId ?? null,
       })) ?? []
   const siblings = dedupeByDocumentId(rawSiblings)
+
+  // Up Next: the child AFTER self in the parent's ORDERED children. Read from
+  // the raw list (which still contains self) — the filtered `siblings` above
+  // has lost self's position, so "next" is underivable from it.
+  const upNext = pickUpNextSibling(
+    (raw.parents?.[0]?.parent?.children ?? []).map((rel) => rel.child),
+    selfId,
+  )
 
   const studyQuestions: WatchStudyQuestion[] = (raw.studyQuestions ?? [])
     .filter((q) => q.value != null && q.value !== "")
@@ -391,6 +446,7 @@ function buildWatchVideoRecord(raw: NormalizableVideo): WatchVideoRecord {
     duration: firstPlayable?.duration ?? null,
     primaryLanguageBcp47: raw.primaryLanguage?.bcp47 ?? null,
     siblings,
+    upNext,
     chapters: buildChildren(raw),
     variants,
     studyQuestions,

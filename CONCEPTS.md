@@ -181,6 +181,18 @@ The application-side ranking identity included in Candidate qualification
 evidence. It changes when Candidate ordering behavior changes, invalidating old
 qualification without rebuilding compatible Typesense collections.
 
+### Watch Search Candidate Qualification
+
+An immutable authorization record binding one Watch Search Candidate Generation
+and its serving revisions to the evidence reviewed for production use.
+
+An automatic Pass means the release gates succeeded. Operator Accepted means a
+reviewer knowingly accepted recorded failed or unrun gates; it authorizes the
+measured exception without relabeling those gates as successful. Promotion to
+the Serving pointer must match the qualification's exact identity and audit
+evidence. Runtime resolution then revalidates an authorizing status and the
+serving identity.
+
 ### Watch Search Candidate Pointer
 
 A versioned control-plane reference that selects one Watch Search Candidate
@@ -993,7 +1005,9 @@ The external `jesusfilm-rag` retrieval service — a standalone system serving b
 
 ### Managed Prompt
 
-A system prompt whose tunable text lives in Langfuse — versioned, label-addressed, access-controlled — rather than in this public repo, retrieved at runtime by the Mastra helper `getManagedPrompt`. Retrieval is label-following (explicit label, else an env-configured default, else `production` — never implicit latest), cached with a TTL and failure cooldown, and always resolved against a caller-supplied fallback: every failure mode serves the compiled-in fallback with provenance saying which was served, so prompt retrieval can never break boot or a chat turn. Retrieval-only by design — authoring, versioning, and label moves stay in the Langfuse UI. Every agent's prompt lives in one Langfuse project, with labels marking which version each environment runs, so promoting a tuned prompt is a label move rather than a copy between projects. The seeker agent is the first consumer (feat-272): its whole system prompt — safety and citation wording included, no composition split — is the managed prompt `seeker-system`, with the full working text compiled in as the fallback. Confidentiality of the tuned text extends only to the Mastra network boundary: the runtime's built-in `/api/agents*` surface returns resolved instructions verbatim, so the managed prompt is kept out of the public repo but must never carry secrets.
+A system prompt whose tunable text lives in Langfuse — versioned, label-addressed, access-controlled — rather than in this public repo, retrieved at runtime by the Mastra prompt helper. Callers may follow a label for candidate intake or pin an immutable version and content hash for production traffic. Runtime retrieval failures and an unconfigured integration degrade to a caller-supplied fallback, so they do not break boot or a chat turn; invalid production URL or allowlist configuration remains intentionally fail-closed at boot. Retrieval-only by design — authoring, versioning, and label moves stay in the Langfuse UI.
+
+The Seeker uses an exact version-and-hash pin for its whole managed system prompt; its `production` label is an alert-only marker rather than a traffic selector. Its compiled outage fallback is reviewed and pinned independently, so managed promotion does not synchronize fallback bytes, but both prompts must preserve the same live tool and safety contract. Managed prompt text must never contain secrets because runtime agent surfaces can return resolved instructions verbatim.
 
 During failure windows the last successfully fetched prompt keeps serving (serve-stale) in preference to the fallback — so deleting a prompt or revoking a key does not retract text already cached in a running process. Retraction is a label move (effective within one cache TTL, and only while the prompt still exists and the credential is trusted) or a restart with the configuration removed — the only path that works after a deletion, a revocation, or against a hostile key; the fallback serves only when no managed text was ever cached.
 

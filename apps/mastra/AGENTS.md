@@ -53,8 +53,11 @@ Full context lives in `apps/mastra/CLAUDE.md`. Keep both files aligned.
   seeker agent resolves `seeker-system` by the exact repository-pinned version
   and content hash in `seeker-production-config.ts` (WHOLE prompt — no
   composition split), with the full working text as compiled-in degraded
-  fallback. The `production` label is an alert-only deployment marker, not a
-  production traffic selector; label defaults remain for candidate intake.
+  fallback. Managed prompt versions and the reviewed outage fallback are pinned
+  independently; promotion of one does not synchronize the other's bytes. Both
+  must preserve the same live tool and safety contract. The `production` label
+  is an alert-only deployment marker, not a production traffic selector; label
+  defaults remain for candidate intake.
   Langfuse tracing shipped separately (feat-321): opt-in, default-off behind
   `LANGFUSE_TRACING_ENABLED` plus the credential trio, routing seeker turns
   by a per-process marker to a dedicated observability config that exports

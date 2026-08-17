@@ -20,7 +20,10 @@ export function useFullscreenPresentation() {
   useEffect(() => {
     navigation.setOptions({
       gestureEnabled: !isFullscreen,
-      orientation: isFullscreen ? "landscape" : "portrait",
+      // MUST name the same single orientation as enterFullscreenLandscape's
+      // LANDSCAPE_RIGHT lock: when the two layers disagree, each geometry
+      // request falls outside the other's mask and iOS rejects the rotation.
+      orientation: isFullscreen ? "landscape_right" : "portrait",
     })
     if (isFullscreen) void enterFullscreenLandscape()
     else void exitToPortrait()

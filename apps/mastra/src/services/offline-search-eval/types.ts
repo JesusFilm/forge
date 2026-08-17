@@ -179,6 +179,8 @@ export type BaselineCase = {
   callerTrack: SearchEvalCallerTrack
   tags: string[]
   operatorNotes?: string
+  /** Exact Serving generation revision returned for this seed search. */
+  serverRevision?: string
   results: SearchEvalResult[]
   searchFailure?: SearchFailure
 }
@@ -206,6 +208,8 @@ export type SearchEvalMetadata = {
   callerTrack: SearchEvalCallerTrack
   promptSetVersion: string
   adminSearchUrl: string | null
+  /** Null only for legacy artifacts captured before Serving-bound baselines. */
+  servingRevision: string | null
   judgeModel: string | null
   search: {
     limit: number

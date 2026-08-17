@@ -94,6 +94,9 @@ describe("POST /api/internal/search-eval/candidate-search", () => {
         resultTypes: ["video"],
       }),
     )
+    expect(
+      createTypesenseWatchSearchCandidateEvaluationService,
+    ).toHaveBeenCalledWith("EVALUATION")
     await expect(response.json()).resolves.toEqual({
       results: [
         expect.objectContaining({

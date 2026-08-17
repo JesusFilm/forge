@@ -11,6 +11,13 @@ describe("seeker production identity", () => {
     const identity = buildSeekerProductionIdentity({ gatewayEnabled: false })
 
     expect(identity.prompt).toEqual(SEEKER_PRODUCTION_PROMPT)
+    expect(identity.prompt).toEqual({
+      provider: "langfuse",
+      name: "seeker-system",
+      revision: "3",
+      contentHash:
+        "fb79743a2a6068cb2ec030694ec73f025a6a74ae617ef5e0bdd8ddc2e81099d2",
+    })
     expect(identity.models.routes.map((route) => route.model)).toEqual([
       "google/gemma-4-31b-it:free",
       "google/gemma-4-26b-a4b-it:free",

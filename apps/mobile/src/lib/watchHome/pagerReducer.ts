@@ -79,6 +79,8 @@ export type PagerEvent =
   | { type: "STREAM_READY" }
   | { type: "SWAP_STARTED" }
   | { type: "SWAP_FINISHED" }
+  /** A marked swap already settled for the desired source; no re-issue owed. */
+  | { type: "PENDING_SWAP_SATISFIED" }
   | { type: "PLAY_STARTED" }
   | { type: "PLAY_TO_END" }
   | { type: "IMAGE_TIMER_ELAPSED" }
@@ -260,6 +262,12 @@ export function pagerReducer(state: PagerState, event: PagerEvent): PagerState {
 
     case "SWAP_FINISHED":
       return state.swapInFlight ? { ...state, swapInFlight: false } : state
+
+    case "PENDING_SWAP_SATISFIED":
+      // The component starts playback directly for a settled matching source;
+      // clearing the marker stops RESUME re-issuing it (expo-video 57 would
+      // reload the item at zero).
+      return state.pendingSwap ? { ...state, pendingSwap: false } : state
 
     case "PLAY_STARTED":
       // During a hold the playing edge belongs to the OUTGOING stream (the

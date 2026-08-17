@@ -26,7 +26,9 @@ The template is illustrative input, not experiment evidence or a baseline.
 - Confirm the candidate's exact prompt revision and SHA-256 content hash.
   Labels may discover candidates but are never durable experiment identity.
 - Copy `productionBenchmark.identity` exactly from the referenced canonical
-  benchmark. Never relabel the legacy fallback baseline as managed evidence.
+  managed benchmark's `resolved-identity.json`. The coordinator loads this
+  strict identity file; run artifacts such as `answers.json` are evidence, not
+  manifest identity input.
 
 ## Create and preflight
 
@@ -37,12 +39,11 @@ Complete the owner, hypothesis, criterion, one comparison axis, benchmark, and
 candidates before spending. Prompt experiments may change only prompt revision
 and hash; model experiments may change only the ordered model route identity.
 
-For the one-time migration away from the legacy fallback benchmark, set
-`productionBenchmark.captureExactManaged` to `true`. The coordinator then
-exact-resolves and freshly executes that managed baseline before any candidate,
-stores both sides in the immutable attempt, and never treats the legacy
-fallback artifact as managed evidence. Remove this flag once promotion has
-materialized the first managed canonical benchmark.
+The one-time migration away from the legacy fallback benchmark completed with
+feat-340. New experiments must not set
+`productionBenchmark.captureExactManaged`; copy the exact managed identity from
+the canonical benchmark instead. Historical sealed experiments retain the flag
+as immutable evidence of the migration run.
 
 Run an official immutable attempt from the repository root:
 

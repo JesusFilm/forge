@@ -653,10 +653,84 @@ promote. For example, the shape is:
 
 This example intentionally cannot qualify and is not production evidence.
 
+After the named reviewer approves the complete `QUALIFIED` report, compute its
+SHA-256 digest from the exact file bytes. Record the report and pin Serving as
+two separate operator actions; neither command accepts a failing report,
+changed Current alias binding, stale Candidate identity, missing evidence,
+changed attribution, or a digest mismatch. Recording never moves Serving.
+
+```bash
+REPORT=/secure-evidence/watch-search-candidate-paired.json
+REPORT_SHA256="sha256:$(sha256sum "$REPORT" | cut -d ' ' -f 1)"
+
+pnpm --filter @forge/admin qualify:typesense-watch-search-candidate -- \
+  --report="$REPORT" \
+  --reviewer="reviewer@example.org" \
+  --operator="operator@example.org" \
+  --sha256="$REPORT_SHA256"
+```
+
+Read the current `SERVING` pointer version independently, then use that exact
+version for the compare-and-set pin. Reuse the same report file, identities,
+and digest; the command reads and hashes the file again before pinning.
+
+```bash
+pnpm --filter @forge/admin pin:typesense-watch-search-candidate -- \
+  --report="$REPORT" \
+  --reviewer="reviewer@example.org" \
+  --operator="operator@example.org" \
+  --sha256="$REPORT_SHA256" \
+  --expected-pointer-version=0
+```
+
+Both commands emit a small JSON audit result rather than the report contents.
+The pin command independently reads back the `SERVING` pointer and fails if it
+does not match the exact Candidate generation and resulting pointer version.
+Do not copy the example identities or pointer version into a real run.
+
+When the automatic gates did not pass but an authorized reviewer explicitly
+accepts the observed Candidate, do not edit the report to say `QUALIFIED`.
+Create one self-contained
+`watch-search-candidate-operator-acceptance/v1` JSON bundle instead. It must
+contain the exact Candidate and Current identity, an evaluation revision of
+`none:operator-accepted:<decisionId>`, actual relevance and latency
+measurements, every waived gate and its reason, known limitations, acceptance
+rationale, raw Mastra outputs, the dated user acceptance and reviewer identity,
+and a merged GitHub PR/commit trail. The PR URL and number must agree and the
+commit list must contain the merge commit. The complete bundle is limited to
+8 MiB.
+
+Operator acceptance uses `TYPESENSE_OPERATOR_API_KEY` as the authenticated
+production-operator boundary. The CLI stores only a stable SHA-256 fingerprint
+of that credential; it never emits or stores the key. Reviewer identity comes
+from the dated acceptance in the bundle. Supplying `--reviewer` or `--operator`
+for this flow fails closed.
+
+```bash
+BUNDLE=/secure-evidence/watch-search-candidate-operator-acceptance.json
+BUNDLE_SHA256="sha256:$(sha256sum "$BUNDLE" | cut -d ' ' -f 1)"
+BUNDLE_BYTES="$(wc -c < "$BUNDLE" | tr -d ' ')"
+
+pnpm --filter @forge/admin qualify:typesense-watch-search-candidate -- \
+  --report="$BUNDLE" \
+  --sha256="$BUNDLE_SHA256" \
+  --byte-length="$BUNDLE_BYTES"
+
+pnpm --filter @forge/admin pin:typesense-watch-search-candidate -- \
+  --report="$BUNDLE" \
+  --sha256="$BUNDLE_SHA256" \
+  --byte-length="$BUNDLE_BYTES" \
+  --expected-pointer-version=0
+```
+
+Both actions read the exact bytes again and verify their SHA-256 and byte
+length. The stored record and operator output remain
+`OPERATOR_ACCEPTED`; they never claim the automatic gates passed.
+
 ### Promote and roll back
 
-After an exact `PASSED` qualification record has been reviewed and stored,
-promote by setting
+After an exact `PASSED` or `OPERATOR_ACCEPTED` qualification record has been
+reviewed, stored, and CAS-pinned to `SERVING`, promote by setting
 `WATCH_SEARCH_TYPESENSE_PROFILE=CANDIDATE:<qualified-generation-id>` on
 `@forge/admin`. A missing, stale, incompatible, unqualified, or
 transcript-drifted pin fails closed. Publishing a newer candidate does not move

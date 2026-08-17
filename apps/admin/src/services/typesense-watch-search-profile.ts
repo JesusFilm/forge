@@ -31,6 +31,7 @@ export type TypesenseWatchSearchProfile = Readonly<{
   generationId: string | null
   applicationRevision: string | null
   transcriptProjectionRevision: bigint | null
+  qrelsRevision?: string | null
   fieldManifests: TypesenseWatchSearchFieldManifests | null
   allowCompatibilityFallback: boolean
 }>
@@ -116,6 +117,7 @@ export function createCurrentWatchSearchProfile(): TypesenseWatchSearchProfile {
     generationId: null,
     applicationRevision: null,
     transcriptProjectionRevision: null,
+    qrelsRevision: null,
     fieldManifests: null,
     allowCompatibilityFallback: true,
   })
@@ -123,6 +125,7 @@ export function createCurrentWatchSearchProfile(): TypesenseWatchSearchProfile {
 
 export function createCandidateWatchSearchProfile(
   generation: ResolvedCandidateWatchSearchGeneration,
+  qrelsRevision: string | null = null,
 ): TypesenseWatchSearchProfile {
   const generationId = required(generation.generationId, "generation id")
   const applicationRevision = required(
@@ -176,6 +179,7 @@ export function createCandidateWatchSearchProfile(
     generationId,
     applicationRevision,
     transcriptProjectionRevision: generation.transcriptProjectionRevision,
+    qrelsRevision,
     fieldManifests: generation.fieldManifests,
     allowCompatibilityFallback: false,
   })
@@ -202,7 +206,10 @@ export async function resolveCandidateWatchSearchProfile(input: {
     qrelsRevision: input.qrelsRevision,
     rankingRevision: input.rankingRevision,
   })
-  return createCandidateWatchSearchProfile(generation)
+  return createCandidateWatchSearchProfile(
+    generation,
+    input.qrelsRevision?.trim() || null,
+  )
 }
 
 export async function freezeCurrentWatchSearchProfile(
@@ -228,6 +235,7 @@ export async function freezeCurrentWatchSearchProfile(
     generationId: null,
     applicationRevision: null,
     transcriptProjectionRevision: null,
+    qrelsRevision: null,
     fieldManifests: null,
     allowCompatibilityFallback: false,
   })

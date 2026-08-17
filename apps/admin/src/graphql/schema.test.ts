@@ -240,6 +240,9 @@ describe("GraphQL schema — Unit 4 content types", () => {
         "languageInterpretation",
       ]),
     )
+    expect(Object.keys(fieldsOf("WatchSearchResponse"))).not.toContain(
+      "retrievalIdentity",
+    )
 
     expect(Object.keys(fieldsOf("WatchSearchLaneStatus"))).toEqual(
       expect.arrayContaining([

@@ -3,6 +3,8 @@ import {
   buildShareUrl,
   formatBadgeLabel,
   formatDuration,
+  formatResumeLabel,
+  shouldOfferResumeChoice,
   shouldShowUpNextRail,
 } from "./detailsHelpers"
 
@@ -124,5 +126,40 @@ describe("buildShareUrl", () => {
   it("returns null when there is no slug", () => {
     expect(buildShareUrl(null, "spanish")).toBeNull()
     expect(buildShareUrl({ slug: "" }, "spanish")).toBeNull()
+  })
+})
+
+describe("shouldOfferResumeChoice", () => {
+  it("offers the choice only for a real saved position", () => {
+    expect(shouldOfferResumeChoice(754)).toBe(true)
+  })
+
+  // One case per rejection clause: each of these must play directly with no
+  // chooser rather than force a dialog on garbage.
+  it.each([
+    ["null", null],
+    ["undefined", undefined],
+    ["zero", 0],
+    ["negative", -5],
+    ["NaN", Number.NaN],
+    ["Infinity", Number.POSITIVE_INFINITY],
+  ])("does not offer for %s", (_label, value) => {
+    expect(shouldOfferResumeChoice(value)).toBe(false)
+  })
+})
+
+describe("formatResumeLabel", () => {
+  it("formats minutes:seconds under an hour", () => {
+    expect(formatResumeLabel(754)).toBe("Resume from 12:34")
+    expect(formatResumeLabel(62)).toBe("Resume from 1:02")
+  })
+
+  it("formats h:mm:ss past the hour", () => {
+    expect(formatResumeLabel(3722)).toBe("Resume from 1:02:02")
+  })
+
+  it("floors fractional seconds and clamps negatives", () => {
+    expect(formatResumeLabel(59.9)).toBe("Resume from 0:59")
+    expect(formatResumeLabel(-3)).toBe("Resume from 0:00")
   })
 })

@@ -8,9 +8,11 @@
 > later production/benchmark promotion must be separate changes; an alerting
 > `production`-label mismatch never changes traffic or blocks deployment.
 
-> **Status note — 2026-08-07.** feat-296 and feat-272 shipped on 2026-07-29.
+> **Status note — 2026-08-17.** feat-296 and feat-272 shipped on 2026-07-29.
 > The ENTIRE seeker instruction set is managed in Langfuse as ONE prompt,
-> `seeker-system`; code keeps only the byte-identical full fallback. This
+> `seeker-system`; code keeps a separately reviewed full outage fallback. The
+> managed production pin and fallback each have their own immutable hash, so a
+> reviewed managed promotion does not copy managed prompt text into Git. This
 > explicitly supersedes the prototype's composition-split proposal. The eval
 > resolves that one prompt through the agent's production helper, stamps its
 > source/label/version and whole-text hash, and pins every cell to that exact
@@ -30,7 +32,7 @@
 - **An eval** is a test suite for AI behavior: a set of questions, a way to produce answers, and a way to score them.
 - **The LLM judge** is a second AI model (`anthropic/claude-haiku-4.5` — note the dot; the dashed spelling used elsewhere in the repo does not exist on OpenRouter) that grades each answer with per-criterion binary verdicts plus required free-text reasoning. Everything mechanical — word counts, "did it only cite sources it was actually given" — is checked by plain code instead of the judge. Quote-evidence verification was dropped because the prototype measured 18–22% quote fabrication overall and mechanical criteria specifically drove 9–10 false protocol errors per run.
 - **A protocol error** is malformed judge output — such as an unknown criterion, a missing verdict, a disagreeing duplicate, or empty reasoning — as opposed to a real problem with the agent's answer.
-- **Langfuse** is the hosted service that stores and versions the seeker's complete system prompt outside the repo. Since feat-272 shipped, the agent resolves the single `seeker-system` prompt through `getManagedPrompt()`; `SEEKER_SYSTEM_PROMPT_FALLBACK` is its full byte-identical fallback, not a separately owned prompt portion.
+- **Langfuse** is the hosted service that stores and versions the seeker's complete system prompt outside the repo. The agent resolves the exact repository-pinned `seeker-system` version and hash; `SEEKER_SYSTEM_PROMPT_FALLBACK` is a separately reviewed full outage prompt, not a separately composed prompt portion.
 - **CI** stands for continuous integration — the automated checks that run on every pull request before it can merge. "The eval is green in CI" means the eval passes as one of those automated checks.
 - **A hard-fail** is a check that fails the whole run outright and blocks the change — no partial credit, no averaging into a score.
 - **The baseline / delta gating**: the gate compares each run against a committed last-known-good run rather than an absolute score, because judge scores wobble slightly between runs. A checklist item that passed in the baseline and now fails is a red; a small score wiggle is not.
@@ -134,9 +136,9 @@ In row 5 below, attribution is analytical: checklist tags identify the behaviour
 original split proposal was considered and explicitly overruled before the
 integration shipped. The safety line, tool-usage instructions, citation
 wording, persona, and empty/unavailable handling all live together in the
-single Langfuse prompt `seeker-system`. Nothing is independently code-owned;
-the only code copy is `SEEKER_SYSTEM_PROMPT_FALLBACK`, which mirrors the full
-working prompt byte-for-byte for outage behavior.
+single Langfuse prompt `seeker-system`. Nothing is independently composed at
+runtime; `SEEKER_SYSTEM_PROMPT_FALLBACK` remains a full reviewed outage prompt
+but no longer has to mirror each promoted managed version byte-for-byte.
 
 Consequences for this eval:
 
@@ -149,9 +151,9 @@ Consequences for this eval:
 - Evaluate a candidate whole-prompt version before moving its label. A label
   move can change every line—including safety—and bypasses PR/CI; the eval is
   a review mechanism, not a technical enforcement control.
-- The full-mirror fallback is the current governing decision. A minimal
-  deny-leaning fallback remains a legitimate alternative only if the owner
-  explicitly reopens and amends feat-272.
+- Managed promotions do not rewrite the compiled fallback. The exact managed
+  version/hash and the reviewed fallback hash are pinned independently; an
+  intentional fallback revision remains a normal code-reviewed change.
 
 ### Axis C — score the whole response, or per prompt section?
 
@@ -215,7 +217,7 @@ CI wiring (path-filtered GitHub Actions job on `apps/mastra/src/mastra/agents/se
 ## 8. Two questions only the maintainer can answer
 
 1. **May the eval spend money in CI?** Putting `CHAT_EVAL_OPENROUTER_API_KEY` into GitHub Actions secrets lets path-filtered PRs run the paid gate automatically (~$0.10–0.50 per triggered run, roughly $5–15/month plus ~$30–45/month nightly). The prototype was deliberately operator-run only. If the answer is no, the gate stays a documented pre-merge operator step until Langfuse label promotion gives it a natural automated home — the build plan is unchanged either way, but the CI wiring PR is.
-2. **Should the full-mirror fallback decision ever be reopened?** Today the answer is settled: feat-272 mandates the complete byte-identical fallback for the one whole prompt. A minimal deny-leaning fallback could keep tuned text out of the repo, but it would deliberately degrade outage behavior and would no longer mirror production. Choosing it requires an explicit owner amendment to feat-272; this eval PR must not drift into that change implicitly.
+2. **Should the full-mirror fallback decision ever be reopened?** **Resolved 2026-08-17:** yes. The owner accepted managed-prompt promotion without preserving particular managed wording in the compiled fallback. The fallback remains complete and reviewed, but its hash is independent from the exact managed production pin.
 
 **Decisions flagged rather than assumed:** (a) the production model fix is now an active recommendation (section 6), not a neutral flag — the maintainer's remaining call is only whether it may land this week ahead of the eval work, which flips PR C's baseline policy as written in step 6; (b) the repo-wide dashed judge slug (`anthropic/claude-haiku-4-5` in `SEARCH_EVAL_JUDGE_MODEL` and `EVAL_QUERY_GENERATION_MODEL` defaults) is a separate bug worth its own small ticket; (c) the crisis question enters the corpus only when the crisis guardrail ships.
 

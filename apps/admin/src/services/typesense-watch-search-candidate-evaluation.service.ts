@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from "node:crypto"
 
-import { env } from "@/config/env"
+import { env, resolveWatchSearchRuntimeEnv } from "@/config/env"
 import { prisma } from "@/db/client"
 
 import { TypesenseClient } from "./typesense-client"
@@ -14,6 +14,7 @@ import { resolveEvaluationCandidateWatchSearchProfile } from "./typesense-watch-
 import {
   assertQualificationProfilesMatchLease,
   freezeCurrentWatchSearchProfile,
+  resolveCandidateWatchSearchProfile,
   type TypesenseWatchSearchProfile,
   type TypesenseWatchSearchQualificationLeaseIdentity,
   watchSearchBindingMembers,
@@ -28,7 +29,10 @@ import type {
 } from "./watch-search.service"
 
 const EVALUATION_LEASE_TTL_MS = 30_000
+const EVALUATION_LEASE_RELEASE_TIMEOUT_MS = 2_000
 const EVALUATION_RESOURCE_PREFIX = "watch-search-candidate-eval"
+
+export type CandidateSearchEvaluationSource = "EVALUATION" | "SERVING"
 
 type SearchExecutor = Pick<TypesenseWatchSearchService, "searchWithDiagnostics">
 
@@ -53,17 +57,28 @@ export class CandidateSearchEvaluationError extends Error {
 }
 
 export type CandidateSearchEvaluationDeps = {
+  source: CandidateSearchEvaluationSource
   resolveCurrentProfile(): Promise<TypesenseWatchSearchProfile>
-  resolveCandidateProfile(): Promise<TypesenseWatchSearchProfile>
+  resolveCandidateProfile(
+    currentProfile: TypesenseWatchSearchProfile,
+  ): Promise<TypesenseWatchSearchProfile>
   createSearch(profile: TypesenseWatchSearchProfile): SearchExecutor
   acquireLease(input: {
+    source: CandidateSearchEvaluationSource
     evaluationId: string
     current: TypesenseWatchSearchProfile
     candidate: TypesenseWatchSearchProfile
   }): Promise<CandidateEvaluationLease | null>
   renewLease(lease: CandidateEvaluationLease): Promise<boolean>
   releaseLease(lease: CandidateEvaluationLease): Promise<boolean>
+  verifyCandidateProfile(profile: TypesenseWatchSearchProfile): Promise<boolean>
   rankingRevision(): string
+  leaseReleaseTimeoutMs?: number
+  onCleanupFailure?(failure: {
+    resourceKey: string
+    reason: "release_failed" | "release_timeout"
+    error?: unknown
+  }): void
 }
 
 function assertCandidateDiagnostics(
@@ -87,6 +102,59 @@ function assertCandidateDiagnostics(
     )
   ) {
     throw new CandidateSearchEvaluationError("identity_mismatch")
+  }
+}
+
+type ServingCandidateGenerationResolver = {
+  getPointer(kind: "SERVING"): Promise<{ generationId: string | null }>
+  resolveGeneration: Parameters<
+    typeof resolveCandidateWatchSearchProfile
+  >[0]["generations"]["resolveGeneration"]
+}
+
+/**
+ * Resolve the immutable generation currently pinned to Serving. This deliberately
+ * does not accept a selector or generation id from callers and never consults
+ * the mutable Evaluation pointer.
+ */
+export async function resolveServingCandidateWatchSearchProfile(input: {
+  generations: ServingCandidateGenerationResolver
+  currentProfile: TypesenseWatchSearchProfile
+  applicationRevision: string | null
+  rankingRevision: string | null
+  transcriptProjectionRevision: bigint | null
+  qrelsRevision: string | null
+}): Promise<TypesenseWatchSearchProfile> {
+  if (
+    input.currentProfile.kind !== "CURRENT" ||
+    input.currentProfile.allowCompatibilityFallback ||
+    !input.applicationRevision ||
+    !input.rankingRevision ||
+    input.transcriptProjectionRevision == null ||
+    !input.qrelsRevision
+  ) {
+    throw new CandidateSearchEvaluationError("profile_unavailable")
+  }
+
+  try {
+    const pointer = await input.generations.getPointer("SERVING")
+    if (!pointer.generationId) {
+      throw new CandidateSearchEvaluationError("profile_unavailable")
+    }
+    return await resolveCandidateWatchSearchProfile({
+      generations: input.generations,
+      generationId: pointer.generationId,
+      applicationRevision: input.applicationRevision,
+      transcriptCollection: input.currentProfile.binding.transcript,
+      transcriptProjectionRevision: input.transcriptProjectionRevision,
+      requireQualified: true,
+      currentBindings: watchSearchBindingMembers(input.currentProfile),
+      qrelsRevision: input.qrelsRevision,
+      rankingRevision: input.rankingRevision,
+    })
+  } catch (error) {
+    if (error instanceof CandidateSearchEvaluationError) throw error
+    throw new CandidateSearchEvaluationError("profile_unavailable")
   }
 }
 
@@ -128,6 +196,7 @@ export function candidateSearchEvaluationRevision(input: {
     rankingRevision: input.rankingRevision,
     transcriptProjectionRevision:
       profile.transcriptProjectionRevision.toString(),
+    evaluationRevision: profile.qrelsRevision ?? null,
     collections: {
       catalog: profile.binding.catalog,
       availability: profile.binding.availability,
@@ -150,6 +219,46 @@ export function candidateSearchEvaluationRevision(input: {
 export class TypesenseWatchSearchCandidateEvaluationService {
   constructor(private readonly deps: CandidateSearchEvaluationDeps) {}
 
+  private async releaseLease(lease: CandidateEvaluationLease): Promise<void> {
+    const configuredTimeout = this.deps.leaseReleaseTimeoutMs
+    const timeoutMs =
+      configuredTimeout != null &&
+      Number.isSafeInteger(configuredTimeout) &&
+      configuredTimeout > 0
+        ? configuredTimeout
+        : EVALUATION_LEASE_RELEASE_TIMEOUT_MS
+    let timeout: ReturnType<typeof setTimeout> | undefined
+    const release = this.deps.releaseLease(lease).then(
+      (released) => ({ kind: "released" as const, released }),
+      (error: unknown) => ({ kind: "failed" as const, error }),
+    )
+    const result = await Promise.race([
+      release,
+      new Promise<{ kind: "timeout" }>((resolve) => {
+        timeout = setTimeout(() => resolve({ kind: "timeout" }), timeoutMs)
+      }),
+    ])
+    if (timeout) clearTimeout(timeout)
+
+    if (result.kind === "released" && result.released) return
+    const failure =
+      result.kind === "timeout"
+        ? {
+            resourceKey: lease.resourceKey,
+            reason: "release_timeout" as const,
+          }
+        : {
+            resourceKey: lease.resourceKey,
+            reason: "release_failed" as const,
+            ...(result.kind === "failed" ? { error: result.error } : {}),
+          }
+    try {
+      this.deps.onCleanupFailure?.(failure)
+    } catch {
+      // Cleanup reporting must never mask the search result or typed failure.
+    }
+  }
+
   async search(input: WatchSearchInput): Promise<{
     response: WatchSearchResponse
     revision: string
@@ -158,19 +267,20 @@ export class TypesenseWatchSearchCandidateEvaluationService {
     let current: TypesenseWatchSearchProfile
     let candidate: TypesenseWatchSearchProfile
     try {
-      const profiles = await Promise.all([
-        this.deps.resolveCurrentProfile(),
-        this.deps.resolveCandidateProfile(),
-      ])
-      current = profiles[0]
-      candidate = profiles[1]
+      current = await this.deps.resolveCurrentProfile()
+      candidate = await this.deps.resolveCandidateProfile(current)
     } catch {
       throw new CandidateSearchEvaluationError("profile_unavailable")
     }
 
     let lease: CandidateEvaluationLease | null = null
     try {
-      lease = await this.deps.acquireLease({ evaluationId, current, candidate })
+      lease = await this.deps.acquireLease({
+        source: this.deps.source,
+        evaluationId,
+        current,
+        candidate,
+      })
       if (!lease) {
         throw new CandidateSearchEvaluationError("lease_unavailable")
       }
@@ -185,6 +295,17 @@ export class TypesenseWatchSearchCandidateEvaluationService {
         .createSearch(candidate)
         .searchWithDiagnostics(input)
       assertCandidateDiagnostics(candidate, result.diagnostics, rankingRevision)
+      const [leaseRenewed, profileVerified] = await Promise.all([
+        this.deps.renewLease(lease),
+        this.deps.verifyCandidateProfile(candidate),
+      ])
+      if (!leaseRenewed) {
+        throw new CandidateSearchEvaluationError("lease_lost")
+      }
+      assertLeaseIdentity({ current, candidate, lease })
+      if (!profileVerified) {
+        throw new CandidateSearchEvaluationError("identity_mismatch")
+      }
       return {
         response: result.response,
         revision: candidateSearchEvaluationRevision({
@@ -200,13 +321,16 @@ export class TypesenseWatchSearchCandidateEvaluationService {
       }
       throw new CandidateSearchEvaluationError("search_failed")
     } finally {
-      if (lease) await this.deps.releaseLease(lease).catch(() => false)
+      if (lease) await this.releaseLease(lease)
     }
   }
 }
 
-/** Production factory with fixed Evaluation-pointer semantics. */
-export function createTypesenseWatchSearchCandidateEvaluationService(): TypesenseWatchSearchCandidateEvaluationService {
+/** Production factory with a fixed, server-selected pointer source. */
+export function createTypesenseWatchSearchCandidateEvaluationService(
+  source: CandidateSearchEvaluationSource,
+): TypesenseWatchSearchCandidateEvaluationService {
+  const runtimeSearchEnv = resolveWatchSearchRuntimeEnv()
   const host = env.TYPESENSE_HOST
   const apiKey = resolveTypesenseWatchSearchApiKey({
     searchApiKey: env.TYPESENSE_SEARCH_API_KEY,
@@ -224,10 +348,21 @@ export function createTypesenseWatchSearchCandidateEvaluationService(): Typesens
   )
 
   return new TypesenseWatchSearchCandidateEvaluationService({
+    source,
     resolveCurrentProfile: () => freezeCurrentWatchSearchProfile(typesense),
-    resolveCandidateProfile: async () => {
+    resolveCandidateProfile: async (currentProfile) => {
       const profile =
-        await resolveEvaluationCandidateWatchSearchProfile(generations)
+        source === "EVALUATION"
+          ? await resolveEvaluationCandidateWatchSearchProfile(generations)
+          : await resolveServingCandidateWatchSearchProfile({
+              generations,
+              currentProfile,
+              applicationRevision: candidateWatchSearchApplicationRevision(),
+              rankingRevision: candidateWatchSearchRankingRevision(),
+              transcriptProjectionRevision:
+                runtimeSearchEnv.transcriptProjectionRevision ?? null,
+              qrelsRevision: env.WATCH_SEARCH_SERVING_QRELS_REVISION ?? null,
+            })
       if (
         profile.applicationRevision !==
         candidateWatchSearchApplicationRevision()
@@ -238,7 +373,12 @@ export function createTypesenseWatchSearchCandidateEvaluationService(): Typesens
     },
     createSearch: (profile) =>
       new TypesenseWatchSearchService(prisma, typesense, { profile }),
-    acquireLease: async ({ evaluationId, current, candidate }) => {
+    acquireLease: async ({
+      source: leaseSource,
+      evaluationId,
+      current,
+      candidate,
+    }) => {
       if (
         !candidate.generationId ||
         !candidate.applicationRevision ||
@@ -246,7 +386,7 @@ export function createTypesenseWatchSearchCandidateEvaluationService(): Typesens
       ) {
         throw new CandidateSearchEvaluationError("profile_unavailable")
       }
-      const resourceKey = `${EVALUATION_RESOURCE_PREFIX}:${evaluationId}`
+      const resourceKey = `${EVALUATION_RESOURCE_PREFIX}:${leaseSource.toLowerCase()}:${evaluationId}`
       const holderToken = randomUUID()
       const currentBindings = watchSearchBindingMembers(current)
       let lease = null
@@ -289,6 +429,30 @@ export function createTypesenseWatchSearchCandidateEvaluationService(): Typesens
         resourceKey: lease.resourceKey,
         holderToken: lease.holderToken,
       }),
+    verifyCandidateProfile: async (profile) => {
+      const pointer = await generations.getPointer(source)
+      return (
+        profile.kind === "CANDIDATE" &&
+        profile.generationId != null &&
+        pointer.generationId === profile.generationId
+      )
+    },
     rankingRevision: candidateWatchSearchRankingRevision,
+    leaseReleaseTimeoutMs: EVALUATION_LEASE_RELEASE_TIMEOUT_MS,
+    onCleanupFailure: ({ resourceKey, reason, error }) => {
+      console.warn(
+        "[watch-search-candidate-evaluation] event=lease_cleanup_failed",
+        {
+          source,
+          resourceKey,
+          reason,
+          ...(error
+            ? {
+                error: error instanceof Error ? error.message : String(error),
+              }
+            : {}),
+        },
+      )
+    },
   })
 }

@@ -157,6 +157,8 @@ const envSchema = z.object({
   ADMIN_SEARCH_EVAL_CANDIDATES_URL: z.string().url().optional(),
   ADMIN_SEARCH_EVAL_CATALOG_CONTEXT_URL: z.string().url().optional(),
   ADMIN_SEARCH_EVAL_SEARCH_URL: z.string().url().optional(),
+  ADMIN_SEARCH_EVAL_SERVING_URL: z.string().url().optional(),
+  ADMIN_SEARCH_EVAL_SERVING_API_KEY: z.string().min(1).optional(),
   ADMIN_SEARCH_TRACE_SAMPLE_URL: z.string().url().optional(),
   ADMIN_TRANSCRIPT_INGEST_URL: z.string().url().optional(),
   // Standalone chat agent tool callbacks → admin (consolidation U8). Base URL
@@ -692,6 +694,12 @@ export const env = envSchema.parse({
   ),
   ADMIN_SEARCH_EVAL_SEARCH_URL: emptyToUndefined(
     process.env.ADMIN_SEARCH_EVAL_SEARCH_URL,
+  ),
+  ADMIN_SEARCH_EVAL_SERVING_URL: emptyToUndefined(
+    process.env.ADMIN_SEARCH_EVAL_SERVING_URL,
+  ),
+  ADMIN_SEARCH_EVAL_SERVING_API_KEY: emptyToUndefined(
+    process.env.ADMIN_SEARCH_EVAL_SERVING_API_KEY,
   ),
   ADMIN_SEARCH_TRACE_SAMPLE_URL: emptyToUndefined(
     process.env.ADMIN_SEARCH_TRACE_SAMPLE_URL,
@@ -1621,6 +1629,19 @@ export type DevotionalVideoSearchConfig = {
   url?: string
   bearer?: string
   defaultVideoId?: string
+}
+
+export type ServingSearchEvalConfig = {
+  url?: string
+  bearer?: string
+}
+
+/** Dedicated fixed-Serving target; never falls back to shared eval credentials. */
+export function getServingSearchEvalConfig(): ServingSearchEvalConfig {
+  return {
+    url: env.ADMIN_SEARCH_EVAL_SERVING_URL,
+    bearer: env.ADMIN_SEARCH_EVAL_SERVING_API_KEY,
+  }
 }
 
 /**
