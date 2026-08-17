@@ -1,7 +1,7 @@
 ---
 title: Precomputed serving indexes for multilingual hybrid search
 date: 2026-08-03
-last_updated: 2026-08-12
+last_updated: 2026-08-17
 category: best-practices
 module: apps/admin watch search
 problem_type: best_practice
@@ -11,7 +11,18 @@ applies_when:
   - Search combines lexical metadata, transcript vectors, and availability data
   - Request-time relational hydration threatens a one-second latency budget
   - A replacement backend needs an absolute multilingual quality gate before rollout
-tags: [search, typesense, embeddings, multilingual, performance, indexing]
+  - A reviewed candidate needs a reversible, evidence-bound production promotion
+tags:
+  [
+    search,
+    typesense,
+    embeddings,
+    multilingual,
+    performance,
+    indexing,
+    promotion,
+    baselines,
+  ]
 ---
 
 # Precomputed Serving Indexes For Multilingual Hybrid Search
@@ -136,9 +147,11 @@ Deployment, private evaluation, and public serving are separate controls:
   `MODERN`; it defaults to `CURRENT`, while the comparison flag defaults off
   (`apps/admin/src/config/env.ts:672-686`).
 - Candidate serving requires the selector and `SERVING` pointer to name the
-  same generation, then revalidates the exact application revision, transcript
-  projection, current physical bindings, qrels revision, and passing
-  qualification (`apps/admin/src/services/index.ts:52-110`).
+  same generation, then revalidates the exact application revision, ranking
+  revision, transcript projection, current physical bindings, and evaluation
+  revision. The authorizing qualification is either an automatic `PASSED`
+  record or a truthful `OPERATOR_ACCEPTED` record for the same evidence-bound
+  identity (`apps/admin/src/services/typesense-watch-search-candidate-generation.ts:1430-1487`).
 
 The application revision is the physical Candidate-collection compatibility
 identity, not the Admin deployment SHA. It stays stable across unrelated
@@ -377,7 +390,7 @@ This did not establish baseline-or-better public relevance. Same-top, Jaccard,
 and bidirectional pairwise preference now remain diagnostics only: `DEFAULT` is
 a rollback backend, not the definition of correctness.
 
-The promotion authority is the versioned 104-case
+The default automatic promotion authority is the versioned 104-case
 `public-watch-absolute/v2` corpus in
 `apps/mastra/src/services/offline-search-eval/absolute-query-set.ts`. Development
 queries may be rerun during tuning; held-out cases run only after the candidate
@@ -398,6 +411,17 @@ availability, lexical, and transcript collections, reject missing or mixed
 observed revisions, record the pointwise judge provider/model/cost, and require
 named operator review. Strict artifact schemas prevent arbitrary observations
 or invented metric shapes from being persisted as release evidence.
+
+An authorized operator may accept a measured candidate that misses those
+automatic thresholds, but that decision is a separate status rather than a
+synthetic pass. `OPERATOR_ACCEPTED` requires at least one explicitly waived
+`FAIL` or `NOT_RUN` gate and preserves the measured relevance, latency,
+limitations, reviewer decision, and exact evidence-bundle identity
+(`apps/admin/src/services/typesense-watch-search-candidate-qualification.ts:260-330`).
+The operator-acceptance evaluation revision embeds the supplied decision ID and
+participates in the serving digest. Giving every acceptance decision a new
+decision ID gives it a distinct observable serving identity
+(`apps/admin/src/services/typesense-watch-search-candidate-evaluation.service.ts:173-216`).
 
 The next experiments should measure how many distinct canonical videos survive
 native retrieval before hydration, especially for product-title and scene-like
@@ -453,6 +477,13 @@ Promotion should keep three controls independent:
   deleting Typesense data or moving collection aliases. Traffic rollback and
   index rollback remain separate operations.
 
+Authenticated fleet rollout adds a fourth, default-off control. Canonical Web
+can verify the configured primary while `WATCH_SEARCH_FLEET_PRIMARY_ENABLED`
+remains false. Only after that smoke check should authenticated fleet callers
+that omitted `mode` inherit the primary; explicit modes and non-fleet callers
+retain their existing behavior (`apps/admin/src/config/env.ts:695-704`,
+`apps/admin/src/graphql/queries/watch-search.ts:55-81`).
+
 The concrete Web controls are `WATCH_SEARCH_PRIMARY_MODE` (production defaults
 to `MODERN`, non-production to `DEFAULT`) and
 `WATCH_SEARCH_DEFAULT_SHADOW_ENABLED`. Admin accepts the shadow request only
@@ -461,6 +492,50 @@ bounds it to one concurrent execution and 64 reserved jobs per process. Primary
 and shadow Search Traces share a request ID but use explicit roles; product
 analytics, long-lived aggregate counters, and eval sampling exclude shadow
 traces so comparisons do not double-count users or query intent.
+
+## Audited Candidate Promotion And Serving-Bound Baselines
+
+Promotion is an authorization sequence, not one environment-variable flip:
+
+1. Deploy the support code with `WATCH_SEARCH_TYPESENSE_PROFILE=CURRENT` and
+   `WATCH_SEARCH_FLEET_PRIMARY_ENABLED=false`.
+2. Record either an exact automatic `PASSED` qualification or a self-contained
+   `OPERATOR_ACCEPTED` bundle. Keep the automatic result unchanged when gates
+   were waived.
+3. Compare-and-set the same generation onto the `SERVING` pointer. The pin
+   re-reads Current physical bindings under the publication lock and requires
+   the exact status, application, ranking, transcript, evaluation, reviewer,
+   operator, digest, and optional byte-length evidence
+   (`apps/admin/src/services/typesense-watch-search-candidate-generation.ts:1410-1501`).
+4. Select `CANDIDATE:<generation>`, wait for the serving-profile cache, and run
+   the pre-registered multilingual exact-title and semantic smoke matrix on
+   canonical Web. Restore `CURRENT` immediately on identity, relevance,
+   latency, degradation, error, or capacity failure.
+5. Enable omitted-mode authenticated fleet routing only after Web passes.
+   Keep explicit-mode controls intact.
+
+Post-launch evidence must measure the generation and revision currently pinned
+by the versioned Serving pointer, not the independently movable Evaluation
+pointer. The dedicated authenticated route accepts only `modern` and fixes its
+source to `SERVING`
+(`apps/admin/src/app/api/internal/search-eval/serving-search/route.ts:13-23`).
+Mastra rejects captures with missing or mixed server revisions before writing
+anything (`apps/mastra/src/services/offline-search-eval/runner.ts:401-422`).
+The baseline and report are validated before writing. If the baseline write
+fails, the store attempts to restore or remove the report and surfaces an error
+if that compensating rollback also fails
+(`apps/mastra/src/services/offline-search-eval/artifacts.ts:647-694`).
+
+Preserve and export the old `seed-baseline`, capture a dated baseline for the
+exact serving revision, rerun the accepted query set, and compare relevance and
+latency with the accepted evidence. Replace `seed-baseline` only if the new
+production measurements still support the same decision. A material drift
+requires a new review decision rather than silently redefining the baseline.
+
+Normal rollback disables fleet inheritance and returns the Typesense profile to
+`CURRENT`; emergency rollback can separately return the primary mode to
+PostgreSQL `DEFAULT`. Neither operation deletes Candidate collections, moves
+the Serving pointer, or rewrites baseline history.
 
 ## Related
 
@@ -471,6 +546,9 @@ traces so comparisons do not double-count users or query intent.
 - [Result-preserving search latency optimization](../performance-issues/admin-search-result-preserving-latency-optimization.md)
 - [Admin semantic HNSW prototype parity gate](../performance-issues/admin-semantic-hnsw-prototype-parity-gate.md)
 - [Mastra offline search eval orchestration](../architecture-patterns/mastra-offline-search-eval-orchestration-boundary-pattern.md)
+- [Mastra seed-baseline portability](../architecture-patterns/mastra-seed-baseline-portability-pattern.md)
+- [Global exact-title recall with localized tokenizers](../architecture-patterns/typesense-global-exact-title-recall-with-localized-tokenizers.md)
+- [Candidate application revision stability](../integration-issues/watch-search-candidate-generation-stable-application-revision.md)
 - [Internal diagnostic search modes need mode-aware eval identity](../architecture-patterns/internal-diagnostic-search-modes-need-mode-aware-eval-identity.md)
 - [Atomic database claim instead of split check-and-write](../database-issues/db-lock-must-be-atomic-update-not-select-for-update.md)
 - [Async single-flight slot release hazards](../design-patterns/async-single-flight-slot-release-hazards.md)
