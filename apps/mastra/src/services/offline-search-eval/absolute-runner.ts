@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto"
 
-import { env } from "../../config/env"
+import { getServingSearchEvalConfig } from "../../config/env"
 import {
   callAdminEvalSearch,
   type AdminSearchEvalClientResult,
@@ -54,13 +54,13 @@ export type AbsoluteOperatorReview = {
 
 export type AbsoluteSearchEvalInput = {
   split?: AbsoluteSearchEvalSplit
-  backendMode?: "modern" | "default"
+  backendMode?: "modern"
   locales?: string[]
   searchLimit?: number
   runPointwiseJudge?: boolean
   acknowledgeHeldOutReleaseGate?: boolean
   relevanceJudgmentSet?: AbsoluteRelevanceJudgmentSet
-  candidateIdentity?: AbsoluteCandidateIdentity
+  candidateIdentity: AbsoluteCandidateIdentity
   operatorReview?: AbsoluteOperatorReview
 }
 
@@ -119,13 +119,14 @@ export type AbsoluteSearchEvalResult =
         | "judge_config_missing"
         | "artifact_write_failed"
         | "held_out_acknowledgement_required"
+        | "serving_revision_mismatch"
       retryable: boolean
     }
 
 type AbsoluteRunnerOptions = {
   cases?: readonly AbsolutePublicWatchQueryCase[]
-  searchUrl?: string
-  adminBearer?: string
+  servingUrl?: string
+  servingBearer?: string
   searchClient?: typeof callAdminEvalSearch
   judge?: OfflineSearchEvalJudge
   relevanceJudgments?: AbsoluteRelevanceJudgments
@@ -303,7 +304,7 @@ export async function runAbsoluteSearchEval(
   const runPointwiseJudge = input.runPointwiseJudge ?? true
   const relevanceJudgmentSet =
     input.relevanceJudgmentSet ?? repositoryAbsoluteRelevanceJudgmentSet
-  const candidateIdentity = input.candidateIdentity ?? null
+  const candidateIdentity = input.candidateIdentity
   const operatorReview = input.operatorReview ?? null
   if (!Number.isInteger(searchLimit) || searchLimit < 1 || searchLimit > 50) {
     return { ok: false, reason: "invalid_input", retryable: false }
@@ -316,9 +317,10 @@ export async function runAbsoluteSearchEval(
     }
   }
 
-  const searchUrl = options.searchUrl ?? env.ADMIN_SEARCH_EVAL_SEARCH_URL
-  const adminBearer = options.adminBearer ?? env.ADMIN_SEARCH_EVAL_API_KEY
-  if (!searchUrl || !adminBearer) {
+  const serving = getServingSearchEvalConfig()
+  const searchUrl = options.servingUrl ?? serving.url
+  const servingBearer = options.servingBearer ?? serving.bearer
+  if (!searchUrl || !servingBearer) {
     return { ok: false, reason: "config_missing", retryable: false }
   }
   const localeFilter = input.locales ? new Set(input.locales) : null
@@ -354,7 +356,7 @@ export async function runAbsoluteSearchEval(
       const response: AdminSearchEvalClientResult<AdminSearchResponse> =
         await searchClient({
           url: searchUrl,
-          bearer: adminBearer,
+          bearer: servingBearer,
           payload: {
             query: entry.queryText,
             locale: entry.locale,
@@ -371,6 +373,28 @@ export async function runAbsoluteSearchEval(
     },
   )
   const searchMs = performance.now() - searchStartedAt
+  const successfulObservations = observations.filter(
+    (entry) => entry.searchFailure == null,
+  )
+  const observedServerRevisions = [
+    ...new Set(
+      successfulObservations.flatMap((entry) =>
+        entry.serverRevision == null ? [] : [entry.serverRevision],
+      ),
+    ),
+  ].sort()
+  if (
+    successfulObservations.some((entry) => entry.serverRevision == null) ||
+    observedServerRevisions.length > 1 ||
+    (observedServerRevisions.length === 1 &&
+      observedServerRevisions[0] !== candidateIdentity.revision)
+  ) {
+    return {
+      ok: false,
+      reason: "serving_revision_mismatch",
+      retryable: false,
+    }
+  }
 
   const tokens = { inputTokens: 0, outputTokens: 0, reportedUsd: 0 }
   let hasReportedUsd = false
@@ -418,13 +442,6 @@ export async function runAbsoluteSearchEval(
         entry.expectedNoResult ||
         Object.values(entry.relevance).some((grade) => grade > 0),
     ).length / observations.length
-  const observedServerRevisions = [
-    ...new Set(
-      observations.flatMap((entry) =>
-        entry.serverRevision == null ? [] : [entry.serverRevision],
-      ),
-    ),
-  ].sort()
   const finishedAt = now()
   const report: AbsoluteSearchEvalReport = {
     schemaVersion: "1",

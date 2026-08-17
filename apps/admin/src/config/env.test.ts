@@ -14,6 +14,7 @@ import {
   fleetSearchGlobalCeilingPerMinEnvSchema,
   searchTraceRawRetentionDaysEnvSchema,
   watchSearchDefaultShadowEnabledEnvSchema,
+  watchSearchFleetPrimaryEnabledEnvSchema,
   watchSearchPrimaryModeEnvSchema,
   watchSearchTypesenseProfileEnvSchema,
   watchSearchCandidateComparisonEnabledEnvSchema,
@@ -46,6 +47,17 @@ describe("env", () => {
       expect(watchSearchDefaultShadowEnabledEnvSchema.parse("false")).toBe(
         false,
       )
+    })
+
+    it("keeps omitted-mode authenticated fleet promotion disabled by default", () => {
+      expect(watchSearchFleetPrimaryEnabledEnvSchema.parse(undefined)).toBe(
+        false,
+      )
+      expect(watchSearchFleetPrimaryEnabledEnvSchema.parse("true")).toBe(true)
+      expect(watchSearchFleetPrimaryEnabledEnvSchema.parse("false")).toBe(false)
+      expect(() =>
+        watchSearchFleetPrimaryEnabledEnvSchema.parse("yes"),
+      ).toThrow()
     })
 
     it("defaults the private Typesense selector and comparison switch off safely", () => {

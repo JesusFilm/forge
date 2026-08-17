@@ -2,7 +2,7 @@ import { z } from "zod"
 
 import { createCandidateSearchEvalPostHandler } from "../create-candidate-search-eval-handler"
 
-const CandidateSearchEvalInputSchema = z
+const ServingSearchEvalInputSchema = z
   .object({
     query: z.string().trim().min(1).max(200),
     locale: z.string().trim().min(1).max(32),
@@ -19,9 +19,9 @@ const CandidateSearchEvalInputSchema = z
   .strict()
 
 export const POST = createCandidateSearchEvalPostHandler({
-  source: "EVALUATION",
-  schema: CandidateSearchEvalInputSchema,
-  rateLimitRoute: "candidate-search-eval-search",
-  invalidInputError: "Invalid Candidate search eval input",
-  unavailableError: "Candidate search eval is temporarily unavailable",
+  source: "SERVING",
+  schema: ServingSearchEvalInputSchema,
+  rateLimitRoute: "serving-search-eval-search",
+  invalidInputError: "Invalid Serving search eval input",
+  unavailableError: "Serving search eval is temporarily unavailable",
 })

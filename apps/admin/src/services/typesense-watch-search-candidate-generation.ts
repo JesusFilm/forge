@@ -12,9 +12,31 @@ import type {
   TypesenseCollectionSchema,
 } from "./typesense-client"
 import { TYPESENSE_WATCH_SEARCH_PUBLICATION_LOCK_ID } from "./typesense-watch-search-publication-lock"
-import { hasPassingCandidateQualificationEvidence } from "./typesense-watch-search-candidate-qualification"
+import {
+  hasPassingCandidateQualificationEvidence,
+  parseCandidateOperatorAcceptanceBundle,
+} from "./typesense-watch-search-candidate-qualification"
+import {
+  freezeCurrentWatchSearchProfile,
+  watchSearchBindingMembers,
+} from "./typesense-watch-search-profile"
 
 export type CandidateGenerationState = WatchSearchCandidateGenerationState
+
+export const WATCH_SEARCH_CANDIDATE_AUTHORIZING_STATUSES = [
+  "PASSED",
+  "OPERATOR_ACCEPTED",
+] as const satisfies readonly WatchSearchCandidateQualificationStatus[]
+
+export type CandidateAuthorizingQualificationStatus =
+  (typeof WATCH_SEARCH_CANDIDATE_AUTHORIZING_STATUSES)[number]
+
+export type CandidateQualificationAudit = Readonly<{
+  reviewerIdentity: string
+  operatorIdentity: string
+  evidenceBundleSha256: string
+  evidenceBundleByteLength?: number
+}>
 
 export type CandidateCollectionOwnership = "OWNED" | "SHARED"
 
@@ -38,7 +60,7 @@ export type CandidateGenerationInput = {
   }
 }
 
-type SchemaClient = Pick<TypesenseClient, "getCollectionSchema">
+type SchemaClient = Pick<TypesenseClient, "getAlias" | "getCollectionSchema">
 type PointerKind = WatchSearchCandidatePointerKind
 
 type StoredGeneration = {
@@ -128,6 +150,114 @@ function recordValue(value: unknown): Record<string, unknown> | null {
     : null
 }
 
+function normalizedQualificationAudit(
+  value: CandidateQualificationAudit | undefined,
+): CandidateQualificationAudit {
+  if (!value) {
+    throw new CandidateGenerationValidationError(
+      "qualification audit attribution is required",
+    )
+  }
+  const reviewerIdentity = requiredString(
+    value.reviewerIdentity,
+    "qualification reviewer identity",
+  )
+  const operatorIdentity = requiredString(
+    value.operatorIdentity,
+    "qualification operator identity",
+  )
+  const evidenceBundleSha256 = requiredString(
+    value.evidenceBundleSha256,
+    "qualification evidence bundle digest",
+  ).toLowerCase()
+  if (!/^sha256:[a-f0-9]{64}$/.test(evidenceBundleSha256)) {
+    throw new CandidateGenerationValidationError(
+      "qualification evidence bundle digest must be a SHA-256 digest",
+    )
+  }
+  const evidenceBundleByteLength = value.evidenceBundleByteLength
+  if (
+    evidenceBundleByteLength !== undefined &&
+    (!Number.isSafeInteger(evidenceBundleByteLength) ||
+      evidenceBundleByteLength <= 0)
+  ) {
+    throw new CandidateGenerationValidationError(
+      "qualification evidence bundle byte length must be a positive safe integer",
+    )
+  }
+  return {
+    reviewerIdentity,
+    operatorIdentity,
+    evidenceBundleSha256,
+    ...(evidenceBundleByteLength === undefined
+      ? {}
+      : { evidenceBundleByteLength }),
+  }
+}
+
+function qualificationAuditMatches(
+  evidence: unknown,
+  expected: CandidateQualificationAudit,
+): boolean {
+  const audit = recordValue(recordValue(evidence)?.audit)
+  return (
+    audit?.reviewerIdentity === expected.reviewerIdentity &&
+    audit?.operatorIdentity === expected.operatorIdentity &&
+    audit?.evidenceBundleSha256 === expected.evidenceBundleSha256 &&
+    audit?.evidenceBundleByteLength === expected.evidenceBundleByteLength
+  )
+}
+
+function assertOperatorAcceptedQualificationEvidence(
+  evidence: Record<string, unknown>,
+  generation: StoredGeneration,
+  input: {
+    generationId: string
+    applicationRevision: string
+    rankingRevision: string
+    transcriptCollection: string
+    transcriptProjectionRevision: bigint
+    qrelsRevision: string
+    currentBindings: readonly string[]
+    qualificationAudit: CandidateQualificationAudit
+  },
+): void {
+  let bundle
+  try {
+    bundle = parseCandidateOperatorAcceptanceBundle(evidence)
+  } catch (error) {
+    throw new CandidateGenerationValidationError(
+      error instanceof Error
+        ? error.message
+        : "operator acceptance bundle is invalid",
+    )
+  }
+  const audit = normalizedQualificationAudit(input.qualificationAudit)
+  const candidateBindings = bundle.identity.candidateBindings
+  if (
+    audit.evidenceBundleByteLength === undefined ||
+    bundle.identity.generationId !== input.generationId ||
+    bundle.identity.applicationRevision !== input.applicationRevision ||
+    bundle.identity.rankingRevision !== input.rankingRevision ||
+    bundle.identity.transcriptCollection !== input.transcriptCollection ||
+    bundle.identity.transcriptProjectionRevision !==
+      input.transcriptProjectionRevision.toString() ||
+    bundle.identity.qrelsRevision !== input.qrelsRevision ||
+    JSON.stringify(bundle.identity.currentBindings) !==
+      JSON.stringify(input.currentBindings) ||
+    candidateBindings.catalog !== generation.catalogCollection ||
+    candidateBindings.availability !== generation.availabilityCollection ||
+    candidateBindings.lexical !== generation.lexicalCollection ||
+    candidateBindings.transcript !== generation.transcriptCollection ||
+    bundle.userAcceptance.reviewerIdentity !== audit.reviewerIdentity ||
+    !qualificationAuditMatches(evidence, audit)
+  ) {
+    throw new CandidateGenerationValidationError(
+      "operator acceptance requires an exact reviewed bundle and audit identity",
+    )
+  }
+}
+
 function assertPassingQualificationEvidence(
   evidence: Record<string, unknown>,
   input: {
@@ -138,6 +268,7 @@ function assertPassingQualificationEvidence(
     transcriptProjectionRevision: bigint
     qrelsRevision: string
     currentBindings: readonly string[]
+    qualificationAudit: CandidateQualificationAudit
   },
 ): void {
   const identity = recordValue(evidence.identity)
@@ -146,6 +277,9 @@ function assertPassingQualificationEvidence(
   const identityBindings = storedBindings
     ? Object.values(storedBindings)
     : identity?.currentBindings
+  const qualificationAudit = normalizedQualificationAudit(
+    input.qualificationAudit,
+  )
   if (
     evidence.schemaVersion !== "watch-search-candidate-qualification/v2" ||
     evidence.status !== "QUALIFIED" ||
@@ -161,7 +295,8 @@ function assertPassingQualificationEvidence(
     !Array.isArray(identityBindings) ||
     JSON.stringify(identityBindings) !==
       JSON.stringify(input.currentBindings) ||
-    !hasPassingCandidateQualificationEvidence(gates)
+    !hasPassingCandidateQualificationEvidence(gates) ||
+    !qualificationAuditMatches(evidence, qualificationAudit)
   ) {
     throw new CandidateGenerationValidationError(
       "passing qualification requires an exact QUALIFIED report with reviewed evidence",
@@ -594,10 +729,13 @@ export class TypesenseWatchSearchCandidateGenerationService {
 
   pinServingGeneration(input: {
     generationId: string
+    applicationRevision: string
     expectedPointerVersion: number
     currentBindings: readonly string[]
     qrelsRevision: string
     rankingRevision: string
+    qualificationAudit: CandidateQualificationAudit
+    qualificationStatus?: CandidateAuthorizingQualificationStatus
   }) {
     return this.movePointer("SERVING", input, true)
   }
@@ -650,7 +788,7 @@ export class TypesenseWatchSearchCandidateGenerationService {
           "qualified resolution requires current bindings, qrels revision, and ranking revision",
         )
       }
-      const qualification = await this.findExactPassedQualification(
+      const qualification = await this.findExactAuthorizedQualification(
         generation,
         input.currentBindings,
         input.qrelsRevision,
@@ -747,15 +885,20 @@ export class TypesenseWatchSearchCandidateGenerationService {
     qrelsRevision: string
     currentBindings: readonly string[]
     evidence: Record<string, unknown>
+    qualificationAudit: CandidateQualificationAudit
   }) {
     const qrelsRevision = requiredString(input.qrelsRevision, "qrels revision")
     const currentBindings = normalizedBindings(input.currentBindings)
+    const qualificationAudit = normalizedQualificationAudit(
+      input.qualificationAudit,
+    )
     assertJsonObject(input.evidence, "qualification evidence")
     if (input.status === "PASSED") {
       assertPassingQualificationEvidence(input.evidence, {
         ...input,
         qrelsRevision,
         currentBindings,
+        qualificationAudit,
       })
     }
     return this.prisma.$transaction(
@@ -770,6 +913,18 @@ export class TypesenseWatchSearchCandidateGenerationService {
         }
         assertGenerationReady(generation)
         assertExactIdentity(generation, input)
+        if (input.status === "OPERATOR_ACCEPTED") {
+          assertOperatorAcceptedQualificationEvidence(
+            input.evidence,
+            generation,
+            {
+              ...input,
+              qrelsRevision,
+              currentBindings,
+              qualificationAudit,
+            },
+          )
+        }
         return tx.watchSearchCandidateQualification.create({
           data: {
             generationId: generation.id,
@@ -1198,10 +1353,13 @@ export class TypesenseWatchSearchCandidateGenerationService {
     kind: PointerKind,
     input: {
       generationId: string
+      applicationRevision?: string
       expectedPointerVersion: number
       currentBindings?: readonly string[]
       qrelsRevision?: string
       rankingRevision?: string
+      qualificationAudit?: CandidateQualificationAudit
+      qualificationStatus?: CandidateAuthorizingQualificationStatus
     },
     requireQualification: boolean,
   ) {
@@ -1230,40 +1388,102 @@ export class TypesenseWatchSearchCandidateGenerationService {
         assertGenerationReady(generation)
         if (requireQualification) {
           if (
+            !input.applicationRevision ||
             !input.currentBindings ||
             !input.qrelsRevision ||
-            !input.rankingRevision
+            !input.rankingRevision ||
+            !input.qualificationAudit
           ) {
             throw new CandidateGenerationValidationError(
-              "serving promotion requires current bindings, qrels revision, and ranking revision",
+              "serving promotion requires application revision, current bindings, qrels revision, ranking revision, and qualification audit attribution",
+            )
+          }
+          const applicationRevision = requiredString(
+            input.applicationRevision,
+            "application revision",
+          )
+          if (generation.applicationRevision !== applicationRevision) {
+            throw new CandidateGenerationCompatibilityError(
+              `candidate generation ${generation.id} is not compatible with application revision ${applicationRevision}`,
             )
           }
           const currentBindings = normalizedBindings(input.currentBindings)
+          const authoritativeCurrentBindings = watchSearchBindingMembers(
+            await freezeCurrentWatchSearchProfile(this.typesense),
+          )
+          if (
+            JSON.stringify(authoritativeCurrentBindings) !==
+            JSON.stringify(currentBindings)
+          ) {
+            throw new CandidateGenerationValidationError(
+              "current physical bindings changed after qualification",
+            )
+          }
           const qrelsRevision = requiredString(
             input.qrelsRevision,
             "qrels revision",
           )
+          const rankingRevision = requiredString(
+            input.rankingRevision,
+            "ranking revision",
+          )
+          const qualificationAudit = normalizedQualificationAudit(
+            input.qualificationAudit,
+          )
+          const qualificationStatus = input.qualificationStatus ?? "PASSED"
           const qualification =
             await tx.watchSearchCandidateQualification.findFirst({
               where: {
                 generationId: generation.id,
-                status: "PASSED",
-                applicationRevision: generation.applicationRevision,
+                status: qualificationStatus,
+                applicationRevision,
                 transcriptCollection: generation.transcriptCollection,
                 transcriptProjectionRevision:
                   generation.transcriptProjectionRevision,
                 qrelsRevision,
                 currentBindings: { equals: asJson(currentBindings) },
-                evidence: {
-                  path: ["identity", "rankingRevision"],
-                  equals: input.rankingRevision,
-                },
+                AND: [
+                  {
+                    evidence: {
+                      path: ["identity", "rankingRevision"],
+                      equals: rankingRevision,
+                    },
+                  },
+                  {
+                    evidence: {
+                      path: ["audit", "reviewerIdentity"],
+                      equals: qualificationAudit.reviewerIdentity,
+                    },
+                  },
+                  {
+                    evidence: {
+                      path: ["audit", "operatorIdentity"],
+                      equals: qualificationAudit.operatorIdentity,
+                    },
+                  },
+                  {
+                    evidence: {
+                      path: ["audit", "evidenceBundleSha256"],
+                      equals: qualificationAudit.evidenceBundleSha256,
+                    },
+                  },
+                  ...(qualificationAudit.evidenceBundleByteLength === undefined
+                    ? []
+                    : [
+                        {
+                          evidence: {
+                            path: ["audit", "evidenceBundleByteLength"],
+                            equals: qualificationAudit.evidenceBundleByteLength,
+                          },
+                        },
+                      ]),
+                ],
               },
-              select: { id: true },
+              select: { id: true, status: true },
             })
           if (!qualification) {
             throw new CandidateGenerationValidationError(
-              `candidate generation ${generation.id} has no exact passing qualification`,
+              `candidate generation ${generation.id} has no exact ${qualificationStatus.toLowerCase()} qualification`,
             )
           }
         }
@@ -1294,7 +1514,7 @@ export class TypesenseWatchSearchCandidateGenerationService {
     )
   }
 
-  private async findExactPassedQualification(
+  private async findExactAuthorizedQualification(
     generation: StoredGeneration,
     currentBindings: readonly string[],
     qrelsRevision: string,
@@ -1303,7 +1523,7 @@ export class TypesenseWatchSearchCandidateGenerationService {
     return this.prisma.watchSearchCandidateQualification.findFirst({
       where: {
         generationId: generation.id,
-        status: "PASSED",
+        status: { in: [...WATCH_SEARCH_CANDIDATE_AUTHORIZING_STATUSES] },
         applicationRevision: generation.applicationRevision,
         transcriptCollection: generation.transcriptCollection,
         transcriptProjectionRevision: generation.transcriptProjectionRevision,

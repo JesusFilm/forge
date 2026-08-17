@@ -44,6 +44,16 @@ const result = {
   languageSlug: "english",
 }
 
+const candidateIdentity = {
+  revision: "candidate-revision",
+  collections: {
+    catalog: "watch_search_catalog_candidate",
+    availability: "watch_search_availability_candidate",
+    lexical: "watch_search_lexical_candidate",
+    transcripts: "watch_search_transcripts_active",
+  },
+} as const
+
 describe("runAbsoluteSearchEval", () => {
   it("runs seed-only MODERN development cases and writes absolute evidence", async () => {
     const searchClient = vi.fn(async (_input: unknown) => ({
@@ -73,11 +83,12 @@ describe("runAbsoluteSearchEval", () => {
         split: "development",
         backendMode: "modern",
         searchLimit: 10,
+        candidateIdentity,
       },
       {
         cases: [developmentCase, heldOutCase],
-        searchUrl: "https://admin.internal/search",
-        adminBearer: "token",
+        servingUrl: "https://admin.internal/search",
+        servingBearer: "token",
         searchClient,
         judge: {
           model: "judge-model",
@@ -115,8 +126,12 @@ describe("runAbsoluteSearchEval", () => {
     })
     expect(searchClient).toHaveBeenCalledOnce()
     const searchInput = searchClient.mock.calls[0]?.[0] as
-      | { payload: unknown }
+      | { url?: string; bearer?: string; payload: unknown }
       | undefined
+    expect(searchInput).toMatchObject({
+      url: "https://admin.internal/search",
+      bearer: "token",
+    })
     expect(searchInput?.payload).toEqual(
       expect.objectContaining({
         query: "jesus",
@@ -143,15 +158,7 @@ describe("runAbsoluteSearchEval", () => {
             "seed-thai-who-is-jesus": { "core:4_jesus": 3 },
           },
         },
-        candidateIdentity: {
-          revision: "candidate-revision",
-          collections: {
-            catalog: "watch_search_catalog_candidate",
-            availability: "watch_search_availability_candidate",
-            lexical: "watch_search_lexical_candidate",
-            transcripts: "watch_search_transcripts_active",
-          },
-        },
+        candidateIdentity,
         operatorReview: {
           approved: true,
           reviewer: "search-owner",
@@ -160,8 +167,8 @@ describe("runAbsoluteSearchEval", () => {
       },
       {
         cases: [heldOutCase],
-        searchUrl: "https://admin.internal/search",
-        adminBearer: "token",
+        servingUrl: "https://admin.internal/search",
+        servingBearer: "token",
         searchClient: vi.fn(async () => ({
           ok: true as const,
           result: {
@@ -196,11 +203,11 @@ describe("runAbsoluteSearchEval", () => {
     const searchClient = vi.fn()
 
     const outcome = await runAbsoluteSearchEval(
-      { split: "held-out", backendMode: "modern" },
+      { split: "held-out", backendMode: "modern", candidateIdentity },
       {
         cases: [heldOutCase],
-        searchUrl: "https://admin.internal/search",
-        adminBearer: "token",
+        servingUrl: "https://admin.internal/search",
+        servingBearer: "token",
         searchClient,
       },
     )
@@ -220,11 +227,12 @@ describe("runAbsoluteSearchEval", () => {
         split: "development",
         backendMode: "modern",
         runPointwiseJudge: false,
+        candidateIdentity,
       },
       {
         cases: [developmentCase],
-        searchUrl: "https://admin.internal/search",
-        adminBearer: "token",
+        servingUrl: "https://admin.internal/search",
+        servingBearer: "token",
         searchClient: vi.fn(async () => ({
           ok: false as const,
           reason: "network_error" as const,
@@ -251,4 +259,60 @@ describe("runAbsoluteSearchEval", () => {
       },
     })
   })
+
+  it.each([
+    ["missing", [null, "candidate-revision"]],
+    ["mixed", ["candidate-revision", "another-revision"]],
+  ])(
+    "rejects %s Serving revisions before judging or writing",
+    async (_case, revisions) => {
+      const writeReport = vi.fn()
+      const judgePointwise = vi.fn()
+      let call = 0
+      const outcome = await runAbsoluteSearchEval(
+        {
+          split: "development",
+          backendMode: "modern",
+          runPointwiseJudge: true,
+          candidateIdentity,
+        },
+        {
+          cases: [developmentCase, { ...developmentCase, id: "seed-jesus-2" }],
+          servingUrl: "https://admin.internal/search",
+          servingBearer: "token",
+          searchClient: vi.fn(async () => ({
+            ok: true as const,
+            result: {
+              results: [result],
+              hasMore: false,
+              query: "jesus",
+              searchMode: "watch-search-typesense",
+              requestId: `request-${call}`,
+              degraded: false,
+              latencyMs: 40,
+              ...(revisions[call++] == null
+                ? {}
+                : { revision: revisions[call - 1]! }),
+              laneStatuses: [],
+            },
+          })),
+          judge: {
+            model: "judge-model",
+            provider: "openrouter",
+            judgePair: vi.fn(),
+            judgePointwise,
+          },
+          artifactWriter: { writeReport },
+        },
+      )
+
+      expect(outcome).toEqual({
+        ok: false,
+        reason: "serving_revision_mismatch",
+        retryable: false,
+      })
+      expect(judgePointwise).not.toHaveBeenCalled()
+      expect(writeReport).not.toHaveBeenCalled()
+    },
+  )
 })

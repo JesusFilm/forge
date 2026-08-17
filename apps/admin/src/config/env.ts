@@ -78,6 +78,12 @@ export const watchSearchDefaultShadowEnabledEnvSchema = z
   .default("true")
   .transform((value) => value === "true")
 
+export const watchSearchFleetPrimaryEnabledEnvSchema = z
+  .enum(["true", "false"])
+  .optional()
+  .default("false")
+  .transform((value) => value === "true")
+
 export const watchSearchTypesenseProfileEnvSchema = z
   .union([
     z.literal("CURRENT"),
@@ -247,6 +253,7 @@ export const env = createEnv({
     WATCH_SEARCH_PRIMARY_MODE: watchSearchPrimaryModeEnvSchema,
     WATCH_SEARCH_DEFAULT_SHADOW_ENABLED:
       watchSearchDefaultShadowEnabledEnvSchema,
+    WATCH_SEARCH_FLEET_PRIMARY_ENABLED: watchSearchFleetPrimaryEnabledEnvSchema,
     WATCH_SEARCH_TYPESENSE_PROFILE: watchSearchTypesenseProfileEnvSchema,
     WATCH_SEARCH_CANDIDATE_COMPARISON_ENABLED:
       watchSearchCandidateComparisonEnabledEnvSchema,
@@ -690,6 +697,9 @@ export const env = createEnv({
     WATCH_SEARCH_DEFAULT_SHADOW_ENABLED:
       emptyToUndefined(process.env.WATCH_SEARCH_DEFAULT_SHADOW_ENABLED) ??
       "true",
+    WATCH_SEARCH_FLEET_PRIMARY_ENABLED:
+      emptyToUndefined(process.env.WATCH_SEARCH_FLEET_PRIMARY_ENABLED) ??
+      "false",
     WATCH_SEARCH_TYPESENSE_PROFILE:
       emptyToUndefined(process.env.WATCH_SEARCH_TYPESENSE_PROFILE) ?? "CURRENT",
     WATCH_SEARCH_CANDIDATE_COMPARISON_ENABLED:

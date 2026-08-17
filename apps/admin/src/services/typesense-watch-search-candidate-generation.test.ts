@@ -1,323 +1,37 @@
-import { beforeEach, describe, expect, it, vi } from "vitest"
+import { beforeEach, describe, expect, it } from "vitest"
 import {
   CandidateGenerationCompatibilityError,
   CandidateGenerationConflictError,
   CandidateGenerationLeaseError,
   CandidateGenerationValidationError,
-  TypesenseWatchSearchCandidateGenerationService,
 } from "./typesense-watch-search-candidate-generation"
 import { WATCH_SEARCH_CANDIDATE_REQUIRED_EVIDENCE_GATES } from "./typesense-watch-search-candidate-qualification"
-
-// The in-memory Prisma double intentionally accepts the delegates' heterogeneous shapes.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type Row = Record<string, any>
-
-function matchesGeneration(row: Row, where: Row): boolean {
-  return (
-    (!where.id || row.id === where.id) &&
-    (!where.state ||
-      row.state === where.state ||
-      (where.state.in as string[] | undefined)?.includes(row.state)) &&
-    (where.version === undefined || row.version === where.version) &&
-    (!where.OR ||
-      where.OR.some(
-        (condition: Row) =>
-          (condition.transcriptCollection?.not !== undefined &&
-            row.transcriptCollection !== condition.transcriptCollection.not) ||
-          (condition.transcriptProjectionRevision?.not !== undefined &&
-            row.transcriptProjectionRevision !==
-              condition.transcriptProjectionRevision.not),
-      ))
-  )
-}
-
-function applyData(row: Row, data: Row): Row {
-  const next = { ...row }
-  for (const [key, value] of Object.entries(data)) {
-    next[key] =
-      typeof value === "object" && value !== null && "increment" in value
-        ? row[key] + value.increment
-        : value
-  }
-  return next
-}
-
-function memoryPrisma() {
-  const generations = new Map<string, Row>()
-  const pointers = new Map<string, Row>([
-    ["EVALUATION", { kind: "EVALUATION", generationId: null, version: 0 }],
-    ["SERVING", { kind: "SERVING", generationId: null, version: 0 }],
-  ])
-  const qualifications: Row[] = []
-  const leases = new Map<string, Row>()
-
-  const prisma: Row = {
-    watchSearchCandidateGeneration: {
-      create: vi.fn(async ({ data }: Row) => {
-        const row = {
-          ...data,
-          state: data.state ?? "BUILDING",
-          version: 0,
-          documentCounts: {},
-          capacityEvidence: {},
-          deletionProgress: {},
-          validatedAt: null,
-          invalidatedAt: null,
-          invalidationReason: null,
-          retiredAt: null,
-        }
-        generations.set(row.id, row)
-        return row
-      }),
-      findUnique: vi.fn(async ({ where }: Row) => {
-        const row = generations.get(where.id)
-        return row ? { ...row } : null
-      }),
-      findFirst: vi.fn(async ({ where }: Row) =>
-        [...generations.values()].find((row) =>
-          (where.state.in as string[]).includes(row.state),
-        ),
-      ),
-      updateMany: vi.fn(async ({ where, data }: Row) => {
-        let count = 0
-        for (const [id, row] of generations) {
-          if (!matchesGeneration(row, where)) continue
-          generations.set(id, applyData(row, data))
-          count += 1
-        }
-        return { count }
-      }),
-    },
-    watchSearchCandidatePointer: {
-      findUnique: vi.fn(async ({ where, include }: Row) => {
-        const pointer = pointers.get(where.kind)
-        if (!pointer) return null
-        return include?.generation
-          ? {
-              ...pointer,
-              generation: pointer.generationId
-                ? generations.get(pointer.generationId)
-                : null,
-            }
-          : { ...pointer }
-      }),
-      updateMany: vi.fn(async ({ where, data }: Row) => {
-        const pointer = pointers.get(where.kind)
-        if (
-          !pointer ||
-          pointer.version !== where.version ||
-          (where.generationId !== undefined &&
-            pointer.generationId !== where.generationId)
-        )
-          return { count: 0 }
-        pointers.set(where.kind, applyData(pointer, data))
-        return { count: 1 }
-      }),
-    },
-    watchSearchCandidateQualification: {
-      create: vi.fn(async ({ data }: Row) => {
-        const row = {
-          id: `qualification-${qualifications.length + 1}`,
-          ...data,
-        }
-        qualifications.push(row)
-        return row
-      }),
-      findFirst: vi.fn(async ({ where }: Row) =>
-        qualifications.find(
-          (row) =>
-            row.generationId === where.generationId &&
-            row.status === where.status &&
-            row.applicationRevision === where.applicationRevision &&
-            row.transcriptCollection === where.transcriptCollection &&
-            row.transcriptProjectionRevision ===
-              where.transcriptProjectionRevision &&
-            (where.qrelsRevision === undefined ||
-              row.qrelsRevision === where.qrelsRevision) &&
-            (where.currentBindings === undefined ||
-              JSON.stringify(row.currentBindings) ===
-                JSON.stringify(where.currentBindings.equals)) &&
-            (where.evidence === undefined ||
-              row.evidence?.identity?.rankingRevision ===
-                where.evidence.equals),
-        ),
-      ),
-    },
-    watchSearchCandidateLease: {
-      updateMany: vi.fn(async ({ where, data }: Row) => {
-        const lease = leases.get(where.resourceKey)
-        if (!lease) return { count: 0 }
-        const renewable = where.holderToken
-          ? lease.holderToken === where.holderToken &&
-            lease.expiresAt > where.expiresAt.gt
-          : lease.expiresAt <= where.OR[0].expiresAt.lte ||
-            lease.holderToken === where.OR[1].holderToken
-        if (!renewable) return { count: 0 }
-        leases.set(where.resourceKey, applyData(lease, data))
-        return { count: 1 }
-      }),
-      create: vi.fn(async ({ data }: Row) => {
-        if (leases.has(data.resourceKey)) throw { code: "P2002" }
-        leases.set(data.resourceKey, data)
-        return data
-      }),
-      findUnique: vi.fn(async ({ where }: Row) =>
-        leases.get(where.resourceKey),
-      ),
-      findFirst: vi.fn(async ({ where }: Row) =>
-        [...leases.values()].find(
-          (lease) =>
-            lease.expiresAt > where.expiresAt.gt &&
-            (where.generationId === undefined ||
-              lease.generationId === where.generationId) &&
-            (where.transcriptCollection === undefined ||
-              lease.transcriptCollection === where.transcriptCollection) &&
-            (where.transcriptProjectionRevision === undefined ||
-              lease.transcriptProjectionRevision ===
-                where.transcriptProjectionRevision),
-        ),
-      ),
-      deleteMany: vi.fn(async ({ where }: Row) => {
-        const lease = leases.get(where.resourceKey)
-        if (!lease || lease.holderToken !== where.holderToken)
-          return { count: 0 }
-        leases.delete(where.resourceKey)
-        return { count: 1 }
-      }),
-    },
-  }
-  prisma.$transaction = vi.fn(async (operation: (tx: Row) => unknown) =>
-    operation(prisma),
-  )
-  prisma.$queryRaw = vi.fn(async () => [{ acquired: true }])
-
-  return { prisma, generations, pointers, qualifications, leases }
-}
-
-const generationInput = (id = "candidate-1") => ({
-  id,
-  applicationRevision: "admin-app-sha-1",
-  sourceEpoch: "catalog-revision-42",
-  sourceDigests: { catalog: "sha256:catalog" },
-  transcriptProjectionRevision: 17n,
-  members: {
-    catalog: {
-      collection: `${id}_catalog`,
-      ownership: "OWNED" as const,
-      fields: [{ name: "id", type: "string" }],
-    },
-    availability: {
-      collection: `${id}_availability`,
-      ownership: "OWNED" as const,
-      fields: [{ name: "id", type: "string" }],
-    },
-    lexical: {
-      collection: `${id}_lexical`,
-      ownership: "OWNED" as const,
-      fields: [{ name: "title", type: "string", locale: "zh" }],
-    },
-    transcript: {
-      collection: "watch_search_transcripts_active",
-      ownership: "SHARED" as const,
-      fields: [{ name: "embedding", type: "float[]", num_dim: 1536 }],
-    },
-  },
-})
-
-function schemaClient() {
-  return {
-    getCollectionSchema: vi.fn(async (collection: string) => {
-      if (collection.endsWith("_catalog")) {
-        return { name: collection, fields: [{ name: "id", type: "string" }] }
-      }
-      if (collection.endsWith("_availability")) {
-        return { name: collection, fields: [{ name: "id", type: "string" }] }
-      }
-      if (collection.endsWith("_lexical")) {
-        return {
-          name: collection,
-          fields: [{ name: "title", type: "string", locale: "zh" }],
-        }
-      }
-      if (collection === "watch_search_transcripts_active") {
-        return {
-          name: collection,
-          fields: [{ name: "embedding", type: "float[]", num_dim: 1536 }],
-        }
-      }
-      throw new Error(`unexpected collection ${collection}`)
-    }),
-  }
-}
+import {
+  createCandidateGenerationTestHarness,
+  currentAliasTargets,
+  currentBindings,
+  generationInput,
+  passingQualificationReport,
+  qualificationAudit,
+  TYPESENSE_WATCH_LEXICAL_ALIAS,
+} from "./typesense-watch-search-candidate-generation.test-support"
 
 describe("TypesenseWatchSearchCandidateGenerationService", () => {
-  let db: ReturnType<typeof memoryPrisma>
-  let typesense: ReturnType<typeof schemaClient>
-  let now: Date
-  let service: TypesenseWatchSearchCandidateGenerationService
+  type Harness = ReturnType<typeof createCandidateGenerationTestHarness>
+  let db: Harness["db"]
+  let typesense: Harness["typesense"]
+  let service: Harness["service"]
+  let ready: Harness["ready"]
+  let setNow: Harness["setNow"]
 
   beforeEach(() => {
-    db = memoryPrisma()
-    typesense = schemaClient()
-    now = new Date("2026-08-10T00:00:00.000Z")
-    service = new TypesenseWatchSearchCandidateGenerationService(
-      db.prisma as never,
-      typesense,
-      () => now,
-    )
+    const harness = createCandidateGenerationTestHarness()
+    db = harness.db
+    typesense = harness.typesense
+    service = harness.service
+    ready = harness.ready
+    setNow = harness.setNow
   })
-
-  async function ready(id = "candidate-1") {
-    await service.createBuildingGeneration(generationInput(id))
-    return service.validateAndMarkReady({
-      generationId: id,
-      expectedVersion: 0,
-      documentCounts: { catalog: 1_070, transcript: 280_107 },
-      capacityEvidence: { residentMemoryBytes: 5_000_000_000 },
-    })
-  }
-
-  function passingQualificationReport(input: {
-    generationId?: string
-    currentBindings: readonly string[]
-    qrelsRevision?: string
-    identityPatch?: Row
-    evidencePatch?: Row
-    artifactPatch?: Row
-  }) {
-    const evidence = Object.fromEntries(
-      WATCH_SEARCH_CANDIDATE_REQUIRED_EVIDENCE_GATES.map((gate) => [
-        gate,
-        "PASS",
-      ]),
-    )
-    const artifacts = Object.fromEntries(
-      WATCH_SEARCH_CANDIDATE_REQUIRED_EVIDENCE_GATES.map((gate) => [
-        gate,
-        `s3://reviewed/${gate}.json`,
-      ]),
-    )
-    return {
-      schemaVersion: "watch-search-candidate-qualification/v2",
-      status: "QUALIFIED",
-      reasons: [],
-      identity: {
-        generationId: input.generationId ?? "candidate-1",
-        applicationRevision: "admin-app-sha-1",
-        rankingRevision: "title-and-brand-v1",
-        transcriptCollection: "watch_search_transcripts_active",
-        transcriptProjectionRevision: "17",
-        qrelsRevision: input.qrelsRevision ?? "qrels-reviewed-1",
-        currentBindings: input.currentBindings,
-        ...input.identityPatch,
-      },
-      evidence: {
-        ...evidence,
-        ...input.evidencePatch,
-        artifacts: { ...artifacts, ...input.artifactPatch },
-      },
-    }
-  }
 
   it("creates the BUILDING owner before validation and publishes only a complete READY tuple", async () => {
     const building = await service.createBuildingGeneration(generationInput())
@@ -546,7 +260,7 @@ describe("TypesenseWatchSearchCandidateGenerationService", () => {
         ttlMs: 60_000,
       }),
     ).resolves.toBe(true)
-    now = new Date("2026-08-10T00:02:00.000Z")
+    setNow(new Date("2026-08-10T00:02:00.000Z"))
     await expect(
       service.acquireLease({ ...identity, holderToken: "holder-b" }),
     ).resolves.toMatchObject({ holderToken: "holder-b" })
@@ -625,7 +339,7 @@ describe("TypesenseWatchSearchCandidateGenerationService", () => {
       service.assertCurrentPublicationAllowed({ rebuildTranscripts: true }),
     ).rejects.toBeInstanceOf(CandidateGenerationLeaseError)
 
-    now = new Date("2026-08-10T00:01:00.000Z")
+    setNow(new Date("2026-08-10T00:01:00.000Z"))
     await expect(
       service.assertCurrentPublicationAllowed({ rebuildTranscripts: false }),
     ).resolves.toBe(undefined)
@@ -661,11 +375,8 @@ describe("TypesenseWatchSearchCandidateGenerationService", () => {
 
   it("pins qualification and serving to one exact generation while evaluation advances", async () => {
     await ready("candidate-1")
-    const currentBindings = [
-      "watch_catalog_current",
-      "watch_transcripts_current",
-    ]
     await service.recordQualification({
+      qualificationAudit,
       generationId: "candidate-1",
       status: "PASSED",
       applicationRevision: "admin-app-sha-1",
@@ -691,7 +402,9 @@ describe("TypesenseWatchSearchCandidateGenerationService", () => {
     db.prisma.$queryRaw.mockResolvedValueOnce([{ acquired: false }])
     await expect(
       service.pinServingGeneration({
+        qualificationAudit,
         generationId: "candidate-1",
+        applicationRevision: "admin-app-sha-1",
         expectedPointerVersion: 0,
         currentBindings,
         qrelsRevision: "qrels-reviewed-1",
@@ -701,7 +414,9 @@ describe("TypesenseWatchSearchCandidateGenerationService", () => {
     expect(db.pointers.get("SERVING")?.generationId).toBeNull()
     await expect(
       service.pinServingGeneration({
+        qualificationAudit,
         generationId: "candidate-1",
+        applicationRevision: "admin-app-sha-1",
         expectedPointerVersion: 0,
         currentBindings: ["new-current-binding"],
         qrelsRevision: "qrels-reviewed-1",
@@ -710,7 +425,9 @@ describe("TypesenseWatchSearchCandidateGenerationService", () => {
     ).rejects.toBeInstanceOf(CandidateGenerationValidationError)
     await expect(
       service.pinServingGeneration({
+        qualificationAudit,
         generationId: "candidate-1",
+        applicationRevision: "admin-app-sha-1",
         expectedPointerVersion: 0,
         currentBindings,
         qrelsRevision: "stale-qrels",
@@ -718,7 +435,9 @@ describe("TypesenseWatchSearchCandidateGenerationService", () => {
       }),
     ).rejects.toBeInstanceOf(CandidateGenerationValidationError)
     await service.pinServingGeneration({
+      qualificationAudit,
       generationId: "candidate-1",
+      applicationRevision: "admin-app-sha-1",
       expectedPointerVersion: 0,
       currentBindings,
       qrelsRevision: "qrels-reviewed-1",
@@ -735,9 +454,11 @@ describe("TypesenseWatchSearchCandidateGenerationService", () => {
     expect(db.pointers.get("EVALUATION")?.generationId).toBe("candidate-2")
     await expect(
       service.pinServingGeneration({
+        qualificationAudit,
         generationId: "candidate-2",
+        applicationRevision: "admin-app-sha-1",
         expectedPointerVersion: 1,
-        currentBindings: ["watch_catalog_current", "watch_transcripts_current"],
+        currentBindings,
         qrelsRevision: "qrels-reviewed-1",
         rankingRevision: "title-and-brand-v1",
       }),
@@ -748,6 +469,7 @@ describe("TypesenseWatchSearchCandidateGenerationService", () => {
     await ready()
     await expect(
       service.recordQualification({
+        qualificationAudit,
         generationId: "candidate-1",
         status: "PASSED",
         applicationRevision: "admin-app-sha-1",
@@ -761,6 +483,69 @@ describe("TypesenseWatchSearchCandidateGenerationService", () => {
     ).rejects.toBeInstanceOf(CandidateGenerationValidationError)
   })
 
+  it("rejects qualification audit fields that do not match the stored report", async () => {
+    await ready()
+    const currentBindings = ["watch_catalog_current"]
+    await expect(
+      service.recordQualification({
+        qualificationAudit,
+        generationId: "candidate-1",
+        status: "PASSED",
+        applicationRevision: "admin-app-sha-1",
+        rankingRevision: "title-and-brand-v1",
+        transcriptCollection: "watch_search_transcripts_active",
+        transcriptProjectionRevision: 17n,
+        qrelsRevision: "qrels-reviewed-1",
+        currentBindings,
+        evidence: {
+          ...passingQualificationReport({ currentBindings }),
+          audit: {
+            ...qualificationAudit,
+            reviewerIdentity: "different-reviewer@example.org",
+          },
+        },
+      }),
+    ).rejects.toBeInstanceOf(CandidateGenerationValidationError)
+    expect(db.qualifications).toHaveLength(0)
+  })
+
+  it.each([
+    ["reviewer identity", { reviewerIdentity: "other@example.org" }],
+    ["operator identity", { operatorIdentity: "other@example.org" }],
+    ["evidence digest", { evidenceBundleSha256: `sha256:${"b".repeat(64)}` }],
+  ])(
+    "rejects serving when the %s changed after recording",
+    async (_name, patch) => {
+      await ready()
+      const currentBindings = ["watch_catalog_current"]
+      await service.recordQualification({
+        qualificationAudit,
+        generationId: "candidate-1",
+        status: "PASSED",
+        applicationRevision: "admin-app-sha-1",
+        rankingRevision: "title-and-brand-v1",
+        transcriptCollection: "watch_search_transcripts_active",
+        transcriptProjectionRevision: 17n,
+        qrelsRevision: "qrels-reviewed-1",
+        currentBindings,
+        evidence: passingQualificationReport({ currentBindings }),
+      })
+
+      await expect(
+        service.pinServingGeneration({
+          qualificationAudit: { ...qualificationAudit, ...patch },
+          generationId: "candidate-1",
+          applicationRevision: "admin-app-sha-1",
+          expectedPointerVersion: 0,
+          currentBindings,
+          qrelsRevision: "qrels-reviewed-1",
+          rankingRevision: "title-and-brand-v1",
+        }),
+      ).rejects.toBeInstanceOf(CandidateGenerationValidationError)
+      expect(db.pointers.get("SERVING")?.generationId).toBeNull()
+    },
+  )
+
   it.each(WATCH_SEARCH_CANDIDATE_REQUIRED_EVIDENCE_GATES)(
     "rejects a passing report when %s did not pass",
     async (gate) => {
@@ -768,6 +553,7 @@ describe("TypesenseWatchSearchCandidateGenerationService", () => {
       const currentBindings = ["watch_catalog_current"]
       await expect(
         service.recordQualification({
+          qualificationAudit,
           generationId: "candidate-1",
           status: "PASSED",
           applicationRevision: "admin-app-sha-1",
@@ -792,6 +578,7 @@ describe("TypesenseWatchSearchCandidateGenerationService", () => {
       const currentBindings = ["watch_catalog_current"]
       await expect(
         service.recordQualification({
+          qualificationAudit,
           generationId: "candidate-1",
           status: "PASSED",
           applicationRevision: "admin-app-sha-1",
@@ -814,6 +601,7 @@ describe("TypesenseWatchSearchCandidateGenerationService", () => {
     const currentBindings = ["watch_catalog_current"]
     await expect(
       service.recordQualification({
+        qualificationAudit,
         generationId: "candidate-1",
         status: "PASSED",
         applicationRevision: "admin-app-sha-1",
@@ -863,7 +651,9 @@ describe("TypesenseWatchSearchCandidateGenerationService", () => {
 
     await expect(
       service.pinServingGeneration({
+        qualificationAudit,
         generationId: "candidate-1",
+        applicationRevision: "admin-app-sha-1",
         expectedPointerVersion: 0,
         currentBindings,
         qrelsRevision: "qrels-reviewed-1",
@@ -873,10 +663,66 @@ describe("TypesenseWatchSearchCandidateGenerationService", () => {
     expect(db.pointers.get("SERVING")?.generationId).toBeNull()
   })
 
+  it("rejects stale application identity and Current bindings while the publication lock is held", async () => {
+    await ready()
+    await service.recordQualification({
+      qualificationAudit,
+      generationId: "candidate-1",
+      status: "PASSED",
+      applicationRevision: "admin-app-sha-1",
+      rankingRevision: "title-and-brand-v1",
+      transcriptCollection: "watch_search_transcripts_active",
+      transcriptProjectionRevision: 17n,
+      qrelsRevision: "qrels-reviewed-1",
+      currentBindings,
+      evidence: passingQualificationReport({ currentBindings }),
+    })
+
+    await expect(
+      service.pinServingGeneration({
+        qualificationAudit,
+        generationId: "candidate-1",
+        applicationRevision: "admin-app-sha-stale",
+        expectedPointerVersion: 0,
+        currentBindings,
+        qrelsRevision: "qrels-reviewed-1",
+        rankingRevision: "title-and-brand-v1",
+      }),
+    ).rejects.toBeInstanceOf(CandidateGenerationCompatibilityError)
+
+    typesense.getAlias.mockImplementation(async (alias: string) => ({
+      name: alias,
+      collection_name:
+        alias === TYPESENSE_WATCH_LEXICAL_ALIAS
+          ? "watch_lexical_republished"
+          : currentAliasTargets.get(alias)!,
+    }))
+    await expect(
+      service.pinServingGeneration({
+        qualificationAudit,
+        generationId: "candidate-1",
+        applicationRevision: "admin-app-sha-1",
+        expectedPointerVersion: 0,
+        currentBindings,
+        qrelsRevision: "qrels-reviewed-1",
+        rankingRevision: "title-and-brand-v1",
+      }),
+    ).rejects.toBeInstanceOf(CandidateGenerationValidationError)
+    expect(typesense.getAlias).toHaveBeenCalledTimes(4)
+    expect(db.prisma.$queryRaw.mock.invocationCallOrder.at(-1)).toBeLessThan(
+      typesense.getAlias.mock.invocationCallOrder[0]!,
+    )
+    expect(
+      db.prisma.watchSearchCandidatePointer.updateMany,
+    ).not.toHaveBeenCalled()
+    expect(db.pointers.get("SERVING")?.generationId).toBeNull()
+  })
+
   it("rejects qualification evidence relabeled to another qrels revision", async () => {
     await ready()
     await expect(
       service.recordQualification({
+        qualificationAudit,
         generationId: "candidate-1",
         status: "PASSED",
         applicationRevision: "admin-app-sha-1",

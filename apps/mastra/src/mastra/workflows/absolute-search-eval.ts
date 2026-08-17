@@ -12,7 +12,7 @@ import {
 const AbsoluteSearchEvalInputSchema = z
   .object({
     split: z.enum(["development", "held-out"]).default("development"),
-    backendMode: z.enum(["modern", "default"]).default("modern"),
+    backendMode: z.literal("modern").default("modern"),
     locales: z.array(z.string().min(1).max(32)).min(1).max(30).optional(),
     searchLimit: z.number().int().min(1).max(50).default(10),
     runPointwiseJudge: z.boolean().default(true),
@@ -30,8 +30,7 @@ const AbsoluteSearchEvalInputSchema = z
           })
           .strict(),
       })
-      .strict()
-      .optional(),
+      .strict(),
     operatorReview: z
       .object({
         approved: z.boolean(),
@@ -60,6 +59,7 @@ const AbsoluteSearchEvalResultSchema = z.discriminatedUnion("ok", [
         "judge_config_missing",
         "artifact_write_failed",
         "held_out_acknowledgement_required",
+        "serving_revision_mismatch",
       ]),
       retryable: z.boolean(),
     })
