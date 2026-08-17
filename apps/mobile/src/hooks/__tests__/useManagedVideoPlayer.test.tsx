@@ -1,9 +1,9 @@
 /**
- * CHARACTERIZATION net over `useManagedVideoPlayer` (U2). These tests pin the
- * behaviour the adapter has TODAY, before U5 re-keys its session boundaries onto
- * explicit signals. They are deliberately NOT a statement of desired behaviour:
- * scenario 4 pins a pause on an `inactive` AppState transition, which U5 will
- * invert on purpose.
+ * CHARACTERIZATION net over `useManagedVideoPlayer` (U2), plus the explicit
+ * session boundaries U5 re-keyed onto (second describe block). The U2 block
+ * still pins the behaviour the adapter had before that re-key, unchanged except
+ * for the `inactive` transition, which U5 inverted on purpose — see the comment
+ * on that case.
  *
  * The adapter runs for real inside the real `VideoPlayer`, so the two behaviours
  * U5 re-keys are observed where the app produces them:
@@ -183,6 +183,7 @@ import { act, type ReactElement } from "react"
 import { AppState } from "react-native"
 
 import { VideoPlayer } from "../../components/watch/VideoPlayer"
+import { getMiniPlayerStore } from "../../lib/miniPlayer/store"
 import type { ProgressIdentity } from "../../lib/watchProgress/recorder"
 import type { ExpoVideoMock } from "../../test-utils/expoVideoMock"
 import {
@@ -241,6 +242,11 @@ const IDENTITY_A: ProgressIdentity = {
   videoSlug: "video-a-slug",
   languageSlug: "english",
 }
+// The adapter's playhead/progress poll interval (STALL_POLL_MS), which is not
+// exported. A drift makes the position-feed case fire zero ticks, not a false
+// pass.
+const POLL_MS = 1000
+
 const IDENTITY_B: ProgressIdentity = {
   videoId: "video-b",
   videoSlug: "video-b-slug",
@@ -305,10 +311,19 @@ async function emitAppState(state: string) {
   })
 }
 
+// The mini-player store is a module singleton, so a session or a latch left by
+// one case would leak into the next.
+function resetMiniPlayerStore() {
+  const store = getMiniPlayerStore()
+  store.setPipHold(false)
+  store.end("abandoned")
+}
+
 beforeEach(() => {
   video.__reset()
   recorderMock.__reset()
   qoeMock.__reset()
+  resetMiniPlayerStore()
   appStateHandlers = []
   jest.spyOn(AppState, "addEventListener").mockImplementation(((
     _event: string,
@@ -325,6 +340,7 @@ beforeEach(() => {
 
 afterEach(async () => {
   if (mounted != null) await unmountPlayer(mounted)
+  jest.useRealTimers()
   jest.restoreAllMocks()
 })
 
@@ -398,19 +414,19 @@ describe("useManagedVideoPlayer — current session boundaries (characterization
     expect(video.__player.pause).toHaveBeenCalledTimes(1)
   })
 
-  it("treats an inactive transition exactly like a background one — it pauses today", async () => {
-    // THE case that separates correct from buggy after U5, and the only one that
-    // does. U5 deliberately inverts this, so the pin makes that inversion a
-    // visible, intentional change rather than an unnoticed side effect.
+  it("neither pauses nor flushes on an inactive transition", async () => {
+    // THE one U2 pin U5 inverts, and the only one it touches. Under U4's
+    // decision table `inactive` is a call, the notification shade or the app
+    // switcher — the app has not left, and a real departure always follows with
+    // `background`, which owns the checkpoint. Flushing here too would spend
+    // admin's 30-mutations-per-minute budget on a transient.
     await renderPlayer()
     expect(video.__player.pause).not.toHaveBeenCalled()
 
     await emitAppState("inactive")
 
-    expect(video.__player.pause).toHaveBeenCalledTimes(1)
-    expect(recorderMock.__flushCalls).toEqual([
-      { index: 0, trigger: "background" },
-    ])
+    expect(video.__player.pause).not.toHaveBeenCalled()
+    expect(recorderMock.__flushCalls).toEqual([])
   })
 
   it("flushes progress under the end trigger when playback reaches the end", async () => {
@@ -424,5 +440,162 @@ describe("useManagedVideoPlayer — current session boundaries (characterization
     expect(recorderMock.__flushCalls).toEqual([{ index: 0, trigger: "end" }])
     // Playback end does not close the quality session — unmount still does.
     expect(qoeMock.__sessions[0].finalize).not.toHaveBeenCalled()
+  })
+})
+
+// One session in the store, matching IDENTITY_A. The adapter reacts to the
+// store's endings, so a case that needs one has to open it first.
+function startStoreSession(videoId = "video-a", videoSlug = "video-a-slug") {
+  getMiniPlayerStore().start({ videoId, videoSlug, title: "A video" })
+}
+
+describe("useManagedVideoPlayer — explicit session boundaries (U5)", () => {
+  it.each([false, true])(
+    "does not pause on an inactive transition (picture-in-picture active: %s)",
+    async (pipHold) => {
+      await renderPlayer()
+      getMiniPlayerStore().setPipHold(pipHold)
+      await act(async () => {
+        video.__player.play()
+      })
+
+      await emitAppState("inactive")
+
+      expect(video.__player.pause).not.toHaveBeenCalled()
+      expect(video.__player.playing).toBe(true)
+    },
+  )
+
+  it("does not pause on background while picture-in-picture is active, and pauses when it is not", async () => {
+    await renderPlayer()
+    const store = getMiniPlayerStore()
+    await act(async () => {
+      video.__player.play()
+    })
+
+    store.setPipHold(true)
+    await emitAppState("background")
+
+    expect(video.__player.pause).not.toHaveBeenCalled()
+    // R13 suspends the pause, not the checkpoint: progress still writes.
+    expect(recorderMock.__flushCalls).toEqual([
+      { index: 0, trigger: "background" },
+    ])
+
+    store.setPipHold(false)
+    await emitAppState("background")
+
+    expect(video.__player.pause).toHaveBeenCalledTimes(1)
+  })
+
+  it("does not resume a video the viewer paused inside picture-in-picture", async () => {
+    const renderer = await renderPlayer()
+    const store = getMiniPlayerStore()
+    await act(async () => {
+      video.__player.play()
+    })
+
+    // An ordinary background first — this is what leaves the was-playing
+    // snapshot set, and reading it on the return from picture-in-picture is
+    // the defect. Without it the case passes for the wrong reason.
+    await emitAppState("background")
+    await emitAppState("active")
+    expect(video.__player.play).toHaveBeenCalledTimes(2)
+    expect(video.__player.playing).toBe(true)
+
+    store.setPipHold(true)
+    await emitAppState("background")
+    // Playback survived, so there is no was-playing snapshot to refresh.
+    expect(video.__player.pause).toHaveBeenCalledTimes(1)
+
+    // The viewer pauses inside the operating system's window.
+    await act(async () => {
+      video.__player.pause()
+    })
+    const playsBeforeReturn = video.__player.play.mock.calls.length
+
+    await emitAppState("active")
+
+    expect(video.__player.play).toHaveBeenCalledTimes(playsBeforeReturn)
+    expect(video.__player.playing).toBe(false)
+    await unmountPlayer(renderer)
+  })
+
+  it("flushes under the dismiss trigger and finalizes as dismissed, not abandoned", async () => {
+    const renderer = await renderPlayer()
+    startStoreSession()
+    expect(recorderMock.__flushCalls).toEqual([])
+    expect(qoeMock.__sessions[0].finalize).not.toHaveBeenCalled()
+
+    await act(async () => {
+      getMiniPlayerStore().requestDismiss()
+    })
+
+    expect(recorderMock.__flushCalls).toEqual([
+      { index: 0, trigger: "dismiss" },
+    ])
+    expect(qoeMock.__sessions[0].finalize).toHaveBeenCalledTimes(1)
+    expect(qoeMock.__sessions[0].finalize).toHaveBeenCalledWith("dismissed")
+
+    // The teardown safety net still runs and must not overwrite the reason:
+    // the explicit signal ran first, so "abandoned" never reaches the summary.
+    await unmountPlayer(renderer)
+    expect(qoeMock.__sessions[0].finalize).toHaveBeenCalledTimes(1)
+  })
+
+  it("ends the first video as replaced and flushes it once when a second starts", async () => {
+    await renderPlayer()
+    startStoreSession()
+
+    await act(async () => {
+      getMiniPlayerStore().start({
+        videoId: "video-b",
+        videoSlug: "video-b-slug",
+        title: "Another video",
+      })
+    })
+
+    expect(recorderMock.__flushCalls).toEqual([
+      { index: 0, trigger: "replace" },
+    ])
+    expect(qoeMock.__sessions[0].finalize).toHaveBeenCalledTimes(1)
+    expect(qoeMock.__sessions[0].finalize).toHaveBeenCalledWith("replaced")
+  })
+
+  it("publishes one position update per poll tick while playing, and none while paused", async () => {
+    // Fake timers so the adapter's one-second poll is driven, not waited on.
+    jest.useFakeTimers()
+    await renderPlayer()
+    const store = getMiniPlayerStore()
+    startStoreSession()
+    let updates = 0
+    const unsubscribe = store.subscribe(() => {
+      updates += 1
+    })
+
+    video.__player.duration = 120
+    await act(async () => {
+      video.__player.play()
+    })
+    video.__player.currentTime = 5
+    await act(async () => {
+      jest.advanceTimersByTime(POLL_MS)
+    })
+
+    expect(updates).toBe(1)
+    expect(store.getSnapshot().session?.positionSeconds).toBe(5)
+    expect(store.getSnapshot().session?.durationSeconds).toBe(120)
+
+    await act(async () => {
+      video.__player.pause()
+    })
+    video.__player.currentTime = 9
+    await act(async () => {
+      jest.advanceTimersByTime(POLL_MS * 3)
+    })
+
+    expect(updates).toBe(1)
+    expect(store.getSnapshot().session?.positionSeconds).toBe(5)
+    unsubscribe()
   })
 })

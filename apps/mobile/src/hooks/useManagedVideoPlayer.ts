@@ -5,8 +5,11 @@ import { useVideoPlayer, type VideoPlayer } from "expo-video"
 
 import { extractMuxPlaybackId } from "../lib/muxThumbnail"
 import { datadogLog } from "../lib/datadog"
+import { getMiniPlayerStore } from "../lib/miniPlayer/store"
+import { appStateBranchDecision } from "../lib/pipPolicy"
 import {
   createProgressRecorder,
+  type FlushTrigger,
   type ProgressIdentity,
   type ProgressRecorder,
 } from "../lib/watchProgress/recorder"
@@ -33,6 +36,16 @@ const STALL_POLL_MS = 1000
 const STALL_THRESHOLD_MS = 3000
 // Float jitter: an advance under this counts as "not moving".
 const POSITION_EPSILON_S = 0.25
+
+// The two explicit endings that also force a progress write (KTD13). "ended"
+// and "failed" close the quality session only — playToEnd already flushed —
+// and "abandoned" is teardown, which keeps its own "unmount" trigger.
+const FLUSH_TRIGGER_BY_END_REASON: Partial<
+  Record<VideoQoeReason, FlushTrigger>
+> = {
+  dismissed: "dismiss",
+  replaced: "replace",
+}
 
 /**
  * The one adapter over expo-video's player lifecycle (todo 016): frozen
@@ -149,6 +162,30 @@ export function useManagedVideoPlayer(
     }
   }, [recorderKey])
 
+  /**
+   * The explicit session ending (KTD13/R16/R17). Attribution no longer rides
+   * React teardown: the caller names WHY the session ended, and this maps that
+   * onto a forced progress write plus the quality-session close.
+   *
+   * The teardown cleanups stay as safety nets. They cannot steal the reason —
+   * `emitQoeSummary` nulls the session it finalizes, so the first reason wins.
+   */
+  const endSession = useCallback(
+    (reason: VideoQoeReason) => {
+      const trigger = FLUSH_TRIGGER_BY_END_REASON[reason]
+      if (trigger) recorderRef.current?.flush(trigger)
+      emitQoeSummary(reason)
+    },
+    [emitQoeSummary],
+  )
+
+  // The session store is the one place that knows an ending and its reason, so
+  // no call site has to remember to stop the previous video. With no session
+  // open it reports nothing, which is every surface until the window ships.
+  useEffect(() => {
+    return getMiniPlayerStore().onEnd((event) => endSession(event.reason))
+  }, [endSession])
+
   useEffect(() => {
     if (!sourceUrl || sourceUrl === loadedUrlRef.current) return
 
@@ -161,8 +198,9 @@ export function useManagedVideoPlayer(
     if (currentId != null && nextId != null && currentId === nextId) return
 
     // A genuine cross-asset swap ends this QoE session and opens a new one so
-    // watched_ms/rebuffers/source attribute to the right asset (R36/R38).
-    emitQoeSummary("abandoned")
+    // watched_ms/rebuffers/source attribute to the right asset (R36/R38). The
+    // source moved without the progress identity, so nothing flushes here.
+    endSession("abandoned")
     startQoeSession(sourceUrl)
     isSwappingRef.current = true
 
@@ -202,7 +240,7 @@ export function useManagedVideoPlayer(
       .finally(() => {
         isSwappingRef.current = false
       })
-  }, [sourceUrl, player, emitQoeSummary, startQoeSession])
+  }, [sourceUrl, player, endSession, startQoeSession])
 
   const { isPlaying } = useEvent(player, "playingChange", {
     isPlaying: player.playing,
@@ -227,13 +265,31 @@ export function useManagedVideoPlayer(
   }, [isPlaying])
 
   // Background pauses; foreground resumes ONLY if playback was active when the
-  // app left — never starts a video the user had paused or never played.
+  // app left — never starts a video the user had paused or never played. What
+  // each state decides is U4's table (R13): picture-in-picture keeps playing.
   const wasPlayingRef = useRef(false)
+  // Set when the app left with the picture-in-picture hold on. Nothing paused
+  // the video then, so `wasPlayingRef` holds a stale snapshot from an earlier
+  // background and would force-resume a video paused inside the window.
+  const leftUnderPipRef = useRef(false)
   useEffect(() => {
     const subscription = AppState.addEventListener("change", (nextState) => {
+      const pipActive = getMiniPlayerStore().getSnapshot().pipHold
+      const decision = appStateBranchDecision(nextState, pipActive)
+
       if (nextState === "active") {
         isForegroundRef.current = true
-        if (wasPlayingRef.current) {
+        const resumeFromPip = leftUnderPipRef.current
+        leftUnderPipRef.current = false
+        let shouldResume = wasPlayingRef.current
+        if (resumeFromPip) {
+          try {
+            shouldResume = player.playing
+          } catch {
+            shouldResume = false // Already released
+          }
+        }
+        if (shouldResume) {
           try {
             player.play()
           } catch {
@@ -245,10 +301,20 @@ export function useManagedVideoPlayer(
             })
           }
         }
-      } else {
+        return
+      }
+
+      if (decision.flushProgress) {
+        // A real departure. `inactive` decides nothing under U4's table, so a
+        // call or the app switcher leaves the swap-resume guard armed.
         isForegroundRef.current = false
-        wasPlayingRef.current = isPlayingRef.current
+        leftUnderPipRef.current = pipActive
         recorderRef.current?.flush("background")
+      }
+      if (decision.recordWasPlaying) {
+        wasPlayingRef.current = isPlayingRef.current
+      }
+      if (decision.pause) {
         try {
           player.pause()
         } catch {
@@ -320,6 +386,12 @@ export function useManagedVideoPlayer(
       qoeRef.current?.onTimeUpdate(position)
       // The recorder samples this same 1s signal at 2s granularity (KTD5).
       recorderRef.current?.onTick(position, duration)
+      // The floating window reads its scrubber from the same tick (KTD2), and
+      // the store drops it when no session is open.
+      getMiniPlayerStore().publishPosition({
+        positionSeconds: position,
+        durationSeconds: duration,
+      })
 
       const now = Date.now()
       const advanced =
