@@ -11,8 +11,14 @@ const SPECIFIC_CHINESE_ALIASES = {
   cantonese: ["粤语", "粵語"],
   "chinese-simplified": ["简体", "簡體", "简体中文", "簡體中文"],
   "chinese-traditional": ["繁体", "繁體", "繁体中文", "繁體中文"],
+  foochow: ["福州话", "福州話", "闽东语", "閩東語"],
+  hainanese: ["海南话", "海南話", "琼语", "瓊語"],
+  hakka: ["客家话", "客家話"],
+  hui: ["徽州话", "徽州話", "徽语", "徽語"],
   "mandarin-china": ["普通话", "普通話"],
   "mandarin-taiwan": ["国语", "國語", "台湾华语", "台灣華語", "臺灣華語"],
+  "penang-hokkien": ["庇能福建话", "庇能福建話", "槟城福建话", "檳城福建話"],
+  "pontianak-hakka": ["坤甸客家话", "坤甸客家話"],
 } as const
 
 const BROAD_CHINESE_LANGUAGE_SLUGS = [
@@ -47,12 +53,18 @@ describe("Watch language search aliases", () => {
     },
   )
 
-  it("binds broad Chinese discovery only to the reviewed slug group", () => {
+  it("binds generic Chinese discovery to the reviewed broad group", () => {
     for (const slug of BROAD_CHINESE_LANGUAGE_SLUGS) {
       expect(watchLanguageSearchAliasesFor(slug)).toContain("中文")
     }
 
-    expect(watchLanguageSearchAliasesFor("english")).not.toContain("中文")
+    const configuredSlugs = Object.entries(WATCH_LANGUAGE_SEARCH_ALIASES)
+      .filter(([, aliases]) => aliases.includes("中文"))
+      .map(([slug]) => slug)
+
+    expect(new Set(configuredSlugs)).toEqual(
+      new Set(BROAD_CHINESE_LANGUAGE_SLUGS),
+    )
   })
 
   it.each(["mandarin-taiwan", "chinese-hokkien-amoy", "penang-hokkien"])(

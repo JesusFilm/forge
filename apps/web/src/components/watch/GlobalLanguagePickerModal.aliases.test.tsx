@@ -36,6 +36,18 @@ import { GlobalLanguagePickerModal } from "@/components/watch/GlobalLanguagePick
 
 const options: GlobalLanguageOption[] = [
   { slug: "english", englishName: "English", nativeName: null },
+  { slug: "foochow", englishName: "Foochow", nativeName: null },
+  { slug: "hui", englishName: "Hui", nativeName: null },
+  {
+    slug: "penang-hokkien",
+    englishName: "Penang Hokkien",
+    nativeName: null,
+  },
+  {
+    slug: "pontianak-hakka",
+    englishName: "Pontianak, Hakka",
+    nativeName: null,
+  },
   {
     slug: "mandarin-china",
     englishName: "Mandarin China",
@@ -117,5 +129,45 @@ describe("GlobalLanguagePickerModal Chinese aliases", () => {
       "mandarin-china",
     )
     expect(pushMock).toHaveBeenCalledWith("/mandarin-china.html/languages")
+  })
+
+  it("keeps backend-supplied order for broad Chinese aliases without inventing native names", async () => {
+    loadGlobalWatchLanguageOptionsMock.mockResolvedValue(options)
+    await act(async () => {
+      root.render(<Harness />)
+    })
+
+    act(() => {
+      document
+        .querySelector<HTMLElement>('[data-testid="language-combobox-trigger"]')
+        ?.click()
+    })
+    const input = document.querySelector<HTMLInputElement>(
+      '[data-testid="language-combobox-search"]',
+    )!
+    act(() => {
+      input.value = "中文"
+      input.dispatchEvent(new Event("input", { bubbles: true }))
+    })
+
+    const results = Array.from(
+      document.querySelectorAll<HTMLElement>(
+        '[data-testid="language-combobox-option"]',
+      ),
+    )
+    expect(
+      results.map((result) => result.getAttribute("data-language-slug")),
+    ).toEqual([
+      "foochow",
+      "hui",
+      "penang-hokkien",
+      "pontianak-hakka",
+      "mandarin-china",
+      "cantonese",
+    ])
+    expect(results[0]?.textContent).not.toContain("福州話")
+    expect(results[1]?.textContent).not.toContain("徽州話")
+    expect(results[2]?.textContent).not.toContain("庇能福建話")
+    expect(results[3]?.textContent).not.toContain("坤甸客家話")
   })
 })

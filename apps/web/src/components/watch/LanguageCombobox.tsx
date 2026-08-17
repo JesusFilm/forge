@@ -17,6 +17,7 @@ import {
 import { createPortal } from "react-dom"
 
 import { languageCodeFor, primaryLanguageCode } from "@/lib/language-code"
+import type { WatchLanguageSearchAliasAuthority } from "@/lib/watch-language-search-aliases"
 
 export type LanguageComboboxOption = {
   slug: string
@@ -29,11 +30,6 @@ export type LanguageComboboxOption = {
   disabled?: boolean
   /** Small status label rendered at the end of the option row. */
   chipLabel?: string | null
-}
-
-export type LanguageComboboxSearchAliasAuthority = {
-  readonly aliasesBySlug: Readonly<Record<string, readonly string[]>>
-  readonly exactAliases: ReadonlySet<string>
 }
 
 export type LanguageComboboxProps = {
@@ -57,7 +53,7 @@ export type LanguageComboboxProps = {
     width: number
   } | null
   takeoverDismissLabel?: string
-  searchAliasAuthority?: LanguageComboboxSearchAliasAuthority
+  searchAliasAuthority?: WatchLanguageSearchAliasAuthority
 }
 
 const LISTBOX_MAX_HEIGHT_PX = 288
@@ -120,7 +116,7 @@ function searchMatchTierForText(
 function searchMatchTierForOption(
   option: LanguageComboboxOption,
   query: string,
-  searchAliasAuthority?: LanguageComboboxSearchAliasAuthority,
+  searchAliasAuthority?: WatchLanguageSearchAliasAuthority,
   exactAliasQuery = false,
 ): number | null {
   const aliases =
