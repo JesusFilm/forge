@@ -212,6 +212,10 @@ import {
   type TestInstance,
 } from "../../../test-utils/rnTestRenderer"
 
+// The suite's first render pays the full HomeHeroPager+FlatList transform
+// cost; on a cold CI runner that exceeds jest's 5s default.
+jest.setTimeout(20_000)
+
 const expoVideo = jest.requireMock("expo-video") as ExpoVideoMock
 const heroStream = jest.requireMock(
   "../../../hooks/useHeroStream",
