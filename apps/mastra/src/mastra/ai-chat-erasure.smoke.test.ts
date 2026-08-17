@@ -4,14 +4,35 @@ import { Memory } from "@mastra/memory"
 import { PostgresStore } from "@mastra/pg"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 
-import { env } from "../config/env"
+import { env, type LangfuseConfig } from "../config/env"
 
 import { AI_CHAT_SCHEMA_NAME } from "./ai-chat-memory"
 import {
   executeAiChatErasure,
   previewAiChatErasure,
+  type AiChatErasureLangfuseSeam,
   type AiChatErasureMemory,
 } from "./ai-chat-erasure"
+
+/**
+ * Explicitly-unconfigured Langfuse seam (layer 1 of the no-egress posture in
+ * the header): the trio is absent, so the module's Langfuse half returns
+ * `skipped_unconfigured` before any request could be built — whatever
+ * `LANGFUSE_*` values the operator shell exports.
+ */
+const UNCONFIGURED_LANGFUSE_CONFIG: LangfuseConfig = {
+  baseUrl: undefined,
+  publicKey: undefined,
+  secretKey: undefined,
+  timeoutMs: 1_000,
+  userAgent: "ai-chat-erasure-smoke",
+  maxResponseBytes: 262_144,
+  promptCacheTtlMs: 60_000,
+  promptFailureCooldownMs: 10_000,
+}
+const unconfiguredLangfuseSeam: AiChatErasureLangfuseSeam = {
+  getConfig: () => UNCONFIGURED_LANGFUSE_CONFIG,
+}
 
 /**
  * Opt-in REAL-POSTGRES erasure smoke (feat-337 U3). Proves against a live
@@ -49,13 +70,19 @@ import {
  * The operator shell running this may hold REAL production Langfuse
  * credentials (the runbook's sourcing idiom exports the whole `LANGFUSE_*`
  * group), and the Langfuse project is always production — a stray delete here
- * would destroy real traces and spend the org-wide daily quota. So the suite
- * asserts, at the boundary, that the erasure path issues ZERO outbound HTTP
- * requests: `globalThis.fetch` is replaced with a recorder for the duration,
- * and any call at all fails the suite. In PR 1 the Langfuse half is
- * `not_implemented`, so this pins "by construction" rather than "by
- * configuration"; PR 2's U6 keeps the same pin with a genuinely unconfigured
- * Langfuse seam once the half exists.
+ * would destroy real traces and spend the org-wide daily quota. Two layers
+ * keep that impossible:
+ *
+ *  1. Every erasure call injects an explicitly-UNCONFIGURED Langfuse seam
+ *     (`getConfig` returning a trio-less config), so the module's Langfuse
+ *     half short-circuits to `skipped_unconfigured` before its egress pin —
+ *     zero requests are possible by construction, whatever the shell's env
+ *     holds.
+ *  2. `globalThis.fetch` is replaced with a BLOCKING recorder: real Langfuse
+ *     client code exists in the erasure module now (U6), so a stray call
+ *     must be blocked outright — recorded and thrown — never merely detected
+ *     after the fact by the final zero-calls assertion (which remains, as
+ *     the loud named-URL evidence).
  */
 
 const RUN_SMOKE = env.AI_CHAT_ERASURE_SMOKE_TEST === "1"
@@ -183,12 +210,15 @@ describe.skipIf(!RUN_SMOKE)(
 
       realFetch = globalThis.fetch
       fetchCalls = []
-      globalThis.fetch = (async (
-        input: RequestInfo | URL,
-        init?: RequestInit,
-      ) => {
+      // NON-forwarding on purpose: the erasure module carries real Langfuse
+      // client code since U6, so a stray outbound call must be BLOCKED (the
+      // production project is the only Langfuse target that exists), not
+      // forwarded and noticed later. Record, then throw.
+      globalThis.fetch = (async (input: RequestInfo | URL) => {
         fetchCalls.push(String(input))
-        return realFetch(input as RequestInfo, init)
+        throw new Error(
+          "ai-chat-erasure smoke: outbound HTTP is blocked by the suite",
+        )
       }) as typeof globalThis.fetch
     })
 
@@ -222,6 +252,7 @@ describe.skipIf(!RUN_SMOKE)(
       const result = await executeAiChatErasure({
         resourceId: TARGET_RESOURCE,
         acquireMemory,
+        langfuse: unconfiguredLangfuseSeam,
         log: { info: () => {}, warn: () => {} },
       })
 
@@ -229,6 +260,7 @@ describe.skipIf(!RUN_SMOKE)(
         kind: "completed",
         mode: "execute",
         postgres: { kind: "erased", threadsDeleted: 2 },
+        langfuse: { kind: "skipped_unconfigured" },
       })
       expect(await threadIdsFor(TARGET_RESOURCE)).toEqual([])
 
@@ -258,19 +290,25 @@ describe.skipIf(!RUN_SMOKE)(
       const preview = await previewAiChatErasure({
         resourceId: TARGET_RESOURCE,
         acquireMemory,
+        langfuse: unconfiguredLangfuseSeam,
         log: { info: () => {}, warn: () => {} },
       })
       expect(preview).toMatchObject({
         mode: "preview",
         postgres: { kind: "no_data" },
+        langfuse: { kind: "skipped_unconfigured" },
       })
 
       const rerun = await executeAiChatErasure({
         resourceId: TARGET_RESOURCE,
         acquireMemory,
+        langfuse: unconfiguredLangfuseSeam,
         log: { info: () => {}, warn: () => {} },
       })
-      expect(rerun).toMatchObject({ postgres: { kind: "no_data" } })
+      expect(rerun).toMatchObject({
+        postgres: { kind: "no_data" },
+        langfuse: { kind: "skipped_unconfigured" },
+      })
     })
 
     it("issues zero outbound HTTP requests — no Langfuse traffic on any path", () => {

@@ -6,6 +6,7 @@ import type { LangfuseConfig } from "../config/env"
 
 import { AI_CHAT_RETENTION_DAYS } from "./ai-chat-retention"
 import {
+  LANGFUSE_ERASURE_LIST_PAGE_SIZE,
   LANGFUSE_RETENTION_LIST_PAGE_SIZE,
   LANGFUSE_TRACE_RETENTION_FIRE_HOUR_UTC,
   MAX_DELETE_REQUESTS_PER_RUN,
@@ -15,6 +16,7 @@ import {
   deleteTraceBatch,
   isLangfuseTraceRetentionConfigured,
   listExpiredObservationsPage,
+  listObservationsByUserIdPage,
   msUntilNextUtcFireHour,
   runLangfuseTraceRetentionSweep,
   startLangfuseTraceRetention,
@@ -401,6 +403,297 @@ describe("listExpiredObservationsPage", () => {
     const result = await listExpiredObservationsPage({
       config: { ...CONFIG, maxResponseBytes: 128 * 1024 },
       toStartTimeIso: CUTOFF_ISO,
+      fetchImpl,
+    })
+    expect(result).toMatchObject({ ok: false, reason: "parse_error" })
+    expect(cancelled).toBe(true)
+  })
+})
+
+/** One observation row per [traceId, userId] pair for the by-userId listing. */
+function userObservationsPage(
+  rows: Array<Record<string, unknown>>,
+  cursor?: string | null,
+): Response {
+  return new Response(
+    JSON.stringify({ data: rows, meta: { cursor: cursor ?? null } }),
+    { status: 200, headers: { "content-type": "application/json" } },
+  )
+}
+
+describe("listObservationsByUserIdPage", () => {
+  const TARGET = "user:auth-123"
+
+  it("sends userId + fields=core,basic + limit with Basic auth — and NEVER the structured filter param", async () => {
+    const { fetchImpl, requests } = fakeFetch([
+      () =>
+        userObservationsPage([
+          { traceId: "t1", userId: TARGET },
+          { traceId: "t2", userId: TARGET },
+        ]),
+    ])
+    const result = await listObservationsByUserIdPage({
+      config: CONFIG,
+      userId: TARGET,
+      fetchImpl,
+    })
+    expect(result).toMatchObject({
+      ok: true,
+      rows: [
+        { traceId: "t1", userId: TARGET },
+        { traceId: "t2", userId: TARGET },
+      ],
+      observationCount: 2,
+      missingUserIdCount: 0,
+    })
+    const { url, init } = requests[0]!
+    expect(url.pathname).toBe("/api/public/v2/observations")
+    expect(url.searchParams.get("userId")).toBe(TARGET)
+    // core,basic and ONLY core,basic: the io group (raw conversation text)
+    // must never be requested by this module.
+    expect(url.searchParams.get("fields")).toBe("core,basic")
+    // The erasure-specific page size: core,basic rows are 2–3× the core row
+    // the sweep's 500 was sized for, so this listing pages at 100.
+    expect(url.searchParams.get("limit")).toBe(
+      String(LANGFUSE_ERASURE_LIST_PAGE_SIZE),
+    )
+    // The structured filter param would take PRECEDENCE over userId if ever
+    // sent — its absence is part of the wire contract.
+    expect(url.searchParams.has("filter")).toBe(false)
+    expect(url.searchParams.has("toStartTime")).toBe(false)
+    const headers = init.headers as Record<string, string>
+    expect(headers.authorization).toBe(
+      `Basic ${Buffer.from("pk-test:sk-test").toString("base64")}`,
+    )
+    expect(init.redirect).toBe("error")
+  })
+
+  it("refuses a blank userId BEFORE any request — an empty filter would list the whole project", async () => {
+    const fetchMock = vi.fn<typeof fetch>()
+    for (const userId of ["", "   "]) {
+      const result = await listObservationsByUserIdPage({
+        config: CONFIG,
+        userId,
+        fetchImpl: fetchMock,
+      })
+      expect(result).toEqual({ ok: false, reason: "parse_error" })
+    }
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it("threads the cursor and surfaces meta.cursor as nextCursor (caller-driven drain until the cursor ends)", async () => {
+    const { fetchImpl, requests } = fakeFetch([
+      () => userObservationsPage([{ traceId: "t1", userId: TARGET }], "c2"),
+      () => userObservationsPage([{ traceId: "t2", userId: TARGET }], null),
+    ])
+    const first = await listObservationsByUserIdPage({
+      config: CONFIG,
+      userId: TARGET,
+      fetchImpl,
+    })
+    expect(first).toMatchObject({ ok: true, nextCursor: "c2" })
+    expect(requests[0]!.url.searchParams.has("cursor")).toBe(false)
+    const second = await listObservationsByUserIdPage({
+      config: CONFIG,
+      userId: TARGET,
+      cursor: (first as { nextCursor?: string }).nextCursor,
+      fetchImpl,
+    })
+    expect(requests[1]!.url.searchParams.get("cursor")).toBe("c2")
+    expect(second).toMatchObject({
+      ok: true,
+      rows: [{ traceId: "t2", userId: TARGET }],
+    })
+    expect((second as { nextCursor?: string }).nextCursor).toBeUndefined()
+  })
+
+  it("strips injected input/output keys — the io group never surfaces in the return value", async () => {
+    const { fetchImpl } = fakeFetch([
+      () =>
+        userObservationsPage([
+          {
+            traceId: "t1",
+            userId: TARGET,
+            input: "RAW CONVERSATION TEXT",
+            output: "RAW MODEL REPLY",
+            metadata: { leak: "no" },
+          },
+        ]),
+    ])
+    const result = await listObservationsByUserIdPage({
+      config: CONFIG,
+      userId: TARGET,
+      fetchImpl,
+    })
+    expect(result).toMatchObject({ ok: true })
+    const ok = result as { rows: Array<Record<string, unknown>> }
+    // Field-by-field projection: EXACTLY { traceId, userId } per row.
+    expect(ok.rows).toEqual([{ traceId: "t1", userId: TARGET }])
+    expect(JSON.stringify(result)).not.toContain("RAW CONVERSATION TEXT")
+    expect(JSON.stringify(result)).not.toContain("RAW MODEL REPLY")
+  })
+
+  it("SURFACES rows lacking a readable string userId instead of silently dropping them (the R7 refusal signal)", async () => {
+    const { fetchImpl } = fakeFetch([
+      () =>
+        userObservationsPage([
+          { traceId: "t1", userId: TARGET },
+          { traceId: "t2" }, // absent
+          { traceId: "t3", userId: null },
+          { traceId: "t4", userId: 42 },
+          { traceId: "t5", userId: "" }, // empty string is not readable
+        ]),
+    ])
+    const result = await listObservationsByUserIdPage({
+      config: CONFIG,
+      userId: TARGET,
+      fetchImpl,
+    })
+    expect(result).toMatchObject({
+      ok: true,
+      rows: [{ traceId: "t1", userId: TARGET }],
+      observationCount: 5,
+      missingUserIdCount: 4,
+      missingTraceIdCount: 0,
+    })
+  })
+
+  it("counts rows with a readable userId but no readable traceId separately (undeletable rows are visible, not vanished)", async () => {
+    const { fetchImpl } = fakeFetch([
+      () =>
+        userObservationsPage([
+          { traceId: "t1", userId: TARGET },
+          { userId: TARGET }, // traceId absent
+          { traceId: 42, userId: TARGET },
+          { traceId: "", userId: TARGET },
+        ]),
+    ])
+    const result = await listObservationsByUserIdPage({
+      config: CONFIG,
+      userId: TARGET,
+      fetchImpl,
+    })
+    expect(result).toMatchObject({
+      ok: true,
+      rows: [{ traceId: "t1", userId: TARGET }],
+      observationCount: 4,
+      missingUserIdCount: 0,
+      missingTraceIdCount: 3,
+    })
+  })
+
+  it("returns ROWS, not deduped ids — a userId the caller must re-check rides every row (dedupe is U6's job)", async () => {
+    const other = "user:someone-else"
+    const { fetchImpl } = fakeFetch([
+      () =>
+        userObservationsPage([
+          { traceId: "t1", userId: TARGET },
+          { traceId: "t1", userId: TARGET }, // duplicate traceId kept
+          { traceId: "t2", userId: other }, // server-filter mismatch kept for the caller's re-check
+        ]),
+    ])
+    const result = await listObservationsByUserIdPage({
+      config: CONFIG,
+      userId: TARGET,
+      fetchImpl,
+    })
+    expect(result).toMatchObject({
+      ok: true,
+      rows: [
+        { traceId: "t1", userId: TARGET },
+        { traceId: "t1", userId: TARGET },
+        { traceId: "t2", userId: other },
+      ],
+    })
+  })
+
+  it("classifies 429 with Retry-After as rate_limited", async () => {
+    const { fetchImpl } = fakeFetch([
+      () => new Response("", { status: 429, headers: { "retry-after": "23" } }),
+    ])
+    const result = await listObservationsByUserIdPage({
+      config: CONFIG,
+      userId: TARGET,
+      fetchImpl,
+    })
+    expect(result).toEqual({
+      ok: false,
+      reason: "rate_limited",
+      status: 429,
+      retryAfterSeconds: 23,
+    })
+  })
+
+  it("classifies auth/rejection/server statuses and malformed bodies", async () => {
+    for (const [status, reason] of [
+      [401, "auth_failed"],
+      [403, "auth_failed"],
+      [404, "rejected"],
+      [500, "network_error"],
+    ] as const) {
+      const { fetchImpl } = fakeFetch([() => new Response("", { status })])
+      const result = await listObservationsByUserIdPage({
+        config: CONFIG,
+        userId: TARGET,
+        fetchImpl,
+      })
+      expect(result).toMatchObject({ ok: false, reason, status })
+    }
+    const { fetchImpl } = fakeFetch([
+      () => new Response("not json", { status: 200 }),
+    ])
+    const result = await listObservationsByUserIdPage({
+      config: CONFIG,
+      userId: TARGET,
+      fetchImpl,
+    })
+    expect(result).toMatchObject({ ok: false, reason: "parse_error" })
+  })
+
+  it("classifies a timeout thrown MID-BODY-READ as timeout, not parse_error (the fixed byte-cap reader copy)", async () => {
+    const stream = new ReadableStream<Uint8Array>({
+      pull() {
+        throw Object.assign(new Error("body timed out"), {
+          name: "TimeoutError",
+        })
+      },
+    })
+    const { fetchImpl } = fakeFetch([() => new Response(stream)])
+    const result = await listObservationsByUserIdPage({
+      config: CONFIG,
+      userId: TARGET,
+      fetchImpl,
+    })
+    expect(result).toEqual({ ok: false, reason: "timeout" })
+  })
+
+  it("classifies a timeout on the typed fetch-throw surface", async () => {
+    const fetchImpl = (async () => {
+      throw Object.assign(new Error("timed out"), { name: "TimeoutError" })
+    }) as typeof fetch
+    const result = await listObservationsByUserIdPage({
+      config: CONFIG,
+      userId: TARGET,
+      fetchImpl,
+    })
+    expect(result).toEqual({ ok: false, reason: "timeout" })
+  })
+
+  it("aborts the body stream past the byte cap and degrades to parse_error", async () => {
+    let cancelled = false
+    const chunk = new TextEncoder().encode("x".repeat(64 * 1024))
+    const stream = new ReadableStream<Uint8Array>({
+      pull(controller) {
+        controller.enqueue(chunk)
+      },
+      cancel() {
+        cancelled = true
+      },
+    })
+    const { fetchImpl } = fakeFetch([() => new Response(stream)])
+    const result = await listObservationsByUserIdPage({
+      config: { ...CONFIG, maxResponseBytes: 128 * 1024 },
+      userId: TARGET,
       fetchImpl,
     })
     expect(result).toMatchObject({ ok: false, reason: "parse_error" })
