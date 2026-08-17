@@ -1,8 +1,21 @@
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Platform, StyleSheet, Text, View } from "react-native"
 import type { View as ViewType } from "react-native"
+import { useRouter } from "expo-router"
+import {
+  isNativeSearchAvailable,
+  TvosSearchView,
+  type SearchEvent,
+  type SelectItemEvent,
+} from "expo-tvos-search"
 
 import { QueryDisplay } from "../src/components/search/QueryDisplay"
+import {
+  findResultById,
+  toNativeSearchResults,
+} from "../src/components/search/nativeSearchResults"
+import { searchResultPath } from "../src/components/search/searchResultPath"
+import { WATCH_THEME } from "../src/components/watch/watchDetailTheme"
 import { SearchBrowse } from "../src/components/search/SearchBrowse"
 import { resolveSearchMeta } from "../src/components/search/searchDisplay"
 import { SearchKeyboard } from "../src/components/search/SearchKeyboard"
@@ -21,9 +34,13 @@ import { meetsMinQueryLength } from "../src/lib/searchGate"
 import { useSearchHistory } from "../src/lib/searchHistory"
 
 /**
- * /search route — Apple TV (Platform.OS "ios") = top linear keyboard + full-width
- * results; Android TV = left grid keyboard + right pane. Native tvOS UISearchController
- * NOT used (2026-06-22 spike: crashes at mount). See docs/superpowers/specs/2026-06-22-tv-apple-linear-search-keyboard-design.md.
+ * /search route — Apple TV (Platform.OS "ios") = NATIVE SwiftUI search surface
+ * (expo-tvos-search): the only path that receives Siri Remote system dictation,
+ * since tvOS gives third-party apps no mic access and dictation writes solely
+ * into Apple's own text primitive. Falls back to the custom linear keyboard if
+ * the native module is unavailable. Android TV = left grid keyboard + right pane.
+ * (The 2026-06-22 spike crash was react-native-screens' SearchBar — NOT this
+ * module; see docs/superpowers/specs/2026-06-22-tv-apple-linear-search-keyboard-design.md.)
  */
 export default function SearchScreen() {
   const [query, setQuery] = useState("")
@@ -90,6 +107,23 @@ export default function SearchScreen() {
     onRetry: retry,
   }
 
+  // Apple TV: native SwiftUI .searchable surface (expo-tvos-search) — the ONLY
+  // path that receives Siri Remote system dictation ("Hold 🎤 to dictate").
+  // tvOS gives third-party apps no mic access; dictation writes exclusively
+  // into Apple's own text primitive, so the input+results presentation is
+  // native while ALL data plumbing (sanitizer → debounce → watchSearch →
+  // telemetry → recents) stays this screen's. Falls back to the custom
+  // keyboard if the native module is unavailable.
+  if (Platform.OS === "ios" && isNativeSearchAvailable()) {
+    return (
+      <SearchBodyNativeTvos
+        state={state}
+        results={results}
+        onChangeQuery={setSanitizedQuery}
+      />
+    )
+  }
+
   return (
     <View style={styles.screen}>
       <View style={styles.queryLine}>
@@ -100,6 +134,61 @@ export default function SearchScreen() {
       ) : (
         <SearchBodyTwoPane {...bodyProps} />
       )}
+    </View>
+  )
+}
+
+/**
+ * Apple TV native search body. The native view owns field + keyboard + results
+ * grid; we own the data: onSearch feeds the SAME sanitized-query state the
+ * custom keyboards write (debounce/min-length/telemetry/recents unchanged),
+ * and selection routes through searchResultPath exactly like ResultCard.
+ */
+function SearchBodyNativeTvos({
+  state,
+  results,
+  onChangeQuery,
+}: {
+  state: SearchState
+  results: SearchResult[]
+  onChangeQuery: (next: string) => void
+}) {
+  const router = useRouter()
+
+  const nativeResults = useMemo(() => toNativeSearchResults(results), [results])
+
+  const handleSearch = useCallback(
+    (event: SearchEvent) => {
+      onChangeQuery(event.nativeEvent.query)
+    },
+    [onChangeQuery],
+  )
+
+  const handleSelectItem = useCallback(
+    (event: SelectItemEvent) => {
+      const match = findResultById(results, event.nativeEvent.id)
+      if (match != null) router.push(searchResultPath(match))
+    },
+    [results, router],
+  )
+
+  return (
+    <View style={styles.nativeScreen}>
+      <TvosSearchView
+        style={styles.nativeSearch}
+        results={nativeResults}
+        onSearch={handleSearch}
+        onSelectItem={handleSelectItem}
+        isLoading={state === "loading"}
+        placeholder="Search"
+        colorScheme="dark"
+        accentColor={WATCH_THEME.accent}
+        showTitle
+        emptyStateText="Search films, series, and topics"
+        searchingText="Searching…"
+        noResultsText="No results found"
+        noResultsHintText="Try a different word — or hold the mic button to dictate"
+      />
     </View>
   )
 }
@@ -239,6 +328,15 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: SEARCH_THEME.bg,
     paddingHorizontal: scale(SEARCH_PAGE_GUTTER),
+  },
+  // Native tvOS search: the SwiftUI surface owns its own insets — no gutter,
+  // just the app background behind it so transitions don't flash white.
+  nativeScreen: {
+    flex: 1,
+    backgroundColor: SEARCH_THEME.bg,
+  },
+  nativeSearch: {
+    flex: 1,
   },
   // Design .s-query: padding 78px 0 (horizontal comes from screen).
   queryLine: {
