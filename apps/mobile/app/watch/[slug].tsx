@@ -339,14 +339,14 @@ export default function WatchVideoPage() {
         activeVariant,
         video,
         seedStreamingUrl,
-        title: video?.title ?? seed?.title ?? null,
-        posterUrl: video?.posterUrl ?? seed?.imageUrl ?? null,
+        title: displayTitle,
+        posterUrl: displayPoster,
         startPositionSeconds,
       })
       if (media != null) castLoadStartRef.current = media.startPositionSeconds
       return media
     },
-    [activeVariant, video, seedStreamingUrl, seed],
+    [activeVariant, video, seedStreamingUrl, displayTitle, displayPoster],
   )
 
   const handleCastPress = useCallback(() => {
@@ -647,11 +647,13 @@ export default function WatchVideoPage() {
             onPlayingChange={undefined}
             fullscreen={isFullscreen}
             onToggleFullscreen={toggleFullscreen}
-            castPlayback={cast}
-            onCastPress={handleCastPress}
-            resolveCastMediaAt={resolveCastMediaAt}
-            castRecovery={castRecovery}
-            progressFeedRef={progressFeedRef}
+            cast={{
+              playback: cast,
+              onCastPress: handleCastPress,
+              resolveMediaAt: resolveCastMediaAt,
+              recovery: castRecovery,
+              progressFeedRef,
+            }}
             progressIdentity={
               // Offline playback may predate the record load — the slug is
               // the on-device key admin resolves server-side (KTD8).

@@ -3,7 +3,7 @@ import { AppState } from "react-native"
 import { useEvent } from "expo"
 import { useVideoPlayer, type VideoPlayer } from "expo-video"
 
-import { extractMuxPlaybackId } from "../lib/muxThumbnail"
+import { extractMuxPlaybackId, isSameMuxAsset } from "../lib/muxThumbnail"
 import { datadogLog } from "../lib/datadog"
 import {
   createProgressRecorder,
@@ -183,10 +183,11 @@ export function useManagedVideoPlayer(
     // Compare by Mux playback ID, not raw URL: two URL strings can name one
     // asset (seed URL vs resolved variant); reloading it would needlessly
     // restart playback.
-    const currentId = extractMuxPlaybackId(loadedUrlRef.current)
-    const nextId = extractMuxPlaybackId(sourceUrl)
+    const sameAsset = isSameMuxAsset(loadedUrlRef.current, sourceUrl)
     loadedUrlRef.current = sourceUrl
-    if (currentId != null && nextId != null && currentId === nextId) return
+    if (sameAsset) return
+    // Swap-log content id (the QoE session id below tracks it separately).
+    const nextId = extractMuxPlaybackId(sourceUrl)
 
     // A genuine cross-asset swap ends this QoE session and opens a new one so
     // watched_ms/rebuffers/source attribute to the right asset (R36/R38).

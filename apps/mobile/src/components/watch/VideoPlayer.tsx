@@ -88,20 +88,23 @@ type VideoPlayerProps = {
    *  site: this player also backs the series-detail trailer dock, so an
    *  implicit default would autoplay surfaces that never asked for it. */
   autostart?: boolean
-  /** U3 cast session (watch screen only); null on surfaces without cast. */
-  castPlayback?: CastPlayback | null
+  /** The screen-owned cast wiring (KTD4); null on surfaces without cast. */
+  cast?: VideoPlayerCast | null
+}
+
+export type VideoPlayerCast = {
+  /** U3 cast session. */
+  playback: CastPlayback
   /** Opens the SDK device dialog — screen-owned (KTD4). */
-  onCastPress?: (() => void) | null
+  onCastPress: () => void
   /** Screen-owned remote-only resolver (KTD5), closed over the variant,
    *  video, and seed — the offline source never reaches it. */
-  resolveCastMediaAt?:
-    | ((startPositionSeconds: number | null) => CastMedia | null)
-    | null
+  resolveMediaAt: (startPositionSeconds: number | null) => CastMedia | null
   /** Screen-derived recovery instruction after a terminal session state. */
-  castRecovery?: CastRecovery | null
+  recovery: CastRecovery | null
   /** U5 (KTD6): receives the adapter's ref-stable progress feed so the
    *  screen can drive cast positions into the recorder. */
-  progressFeedRef?: { current: ProgressFeed | null } | null
+  progressFeedRef: { current: ProgressFeed | null }
 }
 
 export function VideoPlayer({
@@ -115,12 +118,14 @@ export function VideoPlayer({
   progressIdentity = null,
   resumeAtSeconds = null,
   autostart = false,
-  castPlayback = null,
-  onCastPress = null,
-  resolveCastMediaAt = null,
-  castRecovery = null,
-  progressFeedRef = null,
+  cast = null,
 }: VideoPlayerProps) {
+  const castPlayback = cast?.playback ?? null
+  const onCastPress = cast?.onCastPress ?? null
+  const resolveCastMediaAt = cast?.resolveMediaAt ?? null
+  const castRecovery = cast?.recovery ?? null
+  const progressFeedRef = cast?.progressFeedRef ?? null
+
   const { width: screenWidth, height: screenHeight } = useWindowDimensions()
 
   const [hasStarted, setHasStarted] = useState(false)

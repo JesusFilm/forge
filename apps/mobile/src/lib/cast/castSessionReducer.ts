@@ -63,15 +63,14 @@ export function castSessionReducer(
     case "connecting":
       switch (event.type) {
         case "connect":
-          return {
-            phase: "connecting",
-            deviceName: event.deviceName ?? state.deviceName,
-          }
-        case "sessionStarted":
-          return {
-            phase: "connecting",
-            deviceName: event.deviceName ?? state.deviceName,
-          }
+        case "sessionStarted": {
+          // Same-reference on no change so useReducer can bail (repeat
+          // sessionStarted with no new device name is a no-op).
+          const deviceName = event.deviceName ?? state.deviceName
+          return deviceName === state.deviceName
+            ? state
+            : { phase: "connecting", deviceName }
+        }
         case "mediaLoaded":
           return { phase: "active", deviceName: state.deviceName }
         case "mediaFailed":
@@ -136,13 +135,15 @@ export function castSessionReducer(
             deviceName: state.deviceName,
             lastPositionSeconds: event.positionSeconds,
           }
-        case "sessionStarted":
+        case "sessionStarted": {
           // Late async device-name resolution must not regress an active
-          // session to Connecting — only the name updates.
-          return {
-            phase: "active",
-            deviceName: event.deviceName ?? state.deviceName,
-          }
+          // session to Connecting — only the name updates (same-reference
+          // on no change so useReducer can bail).
+          const deviceName = event.deviceName ?? state.deviceName
+          return deviceName === state.deviceName
+            ? state
+            : { phase: "active", deviceName }
+        }
         case "connect":
           return { phase: "connecting", deviceName: event.deviceName }
         default:

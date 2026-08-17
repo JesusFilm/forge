@@ -41,3 +41,16 @@ export function extractMuxPlaybackId(
   if (!streamingUrl) return null
   return MUX_STREAM_RE.exec(streamingUrl)?.[1] ?? null
 }
+
+/**
+ * Two URL strings name one Mux asset (seed URL vs resolved variant) when
+ * their playback IDs match. Non-Mux or null URLs never compare equal.
+ */
+export function isSameMuxAsset(
+  a: string | null | undefined,
+  b: string | null | undefined,
+): boolean {
+  const aId = extractMuxPlaybackId(a)
+  const bId = extractMuxPlaybackId(b)
+  return aId != null && bId != null && aId === bId
+}

@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useReducer, useRef } from "react"
 import {
-  type CastState,
   useCastSession,
   useCastState,
   useMediaStatus,
@@ -35,7 +34,6 @@ export type CastPlayback = {
    * documents the no-devices vs denied-permission ambiguity.
    */
   devicesAvailable: boolean
-  castState: CastState | null
   /** Raw receiver player state ("playing" | "paused" | ...), null with no
    *  remote media. The U4 playback target derives isPlaying from it. */
   remotePlayerState: string | null
@@ -74,15 +72,13 @@ export function useCastPlayback({
   const mediaStatus = useMediaStatus()
   const streamPosition = useStreamPosition()
 
-  // Refs the imperative callbacks read at dispatch time. Synced by the
-  // FIRST effects below so later effects in the same commit see fresh values.
+  // Refs the imperative callbacks read at dispatch time. phaseRef is a pure
+  // mirror (render-time, the repo's latest-value idiom); positionRef is NOT —
+  // load() overwrites it, so only a CHANGE may re-write it (effect below).
   const phaseRef = useRef<CastPhase>(state.phase)
+  phaseRef.current = state.phase
   const positionRef = useRef<number | null>(null)
   const slugRef = useRef<string | null>(videoSlug)
-
-  useEffect(() => {
-    phaseRef.current = state.phase
-  }, [state.phase])
 
   useEffect(() => {
     // Keep the LAST known position when the client tears down — Ended needs
@@ -256,7 +252,6 @@ export function useCastPlayback({
     state,
     deviceName: state.phase === "idle" ? null : state.deviceName,
     devicesAvailable: castDevicesAvailable(castState),
-    castState,
     remotePlayerState: mediaStatus?.playerState ?? null,
     position: streamPosition,
     duration: mediaStatus?.mediaInfo?.streamDuration ?? null,

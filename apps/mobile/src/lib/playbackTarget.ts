@@ -4,7 +4,7 @@
  * no react-native or SDK imports, so it tests without the RN runtime.
  */
 import type { CastPhase } from "./cast/castSessionReducer"
-import { extractMuxPlaybackId } from "./muxThumbnail"
+import { isSameMuxAsset } from "./muxThumbnail"
 
 export type PlaybackTarget = {
   isPlaying: boolean
@@ -106,7 +106,7 @@ export type CastRecovery = {
   sourceSwapped: boolean
 }
 
-// Mirrors useManagedVideoPlayer's swap predicate (Mux playback-id compare):
+// Shares useManagedVideoPlayer's swap predicate (Mux playback-id compare):
 // equal ids mean the adapter will NOT reload when the pin releases.
 export function releaseTriggersSwap(
   pinnedUrl: string | null,
@@ -115,7 +115,5 @@ export function releaseTriggersSwap(
   if (pinnedUrl == null || currentUrl == null || pinnedUrl === currentUrl) {
     return false
   }
-  const pinnedId = extractMuxPlaybackId(pinnedUrl)
-  const currentId = extractMuxPlaybackId(currentUrl)
-  return !(pinnedId != null && currentId != null && pinnedId === currentId)
+  return !isSameMuxAsset(pinnedUrl, currentUrl)
 }
