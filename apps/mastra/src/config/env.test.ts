@@ -1798,6 +1798,19 @@ describe("Mastra env", () => {
     await expect(import("./env")).rejects.toThrow()
   })
 
+  it('accepts AI_CHAT_ERASURE_SMOKE_TEST="1" and rejects any other non-empty value', async () => {
+    // Same posture as both Langfuse smoke gates (feat-337). Loud on a wrong
+    // value rather than half-enabling a suite that DELETES rows.
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("AI_CHAT_ERASURE_SMOKE_TEST", "1")
+    const { env } = await import("./env")
+    expect(env.AI_CHAT_ERASURE_SMOKE_TEST).toBe("1")
+
+    vi.resetModules()
+    vi.stubEnv("AI_CHAT_ERASURE_SMOKE_TEST", "true")
+    await expect(import("./env")).rejects.toThrow()
+  })
+
   it("defaults the devotional Workspace to a local directory and bounded SQL pool", async () => {
     vi.stubEnv("NODE_ENV", "test")
     vi.stubEnv("MASTRA_STORAGE_DIR", ".tmp/mastra")

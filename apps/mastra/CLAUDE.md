@@ -267,6 +267,7 @@ of the defaults and validation contract.
 | `LANGFUSE_PROMPT_FAILURE_COOLDOWN_MS`        | Failure cooldown that suppresses refetch attempts while serving stale/fallback. Defaults to `10000`, schema-capped at `300000`; `getLangfuseConfig()` clamps the effective cooldown to ≤ the effective TTL (the smaller value wins).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
 | `LANGFUSE_PROMPT_SMOKE_TEST`                 | Opt-in gate for the real-credential Langfuse smoke suite (`langfuse-prompt-client.smoke.test.ts`). Only the literal `"1"` enables it; any other non-empty value fails env parse — loud, never half-enabled.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
 | `LANGFUSE_TRACE_RETENTION_SMOKE_TEST`        | Opt-in gate for the feat-336 trace-retention smoke suite (`langfuse-trace-retention.smoke.test.ts`, redesigned 2026-08-11 — backdated synthetic sentinels are UNREACHABLE on the v2 observations read surface, so the suite now asserts the list contract + `filterSkipped === 0` on the sweep's exact expired window, uses a REAL recent production observation as the raw-surface negative control, and proves the DELETE contract on a production-sized 50-id synthetic batch with measured latency; NOTE each run still spends one of the org's 50/day Hobby trace-delete requests). Same posture as `LANGFUSE_PROMPT_SMOKE_TEST`: only the literal `"1"` enables it.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| `AI_CHAT_ERASURE_SMOKE_TEST`                 | Opt-in gate for the feat-337 real-Postgres erasure smoke (`ai-chat-erasure.smoke.test.ts`) — seeds two prefix-adjacent throwaway resources against a CALLER-SUPPLIED throwaway `DATABASE_URL`, erases one, and asserts the neighbour intact (the exact-match-filter proof mocked stores cannot give). Test-only gate, never runtime configuration; the suite is deliberately out of CI because it WRITES AND DELETES rows. Same posture as the two Langfuse smoke gates: only the literal `"1"` enables it.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
 | `PORT`                                       | Railway-provided runtime port. Mastra defaults to `4111` locally.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
 | `MASTRA_STUDIO_PATH`                         | Set to `.mastra/output/studio` when starting the built server with Studio assets.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
 
@@ -790,14 +791,366 @@ availability_missing= shape_dropped=`. Read the two discriminators together:
   rate/concurrency cap remains the real flood control (the chat-side per-user
   gate shipped in feat-233/feat-239; the cap is the open piece).
   Single-instance assumption: add a leader guard before scaling out.
-- **Operator deletion runbook** (subject-erasure requests, keyed by resource):
-  `DELETE FROM ai_chat.mastra_messages WHERE thread_id IN (SELECT id FROM
-ai_chat.mastra_threads WHERE "resourceId" = $1); DELETE FROM
-ai_chat.mastra_threads WHERE "resourceId" = $1;` (plus
-  `ai_chat.mastra_resources` if working memory ever lands). Self-serve
-  deletion is deferred follow-up.
+- **Operator deletion runbook** — moved to its own section: see "Operator
+  erasure runbook (subject-erasure requests)" below. Self-serve
+  (user-initiated) deletion is deferred follow-up; the apps/auth
+  account-deletion cascade is feat-356.
 - Plan + verified package-behavior citations:
   `docs/plans/2026-07-05-001-feat-seeker-postgres-memory-plan.md`.
+
+### Operator erasure runbook (subject-erasure requests) — feat-337
+
+**This section is about the request, not the tool.** The CLI is step 5 of
+eight. Every failure mode that actually matters — erasing the wrong person,
+recording a completion that never happened, claiming more than was deleted —
+happens in the steps around it.
+
+Two stores hold a subject's Seeker data, and both must be dealt with: the
+`ai_chat` Postgres schema (threads + messages, keyed by `resourceId`) and the
+`forge-mastra` Langfuse project (traces, same value in `userId`, carrying RAW
+conversation text whenever `LANGFUSE_TRACING_ENABLED="true"`). Retention does
+not make erasure redundant: the Postgres purge keys on rolling last activity,
+so a thread the subject keeps using never ages out.
+
+#### 0. Preconditions to fill in before the first real run
+
+> ⚠️ **UNRESOLVED — operator/owner input required (2026-08-12).** These are
+> operational facts, not code gaps, and the erasure capability is not fully
+> serviceable until they are named here. Fill each in; do not improvise one
+> mid-request.
+>
+> - **Intake + tracking channel.** WHERE an erasure request arrives, who owns
+>   it, and where the request and its completion are recorded. Without a named
+>   channel there is no place to record completion — and KD5 deliberately
+>   ships no in-tool ledger, so this record IS the record.
+> - **Response deadline.** The statutory clock the operator works against
+>   (GDPR Art. 12(3): one month from receipt, extendable). Write the actual
+>   internal target here.
+> - **Console-session actor record.** Whether Railway retains a
+>   console-session record durable and attributable enough to serve as the §6
+>   actor attribution. KD5 ships no in-tool ledger, so SOMETHING must carry
+>   "who ran this, when" — and for the normal locus (the Railway console, §5) that is
+>   assumed to be Railway's own session record, which is **not yet verified**.
+>   Until it is, pair every console run with an explicit note in the intake
+>   channel naming the operator.
+> - **Whether Langfuse UI bulk-deletes count against the API delete quota**
+>   (unverified). Matters only if the console fallback (§7) is used on a day
+>   the sweep is also spending.
+
+#### 1. Record the request, then verify the requester
+
+Record the request in the intake channel FIRST — an unrecorded destructive run
+has no audit trail at all. Then verify the requester controls the email
+address **through the account's own authenticated channel**, not by replying
+to the address that sent the request. Order matters: the identity check runs
+against the RESOLVED account (§2), so do the bridge query first and verify
+second.
+
+#### 2. Bridge: email → resourceId
+
+The Seeker `sub` is the apps/auth `user.id` **verbatim** — the chat OAuth
+client is not pairwise, so the ID token `sub` is the raw id and no join is
+needed. The erasure key is therefore `"user:" + user.id`.
+
+Run against the **auth** database (a different instance from Mastra's) — the
+access set is anyone with Railway access to that database; if erasure duty
+ever moves to someone without it, that is a blocker to escalate, not a step
+to skip. The address is untrusted free text that arrived from outside — the
+danger point is **how it enters the query**.
+
+**Normal path — the Railway Database tab** (auth database service → Database →
+`user` table → query box; verified by the owner, 2026-08-13). The box is
+plain SQL with no variables, so use dollar-quoting — an apostrophe in the
+address is harmless there, and pasted text cannot break out of the string:
+
+```sql
+SELECT id, email FROM "user"
+WHERE lower(email) = lower(trim($addr$paste@example.com$addr$));
+```
+
+Replace only the text between the two `$addr$` markers (if the pasted text
+ever contained `$addr$` itself, pick a longer tag). **Before running, look at
+what you pasted: it must read as one plain email address** — one line, an `@`
+and a domain, nothing else. If it does not, stop and escalate; never run it.
+That one glance catches an injection attempt, a fat-fingered paste, and a
+wrong-field copy alike. Plain `'…'` quoting works
+only if you double every apostrophe by hand (`'o''brien@example.com'`) — the
+step people forget, which is why the dollar-quoted form is the documented one.
+Clear the query box once the id is recorded: it holds the subject's email in a
+production console session (§6 residue).
+
+**An entry mishap means "re-enter the address", NEVER "no such account".** A
+broken quote or tag produces an error or an empty value, not a real
+zero-match — fix the entry and rerun; never record the abort from a broken
+entry. (A legitimate address like `o'brien@example.com` is exactly the shape
+careless quoting breaks on.)
+
+> **If you must run the bridge from a psql session instead:** do NOT paste
+> the address into `\set` — psql reads that line under meta-command rules,
+> where a multi-line paste executes as commands against the auth database and
+> an apostrophe breaks the variable silently. Read the address interactively
+> with `\prompt 'Requester email: ' requester_email` and query with
+> `lower(trim(:'requester_email'))` — that quoting guards the expansion only,
+> never the entry.
+
+Case-folded and trimmed on purpose (KTD10): `user.email` is DB-unique on the
+EXACT string, so a byte-exact query false-zero-matches on a case difference
+from free-text intake — and a false zero reads as "this person has no
+account", which is the wrong answer to give a data subject.
+
+Then, in this order:
+
+- **Zero matches → ABORT and escalate.** Never "try another spelling" and
+  never proceed on a guess.
+- **More than one match → ABORT and escalate.** Never operator choice.
+- **Exactly one match whose stored `email` is not byte-identical to the
+  supplied string → ESCALATE, do not proceed.** A case-variant address that
+  resolves to a different person's account is the wrong-subject path this
+  rule exists to close.
+- **Exactly one byte-identical match → verify the requester against THAT
+  account's authenticated channel (§1), then continue.**
+
+> **Pairwise caveat.** If `oauth_client.subject_type` is ever flipped to
+> pairwise for the chat client, the `sub` stops being the raw `user.id` and
+> this bridge silently returns the wrong key — with no error anywhere.
+> Re-verify the mapping before erasing if that field has changed.
+
+#### 3. Preview — always, before anything destructive
+
+Run this and §4 in the **Railway `@forge/mastra` service → Console tab** — the
+normal execution locus (credentials and the workstation fallback: §5).
+
+```bash
+pnpm --filter @forge/mastra erase-user -- --resource=user:<auth user.id>
+```
+
+Read-only. It prints the targets it would act on (redacted Postgres identity,
+Langfuse host), the per-store counts, and the `confirm_database=<hash>` token
+step 4 needs. Exit 0 means the preview itself ran cleanly.
+
+**The preview is the ONLY place that token is printed.** An execute run never
+emits it — not even when refusing a mismatch — because the token is computed
+from the arguments just supplied, so echoing it on refusal would hand you a
+valid token for whatever you just typed. If step 4 refuses, come back here and
+preview the exact resource you intend to erase; that is the point of the gate,
+not an obstacle to route around.
+
+**A 0/0 preview means re-derive the key before recording anything.** It is a
+distinct outcome (`event=no_data_for_key`) precisely so it is never filed as a
+completed erasure — the far likelier explanation is a wrong key than a subject
+with no data. A `postgres=unreachable` line is a store fault (exit 1), NOT a
+zero count; fix the connection and re-run.
+
+`reason=filter_mismatch` or `reason=unreadable_rows` (exit 2, zero deletes)
+means the STORE contradicted itself — it returned a row belonging to another
+resource, or a row whose ownership could not be proven (including a row with
+no usable id, or a thread whose own `resourceId` is absent). That is a
+`@mastra/*` contract regression, not an operator error: **stop, do not retry,
+and escalate to engineering.** The tool refuses rather than deleting what it
+cannot prove belongs to the subject.
+
+Because that refusal has no bounded completion and the request is on a
+statutory clock, it does NOT mean the erasure waits indefinitely: the §7
+break-glass paths stay available and become the path of record if engineering
+cannot clear the regression inside the response deadline. Record which path
+was used.
+
+#### 4. Erase
+
+Same console as the preview (§3).
+
+```bash
+pnpm --filter @forge/mastra erase-user -- --resource=user:<auth user.id> \
+  --execute --confirm-database=<hash from the preview>
+```
+
+The hash pins the Postgres identity, the Langfuse **host**, and the **subject**
+— so a token minted against a throwaway database cannot authorize a run against
+production traces, and one minted while previewing one person cannot authorize
+erasing another. A mismatch refuses before any store client is constructed.
+Execute re-reports its own counts — compare them to the preview's rather than
+assuming they matched.
+
+Precision worth knowing: the Langfuse component of the hash is the host only.
+Langfuse keys are project-scoped, so the environment's key pair determines
+WHICH project the Langfuse half operates on — at the console locus that is
+the service's own `forge-mastra` pair by construction; at the workstation
+fallback it is an operator-hygiene assumption (owner-accepted, 2026-08-17,
+recorded in the accepted limitations).
+
+Exit codes: `0` clean · `2` incomplete but safe to rerun (exact-key deletes
+are idempotent — the report names each store's state) · `1` hard refusal or
+fault. **Until PR 2 lands, every `--execute` run exits 2** with
+`langfuse=not_implemented`: the Postgres half is done, the Langfuse half must
+be covered by the console fallback in §7.
+
+#### 5. Credentials at the execution locus
+
+Scripts here are **process-env only** — no dotenv loading. They need
+`DATABASE_URL` (asserted explicitly; there is no localhost fallback for this
+tool) and, once PR 2 lands, the Langfuse trio.
+
+**Normal path — the Railway service console** (owner decision, verified in
+the production console 2026-08-13: pnpm, the workspace, and tsx are all
+present — the Nixpacks full-install image ships the source tree). Nothing to
+load: the deployed container already carries `DATABASE_URL` and the Langfuse
+trio in its environment, and it can reach production Postgres. Open the
+`@forge/mastra` service → Console tab and run the §3/§4 commands as written.
+Two properties make this the right default rather than merely the convenient
+one: no production credential is ever copied onto a laptop, and the session is
+ephemeral, so the residue §6 asks you to clean up largely does not accumulate
+in the first place. (The U3 opt-in erasure smoke never runs here: its guards
+refuse a production runtime and a non-throwaway target — it runs against a
+local or scratch database only.)
+
+**Fallback — an operator workstation.** Use only when the console is
+unavailable. You must supply the credentials yourself; the house idiom is:
+
+```bash
+# Prefer a subshell so the credentials die with it:
+( set -a; source <(grep '^LANGFUSE_' apps/mastra/.env); set +a; \
+  pnpm --filter @forge/mastra erase-user -- --resource=user:<id> )
+```
+
+If you source into your current shell instead, **unset the group afterwards**
+(`unset "${!LANGFUSE_@}"`) — leaving a production Langfuse key pair live in an
+interactive shell is exactly the exposure the console path avoids.
+
+Whichever path you take, remember the Langfuse project is **ALWAYS production**,
+whichever `DATABASE_URL` the Postgres half points at.
+
+#### 6. Verify later, then record completion
+
+Postgres reports synchronously. Langfuse deletion is **~15 minutes
+asynchronous with no completion receipt**, so the normal terminal state is
+"deletes submitted; N still visible" — a non-failure. The completion evidence
+is re-running the **preview** minutes later and seeing zero visible traces.
+
+> **Until PR 2 lands, that paragraph's second half does not apply.** The CLI's
+> preview says nothing about Langfuse at all (`langfuse=not_implemented`), so
+> re-running it can never show "zero visible traces". The Langfuse-half
+> evidence is the §7 console traces table, filtered by exact-equality User ID,
+> showing zero rows — and the requester-facing sentence below must not claim
+> traces were confirmed removed until you have actually looked.
+
+Record completion in the intake channel. **KD5 ships no in-tool ledger, so
+something outside the tool has to answer "who ran this, and when".** On the
+console path that is assumed to be Railway's own session record — which is
+listed in §0 as NOT yet verified, so until it is, name the operator explicitly
+in the intake-channel entry. On the workstation path it is the operator's own
+session log. A locus that produces neither is an escalation, not a place to run
+this from.
+
+**Operator-side residue**, which now differs by locus:
+
+- **Console:** the session is ephemeral and vanishes when you close it, so
+  there is little to clean. Nothing to unset — you did not source anything.
+  Do still clear the §2 bridge query box: it is a separate surface (the auth
+  service's Database tab) and holds the subject's email until you clear it.
+- **Workstation:** the bridge query and the CLI arguments both carry the
+  subject's email or stable key. Run the bridge query with history disabled,
+  clear shell/psql history and the terminal transcript once completion is
+  recorded, and unset the Langfuse group (§5).
+
+Common to both: the resource key is a **command-line argument**, so it is
+visible in process listings (`ps`, `/proc`) to anyone else on that host for the
+duration of the run.
+
+#### 7. Break-glass fallbacks
+
+**Langfuse console bulk-delete** (the cover for the Langfuse half until PR 2,
+and the fallback after it). In the traces table, filter on User ID with an
+**exact-equality** operator — never contains/starts-with, which would delete
+other subjects' traces — and check the filtered count against the CLI
+preview's count before confirming. This path is **unaudited and open to
+anyone with Langfuse project access**; prefer the CLI once its Langfuse half
+exists (PR 2 — the Postgres half already ships).
+
+**Raw SQL** (Postgres half). Superseded by the CLI, which also removes
+orphaned vectors this misses:
+
+```sql
+DELETE FROM ai_chat.mastra_messages WHERE thread_id IN (
+  SELECT id FROM ai_chat.mastra_threads WHERE "resourceId" = $1);
+DELETE FROM ai_chat.mastra_threads WHERE "resourceId" = $1;
+```
+
+(`ai_chat.mastra_resources` too, if working memory ever lands — it has not.)
+
+**Past the Langfuse visibility wall.** The Hobby tier hides data older than 30
+days from the API entirely, so such records can be neither listed nor deleted.
+The escape hatch is a temporary Core-tier upgrade — start it with lead time
+inside the response deadline, not on the last day.
+
+#### Accepted limitations — read before answering the requester
+
+These bound what may honestly be claimed. Erasure completion is claimed
+**per key erased, never per person.**
+
+- **Once an auth account is deleted the `sub` is unrecoverable**, so a later
+  erasure request for that person cannot be serviced at all — the data can
+  only age out over ≤25 days and deletion cannot be confirmed to them.
+- **`anon:*` resources are unreachable by any CASCADE design** — no query
+  links an anonymous key to an email, so an account-deletion cascade can never
+  find one. (The CLI itself accepts `anon:*` fine when an operator holds the
+  exact key; it is the discovery that is impossible, not the erasure.)
+  Retention is their only deletion path in practice.
+- **A subject's Seeker data may span several resourceIds** — a second
+  account, a pre-sign-in `anon:<uuid>` no query can link to an email, turns
+  under the shared fallback resource.
+- **No individual behind the shared `seeker-dogfood` fallback resource can be
+  individually erased.** Many people's turns share that key, so key equality
+  does not bound its blast radius to one subject; the CLI refuses it outright
+  and retention is that data's only deletion path.
+- **The local DuckDB observability store retains redacted seeker spans**
+  stamped `userId = <resourceId>` and `sessionId = <threadId>`, with no
+  retention job — no conversation content, but that identifier-and-timing
+  record survives erasure. Scope: while `LANGFUSE_TRACING_ENABLED="true"` the
+  routed seeker turns write nothing to DuckDB (the `langfuse-seeker`
+  observability config registers no storage exporter), so this residue is
+  historical — spans from flag-off periods plus agent calls outside the seeker
+  route.
+- **The Langfuse half sees only what the v2 observations read surface
+  indexes.** Records ingested via the legacy batch ingestion API never
+  materialize there and cannot be listed or deleted by the CLI (today that set
+  is test sentinels only — production tracing is OTel-ingested and does
+  index); a trace with no v2-indexed observation is the same class.
+- **The environment's Langfuse key pair determines WHICH project the Langfuse
+  half operates on** (keys are project-scoped). A completion claim assumes
+  that pair is the `forge-mastra` pair — guaranteed by construction at the
+  console locus, an operator-hygiene assumption at the workstation fallback
+  (owner-accepted, 2026-08-17).
+
+**The sentence to send back to the requester** (adapt to the channel, keep the
+bounds). **Never claim trace removal you have not visually confirmed** — pick
+the variant that matches what you actually did.
+
+**Variant A — PR-1 build, or any run where you have NOT looked at the Langfuse
+console.** The CLI's Langfuse half is `not_implemented`, so the tool tells you
+nothing about traces:
+
+> We have deleted the conversation data held against your account. The
+> associated diagnostic records age out automatically within 25 days. Two limits we want to be straight about: this
+> covers the account we could match to your email address — if you used the
+> assistant before signing in, or from another account, that activity is not
+> linked to you by any record we can search, and it is deleted automatically
+> within 25 days. A diagnostic record of when conversations happened (no
+> content) may also remain in our internal logs.
+
+**Variant B — you have confirmed zero traces yourself**, either via the §7
+console traces table filtered by exact-equality User ID, or (once PR 2 lands)
+via a preview rerun showing zero visible traces:
+
+> We have deleted the conversation data held against your account, and the
+> associated diagnostic traces have been removed. Two limits we want to be
+> straight about: this covers the account we could match to your email
+> address — if you used the assistant before signing in, or from another
+> account, that activity is not linked to you by any record we can search, and
+> it is deleted automatically within 25 days. A diagnostic record of when
+> conversations happened (no content) may also remain in our internal logs.
+
+If you submitted deletes but have not yet seen them land, you are in neither
+variant: wait and look, then send B — or send A, which is true regardless.
 
 ### ai-chat history read surface (feat-241)
 
@@ -1171,8 +1524,11 @@ days — see the ai-chat retention bullet above) or per-user erasure
 (`docs/roadmap/ai-chat/feat-337-per-user-erasure-capability.md`): those two
 gate AUDIENCE WIDENING, not the first flip — the dogfood audience is
 allowlisted and tiny, manual Langfuse deletion covers the interim, and the
-sweep drains backlog retroactively. Note the ai-chat erasure runbook above
-covers Postgres only. Platform rationale and
+sweep drains backlog retroactively. Superseded 2026-08-12 (feat-337): the
+"Operator erasure runbook" above now covers BOTH stores end to end — the
+request lifecycle, the email→resourceId bridge, the `erase-user` CLI, and the
+accepted limitations. Its Langfuse half is the documented console
+bulk-delete until feat-337's PR 2 automates it. Platform rationale and
 flip triggers:
 `docs/solutions/tooling-decisions/langfuse-vs-mastra-native-management-layer-20260805.md`.
 
