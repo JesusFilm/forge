@@ -218,7 +218,7 @@ describe("runOfflineSearchEval", () => {
           query: "bible project",
           locale: "en",
           languageSlug: "english",
-          mode: "keyword-first",
+          mode: "modern",
         }),
       }),
     )
@@ -230,9 +230,12 @@ describe("runOfflineSearchEval", () => {
     )
     expect(
       searchClient.mock.calls.every(
-        (call) => call[0]?.payload.mode === "keyword-first",
+        (call) => call[0]?.payload.mode === "modern",
       ),
     ).toBe(true)
+    expect(result.ok && result.report.metadata.search.mode).toBe(
+      "keyword-first",
+    )
     for (const call of searchClient.mock.calls) {
       expect(call[0]?.payload).not.toHaveProperty("websiteLocale")
     }
@@ -297,9 +300,10 @@ describe("runOfflineSearchEval", () => {
     ).toBe(true)
     expect(
       searchClient.mock.calls.every(
-        (call) => call[0]?.payload.mode === "hybrid",
+        (call) => call[0]?.payload.mode === "modern",
       ),
     ).toBe(true)
+    expect(result.ok && result.report.metadata.search.mode).toBe("hybrid")
   })
 
   it("rejects caller-track and search-mode combinations before Admin search", async () => {
