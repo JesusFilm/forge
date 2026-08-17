@@ -385,6 +385,26 @@ describe("suspension (AE6)", () => {
     expect(shouldReissueSwap(resumed)).toBe(true)
   })
 
+  it("PENDING_SWAP_SATISFIED clears the marker without a re-issue", () => {
+    const resumed = run(
+      createInitialPagerState(twoVideos),
+      { type: "SWAP_STARTED" },
+      { type: "SUSPEND", reason: "scroll" },
+      { type: "SWAP_FINISHED" },
+      { type: "RESUME" },
+    )
+    expect(shouldReissueSwap(resumed)).toBe(true)
+
+    const satisfied = pagerReducer(resumed, { type: "PENDING_SWAP_SATISFIED" })
+    expect(satisfied.pendingSwap).toBe(false)
+    expect(shouldReissueSwap(satisfied)).toBe(false)
+  })
+
+  it("PENDING_SWAP_SATISFIED is a same-reference no-op with nothing pending", () => {
+    const idle = createInitialPagerState(twoVideos)
+    expect(pagerReducer(idle, { type: "PENDING_SWAP_SATISFIED" })).toBe(idle)
+  })
+
   it("records a stream that resolved while suspended for the resume swap", () => {
     const suspended = pagerReducer(createInitialPagerState(twoVideos), {
       type: "SUSPEND",

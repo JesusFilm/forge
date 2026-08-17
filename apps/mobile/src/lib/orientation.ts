@@ -26,7 +26,11 @@ export async function lockPortrait(): Promise<void> {
 }
 
 /**
- * Lock to LANDSCAPE for fullscreen. We deliberately don't `unlockAsync()`
+ * Rotate into landscape for fullscreen. The lock must be a SINGLE orientation:
+ * the dual LANDSCAPE mask only permits landscape, and on iOS 16+ hardware the
+ * geometry request then defers to the physical sensor — a portrait-held phone
+ * stays portrait until the user tilts it (the sensor-less simulator rotates
+ * either way, which hides this). We deliberately don't `unlockAsync()`
  * afterward: on iOS it re-applies the device's physical orientation, snapping a
  * portrait-held phone back to portrait so the landscape nudge never takes.
  */
@@ -34,7 +38,7 @@ export async function enterFullscreenLandscape(): Promise<void> {
   const SO = load()
   if (!SO) return
   try {
-    await SO.lockAsync(SO.OrientationLock.LANDSCAPE)
+    await SO.lockAsync(SO.OrientationLock.LANDSCAPE_RIGHT)
   } catch {
     // Non-fatal — orientation unavailable in this context.
   }
