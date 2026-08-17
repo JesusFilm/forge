@@ -333,7 +333,8 @@ export function classifyDatabaseHost(host: string): DatabaseHostClass {
     lower.endsWith(".railway.app") ||
     lower.endsWith(".railway.internal") ||
     lower.endsWith(".jesusfilm.org") ||
-    lower.includes("rlwy.net")
+    lower === "rlwy.net" ||
+    lower.endsWith(".rlwy.net")
   ) {
     return "known-production"
   }
