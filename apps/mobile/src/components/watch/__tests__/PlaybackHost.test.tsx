@@ -1655,6 +1655,29 @@ describe("the dismissal exit (R6)", () => {
     })
   }
 
+  it("slides the whole window out: the frame rides the exit wrapper", async () => {
+    jest.useFakeTimers()
+    const id = attachSlot()
+    const renderer = await renderHost()
+    await startPlayback()
+    await detach(id)
+    await dismiss()
+
+    // The exit must translate the frame ITSELF — box, chrome and video leave
+    // together. With the wrapper inside the frame, the contents slid away
+    // while the stationary black box stayed behind and then blinked out.
+    const exit = renderer.root.findAll(
+      (node) => node.props.testID === "playback-exit",
+    )[0] as unknown as {
+      findAll(
+        predicate: (node: { props: { testID?: unknown } }) => boolean,
+      ): unknown[]
+    }
+    expect(
+      exit.findAll((node) => node.props.testID === "playback-frame").length,
+    ).toBeGreaterThan(0)
+  })
+
   it("clears the dismissed session when the exit animation never reports back", async () => {
     jest.useFakeTimers()
     const id = attachSlot()

@@ -524,8 +524,8 @@ function ActivePlaybackHost({
   const layoutConfigRef = useRef(layoutConfig)
   layoutConfigRef.current = layoutConfig
 
-  // KTD5: the drag writes THIS node and never takes the native driver; the
-  // shrink and the exit write the wrapper below it and always do.
+  // KTD5: the drag writes the frame node and never takes the native driver;
+  // the shrink (motion node inside it) and the exit (wrapper above it) do.
   const drag = useRef(new Animated.ValueXY({ x: 0, y: 0 })).current
   const shrink = useRef(new Animated.Value(1)).current
   const exitY = useRef(new Animated.Value(0)).current
@@ -956,34 +956,37 @@ function ActivePlaybackHost({
     <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
       {drawsFrame && (
         <Animated.View
-          testID="playback-frame"
+          testID="playback-exit"
+          // R6 rides its own native node ABOVE the frame so the whole window —
+          // box, chrome, video — slides out together (KTD5: one driver per
+          // node; the frame below keeps the JS-driven drag).
           style={[
-            styles.frame,
-            {
-              left: geometry.x,
-              top: geometry.y,
-              width: geometry.width,
-              height: geometry.height,
-            },
-            // The shrink draws the video larger than this box, so it cannot
-            // clip until the transition has settled into its target — and the
-            // box paints NOTHING of its own mid-flight: an instant black
-            // window at the corner would front-run the arriving video.
-            motion != null && styles.inMotion,
-            floating && chromeReady && styles.rounded,
-            suppressed && styles.suppressed,
-            { transform: [{ translateX: drag.x }, { translateY: drag.y }] },
+            StyleSheet.absoluteFill,
+            { transform: [{ translateY: exitY }] },
           ]}
-          // Invisible over a sheet, so it must not take that sheet's touches.
-          pointerEvents={suppressed ? "none" : "box-none"}
+          pointerEvents="box-none"
         >
           <Animated.View
-            testID="playback-exit"
+            testID="playback-frame"
             style={[
-              StyleSheet.absoluteFill,
-              { transform: [{ translateY: exitY }] },
+              styles.frame,
+              {
+                left: geometry.x,
+                top: geometry.y,
+                width: geometry.width,
+                height: geometry.height,
+              },
+              // The shrink draws the video larger than this box, so it cannot
+              // clip until the transition has settled into its target — and the
+              // box paints NOTHING of its own mid-flight: an instant black
+              // window at the corner would front-run the arriving video.
+              motion != null && styles.inMotion,
+              floating && chromeReady && styles.rounded,
+              suppressed && styles.suppressed,
+              { transform: [{ translateX: drag.x }, { translateY: drag.y }] },
             ]}
-            pointerEvents="box-none"
+            // Invisible over a sheet, so it must not take that sheet's touches.
+            pointerEvents={suppressed ? "none" : "box-none"}
           >
             <Animated.View
               testID="playback-motion"
