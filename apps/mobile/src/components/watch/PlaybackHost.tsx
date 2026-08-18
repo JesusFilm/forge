@@ -532,6 +532,9 @@ function ActivePlaybackHost({
   const chromeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const shrinkAnimRef = useRef<Animated.CompositeAnimation | null>(null)
   const fadeAnimRef = useRef<Animated.CompositeAnimation | null>(null)
+  // The running motion's anchor, so an interruption can park the ramp at that
+  // motion's identity end before its style detaches (see settle).
+  const activeAnchorRef = useRef<"from" | "to">("to")
 
   useEffect(() => {
     return () => {
@@ -560,6 +563,9 @@ function ActivePlaybackHost({
         chromeTimerRef.current = null
       }
       windowFade.setValue(1)
+      // Same identity-parking as settle: whatever motion this interrupts must
+      // not leave a frozen mid-ramp transform behind its detaching style.
+      shrink.setValue(activeAnchorRef.current === "from" ? 0 : 1)
       setMotion(null)
       setChromeReady(true)
     }
@@ -582,10 +588,27 @@ function ActivePlaybackHost({
         // transform may still be native-attached for a beat — hide across the
         // swap; the reveal below owns bringing it back.
         if (anchor === "from") windowFade.setValue(0)
+        // Park the ramp at its IDENTITY end before the style detaches: the
+        // native driver leaves the last driven value stuck on the view
+        // (Fabric skips the restore), and a frozen corner-target transform
+        // pushed the settled window's video clean out of its box — a black
+        // window with live controls.
+        shrink.setValue(anchor === "from" ? 0 : 1)
+        // Park the ramp at its IDENTITY end before the style detaches: the
+        // native driver leaves the last driven value stuck on the view
+        // (Fabric skips the restore), and a frozen corner-target transform
+        // pushed the settled window's video clean out of its box — a black
+        // window with live controls.
+        // Park the ramp at its IDENTITY end before the style detaches: the
+        // native driver leaves the last driven value stuck on the view
+        // (Fabric skips the restore), and a frozen corner-target transform
+        // pushed the settled window's video clean out of its box — a black
+        // window with live controls.
         setMotion(null)
         setChromeReady(true)
         onSettled?.()
       }
+      activeAnchorRef.current = anchor
       setMotion({ from, to, anchor })
       shrink.setValue(0)
       const animation = Animated.timing(shrink, {

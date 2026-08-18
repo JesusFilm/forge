@@ -1395,6 +1395,7 @@ describe("the frame transition (KTD17: shrink and its reverse)", () => {
 
   it("grows out of the corner on expand, and settles clipped at the rect", async () => {
     jest.useFakeTimers()
+    const timingSpy = jest.spyOn(Animated, "timing")
     const first = attachSlot()
     const renderer = await renderHost()
     await startPlayback()
@@ -1402,6 +1403,16 @@ describe("the frame transition (KTD17: shrink and its reverse)", () => {
     // The shrink runs VISIBLY, anchored at the departing player rect.
     expect(windowFadeValue(renderer)).toBe(1)
     expect(frameStyle(renderer)).toMatchObject({ left: RECT.x, top: RECT.y })
+    const shrinkNode = timingSpy.mock.calls.find(
+      ([, config]) =>
+        (config as { duration?: number }).duration === SHRINK_DURATION_MS,
+    )?.[0] as { setValue: (v: number) => void } | undefined
+    expect(shrinkNode).toBeDefined()
+    // Armed after the shrink started, so only the settle's park can trip it.
+    const parkSpy = jest.spyOn(
+      shrinkNode as { setValue: (v: number) => void },
+      "setValue",
+    )
     await act(async () => {
       jest.advanceTimersByTime(SHRINK_DURATION_MS + 300)
     })
@@ -1414,6 +1425,10 @@ describe("the frame transition (KTD17: shrink and its reverse)", () => {
     expect(frameStyle(renderer).backgroundColor).not.toBe("transparent")
     expect(frameStyle(renderer)).not.toMatchObject({ left: RECT.x })
     expect(windowFadeValue(renderer)).toBe(1)
+    // Parked at the ramp's IDENTITY end before the style detached: the native
+    // driver leaves the last driven value stuck on the view, and a frozen
+    // corner-target transform black-boxes the settled window on device.
+    expect(parkSpy).toHaveBeenCalledWith(0)
     expect(sessionStore.getSnapshot().session).not.toBeNull()
 
     // The expand: the remounted screen measures its rect.
