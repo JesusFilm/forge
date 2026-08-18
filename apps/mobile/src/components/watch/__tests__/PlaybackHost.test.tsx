@@ -144,7 +144,6 @@ import {
   EXPAND_DURATION_MS,
   PlaybackHost,
   SHRINK_DURATION_MS,
-  WINDOW_FADE_IN_MS,
   shouldDrawSurface,
 } from "../PlaybackHost"
 import { miniPlayerCornerFrame } from "../../../lib/miniPlayer/layout"
@@ -353,19 +352,6 @@ function exitTranslation(renderer: TestInstance) {
   const value = style.transform?.[0]?.translateY
   if (value == null) throw new Error("no exit translation on the frame")
   return value
-}
-
-/** The window layer's settle fade, read off the node the exit also drives. */
-function windowFadeValue(renderer: TestInstance) {
-  const node = renderer.root.findAll(
-    (n) => n.props.testID === "playback-exit",
-  )[0]
-  const style = StyleSheet.flatten(node.props.style) as {
-    opacity?: { __getValue: () => number }
-  }
-  const value = style.opacity
-  if (value == null) throw new Error("no fade on the window layer")
-  return value.__getValue()
 }
 
 function frameStyle(renderer: TestInstance) {
@@ -1375,7 +1361,6 @@ describe("the frame transition (KTD17: shrink and its reverse)", () => {
     // The shrink is VISIBLE, anchored at the player rect it departs from: the
     // untransformed first frame is then the previous frame, so the native
     // driver's late transform attach has nothing to flash (the device bug).
-    expect(windowFadeValue(renderer)).toBe(1)
     expect(frameStyle(renderer)).toMatchObject({ left: RECT.x, top: RECT.y })
     timingSpy.mockClear()
 
@@ -1388,7 +1373,6 @@ describe("the frame transition (KTD17: shrink and its reverse)", () => {
         (config as { duration?: number }).duration === EXPAND_DURATION_MS,
     )
     expect(growCall).toBeDefined()
-    expect(windowFadeValue(renderer)).toBe(1)
     // The frame already sits at the rect; the transform carries the motion.
     expect(frameStyle(renderer)).toMatchObject({ left: RECT.x, top: RECT.y })
   })
@@ -1401,7 +1385,6 @@ describe("the frame transition (KTD17: shrink and its reverse)", () => {
     await startPlayback()
     await detach(first)
     // The shrink runs VISIBLY, anchored at the departing player rect.
-    expect(windowFadeValue(renderer)).toBe(1)
     expect(frameStyle(renderer)).toMatchObject({ left: RECT.x, top: RECT.y })
     const shrinkNode = timingSpy.mock.calls.find(
       ([, config]) =>
@@ -1416,15 +1399,11 @@ describe("the frame transition (KTD17: shrink and its reverse)", () => {
     await act(async () => {
       jest.advanceTimersByTime(SHRINK_DURATION_MS + 300)
     })
-    await act(async () => {
-      jest.advanceTimersByTime(WINDOW_FADE_IN_MS + 300)
-    })
-    // The settled window: the frame swapped to the corner behind the hide,
-    // the box paints again, and the 0.1s reveal has completed.
+    // The settled window: the frame swapped to corner geometry, clipped and
+    // painting its own box again — no fade, the window is simply there.
     expect(frameStyle(renderer).overflow).toBe("hidden")
     expect(frameStyle(renderer).backgroundColor).not.toBe("transparent")
     expect(frameStyle(renderer)).not.toMatchObject({ left: RECT.x })
-    expect(windowFadeValue(renderer)).toBe(1)
     // Parked at the ramp's IDENTITY end before the style detached: the native
     // driver leaves the last driven value stuck on the view, and a frozen
     // corner-target transform black-boxes the settled window on device.

@@ -86,10 +86,6 @@ export const SHRINK_DURATION_MS = 340
  *  the player rect — the same interpolation as the shrink, never a jump. */
 export const EXPAND_DURATION_MS = 300
 
-/** The settled window's reveal after the shrink (the layer hides through the
- *  shrink itself — see the transition effect). */
-export const WINDOW_FADE_IN_MS = 100
-
 /** R6's downward exit. */
 export const EXIT_DURATION_MS = 220
 
@@ -500,17 +496,10 @@ function ActivePlaybackHost({
   )
 
   // KTD5: the drag writes THIS node and never takes the native driver; the
-  // shrink, the exit and the settle fade write the wrapper below it and
-  // always do.
+  // shrink and the exit write the wrapper below it and always do.
   const drag = useRef(new Animated.ValueXY({ x: 0, y: 0 })).current
   const shrink = useRef(new Animated.Value(1)).current
   const exitY = useRef(new Animated.Value(0)).current
-  // The whole window layer is INVISIBLE through the shrink and fades in only
-  // once it settles: the native driver attaches transforms after the commit
-  // paints, so on device the corner box could flash the untransformed video
-  // before the shrink even started. Connected from mount, so the hide lands
-  // with the first frame.
-  const windowFade = useRef(new Animated.Value(1)).current
 
   const [corner, setCorner] = useState<MiniPlayerCorner>(DEFAULT_CORNER)
   const cornerRef = useRef(corner)
@@ -531,7 +520,6 @@ function ActivePlaybackHost({
   const lastRectRef = useRef<PlaybackRect | null>(null)
   const chromeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const shrinkAnimRef = useRef<Animated.CompositeAnimation | null>(null)
-  const fadeAnimRef = useRef<Animated.CompositeAnimation | null>(null)
   // The running motion's anchor, so an interruption can park the ramp at that
   // motion's identity end before its style detaches (see settle).
   const activeAnchorRef = useRef<"from" | "to">("to")
@@ -555,14 +543,11 @@ function ActivePlaybackHost({
     // state, and its completion callback fires out of turn.
     shrinkAnimRef.current?.stop()
     shrinkAnimRef.current = null
-    fadeAnimRef.current?.stop()
-    fadeAnimRef.current = null
     const clearMotion = () => {
       if (chromeTimerRef.current != null) {
         clearTimeout(chromeTimerRef.current)
         chromeTimerRef.current = null
       }
-      windowFade.setValue(1)
       // Same identity-parking as settle: whatever motion this interrupts must
       // not leave a frozen mid-ramp transform behind its detaching style.
       shrink.setValue(activeAnchorRef.current === "from" ? 0 : 1)
@@ -584,26 +569,12 @@ function ActivePlaybackHost({
           clearTimeout(chromeTimerRef.current)
           chromeTimerRef.current = null
         }
-        // A from-anchored settle swaps the frame to the far end while the old
-        // transform may still be native-attached for a beat — hide across the
-        // swap; the reveal below owns bringing it back.
-        if (anchor === "from") windowFade.setValue(0)
         // Park the ramp at its IDENTITY end before the style detaches: the
         // native driver leaves the last driven value stuck on the view
         // (Fabric skips the restore), and a frozen corner-target transform
         // pushed the settled window's video clean out of its box — a black
         // window with live controls.
         shrink.setValue(anchor === "from" ? 0 : 1)
-        // Park the ramp at its IDENTITY end before the style detaches: the
-        // native driver leaves the last driven value stuck on the view
-        // (Fabric skips the restore), and a frozen corner-target transform
-        // pushed the settled window's video clean out of its box — a black
-        // window with live controls.
-        // Park the ramp at its IDENTITY end before the style detaches: the
-        // native driver leaves the last driven value stuck on the view
-        // (Fabric skips the restore), and a frozen corner-target transform
-        // pushed the settled window's video clean out of its box — a black
-        // window with live controls.
         setMotion(null)
         setChromeReady(true)
         onSettled?.()
@@ -638,7 +609,6 @@ function ActivePlaybackHost({
       lastRectRef.current = rect
       drag.setValue({ x: 0, y: 0 })
       if (grow) {
-        windowFade.setValue(1)
         runMotion(
           miniPlayerCornerFrame(layoutConfig, cornerRef.current),
           rect,
@@ -664,31 +634,12 @@ function ActivePlaybackHost({
     // A new window opens in the default corner, which is also what makes the
     // shrink arithmetic exact: there is no drag offset to subtract. The frame
     // stays anchored at the player rect for the whole shrink (a flash-proof
-    // start: the untransformed first frame IS the previous frame), and the
-    // settle above hides the swap to corner geometry, which the 0.1s reveal
-    // then brings back.
+    // start: the untransformed first frame IS the previous frame).
     setCorner(DEFAULT_CORNER)
     drag.setValue({ x: 0, y: 0 })
     setChromeReady(false)
-    windowFade.setValue(1)
-    runMotion(from, windowFrame, "from", SHRINK_DURATION_MS, () => {
-      const fade = Animated.timing(windowFade, {
-        toValue: 1,
-        duration: WINDOW_FADE_IN_MS,
-        useNativeDriver: true,
-      })
-      fadeAnimRef.current = fade
-      fade.start(() => {
-        if (fadeAnimRef.current === fade) fadeAnimRef.current = null
-      })
-      // The fade's own unconditional release: a driver that never reports
-      // back must not strand an invisible window. The settle freed this ref.
-      chromeTimerRef.current = setTimeout(
-        () => windowFade.setValue(1),
-        WINDOW_FADE_IN_MS + CHROME_RELEASE_SLACK_MS,
-      )
-    })
-  }, [rect, hasSession, layoutConfig, windowFrame, drag, shrink, windowFade])
+    runMotion(from, windowFrame, "from", SHRINK_DURATION_MS)
+  }, [rect, hasSession, layoutConfig, windowFrame, drag, shrink])
 
   useEffect(() => {
     if (presentation !== "exiting") {
@@ -924,9 +875,7 @@ function ActivePlaybackHost({
             testID="playback-exit"
             style={[
               StyleSheet.absoluteFill,
-              // Same native-driven node as the exit: the settle fade may not
-              // ride the drag node (KTD5 forbids mixing drivers there).
-              { transform: [{ translateY: exitY }], opacity: windowFade },
+              { transform: [{ translateY: exitY }] },
             ]}
             pointerEvents="box-none"
           >
