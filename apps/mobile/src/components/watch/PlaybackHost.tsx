@@ -145,6 +145,25 @@ export function shouldDrawSurface(input: {
   return input.hasRect || input.endedCause == null || !input.surfaceReleased
 }
 
+/** R4's tap pins the pre-push frames until the grow consumes them: the pushed
+ *  route re-derives the corner chrome before the rect arrives. */
+type ExpandHold = {
+  windowFrame: MiniPlayerFrame
+  cornerFrame: MiniPlayerFrame
+  at: number
+}
+
+/** One freshness rule for the render and the effect: a hold is live only for a
+ *  floating session inside the push window. */
+function liveExpandHold(
+  hold: ExpandHold | null,
+  hasSession: boolean,
+  now: number,
+): ExpandHold | null {
+  if (hold == null || !hasSession) return null
+  return now - hold.at <= EXPAND_HOLD_TIMEOUT_MS ? hold : null
+}
+
 /**
  * The router bridge. Everything below it is router-free so the window's target
  * and its back answer are injected rather than imported (KTD11, KTD4).
@@ -531,11 +550,9 @@ function ActivePlaybackHost({
   // motion's identity end before its style detaches (see settle).
   const activeAnchorRef = useRef<"from" | "to">("to")
   // R4's tap precedes the rect by a route push: the tab bar leaves the segments
-  // at once, the corner re-derives lower, and the resting window hopped down
-  // before the grow began. The tap pins the frame the viewer is watching.
-  const expandHoldRef = useRef<{ frame: MiniPlayerFrame; at: number } | null>(
-    null,
-  )
+  // at once and the corner re-derives lower. The pin must ride the COMMITTED
+  // geometry — an Animated catch-up lands after the commit paints (Fabric).
+  const expandHoldRef = useRef<ExpandHold | null>(null)
 
   useEffect(() => {
     return () => {
@@ -624,10 +641,15 @@ function ActivePlaybackHost({
       if (grow) {
         // The grow starts where the window is RENDERED, which the tap's hold
         // may have pinned above the live corner frame (see handleExpand).
-        const hold = expandHoldRef.current
+        const hold = liveExpandHold(
+          expandHoldRef.current,
+          hasSession,
+          Date.now(),
+        )
         expandHoldRef.current = null
         runMotion(
-          hold?.frame ?? miniPlayerCornerFrame(layoutConfig, cornerRef.current),
+          hold?.cornerFrame ??
+            miniPlayerCornerFrame(layoutConfig, cornerRef.current),
           rect,
           "to",
           EXPAND_DURATION_MS,
@@ -642,22 +664,18 @@ function ActivePlaybackHost({
     lastRectRef.current = null
     if (from == null || !hasSession) {
       clearMotion()
-      const hold = expandHoldRef.current
-      if (
-        hold != null &&
-        (!hasSession || Date.now() - hold.at > EXPAND_HOLD_TIMEOUT_MS)
-      ) {
-        expandHoldRef.current = null
-      }
       // Mid-expand the destination's chrome is already live, so the corner
-      // frame sits below the window the viewer is watching. Keep aiming at
-      // the held frame; the grow above consumes it as its start.
+      // frame sits below the window the viewer is watching. The drag stays
+      // relative to whichever base frame the render pinned.
+      const hold = liveExpandHold(expandHoldRef.current, hasSession, Date.now())
+      expandHoldRef.current = hold
       const target =
-        expandHoldRef.current?.frame ??
+        hold?.cornerFrame ??
         miniPlayerCornerFrame(layoutConfig, cornerRef.current)
+      const base = hold?.windowFrame ?? windowFrame
       drag.setValue({
-        x: target.x - windowFrame.x,
-        y: target.y - windowFrame.y,
+        x: target.x - base.x,
+        y: target.y - base.y,
       })
       return
     }
@@ -803,9 +821,13 @@ function ActivePlaybackHost({
     const current = getMiniPlayerStore().getSnapshot().session
     if (current == null) return
     // The push drops the tab bar before the rect arrives, so the corner frame
-    // re-derives lower mid-expand. Pin the on-screen frame for the grow.
+    // re-derives lower mid-expand. Pin the on-screen frames for the grow.
     expandHoldRef.current = {
-      frame: miniPlayerCornerFrame(layoutConfigRef.current, cornerRef.current),
+      windowFrame: defaultCornerFrame(layoutConfigRef.current),
+      cornerFrame: miniPlayerCornerFrame(
+        layoutConfigRef.current,
+        cornerRef.current,
+      ),
       at: Date.now(),
     }
     onExpand(current)
@@ -823,10 +845,19 @@ function ActivePlaybackHost({
   const suppressed = hasSession && presentation === "hidden"
   const floating = rect == null && hasSession
   // The frame sits at the motion's anchor while one runs (see the motion
-  // state), and at the corner the moment a from-anchored one settles.
+  // state), and at the corner the moment a from-anchored one settles. An
+  // expand tap pins the COMMITTED base frame through the push: a post-commit
+  // Animated catch-up would paint the re-derived corner for a frame first.
+  const heldWindowFrame = liveExpandHold(
+    expandHoldRef.current,
+    hasSession,
+    Date.now(),
+  )?.windowFrame
   const geometry =
     rect ??
-    (motion != null && motion.anchor === "from" ? motion.from : windowFrame)
+    (motion != null && motion.anchor === "from"
+      ? motion.from
+      : (heldWindowFrame ?? windowFrame))
 
   // A surface can own the player before its stream resolves (an Up Next
   // replace, a seed with no playbackId). The player still holds ANOTHER route's
