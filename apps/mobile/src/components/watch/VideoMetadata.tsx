@@ -42,7 +42,8 @@ const styles = StyleSheet.create({
   container: {
     paddingHorizontal: 16,
     paddingTop: 12,
-    paddingBottom: 16,
+    // Tight seam to the action row's hairline below (user request 2026-08-18).
+    paddingBottom: 8,
   },
   label: {
     color: TEXT_SECONDARY,
