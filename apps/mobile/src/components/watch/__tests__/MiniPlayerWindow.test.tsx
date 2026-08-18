@@ -814,6 +814,48 @@ describe("presentation (R3, R4, R11)", () => {
     })
   })
 
+  it("picks a drag up from the corner it returned to, not from the base frame", async () => {
+    const renderer = await floatWindow()
+    await settle()
+    const config = layoutConfig()
+    const base = defaultCornerFrame(config)
+    const target = miniPlayerCornerFrame(config, "topLeft")
+    const offset = { x: target.x - base.x, y: target.y - base.y }
+
+    const dragTo = async (to: { x: number; y: number }) => {
+      const handlers = panHandlers(renderer)
+      await act(async () => {
+        handlers.onResponderGrant(touchAt(0, 0))
+        handlers.onResponderMove(touchAt(to.x, to.y))
+        handlers.onResponderRelease(touchAt(to.x, to.y))
+      })
+      await advance(400)
+    }
+
+    await dragTo(offset)
+    await act(async () => {
+      sheetCounter.open("sduiQuiz")
+    })
+    await act(async () => {
+      sheetCounter.close("sduiQuiz")
+    })
+
+    // The remounted window inherits a drag node the host left at the corner. A
+    // grab that reads its own default instead would start this move from zero,
+    // throwing the window across the screen on the first finger movement.
+    const nudge = { x: 9, y: 7 }
+    const handlers = panHandlers(renderer)
+    await act(async () => {
+      handlers.onResponderGrant(touchAt(0, 0))
+      handlers.onResponderMove(touchAt(nudge.x, nudge.y))
+    })
+
+    expect(transformOf(byTestId(renderer, "playback-frame")[0])).toEqual({
+      translateX: offset.x + nudge.x,
+      translateY: offset.y + nudge.y,
+    })
+  })
+
   it("renders nothing at all with no session", async () => {
     const id = attachSlot()
     const renderer = await renderHost()
@@ -988,9 +1030,11 @@ describe("dismissal (R6, R23) and bookkeeping (R20)", () => {
       layoutConfig().screen.height - defaultCornerFrame(layoutConfig()).y,
     )
     // Playback stops with the dismissal, and the window is still on screen for
-    // the whole of the exit.
+    // the whole of the exit. Bounded, not arbitrary: the host also releases the
+    // session on a timer, so waiting past that would clear it without the
+    // animation ever reporting (PlaybackHost's EXIT_RELEASE_SLACK_MS).
     expect(video.__player.playing).toBe(false)
-    await advance(1000)
+    await advance(EXIT_DURATION_MS - 20)
     expect(windowRoots(renderer)).toHaveLength(1)
     expect(sessionStore.getSnapshot().session).not.toBeNull()
 

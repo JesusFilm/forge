@@ -61,7 +61,12 @@ function makeRequest(
 }
 
 function makeStores(
-  facts: { started: boolean; position: number; duration: number } = {
+  facts: {
+    started: boolean
+    position: number
+    duration: number
+    reachedEnd?: boolean
+  } = {
     started: false,
     position: 0,
     duration: 0,
@@ -71,6 +76,7 @@ function makeStores(
   const store = createPlaybackRequestStore({ sessionStore })
   store.setPlaybackFactsSource({
     hasPlaybackStarted: () => facts.started,
+    hasReachedEnd: () => facts.reachedEnd ?? false,
     readPosition: () => facts.position,
     readDuration: () => facts.duration,
   })
@@ -82,6 +88,7 @@ describe("shouldOriginateSession (the admission predicate)", () => {
     expect(
       shouldOriginateSession({
         hasPlaybackStarted: false,
+        hasReachedEnd: false,
         session: SESSION_A,
       }),
     ).toBe(false)
@@ -89,7 +96,11 @@ describe("shouldOriginateSession (the admission predicate)", () => {
 
   it("refuses a surface that carries no session descriptor", () => {
     expect(
-      shouldOriginateSession({ hasPlaybackStarted: true, session: null }),
+      shouldOriginateSession({
+        hasPlaybackStarted: true,
+        hasReachedEnd: false,
+        session: null,
+      }),
     ).toBe(false)
   })
 
@@ -97,14 +108,31 @@ describe("shouldOriginateSession (the admission predicate)", () => {
     expect(
       shouldOriginateSession({
         hasPlaybackStarted: true,
+        hasReachedEnd: false,
         session: { ...SESSION_A, originPattern: "video/[sectionKey]" },
+      }),
+    ).toBe(false)
+  })
+
+  it("refuses a video that already ran to its end", () => {
+    // A finished video has nothing left to continue watching, so it earns no
+    // window — the same reason a video that never started earns none.
+    expect(
+      shouldOriginateSession({
+        hasPlaybackStarted: true,
+        hasReachedEnd: true,
+        session: SESSION_A,
       }),
     ).toBe(false)
   })
 
   it("admits a played video from a route that may originate one", () => {
     expect(
-      shouldOriginateSession({ hasPlaybackStarted: true, session: SESSION_A }),
+      shouldOriginateSession({
+        hasPlaybackStarted: true,
+        hasReachedEnd: false,
+        session: SESSION_A,
+      }),
     ).toBe(true)
   })
 })
@@ -267,6 +295,7 @@ describe("a surface that never originates a session (the series trailer)", () =>
     const watch = store.attachSlot(makeRequest())
     store.setPlaybackFactsSource({
       hasPlaybackStarted: () => true,
+      hasReachedEnd: () => false,
       readPosition: () => 61,
       readDuration: () => 600,
     })
@@ -418,6 +447,21 @@ describe("admission on detach", () => {
     // The player outlives the route: the request stays current with no slot.
     expect(store.getSnapshot().request?.progressVideoId).toBe("video-a")
     expect(store.getSnapshot().rect).toBeNull()
+  })
+
+  it("publishes no session for a video that already finished, and drops the request", () => {
+    const { store, sessionStore } = makeStores({
+      started: true,
+      position: 600,
+      duration: 600,
+      reachedEnd: true,
+    })
+    const id = store.attachSlot(makeRequest())
+
+    store.detachSlot(id)
+
+    expect(sessionStore.getSnapshot().session).toBeNull()
+    expect(store.getSnapshot().request).toBeNull()
   })
 
   it("carries the same identity and position shape for a slug-keyed local file", () => {

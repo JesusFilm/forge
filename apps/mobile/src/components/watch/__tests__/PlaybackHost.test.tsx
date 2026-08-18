@@ -134,10 +134,10 @@ jest.mock("../../../lib/authSession", () => {
 })
 
 import { StrictMode, act } from "react"
-import { StyleSheet } from "react-native"
+import { Animated, StyleSheet } from "react-native"
 
 import { ENDED_FADE_DURATION_MS } from "../MiniPlayerWindow"
-import { PlaybackHost } from "../PlaybackHost"
+import { EXIT_DURATION_MS, PlaybackHost } from "../PlaybackHost"
 import {
   getPlaybackRequestStore,
   type PlaybackRequest,
@@ -287,6 +287,33 @@ function hasWindowChrome(renderer: TestInstance): boolean {
   )
 }
 
+/** The window's assistive-tech control path, which reaches the same handlers as
+ *  the visible chrome without waiting on the shrink's readiness gate. */
+function fireWindowAction(renderer: TestInstance, actionName: string) {
+  const node = renderer.root.findAll(
+    (n) => n.props.testID === "mini-player-window",
+  )[0]
+  const handler = node.props.onAccessibilityAction as (event: {
+    nativeEvent: { actionName: string }
+  }) => void
+  handler({ nativeEvent: { actionName } })
+}
+
+/** R6's downward translation, read off the node the exit animates. */
+function exitTranslation(renderer: TestInstance) {
+  const node = renderer.root.findAll(
+    (n) => n.props.testID === "playback-exit",
+  )[0]
+  const style = StyleSheet.flatten(node.props.style) as {
+    transform?: Array<{
+      translateY?: { __getValue: () => number; setValue: (v: number) => void }
+    }>
+  }
+  const value = style.transform?.[0]?.translateY
+  if (value == null) throw new Error("no exit translation on the frame")
+  return value
+}
+
 function frameStyle(renderer: TestInstance) {
   const frame = renderer.root.findAll(
     (node) => node.props.testID === "playback-frame",
@@ -320,6 +347,8 @@ afterEach(async () => {
   requestStore.reset()
   sessionStore.end("abandoned")
   jest.useRealTimers()
+  // A stubbed Animated.timing would silently disarm every later case.
+  jest.restoreAllMocks()
 })
 
 describe("the hoisted player drives the full view", () => {
@@ -352,6 +381,30 @@ describe("the hoisted player drives the full view", () => {
     })
 
     expect(backButtons(renderer)).toHaveLength(0)
+  })
+
+  it("draws no back affordance until the attached surface has measured itself", async () => {
+    const first = attachSlot()
+    const renderer = await renderHost()
+    await startPlayback()
+    await detach(first)
+    // The expand: the screen has mounted its slot but no layout pass has run
+    // yet. The screen drops its own button on rect AND slot, so a host that
+    // gated on the slot alone would draw a second one in this gap.
+    await attachSlotInAct({}, null)
+    expect(requestStore.getSnapshot().slotId).not.toBeNull()
+    expect(requestStore.getSnapshot().rect).toBeNull()
+
+    expect(backButtons(renderer)).toHaveLength(0)
+
+    await act(async () => {
+      requestStore.setSlotRect(
+        requestStore.getSnapshot().slotId as number,
+        RECT,
+      )
+    })
+
+    expect(backButtons(renderer)).toHaveLength(1)
   })
 
   it("does not re-arm the autostart veil when the viewer expands back onto a playing video", async () => {
@@ -407,6 +460,48 @@ describe("admission (R1, R20)", () => {
 
     expect(sessionStore.getSnapshot().session).toBeNull()
     expect(requestStore.getSnapshot().request).toBeNull()
+  })
+
+  it("publishes no session when the video ran to its end in the full view", async () => {
+    const id = attachSlot()
+    const renderer = await renderHost()
+    await startPlayback()
+    video.__player.currentTime = 600
+    video.__player.duration = 600
+
+    // No window owns the frame, so there is no session to mark ended — the
+    // ending has to survive as a fact until this surface goes away.
+    await act(async () => {
+      video.__player.__emit("playToEnd")
+    })
+    expect(sessionStore.getSnapshot().session).toBeNull()
+
+    await detach(id)
+
+    expect(sessionStore.getSnapshot().session).toBeNull()
+    expect(requestStore.getSnapshot().request).toBeNull()
+    expect(videoViews(renderer)).toHaveLength(0)
+  })
+
+  it("publishes a session again once the viewer plays on past that ending", async () => {
+    const id = attachSlot()
+    await renderHost()
+    await startPlayback()
+    await act(async () => {
+      video.__player.__emit("playToEnd")
+    })
+    // Seek back and play on: the video is being watched again, not finished.
+    await act(async () => {
+      video.__player.pause()
+    })
+    await act(async () => {
+      video.__player.play()
+    })
+    video.__player.currentTime = 42
+
+    await detach(id)
+
+    expect(sessionStore.getSnapshot().session?.positionSeconds).toBe(42)
   })
 
   it("publishes a session carrying the video identity and position", async () => {
@@ -828,6 +923,24 @@ describe("native picture-in-picture (U9: R13, R15, R24)", () => {
     expect(sessionStore.getSnapshot().pipHold).toBe(false)
   })
 
+  it("holds the surface through a session ending that is not a dismissal", async () => {
+    const renderer = await floatingWindow()
+    await enterPip(renderer)
+
+    // R25's subject change and the adapter's safety nets clear the session
+    // outright — no exit animation, and no dismissal to defer.
+    await act(async () => {
+      sessionStore.end("abandoned")
+    })
+
+    expect(sessionStore.getSnapshot().session).toBeNull()
+    expect(videoViews(renderer)).toHaveLength(1)
+
+    await exitPip(renderer)
+
+    expect(videoViews(renderer)).toHaveLength(0)
+  })
+
   it("releases the latch when the host tears the view down", async () => {
     const renderer = await floatingWindow()
     await enterPip(renderer)
@@ -841,6 +954,136 @@ describe("native picture-in-picture (U9: R13, R15, R24)", () => {
     // A stranded hold would exempt every adapter in the app from the
     // background pause, with no view left to ever release it.
     expect(sessionStore.getSnapshot().pipHold).toBe(false)
+  })
+})
+
+describe("the ended window's replay (R27)", () => {
+  async function endedWindow() {
+    const id = attachSlot()
+    const renderer = await renderHost()
+    await startPlayback()
+    await detach(id)
+    await act(async () => {
+      video.__player.__emit("playToEnd")
+    })
+    expect(sessionStore.getSnapshot().session?.phase).toBe("ended")
+    return renderer
+  }
+
+  it("leaves the window ended when the player refuses the call", async () => {
+    const renderer = await endedWindow()
+    video.__player.play.mockImplementationOnce(() => {
+      throw new Error("native player already released")
+    })
+
+    await act(async () => {
+      fireWindowAction(renderer, "playPause")
+    })
+
+    // A window that says "playing" over a player that never started offers no
+    // replay control to try again with.
+    expect(sessionStore.getSnapshot().session?.phase).toBe("ended")
+    expect(sessionStore.getSnapshot().session?.endedCause).toBe("playToEnd")
+  })
+
+  it("marks the window playing when the call lands", async () => {
+    const renderer = await endedWindow()
+
+    await act(async () => {
+      fireWindowAction(renderer, "playPause")
+    })
+
+    expect(sessionStore.getSnapshot().session?.phase).toBe("playing")
+    expect(video.__player.play).toHaveBeenCalled()
+  })
+})
+
+describe("the dismissal exit (R6)", () => {
+  async function dismiss() {
+    await act(async () => {
+      sessionStore.requestDismiss()
+    })
+  }
+
+  it("clears the dismissed session when the exit animation never reports back", async () => {
+    jest.useFakeTimers()
+    const id = attachSlot()
+    await renderHost()
+    await startPlayback()
+    await detach(id)
+
+    // The one driver state jest cannot reach on its own: its mocked native
+    // animations always settle (measured 2026-08-18, react-native 0.86.2), so
+    // a driver that goes silent has to be stood up here.
+    jest.spyOn(Animated, "timing").mockReturnValue({
+      start: () => {},
+      stop: () => {},
+      reset: () => {},
+    } as never)
+
+    await dismiss()
+    expect(sessionStore.getSnapshot().dismissal).toBe("exiting")
+
+    await act(async () => {
+      jest.advanceTimersByTime(EXIT_DURATION_MS + 1000)
+    })
+
+    expect(sessionStore.getSnapshot().session).toBeNull()
+  })
+
+  it("puts the exit translation back when a mounted slot survives the dismissal", async () => {
+    jest.useFakeTimers()
+    // The series trailer beneath the episode: session-less, so it is refused
+    // while the window lives and takes the player back the moment it goes.
+    // That is what keeps this host mounted across a completed dismissal.
+    attachSlot({ session: null, streamingUrl: URL_B })
+    const watch = attachSlot()
+    const renderer = await renderHost()
+    await startPlayback()
+    await detach(watch)
+    expect(sessionStore.getSnapshot().session).not.toBeNull()
+
+    await dismiss()
+    // SYNTHETIC: stands in for the position the native driver leaves the node
+    // at on device. A native-driven value never moves in jest (measured
+    // 2026-08-18, react-native 0.86.2), so the animation cannot strand it here.
+    await act(async () => {
+      exitTranslation(renderer).setValue(600)
+    })
+    await act(async () => {
+      jest.advanceTimersByTime(EXIT_DURATION_MS + 1000)
+    })
+
+    expect(sessionStore.getSnapshot().session).toBeNull()
+    expect(requestStore.getSnapshot().request?.streamingUrl).toBe(URL_B)
+    expect(exitTranslation(renderer).__getValue()).toBe(0)
+  })
+
+  it("animates a second dismissal after the first has completed", async () => {
+    jest.useFakeTimers()
+    attachSlot({ session: null, streamingUrl: URL_B })
+    const first = attachSlot()
+    await renderHost()
+    await startPlayback()
+    await detach(first)
+    await dismiss()
+    await act(async () => {
+      jest.advanceTimersByTime(EXIT_DURATION_MS + 1000)
+    })
+    expect(sessionStore.getSnapshot().session).toBeNull()
+
+    const second = await attachSlotInAct()
+    await startPlayback()
+    await detach(second)
+    expect(sessionStore.getSnapshot().session).not.toBeNull()
+
+    await dismiss()
+    expect(sessionStore.getSnapshot().dismissal).toBe("exiting")
+    await act(async () => {
+      jest.advanceTimersByTime(EXIT_DURATION_MS + 1000)
+    })
+
+    expect(sessionStore.getSnapshot().session).toBeNull()
   })
 })
 

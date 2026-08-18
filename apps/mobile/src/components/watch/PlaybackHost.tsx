@@ -88,6 +88,10 @@ const EXIT_CLEARANCE = 24
  *  leave a window with no controls and no way out. */
 const CHROME_RELEASE_SLACK_MS = 250
 
+/** The exit's unconditional release — a dismissed window must clear its session
+ *  even when the animation never reports back. */
+const EXIT_RELEASE_SLACK_MS = 250
+
 /** Live chrome the window may not cover (R7), read from `app/_layout.tsx` and
  *  `app/(tabs)/_layout.tsx`. Both exclude the safe-area inset, which the corner
  *  geometry already subtracts. */
@@ -153,20 +157,32 @@ export function PlaybackHostView({
 }: PlaybackHostViewProps) {
   const store = getPlaybackRequestStore()
   const snapshot = useSyncExternalStore(store.subscribe, store.getSnapshot)
+  const sessionStore = getMiniPlayerStore()
+  const pipHeld = useSyncExternalStore(
+    sessionStore.subscribe,
+    () => sessionStore.getSnapshot().pipHold,
+  )
 
   // R25/KTD15, wired here rather than inside the player: this component is
   // mounted for the app's whole life, so the subject watch outlives every
   // session it has to end. attachAuthSession returns its own detach.
   useEffect(() => getMiniPlayerStore().attachAuthSession(getAuthSession()), [])
 
+  // R24: an ending that is not a dismissal (a subject change, an adapter safety
+  // net) drops the request while the OS window is still up, and unmounting the
+  // view there fires expo-video's unguarded native path. Held, not adopted.
+  const lastRequestRef = useRef<PlaybackRequest | null>(null)
+  if (snapshot.request != null) lastRequestRef.current = snapshot.request
+  const request = snapshot.request ?? (pipHeld ? lastRequestRef.current : null)
+
   // No request, no player: the app carries no native player (and no cold-launch
   // cost) until a surface asks for one, and releasing it is how a dismissed
   // session gives the decoder back.
-  if (snapshot.request == null) return null
+  if (request == null) return null
   return (
     <ActivePlaybackHost
       snapshot={snapshot}
-      request={snapshot.request}
+      request={request}
       segments={segments}
       canGoBack={canGoBack}
       onExpand={onExpand}
@@ -273,14 +289,21 @@ function ActivePlaybackHost({
   // Admission's first half (R1): has THIS video played at all. Reset per video,
   // because a window for a video that never started is AE10's regression.
   const startedRef = useRef(false)
+  // Admission's other half (R1): has THIS video already finished. Reset with
+  // the same key, and cleared whenever playback runs again — a viewer who seeks
+  // back from the end and plays on is watching, not finished.
+  const endedRef = useRef(false)
   const videoKey = request.session
     ? `${request.session.videoId ?? ""}|${request.session.videoSlug}`
     : (request.streamingUrl ?? "")
   useEffect(() => {
     startedRef.current = false
+    endedRef.current = false
   }, [videoKey])
   useEffect(() => {
-    if (isPlaying) startedRef.current = true
+    if (!isPlaying) return
+    startedRef.current = true
+    endedRef.current = false
   }, [isPlaying])
 
   useEffect(() => {
@@ -296,6 +319,7 @@ function ActivePlaybackHost({
           return false // Native player already released
         }
       },
+      hasReachedEnd: () => endedRef.current,
       readPosition: () => {
         try {
           return player.currentTime
@@ -479,15 +503,36 @@ function ActivePlaybackHost({
   }, [rect, hasSession, layoutConfig, windowFrame, drag, shrink])
 
   useEffect(() => {
-    if (presentation !== "exiting") return
+    if (presentation !== "exiting") {
+      // The node outlives the dismissal that moved it: a session-less slot
+      // (the series trailer) keeps this host mounted, so an unreset exit would
+      // draw every later video off screen.
+      exitY.setValue(0)
+      return
+    }
     const distance = screenHeight - windowFrame.y + EXIT_CLEARANCE
-    // Runs on completion whether or not it finished: an interrupted exit that
-    // never cleared the store would strand the window off screen forever.
-    Animated.timing(exitY, {
+    const animation = Animated.timing(exitY, {
       toValue: distance,
       duration: EXIT_DURATION_MS,
       useNativeDriver: true,
-    }).start(() => getMiniPlayerStore().reportExitComplete())
+    })
+    let cancelled = false
+    let timer: ReturnType<typeof setTimeout> | null = null
+    const complete = () => {
+      if (cancelled) return
+      if (timer != null) clearTimeout(timer)
+      timer = null
+      getMiniPlayerStore().reportExitComplete()
+    }
+    // The gate's unconditional release: a driver that never calls back would
+    // strand a dismissed window off screen with its session still live.
+    timer = setTimeout(complete, EXIT_DURATION_MS + EXIT_RELEASE_SLACK_MS)
+    animation.start(complete)
+    return () => {
+      cancelled = true
+      animation.stop()
+      if (timer != null) clearTimeout(timer)
+    }
   }, [presentation, exitY, screenHeight, windowFrame])
 
   // R21/R22 re-arm: a replay puts the surface back before anything else reads it.
@@ -503,10 +548,21 @@ function ActivePlaybackHost({
 
   useEffect(() => {
     const sub = player.addListener("playToEnd", () => {
-      if (!floatingRef.current) return
+      if (!floatingRef.current) {
+        // The full view has no window to mark ended, so the fact is what
+        // carries the ending to admission when this surface goes away.
+        endedRef.current = true
+        return
+      }
       getMiniPlayerStore().markEnded("playToEnd")
     })
-    return () => sub.remove()
+    return () => {
+      try {
+        sub.remove()
+      } catch {
+        // Player already released
+      }
+    }
   }, [player])
 
   useEffect(() => {
@@ -546,10 +602,12 @@ function ActivePlaybackHost({
     try {
       player.currentTime = 0
       player.play()
+      // Inside the try: a window that says "playing" over a player that refused
+      // the call offers no replay control to try again with (R27).
+      getMiniPlayerStore().markPlaying()
     } catch {
       // Native player already released
     }
-    getMiniPlayerStore().markPlaying()
   }, [player])
 
   const handleDismiss = useCallback(() => {
@@ -599,8 +657,9 @@ function ActivePlaybackHost({
 
   // Detached with no session: the surface that was drawing this video is gone
   // and no window is owed. The player keeps running with no view, which is
-  // audio-only rather than a released decoder.
-  if (rect == null && !hasSession) return null
+  // audio-only rather than a released decoder. The hold is a term because the
+  // OS window outlives the session that opened it (R24).
+  if (rect == null && !hasSession && !pipHeld) return null
 
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
@@ -702,8 +761,9 @@ function ActivePlaybackHost({
 
       {/* The screen's back affordance sits OVER the player, so it moves up with
           the video — outside the frame, so its safe-area maths still resolves
-          against the window. The screen drops its own (usePlaybackFrameVisible). */}
-      {snapshot.slotId != null && !request.fullscreen && (
+          against the window. Gated on the SAME predicate the screen drops its
+          own by (usePlaybackFrameVisible), or the measurement gap draws two. */}
+      {snapshot.slotId != null && rect != null && !request.fullscreen && (
         <FloatingBackButton {...BACK_BUTTON_PROPS} />
       )}
     </View>

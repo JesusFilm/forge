@@ -71,6 +71,9 @@ export type PlaybackRequest = {
  */
 export type PlaybackFactsSource = {
   hasPlaybackStarted: () => boolean
+  /** Whether this video already ran to its end. The window's own ending is a
+   *  session PHASE; this is the same fact for a video that never had one. */
+  hasReachedEnd: () => boolean
   readPosition: () => number
   readDuration: () => number
 }
@@ -92,6 +95,7 @@ export type PlaybackRequestStore = ReturnType<typeof createPlaybackRequestStore>
 
 const EMPTY_FACTS: PlaybackFactsSource = {
   hasPlaybackStarted: () => false,
+  hasReachedEnd: () => false,
   readPosition: () => 0,
   readDuration: () => 0,
 }
@@ -101,12 +105,17 @@ const EMPTY_FACTS: PlaybackFactsSource = {
  * source string existing: the watch screen accepts a back press in five
  * pre-playback states, and a window for a video that never played is AE10's
  * regression.
+ *
+ * A video that already reached its end is refused for the same reason a video
+ * that never played is: there is nothing left to continue watching.
  */
 export function shouldOriginateSession(input: {
   hasPlaybackStarted: boolean
+  hasReachedEnd: boolean
   session: PlaybackSessionDescriptor | null
 }): boolean {
   if (!input.hasPlaybackStarted) return false
+  if (input.hasReachedEnd) return false
   if (input.session == null) return false
   return canOriginateRoutePattern(input.session.originPattern)
 }
@@ -368,14 +377,16 @@ export function createPlaybackRequestStore(deps: {
         // A stacked watch screen is waiting to take the player back. No window
         // is owed there — the screen beneath resumes, exactly as it does today.
         const successor = successorSlotId()
+        const descriptor = slot.request.session
         if (
           successor == null &&
+          descriptor != null &&
           shouldOriginateSession({
             hasPlaybackStarted: facts.hasPlaybackStarted(),
-            session: slot.request.session,
+            hasReachedEnd: facts.hasReachedEnd(),
+            session: descriptor,
           })
         ) {
-          const descriptor = slot.request.session as PlaybackSessionDescriptor
           sessionStore.start({
             videoId: descriptor.videoId,
             videoSlug: descriptor.videoSlug,

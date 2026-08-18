@@ -135,6 +135,14 @@ export function MiniPlayerWindow({
   const controlTouchRef = useRef(false)
 
   useEffect(() => {
+    // A listener never fires on add, and the host's drag survives this window's
+    // remount (R11/KTD16 suppression), so seed from the occupied corner with the
+    // host's own resting arithmetic or the first drag jumps back to the frame.
+    const resting = miniPlayerCornerFrame(layoutRef.current, cornerRef.current)
+    liveRef.current = {
+      x: resting.x - frameRef.current.x,
+      y: resting.y - frameRef.current.y,
+    }
     const id = drag.addListener((value) => {
       liveRef.current = value
     })
