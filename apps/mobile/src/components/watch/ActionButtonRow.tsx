@@ -1,7 +1,12 @@
+import { useState } from "react"
 import { Pressable, StyleSheet, Text, View } from "react-native"
 import Ionicons from "@expo/vector-icons/Ionicons"
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons"
 
+import {
+  ACTION_ROW_SPACERS,
+  actionRowSpacingMode,
+} from "../../lib/actionRowSpacing"
 import { BG_COLOR, TEXT_PRIMARY, TEXT_SECONDARY } from "../../lib/color"
 import { feedback } from "../../styles/shared"
 import { useTypography } from "../../hooks/useTypography"
@@ -14,9 +19,12 @@ const DIVIDER_COLOR = "rgba(255, 255, 255, 0.12)"
 const CHIP_BG = "rgba(255, 255, 255, 0.07)"
 // Full-radius pill sentinel; clamps to half the height so it stays a pill.
 const PILL_RADIUS = 999
-// The icon buttons draw 34pt wide for a compact look; the slop restores the
-// 44pt accessible tap width (34 + 5 + 5).
+// The icon buttons draw 34pt wide; the slop restores the 44pt accessible tap
+// width (34 + 5 + 5).
 const ICON_HIT_SLOP = { left: 5, right: 5 }
+// Row paddingLeft (16) + paddingRight (8); the spacing decision needs the
+// inner width.
+const ROW_PADDING_H = 24
 
 export interface ActionButtonRowProps {
   onDownload: () => void
@@ -48,6 +56,17 @@ export function ActionButtonRow({
 }: ActionButtonRowProps) {
   const typography = useTypography()
 
+  // Measured inputs for the spacing mode: the row's inner width plus each
+  // pill's NATURAL width (the real pills clamp at the column, so only the
+  // probe below can reveal how wide a name wants to be).
+  const [rowInnerWidth, setRowInnerWidth] = useState<number | null>(null)
+  const [langNatural, setLangNatural] = useState<number | null>(null)
+  const [subNatural, setSubNatural] = useState<number | null>(null)
+  const spacers =
+    ACTION_ROW_SPACERS[
+      actionRowSpacingMode({ rowInnerWidth, langNatural, subNatural })
+    ]
+
   const language = languageLabel?.trim() || "Language"
   const subtitle = subtitleLabel?.trim() || "Subtitles"
   // Subtitles read bright when on, muted when off (mirrors the "Off" label).
@@ -73,7 +92,47 @@ export function ActionButtonRow({
   const staticIconSize = downloadState === "downloaded" ? 28 : 24
 
   return (
-    <View style={styles.row}>
+    <View
+      style={styles.row}
+      onLayout={(e) =>
+        setRowInnerWidth(e.nativeEvent.layout.width - ROW_PADDING_H)
+      }
+    >
+      {/* Invisible probe: measures each pill's natural width with the same
+          styles as the real pills, so the spacing mode sees how wide a name
+          WANTS to be rather than the clamped width. */}
+      <View
+        style={styles.probe}
+        pointerEvents="none"
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
+      >
+        <View
+          style={[styles.langRow, styles.probePill]}
+          collapsable={false}
+          onLayout={(e) => setLangNatural(e.nativeEvent.layout.width)}
+        >
+          <Ionicons name="globe-outline" size={21} color={TEXT_SECONDARY} />
+          <Text style={[styles.langText, typography.body]} numberOfLines={1}>
+            {language}
+          </Text>
+        </View>
+        <View
+          style={[styles.langRow, styles.probePill]}
+          collapsable={false}
+          onLayout={(e) => setSubNatural(e.nativeEvent.layout.width)}
+        >
+          <MaterialCommunityIcons
+            name="closed-caption-outline"
+            size={21}
+            color={subColor}
+          />
+          <Text style={[styles.langText, typography.body]} numberOfLines={1}>
+            {subtitle}
+          </Text>
+        </View>
+      </View>
+
       {/* Audio + Subtitles flow as content-hugging pills, wrapping to a stacked
           layout only when the two names can't fit together. Tap opens the picker. */}
       <View style={styles.languages}>
@@ -113,46 +172,48 @@ export function ActionButtonRow({
 
       <View style={styles.divider} />
 
-      {/* Download + Share are clean icons, grouped right. */}
-      <View style={styles.icons}>
-        <Pressable
-          onPress={onDownload}
-          style={({ pressed }) => [
-            styles.iconButton,
-            pressed && feedback.pressed,
-          ]}
-          hitSlop={ICON_HIT_SLOP}
-          accessibilityRole="button"
-          accessibilityLabel={downloadA11y}
-        >
-          {dl.inProgress ? (
-            <DownloadProgressRing
-              size={26}
-              strokeWidth={2.5}
-              progress={downloadProgress ?? 0}
-              color={dl.color}
-              trackColor="rgba(255, 255, 255, 0.18)"
-              cutoutColor={BG_COLOR}
-            >
-              <Ionicons name={inProgressIcon} size={12} color={dl.color} />
-            </DownloadProgressRing>
-          ) : (
-            <Ionicons name={dl.icon} size={staticIconSize} color={dl.color} />
-          )}
-        </Pressable>
-        <Pressable
-          onPress={onShare}
-          style={({ pressed }) => [
-            styles.iconButton,
-            pressed && feedback.pressed,
-          ]}
-          hitSlop={ICON_HIT_SLOP}
-          accessibilityRole="button"
-          accessibilityLabel="Share"
-        >
-          <Ionicons name="share-outline" size={24} color={TEXT_SECONDARY} />
-        </Pressable>
-      </View>
+      {/* Download + Share: whitespace comes from the measured spacing mode —
+          roomy until a long name benefits from the width (actionRowSpacing). */}
+      <View style={{ width: spacers.dividerIcon }} />
+      <Pressable
+        onPress={onDownload}
+        style={({ pressed }) => [
+          styles.iconButton,
+          pressed && feedback.pressed,
+        ]}
+        hitSlop={ICON_HIT_SLOP}
+        accessibilityRole="button"
+        accessibilityLabel={downloadA11y}
+      >
+        {dl.inProgress ? (
+          <DownloadProgressRing
+            size={26}
+            strokeWidth={2.5}
+            progress={downloadProgress ?? 0}
+            color={dl.color}
+            trackColor="rgba(255, 255, 255, 0.18)"
+            cutoutColor={BG_COLOR}
+          >
+            <Ionicons name={inProgressIcon} size={12} color={dl.color} />
+          </DownloadProgressRing>
+        ) : (
+          <Ionicons name={dl.icon} size={staticIconSize} color={dl.color} />
+        )}
+      </Pressable>
+      <View style={{ width: spacers.betweenIcons }} />
+      <Pressable
+        onPress={onShare}
+        style={({ pressed }) => [
+          styles.iconButton,
+          pressed && feedback.pressed,
+        ]}
+        hitSlop={ICON_HIT_SLOP}
+        accessibilityRole="button"
+        accessibilityLabel="Share"
+      >
+        <Ionicons name="share-outline" size={24} color={TEXT_SECONDARY} />
+      </Pressable>
+      <View style={{ width: spacers.iconEdge }} />
     </View>
   )
 }
@@ -161,9 +222,7 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
     paddingLeft: 16,
-    // Tighter than the left: the icon group should hug the screen edge.
     paddingRight: 8,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: "rgba(255, 255, 255, 0.1)",
@@ -205,15 +264,22 @@ const styles = StyleSheet.create({
     // Match the pill group's height whether it's one line or wrapped to two.
     alignSelf: "stretch",
     marginVertical: 4,
-    // Keep the pills↔divider spacing at 16 while the row gap tightens the
-    // divider↔icons side to 8.
-    marginLeft: 8,
+    marginLeft: 16,
     backgroundColor: DIVIDER_COLOR,
   },
-  icons: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 0,
+  probe: {
+    position: "absolute",
+    left: 0,
+    top: 0,
+    opacity: 0,
+    // Column so each pill measures independently — side by side they would
+    // squeeze each other before reporting.
+    flexDirection: "column",
+    alignItems: "flex-start",
+  },
+  probePill: {
+    // Replace the real pill's percentage clamp so the probe hugs content.
+    maxWidth: 10000,
   },
   iconButton: {
     // 34pt visual, 44pt tappable via ICON_HIT_SLOP on both Pressables.
