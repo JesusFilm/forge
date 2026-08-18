@@ -1,3 +1,5 @@
+/* global require, module */
+/* eslint-disable @typescript-eslint/no-require-imports */
 // Adds the Google Assistant app-search intent filter to MainActivity.
 // app.json's `android.intentFilters` can't express this action: Expo prebuild
 // unconditionally prefixes `android.intent.action.` onto the action name, and
