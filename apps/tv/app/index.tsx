@@ -200,9 +200,10 @@ export default function HomeScreen() {
     focusMemoryRef.current?.capture(node)
   }, [])
 
-  // Restore only on a genuine re-entry, not first mount (hero's hasTVPreferredFocus
-  // owns initial focus) — a prior blur proves re-entry. rAF defers past the pop's
-  // commit so the target node is mounted before we focus it.
+  // Restore only on a genuine re-entry, not first mount (the top bar Search
+  // tab's hasTVPreferredFocus owns initial focus) — a prior blur proves
+  // re-entry. rAF defers past the pop's commit so the target node is mounted
+  // before we focus it.
   const hasBlurredRef = useRef(false)
   useFocusEffect(
     useCallback(() => {
@@ -542,9 +543,10 @@ export default function HomeScreen() {
 
   // ── Loading state (no model yet — initial load or a retry) ──
   if (screenState === "loading") {
-    // Non-focusable skeleton (KTD2): no focus claim, so the hero's
-    // hasTVPreferredFocus takes over when the content branch mounts. Shown only
-    // when model == null (cold load); a warm re-entry skips straight to content.
+    // Non-focusable skeleton (KTD2): no focus claim of its own — the top bar's
+    // Search tab (hasTVPreferredFocus) owns initial focus in this state too.
+    // Shown only when model == null (cold load); a warm re-entry skips straight
+    // to content.
     return (
       <View style={styles.screen}>
         {topBar}
@@ -626,7 +628,6 @@ export default function HomeScreen() {
             <HomeHeroCarousel
               slides={model.featured}
               index={heroIndex}
-              hasTVPreferredFocus
               onSelect={handleCardPress}
               onFocusChange={handleHeroFocusChange}
               onRequestAdvance={advanceHero}
