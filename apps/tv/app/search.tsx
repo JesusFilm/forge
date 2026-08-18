@@ -196,6 +196,23 @@ export default function SearchScreen() {
     )
   }
 
+  // Apple TV: native SwiftUI .searchable surface (expo-tvos-search) — the ONLY
+  // path that receives Siri Remote system dictation ("Hold 🎤 to dictate").
+  // tvOS gives third-party apps no mic access; dictation writes exclusively
+  // into Apple's own text primitive, so the input+results presentation is
+  // native while ALL data plumbing (sanitizer → debounce → watchSearch →
+  // telemetry → recents) stays this screen's. Falls back to the custom
+  // keyboard if the native module is unavailable.
+  if (Platform.OS === "ios" && isNativeSearchAvailable()) {
+    return (
+      <SearchBodyNativeTvos
+        state={state}
+        results={results}
+        onChangeQuery={setSanitizedQuery}
+      />
+    )
+  }
+
   return (
     <View style={styles.screen}>
       <View style={styles.queryLine}>

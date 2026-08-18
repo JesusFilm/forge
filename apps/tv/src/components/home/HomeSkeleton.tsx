@@ -26,10 +26,11 @@ const CARD_COUNT =
 
 /**
  * Non-focusable cold-launch placeholder, shown in the home "loading" branch in
- * place of the spinner. It holds NO focusable nodes (pointerEvents="none"), so
- * when the content branch mounts the hero's hasTVPreferredFocus claims focus
- * exactly as today (KTD2). Static blocks; layout mirrors the loaded home so it
- * fills the screen: full-bleed hero with bottom-left copy + a rail peek below.
+ * place of the spinner. It holds NO focusable nodes (pointerEvents="none") —
+ * initial focus lives on the top bar's Search tab (its hasTVPreferredFocus),
+ * which renders in this state too (KTD2). Static blocks; layout mirrors the
+ * loaded home so it fills the screen: full-bleed hero with bottom-left copy +
+ * a rail peek below.
  */
 export function HomeSkeleton() {
   return (

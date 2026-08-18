@@ -17,6 +17,7 @@ import {
 import { createPortal } from "react-dom"
 
 import { languageCodeFor, primaryLanguageCode } from "@/lib/language-code"
+import type { WatchLanguageSearchAliasAuthority } from "@/lib/watch-language-search-aliases"
 
 export type LanguageComboboxOption = {
   slug: string
@@ -52,6 +53,7 @@ export type LanguageComboboxProps = {
     width: number
   } | null
   takeoverDismissLabel?: string
+  searchAliasAuthority?: WatchLanguageSearchAliasAuthority
 }
 
 const LISTBOX_MAX_HEIGHT_PX = 288
@@ -114,13 +116,36 @@ function searchMatchTierForText(
 function searchMatchTierForOption(
   option: LanguageComboboxOption,
   query: string,
+  searchAliasAuthority?: WatchLanguageSearchAliasAuthority,
+  exactAliasQuery = false,
 ): number | null {
-  const tiers = [
+  const aliases =
+    searchAliasAuthority &&
+    Object.hasOwn(searchAliasAuthority.aliasesBySlug, option.slug)
+      ? searchAliasAuthority.aliasesBySlug[option.slug]
+      : undefined
+  const ownsExactAlias = aliases?.some(
+    (alias) => alias.trim().toLowerCase() === query,
+  )
+
+  if (exactAliasQuery && (option.disabled || !ownsExactAlias)) return null
+
+  const directTiers = [
     searchMatchTierForText(option.name, query),
     searchMatchTierForText(nativeNameForOption(option), query),
   ].filter((tier): tier is number => tier != null)
+  const directTier = directTiers.length > 0 ? Math.min(...directTiers) : null
 
-  return tiers.length > 0 ? Math.min(...tiers) : null
+  const aliasTiers = option.disabled
+    ? []
+    : (aliases ?? [])
+        .map((alias) => searchMatchTierForText(alias, query))
+        .filter((tier): tier is number => tier != null)
+  const aliasTier = aliasTiers.length > 0 ? Math.min(...aliasTiers) + 3 : null
+
+  if (directTier == null) return aliasTier
+  if (aliasTier == null) return directTier
+  return Math.min(directTier, aliasTier)
 }
 
 function initialsForOption(option: LanguageComboboxOption): string {
@@ -174,6 +199,7 @@ export function LanguageCombobox({
   popoverPortalContainer,
   takeoverRect,
   takeoverDismissLabel,
+  searchAliasAuthority,
 }: LanguageComboboxProps) {
   const t = useTranslations("LanguageCombobox")
   const comboboxId = useId()
@@ -219,11 +245,17 @@ export function LanguageCombobox({
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
     if (!q) return options
+    const exactAliasQuery = searchAliasAuthority?.exactAliases.has(q) ?? false
     return options
       .map((option, index) => ({
         option,
         index,
-        tier: searchMatchTierForOption(option, q),
+        tier: searchMatchTierForOption(
+          option,
+          q,
+          searchAliasAuthority,
+          exactAliasQuery,
+        ),
       }))
       .filter(
         (
@@ -236,7 +268,7 @@ export function LanguageCombobox({
       )
       .sort((a, b) => a.tier - b.tier || a.index - b.index)
       .map((entry) => entry.option)
-  }, [options, query])
+  }, [options, query, searchAliasAuthority])
   // Keep ref in sync with state
   useEffect(() => {
     activeIndexRef.current = activeIndex
@@ -429,25 +461,26 @@ export function LanguageCombobox({
   )
 
   const scrollActiveOptionIntoView = useCallback((index: number) => {
-    if (filteredRef.current.length <= VIRTUALIZATION_THRESHOLD) return
-
     const listbox = listboxRef.current
     if (!listbox) return
 
-    const rowTop = index * OPTION_ROW_HEIGHT_PX
+    const virtualized = filteredRef.current.length > VIRTUALIZATION_THRESHOLD
+
+    const listboxTopPadding = LISTBOX_VERTICAL_PADDING_PX / 2
+    const rowTop = listboxTopPadding + index * OPTION_ROW_HEIGHT_PX
     const rowBottom = rowTop + OPTION_ROW_HEIGHT_PX
     const viewportTop = listbox.scrollTop
     const viewportBottom = viewportTop + listbox.clientHeight
     const nextScrollTop =
       rowTop < viewportTop
-        ? rowTop
+        ? Math.max(0, rowTop - listboxTopPadding)
         : rowBottom > viewportBottom
           ? rowBottom - listbox.clientHeight
           : null
 
     if (nextScrollTop != null) {
       listbox.scrollTop = nextScrollTop
-      setScrollTop(nextScrollTop)
+      if (virtualized) setScrollTop(nextScrollTop)
     }
   }, [])
 

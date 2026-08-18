@@ -32,8 +32,6 @@ type HomeHeroCarouselProps = {
   slides: WatchHomeCard[]
   /** Which slide is active (owned by the screen, mirrored to HeroPager). */
   index: number
-  /** Land initial D-pad focus on the See more CTA on cold mount. */
-  hasTVPreferredFocus?: boolean
   /** Select on the See more CTA opens the active slide. */
   onSelect: (card: WatchHomeCard) => void
   /** Hero focus gained/lost — the screen pins the feed to 0 and sets browse
@@ -57,7 +55,6 @@ type HomeHeroCarouselProps = {
 export function HomeHeroCarousel({
   slides,
   index,
-  hasTVPreferredFocus,
   onSelect,
   onFocusChange,
   onRequestAdvance,
@@ -190,7 +187,6 @@ export function HomeHeroCarousel({
                 onPress={() => onSelect(current)}
                 onFocus={handleSeeMoreFocus}
                 onBlur={handleSeeMoreBlur}
-                hasTVPreferredFocus={hasTVPreferredFocus}
                 onNode={handleSeeMoreNode}
                 selfNode={seeMoreNode}
                 upFocusTarget={upFocusTarget}
@@ -228,7 +224,6 @@ function HeroCtaButton({
   onPress,
   onFocus,
   onBlur,
-  hasTVPreferredFocus,
   onNode,
   selfNode,
   upFocusTarget,
@@ -237,7 +232,6 @@ function HeroCtaButton({
   onPress: () => void
   onFocus: () => void
   onBlur: () => void
-  hasTVPreferredFocus?: boolean
   onNode?: (node: ViewType | null) => void
   selfNode: ViewType | null
   upFocusTarget?: ViewType | null
@@ -270,7 +264,6 @@ function HeroCtaButton({
       // Up bridges to the top bar's Search tab — geometry alone dead-ends here
       // (left-anchored button, centered tabs, no horizontal overlap).
       nextFocusUp={upFocusTarget ?? undefined}
-      hasTVPreferredFocus={hasTVPreferredFocus}
       accessibilityRole="button"
       accessibilityLabel={label}
     >
