@@ -1,5 +1,6 @@
 import { Stack } from "expo-router"
 
+import { BACK_SWIPE_RESPONSE_DISTANCE } from "../../src/lib/backSwipe"
 import { BG_COLOR } from "../../src/lib/color"
 import { SeriesSessionProvider } from "../../src/contexts/SeriesSessionProvider"
 import { LIST_SHEET_DETENTS } from "../../src/styles/shared"
@@ -37,7 +38,15 @@ export default function SeriesLayout() {
       >
         {/* No native header: the hero sits at the top safe edge with a floating
             back button overlaid (mirrors app/watch/_layout.tsx + app/series/[slug]). */}
-        <Stack.Screen name="[slug]" options={{ headerShown: false }} />
+        {/* Edge-confined back-swipe: iOS 26 defaults it to full-width, which
+            claims rightward scrubs on the trailer dock (src/lib/backSwipe). */}
+        <Stack.Screen
+          name="[slug]"
+          options={{
+            headerShown: false,
+            gestureResponseDistance: BACK_SWIPE_RESPONSE_DISTANCE,
+          }}
+        />
         <Stack.Screen name="language" options={LIST_SHEET_OPTIONS} />
         <Stack.Screen name="subtitle" options={LIST_SHEET_OPTIONS} />
         <Stack.Screen

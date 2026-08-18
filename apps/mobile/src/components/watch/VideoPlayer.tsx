@@ -89,6 +89,10 @@ type VideoPlayerProps = {
    *  site: this player also backs the series-detail trailer dock, so an
    *  implicit default would autoplay surfaces that never asked for it. */
   autostart?: boolean
+  /** Reports whether the transport chrome (which hosts the scrubber) is
+   *  mounted, so the route can hold the iOS back-swipe while a horizontal
+   *  scrub is possible — the hold must precede the scrub touch. */
+  onChromeMountedChange?: (mounted: boolean) => void
   /** The screen-owned cast wiring (KTD4); null on surfaces without cast. */
   cast?: VideoPlayerCast | null
 }
@@ -120,6 +124,7 @@ export function VideoPlayer({
   resumeAtSeconds = null,
   autostart = false,
   cast = null,
+  onChromeMountedChange,
 }: VideoPlayerProps) {
   const castPlayback = cast?.playback ?? null
   const onCastPress = cast?.onCastPress ?? null
@@ -295,6 +300,17 @@ export function VideoPlayer({
   })
 
   const controls = useControlsVisibility(player)
+
+  // One expression for the chrome render gates below AND the route's
+  // back-swipe hold, so the two can never drift.
+  const chromeMounted = controls.mounted && !awaitingAutostart
+  const onChromeMountedChangeRef = useRef(onChromeMountedChange)
+  onChromeMountedChangeRef.current = onChromeMountedChange
+  useEffect(() => {
+    onChromeMountedChangeRef.current?.(chromeMounted)
+  }, [chromeMounted])
+  // Release the hold if the player unmounts while its chrome is still up.
+  useEffect(() => () => onChromeMountedChangeRef.current?.(false), [])
 
   // Tap disambiguation (U4): single tap toggles chrome (revealed on press-in
   // so it never lags, KTD3); second tap within DOUBLE_TAP_MS seeks the tapped
@@ -834,7 +850,7 @@ export function VideoPlayer({
 
       {/* Chrome scrim — fades with the chrome and sits BELOW the subtitle so it
           never dims the caption. */}
-      {controls.mounted && !awaitingAutostart && (
+      {chromeMounted && (
         <Animated.View
           pointerEvents="none"
           style={[styles.chromeScrim, { opacity: controls.opacityAnim }]}
@@ -869,7 +885,7 @@ export function VideoPlayer({
       {/* Chrome controls — fade with the chrome and layer OVER the subtitle, so
           the timeline/buttons are always on top of the captions (R: timeline
           must stay visible). */}
-      {controls.mounted && !awaitingAutostart && (
+      {chromeMounted && (
         <Animated.View
           style={[StyleSheet.absoluteFill, { opacity: controls.opacityAnim }]}
           pointerEvents="box-none"

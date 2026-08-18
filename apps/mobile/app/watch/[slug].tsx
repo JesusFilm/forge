@@ -111,7 +111,8 @@ export default function WatchVideoPage() {
   } = useDownloads()
   const [showScrollTop, setShowScrollTop] = useState(false)
   const scrollTopOpacity = useRef(new Animated.Value(0)).current
-  const { isFullscreen, toggleFullscreen } = useFullscreenPresentation()
+  const { isFullscreen, toggleFullscreen, setBackSwipeHeld } =
+    useFullscreenPresentation()
   const insets = useSafeAreaInsets()
   // Honor reduce-motion for the scroll-to-top FAB, the way the player's
   // chrome/subtitles already do — snap instead of fading.
@@ -626,7 +627,10 @@ export default function WatchVideoPage() {
               // is sibling-scoped, so the player's own zIndex can't escape this
               // wrapper to clear the later-painted ScrollView on its own.
               styles.playerDockFullscreen
-            : { paddingTop: insets.top }
+            : // Inline needs a small lift too: the flush scrubber thumb
+              // straddles the player's bottom edge (Scrubber flush contract),
+              // and the later-painted ScrollView would cover its lower half.
+              [styles.playerDockInline, { paddingTop: insets.top }]
         }
       >
         {playerSource == null ? (
@@ -647,6 +651,7 @@ export default function WatchVideoPage() {
             onPlayingChange={undefined}
             fullscreen={isFullscreen}
             onToggleFullscreen={toggleFullscreen}
+            onChromeMountedChange={setBackSwipeHeld}
             cast={{
               playback: cast,
               onCastPress: handleCastPress,
@@ -849,6 +854,9 @@ const styles = StyleSheet.create({
   },
   playerDockFullscreen: {
     zIndex: 1000,
+  },
+  playerDockInline: {
+    zIndex: 1,
   },
   scrollContent: {
     paddingBottom: 80,

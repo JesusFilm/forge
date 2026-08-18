@@ -13,6 +13,7 @@ let SafeAreaProvider: typeof import("react-native-safe-area-context").SafeAreaPr
 let getApolloClient: typeof import("../src/lib/apolloClient").getApolloClient
 let ACCENT: string
 let BG_COLOR: string
+let BACK_SWIPE_RESPONSE_DISTANCE: typeof import("../src/lib/backSwipe").BACK_SWIPE_RESPONSE_DISTANCE
 let ExperienceShell: typeof import("../src/contexts/ExperienceShell").ExperienceShell
 let ExperienceSelectionProvider: typeof import("../src/contexts/ExperienceSelectionProvider").ExperienceSelectionProvider
 let WatchPreferencesProvider: typeof import("../src/contexts/WatchPreferencesProvider").WatchPreferencesProvider
@@ -55,6 +56,8 @@ try {
   const color = require("../src/lib/color")
   ACCENT = color.ACCENT
   BG_COLOR = color.BG_COLOR
+  BACK_SWIPE_RESPONSE_DISTANCE =
+    require("../src/lib/backSwipe").BACK_SWIPE_RESPONSE_DISTANCE
   ExperienceShell = require("../src/contexts/ExperienceShell").ExperienceShell
   ExperienceSelectionProvider =
     require("../src/contexts/ExperienceSelectionProvider").ExperienceSelectionProvider
@@ -347,13 +350,24 @@ export default function RootLayout() {
                             // back button instead.
                             options={{ headerShown: false }}
                           />
+                          {/* Both player stacks confine the back-swipe to the
+                              left edge: iOS 26 defaults it to full-width,
+                              which claims rightward scrubs (src/lib/backSwipe). */}
                           <Stack.Screen
                             name="watch"
-                            options={{ headerShown: false }}
+                            options={{
+                              headerShown: false,
+                              gestureResponseDistance:
+                                BACK_SWIPE_RESPONSE_DISTANCE,
+                            }}
                           />
                           <Stack.Screen
                             name="series"
-                            options={{ headerShown: false }}
+                            options={{
+                              headerShown: false,
+                              gestureResponseDistance:
+                                BACK_SWIPE_RESPONSE_DISTANCE,
+                            }}
                           />
                         </Stack>
                       </ExperienceShell>

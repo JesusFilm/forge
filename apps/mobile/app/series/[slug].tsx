@@ -62,7 +62,8 @@ export default function SeriesScreen() {
   const decodedSlug = slug ? decodeURIComponent(slug) : ""
 
   const router = useRouter()
-  const { isFullscreen, toggleFullscreen } = useFullscreenPresentation()
+  const { isFullscreen, toggleFullscreen, setBackSwipeHeld } =
+    useFullscreenPresentation()
   const typography = useTypography()
   const insets = useSafeAreaInsets()
 
@@ -388,6 +389,9 @@ export default function SeriesScreen() {
   const heroDock = {
     paddingTop: insets.top,
     paddingHorizontal: PLAYER_SIDE_PADDING,
+    // The flush scrubber thumb straddles the trailer's bottom edge; without
+    // the lift the later-painted episode grid covers its lower half.
+    zIndex: 1,
   }
 
   // A poster-only hero (no trailer) scrolls away with the list — rendered as the
@@ -429,6 +433,7 @@ export default function SeriesScreen() {
             posterUrl={displayPoster}
             fullscreen={isFullscreen}
             onToggleFullscreen={toggleFullscreen}
+            onChromeMountedChange={setBackSwipeHeld}
             horizontalInset={PLAYER_SIDE_PADDING}
             autostart
           />
