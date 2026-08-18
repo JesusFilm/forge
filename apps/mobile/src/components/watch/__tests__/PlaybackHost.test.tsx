@@ -1560,6 +1560,102 @@ describe("the resting corner across route and layout changes (R4/R7)", () => {
     return renderer
   }
 
+  /** The same window moved into a TOP corner: bottomRight -> bottomLeft ->
+   *  topRight. The snap is JS-driven, so the timers have to run it out before
+   *  the drag offset is measurable. */
+  async function floatInATopCorner() {
+    const renderer = await floatAtTabRoot()
+    await act(async () => {
+      fireWindowAction(renderer, "moveToCorner")
+    })
+    await act(async () => {
+      fireWindowAction(renderer, "moveToCorner")
+    })
+    await act(async () => {
+      jest.advanceTimersByTime(400)
+    })
+    return renderer
+  }
+
+  it("glides a top-corner window when a header route lifts that corner", async () => {
+    const renderer = await floatInATopCorner()
+    const topBefore = frameVisualTop(renderer)
+    const timingSpy = jest.spyOn(Animated, "timing")
+
+    // The header routes are the app's only chrome.top change. They move a TOP
+    // corner's target while the default corner stays put, so a glide armed off
+    // the default frame alone teleports the window down a header's height.
+    await setSegments(renderer, ["video", "[sectionKey]"])
+
+    const call = repositionCall(timingSpy)
+    expect(call).toBeDefined()
+    // The ramp starts where the window already is. The drag rides the frame
+    // ABOVE it, so the from-rect must be the old position minus that drag.
+    expect(frameVisualTop(renderer)).toBe(topBefore)
+
+    // The ramp's FAR end must be where the settle parks the window: `to` is
+    // otherwise unobservable, and aiming it at the corner target instead of
+    // the base frame flings the window off screen for the whole 260ms.
+    const ramp = (call as unknown as [Animated.Value, unknown])[0]
+    const motionNode = renderer.root.findAll(
+      (n) => n.props.testID === "playback-motion",
+    )[0]
+    const rampY = (
+      StyleSheet.flatten(motionNode.props.style) as {
+        transform?: Array<{ translateY?: { __getValue: () => number } }>
+      }
+    ).transform?.find((entry) => entry.translateY != null)?.translateY
+    expect(rampY).toBeDefined()
+    await act(async () => {
+      ramp.setValue(1)
+    })
+    const rampEnd = frameVisualTop(renderer) + rampY!.__getValue()
+
+    await act(async () => {
+      jest.advanceTimersByTime(REPOSITION_DURATION_MS + 300)
+    })
+    expect(frameVisualTop(renderer)).toBe(rampEnd)
+    expect(frameVisualTop(renderer)).toBeGreaterThan(topBefore)
+  })
+
+  it("lands directly when the header route leaves the occupied corner alone", async () => {
+    const renderer = await floatAtTabRoot()
+    const topBefore = frameVisualTop(renderer)
+    const timingSpy = jest.spyOn(Animated, "timing")
+
+    // The SAME header push over a BOTTOM corner. chrome.top moves only the top
+    // edge, so this corner's target is unchanged and the window must not
+    // animate — the glide follows the corner, not the layout object. Green on
+    // both sides by design: layoutConfig really does change here, so a widened
+    // "any layout change glides" predicate turns this red.
+    await setSegments(renderer, ["video", "[sectionKey]"])
+
+    expect(repositionCall(timingSpy)).toBeUndefined()
+    expect(frameVisualTop(renderer)).toBe(topBefore)
+    await act(async () => {
+      jest.advanceTimersByTime(REPOSITION_DURATION_MS + 300)
+    })
+    expect(frameVisualTop(renderer)).toBe(topBefore)
+  })
+
+  it("lands directly when the chrome changes mid-snap", async () => {
+    const renderer = await floatAtTabRoot()
+    const timingSpy = jest.spyOn(Animated, "timing")
+
+    // The corner is recorded when the snap STARTS, so for its 180ms the drag
+    // node is still behind the recorded rest. Gliding from a rest the window
+    // has not reached yet moves it twice.
+    await act(async () => {
+      fireWindowAction(renderer, "moveToCorner")
+    })
+    await act(async () => {
+      fireWindowAction(renderer, "moveToCorner")
+    })
+    await setSegments(renderer, ["video", "[sectionKey]"])
+
+    expect(repositionCall(timingSpy)).toBeUndefined()
+  })
+
   it("keeps one corner height when a push removes the tab bar", async () => {
     const renderer = await floatAtTabRoot()
     const topAtTabRoot = frameVisualTop(renderer)
