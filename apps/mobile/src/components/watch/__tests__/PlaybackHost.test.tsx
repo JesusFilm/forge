@@ -150,6 +150,7 @@ import {
   PlaybackHost,
   REPOSITION_DURATION_MS,
   SHRINK_DURATION_MS,
+  TAB_BAR_CONTENT_HEIGHT,
   shouldDrawSurface,
 } from "../PlaybackHost"
 import { miniPlayerCornerFrame } from "../../../lib/miniPlayer/layout"
@@ -1558,6 +1559,54 @@ describe("the frame transition (KTD17: shrink and its reverse)", () => {
     })
     expect(parkSpy).toHaveBeenCalledWith(1)
     expect(frameStyle(renderer).overflow).toBe("hidden")
+  })
+
+  it("aims the grow at the corner the drag landed on, not the one the tap pinned", async () => {
+    jest.useFakeTimers()
+    const first = attachSlot()
+    const renderer = await renderHost()
+    await startPlayback()
+    await detach(first)
+    await act(async () => {
+      jest.advanceTimersByTime(SHRINK_DURATION_MS + 300)
+    })
+
+    // The tap pins the corner it was taken at, then the viewer drags away
+    // before the push delivers a rect. The grow must follow the drag.
+    await act(async () => {
+      fireWindowAction(renderer, "activate")
+    })
+    await act(async () => {
+      fireWindowAction(renderer, "moveToCorner")
+    })
+    await act(async () => {
+      fireWindowAction(renderer, "moveToCorner")
+    })
+    await act(async () => {
+      jest.advanceTimersByTime(400)
+    })
+
+    const started = holdTimings()
+    await attachSlotInAct()
+    const ramp = started.find((s) => s.config.duration === EXPAND_DURATION_MS)
+    expect(ramp).toBeDefined()
+    await act(async () => {
+      ramp!.node.setValue(0)
+    })
+
+    const { width, height } = Dimensions.get("window")
+    const config = {
+      screen: { width, height },
+      insets: { top: 0, right: 0, bottom: 0, left: 0 },
+      chrome: { top: 0, bottom: TAB_BAR_CONTENT_HEIGHT },
+    }
+    const dragged = miniPlayerCornerFrame(config, "topRight")
+    const pinned = miniPlayerCornerFrame(config, "bottomRight")
+    expect(videoBox(renderer).centerY).toBeCloseTo(
+      dragged.y + dragged.height / 2,
+      0,
+    )
+    expect(dragged.y).not.toBe(pinned.y)
   })
 
   it("restarts a grow from a non-default corner rather than reversing it", async () => {

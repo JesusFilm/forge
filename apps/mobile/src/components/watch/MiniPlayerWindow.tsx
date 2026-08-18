@@ -296,7 +296,10 @@ export function MiniPlayerWindow({
       accessibilityActions={MINI_PLAYER_ACCESSIBILITY_ACTIONS}
       onAccessibilityAction={handleAccessibilityAction}
       style={StyleSheet.absoluteFill}
-      pointerEvents={exiting ? "none" : undefined}
+      // Inert until the chrome is ready: the frame spans the DEPARTING player
+      // rect for the whole shrink, and nothing tappable paints yet, so this
+      // would otherwise swallow taps meant for the screen underneath.
+      pointerEvents={exiting || !ready ? "none" : undefined}
       {...responder.panHandlers}
     >
       {resolvedPoster != null && (
