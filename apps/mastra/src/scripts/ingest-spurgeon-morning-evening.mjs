@@ -17,25 +17,21 @@
  * corpus moved into the Workspace seed (`devotional-workspace/inputs/`),
  * because reaching that shape means discarding the calendar keys
  * (`month`/`day`/`session`) that `ReflectionEntriesSchema` has nowhere to put —
- * a design question, not a mechanical port. Two things are required before a
- * Spurgeon file can be added, and BOTH are open:
+ * a design question, not a mechanical port. ONE thing is required before a
+ * Spurgeon file can be added, and it is open: emit the contract shape —
+ * top-level `{ entries }` only, per-entry keys only from { source, reference,
+ * osisRef, text, verse, book, chapter }. Both schemas are `.strict()` and the
+ * Workspace validates reflections on reconcile, so today's envelope is silently
+ * EXCLUDED as invalid-content (reported, not fatal) and the file simply never
+ * becomes eligible.
  *
- *   1. Emit the contract shape: top-level `{ entries }` only, per-entry keys
- *      only from { source, reference, osisRef, text, verse, book, chapter }.
- *      Both schemas are `.strict()` and the Workspace validates reflections on
- *      reconcile, so today's envelope is silently EXCLUDED as invalid-content
- *      (reported, not fatal) and the file simply never becomes eligible.
- *   2. Fix reflection routing first. `addReflection`
- *      (`workspace/attempt-data.ts`) routes by osisRef book prefix before
- *      filename, so 123 of these 732 entries (31 `Matt.*`, 92
- *      `Mark|Luke|John.*`) would land in the Ryle / Matthew Henry commentary
- *      corpora rather than the thematic Spurgeon pool. The Henry side is inert
- *      (it matches whole-chapter osisRefs like `Luke.19`, which no Spurgeon
- *      entry has), but the Ryle side is verse-range matched, so a Spurgeon
- *      devotional can be selected and presented as `flavor: "commentary"`.
- *      Ordering hides it today (`ryle-matthew.json` sorts before any
- *      `spurgeon-*` name, so real Ryle sections win `find()`), which makes it a
- *      filename-ordering accident rather than a guarantee.
+ * Routing is no longer a blocker. `addReflection` (`workspace/attempt-data.ts`)
+ * keeps a source thematic when its filename or `source` label contains
+ * "spurgeon", or when it carries no `osisRef`, so these entries stay out of the
+ * passage-matched commentary pool. Before that fix, 123 of these 732 entries
+ * (31 `Matt.*`, 92 `Mark|Luke|John.*`) were routed by osisRef book prefix into
+ * the commentary corpora, where a verse-keyed meditation could be selected and
+ * presented as `flavor: "commentary"`.
  *
  *   node apps/mastra/src/scripts/ingest-spurgeon-morning-evening.mjs
  */

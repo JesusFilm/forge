@@ -48,8 +48,9 @@ function committedCorpora(): ReflectionCorpora {
       content: seed(`reflections/${name}`),
     })
   return {
-    ryleMatthew: load("ryle-matthew.json"),
-    matthewHenry: [
+    commentary: [
+      ...load("ryle-matthew.json"),
+      ...load("ryle-luke.json"),
       ...load("matthew-henry-mark.json"),
       ...load("matthew-henry-luke.json"),
       ...load("matthew-henry-john.json"),
@@ -102,11 +103,7 @@ describe("chaptersWithReflectionSource", () => {
     // Reachability for the caller's fail-loud guard: better an explicit refusal
     // than reserving a clip no devotional can be written for.
     expect(
-      chaptersWithReflectionSource(
-        MAPPED,
-        { ryleMatthew: [], matthewHenry: [], spurgeon: [] },
-        0,
-      ),
+      chaptersWithReflectionSource(MAPPED, { commentary: [], spurgeon: [] }, 0),
     ).toHaveLength(0)
   })
 

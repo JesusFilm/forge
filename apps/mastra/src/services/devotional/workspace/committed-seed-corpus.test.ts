@@ -55,6 +55,7 @@ describe("committed Workspace seed corpus", () => {
       "matthew-henry-john.json",
       "matthew-henry-luke.json",
       "matthew-henry-mark.json",
+      "ryle-luke.json",
       "ryle-matthew.json",
     ])
     expect(await corpusFiles(SCRIPTURE)).toEqual(["web-bible.json"])
@@ -94,15 +95,17 @@ describe("committed Workspace seed corpus", () => {
     }
   })
 
-  it("holds the book coverage reflection routing depends on", async () => {
-    // `addReflection` is module-private, and it routes on the osisRef book
-    // prefix BEFORE the filename. These are the properties of the committed
-    // bytes that make that routing land correctly.
+  it("holds the book coverage the commentary pool depends on", async () => {
+    // `matchReflection` filters the pool by the entry's own book and then ranks
+    // by span, so these are the properties of the committed bytes that make a
+    // passage resolve at all, and resolve to the tighter source.
     const booksIn = (entries: ReflectionEntry[]) =>
       [...new Set(entries.map((e) => (e.osisRef ?? "").split(".")[0]))].sort()
 
-    const ryle = await loadReflections("ryle-matthew.json")
-    expect(booksIn(ryle)).toEqual(["Matt"])
+    expect(booksIn(await loadReflections("ryle-matthew.json"))).toEqual([
+      "Matt",
+    ])
+    expect(booksIn(await loadReflections("ryle-luke.json"))).toEqual(["Luke"])
 
     for (const [name, book] of [
       ["matthew-henry-mark.json", "Mark"],
@@ -111,10 +114,21 @@ describe("committed Workspace seed corpus", () => {
     ] as const) {
       const entries = await loadReflections(name)
       expect(booksIn(entries)).toEqual([book])
-      // Whole-chapter granularity: `matchReflection` looks the Henry side up by
-      // an exact `Book.Chapter` osisRef, so a verse-level ref would never match.
+      // Henry is whole-chapter (`Luke.19`), which is what makes him the FALLBACK
+      // under a section-granular source rather than a competitor.
       expect(
         entries.every((e) => /^[A-Za-z]+\.\d+$/u.test(e.osisRef ?? "")),
+      ).toBe(true)
+    }
+
+    // Ryle is per-pericope (`Luke.19.1-Luke.19.10`) — a verse range, always.
+    for (const name of ["ryle-matthew.json", "ryle-luke.json"] as const) {
+      const entries = await loadReflections(name)
+      expect(
+        entries.every((e) =>
+          /^[A-Za-z]+\.\d+\.\d+(-[A-Za-z]+\.\d+\.\d+)?$/u.test(e.osisRef ?? ""),
+        ),
+        name,
       ).toBe(true)
     }
   })
@@ -122,10 +136,17 @@ describe("committed Workspace seed corpus", () => {
   it("resolves scripture and a reflection for a real passage", async () => {
     const corpora = await loadCorpora()
 
-    // Luke 19 (Zacchaeus) — Matthew Henry via the whole-chapter lookup.
+    // Luke 19 (Zacchaeus): both Ryle's pericope and Henry's whole chapter cover
+    // it, and the pericope must win — that preference is the point of pooling.
     const luke = matchReflection("Luke.19.1-Luke.19.10", corpora)
-    expect(luke?.osisRef).toBe("Luke.19")
-    expect(luke?.source).toContain("Matthew Henry")
+    expect(luke?.osisRef).toBe("Luke.19.1-Luke.19.10")
+    expect(luke?.source).toContain("Ryle")
+    expect(luke?.text.length).toBeLessThan(20_000)
+
+    // Where Ryle has no section, Henry still answers.
+    expect(matchReflection("Mark.4.35-Mark.4.41", corpora)?.source).toContain(
+      "Matthew Henry",
+    )
 
     // Matthew — Ryle, via verse-range coverage.
     const matt = matchReflection("Matt.5.1-Matt.5.12", corpora)
@@ -178,15 +199,15 @@ async function loadReflections(name: string): Promise<ReflectionEntry[]> {
 }
 
 async function loadCorpora(): Promise<ReflectionCorpora> {
-  const [matt, mark, luke, john] = await Promise.all([
-    loadReflections("ryle-matthew.json"),
-    loadReflections("matthew-henry-mark.json"),
-    loadReflections("matthew-henry-luke.json"),
-    loadReflections("matthew-henry-john.json"),
-  ])
-  return {
-    ryleMatthew: matt,
-    matthewHenry: [...mark, ...luke, ...john],
-    spurgeon: [],
-  }
+  // Alphabetical, exactly as reconcile lists the folder — so Henry precedes
+  // Ryle in the pool and any document-order preference would pick the wrong one.
+  const files = [
+    "matthew-henry-john.json",
+    "matthew-henry-luke.json",
+    "matthew-henry-mark.json",
+    "ryle-luke.json",
+    "ryle-matthew.json",
+  ]
+  const loaded = await Promise.all(files.map((name) => loadReflections(name)))
+  return { commentary: loaded.flat(), spurgeon: [] }
 }

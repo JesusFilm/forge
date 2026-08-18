@@ -14,9 +14,11 @@
  * apps/mastra/devotional-workspace/inputs/reflections/matthew-henry-<book>.json.
  * Split by book deliberately: a single combined file is ~4.2 MB, larger than
  * anything else committed in this repo and close enough to the Workspace's
- * 8 MB per-text-file inventory limit to be worth avoiding. Every filename keeps
- * "henry" because `addReflection` (`workspace/attempt-data.ts`) routes by the
- * source path, and reconcile concatenates all reflection files anyway.
+ * 8 MB per-text-file inventory limit to be worth avoiding. Filenames carry no
+ * routing meaning: `addReflection` (`workspace/attempt-data.ts`) pools every
+ * passage-keyed source, and `matchReflection` picks the narrowest entry covering
+ * the passage — so these whole-chapter entries are the fallback wherever a
+ * section-granular source (Ryle on the same book) has no section.
  *
  * The document shape is exactly ReflectionEntriesSchema
  * (`reflection-corpus.ts`): top-level `{ entries }`, per-entry keys only from
