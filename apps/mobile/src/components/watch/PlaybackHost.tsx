@@ -515,11 +515,16 @@ function ActivePlaybackHost({
   const [corner, setCorner] = useState<MiniPlayerCorner>(DEFAULT_CORNER)
   const cornerRef = useRef(corner)
   cornerRef.current = corner
-  // The one in-flight frame transition (KTD17): the shrink toward the corner
-  // and the expand back out of it are the same interpolation, ends swapped.
+  // The one in-flight frame transition (KTD17). The frame ANCHORS at one end
+  // while the transform carries the visual between `from` and `to`: the native
+  // driver attaches transforms after a commit paints, so the untransformed
+  // first frame renders AT the anchor — anchoring at the end the viewer is
+  // already looking at is what makes the start of a transition flash-proof.
+  // The shrink anchors at `from` (the player rect); the expand at `to` (ditto).
   const [motion, setMotion] = useState<{
     from: PlaybackRect
     to: PlaybackRect
+    anchor: "from" | "to"
   } | null>(null)
   const [chromeReady, setChromeReady] = useState(true)
   const [surfaceReleased, setSurfaceReleased] = useState(false)
@@ -561,6 +566,7 @@ function ActivePlaybackHost({
     const runMotion = (
       from: PlaybackRect,
       to: PlaybackRect,
+      anchor: "from" | "to",
       durationMs: number,
       onSettled?: () => void,
     ) => {
@@ -572,11 +578,15 @@ function ActivePlaybackHost({
           clearTimeout(chromeTimerRef.current)
           chromeTimerRef.current = null
         }
+        // A from-anchored settle swaps the frame to the far end while the old
+        // transform may still be native-attached for a beat — hide across the
+        // swap; the reveal below owns bringing it back.
+        if (anchor === "from") windowFade.setValue(0)
         setMotion(null)
         setChromeReady(true)
         onSettled?.()
       }
-      setMotion({ from, to })
+      setMotion({ from, to, anchor })
       shrink.setValue(0)
       const animation = Animated.timing(shrink, {
         toValue: 1,
@@ -609,6 +619,7 @@ function ActivePlaybackHost({
         runMotion(
           miniPlayerCornerFrame(layoutConfig, cornerRef.current),
           rect,
+          "to",
           EXPAND_DURATION_MS,
         )
       } else {
@@ -628,15 +639,16 @@ function ActivePlaybackHost({
       return
     }
     // A new window opens in the default corner, which is also what makes the
-    // shrink arithmetic exact: there is no drag offset to subtract. The layer
-    // hides for the whole shrink and fades in only once it settles — the
-    // native driver attaches transforms after the paint, so on device the
-    // corner box could otherwise flash the untransformed video first.
+    // shrink arithmetic exact: there is no drag offset to subtract. The frame
+    // stays anchored at the player rect for the whole shrink (a flash-proof
+    // start: the untransformed first frame IS the previous frame), and the
+    // settle above hides the swap to corner geometry, which the 0.1s reveal
+    // then brings back.
     setCorner(DEFAULT_CORNER)
     drag.setValue({ x: 0, y: 0 })
     setChromeReady(false)
-    windowFade.setValue(0)
-    runMotion(from, windowFrame, SHRINK_DURATION_MS, () => {
+    windowFade.setValue(1)
+    runMotion(from, windowFrame, "from", SHRINK_DURATION_MS, () => {
       const fade = Animated.timing(windowFade, {
         toValue: 1,
         duration: WINDOW_FADE_IN_MS,
@@ -792,7 +804,11 @@ function ActivePlaybackHost({
     hasSession && (presentation === "floating" || presentation === "exiting")
   const suppressed = hasSession && presentation === "hidden"
   const floating = rect == null && hasSession
-  const geometry = rect ?? windowFrame
+  // The frame sits at the motion's anchor while one runs (see the motion
+  // state), and at the corner the moment a from-anchored one settles.
+  const geometry =
+    rect ??
+    (motion != null && motion.anchor === "from" ? motion.from : windowFrame)
 
   // A surface can own the player before its stream resolves (an Up Next
   // replace, a seed with no playbackId). The player still holds ANOTHER route's
@@ -810,7 +826,9 @@ function ActivePlaybackHost({
   const drawsFrame = drawsSurface || (showWindow && session != null)
 
   // Both rects share the video's aspect ratio, so this is translate plus scale
-  // only (KTD17) — the same ramp carries the shrink and the expand.
+  // only (KTD17) — one ramp carries the shrink and the expand. The transform
+  // maps the ANCHOR rect onto the visual's position: a from-anchored motion
+  // starts at identity and animates away; a to-anchored one arrives at it.
   const motionStyle = useMemo(() => {
     if (motion == null) return null
     const half = (r: PlaybackRect) => ({
@@ -821,6 +839,15 @@ function ActivePlaybackHost({
     const to = half(motion.to)
     const ramp = (a: number, b: number) =>
       shrink.interpolate({ inputRange: [0, 1], outputRange: [a, b] })
+    if (motion.anchor === "from") {
+      return {
+        transform: [
+          { translateX: ramp(0, to.x - from.x) },
+          { translateY: ramp(0, to.y - from.y) },
+          { scale: ramp(1, motion.to.width / motion.from.width) },
+        ],
+      }
+    }
     return {
       transform: [
         { translateX: ramp(from.x - to.x, 0) },

@@ -1368,13 +1368,15 @@ describe("the frame transition (KTD17: shrink and its reverse)", () => {
     } as never)
     await detach(first)
     // Mid-shrink the frame is unclipped so the video may overdraw its box —
-    // and paints nothing of its own: an instant black corner box (or the
-    // untransformed video inside it) would front-run the arriving surface.
+    // and paints nothing of its own: an instant black corner box would
+    // front-run the arriving surface.
     expect(frameStyle(renderer).overflow).toBe("visible")
     expect(frameStyle(renderer).backgroundColor).toBe("transparent")
-    // The whole window layer hides through the shrink (the native driver
-    // attaches transforms after the paint — the device flash this kills).
-    expect(windowFadeValue(renderer)).toBe(0)
+    // The shrink is VISIBLE, anchored at the player rect it departs from: the
+    // untransformed first frame is then the previous frame, so the native
+    // driver's late transform attach has nothing to flash (the device bug).
+    expect(windowFadeValue(renderer)).toBe(1)
+    expect(frameStyle(renderer)).toMatchObject({ left: RECT.x, top: RECT.y })
     timingSpy.mockClear()
 
     // Fast back-then-forward: the full view owns the rect again while the
@@ -1397,18 +1399,20 @@ describe("the frame transition (KTD17: shrink and its reverse)", () => {
     const renderer = await renderHost()
     await startPlayback()
     await detach(first)
-    // Hidden through the shrink; the 0.1s reveal runs only once it settles.
-    expect(windowFadeValue(renderer)).toBe(0)
+    // The shrink runs VISIBLY, anchored at the departing player rect.
+    expect(windowFadeValue(renderer)).toBe(1)
+    expect(frameStyle(renderer)).toMatchObject({ left: RECT.x, top: RECT.y })
     await act(async () => {
       jest.advanceTimersByTime(SHRINK_DURATION_MS + 300)
     })
     await act(async () => {
       jest.advanceTimersByTime(WINDOW_FADE_IN_MS + 300)
     })
-    // The settled window: shrink done, transform released, box painting
-    // again, layer revealed.
+    // The settled window: the frame swapped to the corner behind the hide,
+    // the box paints again, and the 0.1s reveal has completed.
     expect(frameStyle(renderer).overflow).toBe("hidden")
     expect(frameStyle(renderer).backgroundColor).not.toBe("transparent")
+    expect(frameStyle(renderer)).not.toMatchObject({ left: RECT.x })
     expect(windowFadeValue(renderer)).toBe(1)
     expect(sessionStore.getSnapshot().session).not.toBeNull()
 

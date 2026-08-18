@@ -707,20 +707,20 @@ describe("drag (R2, KTD5)", () => {
     await act(async () => {
       video.__player.play()
     })
-    const base = defaultCornerFrame(layoutConfig())
-
     await act(async () => {
       requestStore.detachSlot(id)
     })
 
-    // KTD17: the shrink opens AT the measured rect and scales down to the
-    // corner, so the frame it starts from is the one the surface just left.
+    // KTD17: the shrink is ANCHORED at the measured rect it departs from, so
+    // its first frame is identity — the native driver's late transform attach
+    // then has nothing to flash — and the ramp carries it to the corner.
     const motion = transformOf(byTestId(renderer, "playback-motion")[0])
-    expect(motion.scale).toBeCloseTo(RECT.width / base.width, 5)
-    expect(motion.translateX).toBeCloseTo(
-      RECT.x + RECT.width / 2 - (base.x + base.width / 2),
-      5,
-    )
+    expect(motion.scale).toBeCloseTo(1, 5)
+    expect(motion.translateX).toBeCloseTo(0, 5)
+    expect(styleOf(byTestId(renderer, "playback-frame")[0])).toMatchObject({
+      left: RECT.x,
+      top: RECT.y,
+    })
     expect(nativeTiming(SHRINK_DURATION_MS).config.toValue).toBe(1)
     // The drag node holds no offset while the shrink runs.
     expect(transformOf(byTestId(renderer, "playback-frame")[0])).toEqual({
