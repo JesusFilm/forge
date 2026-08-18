@@ -461,25 +461,26 @@ export function LanguageCombobox({
   )
 
   const scrollActiveOptionIntoView = useCallback((index: number) => {
-    if (filteredRef.current.length <= VIRTUALIZATION_THRESHOLD) return
-
     const listbox = listboxRef.current
     if (!listbox) return
 
-    const rowTop = index * OPTION_ROW_HEIGHT_PX
+    const virtualized = filteredRef.current.length > VIRTUALIZATION_THRESHOLD
+
+    const listboxTopPadding = LISTBOX_VERTICAL_PADDING_PX / 2
+    const rowTop = listboxTopPadding + index * OPTION_ROW_HEIGHT_PX
     const rowBottom = rowTop + OPTION_ROW_HEIGHT_PX
     const viewportTop = listbox.scrollTop
     const viewportBottom = viewportTop + listbox.clientHeight
     const nextScrollTop =
       rowTop < viewportTop
-        ? rowTop
+        ? Math.max(0, rowTop - listboxTopPadding)
         : rowBottom > viewportBottom
           ? rowBottom - listbox.clientHeight
           : null
 
     if (nextScrollTop != null) {
       listbox.scrollTop = nextScrollTop
-      setScrollTop(nextScrollTop)
+      if (virtualized) setScrollTop(nextScrollTop)
     }
   }, [])
 
