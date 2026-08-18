@@ -1,8 +1,99 @@
 import {
+  ACTION_ROW_DIVIDER_BLOCK,
+  ACTION_ROW_ICONS_WIDTH,
+  ACTION_ROW_PILL_GAP,
   ACTION_ROW_SPACERS,
+  DIVIDER_MARGIN_LEFT,
+  DIVIDER_WIDTH,
+  ICON_BUTTON_COUNT,
+  ICON_BUTTON_WIDTH,
+  ICON_HIT_SLOP_MAX,
+  ROW_PADDING_H,
+  ROW_PADDING_LEFT,
+  ROW_PADDING_RIGHT,
   actionRowSpacerWidths,
+  iconInnerSlop,
   type ActionRowSpacerWidths,
 } from "../actionRowSpacing"
+
+declare const __dirname: string
+
+describe("the rendered row consumes the model's geometry", () => {
+  const dirName = __dirname
+  // Asserting the module against its own definitions is tautological: it
+  // cannot see whether ActionButtonRow still hardcodes the widths the model
+  // claims to describe. Pin the CONSUMPTION, since that drift is the bug.
+  const nodeRequire = require as unknown as (m: string) => {
+    readFileSync: (p: string, e: string) => string
+    join: (...p: string[]) => string
+  }
+  const fs = nodeRequire("node:fs")
+  const path = nodeRequire("node:path")
+  const ROW = fs.readFileSync(
+    path.join(
+      dirName,
+      "..",
+      "..",
+      "components",
+      "watch",
+      "ActionButtonRow.tsx",
+    ),
+    "utf8",
+  )
+
+  it("builds the stylesheet from the exported constants", () => {
+    expect(ROW).toContain("width: ICON_BUTTON_WIDTH")
+    expect(ROW).toContain("paddingLeft: ROW_PADDING_LEFT")
+    expect(ROW).toContain("paddingRight: ROW_PADDING_RIGHT")
+    expect(ROW).toContain("marginLeft: DIVIDER_MARGIN_LEFT")
+    expect(ROW).toContain("width: DIVIDER_WIDTH")
+    expect(ROW).toContain("columnGap: ACTION_ROW_PILL_GAP")
+  })
+
+  it("measures the row with the model's own padding total", () => {
+    expect(ROW).toContain("e.nativeEvent.layout.width - ROW_PADDING_H")
+  })
+
+  it("routes the inner hit slop through iconInnerSlop", () => {
+    expect(ROW).toContain("iconInnerSlop(spacers.betweenIcons)")
+  })
+})
+
+describe("geometry is derived, not re-declared", () => {
+  // The model used to hardcode 68/17/24 while the real widths lived in
+  // ActionButtonRow's StyleSheet. Assert the RELATIONSHIP so a button resize
+  // moves both halves together instead of silently mis-sizing the column.
+  it("derives the cluster widths from the button geometry", () => {
+    expect(ACTION_ROW_ICONS_WIDTH).toBe(ICON_BUTTON_WIDTH * ICON_BUTTON_COUNT)
+    expect(ACTION_ROW_DIVIDER_BLOCK).toBe(DIVIDER_MARGIN_LEFT + DIVIDER_WIDTH)
+    expect(ROW_PADDING_H).toBe(ROW_PADDING_LEFT + ROW_PADDING_RIGHT)
+    expect(ACTION_ROW_PILL_GAP).toBeGreaterThan(0)
+  })
+})
+
+describe("iconInnerSlop keeps the two tap targets disjoint", () => {
+  it("gives up all inner slop when the buttons are flush", () => {
+    // At the compact floor an unconditional 5pt let the later Share Pressable
+    // claim the visible right edge of Download and fire the wrong action.
+    expect(iconInnerSlop(ACTION_ROW_SPACERS.compact.betweenIcons)).toBe(0)
+  })
+
+  it("never claims more than half the gap", () => {
+    for (const gap of [0, 1, 4, 8, 10, 16, 40]) {
+      expect(iconInnerSlop(gap) * 2).toBeLessThanOrEqual(Math.max(gap, 0))
+    }
+  })
+
+  it("uses the full slop once the gap can afford it", () => {
+    expect(iconInnerSlop(ACTION_ROW_SPACERS.roomy.betweenIcons)).toBe(
+      ICON_HIT_SLOP_MAX,
+    )
+  })
+
+  it("is inert on non-finite input", () => {
+    expect(iconInnerSlop(Number.NaN)).toBe(0)
+  })
+})
 
 // Fixtures use the iPhone 17 geometry the extremes were designed against:
 // row inner width 378 → roomy column 243, compact column 285, release 42.

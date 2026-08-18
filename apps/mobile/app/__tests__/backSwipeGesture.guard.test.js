@@ -22,6 +22,15 @@ const REQUIRED = [
 
 const OPT_OUT = /gestureResponseDistance:\s*BACK_SWIPE_RESPONSE_DISTANCE/
 
+// Pinning only the identifier is vacuous: emptying the constant keeps every
+// layout matching while the full-width pop comes back. Pin the VALUE too, and
+// pin that the scrubber's guard reads the SAME width, since the whole design
+// is "the pop owns this strip, the scrubber declines it".
+const BACK_SWIPE_SOURCE = fs.readFileSync(
+  path.join(__dirname, "..", "..", "src", "lib", "backSwipe.ts"),
+  "utf8",
+)
+
 // Pure detector over { content, screens } so a positive-control fixture can
 // prove the mechanism flags a real omission, not just that today's tree passes.
 function findScreensMissingOptOut(content, screens) {
@@ -62,4 +71,59 @@ describe("full-width back-swipe opt-out on player stacks", () => {
       expect(findScreensMissingOptOut(content, screens)).toEqual([])
     },
   )
+
+  it("pins the edge width itself, not just the identifier", () => {
+    // Falsification: set BACK_SWIPE_EDGE_WIDTH to 0 and the pop is full-width
+    // again while every layout still contains the token.
+    expect(BACK_SWIPE_SOURCE).toMatch(/BACK_SWIPE_EDGE_WIDTH = 24\b/)
+    // The rect must be built FROM that width, so the two cannot diverge.
+    expect(BACK_SWIPE_SOURCE).toMatch(
+      /BACK_SWIPE_RESPONSE_DISTANCE = \{\s*end: BACK_SWIPE_EDGE_WIDTH,?\s*\}/,
+    )
+  })
+
+  it("feeds the same width to the scrubber's decline guard", () => {
+    const controls = fs.readFileSync(
+      path.join(
+        __dirname,
+        "..",
+        "..",
+        "src",
+        "components",
+        "watch",
+        "PlayerControls.tsx",
+      ),
+      "utf8",
+    )
+    // Fullscreen cannot pop, so it keeps the full-width bar; inline yields the
+    // strip. A literal here instead of the constant is the drift this catches.
+    expect(controls).toContain(
+      "edgeGuardWidth={fullscreen ? 0 : BACK_SWIPE_EDGE_WIDTH}",
+    )
+    const scrubber = fs.readFileSync(
+      path.join(
+        __dirname,
+        "..",
+        "..",
+        "src",
+        "components",
+        "watch",
+        "Scrubber.tsx",
+      ),
+      "utf8",
+    )
+    // Both responder gates must decline, not just the start gate: a move-phase
+    // capture would still steal a drag that began inside the strip.
+    expect(scrubber).toContain(
+      "mayStartScrub(e.nativeEvent.pageX, edgeGuardRef.current)",
+    )
+    // The move gate must read a RECORDED origin. PanResponder assigns
+    // gestureState.x0 only at grant, so it is 0 in the move-capture phase and
+    // `mayStartScrub(g.x0, ...)` would be a constant, not an origin test.
+    expect(scrubber).toContain(
+      "mayStartScrub(touchStartXRef.current, edgeGuardRef.current)",
+    )
+    expect(scrubber).toContain("touchStartXRef.current = e.nativeEvent.pageX")
+    expect(scrubber).not.toContain("mayStartScrub(g.x0")
+  })
 })

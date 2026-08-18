@@ -14,6 +14,7 @@ import { VideoAirPlayButton, type VideoPlayer } from "expo-video"
 import { useEvent } from "expo"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 
+import { BACK_SWIPE_EDGE_WIDTH } from "../../lib/backSwipe"
 import {
   BLACK,
   SURFACE_COLOR,
@@ -342,6 +343,9 @@ export function PlayerControls({
       onSeek={handleSeek}
       onScrubChange={handleScrubChange}
       flush={!fullscreen}
+      // Fullscreen disables the pop entirely, so the bar keeps its full width
+      // there; inline it yields the strip the back-swipe owns.
+      edgeGuardWidth={fullscreen ? 0 : BACK_SWIPE_EDGE_WIDTH}
     />
   )
 

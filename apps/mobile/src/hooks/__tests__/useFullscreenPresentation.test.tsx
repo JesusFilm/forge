@@ -16,9 +16,10 @@
  * consults only that stack's own top screen. Every `gestureEnabled` write must
  * therefore land on BOTH the screen and its parent — the parent write is the
  * load-bearing one; a self-only write is inert against the dismissing pop.
- * `setBackSwipeHeld` holds the gesture while the player chrome (the scrubber)
- * is mounted: the native recognizer claims a touch at delivery, before JS runs,
- * so the hold must be in place before the scrub touch starts.
+ * The gesture is disabled ONLY for fullscreen. The scrubber-vs-pop conflict is
+ * settled by geometry instead (the scrubber declines touches starting in the
+ * strip the pop owns, src/lib/backSwipe.ts), because a chrome-driven hold also
+ * disabled the back-swipe whenever the video was merely paused.
  *
  * apps/mobile's tsconfig maps `react` to its .d.ts and jest-expo mirrors
  * tsconfig paths into jest's moduleNameMapper, so the mocks below re-point
@@ -164,72 +165,12 @@ describe("useFullscreenPresentation back-swipe gating", () => {
     })
   })
 
-  it("holds the gesture on both navigators while the chrome hold is active", async () => {
-    const renderer = await renderHarness()
-    jest.clearAllMocks()
-
-    await act(async () => {
-      api?.setBackSwipeHeld(true)
-    })
-
-    expect(mockSetOptions).toHaveBeenCalledWith({ gestureEnabled: false })
-    expect(mockParentSetOptions).toHaveBeenCalledWith({ gestureEnabled: false })
-    // The hold must not touch orientation — the screen stays portrait.
-    expect(mockSetOptions).not.toHaveBeenCalledWith(
-      expect.objectContaining({ orientation: "landscape_right" }),
-    )
-    expect(enterFullscreenLandscape).not.toHaveBeenCalled()
-
-    jest.clearAllMocks()
-    await act(async () => {
-      api?.setBackSwipeHeld(false)
-    })
-
-    expect(mockSetOptions).toHaveBeenCalledWith({ gestureEnabled: true })
-    expect(mockParentSetOptions).toHaveBeenCalledWith({ gestureEnabled: true })
-    await act(async () => {
-      renderer.unmount()
-    })
-  })
-
-  it("keeps the gesture disabled until BOTH fullscreen and the hold release", async () => {
-    const renderer = await renderHarness()
-
-    await act(async () => {
-      api?.setBackSwipeHeld(true)
-    })
-    await act(async () => {
-      api?.toggleFullscreen()
-    })
-
-    // Exit fullscreen while the chrome hold is still active: stays disabled.
-    jest.clearAllMocks()
-    await act(async () => {
-      api?.toggleFullscreen()
-    })
-    expect(mockSetOptions).not.toHaveBeenCalledWith(
-      expect.objectContaining({ gestureEnabled: true }),
-    )
-    expect(mockParentSetOptions).not.toHaveBeenCalledWith(
-      expect.objectContaining({ gestureEnabled: true }),
-    )
-
-    await act(async () => {
-      api?.setBackSwipeHeld(false)
-    })
-    expect(mockSetOptions).toHaveBeenCalledWith({ gestureEnabled: true })
-    expect(mockParentSetOptions).toHaveBeenCalledWith({ gestureEnabled: true })
-    await act(async () => {
-      renderer.unmount()
-    })
-  })
-
   it("skips writes while unfocused and re-asserts current state on focus", async () => {
     mockFocused = false
     const renderer = await renderHarness()
 
     await act(async () => {
-      api?.setBackSwipeHeld(true)
+      api?.toggleFullscreen()
     })
     expect(mockSetOptions).not.toHaveBeenCalledWith(
       expect.objectContaining({ gestureEnabled: expect.anything() }),
@@ -243,6 +184,25 @@ describe("useFullscreenPresentation back-swipe gating", () => {
     })
     expect(mockSetOptions).toHaveBeenCalledWith({ gestureEnabled: false })
     expect(mockParentSetOptions).toHaveBeenCalledWith({ gestureEnabled: false })
+    await act(async () => {
+      renderer.unmount()
+    })
+  })
+
+  it("leaves the gesture ENABLED whenever the player is not fullscreen", async () => {
+    // Regression guard for the paused-video trap: a chrome-driven hold once
+    // disabled the pop for the screen's whole life, because the chrome never
+    // auto-hides while paused. Only fullscreen may disable it now.
+    const renderer = await renderHarness()
+
+    expect(mockSetOptions).toHaveBeenCalledWith({ gestureEnabled: true })
+    expect(mockParentSetOptions).toHaveBeenCalledWith({ gestureEnabled: true })
+    expect(mockSetOptions).not.toHaveBeenCalledWith({ gestureEnabled: false })
+    // The hook exposes no other way to disable it.
+    expect(Object.keys(api ?? {}).sort()).toEqual([
+      "isFullscreen",
+      "toggleFullscreen",
+    ])
     await act(async () => {
       renderer.unmount()
     })

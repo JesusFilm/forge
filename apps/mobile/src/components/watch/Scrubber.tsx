@@ -14,6 +14,7 @@ import {
   applySkip,
   clamp,
   fractionToTime,
+  mayStartScrub,
   progressFraction,
   thumbOutputRange,
 } from "../../lib/scrubber"
@@ -34,6 +35,10 @@ type ScrubberProps = {
    *  screen at 0% and 100%. The two move together — a bottom-aligned track with
    *  centered thumb travel is not a state this component supports. */
   flush?: boolean
+  /** Width (px from the screen's left edge) the OS back-swipe owns. A touch
+   *  starting inside it is declined so a page-dismiss drag is never half-read
+   *  as a scrub. 0 where no pop can start (fullscreen). See lib/backSwipe.ts. */
+  edgeGuardWidth?: number
 }
 
 const THUMB = 14
@@ -51,6 +56,7 @@ export function Scrubber({
   onSeek,
   onScrubChange,
   flush = false,
+  edgeGuardWidth = 0,
 }: ScrubberProps) {
   const containerRef = useRef<View>(null)
   const trackRef = useRef({ x: 0, width: 0 })
@@ -70,6 +76,15 @@ export function Scrubber({
   // current values instead of the closure captured on first render.
   const durationRef = useRef(duration)
   durationRef.current = duration
+  // Read at gesture time, not closure-captured: the PanResponder is built once
+  // but the guard width changes with fullscreen.
+  const edgeGuardRef = useRef(edgeGuardWidth)
+  edgeGuardRef.current = edgeGuardWidth
+  // Where the current touch began, in screen coordinates. PanResponder's
+  // gestureState.x0 is only assigned at GRANT and is 0 before then, so the
+  // move-phase gate — which runs precisely while nothing has granted — cannot
+  // use it to tell where the finger started.
+  const touchStartXRef = useRef(0)
   const onSeekRef = useRef(onSeek)
   onSeekRef.current = onSeek
   const onScrubChangeRef = useRef(onScrubChange)
@@ -111,13 +126,24 @@ export function Scrubber({
 
   const pan = useRef(
     PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
+      // Observer only: records the origin for the move gate below. Returning
+      // true here would capture every touch on the player.
+      onStartShouldSetPanResponderCapture: (e: GestureResponderEvent) => {
+        touchStartXRef.current = e.nativeEvent.pageX
+        return false
+      },
+      onStartShouldSetPanResponder: (e: GestureResponderEvent) =>
+        mayStartScrub(e.nativeEvent.pageX, edgeGuardRef.current),
       // Only capture once the gesture is clearly horizontal, so a vertical
-      // swipe scrolls the page instead of scrubbing.
+      // swipe scrolls the page instead of scrubbing — and never for a drag
+      // that began in the strip the back-swipe owns.
       onMoveShouldSetPanResponderCapture: (
         _e: GestureResponderEvent,
         g: PanResponderGestureState,
-      ) => Math.abs(g.dx) > Math.abs(g.dy) && Math.abs(g.dx) > 2,
+      ) =>
+        mayStartScrub(touchStartXRef.current, edgeGuardRef.current) &&
+        Math.abs(g.dx) > Math.abs(g.dy) &&
+        Math.abs(g.dx) > 2,
       onPanResponderGrant: (
         _e: GestureResponderEvent,
         g: PanResponderGestureState,

@@ -59,8 +59,7 @@ export default function SeriesScreen() {
   const decodedSlug = slug ? decodeURIComponent(slug) : ""
 
   const router = useRouter()
-  const { isFullscreen, toggleFullscreen, setBackSwipeHeld } =
-    useFullscreenPresentation()
+  const { isFullscreen, toggleFullscreen } = useFullscreenPresentation()
   const typography = useTypography()
   const insets = useSafeAreaInsets()
 
@@ -425,7 +424,6 @@ export default function SeriesScreen() {
             posterUrl={displayPoster}
             fullscreen={isFullscreen}
             onToggleFullscreen={toggleFullscreen}
-            onChromeMountedChange={setBackSwipeHeld}
             autostart
           />
         </View>

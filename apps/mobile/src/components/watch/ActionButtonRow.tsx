@@ -1,9 +1,27 @@
 import { useState } from "react"
-import { Pressable, StyleSheet, Text, View } from "react-native"
+import {
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+  type StyleProp,
+  type TextStyle,
+} from "react-native"
 import Ionicons from "@expo/vector-icons/Ionicons"
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons"
 
-import { actionRowSpacerWidths } from "../../lib/actionRowSpacing"
+import {
+  ACTION_ROW_PILL_GAP,
+  DIVIDER_MARGIN_LEFT,
+  DIVIDER_WIDTH,
+  ICON_BUTTON_WIDTH,
+  ICON_HIT_SLOP_MAX,
+  ROW_PADDING_H,
+  ROW_PADDING_LEFT,
+  ROW_PADDING_RIGHT,
+  actionRowSpacerWidths,
+  iconInnerSlop,
+} from "../../lib/actionRowSpacing"
 import { BG_COLOR, TEXT_PRIMARY, TEXT_SECONDARY } from "../../lib/color"
 import { feedback } from "../../styles/shared"
 import { useTypography } from "../../hooks/useTypography"
@@ -16,12 +34,40 @@ const DIVIDER_COLOR = "rgba(255, 255, 255, 0.12)"
 const CHIP_BG = "rgba(255, 255, 255, 0.07)"
 // Full-radius pill sentinel; clamps to half the height so it stays a pill.
 const PILL_RADIUS = 999
-// The icon buttons draw 34pt wide; the slop restores the 44pt accessible tap
-// width (34 + 5 + 5).
-const ICON_HIT_SLOP = { left: 5, right: 5 }
-// Row paddingLeft (16) + paddingRight (8); the spacing decision needs the
-// inner width.
-const ROW_PADDING_H = 24
+
+/**
+ * The icon + label inside a language/subtitle pill. Shared by the invisible
+ * measurement probe and the real Pressable so the probe can never measure a
+ * pill the user does not see.
+ */
+function PillContent({
+  kind,
+  label,
+  color,
+  textStyle,
+}: {
+  kind: "language" | "subtitle"
+  label: string
+  color: string
+  textStyle: StyleProp<TextStyle>
+}) {
+  return (
+    <>
+      {kind === "language" ? (
+        <Ionicons name="globe-outline" size={21} color={color} />
+      ) : (
+        <MaterialCommunityIcons
+          name="closed-caption-outline"
+          size={21}
+          color={color}
+        />
+      )}
+      <Text style={textStyle} numberOfLines={1}>
+        {label}
+      </Text>
+    </>
+  )
+}
 
 export interface ActionButtonRowProps {
   onDownload: () => void
@@ -64,6 +110,11 @@ export function ActionButtonRow({
     langNatural,
     subNatural,
   })
+  // Outer side keeps the full slop; the inner side yields to the neighbour so
+  // the two 44pt-ideal touch rects never overlap at the compact floor.
+  const inner = iconInnerSlop(spacers.betweenIcons)
+  const downloadSlop = { left: ICON_HIT_SLOP_MAX, right: inner }
+  const shareSlop = { left: inner, right: ICON_HIT_SLOP_MAX }
 
   const language = languageLabel?.trim() || "Language"
   const subtitle = subtitleLabel?.trim() || "Subtitles"
@@ -110,24 +161,24 @@ export function ActionButtonRow({
           collapsable={false}
           onLayout={(e) => setLangNatural(e.nativeEvent.layout.width)}
         >
-          <Ionicons name="globe-outline" size={21} color={TEXT_SECONDARY} />
-          <Text style={[styles.langText, typography.body]} numberOfLines={1}>
-            {language}
-          </Text>
+          <PillContent
+            kind="language"
+            label={language}
+            color={TEXT_SECONDARY}
+            textStyle={[styles.langText, typography.body]}
+          />
         </View>
         <View
           style={[styles.langRow, styles.probePill]}
           collapsable={false}
           onLayout={(e) => setSubNatural(e.nativeEvent.layout.width)}
         >
-          <MaterialCommunityIcons
-            name="closed-caption-outline"
-            size={21}
+          <PillContent
+            kind="subtitle"
+            label={subtitle}
             color={subColor}
+            textStyle={[styles.langText, typography.body]}
           />
-          <Text style={[styles.langText, typography.body]} numberOfLines={1}>
-            {subtitle}
-          </Text>
         </View>
       </View>
 
@@ -140,13 +191,16 @@ export function ActionButtonRow({
           accessibilityRole="button"
           accessibilityLabel={`Language, ${language}`}
         >
-          <Ionicons name="globe-outline" size={21} color={TEXT_SECONDARY} />
-          <Text
-            style={[styles.langText, typography.body, { color: TEXT_PRIMARY }]}
-            numberOfLines={1}
-          >
-            {language}
-          </Text>
+          <PillContent
+            kind="language"
+            label={language}
+            color={TEXT_SECONDARY}
+            textStyle={[
+              styles.langText,
+              typography.body,
+              { color: TEXT_PRIMARY },
+            ]}
+          />
         </Pressable>
         <Pressable
           onPress={onSubtitles}
@@ -154,17 +208,12 @@ export function ActionButtonRow({
           accessibilityRole="button"
           accessibilityLabel={`Subtitles, ${subtitle}`}
         >
-          <MaterialCommunityIcons
-            name="closed-caption-outline"
-            size={21}
+          <PillContent
+            kind="subtitle"
+            label={subtitle}
             color={subColor}
+            textStyle={[styles.langText, typography.body, { color: subColor }]}
           />
-          <Text
-            style={[styles.langText, typography.body, { color: subColor }]}
-            numberOfLines={1}
-          >
-            {subtitle}
-          </Text>
         </Pressable>
       </View>
 
@@ -180,7 +229,7 @@ export function ActionButtonRow({
           styles.iconButton,
           pressed && feedback.pressed,
         ]}
-        hitSlop={ICON_HIT_SLOP}
+        hitSlop={downloadSlop}
         accessibilityRole="button"
         accessibilityLabel={downloadA11y}
       >
@@ -206,7 +255,7 @@ export function ActionButtonRow({
           styles.iconButton,
           pressed && feedback.pressed,
         ]}
-        hitSlop={ICON_HIT_SLOP}
+        hitSlop={shareSlop}
         accessibilityRole="button"
         accessibilityLabel="Share"
       >
@@ -221,8 +270,8 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: "row",
     alignItems: "center",
-    paddingLeft: 16,
-    paddingRight: 8,
+    paddingLeft: ROW_PADDING_LEFT,
+    paddingRight: ROW_PADDING_RIGHT,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: "rgba(255, 255, 255, 0.1)",
     marginTop: 4,
@@ -238,7 +287,7 @@ const styles = StyleSheet.create({
     flexWrap: "wrap",
     alignItems: "center",
     rowGap: 10,
-    columnGap: 8,
+    columnGap: ACTION_ROW_PILL_GAP,
   },
   langRow: {
     flexDirection: "row",
@@ -259,11 +308,11 @@ const styles = StyleSheet.create({
     fontFamily: "System",
   },
   divider: {
-    width: 1,
+    width: DIVIDER_WIDTH,
     // Match the pill group's height whether it's one line or wrapped to two.
     alignSelf: "stretch",
     marginVertical: 4,
-    marginLeft: 16,
+    marginLeft: DIVIDER_MARGIN_LEFT,
     backgroundColor: DIVIDER_COLOR,
   },
   probe: {
@@ -281,11 +330,11 @@ const styles = StyleSheet.create({
     maxWidth: 10000,
   },
   iconButton: {
-    // 34pt visual, 44pt tappable via ICON_HIT_SLOP on both Pressables.
-    width: 34,
+    // Visual width comes from the spacing model so the two cannot drift.
+    width: ICON_BUTTON_WIDTH,
     height: 44,
     alignItems: "center",
     justifyContent: "center",
-    borderRadius: 17,
+    borderRadius: ICON_BUTTON_WIDTH / 2,
   },
 })

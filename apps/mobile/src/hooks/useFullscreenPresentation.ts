@@ -6,13 +6,12 @@ import { enterFullscreenLandscape, exitToPortrait } from "../lib/orientation"
 
 /**
  * The fullscreen apparatus the watch + series screens share (todo 014):
- * orientation lock, iOS back-swipe gating (fullscreen + chrome hold), Android
- * back, foreground re-lock, and the unmount portrait net.
+ * orientation lock, iOS back-swipe gating, Android back, foreground re-lock,
+ * and the unmount portrait net.
  */
 export function useFullscreenPresentation() {
   const navigation = useNavigation()
   const [isFullscreen, setIsFullscreen] = useState(false)
-  const [backSwipeHeld, setBackSwipeHeld] = useState(false)
   const toggleFullscreen = useCallback(() => setIsFullscreen((v) => !v), [])
 
   // MUST name the same single orientation as enterFullscreenLandscape's
@@ -26,10 +25,10 @@ export function useFullscreenPresentation() {
     else void exitToPortrait()
   }, [isFullscreen, navigation])
 
-  // Back-swipe off while fullscreen (can't pop mid-fullscreen) or while the
-  // player chrome is up — a rightward scrub on the seek bar is the same touch
-  // the native pop recognizer claims, and it claims it before JS ever runs.
-  const gestureEnabled = !isFullscreen && !backSwipeHeld
+  // Back-swipe off while fullscreen — the route cannot pop mid-fullscreen.
+  // Inline it stays ON: the scrubber yields the edge strip instead of racing
+  // the recognizer (src/lib/backSwipe.ts), so no chrome-driven hold is needed.
+  const gestureEnabled = !isFullscreen
   useEffect(() => {
     const apply = () => {
       navigation.setOptions({ gestureEnabled })
@@ -38,8 +37,8 @@ export function useFullscreenPresentation() {
       // screen — a self-only write is inert against it.
       navigation.getParent()?.setOptions({ gestureEnabled })
     }
-    // Focus-gated: a covered screen's chrome timers must not clobber the top
-    // screen's options; the focus event replays this screen's truth on return.
+    // Focus-gated: a covered screen must not clobber the top screen's options;
+    // the focus event replays this screen's truth on return.
     if (navigation.isFocused()) apply()
     return navigation.addListener("focus", apply)
   }, [gestureEnabled, navigation])
@@ -70,5 +69,5 @@ export function useFullscreenPresentation() {
     }
   }, [])
 
-  return { isFullscreen, toggleFullscreen, setBackSwipeHeld }
+  return { isFullscreen, toggleFullscreen }
 }

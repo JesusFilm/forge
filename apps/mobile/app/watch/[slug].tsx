@@ -111,8 +111,7 @@ export default function WatchVideoPage() {
   } = useDownloads()
   const [showScrollTop, setShowScrollTop] = useState(false)
   const scrollTopOpacity = useRef(new Animated.Value(0)).current
-  const { isFullscreen, toggleFullscreen, setBackSwipeHeld } =
-    useFullscreenPresentation()
+  const { isFullscreen, toggleFullscreen } = useFullscreenPresentation()
   const insets = useSafeAreaInsets()
   // Honor reduce-motion for the scroll-to-top FAB, the way the player's
   // chrome/subtitles already do — snap instead of fading.
@@ -651,7 +650,6 @@ export default function WatchVideoPage() {
             onPlayingChange={undefined}
             fullscreen={isFullscreen}
             onToggleFullscreen={toggleFullscreen}
-            onChromeMountedChange={setBackSwipeHeld}
             cast={{
               playback: cast,
               onCastPress: handleCastPress,

@@ -1,8 +1,8 @@
 /**
- * Ended → poster overlay (2026-08-18): reaching the end must not leave the
- * player on a (often black) last frame under the Replay chrome. SOURCE-SHAPE
- * assertions (apps/mobile has no component-render harness, KTD11): they pin
- * the wiring, not runtime behaviour.
+ * VideoPlayer's ended-poster RENDER SITE. The state machine itself is covered
+ * behaviourally in src/hooks/__tests__/useEndedPosterFade.test.tsx; this file
+ * only pins the wiring that a hook test cannot see, because apps/mobile has no
+ * render harness for VideoPlayer itself (KTD11).
  */
 
 declare const __dirname: string
@@ -14,34 +14,30 @@ declare const require: (moduleName: string) => {
 const fs = require("node:fs")
 const path = require("node:path")
 
-const SOURCE = fs.readFileSync(
+const PLAYER = fs.readFileSync(
   path.join(__dirname, "..", "VideoPlayer.tsx"),
   "utf8",
 )
 
-describe("VideoPlayer ended poster", () => {
-  it("latches ended on playToEnd and clears it when playback resumes", () => {
-    expect(SOURCE).toContain(
-      'player.addListener("playToEnd", () => setEnded(true))',
+describe("VideoPlayer ended poster rendering", () => {
+  it("takes both values from the hook, keeping no local copy", () => {
+    expect(PLAYER).toContain(
+      "const { ended, posterFade } = useEndedPosterFade(player, isPlaying)",
     )
-    expect(SOURCE).toContain("if (isPlaying) setEnded(false)")
+    // A second source of truth here would drift from the hook's latch.
+    expect(PLAYER).not.toMatch(/const \[ended, setEnded\]/)
   })
 
-  it("drops the poster when a paused seek leaves the end", () => {
-    // Scrub/skip while ended emits no playingChange — only the position
-    // watcher can release the overlay.
-    expect(SOURCE).toContain("player.currentTime < d - 0.5")
-  })
-
-  it("reuses the poster layer for the ended state, with a cross-fade", () => {
-    expect(SOURCE).toContain(
+  it("reuses the one poster layer for the ended state", () => {
+    expect(PLAYER).toContain(
       "(!hasStarted || castRemoteActive || ended) && resolvedPoster != null",
     )
-    // The fade is an OWNED Animated opacity: expo-image's `transition` is
-    // skipped for a memory-cached source, so it cannot carry the cross-fade.
-    expect(SOURCE).toContain("posterFade.setValue(0)")
-    expect(SOURCE).toContain("Animated.timing(posterFade")
-    expect(SOURCE).toContain("{ opacity: posterFade }")
-    expect(SOURCE).not.toContain("transition={")
+    expect(PLAYER).toContain("{ opacity: posterFade }")
+  })
+
+  it("does not fall back to expo-image's own transition", () => {
+    // It is skipped for a memory-cached source, and the pre-start render has
+    // already cached this exact poster — which is why the fade is owned.
+    expect(PLAYER).not.toContain("transition={")
   })
 })

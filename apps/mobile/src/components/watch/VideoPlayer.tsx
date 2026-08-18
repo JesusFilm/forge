@@ -36,6 +36,7 @@ import {
   type SeekSide,
 } from "../../lib/tapSeek"
 import { useControlsVisibility } from "../../hooks/useControlsVisibility"
+import { useEndedPosterFade } from "../../hooks/useEndedPosterFade"
 import type { CastPlayback } from "../../hooks/useCastPlayback"
 import type { CastMedia } from "../../lib/cast/castMediaResolver"
 import { isExternalRouteActive } from "../../lib/externalRoute"
@@ -76,10 +77,6 @@ type VideoPlayerProps = {
   fullscreen?: boolean
   /** Toggle fullscreen (fired by the fullscreen control). */
   onToggleFullscreen?: () => void
-  /** Per-side horizontal inset the parent applies to the inline player, so the
-   *  16:9 height is computed from the reduced width (no letterbox). Ignored in
-   *  fullscreen. Default 0. */
-  horizontalInset?: number
   /** Progress-recording identity (KTD5). Absent = no recording (hero-safe). */
   progressIdentity?: ProgressIdentity | null
   /** Resume-eligible position (KTD6). When set, the player seeks here by
@@ -89,10 +86,6 @@ type VideoPlayerProps = {
    *  site: this player also backs the series-detail trailer dock, so an
    *  implicit default would autoplay surfaces that never asked for it. */
   autostart?: boolean
-  /** Reports whether the transport chrome (which hosts the scrubber) is
-   *  mounted, so the route can hold the iOS back-swipe while a horizontal
-   *  scrub is possible — the hold must precede the scrub touch. */
-  onChromeMountedChange?: (mounted: boolean) => void
   /** The screen-owned cast wiring (KTD4); null on surfaces without cast. */
   cast?: VideoPlayerCast | null
 }
@@ -119,12 +112,10 @@ export function VideoPlayer({
   onPlayingChange,
   fullscreen = false,
   onToggleFullscreen,
-  horizontalInset = 0,
   progressIdentity = null,
   resumeAtSeconds = null,
   autostart = false,
   cast = null,
-  onChromeMountedChange,
 }: VideoPlayerProps) {
   const castPlayback = cast?.playback ?? null
   const onCastPress = cast?.onCastPress ?? null
@@ -151,9 +142,7 @@ export function VideoPlayer({
   const streamingUrlRef = useRef(streamingUrl)
   streamingUrlRef.current = streamingUrl
   const resolvedPoster = resolveImageUrl(posterUrl)
-  const playerHeight = Math.round(
-    (screenWidth - horizontalInset * 2) * PLAYER_HEIGHT_RATIO,
-  )
+  const playerHeight = Math.round(screenWidth * PLAYER_HEIGHT_RATIO)
 
   // Player lifecycle (frozen source, replaceAsync swap, AppState, unmount
   // pause) lives in the shared adapter (todo 016); this component owns the
@@ -200,53 +189,8 @@ export function VideoPlayer({
     onPlayingChange?.(isPlaying)
   }, [isPlaying, hasStarted, onPlayingChange])
 
-  // Ended → the poster overlay covers the (often black) last frame until
-  // playback resumes or a seek moves away from the end.
-  const [ended, setEnded] = useState(false)
-  // Own the ended cross-fade: expo-image's `transition` is skipped for a
-  // memory-cached source (the pre-start render already cached the poster),
-  // so the fade must be an Animated opacity.
-  const posterFade = useRef(new Animated.Value(1)).current
-  useEffect(() => {
-    if (!ended) {
-      // Solid for the pre-start/cast poster states.
-      posterFade.setValue(1)
-      return
-    }
-    posterFade.setValue(0)
-    const anim = Animated.timing(posterFade, {
-      toValue: 1,
-      duration: 300,
-      useNativeDriver: true,
-    })
-    anim.start()
-    return () => anim.stop()
-  }, [ended, posterFade])
-  useEffect(() => {
-    const sub = player.addListener("playToEnd", () => setEnded(true))
-    return () => {
-      try {
-        sub.remove()
-      } catch {
-        // player already released
-      }
-    }
-  }, [player])
-  useEffect(() => {
-    if (isPlaying) setEnded(false)
-  }, [isPlaying])
-  // A scrub/skip while ended stays paused (no playingChange), so watch the
-  // position while ended and drop the poster once it leaves the end.
-  useEffect(() => {
-    if (!ended) return
-    const t = setInterval(() => {
-      const d = player.duration
-      if (Number.isFinite(d) && d > 0 && player.currentTime < d - 0.5) {
-        setEnded(false)
-      }
-    }, 500)
-    return () => clearInterval(t)
-  }, [ended, player])
+  // Ended-playback poster (covers the often-black last frame under Replay).
+  const { ended, posterFade } = useEndedPosterFade(player, isPlaying)
 
   // Both release the pre-autostart chrome suppression below. Without them a
   // viewer whose playback never starts is stranded on a spinner with no
@@ -349,16 +293,8 @@ export function VideoPlayer({
 
   const controls = useControlsVisibility(player)
 
-  // One expression for the chrome render gates below AND the route's
-  // back-swipe hold, so the two can never drift.
+  // One expression for both chrome render gates below, so they can't drift.
   const chromeMounted = controls.mounted && !awaitingAutostart
-  const onChromeMountedChangeRef = useRef(onChromeMountedChange)
-  onChromeMountedChangeRef.current = onChromeMountedChange
-  useEffect(() => {
-    onChromeMountedChangeRef.current?.(chromeMounted)
-  }, [chromeMounted])
-  // Release the hold if the player unmounts while its chrome is still up.
-  useEffect(() => () => onChromeMountedChangeRef.current?.(false), [])
 
   // Tap disambiguation (U4): single tap toggles chrome (revealed on press-in
   // so it never lags, KTD3); second tap within DOUBLE_TAP_MS seeks the tapped
