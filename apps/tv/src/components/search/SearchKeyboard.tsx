@@ -17,9 +17,9 @@ type Props = {
   value: string
   onChange: (next: string) => void
   onSubmit: () => void
-  /** Renders the mic key and receives its press — the availability decision
-   *  (speech recognizer present) stays with the caller, keeping this pure. */
-  onMicPress?: () => void
+  /** Fires when ANY key gains focus — the screen uses it to know D-pad focus
+   *  left the results region (Back should pop, not re-park on the mic). */
+  onKeyFocus?: () => void
 }
 
 /**
@@ -31,23 +31,18 @@ export function SearchKeyboard({
   value,
   onChange,
   onSubmit,
-  onMicPress,
+  onKeyFocus,
 }: Props) {
   // Lowercase default; persistent caps-lock-style toggle. Only future presses
   // are affected — already-typed characters in `value` stay as they were.
   const [isShifted, setIsShifted] = useState(false)
 
-  const includeMicKey = onMicPress != null
   const letterRows = useMemo(() => buildLetterRows(isShifted), [isShifted])
-  const actionRow = useMemo(
-    () => buildActionRow(isShifted, includeMicKey),
-    [isShifted, includeMicKey],
-  )
+  const actionRow = useMemo(() => buildActionRow(isShifted), [isShifted])
 
   // Thin caller over applyKey (tested pure reducer): shift toggles case, submit
-  // fires onSubmit, mic starts voice capture, value-mutating actions forward
-  // their non-null next to onChange. Guarded no-ops (space/backspace on empty)
-  // return null and fall through.
+  // fires onSubmit, value-mutating actions forward their non-null next to onChange.
+  // Guarded no-ops (space/backspace on empty) return null and fall through.
   const dispatch = (action: KeyAction) => {
     if (action.kind === "shift") {
       setIsShifted((prev) => !prev)
@@ -55,10 +50,6 @@ export function SearchKeyboard({
     }
     if (action.kind === "submit") {
       onSubmit()
-      return
-    }
-    if (action.kind === "mic") {
-      onMicPress?.()
       return
     }
     const next = applyKey(value, action)
@@ -85,6 +76,7 @@ export function SearchKeyboard({
               // leaves focus on the last-pressed key.
               hasTVPreferredFocus={rowIdx === 0 && colIdx === 0}
               onPress={() => dispatch(cell.action)}
+              onFocusIn={onKeyFocus}
               dims={GRID_KEY_DIMS}
             />
           ))}
@@ -98,6 +90,7 @@ export function SearchKeyboard({
             cell={cell}
             hasTVPreferredFocus={false}
             onPress={() => dispatch(cell.action)}
+            onFocusIn={onKeyFocus}
             dims={GRID_KEY_DIMS}
           />
         ))}

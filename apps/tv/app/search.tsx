@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { Platform, StyleSheet, Text, View } from "react-native"
+import { BackHandler, Platform, StyleSheet, Text, View } from "react-native"
 import type { View as ViewType } from "react-native"
-import { useRouter } from "expo-router"
+import { useLocalSearchParams, useRouter } from "expo-router"
 import {
   isNativeSearchAvailable,
   TvosSearchView,
@@ -15,6 +15,7 @@ import {
   toNativeSearchResults,
 } from "../src/components/search/nativeSearchResults"
 import { searchResultPath } from "../src/components/search/searchResultPath"
+import { VoiceSearchButton } from "../src/components/search/VoiceSearchButton"
 import { WATCH_THEME } from "../src/components/watch/watchDetailTheme"
 import { SearchBrowse } from "../src/components/search/SearchBrowse"
 import { resolveSearchMeta } from "../src/components/search/searchDisplay"
@@ -78,8 +79,54 @@ export default function SearchScreen() {
   // Android TV voice search: partial/final transcripts write through the SAME
   // sanitize chokepoint as typed keys, then ride the normal debounce → search
   // path. `available` is false everywhere the recognizer doesn't exist (Apple
-  // TV, emulators without Google speech services), which hides the mic key.
+  // TV, emulators without Google speech services), which hides the mic button.
   const voice = useVoiceSearch(setSanitizedQuery)
+
+  // ── Back-from-results choreography (Android) ── Back with focus in the
+  // results region re-parks focus on the mic button (fast repeat searches);
+  // Back from the keyboard/search-bar region pops the screen as usual. The
+  // region flag flips on card focus vs key/mic focus — refs, not state, so
+  // D-pad traversal never re-renders the screen.
+  const resultsRegionFocusedRef = useRef(false)
+  const handleCardFocus = useCallback(() => {
+    resultsRegionFocusedRef.current = true
+  }, [])
+  const handleEntryRegionFocus = useCallback(() => {
+    resultsRegionFocusedRef.current = false
+  }, [])
+  // react-native-tvos host nodes expose requestTVFocus() (absent from the
+  // bundled View type) — same local cast as focusMemory.ts.
+  const micNodeRef = useRef<
+    (ViewType & { requestTVFocus?: () => void }) | null
+  >(null)
+  const setMicNode = useCallback((node: ViewType | null) => {
+    micNodeRef.current = node
+  }, [])
+  const voiceListeningRef = useRef(false)
+  voiceListeningRef.current = voice.listening
+  const voiceCancelRef = useRef(voice.cancel)
+  voiceCancelRef.current = voice.cancel
+  useEffect(() => {
+    if (Platform.OS !== "android") return
+    const handler = () => {
+      // Back during a voice session aborts the session, nothing else.
+      if (voiceListeningRef.current) {
+        voiceCancelRef.current()
+        return true
+      }
+      if (resultsRegionFocusedRef.current) {
+        resultsRegionFocusedRef.current = false
+        micNodeRef.current?.requestTVFocus?.()
+        return true
+      }
+      return false
+    }
+    const subscription = BackHandler.addEventListener(
+      "hardwareBackPress",
+      handler,
+    )
+    return () => subscription.remove()
+  }, [])
 
   // Recent / Category click runs a fresh search immediately, bypassing the 900ms
   // debounce. Thread the sanitized value through runQuery directly: submit() closes
@@ -92,6 +139,21 @@ export default function SearchScreen() {
     },
     [runQuery],
   )
+
+  // Google Assistant app-search ("search for X on Jesus Film Watch"): the
+  // intent bridge routes here with ?q=<spoken text>. Run it immediately —
+  // runQueryImmediate sanitizes at the write site like every other source.
+  // The ref keeps a re-render (or focus re-entry) from re-firing the same
+  // spoken query after the user has moved on.
+  const { q } = useLocalSearchParams<{ q?: string }>()
+  const lastAssistantQueryRef = useRef<string | null>(null)
+  useEffect(() => {
+    const incoming = typeof q === "string" ? q : undefined
+    if (incoming == null || incoming.trim().length === 0) return
+    if (lastAssistantQueryRef.current === incoming) return
+    lastAssistantQueryRef.current = incoming
+    runQueryImmediate(incoming)
+  }, [q, runQueryImmediate])
 
   // Under the min length the browse view stays mounted (no blank/stale pane);
   // the SAME gate the debounce path uses, so results appear exactly when search
@@ -112,7 +174,8 @@ export default function SearchScreen() {
     onClearHistory: clearAll,
     recents,
     onRetry: retry,
-    onVoicePress: voice.available ? voice.start : undefined,
+    onKeyFocus: handleEntryRegionFocus,
+    onCardFocus: handleCardFocus,
   }
 
   // Apple TV: native SwiftUI .searchable surface (expo-tvos-search) — the ONLY
@@ -135,7 +198,17 @@ export default function SearchScreen() {
   return (
     <View style={styles.screen}>
       <View style={styles.queryLine}>
-        <QueryDisplay value={query} />
+        {voice.available ? (
+          <VoiceSearchButton
+            listening={voice.listening}
+            onPress={voice.start}
+            onFocusIn={handleEntryRegionFocus}
+            nodeRef={setMicNode}
+          />
+        ) : null}
+        <View style={styles.queryDisplayWrap}>
+          <QueryDisplay value={query} />
+        </View>
         {voice.listening ? (
           <Text style={styles.listeningHint}>Listening…</Text>
         ) : null}
@@ -217,9 +290,10 @@ type SearchBodyProps = {
   onClearHistory: () => void
   recents: string[]
   onRetry: () => void
-  /** Set only when a speech recognizer exists (Android TV) — renders the grid
-   *  keyboard's mic key and starts a voice session on press. */
-  onVoicePress?: () => void
+  /** Screen-level focus-region signals: keyboard keys report "entry region",
+   *  result cards report "results region" — Back consults the flag. */
+  onKeyFocus?: () => void
+  onCardFocus?: () => void
 }
 
 /**
@@ -238,6 +312,7 @@ function SearchResultsPane({
   onRunQuery,
   onClearHistory,
   onRetry,
+  onCardFocus,
   columns,
   topRowFocusUp,
   browseFullBleed,
@@ -261,6 +336,7 @@ function SearchResultsPane({
             columns={columns}
             onRetry={onRetry}
             topRowFocusUp={topRowFocusUp}
+            onCardFocus={onCardFocus}
           />
         ) : (
           <SearchBrowse
@@ -290,7 +366,7 @@ function SearchBodyTwoPane(props: SearchBodyProps) {
           value={props.query}
           onChange={props.onChangeQuery}
           onSubmit={props.onSubmit}
-          onMicPress={props.onVoicePress}
+          onKeyFocus={props.onKeyFocus}
         />
       </View>
       <View style={styles.resultsPane}>
@@ -356,12 +432,15 @@ const styles = StyleSheet.create({
   // Design .s-query: padding 78px 0 (horizontal comes from screen).
   queryLine: {
     paddingTop: scale(78),
-    // Row so the voice "Listening…" hint right-aligns beside the query text
-    // (QueryDisplay's text flexShrinks, so a long query yields room instead of
-    // pushing the hint off-canvas).
+    // Row: mic button (left) · query text (flex) · "Listening…" hint (right).
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
+    gap: scale(24),
+  },
+  // Flexes so a long query yields room instead of pushing the hint off-canvas
+  // (QueryDisplay's own text already flexShrinks inside).
+  queryDisplayWrap: {
+    flex: 1,
   },
   listeningHint: {
     fontFamily: "System",

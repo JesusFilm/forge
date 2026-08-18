@@ -25,6 +25,8 @@ type UseVoiceSearchResult = {
   listening: boolean
   /** Ask permission if needed, then begin one listening session. */
   start: () => void
+  /** Abort the in-flight session (Back while listening). Safe when idle. */
+  cancel: () => void
 }
 
 export function useVoiceSearch(
@@ -86,5 +88,10 @@ export function useVoiceSearch(
     })
   }, [available])
 
-  return { available, listening, start }
+  const cancel = useCallback(() => {
+    void cancelListening()
+    setListening(false)
+  }, [])
+
+  return { available, listening, start, cancel }
 }

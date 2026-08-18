@@ -13,7 +13,6 @@ export type KeyAction =
   | { kind: "backspace" }
   | { kind: "submit" }
   | { kind: "shift" }
-  | { kind: "mic" }
 
 export type KeyCell = {
   /**
@@ -102,28 +101,13 @@ export function buildLetterRows(
 }
 
 /**
- * The action row: shift toggle · space (wide) · delete · search, plus a voice
- * key when the device has a speech recognizer (`includeMicKey` — Android TV
- * only; Apple TV's dictation lives in the native search surface instead). Shift
- * shows the case it switches TO (iOS/tvOS convention) and is a persistent
- * caps-lock toggle, easier on a D-pad. Submit (⏎) fires
- * useSemanticSearch.submit(), skipping debounce.
+ * The action row: shift toggle · space (wide) · delete · search. Shift shows the
+ * case it switches TO (iOS/tvOS convention) and is a persistent caps-lock toggle,
+ * easier on a D-pad. Submit (⏎) fires useSemanticSearch.submit(), skipping
+ * debounce. Voice search deliberately lives OUTSIDE the keyboard — the mic is
+ * VoiceSearchButton at the left of the search bar.
  */
-export function buildActionRow(
-  isShifted: boolean,
-  includeMicKey: boolean = false,
-): KeyCell[] {
-  const micKey: KeyCell[] = includeMicKey
-    ? [
-        {
-          id: "mic",
-          // Rendered as an Ionicons mic-outline glyph in the component.
-          label: "",
-          action: { kind: "mic" },
-          accessibilityLabel: "Voice search",
-        },
-      ]
-    : []
+export function buildActionRow(isShifted: boolean): KeyCell[] {
   return [
     {
       id: "shift",
@@ -153,7 +137,6 @@ export function buildActionRow(
       action: { kind: "submit" },
       accessibilityLabel: "Search",
     },
-    ...micKey,
   ]
 }
 
@@ -184,9 +167,6 @@ export function applyKey(value: string, action: KeyAction): string | null {
     case "submit":
       return null
     case "shift":
-      return null
-    case "mic":
-      // Voice capture is the keyboard component's side effect, not a text edit.
       return null
     default: {
       // Compile-time exhaustiveness check: a future KeyAction variant errors

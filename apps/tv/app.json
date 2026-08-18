@@ -53,6 +53,7 @@
         }
       ],
       "./plugins/withTVInfoPlistFixes",
+      "./plugins/withAssistantSearchIntent",
       "expo-secure-store"
     ],
     "extra": {
