@@ -20,6 +20,7 @@
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -77,8 +78,17 @@ import { FloatingBackButton } from "../ui/FloatingBackButton"
 import { MiniPlayerWindow } from "./MiniPlayerWindow"
 import { VideoPlayer } from "./VideoPlayer"
 
-/** KTD17's shrink: fixed duration, started when the pop commits. */
-export const SHRINK_DURATION_MS = 260
+/** KTD17's shrink: fixed duration, started when the pop commits. Distinct
+ *  from ENDED_FADE_DURATION_MS (320) so a timing is attributable by duration. */
+export const SHRINK_DURATION_MS = 340
+
+/** KTD17 in reverse: the expanded surface grows out of its corner back into
+ *  the player rect — the same interpolation as the shrink, never a jump. */
+export const EXPAND_DURATION_MS = 300
+
+/** The settled window's reveal after the shrink (the layer hides through the
+ *  shrink itself — see the transition effect). */
+export const WINDOW_FADE_IN_MS = 100
 
 /** R6's downward exit. */
 export const EXIT_DURATION_MS = 220
@@ -490,20 +500,33 @@ function ActivePlaybackHost({
   )
 
   // KTD5: the drag writes THIS node and never takes the native driver; the
-  // shrink and the exit write the wrapper below it and always do.
+  // shrink, the exit and the settle fade write the wrapper below it and
+  // always do.
   const drag = useRef(new Animated.ValueXY({ x: 0, y: 0 })).current
   const shrink = useRef(new Animated.Value(1)).current
   const exitY = useRef(new Animated.Value(0)).current
+  // The whole window layer is INVISIBLE through the shrink and fades in only
+  // once it settles: the native driver attaches transforms after the commit
+  // paints, so on device the corner box could flash the untransformed video
+  // before the shrink even started. Connected from mount, so the hide lands
+  // with the first frame.
+  const windowFade = useRef(new Animated.Value(1)).current
 
   const [corner, setCorner] = useState<MiniPlayerCorner>(DEFAULT_CORNER)
   const cornerRef = useRef(corner)
   cornerRef.current = corner
-  const [shrinkFrom, setShrinkFrom] = useState<PlaybackRect | null>(null)
+  // The one in-flight frame transition (KTD17): the shrink toward the corner
+  // and the expand back out of it are the same interpolation, ends swapped.
+  const [motion, setMotion] = useState<{
+    from: PlaybackRect
+    to: PlaybackRect
+  } | null>(null)
   const [chromeReady, setChromeReady] = useState(true)
   const [surfaceReleased, setSurfaceReleased] = useState(false)
   const lastRectRef = useRef<PlaybackRect | null>(null)
   const chromeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const shrinkAnimRef = useRef<Animated.CompositeAnimation | null>(null)
+  const fadeAnimRef = useRef<Animated.CompositeAnimation | null>(null)
 
   useEffect(() => {
     return () => {
@@ -512,31 +535,91 @@ function ActivePlaybackHost({
   }, [])
 
   // One effect owns the drag node's resting offset, so a rotation, a handover
-  // and a shrink can never race each other over the same value.
-  useEffect(() => {
-    // Whatever this run decides, an earlier shrink may not keep animating into
-    // it: an uncancelled one paints a stale corner-bound transform under a
-    // re-entered full view, and its completion callback fires out of turn.
+  // and a transition can never race each other over the same value.
+  //
+  // A LAYOUT effect: a passive effect runs after the commit paints, so the
+  // frame's first painted frame at its new geometry carried NO transform — one
+  // visible flash of the video already mini-sized inside the corner box before
+  // the shrink even started. The motion state must land before that paint.
+  useLayoutEffect(() => {
+    // Whatever this run decides, an earlier transition may not keep animating
+    // into it: an uncancelled one paints a stale transform under the new
+    // state, and its completion callback fires out of turn.
     shrinkAnimRef.current?.stop()
     shrinkAnimRef.current = null
-    const clearShrink = () => {
+    fadeAnimRef.current?.stop()
+    fadeAnimRef.current = null
+    const clearMotion = () => {
       if (chromeTimerRef.current != null) {
         clearTimeout(chromeTimerRef.current)
         chromeTimerRef.current = null
       }
-      setShrinkFrom(null)
+      windowFade.setValue(1)
+      setMotion(null)
       setChromeReady(true)
     }
+    const runMotion = (
+      from: PlaybackRect,
+      to: PlaybackRect,
+      durationMs: number,
+      onSettled?: () => void,
+    ) => {
+      let settled = false
+      const settle = () => {
+        if (settled) return
+        settled = true
+        if (chromeTimerRef.current != null) {
+          clearTimeout(chromeTimerRef.current)
+          chromeTimerRef.current = null
+        }
+        setMotion(null)
+        setChromeReady(true)
+        onSettled?.()
+      }
+      setMotion({ from, to })
+      shrink.setValue(0)
+      const animation = Animated.timing(shrink, {
+        toValue: 1,
+        duration: durationMs,
+        useNativeDriver: true,
+      })
+      shrinkAnimRef.current = animation
+      animation.start(({ finished }) => {
+        if (shrinkAnimRef.current === animation) shrinkAnimRef.current = null
+        // A stop is a supersession: the run that stopped it owns the state.
+        if (!finished) return
+        settle()
+      })
+      if (chromeTimerRef.current != null) clearTimeout(chromeTimerRef.current)
+      chromeTimerRef.current = setTimeout(() => {
+        // The unconditional release: a driver that never reports back would
+        // strand a mid-transition scale — and an invisible window — forever.
+        settle()
+      }, durationMs + CHROME_RELEASE_SLACK_MS)
+    }
     if (rect != null) {
+      // A rect arriving over a live session is the expand (R4): the surface
+      // grows from the corner it occupied back into the player rect — the
+      // shrink in reverse, never a blink into place.
+      const grow = lastRectRef.current == null && hasSession
       lastRectRef.current = rect
-      clearShrink()
       drag.setValue({ x: 0, y: 0 })
+      if (grow) {
+        windowFade.setValue(1)
+        runMotion(
+          miniPlayerCornerFrame(layoutConfig, cornerRef.current),
+          rect,
+          EXPAND_DURATION_MS,
+        )
+      } else {
+        clearMotion()
+      }
       return
     }
     const from = lastRectRef.current
     lastRectRef.current = null
     if (from == null || !hasSession) {
-      clearShrink()
+      clearMotion()
       const target = miniPlayerCornerFrame(layoutConfig, cornerRef.current)
       drag.setValue({
         x: target.x - windowFrame.x,
@@ -545,33 +628,32 @@ function ActivePlaybackHost({
       return
     }
     // A new window opens in the default corner, which is also what makes the
-    // shrink arithmetic exact: there is no drag offset to subtract.
+    // shrink arithmetic exact: there is no drag offset to subtract. The layer
+    // hides for the whole shrink and fades in only once it settles — the
+    // native driver attaches transforms after the paint, so on device the
+    // corner box could otherwise flash the untransformed video first.
     setCorner(DEFAULT_CORNER)
     drag.setValue({ x: 0, y: 0 })
-    setShrinkFrom(from)
     setChromeReady(false)
-    shrink.setValue(0)
-    const animation = Animated.timing(shrink, {
-      toValue: 1,
-      duration: SHRINK_DURATION_MS,
-      useNativeDriver: true,
+    windowFade.setValue(0)
+    runMotion(from, windowFrame, SHRINK_DURATION_MS, () => {
+      const fade = Animated.timing(windowFade, {
+        toValue: 1,
+        duration: WINDOW_FADE_IN_MS,
+        useNativeDriver: true,
+      })
+      fadeAnimRef.current = fade
+      fade.start(() => {
+        if (fadeAnimRef.current === fade) fadeAnimRef.current = null
+      })
+      // The fade's own unconditional release: a driver that never reports
+      // back must not strand an invisible window. The settle freed this ref.
+      chromeTimerRef.current = setTimeout(
+        () => windowFade.setValue(1),
+        WINDOW_FADE_IN_MS + CHROME_RELEASE_SLACK_MS,
+      )
     })
-    shrinkAnimRef.current = animation
-    animation.start(({ finished }) => {
-      if (shrinkAnimRef.current === animation) shrinkAnimRef.current = null
-      // A stop is a supersession: the run that stopped it owns the state.
-      if (!finished) return
-      setShrinkFrom(null)
-      setChromeReady(true)
-    })
-    if (chromeTimerRef.current != null) clearTimeout(chromeTimerRef.current)
-    chromeTimerRef.current = setTimeout(() => {
-      // The unconditional release also drops the transform: a driver that
-      // never reports back would strand a mid-shrink scale forever.
-      setChromeReady(true)
-      setShrinkFrom(null)
-    }, SHRINK_DURATION_MS + CHROME_RELEASE_SLACK_MS)
-  }, [rect, hasSession, layoutConfig, windowFrame, drag, shrink])
+  }, [rect, hasSession, layoutConfig, windowFrame, drag, shrink, windowFade])
 
   useEffect(() => {
     if (presentation !== "exiting") {
@@ -728,25 +810,25 @@ function ActivePlaybackHost({
   const drawsFrame = drawsSurface || (showWindow && session != null)
 
   // Both rects share the video's aspect ratio, so this is translate plus scale
-  // only (KTD17).
-  const shrinkStyle = useMemo(() => {
-    if (shrinkFrom == null) return null
+  // only (KTD17) — the same ramp carries the shrink and the expand.
+  const motionStyle = useMemo(() => {
+    if (motion == null) return null
     const half = (r: PlaybackRect) => ({
       x: r.x + r.width / 2,
       y: r.y + r.height / 2,
     })
-    const from = half(shrinkFrom)
-    const to = half(windowFrame)
+    const from = half(motion.from)
+    const to = half(motion.to)
     const ramp = (a: number, b: number) =>
       shrink.interpolate({ inputRange: [0, 1], outputRange: [a, b] })
     return {
       transform: [
         { translateX: ramp(from.x - to.x, 0) },
         { translateY: ramp(from.y - to.y, 0) },
-        { scale: ramp(shrinkFrom.width / windowFrame.width, 1) },
+        { scale: ramp(motion.from.width / motion.to.width, 1) },
       ],
     }
-  }, [shrink, shrinkFrom, windowFrame])
+  }, [shrink, motion])
 
   // Armed only while this video actually runs, so pressing Home over a paused
   // video opens no window — and kept armed through the hold, because expo-video
@@ -776,9 +858,11 @@ function ActivePlaybackHost({
               width: geometry.width,
               height: geometry.height,
             },
-            // The shrink draws the video larger than this box, so it cannot clip
-            // until the window has settled into its corner.
-            shrinkFrom != null && styles.unclipped,
+            // The shrink draws the video larger than this box, so it cannot
+            // clip until the transition has settled into its target — and the
+            // box paints NOTHING of its own mid-flight: an instant black
+            // window at the corner would front-run the arriving video.
+            motion != null && styles.inMotion,
             floating && chromeReady && styles.rounded,
             suppressed && styles.suppressed,
             { transform: [{ translateX: drag.x }, { translateY: drag.y }] },
@@ -790,13 +874,15 @@ function ActivePlaybackHost({
             testID="playback-exit"
             style={[
               StyleSheet.absoluteFill,
-              { transform: [{ translateY: exitY }] },
+              // Same native-driven node as the exit: the settle fade may not
+              // ride the drag node (KTD5 forbids mixing drivers there).
+              { transform: [{ translateY: exitY }], opacity: windowFade },
             ]}
             pointerEvents="box-none"
           >
             <Animated.View
               testID="playback-motion"
-              style={[StyleSheet.absoluteFill, shrinkStyle]}
+              style={[StyleSheet.absoluteFill, motionStyle]}
               pointerEvents="box-none"
             >
               {/* R24: the ended fade's completion callback survives the chrome
@@ -889,8 +975,9 @@ const styles = StyleSheet.create({
     backgroundColor: BLACK,
     overflow: "hidden",
   },
-  unclipped: {
+  inMotion: {
     overflow: "visible",
+    backgroundColor: "transparent",
   },
   rounded: {
     borderRadius: 10,

@@ -141,7 +141,10 @@ import { Animated, Dimensions, StyleSheet } from "react-native"
 import { ENDED_FADE_DURATION_MS } from "../MiniPlayerWindow"
 import {
   EXIT_DURATION_MS,
+  EXPAND_DURATION_MS,
   PlaybackHost,
+  SHRINK_DURATION_MS,
+  WINDOW_FADE_IN_MS,
   shouldDrawSurface,
 } from "../PlaybackHost"
 import { miniPlayerCornerFrame } from "../../../lib/miniPlayer/layout"
@@ -352,6 +355,19 @@ function exitTranslation(renderer: TestInstance) {
   return value
 }
 
+/** The window layer's settle fade, read off the node the exit also drives. */
+function windowFadeValue(renderer: TestInstance) {
+  const node = renderer.root.findAll(
+    (n) => n.props.testID === "playback-exit",
+  )[0]
+  const style = StyleSheet.flatten(node.props.style) as {
+    opacity?: { __getValue: () => number }
+  }
+  const value = style.opacity
+  if (value == null) throw new Error("no fade on the window layer")
+  return value.__getValue()
+}
+
 function frameStyle(renderer: TestInstance) {
   const frame = renderer.root.findAll(
     (node) => node.props.testID === "playback-frame",
@@ -359,6 +375,7 @@ function frameStyle(renderer: TestInstance) {
   return StyleSheet.flatten(frame.props.style) as {
     opacity?: number
     overflow?: string
+    backgroundColor?: string
   }
 }
 
@@ -1337,26 +1354,75 @@ describe("the ended session after an expand (R21, R27)", () => {
   })
 })
 
-describe("the shrink into the corner (KTD17)", () => {
-  it("drops a mid-flight shrink the moment a full view takes the rect back", async () => {
+describe("the frame transition (KTD17: shrink and its reverse)", () => {
+  it("turns a mid-flight shrink around into a grow when the full view returns", async () => {
     jest.useFakeTimers()
     const first = attachSlot()
     const renderer = await renderHost()
     await startPlayback()
     // A silent driver holds the shrink mid-flight, as a busy UI thread can.
-    jest.spyOn(Animated, "timing").mockReturnValue({
+    const timingSpy = jest.spyOn(Animated, "timing").mockReturnValue({
       start: () => {},
       stop: () => {},
       reset: () => {},
     } as never)
     await detach(first)
-    // Mid-shrink the frame is unclipped so the video may overdraw its box.
+    // Mid-shrink the frame is unclipped so the video may overdraw its box —
+    // and paints nothing of its own: an instant black corner box (or the
+    // untransformed video inside it) would front-run the arriving surface.
     expect(frameStyle(renderer).overflow).toBe("visible")
+    expect(frameStyle(renderer).backgroundColor).toBe("transparent")
+    // The whole window layer hides through the shrink (the native driver
+    // attaches transforms after the paint — the device flash this kills).
+    expect(windowFadeValue(renderer)).toBe(0)
+    timingSpy.mockClear()
 
     // Fast back-then-forward: the full view owns the rect again while the
-    // shrink never completed. Its transform may not linger under the screen.
+    // shrink never completed — the surface turns around and grows, visibly.
     await attachSlotInAct()
 
+    const growCall = timingSpy.mock.calls.find(
+      ([, config]) =>
+        (config as { duration?: number }).duration === EXPAND_DURATION_MS,
+    )
+    expect(growCall).toBeDefined()
+    expect(windowFadeValue(renderer)).toBe(1)
+    // The frame already sits at the rect; the transform carries the motion.
+    expect(frameStyle(renderer)).toMatchObject({ left: RECT.x, top: RECT.y })
+  })
+
+  it("grows out of the corner on expand, and settles clipped at the rect", async () => {
+    jest.useFakeTimers()
+    const first = attachSlot()
+    const renderer = await renderHost()
+    await startPlayback()
+    await detach(first)
+    // Hidden through the shrink; the 0.1s reveal runs only once it settles.
+    expect(windowFadeValue(renderer)).toBe(0)
+    await act(async () => {
+      jest.advanceTimersByTime(SHRINK_DURATION_MS + 300)
+    })
+    await act(async () => {
+      jest.advanceTimersByTime(WINDOW_FADE_IN_MS + 300)
+    })
+    // The settled window: shrink done, transform released, box painting
+    // again, layer revealed.
+    expect(frameStyle(renderer).overflow).toBe("hidden")
+    expect(frameStyle(renderer).backgroundColor).not.toBe("transparent")
+    expect(windowFadeValue(renderer)).toBe(1)
+    expect(sessionStore.getSnapshot().session).not.toBeNull()
+
+    // The expand: the remounted screen measures its rect.
+    await attachSlotInAct()
+
+    // In flight: the frame is the full rect, the motion node still carries
+    // the corner-anchored transform — a blink into place is the regression.
+    expect(frameStyle(renderer).overflow).toBe("visible")
+    expect(frameStyle(renderer)).toMatchObject({ left: RECT.x, top: RECT.y })
+
+    await act(async () => {
+      jest.advanceTimersByTime(EXPAND_DURATION_MS + 300)
+    })
     expect(frameStyle(renderer).overflow).toBe("hidden")
   })
 })
