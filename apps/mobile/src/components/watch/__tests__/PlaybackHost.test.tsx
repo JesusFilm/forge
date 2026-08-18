@@ -145,6 +145,7 @@ import {
   EXPAND_DURATION_MS,
   EXPAND_HOLD_TIMEOUT_MS,
   PlaybackHost,
+  REPOSITION_DURATION_MS,
   SHRINK_DURATION_MS,
   shouldDrawSurface,
 } from "../PlaybackHost"
@@ -1538,14 +1539,27 @@ describe("the expand hold (R4: the push re-derives the corner chrome)", () => {
     return renderer
   }
 
-  it("re-aims at the live corner when the route changes without a tap", async () => {
+  it("glides to the re-derived corner when navigation changes the chrome", async () => {
     const renderer = await floatAtTabRoot()
     const topAtTabRoot = frameVisualTop(renderer)
+    const timingSpy = jest.spyOn(Animated, "timing")
 
-    await setSegments(renderer, ["watch", "[slug]"])
+    // A push to a tab-bar-less screen (series page, mission page) frees the
+    // corner's reserved height. The move must ride a from-anchored motion:
+    // the first committed frame still paints at the old corner — no teleport.
+    await setSegments(renderer, ["series", "[slug]"])
+    expect(frameVisualTop(renderer)).toBe(topAtTabRoot)
+    const glideCall = timingSpy.mock.calls.find(
+      ([, config]) =>
+        (config as { duration?: number }).duration === REPOSITION_DURATION_MS,
+    )
+    expect(glideCall).toBeDefined()
 
-    // The tab bar left with the route, so the corner frame reclaims its
-    // height — plain navigation keeps following the live chrome (R7).
+    // The glide settles at the live corner — navigation still follows the
+    // chrome (R7), it just gets there smoothly.
+    await act(async () => {
+      jest.advanceTimersByTime(REPOSITION_DURATION_MS + 300)
+    })
     expect(frameVisualTop(renderer)).toBeGreaterThan(topAtTabRoot)
   })
 
@@ -1593,6 +1607,9 @@ describe("the expand hold (R4: the push re-derives the corner chrome)", () => {
     // The expand never completed. A later navigation re-derives the corner
     // from the LIVE chrome; the dead tap must not pin the window forever.
     await setSegments(renderer, ["video", "[sectionKey]"])
+    await act(async () => {
+      jest.advanceTimersByTime(REPOSITION_DURATION_MS + 300)
+    })
     expect(frameVisualTop(renderer)).toBeGreaterThan(topAtTabRoot)
   })
 })

@@ -91,6 +91,11 @@ export const EXPAND_DURATION_MS = 300
  *  chrome; a hold this old is a failed navigation and re-follows live chrome. */
 export const EXPAND_HOLD_TIMEOUT_MS = 2000
 
+/** A chrome change while the window rests (a push hides the tab bar, a pop
+ *  restores it) glides the window to its re-derived corner — never a teleport.
+ *  Distinct from every other duration for test attribution. */
+export const REPOSITION_DURATION_MS = 260
+
 /** R6's downward exit. */
 export const EXIT_DURATION_MS = 220
 
@@ -535,7 +540,7 @@ function ActivePlaybackHost({
   // driver attaches transforms after a commit paints, so the untransformed
   // first frame renders AT the anchor — anchoring at the end the viewer is
   // already looking at is what makes the start of a transition flash-proof.
-  // The shrink anchors at `from` (the player rect); the expand at `to` (ditto).
+  // The shrink and the reposition glide anchor at `from`; the expand at `to`.
   const [motion, setMotion] = useState<{
     from: PlaybackRect
     to: PlaybackRect
@@ -553,6 +558,10 @@ function ActivePlaybackHost({
   // at once and the corner re-derives lower. The pin must ride the COMMITTED
   // geometry — an Animated catch-up lands after the commit paints (Fabric).
   const expandHoldRef = useRef<ExpandHold | null>(null)
+  // The rest the window last settled into (base frame + drag offset), so a
+  // chrome re-derivation can glide from it instead of teleporting.
+  const restingBaseRef = useRef<MiniPlayerFrame | null>(null)
+  const restingDragRef = useRef<{ x: number; y: number } | null>(null)
 
   useEffect(() => {
     return () => {
@@ -658,12 +667,13 @@ function ActivePlaybackHost({
         expandHoldRef.current = null
         clearMotion()
       }
+      restingBaseRef.current = null
+      restingDragRef.current = null
       return
     }
     const from = lastRectRef.current
     lastRectRef.current = null
     if (from == null || !hasSession) {
-      clearMotion()
       // Mid-expand the destination's chrome is already live, so the corner
       // frame sits below the window the viewer is watching. The drag stays
       // relative to whichever base frame the render pinned.
@@ -673,10 +683,28 @@ function ActivePlaybackHost({
         hold?.cornerFrame ??
         miniPlayerCornerFrame(layoutConfig, cornerRef.current)
       const base = hold?.windowFrame ?? windowFrame
-      drag.setValue({
-        x: target.x - base.x,
-        y: target.y - base.y,
-      })
+      const dragTarget = { x: target.x - base.x, y: target.y - base.y }
+      const previousBase = restingBaseRef.current
+      const previousDrag = restingDragRef.current
+      restingBaseRef.current = hasSession ? base : null
+      restingDragRef.current = hasSession ? dragTarget : null
+      drag.setValue(dragTarget)
+      // A chrome change under an unchanged drag glides the resting window to
+      // its re-derived corner on the native ramp — never a teleport. Every
+      // other arrival here (new float, live hold, post-drag) lands directly.
+      const glide =
+        hold == null &&
+        hasSession &&
+        previousBase != null &&
+        previousDrag != null &&
+        (previousBase.x !== base.x || previousBase.y !== base.y) &&
+        previousDrag.x === dragTarget.x &&
+        previousDrag.y === dragTarget.y
+      if (glide) {
+        runMotion(previousBase, base, "from", REPOSITION_DURATION_MS)
+      } else {
+        clearMotion()
+      }
       return
     }
     // A new window opens in the default corner, which is also what makes the
@@ -687,6 +715,9 @@ function ActivePlaybackHost({
     drag.setValue({ x: 0, y: 0 })
     setChromeReady(false)
     runMotion(from, windowFrame, "from", SHRINK_DURATION_MS)
+    // The rest this settle leaves behind: later chrome changes glide from it.
+    restingBaseRef.current = windowFrame
+    restingDragRef.current = { x: 0, y: 0 }
   }, [rect, hasSession, layoutConfig, windowFrame, drag, shrink])
 
   useEffect(() => {
@@ -835,8 +866,10 @@ function ActivePlaybackHost({
 
   const handleCornerChange = useCallback((next: MiniPlayerCorner) => {
     // A drag supersedes the tap: a held frame would aim the grow at the
-    // corner the window just left.
+    // corner the window just left. The drag also animates independently
+    // here, so the next chrome change must land directly, not glide.
     expandHoldRef.current = null
+    restingDragRef.current = null
     setCorner(next)
   }, [])
 
