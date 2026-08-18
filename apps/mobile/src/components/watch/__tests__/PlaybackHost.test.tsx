@@ -69,6 +69,9 @@ jest.mock("expo-glass-effect", () => ({ GlassView: () => null }))
 // router-owning component. expo-router is never imported unmocked in this repo.
 // `push` is captured so the expand wiring is assertable end to end.
 const mockRouterPush = jest.fn()
+// Default: a route none of the presentation tables name, so a published
+// session floats. Reassigned + re-rendered by the expand-hold suite.
+let mockSegments: readonly string[] = []
 jest.mock("expo-router", () => ({
   useRouter: () => ({
     back: jest.fn(),
@@ -76,9 +79,7 @@ jest.mock("expo-router", () => ({
     replace: jest.fn(),
     push: mockRouterPush,
   }),
-  // A route none of the presentation tables name, so a published session
-  // floats. U7's own suite owns the window's behaviour there.
-  useSegments: () => [],
+  useSegments: () => mockSegments,
 }))
 jest.mock("@expo/vector-icons/Ionicons", () => ({
   __esModule: true,
@@ -142,6 +143,7 @@ import { ENDED_FADE_DURATION_MS } from "../MiniPlayerWindow"
 import {
   EXIT_DURATION_MS,
   EXPAND_DURATION_MS,
+  EXPAND_HOLD_TIMEOUT_MS,
   PlaybackHost,
   SHRINK_DURATION_MS,
   shouldDrawSurface,
@@ -380,6 +382,7 @@ beforeEach(() => {
   sessionStore.setPipHold(false)
   sessionStore.end("abandoned")
   mockRouterPush.mockClear()
+  mockSegments = []
 })
 
 afterEach(async () => {
@@ -1492,6 +1495,105 @@ describe("the expand wiring (R4)", () => {
     expect(mockRouterPush).toHaveBeenCalledWith(
       `/watch/${encodeURIComponent("día-1")}`,
     )
+  })
+})
+
+describe("the expand hold (R4: the push re-derives the corner chrome)", () => {
+  async function setSegments(
+    renderer: TestInstance,
+    segments: readonly string[],
+  ) {
+    mockSegments = segments
+    await act(async () => {
+      renderer.update(<PlaybackHost />)
+    })
+  }
+
+  /** The window's on-screen top edge: frame geometry plus the drag offset. */
+  function frameVisualTop(renderer: TestInstance) {
+    const style = frameStyle(renderer) as {
+      top?: number
+      transform?: Array<{ translateY?: { __getValue: () => number } }>
+    }
+    const dragY = style.transform?.find(
+      (entry) => entry.translateY != null,
+    )?.translateY
+    if (style.top == null || dragY == null)
+      throw new Error("no positioned frame")
+    return style.top + dragY.__getValue()
+  }
+
+  /** A settled floating window at a tab root, where the corner frame reserves
+   *  the tab bar's height. */
+  async function floatAtTabRoot() {
+    mockSegments = ["(tabs)"]
+    jest.useFakeTimers()
+    const id = attachSlot()
+    const renderer = await renderHost()
+    await startPlayback()
+    await detach(id)
+    await act(async () => {
+      jest.advanceTimersByTime(SHRINK_DURATION_MS + 300)
+    })
+    return renderer
+  }
+
+  it("re-aims at the live corner when the route changes without a tap", async () => {
+    const renderer = await floatAtTabRoot()
+    const topAtTabRoot = frameVisualTop(renderer)
+
+    await setSegments(renderer, ["watch", "[slug]"])
+
+    // The tab bar left with the route, so the corner frame reclaims its
+    // height — plain navigation keeps following the live chrome (R7).
+    expect(frameVisualTop(renderer)).toBeGreaterThan(topAtTabRoot)
+  })
+
+  it("holds the on-screen frame from the tap until the grow consumes it", async () => {
+    const renderer = await floatAtTabRoot()
+    const topAtTabRoot = frameVisualTop(renderer)
+
+    await act(async () => {
+      fireWindowAction(renderer, "activate")
+    })
+    expect(mockRouterPush).toHaveBeenCalled()
+    // The push leaves the tab root before the rect arrives. The window must
+    // not hop down to the tab-bar-less corner mid-expand — the device blink.
+    await setSegments(renderer, ["watch", "[slug]"])
+    expect(frameVisualTop(renderer)).toBe(topAtTabRoot)
+
+    // The rect arrives: the grow runs and the frame sits at the rect.
+    const timingSpy = jest.spyOn(Animated, "timing")
+    await attachSlotInAct()
+    const growCall = timingSpy.mock.calls.find(
+      ([, config]) =>
+        (config as { duration?: number }).duration === EXPAND_DURATION_MS,
+    )
+    expect(growCall).toBeDefined()
+    expect(frameStyle(renderer)).toMatchObject({ left: RECT.x, top: RECT.y })
+    await act(async () => {
+      jest.advanceTimersByTime(EXPAND_DURATION_MS + 300)
+    })
+    expect(frameStyle(renderer)).toMatchObject({ left: RECT.x, top: RECT.y })
+  })
+
+  it("drops a stale hold once the push window has passed", async () => {
+    const renderer = await floatAtTabRoot()
+    const topAtTabRoot = frameVisualTop(renderer)
+
+    await act(async () => {
+      fireWindowAction(renderer, "activate")
+    })
+    await setSegments(renderer, ["watch", "[slug]"])
+    expect(frameVisualTop(renderer)).toBe(topAtTabRoot)
+
+    await act(async () => {
+      jest.advanceTimersByTime(EXPAND_HOLD_TIMEOUT_MS + 100)
+    })
+    // The expand never completed. A later navigation re-derives the corner
+    // from the LIVE chrome; the dead tap must not pin the window forever.
+    await setSegments(renderer, ["video", "[sectionKey]"])
+    expect(frameVisualTop(renderer)).toBeGreaterThan(topAtTabRoot)
   })
 })
 

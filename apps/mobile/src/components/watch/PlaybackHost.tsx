@@ -46,6 +46,7 @@ import {
   defaultCornerFrame,
   miniPlayerCornerFrame,
   type MiniPlayerCorner,
+  type MiniPlayerFrame,
   type MiniPlayerLayoutConfig,
 } from "../../lib/miniPlayer/layout"
 import {
@@ -85,6 +86,10 @@ export const SHRINK_DURATION_MS = 340
 /** KTD17 in reverse: the expanded surface grows out of its corner back into
  *  the player rect — the same interpolation as the shrink, never a jump. */
 export const EXPAND_DURATION_MS = 300
+
+/** An expand tap pins the window's corner frame while the push re-derives the
+ *  chrome; a hold this old is a failed navigation and re-follows live chrome. */
+export const EXPAND_HOLD_TIMEOUT_MS = 2000
 
 /** R6's downward exit. */
 export const EXIT_DURATION_MS = 220
@@ -494,6 +499,8 @@ function ActivePlaybackHost({
     () => defaultCornerFrame(layoutConfig),
     [layoutConfig],
   )
+  const layoutConfigRef = useRef(layoutConfig)
+  layoutConfigRef.current = layoutConfig
 
   // KTD5: the drag writes THIS node and never takes the native driver; the
   // shrink and the exit write the wrapper below it and always do.
@@ -523,6 +530,12 @@ function ActivePlaybackHost({
   // The running motion's anchor, so an interruption can park the ramp at that
   // motion's identity end before its style detaches (see settle).
   const activeAnchorRef = useRef<"from" | "to">("to")
+  // R4's tap precedes the rect by a route push: the tab bar leaves the segments
+  // at once, the corner re-derives lower, and the resting window hopped down
+  // before the grow began. The tap pins the frame the viewer is watching.
+  const expandHoldRef = useRef<{ frame: MiniPlayerFrame; at: number } | null>(
+    null,
+  )
 
   useEffect(() => {
     return () => {
@@ -609,13 +622,18 @@ function ActivePlaybackHost({
       lastRectRef.current = rect
       drag.setValue({ x: 0, y: 0 })
       if (grow) {
+        // The grow starts where the window is RENDERED, which the tap's hold
+        // may have pinned above the live corner frame (see handleExpand).
+        const hold = expandHoldRef.current
+        expandHoldRef.current = null
         runMotion(
-          miniPlayerCornerFrame(layoutConfig, cornerRef.current),
+          hold?.frame ?? miniPlayerCornerFrame(layoutConfig, cornerRef.current),
           rect,
           "to",
           EXPAND_DURATION_MS,
         )
       } else {
+        expandHoldRef.current = null
         clearMotion()
       }
       return
@@ -624,7 +642,19 @@ function ActivePlaybackHost({
     lastRectRef.current = null
     if (from == null || !hasSession) {
       clearMotion()
-      const target = miniPlayerCornerFrame(layoutConfig, cornerRef.current)
+      const hold = expandHoldRef.current
+      if (
+        hold != null &&
+        (!hasSession || Date.now() - hold.at > EXPAND_HOLD_TIMEOUT_MS)
+      ) {
+        expandHoldRef.current = null
+      }
+      // Mid-expand the destination's chrome is already live, so the corner
+      // frame sits below the window the viewer is watching. Keep aiming at
+      // the held frame; the grow above consumes it as its start.
+      const target =
+        expandHoldRef.current?.frame ??
+        miniPlayerCornerFrame(layoutConfig, cornerRef.current)
       drag.setValue({
         x: target.x - windowFrame.x,
         y: target.y - windowFrame.y,
@@ -771,8 +801,22 @@ function ActivePlaybackHost({
 
   const handleExpand = useCallback(() => {
     const current = getMiniPlayerStore().getSnapshot().session
-    if (current != null) onExpand(current)
+    if (current == null) return
+    // The push drops the tab bar before the rect arrives, so the corner frame
+    // re-derives lower mid-expand. Pin the on-screen frame for the grow.
+    expandHoldRef.current = {
+      frame: miniPlayerCornerFrame(layoutConfigRef.current, cornerRef.current),
+      at: Date.now(),
+    }
+    onExpand(current)
   }, [onExpand])
+
+  const handleCornerChange = useCallback((next: MiniPlayerCorner) => {
+    // A drag supersedes the tap: a held frame would aim the grow at the
+    // corner the window just left.
+    expandHoldRef.current = null
+    setCorner(next)
+  }, [])
 
   const showWindow =
     hasSession && (presentation === "floating" || presentation === "exiting")
@@ -932,7 +976,7 @@ function ActivePlaybackHost({
                 layout={layoutConfig}
                 drag={drag}
                 corner={corner}
-                onCornerChange={setCorner}
+                onCornerChange={handleCornerChange}
                 title={session.title}
                 posterUrl={session.posterUrl}
                 positionSeconds={session.positionSeconds}

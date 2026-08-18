@@ -30,6 +30,7 @@ export type RenderedNode = {
 }
 export type TestInstance = {
   root: { findAll(predicate: (node: RenderedNode) => boolean): RenderedNode[] }
+  update(element: ReactElement): void
   unmount(): void
 }
 export type TestRendererModule = {
