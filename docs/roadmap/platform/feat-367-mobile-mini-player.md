@@ -223,3 +223,37 @@ while running the wrong branch. Run this worktree's Metro on its own port, run
 `adb reverse --remove tcp:8081`, and confirm `Starting project at <worktree
 path>` plus a fresh `Android Bundled` line before believing any result. Restore
 the reverse afterwards.
+
+## Follow-ups deferred from the third review round (2026-08-19)
+
+The round's three behaviour findings landed (`ab63f8080`, `20dda25d5`,
+`c2616984d`). These four were deliberately deferred:
+
+1. **Extract the frame-transition machinery** (the round's P1). `PlaybackHost.tsx`
+   was 896 lines at the round-2 checkpoint, 1096 at the round-3 review, and 1175
+   after these fixes. Move `sameRect`, `ExpandHold`, `liveExpandHold`, the motion
+   state, `motionRef`, the resting refs, `runRamp`/`runMotion`/`clearMotion`, the
+   transition layout effect, `motionStyle` and `geometry` into
+   `src/hooks/useMiniPlayerFrameTransition.ts`, mirroring the `resolvePlayerSource`
+   extraction. Deferred so the device pass on the three behaviour fixes stays
+   attributable — a 260-line move landing beside them makes a device regression
+   ambiguous. Its proof is the suite passing with no test edits beyond imports.
+   If a pure `decideFrameTransition` is extracted with it, it now needs `inFlight`
+   as an input and a fifth `reverse` kind, and the live-drag read must stay in the
+   applicator because it is not pure.
+2. **`WatchSessionProvider` stale-variant window.** On a watch-to-watch transition
+   inside the shared provider with the next record already cached, one committed
+   render still derives `activeVariant` from the previous video's index, because
+   the reset to null is an effect. `PlayerSlot` publishes every commit, so the
+   wrong dub URL can reach the host and kick a `replaceAsync` before the correcting
+   commit. Fix structurally: make the state `{ videoId, index } | null` and derive
+   `activeVariant` only when the id matches. Falsify with a cross-video test that
+   asserts `variantHistory` never contains the previous video's language.
+3. **The ended window still teleports on a reposition glide.** The glide now hides
+   the chrome, but the R21 ended thumbnail renders outside the `ready` gate. An
+   ended window has no live surface to glide, so it should not glide at all.
+4. **The `settleInto` snap races a layout change.** A chrome change inside
+   MiniPlayerWindow's 180ms snap leaves the drag animating toward a `toValue`
+   computed against the old frame. The glide's live-drag guard stops the glide
+   from compounding it; it does not fix the snap. The fix belongs in
+   `MiniPlayerWindow.tsx` — expose or stop the running settle.
