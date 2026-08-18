@@ -155,6 +155,7 @@ import {
   type MiniPlayerEndEvent,
 } from "../../../lib/miniPlayer/store"
 import type { ExpoVideoMock } from "../../../test-utils/expoVideoMock"
+import { FloatingBackButton } from "../../ui/FloatingBackButton"
 import {
   TestRenderer,
   type NodePath,
@@ -407,6 +408,29 @@ describe("the hoisted player drives the full view", () => {
 
     expect(hasVeil(renderer)).toBe(false)
     expect(videoViews(renderer)).toHaveLength(1)
+  })
+
+  it("shows the minimize chevron over a session surface, back over the trailer", async () => {
+    // The watch page's back press MINIMIZES the player into the window, so its
+    // affordance is a down chevron; the series trailer's back is plain
+    // navigation and keeps the back chevron.
+    const backButtonsIn = (renderer: TestInstance) =>
+      renderer.root.findAll(
+        (node) => (node as { type?: unknown }).type === FloatingBackButton,
+      )
+    attachSlot()
+    const renderer = await renderHost()
+    let buttons = backButtonsIn(renderer)
+    expect(buttons).toHaveLength(1)
+    expect(buttons[0].props.icon).toBe("chevron-down")
+
+    requestStore.reset()
+    await act(async () => {
+      attachSlot({ session: null, streamingUrl: URL_B })
+    })
+    buttons = backButtonsIn(renderer)
+    expect(buttons).toHaveLength(1)
+    expect(buttons[0].props.icon).toBe("chevron-back")
   })
 
   it("carries the screen's back affordance over the video, and drops it in fullscreen", async () => {

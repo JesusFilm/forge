@@ -870,9 +870,14 @@ function ActivePlaybackHost({
       {/* The screen's back affordance sits OVER the player, so it moves up with
           the video — outside the frame, so its safe-area maths still resolves
           against the window. Gated on the SAME predicate the screen drops its
-          own by (usePlaybackFrameVisible), or the measurement gap draws two. */}
+          own by (usePlaybackFrameVisible), or the measurement gap draws two.
+          A session-bearing surface minimizes on back, so it shows the down
+          chevron the screen's own button matches. */}
       {snapshot.slotId != null && rect != null && !request.fullscreen && (
-        <FloatingBackButton {...BACK_BUTTON_PROPS} />
+        <FloatingBackButton
+          {...BACK_BUTTON_PROPS}
+          icon={request.session != null ? "chevron-down" : "chevron-back"}
+        />
       )}
     </View>
   )

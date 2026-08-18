@@ -43,6 +43,7 @@ import { PlayerSlot } from "../../src/components/watch/PlayerSlot"
 import { useFullscreenPresentation } from "../../src/hooks/useFullscreenPresentation"
 import { usePlaybackFrameVisible } from "../../src/hooks/usePlaybackFrame"
 import { buildWatchShareUrl } from "../../src/lib/watchShareUrl"
+import { resolvePlayerSource } from "../../src/lib/playerSource"
 import { VideoDetailSkeleton } from "../../src/components/watch/VideoDetailSkeleton"
 import { WatchAmbient } from "../../src/components/watch/WatchAmbient"
 import { VideoMetadata } from "../../src/components/watch/VideoMetadata"
@@ -282,15 +283,17 @@ export default function WatchVideoPage() {
   const subtitleActive = subtitleEnabled && subtitlesAvailable
 
   // Prefer the resolved video; fall back to the seed so first paint has
-  // content. The player source resolves to the active variant, then the
-  // video's first-playable stream, then the seed-derived Mux URL.
+  // content. The source precedence (and why the record fallback waits for the
+  // dub selection to settle) lives in resolvePlayerSource.
   const displayTitle = video?.title ?? seed?.title ?? null
   const displayPoster = video?.posterUrl ?? seed?.imageUrl ?? null
-  const playerSource =
-    offlineSource ??
-    activeVariant?.hls ??
-    video?.streamingUrl ??
-    seedStreamingUrl
+  const playerSource = resolvePlayerSource({
+    offlineSource,
+    activeVariantHls: activeVariant?.hls ?? null,
+    variantSettled: activeVariant != null,
+    recordStreamingUrl: video?.streamingUrl ?? null,
+    seedStreamingUrl,
+  })
 
   const handleScroll = useCallback(
     (e: NativeSyntheticEvent<NativeScrollEvent>) => {
@@ -412,7 +415,7 @@ export default function WatchVideoPage() {
         {/* Match the loaded player's dock (top safe edge, full-bleed sides) so
             the player block doesn't jump when canonical data lands. */}
         <VideoDetailSkeleton playerTopInset={insets.top} />
-        <FloatingBackButton {...BACK_BUTTON_PROPS} />
+        <FloatingBackButton {...BACK_BUTTON_PROPS} icon="chevron-down" />
       </View>
     )
   }
@@ -439,7 +442,7 @@ export default function WatchVideoPage() {
             Retry
           </Text>
         </View>
-        <FloatingBackButton {...BACK_BUTTON_PROPS} />
+        <FloatingBackButton {...BACK_BUTTON_PROPS} icon="chevron-down" />
       </View>
     )
   }
@@ -675,7 +678,7 @@ export default function WatchVideoPage() {
           its own chrome there), and while the playback host draws over this
           dock: the host paints above the stack, so it renders this button. */}
       {!isFullscreen && !playerFrameVisible && (
-        <FloatingBackButton {...BACK_BUTTON_PROPS} />
+        <FloatingBackButton {...BACK_BUTTON_PROPS} icon="chevron-down" />
       )}
 
       {showScrollTop && (
