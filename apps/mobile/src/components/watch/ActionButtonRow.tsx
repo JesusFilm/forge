@@ -3,10 +3,7 @@ import { Pressable, StyleSheet, Text, View } from "react-native"
 import Ionicons from "@expo/vector-icons/Ionicons"
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons"
 
-import {
-  ACTION_ROW_SPACERS,
-  actionRowSpacingMode,
-} from "../../lib/actionRowSpacing"
+import { actionRowSpacerWidths } from "../../lib/actionRowSpacing"
 import { BG_COLOR, TEXT_PRIMARY, TEXT_SECONDARY } from "../../lib/color"
 import { feedback } from "../../styles/shared"
 import { useTypography } from "../../hooks/useTypography"
@@ -62,10 +59,11 @@ export function ActionButtonRow({
   const [rowInnerWidth, setRowInnerWidth] = useState<number | null>(null)
   const [langNatural, setLangNatural] = useState<number | null>(null)
   const [subNatural, setSubNatural] = useState<number | null>(null)
-  const spacers =
-    ACTION_ROW_SPACERS[
-      actionRowSpacingMode({ rowInnerWidth, langNatural, subNatural })
-    ]
+  const spacers = actionRowSpacerWidths({
+    rowInnerWidth,
+    langNatural,
+    subNatural,
+  })
 
   const language = languageLabel?.trim() || "Language"
   const subtitle = subtitleLabel?.trim() || "Subtitles"
@@ -172,8 +170,9 @@ export function ActionButtonRow({
 
       <View style={styles.divider} />
 
-      {/* Download + Share: whitespace comes from the measured spacing mode —
-          roomy until a long name benefits from the width (actionRowSpacing). */}
+      {/* Download + Share: whitespace comes from the measured, SCALAR spacing
+          model — the gaps shrink in proportion to how far the names outgrow
+          the roomy column (actionRowSpacing). */}
       <View style={{ width: spacers.dividerIcon }} />
       <Pressable
         onPress={onDownload}
