@@ -176,6 +176,7 @@ export default function SearchScreen() {
     onRetry: retry,
     onKeyFocus: handleEntryRegionFocus,
     onCardFocus: handleCardFocus,
+    micOwnsInitialFocus: voice.available,
   }
 
   // Apple TV: native SwiftUI .searchable surface (expo-tvos-search) — the ONLY
@@ -202,6 +203,8 @@ export default function SearchScreen() {
           <VoiceSearchButton
             listening={voice.listening}
             onPress={voice.start}
+            // The screen opens with the mic highlighted — voice-first entry.
+            hasTVPreferredFocus
             onFocusIn={handleEntryRegionFocus}
             nodeRef={setMicNode}
           />
@@ -294,6 +297,9 @@ type SearchBodyProps = {
    *  result cards report "results region" — Back consults the flag. */
   onKeyFocus?: () => void
   onCardFocus?: () => void
+  /** True when the mic button renders — it owns the screen's initial focus,
+   *  so the keyboard's first-letter claim must stand down. */
+  micOwnsInitialFocus?: boolean
 }
 
 /**
@@ -367,6 +373,7 @@ function SearchBodyTwoPane(props: SearchBodyProps) {
           onChange={props.onChangeQuery}
           onSubmit={props.onSubmit}
           onKeyFocus={props.onKeyFocus}
+          claimInitialFocus={!props.micOwnsInitialFocus}
         />
       </View>
       <View style={styles.resultsPane}>

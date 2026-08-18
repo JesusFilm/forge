@@ -20,6 +20,9 @@ type Props = {
   /** Fires when ANY key gains focus — the screen uses it to know D-pad focus
    *  left the results region (Back should pop, not re-park on the mic). */
   onKeyFocus?: () => void
+  /** First letter's one-shot mount claim. Default true; the screen passes
+   *  false when the mic button renders — the mic owns initial focus then. */
+  claimInitialFocus?: boolean
 }
 
 /**
@@ -32,6 +35,7 @@ export function SearchKeyboard({
   onChange,
   onSubmit,
   onKeyFocus,
+  claimInitialFocus = true,
 }: Props) {
   // Lowercase default; persistent caps-lock-style toggle. Only future presses
   // are affected — already-typed characters in `value` stay as they were.
@@ -74,7 +78,9 @@ export function SearchKeyboard({
               // One-shot focus claim on the first letter, position-based so the
               // case toggle doesn't move it. Only first mount; later typing
               // leaves focus on the last-pressed key.
-              hasTVPreferredFocus={rowIdx === 0 && colIdx === 0}
+              hasTVPreferredFocus={
+                claimInitialFocus && rowIdx === 0 && colIdx === 0
+              }
               onPress={() => dispatch(cell.action)}
               onFocusIn={onKeyFocus}
               dims={GRID_KEY_DIMS}

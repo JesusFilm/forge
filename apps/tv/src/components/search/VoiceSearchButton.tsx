@@ -11,6 +11,9 @@ type Props = {
   /** A voice session is in flight — the icon goes accent as the live cue. */
   listening: boolean
   onPress: () => void
+  /** One-shot mount claim: the mic owns the screen's initial D-pad focus
+   *  (the keyboard's first-key claim is suppressed when the mic renders). */
+  hasTVPreferredFocus?: boolean
   /** Focus-gained notification for screen-level focus-region tracking. */
   onFocusIn?: () => void
   /**
@@ -31,6 +34,7 @@ const ICON_SIZE = Math.round(scale(30))
 export function VoiceSearchButton({
   listening,
   onPress,
+  hasTVPreferredFocus,
   onFocusIn,
   nodeRef,
 }: Props) {
@@ -49,6 +53,7 @@ export function VoiceSearchButton({
     <Pressable
       ref={nodeRef}
       onPress={onPress}
+      hasTVPreferredFocus={hasTVPreferredFocus}
       onFocus={() => {
         setFocused(true)
         onFocusIn?.()
