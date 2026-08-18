@@ -14,6 +14,9 @@ const DIVIDER_COLOR = "rgba(255, 255, 255, 0.12)"
 const CHIP_BG = "rgba(255, 255, 255, 0.07)"
 // Full-radius pill sentinel; clamps to half the height so it stays a pill.
 const PILL_RADIUS = 999
+// The icon buttons draw 34pt wide for a compact look; the slop restores the
+// 44pt accessible tap width (34 + 5 + 5).
+const ICON_HIT_SLOP = { left: 5, right: 5 }
 
 export interface ActionButtonRowProps {
   onDownload: () => void
@@ -118,6 +121,7 @@ export function ActionButtonRow({
             styles.iconButton,
             pressed && feedback.pressed,
           ]}
+          hitSlop={ICON_HIT_SLOP}
           accessibilityRole="button"
           accessibilityLabel={downloadA11y}
         >
@@ -142,6 +146,7 @@ export function ActionButtonRow({
             styles.iconButton,
             pressed && feedback.pressed,
           ]}
+          hitSlop={ICON_HIT_SLOP}
           accessibilityRole="button"
           accessibilityLabel="Share"
         >
@@ -156,8 +161,10 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 16,
-    paddingHorizontal: 16,
+    gap: 8,
+    paddingLeft: 16,
+    // Tighter than the left: the icon group should hug the screen edge.
+    paddingRight: 8,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: "rgba(255, 255, 255, 0.1)",
     marginTop: 4,
@@ -198,18 +205,22 @@ const styles = StyleSheet.create({
     // Match the pill group's height whether it's one line or wrapped to two.
     alignSelf: "stretch",
     marginVertical: 4,
+    // Keep the pills↔divider spacing at 16 while the row gap tightens the
+    // divider↔icons side to 8.
+    marginLeft: 8,
     backgroundColor: DIVIDER_COLOR,
   },
   icons: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
+    gap: 0,
   },
   iconButton: {
-    width: 44,
+    // 34pt visual, 44pt tappable via ICON_HIT_SLOP on both Pressables.
+    width: 34,
     height: 44,
     alignItems: "center",
     justifyContent: "center",
-    borderRadius: 22,
+    borderRadius: 17,
   },
 })
