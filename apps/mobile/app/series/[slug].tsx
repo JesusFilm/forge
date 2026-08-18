@@ -26,10 +26,7 @@ import { layout, text } from "../../src/styles/shared"
 import { useTypography } from "../../src/hooks/useTypography"
 import { VideoPlayer } from "../../src/components/watch/VideoPlayer"
 import { useFullscreenPresentation } from "../../src/hooks/useFullscreenPresentation"
-import {
-  BACK_BUTTON_PROPS,
-  PLAYER_SIDE_PADDING,
-} from "../../src/lib/playerLayout"
+import { BACK_BUTTON_PROPS } from "../../src/lib/playerLayout"
 import { buildWatchShareUrl } from "../../src/lib/watchShareUrl"
 import { VideoDetailSkeleton } from "../../src/components/watch/VideoDetailSkeleton"
 import { VideoMetadata } from "../../src/components/watch/VideoMetadata"
@@ -345,15 +342,12 @@ export default function SeriesScreen() {
   )
 
   // Cold deep link with nothing to paint yet → skeleton, not a blank spinner.
-  // Match the loaded hero's dock (top safe edge + side inset) so it doesn't jump.
+  // Match the loaded hero's dock (top safe edge, full-bleed) so it doesn't jump.
   if (!hasSeries && seed == null && loading) {
     return (
       <View style={layout.screenContainer}>
         <StatusBar style="light" />
-        <VideoDetailSkeleton
-          playerTopInset={insets.top}
-          playerHorizontalInset={PLAYER_SIDE_PADDING}
-        />
+        <VideoDetailSkeleton playerTopInset={insets.top} />
         <FloatingBackButton {...BACK_BUTTON_PROPS} />
       </View>
     )
@@ -383,12 +377,10 @@ export default function SeriesScreen() {
     )
   }
 
-  // Hero dock: top safe edge + side inset, keeping the trailer clear of the
-  // grid edges. The /watch player is full-bleed; this dock stays inset by
-  // design. Shared by the pinned trailer player and the poster-only hero.
+  // Hero dock: top safe edge, full-bleed like the /watch player (2026-08-18).
+  // Shared by the pinned trailer player and the poster-only hero.
   const heroDock = {
     paddingTop: insets.top,
-    paddingHorizontal: PLAYER_SIDE_PADDING,
     // The flush scrubber thumb straddles the trailer's bottom edge; without
     // the lift the later-painted episode grid covers its lower half.
     zIndex: 1,
@@ -434,7 +426,6 @@ export default function SeriesScreen() {
             fullscreen={isFullscreen}
             onToggleFullscreen={toggleFullscreen}
             onChromeMountedChange={setBackSwipeHeld}
-            horizontalInset={PLAYER_SIDE_PADDING}
             autostart
           />
         </View>
