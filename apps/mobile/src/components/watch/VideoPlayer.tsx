@@ -200,6 +200,35 @@ export function VideoPlayer({
     onPlayingChange?.(isPlaying)
   }, [isPlaying, hasStarted, onPlayingChange])
 
+  // Ended → the poster overlay covers the (often black) last frame until
+  // playback resumes or a seek moves away from the end.
+  const [ended, setEnded] = useState(false)
+  useEffect(() => {
+    const sub = player.addListener("playToEnd", () => setEnded(true))
+    return () => {
+      try {
+        sub.remove()
+      } catch {
+        // player already released
+      }
+    }
+  }, [player])
+  useEffect(() => {
+    if (isPlaying) setEnded(false)
+  }, [isPlaying])
+  // A scrub/skip while ended stays paused (no playingChange), so watch the
+  // position while ended and drop the poster once it leaves the end.
+  useEffect(() => {
+    if (!ended) return
+    const t = setInterval(() => {
+      const d = player.duration
+      if (Number.isFinite(d) && d > 0 && player.currentTime < d - 0.5) {
+        setEnded(false)
+      }
+    }, 500)
+    return () => clearInterval(t)
+  }, [ended, player])
+
   // Both release the pre-autostart chrome suppression below. Without them a
   // viewer whose playback never starts is stranded on a spinner with no
   // controls: `loadFailed` covers a source that errors, `loadTimedOut` covers
@@ -773,13 +802,16 @@ export function VideoPlayer({
       />
 
       {/* R7: the phone shows the poster while the TV plays — the paused
-          local frame would read as a broken player. */}
-      {(!hasStarted || castRemoteActive) && resolvedPoster != null && (
+          local frame would read as a broken player. Ended reuses the layer so
+          the replay state never sits on a black last frame. */}
+      {(!hasStarted || castRemoteActive || ended) && resolvedPoster != null && (
         <Image
           source={resolvedPoster}
           style={StyleSheet.absoluteFill}
           contentFit="cover"
           recyclingKey="watch-poster"
+          // Ended mounts this over the last frame — cross-fade, don't pop.
+          transition={ended ? 300 : 0}
           accessibilityLabel="Video thumbnail"
         />
       )}
