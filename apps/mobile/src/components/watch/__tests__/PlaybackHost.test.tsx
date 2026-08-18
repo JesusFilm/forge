@@ -296,6 +296,20 @@ function hasFullViewChrome(renderer: TestInstance): boolean {
   )
 }
 
+/** The transport control the autostart veil suppresses. The tap target above is
+ *  mounted either way, so only this proves the viewer can reach playback. */
+function hasTransportControls(renderer: TestInstance): boolean {
+  return (
+    renderer.root.findAll(
+      (node) =>
+        typeof node.props.onPress === "function" &&
+        ["Play", "Pause", "Replay"].includes(
+          node.props.accessibilityLabel as string,
+        ),
+    ).length > 0
+  )
+}
+
 function hasWindowChrome(renderer: TestInstance): boolean {
   return (
     renderer.root.findAll((node) => node.props.testID === "mini-player-window")
@@ -765,6 +779,24 @@ describe("expanding back onto the floating video (R4)", () => {
     )
     // And the session it expanded onto is still the one playing.
     expect(sessionStore.getSnapshot().session?.videoId).toBe("video-a")
+  })
+
+  it("gives a PAUSED expand its controls rather than the autostart veil", async () => {
+    const renderer = await floatOneVideo()
+    // Paused in the window, which is where a viewer pauses before expanding.
+    await act(async () => {
+      video.__player.pause()
+    })
+
+    // The adoption emits no new sourceLoad, so nothing here would ever clear a
+    // veil this mount armed — the viewer would wait out the whole timeout.
+    await attachSlotInAct(watchRequest())
+
+    expect(hasVeil(renderer)).toBe(false)
+    expect(hasTransportControls(renderer)).toBe(true)
+    // Expanding is not a play command: the video stays where the viewer left it.
+    expect(video.__player.playing).toBe(false)
+    expect(video.__player.currentTime).toBe(30)
   })
 
   it("still swaps when the viewer changes the dub on the expanded screen", async () => {

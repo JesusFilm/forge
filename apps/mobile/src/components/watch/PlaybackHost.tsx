@@ -748,6 +748,7 @@ function ActivePlaybackHost({
                 onToggleFullscreen={request.onToggleFullscreen ?? undefined}
                 resumeAtSeconds={request.resumeAtSeconds}
                 autostart={request.autostart}
+                adopted={adoptable}
               />
             )}
 

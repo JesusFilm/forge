@@ -66,6 +66,9 @@ type VideoPlayerProps = {
    *  site: this player also backs the series-detail trailer dock, so an
    *  implicit default would autoplay surfaces that never asked for it. */
   autostart?: boolean
+  /** The player already holds this request's content (R4's expand). Only the
+   *  host can know it — the adoption is its `sourceForRequest` decision. */
+  adopted?: boolean
 }
 
 /**
@@ -86,11 +89,13 @@ export function VideoPlayer({
   onToggleFullscreen,
   resumeAtSeconds = null,
   autostart = false,
+  adopted = false,
 }: VideoPlayerProps) {
-  // Seeded from the live player: expanding back onto a playing video remounts
-  // this chrome, and the effect that clears a bare `false` runs after paint —
-  // one frame of autostart veil over a video already playing.
+  // Seeded from ADOPTION, not transport state: an expand onto an already-loaded
+  // source emits no sourceLoad, so a paused one would arm the autostart veil
+  // with nothing left to clear it (the live read alone covers only a playing one).
   const [hasStarted, setHasStarted] = useState(() => {
+    if (adopted) return true
     try {
       return player.playing
     } catch {
