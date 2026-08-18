@@ -141,6 +141,7 @@ import {
   EXIT_DURATION_MS,
   PlaybackHostView,
   SHRINK_DURATION_MS,
+  TAB_BAR_CONTENT_HEIGHT,
 } from "../PlaybackHost"
 import {
   ENDED_FADE_DURATION_MS,
@@ -197,13 +198,14 @@ const SESSION_A: PlaybackSessionDescriptor = {
 }
 
 /** The geometry the host builds for the neutral route this suite renders at:
- *  no tab bar, no native header, and the mocked zero insets. */
+ *  no native header, the mocked zero insets, and the constant bottom
+ *  reservation the host applies on every route. */
 function layoutConfig(): MiniPlayerLayoutConfig {
   const { width, height } = Dimensions.get("window")
   return {
     screen: { width, height },
     insets: { top: 0, right: 0, bottom: 0, left: 0 },
-    chrome: { top: 0, bottom: 0 },
+    chrome: { top: 0, bottom: TAB_BAR_CONTENT_HEIGHT },
   }
 }
 

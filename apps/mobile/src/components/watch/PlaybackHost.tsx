@@ -60,10 +60,7 @@ import {
   type PlaybackRequestSnapshot,
 } from "../../lib/miniPlayer/playbackRequest"
 import { pictureInPictureViewProps } from "../../lib/miniPlayer/pictureInPicture"
-import {
-  isTabRootRoute,
-  miniPlayerPresentation,
-} from "../../lib/miniPlayer/presentation"
+import { miniPlayerPresentation } from "../../lib/miniPlayer/presentation"
 import {
   getMiniPlayerStore,
   type MiniPlayerEndedCause,
@@ -110,10 +107,11 @@ const CHROME_RELEASE_SLACK_MS = 250
  *  even when the animation never reports back. */
 const EXIT_RELEASE_SLACK_MS = 250
 
-/** Live chrome the window may not cover (R7), read from `app/_layout.tsx` and
- *  `app/(tabs)/_layout.tsx`. Both exclude the safe-area inset, which the corner
- *  geometry already subtracts. */
-const TAB_BAR_CONTENT_HEIGHT = Platform.select({
+/** Chrome heights the window may not cover (R7), read from `app/_layout.tsx`
+ *  and `app/(tabs)/_layout.tsx`. Both exclude the safe-area inset, which the
+ *  corner geometry already subtracts. The bottom reservation applies on every
+ *  route so the window keeps one height across pushes. */
+export const TAB_BAR_CONTENT_HEIGHT = Platform.select({
   ios: 49,
   android: 56,
   default: 49,
@@ -492,7 +490,6 @@ function ActivePlaybackHost({
   const { width: screenWidth, height: screenHeight } = useWindowDimensions()
   const insets = useSafeAreaInsets()
   const pattern = routePattern(segments)
-  const atTabRoot = isTabRootRoute(segments)
   const underHeader = HEADER_ROUTE_PATTERNS.has(pattern)
   const layoutConfig = useMemo<MiniPlayerLayoutConfig>(
     () => ({
@@ -505,7 +502,9 @@ function ActivePlaybackHost({
       },
       chrome: {
         top: underHeader ? NATIVE_HEADER_HEIGHT : 0,
-        bottom: atTabRoot ? TAB_BAR_CONTENT_HEIGHT : 0,
+        // ALWAYS reserved, tab bar or not (owner decision 2026-08-19): one
+        // constant height on every screen, so a push never moves the window.
+        bottom: TAB_BAR_CONTENT_HEIGHT,
       },
     }),
     [
@@ -516,7 +515,6 @@ function ActivePlaybackHost({
       insets.bottom,
       insets.left,
       underHeader,
-      atTabRoot,
     ],
   )
   const windowFrame = useMemo(

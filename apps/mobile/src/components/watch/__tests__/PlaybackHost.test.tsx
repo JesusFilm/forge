@@ -86,8 +86,11 @@ jest.mock("@expo/vector-icons/Ionicons", () => ({
   default: () => null,
 }))
 jest.mock("../../ui/PlatformBlur", () => ({ PlatformBlur: () => null }))
+// Drivable like mockSegments: an inset change re-derives the corner layout,
+// which is what the reposition glide and the expand hold guard against.
+let mockInsets = { top: 0, bottom: 0, left: 0, right: 0 }
 jest.mock("react-native-safe-area-context", () => ({
-  useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
+  useSafeAreaInsets: () => mockInsets,
 }))
 jest.mock("../../../lib/datadog", () => ({
   datadogLog: {
@@ -384,6 +387,7 @@ beforeEach(() => {
   sessionStore.end("abandoned")
   mockRouterPush.mockClear()
   mockSegments = []
+  mockInsets = { top: 0, bottom: 0, left: 0, right: 0 }
 })
 
 afterEach(async () => {
@@ -1499,7 +1503,7 @@ describe("the expand wiring (R4)", () => {
   })
 })
 
-describe("the expand hold (R4: the push re-derives the corner chrome)", () => {
+describe("the resting corner across route and layout changes (R4/R7)", () => {
   async function setSegments(
     renderer: TestInstance,
     segments: readonly string[],
@@ -1508,6 +1512,23 @@ describe("the expand hold (R4: the push re-derives the corner chrome)", () => {
     await act(async () => {
       renderer.update(<PlaybackHost />)
     })
+  }
+
+  async function setInsets(
+    renderer: TestInstance,
+    insets: { top: number; bottom: number; left: number; right: number },
+  ) {
+    mockInsets = insets
+    await act(async () => {
+      renderer.update(<PlaybackHost />)
+    })
+  }
+
+  function repositionCall(spy: jest.SpyInstance) {
+    return spy.mock.calls.find(
+      ([, config]) =>
+        (config as { duration?: number }).duration === REPOSITION_DURATION_MS,
+    )
   }
 
   /** The window's on-screen top edge: frame geometry plus the drag offset. */
@@ -1539,28 +1560,39 @@ describe("the expand hold (R4: the push re-derives the corner chrome)", () => {
     return renderer
   }
 
-  it("glides to the re-derived corner when navigation changes the chrome", async () => {
+  it("keeps one corner height when a push removes the tab bar", async () => {
     const renderer = await floatAtTabRoot()
     const topAtTabRoot = frameVisualTop(renderer)
     const timingSpy = jest.spyOn(Animated, "timing")
 
-    // A push to a tab-bar-less screen (series page, mission page) frees the
-    // corner's reserved height. The move must ride a from-anchored motion:
-    // the first committed frame still paints at the old corner — no teleport.
+    // Series/mission pages carry no tab bar, but the bottom reservation is
+    // constant (owner decision 2026-08-19): the window neither drops into
+    // the freed space nor animates — it simply stays put.
     await setSegments(renderer, ["series", "[slug]"])
     expect(frameVisualTop(renderer)).toBe(topAtTabRoot)
-    const glideCall = timingSpy.mock.calls.find(
-      ([, config]) =>
-        (config as { duration?: number }).duration === REPOSITION_DURATION_MS,
-    )
-    expect(glideCall).toBeDefined()
-
-    // The glide settles at the live corner — navigation still follows the
-    // chrome (R7), it just gets there smoothly.
+    expect(repositionCall(timingSpy)).toBeUndefined()
     await act(async () => {
       jest.advanceTimersByTime(REPOSITION_DURATION_MS + 300)
     })
-    expect(frameVisualTop(renderer)).toBeGreaterThan(topAtTabRoot)
+    expect(frameVisualTop(renderer)).toBe(topAtTabRoot)
+  })
+
+  it("glides to the re-derived corner when the layout itself changes", async () => {
+    const renderer = await floatAtTabRoot()
+    const topBefore = frameVisualTop(renderer)
+    const timingSpy = jest.spyOn(Animated, "timing")
+
+    // A real layout change (a safe-area inset shift) still re-derives the
+    // corner. The move rides the from-anchored ramp: the first committed
+    // frame stays at the old corner — never a teleport.
+    await setInsets(renderer, { top: 0, bottom: 34, left: 0, right: 0 })
+    expect(frameVisualTop(renderer)).toBe(topBefore)
+    expect(repositionCall(timingSpy)).toBeDefined()
+
+    await act(async () => {
+      jest.advanceTimersByTime(REPOSITION_DURATION_MS + 300)
+    })
+    expect(frameVisualTop(renderer)).toBeLessThan(topBefore)
   })
 
   it("holds the on-screen frame from the tap until the grow consumes it", async () => {
@@ -1571,8 +1603,9 @@ describe("the expand hold (R4: the push re-derives the corner chrome)", () => {
       fireWindowAction(renderer, "activate")
     })
     expect(mockRouterPush).toHaveBeenCalled()
-    // The push leaves the tab root before the rect arrives. The window must
-    // not hop down to the tab-bar-less corner mid-expand — the device blink.
+    // A layout re-derivation landing mid-push must not move the window —
+    // the tap pinned the frame the viewer is watching until the grow.
+    mockInsets = { top: 0, bottom: 34, left: 0, right: 0 }
     await setSegments(renderer, ["watch", "[slug]"])
     expect(frameVisualTop(renderer)).toBe(topAtTabRoot)
 
@@ -1598,19 +1631,20 @@ describe("the expand hold (R4: the push re-derives the corner chrome)", () => {
     await act(async () => {
       fireWindowAction(renderer, "activate")
     })
+    mockInsets = { top: 0, bottom: 34, left: 0, right: 0 }
     await setSegments(renderer, ["watch", "[slug]"])
     expect(frameVisualTop(renderer)).toBe(topAtTabRoot)
 
     await act(async () => {
       jest.advanceTimersByTime(EXPAND_HOLD_TIMEOUT_MS + 100)
     })
-    // The expand never completed. A later navigation re-derives the corner
-    // from the LIVE chrome; the dead tap must not pin the window forever.
-    await setSegments(renderer, ["video", "[sectionKey]"])
+    // The expand never completed. A later layout change re-derives from the
+    // LIVE config; the dead tap must not pin the window forever.
+    await setInsets(renderer, { top: 0, bottom: 60, left: 0, right: 0 })
     await act(async () => {
       jest.advanceTimersByTime(REPOSITION_DURATION_MS + 300)
     })
-    expect(frameVisualTop(renderer)).toBeGreaterThan(topAtTabRoot)
+    expect(frameVisualTop(renderer)).toBeLessThan(topAtTabRoot)
   })
 })
 
