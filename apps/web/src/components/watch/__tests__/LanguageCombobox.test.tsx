@@ -1054,6 +1054,65 @@ describe("LanguageCombobox", () => {
     expect(document.getElementById(activeOptionId ?? "")).not.toBeNull()
   })
 
+  it("keeps the active option visible in a filtered non-virtualized list", () => {
+    const options = [
+      { slug: "english", name: "English" },
+      ...Array.from({ length: 5 }, (_, index) => ({
+        slug: `chinese-${index}`,
+        name: `Chinese ${index}`,
+      })),
+    ]
+
+    act(() => {
+      root.render(
+        <LanguageCombobox
+          options={options}
+          value="english"
+          onChange={vi.fn()}
+        />,
+      )
+    })
+    act(() => {
+      $('[data-testid="language-combobox-trigger"]')?.click()
+    })
+
+    const combobox = $(
+      '[data-testid="language-combobox-search"]',
+    ) as HTMLInputElement
+    act(() => {
+      combobox.value = "Chinese"
+      combobox.dispatchEvent(new Event("input", { bubbles: true }))
+    })
+
+    const listbox = $("[role=listbox]") as HTMLUListElement
+    Object.defineProperty(listbox, "clientHeight", {
+      configurable: true,
+      value: 288,
+    })
+    expect(listbox.getAttribute("data-virtualized")).toBe("false")
+    expect($$("[role=option]")).toHaveLength(5)
+
+    act(() => {
+      for (let index = 0; index < 4; index += 1) {
+        combobox.dispatchEvent(
+          new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true }),
+        )
+      }
+    })
+
+    expect(listbox.scrollTop).toBe(76)
+
+    act(() => {
+      for (let index = 0; index < 4; index += 1) {
+        combobox.dispatchEvent(
+          new KeyboardEvent("keydown", { key: "ArrowUp", bubbles: true }),
+        )
+      }
+    })
+
+    expect(listbox.scrollTop).toBe(0)
+  })
+
   it("Enter selects the first ranked option after search filtering", () => {
     const onChange = vi.fn()
     const OPTIONS_WITH_RUSSIAN = [

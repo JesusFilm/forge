@@ -1,7 +1,7 @@
 ---
 title: Watch language picker, player chrome fade, and measured episode rail overlap
 date: 2026-06-09
-last_updated: 2026-07-28
+last_updated: 2026-08-18
 category: docs/solutions/design-patterns
 module: apps/web
 problem_type: design_pattern
@@ -255,7 +255,7 @@ Reason future agents might regress it:
   component infer lifecycle state that its owner already knows. Preserve the
   direct state flow and the visible-hidden-visible regression test.
 
-### 7. Virtualized language comboboxes must keep their active option mounted
+### 7. Language comboboxes must keep their active option visible and mounted
 
 Touched files:
 
@@ -269,19 +269,33 @@ Intent:
   `aria-activedescendant` points to the keyboard-active option.
 - Use a per-instance `useId()` prefix for the listbox and option IDs. The same
   option keeps its ID when filtering changes the visible result set.
+- Keyboard navigation must keep the active row inside the visible listbox for
+  both rendering modes. The virtualization threshold decides whether React
+  mounts every row; it does not prove that every mounted row fits inside the
+  listbox viewport.
+- For a non-virtualized list, update the DOM `listbox.scrollTop` when the active
+  row crosses the viewport. All rows are already mounted, so a React scroll
+  state update is unnecessary.
 - For virtualized lists, keyboard navigation must update the virtual scroll
-  state at the same time it changes the active index. Otherwise the active
-  option can be scrolled into view imperatively but remain absent from React's
-  rendered window, leaving `aria-activedescendant` dangling.
+  state after updating the DOM scroll position. Otherwise the active option can
+  be scrolled into view imperatively but remain absent from React's rendered
+  window, leaving `aria-activedescendant` dangling.
+- In `scrollActiveOptionIntoView`, calculate row positions from the shared
+  row-height and listbox-padding constants. Include the listbox's top padding
+  in `rowTop`, and remove it again when scrolling upward so the first row
+  aligns correctly without producing a negative `scrollTop`.
 - Only expose `aria-activedescendant` while its target is mounted. This avoids
   a stale reference when pointer scrolling moves a virtual window away from
   the keyboard-active row.
 
 Reason future agents might regress it:
 
-- A scroll-only fix looks sufficient visually, but assistive technology follows
-  the DOM ID reference rather than the scroll position. Preserve both the
-  regular ARIA relationship test and the virtualized keyboard-navigation test.
+- An early return below the virtualization threshold looks efficient, but a
+  filtered all-mounted list can still be taller than the listbox. Conversely,
+  a DOM-only scroll fix looks sufficient visually for a virtualized list, but
+  assistive technology follows a DOM ID that React may not have mounted.
+  Preserve the regular ARIA relationship test, the virtualized keyboard test,
+  and a filtered non-virtualized overflow test that moves down and back up.
 
 ## Verification commands
 
@@ -330,6 +344,7 @@ gap below the 60 px header, and pushed the body to 251.8 px. Portrait kept its
 
 Related planning records:
 
+- `docs/roadmap/platform/feat-365-watch-language-picker-keyboard-scroll.md`
 - `docs/plans/2026-07-16-001-fix-watch-mobile-landscape-hero-layout-plan.md`
 - `docs/roadmap/platform/feat-264-watch-mobile-landscape-hero-layout.md`
 - `docs/roadmap/platform/feat-175-watch-mobile-portrait-hero-preview.md`
