@@ -148,6 +148,13 @@ export function shouldDrawSurface(input: {
   return input.hasRect || input.endedCause == null || !input.surfaceReleased
 }
 
+/** One box, so one motion's path is exactly the reverse of the other's. */
+function sameRect(a: PlaybackRect, b: PlaybackRect): boolean {
+  return (
+    a.x === b.x && a.y === b.y && a.width === b.width && a.height === b.height
+  )
+}
+
 /** R4's tap pins the pre-push frames until the grow consumes them: the pushed
  *  route re-derives the corner chrome before the rect arrives. */
 type ExpandHold = {
@@ -549,9 +556,14 @@ function ActivePlaybackHost({
   const lastRectRef = useRef<PlaybackRect | null>(null)
   const chromeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const shrinkAnimRef = useRef<Animated.CompositeAnimation | null>(null)
-  // The running motion's anchor, so an interruption can park the ramp at that
-  // motion's identity end before its style detaches (see settle).
-  const activeAnchorRef = useRef<"from" | "to">("to")
+  // The in-flight motion, readable by the run that supersedes it. The `motion`
+  // STATE cannot serve: it is not in this effect's deps, and adding it would
+  // re-run the effect on every transition the effect itself starts.
+  const motionRef = useRef<{
+    from: PlaybackRect
+    to: PlaybackRect
+    anchor: "from" | "to"
+  } | null>(null)
   // R4's tap precedes the rect by a route push: the tab bar leaves the segments
   // at once and the corner re-derives lower. The pin must ride the COMMITTED
   // geometry — an Animated catch-up lands after the commit paints (Fabric).
@@ -580,6 +592,9 @@ function ActivePlaybackHost({
     // Whatever this run decides, an earlier transition may not keep animating
     // into it: an uncancelled one paints a stale transform under the new
     // state, and its completion callback fires out of turn.
+    // Read before the stop: this run decides AGAINST the motion it interrupts,
+    // and only a settle clears the ref.
+    const inFlight = motionRef.current
     shrinkAnimRef.current?.stop()
     shrinkAnimRef.current = null
     const clearMotion = () => {
@@ -589,16 +604,20 @@ function ActivePlaybackHost({
       }
       // Same identity-parking as settle: whatever motion this interrupts must
       // not leave a frozen mid-ramp transform behind its detaching style.
-      shrink.setValue(activeAnchorRef.current === "from" ? 0 : 1)
+      if (inFlight != null) {
+        shrink.setValue(inFlight.anchor === "from" ? 0 : 1)
+      }
+      motionRef.current = null
       setMotion(null)
       setChromeReady(true)
     }
-    const runMotion = (
-      from: PlaybackRect,
-      to: PlaybackRect,
+    // The ramp, direction included. A reversal re-runs it with `toValue: 0`:
+    // a native timing starts from the node's LIVE value, which is the one
+    // thing JS cannot read back off a native-driven node.
+    const runRamp = (
+      toValue: 0 | 1,
       anchor: "from" | "to",
       durationMs: number,
-      onSettled?: () => void,
     ) => {
       let settled = false
       const settle = () => {
@@ -614,15 +633,12 @@ function ActivePlaybackHost({
         // pushed the settled window's video clean out of its box — a black
         // window with live controls.
         shrink.setValue(anchor === "from" ? 0 : 1)
+        motionRef.current = null
         setMotion(null)
         setChromeReady(true)
-        onSettled?.()
       }
-      activeAnchorRef.current = anchor
-      setMotion({ from, to, anchor })
-      shrink.setValue(0)
       const animation = Animated.timing(shrink, {
-        toValue: 1,
+        toValue,
         duration: durationMs,
         useNativeDriver: true,
       })
@@ -640,6 +656,18 @@ function ActivePlaybackHost({
         settle()
       }, durationMs + CHROME_RELEASE_SLACK_MS)
     }
+    const runMotion = (
+      from: PlaybackRect,
+      to: PlaybackRect,
+      anchor: "from" | "to",
+      durationMs: number,
+    ) => {
+      const next = { from, to, anchor }
+      motionRef.current = next
+      setMotion(next)
+      shrink.setValue(0)
+      runRamp(1, anchor, durationMs)
+    }
     if (rect != null) {
       // A rect arriving over a live session is the expand (R4): the surface
       // grows from the corner it occupied back into the player rect — the
@@ -656,13 +684,20 @@ function ActivePlaybackHost({
           Date.now(),
         )
         expandHoldRef.current = null
-        runMotion(
-          hold?.cornerFrame ??
-            miniPlayerCornerFrame(layoutConfig, cornerRef.current),
-          rect,
-          "to",
-          EXPAND_DURATION_MS,
-        )
+        // A shrink still on the ramp is this grow's own path, backwards: turn
+        // the live node around rather than restart from an anchor JS cannot
+        // verify it reached. Same anchor, same geometry, same settle.
+        if (inFlight?.anchor === "from" && sameRect(inFlight.from, rect)) {
+          runRamp(0, "from", EXPAND_DURATION_MS)
+        } else {
+          runMotion(
+            hold?.cornerFrame ??
+              miniPlayerCornerFrame(layoutConfig, cornerRef.current),
+            rect,
+            "to",
+            EXPAND_DURATION_MS,
+          )
+        }
       } else {
         expandHoldRef.current = null
         clearMotion()
@@ -733,7 +768,17 @@ function ActivePlaybackHost({
     setCorner(DEFAULT_CORNER)
     drag.setValue({ x: 0, y: 0 })
     setChromeReady(false)
-    runMotion(from, windowFrame, "from", SHRINK_DURATION_MS)
+    // The same turn-around the other way: a grow still on the ramp departs
+    // from the very corner this shrink is heading for.
+    if (
+      inFlight?.anchor === "to" &&
+      sameRect(inFlight.to, from) &&
+      sameRect(inFlight.from, windowFrame)
+    ) {
+      runRamp(0, "to", SHRINK_DURATION_MS)
+    } else {
+      runMotion(from, windowFrame, "from", SHRINK_DURATION_MS)
+    }
     // The rest this settle leaves behind: later chrome changes glide from it.
     restingCornerRef.current = DEFAULT_CORNER
     restingTargetRef.current = windowFrame
@@ -914,10 +959,14 @@ function ActivePlaybackHost({
     hasSession,
     Date.now(),
   )?.windowFrame
+  // A to-anchored motion keeps its own box when the rect goes away: a reversed
+  // grow is still measured against the player rect it was growing into.
   const geometry =
     rect ??
-    (motion != null && motion.anchor === "from"
-      ? motion.from
+    (motion != null
+      ? motion.anchor === "from"
+        ? motion.from
+        : motion.to
       : (heldWindowFrame ?? windowFrame))
 
   // A surface can own the player before its stream resolves (an Up Next

@@ -1349,6 +1349,50 @@ describe("the ended session after an expand (R21, R27)", () => {
 })
 
 describe("the frame transition (KTD17: shrink and its reverse)", () => {
+  /** A driver double the test can hold PART WAY down a ramp. jest's native
+   *  animated mock settles every timing after 16ms and carries no value, so
+   *  t=0 is the only fraction a real `Animated.timing` is observable at here. */
+  function holdTimings() {
+    const started: Array<{
+      node: Animated.Value
+      config: { toValue: number; duration: number }
+    }> = []
+    jest.spyOn(Animated, "timing").mockImplementation(((
+      node: Animated.Value,
+      config: { toValue: number; duration: number },
+    ) => {
+      started.push({ node, config })
+      return { start: () => {}, stop: () => {}, reset: () => {} }
+    }) as never)
+    return started
+  }
+
+  /** The motion ramp's contribution only — assumes a zero drag offset. Two
+   *  reads that differ across an interruption are the snap the viewer sees. */
+  function videoBox(renderer: TestInstance) {
+    const box = frameStyle(renderer) as unknown as {
+      left: number
+      top: number
+      width: number
+      height: number
+    }
+    const node = renderer.root.findAll(
+      (n) => n.props.testID === "playback-motion",
+    )[0]
+    const style = StyleSheet.flatten(node.props.style) as {
+      transform?: Array<Record<string, { __getValue?: () => number }>>
+    }
+    const read = (key: string, fallback: number) =>
+      style.transform
+        ?.find((entry) => entry[key] != null)
+        ?.[key]?.__getValue?.() ?? fallback
+    return {
+      centerX: box.left + box.width / 2 + read("translateX", 0),
+      centerY: box.top + box.height / 2 + read("translateY", 0),
+      width: box.width * read("scale", 1),
+    }
+  }
+
   it("turns a mid-flight shrink around into a grow when the full view returns", async () => {
     jest.useFakeTimers()
     const first = attachSlot()
@@ -1430,6 +1474,129 @@ describe("the frame transition (KTD17: shrink and its reverse)", () => {
       jest.advanceTimersByTime(EXPAND_DURATION_MS + 300)
     })
     expect(frameStyle(renderer).overflow).toBe("hidden")
+  })
+
+  it("turns a half-run shrink around without moving the video", async () => {
+    jest.useFakeTimers()
+    const first = attachSlot()
+    const renderer = await renderHost()
+    await startPlayback()
+
+    const started = holdTimings()
+    await detach(first)
+    const ramp = started.find((s) => s.config.duration === SHRINK_DURATION_MS)
+    expect(ramp).toBeDefined()
+    const atRect = videoBox(renderer)
+
+    // HALF WAY down the ramp — the fraction a device interruption actually
+    // lands on. The driver is native, so production can never read this back,
+    // which is exactly why restarting from a named anchor is a guess.
+    await act(async () => {
+      ramp!.node.setValue(0.5)
+    })
+    const midFlight = videoBox(renderer)
+    expect(midFlight).not.toEqual(atRect)
+
+    // The full view owns the rect again before the shrink finished.
+    started.length = 0
+    await attachSlotInAct()
+
+    // Same node, same path, opposite direction — and not one pixel of jump.
+    expect(started[0]?.node).toBe(ramp!.node)
+    expect(started[0]?.config).toMatchObject({
+      toValue: 0,
+      duration: EXPAND_DURATION_MS,
+    })
+    expect(videoBox(renderer)).toEqual(midFlight)
+
+    // …and it lands back on the player rect.
+    await act(async () => {
+      ramp!.node.setValue(0)
+    })
+    expect(videoBox(renderer)).toEqual(atRect)
+  })
+
+  it("turns a half-run grow around without moving the video", async () => {
+    jest.useFakeTimers()
+    const first = attachSlot()
+    const renderer = await renderHost()
+    await startPlayback()
+    await detach(first)
+    await act(async () => {
+      jest.advanceTimersByTime(SHRINK_DURATION_MS + 300)
+    })
+
+    const started = holdTimings()
+    await attachSlotInAct()
+    const ramp = started.find((s) => s.config.duration === EXPAND_DURATION_MS)
+    expect(ramp).toBeDefined()
+    const atCorner = videoBox(renderer)
+
+    await act(async () => {
+      ramp!.node.setValue(0.5)
+    })
+    const midFlight = videoBox(renderer)
+    expect(midFlight).not.toEqual(atCorner)
+
+    // The screen goes away again before the grow finished.
+    started.length = 0
+    const parkSpy = jest.spyOn(ramp!.node, "setValue")
+    await detach(requestStore.getSnapshot().slotId as number)
+
+    expect(started[0]?.node).toBe(ramp!.node)
+    expect(started[0]?.config).toMatchObject({
+      toValue: 0,
+      duration: SHRINK_DURATION_MS,
+    })
+    expect(videoBox(renderer)).toEqual(midFlight)
+
+    // The reversed grow stays to-anchored, so its settle parks at 1 and the
+    // window lands clipped at the corner — not at the identity end a
+    // from-anchored motion would park at.
+    await act(async () => {
+      jest.advanceTimersByTime(SHRINK_DURATION_MS + 300)
+    })
+    expect(parkSpy).toHaveBeenCalledWith(1)
+    expect(frameStyle(renderer).overflow).toBe("hidden")
+  })
+
+  it("restarts a grow from a non-default corner rather than reversing it", async () => {
+    jest.useFakeTimers()
+    const first = attachSlot()
+    const renderer = await renderHost()
+    await startPlayback()
+    await detach(first)
+    await act(async () => {
+      jest.advanceTimersByTime(SHRINK_DURATION_MS + 300)
+    })
+    // Two hops off the default corner: the grow now departs a frame the
+    // following shrink is NOT heading for, so the paths are not reverses.
+    await act(async () => {
+      fireWindowAction(renderer, "moveToCorner")
+    })
+    await act(async () => {
+      fireWindowAction(renderer, "moveToCorner")
+    })
+    await act(async () => {
+      jest.advanceTimersByTime(400)
+    })
+
+    const started = holdTimings()
+    await attachSlotInAct()
+    const ramp = started.find((s) => s.config.duration === EXPAND_DURATION_MS)
+    expect(ramp).toBeDefined()
+    await act(async () => {
+      ramp!.node.setValue(0.5)
+    })
+
+    started.length = 0
+    await detach(requestStore.getSnapshot().slotId as number)
+    // A fresh from-anchored shrink, not a reversal: the gate refuses a
+    // turn-around whose two paths do not share a box.
+    expect(started[0]?.config).toMatchObject({
+      toValue: 1,
+      duration: SHRINK_DURATION_MS,
+    })
   })
 })
 
