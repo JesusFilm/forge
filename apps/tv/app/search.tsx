@@ -30,6 +30,7 @@ import { scale } from "../src/lib/scale"
 import type { SearchResult } from "../src/lib/queries"
 import type { SearchState } from "../src/lib/search"
 import { sanitizeQuery, useSemanticSearch } from "../src/lib/search"
+import { useVoiceSearch } from "../src/lib/voiceSearch/useVoiceSearch"
 import { meetsMinQueryLength } from "../src/lib/searchGate"
 import { useSearchHistory } from "../src/lib/searchHistory"
 
@@ -74,6 +75,12 @@ export default function SearchScreen() {
     addRecent(lastSubmittedQuery)
   }, [state, results.length, lastSubmittedQuery, addRecent])
 
+  // Android TV voice search: partial/final transcripts write through the SAME
+  // sanitize chokepoint as typed keys, then ride the normal debounce → search
+  // path. `available` is false everywhere the recognizer doesn't exist (Apple
+  // TV, emulators without Google speech services), which hides the mic key.
+  const voice = useVoiceSearch(setSanitizedQuery)
+
   // Recent / Category click runs a fresh search immediately, bypassing the 900ms
   // debounce. Thread the sanitized value through runQuery directly: submit() closes
   // over stale `query` until the next render, so the lag would search the prior one.
@@ -105,6 +112,7 @@ export default function SearchScreen() {
     onClearHistory: clearAll,
     recents,
     onRetry: retry,
+    onVoicePress: voice.available ? voice.start : undefined,
   }
 
   // Apple TV: native SwiftUI .searchable surface (expo-tvos-search) — the ONLY
@@ -128,6 +136,9 @@ export default function SearchScreen() {
     <View style={styles.screen}>
       <View style={styles.queryLine}>
         <QueryDisplay value={query} />
+        {voice.listening ? (
+          <Text style={styles.listeningHint}>Listening…</Text>
+        ) : null}
       </View>
       {Platform.OS === "ios" ? (
         <SearchBodyStacked {...bodyProps} />
@@ -206,6 +217,9 @@ type SearchBodyProps = {
   onClearHistory: () => void
   recents: string[]
   onRetry: () => void
+  /** Set only when a speech recognizer exists (Android TV) — renders the grid
+   *  keyboard's mic key and starts a voice session on press. */
+  onVoicePress?: () => void
 }
 
 /**
@@ -276,6 +290,7 @@ function SearchBodyTwoPane(props: SearchBodyProps) {
           value={props.query}
           onChange={props.onChangeQuery}
           onSubmit={props.onSubmit}
+          onMicPress={props.onVoicePress}
         />
       </View>
       <View style={styles.resultsPane}>
@@ -341,6 +356,19 @@ const styles = StyleSheet.create({
   // Design .s-query: padding 78px 0 (horizontal comes from screen).
   queryLine: {
     paddingTop: scale(78),
+    // Row so the voice "Listening…" hint right-aligns beside the query text
+    // (QueryDisplay's text flexShrinks, so a long query yields room instead of
+    // pushing the hint off-canvas).
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  listeningHint: {
+    fontFamily: "System",
+    fontSize: Math.round(scale(22)),
+    fontWeight: "700",
+    letterSpacing: scale(1.5),
+    color: WATCH_THEME.accent,
   },
   // Android: keyboard (left) + results (right) fill the height side by side.
   // Tight gap + no top inset so the results sit close to the keyboard's right

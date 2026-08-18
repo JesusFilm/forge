@@ -86,6 +86,32 @@ describe("buildActionRow", () => {
     ].map((k) => k.id)
     expect(new Set(ids).size).toBe(ids.length)
   })
+
+  // Android TV voice search (mic key is OPT-IN — the default shape above is
+  // also the Apple-TV-fallback/linear contract and must stay mic-free).
+  it("appends a mic key LAST when includeMicKey is set", () => {
+    const row = buildActionRow(false, true)
+    expect(row.map((k) => k.action.kind)).toEqual([
+      "shift",
+      "space",
+      "backspace",
+      "submit",
+      "mic",
+    ])
+    const mic = row[row.length - 1]!
+    expect(mic.id).toBe("mic")
+    // Icon-rendered: empty label, so the accessibility label carries the name.
+    expect(mic.label).toBe("")
+    expect(mic.accessibilityLabel).toBe("Voice search")
+  })
+
+  it("mic ids stay unique against letters + actions", () => {
+    const ids = [
+      ...buildLetterRows(false).flat(),
+      ...buildActionRow(false, true),
+    ].map((k) => k.id)
+    expect(new Set(ids).size).toBe(ids.length)
+  })
 })
 
 describe("applyKey", () => {
@@ -110,6 +136,11 @@ describe("applyKey", () => {
     expect(applyKey("ab", { kind: "submit" })).toBeNull()
     expect(applyKey("ab", { kind: "shift" })).toBeNull()
     expect(applyKey("", { kind: "shift" })).toBeNull()
+  })
+
+  it("returns null for mic (voice capture is a side effect, not a text edit)", () => {
+    expect(applyKey("ab", { kind: "mic" })).toBeNull()
+    expect(applyKey("", { kind: "mic" })).toBeNull()
   })
 })
 

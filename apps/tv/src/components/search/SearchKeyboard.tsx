@@ -17,6 +17,9 @@ type Props = {
   value: string
   onChange: (next: string) => void
   onSubmit: () => void
+  /** Renders the mic key and receives its press — the availability decision
+   *  (speech recognizer present) stays with the caller, keeping this pure. */
+  onMicPress?: () => void
 }
 
 /**
@@ -24,17 +27,27 @@ type Props = {
  * delete/search action row, in SEARCH_THEME. Easier to scan on a 10-foot screen
  * than the old strip. Cells dispatch in the showing case; writes go via onChange.
  */
-export function SearchKeyboard({ value, onChange, onSubmit }: Props) {
+export function SearchKeyboard({
+  value,
+  onChange,
+  onSubmit,
+  onMicPress,
+}: Props) {
   // Lowercase default; persistent caps-lock-style toggle. Only future presses
   // are affected — already-typed characters in `value` stay as they were.
   const [isShifted, setIsShifted] = useState(false)
 
+  const includeMicKey = onMicPress != null
   const letterRows = useMemo(() => buildLetterRows(isShifted), [isShifted])
-  const actionRow = useMemo(() => buildActionRow(isShifted), [isShifted])
+  const actionRow = useMemo(
+    () => buildActionRow(isShifted, includeMicKey),
+    [isShifted, includeMicKey],
+  )
 
   // Thin caller over applyKey (tested pure reducer): shift toggles case, submit
-  // fires onSubmit, value-mutating actions forward their non-null next to onChange.
-  // Guarded no-ops (space/backspace on empty) return null and fall through.
+  // fires onSubmit, mic starts voice capture, value-mutating actions forward
+  // their non-null next to onChange. Guarded no-ops (space/backspace on empty)
+  // return null and fall through.
   const dispatch = (action: KeyAction) => {
     if (action.kind === "shift") {
       setIsShifted((prev) => !prev)
@@ -42,6 +55,10 @@ export function SearchKeyboard({ value, onChange, onSubmit }: Props) {
     }
     if (action.kind === "submit") {
       onSubmit()
+      return
+    }
+    if (action.kind === "mic") {
+      onMicPress?.()
       return
     }
     const next = applyKey(value, action)

@@ -24,7 +24,8 @@
       "appleTeamId": "DQ48D9BF2V"
     },
     "android": {
-      "package": "org.jesusfilm.forgetv"
+      "package": "org.jesusfilm.forgetv",
+      "permissions": ["android.permission.RECORD_AUDIO"]
     },
     "plugins": [
       "expo-router",

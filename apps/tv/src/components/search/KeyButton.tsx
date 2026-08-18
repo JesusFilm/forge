@@ -67,9 +67,11 @@ export function KeyButton({
           { transform },
         ]}
       >
-        {cell.action.kind === "backspace" ? (
+        {cell.action.kind === "backspace" || cell.action.kind === "mic" ? (
           <Ionicons
-            name="backspace-outline"
+            name={
+              cell.action.kind === "mic" ? "mic-outline" : "backspace-outline"
+            }
             size={scale(dims.iconSize)}
             color={inkColor}
           />

@@ -1,6 +1,6 @@
 .expo/
-ios/
-android/
+/ios/
+/android/
 .env.local
 node_modules/
 
