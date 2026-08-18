@@ -37,6 +37,11 @@ describe("VideoPlayer ended poster", () => {
     expect(SOURCE).toContain(
       "(!hasStarted || castRemoteActive || ended) && resolvedPoster != null",
     )
-    expect(SOURCE).toContain("transition={ended ? 300 : 0}")
+    // The fade is an OWNED Animated opacity: expo-image's `transition` is
+    // skipped for a memory-cached source, so it cannot carry the cross-fade.
+    expect(SOURCE).toContain("posterFade.setValue(0)")
+    expect(SOURCE).toContain("Animated.timing(posterFade")
+    expect(SOURCE).toContain("{ opacity: posterFade }")
+    expect(SOURCE).not.toContain("transition={")
   })
 })

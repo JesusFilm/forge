@@ -203,6 +203,25 @@ export function VideoPlayer({
   // Ended → the poster overlay covers the (often black) last frame until
   // playback resumes or a seek moves away from the end.
   const [ended, setEnded] = useState(false)
+  // Own the ended cross-fade: expo-image's `transition` is skipped for a
+  // memory-cached source (the pre-start render already cached the poster),
+  // so the fade must be an Animated opacity.
+  const posterFade = useRef(new Animated.Value(1)).current
+  useEffect(() => {
+    if (!ended) {
+      // Solid for the pre-start/cast poster states.
+      posterFade.setValue(1)
+      return
+    }
+    posterFade.setValue(0)
+    const anim = Animated.timing(posterFade, {
+      toValue: 1,
+      duration: 300,
+      useNativeDriver: true,
+    })
+    anim.start()
+    return () => anim.stop()
+  }, [ended, posterFade])
   useEffect(() => {
     const sub = player.addListener("playToEnd", () => setEnded(true))
     return () => {
@@ -805,15 +824,17 @@ export function VideoPlayer({
           local frame would read as a broken player. Ended reuses the layer so
           the replay state never sits on a black last frame. */}
       {(!hasStarted || castRemoteActive || ended) && resolvedPoster != null && (
-        <Image
-          source={resolvedPoster}
-          style={StyleSheet.absoluteFill}
-          contentFit="cover"
-          recyclingKey="watch-poster"
-          // Ended mounts this over the last frame — cross-fade, don't pop.
-          transition={ended ? 300 : 0}
-          accessibilityLabel="Video thumbnail"
-        />
+        <Animated.View
+          style={[StyleSheet.absoluteFill, { opacity: posterFade }]}
+        >
+          <Image
+            source={resolvedPoster}
+            style={StyleSheet.absoluteFill}
+            contentFit="cover"
+            recyclingKey="watch-poster"
+            accessibilityLabel="Video thumbnail"
+          />
+        </Animated.View>
       )}
 
       {awaitingAutostart && <PlayerLoadingVeil />}
