@@ -22,6 +22,7 @@ import {
   type MiniPlayerStore,
 } from "./store"
 import { canOriginateRoutePattern } from "./presentation"
+import { extractMuxPlaybackId } from "../muxThumbnail"
 
 /** Window coordinates of the surface the video view is drawn into (KTD17). */
 export type PlaybackRect = {
@@ -137,6 +138,19 @@ export function sameSessionContent(
 ): boolean {
   if (a.videoId != null && b.videoId != null) return a.videoId === b.videoId
   return a.videoSlug === b.videoSlug
+}
+
+/**
+ * Same underlying stream, tolerant of the seed-vs-canonical URL split: two Mux
+ * URLs naming one playbackId are one asset; non-Mux URLs (offline files)
+ * compare exactly. This is what lets admission trust a live `player.playing`
+ * read — the state is only evidence about the video it was read FOR.
+ */
+export function sameStreamSource(a: string, b: string): boolean {
+  const aId = extractMuxPlaybackId(a)
+  const bId = extractMuxPlaybackId(b)
+  if (aId != null && bId != null) return aId === bId
+  return a === b
 }
 
 /** What the player currently holds, and for which dub. */
@@ -403,6 +417,9 @@ export function createPlaybackRequestStore(deps: {
             originPattern: descriptor.originPattern,
             positionSeconds: facts.readPosition(),
             durationSeconds: facts.readDuration(),
+            // Admission just verified started-and-unfinished playback; a dead
+            // stream is the one ending admission cannot see, so it gates this.
+            playbackLive: !loadFailed,
           })
           retained = slot.request
         } else if (retained === slot.request) {

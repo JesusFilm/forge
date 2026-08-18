@@ -67,12 +67,14 @@ jest.mock("expo-linear-gradient", () => ({ LinearGradient: () => null }))
 jest.mock("expo-glass-effect", () => ({ GlassView: () => null }))
 // The host renders the screen's back affordance, which is the app's existing
 // router-owning component. expo-router is never imported unmocked in this repo.
+// `push` is captured so the expand wiring is assertable end to end.
+const mockRouterPush = jest.fn()
 jest.mock("expo-router", () => ({
   useRouter: () => ({
     back: jest.fn(),
     canGoBack: () => true,
     replace: jest.fn(),
-    push: jest.fn(),
+    push: mockRouterPush,
   }),
   // A route none of the presentation tables name, so a published session
   // floats. U7's own suite owns the window's behaviour there.
@@ -134,10 +136,15 @@ jest.mock("../../../lib/authSession", () => {
 })
 
 import { StrictMode, act } from "react"
-import { Animated, StyleSheet } from "react-native"
+import { Animated, Dimensions, StyleSheet } from "react-native"
 
 import { ENDED_FADE_DURATION_MS } from "../MiniPlayerWindow"
-import { EXIT_DURATION_MS, PlaybackHost } from "../PlaybackHost"
+import {
+  EXIT_DURATION_MS,
+  PlaybackHost,
+  shouldDrawSurface,
+} from "../PlaybackHost"
+import { miniPlayerCornerFrame } from "../../../lib/miniPlayer/layout"
 import {
   getPlaybackRequestStore,
   type PlaybackRequest,
@@ -348,7 +355,10 @@ function frameStyle(renderer: TestInstance) {
   const frame = renderer.root.findAll(
     (node) => node.props.testID === "playback-frame",
   )[0]
-  return StyleSheet.flatten(frame.props.style) as { opacity?: number }
+  return StyleSheet.flatten(frame.props.style) as {
+    opacity?: number
+    overflow?: string
+  }
 }
 
 function hasVeil(renderer: TestInstance): boolean {
@@ -365,6 +375,7 @@ beforeEach(() => {
   requestStore.reset()
   sessionStore.setPipHold(false)
   sessionStore.end("abandoned")
+  mockRouterPush.mockClear()
 })
 
 afterEach(async () => {
@@ -585,6 +596,31 @@ describe("admission (R1, R20)", () => {
     })
   })
 
+  it("keeps the started fact when the record's id arrives mid-playback", async () => {
+    // The seed path: playback starts before GET_VIDEO_BY_SLUG resolves, so the
+    // descriptor names the video by slug alone and gains the id later. That
+    // flip must not wipe admission's started fact — play, pause, back is
+    // exactly the paused continue-watching window R1 promises.
+    const id = attachSlot({ session: { ...SESSION_A, videoId: null } })
+    await renderHost()
+    await startPlayback()
+    await act(async () => {
+      requestStore.updateSlot(id, makeRequest())
+    })
+    await act(async () => {
+      video.__player.pause()
+    })
+    video.__player.currentTime = 25
+
+    await detach(id)
+
+    expect(sessionStore.getSnapshot().session).toMatchObject({
+      videoId: "video-a",
+      positionSeconds: 25,
+      phase: "playing",
+    })
+  })
+
   it("publishes nothing while a back gesture is uncommitted, and publishes once it commits", async () => {
     const id = attachSlot()
     const renderer = await renderHost()
@@ -680,10 +716,46 @@ describe("a surface that owns the player before its stream resolves", () => {
 
     await detach(watch)
 
-    // `hasPlaybackStarted` is true — the trailer is playing — so only the
-    // missing source keeps this from becoming a window that replays nothing.
+    // `hasPlaybackStarted` reads through the applied-source gate below, and
+    // the missing source refuses independently — two guards, one regression.
     expect(video.__player.playing).toBe(true)
     expect(sessionStore.getSnapshot().session).toBeNull()
+  })
+
+  it("publishes no session for a source-bearing back-out mid-handover", async () => {
+    // The trailer beneath, playing and APPLIED to the player.
+    attachSlot({ session: null, streamingUrl: URL_B })
+    await renderHost()
+    await startPlayback()
+
+    // The tapped episode resolves its URL and the swap starts. The viewer
+    // backs out before the new stream's first frame — a multi-second window
+    // on low bandwidth. The live `playing` read describes the TRAILER.
+    const watch = await attachSlotInAct({ streamingUrl: URL_A })
+    expect(video.__player.replaceAsync).toHaveBeenCalledWith(URL_A)
+
+    await detach(watch)
+
+    expect(video.__player.playing).toBe(true)
+    expect(sessionStore.getSnapshot().session).toBeNull()
+  })
+
+  it("still publishes once the swap has applied the new source", async () => {
+    // The protective half of the same fallback: after the apply, a swap that
+    // kept `playing` true throughout emitted no playing-change edge, and the
+    // arriving video must not be denied its window for that.
+    attachSlot({ session: null, streamingUrl: URL_B })
+    await renderHost()
+    await startPlayback()
+    const watch = await attachSlotInAct({ streamingUrl: URL_A })
+    await act(async () => {
+      video.__settleReplace()
+    })
+    video.__player.currentTime = 3
+
+    await detach(watch)
+
+    expect(sessionStore.getSnapshot().session?.videoId).toBe("video-a")
   })
 
   it("keeps the floating video's surface when the expand has no source yet", async () => {
@@ -1091,6 +1163,38 @@ describe("native picture-in-picture (U9: R13, R15, R24)", () => {
     expect(videoViews(renderer)).toHaveLength(0)
   })
 
+  it("mounts nothing for a hold with no live request (the SDUI latch entry)", async () => {
+    jest.useFakeTimers()
+    // A watch video floats, then is dismissed: its request dies UNHELD.
+    const id = attachSlot()
+    const renderer = await renderHost()
+    await startPlayback()
+    await detach(id)
+    await act(async () => {
+      sessionStore.requestDismiss()
+    })
+    await act(async () => {
+      jest.advanceTimersByTime(EXIT_DURATION_MS + 1000)
+    })
+    expect(sessionStore.getSnapshot().session).toBeNull()
+    expect(requestStore.getSnapshot().request).toBeNull()
+    expect(videoViews(renderer)).toHaveLength(0)
+
+    // Later an SDUI screen's OWN view enters the OS window — same global
+    // latch. The dead request must not come back as a phantom second player
+    // drawing a black frame at the corner.
+    await act(async () => {
+      sessionStore.setPipHold(true)
+    })
+
+    expect(videoViews(renderer)).toHaveLength(0)
+    expect(frames(renderer)).toHaveLength(0)
+
+    await act(async () => {
+      sessionStore.setPipHold(false)
+    })
+  })
+
   it("releases the latch when the host tears the view down", async () => {
     const renderer = await floatingWindow()
     await enterPip(renderer)
@@ -1145,6 +1249,161 @@ describe("the ended window's replay (R27)", () => {
 
     expect(sessionStore.getSnapshot().session?.phase).toBe("playing")
     expect(video.__player.play).toHaveBeenCalled()
+  })
+})
+
+describe("the ended session after an expand (R21, R27)", () => {
+  async function floatThenExpand() {
+    const first = attachSlot()
+    const renderer = await renderHost()
+    await startPlayback()
+    video.__player.currentTime = 30
+    video.__player.duration = 600
+    await detach(first)
+    expect(sessionStore.getSnapshot().session?.phase).toBe("playing")
+    await attachSlotInAct()
+    return renderer
+  }
+
+  it("marks the surviving session ended when the video finishes full screen", async () => {
+    const renderer = await floatThenExpand()
+
+    await act(async () => {
+      video.__player.__emit("playToEnd")
+    })
+
+    // The session survived the expand, so it must end WITH the video — a
+    // 'playing' phase here re-floats a paused final frame on the pop and
+    // keeps every hero yielded to a finished video.
+    expect(sessionStore.getSnapshot().session?.phase).toBe("ended")
+    expect(sessionStore.getSnapshot().session?.endedCause).toBe("playToEnd")
+
+    // The pop serves R21's ended window off the retained request.
+    await detach(requestStore.getSnapshot().slotId as number)
+    expect(sessionStore.getSnapshot().session?.phase).toBe("ended")
+    expect(requestStore.getSnapshot().request).not.toBeNull()
+    expect(hasWindowChrome(renderer)).toBe(true)
+  })
+
+  it("floats a playing window again when the viewer replays past the ending", async () => {
+    await floatThenExpand()
+    await act(async () => {
+      video.__player.__emit("playToEnd")
+    })
+    expect(sessionStore.getSnapshot().session?.phase).toBe("ended")
+
+    // R27's full-view replay: seek back and play on. The pop's merge must
+    // reset the phase, or the window mounts 'ended' over live audio and the
+    // heroes un-yield into a second decoder.
+    await act(async () => {
+      video.__player.pause()
+    })
+    await act(async () => {
+      video.__player.play()
+    })
+    video.__player.currentTime = 40
+
+    await detach(requestStore.getSnapshot().slotId as number)
+
+    expect(sessionStore.getSnapshot().session).toMatchObject({
+      phase: "playing",
+      endedCause: null,
+      positionSeconds: 40,
+    })
+  })
+})
+
+describe("the shrink into the corner (KTD17)", () => {
+  it("drops a mid-flight shrink the moment a full view takes the rect back", async () => {
+    jest.useFakeTimers()
+    const first = attachSlot()
+    const renderer = await renderHost()
+    await startPlayback()
+    // A silent driver holds the shrink mid-flight, as a busy UI thread can.
+    jest.spyOn(Animated, "timing").mockReturnValue({
+      start: () => {},
+      stop: () => {},
+      reset: () => {},
+    } as never)
+    await detach(first)
+    // Mid-shrink the frame is unclipped so the video may overdraw its box.
+    expect(frameStyle(renderer).overflow).toBe("visible")
+
+    // Fast back-then-forward: the full view owns the rect again while the
+    // shrink never completed. Its transform may not linger under the screen.
+    await attachSlotInAct()
+
+    expect(frameStyle(renderer).overflow).toBe("hidden")
+  })
+})
+
+describe("shouldDrawSurface (R21, R27)", () => {
+  it("redraws in the same render a replay clears the ended cause", () => {
+    // The window hides its thumbnail imperatively in a child effect; waiting
+    // for the parent's surfaceReleased round-trip leaves a black frame.
+    expect(
+      shouldDrawSurface({
+        pipHeld: false,
+        hasSurfaceVideo: true,
+        hasRect: false,
+        endedCause: null,
+        surfaceReleased: true,
+      }),
+    ).toBe(true)
+  })
+
+  it("keeps the surface released for a still-ended window", () => {
+    expect(
+      shouldDrawSurface({
+        pipHeld: false,
+        hasSurfaceVideo: true,
+        hasRect: false,
+        endedCause: "playToEnd",
+        surfaceReleased: true,
+      }),
+    ).toBe(false)
+  })
+
+  it("never releases under the hold, never draws with no surface video", () => {
+    expect(
+      shouldDrawSurface({
+        pipHeld: true,
+        hasSurfaceVideo: false,
+        hasRect: false,
+        endedCause: "playToEnd",
+        surfaceReleased: true,
+      }),
+    ).toBe(true)
+    expect(
+      shouldDrawSurface({
+        pipHeld: false,
+        hasSurfaceVideo: false,
+        hasRect: true,
+        endedCause: null,
+        surfaceReleased: false,
+      }),
+    ).toBe(false)
+  })
+})
+
+describe("the expand wiring (R4)", () => {
+  it("pushes the watch route with the encoded slug", async () => {
+    const id = attachSlot({
+      session: { ...SESSION_A, videoSlug: "día-1" },
+    })
+    const renderer = await renderHost()
+    await startPlayback()
+    await detach(id)
+
+    await act(async () => {
+      fireWindowAction(renderer, "activate")
+    })
+
+    // The REAL host callback: a wrong prefix or a dropped encodeURIComponent
+    // here would ship with every prop-level suite green.
+    expect(mockRouterPush).toHaveBeenCalledWith(
+      `/watch/${encodeURIComponent("día-1")}`,
+    )
   })
 })
 
@@ -1207,6 +1466,70 @@ describe("the dismissal exit (R6)", () => {
     expect(sessionStore.getSnapshot().session).toBeNull()
     expect(requestStore.getSnapshot().request?.streamingUrl).toBe(URL_B)
     expect(exitTranslation(renderer).__getValue()).toBe(0)
+  })
+
+  it("slides the exit from the corner the window occupies", async () => {
+    const id = attachSlot()
+    const renderer = await renderHost()
+    await startPlayback()
+    await detach(id)
+    // Park the window in a TOP corner — reachable by drag-snap and by the
+    // moveToCorner accessibility action (bottomRight -> bottomLeft -> topRight).
+    await act(async () => {
+      fireWindowAction(renderer, "moveToCorner")
+    })
+    await act(async () => {
+      fireWindowAction(renderer, "moveToCorner")
+    })
+    const timingSpy = jest.spyOn(Animated, "timing")
+
+    await dismiss()
+
+    // Measured from the OCCUPIED corner: the default-corner distance stops a
+    // top-corner window mid-screen, fully visible, then blinks it out.
+    const { width, height } = Dimensions.get("window")
+    const top = miniPlayerCornerFrame(
+      {
+        screen: { width, height },
+        insets: { top: 0, right: 0, bottom: 0, left: 0 },
+        chrome: { top: 0, bottom: 0 },
+      },
+      "topRight",
+    )
+    const exitCall = timingSpy.mock.calls.find(
+      ([, config]) =>
+        (config as { duration?: number }).duration === EXIT_DURATION_MS,
+    )
+    expect(exitCall).toBeDefined()
+    expect(
+      (exitCall?.[1] as { toValue: number }).toValue,
+    ).toBeGreaterThanOrEqual(height - top.y)
+  })
+
+  it("goes inert while the exit runs, so a second tap cannot expand it", async () => {
+    jest.useFakeTimers()
+    const id = attachSlot()
+    const renderer = await renderHost()
+    await startPlayback()
+    await detach(id)
+    mockRouterPush.mockClear()
+
+    await dismiss()
+    expect(sessionStore.getSnapshot().dismissal).toBe("exiting")
+    const windowNode = renderer.root.findAll(
+      (n) => n.props.testID === "mini-player-window",
+    )[0]
+    // Touches: dismiss and expand are adjacent taps on a small surface, and a
+    // regret-tap chasing the departing window would push a route the exit
+    // then clears the session under.
+    expect(windowNode.props.pointerEvents).toBe("none")
+
+    // Assistive tech takes the same rule from the handler itself.
+    await act(async () => {
+      fireWindowAction(renderer, "activate")
+    })
+
+    expect(mockRouterPush).not.toHaveBeenCalled()
   })
 
   it("animates a second dismissal after the first has completed", async () => {

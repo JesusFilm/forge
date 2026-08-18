@@ -50,6 +50,7 @@ import {
 import {
   getPlaybackRequestStore,
   sameSessionContent,
+  sameStreamSource,
   sourceForRequest,
   type LoadedSource,
   type PlaybackRect,
@@ -63,6 +64,7 @@ import {
 } from "../../lib/miniPlayer/presentation"
 import {
   getMiniPlayerStore,
+  type MiniPlayerEndedCause,
   type MiniPlayerSession,
 } from "../../lib/miniPlayer/store"
 import {
@@ -111,6 +113,26 @@ const HEADER_ROUTE_PATTERNS: ReadonlySet<string> = new Set([
   "video/[sectionKey]",
   "collection/[sectionKey]",
 ])
+
+/**
+ * Whether the one video view mounts, decided at RENDER time. `endedCause` is a
+ * term of its own because the window hides its thumbnail imperatively in a
+ * child effect the moment a replay clears the cause — a parent-effect re-arm
+ * alone leaves a black frame between the two (R21/R27).
+ */
+export function shouldDrawSurface(input: {
+  pipHeld: boolean
+  hasSurfaceVideo: boolean
+  hasRect: boolean
+  endedCause: MiniPlayerEndedCause | null
+  surfaceReleased: boolean
+}): boolean {
+  // Never gated away under the hold: unregistering the view mid-OS-window
+  // fires expo-video's unguarded native path (R24).
+  if (input.pipHeld) return true
+  if (!input.hasSurfaceVideo) return false
+  return input.hasRect || input.endedCause == null || !input.surfaceReleased
+}
 
 /**
  * The router bridge. Everything below it is router-free so the window's target
@@ -170,9 +192,12 @@ export function PlaybackHostView({
 
   // R24: an ending that is not a dismissal (a subject change, an adapter safety
   // net) drops the request while the OS window is still up, and unmounting the
-  // view there fires expo-video's unguarded native path. Held, not adopted.
+  // view there fires expo-video's unguarded native path. Held, not adopted —
+  // and only ACROSS a hold: the SDUI screens feed the same latch, so a request
+  // that died unheld must not come back as a phantom on their PiP entry.
   const lastRequestRef = useRef<PlaybackRequest | null>(null)
   if (snapshot.request != null) lastRequestRef.current = snapshot.request
+  else if (!pipHeld) lastRequestRef.current = null
   const request = snapshot.request ?? (pipHeld ? lastRequestRef.current : null)
 
   // No request, no player: the app carries no native player (and no cold-launch
@@ -254,6 +279,9 @@ function ActivePlaybackHost({
     }
   }
 
+  // What the player verifiably HOLDS (applied, not merely requested): the
+  // admission fallback below may only trust `player.playing` for this source.
+  const appliedSourceUrlRef = useRef<string | null>(null)
   const { player, isPlaying } = useManagedVideoPlayer(
     sourceUrl,
     (p) => {
@@ -265,7 +293,13 @@ function ActivePlaybackHost({
         prioritizeTimeOverSizeThreshold: true,
       }
     },
-    { progress: progressIdentity, ownsSession: true },
+    {
+      progress: progressIdentity,
+      ownsSession: true,
+      onSourceApplied: (url) => {
+        appliedSourceUrlRef.current = url
+      },
+    },
   )
 
   const openSheetCount = useSyncExternalStore(
@@ -294,8 +328,12 @@ function ActivePlaybackHost({
   // the same key, and cleared whenever playback runs again — a viewer who seeks
   // back from the end and plays on is watching, not finished.
   const endedRef = useRef(false)
+  // Keyed on the SLUG, which is required on the descriptor and stable across
+  // the record load. The mainline seed path flips videoId null -> documentId
+  // MID-playback, and a reset there wipes the started fact with no playing-
+  // change edge left to re-latch it — play, pause, back then owes no window.
   const videoKey = request.session
-    ? `${request.session.videoId ?? ""}|${request.session.videoSlug}`
+    ? request.session.videoSlug
     : (request.streamingUrl ?? "")
   useEffect(() => {
     startedRef.current = false
@@ -307,13 +345,22 @@ function ActivePlaybackHost({
     endedRef.current = false
   }, [isPlaying])
 
+  const requestRef = useRef(request)
+  requestRef.current = request
+
   useEffect(() => {
     store.setPlaybackFactsSource({
       // The live player, not the latch alone: a swap that keeps `playing` true
       // throughout emits no playing-change edge, and a latch that only an edge
-      // sets would deny the arriving video its window for good.
+      // sets would deny the arriving video its window for good. Gated on the
+      // APPLIED source: mid-swap the state still describes the outgoing video,
+      // and vouching with it admits a never-played video (AE10).
       hasPlaybackStarted: () => {
         if (startedRef.current) return true
+        const requested = requestRef.current.streamingUrl
+        const applied = appliedSourceUrlRef.current
+        if (requested == null || applied == null) return false
+        if (!sameStreamSource(applied, requested)) return false
         try {
           return player.playing
         } catch {
@@ -456,6 +503,7 @@ function ActivePlaybackHost({
   const [surfaceReleased, setSurfaceReleased] = useState(false)
   const lastRectRef = useRef<PlaybackRect | null>(null)
   const chromeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const shrinkAnimRef = useRef<Animated.CompositeAnimation | null>(null)
 
   useEffect(() => {
     return () => {
@@ -466,14 +514,29 @@ function ActivePlaybackHost({
   // One effect owns the drag node's resting offset, so a rotation, a handover
   // and a shrink can never race each other over the same value.
   useEffect(() => {
+    // Whatever this run decides, an earlier shrink may not keep animating into
+    // it: an uncancelled one paints a stale corner-bound transform under a
+    // re-entered full view, and its completion callback fires out of turn.
+    shrinkAnimRef.current?.stop()
+    shrinkAnimRef.current = null
+    const clearShrink = () => {
+      if (chromeTimerRef.current != null) {
+        clearTimeout(chromeTimerRef.current)
+        chromeTimerRef.current = null
+      }
+      setShrinkFrom(null)
+      setChromeReady(true)
+    }
     if (rect != null) {
       lastRectRef.current = rect
+      clearShrink()
       drag.setValue({ x: 0, y: 0 })
       return
     }
     const from = lastRectRef.current
     lastRectRef.current = null
     if (from == null || !hasSession) {
+      clearShrink()
       const target = miniPlayerCornerFrame(layoutConfig, cornerRef.current)
       drag.setValue({
         x: target.x - windowFrame.x,
@@ -488,19 +551,26 @@ function ActivePlaybackHost({
     setShrinkFrom(from)
     setChromeReady(false)
     shrink.setValue(0)
-    Animated.timing(shrink, {
+    const animation = Animated.timing(shrink, {
       toValue: 1,
       duration: SHRINK_DURATION_MS,
       useNativeDriver: true,
-    }).start(() => {
+    })
+    shrinkAnimRef.current = animation
+    animation.start(({ finished }) => {
+      if (shrinkAnimRef.current === animation) shrinkAnimRef.current = null
+      // A stop is a supersession: the run that stopped it owns the state.
+      if (!finished) return
       setShrinkFrom(null)
       setChromeReady(true)
     })
     if (chromeTimerRef.current != null) clearTimeout(chromeTimerRef.current)
-    chromeTimerRef.current = setTimeout(
-      () => setChromeReady(true),
-      SHRINK_DURATION_MS + CHROME_RELEASE_SLACK_MS,
-    )
+    chromeTimerRef.current = setTimeout(() => {
+      // The unconditional release also drops the transform: a driver that
+      // never reports back would strand a mid-shrink scale forever.
+      setChromeReady(true)
+      setShrinkFrom(null)
+    }, SHRINK_DURATION_MS + CHROME_RELEASE_SLACK_MS)
   }, [rect, hasSession, layoutConfig, windowFrame, drag, shrink])
 
   useEffect(() => {
@@ -511,7 +581,11 @@ function ActivePlaybackHost({
       exitY.setValue(0)
       return
     }
-    const distance = screenHeight - windowFrame.y + EXIT_CLEARANCE
+    // From the corner the window OCCUPIES: the exit translates the dragged
+    // frame, so a top-corner dismissal measured from the default bottom corner
+    // stops mid-screen and blinks out.
+    const occupied = miniPlayerCornerFrame(layoutConfig, cornerRef.current)
+    const distance = screenHeight - occupied.y + EXIT_CLEARANCE
     const animation = Animated.timing(exitY, {
       toValue: distance,
       duration: EXIT_DURATION_MS,
@@ -534,7 +608,7 @@ function ActivePlaybackHost({
       animation.stop()
       if (timer != null) clearTimeout(timer)
     }
-  }, [presentation, exitY, screenHeight, windowFrame])
+  }, [presentation, exitY, screenHeight, layoutConfig])
 
   // R21/R22 re-arm: a replay puts the surface back before anything else reads it.
   const endedCause = session?.endedCause ?? null
@@ -549,13 +623,25 @@ function ActivePlaybackHost({
 
   useEffect(() => {
     const sub = player.addListener("playToEnd", () => {
-      if (!floatingRef.current) {
-        // The full view has no window to mark ended, so the fact is what
-        // carries the ending to admission when this surface goes away.
-        endedRef.current = true
+      // One fact for both surfaces (R1): the video finished, wherever it
+      // played. Cleared by a replay's playing edge, and read by admission.
+      endedRef.current = true
+      if (floatingRef.current) {
+        getMiniPlayerStore().markEnded("playToEnd")
         return
       }
-      getMiniPlayerStore().markEnded("playToEnd")
+      // A session that survived an expand must end WITH the video, or the pop
+      // re-serves it phase-'playing', paused on the final frame, with every
+      // hero still yielded to it — instead of R21's ended window.
+      const session = getMiniPlayerStore().getSnapshot().session
+      const descriptor = requestRef.current.session
+      if (
+        session != null &&
+        descriptor != null &&
+        sameSessionContent(descriptor, session)
+      ) {
+        getMiniPlayerStore().markEnded("playToEnd")
+      }
     })
     return () => {
       try {
@@ -630,10 +716,13 @@ function ActivePlaybackHost({
   // replace, a seed with no playbackId). The player still holds ANOTHER route's
   // video then, so drawing it into this rect would paint the wrong one.
   const hasSurfaceVideo = request.streamingUrl != null || adoptable
-  // Never gated away under the hold: unregistering the view mid-OS-window fires
-  // expo-video's unguarded native path (R24).
-  const drawsSurface =
-    pipHeld || (hasSurfaceVideo && (rect != null || !surfaceReleased))
+  const drawsSurface = shouldDrawSurface({
+    pipHeld,
+    hasSurfaceVideo,
+    hasRect: rect != null,
+    endedCause,
+    surfaceReleased,
+  })
   // With none of the three inside it, the frame is an opaque black box over the
   // poster the sourceless screen paints beneath it.
   const drawsFrame = drawsSurface || (showWindow && session != null)
@@ -766,6 +855,7 @@ function ActivePlaybackHost({
                 isPlaying={isPlaying}
                 endedCause={session.endedCause}
                 ready={chromeReady}
+                exiting={presentation === "exiting"}
                 onPlayPause={handlePlayPause}
                 onReplay={handleReplay}
                 onDismiss={handleDismiss}

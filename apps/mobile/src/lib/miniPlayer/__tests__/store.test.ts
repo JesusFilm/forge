@@ -103,6 +103,46 @@ describe("start", () => {
     })
   })
 
+  it("resets a merged 'ended' phase when the caller verified live playback", () => {
+    const { store } = startedStore()
+    store.publishPosition({ positionSeconds: 590, durationSeconds: 600 })
+    store.markEnded("playToEnd")
+    expect(store.getSnapshot().session?.phase).toBe("ended")
+
+    // The full-view replay's pop (R27): detachSlot re-starts the same content
+    // having verified unfinished playback, so the window must mount playing —
+    // an 'ended' merge releases its surface over live audio.
+    store.start({
+      videoId: "video-1",
+      videoSlug: "birth-of-jesus",
+      title: "Birth of Jesus",
+      positionSeconds: 12,
+      playbackLive: true,
+    })
+
+    expect(store.getSnapshot().session).toMatchObject({
+      phase: "playing",
+      endedCause: null,
+      positionSeconds: 12,
+    })
+  })
+
+  it("keeps a merged 'ended' phase when the caller did not verify playback", () => {
+    const { store } = startedStore()
+    store.markEnded("failure")
+
+    store.start({
+      videoId: "video-1",
+      videoSlug: "birth-of-jesus",
+      title: "Birth of Jesus",
+    })
+
+    expect(store.getSnapshot().session).toMatchObject({
+      phase: "ended",
+      endedCause: "failure",
+    })
+  })
+
   it("keys identity on the video id, and on the slug for a local file", () => {
     expect(sessionIdentityKey({ videoId: "video-1", videoSlug: "a" })).toBe(
       "id:video-1",

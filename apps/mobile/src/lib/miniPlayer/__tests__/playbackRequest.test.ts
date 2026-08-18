@@ -7,6 +7,7 @@ import {
   createPlaybackRequestStore,
   samePlaybackRequest,
   sameSessionContent,
+  sameStreamSource,
   shouldOriginateSession,
   sourceForRequest,
   type PlaybackRequest,
@@ -153,6 +154,49 @@ describe("shouldOriginateSession (the admission predicate)", () => {
         session: SESSION_A,
       }),
     ).toBe(true)
+  })
+})
+
+describe("sameStreamSource (asset identity for the live-player fallback)", () => {
+  it("reads two Mux URLs naming one playbackId as one stream", () => {
+    // The seed URL and the resolved variant differ as strings, one asset.
+    expect(
+      sameStreamSource(
+        "https://stream.mux.com/assetAAA111.m3u8",
+        "https://stream.mux.com/assetAAA111.m3u8?redundant_streams=true",
+      ),
+    ).toBe(true)
+  })
+
+  it("separates two Mux assets", () => {
+    expect(
+      sameStreamSource(
+        "https://stream.mux.com/assetAAA111.m3u8",
+        "https://stream.mux.com/assetBBB222.m3u8",
+      ),
+    ).toBe(false)
+  })
+
+  it("compares non-Mux sources (offline files) exactly", () => {
+    expect(
+      sameStreamSource(
+        "file:///offline/downloaded-slug/video.mp4",
+        "file:///offline/downloaded-slug/video.mp4",
+      ),
+    ).toBe(true)
+    expect(
+      sameStreamSource(
+        "file:///offline/a/video.mp4",
+        "file:///offline/b/video.mp4",
+      ),
+    ).toBe(false)
+    // A Mux stream never equals a local file, whatever their strings share.
+    expect(
+      sameStreamSource(
+        "https://stream.mux.com/assetAAA111.m3u8",
+        "file:///offline/downloaded-slug/video.mp4",
+      ),
+    ).toBe(false)
   })
 })
 
@@ -585,6 +629,56 @@ describe("admission on detach", () => {
       positionSeconds: 12,
       durationSeconds: 300,
       phase: "playing",
+    })
+  })
+
+  it("re-starts a merged ended session as playing when the stream is healthy", () => {
+    // The full-view replay's pop (R27): the window's video finished, the
+    // viewer expanded and played on, and admission verified that playback.
+    const { store, sessionStore } = makeStores({
+      started: true,
+      position: 12,
+      duration: 600,
+    })
+    sessionStore.start({
+      videoId: "video-a",
+      videoSlug: "video-a-slug",
+      title: "Video A",
+    })
+    sessionStore.markEnded("playToEnd")
+    const id = store.attachSlot(makeRequest())
+
+    store.detachSlot(id)
+
+    expect(sessionStore.getSnapshot().session).toMatchObject({
+      phase: "playing",
+      endedCause: null,
+      positionSeconds: 12,
+    })
+  })
+
+  it("keeps a merged session ended when the stream is failed at detach", () => {
+    // Admission cannot see a dead stream — `loadFailed` is the one ending the
+    // started/reachedEnd pair misses — so it gates the phase reset.
+    const { store, sessionStore } = makeStores({
+      started: true,
+      position: 12,
+      duration: 600,
+    })
+    sessionStore.start({
+      videoId: "video-a",
+      videoSlug: "video-a-slug",
+      title: "Video A",
+    })
+    sessionStore.markEnded("failure")
+    const id = store.attachSlot(makeRequest())
+    store.setLoadFailed(true)
+
+    store.detachSlot(id)
+
+    expect(sessionStore.getSnapshot().session).toMatchObject({
+      phase: "ended",
+      endedCause: "failure",
     })
   })
 

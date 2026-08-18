@@ -55,6 +55,10 @@ export type MiniPlayerSessionInput = {
   originPattern?: string | null
   positionSeconds?: number
   durationSeconds?: number
+  /** The caller verified unfinished playback for this content. A merge onto an
+   *  ended session then resets the phase — a full-view replay is watching again,
+   *  and a window mounted "ended" over live audio releases its surface (R27). */
+  playbackLive?: boolean
 }
 
 export type MiniPlayerStoreSnapshot = {
@@ -200,8 +204,8 @@ export function createMiniPlayerStore() {
           input.positionSeconds ?? (merging ? previous.positionSeconds : 0),
         durationSeconds:
           input.durationSeconds ?? (merging ? previous.durationSeconds : 0),
-        phase: merging ? previous.phase : "playing",
-        endedCause: merging ? previous.endedCause : null,
+        phase: merging && !input.playbackLive ? previous.phase : "playing",
+        endedCause: merging && !input.playbackLive ? previous.endedCause : null,
       }
       commit({
         session,

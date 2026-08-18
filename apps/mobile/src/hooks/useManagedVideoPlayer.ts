@@ -69,6 +69,13 @@ export function useManagedVideoPlayer(
      * session on someone else's ending.
      */
     ownsSession?: boolean
+    /**
+     * The player now verifiably HOLDS this url — fired after a swap applies,
+     * never when one is merely requested. A live `player.playing` read is only
+     * evidence about the applied source; mid-swap it still describes the
+     * outgoing video (AE10's admission hazard).
+     */
+    onSourceApplied?: (url: string) => void
   },
 ) {
   const ownsSession = options?.ownsSession === true
@@ -86,6 +93,14 @@ export function useManagedVideoPlayer(
   // The source currently loaded into the player, tracked separately from the
   // frozen creationSource so swap decisions can compare against it.
   const loadedUrlRef = useRef(sourceUrl)
+
+  const onSourceAppliedRef = useRef(options?.onSourceApplied)
+  onSourceAppliedRef.current = options?.onSourceApplied
+  // The creation source is applied by construction — the player was made
+  // holding it. Swaps report their own apply below, on settle.
+  useEffect(() => {
+    if (creationSource != null) onSourceAppliedRef.current?.(creationSource)
+  }, [creationSource])
 
   // Whether the app is foregrounded right now. A swap's replaceAsync can outlive
   // a background transition; resume() reads this so it never force-plays into
@@ -206,7 +221,11 @@ export function useManagedVideoPlayer(
     const currentId = extractMuxPlaybackId(loadedUrlRef.current)
     const nextId = extractMuxPlaybackId(sourceUrl)
     loadedUrlRef.current = sourceUrl
-    if (currentId != null && nextId != null && currentId === nextId) return
+    if (currentId != null && nextId != null && currentId === nextId) {
+      // Same asset behind a new string: the player already holds it.
+      onSourceAppliedRef.current?.(sourceUrl)
+      return
+    }
 
     // A genuine cross-asset swap ends this QoE session and opens a new one so
     // watched_ms/rebuffers/source attribute to the right asset (R36/R38). The
@@ -238,11 +257,15 @@ export function useManagedVideoPlayer(
     // for HLS on iOS). Fall back to the synchronous path if it rejects.
     void player
       .replaceAsync(sourceUrl)
-      .then(resume)
+      .then(() => {
+        onSourceAppliedRef.current?.(sourceUrl)
+        resume()
+      })
       .catch(() => {
         datadogLog.warn("video.swap_fallback", { content_id: nextId })
         try {
           player.replace(sourceUrl, true)
+          onSourceAppliedRef.current?.(sourceUrl)
           resume()
         } catch {
           datadogLog.error("video.swap_failed", { content_id: nextId })

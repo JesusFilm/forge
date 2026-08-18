@@ -88,6 +88,11 @@ export type MiniPlayerWindowProps = {
   /** One predicate for the chrome AND its tap target, released on a timer by
    *  the host so a shrink that never settles cannot strand the viewer. */
   ready: boolean
+  /** The dismissal exit is running (R6). The window stays mounted through it
+   *  but goes inert: dismiss and expand are adjacent taps, and a second tap
+   *  landing mid-exit would push a route the exit then clears the session
+   *  under. */
+  exiting?: boolean
   onPlayPause: () => void
   onReplay: () => void
   onDismiss: () => void
@@ -108,6 +113,7 @@ export function MiniPlayerWindow({
   isPlaying,
   endedCause,
   ready,
+  exiting = false,
   onPlayPause,
   onReplay,
   onDismiss,
@@ -248,6 +254,8 @@ export function MiniPlayerWindow({
   }, [endedCause, thumbnailOpacity])
 
   const handleAccessibilityAction = (event: AccessibilityActionEvent) => {
+    // Inert through the exit: the same rule pointerEvents applies to touches.
+    if (exiting) return
     switch (event.nativeEvent.actionName) {
       case "activate":
         onExpand()
@@ -288,6 +296,7 @@ export function MiniPlayerWindow({
       accessibilityActions={MINI_PLAYER_ACCESSIBILITY_ACTIONS}
       onAccessibilityAction={handleAccessibilityAction}
       style={StyleSheet.absoluteFill}
+      pointerEvents={exiting ? "none" : undefined}
       {...responder.panHandlers}
     >
       {resolvedPoster != null && (
