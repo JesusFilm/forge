@@ -108,14 +108,20 @@ const EMPTY_FACTS: PlaybackFactsSource = {
  *
  * A video that already reached its end is refused for the same reason a video
  * that never played is: there is nothing left to continue watching.
+ *
+ * So is a surface that never had a stream: `hasPlaybackStarted` reads the LIVE
+ * player, which may still be running ANOTHER route's video (the series trailer
+ * beneath, the outgoing episode of an Up Next replace).
  */
 export function shouldOriginateSession(input: {
   hasPlaybackStarted: boolean
   hasReachedEnd: boolean
+  hasSource: boolean
   session: PlaybackSessionDescriptor | null
 }): boolean {
   if (!input.hasPlaybackStarted) return false
   if (input.hasReachedEnd) return false
+  if (!input.hasSource) return false
   if (input.session == null) return false
   return canOriginateRoutePattern(input.session.originPattern)
 }
@@ -384,6 +390,7 @@ export function createPlaybackRequestStore(deps: {
           shouldOriginateSession({
             hasPlaybackStarted: facts.hasPlaybackStarted(),
             hasReachedEnd: facts.hasReachedEnd(),
+            hasSource: slot.request.streamingUrl != null,
             session: descriptor,
           })
         ) {

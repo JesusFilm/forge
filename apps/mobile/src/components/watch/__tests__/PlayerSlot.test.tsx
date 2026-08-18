@@ -30,6 +30,7 @@ jest.mock("expo-image", () => ({ Image: () => null }))
 
 import { StrictMode, act, type ReactElement } from "react"
 
+import { PlayerPoster } from "../PlayerPoster"
 import { PlayerSlot } from "../PlayerSlot"
 import { getPlaybackRequestStore } from "../../../lib/miniPlayer/playbackRequest"
 import { getMiniPlayerStore } from "../../../lib/miniPlayer/store"
@@ -90,6 +91,14 @@ function posters(renderer: TestInstance) {
   )
 }
 
+/** The no-stream placeholder. By component type, not a prop: it is the whole
+ *  visual the host would otherwise cover with its frame. */
+function placeholders(renderer: TestInstance) {
+  return renderer.root.findAll(
+    (node) => (node as { type?: unknown }).type === PlayerPoster,
+  )
+}
+
 beforeEach(() => {
   requestStore.reset()
   sessionStore.end("abandoned")
@@ -143,6 +152,29 @@ describe("PlayerSlot", () => {
     })
 
     expect(posters(renderer).length).toBeGreaterThan(0)
+  })
+
+  it("owns the player with no stream to hand it, and stands in for the frame", async () => {
+    // The state the watch screen used to render NO slot for. Dropping the slot
+    // hands the player to the route beneath — the series trailer, which then
+    // paints over this screen — and its unmount reads as a back press.
+    const renderer = await render(
+      <PlayerSlot
+        streamingUrl={null}
+        posterUrl={POSTER}
+        autostart
+        session={SESSION_A}
+      />,
+    )
+
+    const snapshot = requestStore.getSnapshot()
+    expect(snapshot.slotId).not.toBeNull()
+    expect(snapshot.request).toMatchObject({
+      streamingUrl: null,
+      session: SESSION_A,
+    })
+    // The host draws no video here, so the placeholder is what fills the box.
+    expect(placeholders(renderer)).toHaveLength(1)
   })
 
   it("drops the request when the screen goes with no playback behind it", async () => {

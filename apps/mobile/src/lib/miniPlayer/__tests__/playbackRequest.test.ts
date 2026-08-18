@@ -89,6 +89,7 @@ describe("shouldOriginateSession (the admission predicate)", () => {
       shouldOriginateSession({
         hasPlaybackStarted: false,
         hasReachedEnd: false,
+        hasSource: true,
         session: SESSION_A,
       }),
     ).toBe(false)
@@ -99,6 +100,7 @@ describe("shouldOriginateSession (the admission predicate)", () => {
       shouldOriginateSession({
         hasPlaybackStarted: true,
         hasReachedEnd: false,
+        hasSource: true,
         session: null,
       }),
     ).toBe(false)
@@ -109,6 +111,7 @@ describe("shouldOriginateSession (the admission predicate)", () => {
       shouldOriginateSession({
         hasPlaybackStarted: true,
         hasReachedEnd: false,
+        hasSource: true,
         session: { ...SESSION_A, originPattern: "video/[sectionKey]" },
       }),
     ).toBe(false)
@@ -121,6 +124,21 @@ describe("shouldOriginateSession (the admission predicate)", () => {
       shouldOriginateSession({
         hasPlaybackStarted: true,
         hasReachedEnd: true,
+        hasSource: true,
+        session: SESSION_A,
+      }),
+    ).toBe(false)
+  })
+
+  it("refuses a surface that never had a stream, however live the player is", () => {
+    // `hasPlaybackStarted` reads the ONE player, which may be running the
+    // series trailer beneath or the outgoing episode of an Up Next replace.
+    // Without this the window would carry a video that never played a frame.
+    expect(
+      shouldOriginateSession({
+        hasPlaybackStarted: true,
+        hasReachedEnd: false,
+        hasSource: false,
         session: SESSION_A,
       }),
     ).toBe(false)
@@ -131,6 +149,7 @@ describe("shouldOriginateSession (the admission predicate)", () => {
       shouldOriginateSession({
         hasPlaybackStarted: true,
         hasReachedEnd: false,
+        hasSource: true,
         session: SESSION_A,
       }),
     ).toBe(true)
@@ -197,6 +216,20 @@ describe("the source an incoming request should play (R4)", () => {
         adoptable: true,
       }),
     ).toBe(REQUESTED)
+  })
+
+  it("names no source for a surface that has none, adoptable or not", () => {
+    // The adapter swaps on a source CHANGE, and a null never reaches it as one
+    // — so what the player already holds survives the gap either way.
+    for (const adoptable of [true, false])
+      expect(
+        sourceForRequest({
+          requested: null,
+          loaded: LOADED,
+          language: null,
+          adoptable,
+        }),
+      ).toBeNull()
   })
 
   it("matches one video across the keys a remount happens to carry", () => {
@@ -357,6 +390,70 @@ describe("a surface that never originates a session (the series trailer)", () =>
       streamingUrl: "https://trailer.m3u8",
       autostart: true,
     })
+  })
+})
+
+describe("a surface that owns the player before its stream resolves", () => {
+  it("keeps the series trailer beneath from staying current", () => {
+    // The series page pushes an episode whose seed carries no playbackId, so
+    // the watch screen mounts source-less. With no slot of its own the trailer
+    // stayed newest-admissible and the host painted it over the watch screen.
+    const { store } = makeStores()
+    const trailer = store.attachSlot(
+      makeRequest({ session: null, streamingUrl: "https://trailer.m3u8" }),
+    )
+    const watch = store.attachSlot(makeRequest({ streamingUrl: null }))
+
+    expect(store.getSnapshot().slotId).toBe(watch)
+    expect(store.getSnapshot().request?.streamingUrl).toBeNull()
+    expect(store.getSnapshot().slotId).not.toBe(trailer)
+  })
+
+  it("publishes no session across a non-null → null → non-null source", () => {
+    // Up Next replaces the route in place: the screen drops its video, so the
+    // source goes null mid-route. Unmounting the slot there would read as a
+    // committed back press and shrink the OUTGOING video into a window.
+    const { store, sessionStore } = makeStores({
+      started: true,
+      position: 42,
+      duration: 600,
+    })
+    const id = store.attachSlot(makeRequest())
+
+    store.updateSlot(
+      id,
+      makeRequest({ streamingUrl: null, session: SESSION_B }),
+    )
+    expect(sessionStore.getSnapshot().session).toBeNull()
+    expect(store.getSnapshot().slotId).toBe(id)
+
+    store.updateSlot(
+      id,
+      makeRequest({
+        streamingUrl: "https://stream.mux.com/assetBBB222.m3u8",
+        session: SESSION_B,
+      }),
+    )
+
+    expect(sessionStore.getSnapshot().session).toBeNull()
+    expect(store.getSnapshot().slotId).toBe(id)
+    expect(store.getSnapshot().request?.streamingUrl).toContain("assetBBB222")
+  })
+
+  it("publishes no session when it goes while the player runs another video", () => {
+    // The facts source says "started" because the ONE player is playing the
+    // trailer. A window for a video with no stream would replay nothing.
+    const { store, sessionStore } = makeStores({
+      started: true,
+      position: 42,
+      duration: 600,
+    })
+    const id = store.attachSlot(makeRequest({ streamingUrl: null }))
+
+    store.detachSlot(id)
+
+    expect(sessionStore.getSnapshot().session).toBeNull()
+    expect(store.getSnapshot().request).toBeNull()
   })
 })
 

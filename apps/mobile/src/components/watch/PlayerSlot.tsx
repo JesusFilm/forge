@@ -26,8 +26,12 @@ import {
 import { PLAYER_HEIGHT_RATIO } from "../../lib/playerLayout"
 import { resolveImageUrl } from "../../lib/resolveImageUrl"
 import type { ProgressIdentity } from "../../lib/watchProgress/recorder"
+import { PlayerPoster } from "./PlayerPoster"
 
 type PlayerSlotProps = {
+  /** Null while the surface has no stream yet, which is a state it OWNS rather
+   *  than a reason to unmount: dropping the slot hands the player to the route
+   *  beneath, and its unmount reads as a committed back press. */
   streamingUrl: string | null
   posterUrl: string | null
   subtitleVttSrc?: string | null
@@ -45,6 +49,10 @@ type PlayerSlotProps = {
   /** What this video's mini-player session would be. Omitted on a surface that
    *  never originates one — the series trailer (AE14) and R19's routes. */
   session?: PlaybackSessionDescriptor | null
+  /** True while a stream is still being resolved, for the placeholder this
+   *  paints with no `streamingUrl`. A null source ALSO means "resolved, nothing
+   *  playable", where a spinner would promise a stream that never comes. */
+  loading?: boolean
 }
 
 export function PlayerSlot({
@@ -58,6 +66,7 @@ export function PlayerSlot({
   resumeAtSeconds = null,
   autostart = false,
   session = null,
+  loading = false,
 }: PlayerSlotProps) {
   const store = getPlaybackRequestStore()
   const { width: screenWidth, height: screenHeight } = useWindowDimensions()
@@ -140,16 +149,27 @@ export function PlayerSlot({
           : { height: playerHeight },
       ]}
     >
-      {/* Only when the root player is elsewhere: the series trailer while a
-          window holds playback (AE14), and the frame before the first measure. */}
-      {!isDrawn && resolvedPoster != null && (
-        <Image
-          source={resolvedPoster}
-          style={StyleSheet.absoluteFill}
-          contentFit="cover"
-          recyclingKey="player-slot-poster"
-          accessibilityLabel="Video thumbnail"
+      {streamingUrl == null ? (
+        // Owning the player with nothing to hand it. The host draws no video
+        // here, so this stands in for the frame rather than covering it.
+        <PlayerPoster
+          posterUrl={posterUrl}
+          horizontalInset={horizontalInset}
+          loading={loading}
         />
+      ) : (
+        /* Only when the root player is elsewhere: the series trailer while a
+           window holds playback (AE14), and the frame before the first measure. */
+        !isDrawn &&
+        resolvedPoster != null && (
+          <Image
+            source={resolvedPoster}
+            style={StyleSheet.absoluteFill}
+            contentFit="cover"
+            recyclingKey="player-slot-poster"
+            accessibilityLabel="Video thumbnail"
+          />
+        )
       )}
     </View>
   )

@@ -280,6 +280,22 @@ function videoViewProps(renderer: TestInstance) {
   }
 }
 
+/** The one black box the host draws at the owning rect (or the window corner).
+ *  Absent means the surface below the host is what the viewer sees. */
+function frames(renderer: TestInstance) {
+  return renderer.root.findAll((node) => node.props.testID === "playback-frame")
+}
+
+/** The full view's chrome, by its always-mounted tap target rather than a
+ *  control the autostart veil suppresses. */
+function hasFullViewChrome(renderer: TestInstance): boolean {
+  return (
+    renderer.root.findAll(
+      (node) => node.props.accessibilityLabel === "Toggle player controls",
+    ).length > 0
+  )
+}
+
 function hasWindowChrome(renderer: TestInstance): boolean {
   return (
     renderer.root.findAll((node) => node.props.testID === "mini-player-window")
@@ -570,6 +586,108 @@ describe("admission (R1, R20)", () => {
     await detach(id)
 
     expect(sessionStore.getSnapshot().session?.videoId).toBe("video-a")
+  })
+})
+
+describe("a surface that owns the player before its stream resolves", () => {
+  const SESSION_B: PlaybackSessionDescriptor = {
+    ...SESSION_A,
+    videoId: "video-b",
+    videoSlug: "video-b-slug",
+    title: "Video B",
+  }
+
+  it("draws nothing of another route's video into the owning rect", async () => {
+    // The series trailer, playing through this same one player.
+    attachSlot({ session: null, streamingUrl: URL_B })
+    const renderer = await renderHost()
+    await startPlayback()
+    expect(videoViews(renderer)).toHaveLength(1)
+
+    // The episode the viewer tapped: its seed carries no playbackId, so the
+    // watch screen mounts with no source. Without a slot of its own the
+    // trailer stayed current and the host painted it over the watch screen.
+    const watch = await attachSlotInAct({ streamingUrl: null })
+
+    expect(requestStore.getSnapshot().slotId).toBe(watch)
+    expect(videoViews(renderer)).toHaveLength(0)
+    expect(hasFullViewChrome(renderer)).toBe(false)
+    // No opaque black box over the poster the screen paints beneath it.
+    expect(frames(renderer)).toHaveLength(0)
+    // The way out survives: the screen drops its own on the same predicate.
+    expect(backButtons(renderer)).toHaveLength(1)
+  })
+
+  it("keeps its slot and its player across an Up Next source gap", async () => {
+    const id = attachSlot()
+    const renderer = await renderHost()
+    await startPlayback()
+    video.__player.currentTime = 42
+    const replacesBefore = video.__player.replaceAsync.mock.calls.length
+
+    // Up Next replaces the route in place, so the screen drops its video and
+    // the SAME mounted slot republishes with no source. Unmounting the slot
+    // there reads as a committed back press and shrinks the outgoing video.
+    await act(async () => {
+      requestStore.updateSlot(
+        id,
+        makeRequest({ streamingUrl: null, session: SESSION_B }),
+      )
+    })
+
+    expect(sessionStore.getSnapshot().session).toBeNull()
+    expect(requestStore.getSnapshot().slotId).toBe(id)
+    expect(videoViews(renderer)).toHaveLength(0)
+    // The player keeps what it holds: a null never reaches it as a swap.
+    expect(video.__player.replaceAsync).toHaveBeenCalledTimes(replacesBefore)
+    expect(video.__player.currentTime).toBe(42)
+
+    await act(async () => {
+      requestStore.updateSlot(
+        id,
+        makeRequest({ streamingUrl: URL_B, session: SESSION_B }),
+      )
+    })
+    await act(async () => {
+      video.__settleReplace()
+    })
+
+    expect(sessionStore.getSnapshot().session).toBeNull()
+    expect(requestStore.getSnapshot().slotId).toBe(id)
+    expect(video.__player.replaceAsync).toHaveBeenLastCalledWith(URL_B)
+    expect(videoViews(renderer)).toHaveLength(1)
+  })
+
+  it("publishes no session when it goes while the player runs another video", async () => {
+    attachSlot({ session: null, streamingUrl: URL_B })
+    await renderHost()
+    await startPlayback()
+    const watch = await attachSlotInAct({ streamingUrl: null })
+
+    await detach(watch)
+
+    // `hasPlaybackStarted` is true — the trailer is playing — so only the
+    // missing source keeps this from becoming a window that replays nothing.
+    expect(video.__player.playing).toBe(true)
+    expect(sessionStore.getSnapshot().session).toBeNull()
+  })
+
+  it("keeps the floating video's surface when the expand has no source yet", async () => {
+    const first = attachSlot()
+    const renderer = await renderHost()
+    await startPlayback()
+    video.__player.currentTime = 30
+    await detach(first)
+    expect(sessionStore.getSnapshot().session?.videoId).toBe("video-a")
+
+    // R4: the expanded screen names the SAME video, so the player is already
+    // holding it. Blanking the surface here would be a black flash mid-expand.
+    await attachSlotInAct({ streamingUrl: null })
+
+    expect(sessionStore.getSnapshot().session?.videoId).toBe("video-a")
+    expect(videoViews(renderer)).toHaveLength(1)
+    expect(video.__player.currentTime).toBe(30)
+    expect(video.__player.playing).toBe(true)
   })
 })
 

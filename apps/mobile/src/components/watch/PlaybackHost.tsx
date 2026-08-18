@@ -234,14 +234,15 @@ function ActivePlaybackHost({
   const loadedSourceRef = useRef<LoadedSource | null>(null)
   const requestLanguage =
     request.session?.languageSlug ?? request.progressLanguageSlug ?? null
+  const adoptable =
+    sessionSnapshot.session != null &&
+    request.session != null &&
+    sameSessionContent(request.session, sessionSnapshot.session)
   const sourceUrl = sourceForRequest({
     requested: request.streamingUrl,
     loaded: loadedSourceRef.current,
     language: requestLanguage,
-    adoptable:
-      sessionSnapshot.session != null &&
-      request.session != null &&
-      sameSessionContent(request.session, sessionSnapshot.session),
+    adoptable,
   })
   if (sourceUrl != null && sourceUrl === request.streamingUrl) {
     // Handed to the player, so it becomes what the player holds. A known dub is
@@ -625,6 +626,18 @@ function ActivePlaybackHost({
   const floating = rect == null && hasSession
   const geometry = rect ?? windowFrame
 
+  // A surface can own the player before its stream resolves (an Up Next
+  // replace, a seed with no playbackId). The player still holds ANOTHER route's
+  // video then, so drawing it into this rect would paint the wrong one.
+  const hasSurfaceVideo = request.streamingUrl != null || adoptable
+  // Never gated away under the hold: unregistering the view mid-OS-window fires
+  // expo-video's unguarded native path (R24).
+  const drawsSurface =
+    pipHeld || (hasSurfaceVideo && (rect != null || !surfaceReleased))
+  // With none of the three inside it, the frame is an opaque black box over the
+  // poster the sourceless screen paints beneath it.
+  const drawsFrame = drawsSurface || (showWindow && session != null)
+
   // Both rects share the video's aspect ratio, so this is translate plus scale
   // only (KTD17).
   const shrinkStyle = useMemo(() => {
@@ -663,101 +676,105 @@ function ActivePlaybackHost({
 
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
-      <Animated.View
-        testID="playback-frame"
-        style={[
-          styles.frame,
-          {
-            left: geometry.x,
-            top: geometry.y,
-            width: geometry.width,
-            height: geometry.height,
-          },
-          // The shrink draws the video larger than this box, so it cannot clip
-          // until the window has settled into its corner.
-          shrinkFrom != null && styles.unclipped,
-          floating && chromeReady && styles.rounded,
-          suppressed && styles.suppressed,
-          { transform: [{ translateX: drag.x }, { translateY: drag.y }] },
-        ]}
-        // Invisible over a sheet, so it must not take that sheet's touches.
-        pointerEvents={suppressed ? "none" : "box-none"}
-      >
+      {drawsFrame && (
         <Animated.View
-          testID="playback-exit"
+          testID="playback-frame"
           style={[
-            StyleSheet.absoluteFill,
-            { transform: [{ translateY: exitY }] },
+            styles.frame,
+            {
+              left: geometry.x,
+              top: geometry.y,
+              width: geometry.width,
+              height: geometry.height,
+            },
+            // The shrink draws the video larger than this box, so it cannot clip
+            // until the window has settled into its corner.
+            shrinkFrom != null && styles.unclipped,
+            floating && chromeReady && styles.rounded,
+            suppressed && styles.suppressed,
+            { transform: [{ translateX: drag.x }, { translateY: drag.y }] },
           ]}
-          pointerEvents="box-none"
+          // Invisible over a sheet, so it must not take that sheet's touches.
+          pointerEvents={suppressed ? "none" : "box-none"}
         >
           <Animated.View
-            testID="playback-motion"
-            style={[StyleSheet.absoluteFill, shrinkStyle]}
+            testID="playback-exit"
+            style={[
+              StyleSheet.absoluteFill,
+              { transform: [{ translateY: exitY }] },
+            ]}
             pointerEvents="box-none"
           >
-            {/* R24: the ended fade's completion callback survives the chrome
-                unmounting, so the hold is what keeps it from releasing this
-                surface out from under a live OS window. */}
-            {(rect != null || !surfaceReleased || pipHeld) && (
-              <VideoView
+            <Animated.View
+              testID="playback-motion"
+              style={[StyleSheet.absoluteFill, shrinkStyle]}
+              pointerEvents="box-none"
+            >
+              {/* R24: the ended fade's completion callback survives the chrome
+                  unmounting, so the hold is what keeps it from releasing this
+                  surface out from under a live OS window. */}
+              {drawsSurface && (
+                <VideoView
+                  player={player}
+                  style={StyleSheet.absoluteFill}
+                  nativeControls={false}
+                  // iOS 16+ defaults this TRUE, which floats a Live Text "scan"
+                  // button over a paused/ended frame that contains text — a system
+                  // control we do not own, inside chrome we do.
+                  allowsVideoFrameAnalysis={false}
+                  contentFit="contain"
+                  {...pipViewProps}
+                  // textureView composites in the RN view hierarchy on Android so
+                  // the controls/captions overlay reliably renders above the video
+                  // surface (SurfaceView otherwise punches through). No-op on iOS.
+                  surfaceType={
+                    Platform.OS === "android" ? "textureView" : undefined
+                  }
+                />
+              )}
+            </Animated.View>
+
+            {/* Transport chrome for something unplayable would be a lie:
+                nothing to scrub, a play button over a poster that never starts. */}
+            {rect != null && hasSurfaceVideo && (
+              <VideoPlayer
                 player={player}
-                style={StyleSheet.absoluteFill}
-                nativeControls={false}
-                // iOS 16+ defaults this TRUE, which floats a Live Text "scan"
-                // button over a paused/ended frame that contains text — a system
-                // control we do not own, inside chrome we do.
-                allowsVideoFrameAnalysis={false}
-                contentFit="contain"
-                {...pipViewProps}
-                // textureView composites in the RN view hierarchy on Android so
-                // the controls/captions overlay reliably renders above the video
-                // surface (SurfaceView otherwise punches through). No-op on iOS.
-                surfaceType={
-                  Platform.OS === "android" ? "textureView" : undefined
-                }
+                isPlaying={isPlaying}
+                loadFailed={snapshot.loadFailed}
+                streamingUrl={request.streamingUrl}
+                posterUrl={request.posterUrl}
+                subtitleVttSrc={request.subtitleVttSrc}
+                fullscreen={request.fullscreen}
+                onToggleFullscreen={request.onToggleFullscreen ?? undefined}
+                resumeAtSeconds={request.resumeAtSeconds}
+                autostart={request.autostart}
+              />
+            )}
+
+            {showWindow && session != null && (
+              <MiniPlayerWindow
+                frame={windowFrame}
+                layout={layoutConfig}
+                drag={drag}
+                corner={corner}
+                onCornerChange={setCorner}
+                title={session.title}
+                posterUrl={session.posterUrl}
+                positionSeconds={session.positionSeconds}
+                durationSeconds={session.durationSeconds}
+                isPlaying={isPlaying}
+                endedCause={session.endedCause}
+                ready={chromeReady}
+                onPlayPause={handlePlayPause}
+                onReplay={handleReplay}
+                onDismiss={handleDismiss}
+                onExpand={handleExpand}
+                onEndedFadeComplete={() => setSurfaceReleased(true)}
               />
             )}
           </Animated.View>
-
-          {rect != null && (
-            <VideoPlayer
-              player={player}
-              isPlaying={isPlaying}
-              loadFailed={snapshot.loadFailed}
-              streamingUrl={request.streamingUrl}
-              posterUrl={request.posterUrl}
-              subtitleVttSrc={request.subtitleVttSrc}
-              fullscreen={request.fullscreen}
-              onToggleFullscreen={request.onToggleFullscreen ?? undefined}
-              resumeAtSeconds={request.resumeAtSeconds}
-              autostart={request.autostart}
-            />
-          )}
-
-          {showWindow && session != null && (
-            <MiniPlayerWindow
-              frame={windowFrame}
-              layout={layoutConfig}
-              drag={drag}
-              corner={corner}
-              onCornerChange={setCorner}
-              title={session.title}
-              posterUrl={session.posterUrl}
-              positionSeconds={session.positionSeconds}
-              durationSeconds={session.durationSeconds}
-              isPlaying={isPlaying}
-              endedCause={session.endedCause}
-              ready={chromeReady}
-              onPlayPause={handlePlayPause}
-              onReplay={handleReplay}
-              onDismiss={handleDismiss}
-              onExpand={handleExpand}
-              onEndedFadeComplete={() => setSurfaceReleased(true)}
-            />
-          )}
         </Animated.View>
-      </Animated.View>
+      )}
 
       {/* The screen's back affordance sits OVER the player, so it moves up with
           the video — outside the frame, so its safe-area maths still resolves

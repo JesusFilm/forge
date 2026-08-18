@@ -44,7 +44,6 @@ import { useFullscreenPresentation } from "../../src/hooks/useFullscreenPresenta
 import { usePlaybackFrameVisible } from "../../src/hooks/usePlaybackFrame"
 import { buildWatchShareUrl } from "../../src/lib/watchShareUrl"
 import { VideoDetailSkeleton } from "../../src/components/watch/VideoDetailSkeleton"
-import { PlayerPoster } from "../../src/components/watch/PlayerPoster"
 import { WatchAmbient } from "../../src/components/watch/WatchAmbient"
 import { VideoMetadata } from "../../src/components/watch/VideoMetadata"
 import { ActionButtonRow } from "../../src/components/watch/ActionButtonRow"
@@ -493,49 +492,43 @@ export default function WatchVideoPage() {
             : { paddingTop: insets.top }
         }
       >
-        {playerSource == null ? (
-          // No stream yet (series/collection pre-redirect, or no variant in the
-          // target language). Paint the artwork, not transport chrome for
-          // something unplayable.
-          <PlayerPoster
-            posterUrl={displayPoster}
-            // Spin only while the stream is still being resolved — once the
-            // query settles, a null source means unplayable, not pending.
-            loading={loading && error == null}
-          />
-        ) : (
-          <PlayerSlot
-            streamingUrl={playerSource}
-            posterUrl={displayPoster}
-            subtitleVttSrc={subtitleVttSrc}
-            fullscreen={isFullscreen}
-            onToggleFullscreen={toggleFullscreen}
-            // The window needs its own copy of what it is playing: the watch
-            // session provider is group-scoped and dies with the route.
-            session={{
-              videoId: video?.documentId ?? null,
-              videoSlug: decodedSlug,
-              title: displayTitle ?? "",
-              posterUrl: displayPoster,
-              languageSlug: activeVariant?.languageSlug ?? null,
-              originPattern: "watch/[slug]",
-            }}
-            progressIdentity={
-              // Offline playback may predate the record load — the slug is
-              // the on-device key admin resolves server-side (KTD8).
-              video?.documentId
-                ? {
-                    videoId: video.documentId,
-                    languageSlug: activeVariant?.languageSlug ?? null,
-                  }
-                : offlineSource
-                  ? { videoSlug: decodedSlug, languageSlug: null }
-                  : null
-            }
-            resumeAtSeconds={resumeAtSeconds}
-            autostart
-          />
-        )}
+        {/* One slot in every state, including "no stream yet" (series pre-
+            redirect, an Up Next replace, no variant in this language): dropping
+            it hands the player to the route beneath and reads as a back press. */}
+        <PlayerSlot
+          streamingUrl={playerSource}
+          posterUrl={displayPoster}
+          subtitleVttSrc={subtitleVttSrc}
+          fullscreen={isFullscreen}
+          onToggleFullscreen={toggleFullscreen}
+          // Spin only while the stream is still being resolved — once the
+          // query settles, a null source means unplayable, not pending.
+          loading={loading && error == null}
+          // The window needs its own copy of what it is playing: the watch
+          // session provider is group-scoped and dies with the route.
+          session={{
+            videoId: video?.documentId ?? null,
+            videoSlug: decodedSlug,
+            title: displayTitle ?? "",
+            posterUrl: displayPoster,
+            languageSlug: activeVariant?.languageSlug ?? null,
+            originPattern: "watch/[slug]",
+          }}
+          progressIdentity={
+            // Offline playback may predate the record load — the slug is
+            // the on-device key admin resolves server-side (KTD8).
+            video?.documentId
+              ? {
+                  videoId: video.documentId,
+                  languageSlug: activeVariant?.languageSlug ?? null,
+                }
+              : offlineSource
+                ? { videoSlug: decodedSlug, languageSlug: null }
+                : null
+          }
+          resumeAtSeconds={resumeAtSeconds}
+          autostart
+        />
       </View>
 
       <ScrollView

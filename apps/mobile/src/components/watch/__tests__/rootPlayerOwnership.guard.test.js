@@ -104,6 +104,27 @@ describe("the screens borrow the root player", () => {
     ).toEqual(["app/series/[slug].tsx", "app/watch/[slug].tsx"])
   })
 
+  // A slot the watch screen renders only when it HAS a stream hands the player
+  // back to the route beneath for the gap, and its unmount reads as a committed
+  // back press. Neither is visible from the screen's own behaviour in jest.
+  it("the watch screen keeps one slot whatever its source resolves to", () => {
+    const watch = readTree().find(
+      (entry) => entry.relative === "app/watch/[slug].tsx",
+    )
+    expect(watch).toBeDefined()
+
+    expect(watch.content.match(/<PlayerSlot\b/g)).toHaveLength(1)
+    expect(watch.content).toContain("streamingUrl={playerSource}")
+    // The shape that dropped it: a dock branched on the source being absent.
+    expect(watch.content).not.toMatch(/playerSource\s*==\s*null\s*\?/)
+  })
+
+  it("positive control: the detector flags a dock branched on the source", () => {
+    const branched =
+      "{playerSource == null ? <PlayerPoster /> : <PlayerSlot />}"
+    expect(branched).toMatch(/playerSource\s*==\s*null\s*\?/)
+  })
+
   it("exactly one adapter owns the mini-player session, and it is the host", () => {
     const owners = readTree()
       .filter((entry) => SESSION_OWNER.test(entry.content))
