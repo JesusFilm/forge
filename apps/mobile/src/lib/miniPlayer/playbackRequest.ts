@@ -206,6 +206,38 @@ export function sourceForRequest(input: {
   return input.loaded.url
 }
 
+/**
+ * Field-wise, like `sameSession` and for the same reason: the screen builds its
+ * cast wiring as an inline literal AND subscribes to this store, so comparing
+ * identity is a render loop — notify, re-render, new literal, notify. Every
+ * leaf below is a primitive or a `useCallback`/reducer value that only changes
+ * when the receiver does, which is exactly when the chrome must follow.
+ */
+function sameCast(
+  a: VideoPlayerCast | null,
+  b: VideoPlayerCast | null,
+): boolean {
+  if (a === b) return true
+  if (a == null || b == null) return false
+  return (
+    a.onCastPress === b.onCastPress &&
+    a.resolveMediaAt === b.resolveMediaAt &&
+    a.recovery === b.recovery &&
+    a.playback.state === b.playback.state &&
+    a.playback.deviceName === b.playback.deviceName &&
+    a.playback.devicesAvailable === b.playback.devicesAvailable &&
+    a.playback.remotePlayerState === b.playback.remotePlayerState &&
+    a.playback.position === b.playback.position &&
+    a.playback.duration === b.playback.duration &&
+    a.playback.load === b.playback.load &&
+    a.playback.play === b.playback.play &&
+    a.playback.pause === b.playback.pause &&
+    a.playback.seekTo === b.playback.seekTo &&
+    a.playback.end === b.playback.end &&
+    a.playback.reset === b.playback.reset
+  )
+}
+
 /** Field-wise equality, so a screen that re-renders does not re-publish. */
 export function samePlaybackRequest(
   a: PlaybackRequest,
@@ -223,7 +255,7 @@ export function samePlaybackRequest(
     a.progressLanguageSlug === b.progressLanguageSlug &&
     a.onToggleFullscreen === b.onToggleFullscreen &&
     a.castActive === b.castActive &&
-    a.cast === b.cast &&
+    sameCast(a.cast, b.cast) &&
     a.progressFeedRef === b.progressFeedRef &&
     sameSession(a.session, b.session)
   )

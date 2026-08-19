@@ -458,15 +458,58 @@ describe("a surface that never originates a session (the series trailer)", () =>
     expect(store.getSnapshot().request).not.toBeNull()
   })
 
-  it("republishes when only the cast wiring changed", () => {
+  it("republishes when the cast state actually changed", () => {
     // The silent-death path: every other field is stable during a session, so
-    // without the identity compare the host freezes on the first cast object.
+    // a short-circuit here freezes the host on the first cast object and the
+    // chrome never follows the receiver.
     const { store } = makeStores({ started: true, position: 1, duration: 10 })
-    const first = { onCastPress: () => {} } as never
-    const id = store.attachSlot(makeRequest({ cast: first, castActive: true }))
-    const second = { onCastPress: () => {} } as never
-    store.updateSlot(id, makeRequest({ cast: second, castActive: true }))
-    expect(store.getSnapshot().request?.cast).toBe(second)
+    const press = () => {}
+    const wiring = (phase: string) =>
+      ({
+        playback: { state: { phase }, position: 1 },
+        onCastPress: press,
+        resolveMediaAt: press,
+        recovery: null,
+      }) as never
+    const id = store.attachSlot(
+      makeRequest({ cast: wiring("connecting"), castActive: true }),
+    )
+    const next = wiring("active")
+    store.updateSlot(id, makeRequest({ cast: next, castActive: true }))
+    expect(store.getSnapshot().request?.cast).toBe(next)
+  })
+
+  it("holds still when the cast wiring is rebuilt with the same values", () => {
+    // The screen builds `cast` as an inline literal and SUBSCRIBES to this
+    // store, so an identity compare here is a render loop: notify -> re-render
+    // -> new literal -> notify. Every leaf it carries is already stable.
+    const { store } = makeStores({ started: true, position: 1, duration: 10 })
+    const state = { phase: "active" }
+    const press = () => {}
+    const resolve = () => null
+    const wiring = () =>
+      ({
+        playback: {
+          state,
+          deviceName: "Living Room",
+          devicesAvailable: true,
+          remotePlayerState: "playing",
+          position: 12,
+          duration: 300,
+        },
+        onCastPress: press,
+        resolveMediaAt: resolve,
+        recovery: null,
+      }) as never
+    const id = store.attachSlot(
+      makeRequest({ cast: wiring(), castActive: true }),
+    )
+    let notifications = 0
+    store.subscribe(() => {
+      notifications += 1
+    })
+    store.updateSlot(id, makeRequest({ cast: wiring(), castActive: true }))
+    expect(notifications).toBe(0)
   })
 
   it("takes the player, and its autostart, once the dismissed window has gone", () => {
