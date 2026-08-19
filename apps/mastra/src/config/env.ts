@@ -40,6 +40,34 @@ const DEFAULT_SUPPORT_RESEARCH_MAX_RESPONSE_BYTES = 1_048_576
 const DEFAULT_SUPPORT_RESEARCH_MAX_CONVERSATIONS = 200
 const DEFAULT_SUPPORT_RESEARCH_MAX_ACTIONS = 5
 const DEFAULT_SUPPORT_RESEARCH_RETENTION_DAYS = 90
+const DEFAULT_DATADOG_TRIAGE_MODEL = "openai/gpt-5.4-mini"
+const DEFAULT_DATADOG_TRIAGE_SITE = "datadoghq.com"
+const DEFAULT_DATADOG_TRIAGE_SERVICES = "forge-mobile"
+const DEFAULT_DATADOG_TRIAGE_MAX_CANDIDATES_PER_RUN = 200
+const DEFAULT_DATADOG_TRIAGE_MAX_TICKETS_PER_DAY = 5
+const DEFAULT_DATADOG_TRIAGE_TIMEOUT_MS = 15_000
+// 4 MiB ceiling on every buffered Datadog response body. A POLICY ceiling, not
+// a derived bound: one Error Tracking page (100 issues) carrying long stack
+// messages measures in the low hundreds of kB, so this leaves ~10x headroom
+// while bounding the heap a misbehaving upstream can claim. Over-cap aborts the
+// stream and rides the existing graceful-failure path.
+const DEFAULT_DATADOG_TRIAGE_MAX_RESPONSE_BYTES = 4_194_304
+const DEFAULT_DATADOG_TRIAGE_OVERLAP_MS = 300_000
+const DEFAULT_DATADOG_TRIAGE_LAG_MS = 180_000
+const DEFAULT_DATADOG_TRIAGE_CONFIDENCE = 0.7
+const DEFAULT_DATADOG_TRIAGE_ACTIONABILITY = 0.6
+const DEFAULT_DATADOG_TRIAGE_MIN_OCCURRENCES = 3
+const DEFAULT_DATADOG_TRIAGE_REGRESSION_MULTIPLIER = 3
+const DEFAULT_DATADOG_TRIAGE_MONITOR_COOLDOWN_MS = 21_600_000
+const DEFAULT_DATADOG_TRIAGE_SPIKE_MULTIPLIER = 3
+// Release-session discriminator (R17/KTD4), pinned against the live 2026-08-18
+// `forge-mobile` sample: real store builds carry semver-shaped versions while
+// the dev-session noise carries ad-hoc tags (`fixcheck-20260805`,
+// `sdk57-regression-20260813`). A version that fails this pattern is dev-shaped.
+const DEFAULT_DATADOG_TRIAGE_RELEASE_VERSION_PATTERN =
+  "^\\d+\\.\\d+(?:\\.\\d+)?(?:[-+][0-9A-Za-z.-]+)?$"
+const DEFAULT_DATADOG_TRIAGE_DEV_SESSION_MARKERS =
+  "127.0.0.1,localhost,10.0.2.2,dev=true,exp://,expo-development-client"
 const DEFAULT_SUBTITLE_ENRICHMENT_MODEL = "google/gemini-2.5-flash"
 const DEFAULT_SUBTITLE_ENRICHMENT_TIMEOUT_MS = 120_000
 const DEFAULT_SUBTITLE_ENRICHMENT_CONCURRENCY = 10
@@ -656,6 +684,102 @@ const envSchema = z.object({
     .min(1)
     .optional(),
   LINEAR_SUPPORT_RESEARCH_UX_LABEL_ID: z.string().min(1).optional(),
+  DATADOG_TRIAGE_ENABLED: z.enum(["true", "false"]).default("false"),
+  DATADOG_TRIAGE_SITE: z.string().min(1).default(DEFAULT_DATADOG_TRIAGE_SITE),
+  DATADOG_TRIAGE_API_KEY: z.string().min(1).optional(),
+  DATADOG_TRIAGE_APP_KEY: z.string().min(1).optional(),
+  DATADOG_TRIAGE_SERVICES: z
+    .string()
+    .min(1)
+    .default(DEFAULT_DATADOG_TRIAGE_SERVICES),
+  DATADOG_TRIAGE_SERVICE_PROFILES_JSON: z.string().min(2).optional(),
+  DATADOG_TRIAGE_MODEL: z.string().min(1).default(DEFAULT_DATADOG_TRIAGE_MODEL),
+  DATADOG_TRIAGE_MAX_CANDIDATES_PER_RUN: z.coerce
+    .number()
+    .int()
+    .positive()
+    .max(1_000)
+    .default(DEFAULT_DATADOG_TRIAGE_MAX_CANDIDATES_PER_RUN),
+  DATADOG_TRIAGE_MAX_TICKETS_PER_DAY: z.coerce
+    .number()
+    .int()
+    .nonnegative()
+    .max(25)
+    .default(DEFAULT_DATADOG_TRIAGE_MAX_TICKETS_PER_DAY),
+  DATADOG_TRIAGE_TIMEOUT_MS: z.coerce
+    .number()
+    .int()
+    .positive()
+    .max(120_000)
+    .default(DEFAULT_DATADOG_TRIAGE_TIMEOUT_MS),
+  DATADOG_TRIAGE_MAX_RESPONSE_BYTES: z.coerce
+    .number()
+    .int()
+    .positive()
+    .max(16_777_216)
+    .default(DEFAULT_DATADOG_TRIAGE_MAX_RESPONSE_BYTES),
+  DATADOG_TRIAGE_OVERLAP_MS: z.coerce
+    .number()
+    .int()
+    .nonnegative()
+    .max(3_600_000)
+    .default(DEFAULT_DATADOG_TRIAGE_OVERLAP_MS),
+  DATADOG_TRIAGE_LAG_MS: z.coerce
+    .number()
+    .int()
+    .nonnegative()
+    .max(3_600_000)
+    .default(DEFAULT_DATADOG_TRIAGE_LAG_MS),
+  DATADOG_TRIAGE_CONFIDENCE_THRESHOLD: z.coerce
+    .number()
+    .min(0)
+    .max(1)
+    .default(DEFAULT_DATADOG_TRIAGE_CONFIDENCE),
+  DATADOG_TRIAGE_ACTIONABILITY_THRESHOLD: z.coerce
+    .number()
+    .min(0)
+    .max(1)
+    .default(DEFAULT_DATADOG_TRIAGE_ACTIONABILITY),
+  DATADOG_TRIAGE_MIN_OCCURRENCES: z.coerce
+    .number()
+    .int()
+    .positive()
+    .max(10_000)
+    .default(DEFAULT_DATADOG_TRIAGE_MIN_OCCURRENCES),
+  DATADOG_TRIAGE_REGRESSION_MULTIPLIER: z.coerce
+    .number()
+    .min(1)
+    .max(1_000)
+    .default(DEFAULT_DATADOG_TRIAGE_REGRESSION_MULTIPLIER),
+  DATADOG_TRIAGE_MONITOR_COOLDOWN_MS: z.coerce
+    .number()
+    .int()
+    .nonnegative()
+    .max(604_800_000)
+    .default(DEFAULT_DATADOG_TRIAGE_MONITOR_COOLDOWN_MS),
+  DATADOG_TRIAGE_SPIKE_MULTIPLIER: z.coerce
+    .number()
+    .min(1)
+    .max(1_000)
+    .default(DEFAULT_DATADOG_TRIAGE_SPIKE_MULTIPLIER),
+  DATADOG_TRIAGE_RELEASE_VERSION_PATTERN: z
+    .string()
+    .min(1)
+    .max(500)
+    .default(DEFAULT_DATADOG_TRIAGE_RELEASE_VERSION_PATTERN),
+  DATADOG_TRIAGE_DEV_SESSION_MARKERS: z
+    .string()
+    .min(1)
+    .default(DEFAULT_DATADOG_TRIAGE_DEV_SESSION_MARKERS),
+  DATADOG_TRIAGE_REPOSITORY_SMOKE_TEST: z.literal("1").optional(),
+  LINEAR_DATADOG_TRIAGE_API_KEY: z.string().min(1).optional(),
+  LINEAR_DATADOG_TRIAGE_API_URL: z
+    .string()
+    .url()
+    .default(DEFAULT_LINEAR_API_URL),
+  LINEAR_DATADOG_TRIAGE_TEAM_ID: z.string().min(1).optional(),
+  LINEAR_DATADOG_TRIAGE_PROJECT_ID: z.string().min(1).optional(),
+  LINEAR_DATADOG_TRIAGE_BUG_LABEL_ID: z.string().min(1).optional(),
   YOUTUBE_API_KEY: z.string().min(1).optional(),
   YOUTUBE_ALLOWED_HOSTS: z
     .string()
@@ -1061,6 +1185,75 @@ export const env = envSchema.parse({
   LINEAR_SUPPORT_RESEARCH_UX_LABEL_ID: emptyToUndefined(
     process.env.LINEAR_SUPPORT_RESEARCH_UX_LABEL_ID,
   ),
+  DATADOG_TRIAGE_ENABLED: emptyToUndefined(process.env.DATADOG_TRIAGE_ENABLED),
+  DATADOG_TRIAGE_SITE: emptyToUndefined(process.env.DATADOG_TRIAGE_SITE),
+  DATADOG_TRIAGE_API_KEY: emptyToUndefined(process.env.DATADOG_TRIAGE_API_KEY),
+  DATADOG_TRIAGE_APP_KEY: emptyToUndefined(process.env.DATADOG_TRIAGE_APP_KEY),
+  DATADOG_TRIAGE_SERVICES: emptyToUndefined(
+    process.env.DATADOG_TRIAGE_SERVICES,
+  ),
+  DATADOG_TRIAGE_SERVICE_PROFILES_JSON: emptyToUndefined(
+    process.env.DATADOG_TRIAGE_SERVICE_PROFILES_JSON,
+  ),
+  DATADOG_TRIAGE_MODEL: emptyToUndefined(process.env.DATADOG_TRIAGE_MODEL),
+  DATADOG_TRIAGE_MAX_CANDIDATES_PER_RUN: emptyToUndefined(
+    process.env.DATADOG_TRIAGE_MAX_CANDIDATES_PER_RUN,
+  ),
+  DATADOG_TRIAGE_MAX_TICKETS_PER_DAY: emptyToUndefined(
+    process.env.DATADOG_TRIAGE_MAX_TICKETS_PER_DAY,
+  ),
+  DATADOG_TRIAGE_TIMEOUT_MS: emptyToUndefined(
+    process.env.DATADOG_TRIAGE_TIMEOUT_MS,
+  ),
+  DATADOG_TRIAGE_MAX_RESPONSE_BYTES: emptyToUndefined(
+    process.env.DATADOG_TRIAGE_MAX_RESPONSE_BYTES,
+  ),
+  DATADOG_TRIAGE_OVERLAP_MS: emptyToUndefined(
+    process.env.DATADOG_TRIAGE_OVERLAP_MS,
+  ),
+  DATADOG_TRIAGE_LAG_MS: emptyToUndefined(process.env.DATADOG_TRIAGE_LAG_MS),
+  DATADOG_TRIAGE_CONFIDENCE_THRESHOLD: emptyToUndefined(
+    process.env.DATADOG_TRIAGE_CONFIDENCE_THRESHOLD,
+  ),
+  DATADOG_TRIAGE_ACTIONABILITY_THRESHOLD: emptyToUndefined(
+    process.env.DATADOG_TRIAGE_ACTIONABILITY_THRESHOLD,
+  ),
+  DATADOG_TRIAGE_MIN_OCCURRENCES: emptyToUndefined(
+    process.env.DATADOG_TRIAGE_MIN_OCCURRENCES,
+  ),
+  DATADOG_TRIAGE_REGRESSION_MULTIPLIER: emptyToUndefined(
+    process.env.DATADOG_TRIAGE_REGRESSION_MULTIPLIER,
+  ),
+  DATADOG_TRIAGE_MONITOR_COOLDOWN_MS: emptyToUndefined(
+    process.env.DATADOG_TRIAGE_MONITOR_COOLDOWN_MS,
+  ),
+  DATADOG_TRIAGE_SPIKE_MULTIPLIER: emptyToUndefined(
+    process.env.DATADOG_TRIAGE_SPIKE_MULTIPLIER,
+  ),
+  DATADOG_TRIAGE_RELEASE_VERSION_PATTERN: emptyToUndefined(
+    process.env.DATADOG_TRIAGE_RELEASE_VERSION_PATTERN,
+  ),
+  DATADOG_TRIAGE_DEV_SESSION_MARKERS: emptyToUndefined(
+    process.env.DATADOG_TRIAGE_DEV_SESSION_MARKERS,
+  ),
+  DATADOG_TRIAGE_REPOSITORY_SMOKE_TEST: emptyToUndefined(
+    process.env.DATADOG_TRIAGE_REPOSITORY_SMOKE_TEST,
+  ),
+  LINEAR_DATADOG_TRIAGE_API_KEY: emptyToUndefined(
+    process.env.LINEAR_DATADOG_TRIAGE_API_KEY,
+  ),
+  LINEAR_DATADOG_TRIAGE_API_URL: emptyToUndefined(
+    process.env.LINEAR_DATADOG_TRIAGE_API_URL,
+  ),
+  LINEAR_DATADOG_TRIAGE_TEAM_ID: emptyToUndefined(
+    process.env.LINEAR_DATADOG_TRIAGE_TEAM_ID,
+  ),
+  LINEAR_DATADOG_TRIAGE_PROJECT_ID: emptyToUndefined(
+    process.env.LINEAR_DATADOG_TRIAGE_PROJECT_ID,
+  ),
+  LINEAR_DATADOG_TRIAGE_BUG_LABEL_ID: emptyToUndefined(
+    process.env.LINEAR_DATADOG_TRIAGE_BUG_LABEL_ID,
+  ),
   YOUTUBE_API_KEY: emptyToUndefined(process.env.YOUTUBE_API_KEY),
   YOUTUBE_ALLOWED_HOSTS: emptyToUndefined(process.env.YOUTUBE_ALLOWED_HOSTS),
   YOUTUBE_API_BASE_URL: emptyToUndefined(process.env.YOUTUBE_API_BASE_URL),
@@ -1427,6 +1620,219 @@ export function getSupportResearchConfig(): SupportResearchConfig {
       uxLabelId: env.LINEAR_SUPPORT_RESEARCH_UX_LABEL_ID,
     },
   }
+}
+
+/**
+ * Datadog API sites this integration will talk to. The client re-checks the
+ * resolved host against this list before any credential leaves the process
+ * (KTD5), so an operator typo cannot send the app key to an unrelated host.
+ */
+export const DATADOG_TRIAGE_ALLOWED_SITES = [
+  "datadoghq.com",
+  "us3.datadoghq.com",
+  "us5.datadoghq.com",
+  "datadoghq.eu",
+  "ap1.datadoghq.com",
+  "ap2.datadoghq.com",
+  "ddog-gov.com",
+] as const
+
+export function datadogApiBaseUrl(site: string): string {
+  return `https://api.${site}`
+}
+
+export function datadogAppBaseUrl(site: string): string {
+  return `https://app.${site}`
+}
+
+export type DatadogTriageServiceProfile = {
+  /** Bracketed surface prefix on the Linear title, e.g. `[Mobile]` (R9). */
+  surfacePrefix: string
+  /** Whether R17's release-session filter applies to this service (KTD9). */
+  releaseSessionFilter: boolean
+}
+
+export type DatadogTriageConfig = {
+  enabled: boolean
+  model: string
+  databaseUrl: string
+  site: string
+  apiKey?: string
+  applicationKey?: string
+  services: string[]
+  serviceProfiles: Record<string, DatadogTriageServiceProfile>
+  /** True when SERVICE_PROFILES_JSON was set but unusable; readiness refuses. */
+  serviceProfilesInvalid: boolean
+  maxCandidatesPerRun: number
+  maxTicketsPerDay: number
+  timeoutMs: number
+  maxResponseBytes: number
+  overlapMs: number
+  ingestionLagMs: number
+  confidenceThreshold: number
+  actionabilityThreshold: number
+  minOccurrences: number
+  regressionMultiplier: number
+  monitorCooldownMs: number
+  spikeMultiplier: number
+  releaseVersionPattern: string
+  devSessionMarkers: string[]
+  linear: {
+    apiKey?: string
+    apiUrl: string
+    teamId?: string
+    projectId?: string
+    bugLabelId?: string
+  }
+}
+
+const DEFAULT_DATADOG_TRIAGE_SERVICE_PROFILES: Record<
+  string,
+  DatadogTriageServiceProfile
+> = {
+  "forge-mobile": { surfacePrefix: "[Mobile]", releaseSessionFilter: true },
+}
+
+const datadogTriageServiceProfileSchema = z.object({
+  surfacePrefix: z
+    .string()
+    .min(1)
+    .max(40)
+    .regex(/^\[[^\][]{1,38}\]$/u),
+  releaseSessionFilter: z.boolean(),
+})
+
+/**
+ * Per-service surface prefix + filter applicability (KTD9). Returns
+ * `undefined` — never a silent default — when a SET value cannot be used, so
+ * readiness refuses the run rather than filing tickets under a wrong prefix.
+ */
+function parseDatadogTriageServiceProfiles(
+  raw: string | undefined,
+): Record<string, DatadogTriageServiceProfile> | undefined {
+  if (raw === undefined) return DEFAULT_DATADOG_TRIAGE_SERVICE_PROFILES
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(raw)
+  } catch {
+    return undefined
+  }
+  const result = z
+    .record(z.string().min(1), datadogTriageServiceProfileSchema)
+    .safeParse(parsed)
+  return result.success ? result.data : undefined
+}
+
+/**
+ * Optional hourly Datadog mobile triage integration. Every field is optional at
+ * schema level so an unprovisioned environment still boots; completeness is a
+ * runtime readiness decision (`getDatadogTriageReadiness`).
+ */
+export function getDatadogTriageConfig(): DatadogTriageConfig {
+  const serviceProfiles = parseDatadogTriageServiceProfiles(
+    env.DATADOG_TRIAGE_SERVICE_PROFILES_JSON,
+  )
+  return {
+    enabled: env.DATADOG_TRIAGE_ENABLED === "true",
+    model: env.DATADOG_TRIAGE_MODEL,
+    databaseUrl: getMastraDatabaseUrl(),
+    site: env.DATADOG_TRIAGE_SITE.trim().toLowerCase(),
+    apiKey: env.DATADOG_TRIAGE_API_KEY,
+    applicationKey: env.DATADOG_TRIAGE_APP_KEY,
+    services: csvValues(env.DATADOG_TRIAGE_SERVICES),
+    serviceProfiles: serviceProfiles ?? DEFAULT_DATADOG_TRIAGE_SERVICE_PROFILES,
+    serviceProfilesInvalid: serviceProfiles === undefined,
+    maxCandidatesPerRun: env.DATADOG_TRIAGE_MAX_CANDIDATES_PER_RUN,
+    maxTicketsPerDay: env.DATADOG_TRIAGE_MAX_TICKETS_PER_DAY,
+    timeoutMs: env.DATADOG_TRIAGE_TIMEOUT_MS,
+    maxResponseBytes: env.DATADOG_TRIAGE_MAX_RESPONSE_BYTES,
+    overlapMs: env.DATADOG_TRIAGE_OVERLAP_MS,
+    ingestionLagMs: env.DATADOG_TRIAGE_LAG_MS,
+    confidenceThreshold: env.DATADOG_TRIAGE_CONFIDENCE_THRESHOLD,
+    actionabilityThreshold: env.DATADOG_TRIAGE_ACTIONABILITY_THRESHOLD,
+    minOccurrences: env.DATADOG_TRIAGE_MIN_OCCURRENCES,
+    regressionMultiplier: env.DATADOG_TRIAGE_REGRESSION_MULTIPLIER,
+    monitorCooldownMs: env.DATADOG_TRIAGE_MONITOR_COOLDOWN_MS,
+    spikeMultiplier: env.DATADOG_TRIAGE_SPIKE_MULTIPLIER,
+    releaseVersionPattern: env.DATADOG_TRIAGE_RELEASE_VERSION_PATTERN,
+    devSessionMarkers: csvValues(env.DATADOG_TRIAGE_DEV_SESSION_MARKERS).map(
+      (marker) => marker.toLowerCase(),
+    ),
+    linear: {
+      apiKey: env.LINEAR_DATADOG_TRIAGE_API_KEY,
+      apiUrl: env.LINEAR_DATADOG_TRIAGE_API_URL,
+      teamId: env.LINEAR_DATADOG_TRIAGE_TEAM_ID,
+      projectId: env.LINEAR_DATADOG_TRIAGE_PROJECT_ID,
+      bugLabelId: env.LINEAR_DATADOG_TRIAGE_BUG_LABEL_ID,
+    },
+  }
+}
+
+export function getDatadogTriageServiceProfile(
+  config: Pick<DatadogTriageConfig, "serviceProfiles">,
+  service: string,
+): DatadogTriageServiceProfile {
+  return (
+    config.serviceProfiles[service] ?? {
+      surfacePrefix: "[Service]",
+      releaseSessionFilter: false,
+    }
+  )
+}
+
+export type DatadogTriageReadiness =
+  | { ready: true }
+  | { ready: false; reasons: string[] }
+
+function isLinearGraphqlUrl(value: string): boolean {
+  try {
+    const url = new URL(value)
+    return (
+      url.protocol === "https:" &&
+      url.hostname === "api.linear.app" &&
+      url.pathname === "/graphql" &&
+      !url.username &&
+      !url.password &&
+      !url.port &&
+      !url.search &&
+      !url.hash
+    )
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Runtime completeness gate for the triage workflow. Every reason is a fixed
+ * enum string safe to log; no credential or operator value is echoed.
+ */
+export function getDatadogTriageReadiness(
+  config: DatadogTriageConfig,
+): DatadogTriageReadiness {
+  const reasons: string[] = []
+  if (!config.enabled) reasons.push("feature_disabled")
+  if (!config.apiKey) reasons.push("datadog_api_key_missing")
+  if (!config.applicationKey) reasons.push("datadog_app_key_missing")
+  if (
+    !(DATADOG_TRIAGE_ALLOWED_SITES as readonly string[]).includes(config.site)
+  ) {
+    reasons.push("datadog_site_not_allowed")
+  }
+  if (config.services.length === 0) reasons.push("services_missing")
+  if (config.serviceProfilesInvalid) reasons.push("service_profiles_invalid")
+  try {
+    new RegExp(config.releaseVersionPattern, "u")
+  } catch {
+    reasons.push("release_version_pattern_invalid")
+  }
+  if (!config.linear.apiKey) reasons.push("linear_api_key_missing")
+  if (!config.linear.teamId) reasons.push("linear_team_id_missing")
+  if (!config.linear.projectId) reasons.push("linear_project_id_missing")
+  if (!config.linear.bugLabelId) reasons.push("linear_bug_label_missing")
+  if (!isLinearGraphqlUrl(config.linear.apiUrl)) {
+    reasons.push("linear_url_not_allowed")
+  }
+  return reasons.length === 0 ? { ready: true } : { ready: false, reasons }
 }
 
 /**
