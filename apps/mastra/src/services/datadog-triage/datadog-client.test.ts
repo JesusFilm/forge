@@ -223,6 +223,134 @@ describe("DatadogTriageClient issue search", () => {
     expect(result.value.truncated).toBe(false)
   })
 
+  // Pagination. Without it a service whose baseline window exceeds one page
+  // could never seed, so its Error Tracking coverage was silent forever.
+  function rows(ids: string[]) {
+    return ids.map((id) => ({ ...LIVE_ISSUE_ROW, issue_id: id }))
+  }
+
+  type PageArgs = { limit: number; cursor?: string }
+
+  function pagedFetch(pages: unknown[]) {
+    const queue = [...pages]
+    const sentPages: PageArgs[] = []
+    const impl = vi.fn(async (_url: URL, init: RequestInit) => {
+      const body = JSON.parse(String(init.body)) as {
+        data: { attributes: { page: PageArgs } }
+      }
+      sentPages.push(body.data.attributes.page)
+      return jsonResponse(queue.shift() ?? { data: [] })
+    })
+    return { impl: impl as unknown as typeof fetch, sentPages, calls: impl }
+  }
+
+  it.each([
+    ["meta.page.after", (c: string) => ({ meta: { page: { after: c } } })],
+    [
+      "meta.pagination.next_cursor",
+      (c: string) => ({ meta: { pagination: { next_cursor: c } } }),
+    ],
+  ])(
+    "follows the cursor at %s until the window is exhausted",
+    async (_, at) => {
+      const paged = pagedFetch([
+        { data: rows(["A", "B"]), ...at("cur-1") },
+        { data: rows(["C"]) },
+      ])
+      const client = new DatadogTriageClient(CONFIG, paged.impl)
+
+      const result = await client.searchIssues({ ...WINDOW, limit: 2 })
+
+      expect(result.ok).toBe(true)
+      if (!result.ok) throw new Error("expected success")
+      expect(result.value.issues.map((i) => i.issueId)).toEqual(["A", "B", "C"])
+      expect(result.value.truncated).toBe(false)
+      // First request carries no cursor; the second carries the one returned.
+      expect(paged.sentPages).toEqual([
+        { limit: 2 },
+        { limit: 2, cursor: "cur-1" },
+      ])
+    },
+  )
+
+  it("deduplicates an issue that repeats across a cursor", async () => {
+    // The second page must carry BOTH a repeat and a new id, or the assertion
+    // cannot tell deduplication from never having followed the cursor.
+    const paged = pagedFetch([
+      { data: rows(["A", "B"]), meta: { page: { after: "cur-1" } } },
+      { data: rows(["B", "C"]) },
+    ])
+    const client = new DatadogTriageClient(CONFIG, paged.impl)
+
+    const result = await client.searchIssues({ ...WINDOW, limit: 2 })
+
+    expect(result.ok).toBe(true)
+    if (!result.ok) throw new Error("expected success")
+    expect(result.value.issues.map((i) => i.issueId)).toEqual(["A", "B", "C"])
+  })
+
+  it("stops at the page cap and reports the read truncated", async () => {
+    const paged = pagedFetch([
+      { data: rows(["A"]), meta: { page: { after: "c1" } } },
+      { data: rows(["B"]), meta: { page: { after: "c2" } } },
+      { data: rows(["C"]), meta: { page: { after: "c3" } } },
+    ])
+    const client = new DatadogTriageClient(CONFIG, paged.impl)
+
+    const result = await client.searchIssues({
+      ...WINDOW,
+      limit: 1,
+      maxPages: 2,
+    })
+
+    expect(result.ok).toBe(true)
+    if (!result.ok) throw new Error("expected success")
+    expect(result.value.issues.map((i) => i.issueId)).toEqual(["A", "B"])
+    expect(result.value.truncated).toBe(true)
+    expect(paged.calls).toHaveBeenCalledTimes(2)
+  })
+
+  it("fails the whole read when a later page fails", async () => {
+    // Returning the pages already gathered would look like a complete short
+    // window and seed a baseline missing everything behind the failure.
+    let call = 0
+    const client = new DatadogTriageClient(
+      CONFIG,
+      stubFetch(() => {
+        call += 1
+        return call === 1
+          ? jsonResponse({
+              data: rows(["A"]),
+              meta: { page: { after: "cur-1" } },
+            })
+          : jsonResponse({ errors: ["nope"] }, { status: 403 })
+      }),
+    )
+
+    expect(await client.searchIssues({ ...WINDOW, limit: 1 })).toMatchObject({
+      ok: false,
+      reason: "auth_failed",
+    })
+  })
+
+  it("accumulates unparsed rows across pages", async () => {
+    const paged = pagedFetch([
+      {
+        data: [{ issue_id: "A" }, ...rows(["B"])],
+        meta: { page: { after: "cur-1" } },
+      },
+      { data: [{ issue_id: "C" }] },
+    ])
+    const client = new DatadogTriageClient(CONFIG, paged.impl)
+
+    const result = await client.searchIssues({ ...WINDOW, limit: 2 })
+
+    expect(result.ok).toBe(true)
+    if (!result.ok) throw new Error("expected success")
+    expect(result.value.unparsedRows).toBe(2)
+    expect(result.value.issues.map((i) => i.issueId)).toEqual(["B"])
+  })
+
   it("sends an absolute window, a service-scoped query, and both credentials", async () => {
     const fetchImpl = stubFetch(jsonResponse({ data: [] }))
     const client = new DatadogTriageClient(CONFIG, fetchImpl)

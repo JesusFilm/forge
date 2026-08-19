@@ -107,6 +107,11 @@ could not. Run each read once with the provisioned keys and record the result:
      observed on the wire; the module header in `datadog-client.ts` says so in
      place. If production sends a different shape, the run report shows
      `datadog:issue:<service>:unparsed_rows` and the fix is that one parser.
+   - **Record the pagination cursor field.** Ask for more rows than one page
+     holds and note where the next-page cursor appears. The client accepts
+     `meta.page.after` and `meta.pagination.next_cursor`; anything else means
+     paging stops after one page, which shows up as `page_truncated` and
+     blocks that service from ever seeding until the client learns the name.
 2. `GET /api/v1/monitor?monitor_tags=service:forge-mobile`.
 3. `POST /api/v2/rum/analytics/aggregate` for the same service.
 4. Record the actual `X-RateLimit-*` headers each endpoint returned, so the
@@ -342,26 +347,30 @@ re-enabling would file a ticket for every standing error.
 - **A real heartbeat.** A Datadog monitor on the workflow's own logs would
   replace the manual liveness check above. Until it ships, that check is the
   only liveness signal.
-- **Issue-search pagination.** The client issues ONE page request per service
-  per run, and does not follow the cursor. A full page is reported as
-  `page_truncated`; unusable rows are reported as `unparsed_rows`. Either one
-  refuses to seed that service's baseline AND holds the issue cursor, so the
-  next run retries the same wide baseline window instead of collapsing to the
-  overlap window and seeding off one hour.
+- **Issue-search page cap.** The client now follows the search cursor, up to
+  `DATADOG_ISSUE_MAX_PAGES` (10 pages = 1000 issues) per service per run, and
+  deduplicates by issue id across pages. Beyond that cap — or if a full page
+  exposes no cursor at either spelling the client accepts — the read is
+  reported `page_truncated`. Unusable rows are reported `unparsed_rows`.
 
-  The bound that leaves: **a service whose baseline window never fits in one
-  page never seeds, and files nothing from Error Tracking — permanently.**
-  That is the fail-safe direction (silence, not a storm of standing errors),
-  and it is loud — every run reports `partial` and carries
-  `datadog:issue:<service>:baseline_read_incomplete`. But it is silence, and
-  because the seeding flag is per SERVICE, that service's monitor and spike
-  detection stay dormant with it.
+  Either one refuses to seed that service's baseline AND holds the issue
+  cursor, so the next run retries the same wide baseline window instead of
+  collapsing to the overlap window and seeding off one hour. A service that
+  stays over the cap therefore never seeds and files nothing from Error
+  Tracking — fail-safe (silence, not a storm), and loud: every run reports
+  `partial` with `datadog:issue:<service>:baseline_read_incomplete`. Because
+  the seeding flag is per SERVICE, that service's monitor and spike detection
+  stay dormant with it.
 
-  So: confirm during the pre-enable smoke that the service's baseline window
-  returns fewer rows than `DATADOG_ISSUE_PAGE_LIMIT`. If it does not, shorten
-  `DATADOG_TRIAGE_BASELINE_LOOKBACK_MS` until it does, or add pagination
-  before enabling that service. This matters most for the KTD9 admin
-  activation, which has not been sized.
+  The lever is `DATADOG_TRIAGE_BASELINE_LOOKBACK_MS`: shorten it until the
+  baseline window fits. Raising the page cap needs a deploy and is the wrong
+  answer past 1000 standing issues.
+
+  **The cursor field name is unverified.** The client reads `meta.page.after`
+  and `meta.pagination.next_cursor`; if production sends a third spelling,
+  paging silently stops after one page and the read reports `page_truncated`
+  rather than paging wrongly. Confirm the real cursor field during the
+  pre-enable smoke (step 5.1) and add it to the client if it differs.
 
 - **Grouped spike detection.** This version runs one ungrouped error-count
   spike check per service. Grouping by facet is a refinement.

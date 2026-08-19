@@ -70,7 +70,13 @@ Origin documents:
   the client covers Error Tracking issue search/detail, the service-tag-scoped
   monitors list, and one bounded logs/RUM aggregate, and nothing in this
   runtime mutates Datadog — an operator's mute lever is setting an issue to
-  Ignored/Excluded in Datadog's own UI, which detection then skips. Detection
+  Ignored/Excluded in Datadog's own UI, which detection then skips. Issue
+  search follows its cursor up to `DATADOG_ISSUE_MAX_PAGES` (10 × 100 rows),
+  deduplicating by issue id; past the cap, or when a full page exposes no
+  cursor at either accepted spelling, the read reports `truncated`, which
+  refuses to seed that service's baseline AND holds its cursor — so an
+  incomplete first read can never collapse the next window to one hour and
+  ticket every standing error as new. Detection
   is pure (`services/datadog-triage/detect.ts`): absolute windows with
   client-side diffing, a release-session filter that fails OPEN toward
   coverage, and epoch-scoped dedup where a closed ticket does not re-open

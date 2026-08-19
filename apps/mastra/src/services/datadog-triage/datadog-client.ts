@@ -101,10 +101,11 @@ export type DatadogIssuePage = {
    */
   unparsedRows: number
   /**
-   * The page came back full, so there is very likely more behind it. This
-   * client issues ONE request, so a truncated read must never be mistaken for
-   * an exhaustive one — a baseline seeded from a truncated page would treat
-   * every issue it did not see as brand new on the following run (AE5).
+   * The search followed its cursor but still could not exhaust the window:
+   * either the page cap was reached, or a full page exposed no cursor to
+   * follow. A baseline seeded from such a read would treat every issue it did
+   * not see as brand new on the following run (AE5), so the caller refuses to
+   * seed AND holds the cursor on it.
    */
   truncated: boolean
 }
@@ -140,6 +141,15 @@ export type DatadogAggregate = {
 /** Maximum rows requested per page. Datadog caps analytics pages at 1000. */
 export const DATADOG_ISSUE_PAGE_LIMIT = 100
 export const DATADOG_MONITOR_PAGE_LIMIT = 200
+
+/**
+ * Pages followed per issue search before the read is called truncated. Ten
+ * pages is 1000 issues — far past any plausible mobile service, while bounding
+ * the worst case to ten sequential requests inside the run's own budget.
+ * A service that genuinely exceeds it wants a shorter
+ * `DATADOG_TRIAGE_BASELINE_LOOKBACK_MS`, not a higher cap.
+ */
+export const DATADOG_ISSUE_MAX_PAGES = 10
 
 type DatadogClientConfig = Pick<
   DatadogTriageConfig,
@@ -182,9 +192,32 @@ const issueSearchEnvelopeSchema = z
   .object({
     data: z.array(issueRowSchema),
     included: z.array(issueRowSchema).optional(),
-    meta: z.object({ status: z.unknown() }).passthrough().nullish(),
+    // Two spellings because the wire envelope is UNVERIFIED (see the module
+    // header). Both are optional: a missing cursor stops paging, and the
+    // full-page heuristic still reports the read as truncated, so an unknown
+    // third spelling degrades to today's behaviour rather than to silence.
+    meta: z
+      .object({
+        status: z.unknown(),
+        page: z.object({ after: z.unknown() }).passthrough().nullish(),
+        pagination: z
+          .object({ next_cursor: z.unknown() })
+          .passthrough()
+          .nullish(),
+      })
+      .passthrough()
+      .nullish(),
   })
   .passthrough()
+
+function nextIssueCursor(
+  envelope: z.infer<typeof issueSearchEnvelopeSchema>,
+): string | undefined {
+  return (
+    asString(envelope.meta?.page?.after) ??
+    asString(envelope.meta?.pagination?.next_cursor)
+  )
+}
 
 const monitorRowSchema = z
   .object({
@@ -367,11 +400,72 @@ export class DatadogTriageClient {
     from: Date
     to: Date
     limit?: number
+    maxPages?: number
   }): Promise<DatadogResult<DatadogIssuePage>> {
     const limit = Math.min(
       input.limit ?? DATADOG_ISSUE_PAGE_LIMIT,
       DATADOG_ISSUE_PAGE_LIMIT,
     )
+    const maxPages = Math.max(1, input.maxPages ?? DATADOG_ISSUE_MAX_PAGES)
+
+    // Deduplicated across pages by issue id: the window already re-reads its
+    // overlap, and a shifting result set can repeat a row across a cursor.
+    const byId = new Map<string, DatadogIssue>()
+    let unparsedRows = 0
+    let cursor: string | undefined
+    let truncated = false
+    let rateLimit: DatadogResult<DatadogIssuePage>["rateLimit"]
+
+    for (let page = 0; page < maxPages; page += 1) {
+      const result = await this.fetchIssuePage({
+        service: input.service,
+        from: input.from,
+        to: input.to,
+        limit,
+        cursor,
+      })
+      // A mid-pagination failure fails the whole read. Returning the pages
+      // gathered so far would look like a complete short window and seed a
+      // baseline missing everything behind the failure.
+      if (!result.ok) return result
+      rateLimit = result.rateLimit
+
+      for (const issue of result.value.issues) byId.set(issue.issueId, issue)
+      unparsedRows += result.value.unparsedRows
+
+      cursor = result.value.nextCursor
+      const full = result.value.rowCount >= limit
+      if (!full) break
+      if (!cursor) {
+        // Full page, no cursor to follow: the envelope does not expose one at
+        // either spelling, so this read is incomplete and must say so.
+        truncated = true
+        break
+      }
+      if (page === maxPages - 1) truncated = true
+    }
+
+    return {
+      ok: true,
+      value: { issues: [...byId.values()], unparsedRows, truncated },
+      rateLimit,
+    }
+  }
+
+  private async fetchIssuePage(input: {
+    service: string
+    from: Date
+    to: Date
+    limit: number
+    cursor?: string
+  }): Promise<
+    DatadogResult<{
+      issues: DatadogIssue[]
+      unparsedRows: number
+      rowCount: number
+      nextCursor?: string
+    }>
+  > {
     const result = await this.request(
       "api/v2/error-tracking/issues/search",
       {
@@ -383,7 +477,9 @@ export class DatadogTriageClient {
               query: `service:${input.service}`,
               from: input.from.getTime(),
               to: input.to.getTime(),
-              page: { limit },
+              page: input.cursor
+                ? { limit: input.limit, cursor: input.cursor }
+                : { limit: input.limit },
             },
           },
         },
@@ -438,7 +534,10 @@ export class DatadogTriageClient {
       value: {
         issues,
         unparsedRows,
-        truncated: result.value.data.length >= limit,
+        // Raw row count, not the parsed count: an unparsed row still occupies
+        // a slot, so fullness must be measured before any row is dropped.
+        rowCount: result.value.data.length,
+        nextCursor: nextIssueCursor(result.value),
       },
       rateLimit: result.rateLimit,
     }
