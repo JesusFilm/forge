@@ -7,11 +7,13 @@ import {
 } from "../../config/env"
 import { discardResponseBody } from "../devotional/bounded-response"
 
+import { readJsonBodyCappedOrThrow } from "./bounded-read"
+
 /**
  * Read-only Datadog client for the hourly triage sweep (U3, KTD5).
  *
- * Four surfaces, all reads: Error Tracking issue search + detail, the monitors
- * list, and one bounded logs/RUM aggregate. Nothing here mutates Datadog —
+ * Three surfaces, all reads: Error Tracking issue search, the monitors list,
+ * and one bounded logs/RUM aggregate. Nothing here mutates Datadog —
  * R13's read-only boundary is a property of the endpoint set, not a runtime
  * check — so `ambiguous` is always false: a failed request never leaves a
  * half-applied write behind.
@@ -92,8 +94,19 @@ export type DatadogIssue = {
 
 export type DatadogIssuePage = {
   issues: DatadogIssue[]
-  /** Rows the envelope schema accepted but that carried no usable issue id. */
+  /**
+   * Rows the envelope schema accepted but that carried no usable issue id OR
+   * no readable occurrence count. Both are fields detection depends on, so a
+   * rename in either must be loud rather than read as a quiet hour.
+   */
   unparsedRows: number
+  /**
+   * The page came back full, so there is very likely more behind it. This
+   * client issues ONE request, so a truncated read must never be mistaken for
+   * an exhaustive one — a baseline seeded from a truncated page would treat
+   * every issue it did not see as brand new on the following run (AE5).
+   */
+  truncated: boolean
 }
 
 export type DatadogMonitor = {
@@ -161,9 +174,13 @@ const issueRowSchema = z
   })
   .passthrough()
 
+// `data` is REQUIRED on purpose. With `.default([])` an envelope that moved
+// the array to another key parsed as a clean empty page — zero rows, zero
+// unparsed, source `ok`, cursor advanced, liveness green — which is the silent
+// death this module claims to prevent. A genuinely empty result sends `[]`.
 const issueSearchEnvelopeSchema = z
   .object({
-    data: z.array(issueRowSchema).default([]),
+    data: z.array(issueRowSchema),
     included: z.array(issueRowSchema).optional(),
     meta: z.object({ status: z.unknown() }).passthrough().nullish(),
   })
@@ -183,16 +200,17 @@ const aggregateEnvelopeSchema = z
   .object({
     data: z
       .object({
-        buckets: z
-          .array(
-            z
-              .object({
-                by: z.record(z.string(), z.unknown()).optional(),
-                computes: z.record(z.string(), z.unknown()).optional(),
-              })
-              .passthrough(),
-          )
-          .default([]),
+        // Required for the same reason as the issue envelope's `data`: a
+        // renamed bucket array must fail loudly, not read as zero activity
+        // forever (which would keep the spike baseline permanently untrusted).
+        buckets: z.array(
+          z
+            .object({
+              by: z.record(z.string(), z.unknown()).optional(),
+              computes: z.record(z.string(), z.unknown()).optional(),
+            })
+            .passthrough(),
+        ),
       })
       .passthrough()
       .nullish(),
@@ -324,54 +342,6 @@ function failureForThrow(error: unknown): DatadogFailure {
   }
 }
 
-/**
- * Byte-capped streaming JSON read, from the langfuse-trace-retention variant
- * INCLUDING its divergence: a mid-body TimeoutError is rethrown so the caller
- * says `timeout`, not `parse_error`. Never log the caught error — a
- * JSON.parse SyntaxError can embed raw body fragments.
- */
-async function readJsonBodyCapped(
-  response: Response,
-  maxBytes: number,
-): Promise<unknown> {
-  const stream = response.body
-  if (!stream) return undefined
-  let reader: ReadableStreamDefaultReader<Uint8Array> | undefined
-  try {
-    reader = stream.getReader()
-    const chunks: Uint8Array[] = []
-    let total = 0
-    for (;;) {
-      const { done, value } = await reader.read()
-      if (done) break
-      if (!value) continue
-      total += value.byteLength
-      if (total > maxBytes) {
-        await reader.cancel()
-        return undefined
-      }
-      chunks.push(value)
-    }
-    const merged = new Uint8Array(total)
-    let offset = 0
-    for (const chunk of chunks) {
-      merged.set(chunk, offset)
-      offset += chunk.byteLength
-    }
-    return JSON.parse(new TextDecoder().decode(merged))
-  } catch (error) {
-    const name = (error as { name?: string } | null | undefined)?.name
-    if (name === "TimeoutError" || name === "AbortError") throw error
-    return undefined
-  } finally {
-    try {
-      reader?.releaseLock()
-    } catch {
-      // Cleanup must never escape the no-throw boundary.
-    }
-  }
-}
-
 /** `meta.status: "timeout"` arrives with HTTP 200 and partial numbers. */
 function isPartialMeta(meta: unknown): boolean {
   const status = (meta as { status?: unknown } | null | undefined)?.status
@@ -399,6 +369,10 @@ export class DatadogTriageClient {
     to: Date
     limit?: number
   }): Promise<DatadogResult<DatadogIssuePage>> {
+    const limit = Math.min(
+      input.limit ?? DATADOG_ISSUE_PAGE_LIMIT,
+      DATADOG_ISSUE_PAGE_LIMIT,
+    )
     const result = await this.request(
       "api/v2/error-tracking/issues/search",
       {
@@ -410,12 +384,7 @@ export class DatadogTriageClient {
               query: `service:${input.service}`,
               from: input.from.getTime(),
               to: input.to.getTime(),
-              page: {
-                limit: Math.min(
-                  input.limit ?? DATADOG_ISSUE_PAGE_LIMIT,
-                  DATADOG_ISSUE_PAGE_LIMIT,
-                ),
-              },
+              page: { limit },
             },
           },
         },
@@ -439,7 +408,11 @@ export class DatadogTriageClient {
         ...row,
       }
       const issueId = asString(merged.issue_id) ?? asString(row.id)
-      if (!issueId) {
+      // The windowed count is as load-bearing as the id: detection's
+      // recurrence floor and every rate comparison read it, so a renamed count
+      // field would baseline everything at zero and go permanently quiet.
+      const totalCount = asNumber(merged.total_count)
+      if (!issueId || totalCount === undefined) {
         unparsedRows += 1
         continue
       }
@@ -458,60 +431,15 @@ export class DatadogTriageClient {
         lastSeen: asIsoTimestamp(merged.last_seen),
         firstSeenVersion: asString(merged.first_seen_version),
         lastSeenVersion: asString(merged.last_seen_version),
-        totalCount: asNumber(merged.total_count) ?? 0,
+        totalCount,
       })
     }
     return {
       ok: true,
-      value: { issues, unparsedRows },
-      rateLimit: result.rateLimit,
-    }
-  }
-
-  async getIssue(issueId: string): Promise<DatadogResult<DatadogIssue>> {
-    if (!/^[A-Za-z0-9_-]{1,128}$/u.test(issueId)) {
-      return {
-        ok: false,
-        reason: "invalid_config",
-        retryable: false,
-        ambiguous: false,
-      }
-    }
-    const result = await this.request(
-      `api/v2/error-tracking/issues/${issueId}`,
-      { method: "GET" },
-      z.object({ data: issueRowSchema.nullish() }).passthrough(),
-    )
-    if (!result.ok) return result
-    const row = result.value.data
-    const merged = { ...(row?.attributes ?? {}), ...(row ?? {}) }
-    const resolvedId = asString(merged.issue_id) ?? asString(row?.id)
-    if (!resolvedId) {
-      return {
-        ok: false,
-        reason: "parse_error",
-        retryable: false,
-        ambiguous: false,
-      }
-    }
-    return {
-      ok: true,
       value: {
-        issueId: resolvedId,
-        service: asString(merged.service),
-        state: asString(merged.state),
-        errorType: asString(merged.error_type),
-        errorMessage: asString(merged.error_message),
-        filePath: asString(merged.file_path),
-        functionName: asString(merged.function_name),
-        platform: asString(merged.platform),
-        isCrash:
-          typeof merged.is_crash === "boolean" ? merged.is_crash : undefined,
-        firstSeen: asIsoTimestamp(merged.first_seen),
-        lastSeen: asIsoTimestamp(merged.last_seen),
-        firstSeenVersion: asString(merged.first_seen_version),
-        lastSeenVersion: asString(merged.last_seen_version),
-        totalCount: asNumber(merged.total_count) ?? 0,
+        issues,
+        unparsedRows,
+        truncated: result.value.data.length >= limit,
       },
       rateLimit: result.rateLimit,
     }
@@ -685,7 +613,10 @@ export class DatadogTriageClient {
     const rateLimit = rateLimitFrom(response)
     let body: unknown
     try {
-      body = await readJsonBodyCapped(response, this.config.maxResponseBytes)
+      body = await readJsonBodyCappedOrThrow(
+        response,
+        this.config.maxResponseBytes,
+      )
     } catch (error) {
       // A mid-body timeout is a latency incident, not a parse failure.
       return { ...failureForThrow(error), rateLimit }

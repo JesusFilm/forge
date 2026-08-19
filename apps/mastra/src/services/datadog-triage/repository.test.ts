@@ -193,6 +193,7 @@ describe("PostgresDatadogTriageRepository", () => {
         source: "issues:forge-mobile",
         cursorAt: new Date("2026-08-18T10:57:00Z"),
         succeeded: true,
+        succeededAt: new Date("2026-08-19T12:00:00Z"),
       },
     ])
 
@@ -211,14 +212,18 @@ describe("PostgresDatadogTriageRepository", () => {
         source: "monitors:forge-mobile",
         cursorAt: new Date("2026-08-18T10:00:00Z"),
         succeeded: false,
+        succeededAt: new Date("2026-08-19T12:00:00Z"),
       },
     ])
 
     const call = database.calls[0]
     expect(call?.values?.[2]).toEqual([false])
+    // The stamp is the FETCH time, deliberately not the cursor position — a
+    // held cursor is backdated and would fake an outage on a healthy source.
     expect(call?.text).toContain(
-      "case when entry.succeeded then entry.cursor_at else null end",
+      "case when entry.succeeded then entry.succeeded_at else null end",
     )
+    expect(call?.values?.[3]).toEqual([new Date("2026-08-19T12:00:00Z")])
   })
 
   it("skips every query when a commit batch is empty", async () => {
@@ -282,7 +287,10 @@ describe("PostgresDatadogTriageRepository", () => {
     expect(call?.text).toContain(
       "hashtext('forge_datadog_triage_action_budget')",
     )
-    expect(call?.text).toContain("attempts = attempts + 1")
+    // Saturating, not raw: a row that repeatedly crashes after being claimed
+    // but before terminalizing would otherwise breach the attempts CHECK and
+    // take down every subsequent run, since the drain runs first.
+    expect(call?.text).toContain("attempts = least(attempts + 1, 20)")
   })
 
   it("never expires a queued action, so an over-budget finding waits for a later day", async () => {

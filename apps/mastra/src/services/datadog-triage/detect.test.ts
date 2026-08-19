@@ -270,7 +270,6 @@ describe("detectIssueCandidates", () => {
     })
 
     expect(result.candidates).toEqual([])
-    expect(result.seeded).toBe(true)
     expect(result.seenUpdates).toHaveLength(2)
     expect(result.seenUpdates[1]).toMatchObject({
       issueId: "ISSUE-2",
@@ -374,6 +373,95 @@ describe("detectIssueCandidates", () => {
 
     expect(result.candidates).toHaveLength(1)
   })
+
+  it("records the new issue's baseline so the next run sees it as baselined", () => {
+    const result = detect({ issues: [issue()] })
+
+    expect(result.candidates).toHaveLength(1)
+    expect(result.seenUpdates).toEqual([
+      {
+        issueId: "ISSUE-1",
+        service: "forge-mobile",
+        epoch: 0,
+        baselineRate: 12,
+        lastActivityAt: "2026-08-18T10:55:00.000Z",
+        firstSeenAt: "2026-08-18T10:07:00.000Z",
+      },
+    ])
+  })
+
+  it("records the minted epoch's new baseline on a regression", () => {
+    const result = detect({
+      issues: [issue({ totalCount: 30 })],
+      seenIssues: [seen({ baselineRate: 2 })],
+    })
+
+    expect(result.epochsMinted).toBe(1)
+    expect(result.seenUpdates).toEqual([
+      expect.objectContaining({
+        issueId: "ISSUE-1",
+        epoch: 1,
+        baselineRate: 30,
+      }),
+    ])
+  })
+})
+
+/**
+ * Feeds each run's OWN writes into the next run's reads. Every other AE3/AE9
+ * test hand-builds the post-first-run state as an input, so none of them can
+ * tell "the system produced this state" from "the fixture asserted it" — which
+ * is exactly how a missing seen-issue write shipped with a green suite.
+ */
+describe("detectIssueCandidates across sequential runs", () => {
+  function runAgainst(
+    seenIssues: SeenIssue[],
+    overrides: Partial<DatadogIssue> = {},
+  ) {
+    const result = detect({ issues: [issue(overrides)], seenIssues })
+    // Round-trip the writes the way the repository would: a SeenIssueUpdate
+    // minus its outbox pin IS the SeenIssue the next run reads back.
+    const nextSeen: SeenIssue[] = result.seenUpdates.map(
+      ({ requiredActionKey: _ignored, ...row }) => row,
+    )
+    return { result, nextSeen }
+  }
+
+  it("Covers AE3: the second run treats a first-run candidate as baselined", () => {
+    const first = runAgainst([])
+    expect(first.result.candidates).toHaveLength(1)
+
+    const second = runAgainst(first.nextSeen, { totalCount: 12 })
+
+    expect(second.result.candidates).toEqual([])
+    expect(second.result.baselined).toBe(1)
+  })
+
+  it("Covers AE9: a real regression after a real first run mints exactly one epoch", () => {
+    const first = runAgainst([])
+    const spike = runAgainst(first.nextSeen, { totalCount: 120 })
+
+    expect(spike.result.epochsMinted).toBe(1)
+    expect(spike.result.candidates[0]).toMatchObject({ epoch: 1 })
+
+    // Third run at the same elevated rate must stay quiet: the minted epoch
+    // stored the regressed rate as the new normal.
+    const settled = runAgainst(spike.nextSeen, { totalCount: 120 })
+    expect(settled.result.epochsMinted).toBe(0)
+    expect(settled.result.candidates).toEqual([])
+  })
+
+  it("does not re-judge a still-firing issue hour after hour", () => {
+    let seenRows = runAgainst([]).nextSeen
+    const candidatesPerHour: number[] = []
+    for (let hour = 0; hour < 5; hour += 1) {
+      const next = runAgainst(seenRows, { totalCount: 12 })
+      candidatesPerHour.push(next.result.candidates.length)
+      seenRows = next.nextSeen
+    }
+
+    expect(candidatesPerHour).toEqual([0, 0, 0, 0, 0])
+  })
 })
 
 describe("detectMonitorSignals", () => {
@@ -409,7 +497,10 @@ describe("detectMonitorSignals", () => {
       signalKind: "monitor",
       signalId: "42:2026-08-18T10:30:00.000Z",
     })
-    expect(result.stateUpdates[0]?.lastTicketedAt).toBe(NOW.toISOString())
+    // Detection does NOT stamp the cooldown: it does not yet know whether a
+    // ticket will be filed, and stamping a later-suppressed candidate would
+    // blackout the monitor over a ticket that never existed.
+    expect(result.stateUpdates[0]?.lastTicketedAt).toBeNull()
   })
 
   it("stays quiet for a monitor that is not alerting", () => {
@@ -541,7 +632,6 @@ describe("detectSpikeSignals", () => {
 
     expect(result.candidates).toEqual([])
     expect(result.baselineUpdates).toEqual([])
-    expect(result.seeded).toBe(false)
   })
 
   it("records a baseline and files nothing on a service's first covered run", () => {

@@ -41,6 +41,12 @@ export type CursorCommit = {
   cursorAt: Date
   /** Set only when that source's fetch succeeded; drives the liveness check. */
   succeeded: boolean
+  /**
+   * When the successful fetch happened. Deliberately NOT `cursorAt`: a held
+   * cursor is backdated to the earliest unresolved signal, so reusing it as
+   * the liveness stamp would report a healthy source as days stale.
+   */
+  succeededAt: Date
 }
 
 export interface DatadogTriageRepository {
@@ -258,16 +264,22 @@ export class PostgresDatadogTriageRepository implements DatadogTriageRepository 
     await this.database.query(
       `insert into datadog_triage.cursors (source, cursor_at, last_success_at)
        select entry.source, entry.cursor_at,
-              case when entry.succeeded then entry.cursor_at else null end
-         from unnest($1::text[], $2::timestamptz[], $3::boolean[])
-           as entry(source, cursor_at, succeeded)
+              case when entry.succeeded then entry.succeeded_at else null end
+         from unnest(
+           $1::text[], $2::timestamptz[], $3::boolean[], $4::timestamptz[]
+         ) as entry(source, cursor_at, succeeded, succeeded_at)
        on conflict (source) do update
          set cursor_at = greatest(
                datadog_triage.cursors.cursor_at,
                excluded.cursor_at
              ),
-             last_success_at = coalesce(
-               excluded.last_success_at,
+             -- Clamped forward like cursor_at. Without the clamp a run that
+             -- skipped this source would erase a newer success timestamp.
+             last_success_at = greatest(
+               coalesce(
+                 excluded.last_success_at,
+                 datadog_triage.cursors.last_success_at
+               ),
                datadog_triage.cursors.last_success_at
              ),
              updated_at = now()`,
@@ -275,6 +287,7 @@ export class PostgresDatadogTriageRepository implements DatadogTriageRepository 
         entries.map((entry) => entry.source),
         entries.map((entry) => entry.cursorAt),
         entries.map((entry) => entry.succeeded),
+        entries.map((entry) => entry.succeededAt),
       ],
     )
   }
@@ -641,7 +654,7 @@ export class PostgresDatadogTriageRepository implements DatadogTriageRepository 
           set state = 'processing',
               processing_token = $2,
               processing_expires_at = $5,
-              attempts = attempts + 1,
+              attempts = least(attempts + 1, 20),
               updated_at = now()
         where idempotency_key in (select idempotency_key from candidates)
        returning idempotency_key, payload, attempts`,

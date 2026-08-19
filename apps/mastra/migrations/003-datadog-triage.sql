@@ -1,7 +1,8 @@
 create schema if not exists datadog_triage;
 
--- One row per hourly sweep. The lease makes a second concurrent run a no-op
--- instead of a double-ticket race; an expired lease can be taken over.
+-- One row per hourly sweep, keyed by the UTC hour. The lease serializes runs
+-- that SHARE a run_key (a retry, a double-fire) rather than all concurrent
+-- runs; an expired lease can be taken over.
 create table if not exists datadog_triage.runs (
   run_key text primary key,
   status text not null check (
@@ -21,11 +22,8 @@ create table if not exists datadog_triage.runs (
   check (window_end >= window_start)
 );
 
-create index if not exists datadog_triage_runs_status_lease_idx
-  on datadog_triage.runs (status, lease_expires_at);
-
 -- Per-source cursor (KTD2). `source` is `<kind>:<service>`, e.g.
--- `issues:forge-mobile`, so a failed source's window is retried next run while
+-- `issue:forge-mobile`, so a failed source's window is retried next run while
 -- healthy sources move on. `last_success_at` is the runbook's liveness signal.
 create table if not exists datadog_triage.cursors (
   source text primary key,
@@ -55,9 +53,6 @@ create table if not exists datadog_triage.seen_issues (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
-
-create index if not exists datadog_triage_seen_issues_service_idx
-  on datadog_triage.seen_issues (service, last_activity_at desc);
 
 -- Monitor episode identity plus the cooldown that stops a flapping monitor
 -- from storming the daily budget (KTD6).
@@ -125,6 +120,18 @@ create index if not exists datadog_triage_actions_due_idx
 create index if not exists datadog_triage_actions_processing_idx
   on datadog_triage.actions (processing_expires_at)
   where state = 'processing';
+
+-- The claim also counts what today's budget already spent, across three OR
+-- branches. `created` and `deduplicated` are terminal states that accumulate
+-- forever with no purge path, so without these two the count scans the table's
+-- entire history on every claim, twice an hour, growing without bound.
+create index if not exists datadog_triage_actions_reserved_created_idx
+  on datadog_triage.actions (terminal_at)
+  where state = 'created';
+
+create index if not exists datadog_triage_actions_reserved_deduplicated_idx
+  on datadog_triage.actions (remote_create_attempted_at)
+  where state = 'deduplicated';
 
 create index if not exists datadog_triage_actions_signal_idx
   on datadog_triage.actions (signal_kind, signal_id, epoch);

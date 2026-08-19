@@ -1,10 +1,9 @@
 import { z } from "zod"
 
 import { isLinearGraphqlUrl, type DatadogTriageConfig } from "../../config/env"
-import {
-  discardResponseBody,
-  readResponseJsonCapped,
-} from "../devotional/bounded-response"
+import { discardResponseBody } from "../devotional/bounded-response"
+
+import { isAbortLike, readJsonBodyCappedOrThrow } from "./bounded-read"
 
 import type { TriageActionDraft } from "./schema"
 
@@ -19,6 +18,7 @@ const issueSchema = z.object({
   id: z.string().min(1),
   url: z.string().url(),
   description: z.string().nullish(),
+  project: z.object({ id: z.string().nullish() }).nullish(),
 })
 
 const duplicateQuerySchema = z.object({
@@ -192,7 +192,9 @@ export class TriageLinearClient {
   async findIssueByMarker(
     marker: string,
   ): Promise<TriageLinearResult<LinearIssueReference | undefined>> {
-    if (!this.config.linear.teamId) {
+    // Both ids are required: the project is what scopes the match, so without
+    // it this would read wider than the pipeline writes.
+    if (!this.config.linear.teamId || !this.config.linear.projectId) {
       return {
         ok: false,
         reason: "config_missing",
@@ -207,7 +209,7 @@ export class TriageLinearClient {
           `query DatadogTriageFindDuplicate($teamId: String!, $after: String) {
         team(id: $teamId) {
           issues(first: 50, after: $after) {
-            nodes { id url description }
+            nodes { id url description project { id } }
             pageInfo { hasNextPage endCursor }
           }
         }
@@ -222,9 +224,14 @@ export class TriageLinearClient {
       }
       const connection: DuplicateIssueConnection | undefined =
         result.value.data?.team?.issues
+      // Match only inside the project this pipeline writes to. The marker is
+      // an HTML comment in every filed ticket, so it rides along whenever a
+      // human copies a triage ticket's body — and a false match here reports
+      // an unrelated issue as the ticket and hides the real regression.
       const issue = connection?.nodes.find(
         (item: z.infer<typeof issueSchema>) =>
-          item.description?.includes(marker),
+          item.description?.includes(marker) &&
+          item.project?.id === this.config.linear.projectId,
       )
       if (issue) {
         return { ok: true, value: { id: issue.id, url: issue.url } }
@@ -336,10 +343,23 @@ export class TriageLinearClient {
       await discardResponseBody(response)
       return failureForStatus(response.status)
     }
-    const body = await readResponseJsonCapped(
-      response,
-      this.config.maxResponseBytes,
-    )
+    // Uses the rethrowing reader, not the shared swallowing one: a mid-body
+    // timeout classified as non-retryable `parse_error` would terminalize the
+    // outbox row on attempt ONE and silently drop a signal R10 keeps.
+    let body: unknown
+    try {
+      body = await readJsonBodyCappedOrThrow(
+        response,
+        this.config.maxResponseBytes,
+      )
+    } catch (error) {
+      return {
+        ok: false,
+        reason: isAbortLike(error) ? "timeout" : "network_error",
+        retryable: true,
+        ambiguous: mutation,
+      }
+    }
     const parsed = schema.safeParse(body)
     return parsed.success
       ? { ok: true, value: parsed.data }

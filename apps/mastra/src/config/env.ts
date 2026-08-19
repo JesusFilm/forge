@@ -46,6 +46,10 @@ const DEFAULT_DATADOG_TRIAGE_SERVICES = "forge-mobile"
 const DEFAULT_DATADOG_TRIAGE_MAX_CANDIDATES_PER_RUN = 200
 const DEFAULT_DATADOG_TRIAGE_MAX_TICKETS_PER_DAY = 5
 const DEFAULT_DATADOG_TRIAGE_TIMEOUT_MS = 15_000
+// The judge is an LLM generation, not an HTTP GET. Reusing the Datadog/Linear
+// budget aborted routine generations, and every abort withholds the candidate
+// and re-judges it next hour. Sibling single-call LLM surfaces use 120s.
+const DEFAULT_DATADOG_TRIAGE_JUDGE_TIMEOUT_MS = 60_000
 // A POLICY ceiling, not a derived bound: a 100-issue page with long stack
 // messages measures in the low hundreds of kB, so this leaves ~10x headroom.
 // Over-cap aborts the stream onto the existing graceful-failure path.
@@ -713,6 +717,12 @@ const envSchema = z.object({
     .positive()
     .max(120_000)
     .default(DEFAULT_DATADOG_TRIAGE_TIMEOUT_MS),
+  DATADOG_TRIAGE_JUDGE_TIMEOUT_MS: z.coerce
+    .number()
+    .int()
+    .positive()
+    .max(300_000)
+    .default(DEFAULT_DATADOG_TRIAGE_JUDGE_TIMEOUT_MS),
   DATADOG_TRIAGE_MAX_RESPONSE_BYTES: z.coerce
     .number()
     .int()
@@ -1212,6 +1222,9 @@ export const env = envSchema.parse({
   DATADOG_TRIAGE_TIMEOUT_MS: emptyToUndefined(
     process.env.DATADOG_TRIAGE_TIMEOUT_MS,
   ),
+  DATADOG_TRIAGE_JUDGE_TIMEOUT_MS: emptyToUndefined(
+    process.env.DATADOG_TRIAGE_JUDGE_TIMEOUT_MS,
+  ),
   DATADOG_TRIAGE_MAX_RESPONSE_BYTES: emptyToUndefined(
     process.env.DATADOG_TRIAGE_MAX_RESPONSE_BYTES,
   ),
@@ -1678,6 +1691,8 @@ export type DatadogTriageConfig = {
   maxCandidatesPerRun: number
   maxTicketsPerDay: number
   timeoutMs: number
+  /** Separate from timeoutMs: the judge is an LLM call, not an HTTP GET. */
+  judgeTimeoutMs: number
   maxResponseBytes: number
   overlapMs: number
   ingestionLagMs: number
@@ -1763,6 +1778,7 @@ export function getDatadogTriageConfig(): DatadogTriageConfig {
     maxCandidatesPerRun: env.DATADOG_TRIAGE_MAX_CANDIDATES_PER_RUN,
     maxTicketsPerDay: env.DATADOG_TRIAGE_MAX_TICKETS_PER_DAY,
     timeoutMs: env.DATADOG_TRIAGE_TIMEOUT_MS,
+    judgeTimeoutMs: env.DATADOG_TRIAGE_JUDGE_TIMEOUT_MS,
     maxResponseBytes: env.DATADOG_TRIAGE_MAX_RESPONSE_BYTES,
     overlapMs: env.DATADOG_TRIAGE_OVERLAP_MS,
     ingestionLagMs: env.DATADOG_TRIAGE_LAG_MS,
@@ -1804,6 +1820,9 @@ export type DatadogTriageReadiness =
   | { ready: true }
   | { ready: false; reasons: string[] }
 
+/** Also bounded to 120 chars, matching the service column every row carries. */
+const SERVICE_NAME = /^[a-z0-9][a-z0-9._-]{0,119}$/u
+
 /**
  * Shared by readiness and the client's endpoint guard. One predicate, so the
  * two cannot drift into a state where readiness passes while every request
@@ -1844,6 +1863,12 @@ export function getDatadogTriageReadiness(
     reasons.push("datadog_site_not_allowed")
   }
   if (config.services.length === 0) reasons.push("services_missing")
+  // Each name is interpolated into a Datadog query and a monitor tag filter, so
+  // a value carrying a wildcard or a space would widen the monitor read past
+  // the one service KTD6 scopes it to.
+  else if (!config.services.every((service) => SERVICE_NAME.test(service))) {
+    reasons.push("service_name_invalid")
+  }
   if (config.serviceProfilesInvalid) reasons.push("service_profiles_invalid")
   try {
     new RegExp(config.releaseVersionPattern, "u")

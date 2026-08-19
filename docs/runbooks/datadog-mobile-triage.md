@@ -263,6 +263,13 @@ select source,
  order by last_success_at nulls first;
 ```
 
+`last_success_at` is the time of the last successful FETCH, deliberately not
+the cursor position — a cursor held back for an unresolved signal is normal
+bounded work, and reading that as staleness would fire this alarm on the
+pipeline's healthy path. A stale `cursor_at` with a fresh `last_success_at`
+means "reading fine, working through a backlog"; a stale `last_success_at`
+means the source is actually failing.
+
 Every source should show a lag under about two hours. **Act when any source
 exceeds a few hours**, in this order:
 
@@ -305,6 +312,13 @@ re-enabling would file a ticket for every standing error.
 - **A real heartbeat.** A Datadog monitor on the workflow's own logs would
   replace the manual liveness check above. Until it ships, that check is the
   only liveness signal.
+- **Issue-search pagination.** The client issues ONE page request per service
+  per run. It now reports a full page as `page_truncated` — a partial source
+  outcome that also refuses to seed that service's baseline, so a truncated
+  first read can never masquerade as a complete one — but it does not yet
+  follow the cursor. If a service ever trips `page_truncated`, widen the
+  window or add pagination before enabling it. Confirm the paging contract
+  during the pre-enable smoke.
 - **Grouped spike detection.** This version runs one ungrouped error-count
   spike check per service. Grouping by facet is a refinement.
 - **Retention.** No purge job exists for `datadog_triage`. Growth is bounded by

@@ -145,7 +145,10 @@ describe("DatadogTriageClient issue search", () => {
     expect(result.value.unparsedRows).toBe(1)
   })
 
-  it("defaults a missing occurrence count to zero rather than NaN", async () => {
+  it("counts a row whose occurrence count is unreadable, never zero", async () => {
+    // Silently reading a moved count field as 0 would baseline every issue at
+    // zero and then fail the recurrence floor forever — a clean report and a
+    // pipeline that has quietly stopped detecting anything.
     const fetchImpl = stubFetch(
       jsonResponse({ data: [{ issue_id: "abc", state: "FOR_REVIEW" }] }),
     )
@@ -155,7 +158,69 @@ describe("DatadogTriageClient issue search", () => {
 
     expect(result.ok).toBe(true)
     if (!result.ok) throw new Error("expected success")
-    expect(result.value.issues[0]?.totalCount).toBe(0)
+    expect(result.value.issues).toEqual([])
+    expect(result.value.unparsedRows).toBe(1)
+  })
+
+  it("refuses an envelope whose row array moved to another key", async () => {
+    // The dangerous drift: parsing to a clean empty page would advance the
+    // cursor and keep the liveness signal green while nothing is triaged.
+    const client = new DatadogTriageClient(
+      CONFIG,
+      stubFetch(jsonResponse({ issues: [LIVE_ISSUE_ROW] })),
+    )
+
+    expect(await client.searchIssues(WINDOW)).toMatchObject({
+      ok: false,
+      reason: "parse_error",
+    })
+  })
+
+  it("still accepts a genuinely empty result", async () => {
+    const client = new DatadogTriageClient(
+      CONFIG,
+      stubFetch(jsonResponse({ data: [] })),
+    )
+
+    const result = await client.searchIssues(WINDOW)
+
+    expect(result.ok).toBe(true)
+    if (!result.ok) throw new Error("expected success")
+    expect(result.value).toEqual({
+      issues: [],
+      unparsedRows: 0,
+      truncated: false,
+    })
+  })
+
+  it("flags a full page as truncated so a partial read is never read as complete", async () => {
+    const rows = Array.from({ length: 3 }, (_, index) => ({
+      ...LIVE_ISSUE_ROW,
+      issue_id: `ISSUE-${index}`,
+    }))
+    const client = new DatadogTriageClient(
+      CONFIG,
+      stubFetch(jsonResponse({ data: rows })),
+    )
+
+    const result = await client.searchIssues({ ...WINDOW, limit: 3 })
+
+    expect(result.ok).toBe(true)
+    if (!result.ok) throw new Error("expected success")
+    expect(result.value.truncated).toBe(true)
+  })
+
+  it("does not flag a short page as truncated", async () => {
+    const client = new DatadogTriageClient(
+      CONFIG,
+      stubFetch(jsonResponse({ data: [LIVE_ISSUE_ROW] })),
+    )
+
+    const result = await client.searchIssues({ ...WINDOW, limit: 3 })
+
+    expect(result.ok).toBe(true)
+    if (!result.ok) throw new Error("expected success")
+    expect(result.value.truncated).toBe(false)
   })
 
   it("sends an absolute window, a service-scoped query, and both credentials", async () => {
@@ -354,17 +419,6 @@ describe("DatadogTriageClient failure classification", () => {
       ok: false,
       reason: "invalid_config",
       retryable: false,
-    })
-    expect(fetchImpl).not.toHaveBeenCalled()
-  })
-
-  it("refuses an issue id outside the safe pattern before any fetch", async () => {
-    const fetchImpl = stubFetch(jsonResponse({ data: {} }))
-    const client = new DatadogTriageClient(CONFIG, fetchImpl)
-
-    expect(await client.getIssue("../../secrets")).toMatchObject({
-      ok: false,
-      reason: "invalid_config",
     })
     expect(fetchImpl).not.toHaveBeenCalled()
   })

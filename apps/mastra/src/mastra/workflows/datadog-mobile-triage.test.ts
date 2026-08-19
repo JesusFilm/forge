@@ -41,6 +41,7 @@ const READY_CONFIG: DatadogTriageConfig = {
   maxCandidatesPerRun: 200,
   maxTicketsPerDay: 5,
   timeoutMs: 15_000,
+  judgeTimeoutMs: 60_000,
   maxResponseBytes: 4_194_304,
   overlapMs: 300_000,
   ingestionLagMs: 180_000,
@@ -565,10 +566,62 @@ describe("executeDatadogTriage sweep", () => {
       } as never),
     })
 
-    // The candidate was new, so detection emitted no seen update for it; the
-    // pin appears on the update the NEXT run writes. What must hold here is
-    // that nothing was committed without going through the guarded path.
-    expect(repo.commitSeenIssues).toHaveBeenCalled()
+    // Assert the CONTENTS, not just that the call happened: with an empty
+    // array this call is always made, so a bare toHaveBeenCalled() cannot tell
+    // a correct pin from nothing being committed at all.
+    const committed = vi.mocked(repo.commitSeenIssues).mock.calls[0]?.[0] ?? []
+    expect(committed).toEqual([
+      expect.objectContaining({
+        issueId: "ISSUE-1",
+        requiredActionKey: "datadog-triage:issue:ISSUE-1:0",
+      }),
+    ])
+  })
+
+  it("commits a suppressed candidate's state with no outbox pin", async () => {
+    // Judged and rejected: the row still commits so the signal is not
+    // re-judged next hour, but it has no action row to be pinned to.
+    const repo = repository()
+
+    await run({
+      repository: repo,
+      datadog: datadog({
+        searchIssues: vi.fn(async () => ({
+          ok: true as const,
+          value: { issues: [issue()], unparsedRows: 0 },
+        })),
+      } as never),
+      analyzer: analyzer({ ...ANALYSIS, worthInvestigating: false }),
+    })
+
+    const committed = vi.mocked(repo.commitSeenIssues).mock.calls[0]?.[0] ?? []
+    expect(committed).toEqual([
+      expect.objectContaining({
+        issueId: "ISSUE-1",
+        requiredActionKey: undefined,
+      }),
+    ])
+  })
+
+  it("commits no state at all for a candidate this run could not judge", async () => {
+    const repo = repository()
+
+    await run({
+      repository: repo,
+      datadog: datadog({
+        searchIssues: vi.fn(async () => ({
+          ok: true as const,
+          value: { issues: [issue()], unparsedRows: 0 },
+        })),
+      } as never),
+      analyzer: {
+        generate: vi.fn(async () => {
+          throw new Error("provider down")
+        }),
+      },
+    })
+
+    expect(vi.mocked(repo.commitSeenIssues).mock.calls[0]?.[0]).toEqual([])
   })
 
   it("leaves the cursor unmoved when a state commit refuses", async () => {

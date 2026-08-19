@@ -53,8 +53,13 @@ const MIGRATION_PATH = fileURLToPath(
 /**
  * Refuse a target that does not look disposable. This suite truncates the
  * whole `datadog_triage` schema between cases, and the shell most likely to
- * run it is the same one that holds a real `DATABASE_URL`. A prose warning in
- * the header is not a control; this is.
+ * run it is the same one that holds a real `DATABASE_URL`.
+ *
+ * Accepted limitation, carried over from `ai-chat-erasure.smoke.test.ts` where
+ * this guard comes from: a loopback host counts as disposable on its own, so a
+ * production database reached through an `ssh -L` or `kubectl port-forward`
+ * tunnel passes. This is a guard against the realistic accident — a stale
+ * `DATABASE_URL` still exported from an earlier task — not a proof.
  */
 function assertThrowawayTarget(databaseUrl: string): void {
   if (process.env.NODE_ENV === "production") {
@@ -189,10 +194,11 @@ describe.skipIf(!RUN_SMOKE)(
       ])
     })
 
-    it("indexes both branches of the claim CTE, including lease recovery", async () => {
-      // The claim ORs due-and-pending with expired-lease-and-processing. A
-      // partial index on one predicate cannot serve the other, and this table
-      // never gets purged, so a missing index degrades forever.
+    it("indexes every predicate the claim statement actually issues", async () => {
+      // The claim ORs due-and-pending with expired-lease-and-processing, and
+      // its budget subquery ORs three more predicates. A partial index on one
+      // predicate cannot serve another, and this table never gets purged, so a
+      // missing index degrades forever.
       const indexes = await pool.query<{ indexname: string }>(
         `select indexname from pg_indexes
           where schemaname = 'datadog_triage' and tablename = 'actions'
@@ -203,8 +209,82 @@ describe.skipIf(!RUN_SMOKE)(
         "actions_pkey",
         "datadog_triage_actions_due_idx",
         "datadog_triage_actions_processing_idx",
+        "datadog_triage_actions_reserved_created_idx",
+        "datadog_triage_actions_reserved_deduplicated_idx",
         "datadog_triage_actions_signal_idx",
       ])
+    })
+
+    it("keeps the liveness stamp on the fetch time, not the held cursor", async () => {
+      // `holdCursor` backdates cursor_at to the earliest unresolved signal. If
+      // last_success_at inherited that, the runbook's one liveness signal would
+      // report a healthy source as days stale and cry wolf on the normal path.
+      const fetchedAt = new Date("2026-08-19T12:00:00.000Z")
+      await repository.commitCursors([
+        {
+          source: "monitor:forge-mobile",
+          cursorAt: new Date("2026-08-19T11:55:00.000Z"),
+          succeeded: true,
+          succeededAt: fetchedAt,
+        },
+      ])
+
+      // Next run holds the cursor three days back for an unresolved episode.
+      await repository.commitCursors([
+        {
+          source: "monitor:forge-mobile",
+          cursorAt: new Date("2026-08-16T09:00:00.000Z"),
+          succeeded: true,
+          succeededAt: new Date("2026-08-19T13:00:00.000Z"),
+        },
+      ])
+
+      const [cursor] = await repository.getCursors(["monitor:forge-mobile"])
+      expect(cursor?.lastSuccessAt).toBe("2026-08-19T13:00:00.000Z")
+    })
+
+    it("never lets a liveness stamp travel backwards", async () => {
+      await repository.commitCursors([
+        {
+          source: "issue:forge-mobile",
+          cursorAt: new Date("2026-08-19T12:00:00.000Z"),
+          succeeded: true,
+          succeededAt: new Date("2026-08-19T12:00:00.000Z"),
+        },
+      ])
+      await repository.commitCursors([
+        {
+          source: "issue:forge-mobile",
+          cursorAt: new Date("2026-08-19T12:30:00.000Z"),
+          succeeded: true,
+          succeededAt: new Date("2026-08-19T09:00:00.000Z"),
+        },
+      ])
+
+      const [cursor] = await repository.getCursors(["issue:forge-mobile"])
+      expect(cursor?.lastSuccessAt).toBe("2026-08-19T12:00:00.000Z")
+    })
+
+    it("leaves the liveness stamp alone when a source failed", async () => {
+      await repository.commitCursors([
+        {
+          source: "spike:forge-mobile",
+          cursorAt: new Date("2026-08-19T12:00:00.000Z"),
+          succeeded: true,
+          succeededAt: new Date("2026-08-19T12:00:00.000Z"),
+        },
+      ])
+      await repository.commitCursors([
+        {
+          source: "spike:forge-mobile",
+          cursorAt: new Date("2026-08-19T12:00:00.000Z"),
+          succeeded: false,
+          succeededAt: new Date("2026-08-19T13:00:00.000Z"),
+        },
+      ])
+
+      const [cursor] = await repository.getCursors(["spike:forge-mobile"])
+      expect(cursor?.lastSuccessAt).toBe("2026-08-19T12:00:00.000Z")
     })
 
     it("enqueues one row for a repeated idempotency key", async () => {
@@ -426,11 +506,13 @@ describe.skipIf(!RUN_SMOKE)(
           source: "issues:forge-mobile",
           cursorAt: new Date("2026-08-18T10:00:00Z"),
           succeeded: true,
+          succeededAt: new Date("2026-08-19T12:00:00Z"),
         },
         {
           source: "monitors:forge-mobile",
           cursorAt: new Date("2026-08-18T10:00:00Z"),
           succeeded: true,
+          succeededAt: new Date("2026-08-19T12:00:00Z"),
         },
       ])
 
@@ -439,11 +521,13 @@ describe.skipIf(!RUN_SMOKE)(
           source: "issues:forge-mobile",
           cursorAt: new Date("2026-08-18T10:57:00Z"),
           succeeded: true,
+          succeededAt: new Date("2026-08-19T12:00:00Z"),
         },
         {
           source: "monitors:forge-mobile",
           cursorAt: new Date("2026-08-18T10:00:00Z"),
           succeeded: false,
+          succeededAt: new Date("2026-08-19T12:00:00Z"),
         },
       ])
 
@@ -460,8 +544,10 @@ describe.skipIf(!RUN_SMOKE)(
       expect(bySource.get("monitors:forge-mobile")?.cursorAt).toBe(
         "2026-08-18T10:00:00.000Z",
       )
+      // The failed source keeps the stamp from its last SUCCESSFUL fetch, and
+      // that stamp is the fetch time — never the cursor position.
       expect(bySource.get("monitors:forge-mobile")?.lastSuccessAt).toBe(
-        "2026-08-18T10:00:00.000Z",
+        "2026-08-19T12:00:00.000Z",
       )
     })
 

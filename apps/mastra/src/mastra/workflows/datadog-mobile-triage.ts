@@ -56,6 +56,13 @@ import {
 const LEASE_MS = 30 * 60_000
 /** Window a seeded source reads when its cursor is missing. */
 const DEFAULT_LOOKBACK_MS = 60 * 60_000
+/**
+ * Aggregate ceiling on the judgment stage. The run key is the UTC hour, so a
+ * run still executing when the next tick fires does NOT collide with it — both
+ * claim, both pay for the same work. Bounding judgment keeps a run inside its
+ * own hour; whatever does not fit is withheld and re-read next run.
+ */
+const JUDGMENT_BUDGET_MS = 20 * 60_000
 /** The one spike class this version evaluates (R4: one bounded check). */
 const SPIKE_CLASS = "error_rate"
 
@@ -126,6 +133,9 @@ type SourceCollection = {
   cursors: CursorCommit[]
   outcomes: TriageSourceOutcome[]
   seededServices: string[]
+  /** Widest range any source actually read, for the run report. */
+  windowStart?: Date
+  windowEnd?: Date
 }
 
 function emptyCollection(): SourceCollection {
@@ -137,6 +147,33 @@ function emptyCollection(): SourceCollection {
     cursors: [],
     outcomes: [],
     seededServices: [],
+  }
+}
+
+/**
+ * Fold a resolved source window into the run's reported range, and surface a
+ * clamped window as a partial source so "catching up after an outage" is
+ * distinguishable from "stuck" in the runbook's escalation query.
+ */
+function recordWindow(
+  collection: SourceCollection,
+  source: string,
+  window: DetectionWindow,
+  errors: string[],
+): void {
+  if (!collection.windowStart || window.from < collection.windowStart) {
+    collection.windowStart = window.from
+  }
+  if (!collection.windowEnd || window.to > collection.windowEnd) {
+    collection.windowEnd = window.to
+  }
+  if (window.clamped) {
+    errors.push(`datadog:${source}:window_clamped`)
+    collection.outcomes.push({
+      source,
+      status: "partial",
+      reason: "window_clamped",
+    })
   }
 }
 
@@ -236,6 +273,7 @@ export async function executeDatadogTriage(
       now,
       counters,
       errors,
+      heartbeat,
     })
     counters.servicesCovered = config.services.length
     counters.servicesSeeded = collection.seededServices.length
@@ -255,14 +293,28 @@ export async function executeDatadogTriage(
     // WITHHELD at commit time, so next hour re-reads them; committing it would
     // baseline a signal nobody ever looked at.
     const withheld: TriageCandidate[] = [...capped.deferred]
-    const enqueuedByCandidate = new Map<string, string>()
+    const pins = emptyActionPins()
+    // Elapsed REAL time, not a deadline derived from the injected clock: this
+    // budget is about how long the stage actually runs, and mixing the two
+    // clocks would make an injected `now` decide it before the first call.
+    const judgmentStartedAt = Date.now()
 
-    for (const candidate of capped.judged) {
+    for (const [index, candidate] of capped.judged.entries()) {
+      if (Date.now() - judgmentStartedAt > JUDGMENT_BUDGET_MS) {
+        // Out of time. Everything unjudged is withheld, so its state stays
+        // uncommitted and its source cursor holds — the next run picks it up
+        // rather than this one running into the following hour's tick.
+        withheld.push(...capped.judged.slice(index))
+        counters.candidatesCapped += capped.judged.length - index
+        errors.push("judge:budget_exhausted")
+        partialReason = "judgment_budget_exhausted"
+        break
+      }
       await heartbeat()
       const analysis = await analyzeTriageCandidate({
         analyzer: dependencies.analyzer,
         candidate,
-        abortSignal: AbortSignal.timeout(config.timeoutMs),
+        abortSignal: AbortSignal.timeout(config.judgeTimeoutMs),
       })
       counters.judged += 1
       if (!analysis.ok) {
@@ -273,36 +325,51 @@ export async function executeDatadogTriage(
         withheld.push(candidate)
         continue
       }
-      const decision = decideTriageAction({
-        candidate,
-        analysis: analysis.analysis,
-        config: {
-          confidenceThreshold: config.confidenceThreshold,
-          actionabilityThreshold: config.actionabilityThreshold,
-          minOccurrences: config.minOccurrences,
-        },
-        serviceProfile: getDatadogTriageServiceProfile(
-          config,
-          candidate.service,
-        ),
-        site: config.site,
-        labelId: config.linear.bugLabelId,
-      })
-      if (decision.outcome === "suppress") {
-        counters.suppressed += 1
-        logEvent("candidate_suppressed", {
-          service: candidate.service,
-          kind: candidate.signalKind,
-          reason: decision.reason,
+      // Drafting and enqueueing are bounded input operations, but a
+      // deterministic throw here (an over-long id failing a schema bound, say)
+      // would otherwise abort the whole sweep and do so again every hour.
+      try {
+        const decision = decideTriageAction({
+          candidate,
+          analysis: analysis.analysis,
+          config: {
+            confidenceThreshold: config.confidenceThreshold,
+            actionabilityThreshold: config.actionabilityThreshold,
+            minOccurrences: config.minOccurrences,
+          },
+          serviceProfile: getDatadogTriageServiceProfile(
+            config,
+            candidate.service,
+          ),
+          site: config.site,
+          labelId: config.linear.bugLabelId,
         })
-        continue
+        if (decision.outcome === "suppress") {
+          counters.suppressed += 1
+          logEvent("candidate_suppressed", {
+            service: candidate.service,
+            kind: candidate.signalKind,
+            reason: decision.reason,
+          })
+          continue
+        }
+        const inserted = await dependencies.repository.enqueueAction(
+          decision.draft,
+        )
+        if (inserted) counters.actionsEnqueued += 1
+        else counters.alreadyTicketed += 1
+        recordActionPin(pins, candidate, decision.draft.idempotencyKey)
+      } catch {
+        counters.judgeFailures += 1
+        // Fixed vocabulary only — a zod message would echo untrusted text.
+        errors.push("draft:failed")
+        withheld.push(candidate)
       }
-      const inserted = await dependencies.repository.enqueueAction(
-        decision.draft,
-      )
-      if (inserted) counters.actionsEnqueued += 1
-      else counters.alreadyTicketed += 1
-      enqueuedByCandidate.set(candidate.signalId, decision.draft.idempotencyKey)
+    }
+    if (counters.judged > 0 && counters.judgeFailures === counters.judged) {
+      // Every source answered but nothing could be judged. Without this the
+      // run reports `complete` while filing nothing.
+      partialReason ??= "judgment_failed"
     }
 
     // 4. Dispatch what this run enqueued, so AE2's latency stays under an hour.
@@ -325,7 +392,7 @@ export async function executeDatadogTriage(
       repository: dependencies.repository,
       collection,
       withheld,
-      enqueuedByCandidate,
+      pins,
       now,
     })
     await dependencies.repository.commitCursors(
@@ -334,9 +401,11 @@ export async function executeDatadogTriage(
 
     const report = triageRunReportSchema.parse({
       runKey,
+      // The REAL range this run read, not the instant it started — this is the
+      // only place an operator can answer "what did this run actually cover?".
       status: partialReason ? "partial" : "complete",
-      windowStart: now.toISOString(),
-      windowEnd: now.toISOString(),
+      windowStart: (collection.windowStart ?? now).toISOString(),
+      windowEnd: (collection.windowEnd ?? now).toISOString(),
       counters,
       sources: collection.outcomes.slice(0, 60),
       issueUrls: issueUrls.slice(0, 25),
@@ -352,7 +421,14 @@ export async function executeDatadogTriage(
       deferred: counters.actionsDeferred,
     })
     return report
-  } catch {
+  } catch (error) {
+    // Name the error CLASS so an operator can tell a write-ordering refusal
+    // from a database outage from a bug. Never the message — it can carry
+    // upstream text.
+    const errorName =
+      error instanceof Error && /^[A-Za-z]{1,60}$/u.test(error.name)
+        ? error.name
+        : "non_error_throw"
     const failed = triageRunReportSchema.parse({
       runKey,
       status: "failed",
@@ -361,10 +437,13 @@ export async function executeDatadogTriage(
       counters,
       sources: [],
       issueUrls: issueUrls.slice(0, 25),
-      errors: [...errors, "unexpected_failure"].slice(0, 50),
+      errors: [...errors, `unexpected_failure:${errorName}`].slice(0, 50),
       partialReason,
     })
-    logEvent("run_failed", { candidates: counters.candidates })
+    logEvent("run_failed", {
+      candidates: counters.candidates,
+      error: errorName,
+    })
     try {
       await dependencies.repository.finalizeRun(failed, leaseToken)
     } catch {
@@ -422,6 +501,45 @@ function applyDispatch(
 }
 
 /**
+ * Outbox keys for the rows this run enqueued, keyed the way each commit path
+ * looks itself up. One map per kind because the three state tables have three
+ * different identities — keying them all by candidate `signalId` left the KTD2
+ * guard permanently unarmed for monitors and spikes.
+ */
+export type ActionPins = {
+  issues: Map<string, string>
+  monitors: Map<string, string>
+  spikes: Map<string, string>
+}
+
+function emptyActionPins(): ActionPins {
+  return { issues: new Map(), monitors: new Map(), spikes: new Map() }
+}
+
+function spikePinKey(service: string, spikeClass: string): string {
+  return `${service}:${spikeClass}`
+}
+
+function recordActionPin(
+  pins: ActionPins,
+  candidate: TriageCandidate,
+  idempotencyKey: string,
+): void {
+  if (candidate.evidence.kind === "issue") {
+    pins.issues.set(candidate.evidence.issueId, idempotencyKey)
+    return
+  }
+  if (candidate.evidence.kind === "monitor") {
+    pins.monitors.set(candidate.evidence.monitorId, idempotencyKey)
+    return
+  }
+  pins.spikes.set(
+    spikePinKey(candidate.service, candidate.evidence.spikeClass),
+    idempotencyKey,
+  )
+}
+
+/**
  * Commit detection state, minus anything this run could not resolve, and with
  * each resolved write pinned to the outbox row that justifies it (KTD2). The
  * repository refuses the whole batch if such a row is not durable yet, which
@@ -431,7 +549,7 @@ async function commitDetectionState(input: {
   repository: DatadogTriageRepository
   collection: SourceCollection
   withheld: TriageCandidate[]
-  enqueuedByCandidate: Map<string, string>
+  pins: ActionPins
   now: Date
 }): Promise<void> {
   const withheldIssues = new Set(
@@ -453,7 +571,7 @@ async function commitDetectionState(input: {
       .filter((candidate) => candidate.evidence.kind === "spike")
       .map((candidate) =>
         candidate.evidence.kind === "spike"
-          ? `${candidate.service}:${candidate.evidence.spikeClass}`
+          ? spikePinKey(candidate.service, candidate.evidence.spikeClass)
           : "",
       ),
   )
@@ -463,18 +581,44 @@ async function commitDetectionState(input: {
       .filter((update) => !withheldIssues.has(update.issueId))
       .map((update) => ({
         ...update,
-        requiredActionKey: input.enqueuedByCandidate.get(update.issueId),
+        requiredActionKey: input.pins.issues.get(update.issueId),
       })),
   )
   await input.repository.commitMonitorStates(
-    input.collection.monitorUpdates.filter(
-      (update) => !withheldMonitors.has(update.monitorId),
-    ),
+    input.collection.monitorUpdates
+      .filter((update) => !withheldMonitors.has(update.monitorId))
+      .map((update) => {
+        const requiredActionKey = input.pins.monitors.get(update.monitorId)
+        return {
+          ...update,
+          requiredActionKey,
+          // The cooldown stamp records "we FILED a ticket", not "we looked".
+          // Stamping a suppressed candidate would blackout the monitor for
+          // hours over a ticket that was never created.
+          lastTicketedAt: requiredActionKey
+            ? input.now.toISOString()
+            : update.lastTicketedAt,
+        }
+      }),
   )
   await input.repository.commitSpikeBaselines(
-    input.collection.spikeUpdates.filter(
-      (update) => !withheldSpikes.has(`${update.service}:${update.spikeClass}`),
-    ),
+    input.collection.spikeUpdates
+      .filter(
+        (update) =>
+          !withheldSpikes.has(spikePinKey(update.service, update.spikeClass)),
+      )
+      .map((update) => {
+        const requiredActionKey = input.pins.spikes.get(
+          spikePinKey(update.service, update.spikeClass),
+        )
+        return {
+          ...update,
+          requiredActionKey,
+          lastTicketedAt: requiredActionKey
+            ? input.now.toISOString()
+            : update.lastTicketedAt,
+        }
+      }),
   )
   await input.repository.seedServiceBaselines(
     input.collection.seededServices,
@@ -488,8 +632,10 @@ async function collectSignals(input: {
   now: Date
   counters: TriageRunCounters
   errors: string[]
+  /** Renews the run lease: the fetch phase can outlast it on its own. */
+  heartbeat: () => Promise<void>
 }): Promise<SourceCollection> {
-  const { dependencies, config, now, counters, errors } = input
+  const { dependencies, config, now, counters, errors, heartbeat } = input
   const collection = emptyCollection()
   const seeded = new Set(
     await dependencies.repository.getSeededServices(config.services),
@@ -532,6 +678,8 @@ async function collectSignals(input: {
         reason: "empty_window",
       })
     } else {
+      recordWindow(collection, issueSource, issueWindow, errors)
+      await heartbeat()
       const page = await dependencies.datadog.searchIssues({
         service,
         from: issueWindow.from,
@@ -553,6 +701,18 @@ async function collectSignals(input: {
             source: issueSource,
             status: "partial",
             reason: "unparsed_rows",
+          })
+        }
+        if (page.value.truncated) {
+          // A truncated read must never seed a baseline: every issue past the
+          // page boundary would arrive next run as brand new and be ticketed,
+          // which is exactly what F3/AE5 exists to prevent.
+          serviceSeeded = false
+          errors.push(`datadog:${issueSource}:page_truncated`)
+          collection.outcomes.push({
+            source: issueSource,
+            status: "partial",
+            reason: "page_truncated",
           })
         }
         const seen = await dependencies.repository.getSeenIssues(
@@ -577,13 +737,16 @@ async function collectSignals(input: {
         counters.signalsExcludedDevSession += detection.excludedDevSession
         counters.signalsExcludedMuted += detection.excludedMuted
         counters.signalsExcludedBaselined += detection.baselined
+        counters.signalsExcludedForeignService +=
+          detection.excludedForeignService
         counters.epochsMinted += detection.epochsMinted
         collection.cursors.push({
           source: issueSource,
           cursorAt: issueWindow.to,
           succeeded: true,
+          succeededAt: now,
         })
-        if (page.value.unparsedRows === 0) {
+        if (page.value.unparsedRows === 0 && !page.value.truncated) {
           collection.outcomes.push({ source: issueSource, status: "ok" })
         }
       }
@@ -599,6 +762,8 @@ async function collectSignals(input: {
         reason: "empty_window",
       })
     } else {
+      recordWindow(collection, monitorSource, monitorWindow, errors)
+      await heartbeat()
       const monitors = await dependencies.datadog.listMonitors({
         monitorTag: `service:${service}`,
       })
@@ -612,6 +777,14 @@ async function collectSignals(input: {
         errors.push(`datadog:${monitorSource}:${monitors.reason}`)
       } else {
         counters.signalsFetched += monitors.value.monitors.length
+        if (monitors.value.unparsedRows > 0) {
+          errors.push(`datadog:${monitorSource}:unparsed_rows`)
+          collection.outcomes.push({
+            source: monitorSource,
+            status: "partial",
+            reason: "unparsed_rows",
+          })
+        }
         const states = await dependencies.repository.getMonitorStates(
           monitors.value.monitors.map((monitor) => monitor.monitorId),
         )
@@ -630,8 +803,11 @@ async function collectSignals(input: {
           source: monitorSource,
           cursorAt: monitorWindow.to,
           succeeded: true,
+          succeededAt: now,
         })
-        collection.outcomes.push({ source: monitorSource, status: "ok" })
+        if (monitors.value.unparsedRows === 0) {
+          collection.outcomes.push({ source: monitorSource, status: "ok" })
+        }
       }
     }
 
@@ -645,6 +821,8 @@ async function collectSignals(input: {
         reason: "empty_window",
       })
     } else {
+      recordWindow(collection, spikeSource, spikeWindow, errors)
+      await heartbeat()
       const useRum = profile.spikeSource === "rum"
       const aggregate = await (useRum
         ? dependencies.datadog.aggregateRumEvents({
@@ -702,6 +880,7 @@ async function collectSignals(input: {
           source: spikeSource,
           cursorAt: spikeWindow.to,
           succeeded: true,
+          succeededAt: now,
         })
         collection.outcomes.push({ source: spikeSource, status: "ok" })
       }
@@ -729,6 +908,12 @@ const executeDatadogTriageStep = createStep({
       connectionString: config.databaseUrl,
       max: 2,
       allowExitOnIdle: true,
+      // The pinned pg client runs no statement_timeout, so a slow-but-not-down
+      // Postgres would hang every query — including the lease heartbeat — and
+      // the `finally` below would never run, leaking connections per hung run.
+      connectionTimeoutMillis: 5_000,
+      query_timeout: 20_000,
+      statement_timeout: 20_000,
     })
     try {
       return await executeDatadogTriage(inputData, {

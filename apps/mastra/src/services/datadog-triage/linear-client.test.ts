@@ -44,11 +44,28 @@ function stubFetch(...responses: Array<Response | (() => never)>) {
 }
 
 function issuesPage(
-  nodes: Array<{ id: string; url: string; description?: string }>,
+  nodes: Array<{
+    id: string
+    url: string
+    description?: string
+    project?: { id: string } | null
+  }>,
   pageInfo?: { hasNextPage: boolean; endCursor: string | null },
 ) {
   return {
-    data: { team: { issues: { nodes, pageInfo: pageInfo ?? undefined } } },
+    data: {
+      team: {
+        issues: {
+          // Default every fixture row into the configured project; a test that
+          // cares about the project scope overrides it explicitly.
+          nodes: nodes.map((node) => ({
+            project: { id: CONFIG.linear.projectId },
+            ...node,
+          })),
+          pageInfo: pageInfo ?? undefined,
+        },
+      },
+    },
   }
 }
 
@@ -119,6 +136,71 @@ describe("TriageLinearClient.findIssueByMarker", () => {
 
     expect(result).toEqual({ ok: true, value: undefined })
     expect(fetchImpl).toHaveBeenCalledTimes(5)
+  })
+
+  it("ignores a marker match outside the configured project", async () => {
+    // The marker is an HTML comment in every filed ticket, so it travels with
+    // any copy of that ticket body. Matching one would report an unrelated
+    // issue as the ticket and leave the real regression unseen.
+    const marker = triageMarker(DRAFT.idempotencyKey)
+    const client = new TriageLinearClient(
+      CONFIG,
+      stubFetch(
+        jsonResponse(
+          issuesPage([
+            {
+              id: "copied",
+              url: "https://linear.app/forge/issue/FGE-99",
+              description: `someone pasted this ${marker}`,
+              project: { id: "some-other-project" },
+            },
+          ]),
+        ),
+      ),
+    )
+
+    expect(await client.findIssueByMarker(marker)).toEqual({
+      ok: true,
+      value: undefined,
+    })
+  })
+
+  it("ignores a marker match on an issue with no project at all", async () => {
+    const marker = triageMarker(DRAFT.idempotencyKey)
+    const client = new TriageLinearClient(
+      CONFIG,
+      stubFetch(
+        jsonResponse(
+          issuesPage([
+            {
+              id: "orphan",
+              url: "https://linear.app/forge/issue/FGE-98",
+              description: marker,
+              project: null,
+            },
+          ]),
+        ),
+      ),
+    )
+
+    expect(await client.findIssueByMarker(marker)).toEqual({
+      ok: true,
+      value: undefined,
+    })
+  })
+
+  it("reports a missing project id before any request", async () => {
+    const fetchImpl = stubFetch()
+    const client = new TriageLinearClient(
+      { ...CONFIG, linear: { ...CONFIG.linear, projectId: undefined } },
+      fetchImpl,
+    )
+
+    expect(await client.findIssueByMarker("marker")).toMatchObject({
+      ok: false,
+      reason: "config_missing",
+    })
+    expect(fetchImpl).not.toHaveBeenCalled()
   })
 
   it("reports a missing team id before any request", async () => {
@@ -297,6 +379,45 @@ describe("TriageLinearClient.createIssue", () => {
       retryable,
     })
   })
+
+  it.each([
+    ["createIssue", true],
+    ["findIssueByMarker", false],
+  ] as const)(
+    "classifies a mid-body timeout on %s as timeout, not parse_error",
+    async (method, mutation) => {
+      // parse_error is non-retryable, and for the SEARCH path it is also
+      // non-ambiguous — which terminalizes the outbox row on attempt one and
+      // drops a signal R10 promises to keep queued.
+      const timeout = Object.assign(new Error("aborted"), {
+        name: "TimeoutError",
+      })
+      const body = new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.enqueue(new TextEncoder().encode('{"data":'))
+        },
+        pull() {
+          throw timeout
+        },
+      })
+      const client = new TriageLinearClient(
+        CONFIG,
+        stubFetch(new Response(body, { status: 200 })),
+      )
+
+      const result =
+        method === "createIssue"
+          ? await client.createIssue(DRAFT)
+          : await client.findIssueByMarker("marker")
+
+      expect(result).toMatchObject({
+        ok: false,
+        reason: "timeout",
+        retryable: true,
+        ambiguous: mutation,
+      })
+    },
+  )
 
   it("marks a malformed create response ambiguous", async () => {
     const client = new TriageLinearClient(

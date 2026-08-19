@@ -2166,6 +2166,32 @@ describe("Datadog triage env", () => {
     expect(readiness.reasons).toContain("service_profiles_invalid")
   })
 
+  it("refuses a service name that could widen the monitor tag filter", async () => {
+    provisionDatadogTriageEnv()
+    vi.stubEnv("DATADOG_TRIAGE_SERVICES", "forge-mobile,*")
+
+    const { getDatadogTriageConfig, getDatadogTriageReadiness } =
+      await import("./env")
+
+    const readiness = getDatadogTriageReadiness(getDatadogTriageConfig())
+
+    expect(readiness.ready).toBe(false)
+    if (readiness.ready) throw new Error("expected unready config")
+    expect(readiness.reasons).toContain("service_name_invalid")
+  })
+
+  it("accepts ordinary service names", async () => {
+    provisionDatadogTriageEnv()
+    vi.stubEnv("DATADOG_TRIAGE_SERVICES", "forge-mobile,forge-admin.api_v2")
+
+    const { getDatadogTriageConfig, getDatadogTriageReadiness } =
+      await import("./env")
+
+    expect(getDatadogTriageReadiness(getDatadogTriageConfig())).toEqual({
+      ready: true,
+    })
+  })
+
   it("refuses an unusable release-version pattern", async () => {
     provisionDatadogTriageEnv()
     vi.stubEnv("DATADOG_TRIAGE_RELEASE_VERSION_PATTERN", "([")

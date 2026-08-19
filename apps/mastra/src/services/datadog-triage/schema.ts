@@ -107,6 +107,8 @@ export const triageRunCountersSchema = z.object({
   signalsExcludedDevSession: z.number().int().nonnegative().default(0),
   signalsExcludedMuted: z.number().int().nonnegative().default(0),
   signalsExcludedBaselined: z.number().int().nonnegative().default(0),
+  /** Rows Datadog returned for a service the coverage list does not name. */
+  signalsExcludedForeignService: z.number().int().nonnegative().default(0),
   candidates: z.number().int().nonnegative().default(0),
   candidatesCapped: z.number().int().nonnegative().default(0),
   judged: z.number().int().nonnegative().default(0),

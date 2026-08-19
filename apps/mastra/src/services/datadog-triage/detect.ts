@@ -106,19 +106,16 @@ export type IssueDetection = {
   excludedForeignService: number
   baselined: number
   epochsMinted: number
-  seeded: boolean
 }
 
 export type MonitorDetection = {
   candidates: TriageCandidate[]
   stateUpdates: MonitorStateUpdate[]
-  seeded: boolean
 }
 
 export type SpikeDetection = {
   candidates: TriageCandidate[]
   baselineUpdates: SpikeBaselineUpdate[]
-  seeded: boolean
 }
 
 export type ReleaseFilterConfig = {
@@ -259,7 +256,6 @@ export function detectIssueCandidates(input: {
     excludedForeignService: 0,
     baselined: 0,
     epochsMinted: 0,
-    seeded: !input.alreadySeeded,
   }
 
   const handled = new Set<string>()
@@ -295,7 +291,11 @@ export function detectIssueCandidates(input: {
         issueId: issue.issueId,
         service: input.service,
         epoch: seen?.epoch ?? 0,
-        baselineRate: windowRate,
+        // The seed window spans days while every later comparison spans an
+        // hour, so a raw average would read far below any active hour and make
+        // ordinary activity look like a regression on the very next run. Floor
+        // it at the recurrence gate so a standing issue stays standing.
+        baselineRate: Math.max(windowRate, input.config.minOccurrences),
         lastActivityAt,
         firstSeenAt,
       })
@@ -316,6 +316,18 @@ export function detectIssueCandidates(input: {
           firstSeenAt,
         }),
       )
+      // Every candidate carries its state update, exactly as the monitor and
+      // spike detectors do. Without this the issue is never baselined: it comes
+      // back as new every hour, burns a judgment each time, and can never reach
+      // the regression branch below, which needs a stored epoch to increment.
+      detection.seenUpdates.push({
+        issueId: issue.issueId,
+        service: input.service,
+        epoch: 0,
+        baselineRate: windowRate,
+        lastActivityAt,
+        firstSeenAt,
+      })
       continue
     }
 
@@ -352,6 +364,16 @@ export function detectIssueCandidates(input: {
         firstSeenAt: seen.firstSeenAt,
       }),
     )
+    // The regressed rate becomes the new baseline, so the elevated issue does
+    // not re-fire every hour once its epoch is minted.
+    detection.seenUpdates.push({
+      issueId: issue.issueId,
+      service: input.service,
+      epoch: seen.epoch + 1,
+      baselineRate: windowRate,
+      lastActivityAt,
+      firstSeenAt: seen.firstSeenAt,
+    })
   }
 
   return detection
@@ -416,7 +438,6 @@ export function detectMonitorSignals(input: {
   const detection: MonitorDetection = {
     candidates: [],
     stateUpdates: [],
-    seeded: !input.alreadySeeded,
   }
 
   for (const monitor of input.monitors) {
@@ -462,10 +483,11 @@ export function detectMonitorSignals(input: {
         episodeStartedAt,
       },
     })
-    detection.stateUpdates.push({
-      ...baseUpdate,
-      lastTicketedAt: input.now.toISOString(),
-    })
+    // No `lastTicketedAt` here. Detection does not know whether a ticket will
+    // actually be filed, and stamping the cooldown for a candidate the policy
+    // later suppresses would blackout the monitor over a ticket that never
+    // existed. The workflow stamps it once the outcome is known.
+    detection.stateUpdates.push(baseUpdate)
   }
 
   return detection
@@ -489,10 +511,8 @@ export function detectSpikeSignals(input: {
   const detection: SpikeDetection = {
     candidates: [],
     baselineUpdates: [],
-    seeded: !input.alreadySeeded,
   }
   if (input.aggregate.partial) {
-    detection.seeded = false
     return detection
   }
 
@@ -538,7 +558,11 @@ export function detectSpikeSignals(input: {
       signalKind: "spike",
       signalId: `${input.service}:${bucket.key}:${input.window.to.toISOString()}`,
       epoch: 0,
-      occurredAt: input.window.to.toISOString(),
+      // Anchored at the window START, not its end. `holdCursor` pins a
+      // withheld candidate's source at this instant, and the end is exactly
+      // where the cursor would advance to anyway — so anchoring there made a
+      // withheld spike silently unrecoverable instead of re-read next run.
+      occurredAt: input.window.from.toISOString(),
       windowStart: input.window.from.toISOString(),
       windowEnd: input.window.to.toISOString(),
       evidence: {
@@ -549,10 +573,8 @@ export function detectSpikeSignals(input: {
         baselineRatePerHour: stored?.baselineRate ?? 0,
       },
     })
-    detection.baselineUpdates.push({
-      ...nextBaseline,
-      lastTicketedAt: input.now.toISOString(),
-    })
+    // Cooldown stamping belongs to the workflow, which knows the outcome.
+    detection.baselineUpdates.push(nextBaseline)
   }
 
   return detection
