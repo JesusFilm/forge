@@ -25,6 +25,7 @@ const NOW = new Date("2026-08-18T11:00:00.000Z")
 const READY_CONFIG: DatadogTriageConfig = {
   enabled: true,
   model: "openai/gpt-5.4-mini",
+  modelApiKeyPresent: true,
   databaseUrl: "postgresql://localhost:5432/test",
   site: "datadoghq.com",
   apiKey: "dd-api-key",
@@ -315,6 +316,26 @@ describe("executeDatadogTriage readiness (R12)", () => {
     expect(repo.calls).toEqual([])
     expect(dd.searchIssues).not.toHaveBeenCalled()
     expect(lin.createIssue).not.toHaveBeenCalled()
+  })
+
+  // The model credential is as load-bearing as the Datadog and Linear ones:
+  // without it the sweep would pass readiness, spend Datadog quota hourly,
+  // fail EVERY judgment, and file nothing — reported `partial`, with the
+  // runbook's liveness query green because only the fetch half succeeded.
+  it("exits disabled when the judgment model has no credential", async () => {
+    const repo = repository()
+    const dd = datadog()
+
+    const report = await run({
+      config: { modelApiKeyPresent: false },
+      repository: repo,
+      datadog: dd,
+    })
+
+    expect(report.status).toBe("disabled")
+    expect(report.errors).toContain("model_api_key_missing")
+    expect(repo.calls).toEqual([])
+    expect(dd.searchIssues).not.toHaveBeenCalled()
   })
 
   it("exits disabled when credentials are missing even with the flag on", async () => {

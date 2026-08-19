@@ -65,6 +65,15 @@ never committed values.
 | `LINEAR_DATADOG_TRIAGE_TEAM_ID`      | FGE team id                          |
 | `LINEAR_DATADOG_TRIAGE_PROJECT_ID`   | Mobile-triage project id             |
 | `LINEAR_DATADOG_TRIAGE_BUG_LABEL_ID` | Bug-class label id                   |
+| `OPENAI_API_KEY`                     | Judgment model credential            |
+
+`OPENAI_API_KEY` is the shared runtime key, not a triage-specific one — it is
+listed because the default `DATADOG_TRIAGE_MODEL` is an `openai/` route and the
+sweep cannot judge anything without it. Readiness refuses with
+`model_api_key_missing` rather than running, so a missing key is a loud
+`disabled` report and not a silent hour of spent Datadog quota. Point
+`DATADOG_TRIAGE_MODEL` at an `openrouter/...` model to use the OpenRouter keys
+instead.
 
 Leave `DATADOG_TRIAGE_ENABLED` unset or `false` throughout provisioning. Every
 other `DATADOG_TRIAGE_*` variable has a default; see the env table in

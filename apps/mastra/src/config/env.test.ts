@@ -1949,6 +1949,9 @@ function provisionDatadogTriageEnv(): void {
   vi.stubEnv("DATADOG_TRIAGE_ENABLED", "true")
   vi.stubEnv("DATADOG_TRIAGE_API_KEY", "dd-api-key")
   vi.stubEnv("DATADOG_TRIAGE_APP_KEY", "dd-app-key")
+  // The default model is an `openai/...` route, so this is as load-bearing as
+  // the Datadog and Linear credentials: without it every judgment fails.
+  vi.stubEnv("OPENAI_API_KEY", "sk-test")
   vi.stubEnv("LINEAR_DATADOG_TRIAGE_API_KEY", "lin_api_key")
   vi.stubEnv("LINEAR_DATADOG_TRIAGE_TEAM_ID", "team-fge")
   vi.stubEnv("LINEAR_DATADOG_TRIAGE_PROJECT_ID", "project-mobile-triage")
@@ -1959,6 +1962,11 @@ describe("Datadog triage env", () => {
   beforeEach(() => {
     vi.stubEnv("NODE_ENV", "development")
     vi.stubEnv("FIRECRAWL_API_KEY", "firecrawl-key")
+    // Explicit, not inherited: a real key in the developer's shell would make
+    // the model-credential cases pass for the wrong reason.
+    vi.stubEnv("OPENAI_API_KEY", "")
+    vi.stubEnv("OPENROUTER_API_KEY", "")
+    vi.stubEnv("OPENROUTER_API_PAID_KEY", "")
     clearDatadogTriageEnv()
   })
 
@@ -1998,6 +2006,69 @@ describe("Datadog triage env", () => {
 
   it("reports ready once Datadog and Linear are fully provisioned", async () => {
     provisionDatadogTriageEnv()
+
+    const { getDatadogTriageConfig, getDatadogTriageReadiness } =
+      await import("./env")
+
+    expect(getDatadogTriageReadiness(getDatadogTriageConfig())).toEqual({
+      ready: true,
+    })
+  })
+
+  // Without this the sweep passes readiness, spends Datadog quota hourly,
+  // fails every judgment, and files nothing — reported `partial`, while the
+  // runbook's liveness query stays green because the fetch half succeeded.
+  it("refuses when the configured model's provider has no credential", async () => {
+    provisionDatadogTriageEnv()
+    vi.stubEnv("OPENAI_API_KEY", "")
+
+    const { getDatadogTriageConfig, getDatadogTriageReadiness } =
+      await import("./env")
+
+    const readiness = getDatadogTriageReadiness(getDatadogTriageConfig())
+
+    expect(readiness.ready).toBe(false)
+    if (readiness.ready) throw new Error("expected unready config")
+    expect(readiness.reasons).toContain("model_api_key_missing")
+  })
+
+  it("reads the credential the configured provider actually uses", async () => {
+    // Switching the model to an OpenRouter route must switch which key counts:
+    // checking OPENAI_API_KEY unconditionally would refuse a valid setup.
+    provisionDatadogTriageEnv()
+    vi.stubEnv("OPENAI_API_KEY", "")
+    vi.stubEnv("DATADOG_TRIAGE_MODEL", "openrouter/google/gemma-4-31b-it:free")
+    vi.stubEnv("OPENROUTER_API_KEY", "or-key")
+
+    const { getDatadogTriageConfig, getDatadogTriageReadiness } =
+      await import("./env")
+
+    expect(getDatadogTriageReadiness(getDatadogTriageConfig())).toEqual({
+      ready: true,
+    })
+  })
+
+  it("refuses an OpenRouter model when neither OpenRouter key is set", async () => {
+    provisionDatadogTriageEnv()
+    vi.stubEnv("OPENAI_API_KEY", "sk-test")
+    vi.stubEnv("DATADOG_TRIAGE_MODEL", "openrouter/google/gemma-4-31b-it:free")
+
+    const { getDatadogTriageConfig, getDatadogTriageReadiness } =
+      await import("./env")
+
+    const readiness = getDatadogTriageReadiness(getDatadogTriageConfig())
+
+    expect(readiness.ready).toBe(false)
+    if (readiness.ready) throw new Error("expected unready config")
+    expect(readiness.reasons).toContain("model_api_key_missing")
+  })
+
+  it("does not block a provider it cannot classify", async () => {
+    // Refusing an unknown prefix would break a legitimate custom route. This
+    // is the check's honest limit, pinned so it is a decision, not a surprise.
+    provisionDatadogTriageEnv()
+    vi.stubEnv("OPENAI_API_KEY", "")
+    vi.stubEnv("DATADOG_TRIAGE_MODEL", "custom-gateway/some-model")
 
     const { getDatadogTriageConfig, getDatadogTriageReadiness } =
       await import("./env")

@@ -1688,6 +1688,12 @@ export type DatadogTriageConfig = {
   serviceProfiles: Record<string, DatadogTriageServiceProfile>
   /** True when SERVICE_PROFILES_JSON was set but unusable; readiness refuses. */
   serviceProfilesInvalid: boolean
+  /**
+   * Whether the credential the configured model's provider reads is present.
+   * Resolved here rather than inside readiness so readiness stays a pure
+   * function of this config — the workflow injects one in tests.
+   */
+  modelApiKeyPresent: boolean
   maxCandidatesPerRun: number
   maxTicketsPerDay: number
   timeoutMs: number
@@ -1778,6 +1784,7 @@ export function getDatadogTriageConfig(): DatadogTriageConfig {
     services: [...new Set(csvValues(env.DATADOG_TRIAGE_SERVICES))],
     serviceProfiles: serviceProfiles ?? DEFAULT_DATADOG_TRIAGE_SERVICE_PROFILES,
     serviceProfilesInvalid: serviceProfiles === undefined,
+    modelApiKeyPresent: modelCredentialPresent(env.DATADOG_TRIAGE_MODEL),
     maxCandidatesPerRun: env.DATADOG_TRIAGE_MAX_CANDIDATES_PER_RUN,
     maxTicketsPerDay: env.DATADOG_TRIAGE_MAX_TICKETS_PER_DAY,
     timeoutMs: env.DATADOG_TRIAGE_TIMEOUT_MS,
@@ -1853,11 +1860,29 @@ export function isLinearGraphqlUrl(value: string): boolean {
  * Runtime completeness gate for the triage workflow. Every reason is a fixed
  * enum string safe to log; no credential or operator value is echoed.
  */
+/**
+ * Whether the credential the configured model's provider reads is present.
+ *
+ * Returns true for a provider this cannot classify: refusing on an unknown
+ * prefix would block a legitimate custom route. That is the honest limit —
+ * the check covers the two providers this runtime actually defaults to.
+ */
+function modelCredentialPresent(model: string): boolean {
+  const provider = model.split("/")[0]?.toLowerCase()
+  if (provider === "openai") return Boolean(env.OPENAI_API_KEY)
+  if (provider === "openrouter") return Boolean(getOpenRouterApiKey())
+  return true
+}
+
 export function getDatadogTriageReadiness(
   config: DatadogTriageConfig,
 ): DatadogTriageReadiness {
   const reasons: string[] = []
   if (!config.enabled) reasons.push("feature_disabled")
+  // Without this the sweep passes readiness, spends Datadog quota every hour,
+  // fails EVERY judgment, and files nothing — while the runbook's liveness
+  // query stays green, because the fetch half succeeded.
+  if (!config.modelApiKeyPresent) reasons.push("model_api_key_missing")
   if (!config.apiKey) reasons.push("datadog_api_key_missing")
   if (!config.applicationKey) reasons.push("datadog_app_key_missing")
   if (
