@@ -15,6 +15,9 @@ import Ionicons from "@expo/vector-icons/Ionicons"
 
 import { useSectionByKey } from "../../src/contexts/ExperienceProvider"
 import { useManagedVideoPlayer } from "../../src/hooks/useManagedVideoPlayer"
+import { useAutostartPlayback } from "../../src/hooks/useAutostartPlayback"
+import { PlayerLoadingVeil } from "../../src/components/watch/PlayerLoadingVeil"
+import { deriveMuxThumbnailUrl } from "../../src/lib/muxThumbnail"
 import {
   ACCENT,
   BLACK,
@@ -139,6 +142,16 @@ function CollectionPlayerContent({
     return url && validateStreamingUrl(url) ? url : null
   }, [currentIndex, items])
 
+  // Authored art wins; the Mux still is the fallback, matching the video route.
+  const activePosterUrl = useMemo(() => {
+    const item = items[currentIndex]
+    if (item == null) return null
+    return (
+      resolveImageUrl(item.imageUrl) ??
+      resolveImageUrl(deriveMuxThumbnailUrl(item.streamingUrl))
+    )
+  }, [currentIndex, items])
+
   const activeVideoId = items[currentIndex]?.videoId ?? null
   const { player, isPlaying } = useManagedVideoPlayer(
     activeStreamingUrl,
@@ -148,6 +161,15 @@ function CollectionPlayerContent({
       // the departing episode inside the adapter.
       progress: activeVideoId ? { videoId: activeVideoId } : null,
     },
+  )
+
+  // Autostarts behind a poster + spinner, the same as every other player
+  // surface. Opening this screen IS the viewer asking to watch, so it must not
+  // sit on the native transport waiting for a second tap.
+  const { hasStarted, awaitingAutostart } = useAutostartPlayback(
+    player,
+    activeStreamingUrl,
+    isPlaying,
   )
 
   useEndSessionOnViewerInitiatedPlayback(isPlaying)
@@ -348,12 +370,28 @@ function CollectionPlayerContent({
           style={StyleSheet.absoluteFill}
           nativeControls
           fullscreenOptions={{ enable: true }}
+          // Android SurfaceView composites outside the RN tree and punches
+          // through the poster and veil below. No-op on iOS.
+          surfaceType={Platform.OS === "android" ? "textureView" : undefined}
           // Native controls carry a picture-in-picture button on iOS, so this
           // view feeds the same latch the host does. `automatic` is the host's
           // alone — expo-video elects only one view.
           {...pictureInPictureViewProps({ automatic: false })}
           contentFit="contain"
         />
+        {/* Both layers pass touches through, so the native controls stay
+            reachable if a viewer wants to start a slow load by hand. */}
+        {!hasStarted && activePosterUrl != null && (
+          <Image
+            source={activePosterUrl}
+            style={StyleSheet.absoluteFill}
+            contentFit="cover"
+            pointerEvents="none"
+            recyclingKey={`sdui-collection-poster-${currentIndex}`}
+            accessibilityLabel="Video thumbnail"
+          />
+        )}
+        {awaitingAutostart && <PlayerLoadingVeil />}
       </View>
 
       {/* Sticky header */}

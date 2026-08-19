@@ -210,6 +210,19 @@ layer, starting with the bisection sequence above.
 
 ## Prevention
 
+> **Update 2026-08-19 — two surfaces this doc's guard never covered.**
+> The `VideoPlayer.tsx:408` line cited below is historical: feat-367 moved that
+> view into `PlaybackHost.tsx`, and `VideoPlayer.tsx` now mounts no
+> `<VideoView>` at all. More importantly, the guard this doc prescribes is an
+> ENUMERATION of three files, not a sweep, and two `<VideoView>` mounts existed
+> outside it the whole time — `app/video/[sectionKey].tsx` and
+> `app/collection/[sectionKey].tsx`, both added 2026-04-14, four months before
+> the guard. Both shipped without `surfaceType` until 2026-08-19. The
+> "check sibling surfaces" bullet below was the right instinct and still missed
+> them, because it asks the author of a NEW component to look sideways rather
+> than making the guard enumerate what already exists. The guard now pins five
+> surfaces; add a case whenever you add a `<VideoView>`.
+
 - **Known tradeoff, tracked not ignored.** `textureView` renders through the
   view hierarchy rather than a separate hardware layer — a real
   compositing-cost tradeoff versus `SurfaceView`. The repo's designated

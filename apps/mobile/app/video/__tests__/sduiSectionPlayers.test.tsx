@@ -103,6 +103,7 @@ jest.mock("../../../src/contexts/ExperienceProvider", () => {
 })
 
 import { act } from "react"
+import { AppState } from "react-native"
 
 import CollectionPlayerScreen from "../../collection/[sectionKey]"
 import VideoDetailScreen from "../[sectionKey]"
@@ -176,6 +177,17 @@ function videoViewProps(renderer: TestInstance) {
   }
 }
 
+/** Whether any rendered node carries this accessibility label. */
+function labelled(renderer: TestInstance, label: string): boolean {
+  return (
+    renderer.root.findAll(
+      (node) =>
+        (node.props as { accessibilityLabel?: string } | undefined)
+          ?.accessibilityLabel === label,
+    ).length > 0
+  )
+}
+
 function startSession() {
   sessionStore.start({
     videoId: "floating-video",
@@ -190,6 +202,10 @@ beforeEach(() => {
   experience.__setSection(null)
   sessionStore.setPipHold(false)
   sessionStore.end("abandoned")
+  // jest-expo leaves this undefined; a device never does. The autostart gate
+  // refuses to start audio the viewer cannot see, so without this the whole
+  // autostart path is unreachable and its assertions pass vacuously.
+  ;(AppState as { currentState: string }).currentState = "active"
 })
 
 afterEach(async () => {
@@ -230,8 +246,9 @@ describe.each(SCREENS)("%s", (_name, Screen, section) => {
     const endings: MiniPlayerEndEvent[] = []
     const unsubscribe = sessionStore.onEnd((event) => endings.push(event))
 
-    // Mounting alone must not disturb the window — the viewer has not asked
-    // for this video yet, and the poster path never plays.
+    // Mounting alone must not disturb the window. These screens autostart, but
+    // only on `sourceLoad` — until the source is applied there is nothing to
+    // hand the decoder over for.
     expect(sessionStore.getSnapshot().session?.videoId).toBe("floating-video")
     expect(renderer).not.toBeNull()
 
@@ -244,5 +261,38 @@ describe.each(SCREENS)("%s", (_name, Screen, section) => {
     // R19: no session takes its place, from either of these routes.
     expect(sessionStore.getSnapshot().session).toBeNull()
     unsubscribe()
+  })
+
+  // Both screens used to open on a tap-to-play poster while every other player
+  // surface autostarted behind a spinner, so the same card behaved differently
+  // depending on which shelf the viewer came from.
+  it("opens on a spinner, never on a play button", async () => {
+    const renderer = await renderScreen(Screen, section)
+
+    expect(labelled(renderer, "Play video")).toBe(false)
+    expect(labelled(renderer, "Loading video")).toBe(true)
+  })
+
+  it("autostarts once the source is applied, and drops the veil", async () => {
+    const renderer = await renderScreen(Screen, section)
+    expect(video.__player.playing).toBe(false)
+
+    await act(async () => {
+      video.__player.__emit("sourceLoad")
+    })
+
+    expect(video.__player.playing).toBe(true)
+    expect(labelled(renderer, "Loading video")).toBe(false)
+  })
+
+  it("drops the veil when the source fails, so the transport is reachable", async () => {
+    const renderer = await renderScreen(Screen, section)
+
+    await act(async () => {
+      video.__player.__emit("statusChange", { status: "error" })
+    })
+
+    expect(labelled(renderer, "Loading video")).toBe(false)
+    expect(video.__player.playing).toBe(false)
   })
 })

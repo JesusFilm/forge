@@ -343,12 +343,16 @@ view into that rect. The chrome rides in the host layer too, not in the route.
   (a PanResponder writing it with `setValue` fails silently under one); the
   shrink and exit wrappers always do. Do not mix drivers on one node.
 
-**Android `textureView` is mandatory on the host's video view.** Keep
-`surfaceType={Platform.OS === "android" ? "textureView" : undefined}` on it.
-A SurfaceView composites outside the RN view hierarchy and punches through
+**Android `textureView` is mandatory on EVERY video view.** Keep
+`surfaceType={Platform.OS === "android" ? "textureView" : undefined}` on each
+one. A SurfaceView composites outside the RN view hierarchy and punches through
 anything drawn above it, so controls and captions stop rendering over the
-video. `homeHeroAndroidCompositing.guard.test.ts` pins this on all three video
-surfaces (the host, `HomeHeroPager`, `VideoHeroRenderer`). No-op on iOS.
+video. `homeHeroAndroidCompositing.guard.test.ts` pins this on all five video
+surfaces (the host, `HomeHeroPager`, `VideoHeroRenderer`, and the two SDUI
+routes `app/video/[sectionKey].tsx` + `app/collection/[sectionKey].tsx`).
+No-op on iOS. The guard is an ENUMERATION, not a sweep: the two SDUI routes
+predated it by four months and shipped without the prop because nobody added
+them to the list. Add a case whenever you add a `<VideoView>`.
 
 **Sheet suppression is cross-platform; the hazard it prevents is Android-only.**
 The window hides while an in-app sheet is presented and returns to its corner
@@ -380,6 +384,21 @@ re-parents only the elected view's player back out.
 - **The latch must be released on teardown.** A stuck hold exempts EVERY
   adapter from the background pause, because that decision reads one store
   field.
+
+**Every player surface autostarts behind a poster and a spinner.** Opening a
+video IS the viewer asking to watch it, so no surface may sit on a play button
+waiting for a second tap. `/watch/[slug]` gets this from `VideoPlayer.tsx`'s
+`awaitingAutostart`; the two SDUI routes get it from
+`src/hooks/useAutostartPlayback.ts`, which is the same gate without the cast
+entanglement `VideoPlayer` has to carry. They stayed on a tap-to-play poster
+for months because the two paths were written separately and nobody compared
+them — if you add a third player surface, use the hook.
+
+The gate's release paths are the whole point, and there are three: playback
+started, the source errored, or `AUTOSTART_VEIL_TIMEOUT_MS` elapsed. The third
+is not optional — a load that neither starts nor errors would otherwise strand
+the viewer under a veil with no controls. Both layers are `pointerEvents="none"`
+so the native transport stays reachable throughout.
 
 ## Component render tests
 
