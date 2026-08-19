@@ -71,9 +71,9 @@ export type PlaybackRequest = {
    *  the root adapter and session admission read; compared by value, so a
    *  session starting republishes the slot. */
   castActive: boolean
-  /** The surface's cast wiring, forwarded to the chrome. Identity-compared:
-   *  `useCastPlayback` rebuilds it every render, which is how the chrome
-   *  follows the receiver's ~1Hz position. */
+  /** The surface's cast wiring, forwarded to the chrome. Compared FIELD-WISE
+   *  (`sameCast`): the screen rebuilds this literal every render, so comparing
+   *  it by identity notifies a subscriber that re-renders the screen — a loop. */
   cast: VideoPlayerCast | null
   /** The screen's cast progress facade slot; the host fills it from the root
    *  adapter (KTD6). */
