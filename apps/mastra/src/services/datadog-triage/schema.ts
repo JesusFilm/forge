@@ -75,6 +75,9 @@ export const spikeBaselineUpdateSchema = spikeBaselineSchema.extend({
 
 export type SpikeBaselineUpdate = z.infer<typeof spikeBaselineUpdateSchema>
 
+/** Linear title bound. One owner, so the cut and the validator cannot drift. */
+export const TRIAGE_TITLE_MAX_CHARS = 200
+
 /**
  * A ticket intent. `description` already carries the idempotency marker
  * comment the dispatcher searches Linear for before every create.
@@ -85,7 +88,7 @@ export const triageActionDraftSchema = z.object({
   signalKind: triageSignalKindSchema,
   signalId: z.string().min(1).max(200),
   epoch: z.number().int().nonnegative(),
-  title: z.string().min(1).max(200),
+  title: z.string().min(1).max(TRIAGE_TITLE_MAX_CHARS),
   description: z.string().min(1).max(12_000),
   labelId: z.string().min(1).optional(),
 })
