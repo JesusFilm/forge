@@ -66,7 +66,7 @@ Admin GraphQL → gql.tada typed query → dispatcher → renderers
 - **One-decoder discipline**: only the active hero/player mounts a video decoder — episode cards and background surfaces render posters, never VideoViews. (There is no global "VideoDecoderBudget" context; that was never built.)
 - **Hero transition hold**: leaving a PLAYING hero slide sets `transitionFromId` (pagerReducer) — the departing page keeps hosting the live video through the scroll animation; pause + replaceAsync swap defer until the settle (SLIDE_SHOWN), with SUSPEND/SLIDES_SET/MAX_DWELL as release valves. `heroPageVideoState()` is the tested render-time host selector; during a hold, outgoing-stream `playToEnd`/`PLAY_STARTED`/errors are guarded so they can't advance past or reveal the incoming slide.
 - **Hero stream failure cooldown**: failed `GET_VIDEO_BY_SLUG` resolutions open a per-slug module-scope backoff window (`heroStreamCooldown.ts`, 60s doubling to 10min) that suppresses hook + prefetch retries; any query success for the slug — or a successful pull-to-refresh (`clearAllHeroStreamCooldowns`) — releases it.
-- **One expo-video lifecycle adapter**: player creation goes through `useManagedVideoPlayer` (frozen source, replaceAsync swap, AppState pause/resume) — a jest guard forbids raw `useVideoPlayer(` outside it plus a two-file allowlist (`HomeHeroPager`'s bespoke swap engine, `VideoHeroRenderer`).
+- **One expo-video lifecycle adapter**: player creation goes through `useManagedVideoPlayer` (frozen source, replaceAsync swap, AppState pause/resume) — a jest guard forbids BOTH `useVideoPlayer(` and `createVideoPlayer(` outside it, plus a three-entry allowlist (`HomeHeroPager`'s bespoke swap engine, `VideoHeroRenderer`, and the shared test double `src/test-utils/expoVideoMock.ts`). `createVideoPlayer` is named separately because its player does NOT release with the component — the "outlives the route" hole.
 - **expo-image everywhere**: Never use RN `<Image>`. Always `expo-image` with `recyclingKey`.
 
 ## Conventions
@@ -303,14 +303,83 @@ Client-side RUM + Logs via `@datadog/mobile-react-native`; helpers in
   `options.progress` (heroes never reach the adapter, so they're excluded
   structurally); writes batch at most once per 30s (admin's rate limiter
   allows 30 mutations/min — never write per-tick), forced on
-  pause/background/unmount/end. Progress is signed-in ONLY (R10): sign-out
-  empties store, snapshot, and queue via `attachProgressLifecycle`.
+  pause/background/unmount/end AND on the two explicit session endings the
+  mini player added — `dismiss` (the viewer closed the window) and `replace`
+  (new content took the player over). Those two split what `unmount` used to
+  conflate, because progress attribution needs them apart. Progress is
+  signed-in ONLY (R10): sign-out empties store, snapshot, and queue via
+  `attachProgressLifecycle`.
 - **Bars**: one `WatchProgressBar` (store-subscribed by videoId, <1% hidden,
   ≥90% snaps full) on every card surface EXCEPT the Library downloads row
   (deferred — the row stores only a slug). Fold progress into
   `accessibilityLabel` via `progressAccessibilityText`.
 - **RUM identity**: `setDatadogRumUser` receives the opaque auth subject id
   only — never email or display name.
+
+## Mini player and the root-owned playback session (feat-367)
+
+**The app owns ONE player and ONE video view, and neither belongs to a route.**
+`src/components/watch/PlaybackHost.tsx` mounts as a sibling of the `<Stack>` in
+`app/_layout.tsx` and holds the app's single `useManagedVideoPlayer` adapter.
+A route that wants video renders `src/components/watch/PlayerSlot.tsx`: a
+transparent box that reserves the layout, measures itself in WINDOW
+coordinates, and publishes a playback request. The host draws its one video
+view into that rect. The chrome rides in the host layer too, not in the route.
+
+- **Never mount a second player or a second video view for one video.** The
+  video view keeps ONE position in the host's tree in every state — full,
+  floating, suppressed. The full view and the floating window differ only in
+  the frame's geometry and in which chrome renders beside it. Moving the view
+  between parents remounts the surface, which is a black flash.
+  `rootPlayerOwnership.guard.test.js` pins the shape.
+- **The session lives in module scope, not React context.** `src/lib/miniPlayer/`
+  holds it: `store.ts` (the session), `playbackRequest.ts` (the slot-to-host
+  channel), plus the pure `presentation.ts`, `suppression.ts`, `layout.ts`,
+  `heroYield.ts` and `pictureInPicture.ts`. The host is a `<Stack>` SIBLING, so
+  a context could not reach both halves.
+- **`MiniPlayerWindow.tsx` is chrome, never a second video view.** It draws the
+  controls, the drag, the ended/failed states and the accessibility surface over
+  the frame the host animates. The drag node never takes the native driver
+  (a PanResponder writing it with `setValue` fails silently under one); the
+  shrink and exit wrappers always do. Do not mix drivers on one node.
+
+**Android `textureView` is mandatory on the host's video view.** Keep
+`surfaceType={Platform.OS === "android" ? "textureView" : undefined}` on it.
+A SurfaceView composites outside the RN view hierarchy and punches through
+anything drawn above it, so controls and captions stop rendering over the
+video. `homeHeroAndroidCompositing.guard.test.ts` pins this on all three video
+surfaces (the host, `HomeHeroPager`, `VideoHeroRenderer`). No-op on iOS.
+
+**Sheet suppression is cross-platform; the hazard it prevents is Android-only.**
+The window hides while an in-app sheet is presented and returns to its corner
+when the sheet closes. Two mechanisms, because the app presents sheets two
+ways — six real sheet ROUTES (`IN_APP_SHEET_ROUTE_PATTERNS` in
+`src/lib/miniPlayer/suppression.ts`, read from `app/watch/_layout.tsx` and
+`app/series/_layout.tsx`) and two sheets that are component state, counted by
+`getNonRouteSheetCounter()` and keyed by id so an unbalanced call is
+attributable. Keep both in step with those layouts. The rule runs on both
+platforms even though only Android paints through a sheet, so behaviour does
+not fork per platform. Suppression hides by opacity and drops pointer events —
+it never unmounts the view.
+
+**Picture-in-picture: one props object, one latch, chrome-only suppression.**
+Every video view that can enter the OS window spreads
+`pictureInPictureViewProps()` from `src/lib/miniPlayer/pictureInPicture.ts`.
+It wires `onPictureInPictureStart/Stop` to `setPipHold`, and three separate
+requirements rest on those four props arriving together — a view that enters
+the OS window without feeding the latch is paused by the AppState handler,
+is unmounted by the host mid-window, and takes the floating window's chrome
+with it. `startsPictureInPictureAutomatically` belongs to exactly ONE mounted
+view: expo-video elects a single candidate across every view carrying it and
+re-parents only the elected view's player back out.
+
+- **While the latch is set, suppress CHROME only — never unmount the video
+  view.** Unregistering the view fires expo-video's unguarded native path. The
+  presentation selector returns `hidden` for a PiP hold on the same branch as
+  sheet suppression by RESULT only; the mechanisms differ.
+- **The latch must be released on teardown.** A stuck hold exempts EVERY
+  adapter from the background pause, because that decision reads one store
+  field.
 
 ## Component render tests
 

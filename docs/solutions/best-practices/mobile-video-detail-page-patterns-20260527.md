@@ -133,6 +133,8 @@ function MiniPlayerBar({ visible }: { visible: boolean }) {
 }
 ```
 
+> **Exemplar moved, 2026-08-18 (feat-367).** `MiniPlayerBar.tsx` was deleted — it never had an import site, and the root-owned playback host replaced it. The pattern itself is unchanged and still in use; read it from `apps/mobile/src/components/library/DeleteConfirmSheet.tsx:74-92` (the same shape, plus a reduce-motion path) or `apps/mobile/src/hooks/useControlsVisibility.ts:79-92` (the same shape, where a re-reveal mid-fade makes the completion stale). One caution the snippet above cannot show: `useNativeDriver: true` is safe only because nothing writes these nodes with `setValue`. On a node a PanResponder drives, the native driver fails silently — see `apps/mobile/CLAUDE.md`, section "Mini player and the root-owned playback session".
+
 ### 5. FlatList performance: memoize renderItem and hook returns
 
 Scroll-heavy screens must wrap `renderItem` in `useCallback` and hook return values in `useMemo`. Without this, every parent re-render (from scroll events) creates new function references, causing FlatList to re-render all visible cells.

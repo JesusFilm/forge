@@ -28,6 +28,7 @@ let lockPortrait: typeof import("../src/lib/orientation").lockPortrait
 let DevEndpointNotice:
   | typeof import("../src/components/DevEndpointNotice").DevEndpointNotice
   | undefined
+let PlaybackHost: typeof import("../src/components/watch/PlaybackHost").PlaybackHost
 let MobileDatadogProvider: typeof import("../src/components/DatadogRum").MobileDatadogProvider
 let DatadogRouteTracker: typeof import("../src/components/DatadogRouteTracker").DatadogRouteTracker
 // `| undefined`: this one is read at module scope after the try/catch, where a
@@ -71,6 +72,7 @@ try {
   restoreApolloCache = cachePersistence.restoreApolloCache
   startCachePersistence = cachePersistence.startCachePersistence
   lockPortrait = require("../src/lib/orientation").lockPortrait
+  PlaybackHost = require("../src/components/watch/PlaybackHost").PlaybackHost
   if (__DEV__) {
     DevEndpointNotice =
       require("../src/components/DevEndpointNotice").DevEndpointNotice
@@ -371,6 +373,10 @@ export default function RootLayout() {
                           />
                         </Stack>
                       </ExperienceShell>
+                      {/* KTD1: a sibling of ExperienceShell, never inside it —
+                          the shell swaps its element type once per cold launch,
+                          remounting its subtree. The player outlives the route. */}
+                      <PlaybackHost />
                     </DownloadsProvider>
                   </AuthProvider>
                 </WatchPreferencesProvider>

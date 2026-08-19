@@ -3,10 +3,12 @@
  * RENDER key instead shows no bar and fails silently — shipped that way on
  * Home, where `card.id` carries an index suffix.
  *
- * apps/mobile has no component-render tests (KTD11), so this pins the id
- * expression at each call site by source. A pure adapter test cannot: it
- * would stay green if only the consumer regressed. Node globals are declared
- * locally rather than via @types/node — KTD11 forbids new test deps.
+ * This pins the id expression at each call site by source. A pure adapter test
+ * cannot: it would stay green if only the consumer regressed. The app does
+ * have a component-render harness (apps/mobile/CLAUDE.md, "Component render
+ * tests"), but reaching every surface through it would need one case per
+ * surface. Node globals are declared locally rather than via @types/node —
+ * KTD11 forbids new test deps.
  */
 
 declare const __dirname: string

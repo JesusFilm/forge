@@ -23,6 +23,8 @@ import {
   TEXT_SECONDARY,
 } from "../../src/lib/color"
 import { layout, text } from "../../src/styles/shared"
+import { useEndSessionOnViewerInitiatedPlayback } from "../../src/hooks/useEndSessionOnViewerInitiatedPlayback"
+import { pictureInPictureViewProps } from "../../src/lib/miniPlayer/pictureInPicture"
 import { resolveImageUrl } from "../../src/lib/resolveImageUrl"
 import { validateStreamingUrl } from "../../src/lib/validateUrl"
 import { parseSectionKey } from "../../src/lib/parseSectionKey"
@@ -138,11 +140,17 @@ function CollectionPlayerContent({
   }, [currentIndex, items])
 
   const activeVideoId = items[currentIndex]?.videoId ?? null
-  const { player } = useManagedVideoPlayer(activeStreamingUrl, undefined, {
-    // KTD5 opt-in: identity re-keys with the active pager item, flushing
-    // the departing episode inside the adapter.
-    progress: activeVideoId ? { videoId: activeVideoId } : null,
-  })
+  const { player, isPlaying } = useManagedVideoPlayer(
+    activeStreamingUrl,
+    undefined,
+    {
+      // KTD5 opt-in: identity re-keys with the active pager item, flushing
+      // the departing episode inside the adapter.
+      progress: activeVideoId ? { videoId: activeVideoId } : null,
+    },
+  )
+
+  useEndSessionOnViewerInitiatedPlayback(isPlaying)
 
   const flatListRef = useRef<FlatList<CollectionItem>>(null)
 
@@ -340,7 +348,10 @@ function CollectionPlayerContent({
           style={StyleSheet.absoluteFill}
           nativeControls
           fullscreenOptions={{ enable: true }}
-          allowsPictureInPicture
+          // Native controls carry a picture-in-picture button on iOS, so this
+          // view feeds the same latch the host does. `automatic` is the host's
+          // alone — expo-video elects only one view.
+          {...pictureInPictureViewProps({ automatic: false })}
           contentFit="contain"
         />
       </View>

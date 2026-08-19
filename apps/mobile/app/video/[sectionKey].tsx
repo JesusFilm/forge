@@ -25,6 +25,8 @@ import {
   TEXT_ON_OVERLAY,
 } from "../../src/lib/color"
 import { layout, text, overlay, button } from "../../src/styles/shared"
+import { useEndSessionOnViewerInitiatedPlayback } from "../../src/hooks/useEndSessionOnViewerInitiatedPlayback"
+import { pictureInPictureViewProps } from "../../src/lib/miniPlayer/pictureInPicture"
 import { resolveImageUrl } from "../../src/lib/resolveImageUrl"
 import { validateStreamingUrl } from "../../src/lib/validateUrl"
 import { useTypography } from "../../src/hooks/useTypography"
@@ -135,6 +137,8 @@ function VideoDetailContent({
     }
   }, [isPlaying, hasStarted])
 
+  useEndSessionOnViewerInitiatedPlayback(isPlaying)
+
   const handlePlay = useCallback(() => {
     player.play()
   }, [player])
@@ -154,7 +158,10 @@ function VideoDetailContent({
               style={StyleSheet.absoluteFill}
               nativeControls
               fullscreenOptions={{ enable: true }}
-              allowsPictureInPicture
+              // Native controls carry a picture-in-picture button on iOS, so
+              // this view feeds the same latch the host does. `automatic` is
+              // the host's alone — expo-video elects only one view.
+              {...pictureInPictureViewProps({ automatic: false })}
               contentFit="contain"
             />
             {!hasStarted && thumbnailUrl != null && (

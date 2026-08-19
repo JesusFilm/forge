@@ -20,6 +20,20 @@ function readSource(...parts: string[]): string {
   return fs.readFileSync(path.join(__dirname, ...parts), "utf8")
 }
 
+/** Where prettier breaks the prop is its business, not the invariant's. No
+ *  token inside the literal carries a space, so dropping them all is safe. */
+function squish(source: string): string {
+  return source.replace(/\s+/g, "")
+}
+
+/** The first VideoView element in a file, whitespace-normalized. */
+function videoViewElement(source: string): string {
+  const start = at(source, "<VideoView")
+  return squish(source.slice(start, at(source, "/>", start)))
+}
+
+const SURFACE_TYPE = squish(SURFACE_TYPE_LITERAL)
+
 /** indexOf that fails loudly instead of yielding -1 into a slice. */
 function at(source: string, marker: string, from = 0): number {
   const i = source.indexOf(marker, from)
@@ -27,23 +41,33 @@ function at(source: string, marker: string, from = 0): number {
   return i
 }
 
-describe("Android hero VideoViews opt into textureView", () => {
+describe("Android VideoViews opt into textureView", () => {
   it("HomeHeroPager's hero VideoView carries the platform-conditional surfaceType", () => {
-    const source = readSource("..", "HomeHeroPager.tsx")
-    const videoView = source.slice(
-      at(source, "<VideoView"),
-      at(source, "/>", at(source, "<VideoView")),
+    expect(videoViewElement(readSource("..", "HomeHeroPager.tsx"))).toContain(
+      SURFACE_TYPE,
     )
-    expect(videoView).toContain(SURFACE_TYPE_LITERAL)
   })
 
   it("VideoHeroRenderer's VideoView carries the platform-conditional surfaceType", () => {
-    const source = readSource("..", "..", "sections", "VideoHeroRenderer.tsx")
-    const videoView = source.slice(
-      at(source, "<VideoView"),
-      at(source, "/>", at(source, "<VideoView")),
-    )
-    expect(videoView).toContain(SURFACE_TYPE_LITERAL)
+    expect(
+      videoViewElement(
+        readSource("..", "..", "sections", "VideoHeroRenderer.tsx"),
+      ),
+    ).toContain(SURFACE_TYPE)
+  })
+
+  // KTD7/KTD17: one root-owned view serves the full screen AND the floating
+  // window, so the shrink can never swap surface classes mid-animation. The
+  // window renders no video view of its own — this is the only one to pin.
+  it("the playback host's single VideoView carries the platform-conditional surfaceType", () => {
+    const source = readSource("..", "..", "watch", "PlaybackHost.tsx")
+    expect(videoViewElement(source)).toContain(SURFACE_TYPE)
+    expect(source.split("<VideoView")).toHaveLength(2)
+  })
+
+  it("the mini player window renders no video view of its own", () => {
+    const source = readSource("..", "..", "watch", "MiniPlayerWindow.tsx")
+    expect(source).not.toContain("<VideoView")
   })
 })
 

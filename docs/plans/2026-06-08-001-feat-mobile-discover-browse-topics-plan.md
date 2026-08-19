@@ -56,6 +56,8 @@ Carried from origin (`docs/brainstorms/2026-06-08-mobile-discover-browse-topics-
 - KTD7. Label uses `TEXT_PRIMARY` (`#f5f5f4`) at `typography.bodySmall` (14/20) with `fontFamily: "System"`; the glyph carries the per-topic color. Do not use `ACCENT` (`#CB333B`) for the small label text — it fails AA contrast at body size on the dark palette (`apps/mobile/src/lib/color.ts`). The bubble's `Pressable` carries a minimum height of 44 (iOS HIG / Material tap target) so short labels like "Study" stay thumb-safe.
 - KTD8. Tests follow the repo's existing convention — pure-logic `.test.ts` files (the app ships 14 of these and no `.test.tsx`; `@testing-library/react-native` is not a dependency and is not being added). Unit-test the topics constant and any extracted pure handlers; verify component rendering, the tap-to-search flow, and accessibility in the simulator (`idb ui describe-all` + screenshots), per the project's verify-in-simulator discipline and `docs/solutions/mobile/rn-view-accessible-required-for-accessibilityrole.md`.
 
+  > **Superseded in part, 2026-08-18 (feat-367).** The counts and the "no `.test.tsx`" observation are a June snapshot and are long out of date. `apps/mobile` now has a component-render harness with `.test.tsx` suites — jest-expo's transitive `react-test-renderer` via a `react` re-point. The one clause that still holds: `@testing-library/react-native` is still not a dependency. See `apps/mobile/CLAUDE.md`, section "Component render tests".
+
 ### Topic design tokens (directional — tune in sim)
 
 Starting mapping; the implementer adjusts hex/alpha and glyph names against the running simulator (KTD6).

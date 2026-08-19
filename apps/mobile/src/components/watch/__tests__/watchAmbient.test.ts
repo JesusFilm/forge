@@ -1,7 +1,7 @@
 /**
- * SOURCE-SHAPE assertions (apps/mobile has no component-render harness,
- * KTD11), so these pin structure, not appearance. Appearance was verified by
- * simulator screenshot.
+ * SOURCE-SHAPE assertions, so these pin structure, not appearance. They
+ * predate the component-render harness this app now has (apps/mobile/CLAUDE.md,
+ * "Component render tests"). Appearance was verified by simulator screenshot.
  *
  * Each case below guards a regression that is SILENT — the layer still renders
  * and a screenshot still looks plausible, while the defect is a swallowed tap,
