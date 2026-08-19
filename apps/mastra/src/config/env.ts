@@ -46,11 +46,9 @@ const DEFAULT_DATADOG_TRIAGE_SERVICES = "forge-mobile"
 const DEFAULT_DATADOG_TRIAGE_MAX_CANDIDATES_PER_RUN = 200
 const DEFAULT_DATADOG_TRIAGE_MAX_TICKETS_PER_DAY = 5
 const DEFAULT_DATADOG_TRIAGE_TIMEOUT_MS = 15_000
-// 4 MiB ceiling on every buffered Datadog response body. A POLICY ceiling, not
-// a derived bound: one Error Tracking page (100 issues) carrying long stack
-// messages measures in the low hundreds of kB, so this leaves ~10x headroom
-// while bounding the heap a misbehaving upstream can claim. Over-cap aborts the
-// stream and rides the existing graceful-failure path.
+// A POLICY ceiling, not a derived bound: a 100-issue page with long stack
+// messages measures in the low hundreds of kB, so this leaves ~10x headroom.
+// Over-cap aborts the stream onto the existing graceful-failure path.
 const DEFAULT_DATADOG_TRIAGE_MAX_RESPONSE_BYTES = 4_194_304
 const DEFAULT_DATADOG_TRIAGE_OVERLAP_MS = 300_000
 const DEFAULT_DATADOG_TRIAGE_LAG_MS = 180_000
@@ -64,10 +62,9 @@ const DEFAULT_DATADOG_TRIAGE_MIN_OCCURRENCES = 3
 const DEFAULT_DATADOG_TRIAGE_REGRESSION_MULTIPLIER = 3
 const DEFAULT_DATADOG_TRIAGE_MONITOR_COOLDOWN_MS = 21_600_000
 const DEFAULT_DATADOG_TRIAGE_SPIKE_MULTIPLIER = 3
-// Release-session discriminator (R17/KTD4), pinned against the live 2026-08-18
-// `forge-mobile` sample: real store builds carry semver-shaped versions while
-// the dev-session noise carries ad-hoc tags (`fixcheck-20260805`,
-// `sdk57-regression-20260813`). A version that fails this pattern is dev-shaped.
+// Release-session discriminator (R17/KTD4), pinned against the live
+// 2026-08-19 `forge-mobile` sample: store builds carry semver, dev-session
+// noise carries ad-hoc tags like `fixcheck-20260805`.
 const DEFAULT_DATADOG_TRIAGE_RELEASE_VERSION_PATTERN =
   "^\\d+\\.\\d+(?:\\.\\d+)?(?:[-+][0-9A-Za-z.-]+)?$"
 const DEFAULT_DATADOG_TRIAGE_DEV_SESSION_MARKERS =
@@ -1807,7 +1804,12 @@ export type DatadogTriageReadiness =
   | { ready: true }
   | { ready: false; reasons: string[] }
 
-function isLinearGraphqlUrl(value: string): boolean {
+/**
+ * Shared by readiness and the client's endpoint guard. One predicate, so the
+ * two cannot drift into a state where readiness passes while every request
+ * refuses with `invalid_config`.
+ */
+export function isLinearGraphqlUrl(value: string): boolean {
   try {
     const url = new URL(value)
     return (

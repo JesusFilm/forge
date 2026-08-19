@@ -119,5 +119,12 @@ create index if not exists datadog_triage_actions_due_idx
   on datadog_triage.actions (next_attempt_at, created_at)
   where state in ('pending', 'retryable');
 
+-- The claim CTE ORs a second branch: recovering an action whose lease expired
+-- mid-dispatch. The index above cannot serve it, and this table has no purge
+-- path, so without this one that branch scans the whole table forever.
+create index if not exists datadog_triage_actions_processing_idx
+  on datadog_triage.actions (processing_expires_at)
+  where state = 'processing';
+
 create index if not exists datadog_triage_actions_signal_idx
   on datadog_triage.actions (signal_kind, signal_id, epoch);

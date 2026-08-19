@@ -375,10 +375,11 @@ export async function executeDatadogTriage(
 }
 
 /**
- * A source whose window still holds unresolved candidates must not advance
- * past the earliest of them, or those signals are lost (KTD2). The cursor is
- * pulled back rather than skipped, so the source's last-success timestamp
- * still records that the fetch itself worked.
+ * A source still holding unresolved candidates must not advance past the
+ * earliest of them, or those signals are lost (KTD2). `commitCursors` clamps
+ * with `greatest(stored, incoming)`, so a hold below the stored cursor just
+ * leaves it put — and either way the next window, which reaches back by the
+ * overlap, re-reads the withheld signal.
  */
 function holdCursor(
   cursor: CursorCommit,
@@ -393,11 +394,9 @@ function holdCursor(
     .filter((value) => !Number.isNaN(value))
     .sort((left, right) => left - right)[0]
   if (earliest === undefined) return cursor
-  // `commitCursors` applies `greatest(stored, incoming)`, so a hold that lands
-  // below the stored cursor simply leaves it where it was. Either way the next
-  // window (which reaches back by the overlap) re-reads the withheld signal.
-  // `succeeded` stays true: the FETCH worked, only judgment was capped, and the
-  // liveness check reads last-success to spot a dead source.
+  // `succeeded` stays TRUE on purpose: the fetch worked and only judgment was
+  // capped, and the liveness check reads last-success to find a dead source.
+  // Setting it false here would report a healthy source as dead.
   return { ...cursor, cursorAt: new Date(earliest) }
 }
 

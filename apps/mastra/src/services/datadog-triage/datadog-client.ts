@@ -5,6 +5,7 @@ import {
   datadogApiBaseUrl,
   type DatadogTriageConfig,
 } from "../../config/env"
+import { discardResponseBody } from "../devotional/bounded-response"
 
 /**
  * Read-only Datadog client for the hourly triage sweep (U3, KTD5).
@@ -324,11 +325,10 @@ function failureForThrow(error: unknown): DatadogFailure {
 }
 
 /**
- * Byte-capped streaming JSON read. Copied from the langfuse-trace-retention
- * variant, INCLUDING its divergence from the older siblings: a TimeoutError or
- * AbortError raised mid-body is rethrown so the caller classifies a genuine
- * latency incident as `timeout`, not `parse_error`. The catch must never log
- * the caught error — a JSON.parse SyntaxError can embed raw body fragments.
+ * Byte-capped streaming JSON read, from the langfuse-trace-retention variant
+ * INCLUDING its divergence: a mid-body TimeoutError is rethrown so the caller
+ * says `timeout`, not `parse_error`. Never log the caught error — a
+ * JSON.parse SyntaxError can embed raw body fragments.
  */
 async function readJsonBodyCapped(
   response: Response,
@@ -369,14 +369,6 @@ async function readJsonBodyCapped(
     } catch {
       // Cleanup must never escape the no-throw boundary.
     }
-  }
-}
-
-async function drainBody(response: Response): Promise<void> {
-  try {
-    await response.body?.cancel()
-  } catch {
-    // Draining is best-effort; never let cleanup escape.
   }
 }
 
@@ -686,7 +678,7 @@ export class DatadogTriageClient {
     }
 
     if (!response.ok) {
-      await drainBody(response)
+      await discardResponseBody(response)
       return failureForStatus(response)
     }
 

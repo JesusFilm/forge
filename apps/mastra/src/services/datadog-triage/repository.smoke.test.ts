@@ -189,6 +189,24 @@ describe.skipIf(!RUN_SMOKE)(
       ])
     })
 
+    it("indexes both branches of the claim CTE, including lease recovery", async () => {
+      // The claim ORs due-and-pending with expired-lease-and-processing. A
+      // partial index on one predicate cannot serve the other, and this table
+      // never gets purged, so a missing index degrades forever.
+      const indexes = await pool.query<{ indexname: string }>(
+        `select indexname from pg_indexes
+          where schemaname = 'datadog_triage' and tablename = 'actions'
+          order by indexname`,
+      )
+
+      expect(indexes.rows.map((row) => row.indexname)).toEqual([
+        "actions_pkey",
+        "datadog_triage_actions_due_idx",
+        "datadog_triage_actions_processing_idx",
+        "datadog_triage_actions_signal_idx",
+      ])
+    })
+
     it("enqueues one row for a repeated idempotency key", async () => {
       expect(await repository.enqueueAction(actionDraft(1))).toBe(true)
       expect(await repository.enqueueAction(actionDraft(1))).toBe(false)

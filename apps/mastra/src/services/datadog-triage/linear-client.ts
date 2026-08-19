@@ -1,6 +1,6 @@
 import { z } from "zod"
 
-import type { DatadogTriageConfig } from "../../config/env"
+import { isLinearGraphqlUrl, type DatadogTriageConfig } from "../../config/env"
 import {
   discardResponseBody,
   readResponseJsonCapped,
@@ -108,34 +108,18 @@ type TriageLinearConfig = Pick<
 > & { linear: DatadogTriageConfig["linear"] }
 
 /**
- * How many recent team issues the marker search walks (5 pages of 50).
- *
- * This bound is adequate because of what the search is FOR: it reconciles an
- * AMBIGUOUS create — one whose response was lost after Linear may already have
- * accepted it — so the issue it is looking for was created minutes ago and sits
- * at the very top of the team's list. Long-term dedup is the outbox primary
- * key's job, not this query's.
+ * 5 pages of 50 is enough because of what the search is FOR: reconciling an
+ * AMBIGUOUS create, whose issue was made minutes ago and sits at the top of
+ * the list. Long-term dedup is the outbox primary key's job, not this query's.
  */
 const MARKER_SEARCH_PAGES = 5
 
 function endpoint(value: string): URL | undefined {
+  if (!isLinearGraphqlUrl(value)) return undefined
   try {
-    const url = new URL(value)
-    if (
-      url.protocol !== "https:" ||
-      url.hostname !== "api.linear.app" ||
-      url.username ||
-      url.password ||
-      url.port ||
-      url.pathname !== "/graphql" ||
-      url.search ||
-      url.hash
-    ) {
-      return
-    }
-    return url
+    return new URL(value)
   } catch {
-    return
+    return undefined
   }
 }
 
