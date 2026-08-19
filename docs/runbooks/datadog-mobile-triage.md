@@ -163,6 +163,32 @@ and nothing dispatches.
    Re-read a sample of ticket bodies whenever you raise it: what the app logs
    changes over time, and the body carries log-derived text.
 
+## Unverified external: restart backfill
+
+**Not verified as of 2026-08-19.** Whether the Mastra scheduler backfills
+missed windows after a process restart was never observed — doing so needs a
+running instance and a deliberate restart, which is a deploy-time check, not a
+CI one. Adjacent evidence only: Studio's **Resume** on a paused schedule
+calculates the next regular slot and does not backfill.
+
+Two controls bound the damage either way, so this is worth confirming rather
+than worth blocking on:
+
+- The run key is the UTC hour (`datadog-triage:<YYYY-MM-DDTHH>`), so a second
+  fire inside the same hour is refused by the run lease and returns
+  `already_running`.
+- The per-UTC-day ticket budget lives inside the SQL claim under an advisory
+  lock, so even repeated fires cannot exceed the day's ticket count.
+
+**Confirm it during the dry-run window**: restart the mastra service, then
+check whether more than one `runs` row appears for any single hour.
+
+```sql
+select run_key, status, created_at, completed_at
+  from datadog_triage.runs
+ order by created_at desc limit 20;
+```
+
 ## Operator levers
 
 **Mute a noisy issue.** Set it to **Ignored** or **Excluded** in Datadog's
