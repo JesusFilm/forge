@@ -138,10 +138,13 @@ describe("autostart / auto-resume", () => {
   })
 
   it("gates BOTH chrome layers, not just one", () => {
-    // The scrim and the controls layer are separate `controls.mounted` blocks.
-    // Gating one leaves the other painting over the loading veil, which is the
-    // exact bug being fixed — so count them rather than matching once.
-    const gated = SOURCE.match(/controls\.mounted && !awaitingAutostart/g) ?? []
+    // Both layers now share ONE veil-gated expression (`chromeMounted`, also
+    // reported to the route for the back-swipe hold). Gating one layer but not
+    // the other paints chrome over the loading veil — count both gates.
+    expect(SOURCE).toContain(
+      "const chromeMounted = controls.mounted && !awaitingAutostart",
+    )
+    const gated = SOURCE.match(/\{chromeMounted && \(/g) ?? []
     expect(gated).toHaveLength(2)
     // And no ungated `controls.mounted &&` block survives.
     expect(SOURCE).not.toMatch(/controls\.mounted && \(/)

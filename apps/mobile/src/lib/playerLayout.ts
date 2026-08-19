@@ -3,11 +3,10 @@
 // in lockstep — three independent `9 / 16` literals drifted before this.
 export const PLAYER_HEIGHT_RATIO = 9 / 16
 
-// Inline player side inset; the floating back button sits just inside the
-// player's top-left corner. Shared by the watch + series screens (todo 014).
-export const PLAYER_SIDE_PADDING = 10
-
+// Floating back button offsets over the full-bleed player/hero. Shared by
+// the watch + series screens (todo 014); the series dock went full-bleed on
+// 2026-08-18, retiring the old PLAYER_SIDE_PADDING inset.
 export const BACK_BUTTON_PROPS = {
   topOffset: 10,
-  sideOffset: PLAYER_SIDE_PADDING + 8,
+  sideOffset: 18,
 }

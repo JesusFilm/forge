@@ -29,6 +29,7 @@ import {
   type SeekSide,
 } from "../../lib/tapSeek"
 import { useControlsVisibility } from "../../hooks/useControlsVisibility"
+import { useEndedPosterFade } from "../../hooks/useEndedPosterFade"
 import type { CastPlayback } from "../../hooks/useCastPlayback"
 import type { CastMedia } from "../../lib/cast/castMediaResolver"
 import { isExternalRouteActive } from "../../lib/externalRoute"
@@ -162,6 +163,9 @@ export function VideoPlayer({
     onPlayingChange?.(isPlaying)
   }, [isPlaying, hasStarted, onPlayingChange])
 
+  // Ended-playback poster (covers the often-black last frame under Replay).
+  const { ended, posterFade } = useEndedPosterFade(player, isPlaying)
+
   // Releases the pre-autostart suppression below for a load that neither starts
   // nor errors (the host's `loadFailed` covers one that errors). Without both, a
   // viewer whose playback never starts is stranded on a spinner with no controls.
@@ -229,6 +233,9 @@ export function VideoPlayer({
   })
 
   const controls = useControlsVisibility(player)
+
+  // One expression for both chrome render gates below, so they can't drift.
+  const chromeMounted = controls.mounted && !awaitingAutostart
 
   // Tap disambiguation (U4): single tap toggles chrome (revealed on press-in
   // so it never lags, KTD3); second tap within DOUBLE_TAP_MS seeks the tapped
@@ -663,15 +670,20 @@ export function VideoPlayer({
     // and paints the letterbox black behind the video view this chrome covers.
     <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
       {/* R7: the phone shows the poster while the TV plays — the paused
-          local frame would read as a broken player. */}
-      {(!hasStarted || castRemoteActive) && resolvedPoster != null && (
-        <Image
-          source={resolvedPoster}
-          style={StyleSheet.absoluteFill}
-          contentFit="cover"
-          recyclingKey="watch-poster"
-          accessibilityLabel="Video thumbnail"
-        />
+          local frame would read as a broken player. Ended reuses the layer so
+          the replay state never sits on a black last frame. */}
+      {(!hasStarted || castRemoteActive || ended) && resolvedPoster != null && (
+        <Animated.View
+          style={[StyleSheet.absoluteFill, { opacity: posterFade }]}
+        >
+          <Image
+            source={resolvedPoster}
+            style={StyleSheet.absoluteFill}
+            contentFit="cover"
+            recyclingKey="watch-poster"
+            accessibilityLabel="Video thumbnail"
+          />
+        </Animated.View>
       )}
 
       {awaitingAutostart && <PlayerLoadingVeil />}
@@ -740,7 +752,7 @@ export function VideoPlayer({
 
       {/* Chrome scrim — fades with the chrome and sits BELOW the subtitle so it
           never dims the caption. */}
-      {controls.mounted && !awaitingAutostart && (
+      {chromeMounted && (
         <Animated.View
           pointerEvents="none"
           style={[styles.chromeScrim, { opacity: controls.opacityAnim }]}
@@ -775,7 +787,7 @@ export function VideoPlayer({
       {/* Chrome controls — fade with the chrome and layer OVER the subtitle, so
           the timeline/buttons are always on top of the captions (R: timeline
           must stay visible). */}
-      {controls.mounted && !awaitingAutostart && (
+      {chromeMounted && (
         <Animated.View
           style={[StyleSheet.absoluteFill, { opacity: controls.opacityAnim }]}
           pointerEvents="box-none"

@@ -152,7 +152,7 @@ describe("cast remote mode (U4)", () => {
 
   it("keeps the poster on the phone while the TV plays (R7)", () => {
     expect(SOURCE).toContain(
-      "{(!hasStarted || castRemoteActive) && resolvedPoster != null && (",
+      "{(!hasStarted || castRemoteActive || ended) && resolvedPoster != null && (",
     )
   })
 

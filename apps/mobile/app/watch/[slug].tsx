@@ -630,7 +630,10 @@ export default function WatchVideoPage() {
               // is sibling-scoped, so the player's own zIndex can't escape this
               // wrapper to clear the later-painted ScrollView on its own.
               styles.playerDockFullscreen
-            : { paddingTop: insets.top }
+            : // Inline needs a small lift too: the flush scrubber thumb
+              // straddles the player's bottom edge (Scrubber flush contract),
+              // and the later-painted ScrollView would cover its lower half.
+              [styles.playerDockInline, { paddingTop: insets.top }]
         }
       >
         {/* One slot in every state, including "no stream yet" (series pre-
@@ -862,6 +865,9 @@ const styles = StyleSheet.create({
   },
   playerDockFullscreen: {
     zIndex: 1000,
+  },
+  playerDockInline: {
+    zIndex: 1,
   },
   scrollContent: {
     paddingBottom: 80,
