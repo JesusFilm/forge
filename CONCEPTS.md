@@ -935,11 +935,19 @@ The Chrome is visible when playback starts, auto-hides after a few idle seconds 
 
 A video that starts by itself is the exception to "stays up while buffering": the Chrome is withheld until the first frame and an Autostart Veil stands in for it, because a play button and a zero scrubber offered for a video nobody asked to pause read as a stall. Because the Chrome is the player's only recovery affordance, that withholding is always bounded — see the Autostart Veil's release rule.
 
+Chrome visibility is not a release signal. Because the Chrome stays up for as long as playback is paused or ended, anything that holds a capability open "until the Chrome hides" holds it open forever in those states. A hold keyed to Chrome visibility therefore needs its own unconditional release, not the Chrome's.
+
 ### Autostart Veil
 
 The dimmed cover laid over a video's poster while a video that starts on its own is still loading — darkened artwork under a spinner, standing in for the withheld Chrome. It appears only for a video the viewer did not press play on; a video started by hand shows its Chrome throughout.
 
 The veil takes no touches, and while it is up a tap on the video body must not resolve to hiding the Chrome beneath it, or playback begins with no controls at all. It is released by the first frame, by a reported load failure, or by a time limit — whichever comes first. The time limit is not redundant: the other two releases depend on the player reporting something, and the case that strands a viewer is the one where it reports nothing, so a viewer who leaves the app mid-load and returns must also get the veil released. Releasing early only returns the controls sooner, while releasing late leaves the viewer with no way out, so the bound is set to err early.
+
+### Back-Swipe Strip
+
+The narrow band along a watch screen's leading edge that is reserved for the platform's page-dismiss swipe. The seek bar spans the full width visually but declines any drag that begins inside the strip, so a dismiss gesture is never half-read as a scrub.
+
+The strip exists because the dismiss gesture is recognised natively, before the app's own gesture handling runs — a contest the app cannot win, only avoid. Reserving territory in advance is therefore the mechanism, rather than deciding the winner once a touch has arrived. It is reserved only where a native gesture actually competes for the touch: where the platform's back gesture belongs to the OS and reaches the app as a plain navigation event, nothing competes, and reserving a strip would delete usable seek area for nothing. Fullscreen playback, which cannot be dismissed by the gesture, likewise reserves none.
 
 ### Ambient Backdrop
 
