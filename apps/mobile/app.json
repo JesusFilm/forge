@@ -51,7 +51,8 @@
       [
         "expo-video",
         {
-          "supportsBackgroundPlayback": true
+          "supportsBackgroundPlayback": true,
+          "supportsPictureInPicture": true
         }
       ],
       "@kesha-antonov/react-native-background-downloader",

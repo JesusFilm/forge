@@ -2,29 +2,22 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import {
   Animated,
   AppState,
-  Platform,
   Pressable,
   StyleSheet,
   Text,
   View,
-  useWindowDimensions,
   type GestureResponderEvent,
   type LayoutChangeEvent,
 } from "react-native"
 import { Image } from "expo-image"
 import Ionicons from "@expo/vector-icons/Ionicons"
 import { LinearGradient } from "expo-linear-gradient"
-import { VideoView, type VideoPlayerStatus } from "expo-video"
+import type { VideoPlayer as ExpoVideoPlayer } from "expo-video"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { BLACK, TEXT_ON_OVERLAY, hexToRgba } from "../../lib/color"
 import { resolveImageUrl } from "../../lib/resolveImageUrl"
-import {
-  useManagedVideoPlayer,
-  type ProgressFeed,
-} from "../../hooks/useManagedVideoPlayer"
 import { datadogLog, reportDatadogAction } from "../../lib/datadog"
 import { extractMuxPlaybackId } from "../../lib/muxThumbnail"
-import type { ProgressIdentity } from "../../lib/watchProgress/recorder"
 import { applySkip } from "../../lib/scrubber"
 import {
   DOUBLE_TAP_MS,
@@ -47,7 +40,6 @@ import {
   type CastRecovery,
   type PlaybackTarget,
 } from "../../lib/playbackTarget"
-import { PLAYER_HEIGHT_RATIO } from "../../lib/playerLayout"
 import {
   PlayerControls,
   RouteButtons,
@@ -67,6 +59,13 @@ const SUBTITLE_OFFSET_INLINE = 14
 const AUTOSTART_VEIL_TIMEOUT_MS = 12000
 
 type VideoPlayerProps = {
+  /** The root-owned player (KD2). This component creates none: exactly one
+   *  adapter instance exists app-wide, in `PlaybackHost`. */
+  player: ExpoVideoPlayer
+  isPlaying: boolean
+  /** Published by the host from the player's own status (R22), so the full
+   *  view and the floating window read one failure state. */
+  loadFailed?: boolean
   streamingUrl: string | null
   posterUrl: string | null
   subtitleVttSrc?: string | null
@@ -76,12 +75,6 @@ type VideoPlayerProps = {
   fullscreen?: boolean
   /** Toggle fullscreen (fired by the fullscreen control). */
   onToggleFullscreen?: () => void
-  /** Per-side horizontal inset the parent applies to the inline player, so the
-   *  16:9 height is computed from the reduced width (no letterbox). Ignored in
-   *  fullscreen. Default 0. */
-  horizontalInset?: number
-  /** Progress-recording identity (KTD5). Absent = no recording (hero-safe). */
-  progressIdentity?: ProgressIdentity | null
   /** Resume-eligible position (KTD6). When set, the player seeks here by
    *  itself once the source loads — no Resume button. */
   resumeAtSeconds?: number | null
@@ -89,7 +82,12 @@ type VideoPlayerProps = {
    *  site: this player also backs the series-detail trailer dock, so an
    *  implicit default would autoplay surfaces that never asked for it. */
   autostart?: boolean
-  /** The screen-owned cast wiring (KTD4); null on surfaces without cast. */
+  /** The player already holds this request's content (R4's expand). Only the
+   *  host can know it — the adoption is its `sourceForRequest` decision. */
+  adopted?: boolean
+  /** Cast wiring, owned by the surface that published the playback request and
+   *  forwarded by the host. Null once that surface is gone: its unmount already
+   *  ended the session (KTD7), so the floating window is local playback only. */
   cast?: VideoPlayerCast | null
 }
 
@@ -103,33 +101,45 @@ export type VideoPlayerCast = {
   resolveMediaAt: (startPositionSeconds: number | null) => CastMedia | null
   /** Screen-derived recovery instruction after a terminal session state. */
   recovery: CastRecovery | null
-  /** U5 (KTD6): receives the adapter's ref-stable progress feed so the
-   *  screen can drive cast positions into the recorder. */
-  progressFeedRef: { current: ProgressFeed | null }
 }
 
+/**
+ * The full-screen player CHROME (U6). It fills the frame the playback host
+ * draws its one video view into, and layers over that view exactly as it
+ * layered over its own before the hoist: poster, veil, tap target, scrim,
+ * captions, controls.
+ */
 export function VideoPlayer({
+  player,
+  isPlaying,
+  loadFailed = false,
   streamingUrl,
   posterUrl,
   subtitleVttSrc = null,
   onPlayingChange,
   fullscreen = false,
   onToggleFullscreen,
-  horizontalInset = 0,
-  progressIdentity = null,
   resumeAtSeconds = null,
   autostart = false,
+  adopted = false,
   cast = null,
 }: VideoPlayerProps) {
   const castPlayback = cast?.playback ?? null
   const onCastPress = cast?.onCastPress ?? null
   const resolveCastMediaAt = cast?.resolveMediaAt ?? null
   const castRecovery = cast?.recovery ?? null
-  const progressFeedRef = cast?.progressFeedRef ?? null
 
-  const { width: screenWidth, height: screenHeight } = useWindowDimensions()
-
-  const [hasStarted, setHasStarted] = useState(false)
+  // Seeded from ADOPTION, not transport state: an expand onto an already-loaded
+  // source emits no sourceLoad, so a paused one would arm the autostart veil
+  // with nothing left to clear it (the live read alone covers only a playing one).
+  const [hasStarted, setHasStarted] = useState(() => {
+    if (adopted) return true
+    try {
+      return player.playing
+    } catch {
+      return false // Native player already released
+    }
+  })
 
   // KTD4: the remote phases where the session owns the player area. Mirrored
   // into a ref for the once-per-player listeners below.
@@ -146,94 +156,18 @@ export function VideoPlayer({
   const streamingUrlRef = useRef(streamingUrl)
   streamingUrlRef.current = streamingUrl
   const resolvedPoster = resolveImageUrl(posterUrl)
-  const playerHeight = Math.round(
-    (screenWidth - horizontalInset * 2) * PLAYER_HEIGHT_RATIO,
-  )
-
-  // Player lifecycle (frozen source, replaceAsync swap, AppState, unmount
-  // pause) lives in the shared adapter (todo 016); this component owns the
-  // chrome, captions, and tap handling.
-  const { player, isPlaying, progressFeed } = useManagedVideoPlayer(
-    streamingUrl,
-    (p) => {
-      // Favor a fast first frame over deep prebuffer — JFP audience skews to
-      // low-bandwidth networks. (Android-only fields are ignored on iOS.)
-      p.bufferOptions = {
-        minBufferForPlayback: 1,
-        preferredForwardBufferDuration: 8,
-        prioritizeTimeOverSizeThreshold: true,
-      }
-    },
-    { progress: progressIdentity, castActive: castRemoteActive },
-  )
-  // Render-time mirror (same pattern as castRemoteActiveRef): the feed is
-  // identity-stable, so repeated assignment is idempotent.
-  if (progressFeedRef != null) progressFeedRef.current = progressFeed
-
-  // Disable Mux's HLS subtitle tracks (SubtitleOverlay renders admin VTT
-  // instead). These three events cover every AVPlayer auto-select; a fourth
-  // statusChange listener was dropped — it re-fired on every buffer/seek tick.
-  useEffect(() => {
-    const disable = () => {
-      try {
-        if (player.subtitleTrack != null) player.subtitleTrack = null
-      } catch {
-        // Player already released
-      }
-    }
-    const subs = [
-      player.addListener("availableSubtitleTracksChange", disable),
-      player.addListener("subtitleTrackChange", disable),
-      player.addListener("sourceLoad", disable),
-    ]
-    disable()
-    return () => subs.forEach((s) => s.remove())
-  }, [player])
 
   useEffect(() => {
     if (isPlaying && !hasStarted) setHasStarted(true)
     onPlayingChange?.(isPlaying)
   }, [isPlaying, hasStarted, onPlayingChange])
 
-  // Both release the pre-autostart chrome suppression below. Without them a
-  // viewer whose playback never starts is stranded on a spinner with no
-  // controls: `loadFailed` covers a source that errors, `loadTimedOut` covers
-  // one that simply wedges (no watchdog upstream arms before playback).
-  const [loadFailed, setLoadFailed] = useState(false)
+  // Releases the pre-autostart suppression below for a load that neither starts
+  // nor errors (the host's `loadFailed` covers one that errors). Without both, a
+  // viewer whose playback never starts is stranded on a spinner with no controls.
   const [loadTimedOut, setLoadTimedOut] = useState(false)
 
-  // Subscribed once per PLAYER, not per source. Resubscribing on every
-  // streamingUrl change tears down and rebuilds across the seed -> canonical
-  // swap while replaceAsync is still in flight, which can attribute a
-  // pre-swap error to the new source (the adapter's QoE listener avoids this
-  // the same way).
   useEffect(() => {
-    const sub = player.addListener(
-      "statusChange",
-      ({ status }: { status: VideoPlayerStatus }) => {
-        setLoadFailed(status === "error")
-      },
-    )
-    return () => {
-      try {
-        sub.remove()
-      } catch {
-        // Player already released
-      }
-    }
-  }, [player])
-
-  // New source: clear both stop conditions. Seeding from the CURRENT status
-  // rather than a bare false covers a source that already failed before this
-  // effect ran, which a listener alone never sees.
-  useEffect(() => {
-    let current: VideoPlayerStatus | null = null
-    try {
-      current = player.status
-    } catch {
-      // Player already released
-    }
-    setLoadFailed(current === "error")
     setLoadTimedOut(false)
   }, [player, streamingUrl])
 
@@ -725,37 +659,9 @@ export function VideoPlayer({
   const subtitleFontSize = fullscreen ? 22 : 16
 
   return (
-    <View
-      style={[
-        styles.container,
-        fullscreen
-          ? {
-              position: "absolute",
-              top: 0,
-              left: 0,
-              width: screenWidth,
-              height: screenHeight,
-              zIndex: 1000,
-            }
-          : { height: playerHeight },
-      ]}
-    >
-      <VideoView
-        player={player}
-        style={StyleSheet.absoluteFill}
-        nativeControls={false}
-        // iOS 16+ defaults this TRUE, which floats a Live Text "scan" button
-        // over a paused/ended frame that contains text — a system control we
-        // do not own, inside chrome we do.
-        allowsVideoFrameAnalysis={false}
-        contentFit="contain"
-        allowsPictureInPicture
-        // textureView composites in the RN view hierarchy on Android so the
-        // controls/captions overlay reliably renders above the video surface
-        // (SurfaceView otherwise punches through). No-op on iOS.
-        surfaceType={Platform.OS === "android" ? "textureView" : undefined}
-      />
-
+    // absoluteFill, not a sized box: the host's frame owns the geometry (KTD17)
+    // and paints the letterbox black behind the video view this chrome covers.
+    <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
       {/* R7: the phone shows the poster while the TV plays — the paused
           local frame would read as a broken player. */}
       {(!hasStarted || castRemoteActive) && resolvedPoster != null && (
@@ -891,10 +797,6 @@ export function VideoPlayer({
 }
 
 const styles = StyleSheet.create({
-  container: {
-    width: "100%",
-    backgroundColor: BLACK,
-  },
   chromeScrim: {
     position: "absolute",
     left: 0,

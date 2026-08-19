@@ -13,7 +13,7 @@ import type {
 
 // Pure enqueue orchestration: storage gate, request builder, capped enqueue loop,
 // result-derived outcome buckets. I/O-free via injected provider primitives so it
-// unit-tests without rendering the route (no RN render harness).
+// unit-tests without rendering the route.
 
 // Concurrent enqueue cap. Small so concurrent swaps don't put many old+new
 // copies in flight at once — their transient footprint must stay within the

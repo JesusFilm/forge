@@ -85,6 +85,53 @@ describe("createVideoQoeSession", () => {
     })
   })
 
+  it.each(["ended", "replaced", "dismissed", "failed", "abandoned"] as const)(
+    "round-trips reason %s into the emitted summary",
+    (reason) => {
+      const session = createVideoQoeSession({ contentId: "abc", now: () => 0 })
+      session.onTimeUpdate(10)
+      expect(session.finalize(reason)?.reason).toBe(reason)
+    },
+  )
+
+  // Falsification: stamping a dismissal or a replacement as the default
+  // abandonment IS the reason-attribution defect R17 fixes. The exact shape
+  // also pins that widening the reason added no new summary attribute.
+  it.each(["replaced", "dismissed"] as const)(
+    "reports %s as itself, not as an abandonment",
+    (reason) => {
+      const session = createVideoQoeSession({ contentId: "abc", now: () => 0 })
+      session.onTimeUpdate(10)
+      const summary = session.finalize(reason)
+      expect(summary?.reason).not.toBe("abandoned")
+      expect(summary).toEqual({
+        content_id: "abc",
+        ttff_ms: null,
+        rebuffer_count: 0,
+        error_count: 0,
+        reason,
+        watched_ms: 10_000,
+      })
+    },
+  )
+
+  // KTD13: the explicit end signal runs first and the existing cleanups stay
+  // as safety nets, so first-reason-wins is what keeps a later cleanup from
+  // relabelling an attributed session.
+  it.each([
+    ["dismissed", "abandoned"],
+    ["replaced", "abandoned"],
+    ["ended", "dismissed"],
+  ] as const)(
+    "keeps the explicit %s reason when a later cleanup finalizes with %s",
+    (explicit, cleanup) => {
+      const session = createVideoQoeSession({ contentId: "abc", now: () => 0 })
+      session.onTimeUpdate(10)
+      expect(session.finalize(explicit)?.reason).toBe(explicit)
+      expect(session.finalize(cleanup)).toBeNull()
+    },
+  )
+
   it("defaults now to Date.now when the clock is not injected", () => {
     const session = createVideoQoeSession({ contentId: null })
     const ttff = session.onFirstPlaying()

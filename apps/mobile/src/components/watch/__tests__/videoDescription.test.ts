@@ -1,8 +1,8 @@
 /**
- * SOURCE-SHAPE assertions (apps/mobile has no component-render harness,
- * KTD11), so these pin structure, not layout. Both directions were checked in
- * the simulator: a truncated description keeps "Read more", a 3-line one
- * drops it.
+ * SOURCE-SHAPE assertions, so these pin structure, not layout. They predate
+ * the component-render harness this app now has (apps/mobile/CLAUDE.md,
+ * "Component render tests"). Both directions were checked in the simulator: a
+ * truncated description keeps "Read more", a 3-line one drops it.
  *
  * The failure this guards is asymmetric and easy to ship. If the measurement
  * silently never fires, `overflows` stays null and the toggle disappears for

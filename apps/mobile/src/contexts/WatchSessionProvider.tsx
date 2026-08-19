@@ -35,7 +35,8 @@ import { useWatchPreferences } from "./WatchPreferencesProvider"
 type WatchSessionContextValue = {
   video: WatchVideoRecord | null
   setVideo: (video: WatchVideoRecord | null) => void
-  activeVariantIndex: number
+  /** Null until the default dub resolves for this video (or the user picks). */
+  activeVariantIndex: number | null
   setActiveVariantIndex: (index: number) => void
   subtitleEnabled: boolean
   setSubtitleEnabled: (enabled: boolean) => void
@@ -92,7 +93,14 @@ export function WatchSessionProvider({ children }: { children: ReactNode }) {
   } = useWatchPreferences()
 
   const [video, setVideo] = useState<WatchVideoRecord | null>(null)
-  const [activeVariantIndex, setActiveVariantIndexState] = useState(0)
+  // Null = unresolved, matching SeriesSessionProvider's null-before-resolution.
+  // A 0 default surfaced `dubs[0]` for a render before the reconciler ran, so a
+  // multi-dub video briefly published the WRONG language's stream — an audible
+  // flash on a fresh visit, and a restart on an expand (the transient reads as
+  // a dub switch, which defeats R4's adoption).
+  const [activeVariantIndex, setActiveVariantIndexState] = useState<
+    number | null
+  >(null)
   const [activeSubtitleSlug, setActiveSubtitleSlugState] = useState<
     string | null
   >(null)
@@ -153,11 +161,11 @@ export function WatchSessionProvider({ children }: { children: ReactNode }) {
     [setPreferredSubtitleLanguage],
   )
 
-  // Clamp the active index: on navigating to a new video, the previous index
-  // can briefly exceed the new variant list before the resolution effect
-  // re-runs. Clamping avoids a one-frame undefined variant.
+  // Clamp the active index: the user's pick on the PREVIOUS video can exceed
+  // this one's variant list for the render before the identity reset lands.
+  // Null index = unresolved, so no variant surfaces before the default lands.
   const activeVariant =
-    video && video.variants.length > 0
+    video && activeVariantIndex != null && video.variants.length > 0
       ? (video.variants[
           Math.min(activeVariantIndex, video.variants.length - 1)
         ] ?? null)
@@ -232,6 +240,9 @@ export function WatchSessionProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     audioReconcilerRef.current = resetReconciler()
     subtitleReconcilerRef.current = resetReconciler()
+    // Back to unresolved: the next video's default must land before any of its
+    // variants surfaces, and the previous video's pick must never leak.
+    setActiveVariantIndexState(null)
     // subtitleEnabled is now an app-wide pref (persists across videos); only the
     // per-video subtitle slug resets — it re-resolves once this dub's media lands.
     setActiveSubtitleSlugState(null)

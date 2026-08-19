@@ -15,6 +15,7 @@ import { LinearGradient } from "expo-linear-gradient"
 
 import { useTypography } from "../../hooks/useTypography"
 import { QUIZ_GRADIENT } from "../../lib/color"
+import { useNonRouteSheetSuppression } from "../../hooks/useNonRouteSheetSuppression"
 import { layout, feedback } from "../../styles/shared"
 import type { AdminBlock } from "../../lib/queries"
 
@@ -117,6 +118,8 @@ export interface QuizButtonRendererProps {
 export function QuizButtonRenderer({ section }: QuizButtonRendererProps) {
   const typography = useTypography()
   const [modalVisible, setModalVisible] = useState(false)
+
+  useNonRouteSheetSuppression(modalVisible, "sduiQuiz")
 
   const s = section as Record<string, unknown>
   const buttonText = s.buttonText as string | null

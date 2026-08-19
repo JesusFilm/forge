@@ -18,6 +18,10 @@ const SOURCE = fs.readFileSync(
   path.join(__dirname, "..", "VideoPlayer.tsx"),
   "utf8",
 )
+const HOST = fs.readFileSync(
+  path.join(__dirname, "..", "PlaybackHost.tsx"),
+  "utf8",
+)
 
 /** indexOf that fails loudly instead of yielding -1 into a slice. */
 function at(marker: string, from = 0): number {
@@ -27,10 +31,18 @@ function at(marker: string, from = 0): number {
 }
 
 describe("cast remote mode (U4)", () => {
-  it("threads castActive into the managed-player adapter (KTD4)", () => {
-    expect(SOURCE).toContain(
-      "{ progress: progressIdentity, castActive: castRemoteActive }",
+  it("threads castActive into the one adapter, in the host (KTD4)", () => {
+    // Operands asserted independently — the host's options object also carries
+    // ownsSession and onSourceApplied, so a literal would be format-fragile.
+    const options = HOST.slice(
+      HOST.indexOf("useManagedVideoPlayer("),
+      HOST.indexOf("const openSheetCount"),
     )
+    expect(options).toContain("castActive,")
+    expect(HOST).toContain("const castActive = slotOwned && request.castActive")
+    // The chrome must never build a second adapter (rootPlayerOwnership).
+    expect(SOURCE).not.toContain("useManagedVideoPlayer")
+    expect(SOURCE).not.toContain("progressFeedRef")
   })
 
   it("pauses the local player when a session starts", () => {

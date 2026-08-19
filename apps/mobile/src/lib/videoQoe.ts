@@ -2,8 +2,16 @@
 // without the native Datadog SDK or expo-video (VideoPlayer feeds it from existing
 // listeners). PII-free by construction: content_id is the Mux id, never the title.
 
-/** Why the session ended — "ended" (playToEnd) vs "abandoned" (Back/unmount). */
-export type VideoQoeReason = "ended" | "abandoned"
+/** Why the session ended: "ended" (playToEnd), "replaced" (new content took
+ *  over), "dismissed" (the viewer closed it), "failed" (unrecoverable stream
+ *  failure, R22), "abandoned" (Back/unmount — also the safety-net fallback,
+ *  so an explicit reason must finalize FIRST. KTD13). */
+export type VideoQoeReason =
+  | "ended"
+  | "replaced"
+  | "dismissed"
+  | "failed"
+  | "abandoned"
 
 /** Numbers/strings/bools only — never a title or other high-cardinality PII. */
 export type VideoQoeSummary = {

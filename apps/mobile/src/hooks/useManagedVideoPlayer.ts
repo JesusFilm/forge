@@ -5,6 +5,8 @@ import { useVideoPlayer, type VideoPlayer } from "expo-video"
 
 import { extractMuxPlaybackId, isSameMuxAsset } from "../lib/muxThumbnail"
 import { datadogLog } from "../lib/datadog"
+import { getMiniPlayerStore } from "../lib/miniPlayer/store"
+import { appStateBranchDecision } from "../lib/pipPolicy"
 import {
   createProgressRecorder,
   type FlushTrigger,
@@ -35,6 +37,16 @@ const STALL_THRESHOLD_MS = 3000
 // Float jitter: an advance under this counts as "not moving".
 const POSITION_EPSILON_S = 0.25
 
+// The two explicit endings that also force a progress write (KTD13). "ended"
+// and "failed" close the quality session only — playToEnd already flushed —
+// and "abandoned" is teardown, which keeps its own "unmount" trigger.
+const FLUSH_TRIGGER_BY_END_REASON: Partial<
+  Record<VideoQoeReason, FlushTrigger>
+> = {
+  dismissed: "dismiss",
+  replaced: "replace",
+}
+
 /** KTD6: the hook's ref-stable progress facade. Cast-side callers drive the
  *  recorder through it without ever holding a recorder instance. */
 export type ProgressFeed = {
@@ -57,12 +69,27 @@ export function useManagedVideoPlayer(
   setup?: (player: VideoPlayer) => void,
   options?: {
     progress?: ProgressIdentity | null
-    /** KTD4: true while a cast session drives playback. Suppresses the
-     *  AppState play/pause pair and the stall watchdog; the background
-     *  progress flush stays on. */
+    /**
+     * Only the root playback host owns the mini-player session. The session's
+     * end event carries no adapter identity, so a second adapter (the two
+     * `[sectionKey]` screens) would flush ITS recorder and close ITS quality
+     * session on someone else's ending.
+     */
+    ownsSession?: boolean
+    /**
+     * The player now verifiably HOLDS this url — fired after a swap applies,
+     * never when one is merely requested. A live `player.playing` read is only
+     * evidence about the applied source; mid-swap it still describes the
+     * outgoing video (AE10's admission hazard).
+     */
+    onSourceApplied?: (url: string) => void
+    /** KTD4: true while a cast session drives playback. The AppState pair,
+     *  the local recorder tick and the stall watchdog are suppressed; the
+     *  background flush and the QoE time read stay on. */
     castActive?: boolean
   },
 ) {
+  const ownsSession = options?.ownsSession === true
   // Source MUST be frozen: useVideoPlayer recreates/releases the player on any
   // change (dep is JSON.stringify(source)). Swap via replaceAsync on the same
   // player; a changing source = "black screen, stuck on language switch" bug.
@@ -77,6 +104,14 @@ export function useManagedVideoPlayer(
   // The source currently loaded into the player, tracked separately from the
   // frozen creationSource so swap decisions can compare against it.
   const loadedUrlRef = useRef(sourceUrl)
+
+  const onSourceAppliedRef = useRef(options?.onSourceApplied)
+  onSourceAppliedRef.current = options?.onSourceApplied
+  // The creation source is applied by construction — the player was made
+  // holding it. Swaps report their own apply below, on settle.
+  useEffect(() => {
+    if (creationSource != null) onSourceAppliedRef.current?.(creationSource)
+  }, [creationSource])
 
   // Ref-mirrored (KTD4): the AppState effect registers once per player, so a
   // plain option in its closure would be stale by the time a session starts.
@@ -168,6 +203,31 @@ export function useManagedVideoPlayer(
     }
   }, [recorderKey])
 
+  /**
+   * The explicit session ending (KTD13/R16/R17). Attribution no longer rides
+   * React teardown: the caller names WHY the session ended, and this maps that
+   * onto a forced progress write plus the quality-session close.
+   *
+   * The teardown cleanups stay as safety nets. They cannot steal the reason —
+   * `emitQoeSummary` nulls the session it finalizes, so the first reason wins.
+   */
+  const endSession = useCallback(
+    (reason: VideoQoeReason) => {
+      const trigger = FLUSH_TRIGGER_BY_END_REASON[reason]
+      if (trigger) recorderRef.current?.flush(trigger)
+      emitQoeSummary(reason)
+    },
+    [emitQoeSummary],
+  )
+
+  // The session store is the one place that knows an ending and its reason, so
+  // no call site has to remember to stop the previous video. With no session
+  // open it reports nothing, which is every surface until the window ships.
+  useEffect(() => {
+    if (!ownsSession) return
+    return getMiniPlayerStore().onEnd((event) => endSession(event.reason))
+  }, [endSession, ownsSession])
+
   // KTD6: ref-stable facade — dereferences the CURRENT recorder at call
   // time, so a dub switch's rebuild cannot strand cast-side writes in the
   // flushed, dead instance.
@@ -185,13 +245,18 @@ export function useManagedVideoPlayer(
     // restart playback.
     const sameAsset = isSameMuxAsset(loadedUrlRef.current, sourceUrl)
     loadedUrlRef.current = sourceUrl
-    if (sameAsset) return
+    if (sameAsset) {
+      // Same asset behind a new string: the player already holds it.
+      onSourceAppliedRef.current?.(sourceUrl)
+      return
+    }
     // Swap-log content id (the QoE session id below tracks it separately).
     const nextId = extractMuxPlaybackId(sourceUrl)
 
     // A genuine cross-asset swap ends this QoE session and opens a new one so
-    // watched_ms/rebuffers/source attribute to the right asset (R36/R38).
-    emitQoeSummary("abandoned")
+    // watched_ms/rebuffers/source attribute to the right asset (R36/R38). The
+    // source moved without the progress identity, so nothing flushes here.
+    endSession("abandoned")
     startQoeSession(sourceUrl)
     isSwappingRef.current = true
 
@@ -218,11 +283,15 @@ export function useManagedVideoPlayer(
     // for HLS on iOS). Fall back to the synchronous path if it rejects.
     void player
       .replaceAsync(sourceUrl)
-      .then(resume)
+      .then(() => {
+        onSourceAppliedRef.current?.(sourceUrl)
+        resume()
+      })
       .catch(() => {
         datadogLog.warn("video.swap_fallback", { content_id: nextId })
         try {
           player.replace(sourceUrl, true)
+          onSourceAppliedRef.current?.(sourceUrl)
           resume()
         } catch {
           datadogLog.error("video.swap_failed", { content_id: nextId })
@@ -231,7 +300,7 @@ export function useManagedVideoPlayer(
       .finally(() => {
         isSwappingRef.current = false
       })
-  }, [sourceUrl, player, emitQoeSummary, startQoeSession])
+  }, [sourceUrl, player, endSession, startQoeSession])
 
   const { isPlaying } = useEvent(player, "playingChange", {
     isPlaying: player.playing,
@@ -256,13 +325,33 @@ export function useManagedVideoPlayer(
   }, [isPlaying])
 
   // Background pauses; foreground resumes ONLY if playback was active when the
-  // app left — never starts a video the user had paused or never played.
+  // app left — never starts a video the user had paused or never played. What
+  // each state decides is U4's table (R13): picture-in-picture keeps playing.
   const wasPlayingRef = useRef(false)
+  // Set when the app left with the picture-in-picture hold on. Nothing paused
+  // the video then, so `wasPlayingRef` holds a stale snapshot from an earlier
+  // background and would force-resume a video paused inside the window.
+  const leftUnderPipRef = useRef(false)
   useEffect(() => {
     const subscription = AppState.addEventListener("change", (nextState) => {
+      const pipActive = getMiniPlayerStore().getSnapshot().pipHold
+      const decision = appStateBranchDecision(nextState, pipActive)
+
       if (nextState === "active") {
         isForegroundRef.current = true
-        if (wasPlayingRef.current && !castActiveRef.current) {
+        const resumeFromPip = leftUnderPipRef.current
+        leftUnderPipRef.current = false
+        let shouldResume = wasPlayingRef.current
+        if (resumeFromPip) {
+          try {
+            shouldResume = player.playing
+          } catch {
+            shouldResume = false // Already released
+          }
+        }
+        // A session on the TV owns playback: neither resume source may start
+        // local audio over it (KTD4).
+        if (shouldResume && !castActiveRef.current) {
           try {
             player.play()
           } catch {
@@ -274,21 +363,30 @@ export function useManagedVideoPlayer(
             })
           }
         }
-      } else {
+        return
+      }
+
+      if (decision.flushProgress) {
+        // A real departure. `inactive` decides nothing under U4's table, so a
+        // call or the app switcher leaves the swap-resume guard armed.
         isForegroundRef.current = false
-        // The load-bearing race (KTD4): cast starts, the pause has not landed
-        // in playingChange yet, the viewer backgrounds — capturing wasPlaying
-        // here would resume local audio over the TV on foreground.
-        wasPlayingRef.current = castActiveRef.current
-          ? false
-          : isPlayingRef.current
+        leftUnderPipRef.current = pipActive
         recorderRef.current?.flush("background")
-        if (!castActiveRef.current) {
-          try {
-            player.pause()
-          } catch {
-            // Already released
-          }
+      }
+      if (decision.recordWasPlaying) {
+        wasPlayingRef.current = isPlayingRef.current
+      }
+      // KTD4: a session took the player over, so any snapshot is stale — and
+      // the local pause may not have landed in playingChange yet. Cleared on
+      // every departure, so a session ending while away resumes nothing.
+      if (castActiveRef.current) wasPlayingRef.current = false
+      // R13 keeps the operating system's window playing; a session owns
+      // transport. Two independent vetoes over one pause.
+      if (decision.pause && !castActiveRef.current) {
+        try {
+          player.pause()
+        } catch {
+          // Already released
         }
       }
     })
@@ -362,6 +460,14 @@ export function useManagedVideoPlayer(
       if (!castActiveRef.current) {
         recorderRef.current?.onTick(position, duration)
       }
+      // The floating window reads its scrubber from the same tick (KTD2), and
+      // the store drops it when no session is open. Owner-gated for the same
+      // reason as the end subscription above.
+      if (ownsSession)
+        getMiniPlayerStore().publishPosition({
+          positionSeconds: position,
+          durationSeconds: duration,
+        })
 
       const now = Date.now()
       // KTD4: a frozen local playhead is expected while the chrome drives the
@@ -391,7 +497,7 @@ export function useManagedVideoPlayer(
       }
     }, STALL_POLL_MS)
     return () => clearInterval(id)
-  }, [player, isPlaying])
+  }, [player, isPlaying, ownsSession])
 
   // R36: emit the QoE summary on session end. Distinct from the pause try/catch
   // above — that catch is unmount noise and stays silent (KTD4).
