@@ -76,9 +76,10 @@ import { FloatingBackButton } from "../ui/FloatingBackButton"
 import { MiniPlayerWindow } from "./MiniPlayerWindow"
 import { VideoPlayer } from "./VideoPlayer"
 
-/** KTD17's shrink: fixed duration, started when the pop commits. Distinct
- *  from ENDED_FADE_DURATION_MS (320) so a timing is attributable by duration. */
-export const SHRINK_DURATION_MS = 340
+/** KTD17's shrink: fixed duration, started when the pop commits. Distinct from
+ *  every other duration here (and from ENDED_FADE_DURATION_MS, 320) so a timing
+ *  stays attributable by duration. */
+export const SHRINK_DURATION_MS = 400
 
 /** KTD17 in reverse: the expanded surface grows out of its corner back into
  *  the player rect — the same interpolation as the shrink, never a jump. */
