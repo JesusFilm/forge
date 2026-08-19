@@ -54,6 +54,10 @@ const DEFAULT_DATADOG_TRIAGE_TIMEOUT_MS = 15_000
 const DEFAULT_DATADOG_TRIAGE_MAX_RESPONSE_BYTES = 4_194_304
 const DEFAULT_DATADOG_TRIAGE_OVERLAP_MS = 300_000
 const DEFAULT_DATADOG_TRIAGE_LAG_MS = 180_000
+// How far back a service's FIRST covered run reads to record its standing
+// issue set (F3). One hour would baseline only what happened in that hour and
+// make every older standing error look new on the second run.
+const DEFAULT_DATADOG_TRIAGE_BASELINE_LOOKBACK_MS = 604_800_000
 const DEFAULT_DATADOG_TRIAGE_CONFIDENCE = 0.7
 const DEFAULT_DATADOG_TRIAGE_ACTIONABILITY = 0.6
 const DEFAULT_DATADOG_TRIAGE_MIN_OCCURRENCES = 3
@@ -730,6 +734,12 @@ const envSchema = z.object({
     .nonnegative()
     .max(3_600_000)
     .default(DEFAULT_DATADOG_TRIAGE_LAG_MS),
+  DATADOG_TRIAGE_BASELINE_LOOKBACK_MS: z.coerce
+    .number()
+    .int()
+    .positive()
+    .max(2_592_000_000)
+    .default(DEFAULT_DATADOG_TRIAGE_BASELINE_LOOKBACK_MS),
   DATADOG_TRIAGE_CONFIDENCE_THRESHOLD: z.coerce
     .number()
     .min(0)
@@ -1212,6 +1222,9 @@ export const env = envSchema.parse({
     process.env.DATADOG_TRIAGE_OVERLAP_MS,
   ),
   DATADOG_TRIAGE_LAG_MS: emptyToUndefined(process.env.DATADOG_TRIAGE_LAG_MS),
+  DATADOG_TRIAGE_BASELINE_LOOKBACK_MS: emptyToUndefined(
+    process.env.DATADOG_TRIAGE_BASELINE_LOOKBACK_MS,
+  ),
   DATADOG_TRIAGE_CONFIDENCE_THRESHOLD: emptyToUndefined(
     process.env.DATADOG_TRIAGE_CONFIDENCE_THRESHOLD,
   ),
@@ -1669,6 +1682,7 @@ export type DatadogTriageConfig = {
   maxResponseBytes: number
   overlapMs: number
   ingestionLagMs: number
+  baselineLookbackMs: number
   confidenceThreshold: number
   actionabilityThreshold: number
   minOccurrences: number
@@ -1748,6 +1762,7 @@ export function getDatadogTriageConfig(): DatadogTriageConfig {
     maxResponseBytes: env.DATADOG_TRIAGE_MAX_RESPONSE_BYTES,
     overlapMs: env.DATADOG_TRIAGE_OVERLAP_MS,
     ingestionLagMs: env.DATADOG_TRIAGE_LAG_MS,
+    baselineLookbackMs: env.DATADOG_TRIAGE_BASELINE_LOOKBACK_MS,
     confidenceThreshold: env.DATADOG_TRIAGE_CONFIDENCE_THRESHOLD,
     actionabilityThreshold: env.DATADOG_TRIAGE_ACTIONABILITY_THRESHOLD,
     minOccurrences: env.DATADOG_TRIAGE_MIN_OCCURRENCES,
