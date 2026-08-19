@@ -343,9 +343,13 @@ export function PlayerControls({
       onSeek={handleSeek}
       onScrubChange={handleScrubChange}
       flush={!fullscreen}
-      // Fullscreen disables the pop entirely, so the bar keeps its full width
-      // there; inline it yields the strip the back-swipe owns.
-      edgeGuardWidth={fullscreen ? 0 : BACK_SWIPE_EDGE_WIDTH}
+      // iOS-only: there the pop recognizer competes for this touch, so the bar
+      // yields the strip inline (fullscreen cannot pop, so it keeps full
+      // width). Android's back is an OS gesture popped in JS — nothing to
+      // yield to, so giving up the strip there would cost seek area for free.
+      edgeGuardWidth={
+        Platform.OS === "ios" && !fullscreen ? BACK_SWIPE_EDGE_WIDTH : 0
+      }
     />
   )
 

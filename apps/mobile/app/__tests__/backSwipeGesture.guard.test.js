@@ -97,7 +97,17 @@ describe("full-width back-swipe opt-out on player stacks", () => {
     )
     // Fullscreen cannot pop, so it keeps the full-width bar; inline yields the
     // strip. A literal here instead of the constant is the drift this catches.
+    //
+    // And the guard is iOS-ONLY. react-native-screens discards
+    // gestureResponseDistance on Android (ScreenViewManager.kt sets it to Unit
+    // inside an "iOS-only" block) and react-navigation forces
+    // gestureEnabled:false there, so Android has no competing recognizer to
+    // yield to — an ungated guard would just delete ~6% of the timeline's
+    // touch area for nothing.
     expect(controls).toContain(
+      'Platform.OS === "ios" && !fullscreen ? BACK_SWIPE_EDGE_WIDTH : 0',
+    )
+    expect(controls).not.toContain(
       "edgeGuardWidth={fullscreen ? 0 : BACK_SWIPE_EDGE_WIDTH}",
     )
     const scrubber = fs.readFileSync(
