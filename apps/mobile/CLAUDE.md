@@ -218,6 +218,19 @@ local file does not revoke it.
 Rollback is `eas update:rollback --channel <preview|production>`. Exercise it
 once on preview before you ever need it on production.
 
+**`eas.json` sets `cli.requireCommit: true`.** An OTA update reaches every
+tester in minutes with no store review, so publishing an uncommitted working
+tree would ship code that exists nowhere in git. Two things about it are not
+obvious:
+
+- The clean-tree check runs `git status` from the REPO ROOT, not `apps/mobile`.
+  A colleague's stray untracked file under `apps/admin` blocks a mobile publish.
+- If you answer yes to its "Commit changes to git?" prompt it runs `git add -A`
+  across all seven apps. Do not do that mid-incident — commit by hand instead.
+
+It also applies to `eas build`, so a local experiment no longer reaches a build
+archive uncommitted.
+
 **Never set `EXPO_PUBLIC_ADMIN_GRAPHQL_URL` in an EAS environment.** With dotenv
 disabled, resolution falls through to the in-code production default, which is
 already correct and already reviewed. A dashboard-typed URL runs zod on the
