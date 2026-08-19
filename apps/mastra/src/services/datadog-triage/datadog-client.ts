@@ -198,11 +198,11 @@ const monitorRowSchema = z
 
 const aggregateEnvelopeSchema = z
   .object({
+    // Both levels are required: a rename at EITHER `data` or `buckets` must
+    // fail loudly. Optional here reads as zero activity forever, which looks
+    // like a healthy quiet service on every operator surface.
     data: z
       .object({
-        // Required for the same reason as the issue envelope's `data`: a
-        // renamed bucket array must fail loudly, not read as zero activity
-        // forever (which would keep the spike baseline permanently untrusted).
         buckets: z.array(
           z
             .object({
@@ -212,8 +212,7 @@ const aggregateEnvelopeSchema = z
             .passthrough(),
         ),
       })
-      .passthrough()
-      .nullish(),
+      .passthrough(),
     meta: z.object({ status: z.unknown() }).passthrough().nullish(),
   })
   .passthrough()
@@ -534,7 +533,7 @@ export class DatadogTriageClient {
     if (!result.ok) return result
 
     const buckets: DatadogAggregateBucket[] = []
-    for (const bucket of result.value.data?.buckets ?? []) {
+    for (const bucket of result.value.data.buckets) {
       const byValues = Object.values(bucket.by ?? {})
         .map((value) => asString(value))
         .filter((value): value is string => value !== undefined)

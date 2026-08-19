@@ -174,6 +174,15 @@ function windowHours(window: DetectionWindow): number {
   )
 }
 
+/**
+ * The recurrence gate expressed in the unit every baseline comparison uses.
+ * `minOccurrences` is a per-window COUNT; this reads it as "that many inside
+ * one hour", which is the floor below which a rate cannot justify a ticket.
+ */
+function minOccurrencesPerHour(minOccurrences: number): number {
+  return minOccurrences
+}
+
 function ratePerHour(count: number, window: DetectionWindow): number {
   return count / windowHours(window)
 }
@@ -293,9 +302,19 @@ export function detectIssueCandidates(input: {
         epoch: seen?.epoch ?? 0,
         // The seed window spans days while every later comparison spans an
         // hour, so a raw average would read far below any active hour and make
-        // ordinary activity look like a regression on the very next run. Floor
-        // it at the recurrence gate so a standing issue stays standing.
-        baselineRate: Math.max(windowRate, input.config.minOccurrences),
+        // ordinary activity look like a regression on the very next run.
+        // Floor it at the recurrence gate read as an HOURLY rate — the units
+        // differ, which is the point: `minOccurrences` occurrences inside one
+        // hour is the least activity this pipeline ever acts on, so no
+        // baseline below it can make the multiplier mean anything. Raising
+        // `DATADOG_TRIAGE_MIN_OCCURRENCES` therefore also raises the seeded
+        // regression bar to `minOccurrences × regressionMultiplier` per hour.
+        // The `!seen` branch below needs no floor: a candidate has already
+        // cleared the same gate in a one-hour window.
+        baselineRate: Math.max(
+          windowRate,
+          minOccurrencesPerHour(input.config.minOccurrences),
+        ),
         lastActivityAt,
         firstSeenAt,
       })

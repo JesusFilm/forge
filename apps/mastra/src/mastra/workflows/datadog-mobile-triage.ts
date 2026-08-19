@@ -265,6 +265,7 @@ export async function executeDatadogTriage(
       heartbeat,
     })
     applyDispatch(counters, issueUrls, errors, drain)
+    if (drain.failed > 0) partialReason ??= "dispatch_failed"
 
     // 2. Fetch and detect, per source.
     const collection = await collectSignals({
@@ -278,7 +279,7 @@ export async function executeDatadogTriage(
     counters.servicesCovered = config.services.length
     counters.servicesSeeded = collection.seededServices.length
     if (collection.outcomes.some((outcome) => outcome.status !== "ok")) {
-      partialReason = "source_partial"
+      partialReason ??= "source_partial"
     }
 
     // 3. Cap, judge, enqueue.
@@ -307,7 +308,9 @@ export async function executeDatadogTriage(
         withheld.push(...capped.judged.slice(index))
         counters.candidatesCapped += capped.judged.length - index
         errors.push("judge:budget_exhausted")
-        partialReason = "judgment_budget_exhausted"
+        // `??=` everywhere: the FIRST reason a run went partial is the one an
+        // operator needs, and a later stage must not overwrite it.
+        partialReason ??= "judgment_budget_exhausted"
         break
       }
       await heartbeat()
@@ -384,6 +387,12 @@ export async function executeDatadogTriage(
         heartbeat,
       })
       applyDispatch(counters, issueUrls, errors, second)
+      if (second.failed > 0) {
+        // A dispatch that terminalized still commits the signal's state, so
+        // the ticket is never filed and the signal is never re-detected. The
+        // outbox row keeps the draft — the runbook's reclaim step re-sends it.
+        partialReason ??= "dispatch_failed"
+      }
     }
 
     // 5. Commit state, then cursors. Both carry the write-ordering guard, so a
@@ -695,7 +704,13 @@ async function collectSignals(input: {
         errors.push(`datadog:${issueSource}:${page.reason}`)
       } else {
         counters.signalsFetched += page.value.issues.length
+        // Either flag means the page does not describe the whole window, so it
+        // cannot seed a baseline: every issue it missed would arrive next run
+        // as brand new and be ticketed, which is what F3/AE5 exists to prevent.
+        const issueReadIncomplete =
+          page.value.truncated || page.value.unparsedRows > 0
         if (page.value.unparsedRows > 0) {
+          serviceSeeded = false
           errors.push(`datadog:${issueSource}:unparsed_rows`)
           collection.outcomes.push({
             source: issueSource,
@@ -704,9 +719,6 @@ async function collectSignals(input: {
           })
         }
         if (page.value.truncated) {
-          // A truncated read must never seed a baseline: every issue past the
-          // page boundary would arrive next run as brand new and be ticketed,
-          // which is exactly what F3/AE5 exists to prevent.
           serviceSeeded = false
           errors.push(`datadog:${issueSource}:page_truncated`)
           collection.outcomes.push({
@@ -740,13 +752,24 @@ async function collectSignals(input: {
         counters.signalsExcludedForeignService +=
           detection.excludedForeignService
         counters.epochsMinted += detection.epochsMinted
-        collection.cursors.push({
-          source: issueSource,
-          cursorAt: issueWindow.to,
-          succeeded: true,
-          succeededAt: now,
-        })
-        if (page.value.unparsedRows === 0 && !page.value.truncated) {
+        if (alreadySeeded || !issueReadIncomplete) {
+          collection.cursors.push({
+            source: issueSource,
+            cursorAt: issueWindow.to,
+            // A read that parsed nothing is not a live source, whatever the
+            // HTTP status said. Stamping success here is what let a renamed
+            // Datadog field read as a healthy quiet service forever.
+            succeeded:
+              page.value.unparsedRows === 0 || page.value.issues.length > 0,
+            succeededAt: now,
+          })
+        } else {
+          // Holding the cursor keeps the next run on the WIDE baseline window.
+          // Advancing it collapses that window to the overlap, so the service
+          // would seed off ~one hour and ticket every standing error as new.
+          errors.push(`datadog:${issueSource}:baseline_read_incomplete`)
+        }
+        if (!issueReadIncomplete) {
           collection.outcomes.push({ source: issueSource, status: "ok" })
         }
       }

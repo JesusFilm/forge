@@ -16,9 +16,19 @@
  */
 
 /**
+ * Returned instead of `undefined` when the body crosses the cap. An over-cap
+ * read says nothing about whether the REQUEST succeeded, so a caller that
+ * terminalizes on unparseable output must not treat it as a parse failure —
+ * that is the same first-attempt terminalization the rethrow above prevents,
+ * reached through the byte cap instead of the clock.
+ */
+export const BOUNDED_READ_OVER_CAP = Symbol("bounded-read-over-cap")
+
+/**
  * Reads at most `maxBytes`, cancelling the reader (and so the socket) the
- * moment the body crosses the cap. Returns `undefined` for any failure the
- * caller should treat as unusable output; rethrows only a timeout/abort.
+ * moment the body crosses the cap. Returns `BOUNDED_READ_OVER_CAP` past the
+ * cap, `undefined` for any other unusable output, and rethrows only a
+ * timeout/abort.
  *
  * The catch must never log the caught error: a `JSON.parse` SyntaxError can
  * embed raw fragments of the upstream body.
@@ -41,7 +51,7 @@ export async function readJsonBodyCappedOrThrow(
       total += value.byteLength
       if (total > maxBytes) {
         await reader.cancel()
-        return undefined
+        return BOUNDED_READ_OVER_CAP
       }
       chunks.push(value)
     }

@@ -1772,7 +1772,10 @@ export function getDatadogTriageConfig(): DatadogTriageConfig {
     site: env.DATADOG_TRIAGE_SITE.trim().toLowerCase(),
     apiKey: env.DATADOG_TRIAGE_API_KEY,
     applicationKey: env.DATADOG_TRIAGE_APP_KEY,
-    services: csvValues(env.DATADOG_TRIAGE_SERVICES),
+    // Deduplicated: a repeated name makes the sweep push two cursor rows with
+    // the same source, and `on conflict (source) do update` then raises
+    // 21000 — so one typo fails every run rather than degrading.
+    services: [...new Set(csvValues(env.DATADOG_TRIAGE_SERVICES))],
     serviceProfiles: serviceProfiles ?? DEFAULT_DATADOG_TRIAGE_SERVICE_PROFILES,
     serviceProfilesInvalid: serviceProfiles === undefined,
     maxCandidatesPerRun: env.DATADOG_TRIAGE_MAX_CANDIDATES_PER_RUN,

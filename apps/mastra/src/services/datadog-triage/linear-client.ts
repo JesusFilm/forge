@@ -3,7 +3,11 @@ import { z } from "zod"
 import { isLinearGraphqlUrl, type DatadogTriageConfig } from "../../config/env"
 import { discardResponseBody } from "../devotional/bounded-response"
 
-import { isAbortLike, readJsonBodyCappedOrThrow } from "./bounded-read"
+import {
+  BOUNDED_READ_OVER_CAP,
+  isAbortLike,
+  readJsonBodyCappedOrThrow,
+} from "./bounded-read"
 
 import type { TriageActionDraft } from "./schema"
 
@@ -89,6 +93,7 @@ export type TriageLinearFailureReason =
   | "network_error"
   | "rejected"
   | "parse_error"
+  | "response_too_large"
   | "graphql_error"
 
 export type TriageLinearFailure = {
@@ -356,6 +361,18 @@ export class TriageLinearClient {
       return {
         ok: false,
         reason: isAbortLike(error) ? "timeout" : "network_error",
+        retryable: true,
+        ambiguous: mutation,
+      }
+    }
+    if (body === BOUNDED_READ_OVER_CAP) {
+      // Same harm as the timeout above, reached through the byte cap: an
+      // over-cap body says nothing about whether Linear accepted the call, so
+      // terminalizing on it would drop a signal over a paging problem that a
+      // later attempt can clear.
+      return {
+        ok: false,
+        reason: "response_too_large",
         retryable: true,
         ambiguous: mutation,
       }

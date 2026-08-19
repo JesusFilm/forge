@@ -270,6 +270,13 @@ pipeline's healthy path. A stale `cursor_at` with a fresh `last_success_at`
 means "reading fine, working through a backlog"; a stale `last_success_at`
 means the source is actually failing.
 
+"Successful" means rows came back USABLE, not that the request returned 200. A
+read that parsed nothing — the shape Datadog renaming a field produces — does
+not stamp this column, and an incomplete read on a service that has not seeded
+yet writes no cursor row at all. Both therefore age this lag rather than
+showing green, which is the point: an HTTP-200-shaped outage is exactly the
+silent death this check exists to catch.
+
 Every source should show a lag under about two hours. **Act when any source
 exceeds a few hours**, in this order:
 
@@ -287,7 +294,12 @@ exceeds a few hours**, in this order:
 3. `auth_failed` against a source means the key expired or lost a scope.
 4. `parse_error` or `unparsed_rows` means the Datadog response shape changed;
    see the provisioning smoke's envelope note.
-5. No recent `runs` rows at all means the scheduler is not firing. Check the
+5. `dispatch_failed` as `partial_reason` means tickets are not reaching Linear.
+   Go straight to the stuck-outbox check below — fetch health stays green
+   through this, so nothing else here will surface it.
+6. `baseline_read_incomplete` means the service cannot seed from one page. See
+   "Issue-search pagination" under Deferred work.
+7. No recent `runs` rows at all means the scheduler is not firing. Check the
    Mastra service is up and the workflow is registered.
 
 Also check for stuck outbox rows:
@@ -296,9 +308,27 @@ Also check for stuck outbox rows:
 select state, count(*) from datadog_triage.actions group by state;
 ```
 
-`terminal` rows failed five dispatch attempts and need a human: read
-`last_error_code`, fix the cause, and either recreate the ticket by hand or
-reset the row to `pending`.
+`terminal` rows need a human. Do NOT assume they exhausted five attempts: a
+non-retryable failure — a rotated Linear key (`auth_failed`), a rejected
+payload, a GraphQL error — terminalizes on attempt ONE. Read `last_error_code`
+to tell the two apart.
+
+A terminal row means the ticket was never filed, and the signal's detection
+state was still committed — so the sweep will not re-detect it. The outbox row
+is the recovery path: it holds the full drafted ticket, so reclaiming it
+re-sends that draft rather than needing the signal back.
+
+```sql
+-- After fixing the cause (rotate the key, correct the project id, …):
+update datadog_triage.actions
+   set state = 'pending', attempts = 0, next_attempt_at = now()
+ where state = 'terminal';
+```
+
+Check this every time a run reports `partial_reason = 'dispatch_failed'` — that
+is the signal that a dispatch terminalized. Do not wait for the liveness query
+above to fire: it reads FETCH health, which stays green while every ticket
+silently fails to file.
 
 ## Rollback
 
@@ -313,12 +343,26 @@ re-enabling would file a ticket for every standing error.
   replace the manual liveness check above. Until it ships, that check is the
   only liveness signal.
 - **Issue-search pagination.** The client issues ONE page request per service
-  per run. It now reports a full page as `page_truncated` — a partial source
-  outcome that also refuses to seed that service's baseline, so a truncated
-  first read can never masquerade as a complete one — but it does not yet
-  follow the cursor. If a service ever trips `page_truncated`, widen the
-  window or add pagination before enabling it. Confirm the paging contract
-  during the pre-enable smoke.
+  per run, and does not follow the cursor. A full page is reported as
+  `page_truncated`; unusable rows are reported as `unparsed_rows`. Either one
+  refuses to seed that service's baseline AND holds the issue cursor, so the
+  next run retries the same wide baseline window instead of collapsing to the
+  overlap window and seeding off one hour.
+
+  The bound that leaves: **a service whose baseline window never fits in one
+  page never seeds, and files nothing from Error Tracking — permanently.**
+  That is the fail-safe direction (silence, not a storm of standing errors),
+  and it is loud — every run reports `partial` and carries
+  `datadog:issue:<service>:baseline_read_incomplete`. But it is silence, and
+  because the seeding flag is per SERVICE, that service's monitor and spike
+  detection stay dormant with it.
+
+  So: confirm during the pre-enable smoke that the service's baseline window
+  returns fewer rows than `DATADOG_ISSUE_PAGE_LIMIT`. If it does not, shorten
+  `DATADOG_TRIAGE_BASELINE_LOOKBACK_MS` until it does, or add pagination
+  before enabling that service. This matters most for the KTD9 admin
+  activation, which has not been sized.
+
 - **Grouped spike detection.** This version runs one ungrouped error-count
   spike check per service. Grouping by facet is a refinement.
 - **Retention.** No purge job exists for `datadog_triage`. Growth is bounded by

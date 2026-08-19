@@ -559,4 +559,45 @@ describe("DatadogTriageClient monitors and aggregates", () => {
       to: "2026-08-18T11:00:00.000Z",
     })
   })
+
+  // A renamed OUTER key is the failure the inner `buckets` requirement misses.
+  // Optional here reads as zero activity forever, so spike detection dies
+  // silently while every operator surface reports a healthy quiet service.
+  it.each([
+    ["outer data renamed", { series: { buckets: [] } }],
+    ["outer data absent", { meta: { status: "done" } }],
+    ["outer data null", { data: null }],
+  ])("fails loudly when the aggregate envelope drifts: %s", async (_, body) => {
+    const client = new DatadogTriageClient(
+      CONFIG,
+      stubFetch(jsonResponse(body)),
+    )
+
+    const result = await client.aggregateLogs({
+      query: "service:forge-mobile",
+      from: WINDOW.from,
+      to: WINDOW.to,
+    })
+
+    expect(result.ok).toBe(false)
+    if (result.ok) throw new Error("expected a parse failure")
+    expect(result.reason).toBe("parse_error")
+  })
+
+  it("still reads a present but empty bucket list as a real zero", async () => {
+    const client = new DatadogTriageClient(
+      CONFIG,
+      stubFetch(jsonResponse({ data: { buckets: [] } })),
+    )
+
+    const result = await client.aggregateLogs({
+      query: "service:forge-mobile",
+      from: WINDOW.from,
+      to: WINDOW.to,
+    })
+
+    expect(result.ok).toBe(true)
+    if (!result.ok) throw new Error("expected success")
+    expect(result.value.buckets).toEqual([])
+  })
 })

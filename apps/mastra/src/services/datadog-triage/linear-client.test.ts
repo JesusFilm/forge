@@ -419,6 +419,42 @@ describe("TriageLinearClient.createIssue", () => {
     },
   )
 
+  it.each([
+    ["createIssue", true],
+    ["findIssueByMarker", false],
+  ] as const)(
+    "classifies an over-cap body on %s as retryable, not parse_error",
+    async (method, mutation) => {
+      // Same harm as the mid-body timeout above, reached through the byte cap
+      // instead of the clock: a non-retryable, non-ambiguous failure on the
+      // SEARCH path terminalizes the outbox row on attempt one.
+      const oversized = new TextEncoder().encode(
+        JSON.stringify({ data: { pad: "x".repeat(512) } }),
+      )
+      const client = new TriageLinearClient(
+        { ...CONFIG, maxResponseBytes: 64 },
+        stubFetch(
+          new Response(oversized, {
+            status: 200,
+            headers: { "content-type": "application/json" },
+          }),
+        ),
+      )
+
+      const result =
+        method === "createIssue"
+          ? await client.createIssue(DRAFT)
+          : await client.findIssueByMarker("marker")
+
+      expect(result).toMatchObject({
+        ok: false,
+        reason: "response_too_large",
+        retryable: true,
+        ambiguous: mutation,
+      })
+    },
+  )
+
   it("marks a malformed create response ambiguous", async () => {
     const client = new TriageLinearClient(
       CONFIG,

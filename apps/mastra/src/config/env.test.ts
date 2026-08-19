@@ -2038,6 +2038,23 @@ describe("Datadog triage env", () => {
     ])
   })
 
+  it("deduplicates the service list", async () => {
+    // A repeat is not cosmetic: the sweep would push two cursor rows with the
+    // same source, and `on conflict (source) do update` raises 21000 — so one
+    // duplicated name fails every run rather than degrading.
+    vi.stubEnv(
+      "DATADOG_TRIAGE_SERVICES",
+      "forge-mobile, forge-admin ,forge-mobile",
+    )
+
+    const { getDatadogTriageConfig } = await import("./env")
+
+    expect(getDatadogTriageConfig().services).toEqual([
+      "forge-mobile",
+      "forge-admin",
+    ])
+  })
+
   it("falls back to the DEFAULT_* constants for every numeric field", async () => {
     const { getDatadogTriageConfig } = await import("./env")
 

@@ -794,4 +794,106 @@ describe("executeDatadogTriage sweep", () => {
     expect(report.status).toBe("partial")
     expect(report.errors).toContain("datadog:issue:forge-mobile:unparsed_rows")
   })
+
+  // The storm this guards: run 1 reads a WIDE baseline window and truncates,
+  // so it must not seed. If it still advances the cursor, run 2 resolves a
+  // ~1h window instead of the baseline lookback, seeds off that one hour, and
+  // run 3 tickets every standing error the hour happened to miss (F3/AE5).
+  it.each([
+    ["a truncated page", { issues: [], unparsedRows: 0, truncated: true }],
+    ["unparsed rows", { issues: [], unparsedRows: 7, truncated: false }],
+  ])(
+    "holds the issue cursor when %s leaves an unseeded service unseedable",
+    async (_, value) => {
+      const repo = repository({ seeded: [] })
+      const report = await run({
+        repository: repo,
+        datadog: datadog({
+          searchIssues: vi.fn(async () => ({ ok: true as const, value })),
+        } as never),
+      })
+
+      const cursors = vi.mocked(repo.commitCursors).mock.calls[0]?.[0] ?? []
+      expect(
+        cursors.find((cursor) => cursor.source === "issue:forge-mobile"),
+      ).toBeUndefined()
+      expect(repo.seedServiceBaselines).not.toHaveBeenCalledWith(
+        ["forge-mobile"],
+        expect.anything(),
+      )
+      expect(report.errors).toContain(
+        "datadog:issue:forge-mobile:baseline_read_incomplete",
+      )
+    },
+  )
+
+  it("advances the issue cursor on an incomplete read once seeded", async () => {
+    // Past seeding the standing set is recorded, so an incomplete page costs
+    // coverage for one hour, not a false baseline — holding here would stall
+    // the source permanently on a service that always fills its page.
+    const repo = repository({ seeded: ["forge-mobile"] })
+    await run({
+      repository: repo,
+      datadog: datadog({
+        searchIssues: vi.fn(async () => ({
+          ok: true as const,
+          value: { issues: [], unparsedRows: 0, truncated: true },
+        })),
+      } as never),
+    })
+
+    const cursors = vi.mocked(repo.commitCursors).mock.calls[0]?.[0] ?? []
+    expect(
+      cursors.find((cursor) => cursor.source === "issue:forge-mobile"),
+    ).toBeDefined()
+  })
+
+  // A terminalized dispatch still commits the signal's detection state, so the
+  // signal is never re-detected and the ticket is never filed. Reporting the
+  // run `complete` is what makes that permanent and invisible: the runbook's
+  // liveness query reads fetch health, which stays green.
+  it("reports a run partial when a dispatch terminalizes", async () => {
+    const report = await run({
+      datadog: datadog({
+        searchIssues: vi.fn(async () => ({
+          ok: true as const,
+          value: { issues: [issue()], unparsedRows: 0 },
+        })),
+      } as never),
+      linear: linear({
+        findIssueByMarker: vi.fn(async () => ({
+          ok: false as const,
+          reason: "auth_failed" as const,
+          retryable: false,
+          ambiguous: false,
+        })),
+      } as never),
+    })
+
+    expect(report.counters.failures).toBeGreaterThan(0)
+    expect(report.status).toBe("partial")
+    expect(report.partialReason).toBe("dispatch_failed")
+  })
+
+  it("does not stamp liveness for a read that parsed nothing", async () => {
+    // `last_success_at` is the only liveness signal the runbook has. A renamed
+    // Datadog field returns HTTP 200 with zero usable rows, so stamping it
+    // green is what made that class of outage invisible.
+    const repo = repository({ seeded: ["forge-mobile"] })
+    await run({
+      repository: repo,
+      datadog: datadog({
+        searchIssues: vi.fn(async () => ({
+          ok: true as const,
+          value: { issues: [], unparsedRows: 7, truncated: false },
+        })),
+      } as never),
+    })
+
+    const cursors = vi.mocked(repo.commitCursors).mock.calls[0]?.[0] ?? []
+    expect(
+      cursors.find((cursor) => cursor.source === "issue:forge-mobile")
+        ?.succeeded,
+    ).toBe(false)
+  })
 })
