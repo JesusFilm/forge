@@ -9,7 +9,9 @@
  * SCOPE. Only `DatadogProvider` is stubbed, so the captured object is a real
  * `RumConfiguration` and its `Object.assign` retention is genuinely exercised.
  * The suite stops there: `adaptLongTaskThreshold` runs later, inside
- * `DdSdkReactNative.initialize`, and nothing here reaches it.
+ * `DdSdkReactNative.buildConfiguration` (reached via `initializeNativeSDK` —
+ * the legacy `initialize` entry is not on the `DatadogProvider` path), and
+ * nothing here reaches it.
  *
  * No `jest.mock("react", …)` preamble: since SDK 57 the package.json jest config
  * pins `^react$` and both runtimes globally (see `test-utils/rnTestRenderer`).
