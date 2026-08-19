@@ -117,7 +117,25 @@ class ErrorBoundary extends Component<
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    // setState FIRST: it is what puts the component stack on the visible App
+    // Error screen, and must not sit behind a telemetry call that could throw.
     this.setState({ errorInfo })
+    // A boundary catch already reaches RUM — RN routes it through
+    // console.error, which the Datadog SDK patches. What that path drops is
+    // `componentStack`, the one field that names the component that threw. Log
+    // it rather than adding a second RUM error, which would split one crash
+    // into two Error Tracking issues.
+    if (typeof datadogLog?.error === "function") {
+      try {
+        datadogLog.error("app.render_boundary_caught", {
+          origin: "error_boundary",
+          error_message: error.message,
+          component_stack: errorInfo.componentStack ?? "",
+        })
+      } catch {
+        // Telemetry must never mask the App Error screen.
+      }
+    }
   }
 
   render() {
