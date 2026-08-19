@@ -1,8 +1,8 @@
 /**
  * Behavioural coverage for the SDUI autostart gate.
  *
- * The two SDUI player routes used to open on a tap-to-play poster while every
- * other surface autostarted, so the same card behaved differently depending on
+ * Neither SDUI player route autostarted, while every other surface in the app
+ * started behind a spinner, so the same card behaved differently depending on
  * which shelf it came from. These tests drive the real hook against a fake
  * player; the anti-strand case is the one that matters most, because a veil
  * with no release is the documented failure mode

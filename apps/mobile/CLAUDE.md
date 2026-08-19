@@ -403,15 +403,22 @@ video IS the viewer asking to watch it, so no surface may sit on a play button
 waiting for a second tap. `/watch/[slug]` gets this from `VideoPlayer.tsx`'s
 `awaitingAutostart`; the two SDUI routes get it from
 `src/hooks/useAutostartPlayback.ts`, which is the same gate without the cast
-entanglement `VideoPlayer` has to carry. They stayed on a tap-to-play poster
-for months because the two paths were written separately and nobody compared
-them — if you add a third player surface, use the hook.
+entanglement `VideoPlayer` has to carry. Neither SDUI route autostarted for
+months because the paths were written separately and nobody compared them —
+`video/[sectionKey]` sat on a tap-to-play poster, `collection/[sectionKey]` had
+no poster at all. If you add a fourth player surface, use the hook.
 
 The gate's release paths are the whole point, and there are three: playback
 started, the source errored, or `AUTOSTART_VEIL_TIMEOUT_MS` elapsed. The third
 is not optional — a load that neither starts nor errors would otherwise strand
-the viewer under a veil with no controls. Both layers are `pointerEvents="none"`
-so the native transport stays reachable throughout.
+the viewer under a veil with no controls.
+
+**The poster and the veil share ONE predicate — `awaitingAutostart`.** Gating
+the poster on `!hasStarted` instead passes review and ships a subtler version
+of the same bug: on the error and timeout paths the veil lifts while the opaque
+poster stays, sitting over the native transport. `pointerEvents="none"` keeps
+the controls reachable by touch, which is not the same as visible. Whatever
+hides the controls must clear on every path that releases the gate.
 
 ## Component render tests
 

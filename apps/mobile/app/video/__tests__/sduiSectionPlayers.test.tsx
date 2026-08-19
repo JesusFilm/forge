@@ -188,6 +188,22 @@ function labelled(renderer: TestInstance, label: string): boolean {
   )
 }
 
+/**
+ * Whether the autostart poster is on screen. Keyed on the recyclingKey both
+ * routes give it — the playlist rows use `coll-thumb-*`, so this cannot match
+ * one of those by accident.
+ */
+function posterShown(renderer: TestInstance): boolean {
+  return (
+    renderer.root.findAll((node) =>
+      /^sdui-.*-poster-/.test(
+        (node.props as { recyclingKey?: string } | undefined)?.recyclingKey ??
+          "",
+      ),
+    ).length > 0
+  )
+}
+
 function startSession() {
   sessionStore.start({
     videoId: "floating-video",
@@ -263,17 +279,19 @@ describe.each(SCREENS)("%s", (_name, Screen, section) => {
     unsubscribe()
   })
 
-  // Both screens used to open on a tap-to-play poster while every other player
-  // surface autostarted behind a spinner, so the same card behaved differently
-  // depending on which shelf the viewer came from.
-  it("opens on a spinner, never on a play button", async () => {
+  // Neither screen autostarted while every other player surface did, so the
+  // same card behaved differently depending on which shelf the viewer came
+  // from. They failed differently too: the video route sat on a tap-to-play
+  // poster, the collection route had no poster at all.
+  it("opens on a poster and a spinner, never on a play button", async () => {
     const renderer = await renderScreen(Screen, section)
 
     expect(labelled(renderer, "Play video")).toBe(false)
     expect(labelled(renderer, "Loading video")).toBe(true)
+    expect(posterShown(renderer)).toBe(true)
   })
 
-  it("autostarts once the source is applied, and drops the veil", async () => {
+  it("autostarts once the source is applied, then clears poster and veil", async () => {
     const renderer = await renderScreen(Screen, section)
     expect(video.__player.playing).toBe(false)
 
@@ -283,16 +301,22 @@ describe.each(SCREENS)("%s", (_name, Screen, section) => {
 
     expect(video.__player.playing).toBe(true)
     expect(labelled(renderer, "Loading video")).toBe(false)
+    expect(posterShown(renderer)).toBe(false)
   })
 
-  it("drops the veil when the source fails, so the transport is reachable", async () => {
+  // The poster is opaque and sits over the native transport. Clearing the veil
+  // without clearing the poster leaves a viewer looking at a still frame with
+  // no controls and no way out — reachable by touch, invisible to the eye.
+  it("clears the POSTER too when the source fails, not just the veil", async () => {
     const renderer = await renderScreen(Screen, section)
+    expect(posterShown(renderer)).toBe(true)
 
     await act(async () => {
       video.__player.__emit("statusChange", { status: "error" })
     })
 
     expect(labelled(renderer, "Loading video")).toBe(false)
+    expect(posterShown(renderer)).toBe(false)
     expect(video.__player.playing).toBe(false)
   })
 })

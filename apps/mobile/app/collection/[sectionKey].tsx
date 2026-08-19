@@ -166,7 +166,7 @@ function CollectionPlayerContent({
   // Autostarts behind a poster + spinner, the same as every other player
   // surface. Opening this screen IS the viewer asking to watch, so it must not
   // sit on the native transport waiting for a second tap.
-  const { hasStarted, awaitingAutostart } = useAutostartPlayback(
+  const { awaitingAutostart } = useAutostartPlayback(
     player,
     activeStreamingUrl,
     isPlaying,
@@ -379,9 +379,11 @@ function CollectionPlayerContent({
           {...pictureInPictureViewProps({ automatic: false })}
           contentFit="contain"
         />
-        {/* Both layers pass touches through, so the native controls stay
-            reachable if a viewer wants to start a slow load by hand. */}
-        {!hasStarted && activePosterUrl != null && (
+        {/* Poster and veil share ONE predicate. Gating the poster on
+            `!hasStarted` instead would leave it covering the native controls
+            after a failed or timed-out load — visible controls are the
+            recovery affordance, so both must clear together. */}
+        {awaitingAutostart && activePosterUrl != null && (
           <Image
             source={activePosterUrl}
             style={StyleSheet.absoluteFill}

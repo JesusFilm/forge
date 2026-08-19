@@ -130,7 +130,7 @@ function VideoDetailContent({
   // Autostarts behind a poster + spinner, the same as every other player
   // surface. Opening this screen IS the viewer asking to watch, so it must not
   // sit on a play button waiting for a second tap.
-  const { hasStarted, awaitingAutostart } = useAutostartPlayback(
+  const { awaitingAutostart } = useAutostartPlayback(
     player,
     hasValidStream ? streamingUrl : null,
     isPlaying,
@@ -164,9 +164,11 @@ function VideoDetailContent({
               {...pictureInPictureViewProps({ automatic: false })}
               contentFit="contain"
             />
-            {/* Both layers pass touches through, so the native controls stay
-                reachable if a viewer wants to start a slow load by hand. */}
-            {!hasStarted && thumbnailUrl != null && (
+            {/* Poster and veil share ONE predicate. Gating the poster on
+                `!hasStarted` instead would leave it covering the native
+                controls after a failed or timed-out load — visible controls
+                are the recovery affordance, so both must clear together. */}
+            {awaitingAutostart && thumbnailUrl != null && (
               <Image
                 source={thumbnailUrl}
                 style={StyleSheet.absoluteFill}

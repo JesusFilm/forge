@@ -6,9 +6,11 @@ import type { VideoPlayer, VideoPlayerStatus } from "expo-video"
  * Autostart + poster/veil gate for the two viewer-initiated SDUI players
  * (`video/[sectionKey]`, `collection/[sectionKey]`).
  *
- * Those screens used to open on a tap-to-play poster while every other surface
- * in the app autostarts behind a spinner, so the same card read as a different
- * product depending on which shelf it came from. This gives them the
+ * Neither screen autostarted, while every other surface in the app starts
+ * behind a spinner — so the same card read as a different product depending on
+ * which shelf it came from. They failed differently: `video/[sectionKey]` sat
+ * on a tap-to-play poster, and `collection/[sectionKey]` had no poster at all,
+ * just a paused frame under the native transport. This gives both the
  * `VideoPlayer.tsx` behaviour without moving them onto the root host, which
  * they are deliberately excluded from (R19).
  *
