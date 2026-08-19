@@ -1,11 +1,15 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
 
-const { resolveVariantsMock } = vi.hoisted(() => ({
+const { resolveTargetMock, resolveVariantsMock } = vi.hoisted(() => ({
+  resolveTargetMock: vi.fn(),
   resolveVariantsMock: vi.fn(),
 }))
 
+vi.mock("server-only", () => ({}))
+
 vi.mock("./content", () => ({
   resolveWatchLanguagePickerVariants: resolveVariantsMock,
+  resolveWatchUnavailableRecoveryTarget: resolveTargetMock,
 }))
 
 import { resolveWatchUnavailableRecovery } from "./watch-unavailable-recovery-actions"
@@ -40,6 +44,7 @@ let reset: (() => void) | null = null
 afterEach(() => {
   reset?.()
   reset = null
+  resolveTargetMock.mockReset()
   resolveVariantsMock.mockReset()
 })
 
@@ -96,17 +101,21 @@ describe("resolveWatchUnavailableRecovery", () => {
         },
       },
     ])
+    resolveTargetMock.mockResolvedValue({
+      contentTitle: "耶稣受难日直播",
+      imageUrl:
+        "https://imagedelivery.net/account/target/mobileCinematicHigh.jpg",
+    })
 
     const result = await resolveWatchUnavailableRecovery({
       contentSlug: "good-friday-live",
       requestedLanguageSlug: "chinese-simplified",
-      targetImageUrl:
-        "https://imagedelivery.net/account/target/mobileCinematicHigh.jpg",
     })
 
     expect(reads).toBe(1)
     expect(result).toMatchObject({
       verifiedGap: true,
+      contentTitle: "耶稣受难日直播",
       targetImageUrl:
         "https://imagedelivery.net/account/target/mobileCinematicHigh.jpg",
       audioOptions: [
@@ -127,6 +136,129 @@ describe("resolveWatchUnavailableRecovery", () => {
       ],
     })
     expect(resolveVariantsMock).toHaveBeenCalledWith("good-friday-live")
+    expect(resolveTargetMock).toHaveBeenCalledWith(
+      "good-friday-live",
+      "chinese-simplified",
+    )
+  })
+
+  it("keeps admitted audio options when Admin has no recovery snapshot", async () => {
+    reset = setWatchRouteManifestSourceForTest(async () => manifest)
+    resolveVariantsMock.mockResolvedValue([
+      {
+        documentId: "dub-en",
+        hls: "https://example.com/en.m3u8",
+        published: true,
+        language: {
+          slug: "english",
+          name: "English",
+          nativeName: null,
+          bcp47: "en",
+        },
+      },
+    ])
+    resolveTargetMock.mockResolvedValue(null)
+
+    await expect(
+      resolveWatchUnavailableRecovery({
+        contentSlug: "good-friday-live",
+        requestedLanguageSlug: "chinese-simplified",
+      }),
+    ).resolves.toMatchObject({
+      verifiedGap: true,
+      contentTitle: null,
+      targetImageUrl: null,
+      audioOptions: [
+        {
+          slug: "english",
+          href: "/good-friday-live.html",
+        },
+      ],
+    })
+  })
+
+  it("keeps admitted audio options when recovery metadata fails to load", async () => {
+    reset = setWatchRouteManifestSourceForTest(async () => manifest)
+    resolveVariantsMock.mockResolvedValue([
+      {
+        documentId: "dub-en",
+        hls: "https://example.com/en.m3u8",
+        published: true,
+        language: {
+          slug: "english",
+          name: "English",
+          nativeName: null,
+          bcp47: "en",
+        },
+      },
+    ])
+    resolveTargetMock.mockRejectedValue(new Error("Admin metadata unavailable"))
+
+    await expect(
+      resolveWatchUnavailableRecovery({
+        contentSlug: "good-friday-live",
+        requestedLanguageSlug: "chinese-simplified",
+      }),
+    ).resolves.toMatchObject({
+      verifiedGap: true,
+      contentTitle: null,
+      targetImageUrl: null,
+      audioOptions: [
+        {
+          slug: "english",
+          href: "/good-friday-live.html",
+        },
+      ],
+    })
+  })
+
+  it("keeps recovery metadata when audio options fail to load", async () => {
+    reset = setWatchRouteManifestSourceForTest(async () => manifest)
+    resolveVariantsMock.mockRejectedValue(
+      new Error("Admin variants unavailable"),
+    )
+    resolveTargetMock.mockResolvedValue({
+      contentTitle: "耶稣受难日直播",
+      imageUrl:
+        "https://imagedelivery.net/account/target/mobileCinematicHigh.jpg",
+    })
+
+    await expect(
+      resolveWatchUnavailableRecovery({
+        contentSlug: "good-friday-live",
+        requestedLanguageSlug: "chinese-simplified",
+      }),
+    ).resolves.toEqual({
+      verifiedGap: true,
+      contentTitle: "耶稣受难日直播",
+      targetImageUrl:
+        "https://imagedelivery.net/account/target/mobileCinematicHigh.jpg",
+      audioOptions: [],
+    })
+  })
+
+  it.each([
+    ["a non-HTTPS URL", "http://imagedelivery.net/account/target.jpg"],
+    ["an unapproved host", "https://example.com/target.jpg"],
+    ["an overlength URL", `https://imagedelivery.net/${"a".repeat(2_100)}`],
+  ])("rejects %s for recovery artwork", async (_case, imageUrl) => {
+    reset = setWatchRouteManifestSourceForTest(async () => manifest)
+    resolveVariantsMock.mockResolvedValue([])
+    resolveTargetMock.mockResolvedValue({
+      contentTitle: "耶稣受难日直播",
+      imageUrl,
+    })
+
+    await expect(
+      resolveWatchUnavailableRecovery({
+        contentSlug: "good-friday-live",
+        requestedLanguageSlug: "chinese-simplified",
+      }),
+    ).resolves.toMatchObject({
+      verifiedGap: true,
+      contentTitle: "耶稣受难日直播",
+      targetImageUrl: null,
+    })
   })
 
   it("fails closed when the target gap cannot be proven", async () => {
@@ -142,9 +274,11 @@ describe("resolveWatchUnavailableRecovery", () => {
       }),
     ).resolves.toEqual({
       verifiedGap: false,
+      contentTitle: null,
       targetImageUrl: null,
       audioOptions: [],
     })
     expect(resolveVariantsMock).not.toHaveBeenCalled()
+    expect(resolveTargetMock).not.toHaveBeenCalled()
   })
 })

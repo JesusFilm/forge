@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server"
+import { PUBLIC_WATCH_LANGUAGE_SLUGS } from "@forge/watch-url-policy/routes"
 import {
   DEFAULT_LOCALE,
   isLocale,
@@ -41,6 +42,10 @@ import {
   type WatchRouteManifest,
   type WatchRouteManifestRoute,
 } from "@/lib/watch-route-manifest"
+import {
+  WATCH_INTERNAL_REWRITE_HEADER,
+  WATCH_SUBTITLE_INTENT_REWRITE_HEADER,
+} from "@/lib/watch-rewrite-headers"
 
 // Structural subset of `NextRequest` that `proxy()` actually consumes.
 // Production `NextRequest` from `next/server` satisfies this shape via
@@ -58,9 +63,12 @@ const MAX_PATH_LEN = 2048
 const SAFE_PUBLIC_PATH = /^\/[A-Za-z0-9._\-/]+$/
 const DEMO_PREFIXES = new Set(["demo-search", "demo-recommendations"])
 const WATCH_UNAVAILABLE_SENTINEL_PATH = "/unavailable/404"
-export const WATCH_INTERNAL_REWRITE_HEADER = "x-forge-watch-internal-rewrite"
-export const WATCH_SUBTITLE_INTENT_REWRITE_HEADER =
-  "x-forge-watch-subtitle-intent-rewrite"
+const WATCH_ORDINARY_NOT_FOUND_INTERNAL_PATHS = new Set(
+  [DEFAULT_LOCALE, ...PUBLIC_WATCH_LANGUAGE_SLUGS].map((languageSlug) => {
+    const { locale, htmlLang } = resolveWatchLocaleIdentity(languageSlug)
+    return `/${locale}/${htmlLang}/404`
+  }),
+)
 
 type InternalPrefixDecision =
   | { kind: "none" }
@@ -460,11 +468,17 @@ function subtitleIntentForRewrite(
   return subtitleLanguageSlug
 }
 
-function buildNotFound(request: ProxyRequest): NextResponse {
+function buildNotFound(
+  request: ProxyRequest,
+  identity?: Pick<
+    Extract<RewriteDecision, { kind: "rewrite" }>,
+    "locale" | "htmlLang"
+  >,
+): NextResponse {
   return rewriteToInternal(request, {
     kind: "rewrite",
-    locale: DEFAULT_LOCALE,
-    htmlLang: DEFAULT_LOCALE,
+    locale: identity?.locale ?? DEFAULT_LOCALE,
+    htmlLang: identity?.htmlLang ?? DEFAULT_LOCALE,
     pathname: "/404",
   })
 }
@@ -625,7 +639,7 @@ async function isAdmittedInternalRewrite(
   claimedPublicPathname: string,
 ): Promise<boolean> {
   if (claimedPublicPathname === "/404") {
-    return pathname === `/${DEFAULT_LOCALE}/${DEFAULT_LOCALE}/404`
+    return WATCH_ORDINARY_NOT_FOUND_INTERNAL_PATHS.has(pathname)
   }
   if (
     !claimedPublicPathname.startsWith("/") ||
@@ -725,7 +739,7 @@ export async function proxy(request: ProxyRequest): Promise<NextResponse> {
   if (rewrite.kind === "not-found") return buildNotFound(request)
   const admission = await classifyManifestAdmission(rewrite)
   if (admission.kind === "not-found") {
-    return buildNotFound(request)
+    return buildNotFound(request, rewrite)
   }
   if (admission.kind === "known-content-language-gap") {
     return buildUnavailableLanguageNotFound(request, rewrite)

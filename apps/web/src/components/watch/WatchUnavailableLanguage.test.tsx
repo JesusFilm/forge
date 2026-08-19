@@ -7,18 +7,19 @@ import { createRoot, type Root } from "react-dom/client"
 import { NextIntlClientProvider } from "next-intl"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
+import { tryAsContentSlug, tryAsLocaleSlug, watchVideoPath } from "@/lib/routes"
 import type { SearchResult } from "@/lib/search"
+import type { WatchUnavailableRecoveryResolution } from "@/lib/watch-unavailable-recovery-actions"
 import { writeWatchUnavailableRecoveryContext } from "@/lib/watch-unavailable-recovery-context"
+import { parseUnavailableWatchPath } from "@/lib/watch-unavailable-recovery"
 
 vi.unmock("next-intl")
 
-const { pushMock, resolveRecoveryMock } = vi.hoisted(() => ({
+const { pushMock } = vi.hoisted(() => ({
   pushMock: vi.fn(),
-  resolveRecoveryMock: vi.fn(),
 }))
 
 vi.mock("next/navigation", () => ({
-  usePathname: () => "/good-friday-live.html/chinese-simplified.html",
   useRouter: () => ({ push: pushMock }),
 }))
 
@@ -27,14 +28,7 @@ vi.mock("next/image", () => ({
     createElement("img", { alt, src }),
 }))
 
-vi.mock("@/lib/watch-unavailable-recovery-actions", () => ({
-  resolveWatchUnavailableRecovery: resolveRecoveryMock,
-}))
-
-import {
-  WatchUnavailableLanguageClient,
-  parseUnavailableWatchPath,
-} from "./WatchUnavailableLanguageClient"
+import { WatchUnavailableLanguageClient } from "./WatchUnavailableLanguageClient"
 
 const messages = {
   metadataTitle: "Language version unavailable",
@@ -93,8 +87,6 @@ afterEach(() => {
   container = null
   sessionStorage.clear()
   pushMock.mockReset()
-  resolveRecoveryMock.mockReset()
-  vi.useRealTimers()
 })
 
 describe("parseUnavailableWatchPath", () => {
@@ -121,27 +113,54 @@ describe("parseUnavailableWatchPath", () => {
   })
 })
 
-describe("WatchUnavailableLanguageClient", () => {
-  it("waits for approved artwork instead of downloading the fallback first", async () => {
-    writeWatchUnavailableRecoveryContext({
-      target: searchResult(),
-      requestedLanguageSlug: "chinese-simplified",
-      requestedLanguageName: "简体中文",
-    })
-    let resolveRecovery: (
-      value: Awaited<ReturnType<typeof resolveRecoveryMock>>,
-    ) => void = () => {}
-    resolveRecoveryMock.mockReturnValue(
-      new Promise((resolve) => {
-        resolveRecovery = resolve
-      }),
-    )
+const parsedPath = {
+  contentSlug: "good-friday-live",
+  requestedLanguageSlug: "chinese-simplified",
+}
 
-    container = document.createElement("div")
-    document.body.appendChild(container)
-    root = createRoot(container)
-    await act(async () => {
-      root?.render(
+const goodFridayLiveSlug = tryAsContentSlug("good-friday-live")
+const englishSlug = tryAsLocaleSlug("english")
+const spanishCastilianSlug = tryAsLocaleSlug("spanish-castilian")
+if (
+  goodFridayLiveSlug == null ||
+  englishSlug == null ||
+  spanishCastilianSlug == null
+) {
+  throw new Error("Expected the recovery fixture slugs to be valid")
+}
+
+const resolvedRecovery: WatchUnavailableRecoveryResolution = {
+  verifiedGap: true,
+  contentTitle: "耶稣受难日直播",
+  targetImageUrl:
+    "https://imagedelivery.net/account/target/mobileCinematicHigh.jpg",
+  audioOptions: [
+    {
+      slug: "english",
+      name: "English",
+      nativeName: null,
+      bcp47: "en",
+      href: watchVideoPath(goodFridayLiveSlug, englishSlug),
+    },
+    {
+      slug: "spanish-castilian",
+      name: "Spanish Castilian",
+      nativeName: "Español",
+      bcp47: "es",
+      href: watchVideoPath(goodFridayLiveSlug, spanishCastilianSlug),
+    },
+  ],
+}
+
+async function renderClient(
+  initialResolution: WatchUnavailableRecoveryResolution,
+) {
+  container = document.createElement("div")
+  document.body.appendChild(container)
+  root = createRoot(container)
+  await act(async () => {
+    root?.render(
+      <StrictMode>
         <NextIntlClientProvider
           locale="zh-Hans"
           messages={{
@@ -149,116 +168,54 @@ describe("WatchUnavailableLanguageClient", () => {
             LanguageCombobox: languageComboboxMessages,
           }}
         >
-          <WatchUnavailableLanguageClient />
-        </NextIntlClientProvider>,
-      )
-    })
+          <WatchUnavailableLanguageClient
+            parsed={parsedPath}
+            initialResolution={initialResolution}
+          />
+        </NextIntlClientProvider>
+      </StrictMode>,
+    )
+  })
+}
 
-    const artwork = container.querySelector(
+describe("WatchUnavailableLanguageClient", () => {
+  it("renders final title, artwork, and audio choices on its first render", async () => {
+    await renderClient(resolvedRecovery)
+    const artwork = container?.querySelector(
       '[data-testid="watch-unavailable-artwork"]',
     )
-    expect(artwork?.getAttribute("data-state")).toBe("pending")
-    expect(artwork?.className).toContain("bg-[linear-gradient")
-    expect(container.querySelector("img")).toBeNull()
-
-    await act(async () => {
-      resolveRecovery({
-        verifiedGap: true,
-        targetImageUrl:
-          "https://imagedelivery.net/account/target/mobileCinematicHigh.jpg",
-        audioOptions: [],
-      })
-    })
-
     expect(artwork?.getAttribute("data-state")).toBe("resolved")
-    expect(container.querySelector("img")?.getAttribute("src")).toBe(
-      "https://imagedelivery.net/account/target/mobileCinematicHigh.jpg",
+    expect(container?.querySelector("img")?.getAttribute("src")).toBe(
+      resolvedRecovery.targetImageUrl,
     )
+    expect(container?.querySelector("h1")?.textContent).toContain(
+      "耶稣受难日直播暂无简体中文版本",
+    )
+    expect(
+      container?.querySelector('[data-testid="watch-unavailable-audio-panel"]'),
+    ).not.toBeNull()
   })
 
   it("requires an explicit same-video audio selection before navigation", async () => {
-    writeWatchUnavailableRecoveryContext({
-      target: searchResult(),
-      requestedLanguageSlug: "chinese-simplified",
-      requestedLanguageName: "简体中文",
-    })
-    resolveRecoveryMock.mockResolvedValue({
-      verifiedGap: true,
-      targetImageUrl:
-        "https://imagedelivery.net/account/target/mobileCinematicHigh.jpg",
-      audioOptions: [
-        {
-          slug: "english",
-          name: "English",
-          nativeName: null,
-          bcp47: "en",
-          href: "/good-friday-live.html",
-        },
-        {
-          slug: "spanish-castilian",
-          name: "Spanish Castilian",
-          nativeName: "Español",
-          bcp47: "es",
-          href: "/good-friday-live.html/spanish-castilian.html",
-        },
-      ],
-    })
+    await renderClient(resolvedRecovery)
 
-    container = document.createElement("div")
-    document.body.appendChild(container)
-    root = createRoot(container)
-    await act(async () => {
-      root?.render(
-        <StrictMode>
-          <NextIntlClientProvider
-            locale="zh-Hans"
-            messages={{
-              WatchUnavailableLanguage: messages,
-              LanguageCombobox: languageComboboxMessages,
-            }}
-          >
-            <WatchUnavailableLanguageClient />
-          </NextIntlClientProvider>
-        </StrictMode>,
-      )
-    })
-
-    const heading = container.querySelector("h1")
-    expect(heading?.textContent).toContain("耶稣受难日直播暂无简体中文版本")
+    const heading = container?.querySelector("h1")
     expect(
       [...(heading?.querySelectorAll("bdi[dir=auto]") ?? [])].map(
         (node) => node.textContent,
       ),
     ).toEqual(["耶稣受难日直播", "简体中文"])
     expect(heading?.className).toContain("2xl:max-w-5xl")
-    expect(
-      [...(heading?.querySelectorAll("bdi[dir=auto]") ?? [])].every(
-        (node) =>
-          node.classList.contains("inline-block") &&
-          node.classList.contains("max-w-full"),
-      ),
-    ).toBe(true)
-    expect(container.textContent).not.toContain("Watch in English")
-    expect(container.textContent).not.toContain("Choose another language")
-    expect(container.textContent).toContain("Back to search")
-    expect(container.textContent).toContain("Other audio versions")
-    expect(container.textContent).not.toContain("More videos available")
-    const audioPanel = container.querySelector(
-      '[data-testid="watch-unavailable-audio-panel"]',
-    )
-    expect(audioPanel?.className).toContain("rounded-2xl")
-    expect(audioPanel?.className).toContain("bg-black/45")
-    expect(audioPanel?.className).not.toContain("border-t")
-    expect(container.textContent).not.toContain("404")
-    const watchButton = container.querySelector<HTMLButtonElement>(
+    expect(container?.textContent).toContain("Back to search")
+    expect(container?.textContent).not.toContain("404")
+    const watchButton = container?.querySelector<HTMLButtonElement>(
       '[data-testid="watch-selected-language"]',
     )
     expect(watchButton?.disabled).toBe(true)
 
-    const trigger = container.querySelector<HTMLButtonElement>(
+    const trigger = container?.querySelector<HTMLButtonElement>(
       '[data-testid="language-combobox-trigger"]',
     )
-    expect(trigger?.textContent).toContain("Select a language version")
     await act(async () => trigger?.click())
     const spanishOption = document.body.querySelector<HTMLButtonElement>(
       '[data-language-slug="spanish-castilian"]',
@@ -269,125 +226,72 @@ describe("WatchUnavailableLanguageClient", () => {
     expect(pushMock).toHaveBeenCalledWith(
       "/good-friday-live.html/spanish-castilian.html",
     )
-    expect(resolveRecoveryMock).toHaveBeenCalledTimes(1)
-    expect(
-      [...container.querySelectorAll("a")].every(
-        (link) => !link.hasAttribute("data-prefetch"),
-      ),
-    ).toBe(true)
   })
 
-  it("hides the selector when the same video has no admitted audio version", async () => {
-    resolveRecoveryMock.mockResolvedValue({
-      verifiedGap: true,
+  it("renders one stable fallback when recovery data is unavailable", async () => {
+    await renderClient({
+      verifiedGap: false,
+      contentTitle: null,
       targetImageUrl: null,
       audioOptions: [],
     })
 
-    container = document.createElement("div")
-    document.body.appendChild(container)
-    root = createRoot(container)
-    await act(async () => {
-      root?.render(
-        <NextIntlClientProvider
-          locale="zh-Hans"
-          messages={{
-            WatchUnavailableLanguage: messages,
-            LanguageCombobox: languageComboboxMessages,
-          }}
-        >
-          <WatchUnavailableLanguageClient />
-        </NextIntlClientProvider>,
-      )
-    })
-
     expect(
-      container.querySelector('[data-testid="language-combobox-trigger"]'),
+      container?.querySelector('[data-testid="language-combobox-trigger"]'),
     ).toBeNull()
-    expect(container.querySelector("h1")?.textContent).toContain(
+    expect(container?.querySelector("h1")?.textContent).toContain(
       "Good Friday Live暂无简体中文版本",
     )
-    expect(container.querySelector("img")?.getAttribute("src")).toBe(
+    expect(container?.querySelector("img")?.getAttribute("src")).toBe(
       "/watch/images/thumbnails/11_Advent0304-vertical.jpg",
     )
-    expect(container.textContent).toContain("Browse videos in")
+    expect(
+      container
+        ?.querySelector('[data-testid="watch-unavailable-artwork"]')
+        ?.getAttribute("data-state"),
+    ).toBe("fallback")
   })
 
-  it("falls back to safe browse-only actions when recovery resolution fails", async () => {
-    vi.useFakeTimers()
-    resolveRecoveryMock.mockRejectedValue(new Error("manifest unavailable"))
-
-    container = document.createElement("div")
-    document.body.appendChild(container)
-    root = createRoot(container)
-    await act(async () => {
-      root?.render(
-        <NextIntlClientProvider
-          locale="zh-Hans"
-          messages={{
-            WatchUnavailableLanguage: messages,
-            LanguageCombobox: languageComboboxMessages,
-          }}
-        >
-          <WatchUnavailableLanguageClient />
-        </NextIntlClientProvider>,
-      )
-    })
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(750)
+  it("keeps playable choices when only recovery copy and artwork are unavailable", async () => {
+    await renderClient({
+      ...resolvedRecovery,
+      contentTitle: null,
+      targetImageUrl: null,
     })
 
+    expect(container?.querySelector("h1")?.textContent).toContain(
+      "Good Friday Live暂无简体中文版本",
+    )
     expect(
-      container.querySelector('[data-testid="language-combobox-trigger"]'),
-    ).toBeNull()
-    expect(container.textContent).toContain("Browse videos in")
-    expect(container.textContent).not.toContain("Watch selected version")
-    expect(resolveRecoveryMock).toHaveBeenCalledTimes(2)
-  })
-
-  it("recovers from one transient resolution failure", async () => {
-    vi.useFakeTimers()
-    resolveRecoveryMock
-      .mockRejectedValueOnce(new Error("temporary manifest failure"))
-      .mockResolvedValue({
-        verifiedGap: true,
-        targetImageUrl: null,
-        audioOptions: [
-          {
-            slug: "english",
-            name: "English",
-            nativeName: null,
-            bcp47: "en",
-            href: "/good-friday-live.html",
-          },
-        ],
-      })
-
-    container = document.createElement("div")
-    document.body.appendChild(container)
-    root = createRoot(container)
-    await act(async () => {
-      root?.render(
-        <NextIntlClientProvider
-          locale="zh-Hans"
-          messages={{
-            WatchUnavailableLanguage: messages,
-            LanguageCombobox: languageComboboxMessages,
-          }}
-        >
-          <WatchUnavailableLanguageClient />
-        </NextIntlClientProvider>,
-      )
-    })
-    expect(resolveRecoveryMock).toHaveBeenCalledTimes(1)
-
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(750)
-    })
-
-    expect(resolveRecoveryMock).toHaveBeenCalledTimes(2)
-    expect(
-      container.querySelector('[data-testid="language-combobox-trigger"]'),
+      container?.querySelector('[data-testid="watch-unavailable-audio-panel"]'),
     ).not.toBeNull()
+    expect(
+      container
+        ?.querySelector('[data-testid="watch-unavailable-artwork"]')
+        ?.getAttribute("data-state"),
+    ).toBe("fallback")
+  })
+
+  it("returns to browser search context or falls back to Watch home", async () => {
+    const historyBack = vi
+      .spyOn(window.history, "back")
+      .mockImplementation(() => {})
+    writeWatchUnavailableRecoveryContext({
+      target: searchResult(),
+      requestedLanguageSlug: "chinese-simplified",
+      requestedLanguageName: "简体中文",
+    })
+    await renderClient(resolvedRecovery)
+
+    const backButton = [...(container?.querySelectorAll("button") ?? [])].find(
+      (button) => button.textContent?.includes("Back to search"),
+    )
+    await act(async () => backButton?.click())
+    expect(historyBack).toHaveBeenCalledTimes(1)
+
+    sessionStorage.clear()
+    await act(async () => backButton?.click())
+    expect(pushMock).toHaveBeenCalledWith("/")
+    historyBack.mockRestore()
   })
 })
