@@ -1,32 +1,19 @@
 /**
- * Pins the RUM configuration the provider actually hands to the SDK.
+ * Pins the RUM configuration the provider hands to the SDK.
  *
- * `tsc` already rejects a mis-spelled key (TS2561, verified 2026-08-20), so
- * that is NOT what this suite guards. It guards the VALUE: deleting the
+ * `tsc` already rejects a mis-spelled key (TS2561, verified 2026-08-20), so that
+ * is NOT what this suite guards. It guards the VALUE: deleting the
  * `longTaskThresholdMs` line, or setting it to 0, typechecks cleanly and
  * silently returns the JS thread to no long-task reporting at all.
  *
- * The assertions read a REAL `DatadogProviderConfiguration` — only
- * `DatadogProvider` itself is stubbed — so they pin what the SDK retains,
- * not what a mock was told to echo back.
+ * SCOPE. Only `DatadogProvider` is stubbed, so the captured object is a real
+ * `RumConfiguration` and its `Object.assign` retention is genuinely exercised.
+ * The suite stops there: `adaptLongTaskThreshold` runs later, inside
+ * `DdSdkReactNative.initialize`, and nothing here reaches it.
  *
- * apps/mobile's tsconfig maps `react` to its .d.ts and jest-expo mirrors
- * tsconfig paths into jest's moduleNameMapper, so the mocks below re-point
- * `react` at the real package (see AccountSection.test.tsx).
+ * No `jest.mock("react", …)` preamble: since SDK 57 the package.json jest config
+ * pins `^react$` and both runtimes globally (see `test-utils/rnTestRenderer`).
  */
-
-jest.mock("react", () => {
-  const r = require as unknown as NodeRequireLike
-  const path = r("path") as NodePath
-  return jest.requireActual(path.dirname(r.resolve("react/package.json")))
-})
-jest.mock("react/jsx-runtime", () => {
-  const r = require as unknown as NodeRequireLike
-  const path = r("path") as NodePath
-  return jest.requireActual(
-    path.join(path.dirname(r.resolve("react/package.json")), "jsx-runtime.js"),
-  )
-})
 
 jest.mock("../../env", () => ({
   env: {
@@ -81,16 +68,7 @@ jest.mock("@datadog/mobile-react-native-session-replay", () => ({
 import { act } from "react"
 
 import { MobileDatadogProvider } from "../DatadogRum"
-import {
-  TestRenderer,
-  unmount,
-  type NodePath,
-  type NodeRequireLike,
-} from "../../test-utils/rnTestRenderer"
-
-/** The SDK's own bounds, from `utils/longTasksUtils`: below 100 or above 5000 is rewritten. */
-const SDK_MIN_LONG_TASK_MS = 100
-const SDK_MAX_LONG_TASK_MS = 5000
+import { TestRenderer, unmount } from "../../test-utils/rnTestRenderer"
 
 type CapturedRumConfiguration = {
   longTaskThresholdMs: number
@@ -126,22 +104,17 @@ describe("MobileDatadogProvider — JS long task reporting", () => {
 
     expect(rumConfiguration.longTaskThresholdMs).toBe(500)
   })
+})
 
-  it("picks a threshold the SDK passes through without rewriting it", async () => {
+/**
+ * Not coverage of this change — a drift alarm on a vendor default it reasons
+ * from. Reverting the whole feature leaves this green, by design: it fails only
+ * when an SDK bump moves the default out from under the chosen 500.
+ */
+describe("Datadog SDK defaults this change relies on", () => {
+  it("reports native long tasks at 200ms with no configuration", async () => {
     const rumConfiguration = await renderAndCaptureRumConfiguration()
 
-    expect(rumConfiguration.longTaskThresholdMs).toBeGreaterThanOrEqual(
-      SDK_MIN_LONG_TASK_MS,
-    )
-    expect(rumConfiguration.longTaskThresholdMs).toBeLessThanOrEqual(
-      SDK_MAX_LONG_TASK_MS,
-    )
-  })
-
-  it("leaves native long task reporting on the SDK default", async () => {
-    const rumConfiguration = await renderAndCaptureRumConfiguration()
-
-    // Native stalls are already collected at 200ms; only the JS thread was dark.
     expect(rumConfiguration.nativeLongTaskThresholdMs).toBe(200)
   })
 })
