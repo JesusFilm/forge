@@ -1,13 +1,13 @@
 # Seeker eval suite — build review
 
-> **Current experiment review path — 2026-08-10.** The historical baseline
-> below records the eval-suite build, but its prompt provenance is fallback and
-> it is not official managed-prompt promotion evidence. New official work uses
+> **Current experiment review path — 2026-08-17.** The canonical benchmark is
+> exact managed `seeker-system` version 3, promoted from the successful
+> `2026-08-10-006-seeker-source-attribution-prompt` experiment. New official work uses
 > [`../../../evals/experiments/README.md`](../../../evals/experiments/README.md):
 > review the complete immutable attempt, record a human terminal verdict, and
 > commit every outcome. A successful eligible experiment is consumed only by a
 > separate promotion change that validates the evidence commit and materializes
-> the exact accepted identity as the production benchmark.
+> the exact accepted identity as the next production benchmark.
 
 > Written 2026-08-03, for the maintainer's review of branch
 > `feat/seeker-eval-suite` (3 milestone commits, no PR). Everything here was

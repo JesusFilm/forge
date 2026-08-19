@@ -116,6 +116,10 @@ export const HomeTopBar = memo(function HomeTopBar({
           onPress={onSearchPress}
           onChromeFocus={onChromeFocus}
           focusable={!hidden}
+          // Owns Home's first-mount focus (mount-only; back-nav restore is
+          // focusMemory's job). The bar renders in every screen state, so the
+          // claim also covers the skeleton/error/empty branches.
+          hasTVPreferredFocus
           nodeRef={onSearchTabNode}
           onFocusNode={onFocusNode}
         />
@@ -183,6 +187,8 @@ type TopBarTabProps = {
   onPress: () => void
   onChromeFocus: () => void
   focusable: boolean
+  /** One-shot mount-only initial-focus claim (Search tab: the screen default). */
+  hasTVPreferredFocus?: boolean
   /** Lifts this tab's native node up so the hero can target it via nextFocusUp. */
   nodeRef?: (node: ViewType | null) => void
   /** Reports this tab's node on focus so the screen can re-focus it after a nav push/pop. */
@@ -199,6 +205,7 @@ function TopBarTab({
   onPress,
   onChromeFocus,
   focusable,
+  hasTVPreferredFocus,
   nodeRef,
   onFocusNode,
 }: TopBarTabProps) {
@@ -258,6 +265,7 @@ function TopBarTab({
       }}
       onBlur={() => setFocused(false)}
       focusable={focusable}
+      hasTVPreferredFocus={hasTVPreferredFocus}
       testID={testID}
       accessibilityRole="tab"
       accessibilityLabel={accessibilityLabel}

@@ -1,6 +1,7 @@
 import {
   deriveMuxThumbnailUrl,
   extractMuxPlaybackId,
+  isSameMuxAsset,
   muxHlsUrlFromPlaybackId,
   muxThumbnailFromPlaybackId,
 } from "../muxThumbnail"
@@ -67,6 +68,52 @@ describe("muxThumbnailFromPlaybackId", () => {
     expect(muxThumbnailFromPlaybackId(null)).toBeNull()
     expect(muxThumbnailFromPlaybackId(undefined)).toBeNull()
     expect(muxThumbnailFromPlaybackId("")).toBeNull()
+  })
+})
+
+describe("isSameMuxAsset", () => {
+  it("matches two URL shapes that carry the same playback id", () => {
+    // Seed URL vs resolved variant: same asset, different string.
+    expect(
+      isSameMuxAsset(
+        "https://stream.mux.com/abc123XYZ.m3u8",
+        "https://stream.mux.com/abc123XYZ.m3u8?redundant_streams=true",
+      ),
+    ).toBe(true)
+  })
+
+  it("rejects different playback ids", () => {
+    expect(
+      isSameMuxAsset(
+        "https://stream.mux.com/abc123.m3u8",
+        "https://stream.mux.com/def456.m3u8",
+      ),
+    ).toBe(false)
+  })
+
+  it("rejects null on either side", () => {
+    expect(isSameMuxAsset(null, "https://stream.mux.com/abc123.m3u8")).toBe(
+      false,
+    )
+    expect(isSameMuxAsset("https://stream.mux.com/abc123.m3u8", null)).toBe(
+      false,
+    )
+    expect(isSameMuxAsset(null, null)).toBe(false)
+  })
+
+  it("rejects non-Mux URLs, even two identical ones", () => {
+    expect(
+      isSameMuxAsset(
+        "https://example.com/video.m3u8",
+        "https://stream.mux.com/abc123.m3u8",
+      ),
+    ).toBe(false)
+    expect(
+      isSameMuxAsset(
+        "https://example.com/video.m3u8",
+        "https://example.com/video.m3u8",
+      ),
+    ).toBe(false)
   })
 })
 

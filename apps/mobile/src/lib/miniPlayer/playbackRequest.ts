@@ -23,6 +23,12 @@ import {
 } from "./store"
 import { canOriginateRoutePattern } from "./presentation"
 import { extractMuxPlaybackId } from "../muxThumbnail"
+import type { VideoPlayerCast } from "../../components/watch/VideoPlayer"
+import type { ProgressFeed } from "../../hooks/useManagedVideoPlayer"
+
+/** Re-exported so the watch screen can type its cast progress ref without
+ *  naming the adapter — the ownership guard reads that name as a player mount. */
+export type { ProgressFeed }
 
 /** Window coordinates of the surface the video view is drawn into (KTD17). */
 export type PlaybackRect = {
@@ -61,6 +67,17 @@ export type PlaybackRequest = {
   progressVideoSlug: string | null
   progressLanguageSlug: string | null
   onToggleFullscreen: (() => void) | null
+  /** True while a cast session drives this surface (KTD4). The one cast fact
+   *  the root adapter and session admission read; compared by value, so a
+   *  session starting republishes the slot. */
+  castActive: boolean
+  /** The surface's cast wiring, forwarded to the chrome. Identity-compared:
+   *  `useCastPlayback` rebuilds it every render, which is how the chrome
+   *  follows the receiver's ~1Hz position. */
+  cast: VideoPlayerCast | null
+  /** The screen's cast progress facade slot; the host fills it from the root
+   *  adapter (KTD6). */
+  progressFeedRef: { current: ProgressFeed | null } | null
   session: PlaybackSessionDescriptor | null
 }
 
@@ -118,10 +135,15 @@ export function shouldOriginateSession(input: {
   hasPlaybackStarted: boolean
   hasReachedEnd: boolean
   hasSource: boolean
+  castActive: boolean
   session: PlaybackSessionDescriptor | null
 }): boolean {
   if (!input.hasPlaybackStarted) return false
   if (input.hasReachedEnd) return false
+  // Casting is not local playback. `hasPlaybackStarted` latched before the
+  // session froze the local player, so a window would scrub a still playhead
+  // and its play button would start local audio over the receiver.
+  if (input.castActive) return false
   if (!input.hasSource) return false
   if (input.session == null) return false
   return canOriginateRoutePattern(input.session.originPattern)
@@ -200,6 +222,9 @@ export function samePlaybackRequest(
     a.progressVideoSlug === b.progressVideoSlug &&
     a.progressLanguageSlug === b.progressLanguageSlug &&
     a.onToggleFullscreen === b.onToggleFullscreen &&
+    a.castActive === b.castActive &&
+    a.cast === b.cast &&
+    a.progressFeedRef === b.progressFeedRef &&
     sameSession(a.session, b.session)
   )
 }
@@ -405,6 +430,7 @@ export function createPlaybackRequestStore(deps: {
             hasPlaybackStarted: facts.hasPlaybackStarted(),
             hasReachedEnd: facts.hasReachedEnd(),
             hasSource: slot.request.streamingUrl != null,
+            castActive: slot.request.castActive,
             session: descriptor,
           })
         ) {

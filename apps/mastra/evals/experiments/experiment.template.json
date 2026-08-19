@@ -10,7 +10,7 @@
   },
   "comparisonAxis": "prompt",
   "productionBenchmark": {
-    "path": "apps/mastra/evals/results/seeker-baseline/answers.json",
+    "path": "apps/mastra/evals/results/seeker-baseline/resolved-identity.json",
     "identity": {
       "prompt": {
         "provider": "langfuse",

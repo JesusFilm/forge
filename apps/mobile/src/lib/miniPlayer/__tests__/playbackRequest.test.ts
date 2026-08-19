@@ -56,6 +56,9 @@ function makeRequest(
     progressVideoSlug: null,
     progressLanguageSlug: "english",
     onToggleFullscreen: null,
+    castActive: false,
+    cast: null,
+    progressFeedRef: null,
     session: SESSION_A,
     ...overrides,
   }
@@ -91,6 +94,7 @@ describe("shouldOriginateSession (the admission predicate)", () => {
         hasPlaybackStarted: false,
         hasReachedEnd: false,
         hasSource: true,
+        castActive: false,
         session: SESSION_A,
       }),
     ).toBe(false)
@@ -102,6 +106,7 @@ describe("shouldOriginateSession (the admission predicate)", () => {
         hasPlaybackStarted: true,
         hasReachedEnd: false,
         hasSource: true,
+        castActive: false,
         session: null,
       }),
     ).toBe(false)
@@ -113,6 +118,7 @@ describe("shouldOriginateSession (the admission predicate)", () => {
         hasPlaybackStarted: true,
         hasReachedEnd: false,
         hasSource: true,
+        castActive: false,
         session: { ...SESSION_A, originPattern: "video/[sectionKey]" },
       }),
     ).toBe(false)
@@ -126,6 +132,7 @@ describe("shouldOriginateSession (the admission predicate)", () => {
         hasPlaybackStarted: true,
         hasReachedEnd: true,
         hasSource: true,
+        castActive: false,
         session: SESSION_A,
       }),
     ).toBe(false)
@@ -140,6 +147,7 @@ describe("shouldOriginateSession (the admission predicate)", () => {
         hasPlaybackStarted: true,
         hasReachedEnd: false,
         hasSource: false,
+        castActive: false,
         session: SESSION_A,
       }),
     ).toBe(false)
@@ -151,9 +159,28 @@ describe("shouldOriginateSession (the admission predicate)", () => {
         hasPlaybackStarted: true,
         hasReachedEnd: false,
         hasSource: true,
+        castActive: false,
         session: SESSION_A,
       }),
     ).toBe(true)
+  })
+
+  it("refuses a casting surface even with every other term satisfied", () => {
+    // Casting is not local playback: hasPlaybackStarted latched before the
+    // session froze the player, so a window would scrub a still playhead.
+    const admissible = {
+      hasPlaybackStarted: true,
+      hasReachedEnd: false,
+      hasSource: true,
+      session: SESSION_A,
+    }
+    // Anti-vacuous: the same input without the cast term is admitted.
+    expect(shouldOriginateSession({ ...admissible, castActive: false })).toBe(
+      true,
+    )
+    expect(shouldOriginateSession({ ...admissible, castActive: true })).toBe(
+      false,
+    )
   })
 })
 
@@ -410,6 +437,36 @@ describe("a surface that never originates a session (the series trailer)", () =>
     expect(store.getSnapshot().slotId).toBeNull()
     expect(store.getSnapshot().request?.streamingUrl).toContain("assetAAA111")
     expect(sessionStore.getSnapshot().session?.videoId).toBe("video-a")
+  })
+
+  it("leaves no session and no retained request when a casting slot detaches", () => {
+    // Backing out of /watch already ends the receiver session (KTD7), so a
+    // window here would be a lie: a frozen scrubber and a play button that
+    // starts local audio over a receiver being torn down.
+    const { store, sessionStore } = makeStores({
+      started: true,
+      position: 42,
+      duration: 100,
+    })
+    store.detachSlot(store.attachSlot(makeRequest({ castActive: true })))
+    expect(sessionStore.getSnapshot().session).toBeNull()
+    expect(store.getSnapshot().request).toBeNull()
+
+    // Control: the identical detach without cast DOES retain and open a window.
+    store.detachSlot(store.attachSlot(makeRequest({ castActive: false })))
+    expect(sessionStore.getSnapshot().session).not.toBeNull()
+    expect(store.getSnapshot().request).not.toBeNull()
+  })
+
+  it("republishes when only the cast wiring changed", () => {
+    // The silent-death path: every other field is stable during a session, so
+    // without the identity compare the host freezes on the first cast object.
+    const { store } = makeStores({ started: true, position: 1, duration: 10 })
+    const first = { onCastPress: () => {} } as never
+    const id = store.attachSlot(makeRequest({ cast: first, castActive: true }))
+    const second = { onCastPress: () => {} } as never
+    store.updateSlot(id, makeRequest({ cast: second, castActive: true }))
+    expect(store.getSnapshot().request?.cast).toBe(second)
   })
 
   it("takes the player, and its autostart, once the dismissed window has gone", () => {

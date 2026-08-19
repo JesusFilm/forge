@@ -322,7 +322,11 @@ function ActivePlaybackHost({
   // What the player verifiably HOLDS (applied, not merely requested): the
   // admission fallback below may only trust `player.playing` for this source.
   const appliedSourceUrlRef = useRef<string | null>(null)
-  const { player, isPlaying } = useManagedVideoPlayer(
+  // Cast is the SLOT's, not the player's: a retained or PiP-held request from a
+  // departed screen carries a session that screen's unmount already ended.
+  const slotOwned = snapshot.slotId != null
+  const castActive = slotOwned && request.castActive
+  const { player, isPlaying, progressFeed } = useManagedVideoPlayer(
     sourceUrl,
     (p) => {
       // Favor a fast first frame over deep prebuffer — JFP audience skews to
@@ -336,11 +340,18 @@ function ActivePlaybackHost({
     {
       progress: progressIdentity,
       ownsSession: true,
+      castActive,
       onSourceApplied: (url) => {
         appliedSourceUrlRef.current = url
       },
     },
   )
+
+  // The screen's cast recorder reads the root adapter's facade. Render-time,
+  // like the chrome's own mirror before the hoist; the feed is identity-stable,
+  // so repeated assignment is idempotent.
+  if (slotOwned && request.progressFeedRef != null)
+    request.progressFeedRef.current = progressFeed
 
   const openSheetCount = useSyncExternalStore(
     sheetCounter.subscribe,
@@ -982,7 +993,13 @@ function ActivePlaybackHost({
   })
   // With none of the three inside it, the frame is an opaque black box over the
   // poster the sourceless screen paints beneath it.
-  const drawsFrame = drawsSurface || (showWindow && session != null)
+  // A session keeps the frame even with no local source: the pin can capture
+  // null when a screen mounts into an active one, and the chrome is the only
+  // way to stop the receiver from the player area.
+  const drawsFrame =
+    drawsSurface ||
+    (rect != null && castActive) ||
+    (showWindow && session != null)
 
   // Both rects share the video's aspect ratio, so this is translate plus scale
   // only (KTD17) — one ramp carries the shrink and the expand. The transform
@@ -1098,7 +1115,7 @@ function ActivePlaybackHost({
 
             {/* Transport chrome for something unplayable would be a lie:
                 nothing to scrub, a play button over a poster that never starts. */}
-            {rect != null && hasSurfaceVideo && (
+            {rect != null && (hasSurfaceVideo || castActive) && (
               <VideoPlayer
                 player={player}
                 isPlaying={isPlaying}
@@ -1111,6 +1128,7 @@ function ActivePlaybackHost({
                 resumeAtSeconds={request.resumeAtSeconds}
                 autostart={request.autostart}
                 adopted={adoptable}
+                cast={slotOwned ? (request.cast ?? null) : null}
               />
             )}
 

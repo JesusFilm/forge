@@ -126,7 +126,10 @@ export function VideoCard({ video }: VideoCardProps) {
               playbackId={video.playbackId}
               poster={posterUrl(video.playbackId)}
               controls
-              preload="none"
+              // "metadata", not "none": hls.js attaches MediaSource at setup
+              // either way, and with "none" nothing ever loads, so Chrome's
+              // native controls spin forever (HeroPlayer uses the same value).
+              preload="metadata"
               aria-label={boundedLabel(video.title)}
               onError={fail}
               // Mux receives ONLY the pattern-gated playbackId and this origin.

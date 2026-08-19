@@ -223,6 +223,9 @@ function makeRequest(
     progressVideoSlug: null,
     progressLanguageSlug: "english",
     onToggleFullscreen: null,
+    castActive: false,
+    cast: null,
+    progressFeedRef: null,
     session: SESSION_A,
     ...overrides,
   }

@@ -297,6 +297,9 @@ function request(
     progressVideoSlug: progressIdentity?.videoSlug ?? null,
     progressLanguageSlug: progressIdentity?.languageSlug ?? null,
     onToggleFullscreen: null,
+    castActive: false,
+    cast: null,
+    progressFeedRef: null,
     session:
       progressIdentity == null
         ? null

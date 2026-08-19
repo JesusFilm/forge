@@ -95,6 +95,10 @@ A cut/edition of a Video that owns the subtitle tracks. Subtitles hang off the E
 
 A language a Video is offered in: every Dub is for one Language, and subtitle tracks are per-Language. A Language has two identifiers that are easy to conflate — a unique, stable slug that is its identity (e.g. korean, kurmanji-standard), and a BCP-47 tag that is a locale label (e.g. ko, ko-kmr) and is deliberately not unique per language, so distinct Languages can share a tag or its prefix. Identity comparisons and cross-system transport key on the slug; the BCP-47 tag is for locale negotiation and locale-sensitive search execution. The slug is unique when it is present, but it is not guaranteed to exist — a Language can carry no slug at all. A consumer must treat a missing slug as an unusable identity and drop that option, never substitute an empty string, because downstream code reads an empty string as "nothing selected".
 
+### Watch Language Search Alias
+
+A reviewed user-entered synonym bound to one or more exact Language slugs for discovery inside a Watch language picker. It filters only options the picker already owns; it never creates language availability or infers identity from a BCP-47 tag.
+
 ### Watch Language Inventory
 
 The public language-scoped catalog of indexable Watch Videos, organized into
@@ -566,6 +570,14 @@ The language semantic search uses to interpret and match a query. Search Languag
 
 Search Language identity should travel as the public language slug selected or confirmed by the viewer. Locale tags are useful for fallback negotiation and search execution, but they are not the exact identity of the viewer's chosen search language.
 
+### Watch Search Evidence Language
+
+The Language of the indexed title, metadata, or transcript text that supplied a
+Watch search result's winning relevance evidence. It records why the result
+matched; it is not automatically the Search Language, UI display language, or
+playback identity, and evidence text may become visible card copy only when its
+language is appropriate for that result's display or target context.
+
 ### Search Watchability
 
 The target-language playback state attached to a Watch search candidate, distinguishing playable target audio, target subtitles, related-language audio, and no qualifying playback option. Search Watchability describes what the viewer can play and where the result should link; it refines ordering only after textual match and relevance.
@@ -985,6 +997,14 @@ The layered per-request decision in the chat app that resolves seeker-vs-stub: t
 
 The server-side read surface over persisted Seeker threads: a signed-in user lists their own conversations and replays or resumes any of them, with new sends appending to the same thread. Signed-in-only by design — anonymous conversations persist for the session but are never listable or replayable, so they stay effectively ephemeral (a privacy feature: the anonymous continuity cookie must never become a history-reading credential). During the dogfood phase the surface additionally rides the Seeker Dogfood Gate.
 
+### Resource Key
+
+The stable owner identity every Seeker conversation is stored under — a namespaced string distinguishing a signed-in account from an anonymous browser session, with a shared fallback key stamped on internal callers that supply none. The key is treated as opaque past its namespace prefix (matching never splits or parses the remainder), the same value keys the subject's conversations in the persistence store and their traces in observability, and the shared fallback key aggregates many people's turns so nothing keyed to it can be attributed — or erased — per person.
+
+### Subject Erasure
+
+The operator-run deletion of one Resource Key's Seeker data from every store that holds it — conversations and their messages, plus the observability traces keyed to the same value. Erasure matches the full key by exact equality only (never prefix or pattern), previews its blast radius read-only before any destructive run, and refuses outright when what it read cannot prove exactly what it would delete — an unprovable owner or an unaddressable row is an escalation, never a skipped record. Completion is claimed per key erased, never per person: a person's data may span several keys, anonymous keys cannot be discovered from an identity, and data under the shared fallback key is only ever removed by retention aging it out.
+
 ### Featured Video
 
 The single library video the Seeker may attach to one reply — a recommendation rendered as an inline player beside the answer, distinct from the cited passages that ground the answer's text.
@@ -997,7 +1017,9 @@ The external `jesusfilm-rag` retrieval service — a standalone system serving b
 
 ### Managed Prompt
 
-A system prompt whose tunable text lives in Langfuse — versioned, label-addressed, access-controlled — rather than in this public repo, retrieved at runtime by the Mastra helper `getManagedPrompt`. Retrieval is label-following (explicit label, else an env-configured default, else `production` — never implicit latest), cached with a TTL and failure cooldown, and always resolved against a caller-supplied fallback: every failure mode serves the compiled-in fallback with provenance saying which was served, so prompt retrieval can never break boot or a chat turn. Retrieval-only by design — authoring, versioning, and label moves stay in the Langfuse UI. Every agent's prompt lives in one Langfuse project, with labels marking which version each environment runs, so promoting a tuned prompt is a label move rather than a copy between projects. The seeker agent is the first consumer (feat-272): its whole system prompt — safety and citation wording included, no composition split — is the managed prompt `seeker-system`, with the full working text compiled in as the fallback. Confidentiality of the tuned text extends only to the Mastra network boundary: the runtime's built-in `/api/agents*` surface returns resolved instructions verbatim, so the managed prompt is kept out of the public repo but must never carry secrets.
+A system prompt whose tunable text lives in Langfuse — versioned, label-addressed, access-controlled — rather than in this public repo, retrieved at runtime by the Mastra prompt helper. Callers may follow a label for candidate intake or pin an immutable version and content hash for production traffic. Runtime retrieval failures and an unconfigured integration degrade to a caller-supplied fallback, so they do not break boot or a chat turn; invalid production URL or allowlist configuration remains intentionally fail-closed at boot. Retrieval-only by design — authoring, versioning, and label moves stay in the Langfuse UI.
+
+The Seeker uses an exact version-and-hash pin for its whole managed system prompt; its `production` label is an alert-only marker rather than a traffic selector. Its compiled outage fallback is reviewed and pinned independently, so managed promotion does not synchronize fallback bytes, but both prompts must preserve the same live tool and safety contract. Managed prompt text must never contain secrets because runtime agent surfaces can return resolved instructions verbatim.
 
 During failure windows the last successfully fetched prompt keeps serving (serve-stale) in preference to the fallback — so deleting a prompt or revoking a key does not retract text already cached in a running process. Retraction is a label move (effective within one cache TTL, and only while the prompt still exists and the credential is trusted) or a restart with the configuration removed — the only path that works after a deletion, a revocation, or against a hostile key; the fallback serves only when no managed text was ever cached.
 

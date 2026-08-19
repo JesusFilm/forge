@@ -531,6 +531,10 @@ const envSchema = z.object({
   // rows against a CALLER-SUPPLIED throwaway `DATABASE_URL` (see
   // ai-chat-erasure.smoke.test.ts). Test-only gate, never runtime config.
   AI_CHAT_ERASURE_SMOKE_TEST: z.enum(["1"]).optional(),
+  // Same posture for the feat-337 Langfuse READ smoke: a strictly read-only
+  // listing suite against the real `forge-mastra` project (GET only, zero
+  // delete-quota spend — see ai-chat-erasure.langfuse.smoke.test.ts).
+  AI_CHAT_ERASURE_LANGFUSE_SMOKE_TEST: z.enum(["1"]).optional(),
   SEARCH_EVAL_JUDGE_MODEL: z
     .string()
     .min(1)
@@ -958,6 +962,9 @@ export const env = envSchema.parse({
   ),
   AI_CHAT_ERASURE_SMOKE_TEST: emptyToUndefined(
     process.env.AI_CHAT_ERASURE_SMOKE_TEST,
+  ),
+  AI_CHAT_ERASURE_LANGFUSE_SMOKE_TEST: emptyToUndefined(
+    process.env.AI_CHAT_ERASURE_LANGFUSE_SMOKE_TEST,
   ),
   SEARCH_EVAL_JUDGE_MODEL: emptyToUndefined(
     process.env.SEARCH_EVAL_JUDGE_MODEL,

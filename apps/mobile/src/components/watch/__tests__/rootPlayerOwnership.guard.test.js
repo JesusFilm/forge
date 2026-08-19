@@ -114,7 +114,9 @@ describe("the screens borrow the root player", () => {
     expect(watch).toBeDefined()
 
     expect(watch.content.match(/<PlayerSlot\b/g)).toHaveLength(1)
-    expect(watch.content).toContain("streamingUrl={playerSource}")
+    // The cast pin (KTD4) is what reaches the player; `playerSource` is the
+    // live chain it freezes. Pinning the chain here would miss a dropped pin.
+    expect(watch.content).toContain("streamingUrl={effectivePlayerSource}")
     // The shape that dropped it: a dock branched on the source being absent.
     expect(watch.content).not.toMatch(/playerSource\s*==\s*null\s*\?/)
   })

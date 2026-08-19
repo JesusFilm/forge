@@ -22,7 +22,9 @@ import {
   getPlaybackRequestStore,
   type PlaybackRequest,
   type PlaybackSessionDescriptor,
+  type ProgressFeed,
 } from "../../lib/miniPlayer/playbackRequest"
+import type { VideoPlayerCast } from "./VideoPlayer"
 import { PLAYER_HEIGHT_RATIO } from "../../lib/playerLayout"
 import { resolveImageUrl } from "../../lib/resolveImageUrl"
 import type { ProgressIdentity } from "../../lib/watchProgress/recorder"
@@ -53,6 +55,14 @@ type PlayerSlotProps = {
    *  paints with no `streamingUrl`. A null source ALSO means "resolved, nothing
    *  playable", where a spinner would promise a stream that never comes. */
   loading?: boolean
+  /** True while a cast session drives playback (KTD4). It freezes the root
+   *  adapter and refuses this video a floating window. */
+  castActive?: boolean
+  /** The screen's cast wiring, forwarded to the root chrome (KTD4). */
+  cast?: VideoPlayerCast | null
+  /** Filled by the host with the root adapter's progress facade, so the
+   *  screen's cast recorder can write through it (KTD6). */
+  progressFeedRef?: { current: ProgressFeed | null } | null
 }
 
 export function PlayerSlot({
@@ -67,6 +77,9 @@ export function PlayerSlot({
   autostart = false,
   session = null,
   loading = false,
+  castActive = false,
+  cast = null,
+  progressFeedRef = null,
 }: PlayerSlotProps) {
   const store = getPlaybackRequestStore()
   const { width: screenWidth, height: screenHeight } = useWindowDimensions()
@@ -84,6 +97,9 @@ export function PlayerSlot({
     progressVideoSlug: progressIdentity?.videoSlug ?? null,
     progressLanguageSlug: progressIdentity?.languageSlug ?? null,
     onToggleFullscreen: onToggleFullscreen ?? null,
+    castActive,
+    cast,
+    progressFeedRef,
     session,
   }
   const requestRef = useRef(request)
