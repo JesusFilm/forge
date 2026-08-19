@@ -13,6 +13,7 @@ import type { TriageCandidate } from "./detect"
 const PROFILE: DatadogTriageServiceProfile = {
   surfacePrefix: "[Mobile]",
   releaseSessionFilter: true,
+  spikeSource: "rum",
 }
 
 const CONFIG: TriagePolicyConfig = {

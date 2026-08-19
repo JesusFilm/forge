@@ -2084,7 +2084,11 @@ describe("Datadog triage env", () => {
 
     expect(
       getDatadogTriageServiceProfile(getDatadogTriageConfig(), "forge-mobile"),
-    ).toEqual({ surfacePrefix: "[Mobile]", releaseSessionFilter: true })
+    ).toEqual({
+      surfacePrefix: "[Mobile]",
+      releaseSessionFilter: true,
+      spikeSource: "rum",
+    })
   })
 
   it("reads per-service prefixes and filter applicability from config", async () => {
@@ -2106,11 +2110,27 @@ describe("Datadog triage env", () => {
       await import("./env")
     const config = getDatadogTriageConfig()
 
+    // spikeSource is optional in the JSON and defaults to logs, so an operator
+    // adding a service does not have to know the field exists.
     expect(getDatadogTriageServiceProfile(config, "forge-admin")).toEqual({
       surfacePrefix: "[Admin]",
       releaseSessionFilter: false,
+      spikeSource: "logs",
     })
     expect(config.serviceProfilesInvalid).toBe(false)
+  })
+
+  it("falls back to a logs spike check for a service with no profile at all", async () => {
+    const { getDatadogTriageConfig, getDatadogTriageServiceProfile } =
+      await import("./env")
+
+    expect(
+      getDatadogTriageServiceProfile(getDatadogTriageConfig(), "forge-unknown"),
+    ).toEqual({
+      surfacePrefix: "[Service]",
+      releaseSessionFilter: false,
+      spikeSource: "logs",
+    })
   })
 
   it("refuses a malformed service-profile map instead of filing under a guessed prefix", async () => {

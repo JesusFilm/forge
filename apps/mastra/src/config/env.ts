@@ -1663,6 +1663,8 @@ export type DatadogTriageServiceProfile = {
   surfacePrefix: string
   /** Whether R17's release-session filter applies to this service (KTD9). */
   releaseSessionFilter: boolean
+  /** Which aggregate answers the spike check for this service. */
+  spikeSource: "rum" | "logs"
 }
 
 export type DatadogTriageConfig = {
@@ -1704,7 +1706,11 @@ const DEFAULT_DATADOG_TRIAGE_SERVICE_PROFILES: Record<
   string,
   DatadogTriageServiceProfile
 > = {
-  "forge-mobile": { surfacePrefix: "[Mobile]", releaseSessionFilter: true },
+  "forge-mobile": {
+    surfacePrefix: "[Mobile]",
+    releaseSessionFilter: true,
+    spikeSource: "rum",
+  },
 }
 
 const datadogTriageServiceProfileSchema = z.object({
@@ -1714,6 +1720,7 @@ const datadogTriageServiceProfileSchema = z.object({
     .max(40)
     .regex(/^\[[^\][]{1,38}\]$/u),
   releaseSessionFilter: z.boolean(),
+  spikeSource: z.enum(["rum", "logs"]).default("logs"),
 })
 
 /**
@@ -1791,6 +1798,7 @@ export function getDatadogTriageServiceProfile(
     config.serviceProfiles[service] ?? {
       surfacePrefix: "[Service]",
       releaseSessionFilter: false,
+      spikeSource: "logs",
     }
   )
 }
