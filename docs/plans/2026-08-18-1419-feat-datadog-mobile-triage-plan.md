@@ -345,14 +345,14 @@ stateDiagram-v2
 
 ## Verification Contract
 
-| Gate | Command | Applies to |
-|---|---|---|
-| Unit + integration tests | `pnpm --filter @forge/mastra test` | U1–U7 |
-| Types | `pnpm --filter @forge/mastra typecheck` | all code units |
-| Lint | `pnpm --filter @forge/mastra lint` | all code units |
-| Docs formatting | `prettier --write` ×2 then `--check` on touched `.md` | U8 |
-| Real-DB smoke | opt-in real-Postgres suite following the `ai-chat-erasure.smoke.test.ts` pattern (env-gated, throwaway-DB guard, out of CI) | U2 |
-| Migration idempotence | apply `003` twice against a dev database | U2 |
+| Gate                     | Command                                                                                                                     | Applies to     |
+| ------------------------ | --------------------------------------------------------------------------------------------------------------------------- | -------------- |
+| Unit + integration tests | `pnpm --filter @forge/mastra test`                                                                                          | U1–U7          |
+| Types                    | `pnpm --filter @forge/mastra typecheck`                                                                                     | all code units |
+| Lint                     | `pnpm --filter @forge/mastra lint`                                                                                          | all code units |
+| Docs formatting          | `prettier --write` ×2 then `--check` on touched `.md`                                                                       | U8             |
+| Real-DB smoke            | opt-in real-Postgres suite following the `ai-chat-erasure.smoke.test.ts` pattern (env-gated, throwaway-DB guard, out of CI) | U2             |
+| Migration idempotence    | apply `003` twice against a dev database                                                                                    | U2             |
 
 Operational verification (runbook, pre-enable, not CI): a live scoped-key smoke against each Datadog endpoint confirming scopes and recording actual `X-RateLimit-*` headers; a dry-run window with the flag on and the daily budget at zero — actions enqueue but never dispatch — ending with a documented purge-or-raise step before the first real ticket.
 
