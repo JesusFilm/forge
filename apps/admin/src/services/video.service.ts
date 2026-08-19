@@ -848,10 +848,10 @@ function localeBucketsForSnapshot(
 
   return {
     exactLocales: forVideo
-      .filter(
-        (row) =>
-          row.locale === locale &&
-          (languageSlug == null || row.languageSlug === languageSlug),
+      .filter((row) =>
+        languageSlug == null
+          ? row.locale === locale
+          : row.languageSlug === languageSlug,
       )
       .map(mapRow),
     broadLocales: forVideo.filter((row) => row.locale === locale).map(mapRow),
@@ -911,7 +911,7 @@ export async function loadWatchRouteSnapshotRootLocaleBuckets({
       OR: [
         { locale },
         { locale: "en" },
-        ...(languageSlug == null ? [] : [{ locale, languageSlug }]),
+        ...(languageSlug == null ? [] : [{ languageSlug }]),
       ],
     },
     orderBy: [{ languageSlug: "asc" }, { id: "asc" }],
@@ -919,10 +919,10 @@ export async function loadWatchRouteSnapshotRootLocaleBuckets({
   })
 
   const bucketRows = {
-    exactLocales: rows.filter(
-      (row) =>
-        row.locale === locale &&
-        (languageSlug == null || row.languageSlug === languageSlug),
+    exactLocales: rows.filter((row) =>
+      languageSlug == null
+        ? row.locale === locale
+        : row.languageSlug === languageSlug,
     ),
     broadLocales: rows.filter((row) => row.locale === locale),
     englishLocales: rows.filter((row) => row.locale === "en"),
@@ -1025,10 +1025,10 @@ function studyQuestionBucketsForSnapshot(
 
   return {
     exactStudyQuestions: rows
-      .filter(
-        (row) =>
-          row.locale === locale &&
-          (languageSlug == null || row.languageSlug === languageSlug),
+      .filter((row) =>
+        languageSlug == null
+          ? row.locale === locale
+          : row.languageSlug === languageSlug,
       )
       .map(mapRow),
     broadStudyQuestions: rows
@@ -1617,7 +1617,7 @@ export class VideoService {
             { locale: "en" },
             ...(normalizedLanguageSlug == null
               ? []
-              : [{ locale, languageSlug: normalizedLanguageSlug }]),
+              : [{ languageSlug: normalizedLanguageSlug }]),
           ],
         },
         orderBy: [{ languageSlug: "asc" }, { id: "asc" }],
@@ -1648,7 +1648,7 @@ export class VideoService {
             { locale: "en" },
             ...(normalizedLanguageSlug == null
               ? []
-              : [{ locale, languageSlug: normalizedLanguageSlug }]),
+              : [{ languageSlug: normalizedLanguageSlug }]),
           ],
         },
         orderBy: [{ order: "asc" }, { languageSlug: "asc" }, { id: "asc" }],

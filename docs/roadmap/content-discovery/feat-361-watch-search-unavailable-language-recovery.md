@@ -7,7 +7,8 @@ status: "complete"
 start_date: "2026-08-13"
 duration: 4
 depends_on: []
-blocks: []
+blocks:
+  - "feat-367"
 tags:
   - "watch"
   - "search"

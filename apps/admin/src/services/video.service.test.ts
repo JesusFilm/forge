@@ -84,6 +84,115 @@ describe("getWatchRouteSnapshotBySlug", () => {
       sql.indexOf("vd.duration DESC NULLS LAST"),
     )
   })
+
+  it("uses the exact language slug for related metadata and study questions", async () => {
+    const relatedLocaleFindMany = vi.fn().mockResolvedValue([
+      {
+        id: "locale-child-zh-hans",
+        videoId: "video-child",
+        locale: "zh-hans",
+        languageSlug: "chinese-simplified",
+        publishedAt: new Date("2026-08-18T00:00:00.000Z"),
+        title: "开始",
+        description: null,
+        snippet: null,
+        imageAlt: null,
+      },
+    ])
+    const rootLocaleFindMany = vi.fn().mockResolvedValue([])
+    const videoLocaleFindMany = vi.fn(
+      (args: { where: { videoId: string | { in: string[] } } }) =>
+        typeof args.where.videoId === "string"
+          ? rootLocaleFindMany(args)
+          : relatedLocaleFindMany(args),
+    )
+    const studyQuestionFindMany = vi.fn().mockResolvedValue([
+      {
+        id: "question-zh-hans",
+        locale: "zh-hans",
+        languageSlug: "chinese-simplified",
+        text: "你从这个故事中学到了什么？",
+        order: 1,
+      },
+    ])
+    const videoRelationFindMany = vi
+      .fn()
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([
+        {
+          id: "relation-child",
+          order: 1,
+          childId: "video-child",
+          child: {
+            id: "video-child",
+            slug: "the-beginning",
+            label: "SEGMENT",
+            primaryLanguageId: "language-en",
+          },
+        },
+      ])
+    const queryRaw = vi.fn((strings: TemplateStringsArray) => {
+      const sql = strings.join(" ")
+      if (sql.includes("COUNT(DISTINCT vd.language_id)")) {
+        return Promise.resolve([{ count: 0 }])
+      }
+      return Promise.resolve([])
+    })
+    const prisma = {
+      video: {
+        findFirst: vi.fn().mockResolvedValue({
+          id: "video-root",
+          slug: "series",
+          publishedAt: new Date("2026-08-18T00:00:00.000Z"),
+          noIndex: false,
+          label: "SERIES",
+          primaryLanguageId: "language-en",
+          primaryLanguage: { coreId: "529", bcp47: "en" },
+        }),
+      },
+      videoRelation: { findMany: videoRelationFindMany },
+      bibleCitation: { findMany: vi.fn().mockResolvedValue([]) },
+      videoImage: { findMany: vi.fn().mockResolvedValue([]) },
+      videoLocale: { findMany: videoLocaleFindMany },
+      videoStudyQuestion: { findMany: studyQuestionFindMany },
+      $queryRaw: queryRaw,
+    }
+    const service = new VideoService(prisma as never)
+
+    const result = await service.getWatchRouteSnapshotBySlug({
+      slug: "series",
+      locale: "zh-Hans",
+      languageSlug: "chinese-simplified",
+      user: null,
+    })
+
+    expect(relatedLocaleFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          OR: expect.arrayContaining([{ languageSlug: "chinese-simplified" }]),
+        }),
+      }),
+    )
+    expect(studyQuestionFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          OR: expect.arrayContaining([{ languageSlug: "chinese-simplified" }]),
+        }),
+      }),
+    )
+    expect(result?.children[0]?.child?.exactLocales).toEqual([
+      expect.objectContaining({
+        languageSlug: "chinese-simplified",
+        title: "开始",
+      }),
+    ])
+    expect(result?.exactStudyQuestions).toEqual([
+      expect.objectContaining({
+        languageSlug: "chinese-simplified",
+        value: "你从这个故事中学到了什么？",
+      }),
+    ])
+  })
 })
 
 describe("loadWatchRouteSnapshotRootLocaleBuckets", () => {
@@ -214,6 +323,54 @@ describe("loadWatchRouteSnapshotRootLocaleBuckets", () => {
       publicMediaBaseUrl: "https://admin.example",
     })
 
+    expect(prisma.mediaAsset.findMany).not.toHaveBeenCalled()
+  })
+
+  it("selects exact metadata by language slug when the locale representation differs", async () => {
+    const exactLocale = {
+      id: "locale-zh-hans",
+      videoId: "video-1",
+      locale: "zh-hans",
+      languageSlug: "chinese-simplified",
+      publishedAt: new Date("2026-08-18T00:00:00.000Z"),
+      title: "耶稣受难日直播",
+      description: null,
+      snippet: null,
+      imageAlt: null,
+      searchTitle: null,
+      searchDescription: null,
+      socialImageAssetId: null,
+    }
+    const prisma = {
+      videoLocale: { findMany: vi.fn().mockResolvedValue([exactLocale]) },
+      mediaAsset: { findMany: vi.fn() },
+    }
+
+    const buckets = await loadWatchRouteSnapshotRootLocaleBuckets({
+      prisma: prisma as never,
+      videoId: "video-1",
+      locale: "zh-Hans",
+      languageSlug: "chinese-simplified",
+      includeUnpublished: false,
+      publicMediaBaseUrl: "https://admin.example",
+    })
+
+    expect(prisma.videoLocale.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          OR: expect.arrayContaining([{ languageSlug: "chinese-simplified" }]),
+        }),
+      }),
+    )
+    expect(buckets.exactLocales).toEqual([
+      expect.objectContaining({
+        documentId: "locale-zh-hans",
+        languageSlug: "chinese-simplified",
+        title: "耶稣受难日直播",
+      }),
+    ])
+    expect(buckets.broadLocales).toEqual([])
+    expect(buckets.englishLocales).toEqual([])
     expect(prisma.mediaAsset.findMany).not.toHaveBeenCalled()
   })
 })
