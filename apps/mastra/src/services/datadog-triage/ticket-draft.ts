@@ -38,12 +38,11 @@ const BODY_URL_PLACEHOLDER = "[URL omitted]"
 const TITLE_URL_PLACEHOLDER = "(URL omitted)"
 
 /**
- * Every character that renders as nothing: format characters plus the control
- * characters that are not whitespace. Deleting them is what stops an invisible
- * character inside a scheme (`https:<U+200B>//host`) from surviving a later
- * pass that turns it into a space and leaves the host readable.
+ * Characters that render as nothing. `Cf | Cc` is NOT that set on its own:
+ * ~4000 default-ignorable code points sit outside it, and one of those inside
+ * a scheme (`https:<U+FE0F>//host`) leaves a link that still LOOKS ordinary.
  */
-const INVISIBLE_RUN = /[\p{Cf}\p{Cc}]+/gu
+const INVISIBLE_RUN = /[\p{Cf}\p{Cc}\p{Default_Ignorable_Code_Point}]+/gu
 
 /**
  * The only invisibles that carry meaning: real separators. Deliberately NOT
@@ -366,7 +365,9 @@ export function buildTriageTicketDraft(input: {
   // would drop the one token `findIssueByMarker` dedupes on.
   const marker = triageMarker(idempotencyKey)
   const bodyBudget = TRIAGE_DESCRIPTION_MAX_CHARS - marker.length - 2
-  const description = `${body.slice(0, bodyBudget)}\n\n${marker}`
+  const description = `${dropDanglingSurrogate(
+    body.slice(0, bodyBudget),
+  )}\n\n${marker}`
 
   return triageActionDraftSchema.parse({
     idempotencyKey,

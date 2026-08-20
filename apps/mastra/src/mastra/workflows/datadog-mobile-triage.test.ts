@@ -1081,4 +1081,114 @@ describe("executeDatadogTriage sweep", () => {
       expect.anything(),
     )
   })
+  // Verification finding: mutating either withhold filter to `() => true` left
+  // the whole suite green -- nothing asserted the WITHHELD arm of either one.
+  it("does not commit a withheld spike's advanced epoch", async () => {
+    const repo = repository({
+      spikeBaselines: [
+        {
+          service: "forge-mobile",
+          spikeClass: "error_rate",
+          baselineRate: 1,
+          observations: 24,
+          epoch: 0,
+          lastTicketedAt: null,
+        },
+      ],
+    })
+    // Judgment fails, so the candidate is withheld and its state must NOT
+    // commit -- otherwise the next run cannot re-derive the same ticket.
+    const analyzer = { generate: vi.fn(async () => ({ object: {} }) as never) }
+
+    await run({
+      repository: repo,
+      analyzer: analyzer as never,
+      datadog: datadog({
+        aggregateRumEvents: vi.fn(async () => ({
+          ok: true as const,
+          value: {
+            buckets: [{ key: "error_rate", count: 400 }],
+            partial: false,
+          },
+        })),
+      } as never),
+    })
+
+    const committed = vi.mocked(repo.commitSpikeBaselines).mock.calls[0]?.[0]
+    expect(committed?.some((u) => u.spikeClass === "error_rate")).toBe(false)
+  })
+
+  it("does not commit a withheld monitor's state", async () => {
+    const repo = repository()
+    const analyzer = { generate: vi.fn(async () => ({ object: {} }) as never) }
+
+    await run({
+      repository: repo,
+      analyzer: analyzer as never,
+      datadog: datadog({
+        listMonitors: vi.fn(async () => ({
+          ok: true as const,
+          value: {
+            monitors: [
+              {
+                monitorId: "42",
+                name: "Mobile crash rate",
+                overallState: "Alert",
+                overallStateModified: new Date(
+                  NOW.getTime() - 5 * 60_000,
+                ).toISOString(),
+                tags: ["service:forge-mobile"],
+              },
+            ],
+            unparsedRows: 0,
+          },
+        })),
+      } as never),
+    })
+
+    const committed = vi.mocked(repo.commitMonitorStates).mock.calls[0]?.[0]
+    expect(committed?.some((u) => u.monitorId === "42")).toBe(false)
+  })
+
+  it("gives the dispatcher a clock that advances within one run", async () => {
+    // Verification finding: reverting both call sites to the run's frozen
+    // clock left the suite green, because every other test injects `now`.
+    // This one deliberately omits it so the production path is the one tested.
+    const seen: number[] = []
+    const repo = repository()
+    vi.mocked(repo.claimDueActions).mockImplementation(async (input) => {
+      seen.push((input as { now: Date }).now.getTime())
+      return []
+    })
+
+    vi.useFakeTimers()
+    try {
+      vi.setSystemTime(NOW)
+      const promise = executeDatadogTriage(
+        {},
+        {
+          config: READY_CONFIG,
+          repository: repo,
+          datadog: datadog({
+            searchIssues: vi.fn(async () => {
+              vi.advanceTimersByTime(90_000)
+              return {
+                ok: true as const,
+                value: { issues: [issue()], unparsedRows: 0 },
+              }
+            }),
+          } as never),
+          linear: linear(),
+          analyzer: analyzer(),
+          randomId: () => "lease-a",
+        },
+      )
+      await promise
+    } finally {
+      vi.useRealTimers()
+    }
+
+    expect(seen.length).toBeGreaterThanOrEqual(2)
+    expect(new Set(seen).size).toBeGreaterThan(1)
+  })
 })

@@ -114,12 +114,18 @@ differs from the applied checksum` rather than running against a stale schema.
 Reconcile that database rather than forcing past it:
 
 ```sql
-delete from schema_migrations where version = 3;
+-- BOTH statements, in this order. The ledger lives in the devotional_workspace
+-- schema, not the search path, and 003 contains no `alter table` at all -- so
+-- deleting the ledger row alone re-stamps a matching checksum while the table
+-- keeps its old columns. That disarms the guard without fixing the schema.
+drop schema if exists datadog_triage cascade;
+delete from devotional_workspace.schema_migrations where version = 3;
 ```
 
-then re-run `pnpm --filter @forge/mastra migrate:database`. Safe because `003`
-is all `create ... if not exists` — but drop the `datadog_triage` schema first
-if the earlier revision created any table you now need reshaped.
+then re-run `pnpm --filter @forge/mastra migrate:database`, which recreates the
+schema complete. Dropping is safe **only** on a dev database: it destroys every
+baseline and cursor, so on any database whose triage history matters, write the
+missing column by hand instead and leave the ledger alone.
 
 ### 5. Live scoped-key smoke (pre-enable, not CI)
 

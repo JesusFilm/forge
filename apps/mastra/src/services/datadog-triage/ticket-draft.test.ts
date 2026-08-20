@@ -116,6 +116,11 @@ describe("safeTriageText", () => {
     ["BOM", "\ufeff"],
     ["U+0001", "\u0001"],
     ["DEL", "\u007f"],
+    // Outside Cf|Cc. These are the ones that matter most: the survivor still
+    // LOOKS like an ordinary link, unlike the visibly broken whitespace case.
+    ["VS16", "\ufe0f"],
+    ["HANGUL FILLER", "\u3164"],
+    ["CGJ", "\u034f"],
   ])("omits a URL whose scheme is split by %s", (_label, invisible) => {
     const out = safeTriageText(
       `failed for https:${invisible}//internal-admin.example/a?token=sk_live_9f3`,
@@ -261,6 +266,25 @@ describe("buildTriageTicketDraft", () => {
     })
 
     expect(admin.title.startsWith("[Admin] [P2] ")).toBe(true)
+  })
+
+  it("never cuts the description on an unpaired surrogate", () => {
+    // The file already guards the title cut; the description cut skipped it,
+    // and an unpaired surrogate goes over the wire as an invalid code unit.
+    const built = draft({
+      evidence: {
+        ...CANDIDATE.evidence,
+        errorType: "A" + "\u{1F600}".repeat(9000),
+      } as never,
+    })
+
+    // Lone surrogate in either direction; `isWellFormed` would need an
+    // ES2024 lib bump, which is a repo-wide call, not this test's.
+    expect(
+      /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/u.test(
+        built.description,
+      ),
+    ).toBe(false)
   })
 
   it("keeps the marker even when the body fills the description bound", () => {
