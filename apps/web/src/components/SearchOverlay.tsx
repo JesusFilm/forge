@@ -893,6 +893,7 @@ export function SearchOverlay() {
           ? [
               {
                 slug: language.publicSlug,
+                searchAliasSlug: language.aliasOwnerSlug ?? null,
                 name: language.englishName,
                 nativeName: language.nativeName,
                 bcp47: language.bcp47,

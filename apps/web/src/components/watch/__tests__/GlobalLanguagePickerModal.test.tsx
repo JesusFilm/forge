@@ -64,9 +64,24 @@ vi.mock("@/components/watch/LanguageCombobox", () => ({
 import { GlobalLanguagePickerModal } from "@/components/watch/GlobalLanguagePickerModal"
 
 const options: GlobalLanguageOption[] = [
-  { slug: "english", englishName: "English", nativeName: null },
-  { slug: "french", englishName: "French", nativeName: "Français" },
-  { slug: "spanish-castilian", englishName: "Spanish", nativeName: "Español" },
+  {
+    slug: "english",
+    aliasOwnerSlug: "english",
+    englishName: "English",
+    nativeName: null,
+  },
+  {
+    slug: "french",
+    aliasOwnerSlug: "french",
+    englishName: "French",
+    nativeName: "Français",
+  },
+  {
+    slug: "spanish-castilian",
+    aliasOwnerSlug: "spanish-castilian",
+    englishName: "Spanish",
+    nativeName: "Español",
+  },
 ]
 
 let container: HTMLDivElement

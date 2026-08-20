@@ -97,6 +97,8 @@ function isGlobalLanguageOption(value: unknown): value is GlobalLanguageOption {
   const option = value as Partial<GlobalLanguageOption>
   return (
     typeof option.slug === "string" &&
+    (option.aliasOwnerSlug === null ||
+      typeof option.aliasOwnerSlug === "string") &&
     typeof option.englishName === "string" &&
     (option.nativeName === null || typeof option.nativeName === "string")
   )

@@ -120,10 +120,12 @@ const parsedPath = {
 
 const goodFridayLiveSlug = tryAsContentSlug("good-friday-live")
 const englishSlug = tryAsLocaleSlug("english")
+const mandarinChinaSlug = tryAsLocaleSlug("mandarin-china")
 const spanishCastilianSlug = tryAsLocaleSlug("spanish-castilian")
 if (
   goodFridayLiveSlug == null ||
   englishSlug == null ||
+  mandarinChinaSlug == null ||
   spanishCastilianSlug == null
 ) {
   throw new Error("Expected the recovery fixture slugs to be valid")
@@ -141,6 +143,13 @@ const resolvedRecovery: WatchUnavailableRecoveryResolution = {
       nativeName: null,
       bcp47: "en",
       href: watchVideoPath(goodFridayLiveSlug, englishSlug),
+    },
+    {
+      slug: "mandarin-china",
+      name: "Mandarin China",
+      nativeName: null,
+      bcp47: "zh",
+      href: watchVideoPath(goodFridayLiveSlug, mandarinChinaSlug),
     },
     {
       slug: "spanish-castilian",
@@ -226,6 +235,30 @@ describe("WatchUnavailableLanguageClient", () => {
     expect(pushMock).toHaveBeenCalledWith(
       "/good-friday-live.html/spanish-castilian.html",
     )
+  })
+
+  it("finds a playable recovery language by its reviewed alias", async () => {
+    await renderClient(resolvedRecovery)
+
+    const trigger = container?.querySelector<HTMLButtonElement>(
+      '[data-testid="language-combobox-trigger"]',
+    )
+    await act(async () => trigger?.click())
+    const input = document.body.querySelector<HTMLInputElement>(
+      '[data-testid="language-combobox-search"]',
+    )
+    await act(async () => {
+      if (!input) return
+      input.value = "普通话"
+      input.dispatchEvent(new Event("input", { bubbles: true }))
+    })
+
+    expect(
+      document.body.querySelector('[data-language-slug="mandarin-china"]'),
+    ).not.toBeNull()
+    expect(
+      document.body.querySelector('[data-language-slug="spanish-castilian"]'),
+    ).toBeNull()
   })
 
   it("renders one stable fallback when recovery data is unavailable", async () => {
