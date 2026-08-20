@@ -4,6 +4,7 @@ import {
   isSeriesRecord,
   isSeriesSearchResult,
 } from "../isSeriesRecord"
+import { labelText } from "../videoLabel"
 
 describe("isSeriesLabel", () => {
   it("matches SERIES and COLLECTION case-insensitively", () => {
@@ -49,7 +50,19 @@ describe("isSeriesRecord", () => {
 
   it("is true for an unlabeled record that has children", () => {
     expect(isSeriesRecord({ label: null, episodes: [{}, {}] })).toBe(true)
-    expect(isSeriesRecord({ label: "EPISODE", episodes: [{}] })).toBe(true)
+    expect(isSeriesRecord({ label: "", episodes: [{}] })).toBe(true)
+  })
+
+  // REGRESSION GUARD (mirrors apps/tv #1767): JESUS is a FEATURE_FILM carrying
+  // 61 chapter clips. Routing on "has children" billed it a SERIES and opened
+  // the episode grid instead of the film. A record that HAS a label is
+  // classified by that label alone.
+  it("is false for a leaf label that carries children", () => {
+    const chapters = Array.from({ length: 61 }, () => ({}))
+    expect(isSeriesRecord({ label: "FEATURE_FILM", episodes: chapters })).toBe(
+      false,
+    )
+    expect(isSeriesRecord({ label: "EPISODE", episodes: [{}] })).toBe(false)
   })
 
   it("is false for a single video with no children", () => {
@@ -66,10 +79,28 @@ describe("isSeriesSearchResult", () => {
     ).toBe(true)
   })
 
-  it("is true for a non-series label with a positive childCount", () => {
-    // The childCount branch — distinct from the redirect's episodes.length path.
-    expect(isSeriesSearchResult({ label: "EPISODE", childCount: 3 })).toBe(true)
+  it("is true only for an UNLABELED result with a positive childCount", () => {
+    // The childCount branch exists for records the wire left unlabeled; it must
+    // not override a label that is present.
     expect(isSeriesSearchResult({ label: null, childCount: 1 })).toBe(true)
+    expect(isSeriesSearchResult({ label: "", childCount: 1 })).toBe(true)
+  })
+
+  // REGRESSION GUARD: the form HomeCard passes — a DISPLAY label ("Feature
+  // film", via labelText) plus the real child count. This is the exact tuple
+  // that sent JESUS (61) and Life of Jesus (49) to /series/[slug], where the
+  // screen has no player, so back showed a plain chevron and published no
+  // mini-player session.
+  it("is false for a labelled feature film that carries chapter clips", () => {
+    expect(
+      isSeriesSearchResult({ label: "Feature film", childCount: 61 }),
+    ).toBe(false)
+    expect(
+      isSeriesSearchResult({ label: "FEATURE_FILM", childCount: 49 }),
+    ).toBe(false)
+    expect(isSeriesSearchResult({ label: "EPISODE", childCount: 3 })).toBe(
+      false,
+    )
   })
 
   it("is false for a single video (no series label, zero/absent childCount)", () => {
@@ -80,5 +111,21 @@ describe("isSeriesSearchResult", () => {
       false,
     )
     expect(isSeriesSearchResult({ label: null })).toBe(false)
+  })
+})
+
+// The predicate answers correctly; the hazard is WHICH value a caller feeds it.
+// labelText maps an absent admin label to the string "Video", so display text
+// makes every record look labelled and kills the childCount branch.
+describe("display text is not a classification label", () => {
+  it("treats labelText's absent-label sentinel as a real label", () => {
+    expect(labelText(null)).toBe("Video")
+    // Feeding that sentinel strands an unlabeled-with-children record on
+    // /watch, where the lean fragment omits children so no redirect can save it.
+    expect(
+      isSeriesSearchResult({ label: labelText(null), childCount: 12 }),
+    ).toBe(false)
+    // The raw enum is null for the same record, so childCount still decides.
+    expect(isSeriesSearchResult({ label: null, childCount: 12 })).toBe(true)
   })
 })

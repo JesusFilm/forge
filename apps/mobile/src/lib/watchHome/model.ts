@@ -89,6 +89,10 @@ export type WatchHomeCard = {
   title: string
   description: string | null
   label: string
+  /** The label to CLASSIFY by: admin's raw enum for a video, the authored
+   *  override for a curated item, null when genuinely unlabeled. `label` cannot
+   *  serve — labelText turns an absent label into "Video". SYNC: apps/tv. */
+  rawLabel: string | null
   metaLabel: string | null
   imageUrl: string | null
   imageAlt: string
@@ -207,6 +211,7 @@ function normalizeCard(args: {
     title,
     description: locale?.snippet ?? locale?.description ?? null,
     label,
+    rawLabel: args.video.label ?? null,
     metaLabel: buildMetaLabel({
       label,
       durationSeconds: args.video.durationSeconds ?? null,
