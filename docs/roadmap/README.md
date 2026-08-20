@@ -6,8 +6,8 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 
 ## Status (August 20, 2026)
 
-- **Total tickets:** 562
-- **Complete:** 406
+- **Total tickets:** 563
+- **Complete:** 407
 - **In progress:** 39
 - **Not started:** 36
 - **Blocked:** 81
@@ -474,6 +474,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-365](platform/feat-365-watch-language-picker-keyboard-scroll.md)                 | Watch language picker keyboard scrolling                                         | vlad       | P1       | 2026-08-18 | 1    | 2026-08-18 | complete    |
 | [feat-397](platform/feat-397-watch-localized-not-found.md)                             | Preserve Watch locale on true not-found pages                                    | unassigned | P1       | 2026-08-18 | 1    | 2026-08-18 | complete    |
 | [feat-398](platform/feat-398-watch-unavailable-language-first-render.md)               | Render Watch unavailable-language recovery on the server                         | unassigned | P1       | 2026-08-18 | 1    | 2026-08-18 | complete    |
+| [feat-400](platform/feat-400-watch-language-search-consistency.md)                     | Watch language search consistency                                                | vlad       | P1       | 2026-08-20 | 1    | 2026-08-20 | complete    |
 | [feat-247](platform/feat-247-watch-nested-series-language-availability.md)             | Watch nested-series language availability                                        | vlad       | P2       | —          | —    | —          | complete    |
 | [feat-336](platform/feat-336-watch-homepage-seed-schema-drift.md)                      | Repair Watch homepage Experience seed schema drift                               | unassigned | P2       | —          | 1    | —          | not-started |
 | [feat-088](platform/feat-088-internal-tools-branding.md)                               | Internal Tools Branding                                                          | vlad       | P2       | 2026-03-30 | 14   | 2026-04-12 | complete    |

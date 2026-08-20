@@ -3,7 +3,7 @@ id: "feat-400"
 title: "Upgrade Better Auth for native resource binding"
 owner: "tataihono"
 priority: "P0"
-status: "not-started"
+status: "in-progress"
 start_date: "2026-08-20"
 duration: 4
 depends_on:
