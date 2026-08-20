@@ -22,6 +22,7 @@ import {
   hexToRgba,
 } from "../../lib/color"
 import { useTypography } from "../../hooks/useTypography"
+import { CastRouteButton } from "../../lib/cast/CastRouteButton"
 import { applySkip } from "../../lib/scrubber"
 import type { PlaybackTarget } from "../../lib/playbackTarget"
 import { SKIP_SECONDS } from "../../lib/tapSeek"
@@ -143,6 +144,9 @@ export function RouteButtons({
 
   return (
     <>
+      {/* Android-only, invisible, and NOT gated on castUi.available: it is what
+          makes showCastDialog() find a button at all. See CastRouteButton. */}
+      <CastRouteButton />
       {castButton}
       {airPlayButton}
     </>

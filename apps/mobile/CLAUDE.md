@@ -430,6 +430,73 @@ between player surfaces, check which side of that line you are on. The general
 rule: every layer that can hide the recovery affordance must clear on every path
 that releases the gate.
 
+## Cast SDK sheet theming
+
+**Every cast sheet is drawn by the Cast SDK, not by us, and the only lever is
+native.** `react-native-google-cast` exposes no styling API (its one
+styling-adjacent prop is `CastButton`'s `tintColor`, which tints the glyph
+only). `ios/` and `android/` are gitignored prebuild output, so both halves
+ship as config plugins, and a change to either needs a **new native build** —
+it moves the fingerprint runtime version, so an OTA update cannot deliver it.
+
+- **iOS — `plugins/withCastUIStyle.js`.** Injects a `GCKUIStyle` block into
+  `AppDelegate.swift`. Three facts, each of which cost a build to learn:
+  - The block MUST sit **after** the vendor's
+    `GCKCastContext.setSharedInstanceWith(options)`.
+    `GCKUIStyle.sharedInstance()`'s `dispatch_once` reads
+    `GCKCastContext.sharedInstance()`, which raises an uncatchable ObjC
+    exception when the context is unset. The plugin is therefore listed
+    **before** `react-native-google-cast` in `app.json` — AppDelegate mods run
+    in reverse array order.
+  - The trailing call is **`apply()`**, not the header's `applyStyle` — Swift
+    renames the selector. Only a real compile catches this; the unit tests
+    pinned the header spelling and stayed green while the build failed.
+  - Colours only. `-[GCKUIStyle contentSizeDidChange:]` re-runs
+    `initDefaultFonts`, so a custom font is wiped the first time the reader
+    changes text size.
+- **The `deviceChooser` subtree does NOT own the chooser's title or Cancel
+  button.** `_styleAttributesForNavigation` is captured once in `viewDidLoad`
+  from `connectionController` and `syncWithCastState` never reassigns it, so
+  both sheets' nav bars come from
+  `deviceControl.connectionController.navigation`.
+- **A base pass sets every node, so any per-surface difference needs an
+  explicit override after it.** The connected sheet's play/pause shipped at
+  `TEXT_SECONDARY` — the same muted grey as a decorative row glyph — because
+  only the base pass had touched it. Verified by sampling pixels, not by eye.
+- **Not every cast surface is a sheet.** The expanded controls are a
+  full-screen player (`BLACK`); the mini controller is a bar docked over
+  content (`SURFACE_COLOR`); only the dialogs take `BG_COLOR`.
+- **Android has no `GCKUIStyle`** — `plugins/withAndroidCastTheme.js` writes
+  `mediaRouteTheme` + `cast*Style` items onto `AppTheme`, because every cast
+  dialog resolves its theme from the **Activity**, not from the cast button's
+  `ContextThemeWrapper`. Each new style MUST inherit its SDK parent
+  (`Theme.MediaRouter*`, `CastExpandedController`, …); a bare parent drops
+  every SDK default and nothing at runtime says so. `aapt2` is the authority —
+  it fails on an unresolvable parent or a nonexistent attribute.
+- **`showCastDialog()` is a no-op on Android without a mounted native
+  button.** It calls `RNGoogleCastButtonManager.getCurrent()` then
+  `performClick()`, and that registry fills only in
+  `ColorableMediaRouteButton.onAttachedToWindow`. `src/lib/cast/CastRouteButton.tsx`
+  mounts an invisible one beside the visible glyph — Android only, since iOS
+  calls `presentCastDialog` directly. It is **not** gated on
+  `castUi.available`, and `collapsable={false}` is load-bearing: RN Android
+  flattens views that draw nothing, and a flattened wrapper never attaches.
+- **These sheets follow the SYSTEM appearance, not the app's.** `app.json` sets
+  `userInterfaceStyle: "automatic"` while every RN surface is hard-coded dark,
+  so an unstyled sheet renders light on a light-mode phone. Setting every
+  colour explicitly is what pins them dark; re-check in light mode after any
+  change (verified 2026-08-21: sheet band held at luminance 25/255 with the
+  system in light appearance).
+- **Verify by sampling pixels.** The stock cast red `#D0021B` and our `#CB333B`
+  pass a glance and fail the design system. `xcrun simctl io … screenshot` →
+  `ffmpeg -pix_fmt rgb24` → read the bytes. Note that iOS lifts button labels
+  inside the nav pill and toolbar by a uniform ~+13 per channel (`#a8a29e`
+  renders `#b6afaa`, `#e96067` renders `#f76d73`), so compare the _delta_
+  across two differently-coloured buttons rather than expecting an exact hex.
+- Cast discovery **does** work from the iOS simulator, but only after a few
+  seconds — an absent cast glyph early in a session means "not discovered yet",
+  not "unsupported".
+
 ## Component render tests
 
 Component render tests use the in-file react re-point pattern — see

@@ -58,6 +58,8 @@
       "@kesha-antonov/react-native-background-downloader",
       "./plugins/withBackgroundDownloaderAppDelegate",
       "./plugins/withCastOptionsVolume",
+      "./plugins/withCastUIStyle",
+      "./plugins/withAndroidCastTheme",
       [
         "react-native-google-cast",
         {

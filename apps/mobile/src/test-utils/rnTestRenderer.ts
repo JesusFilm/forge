@@ -20,6 +20,12 @@ export type NodePath = {
 }
 
 export type RenderedNode = {
+  /**
+   * A host node's type is the tag string; a composite's is the component. Both
+   * carry the same props, so a suite that needs an exact count must filter on
+   * this — otherwise one rendered control matches twice.
+   */
+  type?: string | unknown
   props: {
     onPress?: () => void
     accessibilityLabel?: string
@@ -32,6 +38,7 @@ export type TestInstance = {
   root: { findAll(predicate: (node: RenderedNode) => boolean): RenderedNode[] }
   update(element: ReactElement): void
   unmount(): void
+  toJSON(): unknown
 }
 export type TestRendererModule = {
   create(element: ReactElement): TestInstance
