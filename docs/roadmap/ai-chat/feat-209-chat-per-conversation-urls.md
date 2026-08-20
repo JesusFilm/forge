@@ -3,13 +3,14 @@ id: "feat-209"
 title: "Per-conversation URLs"
 owner: "jian wei"
 priority: "P2"
-status: "not-started"
+status: "in-progress"
 start_date: "2026-07-28"
 duration: 2
 depends_on:
   - "feat-241"
   - "feat-281"
-blocks: []
+blocks:
+  - "feat-399"
 tags:
   - "web"
 ---
@@ -22,6 +23,22 @@ tags:
 > `docs/handoffs/2026-07-21-chat-architecture-review-rulings.md` (Ruling 1 +
 > "feat-209 ordering"). `start_date` pushed 2026-07-23 → 2026-07-28;
 > `depends_on: feat-281` added.
+
+> **Planned (2026-08-18):** implementation plan at
+> `docs/plans/2026-08-18-2122-feat-chat-per-conversation-urls-plan.md` — it is
+> the authority where this brief has drifted. The four corrections it carries:
+> (1) "signed-in" below means **gate-granted (`seekerEnabled`)** until feat-236
+> removes the dogfood gate — history/replay exist only for allowlisted users,
+> so a merely-signed-in user's URL could never restore; (2) item 4's unified
+> "sign in to continue" state is **superseded** by a two-screen model (see the
+> dated note at item 4); (3) the "thin URL adapter" expectation above holds for
+> the URL layer, but deep links to threads outside the hydrated first history
+> page need one session extension (an adopt-by-id operation) — plan KTD3;
+> (4) per-user erasure (feat-337) and the 25-day retention window (feat-336)
+> make a dead `/c/<id>` a normal owner-visible state, covered by the
+> "not available" screen. In-app URL changes use shallow
+> `history.pushState` + a popstate listener — item 2's "become navigations"
+> must NOT be read as router navigations, which remount the pane (plan KTD1).
 
 ## Problem
 
@@ -86,6 +103,13 @@ matching the major AI chat products.
    expired or invalid session cookie, anonymous visitor, or another
    identity's thread (`thread_forbidden`). The prompt is explicit (not the
    generic failure notice) and never silently adopts the thread.
+   > **Superseded (2026-08-18, plan KTD5):** two screens, not one. "Sign in
+   > to view this conversation" renders only when there is NO valid session
+   > (anonymous ≡ expired ≡ tampered — sign-in is the fix there). A signed-in
+   > visitor who is denied — another identity's thread, a deleted/erased
+   > thread, a gate-denied account, or a malformed id — gets the existing
+   > "This conversation is no longer available." pane with identical wording
+   > across those causes. Never adoption, in either screen.
 5. **Identity-rotation invariant**: an identity change (sign-in/out) must
    still reset active conversation state. Today the OAuth full-page redirect
    does this for free; once ids live in URLs it must be preserved

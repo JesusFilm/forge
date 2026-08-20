@@ -26,6 +26,10 @@ export type UseConversations = {
   stopReply: () => void
   newConversation: () => void
   selectConversation: (id: string) => void
+  /** Adopt-or-refuse by server thread id (feat-209 — the popstate path):
+   * true when the id is (now) active, false only for an unknown id while
+   * history sits in the terminal "denied" phase. */
+  adoptConversation: (id: string) => boolean
   retryHistory: () => void
   loadMoreHistory: () => void
   retryReplay: () => void
@@ -36,17 +40,22 @@ export type UseConversations = {
  * instance per hook lifetime (side-effect-free construction, so StrictMode's
  * doubled initializer is harmless), `useSyncExternalStore` for the snapshot,
  * and a mount effect driving `activate`/`deactivate` — under dev StrictMode's
- * setup → cleanup → setup the SAME instance deactivates and re-arms. The
- * returned shape is unchanged from the pre-extraction hook; `seekerEnabled`
- * is captured at construction (deploy-static, read server-side in page.tsx).
+ * setup → cleanup → setup the SAME instance deactivates and re-arms. Both
+ * arguments are captured at construction (route-static: `seekerEnabled` is
+ * read server-side in page.tsx; `initialConversationId` is feat-209's
+ * deep-link seed, lowercased and validated by the /c/[id] route).
  */
-export function useConversations(seekerEnabled: boolean): UseConversations {
+export function useConversations(
+  seekerEnabled: boolean,
+  initialConversationId?: string,
+): UseConversations {
   const [session] = useState(() =>
     createConversationSession({
       streamReply,
       fetchHistoryPage,
       fetchHistoryThread,
       seekerEnabled,
+      initialConversationId,
     }),
   )
 
@@ -77,6 +86,7 @@ export function useConversations(seekerEnabled: boolean): UseConversations {
     stopReply: session.stopReply,
     newConversation: session.newConversation,
     selectConversation: session.selectConversation,
+    adoptConversation: session.adoptConversation,
     retryHistory: session.retryHistory,
     loadMoreHistory: session.loadMoreHistory,
     retryReplay: session.retryReplay,
