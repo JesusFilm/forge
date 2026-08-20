@@ -33,7 +33,7 @@ import { prisma } from "@/db/client"
 
 assertProductionAuthSecrets()
 
-const validAudiences = getAuthValidAudiences()
+const protectedResources = getAuthValidAudiences()
 
 const accountDeletionHooks = buildAccountDeletionHooks({
   findAppleAccount: (userId) =>
@@ -152,12 +152,13 @@ const socialProviders = {
 const jfpMobileSelfProvider = {
   providerId: JFP_MOBILE_PROVIDER_ID,
   discoveryUrl: `${getAuthBaseUrl()}/.well-known/openid-configuration`,
+  requireIdTokenVerification: true,
   clientId:
     process.env.NODE_ENV === "production"
       ? MOBILE_PRODUCTION_CLIENT_ID
       : MOBILE_LOCAL_CLIENT_ID,
   scopes: [...MOBILE_DEFAULT_SCOPES],
-  redirectURI: `${getAuthBaseUrl()}/api/auth/oauth2/callback/${JFP_MOBILE_PROVIDER_ID}`,
+  redirectURI: `${getAuthBaseUrl()}/api/auth/callback/${JFP_MOBILE_PROVIDER_ID}`,
   pkce: true,
   // R5 (feat-349): always show the login form, even with a live browser
   // session — sign-out must allow account switching on a shared device.
@@ -271,7 +272,15 @@ export const auth = betterAuth({
       allowDynamicClientRegistration: true,
       allowUnauthenticatedClientRegistration: true,
       scopes: AUTH_SCOPES.map((scope) => scope.key),
-      validAudiences,
+      // Next's build phase has no runtime database. Resource seeding belongs
+      // to server startup after migrations, not static route collection.
+      resources: isNextBuild
+        ? []
+        : protectedResources.map((identifier) => ({
+            identifier,
+            allowedScopes: AUTH_SCOPES.map((scope) => scope.key),
+          })),
+      clientRegistrationAllowedResources: isNextBuild ? [] : protectedResources,
       advertisedMetadata: {
         scopes_supported: AUTH_SCOPES.map((scope) => scope.key),
         claims_supported: [
@@ -311,9 +320,6 @@ export const auth = betterAuth({
       customIdTokenClaims: ({ user }) => firstPartyUserClaims(user),
       customUserInfoClaims: ({ user }) => firstPartyUserClaims(user),
       customAccessTokenClaims: ({ metadata }) => ({
-        ...(typeof metadata?.serviceAudience === "string"
-          ? { aud: metadata.serviceAudience }
-          : {}),
         ...(typeof metadata?.environmentKind === "string"
           ? {
               "https://jesusfilm.org/claims/environment":

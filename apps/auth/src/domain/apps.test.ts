@@ -528,7 +528,10 @@ describe("mobile app seed", () => {
         expect.objectContaining({
           key: "local",
           clientId: "jfp_mobile_local",
-          redirectUris: ["http://localhost:3004/api/auth/oauth2/callback/jfp"],
+          redirectUris: [
+            "http://localhost:3004/api/auth/callback/jfp",
+            "http://localhost:3004/api/auth/oauth2/callback/jfp",
+          ],
           allowedOrigins: ["http://localhost:3004"],
           autoApprove: true,
         }),
@@ -536,6 +539,7 @@ describe("mobile app seed", () => {
           key: "production",
           clientId: "jfp_mobile_production",
           redirectUris: [
+            "https://auth.jesusfilm.org/api/auth/callback/jfp",
             "https://auth.jesusfilm.org/api/auth/oauth2/callback/jfp",
           ],
           allowedOrigins: ["https://auth.jesusfilm.org"],

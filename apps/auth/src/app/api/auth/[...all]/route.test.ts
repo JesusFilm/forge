@@ -1085,6 +1085,19 @@ describe("device sign-in continuation", () => {
     ).resolves.toContain("/api/auth/oauth2/authorize")
   })
 
+  it("preserves repeated native resource indicators through login", async () => {
+    const continuation = await signInWith(
+      "client_id=dynamic_native&redirect_uri=http%3A%2F%2F127.0.0.1%3A49173%2Fcallback&resource=https%3A%2F%2Fresource-a.example%2Fmcp&resource=https%3A%2F%2Fresource-b.example%2Fmcp&prompt=login",
+    )
+    const url = new URL(continuation!)
+
+    expect(url.searchParams.getAll("resource")).toEqual([
+      "https://resource-a.example/mcp",
+      "https://resource-b.example/mcp",
+    ])
+    expect(url.searchParams.has("prompt")).toBe(false)
+  })
+
   it("does not let a user code divert an OAuth authorize continuation", async () => {
     // Appending user_code= to a legitimate /login?client_id=… link must not
     // redirect that sign-in to the approval page.
