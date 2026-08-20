@@ -4,11 +4,11 @@
 
 Build trusted, scalable AI capabilities that help people discover gospel content, engage meaningfully with Scripture, and take faithful next steps.
 
-## Status (August 19, 2026)
+## Status (August 20, 2026)
 
-- **Total tickets:** 558
-- **Complete:** 404
-- **In progress:** 39
+- **Total tickets:** 563
+- **Complete:** 407
+- **In progress:** 41
 - **Not started:** 36
 - **Blocked:** 79
 - **Overdue and not complete:** 102
@@ -270,6 +270,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-327](platform/feat-327-admin-prisma-adapter-pool-config.md)                      | Admin Prisma adapter pool config                                                 | codex      | P0       | 2026-08-03 | 1    | 2026-08-03 | complete    |
 | [feat-352](platform/feat-352-mastra-seo-live-proposal-digest.md)                       | Align live SEO proposal digest with Admin persistence                            | codex      | P0       | 2026-08-11 | 1    | 2026-08-11 | complete    |
 | [feat-356](platform/feat-356-preserve-iso-dates-in-seo-report-redaction.md)            | Preserve ISO dates in SEO report redaction                                       | codex      | P0       | 2026-08-11 | 1    | 2026-08-11 | complete    |
+| [feat-402](platform/feat-402-support-research-migration-readiness.md)                  | Fail support research closed on missing database migration                       | codex      | P0       | 2026-08-20 | 1    | 2026-08-20 | in-progress |
 | [feat-278](platform/feat-278-watch-russian-authored-content-localization.md)           | Watch Russian authored content localization                                      | unassigned | P1       | —          | 2    | —          | not-started |
 | [feat-036](platform/feat-036-cms-local-postgres-io-concurrency-compatibility.md)       | CMS local PostgreSQL I/O concurrency compatibility                               | tataihono  | P1       | 2026-04-01 | 1    | 2026-04-01 | complete    |
 | [feat-019](platform/feat-019-scaffolding-support-urim.md)                              | Scaffolding Support for Urim                                                     | tataihono  | P1       | 2026-04-07 | 21   | 2026-04-27 | blocked     |
@@ -470,6 +471,10 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-364](platform/feat-364-watch-language-picker-chinese-search-aliases.md)          | Watch language picker Chinese search aliases                                     | vlad       | P1       | 2026-08-17 | 1    | 2026-08-17 | complete    |
 | [feat-363](platform/feat-363-my-list-account-sync.md)                                  | My List account sync (cross-device saved titles)                                 | ekkasit    | P1       | 2026-08-18 | 5    | 2026-08-22 | not-started |
 | [feat-365](platform/feat-365-watch-language-picker-keyboard-scroll.md)                 | Watch language picker keyboard scrolling                                         | vlad       | P1       | 2026-08-18 | 1    | 2026-08-18 | complete    |
+| [feat-397](platform/feat-397-datadog-mobile-triage.md)                                 | Datadog mobile triage pipeline                                                   | urim       | P1       | 2026-08-18 | 3    | 2026-08-20 | in-progress |
+| [feat-397](platform/feat-397-watch-localized-not-found.md)                             | Preserve Watch locale on true not-found pages                                    | unassigned | P1       | 2026-08-18 | 1    | 2026-08-18 | complete    |
+| [feat-398](platform/feat-398-watch-unavailable-language-first-render.md)               | Render Watch unavailable-language recovery on the server                         | unassigned | P1       | 2026-08-18 | 1    | 2026-08-18 | complete    |
+| [feat-400](platform/feat-400-watch-language-search-consistency.md)                     | Watch language search consistency                                                | vlad       | P1       | 2026-08-20 | 1    | 2026-08-20 | complete    |
 | [feat-247](platform/feat-247-watch-nested-series-language-availability.md)             | Watch nested-series language availability                                        | vlad       | P2       | —          | —    | —          | complete    |
 | [feat-336](platform/feat-336-watch-homepage-seed-schema-drift.md)                      | Repair Watch homepage Experience seed schema drift                               | unassigned | P2       | —          | 1    | —          | not-started |
 | [feat-088](platform/feat-088-internal-tools-branding.md)                               | Internal Tools Branding                                                          | vlad       | P2       | 2026-03-30 | 14   | 2026-04-12 | complete    |

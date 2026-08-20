@@ -267,6 +267,43 @@ describe("daily support research workflow", () => {
     expect(repository.purgeCalls).toBe(1)
   })
 
+  it("fails before repository or upstream access when migration 002 is unavailable", async () => {
+    const repository = new MemoryRepository()
+    repository.getCursor = vi.fn(repository.getCursor.bind(repository))
+    const helpScout = helpScoutWith()
+    const linear = {
+      findIssueByMarker: vi.fn(),
+      createIssue: vi.fn(),
+    }
+
+    const report = await executeDailySupportResearch(
+      { dryRun: false },
+      {
+        config,
+        repository,
+        helpScout,
+        linear,
+        analyzer: { generate: vi.fn() },
+        databaseReadiness: vi.fn().mockResolvedValue({
+          ready: false,
+          reason: "support research database schema is unavailable",
+        }),
+        now: () => now,
+        randomId: () => "fixed-id",
+      },
+    )
+
+    expect(report).toMatchObject({
+      status: "failed",
+      errors: ["database_migration_unavailable"],
+    })
+    expect(repository.getCursor).not.toHaveBeenCalled()
+    expect(repository.reports).toHaveLength(0)
+    expect(helpScout.listNewConversations).not.toHaveBeenCalled()
+    expect(linear.findIssueByMarker).not.toHaveBeenCalled()
+    expect(linear.createIssue).not.toHaveBeenCalled()
+  })
+
   it("dry-runs analysis and proposed actions with zero Linear mutations", async () => {
     const repository = new MemoryRepository()
     const liveCursor = repository.cursor.toISOString()

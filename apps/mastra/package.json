@@ -8,6 +8,7 @@
     "build": "mastra build --studio",
     "start": "MASTRA_STUDIO_PATH=.mastra/output/studio node .mastra/output/index.mjs",
     "check:devotional-database-readiness": "pnpm --dir ../.. exec tsx apps/mastra/src/scripts/check-devotional-database-readiness.ts",
+    "check:support-research-database-readiness": "pnpm --dir ../.. exec tsx apps/mastra/src/scripts/check-support-research-database-readiness.ts",
     "lint": "eslint .",
     "migrate:database": "pnpm --dir ../.. exec tsx apps/mastra/src/scripts/migrate-mastra-database.ts",
     "migrate:devotional-database": "pnpm --dir ../.. exec tsx apps/mastra/src/scripts/migrate-devotional-database.ts",

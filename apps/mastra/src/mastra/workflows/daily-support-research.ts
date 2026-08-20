@@ -37,6 +37,10 @@ import {
   type SupportResearchRepository,
 } from "../../services/support-research/repository"
 import {
+  getSupportResearchDatabaseReadiness,
+  type SupportResearchDatabaseReadiness,
+} from "../../services/support-research/database-readiness"
+import {
   emptySupportRunCounters,
   supportRunReportSchema,
   type StoredSupportObservation,
@@ -68,6 +72,7 @@ export type DailySupportResearchDependencies = {
   validate?: typeof validateWatchReport
   now?: () => Date
   randomId?: () => string
+  databaseReadiness?: () => Promise<SupportResearchDatabaseReadiness>
 }
 
 export type SupportResearchReadiness =
@@ -237,13 +242,34 @@ export async function executeDailySupportResearch(
     ),
   }
   const fallbackCursor = new Date(now.getTime() - 24 * 60 * 60_000)
+  const runKey = input.dryRun
+    ? `support-research:dry-run:${input.idempotencyKey ?? runId}`
+    : `support-research:${input.idempotencyKey ?? dateKey(now)}`
+  if (dependencies.databaseReadiness) {
+    const databaseReadiness = await dependencies.databaseReadiness()
+    if (!databaseReadiness.ready) {
+      const configReadiness = getSupportResearchReadiness(config, input.dryRun)
+      return buildSupportRunReport({
+        runKey,
+        status: config.enabled ? "failed" : "disabled",
+        dryRun: input.dryRun,
+        cutoff: now.toISOString(),
+        cursorStart: fallbackCursor.toISOString(),
+        cursorEnd: fallbackCursor.toISOString(),
+        counters: emptySupportRunCounters(),
+        observations: [],
+        actionUrls: [],
+        errors: [
+          ...(configReadiness.ready ? [] : configReadiness.reasons),
+          "database_migration_unavailable",
+        ],
+      })
+    }
+  }
   const cursorStart = await dependencies.repository.getCursor(
     "help_scout",
     fallbackCursor,
   )
-  const runKey = input.dryRun
-    ? `support-research:dry-run:${input.idempotencyKey ?? runId}`
-    : `support-research:${input.idempotencyKey ?? dateKey(now)}`
   const leaseToken = dependencies.randomId?.() ?? randomUUID()
   const claim = await dependencies.repository.claimRun({
     runKey,
@@ -641,6 +667,7 @@ const executeSupportResearchStep = createStep({
           analyzer: mastra.getAgentById(
             "supportResearchAgent",
           ) as unknown as SupportAnalyzer,
+          databaseReadiness: () => getSupportResearchDatabaseReadiness(pool),
         },
         runId,
       )

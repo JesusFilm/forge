@@ -1984,6 +1984,14 @@ the isolated `datadog_triage` runs, per-source cursor, service-baseline,
 seen-issue, monitor-state, spike-baseline, and Linear outbox schema. Deploy it
 before enabling `DATADOG_TRIAGE_ENABLED=true`.
 
+Before support-research repository, Help Scout, model, validator, or Linear
+work, the scheduled workflow requires the exact immutable identity of
+`002-support-research.sql` and all component relations. Operators can exercise
+the same read-only predicate with
+`pnpm --filter @forge/mastra check:support-research-database-readiness`; a
+missing or partial migration reports only a safe reason and never connection
+details.
+
 Only the Mastra Railway service receives `DEVOTIONAL_WORKSPACE_S3_*`. Signed
 URLs are transient job capabilities and must never enter workflow state or
 logs. Shorts Worker pins them to the configured exact Workspace HTTPS origin
