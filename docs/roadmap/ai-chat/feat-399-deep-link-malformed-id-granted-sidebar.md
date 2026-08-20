@@ -3,12 +3,14 @@ id: "feat-399"
 title: "Deep-link malformed id: keep the granted user's sidebar alive"
 owner: "jian wei"
 priority: "P2"
-status: "not-started"
+status: "in-progress"
 start_date: "2026-09-01"
 duration: 1
 depends_on:
   - "feat-209"
-blocks: []
+blocks:
+  - "feat-401"
+  - "feat-402"
 tags:
   - "web"
 ---

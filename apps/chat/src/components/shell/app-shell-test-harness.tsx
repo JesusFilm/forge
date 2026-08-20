@@ -25,6 +25,8 @@ export type ShellRenderOptions = {
   initialConversationId?: string
   /** feat-209 server-decided denial pane. */
   deniedScreen?: "sign_in" | "unavailable"
+  /** feat-399 granted-shell-on-the-unavailable-pane flag. */
+  deepLinkUnresolvable?: boolean
   /** Renders the rail-foot account control (KTD8 sign-in href assertions). */
   authConfigured?: boolean
 }
@@ -40,6 +42,7 @@ export function renderShell(
       authConfigured={opts.authConfigured}
       initialConversationId={opts.initialConversationId}
       deniedScreen={opts.deniedScreen}
+      deepLinkUnresolvable={opts.deepLinkUnresolvable}
     />
   )
   view = render(opts.strictMode ? <StrictMode>{shell}</StrictMode> : shell)
@@ -223,6 +226,8 @@ export type SeekerHarnessOptions = {
   initialConversationId?: string
   /** feat-209 server-decided denial pane. */
   deniedScreen?: "sign_in" | "unavailable"
+  /** feat-399 granted-shell-on-the-unavailable-pane flag. */
+  deepLinkUnresolvable?: boolean
 }
 
 // Stub global fetch and render flag-on. The mock URL-dispatches: /api/history/*
@@ -269,6 +274,7 @@ export function renderSeeker(
     strictMode: options.strictMode,
     initialConversationId: options.initialConversationId,
     deniedScreen: options.deniedScreen,
+    deepLinkUnresolvable: options.deepLinkUnresolvable,
   })
   return fetchMock
 }
