@@ -87,6 +87,10 @@ export function MobileDatadogProvider({ children }: { children: ReactNode }) {
         // (noise; JS-side aborts are skipped in apolloClient's error link). No SDK
         // knob drops them: errorEventMapper runs only inside DdRum.addError (JS).
         trackErrors: true,
+        // Native stalls already report at the SDK's 200ms default; the JS thread
+        // was dark. 500ms clears a normal FlashList/hero-pager render, so an event
+        // means a real freeze — Apollo parsing a ~494KB payload, say.
+        longTaskThresholdMs: 500,
         nativeCrashReportEnabled: true,
         sessionSampleRate: config.sessionSampleRate,
         resourceTraceSampleRate: 100,
