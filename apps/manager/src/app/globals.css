@@ -2286,6 +2286,51 @@ html[data-coverage-loading="true"] .collections::after {
   color: #a39a8b;
 }
 
+.pipeline-cell-tile {
+  cursor: pointer;
+}
+
+.pipeline-tile-day {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+  opacity: 0.32;
+  pointer-events: none;
+}
+
+.pipeline-tile-day--generated {
+  color: #15803d;
+}
+
+.pipeline-tile-day--pending {
+  color: #57534e;
+}
+
+.pipeline-collection-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.pipeline-cell-icons {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.pipeline-cell-icon--generated {
+  color: #16a34a;
+}
+
+.pipeline-cell-icon--pending {
+  color: #ef4444;
+}
+
 .collection-empty--no-data {
   width: 100%;
   text-align: center;
@@ -2598,6 +2643,20 @@ html[data-coverage-loading="true"] .collections::after {
   background: rgba(239, 68, 68, 0.18);
 }
 
+/* Video Pipelines uses gray, not red, for "not generated" -- there is no
+   error state here, just work that hasn't happened yet. Scoped to its own
+   modifier so the real per-language coverage reports keep their red
+   "None" meaning. */
+.tile--pipeline-pending {
+  border-color: #a8a29e;
+  background: rgba(120, 113, 108, 0.14);
+}
+
+.tile--coverage.tile--pipeline-pending.is-selected {
+  border-color: #78716c;
+  background: #78716c;
+}
+
 .checkbox {
   display: inline-flex;
   align-items: center;
@@ -2857,6 +2916,124 @@ html[data-coverage-loading="true"] .collections::after {
   color: #9f1239;
 }
 
+.pipeline-detail-row {
+  width: 100%;
+  justify-content: space-between;
+}
+
+.pipeline-detail-row-select {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  cursor: pointer;
+}
+
+.pipeline-preview-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
+  color: var(--ds-muted);
+  flex-shrink: 0;
+  transition:
+    background-color 120ms ease,
+    color 120ms ease;
+}
+
+.pipeline-preview-link:hover,
+.pipeline-preview-link:focus-visible {
+  background: rgba(22, 163, 74, 0.12);
+  color: #16a34a;
+}
+
+.collection-card--pipeline .detail-group-list {
+  column-gap: 56px;
+  /* Fill column 1 top-to-bottom before continuing into column 2, instead of
+     the row-major placement grid-auto-flow defaults to. The exact row count
+     varies per collection (30 vs. 31 day months), so it's set inline per
+     instance in pipeline-collection-card.tsx rather than fixed here. */
+  grid-auto-flow: column;
+}
+
+.pipeline-preview-back {
+  display: inline-block;
+  margin-bottom: 18px;
+  color: var(--ds-muted);
+  font-size: 0.86rem;
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.pipeline-preview-back::before {
+  content: "\2190";
+  margin-right: 6px;
+}
+
+.pipeline-preview-back:hover {
+  color: var(--ds-ink);
+  text-decoration: underline;
+}
+
+.pipeline-preview-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px;
+  margin-top: 8px;
+}
+
+@media (max-width: 720px) {
+  .pipeline-preview-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.pipeline-preview-panel {
+  border-radius: 14px;
+  border: 1px solid #d6cec1;
+  background: #ffffff;
+  padding: 18px 20px 22px;
+  box-shadow: 0 10px 22px rgba(12, 17, 29, 0.06);
+}
+
+.pipeline-preview-panel h2 {
+  margin: 0 0 12px;
+  font-size: 0.95rem;
+  font-weight: 650;
+  color: var(--ds-ink);
+}
+
+.pipeline-preview-media {
+  display: block;
+  width: 100%;
+  border-radius: 10px;
+  object-fit: cover;
+  background: #f2efe9;
+}
+
+.pipeline-preview-media--mobile {
+  max-width: 220px;
+  aspect-ratio: 9 / 16;
+  margin: 0 auto;
+}
+
+.pipeline-preview-media--desktop {
+  aspect-ratio: 16 / 9;
+}
+
+.pipeline-preview-media--empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1.5px dashed var(--ds-line-strong);
+  color: var(--ds-soft);
+  font-size: 0.85rem;
+  text-align: center;
+  padding: 16px;
+}
+
 .detail-group-count {
   font-weight: 600;
   font-size: 0.75rem;
@@ -2924,6 +3101,15 @@ html[data-coverage-loading="true"] .collections::after {
 
 .detail-row-checkbox--human:checked {
   background: #16a34a;
+}
+
+.detail-row-checkbox--pipeline-pending {
+  border-color: #a8a29e;
+  background: rgba(120, 113, 108, 0.12);
+}
+
+.detail-row-checkbox--pipeline-pending:checked {
+  background: #78716c;
 }
 
 .detail-row-checkbox--ai {
@@ -3503,6 +3689,13 @@ html[data-coverage-loading="true"] .collections::after {
 
 .detail-thumb--empty {
   border: 1px dashed rgba(248, 250, 252, 0.25);
+}
+
+/* Video Pipelines: the placeholder thumbnail is generic (there's no real
+   render yet), so gray it out for a day that isn't finished -- full color
+   only once both aspects are actually generated. */
+.detail-thumb--pending {
+  filter: grayscale(1) opacity(0.6);
 }
 
 .detail-info {
@@ -8760,6 +8953,10 @@ body.studio-modal-open .studio-dashboard-shell > .design-system-shell {
 
 .design-system-report-icon.is-experiences {
   color: #8b6a24;
+}
+
+.design-system-report-icon.is-video-pipelines {
+  color: #15803d;
 }
 
 .design-system-report-switch-option > .design-system-report-icon {

@@ -12,21 +12,25 @@ import {
 import type { EnrichFeedback } from "@/features/enrich-selection"
 
 type EnrichActionControlsProps = {
+  actionLabel?: string
   enrichActionReady: boolean
   enrichFeedback: EnrichFeedback | null
   isEnrichSubmitting: boolean
   languageSelectionRequired: boolean
   onCancel: () => void
   onEnrich: () => void | Promise<void>
+  submittingLabel?: string
 }
 
 export function EnrichActionControls({
+  actionLabel = "Enrich Now",
   enrichActionReady,
   enrichFeedback,
   isEnrichSubmitting,
   languageSelectionRequired,
   onCancel,
   onEnrich,
+  submittingLabel = "Creating jobs...",
 }: EnrichActionControlsProps) {
   const [isDetailModalOpen, setIsDetailModalOpen] = React.useState(false)
   const detailTitleId = React.useId()
@@ -61,7 +65,7 @@ export function EnrichActionControls({
         ) : (
           <Rocket className="icon" aria-hidden="true" />
         )}
-        {isEnrichSubmitting ? "Creating jobs..." : "Enrich Now"}
+        {isEnrichSubmitting ? submittingLabel : actionLabel}
       </button>
       <button
         type="button"

@@ -29,6 +29,7 @@ import {
   ExternalLink,
   FileAudio2,
   FileJson2,
+  Film,
   KeyRound,
   ListChecks,
   LogOut,
@@ -46,7 +47,11 @@ export type ManagerShellUser = {
   email: string
 }
 
-export type ManagerShellReportType = "subtitles" | "audio" | "meta"
+export type ManagerShellReportType =
+  | "subtitles"
+  | "audio"
+  | "meta"
+  | "video-pipelines"
 
 type ManagerShellContextValue = {
   reportType: ManagerShellReportType
@@ -70,7 +75,7 @@ const REPORT_STORAGE_KEY = "forge-coverage-report"
 
 const ManagerShellContext = createContext<ManagerShellContextValue | null>(null)
 
-const reportOptions: Array<{
+export const reportOptions: Array<{
   icon: LucideIcon
   subtitle: string
   value: ManagerShellReportType
@@ -94,7 +99,20 @@ const reportOptions: Array<{
     subtitle: "Metadata coverage for the selected language.",
     icon: FileJson2,
   },
+  {
+    value: "video-pipelines",
+    label: "Video Pipelines",
+    subtitle: "Track the development and status of video production workflows.",
+    icon: Film,
+  },
 ]
+
+export const REPORT_ROUTE: Record<ManagerShellReportType, Route> = {
+  subtitles: "/dashboard/coverage",
+  audio: "/dashboard/coverage",
+  meta: "/dashboard/coverage",
+  "video-pipelines": "/dashboard/video-pipelines",
+}
 
 const navItems: Array<{
   href: Route
@@ -140,14 +158,43 @@ const navItems: Array<{
   },
 ]
 
-function readStoredReportType(): ManagerShellReportType {
+// These nav destinations (Smart Crop image-reframing, Shorts clip
+// generation, standing Agent automations) are unrelated to the Video
+// Pipelines report's devotional-video tracking, so they're hidden while
+// anywhere under /dashboard/video-pipelines to keep the sidebar focused.
+const VIDEO_PIPELINES_HIDDEN_NAV_KEYS = new Set([
+  "smart-crop",
+  "shorts",
+  "agents",
+])
+
+function isVideoPipelinesRoute(pathname: string): boolean {
+  return pathname.startsWith("/dashboard/video-pipelines")
+}
+
+export function visibleNavItems(pathname: string): typeof navItems {
+  if (!isVideoPipelinesRoute(pathname)) {
+    return navItems
+  }
+
+  return navItems.filter(
+    (item) => !VIDEO_PIPELINES_HIDDEN_NAV_KEYS.has(item.key),
+  )
+}
+
+export function readStoredReportType(): ManagerShellReportType {
   if (typeof window === "undefined") {
     return "subtitles"
   }
 
   try {
     const stored = window.sessionStorage.getItem(REPORT_STORAGE_KEY)
-    if (stored === "subtitles" || stored === "audio" || stored === "meta") {
+    if (
+      stored === "subtitles" ||
+      stored === "audio" ||
+      stored === "meta" ||
+      stored === "video-pipelines"
+    ) {
       return stored
     }
   } catch {
@@ -208,6 +255,17 @@ function getBreadcrumbs(pathname: string): string[] {
     return ["Studio", "Shorts"]
   }
 
+  if (
+    pathname.startsWith("/dashboard/video-pipelines/") &&
+    pathname.endsWith("/preview")
+  ) {
+    return ["Studio", "Video Pipelines", "Preview"]
+  }
+
+  if (pathname.startsWith("/dashboard/video-pipelines")) {
+    return ["Studio", "Video Pipelines"]
+  }
+
   return ["Studio", "Coverage"]
 }
 
@@ -227,6 +285,7 @@ function ReportIcon({
 
 function StudioReportSwitcher() {
   const shell = useManagerShellState()
+  const router = useRouter()
   const [isOpen, setIsOpen] = useState(false)
   const shellRef = useRef<HTMLDivElement | null>(null)
   const selectedReport =
@@ -300,6 +359,7 @@ function StudioReportSwitcher() {
               onClick={() => {
                 shell.setReportType(option.value)
                 setIsOpen(false)
+                router.push(REPORT_ROUTE[option.value])
               }}
             >
               <ReportIcon icon={option.icon} value={option.value} />
@@ -586,11 +646,25 @@ export function ManagerDashboardShell({
   const toggleId = useId()
   const [headerContent, setHeaderContent] = useState<ReactNode | null>(null)
   const [sidebarContent, setSidebarContent] = useState<ReactNode | null>(null)
-  const [reportType, setReportTypeState] = useState<ManagerShellReportType>(
-    () => readStoredReportType(),
-  )
+  // Initial value must match the server-rendered "subtitles" default
+  // exactly (no `window` on the server) — reading sessionStorage here
+  // instead would hydrate-mismatch whenever a prior session had already
+  // selected a non-default report type. Sync from sessionStorage in a
+  // mount-only effect below instead, mirroring useSessionReportType's
+  // established pattern in coverage-report-client.tsx.
+  const [reportType, setReportTypeState] =
+    useState<ManagerShellReportType>("subtitles")
   const [queueCount, setQueueCount] = useState<number | null>(null)
   const breadcrumbs = useMemo(() => getBreadcrumbs(pathname), [pathname])
+
+  /* eslint-disable react-hooks/set-state-in-effect -- intentional: hydrate from sessionStorage after mount to avoid SSR mismatch */
+  useEffect(() => {
+    const stored = readStoredReportType()
+    if (stored !== "subtitles") {
+      setReportTypeState(stored)
+    }
+  }, [])
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const setReportType = useCallback(
     (nextReportType: ManagerShellReportType) => {
@@ -683,7 +757,7 @@ export function ManagerDashboardShell({
               <StudioReportSwitcher />
 
               <nav className="design-system-shell-nav" aria-label="Primary">
-                {navItems.map((item) => {
+                {visibleNavItems(pathname).map((item) => {
                   const Icon = item.icon
                   const isActive = isActiveRoute(pathname, item.href)
 
