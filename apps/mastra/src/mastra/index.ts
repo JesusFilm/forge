@@ -26,6 +26,7 @@ import { smokeAgent, createSmokeResponse } from "./agents/smoke-agent"
 import { seekerAgent } from "./agents/seeker-agent"
 import { webResearchAgent } from "./agents/web-research-agent"
 import { seoMarketingAgent } from "./agents/seo-marketing-agent"
+import { datadogTriageAgent } from "./agents/datadog-triage-agent"
 import { supportResearchAgent } from "./agents/support-research-agent"
 import { copyAgent } from "./agents/devotional/copy-agent"
 import { highlighterAgent } from "./agents/devotional/highlighter-agent"
@@ -144,6 +145,7 @@ import {
   youtubeAiChristianDiscoveryWorkflow,
 } from "./workflows/youtube-ai-christian-discovery"
 import { dailySupportResearchWorkflow } from "./workflows/daily-support-research"
+import { datadogMobileTriageWorkflow } from "./workflows/datadog-mobile-triage"
 import {
   handlePinterestDiscoveryRouteRequest,
   pinterestAiChristianDiscoveryWorkflow,
@@ -281,6 +283,7 @@ export const mastra = new Mastra({
     webResearchAgent,
     seoMarketingAgent,
     supportResearchAgent,
+    datadogTriageAgent,
     scriptureAgent,
     safetyAgent,
     modernizerAgent,
@@ -316,6 +319,7 @@ export const mastra = new Mastra({
     devotionalPublishWorkflow,
     youtubeAiChristianDiscoveryWorkflow,
     dailySupportResearchWorkflow,
+    datadogMobileTriageWorkflow,
     pinterestAiChristianDiscoveryWorkflow,
     subtitleEnrichmentWorkflow,
     transcriptScriptureCorrectionWorkflow,
