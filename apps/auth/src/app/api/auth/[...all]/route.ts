@@ -802,6 +802,7 @@ async function handleEmailSignIn(request: Request): Promise<Response> {
         id: randomUUID(),
         userId: user.id,
         providerId: "firebase",
+        issuer: "local:firebase",
         accountId: verified.uid,
       },
       update: {

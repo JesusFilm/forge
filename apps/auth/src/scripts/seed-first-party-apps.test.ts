@@ -6,6 +6,13 @@ const upsertAppEnvironment = vi.fn()
 const upsertOAuthClient = vi.fn()
 const findManyOAuthClients = vi.fn()
 const updateOAuthClient = vi.fn()
+const upsertOAuthResource = vi.fn()
+const upsertOAuthClientResource = vi.fn()
+const finalizeBetterAuth17Schema = vi.fn()
+
+vi.mock("./finalize-better-auth-17-schema", () => ({
+  finalizeBetterAuth17Schema,
+}))
 
 vi.mock("@/db/client", () => ({
   prisma: {
@@ -17,6 +24,8 @@ vi.mock("@/db/client", () => ({
       update: updateOAuthClient,
       upsert: upsertOAuthClient,
     },
+    oauthResource: { upsert: upsertOAuthResource },
+    oauthClientResource: { upsert: upsertOAuthClientResource },
   },
 }))
 
@@ -45,6 +54,7 @@ describe("seedFirstPartyApps", () => {
       id: `app_${where.key}`,
     }))
     findManyOAuthClients.mockResolvedValue([])
+    finalizeBetterAuth17Schema.mockResolvedValue(undefined)
   })
 
   it("seeds scopes and OAuth clients for every first-party app", async () => {
@@ -59,6 +69,8 @@ describe("seedFirstPartyApps", () => {
       oauthClients: 33,
       scopes: 21,
     })
+
+    expect(finalizeBetterAuth17Schema).toHaveBeenCalledOnce()
 
     expect(upsertScope).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -83,6 +95,8 @@ describe("seedFirstPartyApps", () => {
           public: true,
           requirePKCE: true,
           tokenEndpointAuthMethod: "none",
+          applicationType: "web",
+          clientCredentialsScopes: [],
         }),
       }),
     )
@@ -95,6 +109,8 @@ describe("seedFirstPartyApps", () => {
           public: true,
           requirePKCE: true,
           tokenEndpointAuthMethod: "none",
+          applicationType: "web",
+          clientCredentialsScopes: [],
         }),
       }),
     )
@@ -202,6 +218,8 @@ describe("seedFirstPartyApps", () => {
           public: true,
           requirePKCE: true,
           tokenEndpointAuthMethod: "none",
+          applicationType: "native",
+          clientCredentialsScopes: [],
           grantTypes: ["authorization_code", "refresh_token"],
           metadata: expect.objectContaining({
             appKey: "admin-mcp",
@@ -220,6 +238,8 @@ describe("seedFirstPartyApps", () => {
           public: false,
           requirePKCE: false,
           tokenEndpointAuthMethod: "client_secret_basic",
+          applicationType: "web",
+          clientCredentialsScopes: ["admin:manager-session:validate"],
           grantTypes: ["client_credentials"],
           disabled: true,
           metadata: expect.objectContaining({
@@ -228,6 +248,48 @@ describe("seedFirstPartyApps", () => {
         }),
       }),
     )
+  })
+
+  it("upserts native resources and client links without duplicate rows", async () => {
+    const { seedFirstPartyApps } = await import("./seed-first-party-apps")
+
+    await seedFirstPartyApps()
+    await seedFirstPartyApps()
+
+    expect(upsertOAuthResource).toHaveBeenCalledWith({
+      where: { identifier: "https://admin.jesusfilm.org/mcp" },
+      update: expect.objectContaining({ disabled: false }),
+      create: expect.objectContaining({
+        identifier: "https://admin.jesusfilm.org/mcp",
+        allowedScopes: expect.arrayContaining(["experience:read"]),
+      }),
+    })
+    expect(upsertOAuthClientResource).toHaveBeenCalledWith({
+      where: {
+        clientId_resourceId: {
+          clientId: "jfp_admin_mcp_codex",
+          resourceId: "https://admin.jesusfilm.org/mcp",
+        },
+      },
+      update: {},
+      create: {
+        clientId: "jfp_admin_mcp_codex",
+        resourceId: "https://admin.jesusfilm.org/mcp",
+      },
+    })
+    expect(upsertOAuthClientResource).toHaveBeenCalledWith({
+      where: {
+        clientId_resourceId: {
+          clientId: "jfp_manager_production_session_service",
+          resourceId: "https://admin.jesusfilm.org/api/manager/session",
+        },
+      },
+      update: {},
+      create: {
+        clientId: "jfp_manager_production_session_service",
+        resourceId: "https://admin.jesusfilm.org/api/manager/session",
+      },
+    })
   })
 
   it("records the device grant type for every TV client in both upsert branches", async () => {

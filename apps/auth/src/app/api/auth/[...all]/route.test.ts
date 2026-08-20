@@ -8,6 +8,7 @@ const rateLimitAuthRoute = vi.fn(async (_input: unknown) => ({
 }))
 const signUpEmail = vi.fn()
 const getSession = vi.fn()
+const accountUpsert = vi.fn()
 const canRedeemAgentLoginHandle = vi.fn(
   async (_prisma: unknown, _input: unknown) => false,
 )
@@ -33,7 +34,7 @@ vi.mock("@/db/client", () => ({
     $transaction: vi.fn(async (callback) =>
       callback({
         account: {
-          upsert: vi.fn(),
+          upsert: accountUpsert,
         },
         user: {
           findFirst: vi.fn(async () => ({ id: "user_123" })),
@@ -83,6 +84,7 @@ describe("Auth route wrapper", () => {
     rateLimitAuthRoute.mockReset()
     rateLimitAuthRoute.mockResolvedValue({ allowed: true, source: "local" })
     signUpEmail.mockReset()
+    accountUpsert.mockReset()
     vi.unstubAllEnvs()
   })
 
@@ -763,6 +765,15 @@ describe("Auth route wrapper", () => {
     expect(response.status).toBe(303)
     expect(response.headers.get("location")).toBe(
       "http://localhost:3004/api/auth/oauth2/authorize?client_id=jfp_admin_local&sig=signed",
+    )
+    expect(accountUpsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        create: expect.objectContaining({
+          providerId: "firebase",
+          issuer: "local:firebase",
+          accountId: "firebase_uid",
+        }),
+      }),
     )
     expect(response.headers.get("set-cookie")).toContain(
       "forge_auth_last_login_method=email",
