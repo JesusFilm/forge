@@ -24,12 +24,10 @@ import { resolveImageUrl } from "../../src/lib/resolveImageUrl"
 import { ACCENT, SURFACE_COLOR } from "../../src/lib/color"
 import { layout, text } from "../../src/styles/shared"
 import { useTypography } from "../../src/hooks/useTypography"
-import { VideoPlayer } from "../../src/components/watch/VideoPlayer"
+import { PlayerSlot } from "../../src/components/watch/PlayerSlot"
 import { useFullscreenPresentation } from "../../src/hooks/useFullscreenPresentation"
-import {
-  BACK_BUTTON_PROPS,
-  PLAYER_SIDE_PADDING,
-} from "../../src/lib/playerLayout"
+import { usePlaybackFrameVisible } from "../../src/hooks/usePlaybackFrame"
+import { BACK_BUTTON_PROPS } from "../../src/lib/playerLayout"
 import { buildWatchShareUrl } from "../../src/lib/watchShareUrl"
 import { VideoDetailSkeleton } from "../../src/components/watch/VideoDetailSkeleton"
 import { VideoMetadata } from "../../src/components/watch/VideoMetadata"
@@ -63,6 +61,7 @@ export default function SeriesScreen() {
 
   const router = useRouter()
   const { isFullscreen, toggleFullscreen } = useFullscreenPresentation()
+  const playerFrameVisible = usePlaybackFrameVisible()
   const typography = useTypography()
   const insets = useSafeAreaInsets()
 
@@ -344,15 +343,12 @@ export default function SeriesScreen() {
   )
 
   // Cold deep link with nothing to paint yet → skeleton, not a blank spinner.
-  // Match the loaded hero's dock (top safe edge + side inset) so it doesn't jump.
+  // Match the loaded hero's dock (top safe edge, full-bleed) so it doesn't jump.
   if (!hasSeries && seed == null && loading) {
     return (
       <View style={layout.screenContainer}>
         <StatusBar style="light" />
-        <VideoDetailSkeleton
-          playerTopInset={insets.top}
-          playerHorizontalInset={PLAYER_SIDE_PADDING}
-        />
+        <VideoDetailSkeleton playerTopInset={insets.top} />
         <FloatingBackButton {...BACK_BUTTON_PROPS} />
       </View>
     )
@@ -382,12 +378,13 @@ export default function SeriesScreen() {
     )
   }
 
-  // Hero dock: top safe edge + side inset, keeping the trailer clear of the
-  // grid edges. The /watch player is full-bleed; this dock stays inset by
-  // design. Shared by the pinned trailer player and the poster-only hero.
+  // Hero dock: top safe edge, full-bleed like the /watch player (2026-08-18).
+  // Shared by the pinned trailer player and the poster-only hero.
   const heroDock = {
     paddingTop: insets.top,
-    paddingHorizontal: PLAYER_SIDE_PADDING,
+    // The flush scrubber thumb straddles the trailer's bottom edge; without
+    // the lift the later-painted episode grid covers its lower half.
+    zIndex: 1,
   }
 
   // A poster-only hero (no trailer) scrolls away with the list — rendered as the
@@ -424,12 +421,13 @@ export default function SeriesScreen() {
           (RN zIndex is sibling-scoped, so the player's own can't clear it). */}
       {hasSeries && hasTrailer && (
         <View style={isFullscreen ? styles.heroDockFullscreen : heroDock}>
-          <VideoPlayer
+          {/* No `session`: a trailer never originates a mini-player session,
+              and it yields the root player to one that is already live (AE14). */}
+          <PlayerSlot
             streamingUrl={trailerHls}
             posterUrl={displayPoster}
             fullscreen={isFullscreen}
             onToggleFullscreen={toggleFullscreen}
-            horizontalInset={PLAYER_SIDE_PADDING}
             autostart
           />
         </View>
@@ -511,8 +509,12 @@ export default function SeriesScreen() {
       />
 
       {/* Floating back button overlaid on the hero's top-left corner — replaces
-          the native header back. Hidden in fullscreen (the player owns chrome). */}
-      {!isFullscreen && <FloatingBackButton {...BACK_BUTTON_PROPS} />}
+          the native header back. Hidden in fullscreen (the player owns chrome),
+          and while the playback host draws over this dock: the host paints above
+          the stack, so it renders this button. */}
+      {!isFullscreen && !playerFrameVisible && (
+        <FloatingBackButton {...BACK_BUTTON_PROPS} />
+      )}
 
       <Snackbar
         message={seriesSnackbar ?? ""}

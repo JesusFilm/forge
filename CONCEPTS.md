@@ -935,11 +935,19 @@ The Chrome is visible when playback starts, auto-hides after a few idle seconds 
 
 A video that starts by itself is the exception to "stays up while buffering": the Chrome is withheld until the first frame and an Autostart Veil stands in for it, because a play button and a zero scrubber offered for a video nobody asked to pause read as a stall. Because the Chrome is the player's only recovery affordance, that withholding is always bounded — see the Autostart Veil's release rule.
 
+Chrome visibility is not a release signal. Because the Chrome stays up for as long as playback is paused or ended, anything that holds a capability open "until the Chrome hides" holds it open forever in those states. A hold keyed to Chrome visibility therefore needs its own unconditional release, not the Chrome's.
+
 ### Autostart Veil
 
 The dimmed cover laid over a video's poster while a video that starts on its own is still loading — darkened artwork under a spinner, standing in for the withheld Chrome. It appears only for a video the viewer did not press play on; a video started by hand shows its Chrome throughout.
 
 The veil takes no touches, and while it is up a tap on the video body must not resolve to hiding the Chrome beneath it, or playback begins with no controls at all. It is released by the first frame, by a reported load failure, or by a time limit — whichever comes first. The time limit is not redundant: the other two releases depend on the player reporting something, and the case that strands a viewer is the one where it reports nothing, so a viewer who leaves the app mid-load and returns must also get the veil released. Releasing early only returns the controls sooner, while releasing late leaves the viewer with no way out, so the bound is set to err early.
+
+### Back-Swipe Strip
+
+The narrow band along a watch screen's leading edge that is reserved for the platform's page-dismiss swipe. The seek bar spans the full width visually but declines any drag that begins inside the strip, so a dismiss gesture is never half-read as a scrub.
+
+The strip exists because the dismiss gesture is recognised natively, before the app's own gesture handling runs — a contest the app cannot win, only avoid. Reserving territory in advance is therefore the mechanism, rather than deciding the winner once a touch has arrived. It is reserved only where a native gesture actually competes for the touch: where the platform's back gesture belongs to the OS and reaches the app as a plain navigation event, nothing competes, and reserving a strip would delete usable seek area for nothing. Fullscreen playback, which cannot be dismissed by the gesture, likewise reserves none.
 
 ### Ambient Backdrop
 
@@ -958,6 +966,12 @@ A Watch Session belongs to the currently-viewed Video: it is published when the 
 The app-wide, persisted audio- and subtitle-language choice that carries across every Video and series — a stored _intent_ (a Language slug plus a cached display name), distinct from the per-Video Watch Session. Because the same preference flows over content with different Dubs and subtitle tracks, it is reconciled against each item's actual tracks at display and apply time rather than shown verbatim: an unsupported choice falls back to a supported track, and content with no matching track reads "Off".
 
 Identity always keys on the Language slug; the cached name paints labels instantly on a cold load but is never used for matching. Toggling subtitles on or off changes visibility only — it never rewrites the stored language, which only an explicit pick changes.
+
+### Mini Player
+
+The small floating video window that keeps a video playing after the viewer leaves the screen it was playing on, so playback survives navigation instead of ending with the route. Distinct from the operating system's picture-in-picture window, which is the platform's own window outside the app — the Mini Player is drawn by the app and lives above its navigation.
+
+It is the same live playback surface as the full-size player, resized and repositioned rather than handed to a second player, because moving playback between two surfaces restarts it. A Mini Player is earned rather than automatic: a video that never actually played does not get one, nor does a video that already ran to its end, nor one whose playback is being driven by a cast receiver. While an in-app sheet is presented over it, it is hidden rather than torn down, so the video keeps playing behind the sheet and returns when the sheet closes. The viewer can move it between screen corners and dismiss it; dismissing ends the playback session rather than merely hiding the window.
 
 ## Offline downloads
 

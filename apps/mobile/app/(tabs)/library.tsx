@@ -37,6 +37,7 @@ import {
   formatLibraryBytes,
   storageSummary,
 } from "../../src/lib/libraryDownloads"
+import { useNonRouteSheetSuppression } from "../../src/hooks/useNonRouteSheetSuppression"
 import {
   INITIAL_SELECTION_STATE,
   deselectAll,
@@ -147,6 +148,8 @@ export default function LibraryScreen() {
   useEffect(() => {
     if (!selecting) setConfirmVisible(false)
   }, [selecting])
+
+  useNonRouteSheetSuppression(confirmVisible, "libraryDeleteConfirm")
 
   // Android back: close the confirm sheet first, else exit selection, before
   // falling through to default navigation. Registered only while selecting,

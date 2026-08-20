@@ -35,6 +35,7 @@ import {
 } from "../../lib/color"
 import { useTypography, type TypographyScale } from "../../hooks/useTypography"
 import { prefetchHeroStream, useHeroStream } from "../../hooks/useHeroStream"
+import { useMiniPlayerHoldsVideo } from "../../hooks/useMiniPlayerHoldsVideo"
 import { datadogLog } from "../../lib/datadog"
 import { PlatformBlur } from "../ui/PlatformBlur"
 import { resolveImageUrl } from "../../lib/resolveImageUrl"
@@ -88,8 +89,9 @@ export type HomeHeroPagerProps = {
   slides: readonly WatchHomeSlide[]
   heroHeight?: number
   /**
-   * Screen-driven suspension (scroll past the hero threshold / tab blur).
-   * Mirrors VideoHeroRenderer's prop surface so U7 reuses the same wiring.
+   * Screen-driven suspension (scroll past the hero threshold / tab blur / a
+   * live mini-player window). The window term is ALSO read here directly, so
+   * the yield survives a screen that forgets to compose it.
    */
   paused?: boolean
   blurOpacity?: number
@@ -117,6 +119,9 @@ export function HomeHeroPager({
 }: HomeHeroPagerProps) {
   const { width: screenWidth } = useWindowDimensions()
   const typography = useTypography()
+  // R9/R10. Read here rather than taken as a prop: the hero must yield the
+  // decoder on every route that mounts it, with no wiring to forget.
+  const windowHoldsVideo = useMiniPlayerHoldsVideo()
 
   const pageHeight = heroHeight ?? Math.round(screenWidth * 1.2)
 
@@ -446,16 +451,20 @@ export function HomeHeroPager({
   // ── Suspension (paused prop + AppState, mirroring VideoHeroRenderer) ─────
 
   const appActiveRef = useRef(true)
-  const pausedRef = useRef(paused === true)
+  // A live window suspends the hero through the SAME slot as a scroll-away: the
+  // suspend union holds one reason and RESUME clears it unconditionally, so a
+  // second reason would let either release restart the hero under the window.
+  const suspendHero = paused === true || windowHoldsVideo
+  const pausedRef = useRef(suspendHero)
 
   useEffect(() => {
-    pausedRef.current = paused === true
-    if (paused) {
+    pausedRef.current = suspendHero
+    if (suspendHero) {
       dispatch({ type: "SUSPEND", reason: "scroll" })
     } else if (appActiveRef.current) {
       dispatch({ type: "RESUME" })
     }
-  }, [paused])
+  }, [suspendHero])
 
   useEffect(() => {
     const subscription = AppState.addEventListener("change", (nextState) => {
@@ -567,11 +576,14 @@ export function HomeHeroPager({
   const renderItem = useCallback(
     ({ item, index }: { item: WatchHomeSlide; index: number }) => {
       const { showVideo, posterHidden } = heroPageVideoState(state, item, index)
+      // R10: a paused player still owns its surface, so yielding UNMOUNTS the
+      // view. The poster comes back with it — it is what the page falls to.
+      const hosts = showVideo && !windowHoldsVideo
       return (
         <HeroPage
           slide={item}
-          showVideo={showVideo}
-          posterHidden={posterHidden}
+          showVideo={hosts}
+          posterHidden={hosts && posterHidden}
           player={player}
           width={screenWidth}
           height={pageHeight}
@@ -584,6 +596,7 @@ export function HomeHeroPager({
       state.phase,
       state.videoReady,
       state.transitionFromId,
+      windowHoldsVideo,
       player,
       screenWidth,
       pageHeight,
@@ -602,7 +615,7 @@ export function HomeHeroPager({
         data={state.slides}
         renderItem={renderItem}
         keyExtractor={keyExtractor}
-        extraData={`${state.currentIndex}|${state.phase}|${state.videoReady}|${state.transitionFromId ?? ""}`}
+        extraData={`${state.currentIndex}|${state.phase}|${state.videoReady}|${state.transitionFromId ?? ""}|${windowHoldsVideo}`}
         horizontal
         pagingEnabled
         showsHorizontalScrollIndicator={false}

@@ -3,9 +3,35 @@ import {
   hasUsableDuration,
   applySkip,
   fractionToTime,
+  mayStartScrub,
   progressFraction,
   thumbOutputRange,
 } from "../scrubber"
+
+describe("mayStartScrub (back-swipe edge guard)", () => {
+  it("declines a touch that starts inside the strip the pop owns", () => {
+    // iOS 26 claims this touch natively before JS runs; accepting it is how a
+    // page-dismiss drag got half-read as a scrub.
+    expect(mayStartScrub(0, 24)).toBe(false)
+    expect(mayStartScrub(23.9, 24)).toBe(false)
+  })
+
+  it("accepts a touch at or past the strip's edge", () => {
+    expect(mayStartScrub(24, 24)).toBe(true)
+    expect(mayStartScrub(200, 24)).toBe(true)
+  })
+
+  it("accepts everything when no guard is active (fullscreen)", () => {
+    // Fullscreen disables the pop, so the bar keeps its full width there.
+    expect(mayStartScrub(0, 0)).toBe(true)
+    expect(mayStartScrub(5, 0)).toBe(true)
+  })
+
+  it("fails open on non-finite input rather than deadening the bar", () => {
+    expect(mayStartScrub(Number.NaN, 24)).toBe(true)
+    expect(mayStartScrub(10, Number.NaN)).toBe(true)
+  })
+})
 
 describe("clamp", () => {
   it("bounds a value to [min, max]", () => {

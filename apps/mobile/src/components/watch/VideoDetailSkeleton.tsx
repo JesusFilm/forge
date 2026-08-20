@@ -17,22 +17,14 @@ type VideoDetailSkeletonProps = {
    * which has a native header). Only affects "full".
    */
   playerTopInset?: number
-  /**
-   * Per-side horizontal inset for the player block, matching a parent that
-   * insets the real player. Default 0. Only affects "full".
-   */
-  playerHorizontalInset?: number
 }
 
 export function VideoDetailSkeleton({
   variant = "full",
   playerTopInset = 0,
-  playerHorizontalInset = 0,
 }: VideoDetailSkeletonProps) {
   const { width: screenWidth } = useWindowDimensions()
-  const playerHeight = Math.round(
-    (screenWidth - playerHorizontalInset * 2) * PLAYER_HEIGHT_RATIO,
-  )
+  const playerHeight = Math.round(screenWidth * PLAYER_HEIGHT_RATIO)
   const cardWidth = Math.round(screenWidth * 0.45)
   const cardHeight = Math.round(cardWidth / (16 / 9))
 
@@ -47,10 +39,9 @@ export function VideoDetailSkeleton({
             style={[
               styles.player,
               {
-                width: screenWidth - playerHorizontalInset * 2,
+                width: screenWidth,
                 height: playerHeight,
                 marginTop: playerTopInset,
-                marginHorizontal: playerHorizontalInset,
                 opacity,
               },
             ]}

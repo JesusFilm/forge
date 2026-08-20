@@ -24,6 +24,9 @@ export type ProgressIdentity = {
   languageSlug?: string | null
 }
 
+// "dismiss" and "replace" split what "unmount" conflated: a viewer closing the
+// player and new content taking the player over are different endings, and
+// progress attribution needs them apart (R16).
 // "foreground" is U5's cast reconcile after a suspension — a forced write,
 // but not a playback stop, so it never arms the sign-in prompt.
 export type FlushTrigger =
@@ -31,6 +34,8 @@ export type FlushTrigger =
   | "background"
   | "unmount"
   | "end"
+  | "dismiss"
+  | "replace"
   | "foreground"
 
 export type RecorderDeps = {

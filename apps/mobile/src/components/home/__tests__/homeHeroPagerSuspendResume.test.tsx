@@ -1,6 +1,9 @@
 /**
- * Scroll suspend/resume contract for the hero pager (the two 2026-08 hero
- * regressions surfaced by the expo-video 57 upgrade):
+ * Suspend/resume contract for the hero pager: the two 2026-08 scroll
+ * regressions surfaced by the expo-video 57 upgrade, and the mini-player
+ * window's claim on the one decoder (R9, R10) at the bottom of the file.
+ *
+ * The scroll regressions:
  *
  * 1. Resuming from a scroll suspension must NOT re-issue `replaceAsync` for a
  *    source that is already loaded. On expo-video 57 a replace reloads the
@@ -62,7 +65,9 @@ type FakePlayer = {
 }
 
 type ExpoVideoMock = {
-  VideoView: () => null
+  /** A jest.fn so a suite can find its instances: R10's yield is about the view
+   *  being MOUNTED, which no player-state assertion can see. */
+  VideoView: jest.Mock
   useVideoPlayer: (
     source: unknown,
     setup?: (player: FakePlayer) => void,
@@ -117,7 +122,7 @@ jest.mock("expo-video", () => {
     },
   }
   const mock: ExpoVideoMock = {
-    VideoView: () => null,
+    VideoView: jest.fn(() => null),
     useVideoPlayer: (_source, setup) => {
       setup?.(player)
       return player
@@ -204,11 +209,13 @@ jest.mock("../../../hooks/useHeroStream", () => {
 import { act, type ReactElement } from "react"
 
 import { HomeHeroPager } from "../HomeHeroPager"
+import { getMiniPlayerStore } from "../../../lib/miniPlayer/store"
 import type { WatchHomeVideoSlide } from "../../../lib/watchHome/carouselSequence"
 import {
   TestRenderer,
   type NodePath,
   type NodeRequireLike,
+  type RenderedNode,
   type TestInstance,
 } from "../../../test-utils/rnTestRenderer"
 
@@ -254,6 +261,26 @@ function element(paused: boolean): ReactElement {
   )
 }
 
+const sessionStore = getMiniPlayerStore()
+
+/** The session a window opened over Home would carry. */
+const WINDOW_SESSION = {
+  videoId: "video-in-the-window",
+  videoSlug: "video-in-the-window-slug",
+  title: "Video In The Window",
+}
+
+/**
+ * How many hero video views are MOUNTED. R10's yield is a mount question, and
+ * the player's own state cannot answer it — a paused player keeps its surface.
+ */
+function mountedVideoViews(renderer: TestInstance): number {
+  return renderer.root.findAll(
+    (node) =>
+      (node as RenderedNode & { type?: unknown }).type === expoVideo.VideoView,
+  ).length
+}
+
 /** Renders un-suspended and settles the first swap into steady playback. */
 async function renderPlaying(): Promise<UpdatableInstance> {
   let renderer!: UpdatableInstance
@@ -271,6 +298,9 @@ async function renderPlaying(): Promise<UpdatableInstance> {
 beforeEach(() => {
   jest.clearAllMocks()
   expoVideo.__reset()
+  // A module singleton outlives the file; a session left over would suspend the
+  // next test's hero before it rendered.
+  sessionStore.end("abandoned")
   for (const key of Object.keys(heroStream.__streams)) {
     delete heroStream.__streams[key]
   }
@@ -446,6 +476,88 @@ describe("HomeHeroPager scroll suspend/resume", () => {
     })
 
     expect(expoVideo.__player.replaceAsync).toHaveBeenCalledTimes(1)
+    expect(expoVideo.__player.playing).toBe(true)
+    await act(async () => {
+      renderer.unmount()
+    })
+  })
+})
+
+describe("HomeHeroPager yields to a live mini-player window", () => {
+  it("UNMOUNTS its video view, not merely pauses it", async () => {
+    const renderer = await renderPlaying()
+    // Anti-vacuous: the yield has to remove something that was there.
+    expect(mountedVideoViews(renderer)).toBe(1)
+
+    await act(async () => {
+      sessionStore.start(WINDOW_SESSION)
+    })
+
+    expect(mountedVideoViews(renderer)).toBe(0)
+    expect(expoVideo.__player.playing).toBe(false)
+    await act(async () => {
+      renderer.unmount()
+    })
+  })
+
+  it("stays yielded when Home comes back into focus under the window", async () => {
+    const renderer = await renderPlaying()
+
+    // Leave Home (blur suspends the pager), open the window, come back.
+    await act(async () => {
+      renderer.update(element(true))
+    })
+    await act(async () => {
+      sessionStore.start(WINDOW_SESSION)
+    })
+    await act(async () => {
+      renderer.update(element(false))
+    })
+
+    expect(mountedVideoViews(renderer)).toBe(0)
+    expect(expoVideo.__player.playing).toBe(false)
+    await act(async () => {
+      renderer.unmount()
+    })
+  })
+
+  it("takes the hero back when the window's playback ENDS in place", async () => {
+    const renderer = await renderPlaying()
+    await act(async () => {
+      sessionStore.start(WINDOW_SESSION)
+    })
+    expect(mountedVideoViews(renderer)).toBe(0)
+
+    // The window persists as a thumbnail and nobody dismisses it. Keying the
+    // yield on the session EXISTING would freeze the hero here for good.
+    await act(async () => {
+      sessionStore.markEnded("playToEnd")
+    })
+
+    expect(mountedVideoViews(renderer)).toBe(1)
+    expect(expoVideo.__player.playing).toBe(true)
+    await act(async () => {
+      renderer.unmount()
+    })
+  })
+
+  it("takes the hero back only once a dismissed window has finished leaving", async () => {
+    const renderer = await renderPlaying()
+    await act(async () => {
+      sessionStore.start(WINDOW_SESSION)
+    })
+
+    await act(async () => {
+      sessionStore.requestDismiss()
+    })
+    // Mid-exit the window still draws a video surface.
+    expect(mountedVideoViews(renderer)).toBe(0)
+
+    await act(async () => {
+      sessionStore.reportExitComplete()
+    })
+
+    expect(mountedVideoViews(renderer)).toBe(1)
     expect(expoVideo.__player.playing).toBe(true)
     await act(async () => {
       renderer.unmount()

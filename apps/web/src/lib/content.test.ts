@@ -497,6 +497,80 @@ describe("resolveWatchPage", () => {
 })
 
 // Locale-text fallback (content.ts:1059-1074). When admin's
+describe("resolveWatchUnavailableRecoveryTarget", () => {
+  afterEach(() => {
+    queryMock.mockReset()
+    vi.resetModules()
+  })
+
+  it("returns requested-language copy and stable artwork without selecting playback", async () => {
+    queryMock.mockResolvedValueOnce({
+      data: {
+        watchVideoRouteSnapshotBySlug: makeAdminVideo({
+          slug: "good-friday-live",
+          images: [
+            {
+              documentId: "img-good-friday",
+              url: "https://imagedelivery.net/account/original.jpg",
+              mobileCinematicHigh:
+                "https://imagedelivery.net/account/cinematic-high.jpg",
+            },
+          ],
+          locales: [],
+          exactLocales: [
+            {
+              documentId: "loc-zh-hans",
+              languageSlug: "chinese-simplified",
+              title: "耶稣受难日直播",
+            },
+          ],
+          broadLocales: [],
+          englishLocales: [
+            {
+              documentId: "loc-en",
+              languageSlug: "english",
+              title: "Good Friday Live",
+            },
+          ],
+          variants: [],
+        }),
+      },
+    })
+
+    const { resolveWatchUnavailableRecoveryTarget } = await import("./content")
+    const target = await resolveWatchUnavailableRecoveryTarget(
+      "good-friday-live",
+      "chinese-simplified",
+    )
+
+    expect(queryMock).toHaveBeenCalledTimes(1)
+    expect(queryMock.mock.calls[0][0].variables).toEqual({
+      locale: "zh-Hans",
+      languageSlug: "chinese-simplified",
+      videoSlug: "good-friday-live",
+    })
+    expect(target).toEqual({
+      contentTitle: "耶稣受难日直播",
+      imageUrl: "https://imagedelivery.net/account/cinematic-high.jpg",
+    })
+  })
+
+  it("returns no target when Admin no longer has the manifest-listed video", async () => {
+    queryMock.mockResolvedValueOnce({
+      data: { watchVideoRouteSnapshotBySlug: null },
+    })
+
+    const { resolveWatchUnavailableRecoveryTarget } = await import("./content")
+
+    await expect(
+      resolveWatchUnavailableRecoveryTarget(
+        "good-friday-live",
+        "chinese-simplified",
+      ),
+    ).resolves.toBeNull()
+  })
+})
+
 // `videoBySlug(...)` returns a record with `locales: []` for a non-`en`
 // request — common when the URL uses a language slug ("afrikaans") or
 // when no VideoLocale row exists in the requested language — the
@@ -507,6 +581,67 @@ describe("resolveWatchVideoBySlug — locale fallback", () => {
   afterEach(() => {
     queryMock.mockReset()
     vi.resetModules()
+  })
+
+  it("keeps canonical BCP-47 tags when loading localized content", async () => {
+    const chineseVariant = {
+      ...(makeAdminVideo().variants as Record<string, unknown>[])[0],
+      documentId: "variant-zh-hans",
+      slug: "chinese-simplified",
+      hls: "https://cdn.example/god-rescue-plan-zh-hans.m3u8",
+      language: {
+        coreId: "lang-zh-hans",
+        bcp47: "zh-hans",
+        slug: "chinese-simplified",
+        name: "Chinese, Simplified",
+      },
+    }
+    queryMock
+      .mockResolvedValueOnce({
+        data: {
+          watchVideoRouteSnapshotBySlug: makeAdminVideo({
+            slug: "god-rescue-plan",
+            locales: [],
+            exactLocales: [
+              {
+                documentId: "loc-zh-hans",
+                languageSlug: "chinese-simplified",
+                title: "上帝的拯救计划",
+                description: "中文简介",
+              },
+            ],
+            broadLocales: [],
+            englishLocales: [
+              {
+                documentId: "loc-en",
+                languageSlug: "english",
+                title: "God's Rescue Plan",
+              },
+            ],
+            variants: [chineseVariant],
+          }),
+        },
+      })
+      .mockResolvedValueOnce({
+        data: {
+          videoDub: makeAdminDub(chineseVariant),
+        },
+      })
+
+    const { resolveWatchVideoBySlug } = await import("./content")
+
+    const result = await resolveWatchVideoBySlug(
+      "god-rescue-plan",
+      "chinese-simplified",
+    )
+
+    expect(queryMock.mock.calls[0][0].variables).toEqual({
+      locale: "zh-Hans",
+      languageSlug: "chinese-simplified",
+      videoSlug: "god-rescue-plan",
+    })
+    expect(result?.video.title).toBe("上帝的拯救计划")
+    expect(result?.video.description).toBe("中文简介")
   })
 
   it("uses the English alias when exact and broad copy are empty for a non-en request", async () => {

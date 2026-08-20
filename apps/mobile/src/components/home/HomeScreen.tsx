@@ -22,6 +22,7 @@ import { useNavigation, useRouter } from "expo-router"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import Ionicons from "@expo/vector-icons/Ionicons"
 
+import { useMiniPlayerHoldsVideo } from "../../hooks/useMiniPlayerHoldsVideo"
 import { useTypography } from "../../hooks/useTypography"
 import { useWatchHome } from "../../hooks/useWatchHome"
 import { useWatchHomeCarouselMemory } from "../../hooks/useWatchHomeCarouselMemory"
@@ -33,6 +34,7 @@ import {
   hexToRgba,
 } from "../../lib/color"
 import { isSeriesLabel } from "../../lib/isSeriesRecord"
+import { heroPlaybackPaused } from "../../lib/miniPlayer/heroYield"
 import { openExternalUrl } from "../../lib/openExternalUrl"
 import {
   buildWatchHomeHeroQueue,
@@ -258,6 +260,9 @@ export function HomeScreen() {
   const handleMuteToggle = useCallback(() => setMuted((m) => !m), [])
 
   const [focused, setFocused] = useState(true)
+  // R9: the pop that opens the window fires the focus listener below in the
+  // same commit, so the hero's resume is gated on the window as well as focus.
+  const windowHoldsVideo = useMiniPlayerHoldsVideo()
   useEffect(() => {
     // CuratedHomeLayout session-mute rule: blur resets to muted; an unmute
     // persists across slide advances while focused. The focus flag also suspends
@@ -437,7 +442,11 @@ export function HomeScreen() {
             ref={pagerRef}
             slides={heroSlides}
             heroHeight={heroHeight}
-            paused={heroPaused || !focused}
+            paused={heroPlaybackPaused({
+              scrolledPast: heroPaused,
+              focused,
+              windowHoldsVideo,
+            })}
             blurOpacity={heroBlurOpacity}
             muted={muted}
             onSlideChange={handleSlideChange}

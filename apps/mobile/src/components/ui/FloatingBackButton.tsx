@@ -12,6 +12,10 @@ type FloatingBackButtonProps = {
   topOffset?: number
   /** Inset from the left edge. Default HORIZONTAL_PADDING. */
   sideOffset?: number
+  /** The glyph. A surface whose back press MINIMIZES a player into the
+   *  floating window shows "chevron-down"; plain navigation keeps the back
+   *  chevron. */
+  icon?: "chevron-back" | "chevron-down"
 }
 
 // Back button floating over full-bleed content; mirrors HomeHeader's glass button.
@@ -20,6 +24,7 @@ type FloatingBackButtonProps = {
 export function FloatingBackButton({
   topOffset = 4,
   sideOffset = HORIZONTAL_PADDING,
+  icon = "chevron-back",
 }: FloatingBackButtonProps) {
   const insets = useSafeAreaInsets()
   const router = useRouter()
@@ -52,7 +57,7 @@ export function FloatingBackButton({
           glassEffectStyle="regular"
           colorScheme="dark"
         >
-          <Ionicons name="chevron-back" size={24} color={ACCENT} />
+          <Ionicons name={icon} size={24} color={ACCENT} />
         </GlassView>
       </Pressable>
     </View>

@@ -1,10 +1,14 @@
-"use server"
+import "server-only"
 
 import type { Route } from "next"
 
-import { resolveWatchLanguagePickerVariants } from "./content"
+import {
+  resolveWatchLanguagePickerVariants,
+  resolveWatchUnavailableRecoveryTarget,
+} from "./content"
 import { deriveLanguageDisplay } from "./language-display"
 import { tryAsContentSlug, tryAsLocaleSlug, watchVideoPath } from "./routes"
+import { logWatchServerEvent } from "./watch-observability"
 import {
   getWatchRouteManifest,
   proveWatchContentAudioLanguageByManifest,
@@ -20,6 +24,7 @@ export type WatchUnavailableRecoveryAudioOption = {
 
 export type WatchUnavailableRecoveryResolution = {
   verifiedGap: boolean
+  contentTitle: string | null
   targetImageUrl: string | null
   audioOptions: WatchUnavailableRecoveryAudioOption[]
 }
@@ -27,7 +32,6 @@ export type WatchUnavailableRecoveryResolution = {
 export type ResolveWatchUnavailableRecoveryInput = {
   contentSlug: string
   requestedLanguageSlug: string
-  targetImageUrl?: string | null
 }
 
 function approvedArtworkUrl(value: unknown): string | null {
@@ -47,11 +51,13 @@ function approvedArtworkUrl(value: unknown): string | null {
   }
 }
 
-const EMPTY_RESOLUTION: WatchUnavailableRecoveryResolution = {
-  verifiedGap: false,
-  targetImageUrl: null,
-  audioOptions: [],
-}
+export const EMPTY_WATCH_UNAVAILABLE_RECOVERY: WatchUnavailableRecoveryResolution =
+  {
+    verifiedGap: false,
+    contentTitle: null,
+    targetImageUrl: null,
+    audioOptions: [],
+  }
 
 export async function resolveWatchUnavailableRecovery(
   input: ResolveWatchUnavailableRecoveryInput,
@@ -60,7 +66,7 @@ export async function resolveWatchUnavailableRecovery(
   const requestedLanguageSlug = tryAsLocaleSlug(input.requestedLanguageSlug)
   const manifest = await getWatchRouteManifest()
   if (!contentSlug || !requestedLanguageSlug || !manifest) {
-    return EMPTY_RESOLUTION
+    return EMPTY_WATCH_UNAVAILABLE_RECOVERY
   }
   if (
     proveWatchContentAudioLanguageByManifest(
@@ -69,10 +75,31 @@ export async function resolveWatchUnavailableRecovery(
       requestedLanguageSlug,
     ).kind !== "known-missing"
   ) {
-    return EMPTY_RESOLUTION
+    return EMPTY_WATCH_UNAVAILABLE_RECOVERY
   }
 
-  const variants = await resolveWatchLanguagePickerVariants(contentSlug)
+  const [variantsResult, targetResult] = await Promise.allSettled([
+    resolveWatchLanguagePickerVariants(contentSlug),
+    resolveWatchUnavailableRecoveryTarget(contentSlug, requestedLanguageSlug),
+  ])
+  if (variantsResult.status === "rejected") {
+    logWatchServerEvent("watch_unavailable_recovery.variants.failed", {
+      contentSlug,
+      requestedLanguageSlug,
+      error: variantsResult.reason,
+    })
+  }
+  if (targetResult.status === "rejected") {
+    logWatchServerEvent("watch_unavailable_recovery.metadata.failed", {
+      contentSlug,
+      requestedLanguageSlug,
+      error: targetResult.reason,
+    })
+  }
+
+  const variants =
+    variantsResult.status === "fulfilled" ? variantsResult.value : []
+  const target = targetResult.status === "fulfilled" ? targetResult.value : null
   const audioOptions: WatchUnavailableRecoveryAudioOption[] = []
 
   for (const variant of variants) {
@@ -107,7 +134,8 @@ export async function resolveWatchUnavailableRecovery(
 
   return {
     verifiedGap: true,
-    targetImageUrl: approvedArtworkUrl(input.targetImageUrl),
+    contentTitle: target?.contentTitle?.trim() || null,
+    targetImageUrl: approvedArtworkUrl(target?.imageUrl),
     audioOptions,
   }
 }
