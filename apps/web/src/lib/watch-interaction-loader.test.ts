@@ -49,8 +49,18 @@ const englishVariant: LanguagePickerVariant = {
 }
 
 const globalLanguageOptions: GlobalLanguageOption[] = [
-  { slug: "english", englishName: "English", nativeName: null },
-  { slug: "french", englishName: "French", nativeName: "Français" },
+  {
+    slug: "english",
+    aliasOwnerSlug: "english",
+    englishName: "English",
+    nativeName: null,
+  },
+  {
+    slug: "french",
+    aliasOwnerSlug: "french",
+    englishName: "French",
+    nativeName: "Français",
+  },
 ]
 
 describe("watch interaction loader", () => {

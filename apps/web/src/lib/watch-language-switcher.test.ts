@@ -66,6 +66,7 @@ describe("projectGlobalLanguageOptions", () => {
         nativeName: "Español",
         bcp47: "es-419",
         publicSlug: "spanish-latin-american",
+        aliasOwnerSlug: "spanish-latin-american",
         regionNames: ["South America"],
       },
       {
@@ -73,6 +74,7 @@ describe("projectGlobalLanguageOptions", () => {
         nativeName: null,
         bcp47: "en",
         publicSlug: "english",
+        aliasOwnerSlug: null,
         regionNames: [],
       },
       {
@@ -80,6 +82,7 @@ describe("projectGlobalLanguageOptions", () => {
         nativeName: "English",
         bcp47: "en",
         publicSlug: "english",
+        aliasOwnerSlug: "english",
         regionNames: ["North America"],
       },
       {
@@ -87,6 +90,7 @@ describe("projectGlobalLanguageOptions", () => {
         nativeName: null,
         bcp47: "pt-BR",
         publicSlug: "pt-br",
+        aliasOwnerSlug: "pt-br",
         regionNames: [],
       },
       {
@@ -94,14 +98,35 @@ describe("projectGlobalLanguageOptions", () => {
         nativeName: null,
         bcp47: null,
         publicSlug: null,
+        aliasOwnerSlug: null,
         regionNames: [],
+      },
+      {
+        englishName: "Mandarin inferred from locale",
+        nativeName: null,
+        bcp47: "zh",
+        publicSlug: "mandarin-china",
+        aliasOwnerSlug: null,
+        regionNames: ["Asia"],
       },
     ]
 
     expect(projectGlobalLanguageOptions(options)).toEqual([
-      { slug: "english", englishName: "English", nativeName: "English" },
+      {
+        slug: "english",
+        aliasOwnerSlug: "english",
+        englishName: "English",
+        nativeName: "English",
+      },
+      {
+        slug: "mandarin-china",
+        aliasOwnerSlug: null,
+        englishName: "Mandarin inferred from locale",
+        nativeName: null,
+      },
       {
         slug: "spanish-latin-american",
+        aliasOwnerSlug: "spanish-latin-american",
         englishName: "Spanish, Latin American",
         nativeName: "Español",
       },

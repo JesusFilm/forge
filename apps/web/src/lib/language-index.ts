@@ -15,6 +15,7 @@ export type WatchLanguageIndexLanguage = {
   englishLabel: string
   nativeLabel: string
   publicSlug: string
+  aliasOwnerSlug: string | null
   href: string
   bcp47: string | null
   speakerCount: number
@@ -225,6 +226,7 @@ export function buildWatchLanguageIndex({
     byPublicSlug.set(entry.publicSlug, {
       ...existing,
       coreId: existing.coreId ?? entry.coreId,
+      aliasOwnerSlug: existing.aliasOwnerSlug ?? entry.aliasOwnerSlug,
       nativeLabel:
         existing.nativeLabel === existing.englishLabel
           ? entry.nativeLabel
@@ -318,6 +320,10 @@ function languageIndexEntryFromMetadata({
   if (!englishLabel) return null
 
   const publicSlug = publicSlugForLanguage(language)
+  const aliasOwnerSlug =
+    language.slug && isPublicWatchLanguageSlug(language.slug)
+      ? language.slug
+      : null
   const localeSlug = publicSlug ? tryAsLocaleSlug(publicSlug) : null
   if (!publicSlug || !localeSlug) return null
 
@@ -327,6 +333,7 @@ function languageIndexEntryFromMetadata({
     englishLabel,
     nativeLabel: nativeName(language.name, language.bcp47) ?? englishLabel,
     publicSlug,
+    aliasOwnerSlug,
     href: languageVideosIndexPath(localeSlug),
     bcp47: language.bcp47 ?? null,
     speakerCount,

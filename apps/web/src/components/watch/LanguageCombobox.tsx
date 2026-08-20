@@ -17,11 +17,13 @@ import {
 import { createPortal } from "react-dom"
 
 import { languageCodeFor, primaryLanguageCode } from "@/lib/language-code"
-import type { WatchLanguageSearchAliasAuthority } from "@/lib/watch-language-search-aliases"
+import { createWatchLanguageSearchMatcher } from "@/lib/watch-language-search"
 
 export type LanguageComboboxOption = {
   slug: string
   name: string
+  /** Exact source slug for reviewed aliases; `null` disables alias matching. */
+  searchAliasSlug?: string | null
   /** Optional native-script name; rendered as a muted subtitle below `name`. */
   nativeName?: string | null
   /** BCP 47 tag used to show the primary language code when available. */
@@ -53,7 +55,6 @@ export type LanguageComboboxProps = {
     width: number
   } | null
   takeoverDismissLabel?: string
-  searchAliasAuthority?: WatchLanguageSearchAliasAuthority
 }
 
 const LISTBOX_MAX_HEIGHT_PX = 288
@@ -91,61 +92,6 @@ function nativeNameForOption(option: LanguageComboboxOption): string | null {
   } catch {
     return null
   }
-}
-
-const SEARCH_WORD_SEPARATOR = /[\s,.;:!?()[\]{}"'/\\|_-]+/u
-
-function searchMatchTierForText(
-  value: string | null | undefined,
-  query: string,
-): number | null {
-  const text = value?.trim().toLowerCase()
-  if (!text || !text.includes(query)) return null
-  if (text.startsWith(query)) return 0
-  if (
-    text
-      .split(SEARCH_WORD_SEPARATOR)
-      .filter(Boolean)
-      .some((word) => word.startsWith(query))
-  ) {
-    return 1
-  }
-  return 2
-}
-
-function searchMatchTierForOption(
-  option: LanguageComboboxOption,
-  query: string,
-  searchAliasAuthority?: WatchLanguageSearchAliasAuthority,
-  exactAliasQuery = false,
-): number | null {
-  const aliases =
-    searchAliasAuthority &&
-    Object.hasOwn(searchAliasAuthority.aliasesBySlug, option.slug)
-      ? searchAliasAuthority.aliasesBySlug[option.slug]
-      : undefined
-  const ownsExactAlias = aliases?.some(
-    (alias) => alias.trim().toLowerCase() === query,
-  )
-
-  if (exactAliasQuery && (option.disabled || !ownsExactAlias)) return null
-
-  const directTiers = [
-    searchMatchTierForText(option.name, query),
-    searchMatchTierForText(nativeNameForOption(option), query),
-  ].filter((tier): tier is number => tier != null)
-  const directTier = directTiers.length > 0 ? Math.min(...directTiers) : null
-
-  const aliasTiers = option.disabled
-    ? []
-    : (aliases ?? [])
-        .map((alias) => searchMatchTierForText(alias, query))
-        .filter((tier): tier is number => tier != null)
-  const aliasTier = aliasTiers.length > 0 ? Math.min(...aliasTiers) + 3 : null
-
-  if (directTier == null) return aliasTier
-  if (aliasTier == null) return directTier
-  return Math.min(directTier, aliasTier)
 }
 
 function initialsForOption(option: LanguageComboboxOption): string {
@@ -199,7 +145,6 @@ export function LanguageCombobox({
   popoverPortalContainer,
   takeoverRect,
   takeoverDismissLabel,
-  searchAliasAuthority,
 }: LanguageComboboxProps) {
   const t = useTranslations("LanguageCombobox")
   const comboboxId = useId()
@@ -243,19 +188,19 @@ export function LanguageCombobox({
   const Icon = icon === "subtitles" ? Captions : Languages
 
   const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase()
-    if (!q) return options
-    const exactAliasQuery = searchAliasAuthority?.exactAliases.has(q) ?? false
+    if (!query.trim()) return options
+    const matchLanguage = createWatchLanguageSearchMatcher(query)
     return options
       .map((option, index) => ({
         option,
         index,
-        tier: searchMatchTierForOption(
-          option,
-          q,
-          searchAliasAuthority,
-          exactAliasQuery,
-        ),
+        tier: matchLanguage({
+          slug: option.slug,
+          aliasOwnerSlug: option.searchAliasSlug,
+          displayName: option.name,
+          nativeName: nativeNameForOption(option),
+          disabled: option.disabled,
+        }),
       }))
       .filter(
         (
@@ -268,7 +213,7 @@ export function LanguageCombobox({
       )
       .sort((a, b) => a.tier - b.tier || a.index - b.index)
       .map((entry) => entry.option)
-  }, [options, query, searchAliasAuthority])
+  }, [options, query])
   // Keep ref in sync with state
   useEffect(() => {
     activeIndexRef.current = activeIndex

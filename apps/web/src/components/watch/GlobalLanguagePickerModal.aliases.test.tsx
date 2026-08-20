@@ -35,25 +35,43 @@ vi.mock("@/lib/watch-interaction-loader", () => ({
 import { GlobalLanguagePickerModal } from "@/components/watch/GlobalLanguagePickerModal"
 
 const options: GlobalLanguageOption[] = [
-  { slug: "english", englishName: "English", nativeName: null },
-  { slug: "foochow", englishName: "Foochow", nativeName: null },
-  { slug: "hui", englishName: "Hui", nativeName: null },
+  {
+    slug: "english",
+    aliasOwnerSlug: "english",
+    englishName: "English",
+    nativeName: null,
+  },
+  {
+    slug: "foochow",
+    aliasOwnerSlug: "foochow",
+    englishName: "Foochow",
+    nativeName: null,
+  },
+  { slug: "hui", aliasOwnerSlug: "hui", englishName: "Hui", nativeName: null },
   {
     slug: "penang-hokkien",
+    aliasOwnerSlug: "penang-hokkien",
     englishName: "Penang Hokkien",
     nativeName: null,
   },
   {
     slug: "pontianak-hakka",
+    aliasOwnerSlug: "pontianak-hakka",
     englishName: "Pontianak, Hakka",
     nativeName: null,
   },
   {
     slug: "mandarin-china",
+    aliasOwnerSlug: "mandarin-china",
     englishName: "Mandarin China",
     nativeName: null,
   },
-  { slug: "cantonese", englishName: "Cantonese", nativeName: null },
+  {
+    slug: "cantonese",
+    aliasOwnerSlug: "cantonese",
+    englishName: "Cantonese",
+    nativeName: null,
+  },
 ]
 
 let container: HTMLDivElement
@@ -169,5 +187,37 @@ describe("GlobalLanguagePickerModal Chinese aliases", () => {
     expect(results[1]?.textContent).not.toContain("徽州話")
     expect(results[2]?.textContent).not.toContain("庇能福建話")
     expect(results[3]?.textContent).not.toContain("坤甸客家話")
+  })
+
+  it("does not grant aliases to a locale-derived routing slug", async () => {
+    loadGlobalWatchLanguageOptionsMock.mockResolvedValue([
+      options[0]!,
+      {
+        slug: "mandarin-china",
+        aliasOwnerSlug: null,
+        englishName: "Mandarin inferred from locale",
+        nativeName: null,
+      },
+    ])
+    await act(async () => {
+      root.render(<Harness />)
+    })
+
+    act(() => {
+      document
+        .querySelector<HTMLElement>('[data-testid="language-combobox-trigger"]')
+        ?.click()
+    })
+    const input = document.querySelector<HTMLInputElement>(
+      '[data-testid="language-combobox-search"]',
+    )!
+    act(() => {
+      input.value = "普通话"
+      input.dispatchEvent(new Event("input", { bubbles: true }))
+    })
+
+    expect(
+      document.querySelector('[data-testid="language-combobox-option"]'),
+    ).toBeNull()
   })
 })

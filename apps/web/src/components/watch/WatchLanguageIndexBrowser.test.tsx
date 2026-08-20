@@ -27,12 +27,14 @@ afterEach(() => {
 })
 
 function language(index: number, overrides: TestLanguageOverrides = {}) {
+  const publicSlug = overrides.publicSlug ?? `language-${index}`
   return {
     id: `lang-${index}`,
     coreId: `${index}`,
     englishLabel: `Language ${index}`,
     nativeLabel: `Native ${index}`,
-    publicSlug: `language-${index}`,
+    publicSlug,
+    aliasOwnerSlug: publicSlug,
     href: `/language-${index}.html/videos`,
     bcp47: `l${index}`,
     speakerCount: 10_000 - index,
@@ -312,5 +314,56 @@ describe("WatchLanguageIndexBrowser", () => {
         section.getAttribute("aria-label"),
       ),
     ).toEqual(["Russia languages", "Ukraine languages", "Canada languages"])
+  })
+
+  it("finds a reviewed alias and preserves speaker-count ordering", () => {
+    const cantonese = language(1, {
+      englishLabel: "Cantonese",
+      nativeLabel: "廣東話",
+      publicSlug: "cantonese",
+      speakerCount: 85_600_000,
+    })
+    const html = renderBrowser({
+      regions: [
+        {
+          name: "Asia",
+          languages: [cantonese],
+          countries: [
+            {
+              id: "country-hk",
+              coreId: "HK",
+              name: "Hong Kong",
+              flagPngSrc: null,
+              speakerCount: 6_500_000,
+              languageSpeakerCounts: {
+                [cantonese.publicSlug]: 6_500_000,
+              },
+              languages: [cantonese],
+            },
+            {
+              id: "country-cn",
+              coreId: "CN",
+              name: "China",
+              flagPngSrc: null,
+              speakerCount: 79_000_000,
+              languageSpeakerCounts: {
+                [cantonese.publicSlug]: 79_000_000,
+              },
+              languages: [cantonese],
+            },
+          ],
+        },
+      ],
+    })
+
+    searchLanguages(html, "粤语")
+
+    expect(html.textContent).toContain("Cantonese")
+    expect(html.textContent).toContain("廣東話")
+    expect(
+      countrySections(html).map((section) =>
+        section.getAttribute("aria-label"),
+      ),
+    ).toEqual(["China languages", "Hong Kong languages"])
   })
 })

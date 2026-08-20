@@ -201,4 +201,26 @@ describe("buildWatchLanguageIndex", () => {
       ],
     })
   })
+
+  it("keeps locale-derived routes separate from exact alias ownership", () => {
+    const index = buildWatchLanguageIndex({
+      languages: [
+        {
+          id: "slugless-zh",
+          coreId: "slugless-zh",
+          name: { en: "Slugless Chinese metadata" },
+          bcp47: "zh",
+          slug: null,
+        },
+      ],
+      countries: [],
+    })
+
+    expect(index.languages).toContainEqual(
+      expect.objectContaining({
+        publicSlug: "mandarin-china",
+        aliasOwnerSlug: null,
+      }),
+    )
+  })
 })
