@@ -84,7 +84,7 @@ describe("VideoPipelineCollectionCard", () => {
     expect(tileButtonMatch?.[1]).toContain("tile-checkbox")
   })
 
-  it("colors collapsed tiles green for fully generated cells and red for anything else", () => {
+  it("colors collapsed tiles green for fully generated cells and gray (not red) for anything else", () => {
     const collection = buildDevotionsAugustCollection()
     const generatedCell = collection.cells.find(
       (cell) => cell.mobileGenerated && cell.desktopGenerated,
@@ -104,7 +104,31 @@ describe("VideoPipelineCollectionCard", () => {
     })
 
     expect(markup).toContain("tile--human")
-    expect(markup).toContain("tile--none")
+    expect(markup).toContain("tile--pipeline-pending")
+    expect(markup).not.toContain("tile--none")
+  })
+
+  it("overlays a semi-transparent day number on each collapsed tile, colored to match status", () => {
+    const collection = buildDevotionsAugustCollection()
+    const generatedCell = collection.cells.find(
+      (cell) => cell.mobileGenerated && cell.desktopGenerated,
+    )
+    const pendingCell = collection.cells.find(
+      (cell) => !cell.mobileGenerated || !cell.desktopGenerated,
+    )
+    if (!generatedCell || !pendingCell) {
+      throw new Error(
+        "expected both a generated and a non-generated fixture cell",
+      )
+    }
+
+    const markup = renderCard({
+      collection: { ...collection, cells: [generatedCell, pendingCell] },
+      isExpanded: false,
+    })
+
+    expect(markup).toMatch(/pipeline-tile-day--generated"[^>]*>\d+</)
+    expect(markup).toMatch(/pipeline-tile-day--pending"[^>]*>\d+</)
   })
 
   it("does not show mobile/desktop icons inline in the expanded detail rows", () => {

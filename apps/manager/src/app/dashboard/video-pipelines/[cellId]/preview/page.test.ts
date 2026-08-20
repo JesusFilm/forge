@@ -38,6 +38,16 @@ describe("VideoPipelinePreviewPage", () => {
     expect(markup).toContain("Not generated yet")
   })
 
+  it("finds a cell in a non-August month and labels the back-link with its month", async () => {
+    const element = await VideoPipelinePreviewPage({
+      params: Promise.resolve({ cellId: "devotion-2026-09-01" }),
+    })
+    const markup = renderToStaticMarkup(element as React.ReactElement)
+
+    expect(markup).toContain("Devotions - September")
+    expect(markup).toContain("Not generated yet")
+  })
+
   it("calls notFound() for an unknown cell id", async () => {
     await expect(
       VideoPipelinePreviewPage({

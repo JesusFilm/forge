@@ -3,6 +3,7 @@ import {
   computeAggregateStatus,
   formatCellDate,
   formatCellRowLabel,
+  getCellDayOfMonth,
   type VideoPipelineCell,
   type VideoPipelineCollection,
 } from "./video-pipeline-model"
@@ -65,7 +66,8 @@ export function VideoPipelineCollectionCard({
   const renderCell = (cell: VideoPipelineCell) => {
     const isSelected = selectedCellIds.has(cell.id)
     const status = computeAggregateStatus(cell)
-    const statusLabel = status === "generated" ? "Generated" : "Not generated"
+    const isFinished = status === "generated"
+    const statusLabel = isFinished ? "Generated" : "Not generated"
 
     return (
       <button
@@ -73,7 +75,7 @@ export function VideoPipelineCollectionCard({
         type="button"
         aria-pressed={isSelected}
         className={`tile tile--video tile--coverage pipeline-cell-tile tile--${
-          status === "generated" ? "human" : "none"
+          isFinished ? "human" : "pipeline-pending"
         }${isSelected ? " is-selected" : ""}`}
         aria-label={`${cell.title} — ${formatCellDate(cell.date)} — ${statusLabel}`}
         onClick={() => onToggleCell(cell.id)}
@@ -82,6 +84,16 @@ export function VideoPipelineCollectionCard({
         onFocus={() => onHoverCell(cell)}
         onBlur={() => onHoverCell(null)}
       >
+        <span
+          className={`pipeline-tile-day${
+            isFinished
+              ? " pipeline-tile-day--generated"
+              : " pipeline-tile-day--pending"
+          }`}
+          aria-hidden="true"
+        >
+          {getCellDayOfMonth(cell.date)}
+        </span>
         <span className="tile-checkbox" aria-hidden="true">
           <span className="tile-checkbox-box" />
         </span>
@@ -139,7 +151,15 @@ export function VideoPipelineCollectionCard({
       </div>
 
       <div className={`collection-details${isExpanded ? " is-open" : ""}`}>
-        <div className="detail-group-list">
+        <div
+          className="detail-group-list"
+          style={{
+            gridTemplateRows: `repeat(${Math.max(
+              1,
+              Math.ceil(total / 2),
+            )}, auto)`,
+          }}
+        >
           {collection.cells.map((cell) => {
             const isSelected = selectedCellIds.has(cell.id)
             const status = computeAggregateStatus(cell)

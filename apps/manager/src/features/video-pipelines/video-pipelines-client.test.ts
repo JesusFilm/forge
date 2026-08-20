@@ -20,6 +20,18 @@ describe("VideoPipelinesClient", () => {
     expect(markup).toContain("Not Generated")
   })
 
+  it("renders a section for every month, August through December", () => {
+    const markup = renderToStaticMarkup(
+      React.createElement(VideoPipelinesClient),
+    )
+
+    expect(markup).toContain("Devotions - August")
+    expect(markup).toContain("Devotions - September")
+    expect(markup).toContain("Devotions - October")
+    expect(markup).toContain("Devotions - November")
+    expect(markup).toContain("Devotions - December")
+  })
+
   it("renders a Media Type dropdown alongside the search input", () => {
     const markup = renderToStaticMarkup(
       React.createElement(VideoPipelinesClient),

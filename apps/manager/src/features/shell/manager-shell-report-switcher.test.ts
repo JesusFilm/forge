@@ -3,6 +3,7 @@ import {
   REPORT_ROUTE,
   readStoredReportType,
   reportOptions,
+  visibleNavItems,
 } from "./manager-shell"
 
 describe("Video Pipelines report option", () => {
@@ -33,6 +34,30 @@ describe("REPORT_ROUTE", () => {
 
   it("routes video-pipelines to its own page", () => {
     expect(REPORT_ROUTE["video-pipelines"]).toBe("/dashboard/video-pipelines")
+  })
+})
+
+describe("visibleNavItems", () => {
+  it("shows every nav item outside the Video Pipelines route", () => {
+    const keys = visibleNavItems("/dashboard/coverage").map((item) => item.key)
+
+    expect(keys).toEqual(["coverage", "jobs", "smart-crop", "shorts", "agents"])
+  })
+
+  it("hides Smart Crop, Shorts, and Agents under /dashboard/video-pipelines", () => {
+    const keys = visibleNavItems("/dashboard/video-pipelines").map(
+      (item) => item.key,
+    )
+
+    expect(keys).toEqual(["coverage", "jobs"])
+  })
+
+  it("also hides them on the per-day preview sub-route", () => {
+    const keys = visibleNavItems(
+      "/dashboard/video-pipelines/devotion-2026-08-01/preview",
+    ).map((item) => item.key)
+
+    expect(keys).toEqual(["coverage", "jobs"])
   })
 })
 

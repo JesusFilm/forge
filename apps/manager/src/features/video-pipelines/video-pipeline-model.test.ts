@@ -1,11 +1,13 @@
 import { describe, expect, it } from "vitest"
 import {
+  buildAllDevotionCollections,
   buildDevotionsAugustCollection,
   computeAggregateStatus,
   findCellById,
   formatCellDate,
   formatCellRowLabel,
   formatCellShortDate,
+  getCellDayOfMonth,
 } from "./video-pipeline-model"
 
 describe("buildDevotionsAugustCollection", () => {
@@ -85,6 +87,70 @@ describe("buildDevotionsAugustCollection", () => {
       "2026-08-06",
       "2026-08-07",
     ])
+  })
+})
+
+describe("buildAllDevotionCollections", () => {
+  it("returns August through December, in order, each tagged 'Basic'", () => {
+    const collections = buildAllDevotionCollections()
+
+    expect(collections.map((collection) => collection.title)).toEqual([
+      "Devotions - August",
+      "Devotions - September",
+      "Devotions - October",
+      "Devotions - November",
+      "Devotions - December",
+    ])
+    expect(
+      collections.every(
+        (collection) =>
+          collection.label === "basic" && collection.labelDisplay === "Basic",
+      ),
+    ).toBe(true)
+  })
+
+  it("gives each month the correct day count and date range", () => {
+    const [august, september, october, november, december] =
+      buildAllDevotionCollections()
+
+    expect(august?.cells).toHaveLength(31)
+    expect(september?.cells).toHaveLength(30)
+    expect(october?.cells).toHaveLength(31)
+    expect(november?.cells).toHaveLength(30)
+    expect(december?.cells).toHaveLength(31)
+
+    expect(september?.cells[0]?.date).toBe("2026-09-01")
+    expect(september?.cells[29]?.date).toBe("2026-09-30")
+  })
+
+  it("leaves September-December entirely not-generated (future months)", () => {
+    const collections = buildAllDevotionCollections()
+    const futureMonths = collections.slice(1)
+
+    expect(
+      futureMonths.every((collection) =>
+        collection.cells.every(
+          (cell) => !cell.mobileGenerated && !cell.desktopGenerated,
+        ),
+      ),
+    ).toBe(true)
+  })
+
+  it("gives cell ids and dates unique across every month", () => {
+    const collections = buildAllDevotionCollections()
+    const allIds = collections.flatMap((collection) =>
+      collection.cells.map((cell) => cell.id),
+    )
+
+    expect(new Set(allIds).size).toBe(allIds.length)
+  })
+})
+
+describe("getCellDayOfMonth", () => {
+  it("extracts the day number from a YYYY-MM-DD date", () => {
+    expect(getCellDayOfMonth("2026-08-01")).toBe(1)
+    expect(getCellDayOfMonth("2026-08-31")).toBe(31)
+    expect(getCellDayOfMonth("2026-09-30")).toBe(30)
   })
 })
 

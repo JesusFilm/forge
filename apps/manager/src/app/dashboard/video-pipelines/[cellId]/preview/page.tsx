@@ -2,8 +2,8 @@ import type { Metadata } from "next"
 import Link from "next/link"
 import { notFound } from "next/navigation"
 import {
-  buildDevotionsAugustCollection,
-  findCellById,
+  buildAllDevotionCollections,
+  findCellAcrossCollections,
   formatCellDate,
 } from "@/features/video-pipelines/video-pipeline-model"
 
@@ -19,17 +19,18 @@ export default async function VideoPipelinePreviewPage({
   params: Promise<{ cellId: string }>
 }) {
   const { cellId } = await params
-  const collection = buildDevotionsAugustCollection()
-  const cell = findCellById(collection, cellId)
+  const match = findCellAcrossCollections(buildAllDevotionCollections(), cellId)
 
-  if (!cell) {
+  if (!match) {
     notFound()
   }
+
+  const { cell, collection } = match
 
   return (
     <div className="studio-page">
       <Link href="/dashboard/video-pipelines" className="pipeline-preview-back">
-        Devotions - August
+        {collection.title}
       </Link>
 
       <header className="studio-page-intro">

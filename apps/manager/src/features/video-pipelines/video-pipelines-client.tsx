@@ -18,16 +18,18 @@ import { VideoPipelineCollectionCard } from "./pipeline-collection-card"
 import { PipelineStatDiagram } from "./pipeline-stat-diagram"
 import { resolveRunSelectionOutcome } from "./run-selection"
 import {
-  buildDevotionsAugustCollection,
+  buildAllDevotionCollections,
   computeAggregateStatus,
   type VideoPipelineCell,
 } from "./video-pipeline-model"
 
 export function VideoPipelinesClient() {
   const shell = useOptionalManagerShellState()
-  const collection = useMemo(() => buildDevotionsAugustCollection(), [])
+  const collections = useMemo(() => buildAllDevotionCollections(), [])
 
-  const [isExpanded, setIsExpanded] = useState(false)
+  const [expandedCollectionIds, setExpandedCollectionIds] = useState<
+    Set<string>
+  >(() => new Set())
   const [selectedCellIds, setSelectedCellIds] = useState<Set<string>>(
     () => new Set(),
   )
@@ -43,40 +45,50 @@ export function VideoPipelinesClient() {
   // *different* report type and flip it straight back to "video-pipelines".
   useEffect(() => {
     shell?.setReportType("video-pipelines")
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const counts = useMemo(() => {
-    return collection.cells.reduce(
-      (acc, cell) => {
-        acc[computeAggregateStatus(cell)] += 1
+    return collections.reduce(
+      (acc, collection) => {
+        for (const cell of collection.cells) {
+          acc[computeAggregateStatus(cell)] += 1
+        }
         return acc
       },
       { generated: 0, none: 0 },
     )
-  }, [collection.cells])
+  }, [collections])
 
-  const filteredCollection = useMemo(
-    () => ({
-      ...collection,
-      cells: filterCellsByQuery(collection.cells, searchQuery),
-    }),
-    [collection, searchQuery],
+  const filteredCollections = useMemo(
+    () =>
+      collections.map((collection) => ({
+        ...collection,
+        cells: filterCellsByQuery(collection.cells, searchQuery),
+      })),
+    [collections, searchQuery],
   )
 
-  const isCollectionVisible =
-    mediaTypeFilter === "all" || mediaTypeFilter === collection.label
+  const visibleCollections = useMemo(
+    () =>
+      filteredCollections.filter(
+        (collection) =>
+          mediaTypeFilter === "all" || mediaTypeFilter === collection.label,
+      ),
+    [filteredCollections, mediaTypeFilter],
+  )
 
   // Clear the hover preview once a search query filters its cell out of
   // view, so the detail bar can't keep showing a cell no longer rendered.
   useEffect(() => {
     if (
       hoveredCell &&
-      !filteredCollection.cells.some((cell) => cell.id === hoveredCell.id)
+      !filteredCollections.some((collection) =>
+        collection.cells.some((cell) => cell.id === hoveredCell.id),
+      )
     ) {
       setHoveredCell(null)
     }
-  }, [filteredCollection, hoveredCell])
+  }, [filteredCollections, hoveredCell])
 
   const handleRunNow = async () => {
     setIsSubmitting(true)
@@ -162,24 +174,34 @@ export function VideoPipelinesClient() {
             onChange={setMediaTypeFilter}
             options={[
               { value: "all", label: "Media Type" },
-              { value: collection.label, label: collection.labelDisplay },
+              {
+                value: collections[0]?.label ?? "basic",
+                label: collections[0]?.labelDisplay ?? "Basic",
+              },
             ]}
           />
         </div>
       </section>
 
-      {isCollectionVisible ? (
-        <VideoPipelineCollectionCard
-          collection={filteredCollection}
-          isExpanded={isExpanded}
-          onHoverCell={setHoveredCell}
-          onToggleCell={(cellId) =>
-            setSelectedCellIds((prev) => toggleSetMember(prev, cellId))
-          }
-          onToggleExpanded={() => setIsExpanded((prev) => !prev)}
-          selectedCellIds={selectedCellIds}
-        />
-      ) : null}
+      <div className="pipeline-collection-stack">
+        {visibleCollections.map((collection) => (
+          <VideoPipelineCollectionCard
+            key={collection.id}
+            collection={collection}
+            isExpanded={expandedCollectionIds.has(collection.id)}
+            onHoverCell={setHoveredCell}
+            onToggleCell={(cellId) =>
+              setSelectedCellIds((prev) => toggleSetMember(prev, cellId))
+            }
+            onToggleExpanded={() =>
+              setExpandedCollectionIds((prev) =>
+                toggleSetMember(prev, collection.id),
+              )
+            }
+            selectedCellIds={selectedCellIds}
+          />
+        ))}
+      </div>
 
       <PipelineHoverDetailBar hoveredCell={hoveredCell} />
 

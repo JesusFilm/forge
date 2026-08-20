@@ -18,7 +18,6 @@ export type VideoPipelineCollection = {
 }
 
 const DEVOTIONAL_THUMBNAIL_URL = "/devotional-thumb-placeholder.svg"
-const AUGUST_DAY_COUNT = 31
 
 /** Draft devotional titles for August 2026, one per day (index 0 = Aug 1). */
 const DEVOTIONAL_TITLES = [
@@ -85,20 +84,21 @@ const MONTH_NAMES_SHORT = [
   "Dec",
 ]
 
-function padDay(day: number): string {
-  return String(day).padStart(2, "0")
+function pad2(value: number): string {
+  return String(value).padStart(2, "0")
 }
 
 const FULLY_GENERATED_DAY_COUNT = 7
 
 /**
- * Deterministic (not Math.random) mobile/desktop generation pattern, keyed
- * off day-of-month. The first week (Aug 1-7) is fully generated so the list
- * opens on a realistic "already done" run; the remaining days cycle through
- * mobile-only / desktop-only / neither so the fixture still exercises every
- * (mobileGenerated, desktopGenerated) combination.
+ * Deterministic (not Math.random) mobile/desktop generation pattern for
+ * August, keyed off day-of-month. The first week (Aug 1-7) is fully
+ * generated so the list opens on a realistic "already done" run; the
+ * remaining days cycle through mobile-only / desktop-only / neither so the
+ * fixture still exercises every (mobileGenerated, desktopGenerated)
+ * combination.
  */
-function generationStateForDay(day: number): {
+function generationStateForAugustDay(day: number): {
   mobileGenerated: boolean
   desktopGenerated: boolean
 } {
@@ -116,17 +116,52 @@ function generationStateForDay(day: number): {
   }
 }
 
-export function buildDevotionsAugustCollection(): VideoPipelineCollection {
+type DevotionMonthSpec = {
+  /** 0 = January ... 11 = December. */
+  monthIndex: number
+  year: number
+  slug: string
+}
+
+/**
+ * August is the only month with production underway (real draft titles,
+ * partial generation progress); September-December are future/unstarted
+ * months, so every cell in them is not-yet-generated.
+ */
+const DEVOTION_MONTHS: DevotionMonthSpec[] = [
+  { monthIndex: 7, year: 2026, slug: "august" },
+  { monthIndex: 8, year: 2026, slug: "september" },
+  { monthIndex: 9, year: 2026, slug: "october" },
+  { monthIndex: 10, year: 2026, slug: "november" },
+  { monthIndex: 11, year: 2026, slug: "december" },
+]
+
+function daysInMonth(monthIndex: number, year: number): number {
+  return new Date(year, monthIndex + 1, 0).getDate()
+}
+
+function buildDevotionsCollectionForMonth(
+  spec: DevotionMonthSpec,
+): VideoPipelineCollection {
+  const isAugust = spec.slug === "august"
+  const dayCount = daysInMonth(spec.monthIndex, spec.year)
+  const monthNumber = spec.monthIndex + 1
+  const monthLabel = MONTH_NAMES[spec.monthIndex] ?? spec.slug
+
   const cells: VideoPipelineCell[] = Array.from(
-    { length: AUGUST_DAY_COUNT },
+    { length: dayCount },
     (_, index) => {
       const day = index + 1
-      const { mobileGenerated, desktopGenerated } = generationStateForDay(day)
+      const { mobileGenerated, desktopGenerated } = isAugust
+        ? generationStateForAugustDay(day)
+        : { mobileGenerated: false, desktopGenerated: false }
 
       return {
-        id: `devotion-2026-08-${padDay(day)}`,
-        title: DEVOTIONAL_TITLES[index] ?? "Devotional",
-        date: `2026-08-${padDay(day)}`,
+        id: `devotion-${spec.year}-${pad2(monthNumber)}-${pad2(day)}`,
+        title: isAugust
+          ? (DEVOTIONAL_TITLES[index] ?? "Devotional")
+          : "Devotional",
+        date: `${spec.year}-${pad2(monthNumber)}-${pad2(day)}`,
         thumbnailUrl: DEVOTIONAL_THUMBNAIL_URL,
         mobileGenerated,
         desktopGenerated,
@@ -135,12 +170,28 @@ export function buildDevotionsAugustCollection(): VideoPipelineCollection {
   )
 
   return {
-    id: "devotions-august",
-    title: "Devotions - August",
+    id: `devotions-${spec.slug}`,
+    title: `Devotions - ${monthLabel}`,
     label: "basic",
     labelDisplay: "Basic",
     cells,
   }
+}
+
+export function buildDevotionsAugustCollection(): VideoPipelineCollection {
+  const augustSpec = DEVOTION_MONTHS[0]
+  if (!augustSpec) throw new Error("expected an August month spec")
+  return buildDevotionsCollectionForMonth(augustSpec)
+}
+
+/** August through December 2026, in that order. */
+export function buildAllDevotionCollections(): VideoPipelineCollection[] {
+  return DEVOTION_MONTHS.map(buildDevotionsCollectionForMonth)
+}
+
+/** The calendar day (1-31) a cell's date falls on, for the tile overlay. */
+export function getCellDayOfMonth(date: string): number {
+  return Number(date.split("-")[2])
 }
 
 export function findCellById(
@@ -148,6 +199,18 @@ export function findCellById(
   cellId: string,
 ): VideoPipelineCell | null {
   return collection.cells.find((cell) => cell.id === cellId) ?? null
+}
+
+/** Searches every collection (e.g. all months) for a cell by id. */
+export function findCellAcrossCollections(
+  collections: VideoPipelineCollection[],
+  cellId: string,
+): { cell: VideoPipelineCell; collection: VideoPipelineCollection } | null {
+  for (const collection of collections) {
+    const cell = findCellById(collection, cellId)
+    if (cell) return { cell, collection }
+  }
+  return null
 }
 
 export function computeAggregateStatus(

@@ -2290,6 +2290,33 @@ html[data-coverage-loading="true"] .collections::after {
   cursor: pointer;
 }
 
+.pipeline-tile-day {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+.pipeline-tile-day--generated {
+  color: #15803d;
+}
+
+.pipeline-tile-day--pending {
+  color: #57534e;
+}
+
+.pipeline-collection-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
 .pipeline-cell-icons {
   display: flex;
   align-items: center;
@@ -2616,6 +2643,20 @@ html[data-coverage-loading="true"] .collections::after {
   background: rgba(239, 68, 68, 0.18);
 }
 
+/* Video Pipelines uses gray, not red, for "not generated" -- there is no
+   error state here, just work that hasn't happened yet. Scoped to its own
+   modifier so the real per-language coverage reports keep their red
+   "None" meaning. */
+.tile--pipeline-pending {
+  border-color: #a8a29e;
+  background: rgba(120, 113, 108, 0.14);
+}
+
+.tile--coverage.tile--pipeline-pending.is-selected {
+  border-color: #78716c;
+  background: #78716c;
+}
+
 .checkbox {
   display: inline-flex;
   align-items: center;
@@ -2910,11 +2951,11 @@ html[data-coverage-loading="true"] .collections::after {
 
 .collection-card--pipeline .detail-group-list {
   column-gap: 56px;
-  /* 31 fixed rows (Devotions - August): fill column 1 top-to-bottom
-     (Aug 1-16) before continuing into column 2 (Aug 17-31), instead of the
-     row-major placement grid-auto-flow defaults to. */
+  /* Fill column 1 top-to-bottom before continuing into column 2, instead of
+     the row-major placement grid-auto-flow defaults to. The exact row count
+     varies per collection (30 vs. 31 day months), so it's set inline per
+     instance in pipeline-collection-card.tsx rather than fixed here. */
   grid-auto-flow: column;
-  grid-template-rows: repeat(16, auto);
 }
 
 .pipeline-preview-back {

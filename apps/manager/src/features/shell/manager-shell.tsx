@@ -151,6 +151,30 @@ const navItems: Array<{
   },
 ]
 
+// These nav destinations (Smart Crop image-reframing, Shorts clip
+// generation, standing Agent automations) are unrelated to the Video
+// Pipelines report's devotional-video tracking, so they're hidden while
+// anywhere under /dashboard/video-pipelines to keep the sidebar focused.
+const VIDEO_PIPELINES_HIDDEN_NAV_KEYS = new Set([
+  "smart-crop",
+  "shorts",
+  "agents",
+])
+
+function isVideoPipelinesRoute(pathname: string): boolean {
+  return pathname.startsWith("/dashboard/video-pipelines")
+}
+
+export function visibleNavItems(pathname: string): typeof navItems {
+  if (!isVideoPipelinesRoute(pathname)) {
+    return navItems
+  }
+
+  return navItems.filter(
+    (item) => !VIDEO_PIPELINES_HIDDEN_NAV_KEYS.has(item.key),
+  )
+}
+
 export function readStoredReportType(): ManagerShellReportType {
   if (typeof window === "undefined") {
     return "subtitles"
@@ -722,7 +746,7 @@ export function ManagerDashboardShell({
               <StudioReportSwitcher />
 
               <nav className="design-system-shell-nav" aria-label="Primary">
-                {navItems.map((item) => {
+                {visibleNavItems(pathname).map((item) => {
                   const Icon = item.icon
                   const isActive = isActiveRoute(pathname, item.href)
 
