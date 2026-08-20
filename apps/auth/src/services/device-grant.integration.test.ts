@@ -21,6 +21,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest"
  *   DATABASE_URL=postgresql://forge:forge@localhost:5432/auth_it \
  *     pnpm --filter @forge/auth exec prisma migrate deploy
  *   AUTH_TEST_DATABASE_URL=postgresql://forge:forge@localhost:5432/auth_it \
+ *   BETTER_AUTH_SECRET=upgrade-baseline-secret-not-for-production \
  *     pnpm --filter @forge/auth test -- device-grant.integration
  */
 
@@ -29,7 +30,7 @@ const describeIntegration = databaseUrl ? describe : describe.skip
 
 process.env.DATABASE_URL = databaseUrl ?? process.env.DATABASE_URL
 process.env.BETTER_AUTH_SECRET =
-  process.env.BETTER_AUTH_SECRET ?? "integration-test-secret-not-for-production"
+  process.env.BETTER_AUTH_SECRET ?? "upgrade-baseline-secret-not-for-production"
 process.env.AUTH_BASE_URL = process.env.AUTH_BASE_URL ?? "http://localhost:3004"
 
 const TEST_CLIENT_ID = "jfp_tv_integration_test"
@@ -272,6 +273,17 @@ describeIntegration("device grant against a real database", () => {
     // tests are about.
     expect(String(tokens.access_token)).toMatch(/^jfp_at_/)
     expect(String(tokens.access_token).split(".")).toHaveLength(1)
+
+    const refreshed = (await auth.api.oauth2Token({
+      body: {
+        grant_type: "refresh_token",
+        client_id: TEST_CLIENT_ID,
+        refresh_token: String(tokens.refresh_token),
+      },
+    })) as Record<string, unknown>
+    expect(String(refreshed.access_token)).toMatch(/^jfp_at_/)
+    expect(String(refreshed.refresh_token)).toMatch(/^jfp_rt_/)
+    expect(refreshed.refresh_token).not.toBe(tokens.refresh_token)
   })
 
   /**
