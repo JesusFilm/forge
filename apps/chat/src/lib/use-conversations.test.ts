@@ -161,20 +161,23 @@ describe("mergeReplayMessages (KTD11/KTD5)", () => {
 
 describe("orderConversations (KTD9)", () => {
   it("pins fresh empty local conversations on top, then activity-descending", () => {
-    const ordered = orderConversations([
-      conversation({
-        id: "old-local",
-        messages: [{ id: "m", role: "user", content: "x" }],
-        lastActivityAt: "2026-07-10T08:00:00.000Z",
-      }),
-      conversation({ id: "fresh" }),
-      conversation({
-        id: "server-new",
-        origin: "server",
-        replay: "idle",
-        lastActivityAt: "2026-07-12T08:00:00.000Z",
-      }),
-    ])
+    const ordered = orderConversations(
+      [
+        conversation({
+          id: "old-local",
+          messages: [{ id: "m", role: "user", content: "x" }],
+          lastActivityAt: "2026-07-10T08:00:00.000Z",
+        }),
+        conversation({ id: "fresh" }),
+        conversation({
+          id: "server-new",
+          origin: "server",
+          replay: "idle",
+          lastActivityAt: "2026-07-12T08:00:00.000Z",
+        }),
+      ],
+      "fresh",
+    )
     expect(ordered.map((c) => c.id)).toEqual([
       "fresh",
       "server-new",
@@ -183,33 +186,71 @@ describe("orderConversations (KTD9)", () => {
   })
 
   it("does not pin empty SERVER rows (they are history, not a fresh pane)", () => {
-    const ordered = orderConversations([
-      conversation({
-        id: "server-row",
-        origin: "server",
-        replay: "idle",
-        lastActivityAt: "2026-07-12T08:00:00.000Z",
-      }),
-      conversation({ id: "fresh" }),
-    ])
+    const ordered = orderConversations(
+      [
+        conversation({
+          id: "server-row",
+          origin: "server",
+          replay: "idle",
+          lastActivityAt: "2026-07-12T08:00:00.000Z",
+        }),
+        conversation({ id: "fresh" }),
+      ],
+      "fresh",
+    )
     expect(ordered.map((c) => c.id)).toEqual(["fresh", "server-row"])
   })
 
   it("keeps first-seen order for equal/missing activity keys (stable sort)", () => {
-    const ordered = orderConversations([
-      conversation({
-        id: "a",
-        origin: "server",
-        replay: "idle",
-        lastActivityAt: "2026-07-12T08:00:00.000Z",
-      }),
-      conversation({
-        id: "b",
-        origin: "server",
-        replay: "idle",
-        lastActivityAt: "2026-07-12T08:00:00.000Z",
-      }),
-    ])
+    const ordered = orderConversations(
+      [
+        conversation({
+          id: "a",
+          origin: "server",
+          replay: "idle",
+          lastActivityAt: "2026-07-12T08:00:00.000Z",
+        }),
+        conversation({
+          id: "b",
+          origin: "server",
+          replay: "idle",
+          lastActivityAt: "2026-07-12T08:00:00.000Z",
+        }),
+      ],
+      "a",
+    )
     expect(ordered.map((c) => c.id)).toEqual(["a", "b"])
+  })
+
+  it("pins an ACTIVE lastActivityAt-less server row with the fresh pins (feat-209 R3)", () => {
+    const ordered = orderConversations(
+      [
+        conversation({
+          id: "hydrated",
+          origin: "server",
+          replay: "idle",
+          lastActivityAt: "2026-07-12T08:00:00.000Z",
+        }),
+        conversation({ id: "adopted", origin: "server", replay: "loading" }),
+      ],
+      "adopted",
+    )
+    expect(ordered.map((c) => c.id)).toEqual(["adopted", "hydrated"])
+  })
+
+  it("stops pinning the same server row once deselected — it falls to last", () => {
+    const ordered = orderConversations(
+      [
+        conversation({ id: "adopted", origin: "server", replay: "loading" }),
+        conversation({
+          id: "hydrated",
+          origin: "server",
+          replay: "idle",
+          lastActivityAt: "2026-07-12T08:00:00.000Z",
+        }),
+      ],
+      "hydrated",
+    )
+    expect(ordered.map((c) => c.id)).toEqual(["hydrated", "adopted"])
   })
 })

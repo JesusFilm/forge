@@ -5,6 +5,7 @@ import { useEffect, useLayoutEffect, useRef, type RefObject } from "react"
 import { type Conversation, type ReplayState } from "@/lib/conversations"
 
 import { Composer } from "./composer"
+import { CONVERSATION_UNAVAILABLE_COPY } from "./denial-screens"
 import { EmptyState } from "./empty-state"
 import { MessageList } from "./message-list"
 
@@ -95,9 +96,8 @@ function ReplayNotAvailable({ onStartNew }: { onStartNew: () => void }) {
       data-replay="not_available"
       className="flex flex-col items-start gap-3"
     >
-      <p className="text-sm text-ash">
-        This conversation is no longer available.
-      </p>
+      {/* Single-sourced with the feat-209 denial pane (denial-screens.tsx). */}
+      <p className="text-sm text-ash">{CONVERSATION_UNAVAILABLE_COPY}</p>
       <button
         type="button"
         onClick={onStartNew}

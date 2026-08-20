@@ -12,6 +12,9 @@ type SidebarAccountProps = {
   signInError: boolean
   collapsed: boolean
   styles: CollapsedStyles
+  /** feat-209 (KTD8): current `/c/<id>` path — when set, the sign-in anchor
+   * round-trips it through /api/auth/login so the conversation survives. */
+  signInReturnTo?: string
 }
 
 const SIGN_IN_ERROR_TEXT = "Sign-in didn't complete — try again."
@@ -35,6 +38,7 @@ export function SidebarAccount({
   signInError,
   collapsed,
   styles,
+  signInReturnTo,
 }: SidebarAccountProps) {
   if (!authConfigured) return null
 
@@ -51,7 +55,7 @@ export function SidebarAccount({
       {identity ? (
         <SignedIn identity={identity} collapsed={collapsed} styles={styles} />
       ) : (
-        <SignInLink styles={styles} />
+        <SignInLink styles={styles} returnTo={signInReturnTo} />
       )}
     </div>
   )
@@ -118,10 +122,22 @@ function SignedIn({
 }
 
 /** The signed-out "Sign in" affordance (anchor — a full-page redirect, AE2). */
-function SignInLink({ styles }: { styles: CollapsedStyles }) {
+function SignInLink({
+  styles,
+  returnTo,
+}: {
+  styles: CollapsedStyles
+  returnTo?: string
+}) {
   return (
     <a
-      href="/api/auth/login"
+      // KTD8: on a /c/<id> render the FAMILIAR rail control must carry the
+      // deep link too, or signing in through it silently lands on "/".
+      href={
+        returnTo
+          ? `/api/auth/login?returnTo=${encodeURIComponent(returnTo)}`
+          : "/api/auth/login"
+      }
       title="Sign in"
       className={cn(
         "flex w-full items-center gap-2.5 rounded-[10px] border border-linen/10 px-3.5 py-2.5 text-sm font-medium text-linen transition-colors duration-300 hover:border-linen/20 hover:bg-linen/[0.04]",

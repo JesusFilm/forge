@@ -8,8 +8,10 @@
  * EVERY failure — bad state, missing verifier, token
  * exchange failure (incl. the outbound timeout), or verify failure — funnels
  * through ONE catch that logs a fixed non-PII reason code (KTD7), clears the
- * transient cookies, and 302s home with the R12 marker. Anonymous is the safe
- * default; chat gates nothing (R3/R7).
+ * transient cookies, and 302s to the SAME validated return_to with the R12
+ * marker (feat-209 — a failed sign-in from a /c/<id> deep link lands back on
+ * the conversation, not home). Anonymous is the safe default; chat gates
+ * nothing (R3/R7).
  */
 import { NextResponse } from "next/server"
 
@@ -19,7 +21,7 @@ import {
   getChatOAuthConfig,
   verifyChatIdToken,
 } from "@/auth/oauth-client"
-import { getChatHomeURL, resolveChatReturnToURL } from "@/auth/origins"
+import { resolveChatReturnToURL } from "@/auth/origins"
 import {
   CHAT_FORCE_LOGIN_COOKIE,
   CHAT_OAUTH_RETURN_TO_COOKIE,
@@ -95,7 +97,7 @@ export async function GET(request: Request) {
     console.error(
       `[chat-auth] event=callback_failed reason=${chatAuthErrorCode(error)}`,
     )
-    const response = NextResponse.redirect(homeWithSignInError(), 302)
+    const response = NextResponse.redirect(withSignInError(returnTo), 302)
     clearTransientCookies(response)
     return response
   }
@@ -107,8 +109,14 @@ function clearTransientCookies(response: NextResponse) {
   response.cookies.delete(CHAT_OAUTH_RETURN_TO_COOKIE)
 }
 
-function homeWithSignInError(): string {
-  const home = new URL(getChatHomeURL())
-  home.searchParams.set(SIGN_IN_ERROR_PARAM, SIGN_IN_ERROR_VALUE)
-  return home.toString()
+/**
+ * Append the R12 marker to an ALREADY-VALIDATED redirect target — the
+ * resolveChatReturnToURL result (own-origin or chat home, R10). The URL API
+ * preserves any query string the target already carries; this helper grants
+ * no new redirect authority.
+ */
+function withSignInError(target: string): string {
+  const url = new URL(target)
+  url.searchParams.set(SIGN_IN_ERROR_PARAM, SIGN_IN_ERROR_VALUE)
+  return url.toString()
 }

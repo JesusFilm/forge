@@ -18,9 +18,12 @@ import {
   awaitReply,
   clickNewConversation,
   container,
+  drawerOpen,
   type Frame,
+  getAside,
   getConversationNav,
   getLog,
+  getMain,
   getSendButton,
   getTextarea,
   isPending,
@@ -699,22 +702,6 @@ describe("Stop generation (feat-270, Seeker path)", () => {
 // Sidebar collapse + mobile drawer (state lives in AppShell, so this suite
 // belongs here per apps/chat/CLAUDE.md). jsdom applies no CSS, so assertions
 // read structural signals — which toggle is rendered, the `data-open` attr.
-function getAside(): HTMLElement {
-  const el = container.querySelector("aside")
-  if (!el) throw new Error("aside not found")
-  return el
-}
-
-function getMain(): HTMLElement {
-  const el = container.querySelector("main")
-  if (!el) throw new Error("main not found")
-  return el
-}
-
-function drawerOpen(): boolean {
-  return getAside().getAttribute("data-open") === "true"
-}
-
 describe("Sidebar shell", () => {
   it("starts expanded: wordmark, collapse toggle, and the conversation list are present", () => {
     const aside = getAside()

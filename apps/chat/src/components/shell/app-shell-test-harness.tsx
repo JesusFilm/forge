@@ -17,13 +17,31 @@ export let user: UserEvent
 export let view: ReturnType<typeof render>
 export let container: HTMLElement
 
-/** Render the shell with a given flag value and capture the view/container.
- * `strictMode` wraps in <StrictMode> to exercise dev's double-mount cycle. */
+export type ShellRenderOptions = {
+  /** Wrap in <StrictMode> to exercise dev's double-mount cycle. */
+  strictMode?: boolean
+  /** feat-209 deep-link id — ALWAYS prop-injected, never read from
+   * window.location at construction (URL isolation between tests). */
+  initialConversationId?: string
+  /** feat-209 server-decided denial pane. */
+  deniedScreen?: "sign_in" | "unavailable"
+  /** Renders the rail-foot account control (KTD8 sign-in href assertions). */
+  authConfigured?: boolean
+}
+
+/** Render the shell with a given flag value and capture the view/container. */
 export function renderShell(
   seekerEnabled = false,
-  opts: { strictMode?: boolean } = {},
+  opts: ShellRenderOptions = {},
 ) {
-  const shell = <AppShell seekerEnabled={seekerEnabled} />
+  const shell = (
+    <AppShell
+      seekerEnabled={seekerEnabled}
+      authConfigured={opts.authConfigured}
+      initialConversationId={opts.initialConversationId}
+      deniedScreen={opts.deniedScreen}
+    />
+  )
   view = render(opts.strictMode ? <StrictMode>{shell}</StrictMode> : shell)
   container = view.container
 }
@@ -32,6 +50,9 @@ export function renderShell(
  * interactions resolve and microtasks flow) + a flag-off initial render.
  * cleanup() in vitest.setup.ts unmounts after each test. */
 export function setupShellTest() {
+  // Flag-on shells write to window.history (feat-209) and jsdom URL state
+  // leaks between tests — every test starts at "/".
+  window.history.replaceState(null, "", "/")
   vi.useFakeTimers({ shouldAdvanceTime: true })
   user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
   renderShell(false)
@@ -40,6 +61,8 @@ export function setupShellTest() {
 export function teardownShellTest() {
   vi.useRealTimers()
   vi.unstubAllGlobals()
+  // Mirror of the setup reset — a failing test must not leak its URL either.
+  window.history.replaceState(null, "", "/")
 }
 
 export function getTextarea(): HTMLTextAreaElement {
@@ -56,6 +79,25 @@ export function getLog(): HTMLElement {
 
 export function getConversationNav(): HTMLElement {
   return screen.getByRole("navigation", { name: "Conversations" })
+}
+
+// Structural landmark accessors: jsdom applies no CSS, so suites read which
+// elements exist + the `data-open` attr. drawerOpen deliberately THROWS via
+// getAside when the rail is missing — silent-false would hide a lost aside.
+export function getAside(): HTMLElement {
+  const el = container.querySelector("aside")
+  if (!el) throw new Error("aside not found")
+  return el
+}
+
+export function getMain(): HTMLElement {
+  const el = container.querySelector("main")
+  if (!el) throw new Error("main not found")
+  return el
+}
+
+export function drawerOpen(): boolean {
+  return getAside().getAttribute("data-open") === "true"
 }
 
 // Read only the answer text of each turn (the [data-message-content] node), so
@@ -177,6 +219,10 @@ export type SeekerHarnessOptions = {
     | Promise<Response>
   /** Render inside <StrictMode> (dev double-mount cycle). */
   strictMode?: boolean
+  /** feat-209 deep-link id, threaded as a prop (see ShellRenderOptions). */
+  initialConversationId?: string
+  /** feat-209 server-decided denial pane. */
+  deniedScreen?: "sign_in" | "unavailable"
 }
 
 // Stub global fetch and render flag-on. The mock URL-dispatches: /api/history/*
@@ -219,7 +265,11 @@ export function renderSeeker(
     return Promise.resolve(sseResponse(out as Frame[]))
   })
   vi.stubGlobal("fetch", fetchMock)
-  renderShell(true, { strictMode: options.strictMode })
+  renderShell(true, {
+    strictMode: options.strictMode,
+    initialConversationId: options.initialConversationId,
+    deniedScreen: options.deniedScreen,
+  })
   return fetchMock
 }
 

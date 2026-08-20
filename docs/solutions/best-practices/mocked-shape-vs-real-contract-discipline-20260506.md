@@ -111,7 +111,7 @@ expect(error.code).toBe("artifact_missing")
 
 ## Worked instances in this codebase
 
-The same trap, thirty-one different surfaces:
+The same trap, across every surface below:
 
 ### AWS SDK error shape
 
@@ -848,7 +848,7 @@ agent-tools fixture is production-reachable and no longer synthetic. The
 durable lesson still applies: fixture reachability claims must be checked at
 the producing layer and corrected when that layer changes.
 
-These thirty-one are the same rule applied across widening carriers — mocks,
+These are the same rule applied across widening carriers — mocks,
 generated types, tool self-reports, prose, the fixture's own self-description,
 a cross-app port that carries the source app's fixture with it, the
 SCOPE of an assertion versus the scope its name claims, the verification
@@ -857,8 +857,100 @@ AXIS an assertion measures — content asserted where the defect is a rate —
 and now the LAYER that already holds the property, where the cheapest
 guard (the compiler) silently owns the claim a test was written to make.
 The invariant is constant: the artifact you assert against
-must sit at the same layer as the claim you are making. If you find a
-thirty-second instance, add it here — that's the META home.
+must sit at the same layer as the claim you are making. If you find
+another instance, add it here — that's the META home.
+
+### Two-axis gate where every fixture pins the second axis at its safe value
+
+[feat-209-chat-per-conversation-urls.md](../../roadmap/ai-chat/feat-209-chat-per-conversation-urls.md)
+(chat `/c/<id>` deep-link denial shells; uncommitted feat-209 working
+tree as of 2026-08-19, no PR yet)
+
+feat-209's denial shell is a product of TWO independent axes —
+`deniedScreen` (the server-decided pane) × `seekerEnabled` (the gate
+grant) — and the plan asserted the safe corner as already-true: KTD6
+reads "The URL-sync layer is inert in server-decided denial shells (they
+are never gate-granted)"
+(`docs/plans/2026-08-18-2122-feat-chat-per-conversation-urls-plan.md:102`).
+The route did not implement it. It passed
+`seekerEnabled={gate.seekerEnabled}` unconditionally, while
+`resolveDeepLinkEntry`'s malformed-id branch
+(`apps/chat/src/lib/deep-link-entry.ts:35`) fires BEFORE the gate check
+at `:38` — deliberately, since signing in cannot fix a malformed id — so
+a gate-GRANTED user opening `/c/<malformed-id>` got
+`deniedScreen="unavailable"` together with `seekerEnabled=true`, exactly
+the pair KTD6 called impossible. Every denial-shell test rendered
+flag-OFF (`renderShell(false, { deniedScreen: … })` —
+`app-shell-test-harness.tsx:33-47` supplies `seekerEnabled = false` as
+its own default parameter, so the safe value costs nothing to leave in
+place), which made the KTD5 guard's
+`expect(fetchMock).not.toHaveBeenCalled()`
+(`app-shell.deeplink.test.tsx:230`) pass VACUOUSLY: a flag-off shell
+fetches nothing for ANY reason, pane or no pane. Every assertion about
+axis 1 was satisfied by axis 2 being held closed. Live consequence,
+traced by an independent validator then browser-reproduced: the URL-sync
+effect mounted under the frozen pane, derived `desiredPath = "/"` for
+the fresh non-persisted local row
+(`apps/chat/src/lib/use-conversation-url.ts:75-76`) and `replaceState`d
+the address bar from `/c/not-a-uuid` to `/` (`:87`); history hydration
+POSTed `/api/history/list`; the rail rows stayed session-mutating
+beneath a server-decided pane that could never clear. Found as a P1 by
+three independent Tier-2 reviewers (correctness, security, adversarial)
+plus an independent validator. Fix is fail-closed BY CONSTRUCTION at
+both ends, which turns KTD6's sentence from an assumption into a
+property: producer — `seekerEnabled={entry.kind === "granted"}`
+(`apps/chat/src/app/c/[id]/page.tsx:66`), so a denial shell is
+structurally never granted; consumer belt — AppShell derives
+`denialShell = deniedScreen !== undefined` and `grantedShell =
+seekerEnabled && !denialShell`
+(`apps/chat/src/components/shell/app-shell.tsx:65-66`) and feeds THAT to
+both `useConversations` (`:86`) and the URL hook's `enabled` (`:117`),
+so the bad pair stays inert even if a future caller reconstructs it.
+Discriminating fixture: "a FLAG-ON denial shell keeps the URL-sync layer
+and hydration inert"
+(`apps/chat/src/components/shell/app-shell.deeplink.test.tsx:235-263`)
+renders the denial pane WITH the flag on and asserts no fetch at all AND
+no `pushState`/`replaceState`; both halves were falsified once against
+the pre-fix code and went red on exactly the right behavior (hydration
+POSTed `/api/history/list`; the hook rewrote the bar to `/`). NEW
+dimension vs its nearest kin: feat-282's integration-to-unit row is a
+caller that COULD supply the load-bearing shape, where a relocation
+deleted the only case that did; the adjacent feat-337 row is a negative
+assertion no input could falsify. What survives both here: no single
+case was deleted and no assertion is unfalsifiable — the load-bearing
+input COMBINATION was simply never covered by any case, one CELL of a
+multi-value gate matrix (the real matrix is 3×2 — `deniedScreen` is
+three-valued) that production reaches on one malformed URL, and the safe
+value of axis 2 is the harness default, so the gap is created by writing
+the natural test rather than a wrong one. Each test's own axis is
+exercised properly, so the gap is invisible to the SUITE and to a
+per-test read — here it took three independent Tier-2 reviewers plus an
+independent validator to see it, which is the cost the preventive rule
+removes. Preventive rule: when a behavior is gated by more than one
+axis, enumerate the axis-value combinations and name which are
+production-reachable before writing the suite — and a combination you
+declare unreachable must be verified against the PRODUCER expression
+that would emit it (here the `seekerEnabled=` prop expression in
+`apps/chat/src/app/c/[id]/page.tsx`), never taken from a plan sentence:
+feat-209's author HAD a reachability answer, from KTD6's prose, and it
+was wrong. Until a combination is verified unreachable at the producer
+or made unreachable by construction, write the fixture anyway. The
+obligation is linear, not combinatorial — one fixture per safety
+assertion, holding every OTHER axis at its permissive value, falsified
+once; a "no X happens" assertion is evidence only in a fixture where X
+COULD happen. And when the safe combination is meant to be an INVARIANT
+rather than a coincidence, make it fail-closed by construction at BOTH
+ends — derive the grant from the same decision that chose the denial
+pane (producer), and re-derive it defensively where it is consumed
+(consumer; the architecture home for this fix shape is
+[fail-closed-by-construction-feature-flag-gate-20260708.md](../architecture-patterns/fail-closed-by-construction-feature-flag-gate-20260708.md))
+— so the discriminating test guards a property the code can no longer
+express, instead of being the only thing standing between the plan's
+prose and the bug. One consequence to carry deliberately: once the
+producer half lands, the discriminating fixture stops being
+producer-reachable — label it synthetic in place per item 8 of the
+Prevention checklist, naming the producer symbol that now forbids the
+pair, and keep the permissive-axis sibling tests as its reachable pair.
 
 ## Why the rule keeps recurring
 
