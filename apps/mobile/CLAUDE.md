@@ -413,12 +413,22 @@ started, the source errored, or `AUTOSTART_VEIL_TIMEOUT_MS` elapsed. The third
 is not optional — a load that neither starts nor errors would otherwise strand
 the viewer under a veil with no controls.
 
-**The poster and the veil share ONE predicate — `awaitingAutostart`.** Gating
-the poster on `!hasStarted` instead passes review and ships a subtler version
-of the same bug: on the error and timeout paths the veil lifts while the opaque
-poster stays, sitting over the native transport. `pointerEvents="none"` keeps
-the controls reachable by touch, which is not the same as visible. Whatever
-hides the controls must clear on every path that releases the gate.
+**On the SDUI routes the poster and the veil share ONE predicate —
+`awaitingAutostart`.** Gating the poster on `!hasStarted` there strands the
+viewer: on the error and timeout paths the veil lifts while the opaque poster
+stays over the native transport. `pointerEvents="none"` keeps the controls
+reachable by touch, which is not the same as visible.
+
+**The deciding property is z-order, not the predicate pair.** `VideoPlayer.tsx`
+gates its poster on `(!hasStarted || castRemoteActive || ended)` against the
+same `awaitingAutostart` veil and is CORRECT, because its chrome is React,
+renders after the poster in the same parent, and mounts on exactly the paths
+that lift the veil. The SDUI routes set `nativeControls`, so their transport
+lives inside the `VideoView` and any later sibling covers it — which is why they
+need the shared predicate and `/watch/[slug]` does not. Before copying a gate
+between player surfaces, check which side of that line you are on. The general
+rule: every layer that can hide the recovery affordance must clear on every path
+that releases the gate.
 
 ## Component render tests
 

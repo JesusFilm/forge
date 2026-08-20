@@ -222,6 +222,13 @@ layer, starting with the bisection sequence above.
 > them, because it asks the author of a NEW component to look sideways rather
 > than making the guard enumerate what already exists. The guard now pins five
 > surfaces; add a case whenever you add a `<VideoView>`.
+>
+> One consequence worth carrying: `textureView` is what makes a later RN sibling
+> able to paint OVER the video at all, so adding it to those two routes turned
+> their poster into a real occluder of the native transport. The compositing fix
+> and
+> [that occlusion bug](../logic-errors/occluding-layers-must-share-one-gate-predicate.md)
+> are two halves of one seam.
 
 - **Known tradeoff, tracked not ignored.** `textureView` renders through the
   view hierarchy rather than a separate hardware layer — a real
