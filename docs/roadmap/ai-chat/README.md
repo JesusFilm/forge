@@ -11,10 +11,10 @@ from the main DS Year 1 roadmap.
 > index, and nothing regenerates or overwrites it. See `CLAUDE.md` in this
 > folder for the maintenance rules and why the lane is unregistered.
 
-## Status (August 18, 2026)
+## Status (August 20, 2026)
 
-- **Total tickets:** 58
-- ✅ **Complete:** 47
+- **Total tickets:** 59
+- ✅ **Complete:** 48
 - 🟡 **In progress:** 0
 - 🔵 **Not started:** 11
 - 🔴 **Blocked:** 0
@@ -34,7 +34,7 @@ from the main DS Year 1 roadmap.
 | [feat-206](feat-206-chat-introduce-react-testing-library.md)           | Introduce React Testing Library to the chat app                              | jian wei | P2       | 2026-07-03 | 2    | ✅ complete    | [#1372](https://github.com/JesusFilm/forge/pull/1372)                                                        |
 | [feat-207](feat-207-chat-auth.md)                                      | Chat app authentication                                                      | jian wei | P1       | 2026-07-07 | 5    | ✅ complete    | [#1438](https://github.com/JesusFilm/forge/pull/1438)                                                        |
 | [feat-208](feat-208-seeker-postgres-memory.md)                         | Postgres-persisted Seeker memory + conversation persistence                  | jian wei | P2       | 2026-07-10 | 5    | ✅ complete    | [#1462](https://github.com/JesusFilm/forge/pull/1462)                                                        |
-| [feat-209](feat-209-chat-per-conversation-urls.md)                     | Per-conversation URLs                                                        | jian wei | P2       | 2026-07-28 | 2    | 🔵 not-started | —                                                                                                            |
+| [feat-209](feat-209-chat-per-conversation-urls.md)                     | Per-conversation URLs                                                        | jian wei | P2       | 2026-07-28 | 2    | ✅ complete    | [#1974](https://github.com/JesusFilm/forge/pull/1974)                                                        |
 | [feat-229](feat-229-chat-auth-register-oauth-client.md)                | Register chat OAuth client in apps/auth (chat auth enablement)               | jian wei | P1       | 2026-07-09 | 2    | ✅ complete    | [#1453](https://github.com/JesusFilm/forge/pull/1453)                                                        |
 | [feat-231](feat-231-chat-auth-prod-oauth-client.md)                    | Register chat deployed-environment OAuth clients (prod enablement)           | jian wei | P2       | 2026-07-20 | 1    | ✅ complete    | [#1465](https://github.com/JesusFilm/forge/pull/1465)                                                        |
 | [feat-233](feat-233-chat-seeker-ld-dogfood-gate.md)                    | Chat seeker LaunchDarkly dogfood gate (per-user allowlist)                   | jian wei | P1       | 2026-07-06 | 3    | ✅ complete    | [#1488](https://github.com/JesusFilm/forge/pull/1488)                                                        |
@@ -81,3 +81,4 @@ from the main DS Year 1 roadmap.
 | [feat-363](feat-363-history-route-resourceid-recheck.md)               | Chat history read path: client-side re-check of the resourceId filter        | jian wei | P2       | 2026-08-24 | 1    | 🔵 not-started | —                                                                                                            |
 | [feat-366](feat-366-seeker-follow-up-questions.md)                     | Seeker suggested follow-up questions (post-hoc chips)                        | jian wei | P1       | 2026-08-19 | 6    | 🔵 not-started | —                                                                                                            |
 | [feat-367](feat-367-seeker-follow-up-question-evals.md)                | Automated quality evals for Seeker follow-up questions                       | jian wei | P2       | 2026-09-08 | 3    | 🔵 not-started | —                                                                                                            |
+| [feat-399](feat-399-deep-link-malformed-id-granted-sidebar.md)         | Deep-link malformed id: keep the granted user's sidebar alive                | jian wei | P2       | 2026-09-01 | 1    | 🔵 not-started | —                                                                                                            |

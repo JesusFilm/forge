@@ -30,6 +30,19 @@ describe("isValidAnonId", () => {
       expect(isValidAnonId(bad)).toBe(false)
     }
   })
+
+  it("covenant (tighten-only, lib/conversation-id): the cookie trust gate still rejects non-UUID shapes a loosened URL-id pattern might admit", () => {
+    // UUID_PATTERN is shared with the /c/<id> URL surface (feat-209). If it
+    // were ever relaxed for URL ids, these must fail HERE, at the cookie
+    // boundary — loudly, not silently pass.
+    for (const nonUuid of [
+      "thread_abc123",
+      "0f6d3f1e11114a2b8c3d000000000042", // un-hyphenated 32-hex near-miss
+      "0f6d3f1e-1111-4a2b-8c3d-00000000004", // 35-char near-miss
+    ]) {
+      expect(isValidAnonId(nonUuid)).toBe(false)
+    }
+  })
 })
 
 describe("getCookieValue", () => {

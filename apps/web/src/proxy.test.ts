@@ -1,12 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
+import { config, proxy, type ProxyRequest } from "./proxy"
 import {
   WATCH_INTERNAL_REWRITE_HEADER,
   WATCH_SUBTITLE_INTENT_REWRITE_HEADER,
-  config,
-  proxy,
-  type ProxyRequest,
-} from "./proxy"
+} from "./lib/watch-rewrite-headers"
 import {
   setWatchRouteManifestSourceForTest,
   type WatchRouteManifest,
@@ -106,9 +104,12 @@ function rewritePath(response: Response): string | null {
   return target ? new URL(target).pathname : null
 }
 
-function expectNotFoundRewrite(response: Response): void {
+function expectNotFoundRewrite(
+  response: Response,
+  expectedInternalPathname = "/en/en/404",
+): void {
   expect(response.status).toBe(200)
-  expect(rewritePath(response)).toBe("/en/en/404")
+  expect(rewritePath(response)).toBe(expectedInternalPathname)
   expect(response.headers.get("content-security-policy")).toBe(
     "frame-ancestors 'self'",
   )
@@ -528,21 +529,35 @@ describe("proxy — internal locale/htmlLang rewrites", () => {
     )
   })
 
-  it("keeps unknown content and legacy manifests on the ordinary 404", async () => {
-    const unknown = await proxy(
-      makeRequest("/unknown-video.html/chinese-simplified.html"),
-    )
-    expectNotFoundRewrite(unknown)
+  it.each([
+    [
+      "Simplified Chinese",
+      "/unknown-video.html/chinese-simplified.html",
+      "/zh-Hans/zh-Hans/404",
+    ],
+    ["Russian", "/unknown-video.html/russian.html", "/ru/ru/404"],
+    ["Arabic", "/unknown-video.html/arabic-modern-standard.html", "/ar/ar/404"],
+  ])(
+    "keeps recognized $0 locale on the ordinary 404",
+    async (_language, publicPathname, internalPathname) => {
+      const response = await proxy(makeRequest(publicPathname))
 
+      expectNotFoundRewrite(response, internalPathname)
+    },
+  )
+
+  it("keeps the recognized locale when an older manifest cannot prove the route", async () => {
     resetManifestSource?.()
     resetManifestSource = setWatchRouteManifestSourceForTest(async () => ({
       ...TEST_MANIFEST,
       audioLanguageIndexesByContent: undefined,
     }))
+
     const inconclusive = await proxy(
       makeRequest("/good-friday-live.html/chinese-simplified.html"),
     )
-    expectNotFoundRewrite(inconclusive)
+
+    expectNotFoundRewrite(inconclusive, "/zh-Hans/zh-Hans/404")
   })
 
   it("admits canonical and explicit English parent routes through an English nested collection", async () => {
@@ -923,7 +938,7 @@ describe("proxy — internal locale/htmlLang rewrites", () => {
       ),
     )
 
-    expectNotFoundRewrite(response)
+    expectNotFoundRewrite(response, "/es/es-419/404")
   })
 
   it("fails open to contextual resolution when the route manifest is unavailable", async () => {
@@ -1086,7 +1101,7 @@ describe("proxy — internal locale/htmlLang rewrites", () => {
         "/lumo-the-gospel-of-luke.html/birth-of-jesus/spanish-castilian.html",
       ),
     )
-    expectNotFoundRewrite(missingDub)
+    expectNotFoundRewrite(missingDub, "/es/es-ES/404")
 
     const otherMissingDub = await proxy(
       makeRequest("/lumo-the-gospel-of-mark.html/jesus-baptism/english.html"),
@@ -1096,6 +1111,51 @@ describe("proxy — internal locale/htmlLang rewrites", () => {
 })
 
 describe("proxy — visible internal-prefix policy", () => {
+  it("allows only a bounded localized ordinary 404 sentinel to re-enter", async () => {
+    let manifestReads = 0
+    resetManifestSource?.()
+    resetManifestSource = setWatchRouteManifestSourceForTest(async () => {
+      manifestReads += 1
+      return { ...TEST_MANIFEST }
+    })
+
+    const first = await proxy(
+      makeRequest("/unknown-video.html/chinese-simplified.html"),
+    )
+    const internalPath = rewritePath(first)
+
+    expect(internalPath).toBe("/zh-Hans/zh-Hans/404")
+    const admitted = await proxy(
+      makeRequest(internalPath ?? "", {
+        headers: rewrittenRequestHeaders(first),
+      }),
+    )
+    expect(admitted.status).toBe(200)
+    expect(rewritePath(admitted)).toBeNull()
+    expect(manifestReads).toBe(1)
+
+    const invalidLocalePair = await proxy(
+      makeRequest("/zh-Hans/en/404", {
+        headers: new Headers([[WATCH_INTERNAL_REWRITE_HEADER, "/404"]]),
+      }),
+    )
+    expectNotFoundRewrite(invalidLocalePair)
+
+    const syntheticHtmlLang = await proxy(
+      makeRequest("/en/en-AA/404", {
+        headers: new Headers([[WATCH_INTERNAL_REWRITE_HEADER, "/404"]]),
+      }),
+    )
+    expectNotFoundRewrite(syntheticHtmlLang)
+
+    const nonCanonicalPath = await proxy(
+      makeRequest("https://www.jesusfilm.org/en/en//404", {
+        headers: new Headers([[WATCH_INTERNAL_REWRITE_HEADER, "/404"]]),
+      }),
+    )
+    expectNotFoundRewrite(nonCanonicalPath)
+  })
+
   it("allows only a re-proven unavailable sentinel rewrite to re-enter", async () => {
     const publicPath = "/good-friday-live.html/chinese-simplified.html"
     const first = await proxy(makeRequest(publicPath))

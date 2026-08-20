@@ -82,6 +82,15 @@ with no release-level view.
   public audience or whether feat-356 becomes a hard gate. Coupled to the
   copy item above and to the self-serve-deletion decision already recorded
   under "Erasure capability live".
+- **Access-log retention windows — confirm and document (added 2026-08-18,
+  feat-209):** feat-209 puts thread ids in `/c/<id>` request paths, so they
+  land in Cloudflare and Railway HTTP access logs (IP + timestamp + id;
+  never content) with platform-controlled retention that outlives the
+  25-day window and feat-337 erasure — standard posture is log rotation,
+  not per-user log deletion, but that is only defensible once someone has
+  looked up the two actual retention periods, recorded them here, and the
+  privacy owner has blessed the "residual log entries age out within N
+  days" line for erasure responses. (STATUS: open)
 - **Legal review of the data flows (open, undecided):** EU GDPR analysis for
   special-category data — lawful basis (explicit consent wording at the chat
   surface?), the Langfuse Cloud US processor relationship (DPA is available

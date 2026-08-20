@@ -1013,6 +1013,18 @@ The layered per-request decision in the chat app that resolves seeker-vs-stub: t
 
 The server-side read surface over persisted Seeker threads: a signed-in user lists their own conversations and replays or resumes any of them, with new sends appending to the same thread. Signed-in-only by design — anonymous conversations persist for the session but are never listable or replayable, so they stay effectively ephemeral (a privacy feature: the anonymous continuity cookie must never become a history-reading credential). During the dogfood phase the surface additionally rides the Seeker Dogfood Gate.
 
+### Per-Conversation URL
+
+The address a gate-granted conversation can be reopened from — bookmarked, pasted, or walked with browser back/forward. Minted only once the conversation's server thread provably exists, and only for gate-granted users, because only they can restore history: a merely signed-in or anonymous visitor's address could never resolve, and anonymous chat deliberately never changes its address. In-app selection moves the address without reloading the app; only opening an address from outside re-resolves it on the server. Addresses are per-owner, not shares — the same address opened by anyone else resolves to a Denial Screen, never to the conversation — and they carry no conversation content, so browser history reveals that chat was used, never what was said.
+
+### Adopted Conversation
+
+A conversation row the session creates from a Per-Conversation URL's id alone — an address arrived before any listing proved the conversation exists or belongs to this user. An adopted row starts empty and unproven: its transcript loads through replay, and it becomes a permanent conversation only when a history listing later includes it. Until then it lives under stricter rules than listed rows — a mid-session access denial marks it unavailable rather than silently removing the pane the user deep-linked into, an unproven row whose replay says it is gone is dropped once the user moves away, and an id already found dead this session re-renders its unavailable state from memory instead of asking the server again.
+
+### Denial Screen
+
+The full-pane outcome of opening a Per-Conversation URL that cannot be shown: it replaces the conversation pane while the sidebar stays rendered. Two screens by design. The sign-in screen appears when there is no valid session — anonymous, expired, and tampered are indistinguishable and signing in is the fix, returning to the same conversation afterward (a completed sign-in can still end in denial; that is the model working, not a bug). The unavailable screen covers everything a sign-in cannot fix — another person's conversation, a vanished or erased one, a malformed address, an account the gate denies — with identical wording across those causes so the copy never reveals whether a conversation exists or whose it is. A denial screen never adopts the conversation, and a shell showing one is never gate-granted, so nothing behind the frozen pane fetches, mutates state, or rewrites the address; leaving one is a real navigation.
+
 ### Resource Key
 
 The stable owner identity every Seeker conversation is stored under — a namespaced string distinguishing a signed-in account from an anonymous browser session, with a shared fallback key stamped on internal callers that supply none. The key is treated as opaque past its namespace prefix (matching never splits or parses the remainder), the same value keys the subject's conversations in the persistence store and their traces in observability, and the shared fallback key aggregates many people's turns so nothing keyed to it can be attributed — or erased — per person.
