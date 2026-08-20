@@ -3,7 +3,7 @@ id: "feat-209"
 title: "Per-conversation URLs"
 owner: "jian wei"
 priority: "P2"
-status: "in-progress"
+status: "complete"
 start_date: "2026-07-28"
 duration: 2
 depends_on:
@@ -14,6 +14,18 @@ blocks:
 tags:
   - "web"
 ---
+
+## Resolution
+
+**Shipped:** 2026-08-20 via [PR #1974](https://github.com/JesusFilm/forge/pull/1974) (`feat(chat): per-conversation URLs with two-screen deep-link denial (feat-209)`).
+
+**What landed.** Built to the plan (`docs/plans/2026-08-18-2122-feat-chat-per-conversation-urls-plan.md`), which supersedes this brief where amended: URLs are gate-granted-only (not merely signed-in) until feat-236; item 4's unified sign-in state became a two-screen model (sign-in only when there is no session; one identical "no longer available" for every signed-in denial, escalated client-side for thread-level causes so no composer ever renders under a denial); in-app switching is shallow `history.pushState` with a popstate adopt-or-refuse loop and a `pageshow` bfcache guard — never router navigations. Notable empirical result: back/forward traversal issues zero RSC requests on next@16.2.4 (measured, then source-determined — see the solutions pin). Denial shells are structurally never gate-granted (the Tier-2 review's P1).
+
+**Compound docs.** The two-axis-gate instance in `docs/solutions/best-practices/mocked-shape-vs-real-contract-discipline-20260506.md` (two-axis gate / vacuous flag-off fixtures); `docs/solutions/design-patterns/lifecycle-protection-keyed-to-transient-marker-dies-with-marker.md`; `docs/solutions/developer-experience/mastra-dev-storage-wipe-on-restart.md`; `docs/solutions/best-practices/nextjs-16-shallow-history-traverse-zero-rsc-requests.md`.
+
+**Residual risk / follow-ups.** [feat-399](feat-399-deep-link-malformed-id-granted-sidebar.md) (granted user's sidebar empties on a malformed deep link — designed inertness, UX follow-up); thread ids in Cloudflare/Railway access logs (accepted KTD9 residual; retention-window check registered in feat-339); post-deploy production `/c/<uuid>` probe on the PR checklist.
+
+**Unblocked.** feat-399.
 
 > **Re-sequenced (2026-07-21, architecture-review adjudication):** this ticket
 > now lands AFTER feat-281 (the conversation session module) and is expected
