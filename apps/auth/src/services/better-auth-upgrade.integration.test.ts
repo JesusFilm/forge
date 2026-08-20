@@ -72,7 +72,8 @@ process.env.AUTH_VALID_AUDIENCES = [
 function hash(value: string): string {
   // This reproduces Better Auth's database key for opaque OAuth tokens; the
   // input is random token material, not a user password requiring stretching.
-  return createHash("sha256").update(value).digest("base64url") // codeql[js/insufficient-password-hash]
+  // lgtm[js/insufficient-password-hash]
+  return createHash("sha256").update(value).digest("base64url")
 }
 
 function basicHeaders(clientId: string, secret: string) {
