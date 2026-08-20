@@ -1,7 +1,7 @@
 ---
 id: "feat-399"
 title: "Register Changelog with first-party Auth grants"
-owner: "tataihono"
+owner: "edmonday"
 priority: "P0"
 status: "in-progress"
 start_date: "2026-08-19"
