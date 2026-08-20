@@ -25,6 +25,7 @@ import { WATCH_CACHE_TAGS } from "@/lib/watch-cache-tags"
 import { isWatchBlock } from "@/lib/watch-blocks"
 import { isSeriesRecord } from "@/lib/watch-content-kind"
 import { logWatchServerEvent } from "@/lib/watch-observability"
+import { resolvePosterUrl } from "@/lib/url"
 
 export { isSeriesRecord } from "@/lib/watch-content-kind"
 
@@ -1763,6 +1764,35 @@ export const resolveWatchLanguagePickerVariants = cache(
         language: variant.language,
         videoEdition: null,
       }))
+  },
+)
+
+export type WatchUnavailableRecoveryTarget = {
+  contentTitle: string | null
+  imageUrl: string | null
+}
+
+export const resolveWatchUnavailableRecoveryTarget = cache(
+  async (
+    videoSlug: string,
+    requestedLanguageSlug: string,
+  ): Promise<WatchUnavailableRecoveryTarget | null> => {
+    const identity = contentIdentityForWatchLanguage(requestedLanguageSlug)
+    const snapshot = await fetchWatchVideoRouteSnapshot(videoSlug, identity)
+    if (!snapshot) return null
+
+    const localizedCopy = snapshotLocalizedCopyWithFallback({
+      snapshot,
+      locale: identity.locale,
+      languageSlug: identity.languageSlug,
+    })
+    const video = normalizeAdminVideo(localizedCopy)
+    if (!video) return null
+
+    return {
+      contentTitle: video.title,
+      imageUrl: resolvePosterUrl(video.images[0]),
+    }
   },
 )
 
