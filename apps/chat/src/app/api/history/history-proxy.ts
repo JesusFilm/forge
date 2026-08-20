@@ -7,7 +7,9 @@
  * to Mastra's bearer-gated history routes with the dedicated
  * `AI_CHAT_MASTRA_API_KEY` lane bearer (KTD2 — never the send-path pool key).
  *
- * POST-shaped so thread ids never appear in URLs (and hence access/CDN logs);
+ * POST-shaped so thread ids never appear in URLs (and hence access/CDN logs
+ * — scoped to these proxies: feat-209's `/c/<id>` deep-link GET is the one
+ * deliberate exception, see that route's docstring);
  * uniform non-probing deny contract (KTD8): 401 `invalid_session` (anonymous,
  * expired, invalid — one shape), 403 `gate_denied` / `thread_forbidden`,
  * 404 `thread_not_found` (only when the upstream body carries that reason — a

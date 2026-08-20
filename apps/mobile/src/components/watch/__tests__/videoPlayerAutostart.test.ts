@@ -1,9 +1,11 @@
 /**
  * Auto-resume + autostart replaced the Resume / Start over chips. These are
- * SOURCE-SHAPE assertions (apps/mobile has no component-render harness,
- * KTD11), so they pin structure, not runtime behaviour — a rename-preserving
- * refactor that reorders things at runtime would still pass. The behavioural
- * gap is recorded in the review's testing gaps, not papered over here.
+ * SOURCE-SHAPE assertions, so they pin structure, not runtime behaviour — a
+ * rename-preserving refactor that reorders things at runtime would still pass.
+ * The behavioural gap is recorded in the review's testing gaps, not papered
+ * over here. They predate the component-render harness this app now has
+ * (apps/mobile/CLAUDE.md, "Component render tests"), which is what would close
+ * that gap.
  *
  * Every slice marker is asserted found before use: an unchecked indexOf
  * returning -1 silently widens the slice to most of the file, and the
@@ -136,10 +138,13 @@ describe("autostart / auto-resume", () => {
   })
 
   it("gates BOTH chrome layers, not just one", () => {
-    // The scrim and the controls layer are separate `controls.mounted` blocks.
-    // Gating one leaves the other painting over the loading veil, which is the
-    // exact bug being fixed — so count them rather than matching once.
-    const gated = SOURCE.match(/controls\.mounted && !awaitingAutostart/g) ?? []
+    // Both layers now share ONE veil-gated expression (`chromeMounted`, also
+    // reported to the route for the back-swipe hold). Gating one layer but not
+    // the other paints chrome over the loading veil — count both gates.
+    expect(SOURCE).toContain(
+      "const chromeMounted = controls.mounted && !awaitingAutostart",
+    )
+    const gated = SOURCE.match(/\{chromeMounted && \(/g) ?? []
     expect(gated).toHaveLength(2)
     // And no ungated `controls.mounted &&` block survives.
     expect(SOURCE).not.toMatch(/controls\.mounted && \(/)
@@ -171,8 +176,15 @@ describe("autostart / auto-resume", () => {
 
   it("releases the suppression when the source errors", () => {
     // Playback never starts on an error, so without this the viewer is stuck
-    // on a spinner with no controls and no way to retry.
-    expect(SOURCE).toContain('setLoadFailed(status === "error")')
+    // on a spinner with no controls and no way to retry. U6 moved the listener
+    // onto the playback host — one player, one failure state, read by the full
+    // view and the floating window alike — so the release now spans two files.
+    const host = fs.readFileSync(
+      path.join(__dirname, "..", "PlaybackHost.tsx"),
+      "utf8",
+    )
+    expect(host).toContain('store.setLoadFailed(status === "error")')
+    expect(host).toContain("loadFailed={snapshot.loadFailed}")
   })
 
   it("reports the adoption metric only once playback actually started", () => {

@@ -39,15 +39,15 @@ import {
   hexToRgba,
 } from "../../src/lib/color"
 import { layout, text } from "../../src/styles/shared"
-import { VideoPlayer } from "../../src/components/watch/VideoPlayer"
+import { PlayerSlot } from "../../src/components/watch/PlayerSlot"
 import { useCastPlayback } from "../../src/hooks/useCastPlayback"
 import { useCastProgressRecording } from "../../src/hooks/useCastProgressRecording"
-import type { ProgressFeed } from "../../src/hooks/useManagedVideoPlayer"
 import { showCastDialog } from "../../src/lib/cast/castAdapter"
 import {
   resolveCastMedia,
   type CastMedia,
 } from "../../src/lib/cast/castMediaResolver"
+import type { ProgressFeed } from "../../src/lib/miniPlayer/playbackRequest"
 import {
   isRemoteCastPhase,
   isRemotePlayingState,
@@ -55,9 +55,10 @@ import {
   type CastRecovery,
 } from "../../src/lib/playbackTarget"
 import { useFullscreenPresentation } from "../../src/hooks/useFullscreenPresentation"
+import { usePlaybackFrameVisible } from "../../src/hooks/usePlaybackFrame"
 import { buildWatchShareUrl } from "../../src/lib/watchShareUrl"
+import { resolvePlayerSource } from "../../src/lib/playerSource"
 import { VideoDetailSkeleton } from "../../src/components/watch/VideoDetailSkeleton"
-import { PlayerPoster } from "../../src/components/watch/PlayerPoster"
 import { WatchAmbient } from "../../src/components/watch/WatchAmbient"
 import { VideoMetadata } from "../../src/components/watch/VideoMetadata"
 import { ActionButtonRow } from "../../src/components/watch/ActionButtonRow"
@@ -112,6 +113,7 @@ export default function WatchVideoPage() {
   const [showScrollTop, setShowScrollTop] = useState(false)
   const scrollTopOpacity = useRef(new Animated.Value(0)).current
   const { isFullscreen, toggleFullscreen } = useFullscreenPresentation()
+  const playerFrameVisible = usePlaybackFrameVisible()
   const insets = useSafeAreaInsets()
   // Honor reduce-motion for the scroll-to-top FAB, the way the player's
   // chrome/subtitles already do — snap instead of fading.
@@ -295,15 +297,17 @@ export default function WatchVideoPage() {
   const subtitleActive = subtitleEnabled && subtitlesAvailable
 
   // Prefer the resolved video; fall back to the seed so first paint has
-  // content. The player source resolves to the active variant, then the
-  // video's first-playable stream, then the seed-derived Mux URL.
+  // content. The source precedence (and why the record fallback waits for the
+  // dub selection to settle) lives in resolvePlayerSource.
   const displayTitle = video?.title ?? seed?.title ?? null
   const displayPoster = video?.posterUrl ?? seed?.imageUrl ?? null
-  const playerSource =
-    offlineSource ??
-    activeVariant?.hls ??
-    video?.streamingUrl ??
-    seedStreamingUrl
+  const playerSource = resolvePlayerSource({
+    offlineSource,
+    activeVariantHls: activeVariant?.hls ?? null,
+    variantSettled: activeVariant != null,
+    recordStreamingUrl: video?.streamingUrl ?? null,
+    seedStreamingUrl,
+  })
 
   // ---- Cast session lifecycle (U4: KTD4/KTD7) ----
   // The hook owns the KTD7 end triggers (slug change + unmount) internally.
@@ -549,7 +553,7 @@ export default function WatchVideoPage() {
         {/* Match the loaded player's dock (top safe edge, full-bleed sides) so
             the player block doesn't jump when canonical data lands. */}
         <VideoDetailSkeleton playerTopInset={insets.top} />
-        <FloatingBackButton {...BACK_BUTTON_PROPS} />
+        <FloatingBackButton {...BACK_BUTTON_PROPS} icon="chevron-down" />
       </View>
     )
   }
@@ -576,7 +580,7 @@ export default function WatchVideoPage() {
             Retry
           </Text>
         </View>
-        <FloatingBackButton {...BACK_BUTTON_PROPS} />
+        <FloatingBackButton {...BACK_BUTTON_PROPS} icon="chevron-down" />
       </View>
     )
   }
@@ -626,50 +630,59 @@ export default function WatchVideoPage() {
               // is sibling-scoped, so the player's own zIndex can't escape this
               // wrapper to clear the later-painted ScrollView on its own.
               styles.playerDockFullscreen
-            : { paddingTop: insets.top }
+            : // Inline needs a small lift too: the flush scrubber thumb
+              // straddles the player's bottom edge (Scrubber flush contract),
+              // and the later-painted ScrollView would cover its lower half.
+              [styles.playerDockInline, { paddingTop: insets.top }]
         }
       >
-        {playerSource == null ? (
-          // No stream yet (series/collection pre-redirect, or no variant in the
-          // target language). Paint the artwork, not transport chrome for
-          // something unplayable.
-          <PlayerPoster
-            posterUrl={displayPoster}
-            // Spin only while the stream is still being resolved — once the
-            // query settles, a null source means unplayable, not pending.
-            loading={loading && error == null}
-          />
-        ) : (
-          <VideoPlayer
-            streamingUrl={effectivePlayerSource}
-            posterUrl={displayPoster}
-            subtitleVttSrc={subtitleVttSrc}
-            onPlayingChange={undefined}
-            fullscreen={isFullscreen}
-            onToggleFullscreen={toggleFullscreen}
-            cast={{
-              playback: cast,
-              onCastPress: handleCastPress,
-              resolveMediaAt: resolveCastMediaAt,
-              recovery: castRecovery,
-              progressFeedRef,
-            }}
-            progressIdentity={
-              // Offline playback may predate the record load — the slug is
-              // the on-device key admin resolves server-side (KTD8).
-              video?.documentId
-                ? {
-                    videoId: video.documentId,
-                    languageSlug: activeVariant?.languageSlug ?? null,
-                  }
-                : offlineSource
-                  ? { videoSlug: decodedSlug, languageSlug: null }
-                  : null
-            }
-            resumeAtSeconds={resumeAtSeconds}
-            autostart
-          />
-        )}
+        {/* One slot in every state, including "no stream yet" (series pre-
+            redirect, an Up Next replace, no variant in this language): dropping
+            it hands the player to the route beneath and reads as a back press. */}
+        <PlayerSlot
+          // The cast pin (KTD4), not the live chain: a dub chosen mid-session
+          // reaches the player only when the session releases it.
+          streamingUrl={effectivePlayerSource}
+          posterUrl={displayPoster}
+          subtitleVttSrc={subtitleVttSrc}
+          fullscreen={isFullscreen}
+          onToggleFullscreen={toggleFullscreen}
+          // Spin only while the stream is still being resolved — once the
+          // query settles, a null source means unplayable, not pending.
+          loading={loading && error == null}
+          castActive={castRemoteActive}
+          cast={{
+            playback: cast,
+            onCastPress: handleCastPress,
+            resolveMediaAt: resolveCastMediaAt,
+            recovery: castRecovery,
+          }}
+          progressFeedRef={progressFeedRef}
+          // The window needs its own copy of what it is playing: the watch
+          // session provider is group-scoped and dies with the route.
+          session={{
+            videoId: video?.documentId ?? null,
+            videoSlug: decodedSlug,
+            title: displayTitle ?? "",
+            posterUrl: displayPoster,
+            languageSlug: activeVariant?.languageSlug ?? null,
+            originPattern: "watch/[slug]",
+          }}
+          progressIdentity={
+            // Offline playback may predate the record load — the slug is
+            // the on-device key admin resolves server-side (KTD8).
+            video?.documentId
+              ? {
+                  videoId: video.documentId,
+                  languageSlug: activeVariant?.languageSlug ?? null,
+                }
+              : offlineSource
+                ? { videoSlug: decodedSlug, languageSlug: null }
+                : null
+          }
+          resumeAtSeconds={resumeAtSeconds}
+          autostart
+        />
       </View>
 
       <ScrollView
@@ -811,10 +824,13 @@ export default function WatchVideoPage() {
         )}
       </ScrollView>
 
-      {/* Floating back button overlaid on the player's top-right corner —
+      {/* Floating back button overlaid on the player's top-left corner —
           replaces the native header back. Hidden in fullscreen (the player owns
-          its own chrome there). */}
-      {!isFullscreen && <FloatingBackButton {...BACK_BUTTON_PROPS} />}
+          its own chrome there), and while the playback host draws over this
+          dock: the host paints above the stack, so it renders this button. */}
+      {!isFullscreen && !playerFrameVisible && (
+        <FloatingBackButton {...BACK_BUTTON_PROPS} icon="chevron-down" />
+      )}
 
       {showScrollTop && (
         <Animated.View
@@ -849,6 +865,9 @@ const styles = StyleSheet.create({
   },
   playerDockFullscreen: {
     zIndex: 1000,
+  },
+  playerDockInline: {
+    zIndex: 1,
   },
   scrollContent: {
     paddingBottom: 80,

@@ -933,13 +933,23 @@ The auto-hiding controls overlay on the watch video player — the play/pause, s
 
 The Chrome is visible when playback starts, auto-hides after a few idle seconds while playing, stays up while paused or buffering, and toggles on a tap of the video body. It fades rather than cutting, and is unmounted only after the fade-out completes so a fully-hidden Chrome stops intercepting touches. The home hero's controls are also Chrome; they fade with scroll position rather than idle time, but follow the same rule that hidden Chrome must stop intercepting touches.
 
-A video that starts by itself is the exception to "stays up while buffering": the Chrome is withheld until the first frame and an Autostart Veil stands in for it, because a play button and a zero scrubber offered for a video nobody asked to pause read as a stall. Because the Chrome is the player's only recovery affordance, that withholding is always bounded — see the Autostart Veil's release rule.
+A video that starts by itself is the exception to "stays up while buffering": the Chrome is withheld until the first frame and an Autostart Veil stands in for it, because a play button and a zero scrubber offered for a video nobody asked to pause read as a stall. Because the Chrome is the player's only recovery affordance, that withholding is always bounded — see the Autostart Veil's release rule, which binds every layer covering the Chrome and not only the veil itself.
+
+Chrome visibility is not a release signal. Because the Chrome stays up for as long as playback is paused or ended, anything that holds a capability open "until the Chrome hides" holds it open forever in those states. A hold keyed to Chrome visibility therefore needs its own unconditional release, not the Chrome's.
 
 ### Autostart Veil
 
 The dimmed cover laid over a video's poster while a video that starts on its own is still loading — darkened artwork under a spinner, standing in for the withheld Chrome. It appears only for a video the viewer did not press play on; a video started by hand shows its Chrome throughout.
 
 The veil takes no touches, and while it is up a tap on the video body must not resolve to hiding the Chrome beneath it, or playback begins with no controls at all. It is released by the first frame, by a reported load failure, or by a time limit — whichever comes first. The time limit is not redundant: the other two releases depend on the player reporting something, and the case that strands a viewer is the one where it reports nothing, so a viewer who leaves the app mid-load and returns must also get the veil released. Releasing early only returns the controls sooner, while releasing late leaves the viewer with no way out, so the bound is set to err early.
+
+The veil is rarely the only thing covering the Chrome — the poster it darkens is a layer in its own right. A release rule that frees the veil while the poster stays leaves the viewer exactly as stranded, so every layer that can cover the Chrome must answer to the same release, not merely the topmost one. Whether a residual poster actually strands anyone depends on paint order rather than on the layers themselves: where the Chrome is drawn by the app it can paint over a leftover poster and nothing is lost, but where the player supplies its own controls inside the video surface, any layer laid over that surface hides them. Passing touches through a covering layer does not resolve this — a control that can be pressed but not seen is not a recovery affordance.
+
+### Back-Swipe Strip
+
+The narrow band along a watch screen's leading edge that is reserved for the platform's page-dismiss swipe. The seek bar spans the full width visually but declines any drag that begins inside the strip, so a dismiss gesture is never half-read as a scrub.
+
+The strip exists because the dismiss gesture is recognised natively, before the app's own gesture handling runs — a contest the app cannot win, only avoid. Reserving territory in advance is therefore the mechanism, rather than deciding the winner once a touch has arrived. It is reserved only where a native gesture actually competes for the touch: where the platform's back gesture belongs to the OS and reaches the app as a plain navigation event, nothing competes, and reserving a strip would delete usable seek area for nothing. Fullscreen playback, which cannot be dismissed by the gesture, likewise reserves none.
 
 ### Ambient Backdrop
 
@@ -958,6 +968,12 @@ A Watch Session belongs to the currently-viewed Video: it is published when the 
 The app-wide, persisted audio- and subtitle-language choice that carries across every Video and series — a stored _intent_ (a Language slug plus a cached display name), distinct from the per-Video Watch Session. Because the same preference flows over content with different Dubs and subtitle tracks, it is reconciled against each item's actual tracks at display and apply time rather than shown verbatim: an unsupported choice falls back to a supported track, and content with no matching track reads "Off".
 
 Identity always keys on the Language slug; the cached name paints labels instantly on a cold load but is never used for matching. Toggling subtitles on or off changes visibility only — it never rewrites the stored language, which only an explicit pick changes.
+
+### Mini Player
+
+The small floating video window that keeps a video playing after the viewer leaves the screen it was playing on, so playback survives navigation instead of ending with the route. Distinct from the operating system's picture-in-picture window, which is the platform's own window outside the app — the Mini Player is drawn by the app and lives above its navigation.
+
+It is the same live playback surface as the full-size player, resized and repositioned rather than handed to a second player, because moving playback between two surfaces restarts it. A Mini Player is earned rather than automatic: a video that never actually played does not get one, nor does a video that already ran to its end, nor one whose playback is being driven by a cast receiver. While an in-app sheet is presented over it, it is hidden rather than torn down, so the video keeps playing behind the sheet and returns when the sheet closes. The viewer can move it between screen corners and dismiss it; dismissing ends the playback session rather than merely hiding the window.
 
 ## Offline downloads
 
@@ -996,6 +1012,18 @@ The layered per-request decision in the chat app that resolves seeker-vs-stub: t
 ### Conversation History
 
 The server-side read surface over persisted Seeker threads: a signed-in user lists their own conversations and replays or resumes any of them, with new sends appending to the same thread. Signed-in-only by design — anonymous conversations persist for the session but are never listable or replayable, so they stay effectively ephemeral (a privacy feature: the anonymous continuity cookie must never become a history-reading credential). During the dogfood phase the surface additionally rides the Seeker Dogfood Gate.
+
+### Per-Conversation URL
+
+The address a gate-granted conversation can be reopened from — bookmarked, pasted, or walked with browser back/forward. Minted only once the conversation's server thread provably exists, and only for gate-granted users, because only they can restore history: a merely signed-in or anonymous visitor's address could never resolve, and anonymous chat deliberately never changes its address. In-app selection moves the address without reloading the app; only opening an address from outside re-resolves it on the server. Addresses are per-owner, not shares — the same address opened by anyone else resolves to a Denial Screen, never to the conversation — and they carry no conversation content, so browser history reveals that chat was used, never what was said.
+
+### Adopted Conversation
+
+A conversation row the session creates from a Per-Conversation URL's id alone — an address arrived before any listing proved the conversation exists or belongs to this user. An adopted row starts empty and unproven: its transcript loads through replay, and it becomes a permanent conversation only when a history listing later includes it. Until then it lives under stricter rules than listed rows — a mid-session access denial marks it unavailable rather than silently removing the pane the user deep-linked into, an unproven row whose replay says it is gone is dropped once the user moves away, and an id already found dead this session re-renders its unavailable state from memory instead of asking the server again.
+
+### Denial Screen
+
+The full-pane outcome of opening a Per-Conversation URL that cannot be shown: it replaces the conversation pane while the sidebar stays rendered. Two screens by design. The sign-in screen appears when there is no valid session — anonymous, expired, and tampered are indistinguishable and signing in is the fix, returning to the same conversation afterward (a completed sign-in can still end in denial; that is the model working, not a bug). The unavailable screen covers everything a sign-in cannot fix — another person's conversation, a vanished or erased one, a malformed address, an account the gate denies — with identical wording across those causes so the copy never reveals whether a conversation exists or whose it is. A denial screen never adopts the conversation, and a shell showing one is never gate-granted, so nothing behind the frozen pane fetches, mutates state, or rewrites the address; leaving one is a real navigation.
 
 ### Resource Key
 

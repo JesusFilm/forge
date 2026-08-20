@@ -1,7 +1,8 @@
 /**
- * SOURCE-SHAPE assertions (apps/mobile has no component-render harness,
- * KTD11), so these pin structure, not motion. The spin itself was verified by
- * comparing simulator frames — a static read cannot see an animation.
+ * SOURCE-SHAPE assertions, so these pin structure, not motion. The app HAS a
+ * component-render harness (apps/mobile/CLAUDE.md, "Component render tests"),
+ * but neither it nor a static read can see an animation: the spin itself was
+ * verified by comparing simulator frames.
  *
  * What makes them worth having anyway: both failure modes below are SILENT on
  * Fabric. The ring still renders, so a screenshot looks correct while the

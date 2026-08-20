@@ -36,8 +36,9 @@ tags:
 
 # Hiding the only recovery affordance behind a gate: enumerate every path that fails to open it
 
-All code in this document is on PR #1908 (`feat/mobile-watch-ui-polish`).
-The PR is open and not merged at the time of writing.
+All code in this document is on PR #1908 (`feat/mobile-watch-ui-polish`), which
+merged on 2026-08-12. (This doc was written before that merge and said "open and
+not merged at the time of writing"; corrected 2026-08-20.)
 
 ## Problem
 
@@ -134,6 +135,15 @@ Each item below looked like cover for the gap. None of it was.
   `apps/mobile/src/components/watch/__tests__/videoPlayerAutostart.test.ts:1-14`.
   Those assertions pin structure. They cannot execute a release path, so a
   missing release path is invisible to them by construction.
+
+  > **Superseded, 2026-08-18 (feat-367).** `apps/mobile` now HAS a
+  > component-render harness — jest-expo's transitive `react-test-renderer`
+  > reached through a `react` re-point, still with no new dependency and still
+  > no `@testing-library/react-native`. See `apps/mobile/CLAUDE.md`, section
+  > "Component render tests". The analysis above is left as written: it is the
+  > record of why this bug shipped when it did. But do not carry its premise
+  > forward — a release-path gap of this kind is now testable in CI.
+
 - **Subscribing `statusChange` per source.** The first version keyed the
   listener on `[player, streamingUrl]` and reset `loadFailed` inside the same
   effect. That tears the listener down and rebuilds it across the seed to
@@ -302,6 +312,26 @@ from `player.status` so a source that failed before the effect ran is not
 treated as healthy.
 
 ## Prevention
+
+> **Amended, 2026-08-20 (PR #1972).** This checklist is necessary and NOT
+> sufficient, and that was demonstrated rather than argued:
+> `apps/mobile/src/hooks/useAutostartPlayback.ts` satisfies all six items below
+> and shipped the same stranding anyway. The reason is a second completeness
+> question this doc never asks. These items enumerate the paths that fail to
+> OPEN the gate; they do not enumerate the LAYERS that stay closed when it does.
+> The SDUI routes drew a second opaque layer — a poster — on a different
+> predicate with no unconditional release, so the backstop lifted the veil and
+> the viewer stayed stranded behind the poster.
+>
+> Item 5 below covers the input surface only ("the tap target"). The occluding
+> OUTPUT surface is the missing axis, and `pointerEvents="none"` does not close
+> it: reachable by touch is not visible.
+>
+> Read
+> [Two layers that hide the same control must share one predicate](occluding-layers-must-share-one-gate-predicate.md)
+> alongside this one. Note also that it found `VideoPlayer.tsx` runs the same
+> divergent predicate pair CORRECTLY, because its chrome paints above its
+> poster — so the rule is about paint order, not about the predicates.
 
 **The law: when a gate hides the only recovery affordance, enumerate every path
 by which the gate can fail to open. A "success OR error" pair misses "neither".**

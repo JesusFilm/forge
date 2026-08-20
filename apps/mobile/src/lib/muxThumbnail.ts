@@ -23,11 +23,16 @@ export function muxHlsUrlFromPlaybackId(
 // Same smartcrop shape as deriveMuxThumbnailUrl, but keyed straight off the
 // playback ID an Experience item already carries — the last-resort card poster
 // when a MediaCollection item has no authored image and no hydrated video art.
+//
+// webp, not png: measured 2026-08-19 on a real asset, the png is 988,478 B and
+// this url is 59,262 B for the same frame. `height` is not optional — with a
+// bare `width`, smartcrop keeps the SOURCE height and returns a side-cropped
+// 1280x1080, not 16:9.
 export function muxThumbnailFromPlaybackId(
   playbackId: string | null | undefined,
 ): string | null {
   if (!playbackId || !MUX_PLAYBACK_ID_RE.test(playbackId)) return null
-  return `https://image.mux.com/${playbackId}/thumbnail.png?width=1280&fit_mode=smartcrop`
+  return `https://image.mux.com/${playbackId}/thumbnail.webp?width=1280&height=720&fit_mode=smartcrop`
 }
 
 /**

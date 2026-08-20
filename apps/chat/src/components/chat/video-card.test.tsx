@@ -40,7 +40,7 @@ describe("VideoCard rendering", () => {
       poster:
         "https://image.mux.com/abcdEFGH1234/thumbnail.jpg?width=1280&height=720&fit_mode=smartcrop",
       controls: true,
-      preload: "none",
+      preload: "metadata",
     })
   })
 

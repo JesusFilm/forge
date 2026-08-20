@@ -14,6 +14,7 @@ import { VideoAirPlayButton, type VideoPlayer } from "expo-video"
 import { useEvent } from "expo"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 
+import { BACK_SWIPE_EDGE_WIDTH } from "../../lib/backSwipe"
 import {
   BLACK,
   SURFACE_COLOR,
@@ -342,6 +343,13 @@ export function PlayerControls({
       onSeek={handleSeek}
       onScrubChange={handleScrubChange}
       flush={!fullscreen}
+      // iOS-only: there the pop recognizer competes for this touch, so the bar
+      // yields the strip inline (fullscreen cannot pop, so it keeps full
+      // width). Android's back is an OS gesture popped in JS — nothing to
+      // yield to, so giving up the strip there would cost seek area for free.
+      edgeGuardWidth={
+        Platform.OS === "ios" && !fullscreen ? BACK_SWIPE_EDGE_WIDTH : 0
+      }
     />
   )
 

@@ -13,6 +13,7 @@ let SafeAreaProvider: typeof import("react-native-safe-area-context").SafeAreaPr
 let getApolloClient: typeof import("../src/lib/apolloClient").getApolloClient
 let ACCENT: string
 let BG_COLOR: string
+let BACK_SWIPE_RESPONSE_DISTANCE: typeof import("../src/lib/backSwipe").BACK_SWIPE_RESPONSE_DISTANCE
 let ExperienceShell: typeof import("../src/contexts/ExperienceShell").ExperienceShell
 let ExperienceSelectionProvider: typeof import("../src/contexts/ExperienceSelectionProvider").ExperienceSelectionProvider
 let WatchPreferencesProvider: typeof import("../src/contexts/WatchPreferencesProvider").WatchPreferencesProvider
@@ -27,6 +28,7 @@ let lockPortrait: typeof import("../src/lib/orientation").lockPortrait
 let DevEndpointNotice:
   | typeof import("../src/components/DevEndpointNotice").DevEndpointNotice
   | undefined
+let PlaybackHost: typeof import("../src/components/watch/PlaybackHost").PlaybackHost
 let MobileDatadogProvider: typeof import("../src/components/DatadogRum").MobileDatadogProvider
 let DatadogRouteTracker: typeof import("../src/components/DatadogRouteTracker").DatadogRouteTracker
 // `| undefined`: this one is read at module scope after the try/catch, where a
@@ -55,6 +57,8 @@ try {
   const color = require("../src/lib/color")
   ACCENT = color.ACCENT
   BG_COLOR = color.BG_COLOR
+  BACK_SWIPE_RESPONSE_DISTANCE =
+    require("../src/lib/backSwipe").BACK_SWIPE_RESPONSE_DISTANCE
   ExperienceShell = require("../src/contexts/ExperienceShell").ExperienceShell
   ExperienceSelectionProvider =
     require("../src/contexts/ExperienceSelectionProvider").ExperienceSelectionProvider
@@ -68,6 +72,7 @@ try {
   restoreApolloCache = cachePersistence.restoreApolloCache
   startCachePersistence = cachePersistence.startCachePersistence
   lockPortrait = require("../src/lib/orientation").lockPortrait
+  PlaybackHost = require("../src/components/watch/PlaybackHost").PlaybackHost
   if (__DEV__) {
     DevEndpointNotice =
       require("../src/components/DevEndpointNotice").DevEndpointNotice
@@ -112,7 +117,25 @@ class ErrorBoundary extends Component<
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    // setState FIRST: it is what puts the component stack on the visible App
+    // Error screen, and must not sit behind a telemetry call that could throw.
     this.setState({ errorInfo })
+    // A boundary catch already reaches RUM — RN routes it through
+    // console.error, which the Datadog SDK patches. What that path drops is
+    // `componentStack`, the one field that names the component that threw. Log
+    // it rather than adding a second RUM error, which would split one crash
+    // into two Error Tracking issues.
+    if (typeof datadogLog?.error === "function") {
+      try {
+        datadogLog.error("app.render_boundary_caught", {
+          origin: "error_boundary",
+          error_message: error.message,
+          component_stack: errorInfo.componentStack ?? "",
+        })
+      } catch {
+        // Telemetry must never mask the App Error screen.
+      }
+    }
   }
 
   render() {
@@ -347,16 +370,31 @@ export default function RootLayout() {
                             // back button instead.
                             options={{ headerShown: false }}
                           />
+                          {/* Both player stacks confine the back-swipe to the
+                              left edge: iOS 26 defaults it to full-width,
+                              which claims rightward scrubs (src/lib/backSwipe). */}
                           <Stack.Screen
                             name="watch"
-                            options={{ headerShown: false }}
+                            options={{
+                              headerShown: false,
+                              gestureResponseDistance:
+                                BACK_SWIPE_RESPONSE_DISTANCE,
+                            }}
                           />
                           <Stack.Screen
                             name="series"
-                            options={{ headerShown: false }}
+                            options={{
+                              headerShown: false,
+                              gestureResponseDistance:
+                                BACK_SWIPE_RESPONSE_DISTANCE,
+                            }}
                           />
                         </Stack>
                       </ExperienceShell>
+                      {/* KTD1: a sibling of ExperienceShell, never inside it —
+                          the shell swaps its element type once per cold launch,
+                          remounting its subtree. The player outlives the route. */}
+                      <PlaybackHost />
                     </DownloadsProvider>
                   </AuthProvider>
                 </WatchPreferencesProvider>

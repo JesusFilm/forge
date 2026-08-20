@@ -1,7 +1,7 @@
 ---
 title: "Bind Watch language-picker aliases to exact public slugs"
 date: "2026-08-17"
-last_updated: "2026-08-17"
+last_updated: "2026-08-20"
 category: "ui-bugs"
 module: "apps/web/watch"
 problem_type: "ui_bug"
@@ -9,13 +9,15 @@ component: "frontend_stimulus"
 severity: "medium"
 symptoms:
   - "Available Watch languages looked missing when users searched with familiar Chinese names such as 普通话, 粤语, 简体中文, or 繁體中文."
-  - "The global, playable-audio, and subtitle pickers had no shared way to resolve those terms without widening their available options."
+  - "Only the global, playable-audio, and subtitle pickers initially resolved reviewed aliases; other Watch language selectors and the language directory did not."
 root_cause: "logic_error"
 resolution_type: "code_fix"
 related_components:
   - "apps/web/src/components/watch/LanguageCombobox.tsx"
   - "apps/web/src/components/watch/GlobalLanguagePickerModal.tsx"
   - "apps/web/src/components/watch/LanguagePickerModal.tsx"
+  - "apps/web/src/components/watch/WatchLanguageIndexBrowser.tsx"
+  - "apps/web/src/lib/watch-language-search.ts"
   - "apps/web/src/lib/watch-language-search-aliases.ts"
 tags:
   - "watch"
@@ -57,9 +59,9 @@ must never turn an absent language into a selectable result.
   but it cannot prove alias ownership.
 - **Reusing legacy URL aliases:** `language-aliases.ts` canonicalizes historical
   path segments. A routing alias is not searchable user vocabulary.
-- **Enabling aliases for every combobox:** `LanguageCombobox` has consumers that
-  are outside this feature. Global behavior would silently broaden unrelated
-  pickers.
+- **Making each caller opt in:** only three callers passed the alias authority,
+  so other Watch selectors silently kept different search behavior and new
+  callers could repeat the omission.
 - **Building results from the alias table:** that would make aliases a second
   availability source and could manufacture audio or subtitle choices.
 
@@ -92,28 +94,23 @@ fill a missing visible subtitle: when Core has no native name, the picker shows
 no native-name subtitle. Search synonyms and canonical language metadata stay
 separate, so Web does not invent content that should be curated upstream.
 
-### Make alias matching opt-in
+### Put matching policy behind one shared default
 
-`searchAliasAuthority` is optional on the shared combobox
-(`apps/web/src/components/watch/LanguageCombobox.tsx:34-61`). Production passes
-the authority only to:
-
-- the global Watch language picker
-  (`apps/web/src/components/watch/GlobalLanguagePickerModal.tsx:312-324`);
-- the playable-audio picker
-  (`apps/web/src/components/watch/LanguagePickerModal.tsx:795-803`); and
-- the subtitle picker
-  (`apps/web/src/components/watch/LanguagePickerModal.tsx:962-970`).
-
-Consumers that omit the prop retain the previous display-name and native-name
-search behavior.
+`createWatchLanguageSearchMatcher()` combines public slug, display name,
+native name, and reviewed aliases in one client-safe policy
+(`apps/web/src/lib/watch-language-search.ts`). `LanguageCombobox` uses that
+policy by default, so every current and future Watch combobox receives the same
+search behavior without a caller prop. The custom language-directory browser
+uses the same matcher while preserving its country, region, and speaker-count
+ordering (`apps/web/src/components/watch/WatchLanguageIndexBrowser.tsx`).
 
 ### Filter only the caller's options
 
-The combobox starts with its supplied `options`, computes a match tier for each
-one, removes non-matches, and sorts the remaining entries. It never constructs
-an option from alias metadata
-(`apps/web/src/components/watch/LanguageCombobox.tsx:249-275`).
+The matcher evaluates only the options or language records supplied by its
+caller. It never constructs an option from alias metadata. The combobox filters
+and sorts its supplied `options`; the language directory filters its supplied
+inventory (`apps/web/src/components/watch/LanguageCombobox.tsx`,
+`apps/web/src/components/watch/WatchLanguageIndexBrowser.tsx`).
 
 This preserves each surface's authority:
 
@@ -130,13 +127,19 @@ option whose exact slug owns that alias is eligible. Direct display/native-name
 matches then rank before supplemental alias-only matches, while backend or
 caller order breaks same-tier ties. This prevents a BCP-47-derived label or
 unavailable context row from bypassing the authority
-(`apps/web/src/components/watch/LanguageCombobox.tsx:120-150`).
+(`apps/web/src/lib/watch-language-search.ts`).
+
+Some catalogs retain a BCP-47-derived `publicSlug` for existing routes when the
+source language has no valid slug. They carry a separate nullable
+`aliasOwnerSlug`; `null` keeps the route usable but denies reviewed alias
+ownership. The global language-options API preserves this field instead of
+reconstructing identity in the browser.
 
 For partial queries, existing direct-name tiers remain `0..2`, alias tiers are
 shifted to `3..5`, and original option order breaks ties. Direct display or
 native-name matches therefore continue to rank before alias-only matches
-(`apps/web/src/components/watch/LanguageCombobox.tsx:135-150`,
-`apps/web/src/components/watch/LanguageCombobox.tsx:249-275`).
+(`apps/web/src/lib/watch-language-search.ts`,
+`apps/web/src/components/watch/LanguageCombobox.tsx`).
 
 ## Why This Works
 
@@ -158,8 +161,10 @@ exists, and find it in the subtitle picker only when that subtitle exists.
 - Keep search vocabulary separate from URL-canonicalization aliases, visible
   translated UI copy, and Core-owned native names. Do not use search metadata
   to fill a missing native-name subtitle.
-- Apply alias matching only to the intended consumers, and always filter the
-  options already supplied by the caller.
+- Keep the shared matcher as the default for every Watch language selector and
+  the language directory. Do not add per-caller opt-in flags.
+- Always filter the options or inventory already supplied by the caller. The
+  alias table is search vocabulary, not an availability source.
 - Test a real selectable result and the matching unavailable case. An earlier
   review found that the positive audio case alone did not prove the availability
   boundary (session history); the final player tests now prove that `粤语` finds

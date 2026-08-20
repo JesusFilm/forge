@@ -13,6 +13,7 @@ import type { SearchLanguageOption } from "./search-language"
 
 export type GlobalLanguageOption = {
   slug: string
+  aliasOwnerSlug: string | null
   englishName: string
   nativeName: string | null
 }
@@ -29,13 +30,19 @@ export function projectGlobalLanguageOptions(
 
     const projected = {
       slug,
+      aliasOwnerSlug: option.aliasOwnerSlug ?? null,
       englishName: option.englishName,
       nativeName: option.nativeName,
     }
     const existing = bySlug.get(slug)
-    if (!existing || (!existing.nativeName && projected.nativeName)) {
-      bySlug.set(slug, projected)
-    }
+    const preferred =
+      !existing || (!existing.nativeName && projected.nativeName)
+        ? projected
+        : existing
+    bySlug.set(slug, {
+      ...preferred,
+      aliasOwnerSlug: existing?.aliasOwnerSlug ?? projected.aliasOwnerSlug,
+    })
   }
 
   return [...bySlug.values()].sort((a, b) =>

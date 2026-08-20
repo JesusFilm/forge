@@ -5,8 +5,8 @@
 const fs = require("fs")
 const path = require("path")
 
-// Guard (todo 016): expo-video's raw useVideoPlayer stays behind one adapter.
-// The two allowlisted exceptions own deliberately different player policies.
+// Guard (todo 016): both expo-video player-creation APIs stay behind one
+// adapter. The allowlisted heroes own deliberately different player policies.
 const ALLOWED = new Set([
   "src/hooks/useManagedVideoPlayer.ts",
   // AE3: the home hero runs a bespoke serialized swap engine + videoReady
@@ -14,12 +14,14 @@ const ALLOWED = new Set([
   "src/components/home/HomeHeroPager.tsx",
   // SDUI hero renderer: viewport-pause/mute policy; follow-up candidate.
   "src/components/sections/VideoHeroRenderer.tsx",
+  // Not a player policy: the shared test double names the API it stands in for.
+  "src/test-utils/expoVideoMock.ts",
 ])
 
-// Match the bare identifier, not `useVideoPlayer(` — an aliased import
-// (`import { useVideoPlayer as useVP }`) mentions the identifier on its import
-// line, so word-boundary matching flags the file even when the call is aliased.
-const RAW_USAGE = /\buseVideoPlayer\b/
+// Bare identifiers, not `useVideoPlayer(`: an aliased import still mentions the
+// name on its import line. createVideoPlayer is the second creation API and its
+// player does NOT release with the component — the "outlives the route" hole.
+const RAW_USAGE = /\b(?:useVideoPlayer|createVideoPlayer)\b/
 
 // Pure detector over [{ relative, content }] so a positive-control fixture can
 // prove the mechanism flags a real violation, not just that today's tree is clean.
@@ -47,7 +49,7 @@ function collectSourceFiles(dir, acc = []) {
 }
 
 describe("single expo-video adapter", () => {
-  it("no raw useVideoPlayer usage outside the adapter + allowlist", () => {
+  it("no raw player creation outside the adapter + allowlist", () => {
     const root = path.resolve(__dirname, "../../..")
     const files = [
       ...collectSourceFiles(path.join(root, "src")),
@@ -63,7 +65,7 @@ describe("single expo-video adapter", () => {
     expect(findRawUsage(entries)).toEqual([])
   })
 
-  it("positive control: the detector flags a real violation (incl. aliased import)", () => {
+  it("positive control: the detector flags both creation APIs (incl. aliased imports)", () => {
     // Proves the scan mechanism itself works — without this, a broken regex or
     // root path could make the real-tree assertion pass with zero scanning.
     const offenders = findRawUsage([
@@ -77,17 +79,28 @@ describe("single expo-video adapter", () => {
           'import { useVideoPlayer as useVP } from "expo-video"\nuseVP(src)',
       },
       {
+        relative: "src/components/watch/Detached.tsx",
+        content: 'createVideoPlayer("x")',
+      },
+      {
+        relative: "src/components/watch/DetachedAliased.tsx",
+        content:
+          'import { createVideoPlayer as makePlayer } from "expo-video"\nmakePlayer(src)',
+      },
+      {
         relative: "src/components/watch/Comment.tsx",
-        content: "// uses useVideoPlayer once",
+        content: "// uses useVideoPlayer once\n// uses createVideoPlayer once",
       },
       {
         relative: "src/hooks/useManagedVideoPlayer.ts",
-        content: "useVideoPlayer(source)",
+        content: "useVideoPlayer(source)\ncreateVideoPlayer(source)",
       },
     ])
     expect(offenders).toEqual([
       "src/components/watch/Rogue.tsx",
       "src/components/watch/Aliased.tsx",
+      "src/components/watch/Detached.tsx",
+      "src/components/watch/DetachedAliased.tsx",
     ])
   })
 })

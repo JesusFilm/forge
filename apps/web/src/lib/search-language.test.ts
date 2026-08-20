@@ -153,6 +153,27 @@ describe("groupSearchLanguagesByRegion", () => {
 })
 
 describe("buildSearchLanguageOptions", () => {
+  it("does not grant alias ownership to a locale-derived public slug", () => {
+    const result = buildSearchLanguageOptions({
+      languages: [
+        {
+          id: "slugless-zh",
+          coreId: "slugless-zh",
+          name: { en: "Slugless Chinese metadata" },
+          bcp47: "zh",
+          slug: null,
+        },
+      ],
+    })
+
+    expect(result.options).toContainEqual(
+      expect.objectContaining({
+        publicSlug: "mandarin-china",
+        aliasOwnerSlug: null,
+      }),
+    )
+  })
+
   it("builds facet-limited language options grouped from country metadata", () => {
     const result = buildSearchLanguageOptions({
       availableLanguageFacets: {

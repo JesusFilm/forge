@@ -66,7 +66,7 @@ Admin GraphQL → gql.tada typed query → dispatcher → renderers
 - **One-decoder discipline**: only the active hero/player mounts a video decoder — episode cards and background surfaces render posters, never VideoViews. (There is no global "VideoDecoderBudget" context; that was never built.)
 - **Hero transition hold**: leaving a PLAYING hero slide sets `transitionFromId` (pagerReducer) — the departing page keeps hosting the live video through the scroll animation; pause + replaceAsync swap defer until the settle (SLIDE_SHOWN), with SUSPEND/SLIDES_SET/MAX_DWELL as release valves. `heroPageVideoState()` is the tested render-time host selector; during a hold, outgoing-stream `playToEnd`/`PLAY_STARTED`/errors are guarded so they can't advance past or reveal the incoming slide.
 - **Hero stream failure cooldown**: failed `GET_VIDEO_BY_SLUG` resolutions open a per-slug module-scope backoff window (`heroStreamCooldown.ts`, 60s doubling to 10min) that suppresses hook + prefetch retries; any query success for the slug — or a successful pull-to-refresh (`clearAllHeroStreamCooldowns`) — releases it.
-- **One expo-video lifecycle adapter**: player creation goes through `useManagedVideoPlayer` (frozen source, replaceAsync swap, AppState pause/resume) — a jest guard forbids raw `useVideoPlayer(` outside it plus a two-file allowlist (`HomeHeroPager`'s bespoke swap engine, `VideoHeroRenderer`).
+- **One expo-video lifecycle adapter**: player creation goes through `useManagedVideoPlayer` (frozen source, replaceAsync swap, AppState pause/resume) — a jest guard forbids BOTH `useVideoPlayer(` and `createVideoPlayer(` outside it, plus a three-entry allowlist (`HomeHeroPager`'s bespoke swap engine, `VideoHeroRenderer`, and the shared test double `src/test-utils/expoVideoMock.ts`). `createVideoPlayer` is named separately because its player does NOT release with the component — the "outlives the route" hole.
 - **expo-image everywhere**: Never use RN `<Image>`. Always `expo-image` with `recyclingKey`.
 
 ## Conventions
@@ -218,6 +218,19 @@ local file does not revoke it.
 Rollback is `eas update:rollback --channel <preview|production>`. Exercise it
 once on preview before you ever need it on production.
 
+**`eas.json` sets `cli.requireCommit: true`.** An OTA update reaches every
+tester in minutes with no store review, so publishing an uncommitted working
+tree would ship code that exists nowhere in git. Two things about it are not
+obvious:
+
+- The clean-tree check runs `git status` from the REPO ROOT, not `apps/mobile`.
+  A colleague's stray untracked file under `apps/admin` blocks a mobile publish.
+- If you answer yes to its "Commit changes to git?" prompt it runs `git add -A`
+  across all seven apps. Do not do that mid-incident — commit by hand instead.
+
+It also applies to `eas build`, so a local experiment no longer reaches a build
+archive uncommitted.
+
 **Never set `EXPO_PUBLIC_ADMIN_GRAPHQL_URL` in an EAS environment.** With dotenv
 disabled, resolution falls through to the in-code production default, which is
 already correct and already reviewed. A dashboard-typed URL runs zod on the
@@ -249,6 +262,8 @@ Client-side RUM + Logs via `@datadog/mobile-react-native`; helpers in
 - `Math.round()` all scaled font sizes on Android (sub-pixel = blurry).
 - Admin blocks use flat `videoId` — no nested `video { slug, images }` join. Use block-level `imageUrl`/`mediaUrl` for thumbnails, `deriveMuxThumbnailUrl()` for VideoHero poster.
 - Gating chrome — or any recovery affordance — behind a load: enumerate every path that fails to release the gate. "Playback started OR the player errored" misses "neither": backgrounding mid-load, and a source that wedges without ever erroring. Both leave the viewer with no controls and no way out, and neither logs anything. Always pair such a gate with an unconditional time-based release, and gate the tap target with the same predicate as the chrome it hides. See `docs/solutions/logic-errors/mobile-watch-autostart-veil-gate-missing-release-path.md`.
+- iOS 26 makes the stack back-swipe FULL-WIDTH by default (react-native-screens turns it on when `fullScreenSwipeEnabled` is unset), and a JS PanResponder can never outrace it: the native recognizer claims the touch at delivery, before JS runs. So a rightward scrub on the seek bar IS the pop gesture. **Split the screen instead of racing it.** The watch/series routes confine the pop to a 24pt left strip via `gestureResponseDistance`, and the Scrubber DECLINES touches that start inside that strip (`mayStartScrub` in `src/lib/scrubber.ts`, on BOTH responder gates). One constant feeds both halves (`src/lib/backSwipe.ts`) so they cannot disagree. `fullScreenGestureEnabled: false` is the wrong tool — it kills ALL back-swipe on iOS 26, because no legacy edge recognizer fires.
+- **Do not gate the back-swipe on chrome visibility.** An earlier fix held `gestureEnabled` false while the player chrome was mounted. `shouldArmHideTimer` never arms while paused or ended, so the chrome never auto-hides in those states and the hold never released: pausing a video killed the edge back-swipe for the screen's whole life. Only fullscreen may disable the gesture. Every `gestureEnabled` write must still land on BOTH the screen and its parent stack — the pop that dismisses a nested route belongs to the ROOT stack, which consults only its own top screen. `app/__tests__/backSwipeGesture.guard.test.js` pins the layout options AND the edge width; `useFullscreenPresentation.test.tsx` pins that the gesture stays enabled outside fullscreen.
 - Search requires `EXPO_PUBLIC_ADMIN_GRAPHQL_TOKEN` (mobile's OWN dedicated fleet key — its own entry in admin's `FLEET_ADMIN_API_KEYS` CSV, NOT `WEB_ADMIN_API_KEYS`, and never the same value as TV's; provision in EAS Environments per profile, `.env.local` for dev). `watchSearch` is a PUBLIC resolver, so the bearer buys a per-device rate-limit bucket, not access; a missing/rotated key degrades to the shared `public:<ip>` bucket rather than an `UNAUTHENTICATED` error. The bearer rides ONLY on the `WatchSearch` operation — never attach it to public queries, or every public query also spends the fleet key's rate-limit budget. Admin buckets a fleet key per device (`consumer:<key>:v:<viewer_id>` from the `x-viewer-id` header, else `consumer:<key>:<ip>`), so the fleet doesn't collapse into one bucket. See `src/lib/authHeaders.ts`.
 
 ## Auth + watch progress (feat: mobile login & continue watching)
@@ -301,14 +316,119 @@ Client-side RUM + Logs via `@datadog/mobile-react-native`; helpers in
   `options.progress` (heroes never reach the adapter, so they're excluded
   structurally); writes batch at most once per 30s (admin's rate limiter
   allows 30 mutations/min — never write per-tick), forced on
-  pause/background/unmount/end. Progress is signed-in ONLY (R10): sign-out
-  empties store, snapshot, and queue via `attachProgressLifecycle`.
+  pause/background/unmount/end AND on the two explicit session endings the
+  mini player added — `dismiss` (the viewer closed the window) and `replace`
+  (new content took the player over). Those two split what `unmount` used to
+  conflate, because progress attribution needs them apart. Progress is
+  signed-in ONLY (R10): sign-out empties store, snapshot, and queue via
+  `attachProgressLifecycle`.
 - **Bars**: one `WatchProgressBar` (store-subscribed by videoId, <1% hidden,
   ≥90% snaps full) on every card surface EXCEPT the Library downloads row
   (deferred — the row stores only a slug). Fold progress into
   `accessibilityLabel` via `progressAccessibilityText`.
 - **RUM identity**: `setDatadogRumUser` receives the opaque auth subject id
   only — never email or display name.
+
+## Mini player and the root-owned playback session (feat-367)
+
+**The app owns ONE player and ONE video view, and neither belongs to a route.**
+`src/components/watch/PlaybackHost.tsx` mounts as a sibling of the `<Stack>` in
+`app/_layout.tsx` and holds the app's single `useManagedVideoPlayer` adapter.
+A route that wants video renders `src/components/watch/PlayerSlot.tsx`: a
+transparent box that reserves the layout, measures itself in WINDOW
+coordinates, and publishes a playback request. The host draws its one video
+view into that rect. The chrome rides in the host layer too, not in the route.
+
+- **Never mount a second player or a second video view for one video.** The
+  video view keeps ONE position in the host's tree in every state — full,
+  floating, suppressed. The full view and the floating window differ only in
+  the frame's geometry and in which chrome renders beside it. Moving the view
+  between parents remounts the surface, which is a black flash.
+  `rootPlayerOwnership.guard.test.js` pins the shape.
+- **The session lives in module scope, not React context.** `src/lib/miniPlayer/`
+  holds it: `store.ts` (the session), `playbackRequest.ts` (the slot-to-host
+  channel), plus the pure `presentation.ts`, `suppression.ts`, `layout.ts`,
+  `heroYield.ts` and `pictureInPicture.ts`. The host is a `<Stack>` SIBLING, so
+  a context could not reach both halves.
+- **`MiniPlayerWindow.tsx` is chrome, never a second video view.** It draws the
+  controls, the drag, the ended/failed states and the accessibility surface over
+  the frame the host animates. The drag node never takes the native driver
+  (a PanResponder writing it with `setValue` fails silently under one); the
+  shrink and exit wrappers always do. Do not mix drivers on one node.
+
+**Android `textureView` is mandatory on EVERY video view.** Keep
+`surfaceType={Platform.OS === "android" ? "textureView" : undefined}` on each
+one. A SurfaceView composites outside the RN view hierarchy and punches through
+anything drawn above it, so controls and captions stop rendering over the
+video. `homeHeroAndroidCompositing.guard.test.ts` pins this on all five video
+surfaces (the host, `HomeHeroPager`, `VideoHeroRenderer`, and the two SDUI
+routes `app/video/[sectionKey].tsx` + `app/collection/[sectionKey].tsx`).
+No-op on iOS. The guard is an ENUMERATION, not a sweep: the two SDUI routes
+predated it by four months and shipped without the prop because nobody added
+them to the list. Add a case whenever you add a `<VideoView>`.
+
+**Sheet suppression is cross-platform; the hazard it prevents is Android-only.**
+The window hides while an in-app sheet is presented and returns to its corner
+when the sheet closes. Two mechanisms, because the app presents sheets two
+ways — six real sheet ROUTES (`IN_APP_SHEET_ROUTE_PATTERNS` in
+`src/lib/miniPlayer/suppression.ts`, read from `app/watch/_layout.tsx` and
+`app/series/_layout.tsx`) and two sheets that are component state, counted by
+`getNonRouteSheetCounter()` and keyed by id so an unbalanced call is
+attributable. Keep both in step with those layouts. The rule runs on both
+platforms even though only Android paints through a sheet, so behaviour does
+not fork per platform. Suppression hides by opacity and drops pointer events —
+it never unmounts the view.
+
+**Picture-in-picture: one props object, one latch, chrome-only suppression.**
+Every video view that can enter the OS window spreads
+`pictureInPictureViewProps()` from `src/lib/miniPlayer/pictureInPicture.ts`.
+It wires `onPictureInPictureStart/Stop` to `setPipHold`, and three separate
+requirements rest on those four props arriving together — a view that enters
+the OS window without feeding the latch is paused by the AppState handler,
+is unmounted by the host mid-window, and takes the floating window's chrome
+with it. `startsPictureInPictureAutomatically` belongs to exactly ONE mounted
+view: expo-video elects a single candidate across every view carrying it and
+re-parents only the elected view's player back out.
+
+- **While the latch is set, suppress CHROME only — never unmount the video
+  view.** Unregistering the view fires expo-video's unguarded native path. The
+  presentation selector returns `hidden` for a PiP hold on the same branch as
+  sheet suppression by RESULT only; the mechanisms differ.
+- **The latch must be released on teardown.** A stuck hold exempts EVERY
+  adapter from the background pause, because that decision reads one store
+  field.
+
+**Every player surface autostarts behind a poster and a spinner.** Opening a
+video IS the viewer asking to watch it, so no surface may sit on a play button
+waiting for a second tap. `/watch/[slug]` gets this from `VideoPlayer.tsx`'s
+`awaitingAutostart`; the two SDUI routes get it from
+`src/hooks/useAutostartPlayback.ts`, which is the same gate without the cast
+entanglement `VideoPlayer` has to carry. Neither SDUI route autostarted for
+months because the paths were written separately and nobody compared them —
+`video/[sectionKey]` sat on a tap-to-play poster, `collection/[sectionKey]` had
+no poster at all. If you add a fourth player surface, use the hook.
+
+The gate's release paths are the whole point, and there are three: playback
+started, the source errored, or `AUTOSTART_VEIL_TIMEOUT_MS` elapsed. The third
+is not optional — a load that neither starts nor errors would otherwise strand
+the viewer under a veil with no controls.
+
+**On the SDUI routes the poster and the veil share ONE predicate —
+`awaitingAutostart`.** Gating the poster on `!hasStarted` there strands the
+viewer: on the error and timeout paths the veil lifts while the opaque poster
+stays over the native transport. `pointerEvents="none"` keeps the controls
+reachable by touch, which is not the same as visible.
+
+**The deciding property is z-order, not the predicate pair.** `VideoPlayer.tsx`
+gates its poster on `(!hasStarted || castRemoteActive || ended)` against the
+same `awaitingAutostart` veil and is CORRECT, because its chrome is React,
+renders after the poster in the same parent, and mounts on exactly the paths
+that lift the veil. The SDUI routes set `nativeControls`, so their transport
+lives inside the `VideoView` and any later sibling covers it — which is why they
+need the shared predicate and `/watch/[slug]` does not. Before copying a gate
+between player surfaces, check which side of that line you are on. The general
+rule: every layer that can hide the recovery affordance must clear on every path
+that releases the gate.
 
 ## Component render tests
 

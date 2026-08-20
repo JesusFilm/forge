@@ -40,10 +40,12 @@ describe("watch screen cast wiring (U4)", () => {
     const release = at("pinnedCastSourceRef.current = null", pin)
     expect(capture).toBeGreaterThan(pin)
     expect(release).toBeGreaterThan(capture)
-    // The player consumes the pinned source, not the live chain.
-    const playerStart = at("<VideoPlayer")
-    const playerProps = ROUTE.slice(playerStart, at("/>", playerStart))
-    expect(playerProps).toContain("streamingUrl={effectivePlayerSource}")
+    // The slot publishes the pinned source, not the live chain (U6: the one
+    // player is the host's, so the screen hands it a request).
+    const slotStart = at("<PlayerSlot")
+    const slotProps = ROUTE.slice(slotStart, at("/>", slotStart))
+    expect(slotProps).toContain("streamingUrl={effectivePlayerSource}")
+    expect(slotProps).toContain("castActive={castRemoteActive}")
   })
 
   it("records the released pin so the recovery knows a swap is coming", () => {

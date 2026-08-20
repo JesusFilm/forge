@@ -65,3 +65,16 @@ export function thumbOutputRange(
   const inset = flush ? thumbSize / 2 : 0
   return [inset, Math.max(trackWidth - inset, inset)]
 }
+
+/**
+ * May a scrub start at this absolute screen X? The OS back-swipe owns the
+ * leading `edgeGuardWidth` px, so a touch starting inside it belongs to the
+ * page-dismiss gesture, never to the seek bar (iOS 26 claims that touch
+ * natively before JS runs, so declining it is the only way to keep the two
+ * gestures from fighting). A guard of 0 accepts every touch.
+ */
+export function mayStartScrub(startX: number, edgeGuardWidth: number): boolean {
+  if (!Number.isFinite(startX) || !Number.isFinite(edgeGuardWidth)) return true
+  if (edgeGuardWidth <= 0) return true
+  return startX >= edgeGuardWidth
+}
