@@ -18,7 +18,7 @@ deepened: "2026-08-20"
 - **Means:** Upgrade the coordinated Auth packages to 1.7.1, migrate provider persistence with rollback-compatible expansion, and replay a baseline-versus-target real-database contract matrix. (KTD1-KTD6)
 - **Product authority:** This prerequisite protects existing production Auth behavior first. It enables, but does not implement, Changelog grant enforcement or production activation.
 - **Stop conditions:** Stop if the target cannot preserve an existing client flow, if a production account issuer cannot be derived from trusted configuration, if native resource binding fails, or if rollback requires deleting production data.
-- **Execution profile:** One isolated prerequisite PR for feat-400. Do not include Changelog U2/U3, new grant behavior, or direct Railway deployment.
+- **Execution profile:** One isolated prerequisite PR for feat-401. Do not include Changelog U2/U3, new grant behavior, or direct Railway deployment.
 - **Tail ownership:** The PR lands through the normal PR-to-main path. Production validation follows the existing Auth deployment path and an approved maintenance window.
 
 ---
@@ -42,7 +42,7 @@ The upgrade crosses identity persistence, OAuth provider persistence, client reg
 - **Depends on:** feat-121's standalone Auth platform and current production behavior.
 - **Blocks:** feat-399 Changelog grant enforcement and dynamic MCP activation.
 - **Enables:** Forge can use provider-owned resource state instead of parsing or rewriting authorization-code records.
-- **Separate work:** Changelog grant evaluation, Codex/Claude Changelog connectivity, supported grant operations, and production activation remain outside feat-400.
+- **Separate work:** Changelog grant evaluation, Codex/Claude Changelog connectivity, supported grant operations, and production activation remain outside feat-401.
 
 ### Key Decisions
 
@@ -91,7 +91,7 @@ The upgrade crosses identity persistence, OAuth provider persistence, client reg
 - R18. Rehearse migration against both a fresh database and a production-shaped 1.6.2 database containing live-compatible clients, accounts, codes, tokens, consents, and device records.
 - R19. Preserve rollback by using additive schema changes, retaining legacy OAuth-client fields and callback compatibility through the soak window, and leaving migrated schema in place during application rollback.
 - R20. Production rollout occurs only through the normal PR-to-main deployment path with an approved Auth-write maintenance window, migration verification, health checks, and relying-client smoke tests.
-- R21. Feat-399 U2/U3 remain blocked until feat-400 is complete on main and the native resource real-database gate passes.
+- R21. Feat-399 U2/U3 remain blocked until feat-401 is complete on main and the native resource real-database gate passes.
 
 ### Key Flows
 
@@ -291,7 +291,7 @@ sequenceDiagram
 - **Goal:** Prove the provider upgrade is transparent to Forge clients and ready for the normal production rollout.
 - **Requirements:** R9, R12-R15, R18-R21.
 - **Dependencies:** U5.
-- **Files:** Focused OAuth/session/token tests in Admin, Manager, Web, Chat, TV, and Mobile; Auth deployment docs; feat-400 and generated roadmap index.
+- **Files:** Focused OAuth/session/token tests in Admin, Manager, Web, Chat, TV, and Mobile; Auth deployment docs; feat-401 and generated roadmap index.
 - **Approach:** Run client wire-contract tests, full Auth gates, migration rehearsals, and the deployment checklist. Keep Mobile package pins unchanged unless R3's stop condition fires.
 - **Test scenarios:** Each client parser/session flow; Mastra Studio/Admin MCP registrations; all identity provider account/callback paths; migration preflight; runtime rollback on expanded schema.
 - **Verification:** Consumer checks, full Auth test/typecheck/lint/build, migration rehearsals, and PR-focused checks pass before merge.
@@ -346,5 +346,5 @@ Run the U6 consumer tests and typechecks for any touched consumer package. Requi
 - Every existing Forge relying client and the custom device grant retain their approved behavior.
 - Changelog production activation remains false and no Changelog grant behavior is introduced.
 - Rollout and rollback use the normal PR-to-main path and documented maintenance procedure.
-- Feat-400 is complete on main before feat-399 U2/U3 begins.
+- Feat-401 is complete on main before feat-399 U2/U3 begins.
 - No abandoned compatibility shim, custom resource persistence, raw credential fixture, destructive rollback, or unrelated dependency change remains.

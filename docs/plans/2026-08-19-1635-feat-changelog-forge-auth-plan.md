@@ -15,9 +15,9 @@ deepened: "2026-08-20"
 ## Goal Capsule
 
 - **Objective:** Forge Auth registers and enforces grant-aware Changelog access for local and production without granting Changelog privileges to every Auth account; production activation remains disabled until supported grant provisioning and revocation exist.
-- **Means:** Preserve the completed Changelog registry work, depend on feat-400's Better Auth 1.7.1 native-resource upgrade, and enforce grants through provider-owned resource state at authorization, code exchange, and refresh. (KTD1-KTD8)
+- **Means:** Preserve the completed Changelog registry work, depend on feat-401's Better Auth 1.7.1 native-resource upgrade, and enforce grants through provider-owned resource state at authorization, code exchange, and refresh. (KTD1-KTD8)
 - **Product authority:** This Product Contract's confirmed Forge scope overrides the broader environment coverage in JesusFilm/jfp-changelog issue #71; Forge Auth remains authoritative for application grants and token scopes, while Changelog remains authoritative for its domain rules.
-- **Stop conditions:** Stop if `https://changelog.jesusfilm.org` conflicts with another canonical Forge domain, if feat-400 is not complete on main, if the installed provider cannot prove native authorization-to-token-to-refresh resource binding, or if enforcement changes an existing first-party application's behavior.
+- **Stop conditions:** Stop if `https://changelog.jesusfilm.org` conflicts with another canonical Forge domain, if feat-401 is not complete on main, if the installed provider cannot prove native authorization-to-token-to-refresh resource binding, or if enforcement changes an existing first-party application's behavior.
 - **Execution profile:** One bounded Auth implementation. Do not push, open a PR, deploy, or enable Changelog production use unless separately requested.
 - **Tail ownership:** The executor updates feat-399 and repository documentation after focused and full Auth validation. Production activation remains blocked until supported grant provisioning and revocation exist.
 
@@ -41,11 +41,11 @@ The original issue includes preview registration, but Changelog has no stable pr
 
 ### How This Work Fits Together
 
-- **Depends on:** feat-121's Auth platform and supported application-grant operations, plus feat-400's completed Better Auth 1.7.1 native-resource upgrade.
+- **Depends on:** feat-121's Auth platform and supported application-grant operations, plus feat-401's completed Better Auth 1.7.1 native-resource upgrade.
 - **Enables:** The Changelog repository can validate Forge-issued identity, audience, expiry, and scopes for its web and MCP surfaces.
 - **Can proceed independently of:** Changelog entry ownership and product authorization can be developed against the confirmed scope contract without moving those rules into Forge Auth.
 - **Deferred:** Preview coverage requires a stable Changelog preview deployment and callback domain before either repository can register or consume it.
-- **Explicitly separate:** The Better Auth upgrade and protected-resource schema migration land first in feat-400. This plan consumes that native provider contract but never reimplements it. (KTD6-KTD8)
+- **Explicitly separate:** The Better Auth upgrade and protected-resource schema migration land first in feat-401. This plan consumes that native provider contract but never reimplements it. (KTD6-KTD8)
 
 ### Key Decisions
 
@@ -90,7 +90,7 @@ The original issue includes preview registration, but Changelog has no stable pr
 - R15. A seeded Changelog client resolves its environment from the registered client row. If it also supplies a Changelog MCP resource, the client environment and resource environment must match.
 - R16. Authorization downscopes Changelog scopes before Better Auth creates a provider-native resource-bound code. Exchange maps the provider-persisted resource to the immutable user/application/environment context and rejects a changed or reduced grant decision before token persistence.
 - R17. Refresh uses the provider-persisted original resource and scope ceilings, re-evaluates current grants, rejects resource widening or grant reduction, and never widens from a later grant expansion.
-- R18. U2/U3 begin only after feat-400 is complete on main with Better Auth 1.7.1 and its native resource real-database contract green.
+- R18. U2/U3 begin only after feat-401 is complete on main with Better Auth 1.7.1 and its native resource real-database contract green.
 
 **Ownership boundary**
 
@@ -156,7 +156,7 @@ flowchart TB
 
 - Preview and staging registration remain deferred until Changelog has a stable preview deployment and callback domain.
 - A new Auth grant-provisioning workflow is deferred; this slice may consume a future supported mechanism but must not use direct database edits as the production operating model.
-- Better Auth dependency and protected-resource schema changes are owned exclusively by feat-400. This plan adds no custom authorization-code parser, record rewrite, resource CAS channel, or second token issuer.
+- Better Auth dependency and protected-resource schema changes are owned exclusively by feat-401. This plan adds no custom authorization-code parser, record rewrite, resource CAS channel, or second token issuer.
 - Changelog token/session validation, entry ownership, entry editing or deletion, product administration, and MCP tool implementation remain in the Changelog repository.
 - Firebase authentication, email allowlists, shared cookies, confidential clients, and unrelated Auth dashboard redesign are excluded.
 
@@ -189,7 +189,7 @@ flowchart TB
 - `docs/solutions/architecture-patterns/oauth-grant-via-authorization-code-delivery-not-token-translation.md` — keep Better Auth as the only issuer and pin internal compatibility seams with real exchange tests.
 - `docs/solutions/architecture-patterns/oauth-protected-mcp-tool-parity-pattern-20260721.md` — exact MCP audience and scope validation boundary.
 - [Better Auth OAuth Provider documentation](https://better-auth.com/docs/plugins/oauth-provider) and 1.7.1 source — native resources, code/refresh persistence, and token behavior.
-- `docs/plans/2026-08-20-1524-chore-better-auth-resource-upgrade-plan.md` — feat-400 prerequisite, selected version, migration, and native-resource proof.
+- `docs/plans/2026-08-20-1524-chore-better-auth-resource-upgrade-plan.md` — feat-401 prerequisite, selected version, migration, and native-resource proof.
 - [Better Auth 1.7 upgrade guide](https://better-auth.com/docs/guides/1-7-upgrade-guide) and [GHSA-p2fr-6hmx-4528](https://github.com/better-auth/better-auth/security/advisories/GHSA-p2fr-6hmx-4528) — native resource model and security floor.
 - [RFC 8707](https://www.rfc-editor.org/rfc/rfc8707.html) — resource indicators and grant-bound resource expectations.
 - [MCP authorization specification](https://modelcontextprotocol.io/specification/2026-07-28/basic/authorization) and [RFC 9728](https://www.rfc-editor.org/rfc/rfc9728.html) — agent-client and protected-resource discovery contract.
@@ -205,7 +205,7 @@ flowchart TB
 - KTD3. **Use one trusted target resolver.** Seeded Changelog clients resolve through `AppEnvironment.clientId`; dynamic MCP clients resolve through an exact audience-to-environment map. When both signals exist, they must agree. Client-supplied metadata is never authoritative. Governs U1-U2.
 - KTD4. **Downscope before native code creation and revalidate current grants at issuance.** Better Auth owns resource persistence, PKCE/client validation, code consumption, resource narrowing, and refresh ceilings. Changelog policy maps the provider-owned resource to one environment and never parses or mutates authorization-code JSON. Governs U2-U3.
 - KTD5. **Treat native resources as admission, not authorization.** The exact local/production resource map admits a target; only the matching user/application/environment AppGrant union authorizes `changelog:*` scopes. Governs U1-U3.
-- KTD6. **Consume feat-400 instead of upgrading here.** (session-settled: user-directed — chosen over a combined PR: the provider migration must be isolated from Changelog grant behavior.) U2/U3 start only from 1.7.1 on main with its native resource proof green. Governs U2-U3.
+- KTD6. **Consume feat-401 instead of upgrading here.** (session-settled: user-directed — chosen over a combined PR: the provider migration must be isolated from Changelog grant behavior.) U2/U3 start only from 1.7.1 on main with its native resource proof green. Governs U2-U3.
 - KTD7. **Provisioning is an enforced launch gate.** Production activation defaults off until supported grant provisioning/revocation exists; registration, consent, dynamic-client metadata, and direct database edits cannot bypass it. Governs U1-U3.
 - KTD8. **Require independent real agent clients.** (session-settled: user-directed — chosen over seeded-only MCP verification: engineers must connect their own Codex and Claude clients.) Each client receives a distinct registration and token family; browser authentication and consent remain human-only. Governs U3.
 - KTD9. **Use `customAccessTokenClaims` as the Changelog-only pre-persistence grant gate.** Better Auth 1.7.1 resolves resource-scoped JWT claims before creating access or refresh rows. The callback uses the authenticated user, effective scopes, and provider-owned resources to invoke U2; dynamic client metadata remains non-authoritative. Focused source and real-database tests must prove this ordering for authorization-code and refresh grants. Governs U2-U3.
@@ -240,7 +240,7 @@ sequenceDiagram
 ### Implementation Constraints
 
 - Do not import from another app context or add Changelog domain rules to Auth.
-- Do not alter the feat-400 provider schema or add Changelog-specific persistence unless implementation proves AppGrant fields are insufficient; if that occurs, stop and re-plan.
+- Do not alter the feat-401 provider schema or add Changelog-specific persistence unless implementation proves AppGrant fields are insufficient; if that occurs, stop and re-plan.
 - Do not change any existing first-party seed values, grant behavior, dynamic Admin MCP scopes, or device-grant behavior.
 - Changelog-aware issuance must use a provider callback or extension point proven to run before access and refresh token persistence; a post-issuance claim callback alone is insufficient.
 - Do not mint, translate, or sign tokens outside Better Auth.
@@ -269,7 +269,7 @@ sequenceDiagram
 ### Planning Confidence
 
 - **High:** Registry, seeding, audience configuration, AppGrant persistence shape, absence of a supported production grant writer, and existing test conventions were verified directly in the repository.
-- **High:** Better Auth 1.7.1 source and upstream tests prove authorization-code and refresh resource narrowing; feat-400 independently reproduces that contract in Forge before this plan resumes.
+- **High:** Better Auth 1.7.1 source and upstream tests prove authorization-code and refresh resource narrowing; feat-401 independently reproduces that contract in Forge before this plan resumes.
 - **Medium:** Actual Codex and Claude callback/metadata shapes remain runtime interoperability evidence and are therefore explicit U3 smoke gates.
 
 ---
@@ -298,7 +298,7 @@ sequenceDiagram
   - Both clients remain public, PKCE-required, secretless authorization-code clients after seeding.
   - Repeated seeding updates the same rows; expected totals become 9 apps, 31 environments, 35 OAuth clients, and 24 scopes.
   - Existing seeded client IDs remain globally unique and existing app fixtures are unchanged.
-  - The existing U1 regression suite keeps each Changelog MCP URL exactly once; feat-400 separately proves their native resource rows before U2 starts.
+  - The existing U1 regression suite keeps each Changelog MCP URL exactly once; feat-401 separately proves their native resource rows before U2 starts.
   - Production activation defaults to disabled, accepts only the repository's supported boolean forms, and does not affect local or non-Changelog behavior.
 - **Verification:** Focused domain, seeder, registry-policy, and environment tests pass before U2 begins.
 - **Done When:** AE6 is proven without a schema migration or an existing-app diff.
@@ -307,10 +307,10 @@ sequenceDiagram
 
 - **Goal:** Produce one fail-closed Changelog grant decision from provider-owned resource, user, client, scope, and lifecycle context without issuing tokens or parsing provider records.
 - **Requirements:** R10-R18, R21.
-- **Dependencies:** U1 and completed feat-400 on main.
+- **Dependencies:** U1 and completed feat-401 on main.
 - **Modify:** `apps/auth/src/services/oauth-policy.service.ts` and its test.
 - **Create:** `apps/auth/src/services/changelog-oauth-grant.service.ts` and its test.
-- **Reference:** Better Auth 1.7.1 resource callbacks/extensions from feat-400, `apps/auth/src/services/token-policy.service.ts`, and `apps/auth/prisma/schema.prisma`.
+- **Reference:** Better Auth 1.7.1 resource callbacks/extensions from feat-401, `apps/auth/src/services/token-policy.service.ts`, and `apps/auth/prisma/schema.prisma`.
 - **Approach:**
   - Separate baseline scopes from `changelog:*` and aggregate allowed Changelog scopes across approved, non-revoked grants for one exact user/application/environment tuple.
   - Resolve seeded targets through persisted Changelog clients and dynamic targets through exactly one provider-validated local/production resource.
@@ -336,7 +336,7 @@ sequenceDiagram
 
 - **Goal:** Make the Changelog policy load-bearing before Better Auth token side effects, then document the operational launch boundary.
 - **Requirements:** R10-R22.
-- **Dependencies:** U1-U2 and completed feat-400 on main.
+- **Dependencies:** U1-U2 and completed feat-401 on main.
 - **Modify:**
   - `apps/auth/src/app/api/auth/[...all]/route.ts`
   - `apps/auth/src/app/api/auth/[...all]/route.test.ts`
@@ -358,7 +358,7 @@ sequenceDiagram
   - Return policy denials in the provider's OAuth error shape and preserve no-store token-response headers.
   - Build a scratch-database integration test that uses native provider authorization, consent, code exchange, resource persistence, audience issuance, refresh, and token side-effect ordering.
   - Run independent local Codex and Claude connections with distinct dynamic client/token families through discovery, browser consent, MCP initialize/list/read, refresh, and reconnect.
-  - Document native resources, the default-off production gate, lack of supported production grant mutations, preview deferral, and feat-400 dependency.
+  - Document native resources, the default-off production gate, lack of supported production grant mutations, preview deferral, and feat-401 dependency.
   - After every validation gate passes, mark feat-399 complete as an implementation ticket while leaving production activation visibly blocked by R12. Regenerate `docs/roadmap/README.md` under the repository's documented UTC convention.
 - **Test Scenarios:**
   - Route policy is invoked only for Changelog-aware authorization/code/refresh requests; existing OAuth and device routes remain behaviorally unchanged.

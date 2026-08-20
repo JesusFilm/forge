@@ -1,5 +1,5 @@
 ---
-id: "feat-400"
+id: "feat-401"
 title: "Upgrade Better Auth for native resource binding"
 owner: "tataihono"
 priority: "P0"

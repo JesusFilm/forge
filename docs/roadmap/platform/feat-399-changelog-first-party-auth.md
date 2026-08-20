@@ -8,7 +8,7 @@ start_date: "2026-08-19"
 duration: 3
 depends_on:
   - "feat-121"
-  - "feat-400"
+  - "feat-401"
 blocks: []
 tags:
   - "platform"
@@ -50,7 +50,7 @@ The initial Forge slice covers local and production only. Preview is deferred be
 3. Seed `jfp_changelog_local` and `jfp_changelog_production` as public authorization-code clients that require PKCE and have the exact origins and login/logout callbacks in the Product Contract.
 4. Allow both clients to request the required identity, membership, and Changelog scopes without granting those scopes to an Auth account automatically.
 5. Register or document the local and production Changelog MCP audiences according to the existing `AUTH_VALID_AUDIENCES` convention.
-6. After feat-400 is complete, downscope the human OAuth authorization request against approved Changelog grants before native code creation, then revalidate the immutable user/application/environment tuple and provider-bound exact dynamic MCP resource at code exchange and refresh.
+6. After feat-401 is complete, downscope the human OAuth authorization request against approved Changelog grants before native code creation, then revalidate the immutable user/application/environment tuple and provider-bound exact dynamic MCP resource at code exchange and refresh.
 7. Add the smallest repo-consistent Changelog enforcement seam if the current path ignores grants, without changing access behavior for Admin, Manager, Mastra Studio, or other existing first-party applications.
 8. Keep production Changelog scope issuance disabled by default behind an explicit activation setting until a supported grant-provisioning/revocation path exists; direct database edits must not bypass that gate.
 
@@ -64,7 +64,7 @@ The initial Forge slice covers local and production only. Preview is deferred be
 - Do not add Firebase authentication, Changelog-local email allowlists, shared cross-application cookies, or unrelated dashboard work.
 - Stop and report a conflict if Forge defines a different canonical Changelog production domain.
 - Do not weaken or alter access behavior for existing first-party applications.
-- Do not upgrade Better Auth in this ticket; consume the completed feat-400 native-resource upgrade from main.
+- Do not upgrade Better Auth in this ticket; consume the completed feat-401 native-resource upgrade from main.
 - Do not add a custom authorization-code rewrite, resource CAS channel, or second token issuer.
 
 ## Verification
