@@ -108,6 +108,21 @@ export const AUTH_SCOPES = [
     label: "Generate experiences",
     description: "Generate new Experience page drafts with AI.",
   },
+  {
+    key: "changelog:read",
+    label: "Read Changelog",
+    description: "View and filter published Changelog entries.",
+  },
+  {
+    key: "changelog:submit",
+    label: "Submit Changelog entries",
+    description: "Submit entries and manage entries created by the caller.",
+  },
+  {
+    key: "changelog:admin",
+    label: "Administer Changelog",
+    description: "Manage all Changelog entries and products.",
+  },
 ] as const
 
 export type AuthScopeKey = (typeof AUTH_SCOPES)[number]["key"]

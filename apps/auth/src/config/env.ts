@@ -29,6 +29,9 @@ export const env = createEnv({
     OKTA_CLIENT_SECRET: z.string().min(1).optional(),
     OKTA_ISSUER: z.string().url().optional(),
     AUTH_VALID_AUDIENCES: z.string().min(1).optional(),
+    AUTH_CHANGELOG_PRODUCTION_ENABLED: z
+      .enum(["true", "false"])
+      .default("false"),
     FIREBASE_WEB_API_KEY: z.string().min(1).optional(),
     FIREBASE_PROJECT_ID: z.string().min(1).optional(),
     FIREBASE_CLIENT_EMAIL: z.string().email().optional(),
@@ -68,6 +71,9 @@ export const env = createEnv({
     OKTA_CLIENT_SECRET: emptyToUndefined(process.env.OKTA_CLIENT_SECRET),
     OKTA_ISSUER: emptyToUndefined(process.env.OKTA_ISSUER),
     AUTH_VALID_AUDIENCES: emptyToUndefined(process.env.AUTH_VALID_AUDIENCES),
+    AUTH_CHANGELOG_PRODUCTION_ENABLED: emptyToUndefined(
+      process.env.AUTH_CHANGELOG_PRODUCTION_ENABLED,
+    ),
     FIREBASE_WEB_API_KEY: emptyToUndefined(process.env.FIREBASE_WEB_API_KEY),
     FIREBASE_PROJECT_ID: emptyToUndefined(process.env.FIREBASE_PROJECT_ID),
     FIREBASE_CLIENT_EMAIL: emptyToUndefined(process.env.FIREBASE_CLIENT_EMAIL),
@@ -167,12 +173,18 @@ export function getAuthValidAudiences(): string[] {
       "https://admin-preview.jesusfilm.org/mcp",
       "https://admin-stage.jesusfilm.org/mcp",
       "https://admin.jesusfilm.org/mcp",
+      "http://localhost:3000/mcp",
+      "https://changelog.jesusfilm.org/mcp",
       ...(env.AUTH_VALID_AUDIENCES ?? "")
         .split(",")
         .map((audience) => audience.trim())
         .filter((audience) => audience.length > 0),
     ]),
   )
+}
+
+export function isChangelogProductionEnabled(): boolean {
+  return env.AUTH_CHANGELOG_PRODUCTION_ENABLED === "true"
 }
 
 export function assertProductionAuthSecrets(): void {

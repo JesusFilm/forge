@@ -11,6 +11,7 @@ export const MANAGER_APP_KEY = "manager"
 export const MASTRA_STUDIO_APP_KEY = "mastra-studio"
 export const WEB_APP_KEY = "web"
 export const CHAT_APP_KEY = "chat"
+export const CHANGELOG_APP_KEY = "changelog"
 export const ADMIN_MCP_APP_KEY = "admin-mcp"
 export const TV_APP_KEY = "tv"
 export const ADMIN_MCP_CODEX_CLIENT_ID = "jfp_admin_mcp_codex"
@@ -77,6 +78,16 @@ export const CHAT_DEFAULT_SCOPES = [
   "openid",
   "profile:read",
   "email:read",
+] satisfies AuthScopeKey[]
+
+export const CHANGELOG_DEFAULT_SCOPES = [
+  "openid",
+  "profile:read",
+  "email:read",
+  "membership:read",
+  "changelog:read",
+  "changelog:submit",
+  "changelog:admin",
 ] satisfies AuthScopeKey[]
 
 // Identity-only: mobile's watch-progress permissions ride admin's MOBILE_USER
@@ -393,6 +404,37 @@ export const CHAT_APP_SEED: RegisteredAppSeed = {
   ],
 }
 
+export const CHANGELOG_APP_SEED: RegisteredAppSeed = {
+  key: CHANGELOG_APP_KEY,
+  displayName: "Jesus Film Changelog",
+  description: "Changelog entry publishing and administration.",
+  ...FIRST_PARTY_OWNER,
+  environments: [
+    {
+      key: "local",
+      kind: "local",
+      clientId: "jfp_changelog_local",
+      redirectUris: ["http://localhost:3000/api/auth/callback"],
+      postLogoutRedirectUris: ["http://localhost:3000/api/auth/login"],
+      allowedOrigins: ["http://localhost:3000"],
+      defaultScopes: CHANGELOG_DEFAULT_SCOPES,
+      autoApprove: true,
+    },
+    {
+      key: "production",
+      kind: "production",
+      clientId: "jfp_changelog_production",
+      redirectUris: ["https://changelog.jesusfilm.org/api/auth/callback"],
+      postLogoutRedirectUris: [
+        "https://changelog.jesusfilm.org/api/auth/login",
+      ],
+      allowedOrigins: ["https://changelog.jesusfilm.org"],
+      defaultScopes: CHANGELOG_DEFAULT_SCOPES,
+      autoApprove: true,
+    },
+  ],
+}
+
 export const ADMIN_MCP_APP_SEED: RegisteredAppSeed = {
   key: ADMIN_MCP_APP_KEY,
   displayName: "Jesus Film Admin MCP",
@@ -583,6 +625,7 @@ export const FIRST_PARTY_APP_SEEDS = [
   WEB_APP_SEED,
   MASTRA_STUDIO_APP_SEED,
   CHAT_APP_SEED,
+  CHANGELOG_APP_SEED,
   ADMIN_MCP_APP_SEED,
   MOBILE_APP_SEED,
   TV_APP_SEED,
