@@ -3,7 +3,7 @@ import { resolveThumbnailUrl } from "../resolveThumbnailUrl"
 const MUX_HLS =
   "https://stream.mux.com/x3XKV1Yi01z7dyF6f8ZLBMNrHtNWS02iHoQw6vIcf4hBw.m3u8"
 const MUX_THUMB =
-  "https://image.mux.com/x3XKV1Yi01z7dyF6f8ZLBMNrHtNWS02iHoQw6vIcf4hBw/thumbnail.png?width=1280&fit_mode=smartcrop"
+  "https://image.mux.com/x3XKV1Yi01z7dyF6f8ZLBMNrHtNWS02iHoQw6vIcf4hBw/thumbnail.webp?width=1280&height=720&fit_mode=smartcrop"
 
 describe("resolveThumbnailUrl", () => {
   it("returns a provided https thumbnail unchanged", () => {
