@@ -211,15 +211,27 @@ export class TriageLinearClient {
     for (let page = 0; page < MARKER_SEARCH_PAGES; page += 1) {
       const result: TriageLinearResult<DuplicateQueryResponse> =
         await this.graphql(
-          `query DatadogTriageFindDuplicate($teamId: String!, $after: String) {
+          // Filtered and ordered SERVER-side: narrowing only on the client
+          // spent the page budget on the team's human tickets, and newest-first
+          // puts the minutes-old ticket this search wants on page one.
+          `query DatadogTriageFindDuplicate($teamId: String!, $projectId: ID!, $after: String) {
         team(id: $teamId) {
-          issues(first: 50, after: $after) {
+          issues(
+            first: 50
+            after: $after
+            filter: { project: { id: { eq: $projectId } } }
+            orderBy: createdAt
+          ) {
             nodes { id url description project { id } }
             pageInfo { hasNextPage endCursor }
           }
         }
       }`,
-          { teamId: this.config.linear.teamId, after },
+          {
+            teamId: this.config.linear.teamId,
+            projectId: this.config.linear.projectId,
+            after,
+          },
           duplicateQuerySchema,
           false,
         )

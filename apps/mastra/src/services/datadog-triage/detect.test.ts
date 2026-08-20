@@ -590,6 +590,7 @@ describe("detectSpikeSignals", () => {
     spikeClass: "playback_error",
     baselineRate: 2,
     observations: 24,
+    epoch: 0,
     lastTicketedAt: null,
   }
 
@@ -641,6 +642,7 @@ describe("detectSpikeSignals", () => {
     expect(result.baselineUpdates[0]).toMatchObject({
       baselineRate: 30,
       observations: 1,
+      epoch: 0,
     })
   })
 
@@ -653,6 +655,7 @@ describe("detectSpikeSignals", () => {
     expect(result.baselineUpdates[0]).toMatchObject({
       baselineRate: 3,
       observations: 2,
+      epoch: 0,
     })
   })
 })
@@ -719,5 +722,58 @@ describe("applyCandidateCap", () => {
 
     expect(result.judged).toEqual([])
     expect(result.cursorAt).toBe("2026-08-18T10:10:00.000Z")
+  })
+})
+
+describe("spike identity stability (review finding)", () => {
+  // The signalId embedded window.to, which differs every run, so the recovery
+  // path this pipeline relies on re-derived the SAME spike under a NEW
+  // idempotency key -- and both dedup mechanisms key on that value.
+  function spikeAt(minutesAgo: number) {
+    const to = new Date(Date.now() - minutesAgo * 60_000)
+    return detectSpikeSignals({
+      service: "forge-mobile",
+      window: { from: new Date(to.getTime() - 3_600_000), to, clamped: false },
+      aggregate: {
+        buckets: [{ key: "error_rate", count: 400 }],
+        partial: false,
+      },
+      baselines: [
+        {
+          service: "forge-mobile",
+          spikeClass: "error_rate",
+          baselineRate: 1,
+          observations: 24,
+          epoch: 0,
+          lastTicketedAt: null,
+        },
+      ],
+      alreadySeeded: true,
+      now: to,
+      config: {
+        minOccurrences: 3,
+        spikeMultiplier: 3,
+        monitorCooldownMs: 21_600_000,
+      },
+    })
+  }
+
+  it("gives the same spike the same signalId across two different windows", () => {
+    const first = spikeAt(60).candidates[0]
+    const second = spikeAt(0).candidates[0]
+
+    expect(first?.signalId).toBeDefined()
+    expect(second?.signalId).toBe(first?.signalId)
+    expect(second?.epoch).toBe(first?.epoch)
+  })
+
+  it("advances the stored epoch so the NEXT episode can file again", () => {
+    const detection = spikeAt(0)
+
+    expect(detection.candidates[0]?.epoch).toBe(0)
+    expect(
+      detection.baselineUpdates.find((u) => u.spikeClass === "error_rate")
+        ?.epoch,
+    ).toBe(1)
   })
 })

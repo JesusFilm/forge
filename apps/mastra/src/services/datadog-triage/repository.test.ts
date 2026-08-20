@@ -177,6 +177,7 @@ describe("PostgresDatadogTriageRepository", () => {
           spikeClass: "playback_error_rate",
           baselineRate: 4,
           observations: 12,
+          epoch: 0,
           lastTicketedAt: null,
           requiredActionKey: "spike-key",
         },

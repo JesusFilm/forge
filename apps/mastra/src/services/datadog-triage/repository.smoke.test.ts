@@ -568,6 +568,7 @@ describe.skipIf(!RUN_SMOKE)(
           spikeClass: "playback_error_rate",
           baselineRate: 4.25,
           observations: 12,
+          epoch: 0,
           lastTicketedAt: null,
         },
       ])
@@ -590,6 +591,7 @@ describe.skipIf(!RUN_SMOKE)(
           spikeClass: "playback_error_rate",
           baselineRate: 4.25,
           observations: 12,
+          epoch: 0,
           lastTicketedAt: null,
         },
       ])

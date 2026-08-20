@@ -74,6 +74,9 @@ create table if not exists datadog_triage.spike_baselines (
   baseline_rate double precision not null default 0
     check (baseline_rate >= 0),
   observations integer not null default 0 check (observations >= 0),
+  -- Ticketed-episode counter. Without it a spike's idempotency key would
+  -- have to embed a timestamp, and a re-read would mint a duplicate.
+  epoch integer not null default 0 check (epoch >= 0),
   last_ticketed_at timestamptz,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),

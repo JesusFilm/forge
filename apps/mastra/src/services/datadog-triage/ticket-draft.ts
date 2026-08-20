@@ -5,6 +5,7 @@ import type { TriageAnalysis } from "./analyze"
 import type { TriageCandidate, TriageEvidence } from "./detect"
 import {
   triageActionDraftSchema,
+  TRIAGE_DESCRIPTION_MAX_CHARS,
   TRIAGE_TITLE_MAX_CHARS,
   type TriageActionDraft,
 } from "./schema"
@@ -37,25 +38,57 @@ const BODY_URL_PLACEHOLDER = "[URL omitted]"
 const TITLE_URL_PLACEHOLDER = "(URL omitted)"
 
 /**
- * Drop HTML comments (they would forge an idempotency marker) and DELETE
- * format characters. Deleting is the security-relevant half: a zero-width
- * character inside a scheme (`https:<U+200B>//host`) used to survive until the
- * later strip turned it into a SPACE, which broke the URL match and leaked the
- * host and query string as readable text.
+ * Every character that renders as nothing: format characters plus the control
+ * characters that are not whitespace. Deleting them is what stops an invisible
+ * character inside a scheme (`https:<U+200B>//host`) from surviving a later
+ * pass that turns it into a space and leaves the host readable.
  */
-function stripInvisibleStructure(value: string): string {
-  return value.replace(HTML_COMMENT, " ").replace(/\p{Cf}+/gu, "")
+const INVISIBLE_RUN = /[\p{Cf}\p{Cc}]+/gu
+
+/**
+ * The only invisibles that carry meaning: real separators. Deliberately NOT
+ * regex `\s`, which also matches U+FEFF — keeping a BOM would let it split a
+ * URL scheme and reach the ticket as a space.
+ */
+const SEPARATORS = new Set(["\t", "\n", "\v", "\f", "\r"])
+
+/** Drops every invisible character in a run except those separators. */
+function deleteInvisible(value: string): string {
+  return value.replace(INVISIBLE_RUN, (run) =>
+    [...run].filter((ch) => SEPARATORS.has(ch)).join(""),
+  )
 }
 
 /**
- * Replace URLs (they would render as live links to attacker-chosen
- * destinations) and turn real control characters into separators. Runs AFTER
- * `stripInvisibleStructure`, never before.
+ * The comment scan is O(k*n) on input carrying many unclosed `<!--`, and a
+ * Datadog message is unbounded. Read a generous prefix: the body truncates
+ * every evidence field far below this anyway.
+ */
+const BODY_SOURCE_MAX_CHARS = 16_384
+
+/**
+ * Delete invisible characters, THEN drop HTML comments (they would forge an
+ * idempotency marker). Order is the control: stripping comments first lets
+ * `<!<U+200B>-- ... --<U+200B>>` pass through unrecognized and then re-form
+ * into a live comment when the invisible characters are removed.
+ */
+function stripInvisibleStructure(value: string): string {
+  return deleteInvisible(value).replace(HTML_COMMENT, " ")
+}
+
+/**
+ * Replace URLs, which would otherwise render as live links to attacker-chosen
+ * destinations. Runs AFTER `stripInvisibleStructure`, never before, so no
+ * invisible character can split the scheme past the match.
+ *
+ * Boundary worth stating: a WHITESPACE-split scheme (`https:<TAB>//host`)
+ * still survives as text. That text is visibly broken and not a link, and it
+ * is indistinguishable from someone typing the host in prose — which untrusted
+ * evidence can always do. The property here is "no live link", not "no host
+ * ever appears".
  */
 function neutralizeTriageText(value: string, urlPlaceholder: string): string {
-  return value
-    .replace(/https?:\/\/[^\s]+/giu, urlPlaceholder)
-    .replace(/\p{Cc}+/gu, " ")
+  return value.replace(/https?:\/\/[^\s]+/giu, urlPlaceholder)
 }
 
 /**
@@ -64,7 +97,7 @@ function neutralizeTriageText(value: string, urlPlaceholder: string): string {
  */
 export function safeTriageText(value: string): string {
   return neutralizeTriageText(
-    stripInvisibleStructure(value),
+    stripInvisibleStructure(value.slice(0, BODY_SOURCE_MAX_CHARS)),
     BODY_URL_PLACEHOLDER,
   )
     .replace(/[\\`*_<>#|@]/gu, "\\$&")
@@ -306,7 +339,7 @@ export function buildTriageTicketDraft(input: {
     windowEnd: input.candidate.windowEnd,
   })
 
-  const description = [
+  const body = [
     "> Filed by the Forge Datadog mobile triage agent. A human owns validation, priority, assignment, and resolution.",
     "",
     "## What fired",
@@ -326,9 +359,14 @@ export function buildTriageTicketDraft(input: {
     // Built from the trusted template above — never routed through the
     // sanitizer, which strips URLs.
     deepLink ?? "No deep link could be built for this signal.",
-    "",
-    triageMarker(idempotencyKey),
   ].join("\n")
+
+  // The marker is appended AFTER the body is cut, never before. It is the last
+  // line and the description is tail-truncated, so cutting the joined string
+  // would drop the one token `findIssueByMarker` dedupes on.
+  const marker = triageMarker(idempotencyKey)
+  const bodyBudget = TRIAGE_DESCRIPTION_MAX_CHARS - marker.length - 2
+  const description = `${body.slice(0, bodyBudget)}\n\n${marker}`
 
   return triageActionDraftSchema.parse({
     idempotencyKey,
@@ -337,7 +375,7 @@ export function buildTriageTicketDraft(input: {
     signalId: input.candidate.signalId,
     epoch: input.candidate.epoch,
     title,
-    description: description.slice(0, 12_000),
+    description,
     labelId: input.labelId,
   })
 }

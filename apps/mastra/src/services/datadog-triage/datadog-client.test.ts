@@ -518,7 +518,14 @@ describe("DatadogTriageClient failure classification", () => {
     const result = await client.searchIssues(WINDOW)
 
     expect(cancelled).toBe(true)
-    expect(result).toMatchObject({ ok: false, reason: "parse_error" })
+    // Its OWN reason, not parse_error. The runbook routes the two to different
+    // operator actions -- a shape change means fix the parser, an over-cap body
+    // means look at the payload size -- and the Linear sibling separates them.
+    expect(result).toMatchObject({
+      ok: false,
+      reason: "response_too_large",
+      retryable: true,
+    })
   })
 
   it("short-circuits on missing credentials before any fetch", async () => {

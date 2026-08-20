@@ -63,6 +63,13 @@ const DEFAULT_LOOKBACK_MS = 60 * 60_000
  * own hour; whatever does not fit is withheld and re-read next run.
  */
 const JUDGMENT_BUDGET_MS = 20 * 60_000
+
+/**
+ * Distinct candidates failing to draft back to back reads as a dependency
+ * outage rather than bad data, and every further candidate would pay for a
+ * model call before hitting the same wall.
+ */
+const MAX_CONSECUTIVE_DRAFT_FAILURES = 3
 /** The one spike class this version evaluates (R4: one bounded check). */
 const SPIKE_CLASS = "error_rate"
 
@@ -261,7 +268,9 @@ export async function executeDatadogTriage(
       maxTicketsPerDay: config.maxTicketsPerDay,
       now,
       token: leaseToken,
-      clock: () => now,
+      // Live clock: the SQL claim compares against the real now(), so a
+      // frozen one lets one run burn several backoff rungs at once.
+      clock: dependencies.now ?? (() => new Date()),
       heartbeat,
     })
     applyDispatch(counters, issueUrls, errors, drain)
@@ -299,6 +308,7 @@ export async function executeDatadogTriage(
     // budget is about how long the stage actually runs, and mixing the two
     // clocks would make an injected `now` decide it before the first call.
     const judgmentStartedAt = Date.now()
+    let consecutiveDraftFailures = 0
 
     for (const [index, candidate] of capped.judged.entries()) {
       if (Date.now() - judgmentStartedAt > JUDGMENT_BUDGET_MS) {
@@ -362,17 +372,33 @@ export async function executeDatadogTriage(
         if (inserted) counters.actionsEnqueued += 1
         else counters.alreadyTicketed += 1
         recordActionPin(pins, candidate, decision.draft.idempotencyKey)
+        consecutiveDraftFailures = 0
       } catch {
         counters.judgeFailures += 1
+        consecutiveDraftFailures += 1
         // Fixed vocabulary only — a zod message would echo untrusted text.
         errors.push("draft:failed")
         withheld.push(candidate)
+        if (consecutiveDraftFailures >= MAX_CONSECUTIVE_DRAFT_FAILURES) {
+          // Back-to-back failures across distinct candidates read as a
+          // dependency outage, and each remaining candidate would buy another
+          // model call before hitting the same wall.
+          withheld.push(...capped.judged.slice(index + 1))
+          counters.candidatesCapped += capped.judged.length - index - 1
+          errors.push("draft:systemic_failure")
+          partialReason ??= "draft_systemic_failure"
+          break
+        }
       }
     }
-    if (counters.judged > 0 && counters.judgeFailures === counters.judged) {
-      // Every source answered but nothing could be judged. Without this the
-      // run reports `complete` while filing nothing.
-      partialReason ??= "judgment_failed"
+    if (counters.judgeFailures > 0) {
+      // ANY failure, matching the dispatch guards above. All-failed-only let a
+      // deterministic per-candidate failure repeat hourly under `complete`,
+      // because the candidates that did succeed kept the equality false.
+      partialReason ??=
+        counters.judgeFailures === counters.judged
+          ? "judgment_failed"
+          : "judgment_partial"
     }
 
     // 4. Dispatch what this run enqueued, so AE2's latency stays under an hour.
@@ -383,7 +409,7 @@ export async function executeDatadogTriage(
         maxTicketsPerDay: config.maxTicketsPerDay,
         now,
         token: leaseToken,
-        clock: () => now,
+        clock: dependencies.now ?? (() => new Date()),
         heartbeat,
       })
       applyDispatch(counters, issueUrls, errors, second)
@@ -801,6 +827,9 @@ async function collectSignals(input: {
       } else {
         counters.signalsFetched += monitors.value.monitors.length
         if (monitors.value.unparsedRows > 0) {
+          // Same rule as the issue source: an incomplete read must not seed,
+          // or the rows it dropped arrive next run as brand new.
+          serviceSeeded = false
           errors.push(`datadog:${monitorSource}:unparsed_rows`)
           collection.outcomes.push({
             source: monitorSource,
@@ -825,7 +854,12 @@ async function collectSignals(input: {
         collection.cursors.push({
           source: monitorSource,
           cursorAt: monitorWindow.to,
-          succeeded: true,
+          // Same rule as the issue source: a read that parsed nothing is not a
+          // live source, whatever the HTTP status said, and `last_success_at`
+          // is the only liveness signal the runbook has.
+          succeeded:
+            monitors.value.unparsedRows === 0 ||
+            monitors.value.monitors.length > 0,
           succeededAt: now,
         })
         if (monitors.value.unparsedRows === 0) {

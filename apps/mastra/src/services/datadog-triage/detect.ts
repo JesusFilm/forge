@@ -549,11 +549,13 @@ export function detectSpikeSignals(input: {
         ? windowRate
         : (stored!.baselineRate * observations + windowRate) /
           (observations + 1)
+    const epoch = stored?.epoch ?? 0
     const nextBaseline: SpikeBaselineUpdate = {
       service: input.service,
       spikeClass: bucket.key,
       baselineRate: blended,
       observations: Math.min(observations + 1, 168),
+      epoch,
       lastTicketedAt: stored?.lastTicketedAt ?? null,
     }
 
@@ -572,11 +574,15 @@ export function detectSpikeSignals(input: {
       continue
     }
 
+    // A ticketed episode advances the epoch, so the NEXT one gets a new key.
+    // Withheld candidates have this update filtered out at commit, so a
+    // re-read keeps the same key instead of minting a duplicate.
+    detection.baselineUpdates.push({ ...nextBaseline, epoch: epoch + 1 })
     detection.candidates.push({
       service: input.service,
       signalKind: "spike",
-      signalId: `${input.service}:${bucket.key}:${input.window.to.toISOString()}`,
-      epoch: 0,
+      signalId: `${input.service}:${bucket.key}`,
+      epoch,
       // Anchored at the window START, not its end. `holdCursor` pins a
       // withheld candidate's source at this instant, and the end is exactly
       // where the cursor would advance to anyway — so anchoring there made a
@@ -592,8 +598,8 @@ export function detectSpikeSignals(input: {
         baselineRatePerHour: stored?.baselineRate ?? 0,
       },
     })
-    // Cooldown stamping belongs to the workflow, which knows the outcome.
-    detection.baselineUpdates.push(nextBaseline)
+    // Cooldown stamping belongs to the workflow, which knows the outcome; the
+    // epoch-advanced update was pushed above, before the candidate.
   }
 
   return detection

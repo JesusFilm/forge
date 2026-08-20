@@ -101,7 +101,25 @@ nothing.
    `seen_issues`, `service_baselines`, `spike_baselines`.
 
 Migration `003` is additive and idempotent (`create ... if not exists`), so a
-repeat apply is a no-op.
+repeat apply is a no-op **on a database that has never applied it**.
+
+That idempotence has a sharp edge worth knowing before you run it locally:
+`create table if not exists` does NOT add a column to a table that already
+exists. `003` is still unmerged and has never reached production, so a
+production apply creates every table complete and this cannot bite there. A
+DEV database that ran an EARLIER revision of `003` is a different story — it
+would silently lack `spike_baselines.epoch`, and the sweep would fail at write
+time. The checksum runner protects you: it refuses with `Mastra migration 3
+differs from the applied checksum` rather than running against a stale schema.
+Reconcile that database rather than forcing past it:
+
+```sql
+delete from schema_migrations where version = 3;
+```
+
+then re-run `pnpm --filter @forge/mastra migrate:database`. Safe because `003`
+is all `create ... if not exists` — but drop the `datadog_triage` schema first
+if the earlier revision created any table you now need reshaped.
 
 ### 5. Live scoped-key smoke (pre-enable, not CI)
 
@@ -160,8 +178,11 @@ and nothing dispatches.
       where state = 'pending' and created_at < '<cutoff>';
      ```
 
-   Skipping this decision means the whole dry-run backlog files at once as soon
-   as the budget rises.
+   Skipping this decision does NOT file the backlog at once. The claim orders
+   strictly FIFO by `next_attempt_at, created_at` and the queue has no expiry
+   (R10), so an N-row backlog drains at the daily budget -- and every genuinely
+   new signal detected afterwards is enqueued BEHIND all of it. At a budget of
+   3 a few hundred queued rows is months of latency on new signals.
 
 ## Live rollout
 
@@ -303,11 +324,18 @@ exceeds a few hours**, in this order:
     order by created_at desc limit 5;
    ```
 
-2. A `status` of `disabled` means readiness refused — the `errors` array names
-   which credential or setting.
+2. **No recent rows at all can also mean readiness refused.** A disabled run
+   returns before it claims anything, so it writes NO row -- the `disabled`
+   status the schema reserves is never persisted. Before concluding the
+   scheduler is dead, check `DATADOG_TRIAGE_ENABLED` and the service logs for
+   `[datadog-triage] event=run_disabled reasons=...`, which names the missing
+   credential or setting. A cleared `OPENAI_API_KEY` lands here.
 3. `auth_failed` against a source means the key expired or lost a scope.
-4. `parse_error` or `unparsed_rows` means the Datadog response shape changed;
-   see the provisioning smoke's envelope note.
+4. `parse_error` or `unparsed_rows` means the Datadog response SHAPE changed;
+   see the provisioning smoke's envelope note. `response_too_large` is
+   different and is not a parser problem: the body exceeded
+   `DATADOG_TRIAGE_MAX_RESPONSE_BYTES`. It is retryable, so check whether the
+   payload is legitimately large before raising the cap.
 5. `dispatch_failed` as `partial_reason` means tickets are not reaching Linear.
    Go straight to the stuck-outbox check below — fetch health stays green
    through this, so nothing else here will surface it.
@@ -362,9 +390,14 @@ re-enabling would file a ticket for every standing error.
   exposes no cursor at either spelling the client accepts — the read is
   reported `page_truncated`. Unusable rows are reported `unparsed_rows`.
 
-  Either one refuses to seed that service's baseline AND holds the issue
-  cursor, so the next run retries the same wide baseline window instead of
-  collapsing to the overlap window and seeding off one hour. A service that
+  Either one refuses to seed that service's baseline. **While the service is
+  still unseeded** it also holds the issue cursor, so the next run retries the
+  same wide baseline window instead of collapsing to the overlap window and
+  seeding off one hour. Once a service HAS seeded the cursor advances anyway:
+  the standing set is already recorded, so an incomplete page costs one hour of
+  coverage rather than a false baseline, and holding would stall a service that
+  always fills its page. The cost is real -- issues past the page cap in that
+  window are not seen, and are not seen again if they stop recurring. A service that
   stays over the cap therefore never seeds and files nothing from Error
   Tracking — fail-safe (silence, not a storm), and loud: every run reports
   `partial` with `datadog:issue:<service>:baseline_read_incomplete`. Because

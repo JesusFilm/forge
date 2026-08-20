@@ -11,7 +11,10 @@ import type {
   DatadogTriageRepository,
   DueTriageAction,
 } from "../../services/datadog-triage/repository"
-import type { TriageActionDraft } from "../../services/datadog-triage/schema"
+import type {
+  SpikeBaseline,
+  TriageActionDraft,
+} from "../../services/datadog-triage/schema"
 
 import {
   DatadogMobileTriageInputSchema,
@@ -111,6 +114,7 @@ function repository(
   overrides: Partial<DatadogTriageRepository> & {
     seeded?: string[]
     preloaded?: DueTriageAction[]
+    spikeBaselines?: SpikeBaseline[]
   } = {},
 ): RepositoryStub {
   const calls: string[] = []
@@ -148,7 +152,9 @@ function repository(
     commitSeenIssues: vi.fn(record("commitSeenIssues", undefined)),
     getMonitorStates: vi.fn(record("getMonitorStates", [])),
     commitMonitorStates: vi.fn(record("commitMonitorStates", undefined)),
-    getSpikeBaselines: vi.fn(record("getSpikeBaselines", [])),
+    getSpikeBaselines: vi.fn(
+      record("getSpikeBaselines", overrides.spikeBaselines ?? []),
+    ),
     commitSpikeBaselines: vi.fn(record("commitSpikeBaselines", undefined)),
     enqueueAction: vi.fn(async (draft: TriageActionDraft) => {
       calls.push("enqueueAction")
@@ -916,5 +922,163 @@ describe("executeDatadogTriage sweep", () => {
       cursors.find((cursor) => cursor.source === "issue:forge-mobile")
         ?.succeeded,
     ).toBe(false)
+  })
+  // Review finding: only the ISSUE pin arm was ever asserted, so deleting
+  // pins.monitors.set / pins.spikes.set failed no test.
+  it("pins a monitor candidate's action key onto its state commit", async () => {
+    const repo = repository()
+    await run({
+      repository: repo,
+      datadog: datadog({
+        listMonitors: vi.fn(async () => ({
+          ok: true as const,
+          value: {
+            monitors: [
+              {
+                monitorId: "42",
+                name: "Mobile crash rate",
+                overallState: "Alert",
+                overallStateModified: new Date(
+                  NOW.getTime() - 5 * 60_000,
+                ).toISOString(),
+                tags: ["service:forge-mobile"],
+              },
+            ],
+            unparsedRows: 0,
+          },
+        })),
+      } as never),
+    })
+
+    const committed = vi.mocked(repo.commitMonitorStates).mock.calls[0]?.[0]
+    expect(committed?.[0]?.requiredActionKey).toBeDefined()
+    expect(committed?.[0]?.lastTicketedAt).toBeTruthy()
+  })
+
+  it("pins a spike candidate's action key onto its baseline commit", async () => {
+    const repo = repository({
+      spikeBaselines: [
+        {
+          service: "forge-mobile",
+          spikeClass: "error_rate",
+          baselineRate: 1,
+          observations: 24,
+          epoch: 0,
+          lastTicketedAt: null,
+        },
+      ],
+    })
+    await run({
+      repository: repo,
+      datadog: datadog({
+        aggregateRumEvents: vi.fn(async () => ({
+          ok: true as const,
+          value: {
+            buckets: [{ key: "error_rate", count: 400 }],
+            partial: false,
+          },
+        })),
+      } as never),
+    })
+
+    const committed = vi.mocked(repo.commitSpikeBaselines).mock.calls[0]?.[0]
+    expect(committed?.[0]?.requiredActionKey).toBeDefined()
+    expect(committed?.[0]?.lastTicketedAt).toBeTruthy()
+  })
+
+  // Review finding: this fired only when EVERY candidate failed, so a
+  // deterministic per-candidate failure repeated hourly under `complete`.
+  it("reports partial when only SOME candidates fail to draft", async () => {
+    const repo = repository()
+    let call = 0
+    vi.mocked(repo.enqueueAction).mockImplementation(async () => {
+      call += 1
+      if (call === 1) throw new Error("boom")
+      return true
+    })
+
+    const report = await run({
+      repository: repo,
+      datadog: datadog({
+        searchIssues: vi.fn(async () => ({
+          ok: true as const,
+          value: {
+            issues: [issue(), issue({ issueId: "ISSUE-2" })],
+            unparsedRows: 0,
+          },
+        })),
+      } as never),
+    })
+
+    expect(report.counters.judgeFailures).toBe(1)
+    expect(report.counters.judgeFailures).toBeLessThan(report.counters.judged)
+    expect(report.status).toBe("partial")
+    expect(report.partialReason).toBe("judgment_partial")
+  })
+
+  it("stops judging after repeated back-to-back draft failures", async () => {
+    // A dependency outage should not buy a model call for every remaining
+    // candidate before hitting the same wall.
+    const repo = repository()
+    vi.mocked(repo.enqueueAction).mockRejectedValue(new Error("db down"))
+    const analyzer = {
+      generate: vi.fn(async () => ({ object: ANALYSIS }) as never),
+    }
+
+    const report = await run({
+      repository: repo,
+      analyzer: analyzer as never,
+      datadog: datadog({
+        searchIssues: vi.fn(async () => ({
+          ok: true as const,
+          value: {
+            issues: Array.from({ length: 12 }, (_, i) =>
+              issue({ issueId: `ISSUE-${i}` }),
+            ),
+            unparsedRows: 0,
+          },
+        })),
+      } as never),
+    })
+
+    expect(analyzer.generate.mock.calls.length).toBeLessThanOrEqual(3)
+    expect(report.partialReason).toBe("draft_systemic_failure")
+    expect(report.errors).toContain("draft:systemic_failure")
+  })
+
+  it("does not stamp monitor liveness for a read that parsed nothing", async () => {
+    const repo = repository({ seeded: ["forge-mobile"] })
+    await run({
+      repository: repo,
+      datadog: datadog({
+        listMonitors: vi.fn(async () => ({
+          ok: true as const,
+          value: { monitors: [], unparsedRows: 4 },
+        })),
+      } as never),
+    })
+
+    const cursors = vi.mocked(repo.commitCursors).mock.calls[0]?.[0] ?? []
+    expect(
+      cursors.find((c) => c.source === "monitor:forge-mobile")?.succeeded,
+    ).toBe(false)
+  })
+
+  it("unparsed monitor rows block the service from seeding", async () => {
+    const repo = repository({ seeded: [] })
+    await run({
+      repository: repo,
+      datadog: datadog({
+        listMonitors: vi.fn(async () => ({
+          ok: true as const,
+          value: { monitors: [], unparsedRows: 4 },
+        })),
+      } as never),
+    })
+
+    expect(repo.seedServiceBaselines).not.toHaveBeenCalledWith(
+      ["forge-mobile"],
+      expect.anything(),
+    )
   })
 })

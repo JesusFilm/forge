@@ -7,7 +7,10 @@ import {
 } from "../../config/env"
 import { discardResponseBody } from "../devotional/bounded-response"
 
-import { readJsonBodyCappedOrThrow } from "./bounded-read"
+import {
+  BOUNDED_READ_OVER_CAP,
+  readJsonBodyCappedOrThrow,
+} from "./bounded-read"
 
 /**
  * Read-only Datadog client for the hourly triage sweep (U3, KTD5).
@@ -49,6 +52,7 @@ export type DatadogFailureReason =
   | "network_error"
   | "rejected"
   | "parse_error"
+  | "response_too_large"
 
 export type DatadogRateLimit = {
   limit?: number
@@ -184,18 +188,16 @@ const issueRowSchema = z
   })
   .passthrough()
 
-// `data` is REQUIRED on purpose. With `.default([])` an envelope that moved
-// the array to another key parsed as a clean empty page — zero rows, zero
-// unparsed, source `ok`, cursor advanced, liveness green — which is the silent
-// death this module claims to prevent. A genuinely empty result sends `[]`.
+// `data` is REQUIRED on purpose: `.default([])` let a moved array parse as a
+// clean empty page, which is the silent death this module exists to prevent.
+// A genuinely empty result sends `[]`.
 const issueSearchEnvelopeSchema = z
   .object({
     data: z.array(issueRowSchema),
     included: z.array(issueRowSchema).optional(),
-    // Two spellings because the wire envelope is UNVERIFIED (see the module
-    // header). Both are optional: a missing cursor stops paging, and the
-    // full-page heuristic still reports the read as truncated, so an unknown
-    // third spelling degrades to today's behaviour rather than to silence.
+    // Two spellings because the envelope is UNVERIFIED (module header). Both
+    // optional: an unknown third spelling stops paging and still reports
+    // `truncated`, degrading to the old behaviour rather than to silence.
     meta: z
       .object({
         status: z.unknown(),
@@ -718,6 +720,19 @@ export class DatadogTriageClient {
     } catch (error) {
       // A mid-body timeout is a latency incident, not a parse failure.
       return { ...failureForThrow(error), rateLimit }
+    }
+    if (body === BOUNDED_READ_OVER_CAP) {
+      // Distinct from `parse_error`: the shape did not drift, the body was too
+      // big. The runbook routes those two to different operator actions, and
+      // the Linear sibling already separates them.
+      return {
+        ok: false,
+        reason: "response_too_large",
+        retryable: true,
+        ambiguous: false,
+        status: response.status,
+        rateLimit,
+      }
     }
     const parsed = schema.safeParse(body)
     if (!parsed.success) {

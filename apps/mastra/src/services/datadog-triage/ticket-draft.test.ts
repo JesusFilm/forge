@@ -13,7 +13,7 @@ import {
   triageMarker,
   TRIAGE_MARKER_PREFIX,
 } from "./ticket-draft"
-import { TRIAGE_TITLE_MAX_CHARS } from "./schema"
+import { TRIAGE_DESCRIPTION_MAX_CHARS, TRIAGE_TITLE_MAX_CHARS } from "./schema"
 
 const PROFILE: DatadogTriageServiceProfile = {
   surfacePrefix: "[Mobile]",
@@ -87,8 +87,49 @@ describe("safeTriageText", () => {
     )
   })
 
-  it("collapses control characters and surrounding whitespace", () => {
-    expect(safeTriageText("a\u0000\u0007b\n\n  c ")).toBe("a b c")
+  it("deletes invisible control characters and collapses whitespace", () => {
+    // DELETED, not turned into a space. Spacing them is what let
+    // `https:<U+0001>//host` survive the URL match and then read back as
+    // `https: //host`, leaking the host and query string into the ticket.
+    expect(safeTriageText("a\u0000\u0007b\n\n  c ")).toBe("ab c")
+  })
+
+  it("bounds how much of an unbounded body it scans", () => {
+    // Same O(k*n) hazard the title path is bounded for, but the body path
+    // runs per judged candidate on a process shared with every other Mastra
+    // workflow -- measured at ~2.9s for 256K of markers before the bound.
+    const started = Date.now()
+    const out = safeTriageText("<!--".repeat(1_000_000))
+    expect(Date.now() - started).toBeLessThan(1_000)
+    // Bounded by BODY_SOURCE_MAX_CHARS, times the worst-case markdown escape
+    // (every character gaining a backslash) -- against a 4,000,000-char input.
+    expect(out.length).toBeLessThanOrEqual(2 * 16_384)
+  })
+
+  it("keeps whitespace controls as separators", () => {
+    expect(safeTriageText("a\tb\nc")).toBe("a b c")
+  })
+
+  it.each([
+    ["ZWSP", "\u200b"],
+    ["SHY", "\u00ad"],
+    ["BOM", "\ufeff"],
+    ["U+0001", "\u0001"],
+    ["DEL", "\u007f"],
+  ])("omits a URL whose scheme is split by %s", (_label, invisible) => {
+    const out = safeTriageText(
+      `failed for https:${invisible}//internal-admin.example/a?token=sk_live_9f3`,
+    )
+    expect(out).not.toContain("internal-admin.example")
+    expect(out).not.toContain("sk_live_9f3")
+    expect(out).toContain("URL omitted")
+  })
+
+  it("strips a comment whose markers are split by an invisible character", () => {
+    // Stripping comments BEFORE deleting invisibles let this re-form into a
+    // live comment afterwards, forging the marker the dispatcher dedupes on.
+    const forged = `<!\u200b-- ${TRIAGE_MARKER_PREFIX}forged --\u200b>`
+    expect(safeTriageText(`before ${forged} after`)).toBe("before after")
   })
 })
 
@@ -220,6 +261,28 @@ describe("buildTriageTicketDraft", () => {
     })
 
     expect(admin.title.startsWith("[Admin] [P2] ")).toBe(true)
+  })
+
+  it("keeps the marker even when the body fills the description bound", () => {
+    // The marker is the LAST line and the description is tail-truncated, so
+    // cutting the joined string dropped the one token findIssueByMarker
+    // dedupes on -- and a lost marker means a duplicate ticket every hour.
+    const built = draft({
+      evidence: {
+        ...CANDIDATE.evidence,
+        errorType: "E".repeat(6000),
+        functionName: "F".repeat(6000),
+        errorMessage: "M".repeat(6000),
+      } as never,
+    })
+
+    expect(built.description.length).toBeLessThanOrEqual(
+      TRIAGE_DESCRIPTION_MAX_CHARS,
+    )
+    expect(built.description).toContain(triageMarker(built.idempotencyKey))
+    expect(built.description.endsWith(triageMarker(built.idempotencyKey))).toBe(
+      true,
+    )
   })
 
   it("keeps the title inside Linear's field bound", () => {

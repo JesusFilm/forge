@@ -493,10 +493,11 @@ export class PostgresDatadogTriageRepository implements DatadogTriageRepository 
       spike_class: string
       baseline_rate: number
       observations: number
+      epoch: number
       last_ticketed_at: Date | null
     }>(
       `select service, spike_class, baseline_rate, observations,
-              last_ticketed_at
+              epoch, last_ticketed_at
          from datadog_triage.spike_baselines
         where service = any($1::text[])`,
       [services],
@@ -507,6 +508,7 @@ export class PostgresDatadogTriageRepository implements DatadogTriageRepository 
         spikeClass: row.spike_class,
         baselineRate: Number(row.baseline_rate),
         observations: Number(row.observations),
+        epoch: Number(row.epoch),
         lastTicketedAt: isoOrNull(row.last_ticketed_at),
       }),
     )
@@ -521,10 +523,10 @@ export class PostgresDatadogTriageRepository implements DatadogTriageRepository 
          select *
            from unnest(
              $1::text[], $2::text[], $3::double precision[], $4::integer[],
-             $5::timestamptz[], $6::text[]
+             $5::timestamptz[], $6::text[], $7::integer[]
            ) as entry(
              service, spike_class, baseline_rate, observations,
-             last_ticketed_at, required_action_key
+             last_ticketed_at, required_action_key, epoch
            )
        ), missing as (
          select input.required_action_key as action_key
@@ -536,10 +538,11 @@ export class PostgresDatadogTriageRepository implements DatadogTriageRepository 
             )
        ), applied as (
          insert into datadog_triage.spike_baselines (
-           service, spike_class, baseline_rate, observations, last_ticketed_at
+           service, spike_class, baseline_rate, observations,
+           last_ticketed_at, epoch
          )
          select input.service, input.spike_class, input.baseline_rate,
-                input.observations, input.last_ticketed_at
+                input.observations, input.last_ticketed_at, input.epoch
            from input
           where not exists (select 1 from missing)
          on conflict (service, spike_class) do update
@@ -548,6 +551,11 @@ export class PostgresDatadogTriageRepository implements DatadogTriageRepository 
                last_ticketed_at = coalesce(
                  excluded.last_ticketed_at,
                  datadog_triage.spike_baselines.last_ticketed_at
+               ),
+               -- Never regress: an older overlapping run must not undo a
+               -- newer run's minted episode.
+               epoch = greatest(
+                 excluded.epoch, datadog_triage.spike_baselines.epoch
                ),
                updated_at = now()
          returning service
@@ -561,6 +569,7 @@ export class PostgresDatadogTriageRepository implements DatadogTriageRepository 
         updates.map((update) => update.observations),
         updates.map((update) => update.lastTicketedAt),
         updates.map((update) => update.requiredActionKey ?? null),
+        updates.map((update) => update.epoch),
       ],
     )
     assertNoMissingActions(result.rows[0]?.missing_action_keys)
