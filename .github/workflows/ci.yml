@@ -303,3 +303,45 @@ jobs:
           fi
       - name: Build package
         run: pnpm --filter "${{ matrix.service }}" run --if-present build
+
+  # One always-reporting job so `main` can require a single stable check name.
+  #
+  # A per-package matrix leg cannot be required directly: `affected` only
+  # expands the packages a PR touches, so `test (@forge/mobile)` never reports
+  # on an admin-only PR, and a required check that never reports blocks that PR
+  # forever. This job always runs, always reports under one name, and fails if
+  # any needed job failed or was cancelled.
+  #
+  # `skipped` is a PASS on purpose. Conditional jobs skip legitimately —
+  # commit-lint on a push to main or a dependabot PR, and every `affected`-gated
+  # job when its package is untouched.
+  ci-gate:
+    runs-on: ubuntu-latest
+    if: always()
+    needs:
+      - commit-lint
+      - affected
+      - admin-graphql-generate
+      - admin-schema-drift
+      - format
+      - patched-deps-guard
+      - experiment-ledger
+      - lint
+      - test
+      - expo-doctor
+      - build
+    steps:
+      - name: Fail if any required job failed or was cancelled
+        env:
+          NEEDS: ${{ toJSON(needs) }}
+        run: |
+          echo "$NEEDS"
+          bad=$(echo "$NEEDS" | jq -r \
+            'to_entries
+             | map(select(.value.result == "failure" or .value.result == "cancelled"))
+             | map(.key) | join(", ")')
+          if [ -n "$bad" ]; then
+            echo "::error::CI gate failed. Jobs not green: $bad"
+            exit 1
+          fi
+          echo "CI gate passed."

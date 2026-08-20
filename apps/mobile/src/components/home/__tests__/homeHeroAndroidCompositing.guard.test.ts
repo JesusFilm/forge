@@ -69,6 +69,36 @@ describe("Android VideoViews opt into textureView", () => {
     const source = readSource("..", "..", "watch", "MiniPlayerWindow.tsx")
     expect(source).not.toContain("<VideoView")
   })
+
+  // The two viewer-initiated SDUI players (U9). They predate this guard by four
+  // months and were simply never enumerated, so both shipped without the prop.
+  // The video route draws a poster and a veil over its surface; the collection
+  // route is overlapped by the floating mini-player window.
+  it("the SDUI video route's VideoView carries the platform-conditional surfaceType", () => {
+    const source = readSource(
+      "..",
+      "..",
+      "..",
+      "..",
+      "app",
+      "video",
+      "[sectionKey].tsx",
+    )
+    expect(videoViewElement(source)).toContain(SURFACE_TYPE)
+  })
+
+  it("the SDUI collection route's VideoView carries the platform-conditional surfaceType", () => {
+    const source = readSource(
+      "..",
+      "..",
+      "..",
+      "..",
+      "app",
+      "collection",
+      "[sectionKey].tsx",
+    )
+    expect(videoViewElement(source)).toContain(SURFACE_TYPE)
+  })
 })
 
 describe("Home RefreshControl stays transparent over the z-0 hero layer", () => {

@@ -218,6 +218,19 @@ local file does not revoke it.
 Rollback is `eas update:rollback --channel <preview|production>`. Exercise it
 once on preview before you ever need it on production.
 
+**`eas.json` sets `cli.requireCommit: true`.** An OTA update reaches every
+tester in minutes with no store review, so publishing an uncommitted working
+tree would ship code that exists nowhere in git. Two things about it are not
+obvious:
+
+- The clean-tree check runs `git status` from the REPO ROOT, not `apps/mobile`.
+  A colleague's stray untracked file under `apps/admin` blocks a mobile publish.
+- If you answer yes to its "Commit changes to git?" prompt it runs `git add -A`
+  across all seven apps. Do not do that mid-incident — commit by hand instead.
+
+It also applies to `eas build`, so a local experiment no longer reaches a build
+archive uncommitted.
+
 **Never set `EXPO_PUBLIC_ADMIN_GRAPHQL_URL` in an EAS environment.** With dotenv
 disabled, resolution falls through to the in-code production default, which is
 already correct and already reviewed. A dashboard-typed URL runs zod on the
@@ -343,12 +356,16 @@ view into that rect. The chrome rides in the host layer too, not in the route.
   (a PanResponder writing it with `setValue` fails silently under one); the
   shrink and exit wrappers always do. Do not mix drivers on one node.
 
-**Android `textureView` is mandatory on the host's video view.** Keep
-`surfaceType={Platform.OS === "android" ? "textureView" : undefined}` on it.
-A SurfaceView composites outside the RN view hierarchy and punches through
+**Android `textureView` is mandatory on EVERY video view.** Keep
+`surfaceType={Platform.OS === "android" ? "textureView" : undefined}` on each
+one. A SurfaceView composites outside the RN view hierarchy and punches through
 anything drawn above it, so controls and captions stop rendering over the
-video. `homeHeroAndroidCompositing.guard.test.ts` pins this on all three video
-surfaces (the host, `HomeHeroPager`, `VideoHeroRenderer`). No-op on iOS.
+video. `homeHeroAndroidCompositing.guard.test.ts` pins this on all five video
+surfaces (the host, `HomeHeroPager`, `VideoHeroRenderer`, and the two SDUI
+routes `app/video/[sectionKey].tsx` + `app/collection/[sectionKey].tsx`).
+No-op on iOS. The guard is an ENUMERATION, not a sweep: the two SDUI routes
+predated it by four months and shipped without the prop because nobody added
+them to the list. Add a case whenever you add a `<VideoView>`.
 
 **Sheet suppression is cross-platform; the hazard it prevents is Android-only.**
 The window hides while an in-app sheet is presented and returns to its corner
@@ -380,6 +397,38 @@ re-parents only the elected view's player back out.
 - **The latch must be released on teardown.** A stuck hold exempts EVERY
   adapter from the background pause, because that decision reads one store
   field.
+
+**Every player surface autostarts behind a poster and a spinner.** Opening a
+video IS the viewer asking to watch it, so no surface may sit on a play button
+waiting for a second tap. `/watch/[slug]` gets this from `VideoPlayer.tsx`'s
+`awaitingAutostart`; the two SDUI routes get it from
+`src/hooks/useAutostartPlayback.ts`, which is the same gate without the cast
+entanglement `VideoPlayer` has to carry. Neither SDUI route autostarted for
+months because the paths were written separately and nobody compared them —
+`video/[sectionKey]` sat on a tap-to-play poster, `collection/[sectionKey]` had
+no poster at all. If you add a fourth player surface, use the hook.
+
+The gate's release paths are the whole point, and there are three: playback
+started, the source errored, or `AUTOSTART_VEIL_TIMEOUT_MS` elapsed. The third
+is not optional — a load that neither starts nor errors would otherwise strand
+the viewer under a veil with no controls.
+
+**On the SDUI routes the poster and the veil share ONE predicate —
+`awaitingAutostart`.** Gating the poster on `!hasStarted` there strands the
+viewer: on the error and timeout paths the veil lifts while the opaque poster
+stays over the native transport. `pointerEvents="none"` keeps the controls
+reachable by touch, which is not the same as visible.
+
+**The deciding property is z-order, not the predicate pair.** `VideoPlayer.tsx`
+gates its poster on `(!hasStarted || castRemoteActive || ended)` against the
+same `awaitingAutostart` veil and is CORRECT, because its chrome is React,
+renders after the poster in the same parent, and mounts on exactly the paths
+that lift the veil. The SDUI routes set `nativeControls`, so their transport
+lives inside the `VideoView` and any later sibling covers it — which is why they
+need the shared predicate and `/watch/[slug]` does not. Before copying a gate
+between player surfaces, check which side of that line you are on. The general
+rule: every layer that can hide the recovery affordance must clear on every path
+that releases the gate.
 
 ## Component render tests
 

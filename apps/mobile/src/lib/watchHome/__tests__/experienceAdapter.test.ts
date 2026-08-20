@@ -457,7 +457,7 @@ describe("buildWatchHomeSectionsFromExperience — coreId hydration", () => {
     )
     expect(section.cards[0].title).toBe("lumo-acts-1-1-8-3")
     expect(section.cards[0].imageUrl).toBe(
-      "https://image.mux.com/y2W2LCPRxygn8RdXmldloduOoKYJo8TaVJzdvjBrggw/thumbnail.png?width=1280&fit_mode=smartcrop",
+      "https://image.mux.com/y2W2LCPRxygn8RdXmldloduOoKYJo8TaVJzdvjBrggw/thumbnail.webp?width=1280&height=720&fit_mode=smartcrop",
     )
   })
 
