@@ -14,8 +14,8 @@ from the main DS Year 1 roadmap.
 ## Status (August 20, 2026)
 
 - **Total tickets:** 61
-- ✅ **Complete:** 48
-- 🟡 **In progress:** 1
+- ✅ **Complete:** 49
+- 🟡 **In progress:** 0
 - 🔵 **Not started:** 12
 - 🔴 **Blocked:** 0
 
@@ -81,6 +81,6 @@ from the main DS Year 1 roadmap.
 | [feat-363](feat-363-history-route-resourceid-recheck.md)                      | Chat history read path: client-side re-check of the resourceId filter        | jian wei | P2       | 2026-08-24 | 1    | 🔵 not-started | —                                                                                                            |
 | [feat-366](feat-366-seeker-follow-up-questions.md)                            | Seeker suggested follow-up questions (post-hoc chips)                        | jian wei | P1       | 2026-08-19 | 6    | 🔵 not-started | —                                                                                                            |
 | [feat-367](feat-367-seeker-follow-up-question-evals.md)                       | Automated quality evals for Seeker follow-up questions                       | jian wei | P2       | 2026-09-08 | 3    | 🔵 not-started | —                                                                                                            |
-| [feat-399](feat-399-deep-link-malformed-id-granted-sidebar.md)                | Deep-link malformed id: keep the granted user's sidebar alive                | jian wei | P2       | 2026-09-01 | 1    | 🟡 in-progress | —                                                                                                            |
+| [feat-399](feat-399-deep-link-malformed-id-granted-sidebar.md)                | Deep-link malformed id: keep the granted user's sidebar alive                | jian wei | P2       | 2026-09-01 | 1    | ✅ complete    | [#1984](https://github.com/JesusFilm/forge/pull/1984)                                                        |
 | [feat-401](feat-401-sidebar-no-placeholder-row-for-unstarted-conversation.md) | Sidebar: no placeholder row for an unstarted conversation                    | jian wei | P3       | 2026-09-01 | 1    | 🔵 not-started | —                                                                                                            |
 | [feat-402](feat-402-denial-pane-cta-client-side-on-granted-shells.md)         | Denial pane CTA: client-side New on granted shells                           | jian wei | P3       | 2026-09-01 | 1    | 🔵 not-started | —                                                                                                            |
