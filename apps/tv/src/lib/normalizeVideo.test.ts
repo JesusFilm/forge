@@ -223,6 +223,35 @@ describe("normalizeVideo — base record", () => {
     expect(result.primaryLanguageBcp47).toBe("en")
   })
 
+  it("trims whitespace-tainted hls at ingestion", () => {
+    const raw = makeRawVideo()
+    const variants = (
+      raw as unknown as { variants: { hls: string | null }[] }
+    ).variants.map((variant, index) =>
+      index === 0 ? { ...variant, hls: `${variant.hls}\n` } : variant,
+    )
+    const result = normalizeVideo({ ...raw, variants } as typeof raw)!
+
+    expect(result.streamingUrl).toBe("https://stream.mux.com/abc123.m3u8")
+    expect(result.variants[0].hls).toBe("https://stream.mux.com/abc123.m3u8")
+  })
+
+  it.each([
+    ["whitespace-only", "  \n"],
+    ["interior whitespace", "https://stream.mux.com/abc\n123.m3u8"],
+  ])("treats %s hls as unplayable", (_label, taintedHls) => {
+    const raw = makeRawVideo()
+    const variants = (
+      raw as unknown as { variants: { hls: string | null }[] }
+    ).variants.map((variant, index) =>
+      index === 0 ? { ...variant, hls: taintedHls } : variant,
+    )
+    const result = normalizeVideo({ ...raw, variants } as typeof raw)!
+
+    expect(result.variants[0].hls).toBeNull()
+    expect(result.streamingUrl).toBe("https://stream.mux.com/def456.m3u8")
+  })
+
   it("filters unpublished variants", () => {
     const result = normalizeVideo(makeRawVideo())!
     expect(result.variants).toHaveLength(2)
