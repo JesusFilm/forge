@@ -163,6 +163,8 @@ async function callAdminMcpTool(
   if (name === "experience.locale.create") return service.createLocale(args)
   if (name === "experience.locale.update") return service.updateLocale(args)
   if (name === "experience.locale.publish") return service.publishLocale(args)
+  if (name === "experience.locale.discard") return service.discardLocale(args)
+  if (name === "experience.locale.preview") return service.previewLocale(args)
   if (name === "experience.media.check") return service.checkMedia(args)
   if (name === "video.search_replacements") {
     return service.searchReplacementVideos(args)

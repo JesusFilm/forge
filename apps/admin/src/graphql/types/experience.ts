@@ -2,11 +2,13 @@
 // Embedding column is intentionally excluded (R20). Per Unit 4 of
 // docs/plans/2026-04-13-002-feat-admin-app-graphql-postgres-plan.md.
 
+import type { ExperienceLocale, RevisedByKind } from "@prisma/client"
 import type { Block } from "@/domain/blocks"
 import { isEditorOrAdmin } from "@/auth/principal"
 import { builder } from "@/graphql/builder"
 import { ExperienceBlock } from "@/graphql/types/blocks"
 import { LocaleStatusEnum } from "@/graphql/types/reference"
+import type { ExperiencePreviewShape } from "@/services/experience-preview.service"
 
 // PUBLIC field-strip triplet (consumer-migration U2 — 2026-05-11). The
 // `unauthorizedResolver: () => null` overrides Pothos scope-auth's default
@@ -96,6 +98,144 @@ builder.prismaObject("Experience", {
   }),
 })
 
+// -----------------------------------------------------------------------------
+// Experience draft editorial state (permissioned, service-mediated)
+// -----------------------------------------------------------------------------
+
+type ExperienceLocaleEffectiveShape = Omit<ExperienceLocale, "blocks"> & {
+  blocks: Block[]
+}
+
+type ExperienceLocaleActiveDraftShape = {
+  id: string
+  previewToken: string | null
+  revisedAt: Date
+  revisedBy: string | null
+  revisedByKind: RevisedByKind
+  reason: string | null
+}
+
+type ExperienceLocaleDraftStateShape = {
+  canonical: ExperienceLocale
+  effective: ExperienceLocaleEffectiveShape
+  activeDraft: ExperienceLocaleActiveDraftShape | null
+}
+
+/** @classification abac-gated */
+const ExperienceLocaleEffectiveRef =
+  builder.objectRef<ExperienceLocaleEffectiveShape>("ExperienceLocaleEffective")
+
+ExperienceLocaleEffectiveRef.implement({
+  description:
+    "Effective editable locale state: the active draft snapshot when present, otherwise canonical content.",
+  fields: (t) => ({
+    id: t.exposeID("id"),
+    experienceId: t.exposeID("experienceId"),
+    locale: t.exposeString("locale"),
+    slug: t.exposeString("slug"),
+    isHomepage: t.exposeBoolean("isHomepage"),
+    pathSegment: t.exposeString("pathSegment", { nullable: true }),
+    title: t.exposeString("title", { nullable: true }),
+    metaDescription: t.exposeString("metaDescription", { nullable: true }),
+    ogTitle: t.exposeString("ogTitle", { nullable: true }),
+    ogDescription: t.exposeString("ogDescription", { nullable: true }),
+    ogImageUrl: t.exposeString("ogImageUrl", { nullable: true }),
+    blocks: t.field({
+      type: [ExperienceBlock],
+      nullable: false,
+      resolve: (row) => row.blocks,
+    }),
+    status: t.expose("status", { type: LocaleStatusEnum }),
+    publishedAt: t.string({
+      nullable: true,
+      resolve: (row) => row.publishedAt?.toISOString() ?? null,
+    }),
+    createdAt: t.string({ resolve: (row) => row.createdAt.toISOString() }),
+    updatedAt: t.string({ resolve: (row) => row.updatedAt.toISOString() }),
+  }),
+})
+
+/** @classification abac-gated */
+const ExperienceLocaleActiveDraftRef =
+  builder.objectRef<ExperienceLocaleActiveDraftShape>(
+    "ExperienceLocaleActiveDraft",
+  )
+
+ExperienceLocaleActiveDraftRef.implement({
+  description:
+    "Permissioned metadata for the one shared active draft of a locale.",
+  fields: (t) => ({
+    id: t.exposeID("id"),
+    previewToken: t.exposeString("previewToken", {
+      nullable: true,
+      description:
+        "Bearer capability used by the unlisted Web preview route. Never exposed by public queries.",
+    }),
+    revisedAt: t.string({ resolve: (row) => row.revisedAt.toISOString() }),
+    revisedBy: t.exposeString("revisedBy", { nullable: true }),
+    revisedByKind: t.string({ resolve: (row) => row.revisedByKind }),
+    reason: t.exposeString("reason", { nullable: true }),
+  }),
+})
+
+/** @classification abac-gated */
+const ExperienceLocaleDraftStateRef =
+  builder.objectRef<ExperienceLocaleDraftStateShape>(
+    "ExperienceLocaleDraftState",
+  )
+
+ExperienceLocaleDraftStateRef.implement({
+  description:
+    "Canonical, effective editable, and active-draft state for one language-specific Experience.",
+  fields: (t) => ({
+    canonical: t.prismaField({
+      type: "ExperienceLocale",
+      resolve: (_query, row) => row.canonical,
+    }),
+    effective: t.field({
+      type: ExperienceLocaleEffectiveRef,
+      resolve: (row) => row.effective,
+    }),
+    hasDraft: t.boolean({ resolve: (row) => row.activeDraft !== null }),
+    activeDraft: t.field({
+      type: ExperienceLocaleActiveDraftRef,
+      nullable: true,
+      resolve: (row) => row.activeDraft,
+    }),
+  }),
+})
+
+// -----------------------------------------------------------------------------
+// Public preview capability shape
+// -----------------------------------------------------------------------------
+
+/** @classification public-shape */
+const ExperiencePreviewRef =
+  builder.objectRef<ExperiencePreviewShape>("ExperiencePreview")
+
+ExperiencePreviewRef.implement({
+  description:
+    "Public render-only shape for an active Experience draft capability.",
+  fields: (t) => ({
+    experienceId: t.exposeID("experienceId", { nullable: false }),
+    localeId: t.exposeID("localeId", { nullable: false }),
+    locale: t.exposeString("locale", { nullable: false }),
+    slug: t.exposeString("slug", { nullable: false }),
+    isHomepage: t.exposeBoolean("isHomepage", { nullable: false }),
+    pathSegment: t.exposeString("pathSegment", { nullable: true }),
+    title: t.exposeString("title", { nullable: true }),
+    metaDescription: t.exposeString("metaDescription", { nullable: true }),
+    ogTitle: t.exposeString("ogTitle", { nullable: true }),
+    ogDescription: t.exposeString("ogDescription", { nullable: true }),
+    ogImageUrl: t.exposeString("ogImageUrl", { nullable: true }),
+    blocks: t.field({
+      type: [ExperienceBlock],
+      nullable: false,
+      resolve: (row) => row.blocks,
+    }),
+  }),
+})
+
 builder.queryFields((t) => ({
   experience: t.prismaField({
     type: "Experience",
@@ -135,6 +275,21 @@ builder.queryFields((t) => ({
         query,
       }),
   }),
+  experienceLocaleDraftState: t.field({
+    type: ExperienceLocaleDraftStateRef,
+    nullable: false,
+    authScopes: { hasPermission: "write:experiences" },
+    description:
+      "Fetch canonical and effective shared-draft state for one Experience locale. ABAC-filtered.",
+    args: {
+      id: t.arg.id({ required: true }),
+    },
+    resolve: (_root, args, ctx) =>
+      ctx.services.experience.getLocaleDraftState({
+        id: String(args.id),
+        user: ctx.user,
+      }),
+  }),
   experienceBySlug: t.prismaField({
     type: "ExperienceLocale",
     nullable: true,
@@ -152,5 +307,17 @@ builder.queryFields((t) => ({
         user: ctx.user,
         query,
       }),
+  }),
+  experiencePreview: t.field({
+    type: ExperiencePreviewRef,
+    nullable: true,
+    authScopes: { public: true },
+    description:
+      "Resolve an unlisted active Experience draft capability. Returns null when invalid or retired; never falls back to canonical content.",
+    args: {
+      token: t.arg.string({ required: true }),
+    },
+    resolve: (_root, args, ctx) =>
+      ctx.services.experiencePreview.resolveByToken({ token: args.token }),
   }),
 }))

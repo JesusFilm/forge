@@ -327,6 +327,67 @@ type ExperienceLocale {
   updatedAt: String
 }
 
+"""Permissioned metadata for the one shared active draft of a locale."""
+type ExperienceLocaleActiveDraft {
+  id: ID
+  """
+  Bearer capability used by the unlisted Web preview route. Never exposed by public queries.
+  """
+  previewToken: String
+  reason: String
+  revisedAt: String
+  revisedBy: String
+  revisedByKind: String
+}
+
+"""
+Canonical, effective editable, and active-draft state for one language-specific Experience.
+"""
+type ExperienceLocaleDraftState {
+  activeDraft: ExperienceLocaleActiveDraft
+  canonical: ExperienceLocale
+  effective: ExperienceLocaleEffective
+  hasDraft: Boolean
+}
+
+"""
+Effective editable locale state: the active draft snapshot when present, otherwise canonical content.
+"""
+type ExperienceLocaleEffective {
+  blocks: [ExperienceBlock!]!
+  createdAt: String
+  experienceId: ID
+  id: ID
+  isHomepage: Boolean
+  locale: String
+  metaDescription: String
+  ogDescription: String
+  ogImageUrl: String
+  ogTitle: String
+  pathSegment: String
+  publishedAt: String
+  slug: String
+  status: LocaleStatus
+  title: String
+  updatedAt: String
+}
+
+"""Public render-only shape for an active Experience draft capability."""
+type ExperiencePreview {
+  blocks: [ExperienceBlock!]!
+  experienceId: ID!
+  isHomepage: Boolean!
+  locale: String!
+  localeId: ID!
+  metaDescription: String
+  ogDescription: String
+  ogImageUrl: String
+  ogTitle: String
+  pathSegment: String
+  slug: String!
+  title: String
+}
+
 """Single entry in InfoBlocksBlock.blocks."""
 type InfoBlockItem {
   description: String
@@ -1140,7 +1201,9 @@ type Mutation {
   """Archive an Experience. Owner or ADMIN."""
   archiveExperience(id: ID!): Experience
   clearMyWatchProgress(videoId: ID!): Boolean
-  """Create a new Experience with an initial locale. Caller becomes owner."""
+  """
+  Create a new Experience with an unpublished canonical locale and an initial shared draft. Caller becomes owner.
+  """
   createExperience(blocks: JSON, isTemplate: Boolean, locale: String!, slug: String!, title: String): Experience
   createManagerJob(artifacts: JSON, errors: JSON, languages: [String!], muxAssetId: String!, muxPlaybackId: String, options: JSON, primaryRequestedTargetLanguageCode: String, requestedLanguageAbbreviations: [String!], resolvedTargetLanguageCodes: [String!], sourceCollectionTitle: String, sourceLanguageCode: String, sourceLanguageId: String, sourceMediaTitle: String, sourceSelectionReason: String, steps: [ManagerJobStepInput!], videoDocumentId: String): ManagerJob
   """Create a media folder at the root or inside another folder."""
@@ -1154,7 +1217,11 @@ type Mutation {
   """
   deleteMediaFolder(id: ID!): DeleteMediaFolderResult
   """
-  Publish an ExperienceLocale (flip status to PUBLISHED). Owner or ADMIN.
+  Retire the locale's shared active draft without changing canonical content. Idempotent when no draft exists.
+  """
+  discardExperienceLocaleDraft(id: ID!): ExperienceLocale
+  """
+  Atomically promote the locale's active draft to canonical published content and retire the draft. Owner or ADMIN.
   """
   publishExperienceLocale(id: ID!): ExperienceLocale
   reconcileManagerSeoTicket(input: ManagerSeoTicketReconcileInput!): ManagerSeoTicketReconciliation!
@@ -1165,6 +1232,10 @@ type Mutation {
   """
   registerMediaAsset(backend: MediaAssetBackend, byteSize: String, checksumSha256: String, durationMs: String, folderId: ID, height: Int, kind: MediaAssetKind!, mimeType: String!, muxAssetId: String, muxPlaybackId: String, muxUploadId: String, originalFilename: String, status: MediaAssetStatus, visibility: MediaAssetVisibility, width: Int): MediaAsset
   rejectManagerSeoProposal(input: ManagerSeoRejectInput!): ManagerSeoDecisionResult!
+  """
+  Copy a historical Experience locale revision into the shared active draft without changing canonical content.
+  """
+  restoreExperienceLocaleRevisionToDraft(revisionId: ID!): ExperienceLocale
   reviewManagerSeoLesson(input: ManagerSeoLessonReviewInput!): ManagerSeoLesson!
   """
   Generate and persist a semantic embedding for an ExperienceLocale. Owner or ADMIN.
@@ -1243,8 +1314,10 @@ type Mutation {
     """
     mode: TranscriptBackfillMode
   ): JSON
-  """Update an ExperienceLocale (slug, title, blocks, etc.)."""
-  updateExperienceLocale(blocks: JSON, id: ID!, isHomepage: Boolean, isTemplate: Boolean, metaDescription: String, ogDescription: String, ogImageUrl: String, ogTitle: String, pathSegment: String, slug: String, title: String): ExperienceLocale
+  """
+  Save fields to the locale's one shared active draft. Canonical published content is unchanged until publish.
+  """
+  updateExperienceLocale(blocks: JSON, id: ID!, isHomepage: Boolean, metaDescription: String, ogDescription: String, ogImageUrl: String, ogTitle: String, pathSegment: String, slug: String, title: String): ExperienceLocale
   updateManagerJob(artifacts: JSON, completedAt: String, currentStep: String, errors: JSON, id: ID!, options: JSON, primaryRequestedTargetLanguageCode: String, requestedLanguageAbbreviations: [String!], resolvedTargetLanguageCodes: [String!], retries: Int, sourceCollectionTitle: String, sourceLanguageCode: String, sourceLanguageId: String, sourceMediaTitle: String, sourceSelectionReason: String, startedAt: String, status: ManagerJobStatus, steps: [ManagerJobStepInput!]): ManagerJob
   """Update editable media asset metadata and processing state."""
   updateMediaAsset(byteSize: String, checksumSha256: String, durationMs: String, errorCode: String, errorMessage: String, folderId: ID, height: Int, id: ID!, muxAssetId: String, muxPlaybackId: String, muxUploadId: String, originalFilename: String, status: MediaAssetStatus, visibility: MediaAssetVisibility, width: Int): MediaAsset
@@ -1326,6 +1399,14 @@ type Query {
   Find an Experience locale by (locale, slug). PUBLIC sees published only; EDITOR/ADMIN see all.
   """
   experienceBySlug(locale: String!, slug: String!): ExperienceLocale
+  """
+  Fetch canonical and effective shared-draft state for one Experience locale. ABAC-filtered.
+  """
+  experienceLocaleDraftState(id: ID!): ExperienceLocaleDraftState!
+  """
+  Resolve an unlisted active Experience draft capability. Returns null when invalid or retired; never falls back to canonical content.
+  """
+  experiencePreview(token: String!): ExperiencePreview
   """List Experiences. ABAC-filtered."""
   experiences(includeArchived: Boolean = false, limit: Int = 50, offset: Int = 0): [Experience!]
   """List active (non-soft-deleted) keywords."""

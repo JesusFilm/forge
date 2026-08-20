@@ -18,10 +18,16 @@ vi.mock("./watch-route-manifest-refresh.service", () => ({
 // Mock Prisma client with chained methods
 function mockPrisma() {
   const contentRevision = {
-    create: vi.fn(),
+    create: vi.fn(async ({ data }: { data: Record<string, unknown> }) => ({
+      id: "rev-created",
+      revisedAt: new Date("2026-04-15T12:30:00.000Z"),
+      ...data,
+    })),
+    findFirst: vi.fn(),
     findUniqueOrThrow: vi.fn(),
-    update: vi.fn(),
+    update: vi.fn(async ({ where, data }) => ({ ...where, ...data })),
   }
+  const seoProposalMaterialization = { updateMany: vi.fn() }
   const experienceLocale = {
     create: vi.fn(),
     findFirst: vi.fn(),
@@ -46,9 +52,26 @@ function mockPrisma() {
     experience,
     experienceLocale,
     $queryRaw,
-    $transaction: vi.fn((fn: (tx: unknown) => Promise<unknown>) =>
-      fn({ contentRevision, experience, experienceLocale, $queryRaw }),
-    ),
+    $transaction: vi.fn(async (fn: (tx: unknown) => Promise<unknown>) => {
+      // Service authorization reads happen immediately before a transaction;
+      // replay that row for the locked in-transaction read unless a test
+      // explicitly queued another result.
+      const priorLocaleRead =
+        experienceLocale.findUniqueOrThrow.mock.results.at(-1)?.value
+      if (priorLocaleRead) {
+        experienceLocale.findUniqueOrThrow.mockResolvedValueOnce(
+          await priorLocaleRead,
+        )
+      }
+      return fn({
+        contentRevision,
+        experience,
+        experienceLocale,
+        seoProposalMaterialization,
+        $queryRaw,
+      })
+    }),
+    seoProposalMaterialization,
   } as unknown as Parameters<
     (typeof ExperienceService)["prototype"]["list"]
   > extends never
@@ -80,6 +103,75 @@ describe("ExperienceService", () => {
     vi.mocked(after).mockClear()
   })
 
+  describe("getLocaleDraftState", () => {
+    const locale = {
+      id: "loc-state",
+      experienceId: "exp-state",
+      locale: "en",
+      slug: "live",
+      isHomepage: false,
+      pathSegment: null,
+      title: "Live title",
+      metaDescription: null,
+      ogTitle: null,
+      ogDescription: null,
+      ogImageUrl: null,
+      blocks: [],
+      status: "PUBLISHED",
+      publishedAt: new Date(),
+      experience: {
+        ownerId: "alice",
+        archivedAt: null,
+        isTemplate: false,
+      },
+    }
+
+    it("rejects a non-owner before reading or exposing the active draft", async () => {
+      prisma.experienceLocale.findUniqueOrThrow.mockResolvedValueOnce(locale)
+
+      await expect(
+        service.getLocaleDraftState({ id: locale.id, user: EDITOR_BOB }),
+      ).rejects.toThrow("Forbidden")
+
+      expect(prisma.contentRevision.findFirst).not.toHaveBeenCalled()
+      expect(prisma.contentRevision.update).not.toHaveBeenCalled()
+    })
+
+    it("atomically adopts an SEO-created draft without a preview token", async () => {
+      const seoDraft = {
+        id: "seo-draft",
+        entityType: "ExperienceLocale",
+        entityId: locale.id,
+        status: "DRAFT",
+        previewToken: null,
+        snapshot: { v: 1, data: { title: "SEO title" } },
+      }
+      prisma.experienceLocale.findUniqueOrThrow.mockResolvedValueOnce(locale)
+      prisma.contentRevision.findFirst.mockResolvedValueOnce(seoDraft)
+      prisma.contentRevision.update.mockImplementationOnce(
+        async ({ data }: { data: Record<string, unknown> }) => ({
+          ...seoDraft,
+          ...data,
+        }),
+      )
+
+      const state = await service.getLocaleDraftState({
+        id: locale.id,
+        user: EDITOR_ALICE,
+      })
+
+      expect(state.effective.title).toBe("SEO title")
+      expect(state.activeDraft?.previewToken).toEqual(expect.any(String))
+      expect(prisma.contentRevision.update).toHaveBeenCalledWith({
+        where: { id: "seo-draft" },
+        data: { previewToken: expect.any(String) },
+      })
+      expect(prisma.$transaction).toHaveBeenCalledWith(expect.any(Function), {
+        isolationLevel: "ReadCommitted",
+      })
+    })
+  })
+
   // ---------------------------------------------------------------------------
   // create
   // ---------------------------------------------------------------------------
@@ -90,7 +182,24 @@ describe("ExperienceService", () => {
         id: "exp-1",
         isTemplate: false,
         ownerId: "admin-1",
-        locales: [{ id: "loc-1" }],
+        locales: [
+          {
+            id: "loc-1",
+            experienceId: "exp-1",
+            locale: "en",
+            slug: "hello-world",
+            isHomepage: false,
+            pathSegment: null,
+            title: null,
+            metaDescription: null,
+            ogTitle: null,
+            ogDescription: null,
+            ogImageUrl: null,
+            blocks: [],
+            status: "DRAFT",
+            publishedAt: null,
+          },
+        ],
       }
       prisma.experience.create.mockResolvedValueOnce(created)
 
@@ -99,7 +208,10 @@ describe("ExperienceService", () => {
         user: ADMIN,
       })
 
-      expect(result).toEqual(created)
+      expect(result).toEqual({
+        ...created,
+        locales: [expect.objectContaining({ title: "Hello" })],
+      })
       expect(prisma.experience.create).toHaveBeenCalledWith(
         expect.objectContaining({
           data: expect.objectContaining({
@@ -108,8 +220,18 @@ describe("ExperienceService", () => {
               create: expect.objectContaining({
                 locale: "en",
                 slug: "hello-world",
-                title: "Hello",
+                blocks: [],
               }),
+            }),
+          }),
+        }),
+      )
+      expect(prisma.contentRevision.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            status: "DRAFT",
+            snapshot: expect.objectContaining({
+              data: expect.objectContaining({ title: "Hello" }),
             }),
           }),
         }),
@@ -117,7 +239,27 @@ describe("ExperienceService", () => {
     })
 
     it("EDITOR can create an experience (becomes owner)", async () => {
-      prisma.experience.create.mockResolvedValueOnce({ id: "exp-2" })
+      prisma.experience.create.mockResolvedValueOnce({
+        id: "exp-2",
+        locales: [
+          {
+            id: "loc-2",
+            experienceId: "exp-2",
+            locale: "en",
+            slug: "my-page",
+            isHomepage: false,
+            pathSegment: null,
+            title: null,
+            metaDescription: null,
+            ogTitle: null,
+            ogDescription: null,
+            ogImageUrl: null,
+            blocks: [],
+            status: "DRAFT",
+            publishedAt: null,
+          },
+        ],
+      })
 
       await service.create({
         input: { locale: "en", slug: "my-page" },
@@ -194,7 +336,13 @@ describe("ExperienceService", () => {
       prisma.experienceLocale.create.mockResolvedValueOnce({
         id: "loc-es",
         ...input,
+        isHomepage: false,
+        pathSegment: null,
+        ogTitle: null,
+        ogDescription: null,
+        ogImageUrl: null,
         status: "DRAFT",
+        publishedAt: null,
       })
 
       const result = await service.createLocale({
@@ -207,8 +355,8 @@ describe("ExperienceService", () => {
         data: expect.objectContaining({
           locale: "es",
           slug: "hello-world",
-          blocks: input.blocks,
-          experience: { connect: { id: "exp-1" } },
+          blocks: [],
+          experienceId: "exp-1",
         }),
       })
     })
@@ -400,7 +548,7 @@ describe("ExperienceService", () => {
           data: expect.objectContaining({
             entityType: "ExperienceLocale",
             entityId: "loc-1",
-            status: "HISTORICAL",
+            status: "DRAFT",
           }),
         }),
       )
@@ -432,7 +580,7 @@ describe("ExperienceService", () => {
       expect(result.title).toBe("Admin Edit")
     })
 
-    it("updates template mode when provided", async () => {
+    it("does not mutate parent template mode from locale input", async () => {
       prisma.experienceLocale.findUniqueOrThrow.mockResolvedValueOnce(localeRow)
       prisma.experience.update.mockResolvedValueOnce({
         id: "exp-1",
@@ -445,10 +593,7 @@ describe("ExperienceService", () => {
         user: EDITOR_ALICE,
       })
 
-      expect(prisma.experience.update).toHaveBeenCalledWith({
-        where: { id: "exp-1" },
-        data: { isTemplate: true },
-      })
+      expect(prisma.experience.update).not.toHaveBeenCalled()
     })
 
     it("does not touch template mode when omitted", async () => {
@@ -463,7 +608,7 @@ describe("ExperienceService", () => {
       expect(prisma.experience.update).not.toHaveBeenCalled()
     })
 
-    it("requests manifest refresh after updating a published locale", async () => {
+    it("does not refresh public routes when staging a published locale", async () => {
       const publishedLocale = { ...localeRow, status: "PUBLISHED" }
       prisma.experienceLocale.findUniqueOrThrow.mockResolvedValueOnce(
         publishedLocale,
@@ -478,10 +623,7 @@ describe("ExperienceService", () => {
         user: EDITOR_ALICE,
       })
 
-      expect(refreshWatchRouteManifest).toHaveBeenCalledWith({
-        prisma,
-        reason: "experience.update",
-      })
+      expect(refreshWatchRouteManifest).not.toHaveBeenCalled()
     })
 
     it("does not request manifest refresh for draft-only locale updates", async () => {
@@ -529,6 +671,185 @@ describe("ExperienceService", () => {
   // applyChatMutation (experience-AI chat write path)
   // ---------------------------------------------------------------------------
 
+  it("merges partial saves over the active draft and marks linked SEO materialization stale", async () => {
+    const locale = {
+      id: "loc-merge",
+      experienceId: "exp-1",
+      locale: "en",
+      slug: "canonical",
+      isHomepage: false,
+      pathSegment: null,
+      title: "Live",
+      metaDescription: null,
+      ogTitle: null,
+      ogDescription: null,
+      ogImageUrl: null,
+      blocks: [],
+      status: "PUBLISHED",
+      publishedAt: new Date(),
+      experience: { ownerId: "alice", archivedAt: null, isTemplate: false },
+    }
+    prisma.experienceLocale.findUniqueOrThrow.mockResolvedValueOnce(locale)
+    prisma.contentRevision.findFirst.mockResolvedValueOnce({
+      id: "draft-1",
+      previewToken: null,
+      snapshot: {
+        v: 1,
+        data: {
+          slug: "staged-slug",
+          isHomepage: false,
+          pathSegment: null,
+          title: "Staged title",
+          metaDescription: null,
+          ogTitle: null,
+          ogDescription: null,
+          ogImageUrl: null,
+          blocks: [],
+        },
+      },
+    })
+
+    await service.updateLocale({
+      input: { id: "loc-merge", metaDescription: "New meta" },
+      user: EDITOR_ALICE,
+    })
+
+    expect(prisma.contentRevision.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: "draft-1" },
+        data: expect.objectContaining({
+          previewToken: expect.any(String),
+          snapshot: expect.objectContaining({
+            data: expect.objectContaining({
+              slug: "staged-slug",
+              title: "Staged title",
+              metaDescription: "New meta",
+            }),
+          }),
+        }),
+      }),
+    )
+    expect(prisma.seoProposalMaterialization.updateMany).toHaveBeenCalledWith({
+      where: { contentRevisionId: "draft-1", status: { not: "STALE" } },
+      data: { status: "STALE" },
+    })
+    expect(prisma.experienceLocale.update).not.toHaveBeenCalled()
+  })
+
+  it("serializes concurrent saves and merges the preceding committed draft", async () => {
+    const canonical = {
+      id: "loc-concurrent",
+      experienceId: "exp-1",
+      locale: "en",
+      slug: "live",
+      isHomepage: false,
+      pathSegment: null,
+      title: "Live",
+      metaDescription: null,
+      ogTitle: null,
+      ogDescription: null,
+      ogImageUrl: null,
+      blocks: [],
+      status: "PUBLISHED",
+      publishedAt: new Date(),
+      experience: { ownerId: "alice", archivedAt: null, isTemplate: false },
+    }
+    let draft: {
+      id: string
+      previewToken: string
+      snapshot: { v: number; data: Record<string, unknown> }
+      [key: string]: unknown
+    } = {
+      id: "shared-draft",
+      previewToken: "stable-token",
+      snapshot: {
+        v: 1,
+        data: {
+          slug: "live",
+          isHomepage: false,
+          pathSegment: null,
+          title: "Initial draft",
+          metaDescription: null,
+          ogTitle: null,
+          ogDescription: null,
+          ogImageUrl: null,
+          blocks: [],
+        },
+      },
+    }
+    const isolationLevels: unknown[] = []
+    let transactionTail = Promise.resolve()
+    const tx = {
+      $queryRaw: vi.fn().mockResolvedValue([]),
+      experienceLocale: {
+        findUniqueOrThrow: vi.fn().mockResolvedValue(canonical),
+      },
+      contentRevision: {
+        findFirst: vi.fn(async () => ({ ...draft })),
+        update: vi.fn(async ({ data }: { data: Record<string, unknown> }) => {
+          draft = {
+            ...draft,
+            ...data,
+            previewToken:
+              typeof data.previewToken === "string"
+                ? data.previewToken
+                : draft.previewToken,
+            snapshot:
+              (data.snapshot as typeof draft.snapshot | undefined) ??
+              draft.snapshot,
+          }
+          return { ...draft }
+        }),
+        create: vi.fn(),
+      },
+      seoProposalMaterialization: { updateMany: vi.fn() },
+    }
+    const concurrencyPrisma = {
+      experienceLocale: {
+        findUniqueOrThrow: vi.fn().mockResolvedValue(canonical),
+      },
+      $transaction: vi.fn(
+        (
+          fn: (transaction: typeof tx) => Promise<unknown>,
+          options?: { isolationLevel?: unknown },
+        ) => {
+          isolationLevels.push(options?.isolationLevel)
+          const result = transactionTail.then(() => fn(tx))
+          transactionTail = result.then(
+            () => undefined,
+            () => undefined,
+          )
+          return result
+        },
+      ),
+    }
+    // This purpose-built client models the database row lock by queueing the
+    // transaction callbacks while retaining the committed revision state.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const concurrentService = new ExperienceService(concurrencyPrisma as any)
+
+    await Promise.all([
+      concurrentService.updateLocale({
+        input: { id: canonical.id, title: "First save" },
+        user: EDITOR_ALICE,
+      }),
+      concurrentService.updateLocale({
+        input: { id: canonical.id, metaDescription: "Second save" },
+        user: EDITOR_ALICE,
+      }),
+    ])
+
+    expect(draft.snapshot).toEqual(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          title: "First save",
+          metaDescription: "Second save",
+        }),
+      }),
+    )
+    expect(isolationLevels).toEqual(["ReadCommitted", "ReadCommitted"])
+  })
+
   describe("applyChatMutation", () => {
     const baseRow = {
       id: "loc-1",
@@ -574,27 +895,18 @@ describe("ExperienceService", () => {
       })
 
       expect(result.after.title).toBe("Chat Title")
-      // Revision is the AI-stamped HISTORICAL snapshot.
+      // Revision is the shared AI-stamped DRAFT snapshot.
       expect(prisma.contentRevision.create).toHaveBeenCalledWith(
         expect.objectContaining({
           data: expect.objectContaining({
             entityType: "ExperienceLocale",
             entityId: "loc-1",
-            status: "HISTORICAL",
+            status: "DRAFT",
             revisedByKind: "AI",
           }),
         }),
       )
-      // The write is a plain update keyed only on id — the row is already
-      // locked + version-verified by the FOR UPDATE guard, and a `updatedAt`
-      // predicate would re-introduce the millisecond-truncation mismatch.
-      expect(prisma.experienceLocale.update).toHaveBeenCalledWith(
-        expect.objectContaining({ where: { id: "loc-1" } }),
-      )
-      const updateArg = prisma.experienceLocale.update.mock.calls[0][0] as {
-        where: Record<string, unknown>
-      }
-      expect(updateArg.where).not.toHaveProperty("updatedAt")
+      expect(prisma.experienceLocale.update).not.toHaveBeenCalled()
       expect(prisma.experienceLocale.updateMany).not.toHaveBeenCalled()
     })
 
@@ -627,14 +939,14 @@ describe("ExperienceService", () => {
         reason: "Chat-driven mutation",
       })
 
-      const call = prisma.experienceLocale.update.mock.calls[0][0] as {
-        data: Record<string, unknown>
+      const call = prisma.contentRevision.create.mock.calls[0][0] as {
+        data: { snapshot: { data: Record<string, unknown> } }
       }
-      expect(call.data).not.toHaveProperty("slug")
-      expect(call.data).toHaveProperty("title", "Keep slug")
+      expect(call.data.snapshot.data).toHaveProperty("slug", "test-locale")
+      expect(call.data.snapshot.data).toHaveProperty("title", "Keep slug")
     })
 
-    it("throws ConcurrentModificationError when the row changed concurrently (full-precision text mismatch, no orphan revision)", async () => {
+    it("uses last-save-wins instead of rejecting a stale chat baseline", async () => {
       // Pre-image read succeeds, but the FOR UPDATE locked read returns a
       // DIFFERENT full-precision updated_at than the baseline → a concurrent
       // writer changed the row → lost-update guard fires. (Crucially, this
@@ -645,18 +957,14 @@ describe("ExperienceService", () => {
         .mockResolvedValueOnce([{ u: MICRO_TS }]) // baseline
         .mockResolvedValueOnce([{ u: "2026-04-15 12:00:05.111222+00" }]) // locked (changed)
 
-      await expect(
-        service.applyChatMutation({
-          input: { id: "loc-1", title: "Stale write" },
-          user: EDITOR_ALICE,
-          reason: "Chat-driven mutation",
-        }),
-      ).rejects.toMatchObject({ name: "ConcurrentModificationError" })
+      const result = await service.applyChatMutation({
+        input: { id: "loc-1", title: "Stale write" },
+        user: EDITOR_ALICE,
+        reason: "Chat-driven mutation",
+      })
 
-      // Guard runs BEFORE the revision insert and the write, so the throw
-      // rolls back a transaction that never touched either — no orphan
-      // HISTORICAL revision, no partial update.
-      expect(prisma.contentRevision.create).not.toHaveBeenCalled()
+      expect(result.after.title).toBe("Stale write")
+      expect(prisma.contentRevision.create).toHaveBeenCalled()
       expect(prisma.experienceLocale.update).not.toHaveBeenCalled()
     })
   })
@@ -789,6 +1097,70 @@ describe("ExperienceService", () => {
   })
 
   // ---------------------------------------------------------------------------
+  // discardLocaleDraft
+  // ---------------------------------------------------------------------------
+
+  describe("discardLocaleDraft", () => {
+    const locale = {
+      id: "loc-discard",
+      experienceId: "exp-1",
+      locale: "en",
+      slug: "live",
+      isHomepage: false,
+      pathSegment: null,
+      title: "Live",
+      metaDescription: null,
+      ogTitle: null,
+      ogDescription: null,
+      ogImageUrl: null,
+      blocks: [],
+      status: "PUBLISHED",
+      publishedAt: new Date(),
+      experience: { ownerId: "alice", archivedAt: null },
+    }
+
+    it("retires an active draft without changing canonical content", async () => {
+      prisma.experienceLocale.findUniqueOrThrow.mockResolvedValueOnce(locale)
+      prisma.contentRevision.findFirst.mockResolvedValueOnce({ id: "draft-1" })
+
+      const result = await service.discardLocaleDraft({
+        input: { id: "loc-discard" },
+        user: EDITOR_ALICE,
+      })
+
+      expect(result).toEqual(locale)
+      expect(prisma.contentRevision.update).toHaveBeenCalledWith({
+        where: { id: "draft-1" },
+        data: { status: "DISCARDED" },
+      })
+      expect(prisma.seoProposalMaterialization.updateMany).toHaveBeenCalledWith(
+        {
+          where: {
+            contentRevisionId: "draft-1",
+            status: { not: "STALE" },
+          },
+          data: { status: "STALE" },
+        },
+      )
+      expect(prisma.experienceLocale.update).not.toHaveBeenCalled()
+      expect(refreshWatchRouteManifest).not.toHaveBeenCalled()
+    })
+
+    it("is idempotent when there is no active draft", async () => {
+      prisma.experienceLocale.findUniqueOrThrow.mockResolvedValueOnce(locale)
+      prisma.contentRevision.findFirst.mockResolvedValueOnce(null)
+
+      await expect(
+        service.discardLocaleDraft({
+          input: { id: "loc-discard" },
+          user: EDITOR_ALICE,
+        }),
+      ).resolves.toEqual(locale)
+      expect(prisma.contentRevision.update).not.toHaveBeenCalled()
+    })
+  })
+
+  // ---------------------------------------------------------------------------
   // restoreLocaleRevision
   // ---------------------------------------------------------------------------
 
@@ -866,30 +1238,24 @@ describe("ExperienceService", () => {
       })
 
       expect(result.slug).toBe("restored-slug")
-      expect(prisma.contentRevision.update).toHaveBeenCalledWith(
+      expect(prisma.contentRevision.create).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: { id: "rev-1" },
           data: expect.objectContaining({
-            appliedAt: expect.any(Date),
-          }),
-        }),
-      )
-      expect(prisma.experienceLocale.update).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: { id: "loc-1" },
-          data: expect.objectContaining({
-            slug: "restored-slug",
-            title: "Restored title",
-            pathSegment: "restored",
-            isHomepage: true,
+            entityId: "loc-1",
             status: "DRAFT",
+            snapshot: expect.objectContaining({
+              data: expect.objectContaining({
+                slug: "restored-slug",
+                title: "Restored title",
+                pathSegment: "restored",
+                isHomepage: true,
+              }),
+            }),
           }),
         }),
       )
-      expect(refreshWatchRouteManifest).toHaveBeenCalledWith({
-        prisma,
-        reason: "experience.update",
-      })
+      expect(prisma.experienceLocale.update).not.toHaveBeenCalled()
+      expect(refreshWatchRouteManifest).not.toHaveBeenCalled()
     })
 
     it("does not refresh the public manifest when restoring an already-draft locale", async () => {

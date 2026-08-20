@@ -494,6 +494,42 @@ describe("buildWatchHomeModelFromVideos", () => {
   })
 })
 
+describe("resolveWatchHomePreview", () => {
+  afterEach(() => {
+    queryMock.mockReset()
+    unstableCacheCalls.length = 0
+    vi.resetModules()
+  })
+
+  it("uses one uncached video query and the supplied staged overrides", async () => {
+    queryMock.mockResolvedValueOnce({
+      data: { watchHomeVideos: [makeVideo()] },
+    })
+
+    const { resolveWatchHomePreview } = await import("../watch-home")
+    const stagedBlocks = [
+      {
+        __typename: "MediaCollectionBlock",
+        sectionKey: "preview-section",
+        items: [],
+      },
+    ] as never
+    const result = await resolveWatchHomePreview("ru", "russian", stagedBlocks)
+
+    expect(result.error).toBeNull()
+    expect(queryMock).toHaveBeenCalledTimes(1)
+    expect(queryMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        variables: expect.objectContaining({
+          locale: "ru",
+          languageSlug: "russian",
+        }),
+        fetchPolicy: "no-cache",
+      }),
+    )
+  })
+})
+
 describe("resolveWatchHome", () => {
   afterEach(() => {
     queryMock.mockReset()

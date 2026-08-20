@@ -57,6 +57,7 @@ const REDIRECT_CACHE_CONTROL = "private, max-age=0"
 const MAX_PATH_LEN = 2048
 const SAFE_PUBLIC_PATH = /^\/[A-Za-z0-9._\-/]+$/
 const DEMO_PREFIXES = new Set(["demo-search", "demo-recommendations"])
+const EXPERIENCE_PREVIEW_PREFIX = "/preview/experience/"
 const WATCH_UNAVAILABLE_SENTINEL_PATH = "/unavailable/404"
 export const WATCH_INTERNAL_REWRITE_HEADER = "x-forge-watch-internal-rewrite"
 export const WATCH_SUBTITLE_INTENT_REWRITE_HEADER =
@@ -141,6 +142,13 @@ function redirectDeprecatedSearch(request: ProxyRequest): NextResponse {
 function applyWatchSecurityHeaders(response: NextResponse): NextResponse {
   response.headers.set("Content-Security-Policy", "frame-ancestors 'self'")
   response.headers.set("Referrer-Policy", "strict-origin")
+  return response
+}
+
+function applyExperiencePreviewHeaders(response: NextResponse): NextResponse {
+  response.headers.set("Cache-Control", "private, no-store, max-age=0")
+  response.headers.set("X-Robots-Tag", "noindex, nofollow, noarchive")
+  response.headers.set("Referrer-Policy", "no-referrer")
   return response
 }
 
@@ -678,6 +686,10 @@ async function isAdmittedInternalRewrite(
 
 export async function proxy(request: ProxyRequest): Promise<NextResponse> {
   const { pathname } = request.nextUrl
+
+  if (pathname.startsWith(EXPERIENCE_PREVIEW_PREFIX)) {
+    return applyExperiencePreviewHeaders(NextResponse.next())
+  }
 
   if (shouldBypassLocaleRewrite(pathname)) return NextResponse.next()
 

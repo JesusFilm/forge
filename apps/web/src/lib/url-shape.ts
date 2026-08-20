@@ -35,6 +35,7 @@ export const RESERVED_PREFIXES: ReadonlySet<string> = new Set([
   "images",
   "fonts",
   "favicon.ico",
+  "preview",
   "sitemap",
   "robots.txt",
   "sitemap.xml",

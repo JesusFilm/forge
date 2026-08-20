@@ -6,6 +6,8 @@ const {
   experienceCreate,
   experienceLocaleFindFirst,
   experienceLocaleFindUniqueOrThrow,
+  contentRevisionFindFirst,
+  contentRevisionCreate,
   transactionMock,
 } = vi.hoisted(() => ({
   rateLimitMock: vi.fn(),
@@ -13,6 +15,8 @@ const {
   experienceCreate: vi.fn(),
   experienceLocaleFindFirst: vi.fn(),
   experienceLocaleFindUniqueOrThrow: vi.fn(),
+  contentRevisionFindFirst: vi.fn(),
+  contentRevisionCreate: vi.fn(),
   transactionMock: vi.fn(),
 }))
 
@@ -37,6 +41,11 @@ vi.mock("@/db/client", () => ({
       findFirst: (...args: unknown[]) => experienceLocaleFindFirst(...args),
       findUniqueOrThrow: (...args: unknown[]) =>
         experienceLocaleFindUniqueOrThrow(...args),
+    },
+    contentRevision: {
+      findMany: vi.fn().mockResolvedValue([]),
+      findFirst: (...args: unknown[]) => contentRevisionFindFirst(...args),
+      create: (...args: unknown[]) => contentRevisionCreate(...args),
     },
   },
 }))
@@ -76,10 +85,25 @@ describe("Admin MCP route", () => {
     })
     experienceLocaleFindFirst.mockReset()
     experienceLocaleFindUniqueOrThrow.mockReset()
+    contentRevisionFindFirst.mockReset().mockResolvedValue(null)
+    contentRevisionCreate.mockReset().mockResolvedValue({ id: "draft-1" })
     transactionMock.mockImplementation((callback) =>
       callback({
-        contentRevision: { create: vi.fn() },
-        experienceLocale: { update: vi.fn() },
+        $queryRaw: vi.fn(),
+        experience: {
+          create: (...args: unknown[]) => experienceCreate(...args),
+        },
+        contentRevision: {
+          findFirst: (...args: unknown[]) => contentRevisionFindFirst(...args),
+          create: (...args: unknown[]) => contentRevisionCreate(...args),
+          update: vi.fn(),
+        },
+        seoProposalMaterialization: { updateMany: vi.fn() },
+        experienceLocale: {
+          findUniqueOrThrow: (...args: unknown[]) =>
+            experienceLocaleFindUniqueOrThrow(...args),
+          update: vi.fn(),
+        },
       }),
     )
   })
@@ -199,7 +223,7 @@ describe("Admin MCP route", () => {
   })
 
   it("requires publish scope before dispatching the publish tool", async () => {
-    experienceLocaleFindUniqueOrThrow.mockResolvedValueOnce({
+    const canonical = {
       id: "loc_1",
       experienceId: "exp-1",
       locale: "es",
@@ -217,11 +241,34 @@ describe("Admin MCP route", () => {
       createdAt: new Date("2026-07-21T11:00:00.000Z"),
       updatedAt: new Date("2026-07-21T12:00:00.000Z"),
       experience: { ownerId: "user_1", archivedAt: null },
-    })
+    }
+    experienceLocaleFindUniqueOrThrow.mockResolvedValue(canonical)
     transactionMock.mockImplementationOnce(async (callback) =>
       callback({
-        contentRevision: { create: vi.fn() },
+        $queryRaw: vi.fn(),
+        contentRevision: {
+          findFirst: vi.fn().mockResolvedValue({
+            id: "draft-1",
+            snapshot: {
+              v: 1,
+              data: {
+                slug: "esperanza",
+                isHomepage: false,
+                pathSegment: null,
+                title: "Esperanza",
+                metaDescription: null,
+                ogTitle: null,
+                ogDescription: null,
+                ogImageUrl: null,
+                blocks: [{ t: "text", heading: "Esperanza" }],
+              },
+            },
+          }),
+          create: vi.fn(),
+          update: vi.fn(),
+        },
         experienceLocale: {
+          findUniqueOrThrow: vi.fn().mockResolvedValue(canonical),
           update: vi.fn().mockResolvedValueOnce({
             id: "loc_1",
             experienceId: "exp-1",
@@ -276,7 +323,7 @@ describe("Admin MCP route", () => {
   })
 
   it("dispatches implemented read tools and returns structured MCP content", async () => {
-    experienceLocaleFindFirst.mockResolvedValueOnce({
+    const canonical = {
       id: "loc-en",
       experienceId: "exp-1",
       locale: "en",
@@ -296,8 +343,11 @@ describe("Admin MCP route", () => {
         id: "exp-1",
         isTemplate: false,
         ownerId: "user_1",
+        archivedAt: null,
       },
-    })
+    }
+    experienceLocaleFindFirst.mockResolvedValueOnce(canonical)
+    experienceLocaleFindUniqueOrThrow.mockResolvedValueOnce(canonical)
 
     const res = await POST(
       post({

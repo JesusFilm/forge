@@ -27,6 +27,9 @@ const SOURCE_FILES = SOURCE_DIRS.flatMap((dir) =>
 const INTENDED_PUBLIC_RESOLVERS = [
   // Pre-existing
   "experienceBySlug",
+  // Unlisted draft-lifetime capability. The resolver returns only the narrow
+  // render DTO and never falls back to canonical content.
+  "experiencePreview",
   "searchExperiences",
   "watchSearch",
   "watchSearchSuggestions",

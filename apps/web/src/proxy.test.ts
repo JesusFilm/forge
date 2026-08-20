@@ -141,6 +141,29 @@ function rewrittenRequestHeaders(response: Response): Headers {
   return headers
 }
 
+describe("proxy — Experience draft preview", () => {
+  it("bypasses Watch routing with private crawler-suppression headers", async () => {
+    const response = await proxy(
+      makeRequest("/preview/experience/private-capability-token"),
+    )
+
+    expect(response.headers.get("x-middleware-rewrite")).toBeNull()
+    expect(response.headers.get("cache-control")).toBe(
+      "private, no-store, max-age=0",
+    )
+    expect(response.headers.get("x-robots-tag")).toBe(
+      "noindex, nofollow, noarchive",
+    )
+    expect(response.headers.get("referrer-policy")).toBe("no-referrer")
+  })
+
+  it("does not apply capability headers to unrelated preview-like paths", async () => {
+    const response = await proxy(makeRequest("/previewing/experience/token"))
+
+    expect(response.headers.get("x-robots-tag")).toBeNull()
+  })
+})
+
 // ---------------------------------------------------------------------------
 // Phase 3 canonicalize integration — every row from research §5.4 must
 // produce the exact (status, Location) tuple, AND every redirect must

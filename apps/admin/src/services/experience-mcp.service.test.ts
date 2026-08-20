@@ -13,7 +13,20 @@ vi.mock("@/services/watch-route-manifest-refresh.service", () => ({
 
 function mockPrisma() {
   const contentRevisionCreate = vi.fn()
+  const contentRevisionFindFirst = vi.fn().mockResolvedValue(null)
+  const contentRevisionUpdate = vi
+    .fn()
+    .mockImplementation(async ({ data }) => ({
+      id: "draft-1",
+      previewToken: "preview-token",
+      revisedAt: updatedAt,
+      revisedBy: "admin-1",
+      revisedByKind: "AI",
+      reason: data.reason,
+      ...data,
+    }))
   const experienceLocaleUpdate = vi.fn()
+  const experienceLocaleFindUniqueOrThrow = vi.fn()
   const experienceCreate = vi.fn()
   return {
     experience: {
@@ -21,14 +34,29 @@ function mockPrisma() {
     },
     experienceLocale: {
       findFirst: vi.fn(),
+      findUniqueOrThrow: experienceLocaleFindUniqueOrThrow,
+    },
+    contentRevision: {
+      findFirst: contentRevisionFindFirst,
+      create: contentRevisionCreate,
     },
     contentRevisionCreate,
+    contentRevisionUpdate,
     experienceLocaleUpdate,
     $transaction: vi.fn(
       (callback: (tx: unknown) => Promise<unknown>): Promise<unknown> =>
         callback({
-          contentRevision: { create: contentRevisionCreate },
-          experienceLocale: { update: experienceLocaleUpdate },
+          $queryRaw: vi.fn(),
+          contentRevision: {
+            findFirst: contentRevisionFindFirst,
+            create: contentRevisionCreate,
+            update: contentRevisionUpdate,
+          },
+          seoProposalMaterialization: { updateMany: vi.fn() },
+          experienceLocale: {
+            findUniqueOrThrow: experienceLocaleFindUniqueOrThrow,
+            update: experienceLocaleUpdate,
+          },
           // The atomic generate persist runs ExperienceService.create through
           // the transaction client — same handle as the top-level mock.
           experience: { create: experienceCreate },
@@ -115,7 +143,7 @@ describe("ExperienceMcpService", () => {
             create: expect.objectContaining({
               locale: "en",
               slug: "hope",
-              title: "Hope",
+              blocks: [],
             }),
           }),
         }),
@@ -242,11 +270,7 @@ describe("ExperienceMcpService", () => {
         data: expect.objectContaining({
           locales: expect.objectContaining({
             create: expect.objectContaining({
-              blocks: [
-                expect.objectContaining({
-                  contentParagraphs: [cjkParagraph],
-                }),
-              ],
+              blocks: [],
             }),
           }),
         }),
@@ -305,11 +329,21 @@ describe("ExperienceMcpService.generateExperience", () => {
 
   function primeHappyPersistence() {
     prisma.experienceLocale.findFirst.mockResolvedValueOnce(null)
-    prisma.experience.create.mockResolvedValueOnce(CREATED_EXPERIENCE)
-    prisma.experienceLocaleUpdate.mockResolvedValueOnce({
-      ...CREATED_LOCALE,
-      metaDescription: "A page about hope.",
-    })
+    prisma.experience.create.mockImplementationOnce(
+      async ({
+        data,
+      }: {
+        data: { locales: { create: { slug: string } } }
+      }) => ({
+        ...CREATED_EXPERIENCE,
+        locales: [
+          {
+            ...CREATED_LOCALE,
+            slug: data.locales.create.slug,
+          },
+        ],
+      }),
+    )
   }
 
   it("short-circuits to config_missing before any candidates or mastra call", async () => {
@@ -537,7 +571,7 @@ describe("ExperienceMcpService.generateExperience", () => {
           locales: expect.objectContaining({
             create: expect.objectContaining({
               slug: "hope-in-hard-times",
-              title: "Hope in Hard Times",
+              blocks: [],
             }),
           }),
         }),
@@ -551,22 +585,58 @@ describe("ExperienceMcpService.generateExperience", () => {
           revisedBy: "admin-1",
           revisedByKind: "AI",
           reason: expect.stringContaining("experience.generate"),
-          // The provenance snapshot records the FULL generated draft as
-          // born, including the AI metaDescription.
+          status: "DRAFT",
           snapshot: expect.objectContaining({
             data: expect.objectContaining({
+              slug: "hope-in-hard-times",
+              title: "Hope in Hard Times",
               metaDescription: "A page about hope.",
+              blocks: [
+                expect.objectContaining({
+                  t: "text",
+                  heading: "Hope",
+                  contentParagraphs: ["p1"],
+                }),
+                expect.objectContaining({
+                  t: "text",
+                  heading: "More hope",
+                  contentParagraphs: ["p2"],
+                }),
+              ],
             }),
           }),
         }),
       }),
     )
-    expect(prisma.experienceLocaleUpdate).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: { id: "loc-en" },
-        data: { metaDescription: "A page about hope." },
-      }),
+    expect(prisma.$transaction).toHaveBeenCalledTimes(1)
+    expect(prisma.contentRevisionUpdate).not.toHaveBeenCalled()
+    expect(prisma.experienceLocaleUpdate).not.toHaveBeenCalled()
+  })
+
+  it("returns persist_failed from the single atomic create transaction when the generated draft revision cannot be written", async () => {
+    prisma.experienceLocale.findFirst.mockResolvedValueOnce(null)
+    prisma.experience.create.mockResolvedValueOnce(CREATED_EXPERIENCE)
+    prisma.contentRevisionCreate.mockRejectedValueOnce(
+      new Error("revision write failed"),
     )
+    const service = makeService()
+
+    await expect(
+      service.generateExperience({ input: GENERATE_INPUT, user: ADMIN }),
+    ).resolves.toMatchObject({
+      ok: false,
+      reason: "persist_failed",
+      retryable: false,
+    })
+
+    // Experience + locale and the complete generated draft revision are
+    // written in this one Prisma transaction. A revision failure therefore
+    // rolls the slug-owning rows back instead of leaving an orphan behind.
+    expect(prisma.$transaction).toHaveBeenCalledTimes(1)
+    expect(prisma.experience.create).toHaveBeenCalledTimes(1)
+    expect(prisma.contentRevisionCreate).toHaveBeenCalledTimes(1)
+    expect(prisma.contentRevisionUpdate).not.toHaveBeenCalled()
+    expect(prisma.experienceLocaleUpdate).not.toHaveBeenCalled()
   })
 
   it("routes through the persona variant path when personaId is present", async () => {
@@ -674,7 +744,7 @@ describe("ExperienceMcpService.generateExperience", () => {
     expect(prisma.experience.create).not.toHaveBeenCalled()
   })
 
-  it("skips the metaDescription update when the generated meta is empty but still writes the revision", async () => {
+  it("persists a normalized empty metaDescription in the atomic draft revision", async () => {
     prisma.experienceLocale.findFirst.mockResolvedValueOnce(null)
     prisma.experience.create.mockResolvedValueOnce(CREATED_EXPERIENCE)
     const whitespaceMeta: DraftExperience = {
@@ -695,7 +765,15 @@ describe("ExperienceMcpService.generateExperience", () => {
 
     expect(result).toMatchObject({ ok: true })
     expect(prisma.experienceLocaleUpdate).not.toHaveBeenCalled()
-    expect(prisma.contentRevisionCreate).toHaveBeenCalled()
+    expect(prisma.contentRevisionCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          snapshot: expect.objectContaining({
+            data: expect.objectContaining({ metaDescription: "" }),
+          }),
+        }),
+      }),
+    )
   })
 
   it("clamps a persona-derived slug to the 200-char create cap before any paid work", async () => {
@@ -714,24 +792,6 @@ describe("ExperienceMcpService.generateExperience", () => {
     const probed = prisma.experienceLocale.findFirst.mock.calls[0][0].where.slug
     expect(probed.length).toBeLessThanOrEqual(200)
     expect(probed.endsWith("-grieving")).toBe(true)
-  })
-
-  it("reports persist_failed when the atomic transaction rejects (nothing partially persisted)", async () => {
-    prisma.experienceLocale.findFirst.mockResolvedValueOnce(null)
-    prisma.experience.create.mockResolvedValueOnce(CREATED_EXPERIENCE)
-    prisma.contentRevisionCreate.mockRejectedValueOnce(new Error("db blip"))
-    const service = makeService()
-
-    await expect(
-      service.generateExperience({ input: GENERATE_INPUT, user: ADMIN }),
-    ).resolves.toMatchObject({
-      ok: false,
-      reason: "persist_failed",
-      retryable: false,
-    })
-    // The create ran INSIDE the same transaction as the failing revision
-    // write, so the rejection rolls the whole persist back in production.
-    expect(prisma.$transaction).toHaveBeenCalledTimes(1)
   })
 
   it("sanitizes CR/LF out of error messages in plain-string logs", async () => {

@@ -128,7 +128,8 @@ export const ADMIN_MCP_TOOLS = [
   },
   {
     name: "experience.locale.publish",
-    description: "Publish a validated ExperienceLocale.",
+    description:
+      "Publish the one active shared draft for an ExperienceLocale into canonical public content.",
     requiredScopes: ["experience:publish"],
     inputSchema: {
       type: "object",
@@ -137,6 +138,34 @@ export const ADMIN_MCP_TOOLS = [
         reason: { type: "string" },
       },
       required: ["localeId", "reason"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "experience.locale.discard",
+    description:
+      "Discard the active shared draft for an ExperienceLocale without changing canonical public content.",
+    requiredScopes: ["experience:locale:update"],
+    inputSchema: {
+      type: "object",
+      properties: {
+        localeId: { type: "string" },
+      },
+      required: ["localeId"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "experience.locale.preview",
+    description:
+      "Return the unlisted public preview URL for the active shared ExperienceLocale draft. The URL remains valid until that draft is published or discarded.",
+    requiredScopes: ["experience:read"],
+    inputSchema: {
+      type: "object",
+      properties: {
+        localeId: { type: "string" },
+      },
+      required: ["localeId"],
       additionalProperties: false,
     },
   },
