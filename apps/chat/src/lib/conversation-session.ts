@@ -67,6 +67,10 @@ export type ConversationSessionDeps = {
     signal?: AbortSignal
   }) => Promise<FetchHistoryThreadResult>
   seekerEnabled: boolean
+  /** Deep-link seed (feat-209): when set, construction seeds this id as the
+   * ONLY row (an adopted server-origin conversation) and the active id;
+   * activate() starts its replay. Validation happens at the callers. */
+  initialConversationId?: string
 }
 
 /**
@@ -88,6 +92,16 @@ export type ConversationSession = {
   send(text: string): void
   stopReply(): void
   selectConversation(id: string): void
+  /**
+   * Adopt a server thread id at runtime (feat-209 — the popstate path).
+   * A known id selects like selectConversation (kept client rows stay
+   * traversable after a mid-session revert); an unknown id seeds an adopted
+   * server-origin row, makes it active, and starts its replay. Returns true
+   * when the id is (now) active; false — adding NO row — only for an unknown
+   * id while history sits in the terminal "denied" phase (a mid-session
+   * access denial): the refusal contract covers UNKNOWN ids only.
+   */
+  adoptConversation(id: string): boolean
   newConversation(): void
   retryHistory(): void
   loadMoreHistory(): void
@@ -186,14 +200,32 @@ export function mergeReplayMessages(
   return [...transcript, ...existing]
 }
 
+// Adopt-by-id seed (feat-209, KTD3): a server thread the session has never
+// seen. lastActivityAt is deliberately OMITTED so a later hydration merge's
+// updatedAt fills it; title "" keeps the existing title backfills unchanged.
+function seedAdoptedConversation(id: string): Conversation {
+  return {
+    id,
+    title: "",
+    messages: [],
+    origin: "server",
+    serverPersisted: true,
+    replay: "idle",
+  }
+}
+
 /**
  * Sidebar ordering (KTD9): fresh empty local conversations pinned on top (in
- * their existing order), then everything else activity-descending — local
- * conversations by the `lastActivityAt` stamped on send, server rows by their
- * listed `updatedAt`. Pure — exported for direct unit coverage.
+ * their existing order) — joined, feat-209 (R3), by an ACTIVE
+ * `lastActivityAt`-less server-origin row (an adopted deep link awaiting its
+ * hydration stamp; deselected it falls to last naturally, its key is 0) —
+ * then everything else activity-descending: local conversations by the
+ * `lastActivityAt` stamped on send, server rows by their listed `updatedAt`.
+ * Pure — exported for direct unit coverage.
  */
 export function orderConversations(
   conversations: Conversation[],
+  activeId: string,
 ): Conversation[] {
   const pinned: Conversation[] = []
   const rest: Conversation[] = []
@@ -201,6 +233,12 @@ export function orderConversations(
     if (
       conversation.origin !== "server" &&
       conversation.messages.length === 0
+    ) {
+      pinned.push(conversation)
+    } else if (
+      conversation.id === activeId &&
+      conversation.origin === "server" &&
+      conversation.lastActivityAt === undefined
     ) {
       pinned.push(conversation)
     } else {
@@ -241,11 +279,20 @@ export function orderConversations(
  * all in this module). History fetches track their own AbortController —
  * never the reply-slot map, which doubles as the double-send guard and the
  * sidebar "Replying" pulse.
+ *
+ * Deep-link adoption (feat-209): `initialConversationId` seeds an adopted
+ * server-origin row at construction; adoptConversation() backs the popstate
+ * path. Adopted rows survive a mid-session revert as replay "not_available"
+ * (R1) and are dropped once deselected in that state (R2) — a hydration page
+ * listing the id clears the marker and makes the row permanent.
  */
 export function createConversationSession(
   deps: ConversationSessionDeps,
 ): ConversationSession {
-  let conversations: Conversation[] = [createConversation()]
+  let conversations: Conversation[] =
+    deps.initialConversationId === undefined
+      ? [createConversation()]
+      : [seedAdoptedConversation(deps.initialConversationId)]
   let activeId: string = conversations[0]?.id ?? ""
   let draft = ""
   let history: HistoryState = HISTORY_IDLE
@@ -266,6 +313,25 @@ export function createConversationSession(
   // finalizes quietly (partial text kept, no failure notice) instead of as a
   // teardown abort. Consumed where the stream settles in send().
   const stopped = new Set<string>()
+
+  // Adopted thread ids (feat-209) — session-internal, never a Conversation
+  // field. A hydration page listing an id clears it (proven history); it
+  // survives deactivation (not fetch-completing state).
+  const adoptedIds = new Set<string>(
+    deps.initialConversationId === undefined
+      ? []
+      : [deps.initialConversationId],
+  )
+
+  // The id the user deep-linked into (feat-209, KTD3 rule 1): permanently
+  // exempt from the revert removal — a hydration-cleared marker must not
+  // strip rule-1 protection from the row the user landed on.
+  const deepLinkId = deps.initialConversationId ?? null
+
+  // Adopted ids whose R2 drop resolved them dead this session (feat-209):
+  // re-adoption re-seeds the cached "not_available" pane without refetching.
+  // Survives deactivate() — cache semantics, not fetch-completing state.
+  const deadAdoptedIds = new Set<string>()
 
   // History fetches get their own abort tracking (KTD11) — one session-owned
   // controller aborted on deactivate; select-away never aborts a replay fetch.
@@ -412,12 +478,27 @@ export function createConversationSession(
 
   /** Silent revert to the client-only sidebar on a mid-session access denial
    * (KTD8/R16): message-less server rows disappear; anything the user already
-   * replayed or resumed stays (it is client state now). No nudge, no banner. */
+   * replayed or resumed stays (it is client state now). No nudge, no banner.
+   * Adopted rows are exempt (feat-209 R1) and resolve to replay
+   * "not_available" instead — never a silently vacated deep-link pane. */
   function revertToClientOnly() {
     history = { ...HISTORY_IDLE, phase: "denied" }
     const activeConversation = conversations.find((c) => c.id === activeId)
+    // The deep-link row stays protected even after hydration cleared its
+    // marker — a listed row is still the pane the user deep-linked into,
+    // and removing it here would silently vacate it (rule 1).
     const isRemovable = (c: Conversation) =>
-      c.origin === "server" && c.messages.length === 0
+      c.origin === "server" &&
+      c.messages.length === 0 &&
+      !adoptedIds.has(c.id) &&
+      c.id !== deepLinkId
+    // A LOADED adopted row is exempt from the flip: its replay already proved
+    // ownership server-side, so it is kept client state (R16 silence) — and
+    // flipping it would let the R2 deselect-drop discard a proven transcript.
+    const toUnavailable = (c: Conversation): Conversation =>
+      (adoptedIds.has(c.id) || c.id === deepLinkId) && c.replay !== "loaded"
+        ? { ...c, replay: "not_available" }
+        : c
     if (activeConversation !== undefined && isRemovable(activeConversation)) {
       // The active pane is a disappearing server row — land on the existing
       // fresh local conversation when one is left, else mint one (never both:
@@ -429,10 +510,14 @@ export function createConversationSession(
       const fresh = fallback ?? createConversation()
       activeId = fresh.id
       draft = ""
-      const kept = conversations.filter((c) => !isRemovable(c))
+      const kept = conversations
+        .filter((c) => !isRemovable(c))
+        .map(toUnavailable)
       conversations = fallback ? kept : [fresh, ...kept]
     } else {
-      conversations = conversations.filter((c) => !isRemovable(c))
+      conversations = conversations
+        .filter((c) => !isRemovable(c))
+        .map(toUnavailable)
     }
     commit()
   }
@@ -459,6 +544,13 @@ export function createConversationSession(
       }
       nextPage = page + 1
       conversations = mergeServerThreads(conversations, result.threads)
+      // A hydration-confirmed row is proven part of the user's history — it
+      // stops being "adopted" AND stops counting as session-dead (a listed
+      // row is live by definition, feat-209).
+      for (const row of result.threads) {
+        adoptedIds.delete(row.id)
+        deadAdoptedIds.delete(row.id)
+      }
       history = {
         phase: "loaded",
         hasMore: result.hasMore,
@@ -717,6 +809,25 @@ export function createConversationSession(
     controller.abort()
   }
 
+  // R2 (feat-209): a DESELECTED adopted row whose replay resolved
+  // "not_available" was never proven history — drop it. A marker cleared by
+  // hydration exempts the row for good. Callers commit after.
+  function dropAbandonedAdopted(previousActiveId: string) {
+    const row = conversations.find((c) => c.id === previousActiveId)
+    if (
+      row === undefined ||
+      !adoptedIds.has(row.id) ||
+      row.replay !== "not_available"
+    ) {
+      return
+    }
+    adoptedIds.delete(row.id)
+    // Remember the id as session-dead: re-adoption (back into the dead deep
+    // link) re-seeds the cached "not_available" pane instead of refetching.
+    deadAdoptedIds.add(row.id)
+    conversations = conversations.filter((c) => c.id !== row.id)
+  }
+
   function newConversation() {
     // feat-270: reuse the existing never-used local conversation instead of
     // minting an identical sibling — so at most one fresh row ever exists.
@@ -725,27 +836,64 @@ export function createConversationSession(
     )
     if (existing) {
       if (existing.id !== activeId) {
+        const previousId = activeId
         activeId = existing.id
         draft = ""
+        dropAbandonedAdopted(previousId)
         commit()
       }
       return
     }
     const conversation = createConversation()
+    const previousId = activeId
     activeId = conversation.id
     conversations = [conversation, ...conversations]
     draft = ""
+    dropAbandonedAdopted(previousId)
     commit()
   }
 
   function selectConversation(id: string) {
     if (id === activeId) return
+    const previousId = activeId
     activeId = id
     draft = ""
+    dropAbandonedAdopted(previousId)
     commit()
     // Selection is the lazy-replay trigger (the old hook's [activeId] effect);
     // newConversation/revert always land on local rows, where this no-ops.
     maybeStartReplay()
+  }
+
+  function adoptConversation(id: string): boolean {
+    if (id === activeId) return true
+    if (conversations.some((c) => c.id === id)) {
+      // Known id: selectConversation semantics (select + lazy replay). Kept
+      // client rows stay traversable even after a mid-session revert.
+      selectConversation(id)
+      return true
+    }
+    // Refusal covers UNKNOWN ids only: after a mid-session access denial the
+    // terminal "denied" phase admits no new server row (KTD8).
+    if (history.phase === "denied") return false
+    const previousId = activeId
+    adoptedIds.add(id)
+    // A session-dead id re-seeds its cached terminal state — the replay is
+    // session-cached ("cannot repeat"), so back into a dead deep link
+    // re-renders the pane without ever re-firing the thread fetch.
+    const dead = deadAdoptedIds.has(id)
+    conversations = [
+      ...conversations,
+      dead
+        ? { ...seedAdoptedConversation(id), replay: "not_available" }
+        : seedAdoptedConversation(id),
+    ]
+    activeId = id
+    draft = ""
+    dropAbandonedAdopted(previousId)
+    commit()
+    if (!dead) maybeStartReplay()
+    return true
   }
 
   function setDraft(value: string) {
@@ -815,6 +963,7 @@ export function createConversationSession(
     send,
     stopReply,
     selectConversation,
+    adoptConversation,
     newConversation,
     retryHistory,
     loadMoreHistory,

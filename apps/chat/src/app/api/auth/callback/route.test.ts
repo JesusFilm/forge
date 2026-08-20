@@ -196,14 +196,14 @@ describe("GET /api/auth/callback — force-login marker consumption (feat-240)",
 })
 
 describe("GET /api/auth/callback — failures (R8/R9/R12, all one catch)", () => {
-  it("rejects a state mismatch: no session, home + R12 marker", async () => {
+  it("rejects a state mismatch: no session, stashed return_to + R12 marker", async () => {
     const { GET } = await loadRoute()
     const res = await GET(
       callbackRequest({ state: "attacker", stateCookie: STATE }),
     )
     expect(res.status).toBe(302)
     expect(res.headers.get("location")).toBe(
-      "https://chat.example.com/?signin=failed",
+      "https://chat.example.com/thread/9?signin=failed",
     )
     expect(res.headers.getSetCookie().join("\n")).not.toContain(
       "forge_chat_session=ey",
@@ -211,7 +211,7 @@ describe("GET /api/auth/callback — failures (R8/R9/R12, all one catch)", () =>
     expect(oauth.exchangeChatAuthorizationCode).not.toHaveBeenCalled()
   })
 
-  it("rejects a missing verifier cookie (R8): no session, home", async () => {
+  it("rejects a missing verifier cookie (R8): no session, R12 marker", async () => {
     const { GET } = await loadRoute()
     const res = await GET(callbackRequest({ verifierCookie: null }))
     expect(res.headers.get("location")).toContain("signin=failed")
@@ -295,5 +295,57 @@ describe("GET /api/auth/callback — R9 no access-token fallback (route boundary
     expect(res.headers.getSetCookie().join("\n")).not.toContain(
       "forge_chat_session=ey",
     )
+  })
+})
+
+describe("GET /api/auth/callback — failure keeps the validated return_to (feat-209)", () => {
+  const DEEP_LINK =
+    "https://chat.example.com/c/6f9619ff-8b86-4d01-b42d-00cf4fc964ff"
+
+  it("redirects a failed sign-in back to the stashed /c/<id> deep link with the marker", async () => {
+    const { GET } = await loadRoute()
+    const res = await GET(
+      callbackRequest({ state: "attacker", returnToCookie: DEEP_LINK }),
+    )
+    expect(res.status).toBe(302)
+    expect(res.headers.get("location")).toBe(`${DEEP_LINK}?signin=failed`)
+  })
+
+  it("falls back to home + marker when NO return_to was stashed", async () => {
+    const { GET } = await loadRoute()
+    const res = await GET(
+      callbackRequest({ state: "attacker", returnToCookie: null }),
+    )
+    expect(res.headers.get("location")).toBe(
+      "https://chat.example.com/?signin=failed",
+    )
+  })
+
+  it("falls back to home + marker for a CROSS-ORIGIN stashed return_to (R10 — no new redirect authority)", async () => {
+    const { GET } = await loadRoute()
+    const res = await GET(
+      callbackRequest({
+        state: "attacker",
+        returnToCookie:
+          "https://evil.example.com/c/6f9619ff-8b86-4d01-b42d-00cf4fc964ff",
+      }),
+    )
+    expect(res.headers.get("location")).toBe(
+      "https://chat.example.com/?signin=failed",
+    )
+  })
+
+  it("keeps an existing query string on the return_to — marker appended, not clobbered", async () => {
+    const { GET } = await loadRoute()
+    const res = await GET(
+      callbackRequest({
+        state: "attacker",
+        returnToCookie: `${DEEP_LINK}?x=1`,
+      }),
+    )
+    const location = new URL(res.headers.get("location") ?? "")
+    expect(location.origin + location.pathname).toBe(DEEP_LINK)
+    expect(location.searchParams.get("x")).toBe("1")
+    expect(location.searchParams.get("signin")).toBe("failed")
   })
 })
