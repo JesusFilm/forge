@@ -2296,10 +2296,10 @@ html[data-coverage-loading="true"] .collections::after {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 13px;
-  font-weight: 700;
+  font-size: 12px;
+  font-weight: 600;
   line-height: 1;
-  opacity: 0.55;
+  opacity: 0.32;
   pointer-events: none;
 }
 
@@ -3689,6 +3689,13 @@ html[data-coverage-loading="true"] .collections::after {
 
 .detail-thumb--empty {
   border: 1px dashed rgba(248, 250, 252, 0.25);
+}
+
+/* Video Pipelines: the placeholder thumbnail is generic (there's no real
+   render yet), so gray it out for a day that isn't finished -- full color
+   only once both aspects are actually generated. */
+.detail-thumb--pending {
+  filter: grayscale(1) opacity(0.6);
 }
 
 .detail-info {

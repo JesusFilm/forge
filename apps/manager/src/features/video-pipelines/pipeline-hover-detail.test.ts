@@ -27,6 +27,33 @@ describe("PipelineHoverDetailBar", () => {
     expect(markup).not.toContain("Hover any cell to see its details.")
   })
 
+  it("shows the thumbnail in full color for a finished (fully generated) day", () => {
+    const cell = buildDevotionsAugustCollection().cells[2]
+    if (!cell) throw new Error("expected a cell fixture")
+    expect(cell.mobileGenerated && cell.desktopGenerated).toBe(true)
+
+    const markup = renderToStaticMarkup(
+      React.createElement(PipelineHoverDetailBar, { hoveredCell: cell }),
+    )
+
+    expect(markup).not.toContain("detail-thumb--pending")
+  })
+
+  it("grays out the thumbnail for a day that isn't finished yet", () => {
+    const collection = buildDevotionsAugustCollection()
+    const pendingCell = collection.cells.find(
+      (cell) => !cell.mobileGenerated || !cell.desktopGenerated,
+    )
+    if (!pendingCell) throw new Error("expected a pending fixture cell")
+
+    const markup = renderToStaticMarkup(
+      React.createElement(PipelineHoverDetailBar, { hoveredCell: pendingCell }),
+    )
+
+    expect(markup).toContain("detail-thumb detail-thumb--pending")
+    expect(markup).toContain(`${pendingCell.title} — not generated yet`)
+  })
+
   it("shows the mobile/desktop generated-state icons for the hovered cell", () => {
     const collection = buildDevotionsAugustCollection()
     // Aug 8 is mobile-only generated per the deterministic fixture pattern.

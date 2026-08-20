@@ -1,7 +1,7 @@
 import type { CSSProperties } from "react"
 import { PipelineCellIcons } from "./pipeline-collection-card"
 import type { VideoPipelineCell } from "./video-pipeline-model"
-import { formatCellDate } from "./video-pipeline-model"
+import { computeAggregateStatus, formatCellDate } from "./video-pipeline-model"
 
 /**
  * Replaces the coverage report's description-style hover detail with a
@@ -27,6 +27,8 @@ export function PipelineHoverDetailBar({
     )
   }
 
+  const isFinished = computeAggregateStatus(hoveredCell) === "generated"
+
   return (
     <div
       className={`translation-bar is-detail is-preview${
@@ -47,9 +49,13 @@ export function PipelineHoverDetailBar({
           {hoveredCell.thumbnailUrl ? (
             /* eslint-disable-next-line @next/next/no-img-element */
             <img
-              className="detail-thumb"
+              className={`detail-thumb${isFinished ? "" : " detail-thumb--pending"}`}
               src={hoveredCell.thumbnailUrl}
-              alt={hoveredCell.title}
+              alt={
+                isFinished
+                  ? hoveredCell.title
+                  : `${hoveredCell.title} — not generated yet`
+              }
             />
           ) : (
             <div
