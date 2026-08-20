@@ -29,6 +29,7 @@ import { layout, text } from "../../src/styles/shared"
 import { useEndSessionOnViewerInitiatedPlayback } from "../../src/hooks/useEndSessionOnViewerInitiatedPlayback"
 import { pictureInPictureViewProps } from "../../src/lib/miniPlayer/pictureInPicture"
 import { resolveImageUrl } from "../../src/lib/resolveImageUrl"
+import { blockStreamingUrl } from "../../src/lib/blockVideoDub"
 import { validateStreamingUrl } from "../../src/lib/validateUrl"
 import { parseSectionKey } from "../../src/lib/parseSectionKey"
 import { useTypography } from "../../src/hooks/useTypography"
@@ -38,10 +39,22 @@ import type { AdminBlock } from "../../src/lib/queries"
 
 type CollectionItem = {
   videoId?: string | null
+  // Admin resolves the playable dub live into `videoDub`; it exposes no bare
+  // `streamingUrl` on an item. Always read through `blockStreamingUrl`.
+  videoDub?: {
+    hls?: string | null
+    dash?: string | null
+    share?: string | null
+  } | null
   streamingUrl?: string | null
   imageUrl?: string | null
   titleOverride?: string | null
   backgroundColor?: string | null
+}
+
+/** The item's playable url, from the dub admin actually sends. */
+function itemStreamUrl(item: CollectionItem | undefined): string | null {
+  return item == null ? null : blockStreamingUrl(item)
 }
 
 // ── Constants ───────────────────────────────────────────────────────────────
@@ -117,7 +130,7 @@ function CollectionPlayerContent({
   const playableIndices = useMemo(
     () =>
       items.reduce<number[]>((acc, item, i) => {
-        if (validateStreamingUrl(item.streamingUrl)) {
+        if (validateStreamingUrl(itemStreamUrl(item))) {
           acc.push(i)
         }
         return acc
@@ -138,7 +151,7 @@ function CollectionPlayerContent({
   // the creation source and swaps (replaceAsync + Mux-ID compare) on change.
   const activeStreamingUrl = useMemo(() => {
     if (currentIndex < 0 || currentIndex >= items.length) return null
-    const url = items[currentIndex]?.streamingUrl
+    const url = itemStreamUrl(items[currentIndex])
     return url && validateStreamingUrl(url) ? url : null
   }, [currentIndex, items])
 
@@ -148,7 +161,7 @@ function CollectionPlayerContent({
     if (item == null) return null
     return (
       resolveImageUrl(item.imageUrl) ??
-      resolveImageUrl(deriveMuxThumbnailUrl(item.streamingUrl))
+      resolveImageUrl(deriveMuxThumbnailUrl(itemStreamUrl(item)))
     )
   }, [currentIndex, items])
 
@@ -230,7 +243,7 @@ function CollectionPlayerContent({
   const renderItem = useCallback(
     ({ item, index: idx }: { item: CollectionItem; index: number }) => {
       const isActive = idx === currentIndex
-      const isPlayable = validateStreamingUrl(item.streamingUrl)
+      const isPlayable = validateStreamingUrl(itemStreamUrl(item))
       const title =
         (item.titleOverride != null && item.titleOverride !== ""
           ? item.titleOverride

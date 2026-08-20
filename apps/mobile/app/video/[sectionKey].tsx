@@ -16,6 +16,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context"
 
 import { useManagedVideoPlayer } from "../../src/hooks/useManagedVideoPlayer"
 import { useAutostartPlayback } from "../../src/hooks/useAutostartPlayback"
+import { blockStreamingUrl } from "../../src/lib/blockVideoDub"
 
 import { useSectionByKey } from "../../src/contexts/ExperienceProvider"
 import { ContentDispatcher } from "../../src/components/sections/ContentDispatcher"
@@ -68,7 +69,12 @@ function VideoDetailContent({
   typography: ReturnType<typeof useTypography>
 }) {
   const s = section as Record<string, unknown>
-  const streamingUrl = s.streamingUrl as string | null
+  // Admin exposes no `streamingUrl` on a block — it resolves the playable dub
+  // live into `videoDub`. Reading the bare field yielded undefined on every
+  // load, so this route never mounted a player at all.
+  const streamingUrl = blockStreamingUrl(
+    s as Parameters<typeof blockStreamingUrl>[0],
+  )
   const blockVideoId =
     typeof s.videoId === "string" && s.videoId.length > 0
       ? s.videoId

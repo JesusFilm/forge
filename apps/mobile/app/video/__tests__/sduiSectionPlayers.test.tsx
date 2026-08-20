@@ -125,12 +125,18 @@ const sessionStore = getMiniPlayerStore()
 
 const URL_A = "https://stream.mux.com/assetAAA111.m3u8"
 
+// PRODUCTION SHAPE. Admin exposes no `streamingUrl` on a block or an item — it
+// resolves the playable dub live into `videoDub`, and the fragments select that.
+// These fixtures used to set a bare `streamingUrl`, a field the wire never
+// carries, so both routes passed every test while reading `undefined` on every
+// real load and never mounting a player at all. Do not reintroduce it: the
+// absence of `streamingUrl` here is what makes these tests able to fail.
 const VIDEO_SECTION = {
   __typename: "VideoBlock",
   sectionKey: "section-1",
   title: "A section video",
   videoId: "sdui-video-1",
-  streamingUrl: URL_A,
+  videoDub: { hls: URL_A, dash: null, share: null },
   contentParagraphs: [],
   siblingContent: [],
 }
@@ -139,7 +145,13 @@ const COLLECTION_SECTION = {
   __typename: "VideoCarouselBlock",
   sectionKey: "section-1",
   title: "A collection",
-  items: [{ videoId: "sdui-video-1", streamingUrl: URL_A, imageUrl: null }],
+  items: [
+    {
+      videoId: "sdui-video-1",
+      videoDub: { hls: URL_A, dash: null, share: null },
+      imageUrl: null,
+    },
+  ],
 }
 
 /** Both screens are default exports taking no props. */
