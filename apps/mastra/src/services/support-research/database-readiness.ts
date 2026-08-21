@@ -6,19 +6,27 @@ export const REQUIRED_SUPPORT_RESEARCH_MIGRATION = {
   sha256: "516439bb11d4422d50a8eff496d3b87fecf57694c3f9d01d8cf3d16c2e4d6df9",
 } as const
 
-export const REQUIRED_SUPPORT_RESEARCH_RELATIONS = [
+export const REQUIRED_SUPPORT_RESEARCH_TABLES = [
   "support_research.cursors",
   "support_research.runs",
   "support_research.observations",
   "support_research.actions",
   "support_research.action_sources",
   "support_research.reports",
+] as const
+
+export const REQUIRED_SUPPORT_RESEARCH_INDEXES = [
   "support_research.support_research_runs_status_lease_idx",
   "support_research.support_research_observations_cluster_idx",
   "support_research.support_research_observations_theme_idx",
   "support_research.support_research_actions_live_fingerprint_idx",
   "support_research.support_research_actions_due_idx",
   "support_research.support_research_reports_expiry_idx",
+] as const
+
+export const REQUIRED_SUPPORT_RESEARCH_RELATIONS = [
+  ...REQUIRED_SUPPORT_RESEARCH_TABLES,
+  ...REQUIRED_SUPPORT_RESEARCH_INDEXES,
 ] as const
 
 export type SupportResearchDatabase = {
@@ -63,14 +71,32 @@ export async function getSupportResearchDatabaseReadiness(
       }
     }
 
-    const relations = await database.query<{ relation: string }>(
+    const tables = await database.query<{ relation: string }>(
       `select required.relation
          from unnest($1::text[]) as required(relation)
-        where to_regclass(required.relation) is null
+         left join pg_class as relation
+           on relation.oid = to_regclass(required.relation)
+        where relation.oid is null
+           or relation.relkind <> 'r'
         order by required.relation`,
-      [REQUIRED_SUPPORT_RESEARCH_RELATIONS],
+      [REQUIRED_SUPPORT_RESEARCH_TABLES],
     )
-    const missingRelations = relations.rows.map((row) => row.relation)
+    const indexes = await database.query<{ relation: string }>(
+      `select required.relation
+         from unnest($1::text[]) as required(relation)
+         left join pg_class as relation
+           on relation.oid = to_regclass(required.relation)
+         left join pg_index as index_metadata
+           on index_metadata.indexrelid = relation.oid
+        where relation.oid is null
+           or relation.relkind <> 'i'
+           or index_metadata.indisvalid is distinct from true
+        order by required.relation`,
+      [REQUIRED_SUPPORT_RESEARCH_INDEXES],
+    )
+    const missingRelations = [...tables.rows, ...indexes.rows]
+      .map((row) => row.relation)
+      .sort()
     if (missingRelations.length > 0) {
       return {
         ready: false,

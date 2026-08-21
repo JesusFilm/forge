@@ -304,6 +304,49 @@ describe("daily support research workflow", () => {
     expect(linear.createIssue).not.toHaveBeenCalled()
   })
 
+  it("returns a safe disabled result before every dependency when migration 002 is unavailable", async () => {
+    const repository = new MemoryRepository()
+    repository.getCursor = vi.fn(repository.getCursor.bind(repository))
+    const helpScout = helpScoutWith()
+    const linear = {
+      findIssueByMarker: vi.fn(),
+      createIssue: vi.fn(),
+    }
+    const analyzer = { generate: vi.fn() }
+    const validate = vi.fn()
+
+    const report = await executeDailySupportResearch(
+      { dryRun: false },
+      {
+        config: { ...config, enabled: false },
+        repository,
+        helpScout,
+        linear,
+        analyzer,
+        validate,
+        databaseReadiness: vi.fn().mockResolvedValue({
+          ready: false,
+          reason: "support research database schema is unavailable",
+        }),
+        now: () => now,
+        randomId: () => "fixed-id",
+      },
+    )
+
+    expect(report).toMatchObject({
+      status: "disabled",
+      errors: ["feature_disabled", "database_migration_unavailable"],
+    })
+    expect(repository.getCursor).not.toHaveBeenCalled()
+    expect(repository.reports).toHaveLength(0)
+    expect(repository.purgeCalls).toBe(0)
+    expect(helpScout.listNewConversations).not.toHaveBeenCalled()
+    expect(analyzer.generate).not.toHaveBeenCalled()
+    expect(validate).not.toHaveBeenCalled()
+    expect(linear.findIssueByMarker).not.toHaveBeenCalled()
+    expect(linear.createIssue).not.toHaveBeenCalled()
+  })
+
   it("dry-runs analysis and proposed actions with zero Linear mutations", async () => {
     const repository = new MemoryRepository()
     const liveCursor = repository.cursor.toISOString()

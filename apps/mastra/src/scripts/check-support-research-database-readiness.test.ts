@@ -26,6 +26,7 @@ describe("support research database readiness CLI", () => {
         result([{ version: REQUIRED_SUPPORT_RESEARCH_MIGRATION.version }]),
       )
       .mockResolvedValueOnce(result([]))
+      .mockResolvedValueOnce(result([]))
 
     await expect(
       runSupportResearchDatabaseReadinessCli({
