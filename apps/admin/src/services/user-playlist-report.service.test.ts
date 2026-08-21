@@ -90,6 +90,8 @@ describe("UserPlaylistReportService", () => {
       playlistId: "playlist-1",
       category: "MISLEADING_OR_SPAM",
       reporterIpDigestKeyId: "ip-v1",
+      detailDeleteAfter: new Date("2026-09-18T12:00:00.000Z"),
+      reporterDigestDeleteAfter: new Date("2026-08-26T12:00:00.000Z"),
     })
     expect(create.data).not.toHaveProperty("reportIntent")
     expect(create.data).not.toHaveProperty("capabilityDigest")

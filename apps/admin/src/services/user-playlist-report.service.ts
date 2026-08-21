@@ -9,7 +9,9 @@ import {
 } from "./user-playlist-report-crypto"
 import { UserPlaylistReportIntent } from "./user-playlist-report-intent"
 
-const REPORT_DETAIL_RETENTION_MS = 30 * 24 * 60 * 60 * 1000
+// The purge runs daily. Expire material two days before the legal maximum so
+// a normal run plus scheduler jitter cannot turn a 30-day policy into 31 days.
+const REPORT_DETAIL_RETENTION_MS = 28 * 24 * 60 * 60 * 1000
 
 export const USER_PLAYLIST_REPORT_CATEGORIES = [
   "INAPPROPRIATE_CONTENT",

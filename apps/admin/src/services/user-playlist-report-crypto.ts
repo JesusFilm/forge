@@ -9,7 +9,9 @@ import { isIP } from "node:net"
 const KEY_BYTES = 32
 const GCM_NONCE_BYTES = 12
 const KEY_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/
-const REPORTER_DIGEST_RETENTION_MS = 7 * 24 * 60 * 60 * 1000
+// The purge runs daily. Two days of headroom keeps the hard seven-day privacy
+// boundary true across a normal run and scheduler jitter.
+const REPORTER_DIGEST_RETENTION_MS = 5 * 24 * 60 * 60 * 1000
 
 export type UserPlaylistReportCryptoKey = {
   id: string
