@@ -1,4 +1,9 @@
 import { createEnv } from "@t3-oss/env-nextjs"
+import {
+  resolveUserPlaylistFeatureControls,
+  type UserPlaylistFeatureControlInput,
+  type UserPlaylistFeatureControls,
+} from "@forge/feature-flags/registry"
 import { z } from "zod"
 
 import { normalizeDatadogEnv } from "./datadog-env"
@@ -265,6 +270,19 @@ export const fleetSearchCeilingEnforceEnvSchema = z
   .optional()
   .default("false")
 
+export function resolveUserPlaylistRuntimeControls(
+  input?: UserPlaylistFeatureControlInput,
+): UserPlaylistFeatureControls {
+  return resolveUserPlaylistFeatureControls(
+    input ?? {
+      authoringEnabled: env.FORGE_USER_PLAYLIST_AUTHORING_DEFAULT,
+      anonymousPublicReadEnabled: env.FORGE_USER_PLAYLIST_PUBLIC_READ_DEFAULT,
+      emergencyPublicReadDisabled:
+        env.USER_PLAYLIST_PUBLIC_READ_EMERGENCY_DISABLED,
+    },
+  )
+}
+
 // Unit 1 scaffolding shipped a minimal env. Each later unit appends the
 // vars it owns here and in runtimeEnv. Never read process.env directly.
 export const env = createEnv({
@@ -326,6 +344,12 @@ export const env = createEnv({
       watchSearchCandidateComparisonEnabledEnvSchema,
     WATCH_SEARCH_TRANSCRIPT_PROJECTION_REVISION:
       watchSearchTranscriptProjectionRevisionEnvSchema,
+    // User Playlist U1 rollout controls. These stay as raw optional strings so
+    // the runtime composer can turn malformed values into a deny instead of a
+    // truthy string. Admin/data-boundary consumers are authoritative.
+    FORGE_USER_PLAYLIST_AUTHORING_DEFAULT: z.string().optional(),
+    FORGE_USER_PLAYLIST_PUBLIC_READ_DEFAULT: z.string().optional(),
+    USER_PLAYLIST_PUBLIC_READ_EMERGENCY_DISABLED: z.string().optional(),
     WATCH_SEARCH_SERVING_QRELS_REVISION: z.string().min(1).optional(),
     MANAGER_ADMIN_API_KEY: z.string().min(1).optional(),
     // SEO delegated/workload assertions use per-environment Ed25519 keyrings.
@@ -696,6 +720,15 @@ export const env = createEnv({
   skipValidation: !!process.env.CI,
   runtimeEnv: {
     DATABASE_URL: process.env.DATABASE_URL,
+    FORGE_USER_PLAYLIST_AUTHORING_DEFAULT: emptyToUndefined(
+      process.env.FORGE_USER_PLAYLIST_AUTHORING_DEFAULT,
+    ),
+    FORGE_USER_PLAYLIST_PUBLIC_READ_DEFAULT: emptyToUndefined(
+      process.env.FORGE_USER_PLAYLIST_PUBLIC_READ_DEFAULT,
+    ),
+    USER_PLAYLIST_PUBLIC_READ_EMERGENCY_DISABLED: emptyToUndefined(
+      process.env.USER_PLAYLIST_PUBLIC_READ_EMERGENCY_DISABLED,
+    ),
     NEXT_PUBLIC_DATADOG_APPLICATION_ID: emptyToUndefined(
       process.env.NEXT_PUBLIC_DATADOG_APPLICATION_ID,
     ),

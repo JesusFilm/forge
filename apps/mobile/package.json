@@ -19,7 +19,7 @@
   },
   "dependencies": {
     "@apollo/client": "^4.1.4",
-    "@better-auth/expo": "1.6.2",
+    "@better-auth/expo": "1.6.22",
     "@datadog/mobile-react-native": "3.5.4",
     "@datadog/mobile-react-native-session-replay": "3.5.4",
     "@expo/metro-runtime": "~57.0.12",
@@ -31,7 +31,7 @@
     "@react-native-async-storage/async-storage": "^2.2.0",
     "@shopify/flash-list": "2.0.2",
     "@t3-oss/env-core": "^0.13.11",
-    "better-auth": "1.6.2",
+    "better-auth": "1.6.22",
     "expo": "~57.0.15",
     "expo-blur": "~57.0.2",
     "expo-build-properties": "~57.0.13",

@@ -6,7 +6,7 @@ import {
   type FeatureFlagContext,
 } from "@forge/feature-flags"
 
-import { env } from "@/env"
+import { env, resolveUserPlaylistUxControls } from "@/env"
 
 export type WebFeatureFlagContextInput = Partial<FeatureFlagContext> & {
   custom?: FeatureFlagContext["custom"]
@@ -26,6 +26,10 @@ const webFeatureFlagClient = createFeatureFlagClient({
     FORGE_WATCH_HIDE_BIBLE_QUOTES_DEFAULT:
       env.FORGE_WATCH_HIDE_BIBLE_QUOTES_DEFAULT,
     FORGE_WATCH_QUESTION_PANEL_DEFAULT: env.FORGE_WATCH_QUESTION_PANEL_DEFAULT,
+    FORGE_USER_PLAYLIST_AUTHORING_DEFAULT:
+      env.FORGE_USER_PLAYLIST_AUTHORING_DEFAULT,
+    FORGE_USER_PLAYLIST_PUBLIC_READ_DEFAULT:
+      env.FORGE_USER_PLAYLIST_PUBLIC_READ_DEFAULT,
   },
   defaultValues: {
     "forge.watch.playerMigration": env.NEXT_PUBLIC_FORGE_WATCH_PLAYER_MIGRATION,
@@ -34,6 +38,8 @@ const webFeatureFlagClient = createFeatureFlagClient({
     "forge.watch.globalBetaTesterCta": false,
     "forge.watch.hideBibleQuotes": false,
     "forge.watch.questionPanel": false,
+    "forge.userPlaylist.authoring": false,
+    "forge.userPlaylist.publicRead": false,
   },
   timeoutSeconds: 0.25,
   logger: console,
@@ -112,6 +118,27 @@ export async function isWatchQuestionPanelEnabled(
 ): Promise<boolean> {
   return webFeatureFlagClient.booleanVariation(
     featureFlags.watchQuestionPanel,
+    createWebFeatureFlagContext(context),
+  )
+}
+
+export async function isUserPlaylistAuthoringUxEnabled(
+  context: WebFeatureFlagContextInput = {},
+): Promise<boolean> {
+  if (resolveUserPlaylistUxControls().malformed) return false
+  return webFeatureFlagClient.booleanVariation(
+    featureFlags.userPlaylistAuthoring,
+    createWebFeatureFlagContext(context),
+  )
+}
+
+export async function isUserPlaylistPublicReadUxEnabled(
+  context: WebFeatureFlagContextInput = {},
+): Promise<boolean> {
+  const controls = resolveUserPlaylistUxControls()
+  if (controls.malformed || controls.emergencyPublicReadDisabled) return false
+  return webFeatureFlagClient.booleanVariation(
+    featureFlags.userPlaylistPublicRead,
     createWebFeatureFlagContext(context),
   )
 }

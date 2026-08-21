@@ -14,6 +14,7 @@ import {
   fleetSearchGlobalCeilingPerMinEnvSchema,
   searchTraceRawRetentionDaysEnvSchema,
   resolveWatchSearchRuntimeEnv,
+  resolveUserPlaylistRuntimeControls,
   watchSearchDefaultShadowEnabledEnvSchema,
   watchSearchFleetPrimaryEnabledEnvSchema,
   watchSearchPrimaryModeEnvSchema,
@@ -33,6 +34,36 @@ describe("env", () => {
 
   it("defaults visitor-facing web links to the canonical www watch origin", () => {
     expect(env.WEB_CANONICAL_ORIGIN).toBe(DEFAULT_WEB_CANONICAL_ORIGIN)
+  })
+
+  describe("user playlist rollout controls", () => {
+    it("defaults authoring and anonymous public reads off", () => {
+      expect(
+        resolveUserPlaylistRuntimeControls({
+          authoringEnabled: undefined,
+          anonymousPublicReadEnabled: undefined,
+          emergencyPublicReadDisabled: undefined,
+        }),
+      ).toMatchObject({
+        authoringEnabled: false,
+        anonymousPublicReadEnabled: false,
+      })
+    })
+
+    it("fails malformed Admin controls closed", () => {
+      expect(
+        resolveUserPlaylistRuntimeControls({
+          authoringEnabled: "invalid",
+          anonymousPublicReadEnabled: "true",
+          emergencyPublicReadDisabled: "invalid",
+        }),
+      ).toEqual({
+        authoringEnabled: false,
+        anonymousPublicReadEnabled: false,
+        emergencyPublicReadDisabled: true,
+        malformed: true,
+      })
+    })
   })
 
   describe("Watch search Web routing", () => {

@@ -167,3 +167,41 @@ describe("web env — Watch search rollout", () => {
     expect(env.WATCH_SEARCH_DEFAULT_SHADOW_ENABLED).toBe(false)
   })
 })
+
+describe("web env — user playlist UX rollout", () => {
+  beforeEach(() => {
+    vi.resetModules()
+    process.env = { ...ORIGINAL_ENV }
+    useBaseEnv()
+  })
+
+  afterEach(() => {
+    process.env = { ...ORIGINAL_ENV }
+  })
+
+  it("keeps authoring and anonymous-public-read UX off by default", async () => {
+    const { resolveUserPlaylistUxControls } = await import("./env")
+
+    expect(resolveUserPlaylistUxControls()).toMatchObject({
+      authoringEnabled: false,
+      anonymousPublicReadEnabled: false,
+    })
+  })
+
+  it("fails malformed UX mirrors closed", async () => {
+    const { resolveUserPlaylistUxControls } = await import("./env")
+
+    expect(
+      resolveUserPlaylistUxControls({
+        authoringEnabled: "invalid",
+        anonymousPublicReadEnabled: "true",
+        emergencyPublicReadDisabled: "invalid",
+      }),
+    ).toEqual({
+      authoringEnabled: false,
+      anonymousPublicReadEnabled: false,
+      emergencyPublicReadDisabled: true,
+      malformed: true,
+    })
+  })
+})
