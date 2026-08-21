@@ -1,3 +1,4 @@
+import type { Route } from "next"
 import Link from "next/link"
 import { redirect } from "next/navigation"
 import { hasPermission } from "@/auth/permissions"
@@ -71,7 +72,7 @@ function nextPageHref(
 ) {
   const params = new URLSearchParams({ after: nextCursor })
   if (category) params.set("category", category)
-  return `/dashboard/user-playlist-moderation?${params.toString()}`
+  return `/dashboard/user-playlist-moderation?${params.toString()}` as Route
 }
 
 export default async function UserPlaylistModerationPage({
