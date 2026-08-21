@@ -155,8 +155,9 @@ async function revokeAppleCredential(
   log: (line: string) => void,
 ): Promise<void> {
   const appleConfig = deps.getAppleConfig()
+  if (!appleConfig) return
   const appleAccount = await deps.findAppleAccount(userId)
-  if (!appleAccount?.refreshToken || !appleConfig) return
+  if (!appleAccount?.refreshToken) return
 
   const result = await revokeAppleRefreshToken(
     appleConfig,

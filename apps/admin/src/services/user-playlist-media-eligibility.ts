@@ -5,7 +5,7 @@ import type {
 } from "./user-playlist.service"
 
 /**
- * Conservative default for U3. It attests only catalog-wide Watch visibility
+ * This conservative default attests only catalog-wide Watch visibility
  * and playable published audio. Country is accepted only as an already
  * integrity-verified context and is deliberately not treated as an
  * entitlement source until a canonical territory policy exists.

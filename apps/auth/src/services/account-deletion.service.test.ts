@@ -149,11 +149,27 @@ describe("beforeDelete — Apple revocation", () => {
     )
   })
 
+  it("does not query the Apple account when revocation config is absent", async () => {
+    const findAppleAccount = vi.fn(async () => {
+      throw new Error("Apple account lookup should be skipped")
+    })
+    const { deps } = buildDeps({
+      findAppleAccount,
+      getAppleConfig: () => null,
+    })
+
+    await expect(
+      buildAccountDeletionHooks(deps).beforeDelete({ id: "user-1" }),
+    ).resolves.toBeUndefined()
+    expect(findAppleAccount).not.toHaveBeenCalled()
+  })
+
   it("propagates account-row read failures so deletion aborts with the account intact", async () => {
     const { deps } = buildDeps({
       findAppleAccount: vi.fn(async () => {
         throw new Error("db unavailable")
       }),
+      getAppleConfig: () => APPLE_CONFIG,
     })
 
     await expect(

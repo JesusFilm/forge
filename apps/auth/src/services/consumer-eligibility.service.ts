@@ -5,15 +5,21 @@ import type {
   Prisma,
   PrismaClient,
 } from "@/generated/prisma"
+import { WEB_PLAYLIST_SCOPES } from "@/domain/apps"
 
 const ACTIVE_LEASE_MS = 5 * 60_000
 const ACTIVE_RENEWAL_INTERVAL_MS = 2 * 60_000
 const AUTHOR_PROVIDERS = new Set(["google", "apple"])
-const PLAYLIST_SCOPES = [
-  "playlist:read",
-  "playlist:write",
-  "playlist:share",
-] as const
+const CONSUMER_ELIGIBILITY_USER_SELECT = {
+  id: true,
+  actorType: true,
+  emailVerified: true,
+  membershipStatus: true,
+  consumerLifecycleState: true,
+  consumerLifecycleVersion: true,
+  consumerLifecycleRenewedAt: true,
+  accounts: { select: { providerId: true, accountId: true } },
+} satisfies Prisma.UserSelect
 
 type ConsumerEligibilityOptions = {
   now?: () => Date
@@ -48,16 +54,7 @@ export class ConsumerEligibilityService {
       async (tx) => {
         const user = await tx.user.findUnique({
           where: { id: userId },
-          select: {
-            id: true,
-            actorType: true,
-            emailVerified: true,
-            membershipStatus: true,
-            consumerLifecycleState: true,
-            consumerLifecycleVersion: true,
-            consumerLifecycleRenewedAt: true,
-            accounts: { select: { providerId: true, accountId: true } },
-          },
+          select: CONSUMER_ELIGIBILITY_USER_SELECT,
         })
         if (!user) throw new Error("Consumer identity not found.")
 
@@ -179,16 +176,7 @@ export class ConsumerEligibilityService {
       async (tx) => {
         const user = await tx.user.findUnique({
           where: { id: userId },
-          select: {
-            id: true,
-            actorType: true,
-            emailVerified: true,
-            membershipStatus: true,
-            consumerLifecycleState: true,
-            consumerLifecycleVersion: true,
-            consumerLifecycleRenewedAt: true,
-            accounts: { select: { providerId: true, accountId: true } },
-          },
+          select: CONSUMER_ELIGIBILITY_USER_SELECT,
         })
         if (!user) throw new Error("Consumer identity not found.")
 
@@ -302,7 +290,7 @@ export class ConsumerEligibilityService {
     userId: string,
     now: Date,
   ) {
-    const playlistScopes = [...PLAYLIST_SCOPES]
+    const playlistScopes = [...WEB_PLAYLIST_SCOPES]
     await tx.oauthAccessToken.deleteMany({
       where: { userId, scopes: { hasSome: playlistScopes } },
     })

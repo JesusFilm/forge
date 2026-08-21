@@ -16,22 +16,19 @@ function video(id: string) {
   return {
     id,
     slug: `slug-${id}`,
-    label: "FEATURE_FILM",
     durationSeconds: 120,
     noIndex: false,
     images: [
       {
         mobileCinematicHigh: `https://images.example.test/${id}.jpg`,
         blurDataUrl: null,
-        dominantColor: "#123456",
       },
     ],
-    locales: [{ title: `Title ${id}`, snippet: "Safe description" }],
+    locales: [{ title: `Title ${id}` }],
     preferredPlayableDub: {
       hls: "https://stream.example.test/video.m3u8",
       duration: 120,
       language: { slug: "english" },
-      muxVideo: { playbackId: "playback" },
     },
   }
 }

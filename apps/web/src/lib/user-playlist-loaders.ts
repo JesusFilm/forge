@@ -17,105 +17,24 @@ import type {
   UserPlaylist,
   UserPlaylistActionErrorCode,
   UserPlaylistActionResult,
-  UserPlaylistBlock,
   UserPlaylistPage,
   UserPlaylistPolicy,
   UserPlaylistSummary,
 } from "@/lib/user-playlist-contract"
+import { USER_PLAYLIST_LIMIT } from "@/lib/user-playlist-contract"
+import {
+  adaptOwnerUserPlaylist,
+  adaptUserPlaylistSummary,
+} from "@/lib/user-playlist-owner-adapter"
 import {
   getMyUserPlaylistOperation,
   listMyUserPlaylistsOperation,
 } from "@/lib/user-playlist-operations"
+import { readConfiguredUserPlaylistPolicy } from "@/lib/user-playlist-policy"
 
 const failure = (
   code: UserPlaylistActionErrorCode,
 ): { ok: false; code: UserPlaylistActionErrorCode } => ({ ok: false, code })
-
-function object(value: unknown): Record<string, unknown> | null {
-  return typeof value === "object" && value !== null
-    ? (value as Record<string, unknown>)
-    : null
-}
-
-function mapSummary(value: unknown): UserPlaylistSummary | null {
-  const row = object(value)
-  if (
-    !row ||
-    typeof row.id !== "string" ||
-    typeof row.title !== "string" ||
-    typeof row.description !== "string" ||
-    typeof row.locale !== "string" ||
-    (row.countryCode !== null && typeof row.countryCode !== "string") ||
-    typeof row.version !== "number" ||
-    typeof row.shared !== "boolean"
-  ) {
-    return null
-  }
-  return {
-    id: row.id,
-    title: row.title,
-    description: row.description,
-    locale: row.locale,
-    countryCode: row.countryCode,
-    version: row.version,
-    shareState: row.shared ? "SHARED" : "UNSHARED",
-  }
-}
-
-function mapBlock(value: unknown): UserPlaylistBlock | null {
-  const row = object(value)
-  if (row?.__typename === "UserPlaylistTextBlock") {
-    return typeof row.text === "string"
-      ? { kind: "TEXT", text: row.text }
-      : null
-  }
-  if (
-    row?.__typename !== "UserPlaylistMediaCollectionBlock" &&
-    row?.__typename !== "UserPlaylistVideoCarouselBlock"
-  ) {
-    return null
-  }
-  if (!Array.isArray(row.items)) return null
-  const items: Array<{ videoId: string }> = []
-  for (const item of row.items) {
-    const media = object(item)
-    if (!media || typeof media.videoId !== "string") return null
-    items.push({ videoId: media.videoId })
-  }
-  return {
-    kind:
-      row.__typename === "UserPlaylistMediaCollectionBlock"
-        ? "MEDIA_COLLECTION"
-        : "VIDEO_CAROUSEL",
-    title: typeof row.title === "string" ? row.title : "",
-    items,
-  }
-}
-
-function mapOwner(value: unknown): UserPlaylist | null {
-  const base = mapSummary(value)
-  const row = object(value)
-  if (
-    !base ||
-    !row ||
-    !Array.isArray(row.blocks) ||
-    !Array.isArray(row.unavailableVideoIds) ||
-    !row.unavailableVideoIds.every((id) => typeof id === "string")
-  ) {
-    return null
-  }
-  const blocks: UserPlaylistBlock[] = []
-  for (const input of row.blocks) {
-    const mapped = mapBlock(input)
-    if (!mapped) return null
-    blocks.push(mapped)
-  }
-  return {
-    ...base,
-    blocks,
-    unavailableVideoIds: row.unavailableVideoIds as string[],
-  }
-}
 
 async function withOwnerRead<T>(
   task: (
@@ -159,40 +78,15 @@ async function withOwnerRead<T>(
 export async function loadUserPlaylistPolicyForPage(): Promise<
   UserPlaylistActionResult<UserPlaylistPolicy>
 > {
-  const values = [
-    env.USER_PLAYLIST_TERMS_VERSION,
-    env.USER_PLAYLIST_TERMS_URL,
-    env.USER_PLAYLIST_PRIVACY_VERSION,
-    env.USER_PLAYLIST_PRIVACY_URL,
-    env.USER_PLAYLIST_COMMUNITY_GUIDELINES_VERSION,
-    env.USER_PLAYLIST_COMMUNITY_GUIDELINES_URL,
-  ]
-  if (values.some((value) => !value)) return failure("SERVICE_UNAVAILABLE")
-  return {
-    ok: true,
-    data: {
-      terms: {
-        version: env.USER_PLAYLIST_TERMS_VERSION!,
-        url: env.USER_PLAYLIST_TERMS_URL!,
-      },
-      privacy: {
-        version: env.USER_PLAYLIST_PRIVACY_VERSION!,
-        url: env.USER_PLAYLIST_PRIVACY_URL!,
-      },
-      communityGuidelines: {
-        version: env.USER_PLAYLIST_COMMUNITY_GUIDELINES_VERSION!,
-        url: env.USER_PLAYLIST_COMMUNITY_GUIDELINES_URL!,
-      },
-    },
-  }
+  return readConfiguredUserPlaylistPolicy()
 }
 
 export async function loadMyUserPlaylistsForPage(
   input: { first?: number; after?: string | null } = {},
 ): Promise<UserPlaylistActionResult<UserPlaylistPage>> {
   return withOwnerRead(async (client) => {
-    const first = input.first ?? 20
-    if (!Number.isInteger(first) || first < 1 || first > 20) {
+    const first = input.first ?? USER_PLAYLIST_LIMIT
+    if (!Number.isInteger(first) || first < 1 || first > USER_PLAYLIST_LIMIT) {
       return failure("INVALID_INPUT")
     }
     if (input.after != null && !/^[A-Za-z0-9_-]{1,256}$/.test(input.after)) {
@@ -208,7 +102,7 @@ export async function loadMyUserPlaylistsForPage(
       return failure("SERVICE_UNAVAILABLE")
     const items: UserPlaylistSummary[] = []
     for (const item of page.items) {
-      const mapped = mapSummary(item)
+      const mapped = adaptUserPlaylistSummary(item)
       if (!mapped) return failure("SERVICE_UNAVAILABLE")
       items.push(mapped)
     }
@@ -236,7 +130,7 @@ export async function loadMyUserPlaylistForPage(
       fetchPolicy: "no-cache",
     })
     if (result.data?.myUserPlaylist == null) return failure("NOT_FOUND")
-    const playlist = mapOwner(result.data.myUserPlaylist)
+    const playlist = adaptOwnerUserPlaylist(result.data.myUserPlaylist)
     return playlist
       ? { ok: true, data: playlist }
       : failure("SERVICE_UNAVAILABLE")

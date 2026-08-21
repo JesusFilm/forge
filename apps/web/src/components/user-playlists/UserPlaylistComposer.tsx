@@ -136,11 +136,7 @@ export function UserPlaylistComposer({
   function addBlock(kind: UserPlaylistBlock["kind"]) {
     if (blocks.length >= USER_PLAYLIST_BLOCK_LIMIT) return
     const value: UserPlaylistBlock =
-      kind === "TEXT"
-        ? { kind, text: "" }
-        : kind === "MEDIA_COLLECTION"
-          ? { kind, title: "", items: [] }
-          : { kind, title: "", items: [] }
+      kind === "TEXT" ? { kind, text: "" } : { kind, title: "", items: [] }
     const key = `new-${++keySequence.current}`
     setBlocks((current) => [...current, { key, value }])
     markDirty()
@@ -675,7 +671,7 @@ export function UserPlaylistComposer({
                 </label>
               ) : (
                 <MediaBlockEditor
-                  editorBlock={{ key: block.key, value: block.value }}
+                  value={block.value}
                   unavailableIds={unavailableIds}
                   mediaLabels={mediaLabels}
                   pickerOpen={pickerTarget?.blockKey === block.key}
@@ -762,7 +758,7 @@ export function UserPlaylistComposer({
 }
 
 function MediaBlockEditor({
-  editorBlock,
+  value,
   unavailableIds,
   mediaLabels,
   pickerOpen,
@@ -774,9 +770,7 @@ function MediaBlockEditor({
   onClosePicker,
   onSelectVideo,
 }: {
-  editorBlock: EditorBlock & {
-    value: Exclude<UserPlaylistBlock, { kind: "TEXT" }>
-  }
+  value: Exclude<UserPlaylistBlock, { kind: "TEXT" }>
   unavailableIds: Set<string>
   mediaLabels: Record<string, string>
   pickerOpen: boolean
@@ -789,7 +783,6 @@ function MediaBlockEditor({
   onSelectVideo: (video: { id: string; title: string }) => void
 }) {
   const t = useTranslations("UserPlaylists")
-  const { value } = editorBlock
   return (
     <div className="space-y-4">
       <label className="grid gap-2 text-sm font-semibold text-white">

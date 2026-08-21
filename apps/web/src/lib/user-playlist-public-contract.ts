@@ -1,3 +1,8 @@
+import {
+  USER_PLAYLIST_BLOCK_LIMIT,
+  USER_PLAYLIST_ITEM_LIMIT,
+} from "./user-playlist-contract"
+
 const MEDIA_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_-]{0,190}$/
 
 export type PublicUserPlaylistBlock =
@@ -25,7 +30,9 @@ function boundedString(value: unknown, max: number): string | null {
 }
 
 function mediaIds(value: unknown): string[] | null {
-  if (!Array.isArray(value) || value.length > 100) return null
+  if (!Array.isArray(value) || value.length > USER_PLAYLIST_ITEM_LIMIT) {
+    return null
+  }
   const ids: string[] = []
   for (const candidate of value) {
     const item = record(candidate)
@@ -94,7 +101,7 @@ export function adaptPublicUserPlaylist(
     reportIntent == null ||
     reportIntent.length === 0 ||
     countryCode === undefined ||
-    playlist.blocks.length > 50
+    playlist.blocks.length > USER_PLAYLIST_BLOCK_LIMIT
   ) {
     return null
   }

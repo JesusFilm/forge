@@ -1,23 +1,14 @@
 import type { PrismaClient } from "@prisma/client"
 import { z } from "zod"
+import {
+  USER_PLAYLIST_BLOCK_REASONS,
+  USER_PLAYLIST_RESTORE_REASONS,
+  type UserPlaylistBlockReason,
+  type UserPlaylistRestoreReason,
+} from "@/domain/user-playlist-moderation"
 import { InvalidInputError, NotFoundError } from "./errors"
 import { UserPlaylistReportDetailCipher } from "./user-playlist-report-crypto"
 import { USER_PLAYLIST_REPORT_CATEGORIES } from "./user-playlist-report.service"
-
-const BLOCK_REASONS = [
-  "ABUSE",
-  "COPYRIGHT",
-  "PRIVACY",
-  "SAFETY",
-  "SPAM",
-  "OTHER_POLICY",
-] as const
-
-const RESTORE_REASONS = [
-  "REVIEW_CLEARED",
-  "APPEAL_APPROVED",
-  "ERROR_CORRECTED",
-] as const
 
 const ModeratorActorSchema = z
   .object({ actorSubject: z.string().min(1).max(255).regex(/^\S+$/) })
@@ -30,7 +21,7 @@ const BlockInputSchema = z
       .min(1)
       .max(128)
       .regex(/^[A-Za-z0-9_-]+$/),
-    reasonCode: z.enum(BLOCK_REASONS),
+    reasonCode: z.enum(USER_PLAYLIST_BLOCK_REASONS),
   })
   .strict()
 
@@ -41,7 +32,7 @@ const RestoreInputSchema = z
       .min(1)
       .max(128)
       .regex(/^[A-Za-z0-9_-]+$/),
-    reasonCode: z.enum(RESTORE_REASONS),
+    reasonCode: z.enum(USER_PLAYLIST_RESTORE_REASONS),
   })
   .strict()
 
@@ -101,9 +92,7 @@ export class UserPlaylistModerationService<Credential = unknown> {
   private async changeModerationState(input: {
     playlistId: string
     action: "BLOCK" | "RESTORE"
-    reasonCode:
-      | (typeof BLOCK_REASONS)[number]
-      | (typeof RESTORE_REASONS)[number]
+    reasonCode: UserPlaylistBlockReason | UserPlaylistRestoreReason
     actorSubject: string
   }): Promise<UserPlaylistModerationResult> {
     const before = input.action === "BLOCK" ? "ACTIVE" : "BLOCKED"

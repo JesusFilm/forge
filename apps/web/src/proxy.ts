@@ -162,14 +162,7 @@ function applyWatchSecurityHeaders(response: NextResponse): NextResponse {
   return response
 }
 
-function applyExperiencePreviewHeaders(response: NextResponse): NextResponse {
-  response.headers.set("Cache-Control", "private, no-store, max-age=0")
-  response.headers.set("X-Robots-Tag", "noindex, nofollow, noarchive")
-  response.headers.set("Referrer-Policy", "no-referrer")
-  return response
-}
-
-function applyOwnerPlaylistHeaders(response: NextResponse): NextResponse {
+function applyPrivateNoIndexHeaders<T extends Response>(response: T): T {
   response.headers.set("Cache-Control", "private, no-store, max-age=0")
   response.headers.set("X-Robots-Tag", "noindex, nofollow, noarchive")
   response.headers.set("Referrer-Policy", "no-referrer")
@@ -191,9 +184,7 @@ const PUBLIC_USER_PLAYLIST_CSP = [
 ].join("; ")
 
 function applyPublicUserPlaylistHeaders<T extends Response>(response: T): T {
-  response.headers.set("Cache-Control", "private, no-store, max-age=0")
-  response.headers.set("X-Robots-Tag", "noindex, nofollow, noarchive")
-  response.headers.set("Referrer-Policy", "no-referrer")
+  applyPrivateNoIndexHeaders(response)
   response.headers.set("Content-Security-Policy", PUBLIC_USER_PLAYLIST_CSP)
   response.headers.set("X-Content-Type-Options", "nosniff")
   response.headers.set("X-Frame-Options", "DENY")
@@ -893,7 +884,7 @@ export async function proxy(request: ProxyRequest): Promise<NextResponse> {
   }
 
   if (pathname.startsWith(EXPERIENCE_PREVIEW_PREFIX)) {
-    return applyExperiencePreviewHeaders(NextResponse.next())
+    return applyPrivateNoIndexHeaders(NextResponse.next())
   }
 
   if (shouldBypassLocaleRewrite(pathname)) return NextResponse.next()
@@ -911,7 +902,7 @@ export async function proxy(request: ProxyRequest): Promise<NextResponse> {
     if (!admitted) return buildNotFound(request)
     const response = applyWatchSecurityHeaders(NextResponse.next())
     return isOwnerPlaylistPath(claimedPublicPathname)
-      ? applyOwnerPlaylistHeaders(response)
+      ? applyPrivateNoIndexHeaders(response)
       : response
   }
 
@@ -930,7 +921,7 @@ export async function proxy(request: ProxyRequest): Promise<NextResponse> {
       pathname,
     })
     return isOwnerPlaylistPath(pathname)
-      ? applyOwnerPlaylistHeaders(response)
+      ? applyPrivateNoIndexHeaders(response)
       : response
   }
   if (pathname === "/playlists" || pathname.startsWith("/playlists/")) {

@@ -23,12 +23,9 @@ export type PublicUserPlaylistVideo = {
   id: string
   slug: string
   title: string
-  description: string
   imageUrl: string | null
   imageAlt: string
   blurDataUrl: string | null
-  dominantColor: string | null
-  label: string | null
   durationSeconds: number | null
   languageSlug: string
 }
@@ -37,7 +34,6 @@ export type LoadedPublicUserPlaylist = {
   playlist: PublicUserPlaylist
   videos: PublicUserPlaylistVideo[]
   uiLocale: UiLocale
-  languageSlug: string
 }
 
 export type PublicUserPlaylistPageResult =
@@ -67,10 +63,9 @@ function safeRemoteUrl(value: unknown): string | null {
 function imageFrom(value: unknown): {
   url: string | null
   blurDataUrl: string | null
-  dominantColor: string | null
 } {
   if (!Array.isArray(value)) {
-    return { url: null, blurDataUrl: null, dominantColor: null }
+    return { url: null, blurDataUrl: null }
   }
   for (const candidate of value) {
     const image = record(candidate)
@@ -90,14 +85,9 @@ function imageFrom(value: unknown): {
         image.blurDataUrl.length <= 20_000
           ? image.blurDataUrl
           : null,
-      dominantColor:
-        typeof image.dominantColor === "string" &&
-        /^#[0-9A-Fa-f]{6}$/.test(image.dominantColor)
-          ? image.dominantColor
-          : null,
     }
   }
-  return { url: null, blurDataUrl: null, dominantColor: null }
+  return { url: null, blurDataUrl: null }
 }
 
 function adaptVideo(
@@ -125,12 +115,6 @@ function adaptVideo(
     typeof locale?.title === "string" && locale.title.trim()
       ? locale.title.slice(0, 240)
       : video.slug
-  const description =
-    typeof locale?.snippet === "string"
-      ? locale.snippet.slice(0, 500)
-      : typeof locale?.description === "string"
-        ? locale.description.slice(0, 500)
-        : ""
   const image = imageFrom(video.images)
   const language = record(variant.language)
   const languageSlug =
@@ -147,15 +131,12 @@ function adaptVideo(
     id: video.id,
     slug: video.slug,
     title,
-    description,
     imageUrl: image.url,
     imageAlt:
       typeof locale?.imageAlt === "string" && locale.imageAlt.trim()
         ? locale.imageAlt.slice(0, 300)
         : title,
     blurDataUrl: image.blurDataUrl,
-    dominantColor: image.dominantColor,
-    label: typeof video.label === "string" ? video.label : null,
     durationSeconds:
       typeof durationCandidate === "number" &&
       Number.isFinite(durationCandidate) &&
@@ -317,7 +298,6 @@ export async function loadPublicUserPlaylist(input: {
         languageSlug,
       }),
       uiLocale,
-      languageSlug,
     },
   }
 }

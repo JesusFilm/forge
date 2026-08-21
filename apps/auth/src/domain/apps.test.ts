@@ -20,10 +20,31 @@ import {
   TV_DEVICE_CLIENT_IDS,
   WEB_APP_KEY,
   WEB_APP_SEED,
+  WEB_DEFAULT_SCOPES,
+  WEB_ORDINARY_SCOPES,
+  WEB_PLAYLIST_SCOPES,
 } from "./apps"
 import { assertKnownScopes } from "./scopes"
 
 describe("first-party app seeds", () => {
+  it("composes Web defaults from ordinary scopes followed by playlist scopes", () => {
+    expect(WEB_ORDINARY_SCOPES).toEqual([
+      "openid",
+      "profile:read",
+      "email:read",
+      "web:watch-events:write",
+    ])
+    expect(WEB_PLAYLIST_SCOPES).toEqual([
+      "playlist:read",
+      "playlist:write",
+      "playlist:share",
+    ])
+    expect(WEB_DEFAULT_SCOPES).toEqual([
+      ...WEB_ORDINARY_SCOPES,
+      ...WEB_PLAYLIST_SCOPES,
+    ])
+  })
+
   it("keeps Admin and Manager registered as distinct first-party OAuth apps", () => {
     expect(FIRST_PARTY_APP_SEEDS.map((app) => app.key)).toEqual([
       ADMIN_APP_SEED.key,

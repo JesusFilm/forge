@@ -5,6 +5,10 @@ import { useRouter } from "next/navigation"
 import { ShieldAlert, ShieldCheck } from "lucide-react"
 import { PrimaryButton, SecondaryButton, cx } from "@/components/admin-ui"
 import {
+  USER_PLAYLIST_BLOCK_REASONS,
+  USER_PLAYLIST_RESTORE_REASONS,
+} from "@/domain/user-playlist-moderation"
+import {
   moderateUserPlaylist,
   type UserPlaylistModerationActionInput,
 } from "./moderation-actions"
@@ -68,21 +72,6 @@ type DialogState = {
   playlistId: string
   triggerKey: string
 }
-
-const blockReasonValues = [
-  "ABUSE",
-  "COPYRIGHT",
-  "PRIVACY",
-  "SAFETY",
-  "SPAM",
-  "OTHER_POLICY",
-] as const
-
-const restoreReasonValues = [
-  "REVIEW_CLEARED",
-  "APPEAL_APPROVED",
-  "ERROR_CORRECTED",
-] as const
 
 export function ModerationQueue({
   groups,
@@ -204,7 +193,9 @@ export function ModerationQueue({
   }
 
   const reasonValues =
-    dialog?.action === "BLOCK" ? blockReasonValues : restoreReasonValues
+    dialog?.action === "BLOCK"
+      ? USER_PLAYLIST_BLOCK_REASONS
+      : USER_PLAYLIST_RESTORE_REASONS
 
   return (
     <>

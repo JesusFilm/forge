@@ -9,7 +9,7 @@ import {
 describe("UserPlaylistErasureService", () => {
   const receipt = { findUnique: vi.fn(), create: vi.fn() }
   const lifecycle = { findUnique: vi.fn(), deleteMany: vi.fn() }
-  const playlist = { count: vi.fn(), updateMany: vi.fn(), deleteMany: vi.fn() }
+  const playlist = { updateMany: vi.fn(), deleteMany: vi.fn() }
   const reports = { deleteMany: vi.fn() }
   const quota = { deleteMany: vi.fn() }
   const audit = { updateMany: vi.fn() }
@@ -41,7 +41,7 @@ describe("UserPlaylistErasureService", () => {
     receipt.findUnique.mockResolvedValue(null)
     lifecycle.findUnique.mockResolvedValue({ state: "DELETING", version: 9n })
     lifecycle.deleteMany.mockResolvedValue({ count: 1 })
-    playlist.count.mockResolvedValue(2)
+    playlist.deleteMany.mockResolvedValue({ count: 2 })
     receipt.create.mockImplementation(async ({ data }) => ({
       ...data,
       createdAt: new Date("2026-08-21T12:00:00.000Z"),

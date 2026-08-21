@@ -38,7 +38,6 @@ export const PUBLIC_USER_PLAYLIST_VIDEOS_QUERY_SOURCE = `
   fragment PublicUserPlaylistVideoCard on Video @_unmask {
     id
     slug
-    label
     durationSeconds
     noIndex
     images {
@@ -48,12 +47,9 @@ export const PUBLIC_USER_PLAYLIST_VIDEOS_QUERY_SOURCE = `
       mobileCinematicLow
       videoStill
       blurDataUrl
-      dominantColor
     }
     locales(locale: $locale, languageSlug: $languageSlug) {
       title
-      snippet
-      description
       imageAlt
     }
     preferredPlayableDub(languageSlug: $languageSlug) {
@@ -61,9 +57,6 @@ export const PUBLIC_USER_PLAYLIST_VIDEOS_QUERY_SOURCE = `
       duration
       language {
         slug
-      }
-      muxVideo {
-        playbackId
       }
     }
   }

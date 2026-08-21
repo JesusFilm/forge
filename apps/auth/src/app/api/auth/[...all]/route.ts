@@ -12,6 +12,7 @@ import { normalizeUserCode } from "@/lib/device-user-code"
 import { resolveWebWatchCallbackURL } from "@/auth/web-callback"
 import { getAuthBaseUrl } from "@/config/env"
 import { prisma } from "@/db/client"
+import { WEB_ORDINARY_SCOPES } from "@/domain/apps"
 import { ensureDynamicPreviewRedirectUriRegistered } from "@/services/dynamic-preview-redirect.service"
 import {
   canRedeemAgentLoginHandle,
@@ -31,12 +32,6 @@ const LAST_LOGIN_METHOD_MAX_AGE = 60 * 60 * 24 * 365
 type LastLoginMethod = "apple" | "email" | "facebook" | "google" | "okta"
 const providerPriority = ["google", "facebook", "apple", "okta"] as const
 const consumerEligibility = new ConsumerEligibilityService(prisma)
-const ORDINARY_WEB_SCOPES = [
-  "openid",
-  "profile:read",
-  "email:read",
-  "web:watch-events:write",
-] as const
 
 function isFormPostRequest(request: Request): boolean {
   return (
@@ -603,7 +598,7 @@ async function enforceConsumerWebOAuthPolicy(
     .split(/\s+/)
     .filter(Boolean)
   const safeScopes = (
-    requestedScopes.length > 0 ? requestedScopes : [...ORDINARY_WEB_SCOPES]
+    requestedScopes.length > 0 ? requestedScopes : [...WEB_ORDINARY_SCOPES]
   ).filter((scope) => !scope.startsWith("playlist:"))
   url.searchParams.set("scope", [...new Set(safeScopes)].join(" "))
   return new Request(url, request)

@@ -18,7 +18,6 @@ describe("PublicUserPlaylistPage", () => {
         intentTtlMs: 60_000,
         data: {
           uiLocale: "en",
-          languageSlug: "english",
           playlist: {
             title: hostile,
             description: hostile,
@@ -44,12 +43,9 @@ describe("PublicUserPlaylistPage", () => {
               id: "video_1",
               slug: "jesus",
               title: "Jesus",
-              description: "",
               imageUrl: null,
               imageAlt: "Jesus",
               blurDataUrl: null,
-              dominantColor: null,
-              label: "FEATURE_FILM",
               durationSeconds: 120,
               languageSlug: "english",
             },

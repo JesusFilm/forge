@@ -200,36 +200,34 @@ export class UserPlaylistReportService {
       : null
 
     try {
-      await this.prisma.$transaction(async (tx) => {
-        await tx.userPlaylistReport.create({
-          data: {
-            id: reportId,
-            playlistId: playlist.id,
-            category: input.data.category,
-            reportIntentDigest: Uint8Array.from(intent.intentDigest),
-            reportIntentExpiresAt: intent.expiresAt,
-            reporterIpDigest: ip ? Uint8Array.from(ip.digest) : null,
-            reporterIpDigestKeyId: ip?.keyId ?? null,
-            reporterIpDigestDay: ip?.digestDay ?? null,
-            reporterDigestDeleteAfter: ip?.deleteAfter ?? null,
-            reporterDigestDeletedAt: null,
-            detailCiphertext: detailMaterial
-              ? Uint8Array.from(detailMaterial.ciphertext)
-              : null,
-            detailKeyId: detailMaterial?.keyId ?? null,
-            detailNonce: detailMaterial
-              ? Uint8Array.from(detailMaterial.nonce)
-              : null,
-            detailAuthTag: detailMaterial
-              ? Uint8Array.from(detailMaterial.authTag)
-              : null,
-            detailDeleteAfter: detailMaterial
-              ? new Date(now.getTime() + REPORT_DETAIL_RETENTION_MS)
-              : null,
-            detailDeletedAt: null,
-            createdAt: now,
-          },
-        })
+      await this.prisma.userPlaylistReport.create({
+        data: {
+          id: reportId,
+          playlistId: playlist.id,
+          category: input.data.category,
+          reportIntentDigest: Uint8Array.from(intent.intentDigest),
+          reportIntentExpiresAt: intent.expiresAt,
+          reporterIpDigest: ip ? Uint8Array.from(ip.digest) : null,
+          reporterIpDigestKeyId: ip?.keyId ?? null,
+          reporterIpDigestDay: ip?.digestDay ?? null,
+          reporterDigestDeleteAfter: ip?.deleteAfter ?? null,
+          reporterDigestDeletedAt: null,
+          detailCiphertext: detailMaterial
+            ? Uint8Array.from(detailMaterial.ciphertext)
+            : null,
+          detailKeyId: detailMaterial?.keyId ?? null,
+          detailNonce: detailMaterial
+            ? Uint8Array.from(detailMaterial.nonce)
+            : null,
+          detailAuthTag: detailMaterial
+            ? Uint8Array.from(detailMaterial.authTag)
+            : null,
+          detailDeleteAfter: detailMaterial
+            ? new Date(now.getTime() + REPORT_DETAIL_RETENTION_MS)
+            : null,
+          detailDeletedAt: null,
+          createdAt: now,
+        },
       })
     } catch (error) {
       if (!isUniqueConstraint(error)) throw error

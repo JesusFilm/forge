@@ -30,6 +30,19 @@ type ReportState =
   | "retryable-network-error"
   | "unavailable-intent"
 
+const REPORT_STATUS_MESSAGE_KEYS = {
+  validation: "report.validation",
+  "uniform-success": "report.success",
+  "retryable-network-error": "report.networkError",
+  "unavailable-intent": "report.intentUnavailable",
+} as const satisfies Record<Exclude<ReportState, "idle" | "submitting">, string>
+
+function reportStatusMessageKey(state: ReportState) {
+  return state === "idle" || state === "submitting"
+    ? null
+    : REPORT_STATUS_MESSAGE_KEYS[state]
+}
+
 export function PublicUserPlaylistReportDialog({
   reportIntent,
   intentTtlMs,
@@ -75,16 +88,8 @@ export function PublicUserPlaylistReportDialog({
     }
   }
 
-  const statusMessage =
-    state === "validation"
-      ? t("report.validation")
-      : state === "uniform-success"
-        ? t("report.success")
-        : state === "retryable-network-error"
-          ? t("report.networkError")
-          : state === "unavailable-intent"
-            ? t("report.intentUnavailable")
-            : null
+  const statusMessageKey = reportStatusMessageKey(state)
+  const statusMessage = statusMessageKey ? t(statusMessageKey) : null
 
   return (
     <Dialog

@@ -35,7 +35,7 @@ export const metadata: Metadata = {
   referrer: "no-referrer",
 }
 
-export class PublicUserPlaylistRenderDependencyError extends Error {
+class PublicUserPlaylistRenderDependencyError extends Error {
   constructor() {
     super("Public playlist dependency became unavailable after preflight")
     this.name = "PublicUserPlaylistRenderDependencyError"

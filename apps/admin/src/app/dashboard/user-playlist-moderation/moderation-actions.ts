@@ -5,6 +5,10 @@ import { z } from "zod"
 import { hasPermission } from "@/auth/permissions"
 import { requireAdminSession } from "@/auth/session"
 import { prisma } from "@/db/client"
+import {
+  USER_PLAYLIST_BLOCK_REASONS,
+  USER_PLAYLIST_RESTORE_REASONS,
+} from "@/domain/user-playlist-moderation"
 import { getUserPlaylistGraphqlRuntime } from "@/graphql/user-playlist-runtime"
 
 const ModerationActionSchema = z.discriminatedUnion("action", [
@@ -16,14 +20,7 @@ const ModerationActionSchema = z.discriminatedUnion("action", [
         .max(128)
         .regex(/^[A-Za-z0-9_-]+$/),
       action: z.literal("BLOCK"),
-      reason: z.enum([
-        "ABUSE",
-        "COPYRIGHT",
-        "PRIVACY",
-        "SAFETY",
-        "SPAM",
-        "OTHER_POLICY",
-      ]),
+      reason: z.enum(USER_PLAYLIST_BLOCK_REASONS),
     })
     .strict(),
   z
@@ -34,7 +31,7 @@ const ModerationActionSchema = z.discriminatedUnion("action", [
         .max(128)
         .regex(/^[A-Za-z0-9_-]+$/),
       action: z.literal("RESTORE"),
-      reason: z.enum(["REVIEW_CLEARED", "APPEAL_APPROVED", "ERROR_CORRECTED"]),
+      reason: z.enum(USER_PLAYLIST_RESTORE_REASONS),
     })
     .strict(),
 ])

@@ -1,5 +1,9 @@
 import { GraphQLError } from "graphql"
 import { hasPermission } from "@/auth/permissions"
+import {
+  USER_PLAYLIST_BLOCK_REASONS,
+  USER_PLAYLIST_RESTORE_REASONS,
+} from "@/domain/user-playlist-moderation"
 import { builder, type ContextShape } from "@/graphql/builder"
 import { getUserPlaylistGraphqlRuntime } from "@/graphql/user-playlist-runtime"
 import {
@@ -337,19 +341,12 @@ builder.mutationFields((t) => ({
 }))
 
 const UserPlaylistBlockReasonRef = builder.enumType("UserPlaylistBlockReason", {
-  values: [
-    "ABUSE",
-    "COPYRIGHT",
-    "PRIVACY",
-    "SAFETY",
-    "SPAM",
-    "OTHER_POLICY",
-  ] as const,
+  values: USER_PLAYLIST_BLOCK_REASONS,
 })
 const UserPlaylistRestoreReasonRef = builder.enumType(
   "UserPlaylistRestoreReason",
   {
-    values: ["REVIEW_CLEARED", "APPEAL_APPROVED", "ERROR_CORRECTED"] as const,
+    values: USER_PLAYLIST_RESTORE_REASONS,
   },
 )
 const UserPlaylistReportDetailStatusRef = builder.enumType(

@@ -345,7 +345,7 @@ export const env = createEnv({
       watchSearchCandidateComparisonEnabledEnvSchema,
     WATCH_SEARCH_TRANSCRIPT_PROJECTION_REVISION:
       watchSearchTranscriptProjectionRevisionEnvSchema,
-    // User Playlist U1 rollout controls. These stay as raw optional strings so
+    // User Playlist rollout controls stay as raw optional strings so
     // the runtime composer can turn malformed values into a deny instead of a
     // truthy string. Admin/data-boundary consumers are authoritative.
     FORGE_USER_PLAYLIST_AUTHORING_DEFAULT: z.string().optional(),

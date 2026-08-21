@@ -128,9 +128,6 @@ export class UserPlaylistErasureService<Credential = unknown> {
         )
       }
 
-      const erasedCount = await tx.userPlaylist.count({
-        where: { ownerSubject: input.ownerSubject },
-      })
       await tx.userPlaylist.updateMany({
         where: { ownerSubject: input.ownerSubject },
         data: {
@@ -153,7 +150,7 @@ export class UserPlaylistErasureService<Credential = unknown> {
           ownerSubjectDigest,
         },
       })
-      await tx.userPlaylist.deleteMany({
+      const erased = await tx.userPlaylist.deleteMany({
         where: { ownerSubject: input.ownerSubject },
       })
       await tx.userPlaylistOwnerQuota.deleteMany({
@@ -174,7 +171,7 @@ export class UserPlaylistErasureService<Credential = unknown> {
           idempotencyKey: input.idempotencyKey,
           ownerSubjectDigest,
           lifecycleVersion: input.lifecycleVersion,
-          erasedCount,
+          erasedCount: erased.count,
         },
       })
       return this.receiptView(created)

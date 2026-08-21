@@ -27,31 +27,29 @@ function videoHref(video: PublicUserPlaylistVideo): string | null {
 function PublicVideoCard({ video }: { video: PublicUserPlaylistVideo }) {
   const href = videoHref(video)
   const content = (
-    <>
-      <div className="relative aspect-video overflow-hidden rounded-xl bg-[linear-gradient(135deg,#292524,#450a0a_52%,#052e16)]">
-        {video.imageUrl ? (
-          <Image
-            src={video.imageUrl}
-            alt={video.imageAlt}
-            fill
-            sizes="(max-width: 640px) 90vw, (max-width: 1024px) 45vw, 360px"
-            placeholder={video.blurDataUrl ? "blur" : "empty"}
-            blurDataURL={video.blurDataUrl ?? undefined}
-            className="object-cover transition-transform duration-500 group-hover:scale-105"
-          />
+    <div className="relative aspect-video overflow-hidden rounded-xl bg-[linear-gradient(135deg,#292524,#450a0a_52%,#052e16)]">
+      {video.imageUrl ? (
+        <Image
+          src={video.imageUrl}
+          alt={video.imageAlt}
+          fill
+          sizes="(max-width: 640px) 90vw, (max-width: 1024px) 45vw, 360px"
+          placeholder={video.blurDataUrl ? "blur" : "empty"}
+          blurDataURL={video.blurDataUrl ?? undefined}
+          className="object-cover transition-transform duration-500 group-hover:scale-105"
+        />
+      ) : null}
+      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black via-black/70 to-transparent p-4 pt-16">
+        <h3 className="line-clamp-2 text-base leading-6 font-bold text-white">
+          {video.title}
+        </h3>
+        {video.durationSeconds != null ? (
+          <p className="mt-1 text-xs text-stone-300">
+            {formatDuration(video.durationSeconds)}
+          </p>
         ) : null}
-        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black via-black/70 to-transparent p-4 pt-16">
-          <h3 className="line-clamp-2 text-base leading-6 font-bold text-white">
-            {video.title}
-          </h3>
-          {video.durationSeconds != null ? (
-            <p className="mt-1 text-xs text-stone-300">
-              {formatDuration(video.durationSeconds)}
-            </p>
-          ) : null}
-        </div>
       </div>
-    </>
+    </div>
   )
   return href ? (
     <a

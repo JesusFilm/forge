@@ -65,14 +65,22 @@ export const MASTRA_STUDIO_DEFAULT_SCOPES = [
   "mastra-studio:access",
 ] satisfies AuthScopeKey[]
 
-export const WEB_DEFAULT_SCOPES = [
+export const WEB_ORDINARY_SCOPES = [
   "openid",
   "profile:read",
   "email:read",
   "web:watch-events:write",
+] satisfies AuthScopeKey[]
+
+export const WEB_PLAYLIST_SCOPES = [
   "playlist:read",
   "playlist:write",
   "playlist:share",
+] satisfies AuthScopeKey[]
+
+export const WEB_DEFAULT_SCOPES = [
+  ...WEB_ORDINARY_SCOPES,
+  ...WEB_PLAYLIST_SCOPES,
 ] satisfies AuthScopeKey[]
 
 // Identity-only: chat performs no authorization, so no *:access or
