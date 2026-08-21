@@ -1,7 +1,7 @@
 "use client"
 
 import Image from "next/image"
-import type { CSSProperties } from "react"
+import type { ComponentProps, CSSProperties } from "react"
 import { useEffect, useRef, useState } from "react"
 import { useTranslations } from "next-intl"
 import type { FragmentOf } from "@/lib/legacy-fragment-types"
@@ -56,7 +56,13 @@ type MediaCollectionProps = {
   data: FragmentOf<typeof mediaCollectionFragment>
   routeVideo?: RouteVideo | null
   languageSlug?: string | null
+  initialSelectedSnap?: number
+  onSelectedSnapChange?: (snap: number) => void
 }
+
+type MediaCollectionCarouselApi = Parameters<
+  NonNullable<ComponentProps<typeof Carousel>["setApi"]>
+>[0]
 
 type HoverBackdropLayer = {
   id: number
@@ -163,6 +169,8 @@ export function MediaCollection({
   data,
   routeVideo,
   languageSlug,
+  initialSelectedSnap,
+  onSelectedSnapChange,
 }: MediaCollectionProps) {
   const {
     id,
@@ -236,6 +244,8 @@ export function MediaCollection({
       showItemNumbers={showItemNumbers}
       items={enrichedItems}
       fallbackLanguageSlug={resolvedLanguageSlug}
+      initialSelectedSnap={initialSelectedSnap}
+      onSelectedSnapChange={onSelectedSnapChange}
     />
   )
 }
@@ -275,6 +285,8 @@ function WatchHomeMediaCollection({
   showItemNumbers,
   items,
   fallbackLanguageSlug,
+  initialSelectedSnap,
+  onSelectedSnapChange,
 }: {
   id: string
   categoryLabel: string | null
@@ -290,6 +302,8 @@ function WatchHomeMediaCollection({
   showItemNumbers: boolean | null
   items: EnrichedMediaItem[]
   fallbackLanguageSlug: ReturnType<typeof asLocaleSlug>
+  initialSelectedSnap?: number
+  onSelectedSnapChange?: (snap: number) => void
 }) {
   const t = useTranslations("WatchHome")
   const isRail = variant === "carousel"
@@ -325,6 +339,8 @@ function WatchHomeMediaCollection({
   const [hoverBackdropLayers, setHoverBackdropLayers] = useState<
     HoverBackdropLayer[]
   >([])
+  const [carouselApi, setCarouselApi] = useState<MediaCollectionCarouselApi>()
+  const selectedSnapRef = useRef(initialSelectedSnap ?? 0)
   const normalizedCtaLink = normalizeWatchRootHref(ctaLink)
   const standaloneCtaUrl = normalizedCtaLink?.startsWith(`${WATCH_BASE_PATH}/`)
     ? resolveWatchShareUrlFromPathname({
@@ -433,6 +449,37 @@ function WatchHomeMediaCollection({
 
     return () => window.clearTimeout(timeoutId)
   }, [defaultBackgroundUrl, hoverBackdropLayers])
+
+  useEffect(() => {
+    if (!carouselApi) return
+
+    const reportSelection = () => {
+      const selectedSnap = carouselApi.selectedScrollSnap()
+      selectedSnapRef.current = selectedSnap
+      onSelectedSnapChange?.(selectedSnap)
+    }
+    const restoreSelection = () => {
+      const lastSnap = carouselApi.scrollSnapList().length - 1
+      if (lastSnap < 0) return
+      const clampedSnap = Math.min(
+        Math.max(Math.trunc(selectedSnapRef.current), 0),
+        lastSnap,
+      )
+      selectedSnapRef.current = clampedSnap
+      if (carouselApi.selectedScrollSnap() !== clampedSnap) {
+        carouselApi.scrollTo(clampedSnap, true)
+      }
+      onSelectedSnapChange?.(clampedSnap)
+    }
+
+    restoreSelection()
+    carouselApi.on("reInit", restoreSelection)
+    carouselApi.on("select", reportSelection)
+    return () => {
+      carouselApi.off("reInit", restoreSelection)
+      carouselApi.off("select", reportSelection)
+    }
+  }, [carouselApi, onSelectedSnapChange])
 
   return (
     <section
@@ -567,8 +614,16 @@ function WatchHomeMediaCollection({
               align: "start",
               dragFree: true,
               containScroll: "trimSnaps",
+              ...(initialSelectedSnap == null
+                ? null
+                : { startIndex: Math.max(Math.trunc(initialSelectedSnap), 0) }),
               watchDrag: (api) => api.scrollSnapList().length > 1,
             }}
+            setApi={
+              initialSelectedSnap == null && onSelectedSnapChange == null
+                ? undefined
+                : setCarouselApi
+            }
             className="w-full"
           >
             <CarouselContent

@@ -5,10 +5,12 @@ import { WatchHomeFooter } from "@/components/home/WatchHomeFooter"
 import { WatchHomeTvCarousel } from "@/components/home/WatchHomeTvCarousel"
 import { WATCH_PAGE_CONTENT_CLASSES } from "@/lib/content-width"
 import type { WatchHomeModel } from "@/lib/watch-home"
+import { collectFeaturedCollectionReferences } from "@/lib/featured-collection-references"
 
 type WatchHomeExperiencePageProps = {
   heroModel: WatchHomeModel
   blocks: readonly Section[]
+  locale?: string
   languageSlug: string
 }
 
@@ -98,15 +100,75 @@ function isStandaloneMediaBlock(block: Section) {
   return typename === "VideoBlock" || typename === "VideoCarouselBlock"
 }
 
+function isDynamicMediaCollectionBlock(block: Section) {
+  const candidate = block as {
+    readonly __typename?: string | null
+    readonly itemsSource?: string | null
+  }
+
+  return (
+    candidate.__typename === "MediaCollectionBlock" &&
+    candidate.itemsSource === "dynamicCollections"
+  )
+}
+
 export function WatchHomeExperiencePage({
   heroModel,
   blocks,
+  locale = "en",
   languageSlug,
 }: WatchHomeExperiencePageProps) {
   const t = useTranslations("WatchHome")
   const backdrop = findBackdropImage(heroModel)
   const normalized = normalizeAuthoredPageHeadings(blocks)
   const hasHeroBlock = normalized.blocks.some(isWatchHomeHeroBlock)
+  const featuredCollections = collectFeaturedCollectionReferences(
+    normalized.blocks,
+  )
+  const dynamicCollectionBlock = normalized.blocks.find(
+    isDynamicMediaCollectionBlock,
+  )
+  const authoredBlocks = dynamicCollectionBlock
+    ? normalized.blocks.filter((block) => block !== dynamicCollectionBlock)
+    : normalized.blocks
+
+  const renderBlock = (block: Section, index: number) => {
+    const blockKey =
+      (block as { sectionKey?: string | null }).sectionKey ?? index
+
+    if (isWatchHomeHeroBlock(block)) {
+      return (
+        <WatchHomeTvCarousel
+          key={blockKey}
+          slides={heroModel.heroSlides}
+          sequence={heroModel.carousel}
+        />
+      )
+    }
+
+    const renderedBlock = (
+      <ExperienceSectionRenderer
+        key={blockKey}
+        section={block}
+        locale={locale}
+        languageSlug={languageSlug}
+        featuredCollections={featuredCollections}
+        allowDynamicCollections
+      />
+    )
+
+    return isStandaloneMediaBlock(block) ? (
+      <div
+        key={blockKey}
+        className={`${WATCH_PAGE_CONTENT_CLASSES} pt-16`}
+        data-watch-home-content-rail
+      >
+        {renderedBlock}
+      </div>
+    ) : (
+      renderedBlock
+    )
+  }
 
   return (
     <main className="min-h-screen overflow-x-hidden bg-black text-white">
@@ -148,41 +210,14 @@ export function WatchHomeExperiencePage({
               sequence={heroModel.carousel}
             />
           )}
-          {normalized.blocks.map((block, index) => {
-            const blockKey =
-              (block as { sectionKey?: string | null }).sectionKey ?? index
-
-            if (isWatchHomeHeroBlock(block)) {
-              return (
-                <WatchHomeTvCarousel
-                  key={blockKey}
-                  slides={heroModel.heroSlides}
-                  sequence={heroModel.carousel}
-                />
-              )
-            }
-
-            const renderedBlock = (
-              <ExperienceSectionRenderer
-                key={blockKey}
-                section={block}
-                languageSlug={languageSlug}
-              />
-            )
-
-            return isStandaloneMediaBlock(block) ? (
-              <div
-                key={blockKey}
-                className={`${WATCH_PAGE_CONTENT_CLASSES} pt-16`}
-                data-watch-home-content-rail
-              >
-                {renderedBlock}
-              </div>
-            ) : (
-              renderedBlock
-            )
-          })}
+          {authoredBlocks.map(renderBlock)}
           <WatchHomeFooter />
+          {dynamicCollectionBlock
+            ? renderBlock(
+                dynamicCollectionBlock,
+                normalized.blocks.indexOf(dynamicCollectionBlock),
+              )
+            : null}
         </div>
       </div>
     </main>

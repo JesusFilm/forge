@@ -4,7 +4,50 @@
 
 import { act } from "react"
 import { createRoot, type Root } from "react-dom/client"
-import { afterEach, beforeEach, describe, expect, it } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+
+const { emblaApi, emblaHandlers, emblaState, useEmblaCarouselMock } =
+  vi.hoisted(() => {
+    const handlers: Record<string, Set<() => void>> = {
+      reInit: new Set(),
+      select: new Set(),
+    }
+    const state = { selectedSnap: 0, snapCount: 3 }
+    const api = {
+      canScrollNext: vi.fn(() => true),
+      canScrollPrev: vi.fn(() => false),
+      off: vi.fn((event: string, handler: () => void) => {
+        handlers[event]?.delete(handler)
+        return api
+      }),
+      on: vi.fn((event: string, handler: () => void) => {
+        handlers[event]?.add(handler)
+        return api
+      }),
+      scrollNext: vi.fn(),
+      scrollPrev: vi.fn(),
+      scrollTo: vi.fn((snap: number) => {
+        state.selectedSnap = snap
+      }),
+      scrollSnapList: vi.fn(() =>
+        Array.from({ length: state.snapCount }, (_, index) => index),
+      ),
+      selectedScrollSnap: vi.fn(() => state.selectedSnap),
+    }
+    return {
+      emblaApi: api,
+      emblaHandlers: handlers,
+      emblaState: state,
+      useEmblaCarouselMock: vi.fn((_options?: Record<string, unknown>) => [
+        vi.fn(),
+        api,
+      ]),
+    }
+  })
+
+vi.mock("embla-carousel-react", () => ({
+  default: useEmblaCarouselMock,
+}))
 
 import type { RouteVideo } from "@/lib/content"
 import type { EnrichedMediaItem } from "@/lib/enrichment"
@@ -15,6 +58,14 @@ let container: HTMLDivElement
 let root: Root
 
 beforeEach(() => {
+  vi.clearAllMocks()
+  vi.stubGlobal("matchMedia", vi.fn().mockReturnValue({ matches: true }))
+  emblaState.selectedSnap = 0
+  emblaState.snapCount = 3
+  emblaHandlers.reInit.clear()
+  emblaHandlers.select.clear()
+  emblaApi.canScrollNext.mockReturnValue(true)
+  emblaApi.canScrollPrev.mockReturnValue(false)
   container = document.createElement("div")
   document.body.appendChild(container)
   root = createRoot(container)
@@ -25,6 +76,7 @@ afterEach(() => {
     root.unmount()
   })
   container.remove()
+  vi.unstubAllGlobals()
 })
 
 // The component destructures these fields off `data` at runtime; the prop
@@ -112,6 +164,69 @@ function expectSolidWhiteInteractionFrame(outline: HTMLElement | null) {
 }
 
 describe("MediaCollection VideoCard href", () => {
+  it("keeps authored carousel callers on the existing default snap behavior", () => {
+    act(() => {
+      root.render(
+        <MediaCollection
+          data={makeData({
+            itemsSource: "manual",
+            items: [makeManualItem()],
+          })}
+        />,
+      )
+    })
+
+    expect(useEmblaCarouselMock.mock.calls.at(-1)?.[0]).not.toHaveProperty(
+      "startIndex",
+    )
+    expect(emblaApi.scrollTo).not.toHaveBeenCalled()
+  })
+
+  it("restores, reports, and clamps an optional selected carousel snap", () => {
+    const onSelectedSnapChange = vi.fn()
+    act(() => {
+      root.render(
+        <MediaCollection
+          initialSelectedSnap={8}
+          onSelectedSnapChange={onSelectedSnapChange}
+          data={makeData({
+            itemsSource: "manual",
+            items: [
+              makeManualItem(),
+              makeManualItem({ videoId: "v-2", videoSlug: "episode-two" }),
+              makeManualItem({ videoId: "v-3", videoSlug: "episode-three" }),
+            ],
+          })}
+        />,
+      )
+    })
+
+    expect(useEmblaCarouselMock.mock.calls.at(-1)?.[0]).toEqual(
+      expect.objectContaining({ startIndex: 8 }),
+    )
+    expect(emblaApi.scrollTo).toHaveBeenCalledWith(2, true)
+    expect(onSelectedSnapChange).toHaveBeenLastCalledWith(2)
+
+    emblaState.selectedSnap = 1
+    act(() => {
+      for (const handler of emblaHandlers.select) handler()
+    })
+    expect(onSelectedSnapChange).toHaveBeenLastCalledWith(1)
+
+    emblaState.snapCount = 2
+    emblaState.selectedSnap = 1
+    emblaApi.scrollTo.mockClear()
+    act(() => {
+      for (const handler of emblaHandlers.reInit) handler()
+    })
+    expect(emblaApi.scrollTo).not.toHaveBeenCalled()
+    expect(onSelectedSnapChange).toHaveBeenLastCalledWith(1)
+
+    act(() => root.unmount())
+    expect(emblaApi.off).toHaveBeenCalledWith("reInit", expect.any(Function))
+    expect(emblaApi.off).toHaveBeenCalledWith("select", expect.any(Function))
+  })
+
   it("uses shared typography tokens for card copy and section eyebrows", () => {
     act(() => {
       root.render(

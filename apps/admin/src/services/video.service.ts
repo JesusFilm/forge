@@ -195,6 +195,55 @@ export type WatchLanguageInventory = {
   subtitleOnlyVideos: WatchLanguageInventoryItem[]
 }
 
+export type WatchCollectionFeedPageInfo = {
+  endCursor: string | null
+  hasNextPage: boolean
+}
+
+export type WatchCollectionFeedItem = {
+  id: string
+  coreId: string
+  title: string
+  videoSlug: string
+  languageSlug: string | null
+  label: string | null
+  imageUrl: string | null
+  blurDataUrl: string | null
+  dominantColor: string | null
+  muxPlaybackId: string | null
+}
+
+export type WatchCollectionFeedNode = {
+  id: string
+  slug: string
+  title: string
+  description: string | null
+  items: WatchCollectionFeedItem[]
+}
+
+export type WatchCollectionFeed = {
+  nodes: WatchCollectionFeedNode[]
+  pageInfo: WatchCollectionFeedPageInfo
+}
+
+type WatchCollectionFeedRow = {
+  parentId: string
+  parentSlug: string
+  parentTitle: string
+  parentDescription: string | null
+  itemId: string
+  itemCoreId: string
+  itemSlug: string
+  itemTitle: string
+  itemLabel: string | null
+  languageSlug: string | null
+  muxPlaybackId: string | null
+  imageUrl: string | null
+  blurDataUrl: string | null
+  dominantColor: string | null
+  hasNextPage: boolean
+}
+
 export type WatchRouteSnapshotImage = {
   documentId: string
   url: string | null
@@ -380,6 +429,15 @@ const WATCH_LANGUAGE_INVENTORY_PROMOTED_COUNT = 12
 const WATCH_LANGUAGE_INVENTORY_STATEMENT_TIMEOUT_MS = 10_000
 const WATCH_LANGUAGE_INVENTORY_TRANSACTION_TIMEOUT_MS = 11_000
 const WATCH_LANGUAGE_INVENTORY_STATEMENT_TIMEOUT_SQL = `SET LOCAL statement_timeout = '${WATCH_LANGUAGE_INVENTORY_STATEMENT_TIMEOUT_MS}ms'`
+const WATCH_COLLECTION_FEED_DEFAULT_PAGE_SIZE = 3
+const WATCH_COLLECTION_FEED_MAX_PAGE_SIZE = 3
+export const WATCH_COLLECTION_FEED_MAX_EXCLUSIONS = 200
+const WATCH_COLLECTION_FEED_CARD_COUNTS = [8, 12] as const
+const WATCH_COLLECTION_FEED_STATEMENT_TIMEOUT_MS = 10_000
+const WATCH_COLLECTION_FEED_TRANSACTION_TIMEOUT_MS = 11_000
+const WATCH_COLLECTION_FEED_STATEMENT_TIMEOUT_SQL = `SET LOCAL statement_timeout = '${WATCH_COLLECTION_FEED_STATEMENT_TIMEOUT_MS}ms'`
+const WATCH_COLLECTION_FEED_CURSOR_PATTERN = /^[A-Za-z0-9_-]{1,191}$/
+const PUBLIC_LOCALE_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
 
 const VIDEO_RELATION_ORDER_BY = [
   { order: { sort: "asc" as const, nulls: "last" as const } },
@@ -2112,6 +2170,335 @@ export class VideoService {
     })
   }
 
+  async getWatchCollectionFeed({
+    first,
+    cardsPerParent,
+    locale,
+    languageSlug,
+    after,
+    excludedIds = [],
+    excludedSlugs = [],
+  }: {
+    first?: number | null
+    cardsPerParent: number
+    locale: string
+    languageSlug: string
+    after?: string | null
+    excludedIds?: readonly string[]
+    excludedSlugs?: readonly string[]
+  }): Promise<WatchCollectionFeed> {
+    if (
+      excludedIds.length > WATCH_COLLECTION_FEED_MAX_EXCLUSIONS ||
+      excludedSlugs.length > WATCH_COLLECTION_FEED_MAX_EXCLUSIONS
+    ) {
+      throw new VideoLookupValidationError(
+        `Watch collection feed exclusions exceed max ${WATCH_COLLECTION_FEED_MAX_EXCLUSIONS}`,
+      )
+    }
+
+    const pageSize = normalizeWatchCollectionFeedPageSize(first)
+    const normalizedCardsPerParent =
+      normalizeWatchCollectionFeedCardCount(cardsPerParent)
+    const normalizedLocale = normalizeWatchCollectionFeedLocale(locale)
+    const normalizedLanguageSlug =
+      normalizeWatchCollectionFeedLanguageSlug(languageSlug)
+    const normalizedAfter = normalizeWatchCollectionFeedCursor(after)
+    const normalizedExcludedIds = [...new Set(excludedIds)]
+      .map((value) => value.trim())
+      .filter(Boolean)
+    const normalizedExcludedSlugs = [...new Set(excludedSlugs)]
+      .map((value) => value.trim())
+      .filter(Boolean)
+
+    const cursorFilter = normalizedAfter
+      ? Prisma.sql`AND parent.id > ${normalizedAfter}`
+      : Prisma.empty
+    const excludedIdsFilter = normalizedExcludedIds.length
+      ? Prisma.sql`AND parent.id NOT IN (${Prisma.join(normalizedExcludedIds)})`
+      : Prisma.empty
+    const excludedSlugsFilter = normalizedExcludedSlugs.length
+      ? Prisma.sql`AND parent.slug NOT IN (${Prisma.join(normalizedExcludedSlugs)})`
+      : Prisma.empty
+
+    const rows = await this.prisma.$transaction(
+      async (tx) => {
+        await tx.$executeRawUnsafe(WATCH_COLLECTION_FEED_STATEMENT_TIMEOUT_SQL)
+        return tx.$queryRaw<WatchCollectionFeedRow[]>`
+          WITH eligible_parent AS MATERIALIZED (
+            SELECT
+              parent.id,
+              parent.slug
+            FROM video parent
+            WHERE parent.label = 'collection'
+              AND parent.deleted_at IS NULL
+              AND parent.no_index = FALSE
+              AND NOT ('watch' = ANY(parent.restrict_view_platforms))
+              AND EXISTS (
+                SELECT 1
+                FROM video_locale published_locale
+                WHERE published_locale.video_id = parent.id
+                  AND published_locale.deleted_at IS NULL
+                  AND published_locale.status = 'published'
+              )
+              AND EXISTS (
+                SELECT 1
+                FROM video_relation eligibility_relation
+                JOIN video child
+                  ON child.id = eligibility_relation.child_id
+                WHERE eligibility_relation.parent_id = parent.id
+                  AND child.deleted_at IS NULL
+                  AND child.no_index = FALSE
+                  AND NOT ('watch' = ANY(child.restrict_view_platforms))
+                  AND EXISTS (
+                    SELECT 1
+                    FROM video_locale published_locale
+                    WHERE published_locale.video_id = child.id
+                      AND published_locale.deleted_at IS NULL
+                      AND published_locale.status = 'published'
+                  )
+                  AND EXISTS (
+                    SELECT 1
+                    FROM video_dub dub
+                    WHERE dub.video_id = child.id
+                      AND dub.deleted_at IS NULL
+                      AND dub.published = TRUE
+                      AND NULLIF(BTRIM(dub.hls), '') IS NOT NULL
+                  )
+              )
+              ${cursorFilter}
+              ${excludedIdsFilter}
+              ${excludedSlugsFilter}
+            ORDER BY parent.id ASC
+            LIMIT ${pageSize + 1}
+          ),
+          returned_parent AS MATERIALIZED (
+            SELECT *
+            FROM eligible_parent
+            ORDER BY id ASC
+            LIMIT ${pageSize}
+          ),
+          bounded_child AS MATERIALIZED (
+            SELECT
+              returned_parent.id AS parent_id,
+              returned_parent.slug AS parent_slug,
+              selected_child.id,
+              selected_child.core_id,
+              selected_child.slug,
+              selected_child.label,
+              selected_child.primary_language_id,
+              selected_child.relation_order,
+              selected_child.relation_created_at,
+              selected_child.relation_id
+            FROM returned_parent
+            JOIN LATERAL (
+              SELECT
+                child.id,
+                child.core_id,
+                child.slug,
+                child.label,
+                child.primary_language_id,
+                relation.order AS relation_order,
+                relation.created_at AS relation_created_at,
+                relation.id AS relation_id
+              FROM video_relation relation
+              JOIN video child
+                ON child.id = relation.child_id
+              WHERE relation.parent_id = returned_parent.id
+                AND child.deleted_at IS NULL
+                AND child.no_index = FALSE
+                AND NOT ('watch' = ANY(child.restrict_view_platforms))
+                AND EXISTS (
+                  SELECT 1
+                  FROM video_locale published_locale
+                  WHERE published_locale.video_id = child.id
+                    AND published_locale.deleted_at IS NULL
+                    AND published_locale.status = 'published'
+                )
+                AND EXISTS (
+                  SELECT 1
+                  FROM video_dub dub
+                  WHERE dub.video_id = child.id
+                    AND dub.deleted_at IS NULL
+                    AND dub.published = TRUE
+                    AND NULLIF(BTRIM(dub.hls), '') IS NOT NULL
+                )
+              ORDER BY
+                relation.order ASC NULLS LAST,
+                relation.created_at ASC,
+                relation.id ASC
+              LIMIT ${normalizedCardsPerParent}
+            ) selected_child ON TRUE
+          )
+          SELECT
+            returned_parent.id AS "parentId",
+            returned_parent.slug AS "parentSlug",
+            COALESCE(parent_locale.title, returned_parent.slug) AS "parentTitle",
+            parent_locale.description AS "parentDescription",
+            bounded_child.id AS "itemId",
+            bounded_child.core_id AS "itemCoreId",
+            bounded_child.slug AS "itemSlug",
+            COALESCE(child_locale.title, bounded_child.slug) AS "itemTitle",
+            bounded_child.label AS "itemLabel",
+            selected_playback.language_slug AS "languageSlug",
+            selected_playback.playback_id AS "muxPlaybackId",
+            selected_image.image_url AS "imageUrl",
+            selected_image.blur_data_url AS "blurDataUrl",
+            selected_image.dominant_color AS "dominantColor",
+            (
+              SELECT COUNT(*) > ${pageSize}
+              FROM eligible_parent
+            ) AS "hasNextPage"
+          FROM returned_parent
+          JOIN bounded_child
+            ON bounded_child.parent_id = returned_parent.id
+          LEFT JOIN LATERAL (
+            SELECT
+              NULLIF(BTRIM(locale.title), '') AS title,
+              NULLIF(BTRIM(locale.description), '') AS description
+            FROM video_locale locale
+            WHERE locale.video_id = returned_parent.id
+              AND locale.deleted_at IS NULL
+              AND locale.status = 'published'
+              AND NULLIF(BTRIM(locale.title), '') IS NOT NULL
+              AND (
+                locale.language_slug = ${normalizedLanguageSlug}
+                OR locale.locale = ${normalizedLocale}
+              )
+            ORDER BY
+              CASE
+                WHEN locale.language_slug = ${normalizedLanguageSlug} THEN 0
+                WHEN locale.locale = ${normalizedLocale} THEN 1
+                ELSE 2
+              END ASC,
+              locale.updated_at DESC,
+              locale.id ASC
+            LIMIT 1
+          ) parent_locale ON TRUE
+          LEFT JOIN LATERAL (
+            SELECT NULLIF(BTRIM(locale.title), '') AS title
+            FROM video_locale locale
+            WHERE locale.video_id = bounded_child.id
+              AND locale.deleted_at IS NULL
+              AND locale.status = 'published'
+              AND NULLIF(BTRIM(locale.title), '') IS NOT NULL
+              AND (
+                locale.language_slug = ${normalizedLanguageSlug}
+                OR locale.locale = ${normalizedLocale}
+              )
+            ORDER BY
+              CASE
+                WHEN locale.language_slug = ${normalizedLanguageSlug} THEN 0
+                WHEN locale.locale = ${normalizedLocale} THEN 1
+                ELSE 2
+              END ASC,
+              locale.updated_at DESC,
+              locale.id ASC
+            LIMIT 1
+          ) child_locale ON TRUE
+          JOIN LATERAL (
+            SELECT
+              playback_language.slug AS language_slug,
+              NULLIF(BTRIM(mux_video.playback_id), '') AS playback_id
+            FROM video_dub dub
+            LEFT JOIN language playback_language
+              ON playback_language.id = dub.language_id
+             AND playback_language.deleted_at IS NULL
+            LEFT JOIN mux_video
+              ON mux_video.id = dub.mux_video_id
+             AND mux_video.deleted_at IS NULL
+            WHERE dub.video_id = bounded_child.id
+              AND dub.deleted_at IS NULL
+              AND dub.published = TRUE
+              AND NULLIF(BTRIM(dub.hls), '') IS NOT NULL
+            ORDER BY
+              CASE
+                WHEN playback_language.slug = ${normalizedLanguageSlug}
+                  OR playback_language.bcp47 = ${normalizedLanguageSlug}
+                  THEN 0
+                WHEN dub.language_id = bounded_child.primary_language_id THEN 1
+                ELSE 2
+              END ASC,
+              dub.duration DESC NULLS LAST,
+              dub.id ASC
+            LIMIT 1
+          ) selected_playback ON TRUE
+          LEFT JOIN LATERAL (
+            SELECT
+              COALESCE(
+                NULLIF(BTRIM(image.mobile_cinematic_high), ''),
+                NULLIF(BTRIM(image.mobile_cinematic_low), ''),
+                NULLIF(BTRIM(image.url), ''),
+                NULLIF(BTRIM(image.thumbnail), '')
+              ) AS image_url,
+              image.blur_data_url,
+              image.dominant_color
+            FROM video_image image
+            WHERE image.video_id = bounded_child.id
+              AND image.deleted_at IS NULL
+              AND COALESCE(
+                NULLIF(BTRIM(image.mobile_cinematic_high), ''),
+                NULLIF(BTRIM(image.mobile_cinematic_low), ''),
+                NULLIF(BTRIM(image.url), ''),
+                NULLIF(BTRIM(image.thumbnail), '')
+              ) IS NOT NULL
+            ORDER BY
+              CASE
+                WHEN NULLIF(BTRIM(image.mobile_cinematic_high), '') IS NOT NULL THEN 0
+                WHEN NULLIF(BTRIM(image.mobile_cinematic_low), '') IS NOT NULL THEN 1
+                WHEN NULLIF(BTRIM(image.url), '') IS NOT NULL THEN 2
+                ELSE 3
+              END ASC,
+              image.updated_at DESC,
+              image.id ASC
+            LIMIT 1
+          ) selected_image ON TRUE
+          ORDER BY
+            returned_parent.id ASC,
+            bounded_child.relation_order ASC NULLS LAST,
+            bounded_child.relation_created_at ASC,
+            bounded_child.relation_id ASC
+        `
+      },
+      { timeout: WATCH_COLLECTION_FEED_TRANSACTION_TIMEOUT_MS },
+    )
+
+    const nodesById = new Map<string, WatchCollectionFeedNode>()
+    for (const row of rows) {
+      let node = nodesById.get(row.parentId)
+      if (!node) {
+        node = {
+          id: row.parentId,
+          slug: row.parentSlug,
+          title: row.parentTitle,
+          description: row.parentDescription,
+          items: [],
+        }
+        nodesById.set(row.parentId, node)
+      }
+      node.items.push({
+        id: row.itemId,
+        coreId: row.itemCoreId,
+        title: row.itemTitle,
+        videoSlug: row.itemSlug,
+        languageSlug: row.languageSlug,
+        label: row.itemLabel,
+        imageUrl: row.imageUrl,
+        blurDataUrl: row.blurDataUrl,
+        dominantColor: row.dominantColor,
+        muxPlaybackId: row.muxPlaybackId,
+      })
+    }
+
+    const nodes = [...nodesById.values()]
+    return {
+      nodes,
+      pageInfo: {
+        endCursor: nodes.at(-1)?.id ?? null,
+        hasNextPage: rows[0]?.hasNextPage ?? false,
+      },
+    }
+  }
+
   async getWatchLanguageInventory({
     languageSlug,
     limit,
@@ -3111,6 +3498,70 @@ function withVideoCoreIdForOrdering(query: object): object {
 function normalizeOptionalLocale(locale: string | null | undefined) {
   const normalized = locale?.trim()
   return normalized && normalized.length > 0 ? normalized : null
+}
+
+function normalizeWatchCollectionFeedPageSize(
+  first: number | null | undefined,
+) {
+  const value = first ?? WATCH_COLLECTION_FEED_DEFAULT_PAGE_SIZE
+  if (
+    !Number.isInteger(value) ||
+    value < 1 ||
+    value > WATCH_COLLECTION_FEED_MAX_PAGE_SIZE
+  ) {
+    throw new VideoLookupValidationError(
+      `watchCollectionFeed.first must be an integer from 1 to ${WATCH_COLLECTION_FEED_MAX_PAGE_SIZE}`,
+    )
+  }
+  return value
+}
+
+function normalizeWatchCollectionFeedCardCount(cardsPerParent: number) {
+  if (
+    !WATCH_COLLECTION_FEED_CARD_COUNTS.includes(
+      cardsPerParent as (typeof WATCH_COLLECTION_FEED_CARD_COUNTS)[number],
+    )
+  ) {
+    throw new VideoLookupValidationError(
+      `watchCollectionFeed.cardsPerParent must be ${WATCH_COLLECTION_FEED_CARD_COUNTS.join(" or ")}`,
+    )
+  }
+  return cardsPerParent
+}
+
+function normalizeWatchCollectionFeedCursor(cursor: string | null | undefined) {
+  const normalized = cursor?.trim()
+  if (!normalized) return null
+  if (!WATCH_COLLECTION_FEED_CURSOR_PATTERN.test(normalized)) {
+    throw new VideoLookupValidationError("Invalid watchCollectionFeed cursor")
+  }
+  return normalized
+}
+
+function normalizeWatchCollectionFeedLocale(locale: string) {
+  const normalized = locale.trim().toLowerCase().replaceAll("_", "-")
+  if (
+    normalized.length === 0 ||
+    normalized.length > 35 ||
+    !PUBLIC_LOCALE_PATTERN.test(normalized)
+  ) {
+    throw new VideoLookupValidationError("Invalid watchCollectionFeed locale")
+  }
+  return normalized
+}
+
+function normalizeWatchCollectionFeedLanguageSlug(languageSlug: string) {
+  const normalized = languageSlug.trim().toLowerCase()
+  if (
+    normalized.length === 0 ||
+    normalized.length > 100 ||
+    !PUBLIC_LANGUAGE_SLUG_PATTERN.test(normalized)
+  ) {
+    throw new VideoLookupValidationError(
+      "Invalid watchCollectionFeed languageSlug",
+    )
+  }
+  return normalized
 }
 
 function logSlowVideoLookup(

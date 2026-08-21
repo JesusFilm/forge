@@ -26,6 +26,10 @@ import {
 } from "@/services/video.service"
 import type {
   ChildDubLanguageRow,
+  WatchCollectionFeed,
+  WatchCollectionFeedItem,
+  WatchCollectionFeedNode,
+  WatchCollectionFeedPageInfo,
   WatchLanguageInventory,
   WatchLanguageInventoryCounts,
   WatchLanguageInventoryItem,
@@ -790,6 +794,82 @@ builder.prismaObject("Video", {
           videoId: video.id,
           visibleOnly: !isEditorOrAdmin(ctx.user),
         }),
+    }),
+  }),
+})
+
+/** @classification public-shape */
+const WatchCollectionFeedItemRef = builder.objectRef<WatchCollectionFeedItem>(
+  "WatchCollectionFeedItem",
+)
+
+WatchCollectionFeedItemRef.implement({
+  description:
+    "A localized, playback-resolved Watch card in a bounded collection feed page.",
+  fields: (t) => ({
+    id: t.exposeID("id", { nullable: false }),
+    coreId: t.exposeString("coreId", { nullable: false }),
+    title: t.exposeString("title", { nullable: false }),
+    videoSlug: t.exposeString("videoSlug", { nullable: false }),
+    languageSlug: t.exposeString("languageSlug", { nullable: true }),
+    label: t.exposeString("label", { nullable: true }),
+    imageUrl: t.exposeString("imageUrl", { nullable: true }),
+    blurDataUrl: t.exposeString("blurDataUrl", { nullable: true }),
+    dominantColor: t.exposeString("dominantColor", { nullable: true }),
+    muxPlaybackId: t.exposeString("muxPlaybackId", { nullable: true }),
+  }),
+})
+
+/** @classification public-shape */
+const WatchCollectionFeedNodeRef = builder.objectRef<WatchCollectionFeedNode>(
+  "WatchCollectionFeedNode",
+)
+
+WatchCollectionFeedNodeRef.implement({
+  description:
+    "A visible localized collection parent and its bounded card-ready items.",
+  fields: (t) => ({
+    id: t.exposeID("id", { nullable: false }),
+    slug: t.exposeString("slug", { nullable: false }),
+    title: t.exposeString("title", { nullable: false }),
+    description: t.exposeString("description", { nullable: true }),
+    items: t.field({
+      type: [WatchCollectionFeedItemRef],
+      nullable: false,
+      resolve: (row) => row.items,
+    }),
+  }),
+})
+
+/** @classification public-shape */
+const WatchCollectionFeedPageInfoRef =
+  builder.objectRef<WatchCollectionFeedPageInfo>("WatchCollectionFeedPageInfo")
+
+WatchCollectionFeedPageInfoRef.implement({
+  fields: (t) => ({
+    endCursor: t.exposeString("endCursor", { nullable: true }),
+    hasNextPage: t.exposeBoolean("hasNextPage", { nullable: false }),
+  }),
+})
+
+/** @classification public-shape */
+const WatchCollectionFeedRef = builder.objectRef<WatchCollectionFeed>(
+  "WatchCollectionFeed",
+)
+
+WatchCollectionFeedRef.implement({
+  description:
+    "Cursor-paginated Watch collection parents used by the homepage infinite discovery feed.",
+  fields: (t) => ({
+    nodes: t.field({
+      type: [WatchCollectionFeedNodeRef],
+      nullable: false,
+      resolve: (row) => row.nodes,
+    }),
+    pageInfo: t.field({
+      type: WatchCollectionFeedPageInfoRef,
+      nullable: false,
+      resolve: (row) => row.pageInfo,
     }),
   }),
 })
@@ -1613,6 +1693,42 @@ builder.queryFields((t) => ({
         coreIds: args.coreIds,
         query,
       }),
+  }),
+  watchCollectionFeed: t.field({
+    type: WatchCollectionFeedRef,
+    nullable: false,
+    authScopes: { public: true },
+    description:
+      "Bounded collection-parent feed for Watch homepage discovery. Ordered by stable Admin Video id; callers page with after and may exclude already-featured parent ids or slugs.",
+    args: {
+      first: t.arg.int({ required: false }),
+      cardsPerParent: t.arg.int({ required: true }),
+      locale: t.arg.string({ required: true }),
+      languageSlug: t.arg.string({ required: true }),
+      after: t.arg.string({ required: false }),
+      excludedIds: t.arg.stringList({ required: false }),
+      excludedSlugs: t.arg.stringList({ required: false }),
+    },
+    resolve: async (_root, args, ctx) => {
+      try {
+        return await ctx.services.video.getWatchCollectionFeed({
+          first: args.first,
+          cardsPerParent: args.cardsPerParent,
+          locale: args.locale,
+          languageSlug: args.languageSlug,
+          after: args.after,
+          excludedIds: args.excludedIds ?? [],
+          excludedSlugs: args.excludedSlugs ?? [],
+        })
+      } catch (error) {
+        if (error instanceof VideoLookupValidationErrorClass) {
+          throw new GraphQLError(error.message, {
+            extensions: { code: "BAD_USER_INPUT" },
+          })
+        }
+        throw error
+      }
+    },
   }),
   watchLanguageInventory: t.field({
     type: WatchLanguageInventoryRef,

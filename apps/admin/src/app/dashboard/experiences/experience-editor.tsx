@@ -407,6 +407,14 @@ const BLOCK_LIBRARY: BlockTemplateDefinition[] = [
     icon: LayoutTemplate,
   },
   {
+    key: "dynamicMediaCollection",
+    label: "Infinite Collection Feed",
+    description:
+      "Homepage-only feed of unfeatured database collections loaded on scroll.",
+    category: "Media",
+    icon: Compass,
+  },
+  {
     key: "text",
     label: "Text",
     description: "Rich editorial copy with heading and body.",
@@ -538,6 +546,7 @@ type SectionContentTemplateKey =
       | "routeVideoHero"
       | "routeVideo"
       | "routeVideoCarousel"
+      | "dynamicMediaCollection"
     >
   | "quizButton"
 
@@ -593,6 +602,21 @@ function isRouteOnlyBlockPayload(block: unknown) {
 
 function removeRouteOnlyBlocks(blocks: unknown[]) {
   return blocks.filter((block) => !isRouteOnlyBlockPayload(block))
+}
+
+function isDynamicCollectionBlock(block: unknown) {
+  const record = asRecord(block)
+  return (
+    asString(record?.t) === "mediaCollection" &&
+    asString(record?.itemsSource) === "dynamicCollections"
+  )
+}
+
+function keepDynamicCollectionBlockLast(blocks: unknown[]) {
+  const dynamicBlock = blocks.find(isDynamicCollectionBlock)
+  return dynamicBlock
+    ? [...blocks.filter((block) => block !== dynamicBlock), dynamicBlock]
+    : blocks
 }
 
 const INFO_BLOCK_ICON_OPTIONS: {
@@ -1731,6 +1755,9 @@ export function ExperienceEditor({
     }
 
     if (block.key === "watchHomeHero") return isHomepage
+    if (block.key === "dynamicMediaCollection") {
+      return isHomepage && !parsedBlocks.some(isDynamicCollectionBlock)
+    }
 
     return isTemplate || block.category !== "Route"
   })
@@ -2852,8 +2879,21 @@ export function ExperienceEditor({
     const nextBlocks = [...parsedBlocks]
     const nextBlock = createTemplateBlock(template, nextBlocks.length)
     const nextBlockSummary = summarizeBlock(nextBlock, index, videoLibrary)
-    nextBlocks.splice(index, 0, nextBlock)
-    syncBlocks(nextBlocks, index)
+    let insertionIndex = index
+    if (template === "dynamicMediaCollection") {
+      if (!isHomepage || nextBlocks.some(isDynamicCollectionBlock)) {
+        pushToast(
+          "The homepage can contain one infinite collection feed.",
+          "error",
+        )
+        return
+      }
+      nextBlocks.push(nextBlock)
+      insertionIndex = nextBlocks.length - 1
+    } else {
+      nextBlocks.splice(index, 0, nextBlock)
+    }
+    syncBlocks(nextBlocks, insertionIndex)
     setPendingInsertIndex(null)
     setScrollToBlockKey(nextBlockSummary.key)
     setInsertedBlockAnimation({ key: nextBlockSummary.key, visible: false })
@@ -3371,7 +3411,9 @@ export function ExperienceEditor({
         return false
       }
 
-      const nextBlocks = arrayMove(parsedBlocks, fromIndex, toIndex)
+      const nextBlocks = keepDynamicCollectionBlockLast(
+        arrayMove(parsedBlocks, fromIndex, toIndex),
+      )
       const selectedKey =
         selectedBlockIndex !== null
           ? blockSummaries[selectedBlockIndex]?.key
@@ -8810,7 +8852,8 @@ export function ExperienceEditor({
                     )}
                   </div>
                 ) : null}
-                {type === "mediaCollection" ? (
+                {type === "mediaCollection" &&
+                asString(blockRecord?.itemsSource) !== "dynamicCollections" ? (
                   <div className="mt-2 max-w-xs">
                     {renderInlineTextInput(
                       index,
@@ -9038,7 +9081,8 @@ export function ExperienceEditor({
                     })}
                   </div>
                 ) : null}
-                {type === "mediaCollection"
+                {type === "mediaCollection" &&
+                asString(blockRecord?.itemsSource) !== "dynamicCollections"
                   ? renderInlineBlockCta(index, blockRecord)
                   : null}
                 {type === "section"
@@ -9335,7 +9379,24 @@ export function ExperienceEditor({
                       : null}
                   </div>
                 ) : null}
-                {type === "mediaCollection" ? (
+                {type === "mediaCollection" &&
+                asString(blockRecord?.itemsSource) === "dynamicCollections" ? (
+                  <div className="mt-4 flex w-full items-start gap-3 rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-inset)] px-4 py-3 text-left">
+                    <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-sm border border-[var(--color-hairline)] bg-[rgba(255,255,255,0.04)] text-[var(--color-text-secondary)]">
+                      <Compass className="h-4 w-4" strokeWidth={1.5} />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="text-[13px] font-medium text-[var(--color-text-primary)]">
+                        Dynamic database collections enabled
+                      </div>
+                      <p className="mt-1 text-[12px] leading-5 text-[var(--color-text-secondary)]">
+                        Place this block at the end of the Watch homepage. It
+                        excludes collections featured by other blocks and adds
+                        new collection carousels as viewers scroll.
+                      </p>
+                    </div>
+                  </div>
+                ) : type === "mediaCollection" ? (
                   <div className="mt-4">
                     <div
                       className={cx(

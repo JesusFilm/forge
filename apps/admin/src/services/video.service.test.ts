@@ -5,6 +5,7 @@ import {
   VideoService,
   VideoLookupValidationError,
   VIDEOS_BY_CORE_IDS_MAX,
+  WATCH_COLLECTION_FEED_MAX_EXCLUSIONS,
 } from "./video.service"
 
 describe("getWatchRouteSnapshotBySlug", () => {
@@ -1923,6 +1924,266 @@ describe("VideoService", () => {
         service.getWatchHomeVideos({ coreIds: tooMany, query: {} }),
       ).rejects.toBeInstanceOf(VideoLookupValidationError)
       expect(prisma.video.findMany).not.toHaveBeenCalled()
+    })
+  })
+
+  describe("getWatchCollectionFeed", () => {
+    const feedRow = (
+      overrides: Record<string, unknown> = {},
+    ): Record<string, unknown> => ({
+      parentId: "collection-2",
+      parentSlug: "collection-two",
+      parentTitle: "Coleccion Dos",
+      parentDescription: "Descripcion",
+      itemId: "child-1",
+      itemCoreId: "core-child-1",
+      itemSlug: "episode-one",
+      itemTitle: "Episodio Uno",
+      itemLabel: "episode",
+      languageSlug: "spanish",
+      muxPlaybackId: "mux-child-1",
+      imageUrl: "https://images.example/child-1.jpg",
+      blurDataUrl: "data:image/jpeg;base64,blur",
+      dominantColor: "#123456",
+      hasNextPage: true,
+      ...overrides,
+    })
+
+    it("returns a stable bounded card-ready page from one fixed-stage projection", async () => {
+      prisma.tx.$queryRaw.mockResolvedValueOnce([
+        feedRow(),
+        feedRow({
+          itemId: "child-2",
+          itemCoreId: "core-child-2",
+          itemSlug: "episode-two",
+          itemTitle: "Episodio Dos",
+          muxPlaybackId: "mux-child-2",
+        }),
+        feedRow({
+          parentId: "collection-3",
+          parentSlug: "collection-three",
+          parentTitle: "Collection Three",
+          parentDescription: null,
+          itemId: "child-3",
+          itemCoreId: "core-child-3",
+          itemSlug: "episode-three",
+          itemTitle: "Episode Three",
+          languageSlug: "english",
+          muxPlaybackId: null,
+        }),
+      ])
+
+      const result = await service.getWatchCollectionFeed({
+        first: 2,
+        cardsPerParent: 8,
+        locale: "es",
+        languageSlug: "spanish",
+        after: "collection-1",
+        excludedIds: ["featured-id", "featured-id"],
+        excludedSlugs: ["featured-slug"],
+      })
+
+      expect(result).toEqual({
+        nodes: [
+          {
+            id: "collection-2",
+            slug: "collection-two",
+            title: "Coleccion Dos",
+            description: "Descripcion",
+            items: [
+              expect.objectContaining({
+                id: "child-1",
+                title: "Episodio Uno",
+                languageSlug: "spanish",
+              }),
+              expect.objectContaining({
+                id: "child-2",
+                title: "Episodio Dos",
+                languageSlug: "spanish",
+              }),
+            ],
+          },
+          {
+            id: "collection-3",
+            slug: "collection-three",
+            title: "Collection Three",
+            description: null,
+            items: [
+              expect.objectContaining({
+                id: "child-3",
+                languageSlug: "english",
+                muxPlaybackId: null,
+              }),
+            ],
+          },
+        ],
+        pageInfo: { endCursor: "collection-3", hasNextPage: true },
+      })
+      expect(prisma.video.findMany).not.toHaveBeenCalled()
+      expect(prisma.tx.$executeRawUnsafe).toHaveBeenCalledWith(
+        "SET LOCAL statement_timeout = '10000ms'",
+      )
+      expect(prisma.tx.$queryRaw).toHaveBeenCalledOnce()
+    })
+
+    it("bounds and orders eligible children while preserving public visibility", async () => {
+      prisma.tx.$queryRaw.mockResolvedValueOnce([])
+
+      await service.getWatchCollectionFeed({
+        first: 3,
+        cardsPerParent: 12,
+        locale: "en",
+        languageSlug: "english",
+      })
+
+      const sql = prisma.tx.$queryRaw.mock.calls[0][0].join(" ")
+      expect(sql).toContain("bounded_child AS MATERIALIZED")
+      expect(sql).toContain("JOIN LATERAL")
+      expect(sql).toMatch(
+        /relation\.order ASC NULLS LAST,\s+relation\.created_at ASC,\s+relation\.id ASC/,
+      )
+      expect(prisma.tx.$queryRaw.mock.calls[0].slice(1)).toContain(12)
+      expect(sql).toContain("parent.label = 'collection'")
+      expect(sql).toContain("parent.deleted_at IS NULL")
+      expect(sql).toContain("parent.no_index = FALSE")
+      expect(sql).toContain(
+        "NOT ('watch' = ANY(parent.restrict_view_platforms))",
+      )
+      expect(sql).toContain("child.deleted_at IS NULL")
+      expect(sql).toContain("child.no_index = FALSE")
+      expect(sql).toContain(
+        "NOT ('watch' = ANY(child.restrict_view_platforms))",
+      )
+      expect(sql).toContain("published_locale.status = 'published'")
+      expect(sql).toContain("dub.published = TRUE")
+      expect(sql).toContain("NULLIF(BTRIM(dub.hls), '') IS NOT NULL")
+    })
+
+    it("orders playback requested language, then primary language, then longest deterministic fallback", async () => {
+      prisma.tx.$queryRaw.mockResolvedValueOnce([])
+
+      await service.getWatchCollectionFeed({
+        cardsPerParent: 8,
+        locale: "fr",
+        languageSlug: "french",
+      })
+
+      const sql = prisma.tx.$queryRaw.mock.calls[0][0].join(" ")
+      const playbackStart = sql.indexOf(
+        "JOIN LATERAL (",
+        sql.indexOf(") child_locale ON TRUE"),
+      )
+      const playback = sql.slice(
+        playbackStart,
+        sql.indexOf(") selected_playback ON TRUE"),
+      )
+      const requested = playback.indexOf("WHEN playback_language.slug =")
+      const primary = playback.indexOf(
+        "WHEN dub.language_id = bounded_child.primary_language_id",
+      )
+      const fallback = playback.indexOf("ELSE 2", primary)
+      const duration = playback.indexOf("dub.duration DESC NULLS LAST")
+      const stableId = playback.indexOf("dub.id ASC")
+      expect(requested).toBeGreaterThanOrEqual(0)
+      expect(primary).toBeGreaterThan(requested)
+      expect(fallback).toBeGreaterThan(primary)
+      expect(duration).toBeGreaterThan(fallback)
+      expect(stableId).toBeGreaterThan(duration)
+    })
+
+    it("prefers requested-language copy, then UI-locale copy, then the safe slug", async () => {
+      prisma.tx.$queryRaw.mockResolvedValueOnce([])
+
+      await service.getWatchCollectionFeed({
+        cardsPerParent: 8,
+        locale: "pt-br",
+        languageSlug: "portuguese-brazil",
+      })
+
+      const sql = prisma.tx.$queryRaw.mock.calls[0][0].join(" ")
+      expect(sql).toContain("WHEN locale.language_slug =")
+      expect(sql).toContain("WHEN locale.locale =")
+      expect(sql).toContain(
+        "COALESCE(parent_locale.title, returned_parent.slug)",
+      )
+      expect(sql).toContain("COALESCE(child_locale.title, bounded_child.slug)")
+      expect(
+        sql.match(/NULLIF\(BTRIM\(locale\.title\), ''\) IS NOT NULL/g),
+      ).toHaveLength(2)
+    })
+
+    it("uses the same two database statements for eight or twelve cards", async () => {
+      prisma.tx.$queryRaw.mockResolvedValue([])
+
+      await service.getWatchCollectionFeed({
+        cardsPerParent: 8,
+        locale: "en",
+        languageSlug: "english",
+      })
+      await service.getWatchCollectionFeed({
+        cardsPerParent: 12,
+        locale: "en",
+        languageSlug: "english",
+      })
+
+      expect(prisma.$transaction).toHaveBeenCalledTimes(2)
+      expect(prisma.tx.$executeRawUnsafe).toHaveBeenCalledTimes(2)
+      expect(prisma.tx.$queryRaw).toHaveBeenCalledTimes(2)
+      expect(prisma.tx.$queryRaw.mock.calls[0].slice(1)).toContain(8)
+      expect(prisma.tx.$queryRaw.mock.calls[1].slice(1)).toContain(12)
+    })
+
+    it("rejects invalid bounds, cursors, and oversized exclusions before querying", async () => {
+      await expect(
+        service.getWatchCollectionFeed({
+          cardsPerParent: 8,
+          locale: "en",
+          languageSlug: "english",
+          excludedIds: Array.from(
+            { length: WATCH_COLLECTION_FEED_MAX_EXCLUSIONS + 1 },
+            (_, index) => `collection-${index}`,
+          ),
+        }),
+      ).rejects.toBeInstanceOf(VideoLookupValidationError)
+      await expect(
+        service.getWatchCollectionFeed({
+          first: 4,
+          cardsPerParent: 8,
+          locale: "en",
+          languageSlug: "english",
+        }),
+      ).rejects.toBeInstanceOf(VideoLookupValidationError)
+      await expect(
+        service.getWatchCollectionFeed({
+          cardsPerParent: 9,
+          locale: "en",
+          languageSlug: "english",
+        }),
+      ).rejects.toBeInstanceOf(VideoLookupValidationError)
+      await expect(
+        service.getWatchCollectionFeed({
+          cardsPerParent: 8,
+          locale: "en",
+          languageSlug: "english",
+          after: "not a valid cursor",
+        }),
+      ).rejects.toBeInstanceOf(VideoLookupValidationError)
+      await expect(
+        service.getWatchCollectionFeed({
+          cardsPerParent: 8,
+          locale: "../../en",
+          languageSlug: "english",
+        }),
+      ).rejects.toBeInstanceOf(VideoLookupValidationError)
+      await expect(
+        service.getWatchCollectionFeed({
+          cardsPerParent: 8,
+          locale: "en",
+          languageSlug: "English!",
+        }),
+      ).rejects.toBeInstanceOf(VideoLookupValidationError)
+      expect(prisma.$transaction).not.toHaveBeenCalled()
+      expect(prisma.tx.$queryRaw).not.toHaveBeenCalled()
     })
   })
 

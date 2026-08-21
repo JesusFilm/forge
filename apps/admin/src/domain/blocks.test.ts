@@ -205,6 +205,21 @@ describe("BlockSchema — all top-level types validate", () => {
     ).toBe(false)
   })
 
+  it("accepts the dynamic database collection source for media collections", () => {
+    const result = BlockSchema.safeParse({
+      t: "mediaCollection",
+      variant: "carousel",
+      thumbnailOrientation: "horizontal",
+      itemsSource: "dynamicCollections",
+    })
+
+    expect(result.success).toBe(true)
+    if (result.success && result.data.t === "mediaCollection") {
+      expect(result.data.itemsSource).toBe("dynamicCollections")
+      expect(result.data.items).toEqual([])
+    }
+  })
+
   it("videoRecommendations accepts seed + limit overrides", () => {
     const result = VideoRecommendationsBlockSchema.safeParse({
       t: "videoRecommendations",

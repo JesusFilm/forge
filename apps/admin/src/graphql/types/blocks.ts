@@ -342,6 +342,7 @@ const ItemsSourceEnum = builder.enumType("ItemsSource", {
   values: {
     manual: { value: "manual" },
     routeVideoChildren: { value: "routeVideoChildren" },
+    dynamicCollections: { value: "dynamicCollections" },
   } as const,
 })
 
