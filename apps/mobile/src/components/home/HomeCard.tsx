@@ -81,10 +81,11 @@ export const HomeCard = memo(function HomeCard({
 
   const width = homeCardWidth(variant, screenWidth)
   const imageUrl = resolveImageUrl(card.imageUrl)
-  // Same series test Discover routes with: the model's display label
-  // ("Series"/"Collection") lowercases into isSeriesLabel's set.
+  // rawLabel, never `label`: labelText turns an absent label into "Video", which
+  // reads as labelled and would strand an unlabeled-with-children record on
+  // /watch, where the lean fragment omits children so no redirect can rescue it.
   const isSeries = isSeriesSearchResult({
-    label: card.label,
+    label: card.rawLabel,
     childCount: card.childCount,
   })
   // A slug-less item (curated home cards carry a null videoSlug) has nowhere to

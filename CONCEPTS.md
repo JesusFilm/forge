@@ -980,6 +980,8 @@ The small floating video window that keeps a video playing after the viewer leav
 
 It is the same live playback surface as the full-size player, resized and repositioned rather than handed to a second player, because moving playback between two surfaces restarts it. A Mini Player is earned rather than automatic: a video that never actually played does not get one, nor does a video that already ran to its end, nor one whose playback is being driven by a cast receiver. While an in-app sheet is presented over it, it is hidden rather than torn down, so the video keeps playing behind the sheet and returns when the sheet closes. The viewer can move it between screen corners and dismiss it; dismissing ends the playback session rather than merely hiding the window.
 
+Shrinking into the window and growing back out of it are one reversible motion, not two independent animations: a transition interrupted part-way turns around from where it currently is rather than restarting from either end, so the video never jumps. Because the same surface is being moved rather than replaced, the window is only ever as correct as the transition's own bookkeeping — a transition that ends without restoring the surface to its resting state leaves the window drawn but empty.
+
 ## Offline downloads
 
 ### Download Record

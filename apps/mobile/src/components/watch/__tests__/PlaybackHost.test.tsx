@@ -106,6 +106,13 @@ jest.mock("../../../lib/watchProgress/store", () => ({
   applyLocalProgress: jest.fn(),
   bufferProgressIntent: jest.fn(),
 }))
+// Real geometry, observable call order. Both PlaybackHost timing fixes are about
+// WHEN a value lands relative to the render, and act() collapses the render and
+// its layout effects — so ordering is the only handle a test has on them.
+jest.mock("../../../lib/miniPlayer/layout", () => {
+  const actual = jest.requireActual("../../../lib/miniPlayer/layout")
+  return { ...actual, frameGeometry: jest.fn(actual.frameGeometry) }
+})
 jest.mock("../../../lib/watchProgress/signInPrompt", () => ({
   noteSignedOutPlaybackStop: jest.fn(),
 }))
@@ -153,7 +160,10 @@ import {
   TAB_BAR_CONTENT_HEIGHT,
   shouldDrawSurface,
 } from "../PlaybackHost"
-import { miniPlayerCornerFrame } from "../../../lib/miniPlayer/layout"
+import {
+  frameGeometry,
+  miniPlayerCornerFrame,
+} from "../../../lib/miniPlayer/layout"
 import {
   getPlaybackRequestStore,
   type PlaybackRequest,
@@ -349,6 +359,19 @@ function fireWindowAction(renderer: TestInstance, actionName: string) {
   handler({ nativeEvent: { actionName } })
 }
 
+/** R6's fade, read off the same wrapper the translation rides. */
+function exitOpacity(renderer: TestInstance) {
+  const node = renderer.root.findAll(
+    (n) => n.props.testID === "playback-exit",
+  )[0]
+  const style = StyleSheet.flatten(node.props.style) as {
+    opacity?: { __getValue: () => number }
+  }
+  const value = style.opacity
+  if (value == null) throw new Error("no exit opacity on the frame")
+  return value
+}
+
 /** R6's downward translation, read off the node the exit animates. */
 function exitTranslation(renderer: TestInstance) {
   const node = renderer.root.findAll(
@@ -373,6 +396,46 @@ function frameStyle(renderer: TestInstance) {
     overflow?: string
     backgroundColor?: string
   }
+}
+
+/** react-test-renderer nodes carry `.parent`; the shared helper type does not
+ *  model it, so this is the local view of the walk. */
+type NodeWithParent = {
+  props: { style?: unknown; testID?: unknown }
+  parent: NodeWithParent | null
+}
+
+/**
+ * Every node from the seek bar up to the host's frame that CLIPS. The inline
+ * scrubber runs `flush`: its thumb is centred on a track sitting on the
+ * player's bottom edge, so the thumb's lower half is drawn outside the bar's
+ * own box. Any `overflow: hidden` on that path shears it off — which is what
+ * #1962 did by moving the chrome inside the frame. Returns the offenders so a
+ * failure names the node instead of just asserting a boolean.
+ */
+function clippersAboveScrubber(renderer: TestInstance): string[] {
+  const bars = renderer.root.findAll(
+    (node) => node.props.accessibilityLabel === "Seek bar",
+  ) as unknown as NodeWithParent[]
+  if (bars.length === 0) throw new Error("no seek bar mounted")
+  const offenders = new Set<string>()
+  for (const bar of bars) {
+    let node: NodeWithParent | null = bar
+    let depth = 0
+    while (node != null) {
+      const style = StyleSheet.flatten(node.props.style as never) as
+        | { overflow?: string }
+        | undefined
+      // Depth, because the offender is usually an unnamed style-only View and
+      // "something clips" is not a lead — "4 levels above the bar" is.
+      if (style?.overflow === "hidden")
+        offenders.add(String(node.props.testID ?? `unnamed@+${depth}`))
+      if (node.props.testID === "playback-frame") break
+      node = node.parent
+      depth += 1
+    }
+  }
+  return [...offenders].sort()
 }
 
 function hasVeil(renderer: TestInstance): boolean {
@@ -528,6 +591,22 @@ describe("the hoisted player drives the full view", () => {
       video.__player.__emit("statusChange", { status: "error" })
     })
     expect(requestStore.getSnapshot().loadFailed).toBe(true)
+  })
+
+  // The inline Scrubber runs `flush`, which centres the thumb on a track sitting
+  // ON the player's bottom edge — so its lower half draws BELOW the frame and
+  // the frame must not clip. #1962 moved that chrome inside this box, whose
+  // `overflow: hidden` exists only for the floating window's corner radius.
+  it("does not clip the docked frame, so the flush scrubber thumb stays whole", async () => {
+    attachSlot()
+    const renderer = await renderHost()
+    await startPlayback()
+
+    expect(hasFullViewChrome(renderer)).toBe(true)
+    expect(frameStyle(renderer).overflow).toBe("visible")
+    // The frame is only the clip that HAS bitten. Anything between it and the
+    // bar eats the thumb just as well, so the whole path is what gets pinned.
+    expect(clippersAboveScrubber(renderer)).toEqual([])
   })
 })
 
@@ -1353,6 +1432,26 @@ describe("the ended session after an expand (R21, R27)", () => {
 })
 
 describe("the frame transition (KTD17: shrink and its reverse)", () => {
+  /** The mocked pure geometry helper, as a spy. Its call order is the only
+   *  in-jest proxy for "the render that moved the frame", because act() flushes
+   *  render and layout effects together before any assertion runs. */
+  function geometrySpy() {
+    return frameGeometry as unknown as jest.Mock
+  }
+
+  /** Invocation order of the LAST geometry read, i.e. the most recent render. */
+  function lastGeometryOrder(): number {
+    const orders = geometrySpy().mock.invocationCallOrder
+    expect(orders.length).toBeGreaterThan(0)
+    return orders[orders.length - 1]
+  }
+
+  /** Invocation order of the setValue that parked `value`, or -1. */
+  function parkOrder(spy: jest.Mock, value: 0 | 1): number {
+    const i = spy.mock.calls.findIndex(([v]) => v === value)
+    return i === -1 ? -1 : spy.mock.invocationCallOrder[i]
+  }
+
   /** A driver double the test can hold PART WAY down a ramp. jest's native
    *  animated mock settles every timing after 16ms and carries no value, so
    *  t=0 is the only fraction a real `Animated.timing` is observable at here. */
@@ -1397,6 +1496,28 @@ describe("the frame transition (KTD17: shrink and its reverse)", () => {
     }
   }
 
+  /**
+   * The settled hand-off, from the viewer's side: the video exactly fills the
+   * box the frame settled into. It catches BOTH failure directions — the ramp's
+   * end value surviving into the corner geometry (which pushed the video clean
+   * out of its box, a black window with live controls) and identity landing
+   * while the frame is still the full rect (which flashed the video back to
+   * full size for the gap before the geometry commit).
+   */
+  function expectVideoFillsFrame(renderer: TestInstance) {
+    const box = frameStyle(renderer) as unknown as {
+      left: number
+      top: number
+      width: number
+      height: number
+    }
+    expect(videoBox(renderer)).toEqual({
+      centerX: box.left + box.width / 2,
+      centerY: box.top + box.height / 2,
+      width: box.width,
+    })
+  }
+
   it("turns a mid-flight shrink around into a grow when the full view returns", async () => {
     jest.useFakeTimers()
     const first = attachSlot()
@@ -1433,7 +1554,57 @@ describe("the frame transition (KTD17: shrink and its reverse)", () => {
     expect(frameStyle(renderer)).toMatchObject({ left: RECT.x, top: RECT.y })
   })
 
-  it("grows out of the corner on expand, and settles clipped at the rect", async () => {
+  // ORDERING GUARDS. Both fixes below are about WHEN a value lands, and the end
+  // state is identical either way — so a revert leaves every value assertion in
+  // this file green. Only call order separates the fixed shape from the broken.
+  it("parks the ramp AFTER the render that moved the frame to the corner", async () => {
+    jest.useFakeTimers()
+    const timingSpy = jest.spyOn(Animated, "timing")
+    const id = attachSlot()
+    const renderer = await renderHost()
+    await startPlayback()
+    await detach(id)
+    const shrinkNode = timingSpy.mock.calls.find(
+      ([, config]) =>
+        (config as { duration?: number }).duration === SHRINK_DURATION_MS,
+    )?.[0] as { setValue: (v: number) => void } | undefined
+    expect(shrinkNode).toBeDefined()
+    const parkSpy = jest.spyOn(
+      shrinkNode as { setValue: (v: number) => void },
+      "setValue",
+    ) as unknown as jest.Mock
+
+    await act(async () => {
+      jest.advanceTimersByTime(SHRINK_DURATION_MS + 300)
+    })
+
+    // The frame has settled at the corner, so identity is the settled state.
+    expectVideoFillsFrame(renderer)
+    const parked = parkOrder(parkSpy, 0)
+    expect(parked).toBeGreaterThan(0)
+    // Parking inside settle() instead writes identity while the frame is STILL
+    // the full rect, which flashed the video back to full size for a frame.
+    expect(parked).toBeGreaterThan(lastGeometryOrder())
+  })
+
+  it("hands the departing player rect to the geometry on the pre-shrink render", async () => {
+    const id = attachSlot()
+    await renderHost()
+    await startPlayback()
+    geometrySpy().mockClear()
+
+    await detach(id)
+
+    // The gap render: no motion is armed yet, so only the departing rect can
+    // keep the frame at full size. Passing null paints the corner a frame early.
+    const gapCall = geometrySpy().mock.calls.find(
+      ([args]) => args.rect == null && args.motion == null,
+    )
+    expect(gapCall).toBeDefined()
+    expect(gapCall?.[0].departingRect).toEqual(RECT)
+  })
+
+  it("grows out of the corner on expand, and settles unclipped at the rect", async () => {
     jest.useFakeTimers()
     const timingSpy = jest.spyOn(Animated, "timing")
     const first = attachSlot()
@@ -1460,9 +1631,13 @@ describe("the frame transition (KTD17: shrink and its reverse)", () => {
     expect(frameStyle(renderer).overflow).toBe("hidden")
     expect(frameStyle(renderer).backgroundColor).not.toBe("transparent")
     expect(frameStyle(renderer)).not.toMatchObject({ left: RECT.x })
-    // Parked at the ramp's IDENTITY end before the style detached: the native
-    // driver leaves the last driven value stuck on the view, and a frozen
-    // corner-target transform black-boxes the settled window on device.
+    expectVideoFillsFrame(renderer)
+    // Still parked at the ramp's IDENTITY end — the native driver keeps its
+    // last value once the animated style detaches, and a stale corner-target
+    // transform over corner geometry pushes the video clean out of its box (a
+    // black window over live audio). It is parked by the layout effect on the
+    // commit that DROPS the motion, never before: identity on a frame still
+    // anchored at the full rect flashed the video back to full size.
     expect(parkSpy).toHaveBeenCalledWith(0)
     expect(sessionStore.getSnapshot().session).not.toBeNull()
 
@@ -1477,7 +1652,10 @@ describe("the frame transition (KTD17: shrink and its reverse)", () => {
     await act(async () => {
       jest.advanceTimersByTime(EXPAND_DURATION_MS + 300)
     })
-    expect(frameStyle(renderer).overflow).toBe("hidden")
+    // Settled back on the slot rect, so it is the DOCKED player again — which
+    // must not clip, or the flush scrubber's thumb loses its lower half. Only
+    // the corner window clips.
+    expect(frameStyle(renderer).overflow).toBe("visible")
   })
 
   it("turns a half-run shrink around without moving the video", async () => {
@@ -1554,12 +1732,13 @@ describe("the frame transition (KTD17: shrink and its reverse)", () => {
     })
     expect(videoBox(renderer)).toEqual(midFlight)
 
-    // The reversed grow stays to-anchored, so its settle parks at 1 and the
-    // window lands clipped at the corner — not at the identity end a
-    // from-anchored motion would park at.
+    // The reversed grow stays to-anchored, so the window lands clipped at the
+    // corner with its video filling that box.
     await act(async () => {
       jest.advanceTimersByTime(SHRINK_DURATION_MS + 300)
     })
+    expectVideoFillsFrame(renderer)
+    // To-anchored, so its identity end is 1.
     expect(parkSpy).toHaveBeenCalledWith(1)
     expect(frameStyle(renderer).overflow).toBe("hidden")
   })
@@ -2047,7 +2226,7 @@ describe("the dismissal exit (R6)", () => {
     expect(exitTranslation(renderer).__getValue()).toBe(0)
   })
 
-  it("slides the exit from the corner the window occupies", async () => {
+  it("fades a top-corner dismissal rather than dragging it down the screen", async () => {
     const id = attachSlot()
     const renderer = await renderHost()
     await startPlayback()
@@ -2064,25 +2243,49 @@ describe("the dismissal exit (R6)", () => {
 
     await dismiss()
 
-    // Measured from the OCCUPIED corner: the default-corner distance stops a
-    // top-corner window mid-screen, fully visible, then blinks it out.
+    // Sliding a top-corner window out the bottom drags it across the whole
+    // screen, over the content the viewer is looking at. It fades in place.
+    const exitCall = timingSpy.mock.calls.find(
+      ([, config]) =>
+        (config as { duration?: number }).duration === EXIT_DURATION_MS,
+    )
+    expect(exitCall).toBeDefined()
+    expect(exitCall?.[0]).toBe(exitOpacity(renderer))
+    expect((exitCall?.[1] as { toValue: number }).toValue).toBe(0)
+    // And it does not travel: the translation stays home.
+    expect(exitTranslation(renderer).__getValue()).toBe(0)
+  })
+
+  it("slides a bottom-corner dismissal from the corner it occupies", async () => {
+    const id = attachSlot()
+    const renderer = await renderHost()
+    await startPlayback()
+    await detach(id)
+    const timingSpy = jest.spyOn(Animated, "timing")
+
+    await dismiss()
+
+    // Measured from the OCCUPIED corner, and far enough to clear the screen.
     const { width, height } = Dimensions.get("window")
-    const top = miniPlayerCornerFrame(
+    const bottom = miniPlayerCornerFrame(
       {
         screen: { width, height },
         insets: { top: 0, right: 0, bottom: 0, left: 0 },
         chrome: { top: 0, bottom: 0 },
       },
-      "topRight",
+      "bottomRight",
     )
     const exitCall = timingSpy.mock.calls.find(
       ([, config]) =>
         (config as { duration?: number }).duration === EXIT_DURATION_MS,
     )
     expect(exitCall).toBeDefined()
+    expect(exitCall?.[0]).toBe(exitTranslation(renderer))
     expect(
       (exitCall?.[1] as { toValue: number }).toValue,
-    ).toBeGreaterThanOrEqual(height - top.y)
+    ).toBeGreaterThanOrEqual(height - bottom.y)
+    // And it stays fully opaque on the way out.
+    expect(exitOpacity(renderer).__getValue()).toBe(1)
   })
 
   it("goes inert while the exit runs, so a second tap cannot expand it", async () => {

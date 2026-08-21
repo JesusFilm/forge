@@ -115,6 +115,9 @@ function itemToCard(
     title,
     description: item.subtitleOverride ?? null,
     label,
+    // A curated item has no wire enum, so the authored override IS its
+    // classification label — blank means unlabeled, not the string "".
+    rawLabel: label !== "" ? label : null,
     metaLabel,
     imageUrl,
     imageAlt: title,
