@@ -46,6 +46,12 @@ import {
   WATCH_INTERNAL_REWRITE_HEADER,
   WATCH_SUBTITLE_INTENT_REWRITE_HEADER,
 } from "@/lib/watch-rewrite-headers"
+import {
+  PUBLIC_USER_PLAYLIST_CAPABILITY_HEADER,
+  runPublicUserPlaylistPreflight,
+  sealPublicUserPlaylistCapability,
+  type PublicUserPlaylistBoundaryDecision,
+} from "@/lib/user-playlist-public-boundary"
 
 // Structural subset of `NextRequest` that `proxy()` actually consumes.
 // Production `NextRequest` from `next/server` satisfies this shape via
@@ -63,6 +69,9 @@ const MAX_PATH_LEN = 2048
 const SAFE_PUBLIC_PATH = /^\/[A-Za-z0-9._\-/]+$/
 const DEMO_PREFIXES = new Set(["demo-search", "demo-recommendations"])
 const EXPERIENCE_PREVIEW_PREFIX = "/preview/experience/"
+const PUBLIC_USER_PLAYLIST_NAMESPACE = /^\/p(?:\/|$)/i
+const PUBLIC_USER_PLAYLIST_PATH = /^\/p\/([A-Za-z0-9_-]{43})$/
+const PUBLIC_USER_PLAYLIST_INTERNAL_PATH = "/p/_render"
 const WATCH_UNAVAILABLE_SENTINEL_PATH = "/unavailable/404"
 const WATCH_ORDINARY_NOT_FOUND_INTERNAL_PATHS = new Set(
   [DEFAULT_LOCALE, ...PUBLIC_WATCH_LANGUAGE_SLUGS].map((languageSlug) => {
@@ -165,6 +174,152 @@ function applyOwnerPlaylistHeaders(response: NextResponse): NextResponse {
   response.headers.set("X-Robots-Tag", "noindex, nofollow, noarchive")
   response.headers.set("Referrer-Policy", "no-referrer")
   return response
+}
+
+const PUBLIC_USER_PLAYLIST_CSP = [
+  "default-src 'self'",
+  "base-uri 'none'",
+  "object-src 'none'",
+  "frame-ancestors 'none'",
+  "form-action 'self'",
+  "img-src 'self' data: https:",
+  "media-src 'self' blob: https:",
+  "connect-src 'self'",
+  "script-src 'self' 'unsafe-inline'",
+  "style-src 'self' 'unsafe-inline'",
+  "font-src 'self' data:",
+].join("; ")
+
+function applyPublicUserPlaylistHeaders<T extends Response>(response: T): T {
+  response.headers.set("Cache-Control", "private, no-store, max-age=0")
+  response.headers.set("X-Robots-Tag", "noindex, nofollow, noarchive")
+  response.headers.set("Referrer-Policy", "no-referrer")
+  response.headers.set("Content-Security-Policy", PUBLIC_USER_PLAYLIST_CSP)
+  response.headers.set("X-Content-Type-Options", "nosniff")
+  response.headers.set("X-Frame-Options", "DENY")
+  response.headers.set("Cross-Origin-Resource-Policy", "same-origin")
+  response.headers.set(
+    "Permissions-Policy",
+    "camera=(), microphone=(), geolocation=(), payment=()",
+  )
+  return response
+}
+
+const PUBLIC_PLAYLIST_STATUS_COPY = {
+  en: {
+    unavailable: "This playlist is unavailable",
+    retryable: "This playlist cannot be loaded right now.",
+    retry: "Try again",
+    back: "Back to Watch",
+  },
+  es: {
+    unavailable: "Esta lista no está disponible",
+    retryable: "Esta lista no se puede cargar en este momento.",
+    retry: "Inténtalo de nuevo",
+    back: "Volver a Watch",
+  },
+  fr: {
+    unavailable: "Cette playlist est indisponible",
+    retryable: "Cette playlist ne peut pas être chargée pour le moment.",
+    retry: "Réessayer",
+    back: "Retour à Watch",
+  },
+  pt: {
+    unavailable: "Esta playlist não está disponível",
+    retryable: "Não foi possível carregar esta playlist agora.",
+    retry: "Tentar novamente",
+    back: "Voltar ao Watch",
+  },
+} as const
+
+type PublicPlaylistStatusLocale = keyof typeof PUBLIC_PLAYLIST_STATUS_COPY
+
+function publicPlaylistStatusLocale(
+  acceptLanguage: string | null,
+): PublicPlaylistStatusLocale {
+  for (const part of acceptLanguage?.split(",") ?? []) {
+    const language = part.trim().split(";")[0]?.split("-")[0]?.toLowerCase()
+    if (language && language in PUBLIC_PLAYLIST_STATUS_COPY) {
+      return language as PublicPlaylistStatusLocale
+    }
+  }
+  return "en"
+}
+
+function publicPlaylistStatusHtml(input: {
+  decision: Exclude<PublicUserPlaylistBoundaryDecision, "available">
+  locale: PublicPlaylistStatusLocale
+}): string {
+  const copy = PUBLIC_PLAYLIST_STATUS_COPY[input.locale]
+  const retry =
+    input.decision === "service-unavailable"
+      ? `<a href="">${copy.retry}</a>`
+      : `<a href="/watch">${copy.back}</a>`
+  const headingAutofocus =
+    input.decision === "service-unavailable" ? " autofocus" : ""
+  return `<!doctype html><html lang="${input.locale}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow,noarchive"><title>${copy.unavailable}</title><style>html{color-scheme:dark;font-family:system-ui,sans-serif;background:#0c0a09;color:#fff}body{min-height:100vh;margin:0;display:grid;place-items:center}main{max-width:36rem;padding:2rem;text-align:center}h1{font-size:clamp(1.75rem,5vw,3rem)}p{color:#d6d3d1;line-height:1.6}a{display:inline-block;margin-top:1rem;padding:.8rem 1.2rem;border-radius:999px;background:#fff;color:#111;text-decoration:none;font-weight:700}a:focus{outline:3px solid #fca5a5;outline-offset:4px}</style></head><body><main><h1 tabindex="-1"${headingAutofocus}>${copy.unavailable}</h1>${input.decision === "service-unavailable" ? `<p>${copy.retryable}</p>` : ""}${retry}</main></body></html>`
+}
+
+async function handlePublicUserPlaylist(
+  request: ProxyRequest,
+): Promise<Response> {
+  const match = PUBLIC_USER_PLAYLIST_PATH.exec(request.nextUrl.pathname)
+  const locale = publicPlaylistStatusLocale(
+    request.headers.get("accept-language"),
+  )
+  const decision = match
+    ? await runPublicUserPlaylistPreflight({
+        capability: match[1]!,
+        requestHeaders: request.headers,
+      })
+    : "unavailable"
+
+  if (decision === "available") {
+    const secret = process.env.USER_PLAYLIST_TRUSTED_CONTEXT_HMAC_SECRET ?? ""
+    const envelope = sealPublicUserPlaylistCapability(match![1]!, {
+      secret,
+      now: new Date(),
+    })
+    if (!envelope) {
+      return applyPublicUserPlaylistHeaders(
+        new Response(
+          publicPlaylistStatusHtml({
+            decision: "service-unavailable",
+            locale,
+          }),
+          {
+            status: 503,
+            headers: {
+              "Content-Type": "text/html; charset=utf-8",
+              "Content-Language": locale,
+            },
+          },
+        ),
+      )
+    }
+    const url = request.nextUrl.clone()
+    url.pathname = PUBLIC_USER_PLAYLIST_INTERNAL_PATH
+    url.search = ""
+    const requestHeaders = new Headers(request.headers)
+    requestHeaders.set(PUBLIC_USER_PLAYLIST_CAPABILITY_HEADER, envelope)
+    const response = applyPublicUserPlaylistHeaders(
+      NextResponse.rewrite(url, { request: { headers: requestHeaders } }),
+    )
+    response.headers.set("Content-Language", locale)
+    return response
+  }
+
+  const response = new Response(
+    publicPlaylistStatusHtml({ decision, locale }),
+    {
+      status: decision === "service-unavailable" ? 503 : 404,
+      headers: {
+        "Content-Type": "text/html; charset=utf-8",
+        "Content-Language": locale,
+      },
+    },
+  )
+  return applyPublicUserPlaylistHeaders(response)
 }
 
 function isOwnerPlaylistPath(pathname: string): boolean {
@@ -732,6 +887,10 @@ async function isAdmittedInternalRewrite(
 
 export async function proxy(request: ProxyRequest): Promise<NextResponse> {
   const { pathname } = request.nextUrl
+
+  if (PUBLIC_USER_PLAYLIST_NAMESPACE.test(pathname)) {
+    return (await handlePublicUserPlaylist(request)) as NextResponse
+  }
 
   if (pathname.startsWith(EXPERIENCE_PREVIEW_PREFIX)) {
     return applyExperiencePreviewHeaders(NextResponse.next())

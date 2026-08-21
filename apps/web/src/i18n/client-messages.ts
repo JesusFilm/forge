@@ -85,6 +85,11 @@ export const USER_PLAYLIST_CLIENT_MESSAGE_NAMESPACES = [
   "UserPlaylists",
 ] as const satisfies readonly ClientMessageNamespace[]
 
+export const PUBLIC_USER_PLAYLIST_CLIENT_MESSAGE_NAMESPACES = [
+  "PublicUserPlaylist",
+  "WatchModal",
+] as const satisfies readonly ClientMessageNamespace[]
+
 export function pickClientMessages(
   messages: MessageCatalog,
   namespaces: readonly ClientMessageNamespace[],

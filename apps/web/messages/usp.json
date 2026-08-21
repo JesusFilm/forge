@@ -721,5 +721,34 @@
       "error": "Video search is temporarily unavailable. Try again without losing your playlist changes.",
       "empty": "No available videos found."
     }
+  },
+  "PublicUserPlaylist": {
+    "communityCreated": "Community-created playlist",
+    "context": "Creator context: {context}",
+    "unlistedNotice": "This playlist is unlisted and shareable by link. It is created by a community member and is not part of the editorial Jesus Film portfolio.",
+    "report": {
+      "action": "Report",
+      "title": "Report this playlist",
+      "description": "Choose the closest reason. Reports help our moderation team review community-created playlists.",
+      "categoryLabel": "Reason",
+      "categoryPlaceholder": "Choose a reason",
+      "categories": {
+        "INAPPROPRIATE_CONTENT": "Inappropriate content",
+        "MISLEADING_OR_SPAM": "Misleading or spam",
+        "COPYRIGHT_OR_RIGHTS": "Copyright or rights concern",
+        "PRIVACY_OR_PERSONAL_DATA": "Privacy or personal data",
+        "OTHER_SAFETY": "Other safety concern"
+      },
+      "detailLabel": "Additional details (optional)",
+      "charactersRemaining": "{count} characters remaining",
+      "validation": "Choose a reason before submitting your report.",
+      "submitting": "Submitting…",
+      "submit": "Submit report",
+      "success": "Thank you. Your report has been received.",
+      "networkError": "The report could not be sent. Check your connection and try again.",
+      "intentUnavailable": "This report form has expired. Reload the playlist to get a new form.",
+      "cancel": "Cancel",
+      "close": "Close"
+    }
   }
 }
