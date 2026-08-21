@@ -23,6 +23,7 @@ import { introspectionPlugins } from "@/graphql/plugins/introspection"
 import { openTelemetryPlugin } from "@/graphql/plugins/opentelemetry"
 import { rateLimitPlugin } from "@/graphql/plugins/rate-limit"
 import { env } from "@/config/env"
+import { admitGraphqlRequest } from "@/graphql/request-admission"
 
 type NextAppRouteContext = { params: Promise<Record<string, string>> }
 
@@ -64,7 +65,16 @@ async function handler(
   request: NextRequest,
   context: NextAppRouteContext,
 ): Promise<Response> {
-  return yoga.handle(request, context)
+  const admission = await admitGraphqlRequest(request)
+  if (!admission.admitted) {
+    return new Response(null, {
+      status: admission.status,
+      headers: { "cache-control": "no-store" },
+    })
+  }
+  const response = await yoga.handle(request, context)
+  response.headers.set("cache-control", "no-store")
+  return response
 }
 
 export { handler as GET, handler as POST, handler as OPTIONS }

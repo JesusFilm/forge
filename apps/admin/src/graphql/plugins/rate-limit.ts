@@ -137,11 +137,49 @@ export const rateLimitConfigByField = [
   },
   {
     type: "Query",
-    field: "!(watchVideoRouteSnapshotBySlug|watchSearchSuggestions)",
+    field: "myUserPlaylistCapability",
+    max: 10,
+    window: "1m",
+  },
+  {
+    type: "Query",
+    field: "userPlaylistByToken",
     max: 60,
     window: "1m",
   },
-  { type: "Mutation", field: "*", max: 30, window: "1m" },
+  {
+    type: "Query",
+    field: "(myUserPlaylists|myUserPlaylist|userPlaylistReportQueue)",
+    max: 120,
+    window: "1m",
+  },
+  {
+    type: "Query",
+    field:
+      "!(watchVideoRouteSnapshotBySlug|watchSearchSuggestions|myUserPlaylistCapability|userPlaylistByToken|myUserPlaylists|myUserPlaylist|userPlaylistReportQueue)",
+    max: 60,
+    window: "1m",
+  },
+  {
+    type: "Mutation",
+    field: "reportUserPlaylist",
+    max: 10,
+    window: "1m",
+  },
+  {
+    type: "Mutation",
+    field:
+      "(createUserPlaylist|updateUserPlaylist|deleteUserPlaylist|unshareUserPlaylist|reshareUserPlaylist|rotateUserPlaylistCapability|blockUserPlaylist|restoreUserPlaylist)",
+    max: 20,
+    window: "1m",
+  },
+  {
+    type: "Mutation",
+    field:
+      "!(reportUserPlaylist|createUserPlaylist|updateUserPlaylist|deleteUserPlaylist|unshareUserPlaylist|reshareUserPlaylist|rotateUserPlaylistCapability|blockUserPlaylist|restoreUserPlaylist)",
+    max: 30,
+    window: "1m",
+  },
 ]
 
 export const rateLimitPluginOptions = {

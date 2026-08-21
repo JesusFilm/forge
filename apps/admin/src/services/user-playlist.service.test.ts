@@ -303,6 +303,23 @@ describe("UserPlaylistService", () => {
     expect(userPlaylist.create).not.toHaveBeenCalled()
   })
 
+  it("maps missing authoring policy configuration separately from bad acceptance", async () => {
+    const unconfigured = new UserPlaylistService(
+      { ...tx, $transaction: transaction } as unknown as PrismaClient,
+      {
+        mediaEligibility,
+        lifecycle,
+        capability: capabilities,
+      },
+    )
+    await expect(unconfigured.create(createInput, OWNER)).rejects.toMatchObject(
+      {
+        name: "ServiceConfigurationError",
+      },
+    )
+    expect(userPlaylist.create).not.toHaveBeenCalled()
+  })
+
   it("rejects a stale update before media validation and preserves the snapshot", async () => {
     userPlaylist.findFirst.mockResolvedValue(row({ version: 2 }))
 
@@ -453,6 +470,13 @@ describe("UserPlaylistService", () => {
     expect(result?.blocks[0]).toMatchObject({ items: [{ videoId: "video-1" }] })
     expect(result).not.toHaveProperty("id")
     expect(result).not.toHaveProperty("ownerSubject")
+
+    const access = await service.resolvePublicAccess({ token: created.token })
+    expect(access?.playlist).toEqual(result)
+    expect(access?.playlistId).toBe("playlist-1")
+    expect(Buffer.from(access!.capabilityDigest)).toEqual(
+      Buffer.from(created.material.digest),
+    )
 
     lifecycle.assertActive.mockRejectedValueOnce(
       new ConsumerLifecycleUnavailableError(),

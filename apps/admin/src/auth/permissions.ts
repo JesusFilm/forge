@@ -66,6 +66,7 @@ export type PermissionKey =
   | "read:user-playlists:own"
   | "write:user-playlists:own"
   | "share:user-playlists:own"
+  | "moderate:user-playlists"
   // feat-119 PR2 — admin → manager outbound enrichment trigger.
   // Admin's `triggerManagerEnrichment` mutation gates on this key;
   // the mutation forwards the call to apps/manager's
@@ -141,6 +142,7 @@ const permissionMatrix: Record<PermissionKey, MinTier> = {
   "read:user-playlists:own": "ADMIN",
   "write:user-playlists:own": "ADMIN",
   "share:user-playlists:own": "ADMIN",
+  "moderate:user-playlists": "ADMIN",
   // feat-119 PR2 — admin → manager outbound enrichment trigger.
   // ADMIN-only at the editorial-tier ladder; the bearer-mintable
   // `WORKFLOW_TRIGGER` role is also granted via the per-key allowlist

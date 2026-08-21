@@ -86,6 +86,13 @@ export type PublicUserPlaylist = {
   blocks: UserPlaylistSnapshot["blocks"]
 }
 
+/** Internal resolver metadata; only `playlist` is GraphQL-visible. */
+export type PublicUserPlaylistAccess = {
+  playlist: PublicUserPlaylist
+  playlistId: string
+  capabilityDigest: Uint8Array
+}
+
 export type UserPlaylistWithCapability = {
   playlist: OwnerUserPlaylist
   capability: string
@@ -291,8 +298,12 @@ export class UserPlaylistService {
     await this.dependencies.lifecycle.assertActive(context.ownerSubject)
     const parsed = CreateUserPlaylistInputSchema.parse(input)
     const current = this.dependencies.policyVersions
+    if (!current) {
+      throw new ServiceConfigurationError(
+        "User Playlist policy versions are not configured",
+      )
+    }
     if (
-      !current ||
       parsed.acceptance.termsVersion !== current.terms ||
       parsed.acceptance.privacyVersion !== current.privacy ||
       parsed.acceptance.communityGuidelinesVersion !==
@@ -637,10 +648,10 @@ export class UserPlaylistService {
     return this.ownerView(row, context.viewerCountry ?? null)
   }
 
-  async resolvePublic(input: {
+  async resolvePublicAccess(input: {
     token: string
     viewerCountry?: VerifiedViewerCountryContext | null
-  }): Promise<PublicUserPlaylist | null> {
+  }): Promise<PublicUserPlaylistAccess | null> {
     if (this.dependencies.publicReadsEnabled?.() !== true) return null
     const lookupDigests = this.capability().lookupDigests(input.token)
     if (lookupDigests.length === 0) return null
@@ -669,12 +680,24 @@ export class UserPlaylistService {
       parsed.data,
       input.viewerCountry ?? null,
     )
+    if (!row.capabilityDigest) return null
     return {
-      title: row.title,
-      description: row.description,
-      locale: row.contentLocale,
-      countryCode: row.contextCountry,
-      blocks: publicBlocks(parsed.data, eligible),
+      playlistId: row.id,
+      capabilityDigest: Uint8Array.from(row.capabilityDigest),
+      playlist: {
+        title: row.title,
+        description: row.description,
+        locale: row.contentLocale,
+        countryCode: row.contextCountry,
+        blocks: publicBlocks(parsed.data, eligible),
+      },
     }
+  }
+
+  async resolvePublic(input: {
+    token: string
+    viewerCountry?: VerifiedViewerCountryContext | null
+  }): Promise<PublicUserPlaylist | null> {
+    return (await this.resolvePublicAccess(input))?.playlist ?? null
   }
 }

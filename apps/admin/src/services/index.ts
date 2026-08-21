@@ -54,6 +54,7 @@ export * from "@/services/user-playlist-media-eligibility"
 export * from "@/services/user-playlist-moderation.service"
 export * from "@/services/user-playlist-report-crypto"
 export * from "@/services/user-playlist-report-intent"
+export * from "@/services/user-playlist-report-limiter"
 export * from "@/services/user-playlist-report.service"
 export * from "@/services/user-playlist.service"
 

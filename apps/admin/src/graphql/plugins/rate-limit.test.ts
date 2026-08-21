@@ -469,9 +469,37 @@ describe("rateLimitConfigByField", () => {
     })
     expect(rateLimitConfigByField).toContainEqual({
       type: "Query",
-      field: "!(watchVideoRouteSnapshotBySlug|watchSearchSuggestions)",
+      field:
+        "!(watchVideoRouteSnapshotBySlug|watchSearchSuggestions|myUserPlaylistCapability|userPlaylistByToken|myUserPlaylists|myUserPlaylist|userPlaylistReportQueue)",
       max: 60,
       window: "1m",
     })
+  })
+
+  it("gives playlist capability, public-read, report, and moderation fields dedicated budgets", () => {
+    expect(rateLimitConfigByField).toEqual(
+      expect.arrayContaining([
+        {
+          type: "Query",
+          field: "myUserPlaylistCapability",
+          max: 10,
+          window: "1m",
+        },
+        { type: "Query", field: "userPlaylistByToken", max: 60, window: "1m" },
+        {
+          type: "Mutation",
+          field: "reportUserPlaylist",
+          max: 10,
+          window: "1m",
+        },
+        {
+          type: "Mutation",
+          field:
+            "(createUserPlaylist|updateUserPlaylist|deleteUserPlaylist|unshareUserPlaylist|reshareUserPlaylist|rotateUserPlaylistCapability|blockUserPlaylist|restoreUserPlaylist)",
+          max: 20,
+          window: "1m",
+        },
+      ]),
+    )
   })
 })

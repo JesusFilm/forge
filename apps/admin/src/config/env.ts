@@ -351,6 +351,22 @@ export const env = createEnv({
     FORGE_USER_PLAYLIST_AUTHORING_DEFAULT: z.string().optional(),
     FORGE_USER_PLAYLIST_PUBLIC_READ_DEFAULT: z.string().optional(),
     USER_PLAYLIST_PUBLIC_READ_EMERGENCY_DISABLED: z.string().optional(),
+    // User Playlist crypto and policy values are optional at process boot.
+    // The isolated GraphQL runtime parses them lazily and fails only playlist
+    // operations closed, so an unprovisioned rollout cannot brick Admin.
+    USER_PLAYLIST_CAPABILITY_LOOKUP_KEYS: z.string().optional(),
+    USER_PLAYLIST_CAPABILITY_ENCRYPTION_KEYS: z.string().optional(),
+    USER_PLAYLIST_REPORT_INTENT_KEYS: z.string().optional(),
+    USER_PLAYLIST_REPORT_DETAIL_KEYS: z.string().optional(),
+    USER_PLAYLIST_REPORT_IP_KEYS: z.string().optional(),
+    USER_PLAYLIST_TRUSTED_CONTEXT_HMAC_SECRET: z.string().min(32).optional(),
+    USER_PLAYLIST_TERMS_VERSION: z.string().min(1).max(64).optional(),
+    USER_PLAYLIST_PRIVACY_VERSION: z.string().min(1).max(64).optional(),
+    USER_PLAYLIST_COMMUNITY_GUIDELINES_VERSION: z
+      .string()
+      .min(1)
+      .max(64)
+      .optional(),
     // Auth -> Admin user-playlist owner lifecycle delivery. Separate from
     // account-erasure and Watch progress credentials by design.
     USER_PLAYLIST_LIFECYCLE_HMAC_SECRET: z.string().min(32).optional(),
@@ -732,6 +748,33 @@ export const env = createEnv({
     ),
     USER_PLAYLIST_PUBLIC_READ_EMERGENCY_DISABLED: emptyToUndefined(
       process.env.USER_PLAYLIST_PUBLIC_READ_EMERGENCY_DISABLED,
+    ),
+    USER_PLAYLIST_CAPABILITY_LOOKUP_KEYS: emptyToUndefined(
+      process.env.USER_PLAYLIST_CAPABILITY_LOOKUP_KEYS,
+    ),
+    USER_PLAYLIST_CAPABILITY_ENCRYPTION_KEYS: emptyToUndefined(
+      process.env.USER_PLAYLIST_CAPABILITY_ENCRYPTION_KEYS,
+    ),
+    USER_PLAYLIST_REPORT_INTENT_KEYS: emptyToUndefined(
+      process.env.USER_PLAYLIST_REPORT_INTENT_KEYS,
+    ),
+    USER_PLAYLIST_REPORT_DETAIL_KEYS: emptyToUndefined(
+      process.env.USER_PLAYLIST_REPORT_DETAIL_KEYS,
+    ),
+    USER_PLAYLIST_REPORT_IP_KEYS: emptyToUndefined(
+      process.env.USER_PLAYLIST_REPORT_IP_KEYS,
+    ),
+    USER_PLAYLIST_TRUSTED_CONTEXT_HMAC_SECRET: emptyToUndefined(
+      process.env.USER_PLAYLIST_TRUSTED_CONTEXT_HMAC_SECRET,
+    ),
+    USER_PLAYLIST_TERMS_VERSION: emptyToUndefined(
+      process.env.USER_PLAYLIST_TERMS_VERSION,
+    ),
+    USER_PLAYLIST_PRIVACY_VERSION: emptyToUndefined(
+      process.env.USER_PLAYLIST_PRIVACY_VERSION,
+    ),
+    USER_PLAYLIST_COMMUNITY_GUIDELINES_VERSION: emptyToUndefined(
+      process.env.USER_PLAYLIST_COMMUNITY_GUIDELINES_VERSION,
     ),
     USER_PLAYLIST_LIFECYCLE_HMAC_SECRET: emptyToUndefined(
       process.env.USER_PLAYLIST_LIFECYCLE_HMAC_SECRET,
