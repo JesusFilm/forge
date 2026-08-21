@@ -24,6 +24,7 @@ function mockPrisma() {
       ...data,
     })),
     findFirst: vi.fn(),
+    findMany: vi.fn().mockResolvedValue([]),
     findUniqueOrThrow: vi.fn(),
     update: vi.fn(async ({ where, data }) => ({ ...where, ...data })),
   }
@@ -449,6 +450,83 @@ describe("ExperienceService", () => {
       )
     })
 
+    it("copies each locale's active saved draft without copying revision history", async () => {
+      prisma.experience.findFirst.mockResolvedValueOnce({
+        id: "exp-source",
+        isTemplate: false,
+        archivedAt: null,
+        locales: [
+          {
+            id: "loc-en",
+            experienceId: "exp-source",
+            locale: "en",
+            slug: "canonical-hope",
+            isHomepage: true,
+            pathSegment: null,
+            title: "Canonical hope",
+            metaDescription: null,
+            ogTitle: null,
+            ogDescription: null,
+            ogImageUrl: null,
+            blocks: [],
+            status: "PUBLISHED",
+            publishedAt: new Date("2026-08-20T12:00:00.000Z"),
+          },
+        ],
+      })
+      prisma.contentRevision.findMany.mockResolvedValueOnce([
+        {
+          entityId: "loc-en",
+          snapshot: {
+            v: 1,
+            data: {
+              slug: "saved-draft-hope",
+              isHomepage: true,
+              pathSegment: "topics",
+              title: "Saved draft hope",
+              metaDescription: "Saved draft meta",
+              ogTitle: "Saved draft OG",
+              ogDescription: "Saved draft OG description",
+              ogImageUrl: "https://example.com/saved-draft.jpg",
+              blocks: [{ t: "text", heading: "Saved draft" }],
+            },
+          },
+        },
+      ])
+      prisma.experienceLocale.findMany.mockResolvedValueOnce([])
+      prisma.experience.create.mockResolvedValueOnce({
+        id: "exp-copy",
+        locales: [],
+      })
+
+      await service.duplicate({ input: { id: "exp-source" }, user: ADMIN })
+
+      expect(prisma.experience.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            locales: {
+              create: [
+                expect.objectContaining({
+                  slug: "saved-draft-hope-copy",
+                  title: "Saved draft hope",
+                  metaDescription: "Saved draft meta",
+                  ogTitle: "Saved draft OG",
+                  ogDescription: "Saved draft OG description",
+                  ogImageUrl: "https://example.com/saved-draft.jpg",
+                  pathSegment: "topics",
+                  blocks: [{ t: "text", heading: "Saved draft" }],
+                  isHomepage: false,
+                  status: "DRAFT",
+                  publishedAt: null,
+                }),
+              ],
+            },
+          }),
+        }),
+      )
+      expect(prisma.contentRevision.create).not.toHaveBeenCalled()
+    })
+
     it("allows an ADMIN to duplicate an archived Experience", async () => {
       prisma.experience.findFirst.mockResolvedValueOnce({
         id: "exp-archived",
@@ -533,6 +611,47 @@ describe("ExperienceService", () => {
 
       await expect(
         service.duplicate({ input: { id: "exp-invalid" }, user: ADMIN }),
+      ).rejects.toThrow("cannot be duplicated")
+      expect(prisma.experienceLocale.findMany).not.toHaveBeenCalled()
+      expect(prisma.experience.create).not.toHaveBeenCalled()
+    })
+
+    it("maps a malformed active draft to the safe duplication error", async () => {
+      prisma.experience.findFirst.mockResolvedValueOnce({
+        id: "exp-invalid-draft",
+        isTemplate: false,
+        archivedAt: null,
+        locales: [
+          {
+            id: "loc-invalid-draft",
+            experienceId: "exp-invalid-draft",
+            locale: "en",
+            slug: "canonical",
+            isHomepage: false,
+            pathSegment: null,
+            title: "Canonical",
+            metaDescription: null,
+            ogTitle: null,
+            ogDescription: null,
+            ogImageUrl: null,
+            blocks: [],
+            status: "PUBLISHED",
+            publishedAt: new Date("2026-08-20T12:00:00.000Z"),
+          },
+        ],
+      })
+      prisma.contentRevision.findMany.mockResolvedValueOnce([
+        {
+          entityId: "loc-invalid-draft",
+          snapshot: {
+            v: 1,
+            data: { blocks: [{ t: "not-a-real-block" }] },
+          },
+        },
+      ])
+
+      await expect(
+        service.duplicate({ input: { id: "exp-invalid-draft" }, user: ADMIN }),
       ).rejects.toThrow("cannot be duplicated")
       expect(prisma.experienceLocale.findMany).not.toHaveBeenCalled()
       expect(prisma.experience.create).not.toHaveBeenCalled()

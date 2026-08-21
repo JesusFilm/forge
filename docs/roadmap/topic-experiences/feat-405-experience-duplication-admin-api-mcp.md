@@ -17,7 +17,7 @@ tags:
 
 ## Problem
 
-Editors can create and edit Experiences, but cannot make a safe working copy of an existing Experience. Admin users, GraphQL API clients, and MCP agents need one consistent duplication operation that copies every locale and its authored content without accidentally publishing the copy.
+Editors can create and edit Experiences, but cannot make a safe working copy of an existing Experience. Admin users, GraphQL API clients, and MCP agents need one consistent duplication operation that copies every locale's latest saved effective authored content without accidentally publishing the copy.
 
 ## Entry Points — Read These First
 
@@ -46,6 +46,7 @@ Editors can create and edit Experiences, but cannot make a safe working copy of 
 
 ## Constraints
 
+- Use active locale drafts as saved copy input when present, but do not clone their revision records.
 - Do not copy publication state, homepage designation, embeddings, revisions, or chat threads.
 - Do not emit public revalidation or embedding side effects; duplication creates drafts only.
 - Preserve all authored locale content, including blocks, route prefix, SEO, and OG fields.

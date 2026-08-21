@@ -40,6 +40,7 @@ function mockPrisma() {
     },
     contentRevision: {
       findFirst: contentRevisionFindFirst,
+      findMany: vi.fn().mockResolvedValue([]),
       create: contentRevisionCreate,
     },
     contentRevisionCreate,

@@ -1673,6 +1673,10 @@ export function ExperienceEditor({
     slug !== initialValues.slug ||
     pathSegment !== initialValues.pathSegment ||
     metaDescription !== initialValues.metaDescription ||
+    ogTitle !== initialValues.ogTitle ||
+    ogDescription !== initialValues.ogDescription ||
+    ogImageUrl !== initialValues.ogImageUrl ||
+    isHomepage !== initialValues.isHomepage ||
     serializedBlocks !== initialSerializedBlocks
   const routePrefixInputWidth = `${Math.min(
     Math.max((pathSegment.trim() || "prefix").length, 6),

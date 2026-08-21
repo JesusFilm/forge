@@ -26,7 +26,7 @@ origin: docs/roadmap/topic-experiences/feat-405-experience-duplication-admin-api
 
 ### Summary
 
-Add one Experience duplication capability shared by Admin, GraphQL, and MCP. A copy preserves authored content but is always a new caller-owned draft with no homepage, publication, embedding, revision, chat, or public-refresh state.
+Add one Experience duplication capability shared by Admin, GraphQL, and MCP. A copy preserves the latest saved effective authored content, including active locale drafts, but is always a new caller-owned draft with no homepage, publication, embedding, revision, chat, or public-refresh state.
 
 ### Problem Frame
 
@@ -44,7 +44,7 @@ Experience authors can create and edit content but cannot safely branch an exist
 - R1. A principal with destination write permission can duplicate any Experience the principal can read, including another editor's content and an archived source when existing ABAC allows it.
 - R2. The duplicate is a new active Experience owned by the caller and preserves the source's template classification.
 - R3. Every source locale becomes a new locale with `DRAFT` status, no publication timestamp, and no homepage designation.
-- R4. Each copied locale preserves authored locale, routing, title, SEO, OG, and block content while receiving a distinguishable available copy slug no longer than the existing 200-character limit.
+- R4. Each copied locale preserves its latest saved effective routing, title, SEO, OG, and block content—including an active saved draft when present—while receiving a distinguishable available copy slug no longer than the existing 200-character limit.
 
 **Surface parity**
 
@@ -56,7 +56,7 @@ Experience authors can create and edit content but cannot safely branch an exist
 
 - R8. Duplication does not copy embeddings or their provenance, locale or chat revision history, chat threads, identifiers, timestamps, archive state, or any other derived/public lifecycle state. It does not emit publish, ISR, route-manifest, or embedding side effects.
 - R9. Destination write authorization runs before source lookup, then source read ABAC runs before copying. Missing, unreadable, zero-locale, and block-schema-invalid sources fail without creating a copy.
-- R10. Admin duplication acts on the persisted Experience. Unsaved changes disable the action with an accessible save-first explanation; pending editor transitions disable it without claiming a save is required.
+- R10. Admin duplication acts on the latest saved effective Experience. Unsaved changes across any authored field disable the action with an accessible save-first explanation; pending editor transitions disable it without claiming a save is required.
 
 ### Scope Boundaries
 
@@ -82,7 +82,7 @@ Experience authors can create and edit content but cannot safely branch an exist
 ### Key Technical Decisions
 
 - KTD1. **The Experience service owns duplication.** `ExperienceService.duplicate` parses input, enforces coarse destination permission before any source probe, applies source read ABAC, and performs the single nested create. Thin GraphQL, MCP, and Admin adapters do not copy fields themselves.
-- KTD2. **Copy through an explicit field allowlist.** Canonical `isTemplate` and locale-authored fields are copied. New-row defaults plus explicit resets own archive, homepage, status, and publication state. Omitted relations and embedding columns remain empty by construction.
+- KTD2. **Copy through an explicit field allowlist.** Canonical `isTemplate` and each locale's latest saved effective authored fields are copied; an active locale draft overlays its canonical row but its revision record is not cloned. New-row defaults plus explicit resets own archive, homepage, status, and publication state. Omitted relations and embedding columns remain empty by construction.
 - KTD3. **Copy slugs are deterministic best-effort draft labels.** Probe existing slugs per locale and select `-copy`, then `-copy-2`, with source truncation before the suffix. Do not add a database lock or broaden the partial published-slug uniqueness contract for this feature.
 - KTD4. **Each public contract stays additive and generated artifacts stay derived.** Pothos adds one mutation, then `apps/admin/schema.graphql` and the admin gql.tada environment are regenerated from their owning sources. MCP extends the existing registry → dispatch → service pattern and reuses existing OAuth scopes.
 - KTD5. **Admin duplicates only persisted state.** The client button invokes a server action only when the editor is clean, associates dirty-state helper text with the disabled control, distinguishes that state from unrelated pending work, handles a safe typed failure result, and routes to the copied locale without adding load-time effects or requests.
@@ -103,7 +103,7 @@ flowchart TB
   MCP[MCP registry and dispatch] --> MCPSVC[Experience MCP service]
   MCPSVC --> SERVICE
   SERVICE --> AUTH[Write gate then source-read ABAC]
-  AUTH --> COPY[Explicit canonical and locale field copy]
+  AUTH --> COPY[Resolve saved drafts and copy explicit fields]
   COPY --> DRAFT[Caller-owned active Experience with DRAFT locales]
   DRAFT -. no side effects .-> PUBLIC[Publish, route manifest, ISR, embeddings]
 ```
@@ -138,7 +138,7 @@ The service is the only field-copy and lifecycle-reset owner. Surface adapters c
 - **Files:** `apps/admin/src/services/experience.schemas.ts`, `apps/admin/src/services/experience.service.ts`, `apps/admin/src/services/experience.service.test.ts`.
 - **Approach:**
   1. Validate the source ID and require destination write permission before loading it.
-  2. Load the canonical with every locale, enforce source read ABAC, and reject a zero-locale source or any locale whose block JSON fails the existing block schema before any write.
+  2. Load the canonical with every locale, enforce source read ABAC, overlay each locale's active saved draft when present, and reject a zero-locale source or any effective locale whose block JSON fails the existing block schema before any write.
   3. Probe current locale slugs, derive bounded copy suffixes, and create the caller-owned canonical plus all locale drafts through an explicit allowlist (KTD2, KTD3).
   4. Leave archive, embedding provenance, revisions, chat relations, IDs, and timestamps out of the create payload.
 - **Patterns to follow:** Existing create/update mutation ordering in `ExperienceService`; `canViewExperience` and `hasPermission`; the canonical/locale split in `apps/admin/prisma/schema.prisma`.

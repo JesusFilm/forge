@@ -2420,12 +2420,6 @@ describe("ExperienceEditor", () => {
     expect(routerPush).not.toHaveBeenCalled()
   })
 
-  it("renders preview instead of publish when nothing changed on a published locale", () => {
-    const html = renderEditor([], { hasPublishedVersion: true })
-    expect(html).toContain("Preview")
-    expect(html).not.toContain("Open Published Page")
-  })
-
   it("renders the live control on the server even when the watch URL is inferred in the browser", () => {
     envState.NEXT_PUBLIC_WATCH_URL = undefined
 

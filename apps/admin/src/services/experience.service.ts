@@ -429,6 +429,8 @@ export class ExperienceService {
         locales: {
           orderBy: [{ createdAt: "asc" }, { id: "asc" }],
           select: {
+            id: true,
+            experienceId: true,
             locale: true,
             slug: true,
             isHomepage: true,
@@ -439,6 +441,8 @@ export class ExperienceService {
             ogDescription: true,
             ogImageUrl: true,
             blocks: true,
+            status: true,
+            publishedAt: true,
           },
         },
       },
@@ -454,7 +458,35 @@ export class ExperienceService {
       throw new ExperienceDuplicationError()
     }
 
-    const sourceLocales = source.locales.map((locale) => {
+    const activeDrafts = await this.prisma.contentRevision.findMany({
+      where: {
+        entityType: "ExperienceLocale",
+        entityId: { in: source.locales.map((locale) => locale.id) },
+        status: "DRAFT",
+      },
+      orderBy: [{ revisedAt: "desc" }, { id: "asc" }],
+      select: { entityId: true, snapshot: true },
+    })
+    const activeDraftByLocaleId = new Map<string, unknown>()
+    for (const draft of activeDrafts) {
+      if (!activeDraftByLocaleId.has(draft.entityId)) {
+        activeDraftByLocaleId.set(draft.entityId, draft.snapshot)
+      }
+    }
+
+    const sourceLocales = source.locales.map((canonical) => {
+      const snapshot = activeDraftByLocaleId.get(canonical.id)
+      let locale = canonical
+      if (snapshot !== undefined) {
+        try {
+          locale = effectiveLocale(
+            canonical,
+            effectiveDraftData(canonical, snapshot),
+          )
+        } catch {
+          throw new ExperienceDuplicationError()
+        }
+      }
       const blocks = BlocksSchema.safeParse(locale.blocks)
       if (!blocks.success) {
         throw new ExperienceDuplicationError()
