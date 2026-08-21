@@ -1316,6 +1316,56 @@ describe("Mastra env", () => {
     expect(isSeekerVideoEnabled()).toBe(false)
   })
 
+  // --- feat-366: SEEKER_FOLLOWUPS_ENABLED default-off string-boolean gate (KTD8) ---
+
+  it("disables seeker follow-ups when SEEKER_FOLLOWUPS_ENABLED is unset or empty", async () => {
+    vi.stubEnv("NODE_ENV", "development")
+
+    const first = await import("./env")
+    expect(first.isSeekerFollowUpsEnabled()).toBe(false)
+
+    vi.resetModules()
+    vi.stubEnv("SEEKER_FOLLOWUPS_ENABLED", "")
+    const second = await import("./env")
+    expect(second.isSeekerFollowUpsEnabled()).toBe(false)
+  })
+
+  it.each(["false", "post", "tool", "heuristic", "TRUE"])(
+    "treats SEEKER_FOLLOWUPS_ENABLED=%j as disabled — string-boolean, and the retired prototype mode enum stays dead",
+    async (value) => {
+      // "post"/"tool"/"heuristic" were the prototype's SEEKER_FOLLOWUPS_MODE
+      // values (KTD8: the enum retires with the flag; `mode=post` survives
+      // only as a log-line mechanism label). Any of them read as OFF here.
+      vi.stubEnv("NODE_ENV", "development")
+      vi.stubEnv("SEEKER_FOLLOWUPS_ENABLED", value)
+
+      const { isSeekerFollowUpsEnabled } = await import("./env")
+
+      expect(isSeekerFollowUpsEnabled()).toBe(false)
+    },
+  )
+
+  it('enables seeker follow-ups only when SEEKER_FOLLOWUPS_ENABLED is exactly "true"', async () => {
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("SEEKER_FOLLOWUPS_ENABLED", "true")
+
+    const { isSeekerFollowUpsEnabled } = await import("./env")
+
+    expect(isSeekerFollowUpsEnabled()).toBe(true)
+  })
+
+  it("keeps SEEKER_FOLLOWUPS_ENABLED out of the production required-var set (optional at boot)", async () => {
+    stubProductionBaseline()
+    // SEEKER_FOLLOWUPS_ENABLED deliberately unset — a default-off deploy has
+    // zero new env prerequisites (KTD8).
+
+    const { assertMastraRuntimeEnv, isSeekerFollowUpsEnabled } =
+      await import("./env")
+
+    expect(() => assertMastraRuntimeEnv()).not.toThrow()
+    expect(isSeekerFollowUpsEnabled()).toBe(false)
+  })
+
   // --- feat-327: ADMIN_AGENT_TOOLS_MAX_RESPONSE_BYTES byte cap ---
 
   it("defaults the agent-tools response byte cap to 2 MiB when unset", async () => {
@@ -1848,6 +1898,19 @@ describe("Mastra env", () => {
 
     vi.resetModules()
     vi.stubEnv("AI_CHAT_ERASURE_SMOKE_TEST", "true")
+    await expect(import("./env")).rejects.toThrow()
+  })
+
+  it('accepts SEEKER_FOLLOWUPS_TRACE_SMOKE_TEST="1" and rejects any other non-empty value', async () => {
+    // Same posture as the sibling smoke gates (feat-366): only the literal
+    // "1" enables the opt-in live trace smoke — loud, never half-enabled.
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("SEEKER_FOLLOWUPS_TRACE_SMOKE_TEST", "1")
+    const { env } = await import("./env")
+    expect(env.SEEKER_FOLLOWUPS_TRACE_SMOKE_TEST).toBe("1")
+
+    vi.resetModules()
+    vi.stubEnv("SEEKER_FOLLOWUPS_TRACE_SMOKE_TEST", "true")
     await expect(import("./env")).rejects.toThrow()
   })
 

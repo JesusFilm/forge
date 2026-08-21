@@ -210,6 +210,7 @@ of the defaults and validation contract.
 | `MASTRA_NATIVE_EVAL_ENVIRONMENT`             | Optional label for native search-eval Dataset and Experiment names. Defaults to Mastra environment.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
 | `SEEKER_ROUTE_ENABLED`                       | Default-off gate for the internal `POST /forge-seeker` SSE service route (feat-204). Optional, **no default** — the route returns 404 unless this is exactly `"true"` (repo string-boolean convention; `"false"`/unset = disabled). Never required at boot.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
 | `SEEKER_VIDEO_ENABLED`                       | Default-off gate for the seeker's video capability: since feat-330 it gates the `searchVideos` + `featureVideo` **tools only** — and, through them, the optional `video` field on the `/forge-seeker` terminal `result` frame. It no longer touches the prompt: the video-featuring guidance is durable content in the Langfuse-managed `seeker-system` prompt and in `SEEKER_SYSTEM_PROMPT_FALLBACK`, served in BOTH flag states, phrased tool-conditionally so flag-off degrades to "I can't look up a video right now". Optional, **no default** — unset means the resolved tool set and per-turn behavior match the pre-feat-327 agent (two deliberate exceptions: the global tool-registry footprint, see Containment; and the resolved prompt, which now always carries the guidance) (`"false"`/any other value = disabled; repo string-boolean convention). Never required at boot. Turning it ON is what arms the two credentialed tools on the code-unauthenticated `/api/agents/seekerAgent` surface — see Containment. Depends on the `ADMIN_AGENT_TOOLS_URL`/`ADMIN_AGENT_TOOLS_API_KEY` pair (documented under "Experience draft & chat generation" further below) being provisioned; unprovisioned, searches degrade to empty results and no video is ever featured. |
+| `SEEKER_FOLLOWUPS_ENABLED`                   | Default-off gate for the seeker's suggested follow-up questions (feat-366, plan `docs/plans/2026-08-18-0406-feat-seeker-follow-up-questions-plan.md`). Gates the WRITE side only: post-hoc generation after the answer stream, the optional `followUps` field on the `/forge-seeker` terminal `result` frame, and the `content.metadata.seekerFollowUps` persist. Replay of already-stored questions is deliberately NOT gated (KD1 — mirrors the settled PR #1836 `SEEKER_VIDEO_ENABLED` ruling); retraction levers in order: this flag off → `SEEKER_ROUTE_ENABLED` off → thread purge. Optional, **no default** — only the literal `"true"` enables (repo string-boolean convention; `"false"`, unset, and every retired prototype `SEEKER_FOLLOWUPS_MODE` value = disabled). Never required at boot.                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | `ADMIN_AGENT_TOOLS_MAX_RESPONSE_BYTES`       | Byte-cap on the buffered admin agent-tools response body (feat-327; the 200-path read is the only buffering read on that client). Streamed byte counter aborts the stream past the cap → the existing `parse_error` → empty-result path. Optional, runtime default `2097152` (2 MiB — a POLICY ceiling, ~4x a plausible 20-row worst case at 3 bytes/UTF-16 unit; admin truncates neither `snippet` nor `title`, so no upstream invariant bounds the true worst case), schema-capped at 16 MiB (`16777216`). Never required at boot.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
 | `AI_GATEWAY_SEEKER_ENABLED`                  | Default-off gate that prepends the JesusFilm gateway chat model to the seeker agent's fallback chain (feat-237). Optional, **no default** — the seeker stays on the free-Gemma chain unless this is exactly `"true"` AND `AI_GATEWAY_CHAT_API_KEY` is set (repo string-boolean convention; `"false"`/unset = disabled). Never required at boot. Coupling: `AI_GATEWAY_CHAT_MODEL` and `AI_GATEWAY_CHAT_BASE_URL` are SHARED with the experience surface — changing either while this flag is `"true"` swaps the seeker's model (or retargets its gateway endpoint) too, so re-run the feat-237 smoke checklist before deploying such a change.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
 | `MASTRA_CONTENT_EMBEDDINGS_PROVIDER_MODE`    | Selects content embedding provider posture: `gateway` or `legacy`. Production and gateway-key env imply `gateway`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
@@ -326,6 +327,7 @@ of the defaults and validation contract.
 | `LANGFUSE_TRACE_RETENTION_SMOKE_TEST`        | Opt-in gate for the feat-336 trace-retention smoke suite (`langfuse-trace-retention.smoke.test.ts`, redesigned 2026-08-11 — backdated synthetic sentinels are UNREACHABLE on the v2 observations read surface, so the suite now asserts the list contract + `filterSkipped === 0` on the sweep's exact expired window, uses a REAL recent production observation as the raw-surface negative control, and proves the DELETE contract on a production-sized 50-id synthetic batch with measured latency; NOTE each run still spends one of the org's 50/day Hobby trace-delete requests). Same posture as `LANGFUSE_PROMPT_SMOKE_TEST`: only the literal `"1"` enables it.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
 | `AI_CHAT_ERASURE_SMOKE_TEST`                 | Opt-in gate for the feat-337 real-Postgres erasure smoke (`ai-chat-erasure.smoke.test.ts`) — seeds two prefix-adjacent throwaway resources against a CALLER-SUPPLIED throwaway `DATABASE_URL`, erases one, and asserts the neighbour intact (the exact-match-filter proof mocked stores cannot give). Test-only gate, never runtime configuration; the suite is deliberately out of CI because it WRITES AND DELETES rows. Same posture as the two Langfuse smoke gates: only the literal `"1"` enables it.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
 | `AI_CHAT_ERASURE_LANGFUSE_SMOKE_TEST`        | Opt-in gate for the feat-337 Langfuse READ smoke (`ai-chat-erasure.langfuse.smoke.test.ts`) — a strictly read-only listing suite against the real `forge-mastra` project: pins that `fields=core,basic` genuinely returns per-row `userId` (runtime-discovered subject, never a committed literal), proves the nonexistent-key zero-rows path, and reports the traces-per-userId spread (max/p95, counts only). GET requests only by construction — zero delete-quota spend, safe to re-run. Test-only gate, never runtime configuration. Same posture as the sibling smoke gates: only the literal `"1"` enables it.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| `SEEKER_FOLLOWUPS_TRACE_SMOKE_TEST`          | Opt-in gate for the feat-366 live Langfuse trace smoke (`seeker-follow-ups-tracing.smoke.test.ts`) — walks the KTD9 ladder against the real `forge-mastra` project with a MOCKED model (zero provider spend, zero delete-quota spend; writes a handful of throwaway-subject observations the feat-336 retention sweep drains within 25 days). Span existence and the `userId`-filtered-listing assertion are ship-blockers; trace shape (same-trace vs sibling) is recorded either way. Local-dev Langfuse pair only. Same posture as the sibling smoke gates: only the literal `"1"` enables it.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
 | `PORT`                                       | Railway-provided runtime port. Mastra defaults to `4111` locally.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
 | `MASTRA_STUDIO_PATH`                         | Set to `.mastra/output/studio` when starting the built server with Studio assets.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
 
@@ -781,6 +783,88 @@ availability_missing= shape_dropped=`. Read the two discriminators together:
 - **Data handling:** the model-formulated query `q` is a paraphrase of a
   religious-belief conversation and must never reach a log line on any branch;
   video ids are catalog data and are acceptable, titles are not.
+
+### Follow-up questions (feat-366, `SEEKER_FOLLOWUPS_ENABLED`)
+
+Default-off capability suggesting up to three tappable follow-up questions
+after a grounded, substantive seeker answer. Plan:
+`docs/plans/2026-08-18-0406-feat-seeker-follow-up-questions-plan.md` (U1 —
+mastra half; chat renders the chips in U2).
+
+- **Mechanism (KTD1): post-hoc, riding the terminal frame.** After the answer
+  text stream finishes, a second small model call generates the questions and
+  they ride the terminal `result` frame as an optional `followUps: string[]`
+  (omitted, never null). The chat proxy aborts upstream the moment it relays
+  a terminal frame, so generation DELAYS that frame — bounded by
+  `min(2.5 s, remaining chatTurn budget)` via an abort signal AND a
+  `Promise.race` (the signal stops provider work; the race releases the frame
+  even if a framework layer ignores the abort). Every failure degrades to no
+  chips, never an error frame.
+- **Generator (KTD5): out-of-registry mini-agent, code-owned prompt.**
+  `seeker-follow-ups-generate.ts` — module-cached, memory-less, ZERO-tool /
+  ZERO-processor Agent on `buildSeekerModelList()` (the seeker's own chain),
+  never added to the `agents` registry; handed the runtime Mastra reference
+  once via the dist `__registerMastra` hook (span emission needs it — a dist
+  fact, pinned by test; re-verify on `@mastra/*` bumps). Input is the
+  question's tail (1,000 chars) + the answer's TAIL (2,000 chars), enclosed
+  as delimited DATA — never instructions. The prompt is deliberately
+  code-owned (the output becomes a user's message on click; PR review is the
+  control), so a change here needs no Langfuse promotion.
+- **Suppression gate (KTD7):** `shouldGenerateFollowUps` in
+  `seeker-follow-ups.ts` — grounded (retrieveAnswer `ok`) AND ≥200 trimmed
+  chars. The gate carries the crisis-guardrail hook breadcrumb: the future
+  guardrail must ALSO suppress generation there (feat-339 register,
+  "Safety guardrails").
+- **Storage (KTD2): `content.metadata.seekerFollowUps`, NEVER a message
+  part.** Stored parts are replayed to the provider on later turns, and a
+  fabricated tool-invocation part was observed live to 400 the gateway
+  ("assistant tool call requires id"), breaking every later turn in the
+  thread — the no-parts persist regression test is load-bearing. The
+  best-effort write (`seeker-follow-ups-persist.ts`) runs AFTER the terminal
+  frame, gated on the frame having actually been EMITTED (an enqueue-time
+  flag, never a closed-now check), bounded by its own ~3 s budget and
+  deliberately NOT composed with the request signal (the proxy aborts right
+  after the frame on every normal turn). Carrier = the trailing run's last
+  text-bearing assistant message, with a client-side threadId/resourceId
+  re-check on the returned row before `updateMessages` (which takes bare ids
+  — the single-predicate blast-radius law). Outcomes:
+  `skipped | persisted | no_carrier | store_failed | timeout | undelivered`.
+- **Replay (KTD3): NOT flag-gated (KD1 — settled, mirrors the PR #1836
+  `SEEKER_VIDEO_ENABLED` ruling).** The history route synthesizes a
+  `suggestFollowUps` chunk from the stored metadata so
+  `resolveTurnAttachments` re-validates on every read through the shared
+  drop-never-repair projection (`projectFollowUps`: ≤3 × ≤120 UTF-16 units,
+  control-char/lone-surrogate/dupe drops — chat mirrors it in U2). The wire
+  is LAST-TURN-ONLY: only the thread's final text-bearing assistant message
+  carries `followUps`; older turns' stored sets stay stored, off the wire.
+- **Byte budget (KTD12): measured, not computed.** The followUps term in
+  `AI_CHAT_HISTORY_WORST_CASE_THREAD_BYTES` is a ONE-message allowance
+  (~1.1 kB) because of the last-turn-only slice; the maximal-thread test
+  serializes maximal followUps and measured 6,255,991 B against the
+  8,388,608 B consumer cap (2,132,617 B headroom, 2026-08-18). **Any future
+  per-message replay field must re-derive that budget — and re-measure —
+  BEFORE it ships**; never raise the consumer cap (over-cap = 502 → replay
+  `failed` → R22 blocks every send). Tighten the stored caps instead (first
+  candidate: 2 × 80 — a coordinated edit with chat's mirror).
+- **Click-source tag (KTD11):** the body accepts an optional closed-vocabulary
+  `promptSource` (`follow_up`; anything else reads as absent → `typed`).
+  Logged as `prompt_source=` on the flag-on `[seeker-follow-ups]
+event=turn_resolved mode=post … persist= gen_tokens_in= gen_tokens_out=`
+  line; stamped flag-INDEPENDENTLY into the turn's trace metadata as
+  `sendOrigin` — a DIFFERENT key from the provenance `promptSource`
+  (key-pin test holds them apart). Question text never reaches a log line on
+  any branch (R9); failures log fixed enums only.
+- **Tracing (KTD9):** the generator call carries the per-process marker plus
+  the same `sessionId`/`userId` stamps as the turn, and attempts same-trace
+  joining via the stream output's `traceId`/`spanId` (sibling trace
+  `seeker-follow-ups` is the accepted fallback). The stamps are what keep the
+  feat-336 retention sweep and feat-337 erasure able to find these spans.
+- **Smokes:** `pnpm --filter @forge/mastra smoke:followups-pg` (real-Postgres
+  persist/replay round trip against a throwaway DB — preflight refuses
+  production runtimes, Railway hostnames, and any target whose parsed
+  database name is not exactly `followups_smoke`; no loopback bypass, since a
+  forwarded port can front production) and the opt-in
+  `SEEKER_FOLLOWUPS_TRACE_SMOKE_TEST=1` live trace smoke (see the env table).
 
 ### ai-chat memory, thread ownership + retention (feat-208)
 
@@ -1440,11 +1524,15 @@ stable bearer-gated contract (handler: `agents/seeker-route.ts`,
 `handleSeekerRouteRequest`). It mirrors `/forge-experience-chat` but adds
 per-session memory keying and `retrieveAnswer` `sources[]` extraction. Frames:
 `token_delta {text}` → terminal
-`result {text, sources, grounded, producedBy, video?}`, or `error {reason}`
+`result {text, sources, grounded, producedBy, video?, followUps?}`, or
+`error {reason}`
 (fixed-vocabulary reason only — no raw text on the wire). `video` is the
 optional feat-327 declared-video attachment — see "Video featuring" above; it
 is omitted entirely on every turn that does not declare a valid pick, and the
 request body schema is unchanged (no per-request video toggle exists).
+`followUps` is the optional feat-366 suggested-questions list — see
+"Follow-up questions" above; omitted (never null or empty) on every turn that
+produces none.
 
 - **Default-off**: gated on `SEEKER_ROUTE_ENABLED === "true"`, checked FIRST →
   404 when disabled (KTD7) — the first rung of the shared lane admission
@@ -1463,7 +1551,10 @@ request body schema is unchanged (no per-request video toggle exists).
   the lane-registration no-seam source pin in
   `seeker-route-isolation.test.ts` (the feat-250 const pins themselves are
   gone).
-- **Body**: `{ prompt, threadId }` required; `resourceId` optional + opaque.
+- **Body**: `{ prompt, threadId }` required; `resourceId` optional + opaque;
+  `promptSource` optional closed-vocabulary click-source tag (feat-366 KTD11
+  — `"follow_up"` is the only meaningful value; anything else, including
+  absence, reads as `typed` and is never a 400).
   The route ALWAYS supplies a memory `resource` (the caller's `resourceId` else
   the constant `SEEKER_DEFAULT_RESOURCE_ID = "seeker-dogfood"`) because a
   memory-configured agent throws `AGENT_MEMORY_MISSING_RESOURCE_ID` at runtime

@@ -568,6 +568,9 @@ const envSchema = z.object({
   // listing suite against the real `forge-mastra` project (GET only, zero
   // delete-quota spend — see ai-chat-erasure.langfuse.smoke.test.ts).
   AI_CHAT_ERASURE_LANGFUSE_SMOKE_TEST: z.enum(["1"]).optional(),
+  // Same posture for the feat-366 follow-ups live trace smoke
+  // (seeker-follow-ups-tracing.smoke.test.ts — local-dev Langfuse pair only).
+  SEEKER_FOLLOWUPS_TRACE_SMOKE_TEST: z.enum(["1"]).optional(),
   SEARCH_EVAL_JUDGE_MODEL: z
     .string()
     .min(1)
@@ -590,6 +593,16 @@ const envSchema = z.object({
   // matching SEEKER_ROUTE_ENABLED), NOT JS truthiness, so
   // `SEEKER_VIDEO_ENABLED="false"` stays disabled. No new required-at-boot var.
   SEEKER_VIDEO_ENABLED: z.string().optional(),
+  // Default-off gate for the seeker's suggested follow-up questions
+  // (feat-366, KTD8): post-hoc generation, the `followUps` terminal-frame
+  // field, and the metadata persist. Replay of already-stored questions is
+  // deliberately NOT gated (KD1 — mirrors the PR #1836 ruling). Optional + no
+  // default. Read via the repo's string-boolean convention (`=== "true"`,
+  // matching SEEKER_ROUTE_ENABLED), NOT JS truthiness, so
+  // `SEEKER_FOLLOWUPS_ENABLED="false"` — and every retired prototype
+  // SEEKER_FOLLOWUPS_MODE value ("post"/"tool"/"heuristic") — stays disabled.
+  // No new required-at-boot var.
+  SEEKER_FOLLOWUPS_ENABLED: z.string().optional(),
   SUBTITLE_ENRICHMENT_MODEL: z
     .string()
     .min(1)
@@ -1107,11 +1120,17 @@ export const env = envSchema.parse({
   AI_CHAT_ERASURE_LANGFUSE_SMOKE_TEST: emptyToUndefined(
     process.env.AI_CHAT_ERASURE_LANGFUSE_SMOKE_TEST,
   ),
+  SEEKER_FOLLOWUPS_TRACE_SMOKE_TEST: emptyToUndefined(
+    process.env.SEEKER_FOLLOWUPS_TRACE_SMOKE_TEST,
+  ),
   SEARCH_EVAL_JUDGE_MODEL: emptyToUndefined(
     process.env.SEARCH_EVAL_JUDGE_MODEL,
   ),
   SEEKER_ROUTE_ENABLED: emptyToUndefined(process.env.SEEKER_ROUTE_ENABLED),
   SEEKER_VIDEO_ENABLED: emptyToUndefined(process.env.SEEKER_VIDEO_ENABLED),
+  SEEKER_FOLLOWUPS_ENABLED: emptyToUndefined(
+    process.env.SEEKER_FOLLOWUPS_ENABLED,
+  ),
   SUBTITLE_ENRICHMENT_MODEL: emptyToUndefined(
     process.env.SUBTITLE_ENRICHMENT_MODEL,
   ),
@@ -2024,6 +2043,23 @@ export function isSeekerRouteEnabled(): boolean {
  */
 export function isSeekerVideoEnabled(): boolean {
   return env.SEEKER_VIDEO_ENABLED === "true"
+}
+
+/**
+ * Whether the seeker generates suggested follow-up questions (feat-366,
+ * KTD8). Gates the WRITE side only: post-hoc generation, the optional
+ * `followUps` field on the `/forge-seeker` terminal `result` frame, and the
+ * metadata persist. The replay read path deliberately reads no flag (KD1 —
+ * mirrors the settled PR #1836 `SEEKER_VIDEO_ENABLED` ruling): flipping this
+ * off stops NEW chips; already-stored questions keep replaying on reopened
+ * threads. Retraction levers, in order: this flag off → `SEEKER_ROUTE_ENABLED`
+ * off (darkens the whole lane) → thread purge. Default-off: uses the repo's
+ * string-boolean convention (matching `SEEKER_ROUTE_ENABLED`), NOT JS
+ * truthiness — `"false"` (or any other value, including the retired prototype
+ * mode literals) keeps generation off.
+ */
+export function isSeekerFollowUpsEnabled(): boolean {
+  return env.SEEKER_FOLLOWUPS_ENABLED === "true"
 }
 
 /**
