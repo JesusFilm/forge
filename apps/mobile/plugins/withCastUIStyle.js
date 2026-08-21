@@ -8,6 +8,8 @@ try {
   withAppDelegate = null
 }
 
+const { createHash } = require("crypto")
+
 /**
  * react-native-google-cast presents the Cast SDK's own view controllers and
  * exposes no styling hook, so every cast sheet renders in Google's palette.
@@ -35,14 +37,17 @@ try {
 
 const ANCHOR = "GCKCastContext.setSharedInstanceWith(options)"
 
-// Doubles as the idempotence sentinel: its presence means the block is in.
-const MARKER = "// forge: cast views repainted (plugins/withCastUIStyle.js)"
+// A content HASH, not a bare sentinel. `expo prebuild` reuses an existing ios/
+// rather than recreating it, so a name-only marker would make an edited block
+// look already-applied and silently keep building the previous palette.
+const MARKER_PREFIX =
+  "// forge: cast views repainted (withCastUIStyle.js) sync-"
+const MARKER_END = "// forge: end cast views repainted"
 
 // Hex literals mirror src/lib/color.ts. `#CB333B` (ACCENT) measures ~3.4:1 on
 // `#1c1917` — fine for fills, sliders and glyphs, below AA for normal text, so
 // bare text buttons take ACCENT_ON_DARK instead.
-const STYLE_LINES = [
-  MARKER,
+const STYLE_BODY = [
   "func forgeCastColor(_ rgb: UInt32, _ alpha: CGFloat = 1) -> UIColor {",
   "  return UIColor(",
   "    red: CGFloat((rgb >> 16) & 0xFF) / 255.0,",
@@ -145,13 +150,48 @@ const STYLE_LINES = [
   "GCKUIStyle.sharedInstance().apply()",
 ]
 
+/** Short content hash of the emitted Swift — the whole point of the sentinel. */
+function styleHash() {
+  return createHash("sha1")
+    .update(STYLE_BODY.join("\n"))
+    .digest("hex")
+    .slice(0, 12)
+}
+
+function beginMarker() {
+  return MARKER_PREFIX + styleHash()
+}
+
+/** Remove a previously injected block, whatever hash it carries. */
+function excisePreviousBlock(src, beginIdx) {
+  const blockStart = src.lastIndexOf("\n", beginIdx) + 1
+  const endIdx = src.indexOf(MARKER_END, beginIdx)
+  if (endIdx === -1) {
+    throw new Error(
+      "[withCastUIStyle] found the block's begin marker but no end marker in " +
+        "AppDelegate. The generated file was hand-edited or truncated; delete " +
+        "ios/ and re-run `expo prebuild` rather than letting this plugin splice " +
+        "a partial block.",
+    )
+  }
+  const endLine = src.indexOf("\n", endIdx)
+  const after = endLine === -1 ? src.length : endLine + 1
+  return src.slice(0, blockStart) + src.slice(after)
+}
+
 /**
  * Insert the GCKUIStyle block after the vendor's setSharedInstanceWith line.
  * Throws on vendor drift — a missing anchor means the sheets silently keep
  * Google's palette, which is exactly the outcome this plugin exists to stop.
  */
 function insertCastUIStyle(src) {
-  if (src.includes(MARKER)) return src
+  const beginIdx = src.indexOf(MARKER_PREFIX)
+  if (beginIdx !== -1) {
+    // Matching hash: already current. Different hash: the emitted Swift
+    // changed, so the stale block must be excised before the new one lands.
+    if (src.includes(beginMarker())) return src
+    src = excisePreviousBlock(src, beginIdx)
+  }
   const anchorIdx = src.indexOf(ANCHOR)
   if (anchorIdx === -1) {
     throw new Error(
@@ -167,9 +207,9 @@ function insertCastUIStyle(src) {
   const indent = src.slice(lineStart, anchorIdx)
   const lineEnd = src.indexOf("\n", anchorIdx)
   const insertAt = lineEnd === -1 ? src.length : lineEnd + 1
+  const lines = [beginMarker(), ...STYLE_BODY, MARKER_END]
   const block =
-    STYLE_LINES.map((line) => (line === "" ? "" : indent + line)).join("\n") +
-    "\n"
+    lines.map((line) => (line === "" ? "" : indent + line)).join("\n") + "\n"
   return src.slice(0, insertAt) + block + src.slice(insertAt)
 }
 
@@ -198,4 +238,6 @@ module.exports = function withCastUIStyle(config) {
 // Exported for unit tests — the transform is pure; a silent regression here
 // ships cast sheets in Google's palette with CI green.
 module.exports.insertCastUIStyle = insertCastUIStyle
-module.exports.CAST_UI_STYLE_MARKER = MARKER
+module.exports.CAST_UI_STYLE_MARKER_PREFIX = MARKER_PREFIX
+module.exports.CAST_UI_STYLE_MARKER_END = MARKER_END
+module.exports.castUIStyleBeginMarker = beginMarker

@@ -6,7 +6,8 @@ const fs = require("fs")
 const path = require("path")
 
 // Guard (KTD3): every react-native-google-cast import stays inside the cast
-// layer — pure logic under src/lib/cast/, the one hook at useCastPlayback.
+// layer — src/lib/cast/ (pure logic, plus the thin CastRouteButton.tsx wrapper
+// that exists so callers import it instead of the SDK) and useCastPlayback.
 const ALLOWED_PREFIX = "src/lib/cast/"
 const ALLOWED_FILES = new Set(["src/hooks/useCastPlayback.ts"])
 

@@ -65,7 +65,8 @@
         {
           "iosSuspendSessionsWhenBackgrounded": false,
           "iosStartDiscoveryAfterFirstTapOnCastButton": false,
-          "androidPlayServicesCastFrameworkVersion": "22.3.1"
+          "androidPlayServicesCastFrameworkVersion": "22.3.1",
+          "expandedController": true
         }
       ],
       [

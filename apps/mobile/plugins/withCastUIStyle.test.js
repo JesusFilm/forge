@@ -1,4 +1,9 @@
-const { insertCastUIStyle, CAST_UI_STYLE_MARKER } = require("./withCastUIStyle")
+const {
+  insertCastUIStyle,
+  CAST_UI_STYLE_MARKER_PREFIX,
+  CAST_UI_STYLE_MARKER_END,
+  castUIStyleBeginMarker,
+} = require("./withCastUIStyle")
 const { insertVolumeFlag } = require("./withCastOptionsVolume")
 
 // Real producer symbol: the vendor's own Swift injector builds the fixture, so
@@ -92,7 +97,7 @@ describe("vendor fixture sanity", () => {
 describe("insertCastUIStyle placement", () => {
   it("inserts the style block AFTER setSharedInstanceWith", () => {
     const out = insertCastUIStyle(INJECTED)
-    const markerIdx = out.indexOf(CAST_UI_STYLE_MARKER)
+    const markerIdx = out.indexOf(CAST_UI_STYLE_MARKER_PREFIX)
     expect(markerIdx).toBeGreaterThan(-1)
     expect(markerIdx).toBeGreaterThan(out.indexOf(ANCHOR))
   })
@@ -104,7 +109,7 @@ describe("insertCastUIStyle placement", () => {
       out.indexOf(ANCHOR) - 600,
     )
     const endifIdx = out.indexOf("#endif", guardIdx)
-    const markerIdx = out.indexOf(CAST_UI_STYLE_MARKER)
+    const markerIdx = out.indexOf(CAST_UI_STYLE_MARKER_PREFIX)
     const applyIdx = out.indexOf("GCKUIStyle.sharedInstance().apply()")
     expect(guardIdx).toBeGreaterThan(-1)
     expect(markerIdx).toBeGreaterThan(guardIdx)
@@ -114,7 +119,7 @@ describe("insertCastUIStyle placement", () => {
 
   it("indents the block to match the anchor line", () => {
     const out = insertCastUIStyle(INJECTED)
-    expect(out).toContain(`    ${CAST_UI_STYLE_MARKER}`)
+    expect(out).toContain(`    ${CAST_UI_STYLE_MARKER_PREFIX}`)
     expect(out).toContain("    GCKUIStyle.sharedInstance().apply()")
   })
 
@@ -129,7 +134,7 @@ describe("insertCastUIStyle placement", () => {
     const once = insertCastUIStyle(INJECTED)
     const twice = insertCastUIStyle(once)
     expect(twice).toBe(once)
-    expect(twice.split(CAST_UI_STYLE_MARKER).length - 1).toBe(1)
+    expect(twice.split(CAST_UI_STYLE_MARKER_PREFIX).length - 1).toBe(1)
   })
 
   it("throws when the vendor injection is absent (drift must fail prebuild)", () => {
@@ -139,30 +144,74 @@ describe("insertCastUIStyle placement", () => {
   })
 })
 
-// Both plugins amend the same vendor block around the same anchor — one before
-// it, one after. Neither may drop the other, in either execution order.
-describe("coexistence with withCastOptionsVolume", () => {
-  it("survives when the volume flag lands first", () => {
-    const out = insertCastUIStyle(insertVolumeFlag(INJECTED))
-    expect(out).toContain(VOLUME_FLAG)
-    expect(out).toContain(CAST_UI_STYLE_MARKER)
-    expect(out.indexOf(VOLUME_FLAG)).toBeLessThan(out.indexOf(ANCHOR))
-    expect(out.indexOf(CAST_UI_STYLE_MARKER)).toBeGreaterThan(
-      out.indexOf(ANCHOR),
+// `expo prebuild` REUSES an existing ios/ rather than recreating it, so the
+// transform routinely runs against an AppDelegate that already carries a block.
+// A name-only sentinel made an edited block look already-applied and kept
+// building the previous palette. The sentinel carries a content hash for this.
+describe("re-running against an already-injected AppDelegate", () => {
+  const injected = insertCastUIStyle(INJECTED)
+
+  it("emits a hashed begin marker and an end marker", () => {
+    expect(injected).toContain(castUIStyleBeginMarker())
+    expect(castUIStyleBeginMarker()).toMatch(/sync-[0-9a-f]{12}$/)
+    expect(injected).toContain(CAST_UI_STYLE_MARKER_END)
+  })
+
+  // Mutate OUR begin marker by name. The vendor's own @generated header also
+  // carries a `sync-<hash>` and sits earlier in the file, so a bare
+  // /sync-[0-9a-f]+/ replace rewrites the VENDOR's hash and proves nothing.
+  const STALE_MARKER = `${CAST_UI_STYLE_MARKER_PREFIX}000000000000`
+  const goStale = (src) => src.replace(castUIStyleBeginMarker(), STALE_MARKER)
+
+  it("the stale fixture rewrites this plugin's marker, not the vendor's", () => {
+    const stale = goStale(injected)
+    expect(stale).toContain(STALE_MARKER)
+    expect(stale).not.toContain(castUIStyleBeginMarker())
+    expect(stale).toContain(
+      "react-native-google-cast-didFinishLaunchingWithOptions",
     )
   })
 
-  it("survives when the style block lands first", () => {
-    const out = insertVolumeFlag(insertCastUIStyle(INJECTED))
-    expect(out).toContain(VOLUME_FLAG)
-    expect(out).toContain(CAST_UI_STYLE_MARKER)
-    expect(out.indexOf(VOLUME_FLAG)).toBeLessThan(out.indexOf(ANCHOR))
+  // The discriminating case. Stand in for "someone edited STYLE_BODY" by
+  // corrupting the emitted block, then staling the hash: a correct transform
+  // must replace it. A name-only sentinel returns the corrupted block as-is.
+  it("replaces a block whose hash no longer matches its content", () => {
+    const corrupted = injected.replace(
+      "forgeCastColor(0xCB333B)",
+      "forgeCastColor(0xD0021B)",
+    )
+    expect(corrupted).not.toBe(injected)
+
+    const repaired = insertCastUIStyle(goStale(corrupted))
+    expect(repaired).toContain("forgeCastColor(0xCB333B)")
+    expect(repaired).not.toContain("forgeCastColor(0xD0021B)")
+    expect(repaired).toContain(castUIStyleBeginMarker())
+    expect(repaired).not.toContain(STALE_MARKER)
   })
 
-  it("produces the same file either way", () => {
-    expect(insertCastUIStyle(insertVolumeFlag(INJECTED))).toBe(
-      insertVolumeFlag(insertCastUIStyle(INJECTED)),
-    )
+  it("leaves exactly one block behind after a replacement", () => {
+    const repaired = insertCastUIStyle(goStale(injected))
+    expect(repaired.split(CAST_UI_STYLE_MARKER_PREFIX).length - 1).toBe(1)
+    expect(repaired.split(CAST_UI_STYLE_MARKER_END).length - 1).toBe(1)
+    expect(repaired).toBe(injected)
+  })
+
+  it("keeps the replacement inside the canImport guard", () => {
+    const repaired = insertCastUIStyle(goStale(injected))
+    const guardIdx = repaired.indexOf("#if canImport(GoogleCast) && os(iOS)")
+    const endifIdx = repaired.indexOf("#endif", guardIdx)
+    expect(repaired.indexOf(CAST_UI_STYLE_MARKER_END)).toBeLessThan(endifIdx)
+  })
+
+  it("throws on a begin marker with no end marker rather than splicing blind", () => {
+    const truncated = goStale(injected).replace(CAST_UI_STYLE_MARKER_END, "")
+    expect(() => insertCastUIStyle(truncated)).toThrow(/end marker/)
+  })
+
+  it("does not disturb the sibling volume flag when it replaces a block", () => {
+    const repaired = insertCastUIStyle(goStale(insertVolumeFlag(injected)))
+    expect(repaired).toContain(VOLUME_FLAG)
+    expect(repaired.indexOf(VOLUME_FLAG)).toBeLessThan(repaired.indexOf(ANCHOR))
   })
 })
 
@@ -234,6 +283,55 @@ describe("token pin", () => {
       "forgeVolumeHost.volumeSliderThumbTintColor = forgeAccent",
     )
     expect(out).toContain("forgeSeekHost.sliderProgressColor = forgeAccent")
+  })
+})
+
+// Asserting a colour CONSTANT only pins its `let` declaration. The assignments
+// were unpinned, so gutting forgeApplyCastBase — or swapping which attribute
+// gets which colour — left this suite green while every cast surface silently
+// reverted to Google's palette, and the emitted Swift still compiled.
+describe("emitted assignment pin", () => {
+  const out = insertCastUIStyle(INJECTED)
+
+  // Every surface inherits these six, so losing the body is the widest regression.
+  it.each([
+    "attributes.backgroundColor = forgeBackground",
+    "attributes.headingTextColor = forgeTextPrimary",
+    "attributes.bodyTextColor = forgeTextPrimary",
+    "attributes.captionTextColor = forgeTextSecondary",
+    "attributes.iconTintColor = forgeTextSecondary",
+    "attributes.buttonTextColor = forgeAccentOnDark",
+  ])("pins the base pass write %s", (line) => {
+    expect(out).toContain(line)
+  })
+
+  it.each([
+    // The unfilled volume track: the one attribute in the trio whose value
+    // differs from its siblings, and the one that had no assertion at all.
+    "forgeVolumeHost.volumeSliderMaximumTrackTintColor = forgeTrack",
+    "forgeSeekHost.sliderSecondaryProgressColor = forgeTrackBuffered",
+    "forgeSeekHost.sliderUnseekableProgressColor = forgeTrackUnseekable",
+    "forgeSeekHost.sliderTooltipBackgroundColor = forgeAccent",
+    "forgeSeekHost.liveIndicatorColor = forgeAccent",
+    "forgeExpanded.iconTintColor = forgeTextOnOverlay",
+    "forgeExpanded.bodyTextColor = forgeTextBody",
+    "forgeMini.bodyTextColor = forgeTextBody",
+    "forgeNoDevices.bodyTextColor = forgeTextSecondary",
+  ])("pins the per-surface write %s", (line) => {
+    expect(out).toContain(line)
+  })
+
+  // Anti-vacuous: the assertions above must be able to fail. A colour swapped
+  // between two attributes keeps every forgeCastColor(0x…) token present.
+  it("would catch a colour swapped between two attributes", () => {
+    const swapped = out.replace(
+      "attributes.iconTintColor = forgeTextSecondary",
+      "attributes.iconTintColor = forgeAccent",
+    )
+    expect(swapped).toContain("forgeCastColor(0xA8A29E)")
+    expect(swapped).not.toContain(
+      "attributes.iconTintColor = forgeTextSecondary",
+    )
   })
 
   it("sets no font attribute — Dynamic Type resets those", () => {

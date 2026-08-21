@@ -173,6 +173,102 @@ describe("dialog and transport colours", () => {
   })
 })
 
+// Style existence and parent were pinned; the item VALUES mostly were not, so a
+// value swapped between two keys passed aapt2 and jest alike. aapt2 validates
+// that a @color reference resolves, never that it is the RIGHT one.
+describe("every theme item value", () => {
+  const resources = applyCastStyles(prebuiltStyles())
+  const value = (styleName, item) =>
+    itemValue(byName(resources.style, styleName), item)
+
+  it.each([
+    ["colorPrimary", "@color/forge_cast_accent"],
+    ["colorAccent", "@color/forge_cast_accent"],
+    ["android:colorBackground", "@color/forge_cast_background"],
+    ["android:textColorPrimary", "@color/forge_cast_text_primary"],
+    ["android:textColorSecondary", "@color/forge_cast_text_secondary"],
+    ["mediaRouteDividerColor", "@color/forge_cast_divider"],
+  ])("dialog theme %s -> %s", (item, expected) => {
+    expect(value(CAST_THEME_NAMES.MEDIA_ROUTER_STYLE, item)).toBe(expected)
+  })
+
+  it.each([
+    ["castButtonColor", "@color/forge_cast_text_primary"],
+    ["castSeekBarProgressAndThumbColor", "@color/forge_cast_accent"],
+    ["castSeekBarSecondaryProgressColor", "@color/forge_cast_track_buffered"],
+    [
+      "castSeekBarUnseekableProgressColor",
+      "@color/forge_cast_track_unseekable",
+    ],
+    ["castSeekBarTooltipBackgroundColor", "@color/forge_cast_accent"],
+    ["castExpandedControllerLoadingIndicatorColor", "@color/forge_cast_accent"],
+    ["castLiveIndicatorColor", "@color/forge_cast_accent"],
+  ])("expanded controller %s -> %s", (item, expected) => {
+    expect(value(CAST_THEME_NAMES.EXPANDED_STYLE, item)).toBe(expected)
+  })
+
+  it.each([
+    ["castBackground", "@color/forge_cast_surface"],
+    ["castButtonColor", "@color/forge_cast_text_primary"],
+    ["castProgressBarColor", "@color/forge_cast_accent"],
+    ["castMiniControllerLoadingIndicatorColor", "@color/forge_cast_accent"],
+  ])("mini controller %s -> %s", (item, expected) => {
+    expect(value(CAST_THEME_NAMES.MINI_STYLE, item)).toBe(expected)
+  })
+
+  it.each([
+    ["castBackgroundColor", "@color/forge_cast_background"],
+    ["castButtonBackgroundColor", "@color/forge_cast_accent"],
+  ])("intro overlay %s -> %s", (item, expected) => {
+    expect(value(CAST_THEME_NAMES.INTRO_STYLE, item)).toBe(expected)
+  })
+
+  // Anti-vacuous: the tables above must be able to fail. Swapping two values
+  // keeps every @color name present and every style parent intact.
+  it("would catch a value swapped between two keys", () => {
+    const swapped = applyCastStyles(prebuiltStyles())
+    const style = byName(swapped.style, CAST_THEME_NAMES.MINI_STYLE)
+    byName(style.item, "castBackground")._ = "@color/forge_cast_accent"
+    expect(itemValue(style, "castBackground")).not.toBe(
+      "@color/forge_cast_surface",
+    )
+  })
+
+  // Every referenced colour must exist, or aapt2 fails the build. This is the
+  // seam between the two mods, which run on separate resource files.
+  // Dead config is the other half of the same seam: a declared colour nothing
+  // points at reads as an enforced rule that does not exist.
+  it("declares no colour that nothing references", () => {
+    const declared = applyCastColors(prebuiltColors())
+      .color.map((c) => c.$.name)
+      .filter((n) => n.startsWith("forge_cast_"))
+    const referenced = new Set()
+    for (const style of resources.style) {
+      for (const item of style.item ?? []) {
+        const match = /^@color\/(forge_cast_\w+)$/.exec(item._ ?? "")
+        if (match) referenced.add(match[1])
+      }
+    }
+    expect(declared.length).toBeGreaterThan(5)
+    expect(declared.filter((n) => !referenced.has(n))).toEqual([])
+  })
+
+  it("references only colours the colors mod writes", () => {
+    const declared = new Set(
+      applyCastColors(prebuiltColors()).color.map((c) => c.$.name),
+    )
+    const referenced = new Set()
+    for (const style of resources.style) {
+      for (const item of style.item ?? []) {
+        const match = /^@color\/(forge_cast_\w+)$/.exec(item._ ?? "")
+        if (match) referenced.add(match[1])
+      }
+    }
+    expect(referenced.size).toBeGreaterThan(5)
+    for (const name of referenced) expect(declared).toContain(name)
+  })
+})
+
 describe("colour resources", () => {
   const resources = applyCastColors(prebuiltColors())
   const value = (name) => byName(resources.color, name)._
@@ -183,7 +279,6 @@ describe("colour resources", () => {
     expect(value("forge_cast_text_primary")).toBe("#f5f5f4") // TEXT_PRIMARY
     expect(value("forge_cast_text_secondary")).toBe("#a8a29e") // TEXT_SECONDARY
     expect(value("forge_cast_accent")).toBe("#cb333b") // ACCENT
-    expect(value("forge_cast_accent_text")).toBe("#e96067") // ACCENT_ON_DARK
   })
 
   it("carries no stock cast red and no Expo default blue", () => {

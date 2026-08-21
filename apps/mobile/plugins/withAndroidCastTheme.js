@@ -28,6 +28,11 @@ try {
  * the vendor's layout rather than a theme attribute, so the only lever is a
  * same-name resource override. #000000 already IS the app's BLACK token, whose
  * docblock names the player surface, so the fragile lever buys nothing.
+ *
+ * The expanded controller only RENDERS because app.json sets
+ * `expandedController: true`. The vendor passes that prop bare on Android
+ * (`?? true` on iOS only), so without it the Activity is never declared and
+ * every item in Forge.CastExpandedController is dead configuration.
  */
 
 // From src/lib/color.ts. Prefixed so a name collision with an app colour is
@@ -37,8 +42,9 @@ const COLORS = {
   forge_cast_surface: "#292524", // SURFACE_COLOR
   forge_cast_text_primary: "#f5f5f4", // TEXT_PRIMARY
   forge_cast_text_secondary: "#a8a29e", // TEXT_SECONDARY
-  forge_cast_accent: "#cb333b", // ACCENT — fills, sliders, glyphs (3:1 bar)
-  forge_cast_accent_text: "#e96067", // ACCENT_ON_DARK — bare text (4.5:1 bar)
+  // ACCENT only. Android's mediarouter hardcodes its text-button colour, so
+  // there is no attribute to point ACCENT_ON_DARK at — see iOS for that pair.
+  forge_cast_accent: "#cb333b",
   forge_cast_divider: "#1affffff", // white 10%, the app's hairline recipe
   forge_cast_track_buffered: "#59ffffff", // white 35%
   forge_cast_track_unseekable: "#26ffffff", // white 15%

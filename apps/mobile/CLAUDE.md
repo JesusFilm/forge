@@ -448,6 +448,10 @@ it moves the fingerprint runtime version, so an OTA update cannot deliver it.
     exception when the context is unset. The plugin is therefore listed
     **before** `react-native-google-cast` in `app.json` — AppDelegate mods run
     in reverse array order.
+  - The block's begin marker carries a **content hash** of the emitted Swift, and
+    a mismatch excises the old block before inserting. `expo prebuild` REUSES an
+    existing `ios/` rather than recreating it, so a name-only sentinel made an
+    edited block look already-applied and kept building the previous palette.
   - The trailing call is **`apply()`**, not the header's `applyStyle` — Swift
     renames the selector. Only a real compile catches this; the unit tests
     pinned the header spelling and stayed green while the build failed.
@@ -473,6 +477,9 @@ it moves the fingerprint runtime version, so an OTA update cannot deliver it.
   (`Theme.MediaRouter*`, `CastExpandedController`, …); a bare parent drops
   every SDK default and nothing at runtime says so. `aapt2` is the authority —
   it fails on an unresolvable parent or a nonexistent attribute.
+- **Every `react-native-google-cast` import stays under `src/lib/cast/`** —
+  `castImports.guard.test.js` fails the suite otherwise. That is why the hidden
+  button below is a wrapper in that directory rather than a component folder.
 - **`showCastDialog()` is a no-op on Android without a mounted native
   button.** It calls `RNGoogleCastButtonManager.getCurrent()` then
   `performClick()`, and that registry fills only in
@@ -485,11 +492,24 @@ it moves the fingerprint runtime version, so an OTA update cannot deliver it.
   `userInterfaceStyle: "automatic"` while every RN surface is hard-coded dark,
   so an unstyled sheet renders light on a light-mode phone. Setting every
   colour explicitly is what pins them dark; re-check in light mode after any
-  change (verified 2026-08-21: sheet band held at luminance 25/255 with the
-  system in light appearance).
+  change. **iOS verified 2026-08-21** (sheet band held at luminance 25/255 with
+  the system in light appearance, iPhone 17 Pro Max simulator). **Android is NOT
+  verified** — it rests on an argument, not a measurement: `values-night/`
+  carries no cast resources, so the explicit hex wins in either mode. Confirm on
+  a device before trusting it.
+- **Android runtime status (2026-08-21).** The app builds, installs and runs on
+  an emulator with this theming, and `MediaRouter: onRestoreRoute()` fires when
+  the watch screen mounts — evidence the native `MediaRouteButton` DOES attach
+  under RN 0.86's Fabric interop, which was the open risk. Still unproven: that
+  `showCastDialog()` resolves true and draws a themed dialog. Two emulator
+  limits block it — multicast is mangled (`AOSP-MdnsDiscoveryManag: Error while
+decoding multicast packet`) so no receiver is ever discovered, and the
+  expo-dev-launcher gear overlays the cast glyph in a debug build. Use a
+  physical device, or a release build, to close it.
 - **Verify by sampling pixels.** The stock cast red `#D0021B` and our `#CB333B`
-  pass a glance and fail the design system. `xcrun simctl io … screenshot` →
-  `ffmpeg -pix_fmt rgb24` → read the bytes. Note that iOS lifts button labels
+  pass a glance and fail the design system. On iOS: `xcrun simctl io … screenshot`
+  → `ffmpeg -pix_fmt rgb24` → read the bytes. The Android equivalent
+  (`adb exec-out screencap -p`) has not been exercised on these sheets yet. Note that iOS lifts button labels
   inside the nav pill and toolbar by a uniform ~+13 per channel (`#a8a29e`
   renders `#b6afaa`, `#e96067` renders `#f76d73`), so compare the _delta_
   across two differently-coloured buttons rather than expecting an exact hex.
