@@ -107,9 +107,15 @@ Full context lives in `apps/mastra/CLAUDE.md`. Keep both files aligned.
 - Do not add Help Scout mailbox mutations, attachments, raw ticket persistence,
   arbitrary validation URLs, or model-selected Linear routing to the support
   research workflow. Keep it disabled until model-provider data processing is
-  approved and use a Studio dry run before live Linear dispatch. Require the
-  exact support-research migration identity and component relations before any
-  repository or upstream access.
+  separately approved and use a freshly revalidated admin Studio dry run before
+  live Linear dispatch. Require the exact support-research migration identity
+  and component relations before any repository or upstream access. Production
+  migration must use the generic deployed migrator only after the reviewed PR is
+  merged, its revision is active, a fresh read-only preflight passes, and an
+  immediate explicit database-mutation approval is granted. Never use
+  `railway up`; keep live dispatch disabled until a separate post-dry-run
+  approval. Follow `docs/runbooks/support-research-agent.md` for the independent
+  ledger, object-kind, index-validity, readiness, gate, and cursor evidence.
 - Runtime storage uses Postgres via `DATABASE_URL`; Studio-visible logs and
   observability use DuckDB files under `MASTRA_STORAGE_DIR` on the Railway
   volume.

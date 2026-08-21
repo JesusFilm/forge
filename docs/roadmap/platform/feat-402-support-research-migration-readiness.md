@@ -67,6 +67,19 @@ the exact migration identity and required relations.
   bounded `dryRun=true` verification pass.
 - Production SQL changes use the deployed migrator only after explicit user
   approval; never use `railway up`.
+- Merge the focused PR through the normal main-branch path and verify its exact
+  revision is active before any migration attempt. The generic migrator applies
+  every pending migration `001` through `003` in one bounded, advisory-locked
+  transaction; never apply `002` alone.
+- Production mutation approval is immediate, explicit, and valid for one
+  attempt after a fresh read-only preflight. Timeout, drift, or failure requires
+  forward-only rollback, a new preflight, and renewed approval.
+- Provider/data-processing approval is independent from database-mutation
+  approval. Keep support-research live dispatch, provider approval, devotional
+  starts, and Datadog triage false through migration. Live dispatch requires a
+  separate post-dry-run approval.
+- Production evidence may contain safe object identities and counters only;
+  never record credentials, raw customer content, or unsanitized support data.
 
 ## Verification
 
@@ -76,6 +89,20 @@ the exact migration identity and required relations.
 - Production preflight records exact gates, deployment commit, database
   identity, privileges, PgVector availability, schemas, ledger, and relations.
 - After approval, migration output is followed by independent exact ledger,
-  extension, devotional, support-research, and Datadog relation readback.
-- A bounded unique-key `dryRun=true` reaches Help Scout with zero Linear calls;
-  final evidence records the durable cursor and run status.
+  extension, devotional, support-research, and Datadog relation-kind readback,
+  including `pg_index.indisvalid=true` for every expected index, then both
+  component readiness CLIs pass.
+- With separately approved provider processing, a freshly revalidated admin
+  runs a bounded unique-key `dryRun=true` while
+  `SUPPORT_RESEARCH_ENABLED=false`; evidence records zero Linear access, the
+  durable run status and bounded run window, and an independently unchanged or
+  still-absent live cursor. An empty Help Scout window is connectivity-only
+  evidence and cannot authorize live dispatch.
+
+## Operational completion gate
+
+Keep this ticket `in-progress` after the repository PR. It becomes complete
+only after the reviewed revision is deployed, the approval-gated production
+migration and exact independent readback succeed, both readiness commands pass,
+and the bounded dry-run evidence is reviewed. Even then, live dispatch remains
+disabled until its own separate approval.

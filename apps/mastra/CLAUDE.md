@@ -1992,6 +1992,23 @@ the same read-only predicate with
 missing or partial migration reports only a safe reason and never connection
 details.
 
+Production rollout is an operator-owned sequence, not an application deploy
+side effect. Merge the reviewed PR and verify that exact revision is active
+before migration; never deploy local code with `railway up`. After a fresh
+read-only preflight, production database mutation requires immediate explicit
+approval for one bounded attempt of the deployed generic migrator, which
+applies pending migrations `001` through `003` atomically. Independently read
+back exact ledger identities, relation kinds, and index validity, then run both
+component readiness commands. Keep support-research live dispatch, provider
+approval, devotional new runs, and Datadog triage false through migration.
+Provider approval is a later, separate authorization for a bounded
+`dryRun=true` from a freshly revalidated admin while the live gate stays false;
+the dry run has no Linear network path and must leave the live cursor unchanged
+or absent. Timeout or drift requires rollback, a new preflight, and renewed
+database approval. Successful additive migrations are forward-only. Live
+dispatch remains disabled until a separate post-dry-run approval. The complete
+evidence contract is `docs/runbooks/support-research-agent.md`.
+
 Only the Mastra Railway service receives `DEVOTIONAL_WORKSPACE_S3_*`. Signed
 URLs are transient job capabilities and must never enter workflow state or
 logs. Shorts Worker pins them to the configured exact Workspace HTTPS origin
