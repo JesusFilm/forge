@@ -51,6 +51,10 @@ export * from "@/services/consumer-lifecycle-ingestion.service"
 export * from "@/services/user-playlist-capability"
 export * from "@/services/user-playlist-erasure.service"
 export * from "@/services/user-playlist-media-eligibility"
+export * from "@/services/user-playlist-moderation.service"
+export * from "@/services/user-playlist-report-crypto"
+export * from "@/services/user-playlist-report-intent"
+export * from "@/services/user-playlist-report.service"
 export * from "@/services/user-playlist.service"
 
 export type Services = ReturnType<typeof createServices>

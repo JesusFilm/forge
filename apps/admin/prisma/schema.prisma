@@ -179,6 +179,31 @@ enum UserPlaylistModerationState {
   BLOCKED @map("blocked")
 }
 
+enum UserPlaylistReportCategory {
+  INAPPROPRIATE_CONTENT    @map("inappropriate_content")
+  MISLEADING_OR_SPAM       @map("misleading_or_spam")
+  COPYRIGHT_OR_RIGHTS      @map("copyright_or_rights")
+  PRIVACY_OR_PERSONAL_DATA @map("privacy_or_personal_data")
+  OTHER_SAFETY             @map("other_safety")
+}
+
+enum UserPlaylistModerationAction {
+  BLOCK   @map("block")
+  RESTORE @map("restore")
+}
+
+enum UserPlaylistModerationReason {
+  ABUSE           @map("abuse")
+  COPYRIGHT       @map("copyright")
+  PRIVACY         @map("privacy")
+  SAFETY          @map("safety")
+  SPAM            @map("spam")
+  OTHER_POLICY    @map("other_policy")
+  REVIEW_CLEARED  @map("review_cleared")
+  APPEAL_APPROVED @map("appeal_approved")
+  ERROR_CORRECTED @map("error_corrected")
+}
+
 enum ConsumerLifecycleState {
   ACTIVE     @map("active")
   SUSPENDING @map("suspending")
@@ -1852,34 +1877,40 @@ model ConsumerLifecycleProjection {
 /// Report persistence is scaffolded in U3; report-intent issuance and the
 /// moderation workflow remain U4/U7. Optional detail is ciphertext only.
 model UserPlaylistReport {
-  id                        String       @id @default(cuid())
-  playlistId                String       @map("playlist_id")
-  playlist                  UserPlaylist @relation(fields: [playlistId], references: [id], onDelete: Cascade)
-  category                  String
-  reportIntentDigest        Bytes        @unique @map("report_intent_digest")
-  reporterIpDigest          Bytes?       @map("reporter_ip_digest")
-  detailCiphertext          Bytes?       @map("detail_ciphertext")
-  detailKeyId               String?      @map("detail_key_id")
-  detailNonce               Bytes?       @map("detail_nonce")
-  detailAuthTag             Bytes?       @map("detail_auth_tag")
-  detailDeleteAfter         DateTime?    @map("detail_delete_after")
-  reporterDigestDeleteAfter DateTime?    @map("reporter_digest_delete_after")
-  createdAt                 DateTime     @default(now()) @map("created_at")
+  id                        String                     @id @default(cuid())
+  playlistId                String                     @map("playlist_id")
+  playlist                  UserPlaylist               @relation(fields: [playlistId], references: [id], onDelete: Cascade)
+  category                  UserPlaylistReportCategory
+  reportIntentDigest        Bytes                      @unique @map("report_intent_digest")
+  reportIntentExpiresAt     DateTime                   @map("report_intent_expires_at")
+  reporterIpDigest          Bytes?                     @map("reporter_ip_digest")
+  reporterIpDigestKeyId     String?                    @map("reporter_ip_digest_key_id")
+  reporterIpDigestDay       String?                    @map("reporter_ip_digest_day")
+  reporterDigestDeleteAfter DateTime?                  @map("reporter_digest_delete_after")
+  reporterDigestDeletedAt   DateTime?                  @map("reporter_digest_deleted_at")
+  detailCiphertext          Bytes?                     @map("detail_ciphertext")
+  detailKeyId               String?                    @map("detail_key_id")
+  detailNonce               Bytes?                     @map("detail_nonce")
+  detailAuthTag             Bytes?                     @map("detail_auth_tag")
+  detailDeleteAfter         DateTime?                  @map("detail_delete_after")
+  detailDeletedAt           DateTime?                  @map("detail_deleted_at")
+  createdAt                 DateTime                   @default(now()) @map("created_at")
 
   @@index([playlistId, createdAt])
+  @@index([category, createdAt])
   @@index([detailDeleteAfter])
   @@index([reporterDigestDeleteAfter])
   @@map("user_playlist_report")
 }
 
 model UserPlaylistModerationAudit {
-  id           String        @id @default(cuid())
-  playlistId   String?       @map("playlist_id")
-  playlist     UserPlaylist? @relation(fields: [playlistId], references: [id], onDelete: SetNull)
-  actorSubject String        @map("actor_subject")
-  action       String
-  reasonCode   String        @map("reason_code")
-  createdAt    DateTime      @default(now()) @map("created_at")
+  id           String                       @id @default(cuid())
+  playlistId   String?                      @map("playlist_id")
+  playlist     UserPlaylist?                @relation(fields: [playlistId], references: [id], onDelete: SetNull)
+  actorSubject String                       @map("actor_subject")
+  action       UserPlaylistModerationAction
+  reasonCode   UserPlaylistModerationReason @map("reason_code")
+  createdAt    DateTime                     @default(now()) @map("created_at")
 
   @@index([playlistId, createdAt])
   @@index([actorSubject, createdAt])
