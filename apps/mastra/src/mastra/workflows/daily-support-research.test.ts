@@ -12,6 +12,7 @@ import type {
   SupportRunReport,
 } from "../../services/support-research/schema"
 import {
+  createNoNetworkLinearActionClient,
   dailySupportResearchWorkflow,
   executeDailySupportResearch,
   getSupportResearchReadiness,
@@ -59,6 +60,7 @@ const config: SupportResearchConfig = {
 class MemoryRepository implements SupportResearchRepository {
   readonly observations: StoredSupportObservation[] = []
   readonly actions: SupportActionDraft[] = []
+  readonly actionDryRuns: boolean[] = []
   readonly reports: SupportRunReport[] = []
   readonly progress: Date[] = []
   readonly claimedActions = new Set<string>()
@@ -127,6 +129,7 @@ class MemoryRepository implements SupportResearchRepository {
       return false
     }
     this.actions.push(draft)
+    this.actionDryRuns.push(dryRun)
     if (dryRun) return true
     return true
   }
@@ -351,14 +354,26 @@ describe("daily support research workflow", () => {
     const repository = new MemoryRepository()
     const liveCursor = repository.cursor.toISOString()
     const linear = {
-      findIssueByMarker: vi.fn(),
-      createIssue: vi.fn(),
+      findIssueByMarker: vi.fn(() => {
+        throw new Error("dry run attempted a Linear lookup")
+      }),
+      createIssue: vi.fn(() => {
+        throw new Error("dry run attempted a Linear create")
+      }),
     }
 
     const report = await executeDailySupportResearch(
-      { dryRun: true, idempotencyKey: "operator-check" },
       {
-        config: { ...config, linear: { ...config.linear, apiKey: undefined } },
+        dryRun: true,
+        maxConversations: 5,
+        idempotencyKey: "operator-check",
+      },
+      {
+        config: {
+          ...config,
+          enabled: false,
+          linear: { ...config.linear, apiKey: undefined },
+        },
         repository,
         helpScout: helpScoutWith(),
         linear,
@@ -386,13 +401,66 @@ describe("daily support research workflow", () => {
       },
     })
     expect(report.cursorEnd).toBe(now.toISOString())
+    expect(report.cursorStart).toBe(liveCursor)
+    expect(report.runKey).toBe("support-research:dry-run:operator-check")
     expect(repository.actions.map((item) => item.type)).toEqual([
       "needs_validation",
       "daily_summary",
     ])
+    expect(repository.actionDryRuns).toEqual([true, true])
+    expect(linear.findIssueByMarker).not.toHaveBeenCalled()
     expect(linear.createIssue).not.toHaveBeenCalled()
     expect(repository.cursor.toISOString()).toBe(liveCursor)
     expect(repository.renewals).toBeGreaterThan(0)
+  })
+
+  it("stops a disabled-live dry run before upstream access when provider approval is absent", async () => {
+    const repository = new MemoryRepository()
+    const helpScout = helpScoutWith()
+    const analyzer = { generate: vi.fn() }
+    const validate = vi.fn()
+    const linear = {
+      findIssueByMarker: vi.fn(),
+      createIssue: vi.fn(),
+    }
+
+    const report = await executeDailySupportResearch(
+      { dryRun: true, idempotencyKey: "provider-denied" },
+      {
+        config: { ...config, enabled: false, providerApproved: false },
+        repository,
+        helpScout,
+        analyzer,
+        validate,
+        linear,
+        now: () => now,
+        randomId: () => "fixed-id",
+      },
+    )
+
+    expect(report).toMatchObject({
+      status: "disabled",
+      dryRun: true,
+      errors: ["model_provider_not_approved"],
+    })
+    expect(helpScout.listNewConversations).not.toHaveBeenCalled()
+    expect(analyzer.generate).not.toHaveBeenCalled()
+    expect(validate).not.toHaveBeenCalled()
+    expect(linear.findIssueByMarker).not.toHaveBeenCalled()
+    expect(linear.createIssue).not.toHaveBeenCalled()
+  })
+
+  it("uses an explicit throwing Linear client for runtime dry runs", async () => {
+    const linear = createNoNetworkLinearActionClient()
+
+    await expect(linear.findIssueByMarker("marker")).rejects.toThrow(
+      "Linear network access is unavailable during support-research dry runs",
+    )
+    await expect(
+      linear.createIssue({} as Parameters<typeof linear.createIssue>[0]),
+    ).rejects.toThrow(
+      "Linear network access is unavailable during support-research dry runs",
+    )
   })
 
   it("creates evidence-labeled product and daily summary issues in live mode", async () => {

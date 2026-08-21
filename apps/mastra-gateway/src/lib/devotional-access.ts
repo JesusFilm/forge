@@ -27,6 +27,10 @@ export function isDevotionalNativeWorkflowPath(path: readonly string[]) {
   return path[0] === "workflows" && DEVOTIONAL_WORKFLOW_IDS.has(path[1] ?? "")
 }
 
+export function isSupportResearchNativeWorkflowPath(path: readonly string[]) {
+  return path[0] === "workflows" && path[1] === "daily-support-research"
+}
+
 export function isWorkspaceApiPath(path: readonly string[]) {
   return path[0] === "workspaces"
 }

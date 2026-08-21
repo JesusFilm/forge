@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest"
 import {
   canonicalizeMastraApiPath,
   isDevotionalNativeWorkflowPath,
+  isSupportResearchNativeWorkflowPath,
   isWorkspaceApiPath,
 } from "./devotional-access"
 
@@ -29,6 +30,33 @@ describe("devotional native workflow path detection", () => {
       isDevotionalNativeWorkflowPath(["workflows", "offline-search-eval"]),
     ).toBe(false)
     expect(isDevotionalNativeWorkflowPath(["agents", "smoke"])).toBe(false)
+  })
+})
+
+describe("support-research native workflow path detection", () => {
+  it("matches launch and run paths only for support research", () => {
+    expect(
+      isSupportResearchNativeWorkflowPath([
+        "workflows",
+        "daily-support-research",
+        "start-async",
+      ]),
+    ).toBe(true)
+    expect(
+      isSupportResearchNativeWorkflowPath([
+        "workflows",
+        "daily-support-research",
+        "runs",
+        "run-1",
+      ]),
+    ).toBe(true)
+    expect(
+      isSupportResearchNativeWorkflowPath([
+        "workflows",
+        "offline-search-eval",
+        "start",
+      ]),
+    ).toBe(false)
   })
 })
 

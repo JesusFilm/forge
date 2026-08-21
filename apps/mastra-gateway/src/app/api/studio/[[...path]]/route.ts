@@ -1,8 +1,11 @@
 import {
+  canonicalizeMastraApiPath,
   isDevotionalNativeWorkflowPath,
+  isSupportResearchNativeWorkflowPath,
   revalidateDevotionalSession,
 } from "@/lib/devotional-access"
 import { proxyMastraRequest } from "@/lib/mastra-proxy"
+import { NextResponse } from "next/server"
 
 type RouteContext = {
   params: Promise<{ path?: string[] }>
@@ -29,13 +32,18 @@ export async function DELETE(request: Request, context: RouteContext) {
 }
 
 async function proxyStudioApi(request: Request, context: RouteContext) {
-  const { path = [] } = await context.params
+  const { path: rawPath = [] } = await context.params
+  const path = canonicalizeMastraApiPath(rawPath)
+  if (!path) {
+    return NextResponse.json({ error: "Invalid API path" }, { status: 400 })
+  }
+  const isSupportResearchPath = isSupportResearchNativeWorkflowPath(path)
   return proxyMastraRequest(
     request,
-    `/api/${path.join("/")}`,
-    isDevotionalNativeWorkflowPath(path)
+    `/api/${path.map(encodeURIComponent).join("/")}`,
+    isSupportResearchPath || isDevotionalNativeWorkflowPath(path)
       ? {
-          allowedRoles: ["admin", "editor"],
+          allowedRoles: isSupportResearchPath ? ["admin"] : ["admin", "editor"],
           revalidateSession: (session) =>
             revalidateDevotionalSession(session, { recordAccess: false }),
         }

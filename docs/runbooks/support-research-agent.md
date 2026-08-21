@@ -97,13 +97,15 @@ global ledger head.
 
 ## Dry-run enablement
 
-1. Provision Help Scout, allowed-host, and approved-model settings while leaving
-   the main feature flag false.
-2. Temporarily set `SUPPORT_RESEARCH_ENABLED=true` and run the workflow from
-   authenticated Studio with `dryRun=true`, a small `maxConversations`, and a
-   unique `idempotencyKey`. Dry run reads Help Scout and runs the model and
-   validator, but every proposed Linear action is stored as `dry_run` and no
-   Linear request is made.
+1. Provision Help Scout, allowed-host, retention, analysis, and approved-model
+   settings while leaving `SUPPORT_RESEARCH_ENABLED=false`. Provider approval
+   is a separate authorization boundary; migration approval does not imply it.
+2. From a freshly revalidated admin Studio session, run the workflow with
+   `dryRun=true`, a small `maxConversations`, and a unique `idempotencyKey`.
+   Keep `SUPPORT_RESEARCH_ENABLED=false`: dry-run authorization does not enable
+   the schedule. The runtime supplies a no-network Linear client, every
+   proposed action is stored as `dry_run`, and neither Linear lookups nor
+   creates are possible.
 3. Inspect the durable run report and a sample of sanitized observation rows.
    Confirm that customer names/contact details, quoted history, tokens,
    attachments, raw HTML, and irrelevant tickets are absent; Watch URLs use
@@ -113,8 +115,13 @@ global ledger head.
    evidence, inferred bugs say `Needs validation`, usability work meets the
    distinct-source threshold, and descriptions distinguish reported evidence,
    automated checks, model inference, and missing proof.
-5. Run a full-window dry run. Resolve privacy, precision, cursor, report-size,
-   or duplicate findings before live enablement.
+5. Compare the report's `cursorStart` and `cursorEnd` (the bounded dry-run
+   window) with an independent readback of the live Help Scout cursor. Require
+   the live cursor to remain byte-for-byte unchanged or absent.
+6. Run a full-window dry run. Resolve privacy, precision, cursor, report-size,
+   or duplicate findings before live enablement. An empty eligible Help Scout
+   window proves connectivity and pagination only; it is inconclusive for the
+   model/provider path and does not authorize live dispatch.
 
 ## Live rollout
 

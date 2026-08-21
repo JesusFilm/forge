@@ -79,6 +79,20 @@ export type SupportResearchReadiness =
   | { ready: true }
   | { ready: false; reasons: string[] }
 
+const DRY_RUN_LINEAR_ERROR =
+  "Linear network access is unavailable during support-research dry runs"
+
+export function createNoNetworkLinearActionClient(): LinearActionClient {
+  return {
+    findIssueByMarker: async () => {
+      throw new Error(DRY_RUN_LINEAR_ERROR)
+    },
+    createIssue: async () => {
+      throw new Error(DRY_RUN_LINEAR_ERROR)
+    },
+  }
+}
+
 function expectedUrl(
   value: string,
   hostname: string,
@@ -120,7 +134,7 @@ export function getSupportResearchReadiness(
   dryRun: boolean,
 ): SupportResearchReadiness {
   const reasons: string[] = []
-  if (!config.enabled) reasons.push("feature_disabled")
+  if (!dryRun && !config.enabled) reasons.push("feature_disabled")
   if (!config.providerApproved) reasons.push("model_provider_not_approved")
   if (!config.helpScout.clientId) reasons.push("help_scout_client_id_missing")
   if (!config.helpScout.clientSecret)
@@ -234,6 +248,9 @@ export async function executeDailySupportResearch(
   const input = parsedInput.success
     ? parsedInput.data
     : { dryRun: true, idempotencyKey: `invalid-input:${runId}` }
+  const linear = input.dryRun
+    ? createNoNetworkLinearActionClient()
+    : dependencies.linear
   const config = {
     ...dependencies.config,
     maxConversations: Math.min(
@@ -517,7 +534,7 @@ export async function executeDailySupportResearch(
       const dispatchClock = dependencies.now ?? (() => new Date())
       const productDispatch = await dispatchDueSupportActions({
         repository: dependencies.repository,
-        client: dependencies.linear,
+        client: linear,
         config: { maxActionsPerRun: config.maxActionsPerRun },
         actionTypes: ["confirmed_bug", "needs_validation", "ux_improvement"],
         createdSince,
@@ -545,7 +562,7 @@ export async function executeDailySupportResearch(
         dispatches.push(
           await dispatchDueSupportActions({
             repository: dependencies.repository,
-            client: dependencies.linear,
+            client: linear,
             config: { maxActionsPerRun: 1 },
             actionTypes: ["daily_summary"],
             createdSince,
@@ -663,7 +680,9 @@ const executeSupportResearchStep = createStep({
           config,
           repository: new PostgresSupportResearchRepository(pool),
           helpScout: new HelpScoutClient(config),
-          linear: new LinearClient(config),
+          linear: inputData.dryRun
+            ? createNoNetworkLinearActionClient()
+            : new LinearClient(config),
           analyzer: mastra.getAgentById(
             "supportResearchAgent",
           ) as unknown as SupportAnalyzer,
