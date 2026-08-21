@@ -42,6 +42,7 @@ describe("GET /watch/api/auth/session", () => {
       authenticated: false,
       loginUrl:
         "https://example.test/watch/api/auth/login?returnTo=https%3A%2F%2Fexample.test%2Fwatch",
+      playlistAuthoringEnabled: false,
     })
   })
 
@@ -86,6 +87,7 @@ describe("GET /watch/api/auth/session", () => {
   })
 
   it("accepts the new Web-local Auth session as signed in", async () => {
+    vi.stubEnv("FORGE_USER_PLAYLIST_AUTHORING_DEFAULT", "true")
     const { GET } = await importRoute()
     const { WEB_AUTH_SESSION_COOKIE, createWebAuthSessionCookie } =
       await import("@/auth/web-session")
@@ -113,6 +115,7 @@ describe("GET /watch/api/auth/session", () => {
     await expect(response.json()).resolves.toEqual({
       accountGateEnabled: false,
       authenticated: true,
+      playlistAuthoringEnabled: true,
       user: {
         id: "user_123",
         email: "viewer@example.test",
@@ -146,6 +149,7 @@ describe("GET /watch/api/auth/session", () => {
     await expect(response.json()).resolves.toEqual({
       accountGateEnabled: false,
       authenticated: true,
+      playlistAuthoringEnabled: false,
       user: {
         id: "user_123",
         email: "viewer@example.test",

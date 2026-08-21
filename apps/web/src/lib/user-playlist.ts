@@ -171,9 +171,9 @@ async function fetchVideoBatch(input: {
   languageSlug: string
   adminGraphqlUrl: string
   consumerBearer: string
-}): Promise<PublicUserPlaylistVideo[]> {
+}): Promise<{ ok: true; videos: PublicUserPlaylistVideo[] } | { ok: false }> {
   const first = input.ids[0]
-  if (!first) return []
+  if (!first) return { ok: true, videos: [] }
   const variables: Record<string, string> = {
     locale: input.locale,
     languageSlug: input.languageSlug,
@@ -198,27 +198,27 @@ async function fetchVideoBatch(input: {
       }),
     })
   } catch {
-    return []
+    return { ok: false }
   }
-  if (!response.ok) return []
+  if (!response.ok) return { ok: false }
   const length = Number(response.headers.get("content-length") ?? "0")
-  if (length > VIDEO_RESPONSE_LIMIT) return []
+  if (length > VIDEO_RESPONSE_LIMIT) return { ok: false }
   let text: string
   try {
     text = await response.text()
   } catch {
-    return []
+    return { ok: false }
   }
-  if (text.length > VIDEO_RESPONSE_LIMIT) return []
+  if (text.length > VIDEO_RESPONSE_LIMIT) return { ok: false }
   let payload: unknown
   try {
     payload = JSON.parse(text)
   } catch {
-    return []
+    return { ok: false }
   }
   const root = record(payload)
   const data = record(root?.data)
-  if (!data || Array.isArray(root?.errors)) return []
+  if (!data || Array.isArray(root?.errors)) return { ok: false }
   const requestedIds = new Set(input.ids)
   const videos: PublicUserPlaylistVideo[] = []
   for (let index = 0; index < VIDEO_BATCH_SIZE; index += 1) {
@@ -231,48 +231,64 @@ async function fetchVideoBatch(input: {
       videos.push(video)
     }
   }
-  return videos
+  return { ok: true, videos }
 }
 
 async function hydrateVideos(input: {
   playlist: PublicUserPlaylist
   uiLocale: UiLocale
   languageSlug: string
-}): Promise<PublicUserPlaylistVideo[]> {
+}): Promise<
+  | { kind: "available"; videos: PublicUserPlaylistVideo[] }
+  | { kind: "service-unavailable" }
+> {
+  const ids = videoIds(input.playlist)
+  if (ids.length === 0) return { kind: "available", videos: [] }
   const adminGraphqlUrl = process.env.ADMIN_GRAPHQL_URL
   const consumerBearer = process.env.WEB_ADMIN_API_KEYS?.split(",")[0]?.trim()
-  if (!adminGraphqlUrl || !consumerBearer) return []
-  const batches = batch(videoIds(input.playlist), VIDEO_BATCH_SIZE)
+  if (!adminGraphqlUrl || !consumerBearer) {
+    return { kind: "service-unavailable" }
+  }
+  const batches = batch(ids, VIDEO_BATCH_SIZE)
   const output: PublicUserPlaylistVideo[] = []
   let next = 0
+  let failed = false
 
   await Promise.all(
     Array.from(
       { length: Math.min(VIDEO_BATCH_CONCURRENCY, batches.length) },
       async () => {
-        while (next < batches.length) {
+        while (!failed && next < batches.length) {
           const current = batches[next]
           next += 1
           if (!current) continue
-          output.push(
-            ...(await fetchVideoBatch({
-              ids: current,
-              locale: input.uiLocale,
-              languageSlug: input.languageSlug,
-              adminGraphqlUrl,
-              consumerBearer,
-            })),
-          )
+          const result = await fetchVideoBatch({
+            ids: current,
+            locale: input.uiLocale,
+            languageSlug: input.languageSlug,
+            adminGraphqlUrl,
+            consumerBearer,
+          })
+          if (!result.ok) {
+            failed = true
+            continue
+          }
+          output.push(...result.videos)
         }
       },
     ),
   )
 
+  if (failed) return { kind: "service-unavailable" }
+
   const byId = new Map(output.map((video) => [video.id, video]))
-  return videoIds(input.playlist).flatMap((id) => {
-    const video = byId.get(id)
-    return video ? [video] : []
-  })
+  return {
+    kind: "available",
+    videos: ids.flatMap((id) => {
+      const video = byId.get(id)
+      return video ? [video] : []
+    }),
+  }
 }
 
 export async function loadPublicUserPlaylist(input: {
@@ -288,15 +304,17 @@ export async function loadPublicUserPlaylist(input: {
     publicWatchAudioLanguageSlugForLocale(resolved.playlist.locale) ??
     publicWatchAudioLanguageSlugForLocale(uiLocale) ??
     "english"
+  const hydration = await hydrateVideos({
+    playlist: resolved.playlist,
+    uiLocale,
+    languageSlug,
+  })
+  if (hydration.kind === "service-unavailable") return hydration
   return {
     kind: "available",
     data: {
       playlist: resolved.playlist,
-      videos: await hydrateVideos({
-        playlist: resolved.playlist,
-        uiLocale,
-        languageSlug,
-      }),
+      videos: hydration.videos,
       uiLocale,
     },
   }

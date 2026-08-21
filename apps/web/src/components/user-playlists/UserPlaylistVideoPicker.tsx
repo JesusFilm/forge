@@ -1,6 +1,6 @@
 "use client"
 
-import { useId, useState } from "react"
+import { useEffect, useId, useRef, useState } from "react"
 import { useTranslations } from "next-intl"
 import { Search, X } from "lucide-react"
 
@@ -16,15 +16,25 @@ export function UserPlaylistVideoPicker({
 }) {
   const t = useTranslations("UserPlaylists")
   const headingId = useId()
+  const searchSequence = useRef(0)
+  const queryRef = useRef("")
   const [query, setQuery] = useState("")
   const [results, setResults] = useState<SearchResult[]>([])
   const [status, setStatus] = useState<
     "idle" | "searching" | "ready" | "error"
   >("idle")
 
+  useEffect(
+    () => () => {
+      searchSequence.current += 1
+    },
+    [],
+  )
+
   async function search() {
     const trimmed = query.trim()
     if (trimmed.length < 2 || status === "searching") return
+    const sequence = ++searchSequence.current
     setStatus("searching")
     try {
       const result = await runSearch({
@@ -33,6 +43,12 @@ export function UserPlaylistVideoPicker({
         offset: 0,
         type: "video",
       })
+      if (
+        sequence !== searchSequence.current ||
+        queryRef.current.trim() !== trimmed
+      ) {
+        return
+      }
       if (!result.ok) {
         setResults([])
         setStatus("error")
@@ -41,9 +57,20 @@ export function UserPlaylistVideoPicker({
       setResults(result.results.filter((item) => item.type === "video"))
       setStatus("ready")
     } catch {
+      if (
+        sequence !== searchSequence.current ||
+        queryRef.current.trim() !== trimmed
+      ) {
+        return
+      }
       setResults([])
       setStatus("error")
     }
+  }
+
+  function cancel() {
+    searchSequence.current += 1
+    onCancel()
   }
 
   return (
@@ -64,7 +91,7 @@ export function UserPlaylistVideoPicker({
           type="button"
           aria-label={t("picker.close")}
           className="flex min-h-11 min-w-11 items-center justify-center rounded-full hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-white focus-visible:outline-none"
-          onClick={onCancel}
+          onClick={cancel}
         >
           <X aria-hidden="true" />
         </button>
@@ -85,7 +112,14 @@ export function UserPlaylistVideoPicker({
           maxLength={200}
           placeholder={t("picker.searchPlaceholder")}
           className="min-h-11 min-w-0 flex-1 rounded-lg border border-white/20 bg-stone-950 px-3 text-white placeholder:text-stone-500 focus-visible:ring-2 focus-visible:ring-red-300 focus-visible:outline-none"
-          onChange={(event) => setQuery(event.target.value)}
+          onChange={(event) => {
+            const nextQuery = event.target.value
+            queryRef.current = nextQuery
+            searchSequence.current += 1
+            setQuery(nextQuery)
+            setResults([])
+            setStatus("idle")
+          }}
         />
         <button
           type="submit"

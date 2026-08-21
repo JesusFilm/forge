@@ -31,6 +31,9 @@ for index = 1, #KEYS do
   if count == 1 then redis.call('PEXPIRE', KEYS[index], ARGV[index * 2]) end
   if count > tonumber(ARGV[index * 2 - 1]) then admitted = 0 end
 end
+if admitted == 0 then
+  for index = 1, #KEYS do redis.call('DECR', KEYS[index]) end
+end
 return admitted
 `
 

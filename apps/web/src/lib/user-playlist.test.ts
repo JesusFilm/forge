@@ -125,4 +125,75 @@ describe("loadPublicUserPlaylist", () => {
     expect(result.kind).toBe("available")
     if (result.kind === "available") expect(result.data.videos).toEqual([])
   })
+
+  it.each([
+    ["network rejection", () => Promise.reject(new Error("network"))],
+    [
+      "non-OK response",
+      () => Promise.resolve(new Response("down", { status: 503 })),
+    ],
+    [
+      "malformed JSON",
+      () => Promise.resolve(new Response("not-json", { status: 200 })),
+    ],
+    [
+      "GraphQL errors",
+      () =>
+        Promise.resolve(
+          new Response(JSON.stringify({ errors: [{ message: "down" }] }), {
+            status: 200,
+          }),
+        ),
+    ],
+  ])(
+    "returns service-unavailable for %s during video hydration",
+    async (_name, response) => {
+      resolveBoundary.mockResolvedValue({
+        kind: "available",
+        playlist: {
+          title: "Playlist",
+          description: "",
+          locale: "en",
+          countryCode: null,
+          reportIntent: "intent",
+          blocks: [
+            {
+              kind: "videoCarousel",
+              title: "Videos",
+              videoIds: ["video_1"],
+            },
+          ],
+        },
+      })
+      vi.spyOn(globalThis, "fetch").mockImplementation(response)
+
+      await expect(
+        loadPublicUserPlaylist({ capability, requestHeaders: new Headers() }),
+      ).resolves.toEqual({ kind: "service-unavailable" })
+    },
+  )
+
+  it("does not require the hydration dependency for a text-only playlist", async () => {
+    delete process.env.ADMIN_GRAPHQL_URL
+    delete process.env.WEB_ADMIN_API_KEYS
+    resolveBoundary.mockResolvedValue({
+      kind: "available",
+      playlist: {
+        title: "Playlist",
+        description: "",
+        locale: "en",
+        countryCode: null,
+        reportIntent: "intent",
+        blocks: [{ kind: "text", text: "Welcome" }],
+      },
+    })
+
+    const result = await loadPublicUserPlaylist({
+      capability,
+      requestHeaders: new Headers(),
+    })
+
+    expect(result.kind).toBe("available")
+    if (result.kind === "available") expect(result.data.videos).toEqual([])
+  })
 })

@@ -290,6 +290,9 @@ export function ModerationQueue({
                     </time>
                   </div>
                   <p
+                    data-dd-privacy={
+                      report.detailStatus === "AVAILABLE" ? "hidden" : undefined
+                    }
                     className={cx(
                       "mt-2 whitespace-pre-wrap break-words text-[12px] leading-5",
                       report.detailStatus === "AVAILABLE"

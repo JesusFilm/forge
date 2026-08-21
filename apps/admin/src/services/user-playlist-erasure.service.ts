@@ -1,5 +1,5 @@
 import { createHmac, timingSafeEqual } from "node:crypto"
-import type { PrismaClient } from "@prisma/client"
+import { Prisma, type PrismaClient } from "@prisma/client"
 
 const IDEMPOTENCY_KEY_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$/
 const SUBJECT_PATTERN = /^[^\s]{1,255}$/
@@ -115,14 +115,18 @@ export class UserPlaylistErasureService<Credential = unknown> {
         return this.receiptView(replay)
       }
 
-      const lifecycle = await tx.consumerLifecycleProjection.findUnique({
-        where: { ownerSubject: input.ownerSubject },
-        select: { state: true, version: true },
-      })
-      if (
-        lifecycle?.state !== "DELETING" ||
-        lifecycle.version !== input.lifecycleVersion
-      ) {
+      const [lifecycle] = await tx.$queryRaw<Array<{ matches: boolean }>>(
+        Prisma.sql`
+          SELECT (
+            "state" = 'deleting'
+            AND "version" = ${input.lifecycleVersion}
+          ) AS "matches"
+          FROM "consumer_lifecycle_projection"
+          WHERE "owner_subject" = ${input.ownerSubject}
+          FOR UPDATE
+        `,
+      )
+      if (lifecycle?.matches !== true) {
         throw new UserPlaylistErasureConflictError(
           "Erasure requires the matching DELETING lifecycle version",
         )

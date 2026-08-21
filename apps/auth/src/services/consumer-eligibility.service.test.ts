@@ -383,4 +383,34 @@ describe("ConsumerLifecycleReconciliationService", () => {
 
     expect(transition).toHaveBeenCalledWith("consumer-2", "SUSPENDED")
   })
+
+  it("reconciles a page with bounded concurrency", async () => {
+    let active = 0
+    let maxActive = 0
+    const reconcile = vi.fn(async () => {
+      active += 1
+      maxActive = Math.max(maxActive, active)
+      await new Promise<void>((resolve) => queueMicrotask(resolve))
+      active -= 1
+      return { eligible: true, state: "ACTIVE" as const, version: 1n }
+    })
+    const users = Array.from({ length: 23 }, (_, index) => ({
+      id: `consumer-${index}`,
+      membershipStatus: "ACTIVE" as const,
+      consumerLifecycleState: "ACTIVE" as const,
+      consumerLifecycleVersion: 1n,
+    }))
+    const service = new ConsumerLifecycleReconciliationService(
+      { user: { findMany: vi.fn(async () => users) } } as never,
+      { reconcile, transition: vi.fn() } as never,
+      { concurrency: 10 },
+    )
+
+    await expect(service.reconcileBatch({ limit: 23 })).resolves.toEqual({
+      processed: 23,
+      nextCursor: null,
+    })
+    expect(reconcile).toHaveBeenCalledTimes(23)
+    expect(maxActive).toBe(10)
+  })
 })

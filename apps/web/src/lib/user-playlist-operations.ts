@@ -73,12 +73,9 @@ export const createUserPlaylistOperation = adminGraphql(
     mutation CreateUserPlaylist($input: CreateUserPlaylistInput!) {
       createUserPlaylist(input: $input) {
         __typename
-        ... on UserPlaylistCapabilitySuccess {
-          payload {
-            capability
-            playlist {
-              ...UserPlaylistOwnerFields
-            }
+        ... on UserPlaylistSuccess {
+          playlist {
+            ...UserPlaylistOwnerFields
           }
         }
         ... on UserPlaylistError {
@@ -151,12 +148,9 @@ export const reshareUserPlaylistOperation = adminGraphql(
     mutation ReshareUserPlaylist($input: UserPlaylistVersionedInput!) {
       reshareUserPlaylist(input: $input) {
         __typename
-        ... on UserPlaylistCapabilitySuccess {
-          payload {
-            capability
-            playlist {
-              ...UserPlaylistOwnerFields
-            }
+        ... on UserPlaylistSuccess {
+          playlist {
+            ...UserPlaylistOwnerFields
           }
         }
         ... on UserPlaylistError {
@@ -176,12 +170,9 @@ export const rotateUserPlaylistCapabilityOperation = adminGraphql(
     ) {
       rotateUserPlaylistCapability(input: $input) {
         __typename
-        ... on UserPlaylistCapabilitySuccess {
-          payload {
-            capability
-            playlist {
-              ...UserPlaylistOwnerFields
-            }
+        ... on UserPlaylistSuccess {
+          playlist {
+            ...UserPlaylistOwnerFields
           }
         }
         ... on UserPlaylistError {

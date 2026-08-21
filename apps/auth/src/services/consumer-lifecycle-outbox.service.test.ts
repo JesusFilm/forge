@@ -73,6 +73,7 @@ describe("ConsumerLifecycleOutboxService", () => {
     const tx = {
       consumerLifecycleOutbox: {
         findMany: vi.fn(async () => rows),
+        findFirst: vi.fn(async () => null),
         updateMany,
       },
     }
@@ -86,7 +87,7 @@ describe("ConsumerLifecycleOutboxService", () => {
       now: () => now,
     })
 
-    await expect(service.deliverBatch("worker-1")).resolves.toEqual({
+    await expect(service.deliverBatch("worker-1", 1)).resolves.toEqual({
       delivered: 1,
       failed: 0,
     })
@@ -112,6 +113,246 @@ describe("ConsumerLifecycleOutboxService", () => {
     })
   })
 
+  it("leases just in time so another worker cannot reclaim a slow in-flight owner version", async () => {
+    const now = new Date("2026-08-21T12:00:00.000Z")
+    const rows = [
+      {
+        id: "event-1",
+        ownerSubject: "consumer-1",
+        state: "ACTIVE" as const,
+        version: 1n,
+        activeLeaseExpiresAt: new Date("2026-08-21T12:05:00.000Z"),
+        attempts: 0,
+        status: "PENDING",
+        nextAttemptAt: now,
+        leaseOwner: null as string | null,
+        leaseExpiresAt: null as Date | null,
+        createdAt: now,
+      },
+      {
+        id: "event-2",
+        ownerSubject: "consumer-1",
+        state: "ACTIVE" as const,
+        version: 2n,
+        activeLeaseExpiresAt: new Date("2026-08-21T12:05:00.000Z"),
+        attempts: 0,
+        status: "PENDING",
+        nextAttemptAt: now,
+        leaseOwner: null as string | null,
+        leaseExpiresAt: null as Date | null,
+        createdAt: new Date(now.getTime() + 1),
+      },
+    ]
+    const outbox = {
+      findMany: vi.fn(async () =>
+        rows.filter(
+          (row) =>
+            (row.status === "PENDING" && row.nextAttemptAt <= now) ||
+            (row.status === "LEASED" &&
+              row.leaseExpiresAt !== null &&
+              row.leaseExpiresAt <= now),
+        ),
+      ),
+      findFirst: vi.fn(
+        async ({
+          where,
+        }: {
+          where: { ownerSubject: string; version: { lt: bigint } }
+        }) =>
+          rows.find(
+            (row) =>
+              row.ownerSubject === where.ownerSubject &&
+              row.version < where.version.lt &&
+              row.status !== "DELIVERED",
+          ) ?? null,
+      ),
+      updateMany: vi.fn(
+        async ({
+          where,
+          data,
+        }: {
+          where: { id: string; leaseOwner?: string; status?: string }
+          data: Record<string, unknown>
+        }) => {
+          const row = rows.find((candidate) => candidate.id === where.id)
+          if (!row) return { count: 0 }
+          if (where.leaseOwner && row.leaseOwner !== where.leaseOwner) {
+            return { count: 0 }
+          }
+          if (where.status && row.status !== where.status) return { count: 0 }
+          if (!where.leaseOwner && row.status !== "PENDING") return { count: 0 }
+          Object.assign(row, data)
+          return { count: 1 }
+        },
+      ),
+    }
+    const prisma = {
+      $transaction: vi.fn(async (callback) =>
+        callback({ consumerLifecycleOutbox: outbox }),
+      ),
+      consumerLifecycleOutbox: outbox,
+    }
+    let releaseSend!: () => void
+    const slowSend = vi.fn(
+      () => new Promise<void>((resolve) => (releaseSend = resolve)),
+    )
+    const first = new ConsumerLifecycleOutboxService(prisma as never, {
+      send: slowSend,
+      now: () => now,
+    })
+    const second = new ConsumerLifecycleOutboxService(prisma as never, {
+      send: vi.fn().mockResolvedValue(undefined),
+      now: () => now,
+    })
+
+    const firstRun = first.deliverBatch("worker-1", 1)
+    await vi.waitFor(() => expect(slowSend).toHaveBeenCalledTimes(1))
+    expect(rows[0]?.status).toBe("LEASED")
+    await expect(
+      outbox.findFirst({
+        where: { ownerSubject: "consumer-1", version: { lt: 2n } },
+      }),
+    ).resolves.toMatchObject({ id: "event-1" })
+
+    await expect(second.deliverBatch("worker-2", 1)).resolves.toEqual({
+      delivered: 0,
+      failed: 0,
+    })
+    expect(rows[1]?.status).toBe("PENDING")
+
+    releaseSend()
+    await expect(firstRun).resolves.toEqual({ delivered: 1, failed: 0 })
+  })
+
+  it("does not count a delivery when lease ownership was lost before acknowledgement", async () => {
+    const now = new Date("2026-08-21T12:00:00.000Z")
+    const row = {
+      id: "event-1",
+      ownerSubject: "consumer-1",
+      state: "ACTIVE" as const,
+      version: 1n,
+      activeLeaseExpiresAt: new Date("2026-08-21T12:05:00.000Z"),
+      attempts: 0,
+    }
+    const tx = {
+      consumerLifecycleOutbox: {
+        findMany: vi.fn().mockResolvedValueOnce([row]).mockResolvedValue([]),
+        findFirst: vi.fn(async () => null),
+        updateMany: vi.fn(async () => ({ count: 1 })),
+      },
+    }
+    const prisma = {
+      $transaction: vi.fn(async (callback) => callback(tx)),
+      consumerLifecycleOutbox: {
+        updateMany: vi.fn(async () => ({ count: 0 })),
+      },
+    }
+    const service = new ConsumerLifecycleOutboxService(prisma as never, {
+      send: vi.fn().mockResolvedValue(undefined),
+      now: () => now,
+    })
+
+    await expect(service.deliverBatch("worker-1", 1)).resolves.toEqual({
+      delivered: 0,
+      failed: 0,
+    })
+  })
+
+  it("does not count a failed delivery when lease ownership was lost before requeue", async () => {
+    const now = new Date("2026-08-21T12:00:00.000Z")
+    const row = {
+      id: "event-1",
+      ownerSubject: "consumer-1",
+      state: "ACTIVE" as const,
+      version: 1n,
+      activeLeaseExpiresAt: new Date("2026-08-21T12:05:00.000Z"),
+      attempts: 0,
+    }
+    const tx = {
+      consumerLifecycleOutbox: {
+        findMany: vi.fn(async () => [row]),
+        findFirst: vi.fn(async () => null),
+        updateMany: vi.fn(async () => ({ count: 1 })),
+      },
+    }
+    const prisma = {
+      $transaction: vi.fn(async (callback) => callback(tx)),
+      consumerLifecycleOutbox: {
+        updateMany: vi.fn(async () => ({ count: 0 })),
+      },
+    }
+    const service = new ConsumerLifecycleOutboxService(prisma as never, {
+      send: vi.fn(async () => {
+        throw new ConsumerLifecycleDeliveryError("network")
+      }),
+      now: () => now,
+    })
+
+    await expect(service.deliverBatch("worker-1", 1)).resolves.toEqual({
+      delivered: 0,
+      failed: 0,
+    })
+  })
+
+  it("reports pending, leased, due, and DEAD backlog health", async () => {
+    const now = new Date("2026-08-21T12:00:00.000Z")
+    const count = vi
+      .fn()
+      .mockResolvedValueOnce(4)
+      .mockResolvedValueOnce(2)
+      .mockResolvedValueOnce(1)
+      .mockResolvedValueOnce(3)
+    const service = new ConsumerLifecycleOutboxService(
+      { consumerLifecycleOutbox: { count } } as never,
+      { send: vi.fn(), now: () => now },
+    )
+
+    await expect(service.getHealth()).resolves.toEqual({
+      pending: 4,
+      leased: 2,
+      dead: 1,
+      due: 3,
+      backlog: 7,
+    })
+    expect(count).toHaveBeenLastCalledWith({
+      where: {
+        OR: [
+          { status: "PENDING", nextAttemptAt: { lte: now } },
+          { status: "LEASED", leaseExpiresAt: { lte: now } },
+        ],
+      },
+    })
+  })
+
+  it("retries a serializable lease conflict between workers", async () => {
+    const conflict = Object.assign(new Error("write conflict"), {
+      code: "P2034",
+    })
+    const transaction = vi
+      .fn()
+      .mockRejectedValueOnce(conflict)
+      .mockImplementationOnce(async (callback) =>
+        callback({
+          consumerLifecycleOutbox: {
+            findMany: vi.fn(async () => []),
+          },
+        }),
+      )
+    const service = new ConsumerLifecycleOutboxService(
+      {
+        $transaction: transaction,
+        consumerLifecycleOutbox: { updateMany: vi.fn() },
+      } as never,
+      { send: vi.fn() },
+    )
+
+    await expect(service.deliverBatch("worker-1", 1)).resolves.toEqual({
+      delivered: 0,
+      failed: 0,
+    })
+    expect(transaction).toHaveBeenCalledTimes(2)
+  })
+
   it("requeues a transient failure with bounded backoff after reclaiming due work", async () => {
     const now = new Date("2026-08-21T12:00:00.000Z")
     const row = {
@@ -126,6 +367,7 @@ describe("ConsumerLifecycleOutboxService", () => {
     const tx = {
       consumerLifecycleOutbox: {
         findMany: vi.fn(async () => [row]),
+        findFirst: vi.fn(async () => null),
         updateMany,
       },
     }
@@ -142,7 +384,7 @@ describe("ConsumerLifecycleOutboxService", () => {
       },
     )
 
-    await expect(service.deliverBatch("worker-1")).resolves.toEqual({
+    await expect(service.deliverBatch("worker-1", 1)).resolves.toEqual({
       delivered: 0,
       failed: 1,
     })

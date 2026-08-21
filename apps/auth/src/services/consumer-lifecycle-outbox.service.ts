@@ -4,9 +4,11 @@ import type { ConsumerLifecycleOutbox, PrismaClient } from "@/generated/prisma"
 
 const DEFAULT_BATCH_SIZE = 50
 const MAX_BATCH_SIZE = 100
+const MAX_CANDIDATE_SCAN = 500
 const LEASE_MS = 30_000
 const MAX_ATTEMPTS = 12
 const DELIVERY_TIMEOUT_MS = 5_000
+const LEASE_CONFLICT_RETRIES = 3
 
 export type ConsumerLifecycleDelivery = Pick<
   ConsumerLifecycleOutbox,
@@ -15,6 +17,14 @@ export type ConsumerLifecycleDelivery = Pick<
 
 export interface ConsumerLifecycleSender {
   send(event: ConsumerLifecycleDelivery): Promise<void>
+}
+
+export type ConsumerLifecycleOutboxHealth = {
+  pending: number
+  leased: number
+  dead: number
+  due: number
+  backlog: number
 }
 
 export class ConsumerLifecycleDeliveryError extends Error {
@@ -88,27 +98,36 @@ export class ConsumerLifecycleOutboxService {
     workerId: string,
     limit = DEFAULT_BATCH_SIZE,
   ): Promise<{ delivered: number; failed: number }> {
-    const rows = await this.leaseBatch(workerId, limit)
+    const boundedLimit = Math.min(
+      Math.max(Math.trunc(limit), 1),
+      MAX_BATCH_SIZE,
+    )
     let delivered = 0
     let failed = 0
-    for (const row of rows) {
+    for (let index = 0; index < boundedLimit; index += 1) {
+      // Claim immediately before delivery. The production sender has a
+      // five-second timeout, comfortably inside the 30-second ownership
+      // lease, so no row waits in a worker-local queue while its lease ages.
+      const row = await this.leaseNext(workerId)
+      if (!row) break
       try {
         await this.options.send(row)
-        await this.prisma.consumerLifecycleOutbox.updateMany({
-          where: { id: row.id, leaseOwner: workerId, status: "LEASED" },
-          data: {
-            status: "DELIVERED",
-            deliveredAt: this.now(),
-            leaseOwner: null,
-            leaseExpiresAt: null,
-            lastErrorCode: null,
-          },
-        })
-        delivered += 1
+        const acknowledged =
+          await this.prisma.consumerLifecycleOutbox.updateMany({
+            where: { id: row.id, leaseOwner: workerId, status: "LEASED" },
+            data: {
+              status: "DELIVERED",
+              deliveredAt: this.now(),
+              leaseOwner: null,
+              leaseExpiresAt: null,
+              lastErrorCode: null,
+            },
+          })
+        if (acknowledged.count === 1) delivered += 1
       } catch (error) {
         const attempts = row.attempts + 1
         const dead = attempts >= MAX_ATTEMPTS
-        await this.prisma.consumerLifecycleOutbox.updateMany({
+        const requeued = await this.prisma.consumerLifecycleOutbox.updateMany({
           where: { id: row.id, leaseOwner: workerId, status: "LEASED" },
           data: {
             status: dead ? "DEAD" : "PENDING",
@@ -124,47 +143,116 @@ export class ConsumerLifecycleOutboxService {
                 : "unknown",
           },
         })
-        failed += 1
+        if (requeued.count === 1) failed += 1
       }
     }
     return { delivered, failed }
   }
 
-  private async leaseBatch(workerId: string, requestedLimit: number) {
+  async getHealth(): Promise<ConsumerLifecycleOutboxHealth> {
     const now = this.now()
-    const limit = Math.min(Math.max(requestedLimit, 1), MAX_BATCH_SIZE)
-    return this.prisma.$transaction(async (tx) => {
-      const candidates = await tx.consumerLifecycleOutbox.findMany({
+    const [pending, leased, dead, due] = await Promise.all([
+      this.prisma.consumerLifecycleOutbox.count({
+        where: { status: "PENDING" },
+      }),
+      this.prisma.consumerLifecycleOutbox.count({
+        where: { status: "LEASED" },
+      }),
+      this.prisma.consumerLifecycleOutbox.count({ where: { status: "DEAD" } }),
+      this.prisma.consumerLifecycleOutbox.count({
         where: {
           OR: [
             { status: "PENDING", nextAttemptAt: { lte: now } },
             { status: "LEASED", leaseExpiresAt: { lte: now } },
           ],
         },
-        orderBy: [{ nextAttemptAt: "asc" }, { createdAt: "asc" }],
-        take: limit,
-      })
-      const leased: ConsumerLifecycleOutbox[] = []
-      for (const candidate of candidates) {
-        const acquired = await tx.consumerLifecycleOutbox.updateMany({
-          where: {
-            id: candidate.id,
-            OR: [
-              { status: "PENDING", nextAttemptAt: { lte: now } },
-              { status: "LEASED", leaseExpiresAt: { lte: now } },
-            ],
-          },
-          data: {
-            status: "LEASED",
-            leaseOwner: workerId,
-            leaseExpiresAt: new Date(now.getTime() + LEASE_MS),
-          },
-        })
-        if (acquired.count === 1) leased.push(candidate)
-      }
-      return leased
-    })
+      }),
+    ])
+    return { pending, leased, dead, due, backlog: pending + leased + dead }
   }
+
+  private async leaseNext(workerId: string) {
+    let lastConflict: unknown
+    for (let attempt = 0; attempt < LEASE_CONFLICT_RETRIES; attempt += 1) {
+      try {
+        return await this.tryLeaseNext(workerId)
+      } catch (error) {
+        if (!isPrismaWriteConflict(error)) throw error
+        lastConflict = error
+      }
+    }
+    throw lastConflict
+  }
+
+  private async tryLeaseNext(workerId: string) {
+    const now = this.now()
+    return this.prisma.$transaction(
+      async (tx) => {
+        let cursor: string | undefined
+        for (;;) {
+          const candidates = await tx.consumerLifecycleOutbox.findMany({
+            where: {
+              OR: [
+                { status: "PENDING", nextAttemptAt: { lte: now } },
+                { status: "LEASED", leaseExpiresAt: { lte: now } },
+              ],
+            },
+            orderBy: [
+              { nextAttemptAt: "asc" },
+              { createdAt: "asc" },
+              { id: "asc" },
+            ],
+            ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+            take: MAX_CANDIDATE_SCAN,
+          })
+          for (const candidate of candidates) {
+            // A later lifecycle version must not overtake an earlier version
+            // for the same owner, including one in retry or DEAD.
+            const earlierOutstanding =
+              await tx.consumerLifecycleOutbox.findFirst({
+                where: {
+                  ownerSubject: candidate.ownerSubject,
+                  version: { lt: candidate.version },
+                  status: { not: "DELIVERED" },
+                },
+                select: { id: true },
+              })
+            if (earlierOutstanding) continue
+
+            const acquired = await tx.consumerLifecycleOutbox.updateMany({
+              where: {
+                id: candidate.id,
+                OR: [
+                  { status: "PENDING", nextAttemptAt: { lte: now } },
+                  { status: "LEASED", leaseExpiresAt: { lte: now } },
+                ],
+              },
+              data: {
+                status: "LEASED",
+                leaseOwner: workerId,
+                leaseExpiresAt: new Date(now.getTime() + LEASE_MS),
+              },
+            })
+            if (acquired.count === 1) return candidate
+          }
+
+          if (candidates.length < MAX_CANDIDATE_SCAN) return null
+          cursor = candidates.at(-1)?.id
+          if (!cursor) return null
+        }
+      },
+      { isolationLevel: "Serializable" },
+    )
+  }
+}
+
+function isPrismaWriteConflict(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    error.code === "P2034"
+  )
 }
 
 function retryDelayMs(attempts: number): number {

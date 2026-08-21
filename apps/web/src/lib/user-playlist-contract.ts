@@ -91,11 +91,6 @@ export type UserPlaylistActionResult<T> =
       message?: string
     }
 
-export type UserPlaylistCapabilityResult = {
-  playlist: UserPlaylist
-  capability: string
-}
-
 export type UserPlaylistVersionedInput = {
   id: string
   expectedVersion: number
@@ -110,7 +105,7 @@ export type UserPlaylistOwnerActions = {
   read: (id: string) => Promise<UserPlaylistActionResult<UserPlaylist>>
   create: (
     input: CreateUserPlaylistInput,
-  ) => Promise<UserPlaylistActionResult<UserPlaylistCapabilityResult>>
+  ) => Promise<UserPlaylistActionResult<UserPlaylist>>
   update: (
     input: UpdateUserPlaylistInput,
   ) => Promise<UserPlaylistActionResult<UserPlaylist>>
@@ -122,10 +117,10 @@ export type UserPlaylistOwnerActions = {
   ) => Promise<UserPlaylistActionResult<UserPlaylist>>
   reshare: (
     input: UserPlaylistVersionedInput,
-  ) => Promise<UserPlaylistActionResult<UserPlaylistCapabilityResult>>
+  ) => Promise<UserPlaylistActionResult<UserPlaylist>>
   rotate: (
     input: UserPlaylistVersionedInput,
-  ) => Promise<UserPlaylistActionResult<UserPlaylistCapabilityResult>>
+  ) => Promise<UserPlaylistActionResult<UserPlaylist>>
   reveal: (
     id: string,
   ) => Promise<UserPlaylistActionResult<{ capability: string }>>

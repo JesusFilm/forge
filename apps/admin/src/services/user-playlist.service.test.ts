@@ -259,7 +259,8 @@ describe("UserPlaylistService", () => {
 
     const created = await service.create(createInput, OWNER)
 
-    expect(created.capability).toMatch(/^[A-Za-z0-9_-]{43}$/)
+    expect(created).toMatchObject({ title: "My playlist", shared: true })
+    expect(created).not.toHaveProperty("capability")
     expect(transaction).toHaveBeenCalledTimes(2)
     expect(transaction.mock.calls[1]?.[1]).toEqual({
       isolationLevel: "Serializable",
@@ -286,7 +287,7 @@ describe("UserPlaylistService", () => {
     )
     expect(userPlaylistAudit.create).toHaveBeenCalledWith({
       data: {
-        playlistId: created.playlist.id,
+        playlistId: created.id,
         ownerSubject: OWNER.ownerSubject,
         event: "created",
         version: 1,
@@ -373,7 +374,8 @@ describe("UserPlaylistService", () => {
       { id: "playlist-1", expectedVersion: 1 },
       OWNER,
     )
-    expect(rotated.capability).not.toBe(oldCapability.token)
+    expect(rotated).toMatchObject({ version: 2, shared: true })
+    expect(rotated).not.toHaveProperty("capability")
     const update = userPlaylist.updateMany.mock.calls[0]?.[0]
     expect(update.where).toEqual({
       id: "playlist-1",
@@ -396,6 +398,15 @@ describe("UserPlaylistService", () => {
       },
     )
     const newDigest = Buffer.from(update.data.capabilityDigest)
+    const newCapability = capabilities.reveal("playlist-1", 2, {
+      digest: update.data.capabilityDigest,
+      digestKeyId: update.data.capabilityDigestKeyId,
+      ciphertext: update.data.capabilityCiphertext,
+      encryptionKeyId: update.data.capabilityEncryptionKeyId,
+      nonce: update.data.capabilityNonce,
+      authTag: update.data.capabilityAuthTag,
+    })
+    expect(newCapability).not.toBe(oldCapability.token)
     userPlaylist.findFirst.mockImplementation(
       async ({ where }: { where: Record<string, unknown> }) => {
         if ("id" in where) return after
@@ -412,10 +423,10 @@ describe("UserPlaylistService", () => {
       service.resolvePublic({ token: oldCapability.token }),
     ).resolves.toBeNull()
     await expect(
-      service.resolvePublic({ token: rotated.capability }),
+      service.resolvePublic({ token: newCapability }),
     ).resolves.toMatchObject({ title: "My playlist" })
     await expect(service.reveal({ id: "playlist-1" }, OWNER)).resolves.toBe(
-      rotated.capability,
+      newCapability,
     )
   })
 
@@ -437,7 +448,8 @@ describe("UserPlaylistService", () => {
       { id: "playlist-1", expectedVersion: 1 },
       OWNER,
     )
-    expect(reshared.capability).not.toBe(disabled.token)
+    expect(reshared).toMatchObject({ version: 2, shared: true })
+    expect(reshared).not.toHaveProperty("capability")
     expect(userPlaylist.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: expect.objectContaining({
@@ -451,6 +463,16 @@ describe("UserPlaylistService", () => {
         }),
       }),
     )
+    const update = userPlaylist.updateMany.mock.calls[0]?.[0].data
+    const newCapability = capabilities.reveal("playlist-1", 2, {
+      digest: update.capabilityDigest,
+      digestKeyId: update.capabilityDigestKeyId,
+      ciphertext: update.capabilityCiphertext,
+      encryptionKeyId: update.capabilityEncryptionKeyId,
+      nonce: update.capabilityNonce,
+      authTag: update.capabilityAuthTag,
+    })
+    expect(newCapability).not.toBe(disabled.token)
   })
 
   it("applies share/moderation/lifecycle axes and omits ineligible ids from public output", async () => {

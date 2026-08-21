@@ -1,10 +1,11 @@
 import type { Metadata, Route } from "next"
 import { headers } from "next/headers"
-import { redirect } from "next/navigation"
+import { notFound, redirect } from "next/navigation"
 import { getTranslations, setRequestLocale } from "next-intl/server"
 
 import { UserPlaylistLibrary } from "@/components/user-playlists/UserPlaylistLibrary"
 import { verifyAuthSession } from "@/lib/auth-session"
+import { isUserPlaylistAuthoringUxEnabled } from "@/lib/feature-flags"
 import {
   createUserPlaylist,
   deleteUserPlaylist,
@@ -22,6 +23,7 @@ import {
   loadMyUserPlaylistsForPage,
   loadUserPlaylistPolicyForPage,
 } from "@/lib/user-playlist-loaders"
+import { userPlaylistServerLoginPath } from "@/lib/user-playlist-route-paths"
 import { resolveWatchLocaleIdentity } from "@/lib/locale"
 
 export const dynamic = "force-dynamic"
@@ -62,15 +64,22 @@ export default async function UserPlaylistLibraryPage({
 
   const session = await verifyAuthSession(await headers())
   if (!session.authenticated) {
-    redirect("/watch/api/auth/login?returnTo=%2Fwatch%2Fplaylists" as Route)
+    redirect(userPlaylistServerLoginPath("/watch/playlists") as Route)
   }
+  const authoringEnabled = await isUserPlaylistAuthoringUxEnabled({
+    kind: "user",
+    key: session.userId,
+    anonymous: false,
+    custom: { surface: "user-playlists" },
+  }).catch(() => false)
+  if (!authoringEnabled) notFound()
 
   const [initialResult, policyResult] = await Promise.all([
     loadMyUserPlaylistsForPage({ first: 20 }),
     loadUserPlaylistPolicyForPage(),
   ])
   if (!initialResult.ok && initialResult.code === "UNAUTHENTICATED") {
-    redirect("/watch/api/auth/login?returnTo=%2Fwatch%2Fplaylists" as Route)
+    redirect(userPlaylistServerLoginPath("/watch/playlists") as Route)
   }
 
   return (

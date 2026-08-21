@@ -182,6 +182,29 @@ describe("proxy — authenticated owner playlists", () => {
     },
   )
 
+  it.each([
+    ["/playlists", "/en/en/playlists"],
+    ["/playlists/playlist_123", "/en/en/playlists/playlist_123"],
+  ])(
+    "admits the secured internal re-entry for %s",
+    async (publicPathname, internalPathname) => {
+      const response = await proxy(
+        makeRequest(internalPathname, {
+          headers: { [WATCH_INTERNAL_REWRITE_HEADER]: publicPathname },
+        }),
+      )
+
+      expect(response.headers.get("x-middleware-next")).toBe("1")
+      expect(response.headers.get("x-middleware-rewrite")).toBeNull()
+      expect(response.headers.get("cache-control")).toBe(
+        "private, no-store, max-age=0",
+      )
+      expect(response.headers.get("x-robots-tag")).toBe(
+        "noindex, nofollow, noarchive",
+      )
+    },
+  )
+
   it("rejects malformed or overlong owner playlist identifiers", async () => {
     for (const pathname of [
       "/playlists/unsafe%2Fid",

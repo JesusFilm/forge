@@ -90,7 +90,11 @@ describe("AccountControl", () => {
     vi.stubGlobal(
       "fetch",
       vi.fn(async () =>
-        Response.json({ accountGateEnabled: true, authenticated: false }),
+        Response.json({
+          accountGateEnabled: true,
+          authenticated: false,
+          playlistAuthoringEnabled: false,
+        }),
       ),
     )
 
@@ -136,6 +140,7 @@ describe("AccountControl", () => {
         Response.json({
           accountGateEnabled: false,
           authenticated: true,
+          playlistAuthoringEnabled: false,
           user: "viewer",
         }),
     ],
@@ -145,6 +150,7 @@ describe("AccountControl", () => {
         Response.json({
           accountGateEnabled: true,
           authenticated: false,
+          playlistAuthoringEnabled: false,
           user: { id: "viewer" },
         }),
     ],
@@ -169,7 +175,11 @@ describe("AccountControl", () => {
     vi.stubGlobal(
       "fetch",
       vi.fn(async () =>
-        Response.json({ accountGateEnabled: true, authenticated: false }),
+        Response.json({
+          accountGateEnabled: true,
+          authenticated: false,
+          playlistAuthoringEnabled: false,
+        }),
       ),
     )
 
@@ -202,7 +212,11 @@ describe("AccountControl", () => {
     vi.stubGlobal(
       "fetch",
       vi.fn(async () =>
-        Response.json({ accountGateEnabled: false, authenticated: false }),
+        Response.json({
+          accountGateEnabled: false,
+          authenticated: false,
+          playlistAuthoringEnabled: false,
+        }),
       ),
     )
 
@@ -230,6 +244,7 @@ describe("AccountControl", () => {
         Response.json({
           accountGateEnabled: false,
           authenticated: true,
+          playlistAuthoringEnabled: true,
           user: {
             id: "auth-user-123",
             email: "viewer@example.test",
@@ -306,6 +321,7 @@ describe("AccountControl", () => {
         Response.json({
           accountGateEnabled: false,
           authenticated: true,
+          playlistAuthoringEnabled: false,
           user: {
             email: "viewer@example.test",
             name: "Viewer Example",
@@ -331,6 +347,7 @@ describe("AccountControl", () => {
         container.querySelector('[data-testid="watch-account-menu"]'),
       ).not.toBeNull()
       expect(button.getAttribute("aria-expanded")).toBe("true")
+      expect(container.textContent).not.toContain("My playlists")
     })
 
     floatingChrome.searchChromeVisible = false

@@ -111,6 +111,9 @@ describe("ModerationQueue", () => {
     expect(container.textContent).toContain("No detail supplied")
     expect(container.textContent).not.toContain("owner")
     expect(container.textContent).not.toContain("capability")
+    expect(
+      container.querySelector('[data-dd-privacy="hidden"]')?.textContent,
+    ).toBe("<img src=x onerror=alert(1)>")
   })
 
   it("requires a reason and confirmation, announces success, and returns focus to the row action", async () => {

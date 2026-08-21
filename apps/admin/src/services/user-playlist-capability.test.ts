@@ -1,8 +1,10 @@
 import { Buffer } from "node:buffer"
+import { createCipheriv } from "node:crypto"
 import { describe, expect, it } from "vitest"
 import {
   UserPlaylistCapability,
   UserPlaylistCapabilityConfigurationError,
+  UserPlaylistCapabilityIntegrityError,
 } from "./user-playlist-capability"
 
 const key = (fill: number) => Buffer.alloc(32, fill)
@@ -52,6 +54,48 @@ describe("UserPlaylistCapability", () => {
         expect.objectContaining({ keyId: "lookup-v2" }),
       ]),
     )
+  })
+
+  it("classifies an authenticated but invalid plaintext as corrupt material", () => {
+    const nonce = Buffer.alloc(12, 9)
+    const cipher = createCipheriv("aes-256-gcm", key(2), nonce)
+    cipher.setAAD(
+      Buffer.from(
+        JSON.stringify({
+          purpose: "user-playlist-share",
+          playlistId: "playlist-1",
+          tokenVersion: 1,
+        }),
+        "utf8",
+      ),
+    )
+    const ciphertext = Buffer.concat([
+      cipher.update("not-a-capability", "ascii"),
+      cipher.final(),
+    ])
+
+    expect(() =>
+      capabilities().reveal("playlist-1", 1, {
+        digest: Buffer.alloc(32),
+        digestKeyId: "lookup-v1",
+        ciphertext,
+        encryptionKeyId: "encryption-v1",
+        nonce,
+        authTag: cipher.getAuthTag(),
+      }),
+    ).toThrow(UserPlaylistCapabilityIntegrityError)
+  })
+
+  it("classifies a digest mismatch as corrupt material", () => {
+    const service = capabilities()
+    const created = service.create("playlist-1", 1)
+
+    expect(() =>
+      service.reveal("playlist-1", 1, {
+        ...created.material,
+        digest: Buffer.alloc(32, 8),
+      }),
+    ).toThrow(UserPlaylistCapabilityIntegrityError)
   })
 
   it.each([

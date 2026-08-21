@@ -311,10 +311,18 @@ export class ConsumerEligibilityService {
  * browser sessions or playlist-owner traffic.
  */
 export class ConsumerLifecycleReconciliationService {
+  private readonly concurrency: number
+
   constructor(
     private readonly prisma: PrismaClient,
     private readonly eligibility: ConsumerEligibilityService,
-  ) {}
+    options: { concurrency?: number } = {},
+  ) {
+    this.concurrency = Math.min(
+      Math.max(Math.trunc(options.concurrency ?? 10), 1),
+      25,
+    )
+  }
 
   async reconcileBatch(input: { cursor?: string; limit?: number }) {
     const limit = Math.min(Math.max(input.limit ?? 100, 1), 500)
@@ -331,26 +339,30 @@ export class ConsumerLifecycleReconciliationService {
       take: limit + 1,
     })
     const page = users.slice(0, limit)
-    for (const user of page) {
-      if (user.membershipStatus === "SUSPENDED") {
-        if (
-          user.consumerLifecycleState !== "SUSPENDED" ||
-          user.consumerLifecycleVersion === 0n
-        ) {
-          await this.eligibility.transition(user.id, "SUSPENDED")
-        }
-        continue
-      }
-      if (user.membershipStatus === "DISABLED") {
-        if (
-          user.consumerLifecycleState !== "DISABLED" ||
-          user.consumerLifecycleVersion === 0n
-        ) {
-          await this.eligibility.transition(user.id, "DISABLED")
-        }
-        continue
-      }
-      await this.eligibility.reconcile(user.id)
+    for (let offset = 0; offset < page.length; offset += this.concurrency) {
+      await Promise.all(
+        page.slice(offset, offset + this.concurrency).map(async (user) => {
+          if (user.membershipStatus === "SUSPENDED") {
+            if (
+              user.consumerLifecycleState !== "SUSPENDED" ||
+              user.consumerLifecycleVersion === 0n
+            ) {
+              await this.eligibility.transition(user.id, "SUSPENDED")
+            }
+            return
+          }
+          if (user.membershipStatus === "DISABLED") {
+            if (
+              user.consumerLifecycleState !== "DISABLED" ||
+              user.consumerLifecycleVersion === 0n
+            ) {
+              await this.eligibility.transition(user.id, "DISABLED")
+            }
+            return
+          }
+          await this.eligibility.reconcile(user.id)
+        }),
+      )
     }
 
     return {

@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   query: vi.fn(),
   mutate: vi.fn(),
   consume: vi.fn(),
+  authoringEnabled: vi.fn(),
 }))
 
 vi.mock("next/headers", () => ({
@@ -38,6 +39,10 @@ vi.mock("@/env", () => ({
 
 vi.mock("@/lib/admin-client", () => ({
   createUserPlaylistAdminClient: mocks.createClient,
+}))
+
+vi.mock("@/lib/feature-flags", () => ({
+  isUserPlaylistAuthoringUxEnabled: mocks.authoringEnabled,
 }))
 
 vi.mock("@/lib/user-playlist-action-rate-limit", () => ({
@@ -153,6 +158,7 @@ describe("User Playlist owner Server Actions", () => {
       scopes: ["playlist:read", "playlist:write", "playlist:share"],
     })
     mocks.consume.mockResolvedValue("admitted")
+    mocks.authoringEnabled.mockResolvedValue(true)
     mocks.createClient.mockReturnValue({
       query: mocks.query,
       mutate: mocks.mutate,
@@ -246,6 +252,22 @@ describe("User Playlist owner Server Actions", () => {
     })
   })
 
+  it("fails closed before scope, limiter, or Admin access when authoring is disabled", async () => {
+    mocks.authoringEnabled.mockResolvedValue(false)
+
+    await expect(listMyUserPlaylists()).resolves.toEqual({
+      ok: false,
+      code: "FORBIDDEN",
+    })
+    await expect(getUserPlaylistPolicy()).resolves.toEqual({
+      ok: false,
+      code: "FORBIDDEN",
+    })
+
+    expect(mocks.consume).not.toHaveBeenCalled()
+    expect(mocks.createClient).not.toHaveBeenCalled()
+  })
+
   it("strictly rejects malformed or over-posted input without echo or upstream work", async () => {
     const hostile = {
       ...createInput,
@@ -285,8 +307,8 @@ describe("User Playlist owner Server Actions", () => {
       .mockResolvedValueOnce({
         data: {
           createUserPlaylist: {
-            __typename: "UserPlaylistCapabilitySuccess",
-            payload: { capability: "cap-create", playlist: ownerPlaylist },
+            __typename: "UserPlaylistSuccess",
+            playlist: ownerPlaylist,
           },
         },
       })
@@ -317,23 +339,23 @@ describe("User Playlist owner Server Actions", () => {
       .mockResolvedValueOnce({
         data: {
           reshareUserPlaylist: {
-            __typename: "UserPlaylistCapabilitySuccess",
-            payload: { capability: "cap-reshare", playlist: ownerPlaylist },
+            __typename: "UserPlaylistSuccess",
+            playlist: ownerPlaylist,
           },
         },
       })
       .mockResolvedValueOnce({
         data: {
           rotateUserPlaylistCapability: {
-            __typename: "UserPlaylistCapabilitySuccess",
-            payload: { capability: "cap-rotate", playlist: ownerPlaylist },
+            __typename: "UserPlaylistSuccess",
+            playlist: ownerPlaylist,
           },
         },
       })
 
     await expect(createUserPlaylist(createInput)).resolves.toMatchObject({
       ok: true,
-      data: { capability: "cap-create" },
+      data: { id: "playlist-1" },
     })
     await expect(updateUserPlaylist(updateInput)).resolves.toMatchObject({
       ok: true,
@@ -350,11 +372,11 @@ describe("User Playlist owner Server Actions", () => {
     })
     await expect(reshareUserPlaylist(versioned)).resolves.toMatchObject({
       ok: true,
-      data: { capability: "cap-reshare" },
+      data: { id: "playlist-1" },
     })
     await expect(
       rotateUserPlaylistCapability(versioned),
-    ).resolves.toMatchObject({ ok: true, data: { capability: "cap-rotate" } })
+    ).resolves.toMatchObject({ ok: true, data: { id: "playlist-1" } })
 
     const ownerResults = [readResult, unshareResult]
     expect(JSON.stringify(ownerResults)).not.toContain("cap-")

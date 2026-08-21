@@ -5,6 +5,7 @@ import { getTranslations, setRequestLocale } from "next-intl/server"
 
 import { UserPlaylistComposer } from "@/components/user-playlists/UserPlaylistComposer"
 import { verifyAuthSession } from "@/lib/auth-session"
+import { isUserPlaylistAuthoringUxEnabled } from "@/lib/feature-flags"
 import {
   createUserPlaylist,
   deleteUserPlaylist,
@@ -19,6 +20,7 @@ import {
 } from "@/lib/user-playlist-actions"
 import type { UserPlaylistOwnerActions } from "@/lib/user-playlist-contract"
 import { loadMyUserPlaylistForPage } from "@/lib/user-playlist-loaders"
+import { userPlaylistServerLoginPath } from "@/lib/user-playlist-route-paths"
 import { resolveWatchLocaleIdentity } from "@/lib/locale"
 
 export const dynamic = "force-dynamic"
@@ -60,17 +62,20 @@ export default async function UserPlaylistEditorPage({
   const session = await verifyAuthSession(await headers())
   const returnTo = `/watch/playlists/${encodeURIComponent(id)}`
   if (!session.authenticated) {
-    redirect(
-      `/watch/api/auth/login?returnTo=${encodeURIComponent(returnTo)}` as Route,
-    )
+    redirect(userPlaylistServerLoginPath(returnTo) as Route)
   }
+  const authoringEnabled = await isUserPlaylistAuthoringUxEnabled({
+    kind: "user",
+    key: session.userId,
+    anonymous: false,
+    custom: { surface: "user-playlists" },
+  }).catch(() => false)
+  if (!authoringEnabled) notFound()
 
   const result = await loadMyUserPlaylistForPage(id)
   if (!result.ok) {
     if (result.code === "UNAUTHENTICATED") {
-      redirect(
-        `/watch/api/auth/login?returnTo=${encodeURIComponent(returnTo)}` as Route,
-      )
+      redirect(userPlaylistServerLoginPath(returnTo) as Route)
     }
     if (result.code === "NOT_FOUND" || result.code === "INVALID_INPUT") {
       notFound()

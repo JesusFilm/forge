@@ -130,11 +130,8 @@ function ReadyLibrary({
       setAnnouncement(t("announcement.deleted", { title: playlist.title }))
       return
     }
-    if ("playlist" in result.data) {
-      replaceItem(result.data.playlist)
-    } else if ("id" in result.data) {
-      replaceItem(result.data)
-    }
+    if ("deleted" in result.data) return
+    replaceItem(result.data)
     setAnnouncement(
       operation === "unshare"
         ? t("announcement.unshared", { title: playlist.title })
@@ -441,7 +438,7 @@ function CreatePlaylistDialog({
     // The capability is deliberately not placed in the URL, logs, or client
     // analytics here. The editor can reveal it only when the owner asks.
     window.location.assign(
-      `/watch/playlists/${encodeURIComponent(result.data.playlist.id)}`,
+      `/watch/playlists/${encodeURIComponent(result.data.id)}`,
     )
   }
 

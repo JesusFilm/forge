@@ -17,7 +17,8 @@ describe("RedisPublicUserPlaylistIngressLimiter", () => {
       }),
     ).resolves.toBe("admitted")
 
-    const [, options] = evalCommand.mock.calls[0]!
+    const [script, options] = evalCommand.mock.calls[0]!
+    expect(script).toContain("DECR")
     expect(options.keys).toHaveLength(3)
     expect(JSON.stringify(options.keys)).not.toContain("203.0.113.9")
     expect(options.arguments).toEqual([

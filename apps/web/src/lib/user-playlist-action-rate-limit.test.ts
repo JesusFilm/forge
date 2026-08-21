@@ -20,6 +20,7 @@ describe("RedisUserPlaylistActionLimiter", () => {
 
     const [script, options] = evalCommand.mock.calls[0]!
     expect(script).toContain("INCR")
+    expect(script).toContain("DECR")
     expect(options.keys).toHaveLength(3)
     expect(options.keys.join(" ")).not.toContain("consumer-user-123")
     expect(options.keys.join(" ")).not.toContain("2001:db8::1")

@@ -1,5 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
+const featureFlags = vi.hoisted(() => ({
+  publicReadEnabled: vi.fn(),
+}))
+
+vi.mock("./lib/feature-flags", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("./lib/feature-flags")>()),
+  isUserPlaylistPublicReadUxEnabled: featureFlags.publicReadEnabled,
+}))
+
 import { proxy, type ProxyRequest } from "./proxy"
 import {
   openPublicUserPlaylistCapability,
@@ -37,9 +46,23 @@ afterEach(() => {
 
 beforeEach(() => {
   vi.stubEnv("USER_PLAYLIST_TRUSTED_CONTEXT_HMAC_SECRET", SECRET)
+  featureFlags.publicReadEnabled.mockReset().mockResolvedValue(true)
 })
 
 describe("proxy — public unlisted user playlists", () => {
+  it("returns the neutral 404 without resolving a capability while public read is disabled", async () => {
+    const preflight = vi.fn().mockResolvedValue("available")
+    setPublicUserPlaylistPreflightForTest(preflight)
+    featureFlags.publicReadEnabled.mockResolvedValue(false)
+
+    const response = await proxy(request(`/p/${CAPABILITY}`))
+
+    expect(response.status).toBe(404)
+    expect(await response.text()).not.toContain(CAPABILITY)
+    expect(preflight).not.toHaveBeenCalled()
+    expectPrivateCapabilityHeaders(response)
+  })
+
   it("passes a valid strict capability without locale canonicalization", async () => {
     const preflight = vi.fn().mockResolvedValue("available")
     setPublicUserPlaylistPreflightForTest(preflight)
@@ -115,5 +138,6 @@ describe("proxy — public unlisted user playlists", () => {
       const response = await proxy(request(pathname))
       expect(response.status).toBe(404)
     }
+    expect(featureFlags.publicReadEnabled).not.toHaveBeenCalled()
   })
 })

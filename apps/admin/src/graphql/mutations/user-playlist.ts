@@ -13,7 +13,6 @@ import {
   requireOwnerContext,
   trustedRequestContext,
   UpdateUserPlaylistInput,
-  UserPlaylistCapabilityPayloadRef,
   UserPlaylistGraphqlErrorRef,
   UserPlaylistVersionedInput,
   type UserPlaylistGraphqlError,
@@ -25,10 +24,7 @@ import type {
   UserPlaylistModeratorReport,
 } from "@/services/user-playlist-moderation.service"
 import type { UserPlaylistBlock } from "@/services/user-playlist.schemas"
-import type {
-  OwnerUserPlaylist,
-  UserPlaylistWithCapability,
-} from "@/services/user-playlist.service"
+import type { OwnerUserPlaylist } from "@/services/user-playlist.service"
 
 type InputBlock = {
   kind: "text" | "mediaCollection" | "videoCarousel"
@@ -77,9 +73,6 @@ function normalizeSnapshotInput(input: {
 type OwnerResult =
   | { kind: "owner"; playlist: OwnerUserPlaylist }
   | UserPlaylistGraphqlError
-type CapabilityResult =
-  | { kind: "capability"; payload: UserPlaylistWithCapability }
-  | UserPlaylistGraphqlError
 type DeleteResult =
   | { kind: "deleted"; deleted: true }
   | UserPlaylistGraphqlError
@@ -91,19 +84,6 @@ const OwnerResultSuccessRef = builder
       playlist: t.field({
         type: OwnerUserPlaylistRef,
         resolve: (row) => row.playlist,
-      }),
-    }),
-  })
-
-const CapabilityResultSuccessRef = builder
-  .objectRef<
-    Extract<CapabilityResult, { kind: "capability" }>
-  >("UserPlaylistCapabilitySuccess")
-  .implement({
-    fields: (t) => ({
-      payload: t.field({
-        type: UserPlaylistCapabilityPayloadRef,
-        resolve: (row) => row.payload,
       }),
     }),
   })
@@ -121,16 +101,6 @@ const OwnerMutationResultRef = builder.unionType("UserPlaylistMutationResult", {
       ? UserPlaylistGraphqlErrorRef
       : OwnerResultSuccessRef,
 })
-const CapabilityMutationResultRef = builder.unionType(
-  "UserPlaylistCapabilityMutationResult",
-  {
-    types: [CapabilityResultSuccessRef, UserPlaylistGraphqlErrorRef],
-    resolveType: (value) =>
-      value.kind === "error"
-        ? UserPlaylistGraphqlErrorRef
-        : CapabilityResultSuccessRef,
-  },
-)
 const DeleteMutationResultRef = builder.unionType("UserPlaylistDeleteResult", {
   types: [DeleteResultSuccessRef, UserPlaylistGraphqlErrorRef],
   resolveType: (value) =>
@@ -172,7 +142,7 @@ function requireCompositeCreateScopes(ctx: ContextShape) {
 
 builder.mutationFields((t) => ({
   createUserPlaylist: t.field({
-    type: CapabilityMutationResultRef,
+    type: OwnerMutationResultRef,
     authScopes: { hasPermission: "write:user-playlists:own" },
     args: { input: t.arg({ type: CreateUserPlaylistInput, required: true }) },
     resolve: async (_root, { input }, ctx) => {
@@ -194,7 +164,7 @@ builder.mutationFields((t) => ({
       )
       return isMappedError(result)
         ? result
-        : { kind: "capability" as const, payload: result }
+        : { kind: "owner" as const, playlist: result }
     },
   }),
   updateUserPlaylist: t.field({
@@ -260,7 +230,7 @@ builder.mutationFields((t) => ({
     },
   }),
   reshareUserPlaylist: t.field({
-    type: CapabilityMutationResultRef,
+    type: OwnerMutationResultRef,
     authScopes: { hasPermission: "share:user-playlists:own" },
     args: {
       input: t.arg({ type: UserPlaylistVersionedInput, required: true }),
@@ -276,11 +246,11 @@ builder.mutationFields((t) => ({
       )
       return isMappedError(result)
         ? result
-        : { kind: "capability" as const, payload: result }
+        : { kind: "owner" as const, playlist: result }
     },
   }),
   rotateUserPlaylistCapability: t.field({
-    type: CapabilityMutationResultRef,
+    type: OwnerMutationResultRef,
     authScopes: { hasPermission: "share:user-playlists:own" },
     args: {
       input: t.arg({ type: UserPlaylistVersionedInput, required: true }),
@@ -296,7 +266,7 @@ builder.mutationFields((t) => ({
       )
       return isMappedError(result)
         ? result
-        : { kind: "capability" as const, payload: result }
+        : { kind: "owner" as const, playlist: result }
     },
   }),
 }))

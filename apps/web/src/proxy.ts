@@ -22,6 +22,7 @@ import {
   watchVideoPath,
 } from "@/lib/routes"
 import { getWatchHomepageAvailability } from "@/lib/watch-home-route-admission"
+import { isUserPlaylistPublicReadUxEnabled } from "@/lib/feature-flags"
 import { resolveLegacyWatchEpisodeAlias } from "@/lib/watch-route-aliases"
 import { canonicalizeWatchPath } from "@/lib/url-canonicalize"
 import {
@@ -258,12 +259,21 @@ async function handlePublicUserPlaylist(
   const locale = publicPlaylistStatusLocale(
     request.headers.get("accept-language"),
   )
-  const decision = match
-    ? await runPublicUserPlaylistPreflight({
-        capability: match[1]!,
-        requestHeaders: request.headers,
-      })
-    : "unavailable"
+  const publicReadEnabled = match
+    ? await isUserPlaylistPublicReadUxEnabled({
+        kind: "service",
+        key: "forge-public-playlist",
+        anonymous: true,
+        custom: { surface: "user-playlist-public-read" },
+      }).catch(() => false)
+    : false
+  const decision =
+    match && publicReadEnabled
+      ? await runPublicUserPlaylistPreflight({
+          capability: match[1]!,
+          requestHeaders: request.headers,
+        })
+      : "unavailable"
 
   if (decision === "available") {
     const secret = process.env.USER_PLAYLIST_TRUSTED_CONTEXT_HMAC_SECRET ?? ""
@@ -834,8 +844,9 @@ async function isAdmittedInternalRewrite(
     return false
   }
   if (
+    !isOwnerPlaylistPath(claimedPublicPathname) &&
     canonicalizeWatchPath({ rawPathname: claimedPublicPathname }).kind ===
-    "redirect"
+      "redirect"
   ) {
     return false
   }

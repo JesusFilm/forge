@@ -67,6 +67,7 @@ export function UserPlaylistComposer({
 }) {
   const t = useTranslations("UserPlaylists")
   const keySequence = useRef(initialPlaylist.blocks.length)
+  const draftRevision = useRef(0)
   const [serverPlaylist, setServerPlaylist] = useState(initialPlaylist)
   const [title, setTitle] = useState(initialPlaylist.title)
   const [description, setDescription] = useState(initialPlaylist.description)
@@ -117,7 +118,8 @@ export function UserPlaylistComposer({
   }, [dirty])
 
   function markDirty() {
-    setStatus("dirty")
+    draftRevision.current += 1
+    setStatus((current) => (current === "saving" ? current : "dirty"))
     setMessage(null)
   }
 
@@ -282,6 +284,7 @@ export function UserPlaylistComposer({
       setMessage(t("errors.saveValidation"))
       return
     }
+    const dispatchedRevision = draftRevision.current
     setStatus("saving")
     setMessage(null)
     const result = await actions.update({
@@ -314,6 +317,12 @@ export function UserPlaylistComposer({
       return
     }
     setServerPlaylist(result.data)
+    if (draftRevision.current !== dispatchedRevision) {
+      setStatus("dirty")
+      setMessage(null)
+      setAnnouncement(t("announcement.saved", { version: result.data.version }))
+      return
+    }
     setTitle(result.data.title)
     setDescription(result.data.description)
     setLocale(result.data.locale)
@@ -327,6 +336,14 @@ export function UserPlaylistComposer({
     setStatus("saved")
     setMessage(t("composer.savedMessage", { version: result.data.version }))
     setAnnouncement(t("announcement.saved", { version: result.data.version }))
+  }
+
+  function closePicker() {
+    const target = pickerTarget
+    setPickerTarget(null)
+    requestAnimationFrame(() => {
+      if (target) focusPickerOpener(target)
+    })
   }
 
   async function revealAndUse(use: "copy" | "preview") {
@@ -375,9 +392,7 @@ export function UserPlaylistComposer({
       )
       return
     }
-    setServerPlaylist(
-      "playlist" in result.data ? result.data.playlist : result.data,
-    )
+    setServerPlaylist(result.data)
     setAnnouncement(
       operation === "unshare"
         ? t("announcement.sharingOff")
@@ -693,7 +708,7 @@ export function UserPlaylistComposer({
                       ...(replaceItemIndex == null ? {} : { replaceItemIndex }),
                     })
                   }
-                  onClosePicker={() => setPickerTarget(null)}
+                  onClosePicker={closePicker}
                   onSelectVideo={selectVideo}
                 />
               )}
@@ -941,6 +956,14 @@ function focusMediaControl(key: string, index: number, action: string) {
       `[data-block-key="${key}"] [data-video-index="${index}"] [data-item-action="${action}"]`,
     )
     ?.focus()
+}
+
+function focusPickerOpener(target: PickerTarget) {
+  const selector =
+    target.replaceItemIndex == null
+      ? `[data-block-key="${target.blockKey}"] [data-add-video]`
+      : `[data-block-key="${target.blockKey}"] [data-video-index="${target.replaceItemIndex}"] [data-item-action="replace"]`
+  document.querySelector<HTMLButtonElement>(selector)?.focus()
 }
 
 function cloneBlock(block: UserPlaylistBlock): UserPlaylistBlock {

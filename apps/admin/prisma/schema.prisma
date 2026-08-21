@@ -1818,6 +1818,7 @@ model WatchProgress {
 model UserPlaylist {
   id                                 String                      @id @default(cuid())
   ownerSubject                       String                      @map("owner_subject")
+  lifecycleProjection                ConsumerLifecycleProjection @relation(fields: [ownerSubject], references: [ownerSubject], onDelete: Cascade, onUpdate: Cascade)
   title                              String
   description                        String                      @default("")
   contentLocale                      String                      @map("content_locale")
@@ -1869,6 +1870,8 @@ model ConsumerLifecycleProjection {
   sourceEventId        String                 @unique @map("source_event_id")
   createdAt            DateTime               @default(now()) @map("created_at")
   updatedAt            DateTime               @updatedAt @map("updated_at")
+
+  userPlaylists UserPlaylist[]
 
   @@index([state, activeLeaseExpiresAt])
   @@map("consumer_lifecycle_projection")

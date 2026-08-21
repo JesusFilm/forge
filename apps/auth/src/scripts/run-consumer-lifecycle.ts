@@ -15,6 +15,7 @@ import {
   ConsumerLifecycleOutboxService,
   SignedConsumerLifecycleSender,
 } from "@/services/consumer-lifecycle-outbox.service"
+import { runConsumerLifecycleJob } from "@/services/consumer-lifecycle-runner.service"
 
 async function run() {
   const config = getAdminUserPlaylistLifecycleConfig()
@@ -29,42 +30,23 @@ async function run() {
     prisma,
     eligibility,
   )
-  let cursor: string | undefined
-  let reconciled = 0
-  do {
-    const batch = await reconciliation.reconcileBatch({ cursor })
-    reconciled += batch.processed
-    cursor = batch.nextCursor ?? undefined
-  } while (cursor)
-
+  const sender = new SignedConsumerLifecycleSender(config)
   const outbox = new ConsumerLifecycleOutboxService(prisma, {
-    send: (event) => new SignedConsumerLifecycleSender(config).send(event),
+    send: (event) => sender.send(event),
   })
-  const workerId = randomUUID()
-  let delivered = 0
-  let failed = 0
-  for (let batch = 0; batch < 20; batch += 1) {
-    const result = await outbox.deliverBatch(workerId)
-    delivered += result.delivered
-    failed += result.failed
-    if (result.delivered === 0 && result.failed === 0) break
-  }
-
-  const deletion = await new AccountDeletionRetryService(
+  const deletion = new AccountDeletionRetryService(
     createAccountDeletionDeps(),
     createAccountDeletionRetryStore(),
-  ).retryBatch()
-
-  console.log(
-    JSON.stringify({
-      event: "consumer_lifecycle_run",
-      reconciled,
-      delivered,
-      failed,
-      deletion,
-    }),
   )
-  if (failed > 0 || deletion.failed > 0) process.exitCode = 1
+  const result = await runConsumerLifecycleJob({
+    workerId: randomUUID(),
+    reconciliation,
+    outbox,
+    deletion,
+  })
+
+  console.log(JSON.stringify(result))
+  process.exitCode = result.exitCode
 }
 
 run().finally(async () => prisma.$disconnect())

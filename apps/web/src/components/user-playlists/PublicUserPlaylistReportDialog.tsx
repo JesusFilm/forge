@@ -95,6 +95,7 @@ export function PublicUserPlaylistReportDialog({
     <Dialog
       open={open}
       onOpenChange={(nextOpen) => {
+        if (!nextOpen && state === "submitting") return
         setOpen(nextOpen)
         if (nextOpen && !intentAvailable) {
           setState("unavailable-intent")
@@ -182,7 +183,10 @@ export function PublicUserPlaylistReportDialog({
         ) : null}
 
         <DialogFooter className="border-white/10 bg-white/5">
-          <DialogClose className="inline-flex min-h-11 items-center justify-center rounded-full border border-white/20 px-4 font-semibold hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-red-200 focus-visible:outline-none">
+          <DialogClose
+            disabled={state === "submitting"}
+            className="inline-flex min-h-11 items-center justify-center rounded-full border border-white/20 px-4 font-semibold hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-red-200 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+          >
             {state === "uniform-success"
               ? t("report.close")
               : t("report.cancel")}

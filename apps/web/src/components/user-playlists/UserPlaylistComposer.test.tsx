@@ -14,6 +14,16 @@ import type {
   UserPlaylistOwnerActions,
 } from "@/lib/user-playlist-contract"
 
+function deferred<T>() {
+  let resolve!: (value: T) => void
+  let reject!: (reason?: unknown) => void
+  const promise = new Promise<T>((resolvePromise, rejectPromise) => {
+    resolve = resolvePromise
+    reject = rejectPromise
+  })
+  return { promise, reject, resolve }
+}
+
 const playlist: UserPlaylist = {
   id: "playlist-1",
   title: "Stories for home",
@@ -127,6 +137,111 @@ describe("UserPlaylistComposer", () => {
     expect(ownerActions.update).toHaveBeenCalledTimes(1)
     expect(container.textContent).toContain("newer saved version")
     expect(title?.value).toContain("updated")
+  })
+
+  it("preserves edits made while a save is pending and advances the server version", async () => {
+    const ownerActions = actions()
+    const update =
+      deferred<Awaited<ReturnType<UserPlaylistOwnerActions["update"]>>>()
+    vi.mocked(ownerActions.update).mockReturnValue(update.promise)
+
+    await act(async () => {
+      root.render(
+        <UserPlaylistComposer playlist={playlist} actions={ownerActions} />,
+      )
+    })
+
+    const title = container.querySelector<HTMLInputElement>("#playlist-title")!
+    await act(async () => {
+      title.focus()
+      title.setRangeText("Dispatched title", 0, title.value.length)
+      title.dispatchEvent(new Event("input", { bubbles: true }))
+    })
+    await act(async () => {
+      Array.from(container.querySelectorAll("button"))
+        .find((candidate) => candidate.textContent === "Save")
+        ?.click()
+    })
+
+    await act(async () => {
+      title.setRangeText("Newer local title", 0, title.value.length)
+      title.dispatchEvent(new Event("input", { bubbles: true }))
+    })
+    expect(container.textContent).toContain("Saving changes")
+
+    await act(async () => {
+      update.resolve({
+        ok: true,
+        data: { ...playlist, title: "Dispatched title", version: 4 },
+      })
+      await update.promise
+    })
+
+    expect(title.value).toBe("Newer local title")
+    expect(container.textContent).toContain("Unsaved changes")
+    expect(container.textContent).toContain(
+      "Public preview stays on saved version 4.",
+    )
+  })
+
+  it("returns focus to the add-video opener after keyboard cancellation", async () => {
+    const collection: UserPlaylist = {
+      ...playlist,
+      blocks: [{ kind: "MEDIA_COLLECTION", title: "Stories", items: [] }],
+    }
+    await act(async () => {
+      root.render(
+        <UserPlaylistComposer playlist={collection} actions={actions()} />,
+      )
+    })
+
+    const opener =
+      container.querySelector<HTMLButtonElement>("[data-add-video]")!
+    opener.focus()
+    await act(async () => opener.click())
+    const close = container.querySelector<HTMLButtonElement>(
+      '[aria-label="Close video picker"]',
+    )!
+    close.focus()
+    await act(async () => close.click())
+
+    await vi.waitFor(() => {
+      expect(document.activeElement).toBe(
+        container.querySelector<HTMLButtonElement>("[data-add-video]"),
+      )
+    })
+  })
+
+  it("returns focus to the replace-video opener after keyboard cancellation", async () => {
+    const unavailable: UserPlaylist = {
+      ...playlist,
+      blocks: [
+        {
+          kind: "VIDEO_CAROUSEL",
+          title: "Featured",
+          items: [{ videoId: "private-video-id" }],
+        },
+      ],
+      unavailableVideoIds: ["private-video-id"],
+    }
+    await act(async () => {
+      root.render(
+        <UserPlaylistComposer playlist={unavailable} actions={actions()} />,
+      )
+    })
+
+    const opener = container.querySelector<HTMLButtonElement>(
+      '[data-item-action="replace"]',
+    )!
+    opener.focus()
+    await act(async () => opener.click())
+    const close = container.querySelector<HTMLButtonElement>(
+      '[aria-label="Close video picker"]',
+    )!
+    close.focus()
+    await act(async () => close.click())
+
+    await vi.waitFor(() => expect(document.activeElement).toBe(opener))
   })
 
   it("keeps an unavailable item in place and blocks save until removed or replaced", async () => {

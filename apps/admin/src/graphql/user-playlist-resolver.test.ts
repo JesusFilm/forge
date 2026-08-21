@@ -8,6 +8,7 @@ import {
   NotFoundError,
   ServiceUnavailableError,
 } from "@/services/errors"
+import { UserPlaylistCapabilityIntegrityError } from "@/services/user-playlist-capability"
 
 describe("User Playlist resolver boundary", () => {
   it("normalizes only the closed block input variants", () => {
@@ -56,6 +57,9 @@ describe("User Playlist resolver boundary", () => {
     expect(mapUserPlaylistError(new ServiceUnavailableError())).toMatchObject({
       code: "SERVICE_UNAVAILABLE",
     })
+    expect(
+      mapUserPlaylistError(new UserPlaylistCapabilityIntegrityError()),
+    ).toMatchObject({ code: "SERVICE_UNAVAILABLE" })
     expect(mapUserPlaylistError(new Error("unexpected"))).toBeNull()
   })
 })

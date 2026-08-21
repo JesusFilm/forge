@@ -36,6 +36,13 @@ export class UserPlaylistCapabilityConfigurationError extends Error {
   }
 }
 
+export class UserPlaylistCapabilityIntegrityError extends Error {
+  constructor(message = "User Playlist capability material is corrupt") {
+    super(message)
+    this.name = "UserPlaylistCapabilityIntegrityError"
+  }
+}
+
 function aad(playlistId: string, tokenVersion: number): Buffer {
   return Buffer.from(
     JSON.stringify({
@@ -188,22 +195,27 @@ export class UserPlaylistCapability {
         "Capability material references a missing key",
       )
     }
-    const decipher = createDecipheriv(
-      "aes-256-gcm",
-      encryptionKey.key,
-      material.nonce,
-    )
-    decipher.setAAD(aad(playlistId, tokenVersion))
-    decipher.setAuthTag(Buffer.from(material.authTag))
-    const token = Buffer.concat([
-      decipher.update(material.ciphertext),
-      decipher.final(),
-    ]).toString("ascii")
+    let token: string
+    try {
+      const decipher = createDecipheriv(
+        "aes-256-gcm",
+        encryptionKey.key,
+        material.nonce,
+      )
+      decipher.setAAD(aad(playlistId, tokenVersion))
+      decipher.setAuthTag(Buffer.from(material.authTag))
+      token = Buffer.concat([
+        decipher.update(material.ciphertext),
+        decipher.final(),
+      ]).toString("ascii")
+    } catch {
+      throw new UserPlaylistCapabilityIntegrityError()
+    }
     if (!this.isTokenShape(token))
-      throw new Error("Invalid capability plaintext")
+      throw new UserPlaylistCapabilityIntegrityError()
     const recoveredDigest = digest(token, lookupKey)
     if (!recoveredDigest.equals(Buffer.from(material.digest))) {
-      throw new Error("Capability digest mismatch")
+      throw new UserPlaylistCapabilityIntegrityError()
     }
     return token
   }

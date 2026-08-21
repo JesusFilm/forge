@@ -11,7 +11,6 @@ import type {
   OwnerUserPlaylist,
   OwnerUserPlaylistSummary,
   PublicUserPlaylist,
-  UserPlaylistWithCapability,
 } from "@/services/user-playlist.service"
 import type { UserPlaylistBlock } from "@/services/user-playlist.schemas"
 import {
@@ -24,6 +23,7 @@ import {
   ServiceUnavailableError,
 } from "@/services/errors"
 import { ConsumerLifecycleUnavailableError } from "@/services/consumer-lifecycle.service"
+import { UserPlaylistCapabilityIntegrityError } from "@/services/user-playlist-capability"
 
 type TextBlock = Extract<UserPlaylistBlock, { t: "text" }>
 type MediaBlock = Extract<UserPlaylistBlock, { t: "mediaCollection" }>
@@ -148,19 +148,6 @@ export const PublicUserPlaylistRef = builder
         resolve: (row) => row.blocks,
       }),
       reportIntent: t.exposeString("reportIntent"),
-    }),
-  })
-
-export type UserPlaylistCapabilityPayload = UserPlaylistWithCapability
-export const UserPlaylistCapabilityPayloadRef = builder
-  .objectRef<UserPlaylistCapabilityPayload>("UserPlaylistCapabilityPayload")
-  .implement({
-    fields: (t) => ({
-      playlist: t.field({
-        type: OwnerUserPlaylistRef,
-        resolve: (row) => row.playlist,
-      }),
-      capability: t.exposeString("capability"),
     }),
   })
 
@@ -297,6 +284,7 @@ export function mapUserPlaylistError(
     error instanceof ServiceUnavailableError ||
     error instanceof ServiceConfigurationError ||
     error instanceof ConsumerLifecycleUnavailableError ||
+    error instanceof UserPlaylistCapabilityIntegrityError ||
     (error instanceof Error &&
       /(?:ConfigurationError|runtime is not configured)$/.test(error.name))
   )

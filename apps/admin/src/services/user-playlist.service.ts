@@ -93,11 +93,6 @@ export type PublicUserPlaylistAccess = {
   capabilityDigest: Uint8Array
 }
 
-export type UserPlaylistWithCapability = {
-  playlist: OwnerUserPlaylist
-  capability: string
-}
-
 type PlaylistReadRow = {
   id: string
   title: string
@@ -293,7 +288,7 @@ export class UserPlaylistService {
   async create(
     input: CreateUserPlaylistInput,
     context: UserPlaylistOwnerContext,
-  ): Promise<UserPlaylistWithCapability> {
+  ): Promise<OwnerUserPlaylist> {
     this.assertShareAuthority(context)
     await this.dependencies.lifecycle.assertActive(context.ownerSubject)
     const parsed = CreateUserPlaylistInputSchema.parse(input)
@@ -372,18 +367,15 @@ export class UserPlaylistService {
           { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
         )
         return {
-          capability: createdCapability.token,
-          playlist: {
-            id,
-            title: parsed.title,
-            description: parsed.description,
-            locale: parsed.locale,
-            countryCode: parsed.countryCode,
-            version: 1,
-            shared: true,
-            blocks: parsed.snapshot.blocks,
-            unavailableVideoIds: [],
-          },
+          id,
+          title: parsed.title,
+          description: parsed.description,
+          locale: parsed.locale,
+          countryCode: parsed.countryCode,
+          version: 1,
+          shared: true,
+          blocks: parsed.snapshot.blocks,
+          unavailableVideoIds: [],
         }
       } catch (error) {
         lastError = error
@@ -540,7 +532,7 @@ export class UserPlaylistService {
     operation: "rotated" | "reshared",
     input: { id: string; expectedVersion: number },
     context: UserPlaylistOwnerContext,
-  ): Promise<UserPlaylistWithCapability> {
+  ): Promise<OwnerUserPlaylist> {
     this.assertShareAuthority(context)
     await this.dependencies.lifecycle.assertActive(context.ownerSubject)
     const parsed = VersionedUserPlaylistIdOperationSchema.parse(input)
@@ -587,23 +579,20 @@ export class UserPlaylistService {
         },
       })
     })
-    return {
-      capability: createdCapability.token,
-      playlist: { ...view, version: nextVersion, shared: true },
-    }
+    return { ...view, version: nextVersion, shared: true }
   }
 
   async rotate(
     input: { id: string; expectedVersion: number },
     context: UserPlaylistOwnerContext,
-  ): Promise<UserPlaylistWithCapability> {
+  ): Promise<OwnerUserPlaylist> {
     return this.replaceCapability("rotated", input, context)
   }
 
   async reshare(
     input: { id: string; expectedVersion: number },
     context: UserPlaylistOwnerContext,
-  ): Promise<UserPlaylistWithCapability> {
+  ): Promise<OwnerUserPlaylist> {
     return this.replaceCapability("reshared", input, context)
   }
 

@@ -100,6 +100,27 @@ describe("User Playlist GraphQL contract", () => {
     )
   })
 
+  it("returns owner playlists from sharing mutations and reserves plaintext capability for the explicit reveal query", () => {
+    const mutations = schema.getMutationType()!.getFields()
+    for (const name of [
+      "createUserPlaylist",
+      "reshareUserPlaylist",
+      "rotateUserPlaylistCapability",
+    ]) {
+      expect(mutations[name]?.type.toString()).toBe(
+        "UserPlaylistMutationResult",
+      )
+    }
+    expect(Object.keys(fields("UserPlaylistSuccess"))).toEqual(["playlist"])
+    expect(Object.keys(fields("UserPlaylistCapability"))).toEqual([
+      "capability",
+    ])
+    expect(schema.getType("UserPlaylistCapabilityPayload")).toBeUndefined()
+    expect(
+      schema.getType("UserPlaylistCapabilityMutationResult"),
+    ).toBeUndefined()
+  })
+
   it("keeps the anonymous DTO free of owner and persistence fields", () => {
     const publicFields = Object.keys(fields("PublicUserPlaylist"))
     expect(publicFields).toEqual(

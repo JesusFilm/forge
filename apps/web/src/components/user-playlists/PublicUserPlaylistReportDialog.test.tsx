@@ -13,6 +13,16 @@ vi.mock("@/lib/user-playlist-public-actions", () => ({
 
 import { PublicUserPlaylistReportDialog } from "./PublicUserPlaylistReportDialog"
 
+function deferred<T>() {
+  let resolve!: (value: T) => void
+  let reject!: (reason?: unknown) => void
+  const promise = new Promise<T>((resolvePromise, rejectPromise) => {
+    resolve = resolvePromise
+    reject = rejectPromise
+  })
+  return { promise, reject, resolve }
+}
+
 let root: Root
 let container: HTMLDivElement
 
@@ -80,5 +90,48 @@ describe("PublicUserPlaylistReportDialog", () => {
     await act(async () => button("Cancel").click())
     expect(submitReport).not.toHaveBeenCalled()
     expect(document.activeElement).toBe(trigger)
+  })
+
+  it("keeps cancellation disabled while a report is pending", async () => {
+    const pending = deferred<{ ok: true }>()
+    submitReport.mockReturnValue(pending.promise)
+    await render()
+    const select = document.querySelector("select")!
+    await act(async () => {
+      select.value = "OTHER_SAFETY"
+      select.dispatchEvent(new Event("change", { bubbles: true }))
+    })
+    await act(async () => button("Submit report").click())
+
+    expect(button("Cancel").disabled).toBe(true)
+    await act(async () => button("Cancel").click())
+    expect(document.body.textContent).toContain("Report this playlist")
+
+    await act(async () => {
+      pending.resolve({ ok: true })
+      await pending.promise
+    })
+    expect(document.body.textContent).toContain(
+      "Thank you. Your report has been received.",
+    )
+  })
+
+  it.each([
+    ["an unsuccessful result", false],
+    ["a rejected request", true],
+  ])("shows a retryable error for %s", async (_name, rejects) => {
+    if (rejects) submitReport.mockRejectedValue(new Error("offline"))
+    else submitReport.mockResolvedValue({ ok: false })
+    await render()
+    const select = document.querySelector("select")!
+    await act(async () => {
+      select.value = "OTHER_SAFETY"
+      select.dispatchEvent(new Event("change", { bubbles: true }))
+    })
+    await act(async () => button("Submit report").click())
+
+    expect(document.body.textContent).toContain("could not be sent")
+    expect(button("Cancel").disabled).toBe(false)
+    expect(button("Submit report").disabled).toBe(false)
   })
 })

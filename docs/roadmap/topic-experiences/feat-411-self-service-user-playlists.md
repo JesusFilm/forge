@@ -11,6 +11,7 @@ blocks:
   - "feat-412"
   - "feat-413"
   - "feat-414"
+  - "feat-415"
 tags:
   - "auth"
   - "admin"

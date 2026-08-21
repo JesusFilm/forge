@@ -1218,7 +1218,7 @@ type Mutation {
   createManagerJob(artifacts: JSON, errors: JSON, languages: [String!], muxAssetId: String!, muxPlaybackId: String, options: JSON, primaryRequestedTargetLanguageCode: String, requestedLanguageAbbreviations: [String!], resolvedTargetLanguageCodes: [String!], sourceCollectionTitle: String, sourceLanguageCode: String, sourceLanguageId: String, sourceMediaTitle: String, sourceSelectionReason: String, steps: [ManagerJobStepInput!], videoDocumentId: String): ManagerJob
   """Create a media folder at the root or inside another folder."""
   createMediaFolder(name: String!, parentId: ID): MediaFolder
-  createUserPlaylist(input: CreateUserPlaylistInput!): UserPlaylistCapabilityMutationResult
+  createUserPlaylist(input: CreateUserPlaylistInput!): UserPlaylistMutationResult
   """
   Delete a media asset only when no experience or video locale fields still reference it.
   """
@@ -1245,14 +1245,14 @@ type Mutation {
   registerMediaAsset(backend: MediaAssetBackend, byteSize: String, checksumSha256: String, durationMs: String, folderId: ID, height: Int, kind: MediaAssetKind!, mimeType: String!, muxAssetId: String, muxPlaybackId: String, muxUploadId: String, originalFilename: String, status: MediaAssetStatus, visibility: MediaAssetVisibility, width: Int): MediaAsset
   rejectManagerSeoProposal(input: ManagerSeoRejectInput!): ManagerSeoDecisionResult!
   reportUserPlaylist(input: UserPlaylistReportInput!): UserPlaylistReportReceipt
-  reshareUserPlaylist(input: UserPlaylistVersionedInput!): UserPlaylistCapabilityMutationResult
+  reshareUserPlaylist(input: UserPlaylistVersionedInput!): UserPlaylistMutationResult
   """
   Copy a historical Experience locale revision into the shared active draft without changing canonical content.
   """
   restoreExperienceLocaleRevisionToDraft(revisionId: ID!): ExperienceLocale
   restoreUserPlaylist(playlistId: ID!, reason: UserPlaylistRestoreReason!): UserPlaylistModerationResult
   reviewManagerSeoLesson(input: ManagerSeoLessonReviewInput!): ManagerSeoLesson!
-  rotateUserPlaylistCapability(input: UserPlaylistVersionedInput!): UserPlaylistCapabilityMutationResult
+  rotateUserPlaylistCapability(input: UserPlaylistVersionedInput!): UserPlaylistMutationResult
   """
   Generate and persist a semantic embedding for an ExperienceLocale. Owner or ADMIN.
   """
@@ -1716,17 +1716,6 @@ enum UserPlaylistBlockReason {
 
 type UserPlaylistCapability {
   capability: String
-}
-
-union UserPlaylistCapabilityMutationResult = UserPlaylistCapabilitySuccess | UserPlaylistError
-
-type UserPlaylistCapabilityPayload {
-  capability: String
-  playlist: OwnerUserPlaylist
-}
-
-type UserPlaylistCapabilitySuccess {
-  payload: UserPlaylistCapabilityPayload
 }
 
 union UserPlaylistDeleteResult = UserPlaylistDeleteSuccess | UserPlaylistError

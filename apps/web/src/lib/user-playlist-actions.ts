@@ -9,6 +9,7 @@ import {
 } from "@/auth/web-session"
 import { env } from "@/env"
 import { createUserPlaylistAdminClient } from "@/lib/admin-client"
+import { isUserPlaylistAuthoringUxEnabled } from "@/lib/feature-flags"
 import { getUserPlaylistActionLimiter } from "@/lib/user-playlist-action-rate-limit"
 import {
   authorizeUserPlaylistActionRequest,
@@ -21,7 +22,6 @@ import type {
   UserPlaylistActionErrorCode,
   UserPlaylistActionResult,
   UserPlaylistBlock,
-  UserPlaylistCapabilityResult,
   UserPlaylistPage,
   UserPlaylistPolicy,
   UserPlaylistSummary,
@@ -171,6 +171,19 @@ const failure = (
 
 type OwnerClient = ReturnType<typeof createUserPlaylistAdminClient>
 
+async function isAuthoringEnabled(subject: string): Promise<boolean> {
+  try {
+    return await isUserPlaylistAuthoringUxEnabled({
+      kind: "user",
+      key: subject,
+      anonymous: false,
+      custom: { surface: "user-playlists" },
+    })
+  } catch {
+    return false
+  }
+}
+
 async function runOwnerAction<T>(
   requiredScopes: readonly string[],
   ingressAction: "read" | "write" | "share" | "reveal",
@@ -187,6 +200,7 @@ async function runOwnerAction<T>(
     cookieStore.get(WEB_AUTH_SESSION_COOKIE)?.value,
   )
   if (!session) return failure("UNAUTHENTICATED")
+  if (!(await isAuthoringEnabled(session.subject))) return failure("FORBIDDEN")
   if (!requiredScopes.every((scope) => session.scopes.includes(scope))) {
     return failure("INELIGIBLE")
   }
@@ -250,26 +264,6 @@ function mapOwnerResult(
     : failure("SERVICE_UNAVAILABLE")
 }
 
-function mapCapabilityResult(
-  value: unknown,
-): UserPlaylistActionResult<UserPlaylistCapabilityResult> {
-  const error = mappedAdminError(value)
-  if (error) return error
-  const row = object(value)
-  const payload = object(row?.payload)
-  const playlist = adaptOwnerUserPlaylist(payload?.playlist)
-  if (
-    row?.__typename !== "UserPlaylistCapabilitySuccess" ||
-    !payload ||
-    typeof payload.capability !== "string" ||
-    payload.capability.length === 0 ||
-    !playlist
-  ) {
-    return failure("SERVICE_UNAVAILABLE")
-  }
-  return { ok: true, data: { capability: payload.capability, playlist } }
-}
-
 function graphqlBlocks(blocks: UserPlaylistBlock[]) {
   return blocks.map((item) =>
     item.kind === "TEXT"
@@ -286,6 +280,13 @@ export async function getUserPlaylistPolicy(): Promise<
     allowedOrigins: [env.WEB_BASE_URL, env.NEXT_PUBLIC_CANONICAL_ORIGIN],
   })
   if (!admission.ok) return failure("FORBIDDEN")
+  const cookieStore = await cookies()
+  const session = await readWebAuthSessionCookie(
+    cookieStore.get(WEB_AUTH_SESSION_COOKIE)?.value,
+  )
+  if (!session) return failure("UNAUTHENTICATED")
+  if (!(await isAuthoringEnabled(session.subject))) return failure("FORBIDDEN")
+  if (!session.scopes.includes("playlist:read")) return failure("INELIGIBLE")
   return readConfiguredUserPlaylistPolicy()
 }
 
@@ -341,7 +342,7 @@ export async function getMyUserPlaylist(
 
 export async function createUserPlaylist(
   input: CreateUserPlaylistInput,
-): Promise<UserPlaylistActionResult<UserPlaylistCapabilityResult>> {
+): Promise<UserPlaylistActionResult<UserPlaylist>> {
   return runOwnerAction(
     ["playlist:write", "playlist:share"],
     "write",
@@ -354,7 +355,7 @@ export async function createUserPlaylist(
           input: { ...parsed.data, blocks: graphqlBlocks(parsed.data.blocks) },
         },
       })
-      return mapCapabilityResult(result.data?.createUserPlaylist)
+      return mapOwnerResult(result.data?.createUserPlaylist)
     },
   )
 }
@@ -417,10 +418,10 @@ export async function unshareUserPlaylist(
   return versionedOwnerMutation(input, unshareUserPlaylistOperation)
 }
 
-async function versionedCapabilityMutation(
+async function versionedShareMutation(
   input: UserPlaylistVersionedInput,
   kind: "reshare" | "rotate",
-): Promise<UserPlaylistActionResult<UserPlaylistCapabilityResult>> {
+): Promise<UserPlaylistActionResult<UserPlaylist>> {
   return runOwnerAction(["playlist:share"], "share", async (client) => {
     const parsed = versionedSchema.safeParse(input)
     if (!parsed.success) return failure("INVALID_INPUT")
@@ -429,26 +430,26 @@ async function versionedCapabilityMutation(
         mutation: reshareUserPlaylistOperation,
         variables: { input: parsed.data },
       })
-      return mapCapabilityResult(result.data?.reshareUserPlaylist)
+      return mapOwnerResult(result.data?.reshareUserPlaylist)
     }
     const result = await client.mutate({
       mutation: rotateUserPlaylistCapabilityOperation,
       variables: { input: parsed.data },
     })
-    return mapCapabilityResult(result.data?.rotateUserPlaylistCapability)
+    return mapOwnerResult(result.data?.rotateUserPlaylistCapability)
   })
 }
 
 export async function reshareUserPlaylist(
   input: UserPlaylistVersionedInput,
-): Promise<UserPlaylistActionResult<UserPlaylistCapabilityResult>> {
-  return versionedCapabilityMutation(input, "reshare")
+): Promise<UserPlaylistActionResult<UserPlaylist>> {
+  return versionedShareMutation(input, "reshare")
 }
 
 export async function rotateUserPlaylistCapability(
   input: UserPlaylistVersionedInput,
-): Promise<UserPlaylistActionResult<UserPlaylistCapabilityResult>> {
-  return versionedCapabilityMutation(input, "rotate")
+): Promise<UserPlaylistActionResult<UserPlaylist>> {
+  return versionedShareMutation(input, "rotate")
 }
 
 export async function revealUserPlaylistCapability(

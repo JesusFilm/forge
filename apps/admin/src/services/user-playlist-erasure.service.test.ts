@@ -13,6 +13,7 @@ describe("UserPlaylistErasureService", () => {
   const reports = { deleteMany: vi.fn() }
   const quota = { deleteMany: vi.fn() }
   const audit = { updateMany: vi.fn() }
+  const lockLifecycle = vi.fn()
   const tx = {
     userPlaylistErasureReceipt: receipt,
     consumerLifecycleProjection: lifecycle,
@@ -20,6 +21,7 @@ describe("UserPlaylistErasureService", () => {
     userPlaylistReport: reports,
     userPlaylistOwnerQuota: quota,
     userPlaylistAudit: audit,
+    $queryRaw: lockLifecycle,
   }
   const prisma = {
     ...tx,
@@ -39,7 +41,7 @@ describe("UserPlaylistErasureService", () => {
   beforeEach(() => {
     vi.clearAllMocks()
     receipt.findUnique.mockResolvedValue(null)
-    lifecycle.findUnique.mockResolvedValue({ state: "DELETING", version: 9n })
+    lockLifecycle.mockResolvedValue([{ matches: true }])
     lifecycle.deleteMany.mockResolvedValue({ count: 1 })
     playlist.deleteMany.mockResolvedValue({ count: 2 })
     receipt.create.mockImplementation(async ({ data }) => ({
@@ -53,6 +55,10 @@ describe("UserPlaylistErasureService", () => {
 
     expect(authorizer.assertErasureAuthorized).toHaveBeenCalledWith(
       "erasure-credential",
+    )
+    expect(lockLifecycle).toHaveBeenCalledTimes(1)
+    expect(lockLifecycle.mock.invocationCallOrder[0]).toBeLessThan(
+      playlist.updateMany.mock.invocationCallOrder[0]!,
     )
     expect(playlist.updateMany).toHaveBeenCalledWith({
       where: { ownerSubject: input.ownerSubject },
@@ -107,7 +113,7 @@ describe("UserPlaylistErasureService", () => {
       receiptId: "receipt-1",
       erasedCount: 2,
     })
-    expect(lifecycle.findUnique).not.toHaveBeenCalled()
+    expect(lockLifecycle).not.toHaveBeenCalled()
     expect(playlist.deleteMany).not.toHaveBeenCalled()
   })
 
@@ -126,7 +132,7 @@ describe("UserPlaylistErasureService", () => {
   })
 
   it("requires the matching projected DELETING version", async () => {
-    lifecycle.findUnique.mockResolvedValue({ state: "DELETING", version: 10n })
+    lockLifecycle.mockResolvedValue([{ matches: false }])
     await expect(service.erase(input, "credential")).rejects.toBeInstanceOf(
       UserPlaylistErasureConflictError,
     )
