@@ -11,6 +11,9 @@ const WEB_AUTH_SCOPES = [
   "profile:read",
   "email:read",
   "web:watch-events:write",
+  "playlist:read",
+  "playlist:write",
+  "playlist:share",
 ] as const
 
 export type WebOAuthConfig = {

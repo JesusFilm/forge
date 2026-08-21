@@ -8,6 +8,7 @@ const rateLimitAuthRoute = vi.fn(async (_input: unknown) => ({
 }))
 const signUpEmail = vi.fn()
 const getSession = vi.fn()
+const reconcileConsumer = vi.fn()
 const canRedeemAgentLoginHandle = vi.fn(
   async (_prisma: unknown, _input: unknown) => false,
 )
@@ -55,6 +56,14 @@ vi.mock("@/auth/rate-limit", () => ({
   rateLimitAuthRoute: (input: unknown) => rateLimitAuthRoute(input),
 }))
 
+vi.mock("@/services/consumer-eligibility.service", () => ({
+  ConsumerEligibilityService: class {
+    reconcile(userId: string) {
+      return reconcileConsumer(userId)
+    }
+  },
+}))
+
 vi.mock("@/services/agent-login.service", () => ({
   canRedeemAgentLoginHandle: (prisma: unknown, input: unknown) =>
     canRedeemAgentLoginHandle(prisma, input),
@@ -78,6 +87,13 @@ describe("Auth route wrapper", () => {
     authPost.mockReset()
     getSession.mockReset()
     getSession.mockResolvedValue(null)
+    reconcileConsumer.mockReset()
+    reconcileConsumer.mockResolvedValue({
+      eligible: false,
+      membershipStatus: "INVITED",
+      state: "DISABLED",
+      version: 0n,
+    })
     canRedeemAgentLoginHandle.mockReset()
     canRedeemAgentLoginHandle.mockResolvedValue(false)
     rateLimitAuthRoute.mockReset()
@@ -880,6 +896,55 @@ describe("Auth route wrapper", () => {
 
     expect(response.status).toBe(403)
     expect(authGet).not.toHaveBeenCalled()
+  })
+
+  it("strips every playlist scope before minting for an ineligible Web user", async () => {
+    getSession.mockResolvedValue({ user: { id: "email_user_1" } })
+    reconcileConsumer.mockResolvedValue({
+      eligible: false,
+      membershipStatus: "ACTIVE",
+      state: "DISABLED",
+      version: 0n,
+    })
+
+    const { GET } = await import("./route")
+    await GET(
+      new Request(
+        "http://localhost:3004/api/auth/oauth2/authorize?client_id=jfp_web_local&scope=openid%20web%3Awatch-events%3Awrite%20playlist%3Aread%20playlist%3Awrite%20playlist%3Ashare%20playlist%3Aadmin",
+      ),
+      { params: Promise.resolve({ all: ["oauth2", "authorize"] }) },
+    )
+
+    const forwarded = authGet.mock.calls[0]?.[0] as Request
+    expect(new URL(forwarded.url).searchParams.get("scope")).toBe(
+      "openid web:watch-events:write",
+    )
+    expect(reconcileConsumer).toHaveBeenCalledWith("email_user_1")
+  })
+
+  it("preserves server-registered playlist scopes for a verified persisted social consumer", async () => {
+    getSession.mockResolvedValue({ user: { id: "social_user_1" } })
+    reconcileConsumer.mockResolvedValue({
+      eligible: true,
+      membershipStatus: "ACTIVE",
+      state: "ACTIVE",
+      version: 2n,
+    })
+    const requestedScope =
+      "openid web:watch-events:write playlist:read playlist:write playlist:share"
+
+    const { GET } = await import("./route")
+    await GET(
+      new Request(
+        `http://localhost:3004/api/auth/oauth2/authorize?client_id=jfp_web_local&scope=${encodeURIComponent(requestedScope)}`,
+      ),
+      { params: Promise.resolve({ all: ["oauth2", "authorize"] }) },
+    )
+
+    const forwarded = authGet.mock.calls[0]?.[0] as Request
+    expect(new URL(forwarded.url).searchParams.get("scope")).toBe(
+      requestedScope,
+    )
   })
 })
 

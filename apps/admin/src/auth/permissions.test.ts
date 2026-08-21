@@ -58,6 +58,9 @@ const ALL_PERMISSION_KEYS: PermissionKey[] = [
   "read:watch-progress:own",
   "write:watch-progress:own",
   "delete:watch-progress:own",
+  "read:user-playlists:own",
+  "write:user-playlists:own",
+  "share:user-playlists:own",
   "write:manager-enrichment-trigger",
   "write:manager-jobs",
   "delete:media-assets",
@@ -252,6 +255,34 @@ describe("hasPermission — Web user bearer gate", () => {
       hasPermission(
         { id: "m", role: "MOBILE_USER", rateLimitBucketKey: "m" },
         "write:watch-events",
+      ),
+    ).toBe(false)
+  })
+
+  it("grants playlist permissions only from exact immutable Web scope metadata", () => {
+    const scopedWebUser: Principal = {
+      id: "auth-user-1",
+      role: "WEB_USER",
+      rateLimitBucketKey: "auth-user-1",
+      delegated: {
+        active: true,
+        issuer: "https://auth.jesusfilm.org/api/auth",
+        audience: ["http://localhost:3003/api/graphql"],
+        clientId: "jfp_web_local",
+        environment: "local",
+        scopes: ["playlist:read", "playlist:write", "playlist:share"],
+      },
+    }
+    expect(hasPermission(scopedWebUser, "read:user-playlists:own")).toBe(true)
+    expect(hasPermission(scopedWebUser, "write:user-playlists:own")).toBe(true)
+    expect(hasPermission(scopedWebUser, "share:user-playlists:own")).toBe(true)
+    expect(
+      hasPermission(
+        {
+          ...scopedWebUser,
+          delegated: { ...scopedWebUser.delegated!, clientId: "jfp_tv_local" },
+        },
+        "read:user-playlists:own",
       ),
     ).toBe(false)
   })
@@ -667,6 +698,9 @@ describe("permission matrix completeness", () => {
         "read:watch-progress:own": true,
         "write:watch-progress:own": true,
         "delete:watch-progress:own": true,
+        "read:user-playlists:own": true,
+        "write:user-playlists:own": true,
+        "share:user-playlists:own": true,
         "write:manager-enrichment-trigger": true,
         "write:manager-jobs": true,
         "delete:media-assets": true,
@@ -711,6 +745,9 @@ describe("permission matrix completeness", () => {
         "read:watch-progress:own": true,
         "write:watch-progress:own": true,
         "delete:watch-progress:own": true,
+        "read:user-playlists:own": true,
+        "write:user-playlists:own": true,
+        "share:user-playlists:own": true,
         "write:manager-enrichment-trigger": true,
         "write:manager-jobs": true,
         "delete:media-assets": true,
@@ -757,6 +794,9 @@ describe("permission matrix completeness", () => {
         "read:watch-progress:own": true,
         "write:watch-progress:own": true,
         "delete:watch-progress:own": true,
+        "read:user-playlists:own": true,
+        "write:user-playlists:own": true,
+        "share:user-playlists:own": true,
         "write:manager-enrichment-trigger": true,
         "write:manager-jobs": true,
         "delete:media-assets": true,
@@ -811,6 +851,9 @@ describe("permission matrix completeness", () => {
         "read:watch-progress:own": true,
         "write:watch-progress:own": true,
         "delete:watch-progress:own": true,
+        "read:user-playlists:own": true,
+        "write:user-playlists:own": true,
+        "share:user-playlists:own": true,
         "write:manager-enrichment-trigger": true,
         "write:manager-jobs": true,
         "delete:media-assets": true,

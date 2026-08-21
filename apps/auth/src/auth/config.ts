@@ -20,6 +20,7 @@ import {
 } from "@/domain/apps"
 import { AUTH_SCOPES } from "@/domain/scopes"
 import { buildAccountDeletionHooks } from "@/services/account-deletion.service"
+import { ConsumerEligibilityService } from "@/services/consumer-eligibility.service"
 import {
   assertProductionAuthSecrets,
   env,
@@ -44,6 +45,7 @@ const accountDeletionHooks = buildAccountDeletionHooks({
   getAppleConfig: getAppleNativeClientConfig,
   getAdminErasureConfig: getAdminWatchProgressErasureConfig,
 })
+const consumerEligibility = new ConsumerEligibilityService(prisma)
 
 const isNextBuild = process.env.NEXT_PHASE === "phase-production-build"
 const betterAuthSecret =
@@ -199,7 +201,7 @@ function firstPartyUserClaims(user: {
     "https://jesusfilm.org/claims/actor_type":
       user.actorType === "AGENT" ? "agent" : "human",
     "https://jesusfilm.org/claims/membership_status":
-      user.membershipStatus ?? "invited",
+      user.membershipStatus?.toLowerCase() ?? "invited",
   }
 }
 
@@ -227,6 +229,11 @@ export const auth = betterAuth({
         required: false,
         input: false,
       },
+      membershipStatus: {
+        type: "string",
+        required: false,
+        input: false,
+      },
     },
     // No mailer platform-wide, so intent is verified by a fresh session
     // instead of an email (auth-owner direction, 2026-08-04). Side effects
@@ -237,6 +244,35 @@ export const auth = betterAuth({
     },
   },
   databaseHooks: {
+    account: {
+      create: {
+        after: async (account) => {
+          if (
+            account.providerId === "google" ||
+            account.providerId === "apple"
+          ) {
+            await consumerEligibility.reconcile(account.userId)
+          }
+        },
+      },
+      delete: {
+        after: async (account) => {
+          if (
+            account.providerId === "google" ||
+            account.providerId === "apple"
+          ) {
+            await consumerEligibility.reconcile(account.userId)
+          }
+        },
+      },
+    },
+    user: {
+      update: {
+        after: async (user) => {
+          await consumerEligibility.reconcile(user.id)
+        },
+      },
+    },
     session: {
       create: {
         before: async (session, ctx) => {
@@ -245,6 +281,9 @@ export const auth = betterAuth({
           )
           if (!clientKind) return
           return { data: { ...session, clientKind } }
+        },
+        after: async (session) => {
+          await consumerEligibility.reconcile(session.userId)
         },
       },
     },
@@ -310,7 +349,7 @@ export const auth = betterAuth({
       },
       customIdTokenClaims: ({ user }) => firstPartyUserClaims(user),
       customUserInfoClaims: ({ user }) => firstPartyUserClaims(user),
-      customAccessTokenClaims: ({ metadata }) => ({
+      customAccessTokenClaims: ({ metadata, user }) => ({
         ...(typeof metadata?.serviceAudience === "string"
           ? { aud: metadata.serviceAudience }
           : {}),
@@ -322,6 +361,16 @@ export const auth = betterAuth({
           : {}),
         ...(typeof metadata?.appKey === "string"
           ? { "https://jesusfilm.org/claims/app": metadata.appKey }
+          : {}),
+        ...(user
+          ? {
+              "https://jesusfilm.org/claims/actor_type":
+                user.actorType === "AGENT" ? "agent" : "human",
+              "https://jesusfilm.org/claims/membership_status":
+                typeof user.membershipStatus === "string"
+                  ? user.membershipStatus.toLowerCase()
+                  : "invited",
+            }
           : {}),
       }),
     }),

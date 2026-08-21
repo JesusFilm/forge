@@ -38,7 +38,7 @@ afterEach(() => {
 })
 
 describe("Web OAuth client", () => {
-  it("builds an Auth authorize URL with PKCE and watch-event scope", async () => {
+  it("builds an Auth authorize URL with PKCE and exact playlist scopes", async () => {
     const { buildWebAuthorizeUrl, getWebOAuthConfig } = await importClient()
     const config = getWebOAuthConfig()
 
@@ -58,7 +58,7 @@ describe("Web OAuth client", () => {
     )
     expect(url.searchParams.get("response_type")).toBe("code")
     expect(url.searchParams.get("scope")).toBe(
-      "openid profile:read email:read web:watch-events:write",
+      "openid profile:read email:read web:watch-events:write playlist:read playlist:write playlist:share",
     )
     expect(url.searchParams.get("state")).toBe("state-123")
     expect(url.searchParams.get("code_challenge")).toBe("challenge-123")

@@ -318,6 +318,7 @@ export const env = createEnv({
     AUTH_WEB_USER_TOKEN_ENVIRONMENT: z
       .enum(["local", "preview", "staging", "production"])
       .optional(),
+    AUTH_WEB_USER_TOKEN_AUDIENCE: z.string().url().optional(),
     ADMIN_BASE_URL: z.string().url().optional(),
     // Public web origin used only for outbound visitor-facing watch links
     // from admin. Optional so local/admin-only deployments do not need a new
@@ -350,6 +351,9 @@ export const env = createEnv({
     FORGE_USER_PLAYLIST_AUTHORING_DEFAULT: z.string().optional(),
     FORGE_USER_PLAYLIST_PUBLIC_READ_DEFAULT: z.string().optional(),
     USER_PLAYLIST_PUBLIC_READ_EMERGENCY_DISABLED: z.string().optional(),
+    // Auth -> Admin user-playlist owner lifecycle delivery. Separate from
+    // account-erasure and Watch progress credentials by design.
+    USER_PLAYLIST_LIFECYCLE_HMAC_SECRET: z.string().min(32).optional(),
     WATCH_SEARCH_SERVING_QRELS_REVISION: z.string().min(1).optional(),
     MANAGER_ADMIN_API_KEY: z.string().min(1).optional(),
     // SEO delegated/workload assertions use per-environment Ed25519 keyrings.
@@ -729,6 +733,9 @@ export const env = createEnv({
     USER_PLAYLIST_PUBLIC_READ_EMERGENCY_DISABLED: emptyToUndefined(
       process.env.USER_PLAYLIST_PUBLIC_READ_EMERGENCY_DISABLED,
     ),
+    USER_PLAYLIST_LIFECYCLE_HMAC_SECRET: emptyToUndefined(
+      process.env.USER_PLAYLIST_LIFECYCLE_HMAC_SECRET,
+    ),
     NEXT_PUBLIC_DATADOG_APPLICATION_ID: emptyToUndefined(
       process.env.NEXT_PUBLIC_DATADOG_APPLICATION_ID,
     ),
@@ -784,6 +791,9 @@ export const env = createEnv({
     ),
     AUTH_WEB_USER_TOKEN_ENVIRONMENT: emptyToUndefined(
       process.env.AUTH_WEB_USER_TOKEN_ENVIRONMENT,
+    ),
+    AUTH_WEB_USER_TOKEN_AUDIENCE: emptyToUndefined(
+      process.env.AUTH_WEB_USER_TOKEN_AUDIENCE,
     ),
     ADMIN_BASE_URL: emptyToUndefined(process.env.ADMIN_BASE_URL),
     WEB_CANONICAL_ORIGIN:

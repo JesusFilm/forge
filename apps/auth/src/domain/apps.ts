@@ -24,6 +24,7 @@ export type AppEnvironmentSeed = {
   clientId: string
   managerSessionServiceClientId?: string
   managerSessionServiceAudience?: string
+  tokenAudience?: string
   redirectUris: string[]
   postLogoutRedirectUris: string[]
   allowedOrigins: string[]
@@ -69,6 +70,9 @@ export const WEB_DEFAULT_SCOPES = [
   "profile:read",
   "email:read",
   "web:watch-events:write",
+  "playlist:read",
+  "playlist:write",
+  "playlist:share",
 ] satisfies AuthScopeKey[]
 
 // Identity-only: chat performs no authorization, so no *:access or
@@ -252,6 +256,7 @@ export const WEB_APP_SEED: RegisteredAppSeed = {
       key: "local",
       kind: "local",
       clientId: "jfp_web_local",
+      tokenAudience: "http://localhost:3003/api/graphql",
       redirectUris: ["http://localhost:3000/watch/api/auth/callback"],
       postLogoutRedirectUris: ["http://localhost:3000/watch"],
       allowedOrigins: ["http://localhost:3000"],
@@ -262,6 +267,7 @@ export const WEB_APP_SEED: RegisteredAppSeed = {
       key: "preview",
       kind: "preview",
       clientId: "jfp_web_preview",
+      tokenAudience: "https://admin-preview.jesusfilm.org/api/graphql",
       redirectUris: [
         "https://web-preview.jesusfilm.org/watch/api/auth/callback",
       ],
@@ -274,6 +280,7 @@ export const WEB_APP_SEED: RegisteredAppSeed = {
       key: "staging",
       kind: "staging",
       clientId: "jfp_web_staging",
+      tokenAudience: "https://admin-stage.jesusfilm.org/api/graphql",
       redirectUris: ["https://web-stage.jesusfilm.org/watch/api/auth/callback"],
       postLogoutRedirectUris: ["https://web-stage.jesusfilm.org/watch"],
       allowedOrigins: ["https://web-stage.jesusfilm.org"],
@@ -284,6 +291,7 @@ export const WEB_APP_SEED: RegisteredAppSeed = {
       key: "production",
       kind: "production",
       clientId: "jfp_web_production",
+      tokenAudience: "https://admin.jesusfilm.org/api/graphql",
       redirectUris: [
         "https://www.jesusfilm.org/watch/api/auth/callback",
         "https://watch.jesusfilm.org/watch/api/auth/callback",

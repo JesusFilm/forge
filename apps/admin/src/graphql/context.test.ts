@@ -268,6 +268,36 @@ describe("createContext", () => {
     })
   })
 
+  it("retains delegated playlist scope metadata on the GraphQL context principal", async () => {
+    resolvePrincipalFromRequest.mockResolvedValueOnce(null)
+    resolveMobileUserPrincipalFromToken.mockResolvedValueOnce(null)
+    resolveWebUserPrincipalFromToken.mockResolvedValueOnce({
+      id: "auth-user-123",
+      role: "WEB_USER",
+      rateLimitBucketKey: "auth-user-123",
+      delegated: {
+        active: true,
+        issuer: "https://auth.jesusfilm.org/api/auth",
+        audience: ["http://localhost:3003/api/graphql"],
+        clientId: "jfp_web_local",
+        environment: "local",
+        scopes: ["openid", "playlist:read"],
+      },
+    })
+    const { createContext } = await import("@/graphql/context")
+
+    const ctx = await createContext({
+      request: new Request("http://localhost/api/graphql", {
+        headers: { authorization: "Bearer playlist-only-token" },
+      }),
+    })
+
+    expect(ctx.user?.delegated?.scopes).toEqual(["openid", "playlist:read"])
+    expect(resolveWebUserPrincipalFromToken).toHaveBeenCalledWith(
+      "Bearer playlist-only-token",
+    )
+  })
+
   it("mints WEB_USER before falling through to consumer-bearer", async () => {
     resolvePrincipalFromRequest.mockResolvedValueOnce(null)
     isValidWorkflowBearer.mockReturnValue(false)

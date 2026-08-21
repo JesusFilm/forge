@@ -63,6 +63,9 @@ export type PermissionKey =
   | "read:watch-progress:own"
   | "write:watch-progress:own"
   | "delete:watch-progress:own"
+  | "read:user-playlists:own"
+  | "write:user-playlists:own"
+  | "share:user-playlists:own"
   // feat-119 PR2 — admin → manager outbound enrichment trigger.
   // Admin's `triggerManagerEnrichment` mutation gates on this key;
   // the mutation forwards the call to apps/manager's
@@ -135,6 +138,9 @@ const permissionMatrix: Record<PermissionKey, MinTier> = {
   "read:watch-progress:own": "ADMIN",
   "write:watch-progress:own": "ADMIN",
   "delete:watch-progress:own": "ADMIN",
+  "read:user-playlists:own": "ADMIN",
+  "write:user-playlists:own": "ADMIN",
+  "share:user-playlists:own": "ADMIN",
   // feat-119 PR2 — admin → manager outbound enrichment trigger.
   // ADMIN-only at the editorial-tier ladder; the bearer-mintable
   // `WORKFLOW_TRIGGER` role is also granted via the per-key allowlist
@@ -351,6 +357,14 @@ export function hasPermission(
     return VIDEO_MAPPER_PERMISSIONS.has(key)
   }
   if (role === "WEB_USER") {
+    const playlistScope = PLAYLIST_PERMISSION_SCOPES[key]
+    if (playlistScope) {
+      return (
+        user?.delegated?.active === true &&
+        user.delegated.clientId.startsWith("jfp_web_") &&
+        user.delegated.scopes.includes(playlistScope)
+      )
+    }
     return WEB_USER_PERMISSIONS.has(key)
   }
   if (role === "MOBILE_USER") {
@@ -373,6 +387,12 @@ export function hasPermission(
   }
   const min = permissionMatrix[key]
   return meetsTier(role, min)
+}
+
+const PLAYLIST_PERMISSION_SCOPES: Partial<Record<PermissionKey, string>> = {
+  "read:user-playlists:own": "playlist:read",
+  "write:user-playlists:own": "playlist:write",
+  "share:user-playlists:own": "playlist:share",
 }
 
 // -----------------------------------------------------------------------------

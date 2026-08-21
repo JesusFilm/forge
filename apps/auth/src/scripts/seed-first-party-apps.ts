@@ -217,6 +217,9 @@ async function seedFirstPartyApp(appSeed: RegisteredAppSeed) {
           appKey: appSeed.key,
           environmentKey: environment.key,
           environmentKind: environment.kind,
+          ...(environment.tokenAudience
+            ? { serviceAudience: environment.tokenAudience }
+            : {}),
           trustTier: appSeed.trustTier,
         },
       },
@@ -238,6 +241,9 @@ async function seedFirstPartyApp(appSeed: RegisteredAppSeed) {
           appKey: appSeed.key,
           environmentKey: environment.key,
           environmentKind: environment.kind,
+          ...(environment.tokenAudience
+            ? { serviceAudience: environment.tokenAudience }
+            : {}),
           trustTier: appSeed.trustTier,
         },
       },

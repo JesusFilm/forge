@@ -17,6 +17,7 @@ import {
   canRedeemAgentLoginHandle,
   isAgentLoginHandle,
 } from "@/services/agent-login.service"
+import { ConsumerEligibilityService } from "@/services/consumer-eligibility.service"
 
 type RouteContext = {
   params: Promise<{ all?: string[] }>
@@ -29,6 +30,13 @@ const LAST_LOGIN_METHOD_MAX_AGE = 60 * 60 * 24 * 365
 
 type LastLoginMethod = "apple" | "email" | "facebook" | "google" | "okta"
 const providerPriority = ["google", "facebook", "apple", "okta"] as const
+const consumerEligibility = new ConsumerEligibilityService(prisma)
+const ORDINARY_WEB_SCOPES = [
+  "openid",
+  "profile:read",
+  "email:read",
+  "web:watch-events:write",
+] as const
 
 function isFormPostRequest(request: Request): boolean {
   return (
@@ -573,6 +581,34 @@ async function enforceAgentOAuthAuthorizePolicy(
   return undefined
 }
 
+async function enforceConsumerWebOAuthPolicy(
+  request: Request,
+): Promise<Request | Response> {
+  const url = new URL(request.url)
+  const clientId = url.searchParams.get("client_id")
+  if (!clientId?.startsWith("jfp_web_")) return request
+
+  const session = await auth.api.getSession({ headers: request.headers })
+  if (!session?.user?.id) return request
+  const eligibility = await consumerEligibility.reconcile(session.user.id)
+  if (
+    eligibility.membershipStatus === "SUSPENDED" ||
+    eligibility.membershipStatus === "DISABLED"
+  ) {
+    return new Response("Forbidden", { status: 403 })
+  }
+  if (eligibility.eligible && eligibility.state === "ACTIVE") return request
+
+  const requestedScopes = (url.searchParams.get("scope") ?? "")
+    .split(/\s+/)
+    .filter(Boolean)
+  const safeScopes = (
+    requestedScopes.length > 0 ? requestedScopes : [...ORDINARY_WEB_SCOPES]
+  ).filter((scope) => !scope.startsWith("playlist:"))
+  url.searchParams.set("scope", [...new Set(safeScopes)].join(" "))
+  return new Request(url, request)
+}
+
 async function handleEmailSignUp(request: Request): Promise<Response> {
   const limit = await rateLimitAuthRoute({
     request,
@@ -835,6 +871,9 @@ export async function GET(
     })
     const agentPolicyResponse = await enforceAgentOAuthAuthorizePolicy(request)
     if (agentPolicyResponse) return agentPolicyResponse
+    const consumerPolicyResult = await enforceConsumerWebOAuthPolicy(request)
+    if (consumerPolicyResult instanceof Response) return consumerPolicyResult
+    request = consumerPolicyResult
   }
 
   const response = await authRouteHandlers.GET(request)

@@ -80,34 +80,77 @@ enum DeviceCodeStatus {
   DENIED   @map("denied")
 }
 
-model User {
-  id               String           @id
-  name             String
-  email            String
-  emailVerified    Boolean          @default(false) @map("email_verified")
-  image            String?
-  actorType        UserActorType     @default(HUMAN) @map("actor_type")
-  membershipStatus MembershipStatus @default(INVITED) @map("membership_status")
-  expiresAt        DateTime?        @map("expires_at")
-  createdAt        DateTime         @default(now()) @map("created_at")
-  updatedAt        DateTime         @updatedAt @map("updated_at")
+enum ConsumerLifecycleState {
+  ACTIVE     @map("active")
+  SUSPENDING @map("suspending")
+  SUSPENDED  @map("suspended")
+  DISABLED   @map("disabled")
+  DELETING   @map("deleting")
+  DELETED    @map("deleted")
+}
 
-  sessions    Session[]
-  accounts    Account[]
-  oauthClients OauthClient[]
-  oauthRefreshTokens OauthRefreshToken[]
-  oauthAccessTokens OauthAccessToken[]
-  oauthConsents OauthConsent[]
-  grants      AppGrant[]
-  tokens      TokenRecord[]
-  auditEvents AuthAuditEvent[]
-  deviceCodes DeviceCode[]
+enum ConsumerLifecycleOutboxStatus {
+  PENDING   @map("pending")
+  LEASED    @map("leased")
+  DELIVERED @map("delivered")
+  DEAD      @map("dead")
+}
+
+model User {
+  id                         String                 @id
+  name                       String
+  email                      String
+  emailVerified              Boolean                @default(false) @map("email_verified")
+  image                      String?
+  actorType                  UserActorType          @default(HUMAN) @map("actor_type")
+  membershipStatus           MembershipStatus       @default(INVITED) @map("membership_status")
+  consumerLifecycleState     ConsumerLifecycleState @default(DISABLED) @map("consumer_lifecycle_state")
+  consumerLifecycleVersion   BigInt                 @default(0) @map("consumer_lifecycle_version")
+  consumerLifecycleRenewedAt DateTime?              @map("consumer_lifecycle_renewed_at")
+  expiresAt                  DateTime?              @map("expires_at")
+  createdAt                  DateTime               @default(now()) @map("created_at")
+  updatedAt                  DateTime               @updatedAt @map("updated_at")
+
+  sessions                Session[]
+  accounts                Account[]
+  oauthClients            OauthClient[]
+  oauthRefreshTokens      OauthRefreshToken[]
+  oauthAccessTokens       OauthAccessToken[]
+  oauthConsents           OauthConsent[]
+  grants                  AppGrant[]
+  tokens                  TokenRecord[]
+  auditEvents             AuthAuditEvent[]
+  deviceCodes             DeviceCode[]
+  consumerLifecycleEvents ConsumerLifecycleOutbox[]
 
   @@unique([email])
   @@index([actorType])
   @@index([expiresAt])
   @@index([membershipStatus])
   @@map("user")
+}
+
+model ConsumerLifecycleOutbox {
+  id                   String                        @id @default(cuid())
+  ownerSubject         String                        @map("owner_subject")
+  owner                User                          @relation(fields: [ownerSubject], references: [id], onDelete: Cascade)
+  state                ConsumerLifecycleState
+  version              BigInt
+  activeLeaseExpiresAt DateTime?                     @map("active_lease_expires_at")
+  status               ConsumerLifecycleOutboxStatus @default(PENDING)
+  attempts             Int                           @default(0)
+  nextAttemptAt        DateTime                      @default(now()) @map("next_attempt_at")
+  leaseOwner           String?                       @map("lease_owner")
+  leaseExpiresAt       DateTime?                     @map("lease_expires_at")
+  lastErrorCode        String?                       @map("last_error_code")
+  deliveredAt          DateTime?                     @map("delivered_at")
+  createdAt            DateTime                      @default(now()) @map("created_at")
+  updatedAt            DateTime                      @updatedAt @map("updated_at")
+
+  @@unique([ownerSubject, version])
+  @@index([status, nextAttemptAt])
+  @@index([leaseExpiresAt])
+  @@map("consumer_lifecycle_outbox")
 }
 
 model Session {
@@ -121,10 +164,10 @@ model Session {
   // "mobile" for sessions created through mobile-only entry points
   clientKind String?  @map("client_kind")
   userId     String   @map("user_id")
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   oauthRefreshTokens OauthRefreshToken[]
-  oauthAccessTokens OauthAccessToken[]
+  oauthAccessTokens  OauthAccessToken[]
 
   @@index([userId])
   @@map("session")
@@ -305,20 +348,20 @@ model RegisteredApp {
 }
 
 model AppEnvironment {
-  id              String             @id @default(cuid())
-  appId           String             @map("app_id")
-  app             RegisteredApp      @relation(fields: [appId], references: [id], onDelete: Cascade)
-  key             String
-  kind            AppEnvironmentKind
-  clientId        String             @unique @map("client_id")
-  clientSecretHash String?           @map("client_secret_hash")
-  redirectUris    String[]           @map("redirect_uris")
-  allowedOrigins  String[]           @map("allowed_origins")
-  defaultScopes   String[]           @default([]) @map("default_scopes")
-  status          ApprovalStatus     @default(PENDING)
-  autoApprove     Boolean            @default(false) @map("auto_approve")
-  createdAt       DateTime           @default(now()) @map("created_at")
-  updatedAt       DateTime           @updatedAt @map("updated_at")
+  id               String             @id @default(cuid())
+  appId            String             @map("app_id")
+  app              RegisteredApp      @relation(fields: [appId], references: [id], onDelete: Cascade)
+  key              String
+  kind             AppEnvironmentKind
+  clientId         String             @unique @map("client_id")
+  clientSecretHash String?            @map("client_secret_hash")
+  redirectUris     String[]           @map("redirect_uris")
+  allowedOrigins   String[]           @map("allowed_origins")
+  defaultScopes    String[]           @default([]) @map("default_scopes")
+  status           ApprovalStatus     @default(PENDING)
+  autoApprove      Boolean            @default(false) @map("auto_approve")
+  createdAt        DateTime           @default(now()) @map("created_at")
+  updatedAt        DateTime           @updatedAt @map("updated_at")
 
   grants AppGrant[]
   tokens TokenRecord[]
@@ -381,25 +424,25 @@ model AppGrantScope {
 }
 
 model TokenRecord {
-  id             String       @id @default(cuid())
-  tokenHash      String       @unique @map("token_hash")
-  family         TokenFamily
-  status         TokenStatus  @default(ACTIVE)
-  audience       String
-  scopes         String[]     @default([])
-  appId          String       @map("app_id")
-  app            RegisteredApp @relation(fields: [appId], references: [id], onDelete: Cascade)
-  environmentId  String       @map("environment_id")
-  environment    AppEnvironment @relation(fields: [environmentId], references: [id], onDelete: Cascade)
-  grantId        String?      @map("grant_id")
-  grant          AppGrant?    @relation(fields: [grantId], references: [id], onDelete: SetNull)
-  userId         String?      @map("user_id")
-  user           User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
-  expiresAt      DateTime     @map("expires_at")
-  revokedAt      DateTime?    @map("revoked_at")
-  revocationReason String?    @map("revocation_reason")
-  createdAt      DateTime     @default(now()) @map("created_at")
-  updatedAt      DateTime     @updatedAt @map("updated_at")
+  id               String         @id @default(cuid())
+  tokenHash        String         @unique @map("token_hash")
+  family           TokenFamily
+  status           TokenStatus    @default(ACTIVE)
+  audience         String
+  scopes           String[]       @default([])
+  appId            String         @map("app_id")
+  app              RegisteredApp  @relation(fields: [appId], references: [id], onDelete: Cascade)
+  environmentId    String         @map("environment_id")
+  environment      AppEnvironment @relation(fields: [environmentId], references: [id], onDelete: Cascade)
+  grantId          String?        @map("grant_id")
+  grant            AppGrant?      @relation(fields: [grantId], references: [id], onDelete: SetNull)
+  userId           String?        @map("user_id")
+  user             User?          @relation(fields: [userId], references: [id], onDelete: SetNull)
+  expiresAt        DateTime       @map("expires_at")
+  revokedAt        DateTime?      @map("revoked_at")
+  revocationReason String?        @map("revocation_reason")
+  createdAt        DateTime       @default(now()) @map("created_at")
+  updatedAt        DateTime       @updatedAt @map("updated_at")
 
   @@index([appId, environmentId, status])
   @@index([userId, status])

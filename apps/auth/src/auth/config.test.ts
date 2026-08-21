@@ -12,6 +12,7 @@ const authConfigCapture = vi.hoisted(() => ({
       _args: unknown,
     ): Promise<{ user: { email: string | null } } | null> => null,
   ),
+  reconcileConsumerEligibility: vi.fn(async () => undefined),
 }))
 
 vi.mock("better-auth", () => ({
@@ -59,6 +60,12 @@ vi.mock("@/db/client", () => ({
   prisma: { account: { findUnique: authConfigCapture.findAccountUnique } },
 }))
 
+vi.mock("@/services/consumer-eligibility.service", () => ({
+  ConsumerEligibilityService: class {
+    reconcile = authConfigCapture.reconcileConsumerEligibility
+  },
+}))
+
 type CapturedAuthOptions = {
   socialProviders: Record<string, unknown> & {
     google: GoogleOptions
@@ -88,6 +95,25 @@ type CapturedAuthOptions = {
     additionalFields?: Record<string, { type: string; input?: boolean }>
   }
   databaseHooks?: {
+    account?: {
+      create?: {
+        after?: (account: {
+          providerId: string
+          userId: string
+        }) => Promise<void>
+      }
+      delete?: {
+        after?: (account: {
+          providerId: string
+          userId: string
+        }) => Promise<void>
+      }
+    }
+    user?: {
+      update?: {
+        after?: (user: { id: string }) => Promise<void>
+      }
+    }
     session?: {
       create?: {
         before?: (
@@ -156,6 +182,7 @@ describe("auth provider configuration", () => {
     // that never stubs the lookup cannot inherit the previous one's value.
     authConfigCapture.findAccountUnique.mockReset()
     authConfigCapture.findAccountUnique.mockResolvedValue(null)
+    authConfigCapture.reconcileConsumerEligibility.mockClear()
   })
 
   it("always requests Google account selection when Google is enabled", async () => {
@@ -317,6 +344,30 @@ describe("mobile login configuration", () => {
         provider,
       )
     }
+  })
+
+  it("reconciles persisted social binding creation, unlink, and verified-email changes", async () => {
+    const options = await captureAuthOptions()
+
+    await options.databaseHooks?.account?.create?.after?.({
+      providerId: "google",
+      userId: "consumer-1",
+    })
+    await options.databaseHooks?.account?.delete?.after?.({
+      providerId: "apple",
+      userId: "consumer-1",
+    })
+    await options.databaseHooks?.account?.delete?.after?.({
+      providerId: "credential",
+      userId: "consumer-1",
+    })
+    await options.databaseHooks?.user?.update?.after?.({ id: "consumer-1" })
+
+    expect(authConfigCapture.reconcileConsumerEligibility.mock.calls).toEqual([
+      ["consumer-1"],
+      ["consumer-1"],
+      ["consumer-1"],
+    ])
   })
 
   it("registers the jfp self-RP provider as a public PKCE client of Auth's own OAuth provider", async () => {
