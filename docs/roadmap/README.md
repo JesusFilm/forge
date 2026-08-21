@@ -4,10 +4,10 @@
 
 Build trusted, scalable AI capabilities that help people discover gospel content, engage meaningfully with Scripture, and take faithful next steps.
 
-## Status (August 19, 2026)
+## Status (August 21, 2026)
 
-- **Total tickets:** 558
-- **Complete:** 404
+- **Total tickets:** 559
+- **Complete:** 405
 - **In progress:** 39
 - **Not started:** 36
 - **Blocked:** 79
@@ -592,6 +592,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-059](topic-experiences/feat-059-ai-assisted-topic-page-generation-and-flows.md)       | AI-Assisted Topic Page Generation and Flows                                      | tataihono | P1       | 2026-08-01 | 45   | 2026-09-14 | blocked     |
 | [feat-338](topic-experiences/feat-338-watch-download-sequence-prefixes.md)                  | Watch download sequence prefixes                                                 | vlad      | P1       | 2026-08-06 | 1    | 2026-08-06 | complete    |
 | [feat-276](topic-experiences/feat-276-bulk-locale-factory-mcp.md)                           | Bulk Locale Factory MCP and Codex skill                                          | tataihono | P1       | 2026-08-15 | 21   | 2026-09-04 | complete    |
+| [feat-405](topic-experiences/feat-405-experience-duplication-admin-api-mcp.md)              | Experience duplication across Admin, GraphQL, and MCP                            | codex     | P1       | 2026-08-21 | 1    | 2026-08-21 | complete    |
 | [feat-020](topic-experiences/feat-020-ai-topic-content-generation.md)                       | AI Topic Content Generation Service                                              | vlad      | P2       | 2026-04-28 | 28   | 2026-05-25 | blocked     |
 | [feat-021](topic-experiences/feat-021-generation-quality-monitoring.md)                     | Generation Quality & Monitoring Dashboard                                        | ekkasit   | P2       | 2026-05-05 | 21   | 2026-05-25 | blocked     |
 | [feat-146](topic-experiences/feat-146-watch-bible-quotes-promo-cta-wrap.md)                 | Watch Bible Quotes Promo CTA Wrap                                                | urim      | P2       | 2026-06-13 | 1    | 2026-06-13 | complete    |

@@ -779,6 +779,14 @@ has an independent draft and publish lifecycle; saves use last-save-wins
 collaboration, while publishing or discarding ends the draft and invalidates its
 unlisted preview.
 
+### Experience Duplicate
+
+A new caller-owned Experience created from another Experience's latest saved
+effective authored configuration, including each locale's active draft when one
+exists. It preserves localized content and template classification but starts
+unpublished, without homepage designation, revision history, chat state, or
+derived publication data; referenced media remain shared rather than cloned.
+
 ### Experience Block
 
 An ordered, schema-validated content unit within an Experience. Blocks carry a discriminator that identifies their content semantics, while presentation variants can change a block's treatment without creating a different content kind; section blocks compose other blocks under a shared visual shell.

@@ -31,13 +31,16 @@ function mockPrisma() {
   return {
     experience: {
       create: experienceCreate,
+      findFirst: vi.fn(),
     },
     experienceLocale: {
       findFirst: vi.fn(),
       findUniqueOrThrow: experienceLocaleFindUniqueOrThrow,
+      findMany: vi.fn(),
     },
     contentRevision: {
       findFirst: contentRevisionFindFirst,
+      findMany: vi.fn().mockResolvedValue([]),
       create: contentRevisionCreate,
     },
     contentRevisionCreate,
@@ -166,6 +169,60 @@ describe("ExperienceMcpService", () => {
         data: expect.objectContaining({ ownerId: "alice" }),
       }),
     )
+  })
+
+  it("duplicates a complete Experience as DRAFT through the shared service", async () => {
+    prisma.experience.findFirst.mockResolvedValueOnce({
+      id: "exp-source",
+      isTemplate: false,
+      ownerId: "someone-else",
+      archivedAt: null,
+      locales: [
+        {
+          ...CREATED_LOCALE,
+          id: "loc-source",
+          experienceId: "exp-source",
+          status: "PUBLISHED",
+          publishedAt: new Date("2026-08-20T00:00:00.000Z"),
+        },
+      ],
+    })
+    prisma.experienceLocale.findMany.mockResolvedValueOnce([])
+    prisma.experience.create.mockResolvedValueOnce({
+      ...CREATED_EXPERIENCE,
+      id: "exp-copy",
+      ownerId: "alice",
+      locales: [
+        {
+          ...CREATED_LOCALE,
+          id: "loc-copy",
+          experienceId: "exp-copy",
+          slug: "hope-copy",
+        },
+      ],
+    })
+
+    await expect(
+      service.duplicateExperience({
+        input: { experienceId: "exp-source" },
+        user: EDITOR_ALICE,
+      }),
+    ).resolves.toMatchObject({
+      ok: true,
+      sourceExperienceId: "exp-source",
+      experience: { id: "exp-copy", ownerId: "alice", isTemplate: false },
+      locales: [
+        {
+          id: "loc-copy",
+          experienceId: "exp-copy",
+          slug: "hope-copy",
+          status: "DRAFT",
+          publishedAt: null,
+        },
+      ],
+      editorUrl:
+        "http://localhost:3003/dashboard/experiences/exp-copy?locale=en",
+    })
   })
 
   it("VIEWER cannot create — rejected before the slug probe runs", async () => {

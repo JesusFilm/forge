@@ -1221,6 +1221,10 @@ type Mutation {
   """
   discardExperienceLocaleDraft(id: ID!): ExperienceLocale
   """
+  Duplicate every locale of an Experience into a new unpublished draft owned by the caller.
+  """
+  duplicateExperience(id: ID!): Experience!
+  """
   Atomically promote the locale's active draft to canonical published content and retire the draft. Owner or ADMIN.
   """
   publishExperienceLocale(id: ID!): ExperienceLocale

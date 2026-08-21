@@ -2628,20 +2628,20 @@ Legacy, malformed, unsupported, expired, and retention-suppressed reports stay
 visible as typed availability states rather than crashing or passing arbitrary
 JSON through GraphQL.
 
-## Admin MCP (JFP Admin MCP — feat-276 + feat-320)
+## Admin MCP (JFP Admin MCP — feat-276 + feat-320 + feat-405)
 
 OAuth-protected JSON-RPC MCP surface at `POST /mcp` for AI agents (Claude,
 Codex) operating on Experiences. Onboarding UI at `/dashboard/mcp`; protected-
 resource metadata at `/.well-known/oauth-protected-resource` (its
 `scopes_supported` derives automatically from the tool registry).
 
-- **Registry:** `src/mcp/admin-mcp-tools.ts` (`ADMIN_MCP_TOOLS`, 14 tools).
+- **Registry:** `src/mcp/admin-mcp-tools.ts` (`ADMIN_MCP_TOOLS`, 15 tools).
   New-tool registration is a three-edit change with no framework glue: registry
   entry → `callAdminMcpTool` dispatch branch in `src/app/mcp/route.ts` →
   service method. The route test's registry-dispatch parity loop fails if a
   declared tool has no branch.
 - **Services:** `src/services/experience-locale-mcp.service.ts` (the 12
-  locale-level tools) and `src/services/experience-mcp.service.ts` (the two
+  locale-level tools) and `src/services/experience-mcp.service.ts` (the three
   experience-level tools). Writes delegate to `ExperienceService`; ABAC stays
   in the service layer.
 - **Auth:** bearer JWT verified against apps/auth JWKS
@@ -2650,12 +2650,18 @@ resource metadata at `/.well-known/oauth-protected-resource` (its
   `{ error: "insufficient_scope", required_scopes }` — not a JSON-RPC error.
   Scope strings are untyped on the admin side; they must match apps/auth's
   `AUTH_SCOPES` keys byte-for-byte.
-- **Experience-level tools (feat-320):**
+- **Experience-level tools (feat-320 + feat-405):**
   - `experience.create` (scope `experience:create`) — client-supplied
     `{locale, slug, title, blocks}` → new DRAFT Experience owned by the
     delegated principal. Meta/OG fields are deliberately rejected (`.strict()`
     tool schema) — set them via `experience.locale.update`. Duplicate
     `(locale, slug)` returns a conflict envelope naming the existing resource.
+  - `experience.duplicate` (scopes `experience:read` + `experience:create`) —
+    copies every locale of any readable Experience into a caller-owned
+    Experience. Authored content and template classification are preserved,
+    slugs receive an available `-copy` suffix, and every locale is forced to
+    DRAFT with homepage and publication state cleared. It never copies
+    embeddings, revisions, or chat threads.
   - `experience.generate` (scope `experience:generate`) — server-side chain:
     `loadExperienceAiVideoCandidates` → mastra quick draft
     (`/forge-experience-variant` when `personaId` present, else
@@ -2664,7 +2670,7 @@ resource metadata at `/.well-known/oauth-protected-resource` (its
     transaction. Failures return `{ok:false, reason, retryable, message}`
     envelopes inside `structuredContent` (never thrown) — the JSON-RPC error
     object cannot carry `retryable`.
-  - Neither tool publishes or fires publish side effects (no ISR webhook, no
+  - None of these tools publishes or fires publish side effects (no ISR webhook, no
     manifest refresh, no embedding dispatch). Publishing remains exclusively
     `experience.locale.publish` + `experience:publish` + explicit user
     instruction + ABAC.

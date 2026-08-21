@@ -138,6 +138,10 @@ import {
 } from "./experience-editor/block-helpers"
 import { CanvasBlockList } from "./experience-editor/canvas-block-list"
 import { ContainerWorkspace } from "./experience-editor/container-workspace"
+import {
+  DuplicateExperienceControl,
+  type DuplicateActionResult,
+} from "./experience-editor/duplicate-experience-control"
 
 type EditorLocaleValues = {
   title: string
@@ -1211,6 +1215,8 @@ export function ExperienceEditor({
   watchOrigin,
   initialValues,
   saveAction,
+  duplicateAction,
+  duplicatePending = false,
   publishAction,
   discardAction,
   createLocaleAction,
@@ -1249,6 +1255,8 @@ export function ExperienceEditor({
     blocksJson: string
   }
   saveAction: (formData: FormData) => Promise<EditorActionResult>
+  duplicateAction?: () => Promise<DuplicateActionResult>
+  duplicatePending?: boolean
   publishAction: (localeId: string) => Promise<EditorActionResult>
   discardAction: (localeId: string) => Promise<EditorActionResult>
   createLocaleAction: (formData: FormData) => Promise<CreateLocaleActionResult>
@@ -1665,6 +1673,10 @@ export function ExperienceEditor({
     slug !== initialValues.slug ||
     pathSegment !== initialValues.pathSegment ||
     metaDescription !== initialValues.metaDescription ||
+    ogTitle !== initialValues.ogTitle ||
+    ogDescription !== initialValues.ogDescription ||
+    ogImageUrl !== initialValues.ogImageUrl ||
+    isHomepage !== initialValues.isHomepage ||
     serializedBlocks !== initialSerializedBlocks
   const routePrefixInputWidth = `${Math.min(
     Math.max((pathSegment.trim() || "prefix").length, 6),
@@ -10167,6 +10179,14 @@ export function ExperienceEditor({
               >
                 <History className="h-4 w-4" strokeWidth={1.5} />
               </button>
+              {duplicateAction ? (
+                <DuplicateExperienceControl
+                  action={duplicateAction}
+                  dirty={hasChanges}
+                  externalPending={isPending || duplicatePending}
+                  onError={(message) => pushToast(message, "error")}
+                />
+              ) : null}
               <button
                 type="submit"
                 form={`experience-editor-${initialValues.localeId}`}

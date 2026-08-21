@@ -2,6 +2,7 @@ import type { RevisionStatus } from "@prisma/client"
 import { notFound } from "next/navigation"
 import { revalidatePath } from "next/cache"
 import { ExperienceEditorWithChat } from "@/app/dashboard/experiences/experience-editor-with-chat"
+import { duplicateExperienceForEditor } from "@/app/dashboard/experiences/duplicate-experience-action"
 import {
   archiveThreadAction as archiveChatThreadCore,
   createThreadAction as createChatThreadCore,
@@ -309,6 +310,21 @@ export default async function ExperienceEditorPage({
 
   const currentExperienceId = experience.id
   const canUploadImages = hasPermission(principal, "write:media-assets")
+
+  async function duplicateExperienceAction() {
+    "use server"
+
+    const user = await requireSession()
+    const services = createServices(prisma)
+
+    return duplicateExperienceForEditor({
+      duplicate: (args) => services.experience.duplicate(args),
+      user,
+      sourceExperienceId: currentExperienceId,
+      selectedLocale: selectedLocale.locale,
+      revalidate: () => revalidatePath("/dashboard/experiences"),
+    })
+  }
 
   async function uploadImageAssetAction(formData: FormData) {
     "use server"
@@ -884,6 +900,11 @@ export default async function ExperienceEditorPage({
       mediaLibrary={mediaLibrary}
       canUploadImages={canUploadImages}
       saveAction={saveLocaleAction}
+      duplicateAction={
+        hasPermission(principal, "write:experiences")
+          ? duplicateExperienceAction
+          : undefined
+      }
       publishAction={publishLocaleAction}
       discardAction={discardLocaleDraftAction}
       createLocaleAction={createLocaleAction}
