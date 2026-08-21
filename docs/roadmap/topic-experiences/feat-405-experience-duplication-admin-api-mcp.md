@@ -3,7 +3,7 @@ id: "feat-405"
 title: "Experience duplication across Admin, GraphQL, and MCP"
 owner: "codex"
 priority: "P1"
-status: "in-progress"
+status: "complete"
 start_date: "2026-08-21"
 duration: 1
 depends_on: []
