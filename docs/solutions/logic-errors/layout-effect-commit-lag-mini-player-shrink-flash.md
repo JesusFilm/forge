@@ -92,11 +92,12 @@ drew the video already minimized. The armed motion then snapped it back to full
 size to begin shrinking.
 
 The file's own comment asserted the opposite, and that wrong claim is what let
-the bug survive. `PlaybackHost.tsx:605-611` reads: "A LAYOUT effect: a passive
-effect runs after the commit paints... The motion state must land before that
-paint." A layout effect does run before the paint of ITS OWN commit. Its
-`setState` still schedules another commit, so it cannot make the motion state
-land in the commit that dropped the rect.
+the bug survive. Before this fix, the comment above that effect read: "A LAYOUT
+effect: a passive effect runs after the commit paints... The motion state must
+land before that paint." A layout effect does run before the paint of ITS OWN
+commit. Its `setState` still schedules another commit, so it cannot make the
+motion state land in the commit that dropped the rect. PR #1980 corrects the
+comment to say so.
 
 **Half 2, the closing artifact — and a genuine dilemma.** `settle()` parked the
 native-driven ramp at its identity end (`shrink.setValue(0 | 1)`) BEFORE
@@ -328,14 +329,15 @@ live, window present — before its "no artifact" result counts.
 ### Do not trust a mechanism claim in a comment
 
 A wrong mechanism claim in a comment is worse than no comment, because every
-later reader re-derives the wrong conclusion from it. `PlaybackHost.tsx:605-611`
-asserts that a layout effect makes the motion state land before the paint, and
-that claim is what let the gap render go unexamined. Verify a framework-behavior
-claim at the layer the claim is about — here, by logging the actual render
-sequence — and correct the comment in the same change.
+later reader re-derives the wrong conclusion from it. The comment above the
+motion effect asserted that a layout effect makes the motion state land before
+the paint, and that claim is what let the gap render go unexamined for three
+days. Verify a framework-behavior claim at the layer the claim is about — here,
+by logging the actual render sequence — and correct the comment in the same
+change, so the next reader inherits the finding instead of the error.
 
-**That comment is still uncorrected on PR #1980's branch.** Correcting it is
-outstanding work.
+PR #1980 rewrites it to state what a layout effect does and does not guarantee,
+and to name `departingRect` as the reason the gap needs its own answer.
 
 ## Related Issues
 

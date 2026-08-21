@@ -605,10 +605,9 @@ function ActivePlaybackHost({
   // One effect owns the drag node's resting offset, so a rotation, a handover
   // and a transition can never race each other over the same value.
   //
-  // A LAYOUT effect: a passive effect runs after the commit paints, so the
-  // frame's first painted frame at its new geometry carried NO transform — one
-  // visible flash of the video already mini-sized inside the corner box before
-  // the shrink even started. The motion state must land before that paint.
+  // A LAYOUT effect so the transform is set before this commit paints. It does
+  // NOT make `motion` land in the commit that dropped the rect — a setState
+  // here schedules a further commit, which is why `departingRect` exists.
   useLayoutEffect(() => {
     // Whatever this run decides, an earlier transition may not keep animating
     // into it: an uncancelled one paints a stale transform under the new
