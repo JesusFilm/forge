@@ -15,6 +15,11 @@ Full context lives in `apps/mastra-gateway/CLAUDE.md`. Keep both files aligned.
 - Do not use `apps/admin` for Mastra Studio access management.
 - Do not make Mastra native auth the production SSO/RBAC authority in V1.
 - Do not log raw bearer tokens, session cookies, OAuth codes, or model keys.
+- On both `/api/studio/workflows/daily-support-research/...` and
+  `/api/workflows/daily-support-research/...`, freshly revalidate access and
+  require `admin`. Launch endpoints accept only bounded dry runs with
+  `dryRun=true`, an explicit `maxConversations` of at most 5, and a non-empty
+  `idempotencyKey`; live scheduled dispatch is not a browser launch path.
 
 ## Validation
 

@@ -50,6 +50,7 @@ import { validateWatchReport } from "../../services/support-research/watch-valid
 
 const OVERLAP_MS = 5 * 60_000
 const LEASE_MS = 30 * 60_000
+export const MAX_OPERATOR_DRY_RUN_CONVERSATIONS = 5
 
 export const DailySupportResearchInputSchema = z
   .object({
@@ -58,6 +59,29 @@ export const DailySupportResearchInputSchema = z
     idempotencyKey: z.string().min(1).max(120).optional(),
   })
   .strict()
+  .superRefine((input, context) => {
+    if (!input.dryRun) return
+    if (input.maxConversations === undefined) {
+      context.addIssue({
+        code: "custom",
+        path: ["maxConversations"],
+        message: "Dry runs require an explicit conversation limit",
+      })
+    } else if (input.maxConversations > MAX_OPERATOR_DRY_RUN_CONVERSATIONS) {
+      context.addIssue({
+        code: "custom",
+        path: ["maxConversations"],
+        message: `Dry runs are limited to ${MAX_OPERATOR_DRY_RUN_CONVERSATIONS} conversations`,
+      })
+    }
+    if (input.idempotencyKey === undefined) {
+      context.addIssue({
+        code: "custom",
+        path: ["idempotencyKey"],
+        message: "Dry runs require an explicit idempotency key",
+      })
+    }
+  })
 
 export type DailySupportResearchInput = z.infer<
   typeof DailySupportResearchInputSchema
@@ -262,8 +286,30 @@ export async function executeDailySupportResearch(
   const runKey = input.dryRun
     ? `support-research:dry-run:${input.idempotencyKey ?? runId}`
     : `support-research:${input.idempotencyKey ?? dateKey(now)}`
+  if (!parsedInput.success) {
+    return buildSupportRunReport({
+      runKey,
+      status: "disabled",
+      dryRun: true,
+      cutoff: now.toISOString(),
+      cursorStart: fallbackCursor.toISOString(),
+      cursorEnd: fallbackCursor.toISOString(),
+      counters: emptySupportRunCounters(),
+      observations: [],
+      actionUrls: [],
+      errors: ["invalid_input"],
+    })
+  }
   if (dependencies.databaseReadiness) {
-    const databaseReadiness = await dependencies.databaseReadiness()
+    let databaseReadiness: SupportResearchDatabaseReadiness
+    try {
+      databaseReadiness = await dependencies.databaseReadiness()
+    } catch {
+      databaseReadiness = {
+        ready: false,
+        reason: "support research database schema is unavailable",
+      }
+    }
     if (!databaseReadiness.ready) {
       const configReadiness = getSupportResearchReadiness(config, input.dryRun)
       return buildSupportRunReport({
@@ -324,12 +370,8 @@ export async function executeDailySupportResearch(
 
   try {
     const readiness = getSupportResearchReadiness(config, input.dryRun)
-    if (!parsedInput.success || !readiness.ready) {
-      const readinessErrors = parsedInput.success
-        ? readiness.ready
-          ? []
-          : readiness.reasons
-        : ["invalid_input"]
+    if (!readiness.ready) {
+      const readinessErrors = readiness.reasons
       await purgeSupportResearchRetention({
         dependencies,
         config,
@@ -672,6 +714,9 @@ const executeSupportResearchStep = createStep({
       connectionString: config.databaseUrl,
       max: 2,
       allowExitOnIdle: true,
+      connectionTimeoutMillis: 5_000,
+      query_timeout: 20_000,
+      statement_timeout: 20_000,
     })
     try {
       return await executeDailySupportResearch(

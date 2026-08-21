@@ -1,14 +1,15 @@
 ---
-id: "feat-402"
+id: "feat-401"
 title: "Fail support research closed on missing database migration"
-owner: "codex"
+owner: "vlad"
 priority: "P0"
 status: "in-progress"
 start_date: "2026-08-20"
 duration: 1
 depends_on:
   - "feat-326"
-blocks: []
+blocks:
+  - "feat-402"
 tags:
   - "platform"
   - "mastra"

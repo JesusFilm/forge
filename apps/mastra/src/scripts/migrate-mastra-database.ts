@@ -3,7 +3,12 @@ import { readdir, readFile } from "node:fs/promises"
 import { resolve } from "node:path"
 import { fileURLToPath, pathToFileURL } from "node:url"
 
-import { Pool, type QueryResult, type QueryResultRow } from "pg"
+import {
+  Pool,
+  type PoolConfig,
+  type QueryResult,
+  type QueryResultRow,
+} from "pg"
 
 import { getMastraDatabaseUrl } from "../config/env"
 import {
@@ -30,6 +35,11 @@ export type MigrationResult = {
 
 const MIGRATION_STATEMENT_TIMEOUT_MS = 300_000
 const MIGRATION_LOCK_TIMEOUT_MS = 15_000
+export const MIGRATION_POOL_TIMEOUTS = {
+  connectionTimeoutMillis: MIGRATION_LOCK_TIMEOUT_MS,
+  query_timeout: MIGRATION_STATEMENT_TIMEOUT_MS,
+  statement_timeout: MIGRATION_STATEMENT_TIMEOUT_MS,
+} satisfies PoolConfig
 
 export const DEFAULT_MIGRATIONS_DIRECTORY = fileURLToPath(
   new URL("../../migrations/", import.meta.url),
@@ -122,6 +132,7 @@ export async function runMastraDatabaseMigrationCli(): Promise<void> {
     connectionString: getMastraDatabaseUrl(),
     max: 1,
     allowExitOnIdle: true,
+    ...MIGRATION_POOL_TIMEOUTS,
   })
   try {
     const result = await runMastraDatabaseMigrations({ pool })

@@ -228,7 +228,7 @@ sequenceDiagram
 - **Goal:** Prevent another deploy-success/migration-missing incident and preserve the production authorization boundaries in durable repository guidance.
 - **Requirements:** R9-R14; AE6; KTD4-KTD6.
 - **Dependencies:** U1-U2, U4.
-- **Files:** `apps/mastra/AGENTS.md`, `apps/mastra/CLAUDE.md`, `docs/runbooks/support-research-agent.md`, `docs/roadmap/platform/feat-326-daily-support-user-research-agent.md`, `docs/roadmap/platform/feat-402-support-research-migration-readiness.md`, `docs/roadmap/README.md`.
+- **Files:** `apps/mastra/AGENTS.md`, `apps/mastra/CLAUDE.md`, `docs/runbooks/support-research-agent.md`, `docs/roadmap/platform/feat-326-daily-support-user-research-agent.md`, `docs/roadmap/platform/feat-401-support-research-migration-readiness.md`, `docs/roadmap/README.md`.
 - **Approach:** Document merge-and-deploy-before-migrate sequencing, generic migration `001` through `003`, independent object and index-validity readback, safe readiness commands, disabled-live dry-run evidence, provider approval as a separate gate, forward-only rollback, and final cursor/run reporting.
 - **Patterns to follow:** `docs/plans/2026-08-11-001-fix-mastra-devotional-migration-readiness-plan.md`, `docs/solutions/best-practices/verify-infra-writes-via-independent-read-path-20260420.md`, `docs/solutions/deployment/railway-dashboard-override-shadows-railway-toml-20260429.md`.
 - **Test scenarios:** Test expectation: none -- this unit changes operator and roadmap documentation, while U1-U2 carry the executable regression coverage.
@@ -259,13 +259,13 @@ sequenceDiagram
 - U4 is complete when the generic migrator bounds lock and statement waits and a timeout forces rollback plus renewed preflight and approval.
 - The focused and full package tests, typecheck, lint, format, production build, browser-applicability pass, and PR checks succeed.
 - The branch contains no abandoned experiment, generated-file drift, unrelated workspace changes, or uncommitted eligible review fix.
-- The focused PR is open with the plan and roadmap traceability, while `feat-402` remains `in-progress` until the later production migration and dry run finish.
+- The focused PR is open with the plan and roadmap traceability, while `feat-401` remains `in-progress` until the later production migration and dry run finish.
 
 ---
 
 ## Sources & Research
 
-- `docs/roadmap/platform/feat-402-support-research-migration-readiness.md`
+- `docs/roadmap/platform/feat-401-support-research-migration-readiness.md`
 - `docs/plans/2026-08-01-001-feat-support-research-agent-plan.md`
 - `docs/plans/2026-08-11-001-fix-mastra-devotional-migration-readiness-plan.md`
 - `docs/solutions/architecture-patterns/support-research-evidence-ledger-pattern-20260801.md`

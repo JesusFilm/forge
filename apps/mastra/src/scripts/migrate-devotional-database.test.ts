@@ -7,6 +7,7 @@ import { describe, expect, it, vi } from "vitest"
 
 import {
   DEFAULT_MIGRATIONS_DIRECTORY,
+  MIGRATION_POOL_TIMEOUTS,
   parseVersion,
   runDevotionalDatabaseMigrations,
   type MigrationClient,
@@ -46,6 +47,42 @@ function clientWithExisting(
 }
 
 describe("devotional database migrator", () => {
+  it("bounds connection acquisition and every migration query", () => {
+    expect(MIGRATION_POOL_TIMEOUTS).toEqual({
+      connectionTimeoutMillis: 15_000,
+      query_timeout: 300_000,
+      statement_timeout: 300_000,
+    })
+  })
+
+  it("propagates connection acquisition failure without starting a transaction", async () => {
+    const timeout = new Error("database connection timeout")
+    await expect(
+      runDevotionalDatabaseMigrations({
+        pool: { connect: vi.fn().mockRejectedValue(timeout) },
+      }),
+    ).rejects.toBe(timeout)
+  })
+
+  it("rolls back and releases when the client-side timeout rejects BEGIN", async () => {
+    const client = clientWithExisting()
+    const timeout = new Error("database query timeout")
+    vi.spyOn(client, "query").mockImplementation(async (text) => {
+      client.calls.push(text)
+      if (text === "begin") throw timeout
+      return result()
+    })
+
+    await expect(
+      runDevotionalDatabaseMigrations({
+        pool: { connect: async () => client },
+      }),
+    ).rejects.toBe(timeout)
+
+    expect(client.calls).toEqual(["begin", "rollback"])
+    expect(client.release).toHaveBeenCalledOnce()
+  })
+
   it("applies each unapplied SQL migration under a transaction and lock", async () => {
     const client = clientWithExisting()
     const migration = await runDevotionalDatabaseMigrations({

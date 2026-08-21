@@ -307,6 +307,42 @@ describe("daily support research workflow", () => {
     expect(linear.createIssue).not.toHaveBeenCalled()
   })
 
+  it("fails closed before repository or upstream access when database readiness times out", async () => {
+    const repository = new MemoryRepository()
+    repository.getCursor = vi.fn(repository.getCursor.bind(repository))
+    const helpScout = helpScoutWith()
+    const linear = {
+      findIssueByMarker: vi.fn(),
+      createIssue: vi.fn(),
+    }
+
+    const report = await executeDailySupportResearch(
+      { dryRun: false },
+      {
+        config,
+        repository,
+        helpScout,
+        linear,
+        analyzer: { generate: vi.fn() },
+        databaseReadiness: vi
+          .fn()
+          .mockRejectedValue(new Error("database query timeout")),
+        now: () => now,
+        randomId: () => "fixed-id",
+      },
+    )
+
+    expect(report).toMatchObject({
+      status: "failed",
+      errors: ["database_migration_unavailable"],
+    })
+    expect(repository.getCursor).not.toHaveBeenCalled()
+    expect(repository.reports).toHaveLength(0)
+    expect(helpScout.listNewConversations).not.toHaveBeenCalled()
+    expect(linear.findIssueByMarker).not.toHaveBeenCalled()
+    expect(linear.createIssue).not.toHaveBeenCalled()
+  })
+
   it("returns a safe disabled result before every dependency when migration 002 is unavailable", async () => {
     const repository = new MemoryRepository()
     repository.getCursor = vi.fn(repository.getCursor.bind(repository))
@@ -414,6 +450,53 @@ describe("daily support research workflow", () => {
     expect(repository.renewals).toBeGreaterThan(0)
   })
 
+  it.each([
+    ["missing the explicit limit", { dryRun: true, idempotencyKey: "bounded" }],
+    [
+      "exceeding the operator limit",
+      { dryRun: true, maxConversations: 6, idempotencyKey: "too-wide" },
+    ],
+    ["missing the idempotency key", { dryRun: true, maxConversations: 5 }],
+  ])("rejects dry runs %s before any dependency access", async (_, input) => {
+    const repository = new MemoryRepository()
+    repository.getCursor = vi.fn(repository.getCursor.bind(repository))
+    const helpScout = helpScoutWith()
+    const analyzer = { generate: vi.fn() }
+    const validate = vi.fn()
+    const linear = {
+      findIssueByMarker: vi.fn(),
+      createIssue: vi.fn(),
+    }
+    const databaseReadiness = vi.fn()
+
+    const report = await executeDailySupportResearch(input, {
+      config,
+      repository,
+      helpScout,
+      analyzer,
+      validate,
+      linear,
+      databaseReadiness,
+      now: () => now,
+      randomId: () => "fixed-id",
+    })
+
+    expect(report).toMatchObject({
+      status: "disabled",
+      dryRun: true,
+      errors: ["invalid_input"],
+    })
+    expect(databaseReadiness).not.toHaveBeenCalled()
+    expect(repository.getCursor).not.toHaveBeenCalled()
+    expect(repository.reports).toHaveLength(0)
+    expect(repository.purgeCalls).toBe(0)
+    expect(helpScout.listNewConversations).not.toHaveBeenCalled()
+    expect(analyzer.generate).not.toHaveBeenCalled()
+    expect(validate).not.toHaveBeenCalled()
+    expect(linear.findIssueByMarker).not.toHaveBeenCalled()
+    expect(linear.createIssue).not.toHaveBeenCalled()
+  })
+
   it("stops a disabled-live dry run before upstream access when provider approval is absent", async () => {
     const repository = new MemoryRepository()
     const helpScout = helpScoutWith()
@@ -425,7 +508,11 @@ describe("daily support research workflow", () => {
     }
 
     const report = await executeDailySupportResearch(
-      { dryRun: true, idempotencyKey: "provider-denied" },
+      {
+        dryRun: true,
+        maxConversations: 5,
+        idempotencyKey: "provider-denied",
+      },
       {
         config: { ...config, enabled: false, providerApproved: false },
         repository,
@@ -540,7 +627,11 @@ describe("daily support research workflow", () => {
   it("stops before persisting a retryable analysis failure", async () => {
     const repository = new MemoryRepository()
     const report = await executeDailySupportResearch(
-      { dryRun: true },
+      {
+        dryRun: true,
+        maxConversations: 5,
+        idempotencyKey: "analysis-failure",
+      },
       {
         config,
         repository,
@@ -651,11 +742,11 @@ describe("daily support research workflow", () => {
     }
 
     await executeDailySupportResearch(
-      { dryRun: true, idempotencyKey: "first" },
+      { dryRun: true, maxConversations: 5, idempotencyKey: "first" },
       dependencies,
     )
     const second = await executeDailySupportResearch(
-      { dryRun: true, idempotencyKey: "second" },
+      { dryRun: true, maxConversations: 5, idempotencyKey: "second" },
       dependencies,
     )
 

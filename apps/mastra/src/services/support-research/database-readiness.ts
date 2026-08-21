@@ -24,11 +24,6 @@ export const REQUIRED_SUPPORT_RESEARCH_INDEXES = [
   "support_research.support_research_reports_expiry_idx",
 ] as const
 
-export const REQUIRED_SUPPORT_RESEARCH_RELATIONS = [
-  ...REQUIRED_SUPPORT_RESEARCH_TABLES,
-  ...REQUIRED_SUPPORT_RESEARCH_INDEXES,
-] as const
-
 export type SupportResearchDatabase = {
   query<T extends QueryResultRow = QueryResultRow>(
     text: string,

@@ -31,6 +31,11 @@ Origin documents:
 - Revalidate the current access record for devotional approval, status, and
   playback requests, including native read-only Studio workflow paths. Approval
   forwards bounded actor attribution to Mastra.
+- On both `/api/studio/workflows/daily-support-research/...` and
+  `/api/workflows/daily-support-research/...`, freshly revalidate access and
+  require `admin`. Launch endpoints accept only bounded dry runs with
+  `dryRun=true`, an explicit `maxConversations` of at most 5, and a non-empty
+  `idempotencyKey`; live scheduled dispatch is not a browser launch path.
 - Use separate, mutually disjoint keys for general Studio proxying, devotional
   approval mutation, and devotional read-only status/playback.
 

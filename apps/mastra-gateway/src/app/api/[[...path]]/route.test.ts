@@ -28,14 +28,14 @@ const session: GatewaySession = {
 }
 
 function launchRequest(inputData: Record<string, unknown>) {
-  return new Request("https://gateway.test/api/studio/workflows", {
+  return new Request("https://gateway.test/api/workflows", {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ inputData }),
   })
 }
 
-describe("Studio API proxy support-research authorization", () => {
+describe("native API proxy support-research authorization", () => {
   beforeEach(() => {
     proxyMastraRequest.mockReset()
     revalidateDevotionalSession.mockReset()
@@ -43,7 +43,7 @@ describe("Studio API proxy support-research authorization", () => {
     revalidateDevotionalSession.mockResolvedValue(session)
   })
 
-  it("freshly revalidates and requires admin for a support-research launch", async () => {
+  it("freshly revalidates and requires admin for a direct workflow launch", async () => {
     await POST(
       launchRequest({
         dryRun: true,
@@ -79,8 +79,30 @@ describe("Studio API proxy support-research authorization", () => {
     })
   })
 
+  it.each([
+    [
+      "a live run",
+      { dryRun: false, maxConversations: 5, idempotencyKey: "live" },
+    ],
+    ["an omitted limit", { dryRun: true, idempotencyKey: "no-limit" }],
+    [
+      "an excessive limit",
+      { dryRun: true, maxConversations: 6, idempotencyKey: "too-wide" },
+    ],
+    ["an omitted key", { dryRun: true, maxConversations: 5 }],
+  ])("rejects %s before proxying", async (_, inputData) => {
+    const response = await POST(launchRequest(inputData), {
+      params: Promise.resolve({
+        path: ["workflows", "daily-support-research", "start-async"],
+      }),
+    })
+
+    expect(response.status).toBe(400)
+    expect(proxyMastraRequest).not.toHaveBeenCalled()
+  })
+
   it("preserves devotional editor access behavior", async () => {
-    await POST(new Request("https://gateway.test/api/studio/workflows"), {
+    await POST(new Request("https://gateway.test/api/workflows"), {
       params: Promise.resolve({
         path: ["workflows", "daily-devotional", "runs", "run-1"],
       }),

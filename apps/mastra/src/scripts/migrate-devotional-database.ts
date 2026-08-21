@@ -10,6 +10,7 @@ export const runDevotionalDatabaseMigrations = runMastraDatabaseMigrations
 
 export {
   DEFAULT_MIGRATIONS_DIRECTORY,
+  MIGRATION_POOL_TIMEOUTS,
   parseVersion,
   type MigrationClient,
   type MigrationPool,

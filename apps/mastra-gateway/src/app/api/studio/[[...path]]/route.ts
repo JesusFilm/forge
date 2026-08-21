@@ -5,6 +5,10 @@ import {
   revalidateDevotionalSession,
 } from "@/lib/devotional-access"
 import { proxyMastraRequest } from "@/lib/mastra-proxy"
+import {
+  isBoundedSupportResearchDryRun,
+  isSupportResearchLaunchPath,
+} from "@/lib/support-research-access"
 import { NextResponse } from "next/server"
 
 type RouteContext = {
@@ -38,6 +42,16 @@ async function proxyStudioApi(request: Request, context: RouteContext) {
     return NextResponse.json({ error: "Invalid API path" }, { status: 400 })
   }
   const isSupportResearchPath = isSupportResearchNativeWorkflowPath(path)
+  if (
+    isSupportResearchPath &&
+    isSupportResearchLaunchPath(path) &&
+    !(await isBoundedSupportResearchDryRun(request))
+  ) {
+    return NextResponse.json(
+      { error: "Invalid support research dry-run launch" },
+      { status: 400 },
+    )
+  }
   return proxyMastraRequest(
     request,
     `/api/${path.map(encodeURIComponent).join("/")}`,
