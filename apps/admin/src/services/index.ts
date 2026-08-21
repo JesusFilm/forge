@@ -43,6 +43,16 @@ import {
 } from "@/services/typesense-watch-search.service"
 import { WatchSettingService } from "@/services/watch-setting.service"
 
+// User Playlist keys and internal Auth credentials are intentionally injected
+// by U2/U7 wiring. Export the U3 seams without reading environment variables or
+// conflating lifecycle-ingestion and destructive-erasure authorization here.
+export * from "@/services/consumer-lifecycle.service"
+export * from "@/services/consumer-lifecycle-ingestion.service"
+export * from "@/services/user-playlist-capability"
+export * from "@/services/user-playlist-erasure.service"
+export * from "@/services/user-playlist-media-eligibility"
+export * from "@/services/user-playlist.service"
+
 export type Services = ReturnType<typeof createServices>
 
 type ServingProfileResolver = Pick<

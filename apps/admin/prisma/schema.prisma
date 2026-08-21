@@ -166,6 +166,28 @@ enum UserRole {
   VIEWER @map("VIEWER")
 }
 
+/// User Playlist availability axes are deliberately independent: account
+/// lifecycle changes never clear moderator action, and sharing never grants
+/// editorial publication state.
+enum UserPlaylistShareState {
+  SHARED   @map("shared")
+  UNSHARED @map("unshared")
+}
+
+enum UserPlaylistModerationState {
+  ACTIVE  @map("active")
+  BLOCKED @map("blocked")
+}
+
+enum ConsumerLifecycleState {
+  ACTIVE     @map("active")
+  SUSPENDING @map("suspending")
+  SUSPENDED  @map("suspended")
+  DISABLED   @map("disabled")
+  DELETING   @map("deleting")
+  DELETED    @map("deleted")
+}
+
 /// Manager panel authorization role. Auth owns identity; Admin stores the
 /// Manager-specific product access grant consumed by apps/manager.
 enum ManagerRole {
@@ -1762,6 +1784,137 @@ model WatchProgress {
   @@index([userId, lastWatchedAt])
   @@index([videoId])
   @@map("watch_progress")
+}
+
+/// Consumer-owned composition, intentionally unrelated to the editorial User,
+/// Experience, Collection, Carousel, Video, search, and manifest models.
+/// `blocks` contains only the versioned closed DTO from
+/// services/user-playlist.schemas.ts; media references remain scalar ids.
+model UserPlaylist {
+  id                                 String                      @id @default(cuid())
+  ownerSubject                       String                      @map("owner_subject")
+  title                              String
+  description                        String                      @default("")
+  contentLocale                      String                      @map("content_locale")
+  contextCountry                     String?                     @map("context_country")
+  blocks                             Json
+  version                            Int                         @default(1)
+  shareState                         UserPlaylistShareState      @default(SHARED) @map("share_state")
+  moderationState                    UserPlaylistModerationState @default(ACTIVE) @map("moderation_state")
+  capabilityTokenVersion             Int                         @default(1) @map("capability_token_version")
+  capabilityDigest                   Bytes?                      @unique @map("capability_digest")
+  capabilityDigestKeyId              String?                     @map("capability_digest_key_id")
+  capabilityCiphertext               Bytes?                      @map("capability_ciphertext")
+  capabilityEncryptionKeyId          String?                     @map("capability_encryption_key_id")
+  capabilityNonce                    Bytes?                      @map("capability_nonce")
+  capabilityAuthTag                  Bytes?                      @map("capability_auth_tag")
+  acceptedTermsVersion               String                      @map("accepted_terms_version")
+  acceptedPrivacyVersion             String                      @map("accepted_privacy_version")
+  acceptedCommunityGuidelinesVersion String                      @map("accepted_community_guidelines_version")
+  createdAt                          DateTime                    @default(now()) @map("created_at")
+  updatedAt                          DateTime                    @updatedAt @map("updated_at")
+
+  reports          UserPlaylistReport[]
+  moderationAudits UserPlaylistModerationAudit[]
+  audits           UserPlaylistAudit[]
+
+  @@index([ownerSubject, updatedAt])
+  @@index([shareState, moderationState])
+  @@map("user_playlist")
+}
+
+/// One row per Auth subject is the serialization point for the 20-playlist
+/// ceiling. It is not an Admin User relation.
+model UserPlaylistOwnerQuota {
+  ownerSubject  String   @id @map("owner_subject")
+  playlistCount Int      @default(0) @map("playlist_count")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  @@map("user_playlist_owner_quota")
+}
+
+/// Fail-closed local projection used by both authenticated owner operations
+/// and anonymous share resolution. ACTIVE is usable only while its lease is
+/// current; versions are monotonic Auth-owned integers.
+model ConsumerLifecycleProjection {
+  ownerSubject         String                 @id @map("owner_subject")
+  state                ConsumerLifecycleState
+  version              BigInt
+  activeLeaseExpiresAt DateTime?              @map("active_lease_expires_at")
+  sourceEventId        String                 @unique @map("source_event_id")
+  createdAt            DateTime               @default(now()) @map("created_at")
+  updatedAt            DateTime               @updatedAt @map("updated_at")
+
+  @@index([state, activeLeaseExpiresAt])
+  @@map("consumer_lifecycle_projection")
+}
+
+/// Report persistence is scaffolded in U3; report-intent issuance and the
+/// moderation workflow remain U4/U7. Optional detail is ciphertext only.
+model UserPlaylistReport {
+  id                        String       @id @default(cuid())
+  playlistId                String       @map("playlist_id")
+  playlist                  UserPlaylist @relation(fields: [playlistId], references: [id], onDelete: Cascade)
+  category                  String
+  reportIntentDigest        Bytes        @unique @map("report_intent_digest")
+  reporterIpDigest          Bytes?       @map("reporter_ip_digest")
+  detailCiphertext          Bytes?       @map("detail_ciphertext")
+  detailKeyId               String?      @map("detail_key_id")
+  detailNonce               Bytes?       @map("detail_nonce")
+  detailAuthTag             Bytes?       @map("detail_auth_tag")
+  detailDeleteAfter         DateTime?    @map("detail_delete_after")
+  reporterDigestDeleteAfter DateTime?    @map("reporter_digest_delete_after")
+  createdAt                 DateTime     @default(now()) @map("created_at")
+
+  @@index([playlistId, createdAt])
+  @@index([detailDeleteAfter])
+  @@index([reporterDigestDeleteAfter])
+  @@map("user_playlist_report")
+}
+
+model UserPlaylistModerationAudit {
+  id           String        @id @default(cuid())
+  playlistId   String?       @map("playlist_id")
+  playlist     UserPlaylist? @relation(fields: [playlistId], references: [id], onDelete: SetNull)
+  actorSubject String        @map("actor_subject")
+  action       String
+  reasonCode   String        @map("reason_code")
+  createdAt    DateTime      @default(now()) @map("created_at")
+
+  @@index([playlistId, createdAt])
+  @@index([actorSubject, createdAt])
+  @@map("user_playlist_moderation_audit")
+}
+
+/// Sanitized service audit: never stores title, description, report detail,
+/// raw capability, ciphertext, request path, or caller supplied metadata.
+model UserPlaylistAudit {
+  id                 String        @id @default(cuid())
+  playlistId         String?       @map("playlist_id")
+  playlist           UserPlaylist? @relation(fields: [playlistId], references: [id], onDelete: SetNull)
+  ownerSubject       String?       @map("owner_subject")
+  ownerSubjectDigest Bytes?        @map("owner_subject_digest")
+  event              String
+  version            Int?
+  createdAt          DateTime      @default(now()) @map("created_at")
+
+  @@index([ownerSubject, createdAt])
+  @@index([playlistId, createdAt])
+  @@map("user_playlist_audit")
+}
+
+/// Durable idempotency receipt retains only a keyed subject digest after the
+/// matching DELETING projection and owned aggregate have been erased.
+model UserPlaylistErasureReceipt {
+  id                 String   @id @default(cuid())
+  idempotencyKey     String   @unique @map("idempotency_key")
+  ownerSubjectDigest Bytes    @map("owner_subject_digest")
+  lifecycleVersion   BigInt   @map("lifecycle_version")
+  erasedCount        Int      @map("erased_count")
+  createdAt          DateTime @default(now()) @map("created_at")
+
+  @@index([ownerSubjectDigest])
+  @@map("user_playlist_erasure_receipt")
 }
 
 /// Per-locale Video content. Editors curate localized title / description /
