@@ -4,6 +4,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import { env } from "@/config/env"
 import { prisma } from "@/db/client"
 import { SearchWatchabilityService } from "./search-watchability"
+import { VideoService } from "./video.service"
 import {
   buildAvailabilityDocuments,
   buildCatalogDocuments,
@@ -237,6 +238,274 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
         )
       } catch (error) {
         if (error !== rollback) throw error
+      }
+    }, 35_000)
+
+    it("counts only subtitle inventory cards with playable audio on the subtitle edition", async () => {
+      const suffix = `${Date.now()}-${Math.random().toString(36).slice(2)}`
+      const prefix = `db-test-inventory-${suffix}`
+
+      try {
+        const fixture = await prisma.$transaction(async (tx) => {
+          const [
+            targetLanguage,
+            primaryLanguage,
+            fallbackLanguage,
+            invalidLanguage,
+          ] = await Promise.all([
+            tx.language.create({
+              data: {
+                coreId: `${prefix}-target-language`,
+                slug: `${prefix}-target`,
+                bcp47: "zxx-x-inventory-target",
+                name: { en: "DB Test Inventory Target" },
+              },
+            }),
+            tx.language.create({
+              data: {
+                coreId: `${prefix}-primary-language`,
+                slug: `${prefix}-primary`,
+                bcp47: "zxx-x-inventory-primary",
+                name: { en: "DB Test Inventory Primary" },
+              },
+            }),
+            tx.language.create({
+              data: {
+                coreId: `${prefix}-fallback-language`,
+                slug: `${prefix}-fallback`,
+                bcp47: "zxx-x-inventory-fallback",
+                name: { en: "DB Test Inventory Fallback" },
+              },
+            }),
+            tx.language.create({
+              data: {
+                coreId: `${prefix}-invalid-language`,
+                slug: `${prefix}-Invalid!`,
+                bcp47: "zxx-x-inventory-invalid",
+                name: { en: "DB Test Inventory Invalid" },
+              },
+            }),
+          ])
+
+          const [subtitleEdition, wrongEdition, srtEdition, orphanEdition] =
+            await Promise.all([
+              tx.videoEdition.create({
+                data: {
+                  coreId: `${prefix}-subtitle-edition`,
+                  name: "DB test subtitle edition",
+                },
+              }),
+              tx.videoEdition.create({
+                data: {
+                  coreId: `${prefix}-wrong-edition`,
+                  name: "DB test wrong edition",
+                },
+              }),
+              tx.videoEdition.create({
+                data: {
+                  coreId: `${prefix}-srt-edition`,
+                  name: "DB test SRT edition",
+                },
+              }),
+              tx.videoEdition.create({
+                data: {
+                  coreId: `${prefix}-orphan-edition`,
+                  name: "DB test orphan subtitle edition",
+                },
+              }),
+            ])
+
+          const createPublishedVideo = async (name: string) => {
+            const video = await tx.video.create({
+              data: {
+                coreId: `${prefix}-${name}`,
+                slug: `${prefix}-${name}`,
+                primaryLanguageId: primaryLanguage.id,
+              },
+            })
+            await tx.videoLocale.create({
+              data: {
+                videoId: video.id,
+                languageId: primaryLanguage.id,
+                languageSlug: primaryLanguage.slug,
+                locale: primaryLanguage.bcp47,
+                title: `DB test ${name}`,
+                status: "PUBLISHED",
+              },
+            })
+            return video
+          }
+
+          const [
+            watchableVideo,
+            directSiblingVideo,
+            srtOnlyVideo,
+            noEditionAudioVideo,
+          ] = await Promise.all([
+            createPublishedVideo("watchable-video"),
+            createPublishedVideo("direct-sibling-video"),
+            createPublishedVideo("srt-only-video"),
+            createPublishedVideo("no-edition-audio-video"),
+          ])
+
+          await Promise.all([
+            tx.videoDub.create({
+              data: {
+                coreId: `${prefix}-watchable-fallback-dub`,
+                videoId: watchableVideo.id,
+                videoEditionId: subtitleEdition.id,
+                languageId: fallbackLanguage.id,
+                duration: 100,
+                hls: "https://example.test/watchable-fallback.m3u8",
+                published: true,
+              },
+            }),
+            tx.videoDub.create({
+              data: {
+                coreId: `${prefix}-watchable-wrong-dub`,
+                videoId: watchableVideo.id,
+                videoEditionId: wrongEdition.id,
+                languageId: primaryLanguage.id,
+                duration: 10_000,
+                hls: "https://example.test/watchable-wrong.m3u8",
+                published: true,
+              },
+            }),
+            tx.videoDub.create({
+              data: {
+                coreId: `${prefix}-watchable-primary-dub`,
+                videoId: watchableVideo.id,
+                videoEditionId: subtitleEdition.id,
+                languageId: primaryLanguage.id,
+                duration: 10,
+                hls: "https://example.test/watchable-primary.m3u8",
+                published: true,
+              },
+            }),
+            tx.videoDub.create({
+              data: {
+                coreId: `${prefix}-watchable-invalid-language-dub`,
+                videoId: watchableVideo.id,
+                videoEditionId: subtitleEdition.id,
+                languageId: invalidLanguage.id,
+                duration: 10_000,
+                hls: "https://example.test/watchable-invalid-language.m3u8",
+                published: true,
+              },
+            }),
+            tx.videoDub.create({
+              data: {
+                coreId: `${prefix}-direct-sibling-fallback-dub`,
+                videoId: directSiblingVideo.id,
+                videoEditionId: subtitleEdition.id,
+                languageId: fallbackLanguage.id,
+                duration: 100,
+                hls: "https://example.test/direct-sibling-fallback.m3u8",
+                published: true,
+              },
+            }),
+            tx.videoDub.create({
+              data: {
+                coreId: `${prefix}-srt-only-dub`,
+                videoId: srtOnlyVideo.id,
+                videoEditionId: srtEdition.id,
+                languageId: fallbackLanguage.id,
+                duration: 100,
+                hls: "https://example.test/srt-only.m3u8",
+                published: true,
+              },
+            }),
+            tx.videoDub.create({
+              data: {
+                coreId: `${prefix}-no-edition-audio-wrong-dub`,
+                videoId: noEditionAudioVideo.id,
+                videoEditionId: wrongEdition.id,
+                languageId: primaryLanguage.id,
+                duration: 10_000,
+                hls: "https://example.test/no-edition-audio-wrong.m3u8",
+                published: true,
+              },
+            }),
+          ])
+
+          await Promise.all([
+            tx.videoSubtitle.create({
+              data: {
+                coreId: `${prefix}-watchable-subtitle`,
+                videoId: watchableVideo.id,
+                videoEditionId: subtitleEdition.id,
+                languageId: targetLanguage.id,
+                vttSrc: "https://example.test/watchable.vtt",
+              },
+            }),
+            tx.videoSubtitle.create({
+              data: {
+                coreId: `${prefix}-srt-only-subtitle`,
+                videoId: srtOnlyVideo.id,
+                videoEditionId: srtEdition.id,
+                languageId: targetLanguage.id,
+                srtSrc: "https://example.test/srt-only.srt",
+              },
+            }),
+            tx.videoSubtitle.create({
+              data: {
+                coreId: `${prefix}-no-edition-audio-subtitle`,
+                videoId: noEditionAudioVideo.id,
+                videoEditionId: orphanEdition.id,
+                languageId: targetLanguage.id,
+                vttSrc: "https://example.test/no-edition-audio.vtt",
+              },
+            }),
+            tx.videoSubtitle.create({
+              data: {
+                coreId: `${prefix}-whitespace-vtt-subtitle`,
+                videoId: directSiblingVideo.id,
+                videoEditionId: subtitleEdition.id,
+                languageId: targetLanguage.id,
+                vttSrc: "   ",
+              },
+            }),
+          ])
+
+          return {
+            targetLanguageSlug: targetLanguage.slug!,
+            primaryLanguageSlug: primaryLanguage.slug!,
+            watchableVideoId: watchableVideo.id,
+            directSiblingVideoId: directSiblingVideo.id,
+          }
+        })
+
+        const inventory = await new VideoService(
+          prisma,
+        ).getWatchLanguageInventory({
+          languageSlug: fixture.targetLanguageSlug,
+          limit: 25,
+        })
+
+        expect(inventory.counts.subtitleOnlyVideos).toBe(1)
+        expect(inventory.subtitleOnlyVideos).toHaveLength(1)
+        expect(inventory.subtitleOnlyVideos[0]).toMatchObject({
+          id: fixture.watchableVideoId,
+          availability: "SUBTITLE_ONLY",
+          watchLanguageSlug: fixture.primaryLanguageSlug,
+          durationSeconds: 10,
+        })
+        expect(inventory.subtitleOnlyVideos.map(({ id }) => id)).not.toContain(
+          fixture.directSiblingVideoId,
+        )
+      } finally {
+        await prisma.videoSubtitle.deleteMany({
+          where: { coreId: { startsWith: prefix } },
+        })
+        await prisma.video.deleteMany({
+          where: { coreId: { startsWith: prefix } },
+        })
+        await prisma.videoEdition.deleteMany({
+          where: { coreId: { startsWith: prefix } },
+        })
+        await prisma.language.deleteMany({
+          where: { coreId: { startsWith: prefix } },
+        })
       }
     }, 35_000)
   },

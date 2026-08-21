@@ -995,7 +995,7 @@ describe("VideoService", () => {
         candidateDisplay,
       )
       const selectedImage = sql.indexOf("selected_image.image_url")
-      const fallbackDub = sql.indexOf("fallback_dub.language_slug")
+      const fallbackDubOutput = sql.indexOf('fallback_dub."languageSlug"')
 
       expect(playableAudio).toBeGreaterThanOrEqual(0)
       expect(subtitleCandidates).toBeGreaterThan(playableAudio)
@@ -1011,7 +1011,7 @@ describe("VideoService", () => {
       expect(candidateDisplay).toBeGreaterThan(prelimitedCandidates)
       expect(limitedCandidates).toBeGreaterThan(candidateDisplay)
       expect(selectedImage).toBeGreaterThan(limitedCandidates)
-      expect(fallbackDub).toBeGreaterThan(limitedCandidates)
+      expect(fallbackDubOutput).toBeGreaterThan(limitedCandidates)
       expect(sql).not.toContain("published_videos AS")
       expect(sql).not.toContain("selected_locale AS")
       expect(sql).not.toContain("selected_image AS")
@@ -1024,7 +1024,60 @@ describe("VideoService", () => {
       expect(sql).toContain("dub.hls IS NOT NULL")
       expect(sql).toContain("dub.hls <> ''")
       expect(sql).toContain("subtitle.vtt_src IS NOT NULL")
-      expect(sql).toContain("subtitle.srt_src IS NOT NULL")
+      expect(sql).toContain("subtitle.vtt_src <> ''")
+      expect(sql).toContain("NULLIF(BTRIM(subtitle.vtt_src), '') IS NOT NULL")
+      expect(sql).not.toContain("subtitle.srt_src")
+    })
+
+    it("pairs subtitle-only inventory with playable audio from the same edition", async () => {
+      prisma.language.findFirst.mockResolvedValueOnce({
+        slug: "chinese-simplified",
+        name: { en: "Chinese, Simplified" },
+        bcp47: "zh-hans",
+      })
+      prisma.tx.$queryRaw.mockResolvedValueOnce([])
+
+      await service.getWatchLanguageInventory({
+        languageSlug: "chinese-simplified",
+      })
+
+      const sql = prisma.tx.$queryRaw.mock.calls[0][0].join(" ")
+      const subtitleCandidates = sql.slice(
+        sql.indexOf("usable_subtitle_video AS MATERIALIZED"),
+        sql.indexOf("candidate_video_source AS"),
+      )
+      const finalHydration = sql.slice(
+        sql.indexOf("FROM limited_candidates candidate"),
+        sql.lastIndexOf("ORDER BY"),
+      )
+
+      expect(subtitleCandidates).toContain(
+        'edition_dub.video_edition_id = subtitle."videoEditionId"',
+      )
+      expect(subtitleCandidates).toContain('subtitle."directVideoId" IS NULL')
+      expect(subtitleCandidates).toContain(
+        'subtitle."directVideoId" = edition_dub.video_id',
+      )
+      expect(subtitleCandidates).toContain("edition_dub.published = TRUE")
+      expect(subtitleCandidates).toContain(
+        "NULLIF(BTRIM(edition_dub.hls), '') IS NOT NULL",
+      )
+      expect(subtitleCandidates).toContain(
+        "edition_dub_language.id = edition_dub.language_id",
+      )
+      expect(subtitleCandidates).toContain(
+        "edition_dub_language.deleted_at IS NULL",
+      )
+      expect(subtitleCandidates).toContain(
+        "edition_dub_language.slug ~ '^[a-z0-9-]+$'",
+      )
+      expect(subtitleCandidates).toContain(
+        'edition_dub_language.slug AS "languageSlug"',
+      )
+      expect(finalHydration).toContain(
+        "LEFT JOIN usable_subtitle_video fallback_dub",
+      )
+      expect(finalHydration).not.toContain("JOIN usable_subtitle subtitle")
     })
 
     it("resolves nonblank inventory titles before humanizing the slug", async () => {
