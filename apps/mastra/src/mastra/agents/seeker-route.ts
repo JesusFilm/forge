@@ -15,15 +15,22 @@
  *      turn's raw trace to Langfuse (see `../langfuse-tracing.ts`).
  *
  * Wire frames (one SSE event each):
- *   - token_delta  { text }                                          — per stream chunk
- *   - result       { text, sources, grounded, producedBy, video? }   — terminal success
- *   - error        { reason }                                        — terminal failure
+ *   - token_delta  { text }                                                      — per stream chunk
+ *   - result       { text, sources, grounded, producedBy, video?, followUps? }   — terminal success
+ *   - error        { reason }                                                    — terminal failure
  *
  * `video` (feat-327) is the OPTIONAL declared-video attachment: present only
  * when this turn's model both searched and declared a pick that survives the
  * projection gates, OMITTED (never null) otherwise. The projections and the
  * declaration ladder live in `./seeker-turn-projection.ts` (feat-329, plan
  * P8), shared with the replay path so the two cannot drift.
+ *
+ * `followUps` (feat-366) is the OPTIONAL suggested-follow-up-questions list:
+ * present only on a flag-on, grounded, substantive turn whose post-hoc
+ * generation produced at least one valid question inside its budget, OMITTED
+ * (never null or empty) otherwise. The body also accepts the optional
+ * closed-vocabulary `promptSource` click-source tag (KTD11 — invalid or
+ * unknown values read as absent, never a 400).
  *
  * Defense-in-depth gates, checked in order: the shared lane admission
  * preamble (`refuseUnlessLaneAdmitted`, feat-283 — enable flag (KTD7) → 404,
@@ -51,13 +58,30 @@
 
 import type { RequestContext } from "@mastra/core/di"
 
-import { getOpenRouterApiKey } from "../../config/env"
+import { getOpenRouterApiKey, isSeekerFollowUpsEnabled } from "../../config/env"
 import {
   getManagedPrompt,
   type ManagedPromptResult,
 } from "../../services/langfuse-prompt-client"
 import { refuseUnlessLaneAdmitted } from "../ai-chat-lane-admission"
-import { buildSeekerTracingCallOptions } from "../langfuse-tracing"
+import {
+  buildFollowUpsTracingCallOptions,
+  buildSeekerTracingCallOptions,
+} from "../langfuse-tracing"
+import {
+  FOLLOW_UPS_GENERATION_BUDGET_MS,
+  shouldGenerateFollowUps,
+} from "../seeker-follow-ups"
+import {
+  generateSeekerFollowUps,
+  registerFollowUpsMastra,
+  type FollowUpsGenerationOutcome,
+} from "../seeker-follow-ups-generate"
+import {
+  persistSeekerFollowUps,
+  type FollowUpsPersistMemory,
+  type FollowUpsPersistOutcome,
+} from "../seeker-follow-ups-persist"
 import {
   SEEKER_SYSTEM_PROMPT_FALLBACK,
   SEEKER_SYSTEM_PROMPT_NAME,
@@ -90,6 +114,10 @@ type SeekerToolResultChunk = {
 type SeekerStreamOutput = {
   textStream: ReadableStream<string>
   toolResults: Promise<SeekerToolResultChunk[]>
+  /** Plain fields on the pinned core's stream output (feat-366, KTD10) —
+   * threaded into the follow-ups generator for same-trace joining (KTD9). */
+  traceId?: string
+  spanId?: string
 }
 type SeekerStreamAgent = {
   stream: (
@@ -153,6 +181,46 @@ export type SeekerRouteHandlerInput = {
    * pin the langfuse/fallback/stale metadata branches deterministically.
    */
   getPromptProvenance?: () => Promise<ManagedPromptResult>
+  /**
+   * Seam: the follow-ups flag (feat-366, KTD8). Defaults to the real env
+   * accessor; the registration in index.ts passes nothing. Gates the WRITE
+   * side only — replay reads no flag (KD1).
+   */
+  getFollowUpsEnabled?: () => boolean
+  /**
+   * Seam: post-hoc follow-up generation (feat-366, KTD5/KTD6). Defaults to
+   * the real module, whose internal race enforces the budget this route
+   * derives (`min(2.5s, remaining turn budget)`).
+   */
+  generateFollowUps?: (input: {
+    question: string
+    answer: string
+    budgetMs: number
+    turnSignal?: AbortSignal
+    requestContext?: RequestContext
+    tracingOptions?: {
+      metadata?: Record<string, unknown>
+      traceId?: string
+      parentSpanId?: string
+    }
+  }) => Promise<FollowUpsGenerationOutcome>
+  /**
+   * Seam: the bounded metadata persist (feat-366, KTD2/KTD6). The default
+   * closure supplies the shared ai-chat Memory; the input deliberately
+   * carries NO signal — the write must survive the proxy's normal
+   * post-terminal-frame abort.
+   */
+  persistFollowUps?: (input: {
+    threadId: string
+    resourceId: string
+    questions: string[]
+    /** Turn identity for the carrier scan, LOWER bound — a lagging store
+     * retries rather than writing onto the previous turn's answer. */
+    turnStartedAtMs: number
+    /** Turn identity for the carrier scan, UPPER bound — captured just before
+     * the call, so a NEWER turn's answer can never be written onto. */
+    turnEndedAtMs: number
+  }) => Promise<FollowUpsPersistOutcome>
 }
 
 const SEEKER_AGENT_ID = "seekerAgent"
@@ -264,6 +332,18 @@ export async function handleSeekerRouteRequest({
       name: SEEKER_SYSTEM_PROMPT_NAME,
       fallback: SEEKER_SYSTEM_PROMPT_FALLBACK,
     }),
+  // feat-366 defaults — each is the one-line production revert surface the
+  // default-source pin in the suite guards.
+  getFollowUpsEnabled = isSeekerFollowUpsEnabled,
+  generateFollowUps = generateSeekerFollowUps,
+  persistFollowUps = (input) =>
+    persistSeekerFollowUps({
+      // The shared ai-chat Memory satisfies the persist module's structural
+      // surface (recall + updateMessages) — same instance the agent writes
+      // through, so the carrier scan reads what the turn just stored.
+      memory: getAiChatMemory() as unknown as FollowUpsPersistMemory,
+      ...input,
+    }),
 }: SeekerRouteHandlerInput): Promise<Response> {
   // Gates 1–2 — the shared lane admission preamble (feat-283): enable flag
   // FIRST (KTD7, 404 — no bearer check, no body read, no agent lookup when
@@ -282,6 +362,15 @@ export async function handleSeekerRouteRequest({
     return jsonResponse(400, { error: "prompt and threadId are required" })
   }
   const { prompt, threadId, resourceId } = raw
+  // Click-source tag (feat-366, KTD11): optional, closed-vocabulary at every
+  // hop — an absent, unknown, or non-string value reads as the non-chip
+  // default `typed`, NEVER a 400. Logged as `prompt_source=` (flag-on turns)
+  // and trace-stamped as `sendOrigin` (flag-independent — a different key
+  // from the provenance `promptSource`; the tracing suite pins them apart).
+  const sendOrigin: "follow_up" | "typed" =
+    (raw as { promptSource?: unknown }).promptSource === "follow_up"
+      ? "follow_up"
+      : "typed"
 
   // Gate 4 — model-key preflight (R11): before opening the stream / invoking
   // the agent so a missing key is a clean 503, not a mid-stream error frame.
@@ -289,7 +378,10 @@ export async function handleSeekerRouteRequest({
     return jsonResponse(503, { reason: "model_key_missing" })
   }
 
-  const agent = getMastra().getAgentById(SEEKER_AGENT_ID) as SeekerStreamAgent
+  const mastraInstance = getMastra()
+  const agent = mastraInstance.getAgentById(
+    SEEKER_AGENT_ID,
+  ) as SeekerStreamAgent
 
   // Memory keying (KTD3): `resource` is ALWAYS set — the runtime guard requires
   // it whenever the agent has memory attached. `resourceId` stays opaque (R8).
@@ -305,6 +397,11 @@ export async function handleSeekerRouteRequest({
 
   // Compose the inbound request signal with the internal turn budget so EITHER
   // a client disconnect or the 90s ceiling aborts the agent run (R9, R10).
+  // `turnStartedAt` anchors the follow-ups deadline derivation (KTD6):
+  // effective generation budget = min(2.5s, remaining turn budget), so the
+  // terminal frame always lands inside the ceiling chat's proxy timeout was
+  // sized against.
+  const turnStartedAt = Date.now()
   const budgetSignal = AbortSignal.timeout(budgetMs)
   const abortSignal = requestSignal
     ? AbortSignal.any([requestSignal, budgetSignal])
@@ -327,13 +424,20 @@ export async function handleSeekerRouteRequest({
 
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
-      const enqueue = (frame: string) => {
-        if (closed) return
+      // Returns whether the frame actually landed on the controller — the
+      // follow-ups persist gate reads this for the TERMINAL frame (KTD6: an
+      // emitted flag captured at enqueue time, never a closed-now check,
+      // because the proxy closes the stream right after relaying the frame
+      // on every NORMAL turn).
+      const enqueue = (frame: string): boolean => {
+        if (closed) return false
         try {
           controller.enqueue(encoder.encode(frame))
+          return true
         } catch {
           // Controller already closed (consumer disconnected) — stop emitting.
           closed = true
+          return false
         }
       }
       try {
@@ -372,6 +476,9 @@ export async function handleSeekerRouteRequest({
           promptProvenance: await getPromptProvenance(),
           resource: memory.resource,
           thread: memory.thread,
+          // KTD11: stamped flag-INDEPENDENTLY — the tag is analytics for
+          // every turn, not a follow-ups feature switch.
+          sendOrigin,
         })
 
         output = await agent.stream(prompt, {
@@ -406,6 +513,10 @@ export async function handleSeekerRouteRequest({
           // and the operator logging. Naturally inert with SEEKER_VIDEO_ENABLED
           // off — the tools are not registered, so no searchVideos/featureVideo
           // chunks exist and no second flag read can drift from the agent's.
+          // NOTE: `attachments.followUps` is deliberately unread here — the
+          // projection populates it only on the REPLAY path (from stored
+          // metadata); the live frame's followUps come from the generation
+          // outcome below, already validated by the same projectFollowUps.
           const attachments = resolveTurnAttachments(toTurnChunks(chunks))
           sources = attachments.sources
           grounded = attachments.grounded
@@ -417,7 +528,83 @@ export async function handleSeekerRouteRequest({
           )
         }
 
-        enqueue(
+        // ── Suggested follow-up questions (feat-366, KTD5–KTD7) ─────────────
+        // Generation runs BETWEEN extraction and the terminal enqueue — the
+        // chat proxy aborts upstream the moment it relays a terminal frame,
+        // so there is no later frame to ride (KTD1); the budget below bounds
+        // the delay this adds. Structural containment: the REGISTRATION and
+        // GENERATION calls sit in their own try/catch so no throw — sync or
+        // async — can reach the drain loop's catch and turn a streamed
+        // answer into an error frame. (The flag read and the suppression
+        // gate sit outside it: both are pure reads over already-parsed
+        // values, with nothing to contain.)
+        const followUpsEnabled = getFollowUpsEnabled()
+        let followUps: string[] = []
+        let generation: FollowUpsGenerationOutcome | null = null
+        let generationMs = 0
+        // Why the generator produced no outcome, when it produced none. The
+        // three causes are operationally different — a suppressed turn, a
+        // departed consumer, and a seam that threw are not the same event —
+        // so they must not collapse into one literal (review, 2026-08-20).
+        // Overwritten only on the containment-catch path; unread when
+        // `generation` is non-null.
+        let generationNotRunReason:
+          | "gate_skipped"
+          | "stream_closed"
+          | "unexpected_error" = "gate_skipped"
+        // The `!closed` check is the no-paid-call-for-an-absent-audience gate
+        // (KTD6): a consumer cancel mid-drain makes the reader report done
+        // with a PARTIAL answer while every later enqueue silently no-ops.
+        // `!abortSignal.aborted` is its sibling for the OTHER disconnect
+        // shape: a request-signal abort landing between drain completion and
+        // this gate (the cancel() callback may not have flipped `closed`
+        // yet). The generator survives an already-aborted signal — the
+        // settleWithinBudget fast path settles the seam promise — but there
+        // is no reason to start a paid call for an aborted turn at all.
+        if (closed || abortSignal.aborted) {
+          generationNotRunReason = "stream_closed"
+        }
+        if (
+          followUpsEnabled &&
+          !closed &&
+          !abortSignal.aborted &&
+          shouldGenerateFollowUps({ grounded, answer: full })
+        ) {
+          try {
+            // Span emission needs the runtime Mastra reference (KTD5/KTD9);
+            // one-time latch, never throws.
+            registerFollowUpsMastra(mastraInstance)
+            const remainingMs = budgetMs - (Date.now() - turnStartedAt)
+            const followUpsTracing = buildFollowUpsTracingCallOptions({
+              resource: memory.resource,
+              thread: memory.thread,
+              turnTraceId: output.traceId,
+              turnSpanId: output.spanId,
+            })
+            const generationStartedAt = Date.now()
+            generation = await generateFollowUps({
+              question: prompt,
+              answer: full,
+              budgetMs: Math.min(FOLLOW_UPS_GENERATION_BUDGET_MS, remainingMs),
+              turnSignal: abortSignal,
+              requestContext: followUpsTracing.requestContext,
+              tracingOptions: followUpsTracing.tracingOptions,
+            })
+            generationMs = Date.now() - generationStartedAt
+            followUps = generation.questions
+          } catch {
+            // R5: every generation failure degrades to no chips — never an
+            // error frame, and never a logged error object (R9).
+            generation = null
+            generationNotRunReason = "unexpected_error"
+            followUps = []
+          }
+        }
+
+        // The persist gate consumes THIS return value (KTD6): the terminal
+        // frame either landed on the controller or it did not, decided at
+        // enqueue time.
+        const resultEmitted = enqueue(
           sseFrame("result", {
             text: full,
             sources,
@@ -425,8 +612,56 @@ export async function handleSeekerRouteRequest({
             producedBy: SEEKER_AGENT_ID,
             // OMITTED, never null, when nothing valid was declared (plan D9).
             ...(video ? { video } : {}),
+            // OMITTED, never null, when there is nothing to show (R7).
+            ...(followUps.length > 0 ? { followUps } : {}),
           }),
         )
+
+        // ── Best-effort persist, AFTER the frame (KTD2/KTD6) ────────────────
+        // Deliberately NOT composed with the request signal: the proxy aborts
+        // upstream immediately after relaying the terminal frame on every
+        // normal turn, and live and replay must never disagree (AE3). A frame
+        // that never landed persists nothing (`undelivered`); a race loss or
+        // empty generation stores nothing (`skipped`).
+        if (followUpsEnabled) {
+          let persistOutcome:
+            | "skipped"
+            | "undelivered"
+            | FollowUpsPersistOutcome = "skipped"
+          if (followUps.length > 0) {
+            if (!resultEmitted) {
+              persistOutcome = "undelivered"
+            } else {
+              try {
+                persistOutcome = await persistFollowUps({
+                  threadId: memory.thread,
+                  resourceId: memory.resource,
+                  questions: followUps,
+                  turnStartedAtMs: turnStartedAt,
+                  // Captured HERE, not at turn start: it is the carrier
+                  // scan's upper bound, and every row this turn wrote is
+                  // already stamped by now.
+                  turnEndedAtMs: Date.now(),
+                })
+              } catch {
+                persistOutcome = "store_failed"
+              }
+            }
+          }
+          // Counts, enums, timings, and token counts ONLY (R9) — `mode=post`
+          // is the mechanism label surviving the retired prototype enum.
+          // `gen_reason` is a closed vocabulary: `ok` on a question-bearing
+          // success, the generator's own reason when it ran and produced
+          // none, and otherwise WHICH of the three no-run causes applied —
+          // `gate_skipped` (flag off or the suppression gate), `stream_closed`
+          // (consumer gone before the call), `unexpected_error` (containment
+          // catch). Collapsing those three would cost the operator the one
+          // key that tells a gate skip from a timeout from a junk reply, and
+          // it is what calibrates the provisional retry after the flip.
+          console.info(
+            `[seeker-follow-ups] event=turn_resolved mode=post prompt_source=${sendOrigin} count=${followUps.length} gen_reason=${generation === null ? generationNotRunReason : (generation.reason ?? "ok")} added_ms=${generationMs} persist=${persistOutcome} gen_tokens_in=${generation?.tokensIn ?? -1} gen_tokens_out=${generation?.tokensOut ?? -1} total_ms=${Date.now() - turnStartedAt}`,
+          )
+        }
       } catch {
         // If the textStream drain threw, `output.toolResults` was never awaited
         // (the extraction try is downstream of the drain). Settle it so a later

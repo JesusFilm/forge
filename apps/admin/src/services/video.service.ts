@@ -32,6 +32,7 @@ import {
   watchVisibilityWhere,
 } from "./search-watchability"
 import { ForbiddenError } from "./errors"
+import { compareVideoImagesByDisplayPreference } from "./video-image-selection"
 
 /**
  * Dispatch-fields projection consumed by manager's admin-trigger
@@ -848,10 +849,10 @@ function localeBucketsForSnapshot(
 
   return {
     exactLocales: forVideo
-      .filter(
-        (row) =>
-          row.locale === locale &&
-          (languageSlug == null || row.languageSlug === languageSlug),
+      .filter((row) =>
+        languageSlug == null
+          ? row.locale === locale
+          : row.languageSlug === languageSlug,
       )
       .map(mapRow),
     broadLocales: forVideo.filter((row) => row.locale === locale).map(mapRow),
@@ -911,7 +912,7 @@ export async function loadWatchRouteSnapshotRootLocaleBuckets({
       OR: [
         { locale },
         { locale: "en" },
-        ...(languageSlug == null ? [] : [{ locale, languageSlug }]),
+        ...(languageSlug == null ? [] : [{ languageSlug }]),
       ],
     },
     orderBy: [{ languageSlug: "asc" }, { id: "asc" }],
@@ -919,10 +920,10 @@ export async function loadWatchRouteSnapshotRootLocaleBuckets({
   })
 
   const bucketRows = {
-    exactLocales: rows.filter(
-      (row) =>
-        row.locale === locale &&
-        (languageSlug == null || row.languageSlug === languageSlug),
+    exactLocales: rows.filter((row) =>
+      languageSlug == null
+        ? row.locale === locale
+        : row.languageSlug === languageSlug,
     ),
     broadLocales: rows.filter((row) => row.locale === locale),
     englishLocales: rows.filter((row) => row.locale === "en"),
@@ -1025,10 +1026,10 @@ function studyQuestionBucketsForSnapshot(
 
   return {
     exactStudyQuestions: rows
-      .filter(
-        (row) =>
-          row.locale === locale &&
-          (languageSlug == null || row.languageSlug === languageSlug),
+      .filter((row) =>
+        languageSlug == null
+          ? row.locale === locale
+          : row.languageSlug === languageSlug,
       )
       .map(mapRow),
     broadStudyQuestions: rows
@@ -1054,6 +1055,7 @@ function imageRowsForSnapshot(
 ): WatchRouteSnapshotImage[] {
   return rows
     .filter((row) => row.videoId === videoId)
+    .sort(compareVideoImagesByDisplayPreference)
     .map((row) => ({
       documentId: row.id,
       url: row.url,
@@ -1597,6 +1599,7 @@ export class VideoService {
     ] = await Promise.all([
       this.prisma.videoImage.findMany({
         where: { videoId: { in: allVideoIds }, deletedAt: null },
+        orderBy: [{ videoId: "asc" }, { id: "asc" }],
         select: {
           id: true,
           videoId: true,
@@ -1617,7 +1620,7 @@ export class VideoService {
             { locale: "en" },
             ...(normalizedLanguageSlug == null
               ? []
-              : [{ locale, languageSlug: normalizedLanguageSlug }]),
+              : [{ languageSlug: normalizedLanguageSlug }]),
           ],
         },
         orderBy: [{ languageSlug: "asc" }, { id: "asc" }],
@@ -1648,7 +1651,7 @@ export class VideoService {
             { locale: "en" },
             ...(normalizedLanguageSlug == null
               ? []
-              : [{ locale, languageSlug: normalizedLanguageSlug }]),
+              : [{ languageSlug: normalizedLanguageSlug }]),
           ],
         },
         orderBy: [{ order: "asc" }, { languageSlug: "asc" }, { id: "asc" }],
@@ -2175,20 +2178,39 @@ export class VideoService {
           ON subtitle_edition.id = subtitle.video_edition_id
          AND subtitle_edition.deleted_at IS NULL
         WHERE subtitle.deleted_at IS NULL
-          AND (
-            (subtitle.vtt_src IS NOT NULL AND subtitle.vtt_src <> '')
-            OR (subtitle.srt_src IS NOT NULL AND subtitle.srt_src <> '')
-          )
+          AND subtitle.vtt_src IS NOT NULL
+          AND subtitle.vtt_src <> ''
+          AND NULLIF(BTRIM(subtitle.vtt_src), '') IS NOT NULL
       ),
       usable_subtitle_video AS MATERIALIZED (
-        SELECT "directVideoId" AS "videoId"
-        FROM usable_subtitle
-        WHERE "directVideoId" IS NOT NULL
-        UNION
-        SELECT edition_dub.video_id AS "videoId"
+        SELECT DISTINCT ON (edition_dub.video_id)
+          edition_dub.video_id AS "videoId",
+          edition_dub_language.slug AS "languageSlug",
+          edition_dub.duration AS "durationSeconds"
         FROM usable_subtitle subtitle
         JOIN video_dub edition_dub
           ON edition_dub.video_edition_id = subtitle."videoEditionId"
+         AND edition_dub.deleted_at IS NULL
+         AND edition_dub.published = TRUE
+         AND NULLIF(BTRIM(edition_dub.hls), '') IS NOT NULL
+        JOIN language edition_dub_language
+          ON edition_dub_language.id = edition_dub.language_id
+         AND edition_dub_language.deleted_at IS NULL
+         AND edition_dub_language.slug ~ '^[a-z0-9-]+$'
+        JOIN video subtitle_video
+          ON subtitle_video.id = edition_dub.video_id
+        WHERE subtitle."directVideoId" IS NULL
+          OR subtitle."directVideoId" = edition_dub.video_id
+        ORDER BY
+          edition_dub.video_id ASC,
+          CASE
+            WHEN subtitle_video.primary_language_id = edition_dub_language.id THEN 0
+            WHEN edition_dub_language.slug = 'english' THEN 1
+            ELSE 2
+          END ASC,
+          edition_dub.duration DESC NULLS LAST,
+          edition_dub_language.slug ASC,
+          edition_dub.id ASC
       ),
       candidate_video_source AS (
         SELECT
@@ -2338,25 +2360,6 @@ export class VideoService {
             FROM video_relation child_relation
             WHERE child_relation.parent_id = video.id
           )
-          AND EXISTS (
-            SELECT 1
-            FROM video_dub fallback_dub
-            JOIN language fallback_language
-              ON fallback_language.id = fallback_dub.language_id
-             AND fallback_language.deleted_at IS NULL
-             AND fallback_language.slug IS NOT NULL
-            LEFT JOIN video_edition fallback_edition
-              ON fallback_edition.id = fallback_dub.video_edition_id
-            WHERE fallback_dub.video_id = video.id
-              AND fallback_dub.deleted_at IS NULL
-              AND fallback_dub.published = TRUE
-              AND fallback_dub.hls IS NOT NULL
-              AND fallback_dub.hls <> ''
-              AND (
-                fallback_edition.id IS NULL
-                OR fallback_edition.deleted_at IS NULL
-              )
-          )
       ),
       candidate_inventory AS (
         SELECT * FROM audio_collection_candidate
@@ -2503,14 +2506,14 @@ export class VideoService {
           ELSE 'AUDIO'
         END AS availability,
         CASE
-          WHEN candidate.bucket = 'subtitle_video' THEN fallback_dub.language_slug
+          WHEN candidate.bucket = 'subtitle_video' THEN fallback_dub."languageSlug"
           ELSE inventory_language.slug
         END AS "watchLanguageSlug",
         parent_ref.slug AS "parentSlug",
         parent_ref.title AS "parentTitle",
         parent_ref."parentOrder",
         CASE
-          WHEN candidate.bucket = 'subtitle_video' THEN fallback_dub.duration
+          WHEN candidate.bucket = 'subtitle_video' THEN fallback_dub."durationSeconds"
           ELSE candidate."durationSeconds"
         END AS "durationSeconds",
         CASE
@@ -2630,38 +2633,9 @@ export class VideoService {
         ORDER BY relation.order ASC NULLS LAST, relation.created_at ASC
         LIMIT 1
       ) parent_ref ON TRUE
-      LEFT JOIN LATERAL (
-        SELECT
-          fallback_language.slug AS language_slug,
-          fallback_audio.duration
-        FROM video_dub fallback_audio
-        JOIN language fallback_language
-          ON fallback_language.id = fallback_audio.language_id
-         AND fallback_language.deleted_at IS NULL
-         AND fallback_language.slug IS NOT NULL
-        LEFT JOIN video_edition fallback_edition
-          ON fallback_edition.id = fallback_audio.video_edition_id
-        WHERE candidate.bucket = 'subtitle_video'
-          AND fallback_audio.video_id = candidate.id
-          AND fallback_audio.deleted_at IS NULL
-          AND fallback_audio.published = TRUE
-          AND fallback_audio.hls IS NOT NULL
-          AND fallback_audio.hls <> ''
-          AND (
-            fallback_edition.id IS NULL
-            OR fallback_edition.deleted_at IS NULL
-          )
-        ORDER BY
-          CASE
-            WHEN candidate."primaryLanguageId" = fallback_language.id THEN 0
-            WHEN fallback_language.slug = 'english' THEN 1
-            ELSE 2
-          END ASC,
-          fallback_audio.duration DESC NULLS LAST,
-          fallback_language.slug ASC,
-          fallback_audio.id ASC
-        LIMIT 1
-      ) fallback_dub ON TRUE
+      LEFT JOIN usable_subtitle_video fallback_dub
+        ON candidate.bucket = 'subtitle_video'
+       AND fallback_dub."videoId" = candidate.id
       ORDER BY
         CASE
           WHEN candidate.bucket = 'audio_collection' THEN 0

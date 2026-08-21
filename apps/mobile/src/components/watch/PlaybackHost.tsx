@@ -44,6 +44,8 @@ import { BLACK } from "../../lib/color"
 import {
   DEFAULT_CORNER,
   defaultCornerFrame,
+  frameGeometry,
+  dismissMode,
   miniPlayerCornerFrame,
   type MiniPlayerCorner,
   type MiniPlayerFrame,
@@ -548,6 +550,9 @@ function ActivePlaybackHost({
   const drag = useRef(new Animated.ValueXY({ x: 0, y: 0 })).current
   const shrink = useRef(new Animated.Value(1)).current
   const exitY = useRef(new Animated.Value(0)).current
+  // A top-corner window fades instead of sliding; both ride the exit wrapper
+  // and both are native-driven, so they share one driver (KTD5).
+  const exitOpacity = useRef(new Animated.Value(1)).current
 
   const [corner, setCorner] = useState<MiniPlayerCorner>(DEFAULT_CORNER)
   const cornerRef = useRef(corner)
@@ -568,6 +573,10 @@ function ActivePlaybackHost({
   const lastRectRef = useRef<PlaybackRect | null>(null)
   const chromeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const shrinkAnimRef = useRef<Animated.CompositeAnimation | null>(null)
+  // The ramp value a settled motion still owes the node. Parked only AFTER the
+  // commit that moves the frame, because identity means "fill this frame" and
+  // the frame is the corner only once that commit lands.
+  const pendingParkRef = useRef<0 | 1 | null>(null)
   // The in-flight motion, readable by the run that supersedes it. The `motion`
   // STATE cannot serve: it is not in this effect's deps, and adding it would
   // re-run the effect on every transition the effect itself starts.
@@ -596,10 +605,9 @@ function ActivePlaybackHost({
   // One effect owns the drag node's resting offset, so a rotation, a handover
   // and a transition can never race each other over the same value.
   //
-  // A LAYOUT effect: a passive effect runs after the commit paints, so the
-  // frame's first painted frame at its new geometry carried NO transform — one
-  // visible flash of the video already mini-sized inside the corner box before
-  // the shrink even started. The motion state must land before that paint.
+  // A LAYOUT effect so the transform is set before this commit paints. It does
+  // NOT make `motion` land in the commit that dropped the rect — a setState
+  // here schedules a further commit, which is why `departingRect` exists.
   useLayoutEffect(() => {
     // Whatever this run decides, an earlier transition may not keep animating
     // into it: an uncancelled one paints a stale transform under the new
@@ -614,10 +622,9 @@ function ActivePlaybackHost({
         clearTimeout(chromeTimerRef.current)
         chromeTimerRef.current = null
       }
-      // Same identity-parking as settle: whatever motion this interrupts must
-      // not leave a frozen mid-ramp transform behind its detaching style.
+      // Same deferral as settle for whatever motion this interrupts.
       if (inFlight != null) {
-        shrink.setValue(inFlight.anchor === "from" ? 0 : 1)
+        pendingParkRef.current = inFlight.anchor === "from" ? 0 : 1
       }
       motionRef.current = null
       setMotion(null)
@@ -631,6 +638,9 @@ function ActivePlaybackHost({
       anchor: "from" | "to",
       durationMs: number,
     ) => {
+      // A new ramp now owns the node, so a park the superseded motion queued is
+      // stale — applying it later would stop this ramp mid-flight.
+      pendingParkRef.current = null
       let settled = false
       const settle = () => {
         if (settled) return
@@ -639,12 +649,10 @@ function ActivePlaybackHost({
           clearTimeout(chromeTimerRef.current)
           chromeTimerRef.current = null
         }
-        // Park the ramp at its IDENTITY end before the style detaches: the
-        // native driver leaves the last driven value stuck on the view
-        // (Fabric skips the restore), and a frozen corner-target transform
-        // pushed the settled window's video clean out of its box — a black
-        // window with live controls.
-        shrink.setValue(anchor === "from" ? 0 : 1)
+        // DEFERRED: identity on a frame still anchored at `from` means "fill the
+        // full rect", which flashed the video full size. The effect below parks
+        // it once the frame IS the corner.
+        pendingParkRef.current = anchor === "from" ? 0 : 1
         motionRef.current = null
         setMotion(null)
         setChromeReady(true)
@@ -797,12 +805,27 @@ function ActivePlaybackHost({
     restingDragRef.current = { x: 0, y: 0 }
   }, [rect, hasSession, layoutConfig, windowFrame, drag, shrink])
 
+  // Runs on the commit that DROPS the motion, so identity means "fill the
+  // corner" — the settled state. Parking earlier flashed the video full size;
+  // never parking left the corner-target value stuck on the view (black box).
+  useLayoutEffect(() => {
+    // The ref, not just the state: the effect above runs FIRST in this commit
+    // and may have armed a replacement motion the render cannot see yet.
+    // Parking over it would stop that ramp and skip the transition outright.
+    if (motion != null || motionRef.current != null) return
+    const parked = pendingParkRef.current
+    if (parked == null) return
+    pendingParkRef.current = null
+    shrink.setValue(parked)
+  }, [motion, shrink])
+
   useEffect(() => {
     if (presentation !== "exiting") {
-      // The node outlives the dismissal that moved it: a session-less slot
+      // The nodes outlive the dismissal that moved them: a session-less slot
       // (the series trailer) keeps this host mounted, so an unreset exit would
-      // draw every later video off screen.
+      // draw every later video off screen — or invisible.
       exitY.setValue(0)
+      exitOpacity.setValue(1)
       return
     }
     // From the corner the window OCCUPIES: the exit translates the dragged
@@ -810,11 +833,22 @@ function ActivePlaybackHost({
     // stops mid-screen and blinks out.
     const occupied = miniPlayerCornerFrame(layoutConfig, cornerRef.current)
     const distance = screenHeight - occupied.y + EXIT_CLEARANCE
-    const animation = Animated.timing(exitY, {
-      toValue: distance,
-      duration: EXIT_DURATION_MS,
-      useNativeDriver: true,
-    })
+    // Reset the node this dismissal will NOT drive, so a fade cannot inherit a
+    // slide's offset (or the reverse) from the dismissal before it.
+    const fading = dismissMode(cornerRef.current) === "fade"
+    if (fading) exitY.setValue(0)
+    else exitOpacity.setValue(1)
+    const animation = fading
+      ? Animated.timing(exitOpacity, {
+          toValue: 0,
+          duration: EXIT_DURATION_MS,
+          useNativeDriver: true,
+        })
+      : Animated.timing(exitY, {
+          toValue: distance,
+          duration: EXIT_DURATION_MS,
+          useNativeDriver: true,
+        })
     let cancelled = false
     let timer: ReturnType<typeof setTimeout> | null = null
     const complete = () => {
@@ -832,7 +866,7 @@ function ActivePlaybackHost({
       animation.stop()
       if (timer != null) clearTimeout(timer)
     }
-  }, [presentation, exitY, screenHeight, layoutConfig])
+  }, [presentation, exitY, exitOpacity, screenHeight, layoutConfig])
 
   // R21/R22 re-arm: a replay puts the surface back before anything else reads it.
   const endedCause = session?.endedCause ?? null
@@ -971,15 +1005,21 @@ function ActivePlaybackHost({
     hasSession,
     Date.now(),
   )?.windowFrame
-  // A to-anchored motion keeps its own box when the rect goes away: a reversed
-  // grow is still measured against the player rect it was growing into.
-  const geometry =
-    rect ??
-    (motion != null
-      ? motion.anchor === "from"
-        ? motion.from
-        : motion.to
-      : (heldWindowFrame ?? windowFrame))
+  // The rect the shrink is about to depart FROM, on the one render between the
+  // slot detaching and the layout effect arming the motion. The ref still holds
+  // it here; the effect nulls it immediately after. See frameGeometry.
+  const departingRect = rect == null && hasSession ? lastRectRef.current : null
+  // That same gap render still carries the SETTLED window's chrome state, since
+  // setChromeReady(false) lands a commit later. The frame is the departing rect
+  // here, so neither the corner radius nor the mini transport belongs yet.
+  const settlingFromRect = departingRect != null
+  const geometry = frameGeometry({
+    rect,
+    motion,
+    heldWindowFrame: heldWindowFrame ?? null,
+    departingRect,
+    windowFrame,
+  })
 
   // A surface can own the player before its stream resolves (an Up Next
   // replace, a seed with no playbackId). The player still holds ANOTHER route's
@@ -1059,7 +1099,7 @@ function ActivePlaybackHost({
           // node; the frame below keeps the JS-driven drag).
           style={[
             StyleSheet.absoluteFill,
-            { transform: [{ translateY: exitY }] },
+            { opacity: exitOpacity, transform: [{ translateY: exitY }] },
           ]}
           pointerEvents="box-none"
         >
@@ -1073,12 +1113,13 @@ function ActivePlaybackHost({
                 width: geometry.width,
                 height: geometry.height,
               },
+              floating && styles.clipped,
               // The shrink draws the video larger than this box, so it cannot
               // clip until the transition has settled into its target — and the
               // box paints NOTHING of its own mid-flight: an instant black
               // window at the corner would front-run the arriving video.
               motion != null && styles.inMotion,
-              floating && chromeReady && styles.rounded,
+              floating && chromeReady && !settlingFromRect && styles.rounded,
               suppressed && styles.suppressed,
               { transform: [{ translateX: drag.x }, { translateY: drag.y }] },
             ]}
@@ -1146,7 +1187,7 @@ function ActivePlaybackHost({
                 durationSeconds={session.durationSeconds}
                 isPlaying={isPlaying}
                 endedCause={session.endedCause}
-                ready={chromeReady}
+                ready={chromeReady && !settlingFromRect}
                 exiting={presentation === "exiting"}
                 onPlayPause={handlePlayPause}
                 onReplay={handleReplay}
@@ -1179,6 +1220,14 @@ const styles = StyleSheet.create({
   frame: {
     position: "absolute",
     backgroundColor: BLACK,
+    // Explicit, not defaulted: re-adding a clip here is precisely how the
+    // docked scrubber's thumb lost its lower half once already (#1962).
+    overflow: "visible",
+  },
+  // Only the floating window clips, to hold its corner radius. The docked
+  // player must NOT: the inline scrubber's flush thumb is centred on a track
+  // sitting on the player's bottom edge, so its lower half draws below this box.
+  clipped: {
     overflow: "hidden",
   },
   inMotion: {

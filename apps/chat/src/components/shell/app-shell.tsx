@@ -6,6 +6,12 @@ import { type ChatIdentity } from "@/auth/session-cookie"
 import { SIGN_IN_ERROR_PARAM } from "@/auth/sign-in-notice"
 import { BrandLockup } from "@/components/brand/brand-lockup"
 import { Chat } from "@/components/chat/chat"
+import {
+  DenialScreen,
+  type DeniedScreen,
+} from "@/components/chat/denial-screens"
+import { fallbackTitle } from "@/lib/conversations"
+import { useConversationUrl } from "@/lib/use-conversation-url"
 import { useConversations } from "@/lib/use-conversations"
 
 import { MenuIcon } from "./icons"
@@ -19,24 +25,56 @@ import { Sidebar, SIDEBAR_ID } from "./sidebar"
  *
  * `seekerEnabled` is the deployment-wide flag, read server-side in page.tsx and
  * passed down (feat-205, R1/R2). It selects the reply source — the Seeker proxy
- * vs the local stub — inside useConversations; nothing else here depends on it.
+ * vs the local stub — inside useConversations, and gates the feat-209 URL hook.
  *
  * Auth props (feat-207) are also read server-side in page.tsx and threaded to
  * the sidebar's account control: `authConfigured` (KTD6 gate), `identity` (the
  * signed-in claims, or null), and `signInError` (the R12 marker). Auth changes
  * identity only — nothing here is gated on it (R3/R7).
+ *
+ * feat-209 deep-link inputs, resolved by the /c/[id] route: on a GRANTED shell
+ * `initialConversationId` seeds the session's adopted row and mounts the URL
+ * hook against it; with `deniedScreen` set the denial pane replaces <Chat>
+ * (KTD5/KTD6) and the id only feeds the sign-in returnTo links (KTD8). A
+ * granted deep link whose replay resolves "not_available" ESCALATES to the
+ * same unavailable pane — deep-link conversation only; rail selections keep
+ * chat.tsx's in-pane replay states. Popstate-driven conversation changes close
+ * the drawer and announce through the polite live region below.
+ *
+ * feat-399 adds the third route to that same pane: `deepLinkUnresolvable`, a
+ * GRANTED shell whose id could never resolve (a malformed segment, so there is
+ * no id to seed or escalate from). It opens on the unavailable pane while the
+ * rail, history hydration and the URL layer stay live, and releases on the
+ * first rail selection, New conversation, or history traverse.
  */
 export function AppShell({
   seekerEnabled = false,
   authConfigured = false,
   identity = null,
   signInError = false,
+  initialConversationId,
+  deniedScreen,
+  deepLinkUnresolvable = false,
 }: {
   seekerEnabled?: boolean
   authConfigured?: boolean
   identity?: ChatIdentity | null
   signInError?: boolean
+  /** Deep-link conversation id (lowercased by the route). Doubles as the
+   * denied id for returnTo links when `deniedScreen` is set. */
+  initialConversationId?: string
+  /** Server-decided denial pane (feat-209 KTD5); renders in place of Chat. */
+  deniedScreen?: DeniedScreen
+  /** feat-399: a GRANTED shell that opens on the unavailable pane because the
+   * deep link's id could never resolve. Never set alongside `deniedScreen` —
+   * the route's `deepLinkShell` produces one or the other, never both. */
+  deepLinkUnresolvable?: boolean
 }) {
+  // Structural KTD5 belt: a denial shell renders the gate-granted layers
+  // (history hydration, URL sync) inert even if a caller ever passes
+  // seekerEnabled=true alongside deniedScreen — the route never should.
+  const denialShell = deniedScreen !== undefined
+  const grantedShell = seekerEnabled && !denialShell
   const {
     conversations,
     activeId,
@@ -51,17 +89,88 @@ export function AppShell({
     stopReply,
     newConversation,
     selectConversation,
+    adoptConversation,
     retryHistory,
     loadMoreHistory,
     retryReplay,
-  } = useConversations(seekerEnabled)
+  } = useConversations(
+    grantedShell,
+    // KTD5 guard: on a denial shell the id serves ONLY the returnTo links —
+    // it must never seed an adopted row or fire a stray replay fetch.
+    denialShell ? undefined : initialConversationId,
+  )
 
   const [collapsed, setCollapsed] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
+  // feat-399: is the "link was broken" pane still showing? Seeded from the
+  // route-static prop; every exit path clears it explicitly, because the two
+  // most natural escapes move no conversation id (see dismissUnresolvable).
+  const [unresolvableActive, setUnresolvableActive] =
+    useState(deepLinkUnresolvable)
+  // Explicit because activeId cannot detect the release: the landing row IS
+  // the fresh empty one, so New no-ops and clicking that active rail row
+  // early-returns. Setting false when already false skips the re-render.
+  const dismissUnresolvable = useCallback(
+    () => setUnresolvableActive(false),
+    [],
+  )
 
   // Stable so Sidebar's Escape-listener effect doesn't re-register on every
   // AppShell render (e.g. when a reply arrives) while the drawer is open.
   const closeMobile = useCallback(() => setMobileOpen(false), [])
+
+  // The pre-navigation active id, armed by the popstate path only. The
+  // announce effect below resolves the label AFTER React re-renders — the
+  // handler fires before the new snapshot exists anywhere in the tree.
+  const historyNavFromRef = useRef<string | null>(null)
+  const announcementRef = useRef<HTMLDivElement | null>(null)
+  const activeIdRef = useRef(activeId)
+  useEffect(() => {
+    activeIdRef.current = activeId
+  }, [activeId])
+
+  // Fired synchronously inside the popstate handler: mirror the row-click
+  // path (drawer close) and arm the one-shot announcement.
+  const onHistoryNavigation = useCallback(() => {
+    setMobileOpen(false)
+    dismissUnresolvable()
+    historyNavFromRef.current = activeIdRef.current
+  }, [dismissUnresolvable])
+
+  useConversationUrl({
+    enabled: grantedShell,
+    activeId,
+    serverPersisted: activeConversation.serverPersisted === true,
+    adoptConversation,
+    newConversation,
+    onHistoryNavigation,
+  })
+
+  // Announce a popstate-driven conversation CHANGE once the new snapshot has
+  // rendered (the sidebar's row-label rule). Runs every render — the armed ref
+  // gates it, clicks disarm it below; the live region is written imperatively.
+  useEffect(() => {
+    const from = historyNavFromRef.current
+    if (from === null) return
+    historyNavFromRef.current = null
+    if (from === activeId || announcementRef.current === null) return
+    const label =
+      activeConversation.title.trim().length > 0
+        ? activeConversation.title
+        : fallbackTitle(activeConversation.lastActivityAt ?? "")
+    announcementRef.current.textContent = `Opened ${label}`
+  })
+
+  // Click-driven selection stays silent: a no-op traverse may never have
+  // re-rendered to consume the armed flag, so clicks disarm it explicitly.
+  const selectFromRail = useCallback(
+    (id: string) => {
+      historyNavFromRef.current = null
+      dismissUnresolvable()
+      selectConversation(id)
+    },
+    [selectConversation, dismissUnresolvable],
+  )
 
   // feat-270: the New action lands on a ready-to-type pane, including the
   // no-op case where the active conversation is already the fresh empty one.
@@ -69,6 +178,8 @@ export function AppShell({
   const composerRef = useRef<HTMLTextAreaElement | null>(null)
   const pendingComposerFocusRef = useRef(false)
   const newConversationFocused = () => {
+    historyNavFromRef.current = null
+    dismissUnresolvable()
     newConversation()
     if (mobileOpen) pendingComposerFocusRef.current = true
     else composerRef.current?.focus()
@@ -118,6 +229,28 @@ export function AppShell({
     }
   }, [mobileOpen])
 
+  // KTD8: every /c/<id> render — granted or denied — threads the deep link
+  // into every sign-in affordance, the rail-foot control included.
+  const signInReturnTo =
+    initialConversationId !== undefined
+      ? `/c/${initialConversationId}`
+      : undefined
+
+  // KTD5 escalation: only the DEEP-LINK conversation's dead replay escalates
+  // to the full denial pane; rail selections keep chat.tsx's in-pane state.
+  const escalatedUnavailable =
+    deniedScreen === undefined &&
+    initialConversationId !== undefined &&
+    activeId === initialConversationId &&
+    activeConversation.replay === "not_available"
+  // feat-399: the same pane for a granted visitor whose id was malformed.
+  // `grantedShell` is the structural belt; `unresolvableActive` is the release
+  // every exit path clears — see dismissUnresolvable for why it must be explicit.
+  const unresolvableDeepLink = unresolvableActive && grantedShell
+  const paneDenial =
+    deniedScreen ??
+    (escalatedUnavailable || unresolvableDeepLink ? "unavailable" : undefined)
+
   return (
     <div className="flex h-dvh">
       <Sidebar
@@ -130,8 +263,10 @@ export function AppShell({
         identity={identity}
         signInError={signInError}
         history={history}
+        deniedShell={deniedScreen !== undefined}
+        signInReturnTo={signInReturnTo}
         onNew={newConversationFocused}
-        onSelect={selectConversation}
+        onSelect={selectFromRail}
         onToggleCollapsed={() => setCollapsed((value) => !value)}
         onCloseMobile={closeMobile}
         onRetryHistory={retryHistory}
@@ -160,25 +295,38 @@ export function AppShell({
           </button>
           <BrandLockup />
         </header>
-        <Chat
-          conversation={activeConversation}
-          draft={draft}
-          pending={pending}
-          streamingMessageId={streamingMessageId}
-          seekerEnabled={seekerEnabled}
-          replayState={
-            activeConversation.origin === "server"
-              ? (activeConversation.replay ?? null)
-              : null
-          }
-          composerTextareaRef={composerRef}
-          onDraftChange={setDraft}
-          onSend={send}
-          onStop={stopReply}
-          onRetryReplay={retryReplay}
-          onStartNew={newConversationFocused}
-        />
+        {paneDenial !== undefined ? (
+          <DenialScreen screen={paneDenial} returnTo={signInReturnTo} />
+        ) : (
+          <Chat
+            conversation={activeConversation}
+            draft={draft}
+            pending={pending}
+            streamingMessageId={streamingMessageId}
+            seekerEnabled={seekerEnabled}
+            replayState={
+              activeConversation.origin === "server"
+                ? (activeConversation.replay ?? null)
+                : null
+            }
+            composerTextareaRef={composerRef}
+            onDraftChange={setDraft}
+            onSend={send}
+            onStop={stopReply}
+            onRetryReplay={retryReplay}
+            onStartNew={newConversationFocused}
+          />
+        )}
       </main>
+      {/* Always-mounted polite live region: popstate-driven conversation
+          changes announce here — history traversal has no click feedback.
+          Written imperatively by the announce effect; React renders no child. */}
+      <div
+        ref={announcementRef}
+        aria-live="polite"
+        data-history-announcement
+        className="sr-only"
+      />
     </div>
   )
 }

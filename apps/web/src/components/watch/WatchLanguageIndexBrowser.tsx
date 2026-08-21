@@ -11,6 +11,10 @@ import type {
   WatchLanguageIndexLanguage,
   WatchLanguageIndexRegion,
 } from "@/lib/language-index"
+import {
+  createWatchLanguageSearchMatcher,
+  type WatchLanguageSearchMatcher,
+} from "@/lib/watch-language-search"
 
 type WatchLanguageIndexBrowserProps = {
   regions: WatchLanguageIndexRegion[]
@@ -65,13 +69,15 @@ function normalizeText(value: string): string {
 
 function languageMatchesQuery(
   language: WatchLanguageIndexLanguage,
-  query: string,
+  matchLanguage: WatchLanguageSearchMatcher,
 ): boolean {
-  if (!query) return true
   return (
-    normalizeText(language.englishLabel).includes(query) ||
-    normalizeText(language.nativeLabel).includes(query) ||
-    normalizeText(language.publicSlug.replace(/-/g, " ")).includes(query)
+    matchLanguage({
+      slug: language.publicSlug,
+      aliasOwnerSlug: language.aliasOwnerSlug,
+      displayName: language.englishLabel,
+      nativeName: language.nativeLabel,
+    }) != null
   )
 }
 
@@ -89,16 +95,13 @@ function countryMatchRank(
 
 function matchingLanguageSpeakerCount(
   country: WatchLanguageIndexCountryGroup,
-  query: string,
+  matchingLanguages: readonly WatchLanguageIndexLanguage[],
 ): number {
-  if (!query) return 0
-  return country.languages
-    .filter((language) => languageMatchesQuery(language, query))
-    .reduce(
-      (total, language) =>
-        total + (country.languageSpeakerCounts[language.publicSlug] ?? 0),
-      0,
-    )
+  return matchingLanguages.reduce(
+    (total, language) =>
+      total + (country.languageSpeakerCounts[language.publicSlug] ?? 0),
+    0,
+  )
 }
 
 function compareFilteredCountrySearchResults(
@@ -313,13 +316,14 @@ export function WatchLanguageIndexBrowser({
 
   const normalizedSearch = normalizeText(searchValue)
   const regionGroups = useMemo(() => {
+    const matchLanguage = createWatchLanguageSearchMatcher(normalizedSearch)
     const nextRegions = regions
       .map((region, regionIndex): FilteredRegionSearchResult => {
         const countryResults = region.countries
           .map((country, countryIndex): FilteredCountrySearchResult => {
             const countryRank = countryMatchRank(country, normalizedSearch)
             const matchingLanguages = country.languages.filter((language) =>
-              languageMatchesQuery(language, normalizedSearch),
+              languageMatchesQuery(language, matchLanguage),
             )
             const visibleLanguages =
               countryRank > 0 ? country.languages : matchingLanguages
@@ -331,10 +335,9 @@ export function WatchLanguageIndexBrowser({
               },
               countryIndex,
               countryMatchRank: countryRank,
-              matchingLanguageSpeakerCount: matchingLanguageSpeakerCount(
-                country,
-                normalizedSearch,
-              ),
+              matchingLanguageSpeakerCount: normalizedSearch
+                ? matchingLanguageSpeakerCount(country, matchingLanguages)
+                : 0,
             }
           })
           .filter((result) => result.country.languages.length > 0)

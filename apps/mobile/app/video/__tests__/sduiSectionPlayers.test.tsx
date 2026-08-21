@@ -103,6 +103,7 @@ jest.mock("../../../src/contexts/ExperienceProvider", () => {
 })
 
 import { act } from "react"
+import { AppState } from "react-native"
 
 import CollectionPlayerScreen from "../../collection/[sectionKey]"
 import VideoDetailScreen from "../[sectionKey]"
@@ -124,12 +125,18 @@ const sessionStore = getMiniPlayerStore()
 
 const URL_A = "https://stream.mux.com/assetAAA111.m3u8"
 
+// PRODUCTION SHAPE. Admin exposes no `streamingUrl` on a block or an item — it
+// resolves the playable dub live into `videoDub`, and the fragments select that.
+// These fixtures used to set a bare `streamingUrl`, a field the wire never
+// carries, so both routes passed every test while reading `undefined` on every
+// real load and never mounting a player at all. Do not reintroduce it: the
+// absence of `streamingUrl` here is what makes these tests able to fail.
 const VIDEO_SECTION = {
   __typename: "VideoBlock",
   sectionKey: "section-1",
   title: "A section video",
   videoId: "sdui-video-1",
-  streamingUrl: URL_A,
+  videoDub: { hls: URL_A, dash: null, share: null },
   contentParagraphs: [],
   siblingContent: [],
 }
@@ -138,7 +145,13 @@ const COLLECTION_SECTION = {
   __typename: "VideoCarouselBlock",
   sectionKey: "section-1",
   title: "A collection",
-  items: [{ videoId: "sdui-video-1", streamingUrl: URL_A, imageUrl: null }],
+  items: [
+    {
+      videoId: "sdui-video-1",
+      videoDub: { hls: URL_A, dash: null, share: null },
+      imageUrl: null,
+    },
+  ],
 }
 
 /** Both screens are default exports taking no props. */
@@ -176,6 +189,33 @@ function videoViewProps(renderer: TestInstance) {
   }
 }
 
+/** Whether any rendered node carries this accessibility label. */
+function labelled(renderer: TestInstance, label: string): boolean {
+  return (
+    renderer.root.findAll(
+      (node) =>
+        (node.props as { accessibilityLabel?: string } | undefined)
+          ?.accessibilityLabel === label,
+    ).length > 0
+  )
+}
+
+/**
+ * Whether the autostart poster is on screen. Keyed on the recyclingKey both
+ * routes give it — the playlist rows use `coll-thumb-*`, so this cannot match
+ * one of those by accident.
+ */
+function posterShown(renderer: TestInstance): boolean {
+  return (
+    renderer.root.findAll((node) =>
+      /^sdui-.*-poster-/.test(
+        (node.props as { recyclingKey?: string } | undefined)?.recyclingKey ??
+          "",
+      ),
+    ).length > 0
+  )
+}
+
 function startSession() {
   sessionStore.start({
     videoId: "floating-video",
@@ -190,6 +230,10 @@ beforeEach(() => {
   experience.__setSection(null)
   sessionStore.setPipHold(false)
   sessionStore.end("abandoned")
+  // jest-expo leaves this undefined; a device never does. The autostart gate
+  // refuses to start audio the viewer cannot see, so without this the whole
+  // autostart path is unreachable and its assertions pass vacuously.
+  ;(AppState as { currentState: string }).currentState = "active"
 })
 
 afterEach(async () => {
@@ -230,8 +274,9 @@ describe.each(SCREENS)("%s", (_name, Screen, section) => {
     const endings: MiniPlayerEndEvent[] = []
     const unsubscribe = sessionStore.onEnd((event) => endings.push(event))
 
-    // Mounting alone must not disturb the window — the viewer has not asked
-    // for this video yet, and the poster path never plays.
+    // Mounting alone must not disturb the window. These screens autostart, but
+    // only on `sourceLoad` — until the source is applied there is nothing to
+    // hand the decoder over for.
     expect(sessionStore.getSnapshot().session?.videoId).toBe("floating-video")
     expect(renderer).not.toBeNull()
 
@@ -244,5 +289,46 @@ describe.each(SCREENS)("%s", (_name, Screen, section) => {
     // R19: no session takes its place, from either of these routes.
     expect(sessionStore.getSnapshot().session).toBeNull()
     unsubscribe()
+  })
+
+  // Neither screen autostarted while every other player surface did, so the
+  // same card behaved differently depending on which shelf the viewer came
+  // from. They failed differently too: the video route sat on a tap-to-play
+  // poster, the collection route had no poster at all.
+  it("opens on a poster and a spinner, never on a play button", async () => {
+    const renderer = await renderScreen(Screen, section)
+
+    expect(labelled(renderer, "Play video")).toBe(false)
+    expect(labelled(renderer, "Loading video")).toBe(true)
+    expect(posterShown(renderer)).toBe(true)
+  })
+
+  it("autostarts once the source is applied, then clears poster and veil", async () => {
+    const renderer = await renderScreen(Screen, section)
+    expect(video.__player.playing).toBe(false)
+
+    await act(async () => {
+      video.__player.__emit("sourceLoad")
+    })
+
+    expect(video.__player.playing).toBe(true)
+    expect(labelled(renderer, "Loading video")).toBe(false)
+    expect(posterShown(renderer)).toBe(false)
+  })
+
+  // The poster is opaque and sits over the native transport. Clearing the veil
+  // without clearing the poster leaves a viewer looking at a still frame with
+  // no controls and no way out — reachable by touch, invisible to the eye.
+  it("clears the POSTER too when the source fails, not just the veil", async () => {
+    const renderer = await renderScreen(Screen, section)
+    expect(posterShown(renderer)).toBe(true)
+
+    await act(async () => {
+      video.__player.__emit("statusChange", { status: "error" })
+    })
+
+    expect(labelled(renderer, "Loading video")).toBe(false)
+    expect(posterShown(renderer)).toBe(false)
+    expect(video.__player.playing).toBe(false)
   })
 })

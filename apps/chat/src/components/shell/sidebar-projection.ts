@@ -32,7 +32,7 @@ export function listConversations(
   conversations: Conversation[],
   activeId: string,
 ): Conversation[] {
-  return orderConversations(conversations).filter(
+  return orderConversations(conversations, activeId).filter(
     (c) => c.id === activeId || c.origin === "server" || c.messages.length > 0,
   )
 }

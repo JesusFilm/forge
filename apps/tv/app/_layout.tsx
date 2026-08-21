@@ -32,6 +32,7 @@ let ApolloProvider: typeof import("@apollo/client/react").ApolloProvider
 let getApolloClient: typeof import("../src/lib/apolloClient").getApolloClient
 let TvDatadogProvider: typeof import("../src/components/DatadogRum").TvDatadogProvider
 let DatadogRouteTracker: typeof import("../src/components/DatadogRouteTracker").DatadogRouteTracker
+let AssistantSearchBridge: typeof import("../src/components/AssistantSearchBridge").AssistantSearchBridge
 let reportDatadogError: typeof import("../src/lib/datadog").reportDatadogError
 
 // require() is intentional — static imports cause silent white screens when
@@ -46,6 +47,8 @@ try {
   TvDatadogProvider = require("../src/components/DatadogRum").TvDatadogProvider
   DatadogRouteTracker =
     require("../src/components/DatadogRouteTracker").DatadogRouteTracker
+  AssistantSearchBridge =
+    require("../src/components/AssistantSearchBridge").AssistantSearchBridge
   reportDatadogError = require("../src/lib/datadog").reportDatadogError
 } catch (e: unknown) {
   const err = e instanceof Error ? e : new Error(String(e))
@@ -295,6 +298,7 @@ export default function RootLayout() {
                 <VideoPlayerProvider>
                   <StatusBar style="light" />
                   <DatadogRouteTracker />
+                  <AssistantSearchBridge />
                   <Stack
                     screenOptions={{
                       headerShown: false,

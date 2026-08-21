@@ -6,7 +6,6 @@ import { createRoot, type Root } from "react-dom/client"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import { LanguageCombobox } from "@/components/watch/LanguageCombobox"
-import { WATCH_LANGUAGE_SEARCH_ALIAS_AUTHORITY } from "@/lib/watch-language-search-aliases"
 
 let container: HTMLDivElement
 let root: Root
@@ -40,6 +39,102 @@ const MANY_OPTIONS = Array.from({ length: 200 }, (_, index) => ({
 const OPTION_SCROLL_TOP_FOR_TEST = 7200
 
 describe("LanguageCombobox Chinese aliases", () => {
+  it("uses the reviewed Watch aliases without caller opt-in", () => {
+    act(() => {
+      root.render(
+        <LanguageCombobox
+          options={[
+            { slug: "english", name: "English" },
+            { slug: "mandarin-china", name: "Mandarin China" },
+          ]}
+          value="english"
+          onChange={vi.fn()}
+        />,
+      )
+    })
+    act(() => {
+      $('[data-testid="language-combobox-trigger"]')?.click()
+    })
+
+    const input = $(
+      '[data-testid="language-combobox-search"]',
+    ) as HTMLInputElement
+    act(() => {
+      input.value = "普通话"
+      input.dispatchEvent(new Event("input", { bubbles: true }))
+    })
+
+    expect(
+      $$('[data-testid="language-combobox-option"]').map((item) =>
+        item.getAttribute("data-language-slug"),
+      ),
+    ).toEqual(["mandarin-china"])
+  })
+
+  it("finds an option by its exact public slug", () => {
+    act(() => {
+      root.render(
+        <LanguageCombobox
+          options={[
+            { slug: "english", name: "English" },
+            { slug: "spanish-latin-american", name: "Latin American Spanish" },
+          ]}
+          value="english"
+          onChange={vi.fn()}
+        />,
+      )
+    })
+    act(() => {
+      $('[data-testid="language-combobox-trigger"]')?.click()
+    })
+
+    const input = $(
+      '[data-testid="language-combobox-search"]',
+    ) as HTMLInputElement
+    act(() => {
+      input.value = "spanish-latin-american"
+      input.dispatchEvent(new Event("input", { bubbles: true }))
+    })
+
+    expect(
+      $$('[data-testid="language-combobox-option"]').map((item) =>
+        item.getAttribute("data-language-slug"),
+      ),
+    ).toEqual(["spanish-latin-american"])
+  })
+
+  it("finds a public slug when the query uses spaces", () => {
+    act(() => {
+      root.render(
+        <LanguageCombobox
+          options={[
+            { slug: "english", name: "English" },
+            { slug: "spanish-latin-american", name: "Latin American Spanish" },
+          ]}
+          value="english"
+          onChange={vi.fn()}
+        />,
+      )
+    })
+    act(() => {
+      $('[data-testid="language-combobox-trigger"]')?.click()
+    })
+
+    const input = $(
+      '[data-testid="language-combobox-search"]',
+    ) as HTMLInputElement
+    act(() => {
+      input.value = "spanish latin american"
+      input.dispatchEvent(new Event("input", { bubbles: true }))
+    })
+
+    expect(
+      $$('[data-testid="language-combobox-option"]').map((item) =>
+        item.getAttribute("data-language-slug"),
+      ),
+    ).toEqual(["spanish-latin-american"])
+  })
+
   it("selects an exact-slug alias result with the keyboard", () => {
     const onChange = vi.fn()
     act(() => {
@@ -51,7 +146,6 @@ describe("LanguageCombobox Chinese aliases", () => {
           ]}
           value="english"
           onChange={onChange}
-          searchAliasAuthority={WATCH_LANGUAGE_SEARCH_ALIAS_AUTHORITY}
         />,
       )
     })
@@ -82,24 +176,16 @@ describe("LanguageCombobox Chinese aliases", () => {
   })
 
   it("ranks every direct tier before partial alias matches and preserves alias order", () => {
-    const searchAliasAuthority = {
-      aliasesBySlug: {
-        "alias-first": ["special"],
-        "alias-second": ["spectacular"],
-      },
-      exactAliases: new Set(["special", "spectacular"]),
-    }
     act(() => {
       root.render(
         <LanguageCombobox
           options={[
-            { slug: "alias-first", name: "Alpha" },
-            { slug: "direct", name: "Retrospective" },
-            { slug: "alias-second", name: "Beta" },
+            { slug: "cantonese", name: "Cantonese" },
+            { slug: "direct", name: "中文 direct match" },
+            { slug: "mandarin-china", name: "Mandarin China" },
           ]}
-          value="alias-first"
+          value="cantonese"
           onChange={vi.fn()}
-          searchAliasAuthority={searchAliasAuthority}
         />,
       )
     })
@@ -111,7 +197,7 @@ describe("LanguageCombobox Chinese aliases", () => {
       '[data-testid="language-combobox-search"]',
     ) as HTMLInputElement
     act(() => {
-      input.value = "spec"
+      input.value = "中"
       input.dispatchEvent(new Event("input", { bubbles: true }))
     })
 
@@ -119,7 +205,7 @@ describe("LanguageCombobox Chinese aliases", () => {
       $$('[data-testid="language-combobox-option"]').map((item) =>
         item.getAttribute("data-language-slug"),
       ),
-    ).toEqual(["direct", "alias-first", "alias-second"])
+    ).toEqual(["direct", "cantonese", "mandarin-china"])
   })
 
   it("does not let a BCP-derived native label bypass exact-slug alias authority", () => {
@@ -136,7 +222,6 @@ describe("LanguageCombobox Chinese aliases", () => {
           ]}
           value="mandarin-china"
           onChange={vi.fn()}
-          searchAliasAuthority={WATCH_LANGUAGE_SEARCH_ALIAS_AUTHORITY}
         />,
       )
     })
@@ -159,6 +244,38 @@ describe("LanguageCombobox Chinese aliases", () => {
     ).toEqual(["mandarin-china"])
   })
 
+  it("does not grant aliases to a locale-derived routing slug", () => {
+    act(() => {
+      root.render(
+        <LanguageCombobox
+          options={[
+            {
+              slug: "mandarin-china",
+              searchAliasSlug: null,
+              name: "Slugless Chinese metadata",
+              bcp47: "zh",
+            },
+          ]}
+          value=""
+          onChange={vi.fn()}
+        />,
+      )
+    })
+    act(() => {
+      $('[data-testid="language-combobox-trigger"]')?.click()
+    })
+
+    const input = $(
+      '[data-testid="language-combobox-search"]',
+    ) as HTMLInputElement
+    act(() => {
+      input.value = "普通话"
+      input.dispatchEvent(new Event("input", { bubbles: true }))
+    })
+
+    expect($$('[data-testid="language-combobox-option"]')).toHaveLength(0)
+  })
+
   it("ranks direct native-name matches before exact alias owners", () => {
     act(() => {
       root.render(
@@ -176,7 +293,6 @@ describe("LanguageCombobox Chinese aliases", () => {
           ]}
           value="mandarin-china"
           onChange={vi.fn()}
-          searchAliasAuthority={WATCH_LANGUAGE_SEARCH_ALIAS_AUTHORITY}
         />,
       )
     })
@@ -216,7 +332,6 @@ describe("LanguageCombobox Chinese aliases", () => {
           ]}
           value="mandarin-china"
           onChange={vi.fn()}
-          searchAliasAuthority={WATCH_LANGUAGE_SEARCH_ALIAS_AUTHORITY}
         />,
       )
     })
@@ -253,7 +368,6 @@ describe("LanguageCombobox Chinese aliases", () => {
           ]}
           value=""
           onChange={vi.fn()}
-          searchAliasAuthority={WATCH_LANGUAGE_SEARCH_ALIAS_AUTHORITY}
         />,
       )
     })
@@ -294,7 +408,6 @@ describe("LanguageCombobox Chinese aliases", () => {
           options={options}
           value="language-0"
           onChange={onChange}
-          searchAliasAuthority={WATCH_LANGUAGE_SEARCH_ALIAS_AUTHORITY}
         />,
       )
     })

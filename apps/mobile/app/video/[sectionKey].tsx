@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useLayoutEffect, useState } from "react"
+import { useLayoutEffect, useState } from "react"
 import {
+  Platform,
   Pressable,
   ScrollView,
   Share,
@@ -14,17 +15,14 @@ import { VideoView } from "expo-video"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 
 import { useManagedVideoPlayer } from "../../src/hooks/useManagedVideoPlayer"
+import { useAutostartPlayback } from "../../src/hooks/useAutostartPlayback"
+import { blockStreamingUrl } from "../../src/lib/blockVideoDub"
 
 import { useSectionByKey } from "../../src/contexts/ExperienceProvider"
 import { ContentDispatcher } from "../../src/components/sections/ContentDispatcher"
-import {
-  ACCENT,
-  BLACK,
-  SURFACE_COLOR,
-  TEXT_BODY,
-  TEXT_ON_OVERLAY,
-} from "../../src/lib/color"
-import { layout, text, overlay, button } from "../../src/styles/shared"
+import { PlayerLoadingVeil } from "../../src/components/watch/PlayerLoadingVeil"
+import { ACCENT, BLACK, SURFACE_COLOR, TEXT_BODY } from "../../src/lib/color"
+import { layout, text, button } from "../../src/styles/shared"
 import { useEndSessionOnViewerInitiatedPlayback } from "../../src/hooks/useEndSessionOnViewerInitiatedPlayback"
 import { pictureInPictureViewProps } from "../../src/lib/miniPlayer/pictureInPicture"
 import { resolveImageUrl } from "../../src/lib/resolveImageUrl"
@@ -71,7 +69,12 @@ function VideoDetailContent({
   typography: ReturnType<typeof useTypography>
 }) {
   const s = section as Record<string, unknown>
-  const streamingUrl = s.streamingUrl as string | null
+  // Admin exposes no `streamingUrl` on a block — it resolves the playable dub
+  // live into `videoDub`. Reading the bare field yielded undefined on every
+  // load, so this route never mounted a player at all.
+  const streamingUrl = blockStreamingUrl(
+    s as Parameters<typeof blockStreamingUrl>[0],
+  )
   const blockVideoId =
     typeof s.videoId === "string" && s.videoId.length > 0
       ? s.videoId
@@ -118,7 +121,6 @@ function VideoDetailContent({
   const description =
     contentParagraphs.length > 0 ? contentParagraphs.join(" ") : null
 
-  const [hasStarted, setHasStarted] = useState(false)
   const [showFullDescription, setShowFullDescription] = useState(false)
 
   // Shared lifecycle adapter (todo 016). Deliberate convergence: foreground now
@@ -131,17 +133,16 @@ function VideoDetailContent({
     { progress: blockVideoId ? { videoId: blockVideoId } : null },
   )
 
-  useEffect(() => {
-    if (isPlaying && !hasStarted) {
-      setHasStarted(true)
-    }
-  }, [isPlaying, hasStarted])
+  // Autostarts behind a poster + spinner, the same as every other player
+  // surface. Opening this screen IS the viewer asking to watch, so it must not
+  // sit on a play button waiting for a second tap.
+  const { awaitingAutostart } = useAutostartPlayback(
+    player,
+    hasValidStream ? streamingUrl : null,
+    isPlaying,
+  )
 
   useEndSessionOnViewerInitiatedPlayback(isPlaying)
-
-  const handlePlay = useCallback(() => {
-    player.play()
-  }, [player])
 
   return (
     <ScrollView
@@ -158,37 +159,32 @@ function VideoDetailContent({
               style={StyleSheet.absoluteFill}
               nativeControls
               fullscreenOptions={{ enable: true }}
+              // Android SurfaceView composites outside the RN tree and punches
+              // through the poster and veil below. No-op on iOS.
+              surfaceType={
+                Platform.OS === "android" ? "textureView" : undefined
+              }
               // Native controls carry a picture-in-picture button on iOS, so
               // this view feeds the same latch the host does. `automatic` is
               // the host's alone — expo-video elects only one view.
               {...pictureInPictureViewProps({ automatic: false })}
               contentFit="contain"
             />
-            {!hasStarted && thumbnailUrl != null && (
-              <Pressable
+            {/* Poster and veil share ONE predicate. Gating the poster on
+                `!hasStarted` instead would leave it covering the native
+                controls after a failed or timed-out load — visible controls
+                are the recovery affordance, so both must clear together. */}
+            {awaitingAutostart && thumbnailUrl != null && (
+              <Image
+                source={thumbnailUrl}
                 style={StyleSheet.absoluteFill}
-                onPress={handlePlay}
-                accessibilityRole="button"
-                accessibilityLabel="Play video"
-              >
-                <Image
-                  source={thumbnailUrl}
-                  style={StyleSheet.absoluteFill}
-                  contentFit="cover"
-                  accessibilityLabel={title ?? "Video thumbnail"}
-                />
-                <View style={overlay.playOverlay}>
-                  <View style={styles.playCircle}>
-                    <Ionicons
-                      name="play"
-                      size={28}
-                      color={TEXT_ON_OVERLAY}
-                      style={{ marginLeft: 4 }}
-                    />
-                  </View>
-                </View>
-              </Pressable>
+                contentFit="cover"
+                pointerEvents="none"
+                recyclingKey={`sdui-video-poster-${currentKey ?? title}`}
+                accessibilityLabel={title ?? "Video thumbnail"}
+              />
             )}
+            {awaitingAutostart && <PlayerLoadingVeil />}
           </>
         ) : thumbnailUrl != null ? (
           <Image
@@ -245,17 +241,6 @@ const styles = StyleSheet.create({
   },
   fallback: {
     backgroundColor: SURFACE_COLOR,
-  },
-  // Accent-colored play button per iOS Video Detail (HIG) mockup.
-  // Home feed cards use dark play buttons (VideoCardRenderer).
-  // Fully opaque for reliable 3:1+ contrast against arbitrary thumbnails.
-  playCircle: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    backgroundColor: ACCENT,
-    justifyContent: "center",
-    alignItems: "center",
   },
   descriptionArea: {
     paddingHorizontal: 16,

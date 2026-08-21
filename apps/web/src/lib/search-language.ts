@@ -19,6 +19,7 @@ export type SearchLanguageOption = {
   nativeName: string | null
   bcp47: string | null
   publicSlug: string | null
+  aliasOwnerSlug?: string | null
   regionNames: string[]
   facetCount?: number
 }
@@ -369,6 +370,7 @@ export function buildSearchLanguageOptions({
       nativeName: null,
       bcp47: null,
       publicSlug: null,
+      aliasOwnerSlug: null,
       regionNames: [OTHER_REGION_NAME],
       facetCount: count,
     })
@@ -410,12 +412,17 @@ function languageOptionFromMetadata({
   if (facet) usedFacetNames.add(normalizedEnglishName)
 
   const publicSlug = publicSlugForLanguage(language)
+  const aliasOwnerSlug =
+    language.slug && isPublicWatchLanguageSlug(language.slug)
+      ? language.slug
+      : null
   return {
     coreId: language.coreId ?? null,
     englishName: facet?.label ?? englishName,
     nativeName: nativeName(language.name, language.bcp47),
     bcp47: language.bcp47 ?? null,
     publicSlug,
+    aliasOwnerSlug,
     regionNames: regionNames.length > 0 ? regionNames : [OTHER_REGION_NAME],
     facetCount: facet?.count,
   }
@@ -545,6 +552,7 @@ function uniqueSearchLanguageOptions(
       nativeName: existing.nativeName ?? option.nativeName,
       bcp47: existing.bcp47 ?? option.bcp47,
       publicSlug: existing.publicSlug ?? option.publicSlug,
+      aliasOwnerSlug: existing.aliasOwnerSlug ?? option.aliasOwnerSlug,
       regionNames: [
         ...new Set([...existing.regionNames, ...option.regionNames]),
       ],

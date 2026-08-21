@@ -15,6 +15,9 @@ import Ionicons from "@expo/vector-icons/Ionicons"
 
 import { useSectionByKey } from "../../src/contexts/ExperienceProvider"
 import { useManagedVideoPlayer } from "../../src/hooks/useManagedVideoPlayer"
+import { useAutostartPlayback } from "../../src/hooks/useAutostartPlayback"
+import { PlayerLoadingVeil } from "../../src/components/watch/PlayerLoadingVeil"
+import { deriveMuxThumbnailUrl } from "../../src/lib/muxThumbnail"
 import {
   ACCENT,
   BLACK,
@@ -26,6 +29,7 @@ import { layout, text } from "../../src/styles/shared"
 import { useEndSessionOnViewerInitiatedPlayback } from "../../src/hooks/useEndSessionOnViewerInitiatedPlayback"
 import { pictureInPictureViewProps } from "../../src/lib/miniPlayer/pictureInPicture"
 import { resolveImageUrl } from "../../src/lib/resolveImageUrl"
+import { blockStreamingUrl } from "../../src/lib/blockVideoDub"
 import { validateStreamingUrl } from "../../src/lib/validateUrl"
 import { parseSectionKey } from "../../src/lib/parseSectionKey"
 import { useTypography } from "../../src/hooks/useTypography"
@@ -35,10 +39,22 @@ import type { AdminBlock } from "../../src/lib/queries"
 
 type CollectionItem = {
   videoId?: string | null
+  // Admin resolves the playable dub live into `videoDub`; it exposes no bare
+  // `streamingUrl` on an item. Always read through `blockStreamingUrl`.
+  videoDub?: {
+    hls?: string | null
+    dash?: string | null
+    share?: string | null
+  } | null
   streamingUrl?: string | null
   imageUrl?: string | null
   titleOverride?: string | null
   backgroundColor?: string | null
+}
+
+/** The item's playable url, from the dub admin actually sends. */
+function itemStreamUrl(item: CollectionItem | undefined): string | null {
+  return item == null ? null : blockStreamingUrl(item)
 }
 
 // ── Constants ───────────────────────────────────────────────────────────────
@@ -114,7 +130,7 @@ function CollectionPlayerContent({
   const playableIndices = useMemo(
     () =>
       items.reduce<number[]>((acc, item, i) => {
-        if (validateStreamingUrl(item.streamingUrl)) {
+        if (validateStreamingUrl(itemStreamUrl(item))) {
           acc.push(i)
         }
         return acc
@@ -135,8 +151,18 @@ function CollectionPlayerContent({
   // the creation source and swaps (replaceAsync + Mux-ID compare) on change.
   const activeStreamingUrl = useMemo(() => {
     if (currentIndex < 0 || currentIndex >= items.length) return null
-    const url = items[currentIndex]?.streamingUrl
+    const url = itemStreamUrl(items[currentIndex])
     return url && validateStreamingUrl(url) ? url : null
+  }, [currentIndex, items])
+
+  // Authored art wins; the Mux still is the fallback, matching the video route.
+  const activePosterUrl = useMemo(() => {
+    const item = items[currentIndex]
+    if (item == null) return null
+    return (
+      resolveImageUrl(item.imageUrl) ??
+      resolveImageUrl(deriveMuxThumbnailUrl(itemStreamUrl(item)))
+    )
   }, [currentIndex, items])
 
   const activeVideoId = items[currentIndex]?.videoId ?? null
@@ -148,6 +174,15 @@ function CollectionPlayerContent({
       // the departing episode inside the adapter.
       progress: activeVideoId ? { videoId: activeVideoId } : null,
     },
+  )
+
+  // Autostarts behind a poster + spinner, the same as every other player
+  // surface. Opening this screen IS the viewer asking to watch, so it must not
+  // sit on the native transport waiting for a second tap.
+  const { awaitingAutostart } = useAutostartPlayback(
+    player,
+    activeStreamingUrl,
+    isPlaying,
   )
 
   useEndSessionOnViewerInitiatedPlayback(isPlaying)
@@ -208,7 +243,7 @@ function CollectionPlayerContent({
   const renderItem = useCallback(
     ({ item, index: idx }: { item: CollectionItem; index: number }) => {
       const isActive = idx === currentIndex
-      const isPlayable = validateStreamingUrl(item.streamingUrl)
+      const isPlayable = validateStreamingUrl(itemStreamUrl(item))
       const title =
         (item.titleOverride != null && item.titleOverride !== ""
           ? item.titleOverride
@@ -348,12 +383,30 @@ function CollectionPlayerContent({
           style={StyleSheet.absoluteFill}
           nativeControls
           fullscreenOptions={{ enable: true }}
+          // Android SurfaceView composites outside the RN tree and punches
+          // through the poster and veil below. No-op on iOS.
+          surfaceType={Platform.OS === "android" ? "textureView" : undefined}
           // Native controls carry a picture-in-picture button on iOS, so this
           // view feeds the same latch the host does. `automatic` is the host's
           // alone — expo-video elects only one view.
           {...pictureInPictureViewProps({ automatic: false })}
           contentFit="contain"
         />
+        {/* Poster and veil share ONE predicate. Gating the poster on
+            `!hasStarted` instead would leave it covering the native controls
+            after a failed or timed-out load — visible controls are the
+            recovery affordance, so both must clear together. */}
+        {awaitingAutostart && activePosterUrl != null && (
+          <Image
+            source={activePosterUrl}
+            style={StyleSheet.absoluteFill}
+            contentFit="cover"
+            pointerEvents="none"
+            recyclingKey={`sdui-collection-poster-${currentIndex}`}
+            accessibilityLabel="Video thumbnail"
+          />
+        )}
+        {awaitingAutostart && <PlayerLoadingVeil />}
       </View>
 
       {/* Sticky header */}

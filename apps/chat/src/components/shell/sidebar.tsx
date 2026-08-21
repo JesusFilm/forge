@@ -24,6 +24,10 @@ type SidebarProps = {
   identity: ChatIdentity | null
   signInError: boolean
   history: HistoryListUi
+  /** feat-209 (KTD6): denial shell — the New control becomes an anchor to "/". */
+  deniedShell?: boolean
+  /** feat-209 (KTD8): current `/c/<id>` path for the rail-foot sign-in href. */
+  signInReturnTo?: string
   onNew: () => void
   onSelect: (id: string) => void
   onToggleCollapsed: () => void
@@ -56,6 +60,8 @@ export function Sidebar({
   identity,
   signInError,
   history,
+  deniedShell = false,
+  signInReturnTo,
   onNew,
   onSelect,
   onToggleCollapsed,
@@ -130,6 +136,7 @@ export function Sidebar({
           styles={styles}
           onNew={onNew}
           onCloseMobile={onCloseMobile}
+          linkToHome={deniedShell}
         />
         <ConversationList
           conversations={visibleConversations}
@@ -148,6 +155,7 @@ export function Sidebar({
           signInError={signInError}
           collapsed={collapsed}
           styles={styles}
+          signInReturnTo={signInReturnTo}
         />
       </aside>
     </>

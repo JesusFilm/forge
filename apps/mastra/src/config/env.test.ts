@@ -1316,6 +1316,56 @@ describe("Mastra env", () => {
     expect(isSeekerVideoEnabled()).toBe(false)
   })
 
+  // --- feat-366: SEEKER_FOLLOWUPS_ENABLED default-off string-boolean gate (KTD8) ---
+
+  it("disables seeker follow-ups when SEEKER_FOLLOWUPS_ENABLED is unset or empty", async () => {
+    vi.stubEnv("NODE_ENV", "development")
+
+    const first = await import("./env")
+    expect(first.isSeekerFollowUpsEnabled()).toBe(false)
+
+    vi.resetModules()
+    vi.stubEnv("SEEKER_FOLLOWUPS_ENABLED", "")
+    const second = await import("./env")
+    expect(second.isSeekerFollowUpsEnabled()).toBe(false)
+  })
+
+  it.each(["false", "post", "tool", "heuristic", "TRUE"])(
+    "treats SEEKER_FOLLOWUPS_ENABLED=%j as disabled — string-boolean, and the retired prototype mode enum stays dead",
+    async (value) => {
+      // "post"/"tool"/"heuristic" were the prototype's SEEKER_FOLLOWUPS_MODE
+      // values (KTD8: the enum retires with the flag; `mode=post` survives
+      // only as a log-line mechanism label). Any of them read as OFF here.
+      vi.stubEnv("NODE_ENV", "development")
+      vi.stubEnv("SEEKER_FOLLOWUPS_ENABLED", value)
+
+      const { isSeekerFollowUpsEnabled } = await import("./env")
+
+      expect(isSeekerFollowUpsEnabled()).toBe(false)
+    },
+  )
+
+  it('enables seeker follow-ups only when SEEKER_FOLLOWUPS_ENABLED is exactly "true"', async () => {
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("SEEKER_FOLLOWUPS_ENABLED", "true")
+
+    const { isSeekerFollowUpsEnabled } = await import("./env")
+
+    expect(isSeekerFollowUpsEnabled()).toBe(true)
+  })
+
+  it("keeps SEEKER_FOLLOWUPS_ENABLED out of the production required-var set (optional at boot)", async () => {
+    stubProductionBaseline()
+    // SEEKER_FOLLOWUPS_ENABLED deliberately unset — a default-off deploy has
+    // zero new env prerequisites (KTD8).
+
+    const { assertMastraRuntimeEnv, isSeekerFollowUpsEnabled } =
+      await import("./env")
+
+    expect(() => assertMastraRuntimeEnv()).not.toThrow()
+    expect(isSeekerFollowUpsEnabled()).toBe(false)
+  })
+
   // --- feat-327: ADMIN_AGENT_TOOLS_MAX_RESPONSE_BYTES byte cap ---
 
   it("defaults the agent-tools response byte cap to 2 MiB when unset", async () => {
@@ -1851,6 +1901,19 @@ describe("Mastra env", () => {
     await expect(import("./env")).rejects.toThrow()
   })
 
+  it('accepts SEEKER_FOLLOWUPS_TRACE_SMOKE_TEST="1" and rejects any other non-empty value', async () => {
+    // Same posture as the sibling smoke gates (feat-366): only the literal
+    // "1" enables the opt-in live trace smoke — loud, never half-enabled.
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("SEEKER_FOLLOWUPS_TRACE_SMOKE_TEST", "1")
+    const { env } = await import("./env")
+    expect(env.SEEKER_FOLLOWUPS_TRACE_SMOKE_TEST).toBe("1")
+
+    vi.resetModules()
+    vi.stubEnv("SEEKER_FOLLOWUPS_TRACE_SMOKE_TEST", "true")
+    await expect(import("./env")).rejects.toThrow()
+  })
+
   it("defaults the devotional Workspace to a local directory and bounded SQL pool", async () => {
     vi.stubEnv("NODE_ENV", "test")
     vi.stubEnv("MASTRA_STORAGE_DIR", ".tmp/mastra")
@@ -1900,5 +1963,421 @@ describe("Mastra env", () => {
     vi.stubEnv("DEVOTIONAL_WORKSPACE_DATABASE_POOL_MAX", "1")
 
     await expect(import("./env")).rejects.toThrow()
+  })
+})
+
+/**
+ * Datadog mobile triage env surface (feat-datadog-mobile-triage U1).
+ *
+ * The whole block is `.optional()`/defaulted on purpose: an unprovisioned
+ * Railway environment must still boot, and completeness is a runtime readiness
+ * decision the workflow makes, never a boot throw.
+ */
+const DATADOG_TRIAGE_ENV_VARS = [
+  "DATADOG_TRIAGE_ENABLED",
+  "DATADOG_TRIAGE_SITE",
+  "DATADOG_TRIAGE_API_KEY",
+  "DATADOG_TRIAGE_APP_KEY",
+  "DATADOG_TRIAGE_SERVICES",
+  "DATADOG_TRIAGE_SERVICE_PROFILES_JSON",
+  "DATADOG_TRIAGE_MODEL",
+  "DATADOG_TRIAGE_MAX_CANDIDATES_PER_RUN",
+  "DATADOG_TRIAGE_MAX_TICKETS_PER_DAY",
+  "DATADOG_TRIAGE_TIMEOUT_MS",
+  "DATADOG_TRIAGE_MAX_RESPONSE_BYTES",
+  "DATADOG_TRIAGE_OVERLAP_MS",
+  "DATADOG_TRIAGE_LAG_MS",
+  "DATADOG_TRIAGE_BASELINE_LOOKBACK_MS",
+  "DATADOG_TRIAGE_CONFIDENCE_THRESHOLD",
+  "DATADOG_TRIAGE_ACTIONABILITY_THRESHOLD",
+  "DATADOG_TRIAGE_MIN_OCCURRENCES",
+  "DATADOG_TRIAGE_REGRESSION_MULTIPLIER",
+  "DATADOG_TRIAGE_MONITOR_COOLDOWN_MS",
+  "DATADOG_TRIAGE_SPIKE_MULTIPLIER",
+  "DATADOG_TRIAGE_RELEASE_VERSION_PATTERN",
+  "DATADOG_TRIAGE_DEV_SESSION_MARKERS",
+  "DATADOG_TRIAGE_REPOSITORY_SMOKE_TEST",
+  "LINEAR_DATADOG_TRIAGE_API_KEY",
+  "LINEAR_DATADOG_TRIAGE_API_URL",
+  "LINEAR_DATADOG_TRIAGE_TEAM_ID",
+  "LINEAR_DATADOG_TRIAGE_PROJECT_ID",
+  "LINEAR_DATADOG_TRIAGE_BUG_LABEL_ID",
+] as const
+
+function clearDatadogTriageEnv(): void {
+  for (const name of DATADOG_TRIAGE_ENV_VARS) vi.stubEnv(name, "")
+}
+
+function provisionDatadogTriageEnv(): void {
+  vi.stubEnv("DATADOG_TRIAGE_ENABLED", "true")
+  vi.stubEnv("DATADOG_TRIAGE_API_KEY", "dd-api-key")
+  vi.stubEnv("DATADOG_TRIAGE_APP_KEY", "dd-app-key")
+  // The default model is an `openai/...` route, so this is as load-bearing as
+  // the Datadog and Linear credentials: without it every judgment fails.
+  vi.stubEnv("OPENAI_API_KEY", "sk-test")
+  vi.stubEnv("LINEAR_DATADOG_TRIAGE_API_KEY", "lin_api_key")
+  vi.stubEnv("LINEAR_DATADOG_TRIAGE_TEAM_ID", "team-fge")
+  vi.stubEnv("LINEAR_DATADOG_TRIAGE_PROJECT_ID", "project-mobile-triage")
+  vi.stubEnv("LINEAR_DATADOG_TRIAGE_BUG_LABEL_ID", "label-bug")
+}
+
+describe("Datadog triage env", () => {
+  beforeEach(() => {
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("FIRECRAWL_API_KEY", "firecrawl-key")
+    // Explicit, not inherited: a real key in the developer's shell would make
+    // the model-credential cases pass for the wrong reason.
+    vi.stubEnv("OPENAI_API_KEY", "")
+    vi.stubEnv("OPENROUTER_API_KEY", "")
+    vi.stubEnv("OPENROUTER_API_PAID_KEY", "")
+    clearDatadogTriageEnv()
+  })
+
+  afterEach(() => {
+    vi.unstubAllEnvs()
+    vi.resetModules()
+  })
+
+  it("boots with every new variable unset", async () => {
+    const { assertMastraRuntimeEnv, getDatadogTriageConfig } =
+      await import("./env")
+
+    expect(() => assertMastraRuntimeEnv()).not.toThrow()
+    expect(getDatadogTriageConfig().enabled).toBe(false)
+  })
+
+  it("defaults the enabled flag off and reports every missing credential", async () => {
+    const { getDatadogTriageConfig, getDatadogTriageReadiness } =
+      await import("./env")
+
+    const readiness = getDatadogTriageReadiness(getDatadogTriageConfig())
+
+    expect(readiness.ready).toBe(false)
+    if (readiness.ready) throw new Error("expected unready config")
+    expect(readiness.reasons).toEqual(
+      expect.arrayContaining([
+        "feature_disabled",
+        "datadog_api_key_missing",
+        "datadog_app_key_missing",
+        "linear_api_key_missing",
+        "linear_team_id_missing",
+        "linear_project_id_missing",
+        "linear_bug_label_missing",
+      ]),
+    )
+  })
+
+  it("reports ready once Datadog and Linear are fully provisioned", async () => {
+    provisionDatadogTriageEnv()
+
+    const { getDatadogTriageConfig, getDatadogTriageReadiness } =
+      await import("./env")
+
+    expect(getDatadogTriageReadiness(getDatadogTriageConfig())).toEqual({
+      ready: true,
+    })
+  })
+
+  // Without this the sweep passes readiness, spends Datadog quota hourly,
+  // fails every judgment, and files nothing — reported `partial`, while the
+  // runbook's liveness query stays green because the fetch half succeeded.
+  it("refuses when the configured model's provider has no credential", async () => {
+    provisionDatadogTriageEnv()
+    vi.stubEnv("OPENAI_API_KEY", "")
+
+    const { getDatadogTriageConfig, getDatadogTriageReadiness } =
+      await import("./env")
+
+    const readiness = getDatadogTriageReadiness(getDatadogTriageConfig())
+
+    expect(readiness.ready).toBe(false)
+    if (readiness.ready) throw new Error("expected unready config")
+    expect(readiness.reasons).toContain("model_api_key_missing")
+  })
+
+  it("reads the credential the configured provider actually uses", async () => {
+    // Switching the model to an OpenRouter route must switch which key counts:
+    // checking OPENAI_API_KEY unconditionally would refuse a valid setup.
+    provisionDatadogTriageEnv()
+    vi.stubEnv("OPENAI_API_KEY", "")
+    vi.stubEnv("DATADOG_TRIAGE_MODEL", "openrouter/google/gemma-4-31b-it:free")
+    vi.stubEnv("OPENROUTER_API_KEY", "or-key")
+
+    const { getDatadogTriageConfig, getDatadogTriageReadiness } =
+      await import("./env")
+
+    expect(getDatadogTriageReadiness(getDatadogTriageConfig())).toEqual({
+      ready: true,
+    })
+  })
+
+  it("refuses an OpenRouter model when neither OpenRouter key is set", async () => {
+    provisionDatadogTriageEnv()
+    vi.stubEnv("OPENAI_API_KEY", "sk-test")
+    vi.stubEnv("DATADOG_TRIAGE_MODEL", "openrouter/google/gemma-4-31b-it:free")
+
+    const { getDatadogTriageConfig, getDatadogTriageReadiness } =
+      await import("./env")
+
+    const readiness = getDatadogTriageReadiness(getDatadogTriageConfig())
+
+    expect(readiness.ready).toBe(false)
+    if (readiness.ready) throw new Error("expected unready config")
+    expect(readiness.reasons).toContain("model_api_key_missing")
+  })
+
+  it("does not block a provider it cannot classify", async () => {
+    // Refusing an unknown prefix would break a legitimate custom route. This
+    // is the check's honest limit, pinned so it is a decision, not a surprise.
+    provisionDatadogTriageEnv()
+    vi.stubEnv("OPENAI_API_KEY", "")
+    vi.stubEnv("DATADOG_TRIAGE_MODEL", "custom-gateway/some-model")
+
+    const { getDatadogTriageConfig, getDatadogTriageReadiness } =
+      await import("./env")
+
+    expect(getDatadogTriageReadiness(getDatadogTriageConfig())).toEqual({
+      ready: true,
+    })
+  })
+
+  it("refuses an unrecognized Datadog site instead of sending the key there", async () => {
+    provisionDatadogTriageEnv()
+    vi.stubEnv("DATADOG_TRIAGE_SITE", "datadog.attacker.example")
+
+    const { getDatadogTriageConfig, getDatadogTriageReadiness } =
+      await import("./env")
+
+    const readiness = getDatadogTriageReadiness(getDatadogTriageConfig())
+
+    expect(readiness.ready).toBe(false)
+    if (readiness.ready) throw new Error("expected unready config")
+    expect(readiness.reasons).toContain("datadog_site_not_allowed")
+  })
+
+  it("defaults the service list to forge-mobile alone", async () => {
+    const { getDatadogTriageConfig } = await import("./env")
+
+    expect(getDatadogTriageConfig().services).toEqual(["forge-mobile"])
+  })
+
+  it("trims and drops empty entries from the service list", async () => {
+    vi.stubEnv("DATADOG_TRIAGE_SERVICES", " forge-mobile , ,forge-admin ,")
+
+    const { getDatadogTriageConfig } = await import("./env")
+
+    expect(getDatadogTriageConfig().services).toEqual([
+      "forge-mobile",
+      "forge-admin",
+    ])
+  })
+
+  it("deduplicates the service list", async () => {
+    // A repeat is not cosmetic: the sweep would push two cursor rows with the
+    // same source, and `on conflict (source) do update` raises 21000 — so one
+    // duplicated name fails every run rather than degrading.
+    vi.stubEnv(
+      "DATADOG_TRIAGE_SERVICES",
+      "forge-mobile, forge-admin ,forge-mobile",
+    )
+
+    const { getDatadogTriageConfig } = await import("./env")
+
+    expect(getDatadogTriageConfig().services).toEqual([
+      "forge-mobile",
+      "forge-admin",
+    ])
+  })
+
+  it("falls back to the DEFAULT_* constants for every numeric field", async () => {
+    const { getDatadogTriageConfig } = await import("./env")
+
+    expect(getDatadogTriageConfig()).toMatchObject({
+      maxCandidatesPerRun: 200,
+      maxTicketsPerDay: 5,
+      timeoutMs: 15_000,
+      maxResponseBytes: 4_194_304,
+      overlapMs: 300_000,
+      ingestionLagMs: 180_000,
+      baselineLookbackMs: 604_800_000,
+      confidenceThreshold: 0.7,
+      actionabilityThreshold: 0.6,
+      minOccurrences: 3,
+      regressionMultiplier: 3,
+      monitorCooldownMs: 21_600_000,
+      spikeMultiplier: 3,
+    })
+  })
+
+  it("rejects a non-numeric threshold rather than coercing it to NaN", async () => {
+    vi.stubEnv("DATADOG_TRIAGE_MAX_TICKETS_PER_DAY", "five")
+
+    await expect(import("./env")).rejects.toThrow()
+  })
+
+  it("rejects a daily ticket budget above the schema ceiling", async () => {
+    vi.stubEnv("DATADOG_TRIAGE_MAX_TICKETS_PER_DAY", "500")
+
+    await expect(import("./env")).rejects.toThrow()
+  })
+
+  it("accepts a zero daily budget so the runbook dry-run can enqueue without dispatching", async () => {
+    vi.stubEnv("DATADOG_TRIAGE_MAX_TICKETS_PER_DAY", "0")
+
+    const { getDatadogTriageConfig } = await import("./env")
+
+    expect(getDatadogTriageConfig().maxTicketsPerDay).toBe(0)
+  })
+
+  it("ships the mobile service profile with the release-session filter on", async () => {
+    const { getDatadogTriageConfig, getDatadogTriageServiceProfile } =
+      await import("./env")
+
+    expect(
+      getDatadogTriageServiceProfile(getDatadogTriageConfig(), "forge-mobile"),
+    ).toEqual({
+      surfacePrefix: "[Mobile]",
+      releaseSessionFilter: true,
+      spikeSource: "rum",
+    })
+  })
+
+  it("reads per-service prefixes and filter applicability from config", async () => {
+    vi.stubEnv(
+      "DATADOG_TRIAGE_SERVICE_PROFILES_JSON",
+      JSON.stringify({
+        "forge-mobile": {
+          surfacePrefix: "[Mobile]",
+          releaseSessionFilter: true,
+        },
+        "forge-admin": {
+          surfacePrefix: "[Admin]",
+          releaseSessionFilter: false,
+        },
+      }),
+    )
+
+    const { getDatadogTriageConfig, getDatadogTriageServiceProfile } =
+      await import("./env")
+    const config = getDatadogTriageConfig()
+
+    // spikeSource is optional in the JSON and defaults to logs, so an operator
+    // adding a service does not have to know the field exists.
+    expect(getDatadogTriageServiceProfile(config, "forge-admin")).toEqual({
+      surfacePrefix: "[Admin]",
+      releaseSessionFilter: false,
+      spikeSource: "logs",
+    })
+    expect(config.serviceProfilesInvalid).toBe(false)
+  })
+
+  it("falls back to a logs spike check for a service with no profile at all", async () => {
+    const { getDatadogTriageConfig, getDatadogTriageServiceProfile } =
+      await import("./env")
+
+    expect(
+      getDatadogTriageServiceProfile(getDatadogTriageConfig(), "forge-unknown"),
+    ).toEqual({
+      surfacePrefix: "[Service]",
+      releaseSessionFilter: false,
+      spikeSource: "logs",
+    })
+  })
+
+  it("refuses a malformed service-profile map instead of filing under a guessed prefix", async () => {
+    provisionDatadogTriageEnv()
+    vi.stubEnv("DATADOG_TRIAGE_SERVICE_PROFILES_JSON", "{not json")
+
+    const { getDatadogTriageConfig, getDatadogTriageReadiness } =
+      await import("./env")
+
+    const readiness = getDatadogTriageReadiness(getDatadogTriageConfig())
+
+    expect(readiness.ready).toBe(false)
+    if (readiness.ready) throw new Error("expected unready config")
+    expect(readiness.reasons).toContain("service_profiles_invalid")
+  })
+
+  it("refuses a service-profile entry whose prefix is not bracketed", async () => {
+    provisionDatadogTriageEnv()
+    vi.stubEnv(
+      "DATADOG_TRIAGE_SERVICE_PROFILES_JSON",
+      JSON.stringify({
+        "forge-mobile": { surfacePrefix: "Mobile", releaseSessionFilter: true },
+      }),
+    )
+
+    const { getDatadogTriageConfig, getDatadogTriageReadiness } =
+      await import("./env")
+
+    const readiness = getDatadogTriageReadiness(getDatadogTriageConfig())
+
+    expect(readiness.ready).toBe(false)
+    if (readiness.ready) throw new Error("expected unready config")
+    expect(readiness.reasons).toContain("service_profiles_invalid")
+  })
+
+  it("refuses a service name that could widen the monitor tag filter", async () => {
+    provisionDatadogTriageEnv()
+    vi.stubEnv("DATADOG_TRIAGE_SERVICES", "forge-mobile,*")
+
+    const { getDatadogTriageConfig, getDatadogTriageReadiness } =
+      await import("./env")
+
+    const readiness = getDatadogTriageReadiness(getDatadogTriageConfig())
+
+    expect(readiness.ready).toBe(false)
+    if (readiness.ready) throw new Error("expected unready config")
+    expect(readiness.reasons).toContain("service_name_invalid")
+  })
+
+  it("accepts ordinary service names", async () => {
+    provisionDatadogTriageEnv()
+    vi.stubEnv("DATADOG_TRIAGE_SERVICES", "forge-mobile,forge-admin.api_v2")
+
+    const { getDatadogTriageConfig, getDatadogTriageReadiness } =
+      await import("./env")
+
+    expect(getDatadogTriageReadiness(getDatadogTriageConfig())).toEqual({
+      ready: true,
+    })
+  })
+
+  it("refuses an unusable release-version pattern", async () => {
+    provisionDatadogTriageEnv()
+    vi.stubEnv("DATADOG_TRIAGE_RELEASE_VERSION_PATTERN", "([")
+
+    const { getDatadogTriageConfig, getDatadogTriageReadiness } =
+      await import("./env")
+
+    const readiness = getDatadogTriageReadiness(getDatadogTriageConfig())
+
+    expect(readiness.ready).toBe(false)
+    if (readiness.ready) throw new Error("expected unready config")
+    expect(readiness.reasons).toContain("release_version_pattern_invalid")
+  })
+
+  it("classifies the live 2026-08-18 dev-session versions as non-release", async () => {
+    const { getDatadogTriageConfig } = await import("./env")
+    const pattern = new RegExp(
+      getDatadogTriageConfig().releaseVersionPattern,
+      "u",
+    )
+
+    expect(pattern.test("1.4.2")).toBe(true)
+    expect(pattern.test("1.4.2-beta.3")).toBe(true)
+    expect(pattern.test("fixcheck-20260805")).toBe(false)
+    expect(pattern.test("sdk57-regression-20260813")).toBe(false)
+  })
+
+  it("lower-cases the dev-session markers so matching is case-insensitive", async () => {
+    vi.stubEnv("DATADOG_TRIAGE_DEV_SESSION_MARKERS", " LocalHost , DEV=true ")
+
+    const { getDatadogTriageConfig } = await import("./env")
+
+    expect(getDatadogTriageConfig().devSessionMarkers).toEqual([
+      "localhost",
+      "dev=true",
+    ])
   })
 })

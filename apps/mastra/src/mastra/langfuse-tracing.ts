@@ -240,6 +240,17 @@ export function buildObservabilityConfigs(
 }
 
 /**
+ * Fresh RequestContext carrying the per-process marker — the ONE stamp both
+ * call-option builders below route through, extracted so the two can never
+ * drift on the key or the marker value.
+ */
+function newSeekerTracingRequestContext(): RequestContext {
+  const requestContext = new RequestContext()
+  requestContext.set(TRACING_CONFIG_CONTEXT_KEY, LANGFUSE_SEEKER_TRACING_MARKER)
+  return requestContext
+}
+
+/**
  * Builds the per-turn `agent.stream` tracing options for a seeker send: the
  * marker-stamped RequestContext plus the root-span metadata the Langfuse
  * exporter maps to first-class trace fields (traceName → trace name,
@@ -257,15 +268,22 @@ export function buildSeekerTracingCallOptions(input: {
   resource: string
   /** Memory thread id — becomes the Langfuse session id. */
   thread: string
+  /**
+   * Click-source of the send (feat-366, KTD11): `follow_up` when the person
+   * tapped a suggested chip, `typed` otherwise. Stamped under `sendOrigin` —
+   * NOT `promptSource`, which this metadata already uses for prompt
+   * provenance (`langfuse` | `fallback`); the key-pin test holds the two
+   * apart so they cannot re-merge. Optional at this seam; the route always
+   * supplies it (flag-independent).
+   */
+  sendOrigin?: "follow_up" | "typed"
 }): {
   requestContext: RequestContext
   tracingOptions: { metadata: Record<string, unknown> }
 } {
-  const { promptName, promptProvenance, resource, thread } = input
-  const requestContext = new RequestContext()
-  requestContext.set(TRACING_CONFIG_CONTEXT_KEY, LANGFUSE_SEEKER_TRACING_MARKER)
+  const { promptName, promptProvenance, resource, thread, sendOrigin } = input
   return {
-    requestContext,
+    requestContext: newSeekerTracingRequestContext(),
     tracingOptions: {
       metadata: {
         traceName: "seeker-turn",
@@ -274,6 +292,7 @@ export function buildSeekerTracingCallOptions(input: {
         promptName,
         promptSource: promptProvenance.source,
         promptLabel: promptProvenance.resolvedLabel,
+        ...(sendOrigin !== undefined ? { sendOrigin } : {}),
         ...(promptProvenance.version !== undefined
           ? { promptVersion: promptProvenance.version }
           : {}),
@@ -287,6 +306,68 @@ export function buildSeekerTracingCallOptions(input: {
             }
           : {}),
       },
+    },
+  }
+}
+
+/**
+ * Per-call tracing options for the follow-ups GENERATOR call (feat-366,
+ * KTD9). Carries the same per-process marker (routing its spans to the raw
+ * `langfuse-seeker` config) and the same session (`threadId`) / user
+ * (`resource`) stamps as the turn itself — the stamps are what keep the
+ * feat-336 retention sweep and feat-337 erasure able to FIND these spans
+ * through a `userId`-filtered observation listing.
+ *
+ * Same-trace joining (the KTD9 ladder's top rung): when the turn's stream
+ * output exposed its `traceId`/`spanId`, they thread through as
+ * `tracingOptions.traceId` / `parentSpanId` so the generator's spans join
+ * the turn's trace. Absent ids fall back to a SIBLING trace named
+ * `seeker-follow-ups` with the same stamps — the acceptable fallback.
+ *
+ * SHIPPED SHAPE (KTD9 record). MEASURED 2026-08-20 via
+ * `seeker-follow-ups-tracing.smoke.test.ts` against the real `forge-mastra`
+ * project, @mastra/core 1.55.0, from THIS branch's source (so the run
+ * exercised the current `projectFollowUps` rungs, not main's).
+ * Verbatim recorded line:
+ *
+ *   [followups-trace-smoke] event=ladder_walked spans_listed=2
+ *   distinct_traces=1 trace_shape=same-trace listing_returned_subject_rows=true
+ *
+ * SAME-TRACE via `traceId`/`parentSpanId` — the ladder's TOP rung, not the
+ * sibling fallback. Both ship-blockers pass: the generator's spans EXIST
+ * (`spans_listed=2`, one per generator call, on a single trace), and a
+ * `userId`-filtered observation listing — the exact primitive the feat-337
+ * erasure CLI uses — RETURNED them, all on the throwaway subject. So these
+ * spans are reachable by erasure, which is the property that made it a
+ * blocker rather than an observability nit.
+ *
+ * An earlier operator run on 2026-08-19 reported the same shape and the same
+ * `distinct_traces=1`; this record supersedes it because it post-dates the
+ * projection changes. Re-run on any `@mastra/*` bump.
+ */
+export function buildFollowUpsTracingCallOptions(input: {
+  resource: string
+  thread: string
+  turnTraceId?: string
+  turnSpanId?: string
+}): {
+  requestContext: RequestContext
+  tracingOptions: {
+    metadata: Record<string, unknown>
+    traceId?: string
+    parentSpanId?: string
+  }
+} {
+  return {
+    requestContext: newSeekerTracingRequestContext(),
+    tracingOptions: {
+      metadata: {
+        traceName: "seeker-follow-ups",
+        userId: input.resource,
+        sessionId: input.thread,
+      },
+      ...(input.turnTraceId ? { traceId: input.turnTraceId } : {}),
+      ...(input.turnSpanId ? { parentSpanId: input.turnSpanId } : {}),
     },
   }
 }

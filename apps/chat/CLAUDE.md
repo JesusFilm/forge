@@ -16,7 +16,25 @@ sidebar hydrates from a paginated server listing, threads carry LLM titles,
 and selecting a thread replays its transcript and resumes in the same server
 thread (see "Server-side conversation history" below). Anonymous and
 gate-denied users keep the ephemeral client-only sidebar that resets on
-refresh. Per-conversation URLs/deep-linking is feat-209.
+refresh. Deep links shipped with feat-209: gate-granted conversations live at
+`/c/<id>` (shallow history writes in-app), and the force-dynamic `/c/[id]`
+route resolves a two-screen denial model — "sign in to view this conversation"
+when there is no session, the "no longer available" pane for
+signed-in-but-denied, malformed, or vanished ids — never adoption of another
+identity's thread. Since feat-399 a GATE-GRANTED visitor is the one exception
+to the shell shape (not to the copy): a malformed id gives them the same
+"no longer available" pane on a LIVE shell — rail, history and URL layer all
+working — because a typo'd link should not cost them their sidebar. **Address
+bar, decided in feat-399:** that shell NORMALIZES to `/`, not by a redirect but
+because the now-live URL layer applies its existing rule (a non-persisted active
+conversation derives `/`) — a `replaceState`, so Back still leaves the app
+instead of returning to the dead link. The pane carries the "that link was
+broken" feedback; a reload therefore drops it and lands on a fresh chat, which
+is the accepted trade for a clean address bar and history. A malformed segment
+is never reflected into a prop, href, or fetch — `toConversationId` nulls it, so
+the shell gets no id at all. The valid-UUID-but-dead case is deliberately
+asymmetric: it KEEPS `/c/<id>` in the bar, because its adopted row is
+server-persisted and there is a real id to preserve.
 
 ## Architecture
 
@@ -26,11 +44,12 @@ src/
     layout.tsx           Root layout; loads globals.css (server)
     page.tsx             Resolves the seeker gate (resolveSeekerGate, surface "page"; force-dynamic) → <AppShell seekerEnabled> (server)
     globals.css          "Vigil" token layer — Tailwind v4 @theme palette + fonts + base styles
+    c/[id]/page.tsx      feat-209 deep-link entry: force-dynamic, mirrors page.tsx's resolution order (auth config → identity → seeker gate → signin marker) and maps the pure resolver onto AppShell via deepLinkShell (granted → adopted seed; granted_unresolvable → feat-399's live shell opening on the unavailable pane; else deniedScreen); noindex metadata, no thread titles in the head. The /c/<id> GET necessarily puts the thread id in Cloudflare/Railway HTTP access logs — accepted KTD9 residual, scoped claim in the route's docstring
     api/
       seeker/route.ts    'force-dynamic' POST proxy → Mastra /forge-seeker SSE (feat-205): bearer server-side, SSRF+https guard via the shared transport (lib/server/mastra-upstream — fetch shape, signal composition, failure classifier), timeout-bounded, normalizes every failure to one terminal error{reason} frame; the 503 error-body read is byte-capped (64 KiB, feat-282's hardening delta). feat-208: resolves + always sends resourceId (user:<sub> / anon:<uuid>), re-issues the rolling anon cookie on the SSE response, passes thread_forbidden/thread_limit through. feat-233: per-user seeker gate enforced before any upstream call (deny → terminal gate_denied frame; the SESSION stubs never-persisted conversations, feat-281 Ruling 3). Testable core handleSeekerProxyRequest
       history/history-proxy.ts   feat-241: shared testable cores for the two history proxies — session→resource (user:* only, 401 invalid_session otherwise, NO anon minting), dogfood gate (surface "history"), AI_CHAT_MASTRA_API_KEY lane bearer, the shared transport (lib/server/mastra-upstream: hostAllowed, fetch shape, signal composition, failure classifier, readJsonCapped), [9s,10s]-clamped read budget, status-before-body, byte-capped JSON reads (the 2/8 MiB cap sizes stay here), KTD8 deny contract
       history/list/route.ts      POST → Mastra /forge-ai-chat-history-list (thin wrapper; force-dynamic)
-      history/thread/route.ts    POST → Mastra /forge-ai-chat-history-replay (POST so thread ids never hit URL/CDN logs)
+      history/thread/route.ts    POST → Mastra /forge-ai-chat-history-replay (POST so thread ids never hit URL/CDN logs; since feat-209 the deep-link GET /c/<id> is the one deliberate exception — address bar + Cloudflare/Railway access logs, accepted residual, see that route's docstring)
       auth/login/route.ts    GET → apps/auth authorize + set transient state/verifier/return_to cookies; sends prompt=login when the feat-240 force-login marker is present (marker consumed by callback success, never here); no-op home redirect when unconfigured (feat-207)
       auth/callback/route.ts GET → verify state, exchange code, verifyChatIdToken (id-token-only), set signed session cookie + consume the feat-240 force-login marker (success only), 302 return_to; single catch → non-PII log + ?signin=failed (marker kept armed)
       auth/logout/route.ts   POST → clear session cookie + set the 30-day single-use force-login marker (feat-240), 303 home (POST so it isn't prefetchable)
@@ -49,7 +68,7 @@ src/
   instrumentation.ts     Next server-start hook: ENFORCES the Seeker egress pin as a DEPLOY GATE since feat-306 — logs [seeker-egress] event=misconfigured reason=allowlist_unset|host_not_allowed effect=boot_refused_all_requests|seeker_sends_and_history_refuse (the effect= token IS the posture), then THROWS in a production build, so the server listens but 500s every route (incl /api/health) and the healthcheck refuses to promote. Report-only outside a production build — and only host_not_allowed is reachable there, since allowlist_unset is production-only by construction, so an unset allowlist logs NOTHING outside production. A failed diagnostic (event=diagnostic_failed stage=import|call) never throws and fails OPEN. The proxies remain the security control (see "Production egress pin")
   components/
     shell/
-      app-shell.tsx      'use client' — owns conversation state (useConversations) + sidebar view state (collapsed rail / mobile drawer open); matchMedia breakpoint reset, body scroll-lock, <main> inert focus-trap; mobile-only top bar (menu trigger + brand, feat-270 — the drawer trigger never floats over transcript text)
+      app-shell.tsx      'use client' — owns conversation state (useConversations) + sidebar view state (collapsed rail / mobile drawer open); matchMedia breakpoint reset, body scroll-lock, <main> inert focus-trap; mobile-only top bar (menu trigger + brand, feat-270 — the drawer trigger never floats over transcript text); feat-209: mounts the URL-sync hook on granted shells, swaps <Chat> for the denial pane (deniedScreen, the deep-link row's not_available escalation, or feat-399's deepLinkUnresolvable — the last two are GRANTED shells, so the rail stays live and the pane releases on the first rail row / New / traverse), and announces popstate-driven conversation changes via a polite live region
       sidebar.tsx        'use client' — responsive left rail composition (scrim + <aside>): desktop expanded ↔ collapsed icon-rail + mobile off-canvas drawer. Presentational shell now — UI mechanics live in use-sidebar-chrome, collapsed-style policy in sidebar-collapsed-styles, visible-row policy in sidebar-projection (applied here at render, feat-281 Ruling 4b), sub-rows in the sidebar-* components
       use-sidebar-chrome.ts        'use client' — sidebar UI-mechanics hook: collapse clip state machine (+ 400ms fallback timer), Escape-to-close listener, drawer focus trap/restore. Derives presentation from collapsed/mobileOpen; owns no view state
       sidebar-collapsed-styles.ts  collapsedStyles(collapsed) → the md:-scoped collapsed-rail class policy in one slot-keyed map (header/brand/wordmark/newButton/nav/account/signIn/signOut/…); signIn is deliberately NOT newButton (differs by md:mx-auto + md:hover:border-transparent)
@@ -68,6 +87,7 @@ src/
       sources-list.tsx   Collapsed "Sources · N" disclosure of cited passages (feat-269: deduped by URL, snippets line-clamped behind per-source disclosures) or explicit always-visible "No sources cited" state; untrusted RAG sources → https-only links via untrusted-link, text never HTML (feat-205)
       composer.tsx       Auto-growing textarea; the 44px send slot is a Vesper up-arrow when a draft is ready, a dim dot otherwise, and a stop control while pending (feat-270 — R22 blocked states keep the plain disabled send)
       empty-state.tsx    "What would you like to ask?" heading + starter questions
+      denial-screens.tsx feat-209: the two denial panes replacing <Chat> (KTD5/KTD6 — real anchors only, no composer); exports the shared "no longer available" copy chat.tsx's replay pane reuses
     brand/
       brand-lockup.tsx   Inlined JFP flag mark + "jesusfilm.ai" wordmark
   lib/
@@ -77,10 +97,13 @@ src/
     is-https-url.ts      The https-only link gate for untrusted content, shared by sources-list + assistant-markdown (feat-268)
     server/mastra-upstream.ts feat-282: the shared Mastra upstream transport both proxy families import — hostAllowed (the SSRF guard: https floor with loopback + *.railway.internal http carve-outs, optional host allowlist), validateBaseUrl → the ValidatedBaseUrl brand minted only from hostAllowed's success path (feat-294 — postMastraUpstream's baseUrl demands it, so skipping the guard is a compile error, not a convention; null maps to each proxy's own deny wire), MAX_CONVERSATION_ID_CHARS, postMastraUpstream (the fetch shape: URL-from-path+base, POST, bearer, JSON content-type, per-proxy accept, redirect:"error", signal), composeUpstreamAbortSignal (skips absent sources; single source passes through as-is), classifyUpstreamFailure (timeout | cancelled | network — seeker's check precedence, budget → caller-abort → error name, canonical for both proxies; each proxy keeps its own wire mapping), readJsonCapped + undefinedOnAbort (the byte-capped read + abort-race helper). Pure (no env reads), `import "server-only"`-guarded; deny ladders, budgets, byte-cap SIZES, response channels, and the gate stay per-proxy. Its test file carries the railway.internal label-boundary matrix + direct unit coverage of every transport helper
     seeker-gate.ts       feat-233: resolveSeekerGate — kill switch + verified email + SEEKER_ALLOWED_EMAILS membership → {seekerEnabled, outcome} + the [seeker-gate] R15 log line (grants and denials, sub not email)
+    deep-link-entry.ts   feat-209: pure KTD5 entry resolver for /c/<id> — unavailable / sign_in / granted precedence (malformed id and unconfigured auth deny before the identity branch; gate-denied denies after it) + feat-399's granted_unresolvable kind (malformed id + FULL grant) and deepLinkShell, the one kind → AppShell-props mapping. The grant is ONE expression both granted kinds read, and only those two carry seekerEnabled — the route holds no conditional of its own
+    conversation-id.ts   feat-209: one home for the conversation-id (UUID) shape + lowercase canonicalization (isConversationId / toConversationId); tighten-only covenant — isValidAnonId (the anon-cookie trust gate) is a security-critical consumer of UUID_PATTERN
     conversations.ts     Message (+ optional sources/grounded/engine/error/video) + SeekerSource + VideoAttachment (feat-328) + ReplyFailureReason + Conversation types (feat-241 additive: origin, serverPersisted, lastActivityAt, replay state) + createConversation / deriveTitle / fallbackTitle
     history-client.ts    feat-241: never-throw typed client for /api/history/* — fetchHistoryPage / fetchHistoryThread with the closed access | not_available | unavailable reason set. feat-329: re-validates the replay wire's optional per-message sources/video through toSources/toVideo (malformed → absent, never a failed replay) and aggregates the [chat-video] rejection diagnostic into ONE line per thread open
     conversation-session.ts feat-281: the framework-agnostic conversation session (no React imports) — createConversationSession(deps) owns EVERY conversation machine behind a subscribe/getSnapshot store: send + async streaming lifecycle (empty assistant turn → token append → terminal finalize/error), per-conversation AbortController slots (pending + double-send guard, released in finally), stopReply's quiet finalize (feat-270), new/select with draft semantics, history hydration/paging/merge (feat-241), lazy single-flight replay, R22 send blocking, and ALL of KTD10 (the three markServerPersisted branches + mergeServerThreads' hydration stamp + the stub-vs-failure decision: captured at send START from serverPersisted, gate_denied on a never-persisted conversation rebuilds the immediate inline stub in the finalize — buildStubReply directly, never streamStubReply's 800ms delay). getSnapshot is cached — new identity only on commit; snapshot.conversations is the FULL list (the sidebar projects it — Ruling 4b). Construction is side-effect-free; activate() arms hydration/replay, deactivate() aborts in-flight fetches AND rolls their pending states back so re-activating the SAME instance re-arms (the StrictMode setup→cleanup→setup contract). Deps (streamReply + the two history fetchers + seekerEnabled) are injected — the direct unit suite drives the machines with no DOM. Pure merge/order helpers exported for tests
     use-conversations.ts Thin 'use client' adapter over the session (feat-281): one session per hook lifetime (useState initializer), useSyncExternalStore for the snapshot, a mount effect driving activate/deactivate. Returns the same 16-field UseConversations shape as before the extraction (conversations = the full unprojected list since PR 2)
+    use-conversation-url.ts feat-209: the URL-sync hook — shallow pushState/replaceState via Next's patched history API, popstate adopt-or-refuse, pageshow bfcache reload guard (R9); inert unless the shell is gate-granted and not a denial shell
 public/                  Static assets served by URL (Next.js convention, matches apps/web)
   brand/
     jfp-sign.svg         JFP flag mark — canonical source (the mark is inlined in brand-lockup.tsx); primary favicon
@@ -267,7 +290,9 @@ feat-205 wired a feature-flagged proxy to the internal `/forge-seeker` SSE route
   Prefix-check resources (`startsWith`) — never split on `:`. Known accepted behaviors: a
   cookie-refusing client loses continuity at turn 2 (`thread_forbidden`
   notice); an identity change starts fresh threads (client state resets on the
-  OAuth redirect — an invariant feat-209 must preserve); anonymous→account
+  OAuth redirect — an invariant feat-209 preserved: its `/c/<id>` entry
+  re-resolves identity server-side, and its pageshow bfcache guard hard-reloads
+  a restored pre-sign-out page); anonymous→account
   thread migration is out of scope.
 
 The three former "deferred hardening" criteria (surface failures, outbound
@@ -403,7 +428,10 @@ owns the dogfood-gate layer's removal recipe (refreshed by this feature's PR).
   history routes (dedicated `AI_CHAT_SERVICE_API_KEYS` lane bearer, `user:`
   resource refusal) → thread-ownership gate on replay.
 - **Proxies** (`src/app/api/history/*`): POST-shaped (thread ids never in
-  URLs), no anon-cookie minting, the `AI_CHAT_MASTRA_API_KEY` lane bearer
+  URLs; since feat-209 the deep-link GET `/c/<id>` is the one deliberate
+  exception — address bar + Cloudflare/Railway access logs, accepted residual,
+  see that route's docstring), no anon-cookie minting, the
+  `AI_CHAT_MASTRA_API_KEY` lane bearer
   (since feat-250 the send path presents the same lane bearer — chat holds no
   pool key at all), reusing `SEEKER_MASTRA_BASE_URL` + allowlist + the shared
   transport from `lib/server/mastra-upstream` (feat-282 — `hostAllowed`, the
@@ -584,9 +612,10 @@ logout}/route.ts` wire it. `getChatIdentity()` reads the cookie server-side in
   threads/messages live in Mastra's `ai_chat` Postgres schema (flat 25-day
   retention for everyone, feat-336), and since feat-241 signed-in gate-granted users get
   sidebar history + replay/resume back from it (see "Server-side conversation
-  history"). Still absent: per-conversation URLs / deep-link restore
-  (feat-209), thread delete/rename (feat-247), and anonymous ephemerality
-  stays deliberate — the anon continuity cookie never becomes a
+  history"). Per-conversation URLs / deep-link restore shipped with feat-209
+  (gate-granted conversations only — `/c/<id>`; anonymous chat keeps the root
+  URL). Still absent: thread delete/rename (feat-247), and anonymous
+  ephemerality stays deliberate — the anon continuity cookie never becomes a
   history-reading credential
 - No browser-direct Mastra path / CORS (server-to-server bearer only)
 - No i18n, no design-system sharing with `apps/web`

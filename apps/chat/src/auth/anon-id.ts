@@ -1,5 +1,6 @@
 import { chatSessionCookieOptions, type ChatIdentity } from "./session-cookie"
 import { chatAuthCookiePrefix } from "@/config/env"
+import { UUID_PATTERN } from "@/lib/conversation-id"
 
 /**
  * Anonymous continuity id for Seeker memory keying (feat-208). The proxy
@@ -25,14 +26,13 @@ export const CHAT_ANON_ID_COOKIE = `${prefix}_anon_id`
 /** Aligned with the flat ai-chat retention window (25 days, feat-336). */
 export const ANON_ID_TTL_SECONDS = 25 * 24 * 60 * 60
 
-const UUID_PATTERN =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
-
 /**
  * Whether `value` is a well-formed anon id (a v4-shaped UUID). Security-
  * relevant: the ONLY gate deciding whether a client-settable cookie value is
  * trusted as the anon resource or discarded and re-minted — anything that is
  * not a bare UUID (an injected `user:<sub>`, a cookie-attribute smuggle) fails.
+ * UUID_PATTERN lives in `lib/conversation-id` (feat-209, one owner) under a
+ * tighten-only covenant that names this gate — never relax it for URL ids.
  */
 export function isValidAnonId(value: unknown): value is string {
   return typeof value === "string" && UUID_PATTERN.test(value)

@@ -44,6 +44,9 @@ type Props = {
    * in the two-pane layout, where up scrolls rows and left exits to the keyboard.
    */
   topRowFocusUp?: ViewType | null
+  /** Fires when ANY result card gains focus — the screen's focus-region signal
+   *  (Back from the results region re-parks on the mic instead of popping). */
+  onCardFocus?: () => void
 }
 
 /**
@@ -61,6 +64,7 @@ export function SearchResultsGrid({
   columns,
   onRetry,
   topRowFocusUp,
+  onCardFocus,
 }: Props) {
   const router = useRouter()
   const openResult = useCallback(
@@ -113,6 +117,7 @@ export function SearchResultsGrid({
         onPress={openResult}
         columns={columns}
         topRowFocusUp={topRowFocusUp}
+        onCardFocus={onCardFocus}
       />
     )
   }
@@ -128,11 +133,13 @@ function ResultsList({
   onPress,
   columns,
   topRowFocusUp,
+  onCardFocus,
 }: {
   results: SearchResult[]
   onPress: (result: SearchResult, position: number) => void
   columns?: number
   topRowFocusUp?: ViewType | null
+  onCardFocus?: () => void
 }) {
   // Explicit `columns` wins (two-pane results pane); else width heuristic:
   // 6 columns on 4K-class panels, 4 elsewhere. numColumns is a static
@@ -187,6 +194,7 @@ function ResultsList({
               result={item}
               // 1-based rank for analytics (mirrors web's position: index + 1).
               onPress={(result) => onPress(result, index + 1)}
+              onFocus={onCardFocus}
               // Claim focus only on the FIRST render of this results set;
               // later renders (debounced refresh, virtualization re-mount)
               // pass false to preserve the user's focus position.

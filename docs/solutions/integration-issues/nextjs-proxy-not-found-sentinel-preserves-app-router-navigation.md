@@ -1,6 +1,7 @@
 ---
-title: "Use a statusless proxy rewrite and fixed not-found sentinel for App Router 404s"
+title: "Use a statusless localized sentinel for Watch App Router 404s"
 date: "2026-07-13"
+last_updated: "2026-08-19"
 category: "integration-issues"
 module: "apps/web Watch routing"
 problem_type: "integration_issue"
@@ -9,13 +10,19 @@ symptoms:
   - "Proxy-rejected Watch URLs returned an empty 404 body instead of the locale-scoped not-found experience"
   - "Resolver-level misses rendered the framework default because the locale route had no not-found boundary"
   - "Adding status 404 to the intermediate middleware rewrite broke App Router soft navigation"
+  - "Recognized non-English Watch routes rendered the English ordinary 404"
+  - "Localized cards opened playback or recovery pages with English metadata"
 root_cause: "wrong_api"
 resolution_type: "code_fix"
 severity: "medium"
 related_components:
+  - "apps/admin/src/services/video.service.ts"
   - "apps/web/src/proxy.ts"
+  - "apps/web/src/proxy.test.ts"
   - "apps/web/src/app/[locale]/[htmlLang]/404/page.tsx"
   - "apps/web/src/app/[locale]/[htmlLang]/not-found.tsx"
+  - "apps/web/src/components/watch/WatchUnavailableLanguage.tsx"
+  - "apps/web/src/lib/watch-unavailable-recovery-actions.ts"
 tags:
   - "nextjs"
   - "app-router"
@@ -27,137 +34,133 @@ tags:
   - "watch"
 ---
 
-# Use a statusless proxy rewrite and fixed not-found sentinel for App Router 404s
+# Use a statusless localized sentinel for Watch App Router 404s
 
 ## Problem
 
-Watch rejects impossible public URLs in Next.js Proxy before they reach a
-force-static catch-all. Returning a terminal `new NextResponse(null, { status:
-404 })` preserved the admission and cache-spray boundary, but viewers received
-an empty response. Resolver-level `notFound()` calls had a different failure
-mode: without a locale-scoped boundary they rendered Next.js's default page.
+Watch rejects impossible public URLs in Next.js Proxy before they reach its
+force-static content resolver. Those requests still need a localized Watch
+error page, but the original sentinel sent every ordinary miss to
+`/en/en/404`. A valid Chinese, Russian, or Arabic route therefore lost the
+locale Proxy had already resolved.
 
-Both paths needed one useful page without letting arbitrary invalid URLs become
-internal App Router or ISR keys. The final document also had to remain a true
-404 during direct loads and client-side navigation.
+The internal route must remain bounded: rejected content slugs cannot become
+App Router or cache keys. The final document must also retain the original
+public URL, HTTP 404, and `noindex` behavior.
 
 ## Symptoms
 
-- Structurally invalid or manifest-rejected URLs produced an empty body.
-- Admitted routes whose content resolver missed produced a framework-default
-  page instead of the Watch design.
-- Setting `{ status: 404 }` on `NextResponse.rewrite()` appeared correct for a
-  direct document request, but App Router soft navigation no longer handled the
-  rewrite as a normal React Server Component navigation response.
-- Rewriting each miss to an internal version of its original path would have
-  created unbounded internal identities and weakened the existing admission
-  guard.
+- A recognized non-English route for unknown content displayed the English
+  ordinary 404.
+- Malformed paths and unknown language identities still needed a safe English
+  fallback.
+- The ordinary unknown-content 404 had to remain separate from the
+  known-content/missing-language recovery page.
 
 ## What Didn't Work
 
-- **Returning the 404 directly from Proxy.** This is cheap and semantically
-  correct, but Proxy cannot render the locale layout and not-found component.
-- **Putting status 404 on the intermediate rewrite.** The rewrite is transport
-  into the App Router, not the final error response. A status-bearing
-  intermediate response conflicts with the RSC soft-navigation protocol even
-  when a hard navigation appears to work.
-- **Letting every invalid path reach the catch-all and call `notFound()`.** That
-  would restore UI at the cost of Admin resolver work and potentially unbounded
-  static not-found cache entries—the exact behavior the route manifest prevents.
+- Returning an empty 404 directly from Proxy cannot render the Watch layout.
+- Putting status 404 on the intermediate rewrite breaks App Router soft
+  navigation because that rewrite is transport, not the final document.
+- Rewriting each miss with its rejected content slug creates unbounded internal
+  identities and weakens the route-manifest boundary.
+- Treating a known-content/missing-language route as an ordinary 404 removes
+  the recovery choices introduced by PR #1929.
 
 ## Solution
 
-Keep Proxy's negative classification and manifest admission intact, but make
-every page-level negative branch rewrite to one fixed internal sentinel. Reuse
-the normal internal rewrite helper so the request marker, security headers, and
-locale layout behavior remain consistent:
+After `classifyRewrite` resolves a valid public language and manifest admission
+returns `not-found`, pass only the validated `locale` and `htmlLang` identity to
+`buildNotFound`. The missing content slug is never included:
 
 ```ts
-function buildNotFound(request: ProxyRequest): NextResponse {
+function buildNotFound(
+  request: ProxyRequest,
+  identity?: Pick<
+    Extract<RewriteDecision, { kind: "rewrite" }>,
+    "locale" | "htmlLang"
+  >,
+) {
   return rewriteToInternal(request, {
     kind: "rewrite",
-    locale: DEFAULT_LOCALE,
-    htmlLang: DEFAULT_LOCALE,
+    locale: identity?.locale ?? DEFAULT_LOCALE,
+    htmlLang: identity?.htmlLang ?? DEFAULT_LOCALE,
     pathname: "/404",
   })
 }
 ```
 
-The helper deliberately does **not** set an HTTP status on
-`NextResponse.rewrite()`:
+This produces a bounded localized target such as `/zh-Hans/zh-Hans/404` while
+malformed paths and unknown language identities continue to use `/en/en/404`.
+The request marker carries the fixed claim `/404`, not the rejected public
+pathname.
 
-```ts
-return applyWatchSecurityHeaders(
-  NextResponse.rewrite(url, {
-    request: { headers: requestHeaders },
-  }),
-)
-```
+On Proxy re-entry, accept only exact paths in a finite set derived from the
+public Watch language-slug corpus. A broad BCP-47 resolver is not sufficient
+for this check: it deliberately maps valid-looking tags such as `en-AA` to the
+English UI catalog, even though Proxy can never generate `/en/en-AA/404` from
+a public Watch language slug. Exact set membership rejects both mismatched
+pairs such as `/zh-Hans/en/404` and synthetic same-family tags while avoiding a
+second route-manifest read.
 
-The fixed destination calls `notFound()` before rendering or streaming:
+The intermediate rewrite remains statusless. The fixed sentinel then calls
+`notFound()` synchronously, allowing the locale boundary to render
+`WatchNotFound` and Next.js to produce the final HTTP 404 and `noindex` metadata.
 
-```tsx
-export default function WatchNotFoundSentinel() {
-  notFound()
-}
-```
-
-A sibling locale boundary renders the shared page:
-
-```tsx
-export default function NotFound() {
-  return <WatchNotFound />
-}
-```
-
-Test the two stages according to their separate contracts. Proxy unit tests
-assert a normal intermediate rewrite to the fixed path plus the request marker
-and security headers:
-
-```ts
-expect(response.status).toBe(200)
-expect(rewritePath(response)).toBe("/en/en/404")
-expect(
-  rewrittenRequestHeaders(response).get(WATCH_INTERNAL_REWRITE_HEADER),
-).toBe("1")
-```
-
-Production HTTP and browser tests—not the Proxy unit test—assert the final
-document contract: HTTP 404, `noindex`, original public URL retained, custom
-body rendered, and successful hard and soft navigation.
+Both public failure URLs finish with HTTP 404 and `noindex`. The distinction is
+the rendered body: unknown content uses the ordinary localized 404, while
+a manifest-proven video route admitted to missing-audio recovery uses the
+specialized recovery page and includes playable alternatives when recovery
+data resolves successfully.
 
 ## Why This Works
 
-The statusless rewrite and the sentinel have different responsibilities:
+The request has two stages with separate responsibilities:
 
-1. Proxy classifies the public URL and keeps invalid paths outside the
-   force-static resolver boundary.
-2. One fixed rewrite destination prevents invalid public paths from becoming
-   distinct internal cache identities.
-3. The intermediate response remains compatible with App Router's RSC
-   navigation protocol.
-4. `notFound()` at the fixed destination throws before streaming, allowing
-   Next.js to select the locale-scoped boundary and own the final HTTP 404 plus
-   automatic `noindex` metadata.
+1. Proxy classifies the URL, checks the route manifest, and rewrites a proven
+   miss to one locale-prefixed `/404` sentinel.
+2. The sentinel throws `notFound()` before page rendering; the nearest locale
+   boundary renders the complete localized 404 in the first server response.
 
-This separation is why a Proxy unit test should expect a 200 rewrite while the
-end-to-end document must still be 404. Treating those statuses as if they
-described the same response stage recreates the soft-navigation bug.
+`WatchNotFound` has no client data request or loading state, so its title,
+artwork, and actions do not get replaced after hydration. The separate
+known-content/missing-language sentinel follows the same first-render rule:
+its server boundary reads the Proxy-verified public path, resolves title,
+artwork, and exact manifest-admitted audio options, and passes that final data
+to the client component. Browser storage may help the Back to search action,
+but it cannot replace visible recovery data after hydration.
+
+Content lookup has a separate identity boundary from URL and HTML language
+formatting. Web keeps canonical BCP-47 formatting such as `zh-Hans` and
+`pt-PT`, while Admin's Watch route snapshot uses `languageSlug` as the exact
+public content identity. BCP-47 `locale` remains the broad content fallback,
+followed by English. This handles `zh-Hans` versus `zh-hans` without a
+case-insensitive database filter, forcing every stored tag to lower case, or
+collapsing distinct languages. A localized inventory card, its normal playback
+page, and the unavailable-language recovery page can therefore select the same
+exact metadata.
 
 ## Prevention
 
-- Keep all proxy-owned page misses converged on one fixed sentinel. Do not
-  interpolate the rejected pathname into the internal destination.
+- Keep every ordinary miss on the fixed `/404` suffix. Vary only a previously
+  validated locale/html-language prefix.
+- Keep malformed paths, unknown identities, and forged internal claims on the
+  English fallback.
+- Test both cross-locale forgeries and same-family synthetic BCP-47 tags when
+  an internal sentinel accepts a locale/html-language pair.
 - Never infer the final document status from the `NextResponse.rewrite()` unit
   response. Prove it against a production Next.js server.
-- Include both a direct document request and App Router link navigation in
-  browser proof whenever rewrite status or not-found routing changes.
-- Assert the original URL, `noindex`, security headers, and absence of page
-  resolver or remote-media work on the invalid path.
-- Preserve separate characterization tests for valid rewrites, canonical
-  redirects, reserved assets/APIs, and manifest-rejected routes.
-- If a page needs a shared layout, place `not-found.tsx` at the segment whose
-  layout should remain visible; keep the sentinel inside that same segment.
+- Verify HTTP 404, `noindex`, original URL, localized HTML, and a stable first
+  render in production mode.
+- Preserve `/unavailable/404` for content proven to exist without the requested
+  audio language; it is not an ordinary unknown-content 404.
+- Resolve unavailable-language display data on the server and avoid a
+  route-local loading screen that would reintroduce an intermediate visible
+  state.
+- Use exact language slugs for Watch route-snapshot metadata. Keep BCP-47
+  locales as broad fallback selectors; do not solve metadata misses with
+  browser title hints, case-insensitive database filters, or per-language
+  special cases.
 
 ## Related Issues
 
@@ -170,5 +173,11 @@ described the same response stage recreates the soft-navigation bug.
 - [Frontend changes require page-load performance verification](../conventions/frontend-change-page-load-performance-verification.md)
   describes the timing and waterfall proof required when routing or rendering
   changes.
-- Roadmap tickets `feat-250` and `feat-251` track the custom Watch 404 and the
-  separate route-scoping of inherited media resource hints.
+- [Keep unavailable search evidence separate from playback identity](../logic-errors/watch-search-unavailable-evidence-playback-identity.md)
+  documents the adjacent known-content/missing-language recovery contract.
+- [Key content language identity on exact slugs, not BCP-47](../best-practices/language-identity-on-slug-not-bcp47-20260605.md)
+  explains why exact Watch metadata selection must use the public language
+  slug before applying broader locale fallbacks.
+- Roadmap tickets `feat-250`, `feat-251`, `feat-361`, `feat-397`, and `feat-398`
+  cover the custom 404, resource hints, unavailable-language recovery,
+  localized ordinary 404 behavior, and stable recovery first render.

@@ -209,7 +209,17 @@ export function settleWithinBudget<T>(
   promise: Promise<T>,
   signal: AbortSignal,
 ): Promise<T> {
-  if (signal.aborted) return Promise.reject(new Error("budget_aborted"))
+  if (signal.aborted) {
+    // Settle the caller's promise before rejecting: the argument was already
+    // constructed by the caller, so returning without attaching any handler
+    // would orphan it, and its eventual rejection would escape as an
+    // unhandled rejection — process-fatal under Node's default posture (this
+    // app registers no global handler). First reachable with an
+    // already-aborted signal via the feat-366 follow-ups generation path,
+    // whose composed turn signal can fire before the call (review finding).
+    promise.catch(() => {})
+    return Promise.reject(new Error("budget_aborted"))
+  }
   return new Promise<T>((resolve, reject) => {
     const onAbort = () => reject(new Error("budget_aborted"))
     signal.addEventListener("abort", onAbort, { once: true })

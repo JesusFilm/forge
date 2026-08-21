@@ -30,7 +30,6 @@ import {
 import type { WatchLanguagePickerVariant, WatchSubtitle } from "@/lib/content"
 import { deriveLanguageDisplay } from "@/lib/language-display"
 import { writePreferredLanguageSlug } from "@/lib/language-preference-client"
-import { WATCH_LANGUAGE_SEARCH_ALIAS_AUTHORITY } from "@/lib/watch-language-search-aliases"
 import { isPlayableLanguageVariant } from "@/lib/playable-variant"
 import {
   languagesIndexPath,
@@ -799,7 +798,6 @@ export function LanguagePickerModal({
                 disabled={languageOptionsLoading}
                 placeholder={t("languageHeading")}
                 compact
-                searchAliasAuthority={WATCH_LANGUAGE_SEARCH_ALIAS_AUTHORITY}
                 open={openCombobox === "language"}
                 onOpenChange={(next) =>
                   setOpenComboboxState(next ? "language" : null)
@@ -967,7 +965,6 @@ export function LanguagePickerModal({
                 icon="subtitles"
                 placeholder={subtitlePlaceholder}
                 compact
-                searchAliasAuthority={WATCH_LANGUAGE_SEARCH_ALIAS_AUTHORITY}
                 open={openCombobox === "subtitles"}
                 onOpenChange={(next) =>
                   setOpenComboboxState(next ? "subtitles" : null)

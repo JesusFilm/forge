@@ -18,13 +18,20 @@ function getDeviceLanguageCode(): string | null {
   }
 }
 
-function matchByBcp47Prefix(
+// Exact tag first: "en" and "en-nai" share a prefix, so a pure prefix scan lets
+// ARRAY ORDER pick the winner — which handed JESUS "English, North American
+// Indigenous" (index 266) over plain English (index 614) across its 2281 dubs.
+function matchByBcp47(
   options: LanguageOption[],
   targetBcp47: string,
 ): LanguageOption | undefined {
-  const target = targetBcp47.split("-")[0].toLowerCase()
-  return options.find(
-    (o) => o.bcp47 != null && o.bcp47.split("-")[0].toLowerCase() === target,
+  const full = targetBcp47.toLowerCase()
+  const base = full.split("-")[0]
+  const tag = (o: LanguageOption) => o.bcp47?.toLowerCase() ?? null
+  return (
+    options.find((o) => tag(o) === full) ??
+    options.find((o) => tag(o) === base) ??
+    options.find((o) => tag(o)?.split("-")[0] === base)
   )
 }
 
@@ -47,16 +54,16 @@ export function resolveDefaultSlug(
 
   const deviceLang = getDeviceLanguageCode()
   if (deviceLang) {
-    const match = matchByBcp47Prefix(options, deviceLang)
+    const match = matchByBcp47(options, deviceLang)
     if (match) return match.slug
   }
 
   if (videoPrimaryBcp47) {
-    const match = matchByBcp47Prefix(options, videoPrimaryBcp47)
+    const match = matchByBcp47(options, videoPrimaryBcp47)
     if (match) return match.slug
   }
 
-  const english = matchByBcp47Prefix(options, "en")
+  const english = matchByBcp47(options, "en")
   if (english) return english.slug
 
   return options[0].slug

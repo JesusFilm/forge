@@ -110,7 +110,18 @@ export const AI_CHAT_TITLE_MODEL = "openrouter/google/gemma-4-26b-a4b-it:free"
  * Build the ai-chat Memory. Backend-aware (feat-208): `memory` → a dedicated
  * `InMemoryStore` (local dev/tests + the production kill-switch), `postgres` →
  * the shared `ai_chat` store. Storage-only — no vector/embedder/semantic
- * recall yet. `getBackend` is an injectable seam (same pattern as
+ * recall yet.
+ *
+ * BEFORE TURNING ON `semanticRecall` (feat-366 review, 2026-08-20): the
+ * follow-ups persist (`seeker-follow-ups-persist.ts`) writes a metadata-ONLY
+ * `content` payload — no `content.content`, no text `parts` — and
+ * @mastra/memory 1.24.0 treats such a payload as content-cleared whenever a
+ * vector store is attached, DELETING the carrier row's embeddings with no
+ * re-embed. Storage-only is what keeps that inert today. Enabling semantic
+ * recall means fixing the persist first; the coupling is invisible from this
+ * switch, which is why it is recorded here.
+ *
+ * `getBackend` is an injectable seam (same pattern as
  * seeker-route's `getEnabled`/`getModelKey`) so tests flip backends per-case;
  * `titleModel` is the matching seam for title generation so tests can observe
  * the titling path with a mock model.

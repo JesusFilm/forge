@@ -109,6 +109,11 @@ Audio availability takes precedence over subtitle-only membership, while
 collection containers and playable leaf Videos remain distinct inventory
 groups even when they share the same underlying language coverage.
 
+A subtitle-only entry is actionable only when its requested VTT and fallback
+Dub share a compatible Video Edition. Its public path names the playable audio
+language, while the requested subtitle language travels as separate one-shot
+intent.
+
 ### Contextual Watch Route
 
 A public Watch URL that identifies a parent collection, child Video, and
@@ -941,7 +946,7 @@ The auto-hiding controls overlay on the watch video player — the play/pause, s
 
 The Chrome is visible when playback starts, auto-hides after a few idle seconds while playing, stays up while paused or buffering, and toggles on a tap of the video body. It fades rather than cutting, and is unmounted only after the fade-out completes so a fully-hidden Chrome stops intercepting touches. The home hero's controls are also Chrome; they fade with scroll position rather than idle time, but follow the same rule that hidden Chrome must stop intercepting touches.
 
-A video that starts by itself is the exception to "stays up while buffering": the Chrome is withheld until the first frame and an Autostart Veil stands in for it, because a play button and a zero scrubber offered for a video nobody asked to pause read as a stall. Because the Chrome is the player's only recovery affordance, that withholding is always bounded — see the Autostart Veil's release rule.
+A video that starts by itself is the exception to "stays up while buffering": the Chrome is withheld until the first frame and an Autostart Veil stands in for it, because a play button and a zero scrubber offered for a video nobody asked to pause read as a stall. Because the Chrome is the player's only recovery affordance, that withholding is always bounded — see the Autostart Veil's release rule, which binds every layer covering the Chrome and not only the veil itself.
 
 Chrome visibility is not a release signal. Because the Chrome stays up for as long as playback is paused or ended, anything that holds a capability open "until the Chrome hides" holds it open forever in those states. A hold keyed to Chrome visibility therefore needs its own unconditional release, not the Chrome's.
 
@@ -950,6 +955,8 @@ Chrome visibility is not a release signal. Because the Chrome stays up for as lo
 The dimmed cover laid over a video's poster while a video that starts on its own is still loading — darkened artwork under a spinner, standing in for the withheld Chrome. It appears only for a video the viewer did not press play on; a video started by hand shows its Chrome throughout.
 
 The veil takes no touches, and while it is up a tap on the video body must not resolve to hiding the Chrome beneath it, or playback begins with no controls at all. It is released by the first frame, by a reported load failure, or by a time limit — whichever comes first. The time limit is not redundant: the other two releases depend on the player reporting something, and the case that strands a viewer is the one where it reports nothing, so a viewer who leaves the app mid-load and returns must also get the veil released. Releasing early only returns the controls sooner, while releasing late leaves the viewer with no way out, so the bound is set to err early.
+
+The veil is rarely the only thing covering the Chrome — the poster it darkens is a layer in its own right. A release rule that frees the veil while the poster stays leaves the viewer exactly as stranded, so every layer that can cover the Chrome must answer to the same release, not merely the topmost one. Whether a residual poster actually strands anyone depends on paint order rather than on the layers themselves: where the Chrome is drawn by the app it can paint over a leftover poster and nothing is lost, but where the player supplies its own controls inside the video surface, any layer laid over that surface hides them. Passing touches through a covering layer does not resolve this — a control that can be pressed but not seen is not a recovery affordance.
 
 ### Back-Swipe Strip
 
@@ -980,6 +987,8 @@ Identity always keys on the Language slug; the cached name paints labels instant
 The small floating video window that keeps a video playing after the viewer leaves the screen it was playing on, so playback survives navigation instead of ending with the route. Distinct from the operating system's picture-in-picture window, which is the platform's own window outside the app — the Mini Player is drawn by the app and lives above its navigation.
 
 It is the same live playback surface as the full-size player, resized and repositioned rather than handed to a second player, because moving playback between two surfaces restarts it. A Mini Player is earned rather than automatic: a video that never actually played does not get one, nor does a video that already ran to its end, nor one whose playback is being driven by a cast receiver. While an in-app sheet is presented over it, it is hidden rather than torn down, so the video keeps playing behind the sheet and returns when the sheet closes. The viewer can move it between screen corners and dismiss it; dismissing ends the playback session rather than merely hiding the window.
+
+Shrinking into the window and growing back out of it are one reversible motion, not two independent animations: a transition interrupted part-way turns around from where it currently is rather than restarting from either end, so the video never jumps. Because the same surface is being moved rather than replaced, the window is only ever as correct as the transition's own bookkeeping — a transition that ends without restoring the surface to its resting state leaves the window drawn but empty.
 
 ## Offline downloads
 
@@ -1018,6 +1027,20 @@ The layered per-request decision in the chat app that resolves seeker-vs-stub: t
 ### Conversation History
 
 The server-side read surface over persisted Seeker threads: a signed-in user lists their own conversations and replays or resumes any of them, with new sends appending to the same thread. Signed-in-only by design — anonymous conversations persist for the session but are never listable or replayable, so they stay effectively ephemeral (a privacy feature: the anonymous continuity cookie must never become a history-reading credential). During the dogfood phase the surface additionally rides the Seeker Dogfood Gate.
+
+### Per-Conversation URL
+
+The address a gate-granted conversation can be reopened from — bookmarked, pasted, or walked with browser back/forward. Minted only once the conversation's server thread provably exists, and only for gate-granted users, because only they can restore history: a merely signed-in or anonymous visitor's address could never resolve, and anonymous chat deliberately never changes its address. In-app selection moves the address without reloading the app; only opening an address from outside re-resolves it on the server. Addresses are per-owner, not shares — the same address opened by anyone else resolves to a Denial Screen, never to the conversation — and they carry no conversation content, so browser history reveals that chat was used, never what was said.
+
+### Adopted Conversation
+
+A conversation row the session creates from a Per-Conversation URL's id alone — an address arrived before any listing proved the conversation exists or belongs to this user. An adopted row starts empty and unproven: its transcript loads through replay, and it becomes a permanent conversation only when a history listing later includes it. Until then it lives under stricter rules than listed rows — a mid-session access denial marks it unavailable rather than silently removing the pane the user deep-linked into, an unproven row whose replay says it is gone is dropped once the user moves away, and an id already found dead this session re-renders its unavailable state from memory instead of asking the server again.
+
+### Denial Screen
+
+The full-pane outcome of opening a Per-Conversation URL that cannot be shown: it replaces the conversation pane while the sidebar stays rendered. Two screens by design. The sign-in screen appears when there is no valid session — anonymous, expired, and tampered are indistinguishable and signing in is the fix, returning to the same conversation afterward (a completed sign-in can still end in denial; that is the model working, not a bug). The unavailable screen covers everything a sign-in cannot fix — another person's conversation, a vanished or erased one, a malformed address, an account the gate denies — with identical wording across those causes so the copy never reveals whether a conversation exists or whose it is. A denial screen never adopts the conversation.
+
+The pane is not the shell. A shell showing a SERVER-DECIDED denial screen is never gate-granted — that is the invariant, and it is what makes such a shell inert: nothing behind the frozen pane fetches conversation data, mutates state, or changes the address on the conversation's behalf, and leaving one is a real navigation that re-resolves who the visitor is. (One narrow exception, unrelated to conversations: a visitor returning from a failed sign-in strips that failure marker from their own address.) The grant cannot override a server-decided denial. But a visitor the gate already grants can meet the same unavailable pane on a LIVE shell — their sidebar, history and address layer keep working, and the pane clears when they open another conversation or start a new one — because withholding a granted person's own history is a cost the denial never needed to impose. So it is the absence of a server-decided denial, not the pane on screen, that leaves a shell live.
 
 ### Resource Key
 
@@ -1059,9 +1082,46 @@ An attempt is complete only after its required inventoried evidence has passed a
 
 Once attempt bytes reach the repository's base branch they are historical evidence: later changes create a new attempt or experiment rather than modifying, deleting, renaming, or completing those bytes in place. A terminal verdict seals its whole experiment.
 
+## Telemetry triage
+
+### Triage Signal
+
+One unit of detected activity a triage sweep may act on: a grouped error issue, a monitor alert episode, or a spike in an aggregate count. The kind decides what evidence is available and which dedup rules apply. Everything downstream — judgment, ticket text, dedup identity — is keyed to the signal rather than to the individual events behind it.
+
+### Service Baseline
+
+The standing activity a covered service already had when triage began watching it, recorded on that service's first covered run.
+
+That first run deliberately files nothing: it exists so pre-existing errors read as pre-existing instead of as a sudden flood of new ones. A read the sweep could not complete refuses to seed a baseline at all, because a partial view recorded as "everything that existed" would make the unseen remainder look new forever.
+
+### Epoch
+
+The dedup generation of a Triage Signal — the counter that decides whether an already-ticketed problem may be ticketed again.
+
+A signal ticketed once stays quiet at that epoch however long the problem persists. Only a regression past a configured multiple of the signal's recorded baseline mints the next epoch, and minting records the regressed level as the new baseline, so an elevated but stable problem does not re-fire on every sweep.
+
+### Withheld Signal
+
+A signal a run read or judged but deliberately did not commit state for, so the next run reads it again from the same point.
+
+Withholding is the sweep's response to any uncertainty it cannot resolve — a failed judgment, an exhausted time budget, a ticket the outbox could not durably record. It trades a duplicate read for the guarantee that nothing is silently dropped. The alternative, advancing state past work that did not complete, loses the signal permanently.
+
+### Ticket Outbox
+
+The durable queue every externally created triage ticket passes through, so that deciding to file and actually filing are separate, restartable steps.
+
+The per-day ticket budget is enforced inside the claim that reserves work rather than by the caller, so concurrent or restarted runs cannot exceed it together. Signal state commits only after the outbox row is durable; refusing the state write when that row is absent is what stops a run from recording "handled" for a ticket nothing ever queued. Work that does not fit the budget stays queued for a later day rather than expiring.
+
+### Untrusted Evidence
+
+External text a triage or research pipeline reads and then reproduces — an error message, a stack frame, a support conversation — which anyone who can reach the upstream system can influence.
+
+It is hostile input at two distinct boundaries, and neither boundary's control substitutes for the other's. At the model turn, delimiters keep it from reading as instructions. At the human-facing artifact, a sanitizer neutralizes links and markers before the text is written into a ticket a reader will click.
+
 ## Flagged ambiguities
 
 - "Contextual Watch Route" and "canonical Watch URL" are not synonyms: the contextual route preserves collection navigation, while the Standalone Watch Route owns discovery, social, and sharing identity.
+- "Evidence" names two unrelated things and should always be qualified: **Semantic Evidence** is the content fragment explaining why a search result matched, while **Untrusted Evidence** is attacker-influenceable upstream text a pipeline must neutralize before use.
 - "Showcase" names two unrelated TV surfaces that are close to opposites, and neither is a variant of the other: **Showcase Mode** is the unattended autoplaying reel, while the **Focus-Driven Showcase** is Home's canvas that follows D-pad focus and deliberately mounts no video player. Always qualify which one is meant.
 - "Search Passport" had named a known-caller check as though it were specific to search, and as though it gated access there. Both are wrong: the check is a general known-caller concept, and the public search surface admits anonymous callers — a key there selects Rate-Limit Identity only. Use **Known-Caller Check**, and say explicitly whether a given surface gates on it.
 - "Chapter" carries two unrelated meanings. A **Chapter** is a segment of one feature film (a catalog relationship); a **felt-need chapter** is a themed section of Showcase Mode's reel, announced by a Chapter Card. Qualify which is meant whenever both surfaces are in scope.

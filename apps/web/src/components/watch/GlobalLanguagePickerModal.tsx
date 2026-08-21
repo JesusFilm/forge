@@ -19,7 +19,6 @@ import { LanguageCombobox } from "@/components/watch/LanguageCombobox"
 import { WatchModalViewportCloseButton } from "@/components/watch/WatchModalViewportCloseButton"
 import { writePreferredLanguageSlug } from "@/lib/language-preference-client"
 import { isPublicWatchLanguageSlug } from "@/lib/locale"
-import { WATCH_LANGUAGE_SEARCH_ALIAS_AUTHORITY } from "@/lib/watch-language-search-aliases"
 import { loadGlobalWatchLanguageOptions } from "@/lib/watch-interaction-loader"
 import {
   languageSwitcherTarget,
@@ -169,6 +168,7 @@ export function GlobalLanguagePickerModal({
     () =>
       options.map((option) => ({
         slug: option.slug,
+        searchAliasSlug: option.aliasOwnerSlug,
         name: option.englishName,
         nativeName: option.nativeName,
       })),
@@ -320,7 +320,6 @@ export function GlobalLanguagePickerModal({
             disabled={navigating}
             placeholder={t("languageHeading")}
             compact
-            searchAliasAuthority={WATCH_LANGUAGE_SEARCH_ALIAS_AUTHORITY}
           />
         ) : null}
 

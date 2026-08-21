@@ -9,14 +9,16 @@
       "distribution": "internal",
       "environment": "development",
       "env": {
-        "EXPO_TV": "1"
+        "EXPO_TV": "1",
+        "REACT_NATIVE_OVERRIDE_NIGHTLY_BUILD_VERSION": "0.81.5"
       }
     },
     "preview": {
       "distribution": "internal",
       "environment": "preview",
       "env": {
-        "EXPO_TV": "1"
+        "EXPO_TV": "1",
+        "REACT_NATIVE_OVERRIDE_NIGHTLY_BUILD_VERSION": "0.81.5"
       },
       "android": {
         "buildType": "apk"
@@ -26,7 +28,8 @@
       "autoIncrement": true,
       "environment": "production",
       "env": {
-        "EXPO_TV": "1"
+        "EXPO_TV": "1",
+        "REACT_NATIVE_OVERRIDE_NIGHTLY_BUILD_VERSION": "0.81.5"
       },
       "android": {
         "buildType": "app-bundle"

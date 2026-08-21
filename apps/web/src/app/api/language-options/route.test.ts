@@ -28,7 +28,12 @@ describe("GET /watch/api/language-options", () => {
   it("returns the compact global language catalog without browser caching", async () => {
     const searchOptions = [{ publicSlug: "english", englishName: "English" }]
     const options = [
-      { slug: "english", englishName: "English", nativeName: null },
+      {
+        slug: "english",
+        aliasOwnerSlug: "english",
+        englishName: "English",
+        nativeName: null,
+      },
     ]
     languageCatalog.getSearchLanguageCatalogOptions.mockResolvedValue(
       searchOptions,
