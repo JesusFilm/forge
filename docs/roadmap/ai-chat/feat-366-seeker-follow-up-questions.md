@@ -15,7 +15,7 @@ tags:
 
 ## Resolution (partial — U1 / PR 1 of the arc; feature NOT complete)
 
-**U1 shipped:** 2026-08-20 via PR #TBD-U1 (number filled at ship time). The
+**U1 shipped:** 2026-08-21 via [#1987](https://github.com/JesusFilm/forge/pull/1987). The
 `apps/mastra` half of the feature landed behind `SEEKER_FOLLOWUPS_ENABLED`
 (default-off, and inert on every path while no chat consumer exists): post-hoc
 generation runs after the answer stream on the seeker's own model chain, its
