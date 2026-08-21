@@ -64,6 +64,6 @@ pnpm --filter @forge/mobile typecheck
 pnpm --filter @forge/mobile build
 ```
 
-Also run a non-deploying `EXPO_NO_DOTENV=1 expo export --platform all` into a
-disposable directory outside the repository and require green GitHub checks
-before merging the Mobile PR.
+Also run non-deploying `EXPO_NO_DOTENV=1 expo export` checks for `--platform
+ios` and `--platform android` into disposable directories outside the
+repository, and require green GitHub checks before merging the Mobile PR.
