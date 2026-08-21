@@ -53,7 +53,11 @@ describe("devotional database migrator", () => {
     })
 
     expect(migration).toEqual({
-      applied: ["001-devotional-workspace.sql", "002-support-research.sql"],
+      applied: [
+        "001-devotional-workspace.sql",
+        "002-support-research.sql",
+        "003-datadog-triage.sql",
+      ],
       skipped: [],
     })
     expect(client.calls[0]).toBe("begin")
@@ -68,6 +72,7 @@ describe("devotional database migrator", () => {
     const filenames = [
       "001-devotional-workspace.sql",
       "002-support-research.sql",
+      "003-datadog-triage.sql",
     ] as const
     const existingEntries = Object.fromEntries(
       await Promise.all(

@@ -3,15 +3,29 @@ id: "feat-399"
 title: "Deep-link malformed id: keep the granted user's sidebar alive"
 owner: "jian wei"
 priority: "P2"
-status: "not-started"
+status: "complete"
 start_date: "2026-09-01"
 duration: 1
 depends_on:
   - "feat-209"
-blocks: []
+blocks:
+  - "feat-401"
+  - "feat-402"
 tags:
   - "web"
 ---
+
+## Resolution
+
+**Shipped:** 2026-08-21 via [PR #1984](https://github.com/JesusFilm/forge/pull/1984) (`feat(chat): keep the granted user's sidebar alive on a malformed deep link (feat-399)`).
+
+**What landed.** A gate-granted visitor's malformed `/c/<id>` now resolves to a GRANTED shell that opens on the unchanged "no longer available" pane — rail, history hydration and the URL layer stay live, and the pane releases on the first rail selection, New conversation, or history traverse. Anonymous and gate-denied malformed links are unchanged and still fully inert. The gate decision moved from an inline compare in the route to one tested mapper, `deepLinkShell(kind)`, whose `never`-typed default arm is strictly tighter than the expression it replaced (that one would have passed an unknown kind through as a `DeniedScreen`). **Address-bar decision, which this brief left open:** the shell NORMALIZES to `/` — not by a redirect but because the now-live URL layer applies its existing non-persisted rule, as a `replaceState`, so Back still leaves the app; the pane carries the broken-link feedback. The valid-UUID-but-dead case deliberately keeps `/c/<id>`, since there a real id exists to preserve. Two review rounds removed a redundant release conjunct that was masking whether the explicit dismiss actually worked.
+
+**Compound docs.** A new worked-instance row in [mocked-shape-vs-real-contract-discipline-20260506.md](../../solutions/best-practices/mocked-shape-vs-real-contract-discipline-20260506.md) — an unfalsifiable "defense in depth" conjunct that launders a sibling test's assertion, with the preventive rule bounded to fail-OPEN redundancy so it cannot read as licence to strip the fail-closed consumer belts. The `CONCEPTS.md` "Denial Screen" entry was also corrected: this feature falsified its "a shell showing one is never gate-granted" clause, now restored scoped to server-decided denials.
+
+**Residual risk / follow-ups.** [feat-401](feat-401-sidebar-no-placeholder-row-for-unstarted-conversation.md) (drop the placeholder "New conversation" rail row) and [feat-402](feat-402-denial-pane-cta-client-side-on-granted-shells.md) (the pane CTA still forces a full reload on granted shells, discarding the hydrated sidebar). Accepted limitation: no cross-model review ran at any stage — four independent contexts, zero independent model families — and the independent security pass was source-level only.
+
+**Unblocked.** feat-401, feat-402.
 
 ## Problem
 

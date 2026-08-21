@@ -3,7 +3,7 @@ id: "feat-366"
 title: "Seeker suggested follow-up questions (post-hoc chips)"
 owner: "jian wei"
 priority: "P1"
-status: "not-started"
+status: "in-progress"
 start_date: "2026-08-19"
 duration: 6
 depends_on: []
@@ -12,6 +12,35 @@ blocks:
 tags:
   - "ai-pipeline"
 ---
+
+## Resolution (partial — U1 / PR 1 of the arc; feature NOT complete)
+
+**U1 shipped:** 2026-08-21 via [#1987](https://github.com/JesusFilm/forge/pull/1987). The
+`apps/mastra` half of the feature landed behind `SEEKER_FOLLOWUPS_ENABLED`
+(default-off, and inert on every path while no chat consumer exists): post-hoc
+generation runs after the answer stream on the seeker's own model chain, its
+questions ride the terminal `result` frame as the optional `followUps` field,
+and they persist into the stored assistant message's
+`content.metadata.seekerFollowUps` under a carrier scan bounded on BOTH sides
+by the turn's own clock and re-checked client-side for thread and resource
+ownership before the write. Replay re-derives them through the shared
+projection and puts them on the wire for the thread's last text-bearing
+assistant message only; the generator's Langfuse capture was verified live to
+join the turn's own trace. Three review rounds are absorbed into the shipped
+shape — the emitted-flag disconnect gate, the settle-on-every-branch race fix
+in the shared budget helper, and the Cf-category invisible-character rung on
+the projection.
+
+**Compound docs (PR 1):**
+`docs/solutions/best-practices/settle-caller-promise-on-every-budget-race-helper-exit-path.md`
+(new) and
+`docs/solutions/best-practices/mastra-model-entry-timeout-retry-and-stream-abort-pattern.md`
+(amended — caller-signal scope limit).
+
+**Remaining:** U2 (apps/chat chips UI + the client mirror of the projection,
+including the format-char rung and its ZWNJ/ZWJ carve-outs) and U3 (managed-prompt
+closing-question softening via the experiments ledger). The full `## Resolution`
+replaces this section when the arc's final PR flips status to complete.
 
 ## Problem
 

@@ -40,6 +40,12 @@ import { Sidebar, SIDEBAR_ID } from "./sidebar"
  * same unavailable pane — deep-link conversation only; rail selections keep
  * chat.tsx's in-pane replay states. Popstate-driven conversation changes close
  * the drawer and announce through the polite live region below.
+ *
+ * feat-399 adds the third route to that same pane: `deepLinkUnresolvable`, a
+ * GRANTED shell whose id could never resolve (a malformed segment, so there is
+ * no id to seed or escalate from). It opens on the unavailable pane while the
+ * rail, history hydration and the URL layer stay live, and releases on the
+ * first rail selection, New conversation, or history traverse.
  */
 export function AppShell({
   seekerEnabled = false,
@@ -48,6 +54,7 @@ export function AppShell({
   signInError = false,
   initialConversationId,
   deniedScreen,
+  deepLinkUnresolvable = false,
 }: {
   seekerEnabled?: boolean
   authConfigured?: boolean
@@ -58,6 +65,10 @@ export function AppShell({
   initialConversationId?: string
   /** Server-decided denial pane (feat-209 KTD5); renders in place of Chat. */
   deniedScreen?: DeniedScreen
+  /** feat-399: a GRANTED shell that opens on the unavailable pane because the
+   * deep link's id could never resolve. Never set alongside `deniedScreen` —
+   * the route's `deepLinkShell` produces one or the other, never both. */
+  deepLinkUnresolvable?: boolean
 }) {
   // Structural KTD5 belt: a denial shell renders the gate-granted layers
   // (history hydration, URL sync) inert even if a caller ever passes
@@ -91,6 +102,18 @@ export function AppShell({
 
   const [collapsed, setCollapsed] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
+  // feat-399: is the "link was broken" pane still showing? Seeded from the
+  // route-static prop; every exit path clears it explicitly, because the two
+  // most natural escapes move no conversation id (see dismissUnresolvable).
+  const [unresolvableActive, setUnresolvableActive] =
+    useState(deepLinkUnresolvable)
+  // Explicit because activeId cannot detect the release: the landing row IS
+  // the fresh empty one, so New no-ops and clicking that active rail row
+  // early-returns. Setting false when already false skips the re-render.
+  const dismissUnresolvable = useCallback(
+    () => setUnresolvableActive(false),
+    [],
+  )
 
   // Stable so Sidebar's Escape-listener effect doesn't re-register on every
   // AppShell render (e.g. when a reply arrives) while the drawer is open.
@@ -110,8 +133,9 @@ export function AppShell({
   // path (drawer close) and arm the one-shot announcement.
   const onHistoryNavigation = useCallback(() => {
     setMobileOpen(false)
+    dismissUnresolvable()
     historyNavFromRef.current = activeIdRef.current
-  }, [])
+  }, [dismissUnresolvable])
 
   useConversationUrl({
     enabled: grantedShell,
@@ -142,9 +166,10 @@ export function AppShell({
   const selectFromRail = useCallback(
     (id: string) => {
       historyNavFromRef.current = null
+      dismissUnresolvable()
       selectConversation(id)
     },
-    [selectConversation],
+    [selectConversation, dismissUnresolvable],
   )
 
   // feat-270: the New action lands on a ready-to-type pane, including the
@@ -154,6 +179,7 @@ export function AppShell({
   const pendingComposerFocusRef = useRef(false)
   const newConversationFocused = () => {
     historyNavFromRef.current = null
+    dismissUnresolvable()
     newConversation()
     if (mobileOpen) pendingComposerFocusRef.current = true
     else composerRef.current?.focus()
@@ -217,8 +243,13 @@ export function AppShell({
     initialConversationId !== undefined &&
     activeId === initialConversationId &&
     activeConversation.replay === "not_available"
+  // feat-399: the same pane for a granted visitor whose id was malformed.
+  // `grantedShell` is the structural belt; `unresolvableActive` is the release
+  // every exit path clears — see dismissUnresolvable for why it must be explicit.
+  const unresolvableDeepLink = unresolvableActive && grantedShell
   const paneDenial =
-    deniedScreen ?? (escalatedUnavailable ? "unavailable" : undefined)
+    deniedScreen ??
+    (escalatedUnavailable || unresolvableDeepLink ? "unavailable" : undefined)
 
   return (
     <div className="flex h-dvh">

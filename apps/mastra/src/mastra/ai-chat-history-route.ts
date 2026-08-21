@@ -45,6 +45,18 @@ import {
   type SeekerWireSource,
   type SeekerWireVideo,
 } from "./agents/seeker-turn-projection"
+// feat-366: stored follow-up questions re-enter the shared projection through
+// a SYNTHETIC chunk so `resolveTurnAttachments` stays the single
+// re-validation point (KTD3). Deliberately NO flag import on this path — the
+// replay of already-stored questions is not flag-gated (KD1; mirrors the
+// settled PR #1836 `SEEKER_VIDEO_ENABLED` ruling), and the suite pins this
+// file free of the flag tokens.
+import {
+  FOLLOW_UPS_MAX_QUESTIONS,
+  FOLLOW_UPS_QUESTION_MAX_UNITS,
+  SEEKER_FOLLOW_UPS_METADATA_KEY,
+  SUGGEST_FOLLOW_UPS_TOOL_NAME,
+} from "./seeker-follow-ups"
 
 /** Default + ceiling for the listing page size (KTD6; the store has no cap of
  * its own). The chat side deliberately holds no copy of these — it consumes
@@ -117,6 +129,28 @@ export const AI_CHAT_HISTORY_VIDEO_BYTES_ALLOWANCE = 512
 export const AI_CHAT_HISTORY_MESSAGE_ENVELOPE_BYTES = 256
 
 /**
+ * ONE-message worst case for the feat-366 `followUps` wire field (KTD12):
+ * 3 questions × 120 UTF-16 units × 3 B/unit, plus the JSON envelope (the
+ * `"followUps":[…]` key, brackets, quotes, commas — ~23 B, allowed 64).
+ *
+ * ONE message, not 200: the wire is last-turn-only (KTD3 — only the thread's
+ * final text-bearing assistant message carries the field), so this term adds
+ * ~1.1 kB to the whole-thread budget instead of ~229 kB. The measured
+ * maximal-thread test serializes maximal followUps on every stored assistant
+ * message and asserts exactly one reaches the wire — that slice is what makes
+ * this a one-message term.
+ *
+ * BUDGET RE-DERIVATION NOTE: any future per-message replay field must
+ * re-derive `AI_CHAT_HISTORY_WORST_CASE_THREAD_BYTES` below — and re-measure
+ * via the maximal-thread test — BEFORE it ships. Over-cap is not a degraded
+ * render: it is 502 → replay `failed` → R22 blocks every send → the thread
+ * becomes permanently unreadable and unusable. Never raise the consumer cap;
+ * tighten the stored caps instead (first candidate: 2 × 80).
+ */
+export const AI_CHAT_HISTORY_FOLLOW_UPS_ONE_MESSAGE_BYTES =
+  FOLLOW_UPS_MAX_QUESTIONS * FOLLOW_UPS_QUESTION_MAX_UNITS * 3 + 64
+
+/**
  * The consumer's thread byte-cap, MIRRORED. `apps/chat`'s
  * `HISTORY_THREAD_MAX_RESPONSE_BYTES` is the real constant — apps cannot
  * cross-import, so this copy exists purely so the budget below is asserted
@@ -146,18 +180,26 @@ export const CHAT_HISTORY_THREAD_BYTE_CAP = 8 * 1024 * 1024
  * transcript can still exceed this. The per-message text cap that dominates
  * that case is feat-241's; bounding it is not this unit's change.
  */
+// Measured (feat-366, 2026-08-18, maximal-thread test with maximal followUps
+// on the final text-bearing message): 6,255,991 B serialized against the
+// 8,388,608 B consumer cap — 2,132,617 B real headroom. The derived constant
+// below stays the CLAIMED bound; the measurement is what catches an uncounted
+// field.
 export const AI_CHAT_HISTORY_WORST_CASE_THREAD_BYTES =
   AI_CHAT_HISTORY_REPLAY_MESSAGE_LIMIT *
-  (AI_CHAT_HISTORY_TEXT_CAP_CHARS * 3 +
-    AI_CHAT_HISTORY_MAX_SOURCES_PER_MESSAGE *
-      ((AI_CHAT_HISTORY_SOURCE_SNIPPET_CAP_CHARS +
-        AI_CHAT_HISTORY_ATTACHMENT_FIELD_CAP_CHARS * 2 +
-        AI_CHAT_HISTORY_SOURCE_URL_CAP_CHARS) *
-        3 +
-        AI_CHAT_HISTORY_SOURCE_ENVELOPE_BYTES) +
-    AI_CHAT_HISTORY_ATTACHMENT_FIELD_CAP_CHARS * 3 +
-    AI_CHAT_HISTORY_VIDEO_BYTES_ALLOWANCE +
-    AI_CHAT_HISTORY_MESSAGE_ENVELOPE_BYTES)
+    (AI_CHAT_HISTORY_TEXT_CAP_CHARS * 3 +
+      AI_CHAT_HISTORY_MAX_SOURCES_PER_MESSAGE *
+        ((AI_CHAT_HISTORY_SOURCE_SNIPPET_CAP_CHARS +
+          AI_CHAT_HISTORY_ATTACHMENT_FIELD_CAP_CHARS * 2 +
+          AI_CHAT_HISTORY_SOURCE_URL_CAP_CHARS) *
+          3 +
+          AI_CHAT_HISTORY_SOURCE_ENVELOPE_BYTES) +
+      AI_CHAT_HISTORY_ATTACHMENT_FIELD_CAP_CHARS * 3 +
+      AI_CHAT_HISTORY_VIDEO_BYTES_ALLOWANCE +
+      AI_CHAT_HISTORY_MESSAGE_ENVELOPE_BYTES) +
+  // feat-366 followUps: a whole-thread term, added ONCE (last-turn-only wire
+  // — see the constant's docstring, incl. the budget re-derivation note).
+  AI_CHAT_HISTORY_FOLLOW_UPS_ONE_MESSAGE_BYTES
 
 /** Mirrors the chat proxy's MAX_CONVERSATION_ID_CHARS bound. */
 const MAX_THREAD_ID_CHARS = 200
@@ -224,6 +266,13 @@ export type AiChatHistoryWireMessage = {
   createdAt: string
   sources?: SeekerWireSource[]
   video?: SeekerWireVideo
+  /**
+   * Suggested follow-up questions (feat-366, KTD3) — present ONLY on the
+   * thread's final text-bearing assistant message (older turns keep their
+   * stored sets, off the wire; R3 never renders them). Omitted, never null
+   * or empty. Re-validated through the shared projection on every read.
+   */
+  followUps?: string[]
 }
 
 /**
@@ -426,6 +475,31 @@ function extractStoredToolChunks(candidate: unknown): SeekerToolChunk[] {
   return chunks
 }
 
+/**
+ * Replay-path adapter for stored follow-up questions (feat-366, KTD3):
+ * synthesize ONE `suggestFollowUps` chunk from the stored message's
+ * `content.metadata.seekerFollowUps` so `resolveTurnAttachments` resolves
+ * sources, video, and followUps in one pass — the projection stays the single
+ * re-validation point; this adapter validates NOTHING itself. Total: an
+ * absent or junk-shaped metadata yields no chunk (the projection would drop
+ * junk anyway; skipping the chunk keeps the pooled shape minimal).
+ */
+function extractStoredFollowUpsChunk(candidate: unknown): SeekerToolChunk[] {
+  if (typeof candidate !== "object" || candidate === null) return []
+  const content = (candidate as { content?: unknown }).content as
+    | { metadata?: unknown }
+    | null
+    | undefined
+  if (!content || typeof content.metadata !== "object") return []
+  const stored = (content.metadata as Record<string, unknown> | null)?.[
+    SEEKER_FOLLOW_UPS_METADATA_KEY
+  ]
+  if (stored === undefined) return []
+  return [
+    { toolName: SUGGEST_FOLLOW_UPS_TOOL_NAME, result: { questions: stored } },
+  ]
+}
+
 /** Truncate to a UTF-16 unit cap. Total: a shorter string passes through. */
 function cap(value: string, units: number): string {
   return value.length > units ? value.slice(0, units) : value
@@ -527,13 +601,17 @@ function attachTurnAttachments(
     const attachments = resolveTurnAttachments(chunks)
     const sources = boundSources(attachments.sources)
     const video = attachments.video ? boundVideo(attachments.video) : undefined
+    const followUps = attachments.followUps
     // Omitted, never empty/null — the wire shape stays minimal on the turns
-    // that carry nothing, which is most of them.
-    if (sources.length === 0 && !video) return
+    // that carry nothing, which is most of them. followUps attach per-turn
+    // here; the LAST-TURN-ONLY wire slice below then strips every set except
+    // the thread's final text-bearing assistant message's (KTD3).
+    if (sources.length === 0 && !video && followUps.length === 0) return
     out[lastTextIndex] = {
       ...carrier,
       ...(sources.length > 0 ? { sources } : {}),
       ...(video ? { video } : {}),
+      ...(followUps.length > 0 ? { followUps } : {}),
     }
   }
 
@@ -556,9 +634,33 @@ function attachTurnAttachments(
   }
   closeRun(entries.length)
 
-  return out.filter(
+  const projected = out.filter(
     (message): message is AiChatHistoryWireMessage => message !== null,
   )
+
+  // LAST-TURN-ONLY wire slice for followUps (feat-366, KTD3): a
+  // post-projection pass, so `resolveTurnAttachments` stays the single
+  // re-validation point. Only the thread's FINAL text-bearing assistant
+  // message may carry the field — R3 never renders older turns' chips, so
+  // putting their sets on the wire would spend budget on payload nothing
+  // reads (the byte budget's followUps term is ONE message because of this
+  // slice). Older turns' stored sets stay stored (KTD2 untouched).
+  let finalTextBearingIndex = -1
+  for (let i = projected.length - 1; i >= 0; i -= 1) {
+    const candidate = projected[i]
+    if (candidate.role === "assistant" && candidate.text.trim().length > 0) {
+      finalTextBearingIndex = i
+      break
+    }
+  }
+  return projected.map((message, index) => {
+    if (message.followUps === undefined || index === finalTextBearingIndex) {
+      return message
+    }
+    const rest = { ...message }
+    delete rest.followUps
+    return rest
+  })
 }
 
 /**
@@ -695,7 +797,12 @@ export async function handleAiChatHistoryReplayRequest({
     // stays as `null` so its chunks survive; the attach pass drops it.
     const entries = result.messages.map((candidate) => ({
       message: projectStoredMessage(candidate),
-      chunks: extractStoredToolChunks(candidate),
+      // Stored tool parts plus the synthetic follow-ups chunk (feat-366) pool
+      // into one turn so the shared projection resolves everything at once.
+      chunks: [
+        ...extractStoredToolChunks(candidate),
+        ...extractStoredFollowUpsChunk(candidate),
+      ],
       storedRole: readStoredRole(candidate),
     }))
     return jsonOutcome(200, { messages: attachTurnAttachments(entries) })

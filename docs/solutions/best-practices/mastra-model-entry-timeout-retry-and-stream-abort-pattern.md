@@ -1,6 +1,7 @@
 ---
 title: "Mastra model-entry fetch timeouts: p-retry retries non-APICallError aborts, and AbortSignal bounds the whole streamed body"
 date: 2026-07-08
+last_updated: 2026-08-19
 category: best-practices
 module: apps/mastra
 problem_type: best_practice
@@ -11,6 +12,7 @@ applies_when:
   - "Assuming @mastra/core's built-in retry loop only retries typed APICallError instances with isRetryable true — its shouldRetry falls through to true for any other error, including an undici TimeoutError DOMException from an aborted fetch"
   - "Passing a composed AbortSignal.timeout as fetch's signal for a streaming LLM response — it bounds the entire fetch including the body read, not just header arrival, so it can abort a healthy still-streaming response mid-token"
   - "Testing a Mastra model-entry timeout/abort path — vitest fake timers cannot intercept AbortSignal.timeout; use an exported factory (timeoutMs, fetchImpl=fetch) plus a stub fetch that captures the composed signal, with tiny real budgets"
+  - "Deciding whether a Mastra model entry needs maxRetries: 0 when the deadline is the CALLER's abortSignal rather than an attempt-local fetch timeout — the caller-threaded signal reaches p-retry's signal: option and bounds attempts and fallback entries, but not an in-flight attempt (see the 2026-08-18 amendment)"
 root_cause: wrong_api
 resolution_type: code_fix
 tags:
@@ -66,6 +68,17 @@ return await pRetry.default(
 // gateway 5xx also falls straight to Gemma, today's behavior anyway.
 maxRetries: 0,
 ```
+
+**Scope limit (2026-08-18, feat-366) — Rule 1 is a law about ATTEMPT-LOCAL timeouts.** A
+deadline the model entry itself owns (a custom `fetch`'s own `AbortSignal.timeout` — the KTD9
+guard above) is invisible to the retry loop, and everything in this rule applies. A deadline
+threaded as the CALLER's own signal — `agent.generate(prompt, { abortSignal })`, or the same
+option on `stream()` — reaches p-retry's `signal:` option and does not carry this hazard; it
+needs no `maxRetries: 0` on that account. The discriminator a reader can apply without opening
+a dist: does p-retry SEE your signal? It sees the caller's threaded signal; it never sees a
+timeout composed inside a custom `fetch`. Mechanism, measurements, and the wall-clock
+carve-out are in the dated amendment at the end of this doc — do not apply either shape's
+conclusion to the other.
 
 **Rule 2 — read the retry count from the live entry in a test, don't hardcode it.** `apps/mastra/src/mastra/agents/seeker-agent.test.ts:216-237`:
 
@@ -124,6 +137,7 @@ The second, related consequence (not a retry issue, a streaming-semantics issue)
 ## When to Apply
 
 - Any Mastra `ModelWithRetries[]` array entry (or future custom-`fetch` provider construction anywhere in the codebase) that wraps its `fetch` in a per-attempt timeout guard: pair with `maxRetries: 0` on that entry, or explicitly size the timeout budget retry-aware (`(maxRetries + 1) * timeoutMs` fits inside the caller's ceiling with allowance for whatever runs after).
+- **Not this rule:** a deadline you thread as the caller's own `agent.generate(prompt, { abortSignal })` / `stream({ abortSignal })` signal. `@mastra/core` passes that signal into p-retry's `signal:` option, so it gates every attempt and every backoff sleep and unwinds the fallback loop — the retry-multiplication hazard above does not apply, and `maxRetries: 0` is not required on that account. It still does not cut an attempt already in flight, so pair it with a caller-side `Promise.race` on the same budget whenever the deadline is a promise rather than a best effort. See the 2026-08-18 amendment below.
 - Any streaming provider called through a custom `fetch` bounded by `AbortSignal.timeout` (or any single whole-request abort signal): understand that "timeout" here means "abort the entire response including the body stream," not "abort if headers never arrive." If healthy answers can legitimately run close to the cap, that's a design smell pointing toward a time-to-first-byte + idle-per-chunk guard instead of (or in addition to) a whole-stream cap.
 - Any outbound call sized under an upstream caller's time budget (the general law from `docs/solutions/best-practices/outbound-timeout-shorter-than-caller-budget-20260506.md`) that ALSO sits inside a retrying framework you don't control: check the framework's actual retry-classification logic before assuming "non-retryable errors don't retry." Read the dist, don't infer from the type name.
 - Any test asserting a computed timing/retry invariant: derive both operands (the retry count, the per-attempt timeout) from the real production code path (`buildSeekerModelList()`'s actual output here), not from literals copied into the test, so a later change to either constant is caught rather than silently invalidating the invariant.
@@ -219,6 +233,116 @@ but below the full answer duration — too small a value fires pre-stream and
 demonstrates clean failover instead of the mid-stream abort. Alternatively,
 point the mock above at a chunk-every-400ms-for-45s stream.
 
+## Amendment (2026-08-18, feat-366): a caller-threaded `abortSignal` bounds the retry loop — the Rule 1 hazard is attempt-local
+
+This amendment bounds Rule 1; it retracts nothing. Rule 1 holds for a timeout the model
+entry itself owns — a custom `fetch`'s own `AbortSignal.timeout`, the KTD9 gateway guard.
+That signal is **invisible to the retry loop**: p-retry only ever sees the signal the core
+hands it as its `signal:` option, and the core sources that from the CALLER's options,
+never from an entry's fetch wrapper. An attempt-local abort therefore throws a plain
+non-`APICallError` into `shouldRetry`, falls to `return true`, and multiplies exactly as
+Rule 1 describes. `maxRetries: 0` — or retry-aware budgeting — stays mandatory for that
+shape.
+
+A deadline threaded as the **caller's own** abort signal —
+`agent.generate(prompt, { abortSignal })`, or the same option on `stream()` — does not
+carry that hazard. It is the same `signal:` line Rule 1's snippet already quotes; the
+implication was simply never drawn. Verified in the installed dist
+(`apps/mastra/node_modules/@mastra/core/dist/agent-0y2cApTZ.js:24675-24700`, `@mastra/core`
+1.55.0):
+
+```js
+const abortSignal = options?.abortSignal // :24681 — the CALLER's option
+return await (
+  await import("p-retry")
+).default(
+  async () => {
+    return await (
+      methodType === "stream" ? model.doStream : model.doGenerate
+    ).bind(model)({
+      ...toolsAndToolChoice,
+      prompt,
+      providerOptions,
+      abortSignal /* … */, // :24687
+    })
+  },
+  {
+    retries: modelSettings?.maxRetries ?? 2,
+    signal: abortSignal, // :24695 — AND into p-retry
+    shouldRetry(context) {
+      /* unchanged — see Rule 1 */
+    },
+  },
+)
+```
+
+`options` is the caller's `generate`/`stream` options object, threaded unchanged through
+`#execute` (`:36616`, rest-spread) → `createAgenticExecutionWorkflow` (`:27649`) →
+`createLLMExecutionStep` (`:25691`) → `execute` (`:24624`). An entry-owned fetch wrapper's
+timeout never reaches this option — that is the scope boundary in the other direction.
+
+`p-retry` 7.1.1 (the copy `@mastra/core` resolves, at
+`node_modules/.pnpm/p-retry@7.1.1/node_modules/p-retry/index.js`) gates on that signal at
+four points: `throwIfAborted` before the attempt loop (`:185`), before and after
+**every** attempt (`:195`, `:199`), and around the backoff sleep (`:127`, `:150`) — and the
+sleep itself registers an `abort` listener that rejects with `options.signal.reason`
+(`:129-148`), so a sleep already in progress does not outlive the deadline. Note
+`shouldRetry` runs before those gates: the caller signal does not make the abort
+"non-retryable"; it stops the loop around it.
+
+The fallback loop unwinds instead of advancing — by a **bail, not a throw**. The per-entry
+callback catches the error and, on `isAbortError(error) && options?.abortSignal?.aborted`,
+**returns** `{ callBail: true, … }` (`:26141-26159`); `executeStreamWithFallbackModels`
+(`:25665-25690`) treats a resolved callback as done and breaks before the next entry runs.
+The guard requires the **caller's** signal to be aborted — which is precisely why an
+attempt-local timeout abort does not take this branch and instead advances to the next
+entry, exactly as Rule 1's "the fallback chain IS the retry" says. Consequence worth
+knowing: on this core an aborted `generate` **resolves** (bail), it does not reject — a
+consumer that only catches sees neither.
+
+**Measured, not inferred** (2026-08-18; `@mastra/core` 1.55.0 + `p-retry` 7.1.1, Node
+v24.16.0 — a real `Agent` over two mock entries, `maxRetries: 2` each, every attempt
+throwing the same `TimeoutError` DOMException a fetch-timeout abort produces):
+
+| caller signal              | entry-1 attempts              | entry-2 attempts                | elapsed  | outcome  |
+| -------------------------- | ----------------------------- | ------------------------------- | -------- | -------- |
+| none (attempt-local only)  | 3, at t = 33 / 1034 / 3037 ms | 3, at t = 3044 / 4046 / 6050 ms | 6,056 ms | throws   |
+| `AbortSignal.timeout(150)` | 1, at t = 3 ms                | **0**                           | 155 ms   | resolves |
+
+Row 1 is Rule 1's hazard measured end to end: `(maxRetries + 1) × entries` provider calls
+plus p-retry's 1 s/2 s backoffs. Row 2 is the same error class under a caller-threaded
+deadline — one attempt, the backoff sleep cut mid-flight, the second entry never invoked.
+
+**What this shape bounds, and what it does not.** It bounds the attempt COUNT and the
+fallback-entry count — the multiplication Rule 1 exists to prevent, which therefore does
+not apply. It does **not** by itself bound WALL-CLOCK: `throwIfAborted` is only checked
+_between_ attempts, so a single in-flight attempt that ignores its `abortSignal` runs to
+its own completion — same harness, one hanging attempt, caller deadline 150 ms:
+
+| provider honors `abortSignal` | entry-1 attempts | entry-2 attempts | elapsed  |
+| ----------------------------- | ---------------- | ---------------- | -------- |
+| yes                           | 1                | 0                | 159 ms   |
+| no                            | 1                | 0                | 5,012 ms |
+
+Real fetch-based providers honor the signal, so the top row is the normal case. The bottom
+row is why a caller-side `Promise.race` on the same budget stays the right
+belt-and-suspenders wherever the deadline is a product promise rather than a best effort.
+`apps/mastra/src/mastra/seeker-follow-ups-generate.ts` is the in-tree consumer of the
+bounded shape: it composes its own `AbortSignal.timeout(budget)` with the turn's
+already-composed signal via `AbortSignal.any`, passes the result to `agent.generate`, AND
+races the same budget through the shared `settleWithinBudget`. The authoritative prose is
+the feat-366 plan's "Budget mechanics" Sources bullet and KTD6
+(`docs/plans/2026-08-18-0406-feat-seeker-follow-up-questions-plan.md:104`, `:118`; its
+"unwinds instantly" phrasing describes the no-further-attempts bound — the wall-clock
+carve-out above is the precise form).
+
+Two citation notes. Rule 1's dist quote cites `chunk-AM3IOVFX.js:17915-17945` — that is
+the `@mastra/core` 1.36.0-era chunk; at 1.55.0 the same block (its `shouldRetry` shape
+unchanged) lives at `agent-0y2cApTZ.js:24675-24700`. On future bumps, relocate dist
+citations by symbol (`pRetry`, `shouldRetry`), never by chunk path. And like every dist
+fact in this doc, this amendment is version-pinned — **re-verify on `@mastra/*` and
+`p-retry` bumps**. The race is what makes not re-verifying survivable.
+
 ## Related
 
 - `docs/solutions/conventions/mastra-inline-gateway-construction-createrequire.md` — the inline gateway-construction convention (createRequire shim, `.chat()` pinning, gateway-constants) this timeout wrapper lives inside.
@@ -227,3 +351,4 @@ point the mock above at a chunk-every-400ms-for-45s stream.
 - `docs/solutions/best-practices/buffered-http-response-byte-cap-oom-guard-20260629.md` — sibling application of "test the abort MECHANISM, not just the configured value/return value," on the byte-cap axis instead of the time axis.
 - `docs/solutions/integration-issues/mastra-conversational-agent-memory-and-model-router-wiring.md` — the seeker model-router chain (`buildSeekerModelList`, OpenRouter Gemma fallback) that this timeout/retry hardening sits on top of.
 - `docs/roadmap/ai-chat/feat-237-seeker-gateway-model.md` — the change that surfaced both risks; its Resolution's residual-risk entries track their unverified status (the whole-stream cap was kept for the dogfood trial — revisit toward a TTFB-plus-idle guard only if dogfood shows gateway turns nearing the cap or concatenated replies).
+- `docs/plans/2026-08-18-0406-feat-seeker-follow-up-questions-plan.md` — feat-366, the seeker follow-ups generator whose caller-signal deadline produced the 2026-08-18 amendment above; its "Budget mechanics" Sources bullet and KTD6 carry the authoritative verification prose, and `apps/mastra/src/mastra/seeker-follow-ups-generate.ts`'s header comment carries the same hand-verification stamp.

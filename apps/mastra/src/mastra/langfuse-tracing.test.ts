@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import type { ManagedPromptResult } from "../services/langfuse-prompt-client"
 import {
+  buildFollowUpsTracingCallOptions,
   buildLangfuseSeekerObservabilityConfig,
   buildObservabilityConfigs,
   buildSeekerTracingCallOptions,
@@ -391,5 +392,72 @@ describe("buildSeekerTracingCallOptions", () => {
     expect(tracingOptions.metadata.promptStale).toBe(true)
     expect(tracingOptions.metadata).not.toHaveProperty("promptVersion")
     expect(tracingOptions.metadata).not.toHaveProperty("langfuse")
+  })
+
+  it("stamps the click-source under sendOrigin when supplied (KTD11)", () => {
+    for (const sendOrigin of ["follow_up", "typed"] as const) {
+      const { tracingOptions } = buildSeekerTracingCallOptions({
+        promptName: "seeker-system",
+        promptProvenance: fallbackProvenance(),
+        resource: "user:abc",
+        thread: "thread-1",
+        sendOrigin,
+      })
+      expect(tracingOptions.metadata.sendOrigin).toBe(sendOrigin)
+    }
+  })
+
+  it("keeps sendOrigin and the provenance promptSource as DISTINCT metadata keys (KTD11 key pin)", () => {
+    // `promptSource` already means prompt provenance (langfuse | fallback);
+    // the click-source stamp must never re-merge into it — one key answering
+    // two questions is how the next reader silently loses one of them.
+    const { tracingOptions } = buildSeekerTracingCallOptions({
+      promptName: "seeker-system",
+      promptProvenance: fallbackProvenance({ source: "langfuse", version: 3 }),
+      resource: "user:abc",
+      thread: "thread-1",
+      sendOrigin: "follow_up",
+    })
+    expect(tracingOptions.metadata.sendOrigin).toBe("follow_up")
+    expect(tracingOptions.metadata.promptSource).toBe("langfuse")
+  })
+})
+
+describe("buildFollowUpsTracingCallOptions (KTD9)", () => {
+  it("stamps the per-process marker so generator spans route to langfuse-seeker", () => {
+    const { requestContext } = buildFollowUpsTracingCallOptions({
+      resource: "user:abc",
+      thread: "thread-1",
+    })
+    expect(requestContext.get(TRACING_CONFIG_CONTEXT_KEY)).toBe(
+      LANGFUSE_SEEKER_TRACING_MARKER,
+    )
+  })
+
+  it("carries the sibling-trace name plus the same session/user stamps", () => {
+    // The stamps are what keep the feat-336 retention sweep and feat-337
+    // erasure able to FIND these spans (userId-filtered listing).
+    const { tracingOptions } = buildFollowUpsTracingCallOptions({
+      resource: "user:abc",
+      thread: "thread-1",
+    })
+    expect(tracingOptions.metadata).toEqual({
+      traceName: "seeker-follow-ups",
+      userId: "user:abc",
+      sessionId: "thread-1",
+    })
+    expect(tracingOptions).not.toHaveProperty("traceId")
+    expect(tracingOptions).not.toHaveProperty("parentSpanId")
+  })
+
+  it("attempts same-trace joining when the turn's trace/span ids are known", () => {
+    const { tracingOptions } = buildFollowUpsTracingCallOptions({
+      resource: "user:abc",
+      thread: "thread-1",
+      turnTraceId: "abc123",
+      turnSpanId: "def456",
+    })
+    expect(tracingOptions.traceId).toBe("abc123")
+    expect(tracingOptions.parentSpanId).toBe("def456")
   })
 })

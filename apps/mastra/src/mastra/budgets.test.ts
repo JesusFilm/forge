@@ -5,6 +5,7 @@ import {
   STEP_CAPS,
   TIME_BUDGET_MS,
   getTimeBudgetMs,
+  settleWithinBudget,
 } from "./budgets"
 
 describe("budgets (U11)", () => {
@@ -102,6 +103,42 @@ describe("budgets (U11)", () => {
       expect(getTimeBudgetMs("chatTurn")).toBe(90_000)
       expect(getTimeBudgetMs("multiStepWorkflow")).toBe(180_000)
       expect(getTimeBudgetMs("backgroundAutoEnrich")).toBe(300_000)
+    })
+  })
+
+  describe("settleWithinBudget", () => {
+    it("settles the given promise on the ALREADY-ABORTED fast path — a late rejection cannot escape unhandled (feat-366 review #1)", async () => {
+      // The fast path returns a rejection without awaiting the caller's
+      // promise; if it also never attaches a handler, that promise's later
+      // rejection is an unhandled rejection — process-fatal under Node's
+      // default posture, and no production handler exists in this app.
+      const escaped: unknown[] = []
+      const listener = (reason: unknown) => {
+        escaped.push(reason)
+      }
+      process.on("unhandledRejection", listener)
+      try {
+        const aborted = AbortSignal.abort()
+        let rejectLater!: (error: Error) => void
+        const doomed = new Promise<never>((_, reject) => {
+          rejectLater = reject
+        })
+        await expect(settleWithinBudget(doomed, aborted)).rejects.toThrow(
+          "budget_aborted",
+        )
+        rejectLater(new Error("late failure after the fast-path return"))
+        await new Promise((resolve) => setTimeout(resolve, 20))
+        expect(escaped).toEqual([])
+      } finally {
+        process.removeListener("unhandledRejection", listener)
+      }
+    })
+
+    it("still resolves normally when the signal never fires (anti-vacuous companion)", async () => {
+      const signal = AbortSignal.timeout(5_000)
+      await expect(
+        settleWithinBudget(Promise.resolve("value"), signal),
+      ).resolves.toBe("value")
     })
   })
 })

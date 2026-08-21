@@ -120,13 +120,51 @@ with no release-level view.
   decision would reverse the feat-321 tracing topology (the flip trigger
   recorded in
   `docs/solutions/tooling-decisions/langfuse-vs-mastra-native-management-layer-20260805.md`).
+- **Follow-up-question chips have TWO suppression surfaces — the crisis
+  guardrail must cover the first, and no write-path flag covers the second
+  (added 2026-08-18, feat-366):** (1) the GENERATION gate
+  `shouldGenerateFollowUps` (`apps/mastra/src/mastra/seeker-follow-ups.ts` —
+  its code breadcrumb points back here): when the crisis guardrail lands it
+  must also suppress chip generation at that gate, so a crisis turn never
+  grows tappable follow-up questions; and (2) the REPLAY read path, which is
+  deliberately ungated (KD1, mirroring the PR #1836 `SEEKER_VIDEO_ENABLED`
+  ruling) — `SEEKER_FOLLOWUPS_ENABLED=false` stops NEW chip sets only, and a
+  write-path suppression never covers already-persisted output. The accepted
+  lever for already-stored chips: flag off (stops new sets) →
+  `SEEKER_ROUTE_ENABLED=false` (darkens the lane) → thread purge (retracts
+  existing ones). Revisit triggers: audience widening, or an incident class
+  needing visual retraction.
+- **Follow-up chips silently DROP on some non-Latin scripts, and the code's
+  revisit trigger points here (added 2026-08-21, feat-366):** the chip
+  projection's invisible-character rung (`FORMAT_CHAR_PATTERN` in
+  `apps/mastra/src/mastra/seeker-follow-ups.ts`) matches the whole Unicode
+  `Cf` category, which also contains format characters that appear in real
+  scripture-adjacent text — `U+06DD` (ARABIC END OF AYAH, Quranic verse
+  numbering), `U+0600`-`U+0605` (Arabic number signs), `U+070F` (SYRIAC
+  ABBREVIATION MARK), `U+08E2`, `U+110BD` (KAITHI NUMBER SIGN), and `U+00AD`
+  (SOFT HYPHEN). An item containing one is dropped WHOLE; plain Arabic,
+  Syriac, and Indic prose is unaffected. Accepted for the dogfood roster
+  because the failure direction is safe — drop-never-repair plus a floor of
+  one means the chip list merely shortens or empties, and no chip is ever
+  rendered or SENT wrongly — and because a script-specific carve-out would
+  widen the predicate on the one wire field that becomes user INPUT. The cost
+  is that the failure is INVISIBLE when it happens: a seeker asking a
+  comparative-religion question in Arabic can lose their chips with nothing
+  logged. That rung's JSDoc names THIS register as its revisit trigger, so
+  the decision must be re-taken here before the audience widens past dogfood;
+  the carve-out shape to apply then (visible/semantic script formatters out,
+  genuinely invisible ones kept blocked) is recorded beside the rung.
 
 ### 3. Abuse & cost containment
 
 - Per-caller rate/concurrency cap — named by feat-236 as its precondition
   step 0 and by feat-208 as "the real flood control"; still open.
 - Model spend ceilings for public traffic (the gateway/Gemma chain budget
-  posture was sized for dogfood).
+  posture was sized for dogfood). (Added 2026-08-19, feat-366: with
+  `SEEKER_FOLLOWUPS_ENABLED` on, each grounded send adds a SECOND
+  token-capped model call on the seeker's own chain — the paid gateway entry
+  first when that flag is on — so size the cap and the spend ceiling against
+  sends × 2.)
 
 ### 4. Gate removal mechanics
 

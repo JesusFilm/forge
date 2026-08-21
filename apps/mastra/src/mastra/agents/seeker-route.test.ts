@@ -1799,3 +1799,737 @@ describe("handleSeekerRouteRequest — feat-327 review-hardening gates", () => {
     }
   })
 })
+
+// ===========================================================================
+// feat-366: suggested follow-up questions — route wiring (KTD6/KTD7/KTD11)
+// ===========================================================================
+
+import {
+  FOLLOW_UPS_GENERATION_BUDGET_MS,
+  FOLLOW_UPS_MIN_ANSWER_CHARS,
+} from "../seeker-follow-ups"
+import { generateSeekerFollowUps } from "../seeker-follow-ups-generate"
+import type { FollowUpsGenerationOutcome } from "../seeker-follow-ups-generate"
+
+const LONG_ANSWER = "a".repeat(FOLLOW_UPS_MIN_ANSWER_CHARS + 50)
+const GROUNDED_TOOL_RESULTS = [retrieveAnswerChunk("ok", [])]
+
+type RouteGenerateSeam = NonNullable<
+  SeekerRouteHandlerInput["generateFollowUps"]
+>
+type RoutePersistSeam = NonNullable<SeekerRouteHandlerInput["persistFollowUps"]>
+
+function generationOutcome(
+  over: Partial<FollowUpsGenerationOutcome> = {},
+): FollowUpsGenerationOutcome {
+  return {
+    questions: ["Why pray?"],
+    tokensIn: 5,
+    tokensOut: 3,
+    ...over,
+  }
+}
+
+function followUpsHarness(over: {
+  chunks?: string[]
+  toolResults?: ToolResultChunk[]
+  enabled?: boolean
+  generate?: RouteGenerateSeam
+  persist?: RoutePersistSeam
+  body?: Record<string, unknown>
+  budgetMs?: number
+  requestSignal?: AbortSignal
+  stream?: (prompt: string, opts: StreamOpts) => unknown
+}) {
+  const generateCalls: Array<Parameters<RouteGenerateSeam>[0]> = []
+  const persistCalls: Array<Parameters<RoutePersistSeam>[0]> = []
+  const made = makeMastra({
+    chunks: over.chunks ?? [LONG_ANSWER],
+    toolResults: over.toolResults ?? GROUNDED_TOOL_RESULTS,
+    ...(over.stream ? { stream: over.stream } : {}),
+  })
+  const input = baseInput(made.mastra, {
+    getFollowUpsEnabled: () => over.enabled ?? true,
+    generateFollowUps: (i) => {
+      generateCalls.push(i)
+      return over.generate
+        ? over.generate(i)
+        : Promise.resolve(generationOutcome())
+    },
+    persistFollowUps: (i) => {
+      persistCalls.push(i)
+      return over.persist
+        ? over.persist(i)
+        : Promise.resolve("persisted" as const)
+    },
+    ...(over.body ? { readJson: async () => over.body } : {}),
+    ...(over.budgetMs !== undefined ? { budgetMs: over.budgetMs } : {}),
+    ...(over.requestSignal ? { requestSignal: over.requestSignal } : {}),
+  })
+  return { made, input, generateCalls, persistCalls }
+}
+
+function resultFrameOf(body: string): Record<string, unknown> {
+  const match = body.match(/event: result\ndata: (.+)\n\n/)
+  expect(match).not.toBeNull()
+  return JSON.parse(match![1]) as Record<string, unknown>
+}
+
+describe("handleSeekerRouteRequest — follow-ups gate and frame (R4/R5/R7)", () => {
+  it("flag off (the default) → generator never invoked, no followUps key, no [seeker-follow-ups] line", async () => {
+    const info = vi.spyOn(console, "info")
+    try {
+      const { input, generateCalls, persistCalls } = followUpsHarness({
+        enabled: false,
+      })
+      const res = await handleSeekerRouteRequest(input)
+      const body = await readSse(res)
+      expect(generateCalls).toHaveLength(0)
+      expect(persistCalls).toHaveLength(0)
+      const frame = resultFrameOf(body)
+      expect(frame).not.toHaveProperty("followUps")
+      expect(
+        info.mock.calls.some((c) =>
+          String(c[0]).includes("[seeker-follow-ups]"),
+        ),
+      ).toBe(false)
+    } finally {
+      info.mockRestore()
+    }
+  })
+
+  it("flag on + grounded + substantive → the terminal frame carries followUps", async () => {
+    const { input } = followUpsHarness({})
+    const res = await handleSeekerRouteRequest(input)
+    const frame = resultFrameOf(await readSse(res))
+    expect(frame.followUps).toEqual(["Why pray?"])
+  })
+
+  it("omits the followUps key when generation yields nothing (R7: omitted, never null)", async () => {
+    const { input } = followUpsHarness({
+      generate: async () =>
+        generationOutcome({ questions: [], reason: "no_questions" }),
+    })
+    const res = await handleSeekerRouteRequest(input)
+    const frame = resultFrameOf(await readSse(res))
+    expect(frame).not.toHaveProperty("followUps")
+    expect(JSON.stringify(frame)).not.toContain("followUps")
+  })
+
+  it("skips generation on an ungrounded turn (KTD7)", async () => {
+    const { input, generateCalls } = followUpsHarness({
+      toolResults: [retrieveAnswerChunk("empty", [])],
+    })
+    await readSse(await handleSeekerRouteRequest(input))
+    expect(generateCalls).toHaveLength(0)
+  })
+
+  it("skips generation on a short answer (KTD7 — Covers AE2)", async () => {
+    const { input, generateCalls } = followUpsHarness({
+      chunks: ["Short social closer."],
+    })
+    await readSse(await handleSeekerRouteRequest(input))
+    expect(generateCalls).toHaveLength(0)
+  })
+
+  it("degrades a REJECTING generation seam to a followUps-less result frame — never an error frame (R5)", async () => {
+    const { input } = followUpsHarness({
+      generate: async () => {
+        throw new Error("SECRET-GEN-DETAIL exploded")
+      },
+    })
+    const res = await handleSeekerRouteRequest(input)
+    const body = await readSse(res)
+    expect(body).toContain("event: result")
+    expect(body).not.toContain("event: error")
+    expect(resultFrameOf(body)).not.toHaveProperty("followUps")
+  })
+
+  it("degrades a SYNCHRONOUSLY throwing generation seam identically (KTD6 containment)", async () => {
+    const { input } = followUpsHarness({
+      generate: (() => {
+        throw new Error("sync gen explosion")
+      }) as unknown as RouteGenerateSeam,
+    })
+    const res = await handleSeekerRouteRequest(input)
+    const body = await readSse(res)
+    expect(body).toContain("event: result")
+    expect(body).not.toContain("event: error")
+  })
+
+  it("contains a SYNCHRONOUSLY throwing persist seam — the streamed answer still lands (KTD6)", async () => {
+    const warn = vi.spyOn(console, "warn")
+    const info = vi.spyOn(console, "info")
+    try {
+      const { input } = followUpsHarness({
+        persist: (() => {
+          throw new Error("sync persist explosion")
+        }) as unknown as RoutePersistSeam,
+      })
+      const res = await handleSeekerRouteRequest(input)
+      const body = await readSse(res)
+      expect(body).toContain("event: result")
+      expect(body).not.toContain("event: error")
+      expect(
+        info.mock.calls.some((c) =>
+          String(c[0]).includes("persist=store_failed"),
+        ),
+      ).toBe(true)
+    } finally {
+      warn.mockRestore()
+      info.mockRestore()
+    }
+  })
+
+  it("never logs generation/persist error detail on any failure path (R9 no-leak)", async () => {
+    const spies = [
+      vi.spyOn(console, "log"),
+      vi.spyOn(console, "warn"),
+      vi.spyOn(console, "error"),
+      vi.spyOn(console, "info"),
+    ]
+    try {
+      const { input } = followUpsHarness({
+        generate: async () => {
+          throw new Error("SECRET-GEN-DETAIL")
+        },
+        persist: async () => {
+          throw new Error("SECRET-PERSIST-DETAIL")
+        },
+      })
+      await readSse(await handleSeekerRouteRequest(input))
+      const lines = spies
+        .flatMap((spy) => spy.mock.calls)
+        .map((call) => call.map(String).join(" "))
+      expect(lines.some((l) => l.includes("SECRET-"))).toBe(false)
+    } finally {
+      for (const spy of spies) spy.mockRestore()
+    }
+  })
+})
+
+describe("handleSeekerRouteRequest — follow-ups persist ordering and outcomes (KTD6)", () => {
+  it("enqueues the terminal frame STRICTLY BEFORE persist resolves (deferred-promise fixture)", async () => {
+    let resolvePersist!: (o: "persisted") => void
+    let persistSettled = false
+    const persistDeferred = new Promise<"persisted">((resolve) => {
+      resolvePersist = (o) => {
+        persistSettled = true
+        resolve(o)
+      }
+    })
+    const { input, persistCalls } = followUpsHarness({
+      persist: () => persistDeferred,
+    })
+    const res = await handleSeekerRouteRequest(input)
+    const reader = res.body!.getReader()
+    const decoder = new TextDecoder()
+    let seen = ""
+    while (!seen.includes("event: result")) {
+      const { done, value } = await reader.read()
+      if (done) break
+      seen += decoder.decode(value)
+    }
+    // The frame is on the wire while persist is still pending.
+    expect(seen).toContain("event: result")
+    expect(persistCalls).toHaveLength(1)
+    expect(persistSettled).toBe(false)
+    resolvePersist("persisted")
+    // Drain to completion so the stream closes cleanly.
+    while (true) {
+      const { done } = await reader.read()
+      if (done) break
+    }
+  })
+
+  it("passes the turn's OWN threadId and resolved resourceId to persist — and nothing signal-shaped", async () => {
+    const { input, persistCalls } = followUpsHarness({
+      body: { prompt: "hi", threadId: "thread-A", resourceId: "user:sub-9" },
+    })
+    await readSse(await handleSeekerRouteRequest(input))
+    expect(persistCalls).toHaveLength(1)
+    expect(persistCalls[0]).toEqual({
+      threadId: "thread-A",
+      resourceId: "user:sub-9",
+      questions: ["Why pray?"],
+      // Turn identity for the carrier scan, BOTH bounds. Lower: a lagging
+      // store must retry rather than write onto the PREVIOUS turn's answer.
+      // Upper: a NEWER turn's answer must never receive this turn's chips —
+      // the backwards walk reaches it before the user row that would have
+      // stopped it, so only this bound closes that case.
+      turnStartedAtMs: expect.any(Number),
+      turnEndedAtMs: expect.any(Number),
+    })
+    // The window is real and correctly ordered, not two copies of one clock
+    // read: the end bound is captured just before the persist call.
+    const call = persistCalls[0] as {
+      turnStartedAtMs: number
+      turnEndedAtMs: number
+    }
+    expect(call.turnEndedAtMs).toBeGreaterThanOrEqual(call.turnStartedAtMs)
+  })
+
+  // The three no-run causes are operationally different — a suppressed turn, a
+  // departed consumer, and a seam that threw. One shared literal would cost
+  // the operator the only key that separates them, and it is what calibrates
+  // the provisional persist retry after the flip. Falsify by collapsing them
+  // back to one value: all three of these go red at once.
+  it("distinguishes gen_reason=gate_skipped when the suppression gate refuses the turn", async () => {
+    const info = vi.spyOn(console, "info")
+    try {
+      // Ungrounded: the gate refuses regardless of length.
+      const { input, generateCalls } = followUpsHarness({ toolResults: [] })
+      await readSse(await handleSeekerRouteRequest(input))
+      expect(generateCalls).toHaveLength(0)
+      expect(
+        info.mock.calls.some((c) =>
+          String(c[0]).includes("gen_reason=gate_skipped"),
+        ),
+      ).toBe(true)
+    } finally {
+      info.mockRestore()
+    }
+  })
+
+  it("distinguishes gen_reason=stream_closed when the consumer left before the gate", async () => {
+    const aborted = new AbortController()
+    aborted.abort()
+    const info = vi.spyOn(console, "info")
+    try {
+      const { input, generateCalls } = followUpsHarness({
+        requestSignal: aborted.signal,
+      })
+      await readSse(await handleSeekerRouteRequest(input))
+      expect(generateCalls).toHaveLength(0)
+      expect(
+        info.mock.calls.some((c) =>
+          String(c[0]).includes("gen_reason=stream_closed"),
+        ),
+      ).toBe(true)
+    } finally {
+      info.mockRestore()
+    }
+  })
+
+  it("distinguishes gen_reason=unexpected_error when the generate seam throws synchronously", async () => {
+    const info = vi.spyOn(console, "info")
+    try {
+      const { input } = followUpsHarness({
+        generate: () => {
+          throw new Error("seam exploded")
+        },
+      })
+      const body = await readSse(await handleSeekerRouteRequest(input))
+      // R5 still holds: a thrown seam is contained, never an error frame.
+      expect(body).toContain("event: result")
+      expect(body).not.toContain("event: error")
+      expect(
+        info.mock.calls.some((c) =>
+          String(c[0]).includes("gen_reason=unexpected_error"),
+        ),
+      ).toBe(true)
+    } finally {
+      info.mockRestore()
+    }
+  })
+
+  it("logs the full turn_resolved key set in order (AE5 receiver half)", async () => {
+    const info = vi.spyOn(console, "info")
+    try {
+      const { input } = followUpsHarness({})
+      await readSse(await handleSeekerRouteRequest(input))
+      const line = info.mock.calls
+        .map((c) => String(c[0]))
+        .find((l) => l.includes("[seeker-follow-ups]"))
+      // Anchored FULL-LINE regex — this IS the field-set pin: a missing,
+      // reordered, or extra key goes red here, and no free text can ride the
+      // line. `gen_reason` carries the generator's closed reason vocabulary
+      // (`ok` on success; a distinct no-run cause when the gate, the
+      // stream-open check, or containment kept the
+      // generator from running).
+      expect(line).toMatch(
+        /^\[seeker-follow-ups\] event=turn_resolved mode=post prompt_source=typed count=1 gen_reason=ok added_ms=\d+ persist=persisted gen_tokens_in=5 gen_tokens_out=3 total_ms=\d+$/,
+      )
+      // Positive no-leak property (R9): the anchored full-line regex above
+      // already forbids extra content, and this makes the intent explicit —
+      // the generated QUESTION text never rides the log line.
+      expect(line).not.toContain("Why pray?")
+    } finally {
+      info.mockRestore()
+    }
+  })
+
+  it("records prompt_source=follow_up for a valid chip-originated body (KTD11)", async () => {
+    const info = vi.spyOn(console, "info")
+    try {
+      const { input } = followUpsHarness({
+        body: { prompt: "hi", threadId: "t", promptSource: "follow_up" },
+      })
+      await readSse(await handleSeekerRouteRequest(input))
+      expect(
+        info.mock.calls.some((c) =>
+          String(c[0]).includes("prompt_source=follow_up"),
+        ),
+      ).toBe(true)
+    } finally {
+      info.mockRestore()
+    }
+  })
+
+  it.each([
+    ["absent", { prompt: "hi", threadId: "t" }],
+    ["invalid string", { prompt: "hi", threadId: "t", promptSource: "banana" }],
+    ["non-string", { prompt: "hi", threadId: "t", promptSource: 42 }],
+  ])(
+    "records prompt_source=typed for an %s promptSource — never a 400 (KTD11)",
+    async (_label, body) => {
+      const info = vi.spyOn(console, "info")
+      try {
+        const { input } = followUpsHarness({ body })
+        const res = await handleSeekerRouteRequest(input)
+        expect(res.status).toBe(200)
+        await readSse(res)
+        expect(
+          info.mock.calls.some((c) =>
+            String(c[0]).includes("prompt_source=typed"),
+          ),
+        ).toBe(true)
+      } finally {
+        info.mockRestore()
+      }
+    },
+  )
+
+  it("stamps sendOrigin into the TURN's trace metadata even with the flag OFF (KTD11 — flag-independent)", async () => {
+    const { made, input } = followUpsHarness({
+      enabled: false,
+      body: { prompt: "hi", threadId: "t", promptSource: "follow_up" },
+    })
+    await readSse(await handleSeekerRouteRequest(input))
+    expect(made.streamCalls[0].opts.tracingOptions?.metadata?.sendOrigin).toBe(
+      "follow_up",
+    )
+  })
+
+  it("threads the turn's trace/span ids into the generator's tracing options (KTD9 same-trace attempt)", async () => {
+    const { input, generateCalls } = followUpsHarness({
+      stream: () => ({
+        textStream: textStream([LONG_ANSWER]),
+        toolResults: Promise.resolve(GROUNDED_TOOL_RESULTS),
+        traceId: "trace-abc",
+        spanId: "span-def",
+      }),
+    })
+    await readSse(await handleSeekerRouteRequest(input))
+    expect(generateCalls).toHaveLength(1)
+    const tracing = generateCalls[0].tracingOptions
+    expect(tracing?.traceId).toBe("trace-abc")
+    expect(tracing?.parentSpanId).toBe("span-def")
+    expect(tracing?.metadata?.traceName).toBe("seeker-follow-ups")
+    expect(tracing?.metadata?.userId).toBe(SEEKER_DEFAULT_RESOURCE_ID)
+    expect(generateCalls[0].requestContext?.get("tracingConfig")).toBe(
+      LANGFUSE_SEEKER_TRACING_MARKER,
+    )
+  })
+})
+
+describe("handleSeekerRouteRequest — follow-ups budget and abort edges (KTD6)", () => {
+  it("passes min(2.5s, remaining budget) to generation — the default budget path", async () => {
+    const { input, generateCalls } = followUpsHarness({})
+    await readSse(await handleSeekerRouteRequest(input))
+    expect(generateCalls[0].budgetMs).toBeLessThanOrEqual(
+      FOLLOW_UPS_GENERATION_BUDGET_MS,
+    )
+    expect(generateCalls[0].budgetMs).toBeGreaterThan(0)
+  })
+
+  it("releases the terminal frame at or before a near-exhausted turn ceiling", async () => {
+    // A tight route budget: the effective deadline derives to well under the
+    // 2.5s generation budget, and the REAL generation module's race enforces
+    // it even against a seam that ignores its abort signal.
+    const { input } = followUpsHarness({
+      budgetMs: 150,
+      generate: (i) =>
+        generateSeekerFollowUps({
+          ...i,
+          generateSeam: () => new Promise(() => {}),
+        }),
+    })
+    const started = Date.now()
+    const res = await handleSeekerRouteRequest(input)
+    const body = await readSse(res)
+    expect(Date.now() - started).toBeLessThan(2_000)
+    expect(body).toContain("event: result")
+    expect(resultFrameOf(body)).not.toHaveProperty("followUps")
+  })
+
+  it("a generation that resolves after the race deadline writes nothing (persist=skipped)", async () => {
+    const info = vi.spyOn(console, "info")
+    try {
+      const { input, persistCalls } = followUpsHarness({
+        budgetMs: 120,
+        generate: (i) =>
+          generateSeekerFollowUps({
+            ...i,
+            generateSeam: () =>
+              new Promise((resolve) =>
+                setTimeout(() => resolve({ text: '["Late question?"]' }), 400),
+              ),
+          }),
+      })
+      const body = await readSse(await handleSeekerRouteRequest(input))
+      expect(resultFrameOf(body)).not.toHaveProperty("followUps")
+      expect(persistCalls).toHaveLength(0)
+      expect(
+        info.mock.calls.some((c) => String(c[0]).includes("persist=skipped")),
+      ).toBe(true)
+      // The operator can tell a race loss from a gate skip (finding: the
+      // reason enum must reach the line, not just the return value). This
+      // fixture's module deadline sits milliseconds from the route budget,
+      // so the loss honestly classifies as either race-loss enum.
+      expect(
+        info.mock.calls.some((c) =>
+          /gen_reason=(timeout|aborted)/.test(String(c[0])),
+        ),
+      ).toBe(true)
+    } finally {
+      info.mockRestore()
+    }
+  })
+
+  it("a consumer cancel BEFORE the gate skips generation entirely — no paid call for an absent audience", async () => {
+    let pushChunk!: (t: string) => void
+    let endStream!: () => void
+    const manual = new ReadableStream<string>({
+      start(controller) {
+        pushChunk = (t) => controller.enqueue(t)
+        endStream = () => {
+          try {
+            controller.close()
+          } catch {
+            // Already canceled through the route's reader — nothing to close.
+          }
+        }
+      },
+    })
+    const { input, generateCalls } = followUpsHarness({
+      stream: () => ({
+        textStream: manual,
+        toolResults: Promise.resolve(GROUNDED_TOOL_RESULTS),
+      }),
+    })
+    const info = vi.spyOn(console, "info")
+    try {
+      const res = await handleSeekerRouteRequest(input)
+      const reader = res.body!.getReader()
+      pushChunk(LONG_ANSWER)
+      await reader.read()
+      await reader.cancel()
+      endStream()
+      await vi.waitFor(() => {
+        expect(
+          info.mock.calls.some((c) =>
+            String(c[0]).includes("event=turn_resolved"),
+          ),
+        ).toBe(true)
+      })
+      expect(generateCalls).toHaveLength(0)
+      expect(
+        info.mock.calls.some((c) => String(c[0]).includes("persist=skipped")),
+      ).toBe(true)
+    } finally {
+      info.mockRestore()
+    }
+  })
+
+  it("a cancel AFTER generation but before the terminal enqueue persists nothing (persist=undelivered)", async () => {
+    let resolveGeneration!: (o: FollowUpsGenerationOutcome) => void
+    const pending = new Promise<FollowUpsGenerationOutcome>((resolve) => {
+      resolveGeneration = resolve
+    })
+    let generateStarted!: () => void
+    const started = new Promise<void>((resolve) => {
+      generateStarted = resolve
+    })
+    const { input, persistCalls } = followUpsHarness({
+      generate: () => {
+        generateStarted()
+        return pending
+      },
+    })
+    const info = vi.spyOn(console, "info")
+    try {
+      const res = await handleSeekerRouteRequest(input)
+      const reader = res.body!.getReader()
+      // Drain the token frames until generation is underway, then disconnect.
+      void (async () => {
+        while (true) {
+          const { done } = await reader.read().catch(() => ({ done: true }))
+          if (done) break
+        }
+      })()
+      await started
+      await reader.cancel()
+      resolveGeneration(generationOutcome())
+      await vi.waitFor(() => {
+        expect(
+          info.mock.calls.some((c) =>
+            String(c[0]).includes("persist=undelivered"),
+          ),
+        ).toBe(true)
+      })
+      expect(persistCalls).toHaveLength(0)
+    } finally {
+      info.mockRestore()
+    }
+  })
+
+  it("threads the route's REAL composed abort signal into generation as turnSignal (feat-366 review #2)", async () => {
+    // Every other follow-ups test injects a generation seam, so nothing else
+    // proves the route supplies the real request-derived signal — deleting
+    // `turnSignal: abortSignal` at the call site would leave the suite green
+    // without this pin. Discriminating: a synthetic or absent signal would
+    // never flip when the REQUEST controller aborts.
+    const controller = new AbortController()
+    const { input, generateCalls } = followUpsHarness({
+      requestSignal: controller.signal,
+    })
+    await readSse(await handleSeekerRouteRequest(input))
+    expect(generateCalls).toHaveLength(1)
+    const threaded = generateCalls[0].turnSignal
+    expect(threaded).toBeInstanceOf(AbortSignal)
+    expect(threaded?.aborted).toBe(false)
+    controller.abort()
+    expect(threaded?.aborted).toBe(true)
+  })
+
+  it("skips generation entirely when the composed signal is ALREADY aborted at the gate — no paid call for an aborted turn", async () => {
+    const aborted = new AbortController()
+    aborted.abort()
+    const info = vi.spyOn(console, "info")
+    try {
+      // The fake agent ignores the abort signal and completes normally, so
+      // the drain reaches the gate with `closed` still false — isolating the
+      // `!abortSignal.aborted` rung.
+      const { input, generateCalls } = followUpsHarness({
+        requestSignal: aborted.signal,
+      })
+      const body = await readSse(await handleSeekerRouteRequest(input))
+      expect(body).toContain("event: result")
+      expect(generateCalls).toHaveLength(0)
+      expect(
+        info.mock.calls.some((c) => String(c[0]).includes("persist=skipped")),
+      ).toBe(true)
+    } finally {
+      info.mockRestore()
+    }
+  })
+
+  it("a request-signal abort AFTER the terminal frame never withholds persistence — live and replay cannot disagree", async () => {
+    // ORDERING IS THE WHOLE TEST (review, 2026-08-20). An earlier version read
+    // the stream with `readSse` — i.e. `res.text()`, which resolves only after
+    // start() has already awaited the persist — and aborted afterwards, so the
+    // abort landed after the thing under test had finished. It could not fail:
+    // composing the request signal into the persist would have left it green.
+    // Here the persist is held open on a deferred promise, the abort fires
+    // while it is genuinely in flight, and only THEN is it released.
+    const controller = new AbortController()
+    let signalEntered: (() => void) | undefined
+    let releasePersist: (() => void) | undefined
+    const entered = new Promise<void>((r) => {
+      signalEntered = r
+    })
+    const released = new Promise<"persisted">((r) => {
+      releasePersist = () => r("persisted")
+    })
+    const { input, persistCalls } = followUpsHarness({
+      requestSignal: controller.signal,
+      persist: () => {
+        signalEntered?.()
+        return released
+      },
+    })
+    const info = vi.spyOn(console, "info")
+    try {
+      const res = await handleSeekerRouteRequest(input)
+      const reader = res.body!.getReader()
+      const decoder = new TextDecoder()
+      let seen = ""
+      // Read only up to the terminal frame — do NOT drain to EOF, because the
+      // stream does not close until the persist has settled.
+      while (!seen.includes("event: result")) {
+        const { done, value } = await reader.read()
+        if (done) break
+        seen += decoder.decode(value, { stream: true })
+      }
+      expect(seen).toContain("event: result")
+
+      // The persist is now in flight. The proxy aborts upstream right after
+      // relaying the terminal frame on every NORMAL turn; that abort must not
+      // reach the persist.
+      await entered
+      expect(persistCalls).toHaveLength(1)
+      controller.abort()
+
+      releasePersist!()
+      await vi.waitFor(() => {
+        expect(
+          info.mock.calls.some((c) =>
+            String(c[0]).includes("persist=persisted"),
+          ),
+        ).toBe(true)
+      })
+      await reader.cancel()
+    } finally {
+      info.mockRestore()
+    }
+  })
+})
+
+describe("handleSeekerRouteRequest — follow-ups default-source pins", () => {
+  it("wires the real generation/persist/flag sources as the seam defaults", () => {
+    // The seams exist for tests; each default is the one-line production
+    // revert surface (the feat-283 lesson). Pin them in source so a drive-by
+    // seam-default swap shows up in review.
+    const route = readFileSync(
+      new URL("./seeker-route.ts", import.meta.url),
+      "utf8",
+    )
+    expect(route).toMatch(/getFollowUpsEnabled = isSeekerFollowUpsEnabled/)
+    expect(route).toMatch(/generateFollowUps = generateSeekerFollowUps/)
+    // Anchored to the parameter ASSIGNMENT, not just the call: the previous
+    // /persistSeekerFollowUps\(/ form was satisfied by the literal appearing
+    // anywhere in the file, including inside a comment, unlike its two
+    // siblings which pin name-to-symbol.
+    expect(route).toMatch(
+      /persistFollowUps = \(input\) =>[\s\S]*?persistSeekerFollowUps\(/,
+    )
+  })
+
+  // The default-source pin above reads seeker-route.ts's OWN text, so it says
+  // nothing about the call site that actually relies on those defaults. The
+  // production registration passes no follow-ups seam; a one-line
+  // `getFollowUpsEnabled: () => false` smuggled in there would silently
+  // disable the feature with every test above still green. Same technique as
+  // seeker-route-isolation.test.ts's admission-seam backstop (feat-283).
+  it("passes no follow-ups seam anywhere in index.ts (parser-independent backstop)", () => {
+    const indexSource = readFileSync(
+      new URL("../index.ts", import.meta.url),
+      "utf8",
+    )
+    expect(indexSource).not.toMatch(
+      /\bgetFollowUpsEnabled\b|\bgenerateFollowUps\b|\bpersistFollowUps\b/,
+    )
+  })
+
+  // Anti-vacuous companion: prove the file the backstop reads is the real
+  // registration and not an empty/mis-resolved path.
+  it("reads the real /forge-seeker registration in that backstop", () => {
+    const indexSource = readFileSync(
+      new URL("../index.ts", import.meta.url),
+      "utf8",
+    )
+    expect(indexSource).toContain('"/forge-seeker"')
+    expect(indexSource).toContain("handleSeekerRouteRequest({")
+  })
+})
