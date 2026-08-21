@@ -114,6 +114,10 @@ export const adminMessages = {
           label: "Users",
           description: "Permissions, invites, and role posture.",
         },
+        userPlaylistModeration: {
+          label: "Playlist moderation",
+          description: "Privacy-redacted reports and playlist actions.",
+        },
         partnerKeys: {
           label: "Partner API keys",
           description: "Issued partner bearer tokens and revocation status.",
@@ -937,6 +941,82 @@ export const adminMessages = {
           revokedBy: "Revoked by",
         },
       },
+      playlistModeration: {
+        eyebrow: "System / Trust & Safety",
+        title: "Playlist moderation",
+        description:
+          "Review privacy-redacted reports and take audited playlist actions.",
+        queueTitle: "Reported playlists",
+        queueMeta: "PRIVACY_REDACTED / RETENTION_ENFORCED",
+        emptyTitle: "No reports match this filter",
+        emptyDescription:
+          "New reports will appear here while retained moderation detail remains available.",
+        nextPage: "Next page",
+        filters: {
+          category: "Report category",
+          allCategories: "All categories",
+          apply: "Apply",
+          clear: "Clear",
+        },
+        categories: {
+          INAPPROPRIATE_CONTENT: "Inappropriate content",
+          MISLEADING_OR_SPAM: "Misleading or spam",
+          COPYRIGHT_OR_RIGHTS: "Copyright or rights",
+          PRIVACY_OR_PERSONAL_DATA: "Privacy or personal data",
+          OTHER_SAFETY: "Other safety concern",
+        },
+        queue: {
+          playlistLabel: "Playlist",
+          reportCount: "report",
+          reportsCount: "reports",
+          reportedAt: "Reported",
+          details: {
+            AVAILABLE: "Detail available",
+            ABSENT: "No detail supplied",
+            EXPIRED: "Detail expired",
+            UNAVAILABLE: "Detail unavailable",
+          },
+          categories: {
+            INAPPROPRIATE_CONTENT: "Inappropriate content",
+            MISLEADING_OR_SPAM: "Misleading or spam",
+            COPYRIGHT_OR_RIGHTS: "Copyright or rights",
+            PRIVACY_OR_PERSONAL_DATA: "Privacy or personal data",
+            OTHER_SAFETY: "Other safety concern",
+          },
+          actions: {
+            block: "Block",
+            restore: "Restore",
+            blockTitle: "Block this playlist?",
+            restoreTitle: "Restore this playlist?",
+            blockDescription:
+              "The public playlist link will stop resolving. Choose the audited policy reason before confirming.",
+            restoreDescription:
+              "The separate moderation block will be cleared. Owner eligibility and sharing rules still apply.",
+            reason: "Reason",
+            selectReason: "Select a reason",
+            confirmBlock: "Confirm block",
+            confirmRestore: "Confirm restore",
+            cancel: "Cancel",
+            working: "Working…",
+            blocked: "Playlist blocked",
+            restored: "Playlist restored",
+            failed: "Moderation action failed. Try again.",
+          },
+          blockReasons: {
+            ABUSE: "Abuse",
+            COPYRIGHT: "Copyright",
+            PRIVACY: "Privacy",
+            SAFETY: "Safety",
+            SPAM: "Spam",
+            OTHER_POLICY: "Other policy",
+          },
+          restoreReasons: {
+            REVIEW_CLEARED: "Review cleared",
+            APPEAL_APPROVED: "Appeal approved",
+            ERROR_CORRECTED: "Error corrected",
+          },
+        },
+      },
       settings: {
         eyebrow: "System / Settings",
         title: "Settings & API Keys",
@@ -1237,6 +1317,10 @@ export const adminMessages = {
         users: {
           label: "Usuarios",
           description: "Permisos, invitaciones y postura de roles.",
+        },
+        userPlaylistModeration: {
+          label: "Moderacion de playlists",
+          description: "Reportes redactados y acciones sobre playlists.",
         },
         partnerKeys: {
           label: "Claves API de socios",

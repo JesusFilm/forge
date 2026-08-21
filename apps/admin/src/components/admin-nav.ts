@@ -12,6 +12,7 @@ import {
   Search,
   Settings,
   Shield,
+  ShieldAlert,
   Workflow,
 } from "lucide-react"
 import type { AdminMessages } from "@/i18n/messages"
@@ -95,6 +96,12 @@ export const adminNavItems: AdminNavItem[] = [
     icon: Shield,
   },
   {
+    id: "userPlaylistModeration",
+    href: "/dashboard/user-playlist-moderation",
+    section: "system",
+    icon: ShieldAlert,
+  },
+  {
     id: "partnerKeys",
     href: "/dashboard/partner-keys",
     section: "system",
@@ -128,6 +135,7 @@ export function isNavItemVisible(role: Role, item: AdminNavItem) {
     (item.id === "users" ||
       item.id === "settings" ||
       item.id === "partnerKeys" ||
+      item.id === "userPlaylistModeration" ||
       item.id === "mcp")
   ) {
     return false

@@ -55,6 +55,21 @@ describe("admin shell", () => {
     expect(html).not.toContain(adminMessages.es.nav.items.users.label)
     expect(html).not.toContain(adminMessages.es.nav.items.settings.label)
     expect(html).not.toContain(adminMessages.es.nav.items.mcp.label)
+    expect(html).not.toContain(
+      adminMessages.es.nav.items.userPlaylistModeration.label,
+    )
+  })
+
+  it("shows the playlist moderation route only to Admin principals", () => {
+    const html = renderToStaticMarkup(
+      <AdminShell principal={{ id: "admin@forge.test", role: "ADMIN" }}>
+        <div>content</div>
+      </AdminShell>,
+    )
+
+    expect(html).toContain(
+      adminMessages.es.nav.items.userPlaylistModeration.label,
+    )
   })
 
   it("recognizes internal dashboard navigation that should show pending feedback", () => {
