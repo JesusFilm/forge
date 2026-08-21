@@ -15,8 +15,8 @@ from the main DS Year 1 roadmap.
 
 - **Total tickets:** 61
 - ✅ **Complete:** 49
-- 🟡 **In progress:** 0
-- 🔵 **Not started:** 12
+- 🟡 **In progress:** 1
+- 🔵 **Not started:** 11
 - 🔴 **Blocked:** 0
 
 ## Feature Index
@@ -79,7 +79,7 @@ from the main DS Year 1 roadmap.
 | [feat-340](feat-340-seeker-eval-experiment-workflow.md)                       | Seeker eval experiment workflow                                              | jaco     | P2       | 2026-08-17 | 5    | ✅ complete    | [#1884](https://github.com/JesusFilm/forge/pull/1884), [#1944](https://github.com/JesusFilm/forge/pull/1944) |
 | [feat-356](feat-356-auth-account-deletion-seeker-cascade.md)                  | apps/auth account-deletion cascade to the Seeker stores                      | jian wei | P2       | 2026-09-01 | 3    | 🔵 not-started | —                                                                                                            |
 | [feat-363](feat-363-history-route-resourceid-recheck.md)                      | Chat history read path: client-side re-check of the resourceId filter        | jian wei | P2       | 2026-08-24 | 1    | 🔵 not-started | —                                                                                                            |
-| [feat-366](feat-366-seeker-follow-up-questions.md)                            | Seeker suggested follow-up questions (post-hoc chips)                        | jian wei | P1       | 2026-08-19 | 6    | 🔵 not-started | —                                                                                                            |
+| [feat-366](feat-366-seeker-follow-up-questions.md)                            | Seeker suggested follow-up questions (post-hoc chips)                        | jian wei | P1       | 2026-08-19 | 6    | 🟡 in-progress | —                                                                                                            |
 | [feat-367](feat-367-seeker-follow-up-question-evals.md)                       | Automated quality evals for Seeker follow-up questions                       | jian wei | P2       | 2026-09-08 | 3    | 🔵 not-started | —                                                                                                            |
 | [feat-399](feat-399-deep-link-malformed-id-granted-sidebar.md)                | Deep-link malformed id: keep the granted user's sidebar alive                | jian wei | P2       | 2026-09-01 | 1    | ✅ complete    | [#1984](https://github.com/JesusFilm/forge/pull/1984)                                                        |
 | [feat-401](feat-401-sidebar-no-placeholder-row-for-unstarted-conversation.md) | Sidebar: no placeholder row for an unstarted conversation                    | jian wei | P3       | 2026-09-01 | 1    | 🔵 not-started | —                                                                                                            |
