@@ -300,6 +300,15 @@ describe("proxy — reserved-subtree pass-through", () => {
     }
   })
 
+  it("does not rewrite the favicon or web app manifest", async () => {
+    for (const path of ["/favicon.ico", "/manifest.webmanifest"]) {
+      const response = await proxy(makeRequest(path))
+      expect(response.status).not.toBe(307)
+      expect(response.status).not.toBe(308)
+      expect(rewritePath(response)).toBeNull()
+    }
+  })
+
   it("does not rewrite /fonts/* public assets", async () => {
     const response = await proxy(
       makeRequest("/fonts/Montserrat-VariableFont_wght.woff2"),
