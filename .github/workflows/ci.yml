@@ -100,7 +100,7 @@ jobs:
     if: needs.affected.outputs.services != '[]' && contains(fromJson(needs.affected.outputs.services), '@forge/admin')
     services:
       postgres:
-        image: postgres:18
+        image: pgvector/pgvector:pg18-trixie
         env:
           POSTGRES_PASSWORD: postgres
         ports:
@@ -124,6 +124,10 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Verify schema artifact
         run: pnpm turbo run schema:print --filter=@forge/admin && git diff --exit-code apps/admin/schema.graphql
+      - name: Apply Admin database migrations
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
+        run: pnpm --filter @forge/admin exec prisma migrate deploy
       - name: Exercise Watch database integration against PostgreSQL
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
