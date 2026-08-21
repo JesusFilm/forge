@@ -358,20 +358,33 @@ export function watchLanguageInventorySeoDescription(
   return `Watch free Christian videos, Jesus films, Bible stories, and discipleship series for ${watchLanguageSpeakingAudience(languageName)}, with fully dubbed videos and subtitles in ${languageName}.`
 }
 
-function buildInventoryHref(item: WatchLanguageInventoryItemRaw): Route | null {
+function buildInventoryHref(
+  item: WatchLanguageInventoryItemRaw,
+  inventoryLanguageSlug: string,
+): Route | null {
   const slug = tryAsContentSlug(item.slug)
   const lang = tryAsLocaleSlug(item.watchLanguageSlug)
   if (!slug || !lang) return null
 
+  const subtitleLanguage =
+    item.availability === "SUBTITLE_ONLY"
+      ? tryAsLocaleSlug(inventoryLanguageSlug)
+      : null
+  if (item.availability === "SUBTITLE_ONLY" && !subtitleLanguage) return null
+  const options = subtitleLanguage ? { subtitleLanguage } : undefined
+
   if (item.parentSlug) {
     const parent = tryAsContentSlug(item.parentSlug)
-    if (parent) return watchEpisodePath(parent, slug, lang)
+    if (parent) return watchEpisodePath(parent, slug, lang, options)
   }
 
-  return watchVideoPath(slug, lang)
+  return watchVideoPath(slug, lang, options)
 }
 
-function normalizeCard(item: WatchLanguageInventoryItemRaw) {
+function normalizeCard(
+  item: WatchLanguageInventoryItemRaw,
+  inventoryLanguageSlug: string,
+) {
   return {
     id: item.id,
     coreId: item.coreId,
@@ -382,7 +395,7 @@ function normalizeCard(item: WatchLanguageInventoryItemRaw) {
     imageAlt: item.imageAlt ?? item.title,
     label: item.label ?? null,
     availability: item.availability,
-    href: buildInventoryHref(item),
+    href: buildInventoryHref(item, inventoryLanguageSlug),
     watchLanguageSlug: item.watchLanguageSlug,
     parentSlug: item.parentSlug ?? null,
     parentTitle: item.parentTitle ?? null,
@@ -423,6 +436,8 @@ export async function resolveWatchLanguageInventory(
   const switcherLanguages = await resolveSwitcherLanguages(
     currentSwitcherLanguage,
   )
+  const normalizeInventoryCard = (item: WatchLanguageInventoryItemRaw) =>
+    normalizeCard(item, resolvedLanguageSlug)
 
   return {
     languageSlug: resolvedLanguageSlug,
@@ -430,9 +445,9 @@ export async function resolveWatchLanguageInventory(
     languageNativeName,
     switcherLanguages,
     counts: raw.counts,
-    promoted: raw.promoted.map(normalizeCard),
-    audioCollections: raw.audioCollections.map(normalizeCard),
-    audioVideos: raw.audioVideos.map(normalizeCard),
-    subtitleOnlyVideos: raw.subtitleOnlyVideos.map(normalizeCard),
+    promoted: raw.promoted.map(normalizeInventoryCard),
+    audioCollections: raw.audioCollections.map(normalizeInventoryCard),
+    audioVideos: raw.audioVideos.map(normalizeInventoryCard),
+    subtitleOnlyVideos: raw.subtitleOnlyVideos.map(normalizeInventoryCard),
   }
 }

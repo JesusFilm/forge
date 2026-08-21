@@ -109,6 +109,11 @@ Audio availability takes precedence over subtitle-only membership, while
 collection containers and playable leaf Videos remain distinct inventory
 groups even when they share the same underlying language coverage.
 
+A subtitle-only entry is actionable only when its requested VTT and fallback
+Dub share a compatible Video Edition. Its public path names the playable audio
+language, while the requested subtitle language travels as separate one-shot
+intent.
+
 ### Contextual Watch Route
 
 A public Watch URL that identifies a parent collection, child Video, and
