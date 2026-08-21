@@ -61,10 +61,46 @@ describe("devotional database migrator", () => {
       skipped: [],
     })
     expect(client.calls[0]).toBe("begin")
-    expect(client.calls.some((sql) => /pg_advisory_xact_lock/.test(sql))).toBe(
-      true,
+    const statementTimeoutIndex = client.calls.indexOf(
+      "set local statement_timeout = '300000ms'",
     )
+    const lockTimeoutIndex = client.calls.indexOf(
+      "set local lock_timeout = '15000ms'",
+    )
+    const advisoryLockIndex = client.calls.findIndex((sql) =>
+      /pg_advisory_xact_lock/.test(sql),
+    )
+    expect(statementTimeoutIndex).toBe(1)
+    expect(lockTimeoutIndex).toBe(2)
+    expect(advisoryLockIndex).toBe(3)
     expect(client.calls.at(-1)).toBe("commit")
+    expect(client.release).toHaveBeenCalledOnce()
+  })
+
+  it("rolls back and releases the client when the advisory lock times out", async () => {
+    const client = clientWithExisting()
+    const timeout = new Error("canceling statement due to lock timeout")
+    const query = vi.spyOn(client, "query").mockImplementation(async (text) => {
+      client.calls.push(text)
+      if (/pg_advisory_xact_lock/.test(text)) throw timeout
+      return result()
+    })
+
+    await expect(
+      runDevotionalDatabaseMigrations({
+        pool: { connect: async () => client },
+      }),
+    ).rejects.toBe(timeout)
+
+    expect(query).toHaveBeenCalled()
+    expect(client.calls).toEqual([
+      "begin",
+      "set local statement_timeout = '300000ms'",
+      "set local lock_timeout = '15000ms'",
+      "select pg_advisory_xact_lock(hashtext('forge_devotional_workspace_migrations'))",
+      "rollback",
+    ])
+    expect(client.calls).not.toContain("commit")
     expect(client.release).toHaveBeenCalledOnce()
   })
 

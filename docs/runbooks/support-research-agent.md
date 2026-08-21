@@ -66,24 +66,35 @@ version and will fail closed after `002`.
      schema objects without matching ledger rows; unavailable PgVector; or
      insufficient privileges: stop and investigate. Do not edit applied SQL or
      insert ledger rows by hand.
-4. From the corrected production revision, run
+4. Immediately after the fresh read-only preflight above, obtain explicit
+   approval for exactly one production migration attempt. Record the production
+   environment, deployed revision, database identity, complete generic
+   migration set, and saved baseline in the approval. The approval expires if
+   any observed state changes, if execution does not follow immediately, or if
+   the attempt reaches either of its transaction-local bounds: 15 seconds
+   waiting for a lock or 5 minutes for a statement.
+5. From the corrected production revision, run
    `pnpm --filter @forge/mastra migrate:database`. The advisory-locked migrator
    applies all pending files and their ledger entries in one transaction. On
-   failure, require direct readback to match the saved baseline before retrying.
-5. Independently read back every deployed migration identity, the `vector`
+   timeout or any other failure, the transaction rolls back and the client is
+   released without a successful result. Require direct readback to match the
+   saved baseline, then repeat the entire fresh preflight and obtain renewed
+   explicit approval before retrying; the prior approval cannot authorize a
+   retry.
+6. Independently read back every deployed migration identity, the `vector`
    extension, the devotional readiness row and required relations, and the
    support-research cursor, run, observation, action, action-source, and report
    relations plus their six indexes. When deployed migrations include Datadog
    `003`, also read back its exact ledger identity and required relations. Do
    not infer any of these from command exit status alone.
-6. Inside the deployed Mastra environment, run
+7. Inside the deployed Mastra environment, run
    `pnpm --filter @forge/mastra check:devotional-database-readiness`. Require
    `{"ready":true,"version":1}` even though ledger migration `002` is also
    present. Then run
    `pnpm --filter @forge/mastra check:support-research-database-readiness` and
    require `{"ready":true,"version":2}`. Both commands are read-only and print
    no connection details.
-7. Reconfirm the three named gates remain false and Datadog triage remains
+8. Reconfirm the three named gates remain false and Datadog triage remains
    unset or false. Migration readiness does not
    authorize devotional starts, model-provider use, Help Scout ingestion, or
    either support-research or Datadog Linear writes. Continue only with the

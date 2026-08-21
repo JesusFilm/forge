@@ -28,6 +28,9 @@ export type MigrationResult = {
   skipped: string[]
 }
 
+const MIGRATION_STATEMENT_TIMEOUT_MS = 300_000
+const MIGRATION_LOCK_TIMEOUT_MS = 15_000
+
 export const DEFAULT_MIGRATIONS_DIRECTORY = fileURLToPath(
   new URL("../../migrations/", import.meta.url),
 )
@@ -56,6 +59,12 @@ export async function runMastraDatabaseMigrations(options: {
   const result: MigrationResult = { applied: [], skipped: [] }
 
   return runDevotionalTransaction(options.pool, async (client) => {
+    await client.query(
+      `set local statement_timeout = '${MIGRATION_STATEMENT_TIMEOUT_MS}ms'`,
+    )
+    await client.query(
+      `set local lock_timeout = '${MIGRATION_LOCK_TIMEOUT_MS}ms'`,
+    )
     await client.query(
       "select pg_advisory_xact_lock(hashtext('forge_devotional_workspace_migrations'))",
     )
