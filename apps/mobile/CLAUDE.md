@@ -497,15 +497,32 @@ it moves the fingerprint runtime version, so an OTA update cannot deliver it.
   verified** — it rests on an argument, not a measurement: `values-night/`
   carries no cast resources, so the explicit hex wins in either mode. Confirm on
   a device before trusting it.
-- **Android runtime status (2026-08-21).** The app builds, installs and runs on
-  an emulator with this theming, and `MediaRouter: onRestoreRoute()` fires when
-  the watch screen mounts — evidence the native `MediaRouteButton` DOES attach
-  under RN 0.86's Fabric interop, which was the open risk. Still unproven: that
-  `showCastDialog()` resolves true and draws a themed dialog. Two emulator
-  limits block it — multicast is mangled (`AOSP-MdnsDiscoveryManag: Error while
-decoding multicast packet`) so no receiver is ever discovered, and the
-  expo-dev-launcher gear overlays the cast glyph in a debug build. Use a
-  physical device, or a release build, to close it.
+- **Android runtime status (2026-08-21): NOT verified.** The app builds,
+  installs and runs on an emulator with this theming, and `aapt2` resolves every
+  style parent and attribute. Nothing beyond that is established. In particular
+  it is still unknown whether the native `<CastButton>` mounts and registers at
+  all under RN 0.86's Fabric legacy view-manager interop — a component this app
+  has never rendered. `MediaRouter: onRestoreRoute()` lines in logcat are NOT
+  evidence of it: they repeat on a ~25s cadence (70 in one session), so they are
+  `CastContext`'s own route loop rather than a one-shot `onAttachedToWindow`, and
+  `dumpsys activity top` showed no `MediaRouteButton` view. Two emulator limits
+  block the real check — multicast is mangled (`AOSP-MdnsDiscoveryManag: Error
+while decoding multicast packet`) so no receiver is ever discovered, and the
+  expo-dev-launcher gear overlays the cast glyph in a debug build. Use a physical
+  device, or a release build, and start by proving `showCastDialog()` resolves
+  `true`.
+- **Two Android theme levers are probably inert — confirmed from the AAR, not
+  guessed.** `Theme.MediaRouter` has parent `ThemeOverlay.AppCompat.Dark`, so the
+  dark parent choice is right. But it sets `mediaRouteBodyTextAppearance` and
+  `mediaRouteHeaderTextAppearance` to `TextAppearance.MediaRouter.Dynamic.*`,
+  which hardcode `android:textColor` to `#FFFFFF` (route rows) and `#BDC1C6`
+  (header). A text appearance's own `textColor` beats the theme-level
+  `android:textColorPrimary` / `android:textColorSecondary` this plugin sets, so
+  on the dynamic dialog those two items do nothing. The result is still
+  light-on-dark, just not through our tokens. To actually own it, override those
+  two text-appearance attributes with styles carrying our colours. Which dialog
+  variant appears (dynamic vs classic) depends on whether the receiver advertises
+  dynamic groups — device-only.
 - **Verify by sampling pixels.** The stock cast red `#D0021B` and our `#CB333B`
   pass a glance and fail the design system. On iOS: `xcrun simctl io … screenshot`
   → `ffmpeg -pix_fmt rgb24` → read the bytes. The Android equivalent
