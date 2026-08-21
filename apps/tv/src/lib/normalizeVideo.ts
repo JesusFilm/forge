@@ -9,6 +9,7 @@ import type {
 } from "./videoQueries"
 import { pickCardImage } from "./cardImage"
 import { pickLocalizedName } from "./pickLocalizedName"
+import { cleanStreamUrl } from "./validateUrl"
 
 // ── Consumer types ─────────────────────────────────────────────────
 
@@ -216,7 +217,7 @@ function pickFirstPlayableVariant(
   if (!variants) return null
   return (
     variants.find(
-      (v) => v.published === true && v.hls != null && v.hls !== "",
+      (v) => v.published === true && cleanStreamUrl(v.hls) != null,
     ) ?? null
   )
 }
@@ -361,7 +362,7 @@ function buildWatchVideoRecord(raw: NormalizableVideo): WatchVideoRecord {
       documentId: v.documentId ?? "",
       slug: v.slug ?? "",
       published: v.published ?? false,
-      hls: v.hls ?? null,
+      hls: cleanStreamUrl(v.hls),
       duration: v.duration ?? null,
       languageCoreId: v.language?.coreId ?? null,
       languageBcp47: v.language?.bcp47 ?? null,
@@ -441,7 +442,7 @@ function buildWatchVideoRecord(raw: NormalizableVideo): WatchVideoRecord {
     description: locale.description,
     snippet: locale.snippet,
     posterUrl: pickPosterUrl(raw.images),
-    streamingUrl: firstPlayable?.hls ?? null,
+    streamingUrl: cleanStreamUrl(firstPlayable?.hls),
     muxPlaybackId: firstPlayable?.muxVideo?.playbackId ?? null,
     duration: firstPlayable?.duration ?? null,
     primaryLanguageBcp47: raw.primaryLanguage?.bcp47 ?? null,
