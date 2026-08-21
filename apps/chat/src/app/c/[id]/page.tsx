@@ -5,14 +5,16 @@ import { isSignInError, SIGN_IN_ERROR_PARAM } from "@/auth/sign-in-notice"
 import { AppShell } from "@/components/shell/app-shell"
 import { chatAuthConfigured } from "@/config/env"
 import { toConversationId } from "@/lib/conversation-id"
-import { resolveDeepLinkEntry } from "@/lib/deep-link-entry"
+import { deepLinkShell, resolveDeepLinkEntry } from "@/lib/deep-link-entry"
 import { resolveSeekerGate } from "@/lib/seeker-gate"
 
 /**
  * `/c/<id>` deep-link entry (feat-209): mirrors page.tsx's resolution order
  * (force-dynamic, auth config → identity → seeker gate → signin marker), then
  * maps the pure KTD5 resolver onto AppShell. Deliberately THIN — no logic
- * beyond the mapping; the browser matrix proves the shell behavior.
+ * beyond the mapping; `deepLinkShell` owns the kind → props decision (it is
+ * unit tested, this component is not), and the browser matrix proves the
+ * shell behavior.
  *
  * Privacy (KTD9, scoped claim — never the absolute one): chat's application
  * logs and the POST-shaped history proxies still never carry thread ids, but
@@ -57,18 +59,22 @@ export default async function ConversationPage({
     identity,
     seekerEnabled: gate.seekerEnabled,
   })
+  // The ONE producer of the shell props: `seekerEnabled` is true on exactly
+  // the two granted kinds, and a `deniedScreen` shell is never granted — so
+  // the URL-sync/hydration layer cannot mount under a denial pane.
+  const shell = deepLinkShell(entry.kind)
 
   return (
     <AppShell
-      // granted implies the full gate grant (the resolver's rule 5); a denial
-      // shell is NEVER granted, so the URL-sync/hydration layer must not
-      // mount under a denial pane — even for a gate-granted user.
-      seekerEnabled={entry.kind === "granted"}
+      seekerEnabled={shell.seekerEnabled}
       authConfigured={authConfigured}
       identity={identity}
       signInError={signInError}
+      // Malformed segments resolve to null and are never reflected into a
+      // prop or href — feat-399's shell gets no id at all.
       initialConversationId={canonicalId ?? undefined}
-      deniedScreen={entry.kind === "granted" ? undefined : entry.kind}
+      deniedScreen={shell.deniedScreen}
+      deepLinkUnresolvable={shell.deepLinkUnresolvable}
     />
   )
 }
