@@ -480,14 +480,35 @@ it moves the fingerprint runtime version, so an OTA update cannot deliver it.
 - **Every `react-native-google-cast` import stays under `src/lib/cast/`** —
   `castImports.guard.test.js` fails the suite otherwise. That is why the hidden
   button below is a wrapper in that directory rather than a component folder.
-- **`showCastDialog()` is a no-op on Android without a mounted native
-  button.** It calls `RNGoogleCastButtonManager.getCurrent()` then
-  `performClick()`, and that registry fills only in
-  `ColorableMediaRouteButton.onAttachedToWindow`. `src/lib/cast/CastRouteButton.tsx`
-  mounts an invisible one beside the visible glyph — Android only, since iOS
-  calls `presentCastDialog` directly. It is **not** gated on
-  `castUi.available`, and `collapsable={false}` is load-bearing: RN Android
-  flattens views that draw nothing, and a flattened wrapper never attaches.
+- **The cast CONTROL differs by platform, and that is deliberate.**
+  `showCastDialog()` is implemented differently on each side, so one shared
+  affordance cannot serve both:
+  - iOS calls `[GCKCastContext.sharedInstance presentCastDialog]` directly
+    (`RNGCCastContext.m:78`), so the app-drawn `MaterialIcons "cast"` glyph in
+    `PlayerControls` works, and keeps its `cast-connected` variant and its
+    state-aware label ("Casting to <device>").
+  - Android calls `RNGoogleCastButtonManager.getCurrent()` then
+    `performClick()` (`RNGCCastContext.java:128`) — it can only click a native
+    `MediaRouteButton` that is already attached, and that registry is filled
+    only by `ColorableMediaRouteButton.onAttachedToWindow`. Android therefore
+    renders the SDK's own button as the real control
+    (`src/lib/cast/NativeCastButton.tsx`), inside the same `Frosted` backplate
+    the AirPlay picker already uses.
+    **Do not reintroduce a hidden button to feed that registry.** An earlier
+    version mounted an invisible 1pt `<CastButton>` beside the visible glyph. It
+    worked, but it left a gap between "a glyph is visible" and "a button is
+    registered" — and that gap WAS the original Android bug: the glyph appeared
+    whenever a receiver was discovered and did nothing at all, because nothing
+    had ever mounted a native button. Using the native button as the control
+    closes the gap by construction.
+- **Both platforms stay gated on `castUi.available`,** so replacing the Android
+  control changed no visible behaviour. The SDK button does NOT self-hide when
+  no receiver is present (verified on an emulator, 2026-08-21), so the gate is
+  ours to keep.
+- **`tintColor` is the only styling lever on the SDK button.** The connected
+  artwork is the SDK's, not `cast-connected`. Its accessibility label does reach
+  the native view (`content-desc="Cast"`, verified 2026-08-21); whether the
+  state-aware variant survives a live session is unverified.
 - **These sheets follow the SYSTEM appearance, not the app's.** `app.json` sets
   `userInterfaceStyle: "automatic"` while every RN surface is hard-coded dark,
   so an unstyled sheet renders light on a light-mode phone. Setting every

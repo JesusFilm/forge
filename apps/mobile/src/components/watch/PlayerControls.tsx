@@ -22,7 +22,7 @@ import {
   hexToRgba,
 } from "../../lib/color"
 import { useTypography } from "../../hooks/useTypography"
-import { CastRouteButton } from "../../lib/cast/CastRouteButton"
+import { NativeCastButton } from "../../lib/cast/NativeCastButton"
 import { applySkip } from "../../lib/scrubber"
 import type { PlaybackTarget } from "../../lib/playbackTarget"
 import { SKIP_SECONDS } from "../../lib/tapSeek"
@@ -104,8 +104,20 @@ export function RouteButtons({
   externalPlaybackActive?: boolean
   castUi?: PlayerControlsCastUi | null
 }) {
+  // Android renders the SDK's own button because only a native, attached
+  // MediaRouteButton can open the Android dialog — see NativeCastButton. iOS
+  // presents the dialog from the context directly, so it keeps the app-drawn
+  // glyph and its connected variant and state-aware label. Both platforms stay
+  // gated on `available`, so the visible behaviour is identical.
   const castButton =
-    castUi != null && castUi.available ? (
+    castUi == null || !castUi.available ? null : Platform.OS === "android" ? (
+      <Frosted style={styles.iconButton}>
+        <NativeCastButton
+          accessibilityLabel={castUi.label}
+          tintColor={TEXT_ON_OVERLAY}
+        />
+      </Frosted>
+    ) : (
       <Pressable
         onPress={() => {
           onInteract?.()
@@ -122,7 +134,7 @@ export function RouteButtons({
           />
         </Frosted>
       </Pressable>
-    ) : null
+    )
 
   // Native AVRoutePickerView (iOS only) — it owns the press, so no Pressable
   // wrapper; the Frosted backplate matches the sibling icon buttons.
@@ -144,9 +156,6 @@ export function RouteButtons({
 
   return (
     <>
-      {/* Android-only, invisible, and NOT gated on castUi.available: it is what
-          makes showCastDialog() find a button at all. See CastRouteButton. */}
-      <CastRouteButton />
       {castButton}
       {airPlayButton}
     </>

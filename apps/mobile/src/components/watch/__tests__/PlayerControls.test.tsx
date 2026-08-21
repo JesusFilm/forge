@@ -56,7 +56,6 @@ import { act } from "react"
 import { Platform } from "react-native"
 
 import { PlayerControls, type PlayerControlsCastUi } from "../PlayerControls"
-import { CAST_ROUTE_BUTTON_TEST_ID } from "../../../lib/cast/CastRouteButton"
 import type { PlaybackTarget } from "../../../lib/playbackTarget"
 import {
   TestRenderer,
@@ -320,54 +319,77 @@ describe("Cast button (U4)", () => {
   })
 })
 
-// On Android, showCastDialog() clicks the most recently ATTACHED native
-// MediaRouteButton (RNGCCastContext.java:128); with none mounted it resolves
-// false and nothing opens. So this invisible button is not decoration — it is
-// the reason the Android cast dialogs exist, and therefore the reason the
-// Android theming is observable at all.
-describe("native route button (the Android dialog's prerequisite)", () => {
+// Android cannot open its cast dialog from JS: showCastDialog() can only click a
+// native MediaRouteButton that is already attached (RNGCCastContext.java:128).
+// So Android renders the SDK's own button as the real control, while iOS keeps
+// the app-drawn glyph because it presents the dialog from the context directly.
+describe("cast control differs by platform", () => {
+  // The SDK button is the only host node carrying tintColor.
   function nativeButtonCount(renderer: TestInstance): number {
     return renderer.root.findAll(
-      (node) =>
-        typeof node.type === "string" &&
-        node.props.testID === CAST_ROUTE_BUTTON_TEST_ID,
+      (node) => typeof node.type === "string" && node.props.tintColor != null,
     ).length
   }
 
-  it("mounts once on Android beside the visible glyph", async () => {
+  it("Android renders the SDK button, not a Pressable glyph", async () => {
     setPlatform("android")
     const renderer = await render(false, { castUi: makeCastUi() })
     expect(nativeButtonCount(renderer)).toBe(1)
+    // The native button owns its own press, so no JS handler may compete for
+    // the tap — that competition is what the hidden-button design created.
+    const jsPressHandlers = renderer.root.findAll(
+      (n) =>
+        n.props.accessibilityLabel === "Cast" &&
+        typeof n.props.onPress === "function",
+    )
+    expect(jsPressHandlers).toHaveLength(0)
     await unmount(renderer)
   })
 
-  // The discriminating case. The visible glyph is gated on `available`; the
-  // native button must NOT be, or a viewer whose device appears mid-session
-  // races the mount. Gate it and this test — and only this test — goes red.
-  it("mounts even while the visible Cast glyph is hidden", async () => {
-    setPlatform("android")
-    const renderer = await render(false, {
-      castUi: makeCastUi({ available: false }),
-    })
-    expect(labelCount(renderer, "Cast")).toBe(0)
-    expect(nativeButtonCount(renderer)).toBe(1)
+  it("iOS renders the app-drawn glyph and routes the press through JS", async () => {
+    setPlatform("ios")
+    const castUi = makeCastUi()
+    const renderer = await render(false, { castUi })
+    expect(nativeButtonCount(renderer)).toBe(0)
+    await press(pressableByLabel(renderer, "Cast"))
+    expect(castUi.onPress).toHaveBeenCalledTimes(1)
     await unmount(renderer)
   })
 
-  it("mounts on a surface with no cast wiring at all", async () => {
+  // Both platforms stay gated on `available`, so replacing the Android control
+  // did not change when a viewer sees a cast affordance.
+  it.each([["android"], ["ios"]])(
+    "%s hides the control while no device is reachable (R2)",
+    async (os) => {
+      setPlatform(os as "ios" | "android")
+      const renderer = await render(false, {
+        castUi: makeCastUi({ available: false }),
+      })
+      expect(labelCount(renderer, "Cast")).toBe(0)
+      expect(nativeButtonCount(renderer)).toBe(0)
+      await unmount(renderer)
+    },
+  )
+
+  it("renders nothing on a surface with no cast wiring", async () => {
     setPlatform("android")
     const renderer = await render(false)
-    expect(nativeButtonCount(renderer)).toBe(1)
+    expect(nativeButtonCount(renderer)).toBe(0)
     await unmount(renderer)
   })
 
-  // iOS calls presentCastDialog directly (RNGCCastContext.m:78), so a
-  // GCKUICastButton here would change a platform that already works.
-  it("never mounts on iOS", async () => {
+  // The SDK owns the glyph on Android, so its connected artwork is the SDK's,
+  // not `cast-connected`. iOS keeps the swap and the state-aware label.
+  it("iOS swaps to the connected glyph and label", async () => {
     setPlatform("ios")
-    const renderer = await render(false, { castUi: makeCastUi() })
-    expect(hasLabel(renderer, "Cast")).toBe(true)
-    expect(nativeButtonCount(renderer)).toBe(0)
+    const renderer = await render(false, {
+      castUi: makeCastUi({
+        connected: true,
+        label: "Casting to Living Room TV",
+      }),
+    })
+    expect(hasLabel(renderer, "Casting to Living Room TV")).toBe(true)
+    expect(labelCount(renderer, "Cast")).toBe(0)
     await unmount(renderer)
   })
 })
