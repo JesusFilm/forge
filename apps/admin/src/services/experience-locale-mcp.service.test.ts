@@ -3,6 +3,13 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 import type { Principal } from "@/auth/principal"
 import { ExperienceLocaleMcpService } from "./experience-locale-mcp.service"
 
+const { mockEnv } = vi.hoisted(() => ({
+  mockEnv: {
+    WATCH_CANONICAL_ORIGIN: "https://watch.staging.example",
+  },
+}))
+
+vi.mock("@/config/env", () => ({ env: mockEnv }))
 vi.mock("@/services/revalidate-webhook", () => ({
   emitRevalidateWebhook: vi.fn(),
 }))
@@ -11,12 +18,33 @@ vi.mock("@/services/watch-route-manifest-refresh.service", () => ({
 }))
 
 function mockPrisma() {
+  const experienceLocaleCreate = vi.fn()
+  const experienceLocaleFindUniqueOrThrow = vi.fn()
+  const contentRevisionFindFirst = vi.fn().mockResolvedValue(null)
+  const contentRevisionCreate = vi.fn().mockResolvedValue({
+    id: "draft-1",
+    previewToken: "preview-token",
+    revisedAt: updatedAt,
+    revisedBy: "admin-1",
+    revisedByKind: "USER",
+    reason: "draft saved",
+  })
   return {
     $transaction: vi.fn((callback) =>
       callback({
-        contentRevision: { create: vi.fn() },
+        $queryRaw: vi.fn().mockResolvedValue([]),
+        contentRevision: {
+          findFirst: contentRevisionFindFirst,
+          create: contentRevisionCreate,
+          update: vi.fn(),
+        },
+        seoProposalMaterialization: { updateMany: vi.fn() },
         experience: { update: vi.fn() },
-        experienceLocale: { update: vi.fn() },
+        experienceLocale: {
+          create: experienceLocaleCreate,
+          findUniqueOrThrow: experienceLocaleFindUniqueOrThrow,
+          update: vi.fn(),
+        },
       }),
     ),
     experience: {
@@ -25,9 +53,14 @@ function mockPrisma() {
       findUniqueOrThrow: vi.fn(),
     },
     experienceLocale: {
-      create: vi.fn(),
+      create: experienceLocaleCreate,
       findFirst: vi.fn(),
-      findUniqueOrThrow: vi.fn(),
+      findUniqueOrThrow: experienceLocaleFindUniqueOrThrow,
+    },
+    contentRevision: {
+      findMany: vi.fn().mockResolvedValue([]),
+      findFirst: contentRevisionFindFirst,
+      create: contentRevisionCreate,
     },
     language: {
       findFirst: vi.fn(),
@@ -118,6 +151,8 @@ describe("ExperienceLocaleMcpService", () => {
               title: "Hope",
               status: "PUBLISHED",
               updatedAt: updatedAt.toISOString(),
+              hasDraft: false,
+              activeDraft: null,
             },
           ],
         },
@@ -142,7 +177,7 @@ describe("ExperienceLocaleMcpService", () => {
   })
 
   it("reads a locale with blocks and parent Experience context", async () => {
-    prisma.experienceLocale.findFirst.mockResolvedValueOnce({
+    const row = {
       id: "loc-en",
       experienceId: "exp-1",
       locale: "en",
@@ -163,7 +198,9 @@ describe("ExperienceLocaleMcpService", () => {
         isTemplate: false,
         ownerId: "admin-1",
       },
-    })
+    }
+    prisma.experienceLocale.findFirst.mockResolvedValueOnce(row)
+    prisma.experienceLocale.findUniqueOrThrow.mockResolvedValueOnce(row)
 
     await expect(
       service.readLocale({
@@ -176,6 +213,63 @@ describe("ExperienceLocaleMcpService", () => {
         id: "loc-en",
         blocks: [{ t: "text", heading: "Hope" }],
         updatedAt: updatedAt.toISOString(),
+      },
+    })
+  })
+
+  it("reads the active draft as effective state while preserving canonical", async () => {
+    const canonical = {
+      ...LOCALE_ROW,
+      locale: "en",
+      slug: "hope",
+      title: "Live Hope",
+      status: "PUBLISHED",
+      experience: {
+        id: "exp-1",
+        isTemplate: false,
+        ownerId: "admin-1",
+        archivedAt: null,
+      },
+    }
+    prisma.experienceLocale.findFirst.mockResolvedValueOnce(canonical)
+    prisma.experienceLocale.findUniqueOrThrow.mockResolvedValueOnce(canonical)
+    prisma.contentRevision.findFirst.mockResolvedValueOnce({
+      id: "draft-en",
+      snapshot: {
+        v: 1,
+        data: {
+          slug: "hope-new",
+          isHomepage: false,
+          pathSegment: null,
+          title: "Draft Hope",
+          metaDescription: null,
+          ogTitle: null,
+          ogDescription: null,
+          ogImageUrl: null,
+          blocks: LOCALE_ROW.blocks,
+        },
+      },
+      previewToken: "preview-token",
+      revisedAt: updatedAt,
+      revisedBy: "admin-1",
+      revisedByKind: "USER",
+      reason: "draft saved",
+    })
+
+    await expect(
+      service.readLocale({
+        input: { experienceId: "exp-1", locale: "en" },
+        user: ADMIN,
+      }),
+    ).resolves.toMatchObject({
+      canonical: { slug: "hope", title: "Live Hope" },
+      effective: { slug: "hope-new", title: "Draft Hope" },
+      locale: { slug: "hope-new", title: "Draft Hope" },
+      hasDraft: true,
+      activeDraft: {
+        id: "draft-en",
+        previewUrl:
+          "https://watch.staging.example/watch/preview/experience/preview-token",
       },
     })
   })
@@ -311,14 +405,15 @@ describe("ExperienceLocaleMcpService", () => {
         data: expect.objectContaining({
           locale: "es",
           slug: "esperanza",
-          experience: { connect: { id: "exp-1" } },
+          experienceId: "exp-1",
+          blocks: [],
         }),
       }),
     )
   })
 
   it("updates locales through the existing Experience service", async () => {
-    prisma.experienceLocale.findUniqueOrThrow.mockResolvedValueOnce({
+    const canonical = {
       ...LOCALE_ROW,
       id: "loc-es",
       experience: {
@@ -327,19 +422,8 @@ describe("ExperienceLocaleMcpService", () => {
         isTemplate: false,
       },
       createdAt: new Date("2026-07-21T11:00:00.000Z"),
-    })
-
-    const updated = { ...LOCALE_ROW, title: "Esperanza viva" }
-    prisma.$transaction.mockImplementationOnce(
-      async (callback: (tx: unknown) => unknown) =>
-        callback({
-          contentRevision: { create: vi.fn() },
-          experience: { update: vi.fn() },
-          experienceLocale: {
-            update: vi.fn().mockResolvedValueOnce(updated),
-          },
-        }),
-    )
+    }
+    prisma.experienceLocale.findUniqueOrThrow.mockResolvedValue(canonical)
 
     await expect(
       service.updateLocale({
@@ -357,13 +441,54 @@ describe("ExperienceLocaleMcpService", () => {
     })
   })
 
+  it("rejects parent-scoped isTemplate in locale draft updates", async () => {
+    await expect(
+      service.updateLocale({
+        input: { localeId: "loc-es", draft: { isTemplate: true } },
+        user: ADMIN,
+      }),
+    ).rejects.toThrow()
+    expect(prisma.$transaction).not.toHaveBeenCalled()
+  })
+
+  it("discovers the stable preview URL for the active draft", async () => {
+    const canonical = {
+      ...LOCALE_ROW,
+      experience: {
+        ownerId: "admin-1",
+        archivedAt: null,
+        isTemplate: false,
+      },
+    }
+    prisma.experienceLocale.findUniqueOrThrow.mockResolvedValueOnce(canonical)
+    prisma.contentRevision.findFirst.mockResolvedValueOnce({
+      id: "draft-es",
+      snapshot: { v: 1, data: {} },
+      previewToken: "preview-token",
+      revisedAt: updatedAt,
+      revisedBy: "admin-1",
+      revisedByKind: "USER",
+      reason: null,
+    })
+
+    await expect(
+      service.previewLocale({ input: { localeId: "loc-es" }, user: ADMIN }),
+    ).resolves.toEqual({
+      localeId: "loc-es",
+      draftRevisionId: "draft-es",
+      previewUrl:
+        "https://watch.staging.example/watch/preview/experience/preview-token",
+    })
+  })
+
   it("publishes locales through the existing Experience service", async () => {
-    prisma.experienceLocale.findUniqueOrThrow.mockResolvedValueOnce({
+    const canonical = {
       ...LOCALE_ROW,
       status: "DRAFT",
       experience: { ownerId: "admin-1", archivedAt: null },
       createdAt: new Date("2026-07-21T11:00:00.000Z"),
-    })
+    }
+    prisma.experienceLocale.findUniqueOrThrow.mockResolvedValue(canonical)
 
     const published = {
       ...LOCALE_ROW,
@@ -373,8 +498,30 @@ describe("ExperienceLocaleMcpService", () => {
     prisma.$transaction.mockImplementationOnce(
       async (callback: (tx: unknown) => unknown) =>
         callback({
-          contentRevision: { create: vi.fn() },
+          $queryRaw: vi.fn(),
+          contentRevision: {
+            findFirst: vi.fn().mockResolvedValue({
+              id: "draft-1",
+              snapshot: {
+                v: 1,
+                data: {
+                  slug: LOCALE_ROW.slug,
+                  isHomepage: false,
+                  pathSegment: null,
+                  title: LOCALE_ROW.title,
+                  metaDescription: null,
+                  ogTitle: null,
+                  ogDescription: null,
+                  ogImageUrl: null,
+                  blocks: LOCALE_ROW.blocks,
+                },
+              },
+            }),
+            create: vi.fn(),
+            update: vi.fn(),
+          },
           experienceLocale: {
+            findUniqueOrThrow: vi.fn().mockResolvedValue(canonical),
             update: vi.fn().mockResolvedValueOnce(published),
           },
         }),

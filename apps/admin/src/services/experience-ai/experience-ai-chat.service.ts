@@ -643,10 +643,10 @@ export async function* streamChatTurn(
     return
   }
 
-  const localeRow = thread.experienceLocale
+  const canonicalLocale = thread.experienceLocale
 
   // ---- ABAC --------------------------------------------------------------
-  if (!canEditExperienceLocale(user, localeRow)) {
+  if (!canEditExperienceLocale(user, canonicalLocale)) {
     yield errorEvent(
       "forbidden",
       "You do not have permission to edit this locale",
@@ -662,6 +662,15 @@ export async function* streamChatTurn(
       role: "USER",
       content: input.prompt,
     },
+  })
+
+  // Chat edits the same shared aggregate as the dashboard and MCP. Reading
+  // canonical relation fields here would make a second chat turn forget the
+  // first staged turn until publication.
+  const experienceService = new ExperienceService(prisma)
+  const { effective: localeRow } = await experienceService.getLocaleDraftState({
+    id: canonicalLocale.id,
+    user,
   })
 
   const beforeState = toEditableLocaleState({
@@ -798,7 +807,6 @@ export async function* streamChatTurn(
   }
 
   // ---- Apply via service layer ------------------------------------------
-  const experienceService = new ExperienceService(prisma)
   let applyResult
   try {
     applyResult = await experienceService.applyChatMutation({
@@ -843,20 +851,6 @@ export async function* streamChatTurn(
       yield errorEvent(
         "schema_violation",
         `Service rejected mutation: ${error.message}`,
-      )
-      return
-    }
-    // Optimistic-concurrency guard tripped — a concurrent manual save (or
-    // another chat turn) modified the locale between this turn's read and
-    // write. Surface a "reload and retry" signal rather than a generic
-    // error so the editor knows the canvas is stale.
-    if (
-      error instanceof Error &&
-      error.name === "ConcurrentModificationError"
-    ) {
-      yield errorEvent(
-        "concurrent_modification",
-        "This page was modified concurrently — reload and try again.",
       )
       return
     }

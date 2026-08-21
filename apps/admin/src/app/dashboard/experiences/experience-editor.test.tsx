@@ -90,8 +90,11 @@ function renderEditorElement(
     isTemplate?: boolean
     saveAction?: typeof action
     publishAction?: typeof action
+    discardAction?: typeof action
     canPublish?: boolean
     hasPublishedVersion?: boolean
+    hasDraft?: boolean
+    previewUrl?: string | null
     mediaLibrary?: MediaLibraryBrowserData
     videoLibrary?: VideoLibraryItem[]
     searchVideoLibraryAction?: (
@@ -113,6 +116,12 @@ function renderEditorElement(
     <ExperienceEditor
       canPublish={options.canPublish ?? true}
       hasPublishedVersion={options.hasPublishedVersion ?? false}
+      hasDraft={options.hasDraft ?? false}
+      draftSavedAt={options.hasDraft ? "08/20/2026, 14:30" : null}
+      previewUrl={options.previewUrl ?? null}
+      publishedSlug={
+        options.hasPublishedVersion ? "experience-title-live" : null
+      }
       calendarDate="2026-04-17"
       watchOrigin="https://watch.jesusfilm.org"
       revisionEntries={[]}
@@ -150,6 +159,7 @@ function renderEditorElement(
       }}
       saveAction={options.saveAction ?? action}
       publishAction={options.publishAction ?? action}
+      discardAction={options.discardAction ?? action}
       createLocaleAction={action}
       restoreAction={action}
       uploadImageAction={action}
@@ -2204,37 +2214,46 @@ describe("ExperienceEditor", () => {
     expect(html).toContain("Publish")
   })
 
-  it("renders preview instead of publish when nothing changed on a published locale", () => {
-    const html = renderEditor([], { hasPublishedVersion: true })
-    expect(html).toContain("Preview")
-    expect(html).not.toContain("Open Published Page")
+  it("renders distinct draft and live controls for a saved draft", () => {
+    const html = renderEditor([], {
+      hasPublishedVersion: true,
+      hasDraft: true,
+      previewUrl:
+        "https://watch.jesusfilm.org/watch/preview/experience/draft-token",
+    })
+    expect(html).toContain("Shared draft saved")
+    expect(html).toContain("Preview draft")
+    expect(html).toContain("View live")
+    expect(html).toContain("Publish")
+    expect(html).toContain("Discard draft")
   })
 
-  it("renders preview on the server even when the watch URL is inferred in the browser", () => {
+  it("renders the live control on the server even when the watch URL is inferred in the browser", () => {
     envState.NEXT_PUBLIC_WATCH_URL = undefined
 
     const html = renderEditor([], { hasPublishedVersion: true })
 
-    expect(html).toContain("Preview")
+    expect(html).toContain("View live")
+    expect(html).not.toContain("Preview draft")
     expect(html).not.toContain("Publish")
   })
 
-  it("opens the published page from preview when a published version exists", async () => {
+  it("opens the canonical published page from View live", async () => {
     const openSpy = vi.spyOn(window, "open").mockImplementation(() => null)
     const { container, cleanup } = renderEditorDom([], {
       hasPublishedVersion: true,
     })
 
     try {
-      const previewButton = findButtonByText(container, "Preview")
-      expect(previewButton.disabled).toBe(false)
+      const liveButton = findButtonByText(container, "View live")
+      expect(liveButton.disabled).toBe(false)
 
       await act(async () => {
-        previewButton.click()
+        liveButton.click()
       })
 
       expect(openSpy).toHaveBeenCalledWith(
-        "http://localhost:3000/watch/experience-title.html",
+        "http://localhost:3000/watch/experience-title-live.html",
         "_blank",
         "noopener,noreferrer",
       )
@@ -2250,7 +2269,7 @@ describe("ExperienceEditor", () => {
     })
 
     try {
-      expect(findButtonByText(container, "Preview").disabled).toBe(false)
+      expect(findButtonByText(container, "View live").disabled).toBe(false)
 
       const titleInput = container.querySelector(
         'input[placeholder="Untitled Experience"]',
@@ -2273,6 +2292,168 @@ describe("ExperienceEditor", () => {
 
       const publishButton = findButtonByText(container, "Publish")
       expect(publishButton.disabled).toBe(false)
+    } finally {
+      cleanup()
+    }
+  })
+
+  it("opens the saved draft preview in a new tab", async () => {
+    const openSpy = vi.spyOn(window, "open").mockImplementation(() => null)
+    const previewUrl =
+      "https://watch.jesusfilm.org/watch/preview/experience/draft-token"
+    const { container, cleanup } = renderEditorDom([], {
+      hasPublishedVersion: true,
+      hasDraft: true,
+      previewUrl,
+    })
+
+    try {
+      await act(async () => {
+        findButtonByText(container, "Preview draft").click()
+      })
+
+      expect(openSpy).toHaveBeenCalledWith(
+        previewUrl,
+        "_blank",
+        "noopener,noreferrer",
+      )
+    } finally {
+      cleanup()
+      openSpy.mockRestore()
+    }
+  })
+
+  it("opens a placeholder before saving a dirty draft and locks draft actions until preview is ready", async () => {
+    const events: string[] = []
+    type SaveResult = {
+      ok: boolean
+      error?: string
+      previewUrl?: string | null
+    }
+    let resolveSave: ((result: SaveResult) => void) | null = null
+    const saveAction = vi.fn(
+      () =>
+        new Promise<SaveResult>((resolve) => {
+          events.push("save")
+          resolveSave = resolve
+        }),
+    )
+    const previewWindow = {
+      opener: window,
+      location: { href: "" },
+      close: vi.fn(),
+    } as unknown as Window
+    const openSpy = vi.spyOn(window, "open").mockImplementation(() => {
+      events.push("open")
+      return previewWindow
+    })
+    const previewUrl =
+      "https://watch.jesusfilm.org/watch/preview/experience/new-token"
+    const { container, cleanup } = renderEditorDom([], {
+      hasPublishedVersion: true,
+      saveAction,
+    })
+
+    try {
+      const titleInput = container.querySelector(
+        'input[placeholder="Untitled Experience"]',
+      )
+      if (!(titleInput instanceof HTMLInputElement)) {
+        throw new Error("Title input not found")
+      }
+      const valueSetter = Object.getOwnPropertyDescriptor(
+        window.HTMLInputElement.prototype,
+        "value",
+      )?.set
+
+      act(() => {
+        valueSetter?.call(titleInput, "Dirty preview title")
+        titleInput.dispatchEvent(
+          new InputEvent("input", { bubbles: true, inputType: "insertText" }),
+        )
+      })
+
+      act(() => {
+        findButtonByText(container, "Preview draft").click()
+      })
+      await vi.waitFor(() => expect(saveAction).toHaveBeenCalledTimes(1))
+
+      expect(events).toEqual(["open", "save"])
+      expect(openSpy).toHaveBeenCalledWith("", "_blank")
+      expect(findButtonByText(container, "Save Draft").disabled).toBe(true)
+      expect(findButtonByText(container, "Preview draft").disabled).toBe(true)
+      expect(findButtonByText(container, "Publish").disabled).toBe(true)
+
+      await act(async () => {
+        resolveSave?.({ ok: true, previewUrl })
+        await Promise.resolve()
+      })
+
+      expect(previewWindow.location.href).toBe(previewUrl)
+      expect(previewWindow.close).not.toHaveBeenCalled()
+      expect(findButtonByText(container, "Preview draft").disabled).toBe(false)
+    } finally {
+      cleanup()
+      openSpy.mockRestore()
+    }
+  })
+
+  it("confirms discard without suggesting the live locale changes", async () => {
+    const discardAction = vi.fn(async () => ({
+      ok: true,
+      values: {
+        title: "Published experience title",
+        slug: "published-experience-title",
+        metaDescription: "Published meta description",
+        ogTitle: "Published Open Graph title",
+        ogDescription: "Published Open Graph description",
+        ogImageUrl: "https://example.com/published.jpg",
+        pathSegment: "published-path",
+        isHomepage: true,
+        blocksJson: "[]",
+      },
+    }))
+    const { container, cleanup } = renderEditorDom([], {
+      hasPublishedVersion: true,
+      hasDraft: true,
+      previewUrl:
+        "https://watch.jesusfilm.org/watch/preview/experience/draft-token",
+      discardAction,
+    })
+
+    try {
+      await act(async () => {
+        findButtonByText(container, "Discard draft").click()
+      })
+
+      expect(document.body.textContent).toContain("Discard English draft?")
+      expect(document.body.textContent).toContain(
+        "The live experience will remain unchanged.",
+      )
+
+      const discardDialog = Array.from(
+        document.body.querySelectorAll('[role="dialog"]'),
+      ).find(
+        (candidate) =>
+          candidate.parentElement?.getAttribute("aria-hidden") === "false" &&
+          candidate.textContent?.includes("Discard English draft?"),
+      )
+      if (!(discardDialog instanceof HTMLElement)) {
+        throw new Error("Discard confirmation dialog not found")
+      }
+
+      await act(async () => {
+        findButtonByExactText(discardDialog, "Discard draft").click()
+      })
+
+      expect(discardAction).toHaveBeenCalledWith("locale-1")
+      const titleInput = container.querySelector(
+        'input[placeholder="Untitled Experience"]',
+      )
+      expect(titleInput).toBeInstanceOf(HTMLInputElement)
+      expect((titleInput as HTMLInputElement).value).toBe(
+        "Published experience title",
+      )
     } finally {
       cleanup()
     }

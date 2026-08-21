@@ -771,6 +771,14 @@ A migration failure state the team has classified as safe for automated failed-r
 
 A curated, themed watch page — such as Easter or Christmas — that assembles a selection of watch content under an editorial frame. An Experience is authored in admin (hand-curated by the editorial team, or AI-generated) and published to render as its own standalone page on the watch site, reachable by a public slug of its own (distinct from any single Video's slug).
 
+### Experience Draft
+
+The single shared staged version of one language-specific Experience, editable
+and previewable without changing that Experience's live version. Each language
+has an independent draft and publish lifecycle; saves use last-save-wins
+collaboration, while publishing or discarding ends the draft and invalidates its
+unlisted preview.
+
 ### Experience Block
 
 An ordered, schema-validated content unit within an Experience. Blocks carry a discriminator that identifies their content semantics, while presentation variants can change a block's treatment without creating a different content kind; section blocks compose other blocks under a shared visual shell.

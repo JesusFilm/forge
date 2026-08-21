@@ -139,9 +139,23 @@ import {
 import { CanvasBlockList } from "./experience-editor/canvas-block-list"
 import { ContainerWorkspace } from "./experience-editor/container-workspace"
 
+type EditorLocaleValues = {
+  title: string
+  slug: string
+  metaDescription: string
+  ogTitle: string
+  ogDescription: string
+  ogImageUrl: string
+  pathSegment: string
+  isHomepage: boolean
+  blocksJson: string
+}
+
 type EditorActionResult = {
   ok: boolean
   error?: string
+  previewUrl?: string | null
+  values?: EditorLocaleValues
 }
 
 type CreateLocaleActionResult = EditorActionResult & {
@@ -1184,6 +1198,10 @@ export function buildPublishedWatchUrl(
 export function ExperienceEditor({
   canPublish,
   hasPublishedVersion,
+  hasDraft,
+  draftSavedAt,
+  previewUrl,
+  publishedSlug: initialPublishedSlug,
   revisionEntries,
   localeEntries,
   videoLibrary,
@@ -1194,6 +1212,7 @@ export function ExperienceEditor({
   initialValues,
   saveAction,
   publishAction,
+  discardAction,
   createLocaleAction,
   restoreAction,
   uploadImageAction,
@@ -1203,6 +1222,10 @@ export function ExperienceEditor({
 }: {
   canPublish: boolean
   hasPublishedVersion: boolean
+  hasDraft: boolean
+  draftSavedAt: string | null
+  previewUrl: string | null
+  publishedSlug: string | null
   revisionEntries: RevisionEntry[]
   localeEntries: LocaleEntry[]
   videoLibrary: VideoLibraryItem[]
@@ -1227,6 +1250,7 @@ export function ExperienceEditor({
   }
   saveAction: (formData: FormData) => Promise<EditorActionResult>
   publishAction: (localeId: string) => Promise<EditorActionResult>
+  discardAction: (localeId: string) => Promise<EditorActionResult>
   createLocaleAction: (formData: FormData) => Promise<CreateLocaleActionResult>
   restoreAction: (revisionId: string) => Promise<EditorActionResult>
   uploadImageAction: (formData: FormData) => Promise<UploadActionResult>
@@ -1287,8 +1311,10 @@ export function ExperienceEditor({
   const router = useRouter()
   const { toasts, pushToast, dismissToast } = useToastStack()
   const [publishedSlug, setPublishedSlug] = useState<string | null>(
-    hasPublishedVersion ? cleanRoutePart(initialValues.slug) : null,
+    hasPublishedVersion ? cleanRoutePart(initialPublishedSlug ?? "") : null,
   )
+  const [hasActiveDraft, setHasActiveDraft] = useState(hasDraft)
+  const [draftPreviewUrl, setDraftPreviewUrl] = useState(previewUrl)
   const [editorDateSnapshot, setEditorDateSnapshot] = useState(calendarDate)
   const editorToday = parseEditorDateSnapshot(editorDateSnapshot)
   const [title, setTitle] = useState(initialValues.title)
@@ -1297,10 +1323,12 @@ export function ExperienceEditor({
   const [metaDescription, setMetaDescription] = useState(
     initialValues.metaDescription,
   )
-  const [ogTitle] = useState(initialValues.ogTitle)
-  const [ogDescription] = useState(initialValues.ogDescription)
+  const [ogTitle, setOgTitle] = useState(initialValues.ogTitle)
+  const [ogDescription, setOgDescription] = useState(
+    initialValues.ogDescription,
+  )
   const [ogImageUrl, setOgImageUrl] = useState(initialValues.ogImageUrl)
-  const [isHomepage] = useState(initialValues.isHomepage)
+  const [isHomepage, setIsHomepage] = useState(initialValues.isHomepage)
   const isTemplate = initialValues.isTemplate
 
   const [parsedBlocks, setParsedBlocks] = useState<unknown[]>(() => {
@@ -1552,6 +1580,7 @@ export function ExperienceEditor({
   const [restoreRevisionId, setRestoreRevisionId] = useState<string | null>(
     null,
   )
+  const [discardDraftOpen, setDiscardDraftOpen] = useState(false)
   const [deleteBlockIndex, setDeleteBlockIndex] = useState<number | null>(null)
   const [isContainerSlotDeleteOpen, setIsContainerSlotDeleteOpen] =
     useState(false)
@@ -1561,6 +1590,9 @@ export function ExperienceEditor({
   const [insertedBlockAnimation, setInsertedBlockAnimation] =
     useState<InsertedBlockAnimation | null>(null)
   const [isPending, startTransition] = useTransition()
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const isSubmittingRef = useRef(false)
+  const pendingPreviewWindowRef = useRef<Window | null>(null)
   const blockCardRefs = useRef(new Map<string, HTMLDivElement>())
   const navigationDestinationPopoverRef = useRef<HTMLDivElement | null>(null)
   const videoPickerPreviewContainerRef = useRef<HTMLDivElement | null>(null)
@@ -1642,13 +1674,15 @@ export function ExperienceEditor({
     Math.max((slug.trim() || "slug").length, 4),
     34,
   )}ch`
-  const canPublishNow = canPublish && (!hasPublishedVersion || hasChanges)
+  const canPublishNow =
+    canPublish && (!hasPublishedVersion || hasActiveDraft || hasChanges)
   const activeLocaleCode =
     localeEntries.find((entry) => entry.active)?.code ?? ""
+  const activeLocaleTitle =
+    localeEntries.find((entry) => entry.active)?.title || activeLocaleCode
   const publishedRouteSlug = cleanRoutePart(publishedSlug ?? "")
   const canOpenPublishedPage =
     publishedRouteSlug !== "" && activeLocaleCode !== ""
-  const shouldShowPreviewAction = canOpenPublishedPage && !hasChanges
   function openPublishedWatchPage(routeSlug = publishedRouteSlug) {
     const nextPublishedWatchUrl = buildPublishedWatchUrl(
       routeSlug,
@@ -1661,6 +1695,24 @@ export function ExperienceEditor({
     }
     window.open(nextPublishedWatchUrl, "_blank", "noopener,noreferrer")
   }
+  function openDraftPreview(url = draftPreviewUrl) {
+    if (!url) {
+      pushToast("Save the draft before opening its preview.", "error")
+      return
+    }
+    window.open(url, "_blank", "noopener,noreferrer")
+  }
+  function openDraftPreviewPlaceholder() {
+    if (isSubmittingRef.current || pendingPreviewWindowRef.current) return
+    const previewWindow = window.open("", "_blank")
+    if (!previewWindow) {
+      pushToast("Allow pop-ups to open the draft preview.", "error")
+      return
+    }
+    previewWindow.opener = null
+    pendingPreviewWindowRef.current = previewWindow
+  }
+  const actionsPending = isPending || isSubmitting
   const isFloatingDrawerOpen =
     inlineBlockLibraryOpen || revisionHistoryOpen || localeDrawerOpen
   const isAddingToContainerSlot = focusedContainerIndex !== null
@@ -9974,6 +10026,51 @@ export function ExperienceEditor({
     })
   }
 
+  function confirmDiscardDraft() {
+    startTransition(() => {
+      void (async () => {
+        const result = await discardAction(initialValues.localeId)
+        if (!result.ok) {
+          pushToast(result.error ?? "Unable to discard draft.", "error")
+          return
+        }
+        if (result.values) {
+          setTitle(result.values.title)
+          setSlug(result.values.slug)
+          setMetaDescription(result.values.metaDescription)
+          setOgTitle(result.values.ogTitle)
+          setOgDescription(result.values.ogDescription)
+          setOgImageUrl(result.values.ogImageUrl)
+          setPathSegment(result.values.pathSegment)
+          setIsHomepage(result.values.isHomepage)
+          try {
+            const blocks = JSON.parse(result.values.blocksJson)
+            const nextBlocks = Array.isArray(blocks)
+              ? isTemplate
+                ? blocks
+                : removeRouteOnlyBlocks(blocks)
+              : []
+            setParsedBlocks(nextBlocks)
+            setSelectedBlockIndex(nextBlocks.length > 0 ? 0 : null)
+          } catch {
+            setParsedBlocks([])
+            setSelectedBlockIndex(null)
+          }
+          setFocusedContainerIndex(null)
+          setFocusedSectionIndex(null)
+        }
+        setDiscardDraftOpen(false)
+        setHasActiveDraft(false)
+        setDraftPreviewUrl(null)
+        pushToast(
+          "Shared draft discarded. The live experience is unchanged.",
+          "success",
+        )
+        router.refresh()
+      })()
+    })
+  }
+
   const focusedContainerRecord =
     focusedContainerIndex === null
       ? null
@@ -10021,6 +10118,14 @@ export function ExperienceEditor({
               Add block
             </button>
             <div className="flex items-center gap-1.5">
+              {hasActiveDraft ? (
+                <span
+                  className="hidden px-2 text-[11px] text-[var(--color-text-muted)] md:inline"
+                  aria-live="polite"
+                >
+                  Shared draft saved{draftSavedAt ? ` ${draftSavedAt}` : ""}
+                </span>
+              ) : null}
               <button
                 type="button"
                 onClick={() => {
@@ -10067,49 +10172,93 @@ export function ExperienceEditor({
                 form={`experience-editor-${initialValues.localeId}`}
                 name="intent"
                 value="save"
-                disabled={isPending || !hasChanges}
+                disabled={actionsPending || !hasChanges}
                 className="inline-flex h-9 cursor-pointer items-center justify-center gap-2 rounded-[2px] border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] px-3 text-[12px] font-medium text-[var(--color-text-primary)] transition-all duration-[120ms] ease-out hover:bg-[var(--color-surface)] disabled:cursor-not-allowed disabled:opacity-60"
               >
                 <Save className="h-4 w-4" strokeWidth={1.5} />
                 Save Draft
               </button>
-              {shouldShowPreviewAction ? (
+              {hasActiveDraft || hasChanges ? (
                 <button
-                  type="button"
-                  onClick={() => {
-                    openPublishedWatchPage()
-                  }}
-                  disabled={isPending}
-                  className="inline-flex h-9 cursor-pointer items-center justify-center gap-2 rounded-[2px] bg-[var(--color-brand)] px-3 text-[12px] font-medium text-white transition-all duration-[120ms] ease-out hover:bg-[var(--color-brand-pressed)] disabled:cursor-not-allowed disabled:opacity-60"
-                  title="Open published page"
+                  type={hasChanges ? "submit" : "button"}
+                  form={
+                    hasChanges
+                      ? `experience-editor-${initialValues.localeId}`
+                      : undefined
+                  }
+                  name={hasChanges ? "intent" : undefined}
+                  value={hasChanges ? "preview" : undefined}
+                  onClick={
+                    hasChanges
+                      ? openDraftPreviewPlaceholder
+                      : () => openDraftPreview()
+                  }
+                  disabled={actionsPending}
+                  className="inline-flex h-9 cursor-pointer items-center justify-center gap-2 rounded-[2px] border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] px-3 text-[12px] font-medium text-[var(--color-text-primary)] transition-all duration-[120ms] ease-out hover:bg-[var(--color-surface)] disabled:cursor-not-allowed disabled:opacity-60"
+                  aria-label="Preview draft (opens in a new tab)"
+                  title="Preview draft (opens in a new tab)"
                 >
                   <Eye className="h-4 w-4" strokeWidth={1.5} />
-                  Preview
+                  Preview draft
                 </button>
-              ) : (
+              ) : null}
+              {canOpenPublishedPage ? (
+                <button
+                  type="button"
+                  onClick={() => openPublishedWatchPage()}
+                  disabled={actionsPending}
+                  className="inline-flex h-9 cursor-pointer items-center justify-center gap-2 rounded-[2px] border border-[var(--color-hairline)] bg-transparent px-3 text-[12px] font-medium text-[var(--color-text-primary)] transition-all duration-[120ms] ease-out hover:bg-[var(--color-surface-raised)] disabled:cursor-not-allowed disabled:opacity-60"
+                  aria-label="View live (opens in a new tab)"
+                  title="View live (opens in a new tab)"
+                >
+                  <Globe2 className="h-4 w-4" strokeWidth={1.5} />
+                  View live
+                </button>
+              ) : null}
+              {hasActiveDraft ? (
+                <button
+                  type="button"
+                  onClick={() => setDiscardDraftOpen(true)}
+                  disabled={actionsPending}
+                  className="inline-flex h-9 cursor-pointer items-center justify-center gap-2 rounded-[2px] border border-[var(--color-hairline)] bg-transparent px-3 text-[12px] font-medium text-[var(--color-text-secondary)] transition-all duration-[120ms] ease-out hover:border-[var(--color-danger)] hover:text-[var(--color-danger)] disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  <Trash2 className="h-4 w-4" strokeWidth={1.5} />
+                  Discard draft
+                </button>
+              ) : null}
+              {canPublishNow ? (
                 <button
                   type="submit"
                   form={`experience-editor-${initialValues.localeId}`}
                   name="intent"
                   value="publish"
-                  disabled={isPending || !canPublishNow}
+                  disabled={actionsPending || !canPublishNow}
                   className="inline-flex h-9 cursor-pointer items-center justify-center gap-2 rounded-[2px] bg-[var(--color-brand)] px-3 text-[12px] font-medium text-white transition-all duration-[120ms] ease-out hover:bg-[var(--color-brand-pressed)] disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   <UploadCloud className="h-4 w-4" strokeWidth={1.5} />
                   Publish
                 </button>
-              )}
+              ) : null}
             </div>
           </div>
         </div>
       </div>
 
       <ConfirmModal
+        open={discardDraftOpen}
+        title={`Discard ${activeLocaleTitle} draft?`}
+        description="This retires the shared draft for this locale. The live experience will remain unchanged."
+        confirmLabel="Discard draft"
+        pending={actionsPending}
+        onCancel={() => setDiscardDraftOpen(false)}
+        onConfirm={confirmDiscardDraft}
+      />
+      <ConfirmModal
         open={restoreRevisionId !== null}
         title="Restore This Revision?"
         description="This will replace your current draft with the selected revision. Any unsaved changes in the editor will be lost."
         confirmLabel="Restore Revision"
-        pending={isPending}
+        pending={actionsPending}
         onCancel={() => setRestoreRevisionId(null)}
         onConfirm={confirmRestoreRevision}
       />
@@ -11122,32 +11271,64 @@ export function ExperienceEditor({
       <section className="hidden">
         <form
           id={`experience-editor-${initialValues.localeId}`}
+          onSubmit={() => setIsSubmitting(true)}
           action={async (formData) => {
+            if (isSubmittingRef.current) return
+            isSubmittingRef.current = true
+            setIsSubmitting(true)
             const intent = String(formData.get("intent") ?? "save")
-            const result = await saveAction(formData)
-            if (!result.ok) {
-              pushToast(result.error ?? "Unable to save locale.", "error")
-              return
-            }
-            if (intent === "publish") {
-              const publishResult = await publishAction(initialValues.localeId)
-              if (!publishResult.ok) {
-                pushToast(
-                  publishResult.error ?? "Unable to publish locale.",
-                  "error",
-                )
+            const previewWindow =
+              intent === "preview" ? pendingPreviewWindowRef.current : null
+            pendingPreviewWindowRef.current = null
+            let previewWindowNavigated = false
+            try {
+              const result = await saveAction(formData)
+              if (!result.ok) {
+                previewWindow?.close()
+                pushToast(result.error ?? "Unable to save locale.", "error")
                 return
               }
-              const nextPublishedSlug = cleanRoutePart(slug)
-              setPublishedSlug(nextPublishedSlug)
-              openPublishedWatchPage(nextPublishedSlug)
-              pushToast("Locale published.", "success")
-            } else {
-              pushToast("Locale saved.", "success")
+              setHasActiveDraft(true)
+              const nextDraftPreviewUrl = result.previewUrl ?? draftPreviewUrl
+              setDraftPreviewUrl(nextDraftPreviewUrl)
+              if (intent === "preview") {
+                if (nextDraftPreviewUrl && previewWindow) {
+                  previewWindow.location.href = nextDraftPreviewUrl
+                  previewWindowNavigated = true
+                } else {
+                  previewWindow?.close()
+                  openDraftPreview(nextDraftPreviewUrl)
+                }
+                pushToast("Draft saved.", "success")
+              } else if (intent === "publish") {
+                const publishResult = await publishAction(
+                  initialValues.localeId,
+                )
+                if (!publishResult.ok) {
+                  pushToast(
+                    publishResult.error ?? "Unable to publish locale.",
+                    "error",
+                  )
+                  return
+                }
+                const nextPublishedSlug = cleanRoutePart(slug)
+                setPublishedSlug(nextPublishedSlug)
+                setHasActiveDraft(false)
+                setDraftPreviewUrl(null)
+                pushToast("Locale published.", "success")
+              } else {
+                pushToast("Draft saved.", "success")
+              }
+              startTransition(() => {
+                router.refresh()
+              })
+            } catch {
+              if (!previewWindowNavigated) previewWindow?.close()
+              pushToast("Unable to save locale.", "error")
+            } finally {
+              isSubmittingRef.current = false
+              setIsSubmitting(false)
             }
-            startTransition(() => {
-              router.refresh()
-            })
           }}
           className="hidden"
         >
@@ -11163,11 +11344,6 @@ export function ExperienceEditor({
             type="hidden"
             name="isHomepage"
             value={isHomepage ? "on" : ""}
-          />
-          <input
-            type="hidden"
-            name="isTemplate"
-            value={isTemplate ? "on" : ""}
           />
           <input
             type="hidden"

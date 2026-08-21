@@ -56,6 +56,8 @@ describe("GraphQL schema — Unit 4 content types", () => {
         "experience",
         "experiences",
         "experienceBySlug",
+        "experienceLocaleDraftState",
+        "experiencePreview",
         "watchSetting",
         // Manager backend contracts
         "managerViewer",
@@ -304,6 +306,54 @@ describe("GraphQL schema — Unit 4 content types", () => {
     expect(mutation).toBeTruthy()
     const fields = mutation!.getFields()
     expect(fields.triggerExperienceEmbedding).toBeDefined()
+  })
+
+  it("exposes the Experience locale draft lifecycle contract", () => {
+    const query = schema.getQueryType()!.getFields()
+    expect(String(query.experiencePreview!.type)).toBe("ExperiencePreview")
+    expect(query.experiencePreview!.args.map((arg) => arg.name)).toEqual([
+      "token",
+    ])
+    expect(String(query.experienceLocaleDraftState!.type)).toBe(
+      "ExperienceLocaleDraftState!",
+    )
+
+    expect(Object.keys(fieldsOf("ExperienceLocaleDraftState"))).toEqual(
+      expect.arrayContaining([
+        "canonical",
+        "effective",
+        "hasDraft",
+        "activeDraft",
+      ]),
+    )
+    expect(Object.keys(fieldsOf("ExperienceLocaleActiveDraft"))).toEqual(
+      expect.arrayContaining([
+        "id",
+        "previewToken",
+        "revisedAt",
+        "revisedBy",
+        "revisedByKind",
+        "reason",
+      ]),
+    )
+    expect(Object.keys(fieldsOf("ExperiencePreview"))).toEqual(
+      expect.arrayContaining([
+        "experienceId",
+        "localeId",
+        "locale",
+        "slug",
+        "isHomepage",
+        "title",
+        "blocks",
+      ]),
+    )
+
+    const mutation = schema.getMutationType()!.getFields()
+    expect(mutation.discardExperienceLocaleDraft).toBeDefined()
+    expect(mutation.restoreExperienceLocaleRevisionToDraft).toBeDefined()
+    expect(
+      mutation.updateExperienceLocale!.args.map((arg) => arg.name),
+    ).not.toContain("isTemplate")
   })
 
   it("Mutation root exposes Manager job write contracts", () => {
