@@ -2,6 +2,10 @@ import {
   ConsumerLifecycleSignatureError,
   verifyConsumerLifecycleRequest,
 } from "@/auth/consumer-lifecycle-signature"
+import {
+  digestErasedUserPlaylistSubject,
+  getUserPlaylistErasureSubjectDigestKey,
+} from "@/auth/user-playlist-erasure-bearer"
 import { env } from "@/config/env"
 import { prisma } from "@/db/client"
 import { ConsumerLifecycleIngestionService } from "@/services/consumer-lifecycle-ingestion.service"
@@ -17,14 +21,18 @@ const SIGNED_LIFECYCLE_REQUEST = Symbol("signed-lifecycle-request")
 
 export async function POST(request: Request): Promise<Response> {
   const secret = env.USER_PLAYLIST_LIFECYCLE_HMAC_SECRET
-  if (!secret) {
+  const digestKey = getUserPlaylistErasureSubjectDigestKey()
+  if (!secret || !digestKey) {
     return Response.json({ error: "Unavailable" }, { status: 503 })
   }
 
   try {
     const event = await verifyConsumerLifecycleRequest(request, { secret })
     const ingestion = new ConsumerLifecycleIngestionService(
-      new ConsumerLifecycleService(prisma),
+      new ConsumerLifecycleService(prisma, {
+        erasedSubjectDigest: (ownerSubject) =>
+          digestErasedUserPlaylistSubject(ownerSubject, digestKey),
+      }),
       {
         assertLifecycleAuthorized(credential: symbol) {
           if (credential !== SIGNED_LIFECYCLE_REQUEST) {

@@ -19,13 +19,12 @@ import {
   MOBILE_DEFAULT_SCOPES,
 } from "@/domain/apps"
 import { AUTH_SCOPES } from "@/domain/scopes"
+import { createAccountDeletionDeps } from "@/services/account-deletion-runtime"
 import { buildAccountDeletionHooks } from "@/services/account-deletion.service"
 import { ConsumerEligibilityService } from "@/services/consumer-eligibility.service"
 import {
   assertProductionAuthSecrets,
   env,
-  getAdminWatchProgressErasureConfig,
-  getAppleNativeClientConfig,
   getAuthBaseUrl,
   getAuthTrustedOrigins,
   getAuthValidAudiences,
@@ -36,16 +35,11 @@ assertProductionAuthSecrets()
 
 const validAudiences = getAuthValidAudiences()
 
-const accountDeletionHooks = buildAccountDeletionHooks({
-  findAppleAccount: (userId) =>
-    prisma.account.findFirst({
-      where: { userId, providerId: "apple" },
-      select: { refreshToken: true },
-    }),
-  getAppleConfig: getAppleNativeClientConfig,
-  getAdminErasureConfig: getAdminWatchProgressErasureConfig,
-})
 const consumerEligibility = new ConsumerEligibilityService(prisma)
+
+const accountDeletionHooks = buildAccountDeletionHooks(
+  createAccountDeletionDeps(),
+)
 
 const isNextBuild = process.env.NEXT_PHASE === "phase-production-build"
 const betterAuthSecret =

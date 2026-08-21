@@ -3,6 +3,11 @@ import { randomUUID } from "node:crypto"
 import { getAdminUserPlaylistLifecycleConfig } from "@/config/env"
 import { prisma } from "@/db/client"
 import {
+  createAccountDeletionDeps,
+  createAccountDeletionRetryStore,
+} from "@/services/account-deletion-runtime"
+import { AccountDeletionRetryService } from "@/services/account-deletion.service"
+import {
   ConsumerEligibilityService,
   ConsumerLifecycleReconciliationService,
 } from "@/services/consumer-eligibility.service"
@@ -45,15 +50,21 @@ async function run() {
     if (result.delivered === 0 && result.failed === 0) break
   }
 
+  const deletion = await new AccountDeletionRetryService(
+    createAccountDeletionDeps(),
+    createAccountDeletionRetryStore(),
+  ).retryBatch()
+
   console.log(
     JSON.stringify({
       event: "consumer_lifecycle_run",
       reconciled,
       delivered,
       failed,
+      deletion,
     }),
   )
-  if (failed > 0) process.exitCode = 1
+  if (failed > 0 || deletion.failed > 0) process.exitCode = 1
 }
 
 run().finally(async () => prisma.$disconnect())

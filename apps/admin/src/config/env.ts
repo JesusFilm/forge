@@ -370,6 +370,8 @@ export const env = createEnv({
     // Auth -> Admin user-playlist owner lifecycle delivery. Separate from
     // account-erasure and Watch progress credentials by design.
     USER_PLAYLIST_LIFECYCLE_HMAC_SECRET: z.string().min(32).optional(),
+    USER_PLAYLIST_ERASURE_API_KEYS: z.string().min(1).optional(),
+    USER_PLAYLIST_ERASURE_SUBJECT_DIGEST_KEY: z.string().min(1).optional(),
     WATCH_SEARCH_SERVING_QRELS_REVISION: z.string().min(1).optional(),
     MANAGER_ADMIN_API_KEY: z.string().min(1).optional(),
     // SEO delegated/workload assertions use per-environment Ed25519 keyrings.
@@ -778,6 +780,12 @@ export const env = createEnv({
     ),
     USER_PLAYLIST_LIFECYCLE_HMAC_SECRET: emptyToUndefined(
       process.env.USER_PLAYLIST_LIFECYCLE_HMAC_SECRET,
+    ),
+    USER_PLAYLIST_ERASURE_API_KEYS: emptyToUndefined(
+      process.env.USER_PLAYLIST_ERASURE_API_KEYS,
+    ),
+    USER_PLAYLIST_ERASURE_SUBJECT_DIGEST_KEY: emptyToUndefined(
+      process.env.USER_PLAYLIST_ERASURE_SUBJECT_DIGEST_KEY,
     ),
     NEXT_PUBLIC_DATADOG_APPLICATION_ID: emptyToUndefined(
       process.env.NEXT_PUBLIC_DATADOG_APPLICATION_ID,

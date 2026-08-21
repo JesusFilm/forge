@@ -69,6 +69,27 @@ export class ConsumerEligibilityService {
               AUTHOR_PROVIDERS.has(account.providerId) &&
               account.accountId.length > 0,
           )
+        if (
+          user.consumerLifecycleState === "DELETING" ||
+          user.consumerLifecycleState === "DELETED"
+        ) {
+          // A provider callback can race a deletion retry. Remove the newly
+          // created authority again before returning so a re-link never turns
+          // a terminal lifecycle into a usable account.
+          await this.revokeAllAuthority(
+            tx,
+            user.id,
+            user.consumerLifecycleState,
+            now,
+          )
+          await tx.session.deleteMany({ where: { userId: user.id } })
+          return {
+            eligible: false,
+            membershipStatus: user.membershipStatus,
+            state: user.consumerLifecycleState,
+            version: user.consumerLifecycleVersion,
+          }
+        }
         const membershipLifecycleState =
           user.membershipStatus === "SUSPENDED"
             ? "SUSPENDED"
@@ -76,6 +97,15 @@ export class ConsumerEligibilityService {
               ? "DISABLED"
               : null
         if (membershipLifecycleState) {
+          // Revoke on every reconciliation, including an identical lifecycle,
+          // so a provider callback cannot leave a newly-created session alive.
+          await this.revokeAllAuthority(
+            tx,
+            user.id,
+            membershipLifecycleState,
+            now,
+          )
+          await tx.session.deleteMany({ where: { userId: user.id } })
           if (
             user.consumerLifecycleState === membershipLifecycleState &&
             user.consumerLifecycleVersion > 0n
@@ -87,8 +117,6 @@ export class ConsumerEligibilityService {
               version: user.consumerLifecycleVersion,
             }
           }
-          await this.revokeAllTokenFamilies(tx, user.id, now)
-          await tx.session.deleteMany({ where: { userId: user.id } })
           return this.persistTransition(tx, user, membershipLifecycleState, now)
         }
         if (!eligible) {
@@ -164,8 +192,20 @@ export class ConsumerEligibilityService {
         })
         if (!user) throw new Error("Consumer identity not found.")
 
-        await this.revokeAllTokenFamilies(tx, userId, now)
+        await this.revokeAllAuthority(tx, userId, state, now)
         await tx.session.deleteMany({ where: { userId } })
+
+        if (
+          user.consumerLifecycleState === state &&
+          user.consumerLifecycleVersion > 0n
+        ) {
+          return {
+            eligible: false,
+            membershipStatus: user.membershipStatus,
+            state,
+            version: user.consumerLifecycleVersion,
+          }
+        }
 
         return this.persistTransition(tx, user, state, now)
       },
@@ -222,15 +262,38 @@ export class ConsumerEligibilityService {
     }
   }
 
-  private async revokeAllTokenFamilies(
+  private async revokeAllAuthority(
     tx: Prisma.TransactionClient,
     userId: string,
+    state: Exclude<ConsumerLifecycleState, "ACTIVE">,
     now: Date,
   ) {
     await tx.oauthAccessToken.deleteMany({ where: { userId } })
     await tx.oauthRefreshToken.updateMany({
       where: { userId, revoked: null },
       data: { revoked: now },
+    })
+    await tx.oauthConsent.deleteMany({ where: { userId } })
+    await tx.deviceCode.deleteMany({ where: { userId } })
+    const reason = `consumer_lifecycle_${state}`
+    await tx.tokenRecord.updateMany({
+      where: { userId, status: "ACTIVE" },
+      data: {
+        status: "REVOKED",
+        revokedAt: now,
+        revocationReason: reason,
+      },
+    })
+    await tx.appGrant.updateMany({
+      where: {
+        userId,
+        status: { in: ["PENDING", "APPROVED"] },
+      },
+      data: {
+        status: "REVOKED",
+        revokedAt: now,
+        reason,
+      },
     })
   }
 

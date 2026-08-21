@@ -51,6 +51,45 @@ export type UserPlaylistReportSubmissionResult = {
   status: "RECEIVED"
 }
 
+export async function purgeExpiredUserPlaylistReportSensitiveMaterial(
+  prisma: PrismaClient,
+  now = new Date(),
+): Promise<{ detailRows: number; reporterDigestRows: number }> {
+  const [detail, reporter] = await prisma.$transaction([
+    prisma.userPlaylistReport.updateMany({
+      where: {
+        detailDeleteAfter: { lte: now },
+        detailDeletedAt: null,
+      },
+      data: {
+        detailCiphertext: null,
+        detailKeyId: null,
+        detailNonce: null,
+        detailAuthTag: null,
+        detailDeleteAfter: null,
+        detailDeletedAt: now,
+      },
+    }),
+    prisma.userPlaylistReport.updateMany({
+      where: {
+        reporterDigestDeleteAfter: { lte: now },
+        reporterDigestDeletedAt: null,
+      },
+      data: {
+        reporterIpDigest: null,
+        reporterIpDigestKeyId: null,
+        reporterIpDigestDay: null,
+        reporterDigestDeleteAfter: null,
+        reporterDigestDeletedAt: now,
+      },
+    }),
+  ])
+  return {
+    detailRows: detail.count,
+    reporterDigestRows: reporter.count,
+  }
+}
+
 const UNIFORM_RESULT: UserPlaylistReportSubmissionResult = {
   status: "RECEIVED",
 }
@@ -201,38 +240,6 @@ export class UserPlaylistReportService {
     reporterDigestRows: number
   }> {
     const now = (this.dependencies.now ?? (() => new Date()))()
-    const [detail, reporter] = await this.prisma.$transaction([
-      this.prisma.userPlaylistReport.updateMany({
-        where: {
-          detailDeleteAfter: { lte: now },
-          detailDeletedAt: null,
-        },
-        data: {
-          detailCiphertext: null,
-          detailKeyId: null,
-          detailNonce: null,
-          detailAuthTag: null,
-          detailDeleteAfter: null,
-          detailDeletedAt: now,
-        },
-      }),
-      this.prisma.userPlaylistReport.updateMany({
-        where: {
-          reporterDigestDeleteAfter: { lte: now },
-          reporterDigestDeletedAt: null,
-        },
-        data: {
-          reporterIpDigest: null,
-          reporterIpDigestKeyId: null,
-          reporterIpDigestDay: null,
-          reporterDigestDeleteAfter: null,
-          reporterDigestDeletedAt: now,
-        },
-      }),
-    ])
-    return {
-      detailRows: detail.count,
-      reporterDigestRows: reporter.count,
-    }
+    return purgeExpiredUserPlaylistReportSensitiveMaterial(this.prisma, now)
   }
 }

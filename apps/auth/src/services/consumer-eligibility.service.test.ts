@@ -25,6 +25,10 @@ function buildHarness(
     consumerLifecycleOutbox: { create },
     oauthAccessToken: { deleteMany: vi.fn() },
     oauthRefreshToken: { updateMany: vi.fn() },
+    oauthConsent: { deleteMany: vi.fn() },
+    deviceCode: { deleteMany: vi.fn() },
+    tokenRecord: { updateMany: vi.fn() },
+    appGrant: { updateMany: vi.fn() },
     session: { deleteMany: vi.fn() },
   }
   const prisma = {
@@ -187,6 +191,30 @@ describe("ConsumerEligibilityService", () => {
     )
   })
 
+  it("re-revokes a newly-created session for an already suspended member without duplicating the lifecycle event", async () => {
+    const { service, tx } = buildHarness({
+      id: "consumer-1",
+      actorType: "HUMAN",
+      emailVerified: true,
+      membershipStatus: "SUSPENDED",
+      consumerLifecycleState: "SUSPENDED",
+      consumerLifecycleVersion: 5n,
+      consumerLifecycleRenewedAt: null,
+      accounts: [{ providerId: "google", accountId: "google-subject" }],
+    })
+
+    await expect(service.reconcile("consumer-1")).resolves.toMatchObject({
+      eligible: false,
+      state: "SUSPENDED",
+      version: 5n,
+    })
+    expect(tx.session.deleteMany).toHaveBeenCalledWith({
+      where: { userId: "consumer-1" },
+    })
+    expect(tx.user.update).not.toHaveBeenCalled()
+    expect(tx.consumerLifecycleOutbox.create).not.toHaveBeenCalled()
+  })
+
   it("revokes current token families before emitting a non-active state", async () => {
     const { service, tx } = buildHarness({
       id: "consumer-1",
@@ -211,6 +239,31 @@ describe("ConsumerEligibilityService", () => {
     expect(tx.session.deleteMany).toHaveBeenCalledWith({
       where: { userId: "consumer-1" },
     })
+    expect(tx.oauthConsent.deleteMany).toHaveBeenCalledWith({
+      where: { userId: "consumer-1" },
+    })
+    expect(tx.deviceCode.deleteMany).toHaveBeenCalledWith({
+      where: { userId: "consumer-1" },
+    })
+    expect(tx.tokenRecord.updateMany).toHaveBeenCalledWith({
+      where: { userId: "consumer-1", status: "ACTIVE" },
+      data: {
+        status: "REVOKED",
+        revokedAt: expect.any(Date),
+        revocationReason: "consumer_lifecycle_SUSPENDING",
+      },
+    })
+    expect(tx.appGrant.updateMany).toHaveBeenCalledWith({
+      where: {
+        userId: "consumer-1",
+        status: { in: ["PENDING", "APPROVED"] },
+      },
+      data: {
+        status: "REVOKED",
+        revokedAt: expect.any(Date),
+        reason: "consumer_lifecycle_SUSPENDING",
+      },
+    })
     expect(tx.user.update.mock.invocationCallOrder[0]).toBeGreaterThan(
       tx.session.deleteMany.mock.invocationCallOrder[0]!,
     )
@@ -223,6 +276,33 @@ describe("ConsumerEligibilityService", () => {
         }),
       }),
     )
+  })
+
+  it("retries DELETING without advancing its lifecycle version or duplicating its outbox event", async () => {
+    const { service, tx } = buildHarness({
+      id: "consumer-1",
+      actorType: "HUMAN",
+      emailVerified: true,
+      membershipStatus: "ACTIVE",
+      consumerLifecycleState: "DELETING",
+      consumerLifecycleVersion: 7n,
+      consumerLifecycleRenewedAt: null,
+      accounts: [{ providerId: "apple", accountId: "apple-subject" }],
+    })
+
+    await expect(service.transition("consumer-1", "DELETING")).resolves.toEqual(
+      {
+        eligible: false,
+        membershipStatus: "ACTIVE",
+        state: "DELETING",
+        version: 7n,
+      },
+    )
+    expect(tx.session.deleteMany).toHaveBeenCalledWith({
+      where: { userId: "consumer-1" },
+    })
+    expect(tx.user.update).not.toHaveBeenCalled()
+    expect(tx.consumerLifecycleOutbox.create).not.toHaveBeenCalled()
   })
 
   it.each(["SUSPENDING", "SUSPENDED", "DELETING", "DELETED"])(

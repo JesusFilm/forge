@@ -49,6 +49,7 @@ vi.mock("@/auth/agent-login-plugin", () => ({
 vi.mock("@/config/env", () => ({
   assertProductionAuthSecrets: vi.fn(),
   env: authConfigCapture.env,
+  getAdminUserPlaylistDeletionConfig: vi.fn(() => null),
   getAdminWatchProgressErasureConfig: vi.fn(() => null),
   getAppleNativeClientConfig: vi.fn(() => null),
   getAuthBaseUrl: vi.fn(() => "http://localhost:3004"),
@@ -64,6 +65,10 @@ vi.mock("@/services/consumer-eligibility.service", () => ({
   ConsumerEligibilityService: class {
     reconcile = authConfigCapture.reconcileConsumerEligibility
   },
+}))
+
+vi.mock("@/services/account-deletion-runtime", () => ({
+  createAccountDeletionDeps: vi.fn(() => ({})),
 }))
 
 type CapturedAuthOptions = {
