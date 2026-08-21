@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useRef, useState } from "react"
-import { History, LogOut, UserRound } from "lucide-react"
+import { History, ListVideo, LogOut, UserRound } from "lucide-react"
 import { useTranslations } from "next-intl"
 
 import { useFloatingSearchPinned } from "@/components/FloatingSearchProvider"
@@ -202,6 +202,17 @@ export function AccountControl() {
             </div>
           </div>
           <div className="border-t border-white/10 p-2">
+            <button
+              type="button"
+              role="menuitem"
+              className="flex min-h-11 w-full cursor-pointer items-center gap-2 rounded-md px-3 py-2 text-left text-sm text-stone-100 transition-colors hover:bg-white/10 focus-visible:bg-white/10 focus-visible:outline-none"
+              onClick={() => {
+                window.location.assign("/watch/playlists")
+              }}
+            >
+              <ListVideo aria-hidden="true" className="h-4 w-4" />
+              <span>{t("myPlaylists")}</span>
+            </button>
             <button
               type="button"
               role="menuitem"

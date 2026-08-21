@@ -223,7 +223,7 @@ describe("AccountControl", () => {
     expect(identifyDatadogRumUserMock).not.toHaveBeenCalled()
   })
 
-  it("opens a signed-in account menu with profile details and logout", async () => {
+  it("opens a signed-in account menu with My playlists independent of the download gate", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn(async () =>
@@ -268,10 +268,22 @@ describe("AccountControl", () => {
       expect(el?.textContent).toContain("Viewer Example")
       expect(el?.textContent).toContain("viewer@example.test")
       expect(el?.textContent).toContain("Log out")
+      expect(el?.textContent).toContain("My playlists")
       return el as HTMLElement
     })
     expect(button.getAttribute("aria-expanded")).toBe("true")
     expect(container.innerHTML).toContain("https://example.test/avatar.jpg")
+
+    const playlistsItem = Array.from(
+      menu.querySelectorAll<HTMLButtonElement>('[role="menuitem"]'),
+    ).find((item) => item.textContent?.includes("My playlists"))
+    expect(playlistsItem).toBeDefined()
+
+    await act(async () => {
+      playlistsItem?.click()
+    })
+
+    expect(assignSpy).toHaveBeenCalledWith("/watch/playlists")
 
     const logoutItem = Array.from(
       menu.querySelectorAll<HTMLButtonElement>('[role="menuitem"]'),

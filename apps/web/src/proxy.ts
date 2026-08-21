@@ -160,6 +160,23 @@ function applyExperiencePreviewHeaders(response: NextResponse): NextResponse {
   return response
 }
 
+function applyOwnerPlaylistHeaders(response: NextResponse): NextResponse {
+  response.headers.set("Cache-Control", "private, no-store, max-age=0")
+  response.headers.set("X-Robots-Tag", "noindex, nofollow, noarchive")
+  response.headers.set("Referrer-Policy", "no-referrer")
+  return response
+}
+
+function isOwnerPlaylistPath(pathname: string): boolean {
+  const segments = splitPath(pathname)
+  return (
+    (segments.length === 1 && segments[0] === "playlists") ||
+    (segments.length === 2 &&
+      segments[0] === "playlists" &&
+      /^[A-Za-z0-9][A-Za-z0-9_-]{0,190}$/.test(segments[1] ?? ""))
+  )
+}
+
 function firstSegment(pathname: string): string | undefined {
   return splitPath(pathname)[0]
 }
@@ -268,7 +285,11 @@ function classifyRewrite(pathname: string): RewriteDecision {
   const segments = splitPath(pathname)
   if (segments.length === 1) {
     const [segment] = segments
-    if (segment === "history" || segment === "languages") {
+    if (
+      segment === "history" ||
+      segment === "languages" ||
+      segment === "playlists"
+    ) {
       return {
         kind: "rewrite",
         locale: DEFAULT_LOCALE,
@@ -295,6 +316,17 @@ function classifyRewrite(pathname: string): RewriteDecision {
 
   if (segments.length === 2) {
     const [slugSegment, localeSegment] = segments
+    if (
+      slugSegment === "playlists" &&
+      /^[A-Za-z0-9][A-Za-z0-9_-]{0,190}$/.test(localeSegment ?? "")
+    ) {
+      return {
+        kind: "rewrite",
+        locale: DEFAULT_LOCALE,
+        htmlLang: DEFAULT_LOCALE,
+        pathname,
+      }
+    }
     if (
       localeSegment === "videos" ||
       localeSegment === "languages" ||
@@ -712,13 +744,16 @@ export async function proxy(request: ProxyRequest): Promise<NextResponse> {
   )
   const prefix = internalPrefixDecision(pathname)
   if (claimedPublicPathname != null) {
-    return (await isAdmittedInternalRewrite(
+    const admitted = await isAdmittedInternalRewrite(
       request,
       pathname,
       claimedPublicPathname,
-    ))
-      ? applyWatchSecurityHeaders(NextResponse.next())
-      : buildNotFound(request)
+    )
+    if (!admitted) return buildNotFound(request)
+    const response = applyWatchSecurityHeaders(NextResponse.next())
+    return isOwnerPlaylistPath(claimedPublicPathname)
+      ? applyOwnerPlaylistHeaders(response)
+      : response
   }
 
   if (prefix.kind === "not-found") return buildNotFound(request)
@@ -728,13 +763,19 @@ export async function proxy(request: ProxyRequest): Promise<NextResponse> {
     return buildRedirect(url, 308)
   }
 
-  if (pathname === "/history") {
-    return rewriteToInternal(request, {
+  if (pathname === "/history" || isOwnerPlaylistPath(pathname)) {
+    const response = rewriteToInternal(request, {
       kind: "rewrite",
       locale: DEFAULT_LOCALE,
       htmlLang: DEFAULT_LOCALE,
       pathname,
     })
+    return isOwnerPlaylistPath(pathname)
+      ? applyOwnerPlaylistHeaders(response)
+      : response
+  }
+  if (pathname === "/playlists" || pathname.startsWith("/playlists/")) {
+    return buildNotFound(request)
   }
 
   const canonical = canonicalizeWatchPath({ rawPathname: pathname })

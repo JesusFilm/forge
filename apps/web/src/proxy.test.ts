@@ -165,6 +165,33 @@ describe("proxy — Experience draft preview", () => {
   })
 })
 
+describe("proxy — authenticated owner playlists", () => {
+  it.each(["/playlists", "/playlists/playlist_123"])(
+    "admits GET and Server Action POST routing for %s without discovery caching",
+    async (pathname) => {
+      const response = await proxy(makeRequest(pathname))
+
+      expect(rewritePath(response)).toBe(`/en/en${pathname}`)
+      expect(response.headers.get("cache-control")).toBe(
+        "private, no-store, max-age=0",
+      )
+      expect(response.headers.get("x-robots-tag")).toBe(
+        "noindex, nofollow, noarchive",
+      )
+      expect(response.headers.get("referrer-policy")).toBe("no-referrer")
+    },
+  )
+
+  it("rejects malformed or overlong owner playlist identifiers", async () => {
+    for (const pathname of [
+      "/playlists/unsafe%2Fid",
+      `/playlists/${"a".repeat(192)}`,
+    ]) {
+      expectNotFoundRewrite(await proxy(makeRequest(pathname)))
+    }
+  })
+})
+
 // ---------------------------------------------------------------------------
 // Phase 3 canonicalize integration — every row from research §5.4 must
 // produce the exact (status, Location) tuple, AND every redirect must

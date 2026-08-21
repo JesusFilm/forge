@@ -42,18 +42,45 @@ function createAdminClient(timeoutMs: number): ApolloClient {
   })
 }
 
-export function createUserAdminClient(
+function createAuthenticatedAdminClient(
   accessToken: string,
-  timeoutMs = REQUEST_TIMEOUT_MS,
+  timeoutMs: number,
+  additionalHeaders: Record<string, string> = {},
 ): ApolloClient {
   return new ApolloClient({
     link: new HttpLink({
       uri: env.ADMIN_GRAPHQL_URL,
-      headers: { Authorization: `Bearer ${accessToken}` },
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        ...additionalHeaders,
+      },
       fetch: createTimeoutFetch(timeoutMs),
     }),
     cache: new InMemoryCache(),
   })
+}
+
+export function createUserAdminClient(
+  accessToken: string,
+  timeoutMs = REQUEST_TIMEOUT_MS,
+): ApolloClient {
+  return createAuthenticatedAdminClient(accessToken, timeoutMs)
+}
+
+type UserPlaylistContextHeaders = Record<
+  "x-forge-viewer-context" | "x-forge-viewer-context-signature",
+  string
+>
+
+export function createUserPlaylistAdminClient(
+  accessToken: string,
+  contextHeaders: UserPlaylistContextHeaders,
+): ApolloClient {
+  return createAuthenticatedAdminClient(
+    accessToken,
+    REQUEST_TIMEOUT_MS,
+    contextHeaders,
+  )
 }
 
 function createLazyAdminClient(timeoutMs: number): ApolloClient {
