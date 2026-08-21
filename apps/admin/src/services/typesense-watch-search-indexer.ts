@@ -4,6 +4,10 @@ import { notRestrictedFromWatchWhere } from "./search-watchability"
 import { TypesenseClient } from "./typesense-client"
 import { canonicalTypesenseVideoId } from "./typesense-watch-search-identifiers"
 import {
+  bestVideoImageUrl,
+  sortVideoImagesByDisplayPreference,
+} from "./video-image-selection"
+import {
   buildTypesenseWatchCandidateLexicalDocuments,
   buildTypesenseWatchLexicalDocuments,
   estimateTypesenseCandidateKeywordMemory,
@@ -142,22 +146,6 @@ function englishName(value: unknown): string | null {
     return typeof name === "string" && name.trim() ? name : null
   }
   return null
-}
-
-function bestImageUrl(image: {
-  url: string | null
-  mobileCinematicHigh: string | null
-  mobileCinematicLow: string | null
-  videoStill: string | null
-  thumbnail: string | null
-}): string | null {
-  return (
-    image.mobileCinematicHigh ??
-    image.mobileCinematicLow ??
-    image.videoStill ??
-    image.thumbnail ??
-    image.url
-  )
 }
 
 export function parseTypesenseVector(value: string): number[] {
@@ -346,6 +334,7 @@ export async function buildCatalogDocuments(
           where: { deletedAt: null },
           orderBy: { id: "asc" },
           select: {
+            id: true,
             url: true,
             mobileCinematicHigh: true,
             mobileCinematicLow: true,
@@ -397,7 +386,9 @@ export async function buildCatalogDocuments(
       })
     }
     const subtitleOptions = subtitlesByVideo.get(video.id) ?? []
-    const firstImage = video.images.find((image) => bestImageUrl(image) != null)
+    const firstImage = sortVideoImagesByDisplayPreference(video.images).find(
+      (image) => bestVideoImageUrl(image) != null,
+    )
 
     return [
       {
@@ -412,7 +403,7 @@ export async function buildCatalogDocuments(
         localesJson: JSON.stringify(locales),
         label: video.label ?? null,
         childCount: video.children.length,
-        imageUrl: firstImage ? bestImageUrl(firstImage) : null,
+        imageUrl: firstImage ? bestVideoImageUrl(firstImage) : null,
         imageBlurDataUrl: firstImage?.blurDataUrl ?? null,
         audioLanguageSlugs: audioOptions.map((option) => option.languageSlug),
         subtitleLanguageSlugs: [
