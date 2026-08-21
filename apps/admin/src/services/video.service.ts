@@ -32,6 +32,7 @@ import {
   watchVisibilityWhere,
 } from "./search-watchability"
 import { ForbiddenError } from "./errors"
+import { compareVideoImagesByDisplayPreference } from "./video-image-selection"
 
 /**
  * Dispatch-fields projection consumed by manager's admin-trigger
@@ -1054,6 +1055,7 @@ function imageRowsForSnapshot(
 ): WatchRouteSnapshotImage[] {
   return rows
     .filter((row) => row.videoId === videoId)
+    .sort(compareVideoImagesByDisplayPreference)
     .map((row) => ({
       documentId: row.id,
       url: row.url,
@@ -1597,6 +1599,7 @@ export class VideoService {
     ] = await Promise.all([
       this.prisma.videoImage.findMany({
         where: { videoId: { in: allVideoIds }, deletedAt: null },
+        orderBy: [{ videoId: "asc" }, { id: "asc" }],
         select: {
           id: true,
           videoId: true,
