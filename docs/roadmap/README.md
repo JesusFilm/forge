@@ -6,8 +6,8 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 
 ## Status (August 21, 2026)
 
-- **Total tickets:** 559
-- **Complete:** 405
+- **Total tickets:** 560
+- **Complete:** 406
 - **In progress:** 39
 - **Not started:** 36
 - **Blocked:** 79
@@ -538,6 +538,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-313](platform/feat-313-watch-carousel-hover-controls.md)                         | Watch carousel hover controls                                                    | codex      | P2       | 2026-07-24 | 1    | 2026-07-24 | complete    |
 | [feat-317](platform/feat-317-watch-faq-disclosure-semantics.md)                        | Watch FAQ disclosure semantics                                                   | vlad       | P2       | 2026-07-25 | 1    | 2026-07-25 | complete    |
 | [feat-322](platform/feat-322-watch-series-background-parity.md)                        | Watch series background parity                                                   | codex      | P2       | 2026-07-31 | 1    | 2026-07-31 | complete    |
+| [feat-411](platform/feat-411-watch-favicon-discoverability.md)                         | Watch favicon discoverability                                                    | vlad       | P2       | 2026-08-21 | 1    | 2026-08-21 | complete    |
 | [feat-342](platform/feat-342-tv-device-grant-scaffold-teardown.md)                     | TV device-grant scaffold teardown                                                | ekkasit    | P2       | 2026-09-15 | 2    | 2026-09-16 | not-started |
 | [feat-068](platform/feat-068-partner-publishing-and-user-accounts.md)                  | Partner Publishing and User Accounts                                             | tataihono  | P2       | 2026-10-01 | 61   | 2026-11-30 | blocked     |
 | [feat-066](platform/feat-066-llm-steering-system-rag-and-guardrails.md)                | LLM Steering System (RAG + Guardrails)                                           | tataihono  | P2       | 2026-10-15 | 78   | 2026-12-31 | blocked     |
