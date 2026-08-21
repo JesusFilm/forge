@@ -167,3 +167,73 @@ describe("web env — Watch search rollout", () => {
     expect(env.WATCH_SEARCH_DEFAULT_SHADOW_ENABLED).toBe(false)
   })
 })
+
+describe("web env — user playlist UX rollout", () => {
+  beforeEach(() => {
+    vi.resetModules()
+    process.env = { ...ORIGINAL_ENV }
+    useBaseEnv()
+  })
+
+  afterEach(() => {
+    process.env = { ...ORIGINAL_ENV }
+  })
+
+  it("keeps authoring and anonymous-public-read UX off by default", async () => {
+    const { resolveUserPlaylistUxControls } = await import("./env")
+
+    expect(resolveUserPlaylistUxControls()).toMatchObject({
+      authoringEnabled: false,
+      anonymousPublicReadEnabled: false,
+    })
+  })
+
+  it("fails malformed UX mirrors closed", async () => {
+    const { resolveUserPlaylistUxControls } = await import("./env")
+
+    expect(
+      resolveUserPlaylistUxControls({
+        authoringEnabled: "invalid",
+        anonymousPublicReadEnabled: "true",
+        emergencyPublicReadDisabled: "invalid",
+      }),
+    ).toEqual({
+      authoringEnabled: false,
+      anonymousPublicReadEnabled: false,
+      emergencyPublicReadDisabled: true,
+      malformed: true,
+    })
+  })
+
+  it("reads the complete server-only policy and trusted-context configuration", async () => {
+    process.env.USER_PLAYLIST_TRUSTED_CONTEXT_HMAC_SECRET =
+      "viewer-context-secret-that-is-at-least-32-bytes"
+    process.env.USER_PLAYLIST_TERMS_VERSION = "2026-08-21"
+    process.env.USER_PLAYLIST_PRIVACY_VERSION = "2026-08-21"
+    process.env.USER_PLAYLIST_COMMUNITY_GUIDELINES_VERSION = "2026-08-21"
+    process.env.USER_PLAYLIST_TERMS_URL = "https://www.jesusfilm.org/terms/"
+    process.env.USER_PLAYLIST_PRIVACY_URL = "https://www.jesusfilm.org/privacy/"
+    process.env.USER_PLAYLIST_COMMUNITY_GUIDELINES_URL =
+      "https://www.jesusfilm.org/community-guidelines/"
+
+    const { env } = await import("./env")
+
+    expect(
+      env.USER_PLAYLIST_TRUSTED_CONTEXT_HMAC_SECRET?.length,
+    ).toBeGreaterThanOrEqual(32)
+    expect(env.USER_PLAYLIST_TERMS_VERSION).toBe("2026-08-21")
+    expect(env.USER_PLAYLIST_TERMS_URL).toBe("https://www.jesusfilm.org/terms/")
+  })
+
+  it.each([
+    "USER_PLAYLIST_TERMS_URL",
+    "USER_PLAYLIST_PRIVACY_URL",
+    "USER_PLAYLIST_COMMUNITY_GUIDELINES_URL",
+  ] as const)("rejects an insecure %s policy link", async (variable) => {
+    process.env[variable] = "http://example.test/policy"
+
+    await expect(import("./env")).rejects.toThrow(
+      "Invalid environment variables",
+    )
+  })
+})

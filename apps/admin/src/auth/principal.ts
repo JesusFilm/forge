@@ -78,6 +78,15 @@ export type Principal = {
    * of the flat per-key `consumer:<key>`. Bucketing-only; never a permission.
    */
   fleet?: boolean
+  /** Immutable delegated-token facts retained after introspection. */
+  delegated?: Readonly<{
+    active: true
+    issuer: string
+    audience: readonly string[]
+    clientId: string
+    environment: "local" | "preview" | "staging" | "production"
+    scopes: readonly string[]
+  }>
 }
 
 export type ManagerRole = "OPERATOR"
@@ -145,14 +154,26 @@ export function CONSUMER_BEARER_PRINCIPAL({
 
 export function WEB_USER_PRINCIPAL({
   subject,
+  delegated,
 }: {
   subject: string
+  delegated?: Principal["delegated"]
 }): Principal {
-  return {
+  const principal: Principal = {
     id: subject,
     role: "WEB_USER",
     rateLimitBucketKey: subject,
+    ...(delegated
+      ? {
+          delegated: Object.freeze({
+            ...delegated,
+            audience: Object.freeze([...delegated.audience]),
+            scopes: Object.freeze([...delegated.scopes]),
+          }),
+        }
+      : {}),
   }
+  return delegated ? Object.freeze(principal) : principal
 }
 
 export function MOBILE_USER_PRINCIPAL({

@@ -48,6 +48,21 @@ export const AUTH_SCOPES = [
       "Allow Web to record meaningful signed-in video watch activity.",
   },
   {
+    key: "playlist:read",
+    label: "Read your playlists",
+    description: "Read playlists owned by your signed-in Web account.",
+  },
+  {
+    key: "playlist:write",
+    label: "Edit your playlists",
+    description: "Create and edit playlists owned by your Web account.",
+  },
+  {
+    key: "playlist:share",
+    label: "Share your playlists",
+    description: "Manage unlisted links for playlists you own.",
+  },
+  {
     key: "admin:manager-session:validate",
     label: "Validate Manager sessions",
     description:

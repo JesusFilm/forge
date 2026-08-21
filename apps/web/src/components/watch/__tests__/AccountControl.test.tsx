@@ -90,7 +90,11 @@ describe("AccountControl", () => {
     vi.stubGlobal(
       "fetch",
       vi.fn(async () =>
-        Response.json({ accountGateEnabled: true, authenticated: false }),
+        Response.json({
+          accountGateEnabled: true,
+          authenticated: false,
+          playlistAuthoringEnabled: false,
+        }),
       ),
     )
 
@@ -136,6 +140,7 @@ describe("AccountControl", () => {
         Response.json({
           accountGateEnabled: false,
           authenticated: true,
+          playlistAuthoringEnabled: false,
           user: "viewer",
         }),
     ],
@@ -145,6 +150,7 @@ describe("AccountControl", () => {
         Response.json({
           accountGateEnabled: true,
           authenticated: false,
+          playlistAuthoringEnabled: false,
           user: { id: "viewer" },
         }),
     ],
@@ -169,7 +175,11 @@ describe("AccountControl", () => {
     vi.stubGlobal(
       "fetch",
       vi.fn(async () =>
-        Response.json({ accountGateEnabled: true, authenticated: false }),
+        Response.json({
+          accountGateEnabled: true,
+          authenticated: false,
+          playlistAuthoringEnabled: false,
+        }),
       ),
     )
 
@@ -202,7 +212,11 @@ describe("AccountControl", () => {
     vi.stubGlobal(
       "fetch",
       vi.fn(async () =>
-        Response.json({ accountGateEnabled: false, authenticated: false }),
+        Response.json({
+          accountGateEnabled: false,
+          authenticated: false,
+          playlistAuthoringEnabled: false,
+        }),
       ),
     )
 
@@ -223,13 +237,14 @@ describe("AccountControl", () => {
     expect(identifyDatadogRumUserMock).not.toHaveBeenCalled()
   })
 
-  it("opens a signed-in account menu with profile details and logout", async () => {
+  it("opens a signed-in account menu with My playlists independent of the download gate", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn(async () =>
         Response.json({
           accountGateEnabled: false,
           authenticated: true,
+          playlistAuthoringEnabled: true,
           user: {
             id: "auth-user-123",
             email: "viewer@example.test",
@@ -268,10 +283,22 @@ describe("AccountControl", () => {
       expect(el?.textContent).toContain("Viewer Example")
       expect(el?.textContent).toContain("viewer@example.test")
       expect(el?.textContent).toContain("Log out")
+      expect(el?.textContent).toContain("My playlists")
       return el as HTMLElement
     })
     expect(button.getAttribute("aria-expanded")).toBe("true")
     expect(container.innerHTML).toContain("https://example.test/avatar.jpg")
+
+    const playlistsItem = Array.from(
+      menu.querySelectorAll<HTMLButtonElement>('[role="menuitem"]'),
+    ).find((item) => item.textContent?.includes("My playlists"))
+    expect(playlistsItem).toBeDefined()
+
+    await act(async () => {
+      playlistsItem?.click()
+    })
+
+    expect(assignSpy).toHaveBeenCalledWith("/watch/playlists")
 
     const logoutItem = Array.from(
       menu.querySelectorAll<HTMLButtonElement>('[role="menuitem"]'),
@@ -294,6 +321,7 @@ describe("AccountControl", () => {
         Response.json({
           accountGateEnabled: false,
           authenticated: true,
+          playlistAuthoringEnabled: false,
           user: {
             email: "viewer@example.test",
             name: "Viewer Example",
@@ -319,6 +347,7 @@ describe("AccountControl", () => {
         container.querySelector('[data-testid="watch-account-menu"]'),
       ).not.toBeNull()
       expect(button.getAttribute("aria-expanded")).toBe("true")
+      expect(container.textContent).not.toContain("My playlists")
     })
 
     floatingChrome.searchChromeVisible = false

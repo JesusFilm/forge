@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useRef, useState } from "react"
-import { History, LogOut, UserRound } from "lucide-react"
+import { History, ListVideo, LogOut, UserRound } from "lucide-react"
 import { useTranslations } from "next-intl"
 
 import { useFloatingSearchPinned } from "@/components/FloatingSearchProvider"
@@ -21,11 +21,16 @@ type AccountState =
   | { status: "loading" }
   | { status: "hidden" }
   | { status: "signed-out" }
-  | { status: "signed-in"; user?: AccountUser }
+  | {
+      status: "signed-in"
+      playlistAuthoringEnabled: boolean
+      user?: AccountUser
+    }
 
 type AccountSession = {
   accountGateEnabled: boolean
   authenticated: boolean
+  playlistAuthoringEnabled: boolean
   user?: AccountUser
 }
 
@@ -82,7 +87,11 @@ export function AccountControl() {
         }
         setState(
           session.authenticated
-            ? { status: "signed-in", user: session.user }
+            ? {
+                status: "signed-in",
+                playlistAuthoringEnabled: session.playlistAuthoringEnabled,
+                user: session.user,
+              }
             : session.accountGateEnabled
               ? { status: "signed-out" }
               : { status: "hidden" },
@@ -202,6 +211,19 @@ export function AccountControl() {
             </div>
           </div>
           <div className="border-t border-white/10 p-2">
+            {state.playlistAuthoringEnabled ? (
+              <button
+                type="button"
+                role="menuitem"
+                className="flex min-h-11 w-full cursor-pointer items-center gap-2 rounded-md px-3 py-2 text-left text-sm text-stone-100 transition-colors hover:bg-white/10 focus-visible:bg-white/10 focus-visible:outline-none"
+                onClick={() => {
+                  window.location.assign("/watch/playlists")
+                }}
+              >
+                <ListVideo aria-hidden="true" className="h-4 w-4" />
+                <span>{t("myPlaylists")}</span>
+              </button>
+            ) : null}
             <button
               type="button"
               role="menuitem"
@@ -235,6 +257,7 @@ function isAccountSession(value: unknown): value is AccountSession {
   if (!isRecord(value)) return false
   if (typeof value.accountGateEnabled !== "boolean") return false
   if (typeof value.authenticated !== "boolean") return false
+  if (typeof value.playlistAuthoringEnabled !== "boolean") return false
   if (!value.authenticated && value.user !== undefined) return false
   if (value.user !== undefined && !isAccountUser(value.user)) return false
 

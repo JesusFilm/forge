@@ -20,10 +20,31 @@ import {
   TV_DEVICE_CLIENT_IDS,
   WEB_APP_KEY,
   WEB_APP_SEED,
+  WEB_DEFAULT_SCOPES,
+  WEB_ORDINARY_SCOPES,
+  WEB_PLAYLIST_SCOPES,
 } from "./apps"
 import { assertKnownScopes } from "./scopes"
 
 describe("first-party app seeds", () => {
+  it("composes Web defaults from ordinary scopes followed by playlist scopes", () => {
+    expect(WEB_ORDINARY_SCOPES).toEqual([
+      "openid",
+      "profile:read",
+      "email:read",
+      "web:watch-events:write",
+    ])
+    expect(WEB_PLAYLIST_SCOPES).toEqual([
+      "playlist:read",
+      "playlist:write",
+      "playlist:share",
+    ])
+    expect(WEB_DEFAULT_SCOPES).toEqual([
+      ...WEB_ORDINARY_SCOPES,
+      ...WEB_PLAYLIST_SCOPES,
+    ])
+  })
+
   it("keeps Admin and Manager registered as distinct first-party OAuth apps", () => {
     expect(FIRST_PARTY_APP_SEEDS.map((app) => app.key)).toEqual([
       ADMIN_APP_SEED.key,
@@ -91,7 +112,13 @@ describe("first-party app seeds", () => {
           redirectUris: ["http://localhost:3000/watch/api/auth/callback"],
           postLogoutRedirectUris: ["http://localhost:3000/watch"],
           allowedOrigins: ["http://localhost:3000"],
-          defaultScopes: expect.arrayContaining(["web:watch-events:write"]),
+          defaultScopes: expect.arrayContaining([
+            "web:watch-events:write",
+            "playlist:read",
+            "playlist:write",
+            "playlist:share",
+          ]),
+          tokenAudience: "http://localhost:3003/api/graphql",
           autoApprove: true,
         }),
         expect.objectContaining({
@@ -109,7 +136,13 @@ describe("first-party app seeds", () => {
             "https://www.jesusfilm.org",
             "https://watch.jesusfilm.org",
           ],
-          defaultScopes: expect.arrayContaining(["web:watch-events:write"]),
+          defaultScopes: expect.arrayContaining([
+            "web:watch-events:write",
+            "playlist:read",
+            "playlist:write",
+            "playlist:share",
+          ]),
+          tokenAudience: "https://admin.jesusfilm.org/api/graphql",
           autoApprove: true,
         }),
       ]),

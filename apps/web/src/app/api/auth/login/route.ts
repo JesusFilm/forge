@@ -13,7 +13,7 @@ import {
 import { buildWebAuthorizeUrl, getWebOAuthConfig } from "@/auth/oauth-client"
 import { createOAuthState } from "@/auth/oauth-state"
 import { getRequestOrigin } from "@/auth/request-origin"
-import { resolveWatchCallbackURL } from "@/lib/watch-callback"
+import { normalizeWebReturnTo } from "@/auth/return-to"
 
 export const runtime: ServerRuntime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -31,10 +31,10 @@ export async function GET(request: Request) {
   requireWebSessionSecret()
 
   const returnTo =
-    resolveWatchCallbackURL(
-      toAbsoluteWatchURL(url.searchParams.get("returnTo"), requestOrigin),
-      [requestOrigin, config.webBaseUrl],
-    ) ?? `${config.webBaseUrl}/watch`
+    normalizeWebReturnTo(url.searchParams.get("returnTo"), {
+      requestOrigin,
+      allowedOrigins: [config.webBaseUrl],
+    }) ?? "/watch"
   const cookieStore = await cookies()
   const prompt =
     parsePrompt(url.searchParams.get("prompt")) ??
@@ -71,13 +71,4 @@ function parsePrompt(
   prompt: string | null,
 ): "login" | "select_account" | undefined {
   return prompt === "login" || prompt === "select_account" ? prompt : undefined
-}
-
-function toAbsoluteWatchURL(value: string | null, origin: string) {
-  if (!value) return value
-  try {
-    return new URL(value, origin).toString()
-  } catch {
-    return value
-  }
 }

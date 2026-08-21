@@ -16,9 +16,12 @@ export {
   featureFlags,
   parseBooleanOverride,
   resolveLocalBooleanFallback,
+  resolveUserPlaylistFeatureControls,
   type BooleanOverrideParseResult,
   type FeatureFlagDefinition,
   type FeatureFlagEnv,
   type FeatureFlagKey,
   type FeatureFlagName,
+  type UserPlaylistFeatureControlInput,
+  type UserPlaylistFeatureControls,
 } from "./registry"

@@ -58,6 +58,10 @@ const ALL_PERMISSION_KEYS: PermissionKey[] = [
   "read:watch-progress:own",
   "write:watch-progress:own",
   "delete:watch-progress:own",
+  "read:user-playlists:own",
+  "write:user-playlists:own",
+  "share:user-playlists:own",
+  "moderate:user-playlists",
   "write:manager-enrichment-trigger",
   "write:manager-jobs",
   "delete:media-assets",
@@ -146,6 +150,7 @@ describe("hasPermission — tier-based gate", () => {
       { key: "read:manager-read-models", role: "EDITOR", expected: false },
       { key: "write:manager-jobs", role: "EDITOR", expected: false },
       { key: "write:watch-events", role: "EDITOR", expected: false },
+      { key: "moderate:user-playlists", role: "EDITOR", expected: false },
       { key: "delete:media-assets", role: "EDITOR", expected: false },
       { key: "write:videos", role: "EDITOR", expected: false },
       { key: "system:trigger-workflow", role: "EDITOR", expected: false },
@@ -166,6 +171,7 @@ describe("hasPermission — tier-based gate", () => {
       { key: "publish:experiences", role: "ADMIN", expected: true },
       { key: "system:trigger-workflow", role: "ADMIN", expected: true },
       { key: "admin:all", role: "ADMIN", expected: true },
+      { key: "moderate:user-playlists", role: "ADMIN", expected: true },
       // ADMIN does NOT auto-satisfy SYSTEM-only gates intended for workflows.
       // Intentional? — the matrix says system:write-derived is SYSTEM-min;
       // ADMIN currently passes via the "ADMIN satisfies any tier" rule in
@@ -252,6 +258,34 @@ describe("hasPermission — Web user bearer gate", () => {
       hasPermission(
         { id: "m", role: "MOBILE_USER", rateLimitBucketKey: "m" },
         "write:watch-events",
+      ),
+    ).toBe(false)
+  })
+
+  it("grants playlist permissions only from exact immutable Web scope metadata", () => {
+    const scopedWebUser: Principal = {
+      id: "auth-user-1",
+      role: "WEB_USER",
+      rateLimitBucketKey: "auth-user-1",
+      delegated: {
+        active: true,
+        issuer: "https://auth.jesusfilm.org/api/auth",
+        audience: ["http://localhost:3003/api/graphql"],
+        clientId: "jfp_web_local",
+        environment: "local",
+        scopes: ["playlist:read", "playlist:write", "playlist:share"],
+      },
+    }
+    expect(hasPermission(scopedWebUser, "read:user-playlists:own")).toBe(true)
+    expect(hasPermission(scopedWebUser, "write:user-playlists:own")).toBe(true)
+    expect(hasPermission(scopedWebUser, "share:user-playlists:own")).toBe(true)
+    expect(
+      hasPermission(
+        {
+          ...scopedWebUser,
+          delegated: { ...scopedWebUser.delegated!, clientId: "jfp_tv_local" },
+        },
+        "read:user-playlists:own",
       ),
     ).toBe(false)
   })
@@ -667,6 +701,10 @@ describe("permission matrix completeness", () => {
         "read:watch-progress:own": true,
         "write:watch-progress:own": true,
         "delete:watch-progress:own": true,
+        "read:user-playlists:own": true,
+        "write:user-playlists:own": true,
+        "share:user-playlists:own": true,
+        "moderate:user-playlists": true,
         "write:manager-enrichment-trigger": true,
         "write:manager-jobs": true,
         "delete:media-assets": true,
@@ -711,6 +749,10 @@ describe("permission matrix completeness", () => {
         "read:watch-progress:own": true,
         "write:watch-progress:own": true,
         "delete:watch-progress:own": true,
+        "read:user-playlists:own": true,
+        "write:user-playlists:own": true,
+        "share:user-playlists:own": true,
+        "moderate:user-playlists": true,
         "write:manager-enrichment-trigger": true,
         "write:manager-jobs": true,
         "delete:media-assets": true,
@@ -757,6 +799,10 @@ describe("permission matrix completeness", () => {
         "read:watch-progress:own": true,
         "write:watch-progress:own": true,
         "delete:watch-progress:own": true,
+        "read:user-playlists:own": true,
+        "write:user-playlists:own": true,
+        "share:user-playlists:own": true,
+        "moderate:user-playlists": true,
         "write:manager-enrichment-trigger": true,
         "write:manager-jobs": true,
         "delete:media-assets": true,
@@ -811,6 +857,10 @@ describe("permission matrix completeness", () => {
         "read:watch-progress:own": true,
         "write:watch-progress:own": true,
         "delete:watch-progress:own": true,
+        "read:user-playlists:own": true,
+        "write:user-playlists:own": true,
+        "share:user-playlists:own": true,
+        "moderate:user-playlists": true,
         "write:manager-enrichment-trigger": true,
         "write:manager-jobs": true,
         "delete:media-assets": true,

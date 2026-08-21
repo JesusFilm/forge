@@ -25,6 +25,10 @@ export const env = createEnv({
     APPLE_NATIVE_CLIENT_SECRET: z.string().min(1).optional(),
     ADMIN_WATCH_PROGRESS_BASE_URL: z.string().url().optional(),
     ADMIN_WATCH_PROGRESS_API_KEY: z.string().min(1).optional(),
+    ADMIN_USER_PLAYLIST_LIFECYCLE_URL: z.string().url().optional(),
+    USER_PLAYLIST_LIFECYCLE_HMAC_SECRET: z.string().min(32).optional(),
+    ADMIN_USER_PLAYLIST_ERASURE_URL: z.string().url().optional(),
+    ADMIN_USER_PLAYLIST_ERASURE_API_KEY: z.string().min(1).optional(),
     OKTA_CLIENT_ID: z.string().min(1).optional(),
     OKTA_CLIENT_SECRET: z.string().min(1).optional(),
     OKTA_ISSUER: z.string().url().optional(),
@@ -63,6 +67,18 @@ export const env = createEnv({
     ),
     ADMIN_WATCH_PROGRESS_API_KEY: emptyToUndefined(
       process.env.ADMIN_WATCH_PROGRESS_API_KEY,
+    ),
+    ADMIN_USER_PLAYLIST_LIFECYCLE_URL: emptyToUndefined(
+      process.env.ADMIN_USER_PLAYLIST_LIFECYCLE_URL,
+    ),
+    USER_PLAYLIST_LIFECYCLE_HMAC_SECRET: emptyToUndefined(
+      process.env.USER_PLAYLIST_LIFECYCLE_HMAC_SECRET,
+    ),
+    ADMIN_USER_PLAYLIST_ERASURE_URL: emptyToUndefined(
+      process.env.ADMIN_USER_PLAYLIST_ERASURE_URL,
+    ),
+    ADMIN_USER_PLAYLIST_ERASURE_API_KEY: emptyToUndefined(
+      process.env.ADMIN_USER_PLAYLIST_ERASURE_API_KEY,
     ),
     OKTA_CLIENT_ID: emptyToUndefined(process.env.OKTA_CLIENT_ID),
     OKTA_CLIENT_SECRET: emptyToUndefined(process.env.OKTA_CLIENT_SECRET),
@@ -159,6 +175,48 @@ export function getAdminWatchProgressErasureConfig(): {
   }
 }
 
+export function getAdminUserPlaylistLifecycleConfig(): {
+  endpoint: string
+  secret: string
+} | null {
+  if (
+    !env.ADMIN_USER_PLAYLIST_LIFECYCLE_URL ||
+    !env.USER_PLAYLIST_LIFECYCLE_HMAC_SECRET
+  ) {
+    return null
+  }
+  return {
+    endpoint: env.ADMIN_USER_PLAYLIST_LIFECYCLE_URL,
+    secret: env.USER_PLAYLIST_LIFECYCLE_HMAC_SECRET,
+  }
+}
+
+export function getAdminUserPlaylistDeletionConfig(): {
+  lifecycle: { endpoint: string; secret: string }
+  erasure: { endpoint: string; apiKey: string }
+} | null {
+  const values = [
+    env.ADMIN_USER_PLAYLIST_LIFECYCLE_URL,
+    env.USER_PLAYLIST_LIFECYCLE_HMAC_SECRET,
+    env.ADMIN_USER_PLAYLIST_ERASURE_URL,
+    env.ADMIN_USER_PLAYLIST_ERASURE_API_KEY,
+  ]
+  if (values.every((value) => value == null)) return null
+  if (values.some((value) => value == null)) {
+    throw new Error("partial user-playlist deletion configuration")
+  }
+  return {
+    lifecycle: {
+      endpoint: env.ADMIN_USER_PLAYLIST_LIFECYCLE_URL!,
+      secret: env.USER_PLAYLIST_LIFECYCLE_HMAC_SECRET!,
+    },
+    erasure: {
+      endpoint: env.ADMIN_USER_PLAYLIST_ERASURE_URL!,
+      apiKey: env.ADMIN_USER_PLAYLIST_ERASURE_API_KEY!,
+    },
+  }
+}
+
 export function getAuthValidAudiences(): string[] {
   return Array.from(
     new Set([
@@ -167,6 +225,10 @@ export function getAuthValidAudiences(): string[] {
       "https://admin-preview.jesusfilm.org/mcp",
       "https://admin-stage.jesusfilm.org/mcp",
       "https://admin.jesusfilm.org/mcp",
+      "http://localhost:3003/api/graphql",
+      "https://admin-preview.jesusfilm.org/api/graphql",
+      "https://admin-stage.jesusfilm.org/api/graphql",
+      "https://admin.jesusfilm.org/api/graphql",
       ...(env.AUTH_VALID_AUDIENCES ?? "")
         .split(",")
         .map((audience) => audience.trim())

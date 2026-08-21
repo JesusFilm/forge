@@ -34,3 +34,33 @@ export class ConcurrentModificationError extends Error {
     this.name = "ConcurrentModificationError"
   }
 }
+
+export class InvalidInputError extends Error {
+  constructor(message = "Invalid input") {
+    super(message)
+    this.name = "InvalidInputError"
+  }
+}
+
+export class LimitExceededError extends Error {
+  constructor(message = "Resource limit exceeded") {
+    super(message)
+    this.name = "LimitExceededError"
+  }
+}
+
+export class ServiceUnavailableError extends Error {
+  readonly retryable = true
+
+  constructor(message = "Service temporarily unavailable") {
+    super(message)
+    this.name = "ServiceUnavailableError"
+  }
+}
+
+export class ServiceConfigurationError extends Error {
+  constructor(message = "Service is not configured") {
+    super(message)
+    this.name = "ServiceConfigurationError"
+  }
+}

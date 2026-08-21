@@ -1,4 +1,9 @@
 import { createEnv } from "@t3-oss/env-nextjs"
+import {
+  resolveUserPlaylistFeatureControls,
+  type UserPlaylistFeatureControlInput,
+  type UserPlaylistFeatureControls,
+} from "@forge/feature-flags/registry"
 import { z } from "zod"
 
 /**
@@ -152,6 +157,19 @@ function optionalPositiveIntDefault(defaultValue: number) {
   }, z.number().int().positive().default(defaultValue))
 }
 
+export function resolveUserPlaylistUxControls(
+  input?: UserPlaylistFeatureControlInput,
+): UserPlaylistFeatureControls {
+  return resolveUserPlaylistFeatureControls(
+    input ?? {
+      authoringEnabled: env.FORGE_USER_PLAYLIST_AUTHORING_DEFAULT,
+      anonymousPublicReadEnabled: env.FORGE_USER_PLAYLIST_PUBLIC_READ_DEFAULT,
+      emergencyPublicReadDisabled:
+        env.USER_PLAYLIST_PUBLIC_READ_EMERGENCY_DISABLED,
+    },
+  )
+}
+
 export const env = createEnv({
   server: {
     // Retained for the /api/preview Next.js draft-mode handler. The data
@@ -173,6 +191,35 @@ export const env = createEnv({
     FORGE_WATCH_GLOBAL_BETA_TESTER_CTA_DEFAULT: z.string().optional(),
     FORGE_WATCH_HIDE_BIBLE_QUOTES_DEFAULT: z.string().optional(),
     FORGE_WATCH_QUESTION_PANEL_DEFAULT: z.string().optional(),
+    // UX mirrors only. Admin re-evaluates authoritative controls at the data
+    // boundary; these values may hide/explain unavailable UI but never grant.
+    FORGE_USER_PLAYLIST_AUTHORING_DEFAULT: z.string().optional(),
+    FORGE_USER_PLAYLIST_PUBLIC_READ_DEFAULT: z.string().optional(),
+    USER_PLAYLIST_PUBLIC_READ_EMERGENCY_DISABLED: z.string().optional(),
+    // Shared only between trusted Web and Admin runtimes. It signs a minimal
+    // country/IP envelope so Admin never trusts browser-forwardable headers.
+    USER_PLAYLIST_TRUSTED_CONTEXT_HMAC_SECRET: z.string().min(32).optional(),
+    // Playlist policy metadata is one atomic configuration: the owner UI
+    // stays unavailable unless every current version and public link exists.
+    USER_PLAYLIST_TERMS_VERSION: z.string().min(1).max(64).optional(),
+    USER_PLAYLIST_PRIVACY_VERSION: z.string().min(1).max(64).optional(),
+    USER_PLAYLIST_COMMUNITY_GUIDELINES_VERSION: z
+      .string()
+      .min(1)
+      .max(64)
+      .optional(),
+    USER_PLAYLIST_TERMS_URL: z
+      .url()
+      .refine((value) => new URL(value).protocol === "https:")
+      .optional(),
+    USER_PLAYLIST_PRIVACY_URL: z
+      .url()
+      .refine((value) => new URL(value).protocol === "https:")
+      .optional(),
+    USER_PLAYLIST_COMMUNITY_GUIDELINES_URL: z
+      .url()
+      .refine((value) => new URL(value).protocol === "https:")
+      .optional(),
     // Admin GraphQL URL. Required — web's data layer reads from admin.
     ADMIN_GRAPHQL_URL: z
       .url()
@@ -333,6 +380,33 @@ export const env = createEnv({
       process.env.FORGE_WATCH_HIDE_BIBLE_QUOTES_DEFAULT,
     FORGE_WATCH_QUESTION_PANEL_DEFAULT:
       process.env.FORGE_WATCH_QUESTION_PANEL_DEFAULT,
+    FORGE_USER_PLAYLIST_AUTHORING_DEFAULT:
+      process.env.FORGE_USER_PLAYLIST_AUTHORING_DEFAULT,
+    FORGE_USER_PLAYLIST_PUBLIC_READ_DEFAULT:
+      process.env.FORGE_USER_PLAYLIST_PUBLIC_READ_DEFAULT,
+    USER_PLAYLIST_PUBLIC_READ_EMERGENCY_DISABLED:
+      process.env.USER_PLAYLIST_PUBLIC_READ_EMERGENCY_DISABLED,
+    USER_PLAYLIST_TRUSTED_CONTEXT_HMAC_SECRET: emptyToUndefined(
+      process.env.USER_PLAYLIST_TRUSTED_CONTEXT_HMAC_SECRET,
+    ),
+    USER_PLAYLIST_TERMS_VERSION: emptyToUndefined(
+      process.env.USER_PLAYLIST_TERMS_VERSION,
+    ),
+    USER_PLAYLIST_PRIVACY_VERSION: emptyToUndefined(
+      process.env.USER_PLAYLIST_PRIVACY_VERSION,
+    ),
+    USER_PLAYLIST_COMMUNITY_GUIDELINES_VERSION: emptyToUndefined(
+      process.env.USER_PLAYLIST_COMMUNITY_GUIDELINES_VERSION,
+    ),
+    USER_PLAYLIST_TERMS_URL: emptyToUndefined(
+      process.env.USER_PLAYLIST_TERMS_URL,
+    ),
+    USER_PLAYLIST_PRIVACY_URL: emptyToUndefined(
+      process.env.USER_PLAYLIST_PRIVACY_URL,
+    ),
+    USER_PLAYLIST_COMMUNITY_GUIDELINES_URL: emptyToUndefined(
+      process.env.USER_PLAYLIST_COMMUNITY_GUIDELINES_URL,
+    ),
     ADMIN_GRAPHQL_URL: process.env.ADMIN_GRAPHQL_URL,
     WEB_ADMIN_API_KEYS: process.env.WEB_ADMIN_API_KEYS,
     WATCH_PROGRESS_ADMIN_API_KEYS: process.env.WATCH_PROGRESS_ADMIN_API_KEYS,

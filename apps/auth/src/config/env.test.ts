@@ -190,4 +190,52 @@ describe("mobile auth env", () => {
       apiKey: "erasure-key",
     })
   })
+
+  it("requires the lifecycle and erasure credentials as one playlist-deletion bundle", async () => {
+    vi.stubEnv(
+      "ADMIN_USER_PLAYLIST_LIFECYCLE_URL",
+      "http://localhost:3003/api/internal/user-playlists/lifecycle",
+    )
+    vi.stubEnv(
+      "USER_PLAYLIST_LIFECYCLE_HMAC_SECRET",
+      "lifecycle-secret-that-is-at-least-32-bytes",
+    )
+    vi.stubEnv("ADMIN_USER_PLAYLIST_ERASURE_URL", "")
+    vi.stubEnv("ADMIN_USER_PLAYLIST_ERASURE_API_KEY", "")
+
+    const { getAdminUserPlaylistDeletionConfig } = await loadEnv()
+
+    expect(() => getAdminUserPlaylistDeletionConfig()).toThrow(
+      "partial user-playlist deletion configuration",
+    )
+  })
+
+  it("returns the complete playlist-deletion authority bundle", async () => {
+    vi.stubEnv(
+      "ADMIN_USER_PLAYLIST_LIFECYCLE_URL",
+      "http://localhost:3003/api/internal/user-playlists/lifecycle",
+    )
+    vi.stubEnv(
+      "USER_PLAYLIST_LIFECYCLE_HMAC_SECRET",
+      "lifecycle-secret-that-is-at-least-32-bytes",
+    )
+    vi.stubEnv(
+      "ADMIN_USER_PLAYLIST_ERASURE_URL",
+      "http://localhost:3003/api/internal/user-playlists/erasure",
+    )
+    vi.stubEnv("ADMIN_USER_PLAYLIST_ERASURE_API_KEY", "playlist-erasure")
+
+    const { getAdminUserPlaylistDeletionConfig } = await loadEnv()
+
+    expect(getAdminUserPlaylistDeletionConfig()).toEqual({
+      lifecycle: {
+        endpoint: "http://localhost:3003/api/internal/user-playlists/lifecycle",
+        secret: "lifecycle-secret-that-is-at-least-32-bytes",
+      },
+      erasure: {
+        endpoint: "http://localhost:3003/api/internal/user-playlists/erasure",
+        apiKey: "playlist-erasure",
+      },
+    })
+  })
 })

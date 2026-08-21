@@ -54,6 +54,9 @@ const INTENDED_PUBLIC_RESOLVERS = [
   "countries",
   "keywords",
   "watchSetting",
+  // feat-406: token-only unlisted playlist read and its uniform report sink.
+  "userPlaylistByToken",
+  "reportUserPlaylist",
 ] as const
 
 function readAllTypeSources(): string {

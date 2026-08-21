@@ -4,6 +4,7 @@ import { NextResponse } from "next/server"
 import { verifyAuthSession } from "@/lib/auth-session"
 import { getRequestOrigin } from "@/auth/request-origin"
 import {
+  isUserPlaylistAuthoringUxEnabled,
   isWatchDownloadAccountGateEnabled,
   watchDownloadAccountGateFlagContext,
 } from "@/lib/feature-flags"
@@ -21,9 +22,17 @@ export async function GET(request: Request): Promise<NextResponse> {
   )
 
   if (session.authenticated) {
+    const playlistAuthoringEnabled = await isUserPlaylistAuthoringUxEnabled({
+      kind: "user",
+      key: session.userId,
+      email: session.user?.email,
+      anonymous: false,
+      custom: { surface: "watch-account" },
+    }).catch(() => false)
     return NextResponse.json({
       accountGateEnabled,
       authenticated: true,
+      playlistAuthoringEnabled,
       user: session.user,
     })
   }
@@ -47,6 +56,7 @@ export async function GET(request: Request): Promise<NextResponse> {
     accountGateEnabled,
     authenticated: false,
     loginUrl: loginUrl.toString(),
+    playlistAuthoringEnabled: false,
   })
 }
 

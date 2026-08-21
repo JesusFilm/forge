@@ -46,7 +46,7 @@ afterEach(() => {
 })
 
 describe("GET /watch/api/auth/login", () => {
-  it("stores the request-origin homepage for returnTo=/watch", async () => {
+  it("stores only a normalized relative Watch return target", async () => {
     const { GET } = await importRoute()
     const { WEB_AUTH_RETURN_TO_COOKIE } = await import("@/auth/web-session")
 
@@ -58,23 +58,30 @@ describe("GET /watch/api/auth/login", () => {
 
     expect(response.status).toBe(307)
     expect(response.cookies.get(WEB_AUTH_RETURN_TO_COOKIE)?.value).toBe(
-      "http://localhost:3102/watch",
+      "/watch",
     )
   })
 
-  it("uses the configured homepage fallback for unsafe returnTo values", async () => {
-    const { GET } = await importRoute()
-    const { WEB_AUTH_RETURN_TO_COOKIE } = await import("@/auth/web-session")
+  it.each([
+    "/watch/api/download",
+    "//attacker.example.test/watch",
+    "/%2f%2fattacker.example.test/watch",
+  ])(
+    "uses a relative homepage fallback for unsafe returnTo=%s",
+    async (returnTo) => {
+      const { GET } = await importRoute()
+      const { WEB_AUTH_RETURN_TO_COOKIE } = await import("@/auth/web-session")
 
-    const response = await GET(
-      new Request(
-        "http://localhost:3102/watch/api/auth/login?returnTo=%2Fwatch%2Fapi%2Fdownload",
-      ),
-    )
+      const response = await GET(
+        new Request(
+          `http://localhost:3102/watch/api/auth/login?returnTo=${encodeURIComponent(returnTo)}`,
+        ),
+      )
 
-    expect(response.status).toBe(307)
-    expect(response.cookies.get(WEB_AUTH_RETURN_TO_COOKIE)?.value).toBe(
-      "http://localhost:3000/watch",
-    )
-  })
+      expect(response.status).toBe(307)
+      expect(response.cookies.get(WEB_AUTH_RETURN_TO_COOKIE)?.value).toBe(
+        "/watch",
+      )
+    },
+  )
 })

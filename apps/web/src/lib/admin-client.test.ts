@@ -10,6 +10,11 @@ function extractBearer(fetchSpy: ReturnType<typeof vi.fn>): string | undefined {
   return headers.Authorization || headers.authorization
 }
 
+function extractHeaders(fetchSpy: ReturnType<typeof vi.fn>): Headers {
+  const init = fetchSpy.mock.calls[0]?.[1] as RequestInit | undefined
+  return new Headers(init?.headers)
+}
+
 function extractSignal(
   fetchSpy: ReturnType<typeof vi.fn>,
   callIndex = 0,
@@ -213,5 +218,38 @@ describe("admin-client timeout budgets", () => {
     ])
     expect(extractSignal(fetchSpy, 0)).toBe(signals[0])
     expect(extractSignal(fetchSpy, 1)).toBe(signals[1])
+  })
+})
+
+describe("admin-client User Playlist context", () => {
+  beforeEach(() => {
+    vi.resetModules()
+    process.env = { ...ORIGINAL_ENV }
+    process.env.ADMIN_GRAPHQL_URL = "http://localhost:1437/admin/api/graphql"
+    process.env.WEB_ADMIN_API_KEYS = "test-admin-bearer-key"
+  })
+
+  afterEach(() => {
+    process.env = { ...ORIGINAL_ENV }
+    vi.unstubAllGlobals()
+    vi.restoreAllMocks()
+  })
+
+  it("keeps the delegated bearer server-side and forwards only the signed context envelope", async () => {
+    const fetchSpy = mockSuccessfulFetch()
+    const { createUserPlaylistAdminClient } = await import("./admin-client")
+    const client = createUserPlaylistAdminClient("delegated-user-token", {
+      "x-forge-viewer-context": "opaque-context",
+      "x-forge-viewer-context-signature": "opaque-signature",
+    })
+
+    await runQuery(client)
+
+    const headers = extractHeaders(fetchSpy)
+    expect(headers.get("authorization")).toBe("Bearer delegated-user-token")
+    expect(headers.get("x-forge-viewer-context")).toBe("opaque-context")
+    expect(headers.get("x-forge-viewer-context-signature")).toBe(
+      "opaque-signature",
+    )
   })
 })

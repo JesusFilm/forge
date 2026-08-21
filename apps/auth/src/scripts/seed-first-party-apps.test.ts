@@ -57,7 +57,7 @@ describe("seedFirstPartyApps", () => {
       apps: 8,
       environments: 29,
       oauthClients: 33,
-      scopes: 21,
+      scopes: 24,
     })
 
     expect(upsertScope).toHaveBeenCalledWith(
@@ -104,13 +104,20 @@ describe("seedFirstPartyApps", () => {
         create: expect.objectContaining({
           clientId: "jfp_web_local",
           redirectUris: ["http://localhost:3000/watch/api/auth/callback"],
-          scopes: expect.arrayContaining(["web:watch-events:write"]),
+          scopes: expect.arrayContaining([
+            "web:watch-events:write",
+            "playlist:read",
+            "playlist:write",
+            "playlist:share",
+          ]),
           public: true,
           requirePKCE: true,
           tokenEndpointAuthMethod: "none",
           metadata: expect.objectContaining({
             appKey: "web",
             environmentKey: "local",
+            environmentKind: "local",
+            serviceAudience: "http://localhost:3003/api/graphql",
           }),
         }),
       }),

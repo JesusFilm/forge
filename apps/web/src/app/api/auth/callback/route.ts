@@ -11,6 +11,7 @@ import {
   webAuthCookieOptions,
 } from "@/auth/web-session"
 import { getRequestOrigin } from "@/auth/request-origin"
+import { normalizeWebReturnTo } from "@/auth/return-to"
 import {
   exchangeWebAuthorizationCode,
   getWebOAuthConfig,
@@ -37,8 +38,10 @@ export async function GET(request: Request) {
   const expectedState = cookieStore.get(WEB_AUTH_STATE_COOKIE)?.value
   const codeVerifier = cookieStore.get(WEB_AUTH_VERIFIER_COOKIE)?.value
   const returnTo =
-    cookieStore.get(WEB_AUTH_RETURN_TO_COOKIE)?.value ??
-    `${config.webBaseUrl}/watch`
+    normalizeWebReturnTo(cookieStore.get(WEB_AUTH_RETURN_TO_COOKIE)?.value, {
+      requestOrigin,
+      allowedOrigins: [config.webBaseUrl],
+    }) ?? "/watch"
 
   if (
     !code ||
@@ -48,7 +51,7 @@ export async function GET(request: Request) {
     !codeVerifier
   ) {
     console.warn("web.oauth.callback.rejected reason=invalid_state")
-    return redirectToAuthError(returnTo, "invalid_state")
+    return redirectToAuthError(returnTo, "invalid_state", requestOrigin)
   }
 
   try {
@@ -63,7 +66,7 @@ export async function GET(request: Request) {
       scope: tokenResponse.scope,
     })
     const now = Math.floor(Date.now() / 1000)
-    const response = NextResponse.redirect(new URL(returnTo, request.url))
+    const response = NextResponse.redirect(new URL(returnTo, requestOrigin))
     response.cookies.set(
       WEB_AUTH_SESSION_COOKIE,
       await createWebAuthSessionCookie({
@@ -90,12 +93,16 @@ export async function GET(request: Request) {
         error instanceof Error ? error.message : "unknown"
       }`,
     )
-    return redirectToAuthError(returnTo, "callback_failed")
+    return redirectToAuthError(returnTo, "callback_failed", requestOrigin)
   }
 }
 
-function redirectToAuthError(returnTo: string, reason: string) {
-  const url = new URL(returnTo)
+function redirectToAuthError(
+  returnTo: string,
+  reason: string,
+  requestOrigin: string,
+) {
+  const url = new URL(returnTo, requestOrigin)
   url.searchParams.set("auth", "failed")
   url.searchParams.set("reason", reason)
   const response = NextResponse.redirect(url)

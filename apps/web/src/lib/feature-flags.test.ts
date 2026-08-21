@@ -14,6 +14,9 @@ function setRequiredWebEnv() {
   delete process.env.FORGE_WATCH_GLOBAL_BETA_TESTER_CTA_DEFAULT
   delete process.env.FORGE_WATCH_QUESTION_PANEL_DEFAULT
   delete process.env.FORGE_WATCH_HIDE_BIBLE_QUOTES_DEFAULT
+  delete process.env.FORGE_USER_PLAYLIST_AUTHORING_DEFAULT
+  delete process.env.FORGE_USER_PLAYLIST_PUBLIC_READ_DEFAULT
+  delete process.env.USER_PLAYLIST_PUBLIC_READ_EMERGENCY_DISABLED
   delete process.env.NEXT_PUBLIC_FORGE_WATCH_PLAYER_MIGRATION
 }
 
@@ -136,6 +139,30 @@ describe("web feature flag helpers", () => {
     await expect(isWatchQuestionPanelEnabled()).resolves.toBe(true)
   })
 
+  it("keeps user-playlist UX hidden by default", async () => {
+    const {
+      isUserPlaylistAuthoringUxEnabled,
+      isUserPlaylistPublicReadUxEnabled,
+    } = await import("./feature-flags")
+
+    await expect(isUserPlaylistAuthoringUxEnabled()).resolves.toBe(false)
+    await expect(isUserPlaylistPublicReadUxEnabled()).resolves.toBe(false)
+  })
+
+  it("lets the emergency switch hide public-read UX independently", async () => {
+    process.env.FORGE_USER_PLAYLIST_AUTHORING_DEFAULT = "true"
+    process.env.FORGE_USER_PLAYLIST_PUBLIC_READ_DEFAULT = "true"
+    process.env.USER_PLAYLIST_PUBLIC_READ_EMERGENCY_DISABLED = "true"
+
+    const {
+      isUserPlaylistAuthoringUxEnabled,
+      isUserPlaylistPublicReadUxEnabled,
+    } = await import("./feature-flags")
+
+    await expect(isUserPlaylistAuthoringUxEnabled()).resolves.toBe(true)
+    await expect(isUserPlaylistPublicReadUxEnabled()).resolves.toBe(false)
+  })
+
   it("passes the LaunchDarkly SDK key and local fallbacks into the shared client", async () => {
     process.env.LAUNCHDARKLY_SDK_KEY = "sdk-test"
     process.env.NEXT_PUBLIC_FORGE_WATCH_PLAYER_MIGRATION = "false"
@@ -165,6 +192,8 @@ describe("web feature flag helpers", () => {
       expect.objectContaining({
         sdkKey: "sdk-test",
         localEnv: {
+          FORGE_USER_PLAYLIST_AUTHORING_DEFAULT: undefined,
+          FORGE_USER_PLAYLIST_PUBLIC_READ_DEFAULT: undefined,
           FORGE_WATCH_PLAYER_MIGRATION_DEFAULT: "true",
           FORGE_WATCH_CTA_TEXT_COPY_DEFAULT: "false",
           FORGE_WATCH_DOWNLOAD_ACCOUNT_GATE_DEFAULT: "true",
@@ -173,6 +202,8 @@ describe("web feature flag helpers", () => {
           FORGE_WATCH_HIDE_BIBLE_QUOTES_DEFAULT: "false",
         },
         defaultValues: {
+          "forge.userPlaylist.authoring": false,
+          "forge.userPlaylist.publicRead": false,
           "forge.watch.playerMigration": false,
           "forge.watch.ctaTextCopy": false,
           "forge.watch.downloadAccountGate": false,

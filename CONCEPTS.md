@@ -2,6 +2,21 @@
 
 Shared domain vocabulary for this project — entities, named processes, and status concepts with project-specific meaning. Seeded with core domain vocabulary, then accretes as ce-compound and ce-compound-refresh process learnings; direct edits are fine. Glossary only, not a spec or catch-all.
 
+## User-created experiences
+
+### User Playlist
+
+A regular Watch user's personal, ordered presentation of existing Jesus Film
+media through a bounded set of text, media-collection, and video-carousel
+blocks. A User Playlist is link-accessible but unlisted: possession of its
+opaque capability grants anonymous read access while crawler metadata suppresses
+indexing and no public directory or search surface advertises it.
+
+A User Playlist is not an editorial Experience, Collection, or Carousel. It
+references currently eligible media without creating, organizing, publishing,
+or otherwise mutating the canonical portfolio, and its capability never grants
+write access.
+
 ## Devotional generation
 
 ### Devotional Workspace

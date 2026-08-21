@@ -1,4 +1,17 @@
 export const featureFlags = {
+  userPlaylistAuthoring: {
+    key: "forge.userPlaylist.authoring",
+    defaultValue: false,
+    localOverrideEnv: "FORGE_USER_PLAYLIST_AUTHORING_DEFAULT",
+    description:
+      "Rollout gate for verified Watch consumers authoring user playlists.",
+  },
+  userPlaylistPublicRead: {
+    key: "forge.userPlaylist.publicRead",
+    defaultValue: false,
+    localOverrideEnv: "FORGE_USER_PLAYLIST_PUBLIC_READ_DEFAULT",
+    description: "Rollout gate for anonymous reads of unlisted user playlists.",
+  },
   watchPlayerMigration: {
     key: "forge.watch.playerMigration",
     defaultValue: false,
@@ -63,6 +76,19 @@ export type FeatureFlagKey = FeatureFlagDefinition["key"]
 
 export type FeatureFlagEnv = Record<string, string | undefined>
 
+export type UserPlaylistFeatureControlInput = Readonly<{
+  authoringEnabled?: unknown
+  anonymousPublicReadEnabled?: unknown
+  emergencyPublicReadDisabled?: unknown
+}>
+
+export type UserPlaylistFeatureControls = Readonly<{
+  authoringEnabled: boolean
+  anonymousPublicReadEnabled: boolean
+  emergencyPublicReadDisabled: boolean
+  malformed: boolean
+}>
+
 export type BooleanOverrideParseResult =
   | { ok: true; value: boolean }
   | { ok: false; reason: "empty" | "invalid" }
@@ -82,6 +108,56 @@ export function parseBooleanOverride(
   }
 
   return { ok: false, reason: "invalid" }
+}
+
+function parseUserPlaylistControl(value: unknown): {
+  value: boolean
+  malformed: boolean
+  absent: boolean
+} {
+  if (value === undefined || value === null || value === "") {
+    return { value: false, malformed: false, absent: true }
+  }
+  if (typeof value === "boolean") {
+    return { value, malformed: false, absent: false }
+  }
+  if (typeof value !== "string") {
+    return { value: false, malformed: true, absent: false }
+  }
+
+  const parsed = parseBooleanOverride(value)
+  if (!parsed.ok) {
+    return {
+      value: false,
+      malformed: parsed.reason === "invalid",
+      absent: parsed.reason === "empty",
+    }
+  }
+  return { value: parsed.value, malformed: false, absent: false }
+}
+
+/**
+ * Composes the independent user-playlist rollout controls. Opt-in controls
+ * deny on absent or malformed values. An invalid emergency-switch value is
+ * treated as engaged so anonymous reads fail closed.
+ */
+export function resolveUserPlaylistFeatureControls(
+  input: UserPlaylistFeatureControlInput,
+): UserPlaylistFeatureControls {
+  const authoring = parseUserPlaylistControl(input.authoringEnabled)
+  const publicRead = parseUserPlaylistControl(input.anonymousPublicReadEnabled)
+  const emergency = parseUserPlaylistControl(input.emergencyPublicReadDisabled)
+  const malformed =
+    authoring.malformed || publicRead.malformed || emergency.malformed
+  const emergencyPublicReadDisabled = emergency.malformed || emergency.value
+
+  return {
+    authoringEnabled: authoring.malformed ? false : authoring.value,
+    anonymousPublicReadEnabled:
+      !publicRead.malformed && publicRead.value && !emergencyPublicReadDisabled,
+    emergencyPublicReadDisabled,
+    malformed,
+  }
 }
 
 export function resolveLocalBooleanFallback(

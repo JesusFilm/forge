@@ -236,6 +236,15 @@ type CountryLocale {
   value: String
 }
 
+input CreateUserPlaylistInput {
+  acceptance: UserPlaylistAcceptanceInput!
+  blocks: [UserPlaylistBlockInput!]!
+  countryCode: String
+  description: String!
+  locale: String!
+  title: String!
+}
+
 """Call-to-action block with button label + link."""
 type CtaBlock {
   backgroundColor: String
@@ -1200,6 +1209,7 @@ type Mutation {
   approveManagerSeoProposal(input: ManagerSeoApproveInput!): ManagerSeoDecisionResult!
   """Archive an Experience. Owner or ADMIN."""
   archiveExperience(id: ID!): Experience
+  blockUserPlaylist(playlistId: ID!, reason: UserPlaylistBlockReason!): UserPlaylistModerationResult
   clearMyWatchProgress(videoId: ID!): Boolean
   """
   Create a new Experience with an unpublished canonical locale and an initial shared draft. Caller becomes owner.
@@ -1208,6 +1218,7 @@ type Mutation {
   createManagerJob(artifacts: JSON, errors: JSON, languages: [String!], muxAssetId: String!, muxPlaybackId: String, options: JSON, primaryRequestedTargetLanguageCode: String, requestedLanguageAbbreviations: [String!], resolvedTargetLanguageCodes: [String!], sourceCollectionTitle: String, sourceLanguageCode: String, sourceLanguageId: String, sourceMediaTitle: String, sourceSelectionReason: String, steps: [ManagerJobStepInput!], videoDocumentId: String): ManagerJob
   """Create a media folder at the root or inside another folder."""
   createMediaFolder(name: String!, parentId: ID): MediaFolder
+  createUserPlaylist(input: CreateUserPlaylistInput!): UserPlaylistMutationResult
   """
   Delete a media asset only when no experience or video locale fields still reference it.
   """
@@ -1216,6 +1227,7 @@ type Mutation {
   Delete an empty media folder. Fails when child folders or assets remain.
   """
   deleteMediaFolder(id: ID!): DeleteMediaFolderResult
+  deleteUserPlaylist(input: UserPlaylistVersionedInput!): UserPlaylistDeleteResult
   """
   Retire the locale's shared active draft without changing canonical content. Idempotent when no draft exists.
   """
@@ -1232,11 +1244,15 @@ type Mutation {
   """
   registerMediaAsset(backend: MediaAssetBackend, byteSize: String, checksumSha256: String, durationMs: String, folderId: ID, height: Int, kind: MediaAssetKind!, mimeType: String!, muxAssetId: String, muxPlaybackId: String, muxUploadId: String, originalFilename: String, status: MediaAssetStatus, visibility: MediaAssetVisibility, width: Int): MediaAsset
   rejectManagerSeoProposal(input: ManagerSeoRejectInput!): ManagerSeoDecisionResult!
+  reportUserPlaylist(input: UserPlaylistReportInput!): UserPlaylistReportReceipt
+  reshareUserPlaylist(input: UserPlaylistVersionedInput!): UserPlaylistMutationResult
   """
   Copy a historical Experience locale revision into the shared active draft without changing canonical content.
   """
   restoreExperienceLocaleRevisionToDraft(revisionId: ID!): ExperienceLocale
+  restoreUserPlaylist(playlistId: ID!, reason: UserPlaylistRestoreReason!): UserPlaylistModerationResult
   reviewManagerSeoLesson(input: ManagerSeoLessonReviewInput!): ManagerSeoLesson!
+  rotateUserPlaylistCapability(input: UserPlaylistVersionedInput!): UserPlaylistMutationResult
   """
   Generate and persist a semantic embedding for an ExperienceLocale. Owner or ADMIN.
   """
@@ -1314,6 +1330,7 @@ type Mutation {
     """
     mode: TranscriptBackfillMode
   ): JSON
+  unshareUserPlaylist(input: UserPlaylistVersionedInput!): UserPlaylistMutationResult
   """
   Save fields to the locale's one shared active draft. Canonical published content is unchanged until publish.
   """
@@ -1327,6 +1344,7 @@ type Mutation {
   updateMediaAssetLocale(altText: String, displayName: String, locale: String!, mediaAssetId: ID!): MediaAssetLocale
   """Rename a media folder."""
   updateMediaFolder(id: ID!, name: String!): MediaFolder
+  updateUserPlaylist(input: UpdateUserPlaylistInput!): UserPlaylistMutationResult
   upsertMyWatchProgress(entries: [WatchProgressUpsertInput!]!): [WatchProgressEntry!]
 }
 
@@ -1359,6 +1377,33 @@ type NavigationCarouselItem {
   title: String
 }
 
+type OwnerUserPlaylist {
+  blocks: [UserPlaylistBlock!]
+  countryCode: String
+  description: String
+  id: ID
+  locale: String
+  shared: Boolean
+  title: String
+  unavailableVideoIds: [ID!]
+  version: Int
+}
+
+type OwnerUserPlaylistPage {
+  items: [OwnerUserPlaylistSummary!]
+  nextCursor: String
+}
+
+type OwnerUserPlaylistSummary {
+  countryCode: String
+  description: String
+  id: ID
+  locale: String
+  shared: Boolean
+  title: String
+  version: Int
+}
+
 """
 Cached Bible passage text for a video citation, fetched server-side from an approved provider.
 """
@@ -1388,6 +1433,15 @@ type PromoBannerBlock {
   sectionKey: String
   t: String
   widthPercent: Int
+}
+
+type PublicUserPlaylist {
+  blocks: [UserPlaylistBlock!]
+  countryCode: String
+  description: String
+  locale: String
+  reportIntent: String
+  title: String
 }
 
 type Query {
@@ -1438,6 +1492,9 @@ type Query {
   mediaAssets(backend: MediaAssetBackend, folderId: ID, kind: MediaAssetKind, limit: Int = 50, offset: Int = 0, search: String, status: MediaAssetStatus): [MediaAsset!]
   """List media folders ordered for tree rendering."""
   mediaFolders: [MediaFolder!]
+  myUserPlaylist(id: ID!): OwnerUserPlaylist
+  myUserPlaylistCapability(id: ID!): UserPlaylistCapability
+  myUserPlaylists(after: String, first: Int = 20): OwnerUserPlaylistPage
   myWatchProgress: [WatchProgressEntry!]
   """
   Transcript-backed cosine-similarity recommendations. PUBLIC — see published, non-deleted rows only. Either videoId or slug must be supplied.
@@ -1451,6 +1508,8 @@ type Query {
   Per-phase Core sync watermarks and stats. Shows when each phase last synced and its row counts.
   """
   systemStatus: JSON
+  userPlaylistByToken(token: String!): PublicUserPlaylist
+  userPlaylistReportQueue(after: String, category: UserPlaylistReportCategory, first: Int = 20): UserPlaylistModeratorReportPage
   """Fetch a single Video by id."""
   video(id: ID!): Video
   """Fetch a single Video by slug."""
@@ -1613,6 +1672,159 @@ enum TranscriptBackfillMode {
   IDEMPOTENT
   MODEL_UPGRADE
   REPAIR
+}
+
+input UpdateUserPlaylistInput {
+  blocks: [UserPlaylistBlockInput!]!
+  countryCode: String
+  description: String!
+  expectedVersion: Int!
+  id: ID!
+  locale: String!
+  title: String!
+}
+
+input UserPlaylistAcceptanceInput {
+  communityGuidelinesVersion: String!
+  privacyVersion: String!
+  termsVersion: String!
+}
+
+union UserPlaylistBlock = UserPlaylistMediaCollectionBlock | UserPlaylistTextBlock | UserPlaylistVideoCarouselBlock
+
+input UserPlaylistBlockInput {
+  items: [UserPlaylistMediaItemInput!]
+  kind: UserPlaylistBlockKind!
+  text: String
+  title: String
+}
+
+enum UserPlaylistBlockKind {
+  MEDIA_COLLECTION
+  TEXT
+  VIDEO_CAROUSEL
+}
+
+enum UserPlaylistBlockReason {
+  ABUSE
+  COPYRIGHT
+  OTHER_POLICY
+  PRIVACY
+  SAFETY
+  SPAM
+}
+
+type UserPlaylistCapability {
+  capability: String
+}
+
+union UserPlaylistDeleteResult = UserPlaylistDeleteSuccess | UserPlaylistError
+
+type UserPlaylistDeleteSuccess {
+  deleted: Boolean
+}
+
+type UserPlaylistError {
+  code: UserPlaylistErrorCode
+  message: String
+}
+
+enum UserPlaylistErrorCode {
+  CONFLICT
+  INVALID_INPUT
+  LIMIT_EXCEEDED
+  NOT_FOUND
+  SERVICE_UNAVAILABLE
+}
+
+type UserPlaylistMediaCollectionBlock {
+  items: [UserPlaylistMediaItem!]
+  title: String
+}
+
+type UserPlaylistMediaItem {
+  videoId: ID
+}
+
+input UserPlaylistMediaItemInput {
+  videoId: ID!
+}
+
+type UserPlaylistModerationResult {
+  auditedAt: String
+  changed: Boolean
+  moderationState: UserPlaylistModerationState
+  playlistId: ID
+}
+
+enum UserPlaylistModerationState {
+  ACTIVE
+  BLOCKED
+}
+
+type UserPlaylistModeratorReport {
+  category: UserPlaylistReportCategory
+  createdAt: String
+  detailPlainText: String
+  detailStatus: UserPlaylistReportDetailStatus
+  playlistId: ID
+  reportId: ID
+}
+
+type UserPlaylistModeratorReportPage {
+  items: [UserPlaylistModeratorReport!]
+  nextCursor: String
+}
+
+union UserPlaylistMutationResult = UserPlaylistError | UserPlaylistSuccess
+
+enum UserPlaylistReportCategory {
+  COPYRIGHT_OR_RIGHTS
+  INAPPROPRIATE_CONTENT
+  MISLEADING_OR_SPAM
+  OTHER_SAFETY
+  PRIVACY_OR_PERSONAL_DATA
+}
+
+enum UserPlaylistReportDetailStatus {
+  ABSENT
+  AVAILABLE
+  EXPIRED
+  UNAVAILABLE
+}
+
+input UserPlaylistReportInput {
+  category: UserPlaylistReportCategory!
+  detail: String
+  reportIntent: String!
+}
+
+type UserPlaylistReportReceipt {
+  status: String
+}
+
+enum UserPlaylistRestoreReason {
+  APPEAL_APPROVED
+  ERROR_CORRECTED
+  REVIEW_CLEARED
+}
+
+type UserPlaylistSuccess {
+  playlist: OwnerUserPlaylist
+}
+
+type UserPlaylistTextBlock {
+  text: String
+}
+
+input UserPlaylistVersionedInput {
+  expectedVersion: Int!
+  id: ID!
+}
+
+type UserPlaylistVideoCarouselBlock {
+  items: [UserPlaylistMediaItem!]
+  title: String
 }
 
 """

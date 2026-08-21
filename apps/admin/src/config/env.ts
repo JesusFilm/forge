@@ -1,4 +1,9 @@
 import { createEnv } from "@t3-oss/env-nextjs"
+import {
+  resolveUserPlaylistFeatureControls,
+  type UserPlaylistFeatureControlInput,
+  type UserPlaylistFeatureControls,
+} from "@forge/feature-flags/registry"
 import { z } from "zod"
 
 import { normalizeDatadogEnv } from "./datadog-env"
@@ -265,6 +270,19 @@ export const fleetSearchCeilingEnforceEnvSchema = z
   .optional()
   .default("false")
 
+export function resolveUserPlaylistRuntimeControls(
+  input?: UserPlaylistFeatureControlInput,
+): UserPlaylistFeatureControls {
+  return resolveUserPlaylistFeatureControls(
+    input ?? {
+      authoringEnabled: env.FORGE_USER_PLAYLIST_AUTHORING_DEFAULT,
+      anonymousPublicReadEnabled: env.FORGE_USER_PLAYLIST_PUBLIC_READ_DEFAULT,
+      emergencyPublicReadDisabled:
+        env.USER_PLAYLIST_PUBLIC_READ_EMERGENCY_DISABLED,
+    },
+  )
+}
+
 // Unit 1 scaffolding shipped a minimal env. Each later unit appends the
 // vars it owns here and in runtimeEnv. Never read process.env directly.
 export const env = createEnv({
@@ -300,6 +318,7 @@ export const env = createEnv({
     AUTH_WEB_USER_TOKEN_ENVIRONMENT: z
       .enum(["local", "preview", "staging", "production"])
       .optional(),
+    AUTH_WEB_USER_TOKEN_AUDIENCE: z.string().url().optional(),
     ADMIN_BASE_URL: z.string().url().optional(),
     // Public web origin used only for outbound visitor-facing watch links
     // from admin. Optional so local/admin-only deployments do not need a new
@@ -326,6 +345,33 @@ export const env = createEnv({
       watchSearchCandidateComparisonEnabledEnvSchema,
     WATCH_SEARCH_TRANSCRIPT_PROJECTION_REVISION:
       watchSearchTranscriptProjectionRevisionEnvSchema,
+    // User Playlist rollout controls stay as raw optional strings so
+    // the runtime composer can turn malformed values into a deny instead of a
+    // truthy string. Admin/data-boundary consumers are authoritative.
+    FORGE_USER_PLAYLIST_AUTHORING_DEFAULT: z.string().optional(),
+    FORGE_USER_PLAYLIST_PUBLIC_READ_DEFAULT: z.string().optional(),
+    USER_PLAYLIST_PUBLIC_READ_EMERGENCY_DISABLED: z.string().optional(),
+    // User Playlist crypto and policy values are optional at process boot.
+    // The isolated GraphQL runtime parses them lazily and fails only playlist
+    // operations closed, so an unprovisioned rollout cannot brick Admin.
+    USER_PLAYLIST_CAPABILITY_LOOKUP_KEYS: z.string().optional(),
+    USER_PLAYLIST_CAPABILITY_ENCRYPTION_KEYS: z.string().optional(),
+    USER_PLAYLIST_REPORT_INTENT_KEYS: z.string().optional(),
+    USER_PLAYLIST_REPORT_DETAIL_KEYS: z.string().optional(),
+    USER_PLAYLIST_REPORT_IP_KEYS: z.string().optional(),
+    USER_PLAYLIST_TRUSTED_CONTEXT_HMAC_SECRET: z.string().min(32).optional(),
+    USER_PLAYLIST_TERMS_VERSION: z.string().min(1).max(64).optional(),
+    USER_PLAYLIST_PRIVACY_VERSION: z.string().min(1).max(64).optional(),
+    USER_PLAYLIST_COMMUNITY_GUIDELINES_VERSION: z
+      .string()
+      .min(1)
+      .max(64)
+      .optional(),
+    // Auth -> Admin user-playlist owner lifecycle delivery. Separate from
+    // account-erasure and Watch progress credentials by design.
+    USER_PLAYLIST_LIFECYCLE_HMAC_SECRET: z.string().min(32).optional(),
+    USER_PLAYLIST_ERASURE_API_KEYS: z.string().min(1).optional(),
+    USER_PLAYLIST_ERASURE_SUBJECT_DIGEST_KEY: z.string().min(1).optional(),
     WATCH_SEARCH_SERVING_QRELS_REVISION: z.string().min(1).optional(),
     MANAGER_ADMIN_API_KEY: z.string().min(1).optional(),
     // SEO delegated/workload assertions use per-environment Ed25519 keyrings.
@@ -696,6 +742,51 @@ export const env = createEnv({
   skipValidation: !!process.env.CI,
   runtimeEnv: {
     DATABASE_URL: process.env.DATABASE_URL,
+    FORGE_USER_PLAYLIST_AUTHORING_DEFAULT: emptyToUndefined(
+      process.env.FORGE_USER_PLAYLIST_AUTHORING_DEFAULT,
+    ),
+    FORGE_USER_PLAYLIST_PUBLIC_READ_DEFAULT: emptyToUndefined(
+      process.env.FORGE_USER_PLAYLIST_PUBLIC_READ_DEFAULT,
+    ),
+    USER_PLAYLIST_PUBLIC_READ_EMERGENCY_DISABLED: emptyToUndefined(
+      process.env.USER_PLAYLIST_PUBLIC_READ_EMERGENCY_DISABLED,
+    ),
+    USER_PLAYLIST_CAPABILITY_LOOKUP_KEYS: emptyToUndefined(
+      process.env.USER_PLAYLIST_CAPABILITY_LOOKUP_KEYS,
+    ),
+    USER_PLAYLIST_CAPABILITY_ENCRYPTION_KEYS: emptyToUndefined(
+      process.env.USER_PLAYLIST_CAPABILITY_ENCRYPTION_KEYS,
+    ),
+    USER_PLAYLIST_REPORT_INTENT_KEYS: emptyToUndefined(
+      process.env.USER_PLAYLIST_REPORT_INTENT_KEYS,
+    ),
+    USER_PLAYLIST_REPORT_DETAIL_KEYS: emptyToUndefined(
+      process.env.USER_PLAYLIST_REPORT_DETAIL_KEYS,
+    ),
+    USER_PLAYLIST_REPORT_IP_KEYS: emptyToUndefined(
+      process.env.USER_PLAYLIST_REPORT_IP_KEYS,
+    ),
+    USER_PLAYLIST_TRUSTED_CONTEXT_HMAC_SECRET: emptyToUndefined(
+      process.env.USER_PLAYLIST_TRUSTED_CONTEXT_HMAC_SECRET,
+    ),
+    USER_PLAYLIST_TERMS_VERSION: emptyToUndefined(
+      process.env.USER_PLAYLIST_TERMS_VERSION,
+    ),
+    USER_PLAYLIST_PRIVACY_VERSION: emptyToUndefined(
+      process.env.USER_PLAYLIST_PRIVACY_VERSION,
+    ),
+    USER_PLAYLIST_COMMUNITY_GUIDELINES_VERSION: emptyToUndefined(
+      process.env.USER_PLAYLIST_COMMUNITY_GUIDELINES_VERSION,
+    ),
+    USER_PLAYLIST_LIFECYCLE_HMAC_SECRET: emptyToUndefined(
+      process.env.USER_PLAYLIST_LIFECYCLE_HMAC_SECRET,
+    ),
+    USER_PLAYLIST_ERASURE_API_KEYS: emptyToUndefined(
+      process.env.USER_PLAYLIST_ERASURE_API_KEYS,
+    ),
+    USER_PLAYLIST_ERASURE_SUBJECT_DIGEST_KEY: emptyToUndefined(
+      process.env.USER_PLAYLIST_ERASURE_SUBJECT_DIGEST_KEY,
+    ),
     NEXT_PUBLIC_DATADOG_APPLICATION_ID: emptyToUndefined(
       process.env.NEXT_PUBLIC_DATADOG_APPLICATION_ID,
     ),
@@ -751,6 +842,9 @@ export const env = createEnv({
     ),
     AUTH_WEB_USER_TOKEN_ENVIRONMENT: emptyToUndefined(
       process.env.AUTH_WEB_USER_TOKEN_ENVIRONMENT,
+    ),
+    AUTH_WEB_USER_TOKEN_AUDIENCE: emptyToUndefined(
+      process.env.AUTH_WEB_USER_TOKEN_AUDIENCE,
     ),
     ADMIN_BASE_URL: emptyToUndefined(process.env.ADMIN_BASE_URL),
     WEB_CANONICAL_ORIGIN:
