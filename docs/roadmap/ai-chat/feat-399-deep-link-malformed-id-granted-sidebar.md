@@ -17,7 +17,7 @@ tags:
 
 ## Resolution
 
-**Shipped:** 2026-08-20 via [PR #1984](https://github.com/JesusFilm/forge/pull/1984) (`feat(chat): keep the granted user's sidebar alive on a malformed deep link (feat-399)`).
+**Shipped:** 2026-08-21 via [PR #1984](https://github.com/JesusFilm/forge/pull/1984) (`feat(chat): keep the granted user's sidebar alive on a malformed deep link (feat-399)`).
 
 **What landed.** A gate-granted visitor's malformed `/c/<id>` now resolves to a GRANTED shell that opens on the unchanged "no longer available" pane — rail, history hydration and the URL layer stay live, and the pane releases on the first rail selection, New conversation, or history traverse. Anonymous and gate-denied malformed links are unchanged and still fully inert. The gate decision moved from an inline compare in the route to one tested mapper, `deepLinkShell(kind)`, whose `never`-typed default arm is strictly tighter than the expression it replaced (that one would have passed an unknown kind through as a `DeniedScreen`). **Address-bar decision, which this brief left open:** the shell NORMALIZES to `/` — not by a redirect but because the now-live URL layer applies its existing non-persisted rule, as a `replaceState`, so Back still leaves the app; the pane carries the broken-link feedback. The valid-UUID-but-dead case deliberately keeps `/c/<id>`, since there a real id exists to preserve. Two review rounds removed a redundant release conjunct that was masking whether the explicit dismiss actually worked.
 
