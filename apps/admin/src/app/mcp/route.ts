@@ -10,7 +10,11 @@ import { getAdminMcpResourceUrl } from "@/mcp/admin-mcp-metadata"
 import { ADMIN_MCP_TOOLS, findAdminMcpTool } from "@/mcp/admin-mcp-tools"
 import { ExperienceLocaleMcpService } from "@/services/experience-locale-mcp.service"
 import { ExperienceMcpService } from "@/services/experience-mcp.service"
-import { ForbiddenError, NotFoundError } from "@/services/errors"
+import {
+  ExperienceDuplicationError,
+  ForbiddenError,
+  NotFoundError,
+} from "@/services/errors"
 
 const RATE_LIMIT_MAX = 120
 const RATE_LIMIT_WINDOW_MS = 60_000
@@ -173,6 +177,9 @@ async function callAdminMcpTool(
   if (name === "experience.create") {
     return services.experience.createExperience(args)
   }
+  if (name === "experience.duplicate") {
+    return services.experience.duplicateExperience(args)
+  }
   if (name === "experience.generate") {
     return services.experience.generateExperience(args)
   }
@@ -231,6 +238,9 @@ function toolError(id: unknown, error: unknown) {
   }
   if (error instanceof NotFoundError) {
     return jsonRpcError(id, -32004, error.message)
+  }
+  if (error instanceof ExperienceDuplicationError) {
+    return jsonRpcError(id, -32000, error.message)
   }
   if (error instanceof Error && error.message === "not_implemented") {
     return jsonRpcError(id, -32601, "Admin MCP tool is not implemented yet.")

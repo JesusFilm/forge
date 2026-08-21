@@ -15,7 +15,11 @@ import { launchMastraExperienceVariant } from "@/services/experience-ai/mastra-e
 import { serializeLocale } from "@/services/experience-locale-mcp.service"
 import { launchMastraExperienceDraft } from "@/services/mastra-experience-draft-client"
 import { resolveTimeoutMs } from "@/services/mastra-http-transport"
-import { ForbiddenError, NotFoundError } from "@/services/errors"
+import {
+  ExperienceDuplicationError,
+  ForbiddenError,
+  NotFoundError,
+} from "@/services/errors"
 import { ExperienceService } from "@/services/experience.service"
 
 // `.strict()` is deliberate: `ExperienceService.create`'s own schema silently
@@ -41,6 +45,10 @@ const GenerateExperienceToolInput = z
     personaId: z.string().min(1).max(50).optional(),
     exemplarExperienceId: z.string().min(1).optional(),
   })
+  .strict()
+
+const DuplicateExperienceToolInput = z
+  .object({ experienceId: z.string().min(1) })
   .strict()
 
 /**
@@ -140,8 +148,9 @@ function editorUrlFor(experienceId: string, locale: string) {
 }
 
 /**
- * Service behind the two experience-LEVEL Admin MCP tools (`experience.create`
- * and `experience.generate`). The 12 locale-level tools — including
+ * Service behind the three experience-LEVEL Admin MCP tools
+ * (`experience.create`, `experience.duplicate`, and `experience.generate`).
+ * The 12 locale-level tools — including
  * `experience.list` and `experience.media.check` — live in the sibling
  * `ExperienceLocaleMcpService`.
  */
@@ -193,6 +202,34 @@ export class ExperienceMcpService {
       },
       locale: serializeLocale(locale),
       editorUrl: editorUrlFor(created.id, input.locale),
+    }
+  }
+
+  async duplicateExperience({
+    input: raw,
+    user,
+  }: {
+    input: unknown
+    user: Principal | null
+  }) {
+    const input = DuplicateExperienceToolInput.parse(raw)
+    const duplicated = await new ExperienceService(this.prisma).duplicate({
+      input: { id: input.experienceId },
+      user,
+    })
+    const firstLocale = duplicated.locales[0]
+    if (!firstLocale) throw new ExperienceDuplicationError()
+
+    return {
+      ok: true as const,
+      sourceExperienceId: input.experienceId,
+      experience: {
+        id: duplicated.id,
+        isTemplate: duplicated.isTemplate,
+        ownerId: duplicated.ownerId,
+      },
+      locales: duplicated.locales.map(serializeLocale),
+      editorUrl: editorUrlFor(duplicated.id, firstLocale.locale),
     }
   }
 

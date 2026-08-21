@@ -4,6 +4,17 @@
 // and ABAC checks. Resolvers are thin wiring.
 
 import { builder } from "@/graphql/builder"
+import type { ContextShape } from "@/graphql/builder"
+
+export function duplicateExperienceFromContext(
+  ctx: Pick<ContextShape, "services" | "user">,
+  id: string,
+) {
+  return ctx.services.experience.duplicate({
+    input: { id },
+    user: ctx.user,
+  })
+}
 
 builder.mutationFields((t) => ({
   createExperience: t.prismaField({
@@ -18,7 +29,7 @@ builder.mutationFields((t) => ({
       isTemplate: t.arg.boolean({ required: false }),
       blocks: t.arg({ type: "JSON", required: false }),
     },
-    resolve: (query, _root, args, ctx) =>
+    resolve: (_query, _root, args, ctx) =>
       ctx.services.experience.create({
         input: {
           locale: args.locale,
@@ -29,6 +40,19 @@ builder.mutationFields((t) => ({
         },
         user: ctx.user,
       }),
+  }),
+
+  duplicateExperience: t.prismaField({
+    type: "Experience",
+    nullable: false,
+    authScopes: { hasPermission: "write:experiences" },
+    description:
+      "Duplicate every locale of an Experience into a new unpublished draft owned by the caller.",
+    args: {
+      id: t.arg.id({ required: true }),
+    },
+    resolve: (_query, _root, args, ctx) =>
+      duplicateExperienceFromContext(ctx, String(args.id)),
   }),
 
   updateExperienceLocale: t.prismaField({

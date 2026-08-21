@@ -15,16 +15,17 @@ import {
 } from "./experience-editor"
 import type { VideoLibraryItem } from "./experience-editor/block-helpers"
 
-const { envState } = vi.hoisted(() => ({
+const { envState, routerPush } = vi.hoisted(() => ({
   envState: {
     NEXT_PUBLIC_APP_NAME: "forge-admin",
     NEXT_PUBLIC_WATCH_URL: "http://localhost:3000" as string | undefined,
   },
+  routerPush: vi.fn(),
 }))
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({
-    push: vi.fn(),
+    push: routerPush,
     refresh: vi.fn(),
   }),
 }))
@@ -91,6 +92,12 @@ function renderEditorElement(
     saveAction?: typeof action
     publishAction?: typeof action
     discardAction?: typeof action
+    duplicateAction?: () => Promise<{
+      ok: boolean
+      error?: string
+      href?: string
+    }>
+    duplicatePending?: boolean
     canPublish?: boolean
     hasPublishedVersion?: boolean
     hasDraft?: boolean
@@ -158,6 +165,8 @@ function renderEditorElement(
         blocksJson: JSON.stringify(blocks),
       }}
       saveAction={options.saveAction ?? action}
+      duplicateAction={options.duplicateAction}
+      duplicatePending={options.duplicatePending}
       publishAction={options.publishAction ?? action}
       discardAction={options.discardAction ?? action}
       createLocaleAction={action}
@@ -2226,6 +2235,195 @@ describe("ExperienceEditor", () => {
     expect(html).toContain("View live")
     expect(html).toContain("Publish")
     expect(html).toContain("Discard draft")
+  })
+
+  it("shows the Duplicate action when duplication is available", () => {
+    const html = renderEditor([], {
+      duplicateAction: async () => ({
+        ok: true,
+        href: "/dashboard/experiences/exp-copy?locale=en",
+      }),
+    })
+
+    expect(html).toContain("Duplicate")
+    expect(html).toContain("Duplicate this experience as a draft")
+  })
+
+  it("disables Duplicate for unsaved changes with an accessible explanation", () => {
+    const view = renderEditorDom([], {
+      duplicateAction: async () => ({ ok: true, href: "/copy" }),
+    })
+
+    try {
+      const titleInput = view.container.querySelector(
+        'input[placeholder="Untitled Experience"]',
+      )
+      if (!(titleInput instanceof HTMLInputElement)) {
+        throw new Error("Title input not found")
+      }
+      const valueSetter = Object.getOwnPropertyDescriptor(
+        window.HTMLInputElement.prototype,
+        "value",
+      )?.set
+
+      act(() => {
+        valueSetter?.call(titleInput, "Unsaved title")
+        titleInput.dispatchEvent(
+          new InputEvent("input", { bubbles: true, inputType: "insertText" }),
+        )
+      })
+
+      const duplicateButton = findButtonByText(view.container, "Duplicate")
+      const helperId = duplicateButton.getAttribute("aria-describedby")
+      expect(duplicateButton.disabled).toBe(true)
+      expect(helperId).toBe("duplicate-experience-save-first")
+      expect(duplicateButton.parentElement?.getAttribute("tabindex")).toBe("0")
+      expect(
+        duplicateButton.parentElement?.getAttribute("aria-describedby"),
+      ).toBe(helperId)
+      expect(document.getElementById(helperId!)?.textContent).toContain(
+        "Save your changes before duplicating.",
+      )
+    } finally {
+      view.cleanup()
+    }
+  })
+
+  it("shows a distinct pending state and navigates once on success", async () => {
+    let resolveDuplicate:
+      | ((result: { ok: true; href: string }) => void)
+      | null = null
+    const duplicateAction = vi.fn(
+      () =>
+        new Promise<{ ok: true; href: string }>((resolve) => {
+          resolveDuplicate = resolve
+        }),
+    )
+    const view = renderEditorDom([], { duplicateAction })
+
+    try {
+      await act(async () => {
+        findButtonByExactText(view.container, "Duplicate").click()
+      })
+
+      const pendingButton = findButtonByText(view.container, "Duplicating")
+      expect(pendingButton.disabled).toBe(true)
+      expect(pendingButton.getAttribute("aria-busy")).toBe("true")
+      expect(pendingButton.hasAttribute("aria-describedby")).toBe(false)
+      expect(duplicateAction).toHaveBeenCalledTimes(1)
+
+      await act(async () => {
+        resolveDuplicate?.({
+          ok: true,
+          href: "/dashboard/experiences/exp-copy?locale=en",
+        })
+      })
+
+      expect(routerPush).toHaveBeenCalledTimes(1)
+      expect(routerPush).toHaveBeenCalledWith(
+        "/dashboard/experiences/exp-copy?locale=en",
+      )
+    } finally {
+      view.cleanup()
+    }
+  })
+
+  it("disables Duplicate while another editor mutation is pending", async () => {
+    const duplicateAction = vi.fn(async () => ({ ok: true, href: "/copy" }))
+    const view = renderEditorDom([], {
+      duplicateAction,
+      duplicatePending: true,
+    })
+
+    try {
+      const button = findButtonByExactText(view.container, "Duplicate")
+      expect(button.disabled).toBe(true)
+      expect(button.hasAttribute("aria-describedby")).toBe(false)
+      button.click()
+      expect(duplicateAction).not.toHaveBeenCalled()
+    } finally {
+      view.cleanup()
+    }
+  })
+
+  it("shows safe errors and restores Duplicate after a resolved failure", async () => {
+    const duplicateAction = vi.fn(async () => ({
+      ok: false,
+      error: "Experience cannot be duplicated from its current saved state.",
+    }))
+    const view = renderEditorDom([], { duplicateAction })
+
+    try {
+      await act(async () => {
+        findButtonByExactText(view.container, "Duplicate").click()
+      })
+
+      expect(view.container.textContent).toContain(
+        "Experience cannot be duplicated from its current saved state.",
+      )
+      expect(routerPush).not.toHaveBeenCalled()
+      expect(findButtonByExactText(view.container, "Duplicate").disabled).toBe(
+        false,
+      )
+    } finally {
+      view.cleanup()
+    }
+  })
+
+  it("shows a generic error and restores Duplicate after rejection", async () => {
+    const duplicateAction = vi.fn(async () => {
+      throw new Error("sensitive database detail")
+    })
+    const view = renderEditorDom([], { duplicateAction })
+
+    try {
+      await act(async () => {
+        findButtonByExactText(view.container, "Duplicate").click()
+      })
+
+      expect(view.container.textContent).toContain(
+        "Unable to duplicate experience.",
+      )
+      expect(view.container.textContent).not.toContain(
+        "sensitive database detail",
+      )
+      expect(routerPush).not.toHaveBeenCalled()
+      expect(findButtonByExactText(view.container, "Duplicate").disabled).toBe(
+        false,
+      )
+    } finally {
+      view.cleanup()
+    }
+  })
+
+  it("ignores a duplicate completion after the editor unmounts", async () => {
+    let resolveDuplicate:
+      | ((result: { ok: true; href: string }) => void)
+      | null = null
+    const duplicateAction = vi.fn(
+      () =>
+        new Promise<{ ok: true; href: string }>((resolve) => {
+          resolveDuplicate = resolve
+        }),
+    )
+    const view = renderEditorDom([], { duplicateAction })
+
+    await act(async () => {
+      findButtonByExactText(view.container, "Duplicate").click()
+    })
+    view.cleanup()
+
+    await act(async () => {
+      resolveDuplicate?.({ ok: true, href: "/late-copy" })
+    })
+
+    expect(routerPush).not.toHaveBeenCalled()
+  })
+
+  it("renders preview instead of publish when nothing changed on a published locale", () => {
+    const html = renderEditor([], { hasPublishedVersion: true })
+    expect(html).toContain("Preview")
+    expect(html).not.toContain("Open Published Page")
   })
 
   it("renders the live control on the server even when the watch URL is inferred in the browser", () => {

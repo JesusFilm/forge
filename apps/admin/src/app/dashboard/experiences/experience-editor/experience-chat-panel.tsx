@@ -163,6 +163,8 @@ export type ExperienceChatPanelProps = {
     | { ok: false; code: string; error: string }
   >
   utilitySlot?: ReactNode
+  /** Reports Experience-mutating chat/generation work to sibling controls. */
+  onBusyChange?: (busy: boolean) => void
   /**
    * Test seam — defaults to the real `openChatStream`. Tests inject a
    * deterministic async iterable.
@@ -222,6 +224,7 @@ export function ExperienceChatPanel({
   generateDraftAction,
   generateSectionAction,
   utilitySlot,
+  onBusyChange,
   streamFactory = openChatStream,
 }: ExperienceChatPanelProps) {
   const [draftWorkflowStatus, setDraftWorkflowStatus] = useState<
@@ -252,6 +255,10 @@ export function ExperienceChatPanel({
   // GET /threads/{threadId}/ratings on mount / thread switch so the
   // 👍/👎 widget reflects prior state without per-message fetches.
   const [ratings, setRatings] = useState<Record<string, ChatRatingState>>({})
+  const isMutationPending =
+    draftWorkflowStatus === "generating" ||
+    stream.kind === "creating_thread" ||
+    stream.kind === "streaming"
 
   const messageListRef = useRef<HTMLDivElement | null>(null)
   const stagedDraftRef = useRef<HTMLLIElement | null>(null)
@@ -278,6 +285,10 @@ export function ExperienceChatPanel({
     confirmedAcrossLocales: boolean
     confirmedBrief: boolean
   } | null>(null)
+
+  useEffect(() => {
+    onBusyChange?.(isMutationPending)
+  }, [isMutationPending, onBusyChange])
 
   // -- Initial load --------------------------------------------------------
   useEffect(() => {

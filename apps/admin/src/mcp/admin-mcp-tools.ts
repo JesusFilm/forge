@@ -232,6 +232,20 @@ export const ADMIN_MCP_TOOLS = [
     },
   },
   {
+    name: "experience.duplicate",
+    description:
+      "Duplicate every locale of any readable Experience into a new unpublished DRAFT Experience owned by the delegated principal. Copies authored blocks, routing, SEO, OG content, and template classification; generates available -copy slugs; never copies homepage, publication, embedding, revision, or chat state. Success returns {ok:true, sourceExperienceId, experience, locales, editorUrl}.",
+    requiredScopes: ["experience:read", "experience:create"],
+    inputSchema: {
+      type: "object",
+      properties: {
+        experienceId: { type: "string", minLength: 1 },
+      },
+      required: ["experienceId"],
+      additionalProperties: false,
+    },
+  },
+  {
     name: "experience.generate",
     description:
       "Generate a new DRAFT Experience server-side with AI (video-grounded quick draft; optional persona steering). Never publishes. Expected failures return a structuredContent envelope {ok:false, reason, retryable, message} instead of a JSON-RPC error (reasons: config_missing, auth_failed, network_error, parse_error, invalid_input, timeout, generation_failed, internal_error, slug_exists, candidates_failed, normalization_failed, persist_failed); retry only when retryable is true. Success returns {ok:true, experience, locale, editorUrl, provenance}.",

@@ -10,18 +10,26 @@ import { Prisma, type PrismaClient } from "@prisma/client"
 import { isEditorOrAdmin, type Principal } from "@/auth/principal"
 import {
   hasPermission,
+  canViewExperience,
   canEditExperienceLocale,
   canPublishExperienceLocale,
   canArchiveExperience,
 } from "@/auth/permissions"
 import { start } from "workflow/api"
-import { ForbiddenError, NotFoundError } from "./errors"
+import {
+  ConcurrentModificationError,
+  ExperienceDuplicationError,
+  ForbiddenError,
+  NotFoundError,
+} from "./errors"
+import { BlocksSchema } from "@/domain/blocks"
 import { runExperienceEmbedding } from "@/workflows/experienceEmbedding"
 import { emitRevalidateWebhook } from "./revalidate-webhook"
 import { refreshWatchRouteManifest } from "./watch-route-manifest-refresh.service"
 import { backfillExperienceVideoLanguageIds } from "./experience-video-language-backfill"
 import {
   CreateExperienceInput,
+  DuplicateExperienceInput,
   CreateExperienceLocaleInput,
   UpdateExperienceLocaleInput,
   PublishExperienceLocaleInput,
@@ -32,6 +40,23 @@ import {
   ExperienceLocaleDraftDataSchema,
   type ExperienceLocaleDraftData,
 } from "./experience.schemas"
+
+function availableDuplicateSlug(
+  sourceSlug: string,
+  usedSlugs: Set<string>,
+): string {
+  for (let copyNumber = 1; ; copyNumber += 1) {
+    const suffix = copyNumber === 1 ? "-copy" : `-copy-${copyNumber}`
+    const base =
+      sourceSlug.slice(0, 200 - suffix.length).replace(/-+$/g, "") ||
+      "experience"
+    const candidate = `${base}${suffix}`
+    if (!usedSlugs.has(candidate)) {
+      usedSlugs.add(candidate)
+      return candidate
+    }
+  }
+}
 
 export class ExperienceEmbeddingEligibilityError extends Error {
   constructor(message: string) {
@@ -377,6 +402,109 @@ export class ExperienceService {
           ...experience.locales.slice(1),
         ],
       }
+    })
+  }
+
+  async duplicate({
+    input: raw,
+    user,
+  }: {
+    input: unknown
+    user: Principal | null
+  }) {
+    const input = DuplicateExperienceInput.parse(raw)
+
+    // Gate write permission before loading the source. This prevents callers
+    // without create authority from probing draft or archived Experience ids.
+    if (!user?.id || !hasPermission(user, "write:experiences")) {
+      throw new ForbiddenError()
+    }
+    const ownerId = user.id
+
+    const source = await this.prisma.experience.findFirst({
+      where: { id: input.id },
+      select: {
+        isTemplate: true,
+        archivedAt: true,
+        locales: {
+          orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+          select: {
+            locale: true,
+            slug: true,
+            isHomepage: true,
+            pathSegment: true,
+            title: true,
+            metaDescription: true,
+            ogTitle: true,
+            ogDescription: true,
+            ogImageUrl: true,
+            blocks: true,
+          },
+        },
+      },
+    })
+    if (!source) {
+      throw new NotFoundError("Experience", input.id)
+    }
+    if (!canViewExperience(user, source)) {
+      throw new ForbiddenError()
+    }
+
+    if (source.locales.length === 0) {
+      throw new ExperienceDuplicationError()
+    }
+
+    const sourceLocales = source.locales.map((locale) => {
+      const blocks = BlocksSchema.safeParse(locale.blocks)
+      if (!blocks.success) {
+        throw new ExperienceDuplicationError()
+      }
+      return locale
+    })
+
+    const localeCodes = Array.from(
+      new Set(sourceLocales.map((locale) => locale.locale)),
+    )
+    const existingSlugs = await this.prisma.experienceLocale.findMany({
+      where: {
+        locale: { in: localeCodes },
+      },
+      select: { locale: true, slug: true },
+    })
+    const usedSlugsByLocale = new Map(
+      localeCodes.map((locale) => [locale, new Set<string>()]),
+    )
+    for (const row of existingSlugs) {
+      usedSlugsByLocale.get(row.locale)!.add(row.slug)
+    }
+
+    return this.prisma.experience.create({
+      data: {
+        // Template classification is authored canonical state, not publication
+        // state. Preserve it so route-only template blocks remain editable.
+        isTemplate: source.isTemplate,
+        ownerId,
+        locales: {
+          create: sourceLocales.map((locale) => ({
+            locale: locale.locale,
+            slug: availableDuplicateSlug(
+              locale.slug,
+              usedSlugsByLocale.get(locale.locale)!,
+            ),
+            isHomepage: false,
+            pathSegment: locale.pathSegment,
+            title: locale.title,
+            metaDescription: locale.metaDescription,
+            ogTitle: locale.ogTitle,
+            ogDescription: locale.ogDescription,
+            ogImageUrl: locale.ogImageUrl,
+            blocks: locale.blocks as Prisma.InputJsonValue,
+            status: "DRAFT",
+            publishedAt: null,
+          })),
+        },
+      },
+      include: { locales: true },
     })
   }
 

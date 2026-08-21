@@ -16,8 +16,9 @@
 // DB-DEPENDENT assertions (nested-relation SQL count, ABAC parity test) live
 // in later units once services are in place.
 
-import { describe, expect, it } from "vitest"
+import { describe, expect, it, vi } from "vitest"
 import { schema } from "@/graphql/schema"
+import { duplicateExperienceFromContext } from "@/graphql/mutations/experience"
 
 type FieldsHolder = { getFields(): Record<string, unknown> }
 
@@ -354,6 +355,38 @@ describe("GraphQL schema — Unit 4 content types", () => {
     expect(
       mutation.updateExperienceLocale!.args.map((arg) => arg.name),
     ).not.toContain("isTemplate")
+  })
+
+  it("Mutation root exposes Experience duplication through the API", () => {
+    const mutation = schema.getMutationType()
+    expect(mutation).toBeTruthy()
+    const duplicate = mutation!.getFields().duplicateExperience
+    expect(duplicate).toBeDefined()
+    expect(String(duplicate!.type)).toBe("Experience!")
+    expect(duplicate!.args.map((arg) => arg.name)).toEqual(["id"])
+  })
+
+  it("delegates Experience duplication to the shared service with the caller", async () => {
+    const duplicate = vi.fn().mockResolvedValue({
+      id: "exp-copy",
+      isTemplate: false,
+      ownerId: "editor-1",
+      locales: [],
+    })
+    const user = { id: "editor-1", role: "EDITOR" as const }
+    await expect(
+      duplicateExperienceFromContext(
+        {
+          user,
+          services: { experience: { duplicate } } as never,
+        },
+        "exp-source",
+      ),
+    ).resolves.toMatchObject({ id: "exp-copy" })
+    expect(duplicate).toHaveBeenCalledWith({
+      input: { id: "exp-source" },
+      user,
+    })
   })
 
   it("Mutation root exposes Manager job write contracts", () => {

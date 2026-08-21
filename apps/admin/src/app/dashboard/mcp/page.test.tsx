@@ -34,6 +34,7 @@ describe("dashboard / mcp page", () => {
     expect(html).toContain("forge-bulk-locale-factory")
     expect(html).toContain("Find Experiences missing Spanish locales")
     expect(html).toContain("Generate a new draft Experience about hope")
+    expect(html).toContain("Duplicate the Easter Experience")
     expect(html).not.toContain("Copy the JFP Admin MCP address")
     expect(html).not.toContain("install-skill-from-github.py")
     expect(html).not.toContain("Rules")
