@@ -103,7 +103,9 @@ export function buildLetterRows(
 /**
  * The action row: shift toggle · space (wide) · delete · search. Shift shows the
  * case it switches TO (iOS/tvOS convention) and is a persistent caps-lock toggle,
- * easier on a D-pad. Submit (⏎) fires useSemanticSearch.submit(), skipping debounce.
+ * easier on a D-pad. Submit (⏎) fires useSemanticSearch.submit(), skipping
+ * debounce. Voice search deliberately lives OUTSIDE the keyboard — the mic is
+ * VoiceSearchButton at the left of the search bar.
  */
 export function buildActionRow(isShifted: boolean): KeyCell[] {
   return [
