@@ -154,6 +154,11 @@ The manifest is an admission contract, not a rendering payload or historical
 record; absence can disprove current route validity but cannot explain why a
 relationship changed.
 
+When a consumer synthesizes a selectable context from parent/child relations,
+exact admission means the manifest proves the parent/child pair and that
+specific child's selected audio language. A global language entry or fallback
+playback stream is not proof that the contextual route exists.
+
 ### Watch Search & Social Metadata Overlay
 
 Editor-owned, per-language promotional metadata for a Watch Video that may
