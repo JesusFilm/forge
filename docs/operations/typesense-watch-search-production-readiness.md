@@ -544,6 +544,46 @@ code does not replace public search: keep
 `WATCH_SEARCH_CANDIDATE_COMPARISON_ENABLED=false`. The browser and public
 GraphQL contract cannot select a candidate.
 
+### Qualify a ranking-only common-phrase revision
+
+The common-phrase change introduces ranking revision `canonical-intent-v2`
+and reviewed qrels revision `watch-search-common-phrases/v1`. Merging or
+deploying the code does not qualify or activate either identity. Serving keeps
+the public selector on `CURRENT` and therefore `legacy-rrf`; the separate
+Candidate-serving ranking setting keeps its `title-and-brand-v1` default until
+the normal qualification and promotion workflow completes.
+
+After the change merges, run the private Evaluation profile and paired
+benchmark with the exact qrels identity:
+
+```bash
+WATCH_SEARCH_CANDIDATE_QRELS_REVISION=watch-search-common-phrases/v1 \
+  pnpm --filter @forge/admin benchmark:watch-search-candidate \
+  > /secure-evidence/watch-search-candidate-paired.json
+```
+
+Before accepting the report, verify that every Candidate attempt reports
+`canonical-intent-v2` and `watch-search-common-phrases/v1`, and review the
+separate exact-title and intent-query outcomes. The same report identity must
+also have reviewed relevance, fixed-load resource, steady and peak capacity,
+current-interference, and named-operator evidence. A missing, stale, or mixed
+revision is not qualified.
+
+Only the exact qualified identity may later be accepted, pinned, and promoted:
+Candidate generation, `watch-search-candidate/v2` application revision,
+`canonical-intent-v2` ranking revision, transcript projection, qrels revision,
+and frozen Current bindings must all match. Do not infer a physical Candidate
+rebuild from this ranking-only revision; the physical application revision is
+unchanged. Rebuild only when an independent schema, document projection, or
+retrieval-field contract change requires it.
+
+Rollback remains the existing `CURRENT` selection. If a Candidate must remain
+selected, restore only a previously qualified and pinned
+`title-and-brand-v1` identity. Do not relabel `canonical-intent-v2` evidence or
+change its report to manufacture a v1 rollback. See the
+[FGE-30 implementation plan](../plans/2026-08-21-2253-fix-common-phrase-ranking-plan.md)
+for the scoped acceptance contract.
+
 ### Publish, enable, and compare
 
 1. Give the indexing job `TYPESENSE_OPERATOR_API_KEY`; give runtime Admin only
