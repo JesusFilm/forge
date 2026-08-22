@@ -67,7 +67,7 @@ export function WatchHomePage({ model }: WatchHomePageProps) {
             <WatchHomeSection key={section.id} section={section} />
           ))}
           <WatchHomePromo />
-          <WatchHomeFooter />
+          <WatchHomeFooter showIntroductionReplay />
         </div>
       </div>
     </main>

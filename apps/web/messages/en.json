@@ -120,6 +120,8 @@
     "next": "Next",
     "done": "Done",
     "signup": "Sign up for updates",
+    "replay": "Take the Watch tour",
+    "signupUnavailable": "Sign-up is unavailable right now. Please try again.",
     "steps": {
       "discover": {
         "eyebrow": "Start watching",

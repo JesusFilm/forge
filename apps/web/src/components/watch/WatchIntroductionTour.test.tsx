@@ -55,7 +55,7 @@ function Harness({
 }: {
   onSkip?: () => void
   onComplete?: () => void
-  onSignup?: () => void
+  onSignup?: () => boolean | void
 }) {
   const [open, setOpen] = useState(true)
   return (
@@ -70,8 +70,9 @@ function Harness({
         setOpen(false)
       }}
       onSignup={() => {
-        onSignup()
-        setOpen(false)
+        const accepted = onSignup()
+        if (accepted !== false) setOpen(false)
+        return accepted !== false
       }}
       finalFocus={createRef<HTMLElement>()}
     />
@@ -174,6 +175,22 @@ describe("WatchIntroductionTour", () => {
     await flushDialogEffects()
 
     expect(onSignup).toHaveBeenCalledOnce()
+  })
+
+  it("keeps the final step open and announces when signup is temporarily unavailable", async () => {
+    const onSignup = vi.fn(() => false)
+    act(() => root.render(<Harness onSignup={onSignup} />))
+    await flushDialogEffects()
+    act(() => button("Next").click())
+    act(() => button("Next").click())
+    act(() => button("Next").click())
+    act(() => button("Sign up for updates").click())
+
+    expect(onSignup).toHaveBeenCalledOnce()
+    expect(document.querySelector("[role='dialog']")).not.toBeNull()
+    expect(document.querySelector("[role='status']")?.textContent).toBe(
+      "Sign-up is unavailable right now. Please try again.",
+    )
   })
 
   it("outlines the live search target without making it interactive and cleans listeners", async () => {

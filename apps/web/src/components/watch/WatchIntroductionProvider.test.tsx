@@ -1,6 +1,6 @@
 /** @vitest-environment jsdom */
 
-import { act, type ReactNode } from "react"
+import { act, useEffect, useRef, type ReactNode } from "react"
 import { createRoot, type Root } from "react-dom/client"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
@@ -13,6 +13,9 @@ const route = vi.hoisted(() => ({
     | null,
 }))
 const lazyTour = vi.hoisted(() => ({ renders: 0 }))
+const betaModal = vi.hoisted(() => ({
+  openModal: vi.fn<(trigger?: HTMLElement | null) => boolean>(() => true),
+}))
 
 vi.mock("next/navigation", () => ({
   usePathname: () => route.pathname,
@@ -27,20 +30,34 @@ vi.mock("@/components/FloatingSearchContext", async (importOriginal) => {
   }
 })
 
+vi.mock("@/components/watch/BetaTesterModalProvider", () => ({
+  useBetaTesterModal: () => ({ openModal: betaModal.openModal }),
+}))
+
 vi.mock("next/dynamic", () => ({
   default: () =>
     function MockWatchIntroductionTour({
       open,
       onSkip,
+      onComplete,
+      onSignup,
     }: {
       open: boolean
       onSkip: () => void
+      onComplete: () => void
+      onSignup: () => boolean
     }) {
       lazyTour.renders += 1
       return open ? (
         <div role="dialog" data-testid="watch-introduction-tour">
           <button type="button" onClick={onSkip}>
             Skip
+          </button>
+          <button type="button" onClick={onComplete}>
+            Done
+          </button>
+          <button type="button" onClick={onSignup}>
+            Sign up
           </button>
         </div>
       ) : null
@@ -67,6 +84,8 @@ beforeEach(() => {
   route.pathname = "/watch"
   route.surface = "language-home"
   lazyTour.renders = 0
+  betaModal.openModal.mockReset()
+  betaModal.openModal.mockReturnValue(true)
   const values = new Map<string, string>()
   Object.defineProperty(window, "localStorage", {
     configurable: true,
@@ -104,8 +123,14 @@ afterEach(() => {
 
 function ReplayButton() {
   const introduction = useWatchIntroduction()
+  const buttonRef = useRef<HTMLButtonElement>(null)
+  useEffect(() => {
+    introduction.registerReplayTrigger(buttonRef.current)
+    return () => introduction.registerReplayTrigger(null)
+  }, [introduction])
   return (
     <button
+      ref={buttonRef}
       type="button"
       data-testid="replay"
       onClick={(event) => introduction.replay(event.currentTarget)}
@@ -163,6 +188,21 @@ describe("WatchIntroductionProvider", () => {
     act(() => vi.advanceTimersByTime(1))
     expect(document.querySelector("[role='dialog']")).not.toBeNull()
     expect(lazyTour.renders).toBe(1)
+  })
+
+  it("returns focus to the stable replay action after an automatic tour closes", () => {
+    render()
+    const replay = document.querySelector(
+      "[data-testid='replay']",
+    ) as HTMLButtonElement
+
+    finishAutomaticDelay()
+    const skip = [...document.querySelectorAll("[role='dialog'] button")].find(
+      (candidate) => candidate.textContent === "Skip",
+    ) as HTMLButtonElement
+    act(() => skip.click())
+
+    expect(document.activeElement).toBe(replay)
   })
 
   it("does not schedule automatic opening on an excluded route surface", () => {
@@ -279,6 +319,66 @@ describe("WatchIntroductionProvider", () => {
       await Promise.resolve()
     })
     expect(media.play).toHaveBeenCalledOnce()
+  })
+
+  it("completes only after the beta signup request is accepted and uses the stable replay trigger", () => {
+    render()
+    const replay = document.querySelector(
+      "[data-testid='replay']",
+    ) as HTMLButtonElement
+
+    finishAutomaticDelay()
+    const signup = [
+      ...document.querySelectorAll("[role='dialog'] button"),
+    ].find(
+      (candidate) => candidate.textContent === "Sign up",
+    ) as HTMLButtonElement
+    act(() => signup.click())
+
+    expect(betaModal.openModal).toHaveBeenCalledWith(replay)
+    expect(window.localStorage.getItem(WATCH_INTRODUCTION_STORAGE_KEY)).toBe(
+      "completed",
+    )
+    expect(document.querySelector("[role='dialog']")).toBeNull()
+  })
+
+  it("keeps the final tour open and incomplete when the beta signup request is rejected", () => {
+    betaModal.openModal.mockReturnValue(false)
+    render()
+    const replay = document.querySelector(
+      "[data-testid='replay']",
+    ) as HTMLButtonElement
+
+    act(() => replay.click())
+    const signup = [
+      ...document.querySelectorAll("[role='dialog'] button"),
+    ].find(
+      (candidate) => candidate.textContent === "Sign up",
+    ) as HTMLButtonElement
+    act(() => signup.click())
+
+    expect(
+      window.localStorage.getItem(WATCH_INTRODUCTION_STORAGE_KEY),
+    ).toBeNull()
+    expect(document.querySelector("[role='dialog']")).not.toBeNull()
+  })
+
+  it("completes through Done without requesting the beta modal", () => {
+    render()
+    const replay = document.querySelector(
+      "[data-testid='replay']",
+    ) as HTMLButtonElement
+
+    act(() => replay.click())
+    const done = [...document.querySelectorAll("[role='dialog'] button")].find(
+      (candidate) => candidate.textContent === "Done",
+    ) as HTMLButtonElement
+    act(() => done.click())
+
+    expect(betaModal.openModal).not.toHaveBeenCalled()
+    expect(window.localStorage.getItem(WATCH_INTRODUCTION_STORAGE_KEY)).toBe(
+      "completed",
+    )
   })
 
   it("does not duplicate automatic timers or lazy mounts across rerenders", () => {

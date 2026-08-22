@@ -14,6 +14,7 @@ import dynamic from "next/dynamic"
 import { usePathname } from "next/navigation"
 
 import { useWatchRouteSurface } from "@/components/FloatingSearchContext"
+import { useBetaTesterModal } from "@/components/watch/BetaTesterModalProvider"
 import type { WatchIntroductionTourProps } from "@/components/watch/WatchIntroductionTour"
 import {
   WATCH_MODAL_CLOSE_DELAY_MS,
@@ -30,6 +31,7 @@ const WATCH_INTRODUCTION_AUTO_DELAY_MS = 1_000
 type WatchIntroductionContextValue = {
   open: boolean
   replay: (trigger?: HTMLElement | null) => boolean
+  registerReplayTrigger: (trigger: HTMLButtonElement | null) => void
 }
 
 const WatchIntroductionContext =
@@ -53,6 +55,10 @@ export function useWatchIntroduction(): WatchIntroductionContextValue {
   return context
 }
 
+export function useOptionalWatchIntroduction(): WatchIntroductionContextValue | null {
+  return useContext(WatchIntroductionContext)
+}
+
 function connectedFocusTarget(candidate?: HTMLElement | null) {
   if (candidate?.isConnected) return candidate
   const active = document.activeElement
@@ -68,6 +74,7 @@ export function WatchIntroductionProvider({
 }) {
   const pathname = usePathname()
   const routeSurface = useWatchRouteSurface()
+  const betaTesterModal = useBetaTesterModal()
   const reservation = useWatchModalReservation()
   const [open, setOpen] = useState(false)
   const [tourEnabled, setTourEnabled] = useState(false)
@@ -75,6 +82,7 @@ export function WatchIntroductionProvider({
   const automaticAttemptedRef = useRef(false)
   const automaticAttemptAbandonedRef = useRef(false)
   const returnFocusRef = useRef<HTMLElement | null>(null)
+  const replayTriggerRef = useRef<HTMLButtonElement | null>(null)
   const releaseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const openTour = useCallback(
@@ -86,7 +94,10 @@ export function WatchIntroductionProvider({
         clearTimeout(releaseTimerRef.current)
         releaseTimerRef.current = null
       }
-      returnFocusRef.current = connectedFocusTarget(trigger)
+      returnFocusRef.current =
+        (trigger ? connectedFocusTarget(trigger) : null) ??
+        replayTriggerRef.current ??
+        connectedFocusTarget()
       setTourEnabled(true)
       setOpen(true)
       return true
@@ -94,20 +105,43 @@ export function WatchIntroductionProvider({
     [open, reservation],
   )
 
-  const finishTour = useCallback(() => {
-    markWatchIntroductionCompleted()
-    setOpen(false)
+  const finishTour = useCallback(
+    (restoreFocus = true) => {
+      markWatchIntroductionCompleted()
+      setOpen(false)
 
-    if (releaseTimerRef.current) clearTimeout(releaseTimerRef.current)
-    releaseTimerRef.current = setTimeout(() => {
-      releaseTimerRef.current = null
-      reservation.release()
-    }, WATCH_MODAL_CLOSE_DELAY_MS)
+      if (releaseTimerRef.current) clearTimeout(releaseTimerRef.current)
+      releaseTimerRef.current = setTimeout(() => {
+        releaseTimerRef.current = null
+        reservation.release()
+      }, WATCH_MODAL_CLOSE_DELAY_MS)
 
-    window.requestAnimationFrame(() => {
-      if (returnFocusRef.current?.isConnected) returnFocusRef.current.focus()
-    })
-  }, [reservation])
+      if (restoreFocus) {
+        window.requestAnimationFrame(() => {
+          if (returnFocusRef.current?.isConnected)
+            returnFocusRef.current.focus()
+        })
+      }
+    },
+    [reservation],
+  )
+
+  const registerReplayTrigger = useCallback(
+    (trigger: HTMLButtonElement | null) => {
+      replayTriggerRef.current = trigger
+    },
+    [],
+  )
+
+  const requestSignup = useCallback(() => {
+    const focusTarget = replayTriggerRef.current?.isConnected
+      ? replayTriggerRef.current
+      : null
+    if (!betaTesterModal?.openModal(focusTarget)) return false
+
+    finishTour(false)
+    return true
+  }, [betaTesterModal, finishTour])
 
   useEffect(() => {
     return () => {
@@ -197,8 +231,8 @@ export function WatchIntroductionProvider({
   }, [openTour, pathname, routeSurface])
 
   const value = useMemo<WatchIntroductionContextValue>(
-    () => ({ open, replay: openTour }),
-    [open, openTour],
+    () => ({ open, replay: openTour, registerReplayTrigger }),
+    [open, openTour, registerReplayTrigger],
   )
 
   return (
@@ -209,7 +243,7 @@ export function WatchIntroductionProvider({
           open={open}
           onSkip={finishTour}
           onComplete={finishTour}
-          onSignup={finishTour}
+          onSignup={requestSignup}
           finalFocus={returnFocusRef}
         />
       ) : null}

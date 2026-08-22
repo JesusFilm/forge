@@ -67,7 +67,7 @@ export type WatchIntroductionTourProps = {
   open: boolean
   onSkip: () => void
   onComplete: () => void
-  onSignup: () => void
+  onSignup: () => boolean
   finalFocus: RefObject<HTMLElement | null>
 }
 
@@ -168,6 +168,7 @@ export function WatchIntroductionTour({
   const [targetLayout, setTargetLayout] = useState<MeasuredTargetLayout | null>(
     null,
   )
+  const [signupUnavailable, setSignupUnavailable] = useState(false)
   const closeButtonRef = useRef<HTMLButtonElement>(null)
   const completedActionRef = useRef(false)
   const forcedColors = useMediaPreference("(forced-colors: active)")
@@ -182,6 +183,7 @@ export function WatchIntroductionTour({
   const finishOnce = useCallback((action: () => void) => {
     if (completedActionRef.current) return
     completedActionRef.current = true
+    setSignupUnavailable(false)
     setStepIndex(0)
     setTargetLayout(null)
     action()
@@ -194,10 +196,17 @@ export function WatchIntroductionTour({
     () => finishOnce(onComplete),
     [finishOnce, onComplete],
   )
-  const requestSignup = useCallback(
-    () => finishOnce(onSignup),
-    [finishOnce, onSignup],
-  )
+  const requestSignup = useCallback(() => {
+    if (completedActionRef.current) return
+    if (!onSignup()) {
+      setSignupUnavailable(true)
+      return
+    }
+    completedActionRef.current = true
+    setSignupUnavailable(false)
+    setStepIndex(0)
+    setTargetLayout(null)
+  }, [onSignup])
 
   useEffect(() => {
     if (!open || forcedColors || step.target == null) return
@@ -332,6 +341,15 @@ export function WatchIntroductionTour({
               >
                 {t(`steps.${step.key}.description`)}
               </DialogDescription>
+              {isFinalStep && signupUnavailable ? (
+                <p
+                  role="status"
+                  aria-live="polite"
+                  className="text-sm font-medium text-amber-300"
+                >
+                  {t("signupUnavailable")}
+                </p>
+              ) : null}
             </div>
 
             <div
@@ -351,7 +369,10 @@ export function WatchIntroductionTour({
                 <button
                   type="button"
                   onClick={() =>
-                    setStepIndex((current) => Math.max(0, current - 1))
+                    setStepIndex((current) => {
+                      setSignupUnavailable(false)
+                      return Math.max(0, current - 1)
+                    })
                   }
                   className="min-h-11 rounded-full bg-white/10 px-6 py-3 text-sm font-semibold text-white transition hover:bg-white/16 focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:outline-none motion-reduce:transition-none"
                 >

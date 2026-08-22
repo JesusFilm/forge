@@ -23,7 +23,7 @@ import { cn } from "@/lib/utils"
 
 type BetaTesterModalContextValue = {
   open: boolean
-  openModal: (trigger?: HTMLElement | null) => void
+  openModal: (trigger?: HTMLElement | null) => boolean
   closeModal: () => void
   setQuestionPanelOpen: (open: boolean) => void
 }
@@ -199,6 +199,8 @@ function BetaTesterModalPathProvider({ children }: { children: ReactNode }) {
   const [questionPanelOpen, setQuestionPanelOpen] = useState(false)
   const [showGlobalTrigger, setShowGlobalTrigger] = useState(false)
   const returnFocusRef = useRef<HTMLElement | null>(null)
+  const questionPanelOpenRef = useRef(false)
+  const openRef = useRef(false)
   useWatchModalActivity(open)
 
   useEffect(() => {
@@ -228,19 +230,29 @@ function BetaTesterModalPathProvider({ children }: { children: ReactNode }) {
 
   const openModal = useCallback(
     (trigger?: HTMLElement | null) => {
-      if (searchOpen || questionPanelOpen) return
+      if (searchOpen || questionPanelOpenRef.current || openRef.current) {
+        return false
+      }
       returnFocusRef.current = trigger ?? null
+      openRef.current = true
       setModalEnabled(true)
       setOpen(true)
+      return true
     },
-    [questionPanelOpen, searchOpen],
+    [searchOpen],
   )
 
   const closeModal = useCallback(() => {
+    openRef.current = false
     setOpen(false)
     window.requestAnimationFrame(() => {
       if (returnFocusRef.current?.isConnected) returnFocusRef.current.focus()
     })
+  }, [])
+
+  const updateQuestionPanelOpen = useCallback((nextOpen: boolean) => {
+    questionPanelOpenRef.current = nextOpen
+    setQuestionPanelOpen(nextOpen)
   }, [])
 
   useEffect(() => {
@@ -257,9 +269,9 @@ function BetaTesterModalPathProvider({ children }: { children: ReactNode }) {
       open,
       openModal,
       closeModal,
-      setQuestionPanelOpen,
+      setQuestionPanelOpen: updateQuestionPanelOpen,
     }),
-    [closeModal, open, openModal],
+    [closeModal, open, openModal, updateQuestionPanelOpen],
   )
 
   const triggerUnavailable = searchOpen || questionPanelOpen || open
