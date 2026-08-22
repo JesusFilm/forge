@@ -47,7 +47,7 @@ describe("experience editor block helpers", () => {
   )
 
   it("creates schema-valid starter payloads for every block template", () => {
-    expect(BLOCK_TEMPLATE_KEYS).toHaveLength(21)
+    expect(BLOCK_TEMPLATE_KEYS).toHaveLength(22)
 
     for (const [index, key] of BLOCK_TEMPLATE_KEYS.entries()) {
       const result = BlockSchema.safeParse(createTemplateBlock(key, index))
@@ -99,6 +99,25 @@ describe("experience editor block helpers", () => {
     expect(createTemplateBlock("mediaCollection", 5)).toMatchObject({
       t: "mediaCollection",
       thumbnailOrientation: "vertical",
+    })
+  })
+
+  it("creates an infinite collection feed as a valid dynamic media collection", () => {
+    const block = createTemplateBlock("dynamicMediaCollection", 6)
+
+    expect(block).toMatchObject({
+      t: "mediaCollection",
+      sectionKey: "dynamic-media-collection-6",
+      itemsSource: "dynamicCollections",
+      variant: "carousel",
+      thumbnailOrientation: "horizontal",
+      excludedVideoIds: [],
+      items: [],
+    })
+    expect(BlockSchema.safeParse(block).success).toBe(true)
+    expect(summarizeBlock(block, 0, [])).toMatchObject({
+      typeLabel: "Infinite Collection Feed",
+      badges: ["DYNAMIC_COLLECTIONS"],
     })
   })
 

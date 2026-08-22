@@ -1173,6 +1173,31 @@ describe("Edge cases", () => {
     )
   })
 
+  it("exposes dynamic feed video exclusions on MediaCollectionBlock", () => {
+    const type = schema.getType("MediaCollectionBlock")
+    const fields = type && "getFields" in type ? type.getFields() : null
+    expect(fields?.excludedVideoIds?.type.toString()).toBe("[String!]!")
+  })
+
+  it("defaults missing dynamic feed exclusions for legacy media blocks", async () => {
+    const resolveExcludedVideoIds = fieldResolver(
+      "MediaCollectionBlock",
+      "excludedVideoIds",
+    )
+
+    expect(
+      await resolveExcludedVideoIds(fixtures.mediaCollection, {}, {}, fakeInfo),
+    ).toEqual([])
+    expect(
+      await resolveExcludedVideoIds(
+        { ...fixtures.mediaCollection, excludedVideoIds: ["collection-1"] },
+        {},
+        {},
+        fakeInfo,
+      ),
+    ).toEqual(["collection-1"])
+  })
+
   it("unknown discriminator throws UnknownBlockKindError", () => {
     expect(() =>
       resolveTypeName("ExperienceBlock", { t: "totallyUnknownKind" }),

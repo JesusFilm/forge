@@ -1,7 +1,10 @@
 import { describe, expect, it, vi, beforeEach } from "vitest"
 import { after } from "next/server"
 import type { Principal } from "@/auth/principal"
-import { ExperienceService } from "./experience.service"
+import {
+  ExperienceDynamicCollectionPlacementError,
+  ExperienceService,
+} from "./experience.service"
 import { refreshWatchRouteManifest } from "./watch-route-manifest-refresh.service"
 
 // Override only `after` so the service's manifest-refresh scheduling is
@@ -91,6 +94,17 @@ const CONSUMER_BEARER_USER: Principal = {
   id: null,
   role: "CONSUMER_BEARER",
   rateLimitBucketKey: "test-bucket",
+}
+
+function dynamicCollectionBlock(sectionKey: string) {
+  return {
+    t: "mediaCollection" as const,
+    sectionKey,
+    variant: "carousel" as const,
+    itemsSource: "dynamicCollections" as const,
+    showItemNumbers: false,
+    items: [],
+  }
 }
 
 describe("ExperienceService", () => {
@@ -935,6 +949,63 @@ describe("ExperienceService", () => {
           }),
         }),
       )
+    })
+
+    it.each([
+      {
+        name: "a non-homepage feed",
+        isHomepage: false,
+        blocks: [dynamicCollectionBlock("feed")],
+      },
+      {
+        name: "duplicate feeds",
+        isHomepage: true,
+        blocks: [
+          dynamicCollectionBlock("feed-1"),
+          dynamicCollectionBlock("feed-2"),
+        ],
+      },
+      {
+        name: "a non-terminal feed",
+        isHomepage: true,
+        blocks: [
+          dynamicCollectionBlock("feed"),
+          {
+            t: "text" as const,
+            sectionKey: "after-feed",
+            contentParagraphs: ["After"],
+          },
+        ],
+      },
+    ])("rejects $name", async ({ blocks, isHomepage }) => {
+      prisma.experienceLocale.findUniqueOrThrow.mockResolvedValueOnce(localeRow)
+
+      await expect(
+        service.updateLocale({
+          input: { id: "loc-1", blocks, isHomepage },
+          user: EDITOR_ALICE,
+        }),
+      ).rejects.toBeInstanceOf(ExperienceDynamicCollectionPlacementError)
+      expect(prisma.experienceLocale.update).not.toHaveBeenCalled()
+    })
+
+    it("accepts one terminal feed on a homepage", async () => {
+      prisma.experienceLocale.findUniqueOrThrow.mockResolvedValueOnce(localeRow)
+      prisma.experienceLocale.update.mockResolvedValueOnce({
+        ...localeRow,
+        isHomepage: true,
+      })
+
+      await expect(
+        service.updateLocale({
+          input: {
+            id: "loc-1",
+            isHomepage: true,
+            blocks: [dynamicCollectionBlock("feed")],
+          },
+          user: EDITOR_ALICE,
+        }),
+      ).resolves.toMatchObject({ isHomepage: true })
     })
 
     it("EDITOR cannot update another editor's locale", async () => {

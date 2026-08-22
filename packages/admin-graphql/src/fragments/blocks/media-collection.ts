@@ -24,6 +24,7 @@ export const adminMediaCollectionFragment = adminGraphql(
       mediaCollectionVariant: variant
       thumbnailOrientation
       footerText
+      excludedVideoIds
       imageAssetId
       imageAsset {
         id
