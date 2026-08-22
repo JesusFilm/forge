@@ -60,7 +60,7 @@ describe("Watch search Candidate intent evaluation cases", () => {
           ...WATCH_SEARCH_INTENT_EVAL_CASES[0],
           judgment: {
             ...WATCH_SEARCH_INTENT_EVAL_CASES[0].judgment,
-            acceptableAlternateSlugs: ["the-story-of-jesus-for-children"],
+            acceptableCanonicalSlugs: ["the-story-of-jesus-for-children"],
           },
         },
       ],

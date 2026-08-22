@@ -66,7 +66,7 @@ const REQUIRED_SLICES = REQUIRED_CANDIDATE_BENCHMARK_SLICES
 export type CandidateBenchmarkIdentity = {
   generationId: string
   applicationRevision: string
-  rankingRevision: "canonical-intent-v2"
+  rankingRevision: ReturnType<typeof candidateWatchSearchRankingRevision>
   transcriptCollection: string
   transcriptProjectionRevision: string
   qrelsRevision: string
@@ -107,7 +107,7 @@ type CandidateCompareSuccess = {
   diagnostics: CandidateDiagnostics
 }
 
-export type CandidateBenchmarkResult = {
+type CandidateBenchmarkResult = {
   id: string
   slug: string
   label: string | null
@@ -119,7 +119,7 @@ export type CandidateBenchmarkResult = {
   }
 }
 
-export type CandidateBenchmarkJudgmentVerdict = {
+type CandidateBenchmarkJudgmentVerdict = {
   passed: boolean
   matchedSlug: string | null
   matchedRank: number | null
@@ -194,13 +194,10 @@ export function evaluateWatchSearchCandidateJudgment(
   results: readonly CandidateBenchmarkResult[],
 ): CandidateBenchmarkJudgmentVerdict {
   const reasons = new Set<string>()
-  const acceptedCanonicalSlugs =
-    judgment.acceptableAlternateMaxRank == null
-      ? [
-          ...judgment.expectedCanonicalSlugs,
-          ...judgment.acceptableAlternateSlugs,
-        ]
-      : judgment.expectedCanonicalSlugs
+  const acceptedCanonicalSlugs = [
+    ...judgment.expectedCanonicalSlugs,
+    ...judgment.acceptableCanonicalSlugs,
+  ]
   const expected = results
     .map((result, index) => ({ result, rank: index + 1 }))
     .find(({ result }) => acceptedCanonicalSlugs.includes(result.slug))
@@ -239,14 +236,14 @@ export function evaluateWatchSearchCandidateJudgment(
     }
   }
 
-  if (judgment.acceptableAlternateMaxRank != null) {
+  if (judgment.requiredAlternate != null) {
     const alternate = results
       .map((result, index) => ({ result, rank: index + 1 }))
       .find(({ result }) =>
-        judgment.acceptableAlternateSlugs.includes(result.slug),
+        judgment.requiredAlternate!.slugs.includes(result.slug),
       )
     if (!alternate) reasons.add("acceptable_alternate_missing")
-    else if (alternate.rank > judgment.acceptableAlternateMaxRank) {
+    else if (alternate.rank > judgment.requiredAlternate.maxRank) {
       reasons.add("acceptable_alternate_rank_exceeded")
     }
   }
@@ -577,18 +574,35 @@ export function distinctCaseRelevance(
 ) {
   const tracks = ["exact-title", "intent-query"] as const
   const sides = ["current", "candidate"] as const
+  const attemptsByTrackAndCase = new Map(
+    tracks.map((track) => [
+      track,
+      new Map<
+        string,
+        Record<(typeof sides)[number], CandidateBenchmarkAttempt[]>
+      >(),
+    ]),
+  )
+  for (const attempt of attempts) {
+    if (attempt.track !== "exact-title" && attempt.track !== "intent-query") {
+      continue
+    }
+    const cases = attemptsByTrackAndCase.get(attempt.track)!
+    const caseAttempts = cases.get(attempt.caseId) ?? {
+      current: [],
+      candidate: [],
+    }
+    caseAttempts[attempt.side].push(attempt)
+    cases.set(attempt.caseId, caseAttempts)
+  }
+
   return Object.fromEntries(
     tracks.map((track) => {
-      const trackAttempts = attempts.filter(
-        (attempt) => attempt.track === track,
-      )
-      const caseIds = [...new Set(trackAttempts.map(({ caseId }) => caseId))]
+      const trackCases = attemptsByTrackAndCase.get(track)!
       const sideReports = Object.fromEntries(
         sides.map((side) => {
-          const cases = caseIds.map((caseId) => {
-            const caseAttempts = trackAttempts.filter(
-              (attempt) => attempt.side === side && attempt.caseId === caseId,
-            )
+          const cases = [...trackCases].map(([caseId, attemptsBySide]) => {
+            const caseAttempts = attemptsBySide[side]
             const failedReasons = [
               ...new Set(
                 caseAttempts.flatMap((attempt) =>
@@ -1041,8 +1055,7 @@ async function main() {
       transcriptProjectionRevision: generation.transcriptProjectionRevision,
       requireQualified: false,
     }),
-    qrelsRevision,
-    rankingRevision,
+    { qrelsRevision, rankingRevision },
   )
   const identity: CandidateBenchmarkIdentity = {
     generationId: generation.id,

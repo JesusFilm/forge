@@ -135,9 +135,12 @@ export function createCurrentWatchSearchProfile(): TypesenseWatchSearchProfile {
 
 export function createCandidateWatchSearchProfile(
   generation: ResolvedCandidateWatchSearchGeneration,
-  qrelsRevision: string | null,
-  rankingRevision: CandidateWatchSearchRankingRevision,
+  options: {
+    qrelsRevision: string | null
+    rankingRevision: CandidateWatchSearchRankingRevision
+  },
 ): TypesenseWatchSearchProfile {
+  const { qrelsRevision, rankingRevision } = options
   const generationId = required(generation.generationId, "generation id")
   const applicationRevision = required(
     generation.applicationRevision,
@@ -228,11 +231,10 @@ export async function resolveCandidateWatchSearchProfile(input: {
     qrelsRevision: input.qrelsRevision,
     rankingRevision: input.rankingRevision,
   })
-  return createCandidateWatchSearchProfile(
-    generation,
-    input.qrelsRevision?.trim() || null,
-    input.rankingRevision,
-  )
+  return createCandidateWatchSearchProfile(generation, {
+    qrelsRevision: input.qrelsRevision?.trim() || null,
+    rankingRevision: input.rankingRevision,
+  })
 }
 
 export async function freezeCurrentWatchSearchProfile(

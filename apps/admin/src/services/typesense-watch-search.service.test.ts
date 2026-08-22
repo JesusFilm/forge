@@ -218,8 +218,7 @@ function candidateProfile(
         transcript: "watch_search_transcripts_20260809",
       },
     },
-    null,
-    rankingRevision,
+    { qrelsRevision: null, rankingRevision },
   )
 }
 
@@ -644,8 +643,10 @@ describe("TypesenseWatchSearchService", () => {
           transcript: "watch_search_transcripts_20260809",
         },
       },
-      "none:operator-accepted:launch-1",
-      WATCH_SEARCH_TITLE_AND_BRAND_RANKING_IMPLEMENTATION,
+      {
+        qrelsRevision: "none:operator-accepted:launch-1",
+        rankingRevision: WATCH_SEARCH_TITLE_AND_BRAND_RANKING_IMPLEMENTATION,
+      },
     )
     const typesense = typesenseFixture({
       lexical: [catalogDocument],
@@ -1107,8 +1108,10 @@ describe("TypesenseWatchSearchService", () => {
           transcript: "watch_search_transcripts_20260809",
         },
       },
-      null,
-      WATCH_SEARCH_TITLE_AND_BRAND_RANKING_IMPLEMENTATION,
+      {
+        qrelsRevision: null,
+        rankingRevision: WATCH_SEARCH_TITLE_AND_BRAND_RANKING_IMPLEMENTATION,
+      },
     )
     const typesense = {
       multiSearch: vi.fn(async () => {

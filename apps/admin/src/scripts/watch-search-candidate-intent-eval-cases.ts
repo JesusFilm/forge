@@ -7,16 +7,19 @@ export type WatchSearchCandidateEvalTrack = "exact-title" | "intent-query"
 
 export type WatchSearchCandidateJudgment = {
   expectedCanonicalSlugs: readonly string[]
-  acceptableAlternateSlugs: readonly string[]
+  acceptableCanonicalSlugs: readonly string[]
   maxRank: number
-  acceptableAlternateMaxRank?: number
+  requiredAlternate?: {
+    slugs: readonly string[]
+    maxRank: number
+  }
   allowedAvailabilityKinds: readonly WatchSearchAvailabilityKind[]
   allowedContentTypes: readonly string[]
   allowedLanguageSlugs: readonly string[]
   requiresPlayback: boolean
 }
 
-export type WatchSearchCandidateEvalCase = {
+type WatchSearchCandidateEvalCase = {
   id: string
   query: string
   locale: string
@@ -40,9 +43,12 @@ export const WATCH_SEARCH_INTENT_EVAL_CASES = [
     track: "intent-query",
     judgment: {
       expectedCanonicalSlugs: ["the-story-of-jesus-for-children"],
-      acceptableAlternateSlugs: ["storyclubs-childhood-of-jesus"],
+      acceptableCanonicalSlugs: [],
       maxRank: 1,
-      acceptableAlternateMaxRank: 5,
+      requiredAlternate: {
+        slugs: ["storyclubs-childhood-of-jesus"],
+        maxRank: 5,
+      },
       allowedContentTypes: ["FEATURE_FILM"],
       ...ENGLISH_TARGET_AUDIO,
     },
@@ -55,9 +61,12 @@ export const WATCH_SEARCH_INTENT_EVAL_CASES = [
     track: "intent-query",
     judgment: {
       expectedCanonicalSlugs: ["the-story-of-jesus-for-children"],
-      acceptableAlternateSlugs: ["storyclubs-childhood-of-jesus"],
+      acceptableCanonicalSlugs: [],
       maxRank: 1,
-      acceptableAlternateMaxRank: 5,
+      requiredAlternate: {
+        slugs: ["storyclubs-childhood-of-jesus"],
+        maxRank: 5,
+      },
       allowedContentTypes: ["FEATURE_FILM"],
       ...ENGLISH_TARGET_AUDIO,
     },
@@ -70,7 +79,7 @@ export const WATCH_SEARCH_INTENT_EVAL_CASES = [
     track: "intent-query",
     judgment: {
       expectedCanonicalSlugs: ["31-was-jesus-resurrection-fake-news"],
-      acceptableAlternateSlugs: [
+      acceptableCanonicalSlugs: [
         "3-the-meaning-of-the-resurrection--episode-3",
         "episode-2-i-am-the-resurrection",
       ],
@@ -87,7 +96,7 @@ export const WATCH_SEARCH_INTENT_EVAL_CASES = [
     track: "intent-query",
     judgment: {
       expectedCanonicalSlugs: ["forgiveness"],
-      acceptableAlternateSlugs: [
+      acceptableCanonicalSlugs: [
         "forgiveness-vertical",
         "2-walking-in-forgiveness",
       ],
@@ -104,7 +113,7 @@ export const WATCH_SEARCH_INTENT_EVAL_CASES = [
     track: "intent-query",
     judgment: {
       expectedCanonicalSlugs: ["prayer-talking-to-god"],
-      acceptableAlternateSlugs: ["9-prayer", "41-what-is-prayer"],
+      acceptableCanonicalSlugs: ["9-prayer", "41-what-is-prayer"],
       maxRank: 3,
       allowedContentTypes: ["EPISODE"],
       ...ENGLISH_TARGET_AUDIO,
@@ -118,7 +127,7 @@ export const WATCH_SEARCH_INTENT_EVAL_CASES = [
     track: "intent-query",
     judgment: {
       expectedCanonicalSlugs: ["day-3-anxiety"],
-      acceptableAlternateSlugs: ["day-23-prayer-and-anxiety"],
+      acceptableCanonicalSlugs: ["day-23-prayer-and-anxiety"],
       maxRank: 2,
       allowedContentTypes: ["EPISODE"],
       ...ENGLISH_TARGET_AUDIO,
@@ -132,7 +141,7 @@ export const WATCH_SEARCH_INTENT_EVAL_CASES = [
     track: "intent-query",
     judgment: {
       expectedCanonicalSlugs: ["a-supreme-christmas"],
-      acceptableAlternateSlugs: [
+      acceptableCanonicalSlugs: [
         "22-what-is-the-meaning-of-christmas",
         "21-what-is-the-origin-of-christmas",
         "the-meaning-of-christmas--episode-3",
@@ -152,7 +161,7 @@ export const WATCH_SEARCH_INTENT_EVAL_CASES = [
     track: "intent-query",
     judgment: {
       expectedCanonicalSlugs: ["the-prodigal"],
-      acceptableAlternateSlugs: ["brothers", "in-the-family"],
+      acceptableCanonicalSlugs: ["brothers", "in-the-family"],
       maxRank: 10,
       allowedContentTypes: ["SHORT_FILM", "EPISODE"],
       ...ENGLISH_TARGET_AUDIO,
@@ -166,7 +175,7 @@ export const WATCH_SEARCH_INTENT_EVAL_CASES = [
     track: "intent-query",
     judgment: {
       expectedCanonicalSlugs: ["who-is-jesus"],
-      acceptableAlternateSlugs: ["who-is-jesusreally"],
+      acceptableCanonicalSlugs: ["who-is-jesusreally"],
       maxRank: 2,
       allowedContentTypes: ["EPISODE", "SHORT_FILM"],
       ...ENGLISH_TARGET_AUDIO,
@@ -180,7 +189,7 @@ export const WATCH_SEARCH_INTENT_EVAL_CASES = [
     track: "intent-query",
     judgment: {
       expectedCanonicalSlugs: ["3-life-after-death"],
-      acceptableAlternateSlugs: ["fallingplates"],
+      acceptableCanonicalSlugs: ["fallingplates"],
       maxRank: 2,
       allowedContentTypes: ["EPISODE", "SHORT_FILM"],
       ...ENGLISH_TARGET_AUDIO,
@@ -232,19 +241,35 @@ export function validateWatchSearchCandidateEvalCases(
       evalCase.judgment?.expectedCanonicalSlugs,
       `${evalCase.id}.expectedCanonicalSlugs`,
     )
-    const alternates = Array.isArray(
-      evalCase.judgment?.acceptableAlternateSlugs,
+    const acceptableCanonicalSlugs = Array.isArray(
+      evalCase.judgment?.acceptableCanonicalSlugs,
     )
-      ? evalCase.judgment.acceptableAlternateSlugs
+      ? evalCase.judgment.acceptableCanonicalSlugs
       : []
     if (
-      alternates.some(
+      acceptableCanonicalSlugs.some(
         (slug: unknown) => typeof slug !== "string" || slug.trim().length === 0,
       )
     ) {
-      throw new Error(`${evalCase.id}.acceptableAlternateSlugs is malformed`)
+      throw new Error(`${evalCase.id}.acceptableCanonicalSlugs is malformed`)
     }
-    const slugs = [...expected, ...alternates]
+    const requiredAlternateSlugs = evalCase.judgment.requiredAlternate?.slugs
+    if (
+      requiredAlternateSlugs != null &&
+      (!Array.isArray(requiredAlternateSlugs) ||
+        requiredAlternateSlugs.length === 0 ||
+        requiredAlternateSlugs.some(
+          (slug: unknown) =>
+            typeof slug !== "string" || slug.trim().length === 0,
+        ))
+    ) {
+      throw new Error(`${evalCase.id}.requiredAlternate.slugs is malformed`)
+    }
+    const slugs = [
+      ...expected,
+      ...acceptableCanonicalSlugs,
+      ...(requiredAlternateSlugs ?? []),
+    ]
     if (new Set(slugs).size !== slugs.length) {
       throw new Error(`${evalCase.id} contains duplicate judgment slugs`)
     }
@@ -255,13 +280,12 @@ export function validateWatchSearchCandidateEvalCases(
       throw new Error(`${evalCase.id}.maxRank must be a positive integer`)
     }
     if (
-      evalCase.judgment.acceptableAlternateMaxRank != null &&
-      (!Number.isSafeInteger(evalCase.judgment.acceptableAlternateMaxRank) ||
-        evalCase.judgment.acceptableAlternateMaxRank < 1 ||
-        alternates.length === 0)
+      evalCase.judgment.requiredAlternate != null &&
+      (!Number.isSafeInteger(evalCase.judgment.requiredAlternate.maxRank) ||
+        evalCase.judgment.requiredAlternate.maxRank < 1)
     ) {
       throw new Error(
-        `${evalCase.id}.acceptableAlternateMaxRank requires alternates and a positive integer`,
+        `${evalCase.id}.requiredAlternate.maxRank must be a positive integer`,
       )
     }
     nonemptyStrings(

@@ -1,12 +1,12 @@
 import { normalizeWatchSearchTitle } from "./typesense-watch-search-ranking"
 
-export type WatchSearchCanonicalIntentCatalogEntry = {
+type WatchSearchCanonicalIntentCatalogEntry = {
   languageSlug: string
   aliases: readonly string[]
   targetCanonicalVideoId: string
 }
 
-export type WatchSearchCanonicalIntent = {
+type WatchSearchCanonicalIntent = {
   targetCanonicalVideoId: string
 }
 

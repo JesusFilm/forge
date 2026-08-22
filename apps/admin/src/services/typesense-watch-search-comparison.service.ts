@@ -311,11 +311,10 @@ export async function resolveEvaluationCandidateWatchSearchProfile(
     transcriptProjectionRevision: generation.transcriptProjectionRevision,
     requireQualified: false,
   })
-  return createCandidateWatchSearchProfile(
-    resolved,
-    null,
-    candidateWatchSearchRankingRevision(),
-  )
+  return createCandidateWatchSearchProfile(resolved, {
+    qrelsRevision: null,
+    rankingRevision: candidateWatchSearchRankingRevision(),
+  })
 }
 
 /** Production fixed-semantics factory. Callers cannot provide profile identity. */

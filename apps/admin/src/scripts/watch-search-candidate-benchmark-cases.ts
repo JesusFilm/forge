@@ -51,7 +51,7 @@ function exactTitleJudgment(
 ): WatchSearchCandidateJudgment {
   return {
     expectedCanonicalSlugs: ["jesus"],
-    acceptableAlternateSlugs: [],
+    acceptableCanonicalSlugs: [],
     maxRank: 1,
     allowedAvailabilityKinds: ["target_audio"],
     allowedContentTypes: ["FEATURE_FILM"],

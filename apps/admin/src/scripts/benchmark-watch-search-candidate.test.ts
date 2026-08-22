@@ -349,7 +349,7 @@ describe("paired candidate qualification benchmark", () => {
       const verdict = evaluateWatchSearchCandidateJudgment(
         {
           expectedCanonicalSlugs: ["jesus"],
-          acceptableAlternateSlugs: [],
+          acceptableCanonicalSlugs: [],
           maxRank: 1,
           allowedAvailabilityKinds: ["target_audio"],
           allowedContentTypes: ["FEATURE_FILM"],
@@ -368,7 +368,7 @@ describe("paired candidate qualification benchmark", () => {
     const verdict = evaluateWatchSearchCandidateJudgment(
       {
         expectedCanonicalSlugs: ["expected-episode"],
-        acceptableAlternateSlugs: ["reviewed-alternate"],
+        acceptableCanonicalSlugs: ["reviewed-alternate"],
         maxRank: 2,
         allowedAvailabilityKinds: ["target_audio"],
         allowedContentTypes: ["EPISODE"],
@@ -401,9 +401,12 @@ describe("paired candidate qualification benchmark", () => {
   it("requires the named children alternate within its independent top-five bound", () => {
     const judgment = {
       expectedCanonicalSlugs: ["the-story-of-jesus-for-children"],
-      acceptableAlternateSlugs: ["storyclubs-childhood-of-jesus"],
+      acceptableCanonicalSlugs: [],
       maxRank: 1,
-      acceptableAlternateMaxRank: 5,
+      requiredAlternate: {
+        slugs: ["storyclubs-childhood-of-jesus"],
+        maxRank: 5,
+      },
       allowedAvailabilityKinds: ["target_audio" as const],
       allowedContentTypes: ["FEATURE_FILM"],
       allowedLanguageSlugs: ["english"],

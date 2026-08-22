@@ -65,8 +65,7 @@ describe("Typesense Watch search profiles", () => {
           transcript: "watch_search_transcripts_20260809",
         },
       },
-      null,
-      "title-and-brand-v1",
+      { qrelsRevision: null, rankingRevision: "title-and-brand-v1" },
     )
 
     expect(profile).toMatchObject({
@@ -102,8 +101,10 @@ describe("Typesense Watch search profiles", () => {
             transcript: "watch_search_transcripts_20260809",
           },
         },
-        null,
-        "unknown-ranker" as "title-and-brand-v1",
+        {
+          qrelsRevision: null,
+          rankingRevision: "unknown-ranker" as "title-and-brand-v1",
+        },
       ),
     ).toThrow(TypesenseWatchSearchProfileError)
   })
@@ -139,8 +140,7 @@ describe("Typesense Watch search profiles", () => {
             fieldManifests,
             collections,
           },
-          null,
-          "title-and-brand-v1",
+          { qrelsRevision: null, rankingRevision: "title-and-brand-v1" },
         ),
       ).toThrow(TypesenseWatchSearchProfileError)
     },
@@ -278,8 +278,7 @@ describe("Typesense Watch search profiles", () => {
           transcript: "watch_search_transcripts_physical-1",
         },
       },
-      null,
-      "title-and-brand-v1",
+      { qrelsRevision: null, rankingRevision: "title-and-brand-v1" },
     )
     const lease = {
       generationId: "generation-1",
