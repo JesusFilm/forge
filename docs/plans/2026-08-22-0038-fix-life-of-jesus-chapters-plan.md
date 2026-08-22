@@ -6,7 +6,7 @@ artifact_contract: "ce-unified-plan/v1"
 artifact_readiness: "implementation-ready"
 product_contract_source: "ce-plan-bootstrap"
 execution: "code"
-roadmap: "docs/roadmap/platform/feat-413-watch-life-of-jesus-chapter-context.md"
+roadmap: "docs/roadmap/platform/feat-416-watch-life-of-jesus-chapter-context.md"
 ---
 
 # Life of Jesus Chapter Context - Plan
@@ -79,7 +79,7 @@ This is a Web composition defect, not evidence that the film or its Chapters nee
 
 - Standalone Web route composition for the film-owned selectable Chapter context.
 - Focused route, merge, carousel, navigation, identity, browser, and performance proof.
-- A new `feat-413` platform roadmap ticket linked to FGE-75 and this plan.
+- A new `feat-416` platform roadmap ticket linked to FGE-75 and this plan.
 
 #### Deferred to Follow-Up Work
 
@@ -108,7 +108,7 @@ This is a Web composition defect, not evidence that the film or its Chapters nee
 
 - Production and the current Admin snapshot continue to expose 49 ordered Life of Jesus Chapter relations during execution. If that count changes, the implementation must preserve the live admitted order and record the drift instead of hard-coding 49.
 - The production film page continues to use the synthetic sibling-carousel slot. If an Experience override begins owning the slot, stop and reassess rather than bypassing the override contract.
-- `feat-413` remains the next unreserved global roadmap ID after `origin/main` and open PR #2003 at implementation start. Recheck before creating the ticket.
+- `feat-416` remains the next unreserved global roadmap ID after accounting for `feat-413` on the active FGE-30 recovery branch and `feat-414`/`feat-415` on the active playlist branch. Recheck before creating the ticket.
 
 ### Risks & Dependencies
 
@@ -142,7 +142,7 @@ This is a Web composition defect, not evidence that the film or its Chapters nee
 - **Requirements:** R8, R10-R12.
 - **Dependencies:** None.
 - **Files:**
-  - `docs/roadmap/platform/feat-413-watch-life-of-jesus-chapter-context.md`
+  - `docs/roadmap/platform/feat-416-watch-life-of-jesus-chapter-context.md`
   - `docs/roadmap/README.md`
 - **Approach:** Recheck `origin/main` and open PR roadmap reservations, then create the next sequential platform ticket with `status: "in-progress"`, FGE-75 and plan links, exact entry points, constraints, and verification. Update the generated roadmap index if the repository workflow requires it.
 - **Patterns to follow:** `docs/roadmap/platform/feat-412-watch-share-usage-guidance.md` and the roadmap format in `CLAUDE.md`.
@@ -186,7 +186,7 @@ This is a Web composition defect, not evidence that the film or its Chapters nee
 - **Requirements:** R5-R12; covers AE1-AE4.
 - **Dependencies:** U2.
 - **Files:**
-  - `docs/roadmap/platform/feat-413-watch-life-of-jesus-chapter-context.md`
+  - `docs/roadmap/platform/feat-416-watch-life-of-jesus-chapter-context.md`
 - **Approach:** After the final rebase, record the exact merge-base SHA and Admin snapshot version, then compare that pinned baseline build and the branch build using the same snapshot and runtime configuration on the Life of Jesus standalone route and a contextual Chapter control. Capture behavior at desktop and compact widths, record transfer and request evidence, then update the ticket with exact outcomes and mark it complete only after all gates pass.
 - **Patterns to follow:** `docs/solutions/conventions/frontend-change-page-load-performance-verification.md` and the completion evidence in `docs/roadmap/platform/feat-287-watch-standalone-collection-episodes.md`.
 - **Test scenarios:**
@@ -211,13 +211,13 @@ This is a Web composition defect, not evidence that the film or its Chapters nee
 | Production build      | `@forge/web` production build against the repository's supported local Admin setup                                                                              | Build succeeds without generated GraphQL drift or client/server boundary errors.                                                                                                    |
 | Browser behavior      | Life of Jesus standalone route plus contextual Chapter control at desktop and compact widths                                                                    | Selector, 49-Chapter flow, clip position, playback/download, identity, accessibility, and responsive behavior match R5-R11.                                                         |
 | Page-load performance | Pinned final merge-base versus branch request, transfer, timing, hydration, LCP, and console evidence against the same Admin snapshot and runtime configuration | No new browser data request or eager alternate rail; warmed response and user-visible loading remain within the existing 10% non-regression budget, with payload growth quantified. |
-| Roadmap closeout      | `feat-413` ticket                                                                                                                                               | Status is complete with exact validation and performance evidence plus the PR link when available.                                                                                  |
+| Roadmap closeout      | `feat-416` ticket                                                                                                                                               | Status is complete with exact validation and performance evidence plus the PR link when available.                                                                                  |
 
 ---
 
 ## Definition of Done
 
-- U1 is complete before product edits, and `feat-413` is the verified next sequential ID.
+- U1 is complete before product edits, and `feat-416` is the verified next sequential ID.
 - U2 satisfies R1-R10 and AE1-AE4 with focused automated coverage.
 - U3 satisfies R5-R12 with recorded browser and page-load evidence against `origin/main`.
 - The diff remains Web-only except for the plan, roadmap ticket, generated roadmap index, and durable learning produced by the required workflow.
