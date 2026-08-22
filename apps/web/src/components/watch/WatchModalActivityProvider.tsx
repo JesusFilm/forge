@@ -24,8 +24,15 @@ export type WatchPausableMedia = {
 
 type WatchModalRegistryActions = {
   acquire: (token: symbol) => void
+  tryAcquire: (token: symbol) => boolean
   release: (token: symbol) => void
   hasActivity: () => boolean
+}
+
+export type WatchModalReservation = {
+  tryAcquire: () => boolean
+  release: () => void
+  isAcquired: () => boolean
 }
 
 const WatchModalRegistryContext =
@@ -60,9 +67,20 @@ export function WatchModalActivityProvider({
 
   const hasActivity = useCallback(() => tokens.size > 0, [tokens])
 
+  const tryAcquire = useCallback(
+    (token: symbol) => {
+      if (tokens.has(token)) return true
+      if (tokens.size > 0) return false
+      tokens.add(token)
+      setActive(true)
+      return true
+    },
+    [tokens],
+  )
+
   const registry = useMemo<WatchModalRegistryActions>(
-    () => ({ acquire, release, hasActivity }),
-    [acquire, hasActivity, release],
+    () => ({ acquire, tryAcquire, release, hasActivity }),
+    [acquire, hasActivity, release, tryAcquire],
   )
 
   return (
@@ -71,6 +89,39 @@ export function WatchModalActivityProvider({
         {children}
       </WatchModalActiveContext.Provider>
     </WatchModalRegistryContext.Provider>
+  )
+}
+
+/**
+ * Reserve the shared Watch modal surface synchronously. Unlike an effect-only
+ * activity registration, this lets two same-tick open attempts deterministically
+ * choose one owner before either dialog is rendered.
+ */
+export function useWatchModalReservation(): WatchModalReservation {
+  const registry = useContext(WatchModalRegistryContext)
+  const [token] = useState(() => Symbol("watch-modal-reservation"))
+  const acquiredRef = useRef(false)
+
+  const tryAcquire = useCallback(() => {
+    if (acquiredRef.current) return true
+    if (!registry?.tryAcquire(token)) return false
+    acquiredRef.current = true
+    return true
+  }, [registry, token])
+
+  const release = useCallback(() => {
+    if (!acquiredRef.current) return
+    acquiredRef.current = false
+    registry?.release(token)
+  }, [registry, token])
+
+  const isAcquired = useCallback(() => acquiredRef.current, [])
+
+  useLayoutEffect(() => release, [release])
+
+  return useMemo(
+    () => ({ tryAcquire, release, isAcquired }),
+    [isAcquired, release, tryAcquire],
   )
 }
 
