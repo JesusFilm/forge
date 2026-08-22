@@ -23,12 +23,14 @@ const {
   resolveDownloadSessionAccessMock: vi.fn(),
 }))
 
-vi.mock("next/dynamic", () => ({
-  default: (loader: () => Promise<unknown>) =>
-    loader.toString().includes("ShareModal")
-      ? shareModalMock
-      : collectionDownloadModalMock,
-}))
+vi.mock("next/dynamic", () => {
+  let modalIndex = 0
+
+  return {
+    default: () =>
+      modalIndex++ === 1 ? shareModalMock : collectionDownloadModalMock,
+  }
+})
 
 vi.mock("@/components/watch/download-session-access", () => ({
   resolveDownloadSessionAccess: resolveDownloadSessionAccessMock,

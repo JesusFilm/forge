@@ -45,13 +45,29 @@ import {
 import { cn } from "@/lib/utils"
 import { WatchModalViewportCloseButton } from "./WatchModalViewportCloseButton"
 
+const USAGE_GUIDANCE_URL = "https://www.jesusfilm.org/about/faq/"
+const LICENSING_REQUEST_URL =
+  "https://form.asana.com/?k=qIsNe5Cu3-v5qriWHzwH8Q&d=657768513276"
+const SHARE_MODAL_ANALYTICS_SURFACE = "watch_share_modal"
+const GUIDANCE_VIEWED_EVENT = "watch_share_guidance_viewed"
+const LICENSING_CLICKED_EVENT = "watch_share_licensing_clicked"
+
+type LicensingReuseType = "native_social_upload" | "clip_reuse"
+
+function reportLicensingClick(reuseType: LicensingReuseType) {
+  reportGoogleAnalyticsEvent(LICENSING_CLICKED_EVENT, {
+    reuse_type: reuseType,
+    surface: SHARE_MODAL_ANALYTICS_SURFACE,
+  })
+}
+
 // Optional fields here accept explicit `null` from the parent's `?? null`
 // fallback chain in WatchPageClient (`video.title ?? null`). The effective
 // type is `string | null | undefined` — callers may pass any of the three
 // without forcing a `?? undefined` re-coercion at every call site.
 export type ShareModalProps = {
   open: boolean
-  usageGuidanceScope?: "video" | "generic"
+  usageGuidanceScope: "video" | "generic"
   videoSlug: string
   currentLanguageSlug: string
   videoTitle?: string | null
@@ -67,7 +83,7 @@ type CopyStatus = "idle" | "copied" | "failed"
 
 export function ShareModal({
   open,
-  usageGuidanceScope = "generic",
+  usageGuidanceScope,
   videoSlug,
   currentLanguageSlug,
   videoTitle,
@@ -141,9 +157,9 @@ export function ShareModal({
     }
 
     hasReportedGuidanceForOpenRef.current = true
-    reportGoogleAnalyticsEvent("watch_share_guidance_viewed", {
+    reportGoogleAnalyticsEvent(GUIDANCE_VIEWED_EVENT, {
       guidance_scope: "video",
-      surface: "watch_share_modal",
+      surface: SHARE_MODAL_ANALYTICS_SURFACE,
     })
   }, [activeMode, open, usageGuidanceScope])
 
@@ -481,7 +497,7 @@ export function ShareModal({
                     {t("downloadOrScreening")}
                   </span>
                   <a
-                    href="https://www.jesusfilm.org/about/faq/"
+                    href={USAGE_GUIDANCE_URL}
                     target="_blank"
                     rel="noopener noreferrer"
                     aria-label={`${t("downloadOrScreening")}: ${t("viewUsageGuidance")} (${t("opensInNewTab")})`}
@@ -496,20 +512,12 @@ export function ShareModal({
                     {t("nativeSocialUpload")}
                   </span>
                   <a
-                    href="https://form.asana.com/?k=qIsNe5Cu3-v5qriWHzwH8Q&d=657768513276"
+                    href={LICENSING_REQUEST_URL}
                     target="_blank"
                     rel="noopener noreferrer"
                     aria-label={`${t("nativeSocialUpload")}: ${t("openLicensingForm")} (${t("opensInNewTab")})`}
                     data-testid="watch-share-modal-native-upload-guidance"
-                    onClick={() =>
-                      reportGoogleAnalyticsEvent(
-                        "watch_share_licensing_clicked",
-                        {
-                          reuse_type: "native_social_upload",
-                          surface: "watch_share_modal",
-                        },
-                      )
-                    }
+                    onClick={() => reportLicensingClick("native_social_upload")}
                     className="inline-flex min-h-11 shrink-0 items-center text-sm font-bold text-brand-red underline-offset-4 hover:underline focus-visible:rounded-sm focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:outline-none"
                   >
                     {t("openLicensingForm")}
@@ -520,20 +528,12 @@ export function ShareModal({
                     {t("clipReuse")}
                   </span>
                   <a
-                    href="https://form.asana.com/?k=qIsNe5Cu3-v5qriWHzwH8Q&d=657768513276"
+                    href={LICENSING_REQUEST_URL}
                     target="_blank"
                     rel="noopener noreferrer"
                     aria-label={`${t("clipReuse")}: ${t("openLicensingForm")} (${t("opensInNewTab")})`}
                     data-testid="watch-share-modal-clip-reuse-guidance"
-                    onClick={() =>
-                      reportGoogleAnalyticsEvent(
-                        "watch_share_licensing_clicked",
-                        {
-                          reuse_type: "clip_reuse",
-                          surface: "watch_share_modal",
-                        },
-                      )
-                    }
+                    onClick={() => reportLicensingClick("clip_reuse")}
                     className="inline-flex min-h-11 shrink-0 items-center text-sm font-bold text-brand-red underline-offset-4 hover:underline focus-visible:rounded-sm focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:outline-none"
                   >
                     {t("openLicensingForm")}

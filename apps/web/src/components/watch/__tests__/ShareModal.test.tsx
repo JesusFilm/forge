@@ -73,6 +73,7 @@ describe("ShareModal — Copy Link", () => {
     act(() => {
       root.render(
         <ShareModal
+          usageGuidanceScope="generic"
           open
           videoSlug="the-call"
           currentLanguageSlug="english"
@@ -97,6 +98,7 @@ describe("ShareModal — Copy Link", () => {
     act(() => {
       root.render(
         <ShareModal
+          usageGuidanceScope="generic"
           open
           videoSlug="the-call"
           currentLanguageSlug="english"
@@ -124,6 +126,7 @@ describe("ShareModal — Copy Link", () => {
     act(() => {
       root.render(
         <ShareModal
+          usageGuidanceScope="generic"
           open
           videoSlug="v"
           currentLanguageSlug="english"
@@ -144,6 +147,7 @@ describe("ShareModal — Facebook + X share intents", () => {
     act(() => {
       root.render(
         <ShareModal
+          usageGuidanceScope="generic"
           open
           videoSlug="the-call"
           currentLanguageSlug="english"
@@ -163,6 +167,7 @@ describe("ShareModal — Facebook + X share intents", () => {
     act(() => {
       root.render(
         <ShareModal
+          usageGuidanceScope="generic"
           open
           videoSlug="the-call"
           currentLanguageSlug="english"
@@ -183,6 +188,7 @@ describe("ShareModal — platform and reuse guidance", () => {
     act(() => {
       root.render(
         <ShareModal
+          usageGuidanceScope="generic"
           open
           videoSlug="the-call"
           currentLanguageSlug="english"
@@ -215,6 +221,7 @@ describe("ShareModal — platform and reuse guidance", () => {
     act(() => {
       root.render(
         <ShareModal
+          usageGuidanceScope="generic"
           open
           videoSlug="the-call"
           currentLanguageSlug="english"
@@ -408,6 +415,7 @@ describe("ShareModal — Embed Code tab", () => {
     act(() => {
       root.render(
         <ShareModal
+          usageGuidanceScope="generic"
           open
           videoSlug="v"
           currentLanguageSlug="english"
@@ -428,6 +436,7 @@ describe("ShareModal — Embed Code tab", () => {
     act(() => {
       root.render(
         <ShareModal
+          usageGuidanceScope="generic"
           open
           videoSlug="the-call"
           currentLanguageSlug="english"
@@ -493,6 +502,7 @@ describe("ShareModal — Embed Code tab", () => {
     act(() => {
       root.render(
         <ShareModal
+          usageGuidanceScope="generic"
           open
           videoSlug="the-call"
           currentLanguageSlug="english"
@@ -575,6 +585,7 @@ describe("ShareModal — local origin fallback", () => {
       root.render(
         <ShareModalLocal
           open
+          usageGuidanceScope="generic"
           videoSlug="the-call"
           currentLanguageSlug="english"
           onClose={vi.fn()}
@@ -616,6 +627,7 @@ describe("ShareModal — local origin fallback", () => {
     act(() => {
       root.render(
         <ShareModal
+          usageGuidanceScope="generic"
           open
           videoSlug=""
           currentLanguageSlug="english"
@@ -647,6 +659,7 @@ describe("ShareModal — local origin fallback", () => {
     act(() => {
       root.render(
         <ShareModal
+          usageGuidanceScope="generic"
           open
           videoSlug=""
           currentLanguageSlug="english"
@@ -673,6 +686,7 @@ describe("ShareModal — clipboard failure", () => {
     act(() => {
       root.render(
         <ShareModal
+          usageGuidanceScope="generic"
           open
           videoSlug="v"
           currentLanguageSlug="english"
@@ -709,6 +723,7 @@ describe("ShareModal — clipboard failure", () => {
     act(() => {
       root.render(
         <ShareModal
+          usageGuidanceScope="generic"
           open
           videoSlug="v"
           currentLanguageSlug="english"
@@ -737,6 +752,7 @@ describe("ShareModal — lifecycle", () => {
     act(() => {
       root.render(
         <ShareModal
+          usageGuidanceScope="generic"
           open
           videoSlug="v"
           currentLanguageSlug="english"
@@ -768,6 +784,7 @@ describe("ShareModal — lifecycle", () => {
     act(() => {
       root.render(
         <ShareModal
+          usageGuidanceScope="generic"
           open={false}
           videoSlug="v"
           currentLanguageSlug="english"
@@ -783,6 +800,7 @@ describe("ShareModal — lifecycle", () => {
     act(() => {
       root.render(
         <ShareModal
+          usageGuidanceScope="generic"
           open
           videoSlug="v"
           currentLanguageSlug="english"
