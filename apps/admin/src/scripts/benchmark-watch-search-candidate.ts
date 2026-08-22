@@ -29,13 +29,22 @@ import type {
 } from "@/services/typesense-watch-search-ranking"
 import { TypesenseWatchSearchService } from "@/services/typesense-watch-search.service"
 import { TypesenseClient } from "@/services/typesense-client"
-import type { WatchSearchInput } from "@/services/watch-search.service"
+import type {
+  WatchSearchAvailabilityKind,
+  WatchSearchInput,
+} from "@/services/watch-search.service"
 import {
   PRODUCTION_CANDIDATE_BENCHMARK_CASES,
   REQUIRED_CANDIDATE_BENCHMARK_SLICES,
+  REQUIRED_CANDIDATE_JUDGED_CASES,
   type CandidateBenchmarkCase,
   type CandidateBenchmarkSlice,
 } from "./watch-search-candidate-benchmark-cases"
+import {
+  WATCH_SEARCH_COMMON_PHRASE_QRELS_REVISION,
+  type WatchSearchCandidateEvalTrack,
+  type WatchSearchCandidateJudgment,
+} from "./watch-search-candidate-intent-eval-cases"
 
 export {
   PRODUCTION_CANDIDATE_BENCHMARK_CASES as PRODUCTION_CASES,
@@ -93,13 +102,28 @@ type CandidateCompareSuccess = {
   response: {
     latencyMs: number
     degraded: boolean
-    results: readonly {
-      id: string
-      languageSlug?: string | null
-      playbackId?: string | null
-    }[]
+    results: readonly CandidateBenchmarkResult[]
   }
   diagnostics: CandidateDiagnostics
+}
+
+export type CandidateBenchmarkResult = {
+  id: string
+  slug: string
+  label: string | null
+  languageSlug: string | null
+  playbackId: string | null
+  availability: {
+    kind: WatchSearchAvailabilityKind
+    languageSlug: string | null
+  }
+}
+
+export type CandidateBenchmarkJudgmentVerdict = {
+  passed: boolean
+  matchedSlug: string | null
+  matchedRank: number | null
+  reasons: readonly string[]
 }
 
 type CandidateCompareError = {
@@ -131,6 +155,8 @@ export type CandidateBenchmarkAttempt = {
   degraded: boolean | null
   error: { code: string; errorClass: string } | null
   resultSignature: string | null
+  track?: WatchSearchCandidateEvalTrack | null
+  relevance?: CandidateBenchmarkJudgmentVerdict | null
   diagnostics: CandidateDiagnostics | null
   identity: CandidateBenchmarkIdentity
 }
@@ -163,13 +189,86 @@ function percentiles(values: readonly number[]) {
   }
 }
 
+export function evaluateWatchSearchCandidateJudgment(
+  judgment: WatchSearchCandidateJudgment,
+  results: readonly CandidateBenchmarkResult[],
+): CandidateBenchmarkJudgmentVerdict {
+  const reasons = new Set<string>()
+  const acceptedCanonicalSlugs =
+    judgment.acceptableAlternateMaxRank == null
+      ? [
+          ...judgment.expectedCanonicalSlugs,
+          ...judgment.acceptableAlternateSlugs,
+        ]
+      : judgment.expectedCanonicalSlugs
+  const expected = results
+    .map((result, index) => ({ result, rank: index + 1 }))
+    .find(({ result }) => acceptedCanonicalSlugs.includes(result.slug))
+  if (!expected) {
+    reasons.add("expected_slug_missing")
+  } else {
+    if (expected.rank > judgment.maxRank) {
+      reasons.add("expected_slug_rank_exceeded")
+    }
+    if (!judgment.allowedContentTypes.includes(expected.result.label ?? "")) {
+      reasons.add("expected_slug_content_type_mismatch")
+    }
+    if (
+      !judgment.allowedAvailabilityKinds.includes(
+        expected.result.availability.kind,
+      )
+    ) {
+      reasons.add("expected_slug_availability_mismatch")
+    }
+    if (
+      !judgment.allowedLanguageSlugs.includes(
+        expected.result.languageSlug ?? "",
+      )
+    ) {
+      reasons.add("expected_slug_language_mismatch")
+    }
+    if (
+      !judgment.allowedLanguageSlugs.includes(
+        expected.result.availability.languageSlug ?? "",
+      )
+    ) {
+      reasons.add("expected_slug_availability_language_mismatch")
+    }
+    if (judgment.requiresPlayback && !expected.result.playbackId) {
+      reasons.add("expected_slug_playback_missing")
+    }
+  }
+
+  if (judgment.acceptableAlternateMaxRank != null) {
+    const alternate = results
+      .map((result, index) => ({ result, rank: index + 1 }))
+      .find(({ result }) =>
+        judgment.acceptableAlternateSlugs.includes(result.slug),
+      )
+    if (!alternate) reasons.add("acceptable_alternate_missing")
+    else if (alternate.rank > judgment.acceptableAlternateMaxRank) {
+      reasons.add("acceptable_alternate_rank_exceeded")
+    }
+  }
+
+  return {
+    passed: reasons.size === 0,
+    matchedSlug: expected?.result.slug ?? null,
+    matchedRank: expected?.rank ?? null,
+    reasons: [...reasons].sort(),
+  }
+}
+
 function resultSignature(
   results: CandidateCompareSuccess["response"]["results"],
 ) {
   const projection = results.map((result) => ({
     id: result.id,
-    languageSlug: result.languageSlug ?? null,
-    playbackId: result.playbackId ?? null,
+    slug: result.slug,
+    label: result.label,
+    languageSlug: result.languageSlug,
+    playbackId: result.playbackId,
+    availability: result.availability,
   }))
   return createHash("sha256").update(JSON.stringify(projection)).digest("hex")
 }
@@ -222,7 +321,17 @@ function attemptFromSide(input: {
     order: input.order,
     side: input.sideName,
     identity: input.identity,
+    track: input.benchmarkCase.track ?? null,
   }
+  const failedRelevance = (reason: string) =>
+    input.benchmarkCase.judgment
+      ? {
+          passed: false,
+          matchedSlug: null,
+          matchedRank: null,
+          reasons: [reason],
+        }
+      : null
   if (input.side.status === "error") {
     return {
       ...shared,
@@ -234,6 +343,7 @@ function attemptFromSide(input: {
       degraded: null,
       error: input.side.error,
       resultSignature: null,
+      relevance: failedRelevance("search_attempt_error"),
       diagnostics: null,
     }
   }
@@ -248,6 +358,7 @@ function attemptFromSide(input: {
       degraded: input.side.response.degraded,
       error: { code: "identity_mismatch", errorClass: "IdentityDriftError" },
       resultSignature: null,
+      relevance: failedRelevance("identity_mismatch"),
       diagnostics: input.side.diagnostics,
     }
   }
@@ -262,6 +373,12 @@ function attemptFromSide(input: {
     degraded: input.side.response.degraded,
     error: null,
     resultSignature: resultSignature(input.side.response.results),
+    relevance: input.benchmarkCase.judgment
+      ? evaluateWatchSearchCandidateJudgment(
+          input.benchmarkCase.judgment,
+          input.side.response.results,
+        )
+      : null,
     diagnostics: input.side.diagnostics,
   }
 }
@@ -448,6 +565,116 @@ function boundedWorkReasons(attempts: readonly CandidateBenchmarkAttempt[]) {
   return [...reasons]
 }
 
+function reasonToken(value: string): string {
+  return value
+    .replace(/[^a-z0-9]+/gi, "_")
+    .replace(/^_|_$/g, "")
+    .toLowerCase()
+}
+
+export function distinctCaseRelevance(
+  attempts: readonly CandidateBenchmarkAttempt[],
+) {
+  const tracks = ["exact-title", "intent-query"] as const
+  const sides = ["current", "candidate"] as const
+  return Object.fromEntries(
+    tracks.map((track) => {
+      const trackAttempts = attempts.filter(
+        (attempt) => attempt.track === track,
+      )
+      const caseIds = [...new Set(trackAttempts.map(({ caseId }) => caseId))]
+      const sideReports = Object.fromEntries(
+        sides.map((side) => {
+          const cases = caseIds.map((caseId) => {
+            const caseAttempts = trackAttempts.filter(
+              (attempt) => attempt.side === side && attempt.caseId === caseId,
+            )
+            const failedReasons = [
+              ...new Set(
+                caseAttempts.flatMap((attempt) =>
+                  attempt.relevance?.passed === false
+                    ? attempt.relevance.reasons
+                    : attempt.relevance == null
+                      ? ["judgment_missing"]
+                      : [],
+                ),
+              ),
+            ].sort()
+            return {
+              caseId,
+              passed:
+                caseAttempts.length > 0 &&
+                caseAttempts.every(
+                  (attempt) => attempt.relevance?.passed === true,
+                ),
+              attempts: caseAttempts.length,
+              failedAttempts: caseAttempts.filter(
+                (attempt) => attempt.relevance?.passed !== true,
+              ).length,
+              reasons: failedReasons,
+            }
+          })
+          const passedCases = cases.filter(({ passed }) => passed).length
+          return [
+            side,
+            {
+              totalCases: cases.length,
+              passedCases,
+              failedCases: cases.length - passedCases,
+              successRate:
+                cases.length === 0 ? null : passedCases / cases.length,
+              cases,
+            },
+          ]
+        }),
+      )
+      return [track, sideReports]
+    }),
+  ) as Record<
+    WatchSearchCandidateEvalTrack,
+    Record<
+      "current" | "candidate",
+      {
+        totalCases: number
+        passedCases: number
+        failedCases: number
+        successRate: number | null
+        cases: Array<{
+          caseId: string
+          passed: boolean
+          attempts: number
+          failedAttempts: number
+          reasons: string[]
+        }>
+      }
+    >
+  >
+}
+
+export function productionJudgedCaseInventoryReasons(
+  cases: readonly CandidateBenchmarkCase[],
+): readonly string[] {
+  const reasons = new Set<string>()
+  for (const required of REQUIRED_CANDIDATE_JUDGED_CASES) {
+    const matches = cases.filter(({ id }) => id === required.id)
+    if (matches.length === 0) {
+      reasons.add(`judged_case_missing_${reasonToken(required.id)}`)
+      continue
+    }
+    if (matches.length > 1) {
+      reasons.add(`judged_case_duplicate_${reasonToken(required.id)}`)
+    }
+    if (
+      matches.some(
+        ({ track, judgment }) => track !== required.track || !judgment,
+      )
+    ) {
+      reasons.add(`judged_case_malformed_${reasonToken(required.id)}`)
+    }
+  }
+  return [...reasons].sort()
+}
+
 export function evaluateCandidateQualification(input: {
   identity: CandidateBenchmarkIdentity
   attempts: readonly CandidateBenchmarkAttempt[]
@@ -457,6 +684,11 @@ export function evaluateCandidateQualification(input: {
   invalidReasons?: readonly string[]
 }) {
   const reasons = new Set(input.invalidReasons ?? [])
+  if (
+    input.identity.qrelsRevision !== WATCH_SEARCH_COMMON_PHRASE_QRELS_REVISION
+  ) {
+    reasons.add("qrels_revision_mismatch")
+  }
   const failures = input.attempts.filter(
     (attempt) => attempt.outcome === "error",
   )
@@ -499,6 +731,22 @@ export function evaluateCandidateQualification(input: {
     reasons.add(reason)
   }
   for (const reason of boundedWorkReasons(input.attempts)) reasons.add(reason)
+  const relevance = distinctCaseRelevance(input.attempts)
+  for (const track of ["exact-title", "intent-query"] as const) {
+    for (const evalCase of relevance[track].candidate.cases) {
+      if (evalCase.passed) continue
+      if (evalCase.reasons.length === 0) {
+        reasons.add(
+          `candidate_${reasonToken(track)}_${reasonToken(evalCase.caseId)}_failed`,
+        )
+      }
+      for (const reason of evalCase.reasons) {
+        reasons.add(
+          `candidate_${reasonToken(track)}_${reasonToken(evalCase.caseId)}_${reasonToken(reason)}`,
+        )
+      }
+    }
+  }
   for (const gate of WATCH_SEARCH_CANDIDATE_REQUIRED_EVIDENCE_GATES) {
     if (input.evidence[gate] !== "PASS") {
       reasons.add(`${candidateQualificationEvidenceReason(gate)}_not_passed`)
@@ -517,6 +765,7 @@ export function evaluateCandidateQualification(input: {
       "lease_expired",
       "lease_lost",
       "identity_drift",
+      "qrels_revision_mismatch",
     ].includes(reason),
   )
   return {
@@ -550,6 +799,10 @@ export function evaluateCandidateQualification(input: {
       },
       slices,
     },
+    relevance: {
+      qrelsRevision: input.identity.qrelsRevision,
+      tracks: relevance,
+    },
     evidence: input.evidence,
   }
 }
@@ -565,6 +818,7 @@ export async function runPairedCandidateBenchmark(
 ) {
   const attempts: CandidateBenchmarkAttempt[] = []
   const invalidReasons: string[] = []
+  const qualificationReasons = productionJudgedCaseInventoryReasons(input.cases)
   const now = deps.now ?? (() => new Date())
   const lease = await deps.acquireLease()
   if (!lease) invalidReasons.push("lease_unavailable")
@@ -650,7 +904,7 @@ export async function runPairedCandidateBenchmark(
     requiredPairs: input.pairsPerCase,
     requiredSlices: REQUIRED_SLICES,
     evidence: input.evidence ?? DEFAULT_CANDIDATE_QUALIFICATION_EVIDENCE,
-    invalidReasons,
+    invalidReasons: [...invalidReasons, ...qualificationReasons],
   })
 }
 
@@ -704,8 +958,14 @@ async function executeProfile(
         degraded: result.response.degraded,
         results: result.response.results.map((entry) => ({
           id: entry.id,
+          slug: entry.slug,
+          label: entry.label,
           languageSlug: entry.languageSlug,
           playbackId: entry.playbackId,
+          availability: {
+            kind: entry.availability.kind,
+            languageSlug: entry.availability.languageSlug,
+          },
         })),
       },
       diagnostics: normalizeCandidateBenchmarkDiagnostics(result.diagnostics),
@@ -738,7 +998,13 @@ export function parseCandidateBenchmarkEnvironment(
       "TYPESENSE_HOST, TYPESENSE_SEARCH_API_KEY, and WATCH_SEARCH_CANDIDATE_QRELS_REVISION are required",
     )
   }
-  return { host, apiKey, qrelsRevision: qrelsRevision.trim() }
+  const normalizedQrelsRevision = qrelsRevision.trim()
+  if (normalizedQrelsRevision !== WATCH_SEARCH_COMMON_PHRASE_QRELS_REVISION) {
+    throw new Error(
+      `WATCH_SEARCH_CANDIDATE_QRELS_REVISION does not match code-owned revision ${WATCH_SEARCH_COMMON_PHRASE_QRELS_REVISION}`,
+    )
+  }
+  return { host, apiKey, qrelsRevision: normalizedQrelsRevision }
 }
 
 async function main() {

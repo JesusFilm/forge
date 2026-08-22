@@ -1,3 +1,9 @@
+import {
+  WATCH_SEARCH_INTENT_EVAL_CASES,
+  type WatchSearchCandidateEvalTrack,
+  type WatchSearchCandidateJudgment,
+} from "./watch-search-candidate-intent-eval-cases"
+
 export const REQUIRED_CANDIDATE_BENCHMARK_SLICES = [
   "exact-title",
   "partial-title",
@@ -22,6 +28,36 @@ export type CandidateBenchmarkCase = {
   locale?: string
   languageSlug?: string
   slices: readonly CandidateBenchmarkSlice[]
+  track?: WatchSearchCandidateEvalTrack
+  judgment?: WatchSearchCandidateJudgment
+}
+
+export const REQUIRED_CANDIDATE_JUDGED_CASES = [
+  { id: "jesus-japanese-mixed", track: "exact-title" },
+  { id: "jesus-chinese-native", track: "exact-title" },
+  { id: "jesus-chinese-traditional", track: "exact-title" },
+  { id: "jesus-japanese-native", track: "exact-title" },
+  { id: "jesus-russian-native", track: "exact-title" },
+  { id: "jesus-arabic-native", track: "exact-title" },
+  { id: "jesus-latin-exact", track: "exact-title" },
+  ...WATCH_SEARCH_INTENT_EVAL_CASES.map(({ id, track }) => ({ id, track })),
+] as const satisfies readonly {
+  id: string
+  track: WatchSearchCandidateEvalTrack
+}[]
+
+function exactTitleJudgment(
+  languageSlug: string,
+): WatchSearchCandidateJudgment {
+  return {
+    expectedCanonicalSlugs: ["jesus"],
+    acceptableAlternateSlugs: [],
+    maxRank: 1,
+    allowedAvailabilityKinds: ["target_audio"],
+    allowedContentTypes: ["FEATURE_FILM"],
+    allowedLanguageSlugs: [languageSlug],
+    requiresPlayback: true,
+  }
 }
 
 export const PRODUCTION_CANDIDATE_BENCHMARK_CASES: readonly CandidateBenchmarkCase[] =
@@ -32,6 +68,8 @@ export const PRODUCTION_CANDIDATE_BENCHMARK_CASES: readonly CandidateBenchmarkCa
       locale: "ja",
       languageSlug: "japanese",
       slices: ["exact-title", "mixed-language", "broad-title"],
+      track: "exact-title",
+      judgment: exactTitleJudgment("japanese"),
     },
     {
       id: "jesus-chinese-native",
@@ -44,6 +82,8 @@ export const PRODUCTION_CANDIDATE_BENCHMARK_CASES: readonly CandidateBenchmarkCa
         "broad-title",
         "language-correctness",
       ],
+      track: "exact-title",
+      judgment: exactTitleJudgment("mandarin-china"),
     },
     {
       id: "jesus-chinese-traditional",
@@ -51,6 +91,8 @@ export const PRODUCTION_CANDIDATE_BENCHMARK_CASES: readonly CandidateBenchmarkCa
       locale: "zh-Hant",
       languageSlug: "mandarin-china",
       slices: ["exact-title", "native-title", "language-correctness"],
+      track: "exact-title",
+      judgment: exactTitleJudgment("mandarin-china"),
     },
     {
       id: "jesus-japanese-native",
@@ -58,6 +100,8 @@ export const PRODUCTION_CANDIDATE_BENCHMARK_CASES: readonly CandidateBenchmarkCa
       locale: "ja",
       languageSlug: "japanese",
       slices: ["exact-title", "native-title", "language-correctness"],
+      track: "exact-title",
+      judgment: exactTitleJudgment("japanese"),
     },
     {
       id: "jesus-russian-native",
@@ -65,6 +109,8 @@ export const PRODUCTION_CANDIDATE_BENCHMARK_CASES: readonly CandidateBenchmarkCa
       locale: "ru",
       languageSlug: "russian",
       slices: ["exact-title", "native-title", "language-correctness"],
+      track: "exact-title",
+      judgment: exactTitleJudgment("russian"),
     },
     {
       id: "jesus-arabic-native",
@@ -77,6 +123,8 @@ export const PRODUCTION_CANDIDATE_BENCHMARK_CASES: readonly CandidateBenchmarkCa
         "broad-title",
         "language-correctness",
       ],
+      track: "exact-title",
+      judgment: exactTitleJudgment("arabic-modern-standard"),
     },
     {
       id: "jesus-latin-exact",
@@ -84,6 +132,8 @@ export const PRODUCTION_CANDIDATE_BENCHMARK_CASES: readonly CandidateBenchmarkCa
       locale: "en",
       languageSlug: "english",
       slices: ["exact-title", "native-title", "duplicate-title"],
+      track: "exact-title",
+      judgment: exactTitleJudgment("english"),
     },
     {
       id: "jesus-russian-partial",
@@ -127,4 +177,8 @@ export const PRODUCTION_CANDIDATE_BENCHMARK_CASES: readonly CandidateBenchmarkCa
       languageSlug: "english",
       slices: ["semantic"],
     },
+    ...WATCH_SEARCH_INTENT_EVAL_CASES.map((evalCase) => ({
+      ...evalCase,
+      slices: ["semantic"] as const,
+    })),
   ] as const

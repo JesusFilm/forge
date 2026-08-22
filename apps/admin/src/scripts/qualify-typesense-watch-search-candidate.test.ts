@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto"
 import { describe, expect, it, vi } from "vitest"
 import { WATCH_SEARCH_CANDIDATE_REQUIRED_EVIDENCE_GATES } from "@/services/typesense-watch-search-candidate-qualification"
+import { WATCH_SEARCH_COMMON_PHRASE_QRELS_REVISION } from "./watch-search-candidate-intent-eval-cases"
 import {
   QualificationOperatorError,
   runWatchSearchCandidateQualificationOperator,
@@ -46,7 +47,7 @@ function report(overrides: Record<string, unknown> = {}) {
       rankingRevision: "title-and-brand-v1",
       transcriptCollection: "watch_transcripts_current_42",
       transcriptProjectionRevision: "17",
-      qrelsRevision: "public-watch-qrels/reviewed-v2",
+      qrelsRevision: WATCH_SEARCH_COMMON_PHRASE_QRELS_REVISION,
       currentBindings,
       candidateBindings,
     },
@@ -423,7 +424,7 @@ describe("watch search Candidate qualification operator", () => {
       applicationRevision: "watch-search-candidate/v2",
       expectedPointerVersion: 4,
       currentBindings,
-      qrelsRevision: "public-watch-qrels/reviewed-v2",
+      qrelsRevision: WATCH_SEARCH_COMMON_PHRASE_QRELS_REVISION,
       rankingRevision: "title-and-brand-v1",
       qualificationAudit: {
         reviewerIdentity: "reviewer@example.org",
@@ -431,6 +432,28 @@ describe("watch search Candidate qualification operator", () => {
         evidenceBundleSha256: digest(bytes),
       },
     })
+    expect(service.recordQualification).not.toHaveBeenCalled()
+  })
+
+  it("rejects a qualified report with a stale qrels revision", async () => {
+    const bytes = Buffer.from(
+      JSON.stringify(
+        report({
+          identity: {
+            ...report().identity,
+            qrelsRevision: "stale-qrels-v0",
+          },
+        }),
+      ),
+    )
+    const { dependencies, service } = fixture({ bytes })
+
+    await expect(
+      runWatchSearchCandidateQualificationOperator(
+        args("record", bytes),
+        dependencies,
+      ),
+    ).rejects.toThrow(/qrels revision is incompatible/i)
     expect(service.recordQualification).not.toHaveBeenCalled()
   })
 

@@ -5,15 +5,19 @@ import {
 } from "@/services/typesense-watch-search-candidate-qualification"
 
 import {
+  distinctCaseRelevance,
+  evaluateWatchSearchCandidateJudgment,
   evaluateCandidateQualification,
   normalizeCandidateBenchmarkDiagnostics,
   parseCandidateBenchmarkEnvironment,
+  productionJudgedCaseInventoryReasons,
   PRODUCTION_CASES,
   runPairedCandidateBenchmark,
   type CandidateBenchmarkAttempt,
   type CandidateBenchmarkIdentity,
   type CandidateCompareResponse,
 } from "./benchmark-watch-search-candidate"
+import { WATCH_SEARCH_COMMON_PHRASE_QRELS_REVISION } from "./watch-search-candidate-intent-eval-cases"
 
 const allSlices = [
   "exact-title",
@@ -36,7 +40,7 @@ const identity: CandidateBenchmarkIdentity = {
   rankingRevision: "canonical-intent-v2",
   transcriptCollection: "watch_search_transcripts_1",
   transcriptProjectionRevision: "7",
-  qrelsRevision: "qrels-1",
+  qrelsRevision: WATCH_SEARCH_COMMON_PHRASE_QRELS_REVISION,
   currentBindings: {
     catalog: "watch_search_catalog_1",
     availability: "watch_search_availability_1",
@@ -62,8 +66,14 @@ function successResponse(
       results: [
         {
           id: "video-1",
+          slug: "jesus",
+          label: "FEATURE_FILM",
           languageSlug: "japanese",
           playbackId: "playback-1",
+          availability: {
+            kind: "target_audio" as const,
+            languageSlug: "japanese",
+          },
         },
       ],
     },
@@ -215,13 +225,45 @@ describe("paired candidate qualification benchmark", () => {
     expect(PRODUCTION_CASES.map(({ query }) => query)).toEqual(
       expect.arrayContaining(["Иисус", "耶稣", "耶穌", "イエス", "يسوع"]),
     )
+    expect(
+      PRODUCTION_CASES.filter(({ track }) => track === "exact-title").map(
+        ({ id }) => id,
+      ),
+    ).toEqual([
+      "jesus-japanese-mixed",
+      "jesus-chinese-native",
+      "jesus-chinese-traditional",
+      "jesus-japanese-native",
+      "jesus-russian-native",
+      "jesus-arabic-native",
+      "jesus-latin-exact",
+    ])
+    expect(
+      PRODUCTION_CASES.find(({ id }) => id === "who-is-jesus")?.track,
+    ).toBe("intent-query")
+    expect(productionJudgedCaseInventoryReasons(PRODUCTION_CASES)).toEqual([])
+    expect(
+      productionJudgedCaseInventoryReasons(
+        PRODUCTION_CASES.filter(({ id }) => id !== "jesus-for-kids"),
+      ),
+    ).toContain("judged_case_missing_jesus_for_kids")
+    expect(
+      productionJudgedCaseInventoryReasons(
+        PRODUCTION_CASES.map((benchmarkCase) =>
+          benchmarkCase.id === "jesus-latin-exact"
+            ? { ...benchmarkCase, judgment: undefined }
+            : benchmarkCase,
+        ),
+      ),
+    ).toContain("judged_case_malformed_jesus_latin_exact")
   })
-  it("requires a dedicated search key and an explicit qrels revision", () => {
+  it("requires a dedicated search key and the exact code-owned qrels revision", () => {
     expect(() =>
       parseCandidateBenchmarkEnvironment({
         TYPESENSE_HOST: "typesense.internal",
         TYPESENSE_API_KEY: "legacy-operator-key",
-        WATCH_SEARCH_CANDIDATE_QRELS_REVISION: "qrels-1",
+        WATCH_SEARCH_CANDIDATE_QRELS_REVISION:
+          WATCH_SEARCH_COMMON_PHRASE_QRELS_REVISION,
       }),
     ).toThrow(/TYPESENSE_SEARCH_API_KEY/)
     expect(() =>
@@ -235,13 +277,289 @@ describe("paired candidate qualification benchmark", () => {
         TYPESENSE_HOST: "typesense.internal",
         TYPESENSE_SEARCH_API_KEY: "search-only-key",
         TYPESENSE_API_KEY: "legacy-operator-key",
-        WATCH_SEARCH_CANDIDATE_QRELS_REVISION: " qrels-1 ",
+        WATCH_SEARCH_CANDIDATE_QRELS_REVISION: ` ${WATCH_SEARCH_COMMON_PHRASE_QRELS_REVISION} `,
       }),
     ).toEqual({
       host: "typesense.internal",
       apiKey: "search-only-key",
-      qrelsRevision: "qrels-1",
+      qrelsRevision: WATCH_SEARCH_COMMON_PHRASE_QRELS_REVISION,
     })
+    expect(() =>
+      parseCandidateBenchmarkEnvironment({
+        TYPESENSE_HOST: "typesense.internal",
+        TYPESENSE_SEARCH_API_KEY: "search-only-key",
+        WATCH_SEARCH_CANDIDATE_QRELS_REVISION: "stale-qrels-v0",
+      }),
+    ).toThrow(/does not match code-owned revision/)
+  })
+
+  it.each([
+    ["wrong slug", [{ slug: "not-jesus", rank: 1 }], "expected_slug_missing"],
+    ["wrong rank", [{ slug: "jesus", rank: 2 }], "expected_slug_rank_exceeded"],
+    [
+      "wrong language",
+      [{ slug: "jesus", languageSlug: "spanish-latin-america" }],
+      "expected_slug_language_mismatch",
+    ],
+    [
+      "wrong type",
+      [{ slug: "jesus", label: "EPISODE" }],
+      "expected_slug_content_type_mismatch",
+    ],
+    [
+      "wrong availability",
+      [{ slug: "jesus", availabilityKind: "unavailable" }],
+      "expected_slug_availability_mismatch",
+    ],
+    [
+      "missing playback",
+      [{ slug: "jesus", playbackId: null }],
+      "expected_slug_playback_missing",
+    ],
+  ] as const)(
+    "reports a precise relevance reason for %s",
+    (_label, changes, reason) => {
+      const change = changes[0]
+      const matchingResult = {
+        id: "video-1",
+        slug: change.slug,
+        label: "label" in change ? change.label : "FEATURE_FILM",
+        languageSlug:
+          "languageSlug" in change ? change.languageSlug : "english",
+        playbackId: "playbackId" in change ? change.playbackId : "playback-1",
+        availability: {
+          kind:
+            "availabilityKind" in change
+              ? change.availabilityKind
+              : ("target_audio" as const),
+          languageSlug: "english",
+        },
+      }
+      const results =
+        "rank" in change && change.rank === 2
+          ? [
+              {
+                ...matchingResult,
+                id: "video-before",
+                slug: "another-video",
+              },
+              matchingResult,
+            ]
+          : [matchingResult]
+      const verdict = evaluateWatchSearchCandidateJudgment(
+        {
+          expectedCanonicalSlugs: ["jesus"],
+          acceptableAlternateSlugs: [],
+          maxRank: 1,
+          allowedAvailabilityKinds: ["target_audio"],
+          allowedContentTypes: ["FEATURE_FILM"],
+          allowedLanguageSlugs: ["english"],
+          requiresPlayback: true,
+        },
+        results,
+      )
+
+      expect(verdict.passed).toBe(false)
+      expect(verdict.reasons).toContain(reason)
+    },
+  )
+
+  it("accepts a reviewed alternate as the canonical outcome when no follower bound is declared", () => {
+    const verdict = evaluateWatchSearchCandidateJudgment(
+      {
+        expectedCanonicalSlugs: ["expected-episode"],
+        acceptableAlternateSlugs: ["reviewed-alternate"],
+        maxRank: 2,
+        allowedAvailabilityKinds: ["target_audio"],
+        allowedContentTypes: ["EPISODE"],
+        allowedLanguageSlugs: ["english"],
+        requiresPlayback: true,
+      },
+      [
+        {
+          id: "alternate",
+          slug: "reviewed-alternate",
+          label: "EPISODE",
+          languageSlug: "english",
+          playbackId: "playback-1",
+          availability: {
+            kind: "target_audio",
+            languageSlug: "english",
+          },
+        },
+      ],
+    )
+
+    expect(verdict).toMatchObject({
+      passed: true,
+      matchedSlug: "reviewed-alternate",
+      matchedRank: 1,
+      reasons: [],
+    })
+  })
+
+  it("requires the named children alternate within its independent top-five bound", () => {
+    const judgment = {
+      expectedCanonicalSlugs: ["the-story-of-jesus-for-children"],
+      acceptableAlternateSlugs: ["storyclubs-childhood-of-jesus"],
+      maxRank: 1,
+      acceptableAlternateMaxRank: 5,
+      allowedAvailabilityKinds: ["target_audio" as const],
+      allowedContentTypes: ["FEATURE_FILM"],
+      allowedLanguageSlugs: ["english"],
+      requiresPlayback: true,
+    }
+    const canonical = {
+      id: "canonical",
+      slug: "the-story-of-jesus-for-children",
+      label: "FEATURE_FILM",
+      languageSlug: "english",
+      playbackId: "playback-1",
+      availability: {
+        kind: "target_audio" as const,
+        languageSlug: "english",
+      },
+    }
+    expect(
+      evaluateWatchSearchCandidateJudgment(judgment, [canonical]).reasons,
+    ).toContain("acceptable_alternate_missing")
+    const filler = (slug: string) => ({ ...canonical, id: slug, slug })
+    expect(
+      evaluateWatchSearchCandidateJudgment(judgment, [
+        canonical,
+        filler("two"),
+        filler("three"),
+        filler("four"),
+        filler("five"),
+        filler("storyclubs-childhood-of-jesus"),
+      ]).reasons,
+    ).toContain("acceptable_alternate_rank_exceeded")
+  })
+
+  it("reduces repeated attempts to one distinct case and fails on one inconsistency", () => {
+    const attempts = Array.from({ length: 1_000 }, (_, pairIndex) => ({
+      ...successfulAttempt("candidate"),
+      pairIndex,
+      caseId: "jesus-for-kids",
+      track: "intent-query" as const,
+      relevance: {
+        passed: pairIndex !== 999,
+        matchedSlug: "the-story-of-jesus-for-children",
+        matchedRank: pairIndex === 999 ? 2 : 1,
+        reasons:
+          pairIndex === 999
+            ? ["expected_slug_rank_exceeded"]
+            : ([] as string[]),
+      },
+    }))
+
+    expect(distinctCaseRelevance(attempts)["intent-query"].candidate).toEqual({
+      totalCases: 1,
+      passedCases: 0,
+      failedCases: 1,
+      successRate: 0,
+      cases: [
+        {
+          caseId: "jesus-for-kids",
+          passed: false,
+          attempts: 1_000,
+          failedAttempts: 1,
+          reasons: ["expected_slug_rank_exceeded"],
+        },
+      ],
+    })
+  })
+
+  it("shows the Current children failure without using it as a qualification gate", () => {
+    const current = {
+      ...successfulAttempt("current"),
+      caseId: "jesus-for-kids",
+      track: "intent-query" as const,
+      relevance: {
+        passed: false,
+        matchedSlug: "the-story-of-jesus-for-children",
+        matchedRank: 4,
+        reasons: ["expected_slug_rank_exceeded"],
+      },
+    }
+    const candidate = {
+      ...successfulAttempt("candidate"),
+      caseId: "jesus-for-kids",
+      track: "intent-query" as const,
+      relevance: {
+        passed: true,
+        matchedSlug: "the-story-of-jesus-for-children",
+        matchedRank: 1,
+        reasons: [] as string[],
+      },
+    }
+
+    const evaluation = evaluateCandidateQualification({
+      identity,
+      attempts: [current, candidate],
+      requiredPairs: 1,
+      requiredSlices: allSlices,
+      evidence: passingEvidence,
+    })
+
+    expect(evaluation.status).toBe("QUALIFIED")
+    expect(
+      evaluation.relevance.tracks["intent-query"].current.cases[0],
+    ).toMatchObject({ passed: false, attempts: 1 })
+    expect(
+      evaluation.relevance.tracks["intent-query"].candidate.cases[0],
+    ).toMatchObject({ passed: true, attempts: 1 })
+  })
+
+  it("fails qualification with a case-specific Candidate relevance reason", () => {
+    const current = {
+      ...successfulAttempt("current"),
+      caseId: "jesus-for-kids",
+      track: "intent-query" as const,
+      relevance: {
+        passed: false,
+        matchedSlug: "the-story-of-jesus-for-children",
+        matchedRank: 4,
+        reasons: ["expected_slug_rank_exceeded"],
+      },
+    }
+    const candidate = {
+      ...successfulAttempt("candidate"),
+      caseId: "jesus-for-kids",
+      track: "intent-query" as const,
+      relevance: {
+        passed: false,
+        matchedSlug: "the-story-of-jesus-for-children",
+        matchedRank: 2,
+        reasons: ["expected_slug_rank_exceeded"],
+      },
+    }
+
+    const evaluation = evaluateCandidateQualification({
+      identity,
+      attempts: [current, candidate],
+      requiredPairs: 1,
+      requiredSlices: allSlices,
+      evidence: passingEvidence,
+    })
+
+    expect(evaluation.status).toBe("NOT_QUALIFIED")
+    expect(evaluation.reasons).toContain(
+      "candidate_intent_query_jesus_for_kids_expected_slug_rank_exceeded",
+    )
+  })
+
+  it("invalidates a programmatic qualification with stale qrels identity", () => {
+    const evaluation = evaluateCandidateQualification({
+      identity: { ...identity, qrelsRevision: "stale-qrels-v0" },
+      attempts: [successfulAttempt("current"), successfulAttempt("candidate")],
+      requiredPairs: 1,
+      requiredSlices: allSlices,
+      evidence: passingEvidence,
+    })
+
+    expect(evaluation.status).toBe("INVALID")
+    expect(evaluation.reasons).toContain("qrels_revision_mismatch")
   })
 
   it("renews the exact lease, alternates order, and retains every attempt", async () => {

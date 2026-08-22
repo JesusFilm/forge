@@ -23,6 +23,7 @@ import {
   watchSearchBindingMembers,
 } from "@/services/typesense-watch-search-profile"
 import { TypesenseClient } from "@/services/typesense-client"
+import { WATCH_SEARCH_COMMON_PHRASE_QRELS_REVISION } from "./watch-search-candidate-intent-eval-cases"
 
 type QualificationGeneration = {
   id: string
@@ -308,6 +309,12 @@ function parseReport(bytes: Buffer): QualifiedReport {
       "qualification report ranking revision is incompatible with this application",
     )
   }
+  const qrelsRevision = requiredString(identity.qrelsRevision, "qrels revision")
+  if (qrelsRevision !== WATCH_SEARCH_COMMON_PHRASE_QRELS_REVISION) {
+    throw new QualificationOperatorError(
+      "qualification report qrels revision is incompatible with this application",
+    )
+  }
   return {
     raw: report,
     authorizationStatus: "PASSED",
@@ -320,7 +327,7 @@ function parseReport(bytes: Buffer): QualifiedReport {
         "transcript collection",
       ),
       transcriptProjectionRevision: BigInt(transcriptProjectionRevision),
-      qrelsRevision: requiredString(identity.qrelsRevision, "qrels revision"),
+      qrelsRevision,
       currentBindings: bindingMembers(
         identity.currentBindings,
         "current bindings",
