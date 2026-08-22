@@ -26,7 +26,7 @@ roadmap: "docs/roadmap/platform/feat-416-watch-life-of-jesus-chapter-context.md"
 
 ### Summary
 
-The standalone _Life of Jesus (Gospel of John)_ Watch page will retain its eligible parent collections and add the film's own ordered Chapters as another selectable context. Selecting that context reveals the established short-clip curriculum while the page remains the same playable 183-minute feature film.
+The standalone _Life of Jesus (Gospel of John)_ Watch page will retain its eligible parent collections and add the film's own ordered Chapters as another selectable context. Selecting that context reveals the established short-clip curriculum while the page remains the same playable 183-minute feature film. Life of Jesus is the acceptance target for a generic standalone-video composition rule; the rule is not keyed to one content slug.
 
 ### Problem Frame
 
@@ -39,6 +39,8 @@ This is a Web composition defect, not evidence that the film or its Chapters nee
 - **Add the film-owned Chapters as a selectable standalone context.** (session-settled: user-directed — chosen over replacing eligible parent collections or reclassifying and redirecting the film: the additional context restores the curriculum without changing the feature film's identity.) Governs R1-R6.
 - **Keep the fix Web-only.** (session-settled: user-directed — chosen over Admin, schema, and catalog mutation: current data already contains the ordered relationships and Web's merge masks them.) Governs R2-R7.
 - **Leave the Acts case unresolved in FGE-75.** (session-settled: user-directed — chosen over generalizing one catalog diagnosis to both reports: current evidence does not prove the same cause.) Governs R8.
+- **Keep runtime evidence credential-free.** (session-settled: user-directed — chosen over forwarding an authorization header through a local proxy: browser proof must not expose credentials or weaken the public-data boundary.) Governs R11-R13.
+- **Use the existing Watch contract instead of a title-specific exception.** The Life of Jesus case proves the rule, but every standalone playable Video that satisfies the same exact admission and eligible-parent requirements receives the same composition. Governs R1, R8, and R14.
 
 ### Requirements
 
@@ -59,12 +61,14 @@ This is a Web composition defect, not evidence that the film or its Chapters nee
 - R7. Preserve current publication, deletion, Watch restriction, playability, slug, and route-admission gates without adding an Admin operation, schema change, browser data request, or dependency.
 - R8. Do not change contextual routes, LUMO content, the unresolved 73-clip Acts behavior, or unrelated Watch content that does not satisfy the same eligible-parent plus admitted-own-Chapters contract.
 - R9. When the manifest is unavailable, fewer than two own Chapter routes remain admitted, or no eligible parent context exists, preserve the current fallback behavior.
+- R14. Apply R1 through the existing standalone Watch contract without matching a content slug or document ID; content that does not satisfy the full contract remains unchanged.
 
 **Delivery quality**
 
 - R10. Add focused automated coverage for ordering, fallback, selector behavior, navigation, and standalone identity invariants.
 - R11. Prove the production-shaped Life of Jesus flow at desktop and compact widths, including the 49-Chapter context and _Triumphal Entry and Results_ at clip 30 of 49 when current catalog data remains unchanged.
 - R12. Demonstrate no new initial browser request, no eager loading of the alternate context's full thumbnail set, and no material page-load or hydration regression against `origin/main`.
+- R13. Use only unauthenticated public GraphQL, public HTML, and safe local fixtures for runtime evidence; if those surfaces cannot expose the admitted branch selector, record the exact limitation and continue every independent validation stage without claiming unavailable browser evidence.
 
 ### Acceptance Examples
 
@@ -103,6 +107,8 @@ This is a Web composition defect, not evidence that the film or its Chapters nee
 - KTD2. **Append without changing the default context.** (session-settled: user-directed — chosen over giving the film's own children merge precedence: an additional choice restores access while preserving today's parent order, initial rail, and structured data.) Keep eligible parents first and add the virtual current-Video parent last. Implements R3-R5.
 - KTD3. **Reuse the existing compact selector contract.** The current `CarouselParent`, `WatchSiblingCarouselBlock`, `SiblingCarousel`, and pending-navigation paths already support multiple contexts and a virtual parent whose children do not contain the current Video. Limit production edits to standalone route composition unless characterization exposes a concrete gap. Implements R5-R7 and R10.
 - KTD4. **Measure serialized payload cost instead of adding runtime loading.** The added context can increase HTML/RSC bytes, but it must not add a GraphQL/browser fetch or make alternate-context thumbnails eager. Implements R7 and R12.
+- KTD5. **Keep browser/runtime proof inside public and fixture boundaries.** (session-settled: user-directed — chosen over credential forwarding or an authorization-bearing proxy: evidence collection must not expose secrets or turn a public behavior check into an authenticated request path.) Use unauthenticated public GraphQL, public HTML, and local fixtures only, then preserve any resulting evidence limitation as a durable closeout fact. Implements R11-R13.
+- KTD6. **Avoid a content-identity special case.** Compose from the current standalone Video and exact route-admission data rather than checking the Life of Jesus slug or ID. Implements R1, R8, and R14.
 
 ### Assumptions
 
@@ -152,7 +158,7 @@ This is a Web composition defect, not evidence that the film or its Chapters nee
 ### U2. Append the admitted own-Chapter context
 
 - **Goal:** Make the film-owned Chapter rail selectable without changing the existing default or standalone identity.
-- **Requirements:** R1-R10; covers AE1-AE4.
+- **Requirements:** R1-R10 and R14; covers AE1-AE4.
 - **Dependencies:** U1.
 - **Files:**
   - `apps/web/src/app/[locale]/[htmlLang]/[...rest]/page.tsx`
@@ -174,29 +180,31 @@ This is a Web composition defect, not evidence that the film or its Chapters nee
   3. Covers AE1. Selecting the virtual context enters parent mode, reports 49 Chapters without a false active card, and keeps _Triumphal Entry and Results_ at zero-based index 29.
   4. Covers AE4. A Chapter card in the virtual context produces the existing contextual route and remains accepted by pending-navigation validation and route warming.
   5. Covers AE3. A null manifest or fewer than two admitted own Chapters adds no selectable own context and preserves current fallback behavior.
-  6. A standalone video with admitted own Chapters but no eligible external parent keeps the existing fixed own-children carousel instead of gaining a one-option selectable shape.
-  7. Unpublished, restricted, unavailable-language, invalid-slug, or non-admitted children never appear in the virtual context.
-  8. Contextual Chapter routes and unrelated standalone video fixtures that do not meet the eligible-parent plus admitted-own-Chapters contract receive no new selector choice or identity change.
-  9. Switching from the own context back to an eligible parent restores the current-film active position and accessible selection announcement.
+  6. A film with at least three own Chapters but exactly two selected-language admissions appends a two-Chapter context in relation order and excludes every non-admitted child.
+  7. A standalone video with admitted own Chapters but no eligible external parent keeps the existing fixed own-children carousel instead of gaining a one-option selectable shape.
+  8. Unpublished, restricted, unavailable-language, invalid-slug, or non-admitted children never appear in the virtual context.
+  9. Contextual Chapter routes and unrelated standalone video fixtures that do not meet the eligible-parent plus admitted-own-Chapters contract receive no new selector choice or identity change.
+  10. Switching from the own context back to an eligible parent restores the current-film active position and accessible selection announcement.
 - **Verification:** Focused route, merge, carousel, and navigation suites pass with no product diff outside the standalone route seam unless a documented failing test requires it.
 
 ### U3. Prove the production-shaped flow and load posture
 
 - **Goal:** Demonstrate the restored curriculum and absence of behavioral or page-load regression.
-- **Requirements:** R5-R12; covers AE1-AE4.
+- **Requirements:** R5-R13; covers AE1-AE4.
 - **Dependencies:** U2.
 - **Files:**
   - `docs/roadmap/platform/feat-416-watch-life-of-jesus-chapter-context.md`
-- **Approach:** After the final rebase, record the exact merge-base SHA and Admin snapshot version, then compare that pinned baseline build and the branch build using the same snapshot and runtime configuration on the Life of Jesus standalone route and a contextual Chapter control. Capture behavior at desktop and compact widths, record transfer and request evidence, then update the ticket with exact outcomes and mark it complete only after all gates pass.
+- **Approach:** After the final rebase, record the exact merge-base SHA and any safely observable Admin snapshot version, then compare that pinned baseline build and the branch build using the same safe local fixture/runtime configuration on the Life of Jesus standalone route and a contextual Chapter control. Follow KTD5 for every runtime probe. Do not point Web's bearer-attaching server Admin client at public GraphQL. Use direct anonymous public GraphQL and HTML controls plus deterministic fixtures. Capture desktop and compact behavior when a fixture surface exposes the admitted selector; otherwise record the exact limitation and complete the independent transfer, request, build, and deterministic gates. Update the ticket with exact outcomes and mark it complete only after those gates pass.
 - **Patterns to follow:** `docs/solutions/conventions/frontend-change-page-load-performance-verification.md` and the completion evidence in `docs/roadmap/platform/feat-287-watch-standalone-collection-episodes.md`.
 - **Test scenarios:**
   1. Covers AE1. The standalone film initially shows the existing first eligible parent, then exposes all currently admitted own Chapters after selecting the Life of Jesus context.
   2. Covers AE4. _Triumphal Entry and Results_ appears at clip 30 of 49 under unchanged catalog data, navigates to the contextual Chapter route, and remains playable and downloadable.
   3. Covers AE2. Merely switching context does not change the URL, hero playback, full-film download action, canonical, Share identity, or media metadata.
-  4. Desktop and compact layouts keep the selector keyboard-operable, labeled, focus-visible, announced, and free of document-level horizontal overflow.
+  4. A representative 1280-pixel desktop viewport and 390-pixel compact viewport straddle the existing responsive selector treatment; both keep the selector keyboard-operable, labeled, focus-visible, announced, and free of document-level horizontal overflow, while compact controls retain the established 44-pixel minimum target height.
   5. The branch adds no browser GraphQL/API request, does not eager-load all alternate Chapter thumbnails before selection, and retains one hero-critical image preload.
   6. Initial HTML/RSC raw and compressed growth is attributable only to the compact context payload; warmed response timing, hydration, LCP, and console output show no material regression against the baseline.
   7. The contextual Chapter control renders its fixed rail with no standalone selector regression.
+  8. Runtime evidence uses no authorization header or credential-bearing proxy, and any unavailable selector/browser measurement is named without being reported as a pass.
 - **Verification:** Browser, server-response, resource-timing, and transfer evidence is recorded in the completed roadmap ticket, with limitations named instead of claimed as passes.
 
 ---
@@ -209,7 +217,7 @@ This is a Web composition defect, not evidence that the film or its Chapters nee
 | Web static checks     | `@forge/web` typecheck, lint, and formatting for every changed file                                                                                             | No TypeScript, lint, generated-catalog, formatting, or diff-check failure.                                                                                                          |
 | Broader regression    | PR-focused Web tests and CI-sensitive checks for the touched route                                                                                              | No unrelated Watch route or component regression.                                                                                                                                   |
 | Production build      | `@forge/web` production build against the repository's supported local Admin setup                                                                              | Build succeeds without generated GraphQL drift or client/server boundary errors.                                                                                                    |
-| Browser behavior      | Life of Jesus standalone route plus contextual Chapter control at desktop and compact widths                                                                    | Selector, 49-Chapter flow, clip position, playback/download, identity, accessibility, and responsive behavior match R5-R11.                                                         |
+| Browser behavior      | Life of Jesus standalone route plus contextual Chapter control at desktop and compact widths                                                                    | Available credential-free evidence matches R5-R11; any behavior the public/fixture surfaces cannot expose is recorded as an exact limitation rather than a pass.                    |
 | Page-load performance | Pinned final merge-base versus branch request, transfer, timing, hydration, LCP, and console evidence against the same Admin snapshot and runtime configuration | No new browser data request or eager alternate rail; warmed response and user-visible loading remain within the existing 10% non-regression budget, with payload growth quantified. |
 | Roadmap closeout      | `feat-416` ticket                                                                                                                                               | Status is complete with exact validation and performance evidence plus the PR link when available.                                                                                  |
 
@@ -219,7 +227,7 @@ This is a Web composition defect, not evidence that the film or its Chapters nee
 
 - U1 is complete before product edits, and `feat-416` is the verified next sequential ID.
 - U2 satisfies R1-R10 and AE1-AE4 with focused automated coverage.
-- U3 satisfies R5-R12 with recorded browser and page-load evidence against `origin/main`.
+- U3 satisfies R5-R13 by recording available browser and page-load evidence against `origin/main` plus exact R13 limitations for any behavior the credential-free surfaces cannot expose.
 - The diff remains Web-only except for the plan, roadmap ticket, generated roadmap index, and durable learning produced by the required workflow.
 - The film remains a playable standalone feature film with unchanged full-film playback, download, canonical, Share, language, and media identity.
 - Publication, rights, and route-admission gates are no weaker than `origin/main`.

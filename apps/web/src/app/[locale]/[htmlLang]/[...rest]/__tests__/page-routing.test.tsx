@@ -1738,6 +1738,90 @@ describe("Catch-all routing — series branch (2-seg)", () => {
     expect(jsonLdByType("ItemList")?.numberOfItems).toBe(2)
   })
 
+  it("appends exactly the selected-language own Chapters in relation order", async () => {
+    const result = makeWatchVideoResult("featureFilm")
+    const child = (documentId: string, slug: string, title: string) => ({
+      documentId,
+      slug,
+      title,
+      label: "chapter",
+      images: [],
+      durationSeconds: 30,
+      muxPlaybackId: `mux-${documentId}`,
+      muxThumbnailBlurDataUrl: null,
+    })
+    const ownChildren = [
+      child("own-1", "own-one", "Own One"),
+      child("own-2", "own-two", "Own Two"),
+      child("own-3", "own-three", "Own Three"),
+    ]
+    const parents = [
+      {
+        documentId: "parent-1",
+        slug: "collection-a",
+        title: "Collection A",
+        noIndex: false,
+        label: "collection",
+        images: [],
+        children: [
+          child("v1", "storyclubs", "StoryClubs"),
+          child("peer-1", "peer-one", "Peer One"),
+        ],
+      },
+    ]
+    ;(
+      result.video as unknown as {
+        children: typeof ownChildren
+        parents: typeof parents
+      }
+    ).children = ownChildren
+    ;(
+      result.video as unknown as {
+        children: typeof ownChildren
+        parents: typeof parents
+      }
+    ).parents = parents
+    getWatchRouteManifestMock.mockResolvedValue({
+      version: "1",
+      generatedAt: "2026-08-10T12:00:00.000Z",
+      contentSlugs: [],
+      oneSegmentSlugs: [],
+      episodePairsByParent: {
+        "collection-a": ["storyclubs", "peer-one"],
+        storyclubs: ["own-one", "own-two", "own-three"],
+      },
+      audioLanguageSlugs: ["english", "spanish-castilian"],
+      audioLanguageIndexesByEpisode: {
+        "collection-a": { storyclubs: [0], "peer-one": [0] },
+        storyclubs: { "own-one": [0], "own-two": [1], "own-three": [0] },
+      },
+    })
+    mockRouteVideo(result)
+
+    await render2Seg("storyclubs", "english")
+
+    const props = watchPageClientMock.mock.calls[0]?.[0] as {
+      mergedBlocks: Array<{
+        kind?: string
+        selectableParents?: Array<{
+          slug?: string
+          children?: Array<{ slug?: string }>
+        }>
+      }>
+    }
+    const carousel = props.mergedBlocks.find(
+      (block) => block.kind === "SiblingCarousel",
+    )
+    expect(carousel?.selectableParents?.map((parent) => parent.slug)).toEqual([
+      "collection-a",
+      "storyclubs",
+    ])
+    expect(carousel?.selectableParents?.at(-1)?.children).toEqual([
+      expect.objectContaining({ slug: "own-one" }),
+      expect.objectContaining({ slug: "own-three" }),
+    ])
+  })
+
   it("starts the route manifest request alongside standalone video resolution", async () => {
     let resolveRoute!: (value: unknown) => void
     let resolveManifest!: (value: null) => void
