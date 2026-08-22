@@ -33,6 +33,7 @@ function XBrandIcon({ size = 18 }: { size?: number }) {
 }
 
 import { env } from "@/env"
+import { reportGoogleAnalyticsEvent } from "@/components/GoogleAnalytics"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
 import {
@@ -50,6 +51,7 @@ import { WatchModalViewportCloseButton } from "./WatchModalViewportCloseButton"
 // without forcing a `?? undefined` re-coercion at every call site.
 export type ShareModalProps = {
   open: boolean
+  usageGuidanceScope?: "video" | "generic"
   videoSlug: string
   currentLanguageSlug: string
   videoTitle?: string | null
@@ -65,6 +67,7 @@ type CopyStatus = "idle" | "copied" | "failed"
 
 export function ShareModal({
   open,
+  usageGuidanceScope = "generic",
   videoSlug,
   currentLanguageSlug,
   videoTitle,
@@ -77,6 +80,7 @@ export function ShareModal({
   const [tab, setTab] = useState<ShareTab>("link")
   const [copyStatus, setCopyStatus] = useState<CopyStatus>("idle")
   const embedRef = useRef<HTMLTextAreaElement | null>(null)
+  const hasReportedGuidanceForOpenRef = useRef(false)
   const tabRefs = useRef<Record<ShareTab, HTMLButtonElement | null>>({
     link: null,
     embed: null,
@@ -119,6 +123,29 @@ export function ShareModal({
   const linkTabId = `${tabIdPrefix}-link-tab`
   const embedTabId = `${tabIdPrefix}-embed-tab`
   const tabPanelId = `${tabIdPrefix}-panel`
+  const linkDescriptionId = `${tabIdPrefix}-link-description`
+  const embedDescriptionId = `${tabIdPrefix}-embed-description`
+  const activeDescriptionId = isEmbed ? embedDescriptionId : linkDescriptionId
+
+  useEffect(() => {
+    if (!open) {
+      hasReportedGuidanceForOpenRef.current = false
+      return
+    }
+    if (
+      hasReportedGuidanceForOpenRef.current ||
+      usageGuidanceScope !== "video" ||
+      activeMode == null
+    ) {
+      return
+    }
+
+    hasReportedGuidanceForOpenRef.current = true
+    reportGoogleAnalyticsEvent("watch_share_guidance_viewed", {
+      guidance_scope: "video",
+      surface: "watch_share_modal",
+    })
+  }, [activeMode, open, usageGuidanceScope])
 
   // Reset the "Copied" pill back to the default label after 2s so a second
   // click reads as a fresh copy. Cleanup clears the timer on unmount or when
@@ -266,13 +293,24 @@ export function ShareModal({
             </div>
           </div>
 
+          {shareableUrl ? (
+            <p
+              id={linkDescriptionId}
+              data-testid="watch-share-modal-link-description"
+              className="text-sm leading-relaxed text-stone-300"
+            >
+              {t("linkDescription")}
+            </p>
+          ) : null}
+
           {fbHref && xHref ? (
             <div className="flex gap-3">
               <a
                 href={fbHref}
                 target="_blank"
                 rel="noopener noreferrer"
-                aria-label={`${t("shareOnFacebook")} (opens in a new tab)`}
+                aria-describedby={linkDescriptionId}
+                aria-label={`${t("shareOnFacebook")} (${t("opensInNewTab")})`}
                 data-testid="watch-share-modal-facebook"
                 className="flex h-11 w-11 cursor-pointer items-center justify-center rounded-full bg-[#1877F2] text-white transition hover:bg-[#0c63d4] focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:outline-none"
               >
@@ -282,7 +320,8 @@ export function ShareModal({
                 href={xHref}
                 target="_blank"
                 rel="noopener noreferrer"
-                aria-label={`${t("shareOnX")} (opens in a new tab)`}
+                aria-describedby={linkDescriptionId}
+                aria-label={`${t("shareOnX")} (${t("opensInNewTab")})`}
                 data-testid="watch-share-modal-x"
                 className="flex h-11 w-11 cursor-pointer items-center justify-center rounded-full bg-black text-white transition hover:bg-stone-800 focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:outline-none"
               >
@@ -365,7 +404,18 @@ export function ShareModal({
                 : ""}
           </p>
 
+          {activeMode === "embed" ? (
+            <p
+              id={embedDescriptionId}
+              data-testid="watch-share-modal-embed-description"
+              className="text-sm leading-relaxed text-stone-300"
+            >
+              {t("embedDescription")}
+            </p>
+          ) : null}
+
           <div
+            aria-describedby={activeMode ? activeDescriptionId : undefined}
             aria-labelledby={
               hasShareFormatTabs
                 ? isEmbed
@@ -390,6 +440,7 @@ export function ShareModal({
                 data-testid="watch-share-modal-embed-input"
                 readOnly
                 aria-label={t("embedCodeTab")}
+                aria-describedby={embedDescriptionId}
                 // `rows={2}` is the minimum baseline; the auto-fit effect below
                 // sets `style.height` to `scrollHeight` before paint so the full
                 // snippet is visible without an inner scroll bar (capped at 40vh).
@@ -404,12 +455,96 @@ export function ShareModal({
                 data-testid="watch-share-modal-link-input"
                 readOnly
                 aria-label={t("shareLinkTab")}
+                aria-describedby={linkDescriptionId}
                 value={currentValue ?? ""}
                 onFocus={(e) => e.currentTarget.select()}
                 className="w-full rounded-2xl border border-white/10 bg-white/5 px-5 py-4 text-sm font-semibold text-stone-100 focus-visible:ring-2 focus-visible:ring-brand-red focus-visible:outline-none"
               />
             ) : null}
           </div>
+
+          {usageGuidanceScope === "video" && activeMode != null ? (
+            <section
+              aria-labelledby={`${tabIdPrefix}-usage-heading`}
+              data-testid="watch-share-modal-video-usage-guidance"
+              className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 sm:px-5 sm:py-4"
+            >
+              <h3
+                id={`${tabIdPrefix}-usage-heading`}
+                className="text-sm font-bold text-stone-100"
+              >
+                {t("usageHeading")}
+              </h3>
+              <ul className="mt-2 divide-y divide-white/10">
+                <li className="flex flex-col gap-1 py-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+                  <span className="text-sm font-semibold text-stone-200">
+                    {t("downloadOrScreening")}
+                  </span>
+                  <a
+                    href="https://www.jesusfilm.org/about/faq/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label={`${t("downloadOrScreening")}: ${t("viewUsageGuidance")} (${t("opensInNewTab")})`}
+                    data-testid="watch-share-modal-screening-guidance"
+                    className="inline-flex min-h-11 shrink-0 items-center text-sm font-bold text-brand-red underline-offset-4 hover:underline focus-visible:rounded-sm focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:outline-none"
+                  >
+                    {t("viewUsageGuidance")}
+                  </a>
+                </li>
+                <li className="flex flex-col gap-1 py-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+                  <span className="text-sm font-semibold text-stone-200">
+                    {t("nativeSocialUpload")}
+                  </span>
+                  <a
+                    href="https://form.asana.com/?k=qIsNe5Cu3-v5qriWHzwH8Q&d=657768513276"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label={`${t("nativeSocialUpload")}: ${t("openLicensingForm")} (${t("opensInNewTab")})`}
+                    data-testid="watch-share-modal-native-upload-guidance"
+                    onClick={() =>
+                      reportGoogleAnalyticsEvent(
+                        "watch_share_licensing_clicked",
+                        {
+                          reuse_type: "native_social_upload",
+                          surface: "watch_share_modal",
+                        },
+                      )
+                    }
+                    className="inline-flex min-h-11 shrink-0 items-center text-sm font-bold text-brand-red underline-offset-4 hover:underline focus-visible:rounded-sm focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:outline-none"
+                  >
+                    {t("openLicensingForm")}
+                  </a>
+                </li>
+                <li className="flex flex-col gap-1 py-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+                  <span className="text-sm font-semibold text-stone-200">
+                    {t("clipReuse")}
+                  </span>
+                  <a
+                    href="https://form.asana.com/?k=qIsNe5Cu3-v5qriWHzwH8Q&d=657768513276"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label={`${t("clipReuse")}: ${t("openLicensingForm")} (${t("opensInNewTab")})`}
+                    data-testid="watch-share-modal-clip-reuse-guidance"
+                    onClick={() =>
+                      reportGoogleAnalyticsEvent(
+                        "watch_share_licensing_clicked",
+                        {
+                          reuse_type: "clip_reuse",
+                          surface: "watch_share_modal",
+                        },
+                      )
+                    }
+                    className="inline-flex min-h-11 shrink-0 items-center text-sm font-bold text-brand-red underline-offset-4 hover:underline focus-visible:rounded-sm focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:outline-none"
+                  >
+                    {t("openLicensingForm")}
+                  </a>
+                </li>
+              </ul>
+              <p className="mt-1 text-xs leading-relaxed text-stone-400">
+                {t("licensingFormDescription")}
+              </p>
+            </section>
+          ) : null}
 
           <div className="flex items-center justify-end gap-5 pt-2">
             <Button

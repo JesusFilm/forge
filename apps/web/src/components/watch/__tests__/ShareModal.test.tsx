@@ -22,6 +22,14 @@ import { act } from "react"
 import { createRoot, type Root } from "react-dom/client"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
+const { reportGoogleAnalyticsEvent } = vi.hoisted(() => ({
+  reportGoogleAnalyticsEvent: vi.fn(),
+}))
+
+vi.mock("@/components/GoogleAnalytics", () => ({
+  reportGoogleAnalyticsEvent,
+}))
+
 vi.mock("@/env", () => ({
   env: {
     NEXT_PUBLIC_CANONICAL_ORIGIN: "https://share.example",
@@ -45,6 +53,7 @@ function setClipboard(impl: (text: string) => Promise<void>) {
 }
 
 beforeEach(() => {
+  reportGoogleAnalyticsEvent.mockClear()
   container = document.createElement("div")
   document.body.appendChild(container)
   root = createRoot(container)
@@ -165,6 +174,228 @@ describe("ShareModal — Facebook + X share intents", () => {
     const x = $('[data-testid="watch-share-modal-x"]') as HTMLAnchorElement
     expect(x.href).toBe(
       "https://x.com/intent/tweet?url=https%3A%2F%2Fshare.example%2Fwatch%2Fthe-call.html&text=The%20Call",
+    )
+  })
+})
+
+describe("ShareModal — platform and reuse guidance", () => {
+  it("explains link-post semantics before social controls and associates the active control", () => {
+    act(() => {
+      root.render(
+        <ShareModal
+          open
+          videoSlug="the-call"
+          currentLanguageSlug="english"
+          onClose={vi.fn()}
+        />,
+      )
+    })
+
+    const description = $(
+      '[data-testid="watch-share-modal-link-description"]',
+    ) as HTMLParagraphElement
+    const facebook = $(
+      '[data-testid="watch-share-modal-facebook"]',
+    ) as HTMLAnchorElement
+    const input = $(
+      '[data-testid="watch-share-modal-link-input"]',
+    ) as HTMLInputElement
+
+    expect(description.textContent).toContain("share this Watch page")
+    expect(description.textContent).toContain("do not upload the video")
+    expect(
+      description.compareDocumentPosition(facebook) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
+    expect(input.getAttribute("aria-describedby")).toBe(description.id)
+    expect(facebook.getAttribute("aria-describedby")).toBe(description.id)
+  })
+
+  it("explains website-only iframe use when Embed Code is active", () => {
+    act(() => {
+      root.render(
+        <ShareModal
+          open
+          videoSlug="the-call"
+          currentLanguageSlug="english"
+          playbackId="ScBFl3LbJCViZNNdZfa4bpJCEyQr9Mw4Cpiirb7gb00E"
+          onClose={vi.fn()}
+        />,
+      )
+    })
+
+    act(() => {
+      $('[data-testid="watch-share-modal-tab-embed"]')?.dispatchEvent(
+        new MouseEvent("click", { bubbles: true }),
+      )
+    })
+
+    const description = $(
+      '[data-testid="watch-share-modal-embed-description"]',
+    ) as HTMLParagraphElement
+    const textarea = $(
+      '[data-testid="watch-share-modal-embed-input"]',
+    ) as HTMLTextAreaElement
+
+    expect(description.textContent).toContain("iframe HTML")
+    expect(description.textContent).toContain("ordinary social media post")
+    expect(textarea.getAttribute("aria-describedby")).toBe(description.id)
+  })
+
+  it("routes video reuse questions to the approved FAQ and licensing intake without promising an outcome", () => {
+    act(() => {
+      root.render(
+        <ShareModal
+          open
+          usageGuidanceScope="video"
+          videoSlug="the-call"
+          currentLanguageSlug="english"
+          onClose={vi.fn()}
+        />,
+      )
+    })
+
+    const guidance = $(
+      '[data-testid="watch-share-modal-video-usage-guidance"]',
+    ) as HTMLElement
+    const screening = $(
+      '[data-testid="watch-share-modal-screening-guidance"]',
+    ) as HTMLAnchorElement
+    const nativeUpload = $(
+      '[data-testid="watch-share-modal-native-upload-guidance"]',
+    ) as HTMLAnchorElement
+    const clipReuse = $(
+      '[data-testid="watch-share-modal-clip-reuse-guidance"]',
+    ) as HTMLAnchorElement
+
+    expect(guidance.textContent).toContain("Download or public screening")
+    expect(guidance.textContent).toContain(
+      "Native social upload or republication",
+    )
+    expect(guidance.textContent).toContain("Clip reuse in another production")
+    expect(screening.href).toBe("https://www.jesusfilm.org/about/faq/")
+    expect(nativeUpload.href).toBe(
+      "https://form.asana.com/?k=qIsNe5Cu3-v5qriWHzwH8Q&d=657768513276",
+    )
+    expect(clipReuse.href).toBe(nativeUpload.href)
+    expect(screening.target).toBe("_blank")
+    expect(screening.rel).toContain("noopener")
+    expect(nativeUpload.target).toBe("_blank")
+    expect(nativeUpload.rel).toContain("noopener")
+    expect(guidance.textContent?.toLowerCase()).not.toContain("approved")
+    expect(guidance.textContent?.toLowerCase()).not.toContain("granted")
+  })
+
+  it("keeps generic share surfaces free of video reuse guidance", () => {
+    act(() => {
+      root.render(
+        <ShareModal
+          open
+          usageGuidanceScope="generic"
+          videoSlug="the-call"
+          currentLanguageSlug="english"
+          onClose={vi.fn()}
+        />,
+      )
+    })
+
+    expect(
+      $('[data-testid="watch-share-modal-video-usage-guidance"]'),
+    ).toBeNull()
+  })
+})
+
+describe("ShareModal — guidance analytics", () => {
+  it("reports one bounded view per valid video-modal open edge", () => {
+    const props = {
+      usageGuidanceScope: "video" as const,
+      videoSlug: "the-call",
+      currentLanguageSlug: "english",
+      onClose: vi.fn(),
+    }
+
+    act(() => {
+      root.render(<ShareModal open {...props} videoTitle="Sensitive title" />)
+    })
+
+    expect(reportGoogleAnalyticsEvent).toHaveBeenCalledTimes(1)
+    expect(reportGoogleAnalyticsEvent).toHaveBeenLastCalledWith(
+      "watch_share_guidance_viewed",
+      { guidance_scope: "video", surface: "watch_share_modal" },
+    )
+    expect(JSON.stringify(reportGoogleAnalyticsEvent.mock.calls)).not.toContain(
+      "Sensitive title",
+    )
+
+    act(() => {
+      root.render(<ShareModal open {...props} videoTitle="Changed title" />)
+    })
+    expect(reportGoogleAnalyticsEvent).toHaveBeenCalledTimes(1)
+
+    act(() => {
+      root.render(<ShareModal open={false} {...props} />)
+    })
+    act(() => {
+      root.render(<ShareModal open {...props} />)
+    })
+    expect(reportGoogleAnalyticsEvent).toHaveBeenCalledTimes(2)
+  })
+
+  it("does not report a view for generic or fully invalid modal content", () => {
+    act(() => {
+      root.render(
+        <ShareModal
+          open
+          usageGuidanceScope="generic"
+          videoSlug="the-call"
+          currentLanguageSlug="english"
+          onClose={vi.fn()}
+        />,
+      )
+    })
+    expect(reportGoogleAnalyticsEvent).not.toHaveBeenCalled()
+
+    act(() => {
+      root.render(
+        <ShareModal
+          open
+          usageGuidanceScope="video"
+          videoSlug=""
+          currentLanguageSlug="english"
+          playbackId={null}
+          onClose={vi.fn()}
+        />,
+      )
+    })
+    expect(reportGoogleAnalyticsEvent).not.toHaveBeenCalled()
+  })
+
+  it("reports licensing activation with only a static reuse type", () => {
+    act(() => {
+      root.render(
+        <ShareModal
+          open
+          usageGuidanceScope="video"
+          videoSlug="the-call"
+          currentLanguageSlug="english"
+          onClose={vi.fn()}
+        />,
+      )
+    })
+    reportGoogleAnalyticsEvent.mockClear()
+
+    act(() => {
+      $(
+        '[data-testid="watch-share-modal-native-upload-guidance"]',
+      )?.dispatchEvent(new MouseEvent("click", { bubbles: true }))
+    })
+
+    expect(reportGoogleAnalyticsEvent).toHaveBeenCalledWith(
+      "watch_share_licensing_clicked",
+      {
+        reuse_type: "native_social_upload",
+        surface: "watch_share_modal",
+      },
     )
   })
 })
