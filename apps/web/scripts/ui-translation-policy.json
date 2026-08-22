@@ -1,6 +1,16 @@
 {
   "humanReviewedLocales": ["en", "ru"],
   "pendingTranslationPaths": [
+    "ShareModal.clipReuse",
+    "ShareModal.downloadOrScreening",
+    "ShareModal.embedDescription",
+    "ShareModal.licensingFormDescription",
+    "ShareModal.linkDescription",
+    "ShareModal.nativeSocialUpload",
+    "ShareModal.openLicensingForm",
+    "ShareModal.opensInNewTab",
+    "ShareModal.usageHeading",
+    "ShareModal.viewUsageGuidance",
     "WatchUnavailableLanguage.actionsLabel",
     "WatchUnavailableLanguage.audioVersionsDescription",
     "WatchUnavailableLanguage.audioVersionsTitle",
