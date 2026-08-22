@@ -51,13 +51,13 @@ Implementation contract:
 - `hasLanguageSwitcher|hasSubtitleSwitcher`
 - `hero-player-subtitle-language-count`
 - `hero-chrome-subtitles|showSubtitleLanguageCode`
-- `subtitlesHeading|toggleOff|languageCount`
+- `audioTranslationCount|subtitleCount|toggleOff|languageCount`
 - `FORGE_SUBTITLE_TRACK_LABEL|readyState`
 - `data-modal-state="language"|watch_language_picker_opened`
 
 ## What To Build
 
-1. Serialize localized audio- and subtitle-language count labels at the server route projection and render those stable values through `WatchHeroPlayerBlock` so browser ICU cannot change the first client render. Baseline proof is `2 285 iilwimi` in server HTML versus `2,285 iilwimi` after Xhosa hydration; runtime stays `128 min` and must remain unchanged.
+1. Serialize localized audio-translation and subtitle count labels at the server route projection and render those stable values through `WatchHeroPlayerBlock` so browser ICU cannot change the first client render. English must read `{count} audio translations` and `{count} subtitles`; existing localized wording remains the compatibility fallback until availability-specific translations are authored. Baseline proof is `2 285 iilwimi` in server HTML versus `2,285 iilwimi` after Xhosa hydration; runtime stays `128 min` and must remain unchanged.
 2. Give the pre-reveal subtitle metadata explicit localized subtitle identity plus the offered Language count.
 3. Use `hasSubtitleSwitcher`, not the multi-audio gate, to make offered subtitles interactive when a modal callback exists.
 4. Show a compact visible subtitle state in player chrome for disabled, same-audio, and translated selections while retaining the localized accessible name and existing callback.

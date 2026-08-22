@@ -111,7 +111,7 @@ The current hero shows a captions glyph beside a generic language count and can 
 ### Key Technical Decisions
 
 - KTD1. **Format hero count labels at the server projection boundary.** The pinned baseline proves the Xhosa audio-language count differs between server ICU (`2 285 iilwimi`) and browser ICU (`2,285 iilwimi`), while runtime text is stable. Add nullable localized audio- and subtitle-language count labels to the synthetic hero block, compute them while pruning route data for the client, and render the serialized strings verbatim. This removes browser number formatting from the hydration comparison while preserving localized plurals and grouping. Governs R9 and R10.
-- KTD2. **Use the subtitle-specific interaction gate.** Compose the existing `subtitlesHeading` and `languageCount` messages exactly as `{subtitlesHeading}: {languageCount}` for both visible hero text and its base accessible name, and choose button versus informational text with `hasSubtitleSwitcher`. The audio switcher gate remains independent. Governs R1, R2, R4, and R5.
+- KTD2. **Use explicit availability-specific count labels and the subtitle-specific interaction gate.** Render server-produced audio-translation and subtitle counts verbatim (English: `{count} audio translations` and `{count} subtitles`) for both visible hero text and accessible names, and choose button versus informational text with `hasSubtitleSwitcher`. The audio switcher gate remains independent. Existing localized count wording remains the compatibility fallback where availability-specific translations are not yet authored. Governs R1, R2, R4, and R5.
 - KTD3. **Expose state inside the compact subtitle control.** Reuse the existing localized off/on messages for disabled or code-less enabled tracks and the normalized subtitle Language code when available. Compose that state into the localized accessible name without adding catalog keys. Governs R3 and R4.
 - KTD4. **Prove the real browser boundaries.** Unit tests own render and interaction branches; route tests own server projection; browser evidence owns native track loading, recoverable hydration errors, responsive fit, focus, lazy mounting, and performance windows. Governs R4 and R8-R12.
 
@@ -176,7 +176,7 @@ U1 and U2 are independent: U1 establishes the deterministic localized hero-count
   - `apps/web/src/components/watch/__tests__/LanguagePickerModal.test.tsx`
 - **Approach:** Compose existing localized strings for explicit hero subtitle copy. Use the existing subtitle-specific gate for interaction. Add a compact visible off/on/code state to the chrome button while leaving callback, modal, preference, and track flows intact.
 - **Execution note:** Characterize the one-audio offered-subtitle branch before changing the render gate.
-- **Patterns to follow:** `ChromeButton`, `hasSubtitleSwitcher`, `LanguagePickerModal.subtitlesHeading`, `LanguagePickerModal.toggleOff`, and normalized `languageCodeFor` output.
+- **Patterns to follow:** `ChromeButton`, `hasSubtitleSwitcher`, `HeroPlayer.audioTranslationCount`, `HeroPlayer.subtitleCount`, `LanguagePickerModal.toggleOff`, and normalized `languageCodeFor` output.
 - **Test scenarios:**
   1. One audio Dub plus offered subtitles renders a focusable subtitle button with explicit localized copy and invokes `onLanguageClick` once.
   2. Offered subtitles without a callback render the same explicit information as non-interactive text.
@@ -200,7 +200,7 @@ U1 and U2 are independent: U1 establishes the deterministic localized hero-count
 - **Test scenarios:**
   1. English, Afrikaans, and Xhosa routes emit no React #418, recoverable hydration error, or app-attributable console error.
   2. Tab, Enter, and Space activate both subtitle controls; the dialog receives focus and returns focus to the invoking control on close.
-  3. The exact `{subtitlesHeading}: {languageCount}` pre-reveal copy and the widest audio-code plus translated-subtitle-code chrome state fit in English, Afrikaans, and Xhosa at 320 and 375 CSS pixels and compact landscape without clipping, overlap, or horizontal overflow.
+  3. The explicit availability-count copy and the widest audio-code plus translated-subtitle-code chrome state fit in English, Afrikaans, and Xhosa at 320 and 375 CSS pixels and compact landscape without clipping, overlap, or horizontal overflow.
   4. The known Afrikaans Forge track reaches `readyState === 2` with cues through the same-origin URL.
   5. Xhosa does not expose an invented same-language track and keeps offered translated choices truthful.
   6. The modal chunk and language-option work are absent before interaction and load once after opening subtitles.

@@ -225,7 +225,9 @@
   "HeroPlayer": {
     "playWithSound": "اوس یې وګورئ",
     "tapToUnmute": "د غږ فعالولو لپاره ټېپ کړئ",
-    "nextEpisode": "راتلونکی برخه"
+    "nextEpisode": "راتلونکی برخه",
+    "audioTranslationCount": "{count, plural, one {# ژبه} other {# ژبې}}",
+    "subtitleCount": "سرلیکونه: {count, plural, one {# ژبه} other {# ژبې}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "محتوا بارېږي",

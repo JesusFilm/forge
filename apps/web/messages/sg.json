@@ -225,7 +225,9 @@
   "HeroPlayer": {
     "playWithSound": "Tala sikoyo",
     "tapToUnmute": "Fina mpo na kolongola kozanga mongongo",
-    "nextEpisode": "Episode oyo elandi"
+    "nextEpisode": "Episode oyo elandi",
+    "audioTranslationCount": "{count, plural, one {# monoko} other {# minoko}}",
+    "subtitleCount": "Mibakisi ya maloba: {count, plural, one {# monoko} other {# minoko}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Kozalisa contenu",

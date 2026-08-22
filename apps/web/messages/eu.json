@@ -225,7 +225,9 @@
   "HeroPlayer": {
     "playWithSound": "Ikusi orain",
     "tapToUnmute": "Ukitu soinua aktibatzeko",
-    "nextEpisode": "Hurrengo atala"
+    "nextEpisode": "Hurrengo atala",
+    "audioTranslationCount": "{count, plural, one {# hizkuntza} other {# hizkuntza}}",
+    "subtitleCount": "Azpitituluak: {count, plural, one {# hizkuntza} other {# hizkuntza}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Edukia kargatzen",

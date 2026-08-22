@@ -225,7 +225,9 @@
   "HeroPlayer": {
     "playWithSound": "Haree agora",
     "tapToUnmute": "Toque atu loke mute",
-    "nextEpisode": "Episódiu tuir mai"
+    "nextEpisode": "Episódiu tuir mai",
+    "audioTranslationCount": "{count, plural, one {# língua} other {# língua sira}}",
+    "subtitleCount": "Subtítulus: {count, plural, one {# língua} other {# língua sira}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Karrega kontentu",

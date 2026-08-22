@@ -225,7 +225,9 @@
   "HeroPlayer": {
     "playWithSound": "Hygg nú",
     "tapToUnmute": "Trýst fyri at kveikja ljóðið",
-    "nextEpisode": "Næsti partur"
+    "nextEpisode": "Næsti partur",
+    "audioTranslationCount": "{count, plural, one {# mál} other {# mál}}",
+    "subtitleCount": "Undirtekstir: {count, plural, one {# mál} other {# mál}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Lesur innihald",

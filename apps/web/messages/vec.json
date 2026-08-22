@@ -225,7 +225,9 @@
   "HeroPlayer": {
     "playWithSound": "Varda adesso",
     "tapToUnmute": "Toca par ativar el sòno",
-    "nextEpisode": "Episodio dopo"
+    "nextEpisode": "Episodio dopo",
+    "audioTranslationCount": "{count, plural, one {# lengua} other {# lengue}}",
+    "subtitleCount": "Sottotitoli: {count, plural, one {# lengua} other {# lengue}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Cargando el contenù",

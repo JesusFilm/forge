@@ -225,7 +225,9 @@
   "HeroPlayer": {
     "playWithSound": "Geahččal dál",
     "tapToUnmute": "Čuodjat jietna",
-    "nextEpisode": "Boahtte oskkus"
+    "nextEpisode": "Boahtte oskkus",
+    "audioTranslationCount": "{count, plural, one {# giella} other {# gielat}}",
+    "subtitleCount": "Lávlagat: {count, plural, one {# giella} other {# gielat}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Lohkamin sisdoalu",

@@ -75,8 +75,8 @@ runtime stayed `128 min`; runtime generation was not the cause.
 
 `WatchHeroPlayerBlock` now carries nullable
 `audioLanguageCountLabel` and `subtitleLanguageCountLabel` values. The catch-all
-Watch route obtains the `LanguagePickerModal.languageCount` translator for the
-resolved route locale, formats positive counts on the server, and adds those
+Watch route obtains the availability-specific `HeroPlayer` count translator for
+the resolved route locale, formats positive counts on the server, and adds those
 strings while pruning standalone and episode block data for the client. Series
 routes pass the same values through `SeriesPageClient` and `SeriesHero` into
 trailer-mode `HeroPlayer` blocks.
@@ -88,8 +88,12 @@ the label should be absent.
 
 ### Make subtitle entry points explicit and subtitle-owned
 
-The pre-reveal hero composes the existing localized strings as
-`{subtitlesHeading}: {languageCount}`. It becomes a button when
+The pre-reveal hero renders the server-produced availability labels verbatim.
+In English these read `{count} audio translations` and `{count} subtitles`, so
+the two numbers no longer share the ambiguous `languages` noun. Existing
+localized count wording remains the compatibility fallback for catalogs where
+availability-specific translations have not yet been authored. The subtitle
+label becomes a button when
 `hasSubtitleSwitcher` is true, independently of the audio-language switcher,
 and otherwise remains truthful informational text.
 
@@ -142,7 +146,7 @@ The tested routes were:
 For all three, server HTML and the hydrated DOM retained the same hero count
 labels and the browser reported no app error or hydration signal:
 
-- English: `2,285 languages`; `Subtitles: 57 languages`
+- English: `2,285 audio translations`; `57 subtitles`
 - Afrikaans: `2 285 tale`; `Onderskrifte: 57 tale`
 - Xhosa: `2 285 iilwimi`; `IMibhalo engezantsi: 57 iilwimi`
 

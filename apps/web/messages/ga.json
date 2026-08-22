@@ -225,7 +225,9 @@
   "HeroPlayer": {
     "playWithSound": "Féach anois",
     "tapToUnmute": "Tapáil chun an fhuaim a chasadh air",
-    "nextEpisode": "An chéad eipeasóid eile"
+    "nextEpisode": "An chéad eipeasóid eile",
+    "audioTranslationCount": "{count, plural, one {# teanga} other {# teangacha}}",
+    "subtitleCount": "Fotheidil: {count, plural, one {# teanga} other {# teangacha}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Ábhar á luchtú",

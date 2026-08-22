@@ -225,7 +225,9 @@
   "HeroPlayer": {
     "playWithSound": "اکنون تماشا کنید",
     "tapToUnmute": "برای فعال‌کردن صدا بزنید",
-    "nextEpisode": "قسمت بعدی"
+    "nextEpisode": "قسمت بعدی",
+    "audioTranslationCount": "{count, plural, one {# زبان} other {# زبان}}",
+    "subtitleCount": "زیرنویس: {count, plural, one {# زبان} other {# زبان}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "در حال بارگذاری محتوا",

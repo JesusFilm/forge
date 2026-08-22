@@ -225,7 +225,9 @@
   "HeroPlayer": {
     "playWithSound": "ᑕᑯᖃᑦᑕᕆ",
     "tapToUnmute": "ᐊᒃᑐᕐᓗᒍ ᓂᐱ ᐊᓯᐊᒍᑦ",
-    "nextEpisode": "ᐊᓯᐊᓂ ᐊᕐᕌᒍ"
+    "nextEpisode": "ᐊᓯᐊᓂ ᐊᕐᕌᒍ",
+    "audioTranslationCount": "{count, plural, one {# ᓂᐱ} other {# ᓂᐱᑦ}}",
+    "subtitleCount": "ᓂᕆᐊᕐᓂᖅ ᑐᓴᒐᐅᑏᑦ: {count, plural, one {# ᓂᐱ} other {# ᓂᐱᑦ}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "ᑐᑭᓯᐅᑎᔪᖅ ᐊᓯᔾᔨᕐᓂᖅ",

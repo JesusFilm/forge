@@ -354,7 +354,6 @@ export function HeroPlayer({
 }) {
   const t = useTranslations("HeroPlayer")
   const locale = useLocale()
-  const tLanguagePicker = useTranslations("LanguagePickerModal")
   const tBibleQuotes = useTranslations("BibleQuotes")
   const videoLabels = useTranslations("VideoLabels")
   const { video, variant } = block
@@ -1440,21 +1439,18 @@ export function HeroPlayer({
   const languageCountLabel =
     block.audioLanguageCountLabel === undefined
       ? languageCount > 0
-        ? tLanguagePicker("languageCount", { count: languageCount })
+        ? t("audioTranslationCount", { count: languageCount })
         : null
       : block.audioLanguageCountLabel
   const subtitleLanguageCountLabel =
     block.subtitleLanguageCountLabel === undefined
       ? video.subtitles.length > 0
-        ? tLanguagePicker("languageCount", {
+        ? t("subtitleCount", {
             count: video.subtitles.length,
           })
         : null
       : block.subtitleLanguageCountLabel
-  const subtitleAffordanceLabel =
-    subtitleLanguageCountLabel == null
-      ? null
-      : `${tLanguagePicker("subtitlesHeading")}: ${subtitleLanguageCountLabel}`
+  const subtitleAffordanceLabel = subtitleLanguageCountLabel
   const releaseMetadata = [formatHeroRuntime(variant.duration, locale)]
     .filter((value): value is string => value != null)
     .join(" · ")

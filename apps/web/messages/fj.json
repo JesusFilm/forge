@@ -225,7 +225,9 @@
   "HeroPlayer": {
     "playWithSound": "Raica oqo",
     "tapToUnmute": "Tabaka me vakavu",
-    "nextEpisode": "Episode e tarava"
+    "nextEpisode": "Episode e tarava",
+    "audioTranslationCount": "{count, plural, one {# na vosa} other {# na vosa}}",
+    "subtitleCount": "iVakaraitaki ni Vosa: {count, plural, one {# na vosa} other {# na vosa}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Lavetaki tiko na itukutuku",

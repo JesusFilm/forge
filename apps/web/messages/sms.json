@@ -225,7 +225,9 @@
   "HeroPlayer": {
     "playWithSound": "Kattso nyt",
     "tapToUnmute": "Napâta ääni päälle",
-    "nextEpisode": "Seuraava jakso"
+    "nextEpisode": "Seuraava jakso",
+    "audioTranslationCount": "{count, plural, one {# kiel} other {# kielid}}",
+    "subtitleCount": "Tekstitykõk: {count, plural, one {# kiel} other {# kielid}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Lätee sisällöõk",

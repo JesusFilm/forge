@@ -225,7 +225,9 @@
   "HeroPlayer": {
     "playWithSound": "Doengh gwn",
     "tapToUnmute": "Tap ndeih saeng lai",
-    "nextEpisode": "Episode lai"
+    "nextEpisode": "Episode lai",
+    "audioTranslationCount": "{count, plural, one {# language} other {# languages}} gvaq",
+    "subtitleCount": "Gij subtitles: {count, plural, one {# language} other {# languages}} gvaq"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Raenz content",

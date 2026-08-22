@@ -225,7 +225,9 @@
   "HeroPlayer": {
     "playWithSound": "Sledovat nyní",
     "tapToUnmute": "Klepněte pro zapnutí zvuku",
-    "nextEpisode": "Další epizoda"
+    "nextEpisode": "Další epizoda",
+    "audioTranslationCount": "{count, plural, one {# jazyk} few {# jazyky} other {# jazyků}}",
+    "subtitleCount": "Titulky: {count, plural, one {# jazyk} few {# jazyky} other {# jazyků}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Načítání obsahu",

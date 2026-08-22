@@ -225,7 +225,9 @@
   "HeroPlayer": {
     "playWithSound": "इदानीं पश्यतु",
     "tapToUnmute": "मौन-निवारणाय स्पृशतु",
-    "nextEpisode": "अग्रिमः भागः"
+    "nextEpisode": "अग्रिमः भागः",
+    "audioTranslationCount": "{count, plural, one {# भाषा} other {# भाषाः}}",
+    "subtitleCount": "उपशीर्षकाणि: {count, plural, one {# भाषा} other {# भाषाः}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "सामग्री लोड् क्रियते",

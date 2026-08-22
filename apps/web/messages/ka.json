@@ -225,7 +225,9 @@
   "HeroPlayer": {
     "playWithSound": "უყურეთ ახლა",
     "tapToUnmute": "ხმის ჩართვისთვის დააჭირეთ",
-    "nextEpisode": "შემდეგი ეპიზოდი"
+    "nextEpisode": "შემდეგი ეპიზოდი",
+    "audioTranslationCount": "{count, plural, one {# ენა} other {# ენა}}",
+    "subtitleCount": "სუბტიტრები: {count, plural, one {# ენა} other {# ენა}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "შიგთავსი იტვირთება",

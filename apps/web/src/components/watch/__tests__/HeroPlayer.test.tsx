@@ -102,6 +102,14 @@ vi.mock("next-intl", () => ({
           nextEpisode: "Next Episode",
           playWithSound: "Watch now",
           tapToUnmute: "Tap to Unmute",
+          audioTranslationCount:
+            values?.count === 1
+              ? "1 audio translation"
+              : `${values?.count ?? 0} audio translations`,
+          subtitleCount:
+            values?.count === 1
+              ? "1 subtitle"
+              : `${values?.count ?? 0} subtitles`,
         },
         VideoLabels: {
           episode: "Episode",
@@ -621,7 +629,7 @@ describe("HeroPlayer — initial mount", () => {
               },
             ],
             audioLanguageCountLabel: "2\u00a0285 iilwimi",
-            subtitleLanguageCountLabel: "1 ulwimi",
+            subtitleLanguageCountLabel: "IMibhalo engezantsi: 1 ulwimi",
           })}
           onLanguageClick={onLanguageClick}
           playableLanguageCount={3}
@@ -678,7 +686,7 @@ describe("HeroPlayer — initial mount", () => {
       container.querySelector(
         '[data-testid="hero-player-subtitle-language-count"]',
       )?.textContent,
-    ).toBe("Subtitles: 1 ulwimi")
+    ).toBe("IMibhalo engezantsi: 1 ulwimi")
     expect(
       container.querySelector(
         '[data-testid="hero-player-subtitle-language-count"] svg',
@@ -733,7 +741,7 @@ describe("HeroPlayer — initial mount", () => {
     ) as HTMLButtonElement
     expect(subtitleLanguageTag.tagName).toBe("BUTTON")
     expect(subtitleLanguageTag.getAttribute("aria-label")).toBe(
-      "Subtitles: 1 ulwimi",
+      "IMibhalo engezantsi: 1 ulwimi",
     )
     await act(async () => {
       subtitleLanguageTag.click()
@@ -746,7 +754,7 @@ describe("HeroPlayer — initial mount", () => {
     act(() => {
       root.render(
         <HeroPlayer
-          block={makeBlock({ subtitleLanguageCountLabel: "1 language" })}
+          block={makeBlock({ subtitleLanguageCountLabel: "1 subtitle" })}
           onLanguageClick={onLanguageClick}
           playableLanguageCount={1}
           hasSubtitleOptions
@@ -758,10 +766,8 @@ describe("HeroPlayer — initial mount", () => {
       '[data-testid="hero-player-subtitle-language-count"]',
     ) as HTMLButtonElement
     expect(subtitleLanguageTag.tagName).toBe("BUTTON")
-    expect(subtitleLanguageTag.textContent).toBe("Subtitles: 1 language")
-    expect(subtitleLanguageTag.getAttribute("aria-label")).toBe(
-      "Subtitles: 1 language",
-    )
+    expect(subtitleLanguageTag.textContent).toBe("1 subtitle")
+    expect(subtitleLanguageTag.getAttribute("aria-label")).toBe("1 subtitle")
 
     await act(async () => {
       subtitleLanguageTag.click()
@@ -773,7 +779,7 @@ describe("HeroPlayer — initial mount", () => {
     act(() => {
       root.render(
         <HeroPlayer
-          block={makeBlock({ subtitleLanguageCountLabel: "1 language" })}
+          block={makeBlock({ subtitleLanguageCountLabel: "1 subtitle" })}
           playableLanguageCount={1}
           hasSubtitleOptions
         />,
@@ -784,7 +790,7 @@ describe("HeroPlayer — initial mount", () => {
       '[data-testid="hero-player-subtitle-language-count"]',
     ) as HTMLSpanElement
     expect(subtitleLanguageTag.tagName).toBe("SPAN")
-    expect(subtitleLanguageTag.textContent).toBe("Subtitles: 1 language")
+    expect(subtitleLanguageTag.textContent).toBe("1 subtitle")
   })
 
   it("keeps a one-language count informational and omits unavailable factual tags", () => {
@@ -792,7 +798,7 @@ describe("HeroPlayer — initial mount", () => {
     act(() => {
       root.render(
         <HeroPlayer
-          block={makeBlock({ audioLanguageCountLabel: "1 language" })}
+          block={makeBlock({ audioLanguageCountLabel: "1 audio translation" })}
           onLanguageClick={onLanguageClick}
           playableLanguageCount={1}
         />,
@@ -803,7 +809,7 @@ describe("HeroPlayer — initial mount", () => {
       '[data-testid="hero-player-language-tag"]',
     ) as HTMLSpanElement
     expect(languageTag.tagName).toBe("SPAN")
-    expect(languageTag.textContent).toBe("1 language")
+    expect(languageTag.textContent).toBe("1 audio translation")
     expect(languageTag.className).not.toContain("compact-landscape:min-h-11")
     expect(languageTag.className).not.toContain("compact-landscape:min-w-11")
     expect(
@@ -880,12 +886,12 @@ describe("HeroPlayer — initial mount", () => {
     expect(
       container.querySelector('[data-testid="hero-player-language-tag"]')
         ?.textContent,
-    ).toBe("2 languages")
+    ).toBe("2 audio translations")
     expect(
       container.querySelector(
         '[data-testid="hero-player-subtitle-language-count"]',
       )?.textContent,
-    ).toBe("Subtitles: 1 language")
+    ).toBe("1 subtitle")
   })
 
   it("removes the metadata strip when Watch now reveals player chrome", async () => {

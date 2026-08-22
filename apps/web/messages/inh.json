@@ -225,7 +225,9 @@
   "HeroPlayer": {
     "playWithSound": "Хьалха йахьа",
     "tapToUnmute": "Д1ахьа дагахьа",
-    "nextEpisode": "Т1ехьа эпизод"
+    "nextEpisode": "Т1ехьа эпизод",
+    "audioTranslationCount": "{count, plural, one {# мотт} other {# мотт}}",
+    "subtitleCount": "Субтитраш: {count, plural, one {# мотт} other {# мотт}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Контент йоаккхийла",

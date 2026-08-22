@@ -225,7 +225,9 @@
   "HeroPlayer": {
     "playWithSound": "شاهد الآن",
     "tapToUnmute": "تشغيل الصوت",
-    "nextEpisode": "الحلقة التالية"
+    "nextEpisode": "الحلقة التالية",
+    "audioTranslationCount": "{count, plural, one {# لغة} two {# لغتان} few {# لغات} many {# لغة} other {# لغة}}",
+    "subtitleCount": "الترجمات المصاحبة: {count, plural, one {# لغة} two {# لغتان} few {# لغات} many {# لغة} other {# لغة}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "جارٍ تحميل المحتوى",

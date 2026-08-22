@@ -225,7 +225,9 @@
   "HeroPlayer": {
     "playWithSound": "Tarisa zvino",
     "tapToUnmute": "Taphani kuti mubvise kunyarara",
-    "nextEpisode": "Chikamu chinotevera"
+    "nextEpisode": "Chikamu chinotevera",
+    "audioTranslationCount": "{count, plural, one {# mutauro} other {# mitauro}}",
+    "subtitleCount": "Zvidhindo: {count, plural, one {# mutauro} other {# mitauro}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Kurodha zvirimo",

@@ -225,7 +225,9 @@
   "HeroPlayer": {
     "playWithSound": "Wali tura",
     "tapToUnmute": "Ssed i usmutti",
-    "nextEpisode": "Tferkit d-iteddun"
+    "nextEpisode": "Tferkit d-iteddun",
+    "audioTranslationCount": "{count, plural, one {# tutlayt} other {# tutlayin}}",
+    "subtitleCount": "Ijerriden: {count, plural, one {# tutlayt} other {# tutlayin}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Asali n ugbur",

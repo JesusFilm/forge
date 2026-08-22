@@ -225,7 +225,9 @@
   "HeroPlayer": {
     "playWithSound": "Nézd meg most",
     "tapToUnmute": "Érintés a némítás feloldásához",
-    "nextEpisode": "Következő epizód"
+    "nextEpisode": "Következő epizód",
+    "audioTranslationCount": "{count, plural, one {# nyelv} other {# nyelv}}",
+    "subtitleCount": "Feliratok: {count, plural, one {# nyelv} other {# nyelv}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Tartalom betöltése",

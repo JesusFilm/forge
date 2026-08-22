@@ -225,7 +225,9 @@
   "HeroPlayer": {
     "playWithSound": "දැන් නරඹන්න",
     "tapToUnmute": "ශබ්දය සක්‍රිය කිරීමට තට්ටු කරන්න",
-    "nextEpisode": "ඊළඟ කථාංගය"
+    "nextEpisode": "ඊළඟ කථාංගය",
+    "audioTranslationCount": "{count, plural, one {# භාෂාවක්} other {# භාෂා}}",
+    "subtitleCount": "උපසිරැසි: {count, plural, one {# භාෂාවක්} other {# භාෂා}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "අන්තර්ගතය පූරණය වෙමින් පවතී",

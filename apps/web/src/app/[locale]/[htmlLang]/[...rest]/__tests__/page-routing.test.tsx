@@ -1646,7 +1646,7 @@ describe("Catch-all routing — series branch (2-seg)", () => {
     expect(props.video.variants[0]?.videoEdition).toBeNull()
     const hero = props.mergedBlocks.find((block) => block.kind === "HeroPlayer")
     expect(hero?.playableLanguageCount).toBe(2)
-    expect(hero?.audioLanguageCountLabel).toBe("2 languages")
+    expect(hero?.audioLanguageCountLabel).toBe("2 audio translations")
     expect(hero?.subtitleLanguageCountLabel).toBeNull()
     expect(hero?.variant?.videoEdition).toBeNull()
     expect(hero?.video?.parents).toEqual([])
@@ -1667,11 +1667,13 @@ describe("Catch-all routing — series branch (2-seg)", () => {
       key: string,
       values?: { count?: number },
     ) => {
-      expect(key).toBe("languageCount")
       const count = values?.count ?? 0
-      return `${new Intl.NumberFormat("xh").format(count)} ${
-        count === 1 ? "ulwimi" : "iilwimi"
-      }`
+      const formattedCount = new Intl.NumberFormat("xh").format(count)
+      if (key === "audioTranslationCount") {
+        return `${formattedCount} iinguqulelo zesandi`
+      }
+      expect(key).toBe("subtitleCount")
+      return `${formattedCount} imibhalo engezantsi`
     }) as never)
     const watchVideoResult = makeWatchVideoResult("featureFilm", {
       slug: "xhosa",
@@ -1717,7 +1719,7 @@ describe("Catch-all routing — series branch (2-seg)", () => {
 
     expect(vi.mocked(getTranslations)).toHaveBeenLastCalledWith({
       locale: "xh",
-      namespace: "LanguagePickerModal",
+      namespace: "HeroPlayer",
     })
 
     const props = watchPageClientMock.mock.calls[0]?.[0] as {
@@ -1728,8 +1730,8 @@ describe("Catch-all routing — series branch (2-seg)", () => {
       }>
     }
     const hero = props.mergedBlocks.find((block) => block.kind === "HeroPlayer")
-    expect(hero?.audioLanguageCountLabel).toBe("2\u00a0285 iilwimi")
-    expect(hero?.subtitleLanguageCountLabel).toBe("2 iilwimi")
+    expect(hero?.audioLanguageCountLabel).toBe("2\u00a0285 iinguqulelo zesandi")
+    expect(hero?.subtitleLanguageCountLabel).toBe("2 imibhalo engezantsi")
   })
 
   it("renders a sanitized VideoObject JSON-LD script for playable videos", async () => {
@@ -2342,7 +2344,7 @@ describe("Catch-all routing — props passed to SeriesPageClient (2-seg)", () =>
     const args = seriesPageClientMock.mock.calls[0]?.[0]
     expect(args?.selectedVariant).toBe(watchVideo.selectedVariant)
     expect(args?.locale).toBe("english")
-    expect(args?.audioLanguageCountLabel).toBe("1 language")
+    expect(args?.audioLanguageCountLabel).toBe("1 audio translation")
     expect(args?.subtitleLanguageCountLabel).toBeNull()
   })
 
@@ -2568,8 +2570,8 @@ describe("Catch-all routing — 3-seg episode branch", () => {
       }>
     }
     const hero = props.mergedBlocks.find((block) => block.kind === "HeroPlayer")
-    expect(hero?.audioLanguageCountLabel).toBe("1 language")
-    expect(hero?.subtitleLanguageCountLabel).toBe("1 language")
+    expect(hero?.audioLanguageCountLabel).toBe("1 audio translation")
+    expect(hero?.subtitleLanguageCountLabel).toBe("1 subtitle")
     expect(
       Array.from(
         container.querySelectorAll(

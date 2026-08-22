@@ -143,7 +143,7 @@ function pruneWatchVariantForClient(variant: WatchVariant): WatchVariant {
 function pruneMergedWatchBlocksForClient(
   blocks: MergedWatchBlock[],
   selectedVariant: WatchVariant,
-  formatLanguageCount: (count: number) => string,
+  formatAvailabilityCounts: AvailabilityCountFormatters,
 ): MergedWatchBlock[] {
   return blocks.map((block) => {
     if (!("kind" in block)) return block
@@ -155,11 +155,11 @@ function pruneMergedWatchBlocksForClient(
           variant: pruneWatchVariantForClient(block.variant),
           audioLanguageCountLabel: languageCountLabel(
             block.playableLanguageCount,
-            formatLanguageCount,
+            formatAvailabilityCounts.audio,
           ),
           subtitleLanguageCountLabel: languageCountLabel(
             block.video.subtitles.length,
-            formatLanguageCount,
+            formatAvailabilityCounts.subtitles,
           ),
         }
       case "WatchBody":
@@ -177,6 +177,11 @@ function pruneMergedWatchBlocksForClient(
         return block
     }
   })
+}
+
+type AvailabilityCountFormatters = {
+  audio: (count: number) => string
+  subtitles: (count: number) => string
 }
 
 function languageCountLabel(
@@ -576,33 +581,35 @@ export default async function SlugRestPage({ params }: PageProps) {
     shape.kind === "one-segment" && shape.isLanguageHome
       ? WATCH_HOME_CLIENT_MESSAGE_NAMESPACES
       : WATCH_CONTENT_CLIENT_MESSAGE_NAMESPACES
-  const translateLanguageCountPromise =
+  const translateAvailabilityCountsPromise =
     shape.kind === "one-segment"
       ? null
-      : getTranslations({
-          locale: shape.locale,
-          namespace: "LanguagePickerModal",
-        })
+      : getTranslations({ locale: shape.locale, namespace: "HeroPlayer" })
   const messages = await loadClientMessages(shape.locale, namespaces)
 
   let content: ReactNode
   if (shape.kind === "one-segment") {
     content = await renderOneSegment(shape)
   } else {
-    const translateLanguageCount = await translateLanguageCountPromise!
-    const formatLanguageCount = (count: number) =>
-      translateLanguageCount("languageCount", { count })
+    const translateAvailabilityCounts =
+      await translateAvailabilityCountsPromise!
+    const formatAvailabilityCounts: AvailabilityCountFormatters = {
+      audio: (count) =>
+        translateAvailabilityCounts("audioTranslationCount", { count }),
+      subtitles: (count) =>
+        translateAvailabilityCounts("subtitleCount", { count }),
+    }
     content =
       shape.kind === "episode"
         ? await renderEpisode(
             shape,
             routeIntent.subtitleLanguageSlug,
-            formatLanguageCount,
+            formatAvailabilityCounts,
           )
         : await renderVideo(
             shape,
             routeIntent.subtitleLanguageSlug,
-            formatLanguageCount,
+            formatAvailabilityCounts,
           )
   }
   const routeSurface = watchRouteSurfaceForShape(shape)
@@ -736,7 +743,7 @@ async function renderEpisode(
     implicitEnglish: boolean
   },
   subtitleLanguageSlug: ReturnType<typeof tryAsLocaleSlug>,
-  formatLanguageCount: (count: number) => string,
+  formatAvailabilityCounts: AvailabilityCountFormatters,
 ) {
   const { seriesSlug, episodeSlug, rawLocale, locale, implicitEnglish } = shape
   const routeManifestPromise = getWatchRouteManifest().catch(() => null)
@@ -810,7 +817,7 @@ async function renderEpisode(
   const clientMergedBlocks = pruneMergedWatchBlocksForClient(
     mergedBlocks,
     resolved.selectedVariant,
-    formatLanguageCount,
+    formatAvailabilityCounts,
   )
   const downloadSequence = resolveDownloadSequence(
     resolved.series,
@@ -866,7 +873,7 @@ async function renderVideo(
     locale: UiLocale
   },
   subtitleLanguageSlug: ReturnType<typeof tryAsLocaleSlug>,
-  formatLanguageCount: (count: number) => string,
+  formatAvailabilityCounts: AvailabilityCountFormatters,
 ) {
   const { slug, rawLocale, locale } = shape
   const route = `/watch/${slug}.html/${rawLocale}.html`
@@ -952,7 +959,7 @@ async function renderVideo(
     const clientMergedBlocks = pruneMergedWatchBlocksForClient(
       mergedBlocks,
       watchVideo.selectedVariant,
-      formatLanguageCount,
+      formatAvailabilityCounts,
     )
     const downloadSequence = resolveDownloadSequence(
       watchVideo.canonicalParent,
@@ -1089,11 +1096,11 @@ async function renderVideo(
           subtitleLanguageSlug={subtitleLanguageSlug}
           audioLanguageCountLabel={languageCountLabel(
             languageOptions.length,
-            formatLanguageCount,
+            formatAvailabilityCounts.audio,
           )}
           subtitleLanguageCountLabel={languageCountLabel(
             (series.video.subtitles ?? []).length,
-            formatLanguageCount,
+            formatAvailabilityCounts.subtitles,
           )}
         />
       </>

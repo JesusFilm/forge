@@ -225,7 +225,9 @@
   "HeroPlayer": {
     "playWithSound": "Se nu",
     "tapToUnmute": "Tryk for at slå lyd til",
-    "nextEpisode": "Næste afsnit"
+    "nextEpisode": "Næste afsnit",
+    "audioTranslationCount": "{count, plural, one {# sprog} other {# sprog}}",
+    "subtitleCount": "Undertekster: {count, plural, one {# sprog} other {# sprog}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Indlæser indhold",
