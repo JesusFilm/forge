@@ -16,9 +16,15 @@ describe("route-scoped client messages", () => {
 
     expect(GLOBAL_CLIENT_MESSAGE_NAMESPACES).toContain("LanguagePickerModal")
     expect(GLOBAL_CLIENT_MESSAGE_NAMESPACES).toContain("BetaTesterModal")
+    expect(GLOBAL_CLIENT_MESSAGE_NAMESPACES).toContain(
+      "WatchUnavailableLanguage",
+    )
     expect(messages.LanguagePickerModal?.dialogTitle).toBe("Language")
     expect(messages.LanguagePickerModal?.apply).toBe("Apply")
     expect(messages.BetaTesterModal?.trigger).toBe("Become a beta tester")
+    expect(messages.WatchUnavailableLanguage?.eyebrow).toBe(
+      englishMessages.WatchUnavailableLanguage.eyebrow,
+    )
   })
 
   it("keeps the language inventory collection switcher translated", () => {
