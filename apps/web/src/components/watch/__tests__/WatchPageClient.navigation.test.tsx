@@ -18,6 +18,7 @@ const { routerPushMock, routerPrefetchMock, shareModalProps, watchPlayer } =
       currentLanguageSlug: string
       onClose: () => void
       open: boolean
+      usageGuidanceScope: "generic" | "video"
       videoSlug: string
     }>,
     watchPlayer: {
@@ -525,6 +526,7 @@ describe("WatchPageClient chapter navigation", () => {
     expect(shareModalProps.at(-1)).toMatchObject({
       currentLanguageSlug: "english",
       open: true,
+      usageGuidanceScope: "video",
       videoSlug: "current-video",
     })
     expect(

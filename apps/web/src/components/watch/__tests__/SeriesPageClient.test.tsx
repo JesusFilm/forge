@@ -13,18 +13,29 @@ import { act } from "react"
 import { createRoot, type Root } from "react-dom/client"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
-const { collectionDownloadModalMock, resolveDownloadSessionAccessMock } =
-  vi.hoisted(() => ({
-    collectionDownloadModalMock: vi.fn(() => null),
-    resolveDownloadSessionAccessMock: vi.fn(),
-  }))
+const {
+  collectionDownloadModalMock,
+  loadWatchInteractionMock,
+  resolveDownloadSessionAccessMock,
+} = vi.hoisted(() => ({
+  collectionDownloadModalMock: vi.fn(() => null),
+  loadWatchInteractionMock: vi.fn(async () => undefined),
+  resolveDownloadSessionAccessMock: vi.fn(),
+}))
 
 vi.mock("next/dynamic", () => ({
-  default: () => collectionDownloadModalMock,
+  default: (loader: () => Promise<unknown>) =>
+    loader.toString().includes("ShareModal")
+      ? shareModalMock
+      : collectionDownloadModalMock,
 }))
 
 vi.mock("@/components/watch/download-session-access", () => ({
   resolveDownloadSessionAccess: resolveDownloadSessionAccessMock,
+}))
+
+vi.mock("@/lib/watch-interaction-loader", () => ({
+  loadWatchInteraction: loadWatchInteractionMock,
 }))
 
 vi.mock("@/components/watch/SeriesHero", () => ({
@@ -117,11 +128,15 @@ const { shareModalMock, languagePickerModalMock } = vi.hoisted(() => ({
       videoSlug,
       videoTitle,
       currentLanguageSlug,
+      usageGuidanceScope,
+      onClose,
     }: {
       open: boolean
       videoSlug: string
       videoTitle?: string | null
       currentLanguageSlug: string
+      usageGuidanceScope: "generic" | "video"
+      onClose: () => void
     }) => (
       <div
         data-testid="share-modal-mock"
@@ -129,7 +144,14 @@ const { shareModalMock, languagePickerModalMock } = vi.hoisted(() => ({
         data-slug={videoSlug}
         data-title={videoTitle ?? ""}
         data-language-slug={currentLanguageSlug}
-      />
+        data-usage-guidance-scope={usageGuidanceScope}
+      >
+        <button
+          type="button"
+          data-testid="share-modal-close-mock"
+          onClick={onClose}
+        />
+      </div>
     ),
   ),
   languagePickerModalMock: vi.fn(
@@ -202,6 +224,7 @@ beforeEach(() => {
     languageSlug: null,
   })
   collectionDownloadModalMock.mockClear()
+  loadWatchInteractionMock.mockClear()
   resolveDownloadSessionAccessMock.mockReset()
   resolveDownloadSessionAccessMock.mockResolvedValue({
     ok: true,
@@ -549,7 +572,7 @@ describe("SeriesPageClient — pluralized label (R8, AE4)", () => {
 })
 
 describe("SeriesPageClient — share modal state machine", () => {
-  it("starts with the share modal closed", () => {
+  it("does not mount or load the share modal before user intent", () => {
     act(() => {
       root.render(
         <SeriesPageClient
@@ -565,13 +588,12 @@ describe("SeriesPageClient — share modal state machine", () => {
         ?.getAttribute("data-modal-state"),
     ).toBe("none")
     expect(
-      container
-        .querySelector('[data-testid="share-modal-mock"]')
-        ?.getAttribute("data-open"),
-    ).toBe("false")
+      container.querySelector('[data-testid="share-modal-mock"]'),
+    ).toBeNull()
+    expect(loadWatchInteractionMock).not.toHaveBeenCalled()
   })
 
-  it("opens the share modal when the share pill is clicked", () => {
+  it("loads and mounts exactly one generic share modal on intent, then unmounts it on close", () => {
     act(() => {
       root.render(
         <SeriesPageClient
@@ -593,12 +615,32 @@ describe("SeriesPageClient — share modal state machine", () => {
         .querySelector('[data-testid="series-page-client"]')
         ?.getAttribute("data-modal-state"),
     ).toBe("share")
-    // ShareModal is re-rendered with open=true on the next render — the mock
-    // captures the latest props as the new attribute.
+    expect(loadWatchInteractionMock).toHaveBeenCalledTimes(1)
+    expect(loadWatchInteractionMock).toHaveBeenCalledWith("share")
     const allMockOpens = Array.from(
       container.querySelectorAll('[data-testid="share-modal-mock"]'),
     )
-    expect(allMockOpens.at(-1)?.getAttribute("data-open")).toBe("true")
+    expect(allMockOpens).toHaveLength(1)
+    expect(allMockOpens[0]?.getAttribute("data-open")).toBe("true")
+    expect(allMockOpens[0]?.getAttribute("data-usage-guidance-scope")).toBe(
+      "generic",
+    )
+
+    act(() => {
+      ;(
+        container.querySelector(
+          '[data-testid="share-modal-close-mock"]',
+        ) as HTMLButtonElement
+      ).click()
+    })
+    expect(
+      container
+        .querySelector('[data-testid="series-page-client"]')
+        ?.getAttribute("data-modal-state"),
+    ).toBe("none")
+    expect(
+      container.querySelector('[data-testid="share-modal-mock"]'),
+    ).toBeNull()
   })
 })
 
@@ -848,6 +890,13 @@ describe("SeriesPageClient — passthrough to children", () => {
         />,
       )
     })
+    act(() => {
+      ;(
+        container.querySelector(
+          '[data-testid="series-page-share-button"]',
+        ) as HTMLButtonElement
+      ).click()
+    })
     const modal = container.querySelector('[data-testid="share-modal-mock"]')
     expect(modal?.getAttribute("data-slug")).toBe("storyclubs")
     expect(modal?.getAttribute("data-title")).toBe("StoryClubs")
@@ -866,6 +915,14 @@ describe("SeriesPageClient — passthrough to children", () => {
           locale="english"
         />,
       )
+    })
+
+    act(() => {
+      ;(
+        container.querySelector(
+          '[data-testid="series-page-share-button"]',
+        ) as HTMLButtonElement
+      ).click()
     })
 
     const modal = container.querySelector('[data-testid="share-modal-mock"]')

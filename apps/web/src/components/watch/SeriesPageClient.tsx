@@ -23,7 +23,6 @@ import { buildSubtitleProxyUrl } from "@/components/watch/download-link"
 import { SeriesEpisodesGrid } from "@/components/watch/SeriesEpisodesGrid"
 import { SERIES_CONTENT_GLASS_CLASS_NAME } from "@/components/watch/series-page-styles"
 import { SeriesHero } from "@/components/watch/SeriesHero"
-import { ShareModal } from "@/components/watch/ShareModal"
 import { useWatchModalActivity } from "@/components/watch/WatchModalActivityProvider"
 import type { ResolvedSeriesBySlug } from "@/lib/content"
 import { resolveEpisodeImageUrl } from "@/lib/episode-image"
@@ -47,11 +46,19 @@ import {
   WATCH_HEADER_LANGUAGE_SWITCHER_EVENT,
   type WatchHeaderLanguageSwitcherDetail,
 } from "@/lib/watch-player-chrome-events"
+import { loadWatchInteraction } from "@/lib/watch-interaction-loader"
 
 const CollectionDownloadModal = dynamic(
   () =>
     import("@/components/watch/CollectionDownloadModal").then((module) => ({
       default: module.CollectionDownloadModal,
+    })),
+  { ssr: false },
+)
+const ShareModal = dynamic(
+  () =>
+    import("@/components/watch/ShareModal").then((module) => ({
+      default: module.ShareModal,
     })),
   { ssr: false },
 )
@@ -97,6 +104,7 @@ export function SeriesPageClient({
   }, [])
   const openShare = useCallback(() => {
     cancelDownloadSessionRequest()
+    void loadWatchInteraction("share").catch(() => {})
     setModalState("share")
   }, [cancelDownloadSessionRequest])
   const openLanguage = useCallback(() => {
@@ -567,18 +575,21 @@ export function SeriesPageClient({
         onSubtitleChange={handleSubtitleChange}
       />
 
-      <ShareModal
-        open={modalState === "share"}
-        videoSlug={series.slug ?? ""}
-        currentLanguageSlug={currentLanguageSlug}
-        videoTitle={series.title ?? null}
-        videoDescription={description}
-        posterUrl={posterUrl}
-        // Series-level share never embeds the trailer — Embed tab
-        // suppresses on null playbackId by ShareModal's own gate.
-        playbackId={null}
-        onClose={closeModal}
-      />
+      {modalState === "share" ? (
+        <ShareModal
+          open
+          videoSlug={series.slug ?? ""}
+          currentLanguageSlug={currentLanguageSlug}
+          videoTitle={series.title ?? null}
+          videoDescription={description}
+          posterUrl={posterUrl}
+          // Series-level share never embeds the trailer — Embed tab
+          // suppresses on null playbackId by ShareModal's own gate.
+          playbackId={null}
+          usageGuidanceScope="generic"
+          onClose={closeModal}
+        />
+      ) : null}
     </main>
   )
 }
