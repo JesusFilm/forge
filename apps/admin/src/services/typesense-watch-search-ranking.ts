@@ -1,12 +1,18 @@
-export type WatchSearchRankingMode = "TITLE_AND_BRAND" | "SEMANTIC"
+export type WatchSearchRankingMode =
+  | "TITLE_AND_BRAND"
+  | "CANONICAL_INTENT"
+  | "SEMANTIC"
 
 export const WATCH_SEARCH_LEGACY_RANKING_IMPLEMENTATION = "legacy-rrf"
 export const WATCH_SEARCH_TITLE_AND_BRAND_RANKING_IMPLEMENTATION =
   "title-and-brand-v1"
+export const WATCH_SEARCH_CANONICAL_INTENT_RANKING_IMPLEMENTATION =
+  "canonical-intent-v2"
 
 export type WatchSearchRankingImplementation =
   | typeof WATCH_SEARCH_LEGACY_RANKING_IMPLEMENTATION
   | typeof WATCH_SEARCH_TITLE_AND_BRAND_RANKING_IMPLEMENTATION
+  | typeof WATCH_SEARCH_CANONICAL_INTENT_RANKING_IMPLEMENTATION
 
 export type WatchSearchRankingLaneEvidence = {
   rank: number
@@ -36,6 +42,7 @@ export type WatchSearchTitleNormalization = {
 
 export type WatchSearchRankingEvidenceTier =
   | "NORMALIZED_WHOLE_TITLE"
+  | "CANONICAL_INTENT"
   | "UNIQUE_TITLE_CORE"
   | "ANCHOR_TITLE"
   | "ANCHOR_METADATA"
@@ -84,10 +91,11 @@ const EVIDENCE_TIER_RANK: Readonly<
   Record<WatchSearchRankingEvidenceTier, number>
 > = {
   NORMALIZED_WHOLE_TITLE: 0,
-  UNIQUE_TITLE_CORE: 1,
-  ANCHOR_TITLE: 2,
-  ANCHOR_METADATA: 3,
-  SEMANTIC_FILL: 4,
+  CANONICAL_INTENT: 1,
+  UNIQUE_TITLE_CORE: 2,
+  ANCHOR_TITLE: 3,
+  ANCHOR_METADATA: 4,
+  SEMANTIC_FILL: 5,
 }
 
 const RELATIONSHIP_METADATA_WORDS = new Set([
@@ -463,16 +471,38 @@ export function rankWatchSearchGroups<TGroup extends WatchSearchRankingGroup>(
   queryValue: string,
   groups: readonly TGroup[],
   locale = "en",
+  canonicalIntentTargetId: string | null = null,
 ): {
   mode: WatchSearchRankingMode
   anchor: WatchSearchRankingAnchor | null
   groups: Array<RankedWatchSearchGroup<TGroup>>
 } {
-  const classified = classifyWatchSearchGroups(queryValue, groups, locale)
+  const baseClassification = classifyWatchSearchGroups(
+    queryValue,
+    groups,
+    locale,
+  )
+  const canonicalIntentTargetRecalled =
+    canonicalIntentTargetId != null &&
+    groups.some((group) => group.canonicalVideoId === canonicalIntentTargetId)
+  const classified = canonicalIntentTargetRecalled
+    ? {
+        ...baseClassification,
+        mode: "CANONICAL_INTENT" as const,
+        groups: baseClassification.groups.map((rankedGroup) => ({
+          ...rankedGroup,
+          evidenceTier:
+            rankedGroup.group.canonicalVideoId === canonicalIntentTargetId &&
+            rankedGroup.evidenceTier !== "NORMALIZED_WHOLE_TITLE"
+              ? ("CANONICAL_INTENT" as const)
+              : rankedGroup.evidenceTier,
+        })),
+      }
+    : baseClassification
   return {
     ...classified,
     groups: [...classified.groups].sort((left, right) => {
-      if (classified.mode === "TITLE_AND_BRAND") {
+      if (classified.mode !== "SEMANTIC") {
         const tierDelta =
           EVIDENCE_TIER_RANK[left.evidenceTier] -
           EVIDENCE_TIER_RANK[right.evidenceTier]

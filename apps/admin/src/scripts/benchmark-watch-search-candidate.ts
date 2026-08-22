@@ -23,6 +23,10 @@ import {
   watchSearchBindingMembers,
   type TypesenseWatchSearchCollectionBinding,
 } from "@/services/typesense-watch-search-profile"
+import type {
+  WatchSearchRankingImplementation,
+  WatchSearchRankingMode,
+} from "@/services/typesense-watch-search-ranking"
 import { TypesenseWatchSearchService } from "@/services/typesense-watch-search.service"
 import { TypesenseClient } from "@/services/typesense-client"
 import type { WatchSearchInput } from "@/services/watch-search.service"
@@ -79,8 +83,8 @@ type CandidateDiagnostics = {
   groupedHits: number
   candidates: number
   hydratedRecords: number
-  rankingImplementation: "legacy-rrf" | "title-and-brand-v1"
-  rankingMode: "TITLE_AND_BRAND" | "SEMANTIC"
+  rankingImplementation: WatchSearchRankingImplementation
+  rankingMode: WatchSearchRankingMode
 }
 
 type CandidateCompareSuccess = {

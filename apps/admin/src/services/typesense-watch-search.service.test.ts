@@ -33,7 +33,10 @@ import {
   typesenseLexicalMatchQuality,
   TypesenseWatchSearchService,
 } from "./typesense-watch-search.service"
-import { WATCH_SEARCH_TITLE_AND_BRAND_RANKING_IMPLEMENTATION } from "./typesense-watch-search-ranking"
+import {
+  WATCH_SEARCH_CANONICAL_INTENT_RANKING_IMPLEMENTATION,
+  WATCH_SEARCH_TITLE_AND_BRAND_RANKING_IMPLEMENTATION,
+} from "./typesense-watch-search-ranking"
 
 vi.mock("./search-language-resolution", async (importOriginal) => {
   const actual =
@@ -1651,6 +1654,185 @@ describe("TypesenseWatchSearchService", () => {
       [...pageOne.results, ...pageTwo.results].map(({ id }) => id),
     ).toEqual(response.results.map(({ id }) => id))
   })
+
+  it.each(["Jesus for kids", "Jesus for children"])(
+    "promotes the already-recalled English children film for %s without changing retrieval",
+    async (query) => {
+      const englishDocument = (
+        id: string,
+        coreId: string,
+        slug: string,
+        title: string,
+        audio = true,
+      ): TypesenseWatchCatalogDocument => ({
+        ...catalogDocument,
+        id,
+        coreId,
+        slug,
+        titles: [title],
+        descriptions: [`Description for ${title}`],
+        localeCodes: ["en"],
+        localesJson: JSON.stringify([
+          {
+            locale: "en",
+            languageSlug: "english",
+            title,
+            description: `Description for ${title}`,
+          },
+        ]),
+        audioLanguageSlugs: audio ? ["english"] : [],
+        subtitleLanguageSlugs: [],
+        audioOptionsJson: JSON.stringify(
+          audio
+            ? [
+                {
+                  id: `dub-${id}`,
+                  languageId: "language-en",
+                  languageSlug: "english",
+                  languageEnglishName: "English",
+                  playbackId: `playback-${id}`,
+                  durationSeconds: 120,
+                },
+              ]
+            : [],
+        ),
+        subtitleOptionsJson: "[]",
+      })
+      const jesus = englishDocument("jesus", "jesus", "jesus", "JESUS")
+      const storyClubs = englishDocument(
+        "storyclubs-childhood-of-jesus",
+        "storyclubs-childhood-of-jesus",
+        "storyclubs-childhood-of-jesus",
+        "Childhood of Jesus",
+      )
+      const unavailableTopical = englishDocument(
+        "who-is-jesus",
+        "who-is-jesus",
+        "who-is-jesus",
+        "Who Is Jesus?",
+        false,
+      )
+      const canonical = englishDocument(
+        "story-of-jesus-for-children",
+        "1_cl-0-0",
+        "the-story-of-jesus-for-children",
+        "The Story of Jesus for Children",
+      )
+      const catalog = [jesus, storyClubs, unavailableTopical, canonical]
+      const hybrid = catalog.map((document, index) => ({
+        document: {
+          id: `chunk-${document.id}`,
+          documentKind: "transcript" as const,
+          videoId: document.id,
+          videoEditionId: `edition-${document.id}`,
+          canonicalVideoId: `core:${document.coreId}`,
+          language: "fr",
+          publiclyVisible: true,
+          text: `Semantic evidence ${index}`,
+          startSeconds: 0,
+        },
+        vectorDistance: 0.1 + index / 100,
+      }))
+      const profile = candidateProfile()
+      const fixtureInput = {
+        lexical: catalog,
+        exactLexical: [],
+        titleLexical: [],
+        metadataLexical: [],
+        hybrid,
+        catalog,
+        binding: profile.binding,
+      } satisfies Parameters<typeof typesenseFixture>[0]
+      const languageResolution = {
+        queryLanguageSlug: "english",
+        queryNamedLanguageSlug: null,
+        targetLanguageSlug: "english",
+        targetLanguageSource: "explicit_target" as const,
+        displayLanguageSlug: "english",
+        displayLanguageBcp47: "fr",
+        routeLanguageSlug: "english",
+        routeLanguageBcp47: "fr",
+        currentWatchLanguageSlug: null,
+        acceptLanguage: null,
+        acceptLanguageSlug: null,
+      }
+      const prisma = prismaFixture({
+        targetLanguage: {
+          id: "language-en",
+          slug: "english",
+          name: { en: "English" },
+        },
+        evidenceLanguages: [{ slug: "english", bcp47: "fr" }],
+      })
+
+      vi.mocked(resolveSearchLanguageSignals).mockResolvedValueOnce(
+        languageResolution,
+      )
+      const baselineTypesense = typesenseFixture(fixtureInput)
+      const baseline = await new TypesenseWatchSearchService(
+        prisma,
+        baselineTypesense as unknown as TypesenseClient,
+        { embedder: vi.fn(async () => embedding), profile },
+      ).searchWithDiagnostics({ query, targetLanguageSlug: "english" })
+
+      expect(baseline.response.results.map(({ slug }) => slug)).toEqual([
+        "jesus",
+        "storyclubs-childhood-of-jesus",
+        "who-is-jesus",
+        "the-story-of-jesus-for-children",
+      ])
+
+      vi.mocked(resolveSearchLanguageSignals).mockResolvedValueOnce(
+        languageResolution,
+      )
+      const candidateTypesense = typesenseFixture(fixtureInput)
+      const candidate = await new TypesenseWatchSearchService(
+        prisma,
+        candidateTypesense as unknown as TypesenseClient,
+        {
+          embedder: vi.fn(async () => embedding),
+          profile,
+          rankingImplementation:
+            WATCH_SEARCH_CANONICAL_INTENT_RANKING_IMPLEMENTATION,
+        },
+      ).searchWithDiagnostics({ query, targetLanguageSlug: "english" })
+
+      expect(candidate.response.results.map(({ slug }) => slug)).toEqual([
+        "the-story-of-jesus-for-children",
+        "jesus",
+        "storyclubs-childhood-of-jesus",
+        "who-is-jesus",
+      ])
+      expect(candidate.response.results[0]).toMatchObject({
+        availability: { kind: "target_audio", languageSlug: "english" },
+        evidence: { kind: "transcript_semantic" },
+      })
+      expect(candidate.response.results[0]?.evidence).not.toMatchObject({
+        kind: "exact_title",
+      })
+      expect(candidate.diagnostics).toMatchObject({
+        rankingImplementation: "canonical-intent-v2",
+        rankingMode: "CANONICAL_INTENT",
+      })
+      expect(candidate.diagnostics.rankingTrace).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            canonicalVideoId: "core:1_cl-0-0",
+            evidenceTier: "CANONICAL_INTENT",
+            wholeTitleMatch: false,
+            finalRank: 1,
+          }),
+        ]),
+      )
+      expect(candidateTypesense.multiSearch.mock.calls[0]?.[0]).toEqual(
+        baselineTypesense.multiSearch.mock.calls[0]?.[0],
+      )
+      expect(candidateTypesense.multiSearch.mock.calls[0]?.[0]).toHaveLength(4)
+      expect(candidateTypesense.multiSearch).toHaveBeenCalledTimes(
+        baselineTypesense.multiSearch.mock.calls.length,
+      )
+    },
+  )
 
   it("does not apply normalized title-core boosts when an anchor is ambiguous", async () => {
     const titles = [

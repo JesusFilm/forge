@@ -54,6 +54,61 @@ describe("Watch search title normalization", () => {
 })
 
 describe("automatic Watch search ranking modes", () => {
+  it("promotes a recalled canonical intent below a real whole-title match", () => {
+    const target = group("core:1_cl-0-0", { fusedScore: 0.01 })
+    const semantic = group("semantic", { fusedScore: 0.5 })
+
+    const promoted = rankWatchSearchGroups(
+      "Jesus for kids",
+      [semantic, target],
+      "en",
+      "core:1_cl-0-0",
+    )
+    expect(promoted.mode).toBe("CANONICAL_INTENT")
+    expect(
+      promoted.groups.map(({ group: entry }) => entry.canonicalVideoId),
+    ).toEqual(["core:1_cl-0-0", "semantic"])
+    expect(promoted.groups.map(({ evidenceTier }) => evidenceTier)).toEqual([
+      "CANONICAL_INTENT",
+      "SEMANTIC_FILL",
+    ])
+
+    const exactCollision = titleGroup("literal-title", "Jesus for kids")
+    const collision = rankWatchSearchGroups(
+      "Jesus for kids",
+      [target, exactCollision],
+      "en",
+      "core:1_cl-0-0",
+    )
+    expect(
+      collision.groups.map(({ group: entry }) => entry.canonicalVideoId),
+    ).toEqual(["literal-title", "core:1_cl-0-0"])
+    expect(collision.groups.map(({ evidenceTier }) => evidenceTier)).toEqual([
+      "NORMALIZED_WHOLE_TITLE",
+      "CANONICAL_INTENT",
+    ])
+  })
+
+  it("does not manufacture a missing intent target or perturb unknown queries", () => {
+    const groups = [
+      group("b", { fusedScore: 0.25 }),
+      group("a", { fusedScore: 0.25 }),
+    ]
+    const baseline = rankWatchSearchGroups("Jesus for kids", groups)
+    const missing = rankWatchSearchGroups(
+      "Jesus for kids",
+      groups,
+      "en",
+      "core:missing",
+    )
+    const unknown = rankWatchSearchGroups("resurrection", groups)
+
+    expect(missing).toEqual(baseline)
+    expect(
+      unknown.groups.map(({ group: entry }) => entry.canonicalVideoId),
+    ).toEqual(["a", "b"])
+  })
+
   it("places precise brand metadata before stronger semantic-only RRF fill", () => {
     const collection = titleGroup("collection", "The BibleProject Collection")
     const metadata = group("brand-video", {

@@ -56,6 +56,7 @@ import {
   compareSemanticRankingGroups,
   normalizeWatchSearchTitle,
   rankWatchSearchGroups,
+  WATCH_SEARCH_CANONICAL_INTENT_RANKING_IMPLEMENTATION,
   WATCH_SEARCH_LEGACY_RANKING_IMPLEMENTATION,
   WATCH_SEARCH_TITLE_AND_BRAND_RANKING_IMPLEMENTATION,
   type WatchSearchRankingImplementation,
@@ -64,6 +65,7 @@ import {
   type WatchSearchRankingGroup,
   type WatchSearchRankingMode,
 } from "./typesense-watch-search-ranking"
+import { resolveWatchSearchCanonicalIntent } from "./typesense-watch-search-canonical-intents"
 import {
   defaultWatchSearchEmbedder,
   type WatchSearchInput,
@@ -148,6 +150,7 @@ type TypesenseWatchSearchDeps = {
   embeddingTimeoutMs?: number
   logger?: Pick<Console, "warn">
   profile?: TypesenseWatchSearchProfile
+  rankingImplementation?: WatchSearchRankingImplementation
 }
 
 export type TypesenseWatchSearchDiagnostics = {
@@ -1036,9 +1039,10 @@ export class TypesenseWatchSearchService {
     this.logger = deps.logger ?? console
     this.profile = deps.profile ?? createCurrentWatchSearchProfile()
     this.rankingImplementation =
-      this.profile.kind === "CANDIDATE"
+      deps.rankingImplementation ??
+      (this.profile.kind === "CANDIDATE"
         ? WATCH_SEARCH_TITLE_AND_BRAND_RANKING_IMPLEMENTATION
-        : WATCH_SEARCH_LEGACY_RANKING_IMPLEMENTATION
+        : WATCH_SEARCH_LEGACY_RANKING_IMPLEMENTATION)
   }
 
   async searchWithDiagnostics(input: WatchSearchInput): Promise<{
@@ -1247,6 +1251,16 @@ export class TypesenseWatchSearchService {
         languageInterpretation.queryNamedLanguageSlug,
         languageInterpretation.targetLanguageSlug,
       ])
+    const canonicalIntentTargetId =
+      this.rankingImplementation ===
+      WATCH_SEARCH_CANONICAL_INTENT_RANKING_IMPLEMENTATION
+        ? (resolveWatchSearchCanonicalIntent(
+            titleQuery,
+            languageInterpretation.targetLanguageSlug ??
+              languageInterpretation.displayLanguageSlug ??
+              languageInterpretation.routeLanguageSlug,
+          )?.targetCanonicalVideoId ?? null)
+        : null
     const candidateLimit = Math.min(
       Math.max(offset + limit + 1, MIN_FALLBACK_CANDIDATES),
       MAX_LEXICAL_CANDIDATES,
@@ -1265,6 +1279,7 @@ export class TypesenseWatchSearchService {
       timelineStartedAt: startedAt,
       laneStatuses,
       diagnostics,
+      canonicalIntentTargetId,
     })
     const rankingGroups = retrieval.groups
     const candidates = rankingGroups.flatMap((group) => group.members)
@@ -1571,6 +1586,7 @@ export class TypesenseWatchSearchService {
     timelineStartedAt,
     laneStatuses,
     diagnostics,
+    canonicalIntentTargetId,
   }: {
     titleQuery: string
     preferredLocale: string
@@ -1585,6 +1601,7 @@ export class TypesenseWatchSearchService {
     timelineStartedAt: number
     laneStatuses: WatchSearchLaneStatus[]
     diagnostics?: MutableSearchDiagnostics
+    canonicalIntentTargetId: string | null
   }): Promise<CandidateRetrieval> {
     const globalCandidateRecall = this.profile.kind === "CANDIDATE"
     const semanticEligible = globalCandidateRecall || evidenceLocales.length > 0
@@ -1736,6 +1753,7 @@ export class TypesenseWatchSearchService {
         metadataGroups,
         semanticGroups,
         evidenceLocales,
+        canonicalIntentTargetId,
       })
       const candidateGroups = nativeRanking.groups
       const lexicalGroupIds = new Set(
@@ -1875,6 +1893,7 @@ export class TypesenseWatchSearchService {
     metadataGroups,
     semanticGroups,
     evidenceLocales,
+    canonicalIntentTargetId,
   }: {
     query: string
     queryLocale: string
@@ -1886,16 +1905,19 @@ export class TypesenseWatchSearchService {
     metadataGroups: TypesenseSearchGroup<TypesenseWatchLexicalDocument>[]
     semanticGroups: TypesenseSearchGroup<TypesenseWatchTranscriptDocument>[]
     evidenceLocales: Array<{ slug: string; locale: string }>
+    canonicalIntentTargetId: string | null
   }): {
     groups: RankedCandidateGroup[]
     mode: WatchSearchRankingMode
     anchor: WatchSearchRankingAnchor | null
   } {
-    const titleAndBrandRanking =
+    const categoricalRanking =
       this.rankingImplementation ===
-      WATCH_SEARCH_TITLE_AND_BRAND_RANKING_IMPLEMENTATION
-    const collectRankingEvidence = titleAndBrandRanking || collectDiagnostics
-    const classifyTitleMatch = titleAndBrandRanking
+        WATCH_SEARCH_TITLE_AND_BRAND_RANKING_IMPLEMENTATION ||
+      this.rankingImplementation ===
+        WATCH_SEARCH_CANONICAL_INTENT_RANKING_IMPLEMENTATION
+    const collectRankingEvidence = categoricalRanking || collectDiagnostics
+    const classifyTitleMatch = categoricalRanking
       ? createCandidateTitleMatchClassifier(query, queryLocale)
       : createLegacyTitleMatchClassifier(query)
     const titleClassifierByLocale = new Map([[queryLocale, classifyTitleMatch]])
@@ -2244,8 +2266,13 @@ export class TypesenseWatchSearchService {
       groups.set(canonicalVideoId, state)
     })
 
-    const ranked = titleAndBrandRanking
-      ? rankWatchSearchGroups(query, [...groups.values()], queryLocale)
+    const ranked = categoricalRanking
+      ? rankWatchSearchGroups(
+          query,
+          [...groups.values()],
+          queryLocale,
+          canonicalIntentTargetId,
+        )
       : {
           mode: "SEMANTIC" as const,
           anchor: null,
