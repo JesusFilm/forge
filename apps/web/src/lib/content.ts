@@ -2459,6 +2459,8 @@ export type WatchHeroPlayerBlock = {
   video: WatchVideoRecord
   variant: WatchVariant
   playableLanguageCount?: number
+  audioLanguageCountLabel?: string | null
+  subtitleLanguageCountLabel?: string | null
   nextWatchItem?: WatchNextWatchItem | null
 }
 
@@ -2556,6 +2558,8 @@ export function buildHeroBlock(
     variant,
     playableLanguageCount:
       video.playableLanguageCount ?? countPlayableWatchVariants(video.variants),
+    audioLanguageCountLabel: null,
+    subtitleLanguageCountLabel: null,
     nextWatchItem: buildNextWatchItem(canonicalParent, video),
   }
 }

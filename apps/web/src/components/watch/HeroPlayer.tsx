@@ -1438,29 +1438,31 @@ export function HeroPlayer({
     Symbol("hero-player-language-switcher"),
   ).current
   const languageCountLabel =
-    languageCount > 0
-      ? tLanguagePicker("languageCount", { count: languageCount })
-      : null
-  const subtitleLanguageCount = new Set(
-    video.subtitles
-      .filter(({ vttSrc, language }) => vttSrc.length > 0 && language.slug)
-      .map(({ language }) => language.slug),
-  ).size
+    block.audioLanguageCountLabel === undefined
+      ? languageCount > 0
+        ? tLanguagePicker("languageCount", { count: languageCount })
+        : null
+      : block.audioLanguageCountLabel
   const subtitleLanguageCountLabel =
-    subtitleLanguageCount > 0
-      ? tLanguagePicker("languageCount", { count: subtitleLanguageCount })
-      : null
+    block.subtitleLanguageCountLabel === undefined
+      ? video.subtitles.length > 0
+        ? tLanguagePicker("languageCount", {
+            count: video.subtitles.length,
+          })
+        : null
+      : block.subtitleLanguageCountLabel
+  const subtitleAffordanceLabel =
+    subtitleLanguageCountLabel == null
+      ? null
+      : `${tLanguagePicker("subtitlesHeading")}: ${subtitleLanguageCountLabel}`
   const releaseMetadata = [formatHeroRuntime(variant.duration, locale)]
     .filter((value): value is string => value != null)
     .join(" · ")
   const qualityLabel = highestDownloadQualityLabel(variant.downloads)
-  const hasSubtitleTrack = video.subtitles.some(
-    ({ vttSrc }) => vttSrc.length > 0,
-  )
   const hasHeroMetadataTags =
     releaseMetadata !== "" ||
     languageCountLabel != null ||
-    hasSubtitleTrack ||
+    subtitleLanguageCountLabel != null ||
     qualityLabel != null
   const preRevealActionLabel =
     pillState === "tap-to-unmute" ? t("tapToUnmute") : t("playWithSound")
@@ -1816,6 +1818,7 @@ export function HeroPlayer({
             onLanguageClick={onLanguageClick}
             languageCode={languageCode}
             subtitleLanguageCode={subtitleLanguageCode}
+            subtitleEnabled={Boolean(subtitleVttSrc)}
             // In-chrome audio control intentionally stays visible in fullscreen
             // (the top-right one is hidden by isFullscreen).
             showLanguageButton={hasLanguageSwitcher}
@@ -1982,12 +1985,12 @@ export function HeroPlayer({
                           </span>
                         )
                       ) : null}
-                      {subtitleLanguageCountLabel != null ? (
-                        hasLanguageSwitcher ? (
+                      {subtitleAffordanceLabel != null ? (
+                        hasSubtitleSwitcher ? (
                           <button
                             type="button"
                             data-testid="hero-player-subtitle-language-count"
-                            aria-label={subtitleLanguageCountLabel}
+                            aria-label={subtitleAffordanceLabel}
                             onClick={onLanguageClick}
                             className={`${HERO_LANGUAGE_TAG_CLASS} ${HERO_INTERACTIVE_LANGUAGE_TAG_CLASS} transition hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white`}
                           >
@@ -1995,7 +1998,7 @@ export function HeroPlayer({
                               className="h-3.5 w-3.5 shrink-0"
                               aria-hidden
                             />
-                            {subtitleLanguageCountLabel}
+                            {subtitleAffordanceLabel}
                           </button>
                         ) : (
                           <span
@@ -2006,7 +2009,7 @@ export function HeroPlayer({
                               className="h-3.5 w-3.5 shrink-0"
                               aria-hidden
                             />
-                            {subtitleLanguageCountLabel}
+                            {subtitleAffordanceLabel}
                           </span>
                         )
                       ) : null}
