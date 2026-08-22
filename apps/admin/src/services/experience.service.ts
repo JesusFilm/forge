@@ -64,6 +64,55 @@ export class ExperienceEmbeddingEligibilityError extends Error {
   }
 }
 
+export class ExperienceDynamicCollectionPlacementError extends Error {
+  constructor() {
+    super(
+      "The infinite collection feed must be the homepage's only dynamic collection block and its final top-level block.",
+    )
+    this.name = "ExperienceDynamicCollectionPlacementError"
+  }
+}
+
+function isDynamicCollectionBlock(value: unknown): boolean {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false
+  const record = value as Record<string, unknown>
+  return (
+    record.t === "mediaCollection" &&
+    record.itemsSource === "dynamicCollections"
+  )
+}
+
+function assertDynamicCollectionPlacement(
+  blocks: readonly unknown[],
+  isHomepage: boolean,
+): void {
+  let count = 0
+  let nested = false
+
+  const visit = (value: unknown, isTopLevel: boolean) => {
+    if (isDynamicCollectionBlock(value)) {
+      count += 1
+      if (!isTopLevel) nested = true
+    }
+    if (!value || typeof value !== "object") return
+    for (const child of Object.values(value as Record<string, unknown>)) {
+      if (!Array.isArray(child)) continue
+      for (const item of child) visit(item, false)
+    }
+  }
+
+  for (const block of blocks) visit(block, true)
+  if (count === 0) return
+  if (
+    !isHomepage ||
+    nested ||
+    count !== 1 ||
+    !isDynamicCollectionBlock(blocks[blocks.length - 1])
+  ) {
+    throw new ExperienceDynamicCollectionPlacementError()
+  }
+}
+
 function snapshotEnvelope(
   data: Prisma.InputJsonObject,
 ): Prisma.InputJsonObject {
@@ -213,6 +262,7 @@ export class ExperienceService {
           ...base,
           ...patch,
         })
+        assertDynamicCollectionPlacement(data.blocks, data.isHomepage)
         const snapshot = snapshotEnvelope(
           data as unknown as Prisma.InputJsonObject,
         )
@@ -348,6 +398,8 @@ export class ExperienceService {
     if (!hasPermission(user, "write:experiences")) {
       throw new ForbiddenError()
     }
+
+    assertDynamicCollectionPlacement(input.blocks, false)
 
     const blocks = await backfillExperienceVideoLanguageIds({
       prisma: this.prisma,
@@ -561,6 +613,8 @@ export class ExperienceService {
     ) {
       throw new ForbiddenError()
     }
+
+    assertDynamicCollectionPlacement(input.blocks, input.isHomepage ?? false)
 
     const { experienceId, ...data } = input
     const blocks = await backfillExperienceVideoLanguageIds({
@@ -814,6 +868,7 @@ export class ExperienceService {
           throw new NotFoundError("Active ExperienceLocale draft", input.id)
         }
         const draftData = effectiveDraftData(canonical, draft.snapshot)
+        assertDynamicCollectionPlacement(draftData.blocks, draftData.isHomepage)
         const appliedAt = new Date()
 
         await tx.contentRevision.create({

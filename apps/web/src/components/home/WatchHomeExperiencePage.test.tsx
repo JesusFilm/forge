@@ -42,6 +42,7 @@ vi.mock("@/components/sections", () => ({
       content?: Array<Record<string, unknown> | null> | null
       heading?: string | null
       headingLevel?: string | null
+      itemsSource?: string | null
       sectionContent?: Array<Record<string, unknown> | null> | null
     }
     languageSlug: string
@@ -80,6 +81,7 @@ vi.mock("@/components/sections", () => ({
         data-section-type={section.__typename ?? "unknown"}
         data-language-slug={languageSlug}
         data-block-marker={section.__typename ?? "unknown"}
+        data-items-source={section.itemsSource ?? undefined}
       >
         {headings(section).map(({ heading, level }) =>
           level === "h1" ? (
@@ -338,5 +340,38 @@ describe("WatchHomeExperiencePage", () => {
     expect(
       container.querySelector('[data-testid="watch-home-footer"]'),
     ).not.toBeNull()
+  })
+
+  it("keeps the canonical footer as the final element after the dynamic discovery feed", async () => {
+    const blocks = [
+      makeBlock("MediaCollectionBlock", "authored-collection"),
+      {
+        __typename: "MediaCollectionBlock",
+        sectionKey: "dynamic-collection-feed",
+        itemsSource: "dynamicCollections",
+      } as unknown as Section,
+    ]
+
+    await act(async () => {
+      root.render(
+        <WatchHomeExperiencePage
+          heroModel={heroModel}
+          blocks={blocks}
+          languageSlug="english"
+        />,
+      )
+    })
+
+    const footer = container.querySelector('[data-testid="watch-home-footer"]')
+    const dynamicFeed = container.querySelector(
+      '[data-items-source="dynamicCollections"]',
+    )
+
+    expect(footer).not.toBeNull()
+    expect(dynamicFeed).not.toBeNull()
+    expect(dynamicFeed?.compareDocumentPosition(footer as Node) ?? 0).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    )
+    expect(footer?.parentElement?.lastElementChild).toBe(footer)
   })
 })
