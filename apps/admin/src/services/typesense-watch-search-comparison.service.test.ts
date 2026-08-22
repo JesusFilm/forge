@@ -18,6 +18,7 @@ const currentProfile = {
   },
   generationId: null,
   applicationRevision: null,
+  rankingRevision: "legacy-rrf",
   transcriptProjectionRevision: null,
   fieldManifests: null,
   allowCompatibilityFallback: false,
@@ -34,6 +35,7 @@ const candidateProfile = {
   },
   generationId: "generation-1",
   applicationRevision: "revision-1",
+  rankingRevision: "canonical-intent-v2",
   transcriptProjectionRevision: 7n,
   fieldManifests: {
     catalog: [{ name: "slug", type: "string" }],
@@ -88,7 +90,10 @@ function searchResult(profile: "CURRENT" | "CANDIDATE") {
       groupedHits: 3,
       candidates: 3,
       hydratedRecords: 1,
-      rankingImplementation: "legacy-rrf" as const,
+      rankingImplementation:
+        profile === "CANDIDATE"
+          ? candidateProfile.rankingRevision
+          : currentProfile.rankingRevision,
       rankingMode: "SEMANTIC" as const,
       rankingAnchor: null,
       rankingTrace: [],
@@ -166,6 +171,7 @@ describe("TypesenseWatchSearchComparisonService", () => {
       kind: "CANDIDATE",
       generationId: "generation-1",
       applicationRevision: candidateWatchSearchApplicationRevision(),
+      rankingRevision: "canonical-intent-v2",
     })
     expect(generations.resolveGeneration).toHaveBeenCalledWith({
       generationId: "generation-1",

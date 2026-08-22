@@ -57,7 +57,6 @@ import {
   normalizeWatchSearchTitle,
   rankWatchSearchGroups,
   WATCH_SEARCH_CANONICAL_INTENT_RANKING_IMPLEMENTATION,
-  WATCH_SEARCH_LEGACY_RANKING_IMPLEMENTATION,
   WATCH_SEARCH_TITLE_AND_BRAND_RANKING_IMPLEMENTATION,
   type WatchSearchRankingImplementation,
   type WatchSearchRankingAnchor,
@@ -150,7 +149,6 @@ type TypesenseWatchSearchDeps = {
   embeddingTimeoutMs?: number
   logger?: Pick<Console, "warn">
   profile?: TypesenseWatchSearchProfile
-  rankingImplementation?: WatchSearchRankingImplementation
 }
 
 export type TypesenseWatchSearchDiagnostics = {
@@ -1038,11 +1036,7 @@ export class TypesenseWatchSearchService {
       deps.embeddingTimeoutMs ?? DEFAULT_EMBEDDING_TIMEOUT_MS
     this.logger = deps.logger ?? console
     this.profile = deps.profile ?? createCurrentWatchSearchProfile()
-    this.rankingImplementation =
-      deps.rankingImplementation ??
-      (this.profile.kind === "CANDIDATE"
-        ? WATCH_SEARCH_TITLE_AND_BRAND_RANKING_IMPLEMENTATION
-        : WATCH_SEARCH_LEGACY_RANKING_IMPLEMENTATION)
+    this.rankingImplementation = this.profile.rankingRevision
   }
 
   async searchWithDiagnostics(input: WatchSearchInput): Promise<{

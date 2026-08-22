@@ -6,10 +6,7 @@ import { prisma } from "@/db/client"
 import { TypesenseClient } from "./typesense-client"
 import { resolveTypesenseWatchSearchApiKey } from "./typesense-client-config"
 import { TypesenseWatchSearchCandidateGenerationService } from "./typesense-watch-search-candidate-generation"
-import {
-  candidateWatchSearchApplicationRevision,
-  candidateWatchSearchRankingRevision,
-} from "./typesense-watch-search-candidate-identity"
+import { candidateWatchSearchApplicationRevision } from "./typesense-watch-search-candidate-identity"
 import { resolveEvaluationCandidateWatchSearchProfile } from "./typesense-watch-search-comparison.service"
 import {
   assertQualificationProfilesMatchLease,
@@ -72,7 +69,6 @@ export type CandidateSearchEvaluationDeps = {
   renewLease(lease: CandidateEvaluationLease): Promise<boolean>
   releaseLease(lease: CandidateEvaluationLease): Promise<boolean>
   verifyCandidateProfile(profile: TypesenseWatchSearchProfile): Promise<boolean>
-  rankingRevision(): string
   leaseReleaseTimeoutMs?: number
   onCleanupFailure?(failure: {
     resourceKey: string
@@ -84,7 +80,6 @@ export type CandidateSearchEvaluationDeps = {
 function assertCandidateDiagnostics(
   profile: TypesenseWatchSearchProfile,
   diagnostics: TypesenseWatchSearchDiagnostics,
-  rankingRevision: string,
 ): void {
   if (
     profile.kind !== "CANDIDATE" ||
@@ -93,7 +88,7 @@ function assertCandidateDiagnostics(
     diagnostics.applicationRevision !== profile.applicationRevision ||
     diagnostics.transcriptProjectionRevision !==
       profile.transcriptProjectionRevision ||
-    diagnostics.rankingImplementation !== rankingRevision ||
+    diagnostics.rankingImplementation !== profile.rankingRevision ||
     Object.entries(profile.binding).some(
       ([role, collection]) =>
         diagnostics.binding[
@@ -173,7 +168,6 @@ function assertLeaseIdentity(input: {
 export function candidateSearchEvaluationRevision(input: {
   profile: TypesenseWatchSearchProfile
   currentProfile: TypesenseWatchSearchProfile
-  rankingRevision: string
 }): string {
   const profile = input.profile
   if (
@@ -193,7 +187,7 @@ export function candidateSearchEvaluationRevision(input: {
   const identity = {
     generationId: profile.generationId,
     applicationRevision: profile.applicationRevision,
-    rankingRevision: input.rankingRevision,
+    rankingRevision: profile.rankingRevision,
     transcriptProjectionRevision:
       profile.transcriptProjectionRevision.toString(),
     evaluationRevision: profile.qrelsRevision ?? null,
@@ -290,11 +284,10 @@ export class TypesenseWatchSearchCandidateEvaluationService {
       }
       assertLeaseIdentity({ current, candidate, lease })
 
-      const rankingRevision = this.deps.rankingRevision()
       const result = await this.deps
         .createSearch(candidate)
         .searchWithDiagnostics(input)
-      assertCandidateDiagnostics(candidate, result.diagnostics, rankingRevision)
+      assertCandidateDiagnostics(candidate, result.diagnostics)
       const [leaseRenewed, profileVerified] = await Promise.all([
         this.deps.renewLease(lease),
         this.deps.verifyCandidateProfile(candidate),
@@ -311,7 +304,6 @@ export class TypesenseWatchSearchCandidateEvaluationService {
         revision: candidateSearchEvaluationRevision({
           profile: candidate,
           currentProfile: current,
-          rankingRevision,
         }),
       }
     } catch (error) {
@@ -358,7 +350,7 @@ export function createTypesenseWatchSearchCandidateEvaluationService(
               generations,
               currentProfile,
               applicationRevision: candidateWatchSearchApplicationRevision(),
-              rankingRevision: candidateWatchSearchRankingRevision(),
+              rankingRevision: env.WATCH_SEARCH_SERVING_RANKING_REVISION,
               transcriptProjectionRevision:
                 runtimeSearchEnv.transcriptProjectionRevision ?? null,
               qrelsRevision: env.WATCH_SEARCH_SERVING_QRELS_REVISION ?? null,
@@ -437,7 +429,6 @@ export function createTypesenseWatchSearchCandidateEvaluationService(
         pointer.generationId === profile.generationId
       )
     },
-    rankingRevision: candidateWatchSearchRankingRevision,
     leaseReleaseTimeoutMs: EVALUATION_LEASE_RELEASE_TIMEOUT_MS,
     onCleanupFailure: ({ resourceKey, reason, error }) => {
       console.warn(

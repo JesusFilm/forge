@@ -21,6 +21,7 @@ const currentProfile = {
   },
   generationId: null,
   applicationRevision: null,
+  rankingRevision: "legacy-rrf",
   transcriptProjectionRevision: null,
   fieldManifests: null,
   allowCompatibilityFallback: false,
@@ -36,6 +37,7 @@ const candidateProfile = {
   },
   generationId: "generation-1",
   applicationRevision: "watch-search-candidate/v2",
+  rankingRevision: "canonical-intent-v2",
   transcriptProjectionRevision: 7n,
   qrelsRevision: "qrels-reviewed-1",
   fieldManifests: {
@@ -114,7 +116,7 @@ function searchResult(): {
       groupedHits: 3,
       candidates: 3,
       hydratedRecords: 1,
-      rankingImplementation: "title-and-brand-v1" as const,
+      rankingImplementation: "canonical-intent-v2" as const,
       rankingMode: "SEMANTIC" as const,
       rankingAnchor: null,
       rankingTrace: [],
@@ -147,7 +149,6 @@ function fixture() {
     renewLease: vi.fn(async () => true),
     releaseLease: vi.fn(async () => true),
     verifyCandidateProfile: vi.fn(async () => true),
-    rankingRevision: vi.fn(() => "title-and-brand-v1"),
     leaseReleaseTimeoutMs: 10,
     onCleanupFailure: vi.fn(),
   }
@@ -320,19 +321,31 @@ describe("TypesenseWatchSearchCandidateEvaluationService", () => {
       ).search({ query: "Jesus" }),
     ).rejects.toMatchObject({ code: "identity_mismatch" })
     expect(driftedSearch.deps.releaseLease).toHaveBeenCalledOnce()
+
+    const driftedRanking = fixture()
+    driftedRanking.searchWithDiagnostics.mockResolvedValueOnce({
+      ...searchResult(),
+      diagnostics: {
+        ...searchResult().diagnostics,
+        rankingImplementation: "title-and-brand-v1",
+      },
+    })
+    await expect(
+      new TypesenseWatchSearchCandidateEvaluationService(
+        driftedRanking.deps,
+      ).search({ query: "Jesus" }),
+    ).rejects.toMatchObject({ code: "identity_mismatch" })
   })
 
   it("changes the revision when any bound Candidate identity component changes", () => {
     const baseline = candidateSearchEvaluationRevision({
       profile: candidateProfile,
       currentProfile,
-      rankingRevision: "title-and-brand-v1",
     })
     const revisions = [
       candidateSearchEvaluationRevision({
         profile: { ...candidateProfile, generationId: "generation-2" },
         currentProfile,
-        rankingRevision: "title-and-brand-v1",
       }),
       candidateSearchEvaluationRevision({
         profile: {
@@ -340,22 +353,21 @@ describe("TypesenseWatchSearchCandidateEvaluationService", () => {
           applicationRevision: "watch-search-candidate/v3",
         },
         currentProfile,
-        rankingRevision: "title-and-brand-v1",
       }),
       candidateSearchEvaluationRevision({
-        profile: candidateProfile,
+        profile: {
+          ...candidateProfile,
+          rankingRevision: "title-and-brand-v1",
+        },
         currentProfile,
-        rankingRevision: "title-and-brand-v2",
       }),
       candidateSearchEvaluationRevision({
         profile: { ...candidateProfile, transcriptProjectionRevision: 8n },
         currentProfile,
-        rankingRevision: "title-and-brand-v1",
       }),
       candidateSearchEvaluationRevision({
         profile: { ...candidateProfile, qrelsRevision: "qrels-reviewed-2" },
         currentProfile,
-        rankingRevision: "title-and-brand-v1",
       }),
       candidateSearchEvaluationRevision({
         profile: {
@@ -366,7 +378,6 @@ describe("TypesenseWatchSearchCandidateEvaluationService", () => {
           },
         },
         currentProfile,
-        rankingRevision: "title-and-brand-v1",
       }),
     ]
 
@@ -377,7 +388,6 @@ describe("TypesenseWatchSearchCandidateEvaluationService", () => {
     const baseline = candidateSearchEvaluationRevision({
       profile: candidateProfile,
       currentProfile,
-      rankingRevision: "title-and-brand-v1",
     })
     const movedCurrent = candidateSearchEvaluationRevision({
       profile: candidateProfile,
@@ -388,7 +398,6 @@ describe("TypesenseWatchSearchCandidateEvaluationService", () => {
           lexical: "watch_search_lexical_physical-v2",
         },
       },
-      rankingRevision: "title-and-brand-v1",
     })
 
     expect(movedCurrent).not.toBe(baseline)
@@ -399,7 +408,6 @@ describe("TypesenseWatchSearchCandidateEvaluationService", () => {
       candidateSearchEvaluationRevision({
         profile: currentProfile,
         currentProfile,
-        rankingRevision: "title-and-brand-v1",
       }),
     ).toThrow(CandidateSearchEvaluationError)
   })
@@ -435,6 +443,7 @@ describe("TypesenseWatchSearchCandidateEvaluationService", () => {
 
     expect(profile.generationId).toBe("generation-serving")
     expect(profile.qrelsRevision).toBe("qrels-reviewed-1")
+    expect(profile.rankingRevision).toBe("title-and-brand-v1")
     expect(generations.getPointer).toHaveBeenCalledOnce()
     expect(generations.getPointer).toHaveBeenCalledWith("SERVING")
     expect(generations.resolveGeneration).toHaveBeenCalledWith({

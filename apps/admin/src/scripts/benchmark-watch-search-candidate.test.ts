@@ -33,7 +33,7 @@ const allSlices = [
 const identity: CandidateBenchmarkIdentity = {
   generationId: "generation-a",
   applicationRevision: "revision-a",
-  rankingRevision: "title-and-brand-v1",
+  rankingRevision: "canonical-intent-v2",
   transcriptCollection: "watch_search_transcripts_1",
   transcriptProjectionRevision: "7",
   qrelsRevision: "qrels-1",
@@ -90,7 +90,7 @@ function successResponse(
       hydratedRecords: 1,
       rankingImplementation:
         profile === "CANDIDATE"
-          ? ("title-and-brand-v1" as const)
+          ? identity.rankingRevision
           : ("legacy-rrf" as const),
       rankingMode: "SEMANTIC" as const,
     },
@@ -146,7 +146,9 @@ function successfulAttempt(
       groupedHits: 3,
       candidates: 10,
       hydratedRecords: 1,
-      rankingImplementation: candidate ? "title-and-brand-v1" : "legacy-rrf",
+      rankingImplementation: candidate
+        ? identity.rankingRevision
+        : "legacy-rrf",
       rankingMode: "SEMANTIC",
       ...diagnostics,
     },

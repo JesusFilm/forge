@@ -16,7 +16,7 @@ import {
 } from "@/services/typesense-watch-search-candidate-qualification"
 import {
   candidateWatchSearchApplicationRevision,
-  candidateWatchSearchRankingRevision,
+  isCandidateWatchSearchRankingRevision,
 } from "@/services/typesense-watch-search-candidate-identity"
 import {
   freezeCurrentWatchSearchProfile,
@@ -231,7 +231,7 @@ function parseReport(bytes: Buffer): QualifiedReport {
       )
     }
     if (
-      bundle.identity.rankingRevision !== candidateWatchSearchRankingRevision()
+      !isCandidateWatchSearchRankingRevision(bundle.identity.rankingRevision)
     ) {
       throw new QualificationOperatorError(
         "operator acceptance ranking revision is incompatible with this application",
@@ -303,7 +303,7 @@ function parseReport(bytes: Buffer): QualifiedReport {
     identity.rankingRevision,
     "ranking revision",
   )
-  if (rankingRevision !== candidateWatchSearchRankingRevision()) {
+  if (!isCandidateWatchSearchRankingRevision(rankingRevision)) {
     throw new QualificationOperatorError(
       "qualification report ranking revision is incompatible with this application",
     )

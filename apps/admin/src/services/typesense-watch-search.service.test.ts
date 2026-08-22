@@ -200,19 +200,27 @@ const candidateFieldManifests = {
   transcript: [{ name: "embedding", type: "float[]", num_dim: 1536 }],
 } as const
 
-function candidateProfile() {
-  return createCandidateWatchSearchProfile({
-    generationId: "generation-1",
-    applicationRevision: "revision-1",
-    transcriptProjectionRevision: 7n,
-    fieldManifests: candidateFieldManifests,
-    collections: {
-      catalog: "watch_search_candidate_generation-1_catalog",
-      availability: "watch_search_candidate_generation-1_availability",
-      lexical: "watch_search_candidate_generation-1_lexical",
-      transcript: "watch_search_transcripts_20260809",
+function candidateProfile(
+  rankingRevision:
+    | "title-and-brand-v1"
+    | "canonical-intent-v2" = WATCH_SEARCH_TITLE_AND_BRAND_RANKING_IMPLEMENTATION,
+) {
+  return createCandidateWatchSearchProfile(
+    {
+      generationId: "generation-1",
+      applicationRevision: "revision-1",
+      transcriptProjectionRevision: 7n,
+      fieldManifests: candidateFieldManifests,
+      collections: {
+        catalog: "watch_search_candidate_generation-1_catalog",
+        availability: "watch_search_candidate_generation-1_availability",
+        lexical: "watch_search_candidate_generation-1_lexical",
+        transcript: "watch_search_transcripts_20260809",
+      },
     },
-  })
+    null,
+    rankingRevision,
+  )
 }
 
 function availabilityDocumentsForCatalog(
@@ -637,6 +645,7 @@ describe("TypesenseWatchSearchService", () => {
         },
       },
       "none:operator-accepted:launch-1",
+      WATCH_SEARCH_TITLE_AND_BRAND_RANKING_IMPLEMENTATION,
     )
     const typesense = typesenseFixture({
       lexical: [catalogDocument],
@@ -1085,18 +1094,22 @@ describe("TypesenseWatchSearchService", () => {
   })
 
   it("never retries a missing candidate projection through current aliases", async () => {
-    const profile = createCandidateWatchSearchProfile({
-      generationId: "generation-1",
-      applicationRevision: "revision-1",
-      transcriptProjectionRevision: 7n,
-      fieldManifests: candidateFieldManifests,
-      collections: {
-        catalog: "watch_search_candidate_generation-1_catalog",
-        availability: "watch_search_candidate_generation-1_availability",
-        lexical: "watch_search_candidate_generation-1_lexical",
-        transcript: "watch_search_transcripts_20260809",
+    const profile = createCandidateWatchSearchProfile(
+      {
+        generationId: "generation-1",
+        applicationRevision: "revision-1",
+        transcriptProjectionRevision: 7n,
+        fieldManifests: candidateFieldManifests,
+        collections: {
+          catalog: "watch_search_candidate_generation-1_catalog",
+          availability: "watch_search_candidate_generation-1_availability",
+          lexical: "watch_search_candidate_generation-1_lexical",
+          transcript: "watch_search_transcripts_20260809",
+        },
       },
-    })
+      null,
+      WATCH_SEARCH_TITLE_AND_BRAND_RANKING_IMPLEMENTATION,
+    )
     const typesense = {
       multiSearch: vi.fn(async () => {
         throw new TypesenseRequestError(
@@ -1786,14 +1799,15 @@ describe("TypesenseWatchSearchService", () => {
         languageResolution,
       )
       const candidateTypesense = typesenseFixture(fixtureInput)
+      const canonicalIntentProfile = candidateProfile(
+        WATCH_SEARCH_CANONICAL_INTENT_RANKING_IMPLEMENTATION,
+      )
       const candidate = await new TypesenseWatchSearchService(
         prisma,
         candidateTypesense as unknown as TypesenseClient,
         {
           embedder: vi.fn(async () => embedding),
-          profile,
-          rankingImplementation:
-            WATCH_SEARCH_CANONICAL_INTENT_RANKING_IMPLEMENTATION,
+          profile: canonicalIntentProfile,
         },
       ).searchWithDiagnostics({ query, targetLanguageSlug: "english" })
 

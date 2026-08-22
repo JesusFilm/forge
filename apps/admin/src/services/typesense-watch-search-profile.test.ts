@@ -41,6 +41,7 @@ describe("Typesense Watch search profiles", () => {
       },
       generationId: null,
       applicationRevision: null,
+      rankingRevision: "legacy-rrf",
       transcriptProjectionRevision: null,
       qrelsRevision: null,
       fieldManifests: null,
@@ -51,23 +52,28 @@ describe("Typesense Watch search profiles", () => {
   })
 
   it("creates one immutable candidate profile from an explicit resolved generation", () => {
-    const profile = createCandidateWatchSearchProfile({
-      generationId: "generation-1",
-      applicationRevision: "revision-1",
-      transcriptProjectionRevision: 7n,
-      fieldManifests,
-      collections: {
-        catalog: "watch_search_candidate_generation-1_catalog",
-        availability: "watch_search_candidate_generation-1_availability",
-        lexical: "watch_search_candidate_generation-1_lexical",
-        transcript: "watch_search_transcripts_20260809",
+    const profile = createCandidateWatchSearchProfile(
+      {
+        generationId: "generation-1",
+        applicationRevision: "revision-1",
+        transcriptProjectionRevision: 7n,
+        fieldManifests,
+        collections: {
+          catalog: "watch_search_candidate_generation-1_catalog",
+          availability: "watch_search_candidate_generation-1_availability",
+          lexical: "watch_search_candidate_generation-1_lexical",
+          transcript: "watch_search_transcripts_20260809",
+        },
       },
-    })
+      null,
+      "title-and-brand-v1",
+    )
 
     expect(profile).toMatchObject({
       kind: "CANDIDATE",
       generationId: "generation-1",
       applicationRevision: "revision-1",
+      rankingRevision: "title-and-brand-v1",
       transcriptProjectionRevision: 7n,
       allowCompatibilityFallback: false,
     })
@@ -79,6 +85,27 @@ describe("Typesense Watch search profiles", () => {
     ])
     expect(Object.isFrozen(profile)).toBe(true)
     expect(Object.isFrozen(profile.binding)).toBe(true)
+  })
+
+  it("fails closed for an unknown candidate ranking revision", () => {
+    expect(() =>
+      createCandidateWatchSearchProfile(
+        {
+          generationId: "generation-1",
+          applicationRevision: "revision-1",
+          transcriptProjectionRevision: 7n,
+          fieldManifests,
+          collections: {
+            catalog: "watch_search_candidate_generation-1_catalog",
+            availability: "watch_search_candidate_generation-1_availability",
+            lexical: "watch_search_candidate_generation-1_lexical",
+            transcript: "watch_search_transcripts_20260809",
+          },
+        },
+        null,
+        "unknown-ranker" as "title-and-brand-v1",
+      ),
+    ).toThrow(TypesenseWatchSearchProfileError)
   })
 
   it.each([
@@ -104,13 +131,17 @@ describe("Typesense Watch search profiles", () => {
         collections.transcript = alias
       }
       expect(() =>
-        createCandidateWatchSearchProfile({
-          generationId: "generation-1",
-          applicationRevision: "revision-1",
-          transcriptProjectionRevision: 7n,
-          fieldManifests,
-          collections,
-        }),
+        createCandidateWatchSearchProfile(
+          {
+            generationId: "generation-1",
+            applicationRevision: "revision-1",
+            transcriptProjectionRevision: 7n,
+            fieldManifests,
+            collections,
+          },
+          null,
+          "title-and-brand-v1",
+        ),
       ).toThrow(TypesenseWatchSearchProfileError)
     },
   )
@@ -183,6 +214,7 @@ describe("Typesense Watch search profiles", () => {
       rankingRevision: "title-and-brand-v1",
     })
     expect(profile.generationId).toBe("generation-1")
+    expect(profile.rankingRevision).toBe("title-and-brand-v1")
   })
 
   it("does not construct a candidate when exact generation validation fails", async () => {
@@ -197,8 +229,25 @@ describe("Typesense Watch search profiles", () => {
         applicationRevision: "revision-1",
         transcriptCollection: "watch_search_transcripts_20260809",
         transcriptProjectionRevision: 7n,
+        rankingRevision: "title-and-brand-v1",
       }),
     ).rejects.toThrow("not READY")
+  })
+
+  it("rejects an unknown resolved ranker before generation lookup", async () => {
+    const resolveGeneration = vi.fn()
+
+    await expect(
+      resolveCandidateWatchSearchProfile({
+        generations: { resolveGeneration },
+        generationId: "generation-1",
+        applicationRevision: "revision-1",
+        transcriptCollection: "watch_search_transcripts_20260809",
+        transcriptProjectionRevision: 7n,
+        rankingRevision: "unknown-ranker",
+      }),
+    ).rejects.toThrow(TypesenseWatchSearchProfileError)
+    expect(resolveGeneration).not.toHaveBeenCalled()
   })
 
   it("fails closed when a current alias cannot be frozen", async () => {
@@ -216,18 +265,22 @@ describe("Typesense Watch search profiles", () => {
         collection_name: `${name}_physical-1`,
       })),
     })
-    const candidate = createCandidateWatchSearchProfile({
-      generationId: "generation-1",
-      applicationRevision: "revision-1",
-      transcriptProjectionRevision: 7n,
-      fieldManifests,
-      collections: {
-        catalog: "watch_search_candidate_generation-1_catalog",
-        availability: "watch_search_candidate_generation-1_availability",
-        lexical: "watch_search_candidate_generation-1_lexical",
-        transcript: "watch_search_transcripts_physical-1",
+    const candidate = createCandidateWatchSearchProfile(
+      {
+        generationId: "generation-1",
+        applicationRevision: "revision-1",
+        transcriptProjectionRevision: 7n,
+        fieldManifests,
+        collections: {
+          catalog: "watch_search_candidate_generation-1_catalog",
+          availability: "watch_search_candidate_generation-1_availability",
+          lexical: "watch_search_candidate_generation-1_lexical",
+          transcript: "watch_search_transcripts_physical-1",
+        },
       },
-    })
+      null,
+      "title-and-brand-v1",
+    )
     const lease = {
       generationId: "generation-1",
       applicationRevision: "revision-1",

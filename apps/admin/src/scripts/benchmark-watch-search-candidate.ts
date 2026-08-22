@@ -57,7 +57,7 @@ const REQUIRED_SLICES = REQUIRED_CANDIDATE_BENCHMARK_SLICES
 export type CandidateBenchmarkIdentity = {
   generationId: string
   applicationRevision: string
-  rankingRevision: "title-and-brand-v1"
+  rankingRevision: "canonical-intent-v2"
   transcriptCollection: string
   transcriptProjectionRevision: string
   qrelsRevision: string
@@ -775,6 +775,8 @@ async function main() {
       transcriptProjectionRevision: generation.transcriptProjectionRevision,
       requireQualified: false,
     }),
+    qrelsRevision,
+    rankingRevision,
   )
   const identity: CandidateBenchmarkIdentity = {
     generationId: generation.id,

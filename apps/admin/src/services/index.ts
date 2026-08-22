@@ -27,7 +27,7 @@ import { TypesenseClient } from "@/services/typesense-client"
 import { TypesenseWatchSearchCandidateGenerationService } from "@/services/typesense-watch-search-candidate-generation"
 import {
   candidateWatchSearchApplicationRevision,
-  candidateWatchSearchRankingRevision,
+  isCandidateWatchSearchRankingRevision,
 } from "@/services/typesense-watch-search-candidate-identity"
 import {
   createCandidateWatchSearchProfile,
@@ -78,6 +78,11 @@ export async function resolveWatchSearchServingProfile(input: {
       "Candidate serving requires a ranking revision",
     )
   }
+  if (!isCandidateWatchSearchRankingRevision(input.rankingRevision)) {
+    throw new TypesenseWatchSearchUnavailableError(
+      "Candidate serving ranking revision is unsupported",
+    )
+  }
   if (input.transcriptProjectionRevision == null) {
     throw new TypesenseWatchSearchUnavailableError(
       "Candidate serving requires a transcript projection revision",
@@ -112,6 +117,7 @@ export async function resolveWatchSearchServingProfile(input: {
   return createCandidateWatchSearchProfile(
     generation,
     input.qrelsRevision.trim(),
+    input.rankingRevision,
   )
 }
 
@@ -175,7 +181,7 @@ function createServingTypesenseWatchSearchService(prisma: PrismaClient) {
         const profile = await resolveWatchSearchServingProfile({
           selector: env.WATCH_SEARCH_TYPESENSE_PROFILE,
           applicationRevision: candidateWatchSearchApplicationRevision(),
-          rankingRevision: candidateWatchSearchRankingRevision(),
+          rankingRevision: env.WATCH_SEARCH_SERVING_RANKING_REVISION,
           transcriptProjectionRevision:
             runtimeSearchEnv.transcriptProjectionRevision ?? null,
           qrelsRevision: env.WATCH_SEARCH_SERVING_QRELS_REVISION ?? null,

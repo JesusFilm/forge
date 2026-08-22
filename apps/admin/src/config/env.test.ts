@@ -20,6 +20,7 @@ import {
   watchSearchTypesenseProfileEnvSchema,
   watchSearchCandidateComparisonEnabledEnvSchema,
   watchSearchTranscriptProjectionRevisionEnvSchema,
+  watchSearchServingRankingRevisionEnvSchema,
   webCanonicalOriginEnvSchema,
   workflowStartupTransientAttemptsEnvSchema,
   workflowStartupTransientDelayMsEnvSchema,
@@ -33,6 +34,18 @@ describe("env", () => {
 
   it("defaults visitor-facing web links to the canonical www watch origin", () => {
     expect(env.WEB_CANONICAL_ORIGIN).toBe(DEFAULT_WEB_CANONICAL_ORIGIN)
+  })
+
+  it("defaults Candidate Serving to v1 and rejects unknown ranking revisions", () => {
+    expect(watchSearchServingRankingRevisionEnvSchema.parse(undefined)).toBe(
+      "title-and-brand-v1",
+    )
+    expect(
+      watchSearchServingRankingRevisionEnvSchema.parse("canonical-intent-v2"),
+    ).toBe("canonical-intent-v2")
+    expect(() =>
+      watchSearchServingRankingRevisionEnvSchema.parse("unknown-ranker"),
+    ).toThrow()
   })
 
   describe("Watch search Web routing", () => {

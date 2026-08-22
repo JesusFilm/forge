@@ -98,6 +98,11 @@ export const watchSearchCandidateComparisonEnabledEnvSchema = z
   .default("false")
   .transform((value) => value === "true")
 
+export const watchSearchServingRankingRevisionEnvSchema = z
+  .enum(["title-and-brand-v1", "canonical-intent-v2"])
+  .optional()
+  .default("title-and-brand-v1")
+
 export const watchSearchTranscriptProjectionRevisionEnvSchema = z.coerce
   .bigint()
   .nonnegative()
@@ -327,6 +332,8 @@ export const env = createEnv({
     WATCH_SEARCH_TRANSCRIPT_PROJECTION_REVISION:
       watchSearchTranscriptProjectionRevisionEnvSchema,
     WATCH_SEARCH_SERVING_QRELS_REVISION: z.string().min(1).optional(),
+    WATCH_SEARCH_SERVING_RANKING_REVISION:
+      watchSearchServingRankingRevisionEnvSchema,
     MANAGER_ADMIN_API_KEY: z.string().min(1).optional(),
     // SEO delegated/workload assertions use per-environment Ed25519 keyrings.
     // Keyrings are JSON objects mapping `kid` to SPKI PEM. They are optional at
@@ -778,6 +785,9 @@ export const env = createEnv({
     WATCH_SEARCH_SERVING_QRELS_REVISION: emptyToUndefined(
       process.env.WATCH_SEARCH_SERVING_QRELS_REVISION,
     ),
+    WATCH_SEARCH_SERVING_RANKING_REVISION:
+      emptyToUndefined(process.env.WATCH_SEARCH_SERVING_RANKING_REVISION) ??
+      "title-and-brand-v1",
     MANAGER_ADMIN_API_KEY: emptyToUndefined(process.env.MANAGER_ADMIN_API_KEY),
     SEO_ASSERTION_ENVIRONMENT: emptyToUndefined(
       process.env.SEO_ASSERTION_ENVIRONMENT,

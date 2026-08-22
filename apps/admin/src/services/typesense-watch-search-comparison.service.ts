@@ -16,7 +16,10 @@ import {
 import { TypesenseClient } from "./typesense-client"
 import { resolveTypesenseWatchSearchApiKey } from "./typesense-client-config"
 import { TypesenseWatchSearchCandidateGenerationService } from "./typesense-watch-search-candidate-generation"
-import { candidateWatchSearchApplicationRevision } from "./typesense-watch-search-candidate-identity"
+import {
+  candidateWatchSearchApplicationRevision,
+  candidateWatchSearchRankingRevision,
+} from "./typesense-watch-search-candidate-identity"
 import {
   recordSearchTraceSafely,
   recordWatchSearchTraceSafely,
@@ -308,7 +311,11 @@ export async function resolveEvaluationCandidateWatchSearchProfile(
     transcriptProjectionRevision: generation.transcriptProjectionRevision,
     requireQualified: false,
   })
-  return createCandidateWatchSearchProfile(resolved)
+  return createCandidateWatchSearchProfile(
+    resolved,
+    null,
+    candidateWatchSearchRankingRevision(),
+  )
 }
 
 /** Production fixed-semantics factory. Callers cannot provide profile identity. */

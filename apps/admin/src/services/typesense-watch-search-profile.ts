@@ -4,6 +4,14 @@ import type {
   TypesenseCollectionField,
 } from "./typesense-client"
 import {
+  isCandidateWatchSearchRankingRevision,
+  type CandidateWatchSearchRankingRevision,
+} from "./typesense-watch-search-candidate-identity"
+import {
+  WATCH_SEARCH_LEGACY_RANKING_IMPLEMENTATION,
+  type WatchSearchRankingImplementation,
+} from "./typesense-watch-search-ranking"
+import {
   TYPESENSE_WATCH_AVAILABILITY_ALIAS,
   TYPESENSE_WATCH_CANDIDATE_PREFIX,
   TYPESENSE_WATCH_CATALOG_ALIAS,
@@ -30,6 +38,7 @@ export type TypesenseWatchSearchProfile = Readonly<{
   binding: TypesenseWatchSearchCollectionBinding
   generationId: string | null
   applicationRevision: string | null
+  rankingRevision: WatchSearchRankingImplementation
   transcriptProjectionRevision: bigint | null
   qrelsRevision?: string | null
   fieldManifests: TypesenseWatchSearchFieldManifests | null
@@ -116,6 +125,7 @@ export function createCurrentWatchSearchProfile(): TypesenseWatchSearchProfile {
     binding: CURRENT_ALIASES,
     generationId: null,
     applicationRevision: null,
+    rankingRevision: WATCH_SEARCH_LEGACY_RANKING_IMPLEMENTATION,
     transcriptProjectionRevision: null,
     qrelsRevision: null,
     fieldManifests: null,
@@ -125,13 +135,19 @@ export function createCurrentWatchSearchProfile(): TypesenseWatchSearchProfile {
 
 export function createCandidateWatchSearchProfile(
   generation: ResolvedCandidateWatchSearchGeneration,
-  qrelsRevision: string | null = null,
+  qrelsRevision: string | null,
+  rankingRevision: CandidateWatchSearchRankingRevision,
 ): TypesenseWatchSearchProfile {
   const generationId = required(generation.generationId, "generation id")
   const applicationRevision = required(
     generation.applicationRevision,
     "application revision",
   )
+  if (!isCandidateWatchSearchRankingRevision(rankingRevision)) {
+    throw new TypesenseWatchSearchProfileError(
+      `unsupported candidate ranking revision: ${rankingRevision}`,
+    )
+  }
   if (generation.transcriptProjectionRevision < 0n) {
     throw new TypesenseWatchSearchProfileError(
       "transcript projection revision cannot be negative",
@@ -178,6 +194,7 @@ export function createCandidateWatchSearchProfile(
     binding,
     generationId,
     applicationRevision,
+    rankingRevision,
     transcriptProjectionRevision: generation.transcriptProjectionRevision,
     qrelsRevision,
     fieldManifests: generation.fieldManifests,
@@ -194,8 +211,13 @@ export async function resolveCandidateWatchSearchProfile(input: {
   requireQualified?: boolean
   currentBindings?: readonly string[]
   qrelsRevision?: string
-  rankingRevision?: string
+  rankingRevision: string
 }): Promise<TypesenseWatchSearchProfile> {
+  if (!isCandidateWatchSearchRankingRevision(input.rankingRevision)) {
+    throw new TypesenseWatchSearchProfileError(
+      `unsupported candidate ranking revision: ${input.rankingRevision}`,
+    )
+  }
   const generation = await input.generations.resolveGeneration({
     generationId: input.generationId,
     applicationRevision: input.applicationRevision,
@@ -209,6 +231,7 @@ export async function resolveCandidateWatchSearchProfile(input: {
   return createCandidateWatchSearchProfile(
     generation,
     input.qrelsRevision?.trim() || null,
+    input.rankingRevision,
   )
 }
 
@@ -234,6 +257,7 @@ export async function freezeCurrentWatchSearchProfile(
     binding,
     generationId: null,
     applicationRevision: null,
+    rankingRevision: WATCH_SEARCH_LEGACY_RANKING_IMPLEMENTATION,
     transcriptProjectionRevision: null,
     qrelsRevision: null,
     fieldManifests: null,

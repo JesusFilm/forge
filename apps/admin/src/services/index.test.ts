@@ -166,7 +166,26 @@ describe("resolveWatchSearchServingProfile", () => {
       kind: "CANDIDATE",
       generationId: "generation-a",
       qrelsRevision: "qrels-1",
+      rankingRevision: "title-and-brand-v1",
     })
+  })
+
+  it("fails closed before lookup for an unsupported Serving ranker", async () => {
+    const { getAlias, getPointer, resolveGeneration } = fixture()
+
+    await expect(
+      resolveWatchSearchServingProfile({
+        selector: "CANDIDATE:generation-a",
+        applicationRevision: "revision-a",
+        rankingRevision: "unknown-ranker",
+        transcriptProjectionRevision: 17n,
+        qrelsRevision: "qrels-1",
+        typesense: { getAlias },
+        generations: { getPointer, resolveGeneration },
+      }),
+    ).rejects.toThrow(/ranking revision is unsupported/i)
+    expect(getPointer).not.toHaveBeenCalled()
+    expect(resolveGeneration).not.toHaveBeenCalled()
   })
 
   it("fails closed for missing identity and propagates invalid qualification or drift", async () => {

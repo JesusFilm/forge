@@ -21,7 +21,10 @@ describe("candidateWatchSearchApplicationRevision", () => {
   })
 
   it("tracks ranking qualification separately from collection compatibility", () => {
-    expect(candidateWatchSearchRankingRevision()).toBe("title-and-brand-v1")
+    expect(candidateWatchSearchRankingRevision()).toBe("canonical-intent-v2")
+    expect(candidateWatchSearchApplicationRevision()).toBe(
+      "watch-search-candidate/v2",
+    )
   })
 
   it("is the only revision source used by every candidate boundary", () => {
@@ -54,19 +57,18 @@ describe("candidateWatchSearchApplicationRevision", () => {
     }
   })
 
-  it("binds ranking qualification and serving to the shared ranking revision", () => {
-    const consumers = [
-      new URL(
-        "../scripts/benchmark-watch-search-candidate.ts",
-        import.meta.url,
+  it("selects Evaluation and Serving ranking revisions independently", () => {
+    expect(
+      readFileSync(
+        new URL(
+          "../scripts/benchmark-watch-search-candidate.ts",
+          import.meta.url,
+        ),
+        "utf8",
       ),
-      new URL("./index.ts", import.meta.url),
-    ]
-
-    for (const consumer of consumers) {
-      expect(readFileSync(consumer, "utf8")).toContain(
-        "candidateWatchSearchRankingRevision()",
-      )
-    }
+    ).toContain("candidateWatchSearchRankingRevision()")
+    expect(
+      readFileSync(new URL("./index.ts", import.meta.url), "utf8"),
+    ).toContain("env.WATCH_SEARCH_SERVING_RANKING_REVISION")
   })
 })
