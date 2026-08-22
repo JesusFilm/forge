@@ -147,10 +147,11 @@ canonical/default context. The implementation reuses the existing compact
 navigation path; it does not change the contextual route or any client
 component.
 
-The exact-admission implementation is present through
-`2f8701241302579a97d8cbd03ef7e5ab9d415c9b` against the pinned `origin/main`
-merge base `1f65d0af55f2c99df40a38a44053be5cb7463495`. The final shipping commit and
-PR are recorded at closeout.
+The implementation, independent evidence, and compounded learning are present
+through `60623c624e0f0ce4fd5f885956a3641a065e45ee` against the pinned
+`origin/main` merge base `1f65d0af55f2c99df40a38a44053be5cb7463495`.
+Shipping continues in [PR #2005](https://github.com/JesusFilm/forge/pull/2005);
+this closeout backfill is the only subsequent documentation-only commit.
 
 ## Verified Outcomes — 2026-08-22
 
