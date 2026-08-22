@@ -25,6 +25,8 @@ Customer evidence, including the reported Tagalog _Pilgrim's Progress_ Facebook-
 
 Implementation plan: [`docs/plans/2026-08-21-2229-feat-watch-share-usage-guidance-plan.md`](../../plans/2026-08-21-2229-feat-watch-share-usage-guidance-plan.md)
 
+Pull request: [JesusFilm/forge#2003](https://github.com/JesusFilm/forge/pull/2003)
+
 Follow-up discovery: [Linear FGE-93](https://linear.app/jesus-film-project/issue/FGE-93/watchdiscovery-validate-reuse-guidance-comprehension-and-non-share) owns comprehension validation, support-deflection measurement, and non-Share discoverability.
 
 Review residuals remain out of this scope and are durable in [FGE-94](https://linear.app/jesus-film-project/issue/FGE-94/recover-series-share-after-chunk-failure) and [FGE-95](https://linear.app/jesus-film-project/issue/FGE-95/cover-video-embed-only-share-guidance).
