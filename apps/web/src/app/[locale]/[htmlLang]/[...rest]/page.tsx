@@ -884,16 +884,28 @@ async function renderVideo(
       ),
     ])
     const languageSlug = watchVideo.selectedVariant.language?.slug ?? rawLocale
-    const selectableParents = selectableParentsForStandaloneVideo(
-      watchVideo.video,
-      languageSlug,
-      routeManifest,
-    )
     const carouselVideo = withAdmittedVideoChildren(
       watchVideo.video,
       languageSlug,
       routeManifest,
     )
+    const eligibleParents = selectableParentsForStandaloneVideo(
+      watchVideo.video,
+      languageSlug,
+      routeManifest,
+    )
+    const selectableParents =
+      eligibleParents.length > 0 && carouselVideo.children.length >= 2
+        ? [
+            ...eligibleParents,
+            {
+              documentId: carouselVideo.documentId,
+              slug: carouselVideo.slug,
+              title: carouselVideo.title,
+              children: carouselVideo.children,
+            },
+          ]
+        : eligibleParents
     const mergedBlocks = mergeWatchExperience({
       video: carouselVideo,
       variant: watchVideo.selectedVariant,
