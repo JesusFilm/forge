@@ -3,7 +3,7 @@ id: "feat-413"
 title: "Rank canonical content for common English seeker phrases"
 owner: "codex"
 priority: "P1"
-status: "in-progress"
+status: "complete"
 start_date: "2026-08-21"
 duration: 1
 depends_on: []

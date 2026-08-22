@@ -615,6 +615,18 @@ The automatic final-ranking behavior used when a strong normalized title-lane an
 
 Title-and-Brand Mode is inferred from the existing query evidence. It is not a Search Pipeline Mode, a user-facing selector, or a separate search surface.
 
+### Canonical-Intent Mode
+
+The automatic final-ranking behavior used when a reviewed, language-scoped
+seeker phrase identifies a stable Core canonical group. It promotes only that
+group when the existing bounded retrieval already recalled it, and it remains
+below exact whole-title evidence.
+
+Canonical-Intent Mode does not add a retrieval lane, manufacture recall, or
+copy aliases into public titles or metadata. Its reviewed phrase catalog and
+ranking revision are versioned Candidate evidence rather than a user-facing
+selector.
+
 ### Semantic Mode
 
 The automatic final-ranking behavior used when a Watch search query has no eligible normalized title-lane anchor. It preserves transcript-driven hybrid discovery for themes, feelings, and natural-language questions.

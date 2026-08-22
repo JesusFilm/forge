@@ -1,6 +1,7 @@
 ---
 title: "Treat canonical-intent aliases as versioned ranking evidence"
 date: "2026-08-21"
+last_updated: "2026-08-22"
 category: "architecture-patterns"
 module: "apps/admin Typesense Watch search ranking"
 problem_type: "architecture_pattern"
@@ -28,12 +29,10 @@ tags:
 
 Some common seeker phrases express audience or intent rather than a published
 title. In the read-only production Watch snapshot on 2026-08-21, `Jesus for
-kids` returned `jesus`, `storyclubs-childhood-of-jesus`, and
-`magdalena-director-cut` before `the-story-of-jesus-for-children` at rank 4.
-All of those leading results were playable, so availability alone could not
-express which canonical work best satisfied the phrase. The production DOM and
-API snapshot succeeded; it is pre-change evidence, not a deployment or live
-qualification result.
+kids` placed `the-story-of-jesus-for-children` at rank 4 behind three playable
+results. Availability alone could not express which canonical work best
+satisfied the phrase. The production DOM and API snapshot succeeded; it is
+pre-change evidence, not a deployment or live qualification result.
 
 The implementation needed to improve that phrase without turning an alias into
 a public title, metadata keyword, availability signal, or query-specific
@@ -46,11 +45,13 @@ logic be evaluated while the accepted Serving behavior remained available.
 
 Represent aliases in one reviewed, code-owned catalog. Key every alias by the
 normalized phrase and Forge language slug, and map it to a stable Core canonical
-group rather than an Admin row ID or public slug. Reject malformed language slugs,
-non-Core targets, empty aliases, and collisions while constructing the resolver
-(`apps/admin/src/services/typesense-watch-search-canonical-intents.ts:18-56`).
+group rather than an Admin row ID or public slug. Reject malformed language
+slugs, non-Core targets, empty aliases, and collisions with a typed
+configuration error while constructing the resolver
+(`apps/admin/src/services/typesense-watch-search-canonical-intents.ts:13-75`).
 The current English catalog maps `Jesus for kids` and `Jesus for children` to
-`core:1_cl-0-0` (`apps/admin/src/services/typesense-watch-search-canonical-intents.ts:70-77`).
+`core:1_cl-0-0`
+(`apps/admin/src/services/typesense-watch-search-canonical-intents.ts:90-97`).
 
 An alias is ranking evidence only. Do not copy it into public title or metadata
 fields, and do not infer it from playback availability. The search service
@@ -101,6 +102,19 @@ public canonical slugs plus acceptable alternates, rank bounds, availability,
 content type, language, and playback requirements. The code-owned revision is
 `watch-search-common-phrases/v1`, and exact-title and intent-query are separate
 tracks (`apps/admin/src/scripts/watch-search-candidate-intent-eval-cases.ts:3-25`).
+`acceptableCanonicalSlugs` names alternative content that can satisfy the
+primary judgment. `requiredAlternate` is different: it is an independent
+must-also-appear assertion for the two children phrases. Keep those meanings
+separate so accepting a primary alternative cannot silently satisfy the
+required child-focused follower.
+
+The catalog has two validation layers. TypeScript's `as const satisfies`
+checks the checked-in shape, while runtime validation rejects empty or
+duplicate cases, malformed judgments, invalid ranks, and missing constraints
+with `WatchSearchCandidateEvalConfigurationError`
+(`apps/admin/src/scripts/watch-search-candidate-intent-eval-cases.ts:198-338`).
+The runtime layer remains necessary because the same validator can receive
+externally assembled or widened data in tests and tooling.
 
 Reduce repeated attempts to one result per distinct case, but pass a case only
 when every retained attempt passes. Report exact-title and intent-query success
@@ -108,6 +122,28 @@ separately (`apps/admin/src/scripts/benchmark-watch-search-candidate.ts:575-625`
 Candidate qualification rejects qrels drift and every failed Candidate case
 while leaving Current results visible for comparison
 (`apps/admin/src/scripts/benchmark-watch-search-candidate.ts:680-749`).
+
+### Re-derive authorizing reports from their attempts
+
+Treat an automated benchmark report as input at an authorization boundary, not
+as proof merely because it says `QUALIFIED`. Before returning `PASSED`, the
+qualification reader requires non-empty attempts, the exact code-owned case
+inventory for both tracks and both sides, and the code-owned relevance
+revision (`apps/admin/src/scripts/qualify-typesense-watch-search-candidate.ts:229-288`).
+For each case, it joins the summary back to attempts by case, track, and side;
+recomputes failure reasons and counts; rejects failed Candidate outcomes or
+judgments; and verifies the aggregate counts and success rate
+(`apps/admin/src/scripts/qualify-typesense-watch-search-candidate.ts:290-389`).
+Only then can the automated path continue past its exact schema, evidence-gate,
+and identity checks
+(`apps/admin/src/scripts/qualify-typesense-watch-search-candidate.ts:452-510`).
+
+This consumer-side reconstruction prevents a truncated or internally
+inconsistent artifact from authorizing Serving. A digest binds the operator
+action to the exact bytes supplied; it does not prove those bytes contain the
+measurements the status claims. Explicit operator acceptance remains a separate
+`OPERATOR_ACCEPTED` schema and provenance path rather than a relaxed automated
+pass (`apps/admin/src/scripts/qualify-typesense-watch-search-candidate.ts:406-450`).
 
 ## Why This Matters
 
@@ -148,6 +184,9 @@ closed while allowing v1 Serving and v2 Evaluation to coexist.
   match the immutable profile and code-owned qrels exactly.
 - **Flaky success hidden by aggregation:** retain every paired attempt and fail
   a distinct case when any attempt fails.
+- **Self-asserted qualification:** reject missing relevance, empty attempts,
+  incomplete case inventories, failed Candidate attempts, and summaries that
+  disagree with their raw attempts before recording or pinning a generation.
 - **Premature rollout:** keep Serving on `title-and-brand-v1` until the exact
   `canonical-intent-v2` identity has paired relevance, latency, resource,
   capacity, interference, and operator-review evidence. This implementation
@@ -156,7 +195,10 @@ closed while allowing v1 Serving and v2 Evaluation to coexist.
 Verify these boundaries with the alias-catalog, ranker, service, profile,
 candidate-evaluation, benchmark-case, distinct-case, qualification, and
 promotion suites. The production snapshot above remains baseline evidence;
-post-merge live Evaluation and operator review remain required by the
+the qualification-operator regression suite also pins rejection of empty,
+missing, incomplete, and failing case evidence
+(`apps/admin/src/scripts/qualify-typesense-watch-search-candidate.test.ts:432-462`).
+Post-merge live Evaluation and operator review remain required by the
 [production-readiness runbook](../../operations/typesense-watch-search-production-readiness.md#qualify-a-ranking-only-common-phrase-revision).
 
 ## Examples
