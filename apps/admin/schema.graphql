@@ -1108,6 +1108,8 @@ type MediaCollectionBlock {
   """
   defaultCollectionSlug: String
   description: String
+  """Video or collection ids excluded from dynamic collection feed results."""
+  excludedVideoIds: [String!]!
   footerText: String
   imageAsset: BlockImageAsset
   imageAssetId: String

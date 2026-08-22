@@ -111,6 +111,7 @@ describe("experience editor block helpers", () => {
       itemsSource: "dynamicCollections",
       variant: "carousel",
       thumbnailOrientation: "horizontal",
+      excludedVideoIds: [],
       items: [],
     })
     expect(BlockSchema.safeParse(block).success).toBe(true)

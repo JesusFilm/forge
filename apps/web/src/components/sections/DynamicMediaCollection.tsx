@@ -5,6 +5,7 @@ import {
   type RefCallback,
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from "react"
@@ -14,6 +15,7 @@ import { WATCH_PAGE_CONTENT_CLASSES } from "@/lib/content-width"
 import { loadDynamicCollectionFeedPage } from "@/lib/dynamic-collection-client"
 import {
   DynamicCollectionFeedRequestError,
+  WATCH_COLLECTION_FEED_MAX_EXCLUSIONS,
   WATCH_COLLECTION_FEED_PROFILES,
   type DynamicCollectionFeedProfile,
   type DynamicCollectionFeedSection,
@@ -27,6 +29,7 @@ type DynamicMediaCollectionBlock = {
   title?: string | null
   subtitle?: string | null
   mediaDescription?: string | null
+  excludedVideoIds?: readonly string[] | null
   backgroundColor?: string | null
   showItemNumbers?: boolean | null
   thumbnailOrientation?: "vertical" | "horizontal" | null
@@ -129,6 +132,16 @@ export function DynamicMediaCollection({
   languageSlug,
   featuredCollections = { ids: [], slugs: [] },
 }: DynamicMediaCollectionProps) {
+  const excludedIds = useMemo(
+    () =>
+      [
+        ...new Set([
+          ...(data.excludedVideoIds ?? []),
+          ...featuredCollections.ids,
+        ]),
+      ].slice(0, WATCH_COLLECTION_FEED_MAX_EXCLUSIONS),
+    [data.excludedVideoIds, featuredCollections.ids],
+  )
   const sentinelRef = useRef<HTMLDivElement | null>(null)
   const requestInFlightRef = useRef(false)
   const requestAbortRef = useRef<AbortController | null>(null)
@@ -137,7 +150,7 @@ export function DynamicMediaCollection({
   const statusRef = useRef<"idle" | "loading" | "error">("idle")
   const cursorRef = useRef<string | null>(null)
   const hasNextPageRef = useRef(true)
-  const seenIdsRef = useRef(new Set(featuredCollections.ids))
+  const seenIdsRef = useRef(new Set(excludedIds))
   const seenSlugsRef = useRef(new Set(featuredCollections.slugs))
   const profileRef = useRef<DynamicCollectionFeedProfile>(feedProfile())
   const loadNextPageRef = useRef<(manualRetry?: boolean) => Promise<void>>(
@@ -175,7 +188,7 @@ export function DynamicMediaCollection({
   )
   const [retrySeconds, setRetrySeconds] = useState(0)
   const windowingActive = sections.length > WINDOWING_THRESHOLD
-  const feedIdentity = `${locale}\0${languageSlug}\0${featuredCollections.ids.join(
+  const feedIdentity = `${locale}\0${languageSlug}\0${excludedIds.join(
     "\0",
   )}\0${featuredCollections.slugs.join("\0")}`
 
@@ -293,7 +306,7 @@ export function DynamicMediaCollection({
     requestInFlightRef.current = false
     cursorRef.current = null
     hasNextPageRef.current = true
-    seenIdsRef.current = new Set(featuredCollections.ids)
+    seenIdsRef.current = new Set(excludedIds)
     seenSlugsRef.current = new Set(featuredCollections.slugs)
     profileRef.current = feedProfile()
     rowVisibilityRef.current.clear()
@@ -530,7 +543,7 @@ export function DynamicMediaCollection({
               locale,
               languageSlug,
               after: requestCursor,
-              excludedIds: featuredCollections.ids,
+              excludedIds,
               excludedSlugs: featuredCollections.slugs,
               ...profileRef.current,
             },
@@ -620,7 +633,7 @@ export function DynamicMediaCollection({
       }
     },
     [
-      featuredCollections.ids,
+      excludedIds,
       featuredCollections.slugs,
       languageSlug,
       locale,
@@ -655,24 +668,6 @@ export function DynamicMediaCollection({
       data-testid="dynamic-media-collection-feed"
       aria-busy={status === "loading"}
     >
-      {data.title || data.subtitle || data.mediaDescription ? (
-        <header className={`${WATCH_PAGE_CONTENT_CLASSES} pb-4 pt-16`}>
-          {data.title ? (
-            <h2 className="text-3xl font-bold tracking-tight text-white xl:text-4xl">
-              {data.title}
-            </h2>
-          ) : null}
-          {data.subtitle ? (
-            <p className="mt-2 text-lg text-stone-100/90">{data.subtitle}</p>
-          ) : null}
-          {data.mediaDescription ? (
-            <p className="mt-2 max-w-3xl text-sm leading-relaxed text-stone-200/75 xl:text-base">
-              {data.mediaDescription}
-            </p>
-          ) : null}
-        </header>
-      ) : null}
-
       {sections.map((section, index) => {
         const measuredHeight = rowHeightsRef.current.get(section.id)
         const isMounted =

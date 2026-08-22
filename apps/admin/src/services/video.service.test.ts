@@ -1960,16 +1960,45 @@ describe("VideoService", () => {
           muxPlaybackId: "mux-child-2",
         }),
         feedRow({
+          itemId: "child-3",
+          itemCoreId: "core-child-3",
+          itemSlug: "episode-three",
+          itemTitle: "Episodio Tres",
+          muxPlaybackId: "mux-child-3",
+        }),
+        feedRow({
           parentId: "collection-3",
           parentSlug: "collection-three",
           parentTitle: "Collection Three",
           parentDescription: null,
-          itemId: "child-3",
-          itemCoreId: "core-child-3",
-          itemSlug: "episode-three",
-          itemTitle: "Episode Three",
+          itemId: "child-4",
+          itemCoreId: "core-child-4",
+          itemSlug: "episode-four",
+          itemTitle: "Episode Four",
           languageSlug: "english",
           muxPlaybackId: null,
+        }),
+        feedRow({
+          parentId: "collection-3",
+          parentSlug: "collection-three",
+          parentTitle: "Collection Three",
+          parentDescription: null,
+          itemId: "child-5",
+          itemCoreId: "core-child-5",
+          itemSlug: "episode-five",
+          itemTitle: "Episode Five",
+          languageSlug: "english",
+        }),
+        feedRow({
+          parentId: "collection-3",
+          parentSlug: "collection-three",
+          parentTitle: "Collection Three",
+          parentDescription: null,
+          itemId: "child-6",
+          itemCoreId: "core-child-6",
+          itemSlug: "episode-six",
+          itemTitle: "Episode Six",
+          languageSlug: "english",
         }),
       ])
 
@@ -2001,6 +2030,11 @@ describe("VideoService", () => {
                 title: "Episodio Dos",
                 languageSlug: "spanish",
               }),
+              expect.objectContaining({
+                id: "child-3",
+                title: "Episodio Tres",
+                languageSlug: "spanish",
+              }),
             ],
           },
           {
@@ -2010,10 +2044,12 @@ describe("VideoService", () => {
             description: null,
             items: [
               expect.objectContaining({
-                id: "child-3",
+                id: "child-4",
                 languageSlug: "english",
                 muxPlaybackId: null,
               }),
+              expect.objectContaining({ id: "child-5" }),
+              expect.objectContaining({ id: "child-6" }),
             ],
           },
         ],
@@ -2026,6 +2062,29 @@ describe("VideoService", () => {
       expect(prisma.tx.$queryRaw).toHaveBeenCalledOnce()
     })
 
+    it("omits collections with fewer than three playable videos", async () => {
+      prisma.tx.$queryRaw.mockResolvedValueOnce([
+        feedRow({ parentId: "thin", parentSlug: "thin-collection" }),
+        feedRow({
+          parentId: "thin",
+          parentSlug: "thin-collection",
+          itemId: "child-2",
+        }),
+      ])
+
+      const result = await service.getWatchCollectionFeed({
+        first: 3,
+        cardsPerParent: 12,
+        locale: "en",
+        languageSlug: "english",
+      })
+
+      expect(result).toEqual({
+        nodes: [],
+        pageInfo: { endCursor: "thin", hasNextPage: true },
+      })
+    })
+
     it("bounds and orders eligible children while preserving public visibility", async () => {
       prisma.tx.$queryRaw.mockResolvedValueOnce([])
 
@@ -2034,9 +2093,21 @@ describe("VideoService", () => {
         cardsPerParent: 12,
         locale: "en",
         languageSlug: "english",
+        excludedIds: ["blocked-video"],
       })
 
-      const sql = prisma.tx.$queryRaw.mock.calls[0][0].join(" ")
+      const queryArgs = prisma.tx.$queryRaw.mock.calls[0]
+      const sql = queryArgs[0].join(" ")
+      const nestedSql = queryArgs
+        .slice(1)
+        .flatMap((value: unknown) =>
+          typeof value === "object" && value != null && "strings" in value
+            ? [...(value as { strings: readonly string[] }).strings]
+            : [],
+        )
+        .join(" ")
+      expect(sql).toContain("GROUP BY child.id")
+      expect(sql).toContain(") eligible_child")
       expect(sql).toContain("bounded_child AS MATERIALIZED")
       expect(sql).toContain("JOIN LATERAL")
       expect(sql).toMatch(
@@ -2051,6 +2122,7 @@ describe("VideoService", () => {
       )
       expect(sql).toContain("child.deleted_at IS NULL")
       expect(sql).toContain("child.no_index = FALSE")
+      expect(nestedSql.match(/child\.id NOT IN/g)).toHaveLength(2)
       expect(sql).toContain(
         "NOT ('watch' = ANY(child.restrict_view_platforms))",
       )

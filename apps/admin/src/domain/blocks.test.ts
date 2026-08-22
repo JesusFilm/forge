@@ -216,8 +216,31 @@ describe("BlockSchema — all top-level types validate", () => {
     expect(result.success).toBe(true)
     if (result.success && result.data.t === "mediaCollection") {
       expect(result.data.itemsSource).toBe("dynamicCollections")
+      expect(result.data.excludedVideoIds).toEqual([])
       expect(result.data.items).toEqual([])
     }
+  })
+
+  it("validates dynamic collection feed video exclusions", () => {
+    expect(
+      BlockSchema.safeParse({
+        t: "mediaCollection",
+        variant: "carousel",
+        itemsSource: "dynamicCollections",
+        excludedVideoIds: ["collection-1", "video-1"],
+      }).success,
+    ).toBe(true)
+    expect(
+      BlockSchema.safeParse({
+        t: "mediaCollection",
+        variant: "carousel",
+        itemsSource: "dynamicCollections",
+        excludedVideoIds: Array.from(
+          { length: 201 },
+          (_, index) => `video-${index}`,
+        ),
+      }).success,
+    ).toBe(false)
   })
 
   it("videoRecommendations accepts seed + limit overrides", () => {

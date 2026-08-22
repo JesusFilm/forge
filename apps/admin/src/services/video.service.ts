@@ -433,6 +433,7 @@ const WATCH_COLLECTION_FEED_DEFAULT_PAGE_SIZE = 3
 const WATCH_COLLECTION_FEED_MAX_PAGE_SIZE = 3
 export const WATCH_COLLECTION_FEED_MAX_EXCLUSIONS = 200
 const WATCH_COLLECTION_FEED_CARD_COUNTS = [8, 12] as const
+const WATCH_COLLECTION_FEED_MIN_CARD_COUNT = 3
 const WATCH_COLLECTION_FEED_STATEMENT_TIMEOUT_MS = 10_000
 const WATCH_COLLECTION_FEED_TRANSACTION_TIMEOUT_MS = 11_000
 const WATCH_COLLECTION_FEED_STATEMENT_TIMEOUT_SQL = `SET LOCAL statement_timeout = '${WATCH_COLLECTION_FEED_STATEMENT_TIMEOUT_MS}ms'`
@@ -2216,6 +2217,9 @@ export class VideoService {
     const excludedIdsFilter = normalizedExcludedIds.length
       ? Prisma.sql`AND parent.id NOT IN (${Prisma.join(normalizedExcludedIds)})`
       : Prisma.empty
+    const excludedChildIdsFilter = normalizedExcludedIds.length
+      ? Prisma.sql`AND child.id NOT IN (${Prisma.join(normalizedExcludedIds)})`
+      : Prisma.empty
     const excludedSlugsFilter = normalizedExcludedSlugs.length
       ? Prisma.sql`AND parent.slug NOT IN (${Prisma.join(normalizedExcludedSlugs)})`
       : Prisma.empty
@@ -2240,31 +2244,37 @@ export class VideoService {
                   AND published_locale.deleted_at IS NULL
                   AND published_locale.status = 'published'
               )
-              AND EXISTS (
-                SELECT 1
-                FROM video_relation eligibility_relation
-                JOIN video child
-                  ON child.id = eligibility_relation.child_id
-                WHERE eligibility_relation.parent_id = parent.id
-                  AND child.deleted_at IS NULL
-                  AND child.no_index = FALSE
-                  AND NOT ('watch' = ANY(child.restrict_view_platforms))
-                  AND EXISTS (
-                    SELECT 1
-                    FROM video_locale published_locale
-                    WHERE published_locale.video_id = child.id
-                      AND published_locale.deleted_at IS NULL
-                      AND published_locale.status = 'published'
-                  )
-                  AND EXISTS (
-                    SELECT 1
-                    FROM video_dub dub
-                    WHERE dub.video_id = child.id
-                      AND dub.deleted_at IS NULL
-                      AND dub.published = TRUE
-                      AND NULLIF(BTRIM(dub.hls), '') IS NOT NULL
-                  )
-              )
+              AND (
+                SELECT COUNT(*)
+                FROM (
+                  SELECT child.id
+                  FROM video_relation eligibility_relation
+                  JOIN video child
+                    ON child.id = eligibility_relation.child_id
+                  WHERE eligibility_relation.parent_id = parent.id
+                    AND child.deleted_at IS NULL
+                    AND child.no_index = FALSE
+                    ${excludedChildIdsFilter}
+                    AND NOT ('watch' = ANY(child.restrict_view_platforms))
+                    AND EXISTS (
+                      SELECT 1
+                      FROM video_locale published_locale
+                      WHERE published_locale.video_id = child.id
+                        AND published_locale.deleted_at IS NULL
+                        AND published_locale.status = 'published'
+                    )
+                    AND EXISTS (
+                      SELECT 1
+                      FROM video_dub dub
+                      WHERE dub.video_id = child.id
+                        AND dub.deleted_at IS NULL
+                        AND dub.published = TRUE
+                        AND NULLIF(BTRIM(dub.hls), '') IS NOT NULL
+                    )
+                  GROUP BY child.id
+                  LIMIT ${WATCH_COLLECTION_FEED_MIN_CARD_COUNT}
+                ) eligible_child
+              ) = ${WATCH_COLLECTION_FEED_MIN_CARD_COUNT}
               ${cursorFilter}
               ${excludedIdsFilter}
               ${excludedSlugsFilter}
@@ -2306,6 +2316,7 @@ export class VideoService {
               WHERE relation.parent_id = returned_parent.id
                 AND child.deleted_at IS NULL
                 AND child.no_index = FALSE
+                ${excludedChildIdsFilter}
                 AND NOT ('watch' = ANY(child.restrict_view_platforms))
                 AND EXISTS (
                   SELECT 1
@@ -2489,11 +2500,13 @@ export class VideoService {
       })
     }
 
-    const nodes = [...nodesById.values()]
+    const nodes = [...nodesById.values()].filter(
+      (node) => node.items.length >= WATCH_COLLECTION_FEED_MIN_CARD_COUNT,
+    )
     return {
       nodes,
       pageInfo: {
-        endCursor: nodes.at(-1)?.id ?? null,
+        endCursor: rows.at(-1)?.parentId ?? null,
         hasNextPage: rows[0]?.hasNextPage ?? false,
       },
     }

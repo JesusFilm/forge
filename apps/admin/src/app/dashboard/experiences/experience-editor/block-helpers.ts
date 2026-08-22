@@ -770,6 +770,7 @@ export function createTemplateBlock(
       subtitle: "Discover more from our library",
       description: "New collections will appear as you scroll.",
       showItemNumbers: false,
+      excludedVideoIds: [],
       items: [],
     }
   }

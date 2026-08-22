@@ -239,6 +239,8 @@ describe("DynamicMediaCollection", () => {
             sectionKey: "keep-exploring",
             title: "Keep exploring",
             subtitle: "More stories",
+            mediaDescription: "Introductory feed copy",
+            excludedVideoIds: ["blocked", "already-featured"],
           }}
           locale="en"
           languageSlug="english"
@@ -258,7 +260,7 @@ describe("DynamicMediaCollection", () => {
         locale: "en",
         languageSlug: "english",
         after: null,
-        excludedIds: ["already-featured"],
+        excludedIds: ["blocked", "already-featured"],
         excludedSlugs: ["featured-slug"],
         first: 3,
         cardsPerParent: 12,
@@ -269,6 +271,9 @@ describe("DynamicMediaCollection", () => {
       container.querySelectorAll('[data-testid="loaded-collection"]'),
     ).toHaveLength(1)
     expect(container.querySelector('[data-title="New"]')).toBeTruthy()
+    expect(container.textContent).not.toContain("Keep exploring")
+    expect(container.textContent).not.toContain("More stories")
+    expect(container.textContent).not.toContain("Introductory feed copy")
     expect(container.textContent).toContain(
       "You’ve reached the end of the collection library.",
     )

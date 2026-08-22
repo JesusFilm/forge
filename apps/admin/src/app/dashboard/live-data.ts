@@ -515,6 +515,12 @@ function collectVideoIdsFromBlock(block: PreviewBlock, ids: Set<string>) {
     }
   }
 
+  if (block.t === "mediaCollection") {
+    for (const videoId of block.excludedVideoIds) {
+      addVideoId(ids, videoId)
+    }
+  }
+
   if (block.t === "section") {
     for (const item of block.content) {
       collectVideoIdsFromBlock(item, ids)

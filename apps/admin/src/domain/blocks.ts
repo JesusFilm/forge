@@ -250,6 +250,10 @@ export const MediaCollectionBlockSchema = z
     ctaLabel: z.string().optional(),
     showItemNumbers: z.boolean().default(false),
     footerText: z.string().optional(),
+    excludedVideoIds: z
+      .array(z.string().trim().min(1).max(200))
+      .max(200)
+      .default([]),
     items: z.array(MediaCollectionItemSchema).default([]),
   })
   .strict()

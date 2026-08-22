@@ -342,7 +342,7 @@ describe("WatchHomeExperiencePage", () => {
     ).not.toBeNull()
   })
 
-  it("keeps the canonical footer reachable before the dynamic discovery feed", async () => {
+  it("keeps the canonical footer as the final element after the dynamic discovery feed", async () => {
     const blocks = [
       makeBlock("MediaCollectionBlock", "authored-collection"),
       {
@@ -369,8 +369,9 @@ describe("WatchHomeExperiencePage", () => {
 
     expect(footer).not.toBeNull()
     expect(dynamicFeed).not.toBeNull()
-    expect(footer?.compareDocumentPosition(dynamicFeed as Node) ?? 0).toBe(
+    expect(dynamicFeed?.compareDocumentPosition(footer as Node) ?? 0).toBe(
       Node.DOCUMENT_POSITION_FOLLOWING,
     )
+    expect(footer?.parentElement?.lastElementChild).toBe(footer)
   })
 })

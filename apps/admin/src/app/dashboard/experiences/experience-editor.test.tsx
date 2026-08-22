@@ -1729,6 +1729,92 @@ describe("ExperienceEditor", () => {
     }
   })
 
+  it("selects and removes collection or media exclusions for a dynamic feed", async () => {
+    const collection = {
+      ...defaultVideoLibrary[0]!,
+      key: "collection-1",
+      title: "Digital Training",
+      id: "core-collection",
+      label: "COLLECTION",
+      labelLabel: "Collection",
+      isCollectionTarget: true,
+    }
+    const media = {
+      ...defaultVideoLibrary[0]!,
+      key: "video-2",
+      title: "Training Trailer",
+      id: "core-video-2",
+    }
+    const loadVideoCollectionChildrenAction = vi.fn(async () => [])
+    const view = renderEditorDom(
+      [
+        {
+          t: "mediaCollection",
+          sectionKey: "dynamic-feed",
+          variant: "carousel",
+          itemsSource: "dynamicCollections",
+          excludedVideoIds: [],
+          items: [],
+        },
+      ],
+      {
+        videoLibrary: [collection, media],
+        loadVideoCollectionChildrenAction,
+      },
+    )
+
+    try {
+      act(() => {
+        findButtonByText(view.container, "Add exclusion").click()
+      })
+      act(() => {
+        findButtonByText(view.container, "Digital Training").click()
+      })
+      await act(async () => {
+        findButtonByExactText(view.container, "Exclude media").click()
+      })
+
+      act(() => {
+        findButtonByText(view.container, "Add exclusion").click()
+      })
+      act(() => {
+        findButtonByText(view.container, "Training Trailer").click()
+      })
+      await act(async () => {
+        findButtonByExactText(view.container, "Exclude media").click()
+      })
+
+      const blocksInput = view.container.querySelector('input[name="blocks"]')
+      if (!(blocksInput instanceof HTMLInputElement)) {
+        throw new Error("Blocks input not found")
+      }
+      expect(
+        (
+          JSON.parse(blocksInput.value) as Array<{
+            excludedVideoIds?: string[]
+          }>
+        )[0]?.excludedVideoIds,
+      ).toEqual(["collection-1", "video-2"])
+      expect(loadVideoCollectionChildrenAction).not.toHaveBeenCalled()
+
+      act(() => {
+        findButtonByAriaLabel(
+          view.container,
+          "Remove Digital Training from exclusions",
+        ).click()
+      })
+      expect(
+        (
+          JSON.parse(blocksInput.value) as Array<{
+            excludedVideoIds?: string[]
+          }>
+        )[0]?.excludedVideoIds,
+      ).toEqual(["video-2"])
+    } finally {
+      view.cleanup()
+    }
+  })
+
   it.each(["carousel", "grid", "collection"])(
     "expands a collection into ordered %s media collection children",
     async (variant) => {

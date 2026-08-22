@@ -211,13 +211,13 @@ export function WatchHomeExperiencePage({
             />
           )}
           {authoredBlocks.map(renderBlock)}
-          <WatchHomeFooter />
           {dynamicCollectionBlock
             ? renderBlock(
                 dynamicCollectionBlock,
                 normalized.blocks.indexOf(dynamicCollectionBlock),
               )
             : null}
+          <WatchHomeFooter />
         </div>
       </div>
     </main>
