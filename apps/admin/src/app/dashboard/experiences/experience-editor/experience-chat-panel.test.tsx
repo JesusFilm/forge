@@ -184,6 +184,75 @@ describe("ExperienceChatPanel", () => {
     expect(panel?.textContent).toContain("Create persona version")
   })
 
+  it("reports Experience-mutating generation as busy", async () => {
+    const onBusyChange = vi.fn()
+    const draftDeferred: {
+      resolve?: (result: {
+        ok: true
+        draft: {
+          title: string
+          metaDescription: string
+          blocks: unknown[]
+        }
+      }) => void
+    } = {}
+    const generateDraftAction = vi.fn(
+      () =>
+        new Promise<{
+          ok: true
+          draft: {
+            title: string
+            metaDescription: string
+            blocks: unknown[]
+          }
+        }>((resolve) => {
+          draftDeferred.resolve = resolve
+        }),
+    )
+    const view = mount(
+      <ExperienceChatPanel
+        experienceLocaleId="locale-1"
+        locale="en"
+        canvasController={makeCanvasController()}
+        actions={makeActions()}
+        generateDraftAction={generateDraftAction}
+        onBusyChange={onBusyChange}
+      />,
+    )
+    cleanup = view.cleanup
+    await flush()
+    onBusyChange.mockClear()
+
+    const textarea = view.container.querySelector(
+      '[data-testid="experience-chat-input"]',
+    )
+    if (!(textarea instanceof HTMLTextAreaElement)) {
+      throw new Error("Chat input not found")
+    }
+    setTextareaValue(textarea, "Create a hopeful draft")
+    const quickDraft = view.container.querySelector(
+      '[data-testid="experience-chat-quick-draft"]',
+    )
+    if (!(quickDraft instanceof HTMLButtonElement)) {
+      throw new Error("Quick draft button not found")
+    }
+
+    act(() => quickDraft.click())
+    await flush()
+    expect(onBusyChange).toHaveBeenCalledWith(true)
+
+    draftDeferred.resolve?.({
+      ok: true,
+      draft: {
+        title: "Hope",
+        metaDescription: "A hopeful page",
+        blocks: [],
+      },
+    })
+    await flush()
+    expect(onBusyChange).toHaveBeenLastCalledWith(false)
+  })
+
   it("video-anchored section: stages an append-mode draft and Apply appends to existing canvas blocks", async () => {
     const existingBlock = {
       t: "text",

@@ -4,6 +4,8 @@ const {
   rateLimitMock,
   resolvePrincipalMock,
   experienceCreate,
+  experienceFindFirst,
+  experienceLocaleFindMany,
   experienceLocaleFindFirst,
   experienceLocaleFindUniqueOrThrow,
   contentRevisionFindFirst,
@@ -13,6 +15,8 @@ const {
   rateLimitMock: vi.fn(),
   resolvePrincipalMock: vi.fn(),
   experienceCreate: vi.fn(),
+  experienceFindFirst: vi.fn(),
+  experienceLocaleFindMany: vi.fn(),
   experienceLocaleFindFirst: vi.fn(),
   experienceLocaleFindUniqueOrThrow: vi.fn(),
   contentRevisionFindFirst: vi.fn(),
@@ -34,10 +38,11 @@ vi.mock("@/db/client", () => ({
     $transaction: (...args: unknown[]) => transactionMock(...args),
     experience: {
       findMany: vi.fn(),
-      findFirst: vi.fn(),
+      findFirst: (...args: unknown[]) => experienceFindFirst(...args),
       create: (...args: unknown[]) => experienceCreate(...args),
     },
     experienceLocale: {
+      findMany: (...args: unknown[]) => experienceLocaleFindMany(...args),
       findFirst: (...args: unknown[]) => experienceLocaleFindFirst(...args),
       findUniqueOrThrow: (...args: unknown[]) =>
         experienceLocaleFindUniqueOrThrow(...args),
@@ -84,6 +89,8 @@ describe("Admin MCP route", () => {
       token: { subject: "user_1", scopes: [] },
     })
     experienceLocaleFindFirst.mockReset()
+    experienceFindFirst.mockReset()
+    experienceLocaleFindMany.mockReset()
     experienceLocaleFindUniqueOrThrow.mockReset()
     contentRevisionFindFirst.mockReset().mockResolvedValue(null)
     contentRevisionCreate.mockReset().mockResolvedValue({ id: "draft-1" })
@@ -215,10 +222,34 @@ describe("Admin MCP route", () => {
             name: "experience.create",
           }),
           expect.objectContaining({
+            name: "experience.duplicate",
+          }),
+          expect.objectContaining({
             name: "experience.generate",
           }),
         ]),
       },
+    })
+  })
+
+  it("advertises a non-empty experience id for duplication", async () => {
+    const res = await POST(
+      post({ jsonrpc: "2.0", id: 3, method: "tools/list" }),
+    )
+    const body = (await res.json()) as {
+      result: { tools: typeof ADMIN_MCP_TOOLS }
+    }
+    const duplicateTool = body.result.tools.find(
+      (tool) => tool.name === "experience.duplicate",
+    )
+
+    expect(duplicateTool?.inputSchema).toEqual({
+      type: "object",
+      properties: {
+        experienceId: { type: "string", minLength: 1 },
+      },
+      required: ["experienceId"],
+      additionalProperties: false,
     })
   })
 
@@ -487,6 +518,166 @@ describe("Admin MCP route", () => {
       error: "insufficient_scope",
       required_scopes: ["experience:create"],
     })
+    expect(experienceCreate).not.toHaveBeenCalled()
+  })
+
+  it("requires read and create scopes and duplicates every locale as a draft", async () => {
+    experienceFindFirst.mockResolvedValueOnce({
+      id: "exp-source",
+      isTemplate: false,
+      ownerId: "another-editor",
+      archivedAt: null,
+      locales: [
+        {
+          id: "loc-source",
+          locale: "en",
+          slug: "hope",
+          isHomepage: true,
+          pathSegment: null,
+          title: "Hope",
+          metaDescription: null,
+          ogTitle: null,
+          ogDescription: null,
+          ogImageUrl: null,
+          blocks: [],
+          status: "PUBLISHED",
+          publishedAt: new Date("2026-08-20T00:00:00.000Z"),
+        },
+      ],
+    })
+    experienceLocaleFindMany.mockResolvedValueOnce([])
+    experienceCreate.mockResolvedValueOnce({
+      id: "exp-copy",
+      isTemplate: false,
+      ownerId: "user_1",
+      locales: [
+        {
+          id: "loc-copy",
+          experienceId: "exp-copy",
+          locale: "en",
+          slug: "hope-copy",
+          isHomepage: false,
+          pathSegment: null,
+          title: "Hope",
+          metaDescription: null,
+          ogTitle: null,
+          ogDescription: null,
+          ogImageUrl: null,
+          blocks: [],
+          status: "DRAFT",
+          publishedAt: null,
+          updatedAt: new Date("2026-08-21T12:00:00.000Z"),
+        },
+      ],
+    })
+
+    const res = await POST(
+      post({
+        jsonrpc: "2.0",
+        id: 45,
+        method: "tools/call",
+        params: {
+          name: "experience.duplicate",
+          arguments: { experienceId: "exp-source" },
+        },
+      }),
+    )
+
+    expect(res.status).toBe(200)
+    expect(resolvePrincipalMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        requiredScopes: ["experience:read", "experience:create"],
+      }),
+    )
+    await expect(res.json()).resolves.toMatchObject({
+      result: {
+        structuredContent: {
+          ok: true,
+          sourceExperienceId: "exp-source",
+          experience: { id: "exp-copy", ownerId: "user_1" },
+          locales: [
+            {
+              id: "loc-copy",
+              slug: "hope-copy",
+              status: "DRAFT",
+              publishedAt: null,
+            },
+          ],
+        },
+      },
+    })
+    expect(vi.mocked(emitRevalidateWebhook)).not.toHaveBeenCalled()
+    expect(vi.mocked(refreshWatchRouteManifest)).not.toHaveBeenCalled()
+  })
+
+  it("rejects extra experience.duplicate arguments before reading the source", async () => {
+    const res = await POST(
+      post({
+        jsonrpc: "2.0",
+        id: 46,
+        method: "tools/call",
+        params: {
+          name: "experience.duplicate",
+          arguments: { experienceId: "exp-source", publish: true },
+        },
+      }),
+    )
+
+    await expect(res.json()).resolves.toMatchObject({
+      error: { code: -32602, message: "Invalid tool arguments." },
+    })
+    expect(experienceFindFirst).not.toHaveBeenCalled()
+    expect(experienceCreate).not.toHaveBeenCalled()
+  })
+
+  it("rejects an empty experience.duplicate id before reading the source", async () => {
+    const res = await POST(
+      post({
+        jsonrpc: "2.0",
+        id: 47,
+        method: "tools/call",
+        params: {
+          name: "experience.duplicate",
+          arguments: { experienceId: "" },
+        },
+      }),
+    )
+
+    await expect(res.json()).resolves.toMatchObject({
+      error: { code: -32602, message: "Invalid tool arguments." },
+    })
+    expect(experienceFindFirst).not.toHaveBeenCalled()
+    expect(experienceCreate).not.toHaveBeenCalled()
+  })
+
+  it("returns a safe domain error and creates nothing for an empty source", async () => {
+    experienceFindFirst.mockResolvedValueOnce({
+      id: "exp-empty",
+      isTemplate: false,
+      ownerId: "user_1",
+      archivedAt: null,
+      locales: [],
+    })
+
+    const res = await POST(
+      post({
+        jsonrpc: "2.0",
+        id: 47,
+        method: "tools/call",
+        params: {
+          name: "experience.duplicate",
+          arguments: { experienceId: "exp-empty" },
+        },
+      }),
+    )
+
+    await expect(res.json()).resolves.toMatchObject({
+      error: {
+        code: -32000,
+        message: "Experience cannot be duplicated from its current saved state",
+      },
+    })
+    expect(experienceLocaleFindMany).not.toHaveBeenCalled()
     expect(experienceCreate).not.toHaveBeenCalled()
   })
 

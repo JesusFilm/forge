@@ -16,6 +16,11 @@ export const CreateExperienceInput = z.object({
 })
 export type CreateExperienceInput = z.infer<typeof CreateExperienceInput>
 
+export const DuplicateExperienceInput = z.object({
+  id: z.string().min(1),
+})
+export type DuplicateExperienceInput = z.infer<typeof DuplicateExperienceInput>
+
 export const CreateExperienceLocaleInput = z.object({
   experienceId: z.string().min(1),
   locale: z.string().min(1).max(35),

@@ -54,8 +54,11 @@ describe("canonicalizeWatchPath: short-circuit guards", () => {
     })
   })
 
-  it("returns canonical for reserved literals: favicon, robots, sitemap", () => {
+  it("returns canonical for reserved literals: favicon, manifest, robots, sitemap", () => {
     expect(canonical({ rawPathname: "/favicon.ico" })).toEqual({
+      kind: "canonical",
+    })
+    expect(canonical({ rawPathname: "/manifest.webmanifest" })).toEqual({
       kind: "canonical",
     })
     expect(canonical({ rawPathname: "/robots.txt" })).toEqual({

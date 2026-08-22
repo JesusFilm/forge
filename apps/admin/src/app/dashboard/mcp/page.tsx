@@ -19,6 +19,7 @@ const starterPrompts = [
   "Validate the Spanish locale drafts and list anything that needs review.",
   "Check whether target-language videos exist before creating drafts.",
   "Generate a new draft Experience about hope, then translate it into French.",
+  "Duplicate the Easter Experience as an unpublished draft.",
 ]
 
 export default async function AdminMcpPage() {
