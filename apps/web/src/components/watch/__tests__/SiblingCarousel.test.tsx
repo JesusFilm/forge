@@ -371,6 +371,79 @@ describe("SiblingCarousel — happy path", () => {
     )
   })
 
+  it("switches to a 49-Chapter film context with no false active card", () => {
+    const block = makeSelectableBlock()
+    const filmChildren = Array.from({ length: 49 }, (_, index) => {
+      const position = index + 1
+      return {
+        ...makeChild(position),
+        documentId: `film-chapter-${position}`,
+        slug:
+          index === 29
+            ? "triumphal-entry-and-results"
+            : `film-chapter-${position}`,
+        title:
+          index === 29
+            ? "Triumphal Entry and Results"
+            : `Film Chapter ${position}`,
+      }
+    })
+    block.selectableParents?.push({
+      documentId: "film-parent",
+      slug: "life-of-jesus-gospel-of-john",
+      title: "Life of Jesus (Gospel of John)",
+      children: filmChildren as never,
+    })
+
+    act(() => {
+      root.render(<SiblingCarousel block={block} languageSlug="english" />)
+    })
+
+    const selector = container.querySelector(
+      "[data-testid='sibling-carousel-parent-selector']",
+    ) as HTMLSelectElement
+    act(() => {
+      selector.value = "film-parent"
+      selector.dispatchEvent(new Event("change", { bubbles: true }))
+    })
+
+    const rail = container.querySelector("[data-block-type='SiblingCarousel']")
+    const items = Array.from(
+      container.querySelectorAll("[data-testid='sibling-carousel-item']"),
+    )
+    expect(rail?.getAttribute("data-mode")).toBe("parent")
+    expect(items).toHaveLength(49)
+    expect(items[29]?.getAttribute("data-href")).toBe(
+      "/life-of-jesus-gospel-of-john.html/triumphal-entry-and-results.html",
+    )
+    expect(
+      container.querySelector(
+        "[data-testid='sibling-carousel-item'][data-active='true']",
+      ),
+    ).toBeNull()
+    expect(
+      container.querySelector("[data-testid='sibling-carousel-label']")
+        ?.textContent,
+    ).toBe("49 chapters")
+    expect(
+      container.querySelector(
+        "[data-testid='sibling-carousel-selection-announcement']",
+      )?.textContent,
+    ).toContain("Life of Jesus (Gospel of John) · 49 chapters")
+
+    act(() => {
+      selector.value = "parent-1"
+      selector.dispatchEvent(new Event("change", { bubbles: true }))
+    })
+    expect(
+      container
+        .querySelector(
+          "[data-href='/first-collection.html/current-video.html']",
+        )
+        ?.getAttribute("data-active"),
+    ).toBe("true")
+  })
+
   it("keeps an unmodified active-card click on the standalone route", () => {
     const onChapterNavigateIntent = vi.fn()
 

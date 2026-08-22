@@ -1504,6 +1504,143 @@ describe("Catch-all routing — series branch (2-seg)", () => {
     expect(carousel).not.toHaveProperty("selectableParents")
   })
 
+  it("does not append own Chapters when a legacy manifest cannot prove their exact language", async () => {
+    const result = makeWatchVideoResult("featureFilm")
+    const child = (documentId: string, slug: string, title: string) => ({
+      documentId,
+      slug,
+      title,
+      label: "chapter",
+      images: [],
+      durationSeconds: 30,
+      muxPlaybackId: `mux-${documentId}`,
+      muxThumbnailBlurDataUrl: null,
+    })
+    const ownChildren = [
+      child("own-1", "own-one", "Own One"),
+      child("own-2", "own-two", "Own Two"),
+    ]
+    const parents = [
+      {
+        documentId: "parent-1",
+        slug: "collection-a",
+        title: "Collection A",
+        noIndex: false,
+        label: "collection",
+        images: [],
+        children: [
+          child("v1", "storyclubs", "StoryClubs"),
+          child("peer-1", "peer-one", "Peer One"),
+        ],
+      },
+    ]
+    ;(
+      result.video as unknown as {
+        children: typeof ownChildren
+        parents: typeof parents
+      }
+    ).children = ownChildren
+    ;(
+      result.video as unknown as {
+        children: typeof ownChildren
+        parents: typeof parents
+      }
+    ).parents = parents
+    getWatchRouteManifestMock.mockResolvedValue({
+      version: "1",
+      generatedAt: "2026-08-10T12:00:00.000Z",
+      contentSlugs: [],
+      oneSegmentSlugs: [],
+      episodePairsByParent: {
+        "collection-a": ["storyclubs", "peer-one"],
+        storyclubs: ["own-one", "own-two"],
+      },
+      audioLanguageSlugs: ["english"],
+    })
+    mockRouteVideo(result)
+
+    await render2Seg("storyclubs", "english")
+
+    const props = watchPageClientMock.mock.calls[0]?.[0] as {
+      mergedBlocks: Array<{
+        kind?: string
+        selectableParents?: Array<{ slug?: string }>
+      }>
+    }
+    const carousel = props.mergedBlocks.find(
+      (block) => block.kind === "SiblingCarousel",
+    )
+    expect(carousel?.selectableParents?.map((parent) => parent.slug)).toEqual([
+      "collection-a",
+    ])
+  })
+
+  it("keeps an exact-admitted own-Chapters rail fixed when no external parent is eligible", async () => {
+    const result = makeWatchVideoResult("featureFilm")
+    const ownChildren = [
+      {
+        documentId: "own-1",
+        slug: "own-one",
+        title: "Own One",
+        label: "chapter",
+        images: [],
+        durationSeconds: 30,
+        muxPlaybackId: "mux-own-1",
+        muxThumbnailBlurDataUrl: null,
+      },
+      {
+        documentId: "own-2",
+        slug: "own-two",
+        title: "Own Two",
+        label: "chapter",
+        images: [],
+        durationSeconds: 30,
+        muxPlaybackId: "mux-own-2",
+        muxThumbnailBlurDataUrl: null,
+      },
+    ]
+    ;(
+      result.video as unknown as {
+        children: typeof ownChildren
+        parents: []
+      }
+    ).children = ownChildren
+    ;(
+      result.video as unknown as {
+        children: typeof ownChildren
+        parents: []
+      }
+    ).parents = []
+    getWatchRouteManifestMock.mockResolvedValue({
+      version: "1",
+      generatedAt: "2026-08-10T12:00:00.000Z",
+      contentSlugs: [],
+      oneSegmentSlugs: [],
+      episodePairsByParent: { storyclubs: ["own-one", "own-two"] },
+      audioLanguageSlugs: ["english"],
+      audioLanguageIndexesByEpisode: {
+        storyclubs: { "own-one": [0], "own-two": [0] },
+      },
+    })
+    mockRouteVideo(result)
+
+    await render2Seg("storyclubs", "english")
+
+    const props = watchPageClientMock.mock.calls[0]?.[0] as {
+      mergedBlocks: Array<{
+        kind?: string
+        canonicalParent?: { slug?: string; children?: unknown[] }
+        selectableParents?: unknown
+      }>
+    }
+    const carousel = props.mergedBlocks.find(
+      (block) => block.kind === "SiblingCarousel",
+    )
+    expect(carousel?.canonicalParent?.slug).toBe("storyclubs")
+    expect(carousel?.canonicalParent?.children).toHaveLength(2)
+    expect(carousel).not.toHaveProperty("selectableParents")
+  })
+
   it("keeps only the eligible parent context when fewer than two own routes are admitted", async () => {
     const result = makeWatchVideoResult("featureFilm")
     const ownChildren = [

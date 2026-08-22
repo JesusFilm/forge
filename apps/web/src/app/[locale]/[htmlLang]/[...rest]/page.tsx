@@ -75,6 +75,7 @@ import { logWatchServerEvent } from "@/lib/watch-observability"
 import {
   getWatchRouteManifest,
   getWatchNestedContainerAudioLanguageSlugs,
+  isWatchEpisodeRouteExactlyAdmittedByManifest,
   isWatchNestedContainerRouteAdmittedByManifest,
   isWatchRouteAdmittedByManifest,
   type WatchRouteManifest,
@@ -168,6 +169,15 @@ function withAdmittedCarouselChildren<T extends CarouselParent>(
   parent: T,
   languageSlug: string,
   manifest: WatchRouteManifest | null,
+  isEpisodeAdmitted: (
+    manifest: WatchRouteManifest,
+    route: {
+      kind: "episode"
+      parentSlug: string
+      childSlug: string
+      audioLanguageSlug: string
+    },
+  ) => boolean = isWatchRouteAdmittedByManifest,
 ): T {
   // Preserve the existing fail-open behavior during a manifest outage. The
   // manifest is the exact selected-language route contract when available;
@@ -180,7 +190,7 @@ function withAdmittedCarouselChildren<T extends CarouselParent>(
         const childSlug = tryAsContentSlug(child.slug ?? "")
         return (
           childSlug != null &&
-          isWatchRouteAdmittedByManifest(manifest, {
+          isEpisodeAdmitted(manifest, {
             kind: "episode",
             parentSlug,
             childSlug,
@@ -894,17 +904,20 @@ async function renderVideo(
       languageSlug,
       routeManifest,
     )
+    const ownChapterContext = withAdmittedCarouselChildren(
+      {
+        documentId: carouselVideo.documentId,
+        slug: carouselVideo.slug,
+        title: carouselVideo.title,
+        children: carouselVideo.children,
+      } satisfies CarouselParent,
+      languageSlug,
+      routeManifest,
+      isWatchEpisodeRouteExactlyAdmittedByManifest,
+    )
     const selectableParents =
-      eligibleParents.length > 0 && carouselVideo.children.length >= 2
-        ? [
-            ...eligibleParents,
-            {
-              documentId: carouselVideo.documentId,
-              slug: carouselVideo.slug,
-              title: carouselVideo.title,
-              children: carouselVideo.children,
-            },
-          ]
+      eligibleParents.length > 0 && ownChapterContext.children.length >= 2
+        ? [...eligibleParents, ownChapterContext]
         : eligibleParents
     const mergedBlocks = mergeWatchExperience({
       video: carouselVideo,
