@@ -209,6 +209,7 @@ export function WatchIntroductionProvider({
           open={open}
           onSkip={finishTour}
           onComplete={finishTour}
+          onSignup={finishTour}
           finalFocus={returnFocusRef}
         />
       ) : null}

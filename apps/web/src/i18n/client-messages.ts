@@ -17,6 +17,7 @@ export const GLOBAL_CLIENT_MESSAGE_NAMESPACES = [
   "SearchResultCard",
   "VideoLabels",
   "WatchModal",
+  "WatchIntroductionTour",
   "WatchNotFound",
 ] as const satisfies readonly ClientMessageNamespace[]
 
@@ -36,6 +37,7 @@ export const WATCH_HOME_CLIENT_MESSAGE_NAMESPACES = [
   "WatchHomePromo",
   "WatchHomeSections",
   "WatchModal",
+  "WatchIntroductionTour",
   "WatchStudyQuestions",
 ] as const satisfies readonly ClientMessageNamespace[]
 
@@ -61,6 +63,7 @@ export const WATCH_CONTENT_CLIENT_MESSAGE_NAMESPACES = [
   "WatchHome",
   "WatchHomeSections",
   "WatchModal",
+  "WatchIntroductionTour",
   "WatchQuestionPanel",
   "WatchStudyQuestions",
 ] as const satisfies readonly ClientMessageNamespace[]

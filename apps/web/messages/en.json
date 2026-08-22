@@ -112,6 +112,37 @@
   "WatchModal": {
     "close": "Close"
   },
+  "WatchIntroductionTour": {
+    "close": "Close introduction",
+    "progress": "Step {current} of {total}",
+    "skip": "Skip",
+    "back": "Back",
+    "next": "Next",
+    "done": "Done",
+    "signup": "Sign up for updates",
+    "steps": {
+      "discover": {
+        "eyebrow": "Start watching",
+        "title": "Discover free films and stories",
+        "description": "Explore films, series, and real stories about Jesus and the hope he offers—all available to watch for free."
+      },
+      "search": {
+        "eyebrow": "Find your next watch",
+        "title": "Search for what matters to you",
+        "description": "Use Search to find a title, explore a topic, or ask a question and discover something meaningful."
+      },
+      "language": {
+        "eyebrow": "Watch in your language",
+        "title": "Choose your viewing language",
+        "description": "Open the language picker to find films and stories in the language that feels most natural to you."
+      },
+      "apps": {
+        "eyebrow": "Coming soon",
+        "title": "Watch on mobile and TV",
+        "description": "Mobile and TV apps are on the way. Sign up to hear about beta opportunities and be notified when they are released."
+      }
+    }
+  },
   "BetaTesterModal": {
     "title": "Become a beta tester",
     "trigger": "Become a beta tester",
