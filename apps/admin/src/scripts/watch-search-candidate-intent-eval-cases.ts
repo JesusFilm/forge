@@ -197,13 +197,22 @@ export const WATCH_SEARCH_INTENT_EVAL_CASES = [
   },
 ] as const satisfies readonly WatchSearchCandidateEvalCase[]
 
+export class WatchSearchCandidateEvalConfigurationError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = "WatchSearchCandidateEvalConfigurationError"
+  }
+}
+
 function nonemptyStrings(value: unknown, name: string): readonly string[] {
   if (
     !Array.isArray(value) ||
     value.length === 0 ||
     value.some((entry) => typeof entry !== "string" || entry.trim() === "")
   ) {
-    throw new Error(`${name} must be a non-empty string list`)
+    throw new WatchSearchCandidateEvalConfigurationError(
+      `${name} must be a non-empty string list`,
+    )
   }
   return value
 }
@@ -212,30 +221,40 @@ export function validateWatchSearchCandidateEvalCases(
   cases: readonly WatchSearchCandidateEvalCase[],
 ): void {
   if (!Array.isArray(cases) || cases.length === 0) {
-    throw new Error("watch search Candidate evaluation cases are required")
+    throw new WatchSearchCandidateEvalConfigurationError(
+      "watch search Candidate evaluation cases are required",
+    )
   }
   const ids = new Set<string>()
   const queries = new Set<string>()
   for (const evalCase of cases) {
     if (!evalCase || typeof evalCase !== "object") {
-      throw new Error("watch search Candidate evaluation case is malformed")
+      throw new WatchSearchCandidateEvalConfigurationError(
+        "watch search Candidate evaluation case is malformed",
+      )
     }
     if (!evalCase.id?.trim() || ids.has(evalCase.id)) {
-      throw new Error(`duplicate or missing evaluation case id: ${evalCase.id}`)
+      throw new WatchSearchCandidateEvalConfigurationError(
+        `duplicate or missing evaluation case id: ${evalCase.id}`,
+      )
     }
     ids.add(evalCase.id)
     const queryKey = `${evalCase.track}:${evalCase.query?.trim().toLocaleLowerCase("en")}`
     if (!evalCase.query?.trim() || queries.has(queryKey)) {
-      throw new Error(
+      throw new WatchSearchCandidateEvalConfigurationError(
         `duplicate or missing evaluation query: ${evalCase.query}`,
       )
     }
     queries.add(queryKey)
     if (!evalCase.locale?.trim() || !evalCase.languageSlug?.trim()) {
-      throw new Error(`${evalCase.id} must declare locale and language`)
+      throw new WatchSearchCandidateEvalConfigurationError(
+        `${evalCase.id} must declare locale and language`,
+      )
     }
     if (evalCase.track !== "exact-title" && evalCase.track !== "intent-query") {
-      throw new Error(`${evalCase.id} has an invalid evaluation track`)
+      throw new WatchSearchCandidateEvalConfigurationError(
+        `${evalCase.id} has an invalid evaluation track`,
+      )
     }
     const expected = nonemptyStrings(
       evalCase.judgment?.expectedCanonicalSlugs,
@@ -251,7 +270,9 @@ export function validateWatchSearchCandidateEvalCases(
         (slug: unknown) => typeof slug !== "string" || slug.trim().length === 0,
       )
     ) {
-      throw new Error(`${evalCase.id}.acceptableCanonicalSlugs is malformed`)
+      throw new WatchSearchCandidateEvalConfigurationError(
+        `${evalCase.id}.acceptableCanonicalSlugs is malformed`,
+      )
     }
     const requiredAlternateSlugs = evalCase.judgment.requiredAlternate?.slugs
     if (
@@ -263,7 +284,9 @@ export function validateWatchSearchCandidateEvalCases(
             typeof slug !== "string" || slug.trim().length === 0,
         ))
     ) {
-      throw new Error(`${evalCase.id}.requiredAlternate.slugs is malformed`)
+      throw new WatchSearchCandidateEvalConfigurationError(
+        `${evalCase.id}.requiredAlternate.slugs is malformed`,
+      )
     }
     const slugs = [
       ...expected,
@@ -271,20 +294,24 @@ export function validateWatchSearchCandidateEvalCases(
       ...(requiredAlternateSlugs ?? []),
     ]
     if (new Set(slugs).size !== slugs.length) {
-      throw new Error(`${evalCase.id} contains duplicate judgment slugs`)
+      throw new WatchSearchCandidateEvalConfigurationError(
+        `${evalCase.id} contains duplicate judgment slugs`,
+      )
     }
     if (
       !Number.isSafeInteger(evalCase.judgment?.maxRank) ||
       evalCase.judgment.maxRank < 1
     ) {
-      throw new Error(`${evalCase.id}.maxRank must be a positive integer`)
+      throw new WatchSearchCandidateEvalConfigurationError(
+        `${evalCase.id}.maxRank must be a positive integer`,
+      )
     }
     if (
       evalCase.judgment.requiredAlternate != null &&
       (!Number.isSafeInteger(evalCase.judgment.requiredAlternate.maxRank) ||
         evalCase.judgment.requiredAlternate.maxRank < 1)
     ) {
-      throw new Error(
+      throw new WatchSearchCandidateEvalConfigurationError(
         `${evalCase.id}.requiredAlternate.maxRank must be a positive integer`,
       )
     }
@@ -301,7 +328,9 @@ export function validateWatchSearchCandidateEvalCases(
       `${evalCase.id}.allowedLanguageSlugs`,
     )
     if (typeof evalCase.judgment.requiresPlayback !== "boolean") {
-      throw new Error(`${evalCase.id}.requiresPlayback must be boolean`)
+      throw new WatchSearchCandidateEvalConfigurationError(
+        `${evalCase.id}.requiresPlayback must be boolean`,
+      )
     }
   }
 }

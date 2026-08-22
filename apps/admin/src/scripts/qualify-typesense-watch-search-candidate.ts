@@ -23,6 +23,7 @@ import {
   watchSearchBindingMembers,
 } from "@/services/typesense-watch-search-profile"
 import { TypesenseClient } from "@/services/typesense-client"
+import { REQUIRED_CANDIDATE_JUDGED_CASES } from "./watch-search-candidate-benchmark-cases"
 import { WATCH_SEARCH_COMMON_PHRASE_QRELS_REVISION } from "./watch-search-candidate-intent-eval-cases"
 
 type QualificationGeneration = {
@@ -198,6 +199,198 @@ function exactArrayMatch(
   }
 }
 
+function reportStringArray(value: unknown, name: string): readonly string[] {
+  if (
+    !Array.isArray(value) ||
+    value.some((entry) => typeof entry !== "string")
+  ) {
+    throw new QualificationOperatorError(`${name} must be a string array`)
+  }
+  return value
+}
+
+function reportNonnegativeInteger(value: unknown, name: string): number {
+  if (!Number.isSafeInteger(value) || (value as number) < 0) {
+    throw new QualificationOperatorError(
+      `${name} must be a non-negative integer`,
+    )
+  }
+  return value as number
+}
+
+function exactStringSet(
+  actual: readonly string[],
+  expected: readonly string[],
+  name: string,
+): void {
+  exactArrayMatch([...actual].sort(), [...expected].sort(), name)
+}
+
+function assertAutomatedQualificationCases(
+  report: Record<string, unknown>,
+): void {
+  if (!Array.isArray(report.attempts) || report.attempts.length === 0) {
+    throw new QualificationOperatorError(
+      "qualification report attempts must be non-empty",
+    )
+  }
+  const attempts = report.attempts.map((attempt, index) =>
+    objectValue(attempt, `report attempts[${index}]`),
+  )
+  const relevance = objectValue(report.relevance, "report relevance")
+  if (
+    requiredString(
+      relevance.qrelsRevision,
+      "report relevance qrels revision",
+    ) !== WATCH_SEARCH_COMMON_PHRASE_QRELS_REVISION
+  ) {
+    throw new QualificationOperatorError(
+      "report relevance qrels revision is incompatible with this application",
+    )
+  }
+  const tracks = objectValue(relevance.tracks, "report relevance tracks")
+
+  for (const track of ["exact-title", "intent-query"] as const) {
+    const requiredCaseIds = REQUIRED_CANDIDATE_JUDGED_CASES.filter(
+      (entry) => entry.track === track,
+    ).map(({ id }) => id)
+    const trackReport = objectValue(
+      tracks[track],
+      `report relevance tracks.${track}`,
+    )
+
+    for (const side of ["current", "candidate"] as const) {
+      const sideReport = objectValue(
+        trackReport[side],
+        `report relevance tracks.${track}.${side}`,
+      )
+      if (!Array.isArray(sideReport.cases)) {
+        throw new QualificationOperatorError(
+          `report relevance tracks.${track}.${side}.cases must be an array`,
+        )
+      }
+      const cases = sideReport.cases.map((entry, index) =>
+        objectValue(
+          entry,
+          `report relevance tracks.${track}.${side}.cases[${index}]`,
+        ),
+      )
+      const caseIds = cases.map((entry, index) =>
+        requiredString(
+          entry.caseId,
+          `report relevance tracks.${track}.${side}.cases[${index}].caseId`,
+        ),
+      )
+      exactStringSet(
+        caseIds,
+        requiredCaseIds,
+        `report relevance tracks.${track}.${side} case inventory`,
+      )
+
+      for (const [index, entry] of cases.entries()) {
+        const caseId = caseIds[index]!
+        const caseAttempts = attempts.filter(
+          (attempt) =>
+            attempt.caseId === caseId &&
+            attempt.track === track &&
+            attempt.side === side,
+        )
+        const declaredAttempts = reportNonnegativeInteger(
+          entry.attempts,
+          `report relevance ${track}.${side}.${caseId}.attempts`,
+        )
+        if (
+          declaredAttempts === 0 ||
+          declaredAttempts !== caseAttempts.length
+        ) {
+          throw new QualificationOperatorError(
+            `report relevance ${track}.${side}.${caseId} attempt count does not match`,
+          )
+        }
+        const failedReasons = [
+          ...new Set(
+            caseAttempts.flatMap((attempt, attemptIndex) => {
+              if (
+                attempt.outcome !== "success" &&
+                attempt.outcome !== "error"
+              ) {
+                throw new QualificationOperatorError(
+                  `report attempts ${track}.${side}.${caseId}[${attemptIndex}].outcome is invalid`,
+                )
+              }
+              const verdict = objectValue(
+                attempt.relevance,
+                `report attempts ${track}.${side}.${caseId}[${attemptIndex}].relevance`,
+              )
+              if (typeof verdict.passed !== "boolean") {
+                throw new QualificationOperatorError(
+                  `report attempts ${track}.${side}.${caseId}[${attemptIndex}].relevance.passed must be boolean`,
+                )
+              }
+              const reasons = reportStringArray(
+                verdict.reasons,
+                `report attempts ${track}.${side}.${caseId}[${attemptIndex}].relevance.reasons`,
+              )
+              return verdict.passed ? [] : reasons
+            }),
+          ),
+        ].sort()
+        const failedAttempts = caseAttempts.filter(
+          (attempt) =>
+            objectValue(attempt.relevance, "report attempt relevance")
+              .passed !== true,
+        ).length
+        const passed = failedAttempts === 0
+        if (
+          side === "candidate" &&
+          caseAttempts.some((attempt) => attempt.outcome !== "success")
+        ) {
+          throw new QualificationOperatorError(
+            `qualification report Candidate case ${track}:${caseId} contains a failed attempt`,
+          )
+        }
+        if (
+          entry.passed !== passed ||
+          reportNonnegativeInteger(
+            entry.failedAttempts,
+            `report relevance ${track}.${side}.${caseId}.failedAttempts`,
+          ) !== failedAttempts
+        ) {
+          throw new QualificationOperatorError(
+            `report relevance ${track}.${side}.${caseId} verdict does not match attempts`,
+          )
+        }
+        exactArrayMatch(
+          reportStringArray(
+            entry.reasons,
+            `report relevance ${track}.${side}.${caseId}.reasons`,
+          ),
+          failedReasons,
+          `report relevance ${track}.${side}.${caseId}.reasons`,
+        )
+        if (side === "candidate" && !passed) {
+          throw new QualificationOperatorError(
+            `qualification report Candidate case ${track}:${caseId} did not pass`,
+          )
+        }
+      }
+
+      const passedCases = cases.filter(({ passed }) => passed === true).length
+      const totalCases = cases.length
+      if (
+        sideReport.totalCases !== totalCases ||
+        sideReport.passedCases !== passedCases ||
+        sideReport.failedCases !== totalCases - passedCases ||
+        sideReport.successRate !== passedCases / totalCases
+      ) {
+        throw new QualificationOperatorError(
+          `report relevance tracks.${track}.${side} summary does not match cases`,
+        )
+      }
+    }
+  }
+}
+
 function parseReport(bytes: Buffer): QualifiedReport {
   let parsed: unknown
   try {
@@ -275,6 +468,7 @@ function parseReport(bytes: Buffer): QualifiedReport {
       "every qualification evidence gate and artifact must pass",
     )
   }
+  assertAutomatedQualificationCases(report)
   if (report.audit !== undefined) {
     throw new QualificationOperatorError(
       "qualification report must not contain self-asserted audit fields",

@@ -36,9 +36,9 @@ case-level judgments for the common English phrases named in Linear issue
    evidence tiers and deterministic group ordering.
 4. `apps/admin/src/services/typesense-watch-search-profile.ts` — Current,
    Evaluation, and Serving profile identity.
-5. `apps/admin/src/workers/watch-search-candidate-benchmark.ts` — Candidate
+5. `apps/admin/src/scripts/benchmark-watch-search-candidate.ts` — Candidate
    benchmark execution, result projection, and report generation.
-6. `apps/admin/src/workers/watch-search-candidate-benchmark-cases.ts` — existing
+6. `apps/admin/src/scripts/watch-search-candidate-benchmark-cases.ts` — existing
    multilingual exact-title controls from FGE-14.
 
 ## Grep These

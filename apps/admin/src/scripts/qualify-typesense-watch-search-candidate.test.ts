@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto"
 import { describe, expect, it, vi } from "vitest"
 import { WATCH_SEARCH_CANDIDATE_REQUIRED_EVIDENCE_GATES } from "@/services/typesense-watch-search-candidate-qualification"
+import { REQUIRED_CANDIDATE_JUDGED_CASES } from "./watch-search-candidate-benchmark-cases"
 import { WATCH_SEARCH_COMMON_PHRASE_QRELS_REVISION } from "./watch-search-candidate-intent-eval-cases"
 import {
   QualificationOperatorError,
@@ -23,6 +24,46 @@ const candidateBindings = {
   transcript: "watch_transcripts_current_42",
 }
 
+function passingAutomatedCaseEvidence() {
+  const attempts = REQUIRED_CANDIDATE_JUDGED_CASES.flatMap(({ id, track }) =>
+    (["current", "candidate"] as const).map((side) => ({
+      caseId: id,
+      track,
+      side,
+      outcome: "success" as const,
+      relevance: { passed: true, reasons: [] as string[] },
+    })),
+  )
+  const tracks = Object.fromEntries(
+    (["exact-title", "intent-query"] as const).map((track) => {
+      const caseIds = REQUIRED_CANDIDATE_JUDGED_CASES.filter(
+        (entry) => entry.track === track,
+      ).map(({ id }) => id)
+      const sideReport = () => ({
+        totalCases: caseIds.length,
+        passedCases: caseIds.length,
+        failedCases: 0,
+        successRate: 1,
+        cases: caseIds.map((caseId) => ({
+          caseId,
+          passed: true,
+          attempts: 1,
+          failedAttempts: 0,
+          reasons: [] as string[],
+        })),
+      })
+      return [track, { current: sideReport(), candidate: sideReport() }]
+    }),
+  )
+  return {
+    attempts,
+    relevance: {
+      qrelsRevision: WATCH_SEARCH_COMMON_PHRASE_QRELS_REVISION,
+      tracks,
+    },
+  }
+}
+
 function report(overrides: Record<string, unknown> = {}) {
   const evidence = Object.fromEntries(
     WATCH_SEARCH_CANDIDATE_REQUIRED_EVIDENCE_GATES.map((gate) => [
@@ -36,6 +77,7 @@ function report(overrides: Record<string, unknown> = {}) {
       `s3://reviewed/candidate-1/${gate}.json`,
     ]),
   )
+  const caseEvidence = passingAutomatedCaseEvidence()
   return {
     schemaVersion: "watch-search-candidate-qualification/v2",
     generatedAt: "2026-08-16T00:00:00.000Z",
@@ -52,7 +94,7 @@ function report(overrides: Record<string, unknown> = {}) {
       candidateBindings,
     },
     evidence: { ...evidence, artifacts },
-    attempts: [],
+    ...caseEvidence,
     ...overrides,
   }
 }
@@ -375,6 +417,39 @@ describe("watch search Candidate qualification operator", () => {
     ]
 
     for (const candidateReport of cases) {
+      const bytes = Buffer.from(JSON.stringify(candidateReport))
+      const { dependencies, service } = fixture({ bytes })
+      await expect(
+        runWatchSearchCandidateQualificationOperator(
+          args("record", bytes),
+          dependencies,
+        ),
+      ).rejects.toBeInstanceOf(QualificationOperatorError)
+      expect(service.recordQualification).not.toHaveBeenCalled()
+    }
+  })
+
+  it("rejects automated reports without complete passing case evidence", async () => {
+    const missingCase = report()
+    const relevance = missingCase.relevance
+    relevance.tracks["intent-query"].candidate.cases =
+      relevance.tracks["intent-query"].candidate.cases.slice(1)
+
+    const failedCandidateAttempt = report()
+    const candidateAttempt = failedCandidateAttempt.attempts.find(
+      ({ side }) => side === "candidate",
+    )!
+    candidateAttempt.relevance = {
+      passed: false,
+      reasons: ["acceptable_alternate_missing"],
+    }
+
+    for (const candidateReport of [
+      report({ attempts: [] }),
+      report({ relevance: undefined }),
+      missingCase,
+      failedCandidateAttempt,
+    ]) {
       const bytes = Buffer.from(JSON.stringify(candidateReport))
       const { dependencies, service } = fixture({ bytes })
       await expect(

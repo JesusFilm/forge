@@ -10,13 +10,23 @@ type WatchSearchCanonicalIntent = {
   targetCanonicalVideoId: string
 }
 
+export class WatchSearchCanonicalIntentConfigurationError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = "WatchSearchCanonicalIntentConfigurationError"
+  }
+}
+
 type WatchSearchCanonicalIntentResolver = (
   query: string,
   languageSlug: string | null,
 ) => WatchSearchCanonicalIntent | null
 
-function normalizedAliasKey(query: string, languageSlug: string): string {
-  return `${languageSlug}\u0000${normalizeWatchSearchTitle(query).normalized}`
+function canonicalIntentKey(
+  normalizedQuery: string,
+  languageSlug: string,
+): string {
+  return `${languageSlug}\u0000${normalizedQuery}`
 }
 
 export function createWatchSearchCanonicalIntentResolver(
@@ -27,23 +37,31 @@ export function createWatchSearchCanonicalIntentResolver(
   for (const entry of entries) {
     const languageSlug = entry.languageSlug.trim().toLocaleLowerCase("en")
     if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(languageSlug)) {
-      throw new Error("Canonical intent language slug must be non-empty")
+      throw new WatchSearchCanonicalIntentConfigurationError(
+        "Canonical intent language slug must be non-empty",
+      )
     }
     if (!/^core:\S+$/.test(entry.targetCanonicalVideoId)) {
-      throw new Error("Canonical intent target must use stable Core identity")
+      throw new WatchSearchCanonicalIntentConfigurationError(
+        "Canonical intent target must use stable Core identity",
+      )
     }
     if (entry.aliases.length === 0) {
-      throw new Error("Canonical intent entry must declare at least one alias")
+      throw new WatchSearchCanonicalIntentConfigurationError(
+        "Canonical intent entry must declare at least one alias",
+      )
     }
 
     for (const alias of entry.aliases) {
       const normalizedAlias = normalizeWatchSearchTitle(alias).normalized
       if (!normalizedAlias) {
-        throw new Error("Canonical intent alias must be non-empty")
+        throw new WatchSearchCanonicalIntentConfigurationError(
+          "Canonical intent alias must be non-empty",
+        )
       }
-      const key = normalizedAliasKey(normalizedAlias, languageSlug)
+      const key = canonicalIntentKey(normalizedAlias, languageSlug)
       if (intentsByAlias.has(key)) {
-        throw new Error(
+        throw new WatchSearchCanonicalIntentConfigurationError(
           `Canonical intent collision for ${languageSlug}:${normalizedAlias}`,
         )
       }
@@ -60,9 +78,11 @@ export function createWatchSearchCanonicalIntentResolver(
     if (!languageSlug) return null
     const normalizedLanguageSlug = languageSlug.trim().toLocaleLowerCase("en")
     if (!normalizedLanguageSlug) return null
+    const normalizedQuery = normalizeWatchSearchTitle(query).normalized
     return (
-      intentsByAlias.get(normalizedAliasKey(query, normalizedLanguageSlug)) ??
-      null
+      intentsByAlias.get(
+        canonicalIntentKey(normalizedQuery, normalizedLanguageSlug),
+      ) ?? null
     )
   }
 }

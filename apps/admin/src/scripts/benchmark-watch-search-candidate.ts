@@ -4,6 +4,7 @@ import { pathToFileURL } from "node:url"
 import { prisma } from "@/db/client"
 import { TypesenseWatchSearchCandidateGenerationService } from "@/services/typesense-watch-search-candidate-generation"
 import {
+  CandidateQualificationConfigurationError,
   DEFAULT_CANDIDATE_QUALIFICATION_EVIDENCE,
   WATCH_SEARCH_CANDIDATE_REQUIRED_EVIDENCE_GATES,
   candidateQualificationEvidenceReason,
@@ -1014,7 +1015,7 @@ export function parseCandidateBenchmarkEnvironment(
   }
   const normalizedQrelsRevision = qrelsRevision.trim()
   if (normalizedQrelsRevision !== WATCH_SEARCH_COMMON_PHRASE_QRELS_REVISION) {
-    throw new Error(
+    throw new CandidateQualificationConfigurationError(
       `WATCH_SEARCH_CANDIDATE_QRELS_REVISION does not match code-owned revision ${WATCH_SEARCH_COMMON_PHRASE_QRELS_REVISION}`,
     )
   }

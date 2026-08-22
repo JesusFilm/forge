@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest"
 import {
   createWatchSearchCanonicalIntentResolver,
   resolveWatchSearchCanonicalIntent,
+  WatchSearchCanonicalIntentConfigurationError,
 } from "./typesense-watch-search-canonical-intents"
 
 describe("Watch search canonical intents", () => {
@@ -26,7 +27,7 @@ describe("Watch search canonical intents", () => {
   })
 
   it("rejects normalized alias collisions even when entries name different owners", () => {
-    expect(() =>
+    const createResolver = () =>
       createWatchSearchCanonicalIntentResolver([
         {
           languageSlug: "english",
@@ -38,8 +39,9 @@ describe("Watch search canonical intents", () => {
           aliases: ["jesus-for-kids"],
           targetCanonicalVideoId: "core:second",
         },
-      ]),
-    ).toThrow(/collision.*english.*jesus for kids/i)
+      ])
+    expect(createResolver).toThrow(WatchSearchCanonicalIntentConfigurationError)
+    expect(createResolver).toThrow(/collision.*english.*jesus for kids/i)
   })
 
   it.each([

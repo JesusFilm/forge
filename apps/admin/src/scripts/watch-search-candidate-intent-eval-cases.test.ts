@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest"
 import {
   WATCH_SEARCH_COMMON_PHRASE_QRELS_REVISION,
   WATCH_SEARCH_INTENT_EVAL_CASES,
+  WatchSearchCandidateEvalConfigurationError,
   validateWatchSearchCandidateEvalCases,
 } from "./watch-search-candidate-intent-eval-cases"
 
@@ -114,6 +115,8 @@ describe("Watch search Candidate intent evaluation cases", () => {
       ],
     ],
   ] as const)("rejects %s", (_label, cases) => {
-    expect(() => validateWatchSearchCandidateEvalCases(cases)).toThrow()
+    expect(() => validateWatchSearchCandidateEvalCases(cases)).toThrow(
+      WatchSearchCandidateEvalConfigurationError,
+    )
   })
 })

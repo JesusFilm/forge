@@ -290,7 +290,7 @@ describe("paired candidate qualification benchmark", () => {
         TYPESENSE_SEARCH_API_KEY: "search-only-key",
         WATCH_SEARCH_CANDIDATE_QRELS_REVISION: "stale-qrels-v0",
       }),
-    ).toThrow(/does not match code-owned revision/)
+    ).toThrow(CandidateQualificationConfigurationError)
   })
 
   it.each([
@@ -310,6 +310,11 @@ describe("paired candidate qualification benchmark", () => {
       "wrong availability",
       [{ slug: "jesus", availabilityKind: "unavailable" }],
       "expected_slug_availability_mismatch",
+    ],
+    [
+      "wrong availability language",
+      [{ slug: "jesus", availabilityLanguageSlug: "spanish-latin-america" }],
+      "expected_slug_availability_language_mismatch",
     ],
     [
       "missing playback",
@@ -332,7 +337,10 @@ describe("paired candidate qualification benchmark", () => {
             "availabilityKind" in change
               ? change.availabilityKind
               : ("target_audio" as const),
-          languageSlug: "english",
+          languageSlug:
+            "availabilityLanguageSlug" in change
+              ? change.availabilityLanguageSlug
+              : "english",
         },
       }
       const results =
