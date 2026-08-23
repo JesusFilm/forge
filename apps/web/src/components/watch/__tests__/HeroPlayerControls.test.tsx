@@ -75,6 +75,7 @@ afterEach(() => {
     },
   })
   document.body.innerHTML = ""
+  vi.restoreAllMocks()
 })
 
 function renderControlsFixture(player: MuxPlayerRef = makePlayer()) {
@@ -434,6 +435,56 @@ describe("HeroPlayerControls — in-chrome language controls", () => {
     }
   })
 
+  it("reveals the shared tooltip from pointer hover and keyboard focus only", () => {
+    vi.spyOn(window, "matchMedia").mockReturnValue({
+      matches: true,
+    } as MediaQueryList)
+    act(() => {
+      root.render(
+        <ChromeButton
+          onClick={() => {}}
+          ariaLabel="Subtitles: On (EN)"
+          testId="tooltip-reveal-target"
+        >
+          Icon
+        </ChromeButton>,
+      )
+    })
+    const button = container.querySelector(
+      '[data-testid="tooltip-reveal-target"]',
+    ) as HTMLButtonElement
+    const tooltip = button.querySelector('[role="tooltip"]') as HTMLSpanElement
+
+    expect(tooltip.className).toContain("invisible")
+    expect(tooltip.className).toContain("opacity-0")
+
+    act(() => {
+      button.dispatchEvent(new MouseEvent("mouseover", { bubbles: true }))
+    })
+    expect(tooltip.className).toContain("visible")
+    expect(tooltip.className).toContain("opacity-100")
+
+    act(() => {
+      button.dispatchEvent(new MouseEvent("mouseout", { bubbles: true }))
+    })
+    expect(tooltip.className).toContain("invisible")
+
+    vi.spyOn(button, "matches").mockImplementation(
+      (selector) => selector === ":focus-visible",
+    )
+    act(() => {
+      button.dispatchEvent(new FocusEvent("focusin", { bubbles: true }))
+    })
+    expect(tooltip.className).toContain("visible")
+    expect(tooltip.className).toContain("opacity-100")
+
+    act(() => {
+      button.dispatchEvent(new FocusEvent("focusout", { bubbles: true }))
+    })
+    expect(tooltip.className).toContain("invisible")
+    expect(tooltip.className).toContain("opacity-0")
+  })
+
   it.each([
     { align: "end" as const, buttonLeft: 148, tooltipWidth: 200, shift: 20 },
     { align: "start" as const, buttonLeft: 200, tooltipWidth: 150, shift: -38 },
@@ -441,6 +492,9 @@ describe("HeroPlayerControls — in-chrome language controls", () => {
   ])(
     "clamps a $align-aligned tooltip by $shift pixels",
     ({ align, buttonLeft, tooltipWidth, shift }) => {
+      vi.spyOn(window, "matchMedia").mockReturnValue({
+        matches: true,
+      } as MediaQueryList)
       const originalInnerWidth = window.innerWidth
       Object.defineProperty(window, "innerWidth", {
         configurable: true,
