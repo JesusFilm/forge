@@ -225,7 +225,9 @@
   "HeroPlayer": {
     "playWithSound": "இப்போது பார்க்கவும்",
     "tapToUnmute": "ஒலியை இயக்கத் தட்டவும்",
-    "nextEpisode": "அடுத்த அத்தியாயம்"
+    "nextEpisode": "அடுத்த அத்தியாயம்",
+    "audioTranslationCount": "{count, plural, one {# மொழி} other {# மொழிகள்}}",
+    "subtitleCount": "வசனங்கள்: {count, plural, one {# மொழி} other {# மொழிகள்}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "உள்ளடக்கம் ஏற்றப்படுகிறது",

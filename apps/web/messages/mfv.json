@@ -225,7 +225,9 @@
   "HeroPlayer": {
     "playWithSound": "Odja agora",
     "tapToUnmute": "Toká pa pô son",
-    "nextEpisode": "Prósimu Episódiu"
+    "nextEpisode": "Prósimu Episódiu",
+    "audioTranslationCount": "{count, plural, one {# língua} other {# línguas}}",
+    "subtitleCount": "Legendas: {count, plural, one {# língua} other {# línguas}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Ta kariga konteúdu",

@@ -225,7 +225,9 @@
   "HeroPlayer": {
     "playWithSound": "Lukluk naoia",
     "tapToUnmute": "Tap blong onem saon",
-    "nextEpisode": "Nex Episode"
+    "nextEpisode": "Nex Episode",
+    "audioTranslationCount": "{count, plural, one {# lanwis} other {# lanwis}}",
+    "subtitleCount": "Ol Subtitle: {count, plural, one {# lanwis} other {# lanwis}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Stap loadem content",

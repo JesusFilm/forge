@@ -225,7 +225,9 @@
   "HeroPlayer": {
     "playWithSound": "Omes ngii",
     "tapToUnmute": "Meder er a Unmute",
-    "nextEpisode": "Episode el ngii"
+    "nextEpisode": "Episode el ngii",
+    "audioTranslationCount": "{count, plural, one {# tekoi} other {# tekoi}}",
+    "subtitleCount": "Tekoi el mleches: {count, plural, one {# tekoi} other {# tekoi}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Mengil a content",

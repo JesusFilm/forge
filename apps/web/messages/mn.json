@@ -225,7 +225,9 @@
   "HeroPlayer": {
     "playWithSound": "Одоо үзэх",
     "tapToUnmute": "Дууг нээхийн тулд товшино уу",
-    "nextEpisode": "Дараагийн анги"
+    "nextEpisode": "Дараагийн анги",
+    "audioTranslationCount": "{count, plural, one {# хэл} other {# хэл}}",
+    "subtitleCount": "Хадмал: {count, plural, one {# хэл} other {# хэл}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Агуулга ачаалж байна",

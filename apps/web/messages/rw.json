@@ -225,7 +225,9 @@
   "HeroPlayer": {
     "playWithSound": "Reba ubu",
     "tapToUnmute": "Kanda kugira ngo ufungure ijwi",
-    "nextEpisode": "Igice gikurikira"
+    "nextEpisode": "Igice gikurikira",
+    "audioTranslationCount": "{count, plural, one {# rurimi} other {# ndimi}}",
+    "subtitleCount": "Amazina asobanura ibivugwa: {count, plural, one {# rurimi} other {# ndimi}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Birimo gupakirwa",

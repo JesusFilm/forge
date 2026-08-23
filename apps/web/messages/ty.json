@@ -225,7 +225,9 @@
   "HeroPlayer": {
     "playWithSound": "Mata'ita'i i teie nei",
     "tapToUnmute": "A pato no te faaiti i te oro",
-    "nextEpisode": "Episode i muri mai"
+    "nextEpisode": "Episode i muri mai",
+    "audioTranslationCount": "{count, plural, one {# reo} other {# reo}}",
+    "subtitleCount": "Te mau Subtitles: {count, plural, one {# reo} other {# reo}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Te uta nei i te tumu parau",

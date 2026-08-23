@@ -225,7 +225,9 @@
   "HeroPlayer": {
     "playWithSound": "هاڻي ڏسو",
     "tapToUnmute": "آواز چالو ڪرڻ لاءِ ٽيپ ڪريو",
-    "nextEpisode": "اڳيون قسط"
+    "nextEpisode": "اڳيون قسط",
+    "audioTranslationCount": "{count, plural, one {# ٻولي} other {# ٻوليون}}",
+    "subtitleCount": "سبٽائيٽلز: {count, plural, one {# ٻولي} other {# ٻوليون}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "مواد لوڊ ٿي رهيو آهي",

@@ -225,7 +225,9 @@
   "HeroPlayer": {
     "playWithSound": "Titz'et wakami",
     "tapToUnmute": "Tich'apon richin titzolin q'oxom",
-    "nextEpisode": "Episodio jun chik"
+    "nextEpisode": "Episodio jun chik",
+    "audioTranslationCount": "{count, plural, one {# ch'ab'äl} other {# taq ch'ab'äl}}",
+    "subtitleCount": "Subtítulos: {count, plural, one {# ch'ab'äl} other {# taq ch'ab'äl}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Nuk'ut contenido",

@@ -225,7 +225,9 @@
   "HeroPlayer": {
     "playWithSound": "Maanna takuguk",
     "tapToUnmute": "Nipaa aammaarlugu tuuguk",
-    "nextEpisode": "Immikkoortoq tullinnguuttoq"
+    "nextEpisode": "Immikkoortoq tullinnguuttoq",
+    "audioTranslationCount": "{count, plural, one {# oqaatsi} other {# oqaatsit}}",
+    "subtitleCount": "Subtitlet: {count, plural, one {# oqaatsi} other {# oqaatsit}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Imarisat ammarneqartut",

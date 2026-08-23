@@ -225,7 +225,9 @@
   "HeroPlayer": {
     "playWithSound": "Horfa núna",
     "tapToUnmute": "Pikkaðu til að kveikja á hljóði",
-    "nextEpisode": "Næsti þáttur"
+    "nextEpisode": "Næsti þáttur",
+    "audioTranslationCount": "{count, plural, one {# tungumál} other {# tungumál}}",
+    "subtitleCount": "Textar: {count, plural, one {# tungumál} other {# tungumál}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Hleð efni",

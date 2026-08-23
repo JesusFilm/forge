@@ -225,7 +225,9 @@
   "HeroPlayer": {
     "playWithSound": "СЫ ТЕ",
     "tapToUnmute": "Тыкснемс тонгань пазомс",
-    "nextEpisode": "Сиведьме episode"
+    "nextEpisode": "Сиведьме episode",
+    "audioTranslationCount": "{count, plural, one {# кель} other {# кельть}}",
+    "subtitleCount": "Субтитрт: {count, plural, one {# кель} other {# кельть}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Content-ть лофтозь",

@@ -225,7 +225,9 @@
   "HeroPlayer": {
     "playWithSound": "ئێستا ببینە",
     "tapToUnmute": "دەست لێبدە بۆ لابردنی بێدەنگی",
-    "nextEpisode": "پێشەکی داهاتوو"
+    "nextEpisode": "پێشەکی داهاتوو",
+    "audioTranslationCount": "{count, plural, one {# زمان} other {# زمان}}",
+    "subtitleCount": "ژێرنوسین: {count, plural, one {# زمان} other {# زمان}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "ناوەڕۆک بار دەکرێت",

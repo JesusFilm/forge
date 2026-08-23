@@ -225,7 +225,9 @@
   "HeroPlayer": {
     "playWithSound": "Bogela bjale",
     "tapToUnmute": "Kgotla go buša modumo",
-    "nextEpisode": "Episode e latelago"
+    "nextEpisode": "Episode e latelago",
+    "audioTranslationCount": "{count, plural, one {leleme le 1} other {maleme a #}}",
+    "subtitleCount": "Dihlogwana: {count, plural, one {leleme le 1} other {maleme a #}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "E laiša dikagare",

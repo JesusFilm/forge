@@ -225,7 +225,9 @@
   "HeroPlayer": {
     "playWithSound": "Ara issa",
     "tapToUnmute": "Taptap biex terġa' tixgħel il-ħoss",
-    "nextEpisode": "Episodju li jmiss"
+    "nextEpisode": "Episodju li jmiss",
+    "audioTranslationCount": "{count, plural, one {# lingwa} other {# lingwi}}",
+    "subtitleCount": "Sottotitli: {count, plural, one {# lingwa} other {# lingwi}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Qed jitgħabba l-kontenut",

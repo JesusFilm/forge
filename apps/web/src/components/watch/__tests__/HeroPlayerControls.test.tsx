@@ -123,6 +123,7 @@ describe("HeroPlayerControls — in-chrome language controls", () => {
     onLanguageClick?: () => void
     languageCode?: string | null
     subtitleLanguageCode?: string | null
+    subtitleEnabled?: boolean
   }) {
     const wrapperEl = document.createElement("div")
     const overlayAnchor = document.createElement("div")
@@ -150,6 +151,7 @@ describe("HeroPlayerControls — in-chrome language controls", () => {
           onLanguageClick={props.onLanguageClick}
           languageCode={props.languageCode}
           subtitleLanguageCode={props.subtitleLanguageCode}
+          subtitleEnabled={props.subtitleEnabled}
         />,
       )
     })
@@ -302,35 +304,88 @@ describe("HeroPlayerControls — in-chrome language controls", () => {
     expect(timeVariants[1]?.className).toContain("hidden md:inline")
   })
 
-  it("shows the subtitle code only when it differs from audio", () => {
-    const overlayAnchor = renderWith({
-      showLanguageButton: true,
-      showSubtitleButton: true,
-      onLanguageClick: () => {},
-      languageCode: "EN",
-      subtitleLanguageCode: "ES",
-    })
-    expect(
-      overlayAnchor.querySelector(
-        '[data-testid="hero-chrome-subtitle-language-code"]',
-      )?.textContent,
-    ).toBe("ES")
-
-    act(() => {
-      root.render(<></>)
-    })
-    const matchingAnchor = renderWith({
-      showLanguageButton: true,
-      showSubtitleButton: true,
-      onLanguageClick: () => {},
-      languageCode: "EN",
+  it.each([
+    {
+      subtitleLanguageCode: null,
+      subtitleEnabled: false,
+      visibleState: null,
+      announcedState: "Off",
+    },
+    {
+      subtitleLanguageCode: null,
+      subtitleEnabled: true,
+      visibleState: "On",
+      announcedState: "On",
+    },
+    {
       subtitleLanguageCode: "EN",
+      subtitleEnabled: true,
+      visibleState: "EN",
+      announcedState: "EN",
+    },
+    {
+      subtitleLanguageCode: "ES",
+      subtitleEnabled: true,
+      visibleState: "ES",
+      announcedState: "ES",
+    },
+  ])(
+    "shows $visibleState and announces subtitle state $announcedState",
+    ({
+      subtitleLanguageCode,
+      subtitleEnabled,
+      visibleState,
+      announcedState,
+    }) => {
+      const overlayAnchor = renderWith({
+        showLanguageButton: true,
+        showSubtitleButton: true,
+        onLanguageClick: () => {},
+        languageCode: "EN",
+        subtitleLanguageCode,
+        subtitleEnabled,
+      })
+      const subtitleButton = overlayAnchor.querySelector(
+        '[data-testid="hero-chrome-subtitles"]',
+      )
+      expect(
+        subtitleButton?.querySelector(
+          '[data-testid="hero-chrome-subtitle-language-code"]',
+        )?.textContent ?? null,
+      ).toBe(visibleState)
+      expect(subtitleButton?.getAttribute("aria-label")).toBe(
+        `Subtitles · ${announcedState}`,
+      )
+      expect(
+        subtitleButton?.querySelector('[role="tooltip"]')?.textContent,
+      ).toBe(`Subtitles · ${announcedState}`)
+    },
+  )
+
+  it("dims and explains subtitles when no tracks are available", async () => {
+    const onLanguageClick = vi.fn()
+    const overlayAnchor = renderWith({
+      showSubtitleButton: false,
+      onLanguageClick,
     })
+    const subtitleButton = overlayAnchor.querySelector(
+      '[data-testid="hero-chrome-subtitles"]',
+    ) as HTMLButtonElement
+
+    expect(subtitleButton.getAttribute("aria-disabled")).toBe("true")
+    expect(subtitleButton.getAttribute("aria-label")).toBe(
+      "Subtitles · Not available",
+    )
     expect(
-      matchingAnchor.querySelector(
+      subtitleButton.querySelector(
         '[data-testid="hero-chrome-subtitle-language-code"]',
       ),
     ).toBeNull()
+
+    await act(async () => {
+      subtitleButton.click()
+    })
+    expect(onLanguageClick).not.toHaveBeenCalled()
   })
 
   it("opens the combined modal from the subtitles control", async () => {

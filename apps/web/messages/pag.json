@@ -225,7 +225,9 @@
   "HeroPlayer": {
     "playWithSound": "Panooren na ngatan",
     "tapToUnmute": "Pinduten para ibalik so tunog",
-    "nextEpisode": "Susundan a Episode"
+    "nextEpisode": "Susundan a Episode",
+    "audioTranslationCount": "{count, plural, one {# lengguahe} other {# a lengguahe}}",
+    "subtitleCount": "Mga Subtitle: {count, plural, one {# lengguahe} other {# a lengguahe}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Ilo-load so content",

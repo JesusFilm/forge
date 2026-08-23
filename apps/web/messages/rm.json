@@ -225,7 +225,9 @@
   "HeroPlayer": {
     "playWithSound": "Guardar ussa",
     "tapToUnmute": "Tappa per activar il tun",
-    "nextEpisode": "Proxima episoda"
+    "nextEpisode": "Proxima episoda",
+    "audioTranslationCount": "{count, plural, one {# lingua} other {# linguas}}",
+    "subtitleCount": "Suttitels: {count, plural, one {# lingua} other {# linguas}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Chargiament dal cuntegn",

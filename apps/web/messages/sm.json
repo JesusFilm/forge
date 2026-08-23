@@ -225,7 +225,9 @@
   "HeroPlayer": {
     "playWithSound": "Matamata nei",
     "tapToUnmute": "Pa'i e tatala le leo",
-    "nextEpisode": "Episode e soso'o ai"
+    "nextEpisode": "Episode e soso'o ai",
+    "audioTranslationCount": "{count, plural, one {# gagana} other {# gagana}}",
+    "subtitleCount": "Tusitusiga o le Leo: {count, plural, one {# gagana} other {# gagana}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "O lo'o utaina le anotusi",

@@ -225,7 +225,9 @@
   "HeroPlayer": {
     "playWithSound": "Regarder maintenant",
     "tapToUnmute": "Touchez pour réactiver le son",
-    "nextEpisode": "Épisode suivant"
+    "nextEpisode": "Épisode suivant",
+    "audioTranslationCount": "{count, plural, one {# lak} other {# lakci}}",
+    "subtitleCount": "Bíncii ga widewo: {count, plural, one {# lak} other {# lakci}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Chargement du contenu",

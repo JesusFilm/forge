@@ -225,7 +225,9 @@
   "HeroPlayer": {
     "playWithSound": "Onerani tsopano",
     "tapToUnmute": "Dinani kuti mubwezeretse mawu",
-    "nextEpisode": "Gawo lotsatira"
+    "nextEpisode": "Gawo lotsatira",
+    "audioTranslationCount": "{count, plural, one {# chinenero} other {# zinenero}}",
+    "subtitleCount": "Malembalo: {count, plural, one {# chinenero} other {# zinenero}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Kutsegula zomwe zili",

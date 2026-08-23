@@ -225,7 +225,9 @@
   "HeroPlayer": {
     "playWithSound": "Seet léegi",
     "tapToUnmute": "Tappe ngir joxaat kàddu",
-    "nextEpisode": "Episode bi ci topp"
+    "nextEpisode": "Episode bi ci topp",
+    "audioTranslationCount": "{count, plural, one {# làkk} other {# làkk yi}}",
+    "subtitleCount": "Mbindi tekki yi: {count, plural, one {# làkk} other {# làkk yi}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Yebum xibaar bi",

@@ -126,6 +126,8 @@ describe("SeriesHero — trailer mode (AE1)", () => {
           hasSubtitleOptions
           subtitleLanguageCode="RU"
           subtitleVttSrc="/watch/api/download?subtitle=russian"
+          audioLanguageCountLabel="2 languages"
+          subtitleLanguageCountLabel="57 languages"
         />,
       )
     })
@@ -142,6 +144,10 @@ describe("SeriesHero — trailer mode (AE1)", () => {
     expect(heroPlayerProps?.subtitleLanguageCode).toBe("RU")
     expect(heroPlayerProps?.subtitleVttSrc).toBe(
       "/watch/api/download?subtitle=russian",
+    )
+    expect(heroPlayerProps?.block.audioLanguageCountLabel).toBe("2 languages")
+    expect(heroPlayerProps?.block.subtitleLanguageCountLabel).toBe(
+      "57 languages",
     )
   })
 })
