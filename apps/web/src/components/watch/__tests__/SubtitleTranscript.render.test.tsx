@@ -19,6 +19,7 @@ import type { MuxPlayerRef } from "@forge/video-player"
 
 import { SubtitleTranscript } from "@/components/watch/SubtitleTranscript"
 import type { WatchSubtitle } from "@/lib/content"
+import { formatCompactTranscript } from "@/lib/subtitle-transcript"
 
 vi.mock("next-intl", () => ({
   useTranslations:
@@ -60,7 +61,10 @@ const serverCues = [
   { start: 9, end: 12, text: "Second server-rendered cue." },
   { start: 65, end: 70, text: "Third server-rendered cue." },
 ]
-const serverCompactText = serverCues.map(({ text }) => text).join("\n\n")
+// Derived from the production formatter, not a hand-written join: a fixture
+// that encodes a retired format makes every render test exercise a string
+// production no longer emits.
+const serverCompactText = formatCompactTranscript(serverCues)
 const serverVtt = `WEBVTT
 
 00:00:05.000 --> 00:00:08.000
@@ -201,8 +205,9 @@ describe("SubtitleTranscript rendering", () => {
       container.querySelector('[data-testid="watch-subtitle-cues"]'),
     ).toBeNull()
     expect(container.querySelector("time")).toBeNull()
-    // The header chevron plus the collapsed block's own expand affordance.
-    expect(container.querySelectorAll("button")).toHaveLength(2)
+    // Only the header chevron: the collapsed block is a plain, non-interactive
+    // text container again, so nothing focusable unmounts on expansion.
+    expect(container.querySelectorAll("button")).toHaveLength(1)
     expect(fetchMock).not.toHaveBeenCalled()
   })
 
@@ -215,7 +220,7 @@ describe("SubtitleTranscript rendering", () => {
     expect(compactText).not.toBeNull()
     expect(compactText?.className).toContain("overflow-hidden")
     expect(compactText?.className).toContain(
-      "max-h-[max(8rem,calc(60dvh_-_15rem))]",
+      "max-h-[max(6rem,calc(60svh_-_15rem))]",
     )
     expect(compactText?.className).toContain("[mask-image:linear-gradient(")
     expect(compactText?.className).toContain(
@@ -280,9 +285,14 @@ describe("SubtitleTranscript rendering", () => {
 
     const expandBlock = container.querySelector(
       '[data-testid="watch-subtitle-compact-expand"]',
-    ) as HTMLButtonElement | null
+    ) as HTMLElement | null
     expect(expandBlock).not.toBeNull()
-    expect(expandBlock?.getAttribute("aria-expanded")).toBe("false")
+    // Mouse-only surface: not a button, not focusable, not named for AT. The
+    // header chevron owns the accessible disclosure.
+    expect(expandBlock?.tagName).toBe("DIV")
+    expect(expandBlock?.getAttribute("role")).toBeNull()
+    expect(expandBlock?.getAttribute("tabindex")).toBeNull()
+    expect(expandBlock?.getAttribute("aria-label")).toBeNull()
 
     await act(async () => {
       expandBlock!.click()
@@ -301,11 +311,139 @@ describe("SubtitleTranscript rendering", () => {
     expect(getTranscriptToggle().getAttribute("aria-expanded")).toBe("true")
   })
 
+  it("server-renders the complete transcript text for crawlers, untruncated", () => {
+    // The collapsed teaser is the ONLY transcript text in the initial HTML.
+    // Search and AI crawlers read it from the markup, so the clamp must hide
+    // overflow visually while leaving every character in the DOM. A truncating
+    // "optimization" would pass every other test in this file.
+    const cues = Array.from({ length: 400 }, (_, index) => ({
+      start: index * 4,
+      end: index * 4 + 3,
+      text: `Cue ${index + 1} carries meaningful indexable words.`,
+    }))
+    const full = formatCompactTranscript(cues)
+
+    renderTranscript({ componentKey: "crawlable", compactText: full })
+
+    const node = container.querySelector(
+      '[data-testid="watch-subtitle-compact-text"]',
+    )
+    expect(node?.textContent).toBe(full)
+    expect(node?.textContent).toContain("Cue 1 ")
+    expect(node?.textContent).toContain("Cue 400 ")
+    // Present as real text, not injected by a script tag or a JS-only path.
+    expect(node?.querySelectorAll("script")).toHaveLength(0)
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it("keeps the fade when ResizeObserver is unavailable, and re-measures on resize", () => {
+    // apps/web/vitest.setup.ts installs a global MockResizeObserver, so this
+    // branch is otherwise unreachable in the whole suite even though it is the
+    // only measurement path on a browser without ResizeObserver.
+    vi.stubGlobal("ResizeObserver", undefined)
+    const addSpy = vi.spyOn(window, "addEventListener")
+
+    renderTranscript()
+
+    const compactText = container.querySelector(
+      '[data-testid="watch-subtitle-compact-text"]',
+    ) as HTMLElement
+    expect(compactText.className).toContain("[mask-image:linear-gradient(")
+    expect(
+      addSpy.mock.calls.filter(([event]) => event === "resize"),
+    ).toHaveLength(1)
+  })
+
+  it("does not expand on the second click of a double-click", async () => {
+    // Expanding mounts the cue list synchronously once cues are cached, so an
+    // unguarded second click can land on a cue button and seek/unmute/play.
+    renderTranscript()
+    const block = () =>
+      container.querySelector(
+        '[data-testid="watch-subtitle-compact-expand"]',
+      ) as HTMLElement | null
+
+    const target = block()!
+    await act(async () => {
+      target.dispatchEvent(
+        new MouseEvent("click", { bubbles: true, detail: 2 }),
+      )
+    })
+
+    expect(block()).not.toBeNull()
+    expect(fetchMock).not.toHaveBeenCalled()
+    expect(getTranscriptToggle().getAttribute("aria-expanded")).toBe("false")
+  })
+
+  it("does not expand when the click ends a text selection", async () => {
+    renderTranscript()
+    const selection = { isCollapsed: false } as Selection
+    vi.spyOn(window, "getSelection").mockReturnValue(selection)
+
+    await act(async () => {
+      ;(
+        container.querySelector(
+          '[data-testid="watch-subtitle-compact-expand"]',
+        ) as HTMLElement
+      ).click()
+    })
+
+    expect(
+      container.querySelector('[data-testid="watch-subtitle-compact-text"]'),
+    ).not.toBeNull()
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it("puts nothing focusable inside the collapsed block", () => {
+    // This is the property that prevents the focus-stranding bug: if the
+    // collapsed surface owns a focusable element, expanding unmounts it and
+    // focus falls to <body>. Verified previously by hand: with the block as a
+    // <button>, document.activeElement was BODY after activation.
+    renderTranscript()
+
+    const block = container.querySelector(
+      '[data-testid="watch-subtitle-compact-expand"]',
+    ) as HTMLElement
+    expect(
+      block.querySelectorAll(
+        'button, a[href], input, select, textarea, [tabindex], [contenteditable="true"]',
+      ),
+    ).toHaveLength(0)
+    expect(block.matches("button, a[href], [tabindex]")).toBe(false)
+  })
+
+  it("keeps focus on a control that survives expansion", async () => {
+    // The previous implementation made the collapsed block a button; activating
+    // it unmounted the focused element and dropped focus to <body>, stranding
+    // keyboard and screen-reader users at the top of the document.
+    renderTranscript()
+    const toggle = getTranscriptToggle()
+    toggle.focus()
+    expect(document.activeElement).toBe(toggle)
+
+    await act(async () => {
+      toggle.click()
+    })
+    await act(async () => {
+      await vi.waitFor(() => {
+        expect(
+          container.querySelector('[data-testid="watch-subtitle-cues"]'),
+        ).not.toBeNull()
+      })
+    })
+
+    expect(document.activeElement).toBe(getTranscriptToggle())
+    expect(document.activeElement).not.toBe(document.body)
+  })
+
   it("keeps the collapsed element count bounded for a long transcript", () => {
-    const longTranscript = Array.from(
-      { length: 500 },
-      (_, index) => `Cue ${index + 1}`,
-    ).join("\n\n")
+    const longTranscript = formatCompactTranscript(
+      Array.from({ length: 500 }, (_, index) => ({
+        start: index,
+        end: index + 1,
+        text: `Cue ${index + 1}`,
+      })),
+    )
 
     renderTranscript({ componentKey: "short" })
 
@@ -324,7 +462,7 @@ describe("SubtitleTranscript rendering", () => {
         ?.textContent,
     ).toContain("Cue 500")
     expect(transcript?.querySelectorAll("time")).toHaveLength(0)
-    expect(transcript?.querySelectorAll("button")).toHaveLength(2)
+    expect(transcript?.querySelectorAll("button")).toHaveLength(1)
   })
 
   it("does not load interactive transcript data when the collapsed audio source changes", () => {
@@ -564,6 +702,48 @@ describe("SubtitleTranscript rendering", () => {
       top: 0,
       behavior: "smooth",
     })
+  })
+
+  it("does not seek when a cue click is part of a multi-click gesture", async () => {
+    // Confirmed in Chrome before this guard existed: double-clicking the
+    // collapsed teaser expanded the transcript, and 150ms later the second
+    // click landed on a cue button that had mounted under the pointer --
+    // seeking, unmuting and playing. Reproduced at the cue button because that
+    // is where the errant click actually lands; a guard on the collapsed
+    // surface alone does not stop it.
+    const player = document.createElement("video")
+    const playMock = vi.fn().mockResolvedValue(undefined)
+    Object.defineProperty(player, "play", {
+      configurable: true,
+      value: playMock,
+    })
+    const playerRef = { current: player as unknown as MuxPlayerRef }
+    const scrollToSpy = vi
+      .spyOn(window, "scrollTo")
+      .mockImplementation(() => undefined)
+
+    renderTranscript({ playerRef })
+    await toggleTranscript()
+
+    const cue = container.querySelectorAll(
+      '[data-testid="watch-subtitle-cues"] li > button',
+    )[1] as HTMLButtonElement
+
+    act(() => {
+      cue.dispatchEvent(new MouseEvent("click", { bubbles: true, detail: 2 }))
+    })
+
+    expect(player.currentTime).toBe(0)
+    expect(player.muted).toBe(false)
+    expect(playMock).not.toHaveBeenCalled()
+    expect(scrollToSpy).not.toHaveBeenCalled()
+
+    // A fresh single click still seeks.
+    act(() => {
+      cue.dispatchEvent(new MouseEvent("click", { bubbles: true, detail: 1 }))
+    })
+    expect(player.currentTime).toBe(serverCues[1]!.start)
+    expect(playMock).toHaveBeenCalledOnce()
   })
 
   it("keeps compact text available when lazy cue loading fails", async () => {

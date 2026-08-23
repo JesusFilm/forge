@@ -8,9 +8,19 @@ export type InitialSubtitleTranscript = {
 } | null
 
 /**
- * Collapsed-transcript teaser text. Cues are joined with a SINGLE newline so
- * the clamped block reads as tight continuous prose; a blank line per cue
- * spent half the clamp on whitespace and fit barely a handful of lines.
+ * Collapsed-transcript teaser text. Cues are joined with a SINGLE newline, so
+ * with the collapsed block's `whitespace-pre-line` each cue renders on its own
+ * line — one line per cue, NOT reflowed prose. A blank line per cue (the
+ * original format) spent half the clamped height on whitespace.
+ *
+ * Superseded 2026-08-22: the blank-line separation required by
+ * docs/plans/2026-07-17-001-perf-watch-compact-transcript-plan.md R1 and by
+ * feat-266 predates the height clamp, which made the whitespace unaffordable.
+ *
+ * This string is the ONLY transcript text in the server-rendered HTML, so it
+ * must stay complete — never truncate it to fit the clamp. Search and AI
+ * crawlers read it from the initial markup; the clamp hides the overflow
+ * visually while leaving every character in the DOM.
  */
 export function formatCompactTranscript(cues: SubtitleCue[]): string {
   return cues.map(({ text }) => text).join("\n")
