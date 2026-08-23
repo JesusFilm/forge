@@ -274,6 +274,27 @@ interaction path is still active. The regression test now asserts hidden at
 rest, hover reveal, leave hide, focus reveal, and blur hide rather than only
 checking that class tokens exist.
 
+Production verification of PR #2010's squash commit
+`bc41d384b2a9bba2d61ca13055c600da30525636` showed that React reached the open
+state and replaced the closed utility classes, but the deployed CSS transition
+still retained computed `visibility: hidden` and `opacity: 0`. Final corrective
+PR #2011 therefore keeps the explicit interaction state but projects
+visibility and opacity directly into the tooltip's inline style, without a
+visibility/opacity transition. This removes both utility-cascade and
+transition-state ambiguity.
+
+Railway deployed PR #2011 as squash commit
+`b1629ced1439540803b7180443bb3ec91ebfa8af`. A cache-busted production Watch
+session verified `hidden` / `0` at rest, `visible` / `1` on fine-pointer hover,
+`hidden` / `0` after leave, and `visible` / `1` on keyboard focus. Focus kept
+the player chrome and tooltip visible beyond the idle timeout; moving focus to
+Play hid the subtitle tooltip and revealed Play's tooltip. The subtitle copy
+remained `Subtitles: On (AF)`, one line, and viewport-contained. Datadog RUM
+confirmed the exact release, a 568 ms page load, CLS 0, zero long tasks, and 69
+resources. The QA session also encountered a React hydration error belonging
+to an existing Datadog issue first seen on an older release; it is residual
+site evidence rather than a regression attributed to this change.
+
 ## Prevention
 
 - Server-rendered localized values that participate in hydration should have a
@@ -287,7 +308,8 @@ checking that class tokens exist.
   unavailable runtime metrics explicitly.
 - For icon-only player controls, derive the presentational tooltip from the
   accessible action label, keep it hidden at rest, and test every dynamic state
-  transition rather than asserting styling tokens alone.
+  transition. Production acceptance must inspect computed visibility and
+  opacity rather than treating class-token replacement as rendered proof.
 - Treat tooltip geometry and chrome lifetime as interaction state: measure only
   while open, remeasure live labels, contain the box at compact widths, and
   prevent idle hiding while keyboard focus remains within the controls.
@@ -297,6 +319,7 @@ checking that class tokens exist.
 - [Linear FGE-92](https://linear.app/jesus-film-project/issue/FGE-92)
 - [Merged tooltip consistency PR #2008](https://github.com/JesusFilm/forge/pull/2008)
 - [Production reveal corrective PR #2010](https://github.com/JesusFilm/forge/pull/2010)
+- [Deterministic visibility corrective PR #2011](https://github.com/JesusFilm/forge/pull/2011)
 - [Watch subtitle VTT delivery must remain public and same-origin](watch-subtitle-vtt-proxy-account-gate.md)
 - [Watch caption defaults must be same-audio-language](watch-caption-language-availability-20260615.md)
 - [Frontend change page-load performance verification](../conventions/frontend-change-page-load-performance-verification.md)
