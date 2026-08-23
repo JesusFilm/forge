@@ -225,7 +225,9 @@
   "HeroPlayer": {
     "playWithSound": "지금 보기",
     "tapToUnmute": "음소거 해제",
-    "nextEpisode": "다음 에피소드"
+    "nextEpisode": "다음 에피소드",
+    "audioTranslationCount": "{count, plural, one {#개 언어} other {#개 언어}}",
+    "subtitleCount": "자막: {count, plural, one {#개 언어} other {#개 언어}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "콘텐츠 불러오는 중",

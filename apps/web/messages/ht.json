@@ -225,7 +225,9 @@
   "HeroPlayer": {
     "playWithSound": "Gade kounye a",
     "tapToUnmute": "Tape pou aktive son",
-    "nextEpisode": "Pwochen epizòd"
+    "nextEpisode": "Pwochen epizòd",
+    "audioTranslationCount": "{count, plural, one {# lang} other {# lang}}",
+    "subtitleCount": "Sous-titre: {count, plural, one {# lang} other {# lang}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Ap chaje kontni",

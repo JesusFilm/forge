@@ -40,11 +40,22 @@ export function MuxHoverPreview({
     if (!activationTarget) return
 
     const activate = () => setActivated(true)
+    const activateFromHover = (event: PointerEvent) => {
+      if (
+        (!("pointerType" in event) ||
+          event.pointerType === "mouse" ||
+          event.pointerType === "pen") &&
+        window.matchMedia?.("(any-hover: hover) and (any-pointer: fine)")
+          .matches
+      ) {
+        activate()
+      }
+    }
     activationTarget.addEventListener("focus", activate)
-    activationTarget.addEventListener("pointerenter", activate)
+    activationTarget.addEventListener("pointerenter", activateFromHover)
     return () => {
       activationTarget.removeEventListener("focus", activate)
-      activationTarget.removeEventListener("pointerenter", activate)
+      activationTarget.removeEventListener("pointerenter", activateFromHover)
     }
   }, [activated, previewUrl])
 
@@ -60,7 +71,6 @@ export function MuxHoverPreview({
         "pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100 group-focus-visible:opacity-100 group-focus-within:opacity-100",
         className,
       )}
-      onPointerEnter={() => setActivated(true)}
     >
       {activated ? (
         <Image

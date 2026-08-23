@@ -225,7 +225,9 @@
   "HeroPlayer": {
     "playWithSound": "Bukela ngoku",
     "tapToUnmute": "Chukumisa ukuze ususe ukuthulisa",
-    "nextEpisode": "Isiqendu esilandelayo"
+    "nextEpisode": "Isiqendu esilandelayo",
+    "audioTranslationCount": "{count, plural, one {# ulwimi} other {# iilwimi}}",
+    "subtitleCount": "IMibhalo engezantsi: {count, plural, one {# ulwimi} other {# iilwimi}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Kulayishwa umxholo",

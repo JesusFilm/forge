@@ -240,7 +240,9 @@ export const MediaCollectionBlockSchema = z
     categoryLabel: z.string().optional(),
     variant: z.enum(["carousel", "grid", "collection", "hero", "player"]),
     thumbnailOrientation: z.enum(["vertical", "horizontal"]).optional(),
-    itemsSource: z.enum(["manual", "routeVideoChildren"]).default("manual"),
+    itemsSource: z
+      .enum(["manual", "routeVideoChildren", "dynamicCollections"])
+      .default("manual"),
     title: z.string().optional(),
     subtitle: z.string().optional(),
     description: z.string().optional(),
@@ -248,6 +250,10 @@ export const MediaCollectionBlockSchema = z
     ctaLabel: z.string().optional(),
     showItemNumbers: z.boolean().default(false),
     footerText: z.string().optional(),
+    excludedVideoIds: z
+      .array(z.string().trim().min(1).max(200))
+      .max(200)
+      .default([]),
     items: z.array(MediaCollectionItemSchema).default([]),
   })
   .strict()

@@ -225,7 +225,9 @@
   "HeroPlayer": {
     "playWithSound": "Tonton sekarang",
     "tapToUnmute": "Ketik untuk nyahbisu",
-    "nextEpisode": "Episod seterusnya"
+    "nextEpisode": "Episod seterusnya",
+    "audioTranslationCount": "{count, plural, one {# bahasa} other {# bahasa}}",
+    "subtitleCount": "Sarikata: {count, plural, one {# bahasa} other {# bahasa}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Memuatkan kandungan",

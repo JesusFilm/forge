@@ -225,7 +225,9 @@
   "HeroPlayer": {
     "playWithSound": "Raba ubu",
     "tapToUnmute": "Kanda kugira ngo ufungure ijwi",
-    "nextEpisode": "Igice gikurikira"
+    "nextEpisode": "Igice gikurikira",
+    "audioTranslationCount": "{count, plural, one {# ururimi} other {# indimi}}",
+    "subtitleCount": "Ivyandikishijwe: {count, plural, one {# ururimi} other {# indimi}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Kurikora ibirimwo",

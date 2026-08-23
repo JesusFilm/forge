@@ -225,7 +225,9 @@
   "HeroPlayer": {
     "playWithSound": "Wone léegi",
     "tapToUnmute": "Daatal ngir wone baat",
-    "nextEpisode": "Episode bi topp"
+    "nextEpisode": "Episode bi topp",
+    "audioTranslationCount": "{count, plural, one {# làkk} other {# làkk yi}}",
+    "subtitleCount": "Subtitles yi: {count, plural, one {# làkk} other {# làkk yi}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Dañuy yeb xibaar bi",

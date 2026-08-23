@@ -225,7 +225,9 @@
   "HeroPlayer": {
     "playWithSound": "Epytáke ko'ág̃a",
     "tapToUnmute": "Etoque hag̃ua emohendatyrõ hag̃ua ayvu",
-    "nextEpisode": "Episodio oútava"
+    "nextEpisode": "Episodio oútava",
+    "audioTranslationCount": "{count, plural, one {# ñe'ẽ} other {# ñe'ẽnguéra}}",
+    "subtitleCount": "Subtítulos: {count, plural, one {# ñe'ẽ} other {# ñe'ẽnguéra}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Oñemyanyhẽ contenido",

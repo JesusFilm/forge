@@ -225,7 +225,9 @@
   "HeroPlayer": {
     "playWithSound": "ดูตอนนี้",
     "tapToUnmute": "เปิดเสียง",
-    "nextEpisode": "ตอนถัดไป"
+    "nextEpisode": "ตอนถัดไป",
+    "audioTranslationCount": "{count, plural, one {# ภาษา} other {# ภาษา}}",
+    "subtitleCount": "คำบรรยาย: {count, plural, one {# ภาษา} other {# ภาษา}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "กำลังโหลดเนื้อหา",

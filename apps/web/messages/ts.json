@@ -225,7 +225,9 @@
   "HeroPlayer": {
     "playWithSound": "Languta sweswi",
     "tapToUnmute": "Khumba leswaku u pfula mpfumawulo",
-    "nextEpisode": "Xiphemu lexi landzelaka"
+    "nextEpisode": "Xiphemu lexi landzelaka",
+    "audioTranslationCount": "{count, plural, one {# ririmi} other {# tindzimi}}",
+    "subtitleCount": "Switsalwana: {count, plural, one {# ririmi} other {# tindzimi}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Ku layicha swilo",

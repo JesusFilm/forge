@@ -225,7 +225,9 @@
   "HeroPlayer": {
     "playWithSound": "Tazama sasa",
     "tapToUnmute": "Gusa ili kuwasha sauti",
-    "nextEpisode": "Kipindi Kifuatacho"
+    "nextEpisode": "Kipindi Kifuatacho",
+    "audioTranslationCount": "{count, plural, one {# lugha} other {# lugha}}",
+    "subtitleCount": "Manukuu: {count, plural, one {# lugha} other {# lugha}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Inapakia maudhui",

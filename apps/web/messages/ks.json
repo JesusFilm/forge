@@ -225,7 +225,9 @@
   "HeroPlayer": {
     "playWithSound": "ہنٛز دیکھیو",
     "tapToUnmute": "آواز آن کرنہٕ لئی ٹیپ کرو",
-    "nextEpisode": "اگلی قسط"
+    "nextEpisode": "اگلی قسط",
+    "audioTranslationCount": "{count, plural, one {# زبان} other {# زبانہٕ}}",
+    "subtitleCount": "سب ٹائٹلز: {count, plural, one {# زبان} other {# زبانہٕ}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "مواد لوڈ کران",

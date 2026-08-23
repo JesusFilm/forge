@@ -225,7 +225,9 @@
   "HeroPlayer": {
     "playWithSound": "Nu kieken",
     "tapToUnmute": "Tipp foar't Still-ofmaken",
-    "nextEpisode": "Neiste Afleerung"
+    "nextEpisode": "Neiste Afleerung",
+    "audioTranslationCount": "{count, plural, one {# språk} other {# spraken}}",
+    "subtitleCount": "Ündertitel: {count, plural, one {# språk} other {# spraken}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Iirkunghaid wurdt laadt",

@@ -88,6 +88,7 @@ export function HeroPlayerControls({
   onLanguageClick,
   languageCode,
   subtitleLanguageCode,
+  subtitleEnabled = subtitleLanguageCode != null,
   showLanguageButton,
   showSubtitleButton,
   onVisibilityChange,
@@ -113,6 +114,8 @@ export function HeroPlayerControls({
   languageCode?: string | null
   /** Active subtitle language code; null when subtitles are disabled. */
   subtitleLanguageCode?: string | null
+  /** Whether a subtitle track is active, including tracks without a display code. */
+  subtitleEnabled?: boolean
   /**
    * Whether to render the in-chrome audio button. The parent applies the
    * same gate it uses for the top-right globe (>= 2 playable variants AND
@@ -180,11 +183,14 @@ export function HeroPlayerControls({
       : chromeVisibility === "dim"
         ? "opacity-100"
         : "opacity-0"
-  const showSubtitleLanguageCode = Boolean(
-    languageCode &&
-    subtitleLanguageCode &&
-    subtitleLanguageCode !== languageCode,
-  )
+  const subtitleStateLabel = !showSubtitleButton
+    ? languagePickerT("notAvailable")
+    : (subtitleLanguageCode ??
+      languagePickerT(subtitleEnabled ? "toggleOn" : "toggleOff"))
+  const subtitleTooltip = `${languagePickerT("subtitlesHeading")} · ${subtitleStateLabel}`
+  const visibleSubtitleState = subtitleEnabled
+    ? (subtitleLanguageCode ?? languagePickerT("toggleOn"))
+    : null
 
   useEffect(() => {
     onVisibilityChange?.({
@@ -1280,24 +1286,33 @@ export function HeroPlayerControls({
           </ChromeButton>
         ) : null}
 
-        {showSubtitleButton && onLanguageClick ? (
+        {onLanguageClick ? (
           <ChromeButton
             onClick={onLanguageClick}
-            ariaLabel={languagePickerT("subtitlesHeading")}
+            ariaLabel={subtitleTooltip}
             testId="hero-chrome-subtitles"
+            disabled={!showSubtitleButton}
+            tooltip={subtitleTooltip}
             className={
-              showSubtitleLanguageCode
+              visibleSubtitleState
                 ? "w-auto min-w-10 gap-1 px-1 md:w-auto md:min-w-12 md:gap-1.5 md:px-2"
                 : undefined
             }
           >
-            <Captions aria-hidden className="h-5 w-5 md:h-6 md:w-6" />
-            {showSubtitleLanguageCode ? (
+            <Captions
+              aria-hidden
+              className={`h-5 w-5 md:h-6 md:w-6 ${
+                subtitleEnabled && showSubtitleButton
+                  ? "fill-current [&_path]:stroke-neutral-900"
+                  : ""
+              }`}
+            />
+            {visibleSubtitleState ? (
               <span
                 data-testid="hero-chrome-subtitle-language-code"
                 className="text-[10px] font-bold tracking-[0.1em] md:tracking-[0.14em]"
               >
-                {subtitleLanguageCode}
+                {visibleSubtitleState}
               </span>
             ) : null}
           </ChromeButton>

@@ -225,7 +225,9 @@
   "HeroPlayer": {
     "playWithSound": "Ver ahora",
     "tapToUnmute": "Toque para activar el sonido",
-    "nextEpisode": "Siguiente episodio"
+    "nextEpisode": "Siguiente episodio",
+    "audioTranslationCount": "{count, plural, one {# tzijb'al} other {# taq tzijb'al}}",
+    "subtitleCount": "Tz'iib' chiraaj video: {count, plural, one {# tzijb'al} other {# taq tzijb'al}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Cargando contenido",

@@ -225,7 +225,9 @@
   "HeroPlayer": {
     "playWithSound": "今すぐ見る",
     "tapToUnmute": "ミュートを解除",
-    "nextEpisode": "次のエピソード"
+    "nextEpisode": "次のエピソード",
+    "audioTranslationCount": "{count, plural, one {# 言語} other {# 言語}}",
+    "subtitleCount": "字幕: {count, plural, one {# 言語} other {# 言語}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "コンテンツを読み込み中",

@@ -225,7 +225,9 @@
   "HeroPlayer": {
     "playWithSound": "Elo kucken",
     "tapToUnmute": "Tippt fir den Toun unzeschalten",
-    "nextEpisode": "Nächst Episod"
+    "nextEpisode": "Nächst Episod",
+    "audioTranslationCount": "{count, plural, one {# Sprooch} other {# Sproochen}}",
+    "subtitleCount": "Ënnertitelen: {count, plural, one {# Sprooch} other {# Sproochen}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Inhalt gëtt geluede",

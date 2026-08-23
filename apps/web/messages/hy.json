@@ -225,7 +225,9 @@
   "HeroPlayer": {
     "playWithSound": "Դիտել հիմա",
     "tapToUnmute": "Հպեք՝ ձայնը միացնելու համար",
-    "nextEpisode": "Հաջորդ սերիան"
+    "nextEpisode": "Հաջորդ սերիան",
+    "audioTranslationCount": "{count, plural, one {# լեզու} other {# լեզու}}",
+    "subtitleCount": "Ենթագրեր: {count, plural, one {# լեզու} other {# լեզու}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Բովանդակությունը բեռնվում է",

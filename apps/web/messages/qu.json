@@ -225,7 +225,9 @@
   "HeroPlayer": {
     "playWithSound": "Kunan qhawariy",
     "tapToUnmute": "Upallachinapaq ñit'iy",
-    "nextEpisode": "Qhipa episodio"
+    "nextEpisode": "Qhipa episodio",
+    "audioTranslationCount": "{count, plural, one {# simi} other {# simikuna}}",
+    "subtitleCount": "Subtítulos: {count, plural, one {# simi} other {# simikuna}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Contenido kargachkan",

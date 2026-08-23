@@ -44,8 +44,13 @@ const {
     throw new Error(`NEXT_REDIRECT:${destination}`)
   }),
   seriesPageClientMock: vi.fn(
-    (_props: { series: unknown; selectedVariant: unknown; locale: string }) =>
-      null,
+    (_props: {
+      series: unknown
+      selectedVariant: unknown
+      locale: string
+      audioLanguageCountLabel?: string | null
+      subtitleLanguageCountLabel?: string | null
+    }) => null,
   ),
   watchPageClientMock: vi.fn((_props: unknown) => (
     <div data-testid="watch-page-client-mock" />
@@ -142,9 +147,11 @@ vi.mock("@/lib/watch-route-manifest", async () => {
 import SlugRestPage, {
   generateMetadata,
 } from "@/app/[locale]/[htmlLang]/[...rest]/page"
+import type { WatchVideoRecord } from "@/lib/content"
 import { resolveWatchLocaleIdentity } from "@/lib/locale"
 import { asLocaleSlug, watchSubtitleIntentSegment } from "@/lib/routes"
 import { stripHtmlSuffix } from "@/lib/url-shape"
+import { getTranslations } from "next-intl/server"
 
 let container: HTMLDivElement
 let root: Root
@@ -354,6 +361,10 @@ function makeEpisodeResult(
     bcp47: "en",
     name: "English",
   },
+  subtitles: Array<{
+    language: { slug: string; bcp47: string; name: string }
+    vttSrc: string
+  }> = [],
 ) {
   const selectedVariant = {
     documentId: "var-1",
@@ -398,7 +409,7 @@ function makeEpisodeResult(
       ],
       primaryLanguage: null,
       variants: [selectedVariant],
-      subtitles: [],
+      subtitles,
       studyQuestions: [],
       bibleCitations: [],
     },
@@ -1930,6 +1941,8 @@ describe("Catch-all routing — series branch (2-seg)", () => {
       mergedBlocks: Array<{
         kind?: string
         playableLanguageCount?: number
+        audioLanguageCountLabel?: string | null
+        subtitleLanguageCountLabel?: string | null
         variant?: { videoEdition: unknown }
         video?: {
           parents: unknown[]
@@ -1951,6 +1964,8 @@ describe("Catch-all routing — series branch (2-seg)", () => {
     expect(props.video.variants[0]?.videoEdition).toBeNull()
     const hero = props.mergedBlocks.find((block) => block.kind === "HeroPlayer")
     expect(hero?.playableLanguageCount).toBe(2)
+    expect(hero?.audioLanguageCountLabel).toBe("2 audio translations")
+    expect(hero?.subtitleLanguageCountLabel).toBeNull()
     expect(hero?.variant?.videoEdition).toBeNull()
     expect(hero?.video?.parents).toEqual([])
     expect(hero?.video?.children).toEqual([])
@@ -1963,6 +1978,78 @@ describe("Catch-all routing — series branch (2-seg)", () => {
       (block) => block.kind === "SiblingCarousel",
     )
     expect(carousel?.canonicalParent?.children).toHaveLength(2)
+  })
+
+  it("serializes route-localized Xhosa hero count labels deterministically", async () => {
+    vi.mocked(getTranslations).mockResolvedValueOnce(((
+      key: string,
+      values?: { count?: number },
+    ) => {
+      const count = values?.count ?? 0
+      const formattedCount = new Intl.NumberFormat("xh").format(count)
+      if (key === "audioTranslationCount") {
+        return `${formattedCount} iinguqulelo zesandi`
+      }
+      expect(key).toBe("subtitleCount")
+      return `${formattedCount} imibhalo engezantsi`
+    }) as never)
+    const watchVideoResult = makeWatchVideoResult("featureFilm", {
+      slug: "xhosa",
+      bcp47: "xh",
+      name: "Xhosa",
+    })
+    ;(
+      watchVideoResult.video as typeof watchVideoResult.video & {
+        playableLanguageCount: number
+      }
+    ).playableLanguageCount = 2285
+    ;(
+      watchVideoResult.video as unknown as Pick<WatchVideoRecord, "subtitles">
+    ).subtitles = [
+      {
+        documentId: "subtitle-xh",
+        language: {
+          slug: "xhosa",
+          name: "Xhosa",
+          nativeName: "isiXhosa",
+          bcp47: "xh",
+        },
+        vttSrc: "https://cdn.example/xhosa.vtt",
+        primary: true,
+        aiGenerated: false,
+      },
+      {
+        documentId: "subtitle-en",
+        language: {
+          slug: "english",
+          name: "English",
+          nativeName: "English",
+          bcp47: "en",
+        },
+        vttSrc: "https://cdn.example/english.vtt",
+        primary: false,
+        aiGenerated: false,
+      },
+    ]
+    mockRouteVideo(watchVideoResult)
+
+    await render2Seg("storyclubs", "xhosa")
+
+    expect(vi.mocked(getTranslations)).toHaveBeenLastCalledWith({
+      locale: "xh",
+      namespace: "HeroPlayer",
+    })
+
+    const props = watchPageClientMock.mock.calls[0]?.[0] as {
+      mergedBlocks: Array<{
+        kind?: string
+        audioLanguageCountLabel?: string | null
+        subtitleLanguageCountLabel?: string | null
+      }>
+    }
+    const hero = props.mergedBlocks.find((block) => block.kind === "HeroPlayer")
+    expect(hero?.audioLanguageCountLabel).toBe("2\u00a0285 iinguqulelo zesandi")
+    expect(hero?.subtitleLanguageCountLabel).toBe("2 imibhalo engezantsi")
   })
 
   it("renders a sanitized VideoObject JSON-LD script for playable videos", async () => {
@@ -2575,6 +2662,8 @@ describe("Catch-all routing — props passed to SeriesPageClient (2-seg)", () =>
     const args = seriesPageClientMock.mock.calls[0]?.[0]
     expect(args?.selectedVariant).toBe(watchVideo.selectedVariant)
     expect(args?.locale).toBe("english")
+    expect(args?.audioLanguageCountLabel).toBe("1 audio translation")
+    expect(args?.subtitleLanguageCountLabel).toBeNull()
   })
 
   it("passes selectedVariant=null in static-mode (trailerless) series rendering", async () => {
@@ -2776,7 +2865,14 @@ describe("Catch-all routing — 3-seg episode branch", () => {
   })
 
   it("renders WatchPageClient when episode + series resolve", async () => {
-    resolveSeriesEpisodeBySlugMock.mockResolvedValue(makeEpisodeResult())
+    resolveSeriesEpisodeBySlugMock.mockResolvedValue(
+      makeEpisodeResult({ slug: "english", bcp47: "en", name: "English" }, [
+        {
+          language: { slug: "french", bcp47: "fr", name: "French" },
+          vttSrc: "/watch/api/download/subtitle-1",
+        },
+      ]),
+    )
     await render3Seg("lumo-the-gospel-of-john", "wedding-in-cana", "english")
     expect(watchPageClientMock).toHaveBeenCalledTimes(1)
     expect(resolveSeriesEpisodeBySlugMock).toHaveBeenCalledWith(
@@ -2784,6 +2880,16 @@ describe("Catch-all routing — 3-seg episode branch", () => {
       "wedding-in-cana",
       "english",
     )
+    const props = watchPageClientMock.mock.calls[0]?.[0] as {
+      mergedBlocks: Array<{
+        kind?: string
+        audioLanguageCountLabel?: string | null
+        subtitleLanguageCountLabel?: string | null
+      }>
+    }
+    const hero = props.mergedBlocks.find((block) => block.kind === "HeroPlayer")
+    expect(hero?.audioLanguageCountLabel).toBe("1 audio translation")
+    expect(hero?.subtitleLanguageCountLabel).toBe("1 subtitle")
     expect(
       Array.from(
         container.querySelectorAll(

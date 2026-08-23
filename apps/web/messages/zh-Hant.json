@@ -225,7 +225,9 @@
   "HeroPlayer": {
     "playWithSound": "立即觀看",
     "tapToUnmute": "取消靜音",
-    "nextEpisode": "下一集"
+    "nextEpisode": "下一集",
+    "audioTranslationCount": "{count, plural, one {# 種語言} other {# 種語言}}",
+    "subtitleCount": "字幕: {count, plural, one {# 種語言} other {# 種語言}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "正在載入內容",

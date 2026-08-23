@@ -225,7 +225,9 @@
   "HeroPlayer": {
     "playWithSound": "Nānā i kēia manawa",
     "tapToUnmute": "Kaomi e wehe i ka leo",
-    "nextEpisode": "Mokuna aʻe"
+    "nextEpisode": "Mokuna aʻe",
+    "audioTranslationCount": "{count, plural, one {# ʻōlelo} other {# ʻōlelo}}",
+    "subtitleCount": "Nā Wehewehe Ma lalo: {count, plural, one {# ʻōlelo} other {# ʻōlelo}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Ke hoʻouka nei i ka maʻiʻo",

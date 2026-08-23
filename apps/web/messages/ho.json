@@ -225,7 +225,9 @@
   "HeroPlayer": {
     "playWithSound": "Lukluk nau",
     "tapToUnmute": "Taimim bilong opim maus",
-    "nextEpisode": "Neks Episod"
+    "nextEpisode": "Neks Episod",
+    "audioTranslationCount": "{count, plural, one {# tokples} other {# tokples}}",
+    "subtitleCount": "Sutaitol: {count, plural, one {# tokples} other {# tokples}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "I loadim content",

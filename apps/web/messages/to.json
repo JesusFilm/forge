@@ -225,7 +225,9 @@
   "HeroPlayer": {
     "playWithSound": "Sio he taimí ni",
     "tapToUnmute": "Tap ke ʻAʻaʻi ʻa e Leʻo",
-    "nextEpisode": "ʻEpisooti Hoko"
+    "nextEpisode": "ʻEpisooti Hoko",
+    "audioTranslationCount": "{count, plural, one {# lea} other {# ngaahi lea}}",
+    "subtitleCount": "Ngaahi ʻUhinga: {count, plural, one {# lea} other {# ngaahi lea}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Lolotonga laodí ʻa e fakamatala",

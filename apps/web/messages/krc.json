@@ -225,7 +225,9 @@
   "HeroPlayer": {
     "playWithSound": "Азыр көрүңүз",
     "tapToUnmute": "Үндү ачуу үчүн басыңыз",
-    "nextEpisode": "Кийинки эпизод"
+    "nextEpisode": "Кийинки эпизод",
+    "audioTranslationCount": "{count, plural, one {# тил} other {# тил}}",
+    "subtitleCount": "Субтитрлер: {count, plural, one {# тил} other {# тил}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Мазмун жүктөлүүдө",

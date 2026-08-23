@@ -225,7 +225,9 @@
   "HeroPlayer": {
     "playWithSound": "Žiūrėti dabar",
     "tapToUnmute": "Bakstelėkite, kad įjungtumėte garsą",
-    "nextEpisode": "Kitas epizodas"
+    "nextEpisode": "Kitas epizodas",
+    "audioTranslationCount": "{count, plural, one {# kalba} few {# kalbos} other {# kalbų}}",
+    "subtitleCount": "Subtitrai: {count, plural, one {# kalba} few {# kalbos} other {# kalbų}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Įkeliamas turinys",

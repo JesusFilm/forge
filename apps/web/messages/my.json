@@ -225,7 +225,9 @@
   "HeroPlayer": {
     "playWithSound": "ယခု ကြည့်ပါ",
     "tapToUnmute": "အသံဖွင့်ရန် တို့ပါ",
-    "nextEpisode": "နောက်အပိုင်း"
+    "nextEpisode": "နောက်အပိုင်း",
+    "audioTranslationCount": "{count, plural, one {# ဘာသာစကား} other {# ဘာသာစကားများ}}",
+    "subtitleCount": "စာတန်းထိုးများ: {count, plural, one {# ဘာသာစကား} other {# ဘာသာစကားများ}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "အကြောင်းအရာ တင်နေသည်",

@@ -225,7 +225,9 @@
   "HeroPlayer": {
     "playWithSound": "Warda aworaki",
     "tapToUnmute": "Toca pa kita mute",
-    "nextEpisode": "Episodio sigiente"
+    "nextEpisode": "Episodio sigiente",
+    "audioTranslationCount": "{count, plural, one {# idioma} other {# idiomanan}}",
+    "subtitleCount": "Subtítulonan: {count, plural, one {# idioma} other {# idiomanan}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Ta kargando contenido",

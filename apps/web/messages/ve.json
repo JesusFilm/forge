@@ -225,7 +225,9 @@
   "HeroPlayer": {
     "playWithSound": "Lavhelani zwino",
     "tapToUnmute": "Kandani u bvisa u fhumutshela",
-    "nextEpisode": "Episode i tevhelaho"
+    "nextEpisode": "Episode i tevhelaho",
+    "audioTranslationCount": "{count, plural, one {# luambo} other {# luambo}}",
+    "subtitleCount": "Zwibulo: {count, plural, one {# luambo} other {# luambo}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Khou laedza zwi re ngomu",

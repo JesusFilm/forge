@@ -7,6 +7,8 @@ import type { RouteVideo, Section } from "@/lib/content"
 // Type-only imports stay (zero runtime cost) so `Parameters<typeof X>`
 // callsites in the dispatch switch keep their original signatures.
 import type { MediaCollection as MediaCollectionType } from "./MediaCollection"
+import type { DynamicMediaCollection as DynamicMediaCollectionType } from "./DynamicMediaCollection"
+import type { FeaturedCollectionReferences } from "@/lib/featured-collection-references"
 import type { PromoBanner as PromoBannerType } from "./PromoBanner"
 import type { InfoBlocks as InfoBlocksType } from "./InfoBlocks"
 import type { CTASection as CTASectionType } from "./CTASection"
@@ -24,6 +26,11 @@ import type { NavigationCarousel as NavigationCarouselType } from "./NavigationC
 const MediaCollection = dynamic(() =>
   import("./MediaCollection").then((m) => ({ default: m.MediaCollection })),
 ) as typeof MediaCollectionType
+const DynamicMediaCollection = dynamic(() =>
+  import("./DynamicMediaCollection").then((m) => ({
+    default: m.DynamicMediaCollection,
+  })),
+) as typeof DynamicMediaCollectionType
 const PromoBanner = dynamic(() =>
   import("./PromoBanner").then((m) => ({ default: m.PromoBanner })),
 ) as typeof PromoBannerType
@@ -129,9 +136,23 @@ function renderAdminBlock(
   block: AnyBlock,
   routeVideo: RouteVideo | null | undefined,
   languageSlug: string | null | undefined,
+  locale: string | null | undefined,
+  featuredCollections: FeaturedCollectionReferences | undefined,
+  allowDynamicCollections: boolean,
 ): ReactNode {
   switch (block.__typename) {
     case "MediaCollectionBlock":
+      if (block.itemsSource === "dynamicCollections") {
+        if (!allowDynamicCollections) return null
+        return (
+          <DynamicMediaCollection
+            data={block as Parameters<typeof DynamicMediaCollection>[0]["data"]}
+            locale={locale ?? "en"}
+            languageSlug={languageSlug ?? "english"}
+            featuredCollections={featuredCollections}
+          />
+        )
+      }
       return (
         <MediaCollection
           data={
@@ -299,10 +320,16 @@ export function ExperienceSectionRenderer({
   section,
   routeVideo,
   languageSlug,
+  locale,
+  featuredCollections,
+  allowDynamicCollections = false,
 }: {
   section: Section
   routeVideo?: RouteVideo | null
   languageSlug?: string | null
+  locale?: string | null
+  featuredCollections?: FeaturedCollectionReferences
+  allowDynamicCollections?: boolean
 }) {
   // Admin-shape dispatch — content.ts reads from admin now, so every
   // block reaching this renderer carries an admin `*Block` __typename.
@@ -313,6 +340,9 @@ export function ExperienceSectionRenderer({
       section as unknown as AnyBlock,
       routeVideo,
       languageSlug,
+      locale,
+      featuredCollections,
+      allowDynamicCollections,
     )
   }
 

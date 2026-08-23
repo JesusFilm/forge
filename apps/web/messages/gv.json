@@ -225,7 +225,9 @@
   "HeroPlayer": {
     "playWithSound": "Jeeagh nish",
     "tapToUnmute": "Tap dy un-tostey",
-    "nextEpisode": "Epossiod er-dy-chooyl"
+    "nextEpisode": "Epossiod er-dy-chooyl",
+    "audioTranslationCount": "{count, plural, one {# çhengey} other {# çhengaghyn}}",
+    "subtitleCount": "Focklyn-foyshe: {count, plural, one {# çhengey} other {# çhengaghyn}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Çhargaghey bunys",

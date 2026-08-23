@@ -225,7 +225,9 @@
   "HeroPlayer": {
     "playWithSound": "צפו עכשיו",
     "tapToUnmute": "הקישו כדי לבטל השתקה",
-    "nextEpisode": "הפרק הבא"
+    "nextEpisode": "הפרק הבא",
+    "audioTranslationCount": "{count, plural, one {# שפה} other {# שפות}}",
+    "subtitleCount": "כתוביות: {count, plural, one {# שפה} other {# שפות}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "טוען תוכן",

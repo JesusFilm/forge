@@ -225,7 +225,9 @@
   "HeroPlayer": {
     "playWithSound": "Jichhax uñch’ukiña",
     "tapToUnmute": "Arsuwi jist’ariñatakix táctil ukar llamkt’aña",
-    "nextEpisode": "Jutiri episodio"
+    "nextEpisode": "Jutiri episodio",
+    "audioTranslationCount": "{count, plural, one {# aru} other {# arunaka}}",
+    "subtitleCount": "Subtítulos: {count, plural, one {# aru} other {# arunaka}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Yatiyawi apthapiñaskiwa",

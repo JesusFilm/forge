@@ -225,7 +225,9 @@
   "HeroPlayer": {
     "playWithSound": "Пыдӧт",
     "tapToUnmute": "Звук вӧтлыны йылӧн тупкӧт",
-    "nextEpisode": "Выль серия"
+    "nextEpisode": "Выль серия",
+    "audioTranslationCount": "{count, plural, one {# язык} other {# языкэз}}",
+    "subtitleCount": "Субтитрӧй: {count, plural, one {# язык} other {# языкэз}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Контент лэдзӧм",

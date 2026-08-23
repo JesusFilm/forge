@@ -225,7 +225,9 @@
   "HeroPlayer": {
     "playWithSound": "Ҳозир тамошо кунед",
     "tapToUnmute": "Барои фаъол кардани садо ламс кунед",
-    "nextEpisode": "Қисми навбатӣ"
+    "nextEpisode": "Қисми навбатӣ",
+    "audioTranslationCount": "{count, plural, one {# забон} other {# забон}}",
+    "subtitleCount": "Субтитрҳо: {count, plural, one {# забон} other {# забон}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Бор кардани мундариҷа",

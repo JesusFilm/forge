@@ -225,7 +225,9 @@
   "HeroPlayer": {
     "playWithSound": "Abhi dekhiye",
     "tapToUnmute": "Awaz chalu karne ke liye tap kariye",
-    "nextEpisode": "Agla Episode"
+    "nextEpisode": "Agla Episode",
+    "audioTranslationCount": "{count, plural, one {# bhasha} other {# bhashaein}}",
+    "subtitleCount": "Likhe hue bol: {count, plural, one {# bhasha} other {# bhashaein}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Content load ho raha hai",

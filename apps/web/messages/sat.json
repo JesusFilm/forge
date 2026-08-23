@@ -225,7 +225,9 @@
   "HeroPlayer": {
     "playWithSound": "एक्हन देख मे",
     "tapToUnmute": "आवाज खोले ला़गित् टैप मे",
-    "nextEpisode": "आगेय एपिसोड"
+    "nextEpisode": "आगेय एपिसोड",
+    "audioTranslationCount": "{count, plural, one {# ञेरेन} other {# ञेरेनमाला}}",
+    "subtitleCount": "उपशीर्षक: {count, plural, one {# ञेरेन} other {# ञेरेनमाला}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "सामग्री लोड होतोना",

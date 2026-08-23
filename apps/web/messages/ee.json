@@ -225,7 +225,9 @@
   "HeroPlayer": {
     "playWithSound": "Kpɔ fifi laa",
     "tapToUnmute": "Kɔ nuti be yeatɔ dziwɔ la",
-    "nextEpisode": "Episode si gbɔna"
+    "nextEpisode": "Episode si gbɔna",
+    "audioTranslationCount": "{count, plural, one {# gbegblẽ} other {# gbegblẽwo}}",
+    "subtitleCount": "Nuŋɔŋlɔ siwo le te: {count, plural, one {# gbegblẽ} other {# gbegblẽwo}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Etsɔ content la vɛ",

@@ -225,7 +225,9 @@
   "HeroPlayer": {
     "playWithSound": "ຮັບຊົມຕອນນີ້",
     "tapToUnmute": "ແຕະເພື່ອເປີດສຽງ",
-    "nextEpisode": "ຕອນຕໍ່ໄປ"
+    "nextEpisode": "ຕອນຕໍ່ໄປ",
+    "audioTranslationCount": "{count, plural, one {# ພາສາ} other {# ພາສາ}}",
+    "subtitleCount": "ຄຳບັນຍາຍ: {count, plural, one {# ພາສາ} other {# ພາສາ}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "ກຳລັງໂຫລດເນື້ອຫາ",

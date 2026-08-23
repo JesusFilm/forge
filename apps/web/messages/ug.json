@@ -225,7 +225,9 @@
   "HeroPlayer": {
     "playWithSound": "ھازىر كۆرۈش",
     "tapToUnmute": "ئاۋازنى ئاچۇش ئۈچۈن چېكىڭ",
-    "nextEpisode": "كېيىنكى بۆلۈم"
+    "nextEpisode": "كېيىنكى بۆلۈم",
+    "audioTranslationCount": "{count, plural, one {# تىل} other {# تىل}}",
+    "subtitleCount": "تارتىم: {count, plural, one {# تىل} other {# تىل}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "مەزمۇن يۈكلىنىۋاتىدۇ",

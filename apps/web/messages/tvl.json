@@ -225,7 +225,9 @@
   "HeroPlayer": {
     "playWithSound": "Matamata nei",
     "tapToUnmute": "Ote ki luga ke fakaola te leo",
-    "nextEpisode": "Episode e sosoa"
+    "nextEpisode": "Episode e sosoa",
+    "audioTranslationCount": "{count, plural, one {# gagana} other {# gagana}}",
+    "subtitleCount": "Tusitusiga i lalo: {count, plural, one {# gagana} other {# gagana}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Uta content",

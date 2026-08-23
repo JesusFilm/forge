@@ -225,7 +225,9 @@
   "HeroPlayer": {
     "playWithSound": "Kitaen ita",
     "tapToUnmute": "I-tap tapno maipanaw ti mute",
-    "nextEpisode": "Masurot a Episode"
+    "nextEpisode": "Masurot a Episode",
+    "audioTranslationCount": "{count, plural, one {# a pagsasao} other {# a pagsasao}}",
+    "subtitleCount": "Dagiti subtitle: {count, plural, one {# a pagsasao} other {# a pagsasao}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Ikkarga ti content",

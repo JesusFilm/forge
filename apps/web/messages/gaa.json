@@ -225,7 +225,9 @@
   "HeroPlayer": {
     "playWithSound": "Hwɛ seesei",
     "tapToUnmute": "Bɔ so na yi dinn no fi hɔ",
-    "nextEpisode": "Episode a edi hɔ"
+    "nextEpisode": "Episode a edi hɔ",
+    "audioTranslationCount": "{count, plural, one {# kasa} other {# kasa horow}}",
+    "subtitleCount": "Shishi-gbɛi: {count, plural, one {# kasa} other {# kasa horow}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Yɛreload content no",
