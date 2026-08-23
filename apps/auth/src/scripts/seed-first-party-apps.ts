@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto"
 
 import {
+  ADMIN_MCP_CODEX_CLIENT_ID,
   ADMIN_MCP_DEFAULT_SCOPES,
   FIRST_PARTY_APP_SEEDS,
   TV_DEVICE_CLIENT_IDS,
@@ -13,6 +14,7 @@ import { prisma } from "@/db/client"
 // the literal would be a producer/consumer seam where one edit silently kills
 // every TV sign-in (the gate fails closed and no test observes both halves).
 import { DEVICE_GRANT_TYPE } from "@/services/device-client.service"
+import { finalizeBetterAuth17Schema } from "./finalize-better-auth-17-schema"
 
 const MANAGER_SESSION_SCOPE = "admin:manager-session:validate"
 const BROWSER_GRANT_TYPES = ["authorization_code", "refresh_token"]
@@ -32,7 +34,17 @@ const ADMIN_MCP_DYNAMIC_SCOPE_MARKERS = ADMIN_MCP_DEFAULT_SCOPES.filter(
   (scope) => !POST_REGISTRATION_SCOPES.includes(scope),
 )
 
+const ADMIN_MCP_RESOURCE_BY_ENVIRONMENT = {
+  local: "http://localhost:3003/mcp",
+  preview: "https://admin-preview.jesusfilm.org/mcp",
+  staging: "https://admin-stage.jesusfilm.org/mcp",
+  production: "https://admin.jesusfilm.org/mcp",
+  codex: "https://admin.jesusfilm.org/mcp",
+} as const
+
 export async function seedFirstPartyApps() {
+  await finalizeBetterAuth17Schema()
+
   for (const scope of AUTH_SCOPES) {
     await prisma.scope.upsert({
       where: { key: scope.key },
@@ -47,6 +59,8 @@ export async function seedFirstPartyApps() {
   for (const appSeed of FIRST_PARTY_APP_SEEDS) {
     await seedFirstPartyApp(appSeed)
   }
+
+  await seedFirstPartyOauthResources()
 
   await migrateExistingDynamicAdminMcpClients()
 
@@ -66,6 +80,76 @@ export async function seedFirstPartyApps() {
       0,
     ),
     scopes: AUTH_SCOPES.length,
+  }
+}
+
+async function seedFirstPartyOauthResources() {
+  for (const appSeed of FIRST_PARTY_APP_SEEDS) {
+    for (const environment of appSeed.environments) {
+      const resources: Array<{
+        identifier: string
+        name: string
+        allowedScopes: string[]
+        clientId: string
+      }> = []
+
+      if (
+        environment.managerSessionServiceClientId &&
+        environment.managerSessionServiceAudience
+      ) {
+        resources.push({
+          identifier: environment.managerSessionServiceAudience,
+          name: `${appSeed.displayName} (${environment.key} session validation)`,
+          allowedScopes: [MANAGER_SESSION_SCOPE],
+          clientId: environment.managerSessionServiceClientId,
+        })
+      }
+
+      if (appSeed.key === "admin-mcp") {
+        const identifier =
+          ADMIN_MCP_RESOURCE_BY_ENVIRONMENT[
+            environment.key as keyof typeof ADMIN_MCP_RESOURCE_BY_ENVIRONMENT
+          ]
+        if (identifier) {
+          resources.push({
+            identifier,
+            name: `${appSeed.displayName} (${environment.key})`,
+            allowedScopes: [...ADMIN_MCP_DEFAULT_SCOPES],
+            clientId: environment.clientId,
+          })
+        }
+      }
+
+      for (const resource of resources) {
+        await prisma.oauthResource.upsert({
+          where: { identifier: resource.identifier },
+          update: {
+            name: resource.name,
+            allowedScopes: resource.allowedScopes,
+            disabled: false,
+          },
+          create: {
+            identifier: resource.identifier,
+            name: resource.name,
+            allowedScopes: resource.allowedScopes,
+            disabled: false,
+          },
+        })
+        await prisma.oauthClientResource.upsert({
+          where: {
+            clientId_resourceId: {
+              clientId: resource.clientId,
+              resourceId: resource.identifier,
+            },
+          },
+          update: {},
+          create: {
+            clientId: resource.clientId,
+            resourceId: resource.identifier,
+          },
+        })
+      }
+    }
   }
 }
 
@@ -211,6 +295,9 @@ async function seedFirstPartyApp(appSeed: RegisteredAppSeed) {
         public: true,
         requirePKCE: true,
         tokenEndpointAuthMethod: "none",
+        applicationType:
+          environment.clientId === ADMIN_MCP_CODEX_CLIENT_ID ? "native" : "web",
+        clientCredentialsScopes: [],
         grantTypes: getGrantTypes(environment.clientId),
         responseTypes: ["code"],
         metadata: {
@@ -232,6 +319,9 @@ async function seedFirstPartyApp(appSeed: RegisteredAppSeed) {
         public: true,
         requirePKCE: true,
         tokenEndpointAuthMethod: "none",
+        applicationType:
+          environment.clientId === ADMIN_MCP_CODEX_CLIENT_ID ? "native" : "web",
+        clientCredentialsScopes: [],
         grantTypes: getGrantTypes(environment.clientId),
         responseTypes: ["code"],
         metadata: {
@@ -262,6 +352,8 @@ async function seedFirstPartyApp(appSeed: RegisteredAppSeed) {
           public: false,
           requirePKCE: false,
           tokenEndpointAuthMethod: "client_secret_basic",
+          applicationType: "web",
+          clientCredentialsScopes: [MANAGER_SESSION_SCOPE],
           grantTypes: ["client_credentials"],
           responseTypes: [],
           ...(storedClientSecret ? { clientSecret: storedClientSecret } : {}),
@@ -285,6 +377,8 @@ async function seedFirstPartyApp(appSeed: RegisteredAppSeed) {
           public: false,
           requirePKCE: false,
           tokenEndpointAuthMethod: "client_secret_basic",
+          applicationType: "web",
+          clientCredentialsScopes: [MANAGER_SESSION_SCOPE],
           grantTypes: ["client_credentials"],
           responseTypes: [],
           clientSecret: storedClientSecret,

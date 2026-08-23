@@ -52,7 +52,10 @@ vi.mock("@/config/env", () => ({
   getAppleNativeClientConfig: vi.fn(() => null),
   getAuthBaseUrl: vi.fn(() => "http://localhost:3004"),
   getAuthTrustedOrigins: vi.fn(() => []),
-  getAuthValidAudiences: vi.fn(() => []),
+  getAuthValidAudiences: vi.fn(() => [
+    "http://localhost:3004",
+    "http://localhost:3003/mcp",
+  ]),
 }))
 
 vi.mock("@/db/client", () => ({
@@ -101,11 +104,15 @@ type CapturedAuthOptions = {
 
 type CapturedOAuthProviderOptions = {
   accessTokenExpiresIn: number
+  allowDynamicClientRegistration: boolean
+  allowUnauthenticatedClientRegistration: boolean
   advertisedMetadata: {
     scopes_supported: string[]
   }
   clientRegistrationAllowedScopes: string[]
   clientRegistrationDefaultScopes: string[]
+  clientRegistrationAllowedResources: string[]
+  resources: Array<{ identifier: string; allowedScopes: string[] }>
   scopes: string[]
 }
 
@@ -211,6 +218,34 @@ describe("auth provider configuration", () => {
     expect(options.clientRegistrationDefaultScopes).not.toContain(
       "offline_access",
     )
+  })
+
+  it("uses native protected resources without weakening per-client registration", async () => {
+    const options = await captureOAuthProviderOptions()
+
+    expect(options.allowDynamicClientRegistration).toBe(true)
+    expect(options.allowUnauthenticatedClientRegistration).toBe(true)
+    expect(options).not.toHaveProperty("enforcePerClientResources")
+    expect(options.clientRegistrationAllowedResources).toEqual([
+      "http://localhost:3004",
+      "http://localhost:3003/mcp",
+    ])
+    expect(options.resources.map(({ identifier }) => identifier)).toEqual(
+      options.clientRegistrationAllowedResources,
+    )
+    expect(options.resources[1]?.allowedScopes).toContain("experience:read")
+    expect(options).not.toHaveProperty("validAudiences")
+  })
+
+  it("defers native resource seeding during the database-free Next build", async () => {
+    vi.stubEnv("NEXT_PHASE", "phase-production-build")
+    try {
+      const options = await captureOAuthProviderOptions()
+      expect(options.resources).toEqual([])
+      expect(options.clientRegistrationAllowedResources).toEqual([])
+    } finally {
+      vi.unstubAllEnvs()
+    }
   })
 })
 
@@ -334,7 +369,8 @@ describe("mobile login configuration", () => {
       providerId: "jfp",
       clientId: "jfp_mobile_local",
       discoveryUrl: "http://localhost:3004/.well-known/openid-configuration",
-      redirectURI: "http://localhost:3004/api/auth/oauth2/callback/jfp",
+      requireIdTokenVerification: true,
+      redirectURI: "http://localhost:3004/api/auth/callback/jfp",
       pkce: true,
       scopes: ["openid", "profile:read", "email:read"],
       // R5: prompt=login forces the hosted form even with a live browser

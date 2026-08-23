@@ -474,7 +474,10 @@ export const MOBILE_APP_SEED: RegisteredAppSeed = {
       key: "local",
       kind: "local",
       clientId: MOBILE_LOCAL_CLIENT_ID,
-      redirectUris: ["http://localhost:3004/api/auth/oauth2/callback/jfp"],
+      redirectUris: [
+        "http://localhost:3004/api/auth/callback/jfp",
+        "http://localhost:3004/api/auth/oauth2/callback/jfp",
+      ],
       postLogoutRedirectUris: ["http://localhost:3004"],
       allowedOrigins: ["http://localhost:3004"],
       defaultScopes: MOBILE_DEFAULT_SCOPES,
@@ -484,7 +487,10 @@ export const MOBILE_APP_SEED: RegisteredAppSeed = {
       key: "production",
       kind: "production",
       clientId: MOBILE_PRODUCTION_CLIENT_ID,
-      redirectUris: ["https://auth.jesusfilm.org/api/auth/oauth2/callback/jfp"],
+      redirectUris: [
+        "https://auth.jesusfilm.org/api/auth/callback/jfp",
+        "https://auth.jesusfilm.org/api/auth/oauth2/callback/jfp",
+      ],
       postLogoutRedirectUris: ["https://auth.jesusfilm.org"],
       allowedOrigins: ["https://auth.jesusfilm.org"],
       defaultScopes: MOBILE_DEFAULT_SCOPES,

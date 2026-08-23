@@ -8,6 +8,7 @@ const rateLimitAuthRoute = vi.fn(async (_input: unknown) => ({
 }))
 const signUpEmail = vi.fn()
 const getSession = vi.fn()
+const accountUpsert = vi.fn()
 const canRedeemAgentLoginHandle = vi.fn(
   async (_prisma: unknown, _input: unknown) => false,
 )
@@ -33,7 +34,7 @@ vi.mock("@/db/client", () => ({
     $transaction: vi.fn(async (callback) =>
       callback({
         account: {
-          upsert: vi.fn(),
+          upsert: accountUpsert,
         },
         user: {
           findFirst: vi.fn(async () => ({ id: "user_123" })),
@@ -83,6 +84,7 @@ describe("Auth route wrapper", () => {
     rateLimitAuthRoute.mockReset()
     rateLimitAuthRoute.mockResolvedValue({ allowed: true, source: "local" })
     signUpEmail.mockReset()
+    accountUpsert.mockReset()
     vi.unstubAllEnvs()
   })
 
@@ -764,6 +766,15 @@ describe("Auth route wrapper", () => {
     expect(response.headers.get("location")).toBe(
       "http://localhost:3004/api/auth/oauth2/authorize?client_id=jfp_admin_local&sig=signed",
     )
+    expect(accountUpsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        create: expect.objectContaining({
+          providerId: "firebase",
+          issuer: "local:firebase",
+          accountId: "firebase_uid",
+        }),
+      }),
+    )
     expect(response.headers.get("set-cookie")).toContain(
       "forge_auth_last_login_method=email",
     )
@@ -1072,6 +1083,19 @@ describe("device sign-in continuation", () => {
         "client_id=jfp_admin_local&redirect_uri=http%3A%2F%2Flocalhost%3A3003%2Fapi%2Fauth%2Fcallback&scope=openid",
       ),
     ).resolves.toContain("/api/auth/oauth2/authorize")
+  })
+
+  it("preserves repeated native resource indicators through login", async () => {
+    const continuation = await signInWith(
+      "client_id=dynamic_native&redirect_uri=http%3A%2F%2F127.0.0.1%3A49173%2Fcallback&resource=https%3A%2F%2Fresource-a.example%2Fmcp&resource=https%3A%2F%2Fresource-b.example%2Fmcp&prompt=login",
+    )
+    const url = new URL(continuation!)
+
+    expect(url.searchParams.getAll("resource")).toEqual([
+      "https://resource-a.example/mcp",
+      "https://resource-b.example/mcp",
+    ])
+    expect(url.searchParams.has("prompt")).toBe(false)
   })
 
   it("does not let a user code divert an OAuth authorize continuation", async () => {

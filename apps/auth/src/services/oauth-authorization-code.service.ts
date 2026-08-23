@@ -8,7 +8,7 @@ import { createHash, randomBytes } from "node:crypto"
  *
  * The device grant has to end with a real OAuth token — `jfp_at_` prefixed,
  * audience-bound, carrying `customAccessTokenClaims`, introspectable by admin.
- * `@better-auth/oauth-provider@1.6.2` exports no token-minting function
+ * `@better-auth/oauth-provider@1.7.1` exports no token-minting function
  * (`createUserTokens` and friends are private, and the package's `exports` map
  * does not reach the internal chunk). Re-implementing issuance is the exact
  * `client_id`/scope drift that produced a real IdP account-takeover bug.
@@ -73,7 +73,10 @@ export function buildAuthorizationCode(input: {
     code,
     identifier: authorizationCodeIdentifier(code),
     // Field order and names follow `redirectWithAuthorizationCode`; the library
-    // reads `type`, `query`, `userId`, `sessionId`, `referenceId`, `authTime`.
+    // reads `type`, `query`, `userId`, `sessionId`, optional top-level
+    // `resource`, `referenceId`, and `authTime`. Device grants remain the
+    // provider's legacy no-resource path, so this builder deliberately omits
+    // `resource` and cannot mint a resource-bound authorization code.
     //
     // `authTime` is MILLISECONDS. The library's own producer writes
     // `new Date(session.createdAt).getTime()` and its consumer,

@@ -59,6 +59,68 @@ pnpm --filter @forge/auth db:migrate:deploy
 pnpm --filter @forge/auth seed:first-party-apps
 ```
 
+## Better Auth 1.7 Persistence Rollout
+
+The Better Auth 1.7 upgrade uses an expand-and-contract migration. Production
+must receive it through the normal PR-to-main deployment path during an
+approved Auth-write maintenance window. Do not run `railway up`, trigger a
+manual redeploy, or apply the migration directly from a local checkout.
+
+Before merge, rehearse both database shapes against scratch PostgreSQL:
+
+- a fresh database with every migration followed by `seed:first-party-apps`;
+- a representative 1.6.2-shaped database containing accounts for every live
+  provider, public and confidential OAuth clients, access and refresh tokens,
+  consents, and device codes.
+
+No production snapshot is checked into this repository. The representative
+fixture is a contract rehearsal, not evidence about production row contents;
+record redacted production preflight counts during the maintenance window.
+
+The production dashboard's existing start chain is authoritative:
+
+```text
+db:migrate:deploy && seed:first-party-apps && node server.js
+```
+
+Migration `0004_better_auth_17_persistence` adds the 1.7 tables and columns
+without deleting the 1.6.2 `oauth_client.public`, `oauth_client.type`, redirect
+arrays, or `(provider_id, account_id)` unique key. The seed's first operation
+then finalizes `Account.issuer` before the server starts:
+
+1. Build an explicit trusted map for `credential`, the legacy `firebase`
+   migration marker, `google`, `facebook`, `apple`, the configured
+   `OKTA_ISSUER`, and the JFP self-provider issuer at
+   `${AUTH_BASE_URL}/api/auth`.
+2. Stop on an unknown provider, a missing dynamic issuer, an existing issuer
+   mismatch, or an `(issuer, account_id)` collision before changing account
+   rows or enforcing the new constraint.
+3. Install the trusted map, backfill issuers, add the unique key, and make the
+   column non-null.
+4. Seed native OAuth resources and client-resource links idempotently.
+
+If finalization fails, do not bypass it or start Better Auth 1.7. The additive
+schema can remain in place while the previous deployment continues; correct
+the trusted configuration or identity collision through a reviewed PR and
+repeat the normal deployment path.
+
+After startup, verify `/api/health`, discovery, a representative password and
+upstream-provider login, authorization-code exchange and refresh,
+introspection, Manager client credentials, and the TV device flow. Confirm
+resource and link counts contain no duplicate `(client_id, resource_id)` rows.
+
+### Rollback during the soak window
+
+Rollback the application only; do not reverse the migration. Before returning
+to 1.6.2, revoke or disable resource-bound 1.7 refresh families because 1.6.2
+cannot enforce their resource state. Retain
+`auth_account_issuer_mapping` and the `account_trusted_issuer` trigger: the
+trigger fills issuer for 1.6.2 Account inserts from the trusted map and rejects
+unknown providers, so password and mapped OAuth account creation remain
+compatible with the non-null 1.7 schema. Keep `AUTH_BASE_URL` and
+`OKTA_ISSUER` unchanged across rollback. Rerun the normal seed finalizer before
+restoring 1.7.
+
 ## Cutover Rule
 
 `auth.jesusfilm.org` was moved from admin to Auth on 2026-05-12. Admin now uses

@@ -6,12 +6,12 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 
 ## Status (August 23, 2026)
 
-- **Total tickets:** 583
+- **Total tickets:** 585
 - **Complete:** 427
 - **In progress:** 40
 - **Not started:** 37
-- **Blocked:** 79
-- **Overdue and not complete:** 105
+- **Blocked:** 81
+- **Overdue and not complete:** 106
 
 ## Feature Index
 
@@ -274,6 +274,8 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-327](platform/feat-327-admin-prisma-adapter-pool-config.md)                      | Admin Prisma adapter pool config                                                 | codex      | P0       | 2026-08-03 | 1    | 2026-08-03 | complete    |
 | [feat-352](platform/feat-352-mastra-seo-live-proposal-digest.md)                       | Align live SEO proposal digest with Admin persistence                            | codex      | P0       | 2026-08-11 | 1    | 2026-08-11 | complete    |
 | [feat-356](platform/feat-356-preserve-iso-dates-in-seo-report-redaction.md)            | Preserve ISO dates in SEO report redaction                                       | codex      | P0       | 2026-08-11 | 1    | 2026-08-11 | complete    |
+| [feat-399](platform/feat-399-changelog-first-party-auth.md)                            | Register Changelog with first-party Auth grants                                  | edmonday   | P0       | 2026-08-19 | 3    | 2026-08-21 | blocked     |
+| [feat-401](platform/feat-401-better-auth-native-resource-upgrade.md)                   | Upgrade Better Auth for native resource binding                                  | edmonday   | P0       | 2026-08-20 | 4    | 2026-08-23 | blocked     |
 | [feat-402](platform/feat-402-mobile-expo-sdk57-patch-alignment.md)                     | Mobile Expo SDK 57 patch alignment                                               | edmonday   | P0       | 2026-08-21 | 1    | 2026-08-21 | complete    |
 | [feat-278](platform/feat-278-watch-russian-authored-content-localization.md)           | Watch Russian authored content localization                                      | unassigned | P1       | —          | 2    | —          | not-started |
 | [feat-036](platform/feat-036-cms-local-postgres-io-concurrency-compatibility.md)       | CMS local PostgreSQL I/O concurrency compatibility                               | tataihono  | P1       | 2026-04-01 | 1    | 2026-04-01 | complete    |
