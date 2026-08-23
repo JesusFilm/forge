@@ -5,8 +5,11 @@ import {
   Suspense,
   useEffect,
   useId,
+  useLayoutEffect,
   useMemo,
+  useRef,
   useState,
+  type MouseEvent as ReactMouseEvent,
   type RefObject,
   type ReactNode,
 } from "react"
@@ -42,6 +45,56 @@ function loadInteractiveTranscriptModule(): Promise<InteractiveTranscriptModule>
 }
 
 const LazyInteractiveSubtitleTranscript = lazy(loadInteractiveTranscriptModule)
+
+/**
+ * The overflow measurement must land before the browser paints, or a transcript
+ * that fits shows the "there is more" fade for a frame (seconds on a slow
+ * phone, where hydration is late). `useLayoutEffect` warns during SSR, so fall
+ * back to `useEffect` on the server, where there is no paint to beat anyway.
+ */
+const useIsomorphicLayoutEffect =
+  typeof window === "undefined" ? useEffect : useLayoutEffect
+
+/**
+ * Collapsed transcripts are clamped so the card stops pushing every section
+ * below it thousands of pixels down. The clamp applies to the TEXT box; the
+ * subtracted 15rem is the card's non-text chrome (measured 237-249px across
+ * desktop and mobile: section padding plus header), so the CARD is what lands
+ * at ~60% of the viewport.
+ *
+ * `svh`, NOT `dvh`: this is an in-flow, document-scroll element, and every
+ * other viewport-unit box in apps/web is a fixed/absolute overlay. `dvh`
+ * re-resolves as mobile browser chrome retracts, which would move this card —
+ * and everything below it — by ~35-60px mid-scroll. `WatchHomeTvCarousel`'s
+ * in-flow `h-[66svh]` is the precedent.
+ *
+ * The 60% target only holds while `0.6 * viewport - 240px` clears the 6rem
+ * floor, i.e. above a ~560px-tall viewport. Below that the chrome alone
+ * exceeds 60%, the floor binds, and the card is a fixed ~336px (a landscape
+ * phone therefore sees a card taller than 60% showing ~3 lines) — deliberate,
+ * because the alternative is a card too short to read.
+ */
+const COLLAPSED_TEXT_CLAMP_CLASS =
+  "max-h-[max(6rem,calc(60svh_-_15rem))] overflow-hidden"
+
+/**
+ * Bottom fade telling the reader there is more text behind the clamp. Paired
+ * with the `-webkit-` property for Safari, matching `SiblingCarousel`.
+ *
+ * Do NOT factor the repeated gradient into a shared variable: Tailwind
+ * extracts candidates by scanning source text, so an interpolated class name
+ * never appears in the source and the utility is silently never generated —
+ * the fade would just stop rendering with no build or test error.
+ */
+const COLLAPSED_TEXT_FADE_CLASS =
+  "[mask-image:linear-gradient(to_bottom,black_0%,black_62%,transparent_100%)] [-webkit-mask-image:linear-gradient(to_bottom,black_0%,black_62%,transparent_100%)]"
+
+/**
+ * Sub-pixel line-height rounding leaves `scrollHeight` a hair above
+ * `clientHeight` on text that visually fits, so require more than a rounding
+ * error's worth of overflow before claiming there is more to read.
+ */
+const OVERFLOW_TOLERANCE_PX = 4
 
 type SubtitleTranscriptProps = {
   subtitles: WatchSubtitle[]
@@ -149,6 +202,40 @@ export function SubtitleTranscript({
     return () => controller.abort()
   }, [activeVttSrc, durationSeconds, expanded, hasLoadedActiveSource])
 
+  const collapsedTextRef = useRef<HTMLDivElement | null>(null)
+  // Defaults to faded: a real transcript overflows the clamp far more often
+  // than not, and measurement only ever removes the fade. Environments that
+  // cannot measure (jsdom, a hidden ancestor) therefore keep the honest hint.
+  const [collapsedTextOverflows, setCollapsedTextOverflows] = useState(true)
+
+  useIsomorphicLayoutEffect(() => {
+    if (expanded) return
+    const element = collapsedTextRef.current
+    if (!element) return
+
+    const measure = () => {
+      // A zero-height box means "not laid out", not "fits" — treating it as
+      // fitting would strip the fade from every overflowing transcript.
+      if (element.clientHeight === 0) return
+      setCollapsedTextOverflows(
+        element.scrollHeight - element.clientHeight > OVERFLOW_TOLERANCE_PX,
+      )
+    }
+
+    // Measure once synchronously: ResizeObserver's first callback is async, and
+    // this is the only measurement at all when ResizeObserver is unavailable.
+    measure()
+    if (typeof ResizeObserver === "undefined") {
+      // No observer to re-measure on viewport/orientation change, so listen
+      // for the one event that changes this box's height.
+      window.addEventListener("resize", measure)
+      return () => window.removeEventListener("resize", measure)
+    }
+    const observer = new ResizeObserver(measure)
+    observer.observe(element)
+    return () => observer.disconnect()
+  }, [compactText, expanded])
+
   if (transcriptSubtitles.length === 0) return null
 
   const languageLabel = (subtitle: WatchSubtitle) =>
@@ -170,6 +257,19 @@ export function SubtitleTranscript({
   }
   const closeTranscript = () => {
     setInteraction({ expanded: false, initialSlug, selectedSlug })
+  }
+  const handleCollapsedClick = (event: ReactMouseEvent<HTMLDivElement>) => {
+    // Ignore the second click of a double-click. Expanding mounts the cue list
+    // synchronously whenever cues are already cached, so the next click can
+    // land on a cue button and seek/unmute/play/scroll the page — a reader
+    // double-clicking to select a word would lose their place in the video.
+    if (event.detail > 1) return
+    // A click that ends a text selection is a selection, not a request to
+    // expand. Without this, selecting teaser text collapses into an expand.
+    const selection =
+      typeof window === "undefined" ? null : window.getSelection()
+    if (selection && !selection.isCollapsed) return
+    openTranscript()
   }
   let interactiveStatus: TranscriptStatus = "ready"
   if (!hasLoadedActiveSource) interactiveStatus = "loading"
@@ -209,13 +309,37 @@ export function SubtitleTranscript({
       </Suspense>
     )
   } else {
+    // Click-anywhere is a MOUSE-ONLY enhancement layered on a plain, non-
+    // interactive text container. It is deliberately not a <button>:
+    //   - a button's role is children-presentational, so wrapping the teaser
+    //     pruned it from the accessibility tree and (with aria-label) from the
+    //     accessible name too, making the default state unreadable to screen
+    //     readers and worse for text-extracting crawlers;
+    //   - WebKit sets `-webkit-user-select: none` on button, which broke
+    //     selecting and copying the transcript;
+    //   - the button unmounted on activation, dropping keyboard focus to
+    //     <body>;
+    //   - <div> inside <button> violates the button content model.
+    // The header chevron remains the sole accessible disclosure control: it
+    // already carries aria-expanded/aria-controls, is keyboard reachable, and
+    // PERSISTS across expand/collapse, so focus never sits on a disappearing
+    // element. Anything added here must keep that property.
     content = (
       <div
-        id={contentId}
-        data-testid="watch-subtitle-compact-text"
-        className="whitespace-pre-line px-6 py-6 text-base leading-relaxed text-stone-300 sm:px-8 sm:py-8 sm:text-lg"
+        data-testid="watch-subtitle-compact-expand"
+        onClick={handleCollapsedClick}
+        className="cursor-pointer rounded-b-2xl"
       >
-        {compactText}
+        <div
+          id={contentId}
+          ref={collapsedTextRef}
+          data-testid="watch-subtitle-compact-text"
+          className={`whitespace-pre-line px-6 py-6 text-base leading-relaxed text-stone-300 sm:px-8 sm:py-8 sm:text-lg ${COLLAPSED_TEXT_CLAMP_CLASS} ${
+            collapsedTextOverflows ? COLLAPSED_TEXT_FADE_CLASS : ""
+          }`}
+        >
+          {compactText}
+        </div>
       </div>
     )
   }
