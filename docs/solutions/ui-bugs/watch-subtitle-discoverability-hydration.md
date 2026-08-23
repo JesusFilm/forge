@@ -234,8 +234,8 @@ numbers.
 
 ### Tooltip follow-up verification
 
-PR #2008 was open and unmerged when this learning was updated. The full Web
-suite passed 2,835 tests with one existing todo; Web typecheck, changed-file
+Before PR #2008 merged, the full Web suite passed 2,835 tests with one existing
+todo; Web typecheck, changed-file
 ESLint, Prettier, production build, roadmap generation, and diff integrity also
 passed. Focused coverage verifies matching tooltip/accessibility text across
 all five icon buttons, the four subtitle projections, live play/mute/fullscreen
@@ -251,8 +251,28 @@ was not treated as visual proof of the production component. The actual local
 Watch route returned HTTP 200 but rendered its expected experience-load
 fallback because the local Admin content source was unavailable; the in-app
 browser also rejected a new localhost navigation. This is recorded as a
-browser-environment limitation, not as visual proof. The requested production
-browser verification remains a post-merge check.
+browser-environment limitation, not as visual proof. The resulting production
+verification and corrective finding are recorded below.
+
+### Production reveal regression and corrective follow-up
+
+Railway deployed PR #2008 as squash commit
+`43813a8d4518862c2bae2294ec808de15f88a59b`. Datadog RUM and a cache-busted
+production Watch session both reported that exact release. The live DOM
+contained all five concise tooltip strings, including `Subtitles: On (AF)`,
+with one-line and hidden-at-rest classes. However, direct production
+interaction showed the button matching both `:hover` and `:focus-visible`
+while the tooltip's computed `visibility` stayed `hidden` and `opacity` stayed
+`0`. The CSS-only group variants were therefore present in the bundle but not
+a reliable runtime reveal contract.
+
+Corrective PR #2010 moves the open/closed projection into `ChromeButton` state
+owned by the existing mouse-enter, mouse-leave, focus, and blur handlers. A
+fine-pointer media query keeps compatibility mouse events from making the
+tooltip sticky on touch. Leave and blur preserve the tooltip while the other
+interaction path is still active. The regression test now asserts hidden at
+rest, hover reveal, leave hide, focus reveal, and blur hide rather than only
+checking that class tokens exist.
 
 ## Prevention
 
@@ -275,7 +295,8 @@ browser verification remains a post-merge check.
 ## Related Issues
 
 - [Linear FGE-92](https://linear.app/jesus-film-project/issue/FGE-92)
-- [Pending follow-up PR #2008](https://github.com/JesusFilm/forge/pull/2008)
+- [Merged tooltip consistency PR #2008](https://github.com/JesusFilm/forge/pull/2008)
+- [Production reveal corrective PR #2010](https://github.com/JesusFilm/forge/pull/2010)
 - [Watch subtitle VTT delivery must remain public and same-origin](watch-subtitle-vtt-proxy-account-gate.md)
 - [Watch caption defaults must be same-audio-language](watch-caption-language-availability-20260615.md)
 - [Frontend change page-load performance verification](../conventions/frontend-change-page-load-performance-verification.md)
