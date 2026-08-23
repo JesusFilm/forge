@@ -4,14 +4,14 @@
 
 Build trusted, scalable AI capabilities that help people discover gospel content, engage meaningfully with Scripture, and take faithful next steps.
 
-## Status (August 22, 2026)
+## Status (August 23, 2026)
 
-- **Total tickets:** 580
+- **Total tickets:** 581
 - **Complete:** 425
-- **In progress:** 40
+- **In progress:** 41
 - **Not started:** 36
 - **Blocked:** 79
-- **Overdue and not complete:** 104
+- **Overdue and not complete:** 106
 
 ## Feature Index
 
@@ -487,6 +487,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-409](platform/feat-409-manager-dark-sidebar-depth.md)                            | Manager dark sidebar depth                                                       | vlad       | P1       | 2026-08-21 | 1    | 2026-08-21 | complete    |
 | [feat-410](platform/feat-410-manager-dark-contrast-audit.md)                           | Manager dark contrast audit                                                      | vlad       | P1       | 2026-08-21 | 1    | 2026-08-21 | complete    |
 | [feat-418](platform/feat-418-watch-subtitle-discoverability-hydration.md)              | Watch subtitle discoverability and hydration                                     | codex      | P1       | 2026-08-22 | 2    | 2026-08-23 | complete    |
+| [feat-419](platform/feat-419-watch-player-tooltip-consistency.md)                      | Watch player tooltip consistency                                                 | urim       | P1       | 2026-08-22 | 1    | 2026-08-22 | in-progress |
 | [feat-247](platform/feat-247-watch-nested-series-language-availability.md)             | Watch nested-series language availability                                        | vlad       | P2       | —          | —    | —          | complete    |
 | [feat-336](platform/feat-336-watch-homepage-seed-schema-drift.md)                      | Repair Watch homepage Experience seed schema drift                               | unassigned | P2       | —          | 1    | —          | not-started |
 | [feat-088](platform/feat-088-internal-tools-branding.md)                               | Internal Tools Branding                                                          | vlad       | P2       | 2026-03-30 | 14   | 2026-04-12 | complete    |
