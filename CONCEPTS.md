@@ -589,6 +589,11 @@ The target-language playback state attached to a Watch search candidate, disting
 
 Target-audio and related-language states carry a playable Dub directly. A target-subtitle state keeps the requested subtitle language as availability truth while carrying a deterministic playable Dub action on the compatible Video Edition; the public route uses that action language and passes the subtitle language as explicit intent. A no-option state carries no playable action, so its Search Language remains request context and must not be promoted into a playback identity.
 
+The no-option state also governs presentation: catalog evidence may remain
+visible for recognition and recovery, but playback-derived controls, progress,
+motion, and play affordances must remain absent even when playback-shaped data
+is incidentally present.
+
 ### Query Language Suggestion
 
 A visible search-bar suggestion produced when the typed query appears to be in a supported language different from the current Search Language. The suggestion can be generous because it is confirm-gated: it does not change Search Language until the viewer accepts it, and unsupported or unrecognized queries leave the current Search Language in control.
