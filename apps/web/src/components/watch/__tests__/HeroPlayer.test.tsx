@@ -121,7 +121,9 @@ vi.mock("next-intl", () => ({
         },
         LanguagePickerModal: {
           subtitlesHeading: "Subtitles",
+          toggleOn: "On",
           toggleOff: "Off",
+          notAvailable: "Not available",
           languageCount:
             values?.count === 1
               ? "1 language"
@@ -2520,6 +2522,7 @@ describe("HeroPlayer — custom chrome render", () => {
       playableLanguageCount: 1,
       hasSubtitleOptions: true,
       subtitleLanguageCode: "ES",
+      subtitleVttSrc: "https://cdn.example/subtitles/es.vtt",
     })
 
     expect(
@@ -2539,42 +2542,57 @@ describe("HeroPlayer — custom chrome render", () => {
     {
       hasSubtitleOptions: true,
       subtitleLanguageCode: "EN",
+      subtitleVttSrc: "https://cdn.example/subtitles/en.vtt",
       expectedState: "EN",
+      expectedLabel: "Subtitles · EN",
     },
     {
       hasSubtitleOptions: true,
       subtitleLanguageCode: null,
-      expectedState: "Off",
+      subtitleVttSrc: null,
+      expectedState: null,
+      expectedLabel: "Subtitles · Off",
     },
     {
       hasSubtitleOptions: false,
       subtitleLanguageCode: "ES",
+      subtitleVttSrc: null,
       expectedState: null,
+      expectedLabel: "Subtitles · Not available",
     },
   ])(
     "shows subtitle state $expectedState for $subtitleLanguageCode with availability $hasSubtitleOptions",
-    async ({ hasSubtitleOptions, subtitleLanguageCode, expectedState }) => {
+    async ({
+      hasSubtitleOptions,
+      subtitleLanguageCode,
+      subtitleVttSrc,
+      expectedState,
+      expectedLabel,
+    }) => {
       await revealChrome(makeBlock(), {
         onLanguageClick: vi.fn(),
         playableLanguageCount: 2,
         hasSubtitleOptions,
         subtitleLanguageCode,
+        subtitleVttSrc,
       })
 
       const subtitleButton = container.querySelector(
         '[data-testid="hero-chrome-subtitles"]',
       )
-      expect(subtitleButton === null).toBe(!hasSubtitleOptions)
+      expect(subtitleButton).not.toBeNull()
+      expect(subtitleButton?.getAttribute("aria-disabled")).toBe(
+        hasSubtitleOptions ? null : "true",
+      )
       expect(
         container.querySelector(
           '[data-testid="hero-chrome-subtitle-language-code"]',
         )?.textContent ?? null,
       ).toBe(expectedState)
-      if (expectedState != null) {
-        expect(subtitleButton?.getAttribute("aria-label")).toBe(
-          `Subtitles: ${expectedState}`,
-        )
-      }
+      expect(subtitleButton?.getAttribute("aria-label")).toBe(expectedLabel)
+      expect(
+        subtitleButton?.querySelector('[role="tooltip"]')?.textContent,
+      ).toBe(expectedLabel)
     },
   )
 

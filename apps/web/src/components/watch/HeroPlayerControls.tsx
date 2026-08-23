@@ -183,9 +183,14 @@ export function HeroPlayerControls({
       : chromeVisibility === "dim"
         ? "opacity-100"
         : "opacity-0"
-  const subtitleStateLabel =
-    subtitleLanguageCode ??
-    languagePickerT(subtitleEnabled ? "toggleOn" : "toggleOff")
+  const subtitleStateLabel = !showSubtitleButton
+    ? languagePickerT("notAvailable")
+    : (subtitleLanguageCode ??
+      languagePickerT(subtitleEnabled ? "toggleOn" : "toggleOff"))
+  const subtitleTooltip = `${languagePickerT("subtitlesHeading")} · ${subtitleStateLabel}`
+  const visibleSubtitleState = subtitleEnabled
+    ? (subtitleLanguageCode ?? languagePickerT("toggleOn"))
+    : null
 
   useEffect(() => {
     onVisibilityChange?.({
@@ -1281,20 +1286,35 @@ export function HeroPlayerControls({
           </ChromeButton>
         ) : null}
 
-        {showSubtitleButton && onLanguageClick ? (
+        {onLanguageClick ? (
           <ChromeButton
             onClick={onLanguageClick}
-            ariaLabel={`${languagePickerT("subtitlesHeading")}: ${subtitleStateLabel}`}
+            ariaLabel={subtitleTooltip}
             testId="hero-chrome-subtitles"
-            className="w-auto min-w-10 gap-1 px-1 md:w-auto md:min-w-12 md:gap-1.5 md:px-2"
+            disabled={!showSubtitleButton}
+            tooltip={subtitleTooltip}
+            className={
+              visibleSubtitleState
+                ? "w-auto min-w-10 gap-1 px-1 md:w-auto md:min-w-12 md:gap-1.5 md:px-2"
+                : undefined
+            }
           >
-            <Captions aria-hidden className="h-5 w-5 md:h-6 md:w-6" />
-            <span
-              data-testid="hero-chrome-subtitle-language-code"
-              className="text-[10px] font-bold tracking-[0.1em] md:tracking-[0.14em]"
-            >
-              {subtitleStateLabel}
-            </span>
+            <Captions
+              aria-hidden
+              className={`h-5 w-5 md:h-6 md:w-6 ${
+                subtitleEnabled && showSubtitleButton
+                  ? "fill-current [&_path]:stroke-neutral-900"
+                  : ""
+              }`}
+            />
+            {visibleSubtitleState ? (
+              <span
+                data-testid="hero-chrome-subtitle-language-code"
+                className="text-[10px] font-bold tracking-[0.1em] md:tracking-[0.14em]"
+              >
+                {visibleSubtitleState}
+              </span>
+            ) : null}
           </ChromeButton>
         ) : null}
 
