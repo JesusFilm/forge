@@ -201,8 +201,104 @@ describe("SubtitleTranscript rendering", () => {
       container.querySelector('[data-testid="watch-subtitle-cues"]'),
     ).toBeNull()
     expect(container.querySelector("time")).toBeNull()
-    expect(container.querySelectorAll("button")).toHaveLength(1)
+    // The header chevron plus the collapsed block's own expand affordance.
+    expect(container.querySelectorAll("button")).toHaveLength(2)
     expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it("clamps the collapsed transcript to about 60% of the viewport and fades its bottom", () => {
+    renderTranscript()
+
+    const compactText = container.querySelector(
+      '[data-testid="watch-subtitle-compact-text"]',
+    ) as HTMLElement | null
+    expect(compactText).not.toBeNull()
+    expect(compactText?.className).toContain("overflow-hidden")
+    expect(compactText?.className).toContain(
+      "max-h-[max(8rem,calc(60dvh_-_15rem))]",
+    )
+    expect(compactText?.className).toContain("[mask-image:linear-gradient(")
+    expect(compactText?.className).toContain(
+      "[-webkit-mask-image:linear-gradient(",
+    )
+  })
+
+  it("drops the bottom fade once the collapsed text is measured as fitting", () => {
+    const observerCallbacks: Array<() => void> = []
+    vi.stubGlobal(
+      "ResizeObserver",
+      class {
+        constructor(callback: () => void) {
+          observerCallbacks.push(callback)
+        }
+        observe() {}
+        unobserve() {}
+        disconnect() {}
+      },
+    )
+
+    renderTranscript()
+
+    const compactText = container.querySelector(
+      '[data-testid="watch-subtitle-compact-text"]',
+    ) as HTMLElement
+    expect(compactText.className).toContain("[mask-image:linear-gradient(")
+
+    const setBox = (clientHeight: number, scrollHeight: number) => {
+      Object.defineProperty(compactText, "clientHeight", {
+        configurable: true,
+        value: clientHeight,
+      })
+      Object.defineProperty(compactText, "scrollHeight", {
+        configurable: true,
+        value: scrollHeight,
+      })
+      act(() => {
+        for (const callback of observerCallbacks) callback()
+      })
+    }
+
+    // Unmeasurable box: the fade must survive, otherwise every overflowing
+    // transcript loses its "there is more" hint.
+    setBox(0, 0)
+    expect(compactText.className).toContain("[mask-image:linear-gradient(")
+
+    // Overflowing box keeps the fade.
+    setBox(400, 2400)
+    expect(compactText.className).toContain("[mask-image:linear-gradient(")
+
+    // Fits inside the clamp: no fade, because there is nothing more to read.
+    setBox(400, 400)
+    expect(compactText.className).not.toContain("[mask-image:linear-gradient(")
+    expect(compactText.className).not.toContain(
+      "[-webkit-mask-image:linear-gradient(",
+    )
+  })
+
+  it("expands to the interactive transcript when the collapsed block is clicked", async () => {
+    renderTranscript()
+
+    const expandBlock = container.querySelector(
+      '[data-testid="watch-subtitle-compact-expand"]',
+    ) as HTMLButtonElement | null
+    expect(expandBlock).not.toBeNull()
+    expect(expandBlock?.getAttribute("aria-expanded")).toBe("false")
+
+    await act(async () => {
+      expandBlock!.click()
+    })
+    await act(async () => {
+      await vi.waitFor(() => {
+        expect(
+          container.querySelector('[data-testid="watch-subtitle-cues"]'),
+        ).not.toBeNull()
+      })
+    })
+
+    expect(
+      container.querySelector('[data-testid="watch-subtitle-compact-text"]'),
+    ).toBeNull()
+    expect(getTranscriptToggle().getAttribute("aria-expanded")).toBe("true")
   })
 
   it("keeps the collapsed element count bounded for a long transcript", () => {
@@ -228,7 +324,7 @@ describe("SubtitleTranscript rendering", () => {
         ?.textContent,
     ).toContain("Cue 500")
     expect(transcript?.querySelectorAll("time")).toHaveLength(0)
-    expect(transcript?.querySelectorAll("button")).toHaveLength(1)
+    expect(transcript?.querySelectorAll("button")).toHaveLength(2)
   })
 
   it("does not load interactive transcript data when the collapsed audio source changes", () => {

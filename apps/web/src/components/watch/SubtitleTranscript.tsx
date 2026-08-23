@@ -6,6 +6,7 @@ import {
   useEffect,
   useId,
   useMemo,
+  useRef,
   useState,
   type RefObject,
   type ReactNode,
@@ -42,6 +43,36 @@ function loadInteractiveTranscriptModule(): Promise<InteractiveTranscriptModule>
 }
 
 const LazyInteractiveSubtitleTranscript = lazy(loadInteractiveTranscriptModule)
+
+/**
+ * Collapsed transcripts are clamped so the whole card lands at roughly 60% of
+ * the viewport instead of pushing every section below it thousands of pixels
+ * down. The subtracted 15rem is the card's non-text chrome (measured at
+ * 237-249px across desktop and mobile: section padding plus header), so the
+ * clamp below applies to the TEXT box and the CARD is what hits 60dvh. The
+ * `max()` floor keeps short landscape viewports readable.
+ */
+const COLLAPSED_TEXT_CLAMP_CLASS =
+  "max-h-[max(8rem,calc(60dvh_-_15rem))] overflow-hidden"
+
+/**
+ * Bottom fade telling the reader there is more text behind the clamp. Paired
+ * with the `-webkit-` property for Safari, matching `SiblingCarousel`.
+ *
+ * Do NOT factor the repeated gradient into a shared variable: Tailwind
+ * extracts candidates by scanning source text, so an interpolated class name
+ * never appears in the source and the utility is silently never generated —
+ * the fade would just stop rendering with no build or test error.
+ */
+const COLLAPSED_TEXT_FADE_CLASS =
+  "[mask-image:linear-gradient(to_bottom,black_0%,black_62%,transparent_100%)] [-webkit-mask-image:linear-gradient(to_bottom,black_0%,black_62%,transparent_100%)]"
+
+/**
+ * Sub-pixel line-height rounding leaves `scrollHeight` a hair above
+ * `clientHeight` on text that visually fits, so require more than a rounding
+ * error's worth of overflow before claiming there is more to read.
+ */
+const OVERFLOW_TOLERANCE_PX = 4
 
 type SubtitleTranscriptProps = {
   subtitles: WatchSubtitle[]
@@ -149,6 +180,35 @@ export function SubtitleTranscript({
     return () => controller.abort()
   }, [activeVttSrc, durationSeconds, expanded, hasLoadedActiveSource])
 
+  const collapsedTextRef = useRef<HTMLDivElement | null>(null)
+  // Defaults to faded: a real transcript overflows the clamp far more often
+  // than not, and measurement only ever removes the fade. Environments that
+  // cannot measure (jsdom, a hidden ancestor) therefore keep the honest hint.
+  const [collapsedTextOverflows, setCollapsedTextOverflows] = useState(true)
+
+  useEffect(() => {
+    if (expanded) return
+    const element = collapsedTextRef.current
+    if (!element) return
+
+    const measure = () => {
+      // A zero-height box means "not laid out", not "fits" — treating it as
+      // fitting would strip the fade from every overflowing transcript.
+      if (element.clientHeight === 0) return
+      setCollapsedTextOverflows(
+        element.scrollHeight - element.clientHeight > OVERFLOW_TOLERANCE_PX,
+      )
+    }
+
+    // Measure once synchronously: ResizeObserver's first callback is async, and
+    // this is the only measurement at all when ResizeObserver is unavailable.
+    measure()
+    if (typeof ResizeObserver === "undefined") return
+    const observer = new ResizeObserver(measure)
+    observer.observe(element)
+    return () => observer.disconnect()
+  }, [compactText, expanded])
+
   if (transcriptSubtitles.length === 0) return null
 
   const languageLabel = (subtitle: WatchSubtitle) =>
@@ -210,13 +270,25 @@ export function SubtitleTranscript({
     )
   } else {
     content = (
-      <div
-        id={contentId}
-        data-testid="watch-subtitle-compact-text"
-        className="whitespace-pre-line px-6 py-6 text-base leading-relaxed text-stone-300 sm:px-8 sm:py-8 sm:text-lg"
+      <button
+        type="button"
+        data-testid="watch-subtitle-compact-expand"
+        aria-expanded={false}
+        aria-label={t("heading")}
+        onClick={openTranscript}
+        className="block w-full cursor-pointer rounded-b-2xl text-left focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:outline-none"
       >
-        {compactText}
-      </div>
+        <div
+          id={contentId}
+          ref={collapsedTextRef}
+          data-testid="watch-subtitle-compact-text"
+          className={`whitespace-pre-line px-6 py-6 text-base leading-relaxed text-stone-300 sm:px-8 sm:py-8 sm:text-lg ${COLLAPSED_TEXT_CLAMP_CLASS} ${
+            collapsedTextOverflows ? COLLAPSED_TEXT_FADE_CLASS : ""
+          }`}
+        >
+          {compactText}
+        </div>
+      </button>
     )
   }
 

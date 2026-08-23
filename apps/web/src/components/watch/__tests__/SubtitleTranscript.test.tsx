@@ -68,14 +68,14 @@ describe("filterTranscriptSubtitlesForAudio", () => {
 })
 
 describe("formatCompactTranscript", () => {
-  test("preserves cue boundaries as blank lines in one string", () => {
+  test("separates cues with a single newline in one string", () => {
     expect(
       formatCompactTranscript([
         { start: 1, end: 2, text: "First phrase." },
         { start: 3, end: 4, text: "Second phrase." },
         { start: 5, end: 6, text: "Third phrase." },
       ]),
-    ).toBe("First phrase.\n\nSecond phrase.\n\nThird phrase.")
+    ).toBe("First phrase.\nSecond phrase.\nThird phrase.")
   })
 
   test("returns an empty string for an empty transcript", () => {

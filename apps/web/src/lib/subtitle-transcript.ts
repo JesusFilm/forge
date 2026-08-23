@@ -7,8 +7,13 @@ export type InitialSubtitleTranscript = {
   compactText: string | null
 } | null
 
+/**
+ * Collapsed-transcript teaser text. Cues are joined with a SINGLE newline so
+ * the clamped block reads as tight continuous prose; a blank line per cue
+ * spent half the clamp on whitespace and fit barely a handful of lines.
+ */
 export function formatCompactTranscript(cues: SubtitleCue[]): string {
-  return cues.map(({ text }) => text).join("\n\n")
+  return cues.map(({ text }) => text).join("\n")
 }
 
 const TIMING_RE =
