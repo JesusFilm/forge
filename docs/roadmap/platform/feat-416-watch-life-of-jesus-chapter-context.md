@@ -1,9 +1,9 @@
 ---
 id: "feat-416"
-title: "Watch Life of Jesus chapter context"
+title: "Watch carousel context priority"
 owner: "codex"
 priority: "P1"
-status: "complete"
+status: "in-progress"
 start_date: "2026-08-22"
 duration: 2
 depends_on: []
@@ -18,16 +18,29 @@ tags:
 
 ## Problem
 
-The standalone Watch page for _Life of Jesus (Gospel of John)_ preserves the
-playable film and its eligible collection contexts, but it does not expose the
-film's own 49 manifest-admitted Chapters as another selectable continuation
-context. Viewers therefore cannot continue the curriculum from the full-film
-page even though the catalog already models those Chapters and their routes.
+Watch currently lets a playable video's own children displace a collection
+explicitly selected by a contextual URL, while a standalone playable video
+defaults to external collection choices and appends its own chapter context.
+That reverses the viewer's chosen context in one route shape and makes the
+video's intrinsic hierarchy secondary in the other.
+
+The carousel needs one mutually exclusive, route-shaped source hierarchy:
+
+1. A contextual URL-selected canonical parent is authoritative.
+2. Otherwise, a standalone playable video's own usable children win when at
+   least two remain after admission.
+3. Only then may eligible external parents provide the existing selectable
+   fallback, preserving their relation order and default.
+
+This structural rule applies generically to qualifying playable videos,
+including JESUS, _Life of Jesus_, and _Book of Acts_. It must not match a title,
+slug, or document ID, and owning children must not reclassify a playable film
+or alter the separate `SeriesPage` flow.
 
 Customer evidence: [Linear FGE-75](https://linear.app/jesus-film-project/issue/FGE-75/watchbug-route-the-73-clip-acts-study-to-its-intended-collection),
-whose durable evidence originated in Help Scout. FGE-75's separate 73-clip
-Acts report remains unresolved and is not evidence that the same fix applies
-there. This ticket does not authorize a Help Scout reply.
+whose durable evidence originated in Help Scout. The 73-clip Acts shape is now
+an explicit generic acceptance fixture, not deferred work or a special case.
+This ticket does not authorize a Help Scout reply.
 
 Implementation contract:
 [`docs/plans/2026-08-22-0038-fix-life-of-jesus-chapters-plan.md`](../../plans/2026-08-22-0038-fix-life-of-jesus-chapters-plan.md).
@@ -69,48 +82,57 @@ Implementation contract:
 
 ## What To Build
 
-1. On eligible standalone film routes, append a virtual selectable context
-   for the film's own Chapters after the existing eligible parent contexts.
-2. Admit only film-owned Chapters whose contextual route is present for the
-   active audio language in the existing Watch route manifest, and require at
-   least two admitted Chapters before adding the context.
-3. Keep the first eligible parent selected by default. Selecting the film
-   context must expose the admitted 49-Chapter sequence without leaving the
-   standalone full-film URL; with current catalog data, _Triumphal Entry and
-   Results_ is Chapter 30 of 49.
-4. Reuse the existing selector, carousel, and pending-navigation behavior so a
-   selected Chapter follows its existing contextual route and retains its
-   playback and download identity.
-5. Add focused automated coverage for ordering, manifest fallback, selector
-   behavior, Chapter navigation, and the standalone film's canonical, hero,
-   Share, download, and structured-data identity.
-6. Record desktop and compact browser proof plus a pinned `origin/main`
-   page-load comparison covering requests, eager image loading, serialized
-   payload growth, hydration, and user-visible loading.
+1. At the shared Watch merge seam, resolve the carousel source in this order:
+   contextual canonical parent, qualifying standalone own children, eligible
+   external parents, then no carousel.
+2. Treat contextual-parent resolution as terminal. If its admitted children
+   fall below the two-item threshold, render no sibling carousel and do not
+   fall through to the selected video's children or another parent.
+3. On standalone routes, admit each own child for the exact current
+   parent/child/selected-audio-language route. Apply the two-item threshold
+   after filtering and preserve relation-owned child order.
+4. When the standalone own-child rail qualifies, render it as the one fixed
+   carousel source and omit external-parent choices from the block and client
+   payload. Resolve eligible parents only when the own-child rail does not
+   qualify; preserve their established order and default.
+5. Align carousel cards, contextual hrefs, related-item JSON-LD, and
+   contextual Up Next with the URL-selected canonical parent. Preserve the
+   existing standalone own-video Up Next behavior independently of an
+   external-parent fallback selector.
+6. Add focused automated coverage for the hierarchy, exact partial admission,
+   both thresholds, order, navigation, Up Next, structured data, identity
+   invariants, and `SeriesPage`/collection isolation. Use production-shaped
+   JESUS, Life of Jesus, and Book of Acts fixtures without branching on their
+   current live counts.
+7. Record credential-free desktop and compact browser proof plus a pinned
+   `origin/main` page-load comparison covering requests, eager image loading,
+   serialized payload growth, hydration, and user-visible loading.
 
 ## Constraints
 
-- Limit production changes to standalone Watch route composition. Do not
-  change Admin, GraphQL, generated artifacts, contextual routes, LUMO content,
-  publication or rights gates, film classification, redirects, or route
-  admission.
-- Preserve the existing eligible-parent order and default selection. When the
-  route manifest is unavailable, fewer than two own Chapter routes are
-  admitted, or no eligible parent exists, preserve current fallback behavior.
-- Preserve full-film playback, download, canonical URL, Share payload,
-  language and media identity, hero next-item behavior, and existing
-  parent-context related-item JSON-LD before the viewer selects another
-  context.
-- Do not infer a fix for the unresolved 73-clip Acts report or affect unrelated
-  Watch content that lacks the same eligible-parent plus admitted-own-Chapters
-  contract.
-- Add no new initial browser request, eager alternate-context thumbnail set,
+- Keep production changes Web-only. Do not change Admin, GraphQL, generated
+  artifacts, catalog data, LUMO content, publication or rights gates,
+  redirects, content classification, or route admission.
+- Never derive canonical, playback, hero, Share, download, rights, language,
+  or media identity from the carousel source or an external-parent fallback.
+- Preserve exact per-child admission and relation order. A missing manifest
+  remains fail-open for already restriction-filtered own children; a present
+  legacy manifest that cannot prove exact episode-language admission is
+  inconclusive and uses the eligible-parent fallback.
+- Apply the hierarchy generically, including Acts, JESUS, and Life of Jesus.
+  Do not add a title, slug, document-ID, or current-count exception.
+- Preserve `SeriesPage` separation and the established publication, deletion,
+  restriction, playability, slug, and contextual-route gates.
+- Add no initial browser request, eager alternate-context thumbnail set,
   effect, dependency, or client initialization. Quantify server payload growth
   and demonstrate no material page-load or hydration regression against the
   same pinned `origin/main` baseline.
+- Use only unauthenticated public GraphQL/HTML and safe local fixtures for
+  runtime evidence. Never forward credentials, create a credential-bearing
+  proxy, deploy production, or send a Help Scout reply.
 - Keep Chapter links on the existing public audio-language route builders and
   preserve modified-click, accessibility, pending-navigation, and responsive
-  selector behavior.
+  behavior.
 
 ## Verification
 
@@ -122,10 +144,12 @@ Implementation contract:
 - Run the PR-focused Web regression checks and a production build against the
   repository's supported local Admin setup; confirm no generated GraphQL
   drift or client/server boundary error.
-- At desktop and compact widths, prove the standalone Life of Jesus route
-  defaults to its first eligible parent, offers the film context, reports 49
-  Chapters, places _Triumphal Entry and Results_ at 30 of 49, and navigates a
-  selected Chapter through its existing contextual playback/download route.
+- At desktop and compact widths, prove qualifying standalone Life of Jesus,
+  JESUS, and Book of Acts routes render their own fixed ordered child rail
+  without an external-parent selector and navigate a selected child through
+  its existing contextual playback/download route.
+- Prove a contextual URL-selected parent stays authoritative, including the
+  terminal below-threshold case, even when the selected video owns children.
 - In the same browser pass, verify film identity, canonical, Share, download,
   related-item JSON-LD, selector accessibility, responsive layout, and console
   output remain correct.
@@ -137,31 +161,27 @@ Implementation contract:
   user-visible loading must remain within the existing 10% non-regression
   budget.
 
-## Resolution
+## Current Execution State
 
-The standalone route now keeps every manifest-admitted eligible parent first
-and appends the current film as a virtual parent only when the film has at least
-two manifest-admitted own Chapters. The first eligible parent remains the
-canonical/default context. The implementation reuses the existing compact
-`CarouselParent`, selector, rail, contextual route builder, and pending
-navigation path; it does not change the contextual route or any client
-component.
+The earlier implementation through `60623c624e0f0ce4fd5f885956a3641a065e45ee`
+against merge base `1f65d0af55f2c99df40a38a44053be5cb7463495`
+established exact per-child admission and the evidence below, but implemented
+the now-superseded eligible-parent-first/appended-own-context behavior. The
+ticket is reopened to implement the contextual-parent → standalone-own →
+eligible-parent-fallback hierarchy from the linked plan. The historical proof
+remains useful characterization evidence; it is not evidence that the revised
+priority is already shipped.
 
-The implementation, independent evidence, and compounded learning are present
-through `60623c624e0f0ce4fd5f885956a3641a065e45ee` against the pinned
-`origin/main` merge base `1f65d0af55f2c99df40a38a44053be5cb7463495`.
-Shipping continues in [PR #2005](https://github.com/JesusFilm/forge/pull/2005);
-this closeout backfill is the only subsequent documentation-only commit.
-
-## Verified Outcomes — 2026-08-22
+## Historical Characterization Evidence — 2026-08-22
 
 ### Deterministic and build proof
 
 - The production-shaped focused suite passed **153 tests in 4 files**:
   `./node_modules/.bin/vitest run 'src/app/[locale]/[htmlLang]/[...rest]/__tests__/page-routing.test.tsx' src/lib/__tests__/content-watch-merge.test.ts src/components/watch/__tests__/SiblingCarousel.test.tsx src/components/watch/__tests__/WatchPageClient.navigation.test.tsx`
   from `apps/web`.
-- The route proof appends 49 admitted own Chapters after the ordered eligible
-  parents, retains the first eligible parent as `canonicalParent`, pins
+- The route proof characterized the superseded behavior by appending 49
+  admitted own Chapters after ordered eligible parents and retaining the first
+  eligible parent as `canonicalParent`. It also pins
   _Triumphal Entry and Results_ at zero-based index 29, preserves full-film
   video/Share/download identity, and covers manifest-unavailable and
   fewer-than-two fallback behavior. It also proves that a three-Chapter source
@@ -216,14 +236,15 @@ Safe HTTPS reads on 2026-08-22 returned HTTP 200 for both controls:
   control comparison rather than a same-snapshot measurement of the unshipped
   selector.
 
-Together with the route/component tests, these observations cover the current
-catalog facts behind AE1-AE4 without claiming that the unshipped branch is
-already present in production.
+Together with the route/component tests, these observations preserve reusable
+catalog, identity, exact-admission, navigation, and performance
+characterization without claiming the revised source hierarchy is present in
+production.
 
 ## Performance and Browser Evidence
 
-- The production diff adds only an in-memory array composition after the
-  existing parallel video/manifest resolution. It adds no import, fetch,
+- The earlier production diff added only an in-memory array composition after
+  the existing parallel video/manifest resolution. It added no import, fetch,
   effect, dynamic import, client directive, dependency, or client
   initialization. `SiblingCarousel.tsx` is byte-identical to the merge base,
   and its thumbnails remain explicitly `loading="lazy"`; the existing hero
