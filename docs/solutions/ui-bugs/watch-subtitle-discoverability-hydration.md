@@ -1,6 +1,7 @@
 ---
 title: "Watch subtitle affordances and localized hero counts must hydrate from server-owned labels"
 date: "2026-08-22"
+last_updated: "2026-08-23"
 category: "ui-bugs"
 module: "apps/web/watch"
 problem_type: "ui_bug"
@@ -9,6 +10,7 @@ symptoms:
   - "Watch subtitles were represented by ambiguous or glyph-only controls before and during playback."
   - "A Video with one audio Dub and offered subtitles could render non-interactive subtitle metadata."
   - "The Xhosa JESUS route emitted React hydration error 418 when the server and browser formatted the localized audio-language count differently."
+  - "The subtitle tooltip wrapped its heading and language onto separate lines with a dangling separator, while adjacent icon-only player controls had no equivalent visible help."
 root_cause: "logic_error"
 resolution_type: "code_fix"
 severity: "high"
@@ -16,6 +18,7 @@ related_components:
   - "apps/web/src/app/[locale]/[htmlLang]/[...rest]/page.tsx"
   - "apps/web/src/components/watch/HeroPlayer.tsx"
   - "apps/web/src/components/watch/HeroPlayerControls.tsx"
+  - "apps/web/src/components/watch/ChromeButton.tsx"
   - "apps/web/src/components/watch/SeriesPageClient.tsx"
   - "apps/web/src/components/watch/SeriesHero.tsx"
   - "apps/web/src/lib/content.ts"
@@ -55,6 +58,8 @@ runtime stayed `128 min`; runtime generation was not the cause.
 - Xhosa had no same-language subtitle in the supplied catalog data. That was a
   truthful availability state, not evidence that offered subtitle delivery had
   failed.
+- The subtitle tooltip could split `Subtitles` from `· EN`, and play, mute,
+  audio-language, and fullscreen controls lacked the same hover/focus help.
 
 ## What Didn't Work
 
@@ -97,12 +102,41 @@ label becomes a button when
 `hasSubtitleSwitcher` is true, independently of the audio-language switcher,
 and otherwise remains truthful informational text.
 
-The sound-on Chrome control always includes a compact visible state: the
-localized off label when disabled, the selected normalized subtitle language
-code when available, or the localized on label for an active track whose
-metadata has no resolvable display code. The same state is included in the
-localized accessible name, and the existing modal callback, subtitle
+The sound-on Chrome control keeps a compact visible active state: the selected
+normalized subtitle language code when available, or the localized on label
+for an active track whose metadata has no resolvable display code. Off uses the
+original outlined icon without a visible language label; unavailable uses the
+same disabled, dimmed control. The existing modal callback, subtitle
 preference, and track selection flow remain unchanged.
+
+### Derive concise player tooltips from the accessible action label
+
+The FGE-92 follow-up centralizes icon-button help in `ChromeButton`. Its one
+required `ariaLabel` supplies both the button's accessible name and the
+presentational tooltip, so the two cannot drift
+(`apps/web/src/components/watch/ChromeButton.tsx:17-32`,
+`apps/web/src/components/watch/ChromeButton.tsx:87-126`). The tooltip stays
+hidden at rest, appears for fine-pointer hover or keyboard focus, uses a single
+non-wrapping line, and shifts toward an eight-pixel viewport inset when the
+tooltip fits within the available viewport width
+(`apps/web/src/components/watch/ChromeButton.tsx:38-58`,
+`apps/web/src/components/watch/ChromeButton.tsx:97-125`).
+
+`HeroPlayerControls` composes localized live actions for play/pause,
+mute/unmute, audio language, subtitles, and fullscreen. Subtitle text is the
+explicit state projection `Subtitles: Off`, `Subtitles: On`, `Subtitles: On
+(EN)`, or `Subtitles: Not available`; the visible icon and optional language
+code remain a separate compact state (`apps/web/src/components/watch/HeroPlayerControls.tsx:186-203`,
+`apps/web/src/components/watch/HeroPlayerControls.tsx:1297-1357`).
+
+Measurement remains interaction-scoped. A transient `ResizeObserver` exists
+only while a tooltip is open and disconnects on pointer leave, blur, or
+unmount; changing a live action label also re-clamps the open tooltip
+(`apps/web/src/components/watch/ChromeButton.tsx:60-85`,
+`apps/web/src/components/watch/ChromeButton.tsx:97-108`). Focus within the
+control bar suppresses the idle-hide timer, and leaving the bar resumes normal
+auto-hide behavior (`apps/web/src/components/watch/HeroPlayerControls.tsx:314-334`,
+`apps/web/src/components/watch/HeroPlayerControls.tsx:1087-1104`).
 
 ## Why This Works
 
@@ -116,6 +150,14 @@ Video can still expose offered subtitle choices. It does not manufacture
 availability: the rendered count and modal continue to derive from normalized
 tracks in the Video Edition, and the existing Forge Subtitle Track delivery
 path is untouched.
+
+Using one localized action string for both semantics and presentation keeps
+dynamic tooltip text synchronized without maintaining parallel props. The
+visible subtitle icon and optional language/state label can remain deliberately
+compact because the tooltip and accessible name carry the complete state.
+Open-only measurement avoids
+adding idle page-load work, while the focus guard keeps keyboard help
+perceivable beyond the chrome's ordinary hide delay.
 
 ## Verification
 
@@ -190,6 +232,28 @@ tasks, but cold compilation made its navigation timings unsuitable for a base
 comparison. This limitation is recorded rather than substituting incomparable
 numbers.
 
+### Tooltip follow-up verification
+
+PR #2008 was open and unmerged when this learning was updated. The full Web
+suite passed 2,835 tests with one existing todo; Web typecheck, changed-file
+ESLint, Prettier, production build, roadmap generation, and diff integrity also
+passed. Focused coverage verifies matching tooltip/accessibility text across
+all five icon buttons, the four subtitle projections, live play/mute/fullscreen
+label transitions, 320-pixel clamp arithmetic, re-clamping after a label
+change, and focus persistence beyond the idle timeout
+(`apps/web/src/components/watch/__tests__/HeroPlayerControls.test.tsx:331-413`,
+`apps/web/src/components/watch/__tests__/HeroPlayerControls.test.tsx:415-602`,
+`apps/web/src/components/watch/__tests__/HeroPlayerControls.test.tsx:1228-1280`).
+
+A legacy demo page showed its single subtitle tooltip hidden at rest and five
+controls with semantic names; it still used the obsolete middle-dot copy and
+was not treated as visual proof of the production component. The actual local
+Watch route returned HTTP 200 but rendered its expected experience-load
+fallback because the local Admin content source was unavailable; the in-app
+browser also rejected a new localhost navigation. This is recorded as a
+browser-environment limitation, not as visual proof. The requested production
+browser verification remains a post-merge check.
+
 ## Prevention
 
 - Server-rendered localized values that participate in hydration should have a
@@ -201,10 +265,17 @@ numbers.
 - For above-the-fold frontend changes, compare production initial request count
   and compressed JavaScript against the pinned merge base, then record any
   unavailable runtime metrics explicitly.
+- For icon-only player controls, derive the presentational tooltip from the
+  accessible action label, keep it hidden at rest, and test every dynamic state
+  transition rather than asserting styling tokens alone.
+- Treat tooltip geometry and chrome lifetime as interaction state: measure only
+  while open, remeasure live labels, contain the box at compact widths, and
+  prevent idle hiding while keyboard focus remains within the controls.
 
 ## Related Issues
 
 - [Linear FGE-92](https://linear.app/jesus-film-project/issue/FGE-92)
+- [Pending follow-up PR #2008](https://github.com/JesusFilm/forge/pull/2008)
 - [Watch subtitle VTT delivery must remain public and same-origin](watch-subtitle-vtt-proxy-account-gate.md)
 - [Watch caption defaults must be same-audio-language](watch-caption-language-availability-20260615.md)
 - [Frontend change page-load performance verification](../conventions/frontend-change-page-load-performance-verification.md)

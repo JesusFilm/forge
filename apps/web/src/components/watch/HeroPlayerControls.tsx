@@ -183,11 +183,21 @@ export function HeroPlayerControls({
       : chromeVisibility === "dim"
         ? "opacity-100"
         : "opacity-0"
+  const subtitleHeading = languagePickerT("subtitlesHeading")
   const subtitleStateLabel = !showSubtitleButton
     ? languagePickerT("notAvailable")
-    : (subtitleLanguageCode ??
-      languagePickerT(subtitleEnabled ? "toggleOn" : "toggleOff"))
-  const subtitleTooltip = `${languagePickerT("subtitlesHeading")} · ${subtitleStateLabel}`
+    : subtitleEnabled
+      ? `${languagePickerT("toggleOn")}${subtitleLanguageCode ? ` (${subtitleLanguageCode})` : ""}`
+      : languagePickerT("toggleOff")
+  const subtitleTooltip = `${subtitleHeading}: ${subtitleStateLabel}`
+  const playLabel = playing ? t("pause") : t("play")
+  const muteLabel = muted || volume === 0 ? t("unmute") : t("mute")
+  const audioLanguageLabel = languageCode
+    ? `${t("changeAudioLanguage")}: ${languageCode}`
+    : t("changeAudioLanguage")
+  const fullscreenLabel = isFullscreen
+    ? t("exitFullscreen")
+    : t("enterFullscreen")
   const visibleSubtitleState = subtitleEnabled
     ? (subtitleLanguageCode ?? languagePickerT("toggleOn"))
     : null
@@ -229,6 +239,7 @@ export function HeroPlayerControls({
   // Writes happen in commit-phase effects so concurrent rendering replays
   // can't leave the refs in interim/abandoned states.
   const hoveringControlsRef = useRef(false)
+  const focusWithinControlsRef = useRef(false)
   const [pointerIdle, setPointerIdle] = useState(false)
   const pointerIdleTimerRef = useRef<number | null>(null)
   useEffect(() => {
@@ -310,6 +321,7 @@ export function HeroPlayerControls({
     // either mid-drag drops pointer capture and leaves the drag flag stuck.
     if (
       hoveringControlsRef.current ||
+      focusWithinControlsRef.current ||
       volumeDraggingRef.current ||
       timelineDraggingRef.current
     ) {
@@ -1072,14 +1084,33 @@ export function HeroPlayerControls({
         }
       }}
       onPointerLeave={() => setHoveringControls(false)}
+      onFocusCapture={() => {
+        focusWithinControlsRef.current = true
+        if (hideTimerRef.current != null) {
+          window.clearTimeout(hideTimerRef.current)
+          hideTimerRef.current = null
+        }
+      }}
+      onBlurCapture={(event) => {
+        const nextTarget = event.relatedTarget
+        if (
+          nextTarget instanceof Node &&
+          event.currentTarget.contains(nextTarget)
+        ) {
+          return
+        }
+        focusWithinControlsRef.current = false
+        scheduleHide()
+      }}
       className={`absolute inset-x-0 bottom-0 z-10 flex w-full flex-wrap items-center gap-x-1 gap-y-0 pb-3 transition-opacity duration-300 md:flex-nowrap md:gap-x-4 md:pb-7 ${WATCH_PAGE_RAIL_PADDING_CLASSES} ${
         chromeOpacityClass
       }`}
     >
       <ChromeButton
         onClick={togglePlay}
-        ariaLabel={playing ? t("pause") : t("play")}
+        ariaLabel={playLabel}
         testId="hero-chrome-play"
+        tooltipAlign="start"
       >
         {playbackLoading ? (
           <span
@@ -1252,7 +1283,7 @@ export function HeroPlayerControls({
         </div>
         <ChromeButton
           onClick={toggleMute}
-          ariaLabel={muted || volume === 0 ? t("unmute") : t("mute")}
+          ariaLabel={muteLabel}
           testId="hero-chrome-mute"
         >
           {muted || volume === 0 ? <ChromeMutedIcon /> : <ChromeVolumeIcon />}
@@ -1266,7 +1297,7 @@ export function HeroPlayerControls({
         {showLanguageButton && onLanguageClick ? (
           <ChromeButton
             onClick={onLanguageClick}
-            ariaLabel={t("changeAudioLanguage")}
+            ariaLabel={audioLanguageLabel}
             testId="hero-chrome-language"
             className={
               languageCode
@@ -1292,7 +1323,6 @@ export function HeroPlayerControls({
             ariaLabel={subtitleTooltip}
             testId="hero-chrome-subtitles"
             disabled={!showSubtitleButton}
-            tooltip={subtitleTooltip}
             className={
               visibleSubtitleState
                 ? "w-auto min-w-10 gap-1 px-1 md:w-auto md:min-w-12 md:gap-1.5 md:px-2"
@@ -1320,7 +1350,7 @@ export function HeroPlayerControls({
 
         <ChromeButton
           onClick={toggleFullscreen}
-          ariaLabel={isFullscreen ? t("exitFullscreen") : t("enterFullscreen")}
+          ariaLabel={fullscreenLabel}
           testId="hero-chrome-fullscreen"
         >
           {isFullscreen ? <ExitFullscreenIcon /> : <EnterFullscreenIcon />}
