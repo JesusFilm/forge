@@ -589,6 +589,57 @@ describe("MediaCollectionItem video image resolver", () => {
     })
   })
 
+  it("prefers cinematic linked-video images over still rows", async () => {
+    scheduleBlurGeneration.mockClear()
+    const load = vi.fn().mockResolvedValue([
+      {
+        id: "still",
+        mobileCinematicHigh: null,
+        mobileCinematicLow: null,
+        videoStill: "https://imagedelivery.net/account/still/w=1920",
+        url: null,
+        thumbnail: "https://imagedelivery.net/account/still/w=120",
+        width: 1920,
+        height: 1080,
+        blurDataUrl: "data:image/png;base64,STILL",
+        dominantColor: "#111111",
+      },
+      {
+        id: "cinematic",
+        mobileCinematicHigh:
+          "https://imagedelivery.net/account/cinematic/w=1280",
+        mobileCinematicLow: null,
+        videoStill: null,
+        url: null,
+        thumbnail: null,
+        width: 1280,
+        height: 600,
+        blurDataUrl: "data:image/png;base64,CINEMATIC",
+        dominantColor: "#222222",
+      },
+    ])
+
+    const result = await fieldResolver("MediaCollectionItem", "videoImage")(
+      { videoId: "video-1" },
+      {},
+      {
+        prisma: {},
+        loaders: {
+          videoImagesByVideoId: { load },
+        },
+      },
+      fakeInfo,
+    )
+
+    expect(result).toMatchObject({
+      id: "cinematic",
+      mobileCinematicHigh: "https://imagedelivery.net/account/cinematic/w=1280",
+      blurDataUrl: "data:image/png;base64,CINEMATIC",
+      dominantColor: "#222222",
+    })
+    expect(scheduleBlurGeneration).not.toHaveBeenCalled()
+  })
+
   it("returns stored metadata without scheduling when blur and color are complete", async () => {
     scheduleBlurGeneration.mockClear()
 
@@ -1120,6 +1171,31 @@ describe("Edge cases", () => {
     expect(fields?.thumbnailOrientation?.type.toString()).toBe(
       "MediaCollectionThumbnailOrientation",
     )
+  })
+
+  it("exposes dynamic feed video exclusions on MediaCollectionBlock", () => {
+    const type = schema.getType("MediaCollectionBlock")
+    const fields = type && "getFields" in type ? type.getFields() : null
+    expect(fields?.excludedVideoIds?.type.toString()).toBe("[String!]!")
+  })
+
+  it("defaults missing dynamic feed exclusions for legacy media blocks", async () => {
+    const resolveExcludedVideoIds = fieldResolver(
+      "MediaCollectionBlock",
+      "excludedVideoIds",
+    )
+
+    expect(
+      await resolveExcludedVideoIds(fixtures.mediaCollection, {}, {}, fakeInfo),
+    ).toEqual([])
+    expect(
+      await resolveExcludedVideoIds(
+        { ...fixtures.mediaCollection, excludedVideoIds: ["collection-1"] },
+        {},
+        {},
+        fakeInfo,
+      ),
+    ).toEqual(["collection-1"])
   })
 
   it("unknown discriminator throws UnknownBlockKindError", () => {

@@ -12,6 +12,17 @@ const BLOCKED_SCHEMES = new Set([
 ])
 
 /**
+ * Normalize a CMS-sourced stream URL before validation/playback: trim outer
+ * whitespace and reject any interior whitespace. WHATWG URL parsing silently
+ * strips both, so a tainted value passes validation but 400s at the player.
+ */
+export function cleanStreamUrl(url: string | null | undefined): string | null {
+  const trimmed = url?.trim()
+  if (!trimmed || /\s/.test(trimmed)) return null
+  return trimmed
+}
+
+/**
  * Validate a streaming URL before passing to useVideoPlayer().
  * Only allows Mux streaming domains.
  */

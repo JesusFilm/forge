@@ -86,6 +86,12 @@ describe("buildActionRow", () => {
     ].map((k) => k.id)
     expect(new Set(ids).size).toBe(ids.length)
   })
+
+  // Voice search lives OUTSIDE the keyboard (VoiceSearchButton at the left of
+  // the search bar) — the action row must stay mic-free on every platform.
+  it("has no mic key", () => {
+    expect(buildActionRow(false).some((k) => k.id === "mic")).toBe(false)
+  })
 })
 
 describe("applyKey", () => {

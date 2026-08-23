@@ -225,7 +225,9 @@
   "HeroPlayer": {
     "playWithSound": "Kare e bitaei",
     "tapToUnmute": "Tap e kar me suara ae",
-    "nextEpisode": "Episode re"
+    "nextEpisode": "Episode re",
+    "audioTranslationCount": "{count, plural, one {# language eo} other {# languages re}}",
+    "subtitleCount": "Subtitles re: {count, plural, one {# language eo} other {# languages re}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Content biga ae",

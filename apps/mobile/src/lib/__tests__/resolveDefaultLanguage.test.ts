@@ -51,6 +51,36 @@ describe("resolveDefaultSlug", () => {
     expect(resolveDefaultSlug(options, "en")).toBe("spanish")
   })
 
+  // REGRESSION GUARD: JESUS carries 2281 dubs, of which TWO have a bcp47
+  // starting "en" — "english-north-american-indigenous" (en-nai) at index 266
+  // and plain "english" (en) at index 614. First-match-by-prefix handed the
+  // viewer "English, North American Indigenous". An exact tag must win.
+  const enCollision = () => [
+    opt("english-north-american-indigenous", "en-nai"),
+    opt("english", "en"),
+  ]
+
+  it("prefers the exact tag over a longer one sharing its prefix (device step)", () => {
+    mockDeviceLocale("en-US")
+    expect(resolveDefaultSlug(enCollision(), null)).toBe("english")
+  })
+
+  it("prefers the exact tag at the video-primary step", () => {
+    mockDeviceLocale("fr-FR")
+    expect(resolveDefaultSlug(enCollision(), "en")).toBe("english")
+  })
+
+  it("prefers the exact tag at the English fallback step", () => {
+    mockDeviceLocale("fr-FR")
+    expect(resolveDefaultSlug(enCollision(), "de")).toBe("english")
+  })
+
+  it("still falls back to a prefix match when no exact tag exists", () => {
+    mockDeviceLocale("en-US")
+    // Only the regional tag is offered — it must still be chosen.
+    expect(resolveDefaultSlug([opt("en-nai", "en-nai")], null)).toBe("en-nai")
+  })
+
   it("device locale wins over the video primary language when both match", () => {
     mockDeviceLocale("en-US")
     const options = [opt("french", "fr"), opt("english", "en")]

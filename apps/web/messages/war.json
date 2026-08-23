@@ -225,7 +225,9 @@
   "HeroPlayer": {
     "playWithSound": "Tara, tan-awa yana",
     "tapToUnmute": "Tap basi ablihan an tunog",
-    "nextEpisode": "Sunod nga Episode"
+    "nextEpisode": "Sunod nga Episode",
+    "audioTranslationCount": "{count, plural, one {# yinaknan} other {# mga yinaknan}}",
+    "subtitleCount": "Mga Subtitle: {count, plural, one {# yinaknan} other {# mga yinaknan}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Ginlo-load an sulod",

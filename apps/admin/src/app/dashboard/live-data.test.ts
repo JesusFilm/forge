@@ -95,6 +95,7 @@ describe("dashboard live data", () => {
               variant: "grid",
               itemsSource: "manual",
               showItemNumbers: false,
+              excludedVideoIds: ["blocked-collection"],
               items: [
                 { videoId: "older-video-1" },
                 { videoId: "older-video-2" },
@@ -103,7 +104,7 @@ describe("dashboard live data", () => {
           ],
         },
       ]),
-    ).toEqual(["older-video-1", "older-video-2"])
+    ).toEqual(["older-video-1", "older-video-2", "blocked-collection"])
   })
 
   it("passes a video category through the picker row loader", async () => {

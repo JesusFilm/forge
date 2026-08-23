@@ -17,6 +17,8 @@ export type ChatErrorCode =
   | "timeout"
   | "invalid_json"
   | "schema_violation"
+  // Retained for wire compatibility with already-deployed clients. The
+  // staged Experience write path no longer emits this code.
   | "concurrent_modification"
   | "slug_change_rejected"
   | "cross_locale_unconfirmed"

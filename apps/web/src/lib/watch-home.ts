@@ -143,7 +143,7 @@ export type WatchHomeResult =
   | { data: WatchHomeModel; error: null }
   | { data: null; error: ErrorLike | Error }
 
-type WatchHomeExperienceBlock = NonNullable<
+export type WatchHomeExperienceBlock = NonNullable<
   NonNullable<
     NonNullable<
       WatchHomeEditorialOverridesData["watchSetting"]
@@ -916,6 +916,48 @@ async function fetchWatchHomeModel(
     experienceBlocks:
       overridesResult.data?.watchSetting?.homepageExperience?.blocks ?? null,
   })
+}
+
+/**
+ * Builds Homepage preview chrome from live video inventory plus the supplied
+ * staged blocks. Unlike `resolveWatchHome`, this deliberately bypasses both
+ * the canonical Homepage override query and the Watch Data Cache.
+ */
+export async function resolveWatchHomePreview(
+  locale: string,
+  languageSlug: string,
+  experienceBlocks: readonly WatchHomeExperienceBlock[],
+): Promise<WatchHomeResult> {
+  try {
+    const result = await client.query({
+      query: getWatchHomeVideosOperation,
+      variables: {
+        coreIds: getWatchHomeCoreIds(),
+        locale,
+        languageSlug,
+      },
+      fetchPolicy: "no-cache",
+    })
+    const error = graphqlError(
+      result as { error?: ErrorLike; errors?: unknown[] },
+    )
+    if (error) throw error
+
+    return {
+      data: buildWatchHomeModelFromVideos({
+        videos: result.data?.watchHomeVideos ?? [],
+        locale,
+        languageSlug,
+        experienceBlocks,
+      }),
+      error: null,
+    }
+  } catch (error) {
+    return {
+      data: null,
+      error: error instanceof Error ? error : new Error("Unknown error"),
+    }
+  }
 }
 
 const getCachedWatchHomeModel = unstable_cache(

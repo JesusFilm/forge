@@ -75,8 +75,8 @@ export type AnnotatedVariantRow = {
 
 /**
  * Playable when the HLS URL passes `validateStreamingUrl` (Mux-hosted HLS).
- * Non-empty isn't enough: normalizeVideo passes raw CMS `hls`, so a dub can carry
- * a non-Mux URL the player rejects at Play time. Same guard → disabled, not inert.
+ * Non-empty isn't enough: a dub can carry a non-Mux URL the player rejects at
+ * Play time. Same guard → disabled, not inert.
  */
 export function isVariantPlayable(variant: Pick<WatchVariant, "hls">): boolean {
   return validateStreamingUrl(variant.hls)

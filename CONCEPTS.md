@@ -109,6 +109,11 @@ Audio availability takes precedence over subtitle-only membership, while
 collection containers and playable leaf Videos remain distinct inventory
 groups even when they share the same underlying language coverage.
 
+A subtitle-only entry is actionable only when its requested VTT and fallback
+Dub share a compatible Video Edition. Its public path names the playable audio
+language, while the requested subtitle language travels as separate one-shot
+intent.
+
 ### Contextual Watch Route
 
 A public Watch URL that identifies a parent collection, child Video, and
@@ -781,6 +786,22 @@ A migration failure state the team has classified as safe for automated failed-r
 
 A curated, themed watch page — such as Easter or Christmas — that assembles a selection of watch content under an editorial frame. An Experience is authored in admin (hand-curated by the editorial team, or AI-generated) and published to render as its own standalone page on the watch site, reachable by a public slug of its own (distinct from any single Video's slug).
 
+### Experience Draft
+
+The single shared staged version of one language-specific Experience, editable
+and previewable without changing that Experience's live version. Each language
+has an independent draft and publish lifecycle; saves use last-save-wins
+collaboration, while publishing or discarding ends the draft and invalidates its
+unlisted preview.
+
+### Experience Duplicate
+
+A new caller-owned Experience created from another Experience's latest saved
+effective authored configuration, including each locale's active draft when one
+exists. It preserves localized content and template classification but starts
+unpublished, without homepage designation, revision history, chat state, or
+derived publication data; referenced media remain shared rather than cloned.
+
 ### Experience Block
 
 An ordered, schema-validated content unit within an Experience. Blocks carry a discriminator that identifies their content semantics, while presentation variants can change a block's treatment without creating a different content kind; section blocks compose other blocks under a shared visual shell.
@@ -989,6 +1010,8 @@ Identity always keys on the Language slug; the cached name paints labels instant
 The small floating video window that keeps a video playing after the viewer leaves the screen it was playing on, so playback survives navigation instead of ending with the route. Distinct from the operating system's picture-in-picture window, which is the platform's own window outside the app — the Mini Player is drawn by the app and lives above its navigation.
 
 It is the same live playback surface as the full-size player, resized and repositioned rather than handed to a second player, because moving playback between two surfaces restarts it. A Mini Player is earned rather than automatic: a video that never actually played does not get one, nor does a video that already ran to its end, nor one whose playback is being driven by a cast receiver. While an in-app sheet is presented over it, it is hidden rather than torn down, so the video keeps playing behind the sheet and returns when the sheet closes. The viewer can move it between screen corners and dismiss it; dismissing ends the playback session rather than merely hiding the window.
+
+Shrinking into the window and growing back out of it are one reversible motion, not two independent animations: a transition interrupted part-way turns around from where it currently is rather than restarting from either end, so the video never jumps. Because the same surface is being moved rather than replaced, the window is only ever as correct as the transition's own bookkeeping — a transition that ends without restoring the surface to its resting state leaves the window drawn but empty.
 
 ## Offline downloads
 

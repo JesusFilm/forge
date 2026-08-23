@@ -225,7 +225,9 @@
   "HeroPlayer": {
     "playWithSound": "Katso nyt",
     "tapToUnmute": "Napauta poistaaksesi mykistyksen",
-    "nextEpisode": "Seuraava jakso"
+    "nextEpisode": "Seuraava jakso",
+    "audioTranslationCount": "{count, plural, one {# kieli} other {# kieltä}}",
+    "subtitleCount": "Tekstitykset: {count, plural, one {# kieli} other {# kieltä}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Ladataan sisältöä",

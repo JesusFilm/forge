@@ -359,6 +359,10 @@ describe("parseWatchPath", () => {
       kind: "reserved",
       prefix: "favicon.ico",
     })
+    expect(parseWatchPath("/manifest.webmanifest")).toEqual({
+      kind: "reserved",
+      prefix: "manifest.webmanifest",
+    })
   })
 
   it("parses /languages as languages", () => {

@@ -225,7 +225,9 @@
   "HeroPlayer": {
     "playWithSound": "Lale kio",
     "tapToUnmute": "Tap nan Unmute",
-    "nextEpisode": "Episode eo ilo joriane"
+    "nextEpisode": "Episode eo ilo joriane",
+    "audioTranslationCount": "{count, plural, one {# kajin} other {# kajin ko}}",
+    "subtitleCount": "Subtitle ko: {count, plural, one {# kajin} other {# kajin ko}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Ej load content",

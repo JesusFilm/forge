@@ -7,7 +7,8 @@ status: "complete"
 start_date: "2026-08-20"
 duration: 1
 depends_on: []
-blocks: []
+blocks:
+  - "feat-406"
 tags:
   - "platform"
   - "manager"

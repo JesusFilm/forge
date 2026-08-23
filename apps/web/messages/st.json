@@ -225,7 +225,9 @@
   "HeroPlayer": {
     "playWithSound": "Shebella hona joale",
     "tapToUnmute": "Tlanya ho tlosa khutso",
-    "nextEpisode": "Khahiso e latelang"
+    "nextEpisode": "Khahiso e latelang",
+    "audioTranslationCount": "{count, plural, one {# puo} other {# lipuo}}",
+    "subtitleCount": "Mengolo-tlase: {count, plural, one {# puo} other {# lipuo}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Ho kenya litaba",

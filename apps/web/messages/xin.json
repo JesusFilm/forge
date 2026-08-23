@@ -225,7 +225,9 @@
   "HeroPlayer": {
     "playWithSound": "Ver ahora",
     "tapToUnmute": "Toca para activar el sonido",
-    "nextEpisode": "Siguiente episodio"
+    "nextEpisode": "Siguiente episodio",
+    "audioTranslationCount": "{count, plural, one {# 'apa} other {# 'apaalhi}}",
+    "subtitleCount": "Tumu-xama par'a video: {count, plural, one {# 'apa} other {# 'apaalhi}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Cargando contenido",

@@ -225,7 +225,9 @@
   "HeroPlayer": {
     "playWithSound": "Тагьыр ӧтӥл",
     "tapToUnmute": "Тап кыны, сйлтымты",
-    "nextEpisode": "Икебас эпизод"
+    "nextEpisode": "Икебас эпизод",
+    "audioTranslationCount": "{count, plural, one {# кыл} other {# кылъёс}}",
+    "subtitleCount": "Субтитръёс: {count, plural, one {# кыл} other {# кылъёс}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Материал ӧтӥсько",

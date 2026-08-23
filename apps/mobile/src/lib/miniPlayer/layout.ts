@@ -144,7 +144,7 @@ export function miniPlayerCornerFrame(
 ): MiniPlayerFrame {
   const bounds = snapBounds(config)
   const onLeft = corner === "topLeft" || corner === "bottomLeft"
-  const onTop = corner === "topLeft" || corner === "topRight"
+  const onTop = isTopCorner(corner)
   return {
     corner,
     x: onLeft ? bounds.left : bounds.right,
@@ -221,4 +221,63 @@ export function snapToCorner(
     }
   }
   return nearest
+}
+
+/** The box the host draws this frame, in window coordinates. */
+export type FrameGeometry = {
+  x: number
+  y: number
+  width: number
+  height: number
+}
+
+/**
+ * Where the host's one frame sits for THIS render.
+ *
+ * The ordering is the whole point. A slot detaching drops `rect` a full commit
+ * before the layout effect arms the shrink, so the render in between has no
+ * motion to read; falling through to the window frame there paints the corner a
+ * frame early. `departingRect` answers that gap with the shrink's own first
+ * frame, so the geometry never moves. It ranks BELOW an expand hold.
+ */
+export function frameGeometry(args: {
+  /** The attached slot's measured rect; non-null means a route owns the frame. */
+  rect: FrameGeometry | null
+  /** The in-flight transition; the frame anchors at the end it started from. */
+  motion: {
+    from: FrameGeometry
+    to: FrameGeometry
+    anchor: "from" | "to"
+  } | null
+  /** An expand tap's pinned base frame, if one is live. */
+  heldWindowFrame: FrameGeometry | null
+  /** The rect a shrink is about to depart from, before its motion is armed. */
+  departingRect: FrameGeometry | null
+  /** The resting corner window. */
+  windowFrame: FrameGeometry
+}): FrameGeometry {
+  if (args.rect != null) return args.rect
+  if (args.motion != null)
+    return args.motion.anchor === "from" ? args.motion.from : args.motion.to
+  return args.heldWindowFrame ?? args.departingRect ?? args.windowFrame
+}
+
+/** On the screen's top edge. Single-sourced: the frame arithmetic and the
+ *  dismissal both read it, and a corner may not be "top" for one and not the
+ *  other. */
+export function isTopCorner(corner: MiniPlayerCorner): boolean {
+  return corner === "topLeft" || corner === "topRight"
+}
+
+/** How a dismissal leaves the screen. */
+export type DismissMode = "fade" | "slide"
+
+/**
+ * A bottom-corner window slides down and off — a short trip past the screen
+ * edge it already sits on. A top-corner one would have to cross the ENTIRE
+ * screen to leave the same way, dragging the window over the content the viewer
+ * is actually looking at, so it fades out where it stands instead.
+ */
+export function dismissMode(corner: MiniPlayerCorner): DismissMode {
+  return isTopCorner(corner) ? "fade" : "slide"
 }

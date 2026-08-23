@@ -225,7 +225,9 @@
   "HeroPlayer": {
     "playWithSound": "Titta nu",
     "tapToUnmute": "Tryck för att slå på ljudet",
-    "nextEpisode": "Nästa avsnitt"
+    "nextEpisode": "Nästa avsnitt",
+    "audioTranslationCount": "{count, plural, one {# språk} other {# språk}}",
+    "subtitleCount": "Undertexter: {count, plural, one {# språk} other {# språk}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Laddar innehåll",

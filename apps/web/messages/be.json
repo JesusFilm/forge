@@ -225,7 +225,9 @@
   "HeroPlayer": {
     "playWithSound": "Глядзець зараз",
     "tapToUnmute": "Націсніце, каб уключыць гук",
-    "nextEpisode": "Наступны эпізод"
+    "nextEpisode": "Наступны эпізод",
+    "audioTranslationCount": "{count, plural, one {# мова} few {# мовы} many {# моў} other {# мовы}}",
+    "subtitleCount": "Субцітры: {count, plural, one {# мова} few {# мовы} many {# моў} other {# мовы}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Загрузка зместу",

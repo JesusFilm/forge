@@ -51,6 +51,7 @@ import type {
 import type { z } from "zod"
 import { builder, type ContextShape } from "@/graphql/builder"
 import { publicMediaAssetPreviewUrl } from "@/services/media-asset.service"
+import { sortVideoImagesByDisplayPreference } from "@/services/video-image-selection"
 import { getOrScheduleVideoImageBlurDataUrl } from "@/services/video-image-blur-data-url.service"
 
 // Typed value helpers — each block POJO mirrors its Zod schema output.
@@ -222,7 +223,11 @@ function videoImageUrl(image: VideoImageMetadataSource) {
 function selectRenderableVideoImage(
   images: readonly VideoImageMetadataSource[],
 ) {
-  return images.find((image) => videoImageUrl(image)) ?? null
+  return (
+    sortVideoImagesByDisplayPreference(images).find((image) =>
+      videoImageUrl(image),
+    ) ?? null
+  )
 }
 
 async function resolveMediaCollectionVideoImageMetadata(
@@ -337,6 +342,7 @@ const ItemsSourceEnum = builder.enumType("ItemsSource", {
   values: {
     manual: { value: "manual" },
     routeVideoChildren: { value: "routeVideoChildren" },
+    dynamicCollections: { value: "dynamicCollections" },
   } as const,
 })
 
@@ -868,6 +874,13 @@ MediaCollectionBlockRef.implement({
     }),
     showItemNumbers: t.exposeBoolean("showItemNumbers"),
     footerText: t.exposeString("footerText", { nullable: true }),
+    excludedVideoIds: t.field({
+      type: ["String"],
+      nullable: false,
+      description:
+        "Video or collection ids excluded from dynamic collection feed results.",
+      resolve: (row) => row.excludedVideoIds ?? [],
+    }),
     items: t.field({
       type: [MediaCollectionItemRef],
       nullable: false,

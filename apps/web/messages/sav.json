@@ -225,7 +225,9 @@
   "HeroPlayer": {
     "playWithSound": "Xool léegi",
     "tapToUnmute": "Tàppal ngir jàppal wóol bi",
-    "nextEpisode": "Episode bi ci topp"
+    "nextEpisode": "Episode bi ci topp",
+    "audioTranslationCount": "{count, plural, one {# làkk} other {# làkk yi}}",
+    "subtitleCount": "Subtitles yi: {count, plural, one {# làkk} other {# làkk yi}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Di tënku content bi",

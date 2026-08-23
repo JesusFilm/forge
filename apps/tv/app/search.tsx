@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { Platform, StyleSheet, Text, View } from "react-native"
+import { BackHandler, Platform, StyleSheet, Text, View } from "react-native"
 import type { View as ViewType } from "react-native"
-import { useRouter } from "expo-router"
+import { useLocalSearchParams, useRouter } from "expo-router"
 import {
   isNativeSearchAvailable,
   TvosSearchView,
@@ -15,6 +15,7 @@ import {
   toNativeSearchResults,
 } from "../src/components/search/nativeSearchResults"
 import { searchResultPath } from "../src/components/search/searchResultPath"
+import { VoiceSearchButton } from "../src/components/search/VoiceSearchButton"
 import { WATCH_THEME } from "../src/components/watch/watchDetailTheme"
 import { SearchBrowse } from "../src/components/search/SearchBrowse"
 import { resolveSearchMeta } from "../src/components/search/searchDisplay"
@@ -30,6 +31,7 @@ import { scale } from "../src/lib/scale"
 import type { SearchResult } from "../src/lib/queries"
 import type { SearchState } from "../src/lib/search"
 import { sanitizeQuery, useSemanticSearch } from "../src/lib/search"
+import { useVoiceSearch } from "../src/lib/voiceSearch/useVoiceSearch"
 import { meetsMinQueryLength } from "../src/lib/searchGate"
 import { useSearchHistory } from "../src/lib/searchHistory"
 
@@ -74,6 +76,58 @@ export default function SearchScreen() {
     addRecent(lastSubmittedQuery)
   }, [state, results.length, lastSubmittedQuery, addRecent])
 
+  // Android TV voice search: partial/final transcripts write through the SAME
+  // sanitize chokepoint as typed keys, then ride the normal debounce → search
+  // path. `available` is false everywhere the recognizer doesn't exist (Apple
+  // TV, emulators without Google speech services), which hides the mic button.
+  const voice = useVoiceSearch(setSanitizedQuery)
+
+  // ── Back-from-results choreography (Android) ── Back with focus in the
+  // results region re-parks focus on the mic button (fast repeat searches);
+  // Back from the keyboard/search-bar region pops the screen as usual. The
+  // region flag flips on card focus vs key/mic focus — refs, not state, so
+  // D-pad traversal never re-renders the screen.
+  const resultsRegionFocusedRef = useRef(false)
+  const handleCardFocus = useCallback(() => {
+    resultsRegionFocusedRef.current = true
+  }, [])
+  const handleEntryRegionFocus = useCallback(() => {
+    resultsRegionFocusedRef.current = false
+  }, [])
+  // react-native-tvos host nodes expose requestTVFocus() (absent from the
+  // bundled View type) — same local cast as focusMemory.ts.
+  const micNodeRef = useRef<
+    (ViewType & { requestTVFocus?: () => void }) | null
+  >(null)
+  const setMicNode = useCallback((node: ViewType | null) => {
+    micNodeRef.current = node
+  }, [])
+  const voiceListeningRef = useRef(false)
+  voiceListeningRef.current = voice.listening
+  const voiceCancelRef = useRef(voice.cancel)
+  voiceCancelRef.current = voice.cancel
+  useEffect(() => {
+    if (Platform.OS !== "android") return
+    const handler = () => {
+      // Back during a voice session aborts the session, nothing else.
+      if (voiceListeningRef.current) {
+        voiceCancelRef.current()
+        return true
+      }
+      if (resultsRegionFocusedRef.current) {
+        resultsRegionFocusedRef.current = false
+        micNodeRef.current?.requestTVFocus?.()
+        return true
+      }
+      return false
+    }
+    const subscription = BackHandler.addEventListener(
+      "hardwareBackPress",
+      handler,
+    )
+    return () => subscription.remove()
+  }, [])
+
   // Recent / Category click runs a fresh search immediately, bypassing the 900ms
   // debounce. Thread the sanitized value through runQuery directly: submit() closes
   // over stale `query` until the next render, so the lag would search the prior one.
@@ -85,6 +139,21 @@ export default function SearchScreen() {
     },
     [runQuery],
   )
+
+  // Google Assistant app-search ("search for X on Jesus Film Watch"): the
+  // intent bridge routes here with ?q=<spoken text>. Run it immediately —
+  // runQueryImmediate sanitizes at the write site like every other source.
+  // The ref keeps a re-render (or focus re-entry) from re-firing the same
+  // spoken query after the user has moved on.
+  const { q } = useLocalSearchParams<{ q?: string }>()
+  const lastAssistantQueryRef = useRef<string | null>(null)
+  useEffect(() => {
+    const incoming = typeof q === "string" ? q : undefined
+    if (incoming == null || incoming.trim().length === 0) return
+    if (lastAssistantQueryRef.current === incoming) return
+    lastAssistantQueryRef.current = incoming
+    runQueryImmediate(incoming)
+  }, [q, runQueryImmediate])
 
   // Under the min length the browse view stays mounted (no blank/stale pane);
   // the SAME gate the debounce path uses, so results appear exactly when search
@@ -105,6 +174,26 @@ export default function SearchScreen() {
     onClearHistory: clearAll,
     recents,
     onRetry: retry,
+    onKeyFocus: handleEntryRegionFocus,
+    onCardFocus: handleCardFocus,
+    micOwnsInitialFocus: voice.available,
+  }
+
+  // Apple TV: native SwiftUI .searchable surface (expo-tvos-search) — the ONLY
+  // path that receives Siri Remote system dictation ("Hold 🎤 to dictate").
+  // tvOS gives third-party apps no mic access; dictation writes exclusively
+  // into Apple's own text primitive, so the input+results presentation is
+  // native while ALL data plumbing (sanitizer → debounce → watchSearch →
+  // telemetry → recents) stays this screen's. Falls back to the custom
+  // keyboard if the native module is unavailable.
+  if (Platform.OS === "ios" && isNativeSearchAvailable()) {
+    return (
+      <SearchBodyNativeTvos
+        state={state}
+        results={results}
+        onChangeQuery={setSanitizedQuery}
+      />
+    )
   }
 
   // Apple TV: native SwiftUI .searchable surface (expo-tvos-search) — the ONLY
@@ -127,7 +216,22 @@ export default function SearchScreen() {
   return (
     <View style={styles.screen}>
       <View style={styles.queryLine}>
-        <QueryDisplay value={query} />
+        {voice.available ? (
+          <VoiceSearchButton
+            listening={voice.listening}
+            onPress={voice.start}
+            // The screen opens with the mic highlighted — voice-first entry.
+            hasTVPreferredFocus
+            onFocusIn={handleEntryRegionFocus}
+            nodeRef={setMicNode}
+          />
+        ) : null}
+        <View style={styles.queryDisplayWrap}>
+          <QueryDisplay value={query} />
+        </View>
+        {voice.listening ? (
+          <Text style={styles.listeningHint}>Listening…</Text>
+        ) : null}
       </View>
       {Platform.OS === "ios" ? (
         <SearchBodyStacked {...bodyProps} />
@@ -206,6 +310,13 @@ type SearchBodyProps = {
   onClearHistory: () => void
   recents: string[]
   onRetry: () => void
+  /** Screen-level focus-region signals: keyboard keys report "entry region",
+   *  result cards report "results region" — Back consults the flag. */
+  onKeyFocus?: () => void
+  onCardFocus?: () => void
+  /** True when the mic button renders — it owns the screen's initial focus,
+   *  so the keyboard's first-letter claim must stand down. */
+  micOwnsInitialFocus?: boolean
 }
 
 /**
@@ -224,6 +335,7 @@ function SearchResultsPane({
   onRunQuery,
   onClearHistory,
   onRetry,
+  onCardFocus,
   columns,
   topRowFocusUp,
   browseFullBleed,
@@ -247,6 +359,7 @@ function SearchResultsPane({
             columns={columns}
             onRetry={onRetry}
             topRowFocusUp={topRowFocusUp}
+            onCardFocus={onCardFocus}
           />
         ) : (
           <SearchBrowse
@@ -276,6 +389,8 @@ function SearchBodyTwoPane(props: SearchBodyProps) {
           value={props.query}
           onChange={props.onChangeQuery}
           onSubmit={props.onSubmit}
+          onKeyFocus={props.onKeyFocus}
+          claimInitialFocus={!props.micOwnsInitialFocus}
         />
       </View>
       <View style={styles.resultsPane}>
@@ -341,6 +456,22 @@ const styles = StyleSheet.create({
   // Design .s-query: padding 78px 0 (horizontal comes from screen).
   queryLine: {
     paddingTop: scale(78),
+    // Row: mic button (left) · query text (flex) · "Listening…" hint (right).
+    flexDirection: "row",
+    alignItems: "center",
+    gap: scale(24),
+  },
+  // Flexes so a long query yields room instead of pushing the hint off-canvas
+  // (QueryDisplay's own text already flexShrinks inside).
+  queryDisplayWrap: {
+    flex: 1,
+  },
+  listeningHint: {
+    fontFamily: "System",
+    fontSize: Math.round(scale(22)),
+    fontWeight: "700",
+    letterSpacing: scale(1.5),
+    color: WATCH_THEME.accent,
   },
   // Android: keyboard (left) + results (right) fill the height side by side.
   // Tight gap + no top inset so the results sit close to the keyboard's right

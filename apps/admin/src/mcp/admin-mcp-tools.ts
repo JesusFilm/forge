@@ -128,7 +128,8 @@ export const ADMIN_MCP_TOOLS = [
   },
   {
     name: "experience.locale.publish",
-    description: "Publish a validated ExperienceLocale.",
+    description:
+      "Publish the one active shared draft for an ExperienceLocale into canonical public content.",
     requiredScopes: ["experience:publish"],
     inputSchema: {
       type: "object",
@@ -137,6 +138,34 @@ export const ADMIN_MCP_TOOLS = [
         reason: { type: "string" },
       },
       required: ["localeId", "reason"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "experience.locale.discard",
+    description:
+      "Discard the active shared draft for an ExperienceLocale without changing canonical public content.",
+    requiredScopes: ["experience:locale:update"],
+    inputSchema: {
+      type: "object",
+      properties: {
+        localeId: { type: "string" },
+      },
+      required: ["localeId"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "experience.locale.preview",
+    description:
+      "Return the unlisted public preview URL for the active shared ExperienceLocale draft. The URL remains valid until that draft is published or discarded.",
+    requiredScopes: ["experience:read"],
+    inputSchema: {
+      type: "object",
+      properties: {
+        localeId: { type: "string" },
+      },
+      required: ["localeId"],
       additionalProperties: false,
     },
   },
@@ -199,6 +228,20 @@ export const ADMIN_MCP_TOOLS = [
         isTemplate: { type: "boolean" },
       },
       required: ["locale", "slug", "title", "blocks"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "experience.duplicate",
+    description:
+      "Duplicate every locale of any readable Experience into a new unpublished DRAFT Experience owned by the delegated principal. Copies authored blocks, routing, SEO, OG content, and template classification; generates available -copy slugs; never copies homepage, publication, embedding, revision, or chat state. Success returns {ok:true, sourceExperienceId, experience, locales, editorUrl}.",
+    requiredScopes: ["experience:read", "experience:create"],
+    inputSchema: {
+      type: "object",
+      properties: {
+        experienceId: { type: "string", minLength: 1 },
+      },
+      required: ["experienceId"],
       additionalProperties: false,
     },
   },

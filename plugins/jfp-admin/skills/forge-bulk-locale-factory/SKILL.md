@@ -7,15 +7,20 @@ description: Use when creating, updating, validating, reviewing, or publishing t
 
 Use the JFP Admin MCP as the source of truth. The AI runs the loop; Admin owns data, permissions, validation, writes, and publish.
 
-## Creating New Experiences (feat-320)
+## Creating New Experiences (feat-320 + feat-405)
 
-Two experience-level primitives create brand-new Experiences; both stage a
-DRAFT only and never publish:
+Three experience-level primitives create brand-new Experiences; all stage
+DRAFT content only and never publish:
 
 - `experience.create` (scope `experience:create`) — you supply the full draft:
   `{locale, slug, title, blocks}`. Meta/OG fields are not accepted here; set
   them afterwards with `experience.locale.update`. A duplicate `(locale, slug)`
   returns the existing resource instead of creating a second draft.
+- `experience.duplicate` (scopes `experience:read` + `experience:create`) —
+  supply `{experienceId}` to copy every locale of any readable Experience.
+  The new Experience belongs to the delegated principal; all copied locales
+  are DRAFT, homepage/publication state is cleared, and available `-copy`
+  slugs are assigned. Embeddings, revisions, and chat threads are not copied.
 - `experience.generate` (scope `experience:generate`) — Admin generates
   server-side from `{topic, locale, personaId?, exemplarExperienceId?, slug?}`:
   real video candidates ground the draft, and the result is validated before
@@ -24,17 +29,17 @@ DRAFT only and never publish:
   one generate followed by the locale loop below over regenerating per
   language. Pass an explicit `slug` for non-Latin topics.
 
-**Composition:** a generated or created Experience is a normal source for the
-locale loop — generate once in the source language, then translate it into
-each target locale with the workflow below (fan-out across topics or languages
-stays in your loop; there is no bulk operation server-side).
+**Composition:** a generated, created, or duplicated Experience is a normal
+source for the locale loop — generate once in the source language, then
+translate it into each target locale with the workflow below (fan-out across
+topics or languages stays in your loop; there is no bulk operation server-side).
 
 ## Workflow
 
 1. Confirm source locale, target locale, and whether publish is allowed.
 2. Use `experience.locale.missing` or `experience.list` to choose work.
    To start from nothing, create the source Experience first with
-   `experience.create` or `experience.generate`.
+   `experience.create`, `experience.duplicate`, or `experience.generate`.
 3. Read the source with `experience.locale.read`.
 4. Draft the target locale:
    - Translate user-facing copy.

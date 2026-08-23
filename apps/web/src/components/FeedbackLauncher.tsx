@@ -2,7 +2,7 @@
 
 import dynamic, { type DynamicOptionsLoadingProps } from "next/dynamic"
 import { useTranslations } from "next-intl"
-import { ExternalLink, Headset, Loader2 } from "lucide-react"
+import { Headset, Loader2 } from "lucide-react"
 import {
   createContext,
   useCallback,
@@ -16,7 +16,6 @@ import { useFloatingSearchPinned } from "@/components/FloatingSearchProvider"
 import { useWatchModalActivity } from "@/components/watch/WatchModalActivityProvider"
 import { WatchModalViewportCloseButton } from "@/components/watch/WatchModalViewportCloseButton"
 
-const FEEDBACK_FALLBACK_URL = "https://forms.gle/8WddM1kuyEBznukW8"
 const FeedbackLoadingCancelContext = createContext<() => void>(() => {})
 
 type FeedbackLoadNoticeProps = DynamicOptionsLoadingProps & {
@@ -62,17 +61,6 @@ export function FeedbackLoadNotice({
               >
                 {t("retry")}
               </button>
-            ) : null}
-            {error ? (
-              <a
-                href={FEEDBACK_FALLBACK_URL}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 font-semibold underline decoration-stone-500 underline-offset-4 hover:text-white focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:outline-none"
-              >
-                {t("openFormShort")}
-                <ExternalLink aria-hidden className="size-4" />
-              </a>
             ) : null}
             <button
               type="button"
@@ -141,6 +129,7 @@ export function FeedbackLauncher() {
           aria-busy={open && !modalReady}
           disabled={open && !modalReady}
           data-testid="feedback-launcher"
+          data-feedback-ignore
           onClick={openFeedback}
           className="group fixed bottom-[calc(1rem+env(safe-area-inset-bottom,0px))] left-[calc(1rem+env(safe-area-inset-left,0px))] z-[46] inline-flex h-11 w-11 cursor-pointer items-center justify-start overflow-hidden rounded-full border border-white/15 bg-stone-950/90 p-3 text-sm font-semibold text-stone-100 shadow-2xl backdrop-blur-md transition-[width,background-color,border-color,color] duration-200 ease-out hover:w-32 hover:border-brand-red/60 hover:bg-brand-red hover:text-white focus-visible:w-32 focus-visible:border-brand-red/60 focus-visible:bg-brand-red focus-visible:text-white focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:outline-none"
         >

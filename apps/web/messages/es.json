@@ -225,7 +225,9 @@
   "HeroPlayer": {
     "playWithSound": "Ver ahora",
     "tapToUnmute": "Activar sonido",
-    "nextEpisode": "Siguiente episodio"
+    "nextEpisode": "Siguiente episodio",
+    "audioTranslationCount": "{count, plural, one {# idioma} other {# idiomas}}",
+    "subtitleCount": "Subtítulos: {count, plural, one {# idioma} other {# idiomas}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Cargando contenido",

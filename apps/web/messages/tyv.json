@@ -225,7 +225,9 @@
   "HeroPlayer": {
     "playWithSound": "Азыр көр",
     "tapToUnmute": "Дууду ачыш үчүн тий",
-    "nextEpisode": "Кийинки серия"
+    "nextEpisode": "Кийинки серия",
+    "audioTranslationCount": "{count, plural, one {# чажыт} other {# чажыттар}}",
+    "subtitleCount": "Субтитрлер: {count, plural, one {# чажыт} other {# чажыттар}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Контент ажыдып тур",

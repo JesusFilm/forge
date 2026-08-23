@@ -225,7 +225,9 @@
   "HeroPlayer": {
     "playWithSound": "Kyk nou",
     "tapToUnmute": "Tik om te ont-demp",
-    "nextEpisode": "Volgende episode"
+    "nextEpisode": "Volgende episode",
+    "audioTranslationCount": "{count, plural, one {# taal} other {# tale}}",
+    "subtitleCount": "Onderskrifte: {count, plural, one {# taal} other {# tale}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Inhoud word gelaai",

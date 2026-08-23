@@ -225,7 +225,9 @@
   "HeroPlayer": {
     "playWithSound": "Hozir tomosha qiling",
     "tapToUnmute": "Ovozni yoqish uchun bosing",
-    "nextEpisode": "Keyingi qism"
+    "nextEpisode": "Keyingi qism",
+    "audioTranslationCount": "{count, plural, one {# til} other {# til}}",
+    "subtitleCount": "Subtitrlar: {count, plural, one {# til} other {# til}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Kontent yuklanmoqda",

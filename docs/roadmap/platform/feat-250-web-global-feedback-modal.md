@@ -9,6 +9,7 @@ duration: 1
 depends_on: []
 blocks:
   - "feat-311"
+  - "feat-399"
 tags:
   - "web"
   - "infrastructure"

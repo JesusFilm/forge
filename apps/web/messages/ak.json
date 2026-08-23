@@ -225,7 +225,9 @@
   "HeroPlayer": {
     "playWithSound": "Hwɛ seesei",
     "tapToUnmute": "Bɔ so na yi dede no fi mu",
-    "nextEpisode": "Episode a ɛto so hɔ"
+    "nextEpisode": "Episode a ɛto so hɔ",
+    "audioTranslationCount": "{count, plural, one {# kasa} other {# kasa ahorow}}",
+    "subtitleCount": "Nsɛm Ase Nkyerɛwee: {count, plural, one {# kasa} other {# kasa ahorow}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Rɛhyehyɛ nsɛm mu",

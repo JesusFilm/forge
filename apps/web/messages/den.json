@@ -225,7 +225,9 @@
   "HeroPlayer": {
     "playWithSound": "Kǫ́ta gúhta",
     "tapToUnmute": "Yatı́ náɂa gha ɂekwé",
-    "nextEpisode": "Episode náke"
+    "nextEpisode": "Episode náke",
+    "audioTranslationCount": "{count, plural, one {# yatı́} other {# yatı́}}",
+    "subtitleCount": "Subtitles yatı́: {count, plural, one {# yatı́} other {# yatı́}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Content tɛɣɛ",

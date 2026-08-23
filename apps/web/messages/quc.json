@@ -225,7 +225,9 @@
   "HeroPlayer": {
     "playWithSound": "Tatz'eta' wakami",
     "tapToUnmute": "Tapa' richin titzolin q'ojom",
-    "nextEpisode": "Jun chik episodio"
+    "nextEpisode": "Jun chik episodio",
+    "audioTranslationCount": "{count, plural, one {# ch'ab'äl} other {# taq ch'ab'äl}}",
+    "subtitleCount": "Subtítulos: {count, plural, one {# ch'ab'äl} other {# taq ch'ab'äl}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Tajin nupam rucontenido",

@@ -225,7 +225,9 @@
   "HeroPlayer": {
     "playWithSound": "Tatz'eta' wakami",
     "tapToUnmute": "Taq'ax richin tich'aw chik",
-    "nextEpisode": "Episode ch'aqa' chik"
+    "nextEpisode": "Episode ch'aqa' chik",
+    "audioTranslationCount": "{count, plural, one {# ch'ab'äl} other {# taq ch'ab'äl}}",
+    "subtitleCount": "Subtítulos: {count, plural, one {# ch'ab'äl} other {# taq ch'ab'äl}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Nisamajij content",

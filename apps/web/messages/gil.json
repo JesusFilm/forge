@@ -225,7 +225,9 @@
   "HeroPlayer": {
     "playWithSound": "Karaoaki iou",
     "tapToUnmute": "Tapa n taora te reo",
-    "nextEpisode": "Episode n muri"
+    "nextEpisode": "Episode n muri",
+    "audioTranslationCount": "{count, plural, one {# i-ki} other {# i-kiia}}",
+    "subtitleCount": "Taeka n te subtitle: {count, plural, one {# i-ki} other {# i-kiia}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "E bukinaki te kaonga",

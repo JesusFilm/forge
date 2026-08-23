@@ -225,7 +225,9 @@
   "HeroPlayer": {
     "playWithSound": "ଏବେ ଦେଖନ୍ତୁ",
     "tapToUnmute": "ଧ୍ୱନି ଚାଲୁ କରିବାକୁ ଟାପ୍ କରନ୍ତୁ",
-    "nextEpisode": "ପରବର୍ତ୍ତୀ ଏପିସୋଡ୍"
+    "nextEpisode": "ପରବର୍ତ୍ତୀ ଏପିସୋଡ୍",
+    "audioTranslationCount": "{count, plural, one {# ଭାଷା} other {# ଭାଷାଗୁଡ଼ିକ}}",
+    "subtitleCount": "ସବ୍‌ଟାଇଟଲ୍: {count, plural, one {# ଭାଷା} other {# ଭାଷାଗୁଡ଼ିକ}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "ସାମଗ୍ରୀ ଲୋଡ୍ କରାଯାଉଛି",

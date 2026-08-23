@@ -225,7 +225,9 @@
   "HeroPlayer": {
     "playWithSound": "Coimhead a-nis",
     "tapToUnmute": "Tap gus am balbhachd a thoirt dheth",
-    "nextEpisode": "An ath phrògram"
+    "nextEpisode": "An ath phrògram",
+    "audioTranslationCount": "{count, plural, one {# chànan} other {# cànanan}}",
+    "subtitleCount": "Fo-thiotalan: {count, plural, one {# chànan} other {# cànanan}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "A’ luchdadh susbaint",

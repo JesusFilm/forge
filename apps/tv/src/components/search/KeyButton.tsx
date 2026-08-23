@@ -13,6 +13,8 @@ type Props = {
   onPress: () => void
   /** Per-keyboard size tokens (GRID_KEY_DIMS or LINEAR_KEY_DIMS). */
   dims: KeyDims
+  /** Focus-gained notification for screen-level focus-region tracking. */
+  onFocusIn?: () => void
   /**
    * Exposes this key's native node so another surface can target it as a
    * D-pad `nextFocusUp` destination (the Apple TV stacked layout points the
@@ -31,6 +33,7 @@ export function KeyButton({
   hasTVPreferredFocus,
   onPress,
   dims,
+  onFocusIn,
   nodeRef,
 }: Props) {
   // Shared focus module ("key" role): strongest pop, preset drop shadow.
@@ -45,7 +48,10 @@ export function KeyButton({
     <Pressable
       ref={nodeRef}
       onPress={onPress}
-      onFocus={() => setFocused(true)}
+      onFocus={() => {
+        setFocused(true)
+        onFocusIn?.()
+      }}
       onBlur={() => setFocused(false)}
       hasTVPreferredFocus={hasTVPreferredFocus}
       accessibilityRole="button"
