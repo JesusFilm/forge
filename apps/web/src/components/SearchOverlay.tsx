@@ -663,10 +663,18 @@ export function SearchOverlay() {
     (e: ChangeEvent<HTMLInputElement>) => {
       setSuggestionPanelVisible(true)
       setSuppressedSuggestionValue(null)
-      invalidateSuggestionRequest()
+      // The debounced fetch effect is keyed on the normalized query, so a
+      // normalization-neutral keystroke (e.g. removing a trailing space)
+      // must not bump the generation — that would orphan the pending
+      // request without the effect ever rescheduling a replacement.
+      if (
+        normalizeWatchSearchQuery(e.target.value) !== normalizedSuggestionQuery
+      ) {
+        invalidateSuggestionRequest()
+      }
       setQuery(e.target.value)
     },
-    [invalidateSuggestionRequest, setQuery],
+    [invalidateSuggestionRequest, normalizedSuggestionQuery, setQuery],
   )
 
   const dismissSuggestions = useCallback(() => {

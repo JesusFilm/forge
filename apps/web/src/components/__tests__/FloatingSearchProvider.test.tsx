@@ -54,6 +54,7 @@ import {
   __resetWatchInteractionLoaderForTests,
   __setWatchInteractionLoadersForTests,
 } from "@/lib/watch-interaction-loader"
+import { MAX_WATCH_SEARCH_QUERY_CODE_POINTS } from "@/lib/watch-search-query"
 import type {
   SearchActionResult,
   SearchActionResultSource,
@@ -3280,6 +3281,263 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
       await Promise.resolve()
     })
     expect(document.body.textContent).toContain("Jesus")
+  })
+
+  it("repopulates suggestions after backspacing word-by-word to a shorter query", async () => {
+    vi.useFakeTimers()
+    mockEnglishAndSpanishSearchLanguages()
+    mockedFetchSuggestions
+      .mockResolvedValueOnce([watchSuggestion("Kids story suggestion")])
+      .mockResolvedValueOnce([watchSuggestion("Nazareth ministry")])
+
+    const input = await openSearchOverlay()
+    act(() => setInputValue(input, "Jesus for kids"))
+    await act(async () => {
+      vi.advanceTimersByTime(180)
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+    expect(mockedFetchSuggestions).toHaveBeenCalledTimes(1)
+    expect(document.body.textContent).toContain("Kids story suggestion")
+
+    // Word-by-word Backspace passes through the "Jesus " -> "Jesus" state,
+    // where the raw input changes but the normalized query does not.
+    await act(async () => {
+      setInputValue(input, "Jesus for")
+      await Promise.resolve()
+    })
+    await act(async () => {
+      setInputValue(input, "Jesus ")
+      await Promise.resolve()
+    })
+    await act(async () => {
+      setInputValue(input, "Jesus")
+      await Promise.resolve()
+    })
+    await act(async () => {
+      vi.advanceTimersByTime(180)
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(mockedFetchSuggestions).toHaveBeenCalledTimes(2)
+    expect(mockedFetchSuggestions).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({ query: "Jesus", languageSlug: "english" }),
+    )
+    expect(document.body.textContent).toContain("Nazareth ministry")
+  })
+
+  it("keeps suggestions visible across normalization-neutral trailing-space keystrokes", async () => {
+    vi.useFakeTimers()
+    mockEnglishAndSpanishSearchLanguages()
+    mockedFetchSuggestions.mockResolvedValueOnce([
+      watchSuggestion("Nazareth ministry"),
+    ])
+
+    const input = await openSearchOverlay()
+    act(() => setInputValue(input, "Jesus"))
+    await act(async () => {
+      vi.advanceTimersByTime(180)
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+    expect(document.body.textContent).toContain("Nazareth ministry")
+
+    await act(async () => {
+      setInputValue(input, "Jesus ")
+      await Promise.resolve()
+    })
+    expect(document.querySelector('[role="listbox"]')).not.toBeNull()
+    expect(document.body.textContent).toContain("Nazareth ministry")
+
+    await act(async () => {
+      setInputValue(input, "Jesus")
+      await Promise.resolve()
+    })
+    expect(document.querySelector('[role="listbox"]')).not.toBeNull()
+    expect(document.body.textContent).toContain("Nazareth ministry")
+
+    await act(async () => {
+      vi.advanceTimersByTime(180)
+      await Promise.resolve()
+    })
+    expect(mockedFetchSuggestions).toHaveBeenCalledTimes(1)
+  })
+
+  it("commits an in-flight response after a normalization-neutral keystroke", async () => {
+    vi.useFakeTimers()
+    mockEnglishAndSpanishSearchLanguages()
+    const pending = deferred<WatchSearchSuggestion[]>()
+    mockedFetchSuggestions.mockReturnValueOnce(pending.promise)
+
+    const input = await openSearchOverlay()
+    act(() => setInputValue(input, "Jesus "))
+    await act(async () => {
+      vi.advanceTimersByTime(180)
+      await Promise.resolve()
+    })
+    expect(mockedFetchSuggestions).toHaveBeenCalledTimes(1)
+    expect(mockedFetchSuggestions).toHaveBeenCalledWith(
+      expect.objectContaining({ query: "Jesus" }),
+    )
+
+    await act(async () => {
+      setInputValue(input, "Jesus")
+      await Promise.resolve()
+    })
+    await act(async () => {
+      pending.resolve([watchSuggestion("Nazareth ministry")])
+      await pending.promise
+      await Promise.resolve()
+    })
+
+    expect(mockedFetchSuggestions).toHaveBeenCalledTimes(1)
+    expect(document.body.textContent).toContain("Nazareth ministry")
+  })
+
+  it("never displays a resolved response for a query edited away mid-flight", async () => {
+    vi.useFakeTimers()
+    mockEnglishAndSpanishSearchLanguages()
+    const stale = deferred<WatchSearchSuggestion[]>()
+    mockedFetchSuggestions
+      .mockReturnValueOnce(stale.promise)
+      .mockResolvedValueOnce([watchSuggestion("Fresh Jesu match")])
+
+    const input = await openSearchOverlay()
+    act(() => setInputValue(input, "Jesus for"))
+    await act(async () => {
+      vi.advanceTimersByTime(180)
+      await Promise.resolve()
+    })
+    expect(mockedFetchSuggestions).toHaveBeenCalledTimes(1)
+
+    await act(async () => {
+      setInputValue(input, "Jesu")
+      await Promise.resolve()
+    })
+    await act(async () => {
+      stale.resolve([watchSuggestion("Stale for-query match")])
+      await stale.promise
+      await Promise.resolve()
+    })
+    expect(document.body.textContent).not.toContain("Stale for-query match")
+
+    await act(async () => {
+      vi.advanceTimersByTime(180)
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+    expect(mockedFetchSuggestions).toHaveBeenCalledTimes(2)
+    expect(document.body.textContent).toContain("Fresh Jesu match")
+    expect(document.body.textContent).not.toContain("Stale for-query match")
+  })
+
+  it("issues one debounced fetch for character-by-character typing", async () => {
+    vi.useFakeTimers()
+    mockEnglishAndSpanishSearchLanguages()
+    mockedFetchSuggestions.mockResolvedValueOnce([
+      watchSuggestion("Nazareth ministry"),
+    ])
+
+    const input = await openSearchOverlay()
+    for (const value of ["J", "Je", "Jes", "Jesu", "Jesus"]) {
+      await act(async () => {
+        setInputValue(input, value)
+        await Promise.resolve()
+      })
+    }
+    await act(async () => {
+      vi.advanceTimersByTime(180)
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(mockedFetchSuggestions).toHaveBeenCalledTimes(1)
+    expect(mockedFetchSuggestions).toHaveBeenCalledWith(
+      expect.objectContaining({ query: "Jesus" }),
+    )
+    expect(document.body.textContent).toContain("Nazareth ministry")
+  })
+
+  it("keeps suggestions visible when a keystroke lands beyond the normalization cap", async () => {
+    vi.useFakeTimers()
+    mockEnglishAndSpanishSearchLanguages()
+    mockedFetchSuggestions.mockResolvedValueOnce([
+      watchSuggestion("Capped-query suggestion"),
+    ])
+    const cappedQuery = "a".repeat(MAX_WATCH_SEARCH_QUERY_CODE_POINTS)
+
+    const input = await openSearchOverlay()
+    act(() => setInputValue(input, cappedQuery))
+    await act(async () => {
+      vi.advanceTimersByTime(180)
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+    expect(mockedFetchSuggestions).toHaveBeenCalledTimes(1)
+    expect(document.body.textContent).toContain("Capped-query suggestion")
+
+    // Appending past the cap changes the raw input but not the normalized
+    // query — pins the guard to normalizeWatchSearchQuery identity rather
+    // than a trailing-whitespace heuristic.
+    await act(async () => {
+      setInputValue(input, `${cappedQuery}a`)
+      await Promise.resolve()
+    })
+    expect(document.querySelector('[role="listbox"]')).not.toBeNull()
+    expect(document.body.textContent).toContain("Capped-query suggestion")
+
+    await act(async () => {
+      vi.advanceTimersByTime(180)
+      await Promise.resolve()
+    })
+    expect(mockedFetchSuggestions).toHaveBeenCalledTimes(1)
+  })
+
+  it("discards an in-flight response when a real edit follows a neutral keystroke", async () => {
+    vi.useFakeTimers()
+    mockEnglishAndSpanishSearchLanguages()
+    const stale = deferred<WatchSearchSuggestion[]>()
+    mockedFetchSuggestions
+      .mockReturnValueOnce(stale.promise)
+      .mockResolvedValueOnce([watchSuggestion("Fresh x match")])
+
+    const input = await openSearchOverlay()
+    act(() => setInputValue(input, "Jesus"))
+    await act(async () => {
+      vi.advanceTimersByTime(180)
+      await Promise.resolve()
+    })
+    expect(mockedFetchSuggestions).toHaveBeenCalledTimes(1)
+
+    await act(async () => {
+      setInputValue(input, "Jesus ")
+      await Promise.resolve()
+    })
+    await act(async () => {
+      setInputValue(input, "Jesus x")
+      await Promise.resolve()
+    })
+    await act(async () => {
+      stale.resolve([watchSuggestion("Stale bare-query match")])
+      await stale.promise
+      await Promise.resolve()
+    })
+    expect(document.body.textContent).not.toContain("Stale bare-query match")
+
+    await act(async () => {
+      vi.advanceTimersByTime(180)
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+    expect(mockedFetchSuggestions).toHaveBeenCalledTimes(2)
+    expect(mockedFetchSuggestions).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({ query: "Jesus x" }),
+    )
+    expect(document.body.textContent).toContain("Fresh x match")
+    expect(document.body.textContent).not.toContain("Stale bare-query match")
   })
 
   it("does not reopen suggestions after submitting a draft longer than the request cap", async () => {
