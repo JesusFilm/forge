@@ -50,9 +50,7 @@
             "SearchOverlay.searchInLanguage",
             "SearchOverlay.searchingInLanguage"
           ],
-          "humanReviewedOverrides": [
-            "ru"
-          ]
+          "humanReviewedOverrides": ["ru"]
         }
       ],
       "localeProvenance": {
@@ -5154,13 +5152,7 @@
     "zh-Hant",
     "zu"
   ],
-  "provisionalLocales": [
-    "crk",
-    "mey-Latn"
-  ],
-  "existingNonInventoryLocales": [
-    "tl",
-    "zh-Hans"
-  ],
+  "provisionalLocales": ["crk", "mey-Latn"],
+  "existingNonInventoryLocales": ["tl", "zh-Hans"],
   "missingCatalogs": []
 }
