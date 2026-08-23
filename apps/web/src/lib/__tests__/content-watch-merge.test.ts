@@ -499,7 +499,7 @@ describe("mergeWatchExperience — HeroPlayer slot type-restriction", () => {
 })
 
 describe("buildSiblingCarouselBlock — virtualParent branch (parent/collection videos)", () => {
-  it("uses standalone selectable parents in order ahead of the video's own children", () => {
+  it("uses the standalone video's own children without selectable parent choices", () => {
     const video = makeVideo({
       children: [
         makeChild("own-1", "own-1", "Own 1"),
@@ -544,14 +544,14 @@ describe("buildSiblingCarouselBlock — virtualParent branch (parent/collection 
 
     expect(
       isWatchBlock(carousel!) && carousel.kind === "SiblingCarousel"
-        ? carousel.canonicalParent
+        ? carousel.canonicalParent.documentId
         : null,
-    ).toEqual(selectableParents[0])
+    ).toBe(video.documentId)
     expect(
       isWatchBlock(carousel!) && carousel.kind === "SiblingCarousel"
         ? carousel.selectableParents
-        : null,
-    ).toEqual(selectableParents)
+        : undefined,
+    ).toBeUndefined()
     expect(
       isWatchBlock(hero!) && hero.kind === "HeroPlayer"
         ? hero.nextWatchItem
@@ -590,7 +590,27 @@ describe("buildSiblingCarouselBlock — virtualParent branch (parent/collection 
     ).toBe(false)
   })
 
-  it("prefers video.children over canonicalParent.children when both are populated", () => {
+  it.each([49, 61, 73])(
+    "uses the generic fixed-own-rail path for %i standalone children",
+    (childCount) => {
+      const children = Array.from({ length: childCount }, (_, index) =>
+        makeChild(
+          `chapter-${index + 1}`,
+          `chapter-${index + 1}`,
+          `Chapter ${index + 1}`,
+        ),
+      )
+      const video = makeVideo({ children })
+
+      const block = buildSiblingCarouselBlock(null, video as never)
+
+      expect(block?.canonicalParent.documentId).toBe(video.documentId)
+      expect(block?.canonicalParent.children).toHaveLength(childCount)
+      expect(block).not.toHaveProperty("selectableParents")
+    },
+  )
+
+  it("uses the contextual canonical parent when the selected video also owns children", () => {
     const ownChildren = [
       makeChild("chapter-1", "chapter-1", "Chapter 1"),
       makeChild("chapter-2", "chapter-2", "Chapter 2"),
@@ -614,9 +634,37 @@ describe("buildSiblingCarouselBlock — virtualParent branch (parent/collection 
     )
 
     expect(block).not.toBeNull()
-    // The video's own children win — virtual-parent identity is video.documentId.
-    expect(block!.canonicalParent.documentId).toBe(video.documentId)
-    expect(block!.canonicalParent.children).toEqual(ownChildren)
+    expect(block!.canonicalParent.documentId).toBe(canonicalParent.documentId)
+    expect(block!.canonicalParent.children).toEqual(canonicalParent.children)
+  })
+
+  it("treats a below-threshold contextual parent as terminal", () => {
+    const video = makeVideo({
+      children: [
+        makeChild("own-1", "own-1", "Own 1"),
+        makeChild("own-2", "own-2", "Own 2"),
+      ],
+    })
+    const canonicalParent = makeParent({
+      children: [makeChild("video-1", "jesus", "Jesus")],
+    })
+    const selectableParents = [
+      makeParent({
+        documentId: "fallback-parent",
+        children: [
+          makeChild("video-1", "jesus", "Jesus"),
+          makeChild("peer-1", "peer-1", "Peer 1"),
+        ],
+      }),
+    ]
+
+    expect(
+      buildSiblingCarouselBlock(
+        canonicalParent as never,
+        video as never,
+        selectableParents as never,
+      ),
+    ).toBeNull()
   })
 })
 
@@ -668,6 +716,55 @@ describe("buildHeroBlock — next watch item", () => {
       documentId: "episode-1",
       kind: "episode",
     })
+  })
+
+  it("uses contextual parent progression before a hybrid video's own children", () => {
+    const video = makeVideo({
+      documentId: "hybrid-video",
+      slug: "hybrid-video",
+      children: [makeChild("own-1", "own-one", "Own One")],
+    })
+    const parent = makeParent({
+      slug: "chosen-collection",
+      children: [
+        makeChild("hybrid-video", "hybrid-video", "Hybrid Video"),
+        makeChild("peer-2", "peer-two", "Peer Two"),
+      ],
+    })
+
+    const block = buildHeroBlock(
+      video as never,
+      makeVariant() as never,
+      parent as never,
+    )
+
+    expect(block.nextWatchItem).toMatchObject({
+      parentSlug: "chosen-collection",
+      slug: "peer-two",
+      documentId: "peer-2",
+    })
+  })
+
+  it("does not fall through to own children at the end of a contextual parent", () => {
+    const video = makeVideo({
+      documentId: "hybrid-video",
+      slug: "hybrid-video",
+      children: [makeChild("own-1", "own-one", "Own One")],
+    })
+    const parent = makeParent({
+      children: [
+        makeChild("peer-1", "peer-one", "Peer One"),
+        makeChild("hybrid-video", "hybrid-video", "Hybrid Video"),
+      ],
+    })
+
+    const block = buildHeroBlock(
+      video as never,
+      makeVariant() as never,
+      parent as never,
+    )
+
+    expect(block.nextWatchItem).toBeNull()
   })
 
   it("uses the first child for a parent video with a single child", () => {

@@ -2564,6 +2564,22 @@ export function buildNextWatchItem(
   canonicalParent: WatchParent | null,
   video: WatchVideoRecord,
 ): WatchNextWatchItem | null {
+  if (canonicalParent !== null) {
+    if (!canonicalParent.slug) return null
+    const activeIndex = canonicalParent.children.findIndex(
+      (child) => child.documentId === video.documentId,
+    )
+    if (activeIndex < 0 || activeIndex >= canonicalParent.children.length - 1) {
+      return null
+    }
+    const nextChild = canonicalParent.children
+      .slice(activeIndex + 1)
+      .find(isPlayableWatchChild)
+    if (!nextChild) return null
+
+    return nextWatchItemFromChild(canonicalParent.slug, nextChild)
+  }
+
   const ownChildren = video.children.filter(
     (child): child is WatchChild & { slug: string } =>
       isPlayableWatchChild(child),
@@ -2574,20 +2590,7 @@ export function buildNextWatchItem(
   if (ownChildren.length > 0 && currentSlug != null) {
     return nextWatchItemFromChild(currentSlug, ownChildren[0]!)
   }
-
-  if (!canonicalParent?.slug) return null
-  const activeIndex = canonicalParent.children.findIndex(
-    (child) => child.documentId === video.documentId,
-  )
-  if (activeIndex < 0 || activeIndex >= canonicalParent.children.length - 1) {
-    return null
-  }
-  const nextChild = canonicalParent.children
-    .slice(activeIndex + 1)
-    .find(isPlayableWatchChild)
-  if (!nextChild) return null
-
-  return nextWatchItemFromChild(canonicalParent.slug, nextChild)
+  return null
 }
 
 function isPlayableWatchChild(
@@ -2621,14 +2624,12 @@ function nextWatchItemFromChild(
  * Returns a carousel block with the most relevant peer set, or null when none
  * is available:
  *
- * 1. When the standalone route supplies eligible selectable parents, use the
- *    first as the default and retain all choices for the client selector.
- * 2. When the current video has its **own** children (a parent / collection
+ * 1. When a contextual route supplies a canonical parent, use only that
+ *    parent's children. A below-threshold canonical parent is terminal.
+ * 2. On a standalone route, when the current video has its **own** children,
  *    video like JESUS with 61 chapter segments), surface those — the user is
  *    looking at the parent, so chapters are the relevant peers.
- * 3. Otherwise, fall back to the canonical parent's children — the current
- *    video is itself a chapter, and the user wants to navigate between
- *    siblings of the same parent (e.g. between segments of JESUS).
+ * 3. Otherwise, use eligible selectable parents in their supplied order.
  *
  * Returns null when neither source has at least 2 entries.
  */
@@ -2637,12 +2638,18 @@ export function buildSiblingCarouselBlock(
   video: WatchVideoRecord,
   selectableParents: CarouselParent[] = [],
 ): WatchSiblingCarouselBlock | null {
-  if (selectableParents.length > 0) {
+  if (canonicalParent !== null) {
+    const siblings = canonicalParent.children
+    if (siblings.length < 2) return null
     return {
       kind: "SiblingCarousel",
-      canonicalParent: selectableParents[0]!,
+      canonicalParent: {
+        documentId: canonicalParent.documentId,
+        slug: canonicalParent.slug ?? null,
+        title: canonicalParent.title ?? null,
+        children: siblings,
+      },
       currentVideoDocumentId: video.documentId,
-      selectableParents,
     }
   }
 
@@ -2665,19 +2672,16 @@ export function buildSiblingCarouselBlock(
       currentVideoDocumentId: video.documentId,
     }
   }
-  if (!canonicalParent) return null
-  const siblings = canonicalParent.children
-  if (siblings.length < 2) return null
-  return {
-    kind: "SiblingCarousel",
-    canonicalParent: {
-      documentId: canonicalParent.documentId,
-      slug: canonicalParent.slug ?? null,
-      title: canonicalParent.title ?? null,
-      children: siblings,
-    },
-    currentVideoDocumentId: video.documentId,
+
+  if (selectableParents.length > 0) {
+    return {
+      kind: "SiblingCarousel",
+      canonicalParent: selectableParents[0]!,
+      currentVideoDocumentId: video.documentId,
+      selectableParents,
+    }
   }
+  return null
 }
 
 /** Always returns a WatchBody block — the page always shows title + description. */
@@ -2791,12 +2795,12 @@ export { isWatchBlock } from "@/lib/watch-blocks"
 
 type MergeWatchExperienceArgs = {
   video: WatchVideoRecord
+  /** Optional standalone-only child projection used to resolve the carousel. */
+  carouselVideo?: WatchVideoRecord
   variant: WatchVariant
   /**
-   * Canonical parent for the sibling carousel. May be null when the watch
-   * page is hit via the 2-segment URL `/watch/[video]/[locale]` (no
-   * collection in the URL) AND the video has no parent at all. When null,
-   * the SiblingCarousel slot is omitted from the merged block array.
+   * URL-selected canonical parent for contextual routes. Standalone routes
+   * keep this null even when external parents are eligible carousel choices.
    */
   canonicalParent: WatchParent | null
   /** Eligible collection choices supplied only by the standalone route. */
@@ -2827,6 +2831,7 @@ type MergeWatchExperienceArgs = {
  */
 export function mergeWatchExperience({
   video,
+  carouselVideo = video,
   variant,
   canonicalParent,
   selectableParents,
@@ -2871,7 +2876,11 @@ export function mergeWatchExperience({
   pushSlot("HeroPlayer", buildHeroBlock(video, variant, canonicalParent))
   pushSlot(
     "SiblingCarousel",
-    buildSiblingCarouselBlock(canonicalParent, video, selectableParents),
+    buildSiblingCarouselBlock(
+      canonicalParent,
+      carouselVideo,
+      selectableParents,
+    ),
   )
   pushSlot("WatchBody", buildWatchBodyBlock(video, variant))
   pushSlot("StudyQuestions", buildStudyQuestionsBlock(video.studyQuestions))

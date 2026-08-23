@@ -201,6 +201,7 @@ function withAdmittedVideoChildren(
   video: WatchVideoRecord,
   languageSlug: string,
   manifest: WatchRouteManifest | null,
+  isEpisodeAdmitted: typeof isWatchEpisodeRouteExactlyAdmittedByManifest = isWatchRouteAdmittedByManifest,
 ): WatchVideoRecord {
   const filteredParent = withAdmittedCarouselChildren(
     {
@@ -211,6 +212,7 @@ function withAdmittedVideoChildren(
     },
     languageSlug,
     manifest,
+    isEpisodeAdmitted,
   )
 
   return filteredParent.children === video.children
@@ -886,36 +888,28 @@ async function renderVideo(
       ),
     ])
     const languageSlug = watchVideo.selectedVariant.language?.slug ?? rawLocale
+    const videoWithAdmittedChildren = withAdmittedVideoChildren(
+      watchVideo.video,
+      languageSlug,
+      routeManifest,
+    )
     const carouselVideo = withAdmittedVideoChildren(
       watchVideo.video,
       languageSlug,
       routeManifest,
+      isWatchEpisodeRouteExactlyAdmittedByManifest,
     )
-    const eligibleParents = selectableParentsForStandaloneVideo(
-      watchVideo.video,
-      languageSlug,
-      routeManifest,
-    )
-    const ownChapterContext =
-      eligibleParents.length > 0 && carouselVideo.children.length >= 2
-        ? withAdmittedCarouselChildren(
-            {
-              documentId: carouselVideo.documentId,
-              slug: carouselVideo.slug,
-              title: carouselVideo.title,
-              children: carouselVideo.children,
-            } satisfies CarouselParent,
+    const selectableParents =
+      carouselVideo.children.length >= 2
+        ? []
+        : selectableParentsForStandaloneVideo(
+            watchVideo.video,
             languageSlug,
             routeManifest,
-            isWatchEpisodeRouteExactlyAdmittedByManifest,
           )
-        : null
-    const selectableParents =
-      ownChapterContext != null && ownChapterContext.children.length >= 2
-        ? [...eligibleParents, ownChapterContext]
-        : eligibleParents
     const mergedBlocks = mergeWatchExperience({
-      video: carouselVideo,
+      video: videoWithAdmittedChildren,
+      carouselVideo,
       variant: watchVideo.selectedVariant,
       canonicalParent: null,
       selectableParents,

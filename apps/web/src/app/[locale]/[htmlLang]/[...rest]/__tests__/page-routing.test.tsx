@@ -1245,7 +1245,7 @@ describe("Catch-all routing — series branch (2-seg)", () => {
     ).toEqual(["watch-page-client-mock", "watch-home-footer"])
   })
 
-  it("appends 49 admitted own Chapters after ordered standalone collection choices without changing identity", async () => {
+  it("uses 49 admitted own Chapters as a fixed standalone rail without changing identity", async () => {
     const result = makeWatchVideoResult("featureFilm")
     const child = (documentId: string, slug: string, title: string) => ({
       documentId,
@@ -1400,33 +1400,18 @@ describe("Catch-all routing — series branch (2-seg)", () => {
     const carousel = props.mergedBlocks.find(
       (block) => block.kind === "SiblingCarousel",
     )
-    expect(carousel?.selectableParents?.map((parent) => parent.slug)).toEqual([
-      "collection-a",
-      "collection-b",
-      filmSlug,
-    ])
-    expect(
-      carousel?.selectableParents?.map((parent) =>
-        parent.children.map((entry) => entry.slug),
-      ),
-    ).toEqual([
-      [filmSlug, "a-two"],
-      ["b-one", filmSlug],
-      ownChildren.map((entry) => entry.slug),
-    ])
-    expect(carousel?.canonicalParent?.slug).toBe("collection-a")
-    expect(carousel?.canonicalParent?.children).toHaveLength(2)
-    expect(carousel?.selectableParents?.at(-1)).toMatchObject({
+    expect(carousel?.canonicalParent).toMatchObject({
       documentId: "v1",
       slug: filmSlug,
       title: "Life of Jesus (Gospel of John)",
     })
-    expect(carousel?.selectableParents?.at(-1)?.children).toHaveLength(49)
-    expect(carousel?.selectableParents?.at(-1)?.children[29]).toMatchObject({
+    expect(carousel?.canonicalParent?.children).toHaveLength(49)
+    expect(carousel?.canonicalParent?.children?.[29]).toMatchObject({
       documentId: "chapter-30",
       slug: "triumphal-entry-and-results",
       title: "Triumphal Entry and Results",
     })
+    expect(carousel).not.toHaveProperty("selectableParents")
     const hero = props.mergedBlocks.find((block) => block.kind === "HeroPlayer")
     expect(hero?.nextWatchItem).toMatchObject({
       parentSlug: filmSlug,
@@ -1443,20 +1428,23 @@ describe("Catch-all routing — series branch (2-seg)", () => {
     })
     expect(props.downloadSequence).toBeNull()
     expect(jsonLdByType("BreadcrumbList")).toBeNull()
-    expect(jsonLdByType("ItemList")).toMatchObject({
-      itemListElement: [
-        {
-          position: 1,
-          name: "Life of Jesus (Gospel of John)",
-          url: `https://www.jesusfilm.org/watch/${filmSlug}.html`,
-        },
-        {
-          position: 2,
-          name: "A Two",
-          url: "https://www.jesusfilm.org/watch/a-two.html",
-        },
-      ],
-    })
+    const relatedItems = jsonLdByType("ItemList")
+    const relatedItemElements = relatedItems?.itemListElement as
+      | Array<Record<string, unknown>>
+      | undefined
+    expect(relatedItems?.numberOfItems).toBe(12)
+    expect(relatedItemElements?.slice(0, 2)).toEqual([
+      expect.objectContaining({
+        position: 1,
+        name: "Life of Jesus Chapter 1",
+        url: "https://www.jesusfilm.org/watch/life-of-jesus-chapter-1.html",
+      }),
+      expect.objectContaining({
+        position: 2,
+        name: "Life of Jesus Chapter 2",
+        url: "https://www.jesusfilm.org/watch/life-of-jesus-chapter-2.html",
+      }),
+    ])
   })
 
   it("keeps the standalone own-children fallback when the manifest is unavailable", async () => {
@@ -1564,6 +1552,7 @@ describe("Catch-all routing — series branch (2-seg)", () => {
     const props = watchPageClientMock.mock.calls[0]?.[0] as {
       mergedBlocks: Array<{
         kind?: string
+        nextWatchItem?: { parentSlug?: string; slug?: string } | null
         selectableParents?: Array<{ slug?: string }>
       }>
     }
@@ -1573,6 +1562,10 @@ describe("Catch-all routing — series branch (2-seg)", () => {
     expect(carousel?.selectableParents?.map((parent) => parent.slug)).toEqual([
       "collection-a",
     ])
+    expect(
+      props.mergedBlocks.find((block) => block.kind === "HeroPlayer")
+        ?.nextWatchItem,
+    ).toMatchObject({ parentSlug: "storyclubs", slug: "own-one" })
   })
 
   it("keeps an exact-admitted own-Chapters rail fixed when no external parent is eligible", async () => {
@@ -1725,6 +1718,7 @@ describe("Catch-all routing — series branch (2-seg)", () => {
       mergedBlocks: Array<{
         kind?: string
         canonicalParent?: { slug?: string }
+        nextWatchItem?: { parentSlug?: string; slug?: string } | null
         selectableParents?: Array<{ slug?: string }>
       }>
     }
@@ -1735,10 +1729,14 @@ describe("Catch-all routing — series branch (2-seg)", () => {
     expect(carousel?.selectableParents?.map((parent) => parent.slug)).toEqual([
       "collection-a",
     ])
+    expect(
+      props.mergedBlocks.find((block) => block.kind === "HeroPlayer")
+        ?.nextWatchItem,
+    ).toMatchObject({ parentSlug: "storyclubs", slug: "own-one" })
     expect(jsonLdByType("ItemList")?.numberOfItems).toBe(2)
   })
 
-  it("appends exactly the selected-language own Chapters in relation order", async () => {
+  it("uses exactly the selected-language own Chapters in relation order", async () => {
     const result = makeWatchVideoResult("featureFilm")
     const child = (documentId: string, slug: string, title: string) => ({
       documentId,
@@ -1803,23 +1801,29 @@ describe("Catch-all routing — series branch (2-seg)", () => {
     const props = watchPageClientMock.mock.calls[0]?.[0] as {
       mergedBlocks: Array<{
         kind?: string
-        selectableParents?: Array<{
+        canonicalParent?: {
           slug?: string
           children?: Array<{ slug?: string }>
-        }>
+        }
+        selectableParents?: unknown
       }>
     }
     const carousel = props.mergedBlocks.find(
       (block) => block.kind === "SiblingCarousel",
     )
-    expect(carousel?.selectableParents?.map((parent) => parent.slug)).toEqual([
-      "collection-a",
-      "storyclubs",
-    ])
-    expect(carousel?.selectableParents?.at(-1)?.children).toEqual([
+    expect(carousel?.canonicalParent?.slug).toBe("storyclubs")
+    expect(carousel?.canonicalParent?.children).toEqual([
       expect.objectContaining({ slug: "own-one" }),
       expect.objectContaining({ slug: "own-three" }),
     ])
+    expect(carousel).not.toHaveProperty("selectableParents")
+    expect(jsonLdByType("ItemList")).toMatchObject({
+      numberOfItems: 2,
+      itemListElement: [
+        expect.objectContaining({ position: 1, name: "Own One" }),
+        expect.objectContaining({ position: 2, name: "Own Three" }),
+      ],
+    })
   })
 
   it("starts the route manifest request alongside standalone video resolution", async () => {
@@ -2861,6 +2865,18 @@ describe("Catch-all routing — 3-seg episode branch", () => {
     result.video.documentId = "pilate-chapter-20"
     result.video.slug = "jesus-is-crucified"
     result.video.title = "Jesus is Crucified"
+    result.video.children = [
+      {
+        ...anticipateChildren[0]!,
+        documentId: "owned-chapter-1",
+        slug: "owned-chapter-one",
+      },
+      {
+        ...anticipateChildren[1]!,
+        documentId: "owned-chapter-2",
+        slug: "owned-chapter-two",
+      },
+    ]
     result.video.parents = [
       {
         documentId: "jesus-parent",
@@ -3043,6 +3059,94 @@ describe("Catch-all routing — 3-seg episode branch", () => {
     const itemList = jsonLdByType("ItemList")
     expect(itemList?.numberOfItems).toBe(2)
     expect(JSON.stringify(itemList)).not.toContain("unavailable-episode")
+  })
+
+  it("treats a below-threshold contextual parent as terminal for carousel, ItemList, and Up Next", async () => {
+    const result = makeEpisodeResult()
+    const current = {
+      documentId: "ep-1",
+      order: 1,
+      slug: "wedding-in-cana",
+      title: "Wedding in Cana",
+      label: "episode",
+      images: [],
+      durationSeconds: 30,
+      muxPlaybackId: "mux-wedding",
+      muxThumbnailBlurDataUrl: null,
+    }
+    const unavailableSibling = {
+      ...current,
+      documentId: "ep-2",
+      order: 2,
+      slug: "spanish-only",
+      title: "Spanish Only",
+      muxPlaybackId: "mux-spanish-fallback",
+    }
+    const ownChildren = [
+      {
+        ...current,
+        documentId: "owned-1",
+        slug: "owned-one",
+        title: "Owned One",
+      },
+      {
+        ...current,
+        documentId: "owned-2",
+        slug: "owned-two",
+        title: "Owned Two",
+      },
+    ]
+    ;(result.video as unknown as { children: typeof ownChildren }).children =
+      ownChildren
+    ;(
+      result.series as unknown as {
+        children: Array<typeof current | typeof unavailableSibling>
+      }
+    ).children = [current, unavailableSibling]
+    ;(
+      result.canonicalParent as unknown as {
+        children: Array<typeof current | typeof unavailableSibling>
+      }
+    ).children = [current, unavailableSibling]
+    ;(
+      result.video.parents[0] as unknown as {
+        children: Array<typeof current | typeof unavailableSibling>
+      }
+    ).children = [current, unavailableSibling]
+    resolveSeriesEpisodeBySlugMock.mockResolvedValue(result)
+    getWatchRouteManifestMock.mockResolvedValue({
+      version: "1",
+      generatedAt: "2026-08-10T12:00:00.000Z",
+      contentSlugs: [],
+      oneSegmentSlugs: [],
+      episodePairsByParent: {
+        "lumo-the-gospel-of-john": ["wedding-in-cana", "spanish-only"],
+      },
+      audioLanguageSlugs: ["english", "spanish-castilian"],
+      audioLanguageIndexesByEpisode: {
+        "lumo-the-gospel-of-john": {
+          "wedding-in-cana": [0],
+          "spanish-only": [1],
+        },
+      },
+    })
+
+    await render3Seg("lumo-the-gospel-of-john", "wedding-in-cana", "english")
+
+    const props = watchPageClientMock.mock.calls[0]?.[0] as {
+      mergedBlocks: Array<{
+        kind?: string
+        nextWatchItem?: { slug?: string } | null
+      }>
+    }
+    expect(
+      props.mergedBlocks.find((block) => block.kind === "SiblingCarousel"),
+    ).toBeUndefined()
+    expect(
+      props.mergedBlocks.find((block) => block.kind === "HeroPlayer")
+        ?.nextWatchItem,
+    ).toBeNull()
+    expect(jsonLdByType("ItemList")).toBeNull()
   })
 
   it("passes the LaunchDarkly CTA copy label to WatchPageClient when enabled", async () => {

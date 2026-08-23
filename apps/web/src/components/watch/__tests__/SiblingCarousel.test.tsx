@@ -371,8 +371,7 @@ describe("SiblingCarousel — happy path", () => {
     )
   })
 
-  it("switches to a 49-Chapter film context with no false active card", () => {
-    const block = makeSelectableBlock()
+  it("renders a fixed 49-Chapter film rail with no selector or false active card", () => {
     const filmChildren = Array.from({ length: 49 }, (_, index) => {
       const position = index + 1
       return {
@@ -388,23 +387,19 @@ describe("SiblingCarousel — happy path", () => {
             : `Film Chapter ${position}`,
       }
     })
-    block.selectableParents?.push({
-      documentId: "film-parent",
-      slug: "life-of-jesus-gospel-of-john",
-      title: "Life of Jesus (Gospel of John)",
-      children: filmChildren as never,
-    })
+    const block = {
+      kind: "SiblingCarousel",
+      canonicalParent: {
+        documentId: "film-parent",
+        slug: "life-of-jesus-gospel-of-john",
+        title: "Life of Jesus (Gospel of John)",
+        children: filmChildren,
+      },
+      currentVideoDocumentId: "film-parent",
+    } as WatchSiblingCarouselBlock
 
     act(() => {
       root.render(<SiblingCarousel block={block} languageSlug="english" />)
-    })
-
-    const selector = container.querySelector(
-      "[data-testid='sibling-carousel-parent-selector']",
-    ) as HTMLSelectElement
-    act(() => {
-      selector.value = "film-parent"
-      selector.dispatchEvent(new Event("change", { bubbles: true }))
     })
 
     const rail = container.querySelector("[data-block-type='SiblingCarousel']")
@@ -429,19 +424,15 @@ describe("SiblingCarousel — happy path", () => {
       container.querySelector(
         "[data-testid='sibling-carousel-selection-announcement']",
       )?.textContent,
-    ).toContain("Life of Jesus (Gospel of John) · 49 chapters")
-
-    act(() => {
-      selector.value = "parent-1"
-      selector.dispatchEvent(new Event("change", { bubbles: true }))
-    })
+    ).toBeUndefined()
     expect(
-      container
-        .querySelector(
-          "[data-href='/first-collection.html/current-video.html']",
-        )
-        ?.getAttribute("data-active"),
-    ).toBe("true")
+      container.querySelector(
+        "[data-testid='sibling-carousel-parent-selector']",
+      ),
+    ).toBeNull()
+    expect(container.querySelector("header p a span")?.textContent).toBe(
+      "Life of Jesus (Gospel of John)",
+    )
   })
 
   it("keeps an unmodified active-card click on the standalone route", () => {
