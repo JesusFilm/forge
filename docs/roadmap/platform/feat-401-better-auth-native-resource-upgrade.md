@@ -3,7 +3,7 @@ id: "feat-401"
 title: "Upgrade Better Auth for native resource binding"
 owner: "edmonday"
 priority: "P0"
-status: "in-progress"
+status: "complete"
 start_date: "2026-08-20"
 duration: 4
 depends_on:

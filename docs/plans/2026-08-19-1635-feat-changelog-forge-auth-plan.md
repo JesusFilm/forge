@@ -262,7 +262,7 @@ sequenceDiagram
 ### Sequencing
 
 1. U1 remains the registration baseline and production gate.
-2. Feat-400 completes on main and proves Better Auth 1.7.1 native resource binding.
+2. Feat-401 completes on main and proves Better Auth 1.7.1 native resource binding.
 3. U2 implements grant aggregation and provider-context decisions without provider-record parsing.
 4. U3 wires those decisions into native authorization, exchange, and refresh, then proves Codex and Claude independently.
 
@@ -289,7 +289,7 @@ sequenceDiagram
   - `apps/auth/src/scripts/seed-first-party-apps.test.ts`
   - `apps/auth/src/config/env.ts`
   - `apps/auth/src/config/env.test.ts`
-- **Approach:** Preserve the three exact scopes, `CHANGELOG_APP_SEED`, local/production public clients, two exact MCP URLs, generic seeder inclusion, and strict default-off activation setting already implemented. Feat-400 owns their mechanical migration into native resources.
+- **Approach:** Preserve the three exact scopes, `CHANGELOG_APP_SEED`, local/production public clients, two exact MCP URLs, generic seeder inclusion, and strict default-off activation setting already implemented. Feat-401 owns their mechanical migration into native resources.
 - **Execution note:** Verify this existing baseline idempotently. Do not reimplement or broaden it while starting U2.
 - **Test Scenarios:**
   - All three scope keys are known and render the exact labels/descriptions.
@@ -443,7 +443,7 @@ pnpm --filter @forge/auth lint
 - U3 is complete: the policy is load-bearing before provider token side effects, the real 1.7.1 native-resource exchange passes, and all existing applications retain their behavior.
 - Every requirement R1-R22 is covered by an automated assertion, documented rollout condition, or explicit Changelog-repository boundary.
 - Acceptance examples AE1-AE12 pass at the appropriate unit, route, real-database, or real-client layer.
-- Feat-400 is complete on main before U2/U3 implementation begins.
+- Feat-401 is complete on main before U2/U3 implementation begins.
 - Codex and Claude connect independently without seeded credentials, show fresh resource-aware consent, and retain exact-resource and grant ceilings through an observed refresh/reconnect.
 - Full Auth test, typecheck, and lint gates pass; documentation is formatted; the diff is clean and scoped.
 - Production Changelog scope issuance stays disabled by default until supported grant provisioning and revocation exist; no manual database procedure is presented as the solution.
