@@ -1,6 +1,7 @@
 ---
 title: "Watch carousel hierarchy requires exact own-child admission"
 date: "2026-08-22"
+last_updated: "2026-08-23"
 category: "logic-errors"
 module: "apps/web Watch routing"
 problem_type: "logic_error"
@@ -86,26 +87,37 @@ Resolve one carousel source from route context, in this order:
 
 Exact admission uses `isWatchEpisodeRouteExactlyAdmittedByManifest`, which
 requires both the exact parent/child pair and the child's selected audio
-language in the per-episode index:
+language in the per-episode index. The standalone route creates two projections
+in one pass through the source children:
 
 ```ts
-const admittedOwnChildren = withAdmittedVideoChildren(
-  carouselVideo,
+const { video, carouselVideo } = withStandaloneAdmittedVideoChildren(
+  watchVideo.video,
   languageSlug,
   routeManifest,
-  isWatchEpisodeRouteExactlyAdmittedByManifest,
 )
 
-const carouselSource = canonicalParent
-  ? fixedParent(canonicalParent)
-  : admittedOwnChildren.length >= 2
-    ? fixedOwnChildren(carouselVideo, admittedOwnChildren)
-    : selectableParents(eligibleParents)
+const selectableParents =
+  carouselVideo.children.length >= 2
+    ? []
+    : selectableParentsForStandaloneVideo(
+        watchVideo.video,
+        languageSlug,
+        routeManifest,
+      )
 ```
 
-The sketch expresses precedence, not a required new abstraction. Keep
-standalone parent lookup lazy so qualifying own children do not serialize or
-resolve irrelevant choices. Reuse the fixed-parent carousel, contextual URL
+The `video` projection uses compatibility admission for existing hero and Up
+Next behavior. `carouselVideo` uses exact admission for the carousel threshold.
+When every child survives a projection, the helper preserves the original
+video identity instead of allocating a copy. A missing manifest intentionally
+returns the source video unchanged at this helper boundary for both
+projections; a present legacy manifest cannot prove exact per-episode language
+admission, so an external-parent fallback can remain eligible when it otherwise
+qualifies.
+
+Keep standalone parent lookup lazy so qualifying own children do not serialize
+or resolve irrelevant choices. Reuse the fixed-parent carousel, contextual URL
 builder, and pending-navigation guard. Contextual Up Next follows the
 URL-selected canonical parent; standalone Up Next retains its existing
 own-video behavior and never follows an external-parent fallback selector.
@@ -133,9 +145,34 @@ also avoids shipping external-parent selector data when it cannot be selected.
 This remains a generic Watch contract for qualifying playable videos, including
 JESUS, Life of Jesus, and Book of Acts. It never checks a title, slug, document
 ID, or current child count, does not turn a playable film into a series, and
-does not change the separate `SeriesPage` flow. Carousel choice must not mutate
-canonical, playback, hero, Share, download, rights, language, publication, or
-media identity.
+does not alter the current separate `SeriesPage` flow. Carousel choice does not
+change the selected variant or scalar video identity; the compatibility child
+projection remains intentionally available to Hero and Share independently of
+the exact carousel projection.
+
+## Tests and Evidence
+
+- The content merge, catch-all route, fixed carousel, and structured-data suites
+  pass 173 focused tests covering contextual authority, terminal
+  thresholds, partial exact admission, null and legacy manifests, relation
+  order, Up Next, ItemList, and unchanged full-film identity.
+- The same generic content-merge path accepts 49-, 61-, and 73-child test
+  fixtures without a content-name branch. These counts are catalog-shaped test
+  evidence, not runtime constants.
+- TypeScript, full Web lint, UI-locale drift, touched-file formatting, and diff
+  whitespace checks pass. A dated 2026-08-23 local 73-child fixture
+  serialization preflight reported 18,514 raw bytes, 1,510 gzip bytes, and 769
+  Brotli bytes; this is run evidence, not a permanent size contract.
+- Anonymous production observations on 2026-08-23 showed the pre-fix external
+  collection on the standalone [Life of Jesus](https://www.jesusfilm.org/watch/life-of-jesus-gospel-of-john.html)
+  and [Book of Acts](https://www.jesusfilm.org/watch/book-of-acts.html) pages.
+  They are external before-state evidence, not proof of the unshipped branch.
+- A safe local browser run on 2026-08-23 used the tracked `.env.ci` contract and
+  found no Admin service at `localhost:1437`: standalone pages failed closed
+  after route-manifest fetch failure and the contextual page failed its content
+  fetch. Record those environment-dependent routes as browser Skips. Do not forward
+  authorization headers, add a credential-bearing proxy, or relabel an old
+  selector fixture as proof of the revised fixed own-child rail.
 
 ## Prevention
 

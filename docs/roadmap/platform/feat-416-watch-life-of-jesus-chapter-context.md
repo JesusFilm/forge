@@ -3,7 +3,7 @@ id: "feat-416"
 title: "Watch carousel context priority"
 owner: "codex"
 priority: "P1"
-status: "in-progress"
+status: "complete"
 start_date: "2026-08-22"
 duration: 2
 depends_on: []
@@ -163,14 +163,65 @@ Implementation contract:
 
 ## Current Execution State
 
-The earlier implementation through `60623c624e0f0ce4fd5f885956a3641a065e45ee`
-against merge base `1f65d0af55f2c99df40a38a44053be5cb7463495`
-established exact per-child admission and the evidence below, but implemented
-the now-superseded eligible-parent-first/appended-own-context behavior. The
-ticket is reopened to implement the contextual-parent → standalone-own →
-eligible-parent-fallback hierarchy from the linked plan. The historical proof
-remains useful characterization evidence; it is not evidence that the revised
-priority is already shipped.
+The revised hierarchy is implemented and validated on
+[PR #2005](https://github.com/JesusFilm/forge/pull/2005). A contextual parent
+selected by the URL is terminal; a standalone video's exactly admitted own
+children qualify next; eligible external parents are used only as the
+below-threshold fallback. The earlier implementation through
+`60623c624e0f0ce4fd5f885956a3641a065e45ee` against merge base
+`1f65d0af55f2c99df40a38a44053be5cb7463495` established exact per-child
+admission but used the now-superseded eligible-parent-first/appended-own-context
+behavior. Its evidence below remains useful characterization, not proof of the
+final priority.
+
+## Final Revised-Hierarchy Evidence — 2026-08-23
+
+### Implementation and automated proof
+
+- The shared Watch merge seam now resolves one mutually exclusive source:
+  contextual canonical parent, standalone own children, eligible external
+  parents, or no carousel. Contextual Up Next uses the same terminal URL
+  parent; standalone Up Next remains independent of an external-parent
+  fallback.
+- Standalone route composition computes compatibility and exact carousel
+  child projections in one pass. It preserves relation order and object
+  identity when all children survive, omits eligible-parent computation when
+  at least two exact own routes qualify, and keeps manifest-null fail-open and
+  legacy-manifest fallback behavior at their existing boundaries.
+- The focused route, merge, carousel, and related-item structured-data suites
+  passed **173 tests in 4 files**. Fixtures cover 49-, 61-, and 73-child
+  production shapes, partial exact admission, both thresholds, contextual
+  terminal behavior, Up Next, identity, download order, and Series isolation.
+- TypeScript, touched-file ESLint, Prettier, generated UI-locale drift,
+  roadmap-index generation, and `git diff --check` passed. The production Web
+  build passed with tracked `.env.ci` placeholders; the absent localhost Admin
+  produced only the expected recoverable sitemap diagnostic, and the catch-all
+  route remained statically generated.
+- The dated fixture payload preflight measured the final compact serialized
+  addition at **18,514 raw bytes**, **1,510 gzip bytes**, and **769 Brotli
+  bytes**. Production code adds no browser fetch, eager alternate thumbnail
+  rail, effect, dependency, client initializer, or new client import.
+- Compound Engineering review found no product-code defect. The required
+  cross-model review could not run because exporting repository code was not
+  authorized; a local adversarial review covered the same lens without
+  weakening validation.
+
+### Browser evidence and durable limitation
+
+- Anonymous production controls rendered successfully on desktop and compact
+  widths. The standalone Life of Jesus and Book of Acts routes still show the
+  old 10-item JFM Collection context, which records the live before-state.
+- The branch's local Life of Jesus, JESUS, and Book of Acts standalone routes
+  returned 404 after `watch_route_manifest.fetch.error`; the contextual route
+  returned 500 after its Admin content request failed with `ECONNREFUSED`.
+  The repository-supported localhost Admin at port 1437 was unavailable, so
+  these are browser **Skips**, not branch failures or after-state passes.
+- No credential, authorization header, credential-forwarding proxy, public
+  GraphQL mutation, production deployment, or Help Scout reply was used. An
+  honest final-UI after screenshot and same-snapshot browser waterfall remain
+  unavailable until a safe Admin-backed preview or the normal merged deploy.
+  The older appended-selector fixture screenshot is superseded and is not
+  evidence of this final fixed-own-rail design.
 
 ## Historical Characterization Evidence — 2026-08-22
 
