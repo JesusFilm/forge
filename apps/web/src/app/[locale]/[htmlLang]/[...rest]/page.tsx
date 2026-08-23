@@ -165,11 +165,10 @@ function pruneMergedWatchBlocksForClient(
   })
 }
 
-function withAdmittedCarouselChildren<T extends CarouselParent>(
+function withCompatibilityAdmittedCarouselChildren<T extends CarouselParent>(
   parent: T,
   languageSlug: string,
   manifest: WatchRouteManifest | null,
-  isEpisodeAdmitted: typeof isWatchEpisodeRouteExactlyAdmittedByManifest = isWatchRouteAdmittedByManifest,
 ): T {
   // Preserve the existing fail-open behavior during a manifest outage. The
   // manifest is the exact selected-language route contract when available;
@@ -182,7 +181,7 @@ function withAdmittedCarouselChildren<T extends CarouselParent>(
         const childSlug = tryAsContentSlug(child.slug ?? "")
         return (
           childSlug != null &&
-          isEpisodeAdmitted(manifest, {
+          isWatchRouteAdmittedByManifest(manifest, {
             kind: "episode",
             parentSlug,
             childSlug,
@@ -197,13 +196,12 @@ function withAdmittedCarouselChildren<T extends CarouselParent>(
     : { ...parent, children }
 }
 
-function withAdmittedVideoChildren(
+function withCompatibilityAdmittedVideoChildren(
   video: WatchVideoRecord,
   languageSlug: string,
   manifest: WatchRouteManifest | null,
-  isEpisodeAdmitted: typeof isWatchEpisodeRouteExactlyAdmittedByManifest = isWatchRouteAdmittedByManifest,
 ): WatchVideoRecord {
-  const filteredParent = withAdmittedCarouselChildren(
+  const filteredParent = withCompatibilityAdmittedCarouselChildren(
     {
       documentId: video.documentId,
       slug: video.slug,
@@ -212,12 +210,57 @@ function withAdmittedVideoChildren(
     },
     languageSlug,
     manifest,
-    isEpisodeAdmitted,
   )
 
   return filteredParent.children === video.children
     ? video
     : { ...video, children: filteredParent.children }
+}
+
+function withStandaloneAdmittedVideoChildren(
+  video: WatchVideoRecord,
+  languageSlug: string,
+  manifest: WatchRouteManifest | null,
+): {
+  video: WatchVideoRecord
+  carouselVideo: WatchVideoRecord
+} {
+  if (!manifest) return { video, carouselVideo: video }
+
+  const parentSlug = tryAsContentSlug(video.slug ?? "")
+  const compatibilityChildren: WatchVideoRecord["children"] = []
+  const exactChildren: WatchVideoRecord["children"] = []
+
+  if (parentSlug) {
+    for (const child of video.children) {
+      const childSlug = tryAsContentSlug(child.slug ?? "")
+      if (!childSlug) continue
+
+      const route = {
+        kind: "episode" as const,
+        parentSlug,
+        childSlug,
+        audioLanguageSlug: languageSlug,
+      }
+      if (isWatchRouteAdmittedByManifest(manifest, route)) {
+        compatibilityChildren.push(child)
+      }
+      if (isWatchEpisodeRouteExactlyAdmittedByManifest(manifest, route)) {
+        exactChildren.push(child)
+      }
+    }
+  }
+
+  return {
+    video:
+      compatibilityChildren.length === video.children.length
+        ? video
+        : { ...video, children: compatibilityChildren },
+    carouselVideo:
+      exactChildren.length === video.children.length
+        ? video
+        : { ...video, children: exactChildren },
+  }
 }
 
 function selectableParentsForStandaloneVideo(
@@ -231,7 +274,7 @@ function selectableParentsForStandaloneVideo(
     const parentSlug = tryAsContentSlug(parent.slug ?? "")
     if (!parentSlug) return []
 
-    const filteredParent = withAdmittedCarouselChildren(
+    const filteredParent = withCompatibilityAdmittedCarouselChildren(
       { ...parent, slug: parentSlug },
       languageSlug,
       manifest,
@@ -749,12 +792,12 @@ async function renderEpisode(
     routeManifestPromise,
     getInitialTranscriptForWatchVideo(resolved.video, resolved.selectedVariant),
   ])
-  const carouselVideo = withAdmittedVideoChildren(
+  const carouselVideo = withCompatibilityAdmittedVideoChildren(
     resolved.video,
     languageSlug,
     routeManifest,
   )
-  const carouselSeries = withAdmittedCarouselChildren(
+  const carouselSeries = withCompatibilityAdmittedCarouselChildren(
     resolved.series,
     languageSlug,
     routeManifest,
@@ -888,17 +931,12 @@ async function renderVideo(
       ),
     ])
     const languageSlug = watchVideo.selectedVariant.language?.slug ?? rawLocale
-    const videoWithAdmittedChildren = withAdmittedVideoChildren(
-      watchVideo.video,
-      languageSlug,
-      routeManifest,
-    )
-    const carouselVideo = withAdmittedVideoChildren(
-      watchVideo.video,
-      languageSlug,
-      routeManifest,
-      isWatchEpisodeRouteExactlyAdmittedByManifest,
-    )
+    const { video: videoWithAdmittedChildren, carouselVideo } =
+      withStandaloneAdmittedVideoChildren(
+        watchVideo.video,
+        languageSlug,
+        routeManifest,
+      )
     const selectableParents =
       carouselVideo.children.length >= 2
         ? []

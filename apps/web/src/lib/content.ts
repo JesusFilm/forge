@@ -2626,8 +2626,8 @@ function nextWatchItemFromChild(
  *
  * 1. When a contextual route supplies a canonical parent, use only that
  *    parent's children. A below-threshold canonical parent is terminal.
- * 2. On a standalone route, when the current video has its **own** children,
- *    video like JESUS with 61 chapter segments), surface those — the user is
+ * 2. On a standalone route, when the current video has its **own** children
+ *    (for example, JESUS with 61 chapter segments), surface those — the user is
  *    looking at the parent, so chapters are the relevant peers.
  * 3. Otherwise, use eligible selectable parents in their supplied order.
  *
