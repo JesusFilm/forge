@@ -225,7 +225,9 @@
   "HeroPlayer": {
     "playWithSound": "आतां पळयात",
     "tapToUnmute": "आवाज सुरू करपाक टॅप करात",
-    "nextEpisode": "पुढलो भाग"
+    "nextEpisode": "पुढलो भाग",
+    "audioTranslationCount": "{count, plural, one {# भास} other {# भासां}}",
+    "subtitleCount": "उपशीर्षकां: {count, plural, one {# भास} other {# भासां}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "मजकूर लोड करत आसा",

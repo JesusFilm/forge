@@ -225,7 +225,9 @@
   "HeroPlayer": {
     "playWithSound": "Waɗ now",
     "tapToUnmute": "Tap ngam uddit ñoɓde",
-    "nextEpisode": "Episode fuɗɗiɗo"
+    "nextEpisode": "Episode fuɗɗiɗo",
+    "audioTranslationCount": "{count, plural, one {# ɗemngal} other {# ɗemɗe}}",
+    "subtitleCount": "Binndi les: {count, plural, one {# ɗemngal} other {# ɗemɗe}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Wonndude ɓiɓɓe",

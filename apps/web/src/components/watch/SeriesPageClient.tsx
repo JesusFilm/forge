@@ -71,6 +71,8 @@ type SeriesPageClientProps = {
   selectedVariant: ResolvedSeriesBySlug["selectedVariant"]
   locale: string
   subtitleLanguageSlug?: string | null
+  audioLanguageCountLabel?: string | null
+  subtitleLanguageCountLabel?: string | null
 }
 
 export function SeriesPageClient({
@@ -78,6 +80,8 @@ export function SeriesPageClient({
   selectedVariant,
   locale,
   subtitleLanguageSlug = null,
+  audioLanguageCountLabel = null,
+  subtitleLanguageCountLabel = null,
 }: SeriesPageClientProps) {
   const t = useTranslations("SeriesPage")
   const router = useRouter()
@@ -409,6 +413,8 @@ export function SeriesPageClient({
         hasSubtitleOptions={subtitles.length > 0}
         subtitleLanguageCode={subtitleLanguageCode}
         subtitleVttSrc={subtitleVttSrc}
+        audioLanguageCountLabel={audioLanguageCountLabel}
+        subtitleLanguageCountLabel={subtitleLanguageCountLabel}
         overlay={
           // Stack the label on top, then a horizontal row with the title
           // on the left and the share pill on the right. Using

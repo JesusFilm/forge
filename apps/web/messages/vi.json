@@ -225,7 +225,9 @@
   "HeroPlayer": {
     "playWithSound": "Xem ngay",
     "tapToUnmute": "Bật tiếng",
-    "nextEpisode": "Tập tiếp theo"
+    "nextEpisode": "Tập tiếp theo",
+    "audioTranslationCount": "{count, plural, one {# ngôn ngữ} other {# ngôn ngữ}}",
+    "subtitleCount": "Phụ đề: {count, plural, one {# ngôn ngữ} other {# ngôn ngữ}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Đang tải nội dung",

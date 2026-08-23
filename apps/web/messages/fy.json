@@ -225,7 +225,9 @@
   "HeroPlayer": {
     "playWithSound": "Sjoch no",
     "tapToUnmute": "Tik om it lûd oan te setten",
-    "nextEpisode": "Folgjende ôflevering"
+    "nextEpisode": "Folgjende ôflevering",
+    "audioTranslationCount": "{count, plural, one {# taal} other {# talen}}",
+    "subtitleCount": "Undertiteling: {count, plural, one {# taal} other {# talen}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Ynhâld wurdt laden",

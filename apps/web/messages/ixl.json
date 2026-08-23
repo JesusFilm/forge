@@ -225,7 +225,9 @@
   "HeroPlayer": {
     "playWithSound": "K'utun wakami",
     "tapToUnmute": "Unmute chi tap",
-    "nextEpisode": "Episode aq'anb'al"
+    "nextEpisode": "Episode aq'anb'al",
+    "audioTranslationCount": "{count, plural, one {# b'anob' tzij} other {# b'anob' tzij}}",
+    "subtitleCount": "Subtítulos: {count, plural, one {# b'anob' tzij} other {# b'anob' tzij}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Content chi yüküj",

@@ -225,7 +225,9 @@
   "HeroPlayer": {
     "playWithSound": "Òglądôj terôz",
     "tapToUnmute": "Dotkni, bë włączëc głos",
-    "nextEpisode": "Nôstãpny òdczińk"
+    "nextEpisode": "Nôstãpny òdczińk",
+    "audioTranslationCount": "{count, plural, one {# jãzëk} few {# jãzëczi} many {# jãzëków} other {# jãzëka}}",
+    "subtitleCount": "Titrë: {count, plural, one {# jãzëk} few {# jãzëczi} many {# jãzëków} other {# jãzëka}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Wczytëwanié trzebła",

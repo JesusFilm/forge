@@ -225,7 +225,9 @@
   "HeroPlayer": {
     "playWithSound": "Mātakitaki ināianei",
     "tapToUnmute": "Pāwhiria kia whakakā te oro",
-    "nextEpisode": "Wāhanga Panuku"
+    "nextEpisode": "Wāhanga Panuku",
+    "audioTranslationCount": "{count, plural, one {# reo} other {# reo}}",
+    "subtitleCount": "Ngā Taitararoto: {count, plural, one {# reo} other {# reo}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "E uta ana i te ihirangi",

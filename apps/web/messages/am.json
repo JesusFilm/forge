@@ -225,7 +225,9 @@
   "HeroPlayer": {
     "playWithSound": "አሁን ይመልከቱ",
     "tapToUnmute": "ድምጽ ለማብራት ይንኩ",
-    "nextEpisode": "የሚቀጥለው ክፍል"
+    "nextEpisode": "የሚቀጥለው ክፍል",
+    "audioTranslationCount": "{count, plural, one {# ቋንቋ} other {# ቋንቋዎች}}",
+    "subtitleCount": "ንዑስ ጽሑፎች: {count, plural, one {# ቋንቋ} other {# ቋንቋዎች}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "ይዘት በመጫን ላይ",

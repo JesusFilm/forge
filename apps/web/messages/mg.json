@@ -225,7 +225,9 @@
   "HeroPlayer": {
     "playWithSound": "Jereo izao",
     "tapToUnmute": "Tsindrio mba hampandeha ny feo",
-    "nextEpisode": "Fizarana manaraka"
+    "nextEpisode": "Fizarana manaraka",
+    "audioTranslationCount": "{count, plural, one {# fiteny} other {# fiteny}}",
+    "subtitleCount": "Dikanteny: {count, plural, one {# fiteny} other {# fiteny}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Mampiditra votoaty",

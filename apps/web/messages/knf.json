@@ -225,7 +225,9 @@
   "HeroPlayer": {
     "playWithSound": "Wa yɔrɔ watch",
     "tapToUnmute": "Tap kɛ unmute te",
-    "nextEpisode": "Episode kɛrɛ"
+    "nextEpisode": "Episode kɛrɛ",
+    "audioTranslationCount": "{count, plural, one {# ಭಾಷೆ} other {# ಭಾಷೆಗಳು}}",
+    "subtitleCount": "Subtitles kɛŋ: {count, plural, one {# ಭಾಷೆ} other {# ಭಾಷೆಗಳು}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Content loading",

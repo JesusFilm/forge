@@ -225,7 +225,9 @@
   "HeroPlayer": {
     "playWithSound": "Jùu nah’in",
     "tapToUnmute": "Nakhwats’àt gwik’it tap",
-    "nextEpisode": "Episode łyaa"
+    "nextEpisode": "Episode łyaa",
+    "audioTranslationCount": "{count, plural, one {# gwich’in} other {# gwich’in zhìi}}",
+    "subtitleCount": "Subtitle ginjik: {count, plural, one {# gwich’in} other {# gwich’in zhìi}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Content load gwiłtsąįį",

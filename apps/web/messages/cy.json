@@ -225,7 +225,9 @@
   "HeroPlayer": {
     "playWithSound": "Gwylio nawr",
     "tapToUnmute": "Tapio i ddad-distewi",
-    "nextEpisode": "Pennod Nesaf"
+    "nextEpisode": "Pennod Nesaf",
+    "audioTranslationCount": "{count, plural, one {# iaith} other {# iaith}}",
+    "subtitleCount": "Capsiynau: {count, plural, one {# iaith} other {# iaith}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Wrthi’n llwytho cynnwys",

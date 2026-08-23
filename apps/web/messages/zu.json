@@ -225,7 +225,9 @@
   "HeroPlayer": {
     "playWithSound": "Buka manje",
     "tapToUnmute": "Thepha ukuze ususe ukuthulisa",
-    "nextEpisode": "Isiqephu Esilandelayo"
+    "nextEpisode": "Isiqephu Esilandelayo",
+    "audioTranslationCount": "{count, plural, one {# ulimi} other {# izilimi}}",
+    "subtitleCount": "Izihlokwana: {count, plural, one {# ulimi} other {# izilimi}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Iyalayisha okuqukethwe",

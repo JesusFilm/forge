@@ -225,7 +225,9 @@
   "HeroPlayer": {
     "playWithSound": "Atan ni' ahora",
     "tapToUnmute": "Pùta para na'ongga i bo'ña",
-    "nextEpisode": "Suma' Episode"
+    "nextEpisode": "Suma' Episode",
+    "audioTranslationCount": "{count, plural, one {# lenguahe} other {# lenguahe siha}}",
+    "subtitleCount": "Subtítulos: {count, plural, one {# lenguahe} other {# lenguahe siha}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Ma'loada kontiúdo",

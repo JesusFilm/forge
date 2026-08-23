@@ -225,7 +225,9 @@
   "HeroPlayer": {
     "playWithSound": "Bogela bjale",
     "tapToUnmute": "Kgotla gore o bule modumo",
-    "nextEpisode": "Kgaolo e Latelago"
+    "nextEpisode": "Kgaolo e Latelago",
+    "audioTranslationCount": "{count, plural, one {# polelo} other {# dipolelo}}",
+    "subtitleCount": "Dikapotši: {count, plural, one {# polelo} other {# dipolelo}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Go laetša dikahare",

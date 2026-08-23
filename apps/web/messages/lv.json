@@ -225,7 +225,9 @@
   "HeroPlayer": {
     "playWithSound": "Skatīties tagad",
     "tapToUnmute": "Pieskarieties, lai ieslēgtu skaņu",
-    "nextEpisode": "Nākamā sērija"
+    "nextEpisode": "Nākamā sērija",
+    "audioTranslationCount": "{count, plural, one {# valoda} other {# valodas}}",
+    "subtitleCount": "Subtitri: {count, plural, one {# valoda} other {# valodas}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Notiek satura ielāde",

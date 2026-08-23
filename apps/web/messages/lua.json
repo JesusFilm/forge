@@ -225,7 +225,9 @@
   "HeroPlayer": {
     "playWithSound": "Talala sikila",
     "tapToUnmute": "Bepa ku katula nsembululu",
-    "nextEpisode": "Episode ilandile"
+    "nextEpisode": "Episode ilandile",
+    "audioTranslationCount": "{count, plural, one {# lulaka} other {# malulaka}}",
+    "subtitleCount": "Subtitles ya mu video: {count, plural, one {# lulaka} other {# malulaka}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Kusangula munda",

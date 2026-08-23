@@ -225,7 +225,9 @@
   "HeroPlayer": {
     "playWithSound": "Peit mynta",
     "tapToUnmute": "Tiep ban pynmih sur",
-    "nextEpisode": "Episode ba bud"
+    "nextEpisode": "Episode ba bud",
+    "audioTranslationCount": "{count, plural, one {# ktien} other {# ki ktien}}",
+    "subtitleCount": "Subtitle: {count, plural, one {# ktien} other {# ki ktien}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Dang pynkit content",

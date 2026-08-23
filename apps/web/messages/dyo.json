@@ -225,7 +225,9 @@
   "HeroPlayer": {
     "playWithSound": "Seet léegi",
     "tapToUnmute": "Tappe ngir wutaat kàddu",
-    "nextEpisode": "Episode bu topp"
+    "nextEpisode": "Episode bu topp",
+    "audioTranslationCount": "{count, plural, one {# làkk} other {# làkk yi}}",
+    "subtitleCount": "Suufrek: {count, plural, one {# làkk} other {# làkk yi}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Daan xibaar bi",

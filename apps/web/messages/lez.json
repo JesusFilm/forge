@@ -225,7 +225,9 @@
   "HeroPlayer": {
     "playWithSound": "Азиздик къарагъун",
     "tapToUnmute": "Тышкъун тӏур",
-    "nextEpisode": "Агъани эпизод"
+    "nextEpisode": "Агъани эпизод",
+    "audioTranslationCount": "{count, plural, one {# чӏал} other {# чӏалар}}",
+    "subtitleCount": "Субтитрлар: {count, plural, one {# чӏал} other {# чӏалар}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Мәзунин ашкара",

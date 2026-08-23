@@ -225,7 +225,9 @@
   "HeroPlayer": {
     "playWithSound": "Watz'otz' chanim",
     "tapToUnmute": "K'uxpa' ta q'oxom",
-    "nextEpisode": "Episodio chik"
+    "nextEpisode": "Episodio chik",
+    "audioTranslationCount": "{count, plural, one {# ch'ab'äl} other {# ch'ab'äl}}",
+    "subtitleCount": "Rutz'ib' ta video: {count, plural, one {# ch'ab'äl} other {# ch'ab'äl}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "T'ojb'ena' tarum",

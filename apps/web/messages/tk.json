@@ -225,7 +225,9 @@
   "HeroPlayer": {
     "playWithSound": "Häzir seret",
     "tapToUnmute": "Ses açmak üçin basyň",
-    "nextEpisode": "Soňky bölüm"
+    "nextEpisode": "Soňky bölüm",
+    "audioTranslationCount": "{count, plural, one {# dil} other {# dil}}",
+    "subtitleCount": "Subtitrlər: {count, plural, one {# dil} other {# dil}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Mazmun ýüklenýär",

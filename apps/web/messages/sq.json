@@ -225,7 +225,9 @@
   "HeroPlayer": {
     "playWithSound": "Shiko tani",
     "tapToUnmute": "Prek për të aktivizuar zërin",
-    "nextEpisode": "Episodi tjetër"
+    "nextEpisode": "Episodi tjetër",
+    "audioTranslationCount": "{count, plural, one {# gjuhë} other {# gjuhë}}",
+    "subtitleCount": "Titrat: {count, plural, one {# gjuhë} other {# gjuhë}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Po ngarkohet përmbajtja",
