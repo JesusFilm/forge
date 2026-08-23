@@ -3,7 +3,7 @@ id: "feat-419"
 title: "Watch player tooltip consistency"
 owner: "urim"
 priority: "P1"
-status: "in-progress"
+status: "complete"
 start_date: "2026-08-22"
 duration: 1
 depends_on:
@@ -70,3 +70,11 @@ Implementation contract:
 - Enumerate catalog-derived candidates and render the widest strings with the production font.
 - Verify pointer, keyboard, and touch behavior at desktop, 320px portrait, and compact landscape sizes.
 - Confirm no initial request, dependency, eager media, or modal-loading regression.
+
+Completed evidence:
+
+- The full Web suite passed 2,835 tests with one existing todo; Web typecheck, changed-file ESLint, Prettier, production build, roadmap generation, and diff integrity passed.
+- All 225 supported catalogs contain the reused source keys; the longest derived tooltip candidate was reviewed without adding locale files.
+- Focused tests cover all five icon controls, four subtitle states, dynamic play/mute/fullscreen labels, 320px edge clamping, open-label re-clamping, and keyboard-focus persistence beyond the chrome idle timeout.
+- The implementation adds no dependency, locale catalog, request, eager media path, provider, global listener, or persistent observer. Measurement begins only while a tooltip is open.
+- Local Watch browser navigation was blocked by the in-app localhost policy, and the HTTP 200 local route rendered its expected experience-load fallback while the local Admin source was unavailable. This limitation is recorded rather than reported as browser proof; production interaction and page-load verification follows the normal merge deployment requested by the user.
