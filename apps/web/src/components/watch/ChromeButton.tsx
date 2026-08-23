@@ -134,12 +134,12 @@ export function ChromeButton({
         style={
           {
             "--chrome-tooltip-shift-x": "0px",
+            visibility: isTooltipOpen ? "visible" : "hidden",
+            opacity: isTooltipOpen ? 1 : 0,
           } as CSSProperties
         }
-        className={`pointer-events-none absolute bottom-full z-30 mb-2 w-max translate-x-[var(--chrome-tooltip-shift-x)] rounded-md bg-white px-2.5 py-1.5 text-xs font-medium whitespace-nowrap text-neutral-900 shadow-lg transition-[opacity,visibility] duration-150 ${
-          isTooltipOpen
-            ? "visible translate-y-0 opacity-100"
-            : "invisible translate-y-1 opacity-0"
+        className={`pointer-events-none absolute bottom-full z-30 mb-2 w-max translate-x-[var(--chrome-tooltip-shift-x)] rounded-md bg-white px-2.5 py-1.5 text-xs font-medium whitespace-nowrap text-neutral-900 shadow-lg ${
+          isTooltipOpen ? "translate-y-0" : "translate-y-1"
         } ${tooltipAlign === "start" ? "left-0" : "right-0"}`}
       >
         {ariaLabel}

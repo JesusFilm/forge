@@ -455,19 +455,20 @@ describe("HeroPlayerControls — in-chrome language controls", () => {
     ) as HTMLButtonElement
     const tooltip = button.querySelector('[role="tooltip"]') as HTMLSpanElement
 
-    expect(tooltip.className).toContain("invisible")
-    expect(tooltip.className).toContain("opacity-0")
+    expect(tooltip.style.visibility).toBe("hidden")
+    expect(tooltip.style.opacity).toBe("0")
 
     act(() => {
       button.dispatchEvent(new MouseEvent("mouseover", { bubbles: true }))
     })
-    expect(tooltip.className).toContain("visible")
-    expect(tooltip.className).toContain("opacity-100")
+    expect(tooltip.style.visibility).toBe("visible")
+    expect(tooltip.style.opacity).toBe("1")
 
     act(() => {
       button.dispatchEvent(new MouseEvent("mouseout", { bubbles: true }))
     })
-    expect(tooltip.className).toContain("invisible")
+    expect(tooltip.style.visibility).toBe("hidden")
+    expect(tooltip.style.opacity).toBe("0")
 
     vi.spyOn(button, "matches").mockImplementation(
       (selector) => selector === ":focus-visible",
@@ -475,14 +476,14 @@ describe("HeroPlayerControls — in-chrome language controls", () => {
     act(() => {
       button.dispatchEvent(new FocusEvent("focusin", { bubbles: true }))
     })
-    expect(tooltip.className).toContain("visible")
-    expect(tooltip.className).toContain("opacity-100")
+    expect(tooltip.style.visibility).toBe("visible")
+    expect(tooltip.style.opacity).toBe("1")
 
     act(() => {
       button.dispatchEvent(new FocusEvent("focusout", { bubbles: true }))
     })
-    expect(tooltip.className).toContain("invisible")
-    expect(tooltip.className).toContain("opacity-0")
+    expect(tooltip.style.visibility).toBe("hidden")
+    expect(tooltip.style.opacity).toBe("0")
   })
 
   it.each([
