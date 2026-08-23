@@ -886,6 +886,486 @@ describe("TypesenseWatchSearchSuggestionsService", () => {
     expect(validationAttempts).toBe(2)
   })
 
+  it("recovers phrase and content suggestions when one multi-word query token is unmatched", async () => {
+    findFirstMock.mockResolvedValue({ bcp47: "en" })
+    multiSearchMock.mockResolvedValueOnce([
+      {
+        found: 1,
+        out_of: 1,
+        page: 1,
+        search_time_ms: 1,
+        grouped_hits: [
+          {
+            group_key: ["canonical-1"],
+            found: 1,
+            hits: [
+              {
+                document: {
+                  videoId: "video-story-of-jesus",
+                  canonicalVideoId: "canonical-1",
+                  title_en: ["The Story of Jesus for Children"],
+                },
+              },
+            ],
+          },
+        ],
+      },
+    ])
+    multiSearchMock.mockImplementationOnce(async (searches: unknown[]) =>
+      searches.map(() => ({
+        found: 1,
+        out_of: 1,
+        page: 1,
+        search_time_ms: 1,
+        hits: [{ document: { id: "validated" } }],
+      })),
+    )
+
+    const result = await createService().suggest({
+      query: "Jesus for kids",
+      languageSlug: "english",
+    })
+
+    expect(multiSearchMock.mock.calls[0]?.[0]).toEqual([
+      expect.objectContaining({
+        q: "Jesus for kids",
+        prefix: true,
+        drop_tokens_threshold: 1,
+      }),
+    ])
+    expect(multiSearchMock.mock.calls[1]?.[0]).toEqual([
+      expect.objectContaining({
+        q: "Jesus for Children",
+        prefix: false,
+        per_page: 1,
+        drop_tokens_threshold: 0,
+      }),
+    ])
+    expect(result).toEqual([
+      querySuggestion("Jesus for Children"),
+      contentSuggestion(
+        "The Story of Jesus for Children",
+        null,
+        "title",
+        "video-story-of-jesus",
+      ),
+    ])
+  })
+
+  it.each([
+    ["apostrophes", "children's hope lessons", "Children's Hope"],
+    ["hyphens", "faith-filled stories kids", "Faith-Filled Stories"],
+  ])(
+    "uses phrase token boundaries for relaxed title coverage with %s",
+    async (_label, query, title) => {
+      findFirstMock.mockResolvedValue({ bcp47: "en" })
+      multiSearchMock.mockResolvedValueOnce([
+        {
+          found: 1,
+          out_of: 1,
+          page: 1,
+          search_time_ms: 1,
+          grouped_hits: [
+            {
+              group_key: ["canonical-1"],
+              found: 1,
+              hits: [
+                {
+                  document: {
+                    videoId: "video-token-boundary",
+                    canonicalVideoId: "canonical-1",
+                    title_en: [title],
+                  },
+                },
+              ],
+            },
+          ],
+        },
+      ])
+      const result = await createService().suggest({
+        query,
+        languageSlug: "english",
+      })
+
+      expect(result.filter((row) => row.kind === "content")).toEqual([
+        contentSuggestion(title, null, "title", "video-token-boundary"),
+      ])
+    },
+  )
+
+  it("ranks strict title matches ahead of relaxed matches across candidate groups", async () => {
+    findFirstMock.mockResolvedValue({ bcp47: "en" })
+    multiSearchMock.mockResolvedValueOnce([
+      {
+        found: 2,
+        out_of: 2,
+        page: 1,
+        search_time_ms: 1,
+        grouped_hits: [
+          {
+            group_key: ["canonical-relaxed"],
+            found: 1,
+            hits: [
+              {
+                document: {
+                  videoId: "video-relaxed",
+                  canonicalVideoId: "canonical-relaxed",
+                  title_en: ["The Story of Jesus for Children"],
+                },
+              },
+            ],
+          },
+          {
+            group_key: ["canonical-strict"],
+            found: 1,
+            hits: [
+              {
+                document: {
+                  videoId: "video-strict",
+                  canonicalVideoId: "canonical-strict",
+                  title_en: ["Jesus for Kids"],
+                },
+              },
+            ],
+          },
+        ],
+      },
+    ])
+    multiSearchMock.mockImplementationOnce(async (searches: unknown[]) =>
+      searches.map(() => ({
+        found: 1,
+        out_of: 1,
+        page: 1,
+        search_time_ms: 1,
+        hits: [{ document: { id: "validated" } }],
+      })),
+    )
+
+    const result = await createService().suggest({
+      query: "Jesus for kids",
+      languageSlug: "english",
+    })
+
+    expect(
+      result.filter((row) => row.kind === "content").map((row) => row.title),
+    ).toEqual(["Jesus for Kids", "The Story of Jesus for Children"])
+  })
+
+  it("ranks title-prefix matches ahead of relaxed matches across candidate groups", async () => {
+    findFirstMock.mockResolvedValue({ bcp47: "en" })
+    multiSearchMock.mockResolvedValueOnce([
+      {
+        found: 2,
+        out_of: 2,
+        page: 1,
+        search_time_ms: 1,
+        grouped_hits: [
+          {
+            group_key: ["canonical-relaxed"],
+            found: 1,
+            hits: [
+              {
+                document: {
+                  videoId: "video-relaxed",
+                  canonicalVideoId: "canonical-relaxed",
+                  title_en: ["The Story of Jesus for Children"],
+                },
+              },
+            ],
+          },
+          {
+            group_key: ["canonical-prefix"],
+            found: 1,
+            hits: [
+              {
+                document: {
+                  videoId: "video-prefix",
+                  canonicalVideoId: "canonical-prefix",
+                  title_en: ["Jesus for Kids Around the World"],
+                },
+              },
+            ],
+          },
+        ],
+      },
+    ])
+    multiSearchMock.mockImplementationOnce(async (searches: unknown[]) =>
+      searches.map(() => ({
+        found: 1,
+        out_of: 1,
+        page: 1,
+        search_time_ms: 1,
+        hits: [{ document: { id: "validated" } }],
+      })),
+    )
+
+    const result = await createService().suggest({
+      query: "Jesus for kids",
+      languageSlug: "english",
+    })
+
+    expect(
+      result.filter((row) => row.kind === "content").map((row) => row.title),
+    ).toEqual([
+      "Jesus for Kids Around the World",
+      "The Story of Jesus for Children",
+    ])
+  })
+
+  it("surfaces a relaxed metadata phrase only after strict validation without a direct match", async () => {
+    findFirstMock.mockResolvedValue({ bcp47: "en" })
+    multiSearchMock.mockResolvedValueOnce([
+      {
+        found: 1,
+        out_of: 1,
+        page: 1,
+        search_time_ms: 1,
+        grouped_hits: [
+          {
+            group_key: ["canonical-description"],
+            found: 1,
+            hits: [
+              {
+                document: {
+                  videoId: "video-description",
+                  canonicalVideoId: "canonical-description",
+                  title_en: ["An Unrelated Film"],
+                  metadata_en: ["The Story of Jesus for Children"],
+                },
+              },
+            ],
+          },
+        ],
+      },
+    ])
+    multiSearchMock.mockImplementationOnce(async (searches: unknown[]) =>
+      searches.map(() => ({
+        found: 1,
+        out_of: 1,
+        page: 1,
+        search_time_ms: 1,
+        hits: [{ document: { id: "validated" } }],
+      })),
+    )
+
+    const result = await createService().suggest({
+      query: "Jesus for kids",
+      languageSlug: "english",
+    })
+
+    expect(result).toEqual([
+      {
+        ...querySuggestion("Jesus for Children"),
+        matchSource: "description",
+      },
+    ])
+    expect(multiSearchMock.mock.calls[1]?.[0]).toEqual([
+      expect.objectContaining({
+        q: "Jesus for Children",
+        prefix: false,
+        drop_tokens_threshold: 0,
+      }),
+    ])
+  })
+
+  it("keeps two-token queries strict with no dropped-token recall", async () => {
+    findFirstMock.mockResolvedValue({ bcp47: "en" })
+    multiSearchMock.mockResolvedValueOnce([
+      {
+        found: 1,
+        out_of: 1,
+        page: 1,
+        search_time_ms: 1,
+        grouped_hits: [
+          {
+            group_key: ["canonical-1"],
+            found: 1,
+            hits: [
+              {
+                document: {
+                  videoId: "video-purple-rain",
+                  canonicalVideoId: "canonical-1",
+                  title_en: ["Purple Rain"],
+                },
+              },
+            ],
+          },
+        ],
+      },
+    ])
+
+    const result = await createService().suggest({
+      query: "purple kids",
+      languageSlug: "english",
+    })
+
+    expect(multiSearchMock.mock.calls[0]?.[0]).toEqual([
+      expect.objectContaining({
+        q: "purple kids",
+        drop_tokens_threshold: 0,
+      }),
+    ])
+    expect(result).toEqual([])
+    expect(multiSearchMock).toHaveBeenCalledTimes(1)
+  })
+
+  it("keeps one-token queries strict with no dropped-token recall", async () => {
+    findFirstMock.mockResolvedValue({ bcp47: "en" })
+    multiSearchMock.mockResolvedValueOnce([
+      {
+        found: 1,
+        out_of: 1,
+        page: 1,
+        search_time_ms: 1,
+        grouped_hits: [
+          {
+            group_key: ["canonical-1"],
+            found: 1,
+            hits: [
+              {
+                document: {
+                  videoId: "video-purple-rain",
+                  canonicalVideoId: "canonical-1",
+                  title_en: ["Purple Rain"],
+                },
+              },
+            ],
+          },
+        ],
+      },
+    ])
+
+    await createService().suggest({
+      query: "purple",
+      languageSlug: "english",
+    })
+
+    expect(multiSearchMock.mock.calls[0]?.[0]).toEqual([
+      expect.objectContaining({
+        q: "purple",
+        drop_tokens_threshold: 0,
+      }),
+    ])
+  })
+
+  it("deduplicates repeated query tokens before allowing dropped-token recall", async () => {
+    findFirstMock.mockResolvedValue({ bcp47: "en" })
+    multiSearchMock.mockResolvedValueOnce([
+      {
+        found: 1,
+        out_of: 1,
+        page: 1,
+        search_time_ms: 1,
+        grouped_hits: [
+          {
+            group_key: ["canonical-1"],
+            found: 1,
+            hits: [
+              {
+                document: {
+                  videoId: "video-story-of-jesus",
+                  canonicalVideoId: "canonical-1",
+                  title_en: ["The Story of Jesus for Children"],
+                },
+              },
+            ],
+          },
+        ],
+      },
+    ])
+
+    const result = await createService().suggest({
+      query: "Jesus Jesus kids",
+      languageSlug: "english",
+    })
+
+    expect(multiSearchMock.mock.calls[0]?.[0]).toEqual([
+      expect.objectContaining({
+        q: "Jesus Jesus kids",
+        drop_tokens_threshold: 0,
+      }),
+    ])
+    expect(result).toEqual([])
+  })
+
+  it("rejects relaxed title coverage when two unique query tokens are unmatched", async () => {
+    findFirstMock.mockResolvedValue({ bcp47: "en" })
+    multiSearchMock.mockResolvedValueOnce([
+      {
+        found: 1,
+        out_of: 1,
+        page: 1,
+        search_time_ms: 1,
+        grouped_hits: [
+          {
+            group_key: ["canonical-1"],
+            found: 1,
+            hits: [
+              {
+                document: {
+                  videoId: "video-story-of-jesus",
+                  canonicalVideoId: "canonical-1",
+                  title_en: ["The Story of Jesus for Children"],
+                },
+              },
+            ],
+          },
+        ],
+      },
+    ])
+
+    const result = await createService().suggest({
+      query: "Jesus for kids today",
+      languageSlug: "english",
+    })
+
+    expect(multiSearchMock.mock.calls[0]?.[0]).toEqual([
+      expect.objectContaining({ drop_tokens_threshold: 1 }),
+    ])
+    expect(result).toEqual([])
+  })
+
+  it("never matches through stop words alone even with relaxed recall", async () => {
+    findFirstMock.mockResolvedValue({ bcp47: "en" })
+    multiSearchMock.mockResolvedValueOnce([
+      {
+        found: 1,
+        out_of: 1,
+        page: 1,
+        search_time_ms: 1,
+        grouped_hits: [
+          {
+            group_key: ["canonical-1"],
+            found: 1,
+            hits: [
+              {
+                document: {
+                  videoId: "video-gospel-of-john",
+                  canonicalVideoId: "canonical-1",
+                  title_en: ["The Gospel of John"],
+                },
+              },
+            ],
+          },
+        ],
+      },
+    ])
+
+    const result = await createService().suggest({
+      query: "the story of",
+      languageSlug: "english",
+    })
+
+    expect(multiSearchMock.mock.calls[0]?.[0]).toEqual([
+      expect.objectContaining({
+        q: "the story of",
+        drop_tokens_threshold: 1,
+      }),
+    ])
+    expect(result).toEqual([])
+    expect(multiSearchMock).toHaveBeenCalledTimes(1)
+  })
+
   it("isolates phrase verdicts by exact public language identity", async () => {
     const prisma = {
       language: { findFirst: findFirstMock },
