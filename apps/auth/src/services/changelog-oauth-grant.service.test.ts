@@ -156,6 +156,46 @@ describe("Changelog OAuth grant decision", () => {
     expect(deps.findTargetEnvironment).toHaveBeenCalledWith("local")
   })
 
+  it("resolves native issuance from provider-owned resources without client metadata", async () => {
+    const deps = dependencies({
+      clientEnvironment: null,
+      grants: [{ scopes: [{ scope: { key: "changelog:read" } }] }],
+    })
+
+    await expect(
+      createChangelogOAuthGrantDecision(
+        {
+          ...authorizationInput,
+          lifecycle: "exchange",
+          clientId: undefined,
+          resources: ["http://localhost:3000/mcp"],
+          scopeCeiling: ["openid", "changelog:read"],
+        },
+        deps,
+      ),
+    ).resolves.toMatchObject({
+      allowed: true,
+      scopes: ["openid", "changelog:read"],
+      target: {
+        environmentKind: "local",
+        resource: "http://localhost:3000/mcp",
+      },
+    })
+    expect(deps.findClientEnvironment).not.toHaveBeenCalled()
+  })
+
+  it("rejects provider issuance without either a client or resource target", async () => {
+    await expect(
+      createChangelogOAuthGrantDecision(
+        { ...authorizationInput, clientId: undefined },
+        dependencies(),
+      ),
+    ).resolves.toEqual({
+      allowed: false,
+      reason: "invalid_changelog_target",
+    })
+  })
+
   it.each([
     {
       name: "missing user",

@@ -115,7 +115,6 @@ export async function createChangelogOAuthGrantDecision(
     !isChangelogOAuthLifecycle(input.lifecycle) ||
     !input.userId ||
     input.membershipStatus !== "ACTIVE" ||
-    !input.clientId ||
     !isStringArray(input.requestedScopes) ||
     (input.resources != null && !isStringArray(input.resources)) ||
     (input.scopeCeiling != null && !isStringArray(input.scopeCeiling))
@@ -124,9 +123,9 @@ export async function createChangelogOAuthGrantDecision(
   }
 
   try {
-    const clientEnvironment = await dependencies.findClientEnvironment(
-      input.clientId,
-    )
+    const clientEnvironment = input.clientId
+      ? await dependencies.findClientEnvironment(input.clientId)
+      : null
     if (clientEnvironment && clientEnvironment.app.key !== CHANGELOG_APP_KEY) {
       return deny()
     }
