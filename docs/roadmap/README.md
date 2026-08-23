@@ -4,14 +4,14 @@
 
 Build trusted, scalable AI capabilities that help people discover gospel content, engage meaningfully with Scripture, and take faithful next steps.
 
-## Status (August 21, 2026)
+## Status (August 23, 2026)
 
-- **Total tickets:** 579
-- **Complete:** 424
+- **Total tickets:** 581
+- **Complete:** 425
 - **In progress:** 40
-- **Not started:** 36
+- **Not started:** 37
 - **Blocked:** 79
-- **Overdue and not complete:** 103
+- **Overdue and not complete:** 105
 
 ## Feature Index
 
@@ -145,6 +145,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-362](content-discovery/feat-362-watch-search-native-language-candidate-recall.md)                        | Watch search native-language Candidate recall                                                   | codex      | P1       | 2026-08-13 | 2    | 2026-08-14 | complete    |
 | [feat-363](content-discovery/feat-363-watch-localized-topic-search-query.md)                                   | Submit localized Watch topic search queries                                                     | codex      | P1       | 2026-08-14 | 1    | 2026-08-14 | complete    |
 | [feat-403](content-discovery/feat-403-watch-language-inventory-subtitle-intent.md)                             | Watch language inventory subtitle intent                                                        | vlad       | P1       | 2026-08-20 | 1    | 2026-08-20 | complete    |
+| [feat-412](content-discovery/feat-412-watch-search-suggestion-multi-token-recall.md)                           | Recover Watch suggestions for near-miss multi-word queries                                      | vlad       | P1       | 2026-08-22 | 1    | 2026-08-22 | complete    |
 | [feat-394](content-discovery/feat-394-bounded-recommendation-exploration.md)                                   | Bounded recommendation exploration                                                              | nisal      | P2       | —          | 6    | —          | blocked     |
 | [feat-395](content-discovery/feat-395-learned-multi-outcome-reranker.md)                                       | Learned multi-outcome re-ranker                                                                 | nisal      | P2       | —          | 10   | —          | blocked     |
 | [feat-396](content-discovery/feat-396-recommendation-privacy-capacity-graduation.md)                           | Recommendation privacy and capacity graduation                                                  | nisal      | P2       | —          | 5    | —          | blocked     |
@@ -162,6 +163,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-349](content-discovery/feat-349-admin-search-language-dropdown.md)                                       | Add one language dropdown to Admin search comparison                                            | nisal      | P2       | 2026-08-10 | 1    | 2026-08-10 | complete    |
 | [feat-351](content-discovery/feat-351-finish-admin-search-language-field-migration.md)                         | Finish Admin search comparison language field migration                                         | codex      | P2       | 2026-08-12 | 2    | 2026-08-13 | not-started |
 | [feat-404](content-discovery/feat-404-watch-language-inventory-subtitle-watchability.md)                       | Watch language inventory subtitle watchability                                                  | vlad       | P2       | 2026-08-20 | 2    | 2026-08-21 | complete    |
+| [feat-413](content-discovery/feat-413-watch-suggestion-canonical-group-representative-recall.md)               | Recover valid Watch suggestions hidden by canonical grouping                                    | vlad       | P2       | 2026-08-23 | 1    | 2026-08-23 | not-started |
 | [feat-331](content-discovery/feat-331-devotional-video-matcher-dead-endpoint.md)                               | Devotional video matcher calls a deleted admin search endpoint                                  | unassigned | P2       | 2026-09-01 | 2    | 2026-09-02 | not-started |
 | [feat-333](content-discovery/feat-333-stale-search-api-docs-supersession.md)                                   | Stale docs: /api/search + Query.search documented as live after #1622 removal                   | unassigned | P2       | 2026-09-01 | 1    | 2026-09-01 | not-started |
 | [feat-332](content-discovery/feat-332-consolidate-transcript-chunk-retrievers.md)                              | Consolidate the two video_transcript_chunk semantic retrievers                                  | unassigned | P2       | 2026-09-08 | 3    | 2026-09-10 | not-started |
