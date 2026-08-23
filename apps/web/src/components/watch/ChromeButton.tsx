@@ -9,6 +9,7 @@ import {
   useEffect,
   useLayoutEffect,
   useRef,
+  useState,
   type CSSProperties,
 } from "react"
 
@@ -34,6 +35,7 @@ export function ChromeButton({
   const buttonRef = useRef<HTMLButtonElement | null>(null)
   const tooltipRef = useRef<HTMLSpanElement | null>(null)
   const resizeObserverRef = useRef<ResizeObserver | null>(null)
+  const [isTooltipOpen, setIsTooltipOpen] = useState(false)
 
   const clampTooltipToViewport = useCallback(() => {
     const buttonElement = buttonRef.current
@@ -95,17 +97,33 @@ export function ChromeButton({
       aria-disabled={disabled || undefined}
       data-testid={testId}
       onMouseEnter={() => {
+        if (
+          typeof window.matchMedia === "function" &&
+          !window.matchMedia("(hover: hover) and (pointer: fine)").matches
+        ) {
+          return
+        }
+        setIsTooltipOpen(true)
         clampTooltipToViewport()
         observeOpenTooltip()
       }}
-      onMouseLeave={stopObservingViewport}
+      onMouseLeave={(event) => {
+        if (event.currentTarget.matches(":focus-visible")) return
+        setIsTooltipOpen(false)
+        stopObservingViewport()
+      }}
       onFocus={(event) => {
         if (event.currentTarget.matches(":focus-visible")) {
+          setIsTooltipOpen(true)
           clampTooltipToViewport()
           observeOpenTooltip()
         }
       }}
-      onBlur={stopObservingViewport}
+      onBlur={(event) => {
+        if (event.currentTarget.matches(":hover")) return
+        setIsTooltipOpen(false)
+        stopObservingViewport()
+      }}
       className={`group relative flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-full bg-transparent text-white/90 transition-[color,filter,transform] duration-150 hover:scale-110 hover:text-white focus-visible:scale-110 focus-visible:text-brand-red focus-visible:ring-2 focus-visible:ring-brand-red/70 focus-visible:outline-none aria-disabled:cursor-not-allowed aria-disabled:text-white/40 aria-disabled:hover:scale-100 aria-disabled:hover:text-white/50 aria-disabled:focus-visible:scale-100 md:h-12 md:w-12 ${className}`}
     >
       {children}
@@ -118,9 +136,11 @@ export function ChromeButton({
             "--chrome-tooltip-shift-x": "0px",
           } as CSSProperties
         }
-        className={`pointer-events-none invisible absolute bottom-full z-30 mb-2 w-max translate-x-[var(--chrome-tooltip-shift-x)] translate-y-1 rounded-md bg-white px-2.5 py-1.5 text-xs font-medium whitespace-nowrap text-neutral-900 opacity-0 shadow-lg transition-[opacity,visibility] duration-150 group-focus-visible:visible group-focus-visible:translate-y-0 group-focus-visible:opacity-100 [@media(hover:hover)_and_(pointer:fine)]:group-hover:visible [@media(hover:hover)_and_(pointer:fine)]:group-hover:translate-y-0 [@media(hover:hover)_and_(pointer:fine)]:group-hover:opacity-100 ${
-          tooltipAlign === "start" ? "left-0" : "right-0"
-        }`}
+        className={`pointer-events-none absolute bottom-full z-30 mb-2 w-max translate-x-[var(--chrome-tooltip-shift-x)] rounded-md bg-white px-2.5 py-1.5 text-xs font-medium whitespace-nowrap text-neutral-900 shadow-lg transition-[opacity,visibility] duration-150 ${
+          isTooltipOpen
+            ? "visible translate-y-0 opacity-100"
+            : "invisible translate-y-1 opacity-0"
+        } ${tooltipAlign === "start" ? "left-0" : "right-0"}`}
       >
         {ariaLabel}
       </span>
