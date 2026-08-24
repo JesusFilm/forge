@@ -234,6 +234,7 @@
     "loadMoreFailed": "Ka n'pudi kariga mas resultadus.",
     "searching": "Ta buska...",
     "connectionHint": "Pur favor, odja bu konekson i tenta di novu.",
+    "rateLimitHint": "Pidi dimás. Pur favor, tenta di novu dipus di un minutu.",
     "retrySearch": "Tenta buska di novu",
     "retry": "Tenta di novu",
     "noResults": "Ka tene resultadu pa \"{query}\"",
@@ -268,7 +269,9 @@
   "HeroPlayer": {
     "playWithSound": "Odja agora",
     "tapToUnmute": "Toká pa pô son",
-    "nextEpisode": "Prósimu Episódiu"
+    "nextEpisode": "Prósimu Episódiu",
+    "audioTranslationCount": "{count, plural, one {# língua} other {# línguas}}",
+    "subtitleCount": "Legendas: {count, plural, one {# língua} other {# línguas}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Ta kariga konteúdu",
@@ -581,16 +584,16 @@
     "retryFailed": "Tenta downloads falhadu di novu"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Versaun di língua ka sta dispunível",
+    "eyebrow": "Versaun di língua ka sta dispunível",
+    "title": "<contentTitle>{title}</contentTitle> ka sta dispunível na <languageName>{language}</languageName>",
+    "actionsLabel": "Opsons dispunível pa odja",
+    "browseInLanguage": "Navega vídeus na {language}",
+    "backToSearch": "Riturna pa buska",
+    "audioVersionsTitle": "Otus versaun di áudiu",
+    "audioVersionsDescription": "Skolhi un língua di áudiu pa kontinua odja es vídeu.",
+    "languageVersionLabel": "Língua di áudiu",
+    "selectLanguageVersion": "Skolhi un versaun di língua",
+    "watchSelectedVersion": "Odja versaun skolhidu"
   }
 }

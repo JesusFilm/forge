@@ -5,6 +5,17 @@ status: completed
 date: 2026-07-17
 ---
 
+> **Superseded in part, 2026-08-22 (PR #2007).** R1's "cue phrases separated by
+> blank lines" and the matching Key Technical Decision no longer hold: the
+> collapsed container now joins cues with a SINGLE newline and is height-clamped
+> to `max(6rem, calc(60svh - 15rem))` with a gradient bottom fade, because a
+> blank line per cue spent roughly half the clamped height on whitespace. U2's
+> "exactly one blank line" test scenario is superseded with it. Everything else
+> in this plan still holds — in particular R2 (constant collapsed element count)
+> and R5 (all readable text in the initial HTML, never truncated server-side),
+> which the clamp deliberately preserves by hiding overflow visually rather than
+> shortening the text.
+
 # perf: Compact the default Watch transcript DOM
 
 ## Summary

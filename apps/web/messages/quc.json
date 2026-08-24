@@ -234,6 +234,7 @@
     "loadMoreFailed": "Xeq'ate' rutinikirisaxik ch'aqa' resultados.",
     "searching": "Tajin nikanöx...",
     "connectionHint": "Tajikib'a' ri ak'uxla' y tatojtob'ej chik.",
+    "rateLimitHint": "Janila taq k'utunem. Tatojtob'ej chik pa jun minuto.",
     "retrySearch": "Tatojtob'ej chik ri kanoxïk",
     "retry": "Tatojtob'ej chik",
     "noResults": "Man xk'ulmataj ta resultados richin \"{query}\"",
@@ -268,7 +269,9 @@
   "HeroPlayer": {
     "playWithSound": "Tatz'eta' wakami",
     "tapToUnmute": "Tapa' richin titzolin q'ojom",
-    "nextEpisode": "Jun chik episodio"
+    "nextEpisode": "Jun chik episodio",
+    "audioTranslationCount": "{count, plural, one {# ch'ab'äl} other {# taq ch'ab'äl}}",
+    "subtitleCount": "Subtítulos: {count, plural, one {# ch'ab'äl} other {# taq ch'ab'äl}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Tajin nupam rucontenido",
@@ -581,16 +584,16 @@
     "retryFailed": "Tatojtob'ej chik ri xesach"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Man k'o ta ri ruwäch ch'ab'äl",
+    "eyebrow": "Man k'o ta ri ruwäch ch'ab'äl",
+    "title": "Man k'o ta <contentTitle>{title}</contentTitle> pa <languageName>{language}</languageName>",
+    "actionsLabel": "Taq rub'eyal richin nitz'et",
+    "browseInLanguage": "Tatz'eta' taq video pa {language}",
+    "backToSearch": "Titzolin pa kanoxïk",
+    "audioVersionsTitle": "Ch'aqa' chik taq ruwäch k'oxom",
+    "audioVersionsDescription": "Tacha' jun rutzijol ch'ab'äl richin natz'ët chik re video re'.",
+    "languageVersionLabel": "Ruch'ab'äl k'oxom",
+    "selectLanguageVersion": "Tacha' jun ruwäch ch'ab'äl",
+    "watchSelectedVersion": "Tatz'eta' ri ruwäch xacha'"
   }
 }

@@ -234,6 +234,7 @@
     "loadMoreFailed": "Dañu mënula yeb yeneen résultats.",
     "searching": "Seet…",
     "connectionHint": "Jàngal sa connection te jéemaatal.",
+    "rateLimitHint": "Laaj yi bari nañu lool. Jéemaatal bu benn simili weesoo.",
     "retrySearch": "Jéemaatal seet bi",
     "retry": "Jéemaatal",
     "noResults": "Amul benn résultat ci \"{query}\"",
@@ -268,7 +269,9 @@
   "HeroPlayer": {
     "playWithSound": "Seet léegi",
     "tapToUnmute": "Tappe ngir joxaat kàddu",
-    "nextEpisode": "Episode bi ci topp"
+    "nextEpisode": "Episode bi ci topp",
+    "audioTranslationCount": "{count, plural, one {# làkk} other {# làkk yi}}",
+    "subtitleCount": "Mbindi tekki yi: {count, plural, one {# làkk} other {# làkk yi}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Yebum xibaar bi",
@@ -581,16 +584,16 @@
     "retryFailed": "Jéemaatal xaaj yi lajj"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Xeetu làkk wi amul",
+    "eyebrow": "Xeetu làkk wi amul",
+    "title": "<contentTitle>{title}</contentTitle> amul ci <languageName>{language}</languageName>",
+    "actionsLabel": "Yeneen anam yu ñu man a seetaan",
+    "browseInLanguage": "Xoolal video yi ci {language}",
+    "backToSearch": "Dellu ci seet bi",
+    "audioVersionsTitle": "Yeneen xeeti baat",
+    "audioVersionsDescription": "Tànnal làkku baat ngir wéyal di seetaan video bii.",
+    "languageVersionLabel": "Làkku baat",
+    "selectLanguageVersion": "Tànnal xeetu làkk",
+    "watchSelectedVersion": "Seetaan xeet wi nga tànn"
   }
 }

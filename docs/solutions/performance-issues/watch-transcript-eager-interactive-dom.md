@@ -28,6 +28,12 @@ tags:
   - react
 ---
 
+> **Superseded in part, 2026-08-22 (PR #2007).** The `join("\n\n")` shown below
+> is now `join("\n")`, and the collapsed `<div>` is height-clamped to
+> `max(6rem, calc(60svh - 15rem))` with a gradient bottom fade plus a mouse-only
+> click-to-expand surface. The blank-line rationale recorded here is historical;
+> the single-text-node and full-text-in-initial-HTML properties still hold.
+
 # Mount Watch transcript cue controls on demand
 
 ## Problem

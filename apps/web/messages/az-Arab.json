@@ -234,6 +234,7 @@
     "loadMoreFailed": "بارگیری نتایج بیشتر ناموفق شد.",
     "searching": "در حال جستجو...",
     "connectionHint": "لطفاً اتصال خود را بررسی کنید و دوباره تلاش کنید.",
+    "rateLimitHint": "درخواست‌لر چوخدور. لطفاً بیر دقیقه‌دن سونرا یئنه تلاش ائدین.",
     "retrySearch": "تلاش دوباره برای جستجو",
     "retry": "تلاش دوباره",
     "noResults": "برای «{query}» نتیجه‌ای یافت نشد",
@@ -268,7 +269,9 @@
   "HeroPlayer": {
     "playWithSound": "اکنون تماشا کنید",
     "tapToUnmute": "برای باصدا کردن ضربه بزنید",
-    "nextEpisode": "قسمت بعدی"
+    "nextEpisode": "قسمت بعدی",
+    "audioTranslationCount": "{count, plural, one {# زبان} other {# زبان}}",
+    "subtitleCount": "زیرنویس‌ها: {count, plural, one {# زبان} other {# زبان}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "در حال بارگیری محتوا",
@@ -581,16 +584,16 @@
     "retryFailed": "ناموفق دانلودلاری یئنی‌دن جهد ائدین"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "دیل نسخه‌سی موجود دئییل",
+    "eyebrow": "دیل نسخه‌سی موجود دئییل",
+    "title": "<contentTitle>{title}</contentTitle> <languageName>{language}</languageName> دیلینده موجود دئییل",
+    "actionsLabel": "موجود باخیش سئچنکلری",
+    "browseInLanguage": "{language} دیلینده ویدیولارا باخین",
+    "backToSearch": "آختاریشا قاییدین",
+    "audioVersionsTitle": "باشقا سس نسخه‌لری",
+    "audioVersionsDescription": "بو ویدیونو ایزلمه‌یه دوام ائتمک اوچون بیر سس دیلی سئچین.",
+    "languageVersionLabel": "سس دیلی",
+    "selectLanguageVersion": "بیر دیل نسخه‌سی سئچین",
+    "watchSelectedVersion": "سئچیلمیش نسخه‌یه باخین"
   }
 }

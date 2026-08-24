@@ -234,6 +234,7 @@
     "loadMoreFailed": "Неуспешно зареждане на още резултати.",
     "searching": "Търсене...",
     "connectionHint": "Моля, проверете връзката си и опитайте отново.",
+    "rateLimitHint": "Твърде много заявки. Опитайте отново след минута.",
     "retrySearch": "Опитайте отново търсенето",
     "retry": "Опитай отново",
     "noResults": "Няма резултати за „{query}“",
@@ -268,7 +269,9 @@
   "HeroPlayer": {
     "playWithSound": "Гледайте сега",
     "tapToUnmute": "Докоснете, за да включите звука",
-    "nextEpisode": "Следващ епизод"
+    "nextEpisode": "Следващ епизод",
+    "audioTranslationCount": "{count, plural, one {# език} other {# езика}}",
+    "subtitleCount": "Субтитри: {count, plural, one {# език} other {# езика}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Зареждане на съдържание",
@@ -581,16 +584,16 @@
     "retryFailed": "Опитай отново неуспешните"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Езиковата версия не е налична",
+    "eyebrow": "Езиковата версия не е налична",
+    "title": "<contentTitle>{title}</contentTitle> не е налично на <languageName>{language}</languageName>",
+    "actionsLabel": "Налични опции за гледане",
+    "browseInLanguage": "Разгледайте видеоклипове на {language}",
+    "backToSearch": "Назад към търсенето",
+    "audioVersionsTitle": "Други аудиоверсии",
+    "audioVersionsDescription": "Изберете език на аудиото, за да продължите да гледате този видеоклип.",
+    "languageVersionLabel": "Език на аудиото",
+    "selectLanguageVersion": "Изберете езикова версия",
+    "watchSelectedVersion": "Гледайте избраната версия"
   }
 }

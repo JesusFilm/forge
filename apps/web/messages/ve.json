@@ -234,6 +234,7 @@
     "loadMoreFailed": "Zwo kundelwa u laedza zwiṅwe zwibveledzwa.",
     "searching": "Khou ṱola...",
     "connectionHint": "Ndi humbela ni sedze connection yanu ni lingedze hafhu.",
+    "rateLimitHint": "Khumbelo ndi nnzhi. Ndi humbela ni lingedze hafhu nga murahu ha minete muthihi.",
     "retrySearch": "Lingedzani u ṱola hafhu",
     "retry": "Lingedza hafhu",
     "noResults": "A hu na mvelelo dza \"{query}\"",
@@ -268,7 +269,9 @@
   "HeroPlayer": {
     "playWithSound": "Lavhelani zwino",
     "tapToUnmute": "Kandani u bvisa u fhumutshela",
-    "nextEpisode": "Episode i tevhelaho"
+    "nextEpisode": "Episode i tevhelaho",
+    "audioTranslationCount": "{count, plural, one {# luambo} other {# luambo}}",
+    "subtitleCount": "Zwibulo: {count, plural, one {# luambo} other {# luambo}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Khou laedza zwi re ngomu",
@@ -581,16 +584,16 @@
     "retryFailed": "Lingedzani zwo kundelwaho hafhu"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Vesheni ya luambo a i wanali",
+    "eyebrow": "Vesheni ya luambo a i wanali",
+    "title": "<contentTitle>{title}</contentTitle> a i wanali nga <languageName>{language}</languageName>",
+    "actionsLabel": "Zwine zwa nga khethwa u ṱalela",
+    "browseInLanguage": "Ṱalelani vidio nga {language}",
+    "backToSearch": "Humelani kha ṱhoḓisiso",
+    "audioVersionsTitle": "Dziṅwe vesheni dza mubvumo",
+    "audioVersionsDescription": "Nangani luambo lwa mubvumo uri ni bvele phanḓa na u ṱalela vidio iyi.",
+    "languageVersionLabel": "Luambo lwa mubvumo",
+    "selectLanguageVersion": "Nangani vesheni ya luambo",
+    "watchSelectedVersion": "Ṱalelani vesheni yo nangiwaho"
   }
 }

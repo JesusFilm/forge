@@ -234,6 +234,7 @@
     "loadMoreFailed": "Result łè load nàtɂè.",
     "searching": "Search adlè…",
     "connectionHint": "Connection hı̨ghàda, nàke t’àa hòɂǫ.",
+    "rateLimitHint": "Kǫ̀ta nàowo kʼe hoghà nezų́le. Łǫ̀tʼeetsʼǫ̀ nàke gotsʼęh nàhtsʼı̨.",
     "retrySearch": "Search nàke t’àa hòɂǫ",
     "retry": "Nàke t’àa hòɂǫ",
     "noResults": "\"{query}\" ghà result nàt’è",
@@ -268,7 +269,9 @@
   "HeroPlayer": {
     "playWithSound": "Dı̀ı̀ k’e eghàeda",
     "tapToUnmute": "Yatıı̀ nàke ghà tap hòɂǫ",
-    "nextEpisode": "Episode yàa"
+    "nextEpisode": "Episode yàa",
+    "audioTranslationCount": "{count, plural, one {# yatıı̀} other {# yatıı̀ łè}}",
+    "subtitleCount": "Subtitles łè: {count, plural, one {# yatıı̀} other {# yatıı̀ łè}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Nàtǫ̀ loading",
@@ -581,16 +584,16 @@
     "retryFailed": "Nàtɂè sı̀ı̀ nàke t’àa hòɂǫ"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Yatıì tʼà nàowo hǫtʼǫ̀le",
+    "eyebrow": "Yatıì tʼà nàowo hǫtʼǫ̀le",
+    "title": "<contentTitle>{title}</contentTitle> <languageName>{language}</languageName> yatıì tʼà hǫtʼǫ̀le",
+    "actionsLabel": "Ełekʼe nàowo gha sı̨̀ı̨̀",
+    "browseInLanguage": "{language} yatıì tʼà video łè weghàda",
+    "backToSearch": "Nàowo kʼe nàtsʼè",
+    "audioVersionsTitle": "Audio nàowo łaà",
+    "audioVersionsDescription": "Video sii nàhtsʼı̨ gha audio yatıì łaà wı̨̀ı̨̀.",
+    "languageVersionLabel": "Audio yatıì",
+    "selectLanguageVersion": "Yatıì nàowo łaà wı̨̀ı̨̀",
+    "watchSelectedVersion": "Nàowo wı̨̀ı̨̀ nàhtsʼı̨"
   }
 }

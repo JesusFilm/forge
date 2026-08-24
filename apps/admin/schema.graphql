@@ -413,6 +413,7 @@ type InfoBlocksBlock {
 Where a collection's items come from. Shared by MediaCollectionBlock.itemsSource and VideoCarouselBlock.itemsSource.
 """
 enum ItemsSource {
+  dynamicCollections
   manual
   routeVideoChildren
 }
@@ -1107,6 +1108,8 @@ type MediaCollectionBlock {
   """
   defaultCollectionSlug: String
   description: String
+  """Video or collection ids excluded from dynamic collection feed results."""
+  excludedVideoIds: [String!]!
   footerText: String
   imageAsset: BlockImageAsset
   imageAssetId: String
@@ -1480,6 +1483,10 @@ type Query {
   Batched coreId → dispatch-fields lookup for manager's admin-trigger enrichment endpoints (feat-125). Replaces the Strapi `videos(filters: { coreId: { in } })` call. Gated by `read:video-metadata`; manager's `ADMIN_EMBED_TRIGGER_API_KEY` bearer satisfies it via the WORKFLOW_TRIGGER allowlist. Max 100 coreIds per call (matches manager's receiver-side cap).
   """
   videosByCoreIds(coreIds: [String!]!, targetLocale: String): [VideoForEnrichment!]
+  """
+  Bounded collection-parent feed for Watch homepage discovery. Ordered by stable Admin Video id; callers page with after and may exclude already-featured parent ids or slugs.
+  """
+  watchCollectionFeed(after: String, cardsPerParent: Int!, excludedIds: [String!], excludedSlugs: [String!], first: Int, languageSlug: String!, locale: String!): WatchCollectionFeed!
   """
   Fetch ordered, admin-backed Video records for Forge's public /watch home programming. Max 100 Core ids per call; unknown Core ids are omitted so consumers can report source gaps.
   """
@@ -2148,6 +2155,46 @@ type VideoTranscriptChunk {
   tokenCount: Int
   transcriptId: ID
   updatedAt: String
+}
+
+"""
+Cursor-paginated Watch collection parents used by the homepage infinite discovery feed.
+"""
+type WatchCollectionFeed {
+  nodes: [WatchCollectionFeedNode!]!
+  pageInfo: WatchCollectionFeedPageInfo!
+}
+
+"""
+A localized, playback-resolved Watch card in a bounded collection feed page.
+"""
+type WatchCollectionFeedItem {
+  blurDataUrl: String
+  coreId: String!
+  dominantColor: String
+  id: ID!
+  imageUrl: String
+  label: String
+  languageSlug: String
+  muxPlaybackId: String
+  title: String!
+  videoSlug: String!
+}
+
+"""
+A visible localized collection parent and its bounded card-ready items.
+"""
+type WatchCollectionFeedNode {
+  description: String
+  id: ID!
+  items: [WatchCollectionFeedItem!]!
+  slug: String!
+  title: String!
+}
+
+type WatchCollectionFeedPageInfo {
+  endCursor: String
+  hasNextPage: Boolean!
 }
 
 type WatchEvent {

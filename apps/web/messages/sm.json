@@ -234,6 +234,7 @@
     "loadMoreFailed": "Ua le mafai ona utaina nisi i'uga.",
     "searching": "O lo'o su'e...",
     "connectionHint": "Fa'amolemole siaki lau feso'ota'iga ma toe taumafai.",
+    "rateLimitHint": "Ua tele naua talosaga. Fa'amolemole toe taumafai i se minute.",
     "retrySearch": "Toe taumafai le su'esu'ega",
     "retry": "Toe taumafai",
     "noResults": "E leai ni i'uga mo \"{query}\"",
@@ -268,7 +269,9 @@
   "HeroPlayer": {
     "playWithSound": "Matamata nei",
     "tapToUnmute": "Pa'i e tatala le leo",
-    "nextEpisode": "Episode e soso'o ai"
+    "nextEpisode": "Episode e soso'o ai",
+    "audioTranslationCount": "{count, plural, one {# gagana} other {# gagana}}",
+    "subtitleCount": "Tusitusiga o le Leo: {count, plural, one {# gagana} other {# gagana}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "O lo'o utaina le anotusi",
@@ -581,16 +584,16 @@
     "retryFailed": "Toe taumafai i mea na lē manuia"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "E lē o maua le lomiga o lenei gagana",
+    "eyebrow": "E lē o maua le lomiga o lenei gagana",
+    "title": "E lē o maua <contentTitle>{title}</contentTitle> i le gagana <languageName>{language}</languageName>",
+    "actionsLabel": "Filifiliga e matamata ai",
+    "browseInLanguage": "Su'e vitiō i le gagana {language}",
+    "backToSearch": "Toe fo'i i le su'esu'ega",
+    "audioVersionsTitle": "Isi lomiga leo",
+    "audioVersionsDescription": "Filifili se gagana leo e fa'aauau ai ona matamata i lenei vitiō.",
+    "languageVersionLabel": "Gagana leo",
+    "selectLanguageVersion": "Filifili se lomiga o le gagana",
+    "watchSelectedVersion": "Matamata i le lomiga ua filifilia"
   }
 }

@@ -234,6 +234,7 @@
     "loadMoreFailed": "Ma rnexxilniex inniżżlu aktar riżultati.",
     "searching": "Qed tfittex...",
     "connectionHint": "Jekk jogħġbok iċċekkja l-konnessjoni tiegħek u erġa' pprova.",
+    "rateLimitHint": "Wisq talbiet. Erġa' pprova fi żmien minuta.",
     "retrySearch": "Erġa' pprova t-tfittxija",
     "retry": "Erġa' pprova",
     "noResults": "Ebda riżultat għal \"{query}\"",
@@ -268,7 +269,9 @@
   "HeroPlayer": {
     "playWithSound": "Ara issa",
     "tapToUnmute": "Taptap biex terġa' tixgħel il-ħoss",
-    "nextEpisode": "Episodju li jmiss"
+    "nextEpisode": "Episodju li jmiss",
+    "audioTranslationCount": "{count, plural, one {# lingwa} other {# lingwi}}",
+    "subtitleCount": "Sottotitli: {count, plural, one {# lingwa} other {# lingwi}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Qed jitgħabba l-kontenut",
@@ -581,16 +584,16 @@
     "retryFailed": "Erġa' pprova dawk li fallew"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Il-verżjoni tal-lingwa mhix disponibbli",
+    "eyebrow": "Il-verżjoni tal-lingwa mhix disponibbli",
+    "title": "<contentTitle>{title}</contentTitle> mhuwiex disponibbli bil-<languageName>{language}</languageName>",
+    "actionsLabel": "Għażliet tal-wiri disponibbli",
+    "browseInLanguage": "Fittex videos bil-{language}",
+    "backToSearch": "Lura għat-tfittxija",
+    "audioVersionsTitle": "Verżjonijiet tal-awdjo oħra",
+    "audioVersionsDescription": "Agħżel lingwa tal-awdjo biex tkompli tara dan il-video.",
+    "languageVersionLabel": "Lingwa tal-awdjo",
+    "selectLanguageVersion": "Agħżel verżjoni tal-lingwa",
+    "watchSelectedVersion": "Ara l-verżjoni magħżula"
   }
 }

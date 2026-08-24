@@ -234,6 +234,7 @@
     "loadMoreFailed": "વધુ પરિણામો લોડ કરવામાં નિષ્ફળ.",
     "searching": "શોધી રહ્યું છે...",
     "connectionHint": "કૃપા કરીને તમારું ઇન્ટરનેટ કનેક્શન તપાસો અને ફરી પ્રયાસ કરો.",
+    "rateLimitHint": "ઘણી બધી વિનંતીઓ થઈ છે. કૃપા કરીને એક મિનિટ પછી ફરી પ્રયાસ કરો.",
     "retrySearch": "શોધ ફરી પ્રયાસ કરો",
     "retry": "ફરી પ્રયાસ કરો",
     "noResults": "\"{query}\" માટે કોઈ પરિણામ નથી",
@@ -268,7 +269,9 @@
   "HeroPlayer": {
     "playWithSound": "હમણાં જુઓ",
     "tapToUnmute": "મ્યૂટ દૂર કરવા ટેપ કરો",
-    "nextEpisode": "આગામી એપિસોડ"
+    "nextEpisode": "આગામી એપિસોડ",
+    "audioTranslationCount": "{count, plural, one {# ભાષા} other {# ભાષાઓ}}",
+    "subtitleCount": "ઉપશીર્ષકો: {count, plural, one {# ભાષા} other {# ભાષાઓ}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "સામગ્રી લોડ થઈ રહી છે",
@@ -581,16 +584,16 @@
     "retryFailed": "નિષ્ફળ ડાઉનલોડ ફરી અજમાવો"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "ભાષાનું સંસ્કરણ ઉપલબ્ધ નથી",
+    "eyebrow": "ભાષાનું સંસ્કરણ ઉપલબ્ધ નથી",
+    "title": "<contentTitle>{title}</contentTitle> <languageName>{language}</languageName>માં ઉપલબ્ધ નથી",
+    "actionsLabel": "જોવાના ઉપલબ્ધ વિકલ્પો",
+    "browseInLanguage": "{language}માં વિડિઓ બ્રાઉઝ કરો",
+    "backToSearch": "શોધ પર પાછા જાઓ",
+    "audioVersionsTitle": "અન્ય ઑડિયો સંસ્કરણો",
+    "audioVersionsDescription": "આ વિડિઓ જોવાનું ચાલુ રાખવા માટે ઑડિયો ભાષા પસંદ કરો.",
+    "languageVersionLabel": "ઑડિયો ભાષા",
+    "selectLanguageVersion": "ભાષાનું સંસ્કરણ પસંદ કરો",
+    "watchSelectedVersion": "પસંદ કરેલું સંસ્કરણ જુઓ"
   }
 }

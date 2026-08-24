@@ -234,6 +234,7 @@
     "loadMoreFailed": "وڌيڪ نتيجا لوڊ نه ٿي سگهيا.",
     "searching": "ڳولا جاري آهي...",
     "connectionHint": "مهرباني ڪري پنهنجو ڪنيڪشن چيڪ ڪريو ۽ ٻيهر ڪوشش ڪريو.",
+    "rateLimitHint": "تمام گهڻيون درخواستون. مهرباني ڪري هڪ منٽ کان پوءِ ٻيهر ڪوشش ڪريو.",
     "retrySearch": "ڳولا ٻيهر ڪريو",
     "retry": "ٻيهر ڪوشش ڪريو",
     "noResults": "\"{query}\" لاءِ ڪو به نتيجو ناهي",
@@ -268,7 +269,9 @@
   "HeroPlayer": {
     "playWithSound": "هاڻي ڏسو",
     "tapToUnmute": "آواز آن ڪرڻ لاءِ ٽيپ ڪريو",
-    "nextEpisode": "اڳيون قسط"
+    "nextEpisode": "اڳيون قسط",
+    "audioTranslationCount": "{count, plural, one {# ٻولي} other {# ٻوليون}}",
+    "subtitleCount": "سب ٽائيٽلز: {count, plural, one {# ٻولي} other {# ٻوليون}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "مواد لوڊ ٿي رهيو آهي",
@@ -581,16 +584,16 @@
     "retryFailed": "ناڪام ڊائونلوڊ ٻيهر آزمايو"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "ٻوليءَ جو ورزن موجود ناهي",
+    "eyebrow": "ٻوليءَ جو ورزن موجود ناهي",
+    "title": "<contentTitle>{title}</contentTitle> <languageName>{language}</languageName> ۾ موجود ناهي",
+    "actionsLabel": "ڏسڻ جا موجود اختيار",
+    "browseInLanguage": "{language} ۾ وڊيوز ڏسو",
+    "backToSearch": "ڳولا ڏانهن واپس وڃو",
+    "audioVersionsTitle": "ٻيا آڊيو ورزن",
+    "audioVersionsDescription": "هي وڊيو ڏسڻ جاري رکڻ لاءِ هڪ آڊيو ٻولي چونڊيو.",
+    "languageVersionLabel": "آڊيو ٻولي",
+    "selectLanguageVersion": "ٻوليءَ جو ورزن چونڊيو",
+    "watchSelectedVersion": "چونڊيل ورزن ڏسو"
   }
 }

@@ -234,6 +234,7 @@
     "loadMoreFailed": "Нэмэлт үр дүнг ачаалж чадсангүй.",
     "searching": "Хайж байна...",
     "connectionHint": "Сүлжээгээ шалгаад дахин оролдоно уу.",
+    "rateLimitHint": "Дурадхал дэндүү олон. Нэгэ минутын һүүлээр дахин туршагты.",
     "retrySearch": "Хайлтыг дахин оролдох",
     "retry": "Дахин оролдох",
     "noResults": "“{query}” гэсэн үр дүн алга",
@@ -268,7 +269,9 @@
   "HeroPlayer": {
     "playWithSound": "Одоо үзэх",
     "tapToUnmute": "Дууг нээхийн тулд товшино уу",
-    "nextEpisode": "Дараагийн анги"
+    "nextEpisode": "Дараагийн анги",
+    "audioTranslationCount": "{count, plural, one {# хэл} other {# хэл}}",
+    "subtitleCount": "Хадмал: {count, plural, one {# хэл} other {# хэл}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Агуулга ачаалж байна",
@@ -581,16 +584,16 @@
     "retryFailed": "Татагдаагүй ангинуудые дахин туршаха"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Хэлэнэй хубилбари үгы",
+    "eyebrow": "Хэлэнэй хубилбари үгы",
+    "title": "<contentTitle>{title}</contentTitle> <languageName>{language}</languageName> хэлээр үгы",
+    "actionsLabel": "Хараха арга боломжонууд",
+    "browseInLanguage": "{language} хэлээр видеонуудые хараха",
+    "backToSearch": "Бэдэрэлгэдэ бусаха",
+    "audioVersionsTitle": "Бусад аудио хубилбаринууд",
+    "audioVersionsDescription": "Энэ видео үргэлжэлүүлэн харахын тула аудио хэлэ шэлэгты.",
+    "languageVersionLabel": "Аудио хэлэн",
+    "selectLanguageVersion": "Хэлэнэй хубилбари шэлэхэ",
+    "watchSelectedVersion": "Шэлэгдэһэн хубилбари хараха"
   }
 }

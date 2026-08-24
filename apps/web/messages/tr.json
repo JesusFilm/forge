@@ -234,6 +234,7 @@
     "loadMoreFailed": "Daha fazla sonuç yüklenemedi.",
     "searching": "Aranıyor...",
     "connectionHint": "Bağlantınızı kontrol edip tekrar deneyin.",
+    "rateLimitHint": "Çok fazla istek gönderildi. Lütfen bir dakika sonra tekrar deneyin.",
     "retrySearch": "Aramayı yeniden dene",
     "retry": "Tekrar dene",
     "noResults": "“{query}” için sonuç yok",
@@ -268,7 +269,9 @@
   "HeroPlayer": {
     "playWithSound": "Şimdi izle",
     "tapToUnmute": "Sesi aç",
-    "nextEpisode": "Sonraki bölüm"
+    "nextEpisode": "Sonraki bölüm",
+    "audioTranslationCount": "{count, plural, one {# dil} other {# dil}}",
+    "subtitleCount": "Altyazılar: {count, plural, one {# dil} other {# dil}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "İçerik yükleniyor",
@@ -581,16 +584,16 @@
     "retryFailed": "Başarısız olanları yeniden dene"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Dil sürümü kullanılamıyor",
+    "eyebrow": "Dil sürümü kullanılamıyor",
+    "title": "<contentTitle>{title}</contentTitle>, <languageName>{language}</languageName> dilinde kullanılamıyor",
+    "actionsLabel": "Kullanılabilir izleme seçenekleri",
+    "browseInLanguage": "{language} dilindeki videolara göz atın",
+    "backToSearch": "Aramaya dön",
+    "audioVersionsTitle": "Diğer ses sürümleri",
+    "audioVersionsDescription": "Bu videoyu izlemeye devam etmek için bir ses dili seçin.",
+    "languageVersionLabel": "Ses dili",
+    "selectLanguageVersion": "Bir dil sürümü seçin",
+    "watchSelectedVersion": "Seçilen sürümü izle"
   }
 }

@@ -234,6 +234,7 @@
     "loadMoreFailed": "Ещхь результатхэр къыдэкIыжьыжьы щыIэп.",
     "searching": "КъыщIэн...",
     "connectionHint": "КъащIэ ыкIи щы1эжьыжьы.",
+    "rateLimitHint": "ЛъэIухэр нэхъыбэщ. МинуткIэ щыIэжьыжь.",
     "retrySearch": "КъыщIэн щы1эжьыжьы",
     "retry": "Щы1эжьыжьы",
     "noResults": "\"{query}\" хэта результат щыIэп",
@@ -268,7 +269,9 @@
   "HeroPlayer": {
     "playWithSound": "Ащ къыдэплъэн",
     "tapToUnmute": "Джэжьыжьыуэ къыт",
-    "nextEpisode": "Къэгъэлъэгъу эпизод"
+    "nextEpisode": "Къэгъэлъэгъу эпизод",
+    "audioTranslationCount": "{count, plural, one {# бызэ} other {# бызэхэр}}",
+    "subtitleCount": "Субтитрэхэр: {count, plural, one {# бызэ} other {# бызэхэр}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Контент къыдэкIыныжьы",
@@ -581,16 +584,16 @@
     "retryFailed": "КъыдэкIа хъунукъымхэр щы1эжьыжьы"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Бызэ версиер щыIэп",
+    "eyebrow": "Бызэ версиер щыIэп",
+    "title": "<contentTitle>{title}</contentTitle> <languageName>{language}</languageName>-м щыIэп",
+    "actionsLabel": "Еплъыну щыIэ вариантхэр",
+    "browseInLanguage": "{language}-м видеохэр къэплъэн",
+    "backToSearch": "КъыщIэнэм къэкIуэжын",
+    "audioVersionsTitle": "НэгъуэщI аудио версиэхэр",
+    "audioVersionsDescription": "Мы видеом еплъэн нэщIу аудио бызэ къыхэх.",
+    "languageVersionLabel": "Аудио бызэ",
+    "selectLanguageVersion": "Бызэ версие къыхэх",
+    "watchSelectedVersion": "Къыхэха версием еплъын"
   }
 }

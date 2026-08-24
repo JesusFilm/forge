@@ -136,6 +136,7 @@ export default async function HomePage({ params }: PageProps) {
       <WatchHomeExperiencePage
         heroModel={heroResult.data}
         blocks={visibleContent.blocks}
+        locale={locale}
         languageSlug={languageSlug}
       />
     </>,

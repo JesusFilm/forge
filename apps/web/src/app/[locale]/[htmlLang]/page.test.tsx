@@ -127,6 +127,7 @@ describe("Watch root homepage", () => {
     expect(home.props).toEqual({
       heroModel,
       blocks,
+      locale: "en",
       languageSlug: "english",
     })
   })
@@ -141,6 +142,7 @@ describe("Watch root homepage", () => {
     expect(home.props).toEqual({
       heroModel,
       blocks: [],
+      locale: "en",
       languageSlug: "english",
     })
   })

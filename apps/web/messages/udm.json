@@ -234,6 +234,7 @@
     "loadMoreFailed": "Нырыз тырезsез ӧтӥны ӧвӧл.",
     "searching": "Утчалӥсько...",
     "connectionHint": "Сетьез тексерыны но тагьыр мындад ӧтӥл.",
+    "rateLimitHint": "Трос юанъёс. Одӥг минут бере выльысь тыршыса учкыны.",
     "retrySearch": "Утчалонез нырыз пукты",
     "retry": "Нырыз пукты",
     "noResults": "\"{query}\"лысь результатъёс ӧвӧл",
@@ -268,7 +269,9 @@
   "HeroPlayer": {
     "playWithSound": "Тагьыр ӧтӥл",
     "tapToUnmute": "Тап кыны, сйлтымты",
-    "nextEpisode": "Икебас эпизод"
+    "nextEpisode": "Икебас эпизод",
+    "audioTranslationCount": "{count, plural, one {# кыл} other {# кылъёс}}",
+    "subtitleCount": "Субтитръёс: {count, plural, one {# кыл} other {# кылъёс}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Материал ӧтӥсько",
@@ -581,16 +584,16 @@
     "retryFailed": "Воштӥськемъёсты нырыз сӥлтыны"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Кыл версия ӧвӧл",
+    "eyebrow": "Кыл версия ӧвӧл",
+    "title": "<contentTitle>{title}</contentTitle> <languageName>{language}</languageName> кылын ӧвӧл",
+    "actionsLabel": "Учкыны луонлыкъёс",
+    "browseInLanguage": "{language} кылын видеоосыз учкыны",
+    "backToSearch": "Утчанъёс доры бертыны",
+    "audioVersionsTitle": "Мукет аудио версияос",
+    "audioVersionsDescription": "Та видеоез учкыны азьлань карон понна аудио кылэз быръе.",
+    "languageVersionLabel": "Аудио кыл",
+    "selectLanguageVersion": "Кыл версияез быръе",
+    "watchSelectedVersion": "Быръем версияез учке"
   }
 }

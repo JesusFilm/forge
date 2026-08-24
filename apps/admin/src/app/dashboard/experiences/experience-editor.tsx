@@ -270,7 +270,11 @@ type VideoPickerDraft = {
   showControls: boolean
 }
 
-type VideoPickerMode = "block" | "carouselAppend" | "mediaCollectionAppend"
+type VideoPickerMode =
+  | "block"
+  | "carouselAppend"
+  | "mediaCollectionAppend"
+  | "dynamicCollectionBlacklistAppend"
 type VideoLibrarySearchClient =
   | "experience-editor-video-picker"
   | "experience-editor-video-carousel-picker"
@@ -324,7 +328,10 @@ type InfoBlockDragHandleState = {
 function videoLibrarySearchClientForMode(
   mode: VideoPickerMode,
 ): VideoLibrarySearchClient {
-  if (mode === "mediaCollectionAppend") {
+  if (
+    mode === "mediaCollectionAppend" ||
+    mode === "dynamicCollectionBlacklistAppend"
+  ) {
     return "experience-editor-media-collection-picker"
   }
   if (mode === "carouselAppend") {
@@ -409,6 +416,14 @@ const BLOCK_LIBRARY: BlockTemplateDefinition[] = [
     description: "Grid or carousel of related media items.",
     category: "Media",
     icon: LayoutTemplate,
+  },
+  {
+    key: "dynamicMediaCollection",
+    label: "Infinite Collection Feed",
+    description:
+      "Homepage-only feed of unfeatured database collections loaded on scroll.",
+    category: "Media",
+    icon: Compass,
   },
   {
     key: "text",
@@ -542,6 +557,7 @@ type SectionContentTemplateKey =
       | "routeVideoHero"
       | "routeVideo"
       | "routeVideoCarousel"
+      | "dynamicMediaCollection"
     >
   | "quizButton"
 
@@ -597,6 +613,21 @@ function isRouteOnlyBlockPayload(block: unknown) {
 
 function removeRouteOnlyBlocks(blocks: unknown[]) {
   return blocks.filter((block) => !isRouteOnlyBlockPayload(block))
+}
+
+function isDynamicCollectionBlock(block: unknown) {
+  const record = asRecord(block)
+  return (
+    asString(record?.t) === "mediaCollection" &&
+    asString(record?.itemsSource) === "dynamicCollections"
+  )
+}
+
+function keepDynamicCollectionBlockLast(blocks: unknown[]) {
+  const dynamicBlock = blocks.find(isDynamicCollectionBlock)
+  return dynamicBlock
+    ? [...blocks.filter((block) => block !== dynamicBlock), dynamicBlock]
+    : blocks
 }
 
 const INFO_BLOCK_ICON_OPTIONS: {
@@ -1743,6 +1774,9 @@ export function ExperienceEditor({
     }
 
     if (block.key === "watchHomeHero") return isHomepage
+    if (block.key === "dynamicMediaCollection") {
+      return isHomepage && !parsedBlocks.some(isDynamicCollectionBlock)
+    }
 
     return isTemplate || block.category !== "Route"
   })
@@ -1792,7 +1826,9 @@ export function ExperienceEditor({
       ? "Add carousel video"
       : videoPickerMode === "mediaCollectionAppend"
         ? "Add media collection video"
-        : "Choose a video"
+        : videoPickerMode === "dynamicCollectionBlacklistAppend"
+          ? "Exclude collection or media"
+          : "Choose a video"
   const activeLocaleEntry = localeEntries.find((entry) => entry.active)
   const cleanedNewLocaleCode = cleanLocaleCode(newLocaleCode, true)
   const newLocaleAlreadyExists = localeEntries.some(
@@ -1813,11 +1849,15 @@ export function ExperienceEditor({
       videoPickerBlockType !== "videoHero" ||
       (!item.isCollectionTarget && item.label !== "COLLECTION")
     const isAlreadyInTargetCollection = (item: VideoLibraryItem) =>
-      (videoPickerMode === "carouselAppend" ||
-        videoPickerMode === "mediaCollectionAppend") &&
-      asArray(videoPickerBlockRecord?.items).some(
-        (entry) => asString(asRecord(entry)?.videoId) === item.key,
-      )
+      videoPickerMode === "dynamicCollectionBlacklistAppend"
+        ? asArray(videoPickerBlockRecord?.excludedVideoIds).some(
+            (videoId) => asString(videoId) === item.key,
+          )
+        : (videoPickerMode === "carouselAppend" ||
+            videoPickerMode === "mediaCollectionAppend") &&
+          asArray(videoPickerBlockRecord?.items).some(
+            (entry) => asString(asRecord(entry)?.videoId) === item.key,
+          )
     const availableVideos = videoLibrary.filter(
       (item) =>
         matchesVideoLibraryCategory(item.label, videoLibraryCategory) &&
@@ -2864,8 +2904,21 @@ export function ExperienceEditor({
     const nextBlocks = [...parsedBlocks]
     const nextBlock = createTemplateBlock(template, nextBlocks.length)
     const nextBlockSummary = summarizeBlock(nextBlock, index, videoLibrary)
-    nextBlocks.splice(index, 0, nextBlock)
-    syncBlocks(nextBlocks, index)
+    let insertionIndex = index
+    if (template === "dynamicMediaCollection") {
+      if (!isHomepage || nextBlocks.some(isDynamicCollectionBlock)) {
+        pushToast(
+          "The homepage can contain one infinite collection feed.",
+          "error",
+        )
+        return
+      }
+      nextBlocks.push(nextBlock)
+      insertionIndex = nextBlocks.length - 1
+    } else {
+      nextBlocks.splice(index, 0, nextBlock)
+    }
+    syncBlocks(nextBlocks, insertionIndex)
     setPendingInsertIndex(null)
     setScrollToBlockKey(nextBlockSummary.key)
     setInsertedBlockAnimation({ key: nextBlockSummary.key, visible: false })
@@ -3383,7 +3436,9 @@ export function ExperienceEditor({
         return false
       }
 
-      const nextBlocks = arrayMove(parsedBlocks, fromIndex, toIndex)
+      const nextBlocks = keepDynamicCollectionBlockLast(
+        arrayMove(parsedBlocks, fromIndex, toIndex),
+      )
       const selectedKey =
         selectedBlockIndex !== null
           ? blockSummaries[selectedBlockIndex]?.key
@@ -5360,17 +5415,14 @@ export function ExperienceEditor({
     setVideoLibraryCategory("all")
     setVideoLibrarySearchResultKeys([])
     setVideoPickerDraft({
-      videoKey:
-        mode === "carouselAppend" || mode === "mediaCollectionAppend"
-          ? null
-          : (currentVideo?.key ?? null),
+      videoKey: mode === "block" ? (currentVideo?.key ?? null) : null,
       dubKey:
-        mode === "carouselAppend" || mode === "mediaCollectionAppend"
-          ? null
-          : (preferredPlayableDubForVideo(
+        mode === "block"
+          ? (preferredPlayableDubForVideo(
               currentVideo,
               asString(block?.streamingUrl) || null,
-            )?.key ?? null),
+            )?.key ?? null)
+          : null,
       clipStartSeconds: stringFromOptionalNumber(block?.clipStartSeconds),
       clipEndSeconds: stringFromOptionalNumber(block?.clipEndSeconds),
       autoplay:
@@ -5427,6 +5479,25 @@ export function ExperienceEditor({
     if (videoPickerBlockIndex === null) return
     const selectedVideo = findVideoLibraryItem(videoPickerDraft.videoKey)
     if (!selectedVideo) return
+    if (videoPickerMode === "dynamicCollectionBlacklistAppend") {
+      updateBlockAt(videoPickerBlockIndex, (block) => ({
+        ...block,
+        excludedVideoIds: [
+          ...new Set([
+            ...asArray(block.excludedVideoIds).map(asString).filter(Boolean),
+            selectedVideo.key,
+          ]),
+        ],
+      }))
+      closeVideoPicker()
+      pushToast(
+        selectedVideo.isCollectionTarget
+          ? "Collection excluded from the dynamic feed."
+          : "Media excluded from the dynamic feed.",
+        "success",
+      )
+      return
+    }
     if (
       (videoPickerMode === "carouselAppend" ||
         videoPickerMode === "mediaCollectionAppend") &&
@@ -8822,7 +8893,8 @@ export function ExperienceEditor({
                     )}
                   </div>
                 ) : null}
-                {type === "mediaCollection" ? (
+                {type === "mediaCollection" &&
+                asString(blockRecord?.itemsSource) !== "dynamicCollections" ? (
                   <div className="mt-2 max-w-xs">
                     {renderInlineTextInput(
                       index,
@@ -9050,7 +9122,8 @@ export function ExperienceEditor({
                     })}
                   </div>
                 ) : null}
-                {type === "mediaCollection"
+                {type === "mediaCollection" &&
+                asString(blockRecord?.itemsSource) !== "dynamicCollections"
                   ? renderInlineBlockCta(index, blockRecord)
                   : null}
                 {type === "section"
@@ -9347,7 +9420,104 @@ export function ExperienceEditor({
                       : null}
                   </div>
                 ) : null}
-                {type === "mediaCollection" ? (
+                {type === "mediaCollection" &&
+                asString(blockRecord?.itemsSource) === "dynamicCollections" ? (
+                  <div className="mt-4 space-y-3">
+                    <div className="flex w-full items-start gap-3 rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-inset)] px-4 py-3 text-left">
+                      <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-sm border border-[var(--color-hairline)] bg-[rgba(255,255,255,0.04)] text-[var(--color-text-secondary)]">
+                        <Compass className="h-4 w-4" strokeWidth={1.5} />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="text-[13px] font-medium text-[var(--color-text-primary)]">
+                          Dynamic database collections enabled
+                        </div>
+                        <p className="mt-1 text-[12px] leading-5 text-[var(--color-text-secondary)]">
+                          Place this block at the end of the Watch homepage. It
+                          excludes collections featured by other blocks and adds
+                          new collection carousels as viewers scroll.
+                        </p>
+                      </div>
+                    </div>
+                    <div className="rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-inset)] px-4 py-3">
+                      <div className="flex items-center justify-between gap-3">
+                        <div>
+                          <div className="text-[13px] font-medium text-[var(--color-text-primary)]">
+                            Excluded collections and media
+                          </div>
+                          <p className="mt-1 text-[12px] leading-5 text-[var(--color-text-secondary)]">
+                            Selected collections never appear; selected media is
+                            removed from every generated carousel.
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={(event) => {
+                            event.stopPropagation()
+                            openVideoPicker(
+                              index,
+                              "dynamicCollectionBlacklistAppend",
+                            )
+                          }}
+                          className="inline-flex h-9 shrink-0 cursor-pointer items-center gap-2 rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] px-3 text-[12px] font-medium text-[var(--color-text-primary)] transition-all duration-[120ms] ease-out hover:border-[var(--color-hairline-strong)] hover:bg-[var(--color-surface)]"
+                        >
+                          <Plus className="h-4 w-4" strokeWidth={1.5} />
+                          Add exclusion
+                        </button>
+                      </div>
+                      {asArray(blockRecord?.excludedVideoIds).length > 0 ? (
+                        <div className="mt-3 space-y-2">
+                          {asArray(blockRecord?.excludedVideoIds).map(
+                            (videoIdValue) => {
+                              const videoId = asString(videoIdValue)
+                              const video = findVideoLibraryItem(videoId)
+                              return (
+                                <div
+                                  key={videoId}
+                                  className="flex items-center justify-between gap-3 rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] px-3 py-2"
+                                >
+                                  <div className="min-w-0">
+                                    <div className="truncate text-[12px] font-medium text-[var(--color-text-primary)]">
+                                      {video?.title ?? videoId}
+                                    </div>
+                                    <div className="mt-0.5 truncate font-mono text-[10px] text-[var(--color-text-muted)]">
+                                      {videoId}
+                                    </div>
+                                  </div>
+                                  <button
+                                    type="button"
+                                    aria-label={`Remove ${video?.title ?? videoId} from exclusions`}
+                                    onClick={(event) => {
+                                      event.stopPropagation()
+                                      updateBlockAt(index, (block) => ({
+                                        ...block,
+                                        excludedVideoIds: asArray(
+                                          block.excludedVideoIds,
+                                        ).filter(
+                                          (candidate) =>
+                                            asString(candidate) !== videoId,
+                                        ),
+                                      }))
+                                    }}
+                                    className="inline-flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-sm border border-[var(--color-hairline)] text-[var(--color-text-secondary)] transition-colors hover:border-[rgba(255,120,120,0.28)] hover:text-[var(--color-danger)]"
+                                  >
+                                    <Trash2
+                                      className="h-4 w-4"
+                                      strokeWidth={1.5}
+                                    />
+                                  </button>
+                                </div>
+                              )
+                            },
+                          )}
+                        </div>
+                      ) : (
+                        <p className="mt-3 text-[12px] text-[var(--color-text-muted)]">
+                          No additional exclusions.
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                ) : type === "mediaCollection" ? (
                   <div className="mt-4">
                     <div
                       className={cx(
@@ -10451,10 +10621,7 @@ export function ExperienceEditor({
           aria-labelledby="video-library-title"
           className={cx(
             "flex h-[min(86vh,860px)] w-full flex-col overflow-hidden rounded-sm border border-[var(--color-hairline-strong)] bg-[color-mix(in_oklab,var(--color-surface)_96%,black)] p-5 shadow-[0_32px_120px_rgba(0,0,0,0.58)] transition-[opacity,transform] duration-180 ease-out",
-            videoPickerMode === "carouselAppend" ||
-              videoPickerMode === "mediaCollectionAppend"
-              ? "max-w-[1040px]"
-              : "max-w-[1280px]",
+            videoPickerMode !== "block" ? "max-w-[1040px]" : "max-w-[1280px]",
             videoPickerBlockIndex !== null
               ? "translate-y-0 scale-100 opacity-100"
               : "translate-y-2 scale-[0.98] opacity-0",
@@ -10531,8 +10698,7 @@ export function ExperienceEditor({
             <div
               className={cx(
                 "grid h-full gap-5",
-                videoPickerMode === "carouselAppend" ||
-                  videoPickerMode === "mediaCollectionAppend"
+                videoPickerMode !== "block"
                   ? "lg:grid-cols-[360px_minmax(0,1fr)]"
                   : "lg:grid-cols-[380px_minmax(0,1fr)]",
               )}
@@ -10634,8 +10800,7 @@ export function ExperienceEditor({
                   <div
                     className={cx(
                       "h-full p-5",
-                      videoPickerMode === "carouselAppend" ||
-                        videoPickerMode === "mediaCollectionAppend"
+                      videoPickerMode !== "block"
                         ? ""
                         : "grid gap-5 lg:grid-cols-[minmax(0,1.35fr)_320px]",
                     )}
@@ -11117,7 +11282,9 @@ export function ExperienceEditor({
                     ? "Add video"
                     : videoPickerMode === "mediaCollectionAppend"
                       ? "Add video"
-                      : "Apply video"}
+                      : videoPickerMode === "dynamicCollectionBlacklistAppend"
+                        ? "Exclude media"
+                        : "Apply video"}
               </button>
             </div>
           </div>

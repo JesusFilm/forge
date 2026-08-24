@@ -234,6 +234,7 @@
     "loadMoreFailed": "无法加载更多结果。",
     "searching": "正在搜索...",
     "connectionHint": "请检查网络连接后重试。",
+    "rateLimitHint": "请求过于频繁，请一分钟后重试。",
     "retrySearch": "重试搜索",
     "retry": "重试",
     "noResults": "没有找到“{query}”的结果",
@@ -268,7 +269,9 @@
   "HeroPlayer": {
     "playWithSound": "立即观看",
     "tapToUnmute": "取消静音",
-    "nextEpisode": "下一集"
+    "nextEpisode": "下一集",
+    "audioTranslationCount": "{count, plural, one {# 种语言} other {# 种语言}}",
+    "subtitleCount": "字幕: {count, plural, one {# 种语言} other {# 种语言}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "正在加载内容",

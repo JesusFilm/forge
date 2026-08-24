@@ -234,6 +234,7 @@
     "loadMoreFailed": "Не ўдалося загрузіць больш вынікаў.",
     "searching": "Пошук...",
     "connectionHint": "Праверце злучэнне і паспрабуйце яшчэ раз.",
+    "rateLimitHint": "Занадта шмат запытаў. Паўтарыце спробу праз хвіліну.",
     "retrySearch": "Паўтарыць пошук",
     "retry": "Паспрабаваць зноў",
     "noResults": "Няма вынікаў па запыце \"{query}\"",
@@ -268,7 +269,9 @@
   "HeroPlayer": {
     "playWithSound": "Глядзець зараз",
     "tapToUnmute": "Націсніце, каб уключыць гук",
-    "nextEpisode": "Наступны эпізод"
+    "nextEpisode": "Наступны эпізод",
+    "audioTranslationCount": "{count, plural, one {# мова} few {# мовы} many {# моў} other {# мовы}}",
+    "subtitleCount": "Субцітры: {count, plural, one {# мова} few {# мовы} many {# моў} other {# мовы}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Загрузка зместу",
@@ -581,16 +584,16 @@
     "retryFailed": "Паўтарыць няўдалыя спампоўкі"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Моўная версія недаступная",
+    "eyebrow": "Моўная версія недаступная",
+    "title": "<contentTitle>{title}</contentTitle> недаступна на мове <languageName>{language}</languageName>",
+    "actionsLabel": "Даступныя варыянты прагляду",
+    "browseInLanguage": "Праглядаць відэа на мове {language}",
+    "backToSearch": "Назад да пошуку",
+    "audioVersionsTitle": "Іншыя аўдыяверсіі",
+    "audioVersionsDescription": "Выберыце мову аўдыя, каб працягнуць прагляд гэтага відэа.",
+    "languageVersionLabel": "Мова аўдыя",
+    "selectLanguageVersion": "Выберыце моўную версію",
+    "watchSelectedVersion": "Глядзець выбраную версію"
   }
 }

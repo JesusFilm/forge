@@ -234,6 +234,7 @@
     "loadMoreFailed": "Nem sikerült több találatot betölteni.",
     "searching": "Keresés...",
     "connectionHint": "Ellenőrizd a kapcsolatodat, majd próbáld újra.",
+    "rateLimitHint": "Túl sok kérés. Próbáld újra egy perc múlva.",
     "retrySearch": "Keresés újrapróbálása",
     "retry": "Újra",
     "noResults": "Nincs találat erre: \"{query}\"",
@@ -268,7 +269,9 @@
   "HeroPlayer": {
     "playWithSound": "Nézd meg most",
     "tapToUnmute": "Érintés a némítás feloldásához",
-    "nextEpisode": "Következő epizód"
+    "nextEpisode": "Következő epizód",
+    "audioTranslationCount": "{count, plural, one {# nyelv} other {# nyelv}}",
+    "subtitleCount": "Feliratok: {count, plural, one {# nyelv} other {# nyelv}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Tartalom betöltése",
@@ -581,16 +584,16 @@
     "retryFailed": "Sikertelen letöltések újrapróbálása"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "A nyelvi változat nem érhető el",
+    "eyebrow": "A nyelvi változat nem érhető el",
+    "title": "A(z) <contentTitle>{title}</contentTitle> nem érhető el <languageName>{language}</languageName> nyelven",
+    "actionsLabel": "Elérhető megtekintési lehetőségek",
+    "browseInLanguage": "Videók böngészése {language} nyelven",
+    "backToSearch": "Vissza a kereséshez",
+    "audioVersionsTitle": "Más hangváltozatok",
+    "audioVersionsDescription": "Válassz hangsávnyelvet a videó további megtekintéséhez.",
+    "languageVersionLabel": "Hangsáv nyelve",
+    "selectLanguageVersion": "Nyelvi változat kiválasztása",
+    "watchSelectedVersion": "Kiválasztott változat megtekintése"
   }
 }

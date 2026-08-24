@@ -234,6 +234,7 @@
     "loadMoreFailed": "Nu s-au putut încărca mai multe rezultate.",
     "searching": "Se caută...",
     "connectionHint": "Verifică conexiunea și încearcă din nou.",
+    "rateLimitHint": "Prea multe solicitări. Încercați din nou peste un minut.",
     "retrySearch": "Reîncearcă căutarea",
     "retry": "Reîncearcă",
     "noResults": "Niciun rezultat pentru „{query}”",
@@ -268,7 +269,9 @@
   "HeroPlayer": {
     "playWithSound": "Urmărește acum",
     "tapToUnmute": "Atinge pentru sunet",
-    "nextEpisode": "Episodul următor"
+    "nextEpisode": "Episodul următor",
+    "audioTranslationCount": "{count, plural, one {# limbă} other {# limbi}}",
+    "subtitleCount": "Subtitrări: {count, plural, one {# limbă} other {# limbi}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Se încarcă conținutul",
@@ -581,16 +584,16 @@
     "retryFailed": "Reîncearcă descărcările eșuate"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Versiunea lingvistică nu este disponibilă",
+    "eyebrow": "Versiunea lingvistică nu este disponibilă",
+    "title": "<contentTitle>{title}</contentTitle> nu este disponibil în <languageName>{language}</languageName>",
+    "actionsLabel": "Opțiuni de vizionare disponibile",
+    "browseInLanguage": "Răsfoiți videoclipuri în {language}",
+    "backToSearch": "Înapoi la căutare",
+    "audioVersionsTitle": "Alte versiuni audio",
+    "audioVersionsDescription": "Alegeți o limbă audio pentru a continua vizionarea acestui videoclip.",
+    "languageVersionLabel": "Limba audio",
+    "selectLanguageVersion": "Selectați o versiune lingvistică",
+    "watchSelectedVersion": "Vizionați versiunea selectată"
   }
 }

@@ -234,6 +234,7 @@
     "loadMoreFailed": "Не вдалося завантажити більше результатів.",
     "searching": "Пошук...",
     "connectionHint": "Перевірте підключення та спробуйте ще раз.",
+    "rateLimitHint": "Забагато запитів. Спробуйте ще раз за хвилину.",
     "retrySearch": "Повторити пошук",
     "retry": "Повторити",
     "noResults": "Немає результатів для \"{query}\"",
@@ -268,7 +269,9 @@
   "HeroPlayer": {
     "playWithSound": "Дивитися зараз",
     "tapToUnmute": "Торкніться, щоб увімкнути звук",
-    "nextEpisode": "Наступний епізод"
+    "nextEpisode": "Наступний епізод",
+    "audioTranslationCount": "{count, plural, one {# мова} few {# мови} many {# мов} other {# мови}}",
+    "subtitleCount": "Субтитри: {count, plural, one {# мова} few {# мови} many {# мов} other {# мови}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Завантаження вмісту",
@@ -581,16 +584,16 @@
     "retryFailed": "Повторити невдалі завантаження"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Версія цією мовою недоступна",
+    "eyebrow": "Версія цією мовою недоступна",
+    "title": "<contentTitle>{title}</contentTitle> недоступне мовою <languageName>{language}</languageName>",
+    "actionsLabel": "Доступні варіанти перегляду",
+    "browseInLanguage": "Переглянути відео мовою {language}",
+    "backToSearch": "Назад до пошуку",
+    "audioVersionsTitle": "Інші аудіоверсії",
+    "audioVersionsDescription": "Виберіть мову аудіо, щоб продовжити перегляд цього відео.",
+    "languageVersionLabel": "Мова аудіо",
+    "selectLanguageVersion": "Виберіть мовну версію",
+    "watchSelectedVersion": "Переглянути вибрану версію"
   }
 }

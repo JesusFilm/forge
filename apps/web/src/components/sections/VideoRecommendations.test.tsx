@@ -50,6 +50,7 @@ let container: HTMLDivElement
 let root: Root
 
 beforeEach(() => {
+  vi.stubGlobal("matchMedia", vi.fn().mockReturnValue({ matches: true }))
   container = document.createElement("div")
   document.body.appendChild(container)
   root = createRoot(container)
@@ -60,6 +61,7 @@ afterEach(() => {
     root.unmount()
   })
   container.remove()
+  vi.unstubAllGlobals()
 })
 
 function makeRecommendation(

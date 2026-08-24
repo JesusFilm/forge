@@ -234,6 +234,7 @@
     "loadMoreFailed": "और परिणाम लोड नहीं हो सके।",
     "searching": "खोजा जा रहा है...",
     "connectionHint": "कृपया अपना इंटरनेट कनेक्शन जाँचें और फिर से कोशिश करें।",
+    "rateLimitHint": "बहुत ज़्यादा अनुरोध किए गए हैं। कृपया एक मिनट बाद फिर कोशिश करें।",
     "retrySearch": "फिर से खोजें",
     "retry": "फिर से कोशिश करें",
     "noResults": "\"{query}\" के लिए कोई परिणाम नहीं",
@@ -268,7 +269,9 @@
   "HeroPlayer": {
     "playWithSound": "अभी देखें",
     "tapToUnmute": "ध्वनि चालू करने के लिए टैप करें",
-    "nextEpisode": "अगला एपिसोड"
+    "nextEpisode": "अगला एपिसोड",
+    "audioTranslationCount": "{count, plural, one {# भाषा} other {# भाषाएँ}}",
+    "subtitleCount": "उपशीर्षक: {count, plural, one {# भाषा} other {# भाषाएँ}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "सामग्री लोड हो रही है",
@@ -581,16 +584,16 @@
     "retryFailed": "विफल डाउनलोड फिर से आज़माएँ"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "भाषा संस्करण उपलब्ध नहीं है",
+    "eyebrow": "भाषा संस्करण उपलब्ध नहीं है",
+    "title": "<contentTitle>{title}</contentTitle> <languageName>{language}</languageName> में उपलब्ध नहीं है",
+    "actionsLabel": "देखने के उपलब्ध विकल्प",
+    "browseInLanguage": "{language} में वीडियो ब्राउज़ करें",
+    "backToSearch": "खोज पर वापस जाएँ",
+    "audioVersionsTitle": "अन्य ऑडियो संस्करण",
+    "audioVersionsDescription": "यह वीडियो देखते रहने के लिए ऑडियो भाषा चुनें।",
+    "languageVersionLabel": "ऑडियो भाषा",
+    "selectLanguageVersion": "भाषा संस्करण चुनें",
+    "watchSelectedVersion": "चुना गया संस्करण देखें"
   }
 }

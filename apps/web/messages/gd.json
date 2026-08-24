@@ -234,6 +234,7 @@
     "loadMoreFailed": "Cha do shoirbhich le barrachd thoraidhean a luchdadh.",
     "searching": "A’ lorg...",
     "connectionHint": "Thoir sùil air a’ cheangal agad agus feuch a-rithist.",
+    "rateLimitHint": "Cus iarrtasan. Feuch ris a-rithist an ceann mionaid.",
     "retrySearch": "Feuch ris an rannsachadh a-rithist",
     "retry": "Feuch a-rithist",
     "noResults": "Chan eil toraidhean ann airson \"{query}\"",
@@ -268,7 +269,9 @@
   "HeroPlayer": {
     "playWithSound": "Coimhead a-nis",
     "tapToUnmute": "Tap gus am balbhachd a thoirt dheth",
-    "nextEpisode": "An ath phrògram"
+    "nextEpisode": "An ath phrògram",
+    "audioTranslationCount": "{count, plural, one {# chànan} other {# cànanan}}",
+    "subtitleCount": "Fo-thiotalan: {count, plural, one {# chànan} other {# cànanan}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "A’ luchdadh susbaint",
@@ -581,16 +584,16 @@
     "retryFailed": "Feuch a-rithist ris an fheadhainn a dh’fhàillig"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Chan eil an tionndadh cànain ri fhaighinn",
+    "eyebrow": "Chan eil an tionndadh cànain ri fhaighinn",
+    "title": "Chan eil <contentTitle>{title}</contentTitle> ri fhaighinn ann an <languageName>{language}</languageName>",
+    "actionsLabel": "Roghainnean coimhead a tha rim faighinn",
+    "browseInLanguage": "Rùraich bhideothan ann an {language}",
+    "backToSearch": "Air ais dhan rannsachadh",
+    "audioVersionsTitle": "Tionndaidhean fuaime eile",
+    "audioVersionsDescription": "Tagh cànan fuaime gus leantainn ort a’ coimhead air a’ bhidio seo.",
+    "languageVersionLabel": "Cànan fuaime",
+    "selectLanguageVersion": "Tagh tionndadh cànain",
+    "watchSelectedVersion": "Coimhead air an tionndadh a thagh thu"
   }
 }

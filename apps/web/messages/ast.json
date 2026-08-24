@@ -234,6 +234,7 @@
     "loadMoreFailed": "Nun se pudieron cargar más resultados.",
     "searching": "Buscando...",
     "connectionHint": "Revisa la to conexón y téntalo otra vuelta.",
+    "rateLimitHint": "Demasiaes solicitúes. Volvi tentalo nun minutu.",
     "retrySearch": "Volver a buscar",
     "retry": "Volver a probar",
     "noResults": "Nun hai resultados pa \"{query}\"",
@@ -268,7 +269,9 @@
   "HeroPlayer": {
     "playWithSound": "Ver agora",
     "tapToUnmute": "Toca pa activar el soníu",
-    "nextEpisode": "Siguient episodiu"
+    "nextEpisode": "Siguient episodiu",
+    "audioTranslationCount": "{count, plural, one {# llingua} other {# llingües}}",
+    "subtitleCount": "Subtítulos: {count, plural, one {# llingua} other {# llingües}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Cargando conteníu",
@@ -581,16 +584,16 @@
     "retryFailed": "Volver intentar les descargues fallíes"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Versión llingüística non disponible",
+    "eyebrow": "Versión llingüística non disponible",
+    "title": "<contentTitle>{title}</contentTitle> nun ta disponible en <languageName>{language}</languageName>",
+    "actionsLabel": "Opciones de visualización disponibles",
+    "browseInLanguage": "Esplora vídeos en {language}",
+    "backToSearch": "Volver a la busca",
+    "audioVersionsTitle": "Otres versiones d'audiu",
+    "audioVersionsDescription": "Escueyi una llingua d'audiu pa siguir viendo esti videu.",
+    "languageVersionLabel": "Llingua d'audiu",
+    "selectLanguageVersion": "Escueyi una versión llingüística",
+    "watchSelectedVersion": "Ver la versión escoyida"
   }
 }

@@ -868,6 +868,8 @@ describe("SeriesPageClient — passthrough to children", () => {
           }
           selectedVariant={null}
           locale="en"
+          audioLanguageCountLabel="2 languages"
+          subtitleLanguageCountLabel="57 languages"
         />,
       )
     })
@@ -876,6 +878,12 @@ describe("SeriesPageClient — passthrough to children", () => {
     )
     expect(grid?.getAttribute("data-language-slug")).toBe("english")
     expect(grid?.getAttribute("data-episode-count")).toBe("2")
+    expect(vi.mocked(SeriesHero).mock.calls.at(-1)?.[0]).toEqual(
+      expect.objectContaining({
+        audioLanguageCountLabel: "2 languages",
+        subtitleLanguageCountLabel: "57 languages",
+      }),
+    )
   })
 
   it("passes series identity and the resolved public language slug to ShareModal", () => {

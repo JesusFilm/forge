@@ -234,6 +234,7 @@
     "loadMoreFailed": "さらに結果を読み込めませんでした。",
     "searching": "検索中...",
     "connectionHint": "接続を確認して、もう一度お試しください。",
+    "rateLimitHint": "リクエストが多すぎます。1分後にもう一度お試しください。",
     "retrySearch": "もう一度検索",
     "retry": "再試行",
     "noResults": "「{query}」の結果はありません",
@@ -268,7 +269,9 @@
   "HeroPlayer": {
     "playWithSound": "今すぐ見る",
     "tapToUnmute": "ミュートを解除",
-    "nextEpisode": "次のエピソード"
+    "nextEpisode": "次のエピソード",
+    "audioTranslationCount": "{count, plural, one {# 言語} other {# 言語}}",
+    "subtitleCount": "字幕: {count, plural, one {# 言語} other {# 言語}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "コンテンツを読み込み中",
@@ -581,16 +584,16 @@
     "retryFailed": "失敗した項目を再試行"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "この言語版は利用できません",
+    "eyebrow": "この言語版は利用できません",
+    "title": "<contentTitle>{title}</contentTitle>は<languageName>{language}</languageName>では利用できません",
+    "actionsLabel": "視聴可能なオプション",
+    "browseInLanguage": "{language}の動画を見る",
+    "backToSearch": "検索に戻る",
+    "audioVersionsTitle": "その他の音声版",
+    "audioVersionsDescription": "視聴を続けるには音声言語を選択してください。",
+    "languageVersionLabel": "音声言語",
+    "selectLanguageVersion": "言語版を選択",
+    "watchSelectedVersion": "選択した版を視聴"
   }
 }

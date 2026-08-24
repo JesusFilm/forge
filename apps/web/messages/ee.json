@@ -234,6 +234,7 @@
     "loadMoreFailed": "Mete ŋu tɔ ɖe nu bubuwo o.",
     "searching": "Ele seyi...",
     "connectionHint": "Kpɔ wò connection ɖa eye kpɔe ake.",
+    "rateLimitHint": "Biabia geɖe wu. Taflatse gadze agbagba le miniti ɖeka megbe.",
     "retrySearch": "Kpɔ se la ɖe ake",
     "retry": "Kpɔe ake",
     "noResults": "Meɖo nyaa ɖeke na \"{query}\" o",
@@ -268,7 +269,9 @@
   "HeroPlayer": {
     "playWithSound": "Kpɔ fifi laa",
     "tapToUnmute": "Kɔ nuti be yeatɔ dziwɔ la",
-    "nextEpisode": "Episode si gbɔna"
+    "nextEpisode": "Episode si gbɔna",
+    "audioTranslationCount": "{count, plural, one {# gbegblẽ} other {# gbegblẽwo}}",
+    "subtitleCount": "Nuŋɔŋlɔ siwo le te: {count, plural, one {# gbegblẽ} other {# gbegblẽwo}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Etsɔ content la vɛ",
@@ -581,16 +584,16 @@
     "retryFailed": "Kpɔ esiwo medze o la ake"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Gbegbɔgblɔ sia ƒe tɔtrɔ meɖe o",
+    "eyebrow": "Gbegbɔgblɔ sia ƒe tɔtrɔ meɖe o",
+    "title": "<contentTitle>{title}</contentTitle> meɖe le <languageName>{language}</languageName> me o",
+    "actionsLabel": "Nɔnɔme siwo li be nàkpɔe",
+    "browseInLanguage": "Kpɔ video siwo le {language} me",
+    "backToSearch": "Trɔ yi didi me",
+    "audioVersionsTitle": "Gbe bubuwo me audio",
+    "audioVersionsDescription": "Tia audio ƒe gbe be nàyi edzi akpɔ video sia.",
+    "languageVersionLabel": "Audio ƒe gbe",
+    "selectLanguageVersion": "Tia gbegbɔgblɔ ƒe tɔtrɔ",
+    "watchSelectedVersion": "Kpɔ tɔtrɔ si nètia"
   }
 }

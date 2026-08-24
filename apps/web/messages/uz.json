@@ -234,6 +234,7 @@
     "loadMoreFailed": "Ko‘proq natijalarni yuklab bo‘lmadi.",
     "searching": "Qidirilmoqda...",
     "connectionHint": "Iltimos, ulanishingizni tekshirib qayta urinib ko‘ring.",
+    "rateLimitHint": "Juda ko‘p so‘rov yuborildi. Bir daqiqadan keyin qayta urinib ko‘ring.",
     "retrySearch": "Qidiruvni qayta urinish",
     "retry": "Qayta urinish",
     "noResults": "\"{query}\" uchun natija topilmadi",
@@ -268,7 +269,9 @@
   "HeroPlayer": {
     "playWithSound": "Hozir tomosha qiling",
     "tapToUnmute": "Ovozni yoqish uchun bosing",
-    "nextEpisode": "Keyingi qism"
+    "nextEpisode": "Keyingi qism",
+    "audioTranslationCount": "{count, plural, one {# til} other {# til}}",
+    "subtitleCount": "Subtitrlar: {count, plural, one {# til} other {# til}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Kontent yuklanmoqda",
@@ -581,16 +584,16 @@
     "retryFailed": "Yuklanmaganlarni qayta yuklash"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Bu til versiyasi mavjud emas",
+    "eyebrow": "Bu til versiyasi mavjud emas",
+    "title": "<contentTitle>{title}</contentTitle> <languageName>{language}</languageName> tilida mavjud emas",
+    "actionsLabel": "Ko‘rish uchun mavjud tanlovlar",
+    "browseInLanguage": "{language} tilidagi videolarni ko‘rish",
+    "backToSearch": "Qidiruvga qaytish",
+    "audioVersionsTitle": "Boshqa audio versiyalar",
+    "audioVersionsDescription": "Bu videoni ko‘rishni davom ettirish uchun audio tilini tanlang.",
+    "languageVersionLabel": "Audio tili",
+    "selectLanguageVersion": "Til versiyasini tanlang",
+    "watchSelectedVersion": "Tanlangan versiyani ko‘rish"
   }
 }

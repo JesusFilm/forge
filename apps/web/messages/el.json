@@ -234,6 +234,7 @@
     "loadMoreFailed": "Απέτυχε η φόρτωση περισσότερων αποτελεσμάτων.",
     "searching": "Αναζήτηση...",
     "connectionHint": "Ελέγξτε τη σύνδεσή σας και δοκιμάστε ξανά.",
+    "rateLimitHint": "Υπερβολικά πολλά αιτήματα. Δοκιμάστε ξανά σε ένα λεπτό.",
     "retrySearch": "Επανάληψη αναζήτησης",
     "retry": "Επανάληψη",
     "noResults": "Δεν βρέθηκαν αποτελέσματα για το \"{query}\"",
@@ -268,7 +269,9 @@
   "HeroPlayer": {
     "playWithSound": "Παρακολουθήστε τώρα",
     "tapToUnmute": "Πατήστε για κατάργηση σίγασης",
-    "nextEpisode": "Επόμενο επεισόδιο"
+    "nextEpisode": "Επόμενο επεισόδιο",
+    "audioTranslationCount": "{count, plural, one {# γλώσσα} other {# γλώσσες}}",
+    "subtitleCount": "Υπότιτλοι: {count, plural, one {# γλώσσα} other {# γλώσσες}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Φόρτωση περιεχομένου",
@@ -581,16 +584,16 @@
     "retryFailed": "Επανάληψη αποτυχημένων λήψεων"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Η γλωσσική έκδοση δεν είναι διαθέσιμη",
+    "eyebrow": "Η γλωσσική έκδοση δεν είναι διαθέσιμη",
+    "title": "Το <contentTitle>{title}</contentTitle> δεν είναι διαθέσιμο στα <languageName>{language}</languageName>",
+    "actionsLabel": "Διαθέσιμες επιλογές προβολής",
+    "browseInLanguage": "Περιήγηση σε βίντεο στα {language}",
+    "backToSearch": "Επιστροφή στην αναζήτηση",
+    "audioVersionsTitle": "Άλλες εκδόσεις ήχου",
+    "audioVersionsDescription": "Επιλέξτε γλώσσα ήχου για να συνεχίσετε να βλέπετε αυτό το βίντεο.",
+    "languageVersionLabel": "Γλώσσα ήχου",
+    "selectLanguageVersion": "Επιλέξτε γλωσσική έκδοση",
+    "watchSelectedVersion": "Παρακολούθηση επιλεγμένης έκδοσης"
   }
 }

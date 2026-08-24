@@ -234,6 +234,7 @@
     "loadMoreFailed": "Lohj gvaq results lai.",
     "searching": "Raeuz...",
     "connectionHint": "Gungj liux yiengq connection, deuh lai.",
+    "rateLimitHint": "Doqyaengq lai lo. Gungj liux deuh lai ndaw faen dangh.",
     "retrySearch": "Deuh lai search",
     "retry": "Deuh lai",
     "noResults": "Mienz results daengz \"{query}\"",
@@ -268,7 +269,9 @@
   "HeroPlayer": {
     "playWithSound": "Doengh gwn",
     "tapToUnmute": "Tap ndeih saeng lai",
-    "nextEpisode": "Episode lai"
+    "nextEpisode": "Episode lai",
+    "audioTranslationCount": "{count, plural, one {# language} other {# languages}} gvaq",
+    "subtitleCount": "Gij subtitles: {count, plural, one {# language} other {# languages}} gvaq"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Raenz content",
@@ -581,16 +584,16 @@
     "retryFailed": "Deuh lai gij loi mbouj ndaej"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Banjbonj vah mbouj miz",
+    "eyebrow": "Banjbonj vah mbouj miz",
+    "title": "<contentTitle>{title}</contentTitle> ndaw <languageName>{language}</languageName> mbouj miz",
+    "actionsLabel": "Gij yienghz ndei raeuz video",
+    "browseInLanguage": "Raeuz video ndaw {language}",
+    "backToSearch": "Dauqbae raeuz",
+    "audioVersionsTitle": "Gij banjbonj singhyinh wnq",
+    "audioVersionsDescription": "Gyaeuq vah singhyinh ndei raeuz video neix.",
+    "languageVersionLabel": "Vah singhyinh",
+    "selectLanguageVersion": "Gyaeuq banjbonj vah",
+    "watchSelectedVersion": "Raeuz banjbonj gyaeuq gvaq"
   }
 }

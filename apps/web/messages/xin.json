@@ -234,6 +234,7 @@
     "loadMoreFailed": "No se pudieron cargar más resultados.",
     "searching": "Buscando...",
     "connectionHint": "Revisa tu conexión e inténtalo de nuevo.",
+    "rateLimitHint": "Ar'a' niw'aalhi. Hünük'a xiki lükü mak'a minuto.",
     "retrySearch": "Reintentar búsqueda",
     "retry": "Reintentar",
     "noResults": "No hay resultados para \"{query}\"",
@@ -268,7 +269,9 @@
   "HeroPlayer": {
     "playWithSound": "Ver ahora",
     "tapToUnmute": "Toca para activar el sonido",
-    "nextEpisode": "Siguiente episodio"
+    "nextEpisode": "Siguiente episodio",
+    "audioTranslationCount": "{count, plural, one {# 'apa} other {# 'apaalhi}}",
+    "subtitleCount": "Tumu-xama par'a video: {count, plural, one {# 'apa} other {# 'apaalhi}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Cargando contenido",
@@ -581,16 +584,16 @@
     "retryFailed": "Reintentar descargas fallidas"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Hin 'uuka tuk'u 'apa",
+    "eyebrow": "Hin 'uuka tuk'u 'apa",
+    "title": "Hin 'uuka <contentTitle>{title}</contentTitle> xa <languageName>{language}</languageName>",
+    "actionsLabel": "Pulaalhi par'a lak'u",
+    "browseInLanguage": "Lak'u video xa {language}",
+    "backToSearch": "Hünük'a par'a",
+    "audioVersionsTitle": "Tuk'uulhi xiki xa tumu",
+    "audioVersionsDescription": "Pula 'apa xa tumu ke lak'u video na.",
+    "languageVersionLabel": "'Apa xa tumu",
+    "selectLanguageVersion": "Pula tuk'u 'apa",
+    "watchSelectedVersion": "Lak'u tuk'u pula"
   }
 }

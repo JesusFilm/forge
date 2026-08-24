@@ -342,6 +342,7 @@ const ItemsSourceEnum = builder.enumType("ItemsSource", {
   values: {
     manual: { value: "manual" },
     routeVideoChildren: { value: "routeVideoChildren" },
+    dynamicCollections: { value: "dynamicCollections" },
   } as const,
 })
 
@@ -873,6 +874,13 @@ MediaCollectionBlockRef.implement({
     }),
     showItemNumbers: t.exposeBoolean("showItemNumbers"),
     footerText: t.exposeString("footerText", { nullable: true }),
+    excludedVideoIds: t.field({
+      type: ["String"],
+      nullable: false,
+      description:
+        "Video or collection ids excluded from dynamic collection feed results.",
+      resolve: (row) => row.excludedVideoIds ?? [],
+    }),
     items: t.field({
       type: [MediaCollectionItemRef],
       nullable: false,

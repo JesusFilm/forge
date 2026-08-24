@@ -234,6 +234,7 @@
     "loadMoreFailed": "Results ahłak load kwaa.",
     "searching": "Search gwiłtsąįį...",
     "connectionHint": "Niin connection gwiłtsąįį, łyaa ch’ats’àt gwitr’it.",
+    "rateLimitHint": "Łǫǫhan nilii ahłak nąįį. Łuk gaa gwiizhik tʼee nąįį.",
     "retrySearch": "Search łyaa",
     "retry": "Łyaa gwitr’it",
     "noResults": "“{query}” ts’àt results kwaa",
@@ -268,7 +269,9 @@
   "HeroPlayer": {
     "playWithSound": "Jùu nah’in",
     "tapToUnmute": "Nakhwats’àt gwik’it tap",
-    "nextEpisode": "Episode łyaa"
+    "nextEpisode": "Episode łyaa",
+    "audioTranslationCount": "{count, plural, one {# gwich’in} other {# gwich’in zhìi}}",
+    "subtitleCount": "Subtitle ginjik: {count, plural, one {# gwich’in} other {# gwich’in zhìi}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Content load gwiłtsąįį",
@@ -581,16 +584,16 @@
     "retryFailed": "Download kwaa ihłii łyaa gwitr’it"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Gwichʼin ginjik version diiyee",
+    "eyebrow": "Gwichʼin ginjik version diiyee",
+    "title": "<contentTitle>{title}</contentTitle> <languageName>{language}</languageName> ginjik nilii diiyee",
+    "actionsLabel": "Nihkʼit nahʼàa gwiinzii",
+    "browseInLanguage": "{language} ginjik video nahʼàa",
+    "backToSearch": "Nąįį gootsʼàt nihłįį",
+    "audioVersionsTitle": "Audio version trʼinjàa",
+    "audioVersionsDescription": "Audio ginjik akʼàa nilii, video shòh nąįį.",
+    "languageVersionLabel": "Audio ginjik",
+    "selectLanguageVersion": "Ginjik version akʼàa",
+    "watchSelectedVersion": "Version akʼàa nąįį"
   }
 }

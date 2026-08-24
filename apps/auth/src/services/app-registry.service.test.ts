@@ -120,6 +120,7 @@ describe("app registry policy", () => {
       "web",
       "mastra-studio",
       "chat",
+      "changelog",
       "admin-mcp",
       "mobile",
       "tv",

@@ -234,6 +234,7 @@
     "loadMoreFailed": "Aur results load nai ho paaya.",
     "searching": "Khoj raha hai...",
     "connectionHint": "Kripya aapka connection check kariye aur dobara koshish kariye.",
+    "rateLimitHint": "Bahut jaada request hai. Ek minute ke baad dobara koshish kariye.",
     "retrySearch": "Search dobara kariye",
     "retry": "Dobara koshish kariye",
     "noResults": "\"{query}\" ke liye koi result nai",
@@ -268,7 +269,9 @@
   "HeroPlayer": {
     "playWithSound": "Abhi dekhiye",
     "tapToUnmute": "Awaz chalu karne ke liye tap kariye",
-    "nextEpisode": "Agla Episode"
+    "nextEpisode": "Agla Episode",
+    "audioTranslationCount": "{count, plural, one {# bhasha} other {# bhashaein}}",
+    "subtitleCount": "Likhe hue bol: {count, plural, one {# bhasha} other {# bhashaein}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Content load ho raha hai",
@@ -581,16 +584,16 @@
     "retryFailed": "Fail hue downloads ke dobara koshish kariye"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Bhasha waala version nai mile hai",
+    "eyebrow": "Bhasha waala version nai mile hai",
+    "title": "<contentTitle>{title}</contentTitle> <languageName>{language}</languageName> me nai mile hai",
+    "actionsLabel": "Dekhne ke available option",
+    "browseInLanguage": "{language} me video browse kariye",
+    "backToSearch": "Search pe waapas jaiye",
+    "audioVersionsTitle": "Dusra audio version",
+    "audioVersionsDescription": "Ii video dekhte rahe ke liye ek audio bhasha chuniye.",
+    "languageVersionLabel": "Audio bhasha",
+    "selectLanguageVersion": "Ek bhasha version chuniye",
+    "watchSelectedVersion": "Chuna hua version dekhiye"
   }
 }

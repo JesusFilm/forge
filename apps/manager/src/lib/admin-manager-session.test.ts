@@ -56,6 +56,7 @@ describe("validateAdminManagerSession", () => {
         body: new URLSearchParams({
           grant_type: "client_credentials",
           scope: "admin:manager-session:validate",
+          resource: "https://admin.example/api/manager/session",
         }),
       }),
     )

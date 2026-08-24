@@ -6,6 +6,13 @@ const upsertAppEnvironment = vi.fn()
 const upsertOAuthClient = vi.fn()
 const findManyOAuthClients = vi.fn()
 const updateOAuthClient = vi.fn()
+const upsertOAuthResource = vi.fn()
+const upsertOAuthClientResource = vi.fn()
+const finalizeBetterAuth17Schema = vi.fn()
+
+vi.mock("./finalize-better-auth-17-schema", () => ({
+  finalizeBetterAuth17Schema,
+}))
 
 vi.mock("@/db/client", () => ({
   prisma: {
@@ -17,6 +24,8 @@ vi.mock("@/db/client", () => ({
       update: updateOAuthClient,
       upsert: upsertOAuthClient,
     },
+    oauthResource: { upsert: upsertOAuthResource },
+    oauthClientResource: { upsert: upsertOAuthClientResource },
   },
 }))
 
@@ -45,20 +54,23 @@ describe("seedFirstPartyApps", () => {
       id: `app_${where.key}`,
     }))
     findManyOAuthClients.mockResolvedValue([])
+    finalizeBetterAuth17Schema.mockResolvedValue(undefined)
   })
 
   it("seeds scopes and OAuth clients for every first-party app", async () => {
     const { seedFirstPartyApps } = await import("./seed-first-party-apps")
 
-    // admin 4 + manager 4 + web 4 + mastra-studio 4 + chat 2 + admin-mcp 5 +
-    // mobile 2 + tv 4 = 29 environments; oauthClients adds the 4 manager
+    // admin 4 + manager 4 + web 4 + mastra-studio 4 + chat 2 + changelog 2 +
+    // admin-mcp 5 + mobile 2 + tv 4 = 31 environments; oauthClients adds the 4 manager
     // session-service clients on top.
     await expect(seedFirstPartyApps()).resolves.toEqual({
-      apps: 8,
-      environments: 29,
-      oauthClients: 33,
-      scopes: 21,
+      apps: 9,
+      environments: 31,
+      oauthClients: 35,
+      scopes: 24,
     })
+
+    expect(finalizeBetterAuth17Schema).toHaveBeenCalledOnce()
 
     expect(upsertScope).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -83,6 +95,8 @@ describe("seedFirstPartyApps", () => {
           public: true,
           requirePKCE: true,
           tokenEndpointAuthMethod: "none",
+          applicationType: "web",
+          clientCredentialsScopes: [],
         }),
       }),
     )
@@ -95,6 +109,8 @@ describe("seedFirstPartyApps", () => {
           public: true,
           requirePKCE: true,
           tokenEndpointAuthMethod: "none",
+          applicationType: "web",
+          clientCredentialsScopes: [],
         }),
       }),
     )
@@ -178,6 +194,62 @@ describe("seedFirstPartyApps", () => {
     )
     expect(upsertOAuthClient).toHaveBeenCalledWith(
       expect.objectContaining({
+        where: { clientId: "jfp_changelog_local" },
+        create: expect.objectContaining({
+          clientId: "jfp_changelog_local",
+          redirectUris: ["http://localhost:3000/api/auth/callback"],
+          postLogoutRedirectUris: ["http://localhost:3000/api/auth/login"],
+          scopes: [
+            "openid",
+            "profile:read",
+            "email:read",
+            "membership:read",
+            "changelog:read",
+            "changelog:submit",
+            "changelog:admin",
+          ],
+          public: true,
+          requirePKCE: true,
+          tokenEndpointAuthMethod: "none",
+          grantTypes: ["authorization_code", "refresh_token"],
+          metadata: expect.objectContaining({
+            appKey: "changelog",
+            environmentKey: "local",
+          }),
+        }),
+      }),
+    )
+    expect(upsertOAuthClient).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { clientId: "jfp_changelog_production" },
+        create: expect.objectContaining({
+          clientId: "jfp_changelog_production",
+          redirectUris: ["https://changelog.jesusfilm.org/api/auth/callback"],
+          postLogoutRedirectUris: [
+            "https://changelog.jesusfilm.org/api/auth/login",
+          ],
+          scopes: [
+            "openid",
+            "profile:read",
+            "email:read",
+            "membership:read",
+            "changelog:read",
+            "changelog:submit",
+            "changelog:admin",
+          ],
+          public: true,
+          requirePKCE: true,
+          tokenEndpointAuthMethod: "none",
+          grantTypes: ["authorization_code", "refresh_token"],
+          metadata: expect.objectContaining({
+            appKey: "changelog",
+            environmentKey: "production",
+          }),
+        }),
+      }),
+    )
+    expect(upsertOAuthClient).toHaveBeenCalledWith(
+      expect.objectContaining({
         where: { clientId: "jfp_admin_mcp_codex" },
         create: expect.objectContaining({
           clientId: "jfp_admin_mcp_codex",
@@ -202,6 +274,8 @@ describe("seedFirstPartyApps", () => {
           public: true,
           requirePKCE: true,
           tokenEndpointAuthMethod: "none",
+          applicationType: "native",
+          clientCredentialsScopes: [],
           grantTypes: ["authorization_code", "refresh_token"],
           metadata: expect.objectContaining({
             appKey: "admin-mcp",
@@ -220,6 +294,8 @@ describe("seedFirstPartyApps", () => {
           public: false,
           requirePKCE: false,
           tokenEndpointAuthMethod: "client_secret_basic",
+          applicationType: "web",
+          clientCredentialsScopes: ["admin:manager-session:validate"],
           grantTypes: ["client_credentials"],
           disabled: true,
           metadata: expect.objectContaining({
@@ -228,6 +304,111 @@ describe("seedFirstPartyApps", () => {
         }),
       }),
     )
+  })
+
+  it("upserts native resources and client links without duplicate rows", async () => {
+    const { seedFirstPartyApps } = await import("./seed-first-party-apps")
+
+    await seedFirstPartyApps()
+    await seedFirstPartyApps()
+
+    expect(upsertOAuthResource).toHaveBeenCalledWith({
+      where: { identifier: "https://admin.jesusfilm.org/mcp" },
+      update: expect.objectContaining({ disabled: false }),
+      create: expect.objectContaining({
+        identifier: "https://admin.jesusfilm.org/mcp",
+        allowedScopes: expect.arrayContaining(["experience:read"]),
+      }),
+    })
+    expect(upsertOAuthClientResource).toHaveBeenCalledWith({
+      where: {
+        clientId_resourceId: {
+          clientId: "jfp_admin_mcp_codex",
+          resourceId: "https://admin.jesusfilm.org/mcp",
+        },
+      },
+      update: {},
+      create: {
+        clientId: "jfp_admin_mcp_codex",
+        resourceId: "https://admin.jesusfilm.org/mcp",
+      },
+    })
+    expect(upsertOAuthResource).toHaveBeenCalledWith({
+      where: { identifier: "http://localhost:3000/mcp" },
+      update: expect.objectContaining({
+        allowedScopes: expect.arrayContaining(["changelog:read"]),
+        disabled: false,
+      }),
+      create: expect.objectContaining({
+        identifier: "http://localhost:3000/mcp",
+        allowedScopes: expect.arrayContaining(["changelog:read"]),
+      }),
+    })
+    expect(upsertOAuthClientResource).toHaveBeenCalledWith({
+      where: {
+        clientId_resourceId: {
+          clientId: "jfp_changelog_local",
+          resourceId: "http://localhost:3000/mcp",
+        },
+      },
+      update: {},
+      create: {
+        clientId: "jfp_changelog_local",
+        resourceId: "http://localhost:3000/mcp",
+      },
+    })
+    expect(upsertOAuthClientResource).toHaveBeenCalledWith({
+      where: {
+        clientId_resourceId: {
+          clientId: "jfp_changelog_production",
+          resourceId: "https://changelog.jesusfilm.org/mcp",
+        },
+      },
+      update: {},
+      create: {
+        clientId: "jfp_changelog_production",
+        resourceId: "https://changelog.jesusfilm.org/mcp",
+      },
+    })
+    expect(upsertOAuthClientResource).toHaveBeenCalledWith({
+      where: {
+        clientId_resourceId: {
+          clientId: "jfp_manager_production_session_service",
+          resourceId: "https://admin.jesusfilm.org/api/manager/session",
+        },
+      },
+      update: {},
+      create: {
+        clientId: "jfp_manager_production_session_service",
+        resourceId: "https://admin.jesusfilm.org/api/manager/session",
+      },
+    })
+  })
+
+  it("reuses the same Changelog upsert keys on repeated seeding", async () => {
+    const { seedFirstPartyApps } = await import("./seed-first-party-apps")
+
+    await seedFirstPartyApps()
+    await seedFirstPartyApps()
+
+    for (const clientId of [
+      "jfp_changelog_local",
+      "jfp_changelog_production",
+    ]) {
+      const calls = upsertOAuthClient.mock.calls.filter(
+        ([call]) => call.where.clientId === clientId,
+      )
+      expect(calls).toHaveLength(2)
+      for (const [call] of calls) {
+        expect(call.create).not.toHaveProperty("clientSecret")
+        expect(call.update).not.toHaveProperty("clientSecret")
+      }
+    }
+    expect(
+      upsertRegisteredApp.mock.calls.filter(
+        ([call]) => call.where.key === "changelog",
+      ),
+    ).toHaveLength(2)
   })
 
   it("records the device grant type for every TV client in both upsert branches", async () => {

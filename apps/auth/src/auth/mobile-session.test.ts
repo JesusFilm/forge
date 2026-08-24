@@ -40,6 +40,9 @@ describe("resolveSessionClientKind", () => {
     expect(resolveSessionClientKind({ path: "/oauth2/callback/jfp" })).toBe(
       MOBILE_SESSION_CLIENT_KIND,
     )
+    expect(resolveSessionClientKind({ path: "/callback/jfp" })).toBe(
+      MOBILE_SESSION_CLIENT_KIND,
+    )
   })
 
   it("does not stamp browser social sign-ins without an idToken", () => {

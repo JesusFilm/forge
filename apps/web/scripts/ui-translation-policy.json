@@ -1,5 +1,5 @@
 {
-  "humanReviewedLocales": ["en", "ru"],
+  "humanReviewedLocales": ["en"],
   "pendingTranslationPaths": [
     "ShareModal.back",
     "ShareModal.chooserDescription",
@@ -43,18 +43,7 @@
     "ShareModal.websiteTitle",
     "ShareModal.youtubeDescription",
     "ShareModal.youtubeHeading",
-    "ShareModal.youtubeStepDescription",
-    "WatchUnavailableLanguage.actionsLabel",
-    "WatchUnavailableLanguage.audioVersionsDescription",
-    "WatchUnavailableLanguage.audioVersionsTitle",
-    "WatchUnavailableLanguage.backToSearch",
-    "WatchUnavailableLanguage.browseInLanguage",
-    "WatchUnavailableLanguage.eyebrow",
-    "WatchUnavailableLanguage.languageVersionLabel",
-    "WatchUnavailableLanguage.metadataTitle",
-    "WatchUnavailableLanguage.selectLanguageVersion",
-    "WatchUnavailableLanguage.title",
-    "WatchUnavailableLanguage.watchSelectedVersion"
+    "ShareModal.youtubeStepDescription"
   ],
   "intentionallyLocaleNeutral": [
     "DownloadModal.termsAgreementSuffix",

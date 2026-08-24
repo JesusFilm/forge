@@ -234,6 +234,7 @@
     "loadMoreFailed": "Không tải được thêm kết quả.",
     "searching": "Đang tìm...",
     "connectionHint": "Vui lòng kiểm tra kết nối rồi thử lại.",
+    "rateLimitHint": "Có quá nhiều yêu cầu. Vui lòng thử lại sau một phút.",
     "retrySearch": "Tìm lại",
     "retry": "Thử lại",
     "noResults": "Không có kết quả cho “{query}”",
@@ -268,7 +269,9 @@
   "HeroPlayer": {
     "playWithSound": "Xem ngay",
     "tapToUnmute": "Bật tiếng",
-    "nextEpisode": "Tập tiếp theo"
+    "nextEpisode": "Tập tiếp theo",
+    "audioTranslationCount": "{count, plural, one {# ngôn ngữ} other {# ngôn ngữ}}",
+    "subtitleCount": "Phụ đề: {count, plural, one {# ngôn ngữ} other {# ngôn ngữ}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Đang tải nội dung",
@@ -581,16 +584,16 @@
     "retryFailed": "Thử tải lại các tập bị lỗi"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Không có phiên bản ngôn ngữ này",
+    "eyebrow": "Không có phiên bản ngôn ngữ này",
+    "title": "<contentTitle>{title}</contentTitle> không có bằng <languageName>{language}</languageName>",
+    "actionsLabel": "Các tùy chọn xem hiện có",
+    "browseInLanguage": "Xem video bằng {language}",
+    "backToSearch": "Quay lại tìm kiếm",
+    "audioVersionsTitle": "Các phiên bản âm thanh khác",
+    "audioVersionsDescription": "Chọn ngôn ngữ âm thanh để tiếp tục xem video này.",
+    "languageVersionLabel": "Ngôn ngữ âm thanh",
+    "selectLanguageVersion": "Chọn phiên bản ngôn ngữ",
+    "watchSelectedVersion": "Xem phiên bản đã chọn"
   }
 }

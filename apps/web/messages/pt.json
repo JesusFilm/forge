@@ -234,6 +234,7 @@
     "loadMoreFailed": "Não foi possível carregar mais resultados.",
     "searching": "Pesquisando...",
     "connectionHint": "Verifique sua conexão e tente novamente.",
+    "rateLimitHint": "Muitos pedidos. Tente novamente dentro de um minuto.",
     "retrySearch": "Tentar pesquisa novamente",
     "retry": "Tentar novamente",
     "noResults": "Nenhum resultado para “{query}”",
@@ -268,7 +269,9 @@
   "HeroPlayer": {
     "playWithSound": "Assistir agora",
     "tapToUnmute": "Ativar som",
-    "nextEpisode": "Próximo episódio"
+    "nextEpisode": "Próximo episódio",
+    "audioTranslationCount": "{count, plural, one {# idioma} other {# idiomas}}",
+    "subtitleCount": "Legendas: {count, plural, one {# idioma} other {# idiomas}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Carregando conteúdo",
@@ -581,16 +584,16 @@
     "retryFailed": "Tentar novamente os que falharam"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Versão de idioma indisponível",
+    "eyebrow": "Versão de idioma indisponível",
+    "title": "<contentTitle>{title}</contentTitle> não está disponível em <languageName>{language}</languageName>",
+    "actionsLabel": "Opções disponíveis para assistir",
+    "browseInLanguage": "Ver vídeos em {language}",
+    "backToSearch": "Voltar à pesquisa",
+    "audioVersionsTitle": "Outras versões de áudio",
+    "audioVersionsDescription": "Escolha um idioma de áudio para continuar assistindo a este vídeo.",
+    "languageVersionLabel": "Idioma do áudio",
+    "selectLanguageVersion": "Selecionar uma versão de idioma",
+    "watchSelectedVersion": "Assistir à versão selecionada"
   }
 }

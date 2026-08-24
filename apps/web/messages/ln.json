@@ -234,6 +234,7 @@
     "loadMoreFailed": "Ekokaki te ko charger bikokisami mosusu.",
     "searching": "Ezali koluka...",
     "connectionHint": "Svp tala connexion na yo mpe meka lisusu.",
+    "rateLimitHint": "Masengi eleki mingi. Meká lisusu nsima ya miniti moko.",
     "retrySearch": "Meka lisusu boluki",
     "retry": "Meka lisusu",
     "noResults": "Eloko moko te mpo na \"{query}\"",
@@ -268,7 +269,9 @@
   "HeroPlayer": {
     "playWithSound": "Tala sikoyo",
     "tapToUnmute": "Fina mpo na kopesa mongongo",
-    "nextEpisode": "Épisode oyo ekolanda"
+    "nextEpisode": "Épisode oyo ekolanda",
+    "audioTranslationCount": "{count, plural, one {# monoko} other {# minoko}}",
+    "subtitleCount": "Ba sous-titres: {count, plural, one {# monoko} other {# minoko}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Ezali kocharger contenu",
@@ -581,16 +584,16 @@
     "retryFailed": "Meka lisusu oyo elongaki te"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Libongoli ya monɔkɔ ezali te",
+    "eyebrow": "Libongoli ya monɔkɔ ezali te",
+    "title": "<contentTitle>{title}</contentTitle> ezali te na <languageName>{language}</languageName>",
+    "actionsLabel": "Banzela ya kotala oyo ezali",
+    "browseInLanguage": "Talá bavideo na {language}",
+    "backToSearch": "Zongá na boluki",
+    "audioVersionsTitle": "Babongoli mosusu ya mongongo",
+    "audioVersionsDescription": "Poná monɔkɔ ya mongongo mpo na kokoba kotala video oyo.",
+    "languageVersionLabel": "Monɔkɔ ya mongongo",
+    "selectLanguageVersion": "Poná libongoli ya monɔkɔ",
+    "watchSelectedVersion": "Talá libongoli oyo oponi"
   }
 }

@@ -234,6 +234,7 @@
     "loadMoreFailed": "Ng diak el mengesei a results el mo dmoel.",
     "searching": "Mengeses...",
     "connectionHint": "Ng omdas er a connection kemiu mar a mengedei.",
+    "rateLimitHint": "A klemerang a sebechel. Onger er ngii er a elolem a minute.",
     "retrySearch": "Onger er a search",
     "retry": "Onger er a medengei",
     "noResults": "Diak a results er \"{query}\"",
@@ -268,7 +269,9 @@
   "HeroPlayer": {
     "playWithSound": "Omes ngii",
     "tapToUnmute": "Meder er a Unmute",
-    "nextEpisode": "Episode el ngii"
+    "nextEpisode": "Episode el ngii",
+    "audioTranslationCount": "{count, plural, one {# tekoi} other {# tekoi}}",
+    "subtitleCount": "Tekoi el mleches: {count, plural, one {# tekoi} other {# tekoi}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Mengil a content",
@@ -581,16 +584,16 @@
     "retryFailed": "Onger er a downloads el diak"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Diak el ngar ngii a belkul a tekoi",
+    "eyebrow": "Diak el ngar ngii a belkul a tekoi",
+    "title": "A <contentTitle>{title}</contentTitle> a diak el ngar ngii er a <languageName>{language}</languageName>",
+    "actionsLabel": "A rengalek el omes el ngar ngii",
+    "browseInLanguage": "Meses a videos er a {language}",
+    "backToSearch": "Morael er a meses",
+    "audioVersionsTitle": "Aikukl el belkul a reng",
+    "audioVersionsDescription": "Omeked a tekoi er a reng el mo mesisiich el omes er a video tia.",
+    "languageVersionLabel": "Tekoi er a reng",
+    "selectLanguageVersion": "Omeked a belkul a tekoi",
+    "watchSelectedVersion": "Omes er a belkul el omeked"
   }
 }

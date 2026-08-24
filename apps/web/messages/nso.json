@@ -234,6 +234,7 @@
     "loadMoreFailed": "Go paletšwe go laetša dipoelo tše dingwe.",
     "searching": "Go nyaka...",
     "connectionHint": "Hle hlahloba kgokagano ya gago gomme o leke gape.",
+    "rateLimitHint": "Dikgopelo di dintši kudu. Leka gape ka morago ga motsotso.",
     "retrySearch": "Leka nyakišišo gape",
     "retry": "Leka gape",
     "noResults": "Ga go na dipoelo tša \"{query}\"",
@@ -268,7 +269,9 @@
   "HeroPlayer": {
     "playWithSound": "Bogela bjale",
     "tapToUnmute": "Kgotla gore o bule modumo",
-    "nextEpisode": "Kgaolo e Latelago"
+    "nextEpisode": "Kgaolo e Latelago",
+    "audioTranslationCount": "{count, plural, one {# polelo} other {# dipolelo}}",
+    "subtitleCount": "Dikapotši: {count, plural, one {# polelo} other {# dipolelo}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Go laetša dikahare",
@@ -581,16 +584,16 @@
     "retryFailed": "Leka tše di paletšwego gape"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Phetolelo ya polelo ga e hwetšagale",
+    "eyebrow": "Phetolelo ya polelo ga e hwetšagale",
+    "title": "<contentTitle>{title}</contentTitle> ga e hwetšagale ka <languageName>{language}</languageName>",
+    "actionsLabel": "Dikgetho tša go bogela tše di lego gona",
+    "browseInLanguage": "Phetla dibidio ka {language}",
+    "backToSearch": "Boela go nyako",
+    "audioVersionsTitle": "Dinguqulelo tše dingwe tša modumo",
+    "audioVersionsDescription": "Kgetha polelo ya modumo gore o tšwele pele o bogela bidio ye.",
+    "languageVersionLabel": "Polelo ya modumo",
+    "selectLanguageVersion": "Kgetha phetolelo ya polelo",
+    "watchSelectedVersion": "Bogela phetolelo ye e kgethilwego"
   }
 }

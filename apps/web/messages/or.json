@@ -234,6 +234,7 @@
     "loadMoreFailed": "ଅଧିକ ଫଳାଫଳ ଲୋଡ୍ କରିବାରେ ବିଫଳ।",
     "searching": "ସନ୍ଧାନ କରାଯାଉଛି...",
     "connectionHint": "ଦୟାକରି ଆପଣଙ୍କ ସଂଯୋଗ ଯାଞ୍ଚ କରି ପୁଣି ଚେଷ୍ଟା କରନ୍ତୁ।",
+    "rateLimitHint": "ଅତ୍ୟଧିକ ଅନୁରୋଧ। ଦୟାକରି ଏକ ମିନିଟ୍ ପରେ ପୁଣି ଚେଷ୍ଟା କରନ୍ତୁ।",
     "retrySearch": "ସନ୍ଧାନ ପୁଣି କରନ୍ତୁ",
     "retry": "ପୁଣି ଚେଷ୍ଟା କରନ୍ତୁ",
     "noResults": "\"{query}\" ପାଇଁ କୌଣସି ଫଳାଫଳ ନାହିଁ",
@@ -268,7 +269,9 @@
   "HeroPlayer": {
     "playWithSound": "ଏବେ ଦେଖନ୍ତୁ",
     "tapToUnmute": "ଧ୍ୱନି ଚାଲୁ କରିବାକୁ ଟାପ୍ କରନ୍ତୁ",
-    "nextEpisode": "ପରବର୍ତ୍ତୀ ଏପିସୋଡ୍"
+    "nextEpisode": "ପରବର୍ତ୍ତୀ ଏପିସୋଡ୍",
+    "audioTranslationCount": "{count, plural, one {# ଭାଷା} other {# ଭାଷାଗୁଡ଼ିକ}}",
+    "subtitleCount": "ସବ୍‌ଟାଇଟଲ୍: {count, plural, one {# ଭାଷା} other {# ଭାଷାଗୁଡ଼ିକ}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "ସାମଗ୍ରୀ ଲୋଡ୍ କରାଯାଉଛି",
@@ -581,16 +584,16 @@
     "retryFailed": "ବିଫଳ ଡାଉନଲୋଡ୍‌ଗୁଡ଼ିକୁ ପୁଣି ଚେଷ୍ଟା କରନ୍ତୁ"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "ଭାଷା ସଂସ୍କରଣ ଉପଲବ୍ଧ ନାହିଁ",
+    "eyebrow": "ଭାଷା ସଂସ୍କରଣ ଉପଲବ୍ଧ ନାହିଁ",
+    "title": "<contentTitle>{title}</contentTitle> <languageName>{language}</languageName> ଭାଷାରେ ଉପଲବ୍ଧ ନାହିଁ",
+    "actionsLabel": "ଉପଲବ୍ଧ ଦେଖିବା ବିକଳ୍ପ",
+    "browseInLanguage": "{language} ଭାଷାରେ ଭିଡିଓ ଦେଖନ୍ତୁ",
+    "backToSearch": "ସନ୍ଧାନକୁ ଫେରନ୍ତୁ",
+    "audioVersionsTitle": "ଅନ୍ୟ ଅଡିଓ ସଂସ୍କରଣ",
+    "audioVersionsDescription": "ଏହି ଭିଡିଓ ଦେଖିବା ଜାରି ରଖିବାକୁ ଏକ ଅଡିଓ ଭାଷା ବାଛନ୍ତୁ।",
+    "languageVersionLabel": "ଅଡିଓ ଭାଷା",
+    "selectLanguageVersion": "ଏକ ଭାଷା ସଂସ୍କରଣ ବାଛନ୍ତୁ",
+    "watchSelectedVersion": "ବଛାଯାଇଥିବା ସଂସ୍କରଣ ଦେଖନ୍ତୁ"
   }
 }

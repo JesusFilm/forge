@@ -9,6 +9,7 @@ import type {
   SearchLanguageRegionGroup,
 } from "@/lib/search-language"
 import type { WatchSearchResultClickAnalytics } from "@/lib/watch-search-analytics-contract"
+import type { WatchSearchErrorKind } from "@/lib/watch-search-client"
 
 export type FloatingSearchResultAnalyticsContext = Omit<
   WatchSearchResultClickAnalytics,
@@ -29,6 +30,7 @@ export type FloatingSearchContextValue = {
   showSkeleton: boolean
   loadingMore: boolean
   error: string | null
+  errorKind: WatchSearchErrorKind | null
   searched: boolean
   resultSource: SearchActionResultSource | null
   languageOptions: SearchLanguageOption[]

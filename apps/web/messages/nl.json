@@ -234,6 +234,7 @@
     "loadMoreFailed": "Kan niet meer resultaten laden.",
     "searching": "Zoeken...",
     "connectionHint": "Controleer je verbinding en probeer het opnieuw.",
+    "rateLimitHint": "Te veel aanvragen. Probeer het over een minuut opnieuw.",
     "retrySearch": "Zoeken opnieuw proberen",
     "retry": "Opnieuw proberen",
     "noResults": "Geen resultaten voor \"{query}\"",
@@ -268,7 +269,9 @@
   "HeroPlayer": {
     "playWithSound": "Nu kijken",
     "tapToUnmute": "Tik om geluid aan te zetten",
-    "nextEpisode": "Volgende aflevering"
+    "nextEpisode": "Volgende aflevering",
+    "audioTranslationCount": "{count, plural, one {# taal} other {# talen}}",
+    "subtitleCount": "Ondertiteling: {count, plural, one {# taal} other {# talen}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Content laden",
@@ -581,16 +584,16 @@
     "retryFailed": "Opnieuw proberen mislukt"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Taalversie niet beschikbaar",
+    "eyebrow": "Taalversie niet beschikbaar",
+    "title": "<contentTitle>{title}</contentTitle> is niet beschikbaar in het <languageName>{language}</languageName>",
+    "actionsLabel": "Beschikbare kijkopties",
+    "browseInLanguage": "Bekijk video's in het {language}",
+    "backToSearch": "Terug naar zoeken",
+    "audioVersionsTitle": "Andere audioversies",
+    "audioVersionsDescription": "Kies een audiotaal om deze video verder te bekijken.",
+    "languageVersionLabel": "Audiotaal",
+    "selectLanguageVersion": "Selecteer een taalversie",
+    "watchSelectedVersion": "Geselecteerde versie bekijken"
   }
 }

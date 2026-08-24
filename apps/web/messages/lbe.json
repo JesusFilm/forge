@@ -234,6 +234,7 @@
     "loadMoreFailed": "Ваньгес результатъёс лэсьтэм уг поты.",
     "searching": "Уттӥсько...",
     "connectionHint": "Кемумыясь утт да вожык вузы.",
+    "rateLimitHint": "Талабирду хъюлу хъунни. Ца минутрая хъунмасса икьара ххал хьуну.",
     "retrySearch": "Уттонэз воштӥ",
     "retry": "Воштӥ",
     "noResults": "\"{query}\"лы результатъёс нуна",
@@ -268,7 +269,9 @@
   "HeroPlayer": {
     "playWithSound": "Нунияз кыт",
     "tapToUnmute": "Дэикись кычкан, сӥлӥсэ кышт",
-    "nextEpisode": "Ӧдӥц эпизод"
+    "nextEpisode": "Ӧдӥц эпизод",
+    "audioTranslationCount": "{count, plural, one {# кыл} other {# кылъёс}}",
+    "subtitleCount": "Субтитръёс: {count, plural, one {# кыл} other {# кылъёс}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Кунтент лэсьтӥсько",
@@ -581,16 +584,16 @@
     "retryFailed": "Кылдытэмтэмъёсэз нош воштӥ"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Мазрал версия лякъинни",
+    "eyebrow": "Мазрал версия лякъинни",
+    "title": "<contentTitle>{title}</contentTitle> <languageName>{language}</languageName> мазрай лякъинни",
+    "actionsLabel": "Хъаласса ккаккан буллан",
+    "browseInLanguage": "{language} мазрай видеолухъ ккаккан",
+    "backToSearch": "Лякъинмуртту икьара бувккун",
+    "audioVersionsTitle": "Цара аудио версияру",
+    "audioVersionsDescription": "Видеолухъ ккаккан давунсса аудио маз буллан.",
+    "languageVersionLabel": "Аудио маз",
+    "selectLanguageVersion": "Мазрал версия буллан",
+    "watchSelectedVersion": "Буллалисса версия ккаккан"
   }
 }

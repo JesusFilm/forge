@@ -49,6 +49,7 @@ describe("GraphQL schema — Unit 4 content types", () => {
         "videoBySlug",
         "videos",
         "watchHomeVideos",
+        "watchCollectionFeed",
         "watchLanguageInventory",
         "watchSearch",
         "watchSearchSuggestions",
@@ -70,6 +71,52 @@ describe("GraphQL schema — Unit 4 content types", () => {
         "managerJob",
       ]),
     )
+  })
+
+  it("exposes the bounded Watch collection feed contract", () => {
+    const query = schema.getQueryType()!.getFields().watchCollectionFeed
+    expect(String(query.type)).toBe("WatchCollectionFeed!")
+    expect(query.args.map((arg) => arg.name).sort()).toEqual([
+      "after",
+      "cardsPerParent",
+      "excludedIds",
+      "excludedSlugs",
+      "first",
+      "languageSlug",
+      "locale",
+    ])
+    const argsByName = new Map(query.args.map((arg) => [arg.name, arg]))
+    expect(String(argsByName.get("first")?.type)).toBe("Int")
+    expect(String(argsByName.get("cardsPerParent")?.type)).toBe("Int!")
+    expect(String(argsByName.get("languageSlug")?.type)).toBe("String!")
+    expect(String(argsByName.get("locale")?.type)).toBe("String!")
+    expect(Object.keys(fieldsOf("WatchCollectionFeed"))).toEqual([
+      "nodes",
+      "pageInfo",
+    ])
+    expect(Object.keys(fieldsOf("WatchCollectionFeedNode"))).toEqual([
+      "description",
+      "id",
+      "items",
+      "slug",
+      "title",
+    ])
+    expect(Object.keys(fieldsOf("WatchCollectionFeedItem"))).toEqual([
+      "blurDataUrl",
+      "coreId",
+      "dominantColor",
+      "id",
+      "imageUrl",
+      "label",
+      "languageSlug",
+      "muxPlaybackId",
+      "title",
+      "videoSlug",
+    ])
+    expect(Object.keys(fieldsOf("WatchCollectionFeedPageInfo"))).toEqual([
+      "endCursor",
+      "hasNextPage",
+    ])
   })
 
   it("extends the stable Watch locale contract with search/social fields", () => {

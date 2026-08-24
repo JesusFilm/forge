@@ -234,6 +234,7 @@
     "loadMoreFailed": "Кхы нәтижаташ йоаккхийла йиш яц.",
     "searching": "Къахьа...",
     "connectionHint": "Хьоьга соединени дика хилар дийца а, т1ехьахьа.",
+    "rateLimitHint": "Дукха дехар да. Цхьа минут яьлча, т1ехьахьа.",
     "retrySearch": "Къахьа т1ехьахьа",
     "retry": "Т1ехьахьа",
     "noResults": "\"{query}\" т1а нәтижаташ йац",
@@ -268,7 +269,9 @@
   "HeroPlayer": {
     "playWithSound": "Хьалха йахьа",
     "tapToUnmute": "Д1ахьа дагахьа",
-    "nextEpisode": "Т1ехьа эпизод"
+    "nextEpisode": "Т1ехьа эпизод",
+    "audioTranslationCount": "{count, plural, one {# мотт} other {# мотт}}",
+    "subtitleCount": "Субтитраш: {count, plural, one {# мотт} other {# мотт}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Контент йоаккхийла",
@@ -581,16 +584,16 @@
     "retryFailed": "Йоаккха йиш хилийтадараш юха йоаккха"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Моттал версия яц",
+    "eyebrow": "Моттал версия яц",
+    "title": "<contentTitle>{title}</contentTitle> <languageName>{language}</languageName> мотт т1а яц",
+    "actionsLabel": "Хьажа йиш йолаш варианташ",
+    "browseInLanguage": "{language} т1а видеонашта хьажа",
+    "backToSearch": "Къахьа юха г1о",
+    "audioVersionsTitle": "Кхы аудио версиеш",
+    "audioVersionsDescription": "Хьо йола видео хьажан, аудио мотт хьада.",
+    "languageVersionLabel": "Аудио мотт",
+    "selectLanguageVersion": "Моттал версия хьада",
+    "watchSelectedVersion": "Хьай хьайина версия хьажа"
   }
 }

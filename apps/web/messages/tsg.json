@@ -234,6 +234,7 @@
     "loadMoreFailed": "Napakyas an pag-load hin dugang nga resulta.",
     "searching": "Naghahanap...",
     "connectionHint": "Palihog usisaha an imo koneksyon ngan sulayi utro.",
+    "rateLimitHint": "Maddugul in pangayu. Subay kaw mag-usaha minsan.",
     "retrySearch": "Sulayi utro an search",
     "retry": "Sulayi utro",
     "noResults": "Waray resulta para ha \"{query}\"",
@@ -268,7 +269,9 @@
   "HeroPlayer": {
     "playWithSound": "Tananaon yana",
     "tapToUnmute": "Tap basi I-unmute",
-    "nextEpisode": "Sunod nga Episode"
+    "nextEpisode": "Sunod nga Episode",
+    "audioTranslationCount": "{count, plural, one {# yinaknan} other {# mga yinaknan}}",
+    "subtitleCount": "Mga Subtitle: {count, plural, one {# yinaknan} other {# mga yinaknan}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Gina-load an sulod",
@@ -581,16 +584,16 @@
     "retryFailed": "Sulayi utro an mga napakyas"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Wayru sin bahasa di' awn",
+    "eyebrow": "Wayru sin bahasa di' awn",
+    "title": "<contentTitle>{title}</contentTitle> di' awn ha <languageName>{language}</languageName>",
+    "actionsLabel": "Manga pilian pag-kitaun",
+    "browseInLanguage": "Kitaa in manga video ha {language}",
+    "backToSearch": "Balik ha pagpangita'",
+    "audioVersionsTitle": "Dugaing manga wayru sin suwara",
+    "audioVersionsDescription": "Pili' kaw sin bahasa sin suwara supaya makapadayon kaw mag-kita sin video ini.",
+    "languageVersionLabel": "Bahasa sin suwara",
+    "selectLanguageVersion": "Pili' kaw sin wayru sin bahasa",
+    "watchSelectedVersion": "Kitaa in wayru napili'"
   }
 }

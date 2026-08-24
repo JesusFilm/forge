@@ -94,6 +94,10 @@ export async function getAdminManagerServiceBearer() {
 }
 
 async function requestManagerServiceToken() {
+  const resource = getAdminManagerSessionUrl()
+  if (!resource) {
+    throw new Error("ADMIN_GRAPHQL_URL is required for Manager service tokens")
+  }
   const response = await fetch(getTokenUrl(), {
     method: "POST",
     headers: {
@@ -105,6 +109,7 @@ async function requestManagerServiceToken() {
     body: new URLSearchParams({
       grant_type: "client_credentials",
       scope: MANAGER_SESSION_SCOPE,
+      resource,
     }),
     signal: AbortSignal.timeout(3000),
   })

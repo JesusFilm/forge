@@ -234,6 +234,7 @@
     "loadMoreFailed": "Дараагийн үр дүнг ачаалж чадсангүй.",
     "searching": "Хайж байна...",
     "connectionHint": "Холболтоо шалгаад дахин оролдоно уу.",
+    "rateLimitHint": "Хэт олон хүсэлт илгээлээ. Нэг минутын дараа дахин оролдоно уу.",
     "retrySearch": "Хайлтыг дахин оролдох",
     "retry": "Дахин оролдох",
     "noResults": "\"{query}\"-д үр дүн олдсонгүй",
@@ -268,7 +269,9 @@
   "HeroPlayer": {
     "playWithSound": "Одоо үзэх",
     "tapToUnmute": "Дууг нээхийн тулд товшино уу",
-    "nextEpisode": "Дараагийн анги"
+    "nextEpisode": "Дараагийн анги",
+    "audioTranslationCount": "{count, plural, one {# хэл} other {# хэл}}",
+    "subtitleCount": "Хадмал: {count, plural, one {# хэл} other {# хэл}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Агуулга ачаалж байна",
@@ -581,16 +584,16 @@
     "retryFailed": "Амжилтгүй таталтуудыг дахин оролдох"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Хэлний хувилбар байхгүй",
+    "eyebrow": "Хэлний хувилбар байхгүй",
+    "title": "<contentTitle>{title}</contentTitle> нь <languageName>{language}</languageName> хэлээр байхгүй",
+    "actionsLabel": "Үзэх боломжтой сонголтууд",
+    "browseInLanguage": "{language} хэл дээрх видеонуудыг үзэх",
+    "backToSearch": "Хайлт руу буцах",
+    "audioVersionsTitle": "Бусад аудио хувилбар",
+    "audioVersionsDescription": "Энэ видеог үргэлжлүүлэн үзэхийн тулд аудио хэл сонгоно уу.",
+    "languageVersionLabel": "Аудио хэл",
+    "selectLanguageVersion": "Хэлний хувилбар сонгох",
+    "watchSelectedVersion": "Сонгосон хувилбарыг үзэх"
   }
 }

@@ -234,6 +234,7 @@
     "loadMoreFailed": "Učitavanje dodatnih rezultata nije uspelo.",
     "searching": "Pretraživanje...",
     "connectionHint": "Proverite svoju vezu i pokušajte ponovo.",
+    "rateLimitHint": "Previše zahteva. Pokušajte ponovo za minut.",
     "retrySearch": "Pokušaj pretragu ponovo",
     "retry": "Pokušaj ponovo",
     "noResults": "Nema rezultata za „{query}“",
@@ -268,7 +269,9 @@
   "HeroPlayer": {
     "playWithSound": "Gledaj sada",
     "tapToUnmute": "Dodirnite da biste uključili zvuk",
-    "nextEpisode": "Sledeća epizoda"
+    "nextEpisode": "Sledeća epizoda",
+    "audioTranslationCount": "{count, plural, one {# jezik} other {# jezika}}",
+    "subtitleCount": "Titlovi: {count, plural, one {# jezik} other {# jezika}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Učitavanje sadržaja",
@@ -581,16 +584,16 @@
     "retryFailed": "Ponovi neuspešna preuzimanja"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Jezička verzija nije dostupna",
+    "eyebrow": "Jezička verzija nije dostupna",
+    "title": "<contentTitle>{title}</contentTitle> nije dostupan na jeziku <languageName>{language}</languageName>",
+    "actionsLabel": "Dostupne opcije gledanja",
+    "browseInLanguage": "Pregledajte video-snimke na jeziku {language}",
+    "backToSearch": "Nazad na pretragu",
+    "audioVersionsTitle": "Druge zvučne verzije",
+    "audioVersionsDescription": "Izaberite jezik zvuka da biste nastavili da gledate ovaj video.",
+    "languageVersionLabel": "Jezik zvuka",
+    "selectLanguageVersion": "Izaberite jezičku verziju",
+    "watchSelectedVersion": "Gledajte izabranu verziju"
   }
 }

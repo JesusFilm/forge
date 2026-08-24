@@ -234,6 +234,7 @@
     "loadMoreFailed": "E sega ni rawa ni lavetaki eso tale na results.",
     "searching": "Vakasaqara tiko...",
     "connectionHint": "Yalovinaka raica nomu internet ka tovolea tale.",
+    "rateLimitHint": "Sa rui levu na kerekere. Yalovinaka tovolea tale ni oti e dua na miniti.",
     "retrySearch": "Tovolea tale na vakasaqaqara",
     "retry": "Tovolea tale",
     "noResults": "Sega ni kunea e dua na ka me baleta \"{query}\"",
@@ -268,7 +269,9 @@
   "HeroPlayer": {
     "playWithSound": "Raica oqo",
     "tapToUnmute": "Tabaka me vakavu",
-    "nextEpisode": "Episode e tarava"
+    "nextEpisode": "Episode e tarava",
+    "audioTranslationCount": "{count, plural, one {# na vosa} other {# na vosa}}",
+    "subtitleCount": "iVakaraitaki ni Vosa: {count, plural, one {# na vosa} other {# na vosa}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Lavetaki tiko na itukutuku",
@@ -581,16 +584,16 @@
     "retryFailed": "Tovolea tale na kena e sega ni rawa"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Sega ni vakarautaki na mataqali vosa",
+    "eyebrow": "Sega ni vakarautaki na mataqali vosa",
+    "title": "E sega ni vakarautaki na <contentTitle>{title}</contentTitle> ena <languageName>{language}</languageName>",
+    "actionsLabel": "Na digidigi ni saravi e vakarautaki",
+    "browseInLanguage": "Raica na vidio ena {language}",
+    "backToSearch": "Lesu tale ki na vakasaqaqara",
+    "audioVersionsTitle": "Eso tale na mataqali vakarorogo",
+    "audioVersionsDescription": "Digitaka e dua na vosa ni vakarorogo mo tomana kina na saravi ni vidio oqo.",
+    "languageVersionLabel": "Vosa ni vakarorogo",
+    "selectLanguageVersion": "Digitaka e dua na mataqali vosa",
+    "watchSelectedVersion": "Sarava na mataqali sa digitaki"
   }
 }

@@ -234,6 +234,7 @@
     "loadMoreFailed": "Бор кардани натиҷаҳои бештар муваффақ нашуд.",
     "searching": "Ҷустуҷӯ...",
     "connectionHint": "Лутфан, пайвасти худро санҷед ва дубора кӯшиш кунед.",
+    "rateLimitHint": "Дархостҳо аз ҳад зиёданд. Пас аз як дақиқа боз кӯшиш кунед.",
     "retrySearch": "Ҷустуҷӯро аз нав кӯшиш кунед",
     "retry": "Аз нав кӯшиш кунед",
     "noResults": "Барои \"{query}\" натиҷа нест",
@@ -268,7 +269,9 @@
   "HeroPlayer": {
     "playWithSound": "Ҳозир тамошо кунед",
     "tapToUnmute": "Барои фаъол кардани садо ламс кунед",
-    "nextEpisode": "Қисми навбатӣ"
+    "nextEpisode": "Қисми навбатӣ",
+    "audioTranslationCount": "{count, plural, one {# забон} other {# забон}}",
+    "subtitleCount": "Субтитрҳо: {count, plural, one {# забон} other {# забон}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Бор кардани мундариҷа",
@@ -581,16 +584,16 @@
     "retryFailed": "Боргириҳои нокомро аз нав санҷед"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Версияи забонӣ дастрас нест",
+    "eyebrow": "Версияи забонӣ дастрас нест",
+    "title": "<contentTitle>{title}</contentTitle> ба забони <languageName>{language}</languageName> дастрас нест",
+    "actionsLabel": "Имконоти дастраси тамошо",
+    "browseInLanguage": "Тамошои видеоҳо ба забони {language}",
+    "backToSearch": "Бозгашт ба ҷустуҷӯ",
+    "audioVersionsTitle": "Дигар версияҳои аудиоӣ",
+    "audioVersionsDescription": "Барои идомаи тамошои ин видео забони аудиоро интихоб кунед.",
+    "languageVersionLabel": "Забони аудио",
+    "selectLanguageVersion": "Версияи забониро интихоб кунед",
+    "watchSelectedVersion": "Версияи интихобшударо тамошо кунед"
   }
 }

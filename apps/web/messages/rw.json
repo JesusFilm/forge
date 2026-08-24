@@ -234,6 +234,7 @@
     "loadMoreFailed": "Kunanirwa gupakira ibisubizo byinshi.",
     "searching": "Birashakishwa...",
     "connectionHint": "Nyamuneka genzura umuyoboro wawe hanyuma wongere ugerageze.",
+    "rateLimitHint": "Ibisabwa ni byinshi cyane. Ongera ugerageze mu munota umwe.",
     "retrySearch": "Ongera gushakisha",
     "retry": "Ongera ugerageze",
     "noResults": "Nta bisubizo bya \"{query}\"",
@@ -268,7 +269,9 @@
   "HeroPlayer": {
     "playWithSound": "Reba ubu",
     "tapToUnmute": "Kanda kugira ngo ufungure ijwi",
-    "nextEpisode": "Igice gikurikira"
+    "nextEpisode": "Igice gikurikira",
+    "audioTranslationCount": "{count, plural, one {# rurimi} other {# ndimi}}",
+    "subtitleCount": "Amazina asobanura ibivugwa: {count, plural, one {# rurimi} other {# ndimi}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Birimo gupakirwa",
@@ -581,16 +584,16 @@
     "retryFailed": "Ongera ugerageze ibyanze"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Verisiyo y'ururimi ntiboneka",
+    "eyebrow": "Verisiyo y'ururimi ntiboneka",
+    "title": "<contentTitle>{title}</contentTitle> ntiboneka mu <languageName>{language}</languageName>",
+    "actionsLabel": "Uburyo bwo kureba buhari",
+    "browseInLanguage": "Reba videwo mu {language}",
+    "backToSearch": "Subira ku gushakisha",
+    "audioVersionsTitle": "Izindi verisiyo z'amajwi",
+    "audioVersionsDescription": "Hitamo ururimi rw'amajwi kugira ngo ukomeze kureba iyi videwo.",
+    "languageVersionLabel": "Ururimi rw'amajwi",
+    "selectLanguageVersion": "Hitamo verisiyo y'ururimi",
+    "watchSelectedVersion": "Reba verisiyo wahisemo"
   }
 }

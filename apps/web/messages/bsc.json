@@ -236,6 +236,7 @@
     "connectionHint": "Connection a dɔ kɛ tɔrɔ kɛrɛ.",
     "retrySearch": "Search kɛrɛ",
     "retry": "Tɔrɔ kɛrɛ",
+    "rateLimitHint": "Request mɛ kpa. Tɔrɔ kɛrɛ minute kelen kɛ.",
     "noResults": "\"{query}\" mɛ result nɔ",
     "tryDifferentKeywords": "Keyword mɛ kɛrɛ bɔ category mɛ browse kɛ",
     "loading": "Mɔ lɔd...",
@@ -268,7 +269,9 @@
   "HeroPlayer": {
     "playWithSound": "Nɛa watch kɛ",
     "tapToUnmute": "Tap kɛ mute bɔ",
-    "nextEpisode": "Episode mɛ yɔ"
+    "nextEpisode": "Episode mɛ yɔ",
+    "audioTranslationCount": "{count, plural, one {# language} other {# language mɛ}}",
+    "subtitleCount": "Subtitles mɛ: {count, plural, one {# language} other {# language mɛ}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Kɔntɛnt mɔ lɔd",
@@ -581,16 +584,16 @@
     "retryFailed": "Mɛ kɔʔi sɛ tɔrɔ kɛrɛ"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Language version nɔ kɛrɛ",
+    "eyebrow": "Language version nɔ kɛrɛ",
+    "title": "<contentTitle>{title}</contentTitle> nɔ kɛ <languageName>{language}</languageName> kɛ",
+    "actionsLabel": "Viewing option mɛ kɛrɛ",
+    "browseInLanguage": "Video mɛ {language} kɛ browse kɛ",
+    "backToSearch": "Search kɛrɛ yɛ",
+    "audioVersionsTitle": "Audio version mɛ kɛrɛ",
+    "audioVersionsDescription": "Audio language yɛ, video a watch kɛ continue kɛ.",
+    "languageVersionLabel": "Audio language a",
+    "selectLanguageVersion": "Language version yɛ",
+    "watchSelectedVersion": "Version yɛ watch kɛ"
   }
 }

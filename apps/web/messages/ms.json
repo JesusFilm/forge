@@ -234,6 +234,7 @@
     "loadMoreFailed": "Gagal memuatkan lagi hasil.",
     "searching": "Mencari...",
     "connectionHint": "Semak sambungan anda dan cuba lagi.",
+    "rateLimitHint": "Terlalu banyak permintaan. Cuba lagi dalam seminit.",
     "retrySearch": "Cuba carian lagi",
     "retry": "Cuba lagi",
     "noResults": "Tiada hasil untuk “{query}”",
@@ -268,7 +269,9 @@
   "HeroPlayer": {
     "playWithSound": "Tonton sekarang",
     "tapToUnmute": "Nyahredam",
-    "nextEpisode": "Episod seterusnya"
+    "nextEpisode": "Episod seterusnya",
+    "audioTranslationCount": "{count, plural, one {# bahasa} other {# bahasa}}",
+    "subtitleCount": "Sari kata: {count, plural, one {# bahasa} other {# bahasa}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Memuatkan kandungan",
@@ -581,16 +584,16 @@
     "retryFailed": "Cuba semula yang gagal"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Versi bahasa tidak tersedia",
+    "eyebrow": "Versi bahasa tidak tersedia",
+    "title": "<contentTitle>{title}</contentTitle> tidak tersedia dalam bahasa <languageName>{language}</languageName>",
+    "actionsLabel": "Pilihan tontonan tersedia",
+    "browseInLanguage": "Semak imbas video dalam bahasa {language}",
+    "backToSearch": "Kembali ke carian",
+    "audioVersionsTitle": "Versi audio lain",
+    "audioVersionsDescription": "Pilih bahasa audio untuk terus menonton video ini.",
+    "languageVersionLabel": "Bahasa audio",
+    "selectLanguageVersion": "Pilih versi bahasa",
+    "watchSelectedVersion": "Tonton versi yang dipilih"
   }
 }

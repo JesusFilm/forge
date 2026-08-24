@@ -236,6 +236,7 @@
     "connectionHint": "Attaviit misissukkit aamma misileeqqigit.",
     "retrySearch": "Ujaaseqqissigit",
     "retry": "Misileeqqigit",
+    "rateLimitHint": "Qinnuteqaatit amirlasuurput. Atausirmik minitsimik utaqqilutit misileqqigit.",
     "noResults": "\"{query}\"-mut nassaarisoqanngilaq",
     "tryDifferentKeywords": "Ujaasisut allat atukkit imaluunniit immikkoortunut alakkarit",
     "loading": "Suliarineqarpoq...",
@@ -268,7 +269,9 @@
   "HeroPlayer": {
     "playWithSound": "Maanna takuuk",
     "tapToUnmute": "Nipiuteqqiguk tooruk",
-    "nextEpisode": "Immikkoortoq tulleq"
+    "nextEpisode": "Immikkoortoq tulleq",
+    "audioTranslationCount": "{count, plural, one {# oqaatsit} other {# oqaatsit}}",
+    "subtitleCount": "Titartagaqarneq: {count, plural, one {# oqaatsit} other {# oqaatsit}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Imarisamut suliaqartoqarpoq",
@@ -581,16 +584,16 @@
     "retryFailed": "Nuutinngitsoortut uuktuqqikkit"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Uqausiup aaqqitaa piunngilaq",
+    "eyebrow": "Uqausiup aaqqitaa piunngilaq",
+    "title": "<contentTitle>{title}</contentTitle> <languageName>{language}</languageName>-tut piunngilaq",
+    "actionsLabel": "Tautunnissamut periarfissat",
+    "browseInLanguage": "{language}-tut tautuksat qinirlugit",
+    "backToSearch": "Qinirmut utirit",
+    "audioVersionsTitle": "Nipiliukkat allat",
+    "audioVersionsDescription": "Una tautuksaq tautukkiinnassagukku nipip uqausia niruarlugu.",
+    "languageVersionLabel": "Nipip uqausia",
+    "selectLanguageVersion": "Uqausiup aaqqitaa niruarlugu",
+    "watchSelectedVersion": "Niruarneqartoq tautuk"
   }
 }

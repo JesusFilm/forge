@@ -234,6 +234,7 @@
     "loadMoreFailed": "Saan a naikarga dagiti ad-adu a resulta.",
     "searching": "Agsapsapul...",
     "connectionHint": "Pakisukimaten ti koneksionyo ken subuken manen.",
+    "rateLimitHint": "Napalalo ti kiddaw. Padasen manen kalpasan ti maysa a minuto.",
     "retrySearch": "Agsubli a mangsapul",
     "retry": "Agsubli",
     "noResults": "Awan ti resulta para iti \"{query}\"",
@@ -268,7 +269,9 @@
   "HeroPlayer": {
     "playWithSound": "Kitaen ita",
     "tapToUnmute": "I-tap tapno maipanaw ti mute",
-    "nextEpisode": "Masurot a Episode"
+    "nextEpisode": "Masurot a Episode",
+    "audioTranslationCount": "{count, plural, one {# a pagsasao} other {# a pagsasao}}",
+    "subtitleCount": "Dagiti subtitle: {count, plural, one {# a pagsasao} other {# a pagsasao}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Ikkarga ti content",
@@ -581,16 +584,16 @@
     "retryFailed": "Subuken manen dagiti saan a na-download"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Saan a magun-od ti bersion ti pagsasao",
+    "eyebrow": "Saan a magun-od ti bersion ti pagsasao",
+    "title": "Saan a magun-od ti <contentTitle>{title}</contentTitle> iti <languageName>{language}</languageName>",
+    "actionsLabel": "Dagiti magun-od a pagpilian a panagbuya",
+    "browseInLanguage": "Agbiruk kadagiti video iti {language}",
+    "backToSearch": "Agsubli iti panagbirok",
+    "audioVersionsTitle": "Dadduma a bersion ti audio",
+    "audioVersionsDescription": "Pilien ti pagsasao ti audio tapno ituloy ti panagbuya iti daytoy a video.",
+    "languageVersionLabel": "Pagsasao ti audio",
+    "selectLanguageVersion": "Pilien ti bersion ti pagsasao",
+    "watchSelectedVersion": "Buyaen ti napili a bersion"
   }
 }

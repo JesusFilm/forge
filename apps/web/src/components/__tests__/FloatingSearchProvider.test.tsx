@@ -100,6 +100,14 @@ vi.mock("@/lib/search-actions", () => ({
 vi.mock("@/lib/watch-search-client", () => ({
   fetchWatchSearchSuggestions: vi.fn(),
   searchWatchDirect: vi.fn(),
+  watchSearchErrorKind: vi.fn((error: unknown) =>
+    typeof error === "object" &&
+    error !== null &&
+    "kind" in error &&
+    typeof error.kind === "string"
+      ? error.kind
+      : "unknown",
+  ),
 }))
 
 vi.mock("@/lib/search-language-actions", () => ({
@@ -481,6 +489,7 @@ function SearchModeHarness() {
   const {
     displayResults,
     error,
+    errorKind,
     loadMore,
     loading,
     search,
@@ -491,7 +500,9 @@ function SearchModeHarness() {
   return (
     <div>
       <span data-testid="search-result-count">{displayResults.length}</span>
-      <span data-testid="search-error">{error ?? ""}</span>
+      <span data-testid="search-error">
+        {error == null ? "" : `${errorKind ?? "unknown"}:${error}`}
+      </span>
       <span data-testid="search-loading">{String(loading)}</span>
       <span data-testid="search-skeleton">{String(showSkeleton)}</span>
       <button
@@ -3533,6 +3544,65 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
     )
   })
 
+  it("shows wait-and-retry guidance for a rate-limited search", async () => {
+    mockedRunSearch.mockRejectedValueOnce({ kind: "rate_limited" })
+
+    const input = await openSearchOverlay()
+    await submitSearch(input, "jesus")
+
+    expect(document.body.textContent).toContain(
+      "Too many requests. Please try again in a minute.",
+    )
+    expect(document.body.textContent).not.toContain(
+      "Please check your connection and try again.",
+    )
+  })
+
+  it("localizes rate-limit guidance for Simplified Chinese", async () => {
+    mockedRunSearch.mockRejectedValueOnce({ kind: "rate_limited" })
+
+    const input = await openSearchOverlay("zh-Hans")
+    await submitSearch(input, "jesus")
+
+    expect(document.body.textContent).toContain(
+      "请求过于频繁，请一分钟后重试。",
+    )
+    expect(document.body.textContent).not.toContain(
+      "Please check your connection and try again.",
+    )
+  })
+
+  it("reserves connection guidance for a network search failure", async () => {
+    mockedRunSearch.mockRejectedValueOnce({ kind: "network_error" })
+
+    const input = await openSearchOverlay()
+    await submitSearch(input, "jesus")
+
+    expect(document.body.textContent).toContain(
+      "Please check your connection and try again.",
+    )
+    expect(document.body.textContent).not.toContain(
+      "Too many requests. Please try again in a minute.",
+    )
+  })
+
+  it.each(["server_error", "unknown"] as const)(
+    "keeps %s search guidance neutral",
+    async (kind) => {
+      mockedRunSearch.mockRejectedValueOnce({ kind })
+
+      const input = await openSearchOverlay()
+      await submitSearch(input, "jesus")
+
+      expect(document.body.textContent).not.toContain(
+        "Please check your connection and try again.",
+      )
+      expect(document.body.textContent).not.toContain(
+        "Too many requests. Please try again in a minute.",
+      )
+    },
+  )
+
   it("closes search without navigating when the header logo is clicked", async () => {
     vi.useFakeTimers()
     await openSearchOverlay()
@@ -4609,6 +4679,35 @@ describe("FloatingSearchProvider — search pagination", () => {
       "Initial Bible Project Result 1",
     )
     expect(document.body.textContent).toContain("Next Bible Project Result 1")
+  })
+
+  it("shows rate-limit guidance when loading more results is throttled", async () => {
+    vi.useFakeTimers()
+    mockedRunSearch
+      .mockResolvedValueOnce(
+        makeSearchResponse(
+          [makeSearchResult("initial-1", "Initial Result")],
+          true,
+        ),
+      )
+      .mockRejectedValueOnce({ kind: "rate_limited" })
+
+    const input = await openSearchOverlay()
+    await submitSearch(input, "jesus")
+
+    const loadMore = Array.from(document.querySelectorAll("button")).find(
+      (button) => button.textContent?.trim() === "Load more",
+    )
+    act(() => loadMore?.click())
+    await flushResolvedSearch()
+
+    expect(document.body.textContent).toContain("Initial Result")
+    expect(document.body.textContent).toContain(
+      "Too many requests. Please try again in a minute.",
+    )
+    expect(document.body.textContent).not.toContain(
+      "Please check your connection and try again.",
+    )
   })
 
   it("continues pagination after delayed language metadata refreshes the default selection", async () => {

@@ -234,6 +234,7 @@
     "loadMoreFailed": "Kò ṣàṣeyọrí láti gbé àwọn èsì míì wá.",
     "searching": "Ń wá...",
     "connectionHint": "Jọ̀wọ́ ṣàyẹ̀wò ìsopọ̀ rẹ kí o sì gbìyànjú sí i.",
+    "rateLimitHint": "Àwọn ìbéèrè ti pọ̀ jù. Jọ̀wọ́ tún gbìyànjú lẹ́yìn ìṣẹ́jú kan.",
     "retrySearch": "Gbìyànjú ìwádìí sí i",
     "retry": "Gbìyànjú sí i",
     "noResults": "Kò sí èsì fún \"{query}\"",
@@ -268,7 +269,9 @@
   "HeroPlayer": {
     "playWithSound": "Wo báyìí",
     "tapToUnmute": "Tẹ́ láti yọ adití kúrò",
-    "nextEpisode": "Ẹ̀ka tó tẹ̀lé"
+    "nextEpisode": "Ẹ̀ka tó tẹ̀lé",
+    "audioTranslationCount": "{count, plural, one {# èdè} other {# èdè}}",
+    "subtitleCount": "Àwọn ìtúpalẹ̀ ọrọ̀: {count, plural, one {# èdè} other {# èdè}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Ń gbé àkóónú wá",
@@ -581,16 +584,16 @@
     "retryFailed": "Tún àwọn tó kùnà gbìyànjú"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Ẹ̀dà èdè yìí kò sí",
+    "eyebrow": "Ẹ̀dà èdè yìí kò sí",
+    "title": "<contentTitle>{title}</contentTitle> kò sí ní <languageName>{language}</languageName>",
+    "actionsLabel": "Àwọn ọ̀nà wíwo tó wà",
+    "browseInLanguage": "Wo àwọn fídíò ní {language}",
+    "backToSearch": "Padà sí ìṣàwárí",
+    "audioVersionsTitle": "Àwọn ẹ̀dà ohùn mìíràn",
+    "audioVersionsDescription": "Yan èdè ohùn láti tẹ̀síwájú ní wíwo fídíò yìí.",
+    "languageVersionLabel": "Èdè ohùn",
+    "selectLanguageVersion": "Yan ẹ̀dà èdè",
+    "watchSelectedVersion": "Wo ẹ̀dà tí o yàn"
   }
 }

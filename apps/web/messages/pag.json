@@ -234,6 +234,7 @@
     "loadMoreFailed": "Nabigla ya aga na-load so dakel a resulta.",
     "searching": "Mananaliksik...",
     "connectionHint": "Cheken so koneksyon mo tan suboken kasin.",
+    "rateLimitHint": "Sobra so kerew. Suboken kasin kayari na sakey a minuto.",
     "retrySearch": "Suboken so saliksik kasin",
     "retry": "Suboken kasin",
     "noResults": "Aga'y resulta para ed \"{query}\"",
@@ -268,7 +269,9 @@
   "HeroPlayer": {
     "playWithSound": "Panooren na ngatan",
     "tapToUnmute": "Pinduten para ibalik so tunog",
-    "nextEpisode": "Susundan a Episode"
+    "nextEpisode": "Susundan a Episode",
+    "audioTranslationCount": "{count, plural, one {# lengguahe} other {# a lengguahe}}",
+    "subtitleCount": "Mga Subtitle: {count, plural, one {# lengguahe} other {# a lengguahe}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Ilo-load so content",
@@ -581,16 +584,16 @@
     "retryFailed": "Nabigo so kasin a pan-subok"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Aga magamit so bersyon na lengguahe",
+    "eyebrow": "Aga magamit so bersyon na lengguahe",
+    "title": "Aga magamit so <contentTitle>{title}</contentTitle> ed <languageName>{language}</languageName>",
+    "actionsLabel": "Mga mapilian ya panonood",
+    "browseInLanguage": "Manaliksik na video ed {language}",
+    "backToSearch": "Onlad saliksik",
+    "audioVersionsTitle": "Arum ya bersyon na boses",
+    "audioVersionsDescription": "Pili ka lengguahe na boses pian ituloy so panonood ed sayan a video.",
+    "languageVersionLabel": "Lengguahe na boses",
+    "selectLanguageVersion": "Piliin so bersyon na lengguahe",
+    "watchSelectedVersion": "Panonood so pinili a bersyon"
   }
 }

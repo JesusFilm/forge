@@ -234,6 +234,7 @@
     "loadMoreFailed": "Nabigong mag-load ng mas marami pang resulta.",
     "searching": "Naghahanap...",
     "connectionHint": "Pakisuri ang iyong koneksyon at subukang muli.",
+    "rateLimitHint": "Masyadong maraming request. Subukan ulit pagkalipas ng isang minuto.",
     "retrySearch": "Subukang muli ang paghahanap",
     "retry": "Subukang muli",
     "noResults": "Walang resulta para sa \"{query}\"",
@@ -268,7 +269,9 @@
   "HeroPlayer": {
     "playWithSound": "Panoorin ngayon",
     "tapToUnmute": "I-tap para i-unmute",
-    "nextEpisode": "Susunod na Episode"
+    "nextEpisode": "Susunod na Episode",
+    "audioTranslationCount": "{count, plural, one {# wika} other {# mga wika}}",
+    "subtitleCount": "Mga Subtitle: {count, plural, one {# wika} other {# mga wika}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Nilo-load ang nilalaman",
@@ -581,16 +584,16 @@
     "retryFailed": "Subukang muli ang mga nabigo"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Hindi available ang bersyon sa wikang ito",
+    "eyebrow": "Hindi available ang bersyon sa wikang ito",
+    "title": "Hindi available ang <contentTitle>{title}</contentTitle> sa <languageName>{language}</languageName>",
+    "actionsLabel": "Mga available na opsyon sa panonood",
+    "browseInLanguage": "Mag-browse ng mga video sa {language}",
+    "backToSearch": "Bumalik sa paghahanap",
+    "audioVersionsTitle": "Iba pang bersyon ng audio",
+    "audioVersionsDescription": "Pumili ng wika ng audio para ipagpatuloy ang panonood ng video na ito.",
+    "languageVersionLabel": "Wika ng audio",
+    "selectLanguageVersion": "Pumili ng bersyon ng wika",
+    "watchSelectedVersion": "Panoorin ang napiling bersyon"
   }
 }

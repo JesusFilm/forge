@@ -234,6 +234,7 @@
     "loadMoreFailed": "Mani ta xk'ul ta más resultados.",
     "searching": "Sa'j...",
     "connectionHint": "K'a'ab'ej awconexion y tawila' chik.",
+    "rateLimitHint": "Ya' ma'ronsar k'utun. Tawila' chik patoj jun minuto.",
     "retrySearch": "Tawila' chik sa'j",
     "retry": "Tawila' chik",
     "noResults": "Awan resultados para \"{query}\"",
@@ -268,7 +269,9 @@
   "HeroPlayer": {
     "playWithSound": "Watz'otz' chanim",
     "tapToUnmute": "K'uxpa' ta q'oxom",
-    "nextEpisode": "Episodio chik"
+    "nextEpisode": "Episodio chik",
+    "audioTranslationCount": "{count, plural, one {# ch'ab'äl} other {# ch'ab'äl}}",
+    "subtitleCount": "Rutz'ib' ta video: {count, plural, one {# ch'ab'äl} other {# ch'ab'äl}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "T'ojb'ena' tarum",
@@ -581,16 +584,16 @@
     "retryFailed": "Tawila' chik ri man xq'ax ta"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Mani ta xk'ul ruwach ch'ab'äl",
+    "eyebrow": "Mani ta xk'ul ruwach ch'ab'äl",
+    "title": "<contentTitle>{title}</contentTitle> mani ta xk'ul ta <languageName>{language}</languageName>",
+    "actionsLabel": "Ruk'utb'al ta kawila'",
+    "browseInLanguage": "K'axpa' videos ta {language}",
+    "backToSearch": "Tatz'ul chik ta sa'j",
+    "audioVersionsTitle": "Jun chik ruwach audio",
+    "audioVersionsDescription": "Chak'uxpa' jun ch'ab'äl ta audio y tawila' chik video ri.",
+    "languageVersionLabel": "Ch'ab'äl ta audio",
+    "selectLanguageVersion": "Chak'uxpa' jun ruwach ch'ab'äl",
+    "watchSelectedVersion": "Tawila' ruwach chak'uxum"
   }
 }

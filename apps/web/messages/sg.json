@@ -234,6 +234,7 @@
     "loadMoreFailed": "Kozalisa ba résultats mosusu elongi te.",
     "searching": "Kozala na boluki...",
     "connectionHint": "Svp kotala connexion na yo mpe meka lisusu.",
+    "rateLimitHint": "A-hunda ayeke mingi mingi. Meka encore na pekô ti miniti oko.",
     "retrySearch": "Meka boluki lisusu",
     "retry": "Meka lisusu",
     "noResults": "Eloko moko te mpo na \"{query}\"",
@@ -268,7 +269,9 @@
   "HeroPlayer": {
     "playWithSound": "Tala sikoyo",
     "tapToUnmute": "Fina mpo na kolongola kozanga mongongo",
-    "nextEpisode": "Episode oyo elandi"
+    "nextEpisode": "Episode oyo elandi",
+    "audioTranslationCount": "{count, plural, one {# monoko} other {# minoko}}",
+    "subtitleCount": "Mibakisi ya maloba: {count, plural, one {# monoko} other {# minoko}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Kozalisa contenu",
@@ -581,16 +584,16 @@
     "retryFailed": "Haka â téléchargement so agbu encore"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Version ti yanga ayeke pëpe",
+    "eyebrow": "Version ti yanga ayeke pëpe",
+    "title": "<contentTitle>{title}</contentTitle> ayeke pëpe na <languageName>{language}</languageName>",
+    "actionsLabel": "Lege ti bâ so ayeke",
+    "browseInLanguage": "Tala bavideo na {language}",
+    "backToSearch": "Hïnga na ngonda ti gi",
+    "audioVersionsTitle": "Version ti mbïrïmbïrï mingi",
+    "audioVersionsDescription": "Soro yanga ti mbïrïmbïrï ti bata tënë ti tala video so.",
+    "languageVersionLabel": "Yanga ti mbïrïmbïrï",
+    "selectLanguageVersion": "Soro version ti yanga",
+    "watchSelectedVersion": "Tala version so mo soro"
   }
 }

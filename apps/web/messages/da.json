@@ -234,6 +234,7 @@
     "loadMoreFailed": "Kunne ikke indlæse flere resultater.",
     "searching": "Søger...",
     "connectionHint": "Tjek din forbindelse og prøv igen.",
+    "rateLimitHint": "For mange anmodninger. Prøv igen om et minut.",
     "retrySearch": "Prøv at søge igen",
     "retry": "Prøv igen",
     "noResults": "Ingen resultater for \"{query}\"",
@@ -268,7 +269,9 @@
   "HeroPlayer": {
     "playWithSound": "Se nu",
     "tapToUnmute": "Tryk for at slå lyd til",
-    "nextEpisode": "Næste afsnit"
+    "nextEpisode": "Næste afsnit",
+    "audioTranslationCount": "{count, plural, one {# sprog} other {# sprog}}",
+    "subtitleCount": "Undertekster: {count, plural, one {# sprog} other {# sprog}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Indlæser indhold",
@@ -581,16 +584,16 @@
     "retryFailed": "Prøv de mislykkede igen"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Sprogversionen er ikke tilgængelig",
+    "eyebrow": "Sprogversionen er ikke tilgængelig",
+    "title": "<contentTitle>{title}</contentTitle> er ikke tilgængelig på <languageName>{language}</languageName>",
+    "actionsLabel": "Tilgængelige visningsmuligheder",
+    "browseInLanguage": "Gennemse videoer på {language}",
+    "backToSearch": "Tilbage til søgning",
+    "audioVersionsTitle": "Andre lydversioner",
+    "audioVersionsDescription": "Vælg et lydsprog for at fortsætte med at se denne video.",
+    "languageVersionLabel": "Lydsprog",
+    "selectLanguageVersion": "Vælg en sprogversion",
+    "watchSelectedVersion": "Se den valgte version"
   }
 }
