@@ -67,11 +67,17 @@ export function reportGoogleAnalyticsEvent(
   if (typeof window === "undefined") return
   if (typeof window.gtag !== "function") return
 
-  window.gtag(
-    "event",
-    normalizeGoogleAnalyticsEventName(name),
-    cleanGoogleAnalyticsEventParams(params),
-  )
+  try {
+    window.gtag(
+      "event",
+      normalizeGoogleAnalyticsEventName(name),
+      cleanGoogleAnalyticsEventParams(params),
+    )
+  } catch {
+    // Analytics is observational and must never interrupt the user action
+    // that produced an event. Some privacy tools expose a gtag shim that
+    // throws, so treat the provider as unavailable for this event.
+  }
 }
 
 function pagePathFromLocation(pathname: string, queryString: string): string {

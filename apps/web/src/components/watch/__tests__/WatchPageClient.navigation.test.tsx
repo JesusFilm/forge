@@ -6,6 +6,8 @@ import { act } from "react"
 import { createRoot, type Root } from "react-dom/client"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
+import type { ShareUsageGuidanceScope } from "@/components/watch/ShareModal"
+
 vi.mock("next-intl", () => ({
   useTranslations: () => (key: string) => key,
 }))
@@ -18,6 +20,7 @@ const { routerPushMock, routerPrefetchMock, shareModalProps, watchPlayer } =
       currentLanguageSlug: string
       onClose: () => void
       open: boolean
+      usageGuidanceScope: ShareUsageGuidanceScope
       videoSlug: string
     }>,
     watchPlayer: {
@@ -525,6 +528,7 @@ describe("WatchPageClient chapter navigation", () => {
     expect(shareModalProps.at(-1)).toMatchObject({
       currentLanguageSlug: "english",
       open: true,
+      usageGuidanceScope: "video",
       videoSlug: "current-video",
     })
     expect(

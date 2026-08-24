@@ -164,4 +164,17 @@ describe("GoogleAnalytics", () => {
       language_slug: "english",
     })
   })
+
+  it("swallows a throwing gtag implementation so analytics cannot block UI behavior", () => {
+    window.gtag = vi.fn(() => {
+      throw new Error("analytics unavailable")
+    })
+
+    expect(() =>
+      reportGoogleAnalyticsEvent("watch_share_guidance_viewed", {
+        guidance_scope: "video",
+        surface: "watch_share_modal",
+      }),
+    ).not.toThrow()
+  })
 })
