@@ -446,14 +446,8 @@
     "couldNotLoad": "Impossible de charger le formulaire de commentaires.",
     "loadingForm": "Chargement du formulaire de commentaires…",
     "retry": "Réessayer",
-    "openFormShort": "Ouvrir le formulaire",
     "cancel": "Annuler",
-    "title": "Commentaires bêta",
-    "description": "Partagez ce qui fonctionne et ce que nous pouvons améliorer. Ce formulaire est fourni par Google.",
-    "openInNewTab": "Ouvrir le formulaire dans un nouvel onglet",
-    "closeForm": "Fermer le formulaire de commentaires",
-    "loadingGoogleForm": "Chargement du formulaire Google…",
-    "iframeTitle": "Envoyer des commentaires bêta"
+    "closeForm": "Fermer le formulaire de commentaires"
   },
   "WatchHomeMuxInserts": {
     "datedTitle": "{date} : {title}",

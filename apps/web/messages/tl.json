@@ -446,14 +446,8 @@
     "couldNotLoad": "Hindi ma-load ang form ng feedback.",
     "loadingForm": "Nilo-load ang form ng feedback…",
     "retry": "Subukan muli",
-    "openFormShort": "Buksan ang form",
     "cancel": "Kanselahin",
-    "title": "Puna sa Beta",
-    "description": "Ibahagi kung ano ang gumagana at kung ano ang maaari naming pagbutihin. Ang form na ito ay ibinibigay ng Google.",
-    "openInNewTab": "Buksan ang form sa bagong tab",
-    "closeForm": "Isara ang form ng feedback",
-    "loadingGoogleForm": "Nilo-load ang Google Form…",
-    "iframeTitle": "Magpadala ng Beta Feedback"
+    "closeForm": "Isara ang form ng feedback"
   },
   "WatchHomeMuxInserts": {
     "datedTitle": "{date}: {title}",

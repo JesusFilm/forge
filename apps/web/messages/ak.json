@@ -271,14 +271,8 @@
     "couldNotLoad": "Yentumi annhyehyɛ feedback fɔɔm no.",
     "loadingForm": "Rɛhyɛ feedback fɔɔm no mu…",
     "retry": "Sɔ bio",
-    "openFormShort": "Bue fɔɔm",
     "cancel": "Twa mu",
-    "title": "Beta Adwenkyerɛ",
-    "description": "Kyɛ nea ɛreyɛ adwuma na nea yebetumi ama ayɛ yiye no. Google na ɛde fɔɔm yi ma.",
-    "openInNewTab": "Bue fɔɔm no wɔ tab foforo mu",
-    "closeForm": "Ka feedback fɔɔm no mu",
-    "loadingGoogleForm": "Rɛhyɛ Google Form no mu…",
-    "iframeTitle": "Hyehyɛ Beta Feedback mu"
+    "closeForm": "Ka feedback fɔɔm no mu"
   },
   "LanguageInventory": {
     "metadataTitle": "Christian videos a wontua hwee wɔ {language} mu | Jesus Film Project",

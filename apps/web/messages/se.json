@@ -271,14 +271,8 @@
     "couldNotLoad": "Áššáigeahččanmádii ii sáhttán lohkat.",
     "loadingForm": "Lohkan áššáigeahččanmádii…",
     "retry": "Geahččal ođđasit",
-    "openFormShort": "Raba madii",
     "cancel": "Gaskkalduhte",
-    "title": "Beta-áššáigeahččan",
-    "description": "Muitte maid mii jođán lea ja maid mii sáhtat bisuhit. Dán madii addá Google.",
-    "openInNewTab": "Raba madii ođđa gittašaŋa",
-    "closeForm": "Gidde áššáigeahččanmádii",
-    "loadingGoogleForm": "Lohkan Google Form…",
-    "iframeTitle": "Sádde Beta-áššáigeahččama"
+    "closeForm": "Gidde áššáigeahččanmádii"
   },
   "LanguageInventory": {
     "metadataTitle": "Fállosat kristtalaš videoat {language}:s | Jesus Film Project",

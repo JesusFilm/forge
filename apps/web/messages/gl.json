@@ -271,14 +271,8 @@
     "couldNotLoad": "Non se puido cargar o formulario de comentarios.",
     "loadingForm": "Cargando o formulario de comentarios…",
     "retry": "Reintentar",
-    "openFormShort": "Abrir formulario",
     "cancel": "Cancelar",
-    "title": "Comentarios beta",
-    "description": "Comparte o que funciona e o que podemos mellorar. Este formulario é proporcionado por Google.",
-    "openInNewTab": "Abrir o formulario nunha nova pestana",
-    "closeForm": "Pechar formulario de comentarios",
-    "loadingGoogleForm": "Cargando o formulario de Google…",
-    "iframeTitle": "Enviar comentarios da beta"
+    "closeForm": "Pechar formulario de comentarios"
   },
   "LanguageInventory": {
     "metadataTitle": "Vídeos cristiáns gratuítos en {language} | Jesus Film Project",

@@ -271,14 +271,8 @@
     "couldNotLoad": "Fikr-mulohaza formasini yuklab bo‘lmadi.",
     "loadingForm": "Fikr-mulohaza shakli yuklanmoqda…",
     "retry": "Qayta urinish",
-    "openFormShort": "Formani ochish",
     "cancel": "Bekor qilish",
-    "title": "Beta fikr-mulohaza",
-    "description": "Nima ishlayotganini va nimani yaxshilash mumkinligini ulashing. Ushbu forma Google tomonidan taqdim etilgan.",
-    "openInNewTab": "Formani yangi tabda ochish",
-    "closeForm": "Fikr-mulohaza formasini yopish",
-    "loadingGoogleForm": "Google Form yuklanmoqda…",
-    "iframeTitle": "Beta fikr-mulohazani yuborish"
+    "closeForm": "Fikr-mulohaza formasini yopish"
   },
   "LanguageInventory": {
     "metadataTitle": "{language} tilidagi bepul xristian videolari | Jesus Film Project",

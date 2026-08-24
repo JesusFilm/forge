@@ -271,14 +271,8 @@
     "couldNotLoad": "No por a karga formulario di feedback.",
     "loadingForm": "Ta kargando formulario di feedback…",
     "retry": "Purba di nobo",
-    "openFormShort": "Habri formulario",
     "cancel": "Anula",
-    "title": "Feedback di beta",
-    "description": "Compartí kog y ta bai bon i kon nos por mehora. Google ta proveé e formulario aki.",
-    "openInNewTab": "Habri formulario den un pestaña nobo",
-    "closeForm": "sera formulario di feedback",
-    "loadingGoogleForm": "Ta kargando Google Form…",
-    "iframeTitle": "Presenta feedback di beta"
+    "closeForm": "sera formulario di feedback"
   },
   "LanguageInventory": {
     "metadataTitle": "Video Kristian gratis den {language} | Jesus Film Project",

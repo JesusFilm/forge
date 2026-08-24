@@ -271,14 +271,8 @@
     "couldNotLoad": "Ti siña ma'loada el formu para feedback.",
     "loadingForm": "Ma'loada el formu para feedback…",
     "retry": "Aturí otra biahe",
-    "openFormShort": "Abri formu",
     "cancel": "Hatta",
-    "title": "Feedback para i Beta",
-    "description": "Påra i mina'åse siña ya i ma'gåga' na minala' ya sen mamproba. Este na formu ginen Google.",
-    "openInNewTab": "Abri formu gi nuebo na tab",
-    "closeForm": "Serrá formu para feedback",
-    "loadingGoogleForm": "Ma'loada Google Form…",
-    "iframeTitle": "Someti Beta Feedback"
+    "closeForm": "Serrá formu para feedback"
   },
   "LanguageInventory": {
     "metadataTitle": "Free na Christian videos gi {language} | Jesus Film Project",

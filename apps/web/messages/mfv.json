@@ -271,14 +271,8 @@
     "couldNotLoad": "Formuláriu di feedback ka pudi kariga.",
     "loadingForm": "Ta kariga formuláriu di feedback…",
     "retry": "Tenta di novu",
-    "openFormShort": "Abri formuláriu",
     "cancel": "Kansela",
-    "title": "Feedback Beta",
-    "description": "Partilha kuza ku ta funsiona i kuza ku nu pudi midjora. Es formuláriu ben di Google.",
-    "openInNewTab": "Abri formuláriu na aba nova",
-    "closeForm": "Fixa formuláriu di feedback",
-    "loadingGoogleForm": "Ta kariga Formuláriu Google…",
-    "iframeTitle": "Mandá Feedback Beta"
+    "closeForm": "Fixa formuláriu di feedback"
   },
   "LanguageInventory": {
     "metadataTitle": "Vídeus kriston grátis na {language} | Jesus Film Project",

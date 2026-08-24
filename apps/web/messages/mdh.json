@@ -271,14 +271,8 @@
     "couldNotLoad": "Da mapullot so feedback form.",
     "loadingForm": "Ga-load so feedback form…",
     "retry": "Ulihi",
-    "openFormShort": "Abrihi so form",
     "cancel": "Bawi",
-    "title": "Tubag-balik sa Beta",
-    "description": "Ipamigay kung manu na gaandar ago kung manu pa kapapamait. So form ini gika Google.",
-    "openInNewTab": "Abrihi so form sa bag-o a tab",
-    "closeForm": "Sara so feedback form",
-    "loadingGoogleForm": "Ga-load so Google Form…",
-    "iframeTitle": "Ihatag so Beta Feedback"
+    "closeForm": "Sara so feedback form"
   },
   "LanguageInventory": {
     "metadataTitle": "Free Christian videos sa {language} | Jesus Film Project",

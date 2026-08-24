@@ -271,14 +271,8 @@
     "couldNotLoad": "अभिप्राय फॉर्म लोड होऊ शकला नाही.",
     "loadingForm": "अभिप्राय फॉर्म लोड होत आहे…",
     "retry": "पुन्हा प्रयत्न करा",
-    "openFormShort": "फॉर्म उघडा",
     "cancel": "रद्द करा",
-    "title": "बीटा अभिप्राय",
-    "description": "काय नीट चालत आहे आणि काय सुधारता येईल ते सांगा. हा फॉर्म Google द्वारे प्रदान केला आहे.",
-    "openInNewTab": "फॉर्म नवीन टॅबमध्ये उघडा",
-    "closeForm": "अभिप्राय फॉर्म बंद करा",
-    "loadingGoogleForm": "Google Form लोड होत आहे…",
-    "iframeTitle": "बीटा अभिप्राय सबमिट करा"
+    "closeForm": "अभिप्राय फॉर्म बंद करा"
   },
   "LanguageInventory": {
     "metadataTitle": "{language} मधील मोफत ख्रिस्ती व्हिडिओ | Jesus Film Project",

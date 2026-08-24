@@ -271,14 +271,8 @@
     "couldNotLoad": "Билэрии форма тохтооботох.",
     "loadingForm": "Билэрии форматын хостообут…",
     "retry": "Хатылаа",
-    "openFormShort": "Форманы арый",
     "cancel": "Түмүктээ",
-    "title": "Бета билэрии",
-    "description": "Түмсүйүнү, тугу ис бухатыырын уонна тугу эмиэ эҥэрдэрбитин бөллөөннөр. Бу форма Google-түн кытта биэриллэн турар.",
-    "openInNewTab": "Форманы саҥа кыһылга арый",
-    "closeForm": "Билэрии форматын сап",
-    "loadingGoogleForm": "Google Form-атын хостообут…",
-    "iframeTitle": "Бета билэриини ыыт"
+    "closeForm": "Билэрии форматын сап"
   },
   "LanguageInventory": {
     "metadataTitle": "{language}-та төлөнбүт христиан видеолар | Jesus Film Project",

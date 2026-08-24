@@ -271,14 +271,8 @@
     "couldNotLoad": "Lo formulari de comentaris a pas pogut se cargar.",
     "loadingForm": "Cargament del formulari de comentaris…",
     "retry": "Tornar ensajar",
-    "openFormShort": "Dobrir lo formulari",
     "cancel": "Anullar",
-    "title": "Comentaris beta",
-    "description": "Partatz çò que fonciona e çò que podèm melhorar. Aqueste formulari es provesit per Google.",
-    "openInNewTab": "Dobrir lo formulari dins un onglet novèl",
-    "closeForm": "Tampar lo formulari de comentaris",
-    "loadingGoogleForm": "Cargament del formulari Google…",
-    "iframeTitle": "Enviar de comentaris beta"
+    "closeForm": "Tampar lo formulari de comentaris"
   },
   "LanguageInventory": {
     "metadataTitle": "Vidèos crestianas gratuitas en {language} | Jesus Film Project",

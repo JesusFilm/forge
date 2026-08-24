@@ -271,14 +271,8 @@
     "couldNotLoad": "Ekki tókst að hlaða álitseyðublaðinu.",
     "loadingForm": "Hleð álitseyðublaðinu…",
     "retry": "Reyna aftur",
-    "openFormShort": "Opna eyðublað",
     "cancel": "Hætta við",
-    "title": "Beta-álit",
-    "description": "Deildu því sem virkar og því sem við getum bætt. Þetta eyðublað er frá Google.",
-    "openInNewTab": "Opna eyðublað í nýjum flipa",
-    "closeForm": "Loka álitseyðublaði",
-    "loadingGoogleForm": "Hleð Google-eyðublaði…",
-    "iframeTitle": "Senda beta-álit"
+    "closeForm": "Loka álitseyðublaði"
   },
   "LanguageInventory": {
     "metadataTitle": "Ókeypis kristileg myndbönd á {language} | Jesus Film Project",

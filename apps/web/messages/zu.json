@@ -271,14 +271,8 @@
     "couldNotLoad": "Ifomu lempendulo alikwazanga ukulayishwa.",
     "loadingForm": "Iyalayisha ifomu lempendulo…",
     "retry": "Zama futhi",
-    "openFormShort": "Vula ifomu",
     "cancel": "Khansela",
-    "title": "Impendulo ye-Beta",
-    "description": "Yabelana ngokusebenza kahle nalokho esingakuthuthukisa. Leli fomu linikezwa i-Google.",
-    "openInNewTab": "Vula ifomu kuthebhu entsha",
-    "closeForm": "Vala ifomu lempendulo",
-    "loadingGoogleForm": "Iyalayisha i-Google Form…",
-    "iframeTitle": "Thumela Impendulo ye-Beta"
+    "closeForm": "Vala ifomu lempendulo"
   },
   "LanguageInventory": {
     "metadataTitle": "Amavidiyo amahhala obuKristu ngesi-{language} | Jesus Film Project",

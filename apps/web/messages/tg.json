@@ -271,14 +271,8 @@
     "couldNotLoad": "Формаи бозхӯрд бор нашуд.",
     "loadingForm": "Бор кардани формаи бозхӯрд…",
     "retry": "Аз нав кӯшиш кунед",
-    "openFormShort": "Формаро кушоед",
     "cancel": "Бекор кардан",
-    "title": "Бозхӯрд барои бета",
-    "description": "Бигӯед, чӣ кор мекунад ва чиро метавон беҳтар кард. Ин форма аз ҷониби Google пешниҳод мешавад.",
-    "openInNewTab": "Формаро дар ҷадвали нав кушоед",
-    "closeForm": "Формаи бозхӯрдро пӯшед",
-    "loadingGoogleForm": "Бор кардани Google Form…",
-    "iframeTitle": "Ирсоли бозхӯрд барои бета"
+    "closeForm": "Формаи бозхӯрдро пӯшед"
   },
   "LanguageInventory": {
     "metadataTitle": "Видеоҳои масеҳии ройгон ба забони {language} | Jesus Film Project",

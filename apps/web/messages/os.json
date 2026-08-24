@@ -271,14 +271,8 @@
     "couldNotLoad": "Фидбэк формæ æрхæссын нæ фæуыд.",
     "loadingForm": "Фидбэк формæ æрхæссын…",
     "retry": "Æмæй фидар кæн",
-    "openFormShort": "Формæ æрхæсс",
     "cancel": "Æймæг",
-    "title": "Бета-фидбэк",
-    "description": "Æз фæндон кæнын, мæнæй æмæ нæй куыст æмæ æмæугъдæн. Æрмæст Google куыд фæрæмæ хъæуы, уый формæ.",
-    "openInNewTab": "Формæ æрмæст нæуæг табæй æрхæсс",
-    "closeForm": "Фидбэк формæ сæйгæ",
-    "loadingGoogleForm": "Google Form æрхæссын…",
-    "iframeTitle": "Бета-фидбэк æмæттæн"
+    "closeForm": "Фидбэк формæ сæйгæ"
   },
   "LanguageInventory": {
     "metadataTitle": "{language} æвзагмæ æхцон христианон видеотæ | Jesus Film Project",

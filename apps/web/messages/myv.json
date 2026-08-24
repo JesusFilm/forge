@@ -271,14 +271,8 @@
     "couldNotLoad": "Feedback form-ть аф лезь аштямс.",
     "loadingForm": "Feedback form-ть лофтозь…",
     "retry": "Вановт эйстэ",
-    "openFormShort": "Form-ть аштямс",
     "cancel": "Отказамс",
-    "title": "Beta feedback",
-    "description": "Лезекс, мезе лезь, и мезе моштезь лиякштомс. Те form-ть Google-сь аскезь.",
-    "openInNewTab": "Form-ть аштямс седе лият тяштень",
-    "closeForm": "Feedback form-ть питнемс",
-    "loadingGoogleForm": "Google Form-ть лофтозь…",
-    "iframeTitle": "Beta feedback-ть ветямс"
+    "closeForm": "Feedback form-ть питнемс"
   },
   "LanguageInventory": {
     "metadataTitle": "Платасыз христианонь видеот — {language} | Jesus Film Project",

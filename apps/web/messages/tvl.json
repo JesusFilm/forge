@@ -271,14 +271,8 @@
     "couldNotLoad": "The feedback form could not load.",
     "loadingForm": "Uta te pepa fakamatalaga…",
     "retry": "Toe tofotofo",
-    "openFormShort": "Fakatonu te pepa",
     "cancel": "Seke",
-    "title": "Beta Fakamatalaga",
-    "description": "Tufa mai a mea kolā e galue, mo mea e mafai o fakalelei. E tuku mai te pepa tenei ne Google.",
-    "openInNewTab": "Fakatonu te pepa i se tab fou",
-    "closeForm": "Tapuni te pepa fakamatalaga",
-    "loadingGoogleForm": "Uta te Google Form…",
-    "iframeTitle": "Tuku mai a Beta Feedback"
+    "closeForm": "Tapuni te pepa fakamatalaga"
   },
   "LanguageInventory": {
     "metadataTitle": "Vitio faka-Kelisiano e maua fua i te {language} | Jesus Film Project",

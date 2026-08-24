@@ -271,14 +271,8 @@
     "couldNotLoad": "Indi ma-load ang feedback form.",
     "loadingForm": "Gina-load ang feedback form…",
     "retry": "Sulayi liwat",
-    "openFormShort": "Ablihan ang form",
     "cancel": "Kanselahon",
-    "title": "Mga Komento sa Beta",
-    "description": "Ipaambit kon ano ang nagapakita nga maayo kag ano ang mahimo pa namon mapauswag. Ini nga form ginahatag sang Google.",
-    "openInNewTab": "Ablihan ang form sa bag-o nga tab",
-    "closeForm": "Sirad-an ang feedback form",
-    "loadingGoogleForm": "Gina-load ang Google Form…",
-    "iframeTitle": "Ipasa ang Beta Feedback"
+    "closeForm": "Sirad-an ang feedback form"
   },
   "LanguageInventory": {
     "metadataTitle": "Libre nga mga Kristohanon nga video sa {language} | Jesus Film Project",

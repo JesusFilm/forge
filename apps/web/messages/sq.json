@@ -271,14 +271,8 @@
     "couldNotLoad": "Formulari i komenteve nuk mund të ngarkohej.",
     "loadingForm": "Po ngarkohet formulari i komenteve…",
     "retry": "Provo përsëri",
-    "openFormShort": "Hap formularin",
     "cancel": "Anulo",
-    "title": "Komente beta",
-    "description": "Ndani çfarë funksionon dhe çfarë mund të përmirësojmë. Ky formular ofrohet nga Google.",
-    "openInNewTab": "Hap formularin në një skedë të re",
-    "closeForm": "Mbyll formularin e komenteve",
-    "loadingGoogleForm": "Po ngarkohet Google Form…",
-    "iframeTitle": "Dërgo komentet beta"
+    "closeForm": "Mbyll formularin e komenteve"
   },
   "LanguageInventory": {
     "metadataTitle": "Video të krishtera falas në {language} | Jesus Film Project",

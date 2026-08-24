@@ -271,14 +271,8 @@
     "couldNotLoad": "Man xk'ut ta ri feedback form.",
     "loadingForm": "Nisamajij ri feedback form…",
     "retry": "Tzolin chik",
-    "openFormShort": "Tijaq form",
     "cancel": "Tiq'at",
-    "title": "Rutzijol Beta",
-    "description": "Taya' rutzijol ri nib'an chik utz chuqa' ri nitijon chi uch'akul. Re form re' ya'ban pe ruma Google.",
-    "openInNewTab": "Tijaq form pa jun k'ak'a' tab",
-    "closeForm": "Titz'apïx feedback form",
-    "loadingGoogleForm": "Nisamajij Google Form…",
-    "iframeTitle": "Tijacha' Beta Feedback"
+    "closeForm": "Titz'apïx feedback form"
   },
   "LanguageInventory": {
     "metadataTitle": "Man rajawaxik ta Christian taq video pa {language} | Jesus Film Project",

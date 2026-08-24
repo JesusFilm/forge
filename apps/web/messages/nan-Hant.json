@@ -271,14 +271,8 @@
     "couldNotLoad": "意見回饋表單無法載入。",
     "loadingForm": "正在載入意見回饋表單…",
     "retry": "重試",
-    "openFormShort": "開啟表單",
     "cancel": "取消",
-    "title": "測試版意見回饋",
-    "description": "分享哪些地方運作良好，以及哪些地方可以改進。此表單由 Google 提供。",
-    "openInNewTab": "在新分頁開啟表單",
-    "closeForm": "關閉意見回饋表單",
-    "loadingGoogleForm": "正在載入 Google 表單…",
-    "iframeTitle": "提交測試版意見回饋"
+    "closeForm": "關閉意見回饋表單"
   },
   "LanguageInventory": {
     "metadataTitle": "以 {language} 提供的免費基督教影片 | Jesus Film Project",

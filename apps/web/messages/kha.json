@@ -271,14 +271,8 @@
     "couldNotLoad": "Ym lah ban pynkit ia ka feedback form.",
     "loadingForm": "Kynran ia ka feedback form…",
     "retry": "Pyrshang biang",
-    "openFormShort": "Plie form",
     "cancel": "Sangeh",
-    "title": "Jingai Jingmut Beta",
-    "description": "Sam ia kaei kaba treikam bad kiei ki bym donkam ban pynbha. Kane ka form ka dei na Google.",
-    "openInNewTab": "Plie form ha ka tab thymmai",
-    "closeForm": "Pynkhap ia ka feedback form",
-    "loadingGoogleForm": "Kynran ia ka Google Form…",
-    "iframeTitle": "Ai Beta Feedback"
+    "closeForm": "Pynkhap ia ka feedback form"
   },
   "LanguageInventory": {
     "metadataTitle": "Ki video Khristan paidbah ha {language} | Jesus Film Project",

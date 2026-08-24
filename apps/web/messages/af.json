@@ -271,14 +271,8 @@
     "couldNotLoad": "Kon nie terugvoerform laai nie.",
     "loadingForm": "Terugvoerform word gelaai…",
     "retry": "Probeer weer",
-    "openFormShort": "Maak vorm oop",
     "cancel": "Kanselleer",
-    "title": "Beta-terugvoer",
-    "description": "Deel wat werk en wat ons kan verbeter. Hierdie vorm word deur Google verskaf.",
-    "openInNewTab": "Maak vorm in ’n nuwe oortjie oop",
-    "closeForm": "Sluit terugvoerform",
-    "loadingGoogleForm": "Google-vorm word gelaai…",
-    "iframeTitle": "Stuur beta-terugvoer in"
+    "closeForm": "Sluit terugvoerform"
   },
   "LanguageInventory": {
     "metadataTitle": "Gratis Christelike video’s in {language} | Jesus Film Project",

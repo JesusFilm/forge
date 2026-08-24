@@ -271,14 +271,8 @@
     "couldNotLoad": "Mënul a yomb form bu opinion bi.",
     "loadingForm": "Daan form bu opinion bi…",
     "retry": "Jéemaatal",
-    "openFormShort": "Ubbi form",
     "cancel": "Dakkal",
-    "title": "Opinion bu Beta",
-    "description": "Partager li bëgg a am ci lu baax ak lu mën a gën. Google mooy jox form bii.",
-    "openInNewTab": "Ubbi form bi ci beneen onglet",
-    "closeForm": "Tëj form bu opinion bi",
-    "loadingGoogleForm": "Daan Google Form bi…",
-    "iframeTitle": "Défar opinion bu Beta"
+    "closeForm": "Tëj form bu opinion bi"
   },
   "LanguageInventory": {
     "metadataTitle": "Wideo yu Kirist bu fayu ci {language} | Jesus Film Project",

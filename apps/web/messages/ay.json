@@ -271,14 +271,8 @@
     "couldNotLoad": "Yatiyawi formulariox janiw cargaräkaniti.",
     "loadingForm": "Yatiyawi formulario apthapiñaskiwa…",
     "retry": "Mä kutikiw yant’añani",
-    "openFormShort": "Formulario jist’arña",
     "cancel": "Janiwa",
-    "title": "Beta yatiyawi",
-    "description": "Kunsa waliki irnaqaskis ukhamaraki kunsa askichsna uk yatiyama. Aka formulariox Google ukanwa churatäxi.",
-    "openInNewTab": "Formulario machaq tab ukan jist’arña",
-    "closeForm": "Yatiyawi formulario llawuña",
-    "loadingGoogleForm": "Google Formulario apthapiñaskiwa…",
-    "iframeTitle": "Beta yatiyawi apayaniña"
+    "closeForm": "Yatiyawi formulario llawuña"
   },
   "LanguageInventory": {
     "metadataTitle": "{language} arun aski cristiano video-naka | Jesus Film Project",

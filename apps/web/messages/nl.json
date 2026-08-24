@@ -446,14 +446,8 @@
     "couldNotLoad": "Feedbackformulier kon niet worden geladen.",
     "loadingForm": "Feedbackformulier laden…",
     "retry": "Opnieuw proberen",
-    "openFormShort": "Formulier openen",
     "cancel": "Annuleren",
-    "title": "Bètafeedback",
-    "description": "Deel wat goed werkt en wat we kunnen verbeteren. Dit formulier wordt aangeboden door Google.",
-    "openInNewTab": "Formulier openen in een nieuw tabblad",
-    "closeForm": "Feedbackformulier sluiten",
-    "loadingGoogleForm": "Google Formulier laden…",
-    "iframeTitle": "Bètafeedback indienen"
+    "closeForm": "Feedbackformulier sluiten"
   },
   "WatchHomeMuxInserts": {
     "datedTitle": "{date}: {title}",

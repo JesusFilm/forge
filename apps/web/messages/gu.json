@@ -271,14 +271,8 @@
     "couldNotLoad": "પ્રતિસાદ ફોર્મ લોડ કરી શકાયું નથી.",
     "loadingForm": "પ્રતિસાદ ફોર્મ લોડ થઈ રહ્યું છે…",
     "retry": "ફરી પ્રયાસ કરો",
-    "openFormShort": "ફોર્મ ખોલો",
     "cancel": "રદ કરો",
-    "title": "બીટા પ્રતિસાદ",
-    "description": "શું સારું કામ કરે છે અને આપણે શું સુધારી શકીએ તે શેર કરો. આ ફોર્મ Google દ્વારા પૂરુ પાડવામાં આવે છે.",
-    "openInNewTab": "ફોર્મ નવી ટૅબમાં ખોલો",
-    "closeForm": "પ્રતિસાદ ફોર્મ બંધ કરો",
-    "loadingGoogleForm": "Google ફોર્મ લોડ થઈ રહ્યું છે…",
-    "iframeTitle": "બીટા પ્રતિસાદ મોકલો"
+    "closeForm": "પ્રતિસાદ ફોર્મ બંધ કરો"
   },
   "LanguageInventory": {
     "metadataTitle": "{language} માં મફત ખ્રિસ્તી વીડિયો | Jesus Film Project",

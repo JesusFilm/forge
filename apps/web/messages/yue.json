@@ -271,14 +271,8 @@
     "couldNotLoad": "無法載入意見表格。",
     "loadingForm": "載入意見表格中…",
     "retry": "重試",
-    "openFormShort": "開啟表格",
     "cancel": "取消",
-    "title": "測試版意見",
-    "description": "分享邊啲功能好用，同埋我哋可以改善啲乜。呢個表格由 Google 提供。",
-    "openInNewTab": "喺新分頁開啟表格",
-    "closeForm": "關閉意見表格",
-    "loadingGoogleForm": "載入 Google 表格中…",
-    "iframeTitle": "提交測試版意見"
+    "closeForm": "關閉意見表格"
   },
   "LanguageInventory": {
     "metadataTitle": "{language} 免費基督教影片 | Jesus Film Project",

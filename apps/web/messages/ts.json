@@ -271,14 +271,8 @@
     "couldNotLoad": "Fomo ya mavonelo a yi nga pfuliwanga.",
     "loadingForm": "Ku layicha fomo ya mavonelo…",
     "retry": "Ringeta nakambe",
-    "openFormShort": "Pfula fomo",
     "cancel": "Khansela",
-    "title": "Mavonelo ya Beta",
-    "description": "Avelana leswi tirhaka kahle ni leswi hi nga swi antswisaka. Fomo leyi yi nyikiwe hi Google.",
-    "openInNewTab": "Pfula fomo eka thebhu leyintshwa",
-    "closeForm": "Pfala fomo ya mavonelo",
-    "loadingGoogleForm": "Ku layicha Google Form…",
-    "iframeTitle": "Rhumela Mavonelo ya Beta"
+    "closeForm": "Pfala fomo ya mavonelo"
   },
   "LanguageInventory": {
     "metadataTitle": "Tivhidiyo ta Vukreste ta Mahala hi {language} | Jesus Film Project",

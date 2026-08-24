@@ -271,14 +271,8 @@
     "couldNotLoad": "Kāore i taea te uta te puka urupare.",
     "loadingForm": "E uta ana i te puka urupare…",
     "retry": "Ngana anō",
-    "openFormShort": "Whakatuwhera puka",
     "cancel": "Whakakore",
-    "title": "Urupare Beta",
-    "description": "Tuhia ngā mea e pai ana te mahi me ngā mea ka taea te whakapai ake. Nā Google tēnei puka.",
-    "openInNewTab": "Whakatuwhera puka ki tētahi ripa hōu",
-    "closeForm": "Katia te puka urupare",
-    "loadingGoogleForm": "E uta ana i te Puka Google…",
-    "iframeTitle": "Tuku Urupare Beta"
+    "closeForm": "Katia te puka urupare"
   },
   "LanguageInventory": {
     "metadataTitle": "Ngā ataata Karaitiana koreutu i roto i {language} | Jesus Film Project",

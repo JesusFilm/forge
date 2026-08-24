@@ -271,14 +271,8 @@
     "couldNotLoad": "Feedback form taŋ ka load.",
     "loadingForm": "A taŋ ka load feedback form…",
     "retry": "Fa kaŋa bɛ",
-    "openFormShort": "Fɛmbu form",
     "cancel": "Bɔ",
-    "title": "Beta naŋkaŋ fɔ",
-    "description": "Kɛŋ naŋ a kɛ, naŋ aŋ ka bɛ tɛkɔ. Form nin Google ye a kɛ.",
-    "openInNewTab": "Fɛmbu form a new tab te",
-    "closeForm": "Mɛ feedback form",
-    "loadingGoogleForm": "A taŋ ka load Google Form…",
-    "iframeTitle": "Sɔrɔ Beta Feedback"
+    "closeForm": "Mɛ feedback form"
   },
   "LanguageInventory": {
     "metadataTitle": "Christian videos free in {language} | Jesus Film Project",

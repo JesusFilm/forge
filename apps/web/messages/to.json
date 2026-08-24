@@ -271,14 +271,8 @@
     "couldNotLoad": "Naʻe ʻikai lava ʻo laodí ʻa e foomu fakamatala.",
     "loadingForm": "Lolotonga laodí ʻa e foomu fakamatala…",
     "retry": "Toe feinga",
-    "openFormShort": "Fakaava ʻa e foomu",
     "cancel": "Luluʻi",
-    "title": "Fakamatala Beta",
-    "description": "Vahevahe ʻa e meʻa ʻoku ngāue lelei mo e meʻa te tau lava ʻo fakaleleiʻi. ʻOku ʻoange ʻa e foomu ni ʻe he Google.",
-    "openInNewTab": "Fakaava ʻa e foomu ʻi ha taba foʻou",
-    "closeForm": "Tamateʻi ʻa e foomu fakamatala",
-    "loadingGoogleForm": "Lolotonga laodí ʻa e Google Form…",
-    "iframeTitle": "Fakaʻaliʻali ʻa e Fakamatala Beta"
+    "closeForm": "Tamateʻi ʻa e foomu fakamatala"
   },
   "LanguageInventory": {
     "metadataTitle": "Ngaahi vitio fakakalisitiane taʻetotongi ʻi he {language} | Jesus Film Project",

@@ -271,14 +271,8 @@
     "couldNotLoad": "לא ניתן לטעון את טופס המשוב.",
     "loadingForm": "טופס המשוב נטען…",
     "retry": "נסה שוב",
-    "openFormShort": "פתח טופס",
     "cancel": "ביטול",
-    "title": "משוב בטא",
-    "description": "שתפו מה עובד ומה אפשר לשפר. הטופס מסופק על ידי Google.",
-    "openInNewTab": "פתח את הטופס בלשונית חדשה",
-    "closeForm": "סגור את טופס המשוב",
-    "loadingGoogleForm": "Google Form נטען…",
-    "iframeTitle": "שליחת משוב בטא"
+    "closeForm": "סגור את טופס המשוב"
   },
   "LanguageInventory": {
     "metadataTitle": "סרטונים נוצריים בחינם ב־{language} | Jesus Film Project",

@@ -271,14 +271,8 @@
     "couldNotLoad": "Fòm fidbak la pa t ka chaje.",
     "loadingForm": "Ap chaje fòm fidbak la…",
     "retry": "Reeseye",
-    "openFormShort": "Louvri fòm nan",
     "cancel": "Anile",
-    "title": "Fidbak Beta",
-    "description": "Pataje sa k ap mache byen ak sa nou ka amelyore. Google bay fòm sa a.",
-    "openInNewTab": "Louvri fòm nan nan yon nouvo tab",
-    "closeForm": "Fèmen fòm fidbak la",
-    "loadingGoogleForm": "Ap chaje Google Form…",
-    "iframeTitle": "Soumèt Fidbak Beta"
+    "closeForm": "Fèmen fòm fidbak la"
   },
   "LanguageInventory": {
     "metadataTitle": "Videyo kretyen gratis an {language} | Jesus Film Project",

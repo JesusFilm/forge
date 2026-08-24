@@ -271,14 +271,8 @@
     "couldNotLoad": "Formulaire ya makanisi ekokaki kofungwama te.",
     "loadingForm": "Kofungola formulaire ya makanisi…",
     "retry": "Meka lisusu",
-    "openFormShort": "Fungola formulaire",
     "cancel": "Kolongola",
-    "title": "Makanisi ya Beta",
-    "description": "Kabola oyo ezali kosala malamu mpe oyo tokoki kobongisa. Formulaire oyo epesami na Google.",
-    "openInNewTab": "Fungola formulaire na onglet ya sika",
-    "closeForm": "Kokanga formulaire ya makanisi",
-    "loadingGoogleForm": "Kofungola Google Form…",
-    "iframeTitle": "Tinda makanisi ya Beta"
+    "closeForm": "Kokanga formulaire ya makanisi"
   },
   "LanguageInventory": {
     "metadataTitle": "Ba vidéo ya boklisto ya ofele na {language} | Jesus Film Project",

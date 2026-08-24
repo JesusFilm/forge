@@ -271,14 +271,8 @@
     "couldNotLoad": "Feedback form e inae irababa.",
     "loadingForm": "Biga form ae",
     "retry": "Kewe",
-    "openFormShort": "Aren form",
     "cancel": "Kunar",
-    "title": "Beta Feedback eo",
-    "description": "Ia report wiyebwata ma ibu me koro. Google e aen form eo.",
-    "openInNewTab": "Aren form me tab bwe",
-    "closeForm": "Kunar feedback form",
-    "loadingGoogleForm": "Biga Google Form ae",
-    "iframeTitle": "Beta Feedback bu"
+    "closeForm": "Kunar feedback form"
   },
   "LanguageInventory": {
     "metadataTitle": "Christian videos tei {language} ne | Jesus Film Project",

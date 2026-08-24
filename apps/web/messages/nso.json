@@ -271,14 +271,8 @@
     "couldNotLoad": "Foromo ya maikemišetšo e ka se laetšwe.",
     "loadingForm": "Go laetša foromo ya maikemišetšo…",
     "retry": "Leka gape",
-    "openFormShort": "Bula foromo",
     "cancel": "Khansela",
-    "title": "Maikemišetšo a Beta",
-    "description": "Abelana ka seo se šomago le seo re ka se kaonefatšago. Foromo ye e fiwa ke Google.",
-    "openInNewTab": "Bula foromo ka tab ye mpsha",
-    "closeForm": "Tswalela foromo ya maikemišetšo",
-    "loadingGoogleForm": "Go laetša Google Form…",
-    "iframeTitle": "Romela Maikemišetšo a Beta"
+    "closeForm": "Tswalela foromo ya maikemišetšo"
   },
   "LanguageInventory": {
     "metadataTitle": "Divideo tša mahala tša Bokriste ka {language} | Jesus Film Project",

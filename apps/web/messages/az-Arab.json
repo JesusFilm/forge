@@ -271,14 +271,8 @@
     "couldNotLoad": "فرم بازخورد بارگیری نشد.",
     "loadingForm": "در حال بارگیری فرم بازخورد…",
     "retry": "تلاش دوباره",
-    "openFormShort": "باز کردن فرم",
     "cancel": "لغو",
-    "title": "بازخورد نسخهٔ بتا",
-    "description": "بگویید چه چیزهایی خوب کار می‌کند و چه چیزهایی را می‌توانیم بهتر کنیم. این فرم توسط Google ارائه شده است.",
-    "openInNewTab": "باز کردن فرم در یک برگهٔ جدید",
-    "closeForm": "بستن فرم بازخورد",
-    "loadingGoogleForm": "در حال بارگیری Google Form…",
-    "iframeTitle": "ارسال بازخورد نسخهٔ بتا"
+    "closeForm": "بستن فرم بازخورد"
   },
   "LanguageInventory": {
     "metadataTitle": "ویدیوهای مسیحی رایگان به {language} | Jesus Film Project",

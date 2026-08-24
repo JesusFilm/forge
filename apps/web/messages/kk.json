@@ -271,14 +271,8 @@
     "couldNotLoad": "Пікір формасын жүктеу мүмкін болмады.",
     "loadingForm": "Пікір формасы жүктелуде…",
     "retry": "Қайталау",
-    "openFormShort": "Форманы ашу",
     "cancel": "Бас тарту",
-    "title": "Beta туралы пікір",
-    "description": "Не жұмыс істеп тұрғанын және нені жақсартуға болатынын бөлісіңіз. Бұл форманы Google ұсынады.",
-    "openInNewTab": "Форманы жаңа қойындыда ашу",
-    "closeForm": "Пікір формасын жабу",
-    "loadingGoogleForm": "Google Form жүктелуде…",
-    "iframeTitle": "Beta туралы пікір жіберу"
+    "closeForm": "Пікір формасын жабу"
   },
   "LanguageInventory": {
     "metadataTitle": "{language} тіліндегі тегін христиан видеолары | Jesus Film Project",

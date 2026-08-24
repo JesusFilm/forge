@@ -271,14 +271,8 @@
     "couldNotLoad": "A feedback form a diak el mengesei.",
     "loadingForm": "Mengil a feedback form…",
     "retry": "Onger er a medengei",
-    "openFormShort": "Onged el form",
     "cancel": "Mesek",
-    "title": "A omesik er a Beta",
-    "description": "Omesung a chelsel a ngakl el omesik el klou a cheldol a diak, ke a ngerul a mo ungil. A form ngera Google a obengkel.",
-    "openInNewTab": "Onged a form er a beluu el ngar a ngii a tab mar a tekoi",
-    "closeForm": "Moes a feedback form",
-    "loadingGoogleForm": "Mengil a Google Form…",
-    "iframeTitle": "Onged a Beta Feedback"
+    "closeForm": "Moes a feedback form"
   },
   "LanguageInventory": {
     "metadataTitle": "Christian videos el di tia kelungel er a {language} | Jesus Film Project",

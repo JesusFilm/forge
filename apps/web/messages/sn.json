@@ -271,14 +271,8 @@
     "couldNotLoad": "Fomu remhinduro harina kukwanisa kurodha.",
     "loadingForm": "Kurodha fomu remhinduro…",
     "retry": "Edzazve",
-    "openFormShort": "Vhura fomu",
     "cancel": "Kanzura",
-    "title": "Mhinduro dzeBeta",
-    "description": "Goverana zviri kushanda nezvatisingagona kuvandudza. Fomu iri rinopihwa neGoogle.",
-    "openInNewTab": "Vhura fomu mutabhu itsva",
-    "closeForm": "Vhara fomu remhinduro",
-    "loadingGoogleForm": "Kurodha Google Form…",
-    "iframeTitle": "Tumira mhinduro dzeBeta"
+    "closeForm": "Vhara fomu remhinduro"
   },
   "LanguageInventory": {
     "metadataTitle": "Mavhidhiyo echiKristu emahara mu {language} | Jesus Film Project",

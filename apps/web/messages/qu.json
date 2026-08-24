@@ -271,14 +271,8 @@
     "couldNotLoad": "Yupaychay formularioqa mana kargakurqanichu.",
     "loadingForm": "Yupaychay formulario kargachkan…",
     "retry": "Huk kutichiy",
-    "openFormShort": "Formulario kichay",
     "cancel": "Tukuchiy",
-    "title": "Beta Yupaychay",
-    "description": "Imakuna allin ruwachkan chayta, manataq imakuna allinmanta llank’ananchikta yachachiy. Kay formularioqa Google-mi qushqan.",
-    "openInNewTab": "Formularioqa mushuq tabpi kichay",
-    "closeForm": "Yupaychay formulario wichq’ay",
-    "loadingGoogleForm": "Google Formulario kargachkan…",
-    "iframeTitle": "Beta Yupaychayta apachiy"
+    "closeForm": "Yupaychay formulario wichq’ay"
   },
   "LanguageInventory": {
     "metadataTitle": "{language}-pi mana qullqiyuq cristiano video-kuna | Jesus Film Project",

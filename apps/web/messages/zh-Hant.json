@@ -459,14 +459,8 @@
     "couldNotLoad": "無法載入意見回饋表單。",
     "loadingForm": "正在載入意見回饋表單…",
     "retry": "重試",
-    "openFormShort": "開啟表單",
     "cancel": "取消",
-    "title": "Beta 意見回饋",
-    "description": "請分享哪些部分運作良好，以及哪些地方可以改進。此表單由 Google 提供。",
-    "openInNewTab": "在新分頁中開啟表單",
-    "closeForm": "關閉意見回饋表單",
-    "loadingGoogleForm": "正在載入 Google 表單…",
-    "iframeTitle": "送出 Beta 意見回饋"
+    "closeForm": "關閉意見回饋表單"
   },
   "WatchHomeMuxInserts": {
     "datedTitle": "{date}：{title}",

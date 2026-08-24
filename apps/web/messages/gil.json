@@ -271,14 +271,8 @@
     "couldNotLoad": "E karewe te bukinaki te baiki form.",
     "loadingForm": "E bukinaki te baiki form…",
     "retry": "Temanna naba",
-    "openFormShort": "Buka te form",
     "cancel": "Kanoaki",
-    "title": "Beta Baiki",
-    "description": "Mwaneaki te kaoti n te kaoki ao n te kamwai. A taetaeaki ma Google te form aei.",
-    "openInNewTab": "Buka te form n te tab ni matu",
-    "closeForm": "Taiaki te baiki form",
-    "loadingGoogleForm": "E bukinaki te Google Form…",
-    "iframeTitle": "Taekaa Beta Baiki"
+    "closeForm": "Taiaki te baiki form"
   },
   "LanguageInventory": {
     "metadataTitle": "Videos Khristian ni free n {language} | Jesus Film Project",

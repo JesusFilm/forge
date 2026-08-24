@@ -271,14 +271,8 @@
     "couldNotLoad": "Фикърим гьарф формас хъутӏанач.",
     "loadingForm": "Фикърим гьарф формас ашкара...",
     "retry": "Кьибла",
-    "openFormShort": "Форма ачухь",
     "cancel": "Кьелем",
-    "title": "Бета фикър",
-    "description": "Ни винин ва ни къуьне епин кьван кумар гьарза. Ана Google ийир форма я.",
-    "openInNewTab": "Формани цӏийи вкладкада ачухь",
-    "closeForm": "Фикърим гьарф формас кьепь",
-    "loadingGoogleForm": "Google Form ашкара...",
-    "iframeTitle": "Бета фикър къалур"
+    "closeForm": "Фикърим гьарф формас кьепь"
   },
   "LanguageInventory": {
     "metadataTitle": "{language}-да тӏуьл христиандин видеолар | Jesus Film Project",

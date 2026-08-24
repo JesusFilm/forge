@@ -271,14 +271,8 @@
     "couldNotLoad": "Feedback form load nai ho paaya.",
     "loadingForm": "Feedback form load ho raha hai…",
     "retry": "Dobara koshish kariye",
-    "openFormShort": "Form kholiye",
     "cancel": "Cancel kariye",
-    "title": "Beta Feedback dijiye",
-    "description": "Batayiye kaun sa kaam kar raha hai aur hum kya behtar kar sakte hain. Ee form Google ke taraf se diya gaya hai.",
-    "openInNewTab": "Form naya tab me kholiye",
-    "closeForm": "Feedback form band kariye",
-    "loadingGoogleForm": "Google Form load ho raha hai…",
-    "iframeTitle": "Beta Feedback jama kariye"
+    "closeForm": "Feedback form band kariye"
   },
   "LanguageInventory": {
     "metadataTitle": "{language} me muft Christian videos | Jesus Film Project",

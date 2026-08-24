@@ -271,14 +271,8 @@
     "couldNotLoad": "უკუკავშირის ფორმის ჩატვირთვა ვერ მოხერხდა.",
     "loadingForm": "უკუკავშირის ფორმა იტვირთება…",
     "retry": "ხელახლა სცადეთ",
-    "openFormShort": "ფორმის გახსნა",
     "cancel": "გაუქმება",
-    "title": "ბეტა უკუკავშირი",
-    "description": "გააზიარეთ, რა მუშაობს და რა შეგვიძლია გავაუმჯობესოთ. ეს ფორმა მოწოდებულია Google-ის მიერ.",
-    "openInNewTab": "ფორმის გახსნა ახალ ჩანართში",
-    "closeForm": "უკუკავშირის ფორმის დახურვა",
-    "loadingGoogleForm": "Google ფორმის ჩატვირთვა…",
-    "iframeTitle": "ბეტა უკუკავშირის გაგზავნა"
+    "closeForm": "უკუკავშირის ფორმის დახურვა"
   },
   "LanguageInventory": {
     "metadataTitle": "უფასო ქრისტიანული ვიდეოები {language}-ზე | Jesus Film Project",

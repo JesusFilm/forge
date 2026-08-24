@@ -271,14 +271,8 @@
     "couldNotLoad": "نەتوانرا فۆڕمی ڕا و بۆچوون بار بکرێت.",
     "loadingForm": "فۆڕمی ڕا و بۆچوون بار دەکرێت…",
     "retry": "دووبارە هەوڵدان",
-    "openFormShort": "فۆرم بکەرەوە",
     "cancel": "هەڵوەشاندنەوە",
-    "title": "ڕا و بۆچوونی بتا",
-    "description": "باس بکە چی باشە و چی دەتوانرێت باشتر بکرێت. ئەم فۆرمە لەلایەن Google دابین کراوە.",
-    "openInNewTab": "فۆرمەکە لە تابێکی نوێدا بکەرەوە",
-    "closeForm": "فۆڕمی ڕا و بۆچوون دابخە",
-    "loadingGoogleForm": "Google Form بار دەکرێت…",
-    "iframeTitle": "ناردنی ڕا و بۆچوونی بتا"
+    "closeForm": "فۆڕمی ڕا و بۆچوون دابخە"
   },
   "LanguageInventory": {
     "metadataTitle": "ویدۆی مەسیحی بەخۆڕایی بە {language} | Jesus Film Project",

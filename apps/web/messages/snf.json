@@ -271,14 +271,8 @@
     "couldNotLoad": "Impossible de charger le formulaire de retour.",
     "loadingForm": "Chargement du formulaire de retour…",
     "retry": "Réessayer",
-    "openFormShort": "Ouvrir le formulaire",
     "cancel": "Annuler",
-    "title": "Retour bêta",
-    "description": "Dites ce qui fonctionne et ce que nous pouvons améliorer. Ce formulaire est fourni par Google.",
-    "openInNewTab": "Ouvrir le formulaire dans un nouvel onglet",
-    "closeForm": "Fermer le formulaire de retour",
-    "loadingGoogleForm": "Chargement du formulaire Google…",
-    "iframeTitle": "Envoyer un retour bêta"
+    "closeForm": "Fermer le formulaire de retour"
   },
   "LanguageInventory": {
     "metadataTitle": "Vidéos chrétiennes gratuites en {language} | Jesus Film Project",

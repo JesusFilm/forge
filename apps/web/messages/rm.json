@@ -271,14 +271,8 @@
     "couldNotLoad": "Betg reussì da chargiar il formular da feedback.",
     "loadingForm": "Chargiament dal formular da feedback…",
     "retry": "Empruvar anc ina giada",
-    "openFormShort": "Avrir il formular",
     "cancel": "Interrumper",
-    "title": "Feedback da beta",
-    "description": "Partidai tge che funcziuna e tge che nus pudain meglierar. Quest formular vegn purschì da Google.",
-    "openInNewTab": "Avrir il formular en ina nova tab",
-    "closeForm": "Serrar il formular da feedback",
-    "loadingGoogleForm": "Chargiament dal formular Google…",
-    "iframeTitle": "Trametter feedback da beta"
+    "closeForm": "Serrar il formular da feedback"
   },
   "LanguageInventory": {
     "metadataTitle": "Videos cristians gratuits en {language} | Jesus Film Project",

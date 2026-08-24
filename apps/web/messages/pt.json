@@ -446,14 +446,8 @@
     "couldNotLoad": "Não foi possível carregar o formulário de feedback.",
     "loadingForm": "A carregar o formulário de feedback…",
     "retry": "Tentar novamente",
-    "openFormShort": "Abrir formulário",
     "cancel": "Cancelar",
-    "title": "Feedback beta",
-    "description": "Partilhe o que está a funcionar e o que podemos melhorar. Este formulário é fornecido pela Google.",
-    "openInNewTab": "Abrir o formulário numa nova aba",
-    "closeForm": "Fechar formulário de feedback",
-    "loadingGoogleForm": "A carregar o Formulário Google…",
-    "iframeTitle": "Enviar feedback beta"
+    "closeForm": "Fechar formulário de feedback"
   },
   "WatchHomeMuxInserts": {
     "datedTitle": "{date}: {title}",

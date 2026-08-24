@@ -271,14 +271,8 @@
     "couldNotLoad": "Отзывы къоларух загруждате гьабизе гьечӏо.",
     "loadingForm": "Отзывы къоларух загруждай…",
     "retry": "Цӏидаса хъвазе",
-    "openFormShort": "Форма къоларух",
     "cancel": "Бахъине",
-    "title": "Бета-отзыв",
-    "description": "Бищуналъе къватӏиб ва цӏидаса хъвазе ккун буго. Гьаб форма Google-ниса кьола.",
-    "openInNewTab": "Нухмалъиялда цӏияб табда форма къоларух",
-    "closeForm": "Отзывы къоларух бекьизе",
-    "loadingGoogleForm": "Google Form загруждай…",
-    "iframeTitle": "Бета-отзыв къобалезе"
+    "closeForm": "Отзывы къоларух бекьизе"
   },
   "LanguageInventory": {
     "metadataTitle": "{language}-да тӏолаб гьечӏеб христианский видеол | Jesus Film Project",

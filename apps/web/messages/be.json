@@ -271,14 +271,8 @@
     "couldNotLoad": "Не ўдалося загрузіць форму водгуку.",
     "loadingForm": "Загрузка формы водгуку…",
     "retry": "Паспрабаваць зноў",
-    "openFormShort": "Адкрыць форму",
     "cancel": "Скасаваць",
-    "title": "Бэта-водгук",
-    "description": "Падзяліцеся тым, што працуе добра, і тым, што можна палепшыць. Гэтую форму прадастаўляе Google.",
-    "openInNewTab": "Адкрыць форму ў новай укладцы",
-    "closeForm": "Закрыць форму водгуку",
-    "loadingGoogleForm": "Загрузка формы Google…",
-    "iframeTitle": "Адправіць бэта-водгук"
+    "closeForm": "Закрыць форму водгуку"
   },
   "LanguageInventory": {
     "metadataTitle": "Бясплатныя хрысціянскія відэа на {language} | Jesus Film Project",

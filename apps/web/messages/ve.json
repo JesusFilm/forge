@@ -271,14 +271,8 @@
     "couldNotLoad": "Fomo ya mbekanyo yo kundelwa u laedza.",
     "loadingForm": "Khou laedza fomo ya mbekanyo…",
     "retry": "Lingedza hafhu",
-    "openFormShort": "Vulani fomo",
     "cancel": "Khansela",
-    "title": "Mbekanyo ya Beta",
-    "description": "Ẓanḓani zwine zwa khou shuma na zwine ra nga khwinisa. Heḽi fomo ḽiṋekedzwa nga Google.",
-    "openInNewTab": "Vulani fomo kha thebhu ntswa",
-    "closeForm": "Valani fomo ya mbekanyo",
-    "loadingGoogleForm": "Khou laedza Fomo ya Google…",
-    "iframeTitle": "Ruma Mbekanyo ya Beta"
+    "closeForm": "Valani fomo ya mbekanyo"
   },
   "LanguageInventory": {
     "metadataTitle": "Vidio dza Vhukriste dza mahala nga {language} | Jesus Film Project",

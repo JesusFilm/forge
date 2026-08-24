@@ -271,14 +271,8 @@
     "couldNotLoad": "प्रतिक्रिया फॉर्म लोड बाय होका।",
     "loadingForm": "प्रतिक्रिया फॉर्म लोड होतोना…",
     "retry": "फिर कुस्टी मे",
-    "openFormShort": "फॉर्म खोल मे",
     "cancel": "बोंद मे",
-    "title": "बीटा प्रतिक्रिया",
-    "description": "कुन काज होकाना आर किछु बेसी भाला होराक् मा हस, हांदा साझा मे। ए फॉर्म Google सांव दा़ंदा़याक्।",
-    "openInNewTab": "नावा टैब रे फॉर्म खोल मे",
-    "closeForm": "प्रतिक्रिया फॉर्म बोंद मे",
-    "loadingGoogleForm": "Google Form लोड होतोना…",
-    "iframeTitle": "बीटा प्रतिक्रिया भेज मे"
+    "closeForm": "प्रतिक्रिया फॉर्म बोंद मे"
   },
   "LanguageInventory": {
     "metadataTitle": "{language} रे नि:शुल्क मसीही वीडियो | Jesus Film Project",

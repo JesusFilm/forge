@@ -271,14 +271,8 @@
     "couldNotLoad": "Labele karrega formulário feedback.",
     "loadingForm": "Karrega formulário feedback…",
     "retry": "Tenta fali",
-    "openFormShort": "Buka formulário",
     "cancel": "Kansela",
-    "title": "Feedback Beta",
-    "description": "Partilla saida mak lao di'ak no saida mak ita bele hadi'a. Formulariu ne'e fornese husi Google.",
-    "openInNewTab": "Buka formulário iha tab foun",
-    "closeForm": "Taka formulário feedback",
-    "loadingGoogleForm": "Karrega Google Form…",
-    "iframeTitle": "Submete Feedback Beta"
+    "closeForm": "Taka formulário feedback"
   },
   "LanguageInventory": {
     "metadataTitle": "Vídeo kristaun lais iha {language} | Jesus Film Project",

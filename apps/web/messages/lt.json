@@ -271,14 +271,8 @@
     "couldNotLoad": "Nepavyko įkelti atsiliepimų formos.",
     "loadingForm": "Įkeliama atsiliepimų forma…",
     "retry": "Bandyti dar kartą",
-    "openFormShort": "Atidaryti formą",
     "cancel": "Atšaukti",
-    "title": "Beta versijos atsiliepimai",
-    "description": "Pasidalykite, kas veikia gerai ir ką galime patobulinti. Šią formą teikia „Google“.",
-    "openInNewTab": "Atidaryti formą naujame skirtuke",
-    "closeForm": "Uždaryti atsiliepimų formą",
-    "loadingGoogleForm": "Įkeliama „Google“ forma…",
-    "iframeTitle": "Pateikti beta versijos atsiliepimą"
+    "closeForm": "Uždaryti atsiliepimų formą"
   },
   "LanguageInventory": {
     "metadataTitle": "Nemokami krikščioniški vaizdo įrašai {language} kalba | Jesus Film Project",

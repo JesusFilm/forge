@@ -271,14 +271,8 @@
     "couldNotLoad": "Санал хүсэлтийн маягтыг ачаалж чадсангүй.",
     "loadingForm": "Санал хүсэлтийн маягт ачаалж байна…",
     "retry": "Дахин оролдох",
-    "openFormShort": "Маягт нээх",
     "cancel": "Цуцлах",
-    "title": "Бета санал хүсэлт",
-    "description": "Юу сайн ажиллаж байгааг, юуг сайжруулж болохыг хуваалцаарай. Энэ маягтыг Google олгож байна.",
-    "openInNewTab": "Маягтыг шинэ табд нээх",
-    "closeForm": "Санал хүсэлтийн маягтыг хаах",
-    "loadingGoogleForm": "Google Form ачаалж байна…",
-    "iframeTitle": "Бета санал хүсэлт илгээх"
+    "closeForm": "Санал хүсэлтийн маягтыг хаах"
   },
   "LanguageInventory": {
     "metadataTitle": "{language}-д байгаа үнэгүй Христийн видеонууд | Jesus Film Project",

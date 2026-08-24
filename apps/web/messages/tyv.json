@@ -271,14 +271,8 @@
     "couldNotLoad": "Билдиргиш формазы ачылбас болган.",
     "loadingForm": "Билдиргиш формазын ажыдып тур...",
     "retry": "Дагы көрүп көр",
-    "openFormShort": "Форманы ача бер",
     "cancel": "Бузар",
-    "title": "Бета билдигиш",
-    "description": "Ижи тувадып турарын, кайысыны өстүрүп болурзун билиршин. Бу форма Google-дүң.",
-    "openInNewTab": "Форманы жаңы вкладкада ача бер",
-    "closeForm": "Билдиргиш формазын жаба бер",
-    "loadingGoogleForm": "Google Form-ны ажыдып тур...",
-    "iframeTitle": "Бета билдигиш берип тур"
+    "closeForm": "Билдиргиш формазын жаба бер"
   },
   "LanguageInventory": {
     "metadataTitle": "{language} де төлевес христиан видеолар | Jesus Film Project",

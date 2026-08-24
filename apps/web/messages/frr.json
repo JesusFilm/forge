@@ -271,14 +271,8 @@
     "couldNotLoad": "Feedback-formular kon naad laadt wurde.",
     "loadingForm": "Feedback-formular wurdt laadt…",
     "retry": "Nij versöken",
-    "openFormShort": "Formular oopen",
     "cancel": "Afbreken",
-    "title": "Beta-Feedback",
-    "description": "Deel wat goot wurket un wat wi beter maken könen. Dit formular warrt von Google stelt.",
-    "openInNewTab": "Formular in nien Tab oopen",
-    "closeForm": "Feedback-formular sluten",
-    "loadingGoogleForm": "Google-Formular wurdt laadt…",
-    "iframeTitle": "Beta-Feedback inßenden"
+    "closeForm": "Feedback-formular sluten"
   },
   "LanguageInventory": {
     "metadataTitle": "Frieh kristelike Video's in {language} | Jesus Film Project",

@@ -271,14 +271,8 @@
     "couldNotLoad": "Il-formola tal-feedback ma setgħetx titgħabba.",
     "loadingForm": "Qed titgħabba l-formola tal-feedback…",
     "retry": "Erġa' pprova",
-    "openFormShort": "Iftaħ il-formola",
     "cancel": "Ikkanċella",
-    "title": "Feedback Beta",
-    "description": "Aqsam x'jaħdem u x'nistgħu ntejbu. Din il-formola hija pprovduta minn Google.",
-    "openInNewTab": "Iftaħ il-formola f'tab ġdida",
-    "closeForm": "Agħlaq il-formola tal-feedback",
-    "loadingGoogleForm": "Qed titgħabba l-Formola ta' Google…",
-    "iframeTitle": "Ibgħat Feedback Beta"
+    "closeForm": "Agħlaq il-formola tal-feedback"
   },
   "LanguageInventory": {
     "metadataTitle": "Videos Kristjani b'xejn bil-{language} | Jesus Film Project",

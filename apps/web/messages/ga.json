@@ -271,14 +271,8 @@
     "couldNotLoad": "Níorbh fhéidir an fhoirm aiseolais a luchtú.",
     "loadingForm": "Foirm aiseolais á luchtú…",
     "retry": "Triail eile",
-    "openFormShort": "Oscail foirm",
     "cancel": "Cealaigh",
-    "title": "Aiseolas Béite",
-    "description": "Inis dúinn cad atá ag obair agus cad is féidir linn a fheabhsú. Soláthraíonn Google an fhoirm seo.",
-    "openInNewTab": "Oscail an fhoirm i gcluaisín nua",
-    "closeForm": "Dún an fhoirm aiseolais",
-    "loadingGoogleForm": "Google Form á luchtú…",
-    "iframeTitle": "Aiseolas Béite a Chur Isteach"
+    "closeForm": "Dún an fhoirm aiseolais"
   },
   "LanguageInventory": {
     "metadataTitle": "Físeáin Chríostaí saor in aisce i {language} | Jesus Film Project",

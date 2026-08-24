@@ -271,14 +271,8 @@
     "couldNotLoad": "Tsy afaka nampidirina ny taratasy fanehoan-kevitra.",
     "loadingForm": "Mampiditra ny taratasy fanehoan-kevitra…",
     "retry": "Andramo indray",
-    "openFormShort": "Sokafy ny taratasy",
     "cancel": "Foana",
-    "title": "Fanehoan-kevitra Beta",
-    "description": "Zarao izay mandeha tsara sy izay azontsika hatsaraina. Google no manome ity taratasy ity.",
-    "openInNewTab": "Sokafy amin'ny kiheba vaovao",
-    "closeForm": "Hidio ny taratasy fanehoan-kevitra",
-    "loadingGoogleForm": "Mampiditra Google Form…",
-    "iframeTitle": "Alefaso ny fanehoan-kevitra Beta"
+    "closeForm": "Hidio ny taratasy fanehoan-kevitra"
   },
   "LanguageInventory": {
     "metadataTitle": "Lahatsary kristianina maimaim-poana amin'ny {language} | Jesus Film Project",

@@ -271,14 +271,8 @@
     "couldNotLoad": "Отзыв формаез ӧтӥны ӧвӧл.",
     "loadingForm": "Отзыв формаез ӧтӥсько…",
     "retry": "Сыдӥны ӧтӥл",
-    "openFormShort": "Форма ӧтӥл",
     "cancel": "Вуэм",
-    "title": "Бета-отзыв",
-    "description": "Мый ӵыдэс усьтӥсько но мый ьӧктэмын вуэмъёс пумит. Формаез Google пыр потэ.",
-    "openInNewTab": "Формаез вылйыт табын ӧтӥл",
-    "closeForm": "Отзыв формаез пыдӥл",
-    "loadingGoogleForm": "Google Form ӧтӥсько…",
-    "iframeTitle": "Бета-отзыв пӧртэм"
+    "closeForm": "Отзыв формаез пыдӥл"
   },
   "LanguageInventory": {
     "metadataTitle": "{language} кылын в ӧтэм христиан видеоос | Jesus Film Project",

@@ -446,14 +446,8 @@
     "couldNotLoad": "フィードバックフォームを読み込めませんでした。",
     "loadingForm": "フィードバックフォームを読み込み中…",
     "retry": "再試行",
-    "openFormShort": "フォームを開く",
     "cancel": "キャンセル",
-    "title": "ベータ版フィードバック",
-    "description": "うまくいっている点や改善できる点をお聞かせください。このフォームはGoogleが提供しています。",
-    "openInNewTab": "フォームを新しいタブで開く",
-    "closeForm": "フィードバックフォームを閉じる",
-    "loadingGoogleForm": "Googleフォームを読み込み中…",
-    "iframeTitle": "ベータ版フィードバックを送信"
+    "closeForm": "フィードバックフォームを閉じる"
   },
   "WatchHomeMuxInserts": {
     "datedTitle": "{date}: {title}",

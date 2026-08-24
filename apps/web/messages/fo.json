@@ -271,14 +271,8 @@
     "couldNotLoad": "Afturmeldingarformulárið kundi ikki lesast.",
     "loadingForm": "Lesur afturmeldingarformulær…",
     "retry": "Royn aftur",
-    "openFormShort": "Lat formulár upp",
     "cancel": "Avlýs",
-    "title": "Beta afturmelding",
-    "description": "Deil, hvat riggar, og hvat vit kunnu betra. Hetta formulárið er veitt av Google.",
-    "openInNewTab": "Lat formulárið upp í einum nýggjum flipa",
-    "closeForm": "Lat afturmeldingarformulár aftur",
-    "loadingGoogleForm": "Lesur Google Formulár…",
-    "iframeTitle": "Send beta afturmelding"
+    "closeForm": "Lat afturmeldingarformulár aftur"
   },
   "LanguageInventory": {
     "metadataTitle": "Ókeypis kristin videobrot á {language} | Jesus Film Project",

@@ -459,14 +459,8 @@
     "couldNotLoad": "反馈表单无法加载。",
     "loadingForm": "正在加载反馈表单…",
     "retry": "重试",
-    "openFormShort": "打开表单",
     "cancel": "取消",
-    "title": "Beta 反馈",
-    "description": "分享哪些部分运行良好，以及我们可以改进什么。此表单由 Google 提供。",
-    "openInNewTab": "在新标签页中打开表单",
-    "closeForm": "关闭反馈表单",
-    "loadingGoogleForm": "正在加载 Google 表单…",
-    "iframeTitle": "提交 Beta 反馈"
+    "closeForm": "关闭反馈表单"
   },
   "WatchHomeMuxInserts": {
     "datedTitle": "{date}：{title}",

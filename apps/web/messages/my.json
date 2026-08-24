@@ -271,14 +271,8 @@
     "couldNotLoad": "အကြံပြုချက် ပုံစံကို တင်၍ မရပါ။",
     "loadingForm": "အကြံပြုချက် ပုံစံကို တင်နေသည်…",
     "retry": "ထပ်ကြိုးစားပါ",
-    "openFormShort": "ပုံစံဖွင့်ပါ",
     "cancel": "ပယ်ဖျက်ပါ",
-    "title": "ဘီတာ အကြံပြုချက်",
-    "description": "အဆင်ပြေနေတဲ့အရာများနှင့် တိုးတက်စေနိုင်သောအရာများကို မျှဝေပါ။ ဤပုံစံကို Google က ပံ့ပိုးထားသည်။",
-    "openInNewTab": "ပုံစံကို တက်ဘ်အသစ်တွင် ဖွင့်ပါ",
-    "closeForm": "အကြံပြုချက် ပုံစံကို ပိတ်ပါ",
-    "loadingGoogleForm": "Google Form ကို တင်နေသည်…",
-    "iframeTitle": "ဘီတာ အကြံပြုချက် တင်သွင်းပါ"
+    "closeForm": "အကြံပြုချက် ပုံစံကို ပိတ်ပါ"
   },
   "LanguageInventory": {
     "metadataTitle": "{language} တွင် အခမဲ့ ခရစ်ယာန်ဗီဒီယိုများ | Jesus Film Project",

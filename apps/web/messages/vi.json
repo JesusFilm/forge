@@ -446,14 +446,8 @@
     "couldNotLoad": "Không tải được biểu mẫu phản hồi.",
     "loadingForm": "Đang tải biểu mẫu phản hồi…",
     "retry": "Thử lại",
-    "openFormShort": "Mở biểu mẫu",
     "cancel": "Hủy",
-    "title": "Phản hồi beta",
-    "description": "Chia sẻ điều đang hoạt động tốt và điều chúng tôi có thể cải thiện. Biểu mẫu này do Google cung cấp.",
-    "openInNewTab": "Mở biểu mẫu trong tab mới",
-    "closeForm": "Đóng biểu mẫu phản hồi",
-    "loadingGoogleForm": "Đang tải Google Biểu mẫu…",
-    "iframeTitle": "Gửi phản hồi beta"
+    "closeForm": "Đóng biểu mẫu phản hồi"
   },
   "WatchHomeMuxInserts": {
     "datedTitle": "{date}: {title}",

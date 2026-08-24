@@ -271,14 +271,8 @@
     "couldNotLoad": "فیڈبیک فارم لوڈ نہٕ گژھ۔",
     "loadingForm": "فیڈبیک فارم لوڈ کران۔۔۔",
     "retry": "پھِر کوشش کرو",
-    "openFormShort": "فارم کھولیو",
     "cancel": "منسوخ",
-    "title": "بیٹا فیڈبیک",
-    "description": "کیا چیز کام کران چھُ تہٕ اسہِ کِتھ کِتھ بہتر کرِ سون، یہ شیئر کرو۔ یہ فارم Google طرفہٕ دتھ چھُ۔",
-    "openInNewTab": "فارم نَوۍ ٹیب منز کھولیو",
-    "closeForm": "فیڈبیک فارم بند کرو",
-    "loadingGoogleForm": "Google فارم لوڈ کران۔۔۔",
-    "iframeTitle": "بیٹا فیڈبیک جمع کرو"
+    "closeForm": "فیڈبیک فارم بند کرو"
   },
   "LanguageInventory": {
     "metadataTitle": "{language} منز مفت مسیحی ویڈیو | Jesus Film Project",

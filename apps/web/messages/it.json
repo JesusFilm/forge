@@ -446,14 +446,8 @@
     "couldNotLoad": "Impossibile caricare il modulo di feedback.",
     "loadingForm": "Caricamento del modulo di feedback…",
     "retry": "Riprova",
-    "openFormShort": "Apri il modulo",
     "cancel": "Annulla",
-    "title": "Feedback beta",
-    "description": "Condividi ciò che funziona e ciò che possiamo migliorare. Questo modulo è fornito da Google.",
-    "openInNewTab": "Apri il modulo in una nuova scheda",
-    "closeForm": "Chiudi il modulo di feedback",
-    "loadingGoogleForm": "Caricamento del Modulo Google…",
-    "iframeTitle": "Invia feedback beta"
+    "closeForm": "Chiudi il modulo di feedback"
   },
   "WatchHomeMuxInserts": {
     "datedTitle": "{date}: {title}",

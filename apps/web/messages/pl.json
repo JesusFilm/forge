@@ -446,14 +446,8 @@
     "couldNotLoad": "Nie udało się wczytać formularza opinii.",
     "loadingForm": "Wczytywanie formularza opinii…",
     "retry": "Ponów próbę",
-    "openFormShort": "Otwórz formularz",
     "cancel": "Anuluj",
-    "title": "Opinia beta",
-    "description": "Podziel się tym, co działa, i tym, co możemy ulepszyć. Ten formularz udostępnia Google.",
-    "openInNewTab": "Otwórz formularz w nowej karcie",
-    "closeForm": "Zamknij formularz opinii",
-    "loadingGoogleForm": "Wczytywanie Formularza Google…",
-    "iframeTitle": "Prześlij opinię o becie"
+    "closeForm": "Zamknij formularz opinii"
   },
   "WatchHomeMuxInserts": {
     "datedTitle": "{date}: {title}",

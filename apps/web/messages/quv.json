@@ -271,14 +271,8 @@
     "couldNotLoad": "Ri form de feedback man xuk'ut ta.",
     "loadingForm": "Nuk'ut ri form de feedback…",
     "retry": "Tz'u' chik",
-    "openFormShort": "Tija' form",
     "cancel": "Q'at",
-    "title": "Beta feedback",
-    "description": "K'utuj achike ri k'o chi b'anom. Ri form re' riq'in Google.",
-    "openInNewTab": "Tija' ri form pa jun k'ak'a' tab",
-    "closeForm": "Titz'apïx ri form de feedback",
-    "loadingGoogleForm": "Nuk'ut Google Form…",
-    "iframeTitle": "Tijikib'äx Beta Feedback"
+    "closeForm": "Titz'apïx ri form de feedback"
   },
   "LanguageInventory": {
     "metadataTitle": "Videos cristianos free pa {language} | Jesus Film Project",

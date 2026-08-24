@@ -280,14 +280,8 @@
     "couldNotLoad": "Feedback form could not load.",
     "loadingForm": "Loading feedback form…",
     "retry": "Retry",
-    "openFormShort": "Open form",
     "cancel": "Cancel",
-    "title": "Beta Feedback",
-    "description": "Share what is working and what we can improve. This form is provided by Google.",
-    "openInNewTab": "Open form in a new tab",
     "closeForm": "Close feedback form",
-    "loadingGoogleForm": "Loading Google Form…",
-    "iframeTitle": "Submit Beta Feedback",
     "header": {
       "title": "Share feedback",
       "description": "Quick note, big impact. Help us make Watch better for everyone."

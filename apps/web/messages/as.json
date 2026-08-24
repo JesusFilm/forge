@@ -271,14 +271,8 @@
     "couldNotLoad": "প্ৰতিক্ৰিয়া ফৰ্ম লোড কৰিব পৰা নগ'ল।",
     "loadingForm": "প্ৰতিক্ৰিয়া ফৰ্ম লোড হৈ আছে…",
     "retry": "পুনৰ চেষ্টা কৰক",
-    "openFormShort": "ফৰ্ম খোলক",
     "cancel": "বাতিল কৰক",
-    "title": "বিটা প্ৰতিক্ৰিয়া",
-    "description": "কি কাম কৰিছে আৰু আমি কি উন্নত কৰিব পাৰোঁ, সেয়া শ্বেয়াৰ কৰক। এই ফৰ্মটো Google-ৰ দ্বাৰা প্ৰদান কৰা হৈছে।",
-    "openInNewTab": "ফৰ্মটো নতুন টেবত খোলক",
-    "closeForm": "প্ৰতিক্ৰিয়া ফৰ্ম বন্ধ কৰক",
-    "loadingGoogleForm": "Google Form লোড হৈ আছে…",
-    "iframeTitle": "বিটা প্ৰতিক্ৰিয়া জমা দিয়ক"
+    "closeForm": "প্ৰতিক্ৰিয়া ফৰ্ম বন্ধ কৰক"
   },
   "LanguageInventory": {
     "metadataTitle": "{language} ভাষাত বিনামূলীয়া খ্ৰীষ্টীয় ভিডিঅ’ | Jesus Film Project",

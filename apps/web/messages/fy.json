@@ -271,14 +271,8 @@
     "couldNotLoad": "Feedbackformulier koe net laden wurde.",
     "loadingForm": "Feedbackformulier wurdt laden…",
     "retry": "Opnij besykje",
-    "openFormShort": "Formulier iepenje",
     "cancel": "Annulearje",
-    "title": "Beta-feedback",
-    "description": "Diel wat goed wurket en wat wy ferbetterje kinne. Dit formulier wurdt oanbean troch Google.",
-    "openInNewTab": "Formulier yn in nij ljepblêd iepenje",
-    "closeForm": "Feedbackformulier slute",
-    "loadingGoogleForm": "Google Formulier wurdt laden…",
-    "iframeTitle": "Beta-feedback yntsjinje"
+    "closeForm": "Feedbackformulier slute"
   },
   "LanguageInventory": {
     "metadataTitle": "Fergees kristlike fideo's yn {language} | Jesus Film Project",

@@ -446,14 +446,8 @@
     "couldNotLoad": "Formularul de feedback nu s-a putut încărca.",
     "loadingForm": "Se încarcă formularul de feedback…",
     "retry": "Încearcă din nou",
-    "openFormShort": "Deschide formularul",
     "cancel": "Anulează",
-    "title": "Feedback Beta",
-    "description": "Spune ce funcționează și ce putem îmbunătăți. Acest formular este furnizat de Google.",
-    "openInNewTab": "Deschide formularul într-o filă nouă",
-    "closeForm": "Închide formularul de feedback",
-    "loadingGoogleForm": "Se încarcă formularul Google…",
-    "iframeTitle": "Trimite feedback beta"
+    "closeForm": "Închide formularul de feedback"
   },
   "WatchHomeMuxInserts": {
     "datedTitle": "{date}: {title}",

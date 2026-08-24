@@ -271,14 +271,8 @@
     "couldNotLoad": "Foromo ea maikutlo ha ea ka ea kenya.",
     "loadingForm": "Ho kenya foromo ea maikutlo…",
     "retry": "Leka hape",
-    "openFormShort": "Bula foromo",
     "cancel": "Hlakola",
-    "title": "Maikutlo a Beta",
-    "description": "Arolelana se sebetsang le seo re ka se ntlafatsang. Foromo ena e fanoa ke Google.",
-    "openInNewTab": "Bula foromo tabeng e ncha",
-    "closeForm": "Koala foromo ea maikutlo",
-    "loadingGoogleForm": "Ho kenya Google Form…",
-    "iframeTitle": "Romela maikutlo a Beta"
+    "closeForm": "Koala foromo ea maikutlo"
   },
   "LanguageInventory": {
     "metadataTitle": "Livideo tsa Bokreste tsa mahala ka {language} | Jesus Film Project",

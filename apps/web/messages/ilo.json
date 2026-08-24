@@ -271,14 +271,8 @@
     "couldNotLoad": "Saan a maikarga ti feedback form.",
     "loadingForm": "Ikkarga ti feedback form…",
     "retry": "Agsubli",
-    "openFormShort": "Ilukat ti form",
     "cancel": "Ikinna",
-    "title": "Komentario para iti Beta",
-    "description": "Ibahagi no ania ti agdama nga agtaray ken no ania ti mabalin a mapabaro. Daytoy a form ket ited babaen ti Google.",
-    "openInNewTab": "Ilukat ti form iti baro a tab",
-    "closeForm": "Ikabil ti feedback form",
-    "loadingGoogleForm": "Ikkarga ti Google Form…",
-    "iframeTitle": "Isumite ti Beta Feedback"
+    "closeForm": "Ikabil ti feedback form"
   },
   "LanguageInventory": {
     "metadataTitle": "Libre a Kristiano a video iti {language} | Jesus Film Project",

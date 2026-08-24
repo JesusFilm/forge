@@ -271,14 +271,8 @@
     "couldNotLoad": "अभिप्राय फॉर्म लोड जावना.",
     "loadingForm": "अभिप्राय फॉर्म लोड करत आसा…",
     "retry": "परत प्रयत्न करात",
-    "openFormShort": "फॉर्म उगडात",
     "cancel": "रद्द करात",
-    "title": "बीटा अभिप्राय",
-    "description": "काय बरें चलता आनी कितें भलें करूं येता तें शेअर करात. हो फॉर्म Google कडेन पुरवतात.",
-    "openInNewTab": "फॉर्म नव्या टॅबांत उगडात",
-    "closeForm": "अभिप्राय फॉर्म बंद करात",
-    "loadingGoogleForm": "Google फॉर्म लोड करत आसा…",
-    "iframeTitle": "बीटा अभिप्राय सादर करात"
+    "closeForm": "अभिप्राय फॉर्म बंद करात"
   },
   "LanguageInventory": {
     "metadataTitle": "{language} त फुकट ख्रिस्ती व्हिडिओ | Jesus Film Project",

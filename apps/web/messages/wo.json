@@ -271,14 +271,8 @@
     "couldNotLoad": "Dañu mënula yeb formu feedback bi.",
     "loadingForm": "Yebum formu feedback bi…",
     "retry": "Jéemaatal",
-    "openFormShort": "Ubbi form bi",
     "cancel": "Dëss",
-    "title": "Feedback bu Beta",
-    "description": "Bokkal li đang def ak li ñu man a jëfandikoo ngir baaxal ko. Google moo jox form bii.",
-    "openInNewTab": "Ubbi form bi ci beneen tab",
-    "closeForm": "Tëj formu feedback bi",
-    "loadingGoogleForm": "Yebum Google Form bi…",
-    "iframeTitle": "Déftal Beta Feedback"
+    "closeForm": "Tëj formu feedback bi"
   },
   "LanguageInventory": {
     "metadataTitle": "Video yu xew ci {language} | Jesus Film Project",

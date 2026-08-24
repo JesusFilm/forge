@@ -271,14 +271,8 @@
     "couldNotLoad": "Fomu ya mayi kayikatelele kusanguka.",
     "loadingForm": "Kusangula fomu ya mayi…",
     "retry": "Linga diaka",
-    "openFormShort": "Kafua fomu",
     "cancel": "Pela",
-    "title": "Mayi a Beta",
-    "description": "Pesha bualu budi bukatshile ne tshidi tuya kuyidila. Fomu eyi ipeshwa na Google.",
-    "openInNewTab": "Kafua fomu mu tab muepi",
-    "closeForm": "Vuala fomu ya mayi",
-    "loadingGoogleForm": "Kusangula Google Fomu…",
-    "iframeTitle": "Tuma Mayi a Beta"
+    "closeForm": "Vuala fomu ya mayi"
   },
   "LanguageInventory": {
     "metadataTitle": "Mavidiyo a Bukristu a bupwila mu {language} | Jesus Film Project",

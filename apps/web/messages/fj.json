@@ -271,14 +271,8 @@
     "couldNotLoad": "E sega ni rawa ni dolavi na fomu ni feedback.",
     "loadingForm": "Lavetaki tiko na fomu ni feedback…",
     "retry": "Cakava tale",
-    "openFormShort": "Dolava na fomu",
     "cancel": "Sosomitaka",
-    "title": "Vakasama me baleta na Beta",
-    "description": "Vakamuria na ka e cakacaka tiko kei na ka meda vakavinakataka. E vakarautaka na Google na fomu oqo.",
-    "openInNewTab": "Dolava na fomu ena tab vou",
-    "closeForm": "Vakatautauvata na fomu ni feedback",
-    "loadingGoogleForm": "Lavetaki tiko na Google Form…",
-    "iframeTitle": "Vakauta na Beta Feedback"
+    "closeForm": "Vakatautauvata na fomu ni feedback"
   },
   "LanguageInventory": {
     "metadataTitle": "Vidio Vakarisito sega ni saumi ena {language} | Jesus Film Project",

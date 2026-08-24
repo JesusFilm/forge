@@ -271,14 +271,8 @@
     "couldNotLoad": "Обратная связь форманы вуытэм.",
     "loadingForm": "Обратная связь форманы лэсьтӥсько…",
     "retry": "Кенешыт",
-    "openFormShort": "Форманы вуо",
     "cancel": "Кырӟа",
-    "title": "Бета обратная связь",
-    "description": "Ниже что вӧсьтӥське асьме, но ма улонныз бӧрдытӥ. Форма Google пыр вуэзьтэм.",
-    "openInNewTab": "Форманы выль вкладкаын вуо",
-    "closeForm": "Обратная связь форманы пыдаты",
-    "loadingGoogleForm": "Google Form лэсьтӥсько…",
-    "iframeTitle": "Бета обратная связь вузы"
+    "closeForm": "Обратная связь форманы пыдаты"
   },
   "LanguageInventory": {
     "metadataTitle": "{language} кылын тулыс христиан видеоос | Jesus Film Project",

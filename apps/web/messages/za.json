@@ -271,14 +271,8 @@
     "couldNotLoad": "Form feedback bungh ndaej loh.",
     "loadingForm": "Raenz form feedback…",
     "retry": "Deuh lai",
-    "openFormShort": "Doengh form",
     "cancel": "Gaeq",
-    "title": "Gyaeuq Beta Feedback",
-    "description": "Bunh aen baeuz laeng doengh, daeuj baeuz aen gvaq. Form neix Google cungj cungj gyaeuq.",
-    "openInNewTab": "Doengh form ndaw tab gvaq",
-    "closeForm": "Dej form feedback",
-    "loadingGoogleForm": "Raenz Google Form…",
-    "iframeTitle": "Gyaeuq Beta Feedback"
+    "closeForm": "Dej form feedback"
   },
   "LanguageInventory": {
     "metadataTitle": "Video Christian laeuz ndaw {language} | Jesus Film Project",

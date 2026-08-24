@@ -271,14 +271,8 @@
     "couldNotLoad": "Seslenme formasyny ýükläp bolmady.",
     "loadingForm": "Seslenme formasy ýüklenýär…",
     "retry": "Täzeden synanş",
-    "openFormShort": "Formany aç",
     "cancel": "Ýatyr",
-    "title": "Beta seslenmesi",
-    "description": "Nämäniň işleýändigini we näme gowulandyrylyp bilinjekdigini paýlaşyň. Bu forma Google tarapyndan üpjün edilýär.",
-    "openInNewTab": "Formany täze goýma aç",
-    "closeForm": "Seslenme formasyny ýap",
-    "loadingGoogleForm": "Google formasy ýüklenýär…",
-    "iframeTitle": "Beta seslenmesini iber"
+    "closeForm": "Seslenme formasyny ýap"
   },
   "LanguageInventory": {
     "metadataTitle": "{language} dilindäki mugt hristian wideolary | Jesus Film Project",

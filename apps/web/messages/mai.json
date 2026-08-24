@@ -271,14 +271,8 @@
     "couldNotLoad": "प्रतिपुष्टि फ़ॉर्म लोड नहि भ सकल।",
     "loadingForm": "प्रतिपुष्टि फ़ॉर्म लोड भ रहल अछि…",
     "retry": "फेर कोशिश करू",
-    "openFormShort": "फ़ॉर्म खोलू",
     "cancel": "रद्द करू",
-    "title": "बीटा प्रतिपुष्टि",
-    "description": "की नीक चलि रहल अछि आ की हमसभ सुधारि सकैत छी, से साझा करू। ई फ़ॉर्म Google द्वारा उपलब्ध कराओल गेल अछि।",
-    "openInNewTab": "नव टेबमे फ़ॉर्म खोलू",
-    "closeForm": "प्रतिपुष्टि फ़ॉर्म बन्द करू",
-    "loadingGoogleForm": "Google फ़ॉर्म लोड भ रहल अछि…",
-    "iframeTitle": "बीटा प्रतिपुष्टि जमा करू"
+    "closeForm": "प्रतिपुष्टि फ़ॉर्म बन्द करू"
   },
   "LanguageInventory": {
     "metadataTitle": "{language} मे निःशुल्क ईसाई वीडियो | Jesus Film Project",

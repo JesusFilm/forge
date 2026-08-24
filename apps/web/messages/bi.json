@@ -271,14 +271,8 @@
     "couldNotLoad": "Feedback form i no save load.",
     "loadingForm": "Stap loadem feedback form…",
     "retry": "Traem bakegen",
-    "openFormShort": "Openem form",
     "cancel": "Kansel",
-    "title": "Tingting long Beta",
-    "description": "Sharem wanem i wok gud mo wanem yumi save improve. Google i givim dis form.",
-    "openInNewTab": "Openem form long wan niu tab",
-    "closeForm": "Satem feedback form",
-    "loadingGoogleForm": "Stap loadem Google Form…",
-    "iframeTitle": "Submitum Beta Feedback"
+    "closeForm": "Satem feedback form"
   },
   "LanguageInventory": {
     "metadataTitle": "Ol fri Kristin video long {language} | Jesus Film Project",

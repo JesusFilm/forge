@@ -446,14 +446,8 @@
     "couldNotLoad": "تعذّر تحميل نموذج الملاحظات.",
     "loadingForm": "جارٍ تحميل نموذج الملاحظات…",
     "retry": "إعادة المحاولة",
-    "openFormShort": "افتح النموذج",
     "cancel": "إلغاء",
-    "title": "ملاحظات النسخة التجريبية",
-    "description": "شارك ما يعمل جيدًا وما يمكننا تحسينه. هذا النموذج مقدّم من Google.",
-    "openInNewTab": "افتح النموذج في علامة تبويب جديدة",
-    "closeForm": "إغلاق نموذج الملاحظات",
-    "loadingGoogleForm": "جارٍ تحميل نموذج Google…",
-    "iframeTitle": "إرسال ملاحظات النسخة التجريبية"
+    "closeForm": "إغلاق نموذج الملاحظات"
   },
   "WatchHomeMuxInserts": {
     "datedTitle": "{date}: {title}",

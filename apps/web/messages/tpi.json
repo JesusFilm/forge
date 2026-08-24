@@ -271,14 +271,8 @@
     "couldNotLoad": "Feedback form i no inap load.",
     "loadingForm": "Loadim feedback form…",
     "retry": "Traim gen",
-    "openFormShort": "Openim form",
     "cancel": "Cancelim",
-    "title": "Givim Tingting long Beta",
-    "description": "Serim wanem samting i wok gut na wanem mipela inap kamapim gut moa. Google i givim dispela form.",
-    "openInNewTab": "Openim form long nupela tab",
-    "closeForm": "Pasim feedback form",
-    "loadingGoogleForm": "Loadim Google Form…",
-    "iframeTitle": "Sutim Beta Feedback"
+    "closeForm": "Pasim feedback form"
   },
   "LanguageInventory": {
     "metadataTitle": "Free Christian videos long {language} | Jesus Film Project",

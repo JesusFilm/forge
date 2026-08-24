@@ -271,14 +271,8 @@
     "couldNotLoad": "ʻAʻole hiki ke hoʻouka i ka palapala manaʻo.",
     "loadingForm": "Ke hoʻouka nei i ka palapala manaʻo…",
     "retry": "E hoʻāʻo hou",
-    "openFormShort": "Wehe i ka palapala",
     "cancel": "Hoʻopau",
-    "title": "Manaʻo Beta",
-    "description": "E kaʻana i ka mea e holo pono ana a me kā kākou e hoʻomaikaʻi ai. Hāʻawi ʻia kēia palapala e Google.",
-    "openInNewTab": "Wehe i ka palapala ma kahi kapu hou",
-    "closeForm": "Pani i ka palapala manaʻo",
-    "loadingGoogleForm": "Ke hoʻouka nei i ka Google Form…",
-    "iframeTitle": "Waiho i ka Manaʻo Beta"
+    "closeForm": "Pani i ka palapala manaʻo"
   },
   "LanguageInventory": {
     "metadataTitle": "Nā wikiō Kalikiano manuahi ma {language} | Jesus Film Project",

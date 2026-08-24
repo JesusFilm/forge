@@ -271,14 +271,8 @@
     "couldNotLoad": "ʻAita te faufau faaite i nehenehe e uta mai.",
     "loadingForm": "Te uta nei i te faufau faaite…",
     "retry": "Tamata faahou",
-    "openFormShort": "A iriti i te faufau",
     "cancel": "A faaea",
-    "title": "Faaite Beta",
-    "description": "A faaite mai i te mea e manuia ra e te mea e nehenehe e faahou. Na Google teie faufau.",
-    "openInNewTab": "A iriti i te faufau i roto i te tab apî",
-    "closeForm": "A tapiri i te faufau faaite",
-    "loadingGoogleForm": "Te uta nei i te Google Form…",
-    "iframeTitle": "Tuu i te Faaite Beta"
+    "closeForm": "A tapiri i te faufau faaite"
   },
   "LanguageInventory": {
     "metadataTitle": "Te mau video Kerisetiano tamoni ore i roto i te {language} | Jesus Film Project",

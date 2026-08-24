@@ -446,14 +446,8 @@
     "couldNotLoad": "Geri bildirim formu yüklenemedi.",
     "loadingForm": "Geri bildirim formu yükleniyor…",
     "retry": "Yeniden dene",
-    "openFormShort": "Formu aç",
     "cancel": "İptal",
-    "title": "Beta Geri Bildirimi",
-    "description": "İşe yarayanları ve geliştirebileceğimiz noktaları paylaşın. Bu form Google tarafından sağlanmaktadır.",
-    "openInNewTab": "Formu yeni bir sekmede aç",
-    "closeForm": "Geri bildirim formunu kapat",
-    "loadingGoogleForm": "Google Form yükleniyor…",
-    "iframeTitle": "Beta Geri Bildirimi Gönder"
+    "closeForm": "Geri bildirim formunu kapat"
   },
   "WatchHomeMuxInserts": {
     "datedTitle": "{date}: {title}",

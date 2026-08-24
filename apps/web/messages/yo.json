@@ -271,14 +271,8 @@
     "couldNotLoad": "A kò lè ṣí fọ́ọ̀mù àfèsọ́nà.",
     "loadingForm": "Ń gbé fọ́ọ̀mù àfèsọ́nà wá…",
     "retry": "Gbìyànjú sí i",
-    "openFormShort": "Ṣí fọ́ọ̀mù",
     "cancel": "Fagilé",
-    "title": "Àfèsọ́nà Beta",
-    "description": "Pín ohun tó ń ṣiṣẹ́ dáadáa àti ohun tí a lè mú dára síi. Google ló pèsè fọ́ọ̀mù yìí.",
-    "openInNewTab": "Ṣí fọ́ọ̀mù nínú taabu tuntun",
-    "closeForm": "Pàdé fọ́ọ̀mù àfèsọ́nà",
-    "loadingGoogleForm": "Ń gbé Google Form wá…",
-    "iframeTitle": "Fi Àfèsọ́nà Beta ránṣẹ́"
+    "closeForm": "Pàdé fọ́ọ̀mù àfèsọ́nà"
   },
   "LanguageInventory": {
     "metadataTitle": "Àwọn fídíò Kristẹni ọ̀fẹ́ ní {language} | Jesus Film Project",

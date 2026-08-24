@@ -271,14 +271,8 @@
     "couldNotLoad": "Mete ŋu le feedback form la la o.",
     "loadingForm": "Etsɔ feedback form la vɛ…",
     "retry": "Kpɔe ake",
-    "openFormShort": "Vae form la ŋu",
     "cancel": "Nulɔlɔ",
-    "title": "Beta ƒe nyaɖoɖo",
-    "description": "Kpɔ ɖe nusi wòle wɔwɔ kple nusi míate ŋu aɖo ɖe dzi. Google na form sia.",
-    "openInNewTab": "Vae form la ŋu le tab yeye me",
-    "closeForm": "Tso feedback form la ƒe ŋu",
-    "loadingGoogleForm": "Etsɔ Google Form la vɛ…",
-    "iframeTitle": "Tɔ Beta Feedback ɖo"
+    "closeForm": "Tso feedback form la ƒe ŋu"
   },
   "LanguageInventory": {
     "metadataTitle": "Christian video siwo menɔa mahã le {language} me | Jesus Film Project",

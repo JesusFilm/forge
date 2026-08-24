@@ -271,14 +271,8 @@
     "couldNotLoad": "មិនអាចផ្ទុកទម្រង់មតិយោបល់បាន។",
     "loadingForm": "កំពុងផ្ទុកទម្រង់មតិយោបល់…",
     "retry": "ព្យាយាមម្តងទៀត",
-    "openFormShort": "បើកទម្រង់",
     "cancel": "បោះបង់",
-    "title": "មតិយោបល់បេតា",
-    "description": "ចែករំលែកអ្វីដែលដំណើរការល្អ និងអ្វីដែលយើងអាចកែលម្អបាន។ ទម្រង់នេះផ្តល់ដោយ Google។",
-    "openInNewTab": "បើកទម្រង់ក្នុងផ្ទាំងថ្មី",
-    "closeForm": "បិទទម្រង់មតិយោបល់",
-    "loadingGoogleForm": "កំពុងផ្ទុក Google Form…",
-    "iframeTitle": "ដាក់ស្នើមតិយោបល់បេតា"
+    "closeForm": "បិទទម្រង់មតិយោបល់"
   },
   "LanguageInventory": {
     "metadataTitle": "វីដេអូគ្រីស្ទានឥតគិតថ្លៃជា {language} | Jesus Film Project",

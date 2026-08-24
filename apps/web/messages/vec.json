@@ -271,14 +271,8 @@
     "couldNotLoad": "No se ga podesto cargar el formulario de feedback.",
     "loadingForm": "Cargando el formulario de feedback…",
     "retry": "Torna a provar",
-    "openFormShort": "Sonzo el formulario",
     "cancel": "Anula",
-    "title": "Feedback beta",
-    "description": "Condividi ciò che funziona e ciò che podemo melhorar. Questo formulario xe fornìo da Google.",
-    "openInNewTab": "Sonzo el formulario in una nova scheda",
-    "closeForm": "Sara el formulario de feedback",
-    "loadingGoogleForm": "Cargando el formulario Google…",
-    "iframeTitle": "Invia feedback beta"
+    "closeForm": "Sara el formulario de feedback"
   },
   "LanguageInventory": {
     "metadataTitle": "Video cristiani gratis in {language} | Jesus Film Project",

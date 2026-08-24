@@ -271,14 +271,8 @@
     "couldNotLoad": "فيڊبيڪ فارم لوڊ نه ٿي سگهيو.",
     "loadingForm": "فيڊبيڪ فارم لوڊ ٿي رهيو آهي…",
     "retry": "ٻيهر ڪوشش ڪريو",
-    "openFormShort": "فارم کوليو",
     "cancel": "منسوخ ڪريو",
-    "title": "بيٽا فيڊبيڪ",
-    "description": "ڇا سٺو ڪم ڪري رهيو آهي ۽ اسان ڇا بهتر ڪري سگهون ٿا، اهو شيئر ڪريو. هي فارم Google طرفان مهيا ڪيل آهي.",
-    "openInNewTab": "فارم نئين ٽيب ۾ کوليو",
-    "closeForm": "فيڊبيڪ فارم بند ڪريو",
-    "loadingGoogleForm": "Google فارم لوڊ ٿي رهيو آهي…",
-    "iframeTitle": "بيٽا فيڊبيڪ جمع ڪريو"
+    "closeForm": "فيڊبيڪ فارم بند ڪريو"
   },
   "LanguageInventory": {
     "metadataTitle": "{language} ۾ مفت مسيحي وڊيوز | Jesus Film Project",

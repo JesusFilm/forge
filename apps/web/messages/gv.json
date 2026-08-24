@@ -271,14 +271,8 @@
     "couldNotLoad": "Cha dod y çhishiyn aash lhieeney.",
     "loadingForm": "Çhargaghey yn çhishiyn aash…",
     "retry": "Seeagyn reesht",
-    "openFormShort": "Foashley çhishiyn",
     "cancel": "Scuirr",
-    "title": "Aash Beta",
-    "description": "Sooil magh ny ta gobbraghey as cre'n chaoi oddain jannoo ny share jeh. Ta yn çhishiyn shoh currit liorish Google.",
-    "openInNewTab": "Foashley yn çhishiyn ayns tab noa",
-    "closeForm": "Doo ny çhishiyn aash",
-    "loadingGoogleForm": "Çhargaghey Google Form…",
-    "iframeTitle": "Cur stiagh Aash Beta"
+    "closeForm": "Doo ny çhishiyn aash"
   },
   "LanguageInventory": {
     "metadataTitle": "Videoyn Creestee erskyn as {language} | Jesus Film Project",

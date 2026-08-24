@@ -271,14 +271,8 @@
     "couldNotLoad": "ᐊᓪᓚᖁᑎ ᐱᓇᔪᐊᕈᑦ ᐅᒃᑯᐃᕐᓂᖅ ᐊᔭᓐᓂᖏᑦᑐᖅ.",
     "loadingForm": "ᐊᓪᓚᖁᑎ ᐱᓇᔪᐊᕈᑦ ᐊᓯᔾᔨᕐᓂᖅ…",
     "retry": "ᓱᒃᑲᐃᓕᖅᑕᕆ",
-    "openFormShort": "ᐅᒃᑯᐃᕐᓗᒍ ᐊᓪᓚᖁᑎ",
     "cancel": "ᓄᖅᑲᕆ",
-    "title": "Beta ᐊᓪᓚᖁᑎ",
-    "description": "ᖃᓄᐃᓕᐅᕐᓂᖅ ᐊᒻᒪ ᑲᔪᓯᒋᐊᕈᓐᓇᖏᑦᑐᖅ ᓂᕆᐊᕐᓂᖅ ᐅᐃᒃᑯᑦ ᐃᓚᖓ. ᑖᓐᓇ ᐊᓪᓚᖁᑎ Google ᑐᑭᓯᐅᑎᔪᖅ.",
-    "openInNewTab": "ᐅᒃᑯᐃᕐᓗᒍ ᐊᓪᓚᖁᑎ ᐊᓯᐊᓂ ᑕᐃᒪ ᑕᒫᓂ",
-    "closeForm": "ᐊᒃᑐᕐᓂᖅ ᐊᓪᓚᖁᑎ ᐱᓇᔪᐊᕈᑦ",
-    "loadingGoogleForm": "Google Form ᐊᓯᔾᔨᕐᓂᖅ…",
-    "iframeTitle": "Beta ᐊᓪᓚᖁᑎ ᑐᓂᔭᐅᕗᖅ"
+    "closeForm": "ᐊᒃᑐᕐᓂᖅ ᐊᓪᓚᖁᑎ ᐱᓇᔪᐊᕈᑦ"
   },
   "LanguageInventory": {
     "metadataTitle": "ᐊᐃᕐᖕ ᐊᓯᕈᑏᑦ ᐱᐅᓂᖃᕐᓂᖅ {language} | Jesus Film Project",

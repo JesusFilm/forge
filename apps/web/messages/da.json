@@ -271,14 +271,8 @@
     "couldNotLoad": "Feedbackformularen kunne ikke indlæses.",
     "loadingForm": "Indlæser feedbackformular…",
     "retry": "Prøv igen",
-    "openFormShort": "Åbn formular",
     "cancel": "Annuller",
-    "title": "Beta-feedback",
-    "description": "Del, hvad der fungerer, og hvad vi kan forbedre. Denne formular leveres af Google.",
-    "openInNewTab": "Åbn formular i en ny fane",
-    "closeForm": "Luk feedbackformular",
-    "loadingGoogleForm": "Indlæser Google Formular…",
-    "iframeTitle": "Send beta-feedback"
+    "closeForm": "Luk feedbackformular"
   },
   "LanguageInventory": {
     "metadataTitle": "Gratis kristne videoer på {language} | Jesus Film Project",

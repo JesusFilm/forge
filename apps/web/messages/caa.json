@@ -271,14 +271,8 @@
     "couldNotLoad": "Mani ta xak'ul form ta feedback.",
     "loadingForm": "T'ojb'ena' form ta feedback…",
     "retry": "Tawila' chik",
-    "openFormShort": "Taq'apa' form",
     "cancel": "K'uchu'",
-    "title": "Na'oj ta Beta",
-    "description": "K'utuj ix mani ta ch'ojjok' u ya'ik utz, che' kab'ik ta utz ch'och'jil. Jun Google ta jachb'il form.",
-    "openInNewTab": "Taq'apa' form ta jun k'at ta tab",
-    "closeForm": "Tatz'apka' form ta feedback",
-    "loadingGoogleForm": "T'ojb'ena' Google Form…",
-    "iframeTitle": "Taq'uj Beta Feedback"
+    "closeForm": "Tatz'apka' form ta feedback"
   },
   "LanguageInventory": {
     "metadataTitle": "Videos cristianos gratis ta {language} | Jesus Film Project",

@@ -271,14 +271,8 @@
     "couldNotLoad": "Mënul ubbi form bu feedback bi.",
     "loadingForm": "Di tënku form bu feedback bi…",
     "retry": "Faraat",
-    "openFormShort": "Ubbi form",
     "cancel": "Dëlloo",
-    "title": "Beta Bataaxal",
-    "description": "Jox lu def ak lu nu mën a yàggal. Form bii Google la joxe.",
-    "openInNewTab": "Ubbi form bi ci beneen tab",
-    "closeForm": "Tëj form bu feedback",
-    "loadingGoogleForm": "Di tënku Google Form bi…",
-    "iframeTitle": "Yónnee Beta Feedback"
+    "closeForm": "Tëj form bu feedback"
   },
   "LanguageInventory": {
     "metadataTitle": "Vídeos bu xamul ci {language} | Jesus Film Project",

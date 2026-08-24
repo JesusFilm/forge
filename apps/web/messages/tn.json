@@ -271,14 +271,8 @@
     "couldNotLoad": "Foromo ya maitsholo ga e a kgona go laišwa.",
     "loadingForm": "E laiša foromo ya maitsholo…",
     "retry": "Leka gape",
-    "openFormShort": "Bula foromo",
     "cancel": "Khansela",
-    "title": "Maitsholo a Beta",
-    "description": "Abelana se se šomago le se re ka se kaonafatšago. Foromo ye e fiwa ke Google.",
-    "openInNewTab": "Bula foromo thebe e mpsha",
-    "closeForm": "Tswalela foromo ya maitsholo",
-    "loadingGoogleForm": "E laiša Google Form…",
-    "iframeTitle": "Romela maitsholo a Beta"
+    "closeForm": "Tswalela foromo ya maitsholo"
   },
   "LanguageInventory": {
     "metadataTitle": "Dibidio tša Bokreste tša mahala ka {language} | Jesus Film Project",

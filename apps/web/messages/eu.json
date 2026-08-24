@@ -271,14 +271,8 @@
     "couldNotLoad": "Ezin izan da iritzia emateko formularioa kargatu.",
     "loadingForm": "Iritzia emateko formularioa kargatzen…",
     "retry": "Saiatu berriro",
-    "openFormShort": "Ireki formularioa",
     "cancel": "Utzi",
-    "title": "Beta bertsiorako iritzia",
-    "description": "Partekatu zer dabilen ondo eta zer hobetu dezakegun. Formulario hau Googlek eskaintzen du.",
-    "openInNewTab": "Ireki formularioa fitxa berri batean",
-    "closeForm": "Itxi iritzia emateko formularioa",
-    "loadingGoogleForm": "Google Formularioa kargatzen…",
-    "iframeTitle": "Bidali beta bertsiorako iritzia"
+    "closeForm": "Itxi iritzia emateko formularioa"
   },
   "LanguageInventory": {
     "metadataTitle": "Doako kristau-bideoak {language} hizkuntzan | Jesus Film Project",

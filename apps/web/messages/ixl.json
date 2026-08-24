@@ -271,14 +271,8 @@
     "couldNotLoad": "Feedback form chi load ta'n.",
     "loadingForm": "Feedback form chi yüküj…",
     "retry": "Tz'ib'ej chik",
-    "openFormShort": "Form jaq'",
     "cancel": "Tikanaj",
-    "title": "Beta Tzijonem",
-    "description": "Achike chi utz chi jun chi jun chi utz chi jaljoq. Google chi yijb'an jun form.",
-    "openInNewTab": "Form jaq' jun k'utam q'ij chi tab",
-    "closeForm": "Feedback form tich'up'",
-    "loadingGoogleForm": "Google Form chi yüküj…",
-    "iframeTitle": "Beta Feedback tz'ib'ej"
+    "closeForm": "Feedback form tich'up'"
   },
   "LanguageInventory": {
     "metadataTitle": "Videos cristianos gratuitos chi {language} | Jesus Film Project",

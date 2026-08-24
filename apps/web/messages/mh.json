@@ -271,14 +271,8 @@
     "couldNotLoad": "Form in feedback ejjab maron lōk.",
     "loadingForm": "Ej load form in feedback…",
     "retry": "Jijjet",
-    "openFormShort": "Iak form",
     "cancel": "Bōk jān",
-    "title": "Kōmeḷeḷe ko kōn Beta",
-    "description": "Kōmman ijoko eo elōñ ijin emman im ta eo komaron emman. Google ekar jipan in form in.",
-    "openInNewTab": "Iak form ilo juon tab ekarōk",
-    "closeForm": "Māake form in feedback",
-    "loadingGoogleForm": "Ej load Google Form…",
-    "iframeTitle": "Send Beta Feedback"
+    "closeForm": "Māake form in feedback"
   },
   "LanguageInventory": {
     "metadataTitle": "Christian videos ko ejellok wōnāer ilo {language} | Jesus Film Project",

@@ -271,14 +271,8 @@
     "couldNotLoad": "Ni mòże sã wczytac fòrmùlôrzã ùwôgòw.",
     "loadingForm": "Wczytëwanié fòrmùlôrzã ùwôgòw…",
     "retry": "Spróbùj jinã razã",
-    "openFormShort": "Òtemkni fòrmùlôrz",
     "cancel": "Ùniewôżni",
-    "title": "Beta ùwôgòw",
-    "description": "Pòdzelë sã tim, co dłëgo robi i co mòżemë pòprzëc. Ten fòrmùlôrz dostôwôsz òd Google.",
-    "openInNewTab": "Òtemkni fòrmùlôrz w nowi karce",
-    "closeForm": "Zatrzëmôj fòrmùlôrz ùwôgòw",
-    "loadingGoogleForm": "Wczytëwanié fòrmùlôrzã Google…",
-    "iframeTitle": "Pòslëj beta ùwôgã"
+    "closeForm": "Zatrzëmôj fòrmùlôrz ùwôgòw"
   },
   "LanguageInventory": {
     "metadataTitle": "Darmòwé chrzéścijańsczé wideo pò {language} | Jesus Film Project",

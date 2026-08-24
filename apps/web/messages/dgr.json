@@ -271,14 +271,8 @@
     "couldNotLoad": "Feedback form nàtɂè nàt’è.",
     "loadingForm": "Feedback form loading…",
     "retry": "Nàke t’àa hòɂǫ",
-    "openFormShort": "Form open",
     "cancel": "Nàahdee",
-    "title": "Beta ghà nàowo",
-    "description": "What is working and what we can improve, nàhts’ǫ̀. Google provided this form.",
-    "openInNewTab": "Form open in new tab",
-    "closeForm": "Feedback form close",
-    "loadingGoogleForm": "Google Form loading…",
-    "iframeTitle": "Beta Feedback submit"
+    "closeForm": "Feedback form close"
   },
   "LanguageInventory": {
     "metadataTitle": "{language}: Christian video nàke hòɂǫ | Jesus Film Project",

@@ -271,14 +271,8 @@
     "couldNotLoad": "Feedback fom i no inap load.",
     "loadingForm": "I loadim feedback fom…",
     "retry": "Traim gen",
-    "openFormShort": "Opim fom",
     "cancel": "Kenis",
-    "title": "Beta Manodina Hereva",
-    "description": "Serim wanem i wok na wanem yumi inap mekim i gutpela moa. Dispela fom Google i givim.",
-    "openInNewTab": "Opim fom long nupela tab",
-    "closeForm": "Pasim feedback fom",
-    "loadingGoogleForm": "I loadim Google Form…",
-    "iframeTitle": "Salim Beta Feedback"
+    "closeForm": "Pasim feedback fom"
   },
   "LanguageInventory": {
     "metadataTitle": "Fri Kristen video long {language} | Jesus Film Project",

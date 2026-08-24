@@ -271,14 +271,8 @@
     "couldNotLoad": "Ntibishobotse gupakira ifishi y'ibitekerezo.",
     "loadingForm": "Gupakira ifishi y'ibitekerezo…",
     "retry": "Ongera ugerageze",
-    "openFormShort": "Fungura ifishi",
     "cancel": "Hagarika",
-    "title": "Ibitekerezo bya Beta",
-    "description": "Sangiza ibyo bikora neza n'ibyo twakomeza kunoza. Iyi fishi itangwa na Google.",
-    "openInNewTab": "Fungura ifishi mu rundi tab",
-    "closeForm": "Funga ifishi y'ibitekerezo",
-    "loadingGoogleForm": "Gupakira Google Form…",
-    "iframeTitle": "Ohereza ibitekerezo bya Beta"
+    "closeForm": "Funga ifishi y'ibitekerezo"
   },
   "LanguageInventory": {
     "metadataTitle": "Video za gikristo z'ubuntu mu {language} | Jesus Film Project",

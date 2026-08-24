@@ -271,14 +271,8 @@
     "couldNotLoad": "Neizdevās ielādēt atsauksmju veidlapu.",
     "loadingForm": "Notiek atsauksmju veidlapas ielāde…",
     "retry": "Mēģināt vēlreiz",
-    "openFormShort": "Atvērt veidlapu",
     "cancel": "Atcelt",
-    "title": "Beta versijas atsauksmes",
-    "description": "Pastāstiet, kas darbojas labi un ko varam uzlabot. Šo veidlapu nodrošina Google.",
-    "openInNewTab": "Atvērt veidlapu jaunā cilnē",
-    "closeForm": "Aizvērt atsauksmju veidlapu",
-    "loadingGoogleForm": "Notiek Google veidlapas ielāde…",
-    "iframeTitle": "Iesniegt beta versijas atsauksmes"
+    "closeForm": "Aizvērt atsauksmju veidlapu"
   },
   "LanguageInventory": {
     "metadataTitle": "Bezmaksas kristīgi video {language} valodā | Jesus Film Project",

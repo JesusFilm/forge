@@ -271,14 +271,8 @@
     "couldNotLoad": "Cha b’ urrainn am foirm fios-air-ais a luchdadh.",
     "loadingForm": "A’ luchdadh an fhoirm fios-air-ais…",
     "retry": "Feuch a-rithist",
-    "openFormShort": "Fosgail am foirm",
     "cancel": "Sguir dheth",
-    "title": "Fios-air-ais Beta",
-    "description": "Co-roinn dè tha ag obair agus dè as urrainn dhuinn a leasachadh. Tha am foirm seo air a thoirt seachad le Google.",
-    "openInNewTab": "Fosgail am foirm ann an taba ùr",
-    "closeForm": "Dùin am foirm fios-air-ais",
-    "loadingGoogleForm": "A’ luchdadh Google Form…",
-    "iframeTitle": "Cuir a-steach Fios-air-ais Beta"
+    "closeForm": "Dùin am foirm fios-air-ais"
   },
   "LanguageInventory": {
     "metadataTitle": "Bhideothan Crìosdail an-asgaidh ann an {language} | Jesus Film Project",

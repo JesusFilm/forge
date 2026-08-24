@@ -271,14 +271,8 @@
     "couldNotLoad": "Tagasisidevormi ei saanud laadida.",
     "loadingForm": "Tagasisidevormi laadimine…",
     "retry": "Proovi uuesti",
-    "openFormShort": "Ava vorm",
     "cancel": "Tühista",
-    "title": "Beetatagasiside",
-    "description": "Jaga, mis töötab hästi ja mida saaks parandada. Selle vormi pakub Google.",
-    "openInNewTab": "Ava vorm uuel vahekaardil",
-    "closeForm": "Sulge tagasisidevorm",
-    "loadingGoogleForm": "Google'i vormi laadimine…",
-    "iframeTitle": "Saada beetatagasisidet"
+    "closeForm": "Sulge tagasisidevorm"
   },
   "LanguageInventory": {
     "metadataTitle": "Tasuta kristlikud videod keeles {language} | Jesus Film Project",

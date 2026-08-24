@@ -271,14 +271,8 @@
     "couldNotLoad": "Mënul a xar form bu feedback.",
     "loadingForm": "Dëkkal form bu feedback…",
     "retry": "Jéemaatal",
-    "openFormShort": "Ubbi form",
     "cancel": "Neenal",
-    "title": "Xalaat yu Beta",
-    "description": "Bëggal li moo gën di jëf ak lu nu mën a fésal. Google mooy jox form bii.",
-    "openInNewTab": "Ubbi form bi ci beneen tab",
-    "closeForm": "Tëj form bu feedback",
-    "loadingGoogleForm": "Dëkkal Google Form…",
-    "iframeTitle": "Joxe Beta Feedback"
+    "closeForm": "Tëj form bu feedback"
   },
   "LanguageInventory": {
     "metadataTitle": "Video yu jëmmu Ker bu dul paj ci {language} | Jesus Film Project",

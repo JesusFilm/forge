@@ -271,14 +271,8 @@
     "couldNotLoad": "Ndaikatúi oñemyanyhẽ formulario de feedback.",
     "loadingForm": "Oñemyanyhẽ formulario de feedback…",
     "retry": "Eha'ãjey",
-    "openFormShort": "Eike formulario-pe",
     "cancel": "Heja",
-    "title": "Beta rehegua remiandu",
-    "description": "Emombe'u mba'épa omba'apo porã ha mba'épa ikatu ñamoporãve. Ko formulario ome'ẽ Google.",
-    "openInNewTab": "Eike formulario-pe peteĩ pestaña pyahúpe",
-    "closeForm": "Emboty formulario de feedback",
-    "loadingGoogleForm": "Oñemyanyhẽ Google Form…",
-    "iframeTitle": "Emondo Beta Feedback"
+    "closeForm": "Emboty formulario de feedback"
   },
   "LanguageInventory": {
     "metadataTitle": "Video cristiano gratuitos {language}-pe | Jesus Film Project",

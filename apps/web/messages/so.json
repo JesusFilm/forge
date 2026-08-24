@@ -271,14 +271,8 @@
     "couldNotLoad": "Foomka jawaab-celinta lama soo rari karo.",
     "loadingForm": "Foomka jawaab-celinta waa la soo rarayaa…",
     "retry": "Mar kale isku day",
-    "openFormShort": "Fur foomka",
     "cancel": "Jooji",
-    "title": "Jawaab-celin Beta",
-    "description": "La wadaag waxa shaqaynaya iyo waxa aan hagaajin karno. Foomkan waxaa bixiya Google.",
-    "openInNewTab": "Foomka ku fur tab cusub",
-    "closeForm": "Xir foomka jawaab-celinta",
-    "loadingGoogleForm": "Google Form ayaa la soo rarayaa…",
-    "iframeTitle": "Gudbi Jawaab-celin Beta"
+    "closeForm": "Xir foomka jawaab-celinta"
   },
   "LanguageInventory": {
     "metadataTitle": "Fiidiyowyo Masiixi ah oo bilaash ah gudaha {language} | Jesus Film Project",

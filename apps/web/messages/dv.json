@@ -271,14 +271,8 @@
     "couldNotLoad": "ފީޑްބැක් ފޯމް ލޯޑް ކުރަން ނުބުނެއް.",
     "loadingForm": "ފީޑްބැක් ފޯމް ލޯޑް ކުރަނީ…",
     "retry": "އަލުން ދައްކާ",
-    "openFormShort": "ފޯމް ހުޅުވާ",
     "cancel": "ކެންސަލް",
-    "title": "ބީޓާ ފީޑްބැක්",
-    "description": "ކޮންކަމެއް ރަނގަޅަށް ހިނގަނީކީ އަދި ކޮންކަމެއް ހެޔޮކޮށްދޭންވީކީ ހިއްސާ ކުރާށެވެ. މި ފޯމް Google އިން ދެވޭ ކަމެކެވެ.",
-    "openInNewTab": "ފޯމް އެކެއް އަލަށް ޓެބް އެއްގައި ހުޅުވާ",
-    "closeForm": "ފީޑްބැක් ފޯމް ބާންދާ",
-    "loadingGoogleForm": "Google ފޯމް ލޯޑް ކުރަނީ…",
-    "iframeTitle": "ބීޓާ ފީޑްބැක් ހުށަހެޅުން"
+    "closeForm": "ފީޑްބැක් ފޯމް ބާންދާ"
   },
   "LanguageInventory": {
     "metadataTitle": "{language} ގައި ނުވާގަތު Christian videos | Jesus Film Project",

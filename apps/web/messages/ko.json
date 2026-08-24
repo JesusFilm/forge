@@ -446,14 +446,8 @@
     "couldNotLoad": "피드백 양식을 불러올 수 없습니다.",
     "loadingForm": "피드백 양식 불러오는 중…",
     "retry": "다시 시도",
-    "openFormShort": "양식 열기",
     "cancel": "취소",
-    "title": "베타 피드백",
-    "description": "잘 작동하는 부분과 개선할 점을 알려 주세요. 이 양식은 Google에서 제공합니다.",
-    "openInNewTab": "새 탭에서 양식 열기",
-    "closeForm": "피드백 양식 닫기",
-    "loadingGoogleForm": "Google 양식 불러오는 중…",
-    "iframeTitle": "베타 피드백 제출"
+    "closeForm": "피드백 양식 닫기"
   },
   "WatchHomeMuxInserts": {
     "datedTitle": "{date}: {title}",

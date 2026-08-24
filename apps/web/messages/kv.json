@@ -271,14 +271,8 @@
     "couldNotLoad": "Обратной связь формасьтӧм оз ло.",
     "loadingForm": "Обратной связь форму загрузкаӧн…",
     "retry": "Ещӧт раз",
-    "openFormShort": "Формасьтыны",
     "cancel": "Чышкӧдны",
-    "title": "Бета-обратной связь",
-    "description": "Вӧчны, мый уджалӧ, да мыйӧс позьӧ бурджык вӧчны, висьтавны. Этӧ форму Google вӧчӧ.",
-    "openInNewTab": "Формасьтыны выль вкладкаын",
-    "closeForm": "Обратной связь формасьтыны вӧчны",
-    "loadingGoogleForm": "Google Form загрузкаӧн…",
-    "iframeTitle": "Бета-обратной связьсӧ шедӧдны"
+    "closeForm": "Обратной связь формасьтыны вӧчны"
   },
   "LanguageInventory": {
     "metadataTitle": "{language} вылын бесплатной христианской видео | Jesus Film Project",

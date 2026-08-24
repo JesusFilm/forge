@@ -271,14 +271,8 @@
     "couldNotLoad": "Hindi ma-load ang feedback form.",
     "loadingForm": "Nilo-load ang feedback form…",
     "retry": "Subukang muli",
-    "openFormShort": "Buksan ang form",
     "cancel": "Kanselahin",
-    "title": "Feedback para sa Beta",
-    "description": "Ibahagi kung ano ang gumagana at kung ano ang maaari naming pagbutihin. Ang form na ito ay ibinibigay ng Google.",
-    "openInNewTab": "Buksan ang form sa bagong tab",
-    "closeForm": "Isara ang feedback form",
-    "loadingGoogleForm": "Nilo-load ang Google Form…",
-    "iframeTitle": "Magpadala ng Beta Feedback"
+    "closeForm": "Isara ang feedback form"
   },
   "LanguageInventory": {
     "metadataTitle": "Libreng mga Christian video sa {language} | Jesus Film Project",

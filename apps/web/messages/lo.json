@@ -271,14 +271,8 @@
     "couldNotLoad": "ບໍ່ສາມາດໂຫລດແບບຟອມຄຳຕິຊົມໄດ້.",
     "loadingForm": "ກຳລັງໂຫລດແບບຟອມຄຳຕິຊົມ…",
     "retry": "ລອງໃໝ່",
-    "openFormShort": "ເປີດແບບຟອມ",
     "cancel": "ຍົກເລີກ",
-    "title": "ຄຳຕິຊົມເບຕ້າ",
-    "description": "ແບ່ງປັນສິ່ງທີ່ໃຊ້ໄດ້ດີ ແລະສິ່ງທີ່ເຮົາສາມາດປັບປຸງໄດ້. ແບບຟອມນີ້ຈັດສະໜອງໂດຍ Google.",
-    "openInNewTab": "ເປີດແບບຟອມໃນແທັບໃໝ່",
-    "closeForm": "ປິດແບບຟອມຄຳຕິຊົມ",
-    "loadingGoogleForm": "ກຳລັງໂຫລດ Google Form…",
-    "iframeTitle": "ສົ່ງຄຳຕິຊົມເບຕ້າ"
+    "closeForm": "ປິດແບບຟອມຄຳຕິຊົມ"
   },
   "LanguageInventory": {
     "metadataTitle": "ວິດີໂອຄຣິສຕຽນຟຣີໃນ {language} | Jesus Film Project",

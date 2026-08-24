@@ -271,14 +271,8 @@
     "couldNotLoad": "Diri mabukas an feedback form.",
     "loadingForm": "Ginlo-load an feedback form…",
     "retry": "Sulayi utro",
-    "openFormShort": "Ablihi an form",
     "cancel": "Kanselahon",
-    "title": "Beta nga Feedback",
-    "description": "Ipaambit kon ano an nagagawasan ngan kon ano an puydi pa naton pauswagon. Gihahatag ini nga form han Google.",
-    "openInNewTab": "Ablihi an form ha bag-o nga tab",
-    "closeForm": "Sirad-i an feedback form",
-    "loadingGoogleForm": "Ginlo-load an Google Form…",
-    "iframeTitle": "Isumite an Beta Feedback"
+    "closeForm": "Sirad-i an feedback form"
   },
   "LanguageInventory": {
     "metadataTitle": "Libre nga mga Kristohanon nga video ha {language} | Jesus Film Project",

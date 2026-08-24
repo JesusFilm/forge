@@ -271,14 +271,8 @@
     "couldNotLoad": "Nun se pudo cargar el formulariu de comentarios.",
     "loadingForm": "Cargando formulariu de comentarios…",
     "retry": "Volver a probar",
-    "openFormShort": "Abrir formulariu",
     "cancel": "Encaboxar",
-    "title": "Comentarios beta",
-    "description": "Cuéntanos qué funciona y qué podemos meyorar. Esti formulariu yéi-u Google.",
-    "openInNewTab": "Abrir formulariu nuna llingüeta nueva",
-    "closeForm": "Zarrar formulariu de comentarios",
-    "loadingGoogleForm": "Cargando Google Form…",
-    "iframeTitle": "Unviar comentarios beta"
+    "closeForm": "Zarrar formulariu de comentarios"
   },
   "LanguageInventory": {
     "metadataTitle": "Vídeos cristianos gratis en {language} | Jesus Film Project",

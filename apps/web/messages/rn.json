@@ -271,14 +271,8 @@
     "couldNotLoad": "Ifishi y’ibitekerezo ntiyashoboye kwikorera.",
     "loadingForm": "Kurikora ifishi y’ibitekerezo…",
     "retry": "Gerageza kandi",
-    "openFormShort": "Fungura ifishi",
     "cancel": "Kuraho",
-    "title": "Ibitekerezo vya Beta",
-    "description": "Sangira ikiri gukora neza n’ivyo twokosora. Iyi fishi itangwa na Google.",
-    "openInNewTab": "Fungura ifishi mu tundi tugihe",
-    "closeForm": "Funga ifishi y’ibitekerezo",
-    "loadingGoogleForm": "Kurikora ifishi ya Google…",
-    "iframeTitle": "Tanga ibitekerezo vya Beta"
+    "closeForm": "Funga ifishi y’ibitekerezo"
   },
   "LanguageInventory": {
     "metadataTitle": "Amavidewo ya gikirisu y’ubuntu mu {language} | Jesus Film Project",

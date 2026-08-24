@@ -271,14 +271,8 @@
     "couldNotLoad": "Formular za povratne informacije nije mogao da se učita.",
     "loadingForm": "Učitavanje formulara za povratne informacije…",
     "retry": "Pokušaj ponovo",
-    "openFormShort": "Otvori formular",
     "cancel": "Otkaži",
-    "title": "Beta povratne informacije",
-    "description": "Podelite šta radi dobro i šta možemo da poboljšamo. Ovaj formular obezbeđuje Google.",
-    "openInNewTab": "Otvori formular u novoj kartici",
-    "closeForm": "Zatvori formular za povratne informacije",
-    "loadingGoogleForm": "Učitavanje Google formulara…",
-    "iframeTitle": "Pošalji beta povratne informacije"
+    "closeForm": "Zatvori formular za povratne informacije"
   },
   "LanguageInventory": {
     "metadataTitle": "Besplatni hrišćanski video zapisi na jeziku {language} | Jesus Film Project",

@@ -271,14 +271,8 @@
     "couldNotLoad": "Rəy forması yüklənmədi.",
     "loadingForm": "Rəy forması yüklənir…",
     "retry": "Yenidən cəhd edin",
-    "openFormShort": "Formanı aç",
     "cancel": "Ləğv et",
-    "title": "Beta rəyi",
-    "description": "Nəyin işlədiyini və nələri yaxşılaşdıra biləcəyimizi paylaşın. Bu forma Google tərəfindən təqdim olunur.",
-    "openInNewTab": "Formanı yeni vərəqdə aç",
-    "closeForm": "Rəy formasını bağla",
-    "loadingGoogleForm": "Google Form yüklənir…",
-    "iframeTitle": "Beta rəyi göndər"
+    "closeForm": "Rəy formasını bağla"
   },
   "LanguageInventory": {
     "metadataTitle": "{language} dilində pulsuz xristian videoları | Jesus Film Project",

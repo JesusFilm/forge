@@ -271,14 +271,8 @@
     "couldNotLoad": "Imeshindikana kupakia fomu ya maoni.",
     "loadingForm": "Inapakia fomu ya maoni…",
     "retry": "Jaribu tena",
-    "openFormShort": "Fungua fomu",
     "cancel": "Ghairi",
-    "title": "Maoni ya Beta",
-    "description": "Shiriki kinachofanya kazi na tunachoweza kuboresha. Fomu hii imetolewa na Google.",
-    "openInNewTab": "Fungua fomu katika kichupo kipya",
-    "closeForm": "Funga fomu ya maoni",
-    "loadingGoogleForm": "Inapakia Fomu ya Google…",
-    "iframeTitle": "Wasilisha Maoni ya Beta"
+    "closeForm": "Funga fomu ya maoni"
   },
   "LanguageInventory": {
     "metadataTitle": "Video za Kikristo za bure katika {language} | Jesus Film Project",

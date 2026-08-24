@@ -271,14 +271,8 @@
     "couldNotLoad": "Не вдалося завантажити форму відгуку.",
     "loadingForm": "Завантаження форми відгуку…",
     "retry": "Повторити",
-    "openFormShort": "Відкрити форму",
     "cancel": "Скасувати",
-    "title": "Відгук про бета-версію",
-    "description": "Поділіться тим, що працює добре, і тим, що можна покращити. Цю форму надає Google.",
-    "openInNewTab": "Відкрити форму в новій вкладці",
-    "closeForm": "Закрити форму відгуку",
-    "loadingGoogleForm": "Завантаження Google Форми…",
-    "iframeTitle": "Надіслати відгук про бета-версію"
+    "closeForm": "Закрити форму відгуку"
   },
   "LanguageInventory": {
     "metadataTitle": "Безкоштовні християнські відео {language} | Jesus Film Project",

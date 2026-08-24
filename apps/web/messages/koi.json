@@ -271,14 +271,8 @@
     "couldNotLoad": "Отзыв форма лэдзӧмсьӧтӧм позьтӧм.",
     "loadingForm": "Отзыв форма лэдзӧм…",
     "retry": "Ӧшмӧтны",
-    "openFormShort": "Формаӧн вӧчны",
     "cancel": "Сӧкӧтны",
-    "title": "Beta отзыв",
-    "description": "Висьтлӧ, мый бур ӧддьӧн вундытӧм да мыйӧс позьӧ буржыкӧн вӧчны. Сійӧ формаыс Google-лыдӧн вӧтӧ.",
-    "openInNewTab": "Формаӧн вӧчны выль вкладкаын",
-    "closeForm": "Отзыв формаӧс вӧтчыны",
-    "loadingGoogleForm": "Google Form лэдзӧм…",
-    "iframeTitle": "Beta отзывӧс висьталӧм"
+    "closeForm": "Отзыв формаӧс вӧтчыны"
   },
   "LanguageInventory": {
     "metadataTitle": "{language} йылӧн венӧз христианскӧй видеоэз | Jesus Film Project",

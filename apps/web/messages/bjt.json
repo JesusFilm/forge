@@ -271,14 +271,8 @@
     "couldNotLoad": "Feedback fɔrmu bɔ ka dɔŋ.",
     "loadingForm": "Feedback fɔrmu la dɔŋ…",
     "retry": "Try again",
-    "openFormShort": "Fɔrmu fɔ",
     "cancel": "Sɛlɛ",
-    "title": "Beta fikir fɔ",
-    "description": "Fɔ nɛn kaŋ jɔmɛ nɛ, kaŋ bɛ kɔrɔlɛ nɛn kaŋ bɛ sɛn. Fɔrmu bɔ Google nɔɔ.",
-    "openInNewTab": "Fɔrmu fɔ taabɛ nɛŋ bɔ",
-    "closeForm": "Feedback fɔrmu lɔ",
-    "loadingGoogleForm": "Google Form la dɔŋ…",
-    "iframeTitle": "Beta Feedback sɛn"
+    "closeForm": "Feedback fɔrmu lɔ"
   },
   "LanguageInventory": {
     "metadataTitle": "Christian videos bɔ ka saraa nɔŋ {language} | Jesus Film Project",

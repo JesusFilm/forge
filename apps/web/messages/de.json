@@ -446,14 +446,8 @@
     "couldNotLoad": "Feedback-Formular konnte nicht geladen werden.",
     "loadingForm": "Feedback-Formular wird geladen…",
     "retry": "Erneut versuchen",
-    "openFormShort": "Formular öffnen",
     "cancel": "Abbrechen",
-    "title": "Beta-Feedback",
-    "description": "Teilen Sie mit, was gut funktioniert und was wir verbessern können. Dieses Formular wird von Google bereitgestellt.",
-    "openInNewTab": "Formular in neuem Tab öffnen",
-    "closeForm": "Feedback-Formular schließen",
-    "loadingGoogleForm": "Google-Formular wird geladen…",
-    "iframeTitle": "Beta-Feedback absenden"
+    "closeForm": "Feedback-Formular schließen"
   },
   "WatchHomeMuxInserts": {
     "datedTitle": "{date}: {title}",

@@ -446,14 +446,8 @@
     "couldNotLoad": "Formulir masukan tidak dapat dimuat.",
     "loadingForm": "Memuat formulir masukan…",
     "retry": "Coba lagi",
-    "openFormShort": "Buka formulir",
     "cancel": "Batal",
-    "title": "Masukan Beta",
-    "description": "Bagikan apa yang berfungsi dan apa yang bisa kami tingkatkan. Formulir ini disediakan oleh Google.",
-    "openInNewTab": "Buka formulir di tab baru",
-    "closeForm": "Tutup formulir masukan",
-    "loadingGoogleForm": "Memuat Google Form…",
-    "iframeTitle": "Kirim Masukan Beta"
+    "closeForm": "Tutup formulir masukan"
   },
   "WatchHomeMuxInserts": {
     "datedTitle": "{date}: {title}",

@@ -271,14 +271,8 @@
     "couldNotLoad": "Formulář zpětné vazby se nepodařilo načíst.",
     "loadingForm": "Načítání formuláře zpětné vazby…",
     "retry": "Zkusit znovu",
-    "openFormShort": "Otevřít formulář",
     "cancel": "Zrušit",
-    "title": "Beta zpětná vazba",
-    "description": "Podělte se o to, co funguje, a co můžeme vylepšit. Tento formulář poskytuje Google.",
-    "openInNewTab": "Otevřít formulář na nové kartě",
-    "closeForm": "Zavřít formulář zpětné vazby",
-    "loadingGoogleForm": "Načítání formuláře Google…",
-    "iframeTitle": "Odeslat beta zpětnou vazbu"
+    "closeForm": "Zavřít formulář zpětné vazby"
   },
   "LanguageInventory": {
     "metadataTitle": "Bezplatná křesťanská videa v jazyce {language} | Jesus Film Project",

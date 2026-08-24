@@ -271,14 +271,8 @@
     "couldNotLoad": "Tilbakemeldingsskjemaet kunne ikke lastes.",
     "loadingForm": "Laster tilbakemeldingsskjema…",
     "retry": "Prøv på nytt",
-    "openFormShort": "Åpne skjema",
     "cancel": "Avbryt",
-    "title": "Betatilbakemelding",
-    "description": "Del hva som fungerer, og hva vi kan forbedre. Dette skjemaet er levert av Google.",
-    "openInNewTab": "Åpne skjemaet i en ny fane",
-    "closeForm": "Lukk tilbakemeldingsskjema",
-    "loadingGoogleForm": "Laster Google-skjema…",
-    "iframeTitle": "Send betatilbakemelding"
+    "closeForm": "Lukk tilbakemeldingsskjema"
   },
   "LanguageInventory": {
     "metadataTitle": "Gratis kristne videoer på {language} | Jesus Film Project",

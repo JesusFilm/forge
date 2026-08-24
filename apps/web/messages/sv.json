@@ -271,14 +271,8 @@
     "couldNotLoad": "Det gick inte att ladda feedbackformuläret.",
     "loadingForm": "Laddar feedbackformulär…",
     "retry": "Försök igen",
-    "openFormShort": "Öppna formulär",
     "cancel": "Avbryt",
-    "title": "Beteafeedback",
-    "description": "Dela vad som fungerar och vad vi kan förbättra. Det här formuläret tillhandahålls av Google.",
-    "openInNewTab": "Öppna formuläret i en ny flik",
-    "closeForm": "Stäng feedbackformulär",
-    "loadingGoogleForm": "Laddar Google Formulär…",
-    "iframeTitle": "Skicka in beteafeedback"
+    "closeForm": "Stäng feedbackformulär"
   },
   "LanguageInventory": {
     "metadataTitle": "Gratis kristna videor på {language} | Jesus Film Project",

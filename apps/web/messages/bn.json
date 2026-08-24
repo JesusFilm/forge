@@ -446,14 +446,8 @@
     "couldNotLoad": "প্রতিক্রিয়া ফর্ম লোড করা যায়নি।",
     "loadingForm": "প্রতিক্রিয়া ফর্ম লোড হচ্ছে…",
     "retry": "আবার চেষ্টা করুন",
-    "openFormShort": "ফর্ম খুলুন",
     "cancel": "বাতিল করুন",
-    "title": "বেটা প্রতিক্রিয়া",
-    "description": "কোনটি কাজ করছে আর কী উন্নত করা যায়, তা জানান। এই ফর্মটি Google সরবরাহ করেছে।",
-    "openInNewTab": "নতুন ট্যাবে ফর্ম খুলুন",
-    "closeForm": "প্রতিক্রিয়া ফর্ম বন্ধ করুন",
-    "loadingGoogleForm": "Google ফর্ম লোড হচ্ছে…",
-    "iframeTitle": "বেটা প্রতিক্রিয়া জমা দিন"
+    "closeForm": "প্রতিক্রিয়া ফর্ম বন্ধ করুন"
   },
   "WatchHomeMuxInserts": {
     "datedTitle": "{date}: {title}",

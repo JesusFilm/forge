@@ -271,14 +271,8 @@
     "couldNotLoad": "Aga na-karga so feedback form.",
     "loadingForm": "Ilo-load so feedback form…",
     "retry": "Suboken kasin",
-    "openFormShort": "I-abri so form",
     "cancel": "Kansela",
-    "title": "Panaisip para ed Beta",
-    "description": "Ibahagi no anto so maayos a gagawaen tan anto so maaaring ipa-improve. Inikarga so form na say Google.",
-    "openInNewTab": "I-abri so form ed balo a tab",
-    "closeForm": "Isara so feedback form",
-    "loadingGoogleForm": "Ilo-load so Google Form…",
-    "iframeTitle": "Ipaduma so Beta Feedback"
+    "closeForm": "Isara so feedback form"
   },
   "LanguageInventory": {
     "metadataTitle": "Libre a Kristiyanong video ed {language} | Jesus Film Project",

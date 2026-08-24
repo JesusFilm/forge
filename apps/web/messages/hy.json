@@ -271,14 +271,8 @@
     "couldNotLoad": "Չհաջողվեց բեռնել արձագանքի ձևը։",
     "loadingForm": "Արձագանքի ձևը բեռնվում է…",
     "retry": "Կրկին փորձել",
-    "openFormShort": "Բացել ձևը",
     "cancel": "Չեղարկել",
-    "title": "Բետա արձագանք",
-    "description": "Կիսվեք, թե ինչն է աշխատում և ինչ կարող ենք բարելավել։ Այս ձևը տրամադրվում է Google-ի կողմից։",
-    "openInNewTab": "Բացել ձևը նոր ներդիրում",
-    "closeForm": "Փակել արձագանքի ձևը",
-    "loadingGoogleForm": "Google Form-ը բեռնվում է…",
-    "iframeTitle": "Ներկայացնել բետա արձագանք"
+    "closeForm": "Փակել արձագանքի ձևը"
   },
   "LanguageInventory": {
     "metadataTitle": "Անվճար քրիստոնեական տեսանյութեր՝ {language}-ով | Jesus Film Project",

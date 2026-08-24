@@ -271,14 +271,8 @@
     "couldNotLoad": "प्रतिक्रिया फ़ॉर्म लोड नहीं हो सका।",
     "loadingForm": "प्रतिक्रिया फ़ॉर्म लोड हो रहा है…",
     "retry": "फिर से कोशिश करें",
-    "openFormShort": "फ़ॉर्म खोलें",
     "cancel": "रद्द करें",
-    "title": "बीटा प्रतिक्रिया",
-    "description": "बताएँ कि क्या काम कर रहा है और हम क्या बेहतर कर सकते हैं। यह फ़ॉर्म Google द्वारा उपलब्ध कराया गया है।",
-    "openInNewTab": "फ़ॉर्म को नए टैब में खोलें",
-    "closeForm": "प्रतिक्रिया फ़ॉर्म बंद करें",
-    "loadingGoogleForm": "Google फ़ॉर्म लोड हो रहा है…",
-    "iframeTitle": "बीटा प्रतिक्रिया सबमिट करें"
+    "closeForm": "प्रतिक्रिया फ़ॉर्म बंद करें"
   },
   "LanguageInventory": {
     "metadataTitle": "{language} में निःशुल्क ईसाई वीडियो | Jesus Film Project",

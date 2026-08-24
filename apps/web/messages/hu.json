@@ -271,14 +271,8 @@
     "couldNotLoad": "A visszajelző űrlap nem tölthető be.",
     "loadingForm": "Visszajelző űrlap betöltése…",
     "retry": "Újra",
-    "openFormShort": "Űrlap megnyitása",
     "cancel": "Mégse",
-    "title": "Beta visszajelzés",
-    "description": "Oszd meg, mi működik jól, és min lehetne javítani. Ezt az űrlapot a Google biztosítja.",
-    "openInNewTab": "Űrlap megnyitása új lapon",
-    "closeForm": "Visszajelző űrlap bezárása",
-    "loadingGoogleForm": "Google Űrlap betöltése…",
-    "iframeTitle": "Beta visszajelzés beküldése"
+    "closeForm": "Visszajelző űrlap bezárása"
   },
   "LanguageInventory": {
     "metadataTitle": "Ingyenes keresztény videók {language} nyelven | Jesus Film Project",

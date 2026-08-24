@@ -271,14 +271,8 @@
     "couldNotLoad": "የአስተያየት ቅጹን መጫን አልተቻለም።",
     "loadingForm": "የአስተያየት ቅጹ በመጫን ላይ ነው…",
     "retry": "እንደገና ሞክር",
-    "openFormShort": "ቅጽ ክፈት",
     "cancel": "ሰርዝ",
-    "title": "የቤታ አስተያየት",
-    "description": "የሚሰራውን እና ምን ማሻሻል እንደምንችል ያካፍሉ። ይህ ቅጽ በGoogle የቀረበ ነው።",
-    "openInNewTab": "ቅጹን በአዲስ ትር ክፈት",
-    "closeForm": "የአስተያየት ቅጽ ዝጋ",
-    "loadingGoogleForm": "የGoogle ቅጽ በመጫን ላይ…",
-    "iframeTitle": "የቤታ አስተያየት አስገባ"
+    "closeForm": "የአስተያየት ቅጽ ዝጋ"
   },
   "LanguageInventory": {
     "metadataTitle": "በ{language} የነፃ ክርስቲያናዊ ቪዲዮዎች | Jesus Film Project",

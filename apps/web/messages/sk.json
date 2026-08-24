@@ -271,14 +271,8 @@
     "couldNotLoad": "Formulár spätnej väzby sa nepodarilo načítať.",
     "loadingForm": "Načítava sa formulár spätnej väzby…",
     "retry": "Skúsiť znova",
-    "openFormShort": "Otvoriť formulár",
     "cancel": "Zrušiť",
-    "title": "Beta spätná väzba",
-    "description": "Podeľte sa o to, čo funguje a čo môžeme zlepšiť. Tento formulár poskytuje Google.",
-    "openInNewTab": "Otvoriť formulár na novej karte",
-    "closeForm": "Zavrieť formulár spätnej väzby",
-    "loadingGoogleForm": "Načítava sa formulár Google…",
-    "iframeTitle": "Odoslať beta spätnú väzbu"
+    "closeForm": "Zavrieť formulár spätnej väzby"
   },
   "LanguageInventory": {
     "metadataTitle": "Bezplatné kresťanské videá v jazyku {language} | Jesus Film Project",

@@ -271,14 +271,8 @@
     "couldNotLoad": "Obrazca za povratne informacije ni bilo mogoče naložiti.",
     "loadingForm": "Nalaganje obrazca za povratne informacije …",
     "retry": "Poskusi znova",
-    "openFormShort": "Odpri obrazec",
     "cancel": "Prekliči",
-    "title": "Beta povratne informacije",
-    "description": "Povejte, kaj deluje in kaj lahko izboljšamo. Ta obrazec zagotavlja Google.",
-    "openInNewTab": "Odpri obrazec v novem zavihku",
-    "closeForm": "Zapri obrazec za povratne informacije",
-    "loadingGoogleForm": "Nalaganje obrazca Google …",
-    "iframeTitle": "Pošlji beta povratne informacije"
+    "closeForm": "Zapri obrazec za povratne informacije"
   },
   "LanguageInventory": {
     "metadataTitle": "Brezplačni krščanski videoposnetki v jeziku {language} | Jesus Film Project",

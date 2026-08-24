@@ -271,14 +271,8 @@
     "couldNotLoad": "فیڈبیک فارم لوڈ نہیں ہو سکا۔",
     "loadingForm": "فیڈبیک فارم لوڈ ہو رہا ہے…",
     "retry": "دوبارہ کوشش کریں",
-    "openFormShort": "فارم کھولیں",
     "cancel": "منسوخ کریں",
-    "title": "بیٹا فیڈبیک",
-    "description": "بتائیں کیا چیز درست کام کر رہی ہے اور ہم کیا بہتر بنا سکتے ہیں۔ یہ فارم Google کی طرف سے فراہم کیا گیا ہے۔",
-    "openInNewTab": "فارم نئی ٹیب میں کھولیں",
-    "closeForm": "فیڈبیک فارم بند کریں",
-    "loadingGoogleForm": "Google فارم لوڈ ہو رہا ہے…",
-    "iframeTitle": "بیٹا فیڈبیک جمع کروائیں"
+    "closeForm": "فیڈبیک فارم بند کریں"
   },
   "LanguageInventory": {
     "metadataTitle": "{language} میں مفت مسیحی ویڈیوز | Jesus Film Project",

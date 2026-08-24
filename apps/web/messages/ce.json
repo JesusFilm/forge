@@ -271,14 +271,8 @@
     "couldNotLoad": "Пайда форма ачула ца хили.",
     "loadingForm": "Пайда форма ачуьллу…",
     "retry": "Кхин дӀагӀа",
-    "openFormShort": "Форма ачуьлла",
     "cancel": "Юкъадаьккха",
-    "title": "Бета-пайда",
-    "description": "Цхьаьнна а иштта муьлш а кхочуш хилла, цхьа кхин дезар дац хьо. Корта форма Google-ца цаӀхьа дохуш ду.",
-    "openInNewTab": "Форман нова вкладка ачуьлла",
-    "closeForm": "Пайда форман юкъадаьккха",
-    "loadingGoogleForm": "Google Form ачуьллу…",
-    "iframeTitle": "Бета-пайда дӀаяздар"
+    "closeForm": "Пайда форман юкъадаьккха"
   },
   "LanguageInventory": {
     "metadataTitle": "{language} мотте бесплатни христиански видеолаш | Jesus Film Project",

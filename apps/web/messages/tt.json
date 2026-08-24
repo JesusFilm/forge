@@ -271,14 +271,8 @@
     "couldNotLoad": "Фикер алышу формасын йөкләп булмады.",
     "loadingForm": "Фикер алышу формасы йөкләнә…",
     "retry": "Кабатлау",
-    "openFormShort": "Форманы ачу",
     "cancel": "Баш тарту",
-    "title": "Бета-фикер алышу",
-    "description": "Нәрсә яхшы эшләвен һәм нәрсәне яхшырта алуыбызны бүлешегез. Бу форма Google тарафыннан тәкъдим ителә.",
-    "openInNewTab": "Форманы яңа вкладкада ачу",
-    "closeForm": "Фикер алышу формасын ябу",
-    "loadingGoogleForm": "Google Form йөкләнә…",
-    "iframeTitle": "Бета-фикер алышу җибәрү"
+    "closeForm": "Фикер алышу формасын ябу"
   },
   "LanguageInventory": {
     "metadataTitle": "{language} телендә бушлай христиан видеолары | Jesus Film Project",

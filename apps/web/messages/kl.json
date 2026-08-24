@@ -271,14 +271,8 @@
     "couldNotLoad": "Oqaluttuarisaanut immersugassaq ammarneqarsinnaanngilaq.",
     "loadingForm": "Oqaluttuarisaanut immersugassaq aaneqassaaq…",
     "retry": "Nutaamik misiliigit",
-    "openFormShort": "Immersugassaq ammaruk",
     "cancel": "Unitsiinnaruk",
-    "title": "Beta-mi oqaaseqarneq",
-    "description": "Suut pitsaasuunersut aammalu qanoq pitsaanerulersinneqarsinnaanersut pillugit oqaluttuariuk. Immersugassaq taanna Google-imit tunniunneqarpoq.",
-    "openInNewTab": "Immersugassaq tabimi nutaami ammaruk",
-    "closeForm": "Oqaluttuarisaanut immersugassaq matuneqassaaq",
-    "loadingGoogleForm": "Google Form aaneqassaaq…",
-    "iframeTitle": "Beta-mi oqaaseqarneq nassiuguk"
+    "closeForm": "Oqaluttuarisaanut immersugassaq matuneqassaaq"
   },
   "LanguageInventory": {
     "metadataTitle": "{language}-imi kristumiut video-t akeqanngitsut | Jesus Film Project",

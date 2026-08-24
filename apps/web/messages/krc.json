@@ -271,14 +271,8 @@
     "couldNotLoad": "Пикир формасын жүктөөгө болбоду.",
     "loadingForm": "Пикир формасы жүктөлүүдө…",
     "retry": "Кайра аракет кылуу",
-    "openFormShort": "Форманы ачуу",
     "cancel": "Жокко чыгаруу",
-    "title": "Бета-пикир",
-    "description": "Эмне жакшы иштеп жатканын жана эмнени жакшыртууга болорун бөлүшүңүз. Бул форма Google тарабынан берилген.",
-    "openInNewTab": "Форманы жаңы өтмөктө ачуу",
-    "closeForm": "Пикир формасын жабуу",
-    "loadingGoogleForm": "Google Form жүктөлүүдө…",
-    "iframeTitle": "Бета-пикир жөнөтүү"
+    "closeForm": "Пикир формасын жабуу"
   },
   "LanguageInventory": {
     "metadataTitle": "{language} тилиндеги акысыз христиан видеолору | Jesus Film Project",

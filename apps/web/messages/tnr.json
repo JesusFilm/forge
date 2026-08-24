@@ -271,14 +271,8 @@
     "couldNotLoad": "Form feedback yé tɔrɔ.",
     "loadingForm": "Form feedback yé bɔ…",
     "retry": "Tɔrɔ ka wɛŋ",
-    "openFormShort": "Ile form",
     "cancel": "Kɔyɛ",
-    "title": "Nɔŋ Beta Feedback",
-    "description": "Aŋa ñaŋa kɛ kuŋa tɔrɔ wáa aŋa ñaŋa kɛ kɔŋa. Form ɗi Google ka.",
-    "openInNewTab": "Ile form tab bɔŋ nɛŋ",
-    "closeForm": "Dɔŋ form feedback",
-    "loadingGoogleForm": "Google Form yé bɔ…",
-    "iframeTitle": "Nɔŋ Beta Feedback"
+    "closeForm": "Dɔŋ form feedback"
   },
   "LanguageInventory": {
     "metadataTitle": "Video Christian jɛmɛ {language} ka | Jesus Film Project",

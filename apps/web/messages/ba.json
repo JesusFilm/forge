@@ -271,14 +271,8 @@
     "couldNotLoad": "Фекер белдереү формаһын йөкләп булманы.",
     "loadingForm": "Фекер белдереү формаһы йөкләнә…",
     "retry": "Ҡабатлап ҡарау",
-    "openFormShort": "Форманы асыу",
     "cancel": "Ғәмәлдән сығарыу",
-    "title": "Бета-фекерҙәр",
-    "description": "Нимә яҡшы эшләй, нимәне яҡшыртып булғанын бүлешегеҙ. Был форманы Google тәҡдим итә.",
-    "openInNewTab": "Форманы яңы вкладкала асыу",
-    "closeForm": "Фекер белдереү формаһын ябыу",
-    "loadingGoogleForm": "Google формаһы йөкләнә…",
-    "iframeTitle": "Бета-фекерҙәрҙе ебәреү"
+    "closeForm": "Фекер белдереү формаһын ябыу"
   },
   "LanguageInventory": {
     "metadataTitle": "{language} телендәге бушлай христиан видеолары | Jesus Film Project",

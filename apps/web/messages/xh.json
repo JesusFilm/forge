@@ -271,14 +271,8 @@
     "couldNotLoad": "Ifomu yempendulo ayikwazanga ukulayishwa.",
     "loadingForm": "Kulayishwa ifomu yempendulo…",
     "retry": "Phinda uzame",
-    "openFormShort": "Vula ifomu",
     "cancel": "Rhoxisa",
-    "title": "Impendulo yeBeta",
-    "description": "Yabelana ngento esebenzayo nento esinokuyiphucula. Le fomu inikezelwa yiGoogle.",
-    "openInNewTab": "Vula ifomu kwithebhu entsha",
-    "closeForm": "Vala ifomu yempendulo",
-    "loadingGoogleForm": "Kulayishwa iFomu kaGoogle…",
-    "iframeTitle": "Ngenisa Impendulo yeBeta"
+    "closeForm": "Vala ifomu yempendulo"
   },
   "LanguageInventory": {
     "metadataTitle": "Iividiyo zamaKristu zasimahla ngesi {language} | Jesus Film Project",

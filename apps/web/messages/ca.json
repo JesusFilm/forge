@@ -271,14 +271,8 @@
     "couldNotLoad": "No s’ha pogut carregar el formulari de comentaris.",
     "loadingForm": "S’està carregant el formulari de comentaris…",
     "retry": "Torna a provar",
-    "openFormShort": "Obrir el formulari",
     "cancel": "Cancel·la",
-    "title": "Comentaris beta",
-    "description": "Comparteix què funciona i què podem millorar. Aquest formulari el proporciona Google.",
-    "openInNewTab": "Obrir el formulari en una pestanya nova",
-    "closeForm": "Tancar el formulari de comentaris",
-    "loadingGoogleForm": "S’està carregant el formulari de Google…",
-    "iframeTitle": "Enviar comentaris beta"
+    "closeForm": "Tancar el formulari de comentaris"
   },
   "LanguageInventory": {
     "metadataTitle": "Vídeos cristians gratuïts en {language} | Jesus Film Project",

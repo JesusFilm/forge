@@ -271,14 +271,8 @@
     "couldNotLoad": "Fomu ya ndemanga sinathe kutsegulidwa.",
     "loadingForm": "Kutsegula fomu ya ndemanga…",
     "retry": "Yesaninso",
-    "openFormShort": "Tsegulani fomu",
     "cancel": "Lekani",
-    "title": "Ndemanga za Beta",
-    "description": "Gawani zimene zikuyenda bwino ndi zimene tingawongolere. Fomuyi yaperekedwa ndi Google.",
-    "openInNewTab": "Tsegulani fomu mu tabu yatsopano",
-    "closeForm": "Tsekani fomu ya ndemanga",
-    "loadingGoogleForm": "Kutsegula Google Form…",
-    "iframeTitle": "Tumizani Ndemanga za Beta"
+    "closeForm": "Tsekani fomu ya ndemanga"
   },
   "LanguageInventory": {
     "metadataTitle": "Mavidiyo achikhristu aulere mu {language} | Jesus Film Project",

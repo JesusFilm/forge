@@ -271,14 +271,8 @@
     "couldNotLoad": "Δεν ήταν δυνατή η φόρτωση της φόρμας σχολίων.",
     "loadingForm": "Φόρτωση φόρμας σχολίων…",
     "retry": "Επανάληψη",
-    "openFormShort": "Άνοιγμα φόρμας",
     "cancel": "Ακύρωση",
-    "title": "Σχόλια Beta",
-    "description": "Μοιραστείτε τι λειτουργεί και τι μπορούμε να βελτιώσουμε. Αυτή η φόρμα παρέχεται από τη Google.",
-    "openInNewTab": "Άνοιγμα φόρμας σε νέα καρτέλα",
-    "closeForm": "Κλείσιμο φόρμας σχολίων",
-    "loadingGoogleForm": "Φόρτωση Google Form…",
-    "iframeTitle": "Υποβολή σχολίων Beta"
+    "closeForm": "Κλείσιμο φόρμας σχολίων"
   },
   "LanguageInventory": {
     "metadataTitle": "Δωρεάν χριστιανικά βίντεο στα {language} | Jesus Film Project",

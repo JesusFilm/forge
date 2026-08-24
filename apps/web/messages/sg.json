@@ -271,14 +271,8 @@
     "couldNotLoad": "Fɔrmilɛ ya mayebisi ekokaki kofungwama te.",
     "loadingForm": "Kofungola fɔrmilɛ ya mayebisi…",
     "retry": "Meka lisusu",
-    "openFormShort": "Fungola fɔrmilɛ",
     "cancel": "Kanga",
-    "title": "Mayebisi ya Beta",
-    "description": "Kabola oyo ezali kosala malamu mpe oyo tokoki kobongisa. Fɔrmilɛ oyo epesami na Google.",
-    "openInNewTab": "Fungola fɔrmilɛ na onglet ya sika",
-    "closeForm": "Kanga fɔrmilɛ ya mayebisi",
-    "loadingGoogleForm": "Kofungola Google Form…",
-    "iframeTitle": "Tinda Mayebisi ya Beta"
+    "closeForm": "Kanga fɔrmilɛ ya mayebisi"
   },
   "LanguageInventory": {
     "metadataTitle": "Bavideo ya boklisto ya ofele na {language} | Jesus Film Project",

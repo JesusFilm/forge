@@ -271,14 +271,8 @@
     "couldNotLoad": "ਫੀਡਬੈਕ ਫਾਰਮ ਲੋਡ ਨਹੀਂ ਹੋ ਸਕਿਆ।",
     "loadingForm": "ਫੀਡਬੈਕ ਫਾਰਮ ਲੋਡ ਕੀਤਾ ਜਾ ਰਿਹਾ ਹੈ…",
     "retry": "ਫਿਰ ਕੋਸ਼ਿਸ਼ ਕਰੋ",
-    "openFormShort": "ਫਾਰਮ ਖੋਲ੍ਹੋ",
     "cancel": "ਰੱਦ ਕਰੋ",
-    "title": "ਬੀਟਾ ਫੀਡਬੈਕ",
-    "description": "ਦੱਸੋ ਕਿ ਕੀ ਚੰਗਾ ਕੰਮ ਕਰ ਰਿਹਾ ਹੈ ਅਤੇ ਅਸੀਂ ਕੀ ਬਿਹਤਰ ਕਰ ਸਕਦੇ ਹਾਂ। ਇਹ ਫਾਰਮ Google ਵੱਲੋਂ ਦਿੱਤਾ ਗਿਆ ਹੈ।",
-    "openInNewTab": "ਫਾਰਮ ਨਵੇਂ ਟੈਬ ਵਿੱਚ ਖੋਲ੍ਹੋ",
-    "closeForm": "ਫੀਡਬੈਕ ਫਾਰਮ ਬੰਦ ਕਰੋ",
-    "loadingGoogleForm": "Google ਫਾਰਮ ਲੋਡ ਕੀਤਾ ਜਾ ਰਿਹਾ ਹੈ…",
-    "iframeTitle": "ਬੀਟਾ ਫੀਡਬੈਕ ਭੇਜੋ"
+    "closeForm": "ਫੀਡਬੈਕ ਫਾਰਮ ਬੰਦ ਕਰੋ"
   },
   "LanguageInventory": {
     "metadataTitle": "{language} ਵਿੱਚ ਮੁਫ਼ਤ ਮਸੀਹੀ ਵੀਡੀਓਜ਼ | Jesus Film Project",

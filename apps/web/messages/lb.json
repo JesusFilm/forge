@@ -271,14 +271,8 @@
     "couldNotLoad": "De Feedback-Formulaire konnt net geluede ginn.",
     "loadingForm": "Feedback-Formulaire gëtt geluede…",
     "retry": "Nach eng Kéier",
-    "openFormShort": "Formulaire opmaachen",
     "cancel": "Ofbriechen",
-    "title": "Beta-Feedback",
-    "description": "Deelt mat, wat gutt funktionéiert a wat mir verbessere kënnen. Dëse Formular gëtt vu Google ugebueden.",
-    "openInNewTab": "Formulaire an engem neien Tab opmaachen",
-    "closeForm": "Feedback-Formulaire zoumaachen",
-    "loadingGoogleForm": "Google-Formulaire gëtt geluede…",
-    "iframeTitle": "Beta-Feedback ofginn"
+    "closeForm": "Feedback-Formulaire zoumaachen"
   },
   "LanguageInventory": {
     "metadataTitle": "Gratis chrëschtlech Videoen op {language} | Jesus Film Project",

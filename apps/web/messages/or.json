@@ -271,14 +271,8 @@
     "couldNotLoad": "ମତାମତ ଫର୍ମ ଲୋଡ୍ ହୋଇପାରିଲା ନାହିଁ।",
     "loadingForm": "ମତାମତ ଫର୍ମ ଲୋଡ୍ କରାଯାଉଛି…",
     "retry": "ପୁଣି ଚେଷ୍ଟା କରନ୍ତୁ",
-    "openFormShort": "ଫର୍ମ ଖୋଲନ୍ତୁ",
     "cancel": "ବାତିଲ୍",
-    "title": "ବେଟା ମତାମତ",
-    "description": "କ’ଣ ଭଲ କାମ କରୁଛି ଏବଂ କ’ଣ ଆମେ ଉନ୍ନତ କରିପାରିବୁ, ସେଥିରେ ଭାଗ କରନ୍ତୁ। ଏହି ଫର୍ମ Google ଦ୍ୱାରା ପ୍ରଦାନ କରାଯାଇଛି।",
-    "openInNewTab": "ଏକ ନୂଆ ଟ୍ୟାବ୍‌ରେ ଫର୍ମ ଖୋଲନ୍ତୁ",
-    "closeForm": "ମତାମତ ଫର୍ମ ବନ୍ଦ କରନ୍ତୁ",
-    "loadingGoogleForm": "Google ଫର୍ମ ଲୋଡ୍ କରାଯାଉଛି…",
-    "iframeTitle": "ବେଟା ମତାମତ ଜମାଦିଅନ୍ତୁ"
+    "closeForm": "ମତାମତ ଫର୍ମ ବନ୍ଦ କରନ୍ତୁ"
   },
   "LanguageInventory": {
     "metadataTitle": "{language}ରେ ମାଗଣା ଖ୍ରୀଷ୍ଟିୟ ଭିଡିଓ | Jesus Film Project",

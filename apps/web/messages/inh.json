@@ -271,14 +271,8 @@
     "couldNotLoad": "Хабар форма арадолуш йац.",
     "loadingForm": "Хабар форма йоаккхийла…",
     "retry": "Т1ехьахьа",
-    "openFormShort": "Форма арадалийта",
     "cancel": "Дийцар",
-    "title": "Beta-хьаьтта хабар",
-    "description": "Хьо г1улакх а, цхьа бехк а къахьегарг а боаьржабе. Цу форма Google т1аьхь хила.",
-    "openInNewTab": "Форма цхьа к1ирд табаца арадалийта",
-    "closeForm": "Хабар форма хьаяккха",
-    "loadingGoogleForm": "Google Form йоаккхийла…",
-    "iframeTitle": "Beta-хьаьтта хабар д1айоха"
+    "closeForm": "Хабар форма хьаяккха"
   },
   "LanguageInventory": {
     "metadataTitle": "{language} т1а хьаькха христианский видеол | Jesus Film Project",

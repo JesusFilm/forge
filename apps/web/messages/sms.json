@@ -271,14 +271,8 @@
     "couldNotLoad": "Palautte-lomakk ei puättam lataattâd.",
     "loadingForm": "Lättee palautte-lomakk…",
     "retry": "Koʹlggest ođđâsâst",
-    "openFormShort": "Lääʹdd lomakk",
     "cancel": "Kâʹll",
-    "title": "Beta-palautte",
-    "description": "Jaa mitä toimii ja mitä voib parantaa. Tää lomakk on Google'n.",
-    "openInNewTab": "Lääʹdd lomakk ođđâʹbb välipâʹstâs",
-    "closeForm": "Peitt palautte-lomakk",
-    "loadingGoogleForm": "Lättee Google-lomakk…",
-    "iframeTitle": "Läʹdd beta-palautte"
+    "closeForm": "Peitt palautte-lomakk"
   },
   "LanguageInventory": {
     "metadataTitle": "Maksâttum kristtillâš videoid kielessä {language} | Jesus Film Project",

@@ -271,14 +271,8 @@
     "couldNotLoad": "Feedback-Formular chonnte nöd glade werde.",
     "loadingForm": "Feedback-Formular wird glade…",
     "retry": "Nochmal versueche",
-    "openFormShort": "Formular öffne",
     "cancel": "Abbreche",
-    "title": "Beta-Feedback",
-    "description": "Teile, was funktioniert und was mer verbessere chönd. Das Formular wird vo Google bereitgstellt.",
-    "openInNewTab": "Formular i neui Tab öffne",
-    "closeForm": "Feedback-Formular schliesse",
-    "loadingGoogleForm": "Google-Formular wird glade…",
-    "iframeTitle": "Beta-Feedback einsende"
+    "closeForm": "Feedback-Formular schliesse"
   },
   "LanguageInventory": {
     "metadataTitle": "Gratis christlichi Videos uf {language} | Jesus Film Project",

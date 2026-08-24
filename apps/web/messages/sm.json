@@ -271,14 +271,8 @@
     "couldNotLoad": "E le mafai ona utaina le pepa o manatu.",
     "loadingForm": "O lo'o utaina le pepa o manatu…",
     "retry": "Toe taumafai",
-    "openFormShort": "Tatala le pepa",
     "cancel": "Fa'aleaoga",
-    "title": "Manatu o le Beta",
-    "description": "Fa'asoa mai mea o lo'o lelei ma mea e mafai ona fa'aleleia. O lenei pepa e saunia e Google.",
-    "openInNewTab": "Tatala le pepa i se tab fou",
-    "closeForm": "Tapuni le pepa o manatu",
-    "loadingGoogleForm": "O lo'o utaina le Google Form…",
-    "iframeTitle": "Auina atu Manatu o le Beta"
+    "closeForm": "Tapuni le pepa o manatu"
   },
   "LanguageInventory": {
     "metadataTitle": "Vitio fa'a-Kerisiano e leai se totogi i le {language} | Jesus Film Project",

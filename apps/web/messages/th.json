@@ -446,14 +446,8 @@
     "couldNotLoad": "ไม่สามารถโหลดแบบฟอร์มความคิดเห็นได้",
     "loadingForm": "กำลังโหลดแบบฟอร์มความคิดเห็น…",
     "retry": "ลองใหม่",
-    "openFormShort": "เปิดแบบฟอร์ม",
     "cancel": "ยกเลิก",
-    "title": "ความคิดเห็นเบต้า",
-    "description": "แบ่งปันสิ่งที่ใช้งานได้ดีและสิ่งที่เราควรปรับปรุง แบบฟอร์มนี้จัดทำโดย Google",
-    "openInNewTab": "เปิดแบบฟอร์มในแท็บใหม่",
-    "closeForm": "ปิดแบบฟอร์มความคิดเห็น",
-    "loadingGoogleForm": "กำลังโหลด Google Form…",
-    "iframeTitle": "ส่งความคิดเห็นเบต้า"
+    "closeForm": "ปิดแบบฟอร์มความคิดเห็น"
   },
   "WatchHomeMuxInserts": {
     "datedTitle": "{date}: {title}",

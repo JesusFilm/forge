@@ -271,14 +271,8 @@
     "couldNotLoad": "Ur izmir ara ad yeldi tiferkit n tudert.",
     "loadingForm": "Asali n tiferkit n tudert…",
     "retry": "Ɛreḍ tikkelt-nniḍen",
-    "openFormShort": "Ldi tiferkit",
     "cancel": "Semmet",
-    "title": "Tudert n Beta",
-    "description": "Ḍfer ayen yedren d wayen nezmer ad nerr. Tiferkit-agi d ayen i d-yettwakkes s Google.",
-    "openInNewTab": "Ldi tiferkit deg taceṭṭa tamaynut",
-    "closeForm": "Mdel tiferkit n tudert",
-    "loadingGoogleForm": "Asali n Google Form…",
-    "iframeTitle": "Mmel tudert n Beta"
+    "closeForm": "Mdel tiferkit n tudert"
   },
   "LanguageInventory": {
     "metadataTitle": "Tividyo n Tazrant n Taqbaylit deg {language} | Jesus Film Project",

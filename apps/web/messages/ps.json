@@ -271,14 +271,8 @@
     "couldNotLoad": "د نظر فورمه بار نه شوه.",
     "loadingForm": "د نظر فورمه بارېږي…",
     "retry": "بیا هڅه",
-    "openFormShort": "فورمه پرانیزئ",
     "cancel": "لغوه",
-    "title": "بیټا نظرونه",
-    "description": "وېنئ چې څه سم کار کوي او څه ښه کولای شو. دا فورمه د Google له خوا برابرېږي.",
-    "openInNewTab": "فورمه په نوې ټب کې پرانیزئ",
-    "closeForm": "د نظر فورمه وتړئ",
-    "loadingGoogleForm": "د Google فورمه بارېږي…",
-    "iframeTitle": "بیټا نظر وړاندې کړئ"
+    "closeForm": "د نظر فورمه وتړئ"
   },
   "LanguageInventory": {
     "metadataTitle": "په {language} کې وړیا مسيحي ویډیوګانې | Jesus Film Project",

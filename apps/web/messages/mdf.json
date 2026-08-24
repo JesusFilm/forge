@@ -271,14 +271,8 @@
     "couldNotLoad": "Отзывной формась не смог загрузиться.",
     "loadingForm": "Отзывной формась загрузится…",
     "retry": "Повторить",
-    "openFormShort": "Открыть формас",
     "cancel": "Отменить",
-    "title": "Бета-отзыв",
-    "description": "Поделитесь, что работает хорошо, и что можно улучшить. Формась — Google-нь.",
-    "openInNewTab": "Открыть формас новый табс",
-    "closeForm": "Закрыть отзывной формас",
-    "loadingGoogleForm": "Google Formась загрузится…",
-    "iframeTitle": "Отправить бета-отзыв"
+    "closeForm": "Закрыть отзывной формас"
   },
   "LanguageInventory": {
     "metadataTitle": "Бесплатные христианские видео на {language} | Jesus Film Project",

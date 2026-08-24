@@ -271,14 +271,8 @@
     "couldNotLoad": "Borang maklum balas tidak dapat dimuatkan.",
     "loadingForm": "Memuatkan borang maklum balas…",
     "retry": "Cuba semula",
-    "openFormShort": "Buka borang",
     "cancel": "Batal",
-    "title": "Maklum Balas Beta",
-    "description": "Kongsi apa yang berfungsi dan apa yang boleh kami perbaiki. Borang ini disediakan oleh Google.",
-    "openInNewTab": "Buka borang dalam tab baharu",
-    "closeForm": "Tutup borang maklum balas",
-    "loadingGoogleForm": "Memuatkan Borang Google…",
-    "iframeTitle": "Hantar Maklum Balas Beta"
+    "closeForm": "Tutup borang maklum balas"
   },
   "LanguageInventory": {
     "metadataTitle": "Video Kristian percuma dalam {language} | Jesus Film Project",

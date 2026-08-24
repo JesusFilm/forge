@@ -271,14 +271,8 @@
     "couldNotLoad": "قايتما جەدۋىلىنى يۈكلەش مۇمكىن بولمىدى.",
     "loadingForm": "قايتما جەدۋىلى يۈكلىنىۋاتىدۇ…",
     "retry": "قايتا سىناش",
-    "openFormShort": "جەدۋەلنى ئېچىش",
     "cancel": "بىكار قىلىش",
-    "title": "Beta قايتما",
-    "description": "ئىشلىۋاتقانلىرى ۋە ياخشىلاشقا بولىدىغانلىرىنى ئورتاقلىشىڭ. بۇ جەدۋەل Google تەمىنلىگەن.",
-    "openInNewTab": "جەدۋەلنى يېڭى بەتكۈچتە ئېچىش",
-    "closeForm": "قايتما جەدۋىلىنى يېپىش",
-    "loadingGoogleForm": "Google جەدۋىلى يۈكلىنىۋاتىدۇ…",
-    "iframeTitle": "Beta قايتما يوللاش"
+    "closeForm": "قايتما جەدۋىلىنى يېپىش"
   },
   "LanguageInventory": {
     "metadataTitle": "{language} دىكى ھەقسىز خىرىستىيان سىنلىرى | Jesus Film Project",

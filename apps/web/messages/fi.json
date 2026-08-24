@@ -271,14 +271,8 @@
     "couldNotLoad": "Palautelomaketta ei voitu ladata.",
     "loadingForm": "Ladataan palautelomaketta…",
     "retry": "Yritä uudelleen",
-    "openFormShort": "Avaa lomake",
     "cancel": "Peruuta",
-    "title": "Beta-palaute",
-    "description": "Kerro, mikä toimii ja mitä voimme parantaa. Google tarjoaa tämän lomakkeen.",
-    "openInNewTab": "Avaa lomake uudessa välilehdessä",
-    "closeForm": "Sulje palautelomake",
-    "loadingGoogleForm": "Ladataan Google-lomaketta…",
-    "iframeTitle": "Lähetä beta-palaute"
+    "closeForm": "Sulje palautelomake"
   },
   "LanguageInventory": {
     "metadataTitle": "Ilmaisia kristillisiä videoita kielellä {language} | Jesus Film Project",
