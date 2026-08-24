@@ -82,7 +82,9 @@ async function normalizeLoopbackDcrRequest(request: Request): Promise<Request> {
   const body = parsed as Record<string, unknown>
   const redirectUris = body.redirect_uris
   if (
-    (body.application_type !== undefined && body.application_type !== "web") ||
+    body.application_type !== undefined ||
+    (body.token_endpoint_auth_method !== undefined &&
+      body.token_endpoint_auth_method !== "none") ||
     !Array.isArray(redirectUris) ||
     redirectUris.length === 0 ||
     !redirectUris.every(
@@ -94,7 +96,11 @@ async function normalizeLoopbackDcrRequest(request: Request): Promise<Request> {
   }
 
   return new Request(request.url, {
-    body: JSON.stringify({ ...body, application_type: "native" }),
+    body: JSON.stringify({
+      ...body,
+      application_type: "native",
+      token_endpoint_auth_method: "none",
+    }),
     headers: request.headers,
     method: request.method,
   })
