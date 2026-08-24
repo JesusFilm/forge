@@ -139,7 +139,11 @@ export function decideChangelogOAuthScopes(input: {
       (!changelogScopeSet.has(scope) || grantedScopes.has(scope)),
   )
 
-  if (input.dynamicClient && !scopes.includes("changelog:read")) {
+  if (
+    input.lifecycle === "authorization" &&
+    input.dynamicClient &&
+    !scopes.includes("changelog:read")
+  ) {
     return { allowed: false, reason: "changelog_access_denied" }
   }
 

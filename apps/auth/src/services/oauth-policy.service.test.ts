@@ -125,6 +125,20 @@ describe("Changelog OAuth policy", () => {
     ).toEqual({ allowed: false, reason: "changelog_access_denied" })
   })
 
+  it("allows a previously downscoped identity-only seeded family at issuance", () => {
+    expect(
+      decideChangelogOAuthScopes({
+        lifecycle: "exchange",
+        requestedScopes: ["openid", "email:read"],
+        scopeCeiling: ["openid", "email:read"],
+        grantedScopes: [],
+        environmentKind: "local",
+        dynamicClient: true,
+        productionEnabled: false,
+      }),
+    ).toEqual({ allowed: true, scopes: ["openid", "email:read"] })
+  })
+
   it("rejects a reduced exchange or refresh and keeps the original ceiling", () => {
     expect(
       decideChangelogOAuthScopes({
