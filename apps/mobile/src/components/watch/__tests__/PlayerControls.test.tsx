@@ -356,20 +356,30 @@ describe("cast control differs by platform", () => {
     await unmount(renderer)
   })
 
-  // Both platforms stay gated on `available`, so replacing the Android control
-  // did not change when a viewer sees a cast affordance.
-  it.each([["android"], ["ios"]])(
-    "%s hides the control while no device is reachable (R2)",
-    async (os) => {
-      setPlatform(os as "ios" | "android")
-      const renderer = await render(false, {
-        castUi: makeCastUi({ available: false }),
-      })
-      expect(labelCount(renderer, "Cast")).toBe(0)
-      expect(nativeButtonCount(renderer)).toBe(0)
-      await unmount(renderer)
-    },
-  )
+  // iOS keeps the R2 gate: presentCastDialog needs no attached button, so
+  // getCastState() is trustworthy there and hiding the glyph is honest.
+  it("iOS hides the control while no device is reachable (R2)", async () => {
+    setPlatform("ios")
+    const renderer = await render(false, {
+      castUi: makeCastUi({ available: false }),
+    })
+    expect(labelCount(renderer, "Cast")).toBe(0)
+    expect(nativeButtonCount(renderer)).toBe(0)
+    await unmount(renderer)
+  })
+
+  // Galaxy Tab S8, 2026-08-24: getCastState() answered noDevicesAvailable for
+  // minutes with two Chromecasts already in the app's route list, flipping only
+  // after an attached button opened the dialog. Gating it can never open.
+  it("Android renders the SDK button even while `available` is false", async () => {
+    setPlatform("android")
+    const renderer = await render(false, {
+      castUi: makeCastUi({ available: false }),
+    })
+    expect(nativeButtonCount(renderer)).toBe(1)
+    expect(hasLabel(renderer, "Cast")).toBe(true)
+    await unmount(renderer)
+  })
 
   it("renders nothing on a surface with no cast wiring", async () => {
     setPlatform("android")

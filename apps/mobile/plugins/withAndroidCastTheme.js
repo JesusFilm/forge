@@ -64,6 +64,11 @@ const INTRO_PARENT = "CastIntroOverlay"
 const MEDIA_ROUTER_ITEMS = {
   colorPrimary: "@color/forge_cast_accent",
   colorAccent: "@color/forge_cast_accent",
+  // The dialog's GROUND is windowBackground, not colorBackground. Both are set
+  // to #303030 by ThemeOverlay.AppCompat.Dark; setting only the latter left the
+  // measured ground stock while our text colours landed. Stock is a flat
+  // colour, so overriding it costs no dialog inset or corner radius.
+  "android:windowBackground": "@color/forge_cast_background",
   "android:colorBackground": "@color/forge_cast_background",
   "android:textColorPrimary": "@color/forge_cast_text_primary",
   "android:textColorSecondary": "@color/forge_cast_text_secondary",

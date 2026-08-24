@@ -501,10 +501,18 @@ it moves the fingerprint runtime version, so an OTA update cannot deliver it.
     whenever a receiver was discovered and did nothing at all, because nothing
     had ever mounted a native button. Using the native button as the control
     closes the gap by construction.
-- **Both platforms stay gated on `castUi.available`,** so replacing the Android
-  control changed no visible behaviour. The SDK button does NOT self-hide when
-  no receiver is present (verified on an emulator, 2026-08-21), so the gate is
-  ours to keep.
+- **Android must NOT gate the control on `castUi.available`; iOS must.**
+  `getCastState()` answers `noDevicesAvailable` until a native `MediaRouteButton`
+  has been attached AND used, so gating Android on it is a deadlock — the signal
+  that would reveal the button only turns true after the button exists. Measured
+  on a Galaxy Tab S8 (Android 16, 2026-08-24): both Chromecasts sat in the app's
+  own `MediaRouter` route list for minutes at `noDevicesAvailable`, flipping to
+  `notConnected` only once the dialog opened. iOS keeps the gate — its
+  `presentCastDialog` needs no attached button, so its state is trustworthy.
+- **The SDK button never self-hides**, so the always-visible Android glyph is
+  correct, not a leak. In mediarouter 1.8.0-beta01 `MediaRouteButton` has no
+  visibility logic at all and `setAlwaysVisible(boolean)` is a no-op stub
+  (`0: return` in its bytecode) — the old auto-hide behaviour is gone.
 - **`tintColor` is the only styling lever on the SDK button.** The connected
   artwork is the SDK's, not `cast-connected`. Its accessibility label does reach
   the native view (`content-desc="Cast"`, verified 2026-08-21); whether the
@@ -515,23 +523,36 @@ it moves the fingerprint runtime version, so an OTA update cannot deliver it.
   colour explicitly is what pins them dark; re-check in light mode after any
   change. **iOS verified 2026-08-21** (sheet band held at luminance 25/255 with
   the system in light appearance, iPhone 17 Pro Max simulator). **Android is NOT
-  verified** — it rests on an argument, not a measurement: `values-night/`
-  carries no cast resources, so the explicit hex wins in either mode. Confirm on
-  a device before trusting it.
-- **Android runtime status (2026-08-21): NOT verified.** The app builds,
-  installs and runs on an emulator with this theming, and `aapt2` resolves every
-  style parent and attribute. Nothing beyond that is established. In particular
-  it is still unknown whether the native `<CastButton>` mounts and registers at
-  all under RN 0.86's Fabric legacy view-manager interop — a component this app
-  has never rendered. `MediaRouter: onRestoreRoute()` lines in logcat are NOT
-  evidence of it: they repeat on a ~25s cadence (70 in one session), so they are
-  `CastContext`'s own route loop rather than a one-shot `onAttachedToWindow`, and
-  `dumpsys activity top` showed no `MediaRouteButton` view. Two emulator limits
-  block the real check — multicast is mangled (`AOSP-MdnsDiscoveryManag: Error
-while decoding multicast packet`) so no receiver is ever discovered, and the
-  expo-dev-launcher gear overlays the cast glyph in a debug build. Use a physical
-  device, or a release build, and start by proving `showCastDialog()` resolves
-  `true`.
+  verified in light mode** — that half still rests on an argument, not a
+  measurement: `values-night/` carries no cast resources, so the explicit hex
+  wins in either mode.
+- **Android chooser dialog VERIFIED on hardware (Galaxy Tab S8, Android 16,
+  2026-08-24)** against two real Chromecasts, by sampling pixels: ground
+  `#1c1917` (441,041 px in the panel), title and both route labels `#f5f5f4`,
+  and **zero** pixels of stock `#303030`, `#424242` or `#d0021b`. The SDK
+  `<CastButton>` does mount under RN 0.86 Fabric interop — `content-desc="Cast"`,
+  `clickable=true` in `uiautomator dump`.
+- **The dialog's GROUND is `android:windowBackground`, not
+  `android:colorBackground`.** `ThemeOverlay.AppCompat.Dark` sets BOTH to
+  `@color/background_material_dark` (`#303030`); the first version set only
+  `colorBackground` and the measured ground stayed stock while our text colours
+  landed. Overriding `windowBackground` costs no dialog inset or corner radius
+  because the stock value is a flat colour, not `abc_dialog_material_background`.
+- **An emulator cannot verify any of this** — multicast is mangled
+  (`AOSP-MdnsDiscoveryManag: Error while decoding multicast packet`), so no
+  receiver is ever discovered. Use a physical device on a real LAN.
+- **`MediaRouter: onRestoreRoute()` in logcat is NOT evidence a button
+  attached** — the lines repeat on a ~25s cadence (70 in one session), so they
+  are `CastContext`'s own route loop, not a one-shot `onAttachedToWindow`. Prove
+  attachment with `uiautomator dump` and look for `content-desc="Cast"`.
+- **Discovery itself was never the problem.** GMS registers its own
+  `MediaRouter` callback with `flags=4` and the provider binds without help:
+  `MediaRouteProviderProxy … CastMediaRoute2ProviderService_Persistent` delivers
+  the routes into the app's process. So `MediaTransferReceiver` and a custom
+  discovery module are both unnecessary, and the `media transfer = false` line
+  from `MediaRouterProxy` is a red herring. Enable
+  `setprop log.tag.AxMediaRouter DEBUG` BEFORE process start (the tag is read in
+  a static initializer) and read the `Route added:` lines.
 - **Two Android theme levers are probably inert — confirmed from the AAR, not
   guessed.** `Theme.MediaRouter` has parent `ThemeOverlay.AppCompat.Dark`, so the
   dark parent choice is right. But it sets `mediaRouteBodyTextAppearance` and
@@ -543,7 +564,11 @@ while decoding multicast packet`) so no receiver is ever discovered, and the
   light-on-dark, just not through our tokens. To actually own it, override those
   two text-appearance attributes with styles carrying our colours. Which dialog
   variant appears (dynamic vs classic) depends on whether the receiver advertises
-  dynamic groups — device-only.
+  dynamic groups — device-only. **Observed 2026-08-24: two ordinary Chromecasts
+  produce the CLASSIC chooser** (`mr_chooser_dialog` — "Cast to" plus a
+  `ListView`), where `android:textColorPrimary` DOES land: the labels measured
+  `#f5f5f4`, our token, not the `#FFFFFF` the dynamic text appearance forces. So
+  the inertness above is real but scoped to a variant we have not yet seen.
 - **Verify by sampling pixels.** The stock cast red `#D0021B` and our `#CB333B`
   pass a glance and fail the design system. On iOS: `xcrun simctl io … screenshot`
   → `ffmpeg -pix_fmt rgb24` → read the bytes. The Android equivalent

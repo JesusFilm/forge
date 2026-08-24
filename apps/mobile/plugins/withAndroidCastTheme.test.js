@@ -149,7 +149,13 @@ describe("dialog and transport colours", () => {
   const router = byName(resources.style, CAST_THEME_NAMES.MEDIA_ROUTER_STYLE)
   const expanded = byName(resources.style, CAST_THEME_NAMES.EXPANDED_STYLE)
 
+  // windowBackground is the one that actually paints the ground: with only
+  // colorBackground set, the measured dialog stayed stock #303030 on a Galaxy
+  // Tab S8 (2026-08-24) while our text colours landed. Both are set.
   it("repaints the dialog ground and text", () => {
+    expect(itemValue(router, "android:windowBackground")).toBe(
+      "@color/forge_cast_background",
+    )
     expect(itemValue(router, "android:colorBackground")).toBe(
       "@color/forge_cast_background",
     )
@@ -184,6 +190,7 @@ describe("every theme item value", () => {
   it.each([
     ["colorPrimary", "@color/forge_cast_accent"],
     ["colorAccent", "@color/forge_cast_accent"],
+    ["android:windowBackground", "@color/forge_cast_background"],
     ["android:colorBackground", "@color/forge_cast_background"],
     ["android:textColorPrimary", "@color/forge_cast_text_primary"],
     ["android:textColorSecondary", "@color/forge_cast_text_secondary"],

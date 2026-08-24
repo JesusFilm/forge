@@ -106,18 +106,19 @@ export function RouteButtons({
 }) {
   // Android renders the SDK's own button because only a native, attached
   // MediaRouteButton can open the Android dialog — see NativeCastButton. iOS
-  // presents the dialog from the context directly, so it keeps the app-drawn
-  // glyph and its connected variant and state-aware label. Both platforms stay
-  // gated on `available`, so the visible behaviour is identical.
+  // presents the dialog from the context, so it keeps the app-drawn glyph.
   const castButton =
-    castUi == null || !castUi.available ? null : Platform.OS === "android" ? (
+    castUi == null ? null : Platform.OS === "android" ? (
+      // Deliberately NOT gated on `available`: getCastState() answers
+      // noDevicesAvailable until a native button is attached AND used, so the
+      // gate deadlocks. mediarouter 1.8's button never self-hides.
       <Frosted style={styles.iconButton}>
         <NativeCastButton
           accessibilityLabel={castUi.label}
           tintColor={TEXT_ON_OVERLAY}
         />
       </Frosted>
-    ) : (
+    ) : castUi.available ? (
       <Pressable
         onPress={() => {
           onInteract?.()
@@ -134,7 +135,7 @@ export function RouteButtons({
           />
         </Frosted>
       </Pressable>
-    )
+    ) : null
 
   // Native AVRoutePickerView (iOS only) — it owns the press, so no Pressable
   // wrapper; the Frosted backplate matches the sibling icon buttons.
