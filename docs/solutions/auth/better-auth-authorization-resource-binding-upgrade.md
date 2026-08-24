@@ -98,9 +98,9 @@ Prove the native lifecycle through the real provider and PostgreSQL:
    access-token audience and refresh-token resource ceiling are A.
 5. Allow refresh within A and reject refresh for B.
 
-Draft [PR #1973](https://github.com/JesusFilm/forge/pull/1973) adds an
-`auth-postgres-integration` job for changes that affect `@forge/auth`. On that
-PR, the job starts PostgreSQL 18, applies the Auth migrations, runs the
+[PR #1973](https://github.com/JesusFilm/forge/pull/1973) added an
+`auth-postgres-integration` job for changes that affect `@forge/auth`. The job
+starts PostgreSQL 18, applies the Auth migrations, runs the
 first-party seed, and then executes the Better Auth, device-grant, and Changelog
 OAuth integration suites sequentially with `--no-file-parallelism`. The test
 files remain opt-in for ordinary local runs; CI supplies
