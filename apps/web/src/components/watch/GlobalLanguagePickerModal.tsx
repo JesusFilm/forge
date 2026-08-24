@@ -25,6 +25,7 @@ import {
   LanguagePickerHeader,
   LanguagePickerInventoryLink,
   MultilingualTooltipPanel,
+  isolateLanguageName,
   tooltipLanguageKeyForCurrentLanguage,
   type TooltipLanguageKey,
 } from "@/components/watch/LanguagePickerPresentation"
@@ -42,9 +43,6 @@ import {
   languageSwitcherTarget,
   type GlobalLanguageOption,
 } from "@/lib/watch-language-switcher"
-
-const FIRST_STRONG_ISOLATE = "\u2068"
-const POP_DIRECTIONAL_ISOLATE = "\u2069"
 
 type LoadState =
   | { status: "loading" }
@@ -220,7 +218,7 @@ export function GlobalLanguagePickerModal({
     selectedOption?.englishName ||
     draftSlug
   const draftLanguageInventoryLabel = t("seeAllVideosInLanguage", {
-    language: `${FIRST_STRONG_ISOLATE}${draftLanguageInventoryName}${POP_DIRECTIONAL_ISOLATE}`,
+    language: isolateLanguageName(draftLanguageInventoryName),
   })
   const selectedTarget = selectedOption
     ? languageSwitcherTarget(pathname, selectedOption.slug)
@@ -323,7 +321,13 @@ export function GlobalLanguagePickerModal({
             <LanguagePickerHeader
               allLanguagesHref={allLanguagesPath}
               allLanguagesLabel={t("seeAllLanguages")}
-              countLabel={t("languageCount", { count: options.length })}
+              countLabel={
+                loadState.status === "ready"
+                  ? t("languageCount", { count: options.length })
+                  : loadState.status === "empty"
+                    ? t("languageCount", { count: 0 })
+                    : undefined
+              }
               heading={t("languageHeading")}
               loading={loadState.status === "loading"}
               testIdPrefix="global-language-picker"

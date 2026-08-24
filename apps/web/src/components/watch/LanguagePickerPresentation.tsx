@@ -23,6 +23,13 @@ export const LANGUAGE_PICKER_VIEWPORT_CLASS =
 export const LANGUAGE_PICKER_MODAL_CLASS =
   "m-auto w-full max-w-[608px] shrink-0 border-0 bg-transparent p-0 text-stone-100 ring-0"
 
+const FIRST_STRONG_ISOLATE = "\u2068"
+const POP_DIRECTIONAL_ISOLATE = "\u2069"
+
+export function isolateLanguageName(value: string): string {
+  return `${FIRST_STRONG_ISOLATE}${value}${POP_DIRECTIONAL_ISOLATE}`
+}
+
 const TOOLTIP_LANGUAGES = [
   { key: "english", dir: "ltr" },
   { key: "mandarin", dir: "ltr" },
@@ -236,7 +243,7 @@ export function LanguagePickerHeader({
 }: TooltipCallbacks & {
   allLanguagesHref: string
   allLanguagesLabel: string
-  countLabel: string
+  countLabel?: string
   heading: string
   loading?: boolean
   testIdPrefix: string
@@ -262,12 +269,14 @@ export function LanguagePickerHeader({
             </span>
             <h2 className="text-xl font-semibold text-stone-100">{heading}</h2>
           </div>
-          <span
-            data-testid={`${testIdPrefix}-count`}
-            className="hidden text-xs font-normal text-stone-400 sm:inline sm:text-sm"
-          >
-            {countLabel}
-          </span>
+          {countLabel ? (
+            <span
+              data-testid={`${testIdPrefix}-count`}
+              className="hidden text-xs font-normal text-stone-400 sm:inline sm:text-sm"
+            >
+              {countLabel}
+            </span>
+          ) : null}
           {loading ? (
             <LoaderCircle
               aria-hidden
@@ -342,29 +351,30 @@ export function LanguagePickerActions({
   applyDisabled,
   applyLabel,
   closeDisabled = false,
+  closeIconTestId,
   closeLabel,
+  closeTestId,
   navigating,
   onApply,
   onClose,
   switchingLabel,
   testIdPrefix,
+  applyIconTestId,
   ...tooltipCallbacks
 }: TooltipCallbacks & {
   applyDisabled: boolean
+  applyIconTestId?: string
   applyLabel: string
   closeDisabled?: boolean
+  closeIconTestId?: string
   closeLabel: string
+  closeTestId?: string
   navigating: boolean
   onApply: () => void
   onClose: () => void
   switchingLabel: string
   testIdPrefix: string
 }) {
-  const innerPageIds = testIdPrefix === "watch-language-picker"
-  const closeActionId = innerPageIds
-    ? `${testIdPrefix}-close-action`
-    : `${testIdPrefix}-close`
-
   return (
     <div
       data-testid={`${testIdPrefix}-actions`}
@@ -378,16 +388,12 @@ export function LanguagePickerActions({
         <Button
           type="button"
           variant="ghost"
-          data-testid={closeActionId}
+          data-testid={closeTestId ?? `${testIdPrefix}-close`}
           disabled={closeDisabled}
           onClick={onClose}
           className={`h-auto w-40 gap-1.5 cursor-pointer rounded-full px-5 py-3 text-xs font-bold tracking-wider text-stone-400 uppercase transition-colors duration-200 hover:bg-transparent hover:text-stone-100 ${LANGUAGE_PICKER_FOCUS_RING_CLASS}`}
         >
-          <X
-            aria-hidden
-            data-testid={innerPageIds ? `${closeActionId}-icon` : undefined}
-            className="size-3.5"
-          />
+          <X aria-hidden data-testid={closeIconTestId} className="size-3.5" />
           <span>{closeLabel}</span>
         </Button>
       </MultilingualTooltip>
@@ -409,9 +415,7 @@ export function LanguagePickerActions({
           ) : (
             <Check
               aria-hidden
-              data-testid={
-                innerPageIds ? `${testIdPrefix}-apply-icon` : undefined
-              }
+              data-testid={applyIconTestId}
               className="size-3.5"
             />
           )}

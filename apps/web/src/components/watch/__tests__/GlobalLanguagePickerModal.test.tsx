@@ -195,6 +195,7 @@ describe("GlobalLanguagePickerModal", () => {
     expect(query("global-language-picker-status")?.textContent).toContain(
       "Loading",
     )
+    expect(query("global-language-picker-count")).toBeNull()
     expect(
       query("global-language-picker-apply")?.hasAttribute("disabled"),
     ).toBe(true)
@@ -204,6 +205,9 @@ describe("GlobalLanguagePickerModal", () => {
     expect(loadGlobalWatchLanguageOptionsMock).toHaveBeenCalledTimes(1)
     expect(document.activeElement).toBe(query("global-language-picker-select"))
     expect(query("global-language-picker-status")?.textContent).toContain(
+      "3 languages",
+    )
+    expect(query("global-language-picker-count")?.textContent).toContain(
       "3 languages",
     )
   })
@@ -295,6 +299,9 @@ describe("GlobalLanguagePickerModal", () => {
     expect(query("global-language-picker-empty")?.textContent).toContain(
       "0 languages",
     )
+    expect(query("global-language-picker-count")?.textContent).toContain(
+      "0 languages",
+    )
     expect(query("global-language-picker-select")).toBeNull()
     expect(
       query("global-language-picker-status")?.getAttribute("aria-live"),
@@ -310,6 +317,7 @@ describe("GlobalLanguagePickerModal", () => {
     expect(query("global-language-picker-error")?.textContent).toContain(
       "Please check your connection",
     )
+    expect(query("global-language-picker-count")).toBeNull()
     const retry = query("global-language-picker-retry")
     expect(retry?.getAttribute("aria-label")).toContain("Retry")
 

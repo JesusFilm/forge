@@ -26,6 +26,7 @@ import {
   LanguagePickerInventoryLink,
   MultilingualTooltip,
   MultilingualTooltipPanel,
+  isolateLanguageName,
   tooltipLanguageKeyForCurrentLanguage,
   type TooltipLanguageKey,
 } from "@/components/watch/LanguagePickerPresentation"
@@ -46,9 +47,6 @@ import { useIsFullscreen } from "@/lib/use-is-fullscreen"
 import { WatchModalViewportCloseButton } from "./WatchModalViewportCloseButton"
 
 export type LanguagePickerVariant = WatchLanguagePickerVariant
-
-const FIRST_STRONG_ISOLATE = "\u2068"
-const POP_DIRECTIONAL_ISOLATE = "\u2069"
 
 export type LanguagePickerModalProps = {
   open: boolean
@@ -154,7 +152,7 @@ export function LanguagePickerModal({
   const draftLanguageInventoryName =
     draftLanguageOption?.nativeName?.trim() || draftLanguageDisplay.name
   const draftLanguageInventoryLabel = t("seeAllVideosInLanguage", {
-    language: `${FIRST_STRONG_ISOLATE}${draftLanguageInventoryName}${POP_DIRECTIONAL_ISOLATE}`,
+    language: isolateLanguageName(draftLanguageInventoryName),
   })
   const draftLanguageInventoryPath = useMemo(() => {
     const slug = tryAsLocaleSlug(draftSlug)
@@ -743,8 +741,11 @@ export function LanguagePickerModal({
 
           <LanguagePickerActions
             applyDisabled={!isDirty || navigating || subtitleSelectionRequired}
+            applyIconTestId="watch-language-picker-apply-icon"
             applyLabel={t("apply")}
+            closeIconTestId="watch-language-picker-close-action-icon"
             closeLabel={t("close")}
+            closeTestId="watch-language-picker-close-action"
             navigating={navigating}
             onApply={handleApply}
             onClose={onClose}
