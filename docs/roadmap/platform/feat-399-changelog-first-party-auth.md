@@ -79,3 +79,24 @@ The initial Forge slice covers local and production only. Preview is deferred be
 - `pnpm --filter @forge/auth typecheck`
 - `pnpm --filter @forge/auth lint`
 - Deployment notes identify the migration or seed command, audience configuration, supported grant-provisioning path, and the preview deferral.
+
+## Implementation status
+
+The provider boundary, exact-resource grant decision, authorization
+downscoping, exchange/refresh revalidation, dynamic-registration resource
+defaults, consent disclosure, and opt-in PostgreSQL integration contract are
+implemented. The scratch-database proof covers native dynamic consent, seeded
+and dynamic PKCE exchange, both default DCR resource links, exact audiences,
+grant revocation before code exchange and refresh, zero token rows on denial,
+cross-resource rejection, and production-off behavior. Production issuance
+remains default-off.
+
+This ticket stays `in-progress` until separate clean Codex and Claude client
+profiles prove distinct dynamic client identities and token families through
+authorize, exchange, refresh/reconnect, and a denied ungranted scope/tool.
+That acceptance is externally blocked as of `JesusFilm/jfp-changelog`
+`d403318`: its Auth verifier accepts the local `/mcp` audience, but the
+repository does not yet implement a runnable `/mcp` protected-resource
+endpoint or read tool for either client to connect to.
+Supported grant provisioning and revocation also remain prerequisites for
+enabling production.

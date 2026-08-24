@@ -7,6 +7,9 @@ import {
   ADMIN_APP_SEED,
   CHAT_APP_KEY,
   CHAT_APP_SEED,
+  CHANGELOG_APP_KEY,
+  CHANGELOG_APP_SEED,
+  CHANGELOG_DEFAULT_SCOPES,
   FIRST_PARTY_APP_SEEDS,
   MASTRA_STUDIO_APP_KEY,
   MASTRA_STUDIO_APP_SEED,
@@ -31,6 +34,7 @@ describe("first-party app seeds", () => {
       WEB_APP_KEY,
       MASTRA_STUDIO_APP_KEY,
       CHAT_APP_KEY,
+      CHANGELOG_APP_KEY,
       ADMIN_MCP_APP_KEY,
       MOBILE_APP_KEY,
       TV_APP_KEY,
@@ -43,6 +47,51 @@ describe("first-party app seeds", () => {
         ownerType: "jesus_film",
       }),
     )
+  })
+
+  it("registers exact local and production Changelog OAuth clients", () => {
+    expect(CHANGELOG_APP_SEED).toEqual(
+      expect.objectContaining({
+        key: "changelog",
+        displayName: "Jesus Film Changelog",
+        trustTier: "first_party",
+        ownerType: "jesus_film",
+        ownerName: "Jesus Film Project",
+      }),
+    )
+    expect(CHANGELOG_DEFAULT_SCOPES).toEqual([
+      "openid",
+      "profile:read",
+      "email:read",
+      "membership:read",
+      "changelog:read",
+      "changelog:submit",
+      "changelog:admin",
+    ])
+    expect(CHANGELOG_APP_SEED.environments).toEqual([
+      {
+        key: "local",
+        kind: "local",
+        clientId: "jfp_changelog_local",
+        redirectUris: ["http://localhost:3000/api/auth/callback"],
+        postLogoutRedirectUris: ["http://localhost:3000/api/auth/login"],
+        allowedOrigins: ["http://localhost:3000"],
+        defaultScopes: CHANGELOG_DEFAULT_SCOPES,
+        autoApprove: true,
+      },
+      {
+        key: "production",
+        kind: "production",
+        clientId: "jfp_changelog_production",
+        redirectUris: ["https://changelog.jesusfilm.org/api/auth/callback"],
+        postLogoutRedirectUris: [
+          "https://changelog.jesusfilm.org/api/auth/login",
+        ],
+        allowedOrigins: ["https://changelog.jesusfilm.org"],
+        defaultScopes: CHANGELOG_DEFAULT_SCOPES,
+        autoApprove: true,
+      },
+    ])
   })
 
   it("registers Manager OAuth clients for local, preview, staging, and production", () => {

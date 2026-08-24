@@ -12,11 +12,24 @@ import { normalizeUserCode } from "@/lib/device-user-code"
 import { resolveWebWatchCallbackURL } from "@/auth/web-callback"
 import { getAuthBaseUrl } from "@/config/env"
 import { prisma } from "@/db/client"
+import {
+  CHANGELOG_DEFAULT_SCOPES,
+  CHANGELOG_LOCAL_CLIENT_ID,
+  CHANGELOG_PRODUCTION_CLIENT_ID,
+} from "@/domain/apps"
 import { ensureDynamicPreviewRedirectUriRegistered } from "@/services/dynamic-preview-redirect.service"
 import {
   canRedeemAgentLoginHandle,
   isAgentLoginHandle,
 } from "@/services/agent-login.service"
+import {
+  createChangelogOAuthGrantDecision,
+  type ChangelogOAuthGrantDecision,
+} from "@/services/changelog-oauth-grant.service"
+import {
+  CHANGELOG_OAUTH_RESOURCES,
+  CHANGELOG_OAUTH_SCOPES,
+} from "@/services/oauth-policy.service"
 
 type RouteContext = {
   params: Promise<{ all?: string[] }>
@@ -521,6 +534,155 @@ function withNoStore(response: Response): Response {
   })
 }
 
+const changelogClientIds = new Set([
+  CHANGELOG_LOCAL_CLIENT_ID,
+  CHANGELOG_PRODUCTION_CLIENT_ID,
+])
+const changelogResources = new Set<string>(
+  Object.values(CHANGELOG_OAUTH_RESOURCES),
+)
+const changelogScopes = new Set<string>(CHANGELOG_OAUTH_SCOPES)
+type ChangelogOAuthDenialReason = Extract<
+  ChangelogOAuthGrantDecision,
+  { allowed: false }
+>["reason"]
+
+function isChangelogAuthorizeRequest(params: URLSearchParams): boolean {
+  const requestedScopes =
+    params.get("scope")?.split(/\s+/).filter(Boolean) ?? []
+  return (
+    changelogClientIds.has(params.get("client_id") ?? "") ||
+    requestedScopes.some((scope) => changelogScopes.has(scope)) ||
+    params
+      .getAll("resource")
+      .some((resource) => changelogResources.has(resource))
+  )
+}
+
+async function applyChangelogAuthorizePolicy(
+  request: Request,
+  authorizeUrl: URL,
+  providedSession?: Awaited<ReturnType<typeof auth.api.getSession>>,
+): Promise<{ denied?: Response; url?: URL }> {
+  if (!isChangelogAuthorizeRequest(authorizeUrl.searchParams)) return {}
+
+  const session =
+    providedSession ?? (await auth.api.getSession({ headers: request.headers }))
+  if (!session?.user?.id) return {}
+
+  const requestedScopes =
+    authorizeUrl.searchParams.get("scope")?.split(/\s+/).filter(Boolean) ??
+    (changelogClientIds.has(authorizeUrl.searchParams.get("client_id") ?? "")
+      ? [...CHANGELOG_DEFAULT_SCOPES]
+      : [])
+  const decision = await createChangelogOAuthGrantDecision({
+    lifecycle: "authorization",
+    userId: session.user.id,
+    membershipStatus: (session.user as { membershipStatus?: unknown })
+      .membershipStatus,
+    clientId: authorizeUrl.searchParams.get("client_id"),
+    requestedScopes,
+    resources: authorizeUrl.searchParams.getAll("resource"),
+  })
+  if (!decision.allowed) {
+    return {
+      denied: await changelogOAuthDenial(
+        authorizeUrl.searchParams,
+        decision.reason,
+      ),
+    }
+  }
+
+  const url = new URL(authorizeUrl)
+  url.searchParams.set("scope", decision.scopes.join(" "))
+  url.searchParams.delete("resource")
+  url.searchParams.append(
+    "resource",
+    decision.target.resource ??
+      CHANGELOG_OAUTH_RESOURCES[decision.target.environmentKind],
+  )
+  return { url }
+}
+
+async function changelogOAuthDenial(
+  params: URLSearchParams,
+  reason: ChangelogOAuthDenialReason = "changelog_access_denied",
+): Promise<Response> {
+  const invalidTarget = reason === "invalid_changelog_target"
+  const error = invalidTarget ? "invalid_target" : "access_denied"
+  const errorDescription = invalidTarget
+    ? "The requested Changelog resource is invalid."
+    : "Changelog access is not available."
+  const clientId = params.get("client_id")
+  const redirectUri = params.get("redirect_uri")
+  if (clientId && redirectUri) {
+    try {
+      const client = await prisma.oauthClient.findUnique({
+        where: { clientId },
+        select: { disabled: true, redirectUris: true },
+      })
+      if (!client?.disabled && client?.redirectUris.includes(redirectUri)) {
+        const url = new URL(redirectUri)
+        url.searchParams.set("error", error)
+        url.searchParams.set("error_description", errorDescription)
+        const state = params.get("state")
+        if (state) url.searchParams.set("state", state)
+        url.searchParams.set(
+          "iss",
+          new URL("/api/auth", getAuthBaseUrl()).toString(),
+        )
+        return withNoStore(Response.redirect(url, 302))
+      }
+    } catch {
+      // A lookup failure must never turn an unverified redirect into an
+      // attacker-controlled callback. The generic no-store denial below is
+      // the fail-closed fallback.
+    }
+  }
+
+  return withNoStore(
+    Response.json(
+      {
+        error,
+        error_description: errorDescription,
+      },
+      { status: 403 },
+    ),
+  )
+}
+
+async function enforceChangelogConsentPolicy(
+  request: Request,
+): Promise<Response | undefined> {
+  let body: { oauth_query?: unknown }
+  try {
+    body = (await request.clone().json()) as { oauth_query?: unknown }
+  } catch {
+    return undefined
+  }
+  if (typeof body.oauth_query !== "string") return undefined
+
+  const authorizeUrl = new URL("/api/auth/oauth2/authorize", getAuthBaseUrl())
+  authorizeUrl.search = body.oauth_query
+  const result = await applyChangelogAuthorizePolicy(request, authorizeUrl)
+  if (result.denied) return result.denied
+  if (!result.url) return undefined
+  const sameScopes =
+    result.url.searchParams.get("scope") ===
+    authorizeUrl.searchParams.get("scope")
+  const originalResources = authorizeUrl.searchParams.getAll("resource")
+  const decidedResources = result.url.searchParams.getAll("resource")
+  const sameResources =
+    originalResources.length === decidedResources.length &&
+    originalResources.every(
+      (resource, index) => resource === decidedResources[index],
+    )
+  if (!sameScopes || !sameResources) {
+    return changelogOAuthDenial(authorizeUrl.searchParams)
+  }
+  return undefined
+}
+
 function isDeviceGrantPath(path: string): boolean {
   // Object.hasOwn, not `in`: `in` matches inherited keys, so a request to
   // /api/auth/toString would be treated as a device route.
@@ -529,8 +691,8 @@ function isDeviceGrantPath(path: string): boolean {
 
 async function enforceAgentOAuthAuthorizePolicy(
   request: Request,
+  session: Awaited<ReturnType<typeof auth.api.getSession>>,
 ): Promise<Response | undefined> {
-  const session = await auth.api.getSession({ headers: request.headers })
   if (!session?.user?.id) return undefined
 
   const user = await prisma.user.findUnique({
@@ -834,8 +996,19 @@ export async function GET(
       clientId: url.searchParams.get("client_id"),
       redirectUri: url.searchParams.get("redirect_uri"),
     })
-    const agentPolicyResponse = await enforceAgentOAuthAuthorizePolicy(request)
+    const session = await auth.api.getSession({ headers: request.headers })
+    const agentPolicyResponse = await enforceAgentOAuthAuthorizePolicy(
+      request,
+      session,
+    )
     if (agentPolicyResponse) return agentPolicyResponse
+    const changelogPolicy = await applyChangelogAuthorizePolicy(
+      request,
+      url,
+      session,
+    )
+    if (changelogPolicy.denied) return changelogPolicy.denied
+    if (changelogPolicy.url) request = new Request(changelogPolicy.url, request)
   }
 
   const response = await authRouteHandlers.GET(request)
@@ -875,10 +1048,15 @@ export async function POST(
   if (path === "sign-up/email") {
     return handleEmailSignUp(request)
   }
+  if (path === "oauth2/consent") {
+    const policyResponse = await enforceChangelogConsentPolicy(request)
+    if (policyResponse) return policyResponse
+  }
   if (isDeviceGrantPath(path)) {
     return withNoStore(await authRouteHandlers.POST(request))
   }
-  return authRouteHandlers.POST(request)
+  const response = await authRouteHandlers.POST(request)
+  return path === "oauth2/token" ? withNoStore(response) : response
 }
 
 export async function OPTIONS(request: Request): Promise<Response> {

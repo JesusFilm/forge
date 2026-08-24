@@ -1,6 +1,7 @@
 ---
 title: Upgrade Better Auth when authorization drops the OAuth resource binding
 date: 2026-08-21
+last_updated: 2026-08-24
 category: auth
 module: apps/auth
 problem_type: security_issue
@@ -61,9 +62,14 @@ device-grant bridge.
   dependency on Better Auth's private hashed identifier and JSON shape.
 - Seeded-client-only MCP support was insufficient because engineers must be able
   to connect their own dynamically registered Codex or Claude clients.
-- Ordinary GitHub CI was not conclusive. The real-PostgreSQL suites skip unless
-  `AUTH_TEST_DATABASE_URL` is supplied, so a green standard test job can omit the
-  authorization, exchange, refresh, revocation, and device-flow contracts.
+- Before PR #1973, ordinary GitHub CI was not conclusive. The real-PostgreSQL
+  suites skip unless `AUTH_TEST_DATABASE_URL` is supplied, so a green standard
+  test job could omit the authorization, exchange, refresh, revocation, and
+  device-flow contracts.
+- A database with migrations but without the first-party seed was not a valid
+  integration environment. The Manager resource and seeded TV client were
+  absent, which produced setup and foreign-key failures until the scratch
+  database was recreated, migrated, and seeded. _(session history)_
 - Early database runs shared incompatible test secrets and counted residual
   fixture tokens. Using one explicit test secret and scoping persistence
   assertions by a unique `referenceId` made the suites repeatable. _(session
@@ -91,6 +97,25 @@ Prove the native lifecycle through the real provider and PostgreSQL:
 4. Exchange for A, or omit the token-request resource and inherit A; assert the
    access-token audience and refresh-token resource ceiling are A.
 5. Allow refresh within A and reject refresh for B.
+
+Draft [PR #1973](https://github.com/JesusFilm/forge/pull/1973) adds an
+`auth-postgres-integration` job for changes that affect `@forge/auth`. On that
+PR, the job starts PostgreSQL 18, applies the Auth migrations, runs the
+first-party seed, and then executes the Better Auth, device-grant, and Changelog
+OAuth integration suites sequentially with `--no-file-parallelism`. The test
+files remain opt-in for ordinary local runs; CI supplies
+`AUTH_TEST_DATABASE_URL` when the database contract must run.
+
+The seed is part of the contract, not fixture convenience. Migrations create
+the provider schema, while `seed:first-party-apps` creates the declared scopes,
+applications, environments, OAuth clients, resources, and client-resource
+bindings that the native flows resolve. Serial file execution prevents the
+three suites from racing while they mutate and clean up that shared inventory.
+
+[GitHub Actions run 32685302674](https://github.com/JesusFilm/forge/actions/runs/32685302674)
+verified the workflow on PR #1973: six migrations applied, the first-party seed
+completed, and all 18 native tests passed across the Better Auth upgrade (7),
+device grant (8), and Changelog OAuth grant (3) suites.
 
 The migration remains additive during the rollback window. It introduces the
 provider's resource tables and token-resource state while retaining the legacy
@@ -135,8 +160,16 @@ or their clients disabled before restoring 1.6.2.
   authorization-code hashing and JSON, PKCE, redirects, client authentication,
   token prefixes and hashes, `referenceId`, refresh rotation, claims,
   introspection, dynamic registration, and device exchange.
-- Make the `AUTH_TEST_DATABASE_URL` suites an explicit pre-merge gate; ordinary
-  green CI does not prove those opt-in cases ran.
+- Keep the `AUTH_TEST_DATABASE_URL` suites optional locally, but run them in the
+  affected-Auth PostgreSQL job after migrations and first-party seeding.
+- Treat job execution and merge enforcement as separate controls. Add the job
+  to the repository's stable required-check aggregate or require its named check
+  in the external ruleset; a successful conditional workflow job does not by
+  itself prove that a future failure blocks merging.
+- Make affected-package detection fail closed, and make the aggregate verify
+  that `auth-postgres-integration` actually ran whenever `@forge/auth` is
+  affected. A required aggregate that accepts skipped jobs can still pass if
+  affected detection falls back to an empty package list.
 - Keep schema changes additive until the rollback window closes, and backfill
   identity only from trusted configuration with collision and mismatch checks.
 - Keep legacy no-resource device grants unable to synthesize resource-bound
