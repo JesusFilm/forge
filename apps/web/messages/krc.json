@@ -191,6 +191,7 @@
     "loadMoreFailed": "Кошумча жыйынтыктарды жүктөөгө болбоду.",
     "searching": "Изделүүдө...",
     "connectionHint": "Туташууңузду текшерип, кайра аракет кылыңыз.",
+    "rateLimitHint": "Соруула бек кёпдю. Бир минутдан дагъыда сынагъыз.",
     "retrySearch": "Издөөнү кайра аракет кылуу",
     "retry": "Кайра аракет кылуу",
     "noResults": "\"{query}\" үчүн жыйынтык жок",
@@ -540,16 +541,16 @@
     "retryFailed": "Жүктөлбөгөндөрдү кайра аракет кылуу"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Тил версиясы табылмайды",
+    "eyebrow": "Тил версиясы табылмайды",
+    "title": "<contentTitle>{title}</contentTitle> <languageName>{language}</languageName> тилде табылмайды",
+    "actionsLabel": "Къараргъа болгъан амалла",
+    "browseInLanguage": "{language} тилде видеолагъа къарагъыз",
+    "backToSearch": "Излеуге къайтыгъыз",
+    "audioVersionsTitle": "Башха аудио версияла",
+    "audioVersionsDescription": "Бу видеону къарауну бардырыр ючюн аудио тилни сайлагъыз.",
+    "languageVersionLabel": "Аудио тил",
+    "selectLanguageVersion": "Тил версияны сайлагъыз",
+    "watchSelectedVersion": "Сайланнган версиягъа къарагъыз"
   }
 }

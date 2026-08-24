@@ -191,6 +191,7 @@
     "loadMoreFailed": "Ua hāʻule ka hoʻouka ʻana i nā hopena hou aʻe.",
     "searching": "Ke huli nei...",
     "connectionHint": "E ʻoluʻolu e nānā i kāu pili pūnaewele a hoʻāʻo hou.",
+    "rateLimitHint": "Nui loa nā noi. E hoʻāʻo hou ma hope o hoʻokahi minuke.",
     "retrySearch": "E hoʻāʻo hou i ka huli",
     "retry": "E hoʻāʻo hou",
     "noResults": "ʻAʻohe hopena no \"{query}\"",
@@ -540,16 +541,16 @@
     "retryFailed": "E hoʻāʻo hou i nā mokuna i hāʻule"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "ʻAʻole loaʻa kēia mana ʻōlelo",
+    "eyebrow": "ʻAʻole loaʻa kēia mana ʻōlelo",
+    "title": "ʻAʻole loaʻa ʻo <contentTitle>{title}</contentTitle> ma ka <languageName>{language}</languageName>",
+    "actionsLabel": "Nā koho nānā i loaʻa",
+    "browseInLanguage": "Nānā i nā wikiō ma {language}",
+    "backToSearch": "Hoʻi i ka huli",
+    "audioVersionsTitle": "Nā mana leo ʻē aʻe",
+    "audioVersionsDescription": "E koho i kahi ʻōlelo leo e hoʻomau i ka nānā ʻana i kēia wikiō.",
+    "languageVersionLabel": "ʻŌlelo leo",
+    "selectLanguageVersion": "Koho i kahi mana ʻōlelo",
+    "watchSelectedVersion": "Nānā i ka mana i koho ʻia"
   }
 }

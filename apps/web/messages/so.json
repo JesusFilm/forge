@@ -191,6 +191,7 @@
     "loadMoreFailed": "Ma soo rari karin natiijooyin dheeraad ah.",
     "searching": "Raadinaya...",
     "connectionHint": "Fadlan hubi xiriirkaaga oo mar kale isku day.",
+    "rateLimitHint": "Codsiyo aad u badan. Fadlan isku day mar kale hal daqiiqo kadib.",
     "retrySearch": "Mar kale raadi",
     "retry": "Mar kale isku day",
     "noResults": "Natiijooyin looma helin \"{query}\"",
@@ -540,16 +541,16 @@
     "retryFailed": "Isku-daygii mar kale wuu fashilmay"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Nooca luqaddan lama heli karo",
+    "eyebrow": "Nooca luqaddan lama heli karo",
+    "title": "<contentTitle>{title}</contentTitle> laguma heli karo <languageName>{language}</languageName>",
+    "actionsLabel": "Ikhtiyaarrada daawashada ee jira",
+    "browseInLanguage": "Ka daawo muuqaallo ku qoran {language}",
+    "backToSearch": "Ku noqo raadinta",
+    "audioVersionsTitle": "Noocyo cod oo kale",
+    "audioVersionsDescription": "Dooro luqadda codka si aad u sii waddo daawashada muuqaalkan.",
+    "languageVersionLabel": "Luqadda codka",
+    "selectLanguageVersion": "Dooro nooca luqadda",
+    "watchSelectedVersion": "Daawo nooca la doortay"
   }
 }

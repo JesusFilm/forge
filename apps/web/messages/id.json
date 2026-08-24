@@ -191,6 +191,7 @@
     "loadMoreFailed": "Gagal memuat hasil lainnya.",
     "searching": "Mencari...",
     "connectionHint": "Periksa koneksi Anda lalu coba lagi.",
+    "rateLimitHint": "Terlalu banyak permintaan. Coba lagi dalam satu menit.",
     "retrySearch": "Coba cari lagi",
     "retry": "Coba lagi",
     "noResults": "Tidak ada hasil untuk “{query}”",
@@ -540,16 +541,16 @@
     "retryFailed": "Coba lagi yang gagal"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Versi bahasa tidak tersedia",
+    "eyebrow": "Versi bahasa tidak tersedia",
+    "title": "<contentTitle>{title}</contentTitle> tidak tersedia dalam <languageName>{language}</languageName>",
+    "actionsLabel": "Pilihan tontonan yang tersedia",
+    "browseInLanguage": "Jelajahi video dalam {language}",
+    "backToSearch": "Kembali ke pencarian",
+    "audioVersionsTitle": "Versi audio lainnya",
+    "audioVersionsDescription": "Pilih bahasa audio untuk melanjutkan menonton video ini.",
+    "languageVersionLabel": "Bahasa audio",
+    "selectLanguageVersion": "Pilih versi bahasa",
+    "watchSelectedVersion": "Tonton versi yang dipilih"
   }
 }

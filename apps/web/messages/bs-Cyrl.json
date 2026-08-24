@@ -191,6 +191,7 @@
     "loadMoreFailed": "Учитавање више резултата није успјело.",
     "searching": "Претрага...",
     "connectionHint": "Провјерите везу и покушајте поново.",
+    "rateLimitHint": "Превише захтјева. Покушајте поново за минут.",
     "retrySearch": "Понови претрагу",
     "retry": "Покушај поново",
     "noResults": "Нема резултата за „{query}“",
@@ -540,16 +541,16 @@
     "retryFailed": "Понови неуспјела преузимања"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Језичка верзија није доступна",
+    "eyebrow": "Језичка верзија није доступна",
+    "title": "<contentTitle>{title}</contentTitle> није доступан на језику <languageName>{language}</languageName>",
+    "actionsLabel": "Доступне опције гледања",
+    "browseInLanguage": "Прегледајте видео записе на језику {language}",
+    "backToSearch": "Назад на претрагу",
+    "audioVersionsTitle": "Друге аудио верзије",
+    "audioVersionsDescription": "Изаберите језик звука да бисте наставили гледати овај видео.",
+    "languageVersionLabel": "Језик звука",
+    "selectLanguageVersion": "Изаберите језичку верзију",
+    "watchSelectedVersion": "Гледајте изабрану верзију"
   }
 }

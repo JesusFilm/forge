@@ -191,6 +191,7 @@
     "loadMoreFailed": "Kua se manuia te uta mai o nisi results.",
     "searching": "Saili...",
     "connectionHint": "Fakamolemole, iloilo tou connection kae toe tofotofo.",
+    "rateLimitHint": "Ko tō uke a fakatagi. Toe taumafai i se minute.",
     "retrySearch": "Toe tofotofo search",
     "retry": "Toe tofotofo",
     "noResults": "Se mea ne maua mō \"{query}\"",
@@ -540,16 +541,16 @@
     "retryFailed": "Kua se manuia te toe tofotofo"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "E se maua te vaega i te gana tenei",
+    "eyebrow": "E se maua te vaega i te gana tenei",
+    "title": "<contentTitle>{title}</contentTitle> e se maua i te <languageName>{language}</languageName>",
+    "actionsLabel": "Filifiliga mō te kilo",
+    "browseInLanguage": "Kilo ki vitio i te {language}",
+    "backToSearch": "Foki ki te salasala",
+    "audioVersionsTitle": "Nisi vaega leo",
+    "audioVersionsDescription": "Filifili se gana leo ke tumau te kilo ki te vitio tenei.",
+    "languageVersionLabel": "Gana leo",
+    "selectLanguageVersion": "Filifili se vaega i te gana",
+    "watchSelectedVersion": "Kilo ki te vaega ne filifili"
   }
 }

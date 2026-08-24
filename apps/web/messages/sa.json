@@ -191,6 +191,7 @@
     "loadMoreFailed": "अधिकफलानां लोड्-करणं विफलम्।",
     "searching": "अन्वेष्यते...",
     "connectionHint": "कृपया स्वसंपर्कं परीक्ष्य पुनः प्रयतस्व।",
+    "rateLimitHint": "अत्यधिकाः अनुरोधाः। कृपया एकस्मिन् निमेषे पुनः प्रयतस्व।",
     "retrySearch": "अन्वेषणं पुनः प्रयतस्व",
     "retry": "पुनः प्रयतस्व",
     "noResults": "\"{query}\" इत्यस्य किमपि परिणामं नास्ति",
@@ -540,16 +541,16 @@
     "retryFailed": "विफलानां पुनः प्रयत्नं कुरु"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "भाषा-संस्करणम् उपलब्धं नास्ति",
+    "eyebrow": "भाषा-संस्करणम् उपलब्धं नास्ति",
+    "title": "<contentTitle>{title}</contentTitle> <languageName>{language}</languageName> भाषायाम् उपलब्धं नास्ति",
+    "actionsLabel": "उपलब्धाः दर्शन-विकल्पाः",
+    "browseInLanguage": "{language} भाषायां वीडियोनि ब्राउज़् कुर्वन्तु",
+    "backToSearch": "अन्वेषणं प्रति प्रत्यागच्छतु",
+    "audioVersionsTitle": "अन्यानि श्रव्य-संस्करणानि",
+    "audioVersionsDescription": "एतत् वीडियो द्रष्टुं निरन्तरं श्रव्य-भाषां चिनुत।",
+    "languageVersionLabel": "श्रव्य-भाषा",
+    "selectLanguageVersion": "भाषा-संस्करणं चिनुत",
+    "watchSelectedVersion": "चयनितं संस्करणं पश्यतु"
   }
 }

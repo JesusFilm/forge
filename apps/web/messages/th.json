@@ -191,6 +191,7 @@
     "loadMoreFailed": "ไม่สามารถโหลดผลลัพธ์เพิ่มเติมได้",
     "searching": "กำลังค้นหา...",
     "connectionHint": "โปรดตรวจสอบการเชื่อมต่อแล้วลองอีกครั้ง",
+    "rateLimitHint": "มีคำขอมากเกินไป โปรดลองอีกครั้งในอีกหนึ่งนาที",
     "retrySearch": "ค้นหาอีกครั้ง",
     "retry": "ลองอีกครั้ง",
     "noResults": "ไม่พบผลลัพธ์สำหรับ “{query}”",
@@ -540,16 +541,16 @@
     "retryFailed": "ลองดาวน์โหลดรายการที่ไม่สำเร็จอีกครั้ง"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "ไม่มีเวอร์ชันภาษานี้",
+    "eyebrow": "ไม่มีเวอร์ชันภาษานี้",
+    "title": "<contentTitle>{title}</contentTitle> ไม่มีในภาษา <languageName>{language}</languageName>",
+    "actionsLabel": "ตัวเลือกการรับชมที่มี",
+    "browseInLanguage": "เรียกดูวิดีโอในภาษา {language}",
+    "backToSearch": "กลับไปที่การค้นหา",
+    "audioVersionsTitle": "เวอร์ชันเสียงอื่น",
+    "audioVersionsDescription": "เลือกภาษาเสียงเพื่อรับชมวิดีโอนี้ต่อ",
+    "languageVersionLabel": "ภาษาเสียง",
+    "selectLanguageVersion": "เลือกเวอร์ชันภาษา",
+    "watchSelectedVersion": "ดูเวอร์ชันที่เลือก"
   }
 }

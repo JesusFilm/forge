@@ -191,6 +191,7 @@
     "loadMoreFailed": "無法載入更多結果。",
     "searching": "搜尋中...",
     "connectionHint": "請檢查網路連線後再試一次。",
+    "rateLimitHint": "請求過於頻繁，請一分鐘後再試。",
     "retrySearch": "重新搜尋",
     "retry": "重試",
     "noResults": "找不到「{query}」的結果",

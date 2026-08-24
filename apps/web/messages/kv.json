@@ -191,6 +191,7 @@
     "loadMoreFailed": "Мӧд нәтижаъяс загрузитны оз позь.",
     "searching": "Корсьӧм…",
     "connectionHint": "Сетьӧс проверитны да ещӧт раз вӧчны.",
+    "rateLimitHint": "Юалӧмъяс зэв уна. Минут мысти выльысь зільӧй.",
     "retrySearch": "Корсьӧмӧс бӧр вӧчны",
     "retry": "Ещӧт раз",
     "noResults": "\"{query}\" вылӧ нәтижа абу",
@@ -540,16 +541,16 @@
     "retryFailed": "Артмытӧм ӧтдӧмъяссӧ бӧр вӧчны"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Кыв версияыс абу",
+    "eyebrow": "Кыв версияыс абу",
+    "title": "<contentTitle>{title}</contentTitle> <languageName>{language}</languageName> кывйын абу",
+    "actionsLabel": "Видзӧдны позянлунъяс",
+    "browseInLanguage": "{language} кывйын видео видзӧдны",
+    "backToSearch": "Корсьӧмӧ бергӧдчыны",
+    "audioVersionsTitle": "Мукӧд аудио версияяс",
+    "audioVersionsDescription": "Тайӧ видео водзӧ видзӧдӧм могысь бӧрйы аудио кыв.",
+    "languageVersionLabel": "Аудио кыв",
+    "selectLanguageVersion": "Кыв версия бӧрйы",
+    "watchSelectedVersion": "Бӧрйӧм версия видзӧдны"
   }
 }

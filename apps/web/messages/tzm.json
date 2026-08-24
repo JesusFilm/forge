@@ -191,6 +191,7 @@
     "loadMoreFailed": "Ur yeddi ara usali n yiriken nniḍen.",
     "searching": "Anadi...",
     "connectionHint": "Ma ulac aɣilif, ssenqed aqeddac-nnek sakin ɛreḍ tikkelt-nniḍen.",
+    "rateLimitHint": "ⴰⵟⴰⵚ ⵏ ⵉⵙⵓⵜⵔⴰ. ⴰⵔⵎ ⵜⵉⴽⴽⵍⵜ ⵢⴰⴹⵏ ⴷⴼⴼⵉⵔ ⵢⴰⵏ ⵓⵙⴷⵉⴷ.",
     "retrySearch": "Ɛreḍ anadi tikkelt-nniḍen",
     "retry": "Ɛreḍ tikkelt-nniḍen",
     "noResults": "Ulac yiriken i \"{query}\"",
@@ -540,16 +541,16 @@
     "retryFailed": "Ɛreḍ wid ur yeddin ara"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "ⵓⵍⴰ ⵜⴰⵍⵖⴰ ⵏ ⵜⵓⵜⵍⴰⵢⵜ",
+    "eyebrow": "ⵓⵍⴰ ⵜⴰⵍⵖⴰ ⵏ ⵜⵓⵜⵍⴰⵢⵜ",
+    "title": "<contentTitle>{title}</contentTitle> ⵓⵔ ⵉⵍⵍⵉ ⵙ <languageName>{language}</languageName>",
+    "actionsLabel": "ⵜⵉⴼⵔⴰⵜⵉⵏ ⵏ ⵓⵙⴽⴰⵏ",
+    "browseInLanguage": "ⵙⵙⵉⵔⵎ ⵉⴼⵉⴷⵢⵓⵜⵏ ⵙ {language}",
+    "backToSearch": "ⴰⵖⵓⵍ ⵖⵔ ⵓⵔⵣⵣⵓ",
+    "audioVersionsTitle": "ⵜⵉⵍⵖⴰ ⵢⴰⴹⵏ ⵏ ⵉⵎⵙⵍⵉ",
+    "audioVersionsDescription": "ⵙⵜⵉ ⵜⵓⵜⵍⴰⵢⵜ ⵏ ⵉⵎⵙⵍⵉ ⴰⴼⴰⴷ ⴰⴷ ⵜⴽⵎⵎⵍⴷ ⴰⵙⴽⴰⵏ ⵏ ⵓⴼⵉⴷⵢⵓ ⴰⴷ.",
+    "languageVersionLabel": "ⵜⵓⵜⵍⴰⵢⵜ ⵏ ⵉⵎⵙⵍⵉ",
+    "selectLanguageVersion": "ⵙⵜⵉ ⵜⴰⵍⵖⴰ ⵏ ⵜⵓⵜⵍⴰⵢⵜ",
+    "watchSelectedVersion": "ⵙⴽⵏ ⵜⴰⵍⵖⴰ ⵉⵜⵜⵓⵙⵜⴰⵢⵏ"
   }
 }

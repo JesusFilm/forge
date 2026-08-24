@@ -191,6 +191,7 @@
     "loadMoreFailed": "Күбрәк нәтиҗәләрне йөкләп булмады.",
     "searching": "Эзләнә...",
     "connectionHint": "Зинһар, тоташуыгызны тикшереп, кабатлап карагыз.",
+    "rateLimitHint": "Сораулар артык күп. Бер минуттан кабатлап карагыз.",
     "retrySearch": "Эзләүне кабатлау",
     "retry": "Кабатлау",
     "noResults": "“{query}” өчен нәтиҗә юк",
@@ -540,16 +541,16 @@
     "retryFailed": "Уңышсыз йөкләүләрне кабатлау"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Тел версиясе юк",
+    "eyebrow": "Тел версиясе юк",
+    "title": "<contentTitle>{title}</contentTitle> <languageName>{language}</languageName> телендә юк",
+    "actionsLabel": "Карау өчен булган вариантлар",
+    "browseInLanguage": "{language} телендәге видеоларны карау",
+    "backToSearch": "Эзләүгә кире кайту",
+    "audioVersionsTitle": "Башка аудио версияләр",
+    "audioVersionsDescription": "Бу видеоны карауны дәвам итү өчен аудио телен сайлагыз.",
+    "languageVersionLabel": "Аудио теле",
+    "selectLanguageVersion": "Тел версиясен сайлау",
+    "watchSelectedVersion": "Сайланган версияне карау"
   }
 }

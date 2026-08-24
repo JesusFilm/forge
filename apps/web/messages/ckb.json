@@ -191,6 +191,7 @@
     "loadMoreFailed": "نەتوانرا ئەنجامە زیاترەکان بار بکرێن.",
     "searching": "گەڕان دەکرێت...",
     "connectionHint": "تکایە پەیوەندییەکەت پشکنە و دووبارە هەوڵ بدە.",
+    "rateLimitHint": "داواکاری زۆرە. تکایە دوای خولەکێک هەوڵ بدەرەوە.",
     "retrySearch": "دووبارە هەوڵدانی گەڕان",
     "retry": "دووبارە هەوڵدان",
     "noResults": "هیچ ئەنجامێک بۆ \"{query}\" نەدۆزرایەوە",
@@ -540,16 +541,16 @@
     "retryFailed": "دووبارە هەوڵدان بۆ داگرتنە سەرنەکەوتووەکان"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "وەشانی زمان بەردەست نییە",
+    "eyebrow": "وەشانی زمان بەردەست نییە",
+    "title": "<contentTitle>{title}</contentTitle> بە زمانی <languageName>{language}</languageName> بەردەست نییە",
+    "actionsLabel": "هەڵبژاردەکانی بینین",
+    "browseInLanguage": "ڤیدیۆکان بە زمانی {language} ببینە",
+    "backToSearch": "گەڕانەوە بۆ گەڕان",
+    "audioVersionsTitle": "وەشانەکانی تری دەنگ",
+    "audioVersionsDescription": "زمانێکی دەنگ هەڵبژێرە بۆ بەردەوامبوون لە بینینی ئەم ڤیدیۆیە.",
+    "languageVersionLabel": "زمانی دەنگ",
+    "selectLanguageVersion": "وەشانێکی زمان هەڵبژێرە",
+    "watchSelectedVersion": "وەشانی هەڵبژێردراو ببینە"
   }
 }

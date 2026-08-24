@@ -191,6 +191,7 @@
     "loadMoreFailed": "Daha çox nəticə yüklənmədi.",
     "searching": "Axtarılır...",
     "connectionHint": "Zəhmət olmasa, bağlantınızı yoxlayın və yenidən cəhd edin.",
+    "rateLimitHint": "Сорғулар һәддиндән чохдур. Зәһмәт олмаса, бир дәгигәдән сонра јенидән синајын.",
     "retrySearch": "Axtarışı təkrarla",
     "retry": "Yenidən cəhd edin",
     "noResults": "“{query}” üçün nəticə tapılmadı",
@@ -540,16 +541,16 @@
     "retryFailed": "Уғурсуз оланлары јенидән јүклә"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Дил версијасы мөвҹуд дејил",
+    "eyebrow": "Дил версијасы мөвҹуд дејил",
+    "title": "<contentTitle>{title}</contentTitle> <languageName>{language}</languageName> дилиндә мөвҹуд дејил",
+    "actionsLabel": "Мөвҹуд бахыш сечимләри",
+    "browseInLanguage": "{language} дилиндә видеолара бахын",
+    "backToSearch": "Ахтарыша гајыт",
+    "audioVersionsTitle": "Башга аудио версијалары",
+    "audioVersionsDescription": "Бу видеону изләмәјә давам етмәк үчүн аудио дили сечин.",
+    "languageVersionLabel": "Аудио дили",
+    "selectLanguageVersion": "Дил версијасыны сечин",
+    "watchSelectedVersion": "Сечилмиш версијаја бахын"
   }
 }

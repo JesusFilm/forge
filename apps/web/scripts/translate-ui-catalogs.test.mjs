@@ -1338,12 +1338,12 @@ describe("translate UI catalogs", () => {
         existingNonInventoryLocales: [],
         missingCatalogs: [],
       },
-      inventory: { languages: [{ tag: "ru" }] },
-      completedLocales: ["ru"],
-      generatedLocales: ["ru"],
+      inventory: { languages: [{ tag: "en" }] },
+      completedLocales: ["en"],
+      generatedLocales: ["en"],
       model: MODEL,
       sourceDigest: "current-source",
-      catalogDigests: { ru: "current-ru" },
+      catalogDigests: { en: "current-en" },
       generatedOn: "2026-07-23",
     })
 

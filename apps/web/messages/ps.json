@@ -191,6 +191,7 @@
     "loadMoreFailed": "نورې پایلې بار نه شوې.",
     "searching": "لټون کېږي...",
     "connectionHint": "مهرباني وکړئ خپل اتصال وګورئ او بیا هڅه وکړئ.",
+    "rateLimitHint": "ډېرې غوښتنې شوې دي. مهرباني وکړئ یوه دقیقه وروسته بیا هڅه وکړئ.",
     "retrySearch": "بیا لټون وکړئ",
     "retry": "بیا هڅه",
     "noResults": "د \"{query}\" لپاره هېڅ پایله نشته",
@@ -540,16 +541,16 @@
     "retryFailed": "ناکام ډاونلوډونه بیا وازمویئ"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "د ژبې نسخه نشته",
+    "eyebrow": "د ژبې نسخه نشته",
+    "title": "<contentTitle>{title}</contentTitle> په <languageName>{language}</languageName> ژبه کې نشته",
+    "actionsLabel": "د لیدلو شته انتخابونه",
+    "browseInLanguage": "په {language} ژبه ویډیوګانې وګورئ",
+    "backToSearch": "لټون ته بېرته لاړ شئ",
+    "audioVersionsTitle": "نورې غږیزې نسخې",
+    "audioVersionsDescription": "د دې ویډیو لیدلو ته د دوام ورکولو لپاره د غږ ژبه وټاکئ.",
+    "languageVersionLabel": "د غږ ژبه",
+    "selectLanguageVersion": "د ژبې یوه نسخه وټاکئ",
+    "watchSelectedVersion": "ټاکل شوې نسخه وګورئ"
   }
 }

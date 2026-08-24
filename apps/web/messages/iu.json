@@ -193,6 +193,7 @@
     "connectionHint": "Attaveqarneq misissoruk nangeqqillugulu.",
     "retrySearch": "Ujartueqqissaarit",
     "retry": "Nangeqqi",
+    "rateLimitHint": "ᑐᒃᓯᕋᐅᑎᑦ ᐊᒥᓲᓗᐊᖅᑐᑦ. ᐊᑕᐅᓯᖅ ᒥᓂᑦ ᐅᑕᖅᑭᓗᑎᑦ ᐆᒃᑐᕋᓐᓂᒃᑲᓐᓂᕆᑦ.",
     "noResults": "\"{query}\" pillugu takussutissaqanngilaq",
     "tryDifferentKeywords": "Oqaatsit allaanerusut atukkit imaluunniit immikkoortut takukkit",
     "loading": "Aalartisartoq...",
@@ -540,16 +541,16 @@
     "retryFailed": "ᐱᔭᐅᔪᓐᓇᙱᑦᑐᑦ ᐆᒃᑐᒃᑲᓐᓂᕐᓗᒋᑦ"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "ᐅᖃᐅᓯᐅᑉ ᐊᔾᔨᖓ ᐱᑕᖃᙱᑦᑐᖅ",
+    "eyebrow": "ᐅᖃᐅᓯᐅᑉ ᐊᔾᔨᖓ ᐱᑕᖃᙱᑦᑐᖅ",
+    "title": "<contentTitle>{title}</contentTitle> <languageName>{language}</languageName>ᑐᑦ ᐱᑕᖃᙱᑦᑐᖅ",
+    "actionsLabel": "ᑕᐅᑐᓐᓂᕐᒧᑦ ᐱᕕᒃᓴᑦ",
+    "browseInLanguage": "{language}ᑐᑦ ᑕᐅᑐᒃᓴᑦ ᕿᓂᕐᓗᒋᑦ",
+    "backToSearch": "ᕿᓂᕐᒧᑦ ᐅᑎᕆᑦ",
+    "audioVersionsTitle": "ᓂᐱᓕᐅᒐᐃᑦ ᐊᓯᖏᑦ",
+    "audioVersionsDescription": "ᐅᓇ ᑕᐅᑐᒃᓴᖅ ᑕᐅᑐᒃᑲᓐᓂᕈᒪᒍᕕᐅᒃ ᓂᐱᐅᑉ ᐅᖃᐅᓯᖓ ᓂᕈᐊᕐᓗᒍ.",
+    "languageVersionLabel": "ᓂᐱᐅᑉ ᐅᖃᐅᓯᖓ",
+    "selectLanguageVersion": "ᐅᖃᐅᓯᐅᑉ ᐊᔾᔨᖓ ᓂᕈᐊᕐᓗᒍ",
+    "watchSelectedVersion": "ᓂᕈᐊᖅᑕᖅ ᑕᐅᑐᒃ"
   }
 }

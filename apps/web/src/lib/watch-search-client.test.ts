@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
 
-import { searchWatchDirect } from "./watch-search-client"
+import { searchWatchDirect, watchSearchErrorKind } from "./watch-search-client"
 
 vi.mock("@/env", () => ({
   env: {
@@ -220,5 +220,59 @@ describe("searchWatchDirect", () => {
       availabilityKind: "unavailable",
       languageSlug: null,
     })
+  })
+
+  it("preserves a GraphQL-body 429 as a rate-limited search error", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          errors: [
+            {
+              message: "Too many requests",
+              extensions: { http: { statusCode: 429 } },
+            },
+          ],
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      ),
+    )
+
+    await expect(searchWatchDirect({ query: "Jesus" })).rejects.toMatchObject({
+      kind: "rate_limited",
+    })
+  })
+
+  it("classifies an HTTP 5xx as a server search error", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+      new Response("unavailable", { status: 503 }),
+    )
+
+    await expect(searchWatchDirect({ query: "Jesus" })).rejects.toMatchObject({
+      kind: "server_error",
+    })
+  })
+
+  it("classifies a fetch rejection as a network search error", async () => {
+    vi.spyOn(globalThis, "fetch").mockRejectedValueOnce(
+      new TypeError("offline"),
+    )
+
+    await expect(searchWatchDirect({ query: "Jesus" })).rejects.toMatchObject({
+      kind: "network_error",
+    })
+  })
+
+  it("does not report a request timeout as a network failure", async () => {
+    vi.spyOn(globalThis, "fetch").mockRejectedValueOnce(
+      new DOMException("timed out", "TimeoutError"),
+    )
+
+    await expect(searchWatchDirect({ query: "Jesus" })).rejects.toMatchObject({
+      kind: "server_error",
+    })
+  })
+
+  it("does not misclassify an unrelated error as a network failure", () => {
+    expect(watchSearchErrorKind(new Error("unexpected"))).toBe("unknown")
   })
 })

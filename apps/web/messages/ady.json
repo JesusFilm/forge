@@ -191,6 +191,7 @@
     "loadMoreFailed": "More results къыжьыжьыу къыщымыт.",
     "searching": "Search къыжьыжьы...",
     "connectionHint": "Connection къыплъэу щыжьыжьы, щытхъэу къыдэжь.",
+    "rateLimitHint": "Запросхэр хъугъэу мэхъу. Минутым ипэкӏэ къыдэжь.",
     "retrySearch": "Search къыдэжь",
     "retry": "Къыдэжь",
     "noResults": "\"{query}\" къыщэбгъэр хэмыт",
@@ -540,16 +541,16 @@
     "retryFailed": "КъыщымыIэщхэр къыдэжь"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Бзэм и версиер къэдгъэлъэгъу хъунэп",
+    "eyebrow": "Бзэм и версиер къэдгъэлъэгъу хъунэп",
+    "title": "<contentTitle>{title}</contentTitle> <languageName>{language}</languageName>-мкӏэ щыӏэп",
+    "actionsLabel": "Къэплъэн зыхъукӏэхэр",
+    "browseInLanguage": "{language}-мкӏэ видеохэр къыжъэхъу",
+    "backToSearch": "Лъыхъоныгъэм къэкӏожь",
+    "audioVersionsTitle": "Аудиом и нэмыщӏ версиэхэр",
+    "audioVersionsDescription": "Мы видеом еплъэнымкӏэ аудио бзэ къыхэх.",
+    "languageVersionLabel": "Аудио бзэ",
+    "selectLanguageVersion": "Бзэм и версие къыхэх",
+    "watchSelectedVersion": "Къыхэхыгъэ версием еплъ"
   }
 }

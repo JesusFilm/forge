@@ -191,6 +191,7 @@
     "loadMoreFailed": "No s’han pogut carregar més resultats.",
     "searching": "S’està cercant...",
     "connectionHint": "Comprova la connexió i torna-ho a provar.",
+    "rateLimitHint": "Massa sol·licituds. Torna-ho a provar d'aquí a un minut.",
     "retrySearch": "Torna a provar la cerca",
     "retry": "Torna a provar",
     "noResults": "No hi ha resultats per a \"{query}\"",
@@ -540,16 +541,16 @@
     "retryFailed": "Torna a provar els que han fallat"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "La versió en aquest idioma no està disponible",
+    "eyebrow": "La versió en aquest idioma no està disponible",
+    "title": "<contentTitle>{title}</contentTitle> no està disponible en <languageName>{language}</languageName>",
+    "actionsLabel": "Opcions de visualització disponibles",
+    "browseInLanguage": "Explora vídeos en {language}",
+    "backToSearch": "Torna a la cerca",
+    "audioVersionsTitle": "Altres versions d'àudio",
+    "audioVersionsDescription": "Tria un idioma d'àudio per continuar veient aquest vídeo.",
+    "languageVersionLabel": "Idioma de l'àudio",
+    "selectLanguageVersion": "Tria una versió d'idioma",
+    "watchSelectedVersion": "Mira la versió seleccionada"
   }
 }
