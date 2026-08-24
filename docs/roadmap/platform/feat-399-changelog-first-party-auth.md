@@ -3,7 +3,7 @@ id: "feat-399"
 title: "Register Changelog with first-party Auth grants"
 owner: "edmonday"
 priority: "P0"
-status: "in-progress"
+status: "complete"
 start_date: "2026-08-19"
 duration: 3
 depends_on:
@@ -100,12 +100,35 @@ grant revocation before code exchange and refresh, zero token rows on denial,
 cross-resource rejection, and production-off behavior. Production issuance
 remains default-off.
 
-This ticket stays `in-progress` until separate clean Codex and Claude client
-profiles prove distinct dynamic client identities and token families through
-authorize, exchange, refresh/reconnect, and a denied ungranted scope/tool.
-That acceptance is externally blocked as of `JesusFilm/jfp-changelog`
-`d403318`: its Auth verifier accepts the local `/mcp` audience, but the
-repository does not yet implement a runnable `/mcp` protected-resource
-endpoint or read tool for either client to connect to.
-Supported grant provisioning and revocation also remain prerequisites for
-enabling production.
+Acceptance completed locally on 2026-08-24 against Forge `a4c9e3ba` and
+`JesusFilm/jfp-changelog` `4babe81`. Changelog exposed a protected Streamable
+HTTP `/mcp` endpoint plus the PostgreSQL-backed `list_entries` tool, and a
+disposable Forge database contained one approved local `changelog:read` grant
+and one published test entry. Separate clean CLI profiles completed dynamic
+registration and authorization:
+
+- Codex registered native client `StXZJVoOsCKzKGgVWwUbrLSIvVOlHWGe` with a
+  `127.0.0.1` callback; Claude registered native client
+  `heFkQEOEPcbgyyZOYooMJFcEIuYhCDtU` with a `localhost` callback. Forge commit
+  `a4c9e3ba` normalizes omitted or implicit-web DCR metadata to `native` only
+  when every redirect is an exact HTTP loopback URI, preserving the provider's
+  HTTPS requirement for non-loopback web clients.
+- Both authorization requests included an ungranted `changelog:submit` scope,
+  and both exchanged tokens contained exactly `changelog:read`. Separate
+  refresh-family SHA-256 prefixes (`fad10f525b54` for Codex and
+  `c6a16308cd2a` for Claude) proved the clients did not share credentials.
+- Codex read `Protected MCP reads are available`, refreshed from access-token
+  digest `ef3860e2b443` to `8a326bee7eaa`, then read the same entry after
+  reconnect. Claude independently read the entry, refreshed from
+  `f3b57130de51` to `03e17068181d`, and read it again.
+- A submit-only authorization request for each client returned
+  `access_denied` with no authorization code. Production remained disabled
+  throughout with `AUTH_CHANGELOG_PRODUCTION_ENABLED=false`.
+
+Verification passed with 458 Forge Auth unit tests (18 opt-in integration tests
+skipped in the aggregate command), focused route tests, Auth typecheck and
+lint, plus 98 Changelog tests and Changelog typecheck. The earlier PostgreSQL
+CI receipt above covers all 18 Forge integration tests. Preview registration
+remains deliberately deferred until Changelog has a stable preview domain.
+Supported grant provisioning and revocation remain separate production-
+readiness work and are still prerequisites for enabling production issuance.
