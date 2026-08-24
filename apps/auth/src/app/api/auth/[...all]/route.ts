@@ -39,6 +39,7 @@ const WINDOW_MS = 60_000
 const MAX_ATTEMPTS = 10
 const LAST_LOGIN_METHOD_COOKIE = "forge_auth_last_login_method"
 const LAST_LOGIN_METHOD_MAX_AGE = 60 * 60 * 24 * 365
+const MAX_DCR_BODY_BYTES = 64 * 1024
 
 type LastLoginMethod = "apple" | "email" | "facebook" | "google" | "okta"
 const providerPriority = ["google", "facebook", "apple", "okta"] as const
@@ -65,19 +66,33 @@ function isHttpLoopbackRedirect(uri: string): boolean {
   }
 }
 
-async function normalizeLoopbackDcrRequest(request: Request): Promise<Request> {
+async function normalizeLoopbackDcrRequest(
+  request: Request,
+): Promise<Request | Response> {
   if (!request.headers.get("content-type")?.includes("application/json")) {
     return request
   }
 
+  const bodyBytes = await readBoundedBody(request, MAX_DCR_BODY_BYTES)
+  if (!bodyBytes) {
+    return Response.json(
+      { error: "Request body is too large" },
+      { status: 413 },
+    )
+  }
+  const headers = new Headers(request.headers)
+  headers.delete("content-length")
+  const forward = (body: BodyInit) =>
+    new Request(request, { body, headers, signal: request.signal })
+
   let parsed: unknown
   try {
-    parsed = await request.clone().json()
+    parsed = JSON.parse(new TextDecoder().decode(bodyBytes))
   } catch {
-    return request
+    return forward(bodyBytes)
   }
   if (parsed == null || typeof parsed !== "object" || Array.isArray(parsed)) {
-    return request
+    return forward(bodyBytes)
   }
   const body = parsed as Record<string, unknown>
   const redirectUris = body.redirect_uris
@@ -92,18 +107,45 @@ async function normalizeLoopbackDcrRequest(request: Request): Promise<Request> {
         typeof uri === "string" && isHttpLoopbackRedirect(uri),
     )
   ) {
-    return request
+    return forward(bodyBytes)
   }
 
-  return new Request(request.url, {
+  return new Request(request, {
     body: JSON.stringify({
       ...body,
       application_type: "native",
       token_endpoint_auth_method: "none",
     }),
-    headers: request.headers,
-    method: request.method,
+    headers,
+    signal: request.signal,
   })
+}
+
+async function readBoundedBody(
+  request: Request,
+  maxBytes: number,
+): Promise<ArrayBuffer | undefined> {
+  const reader = request.body?.getReader()
+  if (!reader) return new ArrayBuffer(0)
+  const chunks: Uint8Array[] = []
+  let length = 0
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done) break
+    length += value.byteLength
+    if (length > maxBytes) {
+      await reader.cancel().catch(() => undefined)
+      return
+    }
+    chunks.push(value)
+  }
+  const bytes = new Uint8Array(length)
+  let offset = 0
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset)
+    offset += chunk.byteLength
+  }
+  return bytes.buffer
 }
 
 function sha256(input: string): string {
@@ -1108,7 +1150,9 @@ export async function POST(
     if (policyResponse) return policyResponse
   }
   if (path === "oauth2/register") {
-    request = await normalizeLoopbackDcrRequest(request)
+    const normalized = await normalizeLoopbackDcrRequest(request)
+    if (normalized instanceof Response) return normalized
+    request = normalized
   }
   if (isDeviceGrantPath(path)) {
     return withNoStore(await authRouteHandlers.POST(request))
