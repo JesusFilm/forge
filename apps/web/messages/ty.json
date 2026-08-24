@@ -191,6 +191,7 @@
     "loadMoreFailed": "ʻAita i manuia te utaraa mai i te tahi atu mau résultats.",
     "searching": "Te imi nei...",
     "connectionHint": "A hi'o i to outou taairaa e a tamata faahou.",
+    "rateLimitHint": "Ua rahi roa te mau aniraa. A tamata faahou i roto hoê minuti.",
     "retrySearch": "Tamata faahou i te imiraa",
     "retry": "Tamata faahou",
     "noResults": "ʻAita e tumu parau no «{query}»",
@@ -540,16 +541,16 @@
     "retryFailed": "Tamata faahou i te mau episode i hape"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Aita teie huriraa reo i te vai",
+    "eyebrow": "Aita teie huriraa reo i te vai",
+    "title": "Aita <contentTitle>{title}</contentTitle> i te vai na roto i te <languageName>{language}</languageName>",
+    "actionsLabel": "Te mau maitiraa mata'ita'i e vai ra",
+    "browseInLanguage": "Mata'ita'i i te mau video na roto i te {language}",
+    "backToSearch": "Ho'i i te ma'imiraa",
+    "audioVersionsTitle": "Te tahi atu mau huriraa reo",
+    "audioVersionsDescription": "A ma'iti i te hoê reo no te tamau i te mata'ita'i i teie video.",
+    "languageVersionLabel": "Reo",
+    "selectLanguageVersion": "Ma'iti i te hoê huriraa reo",
+    "watchSelectedVersion": "Mata'ita'i i te huriraa i ma'itihia"
   }
 }

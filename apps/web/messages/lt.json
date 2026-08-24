@@ -191,6 +191,7 @@
     "loadMoreFailed": "Nepavyko įkelti daugiau rezultatų.",
     "searching": "Ieškoma...",
     "connectionHint": "Patikrinkite ryšį ir bandykite dar kartą.",
+    "rateLimitHint": "Per daug užklausų. Bandykite dar kartą po minutės.",
     "retrySearch": "Kartoti paiešką",
     "retry": "Bandyti dar kartą",
     "noResults": "Nėra rezultatų pagal „{query}“",
@@ -540,16 +541,16 @@
     "retryFailed": "Kartoti nepavykusius atsisiuntimus"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Versija šia kalba nepasiekiama",
+    "eyebrow": "Versija šia kalba nepasiekiama",
+    "title": "<contentTitle>{title}</contentTitle> nepasiekiamas kalba „<languageName>{language}</languageName>“",
+    "actionsLabel": "Galimi peržiūros būdai",
+    "browseInLanguage": "Naršyti vaizdo įrašus kalba „{language}“",
+    "backToSearch": "Grįžti į paiešką",
+    "audioVersionsTitle": "Kitos garso versijos",
+    "audioVersionsDescription": "Pasirinkite garso kalbą, kad galėtumėte toliau žiūrėti šį vaizdo įrašą.",
+    "languageVersionLabel": "Garso kalba",
+    "selectLanguageVersion": "Pasirinkite kalbos versiją",
+    "watchSelectedVersion": "Žiūrėti pasirinktą versiją"
   }
 }

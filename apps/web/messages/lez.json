@@ -191,6 +191,7 @@
     "loadMoreFailed": "Хутӏ кьватӏ артухариз хьанвач.",
     "searching": "Гъарда...",
     "connectionHint": "Сизни гьалди текшер кьуна гьаъ хъсан кьван.",
+    "rateLimitHint": "ТIалабунар лап гзаф я. Са минутдилай мадни алахъ.",
     "retrySearch": "Гъарун хъсан кьван",
     "retry": "Хъсан кьван",
     "noResults": "\"{query}\" учун натижалар авач",
@@ -540,16 +541,16 @@
     "retryFailed": "Хъутӏайбур хъсан кьван"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "ЧIалан версия авач",
+    "eyebrow": "ЧIалан версия авач",
+    "title": "<contentTitle>{title}</contentTitle> <languageName>{language}</languageName> чIалал авач",
+    "actionsLabel": "Килигдай мумкинвилер",
+    "browseInLanguage": "{language} чIалал видеояр килиг",
+    "backToSearch": "Жузунал элкъвена",
+    "audioVersionsTitle": "Маса сесин версияяр",
+    "audioVersionsDescription": "И видео килигзавайди давамарун патал сесин чIал хкягъ.",
+    "languageVersionLabel": "Сесин чIал",
+    "selectLanguageVersion": "ЧIалан версия хкягъ",
+    "watchSelectedVersion": "Хкягъай версиядиз килиг"
   }
 }

@@ -191,6 +191,7 @@
     "loadMoreFailed": "Weider Resultater konnte net geluede ginn.",
     "searching": "Sich gëtt duerchgefouert...",
     "connectionHint": "Kontrolléiert w.e.g. Är Verbindung a probéiert et nach eng Kéier.",
+    "rateLimitHint": "Ze vill Ufroen. Probéiert et wgl. an enger Minutt nach eng Kéier.",
     "retrySearch": "Sich nach eng Kéier",
     "retry": "Nach eng Kéier",
     "noResults": "Keng Resultater fir \"{query}\"",
@@ -540,16 +541,16 @@
     "retryFailed": "Gescheitert Erofluede widderhuelen"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Sproochversioun net verfügbar",
+    "eyebrow": "Sproochversioun net verfügbar",
+    "title": "<contentTitle>{title}</contentTitle> ass net op <languageName>{language}</languageName> verfügbar",
+    "actionsLabel": "Verfügbar Optioune fir ze kucken",
+    "browseInLanguage": "Videoen op {language} duerchsichen",
+    "backToSearch": "Zeréck bei d'Sich",
+    "audioVersionsTitle": "Aner Audioversiounen",
+    "audioVersionsDescription": "Wielt eng Audiosprooch, fir dëse Video weiderzekucken.",
+    "languageVersionLabel": "Audiosprooch",
+    "selectLanguageVersion": "Eng Sproochversioun auswielen",
+    "watchSelectedVersion": "Ausgewielte Versioun kucken"
   }
 }

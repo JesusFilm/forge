@@ -191,6 +191,7 @@
     "loadMoreFailed": "Results kɔŋa bɔ yé tɔrɔ.",
     "searching": "Yé suŋ...",
     "connectionHint": "Connection dɔŋ kɛ kɔ tɔrɔ ka wɛŋ.",
+    "rateLimitHint": "Ñininkali kɔŋa. Tɔrɔ ka wɛŋ minute kelen kɔ.",
     "retrySearch": "Search tɔrɔ ka wɛŋ",
     "retry": "Tɔrɔ ka wɛŋ",
     "noResults": "\"{query}\" ka results yé no yi",
@@ -540,16 +541,16 @@
     "retryFailed": "Tɔrɔ maŋga dɛmɛ tɔrɔ ka wɛŋ"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Kan sugu yé no yi",
+    "eyebrow": "Kan sugu yé no yi",
+    "title": "<contentTitle>{title}</contentTitle> yé no yi <languageName>{language}</languageName> ka",
+    "actionsLabel": "Filimu yé waara kɛ",
+    "browseInLanguage": "{language} ka filimu suŋ kɛ",
+    "backToSearch": "Ɲini kɔŋ hɔn",
+    "audioVersionsTitle": "Mankan sugu dɔŋa",
+    "audioVersionsDescription": "Mankan ka kan waara kɛ ka filimu in lajɛ taa.",
+    "languageVersionLabel": "Mankan ka kan",
+    "selectLanguageVersion": "Kan sugu waara kɛ",
+    "watchSelectedVersion": "Sugu waara kɛ yé"
   }
 }

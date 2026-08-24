@@ -191,6 +191,7 @@
     "loadMoreFailed": "Labele karrega rezultadu tan.",
     "searching": "Buka ona...",
     "connectionHint": "Favor verifica ita nia koneksaun no tenta fali.",
+    "rateLimitHint": "Pedidu barak liu. Favór koko fali hafoin minutu ida.",
     "retrySearch": "Tenta buka fali",
     "retry": "Tenta fali",
     "noResults": "La hetan rezultadu ba \"{query}\"",
@@ -540,16 +541,16 @@
     "retryFailed": "Tenta deskarga fali sira ne'ebé falla"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Versaun lian la disponivel",
+    "eyebrow": "Versaun lian la disponivel",
+    "title": "<contentTitle>{title}</contentTitle> la disponivel iha <languageName>{language}</languageName>",
+    "actionsLabel": "Opsaun atu haree ne'ebé disponivel",
+    "browseInLanguage": "Buka vídeu sira iha {language}",
+    "backToSearch": "Fila ba buka",
+    "audioVersionsTitle": "Versaun áudiu seluk",
+    "audioVersionsDescription": "Hili lian áudiu ida atu kontinua haree vídeu ne'e.",
+    "languageVersionLabel": "Lian áudiu",
+    "selectLanguageVersion": "Hili versaun lian ida",
+    "watchSelectedVersion": "Haree versaun ne'ebé hili"
   }
 }

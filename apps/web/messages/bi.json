@@ -191,6 +191,7 @@
     "loadMoreFailed": "I no save loadem moa result.",
     "searching": "Stap sokem...",
     "connectionHint": "Plis checkem connection blong yu mo traem bakegen.",
+    "rateLimitHint": "Plante tumas rikwest. Plis traem bakegen long wan minit.",
     "retrySearch": "Traem search bakegen",
     "retry": "Traem bakegen",
     "noResults": "I no gat result blong \"{query}\"",
@@ -540,16 +541,16 @@
     "retryFailed": "Traem bakegen ol we oli fail"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Lanwis vesen i no stap",
+    "eyebrow": "Lanwis vesen i no stap",
+    "title": "<contentTitle>{title}</contentTitle> i no stap long <languageName>{language}</languageName>",
+    "actionsLabel": "Ol wei blong lukluk we oli stap",
+    "browseInLanguage": "Lukluk ol video long {language}",
+    "backToSearch": "Go bak long lukaot",
+    "audioVersionsTitle": "Ol narafala odio vesen",
+    "audioVersionsDescription": "Jusum wan odio lanwis blong gohed blong lukluk video ia.",
+    "languageVersionLabel": "Odio lanwis",
+    "selectLanguageVersion": "Jusum wan lanwis vesen",
+    "watchSelectedVersion": "Lukluk vesen we yu jusum"
   }
 }

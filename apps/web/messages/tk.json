@@ -191,6 +191,7 @@
     "loadMoreFailed": "Has köp netijäni ýükläp bolmady.",
     "searching": "Gözlenýär...",
     "connectionHint": "Baglanyşygyňyzy barlaň we gaýtadan synanşyň.",
+    "rateLimitHint": "Örän köp haýyş iberildi. Bir minutdan soň gaýtadan synanyşyň.",
     "retrySearch": "Gözlegi gaýtala",
     "retry": "Täzeden synanş",
     "noResults": "\"{query}\" üçin netije ýok",
@@ -540,16 +541,16 @@
     "retryFailed": "Şowsuz bolanlary gaýtadan synanş"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Dil görnüşi elýeterli däl",
+    "eyebrow": "Dil görnüşi elýeterli däl",
+    "title": "<contentTitle>{title}</contentTitle> <languageName>{language}</languageName> dilinde elýeterli däl",
+    "actionsLabel": "Elýeterli tomaşa görnüşleri",
+    "browseInLanguage": "{language} dilindäki wideolara serediň",
+    "backToSearch": "Gözlege dolan",
+    "audioVersionsTitle": "Beýleki ses görnüşleri",
+    "audioVersionsDescription": "Bu wideony görmegi dowam etdirmek üçin ses dilini saýlaň.",
+    "languageVersionLabel": "Ses dili",
+    "selectLanguageVersion": "Dil görnüşini saýlaň",
+    "watchSelectedVersion": "Saýlanan görnüşi görüň"
   }
 }

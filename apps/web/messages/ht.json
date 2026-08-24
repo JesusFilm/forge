@@ -191,6 +191,7 @@
     "loadMoreFailed": "Echèk chaje plis rezilta.",
     "searching": "Ap chèche...",
     "connectionHint": "Tanpri verifye koneksyon ou epi eseye ankò.",
+    "rateLimitHint": "Twòp demann. Tanpri eseye ankò nan yon minit.",
     "retrySearch": "Reeseye rechèch la",
     "retry": "Reeseye",
     "noResults": "Pa gen rezilta pou \"{query}\"",
@@ -540,16 +541,16 @@
     "retryFailed": "Reeseye sa ki echwe yo"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Vèsyon lang lan pa disponib",
+    "eyebrow": "Vèsyon lang lan pa disponib",
+    "title": "<contentTitle>{title}</contentTitle> pa disponib an <languageName>{language}</languageName>",
+    "actionsLabel": "Opsyon vizyonaj ki disponib",
+    "browseInLanguage": "Gade videyo an {language}",
+    "backToSearch": "Retounen nan rechèch la",
+    "audioVersionsTitle": "Lòt vèsyon odyo",
+    "audioVersionsDescription": "Chwazi yon lang odyo pou kontinye gade videyo sa a.",
+    "languageVersionLabel": "Lang odyo",
+    "selectLanguageVersion": "Chwazi yon vèsyon lang",
+    "watchSelectedVersion": "Gade vèsyon ou chwazi a"
   }
 }

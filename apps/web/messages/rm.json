@@ -191,6 +191,7 @@
     "loadMoreFailed": "Betg reussì da chargiar dapli resultats.",
     "searching": "Tschertga...",
     "connectionHint": "Controllai per plaschair la connexiun e empruvai anc ina giada.",
+    "rateLimitHint": "Memia bleras dumondas. Empruvai anc ina giada en ina minuta.",
     "retrySearch": "Empruvar anc ina giada da tschertgar",
     "retry": "Empruvar anc ina giada",
     "noResults": "Nagin resultat per \"{query}\"",
@@ -540,16 +541,16 @@
     "retryFailed": "Reempruvar ils downloads betg reussids"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Versiun linguistica betg disponibla",
+    "eyebrow": "Versiun linguistica betg disponibla",
+    "title": "<contentTitle>{title}</contentTitle> n'è betg disponibel en <languageName>{language}</languageName>",
+    "actionsLabel": "Opziuns da guardar disponiblas",
+    "browseInLanguage": "Navigar tras videos en {language}",
+    "backToSearch": "Enavos a la tschertga",
+    "audioVersionsTitle": "Autras versiuns audio",
+    "audioVersionsDescription": "Tscherna ina lingua audio per cuntinuar a guardar quest video.",
+    "languageVersionLabel": "Lingua audio",
+    "selectLanguageVersion": "Tscherner ina versiun linguistica",
+    "watchSelectedVersion": "Guardar la versiun tschernida"
   }
 }

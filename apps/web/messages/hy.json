@@ -191,6 +191,7 @@
     "loadMoreFailed": "Չհաջողվեց բեռնել ավելի շատ արդյունքներ։",
     "searching": "Որոնվում է...",
     "connectionHint": "Խնդրում ենք ստուգել ձեր կապը և կրկին փորձել։",
+    "rateLimitHint": "Չափազանց շատ հարցումներ։ Կրկին փորձեք մեկ րոպեից։",
     "retrySearch": "Կրկնել որոնումը",
     "retry": "Կրկնել",
     "noResults": "Արդյունքներ չկան «{query}»-ի համար",
@@ -540,16 +541,16 @@
     "retryFailed": "Կրկին փորձել չներբեռնվածները"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Լեզվական տարբերակը հասանելի չէ",
+    "eyebrow": "Լեզվական տարբերակը հասանելի չէ",
+    "title": "<contentTitle>{title}</contentTitle>-ը հասանելի չէ <languageName>{language}</languageName> լեզվով",
+    "actionsLabel": "Դիտման հասանելի տարբերակներ",
+    "browseInLanguage": "Դիտել տեսանյութեր {language} լեզվով",
+    "backToSearch": "Վերադառնալ որոնմանը",
+    "audioVersionsTitle": "Այլ ձայնային տարբերակներ",
+    "audioVersionsDescription": "Ընտրեք ձայնի լեզուն՝ այս տեսանյութի դիտումը շարունակելու համար։",
+    "languageVersionLabel": "Ձայնի լեզու",
+    "selectLanguageVersion": "Ընտրել լեզվական տարբերակ",
+    "watchSelectedVersion": "Դիտել ընտրված տարբերակը"
   }
 }

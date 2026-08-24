@@ -191,6 +191,7 @@
     "loadMoreFailed": "Theip ar níos mó torthaí a luchtú.",
     "searching": "Ag cuardach...",
     "connectionHint": "Seiceáil do cheangal agus bain triail eile as.",
+    "rateLimitHint": "An iomarca iarratas. Bain triail eile as i gceann nóiméid.",
     "retrySearch": "Triail eile ar an gcuardach",
     "retry": "Triail eile",
     "noResults": "Níl torthaí ann do \"{query}\"",
@@ -540,16 +541,16 @@
     "retryFailed": "Triail eile ar na cinn ar theip orthu"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Níl an leagan teanga ar fáil",
+    "eyebrow": "Níl an leagan teanga ar fáil",
+    "title": "Níl <contentTitle>{title}</contentTitle> ar fáil i <languageName>{language}</languageName>",
+    "actionsLabel": "Roghanna féachana atá ar fáil",
+    "browseInLanguage": "Brabhsáil físeáin i {language}",
+    "backToSearch": "Ar ais chuig an gcuardach",
+    "audioVersionsTitle": "Leaganacha fuaime eile",
+    "audioVersionsDescription": "Roghnaigh teanga fuaime chun leanúint ar aghaidh ag féachaint ar an bhfíseán seo.",
+    "languageVersionLabel": "Teanga fuaime",
+    "selectLanguageVersion": "Roghnaigh leagan teanga",
+    "watchSelectedVersion": "Féach ar an leagan roghnaithe"
   }
 }

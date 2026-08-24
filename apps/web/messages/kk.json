@@ -191,6 +191,7 @@
     "loadMoreFailed": "Қосымша нәтижелерді жүктеу мүмкін болмады.",
     "searching": "Ізделуде...",
     "connectionHint": "Қосылымыңызды тексеріп, қайта көріңіз.",
+    "rateLimitHint": "Сұраулар тым көп. Бір минуттан кейін қайталап көріңіз.",
     "retrySearch": "Іздеуді қайталау",
     "retry": "Қайталау",
     "noResults": "\"{query}\" бойынша нәтиже жоқ",
@@ -540,16 +541,16 @@
     "retryFailed": "Сәтсіз жүктелгендерді қайталау"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Тілдік нұсқа қолжетімсіз",
+    "eyebrow": "Тілдік нұсқа қолжетімсіз",
+    "title": "<contentTitle>{title}</contentTitle> <languageName>{language}</languageName> тілінде қолжетімсіз",
+    "actionsLabel": "Қолжетімді көру нұсқалары",
+    "browseInLanguage": "{language} тіліндегі бейнелерді шолу",
+    "backToSearch": "Іздеуге оралу",
+    "audioVersionsTitle": "Басқа аудио нұсқалар",
+    "audioVersionsDescription": "Бұл бейнені көруді жалғастыру үшін аудио тілін таңдаңыз.",
+    "languageVersionLabel": "Аудио тілі",
+    "selectLanguageVersion": "Тілдік нұсқаны таңдаңыз",
+    "watchSelectedVersion": "Таңдалған нұсқаны көру"
   }
 }

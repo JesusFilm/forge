@@ -191,6 +191,7 @@
     "loadMoreFailed": "Yehlulekile ukulayisha eminye imiphumela.",
     "searching": "Kuyaseshwa...",
     "connectionHint": "Sicela uhlole uxhumano lwakho bese uzama futhi.",
+    "rateLimitHint": "Iimbawo zinengi khulu. Zama godu ngemva komzuzu.",
     "retrySearch": "Zama usesho futhi",
     "retry": "Zama futhi",
     "noResults": "Ayikho imiphumela ye-\"{query}\"",
@@ -540,16 +541,16 @@
     "retryFailed": "Zama futhi ukulanda okuhlulekile"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Inguqulo yelimi ayikho",
+    "eyebrow": "Inguqulo yelimi ayikho",
+    "title": "<contentTitle>{title}</contentTitle> ayikho ngelimi lesi-<languageName>{language}</languageName>",
+    "actionsLabel": "Iindlela zokubukela ezikhona",
+    "browseInLanguage": "Phequlula amavidiyo ngelimi lesi-{language}",
+    "backToSearch": "Buyela ekufuneni",
+    "audioVersionsTitle": "Ezinye iinguqulo zomsindo",
+    "audioVersionsDescription": "Khetha ilimi lomsindo ukuze uragele phambili ubukele ividiyo le.",
+    "languageVersionLabel": "Ilimi lomsindo",
+    "selectLanguageVersion": "Khetha inguqulo yelimi",
+    "watchSelectedVersion": "Bukela inguqulo ekhethiwe"
   }
 }

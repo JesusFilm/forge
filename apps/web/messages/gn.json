@@ -191,6 +191,7 @@
     "loadMoreFailed": "Ndaikatúi oñemyanyhẽve resultados.",
     "searching": "Ojeheka hag̃uáicha...",
     "connectionHint": "Ehecha ne conexión ha eha'ãjey.",
+    "rateLimitHint": "Hetaiterei mba’ejerure. Eha’ãjey peteĩ aravo’i rire.",
     "retrySearch": "Eha'ãjey jeheka",
     "retry": "Eha'ãjey",
     "noResults": "Ndojejuhúi mba'eve \"{query}\" rehegua",
@@ -540,16 +541,16 @@
     "retryFailed": "Eha'ãjey umi ndoikóiva"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Ñe’ẽ versión ndojeporukuaái",
+    "eyebrow": "Ñe’ẽ versión ndojeporukuaái",
+    "title": "<contentTitle>{title}</contentTitle> ndojeporukuaái <languageName>{language}</languageName>-pe",
+    "actionsLabel": "Jehecha poravorã ojeporukuaáva",
+    "browseInLanguage": "Eheka ta’ãngamýi {language}-pe",
+    "backToSearch": "Ejevy jehekápe",
+    "audioVersionsTitle": "Ambue ñe’ẽpu versión",
+    "audioVersionsDescription": "Eiporavo peteĩ ñe’ẽpu resegui hag̃ua rehecha ko ta’ãngamýi.",
+    "languageVersionLabel": "Ñe’ẽpu ñe’ẽ",
+    "selectLanguageVersion": "Eiporavo peteĩ ñe’ẽ versión",
+    "watchSelectedVersion": "Ehecha versión reiporavóva"
   }
 }

@@ -191,6 +191,7 @@
     "loadMoreFailed": "আরও ফলাফল লোড করা যায়নি।",
     "searching": "সার্চ হচ্ছে...",
     "connectionHint": "আপনার সংযোগ পরীক্ষা করে আবার চেষ্টা করুন।",
+    "rateLimitHint": "অনেক বেশি অনুরোধ করা হয়েছে। অনুগ্রহ করে এক মিনিট পর আবার চেষ্টা করুন।",
     "retrySearch": "আবার সার্চ করুন",
     "retry": "আবার চেষ্টা করুন",
     "noResults": "\"{query}\"-এর জন্য কোনো ফলাফল নেই",
@@ -540,16 +541,16 @@
     "retryFailed": "ব্যর্থ ডাউনলোডগুলো আবার চেষ্টা করুন"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "ভাষার সংস্করণটি উপলভ্য নয়",
+    "eyebrow": "ভাষার সংস্করণটি উপলভ্য নয়",
+    "title": "<contentTitle>{title}</contentTitle> <languageName>{language}</languageName> ভাষায় উপলভ্য নয়",
+    "actionsLabel": "উপলভ্য দেখার বিকল্প",
+    "browseInLanguage": "{language} ভাষায় ভিডিও ব্রাউজ করুন",
+    "backToSearch": "অনুসন্ধানে ফিরে যান",
+    "audioVersionsTitle": "অন্যান্য অডিও সংস্করণ",
+    "audioVersionsDescription": "এই ভিডিওটি দেখা চালিয়ে যেতে একটি অডিও ভাষা বেছে নিন।",
+    "languageVersionLabel": "অডিও ভাষা",
+    "selectLanguageVersion": "একটি ভাষার সংস্করণ বেছে নিন",
+    "watchSelectedVersion": "নির্বাচিত সংস্করণটি দেখুন"
   }
 }

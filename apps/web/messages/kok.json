@@ -191,6 +191,7 @@
     "loadMoreFailed": "आनीक निकाल लोड करपाक फेल जालें.",
     "searching": "सोदता...",
     "connectionHint": "उपकार करून तुमचें कनेक्शन तपासून परत प्रयत्न करात.",
+    "rateLimitHint": "खूब विनंती आयल्यात. एक मिनटा उपरांत परत यत्न करात.",
     "retrySearch": "शोध परत प्रयत्न करात",
     "retry": "परत प्रयत्न करात",
     "noResults": "\"{query}\" खातीर निकाल मेळ्ळे ना",
@@ -540,16 +541,16 @@
     "retryFailed": "फेल जाल्ल्यांचो परत प्रयत्न करात"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "भाशेची आवृत्ती उपलब्ध ना",
+    "eyebrow": "भाशेची आवृत्ती उपलब्ध ना",
+    "title": "<contentTitle>{title}</contentTitle> <languageName>{language}</languageName> भाशेंत उपलब्ध ना",
+    "actionsLabel": "पळोवपाचे उपलब्ध पर्याय",
+    "browseInLanguage": "{language} भाशेंत व्हिडिओ पळयात",
+    "backToSearch": "सोदाक परत वचात",
+    "audioVersionsTitle": "हेर आवाज आवृत्ती",
+    "audioVersionsDescription": "हो व्हिडिओ पळोवप चालू दवरपाक आवाजाची भास निवडात.",
+    "languageVersionLabel": "आवाजाची भास",
+    "selectLanguageVersion": "भाशेची आवृत्ती निवडात",
+    "watchSelectedVersion": "निवडिल्ली आवृत्ती पळयात"
   }
 }

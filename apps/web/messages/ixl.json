@@ -191,6 +191,7 @@
     "loadMoreFailed": "More results chi load ta'n.",
     "searching": "Chi search...",
     "connectionHint": "Connection yichinb'ej ch'aw chik.",
+    "rateLimitHint": "Nimla taq k'utun. Tz'ib'ej chik chi jun minuto.",
     "retrySearch": "Search chik",
     "retry": "Tz'ib'ej chik",
     "noResults": "\"{query}\" re results ayq'i",
@@ -540,16 +541,16 @@
     "retryFailed": "Ri xsach chi tojtob'ej chik"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Maj re b'anob' tzij re",
+    "eyebrow": "Maj re b'anob' tzij re",
+    "title": "<contentTitle>{title}</contentTitle> maj chi <languageName>{language}</languageName>",
+    "actionsLabel": "Taq b'ey re tz'utuj",
+    "browseInLanguage": "Tz'utuj taq video chi {language}",
+    "backToSearch": "Tzolin chi search",
+    "audioVersionsTitle": "Jule' taq audio",
+    "audioVersionsDescription": "Ticha'j jun audio b'anob' tzij rech katopan chi tz'utuj re video.",
+    "languageVersionLabel": "B'anob' tzij re audio",
+    "selectLanguageVersion": "Ticha'j jun re b'anob' tzij",
+    "watchSelectedVersion": "Tz'utuj ri re cha'on"
   }
 }

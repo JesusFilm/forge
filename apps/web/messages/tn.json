@@ -191,6 +191,7 @@
     "loadMoreFailed": "Go paletšwe ke go laiša diphetho tše dingwe.",
     "searching": "E a nyaka...",
     "connectionHint": "Ka kgopelo hlahloba kgokagano ya gago gomme o leke gape.",
+    "rateLimitHint": "Dikopo di dintsi thata. Tsweetswee leka gape morago ga motsotso.",
     "retrySearch": "Leka gape nyakišišo",
     "retry": "Leka gape",
     "noResults": "Ga go na diphetho tša \"{query}\"",
@@ -540,16 +541,16 @@
     "retryFailed": "Leka gape tse di paletsweng"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Phetolelo ya puo ga e yo",
+    "eyebrow": "Phetolelo ya puo ga e yo",
+    "title": "<contentTitle>{title}</contentTitle> ga e yo ka <languageName>{language}</languageName>",
+    "actionsLabel": "Ditlhopho tse di leng teng tsa go lebelela",
+    "browseInLanguage": "Leba dibidio ka {language}",
+    "backToSearch": "Boela kwa patlong",
+    "audioVersionsTitle": "Diphetolelo tse dingwe tsa modumo",
+    "audioVersionsDescription": "Tlhopha puo ya modumo go tswelela o lebeletse bidio eno.",
+    "languageVersionLabel": "Puo ya modumo",
+    "selectLanguageVersion": "Tlhopha phetolelo ya puo",
+    "watchSelectedVersion": "Lebelela phetolelo e e tlhophilweng"
   }
 }

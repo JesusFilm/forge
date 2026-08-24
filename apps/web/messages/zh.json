@@ -191,6 +191,7 @@
     "loadMoreFailed": "无法加载更多结果。",
     "searching": "正在搜索...",
     "connectionHint": "请检查网络连接后重试。",
+    "rateLimitHint": "请求过于频繁，请一分钟后重试。",
     "retrySearch": "重试搜索",
     "retry": "重试",
     "noResults": "没有找到“{query}”的结果",

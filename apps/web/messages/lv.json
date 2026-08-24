@@ -191,6 +191,7 @@
     "loadMoreFailed": "Neizdevās ielādēt vēl rezultātus.",
     "searching": "Notiek meklēšana...",
     "connectionHint": "Lūdzu, pārbaudiet savienojumu un mēģiniet vēlreiz.",
+    "rateLimitHint": "Pārāk daudz pieprasījumu. Lūdzu, mēģiniet vēlreiz pēc minūtes.",
     "retrySearch": "Mēģināt meklēt vēlreiz",
     "retry": "Mēģināt vēlreiz",
     "noResults": "Nav rezultātu meklējumam \"{query}\"",
@@ -540,16 +541,16 @@
     "retryFailed": "Atkārtot neizdevušās lejupielādes"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Versija šajā valodā nav pieejama",
+    "eyebrow": "Versija šajā valodā nav pieejama",
+    "title": "<contentTitle>{title}</contentTitle> nav pieejams valodā „<languageName>{language}</languageName>“",
+    "actionsLabel": "Pieejamās skatīšanās iespējas",
+    "browseInLanguage": "Pārlūkot videoklipus valodā „{language}“",
+    "backToSearch": "Atpakaļ uz meklēšanu",
+    "audioVersionsTitle": "Citas audio versijas",
+    "audioVersionsDescription": "Izvēlieties audio valodu, lai turpinātu skatīties šo videoklipu.",
+    "languageVersionLabel": "Audio valoda",
+    "selectLanguageVersion": "Izvēlieties valodas versiju",
+    "watchSelectedVersion": "Skatīties izvēlēto versiju"
   }
 }

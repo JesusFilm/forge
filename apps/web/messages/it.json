@@ -191,6 +191,7 @@
     "loadMoreFailed": "Impossibile caricare altri risultati.",
     "searching": "Ricerca in corso...",
     "connectionHint": "Controlla la connessione e riprova.",
+    "rateLimitHint": "Troppe richieste. Riprova tra un minuto.",
     "retrySearch": "Riprova la ricerca",
     "retry": "Riprova",
     "noResults": "Nessun risultato per \"{query}\"",
@@ -540,16 +541,16 @@
     "retryFailed": "Riprova i download non riusciti"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Versione linguistica non disponibile",
+    "eyebrow": "Versione linguistica non disponibile",
+    "title": "<contentTitle>{title}</contentTitle> non è disponibile in <languageName>{language}</languageName>",
+    "actionsLabel": "Opzioni di visualizzazione disponibili",
+    "browseInLanguage": "Sfoglia i video in {language}",
+    "backToSearch": "Torna alla ricerca",
+    "audioVersionsTitle": "Altre versioni audio",
+    "audioVersionsDescription": "Scegli una lingua audio per continuare a guardare questo video.",
+    "languageVersionLabel": "Lingua audio",
+    "selectLanguageVersion": "Seleziona una versione linguistica",
+    "watchSelectedVersion": "Guarda la versione selezionata"
   }
 }

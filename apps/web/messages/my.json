@@ -191,6 +191,7 @@
     "loadMoreFailed": "နောက်ထပ် ရလဒ်များကို တင်ရန် မအောင်မြင်ပါ။",
     "searching": "ရှာဖွေနေသည်...",
     "connectionHint": "သင်၏ ချိတ်ဆက်မှုကို စစ်ပြီး ထပ်ကြိုးစားပါ။",
+    "rateLimitHint": "တောင်းဆိုမှု များလွန်းသည်။ တစ်မိနစ်အကြာတွင် ထပ်စမ်းကြည့်ပါ။",
     "retrySearch": "ရှာဖွေမှု ထပ်ကြိုးစားပါ",
     "retry": "ထပ်ကြိုးစားပါ",
     "noResults": "\"{query}\" အတွက် ရလဒ် မရှိပါ",
@@ -540,16 +541,16 @@
     "retryFailed": "မအောင်မြင်သော အပိုင်းများကို ထပ်ကြိုးစားပါ"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "ဘာသာစကားဗားရှင်း မရနိုင်ပါ",
+    "eyebrow": "ဘာသာစကားဗားရှင်း မရနိုင်ပါ",
+    "title": "<contentTitle>{title}</contentTitle> ကို <languageName>{language}</languageName> ဘာသာဖြင့် မရနိုင်ပါ",
+    "actionsLabel": "ကြည့်ရှုနိုင်သည့် ရွေးချယ်စရာများ",
+    "browseInLanguage": "{language} ဘာသာဖြင့် ဗီဒီယိုများကို ရှာဖွေကြည့်ရန်",
+    "backToSearch": "ရှာဖွေမှုသို့ ပြန်သွားရန်",
+    "audioVersionsTitle": "အခြားအသံဗားရှင်းများ",
+    "audioVersionsDescription": "ဤဗီဒီယိုကို ဆက်လက်ကြည့်ရှုရန် အသံဘာသာစကားတစ်ခု ရွေးပါ။",
+    "languageVersionLabel": "အသံဘာသာစကား",
+    "selectLanguageVersion": "ဘာသာစကားဗားရှင်းတစ်ခု ရွေးပါ",
+    "watchSelectedVersion": "ရွေးချယ်ထားသောဗားရှင်းကို ကြည့်ပါ"
   }
 }

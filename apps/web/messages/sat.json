@@ -191,6 +191,7 @@
     "loadMoreFailed": "आरो परिणाम लोड बाय होका।",
     "searching": "खोजतोना...",
     "connectionHint": "कृपया आमाक् कनेक्शन जाँच मे आओर फिर कुस्टी मे।",
+    "rateLimitHint": "ᱟᱹᱰᱤ ᱰᱷᱮᱨ ᱱᱮᱦᱚᱨ᱾ ᱢᱤᱫ ᱴᱤᱯᱤᱡ ᱛᱟᱭᱚᱢ ᱫᱚᱦᱲᱟ ᱠᱩᱨᱩᱢᱩᱴᱩᱭ ᱢᱮ᱾",
     "retrySearch": "खोज फिर कुस्टी मे",
     "retry": "फिर कुस्टी मे",
     "noResults": "\"{query}\" ला़गित् कुनु परिणाम बाय मिला़क्",
@@ -540,16 +541,16 @@
     "retryFailed": "बाय होकाक् डाउनलोड फिन कुस्टी मे"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "ᱯᱟᱹᱨᱥᱤ ᱵᱷᱟᱨᱥᱚᱱ ᱵᱟᱹᱱᱩᱜᱼᱟ",
+    "eyebrow": "ᱯᱟᱹᱨᱥᱤ ᱵᱷᱟᱨᱥᱚᱱ ᱵᱟᱹᱱᱩᱜᱼᱟ",
+    "title": "<contentTitle>{title}</contentTitle> ᱫᱚ <languageName>{language}</languageName> ᱨᱮ ᱵᱟᱹᱱᱩᱜᱼᱟ",
+    "actionsLabel": "ᱧᱮᱞ ᱫᱟᱲᱮᱭᱟᱜ ᱵᱟᱪᱷᱟᱣ",
+    "browseInLanguage": "{language} ᱨᱮ ᱣᱤᱰᱤᱭᱚ ᱧᱮᱞ ᱢᱮ",
+    "backToSearch": "ᱥᱮᱸᱫᱽᱨᱟ ᱨᱮ ᱨᱩᱣᱟᱹᱲ ᱢᱮ",
+    "audioVersionsTitle": "ᱮᱴᱟᱜ ᱥᱟᱰᱮ ᱵᱷᱟᱨᱥᱚᱱ",
+    "audioVersionsDescription": "ᱱᱚᱣᱟ ᱣᱤᱰᱤᱭᱚ ᱧᱮᱞ ᱪᱟᱹᱞᱩ ᱫᱚᱦᱚ ᱞᱟᱹᱜᱤᱫ ᱥᱟᱰᱮ ᱯᱟᱹᱨᱥᱤ ᱵᱟᱪᱷᱟᱣ ᱢᱮ᱾",
+    "languageVersionLabel": "ᱥᱟᱰᱮ ᱯᱟᱹᱨᱥᱤ",
+    "selectLanguageVersion": "ᱯᱟᱹᱨᱥᱤ ᱵᱷᱟᱨᱥᱚᱱ ᱵᱟᱪᱷᱟᱣ ᱢᱮ",
+    "watchSelectedVersion": "ᱵᱟᱪᱷᱟᱣ ᱵᱷᱟᱨᱥᱚᱱ ᱧᱮᱞ ᱢᱮ"
   }
 }
