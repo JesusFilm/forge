@@ -100,6 +100,33 @@ describe("Auth route wrapper", () => {
     vi.unstubAllEnvs()
   })
 
+  it("normalizes implicit web loopback DCR clients to the native application type", async () => {
+    authPost.mockResolvedValueOnce(
+      Response.json({ client_id: "claude_dynamic" }),
+    )
+    const { POST } = await import("./route")
+    const response = await POST(
+      new Request("http://localhost:3004/api/auth/oauth2/register", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          client_name: "Claude Code",
+          redirect_uris: ["http://localhost:3118/callback"],
+          grant_types: ["authorization_code", "refresh_token"],
+          response_types: ["code"],
+        }),
+      }),
+      { params: Promise.resolve({ all: ["oauth2", "register"] }) },
+    )
+
+    expect(response.status).toBe(200)
+    const forwarded = authPost.mock.calls[0]?.[0] as Request
+    await expect(forwarded.json()).resolves.toMatchObject({
+      application_type: "native",
+      redirect_uris: ["http://localhost:3118/callback"],
+    })
+  })
+
   it("downscopes an authenticated Changelog authorize request before the provider sees it", async () => {
     getSession.mockResolvedValueOnce({
       user: { id: "user_123", membershipStatus: "ACTIVE" },

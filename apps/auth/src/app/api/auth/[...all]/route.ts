@@ -51,6 +51,55 @@ function isFormPostRequest(request: Request): boolean {
   )
 }
 
+function isHttpLoopbackRedirect(uri: string): boolean {
+  try {
+    const url = new URL(uri)
+    return (
+      url.protocol === "http:" &&
+      (url.hostname === "localhost" ||
+        url.hostname === "127.0.0.1" ||
+        url.hostname === "[::1]")
+    )
+  } catch {
+    return false
+  }
+}
+
+async function normalizeLoopbackDcrRequest(request: Request): Promise<Request> {
+  if (!request.headers.get("content-type")?.includes("application/json")) {
+    return request
+  }
+
+  let parsed: unknown
+  try {
+    parsed = await request.clone().json()
+  } catch {
+    return request
+  }
+  if (parsed == null || typeof parsed !== "object" || Array.isArray(parsed)) {
+    return request
+  }
+  const body = parsed as Record<string, unknown>
+  const redirectUris = body.redirect_uris
+  if (
+    (body.application_type !== undefined && body.application_type !== "web") ||
+    !Array.isArray(redirectUris) ||
+    redirectUris.length === 0 ||
+    !redirectUris.every(
+      (uri): uri is string =>
+        typeof uri === "string" && isHttpLoopbackRedirect(uri),
+    )
+  ) {
+    return request
+  }
+
+  return new Request(request.url, {
+    body: JSON.stringify({ ...body, application_type: "native" }),
+    headers: request.headers,
+    method: request.method,
+  })
+}
+
 function sha256(input: string): string {
   return createHash("sha256").update(input).digest("hex")
 }
@@ -1051,6 +1100,9 @@ export async function POST(
   if (path === "oauth2/consent") {
     const policyResponse = await enforceChangelogConsentPolicy(request)
     if (policyResponse) return policyResponse
+  }
+  if (path === "oauth2/register") {
+    request = await normalizeLoopbackDcrRequest(request)
   }
   if (isDeviceGrantPath(path)) {
     return withNoStore(await authRouteHandlers.POST(request))
