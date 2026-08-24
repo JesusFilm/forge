@@ -83,7 +83,12 @@ async function normalizeLoopbackDcrRequest(
   const headers = new Headers(request.headers)
   headers.delete("content-length")
   const forward = (body: BodyInit) =>
-    new Request(request, { body, headers, signal: request.signal })
+    new Request(request.url, {
+      body,
+      headers,
+      method: request.method,
+      signal: request.signal,
+    })
 
   let parsed: unknown
   try {
@@ -110,13 +115,14 @@ async function normalizeLoopbackDcrRequest(
     return forward(bodyBytes)
   }
 
-  return new Request(request, {
+  return new Request(request.url, {
     body: JSON.stringify({
       ...body,
       application_type: "native",
       token_endpoint_auth_method: "none",
     }),
     headers,
+    method: request.method,
     signal: request.signal,
   })
 }
