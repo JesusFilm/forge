@@ -2,6 +2,7 @@ import { expo } from "@better-auth/expo"
 import { prismaAdapter } from "@better-auth/prisma-adapter"
 import { oauthProvider } from "@better-auth/oauth-provider"
 import { betterAuth } from "better-auth"
+import { APIError } from "better-auth/api"
 import { toNextJsHandler, nextCookies } from "better-auth/next-js"
 import { genericOAuth, jwt, okta } from "better-auth/plugins"
 
@@ -19,6 +20,11 @@ import {
   MOBILE_DEFAULT_SCOPES,
 } from "@/domain/apps"
 import { AUTH_SCOPES } from "@/domain/scopes"
+import {
+  CHANGELOG_OAUTH_RESOURCES,
+  CHANGELOG_OAUTH_SCOPES,
+} from "@/services/oauth-policy.service"
+import { createChangelogOAuthGrantDecision } from "@/services/changelog-oauth-grant.service"
 import { buildAccountDeletionHooks } from "@/services/account-deletion.service"
 import {
   assertProductionAuthSecrets,
@@ -34,6 +40,9 @@ import { prisma } from "@/db/client"
 assertProductionAuthSecrets()
 
 const protectedResources = getAuthValidAudiences()
+const changelogResources: readonly string[] = Object.values(
+  CHANGELOG_OAUTH_RESOURCES,
+)
 
 const accountDeletionHooks = buildAccountDeletionHooks({
   findAppleAccount: (userId) =>
@@ -228,6 +237,11 @@ export const auth = betterAuth({
         required: false,
         input: false,
       },
+      membershipStatus: {
+        type: "string",
+        required: false,
+        input: false,
+      },
     },
     // No mailer platform-wide, so intent is verified by a fresh session
     // instead of an email (auth-owner direction, 2026-08-04). Side effects
@@ -281,6 +295,7 @@ export const auth = betterAuth({
             allowedScopes: AUTH_SCOPES.map((scope) => scope.key),
           })),
       clientRegistrationAllowedResources: isNextBuild ? [] : protectedResources,
+      clientRegistrationDefaultResources: isNextBuild ? [] : changelogResources,
       advertisedMetadata: {
         scopes_supported: AUTH_SCOPES.map((scope) => scope.key),
         claims_supported: [
@@ -319,17 +334,60 @@ export const auth = betterAuth({
       },
       customIdTokenClaims: ({ user }) => firstPartyUserClaims(user),
       customUserInfoClaims: ({ user }) => firstPartyUserClaims(user),
-      customAccessTokenClaims: ({ metadata }) => ({
-        ...(typeof metadata?.environmentKind === "string"
-          ? {
-              "https://jesusfilm.org/claims/environment":
-                metadata.environmentKind,
-            }
-          : {}),
-        ...(typeof metadata?.appKey === "string"
-          ? { "https://jesusfilm.org/claims/app": metadata.appKey }
-          : {}),
-      }),
+      customAccessTokenClaims: async ({
+        user,
+        scopes,
+        resources,
+        metadata,
+      }) => {
+        const changelogAware =
+          resources?.some((resource) =>
+            changelogResources.includes(resource),
+          ) ||
+          scopes.some((scope) =>
+            CHANGELOG_OAUTH_SCOPES.includes(
+              scope as (typeof CHANGELOG_OAUTH_SCOPES)[number],
+            ),
+          )
+        if (!changelogAware) {
+          return {
+            ...(typeof metadata?.environmentKind === "string"
+              ? {
+                  "https://jesusfilm.org/claims/environment":
+                    metadata.environmentKind,
+                }
+              : {}),
+            ...(typeof metadata?.appKey === "string"
+              ? { "https://jesusfilm.org/claims/app": metadata.appKey }
+              : {}),
+          }
+        }
+
+        const decision = await createChangelogOAuthGrantDecision({
+          lifecycle: "exchange",
+          userId: user?.id,
+          membershipStatus: user?.membershipStatus,
+          requestedScopes: scopes,
+          resources,
+          scopeCeiling: scopes,
+        })
+        if (
+          !decision.allowed ||
+          decision.scopes.length !== scopes.length ||
+          decision.scopes.some((scope, index) => scope !== scopes[index])
+        ) {
+          throw new APIError("BAD_REQUEST", {
+            error: "invalid_grant",
+            error_description: "Changelog access is no longer available.",
+          })
+        }
+
+        return {
+          "https://jesusfilm.org/claims/environment":
+            decision.target.environmentKind,
+          "https://jesusfilm.org/claims/app": "changelog",
+        }
+      },
     }),
     nextCookies(),
     ...upstreamProviderPlugins,

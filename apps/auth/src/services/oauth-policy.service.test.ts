@@ -125,7 +125,7 @@ describe("Changelog OAuth policy", () => {
     ).toEqual({ allowed: false, reason: "changelog_access_denied" })
   })
 
-  it("allows a previously downscoped identity-only seeded family at issuance", () => {
+  it("allows an already-downscoped identity-only family at issuance", () => {
     expect(
       decideChangelogOAuthScopes({
         lifecycle: "exchange",

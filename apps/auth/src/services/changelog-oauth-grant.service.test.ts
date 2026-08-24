@@ -135,12 +135,6 @@ describe("Changelog OAuth grant decision", () => {
           ...authorizationInput,
           clientId: "dynamic_client",
           resources: ["http://localhost:3000/mcp"],
-          clientMetadata: {
-            name: "Jesus Film Changelog (production)",
-            uri: "https://changelog.jesusfilm.org",
-            softwareId: "jfp_changelog_production",
-            requestedScopes: ["changelog:admin"],
-          },
         },
         deps,
       ),

@@ -15,10 +15,14 @@ export function OAuthConsentPageClient({
   oauthQuery,
   requestingAppName,
   scopes,
+  target,
+  unverifiedDynamicClient = false,
 }: {
   oauthQuery: string
   requestingAppName: string
   scopes: ConsentScope[]
+  target?: { environment: string; resource: string }
+  unverifiedDynamicClient?: boolean
 }) {
   const [isSubmitting, setIsSubmitting] = useState<"accept" | "deny" | null>(
     null,
@@ -87,9 +91,25 @@ export function OAuthConsentPageClient({
             <h2 className="mb-2 mt-2 text-2xl font-bold">
               {requestingAppName}
             </h2>
+            {unverifiedDynamicClient ? (
+              <p className="m-0 text-xs font-bold text-amber-200">
+                Unverified client name
+              </p>
+            ) : null}
             <p className="font-noto-serif mb-0 mt-3 text-[13px] leading-5 text-[#d6d3d1]">
               This will allow the application to continue with the access below.
             </p>
+
+            {target ? (
+              <div className="mt-5 rounded border border-white/10 bg-white/[0.03] px-3.5 py-3">
+                <strong className="block text-[13px] leading-[1.35] text-[#f5f5f4]">
+                  {target.environment} Changelog
+                </strong>
+                <p className="font-noto-serif mb-0 mt-1 break-all text-xs leading-[1.55] text-[#d6d3d1]">
+                  {target.resource}
+                </p>
+              </div>
+            ) : null}
 
             <div className="mt-6 grid max-h-[264px] gap-3 overflow-y-auto pr-1">
               {scopes.length > 0 ? (

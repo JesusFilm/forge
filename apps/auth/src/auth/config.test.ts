@@ -12,6 +12,7 @@ const authConfigCapture = vi.hoisted(() => ({
       _args: unknown,
     ): Promise<{ user: { email: string | null } } | null> => null,
   ),
+  decideChangelogGrant: vi.fn(),
 }))
 
 vi.mock("better-auth", () => ({
@@ -62,6 +63,11 @@ vi.mock("@/db/client", () => ({
   prisma: { account: { findUnique: authConfigCapture.findAccountUnique } },
 }))
 
+vi.mock("@/services/changelog-oauth-grant.service", () => ({
+  createChangelogOAuthGrantDecision: (...args: unknown[]) =>
+    authConfigCapture.decideChangelogGrant(...args),
+}))
+
 type CapturedAuthOptions = {
   socialProviders: Record<string, unknown> & {
     google: GoogleOptions
@@ -79,6 +85,10 @@ type CapturedAuthOptions = {
     accountLinking: { enabled: boolean; trustedProviders: string[] }
   }
   user: {
+    additionalFields?: Record<
+      string,
+      { type: string; required?: boolean; input?: boolean }
+    >
     deleteUser?: {
       enabled: boolean
       sendDeleteAccountVerification?: unknown
@@ -112,6 +122,13 @@ type CapturedOAuthProviderOptions = {
   clientRegistrationAllowedScopes: string[]
   clientRegistrationDefaultScopes: string[]
   clientRegistrationAllowedResources: string[]
+  clientRegistrationDefaultResources: string[]
+  customAccessTokenClaims: (input: {
+    user?: Record<string, unknown> | null
+    scopes: string[]
+    resources?: string[]
+    metadata?: Record<string, unknown>
+  }) => Promise<Record<string, unknown>>
   resources: Array<{ identifier: string; allowedScopes: string[] }>
   scopes: string[]
 }
@@ -163,6 +180,7 @@ describe("auth provider configuration", () => {
     // that never stubs the lookup cannot inherit the previous one's value.
     authConfigCapture.findAccountUnique.mockReset()
     authConfigCapture.findAccountUnique.mockResolvedValue(null)
+    authConfigCapture.decideChangelogGrant.mockReset()
   })
 
   it("always requests Google account selection when Google is enabled", async () => {
@@ -235,6 +253,80 @@ describe("auth provider configuration", () => {
     )
     expect(options.resources[1]?.allowedScopes).toContain("experience:read")
     expect(options).not.toHaveProperty("validAudiences")
+  })
+
+  it("links dynamic registrations to both Changelog resources by default", async () => {
+    const options = await captureOAuthProviderOptions()
+
+    expect(options.clientRegistrationDefaultResources).toEqual([
+      "http://localhost:3000/mcp",
+      "https://changelog.jesusfilm.org/mcp",
+    ])
+  })
+
+  it("revalidates Changelog resource grants before native token persistence", async () => {
+    authConfigCapture.decideChangelogGrant.mockResolvedValue({
+      allowed: true,
+      scopes: ["openid", "changelog:read"],
+      target: {
+        dynamicClient: true,
+        environmentKind: "local",
+        environmentId: "env_changelog_local",
+        resource: "http://localhost:3000/mcp",
+      },
+    })
+    const options = await captureOAuthProviderOptions()
+
+    await expect(
+      options.customAccessTokenClaims({
+        user: { id: "user_123", membershipStatus: "ACTIVE" },
+        scopes: ["openid", "changelog:read"],
+        resources: ["http://localhost:3000/mcp"],
+        metadata: { environmentKind: "spoofed", appKey: "spoofed" },
+      }),
+    ).resolves.toEqual({
+      "https://jesusfilm.org/claims/environment": "local",
+      "https://jesusfilm.org/claims/app": "changelog",
+    })
+    expect(authConfigCapture.decideChangelogGrant).toHaveBeenCalledWith({
+      lifecycle: "exchange",
+      userId: "user_123",
+      membershipStatus: "ACTIVE",
+      requestedScopes: ["openid", "changelog:read"],
+      resources: ["http://localhost:3000/mcp"],
+      scopeCeiling: ["openid", "changelog:read"],
+    })
+  })
+
+  it("fails closed when an issuance-time Changelog grant changes", async () => {
+    authConfigCapture.decideChangelogGrant.mockResolvedValue({
+      allowed: false,
+      reason: "changelog_grant_changed",
+    })
+    const options = await captureOAuthProviderOptions()
+
+    await expect(
+      options.customAccessTokenClaims({
+        user: { id: "user_123", membershipStatus: "ACTIVE" },
+        scopes: ["openid", "changelog:read"],
+        resources: ["http://localhost:3000/mcp"],
+      }),
+    ).rejects.toMatchObject({
+      body: {
+        error: "invalid_grant",
+        error_description: "Changelog access is no longer available.",
+      },
+    })
+  })
+
+  it("loads membership status into provider-owned user context", async () => {
+    const options = await captureAuthOptions()
+
+    expect(options.user.additionalFields?.membershipStatus).toEqual({
+      type: "string",
+      required: false,
+      input: false,
+    })
   })
 
   it("defers native resource seeding during the database-free Next build", async () => {

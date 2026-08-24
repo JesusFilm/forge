@@ -3,10 +3,12 @@ import { createHash } from "node:crypto"
 import {
   ADMIN_MCP_CODEX_CLIENT_ID,
   ADMIN_MCP_DEFAULT_SCOPES,
+  CHANGELOG_DEFAULT_SCOPES,
   FIRST_PARTY_APP_SEEDS,
   TV_DEVICE_CLIENT_IDS,
   type RegisteredAppSeed,
 } from "@/domain/apps"
+import { CHANGELOG_OAUTH_RESOURCES } from "@/domain/changelog"
 import { AUTH_SCOPES, type AuthScopeKey } from "@/domain/scopes"
 import { prisma } from "@/db/client"
 // Imported, never re-declared. This seeder is the ONLY writer of the device
@@ -115,6 +117,21 @@ async function seedFirstPartyOauthResources() {
             identifier,
             name: `${appSeed.displayName} (${environment.key})`,
             allowedScopes: [...ADMIN_MCP_DEFAULT_SCOPES],
+            clientId: environment.clientId,
+          })
+        }
+      }
+
+      if (appSeed.key === "changelog") {
+        const identifier =
+          CHANGELOG_OAUTH_RESOURCES[
+            environment.kind as keyof typeof CHANGELOG_OAUTH_RESOURCES
+          ]
+        if (identifier) {
+          resources.push({
+            identifier,
+            name: `${appSeed.displayName} (${environment.key})`,
+            allowedScopes: [...CHANGELOG_DEFAULT_SCOPES],
             clientId: environment.clientId,
           })
         }

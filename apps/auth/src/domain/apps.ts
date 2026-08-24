@@ -1,4 +1,4 @@
-import type { AuthScopeKey } from "./scopes"
+import { CHANGELOG_OAUTH_SCOPES, type AuthScopeKey } from "./scopes"
 
 export const FIRST_PARTY_OWNER = {
   ownerType: "jesus_film",
@@ -12,6 +12,8 @@ export const MASTRA_STUDIO_APP_KEY = "mastra-studio"
 export const WEB_APP_KEY = "web"
 export const CHAT_APP_KEY = "chat"
 export const CHANGELOG_APP_KEY = "changelog"
+export const CHANGELOG_LOCAL_CLIENT_ID = "jfp_changelog_local"
+export const CHANGELOG_PRODUCTION_CLIENT_ID = "jfp_changelog_production"
 export const ADMIN_MCP_APP_KEY = "admin-mcp"
 export const TV_APP_KEY = "tv"
 export const ADMIN_MCP_CODEX_CLIENT_ID = "jfp_admin_mcp_codex"
@@ -85,9 +87,7 @@ export const CHANGELOG_DEFAULT_SCOPES = [
   "profile:read",
   "email:read",
   "membership:read",
-  "changelog:read",
-  "changelog:submit",
-  "changelog:admin",
+  ...CHANGELOG_OAUTH_SCOPES,
 ] satisfies AuthScopeKey[]
 
 // Identity-only: mobile's watch-progress permissions ride admin's MOBILE_USER
@@ -413,7 +413,7 @@ export const CHANGELOG_APP_SEED: RegisteredAppSeed = {
     {
       key: "local",
       kind: "local",
-      clientId: "jfp_changelog_local",
+      clientId: CHANGELOG_LOCAL_CLIENT_ID,
       redirectUris: ["http://localhost:3000/api/auth/callback"],
       postLogoutRedirectUris: ["http://localhost:3000/api/auth/login"],
       allowedOrigins: ["http://localhost:3000"],
@@ -423,7 +423,7 @@ export const CHANGELOG_APP_SEED: RegisteredAppSeed = {
     {
       key: "production",
       kind: "production",
-      clientId: "jfp_changelog_production",
+      clientId: CHANGELOG_PRODUCTION_CLIENT_ID,
       redirectUris: ["https://changelog.jesusfilm.org/api/auth/callback"],
       postLogoutRedirectUris: [
         "https://changelog.jesusfilm.org/api/auth/login",

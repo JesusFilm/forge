@@ -39,12 +39,11 @@ export type ChangelogOAuthGrantDependencies = {
 export type ChangelogOAuthGrantInput = {
   lifecycle: ChangelogOAuthLifecycle
   userId?: string | null
-  membershipStatus?: "ACTIVE" | "INVITED" | "SUSPENDED" | "DISABLED" | null
+  membershipStatus?: unknown
   clientId?: string | null
   requestedScopes: readonly string[]
   resources?: readonly string[] | null
   scopeCeiling?: readonly string[]
-  clientMetadata?: unknown
 }
 
 export type ChangelogOAuthGrantDecision =

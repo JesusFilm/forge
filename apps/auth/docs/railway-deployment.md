@@ -133,6 +133,32 @@ Before deploying changes to this flow:
 - Admin can complete the OAuth callback flow against `auth.jesusfilm.org`.
 - Rollback is a normal application rollback, not an admin-side auth-mode toggle.
 
+## Changelog OAuth launch boundary
+
+Forge Auth owns Changelog's AppGrant checks and Better Auth owns the OAuth
+authorization code, resource persistence, access token, and refresh token. The
+only supported Changelog MCP resources are:
+
+- local: `http://localhost:3000/mcp`
+- production: `https://changelog.jesusfilm.org/mcp`
+
+Dynamic MCP registrations receive admission links to both resources, but each
+authorization must select exactly one resource and registration does not grant
+any `changelog:*` scope. Auth downscopes before Better Auth creates its native
+authorization code and revalidates the current grant from provider-owned user,
+scope, and resource context before code-exchange or refresh token persistence.
+
+Keep `AUTH_CHANGELOG_PRODUCTION_ENABLED=false` (or unset) in every production
+environment until a supported grant-provisioning and revocation workflow is
+operational. Direct database edits are not a launch procedure. Enabling the
+flag does not create grants; it only permits matching approved, non-revoked
+production AppGrants to be considered. Preview remains intentionally deferred
+until Changelog has a stable preview deployment and callback domain.
+
+This boundary depends on the completed Better Auth 1.7 native-resource rollout
+(`feat-401`). Do not replace it with authorization-code record rewrites, a
+side-channel resource binding, or another issuer.
+
 ## 2026-05-12 Provisioning Status
 
 - Created Railway service `@forge/auth`.

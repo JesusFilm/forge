@@ -333,6 +333,43 @@ describe("seedFirstPartyApps", () => {
         resourceId: "https://admin.jesusfilm.org/mcp",
       },
     })
+    expect(upsertOAuthResource).toHaveBeenCalledWith({
+      where: { identifier: "http://localhost:3000/mcp" },
+      update: expect.objectContaining({
+        allowedScopes: expect.arrayContaining(["changelog:read"]),
+        disabled: false,
+      }),
+      create: expect.objectContaining({
+        identifier: "http://localhost:3000/mcp",
+        allowedScopes: expect.arrayContaining(["changelog:read"]),
+      }),
+    })
+    expect(upsertOAuthClientResource).toHaveBeenCalledWith({
+      where: {
+        clientId_resourceId: {
+          clientId: "jfp_changelog_local",
+          resourceId: "http://localhost:3000/mcp",
+        },
+      },
+      update: {},
+      create: {
+        clientId: "jfp_changelog_local",
+        resourceId: "http://localhost:3000/mcp",
+      },
+    })
+    expect(upsertOAuthClientResource).toHaveBeenCalledWith({
+      where: {
+        clientId_resourceId: {
+          clientId: "jfp_changelog_production",
+          resourceId: "https://changelog.jesusfilm.org/mcp",
+        },
+      },
+      update: {},
+      create: {
+        clientId: "jfp_changelog_production",
+        resourceId: "https://changelog.jesusfilm.org/mcp",
+      },
+    })
     expect(upsertOAuthClientResource).toHaveBeenCalledWith({
       where: {
         clientId_resourceId: {

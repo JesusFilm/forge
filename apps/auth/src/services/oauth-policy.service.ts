@@ -2,6 +2,10 @@ import {
   assertTokenPolicy,
   type TokenPolicyInput,
 } from "./token-policy.service"
+import { CHANGELOG_OAUTH_RESOURCES } from "@/domain/changelog"
+import { CHANGELOG_OAUTH_SCOPES } from "@/domain/scopes"
+
+export { CHANGELOG_OAUTH_RESOURCES, CHANGELOG_OAUTH_SCOPES }
 
 export type OAuthPolicyInput = TokenPolicyInput & {
   membershipStatus?: "invited" | "active" | "suspended" | "disabled" | null
@@ -15,17 +19,6 @@ export type OAuthTokenDecision = {
   scopes: string[]
   family: TokenPolicyInput["family"]
 }
-
-export const CHANGELOG_OAUTH_SCOPES = [
-  "changelog:read",
-  "changelog:submit",
-  "changelog:admin",
-] as const
-
-export const CHANGELOG_OAUTH_RESOURCES = {
-  local: "http://localhost:3000/mcp",
-  production: "https://changelog.jesusfilm.org/mcp",
-} as const
 
 export type ChangelogEnvironmentKind = keyof typeof CHANGELOG_OAUTH_RESOURCES
 export type ChangelogOAuthLifecycle = "authorization" | "exchange" | "refresh"
@@ -110,13 +103,13 @@ export function decideChangelogOAuthScopes(input: {
   productionEnabled: boolean
 }): ChangelogScopeDecision {
   const requestedScopes = [...new Set(input.requestedScopes)]
-  const ceiling =
-    input.lifecycle === "authorization"
-      ? requestedScopes
-      : input.scopeCeiling == null
-        ? null
-        : [...new Set(input.scopeCeiling)]
-  if (!ceiling) return { allowed: false, reason: "changelog_access_denied" }
+  let ceiling = requestedScopes
+  if (input.lifecycle !== "authorization") {
+    if (input.scopeCeiling == null) {
+      return { allowed: false, reason: "changelog_access_denied" }
+    }
+    ceiling = [...new Set(input.scopeCeiling)]
+  }
 
   const grantedScopes = expandChangelogGrantScopes(input.grantedScopes)
   if (input.environmentKind === "production" && !input.productionEnabled) {

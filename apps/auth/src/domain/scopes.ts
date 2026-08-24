@@ -127,6 +127,12 @@ export const AUTH_SCOPES = [
 
 export type AuthScopeKey = (typeof AUTH_SCOPES)[number]["key"]
 
+export const CHANGELOG_OAUTH_SCOPES = [
+  "changelog:read",
+  "changelog:submit",
+  "changelog:admin",
+] as const satisfies readonly AuthScopeKey[]
+
 const scopeKeys = new Set(AUTH_SCOPES.map((scope) => scope.key))
 
 export function isKnownScope(scope: string): scope is AuthScopeKey {
