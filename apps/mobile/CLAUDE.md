@@ -502,13 +502,17 @@ it moves the fingerprint runtime version, so an OTA update cannot deliver it.
     had ever mounted a native button. Using the native button as the control
     closes the gap by construction.
 - **Android must NOT gate the control on `castUi.available`; iOS must.**
-  `getCastState()` answers `noDevicesAvailable` until a native `MediaRouteButton`
-  has been attached AND used, so gating Android on it is a deadlock — the signal
-  that would reveal the button only turns true after the button exists. Measured
-  on a Galaxy Tab S8 (Android 16, 2026-08-24): both Chromecasts sat in the app's
-  own `MediaRouter` route list for minutes at `noDevicesAvailable`, flipping to
-  `notConnected` only once the dialog opened. iOS keeps the gate — its
-  `presentCastDialog` needs no attached button, so its state is trustworthy.
+  What was MEASURED on a Galaxy Tab S8 (Android 16, 2026-08-24): both Chromecasts
+  sat in the app's own `MediaRouter` route list for minutes while
+  `getCastState()` still answered `noDevicesAvailable`; it read `notConnected`
+  seconds after the chooser dialog was opened. That is enough to show the signal
+  is not trustworthy on Android, which is all the fix needs.
+  **The CAUSE is not established.** No counterfactual was run — a button
+  attached but never tapped was never observed, so "attaching and using a button
+  is what flips it" remains one hypothesis among several (discovery latency,
+  foreground state, and a GMS-side cache all fit the same observation). Do not
+  cite this as an SDK contract. iOS keeps the gate — its `presentCastDialog`
+  needs no attached button, so its state is trustworthy there.
 - **The SDK button never self-hides**, so the always-visible Android glyph is
   correct, not a leak. In mediarouter 1.8.0-beta01 `MediaRouteButton` has no
   visibility logic at all and `setAlwaysVisible(boolean)` is a no-op stub
@@ -526,10 +530,13 @@ it moves the fingerprint runtime version, so an OTA update cannot deliver it.
   verified in light mode** — that half still rests on an argument, not a
   measurement: `values-night/` carries no cast resources, so the explicit hex
   wins in either mode.
-- **Android chooser dialog VERIFIED on hardware (Galaxy Tab S8, Android 16,
-  2026-08-24)** against two real Chromecasts, by sampling pixels: ground
-  `#1c1917` (441,041 px in the panel), title and both route labels `#f5f5f4`,
-  and **zero** pixels of stock `#303030`, `#424242` or `#d0021b`. The SDK
+- **The CLASSIC Android chooser is VERIFIED on hardware (Galaxy Tab S8,
+  Android 16, 2026-08-24)** against two real Chromecasts, by sampling pixels:
+  ground `#1c1917` (441,041 pixels MATCHED that value inside the panel), title
+  and both route labels `#f5f5f4`, and **zero** pixels of stock `#303030`
+  (`background_material_dark`), `#424242` (`background_floating_material_dark`)
+  or `#d0021b` (the stock cast red). **The DYNAMIC chooser is still unverified
+  and probably still unthemed** — see the text-appearance bullet below. The SDK
   `<CastButton>` does mount under RN 0.86 Fabric interop — `content-desc="Cast"`,
   `clickable=true` in `uiautomator dump`.
 - **The dialog's GROUND is `android:windowBackground`, not
@@ -571,8 +578,9 @@ it moves the fingerprint runtime version, so an OTA update cannot deliver it.
   the inertness above is real but scoped to a variant we have not yet seen.
 - **Verify by sampling pixels.** The stock cast red `#D0021B` and our `#CB333B`
   pass a glance and fail the design system. On iOS: `xcrun simctl io … screenshot`
-  → `ffmpeg -pix_fmt rgb24` → read the bytes. The Android equivalent
-  (`adb exec-out screencap -p`) has not been exercised on these sheets yet. Note that iOS lifts button labels
+  → `ffmpeg -pix_fmt rgb24` → read the bytes. The Android equivalent is
+  `adb exec-out screencap -p` into the same ffmpeg step; it was exercised on the
+  classic chooser on 2026-08-24. Note that iOS lifts button labels
   inside the nav pill and toolbar by a uniform ~+13 per channel (`#a8a29e`
   renders `#b6afaa`, `#e96067` renders `#f76d73`), so compare the _delta_
   across two differently-coloured buttons rather than expecting an exact hex.

@@ -31,7 +31,8 @@ import { Scrubber } from "./Scrubber"
 
 /** Cast button state (R1/R2) — derived by VideoPlayer, rendered here. */
 export type PlayerControlsCastUi = {
-  /** R2: at least one Cast device is reachable — the button hides otherwise. */
+  /** R2: at least one Cast device is reachable. iOS hides the button when false;
+   *  Android ignores it, because the underlying state is untrustworthy there. */
   available: boolean
   /** True during a session — flips the glyph to its connected variant. */
   connected: boolean
@@ -109,9 +110,9 @@ export function RouteButtons({
   // presents the dialog from the context, so it keeps the app-drawn glyph.
   const castButton =
     castUi == null ? null : Platform.OS === "android" ? (
-      // Deliberately NOT gated on `available`: getCastState() answers
-      // noDevicesAvailable until a native button is attached AND used, so the
-      // gate deadlocks. mediarouter 1.8's button never self-hides.
+      // Deliberately NOT gated on `available`: getCastState() was measured
+      // reporting noDevicesAvailable with devices already discovered, so the
+      // gate never opens. mediarouter 1.8's button never self-hides.
       <Frosted style={styles.iconButton}>
         <NativeCastButton
           accessibilityLabel={castUi.label}

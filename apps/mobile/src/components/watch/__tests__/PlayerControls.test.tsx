@@ -369,8 +369,8 @@ describe("cast control differs by platform", () => {
   })
 
   // Galaxy Tab S8, 2026-08-24: getCastState() answered noDevicesAvailable for
-  // minutes with two Chromecasts already in the app's route list, flipping only
-  // after an attached button opened the dialog. Gating it can never open.
+  // minutes with two Chromecasts already in the app's route list. The cause is
+  // unestablished; the untrustworthiness is what makes the gate wrong here.
   it("Android renders the SDK button even while `available` is false", async () => {
     setPlatform("android")
     const renderer = await render(false, {
