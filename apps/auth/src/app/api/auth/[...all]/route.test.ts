@@ -124,8 +124,87 @@ describe("Auth route wrapper", () => {
     await expect(forwarded.json()).resolves.toMatchObject({
       application_type: "native",
       redirect_uris: ["http://localhost:3118/callback"],
+      token_endpoint_auth_method: "none",
     })
   })
+
+  it.each([
+    {
+      name: "an explicit web client",
+      body: {
+        application_type: "web",
+        redirect_uris: ["http://localhost:3118/callback"],
+      },
+    },
+    {
+      name: "an explicit native client",
+      body: {
+        application_type: "native",
+        redirect_uris: ["http://localhost:3118/callback"],
+      },
+    },
+    {
+      name: "an explicit confidential client",
+      body: {
+        redirect_uris: ["http://localhost:3118/callback"],
+        token_endpoint_auth_method: "client_secret_basic",
+      },
+    },
+    {
+      name: "a public HTTP redirect",
+      body: { redirect_uris: ["http://example.com/callback"] },
+    },
+    {
+      name: "mixed loopback and public redirects",
+      body: {
+        redirect_uris: [
+          "http://127.0.0.1:3118/callback",
+          "https://example.com/callback",
+        ],
+      },
+    },
+    {
+      name: "an empty redirect list",
+      body: { redirect_uris: [] },
+    },
+  ])("does not normalize $name", async ({ body }) => {
+    authPost.mockResolvedValueOnce(Response.json({ client_id: "dynamic" }))
+    const { POST } = await import("./route")
+    await POST(
+      new Request("http://localhost:3004/api/auth/oauth2/register", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(body),
+      }),
+      { params: Promise.resolve({ all: ["oauth2", "register"] }) },
+    )
+
+    const forwarded = authPost.mock.calls[0]?.[0] as Request
+    await expect(forwarded.json()).resolves.toEqual(body)
+  })
+
+  it.each(["http://127.0.0.1:49173/callback", "http://[::1]:49173/callback"])(
+    "normalizes implicit loopback redirect %s",
+    async (redirectUri) => {
+      authPost.mockResolvedValueOnce(Response.json({ client_id: "dynamic" }))
+      const { POST } = await import("./route")
+      await POST(
+        new Request("http://localhost:3004/api/auth/oauth2/register", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ redirect_uris: [redirectUri] }),
+        }),
+        { params: Promise.resolve({ all: ["oauth2", "register"] }) },
+      )
+
+      const forwarded = authPost.mock.calls[0]?.[0] as Request
+      await expect(forwarded.json()).resolves.toEqual({
+        application_type: "native",
+        redirect_uris: [redirectUri],
+        token_endpoint_auth_method: "none",
+      })
+    },
+  )
 
   it("downscopes an authenticated Changelog authorize request before the provider sees it", async () => {
     getSession.mockResolvedValueOnce({
