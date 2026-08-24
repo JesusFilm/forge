@@ -134,6 +134,11 @@ discovery surfaces such as Watch homepage and search thumbnails link to the
 Standalone Watch Route; contextual links are reserved for navigation inside an
 opened collection.
 
+For Watch composition, the parent named by a Contextual Watch Route is the
+terminal carousel and next-item context. If that parent cannot form a useful
+sibling rail, the page does not substitute the playable child's intrinsic
+hierarchy or a different collection.
+
 ### Standalone Watch Route
 
 The canonical public Watch URL for a Video and Language independent of any
@@ -144,6 +149,12 @@ collection relationship. Eligible English uses
 slug is also a public language-home slug, English stays explicit so the
 language home retains the one-segment URL.
 
+When a standalone playable Video owns enough exactly admitted children to form
+a useful rail, those children are its primary carousel context. Eligible
+external collections are a fallback only when that intrinsic rail does not
+qualify; they do not become the standalone Video's canonical or next-item
+identity.
+
 ### Watch Route Manifest
 
 An Admin-owned snapshot of public Watch route dimensions used by consumers to
@@ -153,6 +164,11 @@ content.
 The manifest is an admission contract, not a rendering payload or historical
 record; absence can disprove current route validity but cannot explain why a
 relationship changed.
+
+When a consumer synthesizes a selectable context from parent/child relations,
+exact admission means the manifest proves the parent/child pair and that
+specific child's selected audio language. A global language entry or fallback
+playback stream is not proof that the contextual route exists.
 
 ### Watch Search & Social Metadata Overlay
 

@@ -371,6 +371,70 @@ describe("SiblingCarousel — happy path", () => {
     )
   })
 
+  it("renders a fixed 49-Chapter film rail with no selector or false active card", () => {
+    const filmChildren = Array.from({ length: 49 }, (_, index) => {
+      const position = index + 1
+      return {
+        ...makeChild(position),
+        documentId: `film-chapter-${position}`,
+        slug:
+          index === 29
+            ? "triumphal-entry-and-results"
+            : `film-chapter-${position}`,
+        title:
+          index === 29
+            ? "Triumphal Entry and Results"
+            : `Film Chapter ${position}`,
+      }
+    })
+    const block = {
+      kind: "SiblingCarousel",
+      canonicalParent: {
+        documentId: "film-parent",
+        slug: "life-of-jesus-gospel-of-john",
+        title: "Life of Jesus (Gospel of John)",
+        children: filmChildren,
+      },
+      currentVideoDocumentId: "film-parent",
+    } as WatchSiblingCarouselBlock
+
+    act(() => {
+      root.render(<SiblingCarousel block={block} languageSlug="english" />)
+    })
+
+    const rail = container.querySelector("[data-block-type='SiblingCarousel']")
+    const items = Array.from(
+      container.querySelectorAll("[data-testid='sibling-carousel-item']"),
+    )
+    expect(rail?.getAttribute("data-mode")).toBe("parent")
+    expect(items).toHaveLength(49)
+    expect(items[29]?.getAttribute("data-href")).toBe(
+      "/life-of-jesus-gospel-of-john.html/triumphal-entry-and-results.html",
+    )
+    expect(
+      container.querySelector(
+        "[data-testid='sibling-carousel-item'][data-active='true']",
+      ),
+    ).toBeNull()
+    expect(
+      container.querySelector("[data-testid='sibling-carousel-label']")
+        ?.textContent,
+    ).toBe("49 chapters")
+    expect(
+      container.querySelector(
+        "[data-testid='sibling-carousel-selection-announcement']",
+      )?.textContent,
+    ).toBeUndefined()
+    expect(
+      container.querySelector(
+        "[data-testid='sibling-carousel-parent-selector']",
+      ),
+    ).toBeNull()
+    expect(container.querySelector("header p a span")?.textContent).toBe(
+      "Life of Jesus (Gospel of John)",
+    )
+  })
+
   it("keeps an unmodified active-card click on the standalone route", () => {
     const onChapterNavigateIntent = vi.fn()
 
