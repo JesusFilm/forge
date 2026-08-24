@@ -125,9 +125,26 @@ registration and authorization:
   `access_denied` with no authorization code. Production remained disabled
   throughout with `AUTH_CHANGELOG_PRODUCTION_ENABLED=false`.
 
-Verification passed with 458 Forge Auth unit tests (18 opt-in integration tests
+A post-fix receipt on 2026-08-25 covered the final public-client and MCP
+hardening at Forge `91d9fdb5` and Changelog `858e2cf`. Fresh Codex-style and
+Claude-style registrations created different native public clients,
+`AamZxnppdsqdxOSuHjaKKJUtdEoiFEcs` and
+`jciWzrwyCZZTFKehqWoPtuOfIuBcVjfM`, with no client secrets and with their
+respective `127.0.0.1` and `localhost` callbacks. The Codex client then
+completed authorization-code exchange with PKCE, received only `openid
+changelog:read`, read `Protected MCP reads are available`, rotated both its
+access and refresh tokens (`c89b8af74f8b` to `07536942db2b` and
+`27b9be4bfd19` to `38e0b9de817f`), and read the entry again after refresh. The
+temporary port-3999 metadata proxy used for this receipt did not forward the
+Next.js development WebSocket, so its server-rendered consent page could not
+hydrate; after explicit user approval, the same authenticated consent payload
+was submitted directly to the consent endpoint. The earlier browser consent,
+two-client lifecycle, independent token-family, and denied-capability evidence
+above remains the end-to-end UI receipt.
+
+Verification passed with 468 Forge Auth unit tests (18 opt-in integration tests
 skipped in the aggregate command), focused route tests, Auth typecheck and
-lint, plus 98 Changelog tests and Changelog typecheck. The earlier PostgreSQL
+lint, plus 104 Changelog tests and Changelog typecheck. The earlier PostgreSQL
 CI receipt above covers all 18 Forge integration tests. Preview registration
 remains deliberately deferred until Changelog has a stable preview domain.
 Supported grant provisioning and revocation remain separate production-
