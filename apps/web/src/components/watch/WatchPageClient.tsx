@@ -860,6 +860,7 @@ export function WatchPageClient({
           posterUrl={posterUrl}
           playbackId={variant.muxVideo?.playbackId ?? null}
           usageGuidanceScope="video"
+          onDownload={openDownload}
           onClose={closeModal}
         />
       ) : null}

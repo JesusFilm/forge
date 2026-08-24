@@ -6,6 +6,8 @@ import { act } from "react"
 import { createRoot, type Root } from "react-dom/client"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
+import type { ShareUsageGuidanceScope } from "@/components/watch/ShareModal"
+
 vi.mock("next-intl", () => ({
   useTranslations: () => (key: string) => key,
 }))
@@ -18,7 +20,7 @@ const { routerPushMock, routerPrefetchMock, shareModalProps, watchPlayer } =
       currentLanguageSlug: string
       onClose: () => void
       open: boolean
-      usageGuidanceScope: "generic" | "video"
+      usageGuidanceScope: ShareUsageGuidanceScope
       videoSlug: string
     }>,
     watchPlayer: {

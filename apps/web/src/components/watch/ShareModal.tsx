@@ -1,41 +1,31 @@
 "use client"
 
-import {
-  useEffect,
-  useId,
-  useLayoutEffect,
-  useRef,
-  useState,
-  type KeyboardEvent,
-} from "react"
+import { useEffect, useLayoutEffect, useRef, useState } from "react"
 import Image from "next/image"
-import { Copy, Facebook } from "lucide-react"
+import {
+  ArrowLeft,
+  ChevronRight,
+  Code2,
+  Copy,
+  Download,
+  ExternalLink,
+  Facebook,
+  Globe2,
+  HelpCircle,
+  Instagram,
+  Scissors,
+  Send,
+  Share2,
+  ShieldCheck,
+  Youtube,
+} from "lucide-react"
+import type { LucideIcon } from "lucide-react"
 import { useTranslations } from "next-intl"
 
-// Inline X (formerly Twitter) glyph — lucide-react still ships the legacy
-// blue-bird Twitter icon AND exports its own `XIcon` (the close-button "x"),
-// so we use a brand-specific name to avoid both shadowing and confusion.
-// The X brand mark is a single-path SVG so an inline component keeps the
-// modal free of an extra dependency.
-function XBrandIcon({ size = 18 }: { size?: number }) {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      width={size}
-      height={size}
-      viewBox="0 0 24 24"
-      fill="currentColor"
-      aria-hidden="true"
-    >
-      <path d="M18.244 2H21.5l-7.5 8.572L23 22h-6.86l-5.36-6.78L4.6 22H1.34l8.04-9.187L1 2h6.99l4.84 6.21L18.244 2zm-1.2 18h1.86L7.04 4H5.07l11.974 16z" />
-    </svg>
-  )
-}
-
-import { env } from "@/env"
 import { reportGoogleAnalyticsEvent } from "@/components/GoogleAnalytics"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
+import { env } from "@/env"
 import {
   buildEmbedSnippet,
   buildFbShareUrl,
@@ -48,38 +38,67 @@ import { WatchModalViewportCloseButton } from "./WatchModalViewportCloseButton"
 const USAGE_GUIDANCE_URL = "https://www.jesusfilm.org/about/faq/"
 const LICENSING_REQUEST_URL =
   "https://form.asana.com/?k=qIsNe5Cu3-v5qriWHzwH8Q&d=657768513276"
-const SHARE_MODAL_ANALYTICS_SURFACE = "watch_share_modal"
-const GUIDANCE_VIEWED_EVENT = "watch_share_guidance_viewed"
-const LICENSING_CLICKED_EVENT = "watch_share_licensing_clicked"
+const ANALYTICS_SURFACE = "watch_share_modal"
 
+type ShareView =
+  | "choose"
+  | "social"
+  | "facebook"
+  | "youtube"
+  | "instagram"
+  | "direct"
+  | "offline"
+  | "website"
+  | "embed"
+  | "production"
+type CopyStatus = "idle" | "copied" | "failed"
 type LicensingReuseType = "native_social_upload" | "clip_reuse"
+type ShareIntent =
+  | "social_media"
+  | "send_to_people"
+  | "offline"
+  | "website_or_production"
+  | "facebook"
+  | "youtube"
+  | "instagram"
+  | "website_embed"
+  | "production_reuse"
+type ShareResultView = Exclude<ShareView, "choose">
+
+const PARENT_VIEW_BY_VIEW = {
+  social: "choose",
+  facebook: "social",
+  youtube: "social",
+  instagram: "social",
+  direct: "choose",
+  offline: "choose",
+  website: "choose",
+  embed: "website",
+  production: "website",
+} satisfies Record<ShareResultView, ShareView>
 
 function reportLicensingClick(reuseType: LicensingReuseType) {
-  reportGoogleAnalyticsEvent(LICENSING_CLICKED_EVENT, {
+  reportGoogleAnalyticsEvent("watch_share_licensing_clicked", {
     reuse_type: reuseType,
-    surface: SHARE_MODAL_ANALYTICS_SURFACE,
+    surface: ANALYTICS_SURFACE,
   })
 }
 
-// Optional fields here accept explicit `null` from the parent's `?? null`
-// fallback chain in WatchPageClient (`video.title ?? null`). The effective
-// type is `string | null | undefined` — callers may pass any of the three
-// without forcing a `?? undefined` re-coercion at every call site.
+export type ShareUsageGuidanceScope = "video" | "generic"
+
 export type ShareModalProps = {
   open: boolean
-  usageGuidanceScope: "video" | "generic"
+  usageGuidanceScope: ShareUsageGuidanceScope
   videoSlug: string
   currentLanguageSlug: string
   videoTitle?: string | null
   videoDescription?: string | null
   posterUrl?: string | null
-  /** Mux playback id — used to build a portable iframe embed via player.mux.com. */
   playbackId?: string | null
+  /** Opens the page-owned download flow without duplicating its access rules. */
+  onDownload?: () => void
   onClose: () => void
 }
-
-type ShareTab = "link" | "embed"
-type CopyStatus = "idle" | "copied" | "failed"
 
 export function ShareModal({
   open,
@@ -90,125 +109,93 @@ export function ShareModal({
   videoDescription,
   posterUrl,
   playbackId,
+  onDownload,
   onClose,
 }: ShareModalProps) {
   const t = useTranslations("ShareModal")
-  const [tab, setTab] = useState<ShareTab>("link")
+  const [view, setView] = useState<ShareView>("choose")
   const [copyStatus, setCopyStatus] = useState<CopyStatus>("idle")
+  const [closePortalContainer, setClosePortalContainer] =
+    useState<HTMLSpanElement | null>(null)
   const embedRef = useRef<HTMLTextAreaElement | null>(null)
-  const hasReportedGuidanceForOpenRef = useRef(false)
-  const tabRefs = useRef<Record<ShareTab, HTMLButtonElement | null>>({
-    link: null,
-    embed: null,
-  })
-  const tabIdPrefix = useId()
+  const stepHeadingRef = useRef<HTMLHeadingElement | null>(null)
+  const closeButtonRef = useRef<HTMLButtonElement | null>(null)
+  const mobileScrollRef = useRef<HTMLDivElement | null>(null)
+  const desktopScrollRef = useRef<HTMLDivElement | null>(null)
+  const hasReportedView = useRef(false)
 
   const shareableUrl = resolveWatchShareUrl({
     origin: env.NEXT_PUBLIC_CANONICAL_ORIGIN,
     videoSlug,
     languageSlug: currentLanguageSlug,
   })
-  // buildEmbedSnippet validates playbackId against PLAYBACK_ID_PATTERN before
-  // interpolating into the iframe `src` and returns "" on null/invalid; the
-  // Embed Code tab is also gated on `playbackId ?` below, so an invalid id
-  // hides the tab entirely.
   const embedSnippet = buildEmbedSnippet(playbackId)
-
   const fbHref = shareableUrl ? buildFbShareUrl(shareableUrl) : null
   const xHref = shareableUrl
     ? buildXShareUrl(shareableUrl, videoTitle ?? undefined)
     : null
-
-  const activeMode =
-    tab === "embed" && embedSnippet
-      ? "embed"
+  const activeView =
+    view !== "choose"
+      ? view
       : shareableUrl
-        ? "link"
+        ? "choose"
         : embedSnippet
           ? "embed"
           : null
-  const isEmbed = activeMode === "embed"
-  const currentValue =
-    activeMode === "embed"
-      ? embedSnippet
-      : activeMode === "link"
-        ? shareableUrl
-        : null
-  const copyLabel = isEmbed ? t("copyCode") : t("copyLink")
-  const hasShareFormatTabs = Boolean(embedSnippet && shareableUrl)
-  const linkTabId = `${tabIdPrefix}-link-tab`
-  const embedTabId = `${tabIdPrefix}-embed-tab`
-  const tabPanelId = `${tabIdPrefix}-panel`
-  const linkDescriptionId = `${tabIdPrefix}-link-description`
-  const embedDescriptionId = `${tabIdPrefix}-embed-description`
-  const activeDescriptionId = isEmbed ? embedDescriptionId : linkDescriptionId
+
+  useLayoutEffect(() => {
+    if (!open || closePortalContainer === null) return
+    if (activeView !== null) {
+      if (mobileScrollRef.current) mobileScrollRef.current.scrollTop = 0
+      if (desktopScrollRef.current) desktopScrollRef.current.scrollTop = 0
+    }
+    ;(activeView === null
+      ? closeButtonRef.current
+      : stepHeadingRef.current
+    )?.focus()
+  }, [activeView, closePortalContainer, open])
 
   useEffect(() => {
     if (!open) {
-      hasReportedGuidanceForOpenRef.current = false
+      hasReportedView.current = false
       return
     }
     if (
-      hasReportedGuidanceForOpenRef.current ||
+      hasReportedView.current ||
       usageGuidanceScope !== "video" ||
-      activeMode == null
-    ) {
+      (!shareableUrl && !embedSnippet)
+    )
       return
-    }
 
-    hasReportedGuidanceForOpenRef.current = true
-    reportGoogleAnalyticsEvent(GUIDANCE_VIEWED_EVENT, {
+    hasReportedView.current = true
+    reportGoogleAnalyticsEvent("watch_share_guidance_viewed", {
       guidance_scope: "video",
-      surface: SHARE_MODAL_ANALYTICS_SURFACE,
+      surface: ANALYTICS_SURFACE,
     })
-  }, [activeMode, open, usageGuidanceScope])
+  }, [embedSnippet, open, shareableUrl, usageGuidanceScope])
 
-  // Reset the "Copied" pill back to the default label after 2s so a second
-  // click reads as a fresh copy. Cleanup clears the timer on unmount or when
-  // copyStatus flips early (e.g. user switches tabs).
   useEffect(() => {
     if (copyStatus !== "copied") return
-    const timer = window.setTimeout(() => {
-      setCopyStatus("idle")
-    }, 2000)
+    const timer = window.setTimeout(() => setCopyStatus("idle"), 2000)
     return () => window.clearTimeout(timer)
   }, [copyStatus])
 
   function handleOpenChange(next: boolean) {
-    if (!next) {
-      setTab("link")
-      setCopyStatus("idle")
-      onClose()
-    }
-  }
-
-  function selectTab(next: ShareTab) {
-    setTab(next)
+    if (next) return
+    setView("choose")
     setCopyStatus("idle")
+    onClose()
   }
 
-  function handleTabKeyDown(event: KeyboardEvent<HTMLButtonElement>) {
-    const nextTab =
-      event.key === "Home"
-        ? "link"
-        : event.key === "End"
-          ? "embed"
-          : event.key === "ArrowLeft" ||
-              event.key === "ArrowUp" ||
-              event.key === "ArrowRight" ||
-              event.key === "ArrowDown"
-            ? tab === "link"
-              ? "embed"
-              : "link"
-            : null
-
-    if (!nextTab) return
-
-    event.preventDefault()
-    selectTab(nextTab)
-    // Keep focus with the selected tab so keyboard and assistive-technology
-    // users receive the same active-tab state as pointer users.
-    tabRefs.current[nextTab]?.focus()
+  function choose(next: ShareView, intent?: ShareIntent) {
+    setView(next)
+    setCopyStatus("idle")
+    if (intent) {
+      reportGoogleAnalyticsEvent("watch_share_intent_selected", {
+        intent,
+        surface: ANALYTICS_SURFACE,
+      })
+    }
   }
 
   async function copy(text: string) {
@@ -220,358 +207,710 @@ export function ShareModal({
     }
   }
 
-  // Auto-fit the embed textarea to its content so the full snippet is visible
-  // without an inner scroll bar. Re-runs when the snippet changes (different
-  // playbackId) and on viewport resize, since the textarea wraps differently
-  // at different modal widths. `useLayoutEffect` runs before paint, so the
-  // user never sees the rows-default height flash.
-  //
-  // Cap the auto-fit at 40% of the viewport so an extreme zoom or a malformed
-  // snippet can't push the Copy Code button below the fold; switch the
-  // textarea to inner-scroll once it would otherwise blow past the cap.
-  useLayoutEffect(() => {
-    if (!isEmbed) return
-    const fit = () => {
-      // Read the ref inside the closure rather than capturing it on the
-      // outer effect run — concurrent rendering may swap the DOM node
-      // underneath us between the effect setup and the resize callback.
-      const el = embedRef.current
-      if (!el) return
-      el.style.height = "auto"
-      const cap = window.innerHeight * 0.4
-      const desired = el.scrollHeight
-      if (desired > cap) {
-        el.style.height = `${cap}px`
-        el.style.overflowY = "auto"
-      } else {
-        el.style.height = `${desired}px`
-        el.style.overflowY = "hidden"
-      }
-    }
-    fit()
-    window.addEventListener("resize", fit)
-    return () => window.removeEventListener("resize", fit)
-  }, [isEmbed, embedSnippet])
+  function openDownload() {
+    if (!onDownload) return
+    handleOpenChange(false)
+    onDownload()
+  }
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent
         data-testid="watch-share-modal"
-        className="w-full max-w-[min(90vw,608px)] border-0 bg-transparent p-0 text-stone-100 ring-0 sm:max-w-[608px]"
-        overlayClassName="bg-black/85 supports-backdrop-filter:backdrop-blur-md"
-        viewportClassName="fixed inset-0 z-50 grid place-items-center overflow-y-auto p-4"
+        className="w-full max-w-[min(94vw,1400px)] overflow-hidden rounded-[22px] border border-white/15 bg-[#111211] p-0 text-stone-100 shadow-2xl ring-0"
+        overlayClassName="bg-black/90 supports-backdrop-filter:backdrop-blur-md"
+        viewportClassName="fixed inset-0 z-50 grid place-items-center overflow-y-auto pt-[max(0.75rem,env(safe-area-inset-top))] pr-[max(0.75rem,env(safe-area-inset-right))] pb-[max(0.75rem,env(safe-area-inset-bottom))] pl-[max(0.75rem,env(safe-area-inset-left))] sm:pt-[max(1.5rem,env(safe-area-inset-top))] sm:pr-[max(1.5rem,env(safe-area-inset-right))] sm:pb-[max(1.5rem,env(safe-area-inset-bottom))] sm:pl-[max(1.5rem,env(safe-area-inset-left))]"
         showCloseButton={false}
+        initialFocus={false}
       >
+        <span ref={setClosePortalContainer} className="contents" />
         <WatchModalViewportCloseButton
-          open={open}
+          open={open && closePortalContainer !== null}
           onClose={() => handleOpenChange(false)}
           testId="watch-share-modal-close"
+          buttonRef={closeButtonRef}
+          ariaLabel={t("close")}
+          portalContainer={closePortalContainer}
         />
         <DialogTitle className="sr-only">{t("dialogTitle")}</DialogTitle>
 
-        <div className="flex max-h-[82vh] flex-col gap-6 overflow-y-auto pr-2 [scrollbar-color:theme(colors.stone.700)_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-stone-700 [&::-webkit-scrollbar-track]:bg-transparent hover:[&::-webkit-scrollbar-thumb]:bg-stone-600">
-          <h2 className="text-2xl font-semibold text-stone-100">
-            {t("heading")}
-          </h2>
-
-          <div className="flex flex-col gap-5 sm:flex-row sm:gap-6">
+        <div
+          ref={mobileScrollRef}
+          data-testid="watch-share-modal-scroll"
+          className="grid max-h-[92vh] min-h-0 overflow-y-auto lg:h-[min(90vh,850px)] lg:grid-cols-[465px_minmax(0,1fr)] lg:grid-rows-[minmax(0,1fr)_auto] lg:overflow-hidden"
+        >
+          <aside className="relative flex items-start gap-4 border-b border-white/10 px-5 pt-14 pb-5 sm:px-8 lg:row-start-1 lg:block lg:border-b-0 lg:pt-[66px] lg:pr-12 lg:pb-11 lg:pl-[60px] lg:after:absolute lg:after:top-[66px] lg:after:right-0 lg:after:bottom-11 lg:after:w-px lg:after:bg-white/10">
             <div
               data-testid="watch-share-modal-poster"
-              className="relative aspect-video w-full shrink-0 overflow-hidden rounded-2xl bg-stone-800 sm:w-56"
+              className="relative aspect-[3/2] w-28 shrink-0 overflow-hidden rounded-xl bg-stone-800 sm:w-44 lg:aspect-[1.47] lg:w-full lg:rounded-[18px]"
             >
               {posterUrl ? (
                 <Image
                   src={posterUrl}
                   alt={videoTitle ?? t("posterAlt")}
                   fill
-                  sizes="(min-width: 640px) 224px, 100vw"
+                  sizes="(min-width: 1024px) 345px, 112px"
                   className="object-cover"
                 />
               ) : null}
             </div>
-            <div className="flex min-w-0 flex-1 flex-col gap-3">
+            <div className="min-w-0 flex-1 lg:mt-6">
               {videoTitle ? (
-                <h3
+                <h2
                   data-testid="watch-share-modal-title"
-                  className="text-2xl leading-tight font-semibold text-stone-50 sm:text-3xl"
+                  className="text-xl leading-[1.08] font-bold tracking-tight text-white sm:text-2xl lg:text-[44px]"
                 >
                   {videoTitle}
-                </h3>
+                </h2>
               ) : null}
               {videoDescription ? (
                 <p
                   data-testid="watch-share-modal-description"
-                  className="line-clamp-4 text-sm leading-relaxed font-medium text-stone-300"
+                  className="mt-3 hidden text-sm leading-6 text-stone-300 sm:line-clamp-2 lg:mt-5 lg:block lg:line-clamp-4 lg:text-base lg:leading-7"
                 >
                   {videoDescription}
                 </p>
               ) : null}
+              {usageGuidanceScope === "video" ? (
+                <div className="mt-3 flex items-start gap-2 text-xs leading-5 text-stone-300 lg:mt-7 lg:gap-4 lg:text-sm lg:leading-6">
+                  <ShieldCheck
+                    aria-hidden
+                    className="mt-0.5 h-5 w-5 shrink-0 text-stone-400 lg:h-6 lg:w-6"
+                  />
+                  <span>{t("permissionNote")}</span>
+                </div>
+              ) : null}
             </div>
-          </div>
+          </aside>
 
-          {shareableUrl ? (
-            <p
-              id={linkDescriptionId}
-              data-testid="watch-share-modal-link-description"
-              className="text-sm leading-relaxed text-stone-300"
-            >
-              {t("linkDescription")}
-            </p>
-          ) : null}
-
-          {fbHref && xHref ? (
-            <div className="flex gap-3">
-              <a
-                href={fbHref}
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-describedby={linkDescriptionId}
-                aria-label={`${t("shareOnFacebook")} (${t("opensInNewTab")})`}
-                data-testid="watch-share-modal-facebook"
-                className="flex h-11 w-11 cursor-pointer items-center justify-center rounded-full bg-[#1877F2] text-white transition hover:bg-[#0c63d4] focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:outline-none"
-              >
-                <Facebook size={18} fill="currentColor" stroke="none" />
-              </a>
-              <a
-                href={xHref}
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-describedby={linkDescriptionId}
-                aria-label={`${t("shareOnX")} (${t("opensInNewTab")})`}
-                data-testid="watch-share-modal-x"
-                className="flex h-11 w-11 cursor-pointer items-center justify-center rounded-full bg-black text-white transition hover:bg-stone-800 focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:outline-none"
-              >
-                <XBrandIcon size={16} />
-              </a>
-            </div>
-          ) : null}
-
-          {/* Tab row only renders when there's a real choice to make
-              (i.e., an embed snippet is available alongside the link).
-              For series pages and any other share context with no
-              playbackId, the link is the only mode — surfacing a single
-              "Share Link" tab header alone reads as a meaningless
-              non-choice, so we hide the whole tablist and let the link
-              input flow directly under the social-share row. */}
-          {hasShareFormatTabs ? (
+          <main className="flex min-h-0 flex-col px-5 pt-5 pb-5 sm:px-8 lg:row-start-1 lg:max-h-[92vh] lg:px-[52px] lg:pt-[104px] lg:pb-9">
             <div
-              role="tablist"
-              aria-label={t("shareFormat")}
-              className="flex border-b border-white/10"
+              ref={desktopScrollRef}
+              data-testid="watch-share-modal-step-scroll"
+              className="min-h-0 flex-1 lg:overflow-y-auto lg:pr-2"
             >
-              <button
-                type="button"
-                role="tab"
-                id={linkTabId}
-                aria-controls={tabPanelId}
-                aria-selected={tab === "link"}
-                tabIndex={tab === "link" ? 0 : -1}
-                data-testid="watch-share-modal-tab-link"
-                onClick={() => selectTab("link")}
-                onKeyDown={handleTabKeyDown}
-                ref={(element) => {
-                  tabRefs.current.link = element
-                }}
-                className={cn(
-                  "flex-1 cursor-pointer px-4 py-3 text-xs font-semibold tracking-[0.18em] uppercase transition",
-                  !isEmbed
-                    ? "border-b-2 border-brand-red text-brand-red"
-                    : "border-b-2 border-transparent text-stone-400 hover:text-stone-200",
-                )}
+              {activeView === "choose" ? (
+                <Chooser
+                  usageGuidanceScope={usageGuidanceScope}
+                  hasEmbed={Boolean(embedSnippet)}
+                  onChoose={choose}
+                  headingRef={stepHeadingRef}
+                />
+              ) : activeView ? (
+                <ResultView
+                  view={activeView}
+                  shareableUrl={shareableUrl}
+                  embedSnippet={embedSnippet}
+                  fbHref={fbHref}
+                  xHref={xHref}
+                  copyStatus={copyStatus}
+                  usageGuidanceScope={usageGuidanceScope}
+                  onBack={
+                    view === "choose"
+                      ? undefined
+                      : () => choose(PARENT_VIEW_BY_VIEW[view])
+                  }
+                  onChoose={choose}
+                  onCopy={copy}
+                  onDownload={onDownload ? openDownload : undefined}
+                  embedRef={embedRef}
+                  headingRef={stepHeadingRef}
+                />
+              ) : null}
+            </div>
+          </main>
+
+          {activeView === "choose" ? (
+            <div className="border-t border-white/10 px-5 py-3 text-center sm:px-8 lg:col-span-2 lg:row-start-2 lg:mx-[60px] lg:px-0 lg:py-5">
+              <a
+                href={USAGE_GUIDANCE_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                data-testid="watch-share-modal-unsure"
+                className="inline-flex min-h-11 items-center gap-3 rounded-md px-3 font-semibold text-brand-red hover:underline focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:outline-none"
               >
-                {t("shareLinkTab")}
-              </button>
-              <button
-                type="button"
-                role="tab"
-                id={embedTabId}
-                aria-controls={tabPanelId}
-                aria-selected={tab === "embed"}
-                tabIndex={tab === "embed" ? 0 : -1}
-                data-testid="watch-share-modal-tab-embed"
-                onClick={() => selectTab("embed")}
-                onKeyDown={handleTabKeyDown}
-                ref={(element) => {
-                  tabRefs.current.embed = element
-                }}
-                className={cn(
-                  "flex-1 cursor-pointer px-4 py-3 text-xs font-semibold tracking-[0.18em] uppercase transition",
-                  isEmbed
-                    ? "border-b-2 border-brand-red text-brand-red"
-                    : "border-b-2 border-transparent text-stone-400 hover:text-stone-200",
-                )}
-              >
-                {t("embedCodeTab")}
-              </button>
+                <HelpCircle aria-hidden className="h-5 w-5 text-stone-300" />
+                {t("unsure")}
+                <span className="sr-only"> ({t("opensInNewTab")})</span>
+                <ExternalLink aria-hidden className="h-4 w-4" />
+              </a>
             </div>
           ) : null}
-
-          <p
-            aria-atomic="true"
-            aria-live="polite"
-            className="sr-only"
-            data-testid="watch-share-modal-copy-status"
-            role="status"
-          >
-            {copyStatus === "copied"
-              ? t("copied")
-              : copyStatus === "failed"
-                ? t("copyFailed")
-                : ""}
-          </p>
-
-          {activeMode === "embed" ? (
-            <p
-              id={embedDescriptionId}
-              data-testid="watch-share-modal-embed-description"
-              className="text-sm leading-relaxed text-stone-300"
-            >
-              {t("embedDescription")}
-            </p>
-          ) : null}
-
-          <div
-            aria-describedby={activeMode ? activeDescriptionId : undefined}
-            aria-labelledby={
-              hasShareFormatTabs
-                ? isEmbed
-                  ? embedTabId
-                  : linkTabId
-                : undefined
-            }
-            id={hasShareFormatTabs ? tabPanelId : undefined}
-            role={hasShareFormatTabs ? "tabpanel" : undefined}
-          >
-            {copyStatus === "failed" ? (
-              <p
-                data-testid="watch-share-modal-link-fallback"
-                className="mb-2 text-xs font-semibold text-amber-400"
-              >
-                {t("copyFailed")}
-              </p>
-            ) : null}
-            {activeMode === "embed" ? (
-              <textarea
-                ref={embedRef}
-                data-testid="watch-share-modal-embed-input"
-                readOnly
-                aria-label={t("embedCodeTab")}
-                aria-describedby={embedDescriptionId}
-                // `rows={2}` is the minimum baseline; the auto-fit effect below
-                // sets `style.height` to `scrollHeight` before paint so the full
-                // snippet is visible without an inner scroll bar (capped at 40vh).
-                rows={2}
-                value={embedSnippet}
-                onFocus={(e) => e.currentTarget.select()}
-                className="w-full resize-none rounded-2xl border border-white/10 bg-white/5 px-5 py-4 font-mono text-xs text-stone-100 focus-visible:ring-2 focus-visible:ring-brand-red focus-visible:outline-none"
-              />
-            ) : activeMode === "link" ? (
-              <input
-                type="text"
-                data-testid="watch-share-modal-link-input"
-                readOnly
-                aria-label={t("shareLinkTab")}
-                aria-describedby={linkDescriptionId}
-                value={currentValue ?? ""}
-                onFocus={(e) => e.currentTarget.select()}
-                className="w-full rounded-2xl border border-white/10 bg-white/5 px-5 py-4 text-sm font-semibold text-stone-100 focus-visible:ring-2 focus-visible:ring-brand-red focus-visible:outline-none"
-              />
-            ) : null}
-          </div>
-
-          {usageGuidanceScope === "video" && activeMode != null ? (
-            <section
-              aria-labelledby={`${tabIdPrefix}-usage-heading`}
-              data-testid="watch-share-modal-video-usage-guidance"
-              className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 sm:px-5 sm:py-4"
-            >
-              <h3
-                id={`${tabIdPrefix}-usage-heading`}
-                className="text-sm font-bold text-stone-100"
-              >
-                {t("usageHeading")}
-              </h3>
-              <ul className="mt-2 divide-y divide-white/10">
-                <li className="flex flex-col gap-1 py-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-                  <span className="text-sm font-semibold text-stone-200">
-                    {t("downloadOrScreening")}
-                  </span>
-                  <a
-                    href={USAGE_GUIDANCE_URL}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    aria-label={`${t("downloadOrScreening")}: ${t("viewUsageGuidance")} (${t("opensInNewTab")})`}
-                    data-testid="watch-share-modal-screening-guidance"
-                    className="inline-flex min-h-11 shrink-0 items-center text-sm font-bold text-brand-red underline-offset-4 hover:underline focus-visible:rounded-sm focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:outline-none"
-                  >
-                    {t("viewUsageGuidance")}
-                  </a>
-                </li>
-                <li className="flex flex-col gap-1 py-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-                  <span className="text-sm font-semibold text-stone-200">
-                    {t("nativeSocialUpload")}
-                  </span>
-                  <a
-                    href={LICENSING_REQUEST_URL}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    aria-label={`${t("nativeSocialUpload")}: ${t("openLicensingForm")} (${t("opensInNewTab")})`}
-                    data-testid="watch-share-modal-native-upload-guidance"
-                    onClick={() => reportLicensingClick("native_social_upload")}
-                    className="inline-flex min-h-11 shrink-0 items-center text-sm font-bold text-brand-red underline-offset-4 hover:underline focus-visible:rounded-sm focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:outline-none"
-                  >
-                    {t("openLicensingForm")}
-                  </a>
-                </li>
-                <li className="flex flex-col gap-1 py-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-                  <span className="text-sm font-semibold text-stone-200">
-                    {t("clipReuse")}
-                  </span>
-                  <a
-                    href={LICENSING_REQUEST_URL}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    aria-label={`${t("clipReuse")}: ${t("openLicensingForm")} (${t("opensInNewTab")})`}
-                    data-testid="watch-share-modal-clip-reuse-guidance"
-                    onClick={() => reportLicensingClick("clip_reuse")}
-                    className="inline-flex min-h-11 shrink-0 items-center text-sm font-bold text-brand-red underline-offset-4 hover:underline focus-visible:rounded-sm focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:outline-none"
-                  >
-                    {t("openLicensingForm")}
-                  </a>
-                </li>
-              </ul>
-              <p className="mt-1 text-xs leading-relaxed text-stone-400">
-                {t("licensingFormDescription")}
-              </p>
-            </section>
-          ) : null}
-
-          <div className="flex items-center justify-end gap-5 pt-2">
-            <Button
-              variant="ghost"
-              onClick={() => handleOpenChange(false)}
-              className="cursor-pointer rounded-full px-5 py-3.5 text-sm font-bold tracking-wider text-stone-400 uppercase transition-colors duration-200 hover:bg-transparent hover:text-stone-100"
-            >
-              {t("close")}
-            </Button>
-            {currentValue ? (
-              <Button
-                variant="pill"
-                data-testid={
-                  isEmbed
-                    ? "watch-share-modal-embed-copy"
-                    : "watch-share-modal-link-copy"
-                }
-                onClick={() => copy(currentValue)}
-                className="gap-2 px-7 py-4 text-sm"
-              >
-                <Copy size={16} />
-                <span>{copyStatus === "copied" ? t("copied") : copyLabel}</span>
-              </Button>
-            ) : null}
-          </div>
         </div>
       </DialogContent>
     </Dialog>
+  )
+}
+
+function Chooser({
+  usageGuidanceScope,
+  hasEmbed,
+  onChoose,
+  headingRef,
+}: {
+  usageGuidanceScope: ShareUsageGuidanceScope
+  hasEmbed: boolean
+  onChoose: (view: ShareView, intent?: ShareIntent) => void
+  headingRef: React.RefObject<HTMLHeadingElement | null>
+}) {
+  const t = useTranslations("ShareModal")
+  const rows: Array<{
+    view: ShareView
+    nextView: ShareView
+    intent: ShareIntent
+    title: string
+    description: string
+    icon: LucideIcon
+  }> = [
+    {
+      view: "social" as const,
+      nextView: "social" as const,
+      intent: "social_media",
+      title: t("socialTitle"),
+      description: t("socialDescription"),
+      icon: Share2,
+    },
+    {
+      view: "direct" as const,
+      nextView: "direct" as const,
+      intent: "send_to_people",
+      title: t("directTitle"),
+      description: t("directDescription"),
+      icon: Send,
+    },
+    ...(usageGuidanceScope === "video"
+      ? [
+          {
+            view: "offline" as const,
+            nextView: "offline" as const,
+            intent: "offline" as const,
+            title: t("offlineTitle"),
+            description: t("offlineDescription"),
+            icon: Download,
+          },
+          {
+            view: "website" as const,
+            nextView: "website" as const,
+            intent: "website_or_production" as const,
+            title: t("websiteTitle"),
+            description: hasEmbed
+              ? t("websiteDescription")
+              : t("productionReuseDescription"),
+            icon: Code2,
+          },
+        ]
+      : []),
+  ]
+
+  return (
+    <section aria-labelledby="share-chooser-heading">
+      <h2
+        ref={headingRef}
+        id="share-chooser-heading"
+        tabIndex={-1}
+        className="max-w-4xl text-2xl leading-tight font-bold tracking-tight text-white outline-none sm:text-4xl lg:text-[36px]"
+      >
+        {usageGuidanceScope === "video"
+          ? t("chooserHeading")
+          : t("genericChooserHeading")}
+      </h2>
+      <p className="mt-2 text-sm leading-6 text-stone-300 sm:mt-3 sm:text-lg sm:leading-7">
+        {t("chooserDescription")}
+      </p>
+      <div className="mt-5 overflow-hidden rounded-2xl border border-white/15 bg-white/[0.03] sm:mt-7">
+        {rows.map(
+          (
+            { view, nextView, intent, title, description, icon: Icon },
+            index,
+          ) => (
+            <button
+              key={view}
+              type="button"
+              data-testid={`watch-share-modal-choice-${view}`}
+              onClick={() => onChoose(nextView, intent)}
+              className={cn(
+                "group flex min-h-[92px] w-full cursor-pointer items-center gap-3 px-4 text-left transition hover:bg-white/[0.06] focus-visible:bg-white/[0.06] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-red focus-visible:outline-none sm:min-h-[118px] sm:gap-5 sm:px-8",
+                index > 0 && "border-t border-white/10",
+              )}
+            >
+              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white/10 text-stone-100 sm:h-14 sm:w-14">
+                <Icon aria-hidden className="h-6 w-6 sm:h-7 sm:w-7" />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-base leading-5 font-bold text-white sm:text-xl sm:leading-6">
+                  {title}
+                </span>
+                <span className="mt-1 block text-xs leading-4 text-stone-300 sm:text-base sm:leading-5">
+                  {description}
+                </span>
+              </span>
+              <ChevronRight
+                aria-hidden
+                className="h-7 w-7 shrink-0 text-white transition group-hover:translate-x-1"
+              />
+            </button>
+          ),
+        )}
+      </div>
+    </section>
+  )
+}
+
+function ResultView({
+  view,
+  shareableUrl,
+  embedSnippet,
+  fbHref,
+  xHref,
+  copyStatus,
+  usageGuidanceScope,
+  onBack,
+  onChoose,
+  onCopy,
+  onDownload,
+  embedRef,
+  headingRef,
+}: {
+  view: ShareResultView
+  shareableUrl: string | null
+  embedSnippet: string
+  fbHref: string | null
+  xHref: string | null
+  copyStatus: CopyStatus
+  usageGuidanceScope: ShareUsageGuidanceScope
+  onBack?: () => void
+  onChoose: (view: ShareView, intent?: ShareIntent) => void
+  onCopy: (text: string) => Promise<void>
+  onDownload?: () => void
+  embedRef: React.RefObject<HTMLTextAreaElement | null>
+  headingRef: React.RefObject<HTMLHeadingElement | null>
+}) {
+  const t = useTranslations("ShareModal")
+  const headings = {
+    social: t("socialHeading"),
+    facebook: t("facebookHeading"),
+    youtube: t("youtubeHeading"),
+    instagram: t("instagramHeading"),
+    direct: t("directHeading"),
+    offline: t("offlineHeading"),
+    website: t("websiteHeading"),
+    embed: t("embedHeading"),
+    production: t("productionHeading"),
+  } satisfies Record<Exclude<ShareView, "choose">, string>
+  const descriptions = {
+    social: t("socialDescription"),
+    facebook: t("facebookStepDescription"),
+    youtube: t("youtubeStepDescription"),
+    instagram: t("instagramStepDescription"),
+    direct: t("directStepDescription"),
+    offline: t("offlineStepDescription"),
+    website: t("websiteDescription"),
+    embed: t("embedDescription"),
+    production: t("productionStepDescription"),
+  } satisfies Record<Exclude<ShareView, "choose">, string>
+
+  useLayoutEffect(() => {
+    if (view !== "embed") return
+    const fit = () => {
+      const element = embedRef.current
+      if (!element) return
+      element.style.height = "auto"
+      const height = Math.min(element.scrollHeight, window.innerHeight * 0.28)
+      element.style.height = `${height}px`
+      element.style.overflowY =
+        element.scrollHeight > height ? "auto" : "hidden"
+    }
+    fit()
+    window.addEventListener("resize", fit)
+    return () => window.removeEventListener("resize", fit)
+  }, [embedRef, embedSnippet, view])
+
+  return (
+    <section aria-labelledby="share-result-heading" className="pb-2">
+      {onBack ? (
+        <button
+          type="button"
+          onClick={onBack}
+          data-testid="watch-share-modal-back"
+          className="mb-6 inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-md pr-3 text-sm font-bold text-stone-300 hover:text-white focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:outline-none"
+        >
+          <ArrowLeft aria-hidden className="h-5 w-5" />
+          {t("back")}
+        </button>
+      ) : null}
+      <h2
+        ref={headingRef}
+        id="share-result-heading"
+        tabIndex={-1}
+        className="text-3xl leading-tight font-bold tracking-tight text-white outline-none sm:text-4xl"
+      >
+        {headings[view]}
+      </h2>
+      <p className="mt-3 max-w-3xl text-base leading-7 text-stone-300">
+        {descriptions[view]}
+      </p>
+
+      {view === "social" && usageGuidanceScope === "video" ? (
+        <div className="mt-7 overflow-hidden rounded-2xl border border-white/15 bg-white/[0.03]">
+          <PlatformChoice
+            icon={Facebook}
+            title="Facebook"
+            description={t("facebookDescription")}
+            testId="facebook"
+            onClick={() => onChoose("facebook", "facebook")}
+          />
+          <PlatformChoice
+            icon={Youtube}
+            title="YouTube"
+            description={t("youtubeDescription")}
+            testId="youtube"
+            onClick={() => onChoose("youtube", "youtube")}
+          />
+          <PlatformChoice
+            icon={Instagram}
+            title="Instagram"
+            description={t("youtubeDescription")}
+            testId="instagram"
+            onClick={() => onChoose("instagram", "instagram")}
+          />
+        </div>
+      ) : null}
+
+      {view === "social" && usageGuidanceScope === "generic" ? (
+        <DirectShareActions
+          shareableUrl={shareableUrl}
+          fbHref={fbHref}
+          xHref={xHref}
+          copyStatus={copyStatus}
+          onCopy={onCopy}
+        />
+      ) : null}
+
+      {view === "website" ? (
+        <div className="mt-7 overflow-hidden rounded-2xl border border-white/15 bg-white/[0.03]">
+          {embedSnippet ? (
+            <PlatformChoice
+              icon={Globe2}
+              title={t("embedWebsiteTitle")}
+              description={t("embedWebsiteDescription")}
+              testId="embed"
+              onClick={() => onChoose("embed", "website_embed")}
+            />
+          ) : null}
+          <PlatformChoice
+            icon={Scissors}
+            title={t("productionReuseTitle")}
+            description={t("productionReuseDescription")}
+            testId="production"
+            onClick={() => onChoose("production", "production_reuse")}
+          />
+        </div>
+      ) : null}
+
+      {view === "facebook" && fbHref ? (
+        <div className="mt-7 space-y-5">
+          <LinkCopyCard
+            value={shareableUrl ?? ""}
+            copyStatus={copyStatus}
+            onCopy={onCopy}
+          />
+          <a
+            href={fbHref}
+            target="_blank"
+            rel="noopener noreferrer"
+            data-testid="watch-share-modal-facebook"
+            className="inline-flex min-h-12 items-center gap-3 rounded-full bg-[#1877F2] px-6 font-bold text-white transition hover:bg-[#0c63d4] focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:outline-none"
+          >
+            <Facebook aria-hidden className="h-5 w-5 fill-current" />
+            {t("shareOnFacebook")}
+            <span className="sr-only"> ({t("opensInNewTab")})</span>
+            <ExternalLink aria-hidden className="h-4 w-4" />
+          </a>
+          <LicensingCard reuseType="native_social_upload" />
+        </div>
+      ) : null}
+
+      {view === "youtube" || view === "instagram" ? (
+        <div className="mt-7 space-y-5">
+          {shareableUrl ? (
+            <LinkCopyCard
+              value={shareableUrl}
+              copyStatus={copyStatus}
+              onCopy={onCopy}
+            />
+          ) : null}
+          <LicensingCard reuseType="native_social_upload" />
+        </div>
+      ) : null}
+
+      {view === "direct" ? (
+        <DirectShareActions
+          shareableUrl={shareableUrl}
+          fbHref={fbHref}
+          xHref={xHref}
+          copyStatus={copyStatus}
+          onCopy={onCopy}
+        />
+      ) : null}
+
+      {view === "offline" ? (
+        <div className="mt-7 space-y-5">
+          {onDownload ? (
+            <Button
+              variant="pill"
+              onClick={onDownload}
+              data-testid="watch-share-modal-open-download"
+              className="gap-2 px-7 py-4 text-sm"
+            >
+              <Download aria-hidden className="h-5 w-5" />
+              {t("openDownloadOptions")}
+            </Button>
+          ) : null}
+          <GuidanceLink label={t("viewUsageGuidance")} />
+        </div>
+      ) : null}
+
+      {view === "embed" && embedSnippet ? (
+        <div className="mt-7 space-y-4">
+          <CopyStatus status={copyStatus} />
+          <textarea
+            ref={embedRef}
+            readOnly
+            value={embedSnippet}
+            aria-label={t("embedCodeTab")}
+            data-testid="watch-share-modal-embed-input"
+            onFocus={(event) => event.currentTarget.select()}
+            className="w-full resize-none rounded-2xl border border-white/15 bg-white/5 px-5 py-4 font-mono text-xs leading-5 text-stone-100 focus-visible:ring-2 focus-visible:ring-brand-red focus-visible:outline-none"
+          />
+          <Button
+            variant="pill"
+            data-testid="watch-share-modal-embed-copy"
+            onClick={() => onCopy(embedSnippet)}
+            className="gap-2 px-7 py-4 text-sm"
+          >
+            <Copy aria-hidden className="h-4 w-4" />
+            {copyStatus === "copied" ? t("copied") : t("copyCode")}
+          </Button>
+        </div>
+      ) : null}
+
+      {view === "production" ? (
+        <div className="mt-7">
+          <LicensingCard reuseType="clip_reuse" />
+        </div>
+      ) : null}
+    </section>
+  )
+}
+
+function DirectShareActions({
+  shareableUrl,
+  fbHref,
+  xHref,
+  copyStatus,
+  onCopy,
+}: {
+  shareableUrl: string | null
+  fbHref: string | null
+  xHref: string | null
+  copyStatus: CopyStatus
+  onCopy: (text: string) => Promise<void>
+}) {
+  const t = useTranslations("ShareModal")
+  return (
+    <div className="mt-7 space-y-5">
+      {shareableUrl ? (
+        <LinkCopyCard
+          value={shareableUrl}
+          copyStatus={copyStatus}
+          onCopy={onCopy}
+        />
+      ) : null}
+      {fbHref && xHref ? (
+        <div className="flex flex-wrap gap-3">
+          <a
+            href={fbHref}
+            target="_blank"
+            rel="noopener noreferrer"
+            data-testid="watch-share-modal-direct-facebook"
+            className="inline-flex min-h-11 items-center gap-2 rounded-full bg-[#1877F2] px-5 font-bold text-white focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:outline-none"
+          >
+            <Facebook aria-hidden className="h-4 w-4 fill-current" />
+            Facebook
+            <span className="sr-only"> ({t("opensInNewTab")})</span>
+          </a>
+          <a
+            href={xHref}
+            target="_blank"
+            rel="noopener noreferrer"
+            data-testid="watch-share-modal-x"
+            className="inline-flex min-h-11 items-center rounded-full bg-white px-5 font-bold text-black focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:outline-none"
+          >
+            {t("shareOnX")}
+            <span className="sr-only"> ({t("opensInNewTab")})</span>
+          </a>
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
+function PlatformChoice({
+  icon: Icon,
+  title,
+  description,
+  testId,
+  onClick,
+}: {
+  icon: LucideIcon
+  title: string
+  description: string
+  testId: string
+  onClick: () => void
+}) {
+  return (
+    <button
+      type="button"
+      data-testid={`watch-share-modal-platform-${testId}`}
+      onClick={onClick}
+      className="group flex min-h-[104px] w-full cursor-pointer items-center gap-5 border-b border-white/10 px-5 text-left transition last:border-b-0 hover:bg-white/[0.06] focus-visible:bg-white/[0.06] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-red focus-visible:outline-none sm:px-8"
+    >
+      <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-white/10">
+        <Icon aria-hidden className="h-6 w-6" />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block text-lg font-bold text-white">{title}</span>
+        <span className="mt-1 block text-sm leading-5 text-stone-300">
+          {description}
+        </span>
+      </span>
+      <ChevronRight
+        aria-hidden
+        className="h-6 w-6 transition group-hover:translate-x-1"
+      />
+    </button>
+  )
+}
+
+function CopyStatus({ status }: { status: CopyStatus }) {
+  const t = useTranslations("ShareModal")
+  return (
+    <>
+      <p
+        aria-live="polite"
+        role="status"
+        className="sr-only"
+        data-testid="watch-share-modal-copy-status"
+      >
+        {status === "copied"
+          ? t("copied")
+          : status === "failed"
+            ? t("copyFailed")
+            : ""}
+      </p>
+      {status === "failed" ? (
+        <p
+          className="text-sm font-semibold text-amber-400"
+          data-testid="watch-share-modal-link-fallback"
+        >
+          {t("copyFailed")}
+        </p>
+      ) : null}
+    </>
+  )
+}
+
+function LinkCopyCard({
+  value,
+  copyStatus,
+  onCopy,
+}: {
+  value: string
+  copyStatus: CopyStatus
+  onCopy: (text: string) => Promise<void>
+}) {
+  const t = useTranslations("ShareModal")
+  return (
+    <div className="rounded-2xl border border-white/15 bg-white/[0.04] p-4 sm:p-5">
+      <CopyStatus status={copyStatus} />
+      <div className="flex flex-col gap-3 sm:flex-row">
+        <input
+          type="text"
+          readOnly
+          value={value}
+          aria-label={t("shareLinkTab")}
+          data-testid="watch-share-modal-link-input"
+          onFocus={(event) => event.currentTarget.select()}
+          className="min-h-12 min-w-0 flex-1 rounded-xl border border-white/10 bg-black/25 px-4 text-sm font-semibold text-stone-100 focus-visible:ring-2 focus-visible:ring-brand-red focus-visible:outline-none"
+        />
+        <Button
+          variant="pill"
+          data-testid="watch-share-modal-link-copy"
+          onClick={() => onCopy(value)}
+          className="gap-2 px-6 py-4 text-sm"
+        >
+          <Copy aria-hidden className="h-4 w-4" />
+          {copyStatus === "copied" ? t("copied") : t("copyLink")}
+        </Button>
+      </div>
+    </div>
+  )
+}
+
+function LicensingCard({ reuseType }: { reuseType: LicensingReuseType }) {
+  const t = useTranslations("ShareModal")
+  const isNative = reuseType === "native_social_upload"
+  const label = isNative ? t("nativeSocialUpload") : t("clipReuse")
+  return (
+    <div className="rounded-2xl border border-white/15 bg-white/[0.04] p-5">
+      <div className="flex items-start gap-4">
+        <ShieldCheck
+          aria-hidden
+          className="mt-0.5 h-6 w-6 shrink-0 text-stone-300"
+        />
+        <div>
+          <h3 className="font-bold text-white">{label}</h3>
+          <p className="mt-1 text-sm leading-6 text-stone-300">
+            {t("licensingFormDescription")}
+          </p>
+        </div>
+      </div>
+      <div className="mt-4 flex flex-wrap gap-5 pl-10">
+        <GuidanceLink label={t("viewUsageGuidance")} />
+        <a
+          href={LICENSING_REQUEST_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          data-testid={
+            isNative
+              ? "watch-share-modal-native-upload-guidance"
+              : "watch-share-modal-clip-reuse-guidance"
+          }
+          onClick={() => reportLicensingClick(reuseType)}
+          className="inline-flex min-h-11 items-center gap-2 font-bold text-brand-red hover:underline focus-visible:rounded-sm focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:outline-none"
+        >
+          {t("openLicensingForm")}
+          <span className="sr-only"> ({t("opensInNewTab")})</span>
+          <ExternalLink aria-hidden className="h-4 w-4" />
+        </a>
+      </div>
+    </div>
+  )
+}
+
+function GuidanceLink({ label }: { label: string }) {
+  const t = useTranslations("ShareModal")
+  return (
+    <a
+      href={USAGE_GUIDANCE_URL}
+      target="_blank"
+      rel="noopener noreferrer"
+      data-testid="watch-share-modal-screening-guidance"
+      className="inline-flex min-h-11 items-center gap-2 font-bold text-brand-red hover:underline focus-visible:rounded-sm focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:outline-none"
+    >
+      {label}
+      <span className="sr-only"> ({t("opensInNewTab")})</span>
+      <ExternalLink aria-hidden className="h-4 w-4" />
+    </a>
   )
 }

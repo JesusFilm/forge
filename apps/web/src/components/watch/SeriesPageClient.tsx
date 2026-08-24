@@ -583,8 +583,7 @@ export function SeriesPageClient({
           videoTitle={series.title ?? null}
           videoDescription={description}
           posterUrl={posterUrl}
-          // Series-level share never embeds the trailer — Embed tab
-          // suppresses on null playbackId by ShareModal's own gate.
+          // Series sharing is link-only; null omits the website-embed choice.
           playbackId={null}
           usageGuidanceScope="generic"
           onClose={closeModal}

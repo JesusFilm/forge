@@ -13,6 +13,8 @@ import { act } from "react"
 import { createRoot, type Root } from "react-dom/client"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
+import type { ShareUsageGuidanceScope } from "@/components/watch/ShareModal"
+
 const {
   collectionDownloadModalMock,
   loadWatchInteractionMock,
@@ -137,7 +139,7 @@ const { shareModalMock, languagePickerModalMock } = vi.hoisted(() => ({
       videoSlug: string
       videoTitle?: string | null
       currentLanguageSlug: string
-      usageGuidanceScope: "generic" | "video"
+      usageGuidanceScope: ShareUsageGuidanceScope
       onClose: () => void
     }) => (
       <div
