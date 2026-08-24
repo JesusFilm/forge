@@ -66,28 +66,8 @@ import {
 const FEEDBACK_STEP_COUNT = 5
 const FEEDBACK_SUBMISSION_TIMEOUT_MS = 15_000
 
-const STEP_COPY = [
-  {
-    title: "Choose a feedback type",
-    helper: "What best describes your feedback?",
-  },
-  {
-    title: "Add helpful context",
-    helper: "Tell us whether language or specific content is involved.",
-  },
-  {
-    title: "Point to something",
-    helper: "Optionally mark the exact element or area on this page.",
-  },
-  {
-    title: "Describe what happened",
-    helper: "Share the details and attach technical context if useful.",
-  },
-  {
-    title: "About you",
-    helper: "Add your name and an optional email so we can follow up.",
-  },
-] as const
+// Message-key names under the Feedback.steps namespace, one per wizard step.
+const STEP_KEYS = ["type", "context", "point", "describe", "about"] as const
 
 type FeedbackModalProps = {
   open: boolean
@@ -95,58 +75,33 @@ type FeedbackModalProps = {
   onReady?: () => void
 }
 
+// Persisted `value` fields are wire/persisted enums — never localize them.
+// Display strings resolve through t() inside the component.
 type CategoryOption = {
   value: FeedbackCategory
-  label: string
   icon: typeof TriangleAlert
-  prompt: string
-  helper: string
 }
 
 const CATEGORY_OPTIONS: CategoryOption[] = [
-  {
-    value: "problem",
-    label: "Problem",
-    icon: TriangleAlert,
-    prompt: "What went wrong?",
-    helper: "Tell us what happened and what you expected to see.",
-  },
-  {
-    value: "confusing",
-    label: "Confusing",
-    icon: CircleHelp,
-    prompt: "What was hard to understand?",
-    helper: "Tell us where you got stuck or what felt unclear.",
-  },
-  {
-    value: "idea",
-    label: "Idea",
-    icon: Lightbulb,
-    prompt: "What would make Watch better?",
-    helper: "Describe the change and how it would help you.",
-  },
-  {
-    value: "praise",
-    label: "Praise",
-    icon: Heart,
-    prompt: "What worked well?",
-    helper: "Tell us what you enjoyed so we can do more of it.",
-  },
+  { value: "problem", icon: TriangleAlert },
+  { value: "confusing", icon: CircleHelp },
+  { value: "idea", icon: Lightbulb },
+  { value: "praise", icon: Heart },
 ]
 
 const LANGUAGE_AREA_OPTIONS = [
-  { value: "", label: "No language issue" },
-  { value: "audio", label: "Audio or dubbing" },
-  { value: "subtitles", label: "Subtitles or captions" },
-  { value: "interface", label: "Buttons or interface text" },
-  { value: "title-description", label: "Title or description" },
-  { value: "other", label: "Other language issue" },
+  { value: "", labelKey: "none" },
+  { value: "audio", labelKey: "audio" },
+  { value: "subtitles", labelKey: "subtitles" },
+  { value: "interface", labelKey: "interface" },
+  { value: "title-description", labelKey: "titleDescription" },
+  { value: "other", labelKey: "other" },
 ] as const
 
 const CONTENT_SCOPE_OPTIONS = [
-  { value: "", label: "No specific content" },
-  { value: "current", label: "This page or video" },
-  { value: "other", label: "Another video or resource" },
+  { value: "", labelKey: "none" },
+  { value: "current", labelKey: "current" },
+  { value: "other", labelKey: "other" },
 ] as const
 
 function ThemedSelect<T extends string>({
@@ -309,6 +264,7 @@ function ElementPicker({
   onCancel: () => void
   onSelect: (element: FeedbackSelectedElement) => void
 }) {
+  const t = useTranslations("Feedback")
   const hoveredRef = useRef<HTMLElement | null>(null)
   const [outline, setOutline] = useState<DOMRect | null>(null)
   const [label, setLabel] = useState("")
@@ -393,9 +349,9 @@ function ElementPicker({
           <Crosshair aria-hidden className="size-5" />
         </span>
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold">Choose something on the page</p>
+          <p className="text-sm font-semibold">{t("picker.title")}</p>
           <p className="truncate text-xs text-stone-400">
-            {label || "Point to a heading, button, image, or section"}
+            {label || t("picker.hint")}
           </p>
         </div>
         <button
@@ -404,7 +360,7 @@ function ElementPicker({
           className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-full px-4 text-sm font-semibold text-stone-200 hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:outline-none"
         >
           <X aria-hidden className="size-4" />
-          Cancel
+          {t("picker.cancel")}
         </button>
       </div>
     </div>
@@ -470,10 +426,47 @@ export function FeedbackModal({
       CATEGORY_OPTIONS[0],
     [category],
   )
+  const stepKey = STEP_KEYS[step - 1] ?? "type"
   const currentStepCopy =
     step === 4
-      ? { title: categoryOption.prompt, helper: categoryOption.helper }
-      : STEP_COPY[step - 1]
+      ? {
+          title: t(`categories.${categoryOption.value}.prompt`),
+          helper: t(`categories.${categoryOption.value}.helper`),
+        }
+      : {
+          title: t(`steps.${stepKey}.title`),
+          helper: t(`steps.${stepKey}.helper`),
+        }
+  const languageAreaOptions = useMemo(
+    () =>
+      LANGUAGE_AREA_OPTIONS.map((option) => ({
+        value: option.value,
+        label: t(`languageAreas.${option.labelKey}`),
+      })),
+    [t],
+  )
+  const contentScopeOptions = useMemo(
+    () =>
+      CONTENT_SCOPE_OPTIONS.map((option) => ({
+        value: option.value,
+        label: t(`contentScopes.${option.labelKey}`),
+      })),
+    [t],
+  )
+  // Explicit label map: an unmapped future FeedbackDiagnostics field is a
+  // compile error. <dd> values stay raw (they are persisted to Linear).
+  const diagnosticsLabels = useMemo(
+    () =>
+      ({
+        browser: t("diagnostics.labels.browser"),
+        operatingSystem: t("diagnostics.labels.operatingSystem"),
+        device: t("diagnostics.labels.device"),
+        viewport: t("diagnostics.labels.viewport"),
+        timeZone: t("diagnostics.labels.timeZone"),
+        appVersion: t("diagnostics.labels.appVersion"),
+      }) satisfies Record<keyof FeedbackDiagnostics, string>,
+    [t],
+  )
   const selectedLanguage = useMemo(
     () =>
       languageOptions.find((option) => option.slug === languageSlug) ?? null,
@@ -586,18 +579,18 @@ export function FeedbackModal({
   function validateStep(targetStep: number): boolean {
     const next: Record<string, string> = {}
     if (targetStep === 1 && !category) {
-      next.category = "Choose a feedback type to continue."
+      next.category = t("validation.category")
     }
     if (targetStep === 4 && message.trim().length < 10) {
-      next.message = "Please share at least 10 characters."
+      next.message = t("validation.message")
     }
-    if (targetStep === 5 && !name.trim()) next.name = "Name is required."
+    if (targetStep === 5 && !name.trim()) next.name = t("validation.name")
     if (
       targetStep === 5 &&
       email.trim() &&
       !/^\S+@\S+\.\S+$/.test(email.trim())
     ) {
-      next.email = "Enter a valid email address."
+      next.email = t("validation.email")
     }
     setFieldErrors(next)
     return Object.keys(next).length === 0
@@ -619,7 +612,7 @@ export function FeedbackModal({
       return
     }
     if (!category) {
-      setFieldErrors({ category: "Choose a feedback type to continue." })
+      setFieldErrors({ category: t("validation.category") })
       setStep(1)
       return
     }
@@ -753,18 +746,17 @@ export function FeedbackModal({
                 <CheckCircle2 aria-hidden className="size-8" />
               </span>
               <DialogTitle className="mt-6 text-3xl font-semibold text-white">
-                Thank you
+                {t("success.title")}
               </DialogTitle>
               <DialogDescription className="mt-3 text-base leading-relaxed text-stone-300">
-                Your feedback is with our team. It will help us decide what to
-                improve next.
+                {t("success.description")}
               </DialogDescription>
               <button
                 type="button"
                 onClick={close}
                 className="mt-8 h-11 cursor-pointer rounded-full bg-brand-red px-7 text-sm font-semibold text-white shadow-lg transition hover:bg-brand-red/90 focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:outline-none"
               >
-                Done
+                {t("success.done")}
               </button>
             </div>
           </div>
@@ -777,14 +769,17 @@ export function FeedbackModal({
           >
             <header className="pr-12 sm:pr-14">
               <DialogTitle className="text-3xl leading-tight font-semibold text-white sm:text-[2rem]">
-                Share feedback
+                {t("header.title")}
               </DialogTitle>
               <DialogDescription className="mt-1.5 text-sm leading-relaxed text-stone-300 sm:text-base">
-                Quick note, big impact. Help us make Watch better for everyone.
+                {t("header.description")}
               </DialogDescription>
               <div
                 className="mt-5 flex items-center gap-3"
-                aria-label={`Step ${step} of ${FEEDBACK_STEP_COUNT}`}
+                aria-label={t("steps.progressLabel", {
+                  step,
+                  count: FEEDBACK_STEP_COUNT,
+                })}
               >
                 <span className="shrink-0 text-xs font-semibold text-stone-400">
                   {step} / {FEEDBACK_STEP_COUNT}
@@ -814,7 +809,7 @@ export function FeedbackModal({
 
             {step === 1 ? (
               <fieldset className="mt-6" data-testid="feedback-step-1">
-                <legend className="sr-only">Feedback category</legend>
+                <legend className="sr-only">{t("categories.legend")}</legend>
                 <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4 sm:gap-3">
                   {CATEGORY_OPTIONS.map((option) => {
                     const Icon = option.icon
@@ -841,7 +836,7 @@ export function FeedbackModal({
                         }`}
                       >
                         <Icon aria-hidden className="size-7" />
-                        {option.label}
+                        {t(`categories.${option.value}.label`)}
                       </button>
                     )
                   })}
@@ -858,7 +853,7 @@ export function FeedbackModal({
               <div className="mt-6" data-testid="feedback-step-4">
                 <label htmlFor="feedback-message">
                   <FieldLabel>
-                    Details{" "}
+                    {t("fields.details.label")}{" "}
                     <span className="text-brand-red" aria-hidden>
                       *
                     </span>
@@ -880,7 +875,7 @@ export function FeedbackModal({
                       fieldErrors.message ? "feedback-message-error" : undefined
                     }
                     onChange={(event) => setMessage(event.target.value)}
-                    placeholder="Share details here…"
+                    placeholder={t("fields.details.placeholder")}
                     className="min-h-28 w-full resize-y bg-transparent px-4 py-3 text-sm leading-relaxed text-white placeholder:text-stone-600 focus:outline-none sm:min-h-[6.5rem]"
                   />
                   <div className="flex min-h-9 items-center border-t border-white/8 px-4 text-xs text-stone-500">
@@ -908,13 +903,13 @@ export function FeedbackModal({
               >
                 <div>
                   <label htmlFor="feedback-language-area">
-                    <FieldLabel>Is this language-related?</FieldLabel>
+                    <FieldLabel>{t("fields.languageArea.label")}</FieldLabel>
                   </label>
                   <ThemedSelect
                     id="feedback-language-area"
-                    label="Is this language-related?"
+                    label={t("fields.languageArea.label")}
                     value={languageArea}
-                    options={LANGUAGE_AREA_OPTIONS}
+                    options={languageAreaOptions}
                     onChange={(value) => {
                       setLanguageArea(value)
                       if (!value) {
@@ -927,7 +922,7 @@ export function FeedbackModal({
                   {languageArea ? (
                     <div className="mt-3">
                       <span className="mb-1.5 block text-xs font-medium text-stone-400">
-                        Affected language
+                        {t("fields.affectedLanguage.label")}
                       </span>
                       {languageOptionsState === "error" || useCustomLanguage ? (
                         <input
@@ -935,8 +930,8 @@ export function FeedbackModal({
                           value={customLanguageName}
                           maxLength={100}
                           autoFocus
-                          placeholder="Type the affected language"
-                          aria-label="Affected language"
+                          placeholder={t("fields.affectedLanguage.placeholder")}
+                          aria-label={t("fields.affectedLanguage.label")}
                           onChange={(event) => {
                             setCustomLanguageName(event.target.value)
                             setUseCustomLanguage(true)
@@ -954,8 +949,8 @@ export function FeedbackModal({
                           disabled={languageOptionsState !== "ready"}
                           placeholder={
                             languageOptionsState === "loading"
-                              ? "Loading languages…"
-                              : "Select language"
+                              ? t("languagePicker.loading")
+                              : t("languagePicker.select")
                           }
                           compact
                           triggerClassName="!h-11 !min-h-11 !rounded-xl !px-3"
@@ -964,8 +959,8 @@ export function FeedbackModal({
                       <div className="mt-2 flex items-center justify-between gap-3 text-xs">
                         <span className="text-stone-500">
                           {languageOptionsState === "error"
-                            ? "The language list is unavailable. Your typed value will still be submitted."
-                            : "Can’t find the right language?"}
+                            ? t("languagePicker.unavailable")
+                            : t("languagePicker.cantFind")}
                         </span>
                         <button
                           type="button"
@@ -979,10 +974,10 @@ export function FeedbackModal({
                           className="shrink-0 cursor-pointer font-semibold text-stone-300 hover:text-white focus-visible:ring-2 focus-visible:ring-white/40 focus-visible:outline-none"
                         >
                           {languageOptionsState === "error"
-                            ? "Retry list"
+                            ? t("languagePicker.retryList")
                             : useCustomLanguage
-                              ? "Choose from list"
-                              : "Enter manually"}
+                              ? t("languagePicker.chooseFromList")
+                              : t("languagePicker.enterManually")}
                         </button>
                       </div>
                     </div>
@@ -991,13 +986,13 @@ export function FeedbackModal({
 
                 <div>
                   <label htmlFor="feedback-content-scope">
-                    <FieldLabel>Is this about specific content?</FieldLabel>
+                    <FieldLabel>{t("fields.contentScope.label")}</FieldLabel>
                   </label>
                   <ThemedSelect
                     id="feedback-content-scope"
-                    label="Is this about specific content?"
+                    label={t("fields.contentScope.label")}
                     value={contentScope}
-                    options={CONTENT_SCOPE_OPTIONS}
+                    options={contentScopeOptions}
                     onChange={(value) => {
                       setContentScope(value)
                       setSelectedContent(null)
@@ -1014,7 +1009,7 @@ export function FeedbackModal({
                     <div className="relative mt-3">
                       <label htmlFor="feedback-content-title">
                         <span className="mb-1.5 block text-xs font-medium text-stone-400">
-                          Search or enter media and collections
+                          {t("fields.contentSearch.label")}
                         </span>
                       </label>
                       {selectedContent ? (
@@ -1033,7 +1028,7 @@ export function FeedbackModal({
                           ) : null}
                           <button
                             type="button"
-                            aria-label="Clear selected content"
+                            aria-label={t("contentSearch.clearSelected")}
                             onClick={() => {
                               setSelectedContent(null)
                               setContentQuery("")
@@ -1055,7 +1050,7 @@ export function FeedbackModal({
                             value={contentQuery}
                             maxLength={200}
                             autoComplete="off"
-                            placeholder="Search or type a title…"
+                            placeholder={t("fields.contentSearch.placeholder")}
                             aria-autocomplete="list"
                             aria-controls="feedback-content-results"
                             onChange={(event) => {
@@ -1068,21 +1063,19 @@ export function FeedbackModal({
                       )}
                       {!selectedContent && contentSearchState === "loading" ? (
                         <p className="mt-2 text-xs text-stone-500">
-                          Searching titles…
+                          {t("contentSearch.searching")}
                         </p>
                       ) : null}
                       {!selectedContent && contentSearchState === "error" ? (
                         <p className="mt-2 text-xs text-stone-400">
-                          Couldn’t search titles. You can continue with what you
-                          typed.
+                          {t("contentSearch.error")}
                         </p>
                       ) : null}
                       {!selectedContent &&
                       contentSearchState === "ready" &&
                       contentResults.length === 0 ? (
                         <p className="mt-2 text-xs text-stone-500">
-                          No direct match. Your typed title will still be
-                          submitted.
+                          {t("contentSearch.noMatch")}
                         </p>
                       ) : null}
                       {!selectedContent && contentResults.length > 0 ? (
@@ -1112,7 +1105,7 @@ export function FeedbackModal({
                                   <span className="block truncate text-[11px] text-stone-500">
                                     {result.label
                                       ? result.label.replaceAll("_", " ")
-                                      : "Media"}
+                                      : t("contentSearch.mediaFallback")}
                                     {result.description
                                       ? ` · ${result.description}`
                                       : ""}
@@ -1136,7 +1129,8 @@ export function FeedbackModal({
               >
                 <label>
                   <FieldLabel>
-                    Name <span className="text-brand-red">*</span>
+                    {t("fields.name.label")}{" "}
+                    <span className="text-brand-red">*</span>
                   </FieldLabel>
                   <input
                     id="feedback-name"
@@ -1160,9 +1154,9 @@ export function FeedbackModal({
                 <div>
                   <label htmlFor="feedback-email">
                     <FieldLabel>
-                      Email{" "}
+                      {t("fields.email.label")}{" "}
                       <span className="font-normal text-stone-500">
-                        optional
+                        {t("fields.optional")}
                       </span>
                     </FieldLabel>
                   </label>
@@ -1190,8 +1184,7 @@ export function FeedbackModal({
                     id="feedback-email-helper"
                     className="mt-1.5 text-xs leading-relaxed text-stone-500"
                   >
-                    Add an email if you’d like us to ask follow-up questions or
-                    notify you when the problem is resolved.
+                    {t("fields.email.helper")}
                   </p>
                 </div>
               </div>
@@ -1253,17 +1246,18 @@ export function FeedbackModal({
                     <span className="block truncate text-sm font-semibold text-stone-100">
                       {selectedElement
                         ? selectedElement.label
-                        : "Mark something on the page"}
+                        : t("picker.mark")}
                       {!selectedElement ? (
                         <span className="ml-2 font-normal text-stone-500">
-                          optional
+                          {t("fields.optional")}
                         </span>
                       ) : null}
                     </span>
                     <span className="block truncate text-xs text-stone-500">
                       {selectedElement
-                        ? `Selected ${selectedElement.role} · choose again`
-                        : "Highlight or point out an area"}
+                        ? // {role} stays the raw English DOM tag/role token.
+                          t("picker.selected", { role: selectedElement.role })
+                        : t("picker.markHint")}
                     </span>
                   </span>
                   <ChevronDown
@@ -1298,12 +1292,10 @@ export function FeedbackModal({
                     />
                     <span className="min-w-0 flex-1">
                       <span className="block text-sm font-semibold text-stone-100">
-                        Include technical details
+                        {t("diagnostics.include")}
                       </span>
                       <span className="mt-0.5 block text-xs leading-relaxed text-stone-500">
-                        Browser, device, operating system, screen size, page
-                        URL, language, time zone, and app version. Never
-                        passwords or form contents.
+                        {t("diagnostics.description")}
                       </span>
                     </span>
                   </label>
@@ -1314,7 +1306,7 @@ export function FeedbackModal({
                     onClick={() => setDetailsOpen((current) => !current)}
                     className="inline-flex h-9 shrink-0 cursor-pointer items-center gap-1 rounded-full px-2 text-xs font-semibold text-stone-300 hover:bg-white/5 hover:text-white focus-visible:ring-2 focus-visible:ring-white/50 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-35"
                   >
-                    View details
+                    {t("diagnostics.viewDetails")}
                     <ChevronDown
                       aria-hidden
                       className={`size-3.5 transition ${detailsOpen ? "rotate-180" : ""}`}
@@ -1326,7 +1318,7 @@ export function FeedbackModal({
                     {Object.entries(diagnostics).map(([key, value]) => (
                       <div key={key} className="min-w-0">
                         <dt className="capitalize text-stone-500">
-                          {key.replace(/([A-Z])/g, " $1")}
+                          {diagnosticsLabels[key as keyof FeedbackDiagnostics]}
                         </dt>
                         <dd className="truncate text-stone-300">{value}</dd>
                       </div>
@@ -1359,7 +1351,7 @@ export function FeedbackModal({
                     disabled={submitting}
                     className="h-11 cursor-pointer rounded-full border border-white/15 px-5 text-sm font-semibold text-stone-200 hover:border-white/30 hover:bg-white/[0.05] focus-visible:ring-2 focus-visible:ring-white/50 focus-visible:outline-none disabled:opacity-50"
                   >
-                    Back
+                    {t("nav.back")}
                   </button>
                 ) : null}
                 <button
@@ -1371,17 +1363,17 @@ export function FeedbackModal({
                     <Loader2 aria-hidden className="size-4 animate-spin" />
                   ) : null}
                   {submitting
-                    ? "Sending…"
+                    ? t("nav.sending")
                     : step === FEEDBACK_STEP_COUNT
-                      ? "Send feedback"
+                      ? t("nav.send")
                       : step === 3 && !selectedElement
-                        ? "Skip for now"
-                        : "Continue"}
+                        ? t("nav.skip")
+                        : t("nav.continue")}
                 </button>
               </div>
               <p className="mt-3 flex items-center justify-center gap-2 text-center text-xs text-stone-500">
                 <ShieldCheck aria-hidden className="size-4 shrink-0" />
-                Your feedback is reviewed by our team.
+                {t("footer.reviewed")}
               </p>
             </footer>
           </form>

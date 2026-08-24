@@ -695,6 +695,134 @@ describe("FeedbackLauncher", () => {
     expect(document.querySelector('[data-testid="feedback-modal"]')).toBeNull()
   })
 
+  it("renders translated unavailable-language helper and retry affordances when the language list fails", async () => {
+    interaction.loadGlobalWatchLanguageOptions.mockRejectedValue(
+      new Error("languages unavailable"),
+    )
+    await openFeedback()
+    selectFeedbackCategory("problem")
+    submitCurrentStep()
+    selectThemed("feedback-language-area", "audio")
+    await act(async () => {
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(document.body.textContent).toContain(
+      "The language list is unavailable. Your typed value will still be submitted.",
+    )
+    expect(document.body.textContent).toContain("Retry list")
+    expect(document.body.textContent).not.toContain("Feedback.")
+
+    // Recovery path: a successful retry swaps to the manual-entry toggle copy.
+    interaction.loadGlobalWatchLanguageOptions.mockResolvedValue(
+      languageOptions,
+    )
+    const retryButton = Array.from(document.querySelectorAll("button")).find(
+      (button) => button.textContent === "Retry list",
+    ) as HTMLButtonElement
+    await act(async () => {
+      retryButton.click()
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+    expect(document.body.textContent).toContain(
+      "Can’t find the right language?",
+    )
+    expect(document.body.textContent).toContain("Enter manually")
+    const manualToggle = Array.from(document.querySelectorAll("button")).find(
+      (button) => button.textContent === "Enter manually",
+    ) as HTMLButtonElement
+    act(() => manualToggle.click())
+    expect(document.body.textContent).toContain("Choose from list")
+  })
+
+  it("renders translated content-search loading, error, and no-match states", async () => {
+    watchSearch.fetchWatchSearchSuggestions.mockReturnValueOnce(
+      new Promise(() => undefined),
+    )
+    await openFeedback()
+    selectFeedbackCategory("problem")
+    submitCurrentStep()
+    selectThemed("feedback-content-scope", "other")
+    setValue(
+      document.querySelector("#feedback-content-title") as HTMLInputElement,
+      "Jesus",
+    )
+    await act(async () => {
+      await new Promise((resolve) => window.setTimeout(resolve, 300))
+      await Promise.resolve()
+    })
+    expect(document.body.textContent).toContain("Searching titles…")
+
+    watchSearch.fetchWatchSearchSuggestions.mockRejectedValueOnce(
+      new Error("search unavailable"),
+    )
+    setValue(
+      document.querySelector("#feedback-content-title") as HTMLInputElement,
+      "Jesus film",
+    )
+    await act(async () => {
+      await new Promise((resolve) => window.setTimeout(resolve, 300))
+      await Promise.resolve()
+    })
+    expect(document.body.textContent).toContain(
+      "Couldn’t search titles. You can continue with what you typed.",
+    )
+
+    watchSearch.fetchWatchSearchSuggestions.mockResolvedValueOnce([])
+    setValue(
+      document.querySelector("#feedback-content-title") as HTMLInputElement,
+      "My local screening",
+    )
+    await act(async () => {
+      await new Promise((resolve) => window.setTimeout(resolve, 300))
+      await Promise.resolve()
+    })
+    expect(document.body.textContent).toContain(
+      "No direct match. Your typed title will still be submitted.",
+    )
+    expect(document.body.textContent).not.toContain("Feedback.")
+  })
+
+  it("interpolates the step-progress aria-label and the selected-element role", async () => {
+    const pageButton = document.createElement("button")
+    pageButton.textContent = "Watch now"
+    document.body.appendChild(pageButton)
+    await openFeedback()
+
+    expect(document.querySelector('[aria-label="Step 1 of 5"]')).not.toBeNull()
+    selectFeedbackCategory("problem")
+    submitCurrentStep()
+    expect(document.querySelector('[aria-label="Step 2 of 5"]')).not.toBeNull()
+    submitCurrentStep()
+    expect(document.querySelector('[aria-label="Step 3 of 5"]')).not.toBeNull()
+
+    act(() => {
+      ;(
+        document.querySelector(
+          '[data-testid="feedback-select-element"]',
+        ) as HTMLButtonElement
+      ).click()
+    })
+    expect(document.body.textContent).toContain("Choose something on the page")
+    expect(document.body.textContent).toContain(
+      "Point to a heading, button, image, or section",
+    )
+    act(() => {
+      pageButton.dispatchEvent(new MouseEvent("pointermove", { bubbles: true }))
+      pageButton.dispatchEvent(
+        new MouseEvent("click", { bubbles: true, cancelable: true }),
+      )
+    })
+    await flushDynamicModal()
+    expect(document.body.textContent).toContain(
+      "Selected button · choose again",
+    )
+    expect(document.body.textContent).not.toContain("Feedback.")
+    pageButton.remove()
+  })
+
   it("keeps localized launcher and close-control labels", async () => {
     setRequestLocale("ru")
     act(() => root.render(<FeedbackLauncher />))
