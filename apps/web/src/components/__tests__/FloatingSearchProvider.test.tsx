@@ -2191,6 +2191,9 @@ describe("FloatingSearchProvider — language switcher chrome", () => {
       await Promise.resolve()
     })
     expect(globalLanguageLoader).toHaveBeenCalledTimes(1)
+    expect(
+      document.querySelector('[data-testid="global-language-picker-modal"]'),
+    ).toBeNull()
     for (const loader of Object.values(unrelatedInteractionLoaders)) {
       expect(loader).not.toHaveBeenCalled()
     }

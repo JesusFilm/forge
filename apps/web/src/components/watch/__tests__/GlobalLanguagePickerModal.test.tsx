@@ -133,16 +133,22 @@ function changeSelection(slug: string) {
 
 function Harness({
   currentLanguageSlug = "english",
+  initialOpen = true,
   pathname = "/",
 }: {
   currentLanguageSlug?: string
+  initialOpen?: boolean
   pathname?: string
 }) {
-  const [open, setOpen] = useState(true)
+  const [open, setOpen] = useState(initialOpen)
   const triggerRef = useRef<HTMLButtonElement>(null)
   return (
     <>
-      <button ref={triggerRef} data-testid="language-trigger">
+      <button
+        ref={triggerRef}
+        data-testid="language-trigger"
+        onClick={() => setOpen(true)}
+      >
         Open languages
       </button>
       <GlobalLanguagePickerModal
@@ -163,6 +169,20 @@ async function renderHarness(props: Parameters<typeof Harness>[0] = {}) {
 }
 
 describe("GlobalLanguagePickerModal", () => {
+  it("does not render or request the catalog before opening", async () => {
+    loadGlobalWatchLanguageOptionsMock.mockResolvedValue(options)
+    await renderHarness({ initialOpen: false })
+
+    expect(query("global-language-picker-modal")).toBeNull()
+    expect(loadGlobalWatchLanguageOptionsMock).not.toHaveBeenCalled()
+
+    click(query("language-trigger"))
+    await act(async () => {})
+
+    expect(query("global-language-picker-modal")).not.toBeNull()
+    expect(loadGlobalWatchLanguageOptionsMock).toHaveBeenCalledTimes(1)
+  })
+
   it("announces loading, then focuses the language field when options arrive", async () => {
     const request = deferred<GlobalLanguageOption[]>()
     loadGlobalWatchLanguageOptionsMock.mockReturnValue(request.promise)
@@ -175,6 +195,7 @@ describe("GlobalLanguagePickerModal", () => {
     expect(query("global-language-picker-status")?.textContent).toContain(
       "Loading",
     )
+    expect(query("global-language-picker-count")).toBeNull()
     expect(
       query("global-language-picker-apply")?.hasAttribute("disabled"),
     ).toBe(true)
@@ -184,6 +205,9 @@ describe("GlobalLanguagePickerModal", () => {
     expect(loadGlobalWatchLanguageOptionsMock).toHaveBeenCalledTimes(1)
     expect(document.activeElement).toBe(query("global-language-picker-select"))
     expect(query("global-language-picker-status")?.textContent).toContain(
+      "3 languages",
+    )
+    expect(query("global-language-picker-count")?.textContent).toContain(
       "3 languages",
     )
   })
@@ -275,6 +299,9 @@ describe("GlobalLanguagePickerModal", () => {
     expect(query("global-language-picker-empty")?.textContent).toContain(
       "0 languages",
     )
+    expect(query("global-language-picker-count")?.textContent).toContain(
+      "0 languages",
+    )
     expect(query("global-language-picker-select")).toBeNull()
     expect(
       query("global-language-picker-status")?.getAttribute("aria-live"),
@@ -290,6 +317,7 @@ describe("GlobalLanguagePickerModal", () => {
     expect(query("global-language-picker-error")?.textContent).toContain(
       "Please check your connection",
     )
+    expect(query("global-language-picker-count")).toBeNull()
     const retry = query("global-language-picker-retry")
     expect(retry?.getAttribute("aria-label")).toContain("Retry")
 
@@ -340,16 +368,21 @@ describe("GlobalLanguagePickerModal", () => {
     }
   })
 
-  it("uses the shared inset visible-focus treatment and an accessible dialog name", async () => {
+  it("uses the inner-page language picker presentation without subtitle controls", async () => {
     loadGlobalWatchLanguageOptionsMock.mockResolvedValue(options)
     await renderHarness()
 
-    expect(query("global-language-picker-modal")?.getAttribute("role")).toBe(
-      "dialog",
-    )
+    const modal = query("global-language-picker-modal")
+    expect(modal?.getAttribute("role")).toBe("dialog")
+    expect(modal?.getAttribute("aria-modal")).toBe("true")
+    expect(modal?.className).toContain("bg-transparent")
+    expect(modal?.className).toContain("max-w-[608px]")
+    expect(query("global-language-picker-language-header")).not.toBeNull()
+    expect(query("global-language-picker-all-languages-link")).not.toBeNull()
     expect(
-      query("global-language-picker-modal")?.getAttribute("aria-modal"),
-    ).toBe("true")
+      query("global-language-picker-selected-language-link"),
+    ).not.toBeNull()
+    expect(document.querySelector('[data-testid*="subtitles"]')).toBeNull()
     expect(query("global-language-picker-close")?.className).toContain(
       "focus-visible:ring-inset",
     )
@@ -357,8 +390,13 @@ describe("GlobalLanguagePickerModal", () => {
       query("global-language-picker-modal-close")?.querySelectorAll("svg"),
     ).toHaveLength(1)
     expect(
+      query("global-language-picker-modal")?.contains(
+        query("global-language-picker-modal-close"),
+      ),
+    ).toBe(true)
+    expect(
       query("global-language-picker-close")?.querySelector("svg"),
-    ).toBeNull()
+    ).not.toBeNull()
     expect(query("global-language-picker-apply")?.className).toContain(
       "focus-visible:ring-inset",
     )
