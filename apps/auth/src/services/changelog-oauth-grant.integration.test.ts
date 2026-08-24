@@ -65,6 +65,10 @@ function decodeJwtPayload(token: string): Record<string, unknown> {
   ) as Record<string, unknown>
 }
 
+function digestToken(token: string): string {
+  return createHash("sha256").update(token).digest("base64url")
+}
+
 describeIntegration("Changelog OAuth grants against native Better Auth", () => {
   let prisma: typeof import("@/db/client").prisma
   let auth: typeof import("@/auth/config").auth
@@ -261,6 +265,35 @@ describeIntegration("Changelog OAuth grants against native Better Auth", () => {
     }
   }
 
+  async function tokenRowsSnapshot() {
+    const [accessTokens, refreshTokens] = await Promise.all([
+      prisma.oauthAccessToken.findMany({
+        where: { clientId },
+        orderBy: { id: "asc" },
+      }),
+      prisma.oauthRefreshToken.findMany({
+        where: { clientId },
+        orderBy: { id: "asc" },
+      }),
+    ])
+
+    return {
+      accessTokens: accessTokens.map(({ token, ...row }) => ({
+        ...row,
+        tokenDigest: digestToken(token),
+      })),
+      refreshTokens: refreshTokens.map(
+        ({ token, rotationReplayResponse, ...row }) => ({
+          ...row,
+          tokenDigest: digestToken(token),
+          rotationReplayResponseDigest: rotationReplayResponse
+            ? digestToken(rotationReplayResponse)
+            : null,
+        }),
+      ),
+    }
+  }
+
   it("downscopes, binds the exact resource, and revalidates refresh before writes", async () => {
     const denied = await authorize()
     const deniedLocation = denied.response.headers.get("location")
@@ -363,12 +396,7 @@ describeIntegration("Changelog OAuth grants against native Better Auth", () => {
 
     const staleCodeAuthorization = await authorize()
     const staleCode = await authorizationCode(staleCodeAuthorization.response)
-    const accessRowsBeforeDenial = await prisma.oauthAccessToken.count({
-      where: { clientId },
-    })
-    const refreshRowsBeforeDenial = await prisma.oauthRefreshToken.count({
-      where: { clientId },
-    })
+    const tokenRowsBeforeDenial = await tokenRowsSnapshot()
     await prisma.appGrant.update({
       where: { id: grantId },
       data: { status: "REVOKED", revokedAt: new Date() },
@@ -385,12 +413,7 @@ describeIntegration("Changelog OAuth grants against native Better Auth", () => {
     )
     expect(rejectedExchange.response.status).toBe(400)
     expect(rejectedExchange.body).toMatchObject({ error: "invalid_grant" })
-    await expect(
-      prisma.oauthAccessToken.count({ where: { clientId } }),
-    ).resolves.toBe(accessRowsBeforeDenial)
-    await expect(
-      prisma.oauthRefreshToken.count({ where: { clientId } }),
-    ).resolves.toBe(refreshRowsBeforeDenial)
+    await expect(tokenRowsSnapshot()).resolves.toEqual(tokenRowsBeforeDenial)
 
     const rejectedRefresh = await postToken(
       new URLSearchParams({
@@ -401,12 +424,7 @@ describeIntegration("Changelog OAuth grants against native Better Auth", () => {
     )
     expect(rejectedRefresh.response.status).toBe(400)
     expect(rejectedRefresh.body).toMatchObject({ error: "invalid_grant" })
-    await expect(
-      prisma.oauthAccessToken.count({ where: { clientId } }),
-    ).resolves.toBe(accessRowsBeforeDenial)
-    await expect(
-      prisma.oauthRefreshToken.count({ where: { clientId } }),
-    ).resolves.toBe(refreshRowsBeforeDenial)
+    await expect(tokenRowsSnapshot()).resolves.toEqual(tokenRowsBeforeDenial)
   })
 
   it("keeps production disabled and rejects cross-resource substitution", async () => {
@@ -416,9 +434,7 @@ describeIntegration("Changelog OAuth grants against native Better Auth", () => {
     })
     const local = await authorize()
     const localCode = await authorizationCode(local.response)
-    const accessRowsBeforeSubstitution = await prisma.oauthAccessToken.count({
-      where: { clientId },
-    })
+    const tokenRowsBeforeSubstitution = await tokenRowsSnapshot()
     const substituted = await postToken(
       new URLSearchParams({
         grant_type: "authorization_code",
@@ -431,9 +447,9 @@ describeIntegration("Changelog OAuth grants against native Better Auth", () => {
     )
     expect(substituted.response.status).toBe(400)
     expect(substituted.body).toMatchObject({ error: "invalid_target" })
-    await expect(
-      prisma.oauthAccessToken.count({ where: { clientId } }),
-    ).resolves.toBe(accessRowsBeforeSubstitution)
+    await expect(tokenRowsSnapshot()).resolves.toEqual(
+      tokenRowsBeforeSubstitution,
+    )
 
     const productionEnvironment = await prisma.appEnvironment.findFirstOrThrow({
       where: { kind: "PRODUCTION", app: { key: "changelog" } },

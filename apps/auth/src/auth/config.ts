@@ -209,7 +209,7 @@ function firstPartyUserClaims(user: {
     "https://jesusfilm.org/claims/actor_type":
       user.actorType === "AGENT" ? "agent" : "human",
     "https://jesusfilm.org/claims/membership_status":
-      user.membershipStatus ?? "invited",
+      user.membershipStatus?.toLowerCase() ?? "invited",
   }
 }
 

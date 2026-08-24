@@ -22,7 +22,10 @@ import {
   canRedeemAgentLoginHandle,
   isAgentLoginHandle,
 } from "@/services/agent-login.service"
-import { createChangelogOAuthGrantDecision } from "@/services/changelog-oauth-grant.service"
+import {
+  createChangelogOAuthGrantDecision,
+  type ChangelogOAuthGrantDecision,
+} from "@/services/changelog-oauth-grant.service"
 import {
   CHANGELOG_OAUTH_RESOURCES,
   CHANGELOG_OAUTH_SCOPES,
@@ -539,6 +542,10 @@ const changelogResources = new Set<string>(
   Object.values(CHANGELOG_OAUTH_RESOURCES),
 )
 const changelogScopes = new Set<string>(CHANGELOG_OAUTH_SCOPES)
+type ChangelogOAuthDenialReason = Extract<
+  ChangelogOAuthGrantDecision,
+  { allowed: false }
+>["reason"]
 
 function isChangelogAuthorizeRequest(params: URLSearchParams): boolean {
   const requestedScopes =
@@ -579,7 +586,10 @@ async function applyChangelogAuthorizePolicy(
   })
   if (!decision.allowed) {
     return {
-      denied: await changelogOAuthDenial(authorizeUrl.searchParams),
+      denied: await changelogOAuthDenial(
+        authorizeUrl.searchParams,
+        decision.reason,
+      ),
     }
   }
 
@@ -596,7 +606,13 @@ async function applyChangelogAuthorizePolicy(
 
 async function changelogOAuthDenial(
   params: URLSearchParams,
+  reason: ChangelogOAuthDenialReason = "changelog_access_denied",
 ): Promise<Response> {
+  const invalidTarget = reason === "invalid_changelog_target"
+  const error = invalidTarget ? "invalid_target" : "access_denied"
+  const errorDescription = invalidTarget
+    ? "The requested Changelog resource is invalid."
+    : "Changelog access is not available."
   const clientId = params.get("client_id")
   const redirectUri = params.get("redirect_uri")
   if (clientId && redirectUri) {
@@ -607,11 +623,8 @@ async function changelogOAuthDenial(
       })
       if (!client?.disabled && client?.redirectUris.includes(redirectUri)) {
         const url = new URL(redirectUri)
-        url.searchParams.set("error", "access_denied")
-        url.searchParams.set(
-          "error_description",
-          "Changelog access is not available.",
-        )
+        url.searchParams.set("error", error)
+        url.searchParams.set("error_description", errorDescription)
         const state = params.get("state")
         if (state) url.searchParams.set("state", state)
         url.searchParams.set(
@@ -630,8 +643,8 @@ async function changelogOAuthDenial(
   return withNoStore(
     Response.json(
       {
-        error: "access_denied",
-        error_description: "Changelog access is not available.",
+        error,
+        error_description: errorDescription,
       },
       { status: 403 },
     ),

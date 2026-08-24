@@ -129,6 +129,12 @@ type CapturedOAuthProviderOptions = {
     resources?: string[]
     metadata?: Record<string, unknown>
   }) => Promise<Record<string, unknown>>
+  customIdTokenClaims: (input: {
+    user: Record<string, unknown>
+  }) => Record<string, unknown>
+  customUserInfoClaims: (input: {
+    user: Record<string, unknown>
+  }) => Record<string, unknown>
   resources: Array<{ identifier: string; allowedScopes: string[] }>
   scopes: string[]
 }
@@ -326,6 +332,20 @@ describe("auth provider configuration", () => {
       type: "string",
       required: false,
       input: false,
+    })
+  })
+
+  it("normalizes membership status in first-party token claims", async () => {
+    const options = await captureOAuthProviderOptions()
+    const input = {
+      user: { id: "user_123", membershipStatus: "ACTIVE" },
+    }
+
+    expect(options.customIdTokenClaims(input)).toMatchObject({
+      "https://jesusfilm.org/claims/membership_status": "active",
+    })
+    expect(options.customUserInfoClaims(input)).toMatchObject({
+      "https://jesusfilm.org/claims/membership_status": "active",
     })
   })
 

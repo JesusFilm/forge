@@ -419,9 +419,7 @@ describeIntegration("Better Auth PostgreSQL compatibility contract", () => {
       auth_time: Math.floor(AUTH_TIME.getTime() / 1000),
       email_verified: true,
       "https://jesusfilm.org/claims/actor_type": "human",
-      // 1.6.2's internal user lookup omits this Forge additional field, so
-      // the custom-claim callback observes no value and applies its fallback.
-      "https://jesusfilm.org/claims/membership_status": "invited",
+      "https://jesusfilm.org/claims/membership_status": "active",
     })
 
     const refreshed = (await auth.api.oauth2Token({
