@@ -133,16 +133,22 @@ function changeSelection(slug: string) {
 
 function Harness({
   currentLanguageSlug = "english",
+  initialOpen = true,
   pathname = "/",
 }: {
   currentLanguageSlug?: string
+  initialOpen?: boolean
   pathname?: string
 }) {
-  const [open, setOpen] = useState(true)
+  const [open, setOpen] = useState(initialOpen)
   const triggerRef = useRef<HTMLButtonElement>(null)
   return (
     <>
-      <button ref={triggerRef} data-testid="language-trigger">
+      <button
+        ref={triggerRef}
+        data-testid="language-trigger"
+        onClick={() => setOpen(true)}
+      >
         Open languages
       </button>
       <GlobalLanguagePickerModal
@@ -163,6 +169,20 @@ async function renderHarness(props: Parameters<typeof Harness>[0] = {}) {
 }
 
 describe("GlobalLanguagePickerModal", () => {
+  it("does not render or request the catalog before opening", async () => {
+    loadGlobalWatchLanguageOptionsMock.mockResolvedValue(options)
+    await renderHarness({ initialOpen: false })
+
+    expect(query("global-language-picker-modal")).toBeNull()
+    expect(loadGlobalWatchLanguageOptionsMock).not.toHaveBeenCalled()
+
+    click(query("language-trigger"))
+    await act(async () => {})
+
+    expect(query("global-language-picker-modal")).not.toBeNull()
+    expect(loadGlobalWatchLanguageOptionsMock).toHaveBeenCalledTimes(1)
+  })
+
   it("announces loading, then focuses the language field when options arrive", async () => {
     const request = deferred<GlobalLanguageOption[]>()
     loadGlobalWatchLanguageOptionsMock.mockReturnValue(request.promise)
