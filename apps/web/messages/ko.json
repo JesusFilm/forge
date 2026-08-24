@@ -191,6 +191,7 @@
     "loadMoreFailed": "추가 결과를 불러오지 못했습니다.",
     "searching": "검색 중...",
     "connectionHint": "연결 상태를 확인한 후 다시 시도하세요.",
+    "rateLimitHint": "요청이 너무 많습니다. 1분 후에 다시 시도해 주세요.",
     "retrySearch": "다시 검색",
     "retry": "다시 시도",
     "noResults": "“{query}”에 대한 결과가 없습니다",
@@ -540,16 +541,16 @@
     "retryFailed": "실패한 항목 다시 시도"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "해당 언어 버전을 이용할 수 없습니다",
+    "eyebrow": "해당 언어 버전을 이용할 수 없습니다",
+    "title": "<contentTitle>{title}</contentTitle>은(는) <languageName>{language}</languageName>로 제공되지 않습니다",
+    "actionsLabel": "이용 가능한 시청 옵션",
+    "browseInLanguage": "{language} 동영상 둘러보기",
+    "backToSearch": "검색으로 돌아가기",
+    "audioVersionsTitle": "다른 오디오 버전",
+    "audioVersionsDescription": "이 동영상을 계속 시청하려면 오디오 언어를 선택하세요.",
+    "languageVersionLabel": "오디오 언어",
+    "selectLanguageVersion": "언어 버전 선택",
+    "watchSelectedVersion": "선택한 버전 시청"
   }
 }

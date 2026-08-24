@@ -191,6 +191,7 @@
     "loadMoreFailed": "K’áh result pa tɛɣɛ.",
     "searching": "Náɂa…",
     "connectionHint": "Bɛ se ne connection náɂa, ɂeyí k’ı̨́ı̨́ t’á ɂehtsı.",
+    "rateLimitHint": "Łá hádi gha nezų́. Łá minute tʼáh tsʼę́ ku nádeh.",
     "retrySearch": "Search k’ı̨́ı̨́ t’á ɂehtsı",
     "retry": "K’ı̨́ı̨́ t’á ɂehtsı",
     "noResults": "“{query}” gha result nɛ",
@@ -540,16 +541,16 @@
     "retryFailed": "Pa tɛɣɛ ɂeyí k’ı̨́ı̨́ t’á ɂehtsı"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Dene kedé version hólǫ́ nı̨́lé",
+    "eyebrow": "Dene kedé version hólǫ́ nı̨́lé",
+    "title": "<contentTitle>{title}</contentTitle> <languageName>{language}</languageName> kedé hólǫ́ nı̨́lé",
+    "actionsLabel": "Dúlé náídı̨́ı̨́ł sí",
+    "browseInLanguage": "{language} kedé video náídı̨́ı̨́ł",
+    "backToSearch": "Hoghá nátsʼédé",
+    "audioVersionsTitle": "Audio version łaį́́",
+    "audioVersionsDescription": "Video yédı̨́ı̨́ł náhaghá audio kedé nádááłtʼé.",
+    "languageVersionLabel": "Audio kedé",
+    "selectLanguageVersion": "Kedé version nádááłtʼé",
+    "watchSelectedVersion": "Version nádááłtʼé yédı̨́ı̨́ł"
   }
 }

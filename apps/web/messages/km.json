@@ -191,6 +191,7 @@
     "loadMoreFailed": "មិនអាចផ្ទុកលទ្ធផលបន្ថែមបាន។",
     "searching": "កំពុងស្វែងរក...",
     "connectionHint": "សូមពិនិត្យការតភ្ជាប់របស់អ្នក ហើយព្យាយាមម្តងទៀត។",
+    "rateLimitHint": "មានសំណើច្រើនពេក។ សូមព្យាយាមម្ដងទៀតក្នុងរយៈពេលមួយនាទី។",
     "retrySearch": "ស្វែងរកម្តងទៀត",
     "retry": "ព្យាយាមម្តងទៀត",
     "noResults": "គ្មានលទ្ធផលសម្រាប់ \"{query}\"",
@@ -540,16 +541,16 @@
     "retryFailed": "ព្យាយាមទាញយកវគ្គដែលបរាជ័យម្តងទៀត"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "មិនមានកំណែភាសានេះទេ",
+    "eyebrow": "មិនមានកំណែភាសានេះទេ",
+    "title": "<contentTitle>{title}</contentTitle> មិនមានជាភាសា <languageName>{language}</languageName> ទេ",
+    "actionsLabel": "ជម្រើសសម្រាប់មើលដែលមាន",
+    "browseInLanguage": "រកមើលវីដេអូជាភាសា {language}",
+    "backToSearch": "ត្រឡប់ទៅការស្វែងរក",
+    "audioVersionsTitle": "កំណែសំឡេងផ្សេងទៀត",
+    "audioVersionsDescription": "ជ្រើសរើសភាសាសំឡេង ដើម្បីបន្តមើលវីដេអូនេះ។",
+    "languageVersionLabel": "ភាសាសំឡេង",
+    "selectLanguageVersion": "ជ្រើសរើសកំណែភាសា",
+    "watchSelectedVersion": "មើលកំណែដែលបានជ្រើសរើស"
   }
 }

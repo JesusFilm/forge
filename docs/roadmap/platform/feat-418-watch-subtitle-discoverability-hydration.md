@@ -7,7 +7,8 @@ status: "complete"
 start_date: "2026-08-22"
 duration: 2
 depends_on: []
-blocks: []
+blocks:
+  - "feat-419"
 tags:
   - "platform"
   - "web"

@@ -191,6 +191,7 @@
     "loadMoreFailed": "Ii sáhtán viežžat eanet bohtosiid.",
     "searching": "Ohcamin...",
     "connectionHint": "Dárkkis du oktavuođa ja geahččal ođđasit.",
+    "rateLimitHint": "Beare ollu jearaldagat. Geahččal fas ovtta minuhta geažes.",
     "retrySearch": "Geahččal ohcama ođđasit",
     "retry": "Geahččal ođđasit",
     "noResults": "Eai gávdnon bohtosat \"{query}\" várás",
@@ -540,16 +541,16 @@
     "retryFailed": "Geahččal lihkosteahttán vieččamiid ođđasit"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Giellaveršuvdna ii leat olámuttus",
+    "eyebrow": "Giellaveršuvdna ii leat olámuttus",
+    "title": "<contentTitle>{title}</contentTitle> ii leat olámuttus <languageName>{language}</languageName> gillii",
+    "actionsLabel": "Olámuttus geahččanvejolašvuođat",
+    "browseInLanguage": "Bláđe videoid {language} gillii",
+    "backToSearch": "Máhca ohcamii",
+    "audioVersionsTitle": "Eará jietnaveršuvnnat",
+    "audioVersionsDescription": "Vállje jietnagiela vai sáhtát joatkit dán video geahččama.",
+    "languageVersionLabel": "Jietnagiella",
+    "selectLanguageVersion": "Vállje giellaveršuvnna",
+    "watchSelectedVersion": "Geahča válljejuvvon veršuvnna"
   }
 }

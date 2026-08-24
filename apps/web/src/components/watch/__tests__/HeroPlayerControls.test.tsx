@@ -20,6 +20,7 @@ import { createRef } from "react"
 import type { MuxPlayerRef } from "@forge/video-player"
 
 import { HeroPlayerControls } from "@/components/watch/HeroPlayerControls"
+import { ChromeButton } from "@/components/watch/ChromeButton"
 import { WATCH_PAGE_RAIL_PADDING_CLASSES } from "@/lib/content-width"
 import { WATCH_PLAYER_CHROME_REVEAL_EVENT } from "@/lib/watch-player-chrome-events"
 import { WATCH_PLAYER_CONTROLS_SOFT_BACKDROP_BACKGROUND } from "@/lib/watch-production-overlays"
@@ -74,6 +75,7 @@ afterEach(() => {
     },
   })
   document.body.innerHTML = ""
+  vi.restoreAllMocks()
 })
 
 function renderControlsFixture(player: MuxPlayerRef = makePlayer()) {
@@ -174,8 +176,31 @@ describe("HeroPlayerControls — in-chrome language controls", () => {
       audioButton?.querySelector('[data-testid="hero-chrome-language-code"]')
         ?.textContent,
     ).toBe("EN")
+    expect(audioButton?.getAttribute("aria-label")).toBe(
+      "Change audio language: EN",
+    )
+    expect(audioButton?.querySelector('[role="tooltip"]')?.textContent).toBe(
+      "Change audio language: EN",
+    )
     expect(audioButton?.querySelector("svg")?.getAttribute("class")).toContain(
       "h-6",
+    )
+  })
+
+  it("uses the localized audio action when no language code is available", () => {
+    const overlayAnchor = renderWith({
+      showLanguageButton: true,
+      onLanguageClick: () => {},
+    })
+    const audioButton = overlayAnchor.querySelector(
+      '[data-testid="hero-chrome-language"]',
+    )
+
+    expect(audioButton?.getAttribute("aria-label")).toBe(
+      "Change audio language",
+    )
+    expect(audioButton?.querySelector('[role="tooltip"]')?.textContent).toBe(
+      "Change audio language",
     )
   })
 
@@ -321,13 +346,13 @@ describe("HeroPlayerControls — in-chrome language controls", () => {
       subtitleLanguageCode: "EN",
       subtitleEnabled: true,
       visibleState: "EN",
-      announcedState: "EN",
+      announcedState: "On (EN)",
     },
     {
       subtitleLanguageCode: "ES",
       subtitleEnabled: true,
       visibleState: "ES",
-      announcedState: "ES",
+      announcedState: "On (ES)",
     },
   ])(
     "shows $visibleState and announces subtitle state $announcedState",
@@ -354,11 +379,11 @@ describe("HeroPlayerControls — in-chrome language controls", () => {
         )?.textContent ?? null,
       ).toBe(visibleState)
       expect(subtitleButton?.getAttribute("aria-label")).toBe(
-        `Subtitles · ${announcedState}`,
+        `Subtitles: ${announcedState}`,
       )
       expect(
         subtitleButton?.querySelector('[role="tooltip"]')?.textContent,
-      ).toBe(`Subtitles · ${announcedState}`)
+      ).toBe(`Subtitles: ${announcedState}`)
     },
   )
 
@@ -374,7 +399,7 @@ describe("HeroPlayerControls — in-chrome language controls", () => {
 
     expect(subtitleButton.getAttribute("aria-disabled")).toBe("true")
     expect(subtitleButton.getAttribute("aria-label")).toBe(
-      "Subtitles · Not available",
+      "Subtitles: Not available",
     )
     expect(
       subtitleButton.querySelector(
@@ -386,6 +411,249 @@ describe("HeroPlayerControls — in-chrome language controls", () => {
       subtitleButton.click()
     })
     expect(onLanguageClick).not.toHaveBeenCalled()
+  })
+
+  it("uses one shared hidden tooltip contract for every icon button", () => {
+    const overlayAnchor = renderWith({
+      showLanguageButton: true,
+      showSubtitleButton: true,
+      onLanguageClick: () => {},
+      languageCode: "EN",
+      subtitleLanguageCode: "EN",
+    })
+
+    for (const testId of [
+      "hero-chrome-play",
+      "hero-chrome-mute",
+      "hero-chrome-language",
+      "hero-chrome-subtitles",
+      "hero-chrome-fullscreen",
+    ]) {
+      const button = overlayAnchor.querySelector(`[data-testid="${testId}"]`)
+      const tooltip = button?.querySelector('[role="tooltip"]')
+      expect(tooltip?.textContent).toBe(button?.getAttribute("aria-label"))
+    }
+  })
+
+  it("reveals the shared tooltip from pointer hover and keyboard focus only", () => {
+    vi.spyOn(window, "matchMedia").mockReturnValue({
+      matches: true,
+    } as MediaQueryList)
+    act(() => {
+      root.render(
+        <ChromeButton
+          onClick={() => {}}
+          ariaLabel="Subtitles: On (EN)"
+          testId="tooltip-reveal-target"
+        >
+          Icon
+        </ChromeButton>,
+      )
+    })
+    const button = container.querySelector(
+      '[data-testid="tooltip-reveal-target"]',
+    ) as HTMLButtonElement
+    const tooltip = button.querySelector('[role="tooltip"]') as HTMLSpanElement
+
+    expect(tooltip.style.visibility).toBe("hidden")
+    expect(tooltip.style.opacity).toBe("0")
+
+    act(() => {
+      button.dispatchEvent(new MouseEvent("mouseover", { bubbles: true }))
+    })
+    expect(tooltip.style.visibility).toBe("visible")
+    expect(tooltip.style.opacity).toBe("1")
+
+    act(() => {
+      button.dispatchEvent(new MouseEvent("mouseout", { bubbles: true }))
+    })
+    expect(tooltip.style.visibility).toBe("hidden")
+    expect(tooltip.style.opacity).toBe("0")
+
+    vi.spyOn(button, "matches").mockImplementation(
+      (selector) => selector === ":focus-visible",
+    )
+    act(() => {
+      button.dispatchEvent(new FocusEvent("focusin", { bubbles: true }))
+    })
+    expect(tooltip.style.visibility).toBe("visible")
+    expect(tooltip.style.opacity).toBe("1")
+
+    act(() => {
+      button.dispatchEvent(new FocusEvent("focusout", { bubbles: true }))
+    })
+    expect(tooltip.style.visibility).toBe("hidden")
+    expect(tooltip.style.opacity).toBe("0")
+  })
+
+  it.each([
+    { align: "end" as const, buttonLeft: 148, tooltipWidth: 200, shift: 20 },
+    { align: "start" as const, buttonLeft: 200, tooltipWidth: 150, shift: -38 },
+    { align: "start" as const, buttonLeft: 40, tooltipWidth: 150, shift: 0 },
+  ])(
+    "clamps a $align-aligned tooltip by $shift pixels",
+    ({ align, buttonLeft, tooltipWidth, shift }) => {
+      vi.spyOn(window, "matchMedia").mockReturnValue({
+        matches: true,
+      } as MediaQueryList)
+      const originalInnerWidth = window.innerWidth
+      Object.defineProperty(window, "innerWidth", {
+        configurable: true,
+        value: 320,
+      })
+
+      try {
+        act(() => {
+          root.render(
+            <ChromeButton
+              onClick={() => {}}
+              ariaLabel="Tooltip"
+              testId="clamp-target"
+              tooltipAlign={align}
+            >
+              Icon
+            </ChromeButton>,
+          )
+        })
+        const button = container.querySelector(
+          '[data-testid="clamp-target"]',
+        ) as HTMLButtonElement
+        const tooltip = button.querySelector(
+          '[role="tooltip"]',
+        ) as HTMLSpanElement
+        vi.spyOn(button, "getBoundingClientRect").mockReturnValue({
+          bottom: 40,
+          height: 40,
+          left: buttonLeft,
+          right: buttonLeft + 40,
+          top: 0,
+          width: 40,
+          x: buttonLeft,
+          y: 0,
+          toJSON: () => ({}),
+        })
+        vi.spyOn(tooltip, "getBoundingClientRect").mockReturnValue({
+          bottom: 0,
+          height: 32,
+          left: 0,
+          right: tooltipWidth,
+          top: -32,
+          width: tooltipWidth,
+          x: 0,
+          y: -32,
+          toJSON: () => ({}),
+        })
+
+        act(() => {
+          button.dispatchEvent(new MouseEvent("mouseover", { bubbles: true }))
+        })
+
+        expect(tooltip.style.getPropertyValue("--chrome-tooltip-shift-x")).toBe(
+          `${shift}px`,
+        )
+      } finally {
+        Object.defineProperty(window, "innerWidth", {
+          configurable: true,
+          value: originalInnerWidth,
+        })
+      }
+    },
+  )
+
+  it("reclamps an open tooltip when its dynamic label changes", () => {
+    act(() => {
+      root.render(
+        <ChromeButton
+          onClick={() => {}}
+          ariaLabel="Play"
+          testId="dynamic-clamp-target"
+          tooltipAlign="start"
+        >
+          Icon
+        </ChromeButton>,
+      )
+    })
+    const button = container.querySelector(
+      '[data-testid="dynamic-clamp-target"]',
+    ) as HTMLButtonElement
+    const tooltip = button.querySelector('[role="tooltip"]') as HTMLSpanElement
+    vi.spyOn(button, "matches").mockReturnValue(true)
+    vi.spyOn(button, "getBoundingClientRect").mockReturnValue({
+      bottom: 40,
+      height: 40,
+      left: 900,
+      right: 940,
+      top: 0,
+      width: 40,
+      x: 900,
+      y: 0,
+      toJSON: () => ({}),
+    })
+    vi.spyOn(tooltip, "getBoundingClientRect").mockReturnValue({
+      bottom: 0,
+      height: 32,
+      left: 0,
+      right: 180,
+      top: -32,
+      width: 180,
+      x: 0,
+      y: -32,
+      toJSON: () => ({}),
+    })
+
+    act(() => {
+      root.render(
+        <ChromeButton
+          onClick={() => {}}
+          ariaLabel="A much longer pause action"
+          testId="dynamic-clamp-target"
+          tooltipAlign="start"
+        >
+          Icon
+        </ChromeButton>,
+      )
+    })
+
+    expect(tooltip.textContent).toBe("A much longer pause action")
+    expect(tooltip.style.getPropertyValue("--chrome-tooltip-shift-x")).toBe(
+      "-64px",
+    )
+  })
+
+  it("updates action tooltips after player and fullscreen state changes", async () => {
+    const player = makePlayer({ paused: true, muted: false, volume: 1 })
+    const { overlayAnchor, wrapperEl } = renderControlsFixture(player)
+
+    const expectTooltip = (
+      rootElement: Element,
+      testId: string,
+      label: string,
+    ) => {
+      const button = rootElement.querySelector(`[data-testid="${testId}"]`)
+      expect(button?.getAttribute("aria-label")).toBe(label)
+      expect(button?.querySelector('[role="tooltip"]')?.textContent).toBe(label)
+    }
+
+    expectTooltip(overlayAnchor, "hero-chrome-play", "Play")
+    expectTooltip(overlayAnchor, "hero-chrome-mute", "Mute")
+    expectTooltip(overlayAnchor, "hero-chrome-fullscreen", "Enter fullscreen")
+
+    Object.defineProperty(player, "paused", {
+      configurable: true,
+      value: false,
+    })
+    player.muted = true
+    await act(async () => {
+      player.dispatchEvent(new Event("play"))
+      player.dispatchEvent(new Event("volumechange"))
+    })
+    expectTooltip(overlayAnchor, "hero-chrome-play", "Pause")
+    expectTooltip(overlayAnchor, "hero-chrome-mute", "Unmute")
+
+    await act(async () => {
+      setFullscreenElement(wrapperEl)
+    })
+    expectTooltip(wrapperEl, "hero-chrome-fullscreen", "Exit fullscreen")
   })
 
   it("opens the combined modal from the subtitles control", async () => {
@@ -1012,6 +1280,64 @@ describe("HeroPlayerControls — chrome layout", () => {
 })
 
 describe("HeroPlayerControls — visibility callback", () => {
+  it("keeps the chrome visible while keyboard focus remains inside", async () => {
+    vi.useFakeTimers()
+    const onVisibilityChange = vi.fn()
+    const wrapperEl = document.createElement("div")
+    const overlayAnchor = document.createElement("div")
+    const outsideButton = document.createElement("button")
+    document.body.appendChild(wrapperEl)
+    document.body.appendChild(overlayAnchor)
+    document.body.appendChild(outsideButton)
+    const wrapperRef = createRef<HTMLDivElement>()
+    Object.defineProperty(wrapperRef, "current", {
+      writable: true,
+      value: wrapperEl,
+    })
+    const playerRef = createRef<MuxPlayerRef | null>()
+    Object.defineProperty(playerRef, "current", {
+      writable: true,
+      value: makePlayer(),
+    })
+
+    try {
+      act(() => {
+        root.render(
+          <HeroPlayerControls
+            player={playerRef.current}
+            playerRef={playerRef as React.RefObject<MuxPlayerRef | null>}
+            wrapperRef={wrapperRef as React.RefObject<HTMLDivElement | null>}
+            overlayAnchor={overlayAnchor}
+            onVisibilityChange={onVisibilityChange}
+          />,
+        )
+      })
+      const playButton = overlayAnchor.querySelector(
+        '[data-testid="hero-chrome-play"]',
+      ) as HTMLButtonElement
+
+      act(() => playButton.focus())
+      await act(async () => vi.advanceTimersByTime(10_000))
+
+      expect(
+        overlayAnchor
+          .querySelector('[data-testid="hero-player-custom-chrome"]')
+          ?.getAttribute("data-visible"),
+      ).toBe("true")
+
+      act(() => outsideButton.focus())
+      await act(async () => vi.advanceTimersByTime(4_001))
+
+      expect(
+        overlayAnchor
+          .querySelector('[data-testid="hero-player-custom-chrome"]')
+          ?.getAttribute("data-visible"),
+      ).toBe("false")
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it("reports dimmed state, ignores pointer movement for 5s, and wakes dim after later video movement", async () => {
     vi.useFakeTimers()
     const wrapperEl = document.createElement("div")

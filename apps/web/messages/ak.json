@@ -191,6 +191,7 @@
     "loadMoreFailed": "Entumi annhyehyɛ nsɛm pii no.",
     "searching": "Rehwehwɛ...",
     "connectionHint": "Yɛsrɛ sɛ hwɛ wo connection no na sɔ bio.",
+    "rateLimitHint": "Abisade no dɔɔso. Yɛsrɛ wo, san sɔ hwɛ wɔ simma baako akyi.",
     "retrySearch": "Sɔ search no bio",
     "retry": "Sɔ bio",
     "noResults": "Ne biara nni hɔ ma \"{query}\"",
@@ -540,16 +541,16 @@
     "retryFailed": "Sɔ nea antumi antwe no bio"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Kasa nkyerɛase no nni hɔ",
+    "eyebrow": "Kasa nkyerɛase no nni hɔ",
+    "title": "<contentTitle>{title}</contentTitle> nni <languageName>{language}</languageName> mu",
+    "actionsLabel": "Nhwɛbea a ɛwɔ hɔ",
+    "browseInLanguage": "Hwehwɛ video ahorow wɔ {language} mu",
+    "backToSearch": "San kɔ nhwehwɛmu",
+    "audioVersionsTitle": "Ɔdio nkyerɛase foforo",
+    "audioVersionsDescription": "Yi ɔdio kasa na toa video yi hwɛ so.",
+    "languageVersionLabel": "Ɔdio kasa",
+    "selectLanguageVersion": "Yi kasa nkyerɛase",
+    "watchSelectedVersion": "Hwɛ nkyerɛase a woapaw"
   }
 }

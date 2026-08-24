@@ -191,6 +191,7 @@
     "loadMoreFailed": "Aswan resultados kargayta mana atikurqanichu.",
     "searching": "Maskachkan...",
     "connectionHint": "Ama hina kaspa, conexiónniykita qhawariy chaymanta huk kutin yachapayay.",
+    "rateLimitHint": "Ancha achka mañakuykuna kachkan. Huk minuto qhipaman yapamanta ruray.",
     "retrySearch": "Maskayta huk kutin",
     "retry": "Huk kutin",
     "noResults": "Mana resultado kanchu \"{query}\"paq",
@@ -540,16 +541,16 @@
     "retryFailed": "Mana atikusqakunata huk kutin uraykachiy"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Simip ruwasqan mana kanchu",
+    "eyebrow": "Simip ruwasqan mana kanchu",
+    "title": "<contentTitle>{title}</contentTitle> mana <languageName>{language}</languageName> simipi kanchu",
+    "actionsLabel": "Qhawanapaq kaq akllanakuna",
+    "browseInLanguage": "{language} simipi videokunata qhaway",
+    "backToSearch": "Maskayman kutiy",
+    "audioVersionsTitle": "Huk uyariy ruwasqakuna",
+    "audioVersionsDescription": "Kay videota qhawarillanapaq uyariypa siminta akllay.",
+    "languageVersionLabel": "Uyariypa simin",
+    "selectLanguageVersion": "Simip ruwasqanta akllay",
+    "watchSelectedVersion": "Akllasqa ruwasqata qhaway"
   }
 }

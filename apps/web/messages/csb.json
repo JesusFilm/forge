@@ -191,6 +191,7 @@
     "loadMoreFailed": "Ni mòże sã wczëtac wicy rezùltatów.",
     "searching": "Szëkòwanié...",
     "connectionHint": "Sprawdzë pòłączenié i spróbùj jinã razã.",
+    "rateLimitHint": "Za wiele żądaniôw. Spróbùjë znowa za minutã.",
     "retrySearch": "Spróbùj szëkac znowa",
     "retry": "Spróbùj jinã razã",
     "noResults": "Brëk rezùltatów dlô \"{query}\"",
@@ -540,16 +541,16 @@
     "retryFailed": "Spróbùj znowa pòbrac nieùdóné"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Jãzëkòwô wersëjô je felënk",
+    "eyebrow": "Jãzëkòwô wersëjô je felënk",
+    "title": "<contentTitle>{title}</contentTitle> nie je przistãpné pò <languageName>{language}</languageName>",
+    "actionsLabel": "Przistãpné mòżlëwòtë òbzéraniô",
+    "browseInLanguage": "Przezérôj wideò pò {language}",
+    "backToSearch": "Nazôd do szëkaniô",
+    "audioVersionsTitle": "Jinszé wersëje aùdio",
+    "audioVersionsDescription": "Wëbierzë jãzëk aùdio, bë òbzérac dali to wideò.",
+    "languageVersionLabel": "Jãzëk aùdio",
+    "selectLanguageVersion": "Wëbierzë jãzëkòwą wersëjã",
+    "watchSelectedVersion": "Òbzérôj wëbróną wersëjã"
   }
 }

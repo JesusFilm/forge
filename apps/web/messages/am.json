@@ -191,6 +191,7 @@
     "loadMoreFailed": "ተጨማሪ ውጤቶችን መጫን አልተቻለም።",
     "searching": "በመፈለግ ላይ...",
     "connectionHint": "እባክዎን ግንኙነትዎን ያረጋግጡ እና እንደገና ይሞክሩ።",
+    "rateLimitHint": "ጥያቄዎች በዝተዋል። እባክዎ ከአንድ ደቂቃ በኋላ እንደገና ይሞክሩ።",
     "retrySearch": "ፍለጋ እንደገና ሞክር",
     "retry": "እንደገና ሞክር",
     "noResults": "ለ\"{query}\" ምንም ውጤት የለም",
@@ -540,16 +541,16 @@
     "retryFailed": "ያልተሳኩትን እንደገና ሞክር"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "የቋንቋ ስሪቱ አይገኝም",
+    "eyebrow": "የቋንቋ ስሪቱ አይገኝም",
+    "title": "<contentTitle>{title}</contentTitle> በ<languageName>{language}</languageName> አይገኝም",
+    "actionsLabel": "ያሉ የመመልከቻ አማራጮች",
+    "browseInLanguage": "በ{language} ቪዲዮዎችን ያስሱ",
+    "backToSearch": "ወደ ፍለጋ ተመለስ",
+    "audioVersionsTitle": "ሌሎች የድምፅ ስሪቶች",
+    "audioVersionsDescription": "ይህን ቪዲዮ መመልከት ለመቀጠል የድምፅ ቋንቋ ይምረጡ።",
+    "languageVersionLabel": "የድምፅ ቋንቋ",
+    "selectLanguageVersion": "የቋንቋ ስሪት ይምረጡ",
+    "watchSelectedVersion": "የተመረጠውን ስሪት ይመልከቱ"
   }
 }

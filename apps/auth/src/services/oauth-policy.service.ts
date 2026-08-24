@@ -2,6 +2,10 @@ import {
   assertTokenPolicy,
   type TokenPolicyInput,
 } from "./token-policy.service"
+import { CHANGELOG_OAUTH_RESOURCES } from "@/domain/changelog-oauth-resources"
+import { CHANGELOG_OAUTH_SCOPES } from "@/domain/scopes"
+
+export { CHANGELOG_OAUTH_RESOURCES, CHANGELOG_OAUTH_SCOPES }
 
 export type OAuthPolicyInput = TokenPolicyInput & {
   membershipStatus?: "invited" | "active" | "suspended" | "disabled" | null
@@ -14,6 +18,141 @@ export type OAuthTokenDecision = {
   audience: string
   scopes: string[]
   family: TokenPolicyInput["family"]
+}
+
+export type ChangelogEnvironmentKind = keyof typeof CHANGELOG_OAUTH_RESOURCES
+export type ChangelogOAuthLifecycle = "authorization" | "exchange" | "refresh"
+
+type ChangelogPolicyDenial = {
+  allowed: false
+  reason:
+    | "changelog_access_denied"
+    | "changelog_grant_changed"
+    | "invalid_changelog_target"
+}
+
+export type ChangelogScopeDecision =
+  | { allowed: true; scopes: string[] }
+  | ChangelogPolicyDenial
+
+export type ChangelogTargetDecision =
+  | {
+      allowed: true
+      dynamicClient: boolean
+      environmentKind: ChangelogEnvironmentKind
+      resource: string | null
+    }
+  | ChangelogPolicyDenial
+
+const changelogScopeSet = new Set<string>(CHANGELOG_OAUTH_SCOPES)
+
+export function resolveChangelogOAuthTarget(input: {
+  seededEnvironmentKind: ChangelogEnvironmentKind | null
+  resources: readonly string[]
+}): ChangelogTargetDecision {
+  const { seededEnvironmentKind, resources } = input
+
+  if (seededEnvironmentKind) {
+    if (resources.length === 0) {
+      return {
+        allowed: true,
+        dynamicClient: false,
+        environmentKind: seededEnvironmentKind,
+        resource: null,
+      }
+    }
+    if (
+      resources.length !== 1 ||
+      resources[0] !== CHANGELOG_OAUTH_RESOURCES[seededEnvironmentKind]
+    ) {
+      return { allowed: false, reason: "invalid_changelog_target" }
+    }
+    return {
+      allowed: true,
+      dynamicClient: false,
+      environmentKind: seededEnvironmentKind,
+      resource: resources[0],
+    }
+  }
+
+  if (resources.length !== 1) {
+    return { allowed: false, reason: "invalid_changelog_target" }
+  }
+
+  const resource = resources[0]
+  const target = Object.entries(CHANGELOG_OAUTH_RESOURCES).find(
+    ([, expected]) => resource === expected,
+  )
+  if (!target) return { allowed: false, reason: "invalid_changelog_target" }
+
+  return {
+    allowed: true,
+    dynamicClient: true,
+    environmentKind: target[0] as ChangelogEnvironmentKind,
+    resource,
+  }
+}
+
+export function decideChangelogOAuthScopes(input: {
+  lifecycle: ChangelogOAuthLifecycle
+  requestedScopes: readonly string[]
+  grantedScopes: readonly string[]
+  scopeCeiling?: readonly string[]
+  environmentKind: ChangelogEnvironmentKind
+  dynamicClient: boolean
+  productionEnabled: boolean
+}): ChangelogScopeDecision {
+  const requestedScopes = [...new Set(input.requestedScopes)]
+  let ceiling = requestedScopes
+  if (input.lifecycle !== "authorization") {
+    if (input.scopeCeiling == null) {
+      return { allowed: false, reason: "changelog_access_denied" }
+    }
+    ceiling = [...new Set(input.scopeCeiling)]
+  }
+
+  const grantedScopes = expandChangelogGrantScopes(input.grantedScopes)
+  if (input.environmentKind === "production" && !input.productionEnabled) {
+    grantedScopes.clear()
+  }
+
+  if (input.lifecycle !== "authorization") {
+    const grantChanged = ceiling.some(
+      (scope) => changelogScopeSet.has(scope) && !grantedScopes.has(scope),
+    )
+    if (grantChanged) {
+      return { allowed: false, reason: "changelog_grant_changed" }
+    }
+  }
+
+  const ceilingSet = new Set(ceiling)
+  const scopes = requestedScopes.filter(
+    (scope) =>
+      ceilingSet.has(scope) &&
+      (!changelogScopeSet.has(scope) || grantedScopes.has(scope)),
+  )
+
+  if (
+    input.lifecycle === "authorization" &&
+    input.dynamicClient &&
+    !scopes.includes("changelog:read")
+  ) {
+    return { allowed: false, reason: "changelog_access_denied" }
+  }
+
+  return { allowed: true, scopes }
+}
+
+function expandChangelogGrantScopes(scopes: readonly string[]) {
+  const granted = new Set(
+    scopes.filter((scope) => changelogScopeSet.has(scope)),
+  )
+  if (granted.has("changelog:admin")) {
+    CHANGELOG_OAUTH_SCOPES.forEach((scope) => granted.add(scope))
+  } else if (granted.has("changelog:submit")) {
+    granted.add("changelog:read")
+  }
+  return granted
 }
 
 export function authorizeOAuthTokenIssue(

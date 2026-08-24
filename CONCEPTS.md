@@ -747,6 +747,21 @@ A client-generated, stable-per-device identifier a Fleet Client attaches to a re
 
 ## User sign-in
 
+### Protected Resource
+
+An OAuth API identified by an exact URI that accepts access tokens only when
+their audience names that same resource; it is distinct from the client that
+requests the token and from the authorization server that issues it.
+
+### Resource-Bound OAuth Grant
+
+An OAuth authorization grant whose allowed Protected Resources are fixed when
+the user authorizes it, carried through authorization-code exchange and refresh,
+and never widened by a later token request.
+
+Exchange may select an authorized subset, while refresh remains constrained by
+the original grant ceiling.
+
 ### First-Party App
 
 One of the project's own applications that the auth provider recognizes as its own rather than as a third-party integration, registered with the provider so it can be issued tokens and have sign-in routed back to it.

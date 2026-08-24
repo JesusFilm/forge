@@ -191,6 +191,7 @@
     "loadMoreFailed": "Ku hlulekile ku layicha mimbuyelo yo tala.",
     "searching": "Ku lava...",
     "connectionHint": "Hi kombela u kambela vuhlanganisi bya wena u tlhela u ringeta.",
+    "rateLimitHint": "Swikombelo swi tele ngopfu. Tlhela u ringeta endzhaku ka minete.",
     "retrySearch": "Ringeta ku lava nakambe",
     "retry": "Ringeta nakambe",
     "noResults": "A ku na mimbuyelo ya \"{query}\"",
@@ -540,16 +541,16 @@
     "retryFailed": "Ringeta leswi hlulekeke nakambe"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Nhlobo ya ririmi a yi kona",
+    "eyebrow": "Nhlobo ya ririmi a yi kona",
+    "title": "<contentTitle>{title}</contentTitle> a yi kona hi <languageName>{language}</languageName>",
+    "actionsLabel": "Tindlela leti nga kona to hlalela",
+    "browseInLanguage": "Languta tivhidiyo hi {language}",
+    "backToSearch": "Tlhelela eku laveni",
+    "audioVersionsTitle": "Tinhlobo tin'wana ta mpfumawulo",
+    "audioVersionsDescription": "Hlawula ririmi ra mpfumawulo leswaku u ya emahlweni u hlalela vhidiyo leyi.",
+    "languageVersionLabel": "Ririmi ra mpfumawulo",
+    "selectLanguageVersion": "Hlawula nhlobo ya ririmi",
+    "watchSelectedVersion": "Hlalela nhlobo leyi hlawuriweke"
   }
 }

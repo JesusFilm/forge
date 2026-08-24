@@ -193,6 +193,7 @@
     "connectionHint": "Connection i check kɛ fa kaŋa bɛ.",
     "retrySearch": "Search fa kaŋa bɛ",
     "retry": "Fa kaŋa bɛ",
+    "rateLimitHint": "Request kɛŋ ka ca. Fa kaŋa bɛ minute kelen kɔnɔ.",
     "noResults": "\"{query}\" te result",
     "tryDifferentKeywords": "Keyword dɔɔ kɛ o category dɔɔ browse kɛ",
     "loading": "A ka load...",
@@ -540,16 +541,16 @@
     "retryFailed": "Downloads taŋ kɛŋ fa kaŋa bɛ"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Language version a taŋ te",
+    "eyebrow": "Language version a taŋ te",
+    "title": "<contentTitle>{title}</contentTitle> a taŋ te <languageName>{language}</languageName> te",
+    "actionsLabel": "Watch options kɛŋ a bɛ",
+    "browseInLanguage": "Videos browse kɛ {language} te",
+    "backToSearch": "Search te kɛrɛ",
+    "audioVersionsTitle": "Audio versions kɛŋ dɔɔ",
+    "audioVersionsDescription": "Audio language dɔɔ dɔɔ ka video nin watch kɛ ka taa nyɛ.",
+    "languageVersionLabel": "Audio language i",
+    "selectLanguageVersion": "Language version dɔɔ",
+    "watchSelectedVersion": "Version dɔɔ watch kɛ"
   }
 }

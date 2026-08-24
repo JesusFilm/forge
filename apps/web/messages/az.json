@@ -191,6 +191,7 @@
     "loadMoreFailed": "Daha çox nəticəni yükləmək alınmadı.",
     "searching": "Axtarılır...",
     "connectionHint": "Zəhmət olmasa, bağlantınızı yoxlayın və yenidən cəhd edin.",
+    "rateLimitHint": "Həddən çox sorğu göndərilib. Bir dəqiqə sonra yenidən cəhd edin.",
     "retrySearch": "Axtarışı yenilə",
     "retry": "Yenidən cəhd edin",
     "noResults": "“{query}” üçün nəticə yoxdur",
@@ -540,16 +541,16 @@
     "retryFailed": "Uğursuz yükləmələri yenidən sına"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Dil versiyası mövcud deyil",
+    "eyebrow": "Dil versiyası mövcud deyil",
+    "title": "<contentTitle>{title}</contentTitle> <languageName>{language}</languageName> dilində mövcud deyil",
+    "actionsLabel": "Mövcud baxış seçimləri",
+    "browseInLanguage": "{language} dilində videolara baxın",
+    "backToSearch": "Axtarışa qayıt",
+    "audioVersionsTitle": "Digər audio versiyalar",
+    "audioVersionsDescription": "Bu videoya baxmağa davam etmək üçün audio dili seçin.",
+    "languageVersionLabel": "Audio dili",
+    "selectLanguageVersion": "Dil versiyasını seçin",
+    "watchSelectedVersion": "Seçilmiş versiyaya baxın"
   }
 }

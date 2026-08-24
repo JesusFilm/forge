@@ -191,6 +191,7 @@
     "loadMoreFailed": "Kutadza kurodha mamwe mhedzisiro.",
     "searching": "Kutsvaga...",
     "connectionHint": "Ndapota tarisai kubatana kwenyu wobva maedza zvakare.",
+    "rateLimitHint": "Zvikumbiro zvawandisa. Edzazve mushure meminiti.",
     "retrySearch": "Edzazve kutsvaga",
     "retry": "Edzazve",
     "noResults": "Hapana zvawanikwa zve \"{query}\"",
@@ -540,16 +541,16 @@
     "retryFailed": "Edzazve zvakakundikana"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Shanduro yemutauro haisi kuwanikwa",
+    "eyebrow": "Shanduro yemutauro haisi kuwanikwa",
+    "title": "<contentTitle>{title}</contentTitle> haisi kuwanikwa mumutauro we<languageName>{language}</languageName>",
+    "actionsLabel": "Nzira dziripo dzekuona",
+    "browseInLanguage": "Ona mavhidhiyo emutauro we{language}",
+    "backToSearch": "Dzokera pakutsvaga",
+    "audioVersionsTitle": "Dzimwe shanduro dzezwi",
+    "audioVersionsDescription": "Sarudza mutauro wezwi kuti urambe uchiona vhidhiyo iyi.",
+    "languageVersionLabel": "Mutauro wezwi",
+    "selectLanguageVersion": "Sarudza shanduro yemutauro",
+    "watchSelectedVersion": "Ona shanduro yakasarudzwa"
   }
 }

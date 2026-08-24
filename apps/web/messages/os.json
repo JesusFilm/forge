@@ -191,6 +191,7 @@
     "loadMoreFailed": "Æмæй æфсæстæй æмæстæгтæ æрхæссын нæ фæуыд.",
     "searching": "Æрхæссын…",
     "connectionHint": "Æрхъуыдæйæн нæуын æрхæсс æмæ фидар кæн.",
+    "rateLimitHint": "Дæ уагæвæрдтæ бирæ сты. Иу минуты фæстæ ногæй бафæлвар.",
     "retrySearch": "Æрхæссын æмæй фидар кæн",
     "retry": "Æмæй фидар кæн",
     "noResults": "Æмæстæг нæй \"{query}\" æй",
@@ -540,16 +541,16 @@
     "retryFailed": "Æнæуадзгæ сæвæрдтæ ногæй фæлвар"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Æвзаджы верси нæй",
+    "eyebrow": "Æвзаджы верси нæй",
+    "title": "<contentTitle>{title}</contentTitle> <languageName>{language}</languageName> æвзагыл нæй",
+    "actionsLabel": "Фенынмæ ис варианттæ",
+    "browseInLanguage": "{language} æвзагыл видеотæ фен",
+    "backToSearch": "Агурдмæ раздæх",
+    "audioVersionsTitle": "Иннæ аудио верситæ",
+    "audioVersionsDescription": "Ацы видеойы фенын дарддæр кæнынмæ аудио æвзаг равзар.",
+    "languageVersionLabel": "Аудио æвзаг",
+    "selectLanguageVersion": "Æвзаджы верси равзар",
+    "watchSelectedVersion": "Равзæрст верси фен"
   }
 }

@@ -191,6 +191,7 @@
     "loadMoreFailed": "Sitinathe kutsegula zotsatira zina.",
     "searching": "Kusaka...",
     "connectionHint": "Chonde yang'anani kulumikizana kwanu ndiyeno yesaninso.",
+    "rateLimitHint": "Zopempha zachuluka kwambiri. Chonde yesaninso pakadutsa mphindi imodzi.",
     "retrySearch": "Yesaninso kusaka",
     "retry": "Yesaninso",
     "noResults": "Palibe zotsatira za \"{query}\"",
@@ -540,16 +541,16 @@
     "retryFailed": "Yesaninso zomwe zalephera"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Mtundu wa chilankhulo palibe",
+    "eyebrow": "Mtundu wa chilankhulo palibe",
+    "title": "<contentTitle>{title}</contentTitle> palibe mu <languageName>{language}</languageName>",
+    "actionsLabel": "Zosankha zowonera zomwe zilipo",
+    "browseInLanguage": "Sakatulani mavidiyo mu {language}",
+    "backToSearch": "Bwererani ku kusaka",
+    "audioVersionsTitle": "Mitundu ina ya mawu",
+    "audioVersionsDescription": "Sankhani chilankhulo cha mawu kuti mupitirize kuonera vidiyoyi.",
+    "languageVersionLabel": "Chilankhulo cha mawu",
+    "selectLanguageVersion": "Sankhani mtundu wa chilankhulo",
+    "watchSelectedVersion": "Onerani mtundu womwe mwasankha"
   }
 }

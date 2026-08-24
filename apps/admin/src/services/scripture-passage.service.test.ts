@@ -342,6 +342,67 @@ describe("ScripturePassageService.getPassageForCitation", () => {
     )
   })
 
+  it.each([
+    ["Mandarin China slug", { languageSlug: "mandarin-china" }, 43],
+    ["Simplified Chinese slug", { languageSlug: "chinese-simplified" }, 43],
+    ["Mandarin Taiwan slug", { languageSlug: "mandarin-taiwan" }, 312],
+    ["Traditional Chinese slug", { languageSlug: "chinese-traditional" }, 312],
+    ["Mandarin China Core id", { languageId: "20615" }, 43],
+    ["Simplified Chinese Core id", { languageId: "21754" }, 43],
+    ["Mandarin Taiwan Core id", { languageId: "23221" }, 312],
+    ["Traditional Chinese Core id", { languageId: "21753" }, 312],
+  ])(
+    "uses the Chinese Standard Bible for %s",
+    async (_label, language, versionId) => {
+      const { ScripturePassageService } = await loadService({
+        appKey: "app-key",
+        ttlSeconds: "60",
+      })
+      const prisma = mockPrisma()
+      prisma.bibleCitation.findFirst.mockResolvedValueOnce(makeCitation())
+      prisma.biblePassageCache.findUnique.mockResolvedValueOnce(null)
+      prisma.biblePassageCache.upsert.mockImplementationOnce(
+        async ({ create }: { create: Record<string, unknown> }) => ({
+          ...create,
+        }),
+      )
+      const fetchFn = vi
+        .fn()
+        .mockResolvedValueOnce(
+          Response.json({
+            id: versionId,
+            localized_abbreviation: versionId === 43 ? "CSBS" : "CSBT",
+            localized_title: versionId === 43 ? "中文标准译本" : "中文標準譯本",
+            copyright: "Copyright.",
+          }),
+        )
+        .mockResolvedValueOnce(
+          Response.json({
+            id: "JHN.3.16",
+            reference: "约翰福音 3:16",
+            content: "神爱世人。",
+          }),
+        )
+
+      const service = new ScripturePassageService(prisma, fetchFn as never)
+      const passage = await service.getPassageForCitation({
+        citationId: "bc-1",
+        ...language,
+      })
+
+      expect(fetchFn).toHaveBeenNthCalledWith(
+        1,
+        `https://api.youversion.com/v1/bibles/${versionId}`,
+        expect.any(Object),
+      )
+      expect(passage).toEqual(
+        expect.objectContaining({
+          versionId,
+        }),
+      )
+    },
+  )
+
   it("uses the code-approved version id for the requested language id", async () => {
     const { ScripturePassageService } = await loadService({
       appKey: "app-key",
