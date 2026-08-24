@@ -191,6 +191,7 @@
     "loadMoreFailed": "Ho hlolehile ho kenya liphetho tse ling.",
     "searching": "Ho batla...",
     "connectionHint": "Ka kopo hlahloba khokahano ea hao u leke hape.",
+    "rateLimitHint": "Likopo li ngata haholo. Leka hape kamora motsotso.",
     "retrySearch": "Leka patlo hape",
     "retry": "Leka hape",
     "noResults": "Ha ho liphetho bakeng sa \"{query}\"",
@@ -225,7 +226,9 @@
   "HeroPlayer": {
     "playWithSound": "Shebella hona joale",
     "tapToUnmute": "Tlanya ho tlosa khutso",
-    "nextEpisode": "Khahiso e latelang"
+    "nextEpisode": "Khahiso e latelang",
+    "audioTranslationCount": "{count, plural, one {# puo} other {# lipuo}}",
+    "subtitleCount": "Mengolo-tlase: {count, plural, one {# puo} other {# lipuo}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Ho kenya litaba",
@@ -538,16 +541,16 @@
     "retryFailed": "Leka tse hlolehileng hape"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Phetolelo ya puo ha e fumanehe",
+    "eyebrow": "Phetolelo ya puo ha e fumanehe",
+    "title": "<contentTitle>{title}</contentTitle> ha e fumanehe ka <languageName>{language}</languageName>",
+    "actionsLabel": "Dikgetho tse teng tsa ho shebella",
+    "browseInLanguage": "Sheba divideo ka {language}",
+    "backToSearch": "Kgutlela patlong",
+    "audioVersionsTitle": "Diphetolelo tse ding tsa modumo",
+    "audioVersionsDescription": "Kgetha puo ya modumo ho tswela pele ho shebella video ena.",
+    "languageVersionLabel": "Puo ya modumo",
+    "selectLanguageVersion": "Kgetha phetolelo ya puo",
+    "watchSelectedVersion": "Shebella phetolelo e kgethilweng"
   }
 }

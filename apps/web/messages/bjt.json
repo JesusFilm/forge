@@ -193,6 +193,7 @@
     "connectionHint": "I connection chek kɛ nɛn kaŋ again.",
     "retrySearch": "Sɛrɛch nɔn again",
     "retry": "Nɔn again",
+    "rateLimitHint": "Request baara. Jatɛ nɔn miniti kelen kɔnɔ.",
     "noResults": "\"{query}\" nɔŋ result dɔ ka na",
     "tryDifferentKeywords": "Keyword dɔ tɔŋ kɛlɛ nɔŋ category browsɛ",
     "loading": "Dɔŋ...",
@@ -225,7 +226,9 @@
   "HeroPlayer": {
     "playWithSound": "Kɔrɔlɛ yɔŋ watch kɛ",
     "tapToUnmute": "Tap ka Unmute kɛ",
-    "nextEpisode": "Episode kaŋ"
+    "nextEpisode": "Episode kaŋ",
+    "audioTranslationCount": "{count, plural, one {# language} other {# languages baara}}",
+    "subtitleCount": "Subtitles sɔrɔ: {count, plural, one {# language} other {# languages baara}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Content dɔŋ",
@@ -538,16 +541,16 @@
     "retryFailed": "Failed downloads nɔn again"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Language version bɔ ka na",
+    "eyebrow": "Language version bɔ ka na",
+    "title": "<contentTitle>{title}</contentTitle> bɔ ka na <languageName>{language}</languageName> nɔŋ",
+    "actionsLabel": "Watch options bɛ na",
+    "browseInLanguage": "Videos browsɛ nɔŋ {language}",
+    "backToSearch": "Sɛrɛch kɔnɔ nɔn",
+    "audioVersionsTitle": "Audio versions dɔŋ",
+    "audioVersionsDescription": "Audio language dɔ sɔrɔ ka video nɛn watch kɛ.",
+    "languageVersionLabel": "Audio language sɛn",
+    "selectLanguageVersion": "Language version dɔ sɔrɔ",
+    "watchSelectedVersion": "Version sɔrɔlen watch kɛ"
   }
 }

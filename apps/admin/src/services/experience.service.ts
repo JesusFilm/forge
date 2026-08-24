@@ -5,38 +5,111 @@
 // Resolvers delegate here; they never call Prisma directly for mutations.
 
 import { after } from "next/server"
+import { randomBytes } from "node:crypto"
 import { Prisma, type PrismaClient } from "@prisma/client"
 import { isEditorOrAdmin, type Principal } from "@/auth/principal"
 import {
   hasPermission,
+  canViewExperience,
   canEditExperienceLocale,
   canPublishExperienceLocale,
   canArchiveExperience,
 } from "@/auth/permissions"
 import { start } from "workflow/api"
 import {
-  ConcurrentModificationError,
+  ExperienceDuplicationError,
   ForbiddenError,
   NotFoundError,
 } from "./errors"
+import { BlocksSchema } from "@/domain/blocks"
 import { runExperienceEmbedding } from "@/workflows/experienceEmbedding"
 import { emitRevalidateWebhook } from "./revalidate-webhook"
 import { refreshWatchRouteManifest } from "./watch-route-manifest-refresh.service"
 import { backfillExperienceVideoLanguageIds } from "./experience-video-language-backfill"
 import {
   CreateExperienceInput,
+  DuplicateExperienceInput,
   CreateExperienceLocaleInput,
   UpdateExperienceLocaleInput,
   PublishExperienceLocaleInput,
+  DiscardExperienceLocaleDraftInput,
   RestoreExperienceLocaleRevisionInput,
   ArchiveExperienceInput,
   ChatMutationInput,
+  ExperienceLocaleDraftDataSchema,
+  type ExperienceLocaleDraftData,
 } from "./experience.schemas"
+
+function availableDuplicateSlug(
+  sourceSlug: string,
+  usedSlugs: Set<string>,
+): string {
+  for (let copyNumber = 1; ; copyNumber += 1) {
+    const suffix = copyNumber === 1 ? "-copy" : `-copy-${copyNumber}`
+    const base =
+      sourceSlug.slice(0, 200 - suffix.length).replace(/-+$/g, "") ||
+      "experience"
+    const candidate = `${base}${suffix}`
+    if (!usedSlugs.has(candidate)) {
+      usedSlugs.add(candidate)
+      return candidate
+    }
+  }
+}
 
 export class ExperienceEmbeddingEligibilityError extends Error {
   constructor(message: string) {
     super(message)
     this.name = "ExperienceEmbeddingEligibilityError"
+  }
+}
+
+export class ExperienceDynamicCollectionPlacementError extends Error {
+  constructor() {
+    super(
+      "The infinite collection feed must be the homepage's only dynamic collection block and its final top-level block.",
+    )
+    this.name = "ExperienceDynamicCollectionPlacementError"
+  }
+}
+
+function isDynamicCollectionBlock(value: unknown): boolean {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false
+  const record = value as Record<string, unknown>
+  return (
+    record.t === "mediaCollection" &&
+    record.itemsSource === "dynamicCollections"
+  )
+}
+
+function assertDynamicCollectionPlacement(
+  blocks: readonly unknown[],
+  isHomepage: boolean,
+): void {
+  let count = 0
+  let nested = false
+
+  const visit = (value: unknown, isTopLevel: boolean) => {
+    if (isDynamicCollectionBlock(value)) {
+      count += 1
+      if (!isTopLevel) nested = true
+    }
+    if (!value || typeof value !== "object") return
+    for (const child of Object.values(value as Record<string, unknown>)) {
+      if (!Array.isArray(child)) continue
+      for (const item of child) visit(item, false)
+    }
+  }
+
+  for (const block of blocks) visit(block, true)
+  if (count === 0) return
+  if (
+    !isHomepage ||
+    nested ||
+    count !== 1 ||
+    !isDynamicCollectionBlock(blocks[blocks.length - 1])
+  ) {
+    throw new ExperienceDynamicCollectionPlacementError()
   }
 }
 
@@ -73,7 +146,7 @@ function refreshManifestAfterResponse(
   }
 }
 
-function snapshotExperienceLocale(locale: {
+type LocaleSnapshotSource = {
   id: string
   experienceId: string
   locale: string
@@ -90,11 +163,12 @@ function snapshotExperienceLocale(locale: {
   publishedAt: Date | null
   createdAt?: Date
   updatedAt?: Date
-}): Prisma.InputJsonObject {
-  return snapshotEnvelope({
-    id: locale.id,
-    experienceId: locale.experienceId,
-    locale: locale.locale,
+}
+
+function draftDataFromLocale(
+  locale: LocaleSnapshotSource,
+): ExperienceLocaleDraftData {
+  return ExperienceLocaleDraftDataSchema.parse({
     slug: locale.slug,
     isHomepage: locale.isHomepage,
     pathSegment: locale.pathSegment,
@@ -103,12 +177,16 @@ function snapshotExperienceLocale(locale: {
     ogTitle: locale.ogTitle,
     ogDescription: locale.ogDescription,
     ogImageUrl: locale.ogImageUrl,
-    blocks: locale.blocks as Prisma.InputJsonValue,
-    status: locale.status,
-    publishedAt: locale.publishedAt?.toISOString() ?? null,
-    createdAt: locale.createdAt?.toISOString() ?? null,
-    updatedAt: locale.updatedAt?.toISOString() ?? null,
+    blocks: locale.blocks,
   })
+}
+
+function snapshotExperienceLocale(
+  locale: LocaleSnapshotSource,
+): Prisma.InputJsonObject {
+  return snapshotEnvelope(
+    draftDataFromLocale(locale) as unknown as Prisma.InputJsonObject,
+  )
 }
 
 function asSnapshotRecord(value: unknown): Record<string, unknown> | null {
@@ -117,15 +195,203 @@ function asSnapshotRecord(value: unknown): Record<string, unknown> | null {
     : null
 }
 
+function effectiveDraftData(
+  canonical: LocaleSnapshotSource,
+  snapshot: unknown,
+): ExperienceLocaleDraftData {
+  const base = draftDataFromLocale(canonical)
+  const envelope = asSnapshotRecord(snapshot)
+  const data = asSnapshotRecord(envelope?.data)
+  // Older and SEO-created revisions may be partial. Adopt them by filling all
+  // missing locale-owned fields from canonical before the next write.
+  return ExperienceLocaleDraftDataSchema.parse({ ...base, ...(data ?? {}) })
+}
+
+function effectiveLocale<T extends LocaleSnapshotSource>(
+  canonical: T,
+  data: ExperienceLocaleDraftData,
+): Omit<T, keyof ExperienceLocaleDraftData> & ExperienceLocaleDraftData {
+  return { ...canonical, ...data }
+}
+
 export class ExperienceService {
   constructor(private prisma: PrismaClient) {}
+
+  private async stageLocaleDraft({
+    id,
+    patch,
+    user,
+    revisedByKind,
+    reason,
+  }: {
+    id: string
+    patch: Partial<ExperienceLocaleDraftData>
+    user: Principal | null
+    revisedByKind: "USER" | "AI"
+    reason: string
+  }) {
+    return this.prisma.$transaction(
+      async (tx) => {
+        await tx.$queryRaw(
+          Prisma.sql`SELECT id FROM experience_locale WHERE id = ${id} FOR UPDATE`,
+        )
+        const canonical = await tx.experienceLocale.findUniqueOrThrow({
+          where: { id },
+          include: {
+            experience: {
+              select: { ownerId: true, archivedAt: true, isTemplate: true },
+            },
+          },
+        })
+        if (!canEditExperienceLocale(user, canonical)) {
+          throw new ForbiddenError()
+        }
+
+        const activeDraft = await tx.contentRevision.findFirst({
+          where: {
+            entityType: "ExperienceLocale",
+            entityId: id,
+            status: "DRAFT",
+          },
+          orderBy: { revisedAt: "desc" },
+        })
+        const base = activeDraft
+          ? effectiveDraftData(canonical, activeDraft.snapshot)
+          : draftDataFromLocale(canonical)
+        const data = ExperienceLocaleDraftDataSchema.parse({
+          ...base,
+          ...patch,
+        })
+        assertDynamicCollectionPlacement(data.blocks, data.isHomepage)
+        const snapshot = snapshotEnvelope(
+          data as unknown as Prisma.InputJsonObject,
+        )
+        const revisedAt = new Date()
+
+        const draft = activeDraft
+          ? await tx.contentRevision.update({
+              where: { id: activeDraft.id },
+              data: {
+                snapshot,
+                // SEO-created drafts may predate preview capabilities. Mint
+                // while holding the locale lock so adoption is atomic.
+                previewToken:
+                  activeDraft.previewToken ??
+                  randomBytes(32).toString("base64url"),
+                revisedBy: user?.id ?? null,
+                revisedByKind,
+                reason,
+                revisedAt,
+              },
+            })
+          : await tx.contentRevision.create({
+              data: {
+                entityType: "ExperienceLocale",
+                entityId: id,
+                snapshot,
+                status: "DRAFT",
+                previewToken: randomBytes(32).toString("base64url"),
+                revisedBy: user?.id ?? null,
+                revisedByKind,
+                reason,
+                revisedAt,
+              },
+            })
+
+        // The editorial draft is shared. Once a human/AI editor changes an
+        // SEO-materialized treatment it is no longer the exact approved payload.
+        await tx.seoProposalMaterialization.updateMany({
+          where: {
+            contentRevisionId: draft.id,
+            status: { not: "STALE" },
+          },
+          data: { status: "STALE" },
+        })
+
+        return {
+          canonical,
+          beforeEffective: effectiveLocale(canonical, base),
+          effective: effectiveLocale(canonical, data),
+          activeDraft: draft,
+        }
+      },
+      // The locale row lock serializes this shared draft. READ COMMITTED lets
+      // a waiting save observe and merge the preceding committed draft,
+      // avoiding Serializable P2034 aborts while preserving last-save-wins.
+      { isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted },
+    )
+  }
+
+  async getLocaleDraftState({
+    id,
+    user,
+  }: {
+    id: string
+    user: Principal | null
+  }) {
+    if (!hasPermission(user, "read:experiences")) throw new ForbiddenError()
+    return this.prisma.$transaction(
+      async (tx) => {
+        await tx.$queryRaw(
+          Prisma.sql`SELECT id FROM experience_locale WHERE id = ${id} FOR UPDATE`,
+        )
+        const canonical = await tx.experienceLocale.findUniqueOrThrow({
+          where: { id },
+          include: {
+            experience: {
+              select: { ownerId: true, archivedAt: true, isTemplate: true },
+            },
+          },
+        })
+        // Draft snapshots and preview capabilities are write-surface data.
+        // Enforce ownership/state ABAC before even looking up the revision.
+        if (
+          !canEditExperienceLocale(user, canonical) &&
+          !canPublishExperienceLocale(user, canonical)
+        ) {
+          throw new ForbiddenError()
+        }
+
+        let activeDraft = await tx.contentRevision.findFirst({
+          where: {
+            entityType: "ExperienceLocale",
+            entityId: id,
+            status: "DRAFT",
+          },
+          orderBy: { revisedAt: "desc" },
+        })
+        if (activeDraft && activeDraft.previewToken === null) {
+          activeDraft = await tx.contentRevision.update({
+            where: { id: activeDraft.id },
+            data: { previewToken: randomBytes(32).toString("base64url") },
+          })
+        }
+        return {
+          canonical,
+          effective: activeDraft
+            ? effectiveLocale(
+                canonical,
+                effectiveDraftData(canonical, activeDraft.snapshot),
+              )
+            : effectiveLocale(canonical, draftDataFromLocale(canonical)),
+          activeDraft,
+        }
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted },
+    )
+  }
 
   async create({
     input: raw,
     user,
+    draftAttribution,
   }: {
     input: unknown
     user: Principal | null
+    draftAttribution?: {
+      revisedByKind: "USER" | "AI"
+      reason: string
+    }
   }) {
     const input = CreateExperienceInput.parse(raw)
     // Defense-in-depth: also checked by scope-auth at the resolver layer.
@@ -133,23 +399,192 @@ export class ExperienceService {
       throw new ForbiddenError()
     }
 
+    assertDynamicCollectionPlacement(input.blocks, false)
+
     const blocks = await backfillExperienceVideoLanguageIds({
       prisma: this.prisma,
       blocks: input.blocks,
       locale: input.locale,
     })
 
+    return this.prisma.$transaction(async (tx) => {
+      const experience = await tx.experience.create({
+        data: {
+          isTemplate: input.isTemplate,
+          ownerId: user?.id ?? null,
+          locales: {
+            create: {
+              locale: input.locale,
+              slug: input.slug,
+              // Required identity lives canonically; authored content starts
+              // in the staged aggregate even before the first publication.
+              blocks: [],
+            },
+          },
+        },
+        include: { locales: true },
+      })
+      const locale = experience.locales[0]
+      if (!locale) throw new Error("Experience locale creation failed.")
+      const data = ExperienceLocaleDraftDataSchema.parse({
+        ...draftDataFromLocale(locale),
+        title: input.title ?? null,
+        metaDescription: input.metaDescription ?? null,
+        blocks: blocks.blocks,
+      })
+      await tx.contentRevision.create({
+        data: {
+          entityType: "ExperienceLocale",
+          entityId: locale.id,
+          snapshot: snapshotEnvelope(data as unknown as Prisma.InputJsonObject),
+          status: "DRAFT",
+          previewToken: randomBytes(32).toString("base64url"),
+          revisedBy: user?.id ?? null,
+          revisedByKind: draftAttribution?.revisedByKind ?? "USER",
+          reason:
+            draftAttribution?.reason ??
+            "Initial Experience locale draft created",
+        },
+      })
+      return {
+        ...experience,
+        locales: [
+          effectiveLocale(locale, data),
+          ...experience.locales.slice(1),
+        ],
+      }
+    })
+  }
+
+  async duplicate({
+    input: raw,
+    user,
+  }: {
+    input: unknown
+    user: Principal | null
+  }) {
+    const input = DuplicateExperienceInput.parse(raw)
+
+    // Gate write permission before loading the source. This prevents callers
+    // without create authority from probing draft or archived Experience ids.
+    if (!user?.id || !hasPermission(user, "write:experiences")) {
+      throw new ForbiddenError()
+    }
+    const ownerId = user.id
+
+    const source = await this.prisma.experience.findFirst({
+      where: { id: input.id },
+      select: {
+        isTemplate: true,
+        archivedAt: true,
+        locales: {
+          orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+          select: {
+            id: true,
+            experienceId: true,
+            locale: true,
+            slug: true,
+            isHomepage: true,
+            pathSegment: true,
+            title: true,
+            metaDescription: true,
+            ogTitle: true,
+            ogDescription: true,
+            ogImageUrl: true,
+            blocks: true,
+            status: true,
+            publishedAt: true,
+          },
+        },
+      },
+    })
+    if (!source) {
+      throw new NotFoundError("Experience", input.id)
+    }
+    if (!canViewExperience(user, source)) {
+      throw new ForbiddenError()
+    }
+
+    if (source.locales.length === 0) {
+      throw new ExperienceDuplicationError()
+    }
+
+    const activeDrafts = await this.prisma.contentRevision.findMany({
+      where: {
+        entityType: "ExperienceLocale",
+        entityId: { in: source.locales.map((locale) => locale.id) },
+        status: "DRAFT",
+      },
+      orderBy: [{ revisedAt: "desc" }, { id: "asc" }],
+      select: { entityId: true, snapshot: true },
+    })
+    const activeDraftByLocaleId = new Map<string, unknown>()
+    for (const draft of activeDrafts) {
+      if (!activeDraftByLocaleId.has(draft.entityId)) {
+        activeDraftByLocaleId.set(draft.entityId, draft.snapshot)
+      }
+    }
+
+    const sourceLocales = source.locales.map((canonical) => {
+      const snapshot = activeDraftByLocaleId.get(canonical.id)
+      let locale = canonical
+      if (snapshot !== undefined) {
+        try {
+          locale = effectiveLocale(
+            canonical,
+            effectiveDraftData(canonical, snapshot),
+          )
+        } catch {
+          throw new ExperienceDuplicationError()
+        }
+      }
+      const blocks = BlocksSchema.safeParse(locale.blocks)
+      if (!blocks.success) {
+        throw new ExperienceDuplicationError()
+      }
+      return locale
+    })
+
+    const localeCodes = Array.from(
+      new Set(sourceLocales.map((locale) => locale.locale)),
+    )
+    const existingSlugs = await this.prisma.experienceLocale.findMany({
+      where: {
+        locale: { in: localeCodes },
+      },
+      select: { locale: true, slug: true },
+    })
+    const usedSlugsByLocale = new Map(
+      localeCodes.map((locale) => [locale, new Set<string>()]),
+    )
+    for (const row of existingSlugs) {
+      usedSlugsByLocale.get(row.locale)!.add(row.slug)
+    }
+
     return this.prisma.experience.create({
       data: {
-        isTemplate: input.isTemplate,
-        ownerId: user?.id ?? null,
+        // Template classification is authored canonical state, not publication
+        // state. Preserve it so route-only template blocks remain editable.
+        isTemplate: source.isTemplate,
+        ownerId,
         locales: {
-          create: {
-            locale: input.locale,
-            slug: input.slug,
-            title: input.title,
-            blocks: blocks.blocks as Prisma.InputJsonValue,
-          },
+          create: sourceLocales.map((locale) => ({
+            locale: locale.locale,
+            slug: availableDuplicateSlug(
+              locale.slug,
+              usedSlugsByLocale.get(locale.locale)!,
+            ),
+            isHomepage: false,
+            pathSegment: locale.pathSegment,
+            title: locale.title,
+            metaDescription: locale.metaDescription,
+            ogTitle: locale.ogTitle,
+            ogDescription: locale.ogDescription,
+            ogImageUrl: locale.ogImageUrl,
+            blocks: locale.blocks as Prisma.InputJsonValue,
+            status: "DRAFT",
+            publishedAt: null,
+          })),
         },
       },
       include: { locales: true },
@@ -179,20 +614,43 @@ export class ExperienceService {
       throw new ForbiddenError()
     }
 
+    assertDynamicCollectionPlacement(input.blocks, input.isHomepage ?? false)
+
     const { experienceId, ...data } = input
     const blocks = await backfillExperienceVideoLanguageIds({
       prisma: this.prisma,
       blocks: input.blocks,
       locale: input.locale,
     })
-    return this.prisma.experienceLocale.create({
-      data: {
-        ...data,
-        blocks: blocks.blocks as Prisma.InputJsonValue,
-        experience: {
-          connect: { id: experienceId },
+    return this.prisma.$transaction(async (tx) => {
+      const locale = await tx.experienceLocale.create({
+        data: {
+          experienceId,
+          locale: data.locale,
+          slug: data.slug,
+          blocks: [],
         },
-      },
+      })
+      const draftData = ExperienceLocaleDraftDataSchema.parse({
+        ...draftDataFromLocale(locale),
+        ...data,
+        blocks: blocks.blocks,
+      })
+      await tx.contentRevision.create({
+        data: {
+          entityType: "ExperienceLocale",
+          entityId: locale.id,
+          snapshot: snapshotEnvelope(
+            draftData as unknown as Prisma.InputJsonObject,
+          ),
+          status: "DRAFT",
+          previewToken: randomBytes(32).toString("base64url"),
+          revisedBy: user?.id ?? null,
+          revisedByKind: "USER",
+          reason: "Initial Experience locale draft created",
+        },
+      })
+      return effectiveLocale(locale, draftData)
     })
   }
 
@@ -313,7 +771,7 @@ export class ExperienceService {
       throw new ForbiddenError()
     }
 
-    const { id, isTemplate, ...data } = input
+    const { id, ...data } = input
     if (input.blocks !== undefined) {
       const blocks = await backfillExperienceVideoLanguageIds({
         prisma: this.prisma,
@@ -323,58 +781,14 @@ export class ExperienceService {
       data.blocks = blocks.blocks as typeof data.blocks
     }
 
-    const updated = await this.prisma.$transaction(async (tx) => {
-      await tx.contentRevision.create({
-        data: {
-          entityType: "ExperienceLocale",
-          entityId: existing.id,
-          snapshot: snapshotExperienceLocale(existing),
-          status: "HISTORICAL",
-          revisedBy: user?.id ?? null,
-          revisedByKind: "USER",
-          reason: "Locale updated from admin editor",
-        },
-      })
-
-      if (typeof isTemplate === "boolean") {
-        await tx.experience.update({
-          where: { id: existing.experienceId },
-          data: { isTemplate },
-        })
-      }
-
-      return tx.experienceLocale.update({
-        where: { id },
-        data,
-      })
+    const staged = await this.stageLocaleDraft({
+      id,
+      patch: data,
+      user,
+      revisedByKind: "USER",
+      reason: "Locale draft saved from admin editor",
     })
-
-    // Fire-and-forget: refresh web's ISR cache for any update that
-    // touches a PUBLISHED locale. Draft-only edits never affected
-    // public pages so they don't need revalidation. `emitRevalidateWebhook`
-    // never throws and is intentionally not awaited so a sick web
-    // instance can't add the 5s timeout budget to admin's publish UX.
-    if (updated.status === "PUBLISHED") {
-      void emitRevalidateWebhook({
-        model: "experience",
-        slug: updated.slug,
-        locale: updated.locale,
-      })
-      if (updated.isHomepage || typeof isTemplate === "boolean") {
-        // Homepage / template flag changes ripple through the watch
-        // settings derived view — refresh that too.
-        void emitRevalidateWebhook({
-          model: "watch-setting",
-          slug: null,
-          locale: updated.locale,
-        })
-      }
-      refreshManifestAfterResponse({
-        prisma: this.prisma,
-        reason: "experience.update",
-      })
-    }
-    return updated
+    return staged.effective
   }
 
   async publishLocale({
@@ -413,27 +827,79 @@ export class ExperienceService {
       throw new ForbiddenError()
     }
 
-    const published = await this.prisma.$transaction(async (tx) => {
-      await tx.contentRevision.create({
-        data: {
-          entityType: "ExperienceLocale",
-          entityId: existing.id,
-          snapshot: snapshotExperienceLocale(existing),
-          status: "HISTORICAL",
-          revisedBy: user?.id ?? null,
-          revisedByKind: "USER",
-          reason: "Locale published from admin editor",
-        },
-      })
+    const { published, previous } = await this.prisma.$transaction(
+      async (tx) => {
+        await tx.$queryRaw(
+          Prisma.sql`SELECT id FROM experience_locale WHERE id = ${input.id} FOR UPDATE`,
+        )
+        const canonical = await tx.experienceLocale.findUniqueOrThrow({
+          where: { id: input.id },
+          include: {
+            experience: { select: { ownerId: true, archivedAt: true } },
+          },
+        })
+        if (!canPublishExperienceLocale(user, canonical))
+          throw new ForbiddenError()
 
-      return tx.experienceLocale.update({
-        where: { id: input.id },
-        data: {
-          status: "PUBLISHED",
-          publishedAt: new Date(),
-        },
-      })
-    })
+        let draft = await tx.contentRevision.findFirst({
+          where: {
+            entityType: "ExperienceLocale",
+            entityId: input.id,
+            status: "DRAFT",
+          },
+          orderBy: { revisedAt: "desc" },
+        })
+        // Compatibility for rows created before staged revisions existed.
+        if (!draft && canonical.status === "DRAFT") {
+          draft = await tx.contentRevision.create({
+            data: {
+              entityType: "ExperienceLocale",
+              entityId: canonical.id,
+              snapshot: snapshotExperienceLocale(canonical),
+              status: "DRAFT",
+              previewToken: randomBytes(32).toString("base64url"),
+              revisedBy: user?.id ?? null,
+              revisedByKind: "USER",
+              reason: "Legacy unpublished locale adopted for first publish",
+            },
+          })
+        }
+        if (!draft) {
+          throw new NotFoundError("Active ExperienceLocale draft", input.id)
+        }
+        const draftData = effectiveDraftData(canonical, draft.snapshot)
+        assertDynamicCollectionPlacement(draftData.blocks, draftData.isHomepage)
+        const appliedAt = new Date()
+
+        await tx.contentRevision.create({
+          data: {
+            entityType: "ExperienceLocale",
+            entityId: canonical.id,
+            snapshot: snapshotExperienceLocale(canonical),
+            status: "HISTORICAL",
+            revisedBy: user?.id ?? null,
+            revisedByKind: "USER",
+            reason: "Canonical locale before draft publication",
+          },
+        })
+
+        const next = await tx.experienceLocale.update({
+          where: { id: input.id },
+          data: {
+            ...draftData,
+            blocks: draftData.blocks as Prisma.InputJsonValue,
+            status: "PUBLISHED",
+            publishedAt: appliedAt,
+          },
+        })
+        await tx.contentRevision.update({
+          where: { id: draft.id },
+          data: { status: "HISTORICAL", appliedAt },
+        })
+        return { published: next, previous: canonical }
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+    )
 
     // Fire-and-forget: a fresh publish always changes the public surface.
     // `emitRevalidateWebhook` never throws and is intentionally not awaited
@@ -443,7 +909,14 @@ export class ExperienceService {
       slug: published.slug,
       locale: published.locale,
     })
-    if (published.isHomepage) {
+    if (previous.slug !== published.slug) {
+      void emitRevalidateWebhook({
+        model: "experience",
+        slug: previous.slug,
+        locale: previous.locale,
+      })
+    }
+    if (published.isHomepage || previous.isHomepage) {
       void emitRevalidateWebhook({
         model: "watch-setting",
         slug: null,
@@ -455,6 +928,59 @@ export class ExperienceService {
       reason: "experience.publish",
     })
     return published
+  }
+
+  async discardLocaleDraft({
+    input: raw,
+    user,
+  }: {
+    input: unknown
+    user: Principal | null
+  }) {
+    const input = DiscardExperienceLocaleDraftInput.parse(raw)
+    const existing = await this.prisma.experienceLocale.findUniqueOrThrow({
+      where: { id: input.id },
+      include: {
+        experience: { select: { ownerId: true, archivedAt: true } },
+      },
+    })
+    if (!canEditExperienceLocale(user, existing)) throw new ForbiddenError()
+
+    return this.prisma.$transaction(
+      async (tx) => {
+        await tx.$queryRaw(
+          Prisma.sql`SELECT id FROM experience_locale WHERE id = ${input.id} FOR UPDATE`,
+        )
+        const canonical = await tx.experienceLocale.findUniqueOrThrow({
+          where: { id: input.id },
+          include: {
+            experience: { select: { ownerId: true, archivedAt: true } },
+          },
+        })
+        const draft = await tx.contentRevision.findFirst({
+          where: {
+            entityType: "ExperienceLocale",
+            entityId: input.id,
+            status: "DRAFT",
+          },
+        })
+        if (draft) {
+          await tx.seoProposalMaterialization.updateMany({
+            where: {
+              contentRevisionId: draft.id,
+              status: { not: "STALE" },
+            },
+            data: { status: "STALE" },
+          })
+          await tx.contentRevision.update({
+            where: { id: draft.id },
+            data: { status: "DISCARDED" },
+          })
+        }
+        return canonical
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted },
+    )
   }
 
   async restoreLocaleRevision({
@@ -508,94 +1034,25 @@ export class ExperienceService {
       throw new ForbiddenError()
     }
 
+    const restoredData = effectiveDraftData(existing, revision.snapshot)
     const restoredBlocks = await backfillExperienceVideoLanguageIds({
       prisma: this.prisma,
-      blocks: snapshot.blocks,
+      blocks: restoredData.blocks,
       locale: existing.locale,
     })
-
-    const restored = await this.prisma.$transaction(async (tx) => {
-      const restoredAt = new Date()
-
-      await tx.contentRevision.update({
-        where: { id: revision.id },
-        data: {
-          appliedAt: restoredAt,
-        },
-      })
-
-      return tx.experienceLocale.update({
-        where: { id: existing.id },
-        data: {
-          slug:
-            typeof snapshot.slug === "string" ? snapshot.slug : existing.slug,
-          isHomepage:
-            typeof snapshot.isHomepage === "boolean"
-              ? snapshot.isHomepage
-              : existing.isHomepage,
-          pathSegment:
-            typeof snapshot.pathSegment === "string"
-              ? snapshot.pathSegment
-              : snapshot.pathSegment === null
-                ? null
-                : existing.pathSegment,
-          title:
-            typeof snapshot.title === "string"
-              ? snapshot.title
-              : snapshot.title === null
-                ? null
-                : existing.title,
-          metaDescription:
-            typeof snapshot.metaDescription === "string"
-              ? snapshot.metaDescription
-              : snapshot.metaDescription === null
-                ? null
-                : existing.metaDescription,
-          ogTitle:
-            typeof snapshot.ogTitle === "string"
-              ? snapshot.ogTitle
-              : snapshot.ogTitle === null
-                ? null
-                : existing.ogTitle,
-          ogDescription:
-            typeof snapshot.ogDescription === "string"
-              ? snapshot.ogDescription
-              : snapshot.ogDescription === null
-                ? null
-                : existing.ogDescription,
-          ogImageUrl:
-            typeof snapshot.ogImageUrl === "string"
-              ? snapshot.ogImageUrl
-              : snapshot.ogImageUrl === null
-                ? null
-                : existing.ogImageUrl,
-          blocks: restoredBlocks.blocks as Prisma.InputJsonValue,
-          status: "DRAFT",
-          updatedAt: restoredAt,
-        },
-      })
+    const staged = await this.stageLocaleDraft({
+      id: existing.id,
+      patch: {
+        ...restoredData,
+        blocks: ExperienceLocaleDraftDataSchema.shape.blocks.parse(
+          restoredBlocks.blocks,
+        ),
+      },
+      user,
+      revisedByKind: "USER",
+      reason: `Restored revision ${revision.id} into active draft`,
     })
-
-    if (existing.status === "PUBLISHED") {
-      void emitRevalidateWebhook({
-        model: "experience",
-        slug: existing.slug,
-        locale: existing.locale,
-      })
-      if (existing.isHomepage) {
-        void emitRevalidateWebhook({
-          model: "watch-setting",
-          slug: null,
-          locale: existing.locale,
-        })
-      }
-      refreshManifestAfterResponse({
-        prisma: this.prisma,
-        reason: "experience.update",
-      })
-    }
-
-    return restored
+    return staged.effective
   }
 
   async archive({
@@ -737,19 +1194,6 @@ export class ExperienceService {
       throw new ForbiddenError()
     }
 
-    // Full-precision optimistic-concurrency token. `experience_locale.
-    // updated_at` is a bare TIMESTAMPTZ (microsecond precision), but Prisma
-    // reads it into a JS Date (millisecond precision) — so comparing
-    // `where updated_at = <Date>` silently fails for any row whose stored
-    // value carries sub-millisecond digits (set by a non-Prisma writer:
-    // now()/raw SQL/import/background enrich), tripping the guard on every
-    // apply. Capture the value as text to preserve full precision; the
-    // guard below compares text-to-text inside the locked transaction.
-    const baselineRows = await this.prisma.$queryRaw<{ u: string }[]>(
-      Prisma.sql`SELECT updated_at::text AS u FROM experience_locale WHERE id = ${parsed.id}`,
-    )
-    const baselineUpdatedAtText = baselineRows[0]?.u ?? null
-
     const { id, ...data } = parsed
     if (parsed.blocks !== undefined) {
       const blocks = await backfillExperienceVideoLanguageIds({
@@ -759,56 +1203,13 @@ export class ExperienceService {
       })
       data.blocks = blocks.blocks as typeof data.blocks
     }
-    const result = await this.prisma.$transaction(async (tx) => {
-      // Optimistic-concurrency guard with a row lock. `SELECT ... FOR
-      // UPDATE` locks the row for the rest of this transaction so no
-      // writer can slip in between the check and the write. We compare the
-      // CURRENT full-precision `updated_at::text` against the baseline
-      // captured above (full precision, same `::text` form): if they
-      // differ, a concurrent manual save or chat turn changed the row
-      // since we read it, so we throw — surfacing "reload and retry"
-      // instead of clobbering the other writer (lost update). Throwing
-      // rolls back the transaction, so no orphan HISTORICAL revision row
-      // is left behind.
-      const lockedRows = await tx.$queryRaw<{ u: string }[]>(
-        Prisma.sql`SELECT updated_at::text AS u FROM experience_locale WHERE id = ${id} FOR UPDATE`,
-      )
-      if (
-        lockedRows.length === 0 ||
-        lockedRows[0]?.u !== baselineUpdatedAtText
-      ) {
-        throw new ConcurrentModificationError("ExperienceLocale", id)
-      }
-
-      await tx.contentRevision.create({
-        data: {
-          entityType: "ExperienceLocale",
-          entityId: existing.id,
-          snapshot: snapshotExperienceLocale(existing),
-          status: "HISTORICAL",
-          revisedBy: user?.id ?? null,
-          revisedByKind: "AI",
-          reason,
-        },
-      })
-
-      // Row is locked and version-verified above, so a plain update is
-      // safe — no `updatedAt` predicate (which would re-introduce the
-      // millisecond-truncation mismatch).
-      const updated = await tx.experienceLocale.update({
-        where: { id },
-        data: data as Prisma.ExperienceLocaleUncheckedUpdateInput,
-      })
-
-      return { before: existing, after: updated }
+    const staged = await this.stageLocaleDraft({
+      id,
+      patch: data,
+      user,
+      revisedByKind: "AI",
+      reason,
     })
-
-    // Fire-and-forget web revalidation, mirroring update/publish above.
-    void emitRevalidateWebhook({
-      model: "experience",
-      slug: result.after.slug,
-      locale: result.after.locale,
-    })
-    return result
+    return { before: staged.beforeEffective, after: staged.effective }
   }
 }

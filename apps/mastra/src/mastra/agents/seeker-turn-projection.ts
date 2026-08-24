@@ -27,6 +27,10 @@
  */
 
 import {
+  projectFollowUps,
+  SUGGEST_FOLLOW_UPS_TOOL_NAME,
+} from "../seeker-follow-ups"
+import {
   FEATURABLE_AVAILABILITY_KIND,
   PLAYBACK_ID_PATTERN,
   SLUG_PATTERN,
@@ -87,6 +91,12 @@ export type SeekerTurnAttachments = {
   grounded: boolean
   video?: SeekerWireVideo
   videoRejection?: SeekerVideoRejection
+  /**
+   * Suggested follow-up questions (feat-366, KTD3/KTD4) — empty when the turn
+   * carries none. The WIRE omits the field when empty (R7); callers own that
+   * omission, matching how `video` is omitted at the frame assembly.
+   */
+  followUps: string[]
   /** E7 signal: the turn used a video tool but never called retrieveAnswer. */
   ungroundedVideoTurn: boolean
 }
@@ -293,6 +303,36 @@ function resolveDeclaredVideo(chunks: readonly SeekerToolChunk[]): {
 }
 
 /**
+ * Resolve a turn's suggested follow-up questions from its chunks (feat-366,
+ * KTD3). Reads the LAST `suggestFollowUps` chunk (last-wins, matching
+ * `extractSources`) and re-validates its `result.questions` through the
+ * shared drop-never-repair projection. Pure + total: any shape mismatch
+ * degrades to [].
+ *
+ * Scope, stated precisely (review-corrected): only the REPLAY adapter
+ * synthesizes this chunk (from stored `content.metadata.seekerFollowUps`) —
+ * the chunk name is never a real tool; the generator is zero-tool (KTD5).
+ * The LIVE path never carries such a chunk: the route's terminal frame takes
+ * its questions straight from the generation outcome, which
+ * `generateSeekerFollowUps` already ran through the same `projectFollowUps`.
+ * So the single re-validation point both paths share is the pure
+ * `projectFollowUps` function — live via the generator, replay via this
+ * resolver — and `SeekerTurnAttachments.followUps` is populated only on
+ * replay (always `[]` on live turns).
+ */
+export function resolveStoredFollowUps(
+  chunks: readonly SeekerToolChunk[],
+): string[] {
+  let last: SeekerToolChunk | undefined
+  for (const chunk of chunks) {
+    if (chunk.toolName === SUGGEST_FOLLOW_UPS_TOOL_NAME) last = chunk
+  }
+  if (!last) return []
+  const result = last.result as { questions?: unknown } | null | undefined
+  return projectFollowUps(result?.questions)
+}
+
+/**
  * Resolve one turn's wire attachments from its normalized tool chunks — the
  * single entry point both routes call after adapting their native shape.
  *
@@ -303,6 +343,7 @@ export function resolveTurnAttachments(
 ): SeekerTurnAttachments {
   const { sources, grounded } = extractSources(chunks)
   const { video, rejection } = resolveDeclaredVideo(chunks)
+  const followUps = resolveStoredFollowUps(chunks)
 
   let usedVideoTool = false
   let retrieved = false
@@ -322,6 +363,7 @@ export function resolveTurnAttachments(
     grounded,
     ...(video ? { video } : {}),
     ...(rejection ? { videoRejection: rejection } : {}),
+    followUps,
     ungroundedVideoTurn: usedVideoTool && !retrieved,
   }
 }

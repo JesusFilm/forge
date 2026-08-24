@@ -27,6 +27,7 @@
     "eval:seeker:experiment:run": "pnpm --dir ../.. exec tsx apps/mastra/src/evals/seeker/experiments/command.ts",
     "eval:seeker:experiment:verdict": "pnpm --dir ../.. exec tsx apps/mastra/src/evals/seeker/experiments/cli.ts",
     "eval:seeker:experiment:promote": "pnpm --dir ../.. exec tsx apps/mastra/src/evals/seeker/experiments/cli.ts promote",
+    "smoke:followups-pg": "pnpm --dir ../.. exec tsx apps/mastra/src/scripts/followups-pg-smoke.ts",
     "seed:search-eval": "pnpm --dir ../.. exec tsx apps/mastra/src/scripts/seed-search-eval-from-artifact.ts",
     "seed:search-eval:prod": "MASTRA_NATIVE_EVAL_ENVIRONMENT=local pnpm --dir ../.. exec tsx apps/mastra/src/scripts/seed-search-eval-from-artifact.ts --artifact docs/search-eval-baselines/temporary/prod-seed-baseline-2026-06-02-export.json --environment-label local",
     "typecheck": "tsc --noEmit",

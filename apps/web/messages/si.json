@@ -191,6 +191,7 @@
     "loadMoreFailed": "තවත් ප්‍රතිඵල පූරණය කිරීමට නොහැකි විය.",
     "searching": "සෙවමින්...",
     "connectionHint": "කරුණාකර ඔබගේ සම්බන්ධතාවය පරීක්ෂා කර නැවත උත්සාහ කරන්න.",
+    "rateLimitHint": "ඉල්ලීම් වැඩියි. කරුණාකර මිනිත්තුවකින් නැවත උත්සාහ කරන්න.",
     "retrySearch": "සෙවීම නැවත උත්සාහ කරන්න",
     "retry": "නැවත උත්සාහ කරන්න",
     "noResults": "\"{query}\" සඳහා ප්‍රතිඵල නැත",
@@ -225,7 +226,9 @@
   "HeroPlayer": {
     "playWithSound": "දැන් නරඹන්න",
     "tapToUnmute": "ශබ්දය සක්‍රිය කිරීමට තට්ටු කරන්න",
-    "nextEpisode": "ඊළඟ කථාංගය"
+    "nextEpisode": "ඊළඟ කථාංගය",
+    "audioTranslationCount": "{count, plural, one {# භාෂාවක්} other {# භාෂා}}",
+    "subtitleCount": "උපසිරැසි: {count, plural, one {# භාෂාවක්} other {# භාෂා}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "අන්තර්ගතය පූරණය වෙමින් පවතී",
@@ -538,16 +541,16 @@
     "retryFailed": "අසාර්ථක වූ ඒවා නැවත උත්සාහ කරන්න"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "භාෂා අනුවාදය නොමැත",
+    "eyebrow": "භාෂා අනුවාදය නොමැත",
+    "title": "<contentTitle>{title}</contentTitle> <languageName>{language}</languageName> භාෂාවෙන් නොමැත",
+    "actionsLabel": "නැරඹීමට ඇති විකල්ප",
+    "browseInLanguage": "{language} භාෂාවෙන් වීඩියෝ බලන්න",
+    "backToSearch": "සෙවීමට ආපසු",
+    "audioVersionsTitle": "වෙනත් ශ්‍රව්‍ය අනුවාද",
+    "audioVersionsDescription": "මෙම වීඩියෝව දිගටම නැරඹීමට ශ්‍රව්‍ය භාෂාවක් තෝරන්න.",
+    "languageVersionLabel": "ශ්‍රව්‍ය භාෂාව",
+    "selectLanguageVersion": "භාෂා අනුවාදයක් තෝරන්න",
+    "watchSelectedVersion": "තෝරාගත් අනුවාදය බලන්න"
   }
 }

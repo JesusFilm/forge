@@ -191,6 +191,7 @@
     "loadMoreFailed": "Дэлгэрэнгүй үр дүн ачаалж чадсангүй.",
     "searching": "Хайж байна...",
     "connectionHint": "Сүлжээний холболтоо шалгаад дахин оролдоно уу.",
+    "rateLimitHint": "ᠬᠦᠰᠡᠯᠲᠡ ᠳᠡᠩᠳᠡᠭᠦᠦ ᠣᠯᠠᠨ ᠪᠠᠶᠢᠨ᠎ᠠ᠃ ᠨᠢᠭᠡ ᠮᠢᠨᠦ᠋ᠲ ᠤᠨ ᠳᠠᠷᠠᠭ᠎ᠠ ᠳᠠᠬᠢᠨ ᠣᠷᠣᠯᠳᠤᠨ᠎ᠠ ᠤᠤ᠃",
     "retrySearch": "Хайлтыг дахин оролдох",
     "retry": "Дахин оролдох",
     "noResults": "\"{query}\"-д үр дүн алга",
@@ -225,7 +226,9 @@
   "HeroPlayer": {
     "playWithSound": "Одоо үзэх",
     "tapToUnmute": "Дууг нээхэд товшино уу",
-    "nextEpisode": "Дараагийн анги"
+    "nextEpisode": "Дараагийн анги",
+    "audioTranslationCount": "{count, plural, one {# хэл} other {# хэл}}",
+    "subtitleCount": "Хадмал: {count, plural, one {# хэл} other {# хэл}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Контент ачаалж байна",
@@ -538,16 +541,16 @@
     "retryFailed": "ᠠᠮᠵᠢᠯᠲᠠ ᠦᠭᠡᠢ ᠶᠢ ᠳᠠᠬᠢᠨ ᠪᠠᠭᠤᠯᠭᠠᠬᠤ"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "ᠬᠡᠯᠡᠨ ᠦ ᠬᠤᠪᠢᠯᠪᠤᠷᠢ ᠪᠠᠶᠢᠬᠤ ᠦᠭᠡᠢ",
+    "eyebrow": "ᠬᠡᠯᠡᠨ ᠦ ᠬᠤᠪᠢᠯᠪᠤᠷᠢ ᠪᠠᠶᠢᠬᠤ ᠦᠭᠡᠢ",
+    "title": "<contentTitle>{title}</contentTitle> ᠨᠢ <languageName>{language}</languageName> ᠬᠡᠯᠡ ᠪᠡᠷ ᠪᠠᠶᠢᠬᠤ ᠦᠭᠡᠢ",
+    "actionsLabel": "ᠦᠵᠡᠬᠦ ᠪᠣᠯᠤᠮᠵᠢᠲᠤ ᠰᠣᠩᠭᠣᠯᠲᠠ",
+    "browseInLanguage": "{language} ᠬᠡᠯᠡ ᠪᠡᠷ ᠳᠦᠷᠰᠦ ᠪᠢᠴᠢᠯᠭᠡ ᠦᠵᠡᠬᠦ",
+    "backToSearch": "ᠬᠠᠶᠢᠯᠲᠠ ᠳᠤ ᠪᠤᠴᠠᠬᠤ",
+    "audioVersionsTitle": "ᠪᠤᠰᠤᠳ ᠳᠠᠭᠤᠨ ᠤ ᠬᠤᠪᠢᠯᠪᠤᠷᠢ",
+    "audioVersionsDescription": "ᠡᠨᠡ ᠳᠦᠷᠰᠦ ᠪᠢᠴᠢᠯᠭᠡ ᠶᠢ ᠦᠷᠭᠦᠯᠵᠢᠯᠡᠭᠦᠯᠦᠨ ᠦᠵᠡᠬᠦ ᠶᠢᠨ ᠲᠤᠯᠠᠳᠠ ᠳᠠᠭᠤᠨ ᠤ ᠬᠡᠯᠡ ᠶᠢ ᠰᠣᠩᠭᠣᠨ᠎ᠠ ᠤᠤ᠃",
+    "languageVersionLabel": "ᠳᠠᠭᠤᠨ ᠤ ᠬᠡᠯᠡ",
+    "selectLanguageVersion": "ᠬᠡᠯᠡᠨ ᠦ ᠬᠤᠪᠢᠯᠪᠤᠷᠢ ᠰᠣᠩᠭᠣᠬᠤ",
+    "watchSelectedVersion": "ᠰᠣᠩᠭᠣᠭᠰᠠᠨ ᠬᠤᠪᠢᠯᠪᠤᠷᠢ ᠶᠢ ᠦᠵᠡᠬᠦ"
   }
 }

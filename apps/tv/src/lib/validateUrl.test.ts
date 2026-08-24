@@ -1,8 +1,27 @@
 import {
+  cleanStreamUrl,
   validateStreamingUrl,
   validateActionUrl,
   isAllowedQuizUrl,
 } from "./validateUrl"
+
+describe("cleanStreamUrl", () => {
+  it("trims outer whitespace", () => {
+    expect(cleanStreamUrl("  https://stream.mux.com/abc123.m3u8\n")).toBe(
+      "https://stream.mux.com/abc123.m3u8",
+    )
+  })
+
+  it("rejects interior whitespace", () => {
+    expect(cleanStreamUrl("https://stream.mux.com/abc\n123.m3u8")).toBeNull()
+  })
+
+  it("rejects missing and whitespace-only values", () => {
+    expect(cleanStreamUrl(null)).toBeNull()
+    expect(cleanStreamUrl(undefined)).toBeNull()
+    expect(cleanStreamUrl("  \n")).toBeNull()
+  })
+})
 
 describe("isAllowedQuizUrl", () => {
   it("allows https://nextstep.is", () => {

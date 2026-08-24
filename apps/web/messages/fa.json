@@ -191,6 +191,7 @@
     "loadMoreFailed": "بارگذاری نتایج بیشتر ناموفق بود.",
     "searching": "در حال جستجو...",
     "connectionHint": "لطفاً اتصال خود را بررسی کنید و دوباره تلاش کنید.",
+    "rateLimitHint": "درخواست‌ها بیش از حد است. لطفاً یک دقیقه دیگر دوباره تلاش کنید.",
     "retrySearch": "تلاش دوباره برای جستجو",
     "retry": "تلاش دوباره",
     "noResults": "برای «{query}» نتیجه‌ای یافت نشد",
@@ -225,7 +226,9 @@
   "HeroPlayer": {
     "playWithSound": "اکنون تماشا کنید",
     "tapToUnmute": "برای فعال‌کردن صدا بزنید",
-    "nextEpisode": "قسمت بعدی"
+    "nextEpisode": "قسمت بعدی",
+    "audioTranslationCount": "{count, plural, one {# زبان} other {# زبان}}",
+    "subtitleCount": "زیرنویس: {count, plural, one {# زبان} other {# زبان}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "در حال بارگذاری محتوا",
@@ -538,16 +541,16 @@
     "retryFailed": "تلاش دوباره برای دانلودهای ناموفق"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "نسخهٔ زبانی در دسترس نیست",
+    "eyebrow": "نسخهٔ زبانی در دسترس نیست",
+    "title": "<contentTitle>{title}</contentTitle> به زبان <languageName>{language}</languageName> در دسترس نیست",
+    "actionsLabel": "گزینه‌های تماشای موجود",
+    "browseInLanguage": "مرور ویدیوها به زبان {language}",
+    "backToSearch": "بازگشت به جستجو",
+    "audioVersionsTitle": "نسخه‌های صوتی دیگر",
+    "audioVersionsDescription": "برای ادامهٔ تماشای این ویدیو، یک زبان صوتی انتخاب کنید.",
+    "languageVersionLabel": "زبان صوتی",
+    "selectLanguageVersion": "انتخاب نسخهٔ زبانی",
+    "watchSelectedVersion": "تماشای نسخهٔ انتخاب‌شده"
   }
 }

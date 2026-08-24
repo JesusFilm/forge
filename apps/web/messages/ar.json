@@ -191,6 +191,7 @@
     "loadMoreFailed": "تعذر تحميل المزيد من النتائج.",
     "searching": "جارٍ البحث...",
     "connectionHint": "تحقق من اتصالك وحاول مرة أخرى.",
+    "rateLimitHint": "طلبات كثيرة جدًا. يُرجى المحاولة مرة أخرى بعد دقيقة.",
     "retrySearch": "إعادة البحث",
     "retry": "إعادة المحاولة",
     "noResults": "لا توجد نتائج لـ “{query}”",
@@ -225,7 +226,9 @@
   "HeroPlayer": {
     "playWithSound": "شاهد الآن",
     "tapToUnmute": "تشغيل الصوت",
-    "nextEpisode": "الحلقة التالية"
+    "nextEpisode": "الحلقة التالية",
+    "audioTranslationCount": "{count, plural, one {# لغة} two {# لغتان} few {# لغات} many {# لغة} other {# لغة}}",
+    "subtitleCount": "الترجمات المصاحبة: {count, plural, one {# لغة} two {# لغتان} few {# لغات} many {# لغة} other {# لغة}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "جارٍ تحميل المحتوى",

@@ -122,6 +122,53 @@ describe("createLoaders", () => {
     expect(calls).toBe(1)
   })
 
+  it("orders video image rows by display preference", async () => {
+    let argsSeen: unknown = null
+    const prisma = {
+      experience: { findMany: async () => [] },
+      experienceLocale: { findMany: async () => [] },
+      video: { findMany: async () => [] },
+      videoRelation: { findMany: async () => [] },
+      videoLocale: { findMany: async () => [] },
+      videoStudyQuestion: { findMany: async () => [] },
+      bibleCitation: { findMany: async () => [] },
+      language: { findMany: async () => [] },
+      videoImage: {
+        findMany: async (args: unknown) => {
+          argsSeen = args
+          return [
+            {
+              id: "still",
+              videoId: "video-1",
+              videoStill: "https://cdn.example/still.jpg",
+              mobileCinematicHigh: null,
+              mobileCinematicLow: null,
+              thumbnail: "https://cdn.example/thumb.jpg",
+              url: null,
+            },
+            {
+              id: "cinematic",
+              videoId: "video-1",
+              mobileCinematicHigh: "https://cdn.example/cinematic.jpg",
+              mobileCinematicLow: null,
+              videoStill: null,
+              thumbnail: null,
+              url: null,
+            },
+          ]
+        },
+      },
+    } as unknown as Parameters<typeof createLoaders>[0]
+
+    const loaders = createLoaders(prisma)
+    const rows = await loaders.videoImagesByVideoId.load("video-1")
+
+    expect(rows.map((row) => row.id)).toEqual(["cinematic", "still"])
+    expect(argsSeen).toMatchObject({
+      orderBy: [{ videoId: "asc" }, { id: "asc" }],
+    })
+  })
+
   it("batches video loads that share a Pothos query selection", async () => {
     const calls: Array<{ ids: string[]; query: object }> = []
     const prisma = {

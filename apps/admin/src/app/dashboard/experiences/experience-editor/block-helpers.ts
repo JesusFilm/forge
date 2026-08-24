@@ -20,6 +20,7 @@ export type BlockTemplateKey =
   | "easterDates"
   | "infoBlocks"
   | "mediaCollection"
+  | "dynamicMediaCollection"
   | "navigationCarousel"
   | "promoBanner"
   | "promotionalText"
@@ -43,6 +44,7 @@ export const BLOCK_TEMPLATE_KEYS: BlockTemplateKey[] = [
   "routeVideo",
   "routeVideoCarousel",
   "mediaCollection",
+  "dynamicMediaCollection",
   "text",
   "promotionalText",
   "cta",
@@ -435,15 +437,23 @@ export function summarizeBlock(
 
   if (type === "mediaCollection") {
     const items = asArray(value.items)
+    const usesDynamicCollections =
+      asString(value.itemsSource) === "dynamicCollections"
     return {
       key: summaryKey,
-      typeLabel: "Media Collection",
-      title: asString(value.title) || "Media collection",
+      typeLabel: usesDynamicCollections
+        ? "Infinite Collection Feed"
+        : "Media Collection",
+      title:
+        asString(value.title) ||
+        (usesDynamicCollections ? "Keep exploring" : "Media collection"),
       body:
         asString(value.description) ||
-        `${items.length || 0} items in ${asString(value.variant) || "grid"} mode`,
+        (usesDynamicCollections
+          ? "Loads unfeatured database collections as viewers scroll"
+          : `${items.length || 0} items in ${asString(value.variant) || "grid"} mode`),
       tone: "grid",
-      badges: [],
+      badges: usesDynamicCollections ? ["DYNAMIC_COLLECTIONS"] : [],
     }
   }
 
@@ -744,6 +754,23 @@ export function createTemplateBlock(
       ctaLink: "/",
       showItemNumbers: false,
       footerText: "",
+      items: [],
+    }
+  }
+
+  if (template === "dynamicMediaCollection") {
+    return {
+      t: "mediaCollection",
+      sectionKey: `dynamic-media-collection-${index}`,
+      categoryLabel: "Explore more",
+      variant: "carousel",
+      thumbnailOrientation: "horizontal",
+      itemsSource: "dynamicCollections",
+      title: "Keep exploring",
+      subtitle: "Discover more from our library",
+      description: "New collections will appear as you scroll.",
+      showItemNumbers: false,
+      excludedVideoIds: [],
       items: [],
     }
   }

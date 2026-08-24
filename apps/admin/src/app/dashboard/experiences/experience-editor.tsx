@@ -138,10 +138,28 @@ import {
 } from "./experience-editor/block-helpers"
 import { CanvasBlockList } from "./experience-editor/canvas-block-list"
 import { ContainerWorkspace } from "./experience-editor/container-workspace"
+import {
+  DuplicateExperienceControl,
+  type DuplicateActionResult,
+} from "./experience-editor/duplicate-experience-control"
+
+type EditorLocaleValues = {
+  title: string
+  slug: string
+  metaDescription: string
+  ogTitle: string
+  ogDescription: string
+  ogImageUrl: string
+  pathSegment: string
+  isHomepage: boolean
+  blocksJson: string
+}
 
 type EditorActionResult = {
   ok: boolean
   error?: string
+  previewUrl?: string | null
+  values?: EditorLocaleValues
 }
 
 type CreateLocaleActionResult = EditorActionResult & {
@@ -252,7 +270,11 @@ type VideoPickerDraft = {
   showControls: boolean
 }
 
-type VideoPickerMode = "block" | "carouselAppend" | "mediaCollectionAppend"
+type VideoPickerMode =
+  | "block"
+  | "carouselAppend"
+  | "mediaCollectionAppend"
+  | "dynamicCollectionBlacklistAppend"
 type VideoLibrarySearchClient =
   | "experience-editor-video-picker"
   | "experience-editor-video-carousel-picker"
@@ -306,7 +328,10 @@ type InfoBlockDragHandleState = {
 function videoLibrarySearchClientForMode(
   mode: VideoPickerMode,
 ): VideoLibrarySearchClient {
-  if (mode === "mediaCollectionAppend") {
+  if (
+    mode === "mediaCollectionAppend" ||
+    mode === "dynamicCollectionBlacklistAppend"
+  ) {
     return "experience-editor-media-collection-picker"
   }
   if (mode === "carouselAppend") {
@@ -391,6 +416,14 @@ const BLOCK_LIBRARY: BlockTemplateDefinition[] = [
     description: "Grid or carousel of related media items.",
     category: "Media",
     icon: LayoutTemplate,
+  },
+  {
+    key: "dynamicMediaCollection",
+    label: "Infinite Collection Feed",
+    description:
+      "Homepage-only feed of unfeatured database collections loaded on scroll.",
+    category: "Media",
+    icon: Compass,
   },
   {
     key: "text",
@@ -524,6 +557,7 @@ type SectionContentTemplateKey =
       | "routeVideoHero"
       | "routeVideo"
       | "routeVideoCarousel"
+      | "dynamicMediaCollection"
     >
   | "quizButton"
 
@@ -579,6 +613,21 @@ function isRouteOnlyBlockPayload(block: unknown) {
 
 function removeRouteOnlyBlocks(blocks: unknown[]) {
   return blocks.filter((block) => !isRouteOnlyBlockPayload(block))
+}
+
+function isDynamicCollectionBlock(block: unknown) {
+  const record = asRecord(block)
+  return (
+    asString(record?.t) === "mediaCollection" &&
+    asString(record?.itemsSource) === "dynamicCollections"
+  )
+}
+
+function keepDynamicCollectionBlockLast(blocks: unknown[]) {
+  const dynamicBlock = blocks.find(isDynamicCollectionBlock)
+  return dynamicBlock
+    ? [...blocks.filter((block) => block !== dynamicBlock), dynamicBlock]
+    : blocks
 }
 
 const INFO_BLOCK_ICON_OPTIONS: {
@@ -1184,6 +1233,10 @@ export function buildPublishedWatchUrl(
 export function ExperienceEditor({
   canPublish,
   hasPublishedVersion,
+  hasDraft,
+  draftSavedAt,
+  previewUrl,
+  publishedSlug: initialPublishedSlug,
   revisionEntries,
   localeEntries,
   videoLibrary,
@@ -1193,7 +1246,10 @@ export function ExperienceEditor({
   watchOrigin,
   initialValues,
   saveAction,
+  duplicateAction,
+  duplicatePending = false,
   publishAction,
+  discardAction,
   createLocaleAction,
   restoreAction,
   uploadImageAction,
@@ -1203,6 +1259,10 @@ export function ExperienceEditor({
 }: {
   canPublish: boolean
   hasPublishedVersion: boolean
+  hasDraft: boolean
+  draftSavedAt: string | null
+  previewUrl: string | null
+  publishedSlug: string | null
   revisionEntries: RevisionEntry[]
   localeEntries: LocaleEntry[]
   videoLibrary: VideoLibraryItem[]
@@ -1226,7 +1286,10 @@ export function ExperienceEditor({
     blocksJson: string
   }
   saveAction: (formData: FormData) => Promise<EditorActionResult>
+  duplicateAction?: () => Promise<DuplicateActionResult>
+  duplicatePending?: boolean
   publishAction: (localeId: string) => Promise<EditorActionResult>
+  discardAction: (localeId: string) => Promise<EditorActionResult>
   createLocaleAction: (formData: FormData) => Promise<CreateLocaleActionResult>
   restoreAction: (revisionId: string) => Promise<EditorActionResult>
   uploadImageAction: (formData: FormData) => Promise<UploadActionResult>
@@ -1287,8 +1350,10 @@ export function ExperienceEditor({
   const router = useRouter()
   const { toasts, pushToast, dismissToast } = useToastStack()
   const [publishedSlug, setPublishedSlug] = useState<string | null>(
-    hasPublishedVersion ? cleanRoutePart(initialValues.slug) : null,
+    hasPublishedVersion ? cleanRoutePart(initialPublishedSlug ?? "") : null,
   )
+  const [hasActiveDraft, setHasActiveDraft] = useState(hasDraft)
+  const [draftPreviewUrl, setDraftPreviewUrl] = useState(previewUrl)
   const [editorDateSnapshot, setEditorDateSnapshot] = useState(calendarDate)
   const editorToday = parseEditorDateSnapshot(editorDateSnapshot)
   const [title, setTitle] = useState(initialValues.title)
@@ -1297,10 +1362,12 @@ export function ExperienceEditor({
   const [metaDescription, setMetaDescription] = useState(
     initialValues.metaDescription,
   )
-  const [ogTitle] = useState(initialValues.ogTitle)
-  const [ogDescription] = useState(initialValues.ogDescription)
+  const [ogTitle, setOgTitle] = useState(initialValues.ogTitle)
+  const [ogDescription, setOgDescription] = useState(
+    initialValues.ogDescription,
+  )
   const [ogImageUrl, setOgImageUrl] = useState(initialValues.ogImageUrl)
-  const [isHomepage] = useState(initialValues.isHomepage)
+  const [isHomepage, setIsHomepage] = useState(initialValues.isHomepage)
   const isTemplate = initialValues.isTemplate
 
   const [parsedBlocks, setParsedBlocks] = useState<unknown[]>(() => {
@@ -1552,6 +1619,7 @@ export function ExperienceEditor({
   const [restoreRevisionId, setRestoreRevisionId] = useState<string | null>(
     null,
   )
+  const [discardDraftOpen, setDiscardDraftOpen] = useState(false)
   const [deleteBlockIndex, setDeleteBlockIndex] = useState<number | null>(null)
   const [isContainerSlotDeleteOpen, setIsContainerSlotDeleteOpen] =
     useState(false)
@@ -1561,6 +1629,9 @@ export function ExperienceEditor({
   const [insertedBlockAnimation, setInsertedBlockAnimation] =
     useState<InsertedBlockAnimation | null>(null)
   const [isPending, startTransition] = useTransition()
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const isSubmittingRef = useRef(false)
+  const pendingPreviewWindowRef = useRef<Window | null>(null)
   const blockCardRefs = useRef(new Map<string, HTMLDivElement>())
   const navigationDestinationPopoverRef = useRef<HTMLDivElement | null>(null)
   const videoPickerPreviewContainerRef = useRef<HTMLDivElement | null>(null)
@@ -1633,6 +1704,10 @@ export function ExperienceEditor({
     slug !== initialValues.slug ||
     pathSegment !== initialValues.pathSegment ||
     metaDescription !== initialValues.metaDescription ||
+    ogTitle !== initialValues.ogTitle ||
+    ogDescription !== initialValues.ogDescription ||
+    ogImageUrl !== initialValues.ogImageUrl ||
+    isHomepage !== initialValues.isHomepage ||
     serializedBlocks !== initialSerializedBlocks
   const routePrefixInputWidth = `${Math.min(
     Math.max((pathSegment.trim() || "prefix").length, 6),
@@ -1642,13 +1717,15 @@ export function ExperienceEditor({
     Math.max((slug.trim() || "slug").length, 4),
     34,
   )}ch`
-  const canPublishNow = canPublish && (!hasPublishedVersion || hasChanges)
+  const canPublishNow =
+    canPublish && (!hasPublishedVersion || hasActiveDraft || hasChanges)
   const activeLocaleCode =
     localeEntries.find((entry) => entry.active)?.code ?? ""
+  const activeLocaleTitle =
+    localeEntries.find((entry) => entry.active)?.title || activeLocaleCode
   const publishedRouteSlug = cleanRoutePart(publishedSlug ?? "")
   const canOpenPublishedPage =
     publishedRouteSlug !== "" && activeLocaleCode !== ""
-  const shouldShowPreviewAction = canOpenPublishedPage && !hasChanges
   function openPublishedWatchPage(routeSlug = publishedRouteSlug) {
     const nextPublishedWatchUrl = buildPublishedWatchUrl(
       routeSlug,
@@ -1661,6 +1738,24 @@ export function ExperienceEditor({
     }
     window.open(nextPublishedWatchUrl, "_blank", "noopener,noreferrer")
   }
+  function openDraftPreview(url = draftPreviewUrl) {
+    if (!url) {
+      pushToast("Save the draft before opening its preview.", "error")
+      return
+    }
+    window.open(url, "_blank", "noopener,noreferrer")
+  }
+  function openDraftPreviewPlaceholder() {
+    if (isSubmittingRef.current || pendingPreviewWindowRef.current) return
+    const previewWindow = window.open("", "_blank")
+    if (!previewWindow) {
+      pushToast("Allow pop-ups to open the draft preview.", "error")
+      return
+    }
+    previewWindow.opener = null
+    pendingPreviewWindowRef.current = previewWindow
+  }
+  const actionsPending = isPending || isSubmitting
   const isFloatingDrawerOpen =
     inlineBlockLibraryOpen || revisionHistoryOpen || localeDrawerOpen
   const isAddingToContainerSlot = focusedContainerIndex !== null
@@ -1679,6 +1774,9 @@ export function ExperienceEditor({
     }
 
     if (block.key === "watchHomeHero") return isHomepage
+    if (block.key === "dynamicMediaCollection") {
+      return isHomepage && !parsedBlocks.some(isDynamicCollectionBlock)
+    }
 
     return isTemplate || block.category !== "Route"
   })
@@ -1728,7 +1826,9 @@ export function ExperienceEditor({
       ? "Add carousel video"
       : videoPickerMode === "mediaCollectionAppend"
         ? "Add media collection video"
-        : "Choose a video"
+        : videoPickerMode === "dynamicCollectionBlacklistAppend"
+          ? "Exclude collection or media"
+          : "Choose a video"
   const activeLocaleEntry = localeEntries.find((entry) => entry.active)
   const cleanedNewLocaleCode = cleanLocaleCode(newLocaleCode, true)
   const newLocaleAlreadyExists = localeEntries.some(
@@ -1749,11 +1849,15 @@ export function ExperienceEditor({
       videoPickerBlockType !== "videoHero" ||
       (!item.isCollectionTarget && item.label !== "COLLECTION")
     const isAlreadyInTargetCollection = (item: VideoLibraryItem) =>
-      (videoPickerMode === "carouselAppend" ||
-        videoPickerMode === "mediaCollectionAppend") &&
-      asArray(videoPickerBlockRecord?.items).some(
-        (entry) => asString(asRecord(entry)?.videoId) === item.key,
-      )
+      videoPickerMode === "dynamicCollectionBlacklistAppend"
+        ? asArray(videoPickerBlockRecord?.excludedVideoIds).some(
+            (videoId) => asString(videoId) === item.key,
+          )
+        : (videoPickerMode === "carouselAppend" ||
+            videoPickerMode === "mediaCollectionAppend") &&
+          asArray(videoPickerBlockRecord?.items).some(
+            (entry) => asString(asRecord(entry)?.videoId) === item.key,
+          )
     const availableVideos = videoLibrary.filter(
       (item) =>
         matchesVideoLibraryCategory(item.label, videoLibraryCategory) &&
@@ -2800,8 +2904,21 @@ export function ExperienceEditor({
     const nextBlocks = [...parsedBlocks]
     const nextBlock = createTemplateBlock(template, nextBlocks.length)
     const nextBlockSummary = summarizeBlock(nextBlock, index, videoLibrary)
-    nextBlocks.splice(index, 0, nextBlock)
-    syncBlocks(nextBlocks, index)
+    let insertionIndex = index
+    if (template === "dynamicMediaCollection") {
+      if (!isHomepage || nextBlocks.some(isDynamicCollectionBlock)) {
+        pushToast(
+          "The homepage can contain one infinite collection feed.",
+          "error",
+        )
+        return
+      }
+      nextBlocks.push(nextBlock)
+      insertionIndex = nextBlocks.length - 1
+    } else {
+      nextBlocks.splice(index, 0, nextBlock)
+    }
+    syncBlocks(nextBlocks, insertionIndex)
     setPendingInsertIndex(null)
     setScrollToBlockKey(nextBlockSummary.key)
     setInsertedBlockAnimation({ key: nextBlockSummary.key, visible: false })
@@ -3319,7 +3436,9 @@ export function ExperienceEditor({
         return false
       }
 
-      const nextBlocks = arrayMove(parsedBlocks, fromIndex, toIndex)
+      const nextBlocks = keepDynamicCollectionBlockLast(
+        arrayMove(parsedBlocks, fromIndex, toIndex),
+      )
       const selectedKey =
         selectedBlockIndex !== null
           ? blockSummaries[selectedBlockIndex]?.key
@@ -5296,17 +5415,14 @@ export function ExperienceEditor({
     setVideoLibraryCategory("all")
     setVideoLibrarySearchResultKeys([])
     setVideoPickerDraft({
-      videoKey:
-        mode === "carouselAppend" || mode === "mediaCollectionAppend"
-          ? null
-          : (currentVideo?.key ?? null),
+      videoKey: mode === "block" ? (currentVideo?.key ?? null) : null,
       dubKey:
-        mode === "carouselAppend" || mode === "mediaCollectionAppend"
-          ? null
-          : (preferredPlayableDubForVideo(
+        mode === "block"
+          ? (preferredPlayableDubForVideo(
               currentVideo,
               asString(block?.streamingUrl) || null,
-            )?.key ?? null),
+            )?.key ?? null)
+          : null,
       clipStartSeconds: stringFromOptionalNumber(block?.clipStartSeconds),
       clipEndSeconds: stringFromOptionalNumber(block?.clipEndSeconds),
       autoplay:
@@ -5363,6 +5479,25 @@ export function ExperienceEditor({
     if (videoPickerBlockIndex === null) return
     const selectedVideo = findVideoLibraryItem(videoPickerDraft.videoKey)
     if (!selectedVideo) return
+    if (videoPickerMode === "dynamicCollectionBlacklistAppend") {
+      updateBlockAt(videoPickerBlockIndex, (block) => ({
+        ...block,
+        excludedVideoIds: [
+          ...new Set([
+            ...asArray(block.excludedVideoIds).map(asString).filter(Boolean),
+            selectedVideo.key,
+          ]),
+        ],
+      }))
+      closeVideoPicker()
+      pushToast(
+        selectedVideo.isCollectionTarget
+          ? "Collection excluded from the dynamic feed."
+          : "Media excluded from the dynamic feed.",
+        "success",
+      )
+      return
+    }
     if (
       (videoPickerMode === "carouselAppend" ||
         videoPickerMode === "mediaCollectionAppend") &&
@@ -8758,7 +8893,8 @@ export function ExperienceEditor({
                     )}
                   </div>
                 ) : null}
-                {type === "mediaCollection" ? (
+                {type === "mediaCollection" &&
+                asString(blockRecord?.itemsSource) !== "dynamicCollections" ? (
                   <div className="mt-2 max-w-xs">
                     {renderInlineTextInput(
                       index,
@@ -8986,7 +9122,8 @@ export function ExperienceEditor({
                     })}
                   </div>
                 ) : null}
-                {type === "mediaCollection"
+                {type === "mediaCollection" &&
+                asString(blockRecord?.itemsSource) !== "dynamicCollections"
                   ? renderInlineBlockCta(index, blockRecord)
                   : null}
                 {type === "section"
@@ -9283,7 +9420,104 @@ export function ExperienceEditor({
                       : null}
                   </div>
                 ) : null}
-                {type === "mediaCollection" ? (
+                {type === "mediaCollection" &&
+                asString(blockRecord?.itemsSource) === "dynamicCollections" ? (
+                  <div className="mt-4 space-y-3">
+                    <div className="flex w-full items-start gap-3 rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-inset)] px-4 py-3 text-left">
+                      <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-sm border border-[var(--color-hairline)] bg-[rgba(255,255,255,0.04)] text-[var(--color-text-secondary)]">
+                        <Compass className="h-4 w-4" strokeWidth={1.5} />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="text-[13px] font-medium text-[var(--color-text-primary)]">
+                          Dynamic database collections enabled
+                        </div>
+                        <p className="mt-1 text-[12px] leading-5 text-[var(--color-text-secondary)]">
+                          Place this block at the end of the Watch homepage. It
+                          excludes collections featured by other blocks and adds
+                          new collection carousels as viewers scroll.
+                        </p>
+                      </div>
+                    </div>
+                    <div className="rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-inset)] px-4 py-3">
+                      <div className="flex items-center justify-between gap-3">
+                        <div>
+                          <div className="text-[13px] font-medium text-[var(--color-text-primary)]">
+                            Excluded collections and media
+                          </div>
+                          <p className="mt-1 text-[12px] leading-5 text-[var(--color-text-secondary)]">
+                            Selected collections never appear; selected media is
+                            removed from every generated carousel.
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={(event) => {
+                            event.stopPropagation()
+                            openVideoPicker(
+                              index,
+                              "dynamicCollectionBlacklistAppend",
+                            )
+                          }}
+                          className="inline-flex h-9 shrink-0 cursor-pointer items-center gap-2 rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] px-3 text-[12px] font-medium text-[var(--color-text-primary)] transition-all duration-[120ms] ease-out hover:border-[var(--color-hairline-strong)] hover:bg-[var(--color-surface)]"
+                        >
+                          <Plus className="h-4 w-4" strokeWidth={1.5} />
+                          Add exclusion
+                        </button>
+                      </div>
+                      {asArray(blockRecord?.excludedVideoIds).length > 0 ? (
+                        <div className="mt-3 space-y-2">
+                          {asArray(blockRecord?.excludedVideoIds).map(
+                            (videoIdValue) => {
+                              const videoId = asString(videoIdValue)
+                              const video = findVideoLibraryItem(videoId)
+                              return (
+                                <div
+                                  key={videoId}
+                                  className="flex items-center justify-between gap-3 rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] px-3 py-2"
+                                >
+                                  <div className="min-w-0">
+                                    <div className="truncate text-[12px] font-medium text-[var(--color-text-primary)]">
+                                      {video?.title ?? videoId}
+                                    </div>
+                                    <div className="mt-0.5 truncate font-mono text-[10px] text-[var(--color-text-muted)]">
+                                      {videoId}
+                                    </div>
+                                  </div>
+                                  <button
+                                    type="button"
+                                    aria-label={`Remove ${video?.title ?? videoId} from exclusions`}
+                                    onClick={(event) => {
+                                      event.stopPropagation()
+                                      updateBlockAt(index, (block) => ({
+                                        ...block,
+                                        excludedVideoIds: asArray(
+                                          block.excludedVideoIds,
+                                        ).filter(
+                                          (candidate) =>
+                                            asString(candidate) !== videoId,
+                                        ),
+                                      }))
+                                    }}
+                                    className="inline-flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-sm border border-[var(--color-hairline)] text-[var(--color-text-secondary)] transition-colors hover:border-[rgba(255,120,120,0.28)] hover:text-[var(--color-danger)]"
+                                  >
+                                    <Trash2
+                                      className="h-4 w-4"
+                                      strokeWidth={1.5}
+                                    />
+                                  </button>
+                                </div>
+                              )
+                            },
+                          )}
+                        </div>
+                      ) : (
+                        <p className="mt-3 text-[12px] text-[var(--color-text-muted)]">
+                          No additional exclusions.
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                ) : type === "mediaCollection" ? (
                   <div className="mt-4">
                     <div
                       className={cx(
@@ -9974,6 +10208,51 @@ export function ExperienceEditor({
     })
   }
 
+  function confirmDiscardDraft() {
+    startTransition(() => {
+      void (async () => {
+        const result = await discardAction(initialValues.localeId)
+        if (!result.ok) {
+          pushToast(result.error ?? "Unable to discard draft.", "error")
+          return
+        }
+        if (result.values) {
+          setTitle(result.values.title)
+          setSlug(result.values.slug)
+          setMetaDescription(result.values.metaDescription)
+          setOgTitle(result.values.ogTitle)
+          setOgDescription(result.values.ogDescription)
+          setOgImageUrl(result.values.ogImageUrl)
+          setPathSegment(result.values.pathSegment)
+          setIsHomepage(result.values.isHomepage)
+          try {
+            const blocks = JSON.parse(result.values.blocksJson)
+            const nextBlocks = Array.isArray(blocks)
+              ? isTemplate
+                ? blocks
+                : removeRouteOnlyBlocks(blocks)
+              : []
+            setParsedBlocks(nextBlocks)
+            setSelectedBlockIndex(nextBlocks.length > 0 ? 0 : null)
+          } catch {
+            setParsedBlocks([])
+            setSelectedBlockIndex(null)
+          }
+          setFocusedContainerIndex(null)
+          setFocusedSectionIndex(null)
+        }
+        setDiscardDraftOpen(false)
+        setHasActiveDraft(false)
+        setDraftPreviewUrl(null)
+        pushToast(
+          "Shared draft discarded. The live experience is unchanged.",
+          "success",
+        )
+        router.refresh()
+      })()
+    })
+  }
+
   const focusedContainerRecord =
     focusedContainerIndex === null
       ? null
@@ -10021,6 +10300,14 @@ export function ExperienceEditor({
               Add block
             </button>
             <div className="flex items-center gap-1.5">
+              {hasActiveDraft ? (
+                <span
+                  className="hidden px-2 text-[11px] text-[var(--color-text-muted)] md:inline"
+                  aria-live="polite"
+                >
+                  Shared draft saved{draftSavedAt ? ` ${draftSavedAt}` : ""}
+                </span>
+              ) : null}
               <button
                 type="button"
                 onClick={() => {
@@ -10062,54 +10349,106 @@ export function ExperienceEditor({
               >
                 <History className="h-4 w-4" strokeWidth={1.5} />
               </button>
+              {duplicateAction ? (
+                <DuplicateExperienceControl
+                  action={duplicateAction}
+                  dirty={hasChanges}
+                  externalPending={isPending || duplicatePending}
+                  onError={(message) => pushToast(message, "error")}
+                />
+              ) : null}
               <button
                 type="submit"
                 form={`experience-editor-${initialValues.localeId}`}
                 name="intent"
                 value="save"
-                disabled={isPending || !hasChanges}
+                disabled={actionsPending || !hasChanges}
                 className="inline-flex h-9 cursor-pointer items-center justify-center gap-2 rounded-[2px] border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] px-3 text-[12px] font-medium text-[var(--color-text-primary)] transition-all duration-[120ms] ease-out hover:bg-[var(--color-surface)] disabled:cursor-not-allowed disabled:opacity-60"
               >
                 <Save className="h-4 w-4" strokeWidth={1.5} />
                 Save Draft
               </button>
-              {shouldShowPreviewAction ? (
+              {hasActiveDraft || hasChanges ? (
                 <button
-                  type="button"
-                  onClick={() => {
-                    openPublishedWatchPage()
-                  }}
-                  disabled={isPending}
-                  className="inline-flex h-9 cursor-pointer items-center justify-center gap-2 rounded-[2px] bg-[var(--color-brand)] px-3 text-[12px] font-medium text-white transition-all duration-[120ms] ease-out hover:bg-[var(--color-brand-pressed)] disabled:cursor-not-allowed disabled:opacity-60"
-                  title="Open published page"
+                  type={hasChanges ? "submit" : "button"}
+                  form={
+                    hasChanges
+                      ? `experience-editor-${initialValues.localeId}`
+                      : undefined
+                  }
+                  name={hasChanges ? "intent" : undefined}
+                  value={hasChanges ? "preview" : undefined}
+                  onClick={
+                    hasChanges
+                      ? openDraftPreviewPlaceholder
+                      : () => openDraftPreview()
+                  }
+                  disabled={actionsPending}
+                  className="inline-flex h-9 cursor-pointer items-center justify-center gap-2 rounded-[2px] border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] px-3 text-[12px] font-medium text-[var(--color-text-primary)] transition-all duration-[120ms] ease-out hover:bg-[var(--color-surface)] disabled:cursor-not-allowed disabled:opacity-60"
+                  aria-label="Preview draft (opens in a new tab)"
+                  title="Preview draft (opens in a new tab)"
                 >
                   <Eye className="h-4 w-4" strokeWidth={1.5} />
-                  Preview
+                  Preview draft
                 </button>
-              ) : (
+              ) : null}
+              {canOpenPublishedPage ? (
+                <button
+                  type="button"
+                  onClick={() => openPublishedWatchPage()}
+                  disabled={actionsPending}
+                  className="inline-flex h-9 cursor-pointer items-center justify-center gap-2 rounded-[2px] border border-[var(--color-hairline)] bg-transparent px-3 text-[12px] font-medium text-[var(--color-text-primary)] transition-all duration-[120ms] ease-out hover:bg-[var(--color-surface-raised)] disabled:cursor-not-allowed disabled:opacity-60"
+                  aria-label="View live (opens in a new tab)"
+                  title="View live (opens in a new tab)"
+                >
+                  <Globe2 className="h-4 w-4" strokeWidth={1.5} />
+                  View live
+                </button>
+              ) : null}
+              {hasActiveDraft ? (
+                <button
+                  type="button"
+                  onClick={() => setDiscardDraftOpen(true)}
+                  disabled={actionsPending}
+                  className="inline-flex h-9 cursor-pointer items-center justify-center gap-2 rounded-[2px] border border-[var(--color-hairline)] bg-transparent px-3 text-[12px] font-medium text-[var(--color-text-secondary)] transition-all duration-[120ms] ease-out hover:border-[var(--color-danger)] hover:text-[var(--color-danger)] disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  <Trash2 className="h-4 w-4" strokeWidth={1.5} />
+                  Discard draft
+                </button>
+              ) : null}
+              {canPublishNow ? (
                 <button
                   type="submit"
                   form={`experience-editor-${initialValues.localeId}`}
                   name="intent"
                   value="publish"
-                  disabled={isPending || !canPublishNow}
+                  disabled={actionsPending || !canPublishNow}
                   className="inline-flex h-9 cursor-pointer items-center justify-center gap-2 rounded-[2px] bg-[var(--color-brand)] px-3 text-[12px] font-medium text-white transition-all duration-[120ms] ease-out hover:bg-[var(--color-brand-pressed)] disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   <UploadCloud className="h-4 w-4" strokeWidth={1.5} />
                   Publish
                 </button>
-              )}
+              ) : null}
             </div>
           </div>
         </div>
       </div>
 
       <ConfirmModal
+        open={discardDraftOpen}
+        title={`Discard ${activeLocaleTitle} draft?`}
+        description="This retires the shared draft for this locale. The live experience will remain unchanged."
+        confirmLabel="Discard draft"
+        pending={actionsPending}
+        onCancel={() => setDiscardDraftOpen(false)}
+        onConfirm={confirmDiscardDraft}
+      />
+      <ConfirmModal
         open={restoreRevisionId !== null}
         title="Restore This Revision?"
         description="This will replace your current draft with the selected revision. Any unsaved changes in the editor will be lost."
         confirmLabel="Restore Revision"
-        pending={isPending}
+        pending={actionsPending}
         onCancel={() => setRestoreRevisionId(null)}
         onConfirm={confirmRestoreRevision}
       />
@@ -10282,10 +10621,7 @@ export function ExperienceEditor({
           aria-labelledby="video-library-title"
           className={cx(
             "flex h-[min(86vh,860px)] w-full flex-col overflow-hidden rounded-sm border border-[var(--color-hairline-strong)] bg-[color-mix(in_oklab,var(--color-surface)_96%,black)] p-5 shadow-[0_32px_120px_rgba(0,0,0,0.58)] transition-[opacity,transform] duration-180 ease-out",
-            videoPickerMode === "carouselAppend" ||
-              videoPickerMode === "mediaCollectionAppend"
-              ? "max-w-[1040px]"
-              : "max-w-[1280px]",
+            videoPickerMode !== "block" ? "max-w-[1040px]" : "max-w-[1280px]",
             videoPickerBlockIndex !== null
               ? "translate-y-0 scale-100 opacity-100"
               : "translate-y-2 scale-[0.98] opacity-0",
@@ -10362,8 +10698,7 @@ export function ExperienceEditor({
             <div
               className={cx(
                 "grid h-full gap-5",
-                videoPickerMode === "carouselAppend" ||
-                  videoPickerMode === "mediaCollectionAppend"
+                videoPickerMode !== "block"
                   ? "lg:grid-cols-[360px_minmax(0,1fr)]"
                   : "lg:grid-cols-[380px_minmax(0,1fr)]",
               )}
@@ -10465,8 +10800,7 @@ export function ExperienceEditor({
                   <div
                     className={cx(
                       "h-full p-5",
-                      videoPickerMode === "carouselAppend" ||
-                        videoPickerMode === "mediaCollectionAppend"
+                      videoPickerMode !== "block"
                         ? ""
                         : "grid gap-5 lg:grid-cols-[minmax(0,1.35fr)_320px]",
                     )}
@@ -10948,7 +11282,9 @@ export function ExperienceEditor({
                     ? "Add video"
                     : videoPickerMode === "mediaCollectionAppend"
                       ? "Add video"
-                      : "Apply video"}
+                      : videoPickerMode === "dynamicCollectionBlacklistAppend"
+                        ? "Exclude media"
+                        : "Apply video"}
               </button>
             </div>
           </div>
@@ -11122,32 +11458,64 @@ export function ExperienceEditor({
       <section className="hidden">
         <form
           id={`experience-editor-${initialValues.localeId}`}
+          onSubmit={() => setIsSubmitting(true)}
           action={async (formData) => {
+            if (isSubmittingRef.current) return
+            isSubmittingRef.current = true
+            setIsSubmitting(true)
             const intent = String(formData.get("intent") ?? "save")
-            const result = await saveAction(formData)
-            if (!result.ok) {
-              pushToast(result.error ?? "Unable to save locale.", "error")
-              return
-            }
-            if (intent === "publish") {
-              const publishResult = await publishAction(initialValues.localeId)
-              if (!publishResult.ok) {
-                pushToast(
-                  publishResult.error ?? "Unable to publish locale.",
-                  "error",
-                )
+            const previewWindow =
+              intent === "preview" ? pendingPreviewWindowRef.current : null
+            pendingPreviewWindowRef.current = null
+            let previewWindowNavigated = false
+            try {
+              const result = await saveAction(formData)
+              if (!result.ok) {
+                previewWindow?.close()
+                pushToast(result.error ?? "Unable to save locale.", "error")
                 return
               }
-              const nextPublishedSlug = cleanRoutePart(slug)
-              setPublishedSlug(nextPublishedSlug)
-              openPublishedWatchPage(nextPublishedSlug)
-              pushToast("Locale published.", "success")
-            } else {
-              pushToast("Locale saved.", "success")
+              setHasActiveDraft(true)
+              const nextDraftPreviewUrl = result.previewUrl ?? draftPreviewUrl
+              setDraftPreviewUrl(nextDraftPreviewUrl)
+              if (intent === "preview") {
+                if (nextDraftPreviewUrl && previewWindow) {
+                  previewWindow.location.href = nextDraftPreviewUrl
+                  previewWindowNavigated = true
+                } else {
+                  previewWindow?.close()
+                  openDraftPreview(nextDraftPreviewUrl)
+                }
+                pushToast("Draft saved.", "success")
+              } else if (intent === "publish") {
+                const publishResult = await publishAction(
+                  initialValues.localeId,
+                )
+                if (!publishResult.ok) {
+                  pushToast(
+                    publishResult.error ?? "Unable to publish locale.",
+                    "error",
+                  )
+                  return
+                }
+                const nextPublishedSlug = cleanRoutePart(slug)
+                setPublishedSlug(nextPublishedSlug)
+                setHasActiveDraft(false)
+                setDraftPreviewUrl(null)
+                pushToast("Locale published.", "success")
+              } else {
+                pushToast("Draft saved.", "success")
+              }
+              startTransition(() => {
+                router.refresh()
+              })
+            } catch {
+              if (!previewWindowNavigated) previewWindow?.close()
+              pushToast("Unable to save locale.", "error")
+            } finally {
+              isSubmittingRef.current = false
+              setIsSubmitting(false)
             }
-            startTransition(() => {
-              router.refresh()
-            })
           }}
           className="hidden"
         >
@@ -11163,11 +11531,6 @@ export function ExperienceEditor({
             type="hidden"
             name="isHomepage"
             value={isHomepage ? "on" : ""}
-          />
-          <input
-            type="hidden"
-            name="isTemplate"
-            value={isTemplate ? "on" : ""}
           />
           <input
             type="hidden"

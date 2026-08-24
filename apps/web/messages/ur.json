@@ -191,6 +191,7 @@
     "loadMoreFailed": "مزید نتائج لوڈ نہیں ہو سکے۔",
     "searching": "تلاش ہو رہی ہے...",
     "connectionHint": "براہِ کرم اپنا کنکشن چیک کریں اور دوبارہ کوشش کریں۔",
+    "rateLimitHint": "بہت زیادہ درخواستیں موصول ہوئی ہیں۔ ایک منٹ بعد دوبارہ کوشش کریں۔",
     "retrySearch": "دوبارہ تلاش کریں",
     "retry": "دوبارہ کوشش کریں",
     "noResults": "\"{query}\" کے لیے کوئی نتیجہ نہیں",
@@ -225,7 +226,9 @@
   "HeroPlayer": {
     "playWithSound": "ابھی دیکھیں",
     "tapToUnmute": "آواز بحال کرنے کے لیے ٹیپ کریں",
-    "nextEpisode": "اگلی قسط"
+    "nextEpisode": "اگلی قسط",
+    "audioTranslationCount": "{count, plural, one {# زبان} other {# زبانیں}}",
+    "subtitleCount": "سب ٹائٹلز: {count, plural, one {# زبان} other {# زبانیں}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "مواد لوڈ ہو رہا ہے",
@@ -538,16 +541,16 @@
     "retryFailed": "ناکام ڈاؤن لوڈز دوبارہ آزمائیں"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "اس زبان کا ورژن دستیاب نہیں",
+    "eyebrow": "اس زبان کا ورژن دستیاب نہیں",
+    "title": "<contentTitle>{title}</contentTitle> <languageName>{language}</languageName> میں دستیاب نہیں ہے",
+    "actionsLabel": "دستیاب دیکھنے کے اختیارات",
+    "browseInLanguage": "{language} میں ویڈیوز دیکھیں",
+    "backToSearch": "تلاش پر واپس جائیں",
+    "audioVersionsTitle": "دیگر آڈیو ورژن",
+    "audioVersionsDescription": "اس ویڈیو کو دیکھنا جاری رکھنے کے لیے آڈیو زبان منتخب کریں۔",
+    "languageVersionLabel": "آڈیو زبان",
+    "selectLanguageVersion": "زبان کا ورژن منتخب کریں",
+    "watchSelectedVersion": "منتخب ورژن دیکھیں"
   }
 }

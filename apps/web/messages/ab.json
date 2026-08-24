@@ -191,6 +191,7 @@
     "loadMoreFailed": "Еиҭа алҵшәақәа рҭагалара ауамызт.",
     "searching": "Аԥшаара...",
     "connectionHint": "Шәеимадара агәаҭара, нас еиҭаажәыгышьа.",
+    "rateLimitHint": "Азыҳәақәа убрацәоуп. Минутк рышьҭахь еиҭа шәҽазышәшәа.",
     "retrySearch": "Аԥшаара еиҭашәҽ",
     "retry": "Еиҭашәҽ",
     "noResults": "\"{query}\" азы алҵшәақәа ыҟаӡам",
@@ -225,7 +226,9 @@
   "HeroPlayer": {
     "playWithSound": "Уажәы азыԥхьақәа",
     "tapToUnmute": "Ашәаҳәара ацҵара азы акәша ишьаҭатәуп",
-    "nextEpisode": "Анашьҭатәи аепизод"
+    "nextEpisode": "Анашьҭатәи аепизод",
+    "audioTranslationCount": "{count, plural, one {# бызшәа} other {# бызшәақәа}}",
+    "subtitleCount": "Аҭарқәа: {count, plural, one {# бызшәа} other {# бызшәақәа}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Аҭаҩрақәа ааҭгылара",
@@ -538,16 +541,16 @@
     "retryFailed": "Иалымшеит — даҽазнык иҭажәга"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Абызшәатә версиа ыҟаҵаӡам",
+    "eyebrow": "Абызшәатә версиа ыҟаҵаӡам",
+    "title": "<contentTitle>{title}</contentTitle> <languageName>{language}</languageName> бызшәала иҟаӡам",
+    "actionsLabel": "Иҟазаашьоу ахәаԥшыра алшарақәа",
+    "browseInLanguage": "{language} бызшәала авидеонқәа рылаԥшра",
+    "backToSearch": "Аԥшаарахь ахынҳәра",
+    "audioVersionsTitle": "Егьырҭ аудиоверсиақәа",
+    "audioVersionsDescription": "Ари авидео ахәаԥшыра шәацҵарц аудиабызшәа алышәх.",
+    "languageVersionLabel": "Аудиабызшәа",
+    "selectLanguageVersion": "Абызшәатә версиа алышәх",
+    "watchSelectedVersion": "Иалху аверсиа шәахәаԥшы"
   }
 }

@@ -12,6 +12,7 @@ import {
   getConversationNav,
   getLog,
   getMain,
+  getNewConversationAction,
   getSendButton,
   jsonRes,
   messageTexts,
@@ -233,9 +234,9 @@ describe("Denial shells (feat-209, KTD5/KTD6/KTD8)", () => {
   })
 
   it("a FLAG-ON denial shell keeps the URL-sync layer and hydration inert", async () => {
-    // SYNTHETIC prop pair (2026-08-19): page.tsx's seekerEnabled={entry.kind
-    // === "granted"} makes granted+deniedScreen producer-unreachable; this
-    // pins the CONSUMER belt (grantedShell). Reachable pair: flag-off tests.
+    // SYNTHETIC prop pair (label refreshed 2026-08-20, feat-399): the producer
+    // is now c/[id]/page.tsx's `deepLinkShell(entry.kind)`, whose granted arms
+    // never carry a deniedScreen — pinned in deep-link-entry.test.ts.
     window.history.replaceState(null, "", "/c/not-a-uuid")
     const pushSpy = vi.spyOn(window.history, "pushState")
     const replaceSpy = vi.spyOn(window.history, "replaceState")
@@ -258,6 +259,174 @@ describe("Denial shells (feat-209, KTD5/KTD6/KTD8)", () => {
       expect(newLink).toHaveAttribute("href", "/")
     } finally {
       pushSpy.mockRestore()
+      replaceSpy.mockRestore()
+    }
+  })
+})
+
+describe("Granted malformed deep link (feat-399)", () => {
+  it("keeps the rail, history and URL layer LIVE while the pane says unavailable", async () => {
+    // The one production-reachable quadrant feat-209 could not express:
+    // seekerEnabled ON, no deniedScreen, no id (the segment was malformed so
+    // the route passes none), deepLinkUnresolvable ON.
+    window.history.replaceState(null, "", "/c/not-a-uuid")
+    const fetchMock = renderSeeker(() => [], {
+      listFor: () => ({ threads: [A, B] }),
+      deepLinkUnresolvable: true,
+    })
+
+    // The pane: the same sentence every other denial cause renders.
+    await waitFor(() =>
+      expect(
+        container.querySelector('[data-denial="unavailable"]'),
+      ).not.toBeNull(),
+    )
+    expect(
+      screen.getByText("This conversation is no longer available."),
+    ).toBeInTheDocument()
+    expect(screen.queryByRole("textbox")).toBeNull()
+
+    // The defect feat-399 fixes: the rail hydrated and holds the user's rows.
+    await waitFor(() => expect(navRowTitles()).toContain("Alpha thread"))
+    expect(navRowTitles()).toContain("Beta thread")
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/history/list",
+      expect.anything(),
+    )
+
+    // A real BUTTON here, not the denial shell's anchor — this shell is
+    // granted, so session mutation is allowed. getNewConversationAction() is
+    // the RAIL action; a fresh ROW carries the same accessible name.
+    expect(screen.queryByRole("link", { name: "New conversation" })).toBeNull()
+    expect(getNewConversationAction()).toBeInTheDocument()
+
+    // ADDRESS BAR (the decision this ticket left open): the URL layer's
+    // existing rule normalizes the broken path via REPLACE, so Back still
+    // leaves the app rather than returning to the dead link.
+    expect(window.location.pathname).toBe("/")
+  })
+
+  it("RELEASES the pane when the user selects a rail row", async () => {
+    window.history.replaceState(null, "", "/c/not-a-uuid")
+    renderSeeker(() => [], {
+      listFor: () => ({ threads: [A] }),
+      threadFor: () => ({
+        messages: [{ id: "a2", role: "assistant", text: "answer in A" }],
+      }),
+      deepLinkUnresolvable: true,
+    })
+    await waitFor(() =>
+      expect(
+        container.querySelector('[data-denial="unavailable"]'),
+      ).not.toBeNull(),
+    )
+    await waitFor(() => expect(navRowTitles()).toContain("Alpha thread"))
+
+    await selectRow("Alpha thread")
+
+    // The live chat pane is back: no denial pane, a real transcript, and a
+    // composer to type into.
+    await waitFor(() => expect(messageTexts()).toContain("answer in A"))
+    expect(container.querySelector("[data-denial]")).toBeNull()
+    expect(screen.getByRole("textbox", { name: "Message" })).toBeInTheDocument()
+    expect(window.location.pathname).toBe(`/c/${A.id}`)
+  })
+
+  it("RELEASES the pane on New conversation, landing ready-to-type", async () => {
+    window.history.replaceState(null, "", "/c/not-a-uuid")
+    renderSeeker(() => [], { deepLinkUnresolvable: true })
+    await waitFor(() =>
+      expect(
+        container.querySelector('[data-denial="unavailable"]'),
+      ).not.toBeNull(),
+    )
+
+    // The RAIL action, not the same-named row. The landing conversation is
+    // already the fresh empty one, so newConversation() is a full no-op and
+    // moves no id: only the explicit dismiss can release the pane.
+    await user.click(getNewConversationAction())
+
+    // The RELEASE is what this guards — removing the dismiss turns it red.
+    // Focus rides along as the outcome, from composer.tsx's own mount effect
+    // (not feat-270's deferred path), so no shell-side branch is needed.
+    const composer = await screen.findByRole("textbox", { name: "Message" })
+    expect(container.querySelector("[data-denial]")).toBeNull()
+    await waitFor(() => expect(composer).toHaveFocus())
+  })
+
+  it("RELEASES the pane from the ACTIVE landing row — the natural escape", async () => {
+    // The path no other case reaches: the landing row is already active, so
+    // selectConversation early-returns and moves NO id — selectFromRail's
+    // dismiss is the sole release. The Alpha-thread click moves activeId too.
+    window.history.replaceState(null, "", "/c/not-a-uuid")
+    renderSeeker(() => [], {
+      listFor: () => ({ threads: [A] }),
+      deepLinkUnresolvable: true,
+    })
+    await waitFor(() =>
+      expect(
+        container.querySelector('[data-denial="unavailable"]'),
+      ).not.toBeNull(),
+    )
+
+    await selectRow("New conversation")
+
+    expect(container.querySelector("[data-denial]")).toBeNull()
+    expect(screen.getByRole("textbox", { name: "Message" })).toBeInTheDocument()
+  })
+
+  it("RELEASES the pane on a history traverse that changes nothing", async () => {
+    // Isolates onHistoryNavigation's dismiss: a traverse to "/" while already
+    // on the fresh local row makes the hook's newConversation() a no-op, so
+    // again no id moves and only the dismiss can release.
+    window.history.replaceState(null, "", "/c/not-a-uuid")
+    renderSeeker(() => [], { deepLinkUnresolvable: true })
+    await waitFor(() =>
+      expect(
+        container.querySelector('[data-denial="unavailable"]'),
+      ).not.toBeNull(),
+    )
+
+    await traverseTo("/")
+
+    expect(container.querySelector("[data-denial]")).toBeNull()
+    expect(screen.getByRole("textbox", { name: "Message" })).toBeInTheDocument()
+  })
+
+  it("is INERT on a flag-off shell — the belt, not the caller, decides", async () => {
+    // SYNTHETIC prop pair (2026-08-20): deepLinkShell only emits
+    // deepLinkUnresolvable:true alongside seekerEnabled:true, so this pins the
+    // CONSUMER belt — dropping `grantedShell` panes an anonymous user's chat.
+    view.unmount()
+    const fetchMock = vi.fn()
+    vi.stubGlobal("fetch", fetchMock)
+    renderShell(false, { deepLinkUnresolvable: true })
+    await act(async () => {})
+
+    expect(container.querySelector("[data-denial]")).toBeNull()
+    expect(screen.getByRole("textbox", { name: "Message" })).toBeInTheDocument()
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it("is INERT under a server-decided denial shell — deniedScreen still wins", async () => {
+    // SYNTHETIC prop pair (2026-08-20), same producer argument as above:
+    // deepLinkShell never pairs deepLinkUnresolvable with a deniedScreen.
+    // Pins that the denial shell keeps its inertness if one ever did.
+    window.history.replaceState(null, "", "/c/not-a-uuid")
+    const replaceSpy = vi.spyOn(window.history, "replaceState")
+    const fetchMock = renderSeeker(() => [], {
+      deniedScreen: "unavailable",
+      deepLinkUnresolvable: true,
+    })
+    await act(async () => {})
+    try {
+      expect(fetchMock).not.toHaveBeenCalled()
+      expect(replaceSpy).not.toHaveBeenCalled()
+      expect(window.location.pathname).toBe("/c/not-a-uuid")
+      expect(
+        screen.getByRole("link", { name: "New conversation" }),
+      ).toBeInTheDocument()
+    } finally {
       replaceSpy.mockRestore()
     }
   })

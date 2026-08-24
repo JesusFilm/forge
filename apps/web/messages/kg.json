@@ -191,6 +191,7 @@
     "loadMoreFailed": "Kozwa ba résultat mosusu elongi te.",
     "searching": "Kozalaka koluka...",
     "connectionHint": "Svp talá connexion na yo mpe meka lisusu.",
+    "rateLimitHint": "Malomba me luta mingi. Meka diaka na nima ya miniti mosi.",
     "retrySearch": "Meka boluki lisusu",
     "retry": "Meka lisusu",
     "noResults": "Résultat moko te mpo na \"{query}\"",
@@ -225,7 +226,9 @@
   "HeroPlayer": {
     "playWithSound": "Tala sikoyo",
     "tapToUnmute": "Fina mpo na kosokola mongongo",
-    "nextEpisode": "Episode oyo ekolanda"
+    "nextEpisode": "Episode oyo ekolanda",
+    "audioTranslationCount": "{count, plural, one {monoko #} other {minoko #}}",
+    "subtitleCount": "Mibenga ya nse: {count, plural, one {monoko #} other {minoko #}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Kozwa contenu",
@@ -538,16 +541,16 @@
     "retryFailed": "Meka lisusu oyo elongi te"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Mutindu ya ndinga kele ve",
+    "eyebrow": "Mutindu ya ndinga kele ve",
+    "title": "<contentTitle>{title}</contentTitle> kele ve na <languageName>{language}</languageName>",
+    "actionsLabel": "Mitindu ya kutala yina kele",
+    "browseInLanguage": "Tala bavideo na {language}",
+    "backToSearch": "Vutuka na kusosa",
+    "audioVersionsTitle": "Mitindu yankaka ya ndinga ya audio",
+    "audioVersionsDescription": "Pona ndinga ya audio sambu na kulanda kutala video yai.",
+    "languageVersionLabel": "Ndinga ya audio",
+    "selectLanguageVersion": "Pona mutindu ya ndinga",
+    "watchSelectedVersion": "Tala mutindu yina me ponama"
   }
 }

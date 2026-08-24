@@ -3,10 +3,12 @@ import { Prisma, type PrismaClient } from "@prisma/client"
 
 import type { Principal } from "@/auth/principal"
 import { hasPermission } from "@/auth/permissions"
+import { env } from "@/config/env"
 import { BlocksSchema } from "@/domain/blocks"
 import { ForbiddenError, NotFoundError } from "@/services/errors"
 import {
   CreateExperienceLocaleInput,
+  ExperienceLocaleDraftSnapshotSchema,
   UpdateExperienceLocaleInput,
 } from "@/services/experience.schemas"
 import { ExperienceService } from "@/services/experience.service"
@@ -49,6 +51,14 @@ const UpdateLocaleToolInput = z.object({
 const PublishLocaleToolInput = z.object({
   localeId: z.string().min(1),
   reason: z.string().min(1).max(500),
+})
+
+const DiscardLocaleToolInput = z.object({
+  localeId: z.string().min(1),
+})
+
+const PreviewLocaleToolInput = z.object({
+  localeId: z.string().min(1),
 })
 
 const DiffLocaleInput = z.object({
@@ -146,16 +156,54 @@ export class ExperienceLocaleMcpService {
       },
     })
 
+    const draftRows = await this.prisma.contentRevision.findMany({
+      where: {
+        entityType: "ExperienceLocale",
+        entityId: {
+          in: rows.flatMap((row) => row.locales.map((locale) => locale.id)),
+        },
+        status: "DRAFT",
+      },
+      select: {
+        id: true,
+        entityId: true,
+        snapshot: true,
+        previewToken: true,
+        revisedAt: true,
+        revisedBy: true,
+        revisedByKind: true,
+        reason: true,
+      },
+    })
+    const draftsByLocaleId = new Map(
+      draftRows.map((draft) => [draft.entityId, draft]),
+    )
+
     return {
       experiences: rows.map((row) => ({
         id: row.id,
         isTemplate: row.isTemplate,
         ownerId: row.ownerId,
         updatedAt: row.updatedAt.toISOString(),
-        locales: row.locales.map((locale) => ({
-          ...locale,
-          updatedAt: locale.updatedAt.toISOString(),
-        })),
+        locales: row.locales.map((locale) => {
+          const draft = draftsByLocaleId.get(locale.id)
+          const parsed = draft
+            ? ExperienceLocaleDraftSnapshotSchema.safeParse(draft.snapshot)
+            : null
+          const effective = parsed?.success
+            ? {
+                ...locale,
+                slug: parsed.data.data.slug,
+                title: parsed.data.data.title,
+              }
+            : locale
+          return {
+            ...effective,
+            updatedAt: effective.updatedAt.toISOString(),
+            hasDraft: Boolean(draft),
+            activeDraft: draft ? serializeActiveDraft(draft) : null,
+          }
+        }),
       })),
     }
   }
@@ -205,7 +253,14 @@ export class ExperienceLocaleMcpService {
         isTemplate: experience.isTemplate,
         ownerId: experience.ownerId,
       },
-      locales: experience.locales.map(serializeLocale),
+      locales: await Promise.all(
+        experience.locales.map(async (locale) => {
+          const state = await new ExperienceService(
+            this.prisma,
+          ).getLocaleDraftState({ id: locale.id, user })
+          return serializeDraftState(state)
+        }),
+      ),
     }
   }
 
@@ -256,9 +311,13 @@ export class ExperienceLocaleMcpService {
       )
     }
 
+    const state = await new ExperienceService(this.prisma).getLocaleDraftState({
+      id: locale.id,
+      user,
+    })
     return {
       experience: locale.experience,
-      locale: serializeLocale(locale),
+      ...serializeDraftState(state),
     }
   }
 
@@ -331,8 +390,8 @@ export class ExperienceLocaleMcpService {
     const input = ValidateLocaleInput.parse(raw)
     const schema =
       input.mode === "update"
-        ? UpdateExperienceLocaleInput
-        : CreateExperienceLocaleInput
+        ? UpdateExperienceLocaleInput.strict()
+        : CreateExperienceLocaleInput.strict()
     const result = schema.safeParse(input.draft)
     const blocksResult =
       "blocks" in input.draft
@@ -377,9 +436,12 @@ export class ExperienceLocaleMcpService {
     user: Principal | null
   }) {
     const input = UpdateLocaleToolInput.parse(raw)
+    const draft = UpdateExperienceLocaleInput.omit({ id: true })
+      .strict()
+      .parse(input.draft)
     const result = await new ExperienceService(this.prisma).updateLocale({
       input: {
-        ...input.draft,
+        ...draft,
         id: input.localeId,
       },
       user,
@@ -407,6 +469,45 @@ export class ExperienceLocaleMcpService {
     }
   }
 
+  async discardLocale({
+    input: raw,
+    user,
+  }: {
+    input: unknown
+    user: Principal | null
+  }) {
+    const input = DiscardLocaleToolInput.parse(raw)
+    const result = await new ExperienceService(this.prisma).discardLocaleDraft({
+      input: { id: input.localeId },
+      user,
+    })
+    return { locale: serializeLocale(result), discarded: true }
+  }
+
+  async previewLocale({
+    input: raw,
+    user,
+  }: {
+    input: unknown
+    user: Principal | null
+  }) {
+    const input = PreviewLocaleToolInput.parse(raw)
+    const state = await new ExperienceService(this.prisma).getLocaleDraftState({
+      id: input.localeId,
+      user,
+    })
+    const activeDraft = state.activeDraft
+    const token = activeDraft?.previewToken
+    if (!activeDraft || !token) {
+      throw new NotFoundError("Active ExperienceLocale draft", input.localeId)
+    }
+    return {
+      localeId: input.localeId,
+      draftRevisionId: activeDraft.id,
+      previewUrl: previewUrlFor(token),
+    }
+  }
+
   async diffLocaleDraft({
     input: raw,
     user,
@@ -416,26 +517,12 @@ export class ExperienceLocaleMcpService {
   }) {
     this.assertCanRead(user)
     const input = DiffLocaleInput.parse(raw)
-    const source = await this.prisma.experienceLocale.findUniqueOrThrow({
-      where: { id: input.sourceLocaleId },
-      select: {
-        id: true,
-        experienceId: true,
-        locale: true,
-        slug: true,
-        isHomepage: true,
-        pathSegment: true,
-        title: true,
-        metaDescription: true,
-        ogTitle: true,
-        ogDescription: true,
-        ogImageUrl: true,
-        blocks: true,
-        status: true,
-        publishedAt: true,
-        updatedAt: true,
-      },
-    })
+    const source = (
+      await new ExperienceService(this.prisma).getLocaleDraftState({
+        id: input.sourceLocaleId,
+        user,
+      })
+    ).effective
     const serializedSource = serializeLocale(source)
     const comparedFields = [
       "slug",
@@ -849,6 +936,55 @@ export function serializeLocale(locale: LocaleRow) {
     status: locale.status,
     publishedAt: locale.publishedAt?.toISOString() ?? null,
     updatedAt: locale.updatedAt.toISOString(),
+  }
+}
+
+function previewUrlFor(token: string) {
+  return new URL(
+    `/watch/preview/experience/${encodeURIComponent(token)}`,
+    env.WATCH_CANONICAL_ORIGIN,
+  ).toString()
+}
+
+function serializeActiveDraft(draft: {
+  id: string
+  previewToken: string | null
+  revisedAt: Date
+  revisedBy: string | null
+  revisedByKind: string
+  reason: string | null
+}) {
+  return {
+    id: draft.id,
+    revisedAt: draft.revisedAt.toISOString(),
+    revisedBy: draft.revisedBy,
+    revisedByKind: draft.revisedByKind,
+    reason: draft.reason,
+    previewUrl: draft.previewToken ? previewUrlFor(draft.previewToken) : null,
+  }
+}
+
+function serializeDraftState(state: {
+  canonical: LocaleRow
+  effective: LocaleRow
+  activeDraft: {
+    id: string
+    previewToken: string | null
+    revisedAt: Date
+    revisedBy: string | null
+    revisedByKind: string
+    reason: string | null
+  } | null
+}) {
+  return {
+    canonical: serializeLocale(state.canonical),
+    effective: serializeLocale(state.effective),
+    // Backward-compatible alias: locale is always the editable effective state.
+    locale: serializeLocale(state.effective),
+    hasDraft: state.activeDraft !== null,
+    activeDraft: state.activeDraft
+      ? serializeActiveDraft(state.activeDraft)
+      : null,
   }
 }
 

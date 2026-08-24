@@ -109,6 +109,11 @@ Audio availability takes precedence over subtitle-only membership, while
 collection containers and playable leaf Videos remain distinct inventory
 groups even when they share the same underlying language coverage.
 
+A subtitle-only entry is actionable only when its requested VTT and fallback
+Dub share a compatible Video Edition. Its public path names the playable audio
+language, while the requested subtitle language travels as separate one-shot
+intent.
+
 ### Contextual Watch Route
 
 A public Watch URL that identifies a parent collection, child Video, and
@@ -726,6 +731,21 @@ A client-generated, stable-per-device identifier a Fleet Client attaches to a re
 
 ## User sign-in
 
+### Protected Resource
+
+An OAuth API identified by an exact URI that accepts access tokens only when
+their audience names that same resource; it is distinct from the client that
+requests the token and from the authorization server that issues it.
+
+### Resource-Bound OAuth Grant
+
+An OAuth authorization grant whose allowed Protected Resources are fixed when
+the user authorizes it, carried through authorization-code exchange and refresh,
+and never widened by a later token request.
+
+Exchange may select an authorized subset, while refresh remains constrained by
+the original grant ceiling.
+
 ### First-Party App
 
 One of the project's own applications that the auth provider recognizes as its own rather than as a third-party integration, registered with the provider so it can be issued tokens and have sign-in routed back to it.
@@ -765,6 +785,22 @@ A migration failure state the team has classified as safe for automated failed-r
 ### Experience
 
 A curated, themed watch page — such as Easter or Christmas — that assembles a selection of watch content under an editorial frame. An Experience is authored in admin (hand-curated by the editorial team, or AI-generated) and published to render as its own standalone page on the watch site, reachable by a public slug of its own (distinct from any single Video's slug).
+
+### Experience Draft
+
+The single shared staged version of one language-specific Experience, editable
+and previewable without changing that Experience's live version. Each language
+has an independent draft and publish lifecycle; saves use last-save-wins
+collaboration, while publishing or discarding ends the draft and invalidates its
+unlisted preview.
+
+### Experience Duplicate
+
+A new caller-owned Experience created from another Experience's latest saved
+effective authored configuration, including each locale's active draft when one
+exists. It preserves localized content and template classification but starts
+unpublished, without homepage designation, revision history, chat state, or
+derived publication data; referenced media remain shared rather than cloned.
 
 ### Experience Block
 
@@ -975,6 +1011,8 @@ The small floating video window that keeps a video playing after the viewer leav
 
 It is the same live playback surface as the full-size player, resized and repositioned rather than handed to a second player, because moving playback between two surfaces restarts it. A Mini Player is earned rather than automatic: a video that never actually played does not get one, nor does a video that already ran to its end, nor one whose playback is being driven by a cast receiver. While an in-app sheet is presented over it, it is hidden rather than torn down, so the video keeps playing behind the sheet and returns when the sheet closes. The viewer can move it between screen corners and dismiss it; dismissing ends the playback session rather than merely hiding the window.
 
+Shrinking into the window and growing back out of it are one reversible motion, not two independent animations: a transition interrupted part-way turns around from where it currently is rather than restarting from either end, so the video never jumps. Because the same surface is being moved rather than replaced, the window is only ever as correct as the transition's own bookkeeping — a transition that ends without restoring the surface to its resting state leaves the window drawn but empty.
+
 ## Offline downloads
 
 ### Download Record
@@ -1023,7 +1061,9 @@ A conversation row the session creates from a Per-Conversation URL's id alone �
 
 ### Denial Screen
 
-The full-pane outcome of opening a Per-Conversation URL that cannot be shown: it replaces the conversation pane while the sidebar stays rendered. Two screens by design. The sign-in screen appears when there is no valid session — anonymous, expired, and tampered are indistinguishable and signing in is the fix, returning to the same conversation afterward (a completed sign-in can still end in denial; that is the model working, not a bug). The unavailable screen covers everything a sign-in cannot fix — another person's conversation, a vanished or erased one, a malformed address, an account the gate denies — with identical wording across those causes so the copy never reveals whether a conversation exists or whose it is. A denial screen never adopts the conversation, and a shell showing one is never gate-granted, so nothing behind the frozen pane fetches, mutates state, or rewrites the address; leaving one is a real navigation.
+The full-pane outcome of opening a Per-Conversation URL that cannot be shown: it replaces the conversation pane while the sidebar stays rendered. Two screens by design. The sign-in screen appears when there is no valid session — anonymous, expired, and tampered are indistinguishable and signing in is the fix, returning to the same conversation afterward (a completed sign-in can still end in denial; that is the model working, not a bug). The unavailable screen covers everything a sign-in cannot fix — another person's conversation, a vanished or erased one, a malformed address, an account the gate denies — with identical wording across those causes so the copy never reveals whether a conversation exists or whose it is. A denial screen never adopts the conversation.
+
+The pane is not the shell. A shell showing a SERVER-DECIDED denial screen is never gate-granted — that is the invariant, and it is what makes such a shell inert: nothing behind the frozen pane fetches conversation data, mutates state, or changes the address on the conversation's behalf, and leaving one is a real navigation that re-resolves who the visitor is. (One narrow exception, unrelated to conversations: a visitor returning from a failed sign-in strips that failure marker from their own address.) The grant cannot override a server-decided denial. But a visitor the gate already grants can meet the same unavailable pane on a LIVE shell — their sidebar, history and address layer keep working, and the pane clears when they open another conversation or start a new one — because withholding a granted person's own history is a cost the denial never needed to impose. So it is the absence of a server-decided denial, not the pane on screen, that leaves a shell live.
 
 ### Resource Key
 
@@ -1065,9 +1105,46 @@ An attempt is complete only after its required inventoried evidence has passed a
 
 Once attempt bytes reach the repository's base branch they are historical evidence: later changes create a new attempt or experiment rather than modifying, deleting, renaming, or completing those bytes in place. A terminal verdict seals its whole experiment.
 
+## Telemetry triage
+
+### Triage Signal
+
+One unit of detected activity a triage sweep may act on: a grouped error issue, a monitor alert episode, or a spike in an aggregate count. The kind decides what evidence is available and which dedup rules apply. Everything downstream — judgment, ticket text, dedup identity — is keyed to the signal rather than to the individual events behind it.
+
+### Service Baseline
+
+The standing activity a covered service already had when triage began watching it, recorded on that service's first covered run.
+
+That first run deliberately files nothing: it exists so pre-existing errors read as pre-existing instead of as a sudden flood of new ones. A read the sweep could not complete refuses to seed a baseline at all, because a partial view recorded as "everything that existed" would make the unseen remainder look new forever.
+
+### Epoch
+
+The dedup generation of a Triage Signal — the counter that decides whether an already-ticketed problem may be ticketed again.
+
+A signal ticketed once stays quiet at that epoch however long the problem persists. Only a regression past a configured multiple of the signal's recorded baseline mints the next epoch, and minting records the regressed level as the new baseline, so an elevated but stable problem does not re-fire on every sweep.
+
+### Withheld Signal
+
+A signal a run read or judged but deliberately did not commit state for, so the next run reads it again from the same point.
+
+Withholding is the sweep's response to any uncertainty it cannot resolve — a failed judgment, an exhausted time budget, a ticket the outbox could not durably record. It trades a duplicate read for the guarantee that nothing is silently dropped. The alternative, advancing state past work that did not complete, loses the signal permanently.
+
+### Ticket Outbox
+
+The durable queue every externally created triage ticket passes through, so that deciding to file and actually filing are separate, restartable steps.
+
+The per-day ticket budget is enforced inside the claim that reserves work rather than by the caller, so concurrent or restarted runs cannot exceed it together. Signal state commits only after the outbox row is durable; refusing the state write when that row is absent is what stops a run from recording "handled" for a ticket nothing ever queued. Work that does not fit the budget stays queued for a later day rather than expiring.
+
+### Untrusted Evidence
+
+External text a triage or research pipeline reads and then reproduces — an error message, a stack frame, a support conversation — which anyone who can reach the upstream system can influence.
+
+It is hostile input at two distinct boundaries, and neither boundary's control substitutes for the other's. At the model turn, delimiters keep it from reading as instructions. At the human-facing artifact, a sanitizer neutralizes links and markers before the text is written into a ticket a reader will click.
+
 ## Flagged ambiguities
 
 - "Contextual Watch Route" and "canonical Watch URL" are not synonyms: the contextual route preserves collection navigation, while the Standalone Watch Route owns discovery, social, and sharing identity.
+- "Evidence" names two unrelated things and should always be qualified: **Semantic Evidence** is the content fragment explaining why a search result matched, while **Untrusted Evidence** is attacker-influenceable upstream text a pipeline must neutralize before use.
 - "Showcase" names two unrelated TV surfaces that are close to opposites, and neither is a variant of the other: **Showcase Mode** is the unattended autoplaying reel, while the **Focus-Driven Showcase** is Home's canvas that follows D-pad focus and deliberately mounts no video player. Always qualify which one is meant.
 - "Search Passport" had named a known-caller check as though it were specific to search, and as though it gated access there. Both are wrong: the check is a general known-caller concept, and the public search surface admits anonymous callers — a key there selects Rate-Limit Identity only. Use **Known-Caller Check**, and say explicitly whether a given surface gates on it.
 - "Chapter" carries two unrelated meanings. A **Chapter** is a segment of one feature film (a catalog relationship); a **felt-need chapter** is a themed section of Showcase Mode's reel, announced by a Chapter Card. Qualify which is meant whenever both surfaces are in scope.

@@ -191,6 +191,7 @@
     "loadMoreFailed": "Det gick inte att ladda fler resultat.",
     "searching": "Söker...",
     "connectionHint": "Kontrollera din anslutning och försök igen.",
+    "rateLimitHint": "För många förfrågningar. Försök igen om en minut.",
     "retrySearch": "Försök söka igen",
     "retry": "Försök igen",
     "noResults": "Inga träffar för \"{query}\"",
@@ -225,7 +226,9 @@
   "HeroPlayer": {
     "playWithSound": "Titta nu",
     "tapToUnmute": "Tryck för att slå på ljudet",
-    "nextEpisode": "Nästa avsnitt"
+    "nextEpisode": "Nästa avsnitt",
+    "audioTranslationCount": "{count, plural, one {# språk} other {# språk}}",
+    "subtitleCount": "Undertexter: {count, plural, one {# språk} other {# språk}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Laddar innehåll",
@@ -538,16 +541,16 @@
     "retryFailed": "Försök igen med misslyckade nedladdningar"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Språkversionen är inte tillgänglig",
+    "eyebrow": "Språkversionen är inte tillgänglig",
+    "title": "<contentTitle>{title}</contentTitle> är inte tillgänglig på <languageName>{language}</languageName>",
+    "actionsLabel": "Tillgängliga visningsalternativ",
+    "browseInLanguage": "Bläddra bland videor på {language}",
+    "backToSearch": "Tillbaka till sökningen",
+    "audioVersionsTitle": "Andra ljudversioner",
+    "audioVersionsDescription": "Välj ett ljudspråk för att fortsätta titta på videon.",
+    "languageVersionLabel": "Ljudspråk",
+    "selectLanguageVersion": "Välj en språkversion",
+    "watchSelectedVersion": "Titta på vald version"
   }
 }

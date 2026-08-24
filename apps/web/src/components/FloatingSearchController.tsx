@@ -28,7 +28,11 @@ import {
   type SearchLanguageOption,
 } from "@/lib/search-language"
 import { parseWatchPath } from "@/lib/routes"
-import { searchWatchDirect } from "@/lib/watch-search-client"
+import {
+  searchWatchDirect,
+  watchSearchErrorKind,
+  type WatchSearchErrorKind,
+} from "@/lib/watch-search-client"
 import { normalizeWatchSearchQuery } from "@/lib/watch-search-query"
 import {
   FloatingSearchContext,
@@ -125,6 +129,7 @@ export function FloatingSearchController({
   const [showSkeleton, setShowSkeleton] = useState(false)
   const [loadingMore, setLoadingMore] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [errorKind, setErrorKind] = useState<WatchSearchErrorKind | null>(null)
   const [searched, setSearched] = useState(false)
   const [submittedQuery, setSubmittedQuery] = useState<string | null>(null)
   const [resultSource, setResultSource] =
@@ -380,6 +385,7 @@ export function FloatingSearchController({
         setHasMore(false)
         setSearched(false)
         setError(null)
+        setErrorKind(null)
         setResultSource(null)
         activeSearchSignatureRef.current = null
         setSearchResultAnalytics(null)
@@ -400,6 +406,7 @@ export function FloatingSearchController({
 
       setLoading(true)
       setError(null)
+      setErrorKind(null)
       setSearched(true)
       if (skeletonTimerRef.current) clearTimeout(skeletonTimerRef.current)
       skeletonTimerRef.current = setTimeout(() => {
@@ -510,11 +517,12 @@ export function FloatingSearchController({
           searchLanguageSlug: completedTargetLanguageSlug,
           searchRequestId: responseSearchRequestId,
         })
-      } catch {
+      } catch (searchError) {
         if (requestIdRef.current === thisRequest) {
           activeSearchSignatureRef.current = null
           setSearchResultAnalytics(null)
           setError(tSearchOverlay("searchFailed"))
+          setErrorKind(watchSearchErrorKind(searchError))
         }
       } finally {
         // Only clear loading state for the winning request — otherwise a
@@ -548,6 +556,7 @@ export function FloatingSearchController({
     const thisLoadMoreRun = ++loadMoreRunIdRef.current
     setLoadingMore(true)
     setError(null)
+    setErrorKind(null)
     // Capture the current search's request id; bail out of the append if a
     // new search supersedes us mid-fetch.
     const thisRequest = requestIdRef.current
@@ -600,9 +609,10 @@ export function FloatingSearchController({
         searchLanguageSlug: expectedSignature.searchLanguageSlug,
         searchRequestId: expectedSignature.searchRequestId,
       })
-    } catch {
+    } catch (searchError) {
       if (requestIdRef.current === thisRequest) {
         setError(tSearchOverlay("loadMoreFailed"))
+        setErrorKind(watchSearchErrorKind(searchError))
       }
     } finally {
       if (loadMoreRunIdRef.current === thisLoadMoreRun) {
@@ -721,6 +731,7 @@ export function FloatingSearchController({
       showSkeleton,
       loadingMore,
       error,
+      errorKind,
       searched,
       resultSource,
       languageOptions,
@@ -761,6 +772,7 @@ export function FloatingSearchController({
       showSkeleton,
       loadingMore,
       error,
+      errorKind,
       searched,
       resultSource,
       languageOptions,

@@ -191,6 +191,7 @@
     "loadMoreFailed": "Methu llwytho rhagor o ganlyniadau.",
     "searching": "Wrthi’n chwilio...",
     "connectionHint": "Gwiriwch eich cysylltiad a rhoi cynnig arall arni.",
+    "rateLimitHint": "Gormod o geisiadau. Rhowch gynnig arall arni ymhen munud.",
     "retrySearch": "Ceisio chwilio eto",
     "retry": "Ceisio eto",
     "noResults": "Dim canlyniadau ar gyfer \"{query}\"",
@@ -225,7 +226,9 @@
   "HeroPlayer": {
     "playWithSound": "Gwylio nawr",
     "tapToUnmute": "Tapio i ddad-distewi",
-    "nextEpisode": "Pennod Nesaf"
+    "nextEpisode": "Pennod Nesaf",
+    "audioTranslationCount": "{count, plural, one {# iaith} other {# iaith}}",
+    "subtitleCount": "Capsiynau: {count, plural, one {# iaith} other {# iaith}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Wrthi’n llwytho cynnwys",
@@ -538,16 +541,16 @@
     "retryFailed": "Ceisio’r rhai a fethodd eto"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Nid yw'r fersiwn iaith ar gael",
+    "eyebrow": "Nid yw'r fersiwn iaith ar gael",
+    "title": "Nid yw <contentTitle>{title}</contentTitle> ar gael yn <languageName>{language}</languageName>",
+    "actionsLabel": "Opsiynau gwylio sydd ar gael",
+    "browseInLanguage": "Pori fideos yn {language}",
+    "backToSearch": "Yn ôl i'r chwiliad",
+    "audioVersionsTitle": "Fersiynau sain eraill",
+    "audioVersionsDescription": "Dewiswch iaith sain i barhau i wylio'r fideo hwn.",
+    "languageVersionLabel": "Iaith sain",
+    "selectLanguageVersion": "Dewiswch fersiwn iaith",
+    "watchSelectedVersion": "Gwylio'r fersiwn a ddewiswyd"
   }
 }

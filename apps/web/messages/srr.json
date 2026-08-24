@@ -191,6 +191,7 @@
     "loadMoreFailed": "Mënul a yeb yeneen njureef.",
     "searching": "Dañuy seet...",
     "connectionHint": "Jàngal sa connection te jéemaatal.",
+    "rateLimitHint": "Ñaan yi ɗuuƭ na. Jéemaat o njok ɗik a simili leng.",
     "retrySearch": "Jéemaatal seet bi",
     "retry": "Jéemaatal",
     "noResults": "Amul njureef ci \"{query}\"",
@@ -225,7 +226,9 @@
   "HeroPlayer": {
     "playWithSound": "Wone léegi",
     "tapToUnmute": "Daatal ngir wone baat",
-    "nextEpisode": "Episode bi topp"
+    "nextEpisode": "Episode bi topp",
+    "audioTranslationCount": "{count, plural, one {# làkk} other {# làkk yi}}",
+    "subtitleCount": "Subtitles yi: {count, plural, one {# làkk} other {# làkk yi}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Dañuy yeb xibaar bi",
@@ -538,16 +541,16 @@
     "retryFailed": "Jéemaatal yi lajj"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Sumbum o ƭat naa jeg",
+    "eyebrow": "Sumbum o ƭat naa jeg",
+    "title": "<contentTitle>{title}</contentTitle> naa jeg na <languageName>{language}</languageName>",
+    "actionsLabel": "Tànneef yaa jeg ngir xool",
+    "browseInLanguage": "Xool video yi na {language}",
+    "backToSearch": "Dellu na seet",
+    "audioVersionsTitle": "Yeneen sumbi baat",
+    "audioVersionsDescription": "Tànnal o ƭat o baat ngir wéyal xool video le.",
+    "languageVersionLabel": "O ƭat o baat",
+    "selectLanguageVersion": "Tànnal sumbum o ƭat",
+    "watchSelectedVersion": "Xool sumb bi nga tànn"
   }
 }

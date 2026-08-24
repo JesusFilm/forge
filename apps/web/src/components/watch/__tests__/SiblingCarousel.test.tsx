@@ -273,7 +273,7 @@ const pilatePageChapterSlugs = [
 ]
 
 describe("SiblingCarousel — happy path", () => {
-  it("keeps a one-option standalone collection selector visible", () => {
+  it("renders a one-option standalone collection title as fixed text", () => {
     const block = makeSelectableBlock()
     block.selectableParents = block.selectableParents?.slice(0, 1)
 
@@ -281,17 +281,30 @@ describe("SiblingCarousel — happy path", () => {
       root.render(<SiblingCarousel block={block} languageSlug="english" />)
     })
 
-    const selector = container.querySelector(
-      "[data-testid='sibling-carousel-parent-selector']",
-    ) as HTMLSelectElement | null
-    expect(selector).not.toBeNull()
-    expect(selector?.getAttribute("aria-label")).toBe("Collection")
-    expect(selector?.options).toHaveLength(1)
-    expect(selector?.options[0]?.textContent).toBe("First Collection")
-    expect(selector?.className).toContain("min-h-11")
-    expect(selector?.className).toContain("w-full")
-    expect(selector?.className).toContain("md:max-w-xs")
-    expect(selector?.className).toContain("focus-visible:ring-2")
+    const header = container.querySelector("header")
+    const title = header?.querySelector(
+      "[data-testid='sibling-carousel-parent-title']",
+    )
+    expect(title?.tagName).toBe("SPAN")
+    expect(title?.textContent).toBe("First Collection")
+    expect(title?.getAttribute("role")).toBeNull()
+    expect(title?.getAttribute("tabindex")).toBeNull()
+    expect(title?.getAttribute("aria-busy")).toBeNull()
+    expect(header?.querySelector("select, a, button")).toBeNull()
+    expect(
+      header?.querySelector(
+        "[data-testid='sibling-carousel-selection-announcement']",
+      ),
+    ).toBeNull()
+    expect(
+      header?.querySelector("[data-testid='sibling-carousel-label']")
+        ?.textContent,
+    ).toContain("1 of 3")
+    expect(
+      container
+        .querySelector("[data-block-type='SiblingCarousel']")
+        ?.getAttribute("aria-label"),
+    ).toContain("First Collection")
   })
 
   it("switches collections, rekeys the rail, and updates hrefs, current mark, and announcement", () => {

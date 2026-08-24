@@ -191,6 +191,7 @@
     "loadMoreFailed": "Mabaya so pag-load sa dugang result.",
     "searching": "Ga-search...",
     "connectionHint": "Paki-check so connection mo ago subukan uli.",
+    "rateLimitHint": "Madakel a pangeni. Enggay ka minuto na kapakayaw ka manen.",
     "retrySearch": "Subukan uli so search",
     "retry": "Ulihi",
     "noResults": "Daa result para sa \"{query}\"",
@@ -225,7 +226,9 @@
   "HeroPlayer": {
     "playWithSound": "Panonood na",
     "tapToUnmute": "Tap para i-Unmute",
-    "nextEpisode": "Masunod a Episode"
+    "nextEpisode": "Masunod a Episode",
+    "audioTranslationCount": "{count, plural, one {# wika} other {# mga wika}}",
+    "subtitleCount": "Mga Subtitle: {count, plural, one {# wika} other {# mga wika}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Ga-load so content",
@@ -538,16 +541,16 @@
     "retryFailed": "Mabaya so pag-ulit"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Da makayan i bersiyon nu basa",
+    "eyebrow": "Da makayan i bersiyon nu basa",
+    "title": "Su <contentTitle>{title}</contentTitle> na da makayan sa <languageName>{language}</languageName>",
+    "actionsLabel": "Mga kapamili nu kapegilay",
+    "browseInLanguage": "Gilay ka mga video sa {language}",
+    "backToSearch": "Muli sa kapakayaw",
+    "audioVersionsTitle": "Salakaw a mga bersiyon nu suwara",
+    "audioVersionsDescription": "Pili ka basa nu suwara para makatuluy ka sa kapegilay kanu video aya.",
+    "languageVersionLabel": "Basa nu suwara",
+    "selectLanguageVersion": "Pili ka bersiyon nu basa",
+    "watchSelectedVersion": "Gilay ka su napili a bersiyon"
   }
 }

@@ -191,6 +191,7 @@
     "loadMoreFailed": "Naʻe fehālaaki hono laodí ʻa e ngaahi ola lahi ange.",
     "searching": "Fekumi...",
     "connectionHint": "Kataki ʻo vakaiʻi hoʻo fehokotakiʻanga pea toe feinga.",
+    "rateLimitHint": "Fuʻu lahi e ngaahi kole. Kātaki ʻo toe feinga hili ha miniti ʻe taha.",
     "retrySearch": "Toe feinga fekumi",
     "retry": "Toe feinga",
     "noResults": "ʻIkai ha ola ki he \"{query}\"",
@@ -225,7 +226,9 @@
   "HeroPlayer": {
     "playWithSound": "Sio he taimí ni",
     "tapToUnmute": "Tap ke ʻAʻaʻi ʻa e Leʻo",
-    "nextEpisode": "ʻEpisooti Hoko"
+    "nextEpisode": "ʻEpisooti Hoko",
+    "audioTranslationCount": "{count, plural, one {# lea} other {# ngaahi lea}}",
+    "subtitleCount": "Ngaahi ʻUhinga: {count, plural, one {# lea} other {# ngaahi lea}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Lolotonga laodí ʻa e fakamatala",
@@ -538,16 +541,16 @@
     "retryFailed": "Toe feinga ki he ngaahi meʻa naʻe ʻikai lava"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "ʻOku ʻikai maʻu ʻa e tatau lea",
+    "eyebrow": "ʻOku ʻikai maʻu ʻa e tatau lea",
+    "title": "ʻOku ʻikai maʻu ʻa e <contentTitle>{title}</contentTitle> ʻi he lea <languageName>{language}</languageName>",
+    "actionsLabel": "Ngaahi fili ke mamata ai",
+    "browseInLanguage": "Kumi vitiō ʻi he lea {language}",
+    "backToSearch": "Foki ki he fekumi",
+    "audioVersionsTitle": "Ngaahi tatau ongo kehe",
+    "audioVersionsDescription": "Fili ha lea ʻo e ongo ke hoko atu hoʻo mamata ʻi he vitiō ni.",
+    "languageVersionLabel": "Lea ʻo e ongo",
+    "selectLanguageVersion": "Fili ha tatau lea",
+    "watchSelectedVersion": "Mamata ʻi he tatau kuo fili"
   }
 }

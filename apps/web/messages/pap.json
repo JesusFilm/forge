@@ -191,6 +191,7 @@
     "loadMoreFailed": "No por a karga mas resultado.",
     "searching": "Ta buska...",
     "connectionHint": "Por fabor chek bo konekshon i purba di nobo.",
+    "rateLimitHint": "Muchu petishon. Por fabor purba atrobe den un minüt.",
     "retrySearch": "Purba buskeda di nobo",
     "retry": "Purba di nobo",
     "noResults": "Ningun resultado pa \"{query}\"",
@@ -225,7 +226,9 @@
   "HeroPlayer": {
     "playWithSound": "Warda aworaki",
     "tapToUnmute": "Toca pa kita mute",
-    "nextEpisode": "Episodio sigiente"
+    "nextEpisode": "Episodio sigiente",
+    "audioTranslationCount": "{count, plural, one {# idioma} other {# idiomanan}}",
+    "subtitleCount": "Subtítulonan: {count, plural, one {# idioma} other {# idiomanan}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Ta kargando contenido",
@@ -538,16 +541,16 @@
     "retryFailed": "Purba esnan ku a faya di nobo"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Vershon di idioma no ta disponibel",
+    "eyebrow": "Vershon di idioma no ta disponibel",
+    "title": "<contentTitle>{title}</contentTitle> no ta disponibel na <languageName>{language}</languageName>",
+    "actionsLabel": "Opshonnan disponibel pa wak",
+    "browseInLanguage": "Wak videonan na {language}",
+    "backToSearch": "Bai bèk na buskeda",
+    "audioVersionsTitle": "Otro vershonnan di oudio",
+    "audioVersionsDescription": "Skohe un idioma di oudio pa sigui wak e video aki.",
+    "languageVersionLabel": "Idioma di oudio",
+    "selectLanguageVersion": "Skohe un vershon di idioma",
+    "watchSelectedVersion": "Wak e vershon skohí"
   }
 }

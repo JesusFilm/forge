@@ -191,6 +191,7 @@
     "loadMoreFailed": "Napakyas sa pag-load og dugang resulta.",
     "searching": "Nangita...",
     "connectionHint": "Palihug susiha ang imong koneksyon ug sulayi pag-usab.",
+    "rateLimitHint": "Daghan kaayong hangyo. Sulayi pag-usab sulod sa usa ka minuto.",
     "retrySearch": "Sulayi pag-usab ang pagpangita",
     "retry": "Sulayi pag-usab",
     "noResults": "Walay resulta para sa \"{query}\"",
@@ -225,7 +226,9 @@
   "HeroPlayer": {
     "playWithSound": "Tan-awa karon",
     "tapToUnmute": "I-tap aron buksan ang tunog",
-    "nextEpisode": "Sunod nga Episode"
+    "nextEpisode": "Sunod nga Episode",
+    "audioTranslationCount": "{count, plural, one {# ka pinulongan} other {# ka mga pinulongan}}",
+    "subtitleCount": "Mga Subtitle: {count, plural, one {# ka pinulongan} other {# ka mga pinulongan}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Gina-load ang sulod",
@@ -538,16 +541,16 @@
     "retryFailed": "Sulayi pag-usab ang napakyas"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Dili magamit ang bersyon sa pinulongan",
+    "eyebrow": "Dili magamit ang bersyon sa pinulongan",
+    "title": "<contentTitle>{title}</contentTitle> dili magamit sa <languageName>{language}</languageName>",
+    "actionsLabel": "Magamit nga mga opsyon sa pagtan-aw",
+    "browseInLanguage": "I-browse ang mga video sa {language}",
+    "backToSearch": "Balik sa pagpangita",
+    "audioVersionsTitle": "Ubang bersyon sa audio",
+    "audioVersionsDescription": "Pagpili og pinulongan sa audio aron makapadayon sa pagtan-aw niini nga video.",
+    "languageVersionLabel": "Pinulongan sa audio",
+    "selectLanguageVersion": "Pagpili og bersyon sa pinulongan",
+    "watchSelectedVersion": "Tan-awa ang napiling bersyon"
   }
 }

@@ -1,5 +1,5 @@
 import { z } from "zod"
-import type { Prisma, PrismaClient } from "@prisma/client"
+import type { PrismaClient } from "@prisma/client"
 
 import type { Principal } from "@/auth/principal"
 import { hasPermission } from "@/auth/permissions"
@@ -12,13 +12,14 @@ import {
 } from "@/services/experience-ai/experience-ai-normalize"
 import { buildExemplarOutline } from "@/services/experience-ai/experience-ai-exemplar-outline"
 import { launchMastraExperienceVariant } from "@/services/experience-ai/mastra-experience-variant-client"
-import {
-  serializeLocale,
-  type LocaleRow,
-} from "@/services/experience-locale-mcp.service"
+import { serializeLocale } from "@/services/experience-locale-mcp.service"
 import { launchMastraExperienceDraft } from "@/services/mastra-experience-draft-client"
 import { resolveTimeoutMs } from "@/services/mastra-http-transport"
-import { ForbiddenError, NotFoundError } from "@/services/errors"
+import {
+  ExperienceDuplicationError,
+  ForbiddenError,
+  NotFoundError,
+} from "@/services/errors"
 import { ExperienceService } from "@/services/experience.service"
 
 // `.strict()` is deliberate: `ExperienceService.create`'s own schema silently
@@ -44,6 +45,10 @@ const GenerateExperienceToolInput = z
     personaId: z.string().min(1).max(50).optional(),
     exemplarExperienceId: z.string().min(1).optional(),
   })
+  .strict()
+
+const DuplicateExperienceToolInput = z
+  .object({ experienceId: z.string().min(1) })
   .strict()
 
 /**
@@ -121,25 +126,6 @@ function describeErrorForLog(error: unknown): string {
   return message.replace(/[\r\n\t]+/g, " ").slice(0, 200)
 }
 
-/**
- * Versioned snapshot envelope for the AI-provenance ContentRevision.
- * `serializeLocale` already carries the exact field list of
- * experience.service.ts's module-private `snapshotExperienceLocale`
- * (deliberately excluding `embedding`); only `createdAt` is missing.
- */
-function snapshotGeneratedLocale(
-  locale: LocaleRow & { createdAt?: Date },
-): Prisma.InputJsonObject {
-  return {
-    v: 1,
-    data: {
-      ...serializeLocale(locale),
-      blocks: locale.blocks as Prisma.InputJsonValue,
-      createdAt: locale.createdAt?.toISOString() ?? null,
-    },
-  }
-}
-
 export type ExperienceMcpServiceOverrides = {
   loadCandidates?: typeof loadExperienceAiVideoCandidates
   launchDraft?: typeof launchMastraExperienceDraft
@@ -162,8 +148,9 @@ function editorUrlFor(experienceId: string, locale: string) {
 }
 
 /**
- * Service behind the two experience-LEVEL Admin MCP tools (`experience.create`
- * and `experience.generate`). The 12 locale-level tools — including
+ * Service behind the three experience-LEVEL Admin MCP tools
+ * (`experience.create`, `experience.duplicate`, and `experience.generate`).
+ * The 12 locale-level tools — including
  * `experience.list` and `experience.media.check` — live in the sibling
  * `ExperienceLocaleMcpService`.
  */
@@ -215,6 +202,34 @@ export class ExperienceMcpService {
       },
       locale: serializeLocale(locale),
       editorUrl: editorUrlFor(created.id, input.locale),
+    }
+  }
+
+  async duplicateExperience({
+    input: raw,
+    user,
+  }: {
+    input: unknown
+    user: Principal | null
+  }) {
+    const input = DuplicateExperienceToolInput.parse(raw)
+    const duplicated = await new ExperienceService(this.prisma).duplicate({
+      input: { id: input.experienceId },
+      user,
+    })
+    const firstLocale = duplicated.locales[0]
+    if (!firstLocale) throw new ExperienceDuplicationError()
+
+    return {
+      ok: true as const,
+      sourceExperienceId: input.experienceId,
+      experience: {
+        id: duplicated.id,
+        isTemplate: duplicated.isTemplate,
+        ownerId: duplicated.ownerId,
+      },
+      locales: duplicated.locales.map(serializeLocale),
+      editorUrl: editorUrlFor(duplicated.id, firstLocale.locale),
     }
   }
 
@@ -348,63 +363,25 @@ export class ExperienceMcpService {
     }
 
     try {
-      // The whole persist is ONE transaction — create, metaDescription, and
-      // the AI-provenance revision commit or roll back together, so a
-      // `persist_failed` envelope always means NOTHING was persisted (no
-      // orphaned DRAFT without provenance). ExperienceService.create only
-      // touches `experience.create`, so handing it the transaction client is
-      // safe; the cast is needed because its constructor names the full
-      // PrismaClient. Its own revision story: it writes none (nothing
-      // existed to snapshot), and its input surface has no metaDescription —
-      // going through updateLocale would stamp the wrong provenance
-      // (hardcoded USER kind) and applyChatMutation fires the revalidate
-      // webhook even for DRAFT rows. Neither publish side effects nor
-      // manifest refreshes may fire from this path.
       const provenanceReason = `Generated via Admin MCP experience.generate (topic: "${input.topic}"${
         input.personaId ? `, persona: ${input.personaId}` : ""
       })`
-      const { created, finalLocale } = await this.prisma.$transaction(
-        async (tx) => {
-          const created = await new ExperienceService(
-            tx as unknown as PrismaClient,
-          ).create({
-            input: {
-              locale: input.locale,
-              slug,
-              title: normalized.title,
-              blocks: normalized.blocks,
-            },
-            user,
-          })
-          const createdLocale = created.locales[0]!
-
-          // Meta update FIRST so the provenance snapshot records the full
-          // generated draft (title + metaDescription + blocks) as born.
-          const finalLocale = normalized.metaDescription
-            ? await tx.experienceLocale.update({
-                where: { id: createdLocale.id },
-                data: { metaDescription: normalized.metaDescription },
-              })
-            : createdLocale
-
-          await tx.contentRevision.create({
-            data: {
-              entityType: "ExperienceLocale",
-              entityId: createdLocale.id,
-              snapshot: snapshotGeneratedLocale({
-                ...finalLocale,
-                createdAt: createdLocale.createdAt,
-              }),
-              status: "HISTORICAL",
-              revisedBy: user?.id ?? null,
-              revisedByKind: "AI",
-              reason: provenanceReason,
-            },
-          })
-
-          return { created, finalLocale }
+      const experienceService = new ExperienceService(this.prisma)
+      const created = await experienceService.create({
+        input: {
+          locale: input.locale,
+          slug,
+          title: normalized.title,
+          metaDescription: normalized.metaDescription,
+          blocks: normalized.blocks,
         },
-      )
+        user,
+        draftAttribution: {
+          revisedByKind: "AI",
+          reason: provenanceReason,
+        },
+      })
+      const createdLocale = created.locales[0]!
 
       return {
         ok: true as const,
@@ -413,7 +390,7 @@ export class ExperienceMcpService {
           isTemplate: created.isTemplate,
           ownerId: created.ownerId,
         },
-        locale: serializeLocale(finalLocale),
+        locale: serializeLocale(createdLocale),
         editorUrl: editorUrlFor(created.id, input.locale),
         provenance: {
           source: input.personaId

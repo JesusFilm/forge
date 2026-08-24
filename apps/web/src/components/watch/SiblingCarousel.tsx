@@ -308,42 +308,53 @@ export function SiblingCarousel({
       <header className="mb-4 px-5 md:px-0">
         {selectableParents != null ? (
           <div className="flex min-w-0 flex-col gap-2 md:flex-row md:items-center md:gap-3">
-            <select
-              aria-label={videoLabels("collection")}
-              aria-busy={validPendingNavigation != null ? "true" : undefined}
-              data-testid="sibling-carousel-parent-selector"
-              value={selectedParent.documentId}
-              disabled={validPendingNavigation != null}
-              className="min-h-11 w-full min-w-0 max-w-full truncate rounded-md border border-stone-600 bg-stone-800 px-3 py-2 text-sm font-medium text-stone-100 outline-none focus-visible:border-stone-300 focus-visible:ring-2 focus-visible:ring-white/80 disabled:cursor-wait disabled:opacity-60 md:w-auto md:max-w-xs md:flex-1"
-              onChange={(event) => {
-                setApi(null)
-                deferInitialAutoScrollRef.current = false
-                setParentSelection({
-                  sourceVideoDocumentId: currentVideoDocumentId,
-                  parentDocumentId: event.currentTarget.value,
-                })
-              }}
-            >
-              {selectableParents.map((parent) => (
-                <option key={parent.documentId} value={parent.documentId}>
-                  {parent.title ?? videoLabels("collection")}
-                </option>
-              ))}
-            </select>
+            {selectableParents.length === 1 ? (
+              <span
+                data-testid="sibling-carousel-parent-title"
+                className="min-w-0 max-w-full truncate text-sm font-medium text-stone-100 md:max-w-xs md:flex-1"
+              >
+                {parentTitle}
+              </span>
+            ) : (
+              <select
+                aria-label={videoLabels("collection")}
+                aria-busy={validPendingNavigation != null ? "true" : undefined}
+                data-testid="sibling-carousel-parent-selector"
+                value={selectedParent.documentId}
+                disabled={validPendingNavigation != null}
+                className="min-h-11 w-full min-w-0 max-w-full truncate rounded-md border border-stone-600 bg-stone-800 px-3 py-2 text-sm font-medium text-stone-100 outline-none focus-visible:border-stone-300 focus-visible:ring-2 focus-visible:ring-white/80 disabled:cursor-wait disabled:opacity-60 md:w-auto md:max-w-xs md:flex-1"
+                onChange={(event) => {
+                  setApi(null)
+                  deferInitialAutoScrollRef.current = false
+                  setParentSelection({
+                    sourceVideoDocumentId: currentVideoDocumentId,
+                    parentDocumentId: event.currentTarget.value,
+                  })
+                }}
+              >
+                {selectableParents.map((parent) => (
+                  <option key={parent.documentId} value={parent.documentId}>
+                    {parent.title ?? videoLabels("collection")}
+                  </option>
+                ))}
+              </select>
+            )}
             <span
               data-testid="sibling-carousel-label"
               className="shrink-0 text-sm font-normal text-stone-300"
             >
               {positionLabel}
             </span>
-            <span
-              aria-live="polite"
-              aria-atomic="true"
-              data-testid="sibling-carousel-selection-announcement"
-              className="sr-only"
-            >
-              {parentTitle} · {t("chapterCount", { count: clipTotal })}
-            </span>
+            {selectableParents.length > 1 ? (
+              <span
+                aria-live="polite"
+                aria-atomic="true"
+                data-testid="sibling-carousel-selection-announcement"
+                className="sr-only"
+              >
+                {parentTitle} · {t("chapterCount", { count: clipTotal })}
+              </span>
+            ) : null}
           </div>
         ) : (
           <p className="text-sm font-normal text-stone-300">

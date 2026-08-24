@@ -191,6 +191,7 @@
     "loadMoreFailed": "Nie udało się wczytać więcej wyników.",
     "searching": "Wyszukiwanie...",
     "connectionHint": "Sprawdź połączenie i spróbuj ponownie.",
+    "rateLimitHint": "Zbyt wiele żądań. Spróbuj ponownie za minutę.",
     "retrySearch": "Ponów wyszukiwanie",
     "retry": "Spróbuj ponownie",
     "noResults": "Brak wyników dla „{query}”",
@@ -225,7 +226,9 @@
   "HeroPlayer": {
     "playWithSound": "Obejrzyj teraz",
     "tapToUnmute": "Dotknij, aby włączyć dźwięk",
-    "nextEpisode": "Następny odcinek"
+    "nextEpisode": "Następny odcinek",
+    "audioTranslationCount": "{count, plural, one {# język} other {# języków}}",
+    "subtitleCount": "Napisy: {count, plural, one {# język} other {# języków}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Wczytywanie treści",
@@ -538,16 +541,16 @@
     "retryFailed": "Ponów nieudane pobierania"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Wersja językowa jest niedostępna",
+    "eyebrow": "Wersja językowa jest niedostępna",
+    "title": "<contentTitle>{title}</contentTitle> nie jest dostępny w języku <languageName>{language}</languageName>",
+    "actionsLabel": "Dostępne opcje oglądania",
+    "browseInLanguage": "Przeglądaj filmy w języku {language}",
+    "backToSearch": "Wróć do wyszukiwania",
+    "audioVersionsTitle": "Inne wersje językowe",
+    "audioVersionsDescription": "Wybierz język dźwięku, aby kontynuować oglądanie tego filmu.",
+    "languageVersionLabel": "Język dźwięku",
+    "selectLanguageVersion": "Wybierz wersję językową",
+    "watchSelectedVersion": "Obejrzyj wybraną wersję"
   }
 }

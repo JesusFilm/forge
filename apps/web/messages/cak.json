@@ -191,6 +191,7 @@
     "loadMoreFailed": "Xq'at rutikirisaxik ch'aqa' chik resultados.",
     "searching": "Nikanöx...",
     "connectionHint": "Tanik'oj ri ak'amaya'l chuqa' taya' chik jun tzijol.",
+    "rateLimitHint": "Kʼïy chi taq kʼutunïk. Tabʼanaʼ utzil, tatojtobʼej chik pa jun chʼuti ramaj.",
     "retrySearch": "Tzolin chik kanöxik",
     "retry": "Tzolin chik",
     "noResults": "Majun resultados richin \"{query}\"",
@@ -225,7 +226,9 @@
   "HeroPlayer": {
     "playWithSound": "Tatz'eta' wakami",
     "tapToUnmute": "Taq'ax richin tich'aw chik",
-    "nextEpisode": "Episode ch'aqa' chik"
+    "nextEpisode": "Episode ch'aqa' chik",
+    "audioTranslationCount": "{count, plural, one {# ch'ab'äl} other {# taq ch'ab'äl}}",
+    "subtitleCount": "Subtítulos: {count, plural, one {# ch'ab'äl} other {# taq ch'ab'äl}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Nisamajij content",
@@ -538,16 +541,16 @@
     "retryFailed": "Titojtob'ëx chik ri man xejimïx ta"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Man wachel ta ri ruwäch chʼabʼäl",
+    "eyebrow": "Man wachel ta ri ruwäch chʼabʼäl",
+    "title": "<contentTitle>{title}</contentTitle> man wachel ta pa <languageName>{language}</languageName>",
+    "actionsLabel": "Taq chaʼoj richin nitzʼet",
+    "browseInLanguage": "Keʼatzʼetaʼ taq silowäch pa {language}",
+    "backToSearch": "Katzolin pa kanoxïk",
+    "audioVersionsTitle": "Juley taq ruwäch kʼoxom",
+    "audioVersionsDescription": "Tachaʼ jun ruchʼabʼäl kʼoxom richin nakʼïs rutzʼetik re silowäch reʼ.",
+    "languageVersionLabel": "Ruchʼabʼäl kʼoxom",
+    "selectLanguageVersion": "Tachaʼ jun ruwäch chʼabʼäl",
+    "watchSelectedVersion": "Tatzʼetaʼ ri ruwäch xachaʼ"
   }
 }

@@ -191,6 +191,7 @@
     "loadMoreFailed": "Ejab maron loor results tolak.",
     "searching": "Jibed...",
     "connectionHint": "Jouj im lale connection eo am im jijjet raurok.",
+    "rateLimitHint": "Elap kajjitõk ko. Jouj im bar juon minit.",
     "retrySearch": "Jijjet search",
     "retry": "Jijjet",
     "noResults": "Ejellok result n̄an \"{query}\"",
@@ -225,7 +226,9 @@
   "HeroPlayer": {
     "playWithSound": "Lale kio",
     "tapToUnmute": "Tap nan Unmute",
-    "nextEpisode": "Episode eo ilo joriane"
+    "nextEpisode": "Episode eo ilo joriane",
+    "audioTranslationCount": "{count, plural, one {# kajin} other {# kajin ko}}",
+    "subtitleCount": "Subtitle ko: {count, plural, one {# kajin} other {# kajin ko}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Ej load content",
@@ -538,16 +541,16 @@
     "retryFailed": "Jijjet bar download ko rar jorrāān"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Ejjelok ukok in kajin eo",
+    "eyebrow": "Ejjelok ukok in kajin eo",
+    "title": "<contentTitle>{title}</contentTitle> ejjelok ilo <languageName>{language}</languageName>",
+    "actionsLabel": "Wāween ko rej pād ñan lale",
+    "browseInLanguage": "Lale pija ko ilo {language}",
+    "backToSearch": "Rool ñan pukot",
+    "audioVersionsTitle": "Ukok ko jet an ainikien",
+    "audioVersionsDescription": "Kālet juon kajin ainikien bwe kwōn wōnmaanlok im lale pija in.",
+    "languageVersionLabel": "Kajin ainikien",
+    "selectLanguageVersion": "Kālet juon ukok in kajin",
+    "watchSelectedVersion": "Lale ukok eo emōj kālet"
   }
 }

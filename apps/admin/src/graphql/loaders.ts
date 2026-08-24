@@ -24,6 +24,7 @@ import {
   getOrScheduleWatchHeroPosterMuxDominantColor,
 } from "@/services/mux-image-derivative.service"
 import { notRestrictedFromWatchWhere } from "@/services/search-watchability"
+import { sortVideoImagesByDisplayPreference } from "@/services/video-image-selection"
 
 export type Loaders = ReturnType<typeof createLoaders>
 
@@ -142,7 +143,9 @@ export function createLoaders(prisma: PrismaClient) {
         findMany: (videoIds) =>
           prisma.videoImage.findMany({
             where: { videoId: { in: videoIds }, deletedAt: null },
+            orderBy: [{ videoId: "asc" }, { id: "asc" }],
           }),
+        sortRows: sortVideoImagesByDisplayPreference,
       }),
     ),
 
@@ -729,13 +732,15 @@ type VideoScopedFilterKey = { videoId: string }
 async function loadRowsByVideoId<R extends VideoScopedRow>({
   ids,
   findMany,
+  sortRows,
 }: {
   ids: readonly string[]
   findMany: (videoIds: string[]) => Promise<R[]>
+  sortRows?: (rows: R[]) => R[]
 }): Promise<R[][]> {
   const videoIds = unique(ids as string[])
   const rows = await findMany(videoIds)
-  const rowsByVideoId = groupRowsByVideoId(rows)
+  const rowsByVideoId = groupRowsByVideoId(sortRows ? sortRows(rows) : rows)
   return ids.map((id) => rowsByVideoId.get(id) ?? [])
 }
 

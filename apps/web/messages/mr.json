@@ -191,6 +191,7 @@
     "loadMoreFailed": "अधिक निकाल लोड करण्यात अयशस्वी.",
     "searching": "शोधत आहे...",
     "connectionHint": "कृपया तुमचे कनेक्शन तपासा आणि पुन्हा प्रयत्न करा.",
+    "rateLimitHint": "खूप विनंत्या झाल्या. कृपया एका मिनिटाने पुन्हा प्रयत्न करा.",
     "retrySearch": "शोध पुन्हा करा",
     "retry": "पुन्हा प्रयत्न करा",
     "noResults": "\"{query}\" साठी कोणतेही निकाल नाहीत",
@@ -225,7 +226,9 @@
   "HeroPlayer": {
     "playWithSound": "आता पहा",
     "tapToUnmute": "आवाज सुरू करण्यासाठी टॅप करा",
-    "nextEpisode": "पुढील भाग"
+    "nextEpisode": "पुढील भाग",
+    "audioTranslationCount": "{count, plural, one {# भाषा} other {# भाषा}}",
+    "subtitleCount": "सबटायटल्स: {count, plural, one {# भाषा} other {# भाषा}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "सामग्री लोड होत आहे",
@@ -538,16 +541,16 @@
     "retryFailed": "अयशस्वी डाउनलोडचा पुन्हा प्रयत्न करा"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "भाषा आवृत्ती उपलब्ध नाही",
+    "eyebrow": "भाषा आवृत्ती उपलब्ध नाही",
+    "title": "<contentTitle>{title}</contentTitle> <languageName>{language}</languageName> भाषेत उपलब्ध नाही",
+    "actionsLabel": "उपलब्ध पाहण्याचे पर्याय",
+    "browseInLanguage": "{language} भाषेतील व्हिडिओ ब्राउझ करा",
+    "backToSearch": "शोधाकडे परत जा",
+    "audioVersionsTitle": "इतर ऑडिओ आवृत्त्या",
+    "audioVersionsDescription": "हा व्हिडिओ पाहणे सुरू ठेवण्यासाठी ऑडिओ भाषा निवडा.",
+    "languageVersionLabel": "ऑडिओ भाषा",
+    "selectLanguageVersion": "भाषा आवृत्ती निवडा",
+    "watchSelectedVersion": "निवडलेली आवृत्ती पहा"
   }
 }

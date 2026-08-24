@@ -191,6 +191,7 @@
     "loadMoreFailed": "بارگیری نتایج بیشتر انجام نشد.",
     "searching": "در حال جست‌وجو...",
     "connectionHint": "لطفاً اتصال خود را بررسی کنید و دوباره تلاش کنید.",
+    "rateLimitHint": "درخواست‌لر بەك كۆپ. بىر دقیقە‌دن كېيىن يەنە ئۇرىنىب كۆرۈڭ.",
     "retrySearch": "تلاش دوباره برای جست‌وجو",
     "retry": "تلاش دوباره",
     "noResults": "برای «{query}» نتیجه‌ای پیدا نشد",
@@ -225,7 +226,9 @@
   "HeroPlayer": {
     "playWithSound": "اکنون تماشا کنید",
     "tapToUnmute": "برای روشن کردن صدا بزنید",
-    "nextEpisode": "قسمت بعدی"
+    "nextEpisode": "قسمت بعدی",
+    "audioTranslationCount": "{count, plural, one {# زبان} other {# زبان}}",
+    "subtitleCount": "زیرنویس: {count, plural, one {# زبان} other {# زبان}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "در حال بارگیری محتوا",
@@ -538,16 +541,16 @@
     "retryFailed": "موفق بولمگنلرنی ینه اورینیب کورینگ"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "تیل نۇسخە‌سى مەۋجۇد ئەمەس",
+    "eyebrow": "تیل نۇسخە‌سى مەۋجۇد ئەمەس",
+    "title": "<contentTitle>{title}</contentTitle> <languageName>{language}</languageName> تیلیده مەۋجۇد ئەمەس",
+    "actionsLabel": "مەۋجۇد كۆرۈش تاللاۋلرى",
+    "browseInLanguage": "{language} تیلیده‌گی ویدیو‌لرنى كۆرۈڭ",
+    "backToSearch": "قىدیرىشگە قايتىش",
+    "audioVersionsTitle": "باشقە آودیو نۇسخە‌لرى",
+    "audioVersionsDescription": "بو ویدیو‌نى كۆرۈشنى داۋام اەتتیرىش اوچون آودیو تیلینى تاللەڭ.",
+    "languageVersionLabel": "آودیو تیلی",
+    "selectLanguageVersion": "تیل نۇسخە‌سینى تاللەڭ",
+    "watchSelectedVersion": "تاللەنگەن نۇسخە‌نى كۆرۈڭ"
   }
 }

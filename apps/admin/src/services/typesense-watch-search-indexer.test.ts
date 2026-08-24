@@ -81,12 +81,22 @@ describe("Typesense Watch Search indexer", () => {
         ],
         images: [
           {
-            url: "https://example.com/fallback.jpg",
-            mobileCinematicHigh: "https://example.com/preferred.jpg",
+            id: "a-still-row",
+            url: "https://example.com/still-fallback.jpg",
+            mobileCinematicHigh: null,
+            mobileCinematicLow: null,
+            videoStill: "https://example.com/still.jpg",
+            thumbnail: "https://example.com/thumbnail.jpg",
+            blurDataUrl: "still-blur-data",
+          },
+          {
+            id: "z-cinematic-row",
+            url: "https://example.com/cinematic-fallback.jpg",
+            mobileCinematicHigh: "https://example.com/cinematic.jpg",
             mobileCinematicLow: null,
             videoStill: null,
             thumbnail: null,
-            blurDataUrl: "blur-data",
+            blurDataUrl: "cinematic-blur-data",
           },
         ],
         children: [{ childId: "child-1" }],
@@ -131,6 +141,9 @@ describe("Typesense Watch Search indexer", () => {
             }),
             orderBy: [{ duration: "desc" }, { id: "asc" }],
           }),
+          images: expect.objectContaining({
+            select: expect.objectContaining({ id: true }),
+          }),
         }),
       }),
     )
@@ -165,7 +178,8 @@ describe("Typesense Watch Search indexer", () => {
             description: "Description française",
           },
         ]),
-        imageUrl: "https://example.com/preferred.jpg",
+        imageUrl: "https://example.com/cinematic.jpg",
+        imageBlurDataUrl: "cinematic-blur-data",
         childCount: 1,
         audioOptionsJson: JSON.stringify([
           {

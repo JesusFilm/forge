@@ -191,6 +191,7 @@
     "loadMoreFailed": "Дерриг результаташ ачуьллуш ца хили.",
     "searching": "Ларчучун…",
     "connectionHint": "Хьан байланыш текшир ахь, цхьаннга хьажа.",
+    "rateLimitHint": "Дех дукха дехар. Цхьа минот яьлча юха хьажа.",
     "retrySearch": "Ларчар кхин дӀа",
     "retry": "Кхин дӀа",
     "noResults": "\"{query}\" үчүн гӀуллакх ца хилла",
@@ -225,7 +226,9 @@
   "HeroPlayer": {
     "playWithSound": "ХӀинца хьажа",
     "tapToUnmute": "Денг дӀаха учун тӀехь къахьийна",
-    "nextEpisode": "Кхин эпизод"
+    "nextEpisode": "Кхин эпизод",
+    "audioTranslationCount": "{count, plural, one {# мотт} other {# мотт}}",
+    "subtitleCount": "Субтитраш: {count, plural, one {# мотт} other {# мотт}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Контент ачуьллу",
@@ -538,16 +541,16 @@
     "retryFailed": "Ца хилларг юха хьажа"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Меттан верси йоцуш ю",
+    "eyebrow": "Меттан верси йоцуш ю",
+    "title": "<contentTitle>{title}</contentTitle> <languageName>{language}</languageName> маттахь йоцуш ю",
+    "actionsLabel": "Хьажа йиш йолу гӀирсаш",
+    "browseInLanguage": "{language} маттахь видеонаш хьажа",
+    "backToSearch": "Лехарна юха",
+    "audioVersionsTitle": "Кхин аудиоверсиш",
+    "audioVersionsDescription": "ХӀара видео хьажа дӀадахьа аудиомотт харжа.",
+    "languageVersionLabel": "Аудиомотт",
+    "selectLanguageVersion": "Меттан верси харжа",
+    "watchSelectedVersion": "Хержина верси хьажа"
   }
 }

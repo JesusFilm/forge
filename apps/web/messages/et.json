@@ -191,6 +191,7 @@
     "loadMoreFailed": "Rohkemate tulemuste laadimine nurjus.",
     "searching": "Otsimine...",
     "connectionHint": "Kontrolli oma ühendust ja proovi uuesti.",
+    "rateLimitHint": "Liiga palju päringuid. Proovige minuti pärast uuesti.",
     "retrySearch": "Proovi otsingut uuesti",
     "retry": "Proovi uuesti",
     "noResults": "Tulemusi päringule \"{query}\" ei leitud",
@@ -225,7 +226,9 @@
   "HeroPlayer": {
     "playWithSound": "Vaata nüüd",
     "tapToUnmute": "Toksake heli sisselülitamiseks",
-    "nextEpisode": "Järgmine osa"
+    "nextEpisode": "Järgmine osa",
+    "audioTranslationCount": "{count, plural, one {# keel} other {# keelt}}",
+    "subtitleCount": "Subtiitrid: {count, plural, one {# keel} other {# keelt}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Sisu laadimine",
@@ -538,16 +541,16 @@
     "retryFailed": "Proovi ebaõnnestunud allalaadimisi uuesti"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Keeleversioon pole saadaval",
+    "eyebrow": "Keeleversioon pole saadaval",
+    "title": "<contentTitle>{title}</contentTitle> pole keeles <languageName>{language}</languageName> saadaval",
+    "actionsLabel": "Saadaolevad vaatamisvalikud",
+    "browseInLanguage": "Sirvi videoid keeles {language}",
+    "backToSearch": "Tagasi otsingusse",
+    "audioVersionsTitle": "Muud heliversioonid",
+    "audioVersionsDescription": "Video vaatamise jätkamiseks valige heli keel.",
+    "languageVersionLabel": "Heli keel",
+    "selectLanguageVersion": "Valige keeleversioon",
+    "watchSelectedVersion": "Vaata valitud versiooni"
   }
 }

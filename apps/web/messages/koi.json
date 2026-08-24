@@ -191,6 +191,7 @@
     "loadMoreFailed": "Мында результатэз лэдзӧмсьӧтӧм.",
     "searching": "Поиск…",
     "connectionHint": "Тызалан тӧдӧмӧн вӧтшыны да выльысь юр.",
+    "rateLimitHint": "Юалӧмъяс зэв уна. Минут мысти выльысь ӧшмӧт.",
     "retrySearch": "Поисксӧ выльысь юр",
     "retry": "Ӧшмӧтны",
     "noResults": "\"{query}\" понда результатэз абу",
@@ -225,7 +226,9 @@
   "HeroPlayer": {
     "playWithSound": "Пыдӧт",
     "tapToUnmute": "Звук вӧтлыны йылӧн тупкӧт",
-    "nextEpisode": "Выль серия"
+    "nextEpisode": "Выль серия",
+    "audioTranslationCount": "{count, plural, one {# язык} other {# языкэз}}",
+    "subtitleCount": "Субтитрӧй: {count, plural, one {# язык} other {# языкэз}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Контент лэдзӧм",
@@ -538,16 +541,16 @@
     "retryFailed": "Тӧтшӧтӧмтӧмэзӧс выльысь ӧшмӧтны"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Язык версияыс абу",
+    "eyebrow": "Язык версияыс абу",
+    "title": "<contentTitle>{title}</contentTitle> <languageName>{language}</languageName> вылын абу",
+    "actionsLabel": "Видзӧтчан позянлунъяс",
+    "browseInLanguage": "{language} вылын видеоэз видзӧтны",
+    "backToSearch": "Корсьӧмӧ бергӧдчыны",
+    "audioVersionsTitle": "Мӧд аудио версияэз",
+    "audioVersionsDescription": "Тайӧ видео видзӧтӧм водзӧ нуӧдны аудио язык бӧрйы.",
+    "languageVersionLabel": "Аудио язык",
+    "selectLanguageVersion": "Язык версия бӧрйы",
+    "watchSelectedVersion": "Бӧрйӧм версия видзӧтны"
   }
 }

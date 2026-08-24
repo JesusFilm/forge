@@ -191,6 +191,7 @@
     "loadMoreFailed": "Lisätulosten lataaminen epäonnistui.",
     "searching": "Haetaan...",
     "connectionHint": "Tarkista yhteytesi ja yritä uudelleen.",
+    "rateLimitHint": "Liian monta pyyntöä. Yritä uudelleen minuutin kuluttua.",
     "retrySearch": "Yritä hakua uudelleen",
     "retry": "Yritä uudelleen",
     "noResults": "Ei tuloksia haulle \"{query}\"",
@@ -225,7 +226,9 @@
   "HeroPlayer": {
     "playWithSound": "Katso nyt",
     "tapToUnmute": "Napauta poistaaksesi mykistyksen",
-    "nextEpisode": "Seuraava jakso"
+    "nextEpisode": "Seuraava jakso",
+    "audioTranslationCount": "{count, plural, one {# kieli} other {# kieltä}}",
+    "subtitleCount": "Tekstitykset: {count, plural, one {# kieli} other {# kieltä}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Ladataan sisältöä",
@@ -538,16 +541,16 @@
     "retryFailed": "Uudelleenyritys epäonnistui"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Kieliversio ei ole saatavilla",
+    "eyebrow": "Kieliversio ei ole saatavilla",
+    "title": "<contentTitle>{title}</contentTitle> ei ole saatavilla kielellä <languageName>{language}</languageName>",
+    "actionsLabel": "Saatavilla olevat katseluvaihtoehdot",
+    "browseInLanguage": "Selaa videoita kielellä {language}",
+    "backToSearch": "Takaisin hakuun",
+    "audioVersionsTitle": "Muut ääniversiot",
+    "audioVersionsDescription": "Valitse äänen kieli jatkaaksesi videon katselua.",
+    "languageVersionLabel": "Äänen kieli",
+    "selectLanguageVersion": "Valitse kieliversio",
+    "watchSelectedVersion": "Katso valittu versio"
   }
 }

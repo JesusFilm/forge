@@ -191,6 +191,7 @@
     "loadMoreFailed": "ບໍ່ສາມາດໂຫລດຜົນລັບເພີ່ມໄດ້.",
     "searching": "ກຳລັງຄົ້ນຫາ...",
     "connectionHint": "ກະລຸນາກວດສອບການເຊື່ອມຕໍ່ຂອງທ່ານ ແລະລອງໃໝ່.",
+    "rateLimitHint": "ມີຄຳຮ້ອງຂໍຫຼາຍເກີນໄປ. ກະລຸນາລອງໃໝ່ໃນອີກໜຶ່ງນາທີ.",
     "retrySearch": "ລອງຄົ້ນຫາໃໝ່",
     "retry": "ລອງໃໝ່",
     "noResults": "ບໍ່ມີຜົນລັບສຳລັບ \"{query}\"",
@@ -225,7 +226,9 @@
   "HeroPlayer": {
     "playWithSound": "ຮັບຊົມຕອນນີ້",
     "tapToUnmute": "ແຕະເພື່ອເປີດສຽງ",
-    "nextEpisode": "ຕອນຕໍ່ໄປ"
+    "nextEpisode": "ຕອນຕໍ່ໄປ",
+    "audioTranslationCount": "{count, plural, one {# ພາສາ} other {# ພາສາ}}",
+    "subtitleCount": "ຄຳບັນຍາຍ: {count, plural, one {# ພາສາ} other {# ພາສາ}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "ກຳລັງໂຫລດເນື້ອຫາ",
@@ -538,16 +541,16 @@
     "retryFailed": "ລອງດາວໂຫລດລາຍການທີ່ບໍ່ສຳເລັດອີກຄັ້ງ"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "ບໍ່ມີສະບັບພາສານີ້",
+    "eyebrow": "ບໍ່ມີສະບັບພາສານີ້",
+    "title": "<contentTitle>{title}</contentTitle> ບໍ່ມີໃນພາສາ <languageName>{language}</languageName>",
+    "actionsLabel": "ຕົວເລືອກການເບິ່ງທີ່ມີ",
+    "browseInLanguage": "ເບິ່ງວິດີໂອໃນພາສາ {language}",
+    "backToSearch": "ກັບໄປຫາການຄົ້ນຫາ",
+    "audioVersionsTitle": "ສະບັບສຽງອື່ນໆ",
+    "audioVersionsDescription": "ເລືອກພາສາສຽງເພື່ອເບິ່ງວິດີໂອນີ້ຕໍ່.",
+    "languageVersionLabel": "ພາສາສຽງ",
+    "selectLanguageVersion": "ເລືອກສະບັບພາສາ",
+    "watchSelectedVersion": "ເບິ່ງສະບັບທີ່ເລືອກ"
   }
 }

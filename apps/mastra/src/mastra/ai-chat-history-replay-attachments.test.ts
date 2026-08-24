@@ -13,7 +13,13 @@ import { readFileSync } from "node:fs"
 import { describe, expect, it, vi } from "vitest"
 
 import {
+  FOLLOW_UPS_MAX_QUESTIONS,
+  FOLLOW_UPS_QUESTION_MAX_UNITS,
+  SEEKER_FOLLOW_UPS_METADATA_KEY,
+} from "./seeker-follow-ups"
+import {
   AI_CHAT_HISTORY_ATTACHMENT_FIELD_CAP_CHARS,
+  AI_CHAT_HISTORY_FOLLOW_UPS_ONE_MESSAGE_BYTES,
   AI_CHAT_HISTORY_MAX_SOURCES_PER_MESSAGE,
   AI_CHAT_HISTORY_REPLAY_MESSAGE_LIMIT,
   AI_CHAT_HISTORY_SOURCE_SNIPPET_CAP_CHARS,
@@ -58,6 +64,26 @@ function message(
     role,
     createdAt: "2026-08-04T12:00:00.000Z",
     content: { format: 2, parts },
+  }
+}
+
+/** A stored message whose content.metadata carries follow-up questions
+ * (feat-366, KTD2 — the metadata storage pattern, never a part). */
+function messageWithFollowUps(
+  id: string,
+  role: "user" | "assistant",
+  parts: unknown[],
+  storedFollowUps: unknown,
+): unknown {
+  return {
+    id,
+    role,
+    createdAt: "2026-08-04T12:00:00.000Z",
+    content: {
+      format: 2,
+      parts,
+      metadata: { [SEEKER_FOLLOW_UPS_METADATA_KEY]: storedFollowUps },
+    },
   }
 }
 
@@ -512,39 +538,74 @@ describe("replay attachments — byte-cap ENFORCEMENT (plan U4)", () => {
     const wide = "あ" // 3 UTF-8 bytes per UTF-16 unit — the worst-case script
     const overCap = (units: number) => wide.repeat(units)
 
+    // Maximal follow-ups on EVERY assistant message's metadata (feat-366):
+    // the last-turn-only wire (KTD3) must keep all but the FINAL text-bearing
+    // assistant message's set off the wire, so the budget's followUps term is
+    // ONE message's worst case — this fixture is what falsifies that slice.
+    // DISTINCT per question (the digit suffix): identical maximal strings
+    // would collapse under the projection's case-insensitive dedupe and
+    // silently shrink the measured worst case.
+    const maximalFollowUps = Array.from(
+      { length: FOLLOW_UPS_MAX_QUESTIONS },
+      (_, i) => `${overCap(FOLLOW_UPS_QUESTION_MAX_UNITS - 1)}${i}`,
+    )
+
     const stored = Array.from({ length: 100 }, (_, turn) => [
       message(`u${turn}`, "user", [
         textPart(overCap(AI_CHAT_HISTORY_TEXT_CAP_CHARS * 2)),
       ]),
-      message(`a${turn}`, "assistant", [
-        toolPart("retrieveAnswer", {
-          status: "ok",
-          // Over every bound, on every field the projection must cap.
-          sources: Array.from({ length: 20 }, (_, i) =>
-            source({
-              sourceName: overCap(4_000),
-              title: overCap(4_000),
-              url: `https://example.org/${"a".repeat(150)}/${i}`,
-              text: overCap(AI_CHAT_HISTORY_SOURCE_SNIPPET_CAP_CHARS * 4),
-            }),
-          ),
-        }),
-        toolPart("searchVideos", {
-          videos: [{ ...VIDEO_ROW, title: overCap(4_000) }],
-        }),
-        toolPart("featureVideo", { videoId: "vid-1" }),
-        textPart(overCap(AI_CHAT_HISTORY_TEXT_CAP_CHARS * 2)),
-      ]),
+      messageWithFollowUps(
+        `a${turn}`,
+        "assistant",
+        [
+          toolPart("retrieveAnswer", {
+            status: "ok",
+            // Over every bound, on every field the projection must cap.
+            sources: Array.from({ length: 20 }, (_, i) =>
+              source({
+                sourceName: overCap(4_000),
+                title: overCap(4_000),
+                url: `https://example.org/${"a".repeat(150)}/${i}`,
+                text: overCap(AI_CHAT_HISTORY_SOURCE_SNIPPET_CAP_CHARS * 4),
+              }),
+            ),
+          }),
+          toolPart("searchVideos", {
+            videos: [{ ...VIDEO_ROW, title: overCap(4_000) }],
+          }),
+          toolPart("featureVideo", { videoId: "vid-1" }),
+          textPart(overCap(AI_CHAT_HISTORY_TEXT_CAP_CHARS * 2)),
+        ],
+        maximalFollowUps,
+      ),
     ]).flat()
 
     const messages = await replay(stored)
     expect(messages).toHaveLength(AI_CHAT_HISTORY_REPLAY_MESSAGE_LIMIT)
+
+    // The maximal followUps ride the wire on exactly ONE message — the
+    // thread's final text-bearing assistant message.
+    const carrying = messages.filter((m) => m.followUps !== undefined)
+    expect(carrying).toHaveLength(1)
+    expect(carrying[0].id).toBe(messages[messages.length - 1].id)
+    expect(carrying[0].followUps).toEqual(maximalFollowUps)
 
     const bytes = Buffer.byteLength(JSON.stringify({ messages }), "utf8")
     expect(bytes).toBeLessThan(CHAT_HISTORY_THREAD_BYTE_CAP)
     // ...and inside the budget the constants claim, so the derivation stays
     // an honest description of what the projection actually emits.
     expect(bytes).toBeLessThanOrEqual(AI_CHAT_HISTORY_WORST_CASE_THREAD_BYTES)
+
+    // Measured headroom, recorded per KTD12 (the plan's Verification row asks
+    // for the number): the gap between the real serialized worst case and the
+    // 8 MiB consumer cap. Assert it stays positive through the ONE-message
+    // followUps term rather than a 200-message one — the term's whole point.
+    expect(CHAT_HISTORY_THREAD_BYTE_CAP - bytes).toBeGreaterThan(
+      AI_CHAT_HISTORY_FOLLOW_UPS_ONE_MESSAGE_BYTES,
+    )
+    console.info(
+      `[byte-budget] event=maximal_thread_measured measured_bytes=${bytes} consumer_cap_bytes=${CHAT_HISTORY_THREAD_BYTE_CAP} headroom_bytes=${CHAT_HISTORY_THREAD_BYTE_CAP - bytes}`,
+    )
   })
 
   it("caps every variable-length attachment field, not just the snippet", async () => {
@@ -660,5 +721,149 @@ describe("replay attachments — byte-cap ENFORCEMENT (plan U4)", () => {
       .reduce((product, factor) => product * factor, 1)
     expect(Number.isFinite(chatCap)).toBe(true)
     expect(chatCap).toBe(CHAT_HISTORY_THREAD_BYTE_CAP)
+  })
+})
+
+// ===========================================================================
+// feat-366: follow-up questions on the replay wire (KTD3 — last-turn-only,
+// re-validated through the shared projection on every read; NO flag on this
+// path, KD1)
+// ===========================================================================
+
+describe("replay attachments — followUps (feat-366)", () => {
+  // NOTE the flag posture: every test in this suite runs with
+  // SEEKER_FOLLOWUPS_ENABLED unset — the write-side default-off state — and
+  // stored questions still replay. That IS AE4's server half (KD1: replay is
+  // deliberately not flag-gated; the handler imports no follow-ups flag).
+
+  it("replays stored questions on the thread's final text-bearing assistant message (AE4 server half)", async () => {
+    const messages = await replay([
+      message("u1", "user", [textPart("q")]),
+      messageWithFollowUps(
+        "a1",
+        "assistant",
+        [textPart("answer")],
+        ["Why pray?", "Who wrote the gospels?"],
+      ),
+    ])
+    expect(messages[1].followUps).toEqual([
+      "Why pray?",
+      "Who wrote the gospels?",
+    ])
+  })
+
+  it("keeps older turns' stored sets OFF the wire — last-turn-only (KTD3)", async () => {
+    const messages = await replay([
+      message("u1", "user", [textPart("q1")]),
+      messageWithFollowUps(
+        "a1",
+        "assistant",
+        [textPart("first answer")],
+        ["Old question?"],
+      ),
+      message("u2", "user", [textPart("q2")]),
+      messageWithFollowUps(
+        "a2",
+        "assistant",
+        [textPart("second answer")],
+        ["Fresh question?"],
+      ),
+    ])
+    expect(messages[1]).not.toHaveProperty("followUps")
+    expect(messages[3].followUps).toEqual(["Fresh question?"])
+  })
+
+  it("emits nothing when the FINAL text-bearing turn has no stored set, even though an earlier turn does", async () => {
+    const messages = await replay([
+      message("u1", "user", [textPart("q1")]),
+      messageWithFollowUps(
+        "a1",
+        "assistant",
+        [textPart("first answer")],
+        ["Old question?"],
+      ),
+      message("u2", "user", [textPart("q2")]),
+      message("a2", "assistant", [textPart("social closer")]),
+    ])
+    expect(JSON.stringify(messages)).not.toContain("followUps")
+  })
+
+  it("drops malformed stored items on read and never repairs (Covers AE6)", async () => {
+    const minted = JSON.parse(
+      `["${"w".repeat(150)}", "bad\\u0000ctl", "Why pray?", "why PRAY?", "\\ud800 lone"]`,
+    ) as unknown
+    const messages = await replay([
+      message("u1", "user", [textPart("q")]),
+      messageWithFollowUps("a1", "assistant", [textPart("answer")], minted),
+    ])
+    expect(messages[1].followUps).toEqual(["Why pray?"])
+  })
+
+  it("yields no followUps key for junk metadata shapes, total", async () => {
+    for (const junk of ["not an array", 42, { questions: ["x"] }, null, []]) {
+      const messages = await replay([
+        message("u1", "user", [textPart("q")]),
+        messageWithFollowUps("a1", "assistant", [textPart("answer")], junk),
+      ])
+      expect(messages[1]).not.toHaveProperty("followUps")
+    }
+  })
+
+  it("attaches through turn association: metadata on a TOOL-ONLY assistant row still reaches the turn's text-bearing message", async () => {
+    // The store may split a turn; the metadata write targets the carrier the
+    // persist module resolved, but a stored thread where the metadata sits on
+    // a tool-only sibling row must still pool into the same turn (KTD3 rides
+    // the feat-329 pooling rule unchanged).
+    const messages = await replay([
+      message("u1", "user", [textPart("q")]),
+      messageWithFollowUps(
+        "a1",
+        "assistant",
+        [toolPart("retrieveAnswer", { status: "ok", sources: [] })],
+        ["Why pray?"],
+      ),
+      message("a2", "assistant", [textPart("the visible answer")]),
+    ])
+    // The tool-only row keeps its wire slot (empty text; the chat client
+    // drops it) — the carrier is the turn's text-bearing message at index 2.
+    const carrier = messages.find((m) => m.id === "a2")
+    expect(carrier?.followUps).toEqual(["Why pray?"])
+    expect(messages.find((m) => m.id === "a1")).not.toHaveProperty("followUps")
+  })
+
+  it("still serves the last assistant message's set when the thread ENDS on a user row (finalTextBearingIndex points earlier)", async () => {
+    const messages = await replay([
+      message("u1", "user", [textPart("q1")]),
+      messageWithFollowUps(
+        "a1",
+        "assistant",
+        [textPart("the answer")],
+        ["Why pray?"],
+      ),
+      message("u2", "user", [textPart("a follow-up the user typed himself")]),
+    ])
+    expect(messages[1].followUps).toEqual(["Why pray?"])
+    expect(messages[2]).not.toHaveProperty("followUps")
+  })
+
+  it("keeps the replay handler free of any follow-ups flag read (KD1 source pin)", async () => {
+    const source = readFileSync(
+      new URL("./ai-chat-history-route.ts", import.meta.url),
+      "utf8",
+    )
+    expect(source).not.toContain("isSeekerFollowUpsEnabled")
+    expect(source).not.toContain("SEEKER_FOLLOWUPS_ENABLED")
+  })
+
+  it("derives the ONE-message followUps allowance from the real caps (KTD12)", async () => {
+    // 3 questions x 120 UTF-16 units x 3 B/unit + envelope. ONE message, not
+    // 200: the last-turn-only wire is what keeps the term out of the
+    // per-message row budget.
+    expect(AI_CHAT_HISTORY_FOLLOW_UPS_ONE_MESSAGE_BYTES).toBe(
+      FOLLOW_UPS_MAX_QUESTIONS * FOLLOW_UPS_QUESTION_MAX_UNITS * 3 + 64,
+    )
+    expect(AI_CHAT_HISTORY_WORST_CASE_THREAD_BYTES).toBeLessThan(
+      CHAT_HISTORY_THREAD_BYTE_CAP,
+    )
   })
 })

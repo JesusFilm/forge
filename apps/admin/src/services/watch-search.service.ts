@@ -29,6 +29,10 @@ import {
 } from "./search-watchability"
 import { elapsedMs, nowMs } from "./hybrid-search-timing"
 import { watchSearchQueryEmbeddingProcessCache } from "./watch-search-query-embedding-cache"
+import {
+  bestVideoImageUrl,
+  sortVideoImagesByDisplayPreference,
+} from "./video-image-selection"
 
 const DEFAULT_LIMIT = 20
 const MAX_LIMIT = 50
@@ -858,7 +862,7 @@ export class WatchSearchService {
     })
 
     const byVideoId = new Map<string, WatchSearchResultImage>()
-    for (const image of images) {
+    for (const image of sortVideoImagesByDisplayPreference(images)) {
       if (byVideoId.has(image.videoId)) continue
       const imageUrl = bestVideoImageUrl(image)
       if (!imageUrl) continue
@@ -1305,23 +1309,6 @@ function dedupeSemanticResults(
     if (scoreDelta !== 0) return scoreDelta
     return a.resultId.localeCompare(b.resultId)
   })
-}
-
-function bestVideoImageUrl(image: {
-  url: string | null
-  mobileCinematicHigh: string | null
-  mobileCinematicLow: string | null
-  videoStill: string | null
-  thumbnail: string | null
-}): string | null {
-  return (
-    image.mobileCinematicHigh ??
-    image.mobileCinematicLow ??
-    image.videoStill ??
-    image.thumbnail ??
-    image.url ??
-    null
-  )
 }
 
 function withSearchResultImage(

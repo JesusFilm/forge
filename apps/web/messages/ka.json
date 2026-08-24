@@ -191,6 +191,7 @@
     "loadMoreFailed": "მეტი შედეგის ჩატვირთვა ვერ მოხერხდა.",
     "searching": "ძებნა მიმდინარეობს...",
     "connectionHint": "გთხოვთ, შეამოწმოთ კავშირი და სცადოთ ისევ.",
+    "rateLimitHint": "მოთხოვნა მეტისმეტად ბევრია. გთხოვთ, ერთ წუთში სცადოთ ხელახლა.",
     "retrySearch": "ძიების ხელახლა ცდა",
     "retry": "ხელახლა სცადეთ",
     "noResults": "შედეგი ვერ მოიძებნა „{query}“-სთვის",
@@ -225,7 +226,9 @@
   "HeroPlayer": {
     "playWithSound": "უყურეთ ახლა",
     "tapToUnmute": "ხმის ჩართვისთვის დააჭირეთ",
-    "nextEpisode": "შემდეგი ეპიზოდი"
+    "nextEpisode": "შემდეგი ეპიზოდი",
+    "audioTranslationCount": "{count, plural, one {# ენა} other {# ენა}}",
+    "subtitleCount": "სუბტიტრები: {count, plural, one {# ენა} other {# ენა}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "შიგთავსი იტვირთება",
@@ -538,16 +541,16 @@
     "retryFailed": "წარუმატებელი ჩამოტვირთვების ხელახლა ცდა"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "ამ ენაზე ვერსია მიუწვდომელია",
+    "eyebrow": "ამ ენაზე ვერსია მიუწვდომელია",
+    "title": "<contentTitle>{title}</contentTitle> არ არის ხელმისაწვდომი <languageName>{language}</languageName> ენაზე",
+    "actionsLabel": "ხელმისაწვდომი ნახვის ვარიანტები",
+    "browseInLanguage": "ვიდეოების ნახვა {language} ენაზე",
+    "backToSearch": "ძიებაზე დაბრუნება",
+    "audioVersionsTitle": "სხვა აუდიოვერსიები",
+    "audioVersionsDescription": "ვიდეოს ყურების გასაგრძელებლად აირჩიეთ აუდიოს ენა.",
+    "languageVersionLabel": "აუდიოს ენა",
+    "selectLanguageVersion": "აირჩიეთ ენობრივი ვერსია",
+    "watchSelectedVersion": "არჩეული ვერსიის ნახვა"
   }
 }

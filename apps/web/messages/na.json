@@ -191,6 +191,7 @@
     "loadMoreFailed": "Result more biga ae ekoe.",
     "searching": "Bika...",
     "connectionHint": "Connection eo eu check ae me ika ke.",
+    "rateLimitHint": "Kajjitõk ae mui. Ekoe me minit eo nge ika ke.",
     "retrySearch": "Search e kewe",
     "retry": "Kewe",
     "noResults": "\"{query}\" ke result ekoe",
@@ -225,7 +226,9 @@
   "HeroPlayer": {
     "playWithSound": "Kare e bitaei",
     "tapToUnmute": "Tap e kar me suara ae",
-    "nextEpisode": "Episode re"
+    "nextEpisode": "Episode re",
+    "audioTranslationCount": "{count, plural, one {# language eo} other {# languages re}}",
+    "subtitleCount": "Subtitles re: {count, plural, one {# language eo} other {# languages re}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Content biga ae",
@@ -538,16 +541,16 @@
     "retryFailed": "Downloads failed re kewe"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Dorerin eo ekoe",
+    "eyebrow": "Dorerin eo ekoe",
+    "title": "<contentTitle>{title}</contentTitle> ekoe <languageName>{language}</languageName> ne",
+    "actionsLabel": "Ere ae ome re",
+    "browseInLanguage": "Video ae ome {language} ne",
+    "backToSearch": "Buata ne roga",
+    "audioVersionsTitle": "Dorerin wirim mweinaud re",
+    "audioVersionsDescription": "Dorerin wirim e ere bwe video eo ome naba.",
+    "languageVersionLabel": "Dorerin wirim",
+    "selectLanguageVersion": "Dorerin eo e ere",
+    "watchSelectedVersion": "Dorerin e eren ome"
   }
 }

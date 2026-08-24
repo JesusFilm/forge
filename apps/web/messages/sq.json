@@ -191,6 +191,7 @@
     "loadMoreFailed": "Dështoi ngarkimi i rezultateve të tjera.",
     "searching": "Po kërkohet...",
     "connectionHint": "Ju lutemi kontrolloni lidhjen dhe provoni përsëri.",
+    "rateLimitHint": "Shumë kërkesa. Provo përsëri pas një minute.",
     "retrySearch": "Provo sërish kërkimin",
     "retry": "Provo përsëri",
     "noResults": "Nuk ka rezultate për \"{query}\"",
@@ -225,7 +226,9 @@
   "HeroPlayer": {
     "playWithSound": "Shiko tani",
     "tapToUnmute": "Prek për të aktivizuar zërin",
-    "nextEpisode": "Episodi tjetër"
+    "nextEpisode": "Episodi tjetër",
+    "audioTranslationCount": "{count, plural, one {# gjuhë} other {# gjuhë}}",
+    "subtitleCount": "Titrat: {count, plural, one {# gjuhë} other {# gjuhë}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Po ngarkohet përmbajtja",
@@ -538,16 +541,16 @@
     "retryFailed": "Riprovo shkarkimet e dështuara"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Versioni në këtë gjuhë nuk disponohet",
+    "eyebrow": "Versioni në këtë gjuhë nuk disponohet",
+    "title": "<contentTitle>{title}</contentTitle> nuk disponohet në <languageName>{language}</languageName>",
+    "actionsLabel": "Opsionet e disponueshme të shikimit",
+    "browseInLanguage": "Shfleto video në {language}",
+    "backToSearch": "Kthehu te kërkimi",
+    "audioVersionsTitle": "Versione të tjera audio",
+    "audioVersionsDescription": "Zgjidh një gjuhë audio për të vazhduar shikimin e kësaj videoje.",
+    "languageVersionLabel": "Gjuha e audios",
+    "selectLanguageVersion": "Zgjidh një version gjuhësor",
+    "watchSelectedVersion": "Shiko versionin e zgjedhur"
   }
 }

@@ -1,4 +1,4 @@
-import type { AuthScopeKey } from "./scopes"
+import { CHANGELOG_OAUTH_SCOPES, type AuthScopeKey } from "./scopes"
 
 export const FIRST_PARTY_OWNER = {
   ownerType: "jesus_film",
@@ -11,6 +11,9 @@ export const MANAGER_APP_KEY = "manager"
 export const MASTRA_STUDIO_APP_KEY = "mastra-studio"
 export const WEB_APP_KEY = "web"
 export const CHAT_APP_KEY = "chat"
+export const CHANGELOG_APP_KEY = "changelog"
+export const CHANGELOG_LOCAL_CLIENT_ID = "jfp_changelog_local"
+export const CHANGELOG_PRODUCTION_CLIENT_ID = "jfp_changelog_production"
 export const ADMIN_MCP_APP_KEY = "admin-mcp"
 export const TV_APP_KEY = "tv"
 export const ADMIN_MCP_CODEX_CLIENT_ID = "jfp_admin_mcp_codex"
@@ -77,6 +80,14 @@ export const CHAT_DEFAULT_SCOPES = [
   "openid",
   "profile:read",
   "email:read",
+] satisfies AuthScopeKey[]
+
+export const CHANGELOG_DEFAULT_SCOPES = [
+  "openid",
+  "profile:read",
+  "email:read",
+  "membership:read",
+  ...CHANGELOG_OAUTH_SCOPES,
 ] satisfies AuthScopeKey[]
 
 // Identity-only: mobile's watch-progress permissions ride admin's MOBILE_USER
@@ -393,6 +404,37 @@ export const CHAT_APP_SEED: RegisteredAppSeed = {
   ],
 }
 
+export const CHANGELOG_APP_SEED: RegisteredAppSeed = {
+  key: CHANGELOG_APP_KEY,
+  displayName: "Jesus Film Changelog",
+  description: "Changelog entry publishing and administration.",
+  ...FIRST_PARTY_OWNER,
+  environments: [
+    {
+      key: "local",
+      kind: "local",
+      clientId: CHANGELOG_LOCAL_CLIENT_ID,
+      redirectUris: ["http://localhost:3000/api/auth/callback"],
+      postLogoutRedirectUris: ["http://localhost:3000/api/auth/login"],
+      allowedOrigins: ["http://localhost:3000"],
+      defaultScopes: CHANGELOG_DEFAULT_SCOPES,
+      autoApprove: true,
+    },
+    {
+      key: "production",
+      kind: "production",
+      clientId: CHANGELOG_PRODUCTION_CLIENT_ID,
+      redirectUris: ["https://changelog.jesusfilm.org/api/auth/callback"],
+      postLogoutRedirectUris: [
+        "https://changelog.jesusfilm.org/api/auth/login",
+      ],
+      allowedOrigins: ["https://changelog.jesusfilm.org"],
+      defaultScopes: CHANGELOG_DEFAULT_SCOPES,
+      autoApprove: true,
+    },
+  ],
+}
+
 export const ADMIN_MCP_APP_SEED: RegisteredAppSeed = {
   key: ADMIN_MCP_APP_KEY,
   displayName: "Jesus Film Admin MCP",
@@ -474,7 +516,10 @@ export const MOBILE_APP_SEED: RegisteredAppSeed = {
       key: "local",
       kind: "local",
       clientId: MOBILE_LOCAL_CLIENT_ID,
-      redirectUris: ["http://localhost:3004/api/auth/oauth2/callback/jfp"],
+      redirectUris: [
+        "http://localhost:3004/api/auth/callback/jfp",
+        "http://localhost:3004/api/auth/oauth2/callback/jfp",
+      ],
       postLogoutRedirectUris: ["http://localhost:3004"],
       allowedOrigins: ["http://localhost:3004"],
       defaultScopes: MOBILE_DEFAULT_SCOPES,
@@ -484,7 +529,10 @@ export const MOBILE_APP_SEED: RegisteredAppSeed = {
       key: "production",
       kind: "production",
       clientId: MOBILE_PRODUCTION_CLIENT_ID,
-      redirectUris: ["https://auth.jesusfilm.org/api/auth/oauth2/callback/jfp"],
+      redirectUris: [
+        "https://auth.jesusfilm.org/api/auth/callback/jfp",
+        "https://auth.jesusfilm.org/api/auth/oauth2/callback/jfp",
+      ],
       postLogoutRedirectUris: ["https://auth.jesusfilm.org"],
       allowedOrigins: ["https://auth.jesusfilm.org"],
       defaultScopes: MOBILE_DEFAULT_SCOPES,
@@ -577,6 +625,7 @@ export const FIRST_PARTY_APP_SEEDS = [
   WEB_APP_SEED,
   MASTRA_STUDIO_APP_SEED,
   CHAT_APP_SEED,
+  CHANGELOG_APP_SEED,
   ADMIN_MCP_APP_SEED,
   MOBILE_APP_SEED,
   TV_APP_SEED,

@@ -191,6 +191,7 @@
     "loadMoreFailed": "Не удалось загрузить больше результатов.",
     "searching": "Поиск...",
     "connectionHint": "Проверьте соединение и попробуйте ещё раз.",
+    "rateLimitHint": "Вешематне пек ламот. Фкя минутада меле варда азондомс.",
     "retrySearch": "Повторить поиск",
     "retry": "Повторить",
     "noResults": "Результатов по запросу \"{query}\" нет",
@@ -225,7 +226,9 @@
   "HeroPlayer": {
     "playWithSound": "Смотреть сейчас",
     "tapToUnmute": "Нажмите, чтобы включить звук",
-    "nextEpisode": "Следующий эпизод"
+    "nextEpisode": "Следующий эпизод",
+    "audioTranslationCount": "{count, plural, one {# кяль} other {# кяль}}",
+    "subtitleCount": "Субтитрат: {count, plural, one {# кяль} other {# кяль}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Загрузка контента",
@@ -538,16 +541,16 @@
     "retryFailed": "А лисезь эпизодтнень одов скачать"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Кяль версиясь аш",
+    "eyebrow": "Кяль версиясь аш",
+    "title": "<contentTitle>{title}</contentTitle> <languageName>{language}</languageName> кяльса аш",
+    "actionsLabel": "Ванфтома вариантне",
+    "browseInLanguage": "{language} кяльса видеотнень ваномс",
+    "backToSearch": "Вешемати мекев мрдамс",
+    "audioVersionsTitle": "Иля аудио версият",
+    "audioVersionsDescription": "Тя видеонть ванфтоманень поладоманкса кочка аудио кяль.",
+    "languageVersionLabel": "Аудио кяль",
+    "selectLanguageVersion": "Кяль версия кочкамс",
+    "watchSelectedVersion": "Кочф версиянть ваномс"
   }
 }

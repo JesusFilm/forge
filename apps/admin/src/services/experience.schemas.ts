@@ -11,9 +11,15 @@ export const CreateExperienceInput = z.object({
   locale: z.string().min(1).max(35),
   slug: z.string().min(1).max(200),
   title: z.string().min(1).max(500).optional(),
+  metaDescription: z.string().max(1000).optional(),
   blocks: BlocksSchema.optional().default([]),
 })
 export type CreateExperienceInput = z.infer<typeof CreateExperienceInput>
+
+export const DuplicateExperienceInput = z.object({
+  id: z.string().min(1),
+})
+export type DuplicateExperienceInput = z.infer<typeof DuplicateExperienceInput>
 
 export const CreateExperienceLocaleInput = z.object({
   experienceId: z.string().min(1),
@@ -41,7 +47,6 @@ export const UpdateExperienceLocaleInput = z.object({
   ogDescription: z.string().max(500).optional(),
   ogImageUrl: z.string().url().optional().nullable(),
   isHomepage: z.boolean().optional(),
-  isTemplate: z.boolean().optional(),
   pathSegment: z.string().max(200).optional().nullable(),
   blocks: BlocksSchema.optional(),
 })
@@ -55,6 +60,34 @@ export const PublishExperienceLocaleInput = z.object({
 export type PublishExperienceLocaleInput = z.infer<
   typeof PublishExperienceLocaleInput
 >
+
+export const DiscardExperienceLocaleDraftInput = z.object({
+  id: z.string().min(1),
+})
+export type DiscardExperienceLocaleDraftInput = z.infer<
+  typeof DiscardExperienceLocaleDraftInput
+>
+
+/** The complete locale-owned state persisted in an ExperienceLocale draft. */
+export const ExperienceLocaleDraftDataSchema = z.object({
+  slug: z.string().min(1).max(200),
+  isHomepage: z.boolean(),
+  pathSegment: z.string().max(200).nullable(),
+  title: z.string().max(500).nullable(),
+  metaDescription: z.string().max(1000).nullable(),
+  ogTitle: z.string().max(200).nullable(),
+  ogDescription: z.string().max(500).nullable(),
+  ogImageUrl: z.string().url().nullable(),
+  blocks: BlocksSchema,
+})
+export type ExperienceLocaleDraftData = z.infer<
+  typeof ExperienceLocaleDraftDataSchema
+>
+
+export const ExperienceLocaleDraftSnapshotSchema = z.object({
+  v: z.literal(1),
+  data: ExperienceLocaleDraftDataSchema,
+})
 
 export const RestoreExperienceLocaleRevisionInput = z.object({
   revisionId: z.string().min(1),

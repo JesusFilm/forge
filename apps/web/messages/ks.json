@@ -191,6 +191,7 @@
     "loadMoreFailed": "مزید نتائج لوڈ کرنہٕ منز ناکامی۔",
     "searching": "تلاش کران...",
     "connectionHint": "مہربانی کرِتھ پنٛنۍ کنیکشن چیک کرو تہٕ دوبارہ کوشش کرو۔",
+    "rateLimitHint": "واریاہ درخواستہٕ آیہِ۔ مہربٲنی کٔرِتھ اَکھ مِنَٹ پتہٕ کٔرِو دوبارٕ کوشش۔",
     "retrySearch": "تلاش دوبارہ کرو",
     "retry": "دوبارہ کوشش کرو",
     "noResults": "\"{query}\" لئی کوٚنٛہہ نتیجہ نہٕ",
@@ -225,7 +226,9 @@
   "HeroPlayer": {
     "playWithSound": "ہنٛز دیکھیو",
     "tapToUnmute": "آواز آن کرنہٕ لئی ٹیپ کرو",
-    "nextEpisode": "اگلی قسط"
+    "nextEpisode": "اگلی قسط",
+    "audioTranslationCount": "{count, plural, one {# زبان} other {# زبانہٕ}}",
+    "subtitleCount": "سب ٹائٹلز: {count, plural, one {# زبان} other {# زبانہٕ}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "مواد لوڈ کران",
@@ -538,16 +541,16 @@
     "retryFailed": "ناکام ڈاؤن لوڈ دوبارہ کرو"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "زبانُک وٲرژن چھُنہٕ دستیاب",
+    "eyebrow": "زبانُک وٲرژن چھُنہٕ دستیاب",
+    "title": "<contentTitle>{title}</contentTitle> چھُنہٕ <languageName>{language}</languageName> زبانہٕ منز دستیاب",
+    "actionsLabel": "وچھنُک دستیاب اختیار",
+    "browseInLanguage": "{language} زبانہٕ منز وِڈیو وچھِو",
+    "backToSearch": "تلاشس پٮ۪ٹھ واپس گٔژھِو",
+    "audioVersionsTitle": "باقٕے آڈیو وٲرژن",
+    "audioVersionsDescription": "یہِ وِڈیو وچھُن جٲری تھاونہٕ خٲطرٕ آڈیو زبان ژٲرِو۔",
+    "languageVersionLabel": "آڈیو زبان",
+    "selectLanguageVersion": "زبانُک وٲرژن ژٲرِو",
+    "watchSelectedVersion": "ژٲرمُت وٲرژن وچھِو"
   }
 }

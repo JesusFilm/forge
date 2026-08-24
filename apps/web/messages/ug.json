@@ -191,6 +191,7 @@
     "loadMoreFailed": "تېخىمۇ كۆپ نەتىجىنى يۈكلەش مەغلۇپ بولدى.",
     "searching": "ئىزدەۋاتىدۇ...",
     "connectionHint": "ئۇلىنىشىڭىزنى تەكشۈرۈپ قايتا سىناڭ.",
+    "rateLimitHint": "تەلەپلەر بەك كۆپ. بىر مىنۇتتىن كېيىن قايتا سىناڭ.",
     "retrySearch": "ئىزدەشنى قايتا سىناش",
     "retry": "قايتا سىناش",
     "noResults": "\"{query}\" ئۈچۈن نەتىجە يوق",
@@ -225,7 +226,9 @@
   "HeroPlayer": {
     "playWithSound": "ھازىر كۆرۈش",
     "tapToUnmute": "ئاۋازنى ئاچۇش ئۈچۈن چېكىڭ",
-    "nextEpisode": "كېيىنكى بۆلۈم"
+    "nextEpisode": "كېيىنكى بۆلۈم",
+    "audioTranslationCount": "{count, plural, one {# تىل} other {# تىل}}",
+    "subtitleCount": "تارتىم: {count, plural, one {# تىل} other {# تىل}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "مەزمۇن يۈكلىنىۋاتىدۇ",
@@ -538,16 +541,16 @@
     "retryFailed": "مەغلۇپ بولغانلىرىنى قايتا سىناش"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "تىل نۇسخىسى يوق",
+    "eyebrow": "تىل نۇسخىسى يوق",
+    "title": "<contentTitle>{title}</contentTitle> نىڭ <languageName>{language}</languageName> نۇسخىسى يوق",
+    "actionsLabel": "بار بولغان كۆرۈش تاللانمىلىرى",
+    "browseInLanguage": "{language} تىلىدىكى سىنلارنى كۆرۈڭ",
+    "backToSearch": "ئىزدەشكە قايتىڭ",
+    "audioVersionsTitle": "باشقا ئاۋاز نۇسخىلىرى",
+    "audioVersionsDescription": "بۇ سىننى داۋاملىق كۆرۈش ئۈچۈن ئاۋاز تىلىنى تاللاڭ.",
+    "languageVersionLabel": "ئاۋاز تىلى",
+    "selectLanguageVersion": "تىل نۇسخىسىنى تاللاڭ",
+    "watchSelectedVersion": "تاللانغان نۇسخىنى كۆرۈڭ"
   }
 }
