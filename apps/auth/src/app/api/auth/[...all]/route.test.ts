@@ -206,6 +206,41 @@ describe("Auth route wrapper", () => {
     },
   )
 
+  it("rejects oversized DCR registration bodies", async () => {
+    const { POST } = await import("./route")
+    const response = await POST(
+      new Request("http://localhost:3004/api/auth/oauth2/register", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ padding: "x".repeat(64 * 1024) }),
+      }),
+      { params: Promise.resolve({ all: ["oauth2", "register"] }) },
+    )
+
+    expect(response.status).toBe(413)
+    expect(authPost).not.toHaveBeenCalled()
+  })
+
+  it("preserves malformed DCR JSON for the provider", async () => {
+    authPost.mockResolvedValueOnce(Response.json({ error: "invalid_request" }))
+    const { POST } = await import("./route")
+    await POST(
+      new Request("http://localhost:3004/api/auth/oauth2/register", {
+        method: "POST",
+        headers: {
+          "content-length": "1",
+          "content-type": "application/json",
+        },
+        body: "{",
+      }),
+      { params: Promise.resolve({ all: ["oauth2", "register"] }) },
+    )
+
+    const forwarded = authPost.mock.calls[0]?.[0] as Request
+    expect(forwarded.headers.has("content-length")).toBe(false)
+    await expect(forwarded.text()).resolves.toBe("{")
+  })
+
   it("downscopes an authenticated Changelog authorize request before the provider sees it", async () => {
     getSession.mockResolvedValueOnce({
       user: { id: "user_123", membershipStatus: "ACTIVE" },
