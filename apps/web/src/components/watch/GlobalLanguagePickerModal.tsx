@@ -300,6 +300,7 @@ export function GlobalLanguagePickerModal({
           onClose={requestClose}
           testId="global-language-picker-modal-close"
           ariaLabel={t("close")}
+          renderInline
         />
         <DialogTitle className="sr-only">{t("dialogTitle")}</DialogTitle>
 

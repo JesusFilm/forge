@@ -390,6 +390,11 @@ describe("GlobalLanguagePickerModal", () => {
       query("global-language-picker-modal-close")?.querySelectorAll("svg"),
     ).toHaveLength(1)
     expect(
+      query("global-language-picker-modal")?.contains(
+        query("global-language-picker-modal-close"),
+      ),
+    ).toBe(true)
+    expect(
       query("global-language-picker-close")?.querySelector("svg"),
     ).not.toBeNull()
     expect(query("global-language-picker-apply")?.className).toContain(

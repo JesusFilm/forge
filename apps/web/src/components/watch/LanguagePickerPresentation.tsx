@@ -9,10 +9,12 @@ import {
   LoaderCircle,
   X,
 } from "lucide-react"
-import { useCallback, type ReactNode } from "react"
+import { useCallback, type ComponentProps, type ReactNode } from "react"
 
 import { Button } from "@/components/ui/button"
 import { SpinnerIcon } from "@/components/ui/spinner"
+
+type LinkHref = ComponentProps<typeof Link>["href"]
 
 export const LANGUAGE_PICKER_FOCUS_RING_CLASS =
   "focus-visible:border-stone-100/60 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-stone-100 focus-visible:outline-none"
@@ -241,7 +243,7 @@ export function LanguagePickerHeader({
   testIdPrefix,
   ...tooltipCallbacks
 }: TooltipCallbacks & {
-  allLanguagesHref: string
+  allLanguagesHref: LinkHref
   allLanguagesLabel: string
   countLabel?: string
   heading: string
@@ -321,7 +323,7 @@ export function LanguagePickerInventoryLink({
   label,
   testIdPrefix,
 }: {
-  href: string
+  href: LinkHref
   label: string
   testIdPrefix: string
 }) {
