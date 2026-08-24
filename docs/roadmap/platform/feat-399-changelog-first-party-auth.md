@@ -82,6 +82,15 @@ The initial Forge slice covers local and production only. Preview is deferred be
 
 ## Implementation status
 
+The implementation above merged to `main` in
+[PR #1973](https://github.com/JesusFilm/forge/pull/1973) as `74fce10a` on
+2026-08-24. [GitHub Actions run 32685302674](https://github.com/JesusFilm/forge/actions/runs/32685302674)
+applied all six Auth migrations, completed first-party seeding, and passed all
+18 native PostgreSQL tests across the Better Auth upgrade, device-grant, and
+Changelog OAuth suites. These database tests remain opt-in locally and now run
+in the affected-Auth `auth-postgres-integration` CI job; fail-closed aggregate
+merge enforcement remains separate follow-up work.
+
 The provider boundary, exact-resource grant decision, authorization
 downscoping, exchange/refresh revalidation, dynamic-registration resource
 defaults, consent disclosure, and opt-in PostgreSQL integration contract are
