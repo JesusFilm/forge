@@ -518,7 +518,7 @@ describe("FeedbackLauncher", () => {
       .mockResolvedValueOnce({
         ok: false,
         reason: "delivery_failed",
-        message: "We could not send your feedback. Please try again.",
+        message: "RAW SERVER DELIVERY COPY - must not render",
       })
       .mockResolvedValueOnce({ ok: true })
     await fillMinimalFeedback()
@@ -527,9 +527,60 @@ describe("FeedbackLauncher", () => {
     expect(document.body.textContent).toContain(
       "We could not send your feedback. Please try again.",
     )
+    expect(document.body.textContent).not.toContain(
+      "RAW SERVER DELIVERY COPY - must not render",
+    )
     await sendFeedback()
     expect(feedbackAction.submit).toHaveBeenCalledTimes(2)
     expect(document.body.textContent).toContain("Thank you")
+  })
+
+  it("renders reason-keyed translated messages, never the server message string", async () => {
+    feedbackAction.submit.mockResolvedValueOnce({
+      ok: false,
+      reason: "rate_limited",
+      message: "RAW SERVER RATE COPY - must not render",
+    })
+    await fillMinimalFeedback()
+
+    await sendFeedback()
+    expect(document.body.textContent).toContain(
+      "Too many feedback requests. Please try again later.",
+    )
+    expect(document.body.textContent).not.toContain(
+      "RAW SERVER RATE COPY - must not render",
+    )
+
+    feedbackAction.submit.mockResolvedValueOnce({
+      ok: false,
+      reason: "invalid",
+      message: "RAW SERVER INVALID COPY - must not render",
+    })
+    await sendFeedback()
+    expect(document.body.textContent).toContain(
+      "Please check the form and try again.",
+    )
+    expect(document.body.textContent).not.toContain(
+      "RAW SERVER INVALID COPY - must not render",
+    )
+  })
+
+  it("falls back to the generic failure message on an unknown reason", async () => {
+    feedbackAction.submit.mockResolvedValueOnce({
+      ok: false,
+      reason: "mystery_reason",
+      message: "RAW SERVER MYSTERY COPY - must not render",
+    } as never)
+    await fillMinimalFeedback()
+
+    await sendFeedback()
+    expect(document.body.textContent).toContain(
+      "We could not send your feedback. Please try again.",
+    )
+    expect(document.body.textContent).not.toContain(
+      "RAW SERVER MYSTERY COPY - must not render",
+    )
+    expect(document.body.textContent).not.toContain("undefined")
   })
 
   it("shows a generic retry state when the Server Action rejects", async () => {

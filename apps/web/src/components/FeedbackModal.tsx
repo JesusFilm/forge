@@ -66,6 +66,22 @@ import {
 const FEEDBACK_STEP_COUNT = 5
 const FEEDBACK_SUBMISSION_TIMEOUT_MS = 15_000
 
+// Client-side translation keys for submission failures, keyed by the typed
+// `reason` on FeedbackActionResult (the server has no locale context, so its
+// English `message` is never rendered). Unknown reasons get the generic copy.
+function submissionErrorKey(reason: string): string {
+  switch (reason) {
+    case "invalid":
+      return "errors.invalid"
+    case "rate_limited":
+      return "errors.rateLimited"
+    case "client_timeout":
+      return "errors.timeout"
+    default:
+      return "errors.sendFailed"
+  }
+}
+
 // Message-key names under the Feedback.steps namespace, one per wizard step.
 const STEP_KEYS = ["type", "context", "point", "describe", "about"] as const
 
@@ -669,24 +685,19 @@ export function FeedbackModal({
         new Promise<{
           ok: false
           reason: "client_timeout"
-          message: string
         }>((resolve) => {
           timeoutId = window.setTimeout(
-            () =>
-              resolve({
-                ok: false,
-                reason: "client_timeout",
-                message:
-                  "This is taking longer than expected. Your feedback may have been received; please wait before trying again.",
-              }),
+            () => resolve({ ok: false, reason: "client_timeout" }),
             FEEDBACK_SUBMISSION_TIMEOUT_MS,
           )
         }),
       ])
       if (result.ok) setSubmitted(true)
-      else setError(result.message)
+      // Render locale-aware copy keyed by the typed reason; the server's
+      // `message` string is English-only and is deliberately not rendered.
+      else setError(t(submissionErrorKey(result.reason)))
     } catch {
-      setError("We could not send your feedback. Please try again.")
+      setError(t("errors.sendFailed"))
     } finally {
       if (timeoutId !== undefined) window.clearTimeout(timeoutId)
       setSubmitting(false)
