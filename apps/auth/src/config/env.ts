@@ -1,7 +1,7 @@
 import { createEnv } from "@t3-oss/env-nextjs"
 import { z } from "zod"
 import { MOBILE_APP_SCHEME } from "@/auth/mobile-session"
-import { CHANGELOG_OAUTH_RESOURCES } from "@/domain/changelog"
+import { CHANGELOG_OAUTH_RESOURCES } from "@/domain/changelog-oauth-resources"
 
 const emptyToUndefined = (value: string | undefined) =>
   value === "" ? undefined : value

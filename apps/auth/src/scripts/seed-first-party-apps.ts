@@ -8,7 +8,7 @@ import {
   TV_DEVICE_CLIENT_IDS,
   type RegisteredAppSeed,
 } from "@/domain/apps"
-import { CHANGELOG_OAUTH_RESOURCES } from "@/domain/changelog"
+import { CHANGELOG_OAUTH_RESOURCES } from "@/domain/changelog-oauth-resources"
 import { AUTH_SCOPES, type AuthScopeKey } from "@/domain/scopes"
 import { prisma } from "@/db/client"
 // Imported, never re-declared. This seeder is the ONLY writer of the device

@@ -2,7 +2,7 @@ import {
   assertTokenPolicy,
   type TokenPolicyInput,
 } from "./token-policy.service"
-import { CHANGELOG_OAUTH_RESOURCES } from "@/domain/changelog"
+import { CHANGELOG_OAUTH_RESOURCES } from "@/domain/changelog-oauth-resources"
 import { CHANGELOG_OAUTH_SCOPES } from "@/domain/scopes"
 
 export { CHANGELOG_OAUTH_RESOURCES, CHANGELOG_OAUTH_SCOPES }
