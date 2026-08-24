@@ -191,6 +191,7 @@
     "loadMoreFailed": "Cha dod eh ny smoo freggyrtyn a huiraghey.",
     "searching": "Shirrey...",
     "connectionHint": "Jeagh er dty cheangley as jean faggysagh reesht.",
+    "rateLimitHint": "Ro ymmodee aghin. Prow reesht ayns minnid.",
     "retrySearch": "Aa-shirrey",
     "retry": "Aa-ynsaghey",
     "noResults": "Cha nel freggyrt son \"{query}\"",
@@ -540,16 +541,16 @@
     "retryFailed": "Ren yn aa-ynsaghey failliu"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Cha nel yn lhieggan çhengey ry-gheddyn",
+    "eyebrow": "Cha nel yn lhieggan çhengey ry-gheddyn",
+    "title": "Cha nel <contentTitle>{title}</contentTitle> ry-gheddyn ayns <languageName>{language}</languageName>",
+    "actionsLabel": "Reihghyn jeeaghyn ry-gheddyn",
+    "browseInLanguage": "Ronsaghey feeshanyn ayns {language}",
+    "backToSearch": "Er ash dys shirrey",
+    "audioVersionsTitle": "Lhiegganyn sheean elley",
+    "audioVersionsDescription": "Reih çhengey sheean dy gheddyn er jeeaghyn er y veeshan shoh.",
+    "languageVersionLabel": "Çhengey sheean",
+    "selectLanguageVersion": "Reih lhieggan çhengey",
+    "watchSelectedVersion": "Jeeagh er y lhieggan reiht"
   }
 }

@@ -191,6 +191,7 @@
     "loadMoreFailed": "Дагы харыыларды ажыдып албас болдук.",
     "searching": "Издеп тур...",
     "connectionHint": "Байланышыңарны шынартып, дагы көрүп көрүңер.",
+    "rateLimitHint": "Дилеглер хөй. Бир минуттан катап көрүңер.",
     "retrySearch": "Издеңин дагы көр",
     "retry": "Дагы көрүп көр",
     "noResults": "\"{query}\" үчүн харыы чок",
@@ -540,16 +541,16 @@
     "retryFailed": "Чүктелбээннерни катап көр"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Дыл версиязы чок",
+    "eyebrow": "Дыл версиязы чок",
+    "title": "<contentTitle>{title}</contentTitle> <languageName>{language}</languageName> дылда чок",
+    "actionsLabel": "Көөр арга бар",
+    "browseInLanguage": "{language} дылда видеоларны көрүңер",
+    "backToSearch": "Дилээшкинче эглир",
+    "audioVersionsTitle": "Өске аудио версиялар",
+    "audioVersionsDescription": "Бо видеону көрүп улаштырар ужурлуг аудио дылды шилип алыңар.",
+    "languageVersionLabel": "Аудио дыл",
+    "selectLanguageVersion": "Дыл версиязын шилип алыңар",
+    "watchSelectedVersion": "Шилип алган версияны көрүңер"
   }
 }

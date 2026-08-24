@@ -12,7 +12,32 @@ describe("Auth scopes", () => {
     expect(isKnownScope("experience:publish")).toBe(true)
     expect(isKnownScope("experience:create")).toBe(true)
     expect(isKnownScope("experience:generate")).toBe(true)
+    expect(isKnownScope("changelog:read")).toBe(true)
+    expect(isKnownScope("changelog:submit")).toBe(true)
+    expect(isKnownScope("changelog:admin")).toBe(true)
     expect(isKnownScope("made:up")).toBe(false)
+  })
+
+  it("describes Changelog scopes with their exact consent copy", () => {
+    expect(
+      describeScopes(["changelog:admin", "changelog:read", "changelog:submit"]),
+    ).toEqual([
+      {
+        key: "changelog:read",
+        label: "Read Changelog",
+        description: "View and filter published Changelog entries.",
+      },
+      {
+        key: "changelog:submit",
+        label: "Submit Changelog entries",
+        description: "Submit entries and manage entries created by the caller.",
+      },
+      {
+        key: "changelog:admin",
+        label: "Administer Changelog",
+        description: "Manage all Changelog entries and products.",
+      },
+    ])
   })
 
   it("rejects a typo'd experience-level scope", () => {

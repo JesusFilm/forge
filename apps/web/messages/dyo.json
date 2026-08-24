@@ -191,6 +191,7 @@
     "loadMoreFailed": "Mënul a daan lu ëpp.",
     "searching": "Daan...",
     "connectionHint": "Wone sa ker wi te jéemaatal.",
+    "rateLimitHint": "Lajulo la kamboor. Kañu minit iñee, fuñsoom.",
     "retrySearch": "Jéemaatal seetlu",
     "retry": "Jéemaatal",
     "noResults": "Amul benn lu méngoo ak \"{query}\"",
@@ -540,16 +541,16 @@
     "retryFailed": "Jéemaatal yi lajj"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Bersionu kaji kanam katea",
+    "eyebrow": "Bersionu kaji kanam katea",
+    "title": "<contentTitle>{title}</contentTitle> katea di <languageName>{language}</languageName>",
+    "actionsLabel": "Kañu kañu di gisa",
+    "browseInLanguage": "Gis video yi di {language}",
+    "backToSearch": "Délut di sayo",
+    "audioVersionsTitle": "Bersion audio yeneen",
+    "audioVersionsDescription": "Tan kanam audio ban man gis video bii di kanam.",
+    "languageVersionLabel": "Kanam audio",
+    "selectLanguageVersion": "Tan bersionu kanam",
+    "watchSelectedVersion": "Gis bersion bi nga tan"
   }
 }

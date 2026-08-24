@@ -191,6 +191,7 @@
     "loadMoreFailed": "Ezin izan dira emaitza gehiago kargatu.",
     "searching": "Bilatzen...",
     "connectionHint": "Mesedez, egiaztatu zure konexioa eta saiatu berriro.",
+    "rateLimitHint": "Eskaera gehiegi. Saiatu berriro minutu bat barru.",
     "retrySearch": "Saiatu berriro bilatzen",
     "retry": "Saiatu berriro",
     "noResults": "Ez dago emaitzarik \"{query}\" bilaketarako",
@@ -540,16 +541,16 @@
     "retryFailed": "Saiatu berriro huts egindakoekin"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Hizkuntza-bertsioa ez dago erabilgarri",
+    "eyebrow": "Hizkuntza-bertsioa ez dago erabilgarri",
+    "title": "<contentTitle>{title}</contentTitle> ez dago erabilgarri <languageName>{language}</languageName> hizkuntzan",
+    "actionsLabel": "Ikusteko aukera erabilgarriak",
+    "browseInLanguage": "Arakatu bideoak {language} hizkuntzan",
+    "backToSearch": "Itzuli bilaketara",
+    "audioVersionsTitle": "Beste audio-bertsio batzuk",
+    "audioVersionsDescription": "Aukeratu audio-hizkuntza bat bideo hau ikusten jarraitzeko.",
+    "languageVersionLabel": "Audio-hizkuntza",
+    "selectLanguageVersion": "Aukeratu hizkuntza-bertsio bat",
+    "watchSelectedVersion": "Ikusi aukeratutako bertsioa"
   }
 }

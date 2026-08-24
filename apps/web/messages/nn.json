@@ -191,6 +191,7 @@
     "loadMoreFailed": "Klarte ikkje å laste fleire treff.",
     "searching": "Søkjer...",
     "connectionHint": "Kontroller tilkoplinga di og prøv igjen.",
+    "rateLimitHint": "For mange førespurnader. Prøv igjen om eitt minutt.",
     "retrySearch": "Prøv søket på nytt",
     "retry": "Prøv på nytt",
     "noResults": "Ingen treff for \"{query}\"",
@@ -540,16 +541,16 @@
     "retryFailed": "Prøv mislukka nedlastingar på nytt"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Språkversjonen er ikkje tilgjengeleg",
+    "eyebrow": "Språkversjonen er ikkje tilgjengeleg",
+    "title": "<contentTitle>{title}</contentTitle> er ikkje tilgjengeleg på <languageName>{language}</languageName>",
+    "actionsLabel": "Tilgjengelege visingsalternativ",
+    "browseInLanguage": "Sjå videoar på {language}",
+    "backToSearch": "Tilbake til søk",
+    "audioVersionsTitle": "Andre lydversjonar",
+    "audioVersionsDescription": "Vel eit lydspråk for å halde fram med å sjå denne videoen.",
+    "languageVersionLabel": "Lydspråk",
+    "selectLanguageVersion": "Vel ein språkversjon",
+    "watchSelectedVersion": "Sjå vald versjon"
   }
 }

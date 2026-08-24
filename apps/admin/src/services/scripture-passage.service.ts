@@ -27,6 +27,16 @@ const YOUVERSION_LANGUAGE_VERSIONS = [
   { languageId: "139081", languageSlug: "bengali-indian", versionId: 1883 },
   { languageId: "5671", languageSlug: "bhadrawahi", versionId: 2767 },
   { languageId: "24096", languageSlug: "chinese-qinghai", versionId: 43 },
+  {
+    languageId: "21754",
+    languageSlug: "chinese-simplified",
+    versionId: 43,
+  },
+  {
+    languageId: "21753",
+    languageSlug: "chinese-traditional",
+    versionId: 312,
+  },
   { languageId: "4432", languageSlug: "czech", versionId: 44 },
   { languageId: "4454", languageSlug: "danish", versionId: 49 },
   { languageId: "4633", languageSlug: "dawro", versionId: 1672 },
@@ -54,6 +64,8 @@ const YOUVERSION_LANGUAGE_VERSIONS = [
   { languageId: "6464", languageSlug: "hindi", versionId: 819 },
   { languageId: "147285", languageSlug: "konta", versionId: 1672 },
   { languageId: "184487", languageSlug: "mahasu-pahari", versionId: 2957 },
+  { languageId: "20615", languageSlug: "mandarin-china", versionId: 43 },
+  { languageId: "23221", languageSlug: "mandarin-taiwan", versionId: 312 },
   {
     languageId: "4700",
     languageSlug: "oromo-borana-arsi-guji",

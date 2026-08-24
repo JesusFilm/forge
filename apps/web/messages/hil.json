@@ -191,6 +191,7 @@
     "loadMoreFailed": "Nabigo ang pag-load sang dugang nga resulta.",
     "searching": "Naga-search...",
     "connectionHint": "Palihog checka ang imo koneksyon kag sulayi liwat.",
+    "rateLimitHint": "Tuman kadamo ang mga request. Palihog sulayi liwat pagkatapos sang isa ka minuto.",
     "retrySearch": "Sulayi liwat ang search",
     "retry": "Sulayi liwat",
     "noResults": "Wala sing resulta para sa \"{query}\"",
@@ -540,16 +541,16 @@
     "retryFailed": "Sulayi liwat ang mga nabigo"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Indi available ang bersyon sa sini nga lenguahe",
+    "eyebrow": "Indi available ang bersyon sa sini nga lenguahe",
+    "title": "Ang <contentTitle>{title}</contentTitle> indi available sa <languageName>{language}</languageName>",
+    "actionsLabel": "Mga available nga opsyon sa pagtan-aw",
+    "browseInLanguage": "Mag-browse sang mga video sa {language}",
+    "backToSearch": "Balik sa search",
+    "audioVersionsTitle": "Iban nga mga bersyon sang audio",
+    "audioVersionsDescription": "Magpili sang audio nga lenguahe agod padayon nga matan-aw ini nga video.",
+    "languageVersionLabel": "Audio nga lenguahe",
+    "selectLanguageVersion": "Magpili sang bersyon sang lenguahe",
+    "watchSelectedVersion": "Tan-awa ang napili nga bersyon"
   }
 }

@@ -191,6 +191,7 @@
     "loadMoreFailed": "Цӏикӏкӏараб нәтижал загруждать кьвагьуна.",
     "searching": "Кӏалъай...",
     "connectionHint": "Байланыш текшере ва цӏидаса гьабе.",
+    "rateLimitHint": "Хӏаракатал цӏакъго. Минуталдаса цӏидаса гьабе.",
     "retrySearch": "Кӏалъан цӏидаса гьабе",
     "retry": "Цӏидаса гьабе",
     "noResults": "\"{query}\" учун нәтижа гьечӏо",
@@ -540,16 +541,16 @@
     "retryFailed": "Кьвагьарал цӏидаса жибе"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Мацӏалъул версия гьечӏо",
+    "eyebrow": "Мацӏалъул версия гьечӏо",
+    "title": "<contentTitle>{title}</contentTitle> <languageName>{language}</languageName> мацӏалда гьечӏо",
+    "actionsLabel": "Батӏияб гьал къалъан вариантал",
+    "browseInLanguage": "{language} мацӏалда видеоял къадалъан бие",
+    "backToSearch": "Кӏалъаналдаса тӏад цӏидаса",
+    "audioVersionsTitle": "Цогидаб аудио версиял",
+    "audioVersionsDescription": "Гьаб видео халатго къалъан учун аудио мацӏ бихье.",
+    "languageVersionLabel": "Аудио мацӏ",
+    "selectLanguageVersion": "Мацӏалъул версия бихье",
+    "watchSelectedVersion": "Бихьараб версия къалъе"
   }
 }

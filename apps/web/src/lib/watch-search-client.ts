@@ -41,7 +41,61 @@ type WatchSearchSuggestionsResult = AdminResultOf<
 
 type GraphqlResponse<TData> = {
   data?: TData
-  errors?: Array<{ message?: string | null }>
+  errors?: Array<{
+    message?: string | null
+    extensions?: {
+      code?: unknown
+      http?: { statusCode?: unknown }
+    }
+  }>
+}
+
+export type WatchSearchErrorKind =
+  | "rate_limited"
+  | "server_error"
+  | "network_error"
+  | "unknown"
+
+export class WatchSearchRequestError extends Error {
+  constructor(
+    message: string,
+    readonly kind: WatchSearchErrorKind,
+  ) {
+    super(message)
+    this.name = "WatchSearchRequestError"
+  }
+}
+
+export function watchSearchErrorKind(error: unknown): WatchSearchErrorKind {
+  return error instanceof WatchSearchRequestError ? error.kind : "unknown"
+}
+
+function watchSearchStatusErrorKind(status: unknown): WatchSearchErrorKind {
+  if (status === 429) return "rate_limited"
+  if (typeof status === "number" && status >= 500) return "server_error"
+  return "unknown"
+}
+
+function watchSearchGraphqlErrorKind(
+  error: NonNullable<GraphqlResponse<unknown>["errors"]>[number],
+): WatchSearchErrorKind {
+  const statusKind = watchSearchStatusErrorKind(
+    error.extensions?.http?.statusCode,
+  )
+  if (statusKind !== "unknown") return statusKind
+  return error.extensions?.code === "INTERNAL_SERVER_ERROR"
+    ? "server_error"
+    : "unknown"
+}
+
+function watchSearchFetchErrorKind(error: unknown): WatchSearchErrorKind {
+  const name =
+    typeof error === "object" && error != null && "name" in error
+      ? error.name
+      : null
+  return name === "TimeoutError" || name === "AbortError"
+    ? "server_error"
+    : "network_error"
 }
 
 export type DirectWatchSearchInput = {
@@ -240,26 +294,41 @@ export async function searchWatchDirect({
       resultTypes,
     },
   }
-  const response = await fetch(env.NEXT_PUBLIC_ADMIN_GRAPHQL_URL, {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-    },
-    body: JSON.stringify({
-      query: adminWatchSearchQuery,
-      variables,
-    }),
-    signal: timeoutSignal(WATCH_SEARCH_TIMEOUT_MS),
-  })
+  let response: Response
+  try {
+    response = await fetch(env.NEXT_PUBLIC_ADMIN_GRAPHQL_URL, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        query: adminWatchSearchQuery,
+        variables,
+      }),
+      signal: timeoutSignal(WATCH_SEARCH_TIMEOUT_MS),
+    })
+  } catch (error) {
+    throw new WatchSearchRequestError(
+      "Watch search request failed",
+      watchSearchFetchErrorKind(error),
+    )
+  }
 
   if (!response.ok) {
-    throw new Error(`Watch search failed with HTTP ${response.status}`)
+    throw new WatchSearchRequestError(
+      `Watch search failed with HTTP ${response.status}`,
+      watchSearchStatusErrorKind(response.status),
+    )
   }
 
   const payload =
     (await response.json()) as GraphqlResponse<WatchSearchGraphqlResult>
   if (payload.errors?.length) {
-    throw new Error(payload.errors[0]?.message ?? "Watch search failed")
+    const error = payload.errors[0]!
+    throw new WatchSearchRequestError(
+      error.message ?? "Watch search failed",
+      watchSearchGraphqlErrorKind(error),
+    )
   }
 
   const watchSearch = payload.data?.watchSearch

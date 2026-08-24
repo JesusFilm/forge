@@ -47,4 +47,23 @@ describe("OAuth consent UI", () => {
     expect(html).toContain("Stay signed in")
     expect(html).toContain("keep access active")
   })
+
+  it("shows the exact Changelog target and marks dynamic client metadata unverified", () => {
+    const html = renderToStaticMarkup(
+      <OAuthConsentPageClient
+        oauthQuery="client_id=dynamic-client&amp;scope=changelog%3Aread&amp;resource=http%3A%2F%2Flocalhost%3A3000%2Fmcp"
+        requestingAppName="Claude Desktop"
+        scopes={[]}
+        target={{
+          environment: "Local",
+          resource: "http://localhost:3000/mcp",
+        }}
+        unverifiedDynamicClient
+      />,
+    )
+
+    expect(html).toContain("Local Changelog")
+    expect(html).toContain("http://localhost:3000/mcp")
+    expect(html).toContain("Unverified client name")
+  })
 })

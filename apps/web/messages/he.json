@@ -191,6 +191,7 @@
     "loadMoreFailed": "טעינת תוצאות נוספות נכשלה.",
     "searching": "מחפש...",
     "connectionHint": "בדקו את החיבור ונסו שוב.",
+    "rateLimitHint": "יותר מדי בקשות. אפשר לנסות שוב בעוד דקה.",
     "retrySearch": "נסו את החיפוש שוב",
     "retry": "נסו שוב",
     "noResults": "לא נמצאו תוצאות עבור \"{query}\"",
@@ -540,16 +541,16 @@
     "retryFailed": "נסו שוב את ההורדות שנכשלו"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "גרסת השפה אינה זמינה",
+    "eyebrow": "גרסת השפה אינה זמינה",
+    "title": "<contentTitle>{title}</contentTitle> אינו זמין ב<languageName>{language}</languageName>",
+    "actionsLabel": "אפשרויות צפייה זמינות",
+    "browseInLanguage": "עיון בסרטונים ב{language}",
+    "backToSearch": "חזרה לחיפוש",
+    "audioVersionsTitle": "גרסאות שמע אחרות",
+    "audioVersionsDescription": "יש לבחור שפת שמע כדי להמשיך לצפות בסרטון הזה.",
+    "languageVersionLabel": "שפת שמע",
+    "selectLanguageVersion": "בחירת גרסת שפה",
+    "watchSelectedVersion": "צפייה בגרסה שנבחרה"
   }
 }

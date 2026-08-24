@@ -191,6 +191,7 @@
     "loadMoreFailed": "Mehr Resultaten laaden leet naad.",
     "searching": "Soken...",
     "connectionHint": "Kontroliere din ferbining un versök dat noch emol.",
+    "rateLimitHint": "Tual üüb Frååge. Fersäik et önj en minut noch ens.",
     "retrySearch": "Sook noch emol versöken",
     "retry": "Nij versöken",
     "noResults": "Keene Resultaten foar \"{query}\"",
@@ -540,16 +541,16 @@
     "retryFailed": "Mislukte Dauloads nij versöken"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Diar språåwersjoon as ei diar",
+    "eyebrow": "Diar språåwersjoon as ei diar",
+    "title": "<contentTitle>{title}</contentTitle> as ei önj <languageName>{language}</languageName> diar",
+    "actionsLabel": "Diar muuglikhäide tu luke",
+    "browseInLanguage": "Wideos önj {language} blaad",
+    "backToSearch": "Tebääg tu't säiken",
+    "audioVersionsTitle": "Ööder audio-wersjoone",
+    "audioVersionsDescription": "Wääl en audiosprååk üt, am det wideo wider tu luke.",
+    "languageVersionLabel": "Audiosprååk",
+    "selectLanguageVersion": "Wääl en språåwersjoon üt",
+    "watchSelectedVersion": "Luke det ütjwoole wersjoon"
   }
 }

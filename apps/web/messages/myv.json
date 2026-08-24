@@ -191,6 +191,7 @@
     "loadMoreFailed": "Седе олонь результатт лофтоземс эзь лезь.",
     "searching": "Вешемс...",
     "connectionHint": "Сети-ть текшнемс, сызь вановт эйстэ.",
+    "rateLimitHint": "Вешематне пек ламот. Вейке минутадо мейле варда вант эйстэ.",
     "retrySearch": "Вешемась вановтмс",
     "retry": "Вановт эйстэ",
     "noResults": "\"{query}\" лангсо результатт аш",
@@ -540,16 +541,16 @@
     "retryFailed": "А лезьтнень одов download-темс"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Келень версиясь аш",
+    "eyebrow": "Келень версиясь аш",
+    "title": "<contentTitle>{title}</contentTitle> <languageName>{language}</languageName> келеньсэ аш",
+    "actionsLabel": "Ваномань варианттнэ",
+    "browseInLanguage": "{language} келеньсэ видеотнень ваномс",
+    "backToSearch": "Вешемав кевкстамс",
+    "audioVersionsTitle": "Лия аудио версият",
+    "audioVersionsDescription": "Те видеонть ваномань поладомас кочка аудио кель.",
+    "languageVersionLabel": "Аудио кель",
+    "selectLanguageVersion": "Келень версия кочкамс",
+    "watchSelectedVersion": "Кочказь версиянть ваномс"
   }
 }

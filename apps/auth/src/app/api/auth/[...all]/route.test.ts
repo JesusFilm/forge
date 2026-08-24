@@ -8,9 +8,12 @@ const rateLimitAuthRoute = vi.fn(async (_input: unknown) => ({
 }))
 const signUpEmail = vi.fn()
 const getSession = vi.fn()
+const accountUpsert = vi.fn()
 const canRedeemAgentLoginHandle = vi.fn(
   async (_prisma: unknown, _input: unknown) => false,
 )
+const decideChangelogGrant = vi.fn()
+const findOAuthClient = vi.fn()
 
 vi.mock("@/auth/config", () => ({
   auth: {
@@ -33,7 +36,7 @@ vi.mock("@/db/client", () => ({
     $transaction: vi.fn(async (callback) =>
       callback({
         account: {
-          upsert: vi.fn(),
+          upsert: accountUpsert,
         },
         user: {
           findFirst: vi.fn(async () => ({ id: "user_123" })),
@@ -48,6 +51,9 @@ vi.mock("@/db/client", () => ({
     appEnvironment: {
       findUnique: vi.fn(),
     },
+    oauthClient: {
+      findUnique: (...args: unknown[]) => findOAuthClient(...args),
+    },
   },
 }))
 
@@ -60,6 +66,11 @@ vi.mock("@/services/agent-login.service", () => ({
     canRedeemAgentLoginHandle(prisma, input),
   isAgentLoginHandle: (value: string) =>
     value.trim().toLowerCase().endsWith("@agent-login.jesusfilm.internal"),
+}))
+
+vi.mock("@/services/changelog-oauth-grant.service", () => ({
+  createChangelogOAuthGrantDecision: (input: unknown) =>
+    decideChangelogGrant(input),
 }))
 
 vi.mock("@/auth/firebase-rest", () => ({
@@ -83,7 +94,349 @@ describe("Auth route wrapper", () => {
     rateLimitAuthRoute.mockReset()
     rateLimitAuthRoute.mockResolvedValue({ allowed: true, source: "local" })
     signUpEmail.mockReset()
+    accountUpsert.mockReset()
+    decideChangelogGrant.mockReset()
+    findOAuthClient.mockReset()
     vi.unstubAllEnvs()
+  })
+
+  it("downscopes an authenticated Changelog authorize request before the provider sees it", async () => {
+    getSession.mockResolvedValueOnce({
+      user: { id: "user_123", membershipStatus: "ACTIVE" },
+    })
+    decideChangelogGrant.mockResolvedValueOnce({
+      allowed: true,
+      scopes: ["openid", "changelog:read"],
+      target: {
+        dynamicClient: true,
+        environmentKind: "local",
+        environmentId: "env_local",
+        resource: "http://localhost:3000/mcp",
+      },
+    })
+    const { GET } = await import("./route")
+    const response = await GET(
+      new Request(
+        "http://localhost:3004/api/auth/oauth2/authorize?client_id=codex_dynamic&redirect_uri=http%3A%2F%2Flocalhost%3A9876%2Fcallback&scope=openid+changelog%3Aread+changelog%3Aadmin&resource=http%3A%2F%2Flocalhost%3A3000%2Fmcp",
+      ),
+      { params: Promise.resolve({ all: ["oauth2", "authorize"] }) },
+    )
+
+    expect(response.status).toBe(200)
+    const forwarded = authGet.mock.calls[0]?.[0] as Request
+    const forwardedUrl = new URL(forwarded.url)
+    expect(forwardedUrl.searchParams.get("scope")).toBe("openid changelog:read")
+    expect(forwardedUrl.searchParams.getAll("resource")).toEqual([
+      "http://localhost:3000/mcp",
+    ])
+  })
+
+  it("adds the canonical native resource for a seeded Changelog client", async () => {
+    getSession.mockResolvedValueOnce({
+      user: { id: "user_123", membershipStatus: "ACTIVE" },
+    })
+    decideChangelogGrant.mockResolvedValueOnce({
+      allowed: true,
+      scopes: ["openid", "changelog:read"],
+      target: {
+        dynamicClient: false,
+        environmentKind: "local",
+        environmentId: "env_local",
+        resource: null,
+      },
+    })
+    const { GET } = await import("./route")
+    await GET(
+      new Request(
+        "http://localhost:3004/api/auth/oauth2/authorize?client_id=jfp_changelog_local&scope=openid+changelog%3Aread",
+      ),
+      { params: Promise.resolve({ all: ["oauth2", "authorize"] }) },
+    )
+
+    const forwarded = authGet.mock.calls[0]?.[0] as Request
+    expect(new URL(forwarded.url).searchParams.getAll("resource")).toEqual([
+      "http://localhost:3000/mcp",
+    ])
+  })
+
+  it("uses seeded defaults when a Changelog client omits scope", async () => {
+    getSession.mockResolvedValueOnce({
+      user: { id: "user_123", membershipStatus: "ACTIVE" },
+    })
+    decideChangelogGrant.mockResolvedValueOnce({
+      allowed: true,
+      scopes: ["openid", "profile:read", "email:read", "membership:read"],
+      target: {
+        dynamicClient: false,
+        environmentKind: "local",
+        environmentId: "env_local",
+        resource: null,
+      },
+    })
+    const { GET } = await import("./route")
+    await GET(
+      new Request(
+        "http://localhost:3004/api/auth/oauth2/authorize?client_id=jfp_changelog_local",
+      ),
+      { params: Promise.resolve({ all: ["oauth2", "authorize"] }) },
+    )
+
+    expect(decideChangelogGrant).toHaveBeenCalledWith(
+      expect.objectContaining({
+        requestedScopes: [
+          "openid",
+          "profile:read",
+          "email:read",
+          "membership:read",
+          "changelog:read",
+          "changelog:submit",
+          "changelog:admin",
+        ],
+      }),
+    )
+    const forwarded = authGet.mock.calls[0]?.[0] as Request
+    expect(new URL(forwarded.url).searchParams.get("scope")).toBe(
+      "openid profile:read email:read membership:read",
+    )
+  })
+
+  it("returns a no-store OAuth denial without invoking the provider", async () => {
+    getSession.mockResolvedValueOnce({
+      user: { id: "user_123", membershipStatus: "ACTIVE" },
+    })
+    decideChangelogGrant.mockResolvedValueOnce({
+      allowed: false,
+      reason: "changelog_access_denied",
+    })
+    const { GET } = await import("./route")
+    const response = await GET(
+      new Request(
+        "http://localhost:3004/api/auth/oauth2/authorize?client_id=codex_dynamic&scope=changelog%3Aread&resource=http%3A%2F%2Flocalhost%3A3000%2Fmcp",
+      ),
+      { params: Promise.resolve({ all: ["oauth2", "authorize"] }) },
+    )
+
+    expect(response.status).toBe(403)
+    await expect(response.json()).resolves.toEqual({
+      error: "access_denied",
+      error_description: "Changelog access is not available.",
+    })
+    expect(response.headers.get("cache-control")).toBe("no-store")
+    expect(authGet).not.toHaveBeenCalled()
+  })
+
+  it("returns invalid_target for an invalid Changelog resource", async () => {
+    getSession.mockResolvedValueOnce({
+      user: { id: "user_123", membershipStatus: "ACTIVE" },
+    })
+    decideChangelogGrant.mockResolvedValueOnce({
+      allowed: false,
+      reason: "invalid_changelog_target",
+    })
+    const { GET } = await import("./route")
+    const response = await GET(
+      new Request(
+        "http://localhost:3004/api/auth/oauth2/authorize?client_id=codex_dynamic&scope=changelog%3Aread&resource=https%3A%2F%2Fexample.test%2Fmcp",
+      ),
+      { params: Promise.resolve({ all: ["oauth2", "authorize"] }) },
+    )
+
+    expect(response.status).toBe(403)
+    await expect(response.json()).resolves.toEqual({
+      error: "invalid_target",
+      error_description: "The requested Changelog resource is invalid.",
+    })
+    expect(response.headers.get("cache-control")).toBe("no-store")
+    expect(authGet).not.toHaveBeenCalled()
+  })
+
+  it("redirects a trusted client denial with OAuth state", async () => {
+    getSession.mockResolvedValueOnce({
+      user: { id: "user_123", membershipStatus: "ACTIVE" },
+    })
+    decideChangelogGrant.mockResolvedValueOnce({
+      allowed: false,
+      reason: "changelog_access_denied",
+    })
+    findOAuthClient.mockResolvedValueOnce({
+      disabled: false,
+      redirectUris: ["http://127.0.0.1:9876/callback"],
+    })
+    const { GET } = await import("./route")
+    const response = await GET(
+      new Request(
+        "http://localhost:3004/api/auth/oauth2/authorize?client_id=codex_dynamic&redirect_uri=http%3A%2F%2F127.0.0.1%3A9876%2Fcallback&state=opaque-state&scope=changelog%3Aread&resource=http%3A%2F%2Flocalhost%3A3000%2Fmcp",
+      ),
+      { params: Promise.resolve({ all: ["oauth2", "authorize"] }) },
+    )
+
+    expect(response.status).toBe(302)
+    const location = new URL(response.headers.get("location") ?? "")
+    expect(location.origin + location.pathname).toBe(
+      "http://127.0.0.1:9876/callback",
+    )
+    expect(location.searchParams.get("error")).toBe("access_denied")
+    expect(location.searchParams.get("state")).toBe("opaque-state")
+    expect(location.searchParams.get("iss")).toBe(
+      "http://localhost:3004/api/auth",
+    )
+    expect(authGet).not.toHaveBeenCalled()
+  })
+
+  it("redirects invalid_target to a trusted client with OAuth state", async () => {
+    getSession.mockResolvedValueOnce({
+      user: { id: "user_123", membershipStatus: "ACTIVE" },
+    })
+    decideChangelogGrant.mockResolvedValueOnce({
+      allowed: false,
+      reason: "invalid_changelog_target",
+    })
+    findOAuthClient.mockResolvedValueOnce({
+      disabled: false,
+      redirectUris: ["http://127.0.0.1:9876/callback"],
+    })
+    const { GET } = await import("./route")
+    const response = await GET(
+      new Request(
+        "http://localhost:3004/api/auth/oauth2/authorize?client_id=codex_dynamic&redirect_uri=http%3A%2F%2F127.0.0.1%3A9876%2Fcallback&state=opaque-state&scope=changelog%3Aread&resource=https%3A%2F%2Fexample.test%2Fmcp",
+      ),
+      { params: Promise.resolve({ all: ["oauth2", "authorize"] }) },
+    )
+
+    expect(response.status).toBe(302)
+    const location = new URL(response.headers.get("location") ?? "")
+    expect(location.searchParams.get("error")).toBe("invalid_target")
+    expect(location.searchParams.get("error_description")).toBe(
+      "The requested Changelog resource is invalid.",
+    )
+    expect(location.searchParams.get("state")).toBe("opaque-state")
+    expect(authGet).not.toHaveBeenCalled()
+  })
+
+  it("revalidates the signed consent continuation before native code creation", async () => {
+    getSession.mockResolvedValueOnce({
+      user: { id: "user_123", membershipStatus: "ACTIVE" },
+    })
+    decideChangelogGrant.mockResolvedValueOnce({
+      allowed: false,
+      reason: "changelog_grant_changed",
+    })
+    const { POST } = await import("./route")
+    const response = await POST(
+      new Request("http://localhost:3004/api/auth/oauth2/consent", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          accept: true,
+          oauth_query:
+            "client_id=codex_dynamic&scope=openid+changelog%3Aread&resource=http%3A%2F%2Flocalhost%3A3000%2Fmcp&sig=signed",
+        }),
+      }),
+      { params: Promise.resolve({ all: ["oauth2", "consent"] }) },
+    )
+
+    expect(response.status).toBe(403)
+    expect(authPost).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    {
+      name: "the available scopes narrowed",
+      requestedScopes: "openid changelog:read changelog:admin",
+      decidedScopes: ["openid", "changelog:read"],
+      decidedResource: "http://localhost:3000/mcp",
+      environmentKind: "local" as const,
+    },
+    {
+      name: "the bound resource changed",
+      requestedScopes: "openid changelog:read",
+      decidedScopes: ["openid", "changelog:read"],
+      decidedResource: "https://changelog.jesusfilm.org/mcp",
+      environmentKind: "production" as const,
+    },
+  ])("rejects signed consent when $name", async (testCase) => {
+    getSession.mockResolvedValueOnce({
+      user: { id: "user_123", membershipStatus: "ACTIVE" },
+    })
+    decideChangelogGrant.mockResolvedValueOnce({
+      allowed: true,
+      scopes: testCase.decidedScopes,
+      target: {
+        dynamicClient: true,
+        environmentKind: testCase.environmentKind,
+        environmentId: `env_${testCase.environmentKind}`,
+        resource: testCase.decidedResource,
+      },
+    })
+    const oauthQuery = new URLSearchParams({
+      client_id: "codex_dynamic",
+      scope: testCase.requestedScopes,
+      resource: "http://localhost:3000/mcp",
+      sig: "signed",
+    })
+    const { POST } = await import("./route")
+    const response = await POST(
+      new Request("http://localhost:3004/api/auth/oauth2/consent", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          accept: true,
+          oauth_query: oauthQuery.toString(),
+        }),
+      }),
+      { params: Promise.resolve({ all: ["oauth2", "consent"] }) },
+    )
+
+    expect(response.status).toBe(403)
+    expect(response.headers.get("cache-control")).toBe("no-store")
+    expect(authPost).not.toHaveBeenCalled()
+  })
+
+  it("forwards an unchanged signed consent after successful revalidation", async () => {
+    getSession.mockResolvedValueOnce({
+      user: { id: "user_123", membershipStatus: "ACTIVE" },
+    })
+    decideChangelogGrant.mockResolvedValueOnce({
+      allowed: true,
+      scopes: ["openid", "changelog:read"],
+      target: {
+        dynamicClient: true,
+        environmentKind: "local",
+        environmentId: "env_local",
+        resource: "http://localhost:3000/mcp",
+      },
+    })
+    authPost.mockResolvedValueOnce(Response.json({ url: "http://callback" }))
+    const { POST } = await import("./route")
+    const response = await POST(
+      new Request("http://localhost:3004/api/auth/oauth2/consent", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          accept: true,
+          oauth_query:
+            "client_id=codex_dynamic&scope=openid+changelog%3Aread&resource=http%3A%2F%2Flocalhost%3A3000%2Fmcp&sig=signed",
+        }),
+      }),
+      { params: Promise.resolve({ all: ["oauth2", "consent"] }) },
+    )
+
+    expect(response.status).toBe(200)
+    expect(authPost).toHaveBeenCalledOnce()
+  })
+
+  it("keeps native OAuth token responses out of caches", async () => {
+    authPost.mockResolvedValueOnce(Response.json({ access_token: "redacted" }))
+    const { POST } = await import("./route")
+    const response = await POST(
+      new Request("http://localhost:3004/api/auth/oauth2/token", {
+        method: "POST",
+      }),
+      { params: Promise.resolve({ all: ["oauth2", "token"] }) },
+    )
+
+    expect(response.headers.get("cache-control")).toBe("no-store")
+    expect(response.headers.get("pragma")).toBe("no-cache")
   })
 
   it("blocks malformed email signup", async () => {
@@ -764,6 +1117,15 @@ describe("Auth route wrapper", () => {
     expect(response.headers.get("location")).toBe(
       "http://localhost:3004/api/auth/oauth2/authorize?client_id=jfp_admin_local&sig=signed",
     )
+    expect(accountUpsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        create: expect.objectContaining({
+          providerId: "firebase",
+          issuer: "local:firebase",
+          accountId: "firebase_uid",
+        }),
+      }),
+    )
     expect(response.headers.get("set-cookie")).toContain(
       "forge_auth_last_login_method=email",
     )
@@ -1072,6 +1434,19 @@ describe("device sign-in continuation", () => {
         "client_id=jfp_admin_local&redirect_uri=http%3A%2F%2Flocalhost%3A3003%2Fapi%2Fauth%2Fcallback&scope=openid",
       ),
     ).resolves.toContain("/api/auth/oauth2/authorize")
+  })
+
+  it("preserves repeated native resource indicators through login", async () => {
+    const continuation = await signInWith(
+      "client_id=dynamic_native&redirect_uri=http%3A%2F%2F127.0.0.1%3A49173%2Fcallback&resource=https%3A%2F%2Fresource-a.example%2Fmcp&resource=https%3A%2F%2Fresource-b.example%2Fmcp&prompt=login",
+    )
+    const url = new URL(continuation!)
+
+    expect(url.searchParams.getAll("resource")).toEqual([
+      "https://resource-a.example/mcp",
+      "https://resource-b.example/mcp",
+    ])
+    expect(url.searchParams.has("prompt")).toBe(false)
   })
 
   it("does not let a user code divert an OAuth authorize continuation", async () => {

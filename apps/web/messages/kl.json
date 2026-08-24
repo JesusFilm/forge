@@ -191,6 +191,7 @@
     "loadMoreFailed": "Inernerit amerlanerusut aaneqarsinnaanngillat.",
     "searching": "Ujarlerneqarpoq...",
     "connectionHint": "Attavivit misissoriarlugu nutaamik misiliguk.",
+    "rateLimitHint": "Qinnuteqaatit amerlavallaarput. Minutsi ataaseq qaangiuppat misileeqqigit.",
     "retrySearch": "Ujaqqiiguk",
     "retry": "Nutaamik misiliigit",
     "noResults": "\"{query}\"-mut tunngatillugu nassaartoqanngilaq",
@@ -540,16 +541,16 @@
     "retryFailed": "Ajutoortut misileqqikkit"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Oqaatsit taakku atorlugit saqqummersitaq pissarsiarineqanngilaq",
+    "eyebrow": "Oqaatsit taakku atorlugit saqqummersitaq pissarsiarineqanngilaq",
+    "title": "<contentTitle>{title}</contentTitle> <languageName>{language}</languageName>-mi pissarsiarineqanngilaq",
+    "actionsLabel": "Isiginnaarsinnaasatit",
+    "browseInLanguage": "{language}-imi videonik isiginnaarit",
+    "backToSearch": "Ujarlernermut uterit",
+    "audioVersionsTitle": "Nipilersuutit allat",
+    "audioVersionsDescription": "Video manna isiginnaaginnassagukku oqaatsit nipitallit toqqakkit.",
+    "languageVersionLabel": "Nipip oqaasii",
+    "selectLanguageVersion": "Oqaatsit saqqummersitaat toqqaruk",
+    "watchSelectedVersion": "Saqqummersitaq toqqagaq isiginnaarlugu"
   }
 }

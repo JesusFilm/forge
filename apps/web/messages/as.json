@@ -191,6 +191,7 @@
     "loadMoreFailed": "অধিক ফলাফল লোড কৰিব পৰা নগ'ল।",
     "searching": "সন্ধান কৰা হৈছে...",
     "connectionHint": "অনুগ্ৰহ কৰি আপোনাৰ সংযোগ পৰীক্ষা কৰি পুনৰ চেষ্টা কৰক।",
+    "rateLimitHint": "অত্যধিক অনুৰোধ। অনুগ্ৰহ কৰি এমিনিটৰ পিছত পুনৰ চেষ্টা কৰক।",
     "retrySearch": "পুনৰ সন্ধান কৰক",
     "retry": "পুনৰ চেষ্টা কৰক",
     "noResults": "\"{query}\"-ৰ বাবে কোনো ফলাফল নাই",
@@ -540,16 +541,16 @@
     "retryFailed": "বিফল ডাউনল’ডসমূহ পুনৰ চেষ্টা কৰক"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "ভাষাৰ সংস্কৰণ উপলব্ধ নহয়",
+    "eyebrow": "ভাষাৰ সংস্কৰণ উপলব্ধ নহয়",
+    "title": "<contentTitle>{title}</contentTitle> <languageName>{language}</languageName> ভাষাত উপলব্ধ নহয়",
+    "actionsLabel": "উপলব্ধ চোৱাৰ বিকল্প",
+    "browseInLanguage": "{language} ভাষাৰ ভিডিঅ’সমূহ ব্ৰাউজ কৰক",
+    "backToSearch": "সন্ধানলৈ উভতি যাওক",
+    "audioVersionsTitle": "অন্য অডিঅ' সংস্কৰণ",
+    "audioVersionsDescription": "এই ভিডিঅ'টো চাই থাকিবলৈ এটা অডিঅ' ভাষা বাছক।",
+    "languageVersionLabel": "অডিঅ' ভাষা",
+    "selectLanguageVersion": "এটা ভাষাৰ সংস্কৰণ বাছক",
+    "watchSelectedVersion": "বাছনি কৰা সংস্কৰণটো চাওক"
   }
 }

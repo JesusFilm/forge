@@ -191,6 +191,7 @@
     "loadMoreFailed": "കൂടുതൽ ഫലങ്ങൾ ലോഡ് ചെയ്യാൻ കഴിഞ്ഞില്ല.",
     "searching": "തിരയുന്നു...",
     "connectionHint": "ദയവായി നിങ്ങളുടെ കണക്ഷൻ പരിശോധിച്ച് വീണ്ടും ശ്രമിക്കുക.",
+    "rateLimitHint": "വളരെയധികം അഭ്യർത്ഥനകൾ. ഒരു മിനിറ്റിന് ശേഷം വീണ്ടും ശ്രമിക്കുക.",
     "retrySearch": "തിരച്ചിൽ വീണ്ടും ശ്രമിക്കുക",
     "retry": "വീണ്ടും ശ്രമിക്കുക",
     "noResults": "\"{query}\" ന് ഫലങ്ങളൊന്നുമില്ല",
@@ -540,16 +541,16 @@
     "retryFailed": "പരാജയപ്പെട്ടവ വീണ്ടും ശ്രമിക്കുക"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "ഭാഷാ പതിപ്പ് ലഭ്യമല്ല",
+    "eyebrow": "ഭാഷാ പതിപ്പ് ലഭ്യമല്ല",
+    "title": "<contentTitle>{title}</contentTitle> <languageName>{language}</languageName> ഭാഷയിൽ ലഭ്യമല്ല",
+    "actionsLabel": "ലഭ്യമായ കാഴ്ചാ ഓപ്ഷനുകൾ",
+    "browseInLanguage": "{language} ഭാഷയിലെ വീഡിയോകൾ കാണുക",
+    "backToSearch": "തിരയലിലേക്ക് മടങ്ങുക",
+    "audioVersionsTitle": "മറ്റ് ഓഡിയോ പതിപ്പുകൾ",
+    "audioVersionsDescription": "ഈ വീഡിയോ തുടർന്നും കാണാൻ ഒരു ഓഡിയോ ഭാഷ തിരഞ്ഞെടുക്കുക.",
+    "languageVersionLabel": "ഓഡിയോ ഭാഷ",
+    "selectLanguageVersion": "ഒരു ഭാഷാ പതിപ്പ് തിരഞ്ഞെടുക്കുക",
+    "watchSelectedVersion": "തിരഞ്ഞെടുത്ത പതിപ്പ് കാണുക"
   }
 }

@@ -191,6 +191,7 @@
     "loadMoreFailed": "ᐊᓯᐊᓂ ᑭᐅᔪᑏᑦ ᓇᓂᓐᓂᖅ ᐊᔭᓐᓂᖏᑦᑐᖅ.",
     "searching": "ᓇᓂᓐᓂᖅ...",
     "connectionHint": "ᐊᔭᓐᓂᖅ ᐱᓕᕆᕕᖕᒥ ᓇᓂᓂᖅ ᐊᒻᒪ ᑭᐅᔪᓂᒃ ᑐᓴᕈᓐᓇᕐᓂᖅ.",
+    "rateLimitHint": "Dáígóó nídé kʼe gotsʼę́ę́. Łǫ́ǫ́dǫ́ǫ́ nátʼą́ą́h tsʼídáá nánáʼį́.",
     "retrySearch": "ᓇᓂᓐᓂᖅ ᓱᒃᑲᐃᓕᖅᑕᕆ",
     "retry": "ᓱᒃᑲᐃᓕᖅᑕᕆ",
     "noResults": "\"{query}\" ᑭᐅᔪᑏᑦ ᐱᑕᖃᖏᑦᑐᑦ",
@@ -540,16 +541,16 @@
     "retryFailed": "ᐊᔭᓐᓂᖏᑦᑐᑦ ᐊᓯᐊᒍᑦ ᐱᓇᔪᒃ"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Dene kedé dúlé hólǫ́ nı̨́lé",
+    "eyebrow": "Dene kedé dúlé hólǫ́ nı̨́lé",
+    "title": "<contentTitle>{title}</contentTitle> <languageName>{language}</languageName> kedé yatı́ dúlé hólǫ́ nı̨́lé",
+    "actionsLabel": "Dúlé náídı̨́ı̨́ł nídé",
+    "browseInLanguage": "{language} kedé video náídı̨́ı̨́ł",
+    "backToSearch": "Hoghá nátsʼédé",
+    "audioVersionsTitle": "Audio łaį́́ tʼááłáí",
+    "audioVersionsDescription": "Video yédı̨́ı̨́ł náhaghá audio kedé łaį́́ nádááłtʼé.",
+    "languageVersionLabel": "Audio kedé",
+    "selectLanguageVersion": "Kedé łaį́́ nádááłtʼé",
+    "watchSelectedVersion": "Kedé nádááłtʼé yédı̨́ı̨́ł"
   }
 }

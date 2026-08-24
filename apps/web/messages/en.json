@@ -200,6 +200,7 @@
     "loadMoreFailed": "Failed to load more results.",
     "searching": "Searching...",
     "connectionHint": "Please check your connection and try again.",
+    "rateLimitHint": "Too many requests. Please try again in a minute.",
     "retrySearch": "Retry search",
     "retry": "Retry",
     "noResults": "No results for \"{query}\"",

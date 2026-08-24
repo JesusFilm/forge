@@ -191,6 +191,7 @@
     "loadMoreFailed": "I no inap long loadim moa results.",
     "searching": "Painim...",
     "connectionHint": "Plis checkim connection bilong yu na traim gen.",
+    "rateLimitHint": "Planti tumas askim. Traim gen bihain long wanpela minit.",
     "retrySearch": "Traim search gen",
     "retry": "Traim gen",
     "noResults": "Nogat results bilong \"{query}\"",
@@ -540,16 +541,16 @@
     "retryFailed": "Traim gen long ol episod i pundaun"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Dispela tok i no stap",
+    "eyebrow": "Dispela tok i no stap",
+    "title": "<contentTitle>{title}</contentTitle> i no stap long tok <languageName>{language}</languageName>",
+    "actionsLabel": "Ol rot bilong lukim",
+    "browseInLanguage": "Painim ol vidio long tok {language}",
+    "backToSearch": "Go bek long painim",
+    "audioVersionsTitle": "Ol narapela odi",
+    "audioVersionsDescription": "Makim wanpela tok bilong odi na go het long lukim dispela vidio.",
+    "languageVersionLabel": "Tok bilong odi",
+    "selectLanguageVersion": "Makim wanpela tok",
+    "watchSelectedVersion": "Lukim dispela vesin yu makim"
   }
 }
