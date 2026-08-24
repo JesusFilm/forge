@@ -1,6 +1,6 @@
 "use client"
 
-import { Check, Languages, LoaderCircle, RefreshCw } from "lucide-react"
+import { LoaderCircle, RefreshCw } from "lucide-react"
 import { useTranslations } from "next-intl"
 import {
   useCallback,
@@ -16,17 +16,35 @@ import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
 import { LanguageCombobox } from "@/components/watch/LanguageCombobox"
+import {
+  LANGUAGE_PICKER_FOCUS_RING_CLASS,
+  LANGUAGE_PICKER_MODAL_CLASS,
+  LANGUAGE_PICKER_VIEWPORT_CLASS,
+  LanguagePickerActions,
+  LanguagePickerComboboxFrame,
+  LanguagePickerHeader,
+  LanguagePickerInventoryLink,
+  MultilingualTooltipPanel,
+  tooltipLanguageKeyForCurrentLanguage,
+  type TooltipLanguageKey,
+} from "@/components/watch/LanguagePickerPresentation"
 import { WatchModalViewportCloseButton } from "@/components/watch/WatchModalViewportCloseButton"
 import { writePreferredLanguageSlug } from "@/lib/language-preference-client"
 import { isPublicWatchLanguageSlug } from "@/lib/locale"
 import { loadGlobalWatchLanguageOptions } from "@/lib/watch-interaction-loader"
 import {
+  languageVideosIndexPath,
+  languagesIndexPath,
+  localizedLanguagesPath,
+  tryAsLocaleSlug,
+} from "@/lib/routes"
+import {
   languageSwitcherTarget,
   type GlobalLanguageOption,
 } from "@/lib/watch-language-switcher"
 
-const MODAL_FOCUS_RING_CLASS =
-  "focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white/40 focus-visible:outline-none"
+const FIRST_STRONG_ISOLATE = "\u2068"
+const POP_DIRECTIONAL_ISOLATE = "\u2069"
 
 type LoadState =
   | { status: "loading" }
@@ -104,6 +122,10 @@ export function GlobalLanguagePickerModal({
   const [pendingLanguageName, setPendingLanguageName] = useState<string | null>(
     null,
   )
+  const [activeTooltipCopy, setActiveTooltipCopy] = useState<Record<
+    TooltipLanguageKey,
+    string
+  > | null>(null)
 
   useEffect(() => {
     if (!open) return
@@ -175,6 +197,31 @@ export function GlobalLanguagePickerModal({
     [options],
   )
   const selectedOption = options.find((option) => option.slug === draftSlug)
+  const excludedTooltipLanguage = tooltipLanguageKeyForCurrentLanguage({
+    name: selectedOption?.englishName,
+    nativeName: selectedOption?.nativeName,
+    slug: selectedOption?.slug ?? draftSlug,
+  })
+  const appliedLanguageSlug = tryAsLocaleSlug(
+    loadState.status === "ready"
+      ? loadState.currentLanguageSlug
+      : currentLanguageSlug,
+  )
+  const allLanguagesPath =
+    appliedLanguageSlug && appliedLanguageSlug !== "english"
+      ? localizedLanguagesPath(appliedLanguageSlug)
+      : languagesIndexPath()
+  const draftLocaleSlug = tryAsLocaleSlug(draftSlug)
+  const draftLanguageInventoryPath = draftLocaleSlug
+    ? languageVideosIndexPath(draftLocaleSlug)
+    : null
+  const draftLanguageInventoryName =
+    selectedOption?.nativeName?.trim() ||
+    selectedOption?.englishName ||
+    draftSlug
+  const draftLanguageInventoryLabel = t("seeAllVideosInLanguage", {
+    language: `${FIRST_STRONG_ISOLATE}${draftLanguageInventoryName}${POP_DIRECTIONAL_ISOLATE}`,
+  })
   const selectedTarget = selectedOption
     ? languageSwitcherTarget(pathname, selectedOption.slug)
     : null
@@ -247,8 +294,8 @@ export function GlobalLanguagePickerModal({
         finalFocus={returnFocusRef}
         showCloseButton={false}
         overlayClassName="bg-black/85 supports-backdrop-filter:backdrop-blur-md"
-        viewportClassName="fixed inset-0 z-50 grid place-items-center overflow-y-auto p-4"
-        className="w-[min(608px,calc(100vw-1.5rem))] max-w-[608px] gap-8 border-white/10 bg-stone-950 p-6 text-stone-100 ring-white/10 sm:p-8"
+        viewportClassName={LANGUAGE_PICKER_VIEWPORT_CLASS}
+        className={LANGUAGE_PICKER_MODAL_CLASS}
       >
         <WatchModalViewportCloseButton
           open={open}
@@ -256,99 +303,122 @@ export function GlobalLanguagePickerModal({
           testId="global-language-picker-modal-close"
           ariaLabel={t("close")}
         />
-        <DialogTitle className="flex items-center gap-3 text-xl font-semibold">
-          <Languages aria-hidden className="size-5" />
-          {t("dialogTitle")}
-        </DialogTitle>
+        <DialogTitle className="sr-only">{t("dialogTitle")}</DialogTitle>
 
         <p
           aria-live="polite"
           aria-atomic="true"
           data-testid="global-language-picker-status"
-          className="text-sm text-stone-400"
+          className="sr-only"
         >
           {status}
         </p>
 
-        {loadState.status === "loading" ? (
-          <div className="flex min-h-16 items-center justify-center">
-            <LoaderCircle aria-hidden className="size-6 animate-spin" />
-          </div>
-        ) : null}
-
-        {loadState.status === "empty" ? (
-          <div
-            data-testid="global-language-picker-empty"
-            className="rounded-xl border border-white/10 bg-white/5 p-5 text-stone-300"
-          >
-            {t("languageCount", { count: 0 })}
-          </div>
-        ) : null}
-
-        {loadState.status === "error" ? (
-          <div
-            data-testid="global-language-picker-error"
-            className="flex items-center justify-between gap-4 rounded-xl border border-white/10 bg-white/5 p-5 text-stone-300"
-          >
-            <span>{searchT("connectionHint")}</span>
-            <Button
-              type="button"
-              variant="ghost"
-              aria-label={searchT("retry")}
-              title={searchT("retry")}
-              data-testid="global-language-picker-retry"
-              className={MODAL_FOCUS_RING_CLASS}
-              onClick={() => {
-                setLoadState({ status: "loading" })
-                setLoadAttempt((attempt) => attempt + 1)
-              }}
-            >
-              <RefreshCw aria-hidden className="size-4" />
-              {searchT("retry")}
-            </Button>
-          </div>
-        ) : null}
-
-        {loadState.status === "ready" ? (
-          <LanguageCombobox
-            options={comboboxOptions}
-            value={draftSlug}
-            onChange={(slug) => {
-              setInvalidSelection(false)
-              setDraftSlug(slug)
-            }}
-            disabled={navigating}
-            placeholder={t("languageHeading")}
-            compact
+        <div className="relative flex w-full flex-col gap-10">
+          <MultilingualTooltipPanel
+            copy={activeTooltipCopy}
+            excludedLanguage={excludedTooltipLanguage}
           />
-        ) : null}
+          <div className="flex flex-col gap-4">
+            <LanguagePickerHeader
+              allLanguagesHref={allLanguagesPath}
+              allLanguagesLabel={t("seeAllLanguages")}
+              countLabel={t("languageCount", { count: options.length })}
+              heading={t("languageHeading")}
+              loading={loadState.status === "loading"}
+              testIdPrefix="global-language-picker"
+              onActivate={setActiveTooltipCopy}
+              onDeactivate={() => setActiveTooltipCopy(null)}
+            />
 
-        <div className="flex flex-wrap justify-end gap-3">
-          <Button
-            type="button"
-            variant="ghost"
-            data-testid="global-language-picker-close"
-            disabled={navigating}
-            onClick={requestClose}
-            className={`rounded-full px-5 py-3 text-xs font-bold tracking-wider text-stone-300 uppercase ${MODAL_FOCUS_RING_CLASS}`}
-          >
-            {t("close")}
-          </Button>
-          <Button
-            type="button"
-            variant="pill"
-            data-testid="global-language-picker-apply"
-            disabled={loadState.status !== "ready" || !changed || navigating}
-            onClick={handleApply}
-            className={MODAL_FOCUS_RING_CLASS}
-          >
-            {navigating ? (
-              <LoaderCircle aria-hidden className="size-4 animate-spin" />
-            ) : (
-              <Check aria-hidden className="size-4" />
-            )}
-            {navigating ? `${t("apply")}…` : t("apply")}
-          </Button>
+            {loadState.status === "loading" ? (
+              <div className="flex min-h-16 items-center justify-center rounded-2xl border border-white/10 bg-white/5">
+                <LoaderCircle
+                  aria-hidden
+                  className="size-6 animate-spin text-stone-400"
+                />
+              </div>
+            ) : null}
+
+            {loadState.status === "empty" ? (
+              <div
+                data-testid="global-language-picker-empty"
+                className="rounded-2xl border border-white/10 bg-white/5 p-5 text-stone-300"
+              >
+                {t("languageCount", { count: 0 })}
+              </div>
+            ) : null}
+
+            {loadState.status === "error" ? (
+              <div
+                data-testid="global-language-picker-error"
+                className="flex min-h-16 items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/5 px-5 py-3 text-stone-300"
+              >
+                <span>{searchT("connectionHint")}</span>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  aria-label={searchT("retry")}
+                  title={searchT("retry")}
+                  data-testid="global-language-picker-retry"
+                  className={`size-10 rounded-full p-0 text-stone-300 hover:bg-white/10 hover:text-white ${LANGUAGE_PICKER_FOCUS_RING_CLASS}`}
+                  onClick={() => {
+                    setLoadState({ status: "loading" })
+                    setLoadAttempt((attempt) => attempt + 1)
+                  }}
+                >
+                  <RefreshCw aria-hidden className="size-4" />
+                </Button>
+              </div>
+            ) : null}
+
+            {loadState.status === "ready" ? (
+              <LanguageCombobox
+                options={comboboxOptions}
+                value={draftSlug}
+                onChange={(slug) => {
+                  setInvalidSelection(false)
+                  setDraftSlug(slug)
+                }}
+                disabled={navigating}
+                placeholder={t("languageHeading")}
+                compact
+                triggerWrapper={(trigger) => (
+                  <LanguagePickerComboboxFrame
+                    testIdPrefix="global-language-picker"
+                    onActivate={setActiveTooltipCopy}
+                    onDeactivate={() => setActiveTooltipCopy(null)}
+                  >
+                    {trigger}
+                  </LanguagePickerComboboxFrame>
+                )}
+              />
+            ) : null}
+
+            {loadState.status === "ready" && draftLanguageInventoryPath ? (
+              <LanguagePickerInventoryLink
+                href={draftLanguageInventoryPath}
+                label={draftLanguageInventoryLabel}
+                testIdPrefix="global-language-picker"
+              />
+            ) : null}
+          </div>
+
+          <LanguagePickerActions
+            applyDisabled={
+              loadState.status !== "ready" || !changed || navigating
+            }
+            applyLabel={t("apply")}
+            closeDisabled={navigating}
+            closeLabel={t("close")}
+            navigating={navigating}
+            onApply={handleApply}
+            onClose={requestClose}
+            switchingLabel={t("switching")}
+            testIdPrefix="global-language-picker"
+            onActivate={setActiveTooltipCopy}
+            onDeactivate={() => setActiveTooltipCopy(null)}
+          />
         </div>
       </DialogContent>
     </Dialog>

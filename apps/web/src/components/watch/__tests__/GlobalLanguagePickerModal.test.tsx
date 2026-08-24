@@ -340,16 +340,21 @@ describe("GlobalLanguagePickerModal", () => {
     }
   })
 
-  it("uses the shared inset visible-focus treatment and an accessible dialog name", async () => {
+  it("uses the inner-page language picker presentation without subtitle controls", async () => {
     loadGlobalWatchLanguageOptionsMock.mockResolvedValue(options)
     await renderHarness()
 
-    expect(query("global-language-picker-modal")?.getAttribute("role")).toBe(
-      "dialog",
-    )
+    const modal = query("global-language-picker-modal")
+    expect(modal?.getAttribute("role")).toBe("dialog")
+    expect(modal?.getAttribute("aria-modal")).toBe("true")
+    expect(modal?.className).toContain("bg-transparent")
+    expect(modal?.className).toContain("max-w-[608px]")
+    expect(query("global-language-picker-language-header")).not.toBeNull()
+    expect(query("global-language-picker-all-languages-link")).not.toBeNull()
     expect(
-      query("global-language-picker-modal")?.getAttribute("aria-modal"),
-    ).toBe("true")
+      query("global-language-picker-selected-language-link"),
+    ).not.toBeNull()
+    expect(document.querySelector('[data-testid*="subtitles"]')).toBeNull()
     expect(query("global-language-picker-close")?.className).toContain(
       "focus-visible:ring-inset",
     )
@@ -358,7 +363,7 @@ describe("GlobalLanguagePickerModal", () => {
     ).toHaveLength(1)
     expect(
       query("global-language-picker-close")?.querySelector("svg"),
-    ).toBeNull()
+    ).not.toBeNull()
     expect(query("global-language-picker-apply")?.className).toContain(
       "focus-visible:ring-inset",
     )

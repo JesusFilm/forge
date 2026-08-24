@@ -1,20 +1,9 @@
 "use client"
 
-import Link from "next/link"
 import { useRouter } from "next/navigation"
-import {
-  ArrowRight,
-  Captions,
-  Check,
-  Globe,
-  Languages,
-  LoaderCircle,
-  RefreshCw,
-  Sparkles,
-  X,
-} from "lucide-react"
+import { Captions, Check, Languages, RefreshCw, Sparkles } from "lucide-react"
 import { useTranslations } from "next-intl"
-import type { ReactNode, RefObject } from "react"
+import type { RefObject } from "react"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { flushSync } from "react-dom"
 
@@ -22,11 +11,24 @@ import type { MuxPlayerRef } from "@forge/video-player"
 
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
-import { SpinnerIcon } from "@/components/ui/spinner"
 import {
   LanguageCombobox,
   type LanguageComboboxOption,
 } from "@/components/watch/LanguageCombobox"
+import {
+  LANGUAGE_PICKER_FOCUS_RING_CLASS,
+  LANGUAGE_PICKER_MODAL_CLASS,
+  LANGUAGE_PICKER_VIEWPORT_CLASS,
+  MULTILINGUAL_TOOLTIPS,
+  LanguagePickerActions,
+  LanguagePickerComboboxFrame,
+  LanguagePickerHeader,
+  LanguagePickerInventoryLink,
+  MultilingualTooltip,
+  MultilingualTooltipPanel,
+  tooltipLanguageKeyForCurrentLanguage,
+  type TooltipLanguageKey,
+} from "@/components/watch/LanguagePickerPresentation"
 import type { WatchLanguagePickerVariant, WatchSubtitle } from "@/lib/content"
 import { deriveLanguageDisplay } from "@/lib/language-display"
 import { writePreferredLanguageSlug } from "@/lib/language-preference-client"
@@ -45,8 +47,6 @@ import { WatchModalViewportCloseButton } from "./WatchModalViewportCloseButton"
 
 export type LanguagePickerVariant = WatchLanguagePickerVariant
 
-const MODAL_FOCUS_RING_CLASS =
-  "focus-visible:border-stone-100/60 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-stone-100 focus-visible:outline-none"
 const FIRST_STRONG_ISOLATE = "\u2068"
 const POP_DIRECTIONAL_ISOLATE = "\u2069"
 
@@ -76,204 +76,7 @@ export type LanguagePickerModalProps = {
   onRetryLanguageOptions?: () => void
 }
 
-const TOOLTIP_LANGUAGES = [
-  { key: "english", dir: "ltr" },
-  { key: "mandarin", dir: "ltr" },
-  { key: "hindi", dir: "ltr" },
-  { key: "spanish", dir: "ltr" },
-  { key: "arabic", dir: "rtl" },
-] as const
-
-type TooltipLanguageKey = (typeof TOOLTIP_LANGUAGES)[number]["key"]
-
-const TOOLTIP_LANGUAGE_ALIASES: Record<TooltipLanguageKey, string[]> = {
-  english: ["en", "english"],
-  mandarin: ["zh", "chinese", "mandarin", "中文", "普通话"],
-  hindi: ["hi", "hindi", "हिन्दी"],
-  spanish: ["es", "spanish", "español"],
-  arabic: ["ar", "arabic", "العربية", "عربي"],
-}
-
-const MULTILINGUAL_TOOLTIPS: Record<
-  string,
-  Record<TooltipLanguageKey, string>
-> = {
-  language: {
-    english: "Language",
-    mandarin: "语言",
-    hindi: "भाषा",
-    spanish: "Idioma",
-    arabic: "اللغة",
-  },
-  subtitles: {
-    english: "Subtitles",
-    mandarin: "字幕",
-    hindi: "उपशीर्षक",
-    spanish: "Subtítulos",
-    arabic: "الترجمة",
-  },
-  subtitlesOn: {
-    english: "Turn subtitles on",
-    mandarin: "打开字幕",
-    hindi: "उपशीर्षक चालू करें",
-    spanish: "Activar subtítulos",
-    arabic: "شغّل الترجمة",
-  },
-  subtitlesOff: {
-    english: "Turn subtitles off",
-    mandarin: "关闭字幕",
-    hindi: "उपशीर्षक बंद करें",
-    spanish: "Desactivar subtítulos",
-    arabic: "أوقف الترجمة",
-  },
-  subtitlesUnavailable: {
-    english: "Subtitles unavailable",
-    mandarin: "没有字幕",
-    hindi: "उपशीर्षक उपलब्ध नहीं हैं",
-    spanish: "Subtítulos no disponibles",
-    arabic: "الترجمة غير متاحة",
-  },
-  requestSubtitles: {
-    english: "Request subtitles",
-    mandarin: "请求字幕",
-    hindi: "उपशीर्षक का अनुरोध करें",
-    spanish: "Solicitar subtítulos",
-    arabic: "اطلب الترجمة",
-  },
-  close: {
-    english: "Close",
-    mandarin: "关闭",
-    hindi: "बंद करें",
-    spanish: "Cerrar",
-    arabic: "إغلاق",
-  },
-  apply: {
-    english: "Apply",
-    mandarin: "应用",
-    hindi: "लागू करें",
-    spanish: "Aplicar",
-    arabic: "تطبيق",
-  },
-}
-
 type OpenCombobox = "language" | "subtitles" | null
-
-function normalizedTooltipLanguage(value: string | null | undefined) {
-  return value?.trim().toLowerCase().replace(/_/g, "-") ?? null
-}
-
-function tooltipLanguageKeyForCurrentLanguage({
-  bcp47,
-  name,
-  nativeName,
-  slug,
-}: {
-  bcp47?: string | null
-  name?: string | null
-  nativeName?: string | null
-  slug?: string | null
-}): TooltipLanguageKey | null {
-  const candidates = [slug, bcp47, bcp47?.split(/[-_]/)[0], name, nativeName]
-
-  for (const candidate of candidates) {
-    const normalized = normalizedTooltipLanguage(candidate)
-    if (!normalized) continue
-
-    for (const [languageKey, aliases] of Object.entries(
-      TOOLTIP_LANGUAGE_ALIASES,
-    ) as [TooltipLanguageKey, string[]][]) {
-      if (
-        aliases.some(
-          (alias) => normalized === alias || normalized.startsWith(`${alias}-`),
-        )
-      ) {
-        return languageKey
-      }
-    }
-  }
-
-  return null
-}
-
-function MultilingualTooltip({
-  children,
-  copy,
-  testId,
-  className = "",
-  onActivate,
-  onDeactivate,
-}: {
-  children: ReactNode
-  copy: Record<TooltipLanguageKey, string>
-  testId: string
-  className?: string
-  onActivate: (copy: Record<TooltipLanguageKey, string>) => void
-  onDeactivate: () => void
-}) {
-  const activate = useCallback(() => onActivate(copy), [copy, onActivate])
-  const deactivate = useCallback(() => onDeactivate(), [onDeactivate])
-
-  return (
-    <div
-      data-testid={testId}
-      onMouseEnter={activate}
-      onMouseLeave={deactivate}
-      onPointerEnter={activate}
-      className={`inline-flex ${className}`}
-    >
-      {children}
-    </div>
-  )
-}
-
-function MultilingualTooltipPanel({
-  copy,
-  excludedLanguage,
-}: {
-  copy: Record<TooltipLanguageKey, string> | null
-  excludedLanguage: TooltipLanguageKey | null
-}) {
-  const visible = copy !== null
-  const tooltipCopy = copy ?? MULTILINGUAL_TOOLTIPS.language
-  const tooltipLanguages = excludedLanguage
-    ? TOOLTIP_LANGUAGES.filter((language) => language.key !== excludedLanguage)
-    : TOOLTIP_LANGUAGES
-
-  return (
-    <div
-      role="tooltip"
-      aria-hidden={visible ? undefined : true}
-      data-testid="watch-language-picker-tooltip-panel"
-      className={`pointer-events-none absolute inset-x-0 bottom-full z-20 mb-6 flex min-h-12 w-full items-start gap-2.5 py-1 text-sm leading-5 font-semibold text-stone-200 transition-[opacity,translate] duration-300 ease-out ${
-        visible ? "translate-y-0 opacity-75" : "translate-y-2 opacity-0"
-      }`}
-    >
-      <span
-        aria-hidden
-        data-testid="watch-language-picker-tooltip-globe-icon"
-        className="flex h-5 w-8 shrink-0 items-center justify-center text-stone-300"
-      >
-        <Globe aria-hidden className="size-4" />
-      </span>
-      <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-0.5">
-        {tooltipLanguages.map((language, index) => (
-          <span
-            key={language.key}
-            className="inline-flex items-center gap-2 whitespace-nowrap"
-          >
-            {index > 0 ? (
-              <span
-                aria-hidden
-                className="size-1 shrink-0 rounded-full bg-stone-500/80"
-              />
-            ) : null}
-            <span dir={language.dir}>{tooltipCopy[language.key]}</span>
-          </span>
-        ))}
-      </div>
-    </div>
-  )
-}
 
 export function LanguagePickerModal({
   open,
@@ -697,11 +500,11 @@ export function LanguagePickerModal({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent
         data-testid="watch-language-picker-modal"
-        className="m-auto w-full max-w-[608px] shrink-0 border-0 bg-transparent p-0 text-stone-100 ring-0"
+        className={LANGUAGE_PICKER_MODAL_CLASS}
         overlayClassName="bg-black/85 supports-backdrop-filter:backdrop-blur-md"
         showCloseButton={false}
         portalContainer={portalContainer}
-        viewportClassName="fixed inset-0 z-50 flex overflow-x-hidden overflow-y-auto px-3 py-24"
+        viewportClassName={LANGUAGE_PICKER_VIEWPORT_CLASS}
       >
         <WatchModalViewportCloseButton
           open={open}
@@ -721,54 +524,16 @@ export function LanguagePickerModal({
             excludedLanguage={excludedTooltipLanguage}
           />
           <div className="flex flex-col gap-4">
-            <MultilingualTooltip
-              copy={MULTILINGUAL_TOOLTIPS.language}
-              testId="watch-language-picker-tooltip-language"
-              className="w-full"
+            <LanguagePickerHeader
+              allLanguagesHref={allLanguagesPath}
+              allLanguagesLabel={t("seeAllLanguages")}
+              countLabel={t("languageCount", { count: options.length })}
+              heading={t("languageHeading")}
+              loading={languageOptionsLoading}
+              testIdPrefix="watch-language-picker"
               onActivate={setActiveTooltipCopy}
               onDeactivate={clearActiveTooltip}
-            >
-              <div
-                data-testid="watch-language-picker-language-header"
-                className="flex w-full min-w-0 flex-wrap items-center justify-between gap-1.5"
-              >
-                <div className="flex min-w-0 items-center gap-1.5">
-                  <div className="flex items-center gap-2.5">
-                    <span
-                      data-testid="watch-language-picker-language-icon"
-                      className="flex size-8 shrink-0 items-center justify-center text-stone-200"
-                    >
-                      <Languages aria-hidden className="size-4" />
-                    </span>
-                    <h2 className="text-xl font-semibold text-stone-100">
-                      {t("languageHeading")}
-                    </h2>
-                  </div>
-                  <span
-                    data-testid="watch-language-picker-count"
-                    className="hidden text-xs font-normal text-stone-400 sm:inline sm:text-sm"
-                  >
-                    {t("languageCount", { count: options.length })}
-                  </span>
-                  {languageOptionsLoading ? (
-                    <LoaderCircle
-                      aria-hidden
-                      data-testid="watch-language-picker-loading"
-                      className="size-5 animate-spin text-stone-400"
-                    />
-                  ) : null}
-                </div>
-                <Link
-                  href={allLanguagesPath}
-                  prefetch={false}
-                  data-testid="watch-language-picker-all-languages-link"
-                  className={`ml-auto inline-flex shrink-0 items-center gap-1.5 rounded-full border border-white/15 bg-white/[0.05] px-2 py-1.5 text-xs font-semibold text-stone-300 transition-colors duration-200 hover:border-white/25 hover:bg-white/[0.09] hover:text-white ${MODAL_FOCUS_RING_CLASS}`}
-                >
-                  <Globe aria-hidden className="size-3.5" />
-                  <span>{t("seeAllLanguages")}</span>
-                </Link>
-              </div>
-            </MultilingualTooltip>
+            />
             {languageOptionsError ? (
               <div
                 data-testid="watch-language-picker-load-error"
@@ -785,7 +550,7 @@ export function LanguagePickerModal({
                   title={t("retryLoadingLanguages")}
                   data-testid="watch-language-picker-retry-languages"
                   onClick={onRetryLanguageOptions}
-                  className={`size-10 rounded-full p-0 text-stone-300 hover:bg-white/10 hover:text-white ${MODAL_FOCUS_RING_CLASS}`}
+                  className={`size-10 rounded-full p-0 text-stone-300 hover:bg-white/10 hover:text-white ${LANGUAGE_PICKER_FOCUS_RING_CLASS}`}
                 >
                   <RefreshCw aria-hidden className="size-4" />
                 </Button>
@@ -804,39 +569,22 @@ export function LanguagePickerModal({
                 }
                 popoverPortalContainer={portalContainer}
                 triggerWrapper={(trigger) => (
-                  <MultilingualTooltip
-                    copy={MULTILINGUAL_TOOLTIPS.language}
-                    testId="watch-language-picker-tooltip-language-select"
-                    className="w-full"
+                  <LanguagePickerComboboxFrame
+                    testIdPrefix="watch-language-picker"
                     onActivate={setActiveTooltipCopy}
                     onDeactivate={clearActiveTooltip}
                   >
                     {trigger}
-                  </MultilingualTooltip>
+                  </LanguagePickerComboboxFrame>
                 )}
               />
             )}
             {draftLanguageInventoryPath ? (
-              <div
-                data-testid="watch-language-picker-selected-language-action"
-                className="-mt-2 flex min-w-0 justify-start"
-              >
-                <Link
-                  href={draftLanguageInventoryPath}
-                  prefetch={false}
-                  data-testid="watch-language-picker-selected-language-link"
-                  aria-label={draftLanguageInventoryLabel}
-                  className={`group inline-flex min-h-11 min-w-0 max-w-full items-center gap-1.5 rounded-md px-2 py-2 text-sm font-medium text-stone-400 underline decoration-stone-500 underline-offset-4 transition-colors duration-200 hover:text-white hover:decoration-stone-200 ${MODAL_FOCUS_RING_CLASS}`}
-                >
-                  <span className="truncate">
-                    {draftLanguageInventoryLabel}
-                  </span>
-                  <ArrowRight
-                    aria-hidden
-                    className="size-3.5 shrink-0 transition-transform group-hover:translate-x-0.5"
-                  />
-                </Link>
-              </div>
+              <LanguagePickerInventoryLink
+                href={draftLanguageInventoryPath}
+                label={draftLanguageInventoryLabel}
+                testIdPrefix="watch-language-picker"
+              />
             ) : null}
           </div>
 
@@ -895,7 +643,7 @@ export function LanguagePickerModal({
                   data-testid="watch-language-picker-subtitles-toggle"
                   disabled={!hasSelectableSubtitleOptions}
                   onClick={() => setDraftSubtitleEnabled((value) => !value)}
-                  className={`relative flex h-9 w-16 shrink-0 cursor-pointer items-center overflow-hidden rounded-full p-1 text-[10px] font-bold uppercase transition-colors duration-200 disabled:cursor-not-allowed disabled:opacity-45 ${MODAL_FOCUS_RING_CLASS} ${
+                  className={`relative flex h-9 w-16 shrink-0 cursor-pointer items-center overflow-hidden rounded-full p-1 text-[10px] font-bold uppercase transition-colors duration-200 disabled:cursor-not-allowed disabled:opacity-45 ${LANGUAGE_PICKER_FOCUS_RING_CLASS} ${
                     draftSubtitleEnabled
                       ? "bg-stone-100 text-stone-950"
                       : "border border-stone-500/80 bg-stone-950/70 text-stone-300"
@@ -933,7 +681,7 @@ export function LanguagePickerModal({
                     data-testid="watch-language-picker-request-ai-translation"
                     disabled={translationRequestSent}
                     onClick={() => setTranslationRequestSent(true)}
-                    className={`min-w-0 max-w-full flex-1 shrink gap-1.5 cursor-pointer rounded-full border border-stone-400/50 bg-transparent px-3 py-1.5 text-center text-[11px] leading-4 font-bold tracking-wider whitespace-normal text-stone-300 uppercase transition-colors duration-200 hover:border-stone-200 hover:bg-transparent hover:text-white disabled:cursor-default disabled:border-stone-500/35 disabled:text-stone-500 disabled:opacity-100 sm:flex-none ${MODAL_FOCUS_RING_CLASS}`}
+                    className={`min-w-0 max-w-full flex-1 shrink gap-1.5 cursor-pointer rounded-full border border-stone-400/50 bg-transparent px-3 py-1.5 text-center text-[11px] leading-4 font-bold tracking-wider whitespace-normal text-stone-300 uppercase transition-colors duration-200 hover:border-stone-200 hover:bg-transparent hover:text-white disabled:cursor-default disabled:border-stone-500/35 disabled:text-stone-500 disabled:opacity-100 sm:flex-none ${LANGUAGE_PICKER_FOCUS_RING_CLASS}`}
                   >
                     {translationRequestSent ? (
                       <Check
@@ -993,64 +741,18 @@ export function LanguagePickerModal({
             ) : null}
           </div>
 
-          <div
-            data-testid="watch-language-picker-actions"
-            className="flex flex-wrap items-center justify-end gap-x-6 gap-y-3 pt-3"
-          >
-            <MultilingualTooltip
-              copy={MULTILINGUAL_TOOLTIPS.close}
-              testId="watch-language-picker-tooltip-close"
-              onActivate={setActiveTooltipCopy}
-              onDeactivate={clearActiveTooltip}
-            >
-              <Button
-                variant="ghost"
-                data-testid="watch-language-picker-close-action"
-                onClick={onClose}
-                className={`h-auto w-40 gap-1.5 cursor-pointer rounded-full px-5 py-3 text-xs font-bold tracking-wider text-stone-400 uppercase transition-colors duration-200 hover:bg-transparent hover:text-stone-100 ${MODAL_FOCUS_RING_CLASS}`}
-              >
-                <X
-                  aria-hidden
-                  data-testid="watch-language-picker-close-action-icon"
-                  className="size-3.5"
-                />
-                <span>{t("close")}</span>
-              </Button>
-            </MultilingualTooltip>
-            <MultilingualTooltip
-              copy={MULTILINGUAL_TOOLTIPS.apply}
-              testId="watch-language-picker-tooltip-apply"
-              onActivate={setActiveTooltipCopy}
-              onDeactivate={clearActiveTooltip}
-            >
-              <Button
-                variant="pill"
-                data-testid="watch-language-picker-apply"
-                disabled={!isDirty || navigating || subtitleSelectionRequired}
-                onClick={handleApply}
-                className={`inline-flex w-40 items-center justify-center gap-1.5 bg-stone-300 px-5 py-3 text-xs text-stone-950 hover:bg-white hover:text-stone-950 disabled:bg-stone-300 disabled:text-stone-950 ${MODAL_FOCUS_RING_CLASS}`}
-              >
-                {navigating ? (
-                  <>
-                    <SpinnerIcon
-                      aria-hidden
-                      className="size-3.5 animate-spin"
-                    />
-                    <span>{t("switching")}</span>
-                  </>
-                ) : (
-                  <>
-                    <Check
-                      aria-hidden
-                      data-testid="watch-language-picker-apply-icon"
-                      className="size-3.5"
-                    />
-                    <span>{t("apply")}</span>
-                  </>
-                )}
-              </Button>
-            </MultilingualTooltip>
-          </div>
+          <LanguagePickerActions
+            applyDisabled={!isDirty || navigating || subtitleSelectionRequired}
+            applyLabel={t("apply")}
+            closeLabel={t("close")}
+            navigating={navigating}
+            onApply={handleApply}
+            onClose={onClose}
+            switchingLabel={t("switching")}
+            testIdPrefix="watch-language-picker"
+            onActivate={setActiveTooltipCopy}
+            onDeactivate={clearActiveTooltip}
+          />
         </div>
       </DialogContent>
     </Dialog>
