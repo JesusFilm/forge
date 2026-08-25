@@ -199,6 +199,7 @@ import { act } from "react"
 import { AppState } from "react-native"
 
 import { PlaybackHost } from "../../components/watch/PlaybackHost"
+import { getPlayerSettingsStore } from "../../lib/miniPlayer/playerSettings"
 import { getMiniPlayerStore } from "../../lib/miniPlayer/store"
 import {
   getPlaybackRequestStore,
@@ -362,11 +363,21 @@ function resetMiniPlayerStore() {
   store.end("abandoned")
 }
 
+// Idempotent field-wise reset: `resetFor` early-returns on a matching key, so
+// it cannot serve as a full reset on its own.
+function resetPlayerSettings() {
+  const settings = getPlayerSettingsStore()
+  settings.setSpeed(1)
+  settings.setQualityTier("auto")
+  settings.setContentKey(null)
+}
+
 beforeEach(() => {
   video.__reset()
   recorderMock.__reset()
   qoeMock.__reset()
   resetMiniPlayerStore()
+  resetPlayerSettings()
   appStateHandlers = []
   jest.spyOn(AppState, "addEventListener").mockImplementation(((
     _event: string,
@@ -645,5 +656,82 @@ describe("useManagedVideoPlayer — explicit session boundaries (U5)", () => {
     expect(updates).toBe(1)
     expect(store.getSnapshot().session?.positionSeconds).toBe(5)
     unsubscribe()
+  })
+})
+
+// U2 (KTD2): swap admission learns quality constraints. The pair below is the
+// falsification structure — same asset + same constraint coalesces, same asset
+// + different constraint admits — so admission is only explainable by the
+// `sameQualityConstraint` term; removing it turns exactly one of them red.
+describe("useManagedVideoPlayer — quality-constraint swap admission (U2)", () => {
+  // Same playback id as URL_A with an unrelated param: one asset, and neither
+  // URL carries a max/min_resolution constraint.
+  const URL_A_VARIANT =
+    "https://stream.mux.com/assetAAA111.m3u8?redundant_streams=true"
+  const URL_A_CAPPED =
+    "https://stream.mux.com/assetAAA111.m3u8?max_resolution=720p"
+
+  it("still coalesces a same-asset URL change with no constraint change", async () => {
+    const renderer = await renderPlayer(URL_A, IDENTITY_A)
+
+    await rerender(renderer, URL_A_VARIANT, IDENTITY_A)
+
+    expect(video.__player.replaceAsync).not.toHaveBeenCalled()
+    expect(video.__player.replace).not.toHaveBeenCalled()
+  })
+
+  it("admits a same-asset swap whose quality constraint changed", async () => {
+    const renderer = await renderPlayer(URL_A, IDENTITY_A)
+
+    await rerender(renderer, URL_A_CAPPED, IDENTITY_A)
+
+    expect(video.__player.replaceAsync).toHaveBeenCalledTimes(1)
+    expect(video.__player.replaceAsync).toHaveBeenCalledWith(URL_A_CAPPED)
+  })
+
+  it("keeps the QoE session and the progress recorder across a constraint-only swap (R14/AE8)", async () => {
+    const renderer = await renderPlayer(URL_A, IDENTITY_A)
+    expect(qoeMock.createVideoQoeSession).toHaveBeenCalledTimes(1)
+
+    await rerender(renderer, URL_A_CAPPED, IDENTITY_A)
+    await act(async () => {
+      video.__settleReplace()
+    })
+
+    // Not a session ending: no finalize, no new QoE session, no flush, and
+    // the recorder never re-keys — progress continues on the same video.
+    expect(qoeMock.createVideoQoeSession).toHaveBeenCalledTimes(1)
+    expect(qoeMock.__sessions[0].finalize).not.toHaveBeenCalled()
+    expect(recorderMock.__flushCalls).toEqual([])
+    expect(recorderMock.__recorders).toHaveLength(1)
+  })
+
+  it("suppresses the promise-time resume for a constraint-only swap; a cross-asset swap keeps it", async () => {
+    const renderer = await renderPlayer(URL_A, IDENTITY_A)
+    await act(async () => {
+      video.__player.play()
+    })
+    expect(video.__player.play).toHaveBeenCalledTimes(1)
+
+    await rerender(renderer, URL_A_CAPPED, IDENTITY_A)
+    await act(async () => {
+      video.__settleReplace()
+    })
+
+    // The host's sourceLoad latch owns the constraint-swap resume: a play at
+    // promise time would land before the seek and restart at zero.
+    expect(video.__player.play).toHaveBeenCalledTimes(1)
+
+    await rerender(renderer, URL_B, IDENTITY_A)
+    await act(async () => {
+      video.__settleReplace()
+    })
+
+    // Cross-asset keeps today's behavior exactly: promise-time resume, the
+    // old QoE session finalized as abandoned, a new one opened.
+    expect(video.__player.play).toHaveBeenCalledTimes(2)
+    expect(qoeMock.createVideoQoeSession).toHaveBeenCalledTimes(2)
+    expect(qoeMock.__sessions[0].finalize).toHaveBeenCalledWith("abandoned")
+    expect(qoeMock.__sessions[1].contentId).toBe("assetBBB222")
   })
 })
