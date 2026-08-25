@@ -1244,7 +1244,7 @@
   /* `screen` is the only blend that shows in the shadows: overlay against
      a near-black backdrop multiplies to nothing. Kept low so it adds
      sparkle without milking the blacks. */
-  opacity: 0.16;
+  opacity: 0.04;
   mix-blend-mode: screen;
   pointer-events: none;
   animation: watch-grain-drift-fine 1730ms steps(1, end) infinite;
@@ -1269,7 +1269,11 @@
      tile alone scales grain and tile together — coarser at the opening
      frame, but 512px between repeats instead of 150. */
   background-size: 512px 512px;
-  opacity: 0.72;
+  /* The value a reduced-motion reader gets, because the flicker below is
+     switched off for them — so it tracks the flicker's MEAN rather than
+     sitting above its whole range, which is what 0.72 did against a range
+     that never exceeded 0.68. */
+  opacity: 0.142;
   mix-blend-mode: overlay;
   pointer-events: none;
   animation:
@@ -1420,34 +1424,34 @@
    a repeating pattern. One combined animation repeats every cycle. */
 @keyframes watch-grain-flicker {
   0% {
-    opacity: 0.58;
+    opacity: 0.145;
   }
   11.1111% {
-    opacity: 0.47;
+    opacity: 0.117;
   }
   22.2222% {
-    opacity: 0.66;
+    opacity: 0.165;
   }
   33.3333% {
-    opacity: 0.51;
+    opacity: 0.128;
   }
   44.4444% {
-    opacity: 0.62;
+    opacity: 0.155;
   }
   55.5556% {
-    opacity: 0.45;
+    opacity: 0.113;
   }
   66.6667% {
-    opacity: 0.68;
+    opacity: 0.17;
   }
   77.7778% {
-    opacity: 0.53;
+    opacity: 0.133;
   }
   88.8889% {
-    opacity: 0.6;
+    opacity: 0.15;
   }
   100% {
-    opacity: 0.58;
+    opacity: 0.145;
   }
 }
 

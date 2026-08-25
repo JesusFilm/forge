@@ -374,6 +374,27 @@ describe("scroll-driven timeline choreography", () => {
     expect(to).toMatch(/--era-zoom:\s*1\s*;/)
   })
 
+  it("gives a reduced-motion reader the same grain strength as everyone else", () => {
+    // The flicker animates the coarse layer's opacity, and reduced motion
+    // switches it off — so the static value is what those readers actually
+    // see. It has to sit at the flicker's MEAN. It used to be 0.72 against a
+    // flicker that never exceeded 0.68, which handed the readers who asked
+    // for less the strongest grain on the page.
+    const flicker = blockBody(css, "@keyframes watch-grain-flicker")
+    const frames = [...flicker.matchAll(/opacity:\s*([\d.]+)/g)].map((m) =>
+      Number(m[1]),
+    )
+    // The last keyframe repeats the first; counting it would skew the mean.
+    const cycle = frames.slice(0, -1)
+    const mean = cycle.reduce((a, b) => a + b, 0) / cycle.length
+    const still = Number(
+      blockBody(css, ".watch-grain {").match(/opacity:\s*([\d.]+)/)?.[1],
+    )
+
+    expect(cycle.length).toBeGreaterThan(4)
+    expect(still).toBeCloseTo(mean, 2)
+  })
+
   it("keeps the grain loops from realigning into a visible pattern", () => {
     // Drift and density run as two animations with non-harmonic periods.
     // Equal or multiple durations would resync every cycle and the grain
