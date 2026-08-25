@@ -100,6 +100,147 @@ describe("Auth route wrapper", () => {
     vi.unstubAllEnvs()
   })
 
+  it("normalizes implicit web loopback DCR clients to the native application type", async () => {
+    authPost.mockResolvedValueOnce(
+      Response.json({ client_id: "claude_dynamic" }),
+    )
+    const { POST } = await import("./route")
+    const response = await POST(
+      new Request("http://localhost:3004/api/auth/oauth2/register", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          client_name: "Claude Code",
+          redirect_uris: ["http://localhost:3118/callback"],
+          grant_types: ["authorization_code", "refresh_token"],
+          response_types: ["code"],
+        }),
+      }),
+      { params: Promise.resolve({ all: ["oauth2", "register"] }) },
+    )
+
+    expect(response.status).toBe(200)
+    const forwarded = authPost.mock.calls[0]?.[0] as Request
+    await expect(forwarded.json()).resolves.toMatchObject({
+      application_type: "native",
+      redirect_uris: ["http://localhost:3118/callback"],
+      token_endpoint_auth_method: "none",
+    })
+  })
+
+  it.each([
+    {
+      name: "an explicit web client",
+      body: {
+        application_type: "web",
+        redirect_uris: ["http://localhost:3118/callback"],
+      },
+    },
+    {
+      name: "an explicit native client",
+      body: {
+        application_type: "native",
+        redirect_uris: ["http://localhost:3118/callback"],
+      },
+    },
+    {
+      name: "an explicit confidential client",
+      body: {
+        redirect_uris: ["http://localhost:3118/callback"],
+        token_endpoint_auth_method: "client_secret_basic",
+      },
+    },
+    {
+      name: "a public HTTP redirect",
+      body: { redirect_uris: ["http://example.com/callback"] },
+    },
+    {
+      name: "mixed loopback and public redirects",
+      body: {
+        redirect_uris: [
+          "http://127.0.0.1:3118/callback",
+          "https://example.com/callback",
+        ],
+      },
+    },
+    {
+      name: "an empty redirect list",
+      body: { redirect_uris: [] },
+    },
+  ])("does not normalize $name", async ({ body }) => {
+    authPost.mockResolvedValueOnce(Response.json({ client_id: "dynamic" }))
+    const { POST } = await import("./route")
+    await POST(
+      new Request("http://localhost:3004/api/auth/oauth2/register", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(body),
+      }),
+      { params: Promise.resolve({ all: ["oauth2", "register"] }) },
+    )
+
+    const forwarded = authPost.mock.calls[0]?.[0] as Request
+    await expect(forwarded.json()).resolves.toEqual(body)
+  })
+
+  it.each(["http://127.0.0.1:49173/callback", "http://[::1]:49173/callback"])(
+    "normalizes implicit loopback redirect %s",
+    async (redirectUri) => {
+      authPost.mockResolvedValueOnce(Response.json({ client_id: "dynamic" }))
+      const { POST } = await import("./route")
+      await POST(
+        new Request("http://localhost:3004/api/auth/oauth2/register", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ redirect_uris: [redirectUri] }),
+        }),
+        { params: Promise.resolve({ all: ["oauth2", "register"] }) },
+      )
+
+      const forwarded = authPost.mock.calls[0]?.[0] as Request
+      await expect(forwarded.json()).resolves.toEqual({
+        application_type: "native",
+        redirect_uris: [redirectUri],
+        token_endpoint_auth_method: "none",
+      })
+    },
+  )
+
+  it("rejects oversized DCR registration bodies case-insensitively", async () => {
+    const { POST } = await import("./route")
+    const response = await POST(
+      new Request("http://localhost:3004/api/auth/oauth2/register", {
+        method: "POST",
+        headers: { "content-type": "Application/JSON" },
+        body: JSON.stringify({ padding: "x".repeat(64 * 1024) }),
+      }),
+      { params: Promise.resolve({ all: ["oauth2", "register"] }) },
+    )
+
+    expect(response.status).toBe(413)
+    expect(authPost).not.toHaveBeenCalled()
+  })
+
+  it("preserves malformed DCR JSON for the provider", async () => {
+    authPost.mockResolvedValueOnce(Response.json({ error: "invalid_request" }))
+    const { POST } = await import("./route")
+    await POST(
+      new Request("http://localhost:3004/api/auth/oauth2/register", {
+        method: "POST",
+        headers: {
+          "content-length": "1",
+          "content-type": "application/json",
+        },
+        body: "{",
+      }),
+      { params: Promise.resolve({ all: ["oauth2", "register"] }) },
+    )
+
+    const forwarded = authPost.mock.calls[0]?.[0] as Request
+    expect(forwarded.headers.has("content-length")).toBe(false)
+    await expect(forwarded.text()).resolves.toBe("{")
+  })
+
   it("downscopes an authenticated Changelog authorize request before the provider sees it", async () => {
     getSession.mockResolvedValueOnce({
       user: { id: "user_123", membershipStatus: "ACTIVE" },

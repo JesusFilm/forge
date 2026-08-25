@@ -372,6 +372,7 @@
     "screenReaderPrefix": "Sayfa bulunamadı:",
     "title": "Bu sahne burada yok.",
     "description": "Sayfa taşınmış olabilir, ama hikâye devam ediyor.",
+    "languageDescription": "We couldn't find the page you're looking for, but the story continues in films and videos from languages around the world.",
     "actionsLabel": "Sayfa bulunamadı eylemleri",
     "backToWatch": "Watch'a dön",
     "browseVideos": "Videolara göz at"

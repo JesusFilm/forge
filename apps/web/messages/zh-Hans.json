@@ -372,6 +372,7 @@
     "screenReaderPrefix": "页面未找到：",
     "title": "这里没有这个场景。",
     "description": "页面可能已移至其他位置，但故事仍在继续。",
+    "languageDescription": "We couldn't find the page you're looking for, but the story continues in films and videos from languages around the world.",
     "actionsLabel": "页面未找到时可执行的操作",
     "backToWatch": "返回观看页",
     "browseVideos": "浏览视频"

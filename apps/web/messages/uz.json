@@ -451,6 +451,7 @@
     "screenReaderPrefix": "Sahifa topilmadi:",
     "title": "Bu sahna bu yerda yo‘q.",
     "description": "Sahifa ko‘chgan bo‘lishi mumkin, ammo hikoya davom etadi.",
+    "languageDescription": "We couldn't find the page you're looking for, but the story continues in films and videos from languages around the world.",
     "actionsLabel": "Sahifa topilmadi amallari",
     "backToWatch": "Ko‘rishga qaytish",
     "browseVideos": "Videolarni ko‘rib chiqish"

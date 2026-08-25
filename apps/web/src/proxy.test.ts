@@ -324,8 +324,12 @@ describe("proxy — reserved-subtree pass-through", () => {
     expect(rewritePath(response)).toBeNull()
   })
 
-  it("does not rewrite the remaining demo surface or retired demo-search path", async () => {
-    for (const path of ["/demo-search", "/demo-recommendations/jesus/en"]) {
+  it("does not rewrite standalone demo and preview surfaces", async () => {
+    for (const path of [
+      "/demo-search",
+      "/demo-recommendations/jesus/en",
+      "/language-globe",
+    ]) {
       const response = await proxy(makeRequest(path))
       expect(response.status).not.toBe(307)
       expect(response.status).not.toBe(308)
@@ -359,6 +363,7 @@ describe("proxy config matcher — reserved first-segment exclusions", () => {
     expect(matcherRegex.test("/api/preview")).toBe(false)
     expect(matcherRegex.test("/demo-search")).toBe(false)
     expect(matcherRegex.test("/demo-recommendations/jesus/en")).toBe(false)
+    expect(matcherRegex.test("/language-globe")).toBe(false)
     expect(matcherRegex.test("/_next/data/build/x.json")).toBe(false)
     expect(matcherRegex.test("/.well-known/security.txt")).toBe(false)
     expect(matcherRegex.test("/sitemap.xml")).toBe(false)
