@@ -45,10 +45,20 @@ describe("LanguageGlobe lifecycle", () => {
     vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(context)
 
     let nextFrame = 0
+    let frameCallback: FrameRequestCallback | undefined
     const requestAnimationFrame = vi
       .spyOn(window, "requestAnimationFrame")
-      .mockImplementation(() => ++nextFrame)
+      .mockImplementation((callback) => {
+        frameCallback = callback
+        return ++nextFrame
+      })
     const cancelAnimationFrame = vi.spyOn(window, "cancelAnimationFrame")
+    const setTimeout = vi
+      .spyOn(window, "setTimeout")
+      .mockImplementation(
+        () => 41 as unknown as ReturnType<typeof window.setTimeout>,
+      )
+    const clearTimeout = vi.spyOn(window, "clearTimeout")
 
     let reducedMotion = false
     const motionListeners = new Set<() => void>()
@@ -116,9 +126,12 @@ describe("LanguageGlobe lifecycle", () => {
     expect(requestAnimationFrame).toHaveBeenLastCalledWith(expect.any(Function))
     expect(nextFrame).toBe(1)
 
+    act(() => frameCallback?.(100))
+    expect(setTimeout).toHaveBeenCalledWith(expect.any(Function), 1000 / 20)
+
     reducedMotion = true
     act(() => motionListeners.forEach((listener) => listener()))
-    expect(cancelAnimationFrame).toHaveBeenCalledWith(1)
+    expect(clearTimeout).toHaveBeenCalledWith(41)
 
     reducedMotion = false
     act(() => motionListeners.forEach((listener) => listener()))

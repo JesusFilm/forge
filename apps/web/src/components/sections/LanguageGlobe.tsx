@@ -747,6 +747,7 @@ export function LanguageGlobe({
     let documentVisible = document.visibilityState !== "hidden"
     let pageLoaded = document.readyState === "complete"
     let animationFrame = 0
+    let animationTimer = 0
     let animating = false
     let previousFrame = 0
     let elapsedBeforePause = 0
@@ -778,16 +779,33 @@ export function LanguageGlobe({
       )
     }
 
-    const frame = (now: number) => {
-      if (now - previousFrame >= renderProfile.frameIntervalMilliseconds) {
-        previousFrame = advanceFrameSchedule(
-          previousFrame,
-          now,
-          renderProfile.frameIntervalMilliseconds,
-        )
-        draw(now)
+    const scheduleFrame = (delay = 0) => {
+      if (delay <= 0) {
+        animationFrame = window.requestAnimationFrame(frame)
+        return
       }
-      animationFrame = window.requestAnimationFrame(frame)
+      animationTimer = window.setTimeout(() => {
+        animationTimer = 0
+        animationFrame = window.requestAnimationFrame(frame)
+      }, delay)
+    }
+
+    const frame = (now: number) => {
+      animationFrame = 0
+      previousFrame = advanceFrameSchedule(
+        previousFrame,
+        now,
+        renderProfile.frameIntervalMilliseconds,
+      )
+      draw(now)
+      scheduleFrame(renderProfile.frameIntervalMilliseconds)
+    }
+
+    const cancelScheduledFrame = () => {
+      window.cancelAnimationFrame(animationFrame)
+      window.clearTimeout(animationTimer)
+      animationFrame = 0
+      animationTimer = 0
     }
 
     const shouldAnimate = () =>
@@ -801,14 +819,13 @@ export function LanguageGlobe({
     const syncAnimation = () => {
       const now = performance.now()
       if (animating) elapsedBeforePause += Math.max(0, now - resumedAt)
-      window.cancelAnimationFrame(animationFrame)
-      animationFrame = 0
+      cancelScheduledFrame()
       animating = false
 
       if (shouldAnimate()) {
         resumedAt = now
         animating = true
-        animationFrame = window.requestAnimationFrame(frame)
+        scheduleFrame()
       } else if (inViewport && documentVisible && pageLoaded) {
         draw(now)
       }
@@ -850,7 +867,7 @@ export function LanguageGlobe({
     syncAnimation()
 
     return () => {
-      window.cancelAnimationFrame(animationFrame)
+      cancelScheduledFrame()
       resizeObserver.disconnect()
       intersectionObserver.disconnect()
       document.removeEventListener("visibilitychange", handleVisibilityChange)

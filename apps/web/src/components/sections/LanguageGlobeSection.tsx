@@ -2,6 +2,7 @@ import type { ReactNode } from "react"
 import type { Route } from "next"
 import Link from "next/link"
 
+import { DeferredLanguageGlobe } from "@/components/sections/DeferredLanguageGlobe"
 import { LanguageGlobe } from "@/components/sections/LanguageGlobe"
 import { WATCH_PAGE_CONTENT_CLASSES } from "@/lib/content-width"
 import { cn } from "@/lib/utils"
@@ -19,6 +20,7 @@ type LanguageGlobeSectionProps = {
   children?: ReactNode
   className?: string
   description?: ReactNode
+  deferGlobe?: boolean
   eyebrow?: ReactNode
   globeClassName?: string
   headingId: string
@@ -38,6 +40,7 @@ export function LanguageGlobeSection({
   children,
   className,
   description,
+  deferGlobe = false,
   eyebrow,
   globeClassName,
   headingId,
@@ -147,14 +150,24 @@ export function LanguageGlobeSection({
             </div>
           </div>
 
-          <LanguageGlobe
-            className={cn(
-              "mt-2 sm:mt-0",
-              isNotFound && "h-[clamp(29rem,58vw,44rem)]",
-              globeClassName,
-            )}
-            layout="embedded"
-          />
+          {deferGlobe ? (
+            <DeferredLanguageGlobe
+              className={cn(
+                "mt-2 sm:mt-0",
+                isNotFound && "h-[clamp(29rem,58vw,44rem)]",
+                globeClassName,
+              )}
+            />
+          ) : (
+            <LanguageGlobe
+              className={cn(
+                "mt-2 sm:mt-0",
+                isNotFound && "h-[clamp(29rem,58vw,44rem)]",
+                globeClassName,
+              )}
+              layout="embedded"
+            />
+          )}
         </div>
       </div>
     </section>

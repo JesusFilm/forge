@@ -18,6 +18,7 @@ export function WatchLanguageGlobeSection() {
         },
       ]}
       actionsLabel={t("title")}
+      deferGlobe
       description={t("description")}
       eyebrow={t("eyebrow")}
       headingId="watch-language-globe-heading"

@@ -28,5 +28,7 @@ describe("WatchLanguageGlobeSection", () => {
     expect(markup).toContain("Select language")
     expect(markup).toContain('href="/languages"')
     expect(markup).toContain('data-section-key="watch-language-globe"')
+    expect(markup).toContain('data-testid="deferred-language-globe"')
+    expect(markup).not.toContain('data-testid="language-globe-canvas"')
   })
 })
