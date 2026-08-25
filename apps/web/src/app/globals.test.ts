@@ -111,6 +111,67 @@ describe("scroll-driven timeline choreography", () => {
     expect(override).toBeGreaterThan(base)
   })
 
+  it("never clips the stage, which would shear the full-bleed card", () => {
+    // Measured, not reasoned: the stage's box sits inside the content rail,
+    // so any overflow on it cuts 96px off each side of the opening card and
+    // leaves black strips down both edges of an effect whose whole point is
+    // to reach the viewport edges. `hidden` is worse still — it makes the
+    // stage a scroll container and the pin's sticky never engages. The card
+    // is bounded by the stage's top margin instead.
+    const guard = blockBody(css, "@supports (animation-timeline: view())")
+    const rule = blockBody(guard, ".watch-scroll-stage {")
+
+    expect(rule).not.toContain("overflow")
+  })
+
+  it("drops the lifted lead layer back to its own depth", () => {
+    // The lead layer is raised over its siblings for the length of the zoom
+    // so their clip-box shadows cannot draw a seam across the full-screen
+    // photograph. It has to come back down: the pile is built bottom-up, so
+    // a lead layer left on top would sit over every card that lands on it.
+    const frames = blockBody(css, "@keyframes watch-scroll-intro-front")
+
+    expect(frames).toContain("z-index: 30")
+    expect(frames).toMatch(/100%\s*\{\s*z-index:\s*var\(--layer\)/)
+  })
+
+  it("keeps the opening zoom inside the pinned breakpoint", () => {
+    // The veil and the caption fade start at `opacity: 0`. Below the
+    // pinned breakpoint the stage declares no `--watch-era-stage`
+    // timeline, so these would be animations with nothing to drive them —
+    // the year rail and the lead card's caption riding on whether an
+    // inactive timeline suppresses its own effect. Scope them instead.
+    const guard = blockBody(css, "@supports (animation-timeline: view())")
+    const pinned = blockBody(guard, "@media (width >= 48rem)")
+
+    expect(pinned).not.toBe("")
+    for (const name of [
+      "watch-scroll-intro",
+      "watch-scroll-intro-front",
+      "watch-scroll-intro-veil",
+      "watch-scroll-intro-caption",
+    ]) {
+      const rule = blockBody(pinned, `.${name} {`)
+      expect(rule, name).toContain("animation-timeline: --watch-era-stage")
+      expect(rule, name).toContain("animation-range: var(--intro-range)")
+    }
+  })
+
+  it("scales the opening zoom from the viewport, not from a guessed number", () => {
+    // A hard-coded scale is right at one viewport height and wrong at
+    // every other: too small leaves a strip of page showing around the
+    // photograph, too large crops it to nothing. The trig pair is CSS
+    // dividing two lengths into a bare number.
+    const guard = blockBody(css, "@supports (animation-timeline: view())")
+    const rule = blockBody(guard, ".watch-scroll-intro {")
+
+    expect(rule).toContain("100svh")
+    expect(rule).toContain("atan2(")
+    // Both axes: short viewports are bound by height, ultrawide ones by
+    // the fixed content rail.
+    expect(rule).toContain("100vw")
+  })
+
   it("keeps the grain loops from realigning into a visible pattern", () => {
     // Drift and density run as two animations with non-harmonic periods.
     // Equal or multiple durations would resync every cycle and the grain

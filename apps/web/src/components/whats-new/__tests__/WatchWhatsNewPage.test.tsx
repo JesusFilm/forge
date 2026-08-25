@@ -188,7 +188,20 @@ describe("WatchWhatsNewPage", () => {
     expect(layers).toEqual(WHATS_NEW_ERAS.map((_, index) => index + 1))
   })
 
-  it("gives every era a scroll slice that starts where the last one did not", () => {
+  it("hands the stage from the opening zoom to the first era with no seam", () => {
+    // The intro owns the front of the timeline and era 0 owns what is
+    // left. If the two drift apart the reader gets dead scroll — the card
+    // has landed but its beat has not started, or the beat is already
+    // fading up under a photograph still filling the screen.
+    const stage = container.querySelector('[data-testid="whats-new-eras"]')
+    const introEnd = Number(
+      stage
+        ?.getAttribute("style")
+        ?.match(/--intro-range:\s*contain 0% contain ([\d.]+)%/)?.[1],
+    )
+
+    expect(introEnd).toBeGreaterThan(0)
+
     const starts = cards().map((card) =>
       Number(
         card
@@ -198,7 +211,7 @@ describe("WatchWhatsNewPage", () => {
     )
 
     expect(starts).toHaveLength(WHATS_NEW_ERAS.length)
-    expect(starts[0]).toBe(0)
+    expect(starts[0]).toBe(introEnd)
     for (const [index, start] of starts.entries()) {
       if (index === 0) continue
       expect(start).toBeGreaterThan(starts[index - 1])
@@ -305,13 +318,112 @@ describe("WatchWhatsNewPage", () => {
     expect(stage?.querySelector(".watch-scroll-pin")).not.toBeNull()
   })
 
-  it("shows the first era without animating it in", () => {
-    // The section opens with this card already on screen. Fading it up
-    // from nothing leaves the reader looking at empty black, which reads
-    // as a page that failed to load — the exact bug this guards.
+  it("opens the section on the lead photograph, not on the lead card", () => {
+    // The section opens full-screen and pulls back into the card. Without
+    // the intro the first card would have to be there already or fade up
+    // from nothing, and fading up leaves the reader looking at empty
+    // black, which reads as a page that failed to load.
     const layers = [
       ...container.querySelectorAll('[data-testid="whats-new-era"]'),
     ]
+
+    expect(
+      layers[0].querySelector('[data-testid="whats-new-era-card"]')?.className,
+    ).not.toContain("watch-scroll-era-in")
+    expect(
+      layers[0].querySelector('[data-testid="whats-new-era-zoom"]')?.className,
+    ).toContain("watch-scroll-intro")
+    // The caption rides the same zoom, so it has to wait: at the scale the
+    // pull-back starts from it would arrive as poster type and shrink.
+    expect(
+      layers[0].querySelector(".watch-scroll-intro-caption"),
+    ).not.toBeNull()
+  })
+
+  it("starts the lead beat inside the zoom, and only the lead beat", () => {
+    // The lead beat fades up behind the full-screen photograph so its words
+    // are already there when the pull-back uncovers the slot. Aligned to
+    // era 0's own boundary instead, the card lands over a tall empty band.
+    // Every other beat still starts with its own card.
+    const stage = container.querySelector('[data-testid="whats-new-eras"]')
+    const introEnd = Number(
+      stage
+        ?.getAttribute("style")
+        ?.match(/--intro-range:\s*contain 0% contain ([\d.]+)%/)?.[1],
+    )
+    const beatStart = (index: number) =>
+      Number(
+        beats()
+          [index].getAttribute("style")
+          ?.match(/--beat-range:\s*contain ([\d.]+)%/)?.[1],
+      )
+    const cardStart = (index: number) =>
+      Number(
+        cards()
+          [index].getAttribute("style")
+          ?.match(/--enter-range:\s*contain ([\d.]+)%/)?.[1],
+      )
+
+    expect(beatStart(0)).toBeLessThan(introEnd)
+    for (let index = 1; index < WHATS_NEW_ERAS.length; index += 1) {
+      expect(beatStart(index), `era ${index}`).toBe(cardStart(index))
+    }
+  })
+
+  it("leaves room above the stage for the oversized opening card", () => {
+    // Measured in a browser: before the pin engages, the opening card
+    // reaches 144px above the stage's own top edge. The stage's top margin
+    // is the only thing keeping it off the section heading — there is no
+    // clip on the stage, because clipping it shears 96px off each side of
+    // the card and puts black strips down both edges. Tightening this for
+    // rhythm is the regression.
+    const stage = container.querySelector('[data-testid="whats-new-eras"]')
+    const margin = Number(stage?.className.match(/\bmd:mt-(\d+)\b/)?.[1])
+
+    // Tailwind spacing is 0.25rem per step, so 144px is mt-36.
+    expect(margin).toBeGreaterThanOrEqual(36)
+  })
+
+  it("holds the frosted plate back with the caption it exists for", () => {
+    // The frost is half the card in blur and black. Left outside the fade,
+    // it dims the bottom half of a full-screen photograph for a caption
+    // that is still invisible — which is what it did until this grouping.
+    const plate = container.querySelector(".watch-scroll-intro-caption")
+
+    expect(plate).not.toBeNull()
+    expect(plate?.querySelector(".backdrop-blur-xl")).not.toBeNull()
+    expect(plate?.textContent).toContain(WHATS_NEW_ERAS[0].title)
+  })
+
+  it("gives the opening zoom to the first era and to nothing else", () => {
+    // Anti-vacuous companion. A second zoomed layer would fill the screen
+    // again mid-stack, and every card carrying the intro would leave the
+    // whole pile oversized for the rest of the stage.
+    const zooms = [
+      ...container.querySelectorAll('[data-testid="whats-new-era-zoom"]'),
+    ]
+
+    expect(zooms).toHaveLength(WHATS_NEW_ERAS.length)
+    expect(
+      zooms.map((zoom) => zoom.className.includes("watch-scroll-intro")),
+    ).toEqual(WHATS_NEW_ERAS.map((_, index) => index === 0))
+    expect(
+      container.querySelectorAll(".watch-scroll-intro-caption"),
+    ).toHaveLength(1)
+    // Same for the layer lift. On a second era it would cover the card that
+    // is supposed to land on top of it.
+    expect(
+      [...container.querySelectorAll('[data-testid="whats-new-era"]')].map(
+        (era) => era.className.includes("watch-scroll-intro-front"),
+      ),
+    ).toEqual(WHATS_NEW_ERAS.map((_, index) => index === 0))
+  })
+
+  it("cycles the first era's beat and glow like every other era", () => {
+    // The intro used to be the first card simply being there, which the
+    // beat and the glow had their own hold-then-fade variants for. Leaving
+    // either variant behind now shows era 0's text over a photograph that
+    // still fills the screen.
     const beats = [
       ...container.querySelectorAll('[data-testid="whats-new-era-beat"]'),
     ]
@@ -319,11 +431,11 @@ describe("WatchWhatsNewPage", () => {
       ...container.querySelectorAll('[data-testid="whats-new-era-glow"]'),
     ]
 
-    expect(
-      layers[0].querySelector('[data-testid="whats-new-era-card"]')?.className,
-    ).not.toContain("watch-scroll-era-in")
-    expect(beats[0].className).toContain("watch-scroll-beatbox-lead")
-    expect(glows[0].className).toContain("watch-ambient-lead")
+    for (const node of [...beats, ...glows]) {
+      expect(node.className).not.toMatch(/-lead\b/)
+    }
+    expect(beats[0].className).toContain("watch-scroll-beatbox")
+    expect(glows[0].className).toContain("watch-ambient-cycle")
   })
 
   it("does animate in every era after the first", () => {

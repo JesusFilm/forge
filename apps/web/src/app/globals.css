@@ -362,18 +362,59 @@
   }
 }
 
-/* The first era is on screen before any scrolling happens — it must not
-   fade up from nothing, or the section opens on empty black and reads as
-   a page that failed to load. */
-@keyframes watch-scroll-beat-lead {
-  0%,
-  82% {
-    opacity: 1;
+/* --- Opening zoom ------------------------------------------------------
+   The section does not open on its card. It opens on the lead
+   photograph filling the screen, and pulls back into the card as the
+   reader scrolls — which is also what keeps the section from opening on
+   empty black and reading as a page that failed to load. */
+@keyframes watch-scroll-intro {
+  from {
+    translate: 0 var(--intro-lift, 0);
+    scale: var(--intro-scale, 1);
+  }
+  to {
     translate: 0 0;
+    scale: 1;
+  }
+}
+
+/* Everything around the photograph waits until the pull-back is nearly
+   done. Held rather than eased so nothing is legible at a size the zoom
+   chose for it — a caption riding the scale would arrive as poster type
+   and shrink. */
+/* The eras that have not arrived yet still paint the drop shadow of their
+   clip box, and all four boxes share one rect — so three stacked shadows
+   drew a visible seam across the full-screen photograph, brightest on flat
+   sky. Lifting the lead layer over them for the length of the zoom hides
+   them behind the photograph; it drops back to its own depth at the end,
+   before any sibling has arrived to be covered by. */
+@keyframes watch-scroll-intro-front {
+  0%,
+  98% {
+    z-index: 30;
   }
   100% {
+    z-index: var(--layer);
+  }
+}
+
+@keyframes watch-scroll-intro-veil {
+  0%,
+  55% {
     opacity: 0;
-    translate: 0 -1.75rem;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes watch-scroll-intro-caption {
+  0%,
+  80% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
   }
 }
 
@@ -382,16 +423,6 @@
     opacity: 0;
   }
   15%,
-  78% {
-    opacity: 0.55;
-  }
-  100% {
-    opacity: 0;
-  }
-}
-
-@keyframes watch-ambient-lead {
-  0%,
   78% {
     opacity: 0.55;
   }
@@ -810,7 +841,10 @@
       .watch-scroll-stage {
         view-timeline-name: --watch-era-stage;
         view-timeline-axis: block;
-        min-height: calc(var(--era-count) * 92svh + 34svh);
+        /* The trailing term buys scroll for the opening zoom on top of the
+           eras' own slices, so adding the intro did not speed the stack up.
+           Keep it in step with `ERA_INTRO_SHARE`. */
+        min-height: calc(var(--era-count) * 92svh + 110svh);
       }
 
       .watch-scroll-pin {
@@ -862,20 +896,85 @@
         will-change: opacity, translate;
       }
 
-      .watch-scroll-beatbox-lead {
-        animation-name: watch-scroll-beat-lead;
-      }
-
-      .watch-ambient-cycle,
-      .watch-ambient-lead {
+      .watch-ambient-cycle {
         animation: watch-ambient-cycle linear both;
         animation-timeline: --watch-era-stage;
         animation-range: var(--beat-range);
         will-change: opacity;
       }
 
-      .watch-ambient-lead {
-        animation-name: watch-ambient-lead;
+      /* --- Opening zoom: full screen, back into the card ---------------
+         Geometry, because the constants look arbitrary. The clip box hangs
+         a FIXED distance below the pinned top (sticky offset, year rail,
+         two gaps, the beat's fixed height) and takes whatever height is
+         left, so its centre lands at `50svh + ~10rem` from the top of the
+         viewport whatever the viewport height is — one constant lift
+         re-centres it. The scale it then needs is just viewport ÷ clip box,
+         on whichever axis is worse: short viewports are bound by height,
+         ultrawide ones by the 1920px content rail.
+
+         `tan(atan2(a, b))` is how CSS divides one length by another into a
+         bare number. Without it this would be a scale hard-coded per
+         breakpoint, and wrong between them.
+
+         Deliberately generous (the 1.04, and rounding the chrome up to
+         27rem — measured at 425px in the 768px band, 401px above it, plus
+         the lift's own bias): the zoom is anchored to the top edge, so
+         overshooting only crops the photograph further and grows it off the
+         bottom of the screen, while falling short leaves a strip of page
+         showing. 26rem left 5px of page below the fold at 800x760. */
+      .watch-scroll-intro {
+        /* Grows DOWNWARD from the top of the viewport, not outward from its
+           own centre. Centred, a uniform scale big enough to cover an
+           ultrawide viewport horizontally overshoots vertically by hundreds
+           of pixels, and on a 3440px display the photograph swallowed the
+           section heading on the way in. Anchored to the top edge, the
+           upward overshoot is a constant 104px at every viewport — the
+           pin's own sticky offset — whatever the scale turns out to be.
+
+           The lift is the measured distance from the pinned viewport top
+           down to the clip box — 385px between 768px and 1024px, where the
+           beat is taller, and 361px above that — taking the larger and
+           rounding UP. Falling short shows a strip of page above the
+           photograph (a 23.5rem lift left exactly 9px of it in the 768px
+           band); overshooting shows nothing at all. */
+        transform-origin: 50% 0;
+        --intro-lift: -25rem;
+        --intro-scale: clamp(
+          1.2,
+          calc(
+            max(
+                tan(atan2(100svh, max(1px, calc(100svh - 27rem)))),
+                tan(atan2(100vw, max(1px, calc(min(100vw, 1920px) - 12rem))))
+              ) *
+              1.04
+          ),
+          5
+        );
+        animation: watch-scroll-intro linear both;
+        animation-timeline: --watch-era-stage;
+        animation-range: var(--intro-range);
+        will-change: scale, translate;
+      }
+
+      .watch-scroll-intro-front {
+        animation: watch-scroll-intro-front linear both;
+        animation-timeline: --watch-era-stage;
+        animation-range: var(--intro-range);
+      }
+
+      .watch-scroll-intro-veil {
+        animation: watch-scroll-intro-veil linear both;
+        animation-timeline: --watch-era-stage;
+        animation-range: var(--intro-range);
+        will-change: opacity;
+      }
+
+      .watch-scroll-intro-caption {
+        animation: watch-scroll-intro-caption linear both;
+        animation-timeline: --watch-era-stage;
+        animation-range: var(--intro-range);
+        will-change: opacity;
       }
 
       .watch-scroll-year {
