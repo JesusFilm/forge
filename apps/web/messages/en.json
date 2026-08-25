@@ -501,7 +501,8 @@
     "eyebrow": "Page not found",
     "screenReaderPrefix": "Page not found:",
     "title": "This scene isn't here.",
-    "description": "We couldn't find the page you're looking for, but the story continues in films and videos from languages around the world.",
+    "description": "The page may have moved, but the story continues.",
+    "languageDescription": "We couldn't find the page you're looking for, but the story continues in films and videos from languages around the world.",
     "actionsLabel": "Page not found actions",
     "backToWatch": "Back to Watch",
     "browseVideos": "Browse videos"

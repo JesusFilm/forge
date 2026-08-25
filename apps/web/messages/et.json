@@ -451,6 +451,7 @@
     "screenReaderPrefix": "Lehte ei leitud:",
     "title": "Seda stseeni siin ei ole.",
     "description": "Leht võis olla teisaldatud, kuid lugu jätkub.",
+    "languageDescription": "We couldn't find the page you're looking for, but the story continues in films and videos from languages around the world.",
     "actionsLabel": "Lehemitteleidmise toimingud",
     "backToWatch": "Tagasi vaatama",
     "browseVideos": "Sirvi videoid"

@@ -451,6 +451,7 @@
     "screenReaderPrefix": "Síða fannst ekki:",
     "title": "Þessi sena er ekki hér.",
     "description": "Síðan gæti hafa færst, en sagan heldur áfram.",
+    "languageDescription": "We couldn't find the page you're looking for, but the story continues in films and videos from languages around the world.",
     "actionsLabel": "Aðgerðir fyrir síðu sem fannst ekki",
     "backToWatch": "Til baka í horf",
     "browseVideos": "Fletta í myndböndum"

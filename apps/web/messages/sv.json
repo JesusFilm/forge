@@ -451,6 +451,7 @@
     "screenReaderPrefix": "Sidan hittades inte:",
     "title": "Den här scenen finns inte här.",
     "description": "Sidan kan ha flyttats, men berättelsen fortsätter.",
+    "languageDescription": "We couldn't find the page you're looking for, but the story continues in films and videos from languages around the world.",
     "actionsLabel": "Åtgärder för sidan hittades inte",
     "backToWatch": "Tillbaka till Titta",
     "browseVideos": "Bläddra bland videor"

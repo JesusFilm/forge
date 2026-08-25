@@ -60,6 +60,9 @@ describe("WatchNotFound", () => {
     expect(headings[0]?.textContent).toContain(
       "Page not found: This scene isn't here.",
     )
+    expect(container.textContent).toContain(
+      "We couldn't find the page you're looking for, but the story continues in films and videos from languages around the world.",
+    )
 
     const marker = container.querySelector(
       '[data-testid="watch-not-found-code"]',

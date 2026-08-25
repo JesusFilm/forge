@@ -502,6 +502,7 @@
     "screenReaderPrefix": "Страница не найдена:",
     "title": "Этой сцены здесь нет.",
     "description": "Возможно, страница была перемещена, но история продолжается.",
+    "languageDescription": "We couldn't find the page you're looking for, but the story continues in films and videos from languages around the world.",
     "actionsLabel": "Действия на странице 404",
     "backToWatch": "Вернуться к видео",
     "browseVideos": "Смотреть видео"

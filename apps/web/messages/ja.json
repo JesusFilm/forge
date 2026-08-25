@@ -372,6 +372,7 @@
     "screenReaderPrefix": "ページが見つかりません:",
     "title": "このシーンはここにありません。",
     "description": "ページは移動したかもしれませんが、物語は続いています。",
+    "languageDescription": "We couldn't find the page you're looking for, but the story continues in films and videos from languages around the world.",
     "actionsLabel": "ページが見つからない場合の操作",
     "backToWatch": "Watch に戻る",
     "browseVideos": "動画を閲覧"

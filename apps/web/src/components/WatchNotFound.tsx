@@ -27,7 +27,7 @@ export function WatchNotFound() {
           },
         ]}
         actionsLabel={t("actionsLabel")}
-        description={t("description")}
+        description={t("languageDescription")}
         eyebrow={t("eyebrow")}
         headingId="watch-not-found-heading"
         headingLevel="h1"

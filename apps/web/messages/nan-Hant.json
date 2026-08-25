@@ -451,6 +451,7 @@
     "screenReaderPrefix": "找不到頁面：",
     "title": "這一幕不在這裡。",
     "description": "頁面也許已移動，但故事仍在繼續。",
+    "languageDescription": "We couldn't find the page you're looking for, but the story continues in films and videos from languages around the world.",
     "actionsLabel": "找不到頁面動作",
     "backToWatch": "回到觀看頁面",
     "browseVideos": "瀏覽影片"

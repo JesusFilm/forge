@@ -451,6 +451,7 @@
     "screenReaderPrefix": "Stránka sa nenašla:",
     "title": "Táto scéna tu nie je.",
     "description": "Stránka sa možno presunula, ale príbeh pokračuje.",
+    "languageDescription": "We couldn't find the page you're looking for, but the story continues in films and videos from languages around the world.",
     "actionsLabel": "Akcie pri nenájdenej stránke",
     "backToWatch": "Späť na Sledovať",
     "browseVideos": "Prehliadať videá"
