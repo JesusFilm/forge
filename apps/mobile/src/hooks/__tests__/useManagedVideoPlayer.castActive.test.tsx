@@ -61,6 +61,7 @@ import { AppState, type AppStateStatus } from "react-native"
 
 import { useManagedVideoPlayer } from "../useManagedVideoPlayer"
 import { datadogLog } from "../../lib/datadog"
+import { getMiniPlayerStore } from "../../lib/miniPlayer/store"
 import {
   TestRenderer,
   type NodePath,
@@ -92,22 +93,34 @@ function fireAppState(state: AppStateStatus) {
   for (const listener of [...appStateListeners]) listener(state)
 }
 
-function Harness({ castActive }: { castActive: boolean }) {
+function Harness({
+  castActive,
+  armsPip = false,
+}: {
+  castActive: boolean
+  armsPip?: boolean
+}) {
   useManagedVideoPlayer("https://stream.mux.com/abc123.m3u8", undefined, {
     progress: { videoId: "v1", languageSlug: "en" },
     castActive,
+    // Off by default: only the root host arms the OS window, and every other
+    // case here is about the AppState pair.
+    armsPictureInPicture: armsPip,
   })
   return null
 }
 
 type UpdatableRenderer = TestInstance & { update(element: ReactElement): void }
 
-async function render(castActive: boolean): Promise<UpdatableRenderer> {
+async function render(
+  castActive: boolean,
+  armsPip = false,
+): Promise<UpdatableRenderer> {
   let renderer!: UpdatableRenderer
   await act(async () => {
     renderer = TestRenderer.create(
       <StrictMode>
-        <Harness castActive={castActive} />
+        <Harness castActive={castActive} armsPip={armsPip} />
       </StrictMode>,
     ) as UpdatableRenderer
   })
@@ -119,11 +132,15 @@ async function render(castActive: boolean): Promise<UpdatableRenderer> {
   return renderer
 }
 
-async function update(renderer: UpdatableRenderer, castActive: boolean) {
+async function update(
+  renderer: UpdatableRenderer,
+  castActive: boolean,
+  armsPip = false,
+) {
   await act(async () => {
     renderer.update(
       <StrictMode>
-        <Harness castActive={castActive} />
+        <Harness castActive={castActive} armsPip={armsPip} />
       </StrictMode>,
     )
   })
@@ -226,6 +243,42 @@ describe("castActive stall-watchdog suppression (KTD4)", () => {
       "video.playhead_stall",
       expect.anything(),
     )
+    await act(async () => renderer.unmount())
+  })
+})
+
+describe("castActive picture-in-picture veto (KTD4)", () => {
+  afterEach(() => {
+    // Module singleton: a latch left set leaks into every later suite.
+    getMiniPlayerStore().setPipHold(false)
+  })
+
+  // The session owns transport, so the OS window opening must not start audio
+  // on this device as well.
+  //
+  // ORDER IS THE WHOLE TEST. An ordinary cast departure clears the was-playing
+  // snapshot, so the `!wasPlayingRef` guard would stop the play by itself and
+  // the veto would be untestable — green whether or not it exists. Only a
+  // session that connects AFTER the app has already left leaves that snapshot
+  // set under a live session, which is the one state the veto alone answers.
+  it("does not start local audio when the window opens after a session began", async () => {
+    mockIsPlaying = true
+    const renderer = await render(false, true)
+
+    // Playing, no session: the ordinary background records was-playing.
+    await act(async () => {
+      fireAppState("background")
+    })
+
+    // The session connects while the app is away.
+    await update(renderer, true, true)
+
+    // Now the window takes over.
+    await act(async () => {
+      getMiniPlayerStore().setPipHold(true)
+    })
+
+    expect(mockPlayer.play).not.toHaveBeenCalled()
     await act(async () => renderer.unmount())
   })
 })

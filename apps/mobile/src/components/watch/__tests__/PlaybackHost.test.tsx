@@ -62,6 +62,10 @@ jest.mock("expo", () => {
   }
 })
 
+// The transport reads connectivity to tell a paused video from a broken one.
+jest.mock("expo-network", () => ({
+  useNetworkState: () => ({ isInternetReachable: true }),
+}))
 jest.mock("expo-image", () => ({ Image: () => null }))
 jest.mock("expo-linear-gradient", () => ({ LinearGradient: () => null }))
 jest.mock("expo-glass-effect", () => ({ GlassView: () => null }))
@@ -2480,22 +2484,17 @@ describe("quality tier swaps (U2)", () => {
     expect(video.__player.replaceAsync).toHaveBeenCalledTimes(1)
     expect(video.__player.replaceAsync).toHaveBeenCalledWith(CAPPED_HIGH_A)
 
-    // The promise resolving is NOT the resume point: the incoming item sits
-    // at zero until sourceLoad, and a seek issued here is silently dropped.
-    await act(async () => {
-      video.__settleReplace()
-    })
-    expect(video.__player.currentTime).toBe(0)
-    expect(video.__player.play).toHaveBeenCalledTimes(1)
-
     // Seek-before-play ordering probe: the position playback resumes AT.
     const positionsAtPlay: number[] = []
     video.__player.addListener("playingChange", (payload) => {
       if ((payload as { isPlaying: boolean }).isPlaying)
         positionsAtPlay.push(video.__player.currentTime)
     })
+
+    // Settling loads the incoming item, which emits sourceLoad — the resume
+    // point. A seek at promise time would land on the outgoing item.
     await act(async () => {
-      video.__player.__emit("sourceLoad")
+      video.__settleReplace()
     })
 
     expect(video.__player.currentTime).toBe(754)
@@ -2503,6 +2502,13 @@ describe("quality tier swaps (U2)", () => {
     expect(video.__player.play).toHaveBeenCalledTimes(2)
     expect(positionsAtPlay).toEqual([754])
     expect(video.__player.playing).toBe(true)
+
+    // One-shot: a later load of the same source must not re-seek.
+    video.__player.currentTime = 900
+    await act(async () => {
+      video.__player.__emit("sourceLoad", { videoSource: CAPPED_HIGH_A })
+    })
+    expect(video.__player.currentTime).toBe(900)
     expect(renderer.root).toBeTruthy()
   })
 

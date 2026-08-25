@@ -44,8 +44,17 @@ export type FakePlayer = {
   addListener: (name: string, fn: FakeListener) => FakeSubscription
   /** Fires a native event at the listeners registered for it. */
   __emit: (name: string, payload?: unknown) => void
-  /** Settles the oldest in-flight replaceAsync; rejects it when given a reason. */
-  __settleReplace: (reason?: unknown) => void
+  /**
+   * Settles the oldest in-flight replaceAsync; rejects it when given a reason.
+   *
+   * `withholdLoad` resolves the swap WITHOUT the sourceLoad that normally
+   * follows — the device state where a source is SET but never loads. Nothing
+   * else can produce it, so any wait-for-load timeout is untestable without it.
+   */
+  __settleReplace: (
+    reason?: unknown,
+    options?: { withholdLoad?: boolean },
+  ) => void
   __pendingReplaceCount: () => number
   __reset: () => void
 }
@@ -56,7 +65,10 @@ export type ExpoVideoMock = {
   isPictureInPictureSupported: jest.Mock
   /** The single player every useVideoPlayer call returns (R10: one decoder). */
   __player: FakePlayer
-  __settleReplace: (reason?: unknown) => void
+  __settleReplace: (
+    reason?: unknown,
+    options?: { withholdLoad?: boolean },
+  ) => void
   __reset: () => void
 }
 
@@ -65,9 +77,17 @@ export type ExpoVideoMock = {
  * touch. Playback state is real state (play() flips `playing` and emits
  * playingChange) so a suite reads the same signals the app does.
  */
+type MockImpl = ReturnType<jest.Mock["getMockImplementation"]>
+
 export function makeFakePlayer(): FakePlayer {
   const listeners = new Map<string, Set<FakeListener>>()
-  const pendingReplaces: Array<(reason?: unknown) => void> = []
+  const pendingReplaces: Array<
+    (reason?: unknown, withholdLoad?: boolean) => void
+  > = []
+  // mockClear() keeps an implementation a case installed with
+  // mockImplementation, so a `play` made to throw would still throw in every
+  // later case in the file. Captured below and restored by __reset.
+  const defaultImpls = new Map<jest.Mock, MockImpl>()
 
   const player: FakePlayer = {
     muted: false,
@@ -95,20 +115,39 @@ export function makeFakePlayer(): FakePlayer {
     seekBy: jest.fn((seconds: number) => {
       player.currentTime += seconds
     }),
-    replace: jest.fn((_source: VideoSource) => {
+    replace: jest.fn((source: VideoSource) => {
       player.currentTime = 0
+      // The synchronous path lands the item immediately, so its load event
+      // fires here rather than a tick later. The payload names the source that
+      // loaded, as the native event does — a consumer that must not act on
+      // someone else's load has to be able to tell.
+      player.__emit("sourceLoad", { videoSource: source })
     }),
     replaceAsync: jest.fn(
-      (_source: VideoSource) =>
+      (source: VideoSource) =>
         new Promise<void>((resolve, reject) => {
-          pendingReplaces.push((reason) => {
+          pendingReplaces.push((reason, withholdLoad) => {
             if (reason !== undefined) {
               reject(reason)
               return
             }
-            // expo-video 57: the incoming item loads at zero.
-            player.currentTime = 0
+            // A source that is SET but never loads: the swap settles and no
+            // sourceLoad ever arrives.
+            if (withholdLoad === true) {
+              resolve()
+              return
+            }
+            // Resolve BEFORE the item lands, because that is the real order:
+            // replaceAsync settles while the source is still being applied, so
+            // the zero and the sourceLoad arrive a tick later. A seek written
+            // in the promise continuation is therefore CLOBBERED here, exactly
+            // as it is on a device — see
+            // docs/solutions/integration-issues/expo-video-replaceasync-seek-silently-dropped-tvos.md
             resolve()
+            void Promise.resolve().then(() => {
+              player.currentTime = 0
+              player.__emit("sourceLoad", { videoSource: source })
+            })
           })
         }),
     ),
@@ -124,10 +163,10 @@ export function makeFakePlayer(): FakePlayer {
     __emit: (name, payload) => {
       for (const fn of [...(listeners.get(name) ?? [])]) fn(payload)
     },
-    __settleReplace: (reason) => {
+    __settleReplace: (reason, options) => {
       const settle = pendingReplaces.shift()
       if (settle == null) throw new Error("no in-flight replaceAsync to settle")
-      settle(reason)
+      settle(reason, options?.withholdLoad === true)
     },
     __pendingReplaceCount: () => pendingReplaces.length,
     __reset: () => {
@@ -150,10 +189,24 @@ export function makeFakePlayer(): FakePlayer {
         player.seekBy,
         player.replace,
         player.replaceAsync,
-      ])
-        fn.mockClear()
+      ]) {
+        fn.mockReset()
+        const impl = defaultImpls.get(fn)
+        if (impl != null) fn.mockImplementation(impl)
+      }
     },
   }
+
+  for (const fn of [
+    player.play,
+    player.pause,
+    player.replay,
+    player.seekBy,
+    player.replace,
+    player.replaceAsync,
+  ])
+    defaultImpls.set(fn, fn.getMockImplementation())
+
   return player
 }
 
@@ -177,7 +230,8 @@ export function createExpoVideoMock(): ExpoVideoMock {
     ),
     isPictureInPictureSupported: jest.fn(() => true),
     __player: player,
-    __settleReplace: (reason) => player.__settleReplace(reason),
+    __settleReplace: (reason, options) =>
+      player.__settleReplace(reason, options),
     __reset: () => {
       player.__reset()
       setupRan = false

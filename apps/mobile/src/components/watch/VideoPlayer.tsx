@@ -12,6 +12,7 @@ import {
 import { Image } from "expo-image"
 import Ionicons from "@expo/vector-icons/Ionicons"
 import { LinearGradient } from "expo-linear-gradient"
+import { useNetworkState } from "expo-network"
 import type { VideoPlayer as ExpoVideoPlayer } from "expo-video"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { BLACK, TEXT_ON_OVERLAY, hexToRgba } from "../../lib/color"
@@ -30,6 +31,7 @@ import {
 } from "../../lib/tapSeek"
 import { useControlsVisibility } from "../../hooks/useControlsVisibility"
 import { useEndedPosterFade } from "../../hooks/useEndedPosterFade"
+import { useErrorRecovery } from "../../hooks/useErrorRecovery"
 import { useNonRouteSheetSuppression } from "../../hooks/useNonRouteSheetSuppression"
 import type { CastPlayback } from "../../hooks/useCastPlayback"
 import type { CastMedia } from "../../lib/cast/castMediaResolver"
@@ -70,6 +72,11 @@ type VideoPlayerProps = {
    *  view and the floating window read one failure state. */
   loadFailed?: boolean
   streamingUrl: string | null
+  /** The source the player verifiably holds, which can outlive the requested
+   *  one during an adoption. Recovery rebuilds THIS, not the display value. */
+  recoverSourceUrl?: string | null
+  /** Last position seen while healthy, from the adapter's 1s poll. */
+  getHealthyPosition?: () => number
   posterUrl: string | null
   subtitleVttSrc?: string | null
   onPlayingChange?: (isPlaying: boolean) => void
@@ -117,6 +124,8 @@ export function VideoPlayer({
   isPlaying,
   loadFailed = false,
   streamingUrl,
+  recoverSourceUrl = null,
+  getHealthyPosition,
   posterUrl,
   subtitleVttSrc = null,
   onPlayingChange,
@@ -167,6 +176,23 @@ export function VideoPlayer({
 
   // Ended-playback poster (covers the often-black last frame under Replay).
   const { ended, posterFade } = useEndedPosterFade(player, isPlaying)
+
+  // Read once here, not in the transport: PlayerControls renders in a dozen
+  // suites, and a native module reached for down there would make every one of
+  // them mock it. `isInternetReachable` is null until the first probe answers,
+  // so only an explicit false counts as offline.
+  const { isInternetReachable } = useNetworkState()
+  const isOnline = isInternetReachable !== false
+
+  // Rebuilds a failed source and resumes where the viewer was (todos/024).
+  // `recoverSourceUrl` is what the player HOLDS, which outlives the requested
+  // url during an adoption; `streamingUrl` stays the display/telemetry value.
+  const handleRecover = useErrorRecovery(
+    player,
+    recoverSourceUrl ?? streamingUrl,
+    castRemoteActive,
+    getHealthyPosition,
+  )
 
   // Releases the pre-autostart suppression below for a load that neither starts
   // nor errors (the host's `loadFailed` covers one that errors). Without both, a
@@ -810,6 +836,8 @@ export function VideoPlayer({
             castUi={castUi}
             castTarget={castTarget}
             onOpenSettings={() => setSettingsOpen(true)}
+            onRecover={handleRecover}
+            isOnline={isOnline}
           />
         </Animated.View>
       )}

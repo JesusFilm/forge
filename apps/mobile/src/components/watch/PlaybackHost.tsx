@@ -383,26 +383,30 @@ function ActivePlaybackHost({
   // start inside the swap window the resume latch spans (KTD4).
   const castActiveRef = useRef(castActive)
   castActiveRef.current = castActive
-  const { player, isPlaying, progressFeed } = useManagedVideoPlayer(
-    constrainedSourceUrl,
-    (p) => {
-      // Favor a fast first frame over deep prebuffer — JFP audience skews to
-      // low-bandwidth networks. (Android-only fields are ignored on iOS.)
-      p.bufferOptions = {
-        minBufferForPlayback: 1,
-        preferredForwardBufferDuration: 8,
-        prioritizeTimeOverSizeThreshold: true,
-      }
-    },
-    {
-      progress: progressIdentity,
-      ownsSession: true,
-      castActive,
-      onSourceApplied: (url) => {
-        appliedSourceUrlRef.current = url
+  const { player, isPlaying, progressFeed, getHealthyPosition } =
+    useManagedVideoPlayer(
+      constrainedSourceUrl,
+      (p) => {
+        // Favor a fast first frame over deep prebuffer — JFP audience skews to
+        // low-bandwidth networks. (Android-only fields are ignored on iOS.)
+        p.bufferOptions = {
+          minBufferForPlayback: 1,
+          preferredForwardBufferDuration: 8,
+          prioritizeTimeOverSizeThreshold: true,
+        }
       },
-    },
-  )
+      {
+        progress: progressIdentity,
+        ownsSession: true,
+        castActive,
+        // Only this surface arms automatic entry into the operating system's
+        // window, so only here may the background pause be undone when it opens.
+        armsPictureInPicture: true,
+        onSourceApplied: (url) => {
+          appliedSourceUrlRef.current = url
+        },
+      },
+    )
 
   // The screen's cast recorder reads the root adapter's facade. Render-time,
   // like the chrome's own mirror before the hoist; the feed is identity-stable,
@@ -529,10 +533,21 @@ function ActivePlaybackHost({
   // resolves before the item applies, so a seek there is silently dropped.
   const effectiveSpeedRef = useRef(effectiveSettings.speed)
   effectiveSpeedRef.current = effectiveSettings.speed
+  const constrainedSourceUrlRef = useRef(constrainedSourceUrl)
+  constrainedSourceUrlRef.current = constrainedSourceUrl
   useEffect(() => {
-    const sub = player.addListener("sourceLoad", () => {
-      const pending = pendingQualityResumeRef.current
-      pendingQualityResumeRef.current = null
+    const sub = player.addListener("sourceLoad", (payload?: unknown) => {
+      // Queued swaps load per item: a superseded item's load must not spend
+      // the one-shot latch, or the final item lands at 0:00. Same fail-open
+      // payload rule as recoverPlayback: an unidentifiable load counts as ours.
+      const loaded =
+        typeof payload === "object" && payload !== null
+          ? (payload as { videoSource?: unknown }).videoSource
+          : undefined
+      const isCurrentSource =
+        typeof loaded !== "string" || loaded === constrainedSourceUrlRef.current
+      const pending = isCurrentSource ? pendingQualityResumeRef.current : null
+      if (isCurrentSource) pendingQualityResumeRef.current = null
       try {
         if (pending != null) {
           const durationSeconds =
@@ -1396,6 +1411,13 @@ function ActivePlaybackHost({
                 isPlaying={isPlaying}
                 loadFailed={snapshot.loadFailed}
                 streamingUrl={request.streamingUrl}
+                getHealthyPosition={getHealthyPosition}
+                // What the player verifiably HOLDS. The chrome renders on
+                // `adoptable` alone, so the requested url can still be null
+                // while a real source is loaded — recovery must use this.
+                recoverSourceUrl={
+                  request.streamingUrl ?? appliedSourceUrlRef.current
+                }
                 posterUrl={request.posterUrl}
                 subtitleVttSrc={request.subtitleVttSrc}
                 fullscreen={request.fullscreen}
