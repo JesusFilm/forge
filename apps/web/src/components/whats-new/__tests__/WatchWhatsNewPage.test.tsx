@@ -351,15 +351,15 @@ describe("WatchWhatsNewPage", () => {
     // …it paints above the card, which is the later positioned sibling and
     // would otherwise cover it while it fills the screen,
     expect(beat.className).toMatch(/\bz-10\b/)
-    // …and it carries a shadow, because its backdrop for the whole zoom is
-    // dusk sky rather than the black page every other beat sits on.
-    expect(beat.className).toContain("text-shadow")
+    // …and it is full-strength white, not the dimmed white every other beat
+    // uses against the black page.
+    expect(beat.className).toMatch(/\btext-white\b/)
 
-    // Anti-vacuous: the other beats get none of it, and would look wrong
-    // with a shadow over black or a layer above their own card.
+    // Anti-vacuous: the other beats get none of it, and a layer above their
+    // own card is wrong for every era that arrives underneath one.
     for (const other of beats().slice(1)) {
       expect(other.className).not.toContain("watch-scroll-beatbox-lead")
-      expect(other.className).not.toContain("text-shadow")
+      expect(other.className).not.toMatch(/\bz-10\b/)
     }
   })
 

@@ -364,17 +364,18 @@ export function WatchWhatsNewPage({
                           gets cut off. */}
                       {/* The lead beat is part of the opening frame: it sits
                           over the full-screen photograph from the start, so
-                          it needs a layer above the card (which otherwise
-                          paints over it, being the later positioned sibling)
-                          and a shadow to stay legible against dusk sky
-                          rather than the black page. Both are inert once the
-                          card has landed below it. */}
+                          it needs a layer above the card, which otherwise
+                          paints over it as the later positioned sibling.
+                          Weight and shadow are what make it legible against
+                          dusk sky rather than the black page, and both are
+                          animated rather than classes — see the keyframes,
+                          which also carry why the weight stops at 500. */}
                       <p
                         data-testid="whats-new-era-beat"
                         style={ranges.beat}
                         className={`watch-scroll-beatbox max-w-5xl shrink-0 text-base leading-relaxed font-light text-balance text-white/85 sm:text-xl sm:leading-[1.5] md:h-48 md:text-lg md:leading-[1.55] lg:h-40 lg:text-[1.375rem] lg:leading-[1.45] ${
                           lead
-                            ? "watch-scroll-beatbox-lead relative z-10 text-white [text-shadow:0_1px_3px_rgba(0,0,0,0.7),0_4px_28px_rgba(0,0,0,0.85)]"
+                            ? "watch-scroll-beatbox-lead relative z-10 text-white"
                             : ""
                         }`}
                       >

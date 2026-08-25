@@ -435,6 +435,36 @@
   }
 }
 
+/* …and it starts heavier, easing back to its resting weight as the card
+   lands. `font-light` over a dusk-lit crowd is thin enough to lose against
+   the busier parts of the photograph; the shadow alone was not enough.
+
+   500 is a MEASURED ceiling, not a taste call. The paragraph runs to within
+   12px of its rail at weight 500 and re-wraps at 600 on every viewport at
+   or below 1024px — 700 adds a whole line. Since this interpolates during a
+   scroll, a weight that re-wraps makes the lines jump under the reader.
+   Raise this and re-measure the line boxes at 768, 800 and 1024 first.
+
+   The shadow ends fully transparent: by the time the card has landed the
+   beat is back over the black page, where a halo only muddies it. That is
+   also why neither the weight nor the shadow is a static class — without
+   scroll-driven animations there is no full-screen photograph to be legible
+   against. */
+@keyframes watch-scroll-beat-weight {
+  from {
+    font-weight: 500;
+    text-shadow:
+      0 1px 3px rgb(0 0 0 / 0.9),
+      0 4px 30px rgb(0 0 0 / 0.95);
+  }
+  to {
+    font-weight: 300;
+    text-shadow:
+      0 1px 3px rgb(0 0 0 / 0),
+      0 4px 30px rgb(0 0 0 / 0);
+  }
+}
+
 @keyframes watch-ambient-cycle {
   0% {
     opacity: 0;
@@ -913,8 +943,17 @@
         will-change: opacity, translate;
       }
 
+      /* Two tracks, because they run over different ranges: the hold-then-
+         fade belongs to the era's own slice, the weight and shadow to the
+         opening zoom. Listed explicitly rather than through the shorthand —
+         `animation` resets timeline and range, so both have to be restated
+         per track anyway. */
       .watch-scroll-beatbox-lead {
-        animation-name: watch-scroll-beat-lead;
+        animation:
+          watch-scroll-beat-lead linear both,
+          watch-scroll-beat-weight linear both;
+        animation-timeline: --watch-era-stage, --watch-era-stage;
+        animation-range: var(--beat-range), var(--intro-range);
       }
 
       .watch-ambient-cycle {

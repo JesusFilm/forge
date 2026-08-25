@@ -154,7 +154,48 @@ describe("scroll-driven timeline choreography", () => {
     const guard = blockBody(css, "@supports (animation-timeline: view())")
     const rule = blockBody(guard, ".watch-scroll-beatbox-lead {")
 
-    expect(rule).toContain("animation-name: watch-scroll-beat-lead")
+    expect(rule).toContain("watch-scroll-beat-lead")
+    expect(rule).not.toContain("watch-scroll-beat-cycle")
+  })
+
+  it("runs the lead beat's weight over the zoom, not over its own slice", () => {
+    // The beat carries two tracks on different ranges: hold-then-fade
+    // belongs to the era's slice, weight and shadow to the opening zoom.
+    // Collapsed onto one range, the paragraph would still be at its heavy
+    // opening weight long after the photograph it was heavy FOR has gone.
+    const guard = blockBody(css, "@supports (animation-timeline: view())")
+    const rule = blockBody(guard, ".watch-scroll-beatbox-lead {")
+
+    expect(rule).toContain("watch-scroll-beat-weight")
+    expect(rule).toContain(
+      "animation-range: var(--beat-range), var(--intro-range)",
+    )
+    // Both tracks need a timeline; one entry drives only the first.
+    expect(rule).toContain(
+      "animation-timeline: --watch-era-stage, --watch-era-stage",
+    )
+  })
+
+  it("eases the lead beat from a heavier weight that cannot re-wrap it", () => {
+    // Measured: the paragraph re-wraps at weight 600 on every viewport at
+    // or below 1024px, and gains a line at 700. Because this interpolates
+    // during a scroll, a weight that re-wraps makes the lines jump under
+    // the reader mid-zoom — so the opening weight is capped at 500.
+    const frames = blockBody(css, "@keyframes watch-scroll-beat-weight")
+    const opening = Number(
+      frames.match(/from\s*\{[^}]*font-weight:\s*(\d+)/)?.[1],
+    )
+    const resting = Number(
+      frames.match(/to\s*\{[^}]*font-weight:\s*(\d+)/)?.[1],
+    )
+
+    expect(opening).toBeGreaterThan(resting)
+    expect(opening).toBeLessThanOrEqual(500)
+    // `font-light` is the resting design; landing anywhere else leaves the
+    // beat permanently off-weight, since the fill holds the last frame.
+    expect(resting).toBe(300)
+    // And the halo goes with it: over the black page it only muddies.
+    expect(frames).toMatch(/to\s*\{[\s\S]*rgb\(0 0 0 \/ 0\)/)
   })
 
   it("keeps the opening zoom inside the pinned breakpoint", () => {
