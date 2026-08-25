@@ -422,6 +422,7 @@ export const WHATS_NEW_DIRECTIONS = {
 export type WhatsNewVoteIcon =
   | "search"
   | "language"
+  | "subtitles"
   | "passage"
   | "scene"
   | "playlist"
@@ -442,7 +443,13 @@ export type WhatsNewVoteIcon =
  */
 export const WHATS_NEW_VOTES = {
   eyebrow: "Help us prioritise",
-  heading: "You have three stickers. Put them on what we should build first.",
+  /**
+   * Frames the ask around the reader's own use of Watch, not around our
+   * backlog. "The three" is the only place the budget appears in the heading —
+   * `body` below is what names the stickers and the mechanic, so the two have
+   * to keep travelling together.
+   */
+  heading: "Pick the three that would change how you use Watch",
   body: "Grab a sticker and drop it anywhere on a feature. All three on one, or spread them out.",
   budget: 3,
   remainingLabel: "Stickers left",
@@ -453,12 +460,18 @@ export const WHATS_NEW_VOTES = {
   removeLabel: "Peel",
   fromLabel: "off",
   clear: "Take my stickers back",
+  /**
+   * The only way back once a sticker is in hand: a held sticker leaves the
+   * pile entirely, so there is no slot left to click a second time.
+   */
+  putBack: "Put it back",
   ideaLabel: "Not listed? Tell us your idea",
   previous: "Previous features",
   next: "More features",
   carouselLabel: "Upcoming features",
-  localOnlyNote:
-    "Votes stay in this browser for now — nothing is sent to us yet. We are building the collector next.",
+  voteLabel: "vote",
+  votesLabel: "votes",
+  noVotesLabel: "No votes yet",
   /** Three ways to say it — the sticker carries the reason, not just a tally. */
   stickers: [
     { id: "love", emoji: "\u2764\uFE0F", label: "Love this" },
@@ -477,6 +490,12 @@ export const WHATS_NEW_VOTES = {
       icon: "language",
       title: "Dedicated language experiences",
       body: "A real home for each language, not a filter buried inside the player.",
+    },
+    {
+      id: "dual-subtitles",
+      icon: "subtitles",
+      title: "Two subtitle languages at once",
+      body: "Follow along in your own language and a second one together — for learning, for teaching, and for rooms where people do not share a language.",
     },
     {
       id: "bible-passages",
@@ -540,11 +559,14 @@ export const WHATS_NEW_VOTES = {
   removeLabel: string
   fromLabel: string
   clear: string
+  putBack: string
   ideaLabel: string
   previous: string
   next: string
   carouselLabel: string
-  localOnlyNote: string
+  voteLabel: string
+  votesLabel: string
+  noVotesLabel: string
   stickers: readonly { id: string; emoji: string; label: string }[]
   features: readonly {
     id: string
