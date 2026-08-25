@@ -27,6 +27,14 @@
 }
 
 :root {
+  /* Film-grain field. Measured mean 119.5/255 (near-neutral for an
+     `overlay` blend) with std 77.7 — high contrast, almost no mean
+     shift. The previous texture (images/overlay.svg) was BLACK
+     speckle on transparent: composited over a dark photograph its
+     effective alpha was ~0.04, which is why the grain was invisible.
+     The `%23` is a literal '#' — un-escaping it silently breaks the
+     filter reference and the tile renders as a flat black rectangle. */
+  --watch-grain-image: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='g'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/><feColorMatrix type='matrix' values='1 0 0 0 0 1 0 0 0 0 1 0 0 0 0 0 0 0 0 1'/><feComponentTransfer><feFuncR type='linear' slope='2.6' intercept='-1.05'/><feFuncG type='linear' slope='2.6' intercept='-1.05'/><feFuncB type='linear' slope='2.6' intercept='-1.05'/></feComponentTransfer></filter><rect width='160' height='160' filter='url(%23g)'/></svg>");
   --font-native-sans:
     "Avenir Next", Avenir, "Helvetica Neue", Helvetica, "Segoe UI", Roboto,
     "Noto Sans", "Liberation Sans", Arial, sans-serif;
@@ -221,6 +229,792 @@
   border: 1px solid rgba(255, 255, 255, 0.5);
 }
 
+/* ---------------------------------------------------------------------
+   Scroll-driven choreography for the /whats-new delivery timeline.
+
+   Native `animation-timeline: view()` — no JS, no IntersectionObserver,
+   no hydration cost on an otherwise static page, and the work runs on the
+   compositor rather than the main thread.
+
+   LOAD-BEARING: every hidden start state lives INSIDE the @supports +
+   prefers-reduced-motion:no-preference guard. A browser without
+   scroll-driven animations, or a reader who asked for less motion, gets
+   the finished layout fully visible and completely un-animated. Never
+   move an `opacity: 0` or a `transform` start state out of this block.
+   --------------------------------------------------------------------- */
+
+@keyframes watch-scroll-rise {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 4rem, 0) scale(0.955);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+@keyframes watch-scroll-beat {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 2.25rem, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+/* The slow push through the frame: the image is oversized at the top of
+   its travel and settles as the card leaves, so the photograph is never
+   static while it is on screen. */
+@keyframes watch-scroll-zoom {
+  from {
+    transform: scale(1.26) translate3d(0, -3.5%, 0);
+  }
+  to {
+    transform: scale(1.02) translate3d(0, 3.5%, 0);
+  }
+}
+
+@keyframes watch-scroll-rail {
+  from {
+    transform: scaleY(0);
+  }
+  to {
+    transform: scaleY(1);
+  }
+}
+
+@keyframes watch-scroll-node {
+  from {
+    opacity: 0.3;
+    transform: scale(0.5);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* --- Pinned card stack -------------------------------------------------
+   `translate` and `scale` are animated as SEPARATE properties on purpose.
+   A card runs two animations at once over different scroll ranges — it
+   slides in, then later recedes under the next card — and two animations
+   touching the same `transform` would clobber each other (the later one
+   in the list wins while its fill is active). The standalone properties
+   compose instead. */
+
+/* Travels fully opaque. A card sliding over the one below at partial
+   opacity shows the previous photograph straight through it — the deck
+   stops reading as a deck. Its clip box (`.watch-scroll-clip`) keeps it
+   invisible until it arrives, so no opacity ramp is needed. */
+@keyframes watch-scroll-slide-in {
+  from {
+    translate: 0 102%;
+  }
+  to {
+    translate: 0 0;
+  }
+}
+
+/* Sink into the pile. Each card's resting depth is its own custom
+   property, so cards that receded earlier end up further back and their
+   top edges stay visible above the front card. */
+@keyframes watch-scroll-recede {
+  from {
+    translate: 0 0;
+    scale: 1;
+  }
+  to {
+    translate: 0 var(--sink-y, 0);
+    scale: var(--sink-scale, 0.9);
+  }
+}
+
+/* A scrim element rather than a filter on the card itself: animating
+   `brightness()` on a 34rem card repaints it every frame. */
+@keyframes watch-scroll-scrim {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 0.62;
+  }
+}
+
+@keyframes watch-scroll-beat-cycle {
+  0% {
+    opacity: 0;
+    translate: 0 1.75rem;
+  }
+  18% {
+    opacity: 1;
+    translate: 0 0;
+  }
+  82% {
+    opacity: 1;
+    translate: 0 0;
+  }
+  100% {
+    opacity: 0;
+    translate: 0 -1.75rem;
+  }
+}
+
+/* The first era is on screen before any scrolling happens — it must not
+   fade up from nothing, or the section opens on empty black and reads as
+   a page that failed to load. */
+@keyframes watch-scroll-beat-lead {
+  0%,
+  82% {
+    opacity: 1;
+    translate: 0 0;
+  }
+  100% {
+    opacity: 0;
+    translate: 0 -1.75rem;
+  }
+}
+
+@keyframes watch-ambient-cycle {
+  0% {
+    opacity: 0;
+  }
+  15%,
+  78% {
+    opacity: 0.55;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes watch-ambient-lead {
+  0%,
+  78% {
+    opacity: 0.55;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+/* Die-cut sticker. Eight ZERO-BLUR drop-shadows, one per compass point,
+   build a hard white edge that hugs the emoji's own silhouette. Blurred
+   shadows (`0 0 1.5px`) give a soft halo instead — it reads as a glow, not
+   a cut edge. The last shadow is the cast shadow lifting it off the card. */
+.watch-sticker-art {
+  filter: drop-shadow(2px 0 0 #fff) drop-shadow(-2px 0 0 #fff)
+    drop-shadow(0 2px 0 #fff) drop-shadow(0 -2px 0 #fff)
+    drop-shadow(1.4px 1.4px 0 #fff) drop-shadow(-1.4px 1.4px 0 #fff)
+    drop-shadow(1.4px -1.4px 0 #fff) drop-shadow(-1.4px -1.4px 0 #fff)
+    drop-shadow(var(--watch-sticker-cast, 0 10px 14px rgb(0 0 0 / 0.75)));
+}
+
+/* The cast shadow, and only it, is tuned per band: a 0.75-alpha shadow that
+   reads as lift against a near-black card reads as grime on white. Set on
+   the section so every sticker inside inherits it; the fallback above keeps
+   the dark bands untouched. */
+.watch-sticker-surface-light {
+  --watch-sticker-cast: 0 6px 12px rgb(0 0 0 / 0.28);
+}
+
+/* The gap a sticker leaves behind once it is in your hand. Grey and flat —
+   no white die-cut edge, no lift — so it reads as an empty slot rather
+   than a second sticker sitting in the pile. */
+.watch-sticker-ghost {
+  filter: grayscale(1);
+  opacity: 0.3;
+}
+
+/* Sticker landing: a quick pop so a placed sticker reads as stuck on
+   rather than faded in. */
+@keyframes watch-sticker-pop {
+  0% {
+    opacity: 0;
+    scale: 0.4;
+  }
+  70% {
+    opacity: 1;
+    scale: 1.18;
+  }
+  100% {
+    opacity: 1;
+    scale: 1;
+  }
+}
+
+.watch-sticker-pop {
+  animation: watch-sticker-pop 320ms cubic-bezier(0.22, 1.4, 0.4, 1) both;
+}
+
+/* --- Audience quiz ------------------------------------------------------
+   A styled range input plus the reveal bars. The bar fills animate with
+   `scaleX` rather than `width` so the reveal stays on the compositor and
+   needs no mount-frame trick to transition from zero. */
+
+.watch-quiz-slider {
+  appearance: none;
+  height: 2.25rem;
+  background: transparent;
+  cursor: pointer;
+}
+
+.watch-quiz-slider::-webkit-slider-runnable-track {
+  height: 0.5rem;
+  border-radius: 999px;
+  background: linear-gradient(
+    to right,
+    rgba(255, 255, 255, 0.5),
+    rgba(255, 255, 255, 0.14)
+  );
+}
+
+.watch-quiz-slider::-moz-range-track {
+  height: 0.5rem;
+  border-radius: 999px;
+  background: linear-gradient(
+    to right,
+    rgba(255, 255, 255, 0.5),
+    rgba(255, 255, 255, 0.14)
+  );
+}
+
+.watch-quiz-slider::-webkit-slider-thumb {
+  appearance: none;
+  margin-top: -0.5rem;
+  height: 1.5rem;
+  width: 1.5rem;
+  border-radius: 999px;
+  background: #fff;
+  border: 3px solid var(--color-brand-red);
+  box-shadow: 0 6px 20px rgb(0 0 0 / 0.55);
+}
+
+.watch-quiz-slider::-moz-range-thumb {
+  height: 1.5rem;
+  width: 1.5rem;
+  border-radius: 999px;
+  background: #fff;
+  border: 3px solid var(--color-brand-red);
+  box-shadow: 0 6px 20px rgb(0 0 0 / 0.55);
+}
+
+.watch-quiz-slider:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 6px;
+  border-radius: 999px;
+}
+
+@keyframes watch-quiz-bar {
+  from {
+    scale: 0 1;
+  }
+  to {
+    scale: 1 1;
+  }
+}
+
+.watch-quiz-bar {
+  transform-origin: left;
+  animation: watch-quiz-bar 820ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* The answer lands after the reader has seen their own guess. */
+.watch-quiz-bar-late {
+  animation-delay: 480ms;
+}
+
+/* --- Iceberg -----------------------------------------------------------
+   Slow bob, drifting waterline, and a submerged mass that is revealed
+   downward as the section scrolls in — reading the section uncovers the
+   work holding the visible changes up. */
+
+@keyframes watch-berg-bob {
+  0%,
+  100% {
+    translate: 0 0;
+  }
+  50% {
+    translate: 0 -1.1%;
+  }
+}
+
+@keyframes watch-berg-ripple {
+  0%,
+  100% {
+    translate: 0 0;
+    opacity: 0.85;
+  }
+  50% {
+    translate: -2% 0.5%;
+    opacity: 1;
+  }
+}
+
+@keyframes watch-berg-rays {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes watch-scroll-berg {
+  from {
+    clip-path: inset(0 0 100% 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+.watch-berg-bob {
+  transform-box: view-box;
+  transform-origin: 160px 200px;
+  animation: watch-berg-bob 9s ease-in-out infinite;
+}
+
+.watch-berg-ripple {
+  transform-box: view-box;
+  animation: watch-berg-ripple 7.4s ease-in-out infinite;
+}
+
+.watch-berg-rays {
+  animation: watch-berg-rays 11s ease-in-out infinite;
+}
+
+/* --- Living glyphs in the format diagram ------------------------------
+   Small continuous loops so the diagram reads as a working mechanism
+   rather than a static row of icons. Percentages inside an SVG resolve
+   against the nearest viewport only with `transform-box: view-box`; the
+   glyphs are authored in a 48-unit box, so origins are given in those
+   units. All of it is off under prefers-reduced-motion (see below). */
+
+@keyframes watch-glyph-spin {
+  to {
+    rotate: 360deg;
+  }
+}
+
+/* A meridian squashing and stretching reads as a globe turning far more
+   cheaply than actually rotating one. */
+@keyframes watch-glyph-turn {
+  0%,
+  100% {
+    scale: 1 1;
+  }
+  50% {
+    scale: 0.12 1;
+  }
+}
+
+@keyframes watch-glyph-pulse {
+  0%,
+  100% {
+    opacity: 0.15;
+    scale: 0.9;
+  }
+  50% {
+    opacity: 1;
+    scale: 1.06;
+  }
+}
+
+@keyframes watch-glyph-twinkle {
+  0%,
+  100% {
+    opacity: 0.45;
+    rotate: 0deg;
+    scale: 0.85;
+  }
+  50% {
+    opacity: 1;
+    rotate: 45deg;
+    scale: 1.1;
+  }
+}
+
+/* A highlight travelling the wire, so the connection reads as live.
+   Translated rather than repositioned: `left` would relayout every frame,
+   `translate3d` stays on the compositor. */
+@keyframes watch-wire-pulse {
+  0% {
+    transform: translate3d(-110%, 0, 0);
+    opacity: 0;
+  }
+  12%,
+  86% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate3d(510%, 0, 0);
+    opacity: 0;
+  }
+}
+
+.watch-wire-pulse {
+  animation: watch-wire-pulse 4.2s linear infinite;
+  will-change: transform;
+}
+
+.watch-glyph-spin,
+.watch-glyph-turn,
+.watch-glyph-pulse,
+.watch-glyph-twinkle {
+  transform-box: view-box;
+}
+
+.watch-glyph-spin {
+  transform-origin: 24px 24px;
+  animation: watch-glyph-spin 14s linear infinite;
+}
+
+.watch-glyph-spool-a {
+  transform-box: view-box;
+  transform-origin: 19px 24px;
+  animation: watch-glyph-spin 3.4s linear infinite;
+}
+
+.watch-glyph-spool-b {
+  transform-box: view-box;
+  transform-origin: 29px 24px;
+  animation: watch-glyph-spin 3.4s linear infinite;
+}
+
+.watch-glyph-turn {
+  transform-origin: 24px 24px;
+  animation: watch-glyph-turn 7s ease-in-out infinite;
+}
+
+.watch-glyph-pulse {
+  transform-origin: 24px 24px;
+  animation: watch-glyph-pulse 2.4s ease-in-out infinite;
+}
+
+.watch-glyph-pulse-late {
+  animation-delay: 0.6s;
+}
+
+.watch-glyph-twinkle {
+  transform-origin: 24px 22px;
+  animation: watch-glyph-twinkle 3.2s ease-in-out infinite;
+}
+
+/* Radial card gather. The cards begin spread wide and square to the page,
+   then rotate and slide INWARD until they overlap into a fanned hand.
+   `transform-origin` sits well below each card so the rotation swings
+   around a shared pivot — that pivot is what makes it a fan rather than
+   three cards tilting independently.
+
+   Stacking order runs left-over-right (see `--fan-layer`), so each card
+   covers the RIGHT edge of the one behind it. That direction is
+   load-bearing: the copy is left-aligned, so covering left edges would
+   hide the start of every line. */
+@keyframes watch-fan-gather {
+  from {
+    opacity: 0;
+    rotate: 0deg;
+    translate: var(--fan-open-x, 0) 0;
+    scale: 0.96;
+  }
+  to {
+    opacity: 1;
+    rotate: var(--fan-rotate, 0deg);
+    translate: var(--fan-closed-x, 0) var(--fan-drop, 0);
+    scale: 1;
+  }
+}
+
+@keyframes watch-scroll-year-active {
+  from {
+    opacity: 0.3;
+    scale: 0.94;
+  }
+  to {
+    opacity: 1;
+    scale: 1;
+  }
+}
+
+@keyframes watch-scroll-year-fill {
+  from {
+    scale: 0 1;
+  }
+  to {
+    scale: 1 1;
+  }
+}
+
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .watch-scroll-card {
+      animation: watch-scroll-rise linear both;
+      animation-timeline: view();
+      animation-range: entry 4% cover 26%;
+      will-change: opacity, transform;
+    }
+
+    .watch-scroll-beat {
+      animation: watch-scroll-beat linear both;
+      animation-timeline: view();
+      animation-range: entry 12% cover 34%;
+      will-change: opacity, transform;
+    }
+
+    .watch-scroll-media {
+      animation: watch-scroll-zoom linear both;
+      animation-timeline: view();
+      animation-range: cover 0% cover 100%;
+      will-change: transform;
+    }
+
+    .watch-scroll-node {
+      animation: watch-scroll-node linear both;
+      animation-timeline: view();
+      animation-range: entry 18% cover 18%;
+      will-change: opacity, transform;
+    }
+
+    .watch-scroll-rail {
+      transform-origin: top;
+      animation: watch-scroll-rail linear both;
+      animation-timeline: view();
+      animation-range: cover 0% cover 88%;
+      will-change: transform;
+    }
+
+    /* --- Pinned stack: desktop and tablet only -----------------------
+       A pinned stack needs vertical room a phone does not have: at 667px
+       the composition is taller than the viewport, so the bottom of the
+       pinned block would be unreachable while it is stuck. Below this
+       breakpoint the eras stay in normal flow as a card-then-beat list
+       and get a plain rise on entry instead. */
+    @media (width < 48rem) {
+      .watch-scroll-era {
+        animation: watch-scroll-rise linear both;
+        animation-timeline: view();
+        animation-range: entry 4% cover 26%;
+        will-change: opacity, transform;
+      }
+    }
+
+    @media (width >= 48rem) {
+      /* The stage is tall and names the timeline every layer below reads.
+         The pin sticks inside it, so the stack holds still while the page
+         scrolls past; when the stage runs out the pin releases and the
+         page resumes scrolling normally. */
+      .watch-scroll-stage {
+        view-timeline-name: --watch-era-stage;
+        view-timeline-axis: block;
+        min-height: calc(var(--era-count) * 92svh + 34svh);
+      }
+
+      .watch-scroll-pin {
+        position: sticky;
+        top: calc(env(safe-area-inset-top, 0px) + 6.5rem);
+        min-height: calc(100svh - 9rem);
+      }
+
+      /* Eras leave the flow and stack on top of each other. Outside this
+         block they stay a plain vertical list, which is the fallback. */
+      .watch-scroll-era {
+        position: absolute;
+        inset: 0;
+        z-index: var(--layer);
+      }
+
+      /* Applied to every era EXCEPT the first, which is already in place
+         when the section opens. */
+      .watch-scroll-era-in {
+        animation: watch-scroll-slide-in linear both;
+        animation-timeline: --watch-era-stage;
+        animation-range: var(--enter-range);
+        will-change: translate;
+      }
+
+      /* Recede applies to the CARD, not the era wrapper, so the beat
+         underneath keeps its own size while the card sinks behind the
+         next one. `scale` is a standalone property here because the
+         wrapper is already animating `translate` — one `transform` for
+         both would clobber. */
+      .watch-scroll-sink {
+        animation: watch-scroll-recede linear both;
+        animation-timeline: --watch-era-stage;
+        animation-range: var(--recede-range);
+        will-change: scale;
+      }
+
+      .watch-scroll-scrim {
+        animation: watch-scroll-scrim linear both;
+        animation-timeline: --watch-era-stage;
+        animation-range: var(--recede-range);
+        will-change: opacity;
+      }
+
+      .watch-scroll-beatbox {
+        animation: watch-scroll-beat-cycle linear both;
+        animation-timeline: --watch-era-stage;
+        animation-range: var(--beat-range);
+        will-change: opacity, translate;
+      }
+
+      .watch-scroll-beatbox-lead {
+        animation-name: watch-scroll-beat-lead;
+      }
+
+      .watch-ambient-cycle,
+      .watch-ambient-lead {
+        animation: watch-ambient-cycle linear both;
+        animation-timeline: --watch-era-stage;
+        animation-range: var(--beat-range);
+        will-change: opacity;
+      }
+
+      .watch-ambient-lead {
+        animation-name: watch-ambient-lead;
+      }
+
+      .watch-scroll-year {
+        animation: watch-scroll-year-active linear both;
+        animation-timeline: --watch-era-stage;
+        animation-range: var(--year-range);
+        will-change: opacity, scale;
+      }
+
+      .watch-scroll-wire {
+        animation: watch-scroll-year-fill linear both;
+        animation-timeline: view();
+        /* Entry-relative on purpose: a `cover`-relative end can leave the
+           wire part-drawn while the whole section is on screen, which
+           reads as a diagram that stops halfway. */
+        animation-range: entry 25% entry 100%;
+        will-change: scale;
+      }
+
+      .watch-scroll-pip {
+        animation: watch-scroll-year-active linear both;
+        animation-timeline: view();
+        animation-range: var(--pip-range);
+        will-change: opacity, scale;
+      }
+
+      /* The mass is only hidden where the reveal can actually run. Without
+         scroll-driven animation support the clip never opens, so the
+         start state must not exist outside this guard. */
+      .watch-scroll-berg {
+        animation: watch-scroll-berg linear both;
+        animation-timeline: view();
+        animation-range: entry 18% cover 42%;
+        will-change: clip-path;
+      }
+
+      .watch-scroll-fan {
+        /* Absolute travel, not a percentage of card width. Clearance
+           between one card's copy and the next card's edge is
+           `padding - overlap`, and the padding is fixed — so the travel
+           has to be fixed too, and sized per breakpoint against that
+           breakpoint's padding and grid gap. */
+        --fan-spread: 2rem;
+        /* Bigger than the visual overlap it produces. The pivot below
+           swings each card sideways as it rotates — roughly
+           `pivot-distance x sin(angle)`, about 26px here — in the opposite
+           direction to this travel. Tune by measuring the gathered boxes,
+           not by reading the number. */
+        --fan-travel: 4rem;
+        --fan-open-x: calc(var(--fan-dir, 0) * var(--fan-spread));
+        --fan-closed-x: calc(var(--fan-dir, 0) * -1 * var(--fan-travel));
+        transform-origin: 50% 190%;
+        z-index: var(--fan-layer, 1);
+        animation: watch-fan-gather linear both;
+        animation-timeline: view();
+        animation-range: entry 8% cover 34%;
+        will-change: opacity, rotate, translate, scale;
+      }
+
+      /* MUST follow the base rule above. The bundler flattens nested media
+         queries and hoists them, so a block written BEFORE the rule it
+         overrides ends up before it in the output too — same specificity,
+         later wins, and this override silently did nothing at every width
+         until it was moved down here. */
+      @media (width >= 64rem) {
+        .watch-scroll-fan {
+          --fan-spread: 3rem;
+          --fan-travel: 4.5rem;
+        }
+      }
+
+      .watch-scroll-year-fill {
+        transform-origin: left;
+        animation: watch-scroll-year-fill linear both;
+        animation-timeline: --watch-era-stage;
+        animation-range: contain 0% contain 100%;
+        will-change: scale;
+      }
+    }
+  }
+}
+
+/* Animated film grain laid over timeline photography. The texture is the
+   same repeating overlay used by the promo bands, oversized so the drift
+   never exposes an edge, and stepped rather than eased so it reads as
+   grain rather than a sliding sheet. */
+/* YouTube-ambient-mode halo: a big, heavily blurred wash of the card's own
+   dominant colour bleeding onto the page behind it. `--glow` is extracted
+   from the photograph itself — see whats-new-content.ts. Sits OUTSIDE the
+   card so the card's `overflow-hidden` cannot clip it. */
+.watch-ambient {
+  position: absolute;
+  inset: -14% -10%;
+  z-index: -1;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, var(--glow), transparent 74%);
+  filter: blur(70px);
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+/* Second, faster, finer layer over the same media. Two layers drifting at
+   different rates read as film grain rather than a moving texture — a
+   single layer at any speed looks like a pattern sliding. */
+.watch-grain-fine {
+  position: absolute;
+  inset: -15%;
+  background-image: var(--watch-grain-image);
+  background-repeat: repeat;
+  background-size: 74px 74px;
+  /* `screen` is the only blend that shows in the shadows: overlay against
+     a near-black backdrop multiplies to nothing. Kept low so it adds
+     sparkle without milking the blacks. */
+  opacity: 0.16;
+  mix-blend-mode: screen;
+  pointer-events: none;
+  animation: watch-grain-drift-fine 1730ms steps(1, end) infinite;
+  will-change: transform;
+}
+
+.watch-grain {
+  position: absolute;
+  /* Oversized so the drift below never exposes an edge, but no larger:
+     every extra percent is blended pixels recomposited ~6x a second.
+     Max drift is 7% of the layer's own 130% size = 9.1% of the slot,
+     inside this 15% margin. */
+  inset: -15%;
+  background-image: var(--watch-grain-image);
+  background-repeat: repeat;
+  background-size: 150px 150px;
+  opacity: 0.72;
+  mix-blend-mode: overlay;
+  pointer-events: none;
+  animation:
+    watch-grain-drift 2510ms steps(1, end) infinite,
+    watch-grain-flicker 1870ms steps(1, end) infinite;
+  will-change: transform;
+}
+
 .watch-home-media-enter {
   animation: watch-home-media-enter 900ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
 }
@@ -267,6 +1061,30 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  /* Keep the grain, drop the motion — the texture is part of the look,
+     the jitter is the part that can bother people. */
+  .watch-grain,
+  .watch-grain-fine,
+  .watch-glyph-spin,
+  .watch-glyph-spool-a,
+  .watch-glyph-spool-b,
+  .watch-glyph-turn,
+  .watch-glyph-pulse,
+  .watch-glyph-twinkle,
+  .watch-berg-bob,
+  .watch-berg-ripple,
+  .watch-berg-rays,
+  .watch-wire-pulse {
+    animation: none;
+    opacity: 0;
+  }
+
+  /* Motion off, but the bars are the answer — they must still be there. */
+  .watch-quiz-bar,
+  .watch-sticker-pop {
+    animation: none;
+  }
+
   .watch-home-media-enter,
   .watch-home-media-exit,
   .watch-home-copy-enter,
@@ -309,6 +1127,118 @@
   100% {
     background-position: 50% 50%;
     transform: scale(1);
+  }
+}
+
+@keyframes watch-grain-drift-fine {
+  0% {
+    transform: translate3d(0, 0, 0);
+  }
+  20% {
+    transform: translate3d(4%, -5%, 0);
+  }
+  40% {
+    transform: translate3d(-5%, -2%, 0);
+  }
+  60% {
+    transform: translate3d(2%, 5%, 0);
+  }
+  80% {
+    transform: translate3d(-3%, 3%, 0);
+  }
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+/* Old-cinema shiver. Transform and density are SEPARATE animations on
+   purpose: 16 offsets over 2510ms against 9 densities over 1870ms means
+   the pair only realigns every ~7.8 minutes, so the loop never reads as
+   a repeating pattern. One combined animation repeats every cycle. */
+@keyframes watch-grain-flicker {
+  0% {
+    opacity: 0.58;
+  }
+  11.1111% {
+    opacity: 0.47;
+  }
+  22.2222% {
+    opacity: 0.66;
+  }
+  33.3333% {
+    opacity: 0.51;
+  }
+  44.4444% {
+    opacity: 0.62;
+  }
+  55.5556% {
+    opacity: 0.45;
+  }
+  66.6667% {
+    opacity: 0.68;
+  }
+  77.7778% {
+    opacity: 0.53;
+  }
+  88.8889% {
+    opacity: 0.6;
+  }
+  100% {
+    opacity: 0.58;
+  }
+}
+
+@keyframes watch-grain-drift {
+  0% {
+    transform: translate3d(0%, 0%, 0);
+  }
+  6.25% {
+    transform: translate3d(-5.8%, -3.1%, 0);
+  }
+  12.5% {
+    transform: translate3d(4.2%, -6.4%, 0);
+  }
+  18.75% {
+    transform: translate3d(-2.4%, 5.9%, 0);
+  }
+  25% {
+    transform: translate3d(6.6%, 2.2%, 0);
+  }
+  31.25% {
+    transform: translate3d(-6.9%, -5.2%, 0);
+  }
+  37.5% {
+    transform: translate3d(2.8%, 6.8%, 0);
+  }
+  43.75% {
+    transform: translate3d(-4.6%, 1.4%, 0);
+  }
+  50% {
+    transform: translate3d(5.4%, -4.9%, 0);
+  }
+  56.25% {
+    transform: translate3d(-1.7%, -6.6%, 0);
+  }
+  62.5% {
+    transform: translate3d(6.1%, 5.5%, 0);
+  }
+  68.75% {
+    transform: translate3d(-6.3%, 3.6%, 0);
+  }
+  75% {
+    transform: translate3d(1.9%, -2.7%, 0);
+  }
+  81.25% {
+    transform: translate3d(-3.8%, 6.2%, 0);
+  }
+  87.5% {
+    transform: translate3d(4.9%, -1.3%, 0);
+  }
+  93.75% {
+    transform: translate3d(-5.1%, -6.9%, 0);
+  }
+  100% {
+    transform: translate3d(0, 0, 0);
   }
 }
 

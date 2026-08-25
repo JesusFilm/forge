@@ -110,6 +110,7 @@ type WatchEpisodeRoute = `${WatchEpisodePathname}${"" | `?${string}`}`
 type WatchEpisodeExplicitLanguageRoute =
   `/${string}.html/${string}/${string}.html${"" | `?${string}`}`
 type LanguagesIndexRoute = "/languages"
+type WhatsNewRoute = "/whats-new"
 type LanguageVideosIndexRoute = `/${string}.html/videos`
 type LocalizedLanguagesRoute = `/${string}.html/languages`
 type LocalizedHistoryRoute = `/${string}.html/history`
@@ -235,6 +236,15 @@ export function languagesIndexPath(): LanguagesIndexRoute & Route {
   return "/languages" as LanguagesIndexRoute & Route
 }
 
+/**
+ * Build the Watch product-update page path `/whats-new` (no `.html`
+ * suffix, no language segment). Single-segment utility route, same shape
+ * family as `/languages` and `/history`.
+ */
+export function whatsNewPath(): WhatsNewRoute & Route {
+  return "/whats-new" as WhatsNewRoute & Route
+}
+
 /** Build the language-bearing all-languages path `/{lang}.html/languages`. */
 export function localizedLanguagesPath(
   lang: LocaleSlug,
@@ -268,7 +278,7 @@ export function searchPath(): SearchRoute & Route {
 }
 
 /**
- * Discriminated union returned by `parseWatchPath`. Twelve kinds:
+ * Discriminated union returned by `parseWatchPath`. Thirteen kinds:
  *
  * - `home` — `/` (English default home)
  * - `localized-home` — `/{lang}.html` (one segment)
@@ -276,6 +286,7 @@ export function searchPath(): SearchRoute & Route {
  * - `episode` — eligible English `/{series}.html/{episode}.html` or explicit `/{series}.html/{episode}/{lang}.html`
  * - `languages` — `/languages`
  * - `localized-languages` — `/{lang}.html/languages`
+ * - `whats-new` — `/whats-new`
  * - `history` — `/history`
  * - `localized-history` — `/{lang}.html/history`
  * - `language-videos` — `/{lang}.html/videos`
@@ -290,6 +301,7 @@ export type ParsedWatchPath =
   | { kind: "episode"; series: string; episode: string; lang: string }
   | { kind: "languages" }
   | { kind: "localized-languages"; lang: string }
+  | { kind: "whats-new" }
   | { kind: "history" }
   | { kind: "localized-history"; lang: string }
   | { kind: "language-videos"; lang: string }
@@ -317,6 +329,7 @@ export function parseWatchPath(pathname: string): ParsedWatchPath {
     if (first === "languages" || first === "videos") {
       return { kind: "languages" }
     }
+    if (first === "whats-new") return { kind: "whats-new" }
     if (first === "history") return { kind: "history" }
     if (first === "search") return { kind: "search" }
     return { kind: "localized-home", lang: stripHtmlSuffix(first) }
