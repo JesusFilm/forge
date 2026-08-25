@@ -340,33 +340,44 @@ describe("WatchWhatsNewPage", () => {
     ).not.toBeNull()
   })
 
-  it("starts the lead beat inside the zoom, and only the lead beat", () => {
-    // The lead beat fades up behind the full-screen photograph so its words
-    // are already there when the pull-back uncovers the slot. Aligned to
-    // era 0's own boundary instead, the card lands over a tall empty band.
-    // Every other beat still starts with its own card.
-    const stage = container.querySelector('[data-testid="whats-new-eras"]')
-    const introEnd = Number(
-      stage
-        ?.getAttribute("style")
-        ?.match(/--intro-range:\s*contain 0% contain ([\d.]+)%/)?.[1],
-    )
-    const beatStart = (index: number) =>
+  it("keeps the lead beat over the opening photograph from the first frame", () => {
+    // The lead beat is part of the opening composition, not something the
+    // pull-back reveals. Three separate things have to hold for that, and
+    // dropping any one leaves the words unreadable or invisible:
+    const beat = beats()[0]
+
+    // …it holds full opacity instead of fading up like the others,
+    expect(beat.className).toContain("watch-scroll-beatbox-lead")
+    // …it paints above the card, which is the later positioned sibling and
+    // would otherwise cover it while it fills the screen,
+    expect(beat.className).toMatch(/\bz-10\b/)
+    // …and it carries a shadow, because its backdrop for the whole zoom is
+    // dusk sky rather than the black page every other beat sits on.
+    expect(beat.className).toContain("text-shadow")
+
+    // Anti-vacuous: the other beats get none of it, and would look wrong
+    // with a shadow over black or a layer above their own card.
+    for (const other of beats().slice(1)) {
+      expect(other.className).not.toContain("watch-scroll-beatbox-lead")
+      expect(other.className).not.toContain("text-shadow")
+    }
+  })
+
+  it("starts every beat on its own era's boundary", () => {
+    // The lead beat holds opacity from before its range opens, on `both`
+    // fill, so it needs no head start — and giving it one shifts where its
+    // fade-out lands relative to the card that comes for it.
+    const range = (node: Element | undefined, name: string) =>
       Number(
-        beats()
-          [index].getAttribute("style")
-          ?.match(/--beat-range:\s*contain ([\d.]+)%/)?.[1],
-      )
-    const cardStart = (index: number) =>
-      Number(
-        cards()
-          [index].getAttribute("style")
-          ?.match(/--enter-range:\s*contain ([\d.]+)%/)?.[1],
+        node
+          ?.getAttribute("style")
+          ?.match(new RegExp(`--${name}-range:\\s*contain ([\\d.]+)%`))?.[1],
       )
 
-    expect(beatStart(0)).toBeLessThan(introEnd)
-    for (let index = 1; index < WHATS_NEW_ERAS.length; index += 1) {
-      expect(beatStart(index), `era ${index}`).toBe(cardStart(index))
+    for (const [index, beat] of beats().entries()) {
+      expect(range(beat, "beat"), `era ${index}`).toBe(
+        range(cards()[index], "enter"),
+      )
     }
   })
 
@@ -419,23 +430,21 @@ describe("WatchWhatsNewPage", () => {
     ).toEqual(WHATS_NEW_ERAS.map((_, index) => index === 0))
   })
 
-  it("cycles the first era's beat and glow like every other era", () => {
-    // The intro used to be the first card simply being there, which the
-    // beat and the glow had their own hold-then-fade variants for. Leaving
-    // either variant behind now shows era 0's text over a photograph that
-    // still fills the screen.
-    const beats = [
-      ...container.querySelectorAll('[data-testid="whats-new-era-beat"]'),
-    ]
+  it("cycles every ambient glow, including the first era's", () => {
+    // The glow used to have a hold-then-fade variant, from when the first
+    // card was simply already there. Left behind, it would burn colour
+    // through the edges of a photograph that still fills the screen — and
+    // the glow is the one piece of era 0 that the opening frame does not
+    // want, since the card has no edges to spill past yet.
     const glows = [
       ...container.querySelectorAll('[data-testid="whats-new-era-glow"]'),
     ]
 
-    for (const node of [...beats, ...glows]) {
-      expect(node.className).not.toMatch(/-lead\b/)
+    expect(glows).toHaveLength(WHATS_NEW_ERAS.length)
+    for (const glow of glows) {
+      expect(glow.className).toContain("watch-ambient-cycle")
+      expect(glow.className).not.toMatch(/-lead\b/)
     }
-    expect(beats[0].className).toContain("watch-scroll-beatbox")
-    expect(glows[0].className).toContain("watch-ambient-cycle")
   })
 
   it("does animate in every era after the first", () => {

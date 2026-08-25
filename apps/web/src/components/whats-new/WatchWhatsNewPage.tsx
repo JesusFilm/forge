@@ -129,12 +129,7 @@ function eraRanges(index: number) {
         : `contain ${settled.toFixed(2)}% contain 100%`,
     } as CSSProperties,
     beat: {
-      // The lead beat starts inside the opening zoom rather than after it.
-      // It fades up BEHIND the full-screen photograph — the card paints over
-      // it — so by the time the pull-back uncovers its slot the words are
-      // already there. Starting it on the era's own boundary instead left a
-      // tall empty band between the year rail and the card it introduces.
-      "--beat-range": `contain ${(index === 0 ? ERA_INTRO_SHARE * 0.6 : start).toFixed(2)}% contain ${(isLast ? 100 + slice : start + slice).toFixed(2)}%`,
+      "--beat-range": `contain ${start.toFixed(2)}% contain ${(isLast ? 100 + slice : start + slice).toFixed(2)}%`,
     } as CSSProperties,
     year: {
       "--year-range": `contain ${Math.max(0, start - slice * 0.15).toFixed(2)}% contain ${(start + slice * 0.3).toFixed(2)}%`,
@@ -367,10 +362,21 @@ export function WatchWhatsNewPage({
                           swaps with it. Above rather than below: pinned, a beat
                           under the stack lands at the foot of the viewport and
                           gets cut off. */}
+                      {/* The lead beat is part of the opening frame: it sits
+                          over the full-screen photograph from the start, so
+                          it needs a layer above the card (which otherwise
+                          paints over it, being the later positioned sibling)
+                          and a shadow to stay legible against dusk sky
+                          rather than the black page. Both are inert once the
+                          card has landed below it. */}
                       <p
                         data-testid="whats-new-era-beat"
                         style={ranges.beat}
-                        className="watch-scroll-beatbox max-w-5xl shrink-0 text-base leading-relaxed font-light text-balance text-white/85 sm:text-xl sm:leading-[1.5] md:h-48 md:text-lg md:leading-[1.55] lg:h-40 lg:text-[1.375rem] lg:leading-[1.45]"
+                        className={`watch-scroll-beatbox max-w-5xl shrink-0 text-base leading-relaxed font-light text-balance text-white/85 sm:text-xl sm:leading-[1.5] md:h-48 md:text-lg md:leading-[1.55] lg:h-40 lg:text-[1.375rem] lg:leading-[1.45] ${
+                          lead
+                            ? "watch-scroll-beatbox-lead relative z-10 text-white [text-shadow:0_1px_3px_rgba(0,0,0,0.7),0_4px_28px_rgba(0,0,0,0.85)]"
+                            : ""
+                        }`}
                       >
                         {era.beat}
                       </p>

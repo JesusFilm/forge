@@ -135,6 +135,28 @@ describe("scroll-driven timeline choreography", () => {
     expect(frames).toMatch(/100%\s*\{\s*z-index:\s*var\(--layer\)/)
   })
 
+  it("opens the lead beat at full opacity, not faded out", () => {
+    // Every other beat fades up as its card arrives. The lead beat is part
+    // of the opening frame instead — it sits over the full-screen
+    // photograph from the first pixel — so its keyframes must START opaque.
+    // Reusing the cycle here leaves the opening composition wordless.
+    const lead = blockBody(css, "@keyframes watch-scroll-beat-lead")
+    const cycle = blockBody(css, "@keyframes watch-scroll-beat-cycle")
+
+    expect(lead).toMatch(/0%,\s*\d+%\s*\{\s*opacity:\s*1/)
+    expect(cycle).toMatch(/0%\s*\{\s*opacity:\s*0/)
+    // …and it still gets out of the way for the card that comes for it.
+    expect(lead).toMatch(/100%\s*\{\s*opacity:\s*0/)
+
+    // The wiring, not just the shape. Asserting only on the keyframes lets
+    // the rule be repointed at the cycle — which is the production defect,
+    // and left this test green when it was tried.
+    const guard = blockBody(css, "@supports (animation-timeline: view())")
+    const rule = blockBody(guard, ".watch-scroll-beatbox-lead {")
+
+    expect(rule).toContain("animation-name: watch-scroll-beat-lead")
+  })
+
   it("keeps the opening zoom inside the pinned breakpoint", () => {
     // The veil and the caption fade start at `opacity: 0`. Below the
     // pinned breakpoint the stage declares no `--watch-era-stage`
