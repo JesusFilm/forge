@@ -76,6 +76,10 @@ jest.mock("expo", () => {
   }
 })
 
+// The transport reads connectivity to tell a paused video from a broken one.
+jest.mock("expo-network", () => ({
+  useNetworkState: () => ({ isInternetReachable: true }),
+}))
 jest.mock("expo-image", () => ({ Image: () => null }))
 jest.mock("expo-linear-gradient", () => ({ LinearGradient: () => null }))
 jest.mock("expo-glass-effect", () => ({ GlassView: () => null }))
