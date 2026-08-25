@@ -32,6 +32,12 @@ vi.mock("@/components/home/WatchHomeTvCarousel", () => ({
   ),
 }))
 
+vi.mock("@/components/home/WatchLanguageGlobeSection", () => ({
+  WatchLanguageGlobeSection: () => (
+    <section data-testid="watch-language-globe-section" />
+  ),
+}))
+
 vi.mock("@/components/sections", () => ({
   ExperienceSectionRenderer: ({
     section,
@@ -340,6 +346,16 @@ describe("WatchHomeExperiencePage", () => {
     expect(
       container.querySelector('[data-testid="watch-home-footer"]'),
     ).not.toBeNull()
+    expect(
+      container.querySelectorAll(
+        '[data-testid="watch-language-globe-section"]',
+      ),
+    ).toHaveLength(1)
+    expect(
+      container
+        .querySelector('[data-testid="watch-language-globe-section"]')
+        ?.nextElementSibling?.getAttribute("data-testid"),
+    ).toBe("watch-home-footer")
   })
 
   it("keeps the canonical footer as the final element after the dynamic discovery feed", async () => {

@@ -684,6 +684,7 @@ async function main({ args = process.argv, environment = process.env } = {}) {
             inventoryEntry: inventoryByLocale.get(locale),
             messages,
             references,
+            sourceMessages: sourceFlat,
             model,
             maxAttempts,
             minimumChangeRatio,

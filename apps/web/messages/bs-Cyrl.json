@@ -451,6 +451,7 @@
     "screenReaderPrefix": "Страница није пронађена:",
     "title": "Ова сцена овдје не постоји.",
     "description": "Страница је можда премјештена, али прича се наставља.",
+    "languageDescription": "We couldn't find the page you're looking for, but the story continues in films and videos from languages around the world.",
     "actionsLabel": "Акције за страницу која није пронађена",
     "backToWatch": "Назад на гледање",
     "browseVideos": "Прегледај видео записе"

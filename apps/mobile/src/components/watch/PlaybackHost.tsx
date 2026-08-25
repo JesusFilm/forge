@@ -329,26 +329,30 @@ function ActivePlaybackHost({
   // departed screen carries a session that screen's unmount already ended.
   const slotOwned = snapshot.slotId != null
   const castActive = slotOwned && request.castActive
-  const { player, isPlaying, progressFeed } = useManagedVideoPlayer(
-    sourceUrl,
-    (p) => {
-      // Favor a fast first frame over deep prebuffer — JFP audience skews to
-      // low-bandwidth networks. (Android-only fields are ignored on iOS.)
-      p.bufferOptions = {
-        minBufferForPlayback: 1,
-        preferredForwardBufferDuration: 8,
-        prioritizeTimeOverSizeThreshold: true,
-      }
-    },
-    {
-      progress: progressIdentity,
-      ownsSession: true,
-      castActive,
-      onSourceApplied: (url) => {
-        appliedSourceUrlRef.current = url
+  const { player, isPlaying, progressFeed, getHealthyPosition } =
+    useManagedVideoPlayer(
+      sourceUrl,
+      (p) => {
+        // Favor a fast first frame over deep prebuffer — JFP audience skews to
+        // low-bandwidth networks. (Android-only fields are ignored on iOS.)
+        p.bufferOptions = {
+          minBufferForPlayback: 1,
+          preferredForwardBufferDuration: 8,
+          prioritizeTimeOverSizeThreshold: true,
+        }
       },
-    },
-  )
+      {
+        progress: progressIdentity,
+        ownsSession: true,
+        castActive,
+        // Only this surface arms automatic entry into the operating system's
+        // window, so only here may the background pause be undone when it opens.
+        armsPictureInPicture: true,
+        onSourceApplied: (url) => {
+          appliedSourceUrlRef.current = url
+        },
+      },
+    )
 
   // The screen's cast recorder reads the root adapter's facade. Render-time,
   // like the chrome's own mirror before the hoist; the feed is identity-stable,
@@ -1163,6 +1167,13 @@ function ActivePlaybackHost({
                 isPlaying={isPlaying}
                 loadFailed={snapshot.loadFailed}
                 streamingUrl={request.streamingUrl}
+                getHealthyPosition={getHealthyPosition}
+                // What the player verifiably HOLDS. The chrome renders on
+                // `adoptable` alone, so the requested url can still be null
+                // while a real source is loaded — recovery must use this.
+                recoverSourceUrl={
+                  request.streamingUrl ?? appliedSourceUrlRef.current
+                }
                 posterUrl={request.posterUrl}
                 subtitleVttSrc={request.subtitleVttSrc}
                 fullscreen={request.fullscreen}
