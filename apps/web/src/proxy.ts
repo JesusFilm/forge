@@ -61,7 +61,11 @@ export type ProxyRequest = {
 const REDIRECT_CACHE_CONTROL = "private, max-age=0"
 const MAX_PATH_LEN = 2048
 const SAFE_PUBLIC_PATH = /^\/[A-Za-z0-9._\-/]+$/
-const DEMO_PREFIXES = new Set(["demo-search", "demo-recommendations"])
+const DEMO_PREFIXES = new Set([
+  "demo-search",
+  "demo-recommendations",
+  "language-globe",
+])
 const EXPERIENCE_PREVIEW_PREFIX = "/preview/experience/"
 const WATCH_UNAVAILABLE_SENTINEL_PATH = "/unavailable/404"
 const WATCH_ORDINARY_NOT_FOUND_INTERNAL_PATHS = new Set(
@@ -772,6 +776,6 @@ export const config = {
     // Reserved framework + asset subtrees that must never enter the
     // canonicalize/rewrite pipeline. Demo surfaces live in a route group and
     // keep public paths such as /demo-search without the watch locale rewrite.
-    "/((?!(?:api|assets|images|fonts|sitemap|demo-search|demo-recommendations|\\.well-known)(?:/|$)|_next/(?:static|image|data|webpack-hmr)(?:/|$)|favicon\\.ico$|manifest\\.webmanifest$|robots\\.txt$|sitemap(?:\\.xml)?$).*)",
+    "/((?!(?:api|assets|images|fonts|sitemap|demo-search|demo-recommendations|language-globe|\\.well-known)(?:/|$)|_next/(?:static|image|data|webpack-hmr)(?:/|$)|favicon\\.ico$|manifest\\.webmanifest$|robots\\.txt$|sitemap(?:\\.xml)?$).*)",
   ],
 }

@@ -2,6 +2,30 @@
 
 Shared domain vocabulary for this project — entities, named processes, and status concepts with project-specific meaning. Seeded with core domain vocabulary, then accretes as ce-compound and ce-compound-refresh process learnings; direct edits are fine. Glossary only, not a spec or catch-all.
 
+## Application access
+
+### Registered Application
+
+A Jesus Film product or service recognized by Auth as an application-access boundary, with its own ownership, trust posture, lifecycle, deployment environments, grants, and issued tokens.
+
+### Application Environment
+
+A deployment-specific authorization boundary within a Registered Application that carries the OAuth client posture and approval state against which grants and tokens are evaluated.
+
+### Application Grant
+
+An explicit, revocable approval that gives a user or service a set of scopes for one Registered Application and Application Environment; an OAuth client's allowed scopes do not constitute an Application Grant.
+
+### Dynamic MCP Client
+
+A public OAuth client created at runtime by an MCP host so that each host can establish its own callback metadata and client identity without a pre-seeded credential.
+
+Registering a Dynamic MCP Client identifies the client but grants no application access; authorization still depends on an applicable Application Grant, and the companion MCP resource implementation independently enforces the issued token.
+
+## Relationships
+
+A Registered Application contains Application Environments. Application Grants and issued tokens target an Application Environment, while a Dynamic MCP Client requests access to the protected resource associated with that environment.
+
 ## Devotional generation
 
 ### Devotional Workspace
@@ -113,6 +137,29 @@ A subtitle-only entry is actionable only when its requested VTT and fallback
 Dub share a compatible Video Edition. Its public path names the playable audio
 language, while the requested subtitle language travels as separate one-shot
 intent.
+
+## Watch localization
+
+### Watch UI Catalog
+
+The locale-specific tree of interface copy used by Watch surfaces, distinct
+from the Languages in which media is available. Every supported UI locale
+shares the same message structure even when a narrowly declared leaf still
+uses source-language fallback copy.
+
+### Pending Translation Path
+
+A specific Watch UI Catalog message whose source-language copy is intentionally
+available in non-source locales while its translation remains unfinished. It
+is excluded from translated-source provenance and source-copy completion checks
+without making the rest of the catalog provisional.
+
+### Translation Provenance
+
+The generated evidence tying each translated Watch UI Catalog to the source
+content, translated content, and translation model that produced it. It covers
+the translated portion of a catalog, so Pending Translation Paths do not claim
+completed-translation provenance.
 
 ### Contextual Watch Route
 
