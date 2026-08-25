@@ -7,6 +7,7 @@ import {
 } from "react-native-google-cast"
 
 import { capErrorMessage, datadogLog } from "../datadog"
+import { clamp } from "../scrubber"
 import {
   CAST_MAX_PLAYBACK_RATE,
   CAST_MIN_PLAYBACK_RATE,
@@ -77,7 +78,7 @@ export async function setCastPlaybackRate(rate: number): Promise<void> {
   const session = await CastContext.getSessionManager().getCurrentCastSession()
   if (session == null) return
   await session.client.setPlaybackRate(
-    Math.min(CAST_MAX_PLAYBACK_RATE, Math.max(CAST_MIN_PLAYBACK_RATE, rate)),
+    clamp(rate, CAST_MIN_PLAYBACK_RATE, CAST_MAX_PLAYBACK_RATE),
   )
 }
 

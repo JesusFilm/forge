@@ -51,12 +51,9 @@ export type PlayerSettingsSheetProps = {
   streamingUrl: string | null
 }
 
-/**
- * Two-level player settings sheet (R2, KTD5): component-state RN Modal in the
- * chrome layer — a routed form sheet cannot present over the fullscreen
- * player. Root list with current values; each row opens its option list; a
- * pick writes the store and the sheet stays open (R3).
- */
+/** Two-level player settings sheet (R2, KTD5): component-state RN Modal in
+ *  the chrome layer, because a routed form sheet cannot present over the
+ *  fullscreen player. A pick writes the store; the sheet stays open (R3). */
 export function PlayerSettingsSheet({
   onClose,
   castActive,

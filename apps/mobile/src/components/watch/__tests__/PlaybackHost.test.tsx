@@ -162,6 +162,7 @@ import {
   shouldDrawSurface,
 } from "../PlaybackHost"
 import { getPlayerSettingsStore } from "../../../lib/miniPlayer/playerSettings"
+import { resetPlayerSettings } from "../../../test-utils/resetPlayerSettings"
 import {
   frameGeometry,
   miniPlayerCornerFrame,
@@ -446,15 +447,6 @@ function hasVeil(renderer: TestInstance): boolean {
       (node) => node.props.accessibilityLabel === "Loading video",
     ).length > 0
   )
-}
-
-// Idempotent field-wise reset: `resetFor` early-returns on a matching key, so
-// it cannot serve as a full reset on its own.
-function resetPlayerSettings() {
-  const settings = getPlayerSettingsStore()
-  settings.setSpeed(1)
-  settings.setQualityTier("auto")
-  settings.setContentKey(null)
 }
 
 beforeEach(() => {

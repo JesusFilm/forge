@@ -199,7 +199,7 @@ import { act } from "react"
 import { AppState } from "react-native"
 
 import { PlaybackHost } from "../../components/watch/PlaybackHost"
-import { getPlayerSettingsStore } from "../../lib/miniPlayer/playerSettings"
+import { resetPlayerSettings } from "../../test-utils/resetPlayerSettings"
 import { getMiniPlayerStore } from "../../lib/miniPlayer/store"
 import {
   getPlaybackRequestStore,
@@ -361,15 +361,6 @@ function resetMiniPlayerStore() {
   const store = getMiniPlayerStore()
   store.setPipHold(false)
   store.end("abandoned")
-}
-
-// Idempotent field-wise reset: `resetFor` early-returns on a matching key, so
-// it cannot serve as a full reset on its own.
-function resetPlayerSettings() {
-  const settings = getPlayerSettingsStore()
-  settings.setSpeed(1)
-  settings.setQualityTier("auto")
-  settings.setContentKey(null)
 }
 
 beforeEach(() => {

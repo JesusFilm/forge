@@ -356,10 +356,13 @@ function ActivePlaybackHost({
   // KTD1: the ONE constraint seam. Host bookkeeping above stays on RAW urls;
   // only the adapter sees the constrained one, so every swap (dub change
   // included) inherits the active tier.
-  const constrainedSourceUrl =
-    sourceUrl == null
-      ? null
-      : applyQualityConstraint(sourceUrl, effectiveSettings.qualityTier)
+  const constrainedSourceUrl = useMemo(
+    () =>
+      sourceUrl == null
+        ? null
+        : applyQualityConstraint(sourceUrl, effectiveSettings.qualityTier),
+    [sourceUrl, effectiveSettings.qualityTier],
+  )
 
   // R13's takeover reset and the key's activation in ONE call: an equal key
   // preserves the settings (minimize/restore, remount — AE6); a different one

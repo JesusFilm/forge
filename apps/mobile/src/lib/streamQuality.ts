@@ -1,7 +1,4 @@
-import { cleanStreamUrl } from "./validateUrl"
-
-/** Quality rides Mux playback modifiers, so only stream.mux.com URLs change. */
-const MUX_STREAM_HOST = "stream.mux.com"
+import { MUX_STREAM_HOST, cleanStreamUrl } from "./validateUrl"
 
 export const QUALITY_TIERS = ["auto", "low", "high", "highest"] as const
 

@@ -64,10 +64,9 @@ describe("watch screen cast wiring (U4)", () => {
   })
 
   it("supplies the session speed to the cast load, read at call time (R15/AE9)", () => {
-    // Inside the resolveCastMediaAt callback, keyed on the host's videoKey
-    // semantics for this route (session.videoSlug === decodedSlug). A
-    // getSnapshot() read at call time — never a subscription — so a speed
-    // change cannot re-render the route or retrigger the load effect.
+    // Keyed on the host's videoKey for this route (decodedSlug), read via
+    // getSnapshot() at call time — never a subscription — so a speed change
+    // cannot re-render the route or retrigger the load effect.
     const resolver = at("const resolveCastMediaAt = useCallback(")
     const body = ROUTE.slice(resolver, at("return media", resolver))
     expect(body).toContain("playbackRate: effectivePlayerSettings(")
