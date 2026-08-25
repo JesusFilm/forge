@@ -5,7 +5,7 @@
 import { act } from "react"
 import { createRoot, type Root } from "react-dom/client"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
-import { LanguageGlobe } from "./LanguageGlobe"
+import { getLanguageGlobeRenderProfile, LanguageGlobe } from "./LanguageGlobe"
 
 let container: HTMLDivElement
 let root: Root
@@ -127,7 +127,17 @@ describe("LanguageGlobe lifecycle", () => {
     expect(nextFrame).toBe(1)
 
     act(() => frameCallback?.(100))
-    expect(setTimeout).toHaveBeenCalledWith(expect.any(Function), 1000 / 20)
+    const canvas = container.querySelector("canvas")
+    const deviceNavigator = navigator as Navigator & { deviceMemory?: number }
+    const expectedProfile = getLanguageGlobeRenderProfile(
+      canvas?.clientWidth ?? 0,
+      navigator.hardwareConcurrency || 8,
+      deviceNavigator.deviceMemory || 8,
+    )
+    expect(setTimeout).toHaveBeenCalledWith(
+      expect.any(Function),
+      expectedProfile.frameIntervalMilliseconds,
+    )
 
     reducedMotion = true
     act(() => motionListeners.forEach((listener) => listener()))
