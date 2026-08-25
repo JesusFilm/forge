@@ -10,6 +10,8 @@ try {
   withAndroidColors = null
 }
 
+const { setItem, getRequiredStyle } = require("./androidStyleXml")
+
 /**
  * The Android half of the cast restyle. Android has no GCKUIStyle: the cast
  * dialogs read their colours from THEME ATTRIBUTES resolved off the Activity
@@ -111,17 +113,6 @@ const APP_THEME_ITEMS = {
     "@style/ThemeOverlay.AppCompat.Dark.ActionBar",
 }
 
-/** Replace-or-append one <item name=…> on a style object, in place. */
-function setItem(style, name, value) {
-  if (!Array.isArray(style.item)) style.item = []
-  const existing = style.item.find((entry) => entry.$?.name === name)
-  if (existing) {
-    existing._ = value
-    return
-  }
-  style.item.push({ $: { name }, _: value })
-}
-
 /** Replace-or-append a whole <style>, returning the style object. */
 function upsertStyle(resources, name, parent) {
   if (!Array.isArray(resources.style)) resources.style = []
@@ -140,18 +131,15 @@ function upsertStyle(resources, name, parent) {
  * Activity, so without that item the styles exist and reach nothing.
  */
 function applyCastStyles(resources) {
-  const appTheme = (resources.style ?? []).find(
-    (entry) => entry.$?.name === "AppTheme",
+  const appTheme = getRequiredStyle(
+    resources,
+    "AppTheme",
+    "[withAndroidCastTheme] AppTheme not found in android styles.xml. The " +
+      "Expo template renamed the application theme; every cast dialog " +
+      "resolves its theme off the Activity, so mediaRouteTheme must land on " +
+      "the real one. Failing prebuild instead of shipping unstyled cast " +
+      "dialogs.",
   )
-  if (!appTheme) {
-    throw new Error(
-      "[withAndroidCastTheme] AppTheme not found in android styles.xml. The " +
-        "Expo template renamed the application theme; every cast dialog " +
-        "resolves its theme off the Activity, so mediaRouteTheme must land on " +
-        "the real one. Failing prebuild instead of shipping unstyled cast " +
-        "dialogs.",
-    )
-  }
 
   const targets = [
     [MEDIA_ROUTER_STYLE, MEDIA_ROUTER_PARENT, MEDIA_ROUTER_ITEMS],

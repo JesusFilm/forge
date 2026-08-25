@@ -588,6 +588,38 @@ it moves the fingerprint runtime version, so an OTA update cannot deliver it.
   seconds — an absent cast glyph early in a session means "not discovered yet",
   not "unsupported".
 
+## Android system navigation bar
+
+**`AppTheme` now has TWO writers**, and both go through the shared helpers in
+`plugins/androidStyleXml.js` (`setItem`, `findStyle`, `getRequiredStyle`).
+That module is the single place item-mutation semantics may live — two copies
+can drift and then disagree about how items land on the one style React Native
+reads, which no per-plugin suite would catch. Add a third writer the same way.
+
+`plugins/withAndroidNavigationBar.js` makes the system navigation bar render
+the app's own `#1c1917` instead of the platform contrast scrim.
+
+- **You cannot set a colour.** RN forces `navigationBarColor` to transparent at
+  every React Activity creation (`WindowUtil.kt`, `enableEdgeToEdge`). The only
+  lever RN reads and obeys is `android:enforceNavigationBarContrast`. Setting it
+  `false` stops the platform scrim AND stops RN overwriting the icon appearance
+  from the SYSTEM dark-mode setting — which is why the paired
+  `android:windowLightNavigationBar=false` survives. The two ship together.
+- **Both `AppTheme` and `Theme.App.SplashScreen` are written.** MainActivity's
+  manifest theme is the splash one, and it does not inherit `AppTheme`.
+- **This plugin MUST stay before `expo-splash-screen` in `app.json`.** That
+  plugin REPLACES `Theme.App.SplashScreen` rather than merging, and Expo runs
+  mods last-registered-first. Reversed, the two items are wiped with the suite
+  still green. A test pins the order against the real vendor mod.
+- **Measured, not argued** (`adb exec-out screencap -p` -> ffmpeg -> read bytes):
+  before, the bar was `#e9e8e8` in LIGHT system appearance on a Galaxy S20
+  (API 33) — a near-white bar under a near-black app. After: `#1c1917` in both
+  appearances, and `#1c1917` on the splash window too. API 31-32 unmeasured.
+- **The scrim was doing a job.** It guaranteed button contrast over arbitrary
+  content. That guarantee is now gone app-wide, so any surface drawing light
+  pixels behind the bar (a bright fullscreen video frame) can hide the buttons.
+  No replacement scrim ships yet.
+
 ## Component render tests
 
 Component render tests use the in-file react re-point pattern — see

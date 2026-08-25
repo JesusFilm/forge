@@ -60,6 +60,7 @@
       "./plugins/withCastOptionsVolume",
       "./plugins/withCastUIStyle",
       "./plugins/withAndroidCastTheme",
+      "./plugins/withAndroidNavigationBar",
       [
         "react-native-google-cast",
         {
