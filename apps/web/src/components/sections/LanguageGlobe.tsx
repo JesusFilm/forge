@@ -1,8 +1,8 @@
 "use client"
 
-import { useEffect, useRef, type CSSProperties } from "react"
+import { useEffect, useId, useRef, type CSSProperties } from "react"
 import { cn } from "@/lib/utils"
-import { LAND_CELL_COUNT, LAND_COORDINATES } from "./languageGlobeLand"
+import { LAND_COORDINATES } from "./languageGlobeLand"
 import { VERSE_REFERENCE, VERSE_TRANSLATIONS } from "./languageGlobeVerse"
 
 type GeographicPoint = {
@@ -146,6 +146,15 @@ export function starShimmerOpacity(
   )
 }
 
+export function advanceFrameSchedule(
+  previousFrame: number,
+  now: number,
+  frameIntervalMilliseconds: number,
+): number {
+  const elapsed = now - previousFrame
+  return now - (elapsed % frameIntervalMilliseconds)
+}
+
 export function getLanguageGlobeRenderProfile(
   canvasWidth: number,
   hardwareConcurrency = 8,
@@ -278,11 +287,15 @@ function cachedVerseLines(
 }
 
 const LAND_CELLS: GeographicPoint[] = []
-for (let cellIndex = 0; cellIndex < LAND_CELL_COUNT; cellIndex += 1) {
-  const latitudeTwice = LAND_COORDINATES[cellIndex * 2]
+for (
+  let coordinateIndex = 0;
+  coordinateIndex < LAND_COORDINATES.length;
+  coordinateIndex += 2
+) {
+  const latitudeTwice = LAND_COORDINATES[coordinateIndex]
   if (latitudeTwice < -6) continue
 
-  const longitudeTwice = LAND_COORDINATES[cellIndex * 2 + 1]
+  const longitudeTwice = LAND_COORDINATES[coordinateIndex + 1]
 
   LAND_CELLS.push({
     latitude: latitudeTwice / 2,
@@ -719,6 +732,7 @@ export function LanguageGlobe({
   initialRotationDegrees = -12,
 }: LanguageGlobeProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  const fallbackId = useId()
   const style = {
     "--language-globe-border": "rgba(255, 255, 255, 0.14)",
   } as CSSProperties
@@ -748,13 +762,11 @@ export function LanguageGlobe({
       deviceMemory,
     )
 
-    const currentRotation = (now: number) =>
-      initialRotation +
-      (elapsedBeforePause + (animating ? Math.max(0, now - resumedAt) : 0)) *
-        radiansPerMillisecond
-
     const currentElapsed = (now: number) =>
       elapsedBeforePause + (animating ? Math.max(0, now - resumedAt) : 0)
+
+    const currentRotation = (now: number) =>
+      initialRotation + currentElapsed(now) * radiansPerMillisecond
 
     const draw = (now = performance.now()) => {
       drawGlobe(
@@ -768,7 +780,11 @@ export function LanguageGlobe({
 
     const frame = (now: number) => {
       if (now - previousFrame >= renderProfile.frameIntervalMilliseconds) {
-        previousFrame = now
+        previousFrame = advanceFrameSchedule(
+          previousFrame,
+          now,
+          renderProfile.frameIntervalMilliseconds,
+        )
         draw(now)
       }
       animationFrame = window.requestAnimationFrame(frame)
@@ -850,10 +866,10 @@ export function LanguageGlobe({
       className="block h-full w-full"
       role="img"
       aria-label={`A rotating globe formed from ${VERSE_REFERENCE} in ${VERSE_TRANSLATIONS.length} public-domain language editions`}
+      aria-describedby={fallbackId}
     >
       {VERSE_REFERENCE}: {ENGLISH_VERSE?.text} Rendered in{" "}
-      {VERSE_TRANSLATIONS.length}
-      public-domain language editions.
+      {VERSE_TRANSLATIONS.length} public-domain language editions.
     </canvas>
   )
 
@@ -869,6 +885,10 @@ export function LanguageGlobe({
       style={style}
       aria-label={`${VERSE_REFERENCE} across the nations`}
     >
+      <span id={fallbackId} className="sr-only">
+        {VERSE_REFERENCE}: {ENGLISH_VERSE?.text} Rendered in{" "}
+        {VERSE_TRANSLATIONS.length} public-domain language editions.
+      </span>
       {layout === "standalone" ? (
         <div className="relative h-full w-full overflow-hidden rounded-[1.05rem] border border-[var(--language-globe-border)] bg-[#09090b]">
           {canvas}

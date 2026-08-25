@@ -1,5 +1,28 @@
 # Language Globe Design QA
 
+## 2026-08-24 LFG browser verification
+
+- Server: `http://localhost:3001`
+- `/watch/language-globe` - **Skip:** the integrated browser controller was
+  locked to its connection-error page by the host security policy and explicitly
+  prohibited further navigation or an alternate browser workaround.
+- `/watch/language-globe/not-found` - **Skip:** same controller-policy blocker.
+- `/watch` and a missing localized Watch route - **Skip:** same
+  controller-policy blocker.
+- Static fallback: 20 focused globe, shared-section, homepage, and 404 tests
+  pass. The suite now mounts the real canvas component and verifies viewport,
+  reduced-motion, document-visibility, and unmount cleanup paths. A timestamp
+  cadence test confirms 24 rendered frames over one second of 60 Hz display
+  ticks.
+- Existing responsive and performance captures below remain the visual
+  baseline. The renderer and one-surface composition are unchanged by the final
+  heading-line-height correction; review follow-ups add only accessible
+  description wiring, cadence precision, lifecycle coverage, and safe-area
+  padding.
+
+Result: **PARTIAL** because the host browser policy prevented a fresh rendered
+route pass. No route was silently dropped from the QA scope.
+
 The prior Watch search-language takeover report is preserved at
 `docs/design-qa/watch-search-language-takeover.md`.
 

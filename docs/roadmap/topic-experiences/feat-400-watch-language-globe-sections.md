@@ -1,7 +1,7 @@
 ---
 id: "feat-400"
 title: "Reuse the Watch language globe on home and not-found pages"
-owner: "codex"
+owner: "urim"
 priority: "P1"
 status: "complete"
 start_date: "2026-08-21"
@@ -91,3 +91,9 @@ not-found page without duplicating its canvas renderer.
   globe into one rounded surface. Embedded canvases no longer add a second frame;
   browser QA confirms one outer border and one continuous design on desktop and
   phone viewports.
+- Follow-up headline refinement gives the Watch experience title the established
+  `1.08` line-height rhythm while preserving the compact `0.98` 404 treatment.
+  Variant-specific markup tests prevent the shared class merge from dropping or
+  collapsing those values. The focused 18-test suite, web lint, typecheck, and
+  formatting checks pass; the canvas renderer and its measured performance
+  profile are unchanged.

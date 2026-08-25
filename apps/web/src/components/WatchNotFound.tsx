@@ -2,7 +2,7 @@ import { ArrowLeft, Clapperboard } from "lucide-react"
 import { useTranslations } from "next-intl"
 
 import { LanguageGlobeSection } from "@/components/sections/LanguageGlobeSection"
-import { searchPath, videosIndexPath } from "@/lib/routes"
+import { languagesIndexPath, searchPath } from "@/lib/routes"
 
 export function WatchNotFound() {
   const t = useTranslations("WatchNotFound")
@@ -18,7 +18,7 @@ export function WatchNotFound() {
             label: t("backToWatch"),
           },
           {
-            href: videosIndexPath(),
+            href: languagesIndexPath(),
             icon: (
               <Clapperboard aria-hidden="true" className="h-5 w-5 shrink-0" />
             ),

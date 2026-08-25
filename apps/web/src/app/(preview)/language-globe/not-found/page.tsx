@@ -1,7 +1,8 @@
-import type { Metadata, Route } from "next"
+import type { Metadata } from "next"
 import { ArrowLeft, Clapperboard } from "lucide-react"
 
 import { LanguageGlobeSection } from "@/components/sections/LanguageGlobeSection"
+import { languagesIndexPath, searchPath } from "@/lib/routes"
 
 export const metadata: Metadata = {
   title: "Language Globe 404 Preview | Watch",
@@ -18,12 +19,12 @@ export default function LanguageGlobeNotFoundPreviewPage() {
       <LanguageGlobeSection
         actions={[
           {
-            href: "/" as Route,
+            href: searchPath(),
             icon: <ArrowLeft aria-hidden="true" className="h-5 w-5" />,
             label: "Back to Watch",
           },
           {
-            href: "/languages" as Route,
+            href: languagesIndexPath(),
             icon: <Clapperboard aria-hidden="true" className="h-5 w-5" />,
             label: "Browse videos",
             variant: "secondary",

@@ -1,7 +1,7 @@
 ---
 id: "feat-399"
 title: "Watch animated language globe preview"
-owner: "codex"
+owner: "urim"
 priority: "P1"
 status: "complete"
 start_date: "2026-08-20"

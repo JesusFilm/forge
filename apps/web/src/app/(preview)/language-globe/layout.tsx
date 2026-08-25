@@ -19,10 +19,7 @@ export default function LanguageGlobePreviewLayout({
 }) {
   return (
     <html lang="en" className={cn("bg-[#09090b]", montserrat.variable)}>
-      <body className="m-0 bg-[#09090b]">
-        <style>{`nextjs-portal { display: none !important; }`}</style>
-        {children}
-      </body>
+      <body className="m-0 bg-[#09090b]">{children}</body>
     </html>
   )
 }

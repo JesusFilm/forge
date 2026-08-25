@@ -1,6 +1,7 @@
 import { renderToStaticMarkup } from "react-dom/server"
 import { describe, expect, it } from "vitest"
 import {
+  advanceFrameSchedule,
   LanguageGlobe,
   getLanguageGlobeRenderProfile,
   hasSmallIslandDetailNear,
@@ -20,6 +21,9 @@ describe("LanguageGlobe", () => {
     expect(markup).toContain(
       'aria-label="A rotating globe formed from Matthew 24:14 in 39 public-domain language editions"',
     )
+    const describedBy = markup.match(/aria-describedby="([^"]+)"/)?.[1]
+    expect(describedBy).toBeTruthy()
+    expect(markup).toContain(`id="${describedBy}"`)
     expect(markup).toContain('data-testid="language-globe-canvas"')
     expect(markup).toContain("This Good News of the Kingdom")
   })
@@ -45,6 +49,22 @@ describe("LanguageGlobe", () => {
       "end will come.",
     ])
     expect(lines.every((line) => line.length <= 42)).toBe(true)
+  })
+
+  it("keeps a 24 fps cadence on a 60 Hz display", () => {
+    const interval = 1000 / 24
+    let previousFrame = 0
+    let drawnFrames = 0
+
+    for (let displayFrame = 1; displayFrame <= 60; displayFrame += 1) {
+      const now = displayFrame * (1000 / 60)
+      if (now - previousFrame >= interval) {
+        previousFrame = advanceFrameSchedule(previousFrame, now, interval)
+        drawnFrames += 1
+      }
+    }
+
+    expect(drawnFrames).toBe(24)
   })
 
   it("wraps languages without spaces instead of clipping the verse", () => {

@@ -63,7 +63,7 @@ export function LanguageGlobeSection({
       <div
         className={cn(
           WATCH_PAGE_CONTENT_CLASSES,
-          "relative z-10 pb-[6px]",
+          "relative z-10 pb-[calc(env(safe-area-inset-bottom,0px)+6px)]",
           isNotFound
             ? "pt-[calc(env(safe-area-inset-top,0px)+7rem)] sm:pt-[calc(env(safe-area-inset-top,0px)+8rem)]"
             : "pt-20 sm:pt-24 lg:pt-28",
@@ -98,10 +98,10 @@ export function LanguageGlobeSection({
 
               <Heading
                 className={cn(
-                  "mt-4 leading-[0.98] font-extrabold tracking-[-0.045em] text-white text-balance",
+                  "mt-4 font-extrabold tracking-[-0.045em] text-white text-balance",
                   isNotFound
-                    ? "max-w-3xl text-4xl sm:mt-6 sm:text-6xl md:text-7xl"
-                    : "max-w-5xl text-[clamp(2.75rem,6.5vw,5.5rem)]",
+                    ? "max-w-3xl text-4xl leading-[0.98] sm:mt-6 sm:text-6xl md:text-7xl"
+                    : "max-w-5xl text-[clamp(2.75rem,6.5vw,5.5rem)] leading-[1.08]",
                 )}
                 id={headingId}
               >

@@ -1,7 +1,7 @@
 import type { Metadata } from "next"
-import type { Route } from "next"
 import { Languages } from "lucide-react"
 import { LanguageGlobeSection } from "@/components/sections/LanguageGlobeSection"
+import { languagesIndexPath } from "@/lib/routes"
 
 export const metadata: Metadata = {
   title: "Matthew 24:14 Globe Preview | Watch",
@@ -19,7 +19,7 @@ export default function LanguageGlobePreviewPage() {
       <LanguageGlobeSection
         actions={[
           {
-            href: "/languages" as Route,
+            href: languagesIndexPath(),
             icon: <Languages aria-hidden="true" className="h-5 w-5" />,
             label: "Select your language",
           },

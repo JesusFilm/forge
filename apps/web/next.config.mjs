@@ -67,12 +67,6 @@ const allowedDevOrigins = getAllowedDevOrigins(
 export const nextConfig = {
   basePath: WATCH_BASE_PATH,
   allowedDevOrigins,
-  // Isolated worktrees can reuse an installed dependency tree through a
-  // symlink outside Next's inferred project root. Keep the override opt-in so
-  // normal local, CI, and production builds retain Next's default root.
-  ...(process.env.FORGE_TURBOPACK_ROOT
-    ? { turbopack: { root: process.env.FORGE_TURBOPACK_ROOT } }
-    : {}),
   // Self-hosted prod (Railway) doesn't always sit behind a compressing
   // proxy. Without this the JS chunks ship at their raw ~1.8 MB size,
   // dominating the simulated-mobile LCP budget. compress:true wires

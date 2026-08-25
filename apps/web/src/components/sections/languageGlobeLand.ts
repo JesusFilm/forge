@@ -321,4 +321,3 @@ function decodeLandCoordinates() {
 }
 
 export const LAND_COORDINATES = decodeLandCoordinates()
-export const LAND_CELL_COUNT = 6825
