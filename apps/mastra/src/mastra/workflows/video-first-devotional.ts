@@ -2,6 +2,7 @@ import { createStep, createWorkflow } from "@mastra/core/workflows"
 import { z } from "zod"
 
 import {
+  getDevotionalMusicLibraryDir,
   getDevotionalModel,
   getDevotionalSafetyModel,
   isDevotionalQualityGateEnforced,
@@ -36,6 +37,7 @@ import {
 import { selectScriptureForPassage } from "../../services/devotional/passage-scripture"
 import { lookupVerse } from "../../services/devotional/web-bible"
 import { generateMusic } from "../../services/devotional/elevenlabs-music"
+import { loadMusicLibraryTrack } from "../../services/devotional/music-library"
 import { rotateFilter } from "../../services/devotional/voice-rotation"
 import { evaluateSafety } from "../../services/devotional/safety-gate"
 import { reviewDevotionalText } from "../../services/devotional/devotional-quality-gate"
@@ -705,17 +707,25 @@ const renderStep = createStep({
           wideAsset: null,
         }
       const authored = await loadAttemptData(mastra, inputData.selectedSources)
+      const musicLibraryDir = getDevotionalMusicLibraryDir()
       const audio = await produceDevotionalAudio(devotional, {
         narration: authored.narration,
         voiceProfiles: authored.voices.profiles,
         voiceSettings: authored.voices.settings,
         musicLengthMs: authored.music.defaultLengthMs,
-        music: (options) =>
-          generateMusic({
+        music: async (options) => {
+          const libraryTrack = await loadMusicLibraryTrack({
+            directory: musicLibraryDir,
+            mood: options.mood,
+            sequence: options.sequence,
+          })
+          if (libraryTrack.ok) return libraryTrack
+          return generateMusic({
             ...options,
             moodPrompts: authored.music.moods,
             defaultLengthMs: authored.music.defaultLengthMs,
-          }),
+          })
+        },
       })
       const filesystem = mastra.getWorkspace()?.filesystem
       if (!filesystem) throw new Error("Devotional Workspace is unavailable")

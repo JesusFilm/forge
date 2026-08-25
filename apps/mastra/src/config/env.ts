@@ -2209,6 +2209,10 @@ export function getDevotionalSafetyModel(): string {
   return env.DEVOTIONAL_SAFETY_MODEL
 }
 
+export function getDevotionalMusicLibraryDir(): string | undefined {
+  return env.DEVOTIONAL_MUSIC_LIBRARY_DIR
+}
+
 export type AzureSpeechConfig = {
   key?: string
   region?: string
