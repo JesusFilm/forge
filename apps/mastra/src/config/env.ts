@@ -399,10 +399,6 @@ const envSchema = z.object({
   ELEVENLABS_VOICE_ID: z.string().min(1).default("HKFOb9iktHA85uKXydRT"),
   ELEVENLABS_TTS_MODEL: z.string().min(1).default("eleven_multilingual_v2"),
   ELEVENLABS_MUSIC_MODEL: z.string().min(1).default("music_v1"),
-  // Directory holding the reflection corpus JSON (Ryle / Matthew Henry /
-  // Spurgeon). Defaults to the in-repo `devo/corpus`; override on a bundled
-  // deploy where that path isn't present.
-  DEVOTIONAL_CORPUS_DIR: z.string().min(1).optional(),
   FIRECRAWL_ALLOWED_HOSTS: z
     .string()
     .min(1)
@@ -1037,7 +1033,6 @@ export const env = envSchema.parse({
   ELEVENLABS_VOICE_ID: emptyToUndefined(process.env.ELEVENLABS_VOICE_ID),
   ELEVENLABS_TTS_MODEL: emptyToUndefined(process.env.ELEVENLABS_TTS_MODEL),
   ELEVENLABS_MUSIC_MODEL: emptyToUndefined(process.env.ELEVENLABS_MUSIC_MODEL),
-  DEVOTIONAL_CORPUS_DIR: emptyToUndefined(process.env.DEVOTIONAL_CORPUS_DIR),
   FIRECRAWL_ALLOWED_HOSTS: emptyToUndefined(
     process.env.FIRECRAWL_ALLOWED_HOSTS,
   ),
@@ -2220,11 +2215,6 @@ export function getElevenLabsConfig(): ElevenLabsConfig {
 /** Default narration voice id (overridable per language later). */
 export function getDevotionalElevenVoiceId(): string {
   return env.ELEVENLABS_VOICE_ID
-}
-
-/** Reflection corpus dir; undefined => the reader falls back to the repo copy. */
-export function getDevotionalCorpusDir(): string | undefined {
-  return env.DEVOTIONAL_CORPUS_DIR
 }
 
 export function getInstagramSiteIngestConfig(): InstagramSiteIngestConfig | null {

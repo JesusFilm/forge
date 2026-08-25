@@ -6,9 +6,15 @@
  * verse text — not model-recalled. WEB is public domain (free to use).
  *
  * Source: getbible.net v2 (whole-book JSON per book).
- * Output: devo/corpus/web-bible.json — { verses: { "Luke.8.24": "…" } }, keyed
- * in osis form so it matches reflection-corpus routing. Committed → ships with
- * the app, read at runtime.
+ *
+ * Output: apps/mastra/devotional-workspace/inputs/scripture/web-bible.json —
+ * `{ verses: { "Luke.8.24": "…" } }` keyed in osis form so it matches
+ * reflection-corpus routing. That is the WHOLE document: WebBibleSchema
+ * (`web-bible.ts`) is `.strict()` on `{ verses }` alone and the Workspace
+ * validates every scripture `.json` on reconcile (`workspace/schemas.ts`), so
+ * a translation/licence envelope here would make the corpus ineligible.
+ * Provenance goes to stdout; licence and source URL are recorded in that
+ * folder's README.
  *
  *   node apps/mastra/src/scripts/ingest-web-bible.mjs
  */
@@ -18,7 +24,11 @@ import { fileURLToPath } from "node:url"
 
 const HERE = path.dirname(fileURLToPath(import.meta.url))
 const REPO_ROOT = path.resolve(HERE, "../../../..")
-const OUT = path.join(REPO_ROOT, "devo/corpus/web-bible.json")
+const OUT = path.join(
+  REPO_ROOT,
+  "apps/mastra/devotional-workspace/inputs/scripture/web-bible.json",
+)
+const SOURCE_URL = "https://api.getbible.net/v2/web"
 
 // getbible book number → osis code. Gospels + Acts (where JESUS-film clips live).
 const BOOKS = {
@@ -47,19 +57,15 @@ async function main() {
     console.log(`  ✓ ${osis} (${book.name}): ${n} verses`)
   }
 
-  const corpus = {
-    translation: "World English Bible",
-    abbreviation: "WEB",
-    license: "public-domain",
-    sourceUrl: "https://api.getbible.net/v2/web",
-    books: Object.values(BOOKS),
-    verseCount: Object.keys(verses).length,
-    verses,
-  }
   await mkdir(path.dirname(OUT), { recursive: true })
-  await writeFile(OUT, JSON.stringify(corpus, null, 2) + "\n", "utf8")
+  await writeFile(OUT, JSON.stringify({ verses }, null, 2) + "\n", "utf8")
   console.log(
-    `\n✅ ${corpus.verseCount} WEB verses → ${path.relative(REPO_ROOT, OUT)}`,
+    `\n✅ ${Object.keys(verses).length} WEB verses → ${path.relative(REPO_ROOT, OUT)}`,
+  )
+  console.log(
+    `   provenance: World English Bible (WEB) · public domain · ${Object.values(
+      BOOKS,
+    ).join(", ")} · ${SOURCE_URL}`,
   )
 }
 
