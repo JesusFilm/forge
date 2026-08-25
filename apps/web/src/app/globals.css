@@ -35,6 +35,13 @@
      The `%23` is a literal '#' — un-escaping it silently breaks the
      filter reference and the tile renders as a flat black rectangle. */
   --watch-grain-image: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='g'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/><feColorMatrix type='matrix' values='1 0 0 0 0 1 0 0 0 0 1 0 0 0 0 0 0 0 0 1'/><feComponentTransfer><feFuncR type='linear' slope='2.6' intercept='-1.05'/><feFuncG type='linear' slope='2.6' intercept='-1.05'/><feFuncB type='linear' slope='2.6' intercept='-1.05'/></feComponentTransfer></filter><rect width='160' height='160' filter='url(%23g)'/></svg>");
+  /* Sticker sizing, as ONE number and a ratio off it. A sticker stuck to a
+     card is the finished size; the pile is deliberately larger, because a
+     sticker you are meant to pick up has to look bigger than the same
+     sticker already spent. Two literals here would drift apart the first
+     time either end is tuned. */
+  --watch-sticker-stuck: 2.25rem;
+  --watch-sticker-pile-scale: 1.25;
   --font-native-sans:
     "Avenir Next", Avenir, "Helvetica Neue", Helvetica, "Segoe UI", Roboto,
     "Noto Sans", "Liberation Sans", Arial, sans-serif;
@@ -403,29 +410,28 @@
 /* Die-cut sticker. Eight ZERO-BLUR drop-shadows, one per compass point,
    build a hard white edge that hugs the emoji's own silhouette. Blurred
    shadows (`0 0 1.5px`) give a soft halo instead — it reads as a glow, not
-   a cut edge. The last shadow is the cast shadow lifting it off the card. */
+   a cut edge.
+
+   The last two shadows are what makes it STUCK DOWN rather than hovering:
+   a near-zero-blur contact line directly under the die-cut edge (the vinyl's
+   own thickness), then a short, tight cast. Blur is what reads as height —
+   the previous `0 6px 12px` put the sticker a centimetre above the card, so
+   both offset and blur are small and the alpha carries the weight instead. */
 .watch-sticker-art {
   filter: drop-shadow(2px 0 0 #fff) drop-shadow(-2px 0 0 #fff)
     drop-shadow(0 2px 0 #fff) drop-shadow(0 -2px 0 #fff)
     drop-shadow(1.4px 1.4px 0 #fff) drop-shadow(-1.4px 1.4px 0 #fff)
     drop-shadow(1.4px -1.4px 0 #fff) drop-shadow(-1.4px -1.4px 0 #fff)
-    drop-shadow(var(--watch-sticker-cast, 0 10px 14px rgb(0 0 0 / 0.75)));
+    drop-shadow(var(--watch-sticker-edge, 0 1px 0 rgb(0 0 0 / 0.35)))
+    drop-shadow(var(--watch-sticker-cast, 0 2px 2px rgb(0 0 0 / 0.55)));
 }
 
-/* The cast shadow, and only it, is tuned per band: a 0.75-alpha shadow that
-   reads as lift against a near-black card reads as grime on white. Set on
-   the section so every sticker inside inherits it; the fallback above keeps
-   the dark bands untouched. */
+/* Both shadows are tuned per band: an alpha that reads as contact against a
+   near-black card reads as grime on white. Set on the section so every
+   sticker inside inherits it; the fallbacks above keep the dark bands. */
 .watch-sticker-surface-light {
-  --watch-sticker-cast: 0 6px 12px rgb(0 0 0 / 0.28);
-}
-
-/* The gap a sticker leaves behind once it is in your hand. Grey and flat —
-   no white die-cut edge, no lift — so it reads as an empty slot rather
-   than a second sticker sitting in the pile. */
-.watch-sticker-ghost {
-  filter: grayscale(1);
-  opacity: 0.3;
+  --watch-sticker-edge: 0 1px 0 rgb(0 0 0 / 0.18);
+  --watch-sticker-cast: 0 2px 2px rgb(0 0 0 / 0.22);
 }
 
 /* Sticker landing: a quick pop so a placed sticker reads as stuck on
@@ -729,6 +735,26 @@
   }
 }
 
+/* The gathered hand also comes FORWARD: it finishes larger than the slot it
+   was laid out in, so the fan reads as picked up rather than merely tilted.
+
+   Scaled as ONE hand, not card by card. Growing each card about its own
+   centre pushes its right edge over the next card's copy while pulling that
+   copy left — clearance loses `(scale - 1) x card width` in both
+   directions at once, and since the loss is proportional to card width no
+   fixed rem gather can pay for it: measured at 1.12, the copy clearance at
+   1920 went from 16px to -12px, i.e. the headings were struck through.
+   Scaling the whole list multiplies the gaps along with the cards, so every
+   clearance is preserved by construction at every width. */
+@keyframes watch-fan-lift {
+  from {
+    scale: 1;
+  }
+  to {
+    scale: var(--fan-scale-end, 1.12);
+  }
+}
+
 @keyframes watch-scroll-year-active {
   from {
     opacity: 0.3;
@@ -933,6 +959,20 @@
         animation-timeline: view();
         animation-range: entry 8% cover 34%;
         will-change: opacity, rotate, translate, scale;
+      }
+
+      /* The list the cards are laid out in, grown as one. Its own box is
+         the cards' box, so `view()` here tracks the same scroll positions
+         as the gather above and the hand finishes growing exactly as the
+         cards finish closing. The origin is the list's centre: the fan's
+         own pivot sits 190% below each card and would lift the whole group
+         out of its slot instead of growing it in place. */
+      .watch-scroll-fan-hand {
+        transform-origin: 50% 50%;
+        animation: watch-fan-lift linear both;
+        animation-timeline: view();
+        animation-range: entry 8% cover 34%;
+        will-change: scale;
       }
 
       /* MUST follow the base rule above. The bundler flattens nested media

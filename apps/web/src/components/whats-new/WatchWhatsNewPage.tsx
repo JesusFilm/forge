@@ -578,7 +578,14 @@ export function WatchWhatsNewPage({
                 the audiences are weighted the way they are. */}
             <WhatsNewAudienceQuiz />
 
-            <ul className="mt-12 grid gap-6 isolate md:grid-cols-3 lg:mt-16 lg:gap-8">
+            {/* `watch-scroll-fan-hand` grows the gathered hand as one piece.
+                Per-card growth cannot be paid for by the rem gather below:
+                its cost scales with card width, so the headings behind get
+                covered on a wide viewport. */}
+            <ul
+              data-testid="whats-new-audience-fan"
+              className="watch-scroll-fan-hand mt-12 grid gap-6 isolate md:grid-cols-3 lg:mt-16 lg:gap-8"
+            >
               {WHATS_NEW_AUDIENCES.cards.map((card, index) => {
                 const Icon = ICONS[card.icon]
                 // Outer cards swing out and drop; the middle one stays
@@ -636,7 +643,16 @@ export function WatchWhatsNewPage({
               })}
             </ul>
 
-            <p className={`mt-10 max-w-3xl ${BODY_CLASS}`}>
+            {/* Extra room from `md` up, where the fan exists and grows: the
+                gathered hand ends 12% larger than its slot, so its lowest
+                rotated corner reaches ~20px past the list box and would
+                otherwise sit on this paragraph's first line. Measured
+                clearance at `mt-10` after growth: -13px at 820, -21px at
+                1920. */}
+            <p
+              data-testid="whats-new-audience-closing"
+              className={`mt-10 max-w-3xl md:mt-16 ${BODY_CLASS}`}
+            >
               {WHATS_NEW_AUDIENCES.closing}
             </p>
           </div>

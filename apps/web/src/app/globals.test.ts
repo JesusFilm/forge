@@ -111,6 +111,53 @@ describe("scroll-driven timeline choreography", () => {
     expect(override).toBeGreaterThan(base)
   })
 
+  it("grows the fanned hand about its own centre, past its laid-out size", () => {
+    // The growth is on the LIST, not on the cards: per-card growth costs
+    // copy clearance proportional to card width (measured 16px -> -12px at
+    // 1920), and scaling the list multiplies the gaps along with the cards.
+    // Its origin is the list's centre, because the fan's pivot sits 190%
+    // below each card and would lift the whole group out of its slot.
+    const fan = blockBody(guard, ".watch-scroll-fan {")
+    const hand = blockBody(guard, ".watch-scroll-fan-hand {")
+    const lift = blockBody(css, "@keyframes watch-fan-lift")
+
+    expect(fan).toContain("transform-origin: 50% 190%")
+    expect(hand).toContain("transform-origin: 50% 50%")
+    expect(hand).toContain("animation-timeline: view()")
+    // Both halves of one motion must finish together.
+    const range = /animation-range:([^;]+);/
+    expect(hand.match(range)?.[1]).toBe(fan.match(range)?.[1])
+    // The hand ends LARGER than it starts — that is the whole effect.
+    const from = Number(lift.match(/from\s*\{\s*scale:\s*([\d.]+)/)?.[1])
+    const to = Number(
+      lift.match(/to\s*\{\s*scale:\s*var\(--fan-scale-end,\s*([\d.]+)/)?.[1],
+    )
+    expect(from).toBe(1)
+    expect(to).toBeGreaterThan(1)
+    // Measured ceiling: at 1.15 the grown hand reaches -2px at a 1920
+    // viewport, i.e. the outer card is clipped by the page's `overflow-x`.
+    expect(to).toBeLessThanOrEqual(1.12)
+  })
+
+  it("keeps the sticker pile larger than a stuck sticker", () => {
+    // The pile is what you pick FROM, so it has to read as bigger than the
+    // same sticker already spent on a card. Both ends derive from these two
+    // numbers (see WhatsNewFeatureVote); a scale of 1 or less makes the pile
+    // vanish into the board it feeds, and the class-level test in that
+    // component's suite cannot see the value.
+    const root = blockBody(css, ":root {")
+    const stuck = root.match(/--watch-sticker-stuck:\s*([\d.]+)rem/)?.[1]
+    const scale = Number(
+      root.match(/--watch-sticker-pile-scale:\s*([\d.]+)/)?.[1],
+    )
+
+    expect(stuck).toBeDefined()
+    expect(scale).toBeGreaterThan(1)
+    // And not so far above it that the pile stops being a pile: at 6x it
+    // was competing with the cards it sits under.
+    expect(scale).toBeLessThanOrEqual(1.5)
+  })
+
   it("keeps the grain loops from realigning into a visible pattern", () => {
     // Drift and density run as two animations with non-harmonic periods.
     // Equal or multiple durations would resync every cycle and the grain

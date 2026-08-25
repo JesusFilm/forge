@@ -695,6 +695,45 @@ describe("WatchWhatsNewPage", () => {
     }
   })
 
+  it("grows the gathered hand as one piece, not card by card", () => {
+    // Per-card growth costs clearance proportional to CARD WIDTH — the
+    // card's edge advances over its neighbour's copy while that copy is
+    // pulled the other way — so no fixed rem gather can pay for it. At 1.12
+    // the measured copy clearance at 1920 went from 16px to -12px: struck
+    // through headings. Scaling the list multiplies the gaps along with the
+    // cards, so the clearances survive at every width.
+    const fan = container.querySelector(
+      '[data-testid="whats-new-audience-fan"]',
+    )
+    const cards = [
+      ...container.querySelectorAll('[data-testid="whats-new-audience-card"]'),
+    ]
+
+    expect(fan?.className).toContain("watch-scroll-fan-hand")
+    for (const card of cards) {
+      expect(card.parentElement).toBe(fan)
+      // The growth must not migrate onto the cards themselves.
+      expect(card.className).not.toContain("watch-scroll-fan-hand")
+    }
+  })
+
+  it("reserves room for the grown hand above the closing line", () => {
+    // The hand ends 12% larger than its slot, so its lowest rotated corner
+    // reaches about 20px below the list box — measured clearance to this
+    // paragraph at `mt-10` was -13px at 820 and -21px at 1920, i.e. a card
+    // corner resting on the first line. The reserve starts at `md`, which
+    // is where the fan itself starts.
+    const closing = container.querySelector(
+      '[data-testid="whats-new-audience-closing"]',
+    )
+    const fan = container.querySelector(
+      '[data-testid="whats-new-audience-fan"]',
+    )
+
+    expect(closing?.previousElementSibling).toBe(fan)
+    expect(closing?.className).toMatch(/\bmd:mt-1[68]\b/)
+  })
+
   it("fills each card with its colour and blends where they overlap", () => {
     const cards = [
       ...container.querySelectorAll('[data-testid="whats-new-audience-card"]'),
@@ -710,7 +749,7 @@ describe("WatchWhatsNewPage", () => {
       expect(card.className).toContain("mix-blend-screen")
     }
     // Blending is scoped to the card group, not the section behind it.
-    expect(cards[0].parentElement?.className).toContain("isolate")
+    expect(cards[0].closest("ul")?.className).toContain("isolate")
   })
 
   it("gathers the cards inward until they overlap", () => {
@@ -867,7 +906,37 @@ describe("WatchWhatsNewPage", () => {
     expect(bands[0].nextElementSibling).toBe(bands[1])
     expect(bands[1].nextElementSibling).toBeNull()
     for (const band of bands) {
-      expect(band.className).toContain("bg-white")
+      // Light, not necessarily the same light: the FAQ sits on a warm
+      // off-white so it reads as its own shelf. What must not come back is
+      // a dark fill on either band.
+      expect(band.className, band.getAttribute("data-testid") ?? "").toMatch(
+        /\bbg-(?:white|\[#f8f7f5\])(?![\w-])/,
+      )
+    }
+  })
+
+  it("keeps every fill on the light shelf on the warm side of neutral", () => {
+    // One warm axis for the whole shelf. A neutral or blue-leaning grey next
+    // to the warm off-white FAQ band reads as a different material, which is
+    // exactly how the vote cards looked before (#f5f5f7: blue above red).
+    // Checked across BOTH bands and every state's fill, including `hover:`
+    // variants, so a grey added later cannot quietly go cool.
+    const bands = [
+      ...container.querySelectorAll(
+        '[data-testid="whats-new-vote"], [data-testid="whats-new-faq"]',
+      ),
+    ]
+    const fills = bands.flatMap((band) =>
+      [band, ...band.querySelectorAll("*")].flatMap((el) => [
+        ...(el.getAttribute("class") ?? "").matchAll(/bg-\[#([0-9a-f]{6})\]/gi),
+      ]),
+    )
+
+    expect(fills.length).toBeGreaterThan(0)
+    for (const [utility, hex] of fills) {
+      const red = Number.parseInt(hex.slice(0, 2), 16)
+      const blue = Number.parseInt(hex.slice(4, 6), 16)
+      expect(red, utility).toBeGreaterThanOrEqual(blue)
     }
   })
 
