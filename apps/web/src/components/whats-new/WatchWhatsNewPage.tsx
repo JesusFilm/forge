@@ -23,6 +23,7 @@ import { WhatsNewFeatureVote } from "@/components/whats-new/WhatsNewFeatureVote"
 import { WhatsNewFormatDiagram } from "@/components/whats-new/WhatsNewFormatDiagram"
 import { WhatsNewAudienceQuiz } from "@/components/whats-new/WhatsNewAudienceQuiz"
 import { WhatsNewIceberg } from "@/components/whats-new/WhatsNewIceberg"
+import { WhatsNewNoteBoard } from "@/components/whats-new/WhatsNewNoteBoard"
 import { WhatsNewShot } from "@/components/whats-new/WhatsNewShot"
 import { WhatsNewLanguageSwitcher } from "@/components/whats-new/WhatsNewLanguageSwitcher"
 import { WhatsNewSelfId } from "@/components/whats-new/WhatsNewSelfId"
@@ -1126,9 +1127,11 @@ export function WatchWhatsNewPage({
             </div>
           </div>
         </section>
-        {/* The two blocks that ask the reader for something close the page,
-            on one white shelf that hands off to the white footer instead of
-            ending on another dark section. */}
+        {/* The three blocks that ask the reader for something close the
+            page. The cork band steps the page from the dark sections down
+            to the white shelf the vote and the FAQ share, which hands off
+            to the white footer instead of ending on another dark section. */}
+        <WhatsNewNoteBoard contentClass={WATCH_PAGE_CONTENT_CLASSES} />
         <WhatsNewFeatureVote contentClass={WATCH_PAGE_CONTENT_CLASSES} />
         <WhatsNewFaq contentClass={WATCH_PAGE_CONTENT_CLASSES} />
       </main>
