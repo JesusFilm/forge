@@ -23,6 +23,7 @@ import { WhatsNewFeatureVote } from "@/components/whats-new/WhatsNewFeatureVote"
 import { WhatsNewFormatDiagram } from "@/components/whats-new/WhatsNewFormatDiagram"
 import { WhatsNewAudienceQuiz } from "@/components/whats-new/WhatsNewAudienceQuiz"
 import { WhatsNewIceberg } from "@/components/whats-new/WhatsNewIceberg"
+import { WhatsNewLanguageBeforeAfter } from "@/components/whats-new/WhatsNewLanguageBeforeAfter"
 import { WhatsNewNoteBoard } from "@/components/whats-new/WhatsNewNoteBoard"
 import { WhatsNewShot } from "@/components/whats-new/WhatsNewShot"
 import { WhatsNewLanguageSwitcher } from "@/components/whats-new/WhatsNewLanguageSwitcher"
@@ -989,6 +990,18 @@ export function WatchWhatsNewPage({
             </div>
           </div>
         </section>
+
+        {/* Before and after — the language argument, on one real page.
+            Sits after "What is improving" and after the audiences quiz,
+            because its opening line leans on the 98%/2% figure that
+            quiz reveals. */}
+        <WhatsNewLanguageBeforeAfter
+          bodyClass={BODY_CLASS}
+          contentClass={WATCH_PAGE_CONTENT_CLASSES}
+          eyebrowClass={EYEBROW_CLASS}
+          headingClass={SECTION_HEADING_CLASS}
+          listClass={HAIRLINE_LIST_CLASS}
+        />
 
         {/* Where Watch is going next */}
         <section

@@ -15,6 +15,8 @@
  * availability depends on the individual video asset.
  */
 
+import type { EnglishAssistToken } from "@/components/watch-language-inventory/english-assist"
+
 export const WHATS_NEW_HERO = {
   eyebrow: "Watch · Product update",
   title: "Watch is changing. Here's why.",
@@ -44,6 +46,7 @@ export const WHATS_NEW_CONTENTS = [
   { id: "why", label: "Why it matters" },
   { id: "partners", label: "For partners" },
   { id: "improving", label: "What is improving" },
+  { id: "language", label: "Before & after" },
   { id: "next", label: "What's next" },
   { id: "team", label: "The team" },
   { id: "board", label: "The board" },
@@ -434,6 +437,195 @@ export const WHATS_NEW_DELIVERY = {
   closing:
     "None of this shows up in the interface, which is the point. For a partner in the field it shows up as a video that starts, plays, and downloads.",
 } as const
+
+/**
+ * Destinations the before/after section links to.
+ *
+ * `archive` carries its own absolute URL (it is off-site). The two
+ * on-site destinations name a route instead of a path so they resolve
+ * through `src/lib/routes.ts` — the single source of truth for watch
+ * URLs — rather than hard-coding a shape that a routing change would
+ * silently break.
+ */
+export type WhatsNewBeforeAfterLink =
+  | { kind: "archive"; label: string; href: string }
+  | { kind: "video"; label: string }
+  | { kind: "inventory"; label: string }
+
+/**
+ * Before/after evidence for the language claim above.
+ *
+ * Both panels are real SCREENSHOTS of ONE real address — the Modern
+ * Standard Arabic JESUS page — not illustrations of it.
+ * `scripts/capture-whats-new-shots.mjs` produces both
+ * (`--only arabic-2024,arabic-today`), from the top of the page at an
+ * identical viewport, because the argument is partly about what the
+ * WHOLE frame looks like: the 2024 page runs left to right in English,
+ * today's mirrors into Arabic.
+ *
+ * - `before` is the Internet Archive capture of 2024-11-16, the same
+ *   snapshot the panel's `archive` link opens. Pinned to that timestamp:
+ *   a bare wayback URL resolves to whatever capture is nearest today,
+ *   and the caption quotes this one.
+ * - `after` is production, not `--base`. Re-capture it after a watch
+ *   redesign — a shot that has drifted from the product is worse than
+ *   none — and re-read both captions when you do, because they quote
+ *   strings that have to still be visible in the frame.
+ *
+ * `alt` carries what the caption cannot: a screenshot of an interface is
+ * opaque to a screen reader, so the labels that make the argument are
+ * spelled out there in full.
+ */
+export const WHATS_NEW_BEFORE_AFTER = {
+  eyebrow: "Before and after",
+  heading: "The same Arabic page, less than two years apart",
+  intro: [
+    "The clearest way to show what this redesign is for is to look at one page. JESUS has been dubbed in Modern Standard Arabic for a very long time. The film was in Arabic. The page around it was not — and as recently as November 2024, it did not even run in the same direction.",
+    "Below is that page as the Internet Archive captured it on 16 November 2024, beside the same address today. The URL has not changed.",
+  ],
+  addressLabel: "One address, both panels",
+  address: "jesusfilm.org/watch/jesus.html/arabic-modern-standard.html",
+  /** Screen-reader name for the pair of screenshots. */
+  mockLabel: "The same page in November 2024 and today",
+  panels: [
+    {
+      id: "before",
+      badge: "Nov 2024",
+      badgeNote: "Internet Archive",
+      title: "What an Arabic speaker used to see",
+      shot: {
+        src: "/watch/images/whats-new/arabic-2024.webp",
+        alt: "The Modern Standard Arabic JESUS page in November 2024, captured by the Internet Archive. The whole layout runs left to right and every label is English: the title JESUS, a Play button, a runtime of 128 min, and the tabs DESCRIPTION and DISCUSSION QUESTIONS above a Download button. The only Arabic anywhere on it is the name of the language, اللغة العربية, inside a dropdown.",
+        width: 1800,
+        height: 1920,
+      },
+      note: "The page declared itself English, so it ran the way English runs — logo left, title left, everything reading left to right. Play, 128 min, DESCRIPTION, DISCUSSION QUESTIONS, Download. The only Arabic on it is the name of the language, tucked inside a dropdown.",
+      link: {
+        kind: "archive",
+        label: "Open the November 2024 capture",
+        href: "https://web.archive.org/web/20241116160206/https://www.jesusfilm.org/watch/jesus.html/arabic-modern-standard.html",
+      },
+    },
+    {
+      id: "after",
+      badge: "Today",
+      badgeNote: "Live",
+      title: "What an Arabic speaker sees now",
+      shot: {
+        src: "/watch/images/whats-new/arabic-today.webp",
+        alt: "The same address today, mirrored into right-to-left Arabic. The logo sits on the right, the search field reads ابحث أو تصفح المواضيع, and the kicker فيلم طويل — feature film — sits above the title يسوع. The buttons read شاهد الآن and مشاركة — watch now and share — over a line reading 128 د, FHD, 2,285 لغة, الترجمات المصاحبة: 57 لغة. Below them a chapter rail headed يسوع · 61 فصلًا runs right to left through المقدمة, ميلاد يسوع, and طفولة يسوع, beside a Download button reading تنزيل.",
+        width: 1800,
+        height: 1920,
+      },
+      note: "Arabic, and right to left. The page does not only swap the words — it mirrors. The logo, the search field, the buttons, and the chapter rail all run the other way, the way the language does. And the picker now offers 2,285 languages against 2,171 then.",
+      link: { kind: "video", label: "Open the page today" },
+    },
+  ],
+  seekers: {
+    eyebrow: "Why this is better",
+    heading: "People decide whether a page is for them before they press play",
+    paragraphs: [
+      "Ninety-eight out of every hundred people who arrive at Watch are seekers and believers, not staff. Someone who has just typed a question about Jesus into a search box reads the frame around the video before they read anything else. An English frame answers a question they never asked: this was made for somebody else.",
+      "Translating the interface is not decoration. It is what lets a person do ordinary things without guessing:",
+    ],
+    points: [
+      "Read a page that runs the way their language runs, instead of Arabic poured into a left-to-right frame built for English",
+      "Tell dubbed audio apart from subtitles before committing to a two-hour film",
+      "Read counts, durations, and plurals in the forms their language actually uses",
+      "Know what a button does before pressing it, on a connection where a wrong tap costs real money",
+      "Be found at all: an Arabic page that is genuinely in Arabic can answer an Arabic question, whether it is asked in a search engine or an assistant",
+    ],
+    closing:
+      "And this is not one page, or one language. The same translated, correctly-directed interface is published across the languages Watch serves, so the experience no longer quietly degrades the moment somebody steps outside English.",
+  },
+  /**
+   * The missionary half of the argument. The tooltip is REAL and shipped:
+   * every row below is a live `title` attribute on
+   * `/watch/{lang}.html/videos`, and the English side is imported from the
+   * same constant the product renders (`ENGLISH_ASSIST_COPY`) so this
+   * demonstration cannot drift from it. The labels are transcribed from
+   * `messages/ar.json` under `LanguageInventory`; the key that produces
+   * each one is named on its row.
+   *
+   * `lang` + `dir` are not decoration: Arabic set without them inside this
+   * English page reorders its own punctuation and digits.
+   */
+  missionaries: {
+    eyebrow: "And the other 2%",
+    heading: "We did not forget the people who work across languages",
+    paragraphs: [
+      "A missionary, translator, or ministry partner may open a dozen language collections in an afternoon and read none of them. Localizing the interface for seekers must not turn Watch into a guessing game for the people who use it as a tool.",
+      "So on Watch's language pages the labels stay in the reader's language and the English rides underneath. Hover a control or a status label and the browser tells you what it says — try it here:",
+    ],
+    hint: "Hover a label",
+    lang: "ar",
+    dir: "rtl",
+    rows: [
+      // Section shortcut, `LanguageInventory.collections`.
+      { label: "مجموعات", token: "sectionCollections" },
+      // Section shortcut, `LanguageInventory.subtitlesOnly`.
+      { label: "الترجمة المصاحبة فقط", token: "sectionSubtitlesOnly" },
+      // Card eyebrow, `LanguageInventory.languageCollection`.
+      { label: "مجموعة اللغة", token: "labelLanguageCollection" },
+      // Card action, `LanguageInventory.openCollection`.
+      { label: "افتح المجموعة", token: "openCollection" },
+      // Availability chip, `LanguageInventory.subtitles`.
+      { label: "الترجمة المصاحبة", token: "stateSubtitlesOnly" },
+      // Section metric, `LanguageInventory.itemCount`.
+      { label: "24 عناصر", token: "labelItemCount" },
+    ],
+    footnote:
+      "It is the browser's own tooltip: nothing extra to download, nothing hydrated, and nothing on screen at all for the reader who never goes looking for it.",
+    link: { kind: "inventory", label: "Try it on the Arabic collection" },
+  },
+  /** Direction, not a shipped release — the same rule as the roadmap section. */
+  dualLanguage: {
+    eyebrow: "Being considered",
+    heading: "Next: a dual-language mode",
+    body: "A tooltip is a good answer for a glance and a poor one for a whole shift. We are considering a dual-language mode that shows both languages at once — for partners who work between them all day, and for people learning a language who would rather read a page twice than switch it. It is not built yet, and whether we build it depends on hearing that it would help.",
+  },
+} as const satisfies {
+  eyebrow: string
+  heading: string
+  intro: readonly string[]
+  addressLabel: string
+  address: string
+  mockLabel: string
+  panels: readonly {
+    id: string
+    badge: string
+    badgeNote: string
+    title: string
+    /**
+     * Captured by `scripts/capture-whats-new-shots.mjs`. `alt` must keep
+     * naming the labels the caption argues about — it is the only route
+     * to them for a reader who cannot see the shot.
+     */
+    shot: { src: string; alt: string; width: number; height: number }
+    note: string
+    link: WhatsNewBeforeAfterLink
+  }[]
+  seekers: {
+    eyebrow: string
+    heading: string
+    paragraphs: readonly string[]
+    points: readonly string[]
+    closing: string
+  }
+  missionaries: {
+    eyebrow: string
+    heading: string
+    paragraphs: readonly string[]
+    hint: string
+    /** BCP-47 tag and writing direction for every `rows[].label`. */
+    lang: string
+    dir: "ltr" | "rtl"
+    rows: readonly { label: string; token: EnglishAssistToken }[]
+    footnote: string
+    link: WhatsNewBeforeAfterLink
+  }
+  dualLanguage: { eyebrow: string; heading: string; body: string }
+}
 
 export const WHATS_NEW_AUDIENCES = {
   eyebrow: "Why these changes matter",
