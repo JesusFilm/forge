@@ -23,6 +23,7 @@ import { WhatsNewFeatureVote } from "@/components/whats-new/WhatsNewFeatureVote"
 import { WhatsNewFormatDiagram } from "@/components/whats-new/WhatsNewFormatDiagram"
 import { WhatsNewAudienceQuiz } from "@/components/whats-new/WhatsNewAudienceQuiz"
 import { WhatsNewIceberg } from "@/components/whats-new/WhatsNewIceberg"
+import { WhatsNewLanguageBeforeAfter } from "@/components/whats-new/WhatsNewLanguageBeforeAfter"
 import { WhatsNewLanguageSwitcher } from "@/components/whats-new/WhatsNewLanguageSwitcher"
 import {
   WHATS_NEW_AUDIENCES,
@@ -554,6 +555,15 @@ export function WatchWhatsNewPage({
             </div>
           </div>
         </section>
+
+        {/* Before and after — the language argument, on one real page */}
+        <WhatsNewLanguageBeforeAfter
+          bodyClass={BODY_CLASS}
+          contentClass={WATCH_PAGE_CONTENT_CLASSES}
+          eyebrowClass={EYEBROW_CLASS}
+          headingClass={SECTION_HEADING_CLASS}
+          listClass={HAIRLINE_LIST_CLASS}
+        />
 
         {/* Why these changes matter */}
         <section
