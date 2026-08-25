@@ -362,6 +362,17 @@
   }
 }
 
+/* The opening zoom's factor, mirrored as a registered custom property so
+   things INSIDE the scaled card can divide it back out. Registration is
+   what makes it interpolate — an unregistered custom property animates in
+   discrete jumps. Inherits, and defaults to 1, so every layer that does not
+   sit inside a zooming card divides by nothing. */
+@property --era-zoom {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 1;
+}
+
 /* --- Opening zoom ------------------------------------------------------
    The section does not open on its card. It opens on the lead
    photograph filling the screen, and pulls back into the card as the
@@ -371,10 +382,15 @@
   from {
     translate: 0 var(--intro-lift, 0);
     scale: var(--intro-scale, 1);
+    /* Must track `scale` exactly. `scale` is animated directly rather than
+       read from this property, so that a browser which cannot interpolate
+       the mirror still gets the zoom — it just gets uncompensated grain. */
+    --era-zoom: var(--intro-scale, 1);
   }
   to {
     translate: 0 0;
     scale: 1;
+    --era-zoom: 1;
   }
 }
 
@@ -1144,7 +1160,7 @@
   inset: -15%;
   background-image: var(--watch-grain-image);
   background-repeat: repeat;
-  background-size: 74px 74px;
+  background-size: calc(74px / var(--era-zoom)) calc(74px / var(--era-zoom));
   /* `screen` is the only blend that shows in the shadows: overlay against
      a near-black backdrop multiplies to nothing. Kept low so it adds
      sparkle without milking the blacks. */
@@ -1164,7 +1180,14 @@
   inset: -15%;
   background-image: var(--watch-grain-image);
   background-repeat: repeat;
-  background-size: 150px 150px;
+  /* Divided by the zoom so the tile keeps ONE size on screen. Scaled with
+     the card, a 150px tile becomes 300px at the opening frame and the
+     repeat becomes legible as a pattern, which is the one thing grain must
+     never look like. Costs a background re-raster per frame while the zoom
+     runs; it is static at every other moment, since `--era-zoom` is 1.
+     Deliberately not compensating the pile's sink scale as well: that only
+     reaches 0.865, and those cards are behind a scrim by then. */
+  background-size: calc(150px / var(--era-zoom)) calc(150px / var(--era-zoom));
   opacity: 0.72;
   mix-blend-mode: overlay;
   pointer-events: none;

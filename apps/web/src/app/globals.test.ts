@@ -235,6 +235,47 @@ describe("scroll-driven timeline choreography", () => {
     expect(rule).toContain("100vw")
   })
 
+  it("holds the grain tile at one on-screen size through the zoom", () => {
+    // The grain sits inside the card, so the opening zoom scales it too: a
+    // 150px tile renders at 300px on the first frame and the repeat becomes
+    // legible as a pattern, which is the one thing grain must never look
+    // like. Both layers divide the tile back out by the zoom factor.
+    for (const layer of [".watch-grain {", ".watch-grain-fine {"]) {
+      const rule = blockBody(css, layer)
+      expect(rule, layer).toMatch(
+        /background-size:\s*calc\(\s*\d+px\s*\/\s*var\(--era-zoom\)\s*\)/,
+      )
+    }
+  })
+
+  it("registers the zoom mirror so it can interpolate and be inherited", () => {
+    // Unregistered, a custom property animates in discrete jumps — the tile
+    // would snap between two sizes instead of holding one. And the grain
+    // reads it from an ancestor, so it has to inherit. The 1 default is what
+    // keeps every layer outside a zooming card dividing by nothing.
+    const rule = blockBody(css, "@property --era-zoom")
+
+    expect(rule).toContain('syntax: "<number>"')
+    expect(rule).toContain("inherits: true")
+    expect(rule).toContain("initial-value: 1")
+  })
+
+  it("keeps the zoom mirror tracking the scale it mirrors", () => {
+    // `scale` and `--era-zoom` are animated as separate declarations, so
+    // nothing but this stops them drifting apart — and a mirror that lags
+    // the real scale mis-sizes the tile by exactly that difference.
+    const frames = blockBody(css, "@keyframes watch-scroll-intro")
+    const from = frames.slice(0, frames.indexOf("to {"))
+    const to = frames.slice(frames.indexOf("to {"))
+
+    expect(from).toMatch(/scale:\s*var\(--intro-scale[^)]*\)/)
+    expect(from).toMatch(/--era-zoom:\s*var\(--intro-scale[^)]*\)/)
+    // Anchored on the terminator: an unanchored `1` also matches `1.4`,
+    // which is exactly the drift this is here to catch.
+    expect(to).toMatch(/scale:\s*1\s*;/)
+    expect(to).toMatch(/--era-zoom:\s*1\s*;/)
+  })
+
   it("keeps the grain loops from realigning into a visible pattern", () => {
     // Drift and density run as two animations with non-harmonic periods.
     // Equal or multiple durations would resync every cycle and the grain
