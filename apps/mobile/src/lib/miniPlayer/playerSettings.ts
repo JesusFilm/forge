@@ -18,7 +18,8 @@ export const DEFAULT_PLAYBACK_SPEED: PlaybackSpeed = 1
 export type PlayerSettingsSnapshot = {
   speed: PlaybackSpeed
   qualityTier: QualityTier
-  /** The content the settings belong to — `sessionIdentityKey` shaped. */
+  /** The content the settings belong to — the host's slug-stable `videoKey`,
+   *  never id-shaped: the seed path flips videoId mid-playback. */
   contentKey: string | null
 }
 

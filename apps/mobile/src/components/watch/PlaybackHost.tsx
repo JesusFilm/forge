@@ -53,6 +53,8 @@ import {
   type MiniPlayerLayoutConfig,
 } from "../../lib/miniPlayer/layout"
 import {
+  DEFAULT_PLAYBACK_SPEED,
+  DEFAULT_QUALITY_TIER,
   effectivePlayerSettings,
   getPlayerSettingsStore,
 } from "../../lib/miniPlayer/playerSettings"
@@ -359,6 +361,13 @@ function ActivePlaybackHost({
       ? null
       : applyQualityConstraint(sourceUrl, effectiveSettings.qualityTier)
 
+  // R13's takeover reset and the key's activation in ONE call: an equal key
+  // preserves the settings (minimize/restore, remount — AE6); a different one
+  // clears them (AE5). An empty key (a sourceless gap) names nothing: skip it.
+  useEffect(() => {
+    if (videoKey !== "") settingsStore.resetFor(videoKey)
+  }, [settingsStore, videoKey])
+
   // What the player verifiably HOLDS (applied, not merely requested): the
   // admission fallback below may only trust `player.playing` for this source.
   const appliedSourceUrlRef = useRef<string | null>(null)
@@ -535,6 +544,17 @@ function ActivePlaybackHost({
     }
   }, [player])
 
+  // R5: a speed pick lands on the live rate at once — no pause, no seek, no
+  // source change — and on mount, so an adopted player picks up the session
+  // rate. Deliberately not cast-gated: the local player is paused while casting.
+  useEffect(() => {
+    try {
+      player.playbackRate = effectiveSettings.speed
+    } catch {
+      // Native player already released
+    }
+  }, [player, effectiveSettings.speed])
+
   const openSheetCount = useSyncExternalStore(
     sheetCounter.subscribe,
     sheetCounter.count,
@@ -615,17 +635,32 @@ function ActivePlaybackHost({
     return () => store.setPlaybackFactsSource(null)
   }, [store, player])
 
-  // R25 stops playback on a subject change, R6 on a dismissal. Neither is
-  // covered by the teardown — an expanded screen keeps this host mounted, and a
-  // dismissed window is exactly the case where nothing unmounts.
+  // R25 stops playback on a subject change, R6 on a dismissal — neither is
+  // covered by the teardown (an expanded screen keeps this host mounted). Every
+  // real ending also resets the playback-session settings (R13).
   useEffect(() => {
     return getMiniPlayerStore().onEnd((event) => {
-      if (event.reason !== "abandoned" && event.reason !== "dismissed") return
-      try {
-        player.pause()
-      } catch {
-        // Native player already released
+      if (
+        event.reason !== "abandoned" &&
+        event.reason !== "dismissed" &&
+        event.reason !== "replaced"
+      )
+        return
+      // A replacement's player is being taken over — pausing it would stall
+      // the arriving video's start.
+      if (event.reason !== "replaced") {
+        try {
+          player.pause()
+        } catch {
+          // Native player already released
+        }
       }
+      // R13: the session is over. Key first, so the reset is ONE effective
+      // transition; the next video's resetFor re-keys.
+      const settings = getPlayerSettingsStore()
+      settings.setContentKey(null)
+      settings.setSpeed(DEFAULT_PLAYBACK_SPEED)
+      settings.setQualityTier(DEFAULT_QUALITY_TIER)
     })
   }, [player])
 
