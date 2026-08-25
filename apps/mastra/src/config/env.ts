@@ -313,6 +313,20 @@ const envSchema = z.object({
   // Emergency architecture-exception kill switch. False blocks new canonical
   // starts and retries while status, playback, approval, and cancel stay live.
   DEVOTIONAL_NEW_RUNS_ENABLED: z.enum(["true", "false"]).default("false"),
+  // Whether the three-critic quality gate BLOCKS, or only records what it found.
+  //
+  // Defaults to report-only ("false") on purpose. The gate fails closed — a
+  // critic that could not RUN counts as blocking — which is the right posture
+  // for enforcement and the wrong one for a first rollout: an OpenRouter outage
+  // would cost that day's devotional with nobody yet knowing the critics' false
+  // positive rate. So the verdict is recorded in BOTH modes and enforcement is a
+  // separate, deliberate flip.
+  //
+  // Default-off rather than default-on-with-an-override, because the weaker
+  // posture must not depend on an operator remembering to set a variable before
+  // a deploy. Turning enforcement ON is the act that needs remembering, and
+  // that is the direction where forgetting is safe.
+  DEVOTIONAL_QUALITY_GATE_ENFORCED: z.enum(["true", "false"]).default("false"),
   // Dedicated bearer allowlist for the ai-chat history read routes (feat-241,
   // KTD2) — NOT the shared MASTRA_SERVICE_API_KEYS pool. Bulk conversation read
   // is scoped to its one intended holder (the chat service) so pool keys
@@ -935,6 +949,9 @@ export const env = envSchema.parse({
   ),
   DEVOTIONAL_NEW_RUNS_ENABLED: emptyToUndefined(
     process.env.DEVOTIONAL_NEW_RUNS_ENABLED,
+  ),
+  DEVOTIONAL_QUALITY_GATE_ENFORCED: emptyToUndefined(
+    process.env.DEVOTIONAL_QUALITY_GATE_ENFORCED,
   ),
   AI_CHAT_SERVICE_API_KEYS: emptyToUndefined(
     process.env.AI_CHAT_SERVICE_API_KEYS,
@@ -2015,6 +2032,19 @@ export function getOpenRouterApiKey(): string | undefined {
  * `AI_GATEWAY_CHAT_ENABLED`), NOT JS truthiness — `"false"` (or any other
  * value) keeps the route disabled, preserving the safety default.
  */
+/**
+ * Does the devotional quality gate BLOCK, or only record what it found?
+ *
+ * Report-only by default. The gate fails closed, which is right for enforcement
+ * and wrong for a first rollout: an OpenRouter outage would cost that day's
+ * devotional before anyone knows the critics' false-positive rate. The verdict is
+ * recorded in both modes, so enforcement can be turned on once the recorded runs
+ * say it is safe to.
+ */
+export function isDevotionalQualityGateEnforced(): boolean {
+  return env.DEVOTIONAL_QUALITY_GATE_ENFORCED === "true"
+}
+
 export function isSeekerRouteEnabled(): boolean {
   return env.SEEKER_ROUTE_ENABLED === "true"
 }
