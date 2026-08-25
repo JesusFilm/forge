@@ -28,6 +28,7 @@ import {
 } from "react"
 import {
   Animated,
+  AppState,
   BackHandler,
   Platform,
   StyleSheet,
@@ -378,6 +379,10 @@ function ActivePlaybackHost({
   // departed screen carries a session that screen's unmount already ended.
   const slotOwned = snapshot.slotId != null
   const castActive = slotOwned && request.castActive
+  // Read at sourceLoad time, not effect-capture time: a cast session can
+  // start inside the swap window the resume latch spans (KTD4).
+  const castActiveRef = useRef(castActive)
+  castActiveRef.current = castActive
   const { player, isPlaying, progressFeed } = useManagedVideoPlayer(
     constrainedSourceUrl,
     (p) => {
@@ -475,6 +480,13 @@ function ActivePlaybackHost({
         reverted_tier: pending.revertTier,
       })
       if (pending.revertTier == null) return
+      // A viewer already re-picked the revert tier: the write would no-op, no
+      // swap re-keys the timer, and a re-armed latch would go stale. Stay clear.
+      if (
+        getPlayerSettingsStore().getSnapshot().qualityTier ===
+        pending.revertTier
+      )
+        return
       // Re-arm for the revert swap so the old stream resumes in place. The
       // null revertTier bounds this to one revert per pick.
       pendingQualityResumeRef.current = { ...pending, revertTier: null }
@@ -533,7 +545,15 @@ function ActivePlaybackHost({
               : Math.max(0, pending.positionSeconds)
         }
         player.playbackRate = effectiveSpeedRef.current
-        if (pending?.wasPlaying) player.play()
+        // The latch's resume takes the same vetoes as every local resume path:
+        // never over an active cast session (KTD4), never audio the viewer
+        // cannot see — the adapter's 'active' handler re-resumes on return.
+        if (
+          pending?.wasPlaying &&
+          !castActiveRef.current &&
+          AppState.currentState === "active"
+        )
+          player.play()
       } catch {
         // Native player already released
       }

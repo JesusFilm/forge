@@ -147,7 +147,7 @@ jest.mock("../../../lib/authSession", () => {
 })
 
 import { StrictMode, act } from "react"
-import { Animated, Dimensions, StyleSheet } from "react-native"
+import { Animated, AppState, Dimensions, StyleSheet } from "react-native"
 
 import { ENDED_FADE_DURATION_MS } from "../MiniPlayerWindow"
 import {
@@ -2387,6 +2387,37 @@ describe("replacement (R12)", () => {
       expect(call[0]).toBe(URL_A)
     unsubscribe()
   })
+
+  it("never pauses the taken-over player: a pause would stall the arriving video", async () => {
+    const first = attachSlot()
+    await renderHost()
+    await startPlayback()
+    video.__player.currentTime = 90
+    await detach(first)
+    expect(sessionStore.getSnapshot().session?.videoId).toBe("video-a")
+
+    const endings: MiniPlayerEndEvent[] = []
+    const unsubscribe = sessionStore.onEnd((event) => endings.push(event))
+    video.__player.pause.mockClear()
+    await attachSlotInAct({
+      streamingUrl: URL_B,
+      progressVideoId: "video-b",
+      session: {
+        ...SESSION_A,
+        videoId: "video-b",
+        videoSlug: "video-b-slug",
+        title: "Video B",
+      },
+    })
+    await act(async () => {
+      video.__settleReplace()
+    })
+
+    // The "replaced" ending really fired — the no-pause claim is about it.
+    expect(endings.map((e) => e.reason)).toEqual(["replaced"])
+    expect(video.__player.pause).not.toHaveBeenCalled()
+    unsubscribe()
+  })
 })
 
 /**
@@ -2420,6 +2451,17 @@ describe("quality tier swaps (U2)", () => {
       ([event]) => event === "player_settings.quality_swap_released",
     )
   }
+
+  // The background veto's axis. Jest's default is null, not "active", so a
+  // foreground is stood up — else every case passes the veto for the wrong
+  // reason and the cast case discriminates nothing. Restored against leaks.
+  const realAppState = AppState.currentState
+  beforeEach(() => {
+    ;(AppState as { currentState: string }).currentState = "active"
+  })
+  afterEach(() => {
+    ;(AppState as { currentState: string }).currentState = realAppState
+  })
 
   it("AE1: a tier pick mid-play reloads capped, then resumes at the captured position and speed", async () => {
     attachSlot({ autostart: false })
@@ -2556,6 +2598,115 @@ describe("quality tier swaps (U2)", () => {
     expect(video.__player.currentTime).toBe(42)
   })
 
+  it("a cross-asset swap mid-pick invalidates the latch: no seek to the stale capture", async () => {
+    const id = attachSlot({ autostart: false })
+    await renderHost()
+    await startPlayback()
+    await act(async () => {
+      settings().setSpeed(1.5)
+    })
+    video.__player.currentTime = 500
+    video.__player.duration = 1800
+    await act(async () => {
+      settings().setQualityTier("high")
+    })
+    expect(video.__player.replaceAsync).toHaveBeenCalledWith(CAPPED_HIGH_A)
+
+    // A dub change lands mid-swap: a DIFFERENT asset, same slug. The capture
+    // belongs to the old stream and must not seek the arriving one.
+    await act(async () => {
+      requestStore.updateSlot(
+        id,
+        makeRequest({
+          autostart: false,
+          streamingUrl: URL_B,
+          progressLanguageSlug: "french",
+          session: { ...SESSION_A, languageSlug: "french" },
+        }),
+      )
+    })
+    expect(video.__player.replaceAsync).toHaveBeenLastCalledWith(CAPPED_HIGH_B)
+
+    await act(async () => {
+      video.__settleReplace()
+    })
+    await act(async () => {
+      video.__settleReplace()
+    })
+    // SYNTHETIC: the fresh item's rate-1 state, stood up by hand (see U3).
+    video.__player.playbackRate = 1
+    await act(async () => {
+      video.__player.__emit("sourceLoad")
+    })
+
+    // No seek to 500 — the new dub starts at zero. The rate still rides.
+    expect(video.__player.currentTime).toBe(0)
+    expect(video.__player.playbackRate).toBe(1.5)
+  })
+
+  it("the latch defers to a cast session that starts mid-swap: seek and rate land, play does not", async () => {
+    const id = attachSlot({ autostart: false })
+    await renderHost()
+    await startPlayback()
+    await act(async () => {
+      settings().setSpeed(1.5)
+    })
+    video.__player.currentTime = 400
+    video.__player.duration = 900
+    await act(async () => {
+      settings().setQualityTier("high")
+    })
+    expect(video.__player.replaceAsync).toHaveBeenCalledWith(CAPPED_HIGH_A)
+
+    // The swap window spans seconds on-device; a receiver takes over inside it.
+    await act(async () => {
+      requestStore.updateSlot(
+        id,
+        makeRequest({ autostart: false, castActive: true }),
+      )
+    })
+    await act(async () => {
+      video.__settleReplace()
+    })
+    await act(async () => {
+      video.__player.__emit("sourceLoad")
+    })
+
+    // KTD4: never local audio over the receiver. Only the test's own play.
+    expect(video.__player.play).toHaveBeenCalledTimes(1)
+    expect(video.__player.currentTime).toBe(400)
+    expect(video.__player.playbackRate).toBe(1.5)
+  })
+
+  it("the latch never starts audio in the background: seek and rate land, play does not", async () => {
+    attachSlot({ autostart: false })
+    await renderHost()
+    await startPlayback()
+    await act(async () => {
+      settings().setSpeed(1.5)
+    })
+    video.__player.currentTime = 400
+    video.__player.duration = 900
+    await act(async () => {
+      settings().setQualityTier("high")
+    })
+    expect(video.__player.replaceAsync).toHaveBeenCalledWith(CAPPED_HIGH_A)
+
+    // The app backgrounds inside the swap window; the adapter's 'active'
+    // handler owns the eventual resume, not this latch.
+    ;(AppState as { currentState: string }).currentState = "background"
+    await act(async () => {
+      video.__settleReplace()
+    })
+    await act(async () => {
+      video.__player.__emit("sourceLoad")
+    })
+
+    expect(video.__player.play).toHaveBeenCalledTimes(1)
+    expect(video.__player.currentTime).toBe(400)
+    expect(video.__player.playbackRate).toBe(1.5)
+  })
+
   it("releases on a load error: tier reverted, one log, and the revert leg resumes in place", async () => {
     datadog.datadogLog.warn.mockClear()
     attachSlot({ autostart: false })
@@ -2621,6 +2772,46 @@ describe("quality tier swaps (U2)", () => {
     expect(releaseLogs()).toHaveLength(2)
 
     // And the latch is gone: a later load event seeks nothing.
+    video.__player.currentTime = 7
+    await act(async () => {
+      video.__player.__emit("sourceLoad")
+    })
+    expect(video.__player.currentTime).toBe(7)
+  })
+
+  it("a no-op revert (the viewer already re-picked the revert tier) clears the latch outright", async () => {
+    datadog.datadogLog.warn.mockClear()
+    attachSlot({ autostart: false })
+    await renderHost()
+    await startPlayback()
+    video.__player.currentTime = 400
+    video.__player.duration = 900
+    await act(async () => {
+      settings().setQualityTier("high")
+    })
+    // The viewer re-picks the original tier mid-swap: the effective URL is
+    // already back where the revert would put it.
+    await act(async () => {
+      settings().setQualityTier("auto")
+    })
+    expect(video.__player.replaceAsync).toHaveBeenCalledTimes(2)
+    expect(video.__player.replaceAsync).toHaveBeenLastCalledWith(URL_A)
+
+    await act(async () => {
+      video.__player.__emit("statusChange", { status: "error" })
+    })
+    expect(releaseLogs()).toHaveLength(1)
+    expect(settings().getSnapshot().qualityTier).toBe("auto")
+    // The revert write no-ops, so no swap re-keys the timer: a re-armed latch
+    // here would be timer-less and stale. It must clear instead.
+    expect(video.__player.replaceAsync).toHaveBeenCalledTimes(2)
+
+    await act(async () => {
+      video.__settleReplace()
+    })
+    await act(async () => {
+      video.__settleReplace()
+    })
     video.__player.currentTime = 7
     await act(async () => {
       video.__player.__emit("sourceLoad")
