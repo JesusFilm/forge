@@ -306,6 +306,12 @@ describe("dismissal", () => {
         typeof n.props.onRequestClose === "function",
     )
     expect(modals.length).toBeGreaterThan(0)
+    // Fullscreen locks the app to landscape; RN Modal defaults to
+    // portrait-only. No common orientation aborts the app in UIKit's
+    // presentation path (reproduced on-device 2026-08-26), so pin both.
+    expect(modals[0].props.supportedOrientations).toEqual(
+      expect.arrayContaining(["portrait", "landscape"]),
+    )
     await act(async () => {
       ;(modals[0].props.onRequestClose as () => void)()
     })

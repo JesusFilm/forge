@@ -158,6 +158,9 @@ export function PlayerSettingsSheet({
       transparent
       animationType="slide"
       statusBarTranslucent
+      // Fullscreen locks the app to landscape while the Modal's default is
+      // portrait-only; UIKit aborts a presentation with no common orientation.
+      supportedOrientations={["portrait", "landscape"]}
       onRequestClose={onClose}
     >
       <View style={styles.overlay}>
