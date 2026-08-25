@@ -726,7 +726,9 @@ describe("WatchWhatsNewPage", () => {
     }
   })
 
-  it("keeps the improvements numbered in source order", () => {
+  it("keeps the improvements in source order", () => {
+    // The grid places a featured card on its own row, so DOM order is what
+    // holds the reading order to the order the copy was written in.
     const cards = [
       ...container.querySelectorAll(
         '[data-testid="whats-new-improvement-card"]',
@@ -736,15 +738,26 @@ describe("WatchWhatsNewPage", () => {
     expect(cards.map((card) => card.querySelector("h3")?.textContent)).toEqual(
       WHATS_NEW_IMPROVEMENTS.map((item) => item.title),
     )
-    expect(
-      cards.map(
-        (card) =>
-          card.querySelector("span.tabular-nums")?.textContent ??
-          [...card.querySelectorAll("span")]
-            .map((s) => s.textContent)
-            .find((t) => /^0\d$/.test(t ?? "")),
+  })
+
+  it("leaves the improvement cards free of meta chrome", () => {
+    // Shot, title, copy — nothing between the screenshot and the heading.
+    // An ordinal, rule, or icon reintroduced here is what this catches.
+    const cards = [
+      ...container.querySelectorAll(
+        '[data-testid="whats-new-improvement-card"]',
       ),
-    ).toEqual(["01", "02", "03", "04", "05"])
+    ]
+
+    expect(cards).not.toHaveLength(0)
+    for (const card of cards) {
+      expect(card.querySelector("svg")).toBeNull()
+      expect(card.textContent).not.toMatch(/\b0\d\b/)
+      const heading = card.querySelector("h3")
+      expect(
+        heading?.previousElementSibling?.querySelector("img"),
+      ).not.toBeNull()
+    }
   })
 
   it("puts the divider only on right-hand cells", () => {
@@ -759,6 +772,111 @@ describe("WatchWhatsNewPage", () => {
 
     expect(dividers).toEqual([false, true, false, false, true])
     expect(cards[2].className).toContain("lg:col-span-2")
+  })
+
+  it("gives each improvement a distinct colour band bled to the cell edges", () => {
+    // The tint is declared on the cell (so it inherits) but painted by a
+    // band sized off the shot. Distinct per card is the point — the Set
+    // check is what a single-colour regression trips on.
+    const cells = [
+      ...container.querySelectorAll<HTMLElement>(
+        '[data-testid="whats-new-improvement-card"]',
+      ),
+    ]
+
+    expect(cells).toHaveLength(WHATS_NEW_IMPROVEMENTS.length)
+    const pairs = cells.map(
+      (cell) =>
+        `${cell.style.getPropertyValue("--tint-from")}->${cell.style.getPropertyValue("--tint-to")}`,
+    )
+    expect(pairs).toEqual(
+      WHATS_NEW_IMPROVEMENTS.map(
+        (item) => `${item.tint.from}->${item.tint.to}`,
+      ),
+    )
+    expect(new Set(pairs).size).toBe(cells.length)
+
+    for (const cell of cells) {
+      const band = cell.querySelector<HTMLElement>(
+        '[data-testid="whats-new-tint-band"]',
+      )
+      expect(band).not.toBeNull()
+      // The radials live in globals.css keyed on this class name; a rename
+      // on either side leaves a band with insets, a mask, and no colour.
+      expect(band!.className).toContain("whats-new-tint-band")
+      // Every negative inset cancels one of the cell's padding steps; drop
+      // one and the band stops short of that edge at that breakpoint.
+      for (const inset of [
+        "-top-10",
+        "-right-6",
+        "-left-6",
+        "sm:-right-8",
+        "sm:-left-8",
+        "lg:-top-14",
+        "lg:-right-12",
+        "lg:-left-12",
+      ]) {
+        expect(band!.className, inset).toContain(inset)
+      }
+    }
+  })
+
+  it("grains every colour band with the shared overlay", () => {
+    // The same cached overlay.svg the hero and the Watch sections already
+    // use, not a second noise asset. `isolate` on the band is load-bearing:
+    // the overlay multiplies, so without a stacking context it darkens the
+    // page behind the band instead of the band's own colour.
+    const bands = [
+      ...container.querySelectorAll<HTMLElement>(
+        '[data-testid="whats-new-tint-band"]',
+      ),
+    ]
+
+    expect(bands).toHaveLength(WHATS_NEW_IMPROVEMENTS.length)
+    for (const band of bands) {
+      expect(band.className).toMatch(/(^|\s)isolate(\s|$)/)
+      const grain = band.firstElementChild
+      expect(grain?.className).toContain("overlay.svg")
+      expect(grain?.className).toContain("mix-blend-multiply")
+    }
+  })
+
+  it("stops the colour band above the copy", () => {
+    // The whole point of sizing the band off the shot: it must not sit
+    // behind the heading or body text. Put it back on the cell and the
+    // copy is inside the coloured element again.
+    for (const cell of container.querySelectorAll(
+      '[data-testid="whats-new-improvement-card"]',
+    )) {
+      const band = cell.querySelector('[data-testid="whats-new-tint-band"]')!
+      const wrapper = band.parentElement!
+
+      expect(wrapper.contains(cell.querySelector("h3"))).toBe(false)
+      expect(wrapper.contains(cell.querySelector("p"))).toBe(false)
+      // Containment alone is not enough, and jsdom has no layout to check:
+      // the band is absolutely positioned, so what actually bounds it is
+      // its nearest POSITIONED ancestor. Drop `relative` here (or make the
+      // wrapper `display:contents`, which generates no box at all) and the
+      // band resolves against the cell again and covers the copy, with
+      // every containment assertion above still green.
+      expect(wrapper.className).toMatch(/(^|\s)relative(\s|$)/)
+      expect(wrapper.className).not.toMatch(/(^|\s)contents(\s|$)/)
+      expect(
+        wrapper.querySelector('[data-testid="whats-new-shot-frame"]'),
+      ).not.toBeNull()
+    }
+  })
+
+  it("clips the grid so a corner cell cannot square off the rounded frame", () => {
+    // Each cell paints to its own edges now, so without this the two corner
+    // cells fill their square corners and the rounded border floats over
+    // the colour.
+    const grid = container.querySelector<HTMLElement>(
+      '[data-testid="whats-new-improvement-card"]',
+    )!.parentElement!
+
+    expect(grid.className).toMatch(/\brounded-2xl\b/)
+    expect(grid.className).toMatch(/\boverflow-hidden\b/)
   })
 
   it("singles out the language card among the plain ones", () => {

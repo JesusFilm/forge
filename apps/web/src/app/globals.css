@@ -243,6 +243,25 @@
    move an `opacity: 0` or a `transform` start state out of this block.
    --------------------------------------------------------------------- */
 
+/*
+ * Entrance for a grid tile, as opposed to a free-floating card.
+ *
+ * Opacity only, deliberately: an improvement cell is bounded on its sides
+ * by the grid's 1px rules, and those rules are drawn by the NEIGHBOURING
+ * cell. Translating or scaling one cell therefore slides it out from under
+ * a rule that has not moved, opening a visible strip — measured at 6.47px
+ * with `watch-scroll-rise`. Invisible while the cells were transparent;
+ * obvious the moment they started painting colour to their own edges.
+ */
+@keyframes watch-scroll-tile-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
 @keyframes watch-scroll-rise {
   from {
     opacity: 0;
@@ -847,11 +866,13 @@
 
 @supports (animation-timeline: view()) {
   @media (prefers-reduced-motion: no-preference) {
+    /* Improvement grid tiles. See `watch-scroll-tile-in` for why this one
+       may not carry a transform, unlike the era cards below. */
     .watch-scroll-card {
-      animation: watch-scroll-rise linear both;
+      animation: watch-scroll-tile-in linear both;
       animation-timeline: view();
       animation-range: entry 4% cover 26%;
-      will-change: opacity, transform;
+      will-change: opacity;
     }
 
     .watch-scroll-beat {
@@ -1714,4 +1735,55 @@
   .search-overlay-scroll:hover {
     scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
   }
+}
+
+/**
+ * Colour band behind each improvement shot on /watch/whats-new.
+ *
+ * Three radials over a mixed linear base rather than one flat linear: at
+ * this size a single sweep reads as a printed swatch, while overlapping
+ * pools of the two tint stops give each card its own shape. The base is
+ * what stops the corners going bald where no radial reaches.
+ *
+ * Lives here rather than as an arbitrary Tailwind value because the
+ * `color-mix()` calls and nested commas need underscore-escaping that is
+ * unreadable and easy to break silently. `--tint-from` / `--tint-to` are
+ * set per cell in WatchWhatsNewPage; the element that carries this class
+ * also carries a mask so the band ends on a fade.
+ */
+.whats-new-tint-band {
+  background:
+    radial-gradient(74% 118% at 12% -12%, var(--tint-from) 0%, transparent 62%),
+    radial-gradient(64% 108% at 90% 4%, var(--tint-to) 0%, transparent 58%),
+    radial-gradient(
+      116% 82% at 44% 112%,
+      color-mix(in oklab, var(--tint-to) 62%, var(--tint-from)) 0%,
+      transparent 70%
+    ),
+    linear-gradient(
+      158deg,
+      color-mix(in oklab, var(--tint-from) 76%, #0c0a09),
+      color-mix(in oklab, var(--tint-to) 64%, #0c0a09)
+    );
+  /*
+   * The band ends on a slanted fade rather than a level one, tilted so the
+   * RIGHT side ends lower than the left. 191deg is 11deg past straight-down,
+   * a ~20% slope — measured at 20.0% on both the two-up and the full-width
+   * cell.
+   *
+   * Angle sets the direction and the geometry; the STOPS decide how much of
+   * it you actually see. Percentages run along the gradient line, not the
+   * element height, so if the fade has not finished by the band's bottom
+   * edge the low side is cut off there and the slope flattens — and the
+   * wider the band, the sooner that bites. 72%/94% measured 5.6% against a
+   * geometric 10.5%; 48%/78% held on both at 10.5%; at this steeper angle
+   * 40%/68% left only 8px of headroom on the full-width cell before
+   * clamping, so 36%/63% it is. Re-measure if the grid widens or the angle
+   * changes — do not just edit the degrees.
+   *
+   * `-webkit-` as well, for Safari before 15.4 — without it that engine
+   * drops the mask and the band ends on a hard cut.
+   */
+  -webkit-mask-image: linear-gradient(191deg, #000 36%, transparent 63%);
+  mask-image: linear-gradient(191deg, #000 36%, transparent 63%);
 }

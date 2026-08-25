@@ -55,6 +55,20 @@ describe("scroll-driven timeline choreography", () => {
     expect(slide).not.toContain("opacity")
   })
 
+  it("never transforms a grid tile, only fades it", () => {
+    // A cell's side rules are drawn by its NEIGHBOUR, so a cell that
+    // translates or scales slides out from under a rule that has not
+    // moved and opens a visible strip. Pointing this back at
+    // `watch-scroll-rise` — the obvious thing to reach for, and what it
+    // used to use — reopens a 6.47px gap.
+    const tile = blockBody(guard, ".watch-scroll-card {")
+    expect(tile).toContain("watch-scroll-tile-in")
+    expect(tile).not.toContain("watch-scroll-rise")
+    expect(blockBody(css, "@keyframes watch-scroll-tile-in")).not.toContain(
+      "transform",
+    )
+  })
+
   it("attaches every choreographed class to the view timeline", () => {
     // Anti-vacuous companion: a class sitting inside the guard with no
     // `animation-timeline` would satisfy the check above while animating
@@ -329,5 +343,44 @@ describe("scroll-driven timeline choreography", () => {
     expect(a % b === 0 || b % a === 0).toBe(false)
     // …and slow enough to read as grain, not static.
     for (const period of periods) expect(period).toBeGreaterThan(1200)
+  })
+})
+
+describe("improvement colour band", () => {
+  const band = blockBody(css, ".whats-new-tint-band")
+
+  it("layers radials over a base so no corner is left bald", () => {
+    expect(band).not.toBe("")
+    const radials = band.match(/radial-gradient\(/g) ?? []
+    expect(radials.length).toBeGreaterThanOrEqual(3)
+    // The base is what the radials sit on; without it their falloff leaves
+    // the cell corners transparent and the band reads as three blobs.
+    expect(band).toContain("linear-gradient(")
+  })
+
+  it("ends on a slanted fade, prefixed for older Safari", () => {
+    // A level fade is what anyone would reach for by default; the slant is
+    // the point. `to bottom`, or a bare 180deg, means the tilt was lost.
+    const angle = band.match(/[^-]mask-image:\s*linear-gradient\(\s*(\d+)deg/)
+    expect(angle).not.toBeNull()
+    const deg = Number(angle![1])
+    expect(deg).not.toBe(180)
+    // Past 180deg tilts the fade so the RIGHT side ends lower; under 180
+    // mirrors it, which is the direction this was deliberately moved away
+    // from and is otherwise a silent one-character flip.
+    expect(deg).toBeGreaterThan(180)
+    expect(deg).toBeLessThanOrEqual(200)
+    // Both spellings, or Safari < 15.4 drops the mask and shows a hard cut.
+    expect(band).toContain("-webkit-mask-image:")
+  })
+
+  it("drives every layer from the per-cell tint properties", () => {
+    // Hard-coding a colour here would paint all five cells identically
+    // while the cells still carry five different tints.
+    expect(band).toContain("var(--tint-from)")
+    expect(band).toContain("var(--tint-to)")
+    // #0c0a09 is the page base the mixes fall back to; any OTHER literal
+    // hex is a colour that ignores the cell's tint.
+    expect(band).not.toMatch(/#(?!0c0a09\b)[0-9a-f]{6}/i)
   })
 })

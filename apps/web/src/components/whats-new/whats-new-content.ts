@@ -223,11 +223,15 @@ export const WHATS_NEW_FORMATS = [
 
 export const WHATS_NEW_IMPROVEMENTS = [
   {
-    icon: "home",
     shot: {
       src: "/watch/images/whats-new/home.webp",
       alt: "The Watch home page: a cinematic featured story with the search bar above it and curated rows below.",
     },
+    clip: {
+      webm: "/watch/assets/whats-new/home.webm",
+      mp4: "/watch/assets/whats-new/home.mp4",
+    },
+    tint: { from: "#4f46e5", to: "#a855f7" },
     title: "A more useful place to begin",
     paragraphs: [
       "The Watch home page now provides a clearer and more visual way to discover content, with cinematic featured stories, curated collections, improved layouts, and more opportunities to continue exploring.",
@@ -237,11 +241,15 @@ export const WHATS_NEW_IMPROVEMENTS = [
     featured: false,
   },
   {
-    icon: "play",
     shot: {
       src: "/watch/images/whats-new/player.webp",
       alt: "A Watch video page with the rebuilt player and its playback, audio, and subtitle controls.",
     },
+    clip: {
+      webm: "/watch/assets/whats-new/player.webm",
+      mp4: "/watch/assets/whats-new/player.mp4",
+    },
+    tint: { from: "#0e7490", to: "#38bdf8" },
     title: "Better playback on more devices",
     paragraphs: [
       "The video experience has been rebuilt around a modern streaming platform. Improvements include:",
@@ -259,11 +267,15 @@ export const WHATS_NEW_IMPROVEMENTS = [
     featured: false,
   },
   {
-    icon: "globe",
     shot: {
       src: "/watch/images/whats-new/language.webp",
       alt: "The Watch language index, listing available languages grouped by region.",
     },
+    clip: {
+      webm: "/watch/assets/whats-new/language.webm",
+      mp4: "/watch/assets/whats-new/language.mp4",
+    },
+    tint: { from: "#db2777", to: "#fb923c" },
     title: "Language is becoming central to the experience",
     paragraphs: [
       "Jesus Film Project has content in thousands of languages. That is one of the most important things Watch can offer, so language should not feel like an option hidden inside the player.",
@@ -281,11 +293,15 @@ export const WHATS_NEW_IMPROVEMENTS = [
     featured: true,
   },
   {
-    icon: "search",
     shot: {
       src: "/watch/images/whats-new/search.webp",
       alt: "Watch search open on the word “hope”, showing suggestions and matching videos.",
     },
+    clip: {
+      webm: "/watch/assets/whats-new/search.webm",
+      mp4: "/watch/assets/whats-new/search.mp4",
+    },
+    tint: { from: "#047857", to: "#34d399" },
     title: "Search that understands more than titles",
     paragraphs: [
       "People do not always know the name of the film they need. They may search for hope, anxiety, forgiveness, a Bible passage, or a question about Jesus.",
@@ -295,11 +311,15 @@ export const WHATS_NEW_IMPROVEMENTS = [
     featured: false,
   },
   {
-    icon: "send",
     shot: {
       src: "/watch/images/whats-new/share.webp",
       alt: "A Watch video page scrolled to its share and download controls.",
     },
+    clip: {
+      webm: "/watch/assets/whats-new/share.webm",
+      mp4: "/watch/assets/whats-new/share.mp4",
+    },
+    tint: { from: "#b45309", to: "#fbbf24" },
     title: "Easier sharing and ministry use",
     paragraphs: [
       "Watch should serve the person watching and the person helping someone else watch. We are strengthening Watch as a dependable place for believers and ministry partners to:",
@@ -316,7 +336,6 @@ export const WHATS_NEW_IMPROVEMENTS = [
     featured: false,
   },
 ] as const satisfies readonly {
-  icon: WhatsNewIconKey
   /**
    * Screenshot of the live Watch surface this improvement is about.
    * Captured by `scripts/capture-whats-new-shots.mjs` — re-run it after a
@@ -324,6 +343,23 @@ export const WHATS_NEW_IMPROVEMENTS = [
    * of step with the product they are describing.
    */
   shot: { src: string; alt: string }
+  /**
+   * Looping screencast of the same surface being used, recorded by
+   * `scripts/capture-whats-new-clips.mjs`. The still above is its poster,
+   * so a card is never blank while the clip loads — and stays the whole
+   * story under reduced motion, where the clip is never fetched.
+   */
+  clip: { webm: string; mp4: string }
+  /**
+   * The two stops of the gradient mat the clip sits on. Five distinct hue
+   * pairs so the grid has a rhythm as you scroll rather than five identical
+   * dark rectangles; adjacent cells never share a family (the two-up rows
+   * are indigo/cyan and emerald/amber, the full-width language cell takes
+   * the warmest pair). Same `tint`-in-content convention as
+   * WHATS_NEW_AUDIENCES — the hex lives here, the mixing lives in the
+   * component.
+   */
+  tint: { from: string; to: string }
   title: string
   paragraphs: readonly string[]
   points: readonly string[]
