@@ -10,6 +10,7 @@ import {
   TEXT_SECONDARY,
   hexToRgba,
 } from "../../lib/color"
+import { setCastPlaybackRateLogged } from "../../lib/cast/castAdapter"
 import {
   PLAYBACK_SPEEDS,
   getPlayerSettingsStore,
@@ -123,7 +124,12 @@ export function PlayerSettingsSheet({
         `speed-${speed}`,
         speedLabel(speed),
         snapshot.speed === speed,
-        () => store.setSpeed(speed),
+        () => {
+          // AE4: the store stays the single truth; while casting the pick ALSO
+          // goes to the receiver (fire-and-forget, logged in the facade).
+          store.setSpeed(speed)
+          if (castActive) setCastPlaybackRateLogged(speed)
+        },
       ),
     )
   } else if (body === "quality") {

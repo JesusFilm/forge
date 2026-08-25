@@ -30,6 +30,11 @@ jest.mock("@expo/vector-icons/Ionicons", () => ({
 jest.mock("react-native-safe-area-context", () => ({
   useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
 }))
+// The rate facade touches the cast SDK; the sheet's contract is WHEN it is
+// called, so the mock stands in (behaviour lives in castAdapter.test.ts).
+jest.mock("../../../lib/cast/castAdapter", () => ({
+  setCastPlaybackRateLogged: jest.fn(),
+}))
 
 import { act } from "react"
 
@@ -204,6 +209,38 @@ describe("context variants", () => {
     const renderer = await render({ castActive: true, streamingUrl: MUX_URL })
     expect(hasText(renderer, "Playback speed")).toBe(true)
     expect(hasText(renderer, "Quality")).toBe(false)
+    await unmount(renderer)
+  })
+})
+
+describe("cast speed routing (AE4/R10)", () => {
+  const { setCastPlaybackRateLogged: mockSetRate } = jest.requireMock(
+    "../../../lib/cast/castAdapter",
+  ) as { setCastPlaybackRateLogged: jest.Mock }
+
+  beforeEach(() => {
+    mockSetRate.mockClear()
+  })
+
+  it("routes a pick to the rate facade while casting, and still writes the store", async () => {
+    const renderer = await render({ castActive: true })
+    await press(pressableByLabel(renderer, "Playback speed"))
+    await press(pressableByLabel(renderer, "1.5×"))
+    // AE4: the store stays the single truth — the receiver call is additive.
+    expect(getPlayerSettingsStore().getSnapshot().speed).toBe(1.5)
+    expect(mockSetRate).toHaveBeenCalledTimes(1)
+    expect(mockSetRate).toHaveBeenCalledWith(1.5)
+    // The sheet survived the pick: still on the option list (R3).
+    expect(hasText(renderer, "2×")).toBe(true)
+    await unmount(renderer)
+  })
+
+  it("never calls the facade with cast inactive", async () => {
+    const renderer = await render({ castActive: false })
+    await press(pressableByLabel(renderer, "Playback speed"))
+    await press(pressableByLabel(renderer, "1.5×"))
+    expect(getPlayerSettingsStore().getSnapshot().speed).toBe(1.5)
+    expect(mockSetRate).not.toHaveBeenCalled()
     await unmount(renderer)
   })
 })
