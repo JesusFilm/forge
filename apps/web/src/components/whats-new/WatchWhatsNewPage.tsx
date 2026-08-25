@@ -430,7 +430,30 @@ export function WatchWhatsNewPage({
                                 alt={image.alt}
                                 width={image.width}
                                 height={image.height}
-                                sizes="(min-width: 1024px) 60vw, 100vw"
+                                /* The lead photograph is rendered at the
+                                   full viewport width during the opening
+                                   zoom, not at the card's 60vw, so it has
+                                   to be REQUESTED at that width or it
+                                   arrives upscaled and soft. */
+                                sizes={
+                                  lead
+                                    ? "100vw"
+                                    : "(min-width: 1024px) 60vw, 100vw"
+                                }
+                                style={
+                                  lead
+                                    ? ({
+                                        // The opening fit divides by this to
+                                        // hold the picture's own shape. Read
+                                        // from the picture rather than
+                                        // hard-coded in the stylesheet, so
+                                        // swapping the photograph cannot
+                                        // leave the two disagreeing.
+                                        "--photo-aspect":
+                                          image.width / image.height,
+                                      } as CSSProperties)
+                                    : undefined
+                                }
                                 className={`absolute inset-0 h-full w-full object-cover ${
                                   lead ? "watch-scroll-intro-photo" : ""
                                 }`}

@@ -68,16 +68,20 @@ vi.mock("next/image", () => ({
     alt,
     src,
     className,
+    style,
   }: {
     alt: string
     src: string
     className?: string
+    // Threaded because the opening fit is handed the picture's aspect this
+    // way; a mock that drops it makes that contract untestable.
+    style?: React.CSSProperties
   }) =>
     // `createElement` rather than JSX: an `<img>` literal trips
     // `@next/next/no-img-element`, and that rule is not resolvable when
     // lint-staged runs eslint on this file outside the app's Next config,
     // so a disable comment errors there instead of silencing anything.
-    createElement("img", { alt, src, className }),
+    createElement("img", { alt, src, className, style }),
 }))
 
 const LANGUAGES = [
@@ -394,15 +398,25 @@ describe("WatchWhatsNewPage", () => {
     ).toEqual(WHATS_NEW_ERAS.map((_, index) => index === 0))
   })
 
-  it("keeps the lead photograph 16:9, which the fit is hard-coded to", () => {
-    // The CSS divides the box width by 16/9 to hold the picture's aspect.
-    // Swapping the lead photograph for one of any other shape would crop it
-    // sideways at the opening frame — the exact thing the fit exists to
-    // prevent — and nothing in the stylesheet could notice.
+  it("hands the opening fit the lead photograph's own aspect", () => {
+    // The opening fit divides the box width by this to hold the picture's
+    // shape. It was a hard-coded 16:9 in the stylesheet, which made swapping
+    // the photograph a two-file change that cropped it sideways in between.
+    // Reading it off the picture is what makes a swap safe — and a missing
+    // value would divide by nothing and collapse the box.
     const image = WHATS_NEW_ERAS[0].image
-
     expect(image).toBeDefined()
-    expect(image!.width / image!.height).toBeCloseTo(16 / 9, 3)
+
+    const styles = cards().map(
+      (card) => card.querySelector("img")?.getAttribute("style") ?? "",
+    )
+    const aspect = Number(styles[0].match(/--photo-aspect:\s*([\d.]+)/)?.[1])
+
+    expect(aspect).toBeCloseTo(image!.width / image!.height, 4)
+    // Anti-vacuous: no other era is fitted this way, so none should carry it.
+    for (const style of styles.slice(1)) {
+      expect(style).not.toContain("--photo-aspect")
+    }
   })
 
   it("leaves room above the stage for the oversized opening card", () => {

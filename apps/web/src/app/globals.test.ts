@@ -223,9 +223,10 @@ describe("scroll-driven timeline choreography", () => {
     const from = frames.slice(0, frames.indexOf("to {"))
     const to = frames.slice(frames.indexOf("to {"))
 
-    // Opening: screen-centred, at the picture's own 16:9 aspect.
+    // Opening: screen-centred, at the picture's own aspect — read from the
+    // picture, never hard-coded here.
     expect(from).toContain("50svh")
-    expect(from).toMatch(/height:\s*calc\(100vw \* 9 \/ 16/)
+    expect(from).toMatch(/height:\s*calc\(100vw \/ var\(--photo-aspect\)/)
     // Landed: the card's own box, exactly.
     expect(to).toMatch(/top:\s*50%\s*;/)
     expect(to).toMatch(/height:\s*100%\s*;/)

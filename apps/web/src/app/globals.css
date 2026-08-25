@@ -431,11 +431,16 @@
 
    In between it is a straight interpolation between two correct endpoints:
    off the true screen centre by ~90px at mid-zoom on a 5:4 window, where
-   the picture is moving and the bands are transient anyway. */
+   the picture is moving and the bands are transient anyway.
+
+   `--photo-aspect` comes from the picture's own dimensions, set inline by
+   the component. It used to be a hard-coded 16:9 here, with a test tying
+   the content to it — which meant swapping the photograph was a two-file
+   change with a failing test in between. One source of truth instead. */
 @keyframes watch-scroll-intro-photo {
   from {
     top: calc((50svh + 39px) / var(--intro-scale));
-    height: calc(100vw * 9 / 16 / var(--intro-scale));
+    height: calc(100vw / var(--photo-aspect) / var(--intro-scale));
   }
   to {
     top: 50%;
