@@ -114,6 +114,8 @@ async function render(
     externalPlaybackActive?: boolean
     castUi?: PlayerControlsCastUi | null
     castTarget?: PlaybackTarget | null
+    onRecover?: () => void
+    isOnline?: boolean
   } = {},
   player: ReturnType<typeof makePlayer> = makePlayer(),
 ): Promise<TestInstance> {
@@ -327,6 +329,93 @@ describe("Cast remote mode (KTD4)", () => {
     await press(pressableByLabel(renderer, "Pause"))
     expect(castTarget.pause).toHaveBeenCalledTimes(1)
     expect(player.pause).not.toHaveBeenCalled()
+    expect(player.play).not.toHaveBeenCalled()
+    await unmount(renderer)
+  })
+
+  // A stopped video looked identical whatever stopped it. Offline plus a failed
+  // source is the one case we can name, so it gets its own indicator — and no
+  // play button, because a retry cannot succeed with no connection.
+  it("shows a no-connection indicator, not a play button, when offline and errored", async () => {
+    const player = { ...makePlayer(), status: "error" }
+    const renderer = await render(false, { isOnline: false }, player)
+
+    const offline = renderer.root.findAll(
+      (n) =>
+        n.props.accessibilityLabel === "No connection. The video cannot play.",
+    )
+    expect(offline.length).toBeGreaterThan(0)
+
+    const play = renderer.root.findAll(
+      (n) =>
+        n.props.accessibilityLabel === "Play" &&
+        typeof n.props.onPress === "function",
+    )
+    expect(play).toHaveLength(0)
+    await unmount(renderer)
+  })
+
+  // The indicator must not outlive the outage, or the viewer is stranded
+  // looking at it with no way to resume.
+  it("returns the play button once the connection is back, still errored", async () => {
+    const player = { ...makePlayer(), status: "error" }
+    const renderer = await render(false, { isOnline: true }, player)
+    expect(pressableByLabel(renderer, "Play")).toBeTruthy()
+    await unmount(renderer)
+  })
+
+  // A released player throws on every read. The chrome has no error boundary,
+  // so an exception escaping the render unmounts the whole player surface.
+  //
+  // The throw is installed AFTER construction on purpose: Babel lowers object
+  // spread to Object.assign, which reads a getter declared in the same literal
+  // and would fire the throw in the fixture instead of in the component.
+  function releaseProperty(target: object, key: string) {
+    Object.defineProperty(target, key, {
+      get() {
+        throw new Error("released")
+      },
+      configurable: true,
+    })
+  }
+
+  it("renders the ordinary control when the status cannot be read", async () => {
+    const player = makePlayer()
+    releaseProperty(player, "status")
+
+    // Offline: a READABLE error status here shows the no-connection glyph, so
+    // the ordinary control is only correct because the status is unreadable.
+    const renderer = await render(false, { isOnline: false }, player)
+
+    expect(pressableByLabel(renderer, "Play")).toBeTruthy()
+    expect(hasLabel(renderer, "No connection. The video cannot play.")).toBe(
+      false,
+    )
+    await unmount(renderer)
+  })
+
+  it("does nothing when the press finds the player released", async () => {
+    const onRecover = jest.fn()
+    const player = { ...makePlayer(), status: "error" }
+    releaseProperty(player, "playing")
+    const renderer = await render(false, { onRecover }, player)
+
+    await press(pressableByLabel(renderer, "Play"))
+
+    expect(onRecover).not.toHaveBeenCalled()
+    expect(player.play).not.toHaveBeenCalled()
+    expect(player.pause).not.toHaveBeenCalled()
+    await unmount(renderer)
+  })
+
+  // todos/024: after a dropout ExoPlayer sits in `error`, where play() is a
+  // no-op — so the button silently did nothing. Recovery re-applies the source.
+  it("recovers instead of calling play when the source has errored", async () => {
+    const player = { ...makePlayer(), status: "error" }
+    const onRecover = jest.fn()
+    const renderer = await render(false, { onRecover }, player)
+    await press(pressableByLabel(renderer, "Play"))
+    expect(onRecover).toHaveBeenCalledTimes(1)
     expect(player.play).not.toHaveBeenCalled()
     await unmount(renderer)
   })
