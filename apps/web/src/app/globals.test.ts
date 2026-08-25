@@ -276,16 +276,73 @@ describe("scroll-driven timeline choreography", () => {
     expect(rule).toContain("100vw")
   })
 
-  it("holds the grain tile at one on-screen size through the zoom", () => {
-    // The grain sits inside the card, so the opening zoom scales it too: a
-    // 150px tile renders at 300px on the first frame and the repeat becomes
-    // legible as a pattern, which is the one thing grain must never look
-    // like. Both layers divide the tile back out by the zoom factor.
-    for (const layer of [".watch-grain {", ".watch-grain-fine {"]) {
-      const rule = blockBody(css, layer)
-      expect(rule, layer).toMatch(
-        /background-size:\s*calc\(\s*\d+px\s*\/\s*var\(--era-zoom\)\s*\)/,
+  it("draws each grain tile at the size its noise was authored for", () => {
+    // MEASURED. `baseFrequency` is per user unit, so rendering an N-unit
+    // noise field into a box that is not N pixels scales the grain with the
+    // box. The old `fine` layer asked for a 160-unit field at 74px and got
+    // 0.5px blobs, which average to flat grey — a layer that cost paint and
+    // contributed nothing. Authored size and background-size must match.
+    const declared = (name: string) =>
+      Number(
+        css.match(
+          new RegExp(`--watch-grain-image${name}:[^;]*width='(\\d+)'`),
+        )?.[1],
       )
+    const drawn = (selector: string) =>
+      Number(blockBody(css, selector).match(/background-size:\s*(\d+)px/)?.[1])
+
+    // Both halves: the size the rule draws at, AND that it draws the image
+    // that size was authored for. Comparing only the numbers lets the fine
+    // layer be repointed at the coarse image — which IS the mush bug, and
+    // left this test green when it was tried.
+    for (const [selector, suffix] of [
+      [".watch-grain {", ""],
+      [".watch-grain-fine {", "-fine"],
+    ] as const) {
+      const rule = blockBody(css, selector)
+      expect(rule, selector).toContain(
+        `background-image: var(--watch-grain-image${suffix})`,
+      )
+      expect(drawn(selector), selector).toBe(declared(suffix))
+    }
+    // …and the two images are genuinely different fields, not one size twice.
+    expect(declared("")).not.toBe(declared("-fine"))
+  })
+
+  it("keeps the two grain tiles from repeating in step", () => {
+    // Two layers only hide each other's repeat if their periods do not line
+    // up. The old pair was 150 and 74 — within 1.5% of 2:1 — so they
+    // reinforced every other tile and the pattern read as one 150px block.
+    const coarse = Number(
+      blockBody(css, ".watch-grain {").match(/background-size:\s*(\d+)px/)?.[1],
+    )
+    const fine = Number(
+      blockBody(css, ".watch-grain-fine {").match(
+        /background-size:\s*(\d+)px/,
+      )?.[1],
+    )
+    const ratio = coarse / fine
+
+    // Far from every simple ratio up to 3:1, in either direction.
+    for (const simple of [1, 1.25, 1.333, 1.5, 2, 2.5, 3]) {
+      expect(
+        Math.abs(ratio - simple),
+        `ratio ${ratio} vs ${simple}`,
+      ).toBeGreaterThan(0.08)
+    }
+    // …and big enough that a screen holds only a couple of copies.
+    expect(Math.min(coarse, fine)).toBeGreaterThan(300)
+  })
+
+  it("does not divide the grain tile by the zoom", () => {
+    // MEASURED, and a reversal: the grain is rastered in the card's own
+    // coordinate space and then GPU-scaled with it, so dividing the tile down
+    // only asks for sub-pixel noise that averages to mush BEFORE the upscale.
+    // It measured 3px soft blobs at the opening frame against 1px crisp
+    // landed, and doubled the repeats across the screen at the same time.
+    for (const selector of [".watch-grain {", ".watch-grain-fine {"]) {
+      const rule = blockBody(css, selector)
+      expect(rule, selector).not.toContain("--era-zoom")
     }
   })
 
