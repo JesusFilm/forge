@@ -811,7 +811,9 @@ describe("WatchWhatsNewPage", () => {
     expect(steps).toHaveLength(WHATS_NEW_FORMATS.length)
     expect(
       steps.map(
-        (step) => step.querySelector("span")?.nextElementSibling?.textContent,
+        (step) =>
+          step.querySelector('[data-testid="whats-new-format-label"]')
+            ?.textContent,
       ),
     ).toEqual(WHATS_NEW_FORMATS.map((format) => format.label))
     // Every step draws a real glyph, not a missing-key blank.
@@ -834,6 +836,186 @@ describe("WatchWhatsNewPage", () => {
     // only that one.
     expect(terminal).toHaveLength(1)
     expect(terminal[0]).toBe(steps.at(-1))
+  })
+
+  it("keeps the drifting lights off the top of the format section", () => {
+    // The bokeh is the section's lighting, and the whole look depends on it
+    // reading as something glimpsed low and far away: the lights live in a
+    // bottom-anchored box that crops them, and that box's own mask fades
+    // them out towards its top only. Lose the bottom anchor, the clip or
+    // the mask and a light reaches the heading, which is exactly the look
+    // this replaced.
+    const field = container.querySelector<HTMLElement>(
+      '[data-testid="whats-new-format-bokeh"]',
+    )
+
+    expect(field).not.toBeNull()
+    expect(field?.getAttribute("aria-hidden")).toBe("true")
+
+    const fieldClass = field?.getAttribute("class") ?? ""
+    expect(fieldClass).toContain("bottom-0")
+    expect(fieldClass).not.toContain("top-0")
+    expect(fieldClass).toContain("overflow-hidden")
+    expect(fieldClass).toContain("pointer-events-none")
+    // The `to top` ramp is opaque at the bottom and transparent at the
+    // top: the lights run at full strength into the section's bottom edge
+    // and get cropped there, and nothing reaches the heading. A fade added
+    // back at the bottom puts a black band under the lights.
+    expect(fieldClass).toMatch(
+      /\[mask-image:linear-gradient\(to_top,black_0%,.*,transparent_100%\)\]/,
+    )
+    expect(fieldClass).toContain("[-webkit-mask-image:linear-gradient(to_top,")
+
+    // Every light is inside that box, and none of them is focusable or
+    // readable — they are lighting, not content.
+    const orbs = [...(field?.querySelectorAll(".watch-bokeh-orb") ?? [])]
+    expect(orbs.length).toBeGreaterThan(0)
+    for (const orb of orbs) {
+      expect(orb.textContent).toBe("")
+      expect(orb.getAttribute("class") ?? "").toContain("absolute")
+    }
+  })
+
+  it("sends every light across the section left to right, never back", () => {
+    // The whole read is traffic seen from a fixed seat. One light crossing
+    // the other way turns that into a wobble, and it is a single sign flip
+    // in a table of numbers — so pin the direction per light rather than
+    // trusting the pair to be authored the right way round.
+    const lights = [
+      ...container.querySelectorAll<HTMLElement>(
+        '[data-testid="whats-new-format-bokeh"] .watch-bokeh-orb',
+      ),
+    ]
+
+    expect(lights.length).toBeGreaterThan(0)
+    for (const light of lights) {
+      const from = light.style.getPropertyValue("--bokeh-from")
+      const to = light.style.getPropertyValue("--bokeh-to")
+      const rest = light.style.getPropertyValue("--bokeh-rest")
+
+      expect(from, "start of the crossing").toMatch(/vw$/)
+      expect(to, "end of the crossing").toMatch(/vw$/)
+      expect(
+        Number.parseFloat(to),
+        `${from} -> ${to} must travel rightwards`,
+      ).toBeGreaterThan(Number.parseFloat(from))
+      // Starts off-screen left and ends off-screen right, so a light
+      // arrives and leaves rather than sliding in from the section edge.
+      expect(Number.parseFloat(from)).toBeLessThan(0)
+      expect(Number.parseFloat(to)).toBeGreaterThan(100)
+      // Under prefers-reduced-motion the crossing is removed, and without
+      // its own resting place every light would pile up off-screen left.
+      expect(rest, "reduced-motion resting place").toMatch(/vw$/)
+    }
+  })
+
+  it("keeps every light's centre below the section's bottom edge", () => {
+    // The section shows the TOP of each light and crops the rest. That is
+    // what makes the field read as light spilling from below the frame,
+    // and it is what keeps the bottom edge a cut rather than a fade: with
+    // the centre above the edge, the crop lands in the falloff and a black
+    // band comes back. It is a table of numbers, so one wrong value is
+    // invisible — hence the arithmetic here rather than trust.
+    const rem = (value: string) => Number.parseFloat(value)
+    const lights = [
+      ...container.querySelectorAll<HTMLElement>(
+        '[data-testid="whats-new-format-bokeh"] .watch-bokeh-orb',
+      ),
+    ]
+
+    expect(lights.length).toBeGreaterThan(0)
+    for (const light of lights) {
+      const className = light.getAttribute("class") ?? ""
+      const size = className.match(/\bh-\[([\d.]+)rem\]/)
+      const bottom = className.match(/-bottom-\[([\d.]+)rem\]/)
+
+      expect(size, className).not.toBeNull()
+      expect(bottom, className).not.toBeNull()
+
+      // How far the centre sits below the section's bottom edge at rest.
+      const drop = rem(bottom![1]) - rem(size![1]) / 2
+      // How far the crossing lifts it at its highest.
+      const lift = Math.max(
+        Math.abs(rem(light.style.getPropertyValue("--bokeh-y"))),
+        Math.abs(rem(light.style.getPropertyValue("--bokeh-y-end"))),
+      )
+
+      expect(drop, `${className.slice(0, 40)} rest`).toBeGreaterThanOrEqual(0)
+      expect(
+        drop - lift,
+        `${className.slice(0, 40)} mid-crossing`,
+      ).toBeGreaterThanOrEqual(0)
+    }
+  })
+
+  it("lays grain over the lights, inside the same masked box", () => {
+    // Rain on glass is never clean light — the speckle is what stops the
+    // lights reading as flat CSS circles. It has to live INSIDE the masked
+    // box or it becomes a haze over the whole section, which is the thing
+    // the era-card grain rule below is guarding against.
+    const grain = container.querySelectorAll(".watch-bokeh-grain")
+
+    expect(grain).toHaveLength(1)
+    expect(grain[0].getAttribute("aria-hidden")).toBe("true")
+    expect(
+      grain[0].closest('[data-testid="whats-new-format-bokeh"]'),
+    ).not.toBeNull()
+  })
+
+  it("leaves the format marks static and unringed", () => {
+    // The only motion in this section is the light field behind it. Seven
+    // icons each looping on their own clock read as clutter against a
+    // moving background — and the discs they used to sit in were there to
+    // mask the wire, not to be seen.
+    const steps = [
+      ...container.querySelectorAll<HTMLElement>(
+        '[data-testid="whats-new-format-step"]',
+      ),
+    ]
+
+    expect(steps.length).toBeGreaterThan(0)
+    for (const step of steps) {
+      const label = step.textContent ?? ""
+      // Nothing inside a mark carries a class at all: every animation here
+      // was applied to a path or a group inside the SVG.
+      for (const node of step.querySelectorAll("svg *")) {
+        expect(node.getAttribute("class"), label).toBeNull()
+      }
+      // No filled disc behind the mark. A background utility on anything
+      // in the step is the disc coming back.
+      for (const node of step.querySelectorAll("span")) {
+        expect(node.getAttribute("class") ?? "", label).not.toMatch(
+          /\bbg-(?!gradient-to-r\b)/,
+        )
+      }
+    }
+  })
+
+  it("joins the marks with one segment per gap, stopping short of each", () => {
+    // A single wire behind the row has to be masked wherever a mark sits
+    // on it, and over a moving background the only thing that can mask it
+    // is an opaque disc. Segments are what let the discs go: one per gap,
+    // none after the last mark.
+    const steps = [
+      ...container.querySelectorAll<HTMLElement>(
+        '[data-testid="whats-new-format-step"]',
+      ),
+    ]
+    const links = container.querySelectorAll(
+      '[data-testid="whats-new-format-link"]',
+    )
+
+    expect(links).toHaveLength(steps.length - 1)
+    expect(
+      steps.at(-1)?.querySelector('[data-testid="whats-new-format-link"]'),
+    ).toBeNull()
+    for (const link of links) {
+      // Starts clear of its own mark and stops clear of the next one.
+      expect(link.getAttribute("class") ?? "").toContain(
+        "left-[calc(50%+3rem)]",
+      )
+      expect(link.getAttribute("class") ?? "").toContain("w-[calc(100%-6rem)]")
+    }
   })
 
   it("keeps the diagram glyphs free of per-stroke alpha", () => {
