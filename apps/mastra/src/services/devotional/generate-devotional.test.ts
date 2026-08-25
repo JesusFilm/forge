@@ -164,3 +164,53 @@ describe("stripDashes", () => {
     expect(stripDashes("a—b–c")).not.toMatch(/[—–]/)
   })
 })
+
+describe("which point lands last", () => {
+  // Four points, because the picker only runs on a genuinely multi-point
+  // excerpt. The commentator numbers the bleak one FIRST; the picker is asked
+  // to close on the point that lifts, so it returns them in the order it wants
+  // them heard rather than the order the author wrote them.
+  const fourPoints: ReflectionCorpora = {
+    ...corpora,
+    ryleLuke: [
+      {
+        source: "J.C. Ryle, Expository Thoughts on the Gospels: Luke",
+        reference: "Jesus Calms the Storm, Luke 8:22-25",
+        osisRef: "Luke.8.22-Luke.8.25",
+        text:
+          "I. Fear shows how weak the strongest believer really is. " +
+          "II. The sea obeys a word from its Maker. " +
+          "III. Sleep in a storm is not indifference. " +
+          "IV. Christ is never asleep to the danger his people are in.",
+      },
+    ],
+  }
+
+  it("hands the writer the points in the picker's order, not the author's", async () => {
+    const modernize = vi.fn().mockImplementation(async ({ sourceName }) => ({
+      adapted: "Modernized reflection text.",
+      attribution: `Adapted from ${sourceName}`,
+      focusReference: "Luke 8:22-25",
+    }))
+    await generateDevotional(
+      { chapterIndex: 19, sequence: 0, date: "2026-07-10", llm },
+      {
+        ...deps,
+        corpora: fourPoints,
+        modernize,
+        // Point IV lifts, so it is asked for LAST — the reverse of how the
+        // author numbered the pair. Returning [1, 4] would prove nothing.
+        pickPoints: vi
+          .fn()
+          .mockResolvedValue({ chosen: [4, 1], reason: "test" }),
+      },
+    )
+    const source = modernize.mock.calls[0][0].sourceText as string
+    const lifting = source.indexOf("never asleep to the danger")
+    const bleak = source.indexOf("how weak the strongest")
+    expect(lifting).toBeGreaterThanOrEqual(0)
+    expect(bleak).toBeGreaterThanOrEqual(0)
+    // Author order would put "how weak" first; the picker asked for the reverse.
+    expect(lifting).toBeLessThan(bleak)
+  })
+})

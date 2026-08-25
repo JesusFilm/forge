@@ -12,6 +12,7 @@ import {
   matchReflection,
   selectReflection,
   shortlistSpurgeonByTheme,
+  type CommentaryPreference,
   type ReflectionCorpora,
   type ReflectionFlavor,
   type ReflectionSelection,
@@ -22,10 +23,7 @@ import {
 } from "./jesus-film-passages"
 import { modernizeReflection } from "./reflection-modernizer"
 import { pickReflectionPoints } from "./reflection-point-picker"
-import {
-  commentaryPreamble,
-  splitCommentaryPoints,
-} from "./reflection-points"
+import { commentaryPreamble, splitCommentaryPoints } from "./reflection-points"
 import { pickReflectionHighlights } from "./reflection-highlighter"
 import { splitReflection } from "./reflection-split"
 import { pickBestSpurgeon } from "./spurgeon-ranker"
@@ -188,6 +186,12 @@ export type GenerateDevotionalInput = {
   approxWords?: number
   /** Optional progress logger (which commentary points were chosen, etc.). */
   log?: (msg: string) => void
+  /** 1-based beat of a scene that defines `episodes` — a standalone devotional
+   *  over part of the scene, with its own window and its own verse. */
+  episode?: number
+  /** Read the scene with this commentator for this run only, ignoring the
+   *  passage table. For comparing readings before committing to one. */
+  commentaryOverride?: CommentaryPreference
 }
 
 export async function generateDevotional(
@@ -195,7 +199,13 @@ export async function generateDevotional(
   deps: GenerateDevotionalDeps = {},
 ): Promise<GeneratedDevotional> {
   const sourced = await sourceClipAndScripture(
-    { chapterIndex: input.chapterIndex, llm: input.llm, llms: input.llms },
+    {
+      chapterIndex: input.chapterIndex,
+      llm: input.llm,
+      llms: input.llms,
+      episode: input.episode,
+      commentaryOverride: input.commentaryOverride,
+    },
     deps,
   )
   return composeDevotionalContent(
@@ -225,10 +235,13 @@ export async function sourceClipAndScripture(
     chapterIndex: number
     llm: DevotionalLlm
     llms?: DevotionalAgentLlms
+    /** Narrow to one beat of the scene — see ChapterPassage.episodes. */
+    episode?: number
+    commentaryOverride?: CommentaryPreference
   },
   deps: GenerateDevotionalDeps = {},
 ): Promise<SourcedDevotional> {
-  const chapter = chapterWithPassage(input.chapterIndex)
+  const chapter = chapterWithPassage(input.chapterIndex, input.episode)
   if (!chapter) {
     throw new Error(`no passage mapping for chapter ${input.chapterIndex}`)
   }
@@ -237,7 +250,12 @@ export async function sourceClipAndScripture(
     reference: chapter.reference,
     llm: input.llms?.scripture ?? input.llm,
   })
-  return { chapter, scripture }
+  return {
+    chapter: input.commentaryOverride
+      ? { ...chapter, commentary: input.commentaryOverride }
+      : chapter,
+    scripture,
+  }
 }
 
 // ---- Stage 2: CONTENT — reflection, highlights, copy -------------------------
@@ -283,7 +301,11 @@ export async function composeDevotionalContent(
   // source. (A per-scene coherence gate could re-enable Spurgeon where it truly
   // fits; kept out for now to guarantee matching.)
   let selection: ReflectionSelection | null = null
-  const commentary = matchReflection(chapter.osisRef, corpora)
+  const commentary = matchReflection(
+    chapter.osisRef,
+    corpora,
+    chapter.commentary,
+  )
   if (commentary) {
     selection = {
       ...commentary,
@@ -322,6 +344,7 @@ export async function composeDevotionalContent(
         reference: chapter.reference,
         themes: chapter.themes,
         sequence: input.sequence,
+        ...(chapter.commentary ? { commentary: chapter.commentary } : {}),
       },
       corpora,
     )
@@ -344,12 +367,29 @@ export async function composeDevotionalContent(
     const { chosen, reason } = await pickPoints({
       points: allPoints,
       sceneTitle: chapter.title,
+      ...(chapter.episodeNote ? { sceneNote: chapter.episodeNote } : {}),
       scriptureReference: scripture.reference,
       scriptureText: scripture.text,
       approxWords: input.approxWords ?? 170,
       llm: input.llms?.pointPicker ?? input.llm,
     })
-    const kept = allPoints.filter((p) => chosen.includes(p.index))
+    // Keep the picker's ORDER, not the author's numbering.
+    //
+    // The picker is asked to build an arc — what Christ does, then what that
+    // means for the believer — and to put the lifting point last, because the
+    // closing paragraph is what the viewer carries away. Filtering by source
+    // order silently threw that decision away: whichever point the commentator
+    // happened to number lower landed last, so the one instruction that could
+    // shape the ending had no effect on it.
+    //
+    // This belongs here rather than in a critic. A critic can only reject, and
+    // its `suggestion` field is logged and never reaches the writer, so a rule
+    // enforced there bounces the text back with no way for the next attempt to
+    // know what to choose differently (owner's point, and the code agrees).
+    const order = new Map(chosen.map((index, at) => [index, at]))
+    const kept = allPoints
+      .filter((p) => order.has(p.index))
+      .sort((a, b) => order.get(a.index)! - order.get(b.index)!)
     if (kept.length > 0) {
       keptPoints = kept.map((p) => ({ index: p.index, text: p.text }))
       const preamble = commentaryPreamble(selection.text)
@@ -392,6 +432,7 @@ export async function composeDevotionalContent(
         // as competing claims (grace vs works) rather than one argument.
         ...(i > 0 ? { precedingHalf: halves[i - 1] } : {}),
         llm: input.llms?.modernize ?? input.llm,
+        ...(input.log ? { log: input.log } : {}),
       })
       halves.push(stripDashes(half.adapted))
     }
@@ -419,6 +460,7 @@ export async function composeDevotionalContent(
       scriptureText: scripture.text,
       approxWords: input.approxWords ?? 170,
       llm: input.llms?.modernize ?? input.llm,
+      ...(input.log ? { log: input.log } : {}),
     })
     // Owner rule: NO em/en dashes in generated copy (reads as AI). Agents are
     // instructed to avoid them; this is the safety net. Sanitize the reflection

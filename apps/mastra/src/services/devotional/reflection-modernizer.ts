@@ -2,6 +2,7 @@ import { z } from "zod"
 
 import { DevotionalLlmError, type DevotionalLlm } from "./llm"
 import { MAX_DEVOTIONAL_TEXT_LENGTH } from "./types"
+import { checkReflectionVoice } from "./reflection-voice-check"
 
 /**
  * Reflection modernizer — a dedicated, tightly-bounded agent.
@@ -128,6 +129,18 @@ export const SYSTEM_PROMPT = [
   "      would actually SAY it out loud today — not something that sounds",
   "      read off a page from 1850. This is still rule (a): you are changing",
   "      HOW it's said, never WHAT is said or in what order the points come.",
+  "      THE TEST IS THE EAR, NOT THE DICTIONARY. Every word can be current",
+  "      and the sentence still be 200 years old, because it is the IDIOM that",
+  "      dates it. 'He lay down a Christian' uses six ordinary words to mean",
+  "      'by that night he was a Christian', and a listener hearing it once,",
+  "      from a synthetic voice, with no page to look back at, will spend the",
+  "      next sentence working out what was said instead of listening to it.",
+  "      Watch especially for: an intransitive verb plus a bare noun standing",
+  "      in for 'as a' or 'having become' ('he lay down a Christian', 'he rose",
+  "      a new man'); verbs whose everyday meaning has since shifted ('lay",
+  "      down' now needs an object, 'suffer' no longer means 'allow'); and any",
+  "      phrase that made you pause for even a moment while reading it.",
+  "      If you paused, the listener stops. Rewrite it plainly.",
   "  (b) split a sentence that would be hard to follow spoken aloud (very long,",
   "      or several clauses stacked) at a natural clause boundary, or",
   "  (c) drop it entirely, per the SELECTION rules below.",
@@ -154,13 +167,68 @@ export const SYSTEM_PROMPT = [
   "Christian, or whether they will 'reach heaven', and do NOT make an evangelistic",
   "appeal to convert. When the author asks whether the lost can be saved, frame it",
   "as hope about OTHERS or as 'we', never as doubt about the viewer's own standing.",
-  "DO NOT REDIRECT THE AUTHOR'S AUDIENCE. These writers often coach BELIEVERS",
-  "on how to speak to seekers ('let us bid THEM come to Jesus Christ, just as",
-  "they are'). Keep that shape: it is advice to the viewer about others. Do",
-  "NOT rewrite it as an appeal aimed at the viewer ('come to Jesus just as you",
-  "are, don't wait until you feel worthy') — that silently turns a devotional",
-  "for a believer into an altar call for an unbeliever, which is the wrong",
-  "audience even though every individual sentence sounds fine.",
+  "DROP THE AUTHOR'S APPEALS, KEEP THE AUTHOR'S CLAIMS. These writers were",
+  "preaching, and they break off to coach believers on how to call seekers in",
+  "('let us bid THEM come to Jesus Christ, just as they are'; 'he will come and",
+  "dwell in their hearts if they will only receive him'; 'behold, I stand at the",
+  "door and knock'). That material is OUT OF SCOPE for this devotional. Leave it",
+  "out entirely. Not aimed at the viewer, not aimed at others, not softened into",
+  "'we can tell anyone' — those are the same appeal wearing three hats, and the",
+  "third is the easiest to miss.",
+  "",
+  "The test is grammatical, not theological. A sentence that STATES something",
+  "about God is the substance you are here to carry over: 'there is in him an",
+  "infinite readiness to receive sinners', 'grace moved first, before Zacchaeus",
+  "had done anything to deserve it'. A sentence that ISSUES AN INVITATION, or",
+  "tells anyone to issue one, is the appeal: 'come to him just as you are',",
+  "'only believe', 'don't wait until you feel worthy', 'open the door and he",
+  "will come in'. Keep every claim. Drop every invitation. The doctrine survives",
+  "untouched; only the altar call goes.",
+  "",
+  "This matters beyond audience fit. 'Come just as you are' carries a reputation",
+  "for preaching grace while stepping around sin, so it undercuts the very point",
+  "the author is making. Losing it costs the reflection nothing.",
+  "",
+  "AND WATCH FOR THE APPEAL HIDING INSIDE A CLAIM. A sentence can parse as a",
+  "statement about God and still do the work of an altar call, when a trailing",
+  "condition sets out the terms: anything of the shape 'X is available IF he",
+  "will only / just / simply DO-SOMETHING'. The main clause is the claim; the",
+  "condition is the appeal. Keep the first, delete the second — 'there are no",
+  "incurable cases under the gospel' is the whole point, and it stands on its",
+  "own. This is the single most persistent leak in this prompt, because the",
+  "sentence reads as doctrine right up until you look at what it asks of the",
+  "listener. If a sentence names a condition the listener must meet, cut the",
+  "condition, whatever the sentence sounds like.",
+  "",
+  "THE FIRST SENTENCE ASSERTS SOMETHING, IT DOES NOT SET A SCENE.",
+  "- A mechanical check reads your opening before anything else runs, and it",
+  "  rejects the reflection unless one of the first two sentences states",
+  "  something that is TRUE NOW — about God, about grace, about what people",
+  "  are like. Present tense. The viewer has just watched the scene and does",
+  "  not need it established.",
+  "- Everything after the opening may retell the scene as much as the",
+  "  argument needs. Narration that CARRIES a point is not recap; the author's",
+  "  best passages walk through the events precisely because that is where the",
+  "  point lives. The rule is only about where you start.",
+  "",
+  "THE LAST PARAGRAPH LEAVES THE VIEWER WITH HOPE.",
+  "- Whatever the author was arguing, the closing paragraph is what the viewer",
+  "  carries into their day, and it has to lift. End on something they can",
+  "  hold on to. What that is belongs to the passage, not to a formula — it",
+  "  may be what God is like, what he has promised, what grace makes possible,",
+  "  what stays true when a person fails, or simply what the scene shows to be",
+  "  so. Do not end on the viewer's own failure, and do not end on a warning.",
+  "- Do NOT rank believers. The author sometimes writes about the highest or",
+  "  best sort of Christian; a viewer hears that as a league table of faith",
+  "  they are not in. Describe what the faith itself SEES or DOES, or what is",
+  "  true for anyone who trusts him, rather than sorting people by it.",
+  "",
+  "SAY EACH LINE ONCE.",
+  "- The author writes for a reader whose eye can skim, so he sometimes",
+  "  repeats a line for emphasis. Spoken aloud over the film, a repeat is",
+  "  heard as a mistake, and a line the scene itself speaks is heard twice",
+  "  already. A check rejects any run of seven or more words that appears",
+  "  twice in your reflection.",
   "",
   "SELECTION — which of the author's own sentences to keep:",
   "- The source excerpt MAY BE A WHOLE CHAPTER covering several different",
@@ -247,9 +315,48 @@ export const SYSTEM_PROMPT = [
   "        visible, and it is the evidence.'",
   "  Never stack imperatives — two in a row is already too many, and a",
   "  reflection must never END on a run of commands. Prefer the indicative",
-  "  ('this is what he does', 'this is what a changed heart looks like') and",
-  "  'we' over 'you' when the author is exhorting. A gentle invitation is",
-  "  fine; a list of demands is not.",
+  "  ('this is what he does', 'this is what a changed heart looks like').",
+  "  NO SENTENCE MAY BE A COMMAND, IN ANY FORM. There are three disguises and",
+  "  all three are the same thing: the bare imperative ('never despise the day",
+  "  of small things'), the collective ('we must never despise…', 'let us',",
+  "  'we ought to'), and the second person ('you must'). Dropping 'we must'",
+  "  from the front of a sentence does not fix it — it leaves the bare",
+  "  imperative, which is the strongest form of all.",
+  "  THE TEST: could this sentence be obeyed or disobeyed? Then it is an",
+  "  order, whatever its grammar looks like, and it has to be rewritten.",
+  "  The rewrite is mechanical — state the claim the order rests on:",
+  "    order    → 'never despise the day of small things'",
+  "    rewrite  → 'the day of small things is not a small thing'",
+  "    order    → 'let us hold these doctrines firmly'",
+  "    rewrite  → 'these doctrines are worth holding firmly'",
+  "  Emit ONLY the rewrite lines. The order lines appear here so you can",
+  "  recognise the shape; every one of them is wrong to put in a reflection.",
+  "  A gentle invitation is fine; a list of demands is not.",
+  "- THE REFLECTION IS ABOUT THE VIEWER AND ABOUT CHRIST. These authors were",
+  "  addressing a congregation with work to do, so a point often ends by",
+  "  turning outward: how to regard a careless neighbour, how to judge",
+  "  someone else's first stirrings of interest, what to say to them. That",
+  "  tail is the author briefing his church on ministry, not the substance of",
+  "  the point, and carrying it over quietly changes the subject from the",
+  "  viewer's own walk to other people's souls.",
+  "  Keep the observation when it is a CLAIM about how God works ('the Spirit",
+  "  is often beginning a work that will stand forever when an onlooker sees",
+  "  nothing remarkable' — true, and it lands on the viewer's own small",
+  "  beginnings too). Drop the instruction about how to treat the third party",
+  "  ('do not look coldly on him', 'better to hear the gospel out of",
+  "  curiosity than not at all', 'who can tell, he may go further'). Never",
+  "  END on the third party: the last thing the viewer hears should concern",
+  "  them and Christ, not a hypothetical stranger's prospects.",
+  "- KEEP THE DETAIL THE LESSON RESTS ON, especially WHO SOMEONE WAS. These",
+  "  authors build a point on a person's standing, and the point collapses",
+  "  without it. Henry's lesson about Zacchaeus is not that a short man",
+  "  climbed a tree — it is that the CHIEF OF THE PUBLICANS, a rich and",
+  "  conspicuous man, 'forgot his gravity' and 'ran before, like a boy'. Drop",
+  "  the office and you keep the picture while losing what it cost him, which",
+  "  is the whole lesson. Before you cut any identifying detail (someone's",
+  "  rank, wealth, reputation, age, illness), check whether the author's",
+  "  conclusion still follows without it. If it does not, the detail is not",
+  "  colour, it is the argument, and it stays.",
   "- KEEP THE ORDER OF EVENTS THE AUTHOR GIVES. Do not invert who acted",
   "  first. If the person sought Christ and Christ then answered beyond what",
   "  was sought, do not rewrite it as Christ calling and the person merely",
@@ -302,7 +409,7 @@ export const SYSTEM_PROMPT = [
   "(two of Ryle's points on Zacchaeus, about 190 words). Match this scale and",
   "specificity. Do not copy its wording or subject; it is here to show you how",
   "much text the target actually is, because word counts are easy to overshoot:",
-  "  \"Jesus came to seek and save the lost, and no one is too far gone for his",
+  '  "Jesus came to seek and save the lost, and no one is too far gone for his',
   "  grace. Look at Zacchaeus, a wealthy tax-collector, a man you'd think had",
   "  everything to lose by following Jesus. Yet he became a disciple. This shows",
   "  us that all things are possible with God. The door of hope is wide open. We",
@@ -313,9 +420,20 @@ export const SYSTEM_PROMPT = [
   "  didn't just say he believed; he gave half his possessions to the poor and",
   "  promised to repay anyone he'd cheated four times over. That's real",
   "  conversion. A faith that doesn't change your heart and life isn't saving",
-  "  faith at all. If you truly know Christ, you'll hate sin and want to live",
-  "  differently. So ask yourself: are you showing by your life that you belong",
-  "  to Him?\"",
+  "  faith at all. Grace that has really been tasted shows up somewhere, in what",
+  "  a person does with money, with grudges, with the people they used to walk",
+  '  past."',
+  "Notice how that ending lands: it states what grace does, and lets the viewer",
+  "do their own arithmetic. It does not close with 'so ask yourself', and it",
+  "does not put their standing with God in question. End your reflections the",
+  "same way — on a statement, never on a command or an audit.",
+  "THE EXAMPLES ABOVE ARE SHAPES, NOT SENTENCES TO REUSE. Every line here was",
+  "written for a different devotional than yours. Copying one across — 'but",
+  "here's what matters', 'grace that has really been tasted shows up somewhere",
+  "in what a person does with money, with grudges' — makes your reflection say",
+  "what THIS author said about THAT passage, and a viewer watching two",
+  "devotionals in a week hears the same sentence twice and stops believing",
+  "either. Take the move; write your own words for the excerpt in front of you.",
   "PUNCTUATION: do NOT use em dashes or en dashes (the '—' or '–' characters)",
   "anywhere. They read as AI writing. Use a period, comma, or colon, or restructure.",
   "Return JSON only: an object with an 'adapted' string.",
@@ -347,6 +465,9 @@ export type ModernizeReflectionOptions = {
    *  tail, so sentence count drives video length independently of words. */
   maxSentences?: number
   llm: DevotionalLlm
+  /** Surfaces the voice-repair attempts, which are otherwise invisible: the
+   *  operator sees only the final text and cannot tell it took three calls. */
+  log?: (msg: string) => void
 }
 
 export type ModernizedReflection = {
@@ -383,6 +504,57 @@ async function requestAdaptation(
   return result.adapted.trim()
 }
 
+/**
+ * Bounded voice-rule repair.
+ *
+ * The standing voice rules are all stated in the system prompt above, and each
+ * of them has been ignored at some point anyway — a prompt is a probability.
+ * `reflection-voice-check` measures them instead, and this feeds what it
+ * measured back, which is the same shape as the length and banned-phrase
+ * retries above and the only thing in this file that has ever moved a rule the
+ * prose could not.
+ *
+ * TWO attempts, not one: the rules are independent, so a rewrite that fixes the
+ * opening can introduce a repeat. If it still fails after that, the text is
+ * returned as-is and the quality gate reports it to a human — a crash here
+ * would lose the run's other work and tell the operator less.
+ */
+const VOICE_REPAIR_ATTEMPTS = 2
+
+async function repairVoice(
+  adapted: string,
+  user: string,
+  llm: ModernizeReflectionOptions["llm"],
+  log?: (msg: string) => void,
+): Promise<string> {
+  let current = adapted
+  for (let attempt = 1; attempt <= VOICE_REPAIR_ATTEMPTS; attempt++) {
+    const found = checkReflectionVoice(current)
+    if (found.length === 0) return current
+    log?.(
+      `   ↻ voice repair ${attempt}/${VOICE_REPAIR_ATTEMPTS}: ` +
+        found.map((f) => f.rule).join(", "),
+    )
+    const retryUser = [
+      user,
+      "",
+      "Your previous attempt broke rules that are checked mechanically:",
+      ...found.map((f) => `- ${f.why}\n  In: “${f.sentence}”`),
+      "",
+      "Rewrite the ENTIRE reflection so none of those hold. Keep every point",
+      "the author makes and keep the concrete details his argument rests on —",
+      "a compliant but emptier reflection is a worse answer.",
+    ].join("\n")
+    const fixed = await requestAdaptation(llm, retryUser)
+    // Only take the rewrite if it is actually cleaner. A retry that trades one
+    // broken rule for two is worse than what we already had.
+    if (!fixed) break
+    if (checkReflectionVoice(fixed).length >= found.length) break
+    current = fixed
+  }
+  return current
+}
+
 export async function modernizeReflection(
   options: ModernizeReflectionOptions,
 ): Promise<ModernizedReflection> {
@@ -398,7 +570,9 @@ export async function modernizeReflection(
     `Passage to focus on: ${options.focusReference}`,
     `Author/source: ${options.sourceName}`,
     ...(options.scriptureReference && options.scriptureText
-      ? [`Quoted verse shown on screen (${options.scriptureReference}): ${options.scriptureText}`]
+      ? [
+          `Quoted verse shown on screen (${options.scriptureReference}): ${options.scriptureText}`,
+        ]
       : []),
     ...(options.precedingHalf
       ? [
@@ -440,7 +614,9 @@ export async function modernizeReflection(
       "",
       `Your previous attempt was ${words} words in ${sentences} sentences.`,
       `The hard limits are ${maxWords} words and ${maxSentences} sentences.`,
-      overWords > 0 ? `Cut at least ${overWords} words.` : "Use fewer, fuller sentences.",
+      overWords > 0
+        ? `Cut at least ${overWords} words.`
+        : "Use fewer, fuller sentences.",
       "Cut SUPPORTING ILLUSTRATION, not substance: drop an extra metaphor, an",
       "extra Scripture quotation, or a restatement of a point you already",
       "made. Keep every main point the author makes, keep the concrete",
@@ -485,6 +661,8 @@ export async function modernizeReflection(
       )
     }
   }
+
+  adapted = await repairVoice(adapted, user, options.llm, options.log)
 
   return {
     adapted,

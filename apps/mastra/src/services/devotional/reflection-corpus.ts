@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs"
 import path from "node:path"
+import { henrySectionForVerses } from "./henry-sections"
 import { repoRoot } from "./repo-root"
 
 import { getDevotionalCorpusDir } from "../../config/env"
@@ -120,9 +121,32 @@ function matchRyleSection(
 export function matchReflection(
   passageOsis: string,
   corpora: Pick<ReflectionCorpora, "ryleMatthew" | "ryleLuke" | "matthewHenry">,
+  prefer?: CommentaryPreference,
 ): ReflectionMatch | null {
   const parts = parseOsis(passageOsis)
   if (!parts || !OSIS_TO_BOOK.has(parts.book)) return null
+
+  // An explicit choice wins over the per-book default. Henry is whole-chapter,
+  // so it is available for every book we carry; Ryle only where his volume was
+  // ingested, and asking for him elsewhere falls through to the default rather
+  // than returning nothing.
+  if (prefer === "henry") {
+    return matchHenryChapter(
+      corpora.matthewHenry,
+      parts.book,
+      parts.chapter,
+      parts.verse,
+      lastVerseOf(passageOsis),
+    )
+  }
+  if (prefer === "ryle" && parts.book === "Luke") {
+    return matchRyleSection(
+      corpora.ryleLuke,
+      parts.chapter,
+      parts.verse,
+      passageOsis,
+    )
+  }
 
   if (parts.book === "Matt") {
     return matchRyleSection(
@@ -142,15 +166,56 @@ export function matchReflection(
   }
 
   // Mark / John → Matthew Henry whole-chapter (no ingested Ryle volume).
-  const chapterId = `${parts.book}.${parts.chapter}`
-  const entry = corpora.matthewHenry.find((e) => e.osisRef === chapterId)
+  return matchHenryChapter(
+    corpora.matthewHenry,
+    parts.book,
+    parts.chapter,
+    parts.verse,
+    lastVerseOf(passageOsis),
+  )
+}
+
+/** Closing verse of an osis range ("Luke.19.3-Luke.19.5" → 5). */
+function lastVerseOf(osis: string): number | null {
+  const tail = osis.split("-").pop()?.trim()
+  const m = tail?.match(/\.(\d+)$/)
+  return m ? Number(m[1]) : null
+}
+
+/**
+ * Matthew Henry is keyed by whole chapter, so narrow to the section covering
+ * the passage before handing it on.
+ *
+ * Without this the modernizer and the fidelity critic both receive a whole
+ * chapter — 10,770 words for Luke 19, of which Zacchaeus is a third and the
+ * rest is the parable of the pounds, the triumphal entry and the temple. The
+ * critic then reports dropped arguments every time, correctly by its own
+ * rules, because most of the source really was dropped. Falls back to the full
+ * chapter when the outline cannot be parsed: a large excerpt is worse than a
+ * small one, but far better than no reflection.
+ */
+function matchHenryChapter(
+  henry: ReflectionEntry[],
+  book: string,
+  chapter: number,
+  startVerse: number | null,
+  endVerse: number | null,
+): ReflectionMatch | null {
+  const chapterId = `${book}.${chapter}`
+  const entry = henry.find((e) => e.osisRef === chapterId)
   if (!entry) return null
+  const section =
+    startVerse != null
+      ? henrySectionForVerses(entry.text, startVerse, endVerse ?? startVerse)
+      : null
   return {
     source: entry.source,
-    reference: entry.reference,
-    osisRef: entry.osisRef,
-    text: entry.text,
-    focusReference: passageOsis,
+    reference: section
+      ? `${entry.reference}:${section.startVerse}-${section.endVerse}`
+      : entry.reference,
+    osisRef: chapterId,
+    text: section ? section.text : entry.text,
+    focusReference: chapterId,
   }
 }
 
@@ -243,7 +308,25 @@ export type SelectReflectionInput = {
   themes: string[]
   /** Monotonic counter; even → commentary, odd → Spurgeon (with fallback). */
   sequence: number
+  /**
+   * Force the commentator instead of taking the per-book default.
+   *
+   * Luke defaults to Ryle because his Luke volume is ingested, and that is
+   * usually right. But the commentators genuinely differ on some scenes, and
+   * the difference decides what the devotional is ABOUT. On Zacchaeus in the
+   * tree, Ryle reads the climb as a small thing ("curiosity, and nothing but
+   * curiosity") and applies it to how we should regard OTHER people's first
+   * stirrings. Henry reads the same climb as a man who "forgot his gravity, as
+   * chief of the publicans, and ran before, like a boy", and applies it to the
+   * viewer's own willingness to look foolish in order to see Christ. That is a
+   * reading decision, so it belongs in the data beside the clip window — not in
+   * a prompt asking a model to reinterpret the commentator it was handed.
+   */
+  commentary?: CommentaryPreference
 }
+
+/** Which commentator to read a scene with. See SelectReflectionInput. */
+export type CommentaryPreference = "ryle" | "henry"
 
 /**
  * Choose the reflection for a devotional, ROTATING between two flavors so all
@@ -260,7 +343,7 @@ export function selectReflection(
 ): ReflectionSelection | null {
   const focus = input.reference ?? input.passageOsis
   const commentary = (): ReflectionSelection | null => {
-    const m = matchReflection(input.passageOsis, corpora)
+    const m = matchReflection(input.passageOsis, corpora, input.commentary)
     return m ? { ...m, flavor: "commentary", focusReference: focus } : null
   }
   const spurgeon = (): ReflectionSelection | null => {

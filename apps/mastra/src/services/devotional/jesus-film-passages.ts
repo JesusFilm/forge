@@ -1,5 +1,6 @@
 import type { MusicMood } from "./elevenlabs-music"
 import { JESUS_FILM_CHAPTERS } from "./jesus-film-catalog"
+import type { CommentaryPreference } from "./reflection-corpus"
 
 /**
  * Clip → Bible-passage table for the video-first pipeline.
@@ -53,6 +54,34 @@ export type ChapterPassage = {
    *  long text after one long clip. Only takes effect when the point picker
    *  actually chose two points and the clip really contains an act break. */
   splitActs?: boolean
+  /** Split this scene into a SERIES of standalone devotionals, one per beat.
+   *
+   *  Different from `splitActs`, which interleaves two acts inside ONE video.
+   *  Owner feedback on that shape: viewers found the back-and-forth harder to
+   *  follow than seeing a stretch of story whole. An episode instead gets its
+   *  own clip window, its own on-screen verse, and its own reflection, and can
+   *  be watched without the others.
+   *
+   *  The verse is what does the work. The point picker chooses the
+   *  commentator's points by what the QUOTED VERSE says, so narrowing the verse
+   *  to the beat on screen makes it select that beat's points on its own —
+   *  nothing forces its hand. */
+  episodes?: ChapterEpisode[]
+}
+
+/** One standalone devotional cut from a longer scene. See `episodes`. */
+export type ChapterEpisode = {
+  /** Shown on screen and handed to the point picker. */
+  osisRef: string
+  reference: string
+  /** This beat's window, in the same coordinates as `clipStartSec`. */
+  clipStartSec: number
+  clipLengthSec: number
+  /** What happens here, for whoever reads this file next. */
+  note: string
+  /** Read this beat with a named commentator instead of the book's default.
+   *  See SelectReflectionInput.commentary for why this is a data decision. */
+  commentary?: CommentaryPreference
 }
 
 export const JESUS_FILM_PASSAGES: ChapterPassage[] = [
@@ -175,6 +204,65 @@ export const JESUS_FILM_PASSAGES: ChapterPassage[] = [
     // the picker already chooses for Luke 19:10. Owner is reviewing this
     // structure here before deciding whether to enable it elsewhere.
     splitActs: true,
+    // Owner is trying the SERIES shape here instead: two standalone videos over
+    // the same scene, each whole, rather than one video that cuts back and
+    // forth. The boundary is the 16.1s of silent walking, so neither episode
+    // has to cut across a line of dialogue.
+    //
+    // Ryle's four points on Luke 19:1-10 divide cleanly between them, two each,
+    // and the narrowed verse is what makes the picker find them:
+    //   ep 1 · vv3-4 ("he ran ahead and climbed") → points 1 and 2 — no one is
+    //          beyond grace, and how small the things are that a life turns on
+    //   ep 2 · vv8-10 (the pledge, "salvation has come") → points 3 and 4 —
+    //          Christ moves first unasked, and conversion shows itself
+    episodes: [
+      {
+        // Must reach v5. The window plays through Jesus stopping and calling
+        // Zacchaeus down, and that call is the hinge the reflection turns on —
+        // with vv3-4 alone the coherence critic correctly blocked the run: the
+        // verse on screen showed a man climbing a tree while the voice talked
+        // about being called down from it.
+        osisRef: "Luke.19.3-Luke.19.5",
+        reference: "Luke 19:3-5",
+        clipStartSec: 39,
+        clipLengthSec: 30,
+        note:
+          "Zacchaeus wants to see Jesus, runs ahead, climbs the tree; Jesus " +
+          "stops, looks up and calls him down, the crowd objects. It ENDS " +
+          "there, on the invitation. Zacchaeus's pledge and Jesus's 'today " +
+          "salvation has come to this house' are both in the next episode, so " +
+          "the outcome of his conversion is off screen here.",
+        // Owner's reading, and Henry is the commentator who states it: the
+        // climb was not a small thing but a costly one. "He forgot his
+        // gravity, as chief of the publicans, and ran before, like a boy."
+        // Ryle, the default for Luke, calls the same climb mere curiosity and
+        // then turns to how we should regard other people's first stirrings —
+        // which is what kept pulling this episode away from the viewer.
+        commentary: "henry",
+      },
+      {
+        // Narrowed from 8-10. Verse 10 ("the Son of Man came to SEEK and to
+        // save") points back at the calling, which is episode 1's footage, and
+        // the reflection duly spent its first third re-telling a scene this
+        // episode never shows. 8-9 is the pledge and Jesus's answer to it —
+        // exactly what is on screen here.
+        osisRef: "Luke.19.8-Luke.19.9",
+        reference: "Luke 19:8-9",
+        clipStartSec: 78.7,
+        clipLengthSec: 52.6,
+        note:
+          "Opens INSIDE the house, on Zacchaeus's pledge: half his goods to " +
+          "the poor, fourfold to anyone he defrauded. Then Jesus's answer, " +
+          "'today salvation has come to this house'. The climb, the tree and " +
+          "Jesus calling him down are all in the PREVIOUS episode and are not " +
+          "on screen here. Raw window; removeInternalGaps cuts the ~21s " +
+          "crowd-reaction gap to roughly 32s of content.",
+        // Same commentator as episode 1. A two-part series read by two
+        // different commentators changes vocabulary and emphasis halfway
+        // through, which reads as two unrelated videos rather than one story.
+        commentary: "henry",
+      },
+    ],
   }, // Jesus and Zaccheus. Seed for subtitle alignment: snaps to the story's opening line "In Jericho there was a tax collector named Zaccheus" (en 37.9s / ru 37.1s "И вот некто именем Закхей"), through the pledge, ends on "The Son of Man came to seek and to save the lost" (~131s). Earlier 44s seed snapped to the 2nd sentence "He wanted to see Jesus…" — mid-story, not the intro.
   {
     index: 55,
@@ -204,21 +292,78 @@ export const JESUS_FILM_PASSAGES: ChapterPassage[] = [
 
 const BY_INDEX = new Map(JESUS_FILM_PASSAGES.map((p) => [p.index, p]))
 
-export function passageForChapter(index: number): ChapterPassage | null {
-  return BY_INDEX.get(index) ?? null
+export function passageForChapter(
+  index: number,
+  episode?: number,
+): ChapterPassage | null {
+  const passage = BY_INDEX.get(index) ?? null
+  if (!passage || episode === undefined) return passage
+  // The RENDER re-reads this table by chapter index, so without the episode it
+  // silently gets the whole scene's window — the clip card ran the full story
+  // and the blurred background played episode 2's ending behind episode 1's
+  // text. Generation narrowed correctly; only the render was blind to it.
+  const beat = passage.episodes?.[episode - 1]
+  if (!beat) return passage
+  return {
+    ...passage,
+    osisRef: beat.osisRef,
+    reference: beat.reference,
+    clipStartSec: beat.clipStartSec,
+    clipLengthSec: beat.clipLengthSec,
+    splitActs: false,
+  }
 }
 
 export type ChapterWithPassage = ChapterPassage & {
   id: string
   title: string
+  /** Set only for an episode: what this beat actually shows. The point picker
+   *  needs it, because a scene title alone ("Jesus and Zaccheus") describes the
+   *  whole story and would let it choose a point whose events the viewer of
+   *  THIS episode never sees. */
+  episodeNote?: string
+  /** Commentator override carried up from the episode. */
+  commentary?: CommentaryPreference
 }
 
-/** Join a passage entry with its catalog chapter (title + Arclight id). */
-export function chapterWithPassage(index: number): ChapterWithPassage | null {
+/**
+ * Join a passage entry with its catalog chapter (title + Arclight id).
+ *
+ * With `episode` (1-based), the chapter is narrowed to that beat: its window,
+ * its verse range. Everything downstream — verse selection, point picking,
+ * subtitle alignment, the clip trim — then works on the narrowed entry without
+ * knowing episodes exist, which is why this is the only place that changes.
+ * `splitActs` is dropped for an episode: an episode IS one act, so leaving it
+ * on would ask the renderer to cut a single beat in half again.
+ */
+export function chapterWithPassage(
+  index: number,
+  episode?: number,
+): ChapterWithPassage | null {
   const passage = BY_INDEX.get(index)
   const chapter = JESUS_FILM_CHAPTERS[index - 1]
   if (!passage || !chapter || chapter.index !== index) return null
-  return { ...passage, id: chapter.id, title: chapter.title }
+  const base = { ...passage, id: chapter.id, title: chapter.title }
+  if (episode === undefined) return base
+  const beat = passage.episodes?.[episode - 1]
+  if (!beat) {
+    throw new Error(
+      `chapter ${index} has no episode ${episode}` +
+        (passage.episodes
+          ? ` (it has ${passage.episodes.length})`
+          : " (no episodes defined)"),
+    )
+  }
+  return {
+    ...base,
+    osisRef: beat.osisRef,
+    reference: beat.reference,
+    clipStartSec: beat.clipStartSec,
+    clipLengthSec: beat.clipLengthSec,
+    splitActs: false,
+    episodeNote: beat.note,
+    ...(beat.commentary ? { commentary: beat.commentary } : {}),
+  }
 }
 
 /** The chapters that currently have a passage mapping (the pipeline's pool). */

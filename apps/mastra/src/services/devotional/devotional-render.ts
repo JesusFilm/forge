@@ -8,9 +8,9 @@ import { Readable } from "node:stream"
 import { repoRoot } from "./repo-root"
 
 import {
+  buildNarrationSegments,
   produceDevotionalAudio,
   type ProducedDevotionalAudio,
-  type ProducedSegment,
 } from "./devotional-audio"
 import { joinAudioVarGaps, slowAndPad } from "./audio-concat"
 import {
@@ -21,6 +21,12 @@ import {
   saveCachedAudio,
   saveCachedDevo,
 } from "./devotional-cache"
+import {
+  approvalMessage,
+  approvalState,
+  textFingerprint,
+  writeApproval,
+} from "./devotional-text-approval"
 import {
   buildDevotionalManifest,
   type StagedSegment,
@@ -126,14 +132,34 @@ const OUTRO_HOLD_SEC = 8
 /** Slack for the per-boundary crossfades (each card lingers into the next). */
 const BG_SAFETY_SEC = 5
 /**
- * Floor for the background's playback rate. When the usable film is SHORTER
- * than the background timeline, the clip is slowed to stretch across it; the
- * background is heavily blurred, dimmed and Ken-Burns-zoomed, so a slow rate is
- * imperceptible — whereas running out of footage is a visible freeze. (Was
- * 0.8, which wasn't enough for short chapters: "Jesus Calms the Storm" has
- * ~111s of usable film against a ~154s timeline, so it needs ~0.72.)
+ * Floor when the backdrop LOOPS rather than stretching one pass.
+ *
+ * 0.5x reads as dreamlike drift; owner called it too slow. Once the clip
+ * repeats, extreme slowing buys nothing — an extra repeat covers the same
+ * ground while the motion stays close to life.
  */
-const BG_MIN_PLAYBACK_RATE = 0.5
+const BG_LOOPED_MIN_RATE = 0.85
+/**
+ * How long each backdrop seam dissolves.
+ *
+ * The pieces used to be hard-concatenated, so every repeat cut from the end of
+ * the scene straight back to its start — visible as the picture starting over,
+ * which is exactly what the owner reported. Dissolving the seam is what makes a
+ * repeat read as ambient motion instead. Slow on purpose: a fast crossfade
+ * still registers as an edit.
+ */
+const BG_SEAM_XFADE_SEC = 1.2
+
+/**
+ * Music bed level against the narration.
+ *
+ * 0.12 left the bed inaudible under a bright voice, and the narration then sat
+ * bare and hard on the ear; earlier devotionals ran the other way, with the
+ * music up far enough to swallow words. This sits between the two. It is a
+ * starting point for the ear, not a measured value — override per render with
+ * `--music-volume` while judging.
+ */
+const MUSIC_VOLUME_DEFAULT = 0.2
 
 /**
  * SSRF guard for the Arclight-returned download URL: the metadata endpoint is a
@@ -170,6 +196,25 @@ function assertPublicHttpsUrl(raw: string): void {
   if (isPrivate) {
     throw new Error(`refusing private/reserved download host (${host})`)
   }
+}
+
+/**
+ * Move captions in time without changing their order or duration.
+ *
+ * Clamped at zero: a caption cannot begin before its card exists, and a cue
+ * shifted past the card's start would otherwise render at a negative time and
+ * simply vanish.
+ */
+function shiftCaptions(
+  captions: TimedCaption[],
+  offsetSec: number,
+): TimedCaption[] {
+  if (offsetSec === 0) return captions
+  return captions.map((c) => ({
+    ...c,
+    startSec: Math.max(0, c.startSec + offsetSec),
+    endSec: Math.max(0, c.endSec + offsetSec),
+  }))
 }
 
 function probeDuration(file: string): Promise<number> {
@@ -341,6 +386,175 @@ function trimClip(
 }
 
 /**
+ * Build the blurred backdrop by REPEATING a window until it covers `coverSec`.
+ *
+ * An episode's backdrop may only show that episode's footage, which for a 30s
+ * beat is far less than the ~170s timeline. Slowing alone cannot bridge that
+ * (0.18x, well under the floor), and the composition cannot help: its schema
+ * declares `bgDurationSec` "so the background is looped", but nothing in
+ * DevotionalVideo.tsx ever reads it — the field is dead, and the render simply
+ * held its last frame for the remaining two minutes.
+ *
+ * So the repeat happens here, in ffmpeg, where it is verifiable. `-stream_loop`
+ * repeats the trimmed window; `-t` cuts the result to exactly what the timeline
+ * needs. The backdrop is heavily blurred, dimmed and Ken-Burns-zoomed, so a
+ * repeat reads as ambient motion rather than a visible restart.
+ */
+/**
+ * Plan which pieces of the film make up the blurred backdrop.
+ *
+ * Returns SOURCE segments, in order, to be concatenated and then slowed. Every
+ * piece starts at the same point in the film, so each new piece reads as the
+ * scene beginning again rather than as an arbitrary jump.
+ *
+ * `restartAtSec` is where a deliberate restart belongs — the moment the
+ * reflection begins. The backdrop plays from the top of the scene under the
+ * cover and scripture, then starts over exactly as the reflection opens, which
+ * lands as a considered beat instead of a loop seam falling wherever the
+ * arithmetic happened to put it.
+ */
+export function planBackgroundSegments(input: {
+  startSec: number
+  windowLen: number
+  coverSec: number
+  speed: number
+  restartAtSec?: number
+  /** Source seconds each seam dissolve consumes, times the seams expected.
+   *  A crossfade overlaps its two sides, so the joined result is SHORTER than
+   *  the sum of its pieces; without this the backdrop lands a few seconds
+   *  short and freezes on its last frame. Over-provisioning is free — the
+   *  composition takes what it needs — and `buildBackground` measures the
+   *  real duration afterwards either way. */
+  extraSourceSec?: number
+}): { startSec: number; lengthSec: number }[] {
+  const { startSec, windowLen, coverSec, speed } = input
+  // At 0.85x a second of film paints ~1.18s of screen, so less source than
+  // screen time is needed.
+  const totalSource = coverSec * speed + (input.extraSourceSec ?? 0)
+  const piece = (len: number) => ({
+    startSec,
+    lengthSec: Math.min(len, windowLen),
+  })
+
+  const out: { startSec: number; lengthSec: number }[] = []
+  let placed = 0
+  if (input.restartAtSec && input.restartAtSec > 0) {
+    const preSource = Math.min(input.restartAtSec * speed, totalSource)
+    // The pre-reflection stretch may itself be longer than the window.
+    let pre = preSource
+    while (pre > 0.01) {
+      const take = Math.min(pre, windowLen)
+      out.push({ startSec, lengthSec: take })
+      pre -= take
+      placed += take
+    }
+  }
+  while (placed < totalSource - 0.01) {
+    const take = Math.min(totalSource - placed, windowLen)
+    out.push(piece(take))
+    placed += take
+  }
+  return out
+}
+
+async function buildBackground(
+  src: string,
+  dest: string,
+  segments: { startSec: number; lengthSec: number }[],
+  coverSec: number,
+  speed: number,
+): Promise<void> {
+  if (segments.length > 1) {
+    await concatWithSeamXfade(src, dest, segments, speed, BG_SEAM_XFADE_SEC)
+  } else {
+    await trimClipSegments(src, dest, segments, false, speed)
+  }
+  // MEASURE it. An earlier version logged its own arithmetic as though it were
+  // the result — "looped x6 -> covers 178s" while the file was 35s — so a
+  // backdrop that froze under the whole reflection reported success three runs
+  // running. Never claim coverage that has not been read back off the disk.
+  const built = await probeDuration(dest)
+  if (built < coverSec - 1.5) {
+    throw new Error(
+      `background is ${built.toFixed(0)}s but the timeline needs ` +
+        `${coverSec.toFixed(0)}s — it would freeze on its last frame ` +
+        `(${segments.length} segment(s), speed ${speed})`,
+    )
+  }
+}
+
+/**
+ * Join backdrop pieces with a dissolve at every seam.
+ *
+ * The backdrop repeats because a chapter is often shorter than the timeline it
+ * has to cover — the storm scene gives 111 usable seconds under a 177-second
+ * layout, so no arrangement of it avoids a repeat. What CAN be avoided is
+ * seeing the repeat, and that is the whole job here.
+ *
+ * `xfade` overlaps its two sides, so each seam costs `dissolveSec` of the
+ * joined duration; the offsets below therefore walk the running total rather
+ * than the raw sum, and callers over-provision the source to compensate.
+ * `acrossfade` does the same for audio so the two streams stay the same length.
+ */
+async function concatWithSeamXfade(
+  src: string,
+  dest: string,
+  segments: ReadonlyArray<{ startSec: number; lengthSec: number }>,
+  speed: number,
+  dissolveSec: number,
+): Promise<void> {
+  // A dissolve cannot be longer than the shorter side of the seam it joins.
+  const shortest = Math.min(...segments.map((s) => s.lengthSec))
+  const d = Math.max(0.2, Math.min(dissolveSec, shortest / 2))
+  const args = ["-y"]
+  for (const seg of segments) {
+    args.push(
+      "-ss",
+      String(seg.startSec),
+      "-t",
+      String(seg.lengthSec),
+      "-i",
+      src,
+    )
+  }
+  const filters: string[] = []
+  let vLabel = "0:v"
+  let aLabel = "0:a"
+  let running = segments[0].lengthSec
+  for (let i = 1; i < segments.length; i++) {
+    const v = `vx${i}`
+    const a = `ax${i}`
+    filters.push(
+      `[${vLabel}][${i}:v]xfade=transition=fade:duration=${d}:` +
+        `offset=${(running - d).toFixed(3)}[${v}]`,
+      `[${aLabel}][${i}:a]acrossfade=d=${d}[${a}]`,
+    )
+    running = running + segments[i].lengthSec - d
+    vLabel = v
+    aLabel = a
+  }
+  const vTail = speed !== 1 ? `,setpts=PTS/${speed}` : ""
+  filters.push(`[${vLabel}]format=yuv420p${vTail}[v]`)
+  filters.push(`[${aLabel}]${speed !== 1 ? `atempo=${speed}` : "anull"}[a]`)
+  args.push(
+    "-filter_complex",
+    filters.join(";"),
+    "-map",
+    "[v]",
+    "-map",
+    "[a]",
+    "-c:v",
+    "libx264",
+    "-preset",
+    "veryfast",
+    "-c:a",
+    "aac",
+    dest,
+  )
+  return runFfmpeg(args)
+}
+
+/**
  * Concatenate multiple [startSec, startSec+lengthSec] pieces of `src` into
  * one `dest` — the multi-segment counterpart of `trimClip`, used when
  * `removeInternalGaps` cut one or more dead-air gaps out of the window. A
@@ -365,13 +579,22 @@ function trimClipSegments(
   }
   const args = ["-y"]
   for (const seg of segments) {
-    args.push("-ss", String(seg.startSec), "-t", String(seg.lengthSec), "-i", src)
+    args.push(
+      "-ss",
+      String(seg.startSec),
+      "-t",
+      String(seg.lengthSec),
+      "-i",
+      src,
+    )
   }
   const parts: string[] = []
   for (let i = 0; i < segments.length; i++) {
     parts.push(`[${i}:v][${i}:a]`)
   }
-  const filters = [`${parts.join("")}concat=n=${segments.length}:v=1:a=1[vc][ac]`]
+  const filters = [
+    `${parts.join("")}concat=n=${segments.length}:v=1:a=1[vc][ac]`,
+  ]
   const vTail = speed !== 1 ? `,setpts=PTS/${speed}` : ""
   filters.push(`[vc]null${vTail}[v]`)
   const aChain = [
@@ -406,6 +629,7 @@ function runRender(
   musicVol: number,
   xfadeSec: number,
   videoAudioLevel: number,
+  cover: { dateLabel?: string; titleFirst?: boolean } = {},
 ): Promise<void> {
   return new Promise((resolve, reject) => {
     const c = spawn(
@@ -426,6 +650,8 @@ function runRender(
         // does NOT bleed into the reflection. Music is not ducked (plays through
         // quietly as a bed).
         `--video-audio=${videoAudioLevel}`,
+        ...(cover.dateLabel ? [`--cover-date-label=${cover.dateLabel}`] : []),
+        ...(cover.titleFirst ? ["--cover-title-first=true"] : []),
       ],
       { stdio: "inherit", cwd: REPO_ROOT },
     )
@@ -448,15 +674,78 @@ function runRender(
   })
 }
 
+/**
+ * Name the output file so nothing a render can vary silently overwrites
+ * something else.
+ *
+ * Every part earns its place by a collision it prevents: two episodes of one
+ * scene share the clip title AND the sequence, a localized edition shares
+ * everything but the language, and the wide cut shares everything but the
+ * aspect. The episode tag was added after episode 1 of Zacchaeus overwrote the
+ * full-scene devotional of the same name.
+ */
+export function devotionalVideoFilename(input: {
+  clipTitle: string
+  sequence: number
+  lang: string
+  aspect: "portrait" | "wide"
+  episode?: number
+}): string {
+  // Trim the edges: a title ending in punctuation ("Jesus' Triumphal Entry!")
+  // otherwise leaves a trailing dash and the name comes out double-dashed.
+  const slug = input.clipTitle
+    .replace(/[^a-z0-9]+/gi, "-")
+    .replace(/^-+|-+$/g, "")
+    .toLowerCase()
+  const ep = input.episode ? `-ep${input.episode}` : ""
+  const lang = input.lang === "en" ? "" : `-${input.lang}`
+  const aspect = input.aspect === "wide" ? "-wide" : ""
+  return `${slug}-seq${input.sequence}${ep}${lang}${aspect}.mp4`
+}
+
 export type RenderOptions = {
   /** Directory to write the MP4 into. */
   outDir: string
+  /** 1-based episode of a scene split into a series. Tags the filename, so
+   *  episodes of one scene do not overwrite each other — they share a clip
+   *  title and a sequence, which is everything else the name is built from. */
+  episode?: number
   /** "portrait" (9:16 social, default) or "wide" (16:9 desktop/YouTube). */
   aspect?: "portrait" | "wide"
   style?: string
   layout?: string
   /** Header date label; defaults to today (Mon D). */
   headerDate?: string
+  /** Let the BACKGROUND run past the episode's window.
+   *
+   *  An episode's backdrop is normally confined to that episode's footage, but
+   *  a 30s window under a ~180s timeline has to repeat six times, and the
+   *  repetition is noticeable. This starts the backdrop at the episode's start
+   *  and lets it keep playing forward through whatever film remains, so most
+   *  of the reflection still sits under this episode's own scene and the
+   *  repeats drop to one or none. The clip card is unaffected — it always
+   *  shows only the episode. */
+  bgExtendPastEpisode?: boolean
+  /** Shift every caption later by this many seconds (negative = earlier).
+   *
+   *  The film's SRT can lead its own audio. Our trim is frame-accurate — 30.000s
+   *  measured for a 30s ask — and the mapping was verified cue by cue, so a
+   *  residual lead belongs to the track, not to the arithmetic. Sync can only be
+   *  judged by ear, so it is a knob rather than a computed value. */
+  captionOffsetSec?: number
+  /** Text in the cover's date slot. Defaults to "Today's Devotional". */
+  coverDateLabel?: string
+  /** Title animates first, logo follows ~2s in. Off by default: it changes the
+   *  opening seconds, and the established devotional opens with the mark. */
+  coverTitleFirst?: boolean
+  /** Leave today's fixed-date occasion unspoken and off the cover. */
+  suppressOccasion?: boolean
+  /** Render ONLY the cover card — the opening seconds, animation and all. */
+  coverOnly?: boolean
+  /** Use this mp3 as the music bed instead of the library or the generator. */
+  musicFile?: string
+  /** Replace the rotated settle line on the cover for this run. */
+  settleLine?: string
   /** Music bed level (0–1). Low by default — music is a BACKGROUND bed, well
    *  below the voice. */
   musicVolume?: number
@@ -552,7 +841,7 @@ async function renderInStage(
   const MAX_VIDEO_CARD_SEC = 60
   const clampVideoCardSec = (sec: number) =>
     Math.min(MAX_VIDEO_CARD_SEC, Math.max(MIN_VIDEO_CARD_SEC, sec))
-  const window = passageForChapter(devo.clip.index)
+  const window = passageForChapter(devo.clip.index, options.episode)
   // Assigned by every branch below (two-act split, single clip, or the
   // no-curated-window fallback); the assertion after the block proves it
   // rather than letting a sentinel 0 reach the manifest.
@@ -577,6 +866,15 @@ async function renderInStage(
       { startSec: winStart, lengthSec: winLen },
     ]
     let sourceCues: SubtitleCue[] = []
+    // Every path out of here used to be silent. When the fetch or the alignment
+    // failed the clip simply rendered without captions and nothing said so —
+    // which is how an episode shipped with the subtitles missing and no trace
+    // in the log to explain it.
+    if (!clipInfo.subtitleUrl) {
+      log(
+        `⚠️  no subtitle track for ${devo.clip.id} in ${locale.lang}; the clip will have NO captions`,
+      )
+    }
     if (clipInfo.subtitleUrl) {
       const edited = await fetchEditedWindow(
         clipInfo.subtitleUrl,
@@ -593,6 +891,13 @@ async function renderInStage(
         winLen = edited.lengthSec
         clipSegments = edited.segments
         sourceCues = edited.cues
+        if (!edited.snapped) {
+          log(
+            `⚠️  window ${winStart.toFixed(0)}s +${winLen.toFixed(0)}s could not snap to ` +
+              `sentence boundaries (the beat's dialogue is shorter than the ` +
+              `window); keeping the seeded edges. Captions are unaffected.`,
+          )
+        }
         const cutNote =
           edited.segments.length > 1
             ? ` (${edited.segments.length - 1} pause${edited.segments.length > 2 ? "s" : ""} cut)`
@@ -632,7 +937,8 @@ async function renderInStage(
     // encode the halves as two clips, so the manifest can play act 1, show
     // the first half of the reflection, then play act 2. Only when the
     // chapter opted in AND the reflection actually came back as two halves.
-    const wantsActs = window.splitActs === true && devo.reflection.parts?.length === 2
+    const wantsActs =
+      window.splitActs === true && devo.reflection.parts?.length === 2
     const actBreak = wantsActs
       ? findActBreak(sourceCues, winStart, winLen)
       : null
@@ -657,12 +963,22 @@ async function renderInStage(
         const clip2 = path.join(stage, "clip2.mp4")
         await trimClipSegments(full, clip, act1Segments, true, VIDEO_SPEED)
         await trimClipSegments(full, clip2, act2Segments, true, VIDEO_SPEED)
-        const act1Sec = act1Segments.reduce((s, x) => s + x.lengthSec, 0) / VIDEO_SPEED
-        const act2Sec = act2Segments.reduce((s, x) => s + x.lengthSec, 0) / VIDEO_SPEED
+        const act1Sec =
+          act1Segments.reduce((s, x) => s + x.lengthSec, 0) / VIDEO_SPEED
+        const act2Sec =
+          act2Segments.reduce((s, x) => s + x.lengthSec, 0) / VIDEO_SPEED
         videoCardSec = clampVideoCardSec(act1Sec)
         if (sourceCues.length > 0) {
-          videoCaptions = mapCuesToEditedTimeline(sourceCues, act1Segments, VIDEO_SPEED)
-          act2Captions = mapCuesToEditedTimeline(sourceCues, act2Segments, VIDEO_SPEED)
+          videoCaptions = mapCuesToEditedTimeline(
+            sourceCues,
+            act1Segments,
+            VIDEO_SPEED,
+          )
+          act2Captions = mapCuesToEditedTimeline(
+            sourceCues,
+            act2Segments,
+            VIDEO_SPEED,
+          )
         }
         // Cap by the clip that was ACTUALLY encoded, exactly as the main
         // video card does. Deriving the duration from the segment arithmetic
@@ -687,17 +1003,23 @@ async function renderInStage(
 
     if (!act2Info) {
       await trimClipSegments(full, clip, trimSegments, true, VIDEO_SPEED) // normalize + speed
-      videoCardSec = clampVideoCardSec(onScreenSec / VIDEO_SPEED)
+      // The card can never be longer than the footage it shows. Clamping UP to
+      // MIN_VIDEO_CARD_SEC held the clip's last frame for the difference —
+      // 30s of card against 26.8s of sped-up footage froze for three seconds
+      // before the reflection took over.
+      const playableSec = onScreenSec / VIDEO_SPEED
+      videoCardSec = Math.min(clampVideoCardSec(playableSec), playableSec)
       // Captions must follow the SAME edit as the picture: cut-out pauses shift
       // later lines earlier, and the speed-up compresses every timestamp. Map
       // against `trimSegments` (exactly what was encoded into clip.mp4).
       if (sourceCues.length > 0) {
-        videoCaptions = mapCuesToEditedTimeline(
-          sourceCues,
-          trimSegments,
-          VIDEO_SPEED,
+        videoCaptions = shiftCaptions(
+          mapCuesToEditedTimeline(sourceCues, trimSegments, VIDEO_SPEED),
+          options.captionOffsetSec ?? 0,
         )
-        log(`captions: ${videoCaptions.length} cue(s) mapped onto the edited clip`)
+        log(
+          `captions: ${videoCaptions.length} cue(s) mapped onto the edited clip`,
+        )
       }
     }
   } else {
@@ -737,12 +1059,27 @@ async function renderInStage(
     musicFile,
     headerDate,
     labels: locale.labels,
-    occasion: occasionFor(devo.date, locale.lang) ?? undefined,
+    // Suppressed for social cuts. This is the SECOND place the occasion enters
+    // — the narration reads it from its own call — and silencing only the voice
+    // left "WORLD HUMANITARIAN DAY" sitting on the cover.
+    occasion: options.suppressOccasion
+      ? undefined
+      : (occasionFor(devo.date, locale.lang) ?? undefined),
     videoCaptions,
-    ...(act2Info
-      ? { act2: { ...act2Info, captions: act2Captions } }
-      : {}),
+    ...(act2Info ? { act2: { ...act2Info, captions: act2Captions } } : {}),
   })
+
+  // COVER ONLY: keep the opening card and drop the rest. Used when the cover
+  // itself needs re-cutting — a new date label, say — and the devotional it
+  // belongs to is already finished and liked. Rendering the whole thing again
+  // would re-synthesise every line and hand back a video that differs from the
+  // one being kept.
+  if (options.coverOnly) {
+    manifest.cards = manifest.cards.filter((c) => c.kind === "cover")
+    if (manifest.cards.length === 0) {
+      throw new Error("cover-only render: this devotional has no cover card")
+    }
+  }
 
   // SEAMLESS BACKGROUND: cut ONE continuous slice of the source film and let
   // EVERY non-video card be a window into it (the composition sets each card's
@@ -769,10 +1106,26 @@ async function renderInStage(
     },
     INTRO_HOLD_SEC + OUTRO_HOLD_SEC + BG_SAFETY_SEC,
   )
-  const bgLen = Math.min(bgTimelineSec, usableDur)
-  await trimClip(full, path.join(stage, "bg.mp4"), 0, bgLen)
+  // The background may only ever show THIS episode's footage.
+  //
+  // Three rules meet here and the first version of this got all three wrong:
+  //   - an episode's backdrop must not reach into the next episode's story
+  //     (the viewer watched Zacchaeus give his money away while the voice was
+  //     still describing him up the tree),
+  //   - it must not run past `usableDur`, which already withholds the film's
+  //     last TRAILER seconds,
+  //   - and it must not run past the end of the file at all: offsetting the
+  //     start without shrinking the length asked ffmpeg for 39s→173s of a 142s
+  //     clip, which is how both of the above happened at once.
+  // A short source is fine — the composition loops at `bgDurationSec`.
+  const bgStart = options.episode ? (window?.clipStartSec ?? 0) : 0
+  const bgAvailable = Math.max(1, usableDur - bgStart)
+  const bgWindowLen =
+    options.episode && !options.bgExtendPastEpisode
+      ? Math.min(window?.clipLengthSec ?? bgAvailable, bgAvailable)
+      : bgAvailable
+  const bgLen = Math.min(bgTimelineSec, bgWindowLen)
   manifest.bgFile = "bg.mp4"
-  manifest.bgDurationSec = bgLen
   // Pin the held beats the composition adds to the first/last card, so its
   // layout can't drift from the budget computed above.
   manifest.introHoldSec = INTRO_HOLD_SEC
@@ -780,11 +1133,66 @@ async function renderInStage(
   // If the usable film is SHORTER than the background timeline, slow the ONE
   // continuous clip so it stretches across every card instead of running out
   // (a freeze). Never faster than 1×.
+  // Slow a short backdrop as far as the floor allows; the composition loops
+  // whatever is still missing. Slowing alone cannot cover an episode-sized
+  // window (30s under a ~170s timeline would need 0.18×, well past the floor),
+  // so loop and slow together rather than stretching one clip to a crawl.
+  // Keep the motion close to life and let the scene begin again instead, which
+  // reads better than stretching one pass to a crawl.
   const bgRate =
-    bgTimelineSec > usableDur
-      ? Math.max(BG_MIN_PLAYBACK_RATE, usableDur / bgTimelineSec)
+    bgTimelineSec > bgLen
+      ? Math.max(BG_LOOPED_MIN_RATE, Math.min(1, bgLen / bgTimelineSec))
       : 1
-  manifest.bgPlaybackRate = bgRate
+  // Where the backdrop should visibly start over: the moment the reflection
+  // opens. Video cards are excluded from this timeline (the clip itself is on
+  // screen then), so this is the intro hold plus the cards before the first
+  // reflection card — cover and scripture.
+  // Only meaningful when there IS a reflection to restart on. A cover-only
+  // render has none, and the accumulator then ran past every card and put the
+  // seam inside the cover itself — two black frames at 7.3s, which read as the
+  // picture glitching.
+  // ...and ONLY for an episode. The restart exists because an episode's
+  // backdrop may only show that episode's few seconds of film, so it has to
+  // begin again and the honest place for the seam is a deliberate beat. A full
+  // devotional has the whole scene: the owner asked for the earlier look, where
+  // the backdrop reads as one continuous take carrying on behind the voice, so
+  // there is no deliberate restart and the seams are dissolved instead.
+  const hasReflection =
+    Boolean(options.episode) &&
+    manifest.cards.some((c) => String(c.kind).startsWith("reflection"))
+  let bgRestartAtSec = hasReflection ? INTRO_HOLD_SEC : 0
+  if (hasReflection) {
+    for (const card of manifest.cards) {
+      if (String(card.kind).startsWith("reflection")) break
+      if (card.kind === "video") continue
+      bgRestartAtSec +=
+        (Number(card.durationSec) || 3) +
+        (Number(card.holdSec) || 0) +
+        CARD_TAIL_SEC
+    }
+  }
+  const bgSegments = planBackgroundSegments({
+    startSec: bgStart,
+    windowLen: bgLen,
+    coverSec: bgTimelineSec,
+    speed: bgRate,
+    restartAtSec: bgRestartAtSec,
+    // Generous: a few seams cost a few seconds, and running long is harmless
+    // while running short freezes the picture.
+    extraSourceSec: BG_SEAM_XFADE_SEC * 4,
+  })
+  await buildBackground(
+    full,
+    path.join(stage, "bg.mp4"),
+    bgSegments,
+    bgTimelineSec,
+    bgRate,
+  )
+  // bg.mp4 is now built to cover the timeline (slowed AND repeated), so the
+  // composition must play it straight — re-applying the rate would stretch it
+  // a second time and leave the same hole this loop was added to close.
+  manifest.bgPlaybackRate = 1
+  manifest.bgDurationSec = bgTimelineSec
   // Non-video cards read the shared top-level bgFile — clear any per-card bg so
   // they all window into the ONE continuous clip.
   for (const card of manifest.cards) {
@@ -793,9 +1201,18 @@ async function renderInStage(
       delete card.bgDurationSec
     }
   }
-  const bgCoverageSec = bgLen / bgRate
+  // bg.mp4 is built to the full timeline, so coverage is no longer the slice
+  // length over a rate — the repeat count is what closes the gap. Log the
+  // repeats so a backdrop that visibly restarts can be traced to a window that
+  // was too short, rather than looking like a render glitch.
+  const bgCoverageSec = bgTimelineSec
   log(
-    `background: one continuous ${bgLen.toFixed(0)}s slice ×${bgRate.toFixed(2)} → covers ${bgCoverageSec.toFixed(0)}s of a ${bgTimelineSec.toFixed(0)}s timeline`,
+    `background: ${bgStart.toFixed(0)}s +${bgLen.toFixed(0)}s ×${bgRate.toFixed(2)}, ` +
+      `${bgSegments.length} pass(es), ` +
+      (bgRestartAtSec > 0
+        ? `restarts at ${bgRestartAtSec.toFixed(0)}s (reflection) `
+        : `${BG_SEAM_XFADE_SEC}s seam dissolves `) +
+      `→ covers ${bgTimelineSec.toFixed(0)}s`,
   )
   if (bgCoverageSec < bgTimelineSec - 0.5) {
     // Only reachable when the film is so short that even the slowest allowed
@@ -813,13 +1230,15 @@ async function renderInStage(
   await mkdir(options.outDir, { recursive: true })
   const aspect = options.aspect ?? "portrait"
   const comp = aspect === "wide" ? "devotional-wide" : "devotional"
-  const suffix = aspect === "wide" ? "-wide" : ""
-  // Clip title stays English, so tag non-English renders to avoid overwriting.
-  const langSuffix = locale.lang === "en" ? "" : `-${locale.lang}`
-  const slug = devo.clip.title.replace(/[^a-z0-9]+/gi, "-").toLowerCase()
   const videoPath = path.join(
     options.outDir,
-    `${slug}-seq${devo.sequence}${langSuffix}${suffix}.mp4`,
+    devotionalVideoFilename({
+      clipTitle: devo.clip.title,
+      sequence: devo.sequence,
+      lang: locale.lang,
+      aspect,
+      ...(options.episode ? { episode: options.episode } : {}),
+    }),
   )
   log(`render (${aspect}) → ${videoPath}`)
   await runRender(
@@ -828,9 +1247,15 @@ async function renderInStage(
     comp,
     style,
     layout,
-    options.musicVolume ?? 0.12,
+    options.musicVolume ?? MUSIC_VOLUME_DEFAULT,
     options.xfadeSec ?? 1.2,
     options.videoAudioLevel ?? 0.55,
+    {
+      // Owner rules for the devotional cover: never a date, and the hook is
+      // read before the mark animates.
+      dateLabel: options.coverDateLabel ?? "Today's Devotional",
+      titleFirst: options.coverTitleFirst ?? false,
+    },
   )
   return videoPath
 }
@@ -859,11 +1284,34 @@ export type PrepareAndRenderInput = RenderOptions & {
    *  critic could not run). Default false — the gate runs BEFORE audio and
    *  video precisely so a bad text doesn't cost a TTS bill and a render. */
   ignoreQualityGate?: boolean
+  /** Stop after the text is written, reviewed by the critics and cached —
+   *  before a single character is sent to TTS. The whole devotional is printed
+   *  so a person can read it, and the cached devo.json can be hand-edited or
+   *  the prompts changed and the text regenerated, all at LLM prices. Resume by
+   *  re-running without this flag: the cached text is reused and only the audio
+   *  and video are produced. */
+  reviewOnly?: boolean
+  /** Record that a person has read THIS wording, and continue to audio. The
+   *  approval is bound to the text's fingerprint, so a later edit or
+   *  regeneration invalidates it and the gate closes again. */
+  approveText?: boolean
+  /** Read the scene with this commentator for THIS run, ignoring what the
+   *  passage table says. For comparing readings before choosing one. */
+  commentaryOverride?: "ryle" | "henry"
+  /** Target length of the spoken reflection, in words. Defaults to 170, which
+   *  runs about 70 seconds. The picker also reads it, to judge whether two
+   *  commentary points can honestly fit in the budget. */
+  approxWords?: number
+  /** Render one beat of a scene that defines `episodes` (1-based) as its own
+   *  standalone devotional. Caches under its own dir, so episodes of the same
+   *  scene do not overwrite one another. */
+  episode?: number
 }
 
 export type RenderedDevotional = {
   devotional: GeneratedDevotional
-  videoPath: string
+  /** null when `reviewOnly` stopped the run before any audio or video work. */
+  videoPath: string | null
 }
 
 /**
@@ -953,7 +1401,14 @@ export function assertNarrationComplete(audio: ProducedDevotionalAudio): void {
 export async function produceNarration(
   devo: GeneratedDevotional,
   locale: DevotionalLocale,
-  opts: { cacheDir: string; reuse: boolean; log?: (msg: string) => void },
+  opts: {
+    cacheDir: string
+    reuse: boolean
+    log?: (msg: string) => void
+    suppressOccasion?: boolean
+    musicFile?: string
+    settleLine?: string
+  },
 ): Promise<ProducedDevotionalAudio> {
   const log = opts.log ?? (() => {})
   const { cacheDir } = opts
@@ -987,6 +1442,9 @@ export async function produceNarration(
   const audio = await produceDevotionalAudio(
     devo,
     {
+      suppressOccasion: opts.suppressOccasion ?? false,
+      ...(opts.musicFile ? { musicFile: opts.musicFile } : {}),
+      ...(opts.settleLine ? { settleLine: opts.settleLine } : {}),
       reusable,
       // Numbers are spelled deterministically in the connectors. Stress marks:
       // ONLY the owner-curated overrides (spoken only). ElevenLabs' Russian
@@ -1019,6 +1477,58 @@ export async function produceNarration(
   return audio
 }
 
+/**
+ * Render the devotional as a person will actually HEAR it, for the review stop.
+ *
+ * Built from `buildNarrationSegments` — the same function the TTS step calls —
+ * so what is read here is character-for-character what would be synthesized,
+ * connectors included. A pretty-printed devo.json would show the raw fields and
+ * hide exactly the seams ("Here's today's scripture", "Let's watch") that make
+ * a devotional sound stitched together or natural.
+ */
+export function printDevotionalForReview(
+  devo: GeneratedDevotional,
+  locale: DevotionalLocale,
+  cacheDir: string,
+  opts: { suppressOccasion?: boolean } = {},
+): string {
+  const spoken = buildNarrationSegments(devo, locale, {
+    suppressOccasion: opts.suppressOccasion ?? false,
+  })
+  const rule = "─".repeat(72)
+  const lines = [
+    "",
+    rule,
+    `REVIEW — nothing has been sent to TTS yet`,
+    rule,
+    `voice ${devo.voice} · mood ${devo.mood} · ${devo.scripture.reference} · ${devo.date}`,
+    `source: ${devo.reflection.attribution}`,
+    "",
+    "SPOKEN, in order (connectors included):",
+    "",
+  ]
+  for (const seg of spoken) {
+    lines.push(`  [${seg.id}]`)
+    for (const para of seg.text.split("\n").filter((p) => p.trim())) {
+      lines.push(`  ${para.trim()}`)
+    }
+    lines.push("")
+  }
+  const highlights = (devo.reflectionHighlights ?? []).filter(Boolean)
+  if (highlights.length) {
+    lines.push(`ON SCREEN, accented: ${highlights.join(" / ")}`, "")
+  }
+  lines.push(
+    rule,
+    `To change the WORDING: edit ${path.join(cacheDir, "devo.json")}`,
+    `To change the RULES:   edit the agent prompts, then re-run with --regenerate`,
+    `To continue as is:     re-run the same command without --review`,
+    rule,
+    "",
+  )
+  return lines.join("\n")
+}
+
 export async function prepareAndRenderDevotional(
   input: PrepareAndRenderInput,
 ): Promise<RenderedDevotional> {
@@ -1030,7 +1540,12 @@ export async function prepareAndRenderDevotional(
   // TTS glitch can regenerate just the audio (keeping the wording), and a hand
   // edit to the cached devo.json flows into a fresh audio render. English is
   // cached under ch<N>-seq<M>; a localized edition gets its own -<lang> dir.
-  const enDir = cacheDirFor(input.chapterIndex, input.sequence)
+  const enDir = cacheDirFor(
+    input.chapterIndex,
+    input.sequence,
+    "en",
+    input.episode,
+  )
   let devo = input.regenerate ? null : await loadCachedDevo(enDir)
   if (devo) {
     log("reusing cached devotional text")
@@ -1043,7 +1558,10 @@ export async function prepareAndRenderDevotional(
       devo = { ...devo, date: input.date }
     }
   } else {
-    log(`generate (ch${input.chapterIndex}, seq${input.sequence})…`)
+    log(
+      `generate (ch${input.chapterIndex}, seq${input.sequence}` +
+        `${input.episode ? `, episode ${input.episode}` : ""})…`,
+    )
     devo = await generateDevotional({
       chapterIndex: input.chapterIndex,
       sequence: input.sequence,
@@ -1052,6 +1570,11 @@ export async function prepareAndRenderDevotional(
       // Per-agent models: strong for modernizer/copywriter, cheap for the rest.
       llms: buildDevotionalAgentLlms(),
       log,
+      ...(input.episode ? { episode: input.episode } : {}),
+      ...(input.commentaryOverride
+        ? { commentaryOverride: input.commentaryOverride }
+        : {}),
+      ...(input.approxWords ? { approxWords: input.approxWords } : {}),
     })
     await saveCachedDevo(enDir, devo)
   }
@@ -1060,7 +1583,12 @@ export async function prepareAndRenderDevotional(
   // film-language voice), cached under the -<lang> dir.
   let cacheDir = enDir
   if (lang !== "en") {
-    cacheDir = cacheDirFor(input.chapterIndex, input.sequence, lang)
+    cacheDir = cacheDirFor(
+      input.chapterIndex,
+      input.sequence,
+      lang,
+      input.episode,
+    )
     const cached = input.regenerate ? null : await loadCachedDevo(cacheDir)
     if (cached) {
       log(`reusing cached ${lang} devotional text`)
@@ -1083,22 +1611,46 @@ export async function prepareAndRenderDevotional(
   if (locale.voice !== "rotate") devo = { ...devo, voice: locale.voice }
   // Per-render voice override (experiments) — wins over the locale voice.
   if (input.voiceOverride) {
-    devo = { ...devo, voice: input.voiceOverride as GeneratedDevotional["voice"] }
+    devo = {
+      ...devo,
+      voice: input.voiceOverride as GeneratedDevotional["voice"],
+    }
   }
 
-  // QUALITY GATE — runs on the FINAL text, before any audio or video work.
+  // APPROVAL FIRST. A human reading the text is the real gate; the critics
+  // exist so nobody has to read a bad one. Once this exact wording has been
+  // approved, re-running them is not a second opinion — it is a lottery, and
+  // it lost: text approved yesterday failed coherence today and refused to
+  // render. Critics are LLM calls, so their verdict is not stable across runs.
+  // Skipping them here also saves three calls on every re-render.
+  const spoken = buildNarrationSegments(devo, locale, {
+    suppressOccasion: input.suppressOccasion ?? false,
+  }).map((s) => s.text)
+  let approval = await approvalState(cacheDir, spoken)
+  if (approval !== "approved" && input.approveText) {
+    await writeApproval(cacheDir, textFingerprint(spoken), input.date)
+    log("✅ text approved — this wording, and only this wording")
+    approval = "approved"
+  }
+
+  // QUALITY GATE — runs on the FINAL text, before any audio or video work,
+  // and ONLY while no human has signed off on this wording.
   // The critics only ever read text, so running them here instead of after the
   // render means a bad devotional costs three cheap LLM calls rather than a
   // full ElevenLabs narration plus a multi-minute Remotion render.
-  const review = await reviewDevotionalText({
-    devotional: devo,
-    // Fidelity compares against the English modernization step, so it is
-    // meaningless once `devo` is a translation — skip it for localized runs
-    // rather than compare an English excerpt to Russian prose.
-    checkFidelity: lang === "en",
-    passageReference: devo.passage.reference,
-    log,
-  })
+  const review =
+    approval === "approved"
+      ? { blocking: [] as string[] }
+      : await reviewDevotionalText({
+          devotional: devo,
+          // Fidelity compares against the English modernization step, so it is
+          // meaningless once `devo` is a translation — skip it for localized
+          // runs rather than compare an English excerpt to Russian prose.
+          checkFidelity: lang === "en",
+          lang: lang === "ru" ? "ru" : "en",
+          passageReference: devo.passage.reference,
+          log,
+        })
   if (review.blocking.length > 0) {
     const summary = review.blocking.join("; ")
     if (input.ignoreQualityGate) {
@@ -1108,15 +1660,45 @@ export async function prepareAndRenderDevotional(
     }
   }
 
+  // HUMAN GATE — the critics have passed, the text is cached, and nothing has
+  // been paid for beyond the LLM calls. Stopping here makes a rewrite cost a
+  // few cents instead of a full narration: change a prompt or hand-edit
+  // `<cacheDir>/devo.json`, then re-run to continue from the cached text.
+  //
+  // It is a GATE, not a flag: the run stops here unless this exact wording has
+  // been approved. `--review` opts IN to reading it; nothing opts out of having
+  // read it, because the only way past is an approval bound to the text's own
+  // fingerprint. Forgetting a flag then costs nothing instead of a narration.
+  if (input.reviewOnly || approval !== "approved") {
+    log(
+      printDevotionalForReview(devo, locale, cacheDir, {
+        suppressOccasion: input.suppressOccasion ?? false,
+      }),
+    )
+    if (approval !== "approved") {
+      log(`⛔ ${approvalMessage(approval)}`)
+      log(
+        "   Read it above. If it is right, re-run with --approve to continue.",
+      )
+    }
+    return { devotional: devo, videoPath: null }
+  }
+
   // A voice override always regenerates audio (cached audio is a different voice).
   const reuseAudio =
     !input.regenerate && !input.regenerateAudio && !input.voiceOverride
   const audio = await produceNarration(devo, locale, {
     cacheDir,
+    suppressOccasion: input.suppressOccasion ?? false,
+    ...(input.musicFile ? { musicFile: input.musicFile } : {}),
+    ...(input.settleLine ? { settleLine: input.settleLine } : {}),
     reuse: reuseAudio,
     log,
   })
 
-  const videoPath = await renderDevotionalVideo(devo, audio, { ...input, locale })
+  const videoPath = await renderDevotionalVideo(devo, audio, {
+    ...input,
+    locale,
+  })
   return { devotional: devo, videoPath }
 }

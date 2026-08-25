@@ -8,10 +8,7 @@
 import { homedir } from "node:os"
 import path from "node:path"
 
-import {
-  getDevotionalModel,
-  getDevotionalTranslateModel,
-} from "../config/env"
+import { getDevotionalModel, getDevotionalTranslateModel } from "../config/env"
 import { prepareAndRenderDevotional } from "../services/devotional/devotional-render"
 import { createDevotionalLlm } from "../services/devotional/llm"
 
@@ -53,12 +50,42 @@ async function main() {
     regenerate: process.argv.includes("--regenerate"),
     regenerateAudio: process.argv.includes("--regenerate-audio"),
     ignoreQualityGate: process.argv.includes("--ignore-quality"),
+    reviewOnly: process.argv.includes("--review"),
+    approveText: process.argv.includes("--approve"),
+    // Try a scene with a different commentator without editing the passage
+    // table — the two read the same scene differently often enough to be worth
+    // comparing before committing a choice to the data.
+    bgExtendPastEpisode: process.argv.includes("--bg-extend"),
+    coverOnly: process.argv.includes("--cover-only"),
+    ...(arg("music-file") ? { musicFile: arg("music-file") } : {}),
+    ...(arg("settle-line") ? { settleLine: arg("settle-line") } : {}),
+    coverTitleFirst: process.argv.includes("--cover-title-first"),
+    suppressOccasion: process.argv.includes("--no-occasion"),
+    ...(arg("caption-offset")
+      ? { captionOffsetSec: Number(arg("caption-offset")) }
+      : {}),
+    ...(arg("music-volume")
+      ? { musicVolume: Number(arg("music-volume")) }
+      : {}),
+    ...(arg("voice-level")
+      ? { videoAudioLevel: Number(arg("voice-level")) }
+      : {}),
+    ...(arg("words") ? { approxWords: Number(arg("words")) } : {}),
+    ...(arg("commentary")
+      ? { commentaryOverride: arg("commentary") as "ryle" | "henry" }
+      : {}),
+    ...(arg("episode") ? { episode: Number(arg("episode")) } : {}),
     log: (m) => console.log(m),
   })
+  if (videoPath === null) {
+    console.log(
+      `\n⏸  STOPPED FOR REVIEW: "${devotional.title}" [${devotional.reflection.flavor}, voice ${devotional.voice}, ${devotional.mood}]\n   No audio was synthesized, so nothing was billed beyond the LLM calls.`,
+    )
+    return
+  }
   console.log(
     `\n✅ DONE (${aspect}): "${devotional.title}" [${devotional.reflection.flavor}, voice ${devotional.voice}, ${devotional.mood}]\n   ${videoPath}`,
   )
-
 }
 
 main().catch((e) => {

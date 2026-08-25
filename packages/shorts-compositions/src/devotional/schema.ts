@@ -147,6 +147,35 @@ export const devotionalInputPropsSchema = z.object({
   /** Cover only: skip the date entirely — no date box, logo sits alone. Used
    *  for social test cards where the date would be a distraction. */
   hideCoverDate: z.boolean().optional(),
+  /** The video card CONTINUES the shared background take instead of starting
+   *  its clip over.
+   *
+   *  A full devotional gives the video card its own curated window, so it
+   *  rightly starts at frame 0 of its own file. A teaser plays ONE take: the
+   *  same file is the backdrop under the text cards and then takes the frame.
+   *  Starting it over there replays footage the viewer has just watched, which
+   *  reads as the video restarting. Opt-in, so the full devotional's curated
+   *  window is untouched. */
+  continuousClip: z.boolean().optional(),
+  /** Hold the text of the card BEFORE a video card on screen for this long as
+   *  the video comes up (seconds).
+   *
+   *  Normally each card clears its text inside its own duration so two lines
+   *  are never on screen together. A verse is different: it is worth reading
+   *  while the scene it describes begins. Implemented as a longer dissolve into
+   *  the video plus a suppressed text fade, not as an overlay, so the verse and
+   *  the footage are genuinely cross-dissolving. */
+  verseHoldIntoVideoSec: z.number().nonnegative().optional(),
+  /** Cover only: no brand mark at all. The cover is a centred flex column, so
+   *  dropping the logo row leaves the title alone in the middle of the frame —
+   *  which is the point: a teaser has three seconds to be read, and a mark
+   *  animating above the hook spends them. Full devotionals keep the logo. */
+  hideCoverLogo: z.boolean().optional(),
+  /** Cover only: leave the footage SHARP behind the title (no blur, lighter
+   *  scrim). The blur exists so long text stays legible over moving footage; a
+   *  cover carries one line, and on a teaser the footage is the thing being
+   *  advertised. */
+  coverBgSharp: z.boolean().optional(),
   /** Cover only: show the title + attribution from frame 0 while the logo
    *  animation still plays underneath (distinct from `staticCover`, which
    *  freezes the logo too). Social test cards want the title readable
@@ -155,6 +184,16 @@ export const devotionalInputPropsSchema = z.object({
   /** Cover only: a short line shown under the title, same font treatment as
    *  the date. Fades in once the logo settles. */
   coverSecondaryLine: z.string().optional(),
+  /** Cover only: text to show in the DATE's slot, with the date's exact type
+   *  treatment, instead of the date itself ("Today's Devotional"). A dated
+   *  cover ages a video the moment it is seen, which is wrong for a series
+   *  meant to be watched whenever someone finds it. */
+  coverDateLabel: z.string().optional(),
+  /** Cover only: the TITLE animates in first, from frame 0, and the logo
+   *  sequence is delayed so it begins about two seconds in. The default order
+   *  is the reverse — logo, then date, then title — which leaves the first
+   *  seconds of a scroll-stopping line unread while a mark animates. */
+  coverTitleFirst: z.boolean().optional(),
   /** Override the crossfade between non-video cards (seconds). Teasers raise it
    *  (~1.4s) so the opening dissolves — and the verse blur ramps in — slowly. */
   xfadeSec: z.number().nonnegative().optional(),

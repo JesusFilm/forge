@@ -340,6 +340,90 @@ function BrandMark({ px }: { px: (n: number) => number }) {
   )
 }
 
+/**
+ * The brand mark, performing the way the cover's does: it slams in oversized,
+ * settles, then the full lockup crops down to the standalone symbol.
+ *
+ * The end card used the STATIC symbol — on the one card whose whole job is to
+ * ask for a follow, the mark was the only thing not doing anything. Same
+ * keyframes as the cover's logo so the two read as one system, driven by this
+ * card's own frame and over a span short enough to finish inside a ~2s card.
+ */
+function AnimatedBrandMark({
+  px,
+  frame,
+  fps,
+}: {
+  px: (n: number) => number
+  frame: number
+  fps: number
+}) {
+  const span = Math.max(1, Math.round(1.0 * fps))
+  const p = Math.max(0, Math.min(1, frame / span))
+  const clamp = { extrapolateLeft: "clamp", extrapolateRight: "clamp" } as const
+  const inOutCubic = {
+    easing: Easing.inOut(Easing.cubic) as (t: number) => number,
+  }
+  const symbolW = px(34)
+  const lockupW = px(34 * (160.27 / 55.65))
+  const rowH = px(25)
+  const opacity = interpolate(p, [0, 0.04], [0, 1], clamp)
+  const stamp = interpolate(
+    p,
+    [0, 0.035, 0.06, 0.085],
+    [1.4, 0.93, 1.05, 1.0],
+    clamp,
+  )
+  const clipW = interpolate(p, [0.16, 0.35], [lockupW, symbolW], {
+    ...clamp,
+    ...inOutCubic,
+  })
+  const lockupOpacity = interpolate(p, [0.29, 0.35], [1, 0], {
+    ...clamp,
+    ...inOutCubic,
+  })
+  const symbolOpacity = interpolate(p, [0.29, 0.35], [0, 1], {
+    ...clamp,
+    ...inOutCubic,
+  })
+  return (
+    <div
+      style={{
+        position: "relative",
+        width: clipW,
+        height: rowH,
+        opacity,
+        transform: `scale(${stamp})`,
+      }}
+    >
+      <div
+        style={{
+          width: clipW,
+          height: rowH,
+          overflow: "hidden",
+          opacity: lockupOpacity,
+        }}
+      >
+        <img
+          src={BRAND_LOCKUP_URI}
+          alt=""
+          style={{ display: "block", width: lockupW, height: rowH }}
+        />
+      </div>
+      <div
+        style={{
+          position: "absolute",
+          top: 0,
+          left: 0,
+          opacity: symbolOpacity,
+        }}
+      >
+        <BrandMark px={px} />
+      </div>
+    </div>
+  )
+}
+
 // Jesus Film brand red — matches the official lockup asset so the intro's
 // lockup → standalone-symbol crossfade is seamless.
 const BRAND_RED = "#ee3441"
@@ -596,6 +680,9 @@ function CoverIntro({
   isLandscape,
   attribution,
   hideDate,
+  hideLogo,
+  dateLabel,
+  titleFirst,
   textStatic,
   secondaryLine,
 }: {
@@ -611,8 +698,17 @@ function CoverIntro({
   staticCover: boolean
   isLandscape: boolean
   attribution?: string
+  /** Drop the brand mark entirely. `display: none` rather than opacity, so the
+   *  row leaves the flex column and its `gap` with it — otherwise the title
+   *  sits a little below centre with nothing above it. */
+  hideLogo?: boolean
   /** Skip the date box entirely — logo sits alone in the row. */
   hideDate?: boolean
+  /** Shown in the date's slot with the date's type treatment, instead of the
+   *  date ("Today's Devotional"). */
+  dateLabel?: string
+  /** Title animates first from frame 0; the logo sequence starts ~2s in. */
+  titleFirst?: boolean
   /** Title + attribution shown from frame 0 while the logo still animates
    *  (unlike `staticCover`, which also freezes the logo). */
   textStatic?: boolean
@@ -629,6 +725,25 @@ function CoverIntro({
     Math.min(durationInFrames - 1, Math.round(COVER_ANIM_SEC * fps)),
   )
   const p = staticCover ? 1 : Math.max(0, Math.min(1, frame / animSpan))
+  // TITLE-FIRST: the headline owns the opening beat and the logo waits. The
+  // logo/date keyframes below read `pLogo` instead of `p`, so the whole stamp →
+  // morph → date sequence simply starts later without being re-timed.
+  const LOGO_DELAY_SEC = 2
+  // With no logo there is nothing for the title to wait for, so it MUST lead.
+  // Left to the default order (logo → date → title) a logo-less cover sits
+  // empty for about two seconds of a three-and-a-half second card: the title is
+  // still waiting on an animation that was removed. Deriving this from
+  // `hideLogo` rather than asking callers to remember `coverTitleFirst` keeps
+  // the two flags from being set inconsistently.
+  const titleLeads = titleFirst || Boolean(hideLogo)
+  const logoDelay = titleLeads ? Math.round(LOGO_DELAY_SEC * fps) : 0
+  const pLogo = staticCover
+    ? 1
+    : Math.max(0, Math.min(1, (frame - logoDelay) / animSpan))
+  // The headline gets its own short span from frame 0 rather than a slice near
+  // the end of the shared one.
+  const titleSpan = Math.max(1, Math.round(0.9 * fps))
+  const pTitle = staticCover ? 1 : Math.max(0, Math.min(1, frame / titleSpan))
   const outCubic = { easing: Easing.out(Easing.cubic) as (t: number) => number }
   const inOutCubic = {
     easing: Easing.inOut(Easing.cubic) as (t: number) => number,
@@ -652,29 +767,32 @@ function CoverIntro({
   // so the settled [symbol · date] row has no trailing gap and centres cleanly
   // for any date string (measured, not a fixed 268px).
   const dateLeftPad = cpx(9.75) // 18px
+  // The slot shows `dateLabel` when given, otherwise the date itself.
+  const dateText = dateLabel ?? date
   const dateTargetW = hideDate
     ? 0
-    : measureLineWidth(date.toUpperCase(), cpx(8.1), cpx(1.625)) + dateLeftPad
+    : measureLineWidth(dateText.toUpperCase(), cpx(8.1), cpx(1.625)) +
+      dateLeftPad
 
   // ---- logo: stamp then morph -----------------------------------------------
-  const logoOpacity = interpolate(p, [0, 0.04], [0, 1], clamp)
+  const logoOpacity = interpolate(pLogo, [0, 0.04], [0, 1], clamp)
   // Keyframed stamp: slams in oversized, dips under, settles (linear between).
   const stamp = interpolate(
-    p,
+    pLogo,
     [0, 0.035, 0.06, 0.085],
     [1.4, 0.93, 1.05, 1.0],
     clamp,
   )
   // Clip width shrinks full-lockup → symbol, cropping the wordmark from the right.
-  const clipW = interpolate(p, [0.16, 0.35], [lockupW, symbolW], {
+  const clipW = interpolate(pLogo, [0.16, 0.35], [lockupW, symbolW], {
     ...clamp,
     ...inOutCubic,
   })
-  const lockupOpacity = interpolate(p, [0.29, 0.35], [1, 0], {
+  const lockupOpacity = interpolate(pLogo, [0.29, 0.35], [1, 0], {
     ...clamp,
     ...inOutCubic,
   })
-  const symbolOpacity = interpolate(p, [0.29, 0.35], [0, 1], {
+  const symbolOpacity = interpolate(pLogo, [0.29, 0.35], [0, 1], {
     ...clamp,
     ...inOutCubic,
   })
@@ -685,7 +803,7 @@ function CoverIntro({
   // hideDate (dateTargetW is already 0, so this just stays at 0).
   const dateW = hideDate
     ? 0
-    : interpolate(p, [0.42, 0.58], [0, dateTargetW], {
+    : interpolate(pLogo, [0.42, 0.58], [0, dateTargetW], {
         ...clamp,
         ...inOutCubic,
       })
@@ -694,10 +812,14 @@ function CoverIntro({
   // cards want the title readable from frame 0 while the logo still animates.
   const headOpacity = textStatic
     ? 1
-    : interpolate(p, [0.72, 0.94], [0, 1], { ...clamp, ...outCubic })
+    : titleLeads
+      ? interpolate(pTitle, [0, 0.75], [0, 1], { ...clamp, ...outCubic })
+      : interpolate(p, [0.72, 0.94], [0, 1], { ...clamp, ...outCubic })
   const headY = textStatic
     ? 0
-    : interpolate(p, [0.72, 0.96], [cpx(10.8), 0], { ...clamp, ...outCubic })
+    : titleLeads
+      ? interpolate(pTitle, [0, 1], [cpx(10.8), 0], { ...clamp, ...outCubic })
+      : interpolate(p, [0.72, 0.96], [cpx(10.8), 0], { ...clamp, ...outCubic })
 
   // ---- secondary line: reveals letter-by-letter once the logo settles (no
   // date-wipe slot to wait for, so it can start right after the morph
@@ -722,7 +844,7 @@ function CoverIntro({
           the centered row widens and the symbol nudges left as the date opens. */}
       <div
         style={{
-          display: "flex",
+          display: hideLogo ? "none" : "flex",
           alignItems: "center",
           justifyContent: "center",
           height: rowH,
@@ -789,7 +911,7 @@ function CoverIntro({
               color: "rgba(214,217,224,0.82)",
             }}
           >
-            {date}
+            {dateText}
           </div>
         </div>
       </div>
@@ -1086,6 +1208,9 @@ function CardBody({
   wideText,
   attribution,
   hideCoverDate,
+  hideCoverLogo,
+  coverDateLabel,
+  coverTitleFirst,
   coverTextStatic,
   coverSecondaryLine,
 }: {
@@ -1101,6 +1226,9 @@ function CardBody({
   wideText?: "bottom" | "right"
   attribution?: string
   hideCoverDate?: boolean
+  hideCoverLogo?: boolean
+  coverDateLabel?: string
+  coverTitleFirst?: boolean
   coverTextStatic?: boolean
   coverSecondaryLine?: string
 }) {
@@ -1141,6 +1269,9 @@ function CardBody({
         isLandscape={isLandscape}
         attribution={attribution}
         hideDate={hideCoverDate}
+        hideLogo={hideCoverLogo}
+        dateLabel={coverDateLabel}
+        titleFirst={coverTitleFirst}
         textStatic={coverTextStatic}
         secondaryLine={coverSecondaryLine}
       />
@@ -1630,17 +1761,17 @@ function CardBody({
           padding: pad,
         }}
       >
-        <div style={{ ...reveal(frame, fps, 0.15, 1, "up") }}>
-          <BrandMark px={px} />
-        </div>
+        <AnimatedBrandMark px={px} frame={frame} fps={fps} />
         <p
           style={{
             margin: `${px(26)}px 0 ${px(18)}px`,
             fontFamily: SANS,
             fontWeight: 700,
-            fontSize: px(38),
-            lineHeight: 1.15,
-            letterSpacing: px(-0.4),
+            // Smaller than the cover's headline: this card carries an ask, not
+            // the hook, and at px(38) it competed with the title it follows.
+            fontSize: px(30),
+            lineHeight: 1.18,
+            letterSpacing: px(-0.3),
             color: style.heading,
             maxWidth: px(320),
             ...reveal(frame, fps, 0.35, 1, "up"),
@@ -1673,7 +1804,11 @@ function CardBody({
               ...reveal(frame, fps, 0.7, 1, "fade"),
             }}
           >
-            {card.ctaHandle} · link in bio
+            {/* The handle alone. "· link in bio" was appended here regardless of
+                whether a link was actually in the bio, which makes the card
+                promise something the account may not be doing; the handle is
+                what the viewer needs in order to follow. */}
+            {card.ctaHandle}
           </div>
         ) : null}
       </AbsoluteFill>
@@ -1938,6 +2073,12 @@ function Background({
           loud clip audio doesn't jump against the music bed. */}
       <OffthreadVideo
         src={staticFile(src)}
+        // In continuous mode the clip is a WINDOW into the same take the
+        // backdrop has been playing, so it opens where that left off. Without
+        // this the file restarts and the viewer sees the last few seconds again.
+        {...(props.continuousClip
+          ? { trimBefore: Math.max(0, Math.round(bgStartFrame)) }
+          : {})}
         muted={clipAudioLevel <= 0}
         volume={(f) => {
           const clipEnd = Math.round((card.durationSec ?? 1) * fps)
@@ -1945,20 +2086,27 @@ function Background({
           // Teaser (videoAudioLevel set): quiet + slow fade in/out so it eases
           // gently under the music bed.
           const slow = props.videoAudioLevel != null
-          // 0.6s was too short AND linear, so the clip audio seemed to sit
-          // quiet and then jump (owner-reported). Loudness is perceived
-          // roughly logarithmically, so a linear ramp does most of its
-          // audible work at the very end. Longer ramp + square the curve:
-          // the gain rises slowly at first and arrives smoothly.
-          const fin = Math.round((slow ? 2 : 1.6) * fps)
+          // The onset and the tail want OPPOSITE curves, and squaring both is
+          // what made the clip audio "sit quiet then jump" a second time.
+          //
+          // A squared ramp is back-loaded: a quarter of the way in it is at
+          // 6% gain, inaudible, and nearly all the audible movement happens in
+          // the last moments — the jump itself. The film is SPEAKING from its
+          // first frame here, so the onset has to be quick and front-loaded
+          // (sqrt) to be intelligible immediately, with just enough ramp to
+          // avoid a click. The tail is the opposite case: nothing is lost by
+          // letting it recede slowly, so it keeps the squared curve.
+          const fin = Math.round((slow ? 1.2 : 0.45) * fps)
           const fout = Math.round((slow ? 2 : 1.3) * fps)
-          const linear = interpolate(
-            f,
-            [0, fin, clipEnd - fout, clipEnd],
-            [0, 1, 1, 0],
-            { extrapolateLeft: "clamp", extrapolateRight: "clamp" },
-          )
-          return clipAudioLevel * linear * linear
+          const rise = interpolate(f, [0, fin], [0, 1], {
+            extrapolateLeft: "clamp",
+            extrapolateRight: "clamp",
+          })
+          const fall = interpolate(f, [clipEnd - fout, clipEnd], [1, 0], {
+            extrapolateLeft: "clamp",
+            extrapolateRight: "clamp",
+          })
+          return clipAudioLevel * Math.sqrt(rise) * fall * fall
         }}
         style={
           isLandscape
@@ -2010,12 +2158,20 @@ function Background({
   // Legibility comes from the scrim + a soft, wide text shadow. Scripture (soft)
   // and questions (medium) keep heavier blur.
   const heavyBlurPx = isLandscape ? px(2.8) : px(4.2)
-  const BLUR = (soft ? px(8) : medium ? px(15) : heavyBlurPx) * blurScale
-  const wholeScrim = soft
-    ? "rgba(6,4,3,0.3)"
-    : medium
-      ? "rgba(6,4,3,0.36)"
-      : "rgba(6,4,3,0.46)"
+  // A cover asked to stay sharp keeps the footage unblurred and takes only a
+  // light scrim — enough for one line of white text, not enough to hide what
+  // the shot is. Cover only; every other card still needs its blur to be read.
+  const sharpCover = Boolean(props.coverBgSharp) && card.kind === "cover"
+  const BLUR = sharpCover
+    ? 0
+    : (soft ? px(8) : medium ? px(15) : heavyBlurPx) * blurScale
+  const wholeScrim = sharpCover
+    ? "rgba(6,4,3,0.22)"
+    : soft
+      ? "rgba(6,4,3,0.3)"
+      : medium
+        ? "rgba(6,4,3,0.36)"
+        : "rgba(6,4,3,0.46)"
   let blurOverlay: ReactNode = null
   if (region === "whole") {
     blurOverlay = (
@@ -2276,10 +2432,19 @@ export function DevotionalVideo(props: DevotionalInputProps) {
   // Both dissolves touching the video card are slower — scripture melts INTO the
   // clip, and the clip melts OUT into the reflection (no abrupt cut either end).
   const VIDEO_XFADE = Math.round(1.3 * fps)
+  /** Frames of the requested verse hold, if any. */
+  const verseHoldFrames = Math.round((props.verseHoldIntoVideoSec ?? 0) * fps)
+  /** Card `i` is the one whose text should stay up as the video arrives. */
+  const holdsIntoVideo = (i: number) =>
+    verseHoldFrames > 0 &&
+    props.cards[i]?.kind !== "video" &&
+    props.cards[i + 1]?.kind === "video"
   const boundaryXfade = (i: number) =>
-    props.cards[i]?.kind === "video" || props.cards[i + 1]?.kind === "video"
-      ? VIDEO_XFADE
-      : XFADE
+    holdsIntoVideo(i)
+      ? verseHoldFrames
+      : props.cards[i]?.kind === "video" || props.cards[i + 1]?.kind === "video"
+        ? VIDEO_XFADE
+        : XFADE
   const lastIndex = props.cards.length - 1
 
   // Duck the music to silence across the video card (it plays the film's own
@@ -2326,7 +2491,11 @@ export function DevotionalVideo(props: DevotionalInputProps) {
   const bgRate = props.bgPlaybackRate ?? 1
   let bgAcc = 0
   const bgStartFrames = props.cards.map((c, i) => {
-    if (c.kind === "video") return 0
+    // A video card normally shows its OWN window, so it starts at frame 0 and
+    // does not consume any of the shared take. `continuousClip` makes it part
+    // of the same take instead — it starts where the backdrop left off and
+    // advances the accumulator like any other card, so nothing is replayed.
+    if (c.kind === "video" && !props.continuousClip) return 0
     const start = bgAcc
     // Advance by the card's frames scaled by the playback rate — the clip
     // advances `bgRate` film-frames per composition frame, so the window
@@ -2355,14 +2524,19 @@ export function DevotionalVideo(props: DevotionalInputProps) {
         const textFadeStart =
           frames[i].from + frames[i].durationInFrames - textFadeFrames
         const textOpacity =
-          i < lastIndex
-            ? interpolate(
-                frame,
-                [textFadeStart, textFadeStart + textFadeFrames],
-                [1, 0],
-                { extrapolateLeft: "clamp", extrapolateRight: "clamp" },
-              )
-            : 1
+          // The card holding its verse into the video keeps the text up for the
+          // whole dissolve; the fade that normally clears it early would defeat
+          // the point of the hold.
+          holdsIntoVideo(i)
+            ? 1
+            : i < lastIndex
+              ? interpolate(
+                  frame,
+                  [textFadeStart, textFadeStart + textFadeFrames],
+                  [1, 0],
+                  { extrapolateLeft: "clamp", extrapolateRight: "clamp" },
+                )
+              : 1
         return (
           <Sequence
             key={i}
@@ -2411,6 +2585,9 @@ export function DevotionalVideo(props: DevotionalInputProps) {
                   wideText={wideText}
                   attribution={props.attribution}
                   hideCoverDate={props.hideCoverDate === true}
+                  hideCoverLogo={props.hideCoverLogo === true}
+                  coverDateLabel={props.coverDateLabel}
+                  coverTitleFirst={props.coverTitleFirst === true}
                   coverTextStatic={props.coverTextStatic === true}
                   coverSecondaryLine={props.coverSecondaryLine}
                 />
@@ -2489,6 +2666,9 @@ function CardLayer({
   wideText,
   attribution,
   hideCoverDate,
+  hideCoverLogo,
+  coverDateLabel,
+  coverTitleFirst,
   coverTextStatic,
   coverSecondaryLine,
 }: {
@@ -2504,6 +2684,9 @@ function CardLayer({
   wideText?: "bottom" | "right"
   attribution?: string
   hideCoverDate?: boolean
+  hideCoverLogo?: boolean
+  coverDateLabel?: string
+  coverTitleFirst?: boolean
   coverTextStatic?: boolean
   coverSecondaryLine?: string
 }) {
@@ -2527,6 +2710,9 @@ function CardLayer({
         staticCover={staticCover}
         attribution={attribution}
         hideCoverDate={hideCoverDate}
+        hideCoverLogo={hideCoverLogo}
+        coverDateLabel={coverDateLabel}
+        coverTitleFirst={coverTitleFirst}
         coverTextStatic={coverTextStatic}
         coverSecondaryLine={coverSecondaryLine}
       />

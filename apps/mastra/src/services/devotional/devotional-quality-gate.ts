@@ -7,6 +7,7 @@ import {
 import { critiqueReflection } from "./devotional-reflection-critic"
 import type { GeneratedDevotional } from "./generate-devotional"
 import { critiqueReflectionFidelity } from "./reflection-fidelity-critic"
+import { checkReflectionVoice } from "./reflection-voice-check"
 
 /**
  * Runs the three text critics as ONE gate, before any audio or video work.
@@ -64,6 +65,10 @@ export type ReviewDevotionalTextInput = {
   /** Fidelity compares the adaptation against the ENGLISH source excerpt, so
    *  it is meaningless for a localized devotional. */
   checkFidelity: boolean
+  /** Which language `devotional` is in. The voice rules are per-language; a
+   *  localized run that omits this gets the English patterns and so gets no
+   *  check at all. */
+  lang?: "en" | "ru"
   log?: (msg: string) => void
 }
 
@@ -73,6 +78,27 @@ export async function reviewDevotionalText(
   const d = input.devotional
   const log = input.log ?? (() => {})
   const blocking: string[] = []
+
+  // Deterministic voice rules FIRST: they cost nothing, they never flake, and
+  // a run that trips them is going to be regenerated anyway — no reason to buy
+  // three critic calls to find that out. The critics judge whether the text is
+  // good; this only judges whether it obeys the owner's standing rules, which
+  // is not a matter of opinion and so should not be left to a model.
+  const voice = checkReflectionVoice(d.reflection.text, {
+    scriptureText: d.scripture.text,
+    conclusion: d.conclusion,
+    ...(input.lang ? { lang: input.lang } : {}),
+  })
+  for (const f of voice) {
+    log(`   ⛔ [voice/${f.rule}] ${f.why}\n      “${f.sentence}”`)
+  }
+  if (voice.length > 0) {
+    const rules = [...new Set(voice.map((f) => f.rule))].join(", ")
+    blocking.push(
+      `voice (${rules}): ${voice.length} sentence(s) break a standing rule, ` +
+        `first is “${voice[0].sentence}”`,
+    )
+  }
 
   const coherence = await checkDevotionalCoherence({
     sceneTitle: d.clip.title,
@@ -86,7 +112,9 @@ export async function reviewDevotionalText(
     passageReference: input.passageReference,
     llm: buildCoherenceLlm(),
   })
-  log(`🔎 coherence: ${coherence.coherent ? "OK" : "ISSUES FOUND"} — ${coherence.summary}`)
+  log(
+    `🔎 coherence: ${coherence.coherent ? "OK" : "ISSUES FOUND"} — ${coherence.summary}`,
+  )
   for (const i of coherence.issues) {
     log(`   ⚠️ [${i.severity}/${i.area}] ${i.problem}\n      → ${i.suggestion}`)
   }
@@ -94,7 +122,9 @@ export async function reviewDevotionalText(
   // match. It used to be computed and dropped on the floor; surface it, since
   // it is the one piece of advice that tells the operator WHAT to change.
   if (coherence.suggestedScriptureReference) {
-    log(`   💡 better-fitting scripture: ${coherence.suggestedScriptureReference}`)
+    log(
+      `   💡 better-fitting scripture: ${coherence.suggestedScriptureReference}`,
+    )
   }
   if (coherence.skipped) blocking.push("coherence check could not run")
   else if (!coherence.coherent) {
@@ -129,9 +159,13 @@ export async function reviewDevotionalText(
       adapted: d.reflection.text,
       llm: buildFidelityCriticLlm(),
     })
-    log(`📜 source fidelity: ${fidelity.faithful ? "OK" : "ISSUES FOUND"} — ${fidelity.summary}`)
+    log(
+      `📜 source fidelity: ${fidelity.faithful ? "OK" : "ISSUES FOUND"} — ${fidelity.summary}`,
+    )
     for (const i of fidelity.issues) {
-      log(`   ⚠️ [${i.severity}/${i.kind}] ${i.problem}\n      → ${i.suggestion}`)
+      log(
+        `   ⚠️ [${i.severity}/${i.kind}] ${i.problem}\n      → ${i.suggestion}`,
+      )
     }
     if (fidelity.skipped) blocking.push("fidelity check could not run")
     else if (!fidelity.faithful) {

@@ -31,7 +31,16 @@ export type DevotionalConnectors = {
    * `occasion` is an optional fixed-date tag (e.g. "World Humanitarian Day")
    * from `devotional-occasions.ts`, spoken only on configured dates.
    */
-  cover: (hook: string, date?: string | null, occasion?: string | null) => string
+  /** `sequence` rotates the settle line (English) the way it rotates voices. */
+  cover: (
+    hook: string,
+    sequence: number,
+    date?: string | null,
+    occasion?: string | null,
+    /** Replace the rotated settle line for THIS run. Used when a cut has to
+     *  avoid a word the card after it already says. */
+    settleOverride?: string | null,
+  ) => string
   /** Scripture card, ending with the lead-in to the video clip. */
   scripture: (ref: string, verse: string) => string
   /** Opens the FIRST reflection card only. */
@@ -98,12 +107,42 @@ function weekdayIndex(p: { y: number; m: number; d: number }): number {
 // ---- English (the default; current behavior) --------------------------------
 
 const EN_MONTHS = [
-  "January", "February", "March", "April", "May", "June",
-  "July", "August", "September", "October", "November", "December",
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
 ]
 const EN_WEEKDAYS = [
-  "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday",
+  "Sunday",
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
 ]
+
+/**
+ * Spoken after the hook on the cover: the line that asks the viewer to settle.
+ *
+ * Owner-chosen, and rotated by `sequence` so a daily series does not open the
+ * same way every time — the same reason the hook FORMS rotate. All three are
+ * first-person plural on purpose: "let's" invites, where an imperative would
+ * order a stranger about thirty seconds into a video.
+ */
+const EN_SETTLE_LINES = [
+  "Let's slow down and give Scripture our attention.",
+  "Let's take a moment and sit with today's passage.",
+  "Let's slow down together before the day takes over.",
+] as const
 
 export const EN_LOCALE: DevotionalLocale = {
   lang: "en",
@@ -125,14 +164,26 @@ export const EN_LOCALE: DevotionalLocale = {
   // English TTS reads "Luke 19:10" fine — no change needed.
   spokenReference: (r) => r,
   connectors: {
-    cover: (hook, date, occasion) => {
+    cover: (hook, sequence, _date, occasion, settleOverride) => {
       const occasionLine = occasion ? ` Today is also ${occasion}.` : ""
-      return date
-        ? `It's ${date}.${occasionLine} And today's devotional: ${hook}`
-        : `Today's devotional. ${hook}`
+      // HOOK FIRST, then the settle line. The hook is what stops the scroll, so
+      // it cannot wait behind a date; the settle line is what turns a stopped
+      // scroller into someone willing to sit still, so it comes second.
+      //
+      // The date is deliberately not spoken. A weekday and a number date the
+      // video the moment it is heard, which is wrong for a series meant to be
+      // watched whenever someone finds it. `_date` stays in the signature
+      // because Russian still opens with it.
+      // `hook` already arrives with terminal punctuation from the caller.
+      const settle =
+        settleOverride ?? EN_SETTLE_LINES[sequence % EN_SETTLE_LINES.length]
+      return `${hook}${occasionLine} ${settle}`
     },
+    // Deliberately does NOT say "scripture" or "passage": the settle line on the
+    // cover, spoken seconds earlier, already uses one of those words, and the
+    // repetition lands hard when the two are heard back to back.
     scripture: (ref, verse) =>
-      `Here's today's scripture. ${ref ? `${ref}. ` : ""}${verse} Let's watch.`,
+      `Here's where we're reading today. ${ref ? `${ref}. ` : ""}${verse} Let's watch.`,
     reflectionOpen: (chunk) => `Reflect on this. ${chunk}`,
     conclusion: (line) => line,
     questions: (question, prayer) =>
@@ -148,14 +199,29 @@ export const EN_LOCALE: DevotionalLocale = {
 // correct Russian punctuation, not an AI tell).
 
 const RU_MONTHS = [
-  "января", "февраля", "марта", "апреля", "мая", "июня",
-  "июля", "августа", "сентября", "октября", "ноября", "декабря",
+  "января",
+  "февраля",
+  "марта",
+  "апреля",
+  "мая",
+  "июня",
+  "июля",
+  "августа",
+  "сентября",
+  "октября",
+  "ноября",
+  "декабря",
 ]
 // Capitalized: each use is sentence-initial (spoken cover) or a standalone
 // label (on-screen date), where Russian weekday names take a capital.
 const RU_WEEKDAYS = [
-  "Воскресенье", "Понедельник", "Вторник", "Среда",
-  "Четверг", "Пятница", "Суббота",
+  "Воскресенье",
+  "Понедельник",
+  "Вторник",
+  "Среда",
+  "Четверг",
+  "Пятница",
+  "Суббота",
 ]
 
 export const RU_LOCALE: DevotionalLocale = {
@@ -195,7 +261,10 @@ export const RU_LOCALE: DevotionalLocale = {
     // Owner: date first ("Сегодня <weekday>, <date>"), then a gentle spoken
     // lead-in that invites the viewer to slow down, then the hook as the
     // opening line of the story.
-    cover: (hook, date, occasion) => {
+    // Russian still opens with the date — the English change (hook first, no
+    // date) was made for the English series and has not been reviewed by a
+    // native speaker for Russian, so this half is deliberately left alone.
+    cover: (hook, _sequence, date, occasion, _settleOverride) => {
       const occasionLine = occasion ? `Сегодня отмечается ${occasion}.\n\n` : ""
       return date
         ? `Сегодня ${date}.\n\n${occasionLine}Сделай небольшую паузу. Давай поразмышляем над Божьим Словом.\n\n${hook}`

@@ -108,10 +108,34 @@ export async function selectScriptureForPassage(
   const exact = lookup(reference)
   return {
     reference,
-    text: exact ?? response.text.trim(),
+    text: balanceQuotes(exact ?? response.text.trim()),
     translation: "WEB",
     needsCanonicalSource: exact == null,
   }
+}
+
+/**
+ * Drop quote marks left dangling by pulling ONE verse out of a longer speech.
+ *
+ * Luke 19:10 in the WEB ends `…to save that which was lost."` — the closing
+ * half of a quotation opened back in verse 9. On screen it looks like a typo;
+ * read aloud by TTS it can land as an odd clipped beat. Only unpaired marks are
+ * removed, so a verse that quotes something in full keeps its punctuation.
+ */
+export function balanceQuotes(text: string): string {
+  const QUOTE = /["“”]/g
+  const positions: number[] = []
+  for (const m of text.matchAll(QUOTE)) positions.push(m.index)
+  // Even count means the marks pair up; leave the verse exactly as printed.
+  if (positions.length % 2 === 0) return text
+  // Odd means one is orphaned. Drop the LAST: a verse lifted from the middle
+  // of a speech keeps the closing mark whose opener stayed behind.
+  const cut = positions[positions.length - 1]
+  const out = text.slice(0, cut) + text.slice(cut + 1)
+  return out
+    .replace(/\s+([.,!?;:])/g, "$1")
+    .replace(/\s{2,}/g, " ")
+    .trim()
 }
 
 export const _internal = { JSON_SCHEMA: SCRIPTURE_JSON_SCHEMA }

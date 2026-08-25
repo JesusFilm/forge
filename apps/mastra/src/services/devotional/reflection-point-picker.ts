@@ -83,7 +83,17 @@ export const SYSTEM_PROMPT = [
   "deepen a fellow believer — never question whether the viewer is or can",
   "become a Christian, and never make an appeal to convert.",
   "",
-  `Choose TWO points, or ONE. Rules, in priority order:`,
+  "FIRST, IF THE CLIP'S CONTENTS ARE GIVEN, STRIKE OUT WHAT IS NOT IN THEM.",
+  "This happens before any of the rules below and is not traded against them.",
+  "A commentator's points cover the whole passage, but the clip may be a single",
+  "beat of it. A point whose events happen after the clip stops is NOT A",
+  "CANDIDATE — not for the arc, not for audience fit, not for anything. Picking",
+  "it forces the writer to narrate what the viewer has not seen, so the video",
+  "describes a different video. Rank only what survives this strike-out; if",
+  "that leaves one point, one is the answer, and rule 4's 'two is normal' does",
+  "not apply.",
+  "",
+  `Then choose TWO points, or ONE, from what remains. Rules, in priority order:`,
   "1. AUDIENCE FIT comes first. A point's REGISTER is inherited by the whole",
   "   finished reflection, so this is decided here, not later. These authors",
   "   mix two kinds of point: some address the BELIEVER directly (what a",
@@ -102,17 +112,34 @@ export const SYSTEM_PROMPT = [
   "   that means for the believer's own life (grace, then the response grace",
   "   produces). That pairing is what the approved reference used, and it",
   "   both reads better and keeps the register anchored.",
-  "4. Choose ONE only when a second point would genuinely dilute the verse's",
+  "4. ORDER MATTERS, and the order you return is the order the viewer hears.",
+  "   The point you list LAST becomes the closing paragraph, which is what the",
+  "   viewer carries into their day. Of the points you choose, put the one that",
+  "   leaves the viewer with something to hold on to LAST. What that is depends",
+  "   entirely on the passage — do not look for one particular kind of ending.",
+  "   The test is direction, not subject: does the point leave the viewer with",
+  "   more than it took away? If neither point is heavier than the other, order",
+  "   them by the arc in rule 3 instead.",
+  "5. Choose ONE only when a second point would genuinely dilute the verse's",
   "   own subject. Two is the normal answer.",
-  "5. Ignore how quotable or vivid a point's writing is. A point full of",
+  "6. Ignore how quotable or vivid a point's writing is. A point full of",
   "   striking images is not a better choice than a plainer point that",
   "   actually matches the verse and the audience.",
+  "7. Audience fit (rule 1) is satisfied by REGISTER, not by subject matter.",
+  "   A point about what Christ does still speaks to the believer when it is",
+  "   written as description rather than as instructions for evangelising",
+  "   others. Do not reach past the strike-out for a 'response' point to",
+  "   balance a 'grace' point — an unavailable point cannot balance anything.",
   "Return JSON only: { chosen: [indices], reason: one short sentence }.",
 ].join("\n")
 
 export type PickReflectionPointsInput = {
   points: ReadonlyArray<CommentaryPoint>
   sceneTitle: string
+  /** What the viewer actually sees, when the clip is one beat of a longer
+   *  scene. Without it the picker judges against the whole story the title
+   *  names, and can choose a point about events this episode never reaches. */
+  sceneNote?: string
   scriptureReference?: string
   scriptureText?: string
   /** Word budget for the finished reflection — the picker needs it to judge
@@ -126,13 +153,44 @@ function countWords(text: string): number {
   return t ? t.split(/\s+/).length : 0
 }
 
+/**
+ * How much of a point is spent calling the unconverted in, rather than saying
+ * something to a believer.
+ *
+ * The picker is shown one sentence per point, and that is usually right — but
+ * it hides the case that keeps costing us runs. Ryle's first point on Luke 19
+ * OPENS on doctrine ("no one is too bad to be saved") and then spends most of
+ * its length on the appeal: offer the gospel boldly, bid them come, only
+ * repent and believe. From the thesis alone it reads as the perfect
+ * believer-facing choice, so the picker takes it, the modernizer inherits an
+ * excerpt made of altar call, and the voice check rejects the result. Three
+ * runs in a row died this way before we measured it.
+ */
+function appealShare(text: string): number {
+  const APPEAL =
+    /\b(?:come to (?:him|christ|jesus)|bid them|only believe|only repent|freely forgiven|offer the gospel|the vilest|worst and wickedest|if (?:he|they|you) will only)\b/i
+  const sentences = text.split(/(?<=[.!?])\s+/).filter((s) => s.trim())
+  if (sentences.length === 0) return 0
+  const hits = sentences.filter((s) => APPEAL.test(s)).length
+  return hits / sentences.length
+}
+
 /** A short label per point so the picker sees its subject, not its full text. */
 function summarize(point: CommentaryPoint): string {
   // The lead-in sentence carries the point's thesis ("We learn, firstly, that
   // no one is too bad to be saved"), so the opening is the most informative
   // slice to show; the rest is elaboration the picker doesn't need.
   const firstSentence = point.text.split(/(?<=[.!?])\s+/)[0] ?? point.text
-  return firstSentence.slice(0, 400)
+  const thesis = firstSentence.slice(0, 400)
+  // Measured on the WHOLE point, because that is exactly what the thesis hides.
+  const share = appealShare(point.text)
+  if (share < 0.2) return thesis
+  return (
+    `${thesis} [WARNING: ${Math.round(share * 100)}% of this point's ` +
+    `sentences are an appeal to the unconverted, whatever its opening ` +
+    `sentence sounds like. Building a reflection on it produces an altar ` +
+    `call, which this audience must not be given.]`
+  )
 }
 
 /**
@@ -155,11 +213,21 @@ export async function pickReflectionPoints(
 
   const user = [
     `Scene the viewer just watched: ${input.sceneTitle}`,
+    ...(input.sceneNote
+      ? [
+          `What this clip ACTUALLY SHOWS, start to finish: ${input.sceneNote}`,
+          "The clip stops there. Anything later in the story is off screen.",
+        ]
+      : []),
     ...(input.scriptureReference && input.scriptureText
-      ? [`Verse shown on screen (${input.scriptureReference}): ${input.scriptureText}`]
+      ? [
+          `Verse shown on screen (${input.scriptureReference}): ${input.scriptureText}`,
+        ]
       : []),
     ...(input.approxWords
-      ? [`Budget for the finished reflection: about ${input.approxWords} words TOTAL.`]
+      ? [
+          `Budget for the finished reflection: about ${input.approxWords} words TOTAL.`,
+        ]
       : []),
     "",
     "The author's points (source length shown — compare it to the budget):",
@@ -184,12 +252,18 @@ export async function pickReflectionPoints(
       .sort((a, b) => a - b)
       .slice(0, MAX_POINTS)
     if (valid.length === 0) {
-      return { chosen: [points[0].index], reason: "picker returned no valid index" }
+      return {
+        chosen: [points[0].index],
+        reason: "picker returned no valid index",
+      }
     }
     return { chosen: valid, reason: result.reason }
   } catch (error) {
     if (error instanceof DevotionalLlmError) {
-      return { chosen: [points[0].index], reason: `picker skipped: ${error.code}` }
+      return {
+        chosen: [points[0].index],
+        reason: `picker skipped: ${error.code}`,
+      }
     }
     throw error
   }

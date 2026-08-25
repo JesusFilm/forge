@@ -170,6 +170,8 @@ export function buildDevotionalManifest(
 
   // Card text = the chunk, with the "Reflect on this." connector (narration
   // only) stripped, plus one accent phrase, aligned by index with the highlights.
+  /** Highlights already placed, so one phrase cannot claim two cards. */
+  const usedHighlights = new Set<number>()
   reflectionSegments.forEach((seg, k) => {
     // Second act plays BEFORE the half that comments on it.
     if (k === act2At && act2) {
@@ -183,7 +185,22 @@ export function buildDevotionalManifest(
         ...(act2Captions.length ? { subtitles: act2Captions } : {}),
       })
     }
-    const highlight = d.reflectionHighlights?.[k]
+    // Match the highlight to the card by CONTENT, not by position.
+    //
+    // These used to be read as `reflectionHighlights[k]`, which silently
+    // assumes the reflection still splits into exactly the chunks it did when
+    // the highlights were picked. Fixing a sentence-splitting bug (a closing
+    // quote after the full stop) changed that chunk count, and every cached
+    // devotional's highlights would have shifted onto the wrong cards —
+    // invisibly, because a phrase that isn't in the card's text just doesn't
+    // render. A phrase belongs to the card that contains it; each is used once.
+    const cardText = (seg.text ?? "").replace(/^Reflect on this\.\s*/, "")
+    const highlightIndex = (d.reflectionHighlights ?? []).findIndex(
+      (h, i) => h && !usedHighlights.has(i) && cardText.includes(h),
+    )
+    if (highlightIndex >= 0) usedHighlights.add(highlightIndex)
+    const highlight =
+      highlightIndex >= 0 ? d.reflectionHighlights?.[highlightIndex] : undefined
     cards.push({
       kind: "reflection-focus",
       // The reflect label shows on the FIRST card of each half; the rest pass
@@ -191,7 +208,7 @@ export function buildDevotionalManifest(
       ...(k === 0 || k === act2At
         ? { sectionLabel: labels.reflect }
         : { sectionLabel: "" }),
-      text: (seg.text ?? "").replace(/^Reflect on this\.\s*/, ""),
+      text: cardText,
       ...(highlight ? { highlight } : {}),
       audioFile: seg.file,
       durationSec: seg.durationSec,

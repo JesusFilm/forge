@@ -8,7 +8,11 @@ export function splitReflection(text: string): string[] {
   const sentences = text
     .replace(/\s+/g, " ")
     .trim()
-    .split(/(?<=[.!?…])\s+/)
+    // The terminator may be followed by a CLOSING QUOTE, and it usually is
+    // when the commentator quotes speech. Without the optional quote here the
+    // lookbehind sees "perish!'" as unterminated and three sentences land on
+    // one card — which is what shipped, and what the owner caught on screen.
+    .split(/(?<=[.!?…]['’"”]?)\s+/)
     .filter(Boolean)
   return sentences.length ? sentences : [text.trim()].filter(Boolean)
 }

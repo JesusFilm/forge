@@ -67,9 +67,16 @@ export async function pickReflectionHighlights(
 
   // Keep the top few verbatim phrases, then assign each to the first chunk that
   // contains it (one accent per card).
+  //
+  // Trailing punctuation is forgiven before matching. The model is asked for a
+  // phrase that may end mid-sentence, and gpt-4o-mini reliably tidies it into a
+  // sentence by appending a full stop: "The door of hope is wide open." where
+  // the reflection reads "...wide open, and it opens from the outside." A
+  // strict compare then dropped it. Reproduced 3 runs out of 3, and it cost two
+  // of every three accents on screen with nothing logged to say so.
   const phrases = (result.phrases ?? [])
-    .map((p) => p.trim())
-    .filter((p) => p && full.includes(p))
+    .map((p) => normalizeHighlight(p, full))
+    .filter((p): p is string => p !== null)
     .slice(0, MAX_HIGHLIGHTS)
   const used = new Set<string>()
   return input.chunks.map((chunk) => {
@@ -77,6 +84,27 @@ export async function pickReflectionHighlights(
     if (hit) used.add(hit)
     return hit ?? ""
   })
+}
+
+/**
+ * The phrase as it appears in `full`, or null when it genuinely isn't there.
+ *
+ * Only the ENDING is negotiable: a phrase the model closed off with punctuation
+ * the source doesn't have is still the author's phrase, while a phrase whose
+ * WORDS differ is a paraphrase and must stay rejected — the accent is drawn on
+ * the card by finding this exact substring, so a near-miss would render nothing
+ * and take the card's emphasis with it.
+ */
+export function normalizeHighlight(raw: string, full: string): string | null {
+  const phrase = raw.trim()
+  // Must contain a word. Bare punctuation passes a naive substring test — the
+  // reflection obviously contains "." — and would set a card's accent to a
+  // character, which the composition then highlights somewhere arbitrary.
+  if (!/\p{L}/u.test(phrase)) return null
+  if (full.includes(phrase)) return phrase
+  const stripped = phrase.replace(/[.,;:!?\s]+$/, "")
+  if (stripped && full.includes(stripped)) return stripped
+  return null
 }
 
 export const _internal = { JSON_SCHEMA }

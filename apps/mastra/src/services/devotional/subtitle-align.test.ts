@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest"
 
 import {
   alignWindow,
+  fetchEditedWindow,
   findActBreak,
   mapCuesToEditedTimeline,
   parseSubtitles,
@@ -254,7 +255,9 @@ Second line, after a cut.
 
   it("ignores slivers shorter than the minimum duration", () => {
     // Only 0.1s of the first cue survives — too short to flash on screen.
-    const out = mapCuesToEditedTimeline(cues, [{ startSec: 13.9, lengthSec: 2 }])
+    const out = mapCuesToEditedTimeline(cues, [
+      { startSec: 13.9, lengthSec: 2 },
+    ])
     expect(out).toEqual([])
   })
 })
@@ -345,5 +348,81 @@ describe("findActBreak", () => {
     const r = findActBreak(cues, 39, 40, 8)
     expect(r).not.toBeNull()
     expect(r!.act1EndSec).toBeGreaterThan(39)
+  })
+})
+
+describe("captions survive a window that cannot be snapped", () => {
+  /**
+   * The live bug, and the reason this is two behaviours and not one: the
+   * Zacchaeus beat's dialogue ends at 62.6s and the rest of the 30s window is
+   * a silent walk, so snapping yields 24.7s and `alignWindow` correctly
+   * refuses it (owner rule: a clip shows a whole scene). `fetchEditedWindow`
+   * used to turn that refusal into `null`, which threw the CUES away too — and
+   * every episode rendered with no subtitles at all.
+   */
+  const SRT = `1
+00:00:37,900 --> 00:00:42,400
+In Jericho there was a tax collector.
+
+2
+00:00:42,400 --> 00:00:46,700
+His name was Zacchaeus, and he was rich.
+
+3
+00:00:60,600 --> 00:01:02,600
+Zacchaeus, hurry and come down.
+`
+  const fetchFn = async () =>
+    ({ ok: true, text: async () => SRT }) as unknown as Response
+
+  it("returns the cues, and says the window was not snapped", async () => {
+    const out = await fetchEditedWindow("u", 39, 30, { fetchFn })
+    expect(out).not.toBeNull()
+    expect(out!.cues.length).toBe(3)
+    expect(out!.snapped).toBe(false)
+    // The LENGTH is kept as seeded; the start is pulled back to the line that
+    // is already speaking at 39s, so the clip does not open mid-sentence.
+    expect(out!.startSec).toBeCloseTo(37.9, 1)
+    expect(out!.lengthSec).toBe(30)
+  })
+
+  it("marks a window that DID snap, so the two cases are distinguishable", async () => {
+    const wide = await fetchEditedWindow("u", 37, 60, { fetchFn })
+    // Whatever the alignment decides, the flag must state which path ran.
+    expect(typeof wide!.snapped).toBe("boolean")
+  })
+
+  it("still returns null when the track itself cannot be read", async () => {
+    const bad = async () => ({ ok: false }) as unknown as Response
+    expect(await fetchEditedWindow("u", 39, 30, { fetchFn: bad })).toBeNull()
+  })
+})
+
+describe("an unsnapped window still starts on a cue boundary", () => {
+  const SRT = `1
+00:00:37,900 --> 00:00:42,400
+In Jericho there was a tax collector named Zaccheus.
+
+2
+00:01:00,600 --> 00:01:02,600
+Zaccheus, hurry and come down.
+`
+  const fetchFn = async () =>
+    ({ ok: true, text: async () => SRT }) as unknown as Response
+
+  it("pulls the start back to the line already speaking there", async () => {
+    // Seeded at 39s, 1.1s into the opening line: the clip used to open
+    // mid-sentence while its caption showed from the first frame.
+    const out = await fetchEditedWindow("u", 39, 30, { fetchFn })
+    expect(out!.startSec).toBeCloseTo(37.9, 1)
+    expect(out!.lengthSec).toBe(30)
+    expect(out!.snapped).toBe(false)
+  })
+
+  it("never pushes the start LATER than asked", async () => {
+    // Snapping may only widen at the head; moving it later would cut footage
+    // the caller deliberately seeded.
+    const out = await fetchEditedWindow("u", 50, 30, { fetchFn })
+    expect(out!.startSec).toBeLessThanOrEqual(50)
   })
 })

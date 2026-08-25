@@ -25,14 +25,19 @@ export function cacheDirFor(
   chapterIndex: number,
   sequence: number,
   lang: DevotionalLang = "en",
+  episode?: number,
 ): string {
   // English keeps the original path; other languages get a suffixed dir so a
   // localized edition never collides with the English text/audio.
   const suffix = lang === "en" ? "" : `-${lang}`
+  // Episodes of one scene are DIFFERENT devotionals sharing (chapter, sequence),
+  // so without this they would overwrite each other's text and narration — and
+  // the second one would look like a cache hit for the first.
+  const ep = episode === undefined ? "" : `-ep${episode}`
   return path.join(
     repoRoot(),
     "devo/cache",
-    `ch${chapterIndex}-seq${sequence}${suffix}`,
+    `ch${chapterIndex}-seq${sequence}${ep}${suffix}`,
   )
 }
 

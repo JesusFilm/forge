@@ -85,21 +85,37 @@ describe("buildNarrationSegments", () => {
     expect(refl.length).toBeGreaterThan(1)
   })
 
-  it("opens the cover with the spoken weekday + date (no doubled 'today')", () => {
+  it("opens on the hook, then the settle line, and never speaks the date", () => {
     const s = buildNarrationSegments(DEVO).find((x) => x.id === "cover")
-    // DEVO.date is 2026-07-10 → Friday → "It's Friday, July 10. And today's…"
-    expect(s?.text).toMatch(/^It's Friday, July 10\. And today's devotional: /)
-    // "today" appears exactly once (in "today's devotional").
-    expect(s?.text?.match(/today/gi)?.length).toBe(1)
+    // The hook is what stops the scroll, so nothing may precede it.
+    expect(s?.text?.startsWith(DEVO.title)).toBe(true)
+    expect(s?.text).toMatch(/Let's [a-z]/)
+    // DEVO.date is 2026-07-10 → Friday. Neither the weekday nor the numeric
+    // date may be spoken: it would date a video meant to be watched any day.
+    expect(s?.text).not.toMatch(/Friday|July|10/)
   })
 
-  it("speaks a configured occasion on its date, without doubling 'today'", () => {
+  it("rotates the settle line by sequence, so a series does not repeat itself", () => {
+    const spoken = [0, 1, 2, 3].map(
+      (sequence) =>
+        buildNarrationSegments({ ...DEVO, sequence }).find(
+          (x) => x.id === "cover",
+        )?.text ?? "",
+    )
+    const settles = spoken.map((t) => t.slice(DEVO.title.length).trim())
+    // Three distinct lines, and the fourth wraps back to the first.
+    expect(new Set(settles.slice(0, 3)).size).toBe(3)
+    expect(settles[3]).toBe(settles[0])
+  })
+
+  it("speaks a configured occasion between the hook and the settle line", () => {
     const s = buildNarrationSegments({ ...DEVO, date: "2026-08-19" }).find(
       (x) => x.id === "cover",
     )
     expect(s?.text).toMatch(
-      /^It's Wednesday, August 19\. Today is also World Humanitarian Day\. And today's devotional: /,
+      /Today is also World Humanitarian Day\. Let's [a-z]/,
     )
+    expect(s?.text?.startsWith(DEVO.title)).toBe(true)
   })
 
   it("says nothing extra on a date with no configured occasion", () => {
@@ -109,8 +125,15 @@ describe("buildNarrationSegments", () => {
 
   it("includes the scripture connector and reference", () => {
     const s = buildNarrationSegments(DEVO).find((x) => x.id === "scripture")
-    expect(s?.text).toMatch(/^Here's today's scripture\. Luke 8:24\. /)
+    expect(s?.text).toMatch(/^Here's where we're reading today\. Luke 8:24\. /)
     expect(s?.text).toMatch(/Let's watch\.$/) // leads into the video card
+  })
+
+  it("does not echo the cover's 'Scripture' or 'passage' one card later", () => {
+    // The cover's settle line already says one of those words seconds earlier,
+    // and hearing it twice in a row is what makes the opening sound templated.
+    const s = buildNarrationSegments(DEVO).find((x) => x.id === "scripture")
+    expect(s?.text).not.toMatch(/scripture|passage/i)
   })
 })
 
@@ -123,6 +146,10 @@ describe("produceDevotionalAudio", () => {
     const out = await produceDevotionalAudio(DEVO, {
       voiceover: voiceover as never,
       music: music as never,
+      // Empty library → the generation path these assertions describe. Injected
+      // rather than left to disk, so the test does not depend on whether the
+      // developer happens to have devo/assets/music populated.
+      libraryBed: async () => null,
     })
     expect(out.voice).toBe("male-d")
     // cover, scripture (+"Let's watch"), one reflection chunk, conclusion,
@@ -158,10 +185,65 @@ describe("produceDevotionalAudio", () => {
     const out = await produceDevotionalAudio(DEVO, {
       voiceover: vi.fn().mockResolvedValue(missing) as never,
       music: vi.fn().mockResolvedValue(missing) as never,
+      libraryBed: async () => null,
     })
     expect(out.segments).toHaveLength(0)
     expect(out.music).toBeNull()
     expect(out.skipped).toContain("music")
     expect(out.skipped).toContain("reflection-1")
+  })
+})
+
+describe("music library reuse", () => {
+  /**
+   * The library exists so a music credit is not spent per render. It was built
+   * and paid for, then never wired in: every render called the paid Music API
+   * while twenty tracks sat on disk. Owner found it in the ElevenLabs
+   * analytics, not in any log — so these tests pin the wiring in place.
+   */
+  const bed = {
+    file: "hope-2.mp3",
+    bytes: Buffer.from("library-bytes"),
+    mood: "hope" as const,
+  }
+
+  it("uses a library track and does NOT call the paid generator", async () => {
+    const music = vi.fn().mockResolvedValue(okMusic())
+    const out = await produceDevotionalAudio(DEVO, {
+      voiceover: vi
+        .fn()
+        .mockImplementation(async ({ text }) => okVoice(text)) as never,
+      music: music as never,
+      libraryBed: async () => bed,
+    })
+    expect(music).not.toHaveBeenCalled()
+    expect(out.music?.mood).toBe("hope")
+    expect(Buffer.from(out.music!.audio.bytes).toString()).toBe("library-bytes")
+  })
+
+  it("records which library file was used, so a render can be traced", async () => {
+    const out = await produceDevotionalAudio(DEVO, {
+      voiceover: vi
+        .fn()
+        .mockImplementation(async ({ text }) => okVoice(text)) as never,
+      music: vi.fn().mockResolvedValue(okMusic()) as never,
+      libraryBed: async () => bed,
+    })
+    expect(out.music?.audio.prompt).toBe("library:hope-2.mp3")
+  })
+
+  it("falls back to generating when the library cannot serve the mood", async () => {
+    // A partially-populated library must degrade to the old behaviour, never
+    // to a silent video.
+    const music = vi.fn().mockResolvedValue(okMusic())
+    const out = await produceDevotionalAudio(DEVO, {
+      voiceover: vi
+        .fn()
+        .mockImplementation(async ({ text }) => okVoice(text)) as never,
+      music: music as never,
+      libraryBed: async () => null,
+    })
+    expect(music).toHaveBeenCalledTimes(1)
+    expect(out.music).not.toBeNull()
   })
 })

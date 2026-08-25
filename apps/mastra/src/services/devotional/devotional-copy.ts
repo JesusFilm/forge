@@ -63,15 +63,16 @@ export const SYSTEM_PROMPT = [
   "frame any 'can the lost be saved' idea as hope about others or as 'we'.",
   "Given the scene, its Bible verse, and a short reflection, return three things:",
   "1. title — a HOOK for the cover: a scroll-stopping opening line that makes",
-  "   someone stop and watch, present-tense and personal ('you'). NOT a neutral",
-  "   title or a summary. VARY THE FORM from devotional to devotional — it does",
-  "   NOT have to be a question. Rotate across: a bold statement, a relatable",
-  "   confession or felt-need, a vivid concrete image from the scene, a direct",
-  "   invitation, a surprising truth, or (only sometimes) a question. Do NOT",
-  "   default to a question, and NEVER open with 'What if'. Up to ~10 words.",
-  '   Examples of DIFFERENT forms: "You can stop performing for God." /',
-  '   "Some storms don\'t frighten Jesus at all." / "He saw the one everyone',
-  '   walked past." / "There is a table set for the person you\'d overlook."',
+  "   someone stop and watch. Up to ~10 words. Follow the hook style given",
+  "   below; it rotates so the covers don't all sound alike.",
+  "   THE ONE TEST THAT MATTERS: a hook OPENS a gap, a summary CLOSES it. If",
+  "   someone who heard only your line already knows the devotional's point,",
+  "   you have written a summary and it is wrong, however true and well put.",
+  '   "Jesus invites himself into the life of the person no one wanted" tells',
+  '   the whole story in one breath and leaves nothing to watch for. "When',
+  '   everyone else had written him off, Jesus stopped" carries the same idea',
+  "   and makes you ask who, and why, and what happened next.",
+  "   Say the least that still intrigues. NEVER open with 'What if'.",
   "   If the per-devotional hook style below is set, follow it — but the",
   "   AUDIENCE rule above outranks it. A hook must never put the viewer's own",
   "   standing with God in doubt, however well it fits the requested style:",
@@ -89,6 +90,18 @@ export const SYSTEM_PROMPT = [
   '   about this (e.g. "Take a moment to bring your fear to God and ask for his',
   '   peace"). It invites the viewer to pray — it is NOT a scripted prayer',
   "   addressed to God, not words to recite.",
+  "ALL THREE ARE ABOUT THE VIEWER AND CHRIST — never about a third party.",
+  "The commonest drift, and it looks harmless every time: the hook names a",
+  "feeling the viewer knows, and then the question and the prayer quietly turn",
+  "outward to somebody else who needs saving. 'Who in your life seems too far",
+  "from God?' and 'Ask God to show you someone who needs to hear this' hand the",
+  "viewer an errand about other people instead of anything for their own walk,",
+  "and they arrive right after a reflection that WAS about them, so the",
+  "devotional changes address halfway through.",
+  "Turn the same idea inward and it works: 'Where do you need to remember he",
+  "chose you first?' rather than 'Who do you know that needs to hear it?'",
+  "This binds even when the reflection is about the unlikeliness of grace: that",
+  "the grace was unlikely is a fact about the VIEWER's rescue too.",
   "Match the tone of the scene.",
   "THEOLOGY (hook especially): a hook may provoke with a real felt-need or",
   "tension, but must NEVER state or imply something theologically false, even as",
@@ -104,16 +117,25 @@ export const SYSTEM_PROMPT = [
  * Cover-hook FORMS, rotated by sequence so the opening line varies across
  * devotionals instead of collapsing to one shape (owner: every cover was opening
  * "What if..."). Each run gets one style; the model still has freedom within it.
+ *
+ * Owner-chosen, and cut down to THREE. The previous eight were abstract labels
+ * with no examples ("a bold, declarative statement"), and abstract labels are
+ * what let the hook drift into summary: a summary is, after all, bold and
+ * declarative. Each form now carries the owner's own example, because we have
+ * twice watched an example in a prompt outweigh the rule beside it.
  */
 export const HOOK_STYLES = [
-  "a bold, declarative statement (no question mark)",
-  "an emotional statement naming a feeling the viewer already knows (no question mark)",
-  "a relatable confession or felt-need in the viewer's own voice",
-  "direct audience identification: name the kind of believer watching, so they recognise themselves",
-  "a vivid, concrete image drawn from the scene",
-  "a warm, direct invitation",
-  "a surprising or counterintuitive truth",
-  "an intriguing question the viewer needs answered — it must NOT begin with 'What if'",
+  "DIRECT ADDRESS — name the kind of person watching, so they recognise " +
+    "themselves and know the next two minutes are for them. Often opens " +
+    "'For anyone who…'. Example: \"For anyone who thinks they've gone too " +
+    'far." Name the feeling they arrived with, not the lesson they leave with.',
+  "INTRIGUING STATEMENT about Jesus — one moment from the scene, stated so " +
+    'that it raises a question instead of answering one. Example: "When ' +
+    'everyone else had written him off, Jesus stopped." The viewer should ' +
+    "want to know who was written off, and why, and what happened next.",
+  "INTRIGUING QUESTION — one the viewer cannot answer from the title alone, " +
+    'and now wants answered. Example: "What changed Zacchaeus so completely?" ' +
+    "Never begins with 'What if'.",
 ] as const
 
 /** Deterministic hook style for a devotional's rotation counter. */

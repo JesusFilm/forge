@@ -210,11 +210,34 @@ async function main() {
   const staticCover = arg("static-cover", "false") === "true"
   // Social cover tests: skip the date entirely.
   const hideCoverDate = arg("hide-cover-date", "false") === "true"
+  // Teasers: no brand mark on the cover, so the title sits alone in the middle
+  // of the frame. Full devotionals keep the logo.
+  const hideCoverLogo = arg("hide-cover-logo", "false") === "true"
+  // Teasers: leave the footage sharp behind the cover title.
+  const coverBgSharp = arg("cover-bg-sharp", "false") === "true"
+  // Film treatment: halation, a heavier grain layer, deeper vignette, film edge.
+  // The teaser wants the grain without the split-tone grade, which is why this
+  // is separate from `--style`.
+  const filmTreatment = arg("film-treatment", "false") === "true"
+  // Teasers: let the BACKGROUND clip's own sound play under the text cards, at
+  // half `--video-audio`, so the scene is audible from the first frame and
+  // rises when the clip takes the frame. Without it the text cards are
+  // music-only and the film's sound arrives abruptly on the video card.
+  const bgAudio = arg("bg-audio", "false") === "true"
+  // Teasers: the video card continues the shared take rather than restarting it.
+  const continuousClip = arg("continuous-clip", "false") === "true"
+  // Teasers: hold the verse on screen as the video comes up (seconds).
+  const verseHoldIntoVideoSec = arg("verse-hold", "")
   // Social cover tests: title + attribution shown from frame 0, but (unlike
   // static-cover) the logo animation still plays.
   const coverTextStatic = arg("cover-text-static", "false") === "true"
   // Social cover tests: short line under the title, same font as the date.
   const coverSecondaryLine = arg("cover-secondary", "")
+  // Shown in the date's slot instead of a date. A dated cover ages the video
+  // the moment it is seen, which is wrong for a series watched whenever found.
+  const coverDateLabel = arg("cover-date-label", "")
+  // Title animates first from frame 0; the logo sequence starts ~2s in.
+  const coverTitleFirst = arg("cover-title-first", "false") === "true"
   // Teasers: slower crossfade between non-video cards (seconds).
   const xfadeSec = arg("xfade", "")
   // Music bed level (0–1). Default matches the schema; raise for teasers where
@@ -281,8 +304,18 @@ async function main() {
         : {}),
       ...(staticCover ? { staticCover: true } : {}),
       ...(hideCoverDate ? { hideCoverDate: true } : {}),
+      ...(hideCoverLogo ? { hideCoverLogo: true } : {}),
+      ...(coverBgSharp ? { coverBgSharp: true } : {}),
+      ...(filmTreatment ? { filmTreatment: true } : {}),
+      ...(bgAudio ? { bgAudio: true } : {}),
+      ...(continuousClip ? { continuousClip: true } : {}),
+      ...(verseHoldIntoVideoSec
+        ? { verseHoldIntoVideoSec: Number(verseHoldIntoVideoSec) }
+        : {}),
       ...(coverTextStatic ? { coverTextStatic: true } : {}),
       ...(coverSecondaryLine ? { coverSecondaryLine } : {}),
+      ...(coverDateLabel ? { coverDateLabel } : {}),
+      ...(coverTitleFirst ? { coverTitleFirst: true } : {}),
       ...(xfadeSec !== "" ? { xfadeSec: Number(xfadeSec) } : {}),
       ...(musicVolume !== "" ? { musicVolume: Number(musicVolume) } : {}),
       ...(mediaFilterOverride ? { mediaFilterOverride } : {}),
@@ -294,6 +327,48 @@ async function main() {
         ? { bgPlaybackRate: manifest.bgPlaybackRate }
         : {}),
       ...(manifest.musicFile ? { musicFile: manifest.musicFile } : {}),
+    }
+
+    // A manifest may carry its own `render` block — the look this KIND of video
+    // is supposed to have, as data rather than a line of flags someone has to
+    // remember. Teasers use it: their recipe (no grade, no logo, sharp cover,
+    // continuous take, verse hold, film sound at 10%) was settled once and now
+    // travels with the manifest.
+    //
+    // These are DEFAULTS, not overrides: a flag passed explicitly on the command
+    // line still wins, so one-off experiments do not require editing a manifest.
+    // "Explicitly" means present in argv — checking the parsed value cannot tell
+    // a passed `--style=grain` from the built-in default of the same name.
+    const passedOnCli = (flag) =>
+      process.argv.some((a) => a.startsWith(`--${flag}=`))
+    /** prop name → the CLI flag that sets it, where one exists. */
+    const CLI_FLAG_FOR = {
+      style: "style",
+      layout: "layout",
+      textAnim: "anim",
+      outroHoldSec: "outro",
+      introHoldSec: "intro",
+      hideCoverDate: "hide-cover-date",
+      hideCoverLogo: "hide-cover-logo",
+      coverBgSharp: "cover-bg-sharp",
+      filmTreatment: "film-treatment",
+      bgAudio: "bg-audio",
+      continuousClip: "continuous-clip",
+      verseHoldIntoVideoSec: "verse-hold",
+      videoAudioLevel: "video-audio",
+      muteVideoAudio: "mute-video",
+      musicVolume: "music-vol",
+      xfadeSec: "xfade",
+    }
+    for (const [key, value] of Object.entries(manifest.render ?? {})) {
+      const flag = CLI_FLAG_FOR[key]
+      if (flag && passedOnCli(flag)) continue
+      inputProps[key] = value
+    }
+    if (manifest.render) {
+      console.log(
+        `manifest render block: ${Object.keys(manifest.render).join(", ")}`,
+      )
     }
 
     console.log("Ensuring headless browser (first run downloads ~150MB)…")

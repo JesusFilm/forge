@@ -15,10 +15,7 @@
 import { homedir } from "node:os"
 import path from "node:path"
 
-import {
-  getDevotionalModel,
-  getDevotionalTranslateModel,
-} from "../config/env"
+import { getDevotionalModel, getDevotionalTranslateModel } from "../config/env"
 import { prepareAndRenderDevotional } from "../services/devotional/devotional-render"
 import { type DevotionalLang } from "../services/devotional/devotional-locale"
 import { JESUS_FILM_CHAPTERS } from "../services/devotional/jesus-film-catalog"
@@ -118,6 +115,13 @@ async function main() {
       aspect,
       log: (m) => console.log(`[${aspect}] ${m}`),
     })
+    // The daily job never asks for the review stop, so a null path here would
+    // mean the contract changed under us rather than a run we chose to pause.
+    if (videoPath === null) {
+      throw new Error(
+        `daily render returned no video for ${aspect} (review stop is not used by the daily job)`,
+      )
+    }
     results[aspect] = videoPath
   }
 

@@ -1,3 +1,5 @@
+import { readFile } from "node:fs/promises"
+import { libraryBed } from "./music-library-store"
 import {
   generateMusic,
   type MusicAudio,
@@ -99,14 +101,19 @@ export function splitSpokenUnits(
   const units: string[] = []
   const gaps: number[] = []
   paras.forEach((para, pi) => {
-    const sentences = (para.match(/[^.!?…]+[.!?…]*/g) ?? [para])
+    // Trailing closing quotes belong to the sentence they end. Leaving them
+    // out started the NEXT unit with a lone quote mark, and ElevenLabs read
+    // that stray character as a filler ("umm") before the line.
+    const sentences = (para.match(/[^.!?…]+[.!?…]*['’"”]*/g) ?? [para])
       .map((s) => flattenSpokenText(s))
       .filter(Boolean)
     sentences.forEach((s, si) => {
       units.push(s)
       const lastSentence = si === sentences.length - 1
       const lastPara = pi === paras.length - 1
-      gaps.push(lastSentence ? (lastPara ? 0 : PARAGRAPH_GAP_SEC) : SENTENCE_GAP_SEC)
+      gaps.push(
+        lastSentence ? (lastPara ? 0 : PARAGRAPH_GAP_SEC) : SENTENCE_GAP_SEC,
+      )
     })
   })
   // "Settling" ending (owner): the last few words of the WHOLE devotional get
@@ -132,6 +139,11 @@ export function splitSpokenUnits(
 export function buildNarrationSegments(
   d: GeneratedDevotional,
   locale: DevotionalLocale = EN_LOCALE,
+  /** Fixed-date occasions ("Today is also World Humanitarian Day") belong to
+   *  the daily site edition. A social cut is watched whenever someone finds
+   *  it, so naming today's holiday dates the video exactly the way a date
+   *  does. */
+  opts: { suppressOccasion?: boolean; settleLine?: string } = {},
 ): NarrationSegment[] {
   const c = locale.connectors
   const segments: NarrationSegment[] = []
@@ -141,8 +153,10 @@ export function buildNarrationSegments(
       // Terminal punctuation so the hook lands as a complete sentence.
       text: c.cover(
         ensureTerminal(d.title),
+        d.sequence,
         locale.spokenDate(d.date),
-        occasionFor(d.date, locale.lang),
+        opts.suppressOccasion ? null : occasionFor(d.date, locale.lang),
+        opts.settleLine ?? null,
       ),
     })
   }
@@ -279,6 +293,17 @@ export type ProduceDevotionalAudioDeps = {
    */
   reusable?: Map<string, ProducedSegment>
   music?: typeof generateMusic
+  /** Injectable for tests; defaults to reading devo/assets/music. */
+  libraryBed?: typeof libraryBed
+  /** Leave today's fixed-date occasion out of the spoken cover. */
+  suppressOccasion?: boolean
+  /** Replace the rotated settle line on the cover for this run. */
+  settleLine?: string
+  /** Use THIS mp3 as the bed, instead of the library or the paid generator.
+   *  For matching an existing video whose own track was never saved: the only
+   *  copy is mixed into its audio, and the one stretch without narration is a
+   *  few seconds of the outro. */
+  musicFile?: string
   /** Music bed length in ms (looped to cover the video at render time). */
   musicLengthMs?: number
   /**
@@ -337,7 +362,10 @@ export async function produceDevotionalAudio(
   const failures: SegmentFailure[] = []
 
   // Cards read a touch slower (owner): scripture and the LAST reflection card.
-  const segs = buildNarrationSegments(devotional, locale)
+  const segs = buildNarrationSegments(devotional, locale, {
+    suppressOccasion: deps.suppressOccasion ?? false,
+    ...(deps.settleLine ? { settleLine: deps.settleLine } : {}),
+  })
   const lastReflectionId = [...segs]
     .reverse()
     .find((s) => /^reflection-\d+$/.test(s.id))?.id
@@ -373,7 +401,11 @@ export async function produceDevotionalAudio(
         audioReuseKey(role, seg.display ?? seg.text, devotional.voice),
       )
       if (hit) {
-        segments.push({ id: seg.id, text: seg.display ?? seg.text, audio: hit.audio })
+        segments.push({
+          id: seg.id,
+          text: seg.display ?? seg.text,
+          audio: hit.audio,
+        })
         reused.push(seg.id)
         continue
       }
@@ -433,7 +465,11 @@ export async function produceDevotionalAudio(
     if (failed || audios.length === 0) {
       skipped.push(seg.id)
       failures.push(
-        failure ?? { id: seg.id, reason: "no_audio_produced", retryable: false },
+        failure ?? {
+          id: seg.id,
+          reason: "no_audio_produced",
+          retryable: false,
+        },
       )
       continue
     }
@@ -458,7 +494,11 @@ export async function produceDevotionalAudio(
       bytes = await deps.pace(bytes, LAST_REFLECTION_TEMPO, 0)
     }
     // Store the CLEAN on-screen text (spoken connector stays audio-only).
-    segments.push({ id: seg.id, text: seg.display ?? seg.text, audio: { ...audio, bytes } })
+    segments.push({
+      id: seg.id,
+      text: seg.display ?? seg.text,
+      audio: { ...audio, bytes },
+    })
   }
 
   // Tail of silence after the close so it settles (the final sentence itself is
@@ -466,18 +506,62 @@ export async function produceDevotionalAudio(
   // slowdown, to avoid dragging).
   if (deps.pace && segments.length > 0) {
     const last = segments[segments.length - 1]
-    last.audio = { ...last.audio, bytes: await deps.pace(last.audio.bytes, 1.0, 0.7) }
+    last.audio = {
+      ...last.audio,
+      bytes: await deps.pace(last.audio.bytes, 1.0, 0.7),
+    }
   }
 
+  // LIBRARY FIRST. The 20-track library was generated once precisely so a
+  // music credit is not spent per render; going straight to generateMusic
+  // bought a fresh bed every single time while those tracks sat on disk.
+  // Generation stays as the fallback for a mood the library cannot serve.
   let musicOut: ProducedDevotionalAudio["music"] = null
-  const m = await music({
-    mood: devotional.mood,
-    ...(deps.musicLengthMs != null ? { lengthMs: deps.musicLengthMs } : {}),
-  })
-  if (m.ok) musicOut = { mood: devotional.mood, audio: m.audio }
-  else {
-    skipped.push("music")
-    failures.push({ id: "music", reason: m.reason, retryable: m.retryable })
+  // An explicit file wins over both: it is how a new cut is matched to an
+  // existing video whose own bed was never saved anywhere but inside its mix.
+  const fromFile = deps.musicFile
+    ? await readFile(deps.musicFile).catch(() => null)
+    : null
+  const fromLibrary = fromFile
+    ? null
+    : await (deps.libraryBed ?? libraryBed)(
+        devotional.mood,
+        devotional.sequence,
+      )
+  if (fromFile) {
+    musicOut = {
+      mood: devotional.mood,
+      audio: {
+        format: "mp3",
+        bytes: fromFile,
+        prompt: `file:${deps.musicFile}`,
+        model: "file",
+        lengthMs: 0,
+      },
+    }
+  } else if (fromLibrary) {
+    musicOut = {
+      mood: fromLibrary.mood,
+      audio: {
+        format: "mp3",
+        bytes: fromLibrary.bytes,
+        // Provenance for a library track is the file it came from; the original
+        // generation prompt lives in the library manifest, not here.
+        prompt: `library:${fromLibrary.file}`,
+        model: "library",
+        lengthMs: 0,
+      },
+    }
+  } else {
+    const m = await music({
+      mood: devotional.mood,
+      ...(deps.musicLengthMs != null ? { lengthMs: deps.musicLengthMs } : {}),
+    })
+    if (m.ok) musicOut = { mood: devotional.mood, audio: m.audio }
+    else {
+      skipped.push("music")
+      failures.push({ id: "music", reason: m.reason, retryable: m.retryable })
+    }
   }
 
   return {

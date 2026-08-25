@@ -25,9 +25,14 @@ function timeToSeconds(ts: string): number | null {
 }
 
 /** Parse .srt or .vtt into cues (format auto-detected by the arrow line). */
+import { normalizeCaptionNames } from "./caption-name-spelling"
+
 export function parseSubtitles(raw: string): SubtitleCue[] {
   const cues: SubtitleCue[] = []
-  const blocks = raw.replace(/\r/g, "").replace(/^WEBVTT.*?\n/s, "").split(/\n\s*\n/)
+  const blocks = raw
+    .replace(/\r/g, "")
+    .replace(/^WEBVTT.*?\n/s, "")
+    .split(/\n\s*\n/)
   for (const block of blocks) {
     const lines = block.trim().split("\n")
     const arrowIdx = lines.findIndex((l) => l.includes("-->"))
@@ -41,7 +46,10 @@ export function parseSubtitles(raw: string): SubtitleCue[] {
       .slice(arrowIdx + 1)
       .join(" ")
       .trim()
-    cues.push({ start, end, text })
+    // Normalize here, at the single point every caption enters the pipeline,
+    // so the alignment, the act split and the on-screen text all see the same
+    // spelling as the verse quoted beside them.
+    cues.push({ start, end, text: normalizeCaptionNames(text) })
   }
   return cues.sort((x, y) => x.start - y.start)
 }
@@ -69,11 +77,15 @@ function endsSentence(text: string): boolean {
  * language's sentence boundaries can otherwise snap to a single short cue
  * (observed: 12–15s on "Jesus Feeds 5,000") well under the curated window.
  */
+/** A clip must show a whole scene, not a single short cue (owner rule). */
+const SCENE_MIN_SEC = 30
+
 export function alignWindow(
   cues: SubtitleCue[],
   desiredStart: number,
   desiredLen: number,
-  minLengthSec = 30,
+  /** Owner rule: a clip shows a whole scene, not a single short cue. */
+  minLengthSec = SCENE_MIN_SEC,
 ): AlignedWindow | null {
   if (cues.length === 0) return null
   const desiredEnd = desiredStart + desiredLen
@@ -97,7 +109,9 @@ export function alignWindow(
   let end = desiredEnd
   const sentenceEnd = [...cues]
     .reverse()
-    .find((c) => c.end <= desiredEnd + tol && c.end > start && endsSentence(c.text))
+    .find(
+      (c) => c.end <= desiredEnd + tol && c.end > start && endsSentence(c.text),
+    )
   if (sentenceEnd) {
     end = sentenceEnd.end
   } else {
@@ -249,7 +263,10 @@ export function findActBreak(
   // acts meet at the gap's MIDPOINT instead, which keeps the split single-valued
   // whatever the buffers ask for.
   const wantAct1End = Math.min(best.prevEnd + 1.5, best.nextStart)
-  const wantAct2Start = Math.max(best.nextStart - leadingBufferSec, best.prevEnd)
+  const wantAct2Start = Math.max(
+    best.nextStart - leadingBufferSec,
+    best.prevEnd,
+  )
   if (wantAct1End <= wantAct2Start) {
     return { act1EndSec: wantAct1End, act2StartSec: wantAct2Start }
   }
@@ -286,6 +303,10 @@ export type EditedWindow = AlignedWindow & {
   /** Every parsed cue from the track (SOURCE timings), so the caller can
    *  remap them onto the edited clip with `mapCuesToEditedTimeline`. */
   cues: SubtitleCue[]
+  /** False when the window could NOT be snapped to sentence boundaries and the
+   *  caller's seeded window was kept. The captions are still usable; only the
+   *  clip's in/out points are unpolished. */
+  snapped: boolean
 }
 
 /** A caption timed against the FINAL, edited clip (gaps cut, speed applied). */
@@ -352,15 +373,42 @@ export async function fetchEditedWindow(
     })
     if (!r.ok) return null
     const cues = parseSubtitles(await r.text())
+    // Aligning the WINDOW and having CAPTIONS are different things, and
+    // conflating them cost every episode its subtitles. Alignment refuses a
+    // window it would have to shorten past a whole scene — for the Zacchaeus
+    // beat the dialogue ends at 62.6s and the rest is a silent walk, so the
+    // snapped window is 24.7s and correctly refused. The cues in that window
+    // are still perfectly good, so return them and let the caller keep the
+    // window it seeded: a slightly unsnapped edge is a far smaller fault than
+    // a clip with no captions at all.
     const aligned = alignWindow(cues, desiredStart, desiredLen)
-    if (!aligned) return null
+    if (!aligned) {
+      // The window is refused, but its START can still be honest. A seed that
+      // lands 1.1s inside the opening line clips that line's first words,
+      // while the caption for it shows in full from frame one — the voice is
+      // already mid-sentence when the text appears. Snap the start back to the
+      // cue that is already speaking there and keep the requested length.
+      const opening = [...cues]
+        .reverse()
+        .find((c) => c.start <= desiredStart + 1.5)
+      const startSec = opening
+        ? Math.min(opening.start, desiredStart)
+        : desiredStart
+      return {
+        startSec,
+        lengthSec: desiredLen,
+        segments: removeInternalGaps(cues, startSec, desiredLen, gapOpts),
+        cues,
+        snapped: false,
+      }
+    }
     const segments = removeInternalGaps(
       cues,
       aligned.startSec,
       aligned.lengthSec,
       gapOpts,
     )
-    return { ...aligned, segments, cues }
+    return { ...aligned, segments, cues, snapped: true }
   } catch {
     return null
   }
