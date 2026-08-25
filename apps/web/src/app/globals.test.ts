@@ -111,6 +111,212 @@ describe("scroll-driven timeline choreography", () => {
     expect(override).toBeGreaterThan(base)
   })
 
+  it("never clips the stage, which would shear the full-bleed card", () => {
+    // Measured, not reasoned: the stage's box sits inside the content rail,
+    // so any overflow on it cuts 96px off each side of the opening card and
+    // leaves black strips down both edges of an effect whose whole point is
+    // to reach the viewport edges. `hidden` is worse still — it makes the
+    // stage a scroll container and the pin's sticky never engages. The card
+    // is bounded by the stage's top margin instead.
+    const guard = blockBody(css, "@supports (animation-timeline: view())")
+    const rule = blockBody(guard, ".watch-scroll-stage {")
+
+    expect(rule).not.toContain("overflow")
+  })
+
+  it("drops the lifted lead layer back to its own depth", () => {
+    // The lead layer is raised over its siblings for the length of the zoom
+    // so their clip-box shadows cannot draw a seam across the full-screen
+    // photograph. It has to come back down: the pile is built bottom-up, so
+    // a lead layer left on top would sit over every card that lands on it.
+    const frames = blockBody(css, "@keyframes watch-scroll-intro-front")
+
+    expect(frames).toContain("z-index: 30")
+    expect(frames).toMatch(/100%\s*\{\s*z-index:\s*var\(--layer\)/)
+  })
+
+  it("opens the lead beat at full opacity, not faded out", () => {
+    // Every other beat fades up as its card arrives. The lead beat is part
+    // of the opening frame instead — it sits over the full-screen
+    // photograph from the first pixel — so its keyframes must START opaque.
+    // Reusing the cycle here leaves the opening composition wordless.
+    const lead = blockBody(css, "@keyframes watch-scroll-beat-lead")
+    const cycle = blockBody(css, "@keyframes watch-scroll-beat-cycle")
+
+    expect(lead).toMatch(/0%,\s*\d+%\s*\{\s*opacity:\s*1/)
+    expect(cycle).toMatch(/0%\s*\{\s*opacity:\s*0/)
+    // …and it still gets out of the way for the card that comes for it.
+    expect(lead).toMatch(/100%\s*\{\s*opacity:\s*0/)
+
+    // The wiring, not just the shape. Asserting only on the keyframes lets
+    // the rule be repointed at the cycle — which is the production defect,
+    // and left this test green when it was tried.
+    const guard = blockBody(css, "@supports (animation-timeline: view())")
+    const rule = blockBody(guard, ".watch-scroll-beatbox-lead {")
+
+    expect(rule).toContain("watch-scroll-beat-lead")
+    expect(rule).not.toContain("watch-scroll-beat-cycle")
+  })
+
+  it("runs the lead beat's weight over the zoom, not over its own slice", () => {
+    // The beat carries two tracks on different ranges: hold-then-fade
+    // belongs to the era's slice, weight and shadow to the opening zoom.
+    // Collapsed onto one range, the paragraph would still be at its heavy
+    // opening weight long after the photograph it was heavy FOR has gone.
+    const guard = blockBody(css, "@supports (animation-timeline: view())")
+    const rule = blockBody(guard, ".watch-scroll-beatbox-lead {")
+
+    expect(rule).toContain("watch-scroll-beat-weight")
+    expect(rule).toContain(
+      "animation-range: var(--beat-range), var(--intro-range)",
+    )
+    // Both tracks need a timeline; one entry drives only the first.
+    expect(rule).toContain(
+      "animation-timeline: --watch-era-stage, --watch-era-stage",
+    )
+  })
+
+  it("eases the lead beat from a heavier weight that cannot re-wrap it", () => {
+    // Measured: the paragraph re-wraps at weight 600 on every viewport at
+    // or below 1024px, and gains a line at 700. Because this interpolates
+    // during a scroll, a weight that re-wraps makes the lines jump under
+    // the reader mid-zoom — so the opening weight is capped at 500.
+    const frames = blockBody(css, "@keyframes watch-scroll-beat-weight")
+    const opening = Number(
+      frames.match(/from\s*\{[^}]*font-weight:\s*(\d+)/)?.[1],
+    )
+    const resting = Number(
+      frames.match(/to\s*\{[^}]*font-weight:\s*(\d+)/)?.[1],
+    )
+
+    expect(opening).toBeGreaterThan(resting)
+    expect(opening).toBeLessThanOrEqual(500)
+    // `font-light` is the resting design; landing anywhere else leaves the
+    // beat permanently off-weight, since the fill holds the last frame.
+    expect(resting).toBe(300)
+    // And the halo goes with it: over the black page it only muddies.
+    expect(frames).toMatch(/to\s*\{[\s\S]*rgb\(0 0 0 \/ 0\)/)
+  })
+
+  it("sizes the opening photograph from the viewport, capped at the card", () => {
+    // The card is far wider than the screen while it fills it, so a
+    // card-filling box pushes ~40% of the picture off both sides. The box is
+    // the VIEWPORT width instead, divided back out by the zoom — and capped
+    // at the card's own footprint so the landed frame is unchanged. Drop the
+    // cap and the landed card shows a crop it never used to.
+    const guard = blockBody(css, "@supports (animation-timeline: view())")
+    const rule = blockBody(guard, ".watch-scroll-intro-photo {")
+
+    expect(rule).toMatch(
+      /width:\s*min\(\s*calc\(100vw \/ var\(--era-zoom\)\)\s*,\s*100%\s*\)/,
+    )
+  })
+
+  it("lands the opening photograph on its card, not on the screen", () => {
+    // Height and vertical centre have DIFFERENT right answers at the two
+    // ends, so both are animated between them rather than computed once.
+    // A single value correct at the opening frame is wrong at the landed one:
+    // reading the screen's centre there pushed the picture 239px down inside
+    // its own card, and taking the height from the viewport left it 96px
+    // short of the card top and bottom on a tall window. Both shipped.
+    const frames = blockBody(css, "@keyframes watch-scroll-intro-photo")
+    const from = frames.slice(0, frames.indexOf("to {"))
+    const to = frames.slice(frames.indexOf("to {"))
+
+    // Opening: screen-centred, at the picture's own aspect — read from the
+    // picture, never hard-coded here.
+    expect(from).toContain("50svh")
+    expect(from).toMatch(/height:\s*calc\(100vw \/ var\(--photo-aspect\)/)
+    // Landed: the card's own box, exactly.
+    expect(to).toMatch(/top:\s*50%\s*;/)
+    expect(to).toMatch(/height:\s*100%\s*;/)
+
+    // …and it is actually wired to the zoom's range, or neither end applies.
+    const guard = blockBody(css, "@supports (animation-timeline: view())")
+    const rule = blockBody(guard, ".watch-scroll-intro-photo {")
+
+    expect(rule).toContain("animation: watch-scroll-intro-photo")
+    expect(rule).toContain("animation-range: var(--intro-range)")
+  })
+
+  it("keeps the opening zoom inside the pinned breakpoint", () => {
+    // The veil and the caption fade start at `opacity: 0`. Below the
+    // pinned breakpoint the stage declares no `--watch-era-stage`
+    // timeline, so these would be animations with nothing to drive them —
+    // the year rail and the lead card's caption riding on whether an
+    // inactive timeline suppresses its own effect. Scope them instead.
+    const guard = blockBody(css, "@supports (animation-timeline: view())")
+    const pinned = blockBody(guard, "@media (width >= 48rem)")
+
+    expect(pinned).not.toBe("")
+    for (const name of [
+      "watch-scroll-intro",
+      "watch-scroll-intro-front",
+      "watch-scroll-intro-veil",
+      "watch-scroll-intro-caption",
+    ]) {
+      const rule = blockBody(pinned, `.${name} {`)
+      expect(rule, name).toContain("animation-timeline: --watch-era-stage")
+      expect(rule, name).toContain("animation-range: var(--intro-range)")
+    }
+  })
+
+  it("scales the opening zoom from the viewport, not from a guessed number", () => {
+    // A hard-coded scale is right at one viewport height and wrong at
+    // every other: too small leaves a strip of page showing around the
+    // photograph, too large crops it to nothing. The trig pair is CSS
+    // dividing two lengths into a bare number.
+    const guard = blockBody(css, "@supports (animation-timeline: view())")
+    const rule = blockBody(guard, ".watch-scroll-intro {")
+
+    expect(rule).toContain("100svh")
+    expect(rule).toContain("atan2(")
+    // Both axes: short viewports are bound by height, ultrawide ones by
+    // the fixed content rail.
+    expect(rule).toContain("100vw")
+  })
+
+  it("holds the grain tile at one on-screen size through the zoom", () => {
+    // The grain sits inside the card, so the opening zoom scales it too: a
+    // 150px tile renders at 300px on the first frame and the repeat becomes
+    // legible as a pattern, which is the one thing grain must never look
+    // like. Both layers divide the tile back out by the zoom factor.
+    for (const layer of [".watch-grain {", ".watch-grain-fine {"]) {
+      const rule = blockBody(css, layer)
+      expect(rule, layer).toMatch(
+        /background-size:\s*calc\(\s*\d+px\s*\/\s*var\(--era-zoom\)\s*\)/,
+      )
+    }
+  })
+
+  it("registers the zoom mirror so it can interpolate and be inherited", () => {
+    // Unregistered, a custom property animates in discrete jumps — the tile
+    // would snap between two sizes instead of holding one. And the grain
+    // reads it from an ancestor, so it has to inherit. The 1 default is what
+    // keeps every layer outside a zooming card dividing by nothing.
+    const rule = blockBody(css, "@property --era-zoom")
+
+    expect(rule).toContain('syntax: "<number>"')
+    expect(rule).toContain("inherits: true")
+    expect(rule).toContain("initial-value: 1")
+  })
+
+  it("keeps the zoom mirror tracking the scale it mirrors", () => {
+    // `scale` and `--era-zoom` are animated as separate declarations, so
+    // nothing but this stops them drifting apart — and a mirror that lags
+    // the real scale mis-sizes the tile by exactly that difference.
+    const frames = blockBody(css, "@keyframes watch-scroll-intro")
+    const from = frames.slice(0, frames.indexOf("to {"))
+    const to = frames.slice(frames.indexOf("to {"))
+
+    expect(from).toMatch(/scale:\s*var\(--intro-scale[^)]*\)/)
+    expect(from).toMatch(/--era-zoom:\s*var\(--intro-scale[^)]*\)/)
+    // Anchored on the terminator: an unanchored `1` also matches `1.4`,
+    // which is exactly the drift this is here to catch.
+    expect(to).toMatch(/scale:\s*1\s*;/)
+    expect(to).toMatch(/--era-zoom:\s*1\s*;/)
+  })
+
   it("keeps the grain loops from realigning into a visible pattern", () => {
     // Drift and density run as two animations with non-harmonic periods.
     // Equal or multiple durations would resync every cycle and the grain

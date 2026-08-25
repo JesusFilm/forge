@@ -11,6 +11,7 @@ import { WatchWhatsNewPage } from "@/components/whats-new/WatchWhatsNewPage"
 import {
   WHATS_NEW_AUDIENCES,
   WHATS_NEW_FORMATS,
+  WHATS_NEW_DELIVERY,
   WHATS_NEW_DIRECTIONS,
   WHATS_NEW_ERAS,
   WHATS_NEW_FAQ,
@@ -18,6 +19,9 @@ import {
   WHATS_NEW_ICEBERG,
   WHATS_NEW_IMPROVEMENTS,
   WHATS_NEW_LEDE,
+  WHATS_NEW_PARTNER_LETTER,
+  WHATS_NEW_QUIZ,
+  WHATS_NEW_SELF_ID,
   WHATS_NEW_TEAM,
 } from "@/components/whats-new/whats-new-content"
 import { WHATS_NEW_LANGUAGE_SWITCHER } from "@/components/whats-new/whats-new-content"
@@ -68,16 +72,20 @@ vi.mock("next/image", () => ({
     alt,
     src,
     className,
+    style,
   }: {
     alt: string
     src: string
     className?: string
+    // Threaded because the opening fit is handed the picture's aspect this
+    // way; a mock that drops it makes that contract untestable.
+    style?: React.CSSProperties
   }) =>
     // `createElement` rather than JSX: an `<img>` literal trips
     // `@next/next/no-img-element`, and that rule is not resolvable when
     // lint-staged runs eslint on this file outside the app's Next config,
     // so a disable comment errors there instead of silencing anything.
-    createElement("img", { alt, src, className }),
+    createElement("img", { alt, src, className, style }),
 }))
 
 const LANGUAGES = [
@@ -188,7 +196,20 @@ describe("WatchWhatsNewPage", () => {
     expect(layers).toEqual(WHATS_NEW_ERAS.map((_, index) => index + 1))
   })
 
-  it("gives every era a scroll slice that starts where the last one did not", () => {
+  it("hands the stage from the opening zoom to the first era with no seam", () => {
+    // The intro owns the front of the timeline and era 0 owns what is
+    // left. If the two drift apart the reader gets dead scroll — the card
+    // has landed but its beat has not started, or the beat is already
+    // fading up under a photograph still filling the screen.
+    const stage = container.querySelector('[data-testid="whats-new-eras"]')
+    const introEnd = Number(
+      stage
+        ?.getAttribute("style")
+        ?.match(/--intro-range:\s*contain 0% contain ([\d.]+)%/)?.[1],
+    )
+
+    expect(introEnd).toBeGreaterThan(0)
+
     const starts = cards().map((card) =>
       Number(
         card
@@ -198,7 +219,7 @@ describe("WatchWhatsNewPage", () => {
     )
 
     expect(starts).toHaveLength(WHATS_NEW_ERAS.length)
-    expect(starts[0]).toBe(0)
+    expect(starts[0]).toBe(introEnd)
     for (const [index, start] of starts.entries()) {
       if (index === 0) continue
       expect(start).toBeGreaterThan(starts[index - 1])
@@ -305,25 +326,167 @@ describe("WatchWhatsNewPage", () => {
     expect(stage?.querySelector(".watch-scroll-pin")).not.toBeNull()
   })
 
-  it("shows the first era without animating it in", () => {
-    // The section opens with this card already on screen. Fading it up
-    // from nothing leaves the reader looking at empty black, which reads
-    // as a page that failed to load — the exact bug this guards.
+  it("opens the section on the lead photograph, not on the lead card", () => {
+    // The section opens full-screen and pulls back into the card. Without
+    // the intro the first card would have to be there already or fade up
+    // from nothing, and fading up leaves the reader looking at empty
+    // black, which reads as a page that failed to load.
     const layers = [
       ...container.querySelectorAll('[data-testid="whats-new-era"]'),
-    ]
-    const beats = [
-      ...container.querySelectorAll('[data-testid="whats-new-era-beat"]'),
-    ]
-    const glows = [
-      ...container.querySelectorAll('[data-testid="whats-new-era-glow"]'),
     ]
 
     expect(
       layers[0].querySelector('[data-testid="whats-new-era-card"]')?.className,
     ).not.toContain("watch-scroll-era-in")
-    expect(beats[0].className).toContain("watch-scroll-beatbox-lead")
-    expect(glows[0].className).toContain("watch-ambient-lead")
+    expect(
+      layers[0].querySelector('[data-testid="whats-new-era-zoom"]')?.className,
+    ).toContain("watch-scroll-intro")
+    // The caption rides the same zoom, so it has to wait: at the scale the
+    // pull-back starts from it would arrive as poster type and shrink.
+    expect(
+      layers[0].querySelector(".watch-scroll-intro-caption"),
+    ).not.toBeNull()
+  })
+
+  it("keeps the lead beat over the opening photograph from the first frame", () => {
+    // The lead beat is part of the opening composition, not something the
+    // pull-back reveals. Three separate things have to hold for that, and
+    // dropping any one leaves the words unreadable or invisible:
+    const beat = beats()[0]
+
+    // …it holds full opacity instead of fading up like the others,
+    expect(beat.className).toContain("watch-scroll-beatbox-lead")
+    // …it paints above the card, which is the later positioned sibling and
+    // would otherwise cover it while it fills the screen,
+    expect(beat.className).toMatch(/\bz-10\b/)
+    // …and it is full-strength white, not the dimmed white every other beat
+    // uses against the black page.
+    expect(beat.className).toMatch(/\btext-white\b/)
+
+    // Anti-vacuous: the other beats get none of it, and a layer above their
+    // own card is wrong for every era that arrives underneath one.
+    for (const other of beats().slice(1)) {
+      expect(other.className).not.toContain("watch-scroll-beatbox-lead")
+      expect(other.className).not.toMatch(/\bz-10\b/)
+    }
+  })
+
+  it("starts every beat on its own era's boundary", () => {
+    // The lead beat holds opacity from before its range opens, on `both`
+    // fill, so it needs no head start — and giving it one shifts where its
+    // fade-out lands relative to the card that comes for it.
+    const range = (node: Element | undefined, name: string) =>
+      Number(
+        node
+          ?.getAttribute("style")
+          ?.match(new RegExp(`--${name}-range:\\s*contain ([\\d.]+)%`))?.[1],
+      )
+
+    for (const [index, beat] of beats().entries()) {
+      expect(range(beat, "beat"), `era ${index}`).toBe(
+        range(cards()[index], "enter"),
+      )
+    }
+  })
+
+  it("fits the opening photograph to the viewport width, lead only", () => {
+    // The card is wider than the screen while it fills it, so the picture
+    // needs a box sized to the viewport instead of to the card. Any other
+    // era carrying this would be sized against a viewport it never fills.
+    const photos = cards().map((card) => card.querySelector("img"))
+
+    expect(
+      photos.map((img) =>
+        Boolean(img?.className.includes("watch-scroll-intro-photo")),
+      ),
+    ).toEqual(WHATS_NEW_ERAS.map((_, index) => index === 0))
+  })
+
+  it("hands the opening fit the lead photograph's own aspect", () => {
+    // The opening fit divides the box width by this to hold the picture's
+    // shape. It was a hard-coded 16:9 in the stylesheet, which made swapping
+    // the photograph a two-file change that cropped it sideways in between.
+    // Reading it off the picture is what makes a swap safe — and a missing
+    // value would divide by nothing and collapse the box.
+    const image = WHATS_NEW_ERAS[0].image
+    expect(image).toBeDefined()
+
+    const styles = cards().map(
+      (card) => card.querySelector("img")?.getAttribute("style") ?? "",
+    )
+    const aspect = Number(styles[0].match(/--photo-aspect:\s*([\d.]+)/)?.[1])
+
+    expect(aspect).toBeCloseTo(image!.width / image!.height, 4)
+    // Anti-vacuous: no other era is fitted this way, so none should carry it.
+    for (const style of styles.slice(1)) {
+      expect(style).not.toContain("--photo-aspect")
+    }
+  })
+
+  it("leaves room above the stage for the oversized opening card", () => {
+    // Measured in a browser: before the pin engages, the opening card
+    // reaches 144px above the stage's own top edge. The stage's top margin
+    // is the only thing keeping it off the section heading — there is no
+    // clip on the stage, because clipping it shears 96px off each side of
+    // the card and puts black strips down both edges. Tightening this for
+    // rhythm is the regression.
+    const stage = container.querySelector('[data-testid="whats-new-eras"]')
+    const margin = Number(stage?.className.match(/\bmd:mt-(\d+)\b/)?.[1])
+
+    // Tailwind spacing is 0.25rem per step, so 144px is mt-36.
+    expect(margin).toBeGreaterThanOrEqual(36)
+  })
+
+  it("holds the frosted plate back with the caption it exists for", () => {
+    // The frost is half the card in blur and black. Left outside the fade,
+    // it dims the bottom half of a full-screen photograph for a caption
+    // that is still invisible — which is what it did until this grouping.
+    const plate = container.querySelector(".watch-scroll-intro-caption")
+
+    expect(plate).not.toBeNull()
+    expect(plate?.querySelector(".backdrop-blur-xl")).not.toBeNull()
+    expect(plate?.textContent).toContain(WHATS_NEW_ERAS[0].title)
+  })
+
+  it("gives the opening zoom to the first era and to nothing else", () => {
+    // Anti-vacuous companion. A second zoomed layer would fill the screen
+    // again mid-stack, and every card carrying the intro would leave the
+    // whole pile oversized for the rest of the stage.
+    const zooms = [
+      ...container.querySelectorAll('[data-testid="whats-new-era-zoom"]'),
+    ]
+
+    expect(zooms).toHaveLength(WHATS_NEW_ERAS.length)
+    expect(
+      zooms.map((zoom) => zoom.className.includes("watch-scroll-intro")),
+    ).toEqual(WHATS_NEW_ERAS.map((_, index) => index === 0))
+    expect(
+      container.querySelectorAll(".watch-scroll-intro-caption"),
+    ).toHaveLength(1)
+    // Same for the layer lift. On a second era it would cover the card that
+    // is supposed to land on top of it.
+    expect(
+      [...container.querySelectorAll('[data-testid="whats-new-era"]')].map(
+        (era) => era.className.includes("watch-scroll-intro-front"),
+      ),
+    ).toEqual(WHATS_NEW_ERAS.map((_, index) => index === 0))
+  })
+
+  it("cycles every ambient glow, including the first era's", () => {
+    // The glow used to have a hold-then-fade variant, from when the first
+    // card was simply already there. Left behind, it would burn colour
+    // through the edges of a photograph that still fills the screen — and
+    // the glow is the one piece of era 0 that the opening frame does not
+    // want, since the card has no edges to spill past yet.
+    const glows = [
+      ...container.querySelectorAll('[data-testid="whats-new-era-glow"]'),
+    ]
+
+    expect(glows).toHaveLength(WHATS_NEW_ERAS.length)
+    for (const glow of glows) {
+      expect(glow.className).toContain("watch-ambient-cycle")
+      expect(glow.className).not.toMatch(/-lead\b/)
+    }
   })
 
   it("does animate in every era after the first", () => {
@@ -769,6 +932,201 @@ describe("WatchWhatsNewPage", () => {
     for (const card of cards) {
       expect(card.querySelector("svg")).not.toBeNull()
     }
+  })
+
+  it("closes the audiences section by asking the reader which one they are", () => {
+    const selfId = container.querySelector('[data-testid="whats-new-self-id"]')
+
+    expect(selfId).not.toBeNull()
+    expect(
+      selfId?.closest("section")?.getAttribute("id"),
+      "the question belongs to the audiences section, not a neighbouring one",
+    ).toBe("why")
+    expect(selfId?.textContent).toContain(WHATS_NEW_SELF_ID.question)
+
+    // After the cards: the reader has to have seen the three audiences
+    // before being asked to pick one of them.
+    const cards = [
+      ...container.querySelectorAll('[data-testid="whats-new-audience-card"]'),
+    ]
+    expect(cards.length).toBeGreaterThan(0)
+    for (const card of cards) {
+      expect(
+        card.compareDocumentPosition(selfId!) &
+          Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy()
+    }
+  })
+
+  it("tells the platform-move story under the improvements it explains", () => {
+    const band = container.querySelector('[data-testid="whats-new-delivery"]')
+
+    expect(band).not.toBeNull()
+    expect(
+      band?.closest("section")?.getAttribute("id"),
+      "the band is the work underneath the improvements, so it belongs to that section",
+    ).toBe("improving")
+
+    // Both platforms are named: "we moved" means nothing without the two
+    // ends of the move.
+    expect(band?.textContent).toContain("Brightcove")
+    expect(band?.textContent).toContain("Mux")
+
+    for (const paragraph of WHATS_NEW_DELIVERY.paragraphs) {
+      expect(band?.textContent).toContain(paragraph)
+    }
+    for (const point of WHATS_NEW_DELIVERY.points) {
+      expect(band?.textContent).toContain(point)
+    }
+    for (const paragraph of WHATS_NEW_DELIVERY.downloads.paragraphs) {
+      expect(band?.textContent).toContain(paragraph)
+    }
+    expect(band?.textContent).toContain(WHATS_NEW_DELIVERY.closing)
+  })
+
+  it("never prints a complaint figure without its window and its method", () => {
+    // These are checkable claims on a public page. A bare "0" invites the
+    // reading "zero complaints, ever"; the window and the ticket count are
+    // what make it a measurement, and the note is what makes it honest —
+    // hand-counted, and against an update that also shipped the redesign.
+    const stats = [
+      ...container.querySelectorAll('[data-testid="whats-new-delivery-stat"]'),
+    ]
+
+    expect(stats).toHaveLength(WHATS_NEW_DELIVERY.stats.length)
+    for (const [index, stat] of stats.entries()) {
+      const source = WHATS_NEW_DELIVERY.stats[index]
+      expect(stat.querySelector("dd")?.textContent).toBe(source.value)
+      expect(stat.querySelector("dt")?.textContent).toContain(source.label)
+      expect(stat.querySelector("dt")?.textContent).toContain(source.detail)
+      // Label before value in the DOM: a screen reader must never reach
+      // the figure before the window it belongs to.
+      expect(
+        stat
+          .querySelector("dt")!
+          .compareDocumentPosition(stat.querySelector("dd")!) &
+          Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy()
+    }
+
+    const band = container.querySelector('[data-testid="whats-new-delivery"]')
+    expect(band?.textContent).toContain(WHATS_NEW_DELIVERY.statsHeading)
+    expect(band?.textContent).toContain(WHATS_NEW_DELIVERY.note)
+  })
+
+  it("keeps display figures proportional, not tabular", () => {
+    // `tabular-nums` gives every digit the width of a zero, which reads as
+    // loose spacing at 3rem. It belongs in columns that must align.
+    const values = [
+      ...container.querySelectorAll(
+        '[data-testid="whats-new-delivery-stat"] dd',
+      ),
+    ]
+
+    expect(values.length).toBeGreaterThan(0)
+    for (const value of values) {
+      expect(value.className).not.toContain("tabular-nums")
+    }
+  })
+
+  it("addresses field partners in one signed letter, after the audiences", () => {
+    const letter = container.querySelector('[data-testid="whats-new-letter"]')
+
+    expect(letter).not.toBeNull()
+    expect(letter?.closest("section")?.getAttribute("id")).toBe("partners")
+    expect(letter?.textContent).toContain(WHATS_NEW_PARTNER_LETTER.greeting)
+    for (const paragraph of [
+      ...WHATS_NEW_PARTNER_LETTER.beforeFigure,
+      ...WHATS_NEW_PARTNER_LETTER.afterFigure,
+    ]) {
+      expect(letter?.textContent).toContain(paragraph)
+    }
+    expect(letter?.textContent).toContain(WHATS_NEW_PARTNER_LETTER.ask)
+
+    // A first-person letter that nobody signs is a press release. The name
+    // and the role both have to reach the page.
+    const signature = letter?.querySelector(
+      '[data-testid="whats-new-letter-signature"]',
+    )
+    expect(signature?.textContent).toContain(
+      WHATS_NEW_PARTNER_LETTER.signature.name,
+    )
+    expect(signature?.textContent).toContain(
+      WHATS_NEW_PARTNER_LETTER.signature.role,
+    )
+    // The letter's ask needs somewhere to land.
+    expect(signature?.querySelector("button")?.textContent).toContain(
+      WHATS_NEW_PARTNER_LETTER.feedbackCta,
+    )
+
+    // The letter answers the self-identification question above it, so it
+    // has to come after that question, not before.
+    const selfId = container.querySelector('[data-testid="whats-new-self-id"]')
+    expect(
+      selfId!.compareDocumentPosition(letter!) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
+  })
+
+  it("makes the share of visitors unskimmable, and quotes one number", () => {
+    // The letter exists to land this figure. If it reads as prose in the
+    // middle of eight paragraphs, the reader who most needs it is exactly
+    // the reader who skims past it.
+    const figure = container.querySelector(
+      '[data-testid="whats-new-letter-figure"]',
+    )
+
+    expect(figure?.tagName).toBe("FIGURE")
+    expect(figure?.querySelector("figcaption")?.textContent).toBe(
+      WHATS_NEW_PARTNER_LETTER.figure.claim,
+    )
+
+    // The letter's share and the quiz's answer are the same claim about
+    // the same audience. Two different numbers on one page would
+    // discredit both, so the figure is pinned to the quiz's value, not to
+    // its own copy of it.
+    const value = container.querySelector(
+      '[data-testid="whats-new-letter-figure-value"]',
+    )
+    expect(value?.textContent).toBe(`${WHATS_NEW_QUIZ.actualPercent}%`)
+
+    // Display-sized, not body-sized. jsdom computes no Tailwind, so the
+    // class is the assertable proxy; the rendered px size was checked in a
+    // real browser.
+    expect(value?.className).toMatch(/\btext-5xl\b/)
+  })
+
+  it("does not tell field partners they are the main audience", () => {
+    // The letter's whole purpose is to correct that belief. A future edit
+    // that softens the figure back into flattery undoes it, and reads as a
+    // promise we then break with every front-door decision.
+    const letter = container.querySelector('[data-testid="whats-new-letter"]')
+    const copy = letter?.textContent ?? ""
+
+    expect(copy).not.toMatch(/main (?:focus|audience)/i)
+    expect(copy).not.toMatch(/(?:you are|you're) (?:our|the) (?:primary|main)/i)
+    // And it still says the corrective thing: the majority, named.
+    expect(copy).toMatch(/ninety-eight/i)
+  })
+
+  it("puts no inbox on the page for a bot to harvest", () => {
+    // The signer's reply path is the shared feedback composer by decision,
+    // not a printed address. A `mailto:` here — or a stray staff address
+    // anywhere in the copy — is the regression.
+    expect(container.querySelector('a[href^="mailto:"]')).toBeNull()
+    expect(textContent()).not.toMatch(/@jesusfilm\.org/i)
+  })
+
+  it("offers the partner letter in the table of contents", () => {
+    // The literal id, not one mapped out of WHATS_NEW_CONTENTS: the nav is
+    // rendered FROM that list, so comparing the two only proves they were
+    // built from the same array. Deleting the entry has to fail here.
+    const linked = [
+      ...container.querySelectorAll<HTMLAnchorElement>('nav a[href^="#"]'),
+    ].map((link) => link.getAttribute("href")!.slice(1))
+
+    expect(linked).toContain("partners")
+    expect(container.querySelector('section[id="partners"]')).not.toBeNull()
   })
 
   it("illustrates the team section with a labelled iceberg", () => {
