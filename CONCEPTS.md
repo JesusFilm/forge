@@ -2,6 +2,30 @@
 
 Shared domain vocabulary for this project — entities, named processes, and status concepts with project-specific meaning. Seeded with core domain vocabulary, then accretes as ce-compound and ce-compound-refresh process learnings; direct edits are fine. Glossary only, not a spec or catch-all.
 
+## Application access
+
+### Registered Application
+
+A Jesus Film product or service recognized by Auth as an application-access boundary, with its own ownership, trust posture, lifecycle, deployment environments, grants, and issued tokens.
+
+### Application Environment
+
+A deployment-specific authorization boundary within a Registered Application that carries the OAuth client posture and approval state against which grants and tokens are evaluated.
+
+### Application Grant
+
+An explicit, revocable approval that gives a user or service a set of scopes for one Registered Application and Application Environment; an OAuth client's allowed scopes do not constitute an Application Grant.
+
+### Dynamic MCP Client
+
+A public OAuth client created at runtime by an MCP host so that each host can establish its own callback metadata and client identity without a pre-seeded credential.
+
+Registering a Dynamic MCP Client identifies the client but grants no application access; authorization still depends on an applicable Application Grant, and the companion MCP resource implementation independently enforces the issued token.
+
+## Relationships
+
+A Registered Application contains Application Environments. Application Grants and issued tokens target an Application Environment, while a Dynamic MCP Client requests access to the protected resource associated with that environment.
+
 ## Devotional generation
 
 ### Devotional Workspace
