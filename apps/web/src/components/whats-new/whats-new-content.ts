@@ -87,8 +87,12 @@ export type WhatsNewIconKey =
 export const WHATS_NEW_ERAS = [
   {
     icon: "projector",
-    /** Ambient-glow colour — dusk sky over the screening field. */
-    glow: "#4ca2f0",
+    /**
+     * Ambient-glow colour. Sampled from the photograph's lit ground and
+     * saturated to a usable glow: the frame is a night screening, so its
+     * only colour is tungsten projector light on sand.
+     */
+    glow: "#c8a552",
     year: "1979",
     kicker: "Where it started",
     title: "A projector and a screen",
@@ -101,10 +105,10 @@ export const WHATS_NEW_ERAS = [
      * browser hot-linking it directly.
      */
     image: {
-      src: "https://www.jesusfilm.org/wp-content/uploads/2023/07/The-JESUS-Film-Why-Is-This-Film-Historically-Significant-.jpg",
-      alt: "A large crowd seated on the ground at dusk, watching the JESUS film on a portable screen raised in a rural clearing.",
-      width: 2048,
-      height: 1152,
+      src: "https://www.jesusfilm.org/wp-content/uploads/2026/08/Exposures-1-hi-res.png",
+      alt: "A night screening: hundreds of children and adults seated on sand in front of a raised screen showing Jesus among a crowd, with a film projector on a tripod among them.",
+      width: 1536,
+      height: 1024,
     },
     beat: "The JESUS film did not begin as a website. It began as a screening. Missionaries carried projectors, screens, and generators into villages and towns and showed the life of Jesus in the local language — a visual, media-rich way to tell the story in a form anyone could follow, to any people group, anywhere.",
     current: false,

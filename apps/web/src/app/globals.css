@@ -362,9 +362,117 @@
   }
 }
 
-/* The first era is on screen before any scrolling happens — it must not
-   fade up from nothing, or the section opens on empty black and reads as
-   a page that failed to load. */
+/* The opening zoom's factor, mirrored as a registered custom property so
+   things INSIDE the scaled card can divide it back out. Registration is
+   what makes it interpolate — an unregistered custom property animates in
+   discrete jumps. Inherits, and defaults to 1, so every layer that does not
+   sit inside a zooming card divides by nothing. */
+@property --era-zoom {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 1;
+}
+
+/* --- Opening zoom ------------------------------------------------------
+   The section does not open on its card. It opens on the lead
+   photograph filling the screen, and pulls back into the card as the
+   reader scrolls — which is also what keeps the section from opening on
+   empty black and reading as a page that failed to load. */
+@keyframes watch-scroll-intro {
+  from {
+    translate: 0 var(--intro-lift, 0);
+    scale: var(--intro-scale, 1);
+    /* Must track `scale` exactly. `scale` is animated directly rather than
+       read from this property, so that a browser which cannot interpolate
+       the mirror still gets the zoom — it just gets uncompensated grain. */
+    --era-zoom: var(--intro-scale, 1);
+  }
+  to {
+    translate: 0 0;
+    scale: 1;
+    --era-zoom: 1;
+  }
+}
+
+/* Everything around the photograph waits until the pull-back is nearly
+   done. Held rather than eased so nothing is legible at a size the zoom
+   chose for it — a caption riding the scale would arrive as poster type
+   and shrink. */
+/* The eras that have not arrived yet still paint the drop shadow of their
+   clip box, and all four boxes share one rect — so three stacked shadows
+   drew a visible seam across the full-screen photograph, brightest on flat
+   sky. Lifting the lead layer over them for the length of the zoom hides
+   them behind the photograph; it drops back to its own depth at the end,
+   before any sibling has arrived to be covered by. */
+@keyframes watch-scroll-intro-front {
+  0%,
+  98% {
+    z-index: 30;
+  }
+  100% {
+    z-index: var(--layer);
+  }
+}
+
+/* Where the picture's centre belongs changes over the zoom, so it is
+   animated rather than computed once.
+
+   At the opening frame the card is much taller than the screen whenever the
+   horizontal axis set the scale, so the picture has to be centred on the
+   SCREEN or the letterbox goes lopsided — 439px above and 153px below on a
+   5:4 window. `50svh + 39px` is that centre measured down from the card's
+   top edge, which the top-anchored lift parks 39px above the viewport top;
+   one division by the starting zoom puts it in the card's own units.
+
+   By the landed frame the picture is exactly the card's height, so it has to
+   be centred on the CARD instead — `50%`. Reading the screen's centre there
+   instead pushes the picture 239px down inside its own card and leaves a
+   dark band across the top of it, which is what a single static value did.
+
+   In between it is a straight interpolation between two correct endpoints:
+   off the true screen centre by ~90px at mid-zoom on a 5:4 window, where
+   the picture is moving and the bands are transient anyway.
+
+   `--photo-aspect` comes from the picture's own dimensions, set inline by
+   the component. It used to be a hard-coded 16:9 here, with a test tying
+   the content to it — which meant swapping the photograph was a two-file
+   change with a failing test in between. One source of truth instead. */
+@keyframes watch-scroll-intro-photo {
+  from {
+    top: calc((50svh + 39px) / var(--intro-scale));
+    height: calc(100vw / var(--photo-aspect) / var(--intro-scale));
+  }
+  to {
+    top: 50%;
+    height: 100%;
+  }
+}
+
+@keyframes watch-scroll-intro-veil {
+  0%,
+  55% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes watch-scroll-intro-caption {
+  0%,
+  80% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+/* The lead beat is part of the opening frame, not something the pull-back
+   reveals: it has to be legible over the full-screen photograph from the
+   first pixel of the section. So it holds at full opacity from the start —
+   before its own range even opens, on `both` fill — and only fades when the
+   next era's card comes for it. */
 @keyframes watch-scroll-beat-lead {
   0%,
   82% {
@@ -377,21 +485,41 @@
   }
 }
 
+/* …and it starts heavier, easing back to its resting weight as the card
+   lands. `font-light` over a dusk-lit crowd is thin enough to lose against
+   the busier parts of the photograph; the shadow alone was not enough.
+
+   500 is a MEASURED ceiling, not a taste call. The paragraph runs to within
+   12px of its rail at weight 500 and re-wraps at 600 on every viewport at
+   or below 1024px — 700 adds a whole line. Since this interpolates during a
+   scroll, a weight that re-wraps makes the lines jump under the reader.
+   Raise this and re-measure the line boxes at 768, 800 and 1024 first.
+
+   The shadow ends fully transparent: by the time the card has landed the
+   beat is back over the black page, where a halo only muddies it. That is
+   also why neither the weight nor the shadow is a static class — without
+   scroll-driven animations there is no full-screen photograph to be legible
+   against. */
+@keyframes watch-scroll-beat-weight {
+  from {
+    font-weight: 500;
+    text-shadow:
+      0 1px 3px rgb(0 0 0 / 0.9),
+      0 4px 30px rgb(0 0 0 / 0.95);
+  }
+  to {
+    font-weight: 300;
+    text-shadow:
+      0 1px 3px rgb(0 0 0 / 0),
+      0 4px 30px rgb(0 0 0 / 0);
+  }
+}
+
 @keyframes watch-ambient-cycle {
   0% {
     opacity: 0;
   }
   15%,
-  78% {
-    opacity: 0.55;
-  }
-  100% {
-    opacity: 0;
-  }
-}
-
-@keyframes watch-ambient-lead {
-  0%,
   78% {
     opacity: 0.55;
   }
@@ -810,7 +938,10 @@
       .watch-scroll-stage {
         view-timeline-name: --watch-era-stage;
         view-timeline-axis: block;
-        min-height: calc(var(--era-count) * 92svh + 34svh);
+        /* The trailing term buys scroll for the opening zoom on top of the
+           eras' own slices, so adding the intro did not speed the stack up.
+           Keep it in step with `ERA_INTRO_SHARE`. */
+        min-height: calc(var(--era-count) * 92svh + 110svh);
       }
 
       .watch-scroll-pin {
@@ -862,20 +993,134 @@
         will-change: opacity, translate;
       }
 
+      /* Two tracks, because they run over different ranges: the hold-then-
+         fade belongs to the era's own slice, the weight and shadow to the
+         opening zoom. Listed explicitly rather than through the shorthand —
+         `animation` resets timeline and range, so both have to be restated
+         per track anyway. */
       .watch-scroll-beatbox-lead {
-        animation-name: watch-scroll-beat-lead;
+        animation:
+          watch-scroll-beat-lead linear both,
+          watch-scroll-beat-weight linear both;
+        animation-timeline: --watch-era-stage, --watch-era-stage;
+        animation-range: var(--beat-range), var(--intro-range);
       }
 
-      .watch-ambient-cycle,
-      .watch-ambient-lead {
+      .watch-ambient-cycle {
         animation: watch-ambient-cycle linear both;
         animation-timeline: --watch-era-stage;
         animation-range: var(--beat-range);
         will-change: opacity;
       }
 
-      .watch-ambient-lead {
-        animation-name: watch-ambient-lead;
+      /* --- Opening zoom: full screen, back into the card ---------------
+         Geometry, because the constants look arbitrary. The clip box hangs
+         a FIXED distance below the pinned top (sticky offset, year rail,
+         two gaps, the beat's fixed height) and takes whatever height is
+         left, so its centre lands at `50svh + ~10rem` from the top of the
+         viewport whatever the viewport height is — one constant lift
+         re-centres it. The scale it then needs is just viewport ÷ clip box,
+         on whichever axis is worse: short viewports are bound by height,
+         ultrawide ones by the 1920px content rail.
+
+         `tan(atan2(a, b))` is how CSS divides one length by another into a
+         bare number. Without it this would be a scale hard-coded per
+         breakpoint, and wrong between them.
+
+         Deliberately generous (the 1.04, and rounding the chrome up to
+         27rem — measured at 425px in the 768px band, 401px above it, plus
+         the lift's own bias): the zoom is anchored to the top edge, so
+         overshooting only crops the photograph further and grows it off the
+         bottom of the screen, while falling short leaves a strip of page
+         showing. 26rem left 5px of page below the fold at 800x760. */
+      .watch-scroll-intro {
+        /* Grows DOWNWARD from the top of the viewport, not outward from its
+           own centre. Centred, a uniform scale big enough to cover an
+           ultrawide viewport horizontally overshoots vertically by hundreds
+           of pixels, and on a 3440px display the photograph swallowed the
+           section heading on the way in. Anchored to the top edge, the
+           upward overshoot is a constant 104px at every viewport — the
+           pin's own sticky offset — whatever the scale turns out to be.
+
+           The lift is the measured distance from the pinned viewport top
+           down to the clip box — 385px between 768px and 1024px, where the
+           beat is taller, and 361px above that — taking the larger and
+           rounding UP. Falling short shows a strip of page above the
+           photograph (a 23.5rem lift left exactly 9px of it in the 768px
+           band); overshooting shows nothing at all. */
+        transform-origin: 50% 0;
+        --intro-lift: -25rem;
+        --intro-scale: clamp(
+          1.2,
+          calc(
+            max(
+                tan(atan2(100svh, max(1px, calc(100svh - 27rem)))),
+                tan(atan2(100vw, max(1px, calc(min(100vw, 1920px) - 12rem))))
+              ) *
+              1.04
+          ),
+          5
+        );
+        animation: watch-scroll-intro linear both;
+        animation-timeline: --watch-era-stage;
+        animation-range: var(--intro-range);
+        will-change: scale, translate;
+      }
+
+      .watch-scroll-intro-front {
+        animation: watch-scroll-intro-front linear both;
+        animation-timeline: --watch-era-stage;
+        animation-range: var(--intro-range);
+      }
+
+      /* Opening frame: the whole WIDTH of the photograph.
+         While the card fills the screen it is far wider than the viewport —
+         2500px against 1440 at a 1440x900 window — so a card-filling
+         `object-cover` pushes roughly 40% of the picture off both sides.
+         Sizing the box to the viewport width instead, at the picture's own
+         16:9 aspect, shows all of it. `min(…, 100%)` hands the card back its
+         own footprint the moment the card becomes the narrower of the two,
+         so the landed frame is exactly what it was before this existed.
+
+         Height is animated rather than capped the same way, because the two
+         caps bite independently: a window tall enough for the width to cap
+         at the card while the height still came from the viewport left the
+         box at 1.25 instead of 16:9, and the landed picture 96px short of
+         its own card at top and bottom. Animating it from the aspect-derived
+         opening height to the card's own height keeps both endpoints exact,
+         and the interpolation between them only ever runs WIDER than 16:9 —
+         which crops vertically, never sideways.
+
+         Consequence, stated because it is a design call rather than a bug:
+         on a window narrower than 16:9 the full width cannot also fill the
+         height, so the picture letterboxes against the card's own dark
+         background. Nothing at 16:9, ~90px total at 1440x900, ~590px on a
+         5:4 window. */
+      .watch-scroll-intro-photo {
+        inset: auto;
+        /* Vertical centre travels from the screen's to the card's — see the
+           keyframes. Horizontally the card is already screen-centred, since
+           the zoom's origin is its own 50%, so one value serves both ends. */
+        left: 50%;
+        translate: -50% -50%;
+        animation: watch-scroll-intro-photo linear both;
+        animation-timeline: --watch-era-stage;
+        animation-range: var(--intro-range);
+        width: min(calc(100vw / var(--era-zoom)), 100%);
+      }
+
+      .watch-scroll-intro-veil {
+        animation: watch-scroll-intro-veil linear both;
+        animation-timeline: --watch-era-stage;
+        animation-range: var(--intro-range);
+        will-change: opacity;
+      }
+
+      .watch-scroll-intro-caption {
+        animation: watch-scroll-intro-caption linear both;
+        animation-timeline: --watch-era-stage;
+        animation-range: var(--intro-range);
+        will-change: opacity;
       }
 
       .watch-scroll-year {
@@ -985,7 +1230,7 @@
   inset: -15%;
   background-image: var(--watch-grain-image);
   background-repeat: repeat;
-  background-size: 74px 74px;
+  background-size: calc(74px / var(--era-zoom)) calc(74px / var(--era-zoom));
   /* `screen` is the only blend that shows in the shadows: overlay against
      a near-black backdrop multiplies to nothing. Kept low so it adds
      sparkle without milking the blacks. */
@@ -1005,7 +1250,14 @@
   inset: -15%;
   background-image: var(--watch-grain-image);
   background-repeat: repeat;
-  background-size: 150px 150px;
+  /* Divided by the zoom so the tile keeps ONE size on screen. Scaled with
+     the card, a 150px tile becomes 300px at the opening frame and the
+     repeat becomes legible as a pattern, which is the one thing grain must
+     never look like. Costs a background re-raster per frame while the zoom
+     runs; it is static at every other moment, since `--era-zoom` is 1.
+     Deliberately not compensating the pile's sink scale as well: that only
+     reaches 0.865, and those cards are behind a scrim by then. */
+  background-size: calc(150px / var(--era-zoom)) calc(150px / var(--era-zoom));
   opacity: 0.72;
   mix-blend-mode: overlay;
   pointer-events: none;
