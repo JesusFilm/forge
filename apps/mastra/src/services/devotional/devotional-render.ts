@@ -113,6 +113,38 @@ const RENDER_TIMEOUT_MS = 20 * 60_000
 // hostile/misconfigured response before it can exhaust memory or disk.
 const MAX_DOWNLOAD_BYTES = 600 * 1024 * 1024
 
+export function planBackgroundSegments(input: {
+  startSec: number
+  windowLen: number
+  coverSec: number
+  speed: number
+  restartAtSec?: number
+  extraSourceSec?: number
+}): { startSec: number; lengthSec: number }[] {
+  const { startSec, windowLen, coverSec, speed } = input
+  const totalSource = coverSec * speed + (input.extraSourceSec ?? 0)
+  const out: { startSec: number; lengthSec: number }[] = []
+  let placed = 0
+
+  if (input.restartAtSec && input.restartAtSec > 0) {
+    let pre = Math.min(input.restartAtSec * speed, totalSource)
+    while (pre > 0.01) {
+      const take = Math.min(pre, windowLen)
+      out.push({ startSec, lengthSec: take })
+      pre -= take
+      placed += take
+    }
+  }
+
+  while (placed < totalSource - 0.01) {
+    const take = Math.min(totalSource - placed, windowLen)
+    out.push({ startSec, lengthSec: take })
+    placed += take
+  }
+
+  return out
+}
+
 export class DevotionalRenderError extends Error {
   override readonly name = "DevotionalRenderError"
 
@@ -537,9 +569,32 @@ export function devotionalVideoOutputPath(
   outDir: string,
   aspect: "portrait" | "wide",
 ): string {
-  const suffix = aspect === "wide" ? "-wide" : ""
-  const slug = devo.clip.title.replace(/[^a-z0-9]+/gi, "-").toLowerCase()
-  return path.join(outDir, `${slug}-seq${devo.sequence}${suffix}.mp4`)
+  return path.join(
+    outDir,
+    devotionalVideoFilename({
+      clipTitle: devo.clip.title,
+      sequence: devo.sequence,
+      lang: "en",
+      aspect,
+    }),
+  )
+}
+
+export function devotionalVideoFilename(input: {
+  clipTitle: string
+  sequence: number
+  lang: string
+  aspect: "portrait" | "wide"
+  episode?: number
+}): string {
+  const slug = input.clipTitle
+    .replace(/[^a-z0-9]+/gi, "-")
+    .replace(/^-+|-+$/g, "")
+    .toLowerCase()
+  const ep = input.episode ? `-ep${input.episode}` : ""
+  const lang = input.lang === "en" ? "" : `-${input.lang}`
+  const aspect = input.aspect === "wide" ? "-wide" : ""
+  return `${slug}-seq${input.sequence}${ep}${lang}${aspect}.mp4`
 }
 
 async function renderInStage(

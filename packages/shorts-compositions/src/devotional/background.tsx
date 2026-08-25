@@ -153,6 +153,9 @@ function Background({
           loud clip audio doesn't jump against the music bed. */}
       <OffthreadVideo
         src={staticFile(src)}
+        {...(props.continuousClip
+          ? { trimBefore: Math.max(0, Math.round(bgStartFrame)) }
+          : {})}
         muted={clipAudioLevel <= 0}
         volume={(f) => {
           const clipEnd = Math.round((card.durationSec ?? 1) * fps)
@@ -221,12 +224,17 @@ function Background({
   // Legibility comes from the scrim + a soft, wide text shadow. Scripture (soft)
   // and questions (medium) keep heavier blur.
   const heavyBlurPx = isLandscape ? px(2.8) : px(4.2)
-  const BLUR = (soft ? px(8) : medium ? px(15) : heavyBlurPx) * blurScale
-  const wholeScrim = soft
-    ? "rgba(6,4,3,0.3)"
-    : medium
-      ? "rgba(6,4,3,0.36)"
-      : "rgba(6,4,3,0.46)"
+  const sharpCover = Boolean(props.coverBgSharp) && card.kind === "cover"
+  const BLUR = sharpCover
+    ? 0
+    : (soft ? px(8) : medium ? px(15) : heavyBlurPx) * blurScale
+  const wholeScrim = sharpCover
+    ? "rgba(6,4,3,0.22)"
+    : soft
+      ? "rgba(6,4,3,0.3)"
+      : medium
+        ? "rgba(6,4,3,0.36)"
+        : "rgba(6,4,3,0.46)"
   let blurOverlay: ReactNode = null
   if (region === "whole") {
     blurOverlay = (
@@ -348,7 +356,10 @@ function Background({
   const coverScrim = introCover ? (
     <>
       <AbsoluteFill
-        style={{ background: "rgba(0,0,0,0.28)", pointerEvents: "none" }}
+        style={{
+          background: sharpCover ? "rgba(0,0,0,0.18)" : "rgba(0,0,0,0.28)",
+          pointerEvents: "none",
+        }}
       />
       <AbsoluteFill
         style={{

@@ -170,6 +170,23 @@ describe("reviewDevotionalText", () => {
     expect(r.blocking).toEqual([])
   })
 
+  it("blocks deterministic voice-rule failures before paid work", async () => {
+    const r = await reviewDevotionalText({
+      devotional: devotional({
+        reflection: {
+          ...devotional().reflection,
+          text: "We should never despise small beginnings.",
+        },
+      }),
+      checkFidelity: true,
+    })
+
+    expect(r.blocking[0]).toMatch(/^voice \(command\):/)
+    expect(checkDevotionalCoherence).not.toHaveBeenCalled()
+    expect(critiqueReflection).not.toHaveBeenCalled()
+    expect(critiqueReflectionFidelity).not.toHaveBeenCalled()
+  })
+
   describe("a check that could not RUN blocks", () => {
     it("blocks when coherence was skipped", async () => {
       // `coherent: true` here is the fallback value, NOT a verdict — exactly the

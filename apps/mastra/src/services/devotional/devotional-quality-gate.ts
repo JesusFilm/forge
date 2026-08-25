@@ -7,6 +7,7 @@ import {
 import { critiqueReflection } from "./devotional-reflection-critic"
 import type { GeneratedDevotional } from "./generate-devotional"
 import { critiqueReflectionFidelity } from "./reflection-fidelity-critic"
+import { checkReflectionVoice } from "./reflection-voice-check"
 
 /**
  * Runs the three text critics as ONE gate, before any audio or video work.
@@ -79,6 +80,8 @@ export type ReviewDevotionalTextInput = {
   /** Fidelity compares the adaptation against the ENGLISH source excerpt, so
    *  it is meaningless for a localized devotional. */
   checkFidelity: boolean
+  /** Voice rules are language-specific. English is the current production path. */
+  lang?: "en" | "ru"
   log?: (msg: string) => void
   /** Cancellation from the workflow step, forwarded to every critic. The three
    *  run in sequence, so without it a cancelled run keeps paying for the two that
@@ -92,6 +95,25 @@ export async function reviewDevotionalText(
   const d = input.devotional
   const log = input.log ?? (() => {})
   const blocking: string[] = []
+
+  // Deterministic voice rules first: they cost nothing, never flake, and catch
+  // owner rules that prompts repeatedly failed to hold.
+  const voice = checkReflectionVoice(d.reflection.text, {
+    scriptureText: d.scripture.text,
+    conclusion: d.conclusion,
+    ...(input.lang ? { lang: input.lang } : {}),
+  })
+  for (const finding of voice) {
+    log(`   [voice/${finding.rule}] ${finding.why}\n      ${finding.sentence}`)
+  }
+  if (voice.length > 0) {
+    const rules = [...new Set(voice.map((finding) => finding.rule))].join(", ")
+    blocking.push(
+      `voice (${rules}): ${voice.length} sentence(s) break a standing rule, ` +
+        `first is "${voice[0].sentence}"`,
+    )
+    return { blocking }
+  }
 
   const coherence = await checkDevotionalCoherence({
     sceneTitle: d.clip.title,

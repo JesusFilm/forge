@@ -25,6 +25,12 @@ function CardBody({
   staticCover,
   wideText,
   attribution,
+  hideCoverDate,
+  hideCoverLogo,
+  coverDateLabel,
+  coverTitleFirst,
+  coverTextStatic,
+  coverSecondaryLine,
 }: {
   card: DevotionalCard
   style: DevotionalStyle
@@ -37,6 +43,12 @@ function CardBody({
   staticCover: boolean
   wideText?: "bottom" | "right"
   attribution?: string
+  hideCoverDate?: boolean
+  hideCoverLogo?: boolean
+  coverDateLabel?: string
+  coverTitleFirst?: boolean
+  coverTextStatic?: boolean
+  coverSecondaryLine?: string
 }) {
   const { width: vw, height: vh } = useVideoConfig()
   const isLandscape = vw > vh
@@ -61,10 +73,16 @@ function CardBody({
         fps={fps}
         durationInFrames={durationInFrames}
         title={title}
-        date={headerDate}
+        date={coverDateLabel ?? headerDate}
+        occasion={card.occasion}
         staticCover={staticCover}
         isLandscape={isLandscape}
         attribution={attribution}
+        hideDate={hideCoverDate}
+        hideLogo={hideCoverLogo}
+        titleFirst={coverTitleFirst}
+        textStatic={coverTextStatic}
+        secondaryLine={coverSecondaryLine}
       />
     )
   }
@@ -587,7 +605,9 @@ function CardBody({
       }}
     >
       <Eyebrow px={px} color={style.eyebrow} size={12}>
-        <span style={reveal(frame, fps, 0.15, 1, "down")}>Ask yourself</span>
+        <span style={reveal(frame, fps, 0.15, 1, "down")}>
+          {card.askLabel ?? "Ask yourself"}
+        </span>
       </Eyebrow>
       <div style={{ display: "flex", flexDirection: "column", gap: q(22) }}>
         {questions.map((text, i) => (
@@ -646,7 +666,7 @@ function CardBody({
             }}
           />
           <Eyebrow px={px} color={style.eyebrow} size={12} mb={14}>
-            Pray
+            {card.prayLabel ?? "Pray"}
           </Eyebrow>
           <p
             style={{

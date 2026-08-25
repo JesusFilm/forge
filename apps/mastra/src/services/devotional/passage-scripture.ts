@@ -106,8 +106,24 @@ export async function selectScriptureForPassage(
   const exact = options.lookupVerse(reference)
   return {
     reference,
-    text: exact ?? response.text.trim(),
+    text: balanceQuotes(exact ?? response.text.trim()),
     translation: "WEB",
     needsCanonicalSource: exact == null,
   }
+}
+
+/**
+ * Drop quote marks left dangling by pulling one verse out of a longer speech.
+ * Only unpaired marks are removed, so a complete quotation remains untouched.
+ */
+export function balanceQuotes(text: string): string {
+  const positions = [...text.matchAll(/["“”]/g)].map((match) => match.index)
+  if (positions.length % 2 === 0) return text
+
+  const cut = positions[positions.length - 1]
+  const out = text.slice(0, cut) + text.slice(cut + 1)
+  return out
+    .replace(/\s+([.,!?;:])/g, "$1")
+    .replace(/\s{2,}/g, " ")
+    .trim()
 }

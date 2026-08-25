@@ -13,8 +13,10 @@
  *   render-devotional-video.mjs --manifest=devo/artifacts/teasers/refuge/A-truncated/manifest.json \
  *     --style=splittone --layout=grounded --anim=letters --outro=2 --out=...
  */
+import { execFile } from "node:child_process"
 import { copyFile, mkdir, readFile, writeFile } from "node:fs/promises"
 import path from "node:path"
+import { promisify } from "node:util"
 import { fileURLToPath } from "node:url"
 
 const HERE = path.dirname(fileURLToPath(import.meta.url))
@@ -26,6 +28,25 @@ function arg(name, fallback) {
 }
 function abs(p) {
   return path.isAbsolute(p) ? p : path.join(REPO_ROOT, p)
+}
+
+const execFileAsync = promisify(execFile)
+
+async function probeDuration(file) {
+  const { stdout } = await execFileAsync("ffprobe", [
+    "-v",
+    "error",
+    "-show_entries",
+    "format=duration",
+    "-of",
+    "csv=p=0",
+    file,
+  ])
+  return Number(stdout.trim())
+}
+
+function overheadSec(cardCount, outroSec = TEASER_RENDER.outroHoldSec) {
+  return 0.8 + 0.86 * cardCount + outroSec
 }
 
 const MONTHS = [
@@ -48,9 +69,23 @@ function todayLabel() {
   return `${MONTHS[n.getMonth()]} ${n.getDate()}`
 }
 
-const CTA_HEADLINE = arg("cta-headline", "Watch the full devotional")
-const CTA_HANDLE = arg("cta-handle", "@gospelmedialab")
-const CTA_URL = arg("cta-url", "jesusfilm.org/watch")
+const CTA_HEADLINE = arg("cta-headline", "Follow for the full devotional.")
+const CTA_HANDLE = arg("cta-handle", "@daily.biblepause")
+const CTA_URL = arg("cta-url", "")
+
+const TEASER_RENDER = {
+  style: "grain",
+  layout: "editorial",
+  textAnim: "letters",
+  outroHoldSec: 2,
+  hideCoverDate: true,
+  hideCoverLogo: true,
+  coverBgSharp: true,
+  bgAudio: true,
+  videoAudioLevel: 0.2,
+  continuousClip: true,
+  verseHoldIntoVideoSec: 2.5,
+}
 
 // Card factories — every card gets the clip as its (blurred) background; the
 // video card plays the clip clear. No audioFile → music-only, muted-friendly.
@@ -73,7 +108,7 @@ const cta = (d, headline) => ({
   bgFile: "clip.mp4",
   ctaHeadline: headline ?? CTA_HEADLINE,
   ctaHandle: CTA_HANDLE,
-  ctaUrl: CTA_URL,
+  ...(CTA_URL ? { ctaUrl: CTA_URL } : {}),
 })
 
 /**
@@ -89,19 +124,34 @@ function approaches(src) {
   }
   return {
     // 1) Truncated open — the devo's real opening, tightened, then CTA.
-    "A-truncated": [cover(3.5, c), verse(7, v), clip(11), cta(2)],
+    "A-truncated": [cover(3.5, c), verse(6.5, v), clip(11), cta(2.5)],
     // 2) Cold open — start ON the footage, then hook + verse, then CTA.
-    "B-coldopen": [clip(9), cover(3.5, c), verse(8, v), cta(2)],
+    "B-coldopen": [clip(9), cover(3.5, c), verse(7.5, v), cta(2.5)],
     // 3) Verse-forward — the scripture is the hero (big, held), a taste of film, CTA.
-    "C-verse": [verse(9, v), clip(12), cta(2)],
+    "C-verse": [verse(9, v), clip(12), cta(2.5)],
     // 4) Cliffhanger — hook, the clip building and cutting before the payoff,
     //    verse, then a "see how it ends" CTA.
     "D-cliffhanger": [
       cover(3.5, c),
-      clip(14),
+      clip(11.5),
       verse(6, v),
-      cta(2.5, "See how it ends —"),
+      cta(2.5, "See how it ends"),
     ],
+  }
+}
+
+const MAX_TEASER_SEC = 30
+
+function assertFitsBudget(all) {
+  for (const [name, cards] of Object.entries(all)) {
+    const total =
+      cards.reduce((t, c) => t + c.durationSec, 0) + overheadSec(cards.length)
+    if (total > MAX_TEASER_SEC) {
+      throw new Error(
+        `${name} would run ${total.toFixed(1)}s, over the ${MAX_TEASER_SEC}s ` +
+          `limit — shorten a card in approaches().`,
+      )
+    }
   }
 }
 
@@ -128,8 +178,18 @@ async function main() {
   const musicName = manifest.musicFile // e.g. music.mp3
   const outRoot = path.join(REPO_ROOT, "devo/artifacts/teasers", devoName)
 
+  const clipSec = await probeDuration(clipSrc)
   const all = approaches(src)
+  assertFitsBudget(all)
   for (const [name, cards] of Object.entries(all)) {
+    const needSec =
+      cards.reduce((t, c) => t + c.durationSec, 0) + overheadSec(cards.length)
+    if (clipSec < needSec) {
+      throw new Error(
+        `${name}: clip is ${clipSec.toFixed(1)}s but the teaser runs ` +
+          `${needSec.toFixed(1)}s — the backdrop would freeze on its last frame.`,
+      )
+    }
     const dir = path.join(outRoot, name)
     await mkdir(dir, { recursive: true })
     await copyFile(clipSrc, path.join(dir, "clip.mp4"))
@@ -144,6 +204,7 @@ async function main() {
       schemaVersion: "2",
       headerDate: todayLabel(),
       ...(musicName ? { musicFile: musicName } : {}),
+      render: TEASER_RENDER,
       cards,
     }
     await writeFile(

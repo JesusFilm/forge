@@ -69,6 +69,9 @@ export const devotionalCardSchema = z.object({
 
   // ---- semantic content (used per kind) ----
   title: z.string().optional(), // cover
+  /** Fixed-date occasion tag shown above the headline (e.g. "World
+   *  Humanitarian Day"). Cover only; most days have none. */
+  occasion: z.string().optional(), // cover
   verse: z.string().optional(), // scripture
   citation: z.string().optional(), // scripture
   paragraphs: z.array(z.string()).optional(), // reflection-full
@@ -77,6 +80,8 @@ export const devotionalCardSchema = z.object({
   highlight: z.string().optional(), // phrase within text/title to accent
   questions: z.array(z.string()).optional(), // questions card
   prayer: z.string().optional(), // questions card
+  askLabel: z.string().optional(), // questions card eyebrow (localized "Ask yourself")
+  prayLabel: z.string().optional(), // questions card prayer eyebrow (localized "Pray")
   ctaHeadline: z.string().optional(), // cta card, e.g. "Watch the full devotional"
   ctaHandle: z.string().optional(), // cta card, e.g. "@gospelmedialab"
   ctaUrl: z.string().optional(), // cta card, e.g. "jesusfilm.org/watch"
@@ -146,6 +151,26 @@ export const devotionalInputPropsSchema = z.object({
   /** Render the cover's text with NO entrance animation (shown from frame 0).
    *  Teasers use this so the hook + eyebrow are readable instantly. */
   staticCover: z.boolean().optional(),
+  /** Cover only: skip the date entirely. */
+  hideCoverDate: z.boolean().optional(),
+  /** The video card continues the shared background take instead of starting
+   *  its clip over. Used by teasers where one file carries the background and
+   *  then becomes the foreground clip. */
+  continuousClip: z.boolean().optional(),
+  /** Hold the previous card's text as the video card fades in. */
+  verseHoldIntoVideoSec: z.number().nonnegative().optional(),
+  /** Cover only: no brand mark. */
+  hideCoverLogo: z.boolean().optional(),
+  /** Cover only: leave the footage sharp behind the title. */
+  coverBgSharp: z.boolean().optional(),
+  /** Cover only: show title/attribution immediately while the logo animation can still play. */
+  coverTextStatic: z.boolean().optional(),
+  /** Cover only: a short line under the title. */
+  coverSecondaryLine: z.string().optional(),
+  /** Cover only: replacement text for the date slot. */
+  coverDateLabel: z.string().optional(),
+  /** Cover only: animate the title before the logo/date row. */
+  coverTitleFirst: z.boolean().optional(),
   /** Override the crossfade between non-video cards (seconds). Teasers raise it
    *  (~1.4s) so the opening dissolves — and the verse blur ramps in — slowly. */
   xfadeSec: z.number().nonnegative().optional(),

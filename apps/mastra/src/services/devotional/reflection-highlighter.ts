@@ -60,8 +60,8 @@ export async function pickReflectionHighlights(
   // Keep the top few verbatim phrases, then assign each to the first chunk that
   // contains it (one accent per card).
   const phrases = (result.phrases ?? [])
-    .map((p) => p.trim())
-    .filter((p) => p && full.includes(p))
+    .map((p) => normalizeHighlight(p, full))
+    .filter((p): p is string => p !== null)
     .slice(0, MAX_HIGHLIGHTS)
   const used = new Set<string>()
   return input.chunks.map((chunk) => {
@@ -69,4 +69,17 @@ export async function pickReflectionHighlights(
     if (hit) used.add(hit)
     return hit ?? ""
   })
+}
+
+/**
+ * Return the phrase exactly as it appears in `full`, or null for a real
+ * paraphrase. Only a model-added trailing closer is negotiable.
+ */
+export function normalizeHighlight(raw: string, full: string): string | null {
+  const phrase = raw.trim()
+  if (!/\p{L}/u.test(phrase)) return null
+  if (full.includes(phrase)) return phrase
+  const stripped = phrase.replace(/[.,;:!?\s]+$/, "")
+  if (stripped && full.includes(stripped)) return stripped
+  return null
 }

@@ -20,9 +20,15 @@ function CoverIntro({
   durationInFrames,
   title,
   date,
+  occasion,
   staticCover,
   isLandscape,
   attribution,
+  hideDate,
+  hideLogo,
+  titleFirst,
+  textStatic,
+  secondaryLine,
 }: {
   px: (n: number) => number
   frame: number
@@ -30,9 +36,15 @@ function CoverIntro({
   durationInFrames: number
   title: ReactNode
   date: string
+  occasion?: string
   staticCover: boolean
   isLandscape: boolean
   attribution?: string
+  hideDate?: boolean
+  hideLogo?: boolean
+  titleFirst?: boolean
+  textStatic?: boolean
+  secondaryLine?: string
 }) {
   // Progress runs over a FIXED span (COVER_ANIM_SEC), not the whole card — so a
   // long narration extends the settled HOLD instead of slowing the animation.
@@ -42,7 +54,13 @@ function CoverIntro({
     1,
     Math.min(durationInFrames - 1, Math.round(COVER_ANIM_SEC * fps)),
   )
-  const p = staticCover ? 1 : Math.max(0, Math.min(1, frame / animSpan))
+  const titleLeads = Boolean(titleFirst || hideLogo)
+  const logoFrame = titleLeads
+    ? Math.max(0, frame - Math.round(2 * fps))
+    : frame
+  const p = staticCover ? 1 : Math.max(0, Math.min(1, logoFrame / animSpan))
+  const pText =
+    staticCover || textStatic ? 1 : Math.max(0, Math.min(1, frame / animSpan))
   const outCubic = { easing: Easing.out(Easing.cubic) as (t: number) => number }
   const inOutCubic = {
     easing: Easing.inOut(Easing.cubic) as (t: number) => number,
@@ -67,7 +85,9 @@ function CoverIntro({
   // for any date string (measured, not a fixed 268px).
   const dateLeftPad = cpx(9.75) // 18px
   const dateTargetW =
-    measureLineWidth(date.toUpperCase(), cpx(8.1), cpx(1.625)) + dateLeftPad
+    hideDate || hideLogo
+      ? 0
+      : measureLineWidth(date.toUpperCase(), cpx(8.1), cpx(1.625)) + dateLeftPad
 
   // ---- logo: stamp then morph -----------------------------------------------
   const logoOpacity = interpolate(p, [0, 0.04], [0, 1], clamp)
@@ -105,7 +125,8 @@ function CoverIntro({
     ...clamp,
     ...outCubic,
   })
-  const headY = interpolate(p, [0.72, 0.96], [cpx(10.8), 0], {
+  const textOpacity = titleLeads || textStatic ? 1 : headOpacity
+  const headY = interpolate(pText, [0.72, 0.96], [cpx(10.8), 0], {
     ...clamp,
     ...outCubic,
   })
@@ -122,83 +143,100 @@ function CoverIntro({
         padding: `0 ${px(30)}px`,
       }}
     >
-      {/* logo + date row: symbol on the left, date container grows rightward so
-          the centered row widens and the symbol nudges left as the date opens. */}
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          height: rowH,
-          opacity: logoOpacity,
-          transform: `scale(${stamp})`,
-        }}
-      >
-        {/* logo group: full lockup clipped down to the clean symbol */}
+      {hideLogo ? null : (
         <div
           style={{
-            position: "relative",
-            width: clipW,
-            height: rowH,
-            flex: "none",
-          }}
-        >
-          <div
-            style={{
-              width: clipW,
-              height: rowH,
-              overflow: "hidden",
-              opacity: lockupOpacity,
-            }}
-          >
-            <img
-              src={BRAND_LOCKUP_URI}
-              alt=""
-              style={{ display: "block", width: lockupW, height: rowH }}
-            />
-          </div>
-          <div
-            style={{
-              position: "absolute",
-              top: 0,
-              left: 0,
-              opacity: symbolOpacity,
-            }}
-          >
-            <BrandSymbol px={px} w={symbolWNum} />
-          </div>
-        </div>
-        {/* date container: width springs 0→268px, cropping the text as it opens */}
-        <div
-          style={{
-            width: dateW,
-            height: rowH,
-            overflow: "hidden",
             display: "flex",
             alignItems: "center",
-            flex: "none",
+            justifyContent: "center",
+            height: rowH,
+            opacity: logoOpacity,
+            transform: `scale(${stamp})`,
           }}
         >
+          {/* logo group: full lockup clipped down to the clean symbol */}
           <div
             style={{
-              paddingLeft: dateLeftPad, // 18px
-              whiteSpace: "nowrap",
-              fontFamily: SANS,
-              fontWeight: 700,
-              fontSize: cpx(8.1), // 15px
-              letterSpacing: cpx(1.625), // 3px
-              textTransform: "uppercase",
-              // Muted cool grey (not bright white) so the date sits quietly next
-              // to the mark and reads as a kicker, on light or dark footage.
-              color: "rgba(214,217,224,0.82)",
+              position: "relative",
+              width: clipW,
+              height: rowH,
+              flex: "none",
             }}
           >
-            {date}
+            <div
+              style={{
+                width: clipW,
+                height: rowH,
+                overflow: "hidden",
+                opacity: lockupOpacity,
+              }}
+            >
+              <img
+                src={BRAND_LOCKUP_URI}
+                alt=""
+                style={{ display: "block", width: lockupW, height: rowH }}
+              />
+            </div>
+            <div
+              style={{
+                position: "absolute",
+                top: 0,
+                left: 0,
+                opacity: symbolOpacity,
+              }}
+            >
+              <BrandSymbol px={px} w={symbolWNum} />
+            </div>
           </div>
+          {hideDate ? null : (
+            <div
+              style={{
+                width: dateW,
+                height: rowH,
+                overflow: "hidden",
+                display: "flex",
+                alignItems: "center",
+                flex: "none",
+              }}
+            >
+              <div
+                style={{
+                  paddingLeft: dateLeftPad, // 18px
+                  whiteSpace: "nowrap",
+                  fontFamily: SANS,
+                  fontWeight: 700,
+                  fontSize: cpx(8.1), // 15px
+                  letterSpacing: cpx(1.625), // 3px
+                  textTransform: "uppercase",
+                  // Muted cool grey (not bright white) so the date sits quietly next
+                  // to the mark and reads as a kicker, on light or dark footage.
+                  color: "rgba(214,217,224,0.82)",
+                }}
+              >
+                {date}
+              </div>
+            </div>
+          )}
         </div>
-      </div>
+      )}
 
       {/* headline */}
+      {occasion ? (
+        <div
+          style={{
+            marginBottom: cpx(-10),
+            fontFamily: SANS,
+            fontWeight: 700,
+            fontSize: cpx(8.1),
+            letterSpacing: cpx(1.625),
+            textTransform: "uppercase",
+            color: "rgba(214,217,224,0.82)",
+            opacity: textOpacity,
+          }}
+        >
+          {occasion}
+        </div>
+      ) : null}
       <div
         style={{
           fontFamily: SANS,
@@ -208,12 +246,28 @@ function CoverIntro({
           letterSpacing: cpx(-0.758), // −1.4px
           color: "#fff",
           maxWidth: cpx(487), // 900px
-          opacity: headOpacity,
+          opacity: textOpacity,
           transform: `translateY(${headY}px)`,
         }}
       >
         {title}
       </div>
+      {secondaryLine ? (
+        <div
+          style={{
+            marginTop: cpx(-8),
+            fontFamily: SANS,
+            fontWeight: 700,
+            fontSize: cpx(8.1),
+            letterSpacing: cpx(1.625),
+            textTransform: "uppercase",
+            color: "rgba(214,217,224,0.82)",
+            opacity: textOpacity,
+          }}
+        >
+          {secondaryLine}
+        </div>
+      ) : null}
       {attribution ? (
         <AttributionCredit
           px={px}

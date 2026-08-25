@@ -39,6 +39,12 @@ function arg(name, fallback) {
   return hit ? hit.slice(name.length + 3) : fallback
 }
 
+function passedOnCli(name) {
+  return process.argv.some(
+    (a) => a === `--${name}` || a.startsWith(`--${name}=`),
+  )
+}
+
 function abs(p) {
   return path.isAbsolute(p) ? p : path.join(REPO_ROOT, p)
 }
@@ -171,6 +177,16 @@ async function main() {
   const videoAudioLevel = arg("video-audio", "")
   // Teasers: cover text shown from frame 0 (no entrance animation).
   const staticCover = arg("static-cover", "false") === "true"
+  const hideCoverDate = arg("hide-cover-date", "false") === "true"
+  const hideCoverLogo = arg("hide-cover-logo", "false") === "true"
+  const coverBgSharp = arg("cover-bg-sharp", "false") === "true"
+  const coverTextStatic = arg("cover-text-static", "false") === "true"
+  const coverSecondaryLine = arg("cover-secondary", "")
+  const coverDateLabel = arg("cover-date-label", "")
+  const coverTitleFirst = arg("cover-title-first", "false") === "true"
+  const bgAudio = arg("bg-audio", "false") === "true"
+  const continuousClip = arg("continuous-clip", "false") === "true"
+  const verseHoldIntoVideoSec = arg("verse-hold", "")
   // Teasers: slower crossfade between non-video cards (seconds).
   const xfadeSec = arg("xfade", "")
   // Music bed level (0–1). Default matches the schema; raise for teasers where
@@ -241,6 +257,18 @@ async function main() {
         ? { videoAudioLevel: Number(videoAudioLevel) }
         : {}),
       ...(staticCover ? { staticCover: true } : {}),
+      ...(hideCoverDate ? { hideCoverDate: true } : {}),
+      ...(hideCoverLogo ? { hideCoverLogo: true } : {}),
+      ...(coverBgSharp ? { coverBgSharp: true } : {}),
+      ...(coverTextStatic ? { coverTextStatic: true } : {}),
+      ...(coverSecondaryLine ? { coverSecondaryLine } : {}),
+      ...(coverDateLabel ? { coverDateLabel } : {}),
+      ...(coverTitleFirst ? { coverTitleFirst: true } : {}),
+      ...(bgAudio ? { bgAudio: true } : {}),
+      ...(continuousClip ? { continuousClip: true } : {}),
+      ...(verseHoldIntoVideoSec !== ""
+        ? { verseHoldIntoVideoSec: Number(verseHoldIntoVideoSec) }
+        : {}),
       ...(xfadeSec !== "" ? { xfadeSec: Number(xfadeSec) } : {}),
       ...(musicVolume !== "" ? { musicVolume: Number(musicVolume) } : {}),
       ...(mediaFilterOverride ? { mediaFilterOverride } : {}),
@@ -252,6 +280,40 @@ async function main() {
         ? { bgPlaybackRate: manifest.bgPlaybackRate }
         : {}),
       ...(manifest.musicFile ? { musicFile: manifest.musicFile } : {}),
+    }
+
+    const CLI_FLAG_FOR = {
+      style: "style",
+      layout: "layout",
+      showMuteButton: "mute-button",
+      textAnim: "anim",
+      outroHoldSec: "outro",
+      introHoldSec: "intro",
+      hideCoverDate: "hide-cover-date",
+      hideCoverLogo: "hide-cover-logo",
+      coverBgSharp: "cover-bg-sharp",
+      coverTextStatic: "cover-text-static",
+      coverSecondaryLine: "cover-secondary",
+      coverDateLabel: "cover-date-label",
+      coverTitleFirst: "cover-title-first",
+      filmTreatment: "film-treatment",
+      bgAudio: "bg-audio",
+      continuousClip: "continuous-clip",
+      verseHoldIntoVideoSec: "verse-hold",
+      videoAudioLevel: "video-audio",
+      muteVideoAudio: "mute-video",
+      musicVolume: "music-vol",
+      xfadeSec: "xfade",
+    }
+    for (const [key, value] of Object.entries(manifest.render ?? {})) {
+      const flag = CLI_FLAG_FOR[key]
+      if (flag && passedOnCli(flag)) continue
+      inputProps[key] = value
+    }
+    if (manifest.render) {
+      console.log(
+        `Using manifest render recipe: ${Object.keys(manifest.render).join(", ")}`,
+      )
     }
 
     console.log("Ensuring headless browser (first run downloads ~150MB)…")

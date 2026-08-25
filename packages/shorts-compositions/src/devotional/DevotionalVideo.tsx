@@ -105,9 +105,12 @@ export function DevotionalVideo(props: DevotionalInputProps) {
   // Both dissolves touching the video card are slower — scripture melts INTO the
   // clip, and the clip melts OUT into the reflection (no abrupt cut either end).
   const VIDEO_XFADE = Math.round(1.3 * fps)
+  const verseHoldFrames = Math.round((props.verseHoldIntoVideoSec ?? 0) * fps)
   const boundaryXfade = (i: number) =>
     props.cards[i]?.kind === "video" || props.cards[i + 1]?.kind === "video"
-      ? VIDEO_XFADE
+      ? props.cards[i + 1]?.kind === "video"
+        ? Math.max(VIDEO_XFADE, verseHoldFrames)
+        : VIDEO_XFADE
       : XFADE
   const lastIndex = props.cards.length - 1
 
@@ -120,22 +123,25 @@ export function DevotionalVideo(props: DevotionalInputProps) {
   // clip's own audio. Skip ducking only when the clip is muted, or in teasers
   // (bgAudio) where the bed plays straight through. A quiet video-card level
   // (videoAudioLevel) no longer disables the duck.
-  const videoIdx =
+  const videoWindows =
     props.muteVideoAudio || props.bgAudio
-      ? -1
-      : props.cards.findIndex((c) => c.kind === "video")
-  const videoWindow =
-    videoIdx >= 0
-      ? {
-          start: frames[videoIdx].from,
-          // Keep the music muted through the trailing crossfade too — the clip's
-          // own audio plays until the video card fully dissolves into the next.
-          end:
-            frames[videoIdx].from +
-            frames[videoIdx].durationInFrames +
-            (videoIdx < lastIndex ? XFADE : 0),
-        }
-      : null
+      ? []
+      : props.cards.flatMap((c, i) =>
+          c.kind === "video"
+            ? [
+                {
+                  start: frames[i].from,
+                  // Keep the music muted through the trailing crossfade too —
+                  // the clip's own audio plays until the video card fully
+                  // dissolves into the next.
+                  end:
+                    frames[i].from +
+                    frames[i].durationInFrames +
+                    (i < lastIndex ? XFADE : 0),
+                },
+              ]
+            : [],
+        )
   const duckFade = Math.round(0.4 * fps)
 
   // Seamless background: every non-video card is a WINDOW into ONE shared,
@@ -148,7 +154,7 @@ export function DevotionalVideo(props: DevotionalInputProps) {
   const bgRate = props.bgPlaybackRate ?? 1
   let bgAcc = 0
   const bgStartFrames = props.cards.map((c, i) => {
-    if (c.kind === "video") return 0
+    if (c.kind === "video" && !props.continuousClip) return 0
     const start = bgAcc
     // Advance by the card's frames scaled by the playback rate — the clip
     // advances `bgRate` film-frames per composition frame, so the window
@@ -209,6 +215,12 @@ export function DevotionalVideo(props: DevotionalInputProps) {
                   staticCover={props.staticCover === true}
                   wideText={wideText}
                   attribution={props.attribution}
+                  hideCoverDate={props.hideCoverDate === true}
+                  hideCoverLogo={props.hideCoverLogo === true}
+                  coverDateLabel={props.coverDateLabel}
+                  coverTitleFirst={props.coverTitleFirst === true}
+                  coverTextStatic={props.coverTextStatic === true}
+                  coverSecondaryLine={props.coverSecondaryLine}
                 />
               </div>
               {/* Progress ring as a FULL-FRAME overlay (outside the text column)
@@ -254,18 +266,22 @@ export function DevotionalVideo(props: DevotionalInputProps) {
               ],
               { extrapolateLeft: "clamp", extrapolateRight: "clamp" },
             )
-            if (!videoWindow) return base
-            // 1 everywhere except 0 across the video card (short edge fades).
-            const duck = interpolate(
-              f,
-              [
-                videoWindow.start - duckFade,
-                videoWindow.start,
-                videoWindow.end,
-                videoWindow.end + duckFade,
-              ],
-              [1, 0, 0, 1],
-              { extrapolateLeft: "clamp", extrapolateRight: "clamp" },
+            if (!videoWindows.length) return base
+            // 1 everywhere except 0 across each video card (short edge fades).
+            const duck = Math.min(
+              ...videoWindows.map((videoWindow) =>
+                interpolate(
+                  f,
+                  [
+                    videoWindow.start - duckFade,
+                    videoWindow.start,
+                    videoWindow.end,
+                    videoWindow.end + duckFade,
+                  ],
+                  [1, 0, 0, 1],
+                  { extrapolateLeft: "clamp", extrapolateRight: "clamp" },
+                ),
+              ),
             )
             return base * duck
           }}
@@ -294,6 +310,12 @@ function CardLayer({
   staticCover,
   wideText,
   attribution,
+  hideCoverDate,
+  hideCoverLogo,
+  coverDateLabel,
+  coverTitleFirst,
+  coverTextStatic,
+  coverSecondaryLine,
 }: {
   card: DevotionalCard
   style: DevotionalStyle
@@ -306,6 +328,12 @@ function CardLayer({
   staticCover: boolean
   wideText?: "bottom" | "right"
   attribution?: string
+  hideCoverDate?: boolean
+  hideCoverLogo?: boolean
+  coverDateLabel?: string
+  coverTitleFirst?: boolean
+  coverTextStatic?: boolean
+  coverSecondaryLine?: string
 }) {
   const frame = useCurrentFrame()
   // Owner rules: NO logo anywhere; the date appears ONLY on the cover (above
@@ -324,6 +352,12 @@ function CardLayer({
         anim={anim}
         staticCover={staticCover}
         attribution={attribution}
+        hideCoverDate={hideCoverDate}
+        hideCoverLogo={hideCoverLogo}
+        coverDateLabel={coverDateLabel}
+        coverTitleFirst={coverTitleFirst}
+        coverTextStatic={coverTextStatic}
+        coverSecondaryLine={coverSecondaryLine}
       />
       {card.kind === "video" && card.subtitles?.length ? (
         <VideoSubtitles
