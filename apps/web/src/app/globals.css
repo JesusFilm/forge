@@ -414,6 +414,35 @@
   }
 }
 
+/* Where the picture's centre belongs changes over the zoom, so it is
+   animated rather than computed once.
+
+   At the opening frame the card is much taller than the screen whenever the
+   horizontal axis set the scale, so the picture has to be centred on the
+   SCREEN or the letterbox goes lopsided — 439px above and 153px below on a
+   5:4 window. `50svh + 39px` is that centre measured down from the card's
+   top edge, which the top-anchored lift parks 39px above the viewport top;
+   one division by the starting zoom puts it in the card's own units.
+
+   By the landed frame the picture is exactly the card's height, so it has to
+   be centred on the CARD instead — `50%`. Reading the screen's centre there
+   instead pushes the picture 239px down inside its own card and leaves a
+   dark band across the top of it, which is what a single static value did.
+
+   In between it is a straight interpolation between two correct endpoints:
+   off the true screen centre by ~90px at mid-zoom on a 5:4 window, where
+   the picture is moving and the bands are transient anyway. */
+@keyframes watch-scroll-intro-photo {
+  from {
+    top: calc((50svh + 39px) / var(--intro-scale));
+    height: calc(100vw * 9 / 16 / var(--intro-scale));
+  }
+  to {
+    top: 50%;
+    height: 100%;
+  }
+}
+
 @keyframes watch-scroll-intro-veil {
   0%,
   55% {
@@ -1048,6 +1077,15 @@
          own footprint the moment the card becomes the narrower of the two,
          so the landed frame is exactly what it was before this existed.
 
+         Height is animated rather than capped the same way, because the two
+         caps bite independently: a window tall enough for the width to cap
+         at the card while the height still came from the viewport left the
+         box at 1.25 instead of 16:9, and the landed picture 96px short of
+         its own card at top and bottom. Animating it from the aspect-derived
+         opening height to the card's own height keeps both endpoints exact,
+         and the interpolation between them only ever runs WIDER than 16:9 —
+         which crops vertically, never sideways.
+
          Consequence, stated because it is a design call rather than a bug:
          on a window narrower than 16:9 the full width cannot also fill the
          height, so the picture letterboxes against the card's own dark
@@ -1055,21 +1093,15 @@
          5:4 window. */
       .watch-scroll-intro-photo {
         inset: auto;
-        /* Centred on the SCREEN, not on the card. The zoom is top-anchored,
-           so the card's top edge sits a measured 39px above the viewport top
-           at every viewport — the lift's deliberate overshoot — which puts
-           the viewport's centre `50svh + 39px` below the card's top edge in
-           screen pixels, and one division by the zoom puts that in the
-           card's own units. Centred on the card instead, a 5:4 window got
-           439px of letterbox above the picture and 153px below: the card is
-           far taller than the screen whenever the horizontal axis is what
-           set the scale. Horizontally the card IS screen-centred, since the
-           zoom's origin is its own 50%. */
-        top: calc((50svh + 39px) / var(--era-zoom));
+        /* Vertical centre travels from the screen's to the card's — see the
+           keyframes. Horizontally the card is already screen-centred, since
+           the zoom's origin is its own 50%, so one value serves both ends. */
         left: 50%;
         translate: -50% -50%;
+        animation: watch-scroll-intro-photo linear both;
+        animation-timeline: --watch-era-stage;
+        animation-range: var(--intro-range);
         width: min(calc(100vw / var(--era-zoom)), 100%);
-        height: min(calc(100vw * 9 / 16 / var(--era-zoom)), 100%);
       }
 
       .watch-scroll-intro-veil {

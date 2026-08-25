@@ -210,11 +210,32 @@ describe("scroll-driven timeline choreography", () => {
     expect(rule).toMatch(
       /width:\s*min\(\s*calc\(100vw \/ var\(--era-zoom\)\)\s*,\s*100%\s*\)/,
     )
-    // Height keeps the picture's own aspect, or the box crops it sideways.
-    expect(rule).toMatch(/height:\s*min\(calc\(100vw \* 9 \/ 16/)
-    // Centred on the screen, not on a card that is often much taller.
-    expect(rule).toContain("50svh")
-    expect(rule).not.toMatch(/top:\s*50%/)
+  })
+
+  it("lands the opening photograph on its card, not on the screen", () => {
+    // Height and vertical centre have DIFFERENT right answers at the two
+    // ends, so both are animated between them rather than computed once.
+    // A single value correct at the opening frame is wrong at the landed one:
+    // reading the screen's centre there pushed the picture 239px down inside
+    // its own card, and taking the height from the viewport left it 96px
+    // short of the card top and bottom on a tall window. Both shipped.
+    const frames = blockBody(css, "@keyframes watch-scroll-intro-photo")
+    const from = frames.slice(0, frames.indexOf("to {"))
+    const to = frames.slice(frames.indexOf("to {"))
+
+    // Opening: screen-centred, at the picture's own 16:9 aspect.
+    expect(from).toContain("50svh")
+    expect(from).toMatch(/height:\s*calc\(100vw \* 9 \/ 16/)
+    // Landed: the card's own box, exactly.
+    expect(to).toMatch(/top:\s*50%\s*;/)
+    expect(to).toMatch(/height:\s*100%\s*;/)
+
+    // …and it is actually wired to the zoom's range, or neither end applies.
+    const guard = blockBody(css, "@supports (animation-timeline: view())")
+    const rule = blockBody(guard, ".watch-scroll-intro-photo {")
+
+    expect(rule).toContain("animation: watch-scroll-intro-photo")
+    expect(rule).toContain("animation-range: var(--intro-range)")
   })
 
   it("keeps the opening zoom inside the pinned breakpoint", () => {
