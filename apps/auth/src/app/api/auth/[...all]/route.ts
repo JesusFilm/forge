@@ -69,7 +69,12 @@ function isHttpLoopbackRedirect(uri: string): boolean {
 async function normalizeLoopbackDcrRequest(
   request: Request,
 ): Promise<Request | Response> {
-  if (!request.headers.get("content-type")?.includes("application/json")) {
+  if (
+    !request.headers
+      .get("content-type")
+      ?.toLowerCase()
+      .includes("application/json")
+  ) {
     return request
   }
 

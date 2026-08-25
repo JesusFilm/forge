@@ -206,12 +206,12 @@ describe("Auth route wrapper", () => {
     },
   )
 
-  it("rejects oversized DCR registration bodies", async () => {
+  it("rejects oversized DCR registration bodies case-insensitively", async () => {
     const { POST } = await import("./route")
     const response = await POST(
       new Request("http://localhost:3004/api/auth/oauth2/register", {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: { "content-type": "Application/JSON" },
         body: JSON.stringify({ padding: "x".repeat(64 * 1024) }),
       }),
       { params: Promise.resolve({ all: ["oauth2", "register"] }) },
