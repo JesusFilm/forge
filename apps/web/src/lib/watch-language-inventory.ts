@@ -338,6 +338,41 @@ async function resolveSwitcherLanguages(
   })
 }
 
+/**
+ * Switcher options WITHOUT the language's inventory payload.
+ *
+ * `resolveWatchLanguageInventory` also fetches every promoted card,
+ * collection, dubbed video, and subtitle-only video for the language; a
+ * surface that only needs the language LIST (the /whats-new switcher)
+ * must not pay for that. Degrades to the current language alone when
+ * Admin is unreachable, so an otherwise data-free static page never fails
+ * to render because of this control.
+ */
+export async function resolveWatchLanguageSwitcherOptions(
+  currentSlug: string,
+): Promise<WatchLanguageInventorySwitcherLanguage[]> {
+  const fallback = {
+    slug: currentSlug,
+    languageName: labelFromSlug(currentSlug),
+    nativeName: null,
+    bcp47: null,
+  } satisfies WatchLanguageInventorySwitcherLanguage
+
+  try {
+    const languages = await fetchWatchLanguageInventoryLanguages()
+    const current =
+      languages
+        .flatMap((language) => {
+          const option = switcherLanguageFromRaw(language)
+          return option && option.slug === currentSlug ? [option] : []
+        })
+        .at(0) ?? fallback
+    return await resolveSwitcherLanguages(current)
+  } catch {
+    return [fallback]
+  }
+}
+
 export function primaryLanguageNameForSeo(languageName: string): string {
   const trimmed = languageName.trim()
   const [primary] = trimmed.split(",")
