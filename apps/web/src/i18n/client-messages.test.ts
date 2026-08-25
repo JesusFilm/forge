@@ -28,7 +28,7 @@ describe("route-scoped client messages", () => {
   it.each([
     ["Russian", russianMessages, "Недоступно"],
     ["Arabic", arabicMessages, "غير متاح"],
-    ["Chinese", chineseMessages, "不可用"],
+    ["Chinese", chineseMessages, "暂不可用"],
   ])(
     "projects the localized unavailable badge status in %s",
     (_, catalog, expected) => {
