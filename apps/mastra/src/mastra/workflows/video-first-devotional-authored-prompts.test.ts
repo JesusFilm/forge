@@ -138,8 +138,7 @@ vi.mock("../../services/devotional/workspace/attempt-data", () => ({
     passages: [CHAPTER],
     scripture: { verses: {} },
     corpora: {
-      ryleMatthew: [],
-      matthewHenry: [
+      commentary: [
         {
           source: "Matthew Henry, Commentary on the Whole Bible",
           reference: "Luke 8",

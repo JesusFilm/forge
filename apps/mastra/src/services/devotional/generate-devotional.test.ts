@@ -110,7 +110,7 @@ describe("generateDevotional", () => {
       ...deps,
       corpora: {
         ...corpora,
-        matthewHenry: [
+        commentary: [
           {
             source: "Matthew Henry, Commentary on the Whole Bible",
             reference: "Luke 8",
