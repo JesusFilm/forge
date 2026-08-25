@@ -1,5 +1,6 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises"
 import path from "node:path"
+import { getDevotionalCacheDir } from "../../config/env"
 
 import type { ProducedDevotionalAudio } from "./devotional-audio"
 import { resolveVoiceId } from "./elevenlabs-voiceover"
@@ -35,8 +36,10 @@ export function cacheDirFor(
   // the second one would look like a cache hit for the first.
   const ep = episode === undefined ? "" : `-ep${episode}`
   return path.join(
-    repoRoot(),
-    "devo/cache",
+    // Read-WRITE and cumulative (text, paid narration, approval markers), so on
+    // a deploy this has to be a persistent volume — an ephemeral filesystem
+    // re-voices every devotional after each release.
+    getDevotionalCacheDir() ?? path.join(repoRoot(), "devo/cache"),
     `ch${chapterIndex}-seq${sequence}${ep}${suffix}`,
   )
 }

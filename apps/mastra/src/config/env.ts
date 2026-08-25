@@ -169,6 +169,16 @@ const envSchema = z.object({
   // Spurgeon). Defaults to the in-repo `devo/corpus`; override on a bundled
   // deploy where that path isn't present.
   DEVOTIONAL_CORPUS_DIR: z.string().min(1).optional(),
+  // Pre-generated music beds. Defaults to the in-repo `devo/assets/music`;
+  // point this at a mounted volume on a deploy. These tracks are PAID, and a
+  // deploy that cannot see them starts generating (and billing) instead, so
+  // `music-library-store` treats an unreadable library as a hard error rather
+  // than a miss — see the note there.
+  DEVOTIONAL_MUSIC_DIR: z.string().min(1).optional(),
+  // Per-devotional text, narration and approval markers. Read-WRITE and
+  // cumulative, so on an ephemeral filesystem every deploy re-voices
+  // everything. Point this at a persistent volume.
+  DEVOTIONAL_CACHE_DIR: z.string().min(1).optional(),
   FIRECRAWL_ALLOWED_HOSTS: z
     .string()
     .min(1)
@@ -380,6 +390,8 @@ export const env = envSchema.parse({
   ELEVENLABS_TTS_MODEL: emptyToUndefined(process.env.ELEVENLABS_TTS_MODEL),
   ELEVENLABS_MUSIC_MODEL: emptyToUndefined(process.env.ELEVENLABS_MUSIC_MODEL),
   DEVOTIONAL_CORPUS_DIR: emptyToUndefined(process.env.DEVOTIONAL_CORPUS_DIR),
+  DEVOTIONAL_MUSIC_DIR: emptyToUndefined(process.env.DEVOTIONAL_MUSIC_DIR),
+  DEVOTIONAL_CACHE_DIR: emptyToUndefined(process.env.DEVOTIONAL_CACHE_DIR),
   FIRECRAWL_ALLOWED_HOSTS: emptyToUndefined(
     process.env.FIRECRAWL_ALLOWED_HOSTS,
   ),
@@ -683,6 +695,16 @@ export function getDevotionalElevenVoiceId(): string {
 /** Reflection corpus dir; undefined => the reader falls back to the repo copy. */
 export function getDevotionalCorpusDir(): string | undefined {
   return env.DEVOTIONAL_CORPUS_DIR
+}
+
+/** Paid music library dir; undefined => the repo copy. */
+export function getDevotionalMusicDir(): string | undefined {
+  return env.DEVOTIONAL_MUSIC_DIR
+}
+
+/** Devotional cache dir (read-write); undefined => the repo copy. */
+export function getDevotionalCacheDir(): string | undefined {
+  return env.DEVOTIONAL_CACHE_DIR
 }
 
 function getLegacyEmbeddingProviderConfig(
