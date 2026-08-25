@@ -1,6 +1,6 @@
 {
   "humanReviewedLocales": ["en"],
-  "pendingTranslationPaths": [],
+  "pendingTranslationPaths": ["WatchNotFound.languageDescription"],
   "intentionallyLocaleNeutral": [
     "DownloadModal.termsAgreementSuffix",
     "LanguageInventory.bibleProject",

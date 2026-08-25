@@ -451,6 +451,7 @@
     "screenReaderPrefix": "Sivua ei löydy:",
     "title": "Tätä kohtausta ei ole täällä.",
     "description": "Sivu on ehkä siirtynyt, mutta kertomus jatkuu.",
+    "languageDescription": "We couldn't find the page you're looking for, but the story continues in films and videos from languages around the world.",
     "actionsLabel": "Sivua ei löydy -toiminnot",
     "backToWatch": "Takaisin katseluun",
     "browseVideos": "Selaa videoita"

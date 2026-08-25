@@ -451,6 +451,7 @@
     "screenReaderPrefix": "Side ikkje funnen:",
     "title": "Denne scenen er ikkje her.",
     "description": "Sida kan ha flytta på seg, men historia held fram.",
+    "languageDescription": "We couldn't find the page you're looking for, but the story continues in films and videos from languages around the world.",
     "actionsLabel": "Handlingar for sida ikkje funnen",
     "backToWatch": "Tilbake til Vis",
     "browseVideos": "Bla i videoar"

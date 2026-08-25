@@ -114,6 +114,29 @@ Dub share a compatible Video Edition. Its public path names the playable audio
 language, while the requested subtitle language travels as separate one-shot
 intent.
 
+## Watch localization
+
+### Watch UI Catalog
+
+The locale-specific tree of interface copy used by Watch surfaces, distinct
+from the Languages in which media is available. Every supported UI locale
+shares the same message structure even when a narrowly declared leaf still
+uses source-language fallback copy.
+
+### Pending Translation Path
+
+A specific Watch UI Catalog message whose source-language copy is intentionally
+available in non-source locales while its translation remains unfinished. It
+is excluded from translated-source provenance and source-copy completion checks
+without making the rest of the catalog provisional.
+
+### Translation Provenance
+
+The generated evidence tying each translated Watch UI Catalog to the source
+content, translated content, and translation model that produced it. It covers
+the translated portion of a catalog, so Pending Translation Paths do not claim
+completed-translation provenance.
+
 ### Contextual Watch Route
 
 A public Watch URL that identifies a parent collection, child Video, and
