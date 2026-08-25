@@ -134,6 +134,11 @@ discovery surfaces such as Watch homepage and search thumbnails link to the
 Standalone Watch Route; contextual links are reserved for navigation inside an
 opened collection.
 
+For Watch composition, the parent named by a Contextual Watch Route is the
+terminal carousel and next-item context. If that parent cannot form a useful
+sibling rail, the page does not substitute the playable child's intrinsic
+hierarchy or a different collection.
+
 ### Standalone Watch Route
 
 The canonical public Watch URL for a Video and Language independent of any
@@ -144,6 +149,12 @@ collection relationship. Eligible English uses
 slug is also a public language-home slug, English stays explicit so the
 language home retains the one-segment URL.
 
+When a standalone playable Video owns enough exactly admitted children to form
+a useful rail, those children are its primary carousel context. Eligible
+external collections are a fallback only when that intrinsic rail does not
+qualify; they do not become the standalone Video's canonical or next-item
+identity.
+
 ### Watch Route Manifest
 
 An Admin-owned snapshot of public Watch route dimensions used by consumers to
@@ -153,6 +164,11 @@ content.
 The manifest is an admission contract, not a rendering payload or historical
 record; absence can disprove current route validity but cannot explain why a
 relationship changed.
+
+When a consumer synthesizes a selectable context from parent/child relations,
+exact admission means the manifest proves the parent/child pair and that
+specific child's selected audio language. A global language entry or fallback
+playback stream is not proof that the contextual route exists.
 
 ### Watch Search & Social Metadata Overlay
 
@@ -589,6 +605,11 @@ The target-language playback state attached to a Watch search candidate, disting
 
 Target-audio and related-language states carry a playable Dub directly. A target-subtitle state keeps the requested subtitle language as availability truth while carrying a deterministic playable Dub action on the compatible Video Edition; the public route uses that action language and passes the subtitle language as explicit intent. A no-option state carries no playable action, so its Search Language remains request context and must not be promoted into a playback identity.
 
+The no-option state also governs presentation: catalog evidence may remain
+visible for recognition and recovery, but playback-derived controls, progress,
+motion, and play affordances must remain absent even when playback-shaped data
+is incidentally present.
+
 ### Query Language Suggestion
 
 A visible search-bar suggestion produced when the typed query appears to be in a supported language different from the current Search Language. The suggestion can be generous because it is confirm-gated: it does not change Search Language until the viewer accepts it, and unsupported or unrecognized queries leave the current Search Language in control.
@@ -1005,6 +1026,12 @@ The app-wide, persisted audio- and subtitle-language choice that carries across 
 
 Identity always keys on the Language slug; the cached name paints labels instantly on a cold load but is never used for matching. Toggling subtitles on or off changes visibility only — it never rewrites the stored language, which only an explicit pick changes.
 
+### Playback Surface
+
+The app's one video player and the single view that draws it, owned above the navigation rather than by any screen, so every screen that shows video borrows it instead of creating its own.
+
+Because there is only ever one, moving video between presentations is a matter of resizing and repositioning that view — never handing playback to a second player, which would restart it and blank the picture. This is what lets a video survive leaving the screen it started on, and why the Mini Player and a Picture-in-Picture Handoff are presentations of the same playback rather than copies of it. A screen that wants video reserves the space it should occupy and publishes a request; the owner draws into that space.
+
 ### Mini Player
 
 The small floating video window that keeps a video playing after the viewer leaves the screen it was playing on, so playback survives navigation instead of ending with the route. Distinct from the operating system's picture-in-picture window, which is the platform's own window outside the app — the Mini Player is drawn by the app and lives above its navigation.
@@ -1012,6 +1039,14 @@ The small floating video window that keeps a video playing after the viewer leav
 It is the same live playback surface as the full-size player, resized and repositioned rather than handed to a second player, because moving playback between two surfaces restarts it. A Mini Player is earned rather than automatic: a video that never actually played does not get one, nor does a video that already ran to its end, nor one whose playback is being driven by a cast receiver. While an in-app sheet is presented over it, it is hidden rather than torn down, so the video keeps playing behind the sheet and returns when the sheet closes. The viewer can move it between screen corners and dismiss it; dismissing ends the playback session rather than merely hiding the window.
 
 Shrinking into the window and growing back out of it are one reversible motion, not two independent animations: a transition interrupted part-way turns around from where it currently is rather than restarting from either end, so the video never jumps. Because the same surface is being moved rather than replaced, the window is only ever as correct as the transition's own bookkeeping — a transition that ends without restoring the surface to its resting state leaves the window drawn but empty.
+
+### Picture-in-Picture Handoff
+
+The state in which the operating system's own floating window carries the app's playback after the app has left the foreground, so a video keeps playing outside the app entirely. Distinct from the Mini Player, which the app draws and owns inside its own navigation.
+
+The handoff and the app's departure are not simultaneous, and which comes first is platform-dependent: one platform reports the app backgrounded before the window announces itself, the other completes the handoff before the app is reported backgrounded at all. So a decision that depends on "the window took over" has to be made when the window announces itself; asked at the moment the app is reported backgrounded, the answer is right on one platform and wrong on the other. Because the app cannot know in advance that a handoff is coming, it stops playback on leaving as it would for any other departure, and the window's announcement is what undoes that stop; suppressing the stop in anticipation instead would leave a viewer who has the platform feature switched off playing audio indefinitely.
+
+Closing the window ends playback, while expanding it returns the same playback to the app. Both raise the same signal from the window, so they are told apart by what follows rather than by the signal itself, and a video the viewer paused inside the window stays paused through either. Only a surface armed for automatic entry can be handed off, and a video that was not playing is never handed off at all.
 
 ## Offline downloads
 

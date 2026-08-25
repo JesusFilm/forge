@@ -10,7 +10,11 @@ import {
 } from "react-native"
 import Ionicons from "@expo/vector-icons/Ionicons"
 import MaterialIcons from "@expo/vector-icons/MaterialIcons"
-import { VideoAirPlayButton, type VideoPlayer } from "expo-video"
+import {
+  VideoAirPlayButton,
+  type VideoPlayer,
+  type VideoPlayerStatus,
+} from "expo-video"
 import { useEvent } from "expo"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 
@@ -22,15 +26,22 @@ import {
   hexToRgba,
 } from "../../lib/color"
 import { useTypography } from "../../hooks/useTypography"
+import { NativeCastButton } from "../../lib/cast/NativeCastButton"
 import { applySkip } from "../../lib/scrubber"
 import type { PlaybackTarget } from "../../lib/playbackTarget"
+import {
+  playPressAction,
+  type PlayPressAction,
+} from "../../lib/playPressAction"
+import { playerCenterControl } from "../../lib/playerCenterControl"
 import { SKIP_SECONDS } from "../../lib/tapSeek"
 import { PlatformBlur } from "../ui/PlatformBlur"
 import { Scrubber } from "./Scrubber"
 
 /** Cast button state (R1/R2) — derived by VideoPlayer, rendered here. */
 export type PlayerControlsCastUi = {
-  /** R2: at least one Cast device is reachable — the button hides otherwise. */
+  /** R2: at least one Cast device is reachable. iOS hides the button when false;
+   *  Android ignores it, because the underlying state is untrustworthy there. */
   available: boolean
   /** True during a session — flips the glyph to its connected variant. */
   connected: boolean
@@ -57,6 +68,13 @@ type PlayerControlsProps = {
   /** KTD4: non-null while a cast session is remote-controlling — the
    *  transport reads and writes this target, never the local player. */
   castTarget?: PlaybackTarget | null
+  /** Rebuilds the source after a terminal `error` status. Without it a play
+   *  press on a failed stream is silently dropped (todos/024). */
+  onRecover?: () => void
+  /** False when the device has no usable connection. Threaded from the host so
+   *  this component stays free of the native network module — every suite that
+   *  renders the transport would otherwise have to mock it. */
+  isOnline?: boolean
 }
 
 // Side inset for the bar's text and icons. The inline seek bar cancels it so
@@ -103,8 +121,21 @@ export function RouteButtons({
   externalPlaybackActive?: boolean
   castUi?: PlayerControlsCastUi | null
 }) {
+  // Android renders the SDK's own button because only a native, attached
+  // MediaRouteButton can open the Android dialog — see NativeCastButton. iOS
+  // presents the dialog from the context, so it keeps the app-drawn glyph.
   const castButton =
-    castUi != null && castUi.available ? (
+    castUi == null ? null : Platform.OS === "android" ? (
+      // Deliberately NOT gated on `available`: getCastState() was measured
+      // reporting noDevicesAvailable with devices already discovered, so the
+      // gate never opens. mediarouter 1.8's button never self-hides.
+      <Frosted style={styles.iconButton}>
+        <NativeCastButton
+          accessibilityLabel={castUi.label}
+          tintColor={TEXT_ON_OVERLAY}
+        />
+      </Frosted>
+    ) : castUi.available ? (
       <Pressable
         onPress={() => {
           onInteract?.()
@@ -158,6 +189,8 @@ export function PlayerControls({
   externalPlaybackActive = false,
   castUi = null,
   castTarget = null,
+  onRecover,
+  isOnline = true,
 }: PlayerControlsProps) {
   const typography = useTypography()
   const insets = useSafeAreaInsets()
@@ -171,18 +204,46 @@ export function PlayerControls({
   // reads the live value without re-subscribing.
   const scrubbingRef = useRef(false)
 
+  // Guarded like the status read below, and for the same reason — but this is
+  // the FIRST touch of the player in the render, so an unguarded throw here
+  // takes the whole chrome down before either of the other guards can run.
+  let seedPlaying = false
+  try {
+    seedPlaying = player.playing
+  } catch {
+    // Player already released; not-playing is the safe seed.
+  }
   const { isPlaying } = useEvent(player, "playingChange", {
-    isPlaying: player.playing,
+    isPlaying: seedPlaying,
   })
 
   // KTD4 remote mode: while a session is active, every transport read and
   // write goes to the cast target; the local player stays paused untouched.
   const remote = castTarget
   const remoteMode = remote != null
+  // A cast session plays on the receiver, which has its own connection — the
+  // local device being offline says nothing about it.
+  const online = remote != null || isOnline
+
   const remoteTime = remote?.currentTime
   const remoteDuration = remote?.duration
   const effectiveIsPlaying = remote != null ? remote.isPlaying : isPlaying
   const effectiveEnded = remote != null ? remote.ended : ended
+
+  // Reading status live rather than from a snapshot, for the same reason the
+  // press handler does: a swap can change it without emitting playingChange.
+  let playerStatus: VideoPlayerStatus | "" = ""
+  try {
+    playerStatus = player.status
+  } catch {
+    // Player already released; the normal controls are the safe fallback.
+  }
+  const centerControl = playerCenterControl({
+    playing: effectiveIsPlaying,
+    ended: effectiveEnded,
+    status: playerStatus,
+    online,
+  })
 
   useEffect(() => {
     // remoteMode gate: the session's pause can lag playingChange, and a poll
@@ -191,8 +252,12 @@ export function PlayerControls({
       intervalRef.current = setInterval(() => {
         // Don't let the poll fight the finger while scrubbing (R8).
         if (scrubbingRef.current) return
-        setCurrentTime(player.currentTime)
-        setDuration(player.duration)
+        try {
+          setCurrentTime(player.currentTime)
+          setDuration(player.duration)
+        } catch {
+          // Player released between ticks; keep the last displayed time.
+        }
       }, 500)
     } else {
       if (intervalRef.current) {
@@ -211,17 +276,28 @@ export function PlayerControls({
   useEffect(() => {
     if (!seekSignal) return
     setCurrentTime(seekSignal.time)
-    if (seekSignal.time < player.duration - 0.5) setEnded(false)
+    try {
+      if (seekSignal.time < player.duration - 0.5) setEnded(false)
+    } catch {
+      // Player already released; leave the ended state as it stands.
+    }
   }, [seekSignal, player])
 
   // Mark ended on playToEnd (the reliable end signal — the time poll stops
   // before the last frame, so currentTime alone can't detect it). Resuming
   // playback clears it.
   useEffect(() => {
-    const sub = player.addListener("playToEnd", () => setEnded(true))
+    let sub: { remove: () => void } | null = null
+    try {
+      sub = player.addListener("playToEnd", () => setEnded(true))
+    } catch {
+      // Player already released; there is no end event left to hear.
+      return
+    }
+    const attached = sub
     return () => {
       try {
-        sub.remove()
+        attached.remove()
       } catch {
         // player already released
       }
@@ -235,13 +311,17 @@ export function PlayerControls({
   // without this, re-showing resets to 0:00/play, losing a paused or ended
   // video's position and replay state (poll only runs while playing).
   useEffect(() => {
-    // HLS duration may be 0 here, so the time/ended seed stays guarded.
-    const d = player.duration
-    if (!Number.isFinite(d) || d <= 0) return
-    const t = player.currentTime
-    setCurrentTime(t)
-    setDuration(d)
-    setEnded(!player.playing && t >= d - 0.5)
+    try {
+      // HLS duration may be 0 here, so the time/ended seed stays guarded.
+      const d = player.duration
+      if (!Number.isFinite(d) || d <= 0) return
+      const t = player.currentTime
+      setCurrentTime(t)
+      setDuration(d)
+      setEnded(!player.playing && t >= d - 0.5)
+    } catch {
+      // Player already released; the chrome keeps its current seed.
+    }
   }, [player])
 
   // Remote mode: adopt the receiver's ~1s status as truth, except while the
@@ -270,19 +350,34 @@ export function PlayerControls({
     // Read live player state, NOT the React `isPlaying` snapshot: a source swap
     // (e.g. mid-play language switch) can pause expo-video without a
     // playingChange, so the stale-true snapshot would wedge controls until remount.
-    if (player.playing) {
+    let action: PlayPressAction
+    try {
+      action = playPressAction({
+        playing: player.playing,
+        status: player.status,
+        duration: player.duration,
+        currentTime: player.currentTime,
+      })
+    } catch {
+      return // Player already released.
+    }
+
+    if (action === "pause") {
       player.pause()
       return
     }
-    // Replay from the start if the video has reached the end — otherwise
-    // play() is a no-op on a finished video and nothing happens.
-    const dur = player.duration
-    if (Number.isFinite(dur) && dur > 0 && player.currentTime >= dur - 0.5) {
+    // play() is a no-op on an errored player, so without this the button reads
+    // as dead after a dropout (todos/024). Recovery re-applies the source.
+    if (action === "recover") {
+      onRecover?.()
+      return
+    }
+    if (action === "replay") {
       player.currentTime = 0
       setCurrentTime(0)
     }
     player.play()
-  }, [player, onInteract, remote])
+  }, [player, onInteract, remote, onRecover])
 
   const skip = useCallback(
     (delta: number) => {
@@ -426,34 +521,56 @@ export function PlayerControls({
           </Frosted>
         </Pressable>
 
-        <Pressable
-          onPress={togglePlayPause}
-          accessibilityRole="button"
-          accessibilityLabel={
-            effectiveEnded ? "Replay" : effectiveIsPlaying ? "Pause" : "Play"
-          }
-        >
-          <Frosted style={styles.playButton}>
-            <Ionicons
-              name={
-                effectiveEnded
-                  ? "reload"
-                  : effectiveIsPlaying
-                    ? "pause"
-                    : "play"
-              }
-              size={24}
-              color={TEXT_ON_OVERLAY}
-              // Ionicons' style prop takes a single object, not an array.
-              style={StyleSheet.flatten([
-                styles.centerIcon,
-                !effectiveEnded && !effectiveIsPlaying
-                  ? styles.playGlyphNudge
-                  : null,
-              ])}
-            />
-          </Frosted>
-        </Pressable>
+        {centerControl === "offline" ? (
+          // Not a button: while the device is offline there is nothing a press
+          // could achieve, and a play glyph over a failed stream both hides the
+          // reason and offers a retry that cannot succeed. It becomes the play
+          // control again the moment the connection returns.
+          <View
+            accessibilityRole="image"
+            accessibilityLabel="No connection. The video cannot play."
+          >
+            <Frosted style={styles.playButton}>
+              <MaterialIcons
+                name="wifi-off"
+                size={24}
+                color={TEXT_ON_OVERLAY}
+                style={styles.centerIcon}
+              />
+            </Frosted>
+          </View>
+        ) : (
+          <Pressable
+            onPress={togglePlayPause}
+            accessibilityRole="button"
+            accessibilityLabel={
+              centerControl === "replay"
+                ? "Replay"
+                : centerControl === "pause"
+                  ? "Pause"
+                  : "Play"
+            }
+          >
+            <Frosted style={styles.playButton}>
+              <Ionicons
+                name={
+                  centerControl === "replay"
+                    ? "reload"
+                    : centerControl === "pause"
+                      ? "pause"
+                      : "play"
+                }
+                size={24}
+                color={TEXT_ON_OVERLAY}
+                // Ionicons' style prop takes a single object, not an array.
+                style={StyleSheet.flatten([
+                  styles.centerIcon,
+                  centerControl === "play" ? styles.playGlyphNudge : null,
+                ])}
+              />
+            </Frosted>
+          </Pressable>
+        )}
 
         <Pressable
           onPress={() => skip(SKIP_SECONDS)}

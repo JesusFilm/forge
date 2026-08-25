@@ -57,6 +57,14 @@ const INTENDED_PUBLIC_RESOLVERS = [
   "countries",
   "keywords",
   "watchSetting",
+  // Anonymous sticker voting on web's /watch/whats-new. Deliberately public:
+  // the page has no login, so requiring one would cost the signal the votes
+  // exist to collect. The abuse story is the per-IP mutation rate limit plus
+  // the service's per-ballot budget — not the auth scope. Writes validate
+  // every id server-side and refuse rather than throw.
+  "whatsNewFeatureVoteTallies",
+  "castWhatsNewFeatureVote",
+  "retractWhatsNewFeatureVote",
 ] as const
 
 function readAllTypeSources(): string {

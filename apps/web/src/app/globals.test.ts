@@ -55,6 +55,20 @@ describe("scroll-driven timeline choreography", () => {
     expect(slide).not.toContain("opacity")
   })
 
+  it("never transforms a grid tile, only fades it", () => {
+    // A cell's side rules are drawn by its NEIGHBOUR, so a cell that
+    // translates or scales slides out from under a rule that has not
+    // moved and opens a visible strip. Pointing this back at
+    // `watch-scroll-rise` — the obvious thing to reach for, and what it
+    // used to use — reopens a 6.47px gap.
+    const tile = blockBody(guard, ".watch-scroll-card {")
+    expect(tile).toContain("watch-scroll-tile-in")
+    expect(tile).not.toContain("watch-scroll-rise")
+    expect(blockBody(css, "@keyframes watch-scroll-tile-in")).not.toContain(
+      "transform",
+    )
+  })
+
   it("attaches every choreographed class to the view timeline", () => {
     // Anti-vacuous companion: a class sitting inside the guard with no
     // `animation-timeline` would satisfy the check above while animating
@@ -109,6 +123,53 @@ describe("scroll-driven timeline choreography", () => {
     expect(base).toBeGreaterThan(-1)
     expect(override).toBeGreaterThan(-1)
     expect(override).toBeGreaterThan(base)
+  })
+
+  it("grows the fanned hand about its own centre, past its laid-out size", () => {
+    // The growth is on the LIST, not on the cards: per-card growth costs
+    // copy clearance proportional to card width (measured 16px -> -12px at
+    // 1920), and scaling the list multiplies the gaps along with the cards.
+    // Its origin is the list's centre, because the fan's pivot sits 190%
+    // below each card and would lift the whole group out of its slot.
+    const fan = blockBody(guard, ".watch-scroll-fan {")
+    const hand = blockBody(guard, ".watch-scroll-fan-hand {")
+    const lift = blockBody(css, "@keyframes watch-fan-lift")
+
+    expect(fan).toContain("transform-origin: 50% 190%")
+    expect(hand).toContain("transform-origin: 50% 50%")
+    expect(hand).toContain("animation-timeline: view()")
+    // Both halves of one motion must finish together.
+    const range = /animation-range:([^;]+);/
+    expect(hand.match(range)?.[1]).toBe(fan.match(range)?.[1])
+    // The hand ends LARGER than it starts — that is the whole effect.
+    const from = Number(lift.match(/from\s*\{\s*scale:\s*([\d.]+)/)?.[1])
+    const to = Number(
+      lift.match(/to\s*\{\s*scale:\s*var\(--fan-scale-end,\s*([\d.]+)/)?.[1],
+    )
+    expect(from).toBe(1)
+    expect(to).toBeGreaterThan(1)
+    // Measured ceiling: at 1.15 the grown hand reaches -2px at a 1920
+    // viewport, i.e. the outer card is clipped by the page's `overflow-x`.
+    expect(to).toBeLessThanOrEqual(1.12)
+  })
+
+  it("keeps the sticker pile larger than a stuck sticker", () => {
+    // The pile is what you pick FROM, so it has to read as bigger than the
+    // same sticker already spent on a card. Both ends derive from these two
+    // numbers (see WhatsNewFeatureVote); a scale of 1 or less makes the pile
+    // vanish into the board it feeds, and the class-level test in that
+    // component's suite cannot see the value.
+    const root = blockBody(css, ":root {")
+    const stuck = root.match(/--watch-sticker-stuck:\s*([\d.]+)rem/)?.[1]
+    const scale = Number(
+      root.match(/--watch-sticker-pile-scale:\s*([\d.]+)/)?.[1],
+    )
+
+    expect(stuck).toBeDefined()
+    expect(scale).toBeGreaterThan(1)
+    // And not so far above it that the pile stops being a pile: at 6x it
+    // was competing with the cards it sits under.
+    expect(scale).toBeLessThanOrEqual(1.5)
   })
 
   it("never clips the stage, which would shear the full-bleed card", () => {
@@ -283,37 +344,44 @@ describe("scroll-driven timeline choreography", () => {
     expect(rule).toContain("100vw")
   })
 
-  it("draws each grain tile at the size its noise was authored for", () => {
+  it("draws every grain tile at the size its noise was authored for", () => {
     // MEASURED. `baseFrequency` is per user unit, so rendering an N-unit
     // noise field into a box that is not N pixels scales the grain with the
-    // box. The old `fine` layer asked for a 160-unit field at 74px and got
-    // 0.5px blobs, which average to flat grey — a layer that cost paint and
-    // contributed nothing. Authored size and background-size must match.
-    const declared = (name: string) =>
+    // box. A 512-unit field drawn at 148px comes out as 0.3px blobs and
+    // averages to flat grey — a layer that costs paint and shows nothing.
+    //
+    // Scanned over EVERY rule that references a grain field, not the two
+    // this started with. A merge added a third consumer at a size that
+    // matched the field it was written against, and enlarging the shared
+    // field silently broke it; a guard naming only the rules it knew about
+    // could not have noticed.
+    const authored = (suffix: string) =>
       Number(
         css.match(
-          new RegExp(`--watch-grain-image${name}:[^;]*width='(\\d+)'`),
+          new RegExp(`--watch-grain-image${suffix}:[^;]*width='(\\d+)'`),
         )?.[1],
       )
-    const drawn = (selector: string) =>
-      Number(blockBody(css, selector).match(/background-size:\s*(\d+)px/)?.[1])
 
-    // Both halves: the size the rule draws at, AND that it draws the image
-    // that size was authored for. Comparing only the numbers lets the fine
-    // layer be repointed at the coarse image — which IS the mush bug, and
-    // left this test green when it was tried.
-    for (const [selector, suffix] of [
-      [".watch-grain {", ""],
-      [".watch-grain-fine {", "-fine"],
-    ] as const) {
-      const rule = blockBody(css, selector)
-      expect(rule, selector).toContain(
-        `background-image: var(--watch-grain-image${suffix})`,
-      )
-      expect(drawn(selector), selector).toBe(declared(suffix))
+    const consumers = [
+      ...css.matchAll(
+        /\.([\w-]+)\s*\{([^}]*background-image:\s*var\(--watch-grain-image(-fine)?\)[^}]*)\}/g,
+      ),
+    ].map((m) => ({
+      name: m[1],
+      drawn: Number(m[2].match(/background-size:\s*(\d+)px/)?.[1]),
+      suffix: m[3] ?? "",
+    }))
+
+    // The scan itself has to be load-bearing: if it stops matching, every
+    // assertion below passes vacuously.
+    expect(consumers.length).toBeGreaterThanOrEqual(3)
+
+    for (const { name, drawn, suffix } of consumers) {
+      expect(drawn, `.${name} background-size`).toBe(authored(suffix))
     }
-    // …and the two images are genuinely different fields, not one size twice.
-    expect(declared("")).not.toBe(declared("-fine"))
+
+    // …and the two fields are genuinely different, not one size twice.
+    expect(authored("")).not.toBe(authored("-fine"))
   })
 
   it("keeps the two grain tiles from repeating in step", () => {
@@ -414,5 +482,44 @@ describe("scroll-driven timeline choreography", () => {
     expect(a % b === 0 || b % a === 0).toBe(false)
     // …and slow enough to read as grain, not static.
     for (const period of periods) expect(period).toBeGreaterThan(1200)
+  })
+})
+
+describe("improvement colour band", () => {
+  const band = blockBody(css, ".whats-new-tint-band")
+
+  it("layers radials over a base so no corner is left bald", () => {
+    expect(band).not.toBe("")
+    const radials = band.match(/radial-gradient\(/g) ?? []
+    expect(radials.length).toBeGreaterThanOrEqual(3)
+    // The base is what the radials sit on; without it their falloff leaves
+    // the cell corners transparent and the band reads as three blobs.
+    expect(band).toContain("linear-gradient(")
+  })
+
+  it("ends on a slanted fade, prefixed for older Safari", () => {
+    // A level fade is what anyone would reach for by default; the slant is
+    // the point. `to bottom`, or a bare 180deg, means the tilt was lost.
+    const angle = band.match(/[^-]mask-image:\s*linear-gradient\(\s*(\d+)deg/)
+    expect(angle).not.toBeNull()
+    const deg = Number(angle![1])
+    expect(deg).not.toBe(180)
+    // Past 180deg tilts the fade so the RIGHT side ends lower; under 180
+    // mirrors it, which is the direction this was deliberately moved away
+    // from and is otherwise a silent one-character flip.
+    expect(deg).toBeGreaterThan(180)
+    expect(deg).toBeLessThanOrEqual(200)
+    // Both spellings, or Safari < 15.4 drops the mask and shows a hard cut.
+    expect(band).toContain("-webkit-mask-image:")
+  })
+
+  it("drives every layer from the per-cell tint properties", () => {
+    // Hard-coding a colour here would paint all five cells identically
+    // while the cells still carry five different tints.
+    expect(band).toContain("var(--tint-from)")
+    expect(band).toContain("var(--tint-to)")
+    // #0c0a09 is the page base the mixes fall back to; any OTHER literal
+    // hex is a colour that ignores the cell's tint.
+    expect(band).not.toMatch(/#(?!0c0a09\b)[0-9a-f]{6}/i)
   })
 })

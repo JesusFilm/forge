@@ -121,4 +121,23 @@ describe("WatchModalViewportCloseButton", () => {
       fullscreenContainer.querySelector('[data-testid="watch-modal-close"]'),
     ).not.toBeNull()
   })
+
+  it("can remain inside an accessible dialog surface", () => {
+    act(() => {
+      root.render(
+        <div data-testid="dialog-surface">
+          <WatchModalViewportCloseButton
+            open
+            onClose={vi.fn()}
+            testId="watch-modal-close"
+            renderInline
+          />
+        </div>,
+      )
+    })
+
+    const surface = container.querySelector('[data-testid="dialog-surface"]')
+    const close = container.querySelector('[data-testid="watch-modal-close"]')
+    expect(surface?.contains(close)).toBe(true)
+  })
 })

@@ -23,6 +23,8 @@ import { WhatsNewFeatureVote } from "@/components/whats-new/WhatsNewFeatureVote"
 import { WhatsNewFormatDiagram } from "@/components/whats-new/WhatsNewFormatDiagram"
 import { WhatsNewAudienceQuiz } from "@/components/whats-new/WhatsNewAudienceQuiz"
 import { WhatsNewIceberg } from "@/components/whats-new/WhatsNewIceberg"
+import { WhatsNewNoteBoard } from "@/components/whats-new/WhatsNewNoteBoard"
+import { WhatsNewShot } from "@/components/whats-new/WhatsNewShot"
 import { WhatsNewLanguageSwitcher } from "@/components/whats-new/WhatsNewLanguageSwitcher"
 import { WhatsNewSelfId } from "@/components/whats-new/WhatsNewSelfId"
 import {
@@ -57,6 +59,19 @@ const BODY_CLASS = "text-base leading-8 text-white/76 sm:text-lg sm:leading-9"
 // `src/components/sections/Text.tsx`.
 const HAIRLINE_LIST_CLASS =
   "grid list-none gap-3 text-base leading-7 text-white/78 sm:text-lg [&>li]:relative [&>li]:pl-5 [&>li]:before:absolute [&>li]:before:top-[0.78em] [&>li]:before:left-0 [&>li]:before:h-px [&>li]:before:w-2.5 [&>li]:before:bg-red-100/60"
+/**
+ * Card copy runs one step below the page's body scale. Five cards of
+ * long-form copy set at full section size crowds the cell and competes with
+ * the screenshot above it.
+ *
+ * Written out in full rather than appended to BODY_CLASS / HAIRLINE_LIST_CLASS:
+ * two conflicting `text-*` utilities in one class string are resolved by
+ * stylesheet order, not by which one appears last in the attribute.
+ */
+const CARD_BODY_CLASS =
+  "text-sm leading-7 text-white/76 sm:text-base sm:leading-8"
+const CARD_LIST_CLASS =
+  "grid list-none gap-2.5 text-sm leading-6 text-white/78 sm:text-base sm:leading-7 [&>li]:relative [&>li]:pl-5 [&>li]:before:absolute [&>li]:before:top-[0.78em] [&>li]:before:left-0 [&>li]:before:h-px [&>li]:before:w-2.5 [&>li]:before:bg-red-100/60"
 const SECONDARY_CTA_CLASS =
   "inline-flex h-12 cursor-pointer items-center justify-center gap-2 rounded-full border border-white/25 bg-white/5 px-7 text-sm font-bold tracking-wider text-white uppercase backdrop-blur-sm transition-colors duration-200 hover:border-white/50 hover:bg-white/12 focus-visible:outline-2 focus-visible:outline-white focus-visible:outline-offset-4 sm:px-9"
 const HERO_GRADIENT_CLASS =
@@ -80,6 +95,36 @@ const ICONS: Record<WhatsNewIconKey, LucideIcon> = {
 
 /** Resolved once: the delivery band renders exactly one icon. */
 const DeliveryIcon = ICONS[WHATS_NEW_DELIVERY.icon]
+
+/**
+ * Where each improvement sits on the two-column grid.
+ *
+ * A featured card takes a whole row, so it both closes the row it lands on
+ * and starts the next one — index parity would put the divider on the wrong
+ * cards. `column` drives the vertical rule; `row` lets the final row drop
+ * its own bottom rule and hand the foot of the frame back to the container,
+ * which is what keeps the rounded corners unbroken.
+ */
+const IMPROVEMENT_PLACEMENTS = WHATS_NEW_IMPROVEMENTS.reduce<
+  { column: number; row: number }[]
+>((placed, item) => {
+  const previous = placed.at(-1)
+  const after = previous
+    ? previous.column === 1 ||
+      WHATS_NEW_IMPROVEMENTS[placed.length - 1].featured
+      ? { column: 0, row: previous.row + 1 }
+      : { column: previous.column + 1, row: previous.row }
+    : { column: 0, row: 0 }
+
+  // A featured card cannot share a row, so it drops to the next one.
+  return [
+    ...placed,
+    item.featured && after.column !== 0
+      ? { column: 0, row: after.row + 1 }
+      : after,
+  ]
+}, [])
+const IMPROVEMENT_LAST_ROW = IMPROVEMENT_PLACEMENTS.at(-1)?.row ?? 0
 
 /**
  * Repeating grain used across Watch's promotional surfaces. Already shipped
@@ -158,21 +203,21 @@ function ImprovementBody({
   item: (typeof WHATS_NEW_IMPROVEMENTS)[number]
 }) {
   return (
-    <div className="min-w-0 space-y-5">
+    <div className="min-w-0 space-y-4">
       {item.paragraphs.map((paragraph) => (
-        <p key={paragraph} className={BODY_CLASS}>
+        <p key={paragraph} className={CARD_BODY_CLASS}>
           {paragraph}
         </p>
       ))}
       {item.points.length > 0 && (
-        <ul className={`pt-1 ${HAIRLINE_LIST_CLASS}`}>
+        <ul className={`pt-1 ${CARD_LIST_CLASS}`}>
           {item.points.map((point) => (
             <li key={point}>{point}</li>
           ))}
         </ul>
       )}
       {"closing" in item && item.closing ? (
-        <p className={`pt-1 ${BODY_CLASS}`}>{item.closing}</p>
+        <p className={`pt-1 ${CARD_BODY_CLASS}`}>{item.closing}</p>
       ) : null}
     </div>
   )
@@ -576,7 +621,14 @@ export function WatchWhatsNewPage({
                 the audiences are weighted the way they are. */}
             <WhatsNewAudienceQuiz />
 
-            <ul className="mt-12 grid gap-6 isolate md:grid-cols-3 lg:mt-16 lg:gap-8">
+            {/* `watch-scroll-fan-hand` grows the gathered hand as one piece.
+                Per-card growth cannot be paid for by the rem gather below:
+                its cost scales with card width, so the headings behind get
+                covered on a wide viewport. */}
+            <ul
+              data-testid="whats-new-audience-fan"
+              className="watch-scroll-fan-hand mt-12 grid gap-6 isolate md:grid-cols-3 lg:mt-16 lg:gap-8"
+            >
               {WHATS_NEW_AUDIENCES.cards.map((card, index) => {
                 const Icon = ICONS[card.icon]
                 // Outer cards swing out and drop; the middle one stays
@@ -634,7 +686,16 @@ export function WatchWhatsNewPage({
               })}
             </ul>
 
-            <p className={`mt-10 max-w-3xl ${BODY_CLASS}`}>
+            {/* Extra room from `md` up, where the fan exists and grows: the
+                gathered hand ends 12% larger than its slot, so its lowest
+                rotated corner reaches ~20px past the list box and would
+                otherwise sit on this paragraph's first line. Measured
+                clearance at `mt-10` after growth: -13px at 820, -21px at
+                1920. */}
+            <p
+              data-testid="whats-new-audience-closing"
+              className={`mt-10 max-w-3xl md:mt-16 ${BODY_CLASS}`}
+            >
               {WHATS_NEW_AUDIENCES.closing}
             </p>
 
@@ -759,69 +820,77 @@ export function WatchWhatsNewPage({
                 rules between cells. The language card spans the full row
                 because it is the one the redesign turns on — and unlike a
                 masonry column flow, this keeps the visual order 01→05 the
-                same as the DOM order. */}
-            <div className="mt-12 grid border-t border-white/10 lg:mt-16 lg:grid-cols-2">
+                same as the DOM order.
+
+                The container draws the whole rounded frame; cells draw only
+                the rules between them, so the last row skips its bottom rule
+                rather than laying a straight line across the curve.
+
+                `overflow-hidden` is load-bearing now that each cell paints a
+                gradient to its own edges — without it the corner cells fill
+                their square corners and the rounded border floats over the
+                colour. It is only safe because the last row has no bottom
+                rule for the clip to eat. */}
+            <div className="mt-12 grid overflow-hidden rounded-2xl border border-white/10 lg:mt-16 lg:grid-cols-2">
               {WHATS_NEW_IMPROVEMENTS.map((item, index) => {
-                const Icon = ICONS[item.icon]
-                const ordinal = String(index + 1).padStart(2, "0")
-                // Full-width cells reset the column walk, so the vertical
-                // divider lands on right-hand cells only.
-                const column = WHATS_NEW_IMPROVEMENTS.slice(0, index).reduce(
-                  (at, previous) => (previous.featured ? 0 : (at + 1) % 2),
-                  0,
-                )
+                const { column, row } = IMPROVEMENT_PLACEMENTS[index]
 
                 return (
                   <article
                     key={item.title}
                     data-testid="whats-new-improvement-card"
                     data-featured={item.featured ? "" : undefined}
-                    className={`watch-scroll-card relative flex flex-col border-b border-white/10 py-10 lg:py-14 ${
+                    // The tint is declared on the CELL so the band below can
+                    // inherit it, but the band is what paints — see there for
+                    // why it is not simply this element's background.
+                    style={
+                      {
+                        "--tint-from": item.tint.from,
+                        "--tint-to": item.tint.to,
+                      } as CSSProperties
+                    }
+                    className={`watch-scroll-card relative flex flex-col border-white/10 px-6 py-10 sm:px-8 lg:px-12 lg:py-14 ${
                       item.featured ? "lg:col-span-2" : ""
-                    } ${
-                      column === 1
-                        ? "lg:border-l lg:border-l-white/10 lg:pl-14"
-                        : "lg:pr-14"
+                    } ${row === IMPROVEMENT_LAST_ROW ? "" : "border-b"} ${
+                      column === 1 ? "lg:border-l lg:border-l-white/10" : ""
                     }`}
                   >
-                    <div
-                      className={`relative overflow-hidden rounded-xl border border-white/10 bg-stone-950 ${
-                        item.featured ? "aspect-[21/7]" : "aspect-[16/9]"
-                      }`}
-                    >
-                      <Image
-                        src={item.shot.src}
-                        alt={item.shot.alt}
-                        width={2880}
-                        height={1514}
-                        quality={94}
-                        sizes={
-                          item.featured
-                            ? "(min-width: 1024px) 76vw, 92vw"
-                            : "(min-width: 1024px) 38vw, 92vw"
-                        }
-                        className="absolute inset-0 h-full w-full object-cover object-top"
-                      />
-                      {/* Settles the shot into the cell rather than ending
-                          on a hard crop line. */}
-                      <span
+                    <div className="relative">
+                      {/* The colour band, sized off the SHOT rather than the
+                          cell: negative insets cancel the cell's padding so
+                          it still bleeds to three cell edges, but it stops
+                          just below the clip instead of running the full
+                          height. Each inset mirrors a padding step above —
+                          change one and the band stops reaching that edge.
+
+                          The layered radials and the slanted foot mask are
+                          in globals.css under `.whats-new-tint-band`; only
+                          the two stops are set here, on the cell, so they
+                          inherit. */}
+                      <div
                         aria-hidden
-                        className="pointer-events-none absolute inset-x-0 bottom-0 h-1/4 bg-gradient-to-t from-stone-950 to-transparent"
+                        data-testid="whats-new-tint-band"
+                        // `isolate` is what keeps the grain honest: the
+                        // overlay blends with `mix-blend-multiply`, and
+                        // without a stacking context here it would multiply
+                        // against the page behind the band rather than
+                        // against the band's own colour.
+                        //
+                        // A div rather than a span because it now has a
+                        // block child; the mask above applies to children
+                        // too, so the grain fades out with the colour.
+                        className="whats-new-tint-band pointer-events-none absolute isolate -top-10 -right-6 -bottom-4 -left-6 sm:-right-8 sm:-left-8 lg:-top-14 lg:-right-12 lg:-bottom-5 lg:-left-12"
+                      >
+                        <NoiseOverlay />
+                      </div>
+                      <WhatsNewShot
+                        shot={item.shot}
+                        clip={item.clip}
+                        featured={item.featured}
                       />
                     </div>
 
-                    <div className="mt-8 flex items-center gap-4">
-                      <span className="text-[0.6875rem] font-semibold tracking-[0.28em] text-red-100/60 tabular-nums">
-                        {ordinal}
-                      </span>
-                      <span aria-hidden className="h-px flex-1 bg-white/12" />
-                      <Icon
-                        aria-hidden
-                        className="size-5 text-white opacity-45"
-                      />
-                    </div>
-
-                    <h3 className="mt-5 text-xl leading-snug font-semibold tracking-[-0.01em] text-balance text-white sm:text-2xl">
+                    <h3 className="mt-8 text-lg leading-snug font-semibold tracking-[-0.01em] text-balance text-white sm:text-xl">
                       {item.title}
                     </h3>
 
@@ -1058,9 +1127,11 @@ export function WatchWhatsNewPage({
             </div>
           </div>
         </section>
-        {/* The two blocks that ask the reader for something close the page,
-            on one white shelf that hands off to the white footer instead of
-            ending on another dark section. */}
+        {/* The three blocks that ask the reader for something close the
+            page. The cork band steps the page from the dark sections down
+            to the white shelf the vote and the FAQ share, which hands off
+            to the white footer instead of ending on another dark section. */}
+        <WhatsNewNoteBoard contentClass={WATCH_PAGE_CONTENT_CLASSES} />
         <WhatsNewFeatureVote contentClass={WATCH_PAGE_CONTENT_CLASSES} />
         <WhatsNewFaq contentClass={WATCH_PAGE_CONTENT_CLASSES} />
       </main>

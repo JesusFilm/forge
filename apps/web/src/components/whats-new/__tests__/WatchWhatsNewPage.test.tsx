@@ -726,7 +726,9 @@ describe("WatchWhatsNewPage", () => {
     }
   })
 
-  it("keeps the improvements numbered in source order", () => {
+  it("keeps the improvements in source order", () => {
+    // The grid places a featured card on its own row, so DOM order is what
+    // holds the reading order to the order the copy was written in.
     const cards = [
       ...container.querySelectorAll(
         '[data-testid="whats-new-improvement-card"]',
@@ -736,15 +738,26 @@ describe("WatchWhatsNewPage", () => {
     expect(cards.map((card) => card.querySelector("h3")?.textContent)).toEqual(
       WHATS_NEW_IMPROVEMENTS.map((item) => item.title),
     )
-    expect(
-      cards.map(
-        (card) =>
-          card.querySelector("span.tabular-nums")?.textContent ??
-          [...card.querySelectorAll("span")]
-            .map((s) => s.textContent)
-            .find((t) => /^0\d$/.test(t ?? "")),
+  })
+
+  it("leaves the improvement cards free of meta chrome", () => {
+    // Shot, title, copy — nothing between the screenshot and the heading.
+    // An ordinal, rule, or icon reintroduced here is what this catches.
+    const cards = [
+      ...container.querySelectorAll(
+        '[data-testid="whats-new-improvement-card"]',
       ),
-    ).toEqual(["01", "02", "03", "04", "05"])
+    ]
+
+    expect(cards).not.toHaveLength(0)
+    for (const card of cards) {
+      expect(card.querySelector("svg")).toBeNull()
+      expect(card.textContent).not.toMatch(/\b0\d\b/)
+      const heading = card.querySelector("h3")
+      expect(
+        heading?.previousElementSibling?.querySelector("img"),
+      ).not.toBeNull()
+    }
   })
 
   it("puts the divider only on right-hand cells", () => {
@@ -759,6 +772,111 @@ describe("WatchWhatsNewPage", () => {
 
     expect(dividers).toEqual([false, true, false, false, true])
     expect(cards[2].className).toContain("lg:col-span-2")
+  })
+
+  it("gives each improvement a distinct colour band bled to the cell edges", () => {
+    // The tint is declared on the cell (so it inherits) but painted by a
+    // band sized off the shot. Distinct per card is the point — the Set
+    // check is what a single-colour regression trips on.
+    const cells = [
+      ...container.querySelectorAll<HTMLElement>(
+        '[data-testid="whats-new-improvement-card"]',
+      ),
+    ]
+
+    expect(cells).toHaveLength(WHATS_NEW_IMPROVEMENTS.length)
+    const pairs = cells.map(
+      (cell) =>
+        `${cell.style.getPropertyValue("--tint-from")}->${cell.style.getPropertyValue("--tint-to")}`,
+    )
+    expect(pairs).toEqual(
+      WHATS_NEW_IMPROVEMENTS.map(
+        (item) => `${item.tint.from}->${item.tint.to}`,
+      ),
+    )
+    expect(new Set(pairs).size).toBe(cells.length)
+
+    for (const cell of cells) {
+      const band = cell.querySelector<HTMLElement>(
+        '[data-testid="whats-new-tint-band"]',
+      )
+      expect(band).not.toBeNull()
+      // The radials live in globals.css keyed on this class name; a rename
+      // on either side leaves a band with insets, a mask, and no colour.
+      expect(band!.className).toContain("whats-new-tint-band")
+      // Every negative inset cancels one of the cell's padding steps; drop
+      // one and the band stops short of that edge at that breakpoint.
+      for (const inset of [
+        "-top-10",
+        "-right-6",
+        "-left-6",
+        "sm:-right-8",
+        "sm:-left-8",
+        "lg:-top-14",
+        "lg:-right-12",
+        "lg:-left-12",
+      ]) {
+        expect(band!.className, inset).toContain(inset)
+      }
+    }
+  })
+
+  it("grains every colour band with the shared overlay", () => {
+    // The same cached overlay.svg the hero and the Watch sections already
+    // use, not a second noise asset. `isolate` on the band is load-bearing:
+    // the overlay multiplies, so without a stacking context it darkens the
+    // page behind the band instead of the band's own colour.
+    const bands = [
+      ...container.querySelectorAll<HTMLElement>(
+        '[data-testid="whats-new-tint-band"]',
+      ),
+    ]
+
+    expect(bands).toHaveLength(WHATS_NEW_IMPROVEMENTS.length)
+    for (const band of bands) {
+      expect(band.className).toMatch(/(^|\s)isolate(\s|$)/)
+      const grain = band.firstElementChild
+      expect(grain?.className).toContain("overlay.svg")
+      expect(grain?.className).toContain("mix-blend-multiply")
+    }
+  })
+
+  it("stops the colour band above the copy", () => {
+    // The whole point of sizing the band off the shot: it must not sit
+    // behind the heading or body text. Put it back on the cell and the
+    // copy is inside the coloured element again.
+    for (const cell of container.querySelectorAll(
+      '[data-testid="whats-new-improvement-card"]',
+    )) {
+      const band = cell.querySelector('[data-testid="whats-new-tint-band"]')!
+      const wrapper = band.parentElement!
+
+      expect(wrapper.contains(cell.querySelector("h3"))).toBe(false)
+      expect(wrapper.contains(cell.querySelector("p"))).toBe(false)
+      // Containment alone is not enough, and jsdom has no layout to check:
+      // the band is absolutely positioned, so what actually bounds it is
+      // its nearest POSITIONED ancestor. Drop `relative` here (or make the
+      // wrapper `display:contents`, which generates no box at all) and the
+      // band resolves against the cell again and covers the copy, with
+      // every containment assertion above still green.
+      expect(wrapper.className).toMatch(/(^|\s)relative(\s|$)/)
+      expect(wrapper.className).not.toMatch(/(^|\s)contents(\s|$)/)
+      expect(
+        wrapper.querySelector('[data-testid="whats-new-shot-frame"]'),
+      ).not.toBeNull()
+    }
+  })
+
+  it("clips the grid so a corner cell cannot square off the rounded frame", () => {
+    // Each cell paints to its own edges now, so without this the two corner
+    // cells fill their square corners and the rounded border floats over
+    // the colour.
+    const grid = container.querySelector<HTMLElement>(
+      '[data-testid="whats-new-improvement-card"]',
+    )!.parentElement!
+
+    expect(grid.className).toMatch(/\brounded-2xl\b/)
+    expect(grid.className).toMatch(/\boverflow-hidden\b/)
   })
 
   it("singles out the language card among the plain ones", () => {
@@ -858,6 +976,45 @@ describe("WatchWhatsNewPage", () => {
     }
   })
 
+  it("grows the gathered hand as one piece, not card by card", () => {
+    // Per-card growth costs clearance proportional to CARD WIDTH — the
+    // card's edge advances over its neighbour's copy while that copy is
+    // pulled the other way — so no fixed rem gather can pay for it. At 1.12
+    // the measured copy clearance at 1920 went from 16px to -12px: struck
+    // through headings. Scaling the list multiplies the gaps along with the
+    // cards, so the clearances survive at every width.
+    const fan = container.querySelector(
+      '[data-testid="whats-new-audience-fan"]',
+    )
+    const cards = [
+      ...container.querySelectorAll('[data-testid="whats-new-audience-card"]'),
+    ]
+
+    expect(fan?.className).toContain("watch-scroll-fan-hand")
+    for (const card of cards) {
+      expect(card.parentElement).toBe(fan)
+      // The growth must not migrate onto the cards themselves.
+      expect(card.className).not.toContain("watch-scroll-fan-hand")
+    }
+  })
+
+  it("reserves room for the grown hand above the closing line", () => {
+    // The hand ends 12% larger than its slot, so its lowest rotated corner
+    // reaches about 20px below the list box — measured clearance to this
+    // paragraph at `mt-10` was -13px at 820 and -21px at 1920, i.e. a card
+    // corner resting on the first line. The reserve starts at `md`, which
+    // is where the fan itself starts.
+    const closing = container.querySelector(
+      '[data-testid="whats-new-audience-closing"]',
+    )
+    const fan = container.querySelector(
+      '[data-testid="whats-new-audience-fan"]',
+    )
+
+    expect(closing?.previousElementSibling).toBe(fan)
+    expect(closing?.className).toMatch(/\bmd:mt-1[68]\b/)
+  })
+
   it("fills each card with its colour and blends where they overlap", () => {
     const cards = [
       ...container.querySelectorAll('[data-testid="whats-new-audience-card"]'),
@@ -873,7 +1030,7 @@ describe("WatchWhatsNewPage", () => {
       expect(card.className).toContain("mix-blend-screen")
     }
     // Blending is scoped to the card group, not the section behind it.
-    expect(cards[0].parentElement?.className).toContain("isolate")
+    expect(cards[0].closest("ul")?.className).toContain("isolate")
   })
 
   it("gathers the cards inward until they overlap", () => {
@@ -1169,7 +1326,9 @@ describe("WatchWhatsNewPage", () => {
     expect(steps).toHaveLength(WHATS_NEW_FORMATS.length)
     expect(
       steps.map(
-        (step) => step.querySelector("span")?.nextElementSibling?.textContent,
+        (step) =>
+          step.querySelector('[data-testid="whats-new-format-label"]')
+            ?.textContent,
       ),
     ).toEqual(WHATS_NEW_FORMATS.map((format) => format.label))
     // Every step draws a real glyph, not a missing-key blank.
@@ -1192,6 +1351,186 @@ describe("WatchWhatsNewPage", () => {
     // only that one.
     expect(terminal).toHaveLength(1)
     expect(terminal[0]).toBe(steps.at(-1))
+  })
+
+  it("keeps the drifting lights off the top of the format section", () => {
+    // The bokeh is the section's lighting, and the whole look depends on it
+    // reading as something glimpsed low and far away: the lights live in a
+    // bottom-anchored box that crops them, and that box's own mask fades
+    // them out towards its top only. Lose the bottom anchor, the clip or
+    // the mask and a light reaches the heading, which is exactly the look
+    // this replaced.
+    const field = container.querySelector<HTMLElement>(
+      '[data-testid="whats-new-format-bokeh"]',
+    )
+
+    expect(field).not.toBeNull()
+    expect(field?.getAttribute("aria-hidden")).toBe("true")
+
+    const fieldClass = field?.getAttribute("class") ?? ""
+    expect(fieldClass).toContain("bottom-0")
+    expect(fieldClass).not.toContain("top-0")
+    expect(fieldClass).toContain("overflow-hidden")
+    expect(fieldClass).toContain("pointer-events-none")
+    // The `to top` ramp is opaque at the bottom and transparent at the
+    // top: the lights run at full strength into the section's bottom edge
+    // and get cropped there, and nothing reaches the heading. A fade added
+    // back at the bottom puts a black band under the lights.
+    expect(fieldClass).toMatch(
+      /\[mask-image:linear-gradient\(to_top,black_0%,.*,transparent_100%\)\]/,
+    )
+    expect(fieldClass).toContain("[-webkit-mask-image:linear-gradient(to_top,")
+
+    // Every light is inside that box, and none of them is focusable or
+    // readable — they are lighting, not content.
+    const orbs = [...(field?.querySelectorAll(".watch-bokeh-orb") ?? [])]
+    expect(orbs.length).toBeGreaterThan(0)
+    for (const orb of orbs) {
+      expect(orb.textContent).toBe("")
+      expect(orb.getAttribute("class") ?? "").toContain("absolute")
+    }
+  })
+
+  it("sends every light across the section left to right, never back", () => {
+    // The whole read is traffic seen from a fixed seat. One light crossing
+    // the other way turns that into a wobble, and it is a single sign flip
+    // in a table of numbers — so pin the direction per light rather than
+    // trusting the pair to be authored the right way round.
+    const lights = [
+      ...container.querySelectorAll<HTMLElement>(
+        '[data-testid="whats-new-format-bokeh"] .watch-bokeh-orb',
+      ),
+    ]
+
+    expect(lights.length).toBeGreaterThan(0)
+    for (const light of lights) {
+      const from = light.style.getPropertyValue("--bokeh-from")
+      const to = light.style.getPropertyValue("--bokeh-to")
+      const rest = light.style.getPropertyValue("--bokeh-rest")
+
+      expect(from, "start of the crossing").toMatch(/vw$/)
+      expect(to, "end of the crossing").toMatch(/vw$/)
+      expect(
+        Number.parseFloat(to),
+        `${from} -> ${to} must travel rightwards`,
+      ).toBeGreaterThan(Number.parseFloat(from))
+      // Starts off-screen left and ends off-screen right, so a light
+      // arrives and leaves rather than sliding in from the section edge.
+      expect(Number.parseFloat(from)).toBeLessThan(0)
+      expect(Number.parseFloat(to)).toBeGreaterThan(100)
+      // Under prefers-reduced-motion the crossing is removed, and without
+      // its own resting place every light would pile up off-screen left.
+      expect(rest, "reduced-motion resting place").toMatch(/vw$/)
+    }
+  })
+
+  it("keeps every light's centre below the section's bottom edge", () => {
+    // The section shows the TOP of each light and crops the rest. That is
+    // what makes the field read as light spilling from below the frame,
+    // and it is what keeps the bottom edge a cut rather than a fade: with
+    // the centre above the edge, the crop lands in the falloff and a black
+    // band comes back. It is a table of numbers, so one wrong value is
+    // invisible — hence the arithmetic here rather than trust.
+    const rem = (value: string) => Number.parseFloat(value)
+    const lights = [
+      ...container.querySelectorAll<HTMLElement>(
+        '[data-testid="whats-new-format-bokeh"] .watch-bokeh-orb',
+      ),
+    ]
+
+    expect(lights.length).toBeGreaterThan(0)
+    for (const light of lights) {
+      const className = light.getAttribute("class") ?? ""
+      const size = className.match(/\bh-\[([\d.]+)rem\]/)
+      const bottom = className.match(/-bottom-\[([\d.]+)rem\]/)
+
+      expect(size, className).not.toBeNull()
+      expect(bottom, className).not.toBeNull()
+
+      // How far the centre sits below the section's bottom edge at rest.
+      const drop = rem(bottom![1]) - rem(size![1]) / 2
+      // How far the crossing lifts it at its highest.
+      const lift = Math.max(
+        Math.abs(rem(light.style.getPropertyValue("--bokeh-y"))),
+        Math.abs(rem(light.style.getPropertyValue("--bokeh-y-end"))),
+      )
+
+      expect(drop, `${className.slice(0, 40)} rest`).toBeGreaterThanOrEqual(0)
+      expect(
+        drop - lift,
+        `${className.slice(0, 40)} mid-crossing`,
+      ).toBeGreaterThanOrEqual(0)
+    }
+  })
+
+  it("lays grain over the lights, inside the same masked box", () => {
+    // Rain on glass is never clean light — the speckle is what stops the
+    // lights reading as flat CSS circles. It has to live INSIDE the masked
+    // box or it becomes a haze over the whole section, which is the thing
+    // the era-card grain rule below is guarding against.
+    const grain = container.querySelectorAll(".watch-bokeh-grain")
+
+    expect(grain).toHaveLength(1)
+    expect(grain[0].getAttribute("aria-hidden")).toBe("true")
+    expect(
+      grain[0].closest('[data-testid="whats-new-format-bokeh"]'),
+    ).not.toBeNull()
+  })
+
+  it("leaves the format marks static and unringed", () => {
+    // The only motion in this section is the light field behind it. Seven
+    // icons each looping on their own clock read as clutter against a
+    // moving background — and the discs they used to sit in were there to
+    // mask the wire, not to be seen.
+    const steps = [
+      ...container.querySelectorAll<HTMLElement>(
+        '[data-testid="whats-new-format-step"]',
+      ),
+    ]
+
+    expect(steps.length).toBeGreaterThan(0)
+    for (const step of steps) {
+      const label = step.textContent ?? ""
+      // Nothing inside a mark carries a class at all: every animation here
+      // was applied to a path or a group inside the SVG.
+      for (const node of step.querySelectorAll("svg *")) {
+        expect(node.getAttribute("class"), label).toBeNull()
+      }
+      // No filled disc behind the mark. A background utility on anything
+      // in the step is the disc coming back.
+      for (const node of step.querySelectorAll("span")) {
+        expect(node.getAttribute("class") ?? "", label).not.toMatch(
+          /\bbg-(?!gradient-to-r\b)/,
+        )
+      }
+    }
+  })
+
+  it("joins the marks with one segment per gap, stopping short of each", () => {
+    // A single wire behind the row has to be masked wherever a mark sits
+    // on it, and over a moving background the only thing that can mask it
+    // is an opaque disc. Segments are what let the discs go: one per gap,
+    // none after the last mark.
+    const steps = [
+      ...container.querySelectorAll<HTMLElement>(
+        '[data-testid="whats-new-format-step"]',
+      ),
+    ]
+    const links = container.querySelectorAll(
+      '[data-testid="whats-new-format-link"]',
+    )
+
+    expect(links).toHaveLength(steps.length - 1)
+    expect(
+      steps.at(-1)?.querySelector('[data-testid="whats-new-format-link"]'),
+    ).toBeNull()
+    for (const link of links) {
+      // Starts clear of its own mark and stops clear of the next one.
+      expect(link.getAttribute("class") ?? "").toContain(
+        "left-[calc(50%+3rem)]",
+      )
+      expect(link.getAttribute("class") ?? "").toContain("w-[calc(100%-6rem)]")
+    }
   })
 
   it("keeps the diagram glyphs free of per-stroke alpha", () => {
@@ -1225,7 +1564,37 @@ describe("WatchWhatsNewPage", () => {
     expect(bands[0].nextElementSibling).toBe(bands[1])
     expect(bands[1].nextElementSibling).toBeNull()
     for (const band of bands) {
-      expect(band.className).toContain("bg-white")
+      // Light, not necessarily the same light: the FAQ sits on a warm
+      // off-white so it reads as its own shelf. What must not come back is
+      // a dark fill on either band.
+      expect(band.className, band.getAttribute("data-testid") ?? "").toMatch(
+        /\bbg-(?:white|\[#f8f7f5\])(?![\w-])/,
+      )
+    }
+  })
+
+  it("keeps every fill on the light shelf on the warm side of neutral", () => {
+    // One warm axis for the whole shelf. A neutral or blue-leaning grey next
+    // to the warm off-white FAQ band reads as a different material, which is
+    // exactly how the vote cards looked before (#f5f5f7: blue above red).
+    // Checked across BOTH bands and every state's fill, including `hover:`
+    // variants, so a grey added later cannot quietly go cool.
+    const bands = [
+      ...container.querySelectorAll(
+        '[data-testid="whats-new-vote"], [data-testid="whats-new-faq"]',
+      ),
+    ]
+    const fills = bands.flatMap((band) =>
+      [band, ...band.querySelectorAll("*")].flatMap((el) => [
+        ...(el.getAttribute("class") ?? "").matchAll(/bg-\[#([0-9a-f]{6})\]/gi),
+      ]),
+    )
+
+    expect(fills.length).toBeGreaterThan(0)
+    for (const [utility, hex] of fills) {
+      const red = Number.parseInt(hex.slice(0, 2), 16)
+      const blue = Number.parseInt(hex.slice(4, 6), 16)
+      expect(red, utility).toBeGreaterThanOrEqual(blue)
     }
   })
 

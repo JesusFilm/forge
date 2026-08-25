@@ -45,6 +45,13 @@
      512:331 was within 3% of 3:2 — a test rejected that one. */
   --watch-grain-image: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='512' height='512'><filter id='g'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' seed='3' stitchTiles='stitch'/><feColorMatrix type='matrix' values='1 0 0 0 0 1 0 0 0 0 1 0 0 0 0 0 0 0 0 1'/><feComponentTransfer><feFuncR type='linear' slope='2.6' intercept='-1.05'/><feFuncG type='linear' slope='2.6' intercept='-1.05'/><feFuncB type='linear' slope='2.6' intercept='-1.05'/></feComponentTransfer></filter><rect width='512' height='512' filter='url(%23g)'/></svg>");
   --watch-grain-image-fine: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='317' height='317'><filter id='g'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' seed='17' stitchTiles='stitch'/><feColorMatrix type='matrix' values='1 0 0 0 0 1 0 0 0 0 1 0 0 0 0 0 0 0 0 1'/><feComponentTransfer><feFuncR type='linear' slope='2.6' intercept='-1.05'/><feFuncG type='linear' slope='2.6' intercept='-1.05'/><feFuncB type='linear' slope='2.6' intercept='-1.05'/></feComponentTransfer></filter><rect width='317' height='317' filter='url(%23g)'/></svg>");
+  /* Sticker sizing, as ONE number and a ratio off it. A sticker stuck to a
+     card is the finished size; the pile is deliberately larger, because a
+     sticker you are meant to pick up has to look bigger than the same
+     sticker already spent. Two literals here would drift apart the first
+     time either end is tuned. */
+  --watch-sticker-stuck: 2.25rem;
+  --watch-sticker-pile-scale: 1.25;
   --font-native-sans:
     "Avenir Next", Avenir, "Helvetica Neue", Helvetica, "Segoe UI", Roboto,
     "Noto Sans", "Liberation Sans", Arial, sans-serif;
@@ -252,6 +259,25 @@
    the finished layout fully visible and completely un-animated. Never
    move an `opacity: 0` or a `transform` start state out of this block.
    --------------------------------------------------------------------- */
+
+/*
+ * Entrance for a grid tile, as opposed to a free-floating card.
+ *
+ * Opacity only, deliberately: an improvement cell is bounded on its sides
+ * by the grid's 1px rules, and those rules are drawn by the NEIGHBOURING
+ * cell. Translating or scaling one cell therefore slides it out from under
+ * a rule that has not moved, opening a visible strip — measured at 6.47px
+ * with `watch-scroll-rise`. Invisible while the cells were transparent;
+ * obvious the moment they started painting colour to their own edges.
+ */
+@keyframes watch-scroll-tile-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
 
 @keyframes watch-scroll-rise {
   from {
@@ -547,29 +573,28 @@
 /* Die-cut sticker. Eight ZERO-BLUR drop-shadows, one per compass point,
    build a hard white edge that hugs the emoji's own silhouette. Blurred
    shadows (`0 0 1.5px`) give a soft halo instead — it reads as a glow, not
-   a cut edge. The last shadow is the cast shadow lifting it off the card. */
+   a cut edge.
+
+   The last two shadows are what makes it STUCK DOWN rather than hovering:
+   a near-zero-blur contact line directly under the die-cut edge (the vinyl's
+   own thickness), then a short, tight cast. Blur is what reads as height —
+   the previous `0 6px 12px` put the sticker a centimetre above the card, so
+   both offset and blur are small and the alpha carries the weight instead. */
 .watch-sticker-art {
   filter: drop-shadow(2px 0 0 #fff) drop-shadow(-2px 0 0 #fff)
     drop-shadow(0 2px 0 #fff) drop-shadow(0 -2px 0 #fff)
     drop-shadow(1.4px 1.4px 0 #fff) drop-shadow(-1.4px 1.4px 0 #fff)
     drop-shadow(1.4px -1.4px 0 #fff) drop-shadow(-1.4px -1.4px 0 #fff)
-    drop-shadow(var(--watch-sticker-cast, 0 10px 14px rgb(0 0 0 / 0.75)));
+    drop-shadow(var(--watch-sticker-edge, 0 1px 0 rgb(0 0 0 / 0.35)))
+    drop-shadow(var(--watch-sticker-cast, 0 2px 2px rgb(0 0 0 / 0.55)));
 }
 
-/* The cast shadow, and only it, is tuned per band: a 0.75-alpha shadow that
-   reads as lift against a near-black card reads as grime on white. Set on
-   the section so every sticker inside inherits it; the fallback above keeps
-   the dark bands untouched. */
+/* Both shadows are tuned per band: an alpha that reads as contact against a
+   near-black card reads as grime on white. Set on the section so every
+   sticker inside inherits it; the fallbacks above keep the dark bands. */
 .watch-sticker-surface-light {
-  --watch-sticker-cast: 0 6px 12px rgb(0 0 0 / 0.28);
-}
-
-/* The gap a sticker leaves behind once it is in your hand. Grey and flat —
-   no white die-cut edge, no lift — so it reads as an empty slot rather
-   than a second sticker sitting in the pile. */
-.watch-sticker-ghost {
-  filter: grayscale(1);
-  opacity: 0.3;
+  --watch-sticker-edge: 0 1px 0 rgb(0 0 0 / 0.18);
+  --watch-sticker-cast: 0 2px 2px rgb(0 0 0 / 0.22);
 }
 
 /* Sticker landing: a quick pop so a placed sticker reads as stuck on
@@ -731,121 +756,95 @@
   animation: watch-berg-rays 11s ease-in-out infinite;
 }
 
-/* --- Living glyphs in the format diagram ------------------------------
-   Small continuous loops so the diagram reads as a working mechanism
-   rather than a static row of icons. Percentages inside an SVG resolve
-   against the nearest viewport only with `transform-box: view-box`; the
-   glyphs are authored in a 48-unit box, so origins are given in those
-   units. All of it is off under prefers-reduced-motion (see below). */
+/* --- Rainy-window bokeh, format diagram -------------------------------
+   Out-of-focus lights sliding along the bottom of the section: the view
+   through a wet cafe window, where nothing outside resolves but the
+   lights still go past. Only compositor-friendly properties animate —
+   `translate`, `scale`, `opacity` — and the softness comes from radial
+   gradients rather than `filter: blur()`, which would have to re-blur
+   every light on every frame.
 
-@keyframes watch-glyph-spin {
+   Three separate animations, one property each, because they need
+   different clocks: the crossing is linear and one-way, the swell is
+   eased and reverses, and the fade belongs to the ENDS of the crossing.
+   Splitting them by property is what lets them coexist — put two of them
+   in one keyframe block and the last declaration wins.
+
+   Per-light values are set at the call site (WhatsNewFormatDiagram). */
+
+/* The crossing. Left to right, never back: `alternate` here would drag
+   every light backwards across the frame, which reads as a wobble rather
+   than as traffic. */
+@keyframes watch-bokeh-drift {
+  from {
+    translate: var(--bokeh-from, -30vw) var(--bokeh-y, 0rem);
+  }
   to {
-    rotate: 360deg;
+    translate: var(--bokeh-to, 130vw) var(--bokeh-y-end, -3rem);
   }
 }
 
-/* A meridian squashing and stretching reads as a globe turning far more
-   cheaply than actually rotating one. */
-@keyframes watch-glyph-turn {
+/* Faded in and out at the ends of the same crossing, so a light arrives
+   and leaves rather than popping at the clip edge. Shares the crossing's
+   duration and delay — see the paired `animation-delay` below. */
+@keyframes watch-bokeh-fade {
   0%,
   100% {
-    scale: 1 1;
-  }
-  50% {
-    scale: 0.12 1;
-  }
-}
-
-@keyframes watch-glyph-pulse {
-  0%,
-  100% {
-    opacity: 0.15;
-    scale: 0.9;
-  }
-  50% {
-    opacity: 1;
-    scale: 1.06;
-  }
-}
-
-@keyframes watch-glyph-twinkle {
-  0%,
-  100% {
-    opacity: 0.45;
-    rotate: 0deg;
-    scale: 0.85;
-  }
-  50% {
-    opacity: 1;
-    rotate: 45deg;
-    scale: 1.1;
-  }
-}
-
-/* A highlight travelling the wire, so the connection reads as live.
-   Translated rather than repositioned: `left` would relayout every frame,
-   `translate3d` stays on the compositor. */
-@keyframes watch-wire-pulse {
-  0% {
-    transform: translate3d(-110%, 0, 0);
     opacity: 0;
   }
-  12%,
+  14%,
   86% {
-    opacity: 1;
-  }
-  100% {
-    transform: translate3d(510%, 0, 0);
-    opacity: 0;
+    opacity: var(--bokeh-lit, 0.8);
   }
 }
 
-.watch-wire-pulse {
-  animation: watch-wire-pulse 4.2s linear infinite;
+/* The swell, on its own slower clock so it never lines up with the
+   crossing — a light that brightens at the same point of every pass
+   reads as a loop. */
+@keyframes watch-bokeh-breathe {
+  from {
+    scale: 1;
+  }
+  to {
+    scale: var(--bokeh-scale, 1.25);
+  }
+}
+
+.watch-bokeh-orb {
+  opacity: 0;
+  animation:
+    watch-bokeh-drift var(--bokeh-duration, 60s) linear infinite,
+    watch-bokeh-fade var(--bokeh-duration, 60s) linear infinite,
+    watch-bokeh-breathe var(--bokeh-breath, 10s) ease-in-out infinite alternate;
+  /* The first two MUST share a delay: they describe one crossing, and a
+     drift that starts before its own fade arrives already lit. */
+  animation-delay: var(--bokeh-delay, 0s), var(--bokeh-delay, 0s), 0s;
+  will-change: translate, opacity, scale;
+}
+
+/* Grain over the light field. Same texture as the era-card film grain, but
+   its own layer: `screen` is the only blend that survives against a
+   near-black backdrop, and it is stepped so it reads as speckle rather than
+   a sliding sheet.
+
+   It draws the FINE field at its authored 317px, not the coarse one at 148.
+   `baseFrequency` is per user unit, so a 512-unit field drawn at 148px comes
+   out as 0.3px blobs and averages to flat grey — the layer would cost paint
+   and show nothing. The two never share a screen (this sits in the format
+   diagram, the card grain in the era stage), so reusing the field costs
+   nothing. */
+.watch-bokeh-grain {
+  position: absolute;
+  /* Oversized past the drift so the step never exposes a tile edge. */
+  inset: -12%;
+  background-image: var(--watch-grain-image-fine);
+  background-repeat: repeat;
+  background-size: 317px 317px;
+  opacity: 0.14;
+  mix-blend-mode: screen;
+  pointer-events: none;
+  animation: watch-grain-drift-fine 2130ms steps(1, end) infinite;
   will-change: transform;
-}
-
-.watch-glyph-spin,
-.watch-glyph-turn,
-.watch-glyph-pulse,
-.watch-glyph-twinkle {
-  transform-box: view-box;
-}
-
-.watch-glyph-spin {
-  transform-origin: 24px 24px;
-  animation: watch-glyph-spin 14s linear infinite;
-}
-
-.watch-glyph-spool-a {
-  transform-box: view-box;
-  transform-origin: 19px 24px;
-  animation: watch-glyph-spin 3.4s linear infinite;
-}
-
-.watch-glyph-spool-b {
-  transform-box: view-box;
-  transform-origin: 29px 24px;
-  animation: watch-glyph-spin 3.4s linear infinite;
-}
-
-.watch-glyph-turn {
-  transform-origin: 24px 24px;
-  animation: watch-glyph-turn 7s ease-in-out infinite;
-}
-
-.watch-glyph-pulse {
-  transform-origin: 24px 24px;
-  animation: watch-glyph-pulse 2.4s ease-in-out infinite;
-}
-
-.watch-glyph-pulse-late {
-  animation-delay: 0.6s;
-}
-
-.watch-glyph-twinkle {
-  transform-origin: 24px 22px;
-  animation: watch-glyph-twinkle 3.2s ease-in-out infinite;
 }
 
 /* Radial card gather. The cards begin spread wide and square to the page,
@@ -873,6 +872,26 @@
   }
 }
 
+/* The gathered hand also comes FORWARD: it finishes larger than the slot it
+   was laid out in, so the fan reads as picked up rather than merely tilted.
+
+   Scaled as ONE hand, not card by card. Growing each card about its own
+   centre pushes its right edge over the next card's copy while pulling that
+   copy left — clearance loses `(scale - 1) x card width` in both
+   directions at once, and since the loss is proportional to card width no
+   fixed rem gather can pay for it: measured at 1.12, the copy clearance at
+   1920 went from 16px to -12px, i.e. the headings were struck through.
+   Scaling the whole list multiplies the gaps along with the cards, so every
+   clearance is preserved by construction at every width. */
+@keyframes watch-fan-lift {
+  from {
+    scale: 1;
+  }
+  to {
+    scale: var(--fan-scale-end, 1.12);
+  }
+}
+
 @keyframes watch-scroll-year-active {
   from {
     opacity: 0.3;
@@ -895,11 +914,13 @@
 
 @supports (animation-timeline: view()) {
   @media (prefers-reduced-motion: no-preference) {
+    /* Improvement grid tiles. See `watch-scroll-tile-in` for why this one
+       may not carry a transform, unlike the era cards below. */
     .watch-scroll-card {
-      animation: watch-scroll-rise linear both;
+      animation: watch-scroll-tile-in linear both;
       animation-timeline: view();
       animation-range: entry 4% cover 26%;
-      will-change: opacity, transform;
+      will-change: opacity;
     }
 
     .watch-scroll-beat {
@@ -1146,16 +1167,6 @@
         will-change: opacity, scale;
       }
 
-      .watch-scroll-wire {
-        animation: watch-scroll-year-fill linear both;
-        animation-timeline: view();
-        /* Entry-relative on purpose: a `cover`-relative end can leave the
-           wire part-drawn while the whole section is on screen, which
-           reads as a diagram that stops halfway. */
-        animation-range: entry 25% entry 100%;
-        will-change: scale;
-      }
-
       .watch-scroll-pip {
         animation: watch-scroll-year-active linear both;
         animation-timeline: view();
@@ -1194,6 +1205,20 @@
         animation-timeline: view();
         animation-range: entry 8% cover 34%;
         will-change: opacity, rotate, translate, scale;
+      }
+
+      /* The list the cards are laid out in, grown as one. Its own box is
+         the cards' box, so `view()` here tracks the same scroll positions
+         as the gather above and the hand finishes growing exactly as the
+         cards finish closing. The origin is the list's centre: the fan's
+         own pivot sits 190% below each card and would lift the whole group
+         out of its slot instead of growing it in place. */
+      .watch-scroll-fan-hand {
+        transform-origin: 50% 50%;
+        animation: watch-fan-lift linear both;
+        animation-timeline: view();
+        animation-range: entry 8% cover 34%;
+        will-change: scale;
       }
 
       /* MUST follow the base rule above. The bundler flattens nested media
@@ -1333,28 +1358,126 @@
     cubic-bezier(0.2, 1.35, 0.35, 1) forwards;
 }
 
+/* --- Pin board ----------------------------------------------------------
+   Paper notes on a plain white board, set into a warm band so the section
+   reads as a physical object dropped into the page rather than another card
+   grid. Textures are gradients only, so the section costs no new image
+   request. */
+
+/* A warm grey, not a beige: enough tint to keep the paper notes feeling
+   like they are on a surface, little enough that the band recedes behind
+   them. The corner shade is neutral grey rather than tan, and the linear
+   sweep spans a much narrower range than it used to, so the gradient reads
+   as a soft fall-off instead of a wash of colour. */
+.watch-corkroom {
+  background-color: #f1efec;
+  background-image:
+    radial-gradient(
+      ellipse at 12% 0%,
+      rgba(255, 255, 254, 0.75),
+      transparent 55%
+    ),
+    radial-gradient(
+      ellipse at 90% 100%,
+      rgba(142, 137, 129, 0.16),
+      transparent 60%
+    ),
+    linear-gradient(168deg, #f6f4f2, #e9e6e1);
+}
+
+/* Paper. `--paper` / `--paper-shade` / `--paper-ink` come from the note's
+   chosen stock, set inline by the component. */
+.watch-note {
+  position: relative;
+  border-radius: 2px;
+  background-image: linear-gradient(168deg, var(--paper), var(--paper-shade));
+  box-shadow:
+    0 12px 20px -12px rgb(24 12 4 / 0.8),
+    0 2px 3px rgb(24 12 4 / 0.28);
+}
+
+/* Lifted bottom-right corner. Drawn rather than clipped so the focus ring
+   still gets to run the whole way round the note. */
+.watch-note::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 1.15rem;
+  height: 1.15rem;
+  border-radius: 0 0 2px 0;
+  background-image: linear-gradient(
+    315deg,
+    rgb(24 12 4 / 0.22) 0 50%,
+    transparent 50%
+  );
+  pointer-events: none;
+}
+
+/* Marker on paper. No webfont: this is a fallback stack on purpose, so the
+   playful hand costs nothing to load and degrades to the page sans where
+   the reader has none of them. */
+.watch-note-ink {
+  font-family:
+    "Bradley Hand", "Chalkboard SE", "Segoe Print", "Comic Sans MS", cursive,
+    var(--font-sans, sans-serif);
+  color: var(--paper-ink);
+}
+
+/* Landing: a note drops onto the cork rather than fading in. */
+@keyframes watch-note-pop {
+  0% {
+    opacity: 0;
+    scale: 0.7;
+    translate: 0 -0.75rem;
+  }
+  65% {
+    opacity: 1;
+    scale: 1.06;
+    translate: 0 0;
+  }
+  100% {
+    opacity: 1;
+    scale: 1;
+    translate: 0 0;
+  }
+}
+
+.watch-note-pop {
+  animation: watch-note-pop 280ms cubic-bezier(0.22, 1.35, 0.4, 1) both;
+}
+
 @media (prefers-reduced-motion: reduce) {
   /* Keep the grain, drop the motion — the texture is part of the look,
      the jitter is the part that can bother people. */
   .watch-grain,
   .watch-grain-fine,
-  .watch-glyph-spin,
-  .watch-glyph-spool-a,
-  .watch-glyph-spool-b,
-  .watch-glyph-turn,
-  .watch-glyph-pulse,
-  .watch-glyph-twinkle,
   .watch-berg-bob,
   .watch-berg-ripple,
-  .watch-berg-rays,
-  .watch-wire-pulse {
+  .watch-berg-rays {
     animation: none;
     opacity: 0;
   }
 
+  /* The bokeh is the section's lighting, not an accent — hold it still
+     rather than hiding it, or the bottom half goes flat black. Every
+     light starts its crossing off-screen, so parking them needs an
+     explicit resting place or the whole field piles up on the left. */
+  .watch-bokeh-orb {
+    animation: none;
+    opacity: var(--bokeh-dim, 0.35);
+    translate: var(--bokeh-rest, 40vw) var(--bokeh-y, 0rem);
+  }
+
+  /* Grain stays — it is texture, not motion. Only the shiver goes. */
+  .watch-bokeh-grain {
+    animation: none;
+  }
+
   /* Motion off, but the bars are the answer — they must still be there. */
   .watch-quiz-bar,
-  .watch-sticker-pop {
+  .watch-sticker-pop,
+  .watch-note-pop {
     animation: none;
   }
 
@@ -1769,4 +1892,55 @@
   .search-overlay-scroll:hover {
     scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
   }
+}
+
+/**
+ * Colour band behind each improvement shot on /watch/whats-new.
+ *
+ * Three radials over a mixed linear base rather than one flat linear: at
+ * this size a single sweep reads as a printed swatch, while overlapping
+ * pools of the two tint stops give each card its own shape. The base is
+ * what stops the corners going bald where no radial reaches.
+ *
+ * Lives here rather than as an arbitrary Tailwind value because the
+ * `color-mix()` calls and nested commas need underscore-escaping that is
+ * unreadable and easy to break silently. `--tint-from` / `--tint-to` are
+ * set per cell in WatchWhatsNewPage; the element that carries this class
+ * also carries a mask so the band ends on a fade.
+ */
+.whats-new-tint-band {
+  background:
+    radial-gradient(74% 118% at 12% -12%, var(--tint-from) 0%, transparent 62%),
+    radial-gradient(64% 108% at 90% 4%, var(--tint-to) 0%, transparent 58%),
+    radial-gradient(
+      116% 82% at 44% 112%,
+      color-mix(in oklab, var(--tint-to) 62%, var(--tint-from)) 0%,
+      transparent 70%
+    ),
+    linear-gradient(
+      158deg,
+      color-mix(in oklab, var(--tint-from) 76%, #0c0a09),
+      color-mix(in oklab, var(--tint-to) 64%, #0c0a09)
+    );
+  /*
+   * The band ends on a slanted fade rather than a level one, tilted so the
+   * RIGHT side ends lower than the left. 191deg is 11deg past straight-down,
+   * a ~20% slope — measured at 20.0% on both the two-up and the full-width
+   * cell.
+   *
+   * Angle sets the direction and the geometry; the STOPS decide how much of
+   * it you actually see. Percentages run along the gradient line, not the
+   * element height, so if the fade has not finished by the band's bottom
+   * edge the low side is cut off there and the slope flattens — and the
+   * wider the band, the sooner that bites. 72%/94% measured 5.6% against a
+   * geometric 10.5%; 48%/78% held on both at 10.5%; at this steeper angle
+   * 40%/68% left only 8px of headroom on the full-width cell before
+   * clamping, so 36%/63% it is. Re-measure if the grid widens or the angle
+   * changes — do not just edit the degrees.
+   *
+   * `-webkit-` as well, for Safari before 15.4 — without it that engine
+   * drops the mask and the band ends on a hard cut.
+   */
+  -webkit-mask-image: linear-gradient(191deg, #000 36%, transparent 63%);
+  mask-image: linear-gradient(191deg, #000 36%, transparent 63%);
 }

@@ -85,6 +85,10 @@ jest.mock("expo", () => {
 })
 
 // Visual leaves — none participate in either behaviour under test.
+// The transport reads connectivity to tell a paused video from a broken one.
+jest.mock("expo-network", () => ({
+  useNetworkState: () => ({ isInternetReachable: true }),
+}))
 jest.mock("expo-image", () => ({ Image: () => null }))
 jest.mock("expo-linear-gradient", () => ({ LinearGradient: () => null }))
 jest.mock("expo-glass-effect", () => ({ GlassView: () => null }))
@@ -199,7 +203,10 @@ import { act } from "react"
 import { AppState } from "react-native"
 
 import { PlaybackHost } from "../../components/watch/PlaybackHost"
+import { datadogLog } from "../../lib/datadog"
 import { getMiniPlayerStore } from "../../lib/miniPlayer/store"
+import { PIP_EXPAND_GRACE_MS } from "../../lib/pipPolicy"
+import { useManagedVideoPlayer } from "../useManagedVideoPlayer"
 import {
   getPlaybackRequestStore,
   type PlaybackRequest,
@@ -530,10 +537,268 @@ describe("useManagedVideoPlayer — explicit session boundaries (U5)", () => {
       { index: 0, trigger: "background" },
     ])
 
-    store.setPipHold(false)
+    // Releasing the latch now runs the pause it suspended, on the release
+    // itself — no second AppState event arrives to carry it.
+    await act(async () => {
+      store.setPipHold(false)
+    })
+    expect(video.__player.pause).toHaveBeenCalledTimes(1)
+
+    // An ordinary background with no latch held still pauses.
+    await emitAppState("active")
+    await act(async () => {
+      video.__player.play()
+    })
     await emitAppState("background")
 
+    expect(video.__player.pause).toHaveBeenCalledTimes(2)
+  })
+
+  // Reported 2026-08-24: pressing Home during playback dismissed the app with
+  // no window at all. On the device the background event lands about half a
+  // second BEFORE the window starts, so the latch is still clear and the
+  // ordinary background pause stops the video the window was about to carry.
+  it("resumes playback when the OS window starts after the background pause", async () => {
+    const renderer = await renderPlayer()
+    const store = getMiniPlayerStore()
+    await act(async () => {
+      video.__player.play()
+    })
+
+    // No setPipHold(true) yet: on the device the background event lands first,
+    // so the ordinary pause runs and stops the video the window will carry.
+    await emitAppState("background")
+    expect(video.__player.playing).toBe(false)
+
+    // The window starts and reports itself.
+    await act(async () => {
+      store.setPipHold(true)
+    })
+
+    expect(video.__player.playing).toBe(true)
+    await unmountPlayer(renderer)
+  })
+
+  // The undo is gated on the video having been playing, so a video the viewer
+  // had already paused does not start itself inside the window.
+  it("does not start a paused video when the OS window opens", async () => {
+    const renderer = await renderPlayer()
+    const store = getMiniPlayerStore()
+
+    await emitAppState("background")
+    const playsBefore = video.__player.play.mock.calls.length
+
+    await act(async () => {
+      store.setPipHold(true)
+    })
+
+    expect(video.__player.play.mock.calls.length).toBe(playsBefore)
+    expect(video.__player.playing).toBe(false)
+    await unmountPlayer(renderer)
+  })
+
+  // Reported 2026-08-24: closing the OS window while the app was away left
+  // audio playing faintly, and reopening the app showed the video still
+  // running. R13 suspends the background pause while the latch is held, but
+  // releasing it fires no AppState event, so nothing ever ran the pause it
+  // suspended.
+  it("pauses when the viewer closes the OS window while the app is away", async () => {
+    const renderer = await renderPlayer()
+    const store = getMiniPlayerStore()
+    await act(async () => {
+      video.__player.play()
+    })
+
+    store.setPipHold(true)
+    await emitAppState("background")
+    expect(video.__player.pause).not.toHaveBeenCalled()
+
+    // The viewer taps the window's close button. No AppState change follows —
+    // the app was already in the background. The pause must land on this event
+    // and NOT behind a timer: once the activity is stopped a scheduled callback
+    // does not run for many seconds, which is what the viewer heard.
+    await act(async () => {
+      store.setPipHold(false)
+    })
+
     expect(video.__player.pause).toHaveBeenCalledTimes(1)
+    expect(video.__player.playing).toBe(false)
+    await unmountPlayer(renderer)
+  })
+
+  // The same stop event fires when the viewer taps the window to expand it, and
+  // that must keep playing. Without the settle delay this case is what a naive
+  // pause-on-release breaks.
+  it("keeps playing when the viewer expands the OS window back into the app", async () => {
+    const renderer = await renderPlayer()
+    const store = getMiniPlayerStore()
+    await act(async () => {
+      video.__player.play()
+    })
+
+    store.setPipHold(true)
+    await emitAppState("background")
+
+    const playsBefore = video.__player.play.mock.calls.length
+
+    // The release pauses first — the two gestures are indistinguishable at that
+    // instant — and the foreground transition that follows identifies an expand
+    // and undoes it.
+    await act(async () => {
+      store.setPipHold(false)
+    })
+    await emitAppState("active")
+
+    expect(video.__player.playing).toBe(true)
+    expect(video.__player.play.mock.calls.length).toBeGreaterThan(playsBefore)
+    await unmountPlayer(renderer)
+  })
+
+  // The grace window must not resurrect a video the viewer closed and returned
+  // to later — that would be the reported complaint in reverse.
+  it("leaves the video paused when the viewer returns long after closing the window", async () => {
+    const renderer = await renderPlayer()
+    const store = getMiniPlayerStore()
+    await act(async () => {
+      video.__player.play()
+    })
+
+    store.setPipHold(true)
+    await emitAppState("background")
+
+    await act(async () => {
+      store.setPipHold(false)
+    })
+    expect(video.__player.playing).toBe(false)
+
+    // Return well outside the expand window.
+    const realNow = Date.now
+    Date.now = () => realNow() + PIP_EXPAND_GRACE_MS + 1000
+    try {
+      await emitAppState("active")
+    } finally {
+      Date.now = realNow
+    }
+
+    expect(video.__player.playing).toBe(false)
+    await unmountPlayer(renderer)
+  })
+
+  // The device order is the REVERSE of the case above: the background event
+  // lands before the window starts, so the ordinary branch records the
+  // was-playing snapshot and the picture-in-picture guard never arms. Closing
+  // the window and reopening the app then resumed a video the viewer had
+  // dismissed — measured on hardware 2026-08-24, 22 seconds after the close.
+  it("leaves the video paused when the window started after the background event", async () => {
+    const renderer = await renderPlayer()
+    const store = getMiniPlayerStore()
+    await act(async () => {
+      video.__player.play()
+    })
+
+    // Production order: the background pause runs first, then the window
+    // reports itself and the started branch undoes that pause.
+    await emitAppState("background")
+    await act(async () => {
+      store.setPipHold(true)
+    })
+    expect(video.__player.playing).toBe(true)
+
+    // The viewer closes the window.
+    await act(async () => {
+      store.setPipHold(false)
+    })
+    expect(video.__player.playing).toBe(false)
+
+    const realNow = Date.now
+    Date.now = () => realNow() + PIP_EXPAND_GRACE_MS + 1000
+    try {
+      await emitAppState("active")
+    } finally {
+      Date.now = realNow
+    }
+
+    expect(video.__player.playing).toBe(false)
+    await unmountPlayer(renderer)
+  })
+
+  // The grace window undoes the release pause. It must not undo a pause the
+  // VIEWER made inside the window: expanding that video back into the app
+  // started playing something they had deliberately stopped.
+  it("does not resume a video paused inside the window when it expands back", async () => {
+    const renderer = await renderPlayer()
+    const store = getMiniPlayerStore()
+    await act(async () => {
+      video.__player.play()
+    })
+
+    await emitAppState("background")
+    await act(async () => {
+      store.setPipHold(true)
+    })
+    expect(video.__player.playing).toBe(true)
+
+    await act(async () => {
+      video.__player.pause()
+    })
+    await act(async () => {
+      store.setPipHold(false)
+    })
+    await emitAppState("active")
+
+    expect(video.__player.playing).toBe(false)
+    await unmountPlayer(renderer)
+  })
+
+  // Both picture-in-picture transport calls sat behind a bare catch. The window
+  // is on screen either way, so a failure looks like a frozen frame or like
+  // audio that will not stop — the two complaints this branch exists to answer,
+  // with nothing in the logs to tell them apart.
+  it("reports a resume failure when the window opens onto a released player", async () => {
+    const renderer = await renderPlayer()
+    const store = getMiniPlayerStore()
+    await act(async () => {
+      video.__player.play()
+    })
+    await emitAppState("background")
+    ;(datadogLog.warn as jest.Mock).mockClear()
+    video.__player.play.mockImplementation(() => {
+      throw new Error("released")
+    })
+    await act(async () => {
+      store.setPipHold(true)
+    })
+
+    expect(datadogLog.warn).toHaveBeenCalledWith(
+      "video.resume_failed",
+      expect.objectContaining({ surface: "pip_start" }),
+    )
+    await unmountPlayer(renderer)
+  })
+
+  it("reports a pause failure when the viewer closes the window onto a released player", async () => {
+    const renderer = await renderPlayer()
+    const store = getMiniPlayerStore()
+    await act(async () => {
+      video.__player.play()
+    })
+    await emitAppState("background")
+    await act(async () => {
+      store.setPipHold(true)
+    })
+    ;(datadogLog.warn as jest.Mock).mockClear()
+    video.__player.pause.mockImplementation(() => {
+      throw new Error("released")
+    })
+    await act(async () => {
+      store.setPipHold(false)
+    })
+
+    expect(datadogLog.warn).toHaveBeenCalledWith(
+      "video.pause_failed",
+      expect.objectContaining({ surface: "pip_release" }),
+    )
+    await unmountPlayer(renderer)
   })
 
   it("does not resume a video the viewer paused inside picture-in-picture", async () => {
@@ -645,5 +910,81 @@ describe("useManagedVideoPlayer — explicit session boundaries (U5)", () => {
     expect(updates).toBe(1)
     expect(store.getSnapshot().session?.positionSeconds).toBe(5)
     unsubscribe()
+  })
+})
+
+// The resume position for error recovery comes from THIS poll, not from
+// expo-video's `timeUpdate` — that event only fires when
+// `timeUpdateEventInterval` is set, which this app never does. An earlier
+// version listened for it and the position silently stayed at zero while the
+// tests passed, because they emitted the event by hand.
+describe("useManagedVideoPlayer — healthy position for error recovery", () => {
+  function renderProbe(sourceUrl: string | null) {
+    const box: { get: () => number } = { get: () => -1 }
+    function Probe({ url }: { url: string | null }) {
+      const { getHealthyPosition } = useManagedVideoPlayer(url, undefined, {
+        ownsSession: true,
+      })
+      box.get = getHealthyPosition
+      return null
+    }
+    let renderer!: TestInstance
+    act(() => {
+      renderer = TestRenderer.create(<Probe url={sourceUrl} />)
+    })
+    return { box, renderer, Probe }
+  }
+
+  it("tracks the position the poll reports while the player is healthy", async () => {
+    jest.useFakeTimers()
+    const { box, renderer } = renderProbe(URL_A)
+
+    video.__player.status = "readyToPlay"
+    await act(async () => {
+      video.__player.play()
+    })
+    video.__player.currentTime = 249.7
+    await act(async () => {
+      jest.advanceTimersByTime(POLL_MS)
+    })
+
+    expect(box.get()).toBe(249.7)
+
+    // The failure zeroes the player's own clock; the tracked value must not
+    // follow it down, because that is what recovery resumes from.
+    video.__player.status = "error"
+    video.__player.currentTime = 0
+    await act(async () => {
+      jest.advanceTimersByTime(POLL_MS)
+    })
+
+    expect(box.get()).toBe(249.7)
+    await act(async () => {
+      renderer.unmount()
+    })
+  })
+
+  it("forgets the position when the source changes", async () => {
+    jest.useFakeTimers()
+    const { box, renderer, Probe } = renderProbe(URL_A)
+
+    video.__player.status = "readyToPlay"
+    await act(async () => {
+      video.__player.play()
+    })
+    video.__player.currentTime = 249.7
+    await act(async () => {
+      jest.advanceTimersByTime(POLL_MS)
+    })
+    expect(box.get()).toBe(249.7)
+
+    await act(async () => {
+      renderer.update(<Probe url={URL_B} />)
+    })
+
+    expect(box.get()).toBe(0)
+    await act(async () => {
+      renderer.unmount()
+    })
   })
 })

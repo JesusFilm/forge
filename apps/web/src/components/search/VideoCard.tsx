@@ -165,6 +165,31 @@ export function pickCardPill(
   return null
 }
 
+function UnavailableLanguageBadge({
+  requestedLanguageName,
+}: {
+  requestedLanguageName?: string | null
+}) {
+  const t = useTranslations("LanguagePickerModal")
+
+  return (
+    <span
+      data-testid="search-card-availability-badge"
+      className="absolute top-3 left-3 z-30 inline-flex max-w-[calc(100%-1.5rem)] rounded-md bg-stone-100/95 px-2.5 py-1 text-[11px] leading-4 font-semibold text-stone-950 shadow-lg ring-1 ring-black/20 backdrop-blur-sm"
+    >
+      <span className="truncate">
+        <span>{t("notAvailable")}</span>
+        {requestedLanguageName ? (
+          <>
+            <span aria-hidden="true"> · </span>
+            <bdi dir="auto">{requestedLanguageName}</bdi>
+          </>
+        ) : null}
+      </span>
+    </span>
+  )
+}
+
 export function VideoCard({
   result,
   index = 0,
@@ -175,12 +200,13 @@ export function VideoCard({
 }: VideoCardProps) {
   const t = useTranslations("SearchResultCard")
   const videoLabels = useTranslations("VideoLabels")
+  const isUnavailable = result.availabilityKind === "unavailable"
   const muxThumbnailSrc =
-    result.type === "video" && result.playbackId
+    !isUnavailable && result.type === "video" && result.playbackId
       ? muxSearchThumbnail(result.playbackId, result.startSeconds)
       : null
   const muxPreviewUrl =
-    result.type === "video"
+    !isUnavailable && result.type === "video"
       ? resolveMuxAnimatedPreviewUrl(result.playbackId)
       : null
   const thumbnailSrc = result.imageUrl ?? muxThumbnailSrc
@@ -197,9 +223,9 @@ export function VideoCard({
   // duration, so the regular pill helper isn't consulted — the chip
   // IS the surface signal. Non-experience cards use the new count /
   // duration pill at top-right and a type badge bottom-left.
-  const pill = isExperience ? null : pickCardPill(result)
+  const pill = isExperience || isUnavailable ? null : pickCardPill(result)
   const typeBadge =
-    isExperience || result.label == null
+    isExperience || isUnavailable || result.label == null
       ? null
       : videoLabels(videoLabelMessageKey(result.label))
   const pillText =
@@ -210,10 +236,10 @@ export function VideoCard({
   return (
     <Link
       href={hrefBuilder(result, requestedLanguageSlug)}
-      prefetch={result.availabilityKind === "unavailable" ? false : undefined}
+      prefetch={isUnavailable ? false : undefined}
       onClick={(event) => {
         if (
-          result.availabilityKind === "unavailable" &&
+          isUnavailable &&
           requestedLanguageSlug &&
           isUnmodifiedPrimaryNavigation(event)
         ) {
@@ -246,7 +272,12 @@ export function VideoCard({
             alt={result.title ?? t("thumbnailAlt")}
             fill
             sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, (max-width: 1280px) 33vw, 25vw"
-            className="search-card-hover-zoom object-cover transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]"
+            className={cn(
+              "object-cover",
+              isUnavailable
+                ? "grayscale brightness-[0.4] contrast-75 saturate-0"
+                : "search-card-hover-zoom transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]",
+            )}
             {...(thumbnailBlurDataURL
               ? {
                   placeholder: "blur" as const,
@@ -254,7 +285,7 @@ export function VideoCard({
                 }
               : {})}
           />
-        ) : result.type === "experience" ? (
+        ) : isUnavailable ? null : result.type === "experience" ? (
           <div
             aria-hidden
             className={`search-card-hover-zoom relative h-full w-full overflow-hidden bg-gradient-to-br transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] ${gradientForSlug(result.slug)}`}
@@ -287,15 +318,27 @@ export function VideoCard({
             </svg>
           </div>
         )}
-        <MuxHoverPreview
-          previewUrl={muxPreviewUrl}
-          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, (max-width: 1280px) 33vw, 25vw"
-        />
+        {!isUnavailable ? (
+          <MuxHoverPreview
+            previewUrl={muxPreviewUrl}
+            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, (max-width: 1280px) 33vw, 25vw"
+          />
+        ) : null}
+
+        {isUnavailable ? (
+          <div aria-hidden className="absolute inset-0 bg-stone-950/60" />
+        ) : null}
 
         {/* Gradient overlay for text legibility */}
         <div className="absolute inset-0 bg-gradient-to-t from-black via-black/25 to-transparent" />
-        {result.type === "video" ? (
+        {result.type === "video" && !isUnavailable ? (
           <WatchProgressBar videoId={result.id} />
+        ) : null}
+
+        {isUnavailable ? (
+          <UnavailableLanguageBadge
+            requestedLanguageName={requestedLanguageName}
+          />
         ) : null}
 
         {/* Top-right slot.
@@ -304,7 +347,7 @@ export function VideoCard({
             - Non-experience with countable children OR a duration: dark
               translucent pill with the count / runtime.
             - Otherwise nothing. */}
-        {isExperience ? (
+        {isExperience && !isUnavailable ? (
           <span
             data-testid="search-card-experience-chip"
             className="absolute top-3 right-3 rounded-full bg-amber-500/90 px-2 py-0.5 text-[10px] font-semibold tracking-wider text-stone-950 uppercase shadow"
@@ -327,7 +370,9 @@ export function VideoCard({
         {/* Bottom-left content: type badge (videos only) + title +
             snippet. Experience cards skip the badge — the amber chip in
             the top-right is the sole type signal. */}
-        <VideoThumbnailCaption>
+        <VideoThumbnailCaption
+          className={isUnavailable ? "opacity-45" : undefined}
+        >
           {typeBadge ? (
             <VideoThumbnailEyebrow
               data-testid="search-card-type-badge"

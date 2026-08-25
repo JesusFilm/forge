@@ -58,12 +58,15 @@
       "@kesha-antonov/react-native-background-downloader",
       "./plugins/withBackgroundDownloaderAppDelegate",
       "./plugins/withCastOptionsVolume",
+      "./plugins/withCastUIStyle",
+      "./plugins/withAndroidCastTheme",
       [
         "react-native-google-cast",
         {
           "iosSuspendSessionsWhenBackgrounded": false,
           "iosStartDiscoveryAfterFirstTapOnCastButton": false,
-          "androidPlayServicesCastFrameworkVersion": "22.3.1"
+          "androidPlayServicesCastFrameworkVersion": "22.3.1",
+          "expandedController": true
         }
       ],
       [

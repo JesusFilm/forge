@@ -33,10 +33,12 @@ export function WhatsNewFaq({ contentClass }: { contentClass: string }) {
       id="faq"
       aria-labelledby="whats-new-faq-heading"
       data-testid="whats-new-faq"
-      /* Light band immediately above the footer, which is also white — the
-         page lands on paper rather than ending on another dark section. The
-         hairline separates it from the vote band, which is white too. */
-      className="relative border-t border-black/[0.08] bg-white text-[#131111] scroll-mt-24 md:scroll-mt-32"
+      /* Light band immediately above the footer — the page lands on paper
+         rather than ending on another dark section. A warm off-white rather
+         than pure white, so the answers read as a separate shelf from the
+         white vote band above it and the white footer below; the hairline
+         alone was carrying that separation. */
+      className="relative border-t border-black/[0.08] bg-[#f8f7f5] text-[#131111] scroll-mt-24 md:scroll-mt-32"
     >
       <div className={`${contentClass} py-16 sm:py-20 lg:py-24`}>
         <div className="flex flex-wrap items-end justify-between gap-x-10 gap-y-6">
