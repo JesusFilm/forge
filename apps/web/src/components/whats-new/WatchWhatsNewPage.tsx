@@ -431,7 +431,9 @@ export function WatchWhatsNewPage({
                                 width={image.width}
                                 height={image.height}
                                 sizes="(min-width: 1024px) 60vw, 100vw"
-                                className="absolute inset-0 h-full w-full object-cover"
+                                className={`absolute inset-0 h-full w-full object-cover ${
+                                  lead ? "watch-scroll-intro-photo" : ""
+                                }`}
                               />
                             ) : (
                               // No photograph exists for an era that has not

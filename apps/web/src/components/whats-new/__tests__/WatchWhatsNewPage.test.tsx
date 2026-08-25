@@ -381,6 +381,30 @@ describe("WatchWhatsNewPage", () => {
     }
   })
 
+  it("fits the opening photograph to the viewport width, lead only", () => {
+    // The card is wider than the screen while it fills it, so the picture
+    // needs a box sized to the viewport instead of to the card. Any other
+    // era carrying this would be sized against a viewport it never fills.
+    const photos = cards().map((card) => card.querySelector("img"))
+
+    expect(
+      photos.map((img) =>
+        Boolean(img?.className.includes("watch-scroll-intro-photo")),
+      ),
+    ).toEqual(WHATS_NEW_ERAS.map((_, index) => index === 0))
+  })
+
+  it("keeps the lead photograph 16:9, which the fit is hard-coded to", () => {
+    // The CSS divides the box width by 16/9 to hold the picture's aspect.
+    // Swapping the lead photograph for one of any other shape would crop it
+    // sideways at the opening frame — the exact thing the fit exists to
+    // prevent — and nothing in the stylesheet could notice.
+    const image = WHATS_NEW_ERAS[0].image
+
+    expect(image).toBeDefined()
+    expect(image!.width / image!.height).toBeCloseTo(16 / 9, 3)
+  })
+
   it("leaves room above the stage for the oversized opening card", () => {
     // Measured in a browser: before the pin engages, the opening card
     // reaches 144px above the stage's own top edge. The stage's top margin

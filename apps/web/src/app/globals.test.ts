@@ -198,6 +198,25 @@ describe("scroll-driven timeline choreography", () => {
     expect(frames).toMatch(/to\s*\{[\s\S]*rgb\(0 0 0 \/ 0\)/)
   })
 
+  it("sizes the opening photograph from the viewport, capped at the card", () => {
+    // The card is far wider than the screen while it fills it, so a
+    // card-filling box pushes ~40% of the picture off both sides. The box is
+    // the VIEWPORT width instead, divided back out by the zoom — and capped
+    // at the card's own footprint so the landed frame is unchanged. Drop the
+    // cap and the landed card shows a crop it never used to.
+    const guard = blockBody(css, "@supports (animation-timeline: view())")
+    const rule = blockBody(guard, ".watch-scroll-intro-photo {")
+
+    expect(rule).toMatch(
+      /width:\s*min\(\s*calc\(100vw \/ var\(--era-zoom\)\)\s*,\s*100%\s*\)/,
+    )
+    // Height keeps the picture's own aspect, or the box crops it sideways.
+    expect(rule).toMatch(/height:\s*min\(calc\(100vw \* 9 \/ 16/)
+    // Centred on the screen, not on a card that is often much taller.
+    expect(rule).toContain("50svh")
+    expect(rule).not.toMatch(/top:\s*50%/)
+  })
+
   it("keeps the opening zoom inside the pinned breakpoint", () => {
     // The veil and the caption fade start at `opacity: 0`. Below the
     // pinned breakpoint the stage declares no `--watch-era-stage`

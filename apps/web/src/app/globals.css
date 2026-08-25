@@ -1039,6 +1039,39 @@
         animation-range: var(--intro-range);
       }
 
+      /* Opening frame: the whole WIDTH of the photograph.
+         While the card fills the screen it is far wider than the viewport —
+         2500px against 1440 at a 1440x900 window — so a card-filling
+         `object-cover` pushes roughly 40% of the picture off both sides.
+         Sizing the box to the viewport width instead, at the picture's own
+         16:9 aspect, shows all of it. `min(…, 100%)` hands the card back its
+         own footprint the moment the card becomes the narrower of the two,
+         so the landed frame is exactly what it was before this existed.
+
+         Consequence, stated because it is a design call rather than a bug:
+         on a window narrower than 16:9 the full width cannot also fill the
+         height, so the picture letterboxes against the card's own dark
+         background. Nothing at 16:9, ~90px total at 1440x900, ~590px on a
+         5:4 window. */
+      .watch-scroll-intro-photo {
+        inset: auto;
+        /* Centred on the SCREEN, not on the card. The zoom is top-anchored,
+           so the card's top edge sits a measured 39px above the viewport top
+           at every viewport — the lift's deliberate overshoot — which puts
+           the viewport's centre `50svh + 39px` below the card's top edge in
+           screen pixels, and one division by the zoom puts that in the
+           card's own units. Centred on the card instead, a 5:4 window got
+           439px of letterbox above the picture and 153px below: the card is
+           far taller than the screen whenever the horizontal axis is what
+           set the scale. Horizontally the card IS screen-centred, since the
+           zoom's origin is its own 50%. */
+        top: calc((50svh + 39px) / var(--era-zoom));
+        left: 50%;
+        translate: -50% -50%;
+        width: min(calc(100vw / var(--era-zoom)), 100%);
+        height: min(calc(100vw * 9 / 16 / var(--era-zoom)), 100%);
+      }
+
       .watch-scroll-intro-veil {
         animation: watch-scroll-intro-veil linear both;
         animation-timeline: --watch-era-stage;
