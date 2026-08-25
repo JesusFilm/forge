@@ -223,9 +223,16 @@ describe("scroll-driven timeline choreography", () => {
     const from = frames.slice(0, frames.indexOf("to {"))
     const to = frames.slice(frames.indexOf("to {"))
 
-    // Opening: screen-centred, at the picture's own aspect — read from the
-    // picture, never hard-coded here.
-    expect(from).toContain("50svh")
+    // Opening: top edge flush with the top of the screen, at the picture's
+    // own aspect — read from the picture, never hard-coded here. The centre
+    // is half a rendered height below the card's top edge, which is the
+    // `39px + 50vw / aspect`. Centred on the screen instead (`50svh`), the
+    // letterbox splits and its upper half stacks under the page's own dark
+    // band, which reads as a gap above the picture.
+    expect(from).toMatch(
+      /top:\s*calc\(\(39px \+ 50vw \/ var\(--photo-aspect\)\)/,
+    )
+    expect(from).not.toContain("50svh")
     expect(from).toMatch(/height:\s*calc\(100vw \/ var\(--photo-aspect\)/)
     // Landed: the card's own box, exactly.
     expect(to).toMatch(/top:\s*50%\s*;/)
