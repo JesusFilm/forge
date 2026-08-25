@@ -11,6 +11,7 @@ import { WatchWhatsNewPage } from "@/components/whats-new/WatchWhatsNewPage"
 import {
   WHATS_NEW_AUDIENCES,
   WHATS_NEW_FORMATS,
+  WHATS_NEW_DELIVERY,
   WHATS_NEW_DIRECTIONS,
   WHATS_NEW_ERAS,
   WHATS_NEW_FAQ,
@@ -18,6 +19,9 @@ import {
   WHATS_NEW_ICEBERG,
   WHATS_NEW_IMPROVEMENTS,
   WHATS_NEW_LEDE,
+  WHATS_NEW_PARTNER_LETTER,
+  WHATS_NEW_QUIZ,
+  WHATS_NEW_SELF_ID,
   WHATS_NEW_TEAM,
 } from "@/components/whats-new/whats-new-content"
 import { WHATS_NEW_LANGUAGE_SWITCHER } from "@/components/whats-new/whats-new-content"
@@ -769,6 +773,201 @@ describe("WatchWhatsNewPage", () => {
     for (const card of cards) {
       expect(card.querySelector("svg")).not.toBeNull()
     }
+  })
+
+  it("closes the audiences section by asking the reader which one they are", () => {
+    const selfId = container.querySelector('[data-testid="whats-new-self-id"]')
+
+    expect(selfId).not.toBeNull()
+    expect(
+      selfId?.closest("section")?.getAttribute("id"),
+      "the question belongs to the audiences section, not a neighbouring one",
+    ).toBe("why")
+    expect(selfId?.textContent).toContain(WHATS_NEW_SELF_ID.question)
+
+    // After the cards: the reader has to have seen the three audiences
+    // before being asked to pick one of them.
+    const cards = [
+      ...container.querySelectorAll('[data-testid="whats-new-audience-card"]'),
+    ]
+    expect(cards.length).toBeGreaterThan(0)
+    for (const card of cards) {
+      expect(
+        card.compareDocumentPosition(selfId!) &
+          Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy()
+    }
+  })
+
+  it("tells the platform-move story under the improvements it explains", () => {
+    const band = container.querySelector('[data-testid="whats-new-delivery"]')
+
+    expect(band).not.toBeNull()
+    expect(
+      band?.closest("section")?.getAttribute("id"),
+      "the band is the work underneath the improvements, so it belongs to that section",
+    ).toBe("improving")
+
+    // Both platforms are named: "we moved" means nothing without the two
+    // ends of the move.
+    expect(band?.textContent).toContain("Brightcove")
+    expect(band?.textContent).toContain("Mux")
+
+    for (const paragraph of WHATS_NEW_DELIVERY.paragraphs) {
+      expect(band?.textContent).toContain(paragraph)
+    }
+    for (const point of WHATS_NEW_DELIVERY.points) {
+      expect(band?.textContent).toContain(point)
+    }
+    for (const paragraph of WHATS_NEW_DELIVERY.downloads.paragraphs) {
+      expect(band?.textContent).toContain(paragraph)
+    }
+    expect(band?.textContent).toContain(WHATS_NEW_DELIVERY.closing)
+  })
+
+  it("never prints a complaint figure without its window and its method", () => {
+    // These are checkable claims on a public page. A bare "0" invites the
+    // reading "zero complaints, ever"; the window and the ticket count are
+    // what make it a measurement, and the note is what makes it honest —
+    // hand-counted, and against an update that also shipped the redesign.
+    const stats = [
+      ...container.querySelectorAll('[data-testid="whats-new-delivery-stat"]'),
+    ]
+
+    expect(stats).toHaveLength(WHATS_NEW_DELIVERY.stats.length)
+    for (const [index, stat] of stats.entries()) {
+      const source = WHATS_NEW_DELIVERY.stats[index]
+      expect(stat.querySelector("dd")?.textContent).toBe(source.value)
+      expect(stat.querySelector("dt")?.textContent).toContain(source.label)
+      expect(stat.querySelector("dt")?.textContent).toContain(source.detail)
+      // Label before value in the DOM: a screen reader must never reach
+      // the figure before the window it belongs to.
+      expect(
+        stat
+          .querySelector("dt")!
+          .compareDocumentPosition(stat.querySelector("dd")!) &
+          Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy()
+    }
+
+    const band = container.querySelector('[data-testid="whats-new-delivery"]')
+    expect(band?.textContent).toContain(WHATS_NEW_DELIVERY.statsHeading)
+    expect(band?.textContent).toContain(WHATS_NEW_DELIVERY.note)
+  })
+
+  it("keeps display figures proportional, not tabular", () => {
+    // `tabular-nums` gives every digit the width of a zero, which reads as
+    // loose spacing at 3rem. It belongs in columns that must align.
+    const values = [
+      ...container.querySelectorAll(
+        '[data-testid="whats-new-delivery-stat"] dd',
+      ),
+    ]
+
+    expect(values.length).toBeGreaterThan(0)
+    for (const value of values) {
+      expect(value.className).not.toContain("tabular-nums")
+    }
+  })
+
+  it("addresses field partners in one signed letter, after the audiences", () => {
+    const letter = container.querySelector('[data-testid="whats-new-letter"]')
+
+    expect(letter).not.toBeNull()
+    expect(letter?.closest("section")?.getAttribute("id")).toBe("partners")
+    expect(letter?.textContent).toContain(WHATS_NEW_PARTNER_LETTER.greeting)
+    for (const paragraph of [
+      ...WHATS_NEW_PARTNER_LETTER.beforeFigure,
+      ...WHATS_NEW_PARTNER_LETTER.afterFigure,
+    ]) {
+      expect(letter?.textContent).toContain(paragraph)
+    }
+    expect(letter?.textContent).toContain(WHATS_NEW_PARTNER_LETTER.ask)
+
+    // A first-person letter that nobody signs is a press release. The name
+    // and the role both have to reach the page.
+    const signature = letter?.querySelector(
+      '[data-testid="whats-new-letter-signature"]',
+    )
+    expect(signature?.textContent).toContain(
+      WHATS_NEW_PARTNER_LETTER.signature.name,
+    )
+    expect(signature?.textContent).toContain(
+      WHATS_NEW_PARTNER_LETTER.signature.role,
+    )
+    // The letter's ask needs somewhere to land.
+    expect(signature?.querySelector("button")?.textContent).toContain(
+      WHATS_NEW_PARTNER_LETTER.feedbackCta,
+    )
+
+    // The letter answers the self-identification question above it, so it
+    // has to come after that question, not before.
+    const selfId = container.querySelector('[data-testid="whats-new-self-id"]')
+    expect(
+      selfId!.compareDocumentPosition(letter!) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
+  })
+
+  it("makes the share of visitors unskimmable, and quotes one number", () => {
+    // The letter exists to land this figure. If it reads as prose in the
+    // middle of eight paragraphs, the reader who most needs it is exactly
+    // the reader who skims past it.
+    const figure = container.querySelector(
+      '[data-testid="whats-new-letter-figure"]',
+    )
+
+    expect(figure?.tagName).toBe("FIGURE")
+    expect(figure?.querySelector("figcaption")?.textContent).toBe(
+      WHATS_NEW_PARTNER_LETTER.figure.claim,
+    )
+
+    // The letter's share and the quiz's answer are the same claim about
+    // the same audience. Two different numbers on one page would
+    // discredit both, so the figure is pinned to the quiz's value, not to
+    // its own copy of it.
+    const value = container.querySelector(
+      '[data-testid="whats-new-letter-figure-value"]',
+    )
+    expect(value?.textContent).toBe(`${WHATS_NEW_QUIZ.actualPercent}%`)
+
+    // Display-sized, not body-sized. jsdom computes no Tailwind, so the
+    // class is the assertable proxy; the rendered px size was checked in a
+    // real browser.
+    expect(value?.className).toMatch(/\btext-5xl\b/)
+  })
+
+  it("does not tell field partners they are the main audience", () => {
+    // The letter's whole purpose is to correct that belief. A future edit
+    // that softens the figure back into flattery undoes it, and reads as a
+    // promise we then break with every front-door decision.
+    const letter = container.querySelector('[data-testid="whats-new-letter"]')
+    const copy = letter?.textContent ?? ""
+
+    expect(copy).not.toMatch(/main (?:focus|audience)/i)
+    expect(copy).not.toMatch(/(?:you are|you're) (?:our|the) (?:primary|main)/i)
+    // And it still says the corrective thing: the majority, named.
+    expect(copy).toMatch(/ninety-eight/i)
+  })
+
+  it("puts no inbox on the page for a bot to harvest", () => {
+    // The signer's reply path is the shared feedback composer by decision,
+    // not a printed address. A `mailto:` here — or a stray staff address
+    // anywhere in the copy — is the regression.
+    expect(container.querySelector('a[href^="mailto:"]')).toBeNull()
+    expect(textContent()).not.toMatch(/@jesusfilm\.org/i)
+  })
+
+  it("offers the partner letter in the table of contents", () => {
+    // The literal id, not one mapped out of WHATS_NEW_CONTENTS: the nav is
+    // rendered FROM that list, so comparing the two only proves they were
+    // built from the same array. Deleting the entry has to fail here.
+    const linked = [
+      ...container.querySelectorAll<HTMLAnchorElement>('nav a[href^="#"]'),
+    ].map((link) => link.getAttribute("href")!.slice(1))
+
+    expect(linked).toContain("partners")
+    expect(container.querySelector('section[id="partners"]')).not.toBeNull()
   })
 
   it("illustrates the team section with a labelled iceberg", () => {

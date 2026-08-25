@@ -24,10 +24,12 @@ import { WhatsNewFormatDiagram } from "@/components/whats-new/WhatsNewFormatDiag
 import { WhatsNewAudienceQuiz } from "@/components/whats-new/WhatsNewAudienceQuiz"
 import { WhatsNewIceberg } from "@/components/whats-new/WhatsNewIceberg"
 import { WhatsNewLanguageSwitcher } from "@/components/whats-new/WhatsNewLanguageSwitcher"
+import { WhatsNewSelfId } from "@/components/whats-new/WhatsNewSelfId"
 import {
   WHATS_NEW_AUDIENCES,
   WHATS_NEW_CLOSING,
   WHATS_NEW_CONTENTS,
+  WHATS_NEW_DELIVERY,
   WHATS_NEW_DIRECTIONS,
   WHATS_NEW_ERAS,
   WHATS_NEW_FAQ,
@@ -35,6 +37,7 @@ import {
   WHATS_NEW_IMPROVEMENTS,
   WHATS_NEW_LANGUAGE_SWITCHER,
   WHATS_NEW_LEDE,
+  WHATS_NEW_PARTNER_LETTER,
   WHATS_NEW_TEAM,
   type WhatsNewIconKey,
 } from "@/components/whats-new/whats-new-content"
@@ -74,6 +77,9 @@ const ICONS: Record<WhatsNewIconKey, LucideIcon> = {
   globe: Globe2,
   send: Send,
 }
+
+/** Resolved once: the delivery band renders exactly one icon. */
+const DeliveryIcon = ICONS[WHATS_NEW_DELIVERY.icon]
 
 /**
  * Repeating grain used across Watch's promotional surfaces. Already shipped
@@ -458,6 +464,191 @@ export function WatchWhatsNewPage({
           contentClass={WATCH_PAGE_CONTENT_CLASSES}
         />
 
+        {/* Why these changes matter */}
+        <section
+          id="why"
+          aria-labelledby="whats-new-audiences-heading"
+          className="relative border-t border-white/10 scroll-mt-24 md:scroll-mt-32"
+        >
+          <div
+            className={`${WATCH_PAGE_CONTENT_CLASSES} py-16 sm:py-20 lg:py-24`}
+          >
+            <div className="max-w-3xl">
+              <p className={EYEBROW_CLASS}>{WHATS_NEW_AUDIENCES.eyebrow}</p>
+              <h2
+                id="whats-new-audiences-heading"
+                className={`mt-4 ${SECTION_HEADING_CLASS}`}
+              >
+                {WHATS_NEW_AUDIENCES.heading}
+              </h2>
+            </div>
+
+            {/* The surprise comes before the three cards: it is the reason
+                the audiences are weighted the way they are. */}
+            <WhatsNewAudienceQuiz />
+
+            <ul className="mt-12 grid gap-6 isolate md:grid-cols-3 lg:mt-16 lg:gap-8">
+              {WHATS_NEW_AUDIENCES.cards.map((card, index) => {
+                const Icon = ICONS[card.icon]
+                // Outer cards swing out and drop; the middle one stays
+                // upright and highest, which is what reads as a fan.
+                const offset = index - 1
+
+                return (
+                  <li
+                    key={card.title}
+                    data-testid="whats-new-audience-card"
+                    style={
+                      {
+                        "--tint": card.tint,
+                        "--fan-rotate": `${offset * 5}deg`,
+                        "--fan-drop": `${Math.abs(offset) * 0.9}rem`,
+                        // Direction only. The DISTANCE lives in CSS in
+                        // absolute units, because the space the overlap
+                        // must not eat is the card's fixed padding — a
+                        // percentage of card width closes that gap to
+                        // nothing on a wide viewport.
+                        "--fan-dir": offset,
+                        // Left card on top so every card covers only the
+                        // RIGHT edge of the one behind it.
+                        "--fan-layer": WHATS_NEW_AUDIENCES.cards.length - index,
+                      } as CSSProperties
+                    }
+                    className="watch-scroll-fan group relative overflow-hidden rounded-2xl border border-[color-mix(in_oklab,var(--tint)_62%,transparent)] bg-[linear-gradient(150deg,color-mix(in_oklab,var(--tint)_52%,#0a0910),color-mix(in_oklab,var(--tint)_26%,#08070c))] p-6 mix-blend-screen transition-colors duration-300 hover:border-[color-mix(in_oklab,var(--tint)_85%,transparent)] lg:p-8"
+                  >
+                    {/* Tint wash, strongest behind the icon. */}
+                    <span
+                      aria-hidden
+                      className="pointer-events-none absolute inset-0 bg-[radial-gradient(90%_60%_at_0%_0%,rgba(255,255,255,0.16),transparent_60%)]"
+                    />
+
+                    <div className="relative">
+                      <span
+                        className="grid size-12 place-items-center rounded-xl border border-[color-mix(in_oklab,var(--tint)_50%,transparent)] bg-[color-mix(in_oklab,var(--tint)_22%,transparent)] text-[var(--tint)]"
+                        style={{ color: card.tint }}
+                      >
+                        <Icon aria-hidden className="size-6" />
+                      </span>
+
+                      <span className="mt-6 block text-[0.6875rem] font-semibold tracking-[0.28em] tabular-nums text-[var(--tint)]">
+                        {String(index + 1).padStart(2, "0")}
+                      </span>
+                      <h3 className="mt-3 text-lg font-semibold text-white">
+                        {card.title}
+                      </h3>
+                      <p className="mt-3 text-sm leading-relaxed text-white/88">
+                        {card.body}
+                      </p>
+                    </div>
+                  </li>
+                )
+              })}
+            </ul>
+
+            <p className={`mt-10 max-w-3xl ${BODY_CLASS}`}>
+              {WHATS_NEW_AUDIENCES.closing}
+            </p>
+
+            {/* The section has told the reader who Watch is for; the last
+                move is to let them say which of the three they are, so it
+                closes on their situation rather than on our numbers. */}
+            <WhatsNewSelfId />
+          </div>
+        </section>
+
+        {/* A letter to missionaries and field partners.
+            Placed straight after the audiences section: the reader has
+            just been asked which of the three they are, so the one
+            audience with the hardest conditions gets addressed directly
+            before the page moves on to what is next. */}
+        <section
+          id="partners"
+          aria-labelledby="whats-new-partners-heading"
+          className="relative border-t border-white/10 bg-stone-950 scroll-mt-24 md:scroll-mt-32"
+        >
+          <div
+            className={`${WATCH_PAGE_CONTENT_CLASSES} py-16 sm:py-20 lg:py-24`}
+          >
+            <div className="grid gap-10 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] lg:gap-20">
+              <header className="max-w-xl">
+                <p className={EYEBROW_CLASS}>
+                  {WHATS_NEW_PARTNER_LETTER.eyebrow}
+                </p>
+                <h2
+                  id="whats-new-partners-heading"
+                  className={`mt-4 ${SECTION_HEADING_CLASS}`}
+                >
+                  {WHATS_NEW_PARTNER_LETTER.heading}
+                </h2>
+              </header>
+
+              <div data-testid="whats-new-letter" className="max-w-2xl">
+                <p className={BODY_CLASS}>
+                  {WHATS_NEW_PARTNER_LETTER.greeting}
+                </p>
+                {WHATS_NEW_PARTNER_LETTER.beforeFigure.map((paragraph) => (
+                  <p key={paragraph} className={`mt-6 ${BODY_CLASS}`}>
+                    {paragraph}
+                  </p>
+                ))}
+
+                {/* The letter's one job, set as a figure rather than left
+                    inside a paragraph: a reader who skims the letter still
+                    cannot skim past the number. The share is interpolated
+                    from the quiz, so the page cannot print two of them.
+
+                    Number and claim sit side by side on the first line's
+                    baseline, so the figure reads as one sentence rather
+                    than a heading over a paragraph — stacking below `sm`,
+                    where a 60px number and a caption cannot share a
+                    line. */}
+                <figure
+                  data-testid="whats-new-letter-figure"
+                  className="mt-10 flex flex-col gap-y-4 border-l-2 border-brand-red pl-6 sm:flex-row sm:items-center sm:gap-x-7 sm:pl-8"
+                >
+                  <p
+                    data-testid="whats-new-letter-figure-value"
+                    className="text-5xl leading-none font-semibold tracking-[-0.03em] text-white sm:shrink-0 sm:text-[4rem]"
+                  >
+                    {WHATS_NEW_PARTNER_LETTER.figure.value}
+                  </p>
+                  <figcaption className="text-lg leading-8 text-white">
+                    {WHATS_NEW_PARTNER_LETTER.figure.claim}
+                  </figcaption>
+                </figure>
+
+                {WHATS_NEW_PARTNER_LETTER.afterFigure.map((paragraph) => (
+                  <p key={paragraph} className={`mt-6 ${BODY_CLASS}`}>
+                    {paragraph}
+                  </p>
+                ))}
+                <p className={`mt-6 ${BODY_CLASS}`}>
+                  {WHATS_NEW_PARTNER_LETTER.ask}
+                </p>
+
+                {/* Typed name, not a drawn signature: a rendered
+                    handwriting graphic of a real person's name would be a
+                    forgery of the one mark that is theirs. */}
+                <div
+                  data-testid="whats-new-letter-signature"
+                  className="mt-10 border-t border-white/12 pt-7"
+                >
+                  <p className="text-base font-semibold text-white">
+                    {WHATS_NEW_PARTNER_LETTER.signature.name}
+                  </p>
+                  <p className="mt-1 text-sm text-white/55">
+                    {WHATS_NEW_PARTNER_LETTER.signature.role}
+                  </p>
+                  <WhatsNewFeedbackButton
+                    label={WHATS_NEW_PARTNER_LETTER.feedbackCta}
+                    className={`mt-7 ${SECONDARY_CTA_CLASS}`}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
         {/* What is improving */}
         <section
           id="improving"
@@ -552,93 +743,92 @@ export function WatchWhatsNewPage({
                 )
               })}
             </div>
-          </div>
-        </section>
 
-        {/* Why these changes matter */}
-        <section
-          id="why"
-          aria-labelledby="whats-new-audiences-heading"
-          className="relative border-t border-white/10 scroll-mt-24 md:scroll-mt-32"
-        >
-          <div
-            className={`${WATCH_PAGE_CONTENT_CLASSES} py-16 sm:py-20 lg:py-24`}
-          >
-            <div className="max-w-3xl">
-              <p className={EYEBROW_CLASS}>{WHATS_NEW_AUDIENCES.eyebrow}</p>
-              <h2
-                id="whats-new-audiences-heading"
-                className={`mt-4 ${SECTION_HEADING_CLASS}`}
-              >
-                {WHATS_NEW_AUDIENCES.heading}
-              </h2>
-            </div>
-
-            {/* The surprise comes before the three cards: it is the reason
-                the audiences are weighted the way they are. */}
-            <WhatsNewAudienceQuiz />
-
-            <ul className="mt-12 grid gap-6 isolate md:grid-cols-3 lg:mt-16 lg:gap-8">
-              {WHATS_NEW_AUDIENCES.cards.map((card, index) => {
-                const Icon = ICONS[card.icon]
-                // Outer cards swing out and drop; the middle one stays
-                // upright and highest, which is what reads as a fan.
-                const offset = index - 1
-
-                return (
-                  <li
-                    key={card.title}
-                    data-testid="whats-new-audience-card"
-                    style={
-                      {
-                        "--tint": card.tint,
-                        "--fan-rotate": `${offset * 5}deg`,
-                        "--fan-drop": `${Math.abs(offset) * 0.9}rem`,
-                        // Direction only. The DISTANCE lives in CSS in
-                        // absolute units, because the space the overlap
-                        // must not eat is the card's fixed padding — a
-                        // percentage of card width closes that gap to
-                        // nothing on a wide viewport.
-                        "--fan-dir": offset,
-                        // Left card on top so every card covers only the
-                        // RIGHT edge of the one behind it.
-                        "--fan-layer": WHATS_NEW_AUDIENCES.cards.length - index,
-                      } as CSSProperties
-                    }
-                    className="watch-scroll-fan group relative overflow-hidden rounded-2xl border border-[color-mix(in_oklab,var(--tint)_62%,transparent)] bg-[linear-gradient(150deg,color-mix(in_oklab,var(--tint)_52%,#0a0910),color-mix(in_oklab,var(--tint)_26%,#08070c))] p-6 mix-blend-screen transition-colors duration-300 hover:border-[color-mix(in_oklab,var(--tint)_85%,transparent)] lg:p-8"
-                  >
-                    {/* Tint wash, strongest behind the icon. */}
-                    <span
+            {/* The section heading promises "the work underneath". This is
+                the piece of that work partners feel most, so it closes the
+                section as one band rather than a sixth screenshot card —
+                there is nothing to screenshot about a platform move. */}
+            <div
+              data-testid="whats-new-delivery"
+              className={`mt-14 overflow-hidden rounded-3xl border border-white/12 ${ACCENT_GRADIENT_CLASS} p-6 sm:p-9 lg:mt-20 lg:p-12`}
+            >
+              <div className="grid gap-12 lg:grid-cols-2 lg:gap-16">
+                <div>
+                  <div className="flex items-center gap-4">
+                    <DeliveryIcon
                       aria-hidden
-                      className="pointer-events-none absolute inset-0 bg-[radial-gradient(90%_60%_at_0%_0%,rgba(255,255,255,0.16),transparent_60%)]"
+                      className="size-5 shrink-0 text-white opacity-45"
                     />
+                    <p className={EYEBROW_CLASS}>
+                      {WHATS_NEW_DELIVERY.eyebrow}
+                    </p>
+                  </div>
+                  <h3 className="mt-5 text-2xl leading-snug font-semibold tracking-[-0.015em] text-balance text-white sm:text-3xl">
+                    {WHATS_NEW_DELIVERY.heading}
+                  </h3>
+                  {WHATS_NEW_DELIVERY.paragraphs.map((paragraph) => (
+                    <p key={paragraph} className={`mt-5 ${BODY_CLASS}`}>
+                      {paragraph}
+                    </p>
+                  ))}
+                  <ul className={`mt-7 ${HAIRLINE_LIST_CLASS}`}>
+                    {WHATS_NEW_DELIVERY.points.map((point) => (
+                      <li key={point}>{point}</li>
+                    ))}
+                  </ul>
+                </div>
 
-                    <div className="relative">
-                      <span
-                        className="grid size-12 place-items-center rounded-xl border border-[color-mix(in_oklab,var(--tint)_50%,transparent)] bg-[color-mix(in_oklab,var(--tint)_22%,transparent)] text-[var(--tint)]"
-                        style={{ color: card.tint }}
+                <div>
+                  <h4 className="text-xl leading-snug font-semibold tracking-[-0.01em] text-balance text-white sm:text-2xl">
+                    {WHATS_NEW_DELIVERY.downloads.heading}
+                  </h4>
+                  {WHATS_NEW_DELIVERY.downloads.paragraphs.map((paragraph) => (
+                    <p key={paragraph} className={`mt-5 ${BODY_CLASS}`}>
+                      {paragraph}
+                    </p>
+                  ))}
+
+                  {/* Two numbers doing one comparison: a KPI pair, not a
+                      chart. Reading order is label then value, so the
+                      figure never arrives without its window; the visual
+                      order is reversed because the number is the headline.
+                      Proportional figures — `tabular-nums` only belongs in
+                      a column of numbers that must align. */}
+                  <p className="mt-9 border-t border-white/12 pt-8 text-[0.6875rem] font-semibold tracking-[0.28em] text-red-100/70 uppercase">
+                    {WHATS_NEW_DELIVERY.statsHeading}
+                  </p>
+                  <dl
+                    data-testid="whats-new-delivery-stats"
+                    className="mt-6 grid gap-5 sm:grid-cols-2"
+                  >
+                    {WHATS_NEW_DELIVERY.stats.map((stat) => (
+                      <div
+                        key={stat.label}
+                        data-testid="whats-new-delivery-stat"
+                        className="flex flex-col-reverse"
                       >
-                        <Icon aria-hidden className="size-6" />
-                      </span>
+                        <dt className="mt-3 text-sm leading-6 text-white/70">
+                          {stat.label}
+                          <span className="mt-1 block text-xs text-white/45">
+                            {stat.detail}
+                          </span>
+                        </dt>
+                        <dd className="text-5xl leading-none font-semibold tracking-[-0.02em] text-white">
+                          {stat.value}
+                        </dd>
+                      </div>
+                    ))}
+                  </dl>
+                  <p className="mt-6 text-xs leading-6 text-white/45">
+                    {WHATS_NEW_DELIVERY.note}
+                  </p>
+                </div>
+              </div>
 
-                      <span className="mt-6 block text-[0.6875rem] font-semibold tracking-[0.28em] tabular-nums text-[var(--tint)]">
-                        {String(index + 1).padStart(2, "0")}
-                      </span>
-                      <h3 className="mt-3 text-lg font-semibold text-white">
-                        {card.title}
-                      </h3>
-                      <p className="mt-3 text-sm leading-relaxed text-white/88">
-                        {card.body}
-                      </p>
-                    </div>
-                  </li>
-                )
-              })}
-            </ul>
-
-            <p className={`mt-10 max-w-3xl ${BODY_CLASS}`}>
-              {WHATS_NEW_AUDIENCES.closing}
-            </p>
+              <p className={`mt-12 max-w-3xl ${BODY_CLASS}`}>
+                {WHATS_NEW_DELIVERY.closing}
+              </p>
+            </div>
           </div>
         </section>
 
