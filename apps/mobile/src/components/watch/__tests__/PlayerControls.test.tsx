@@ -114,6 +114,8 @@ async function render(
     externalPlaybackActive?: boolean
     castUi?: PlayerControlsCastUi | null
     castTarget?: PlaybackTarget | null
+    onOpenSettings?: () => void
+    onInteract?: () => void
   } = {},
   player: ReturnType<typeof makePlayer> = makePlayer(),
 ): Promise<TestInstance> {
@@ -400,6 +402,55 @@ describe("cast control differs by platform", () => {
     })
     expect(hasLabel(renderer, "Casting to Living Room TV")).toBe(true)
     expect(labelCount(renderer, "Cast")).toBe(0)
+    await unmount(renderer)
+  })
+})
+
+describe("Settings gear (U4)", () => {
+  it.each([
+    ["inline", false],
+    ["fullscreen", true],
+  ])(
+    "renders the gear in the route row on iOS (%s)",
+    async (_n, fullscreen) => {
+      const renderer = await render(fullscreen as boolean, {
+        onOpenSettings: () => {},
+      })
+      expect(hasLabel(renderer, "Video settings")).toBe(true)
+      await unmount(renderer)
+    },
+  )
+
+  it.each([
+    ["inline", false],
+    ["fullscreen", true],
+  ])(
+    "renders the gear in the route row on Android (%s)",
+    async (_n, fullscreen) => {
+      setPlatform("android")
+      const renderer = await render(fullscreen as boolean, {
+        onOpenSettings: () => {},
+      })
+      expect(hasLabel(renderer, "Video settings")).toBe(true)
+      await unmount(renderer)
+    },
+  )
+
+  it("opens the sheet and resets the auto-hide timer on press", async () => {
+    const onOpenSettings = jest.fn()
+    const onInteract = jest.fn()
+    const renderer = await render(false, { onOpenSettings, onInteract })
+    await press(pressableByLabel(renderer, "Video settings"))
+    expect(onOpenSettings).toHaveBeenCalledTimes(1)
+    expect(onInteract).toHaveBeenCalledTimes(1)
+    await unmount(renderer)
+  })
+
+  // R12 is structural: only the watch chrome threads the callback, so a
+  // surface that does not (the veil route row) renders no gear.
+  it("renders no gear when the host does not thread onOpenSettings", async () => {
+    const renderer = await render(false)
+    expect(labelCount(renderer, "Video settings")).toBe(0)
     await unmount(renderer)
   })
 })

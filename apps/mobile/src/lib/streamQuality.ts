@@ -52,6 +52,15 @@ export function applyQualityConstraint(url: string, tier: QualityTier): string {
   return parsed.toString()
 }
 
+/**
+ * R9, checked at the point of use: quality options exist only where the
+ * constraint can act — a Mux http(s) stream. Offline file:// and non-Mux
+ * URLs (which applyQualityConstraint passes through) answer false.
+ */
+export function supportsQualityConstraint(url: string | null): boolean {
+  return url != null && parseMuxStreamUrl(url) != null
+}
+
 type QualityConstraint = {
   maxResolution: string | null
   minResolution: string | null

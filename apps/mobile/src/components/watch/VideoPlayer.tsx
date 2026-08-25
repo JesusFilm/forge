@@ -30,6 +30,7 @@ import {
 } from "../../lib/tapSeek"
 import { useControlsVisibility } from "../../hooks/useControlsVisibility"
 import { useEndedPosterFade } from "../../hooks/useEndedPosterFade"
+import { useNonRouteSheetSuppression } from "../../hooks/useNonRouteSheetSuppression"
 import type { CastPlayback } from "../../hooks/useCastPlayback"
 import type { CastMedia } from "../../lib/cast/castMediaResolver"
 import { isExternalRouteActive } from "../../lib/externalRoute"
@@ -47,6 +48,7 @@ import {
   type PlayerControlsCastUi,
 } from "./PlayerControls"
 import { PlayerLoadingVeil } from "./PlayerLoadingVeil"
+import { PlayerSettingsSheet } from "./PlayerSettingsSheet"
 import { SubtitleOverlay } from "./SubtitleOverlay"
 
 // Caption distance above the bottom edge (px). In fullscreen the caption lifts
@@ -233,6 +235,12 @@ export function VideoPlayer({
   })
 
   const controls = useControlsVisibility(player)
+
+  // Settings sheet (U4): component state, never a route — a routed form sheet
+  // cannot present over the fullscreen player (KTD5). The floating window
+  // hides beneath it like every other in-app sheet (R11).
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  useNonRouteSheetSuppression(settingsOpen, "playerSettings")
 
   // One expression for both chrome render gates below, so they can't drift.
   const chromeMounted = controls.mounted && !awaitingAutostart
@@ -801,8 +809,17 @@ export function VideoPlayer({
             externalPlaybackActive={airPlayActive}
             castUi={castUi}
             castTarget={castTarget}
+            onOpenSettings={() => setSettingsOpen(true)}
           />
         </Animated.View>
+      )}
+
+      {settingsOpen && (
+        <PlayerSettingsSheet
+          onClose={() => setSettingsOpen(false)}
+          castActive={castRemoteActive}
+          streamingUrl={streamingUrl}
+        />
       )}
     </View>
   )

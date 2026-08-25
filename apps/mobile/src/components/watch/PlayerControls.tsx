@@ -59,6 +59,8 @@ type PlayerControlsProps = {
   /** KTD4: non-null while a cast session is remote-controlling — the
    *  transport reads and writes this target, never the local player. */
   castTarget?: PlaybackTarget | null
+  /** Opens the player settings sheet (threaded to the route row's gear). */
+  onOpenSettings?: () => void
 }
 
 // Side inset for the bar's text and icons. The inline seek bar cancels it so
@@ -100,10 +102,14 @@ export function RouteButtons({
   onInteract,
   externalPlaybackActive = false,
   castUi = null,
+  onOpenSettings,
 }: {
   onInteract?: () => void
   externalPlaybackActive?: boolean
   castUi?: PlayerControlsCastUi | null
+  /** Opens the player settings sheet. R1/R12: only the watch chrome threads
+   *  it, so the veil route row and other surfaces render no gear. */
+  onOpenSettings?: () => void
 }) {
   // Android renders the SDK's own button because only a native, attached
   // MediaRouteButton can open the Android dialog — see NativeCastButton. iOS
@@ -156,10 +162,28 @@ export function RouteButtons({
       </Frosted>
     ) : null
 
+  // Same 44pt frosted backplate as its siblings, both platforms (R1).
+  const settingsButton =
+    onOpenSettings == null ? null : (
+      <Pressable
+        onPress={() => {
+          onInteract?.()
+          onOpenSettings()
+        }}
+        accessibilityRole="button"
+        accessibilityLabel="Video settings"
+      >
+        <Frosted style={styles.iconButton}>
+          <MaterialIcons name="settings" size={22} color={TEXT_ON_OVERLAY} />
+        </Frosted>
+      </Pressable>
+    )
+
   return (
     <>
       {castButton}
       {airPlayButton}
+      {settingsButton}
     </>
   )
 }
@@ -173,6 +197,7 @@ export function PlayerControls({
   externalPlaybackActive = false,
   castUi = null,
   castTarget = null,
+  onOpenSettings,
 }: PlayerControlsProps) {
   const typography = useTypography()
   const insets = useSafeAreaInsets()
@@ -405,6 +430,7 @@ export function PlayerControls({
       onInteract={onInteract}
       externalPlaybackActive={externalPlaybackActive}
       castUi={castUi}
+      onOpenSettings={onOpenSettings}
     />
   )
 

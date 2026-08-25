@@ -372,7 +372,7 @@ The window hides while an in-app sheet is presented and returns to its corner
 when the sheet closes. Two mechanisms, because the app presents sheets two
 ways — six real sheet ROUTES (`IN_APP_SHEET_ROUTE_PATTERNS` in
 `src/lib/miniPlayer/suppression.ts`, read from `app/watch/_layout.tsx` and
-`app/series/_layout.tsx`) and two sheets that are component state, counted by
+`app/series/_layout.tsx`) and three sheets that are component state, counted by
 `getNonRouteSheetCounter()` and keyed by id so an unbalanced call is
 attributable. Keep both in step with those layouts. The rule runs on both
 platforms even though only Android paints through a sheet, so behaviour does

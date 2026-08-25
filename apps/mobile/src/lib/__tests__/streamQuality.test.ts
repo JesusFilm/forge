@@ -2,6 +2,7 @@ import {
   QUALITY_TIERS,
   applyQualityConstraint,
   sameQualityConstraint,
+  supportsQualityConstraint,
   type QualityTier,
 } from "../streamQuality"
 
@@ -94,6 +95,39 @@ describe("applyQualityConstraint", () => {
       expect(applyQualityConstraint("not a url", tier)).toBe("not a url")
     },
   )
+})
+
+describe("supportsQualityConstraint", () => {
+  it("supports a Mux https stream", () => {
+    expect(supportsQualityConstraint(MUX_URL)).toBe(true)
+  })
+
+  it("supports a Mux stream carrying a query string", () => {
+    expect(supportsQualityConstraint(`${MUX_URL}?token=abc.def`)).toBe(true)
+  })
+
+  it("supports a whitespace-tainted Mux URL (cleaned first)", () => {
+    expect(supportsQualityConstraint(`${MUX_URL}\n`)).toBe(true)
+  })
+
+  it("rejects a non-Mux https stream", () => {
+    expect(
+      supportsQualityConstraint("https://cdn.example.com/video.m3u8"),
+    ).toBe(false)
+  })
+
+  it("rejects an offline file:// source (R11)", () => {
+    expect(
+      supportsQualityConstraint(
+        "file:///var/mobile/offline/birth-of-jesus.mp4",
+      ),
+    ).toBe(false)
+  })
+
+  it("rejects null and an unparseable value", () => {
+    expect(supportsQualityConstraint(null)).toBe(false)
+    expect(supportsQualityConstraint("not a url")).toBe(false)
+  })
 })
 
 describe("sameQualityConstraint", () => {
