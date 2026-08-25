@@ -4,6 +4,7 @@
 import { act, createElement } from "react"
 import { createRoot, type Root } from "react-dom/client"
 import { afterEach, describe, expect, it, vi } from "vitest"
+import englishMessages from "../../../messages/en.json"
 import { formatDuration } from "@/lib/format-duration"
 import type { SearchResult } from "@/lib/search"
 import { resolveMuxAnimatedPreviewUrl } from "@/lib/url"
@@ -19,15 +20,32 @@ import {
 import { WATCH_UNAVAILABLE_RECOVERY_STORAGE_KEY } from "@/lib/watch-unavailable-recovery-context"
 
 vi.mock("next-intl", () => ({
-  useTranslations: () => (key: string, values?: Record<string, number>) => {
-    if (key === "episodeCount") {
-      const count = values?.count ?? 0
-      return `${count} ${count === 1 ? "episode" : "episodes"}`
+  useTranslations: (namespace: string) => {
+    const translate = (
+      key: string,
+      values?: Record<string, string | number>,
+    ) => {
+      if (namespace === "LanguagePickerModal" && key === "notAvailable") {
+        return englishMessages.LanguagePickerModal.notAvailable
+      }
+      if (key === "episodeCount") {
+        const count = values?.count ?? 0
+        return `${count} ${count === 1 ? "episode" : "episodes"}`
+      }
+      if (key === "experience") return "Experience"
+      if (key === "thumbnailAlt") return "Video thumbnail"
+      return key
     }
-    if (key === "experience") return "Experience"
-    if (key === "thumbnailAlt") return "Video thumbnail"
-    return key
+    return translate
   },
+}))
+
+vi.mock("@/components/watch/WatchProgressBar", () => ({
+  WatchProgressBar: ({ videoId }: { videoId: string }) =>
+    createElement("div", {
+      "data-testid": "watch-progress-bar",
+      "data-video-id": videoId,
+    }),
 }))
 
 vi.mock("next/image", () => ({
@@ -436,6 +454,293 @@ describe("VideoCard", () => {
       container?.querySelector(
         '[data-testid="search-card-availability-badge"]',
       ),
+    ).toBeNull()
+  })
+
+  it("presents a retained unavailable result as localized recovery, not playable media", () => {
+    container = document.createElement("div")
+    document.body.appendChild(container)
+    root = createRoot(container)
+    const unavailable = makeResult({
+      id: "unavailable-with-stale-media",
+      slug: "good-friday-live",
+      title: "Good Friday: Live",
+      snippet: "A catalog description remains useful.",
+      availabilityKind: "unavailable",
+      languageSlug: null,
+      imageUrl: "https://example.com/admin-static-art.jpg",
+      imageBlurDataUrl: "data:image/svg+xml;base64,ADMIN==",
+      muxThumbnailBlurDataUrl: "data:image/jpeg;base64,STALE==",
+      playbackId: "stale-playback-id",
+      startSeconds: 37,
+      label: "COLLECTION",
+      durationSeconds: 9_999,
+      childCount: 12,
+    })
+
+    act(() => {
+      root?.render(
+        <VideoCard
+          result={unavailable}
+          requestedLanguageSlug="spanish-castilian"
+          requestedLanguageName="Spanish, Castilian"
+          onResultClick={(_result, event) => event.preventDefault()}
+        />,
+      )
+    })
+
+    const card = container.querySelector("a")
+    const image = container.querySelector("img")
+    const mediaFrame = image?.parentElement
+
+    expect
+      .soft(card?.getAttribute("href"))
+      .toBe("/good-friday-live.html/spanish-castilian.html")
+    expect.soft(card?.className).toContain("focus-visible:outline-none")
+    expect.soft(mediaFrame?.className).toContain("aspect-video")
+    expect
+      .soft(image?.getAttribute("src"))
+      .toBe("https://example.com/admin-static-art.jpg")
+    expect.soft(image?.getAttribute("alt")).toBe("Good Friday: Live")
+    expect.soft(container.textContent).toContain("Good Friday: Live")
+    expect
+      .soft(container.textContent)
+      .toContain("A catalog description remains useful.")
+    const unavailableBadge = container.querySelector(
+      '[data-testid="search-card-availability-badge"]',
+    )
+    expect
+      .soft(unavailableBadge?.textContent?.trim())
+      .toBe(
+        `${englishMessages.LanguagePickerModal.notAvailable} · Spanish, Castilian`,
+      )
+    expect.soft(unavailableBadge?.className).toContain("bg-stone-100/95")
+    expect.soft(image?.className).toContain("grayscale")
+    expect.soft(image?.className).toContain("brightness-[0.4]")
+    expect
+      .soft(
+        container.querySelector('[data-slot="video-thumbnail-caption"]')
+          ?.className,
+      )
+      .toContain("opacity-45")
+    expect
+      .soft(container.querySelector('[data-testid="search-card-type-badge"]'))
+      .toBeNull()
+    expect.soft(image?.className).not.toContain("search-card-hover-zoom")
+    expect
+      .soft(container.querySelector('[data-testid="mux-hover-preview"]'))
+      .toBeNull()
+    expect
+      .soft(container.querySelector('[data-testid="watch-progress-bar"]'))
+      .toBeNull()
+    expect
+      .soft(container.querySelector('[data-testid="search-card-pill"]'))
+      .toBeNull()
+
+    act(() => {
+      card?.dispatchEvent(
+        new MouseEvent("click", {
+          bubbles: true,
+          cancelable: true,
+          button: 0,
+        }),
+      )
+    })
+    const stored = JSON.parse(
+      sessionStorage.getItem(WATCH_UNAVAILABLE_RECOVERY_STORAGE_KEY) ?? "null",
+    ) as {
+      target?: {
+        requestedLanguageSlug?: string
+        requestedLanguageName?: string | null
+      }
+    } | null
+    expect.soft(stored?.target?.requestedLanguageSlug).toBe("spanish-castilian")
+    expect
+      .soft(stored?.target?.requestedLanguageName)
+      .toBe("Spanish, Castilian")
+  })
+
+  it("suppresses stale Mux fallback and play glyphs for unavailable results without Admin art", () => {
+    container = document.createElement("div")
+    document.body.appendChild(container)
+    root = createRoot(container)
+
+    act(() => {
+      root?.render(
+        <VideoCard
+          result={makeResult({
+            id: "unavailable-with-stale-mux",
+            availabilityKind: "unavailable",
+            languageSlug: null,
+            imageUrl: null,
+            imageBlurDataUrl: null,
+            muxThumbnailBlurDataUrl: "data:image/jpeg;base64,STALE==",
+            playbackId: "stale-playback-id",
+            label: "FEATURE_FILM",
+            durationSeconds: 7_200,
+            childCount: 8,
+          })}
+          requestedLanguageSlug="spanish-castilian"
+        />,
+      )
+    })
+
+    expect.soft(container.querySelector("img")).toBeNull()
+    expect
+      .soft(container.querySelector('[data-testid="mux-hover-preview"]'))
+      .toBeNull()
+    expect
+      .soft(container.querySelector('[data-testid="watch-progress-bar"]'))
+      .toBeNull()
+    expect
+      .soft(container.querySelector('[data-testid="search-card-pill"]'))
+      .toBeNull()
+    expect.soft(container.querySelector("svg")).toBeNull()
+    expect
+      .soft(
+        Array.from(container.querySelectorAll<HTMLElement>("[style]")).some(
+          (element) => element.getAttribute("style")?.includes("STALE"),
+        ),
+      )
+      .toBe(false)
+    expect
+      .soft(
+        container.querySelector(
+          '[data-testid="search-card-availability-badge"]',
+        )?.textContent,
+      )
+      .toBe(englishMessages.LanguagePickerModal.notAvailable)
+  })
+
+  it("isolates an unavailable language name from RTL badge direction", () => {
+    container = document.createElement("div")
+    container.dir = "rtl"
+    document.body.appendChild(container)
+    root = createRoot(container)
+
+    act(() => {
+      root?.render(
+        <VideoCard
+          result={makeResult({
+            availabilityKind: "unavailable",
+            languageSlug: null,
+          })}
+          requestedLanguageSlug="english"
+          requestedLanguageName="English"
+        />,
+      )
+    })
+
+    const isolatedLanguageName = container.querySelector("bdi")
+    expect(isolatedLanguageName?.getAttribute("dir")).toBe("auto")
+    expect(isolatedLanguageName?.textContent).toBe("English")
+  })
+
+  it.each([
+    {
+      availabilityKind: "target_audio" as const,
+      languageSlug: "russian",
+      subtitleLanguageSlug: null,
+      expectedHref: "/x.html/russian.html",
+    },
+    {
+      availabilityKind: "target_subtitle" as const,
+      languageSlug: "english",
+      subtitleLanguageSlug: "russian",
+      expectedHref: "/x.html?subtitles=russian",
+    },
+    {
+      availabilityKind: "related_language" as const,
+      languageSlug: "portuguese-brazil",
+      subtitleLanguageSlug: null,
+      expectedHref: "/x.html/portuguese-brazil.html",
+    },
+    {
+      availabilityKind: undefined,
+      languageSlug: "english",
+      subtitleLanguageSlug: null,
+      expectedHref: "/x.html",
+    },
+  ])(
+    "keeps $availabilityKind results playable without an unavailable status",
+    ({
+      availabilityKind,
+      languageSlug,
+      subtitleLanguageSlug,
+      expectedHref,
+    }) => {
+      container = document.createElement("div")
+      document.body.appendChild(container)
+      root = createRoot(container)
+
+      act(() => {
+        root?.render(
+          <VideoCard
+            result={makeResult({
+              availabilityKind,
+              languageSlug,
+              subtitleLanguageSlug,
+              imageUrl: "https://example.com/playable.jpg",
+              playbackId: "playable-id",
+            })}
+          />,
+        )
+      })
+
+      expect(container.querySelector("a")?.getAttribute("href")).toBe(
+        expectedHref,
+      )
+      expect(
+        container.querySelector(
+          '[data-testid="search-card-availability-badge"]',
+        ),
+      ).toBeNull()
+      expect(
+        container.querySelector('[data-testid="search-card-pill"]'),
+      ).not.toBeNull()
+      expect(
+        container.querySelector('[data-testid="mux-hover-preview"]'),
+      ).not.toBeNull()
+      expect(
+        container.querySelector('[data-testid="watch-progress-bar"]'),
+      ).not.toBeNull()
+      expect(container.querySelector("img")?.className).toContain(
+        "search-card-hover-zoom",
+      )
+    },
+  )
+
+  it("fails closed without writing recovery context for a malformed requested language", () => {
+    container = document.createElement("div")
+    document.body.appendChild(container)
+    root = createRoot(container)
+
+    act(() => {
+      root?.render(
+        <VideoCard
+          result={makeResult({
+            availabilityKind: "unavailable",
+            languageSlug: null,
+          })}
+          requestedLanguageSlug="Spanish!"
+          onResultClick={(_result, event) => event.preventDefault()}
+        />,
+      )
+    })
+
+    const card = container.querySelector("a")
+    expect(card?.getAttribute("href")).toBe("/")
+    act(() => {
+      card?.dispatchEvent(
+        new MouseEvent("click", {
+          bubbles: true,
+          cancelable: true,
+          button: 0,
+        }),
+      )
+    })
+    expect(
+      sessionStorage.getItem(WATCH_UNAVAILABLE_RECOVERY_STORAGE_KEY),
     ).toBeNull()
   })
 

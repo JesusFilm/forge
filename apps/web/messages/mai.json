@@ -191,6 +191,7 @@
     "loadMoreFailed": "आओर परिणाम लोड करबामे असफल।",
     "searching": "खोज भ रहल अछि...",
     "connectionHint": "कृपया अपन कनेक्शन जाँचि कए फेर कोशिश करू।",
+    "rateLimitHint": "बहुत अनुरोध भेल। कृपया एक मिनट बाद फेर प्रयास करू।",
     "retrySearch": "फेरसँ खोज करू",
     "retry": "फेर कोशिश करू",
     "noResults": "\"{query}\" लेल कोनो परिणाम नहि",
@@ -225,7 +226,9 @@
   "HeroPlayer": {
     "playWithSound": "अहिने देखू",
     "tapToUnmute": "म्यूट हटाबय लेल टैप करू",
-    "nextEpisode": "अगिला एपिसोड"
+    "nextEpisode": "अगिला एपिसोड",
+    "audioTranslationCount": "{count, plural, one {# भाषा} other {# भाषा सभ}}",
+    "subtitleCount": "उपशीर्षक: {count, plural, one {# भाषा} other {# भाषा सभ}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "सामग्री लोड भ रहल अछि",
@@ -538,16 +541,16 @@
     "retryFailed": "असफल डाउनलोड सभ लेल फेर कोशिश करू"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "भाषा संस्करण उपलब्ध नहि",
+    "eyebrow": "भाषा संस्करण उपलब्ध नहि",
+    "title": "<contentTitle>{title}</contentTitle> <languageName>{language}</languageName> मे उपलब्ध नहि अछि",
+    "actionsLabel": "उपलब्ध देखबाक विकल्प",
+    "browseInLanguage": "{language} मे वीडियो ब्राउज़ करू",
+    "backToSearch": "खोज पर वापस जाउ",
+    "audioVersionsTitle": "अन्य ऑडियो संस्करण",
+    "audioVersionsDescription": "ई वीडियो देखनाइ जारी रखबाक लेल ऑडियो भाषा चुनू।",
+    "languageVersionLabel": "ऑडियो भाषा",
+    "selectLanguageVersion": "भाषा संस्करण चुनू",
+    "watchSelectedVersion": "चुनल संस्करण देखू"
   }
 }

@@ -191,6 +191,7 @@
     "loadMoreFailed": "Nepodarilo sa načítať ďalšie výsledky.",
     "searching": "Vyhľadáva sa...",
     "connectionHint": "Skontrolujte svoje pripojenie a skúste to znova.",
+    "rateLimitHint": "Príliš veľa požiadaviek. Skúste to znova o minútu.",
     "retrySearch": "Skúsiť vyhľadávanie znova",
     "retry": "Skúsiť znova",
     "noResults": "Pre „{query}“ sa nenašli žiadne výsledky",
@@ -225,7 +226,9 @@
   "HeroPlayer": {
     "playWithSound": "Sledovať teraz",
     "tapToUnmute": "Ťuknite pre zapnutie zvuku",
-    "nextEpisode": "Ďalšia epizóda"
+    "nextEpisode": "Ďalšia epizóda",
+    "audioTranslationCount": "{count, plural, one {# jazyk} few {# jazyky} other {# jazykov}}",
+    "subtitleCount": "Titulky: {count, plural, one {# jazyk} few {# jazyky} other {# jazykov}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Načítava sa obsah",
@@ -538,16 +541,16 @@
     "retryFailed": "Znova skúsiť neúspešné sťahovania"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Jazyková verzia nie je dostupná",
+    "eyebrow": "Jazyková verzia nie je dostupná",
+    "title": "<contentTitle>{title}</contentTitle> nie je dostupné v jazyku <languageName>{language}</languageName>",
+    "actionsLabel": "Dostupné možnosti sledovania",
+    "browseInLanguage": "Prehliadať videá v jazyku {language}",
+    "backToSearch": "Späť na vyhľadávanie",
+    "audioVersionsTitle": "Ďalšie zvukové verzie",
+    "audioVersionsDescription": "Vyberte jazyk zvuku a pokračujte v sledovaní videa.",
+    "languageVersionLabel": "Jazyk zvuku",
+    "selectLanguageVersion": "Vyberte jazykovú verziu",
+    "watchSelectedVersion": "Pozrieť vybranú verziu"
   }
 }

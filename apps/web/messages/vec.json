@@ -191,6 +191,7 @@
     "loadMoreFailed": "No se ga podesto cargar altri risultadi.",
     "searching": "Serca...",
     "connectionHint": "Controła la to conession e prova ancora.",
+    "rateLimitHint": "Troppe richieste. Prova ancora tra un minuto.",
     "retrySearch": "Torna a sercar",
     "retry": "Torna a provar",
     "noResults": "Nissun risultato par \"{query}\"",
@@ -225,7 +226,9 @@
   "HeroPlayer": {
     "playWithSound": "Varda adesso",
     "tapToUnmute": "Toca par ativar el sòno",
-    "nextEpisode": "Episodio dopo"
+    "nextEpisode": "Episodio dopo",
+    "audioTranslationCount": "{count, plural, one {# lengua} other {# lengue}}",
+    "subtitleCount": "Sottotitoli: {count, plural, one {# lengua} other {# lengue}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Cargando el contenù",
@@ -538,16 +541,16 @@
     "retryFailed": "Torna a descargar quei falìi"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Version de lengua no disponibile",
+    "eyebrow": "Version de lengua no disponibile",
+    "title": "<contentTitle>{title}</contentTitle> no ze disponibile in lengua <languageName>{language}</languageName>",
+    "actionsLabel": "Opzioni disponibili par vardar",
+    "browseInLanguage": "Navega tra i video in lengua {language}",
+    "backToSearch": "Torna a la ricerca",
+    "audioVersionsTitle": "Altre version audio",
+    "audioVersionsDescription": "Scegli una lengua audio par continuar a vardar sto video.",
+    "languageVersionLabel": "Lengua audio",
+    "selectLanguageVersion": "Scegli una version de lengua",
+    "watchSelectedVersion": "Varda la version scelta"
   }
 }

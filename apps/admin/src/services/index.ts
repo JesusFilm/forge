@@ -8,6 +8,7 @@
 import type { PrismaClient } from "@prisma/client"
 import { env, resolveWatchSearchRuntimeEnv } from "@/config/env"
 import { ExperienceService } from "@/services/experience.service"
+import { ExperiencePreviewService } from "@/services/experience-preview.service"
 import { ExperienceSearchService } from "@/services/experience.search"
 import { ManagerJobService } from "@/services/manager-job.service"
 import { ManagerReadModelService } from "@/services/manager-read-model.service"
@@ -194,6 +195,7 @@ function createServingTypesenseWatchSearchService(prisma: PrismaClient) {
 export function createServices(prisma: PrismaClient) {
   return {
     experience: new ExperienceService(prisma),
+    experiencePreview: new ExperiencePreviewService(prisma),
     experienceSearch: new ExperienceSearchService(prisma),
     managerJob: new ManagerJobService(prisma),
     managerReadModel: new ManagerReadModelService(prisma),

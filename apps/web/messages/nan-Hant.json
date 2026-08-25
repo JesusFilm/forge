@@ -191,6 +191,7 @@
     "loadMoreFailed": "載入更多結果失敗。",
     "searching": "搜尋中...",
     "connectionHint": "請檢查您的連線後再試一次。",
+    "rateLimitHint": "要求傷濟。請過一分鐘閣試一擺。",
     "retrySearch": "重試搜尋",
     "retry": "重試",
     "noResults": "沒有符合「{query}」的結果",
@@ -225,7 +226,9 @@
   "HeroPlayer": {
     "playWithSound": "立即觀看",
     "tapToUnmute": "點一下取消靜音",
-    "nextEpisode": "下一集"
+    "nextEpisode": "下一集",
+    "audioTranslationCount": "{count, plural, one {# 種語言} other {# 種語言}}",
+    "subtitleCount": "字幕: {count, plural, one {# 種語言} other {# 種語言}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "正在載入內容",
@@ -538,16 +541,16 @@
     "retryFailed": "重試失敗項目"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "這个語言版本無法度使用",
+    "eyebrow": "這个語言版本無法度使用",
+    "title": "<contentTitle>{title}</contentTitle> 無 <languageName>{language}</languageName> 版本",
+    "actionsLabel": "會使觀看的選項",
+    "browseInLanguage": "瀏覽 {language} 的影片",
+    "backToSearch": "轉去搜尋",
+    "audioVersionsTitle": "其他聲音版本",
+    "audioVersionsDescription": "揀一个聲音語言來繼續觀看這支影片。",
+    "languageVersionLabel": "聲音語言",
+    "selectLanguageVersion": "揀一个語言版本",
+    "watchSelectedVersion": "觀看揀好的版本"
   }
 }

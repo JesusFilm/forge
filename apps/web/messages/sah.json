@@ -191,6 +191,7 @@
     "loadMoreFailed": "Эбии харыйалар хостооботох.",
     "searching": "Көрдө…",
     "connectionHint": "Ситимнэри тиийэ көр уонна хатылаа.",
+    "rateLimitHint": "Ыйытыылар наһаа элбэх. Биир мүнүүтэн хатылаа.",
     "retrySearch": "Көрдөөһүөнү хатылаа",
     "retry": "Хатылаа",
     "noResults": "\"{query}\" туһунан көрдөбүт булуллубата",
@@ -225,7 +226,9 @@
   "HeroPlayer": {
     "playWithSound": "Быһа көр",
     "tapToUnmute": "Саҥаны арыйарга тык",
-    "nextEpisode": "Кэлэр эпизод"
+    "nextEpisode": "Кэлэр эпизод",
+    "audioTranslationCount": "{count, plural, one {# тыл} other {# тыллар}}",
+    "subtitleCount": "Субтитрдар: {count, plural, one {# тыл} other {# тыллар}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Контент хостообут",
@@ -538,16 +541,16 @@
     "retryFailed": "Сатамматахтары хатылаа"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Тыл барыла суох",
+    "eyebrow": "Тыл барыла суох",
+    "title": "<contentTitle>{title}</contentTitle> <languageName>{language}</languageName> тылынан суох",
+    "actionsLabel": "Көрөр кыахтар",
+    "browseInLanguage": "{language} тылынан видеолары көр",
+    "backToSearch": "Көрдөөһүҥҥэ төнн",
+    "audioVersionsTitle": "Атын аудио барыллар",
+    "audioVersionsDescription": "Бу видеону салгыы көрөргө аудио тылы тал.",
+    "languageVersionLabel": "Аудио тыла",
+    "selectLanguageVersion": "Тыл барылын тал",
+    "watchSelectedVersion": "Талбыт барылы көр"
   }
 }

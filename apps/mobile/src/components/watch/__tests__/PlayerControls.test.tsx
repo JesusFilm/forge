@@ -321,6 +321,91 @@ describe("Cast button (U4)", () => {
   })
 })
 
+// Android cannot open its cast dialog from JS: showCastDialog() can only click a
+// native MediaRouteButton that is already attached (RNGCCastContext.java:128).
+// So Android renders the SDK's own button as the real control, while iOS keeps
+// the app-drawn glyph because it presents the dialog from the context directly.
+describe("cast control differs by platform", () => {
+  // The SDK button is the only host node carrying tintColor.
+  function nativeButtonCount(renderer: TestInstance): number {
+    return renderer.root.findAll(
+      (node) => typeof node.type === "string" && node.props.tintColor != null,
+    ).length
+  }
+
+  it("Android renders the SDK button, not a Pressable glyph", async () => {
+    setPlatform("android")
+    const renderer = await render(false, { castUi: makeCastUi() })
+    expect(nativeButtonCount(renderer)).toBe(1)
+    // The native button owns its own press, so no JS handler may compete for
+    // the tap — that competition is what the hidden-button design created.
+    const jsPressHandlers = renderer.root.findAll(
+      (n) =>
+        n.props.accessibilityLabel === "Cast" &&
+        typeof n.props.onPress === "function",
+    )
+    expect(jsPressHandlers).toHaveLength(0)
+    await unmount(renderer)
+  })
+
+  it("iOS renders the app-drawn glyph and routes the press through JS", async () => {
+    setPlatform("ios")
+    const castUi = makeCastUi()
+    const renderer = await render(false, { castUi })
+    expect(nativeButtonCount(renderer)).toBe(0)
+    await press(pressableByLabel(renderer, "Cast"))
+    expect(castUi.onPress).toHaveBeenCalledTimes(1)
+    await unmount(renderer)
+  })
+
+  // iOS keeps the R2 gate: presentCastDialog needs no attached button, so
+  // getCastState() is trustworthy there and hiding the glyph is honest.
+  it("iOS hides the control while no device is reachable (R2)", async () => {
+    setPlatform("ios")
+    const renderer = await render(false, {
+      castUi: makeCastUi({ available: false }),
+    })
+    expect(labelCount(renderer, "Cast")).toBe(0)
+    expect(nativeButtonCount(renderer)).toBe(0)
+    await unmount(renderer)
+  })
+
+  // Galaxy Tab S8, 2026-08-24: getCastState() answered noDevicesAvailable for
+  // minutes with two Chromecasts already in the app's route list. The cause is
+  // unestablished; the untrustworthiness is what makes the gate wrong here.
+  it("Android renders the SDK button even while `available` is false", async () => {
+    setPlatform("android")
+    const renderer = await render(false, {
+      castUi: makeCastUi({ available: false }),
+    })
+    expect(nativeButtonCount(renderer)).toBe(1)
+    expect(hasLabel(renderer, "Cast")).toBe(true)
+    await unmount(renderer)
+  })
+
+  it("renders nothing on a surface with no cast wiring", async () => {
+    setPlatform("android")
+    const renderer = await render(false)
+    expect(nativeButtonCount(renderer)).toBe(0)
+    await unmount(renderer)
+  })
+
+  // The SDK owns the glyph on Android, so its connected artwork is the SDK's,
+  // not `cast-connected`. iOS keeps the swap and the state-aware label.
+  it("iOS swaps to the connected glyph and label", async () => {
+    setPlatform("ios")
+    const renderer = await render(false, {
+      castUi: makeCastUi({
+        connected: true,
+        label: "Casting to Living Room TV",
+      }),
+    })
+    expect(hasLabel(renderer, "Casting to Living Room TV")).toBe(true)
+    expect(labelCount(renderer, "Cast")).toBe(0)
+    await unmount(renderer)
+  })
+})
+
 describe("Cast remote mode (KTD4)", () => {
   it("routes pause to the cast target and never the local player", async () => {
     const player = makePlayer()

@@ -191,6 +191,7 @@
     "loadMoreFailed": "Тағы ла һөҙөмтәләрҙе йөкләп булманы.",
     "searching": "Эҙләнә...",
     "connectionHint": "Бәйләнешегеҙҙе тикшерегеҙ һәм ҡабатлап ҡарағыҙ.",
+    "rateLimitHint": "Һорауҙар артыҡ күп. Бер минуттан ҡабатлап ҡарағыҙ.",
     "retrySearch": "Эҙләүҙе ҡабатлау",
     "retry": "Ҡабатлау",
     "noResults": "\"{query}\" өсөн һөҙөмтә юҡ",
@@ -225,7 +226,9 @@
   "HeroPlayer": {
     "playWithSound": "Хәҙер ҡарағыҙ",
     "tapToUnmute": "Тауышты ҡабыҙыу өсөн баҫығыҙ",
-    "nextEpisode": "Киләһе эпизод"
+    "nextEpisode": "Киләһе эпизод",
+    "audioTranslationCount": "{count, plural, one {# тел} other {# тел}}",
+    "subtitleCount": "Субтитрҙар: {count, plural, one {# тел} other {# тел}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Контент йөкләнә",
@@ -538,16 +541,16 @@
     "retryFailed": "Йөкләнмәгәндәрҙе ҡабатлау"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Тел версияһы юҡ",
+    "eyebrow": "Тел версияһы юҡ",
+    "title": "<contentTitle>{title}</contentTitle> <languageName>{language}</languageName> телендә юҡ",
+    "actionsLabel": "Ҡарау мөмкинлектәре",
+    "browseInLanguage": "{language} телендәге видеоларҙы ҡарау",
+    "backToSearch": "Эҙләүгә кире ҡайтыу",
+    "audioVersionsTitle": "Башҡа аудиоверсиялар",
+    "audioVersionsDescription": "Был видеоны ҡарауҙы дауам итеү өсөн аудиотел һайлағыҙ.",
+    "languageVersionLabel": "Аудиотел",
+    "selectLanguageVersion": "Тел версияһын һайлау",
+    "watchSelectedVersion": "Һайланған версияны ҡарау"
   }
 }

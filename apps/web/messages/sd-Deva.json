@@ -191,6 +191,7 @@
     "loadMoreFailed": "وڌيڪ نتيجا لوڊ نه ٿي سگهيا.",
     "searching": "ڳولا ٿي رهي آهي...",
     "connectionHint": "مهرباني ڪري پنهنجو ڪنيڪشن چيڪ ڪريو ۽ ٻيهر ڪوشش ڪريو.",
+    "rateLimitHint": "घणियूं दरख़्वास्तूं आहिनि। महिरबानी करे हिकु मिनटु पोइ वरी कोशिशि करियो।",
     "retrySearch": "ڳولا ٻيهر ڪريو",
     "retry": "ٻيهر ڪوشش ڪريو",
     "noResults": "\"{query}\" لاءِ ڪوبه نتيجو نه مليو",
@@ -225,7 +226,9 @@
   "HeroPlayer": {
     "playWithSound": "هاڻي ڏسو",
     "tapToUnmute": "آواز چالو ڪرڻ لاءِ ٽيپ ڪريو",
-    "nextEpisode": "اڳيون قسط"
+    "nextEpisode": "اڳيون قسط",
+    "audioTranslationCount": "{count, plural, one {# ٻولي} other {# ٻوليون}}",
+    "subtitleCount": "سبٽائيٽلز: {count, plural, one {# ٻولي} other {# ٻوليون}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "مواد لوڊ ٿي رهيو آهي",
@@ -538,16 +541,16 @@
     "retryFailed": "नाकाम डाउनलोड ॿीहरि आज़मायो"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "भाषा जो संस्करण मौजूदु नाहे",
+    "eyebrow": "भाषा जो संस्करण मौजूदु नाहे",
+    "title": "<contentTitle>{title}</contentTitle> <languageName>{language}</languageName> में मौजूदु नाहे",
+    "actionsLabel": "मौजूदु ॾिसण जा विकल्प",
+    "browseInLanguage": "{language} में वीडियो ॾिसो",
+    "backToSearch": "गोल्हा ॾे वापसि वञो",
+    "audioVersionsTitle": "ॿिया ऑडियो संस्करण",
+    "audioVersionsDescription": "ही वीडियो ॾिसण जारी रखण लाइ हिक ऑडियो भाषा चूंडियो।",
+    "languageVersionLabel": "ऑडियो भाषा",
+    "selectLanguageVersion": "भाषा जो हिकु संस्करण चूंडियो",
+    "watchSelectedVersion": "चूंडियल संस्करण ॾिसो"
   }
 }

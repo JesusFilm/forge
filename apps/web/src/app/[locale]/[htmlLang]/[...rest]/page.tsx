@@ -1,7 +1,8 @@
 import type { Metadata } from "next"
 import { notFound, redirect } from "next/navigation"
 import { NextIntlClientProvider } from "next-intl"
-import { setRequestLocale } from "next-intl/server"
+import { getTranslations, setRequestLocale } from "next-intl/server"
+import type { ReactNode } from "react"
 
 import { DEFAULT_WATCH_LANGUAGE_SLUG } from "@forge/watch-url-policy/routes"
 
@@ -75,6 +76,7 @@ import { logWatchServerEvent } from "@/lib/watch-observability"
 import {
   getWatchRouteManifest,
   getWatchNestedContainerAudioLanguageSlugs,
+  isWatchEpisodeRouteExactlyAdmittedByManifest,
   isWatchNestedContainerRouteAdmittedByManifest,
   isWatchRouteAdmittedByManifest,
   type WatchRouteManifest,
@@ -142,11 +144,25 @@ function pruneWatchVariantForClient(variant: WatchVariant): WatchVariant {
 function pruneMergedWatchBlocksForClient(
   blocks: MergedWatchBlock[],
   selectedVariant: WatchVariant,
+  formatAvailabilityCounts: AvailabilityCountFormatters,
 ): MergedWatchBlock[] {
   return blocks.map((block) => {
     if (!("kind" in block)) return block
     switch (block.kind) {
       case "HeroPlayer":
+        return {
+          ...block,
+          video: pruneWatchVideoForClient(block.video, selectedVariant),
+          variant: pruneWatchVariantForClient(block.variant),
+          audioLanguageCountLabel: languageCountLabel(
+            block.playableLanguageCount,
+            formatAvailabilityCounts.audio,
+          ),
+          subtitleLanguageCountLabel: languageCountLabel(
+            block.video.subtitles.length,
+            formatAvailabilityCounts.subtitles,
+          ),
+        }
       case "WatchBody":
         return {
           ...block,
@@ -164,7 +180,21 @@ function pruneMergedWatchBlocksForClient(
   })
 }
 
-function withAdmittedCarouselChildren<T extends CarouselParent>(
+type AvailabilityCountFormatters = {
+  audio: (count: number) => string
+  subtitles: (count: number) => string
+}
+
+function languageCountLabel(
+  count: number | null | undefined,
+  formatLanguageCount: (count: number) => string,
+): string | null {
+  return typeof count === "number" && Number.isFinite(count) && count > 0
+    ? formatLanguageCount(count)
+    : null
+}
+
+function withCompatibilityAdmittedCarouselChildren<T extends CarouselParent>(
   parent: T,
   languageSlug: string,
   manifest: WatchRouteManifest | null,
@@ -195,12 +225,12 @@ function withAdmittedCarouselChildren<T extends CarouselParent>(
     : { ...parent, children }
 }
 
-function withAdmittedVideoChildren(
+function withCompatibilityAdmittedVideoChildren(
   video: WatchVideoRecord,
   languageSlug: string,
   manifest: WatchRouteManifest | null,
 ): WatchVideoRecord {
-  const filteredParent = withAdmittedCarouselChildren(
+  const filteredParent = withCompatibilityAdmittedCarouselChildren(
     {
       documentId: video.documentId,
       slug: video.slug,
@@ -216,6 +246,52 @@ function withAdmittedVideoChildren(
     : { ...video, children: filteredParent.children }
 }
 
+function withStandaloneAdmittedVideoChildren(
+  video: WatchVideoRecord,
+  languageSlug: string,
+  manifest: WatchRouteManifest | null,
+): {
+  video: WatchVideoRecord
+  carouselVideo: WatchVideoRecord
+} {
+  if (!manifest) return { video, carouselVideo: video }
+
+  const parentSlug = tryAsContentSlug(video.slug ?? "")
+  const compatibilityChildren: WatchVideoRecord["children"] = []
+  const exactChildren: WatchVideoRecord["children"] = []
+
+  if (parentSlug) {
+    for (const child of video.children) {
+      const childSlug = tryAsContentSlug(child.slug ?? "")
+      if (!childSlug) continue
+
+      const route = {
+        kind: "episode" as const,
+        parentSlug,
+        childSlug,
+        audioLanguageSlug: languageSlug,
+      }
+      if (isWatchRouteAdmittedByManifest(manifest, route)) {
+        compatibilityChildren.push(child)
+      }
+      if (isWatchEpisodeRouteExactlyAdmittedByManifest(manifest, route)) {
+        exactChildren.push(child)
+      }
+    }
+  }
+
+  return {
+    video:
+      compatibilityChildren.length === video.children.length
+        ? video
+        : { ...video, children: compatibilityChildren },
+    carouselVideo:
+      exactChildren.length === video.children.length
+        ? video
+        : { ...video, children: exactChildren },
+  }
+}
+
 function selectableParentsForStandaloneVideo(
   video: WatchVideoRecord,
   languageSlug: string,
@@ -227,7 +303,7 @@ function selectableParentsForStandaloneVideo(
     const parentSlug = tryAsContentSlug(parent.slug ?? "")
     if (!parentSlug) return []
 
-    const filteredParent = withAdmittedCarouselChildren(
+    const filteredParent = withCompatibilityAdmittedCarouselChildren(
       { ...parent, slug: parentSlug },
       languageSlug,
       manifest,
@@ -552,14 +628,37 @@ export default async function SlugRestPage({ params }: PageProps) {
     shape.kind === "one-segment" && shape.isLanguageHome
       ? WATCH_HOME_CLIENT_MESSAGE_NAMESPACES
       : WATCH_CONTENT_CLIENT_MESSAGE_NAMESPACES
+  const translateAvailabilityCountsPromise =
+    shape.kind === "one-segment"
+      ? null
+      : getTranslations({ locale: shape.locale, namespace: "HeroPlayer" })
   const messages = await loadClientMessages(shape.locale, namespaces)
 
-  const content =
-    shape.kind === "one-segment"
-      ? await renderOneSegment(shape)
-      : shape.kind === "episode"
-        ? await renderEpisode(shape, routeIntent.subtitleLanguageSlug)
-        : await renderVideo(shape, routeIntent.subtitleLanguageSlug)
+  let content: ReactNode
+  if (shape.kind === "one-segment") {
+    content = await renderOneSegment(shape)
+  } else {
+    const translateAvailabilityCounts =
+      await translateAvailabilityCountsPromise!
+    const formatAvailabilityCounts: AvailabilityCountFormatters = {
+      audio: (count) =>
+        translateAvailabilityCounts("audioTranslationCount", { count }),
+      subtitles: (count) =>
+        translateAvailabilityCounts("subtitleCount", { count }),
+    }
+    content =
+      shape.kind === "episode"
+        ? await renderEpisode(
+            shape,
+            routeIntent.subtitleLanguageSlug,
+            formatAvailabilityCounts,
+          )
+        : await renderVideo(
+            shape,
+            routeIntent.subtitleLanguageSlug,
+            formatAvailabilityCounts,
+          )
+  }
   const routeSurface = watchRouteSurfaceForShape(shape)
 
   return (
@@ -691,6 +790,7 @@ async function renderEpisode(
     implicitEnglish: boolean
   },
   subtitleLanguageSlug: ReturnType<typeof tryAsLocaleSlug>,
+  formatAvailabilityCounts: AvailabilityCountFormatters,
 ) {
   const { seriesSlug, episodeSlug, rawLocale, locale, implicitEnglish } = shape
   const routeManifestPromise = getWatchRouteManifest().catch(() => null)
@@ -745,12 +845,12 @@ async function renderEpisode(
     routeManifestPromise,
     getInitialTranscriptForWatchVideo(resolved.video, resolved.selectedVariant),
   ])
-  const carouselVideo = withAdmittedVideoChildren(
+  const carouselVideo = withCompatibilityAdmittedVideoChildren(
     resolved.video,
     languageSlug,
     routeManifest,
   )
-  const carouselSeries = withAdmittedCarouselChildren(
+  const carouselSeries = withCompatibilityAdmittedCarouselChildren(
     resolved.series,
     languageSlug,
     routeManifest,
@@ -764,6 +864,7 @@ async function renderEpisode(
   const clientMergedBlocks = pruneMergedWatchBlocksForClient(
     mergedBlocks,
     resolved.selectedVariant,
+    formatAvailabilityCounts,
   )
   const downloadSequence = resolveDownloadSequence(
     resolved.series,
@@ -819,6 +920,7 @@ async function renderVideo(
     locale: UiLocale
   },
   subtitleLanguageSlug: ReturnType<typeof tryAsLocaleSlug>,
+  formatAvailabilityCounts: AvailabilityCountFormatters,
 ) {
   const { slug, rawLocale, locale } = shape
   const route = `/watch/${slug}.html/${rawLocale}.html`
@@ -884,18 +986,23 @@ async function renderVideo(
       ),
     ])
     const languageSlug = watchVideo.selectedVariant.language?.slug ?? rawLocale
-    const selectableParents = selectableParentsForStandaloneVideo(
-      watchVideo.video,
-      languageSlug,
-      routeManifest,
-    )
-    const carouselVideo = withAdmittedVideoChildren(
-      watchVideo.video,
-      languageSlug,
-      routeManifest,
-    )
+    const { video: videoWithAdmittedChildren, carouselVideo } =
+      withStandaloneAdmittedVideoChildren(
+        watchVideo.video,
+        languageSlug,
+        routeManifest,
+      )
+    const selectableParents =
+      carouselVideo.children.length >= 2
+        ? []
+        : selectableParentsForStandaloneVideo(
+            watchVideo.video,
+            languageSlug,
+            routeManifest,
+          )
     const mergedBlocks = mergeWatchExperience({
-      video: carouselVideo,
+      video: videoWithAdmittedChildren,
+      carouselVideo,
       variant: watchVideo.selectedVariant,
       canonicalParent: null,
       selectableParents,
@@ -904,6 +1011,7 @@ async function renderVideo(
     const clientMergedBlocks = pruneMergedWatchBlocksForClient(
       mergedBlocks,
       watchVideo.selectedVariant,
+      formatAvailabilityCounts,
     )
     const downloadSequence = resolveDownloadSequence(
       watchVideo.canonicalParent,
@@ -1038,6 +1146,14 @@ async function renderVideo(
           }
           locale={seriesLanguage?.slug ?? rawLocale}
           subtitleLanguageSlug={subtitleLanguageSlug}
+          audioLanguageCountLabel={languageCountLabel(
+            languageOptions.length,
+            formatAvailabilityCounts.audio,
+          )}
+          subtitleLanguageCountLabel={languageCountLabel(
+            (series.video.subtitles ?? []).length,
+            formatAvailabilityCounts.subtitles,
+          )}
         />
       </>
     )

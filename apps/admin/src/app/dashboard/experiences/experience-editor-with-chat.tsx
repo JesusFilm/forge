@@ -100,6 +100,7 @@ export function ExperienceEditorWithChat({
 }: ExperienceEditorWithChatProps) {
   const controllerRef = useRef<ExperienceCanvasController | null>(null)
   const [canvasHasBlocks, setCanvasHasBlocks] = useState(false)
+  const [chatMutationPending, setChatMutationPending] = useState(false)
   const [, forceTick] = useState(0)
   const [videoLibrary, setVideoLibrary] =
     useState<VideoLibraryItem[]>(initialVideoLibrary)
@@ -249,6 +250,7 @@ export function ExperienceEditorWithChat({
         videoLibrary={videoLibrary}
         generateDraftAction={generateDraftAction}
         generateSectionAction={generateSectionAction}
+        onBusyChange={setChatMutationPending}
         utilitySlot={
           generateVariantAction ? (
             <PersonaVariantButton action={generateVariantAction} />
@@ -258,6 +260,7 @@ export function ExperienceEditorWithChat({
       <div className="flex min-w-0 flex-1 flex-col">
         <ExperienceEditor
           {...editorProps}
+          duplicatePending={chatMutationPending}
           videoLibrary={videoLibrary}
           loadVideoCollectionChildrenAction={handleLoadVideoCollectionChildren}
           searchVideoLibraryAction={handleSearchVideoLibrary}

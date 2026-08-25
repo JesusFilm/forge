@@ -191,6 +191,7 @@
     "loadMoreFailed": "மேலும் முடிவுகளை ஏற்ற முடியவில்லை.",
     "searching": "தேடப்படுகிறது...",
     "connectionHint": "தயவுசெய்து உங்கள் இணைப்பைச் சரிபார்த்து மீண்டும் முயற்சிக்கவும்.",
+    "rateLimitHint": "அதிகமான கோரிக்கைகள். ஒரு நிமிடம் கழித்து மீண்டும் முயலவும்.",
     "retrySearch": "தேடலை மீண்டும் முயற்சிக்கவும்",
     "retry": "மீண்டும் முயற்சி",
     "noResults": "\"{query}\" க்கு முடிவுகள் எதுவும் இல்லை",
@@ -225,7 +226,9 @@
   "HeroPlayer": {
     "playWithSound": "இப்போது பார்க்கவும்",
     "tapToUnmute": "ஒலியை இயக்கத் தட்டவும்",
-    "nextEpisode": "அடுத்த அத்தியாயம்"
+    "nextEpisode": "அடுத்த அத்தியாயம்",
+    "audioTranslationCount": "{count, plural, one {# மொழி} other {# மொழிகள்}}",
+    "subtitleCount": "வசனங்கள்: {count, plural, one {# மொழி} other {# மொழிகள்}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "உள்ளடக்கம் ஏற்றப்படுகிறது",
@@ -538,16 +541,16 @@
     "retryFailed": "தோல்வியுற்றவற்றை மீண்டும் முயற்சிக்கவும்"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "மொழிப் பதிப்பு கிடைக்கவில்லை",
+    "eyebrow": "மொழிப் பதிப்பு கிடைக்கவில்லை",
+    "title": "<contentTitle>{title}</contentTitle> <languageName>{language}</languageName> மொழியில் கிடைக்கவில்லை",
+    "actionsLabel": "கிடைக்கும் பார்வை விருப்பங்கள்",
+    "browseInLanguage": "{language} மொழியில் காணொளிகளை உலாவுக",
+    "backToSearch": "தேடலுக்குத் திரும்பு",
+    "audioVersionsTitle": "பிற ஒலி பதிப்புகள்",
+    "audioVersionsDescription": "இந்தக் காணொளியைத் தொடர்ந்து பார்க்க ஒலி மொழியைத் தேர்ந்தெடுக்கவும்.",
+    "languageVersionLabel": "ஒலி மொழி",
+    "selectLanguageVersion": "மொழிப் பதிப்பைத் தேர்ந்தெடுக்கவும்",
+    "watchSelectedVersion": "தேர்ந்தெடுத்த பதிப்பைப் பார்க்கவும்"
   }
 }

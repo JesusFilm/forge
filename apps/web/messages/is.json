@@ -191,6 +191,7 @@
     "loadMoreFailed": "Mistókst að hlaða fleiri niðurstöðum.",
     "searching": "Leita...",
     "connectionHint": "Vinsamlegast athugaðu tenginguna þína og reyndu aftur.",
+    "rateLimitHint": "Of margar beiðnir. Reyndu aftur eftir eina mínútu.",
     "retrySearch": "Reyna leit aftur",
     "retry": "Reyna aftur",
     "noResults": "Engar niðurstöður fyrir „{query}“",
@@ -225,7 +226,9 @@
   "HeroPlayer": {
     "playWithSound": "Horfa núna",
     "tapToUnmute": "Pikkaðu til að kveikja á hljóði",
-    "nextEpisode": "Næsti þáttur"
+    "nextEpisode": "Næsti þáttur",
+    "audioTranslationCount": "{count, plural, one {# tungumál} other {# tungumál}}",
+    "subtitleCount": "Textar: {count, plural, one {# tungumál} other {# tungumál}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Hleð efni",
@@ -538,16 +541,16 @@
     "retryFailed": "Reyna aftur að sækja það sem mistókst"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Tungumálaútgáfa ekki í boði",
+    "eyebrow": "Tungumálaútgáfa ekki í boði",
+    "title": "<contentTitle>{title}</contentTitle> er ekki í boði á <languageName>{language}</languageName>",
+    "actionsLabel": "Tiltækir áhorfsvalkostir",
+    "browseInLanguage": "Skoða myndskeið á {language}",
+    "backToSearch": "Til baka í leit",
+    "audioVersionsTitle": "Aðrar hljóðútgáfur",
+    "audioVersionsDescription": "Veldu hljóðtungumál til að halda áfram að horfa á þetta myndskeið.",
+    "languageVersionLabel": "Hljóðtungumál",
+    "selectLanguageVersion": "Veldu tungumálaútgáfu",
+    "watchSelectedVersion": "Horfa á valda útgáfu"
   }
 }

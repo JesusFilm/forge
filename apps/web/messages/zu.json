@@ -191,6 +191,7 @@
     "loadMoreFailed": "Yehlulekile ukulayisha eminye imiphumela.",
     "searching": "Kuyaseshwa...",
     "connectionHint": "Sicela uhlole ukuxhumeka kwakho bese uzama futhi.",
+    "rateLimitHint": "Izicelo ziningi kakhulu. Sicela uzame futhi ngemva komzuzu.",
     "retrySearch": "Zama ukusesha futhi",
     "retry": "Zama futhi",
     "noResults": "Ayikho imiphumela ye-\"{query}\"",
@@ -225,7 +226,9 @@
   "HeroPlayer": {
     "playWithSound": "Buka manje",
     "tapToUnmute": "Thepha ukuze ususe ukuthulisa",
-    "nextEpisode": "Isiqephu Esilandelayo"
+    "nextEpisode": "Isiqephu Esilandelayo",
+    "audioTranslationCount": "{count, plural, one {# ulimi} other {# izilimi}}",
+    "subtitleCount": "Izihlokwana: {count, plural, one {# ulimi} other {# izilimi}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Iyalayisha okuqukethwe",
@@ -538,16 +541,16 @@
     "retryFailed": "Zama futhi ukulanda okuhlulekile"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Inguqulo yalolu limi ayitholakali",
+    "eyebrow": "Inguqulo yalolu limi ayitholakali",
+    "title": "<contentTitle>{title}</contentTitle> ayitholakali ngolimi <languageName>{language}</languageName>",
+    "actionsLabel": "Izinketho zokubuka ezitholakalayo",
+    "browseInLanguage": "Buka amavidiyo ngolimi {language}",
+    "backToSearch": "Buyela ekusesheni",
+    "audioVersionsTitle": "Ezinye izinguqulo zomsindo",
+    "audioVersionsDescription": "Khetha ulimi lomsindo ukuze uqhubeke ubuke le vidiyo.",
+    "languageVersionLabel": "Ulimi lomsindo",
+    "selectLanguageVersion": "Khetha inguqulo yolimi",
+    "watchSelectedVersion": "Buka inguqulo ekhethiwe"
   }
 }

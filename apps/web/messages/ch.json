@@ -191,6 +191,7 @@
     "loadMoreFailed": "Ti siña ma'loada mádu' resulta siha.",
     "searching": "Ma'ekka...",
     "connectionHint": "Paki cheke i connection-mu ya pruêba otra biahe.",
+    "rateLimitHint": "Meggai mamaisenña. Fan un minuto, prøveha taʼlo.",
     "retrySearch": "Pruweba otra biahe i search",
     "retry": "Aturí otra biahe",
     "noResults": "Acha resulta para \"{query}\"",
@@ -225,7 +226,9 @@
   "HeroPlayer": {
     "playWithSound": "Atan ni' ahora",
     "tapToUnmute": "Pùta para na'ongga i bo'ña",
-    "nextEpisode": "Suma' Episode"
+    "nextEpisode": "Suma' Episode",
+    "audioTranslationCount": "{count, plural, one {# lenguahe} other {# lenguahe siha}}",
+    "subtitleCount": "Subtítulos: {count, plural, one {# lenguahe} other {# lenguahe siha}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Ma'loada kontiúdo",
@@ -538,16 +541,16 @@
     "retryFailed": "Aturí otra biahe i ti manhuyong"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Ti guaha bersión gi finoʼ-mu",
+    "eyebrow": "Ti guaha bersión gi finoʼ-mu",
+    "title": "Ti guaha <contentTitle>{title}</contentTitle> gi <languageName>{language}</languageName>",
+    "actionsLabel": "I manmåolek na manera para un atan",
+    "browseInLanguage": "Guya video siha gi {language}",
+    "backToSearch": "Tåtatte para i inaligao",
+    "audioVersionsTitle": "Otro na bersión audio siha",
+    "audioVersionsDescription": "Ayek un finoʼ audio para un kontinua umatan este na bidiu.",
+    "languageVersionLabel": "Finoʼ audio",
+    "selectLanguageVersion": "Ayek un bersión finoʼ",
+    "watchSelectedVersion": "Atan i inayek na bersión"
   }
 }

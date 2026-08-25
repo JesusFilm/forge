@@ -191,6 +191,7 @@
     "loadMoreFailed": "Mear resultaten laden mislearre.",
     "searching": "Sykjen...",
     "connectionHint": "Kontrolearje jo ferbining en besykje it opnij.",
+    "rateLimitHint": "Tefolle fersiken. Besykje it oer in minút nochris.",
     "retrySearch": "Sykjen opnij besykje",
     "retry": "Opnij besykje",
     "noResults": "Gjin resultaten foar \"{query}\"",
@@ -225,7 +226,9 @@
   "HeroPlayer": {
     "playWithSound": "Sjoch no",
     "tapToUnmute": "Tik om it lûd oan te setten",
-    "nextEpisode": "Folgjende ôflevering"
+    "nextEpisode": "Folgjende ôflevering",
+    "audioTranslationCount": "{count, plural, one {# taal} other {# talen}}",
+    "subtitleCount": "Undertiteling: {count, plural, one {# taal} other {# talen}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Ynhâld wurdt laden",
@@ -538,16 +541,16 @@
     "retryFailed": "Mislearre downloads opnij besykje"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Taalferzje net beskikber",
+    "eyebrow": "Taalferzje net beskikber",
+    "title": "<contentTitle>{title}</contentTitle> is net beskikber yn <languageName>{language}</languageName>",
+    "actionsLabel": "Beskikbere besjenopsjes",
+    "browseInLanguage": "Blêdzje troch fideo's yn it {language}",
+    "backToSearch": "Werom nei sykjen",
+    "audioVersionsTitle": "Oare audioferzjes",
+    "audioVersionsDescription": "Kies in audiotaal om dizze fideo fierder te besjen.",
+    "languageVersionLabel": "Audiotaal",
+    "selectLanguageVersion": "Selektearje in taalferzje",
+    "watchSelectedVersion": "Selektearre ferzje besjen"
   }
 }

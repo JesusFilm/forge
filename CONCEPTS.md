@@ -134,6 +134,11 @@ discovery surfaces such as Watch homepage and search thumbnails link to the
 Standalone Watch Route; contextual links are reserved for navigation inside an
 opened collection.
 
+For Watch composition, the parent named by a Contextual Watch Route is the
+terminal carousel and next-item context. If that parent cannot form a useful
+sibling rail, the page does not substitute the playable child's intrinsic
+hierarchy or a different collection.
+
 ### Standalone Watch Route
 
 The canonical public Watch URL for a Video and Language independent of any
@@ -144,6 +149,12 @@ collection relationship. Eligible English uses
 slug is also a public language-home slug, English stays explicit so the
 language home retains the one-segment URL.
 
+When a standalone playable Video owns enough exactly admitted children to form
+a useful rail, those children are its primary carousel context. Eligible
+external collections are a fallback only when that intrinsic rail does not
+qualify; they do not become the standalone Video's canonical or next-item
+identity.
+
 ### Watch Route Manifest
 
 An Admin-owned snapshot of public Watch route dimensions used by consumers to
@@ -153,6 +164,11 @@ content.
 The manifest is an admission contract, not a rendering payload or historical
 record; absence can disprove current route validity but cannot explain why a
 relationship changed.
+
+When a consumer synthesizes a selectable context from parent/child relations,
+exact admission means the manifest proves the parent/child pair and that
+specific child's selected audio language. A global language entry or fallback
+playback stream is not proof that the contextual route exists.
 
 ### Watch Search & Social Metadata Overlay
 
@@ -589,6 +605,11 @@ The target-language playback state attached to a Watch search candidate, disting
 
 Target-audio and related-language states carry a playable Dub directly. A target-subtitle state keeps the requested subtitle language as availability truth while carrying a deterministic playable Dub action on the compatible Video Edition; the public route uses that action language and passes the subtitle language as explicit intent. A no-option state carries no playable action, so its Search Language remains request context and must not be promoted into a playback identity.
 
+The no-option state also governs presentation: catalog evidence may remain
+visible for recognition and recovery, but playback-derived controls, progress,
+motion, and play affordances must remain absent even when playback-shaped data
+is incidentally present.
+
 ### Query Language Suggestion
 
 A visible search-bar suggestion produced when the typed query appears to be in a supported language different from the current Search Language. The suggestion can be generous because it is confirm-gated: it does not change Search Language until the viewer accepts it, and unsupported or unrecognized queries leave the current Search Language in control.
@@ -731,6 +752,21 @@ A client-generated, stable-per-device identifier a Fleet Client attaches to a re
 
 ## User sign-in
 
+### Protected Resource
+
+An OAuth API identified by an exact URI that accepts access tokens only when
+their audience names that same resource; it is distinct from the client that
+requests the token and from the authorization server that issues it.
+
+### Resource-Bound OAuth Grant
+
+An OAuth authorization grant whose allowed Protected Resources are fixed when
+the user authorizes it, carried through authorization-code exchange and refresh,
+and never widened by a later token request.
+
+Exchange may select an authorized subset, while refresh remains constrained by
+the original grant ceiling.
+
 ### First-Party App
 
 One of the project's own applications that the auth provider recognizes as its own rather than as a third-party integration, registered with the provider so it can be issued tokens and have sign-in routed back to it.
@@ -770,6 +806,22 @@ A migration failure state the team has classified as safe for automated failed-r
 ### Experience
 
 A curated, themed watch page — such as Easter or Christmas — that assembles a selection of watch content under an editorial frame. An Experience is authored in admin (hand-curated by the editorial team, or AI-generated) and published to render as its own standalone page on the watch site, reachable by a public slug of its own (distinct from any single Video's slug).
+
+### Experience Draft
+
+The single shared staged version of one language-specific Experience, editable
+and previewable without changing that Experience's live version. Each language
+has an independent draft and publish lifecycle; saves use last-save-wins
+collaboration, while publishing or discarding ends the draft and invalidates its
+unlisted preview.
+
+### Experience Duplicate
+
+A new caller-owned Experience created from another Experience's latest saved
+effective authored configuration, including each locale's active draft when one
+exists. It preserves localized content and template classification but starts
+unpublished, without homepage designation, revision history, chat state, or
+derived publication data; referenced media remain shared rather than cloned.
 
 ### Experience Block
 

@@ -191,6 +191,7 @@
     "loadMoreFailed": "އިތުރު އަދަދެއް ލޯޑް ކުރަން ނުބުނެއް.",
     "searching": "ހޯދަނީ...",
     "connectionHint": "ކޮނެކްޝަން ބަލައި އަލުން ދައްކާ.",
+    "rateLimitHint": "ރިކުއެސްޓް ގިނަވެއްޖެ. އެއް މިނިޓުން ފަހުން އަލުން އުޅުއްވާ.",
     "retrySearch": "ހޯދާކަން އަލުން",
     "retry": "އަލުން",
     "noResults": "\"{query}\" އަށް ފައިންޑް ކުރެވޭ އެއްޗެއް ނެތް",
@@ -225,7 +226,9 @@
   "HeroPlayer": {
     "playWithSound": "މިހާރު ބަލާ",
     "tapToUnmute": "އަޑު ހުޅުވާން tap ކުރާ",
-    "nextEpisode": "ފަހަތަށް އޮތް episode"
+    "nextEpisode": "ފަހަތަށް އޮތް episode",
+    "audioTranslationCount": "{count, plural, one {# ބަސް} other {# ބަސްތައް}}",
+    "subtitleCount": "ސަބްޓައިޓަލްތައް: {count, plural, one {# ބަސް} other {# ބަސްތައް}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "ކޮންޓެންޓް ލޯޑް ކުރަނީ",
@@ -538,16 +541,16 @@
     "retryFailed": "ނުވި ޑައުންލޯޑްތައް އަލުން ދައްކާ"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "ބަހުގެ ވާޝަން ލިބެން ނެތް",
+    "eyebrow": "ބަހުގެ ވާޝަން ލިބެން ނެތް",
+    "title": "<contentTitle>{title}</contentTitle> އަކީ <languageName>{language}</languageName> އިން ލިބެން ނެތް އެއްޗެއް",
+    "actionsLabel": "ބެލުމަށް ލިބޭ އިޚްތިޔާރުތައް",
+    "browseInLanguage": "{language} ބަހުން ވީޑިއޯތައް ބަލާ",
+    "backToSearch": "ހޯދުމަށް އެނބުރި ދާން",
+    "audioVersionsTitle": "އެހެން އޯޑިއޯ ވާޝަންތައް",
+    "audioVersionsDescription": "މި ވީޑިއޯ ބެލުން ކުރިއަށް ގެންދިއުމަށް އޯޑިއޯ ބަހެއް ހޮވާ.",
+    "languageVersionLabel": "އޯޑިއޯ ބަސް",
+    "selectLanguageVersion": "ބަހުގެ ވާޝަނެއް ހޮވާ",
+    "watchSelectedVersion": "ހޮވާފައިވާ ވާޝަން ބަލާ"
   }
 }

@@ -191,6 +191,7 @@
     "loadMoreFailed": "Imeshindikana kupakia matokeo zaidi.",
     "searching": "Inatafuta...",
     "connectionHint": "Tafadhali kagua muunganisho wako na ujaribu tena.",
+    "rateLimitHint": "Maombi mengi mno. Tafadhali jaribu tena baada ya dakika moja.",
     "retrySearch": "Jaribu tena kutafuta",
     "retry": "Jaribu tena",
     "noResults": "Hakuna matokeo ya \"{query}\"",
@@ -225,7 +226,9 @@
   "HeroPlayer": {
     "playWithSound": "Tazama sasa",
     "tapToUnmute": "Gusa ili kuwasha sauti",
-    "nextEpisode": "Kipindi Kifuatacho"
+    "nextEpisode": "Kipindi Kifuatacho",
+    "audioTranslationCount": "{count, plural, one {# lugha} other {# lugha}}",
+    "subtitleCount": "Manukuu: {count, plural, one {# lugha} other {# lugha}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Inapakia maudhui",
@@ -538,16 +541,16 @@
     "retryFailed": "Jaribu tena vilivyoshindikana"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Toleo la lugha halipatikani",
+    "eyebrow": "Toleo la lugha halipatikani",
+    "title": "<contentTitle>{title}</contentTitle> haipatikani kwa <languageName>{language}</languageName>",
+    "actionsLabel": "Chaguo za kutazama zinazopatikana",
+    "browseInLanguage": "Vinjari video kwa {language}",
+    "backToSearch": "Rudi kwenye utafutaji",
+    "audioVersionsTitle": "Matoleo mengine ya sauti",
+    "audioVersionsDescription": "Chagua lugha ya sauti ili uendelee kutazama video hii.",
+    "languageVersionLabel": "Lugha ya sauti",
+    "selectLanguageVersion": "Chagua toleo la lugha",
+    "watchSelectedVersion": "Tazama toleo ulilochagua"
   }
 }

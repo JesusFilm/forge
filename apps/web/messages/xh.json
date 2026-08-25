@@ -191,6 +191,7 @@
     "loadMoreFailed": "Akuphumelelanga ukulayisha ezinye iziphumo.",
     "searching": "Kuyakhangelwa...",
     "connectionHint": "Nceda ujonge uqhagamshelo lwakho uze uzame kwakhona.",
+    "rateLimitHint": "Izicelo zininzi kakhulu. Nceda uzame kwakhona emva komzuzu.",
     "retrySearch": "Phinda uzame ukukhangela",
     "retry": "Phinda uzame",
     "noResults": "Akukho ziphumo ze \"{query}\"",
@@ -225,7 +226,9 @@
   "HeroPlayer": {
     "playWithSound": "Bukela ngoku",
     "tapToUnmute": "Chukumisa ukuze ususe ukuthulisa",
-    "nextEpisode": "Isiqendu esilandelayo"
+    "nextEpisode": "Isiqendu esilandelayo",
+    "audioTranslationCount": "{count, plural, one {# ulwimi} other {# iilwimi}}",
+    "subtitleCount": "IMibhalo engezantsi: {count, plural, one {# ulwimi} other {# iilwimi}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Kulayishwa umxholo",
@@ -538,16 +541,16 @@
     "retryFailed": "Phinda uzame ezingaphumelelanga"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Inguqulelo yolu lwimi ayifumaneki",
+    "eyebrow": "Inguqulelo yolu lwimi ayifumaneki",
+    "title": "<contentTitle>{title}</contentTitle> ayifumaneki ngolwimi <languageName>{language}</languageName>",
+    "actionsLabel": "Iindlela ezikhoyo zokubukela",
+    "browseInLanguage": "Bhrawuza iividiyo ngolwimi {language}",
+    "backToSearch": "Buyela kuphendlo",
+    "audioVersionsTitle": "Ezinye iinguqulelo zesandi",
+    "audioVersionsDescription": "Khetha ulwimi lwesandi ukuze uqhubeke ubukele le vidiyo.",
+    "languageVersionLabel": "Ulwimi lwesandi",
+    "selectLanguageVersion": "Khetha inguqulelo yolwimi",
+    "watchSelectedVersion": "Bukela inguqulelo ekhethiweyo"
   }
 }

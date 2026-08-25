@@ -90,11 +90,17 @@ function makeFakePrisma(opts: FakePrismaOpts = {}) {
     experienceId: "exp-1",
     locale: "en",
     slug: "old-slug",
+    isHomepage: false,
+    pathSegment: null,
     title: "Old Title",
     metaDescription: "Old description",
+    ogTitle: null,
+    ogDescription: null,
     ogImageUrl: null,
     blocks: opts.blocks ?? [],
     status: "DRAFT",
+    publishedAt: null,
+    createdAt: new Date("2026-04-15T11:00:00.000Z"),
     updatedAt: new Date("2026-04-15T12:00:00.000Z"),
     experience: {
       ownerId: opts.threadOwnerId ?? EDITOR.id,
@@ -121,15 +127,24 @@ function makeFakePrisma(opts: FakePrismaOpts = {}) {
     // applyChatMutation reads the pre-image once (outside tx), then writes
     // via a plain `update` inside the locked tx (the FOR UPDATE + text
     // guard replaced the old updateMany-on-updatedAt path).
-    findUniqueOrThrow: vi
-      .fn()
-      .mockResolvedValueOnce(preImage)
-      .mockResolvedValue(afterRow),
+    findUniqueOrThrow: vi.fn().mockResolvedValue(preImage),
     updateMany: vi.fn().mockResolvedValue({ count: 1 }),
     update: vi.fn().mockResolvedValue(afterRow),
   }
 
-  const contentRevision = { create: vi.fn() }
+  const contentRevision = {
+    findFirst: vi.fn().mockResolvedValue(null),
+    create: vi.fn().mockImplementation(async ({ data }) => ({
+      id: "draft-1",
+      previewToken: "preview-token",
+      revisedAt: new Date("2026-04-15T12:00:00.000Z"),
+      revisedBy: EDITOR.id,
+      revisedByKind: "AI",
+      reason: data.reason,
+      ...data,
+    })),
+    update: vi.fn(),
+  }
   // applyChatMutation's optimistic-concurrency token: a full-precision
   // `updated_at::text` read (baseline outside tx, then the FOR UPDATE
   // locked read inside tx). Both resolve to the same value by default so
@@ -140,6 +155,7 @@ function makeFakePrisma(opts: FakePrismaOpts = {}) {
       ? (fn as (txc: unknown) => Promise<unknown>)({
           experienceLocale: locale,
           contentRevision,
+          seoProposalMaterialization: { updateMany: vi.fn() },
           $queryRaw,
         })
       : fn,

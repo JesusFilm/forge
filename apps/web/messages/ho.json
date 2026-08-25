@@ -193,6 +193,7 @@
     "connectionHint": "Plis skelim connection bilong yu na traim gen.",
     "retrySearch": "Traim painim gen",
     "retry": "Traim gen",
+    "rateLimitHint": "Dinohama momo herea. Minitsi ta ena murinai, lou haida.",
     "noResults": "I no gat hasil bilong \"{query}\"",
     "tryDifferentKeywords": "Traim narapela keyword o brosim ol kategori",
     "loading": "I loadim...",
@@ -225,7 +226,9 @@
   "HeroPlayer": {
     "playWithSound": "Lukluk nau",
     "tapToUnmute": "Taimim bilong opim maus",
-    "nextEpisode": "Neks Episod"
+    "nextEpisode": "Neks Episod",
+    "audioTranslationCount": "{count, plural, one {# tokples} other {# tokples}}",
+    "subtitleCount": "Sutaitol: {count, plural, one {# tokples} other {# tokples}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "I loadim content",
@@ -538,16 +541,16 @@
     "retryFailed": "Traim gen ol i no bin daunlod"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Gado vesin be asi noho",
+    "eyebrow": "Gado vesin be asi noho",
+    "title": "<contentTitle>{title}</contentTitle> be <languageName>{language}</languageName> gado dekenai asi noho",
+    "actionsLabel": "Itaia dalana noho",
+    "browseInLanguage": "{language} gado ena vitio idia tahua",
+    "backToSearch": "Dinohama dekenai lou lao",
+    "audioVersionsTitle": "Dobe vesin ma haida",
+    "audioVersionsDescription": "Una vitio itaia noho be dobe gado ta abia.",
+    "languageVersionLabel": "Dobe gado",
+    "selectLanguageVersion": "Gado vesin ta abia",
+    "watchSelectedVersion": "Abia vesin itaia"
   }
 }

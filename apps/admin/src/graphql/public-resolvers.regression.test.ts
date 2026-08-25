@@ -27,6 +27,9 @@ const SOURCE_FILES = SOURCE_DIRS.flatMap((dir) =>
 const INTENDED_PUBLIC_RESOLVERS = [
   // Pre-existing
   "experienceBySlug",
+  // Unlisted draft-lifetime capability. The resolver returns only the narrow
+  // render DTO and never falls back to canonical content.
+  "experiencePreview",
   "searchExperiences",
   "watchSearch",
   "watchSearchSuggestions",
@@ -39,6 +42,9 @@ const INTENDED_PUBLIC_RESOLVERS = [
   "videos",
   // Forge /watch home showcase lookup: public consumer read, normal Video shape.
   "watchHomeVideos",
+  // Forge /watch homepage infinite discovery feed: public, bounded collection
+  // parents using the same Video visibility contract (feat-405).
+  "watchCollectionFeed",
   // Forge /watch language inventory lookup: public consumer read, flat card shape.
   "watchLanguageInventory",
   // Forge /watch single-video cold route lookup: public consumer read, flat

@@ -191,6 +191,7 @@
     "loadMoreFailed": "Kulemba mayele a bingi kukafueko.",
     "searching": "Kusaka...",
     "connectionHint": "Kenga kusangula kwebe ne dinga diaka, yidila.",
+    "rateLimitHint": "Milombu idi ya bungi. Teta kabidi panyima pa miniti umwe.",
     "retrySearch": "Linga diaka kusaka",
     "retry": "Linga diaka",
     "noResults": "Katshi na mayele pa \"{query}\"",
@@ -225,7 +226,9 @@
   "HeroPlayer": {
     "playWithSound": "Talala sikila",
     "tapToUnmute": "Bepa ku katula nsembululu",
-    "nextEpisode": "Episode ilandile"
+    "nextEpisode": "Episode ilandile",
+    "audioTranslationCount": "{count, plural, one {# lulaka} other {# malulaka}}",
+    "subtitleCount": "Subtitles ya mu video: {count, plural, one {# lulaka} other {# malulaka}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Kusangula munda",
@@ -538,16 +541,16 @@
     "retryFailed": "Linga diaka bikafueko"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Mushindu wa muakulu kawena",
+    "eyebrow": "Mushindu wa muakulu kawena",
+    "title": "<contentTitle>{title}</contentTitle> kawena mu <languageName>{language}</languageName>",
+    "actionsLabel": "Mishindu ya kumona idi",
+    "browseInLanguage": "Mona bivideo mu {language}",
+    "backToSearch": "Funda ku lukonko",
+    "audioVersionsTitle": "Mishindu mikwabu ya diyi",
+    "audioVersionsDescription": "Sungula muakulu wa diyi bua kutungunuka ne kumona video eu.",
+    "languageVersionLabel": "Muakulu wa diyi",
+    "selectLanguageVersion": "Sungula mushindu wa muakulu",
+    "watchSelectedVersion": "Mona mushindu muwasungula"
   }
 }

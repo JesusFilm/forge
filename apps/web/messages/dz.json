@@ -191,6 +191,7 @@
     "loadMoreFailed": "མངམ་འབྲས་བུ་ནང་འཇུག་འཐབ་མ་ཚུགས།",
     "searching": "འཚོལ་བཞིན་པ...",
     "connectionHint": "ཁྱེད་ཀྱི་འབྲེལ་མཐུད་ཞིབ་དཔྱད་འབད་སྟེ་བསྐྱར་འབད།",
+    "rateLimitHint": "ཞུ་བ་ལེ་ཤ་འབད་ནུག སྐར་མ་གཅིག་གི་ཤུལ་ལས་ལོག་འབད་གནང་།",
     "retrySearch": "འཚོལ་ཞིབ་བསྐྱར་འབད།",
     "retry": "བསྐྱར་འབད།",
     "noResults": "\"{query}\" ལུ་འབྲས་བུ་མེད།",
@@ -225,7 +226,9 @@
   "HeroPlayer": {
     "playWithSound": "ད་ལྟ་ལྟ།",
     "tapToUnmute": "སྒྲ་སྒོ་ཕྱེ་ནི་ལུ་རེག།",
-    "nextEpisode": "སྡེ་ཚན་རྗེས་མ།"
+    "nextEpisode": "སྡེ་ཚན་རྗེས་མ།",
+    "audioTranslationCount": "{count, plural, one {# སྐད་ཡིག} other {# སྐད་ཡིག་ཚུ}}",
+    "subtitleCount": "བརྡ་དཔེ།: {count, plural, one {# སྐད་ཡིག} other {# སྐད་ཡིག་ཚུ}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "ནང་དོན་ནང་འཇུག",
@@ -538,16 +541,16 @@
     "retryFailed": "འཐུས་ཤོར་ཚུ་བསྐྱར་འབད།"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "སྐད་ཡིག་ཐོན་རིམ་མིན་འདུག",
+    "eyebrow": "སྐད་ཡིག་ཐོན་རིམ་མིན་འདུག",
+    "title": "<contentTitle>{title}</contentTitle> འདི་<languageName>{language}</languageName> ནང་མིན་འདུག",
+    "actionsLabel": "བལྟ་ནིའི་གདམ་ཁ་ཚུ",
+    "browseInLanguage": "{language} ནང་གི་གློག་བརྙན་ལྟ་སྐོར།",
+    "backToSearch": "འཚོལ་ཞིབ་ལུ་ལོག",
+    "audioVersionsTitle": "སྒྲའི་ཐོན་རིམ་གཞན་ཚུ",
+    "audioVersionsDescription": "གློག་བརྙན་འདི་མུ་མཐུད་བལྟ་ནིའི་དོན་ལུ་སྒྲའི་སྐད་ཡིག་གདམ་ཁ་རྐྱབ།",
+    "languageVersionLabel": "སྒྲའི་སྐད་ཡིག",
+    "selectLanguageVersion": "སྐད་ཡིག་ཐོན་རིམ་གདམ།",
+    "watchSelectedVersion": "གདམ་ཁ་རྐྱབ་པའི་ཐོན་རིམ་བལྟ།"
   }
 }

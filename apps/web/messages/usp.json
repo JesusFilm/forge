@@ -191,6 +191,7 @@
     "loadMoreFailed": "No se pudieron cargar más resultados.",
     "searching": "Buscando...",
     "connectionHint": "Revise su conexión e inténtelo de nuevo.",
+    "rateLimitHint": "K'ïy taq k'utun xab'än. Tato' chik pa jun minuto.",
     "retrySearch": "Reintentar búsqueda",
     "retry": "Reintentar",
     "noResults": "No hay resultados para \"{query}\"",
@@ -225,7 +226,9 @@
   "HeroPlayer": {
     "playWithSound": "Ver ahora",
     "tapToUnmute": "Toque para activar el sonido",
-    "nextEpisode": "Siguiente episodio"
+    "nextEpisode": "Siguiente episodio",
+    "audioTranslationCount": "{count, plural, one {# tzijb'al} other {# taq tzijb'al}}",
+    "subtitleCount": "Tz'iib' chiraaj video: {count, plural, one {# tzijb'al} other {# taq tzijb'al}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Cargando contenido",
@@ -538,16 +541,16 @@
     "retryFailed": "Reintentar descargas fallidas"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Man k'o ta ri ruwäch ch'ab'äl",
+    "eyebrow": "Man k'o ta ri ruwäch ch'ab'äl",
+    "title": "<contentTitle>{title}</contentTitle> man k'o ta pa <languageName>{language}</languageName>",
+    "actionsLabel": "Taq rub'eyal richin rilöx",
+    "browseInLanguage": "Takanoj taq wachib'äl pa {language}",
+    "backToSearch": "Tatzolin pa kanoxïk",
+    "audioVersionsTitle": "Juley chik taq ruwäch audio",
+    "audioVersionsDescription": "Tacha' jun ch'ab'äl rech audio richin nak'ïs rilik re wachib'äl re'.",
+    "languageVersionLabel": "Ch'ab'äl rech audio",
+    "selectLanguageVersion": "Tacha' jun ruwäch ch'ab'äl",
+    "watchSelectedVersion": "Tawila' ri ruwäch acha'on"
   }
 }

@@ -191,6 +191,7 @@
     "loadMoreFailed": "Enâb tulõõk tõlkkmõš ei onnistum.",
     "searching": "Etsimää...",
     "connectionHint": "Tarkista liittõõz ja yritä ođđâsâst.",
+    "rateLimitHint": "Jearõõttmõõžž lij nuʹtt jäänab. Proʹsttee ođđest õhtt minuutt mâŋŋa.",
     "retrySearch": "Yritä hakuu ođđâsâst",
     "retry": "Yritä ođđâsâst",
     "noResults": "Ei tulõkõk hauss \"{query}\"",
@@ -225,7 +226,9 @@
   "HeroPlayer": {
     "playWithSound": "Kattso nyt",
     "tapToUnmute": "Napâta ääni päälle",
-    "nextEpisode": "Seuraava jakso"
+    "nextEpisode": "Seuraava jakso",
+    "audioTranslationCount": "{count, plural, one {# kiel} other {# kielid}}",
+    "subtitleCount": "Tekstitykõk: {count, plural, one {# kiel} other {# kielid}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Lätee sisällöõk",
@@ -538,16 +541,16 @@
     "retryFailed": "Yritä epäonnistuneid ođđâsâst"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Ǩiõllversio ij leäkku vuäǯǯamnalla",
+    "eyebrow": "Ǩiõllversio ij leäkku vuäǯǯamnalla",
+    "title": "<contentTitle>{title}</contentTitle> ij leäkku <languageName>{language}</languageName> ǩiõʹlle",
+    "actionsLabel": "Vuäǯǯamnalla åårrai ǩiõččâmvuäʹpp",
+    "browseInLanguage": "Ǩiõčč videoid {language} ǩiõʹlle",
+    "backToSearch": "Mååust ooccâmma",
+    "audioVersionsTitle": "Jeeʹres jiõnnversiok",
+    "audioVersionsDescription": "Vaʹlljed jiõnnǩiõl, što vueiʹtte juätkked tän video ǩiõččâm.",
+    "languageVersionLabel": "Jiõnnǩiõll",
+    "selectLanguageVersion": "Vaʹlljed ǩiõllversio",
+    "watchSelectedVersion": "Ǩiõčč vaʹlljum versio"
   }
 }

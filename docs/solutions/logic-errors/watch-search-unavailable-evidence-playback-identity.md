@@ -1,6 +1,7 @@
 ---
 title: "Keep unavailable Watch search evidence separate from playback identity"
 date: "2026-08-13"
+last_updated: "2026-08-23"
 category: "logic-errors"
 module: "Watch search-to-route handoff"
 problem_type: "logic_error"
@@ -10,11 +11,13 @@ symptoms:
   - "A relevant Watch search result classified as unavailable opened a generic 404 when activated"
   - "The selected search language appeared in a playback-shaped URL even though Admin supplied no playable action language"
   - "Exact route admission rejected the fabricated content-and-audio combination instead of reaching a useful recovery experience"
+  - "An unavailable result still looked playable when stale media fields produced posters, previews, progress, pills, play glyphs, or hover motion"
 root_cause: "logic_error"
 resolution_type: "code_fix"
 related_components:
   - "apps/admin Watch search contract"
   - "apps/web search result mapping"
+  - "apps/web Watch VideoCard presentation"
   - "apps/web Watch route admission"
   - "Next.js App Router not-found recovery"
 tags:
@@ -44,6 +47,13 @@ so clicking a useful search result ended on the generic Watch 404. For example,
 a Simplified Chinese metadata match could become a
 `/good-friday-live.html/chinese-simplified.html` playback claim even though the
 search response contained no Simplified Chinese action language.
+
+After recovery routing was fixed, the same authority mistake remained in card
+presentation. `VideoCard` independently treated playback-shaped fields such as
+`playbackId`, duration, child count, watch progress, and blur metadata as
+permission to render ordinary playback affordances. An explicitly unavailable
+row could therefore use the correct recovery destination while still looking
+and behaving like a normal playable Watch card.
 
 ## Root Cause
 
@@ -103,6 +113,22 @@ ordinary 404 rather than receive a specialized recovery page.
 Proxy classifies the route and rewrites it to the locale-scoped sentinel. The
 sentinel calls `notFound()`, allowing the nearest not-found boundary to render
 the recovery UI while keeping classification separate from the final document.
+
+### Fixing only the unavailable label
+
+A localized status explains why the row is different, but it does not cancel
+the independent poster, preview, progress, pill, play-glyph, or hover branches.
+Every playback-derived presentation boundary must use the same authoritative
+watchability predicate; otherwise one stale field can revive one misleading
+affordance.
+
+### Filtering unavailable rows after pagination
+
+Removing the row in Web would discard useful catalog evidence and the recovery
+path while also changing the bounded result window, offsets, visible-result
+analytics, and click positions. When an unavailable row remains relevant, the
+correct fix is a distinct non-playable recovery presentation, not a post-window
+filter.
 
 ## Solution
 
@@ -167,11 +193,10 @@ Reads require an exact content/requested-language match and remove stale,
 malformed, oversized, or mismatched data. The server independently re-proves
 the exact gap, so browser storage cannot admit a route or mint playback.
 
-Artwork follows the same authority boundary. While server admission is
-pending, the page renders a CSS gradient and no image element. After admission
-completes, it renders only the approved content image, or the static fallback
-when no approved image exists. This avoids downloading a default image and
-then replacing it with a second network image.
+Artwork follows the same authority boundary. The server resolves admission,
+artwork, and audio options before the first render. The client renders exactly
+one approved content image or one static fallback, with no hydration-time image
+replacement.
 
 ### 6. Offer only explicit, admitted same-video audio options
 
@@ -181,9 +206,34 @@ remaining option with exact route-manifest admission before building a URL.
 
 The client starts with no selected option. The watch action remains disabled
 until the viewer explicitly chooses one, and navigation uses only the admitted
-href returned by the server. One transient resolution failure may retry once;
-a second failure settles into safe browse-only recovery rather than looping or
-inventing a fallback.
+href returned by the server. Variant and metadata failures degrade
+independently in a single server resolution; absent options settle into safe
+browse-only recovery without a retry loop or invented fallback.
+
+### 7. Let explicit unavailability dominate card affordances
+
+The card derives one `isUnavailable` value from the Admin-owned
+`availabilityKind` and applies it before resolving Mux media or rendering any
+playback affordance in `apps/web/src/components/search/VideoCard.tsx`. For
+that state it suppresses Mux poster fallback and animated-preview resolution,
+duration and child-count pills, type and experience badges, hover zoom, the
+generic play placeholder, `MuxHoverPreview`, and `WatchProgressBar`
+through the component's `isUnavailable` guards.
+
+This is a presentation eligibility rule, not a reason to erase the row.
+Unavailable cards retain Admin's static catalog artwork when present, title,
+snippet, aspect ratio, link focus semantics, completed-language recovery href,
+and the existing prefetch opt-out. They add the localized
+`LanguagePickerModal.notAvailable` label as visible text so the state is not
+conveyed only through missing motion or color in `UnavailableLanguageBadge`.
+The global client message projection already includes that fully translated
+namespace, so the label remains stable across SSR and hydration without
+exposing the recovery page's provisional message namespace globally.
+
+The branch remains exact: `target_audio`, `target_subtitle`, and
+`related_language` results keep their existing playable presentation and
+destinations. The completed Search Language remains recovery context and is
+never promoted into `languageSlug` or another playback identity.
 
 ## Why This Works
 
@@ -203,6 +253,13 @@ selected language, UI locale, and session storage cannot manufacture a Dub.
 The specialized sentinel keeps honest 404/SEO semantics while giving the
 viewer a useful, explicit next choice.
 
+Card presentation now follows the same ownership model. Search Watchability
+answers whether an immediate play action may be advertised; catalog metadata
+answers whether the result can still be identified and explained. Making the
+explicit no-option state dominate weaker playback-shaped fields prevents stale
+metadata from manufacturing a playable-looking surface without weakening the
+recovery route or discarding useful search evidence.
+
 ## Verification
 
 Cover every boundary rather than testing only the final component:
@@ -221,8 +278,20 @@ Cover every boundary rather than testing only the final component:
   search/playback fields;
 - recovery options are same-video, playable, exact-manifest-admitted, and not
   preselected;
-- transient failure retries once and persistent failure terminates safely; and
-- pending artwork renders no image, then resolves to exactly one final image.
+- variant and metadata failures degrade independently and terminate in a safe
+  server-resolved state;
+- the first render contains exactly one server-approved content image or one
+  static fallback without hydration replacement;
+- unavailable card fixtures combine stale playback ID, duration, child count,
+  label, progress-capable identity, and blur data while retaining static
+  catalog content and recovery navigation;
+- playable `target_audio`, `target_subtitle`, and `related_language` fixtures
+  retain pills, preview, progress, zoom, and their original destinations;
+- a mixed provider-level result window preserves order, visible-result IDs,
+  click position, and the completed Search Language after the draft language
+  changes; and
+- the global client-message projection directly includes the localized
+  `LanguagePickerModal.notAvailable` status used during hydration.
 
 ## Prevention
 
@@ -239,11 +308,23 @@ Cover every boundary rather than testing only the final component:
 - Do not silently choose English or the first playable language.
 - When the final image URL depends on asynchronous admission, use a non-image
   placeholder until that decision is complete.
+- Gate poster resolution, preview mounting, progress, pills, placeholders,
+  glyphs, and motion from the same explicit Search Watchability predicate.
+  Optional playback-shaped fields are never substitutes for eligibility.
+- Keep static catalog presentation separate from playback affordances. An
+  unavailable result may remain recognizable and focusable as a recovery link
+  without implying that it can play immediately.
+- When retained unavailable rows are presentation-only, do not filter them
+  after the Search Candidate Window; pin result order and analytics identity in
+  the integration test.
 
 ## Related
 
 - [Watch subtitle-only search results need separate availability and playback languages](watch-search-subtitle-playback-contract.md)
 - [Separate Watch Search lexical language from playback language](watch-search-chinese-lexical-playback-language-conflation.md)
+- [Watch search overlay page-size contract](watch-search-overlay-page-size-mismatch.md)
+- [Prevent missing client namespaces from exposing raw next-intl keys](../ui-bugs/watch-collection-download-raw-next-intl-keys-missing-client-namespace.md)
+- [Validate machine-translated UI catalogs semantically](../ui-bugs/machine-translated-ui-catalog-wrong-language-validation-gap.md)
 - [Use a statusless proxy rewrite and fixed not-found sentinel for App Router 404s](../integration-issues/nextjs-proxy-not-found-sentinel-preserves-app-router-navigation.md)
 - [Admin-owned Watch route manifest](../architecture-patterns/admin-owned-watch-route-manifest-20260530.md)
 - [Static locale rewrite and route-manifest admission](../performance-issues/watch-static-locale-rewrite-route-manifest-admission-20260529.md)

@@ -1,6 +1,6 @@
 import { createHash, randomBytes, randomUUID } from "node:crypto"
 
-import { afterAll, beforeAll, describe, expect, it } from "vitest"
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest"
 
 /**
  * Real-database proof for the two claims no mocked test can make.
@@ -21,6 +21,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest"
  *   DATABASE_URL=postgresql://forge:forge@localhost:5432/auth_it \
  *     pnpm --filter @forge/auth exec prisma migrate deploy
  *   AUTH_TEST_DATABASE_URL=postgresql://forge:forge@localhost:5432/auth_it \
+ *   BETTER_AUTH_SECRET=upgrade-baseline-secret-not-for-production \
  *     pnpm --filter @forge/auth test -- device-grant.integration
  */
 
@@ -29,12 +30,35 @@ const describeIntegration = databaseUrl ? describe : describe.skip
 
 process.env.DATABASE_URL = databaseUrl ?? process.env.DATABASE_URL
 process.env.BETTER_AUTH_SECRET =
-  process.env.BETTER_AUTH_SECRET ?? "integration-test-secret-not-for-production"
+  process.env.BETTER_AUTH_SECRET ?? "upgrade-baseline-secret-not-for-production"
 process.env.AUTH_BASE_URL = process.env.AUTH_BASE_URL ?? "http://localhost:3004"
 
 const TEST_CLIENT_ID = "jfp_tv_integration_test"
 const REDIRECT_URI = "http://localhost:3004/device/callback"
 const SCOPES = ["openid", "profile:read", "email:read", "offline_access"]
+const nativeFetch = globalThis.fetch
+
+function stubSelfDiscovery() {
+  vi.stubGlobal(
+    "fetch",
+    (input: string | URL | Request, init?: RequestInit) => {
+      if (String(input).endsWith("/.well-known/openid-configuration")) {
+        return Promise.resolve(
+          Response.json({
+            issuer: "http://localhost:3004/api/auth",
+            authorization_endpoint:
+              "http://localhost:3004/api/auth/oauth2/authorize",
+            token_endpoint: "http://localhost:3004/api/auth/oauth2/token",
+            userinfo_endpoint: "http://localhost:3004/api/auth/oauth2/userinfo",
+            jwks_uri: "http://localhost:3004/api/auth/jwks",
+            id_token_signing_alg_values_supported: ["EdDSA"],
+          }),
+        )
+      }
+      return nativeFetch(input, init)
+    },
+  )
+}
 
 /**
  * Introspection is authenticated, and the TV's own public client cannot do it.
@@ -58,6 +82,36 @@ function pkcePair() {
   return { verifier, challenge }
 }
 
+function basicHeaders(clientId: string, secret: string) {
+  return new Headers({
+    authorization: `Basic ${Buffer.from(`${clientId}:${secret}`).toString("base64")}`,
+  })
+}
+
+async function introspectOverHttp(
+  handler: (request: Request) => Promise<Response>,
+  token: string,
+  clientId: string,
+) {
+  const response = await handler(
+    new Request("http://localhost:3004/api/auth/oauth2/introspect", {
+      method: "POST",
+      headers: {
+        authorization: basicHeaders(clientId, INTROSPECT_CLIENT_SECRET).get(
+          "authorization",
+        )!,
+        "content-type": "application/x-www-form-urlencoded",
+      },
+      body: new URLSearchParams({
+        token,
+        token_type_hint: "access_token",
+      }),
+    }),
+  )
+  expect(response.status).toBe(200)
+  return (await response.json()) as Record<string, unknown>
+}
+
 describeIntegration("device grant against a real database", () => {
   let prisma: typeof import("@/db/client").prisma
   let service: typeof import("./device-grant.service")
@@ -66,6 +120,7 @@ describeIntegration("device grant against a real database", () => {
   let sessionId: string
 
   beforeAll(async () => {
+    stubSelfDiscovery()
     ;({ prisma } = await import("@/db/client"))
     service = await import("./device-grant.service")
     ;({ auth } = await import("@/auth/config"))
@@ -84,6 +139,7 @@ describeIntegration("device grant against a real database", () => {
         public: true,
         requirePKCE: true,
         tokenEndpointAuthMethod: "none",
+        applicationType: "native",
         skipConsent: true,
       },
       create: {
@@ -126,6 +182,8 @@ describeIntegration("device grant against a real database", () => {
         public: false,
         requirePKCE: false,
         tokenEndpointAuthMethod: "client_secret_basic",
+        applicationType: "web",
+        clientCredentialsScopes: [],
         skipConsent: true,
       },
     })
@@ -153,6 +211,7 @@ describeIntegration("device grant against a real database", () => {
   })
 
   afterAll(async () => {
+    vi.unstubAllGlobals()
     if (!databaseUrl) return
     await prisma.deviceCode.deleteMany({ where: { clientId: TEST_CLIENT_ID } })
     await prisma.session.deleteMany({ where: { userId } })
@@ -272,19 +331,29 @@ describeIntegration("device grant against a real database", () => {
     // tests are about.
     expect(String(tokens.access_token)).toMatch(/^jfp_at_/)
     expect(String(tokens.access_token).split(".")).toHaveLength(1)
+
+    const refreshed = (await auth.api.oauth2Token({
+      body: {
+        grant_type: "refresh_token",
+        client_id: TEST_CLIENT_ID,
+        refresh_token: String(tokens.refresh_token),
+      },
+    })) as Record<string, unknown>
+    expect(String(refreshed.access_token)).toMatch(/^jfp_at_/)
+    expect(String(refreshed.refresh_token)).toMatch(/^jfp_rt_/)
+    expect(refreshed.refresh_token).not.toBe(tokens.refresh_token)
   })
 
   /**
-   * These two pin a constraint of @better-auth/oauth-provider@1.6.2 that the TV
+   * These two pin the legacy no-resource introspection constraint that the TV
    * rollout depends on and that no mocked test can see: introspection is
    * caller-scoped. Both `validateJwtAccessToken` and `validateOpaqueAccessToken`
    * end with `if (clientId && <token>.clientId !== clientId) return {active:false}`.
    *
    * Consequence for PR6: admin holds a single introspection client id, so it
    * cannot authorise both `jfp_web_*` and `jfp_tv_*` tokens as currently
-   * configured. That is an entry precondition on the consuming ticket, not a
-   * defect in this PR. If a library upgrade ever relaxes the scoping, the first
-   * of these goes red and the workaround can be dropped.
+   * configured. Better Auth 1.7 broadens introspection only for explicitly
+   * linked resource servers; an unlinked legacy caller must remain inactive.
    */
   it("refuses to introspect a token minted for a different client", async () => {
     const { verifier, challenge } = pkcePair()
@@ -310,22 +379,16 @@ describeIntegration("device grant against a real database", () => {
       },
     })) as Record<string, unknown>
 
-    const introspection = (await auth.api.oauth2Introspect({
-      body: {
-        token: String(tokens.access_token),
-        token_type_hint: "access_token",
-        // Body credentials rather than a Basic header: a direct auth.api call
-        // has no underlying Request for the header path to read. Over HTTP
-        // admin sends Basic; the endpoint accepts either.
-        client_id: INTROSPECT_CLIENT_ID,
-        client_secret: INTROSPECT_CLIENT_SECRET,
-      },
-    })) as Record<string, unknown>
+    const introspection = await introspectOverHttp(
+      auth.handler,
+      String(tokens.access_token),
+      INTROSPECT_CLIENT_ID,
+    )
 
     expect(introspection.active).toBe(false)
   })
 
-  it("introspects a token when the caller is the client that owns it", async () => {
+  it("introspects a token when the authenticated caller owns it", async () => {
     // Same token, caller switched to the owning client. Production TV clients
     // are public and hold no secret; an operator provisions one out of band for
     // whichever client does the introspecting. The seeder's update branch never
@@ -362,19 +425,33 @@ describeIntegration("device grant against a real database", () => {
       },
     })) as Record<string, unknown>
 
-    const introspection = (await auth.api.oauth2Introspect({
-      body: {
-        token: String(tokens.access_token),
-        token_type_hint: "access_token",
-        client_id: TEST_CLIENT_ID,
-        client_secret: INTROSPECT_CLIENT_SECRET,
+    await prisma.oauthClient.update({
+      where: { clientId: TEST_CLIENT_ID },
+      data: {
+        public: false,
+        tokenEndpointAuthMethod: "client_secret_basic",
+        applicationType: "web",
       },
-    })) as Record<string, unknown>
+    })
+
+    const introspection = await introspectOverHttp(
+      auth.handler,
+      String(tokens.access_token),
+      TEST_CLIENT_ID,
+    )
 
     expect(introspection.active).toBe(true)
     expect(introspection.client_id).toBe(TEST_CLIENT_ID)
     expect(introspection.sub).toBe(userId)
     expect(String(introspection.scope)).toContain("openid")
+    await prisma.oauthClient.update({
+      where: { clientId: TEST_CLIENT_ID },
+      data: {
+        public: true,
+        tokenEndpointAuthMethod: "none",
+        applicationType: "native",
+      },
+    })
   })
 
   it("rejects a device code redeemed with the wrong PKCE verifier", async () => {

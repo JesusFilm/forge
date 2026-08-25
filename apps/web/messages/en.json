@@ -200,6 +200,7 @@
     "loadMoreFailed": "Failed to load more results.",
     "searching": "Searching...",
     "connectionHint": "Please check your connection and try again.",
+    "rateLimitHint": "Too many requests. Please try again in a minute.",
     "retrySearch": "Retry search",
     "retry": "Retry",
     "noResults": "No results for \"{query}\"",
@@ -234,7 +235,9 @@
   "HeroPlayer": {
     "playWithSound": "Watch now",
     "tapToUnmute": "Tap to Unmute",
-    "nextEpisode": "Next Episode"
+    "nextEpisode": "Next Episode",
+    "audioTranslationCount": "{count, plural, one {# audio translation} other {# audio translations}}",
+    "subtitleCount": "{count, plural, one {# subtitle} other {# subtitles}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Loading content",

@@ -191,6 +191,7 @@
     "loadMoreFailed": "Horiima wudi ɓeydude waɗɗeji.",
     "searching": "Ceɗɗitugol...",
     "connectionHint": "Tiiɗno ƴeewto ceŋtol maa kadi fuɗɗito.",
+    "rateLimitHint": "Ɗaɓɓitanɗe ɓurii heewde. Tiiɗno fuɗɗito caggal hojom gooto.",
     "retrySearch": "Fuɗɗito ceɗɗitugol",
     "retry": "Fuɗɗito",
     "noResults": "Alaa njiyndi e \"{query}\"",
@@ -225,7 +226,9 @@
   "HeroPlayer": {
     "playWithSound": "Waɗ now",
     "tapToUnmute": "Tap ngam uddit ñoɓde",
-    "nextEpisode": "Episode fuɗɗiɗo"
+    "nextEpisode": "Episode fuɗɗiɗo",
+    "audioTranslationCount": "{count, plural, one {# ɗemngal} other {# ɗemɗe}}",
+    "subtitleCount": "Binndi les: {count, plural, one {# ɗemngal} other {# ɗemɗe}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Wonndude ɓiɓɓe",
@@ -538,16 +541,16 @@
     "retryFailed": "Fuɗɗito ɗe kori"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Jame yamiroore ndee woodaani",
+    "eyebrow": "Jame yamiroore ndee woodaani",
+    "title": "<contentTitle>{title}</contentTitle> woodaani e <languageName>{language}</languageName>",
+    "actionsLabel": "Cuɓe yiyde ɗe ngoodi",
+    "browseInLanguage": "Yiylo widewoo e {language}",
+    "backToSearch": "Rutto e njiilaw",
+    "audioVersionsTitle": "Jame nanngo goɗɗe",
+    "audioVersionsDescription": "Suɓo ɗemngal nanngo ngam jokkude yiyde widewoo oo.",
+    "languageVersionLabel": "Ɗemngal nanngo",
+    "selectLanguageVersion": "Suɓo jame ɗemngal",
+    "watchSelectedVersion": "Yiy jame nde cuɓaa"
   }
 }

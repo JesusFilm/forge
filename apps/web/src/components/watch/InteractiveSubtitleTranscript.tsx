@@ -1,6 +1,12 @@
 "use client"
 
-import { useCallback, useEffect, useState, type RefObject } from "react"
+import {
+  useCallback,
+  useEffect,
+  useState,
+  type MouseEvent as ReactMouseEvent,
+  type RefObject,
+} from "react"
 
 import type { MuxPlayerRef } from "@forge/video-player"
 
@@ -70,7 +76,15 @@ export default function InteractiveSubtitleTranscript({
   }, [cues, playerRef])
 
   const handleSeek = useCallback(
-    (cue: SubtitleCue) => {
+    (cue: SubtitleCue, event: ReactMouseEvent<HTMLButtonElement>) => {
+      // Ignore any click that is part of a multi-click gesture. Expanding the
+      // transcript mounts this list under the reader's pointer, so the second
+      // click of a double-click on the collapsed teaser (the normal gesture for
+      // selecting a word) would otherwise land here and seek, unmute, play, and
+      // scroll the page. `detail` only increments for repeated clicks at the
+      // same position, so a deliberate click on a different cue still seeks.
+      if (event.detail > 1) return
+
       const player = playerRef.current as HTMLMediaElement | null
       if (!player) return
 
@@ -113,7 +127,7 @@ export default function InteractiveSubtitleTranscript({
           <li key={`${cue.start}-${idx}`}>
             <button
               type="button"
-              onClick={() => handleSeek(cue)}
+              onClick={(event) => handleSeek(cue, event)}
               aria-current={isActive ? "true" : undefined}
               className={[
                 "group flex w-full cursor-pointer items-baseline gap-4 rounded-lg px-4 py-3 text-left transition-colors duration-150",

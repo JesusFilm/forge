@@ -12,6 +12,7 @@ import {
   type UiLocale,
 } from "@/lib/locale"
 import { montserrat } from "@/lib/watch-font"
+import { WATCH_APP_METADATA } from "@/lib/watch-app-metadata"
 import DatadogRum from "@/components/DatadogRum"
 import GoogleAnalytics from "@/components/GoogleAnalytics"
 import { WatchModalActivityProvider } from "@/components/watch/WatchModalActivityProvider"
@@ -24,32 +25,7 @@ function boundedUiLocale(locale: string): UiLocale {
   return hasUiLocale(locale) ? (locale as UiLocale) : DEFAULT_LOCALE
 }
 
-export const metadata: Metadata = {
-  icons: {
-    icon: [
-      {
-        url: "/watch/images/favicon-32.png",
-        sizes: "32x32",
-        type: "image/png",
-      },
-      {
-        url: "/watch/images/favicon-180.png",
-        sizes: "192x192",
-        type: "image/png",
-      },
-    ],
-    apple: [
-      {
-        url: "/watch/images/favicon-180.png",
-        type: "image/png",
-      },
-    ],
-  },
-  other: {
-    "msapplication-TileImage": "/watch/images/favicon-180.png",
-    "apple-mobile-web-app-status-bar-style": "black",
-  },
-}
+export const metadata: Metadata = WATCH_APP_METADATA
 
 export const viewport: Viewport = {
   width: "device-width",

@@ -228,6 +228,7 @@ export function SearchOverlay() {
     showSkeleton,
     loadingMore,
     error,
+    errorKind,
     searched,
     languageOptions,
     languageOptionsLoading,
@@ -663,10 +664,18 @@ export function SearchOverlay() {
     (e: ChangeEvent<HTMLInputElement>) => {
       setSuggestionPanelVisible(true)
       setSuppressedSuggestionValue(null)
-      invalidateSuggestionRequest()
+      // The debounced fetch effect is keyed on the normalized query, so a
+      // normalization-neutral keystroke (e.g. removing a trailing space)
+      // must not bump the generation — that would orphan the pending
+      // request without the effect ever rescheduling a replacement.
+      if (
+        normalizeWatchSearchQuery(e.target.value) !== normalizedSuggestionQuery
+      ) {
+        invalidateSuggestionRequest()
+      }
       setQuery(e.target.value)
     },
-    [invalidateSuggestionRequest, setQuery],
+    [invalidateSuggestionRequest, normalizedSuggestionQuery, setQuery],
   )
 
   const dismissSuggestions = useCallback(() => {
@@ -1455,9 +1464,15 @@ export function SearchOverlay() {
           {!loading && searched && displayResults.length === 0 && error && (
             <div className="flex flex-col items-center justify-center py-20 text-center">
               <h2 className="text-lg font-semibold text-stone-200">{error}</h2>
-              <p className="mt-2 text-sm text-stone-500">
-                {t("connectionHint")}
-              </p>
+              {errorKind === "rate_limited" ? (
+                <p className="mt-2 text-sm text-stone-500">
+                  {t("rateLimitHint")}
+                </p>
+              ) : errorKind === "network_error" ? (
+                <p className="mt-2 text-sm text-stone-500">
+                  {t("connectionHint")}
+                </p>
+              ) : null}
               <button
                 type="button"
                 onClick={() => void search(submittedQuery ?? query)}
@@ -1540,6 +1555,15 @@ export function SearchOverlay() {
               {error && (
                 <div className="mt-6 text-center">
                   <p className="text-sm text-brand-red">{error}</p>
+                  {errorKind === "rate_limited" ? (
+                    <p className="mt-2 text-sm text-stone-500">
+                      {t("rateLimitHint")}
+                    </p>
+                  ) : errorKind === "network_error" ? (
+                    <p className="mt-2 text-sm text-stone-500">
+                      {t("connectionHint")}
+                    </p>
+                  ) : null}
                   <button
                     type="button"
                     onClick={() => void loadMore()}

@@ -849,31 +849,31 @@ model SeoAutomationState {
 /// One bounded scheduled or manual collection attempt. Provider coverage and
 /// dry-run suppression counts remain visible even when one lane is unavailable.
 model SeoRun {
-  id                   String                   @id @default(cuid())
-  idempotencyKey       String                   @unique @map("idempotency_key")
-  mode                 SeoAutomationMode
-  status               SeoRunStatus             @default(RUNNING)
-  windowStart          DateTime?                @map("window_start")
-  windowEnd            DateTime?                @map("window_end")
-  providerCoverage     Json                     @default("{}") @map("provider_coverage")
-  report               Json                     @default("{}")
-  eligibleCount        Int                      @default(0) @map("eligible_count")
-  selectedCount        Int                      @default(0) @map("selected_count")
-  wouldProposeCount    Int                      @default(0) @map("would_propose_count")
-  proposedCount        Int                      @default(0) @map("proposed_count")
-  materializationCount Int                      @default(0) @map("materialization_count")
-  ticketCount          Int                      @default(0) @map("ticket_count")
-  experimentCount      Int                      @default(0) @map("experiment_count")
-  suppressedOperations String[]                 @default([]) @map("suppressed_operations")
-  executionFenceGeneration Int                  @default(0) @map("execution_fence_generation")
-  executionClaimTokenHash String?               @map("execution_claim_token_hash")
-  executionClaimExpiresAt DateTime?              @map("execution_claim_expires_at")
-  startedAt            DateTime                 @default(now()) @map("started_at")
-  completedAt          DateTime?                @map("completed_at")
-  createdAt            DateTime                 @default(now()) @map("created_at")
-  updatedAt            DateTime                 @updatedAt @map("updated_at")
-  observations         SeoEvidenceObservation[]
-  proposalVersions     SeoProposalVersion[]
+  id                       String                   @id @default(cuid())
+  idempotencyKey           String                   @unique @map("idempotency_key")
+  mode                     SeoAutomationMode
+  status                   SeoRunStatus             @default(RUNNING)
+  windowStart              DateTime?                @map("window_start")
+  windowEnd                DateTime?                @map("window_end")
+  providerCoverage         Json                     @default("{}") @map("provider_coverage")
+  report                   Json                     @default("{}")
+  eligibleCount            Int                      @default(0) @map("eligible_count")
+  selectedCount            Int                      @default(0) @map("selected_count")
+  wouldProposeCount        Int                      @default(0) @map("would_propose_count")
+  proposedCount            Int                      @default(0) @map("proposed_count")
+  materializationCount     Int                      @default(0) @map("materialization_count")
+  ticketCount              Int                      @default(0) @map("ticket_count")
+  experimentCount          Int                      @default(0) @map("experiment_count")
+  suppressedOperations     String[]                 @default([]) @map("suppressed_operations")
+  executionFenceGeneration Int                      @default(0) @map("execution_fence_generation")
+  executionClaimTokenHash  String?                  @map("execution_claim_token_hash")
+  executionClaimExpiresAt  DateTime?                @map("execution_claim_expires_at")
+  startedAt                DateTime                 @default(now()) @map("started_at")
+  completedAt              DateTime?                @map("completed_at")
+  createdAt                DateTime                 @default(now()) @map("created_at")
+  updatedAt                DateTime                 @updatedAt @map("updated_at")
+  observations             SeoEvidenceObservation[]
+  proposalVersions         SeoProposalVersion[]
 
   @@index([status, startedAt])
   @@index([mode, startedAt])
@@ -1036,29 +1036,29 @@ model SeoProposalMaterialization {
 }
 
 model SeoExperiment {
-  id                     String               @id @default(cuid())
-  proposalVersionId      String               @unique @map("proposal_version_id")
-  proposalVersion        SeoProposalVersion   @relation(fields: [proposalVersionId], references: [id], onDelete: Restrict)
-  status                 SeoExperimentStatus  @default(AWAITING_ACTIVATION)
-  preChangeSnapshot      Json                 @map("pre_change_snapshot")
-  treatmentSnapshot      Json                 @map("treatment_snapshot")
-  preChangeHash          String               @map("pre_change_hash")
-  treatmentHash          String               @map("treatment_hash")
-  expectedActivationHash String               @map("expected_activation_hash")
-  observedActivationHash String?              @map("observed_activation_hash")
-  activatedAt            DateTime?            @map("activated_at")
-  measurementStartsAt    DateTime?            @map("measurement_starts_at")
-  interimDueAt           DateTime?            @map("interim_due_at")
-  finalDueAt             DateTime?            @map("final_due_at")
-  evaluationFenceGeneration Int               @default(0) @map("evaluation_fence_generation")
-  evaluationClaimTokenHash String?             @map("evaluation_claim_token_hash")
-  evaluationClaimExpiresAt DateTime?            @map("evaluation_claim_expires_at")
-  confounders            Json                 @default("[]")
-  legalHold              Boolean              @default(false) @map("legal_hold")
-  createdAt              DateTime             @default(now()) @map("created_at")
-  updatedAt              DateTime             @updatedAt @map("updated_at")
-  evaluations            SeoEvaluationEvent[]
-  lesson                 SeoLesson?
+  id                        String               @id @default(cuid())
+  proposalVersionId         String               @unique @map("proposal_version_id")
+  proposalVersion           SeoProposalVersion   @relation(fields: [proposalVersionId], references: [id], onDelete: Restrict)
+  status                    SeoExperimentStatus  @default(AWAITING_ACTIVATION)
+  preChangeSnapshot         Json                 @map("pre_change_snapshot")
+  treatmentSnapshot         Json                 @map("treatment_snapshot")
+  preChangeHash             String               @map("pre_change_hash")
+  treatmentHash             String               @map("treatment_hash")
+  expectedActivationHash    String               @map("expected_activation_hash")
+  observedActivationHash    String?              @map("observed_activation_hash")
+  activatedAt               DateTime?            @map("activated_at")
+  measurementStartsAt       DateTime?            @map("measurement_starts_at")
+  interimDueAt              DateTime?            @map("interim_due_at")
+  finalDueAt                DateTime?            @map("final_due_at")
+  evaluationFenceGeneration Int                  @default(0) @map("evaluation_fence_generation")
+  evaluationClaimTokenHash  String?              @map("evaluation_claim_token_hash")
+  evaluationClaimExpiresAt  DateTime?            @map("evaluation_claim_expires_at")
+  confounders               Json                 @default("[]")
+  legalHold                 Boolean              @default(false) @map("legal_hold")
+  createdAt                 DateTime             @default(now()) @map("created_at")
+  updatedAt                 DateTime             @updatedAt @map("updated_at")
+  evaluations               SeoEvaluationEvent[]
+  lesson                    SeoLesson?
 
   @@index([status, interimDueAt])
   @@index([status, finalDueAt])
@@ -1196,6 +1196,8 @@ model ContentRevision {
   revisedAt           DateTime                     @default(now()) @map("revised_at")
   /// When a DRAFT was promoted to canonical (HISTORICAL only).
   appliedAt           DateTime?                    @map("applied_at")
+  /// Stable bearer capability for the lifetime of an active ExperienceLocale draft.
+  previewToken        String?                      @unique @map("preview_token")
   seoMaterializations SeoProposalMaterialization[]
 
   @@index([entityType, entityId, status, revisedAt])

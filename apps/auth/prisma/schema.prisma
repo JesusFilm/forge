@@ -86,22 +86,22 @@ model User {
   email            String
   emailVerified    Boolean          @default(false) @map("email_verified")
   image            String?
-  actorType        UserActorType     @default(HUMAN) @map("actor_type")
+  actorType        UserActorType    @default(HUMAN) @map("actor_type")
   membershipStatus MembershipStatus @default(INVITED) @map("membership_status")
   expiresAt        DateTime?        @map("expires_at")
   createdAt        DateTime         @default(now()) @map("created_at")
   updatedAt        DateTime         @updatedAt @map("updated_at")
 
-  sessions    Session[]
-  accounts    Account[]
-  oauthClients OauthClient[]
+  sessions           Session[]
+  accounts           Account[]
+  oauthClients       OauthClient[]
   oauthRefreshTokens OauthRefreshToken[]
-  oauthAccessTokens OauthAccessToken[]
-  oauthConsents OauthConsent[]
-  grants      AppGrant[]
-  tokens      TokenRecord[]
-  auditEvents AuthAuditEvent[]
-  deviceCodes DeviceCode[]
+  oauthAccessTokens  OauthAccessToken[]
+  oauthConsents      OauthConsent[]
+  grants             AppGrant[]
+  tokens             TokenRecord[]
+  auditEvents        AuthAuditEvent[]
+  deviceCodes        DeviceCode[]
 
   @@unique([email])
   @@index([actorType])
@@ -121,10 +121,10 @@ model Session {
   // "mobile" for sessions created through mobile-only entry points
   clientKind String?  @map("client_kind")
   userId     String   @map("user_id")
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   oauthRefreshTokens OauthRefreshToken[]
-  oauthAccessTokens OauthAccessToken[]
+  oauthAccessTokens  OauthAccessToken[]
 
   @@index([userId])
   @@map("session")
@@ -134,6 +134,7 @@ model Account {
   id                    String    @id
   accountId             String    @map("account_id")
   providerId            String    @map("provider_id")
+  issuer                String
   userId                String    @map("user_id")
   user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   accessToken           String?   @map("access_token")
@@ -147,8 +148,21 @@ model Account {
   updatedAt             DateTime  @updatedAt @map("updated_at")
 
   @@unique([providerId, accountId])
+  @@unique([issuer, accountId])
   @@index([userId])
   @@map("account")
+}
+
+/// Trusted compatibility map used by the database trigger while a 1.6.2
+/// runtime remains a rollback option. Better Auth 1.7 writes `issuer`
+/// directly; 1.6.2 inserts are completed from this operator-controlled map.
+model AccountIssuerMapping {
+  providerId String   @id @map("provider_id")
+  issuer     String
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  @@map("auth_account_issuer_mapping")
 }
 
 model Verification {
@@ -177,109 +191,178 @@ model Jwks {
 }
 
 model OauthClient {
-  id                      String   @id @default(cuid())
-  clientId                String   @unique @map("client_id")
-  clientSecret            String?  @map("client_secret")
-  disabled                Boolean  @default(false)
-  skipConsent             Boolean? @map("skip_consent")
-  enableEndSession        Boolean? @map("enable_end_session")
-  subjectType             String?  @map("subject_type")
-  scopes                  String[] @default([])
-  userId                  String?  @map("user_id")
-  user                    User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
-  createdAt               DateTime @default(now()) @map("created_at")
-  updatedAt               DateTime @updatedAt @map("updated_at")
-  name                    String?
-  uri                     String?
-  icon                    String?
-  contacts                String[] @default([])
-  tos                     String?
-  policy                  String?
-  softwareId              String?  @map("software_id")
-  softwareVersion         String?  @map("software_version")
-  softwareStatement       String?  @map("software_statement")
-  redirectUris            String[] @map("redirect_uris")
-  postLogoutRedirectUris  String[] @default([]) @map("post_logout_redirect_uris")
-  tokenEndpointAuthMethod String?  @map("token_endpoint_auth_method")
-  grantTypes              String[] @default([]) @map("grant_types")
-  responseTypes           String[] @default([]) @map("response_types")
-  public                  Boolean?
-  type                    String?
-  requirePKCE             Boolean? @map("require_pkce")
-  referenceId             String?  @map("reference_id")
-  metadata                Json?
+  id                               String   @id @default(cuid())
+  clientId                         String   @unique @map("client_id")
+  clientSecret                     String?  @map("client_secret")
+  clientDiscoveryId                String?  @map("client_discovery_id")
+  disabled                         Boolean  @default(false)
+  skipConsent                      Boolean? @map("skip_consent")
+  enableEndSession                 Boolean? @map("enable_end_session")
+  subjectType                      String?  @map("subject_type")
+  scopes                           String[] @default([])
+  clientCredentialsScopes          String[] @default([]) @map("client_credentials_scopes")
+  userId                           String?  @map("user_id")
+  user                             User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  createdAt                        DateTime @default(now()) @map("created_at")
+  updatedAt                        DateTime @updatedAt @map("updated_at")
+  name                             String?
+  uri                              String?
+  icon                             String?
+  contacts                         String[] @default([])
+  tos                              String?
+  policy                           String?
+  softwareId                       String?  @map("software_id")
+  softwareVersion                  String?  @map("software_version")
+  softwareStatement                String?  @map("software_statement")
+  redirectUris                     String[] @map("redirect_uris")
+  postLogoutRedirectUris           String[] @default([]) @map("post_logout_redirect_uris")
+  backchannelLogoutUri             String?  @map("backchannel_logout_uri")
+  backchannelLogoutSessionRequired Boolean? @map("backchannel_logout_session_required")
+  tokenEndpointAuthMethod          String?  @map("token_endpoint_auth_method")
+  applicationType                  String?  @map("application_type")
+  jwks                             String?
+  jwksUri                          String?  @map("jwks_uri")
+  grantTypes                       String[] @default([]) @map("grant_types")
+  responseTypes                    String[] @default([]) @map("response_types")
+  dpopBoundAccessTokens            Boolean  @default(false) @map("dpop_bound_access_tokens")
+  public                           Boolean?
+  type                             String?
+  requirePKCE                      Boolean? @map("require_pkce")
+  referenceId                      String?  @map("reference_id")
+  metadata                         Json?
 
   refreshTokens OauthRefreshToken[]
   accessTokens  OauthAccessToken[]
   consents      OauthConsent[]
+  resourceLinks OauthClientResource[]
 
   @@index([userId])
   @@index([referenceId])
   @@map("oauth_client")
 }
 
+model OauthResource {
+  id                            String   @id @default(cuid())
+  identifier                    String   @unique
+  name                          String
+  accessTokenTtl                Int?     @map("access_token_ttl")
+  refreshTokenTtl               Int?     @map("refresh_token_ttl")
+  signingAlgorithm              String?  @map("signing_algorithm")
+  signingKeyId                  String?  @map("signing_key_id")
+  allowedScopes                 String[] @default([]) @map("allowed_scopes")
+  customClaims                  Json?    @map("custom_claims")
+  dpopBoundAccessTokensRequired Boolean  @default(false) @map("dpop_bound_access_tokens_required")
+  disabled                      Boolean  @default(false)
+  policyVersion                 Int      @default(1) @map("policy_version")
+  metadata                      Json?
+  createdAt                     DateTime @default(now()) @map("created_at")
+  updatedAt                     DateTime @updatedAt @map("updated_at")
+
+  clientLinks OauthClientResource[]
+
+  @@map("oauth_resource")
+}
+
+model OauthClientResource {
+  id         String        @id @default(cuid())
+  clientId   String        @map("client_id")
+  client     OauthClient   @relation(fields: [clientId], references: [clientId], onDelete: Cascade)
+  resourceId String        @map("resource_id")
+  resource   OauthResource @relation(fields: [resourceId], references: [identifier], onDelete: Cascade)
+  metadata   Json?
+  createdAt  DateTime      @default(now()) @map("created_at")
+
+  @@unique([clientId, resourceId])
+  @@index([clientId])
+  @@index([resourceId])
+  @@map("oauth_client_resource")
+}
+
 model OauthRefreshToken {
-  id          String      @id @default(cuid())
-  token       String
-  clientId    String      @map("client_id")
-  client      OauthClient @relation(fields: [clientId], references: [clientId], onDelete: Cascade)
-  sessionId   String?     @map("session_id")
-  session     Session?    @relation(fields: [sessionId], references: [id], onDelete: SetNull)
-  userId      String      @map("user_id")
-  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  referenceId String?     @map("reference_id")
-  expiresAt   DateTime    @map("expires_at")
-  createdAt   DateTime    @default(now()) @map("created_at")
-  revoked     DateTime?
-  authTime    DateTime?   @map("auth_time")
-  scopes      String[]
+  id                      String      @id @default(cuid())
+  token                   String      @unique
+  clientId                String      @map("client_id")
+  client                  OauthClient @relation(fields: [clientId], references: [clientId], onDelete: Cascade)
+  sessionId               String?     @map("session_id")
+  session                 Session?    @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+  userId                  String      @map("user_id")
+  user                    User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  referenceId             String?     @map("reference_id")
+  authorizationCodeId     String?     @map("authorization_code_id")
+  resources               String[]    @default([])
+  requestedUserInfoClaims String[]    @default([]) @map("requested_user_info_claims")
+  expiresAt               DateTime    @map("expires_at")
+  createdAt               DateTime    @default(now()) @map("created_at")
+  revoked                 DateTime?
+  rotatedAt               DateTime?   @map("rotated_at")
+  rotationReplayResponse  String?     @map("rotation_replay_response")
+  rotationReplayExpiresAt DateTime?   @map("rotation_replay_expires_at")
+  authTime                DateTime?   @map("auth_time")
+  confirmation            Json?
+  scopes                  String[]
 
   accessTokens OauthAccessToken[]
 
   @@index([clientId])
   @@index([sessionId])
   @@index([userId])
+  @@index([authorizationCodeId])
   @@map("oauth_refresh_token")
 }
 
 model OauthAccessToken {
-  id          String             @id @default(cuid())
-  token       String             @unique
-  clientId    String             @map("client_id")
-  client      OauthClient        @relation(fields: [clientId], references: [clientId], onDelete: Cascade)
-  sessionId   String?            @map("session_id")
-  session     Session?           @relation(fields: [sessionId], references: [id], onDelete: SetNull)
-  userId      String?            @map("user_id")
-  user        User?              @relation(fields: [userId], references: [id], onDelete: Cascade)
-  referenceId String?            @map("reference_id")
-  refreshId   String?            @map("refresh_id")
-  refresh     OauthRefreshToken? @relation(fields: [refreshId], references: [id], onDelete: SetNull)
-  expiresAt   DateTime           @map("expires_at")
-  createdAt   DateTime           @default(now()) @map("created_at")
-  scopes      String[]
+  id                      String             @id @default(cuid())
+  token                   String             @unique
+  clientId                String             @map("client_id")
+  client                  OauthClient        @relation(fields: [clientId], references: [clientId], onDelete: Cascade)
+  sessionId               String?            @map("session_id")
+  session                 Session?           @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+  userId                  String?            @map("user_id")
+  user                    User?              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  referenceId             String?            @map("reference_id")
+  authorizationCodeId     String?            @map("authorization_code_id")
+  resources               String[]           @default([])
+  requestedUserInfoClaims String[]           @default([]) @map("requested_user_info_claims")
+  refreshId               String?            @map("refresh_id")
+  refresh                 OauthRefreshToken? @relation(fields: [refreshId], references: [id], onDelete: SetNull)
+  expiresAt               DateTime           @map("expires_at")
+  createdAt               DateTime           @default(now()) @map("created_at")
+  revoked                 DateTime?
+  confirmation            Json?
+  scopes                  String[]
 
   @@index([clientId])
   @@index([sessionId])
   @@index([userId])
   @@index([refreshId])
+  @@index([authorizationCodeId])
   @@map("oauth_access_token")
 }
 
 model OauthConsent {
-  id          String      @id @default(cuid())
-  clientId    String      @map("client_id")
-  client      OauthClient @relation(fields: [clientId], references: [clientId], onDelete: Cascade)
-  userId      String?     @map("user_id")
-  user        User?       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  referenceId String?     @map("reference_id")
-  scopes      String[]
-  createdAt   DateTime    @default(now()) @map("created_at")
-  updatedAt   DateTime    @updatedAt @map("updated_at")
+  id                      String      @id @default(cuid())
+  clientId                String      @map("client_id")
+  client                  OauthClient @relation(fields: [clientId], references: [clientId], onDelete: Cascade)
+  userId                  String?     @map("user_id")
+  user                    User?       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  referenceId             String?     @map("reference_id")
+  resources               String[]    @default([])
+  requestedUserInfoClaims String[]    @default([]) @map("requested_user_info_claims")
+  scopes                  String[]
+  createdAt               DateTime    @default(now()) @map("created_at")
+  updatedAt               DateTime    @updatedAt @map("updated_at")
 
   @@index([clientId])
   @@index([userId])
   @@index([referenceId])
   @@map("oauth_consent")
+}
+
+model OauthClientAssertion {
+  id        String   @id
+  expiresAt DateTime @map("expires_at")
+
+  @@map("oauth_client_assertion")
 }
 
 model RegisteredApp {
@@ -305,20 +388,20 @@ model RegisteredApp {
 }
 
 model AppEnvironment {
-  id              String             @id @default(cuid())
-  appId           String             @map("app_id")
-  app             RegisteredApp      @relation(fields: [appId], references: [id], onDelete: Cascade)
-  key             String
-  kind            AppEnvironmentKind
-  clientId        String             @unique @map("client_id")
-  clientSecretHash String?           @map("client_secret_hash")
-  redirectUris    String[]           @map("redirect_uris")
-  allowedOrigins  String[]           @map("allowed_origins")
-  defaultScopes   String[]           @default([]) @map("default_scopes")
-  status          ApprovalStatus     @default(PENDING)
-  autoApprove     Boolean            @default(false) @map("auto_approve")
-  createdAt       DateTime           @default(now()) @map("created_at")
-  updatedAt       DateTime           @updatedAt @map("updated_at")
+  id               String             @id @default(cuid())
+  appId            String             @map("app_id")
+  app              RegisteredApp      @relation(fields: [appId], references: [id], onDelete: Cascade)
+  key              String
+  kind             AppEnvironmentKind
+  clientId         String             @unique @map("client_id")
+  clientSecretHash String?            @map("client_secret_hash")
+  redirectUris     String[]           @map("redirect_uris")
+  allowedOrigins   String[]           @map("allowed_origins")
+  defaultScopes    String[]           @default([]) @map("default_scopes")
+  status           ApprovalStatus     @default(PENDING)
+  autoApprove      Boolean            @default(false) @map("auto_approve")
+  createdAt        DateTime           @default(now()) @map("created_at")
+  updatedAt        DateTime           @updatedAt @map("updated_at")
 
   grants AppGrant[]
   tokens TokenRecord[]
@@ -381,25 +464,25 @@ model AppGrantScope {
 }
 
 model TokenRecord {
-  id             String       @id @default(cuid())
-  tokenHash      String       @unique @map("token_hash")
-  family         TokenFamily
-  status         TokenStatus  @default(ACTIVE)
-  audience       String
-  scopes         String[]     @default([])
-  appId          String       @map("app_id")
-  app            RegisteredApp @relation(fields: [appId], references: [id], onDelete: Cascade)
-  environmentId  String       @map("environment_id")
-  environment    AppEnvironment @relation(fields: [environmentId], references: [id], onDelete: Cascade)
-  grantId        String?      @map("grant_id")
-  grant          AppGrant?    @relation(fields: [grantId], references: [id], onDelete: SetNull)
-  userId         String?      @map("user_id")
-  user           User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
-  expiresAt      DateTime     @map("expires_at")
-  revokedAt      DateTime?    @map("revoked_at")
-  revocationReason String?    @map("revocation_reason")
-  createdAt      DateTime     @default(now()) @map("created_at")
-  updatedAt      DateTime     @updatedAt @map("updated_at")
+  id               String         @id @default(cuid())
+  tokenHash        String         @unique @map("token_hash")
+  family           TokenFamily
+  status           TokenStatus    @default(ACTIVE)
+  audience         String
+  scopes           String[]       @default([])
+  appId            String         @map("app_id")
+  app              RegisteredApp  @relation(fields: [appId], references: [id], onDelete: Cascade)
+  environmentId    String         @map("environment_id")
+  environment      AppEnvironment @relation(fields: [environmentId], references: [id], onDelete: Cascade)
+  grantId          String?        @map("grant_id")
+  grant            AppGrant?      @relation(fields: [grantId], references: [id], onDelete: SetNull)
+  userId           String?        @map("user_id")
+  user             User?          @relation(fields: [userId], references: [id], onDelete: SetNull)
+  expiresAt        DateTime       @map("expires_at")
+  revokedAt        DateTime?      @map("revoked_at")
+  revocationReason String?        @map("revocation_reason")
+  createdAt        DateTime       @default(now()) @map("created_at")
+  updatedAt        DateTime       @updatedAt @map("updated_at")
 
   @@index([appId, environmentId, status])
   @@index([userId, status])

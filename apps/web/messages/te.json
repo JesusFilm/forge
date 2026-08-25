@@ -191,6 +191,7 @@
     "loadMoreFailed": "మరిన్ని ఫలితాలను లోడ్ చేయడం విఫలమైంది.",
     "searching": "శోధిస్తోంది...",
     "connectionHint": "దయచేసి మీ కనెక్షన్‌ను తనిఖీ చేసి మళ్లీ ప్రయత్నించండి.",
+    "rateLimitHint": "చాలా ఎక్కువ అభ్యర్థనలు వచ్చాయి. ఒక నిమిషం తర్వాత మళ్లీ ప్రయత్నించండి.",
     "retrySearch": "శోధనను మళ్లీ ప్రయత్నించండి",
     "retry": "మళ్లీ ప్రయత్నించండి",
     "noResults": "\"{query}\" కోసం ఫలితాలు లేవు",
@@ -225,7 +226,9 @@
   "HeroPlayer": {
     "playWithSound": "ఇప్పుడే చూడండి",
     "tapToUnmute": "మ్యూట్ ఆఫ్ చేయడానికి తాకండి",
-    "nextEpisode": "తదుపరి ఎపిసోడ్"
+    "nextEpisode": "తదుపరి ఎపిసోడ్",
+    "audioTranslationCount": "{count, plural, one {# భాష} other {# భాషలు}}",
+    "subtitleCount": "ఉపశీర్షికలు: {count, plural, one {# భాష} other {# భాషలు}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "కంటెంట్ లోడ్ అవుతోంది",
@@ -538,16 +541,16 @@
     "retryFailed": "విఫలమైన వాటిని మళ్లీ ప్రయత్నించండి"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "భాషా వెర్షన్ అందుబాటులో లేదు",
+    "eyebrow": "భాషా వెర్షన్ అందుబాటులో లేదు",
+    "title": "<contentTitle>{title}</contentTitle> <languageName>{language}</languageName> భాషలో అందుబాటులో లేదు",
+    "actionsLabel": "అందుబాటులో ఉన్న వీక్షణ ఎంపికలు",
+    "browseInLanguage": "{language} భాషలో వీడియోలను బ్రౌజ్ చేయండి",
+    "backToSearch": "శోధనకు తిరిగి వెళ్లు",
+    "audioVersionsTitle": "ఇతర ఆడియో వెర్షన్‌లు",
+    "audioVersionsDescription": "ఈ వీడియోను చూడటం కొనసాగించడానికి ఆడియో భాషను ఎంచుకోండి.",
+    "languageVersionLabel": "ఆడియో భాష",
+    "selectLanguageVersion": "భాషా వెర్షన్‌ను ఎంచుకోండి",
+    "watchSelectedVersion": "ఎంచుకున్న వెర్షన్‌ను చూడండి"
   }
 }

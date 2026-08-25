@@ -191,6 +191,7 @@
     "loadMoreFailed": "Witeri Resultat chönd nöd glade werde.",
     "searching": "Wird gsuecht...",
     "connectionHint": "Bitte prüef dini Verbindig und probier's no einisch.",
+    "rateLimitHint": "Z vill Aafrage. Probier's in ere Minute nomol.",
     "retrySearch": "Suechi nomal starte",
     "retry": "Nochmal versueche",
     "noResults": "Kei Resultat für \"{query}\"",
@@ -225,7 +226,9 @@
   "HeroPlayer": {
     "playWithSound": "Jetzt luege",
     "tapToUnmute": "Aatippe zum Ton iischalte",
-    "nextEpisode": "Nächsti Folg"
+    "nextEpisode": "Nächsti Folg",
+    "audioTranslationCount": "{count, plural, one {# Sprach} other {# Sprachen}}",
+    "subtitleCount": "Untertitel: {count, plural, one {# Sprach} other {# Sprachen}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Inhalt wird glade",
@@ -538,16 +541,16 @@
     "retryFailed": "Fehlgschlagni nomal versueche"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Sprachversion nöd verfügbar",
+    "eyebrow": "Sprachversion nöd verfügbar",
+    "title": "<contentTitle>{title}</contentTitle> isch uf <languageName>{language}</languageName> nöd verfügbar",
+    "actionsLabel": "Verfügbari Aaluegoptione",
+    "browseInLanguage": "Videos uf {language} dureblättere",
+    "backToSearch": "Zurück zur Suechi",
+    "audioVersionsTitle": "Anderi Audioversione",
+    "audioVersionsDescription": "Wähl e Audiosprach, zum das Video wiiterz'luege.",
+    "languageVersionLabel": "Audiosprach",
+    "selectLanguageVersion": "Sprachversion uswähle",
+    "watchSelectedVersion": "Usgwählti Version aaluege"
   }
 }

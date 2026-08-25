@@ -26,6 +26,7 @@ import {
   hexToRgba,
 } from "../../lib/color"
 import { useTypography } from "../../hooks/useTypography"
+import { NativeCastButton } from "../../lib/cast/NativeCastButton"
 import { applySkip } from "../../lib/scrubber"
 import type { PlaybackTarget } from "../../lib/playbackTarget"
 import {
@@ -39,7 +40,8 @@ import { Scrubber } from "./Scrubber"
 
 /** Cast button state (R1/R2) — derived by VideoPlayer, rendered here. */
 export type PlayerControlsCastUi = {
-  /** R2: at least one Cast device is reachable — the button hides otherwise. */
+  /** R2: at least one Cast device is reachable. iOS hides the button when false;
+   *  Android ignores it, because the underlying state is untrustworthy there. */
   available: boolean
   /** True during a session — flips the glyph to its connected variant. */
   connected: boolean
@@ -119,8 +121,21 @@ export function RouteButtons({
   externalPlaybackActive?: boolean
   castUi?: PlayerControlsCastUi | null
 }) {
+  // Android renders the SDK's own button because only a native, attached
+  // MediaRouteButton can open the Android dialog — see NativeCastButton. iOS
+  // presents the dialog from the context, so it keeps the app-drawn glyph.
   const castButton =
-    castUi != null && castUi.available ? (
+    castUi == null ? null : Platform.OS === "android" ? (
+      // Deliberately NOT gated on `available`: getCastState() was measured
+      // reporting noDevicesAvailable with devices already discovered, so the
+      // gate never opens. mediarouter 1.8's button never self-hides.
+      <Frosted style={styles.iconButton}>
+        <NativeCastButton
+          accessibilityLabel={castUi.label}
+          tintColor={TEXT_ON_OVERLAY}
+        />
+      </Frosted>
+    ) : castUi.available ? (
       <Pressable
         onPress={() => {
           onInteract?.()

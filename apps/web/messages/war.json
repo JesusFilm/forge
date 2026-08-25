@@ -191,6 +191,7 @@
     "loadMoreFailed": "Napalpak an pag-load hin dugang nga resulta.",
     "searching": "Nagsa-search...",
     "connectionHint": "Palihog usisaha an imo koneksyon ngan sulayi utro.",
+    "rateLimitHint": "Damo la an mga hangyo. Palihog sulayi utro katapos hin usa ka minuto.",
     "retrySearch": "Sulayi utro an search",
     "retry": "Sulayi utro",
     "noResults": "Waray resulta para han \"{query}\"",
@@ -225,7 +226,9 @@
   "HeroPlayer": {
     "playWithSound": "Tara, tan-awa yana",
     "tapToUnmute": "Tap basi ablihan an tunog",
-    "nextEpisode": "Sunod nga Episode"
+    "nextEpisode": "Sunod nga Episode",
+    "audioTranslationCount": "{count, plural, one {# yinaknan} other {# mga yinaknan}}",
+    "subtitleCount": "Mga Subtitle: {count, plural, one {# yinaknan} other {# mga yinaknan}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Ginlo-load an sulod",
@@ -538,16 +541,16 @@
     "retryFailed": "Sulayi utro an mga napakyas"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Diri magagamit an bersyon han yinaknan",
+    "eyebrow": "Diri magagamit an bersyon han yinaknan",
+    "title": "<contentTitle>{title}</contentTitle> diri magagamit ha <languageName>{language}</languageName>",
+    "actionsLabel": "Mga paagi ha pagkita nga magagamit",
+    "browseInLanguage": "Usisa an mga video ha {language}",
+    "backToSearch": "Balik ha pamiling",
+    "audioVersionsTitle": "Iba nga mga bersyon han audio",
+    "audioVersionsDescription": "Pagpili hin yinaknan han audio basi magpadayon pagkita hini nga video.",
+    "languageVersionLabel": "Yinaknan han audio",
+    "selectLanguageVersion": "Pagpili hin bersyon han yinaknan",
+    "watchSelectedVersion": "Kitaa an ginpili nga bersyon"
   }
 }

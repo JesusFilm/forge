@@ -191,6 +191,7 @@
     "loadMoreFailed": "Juk’amp jikxatäwinaka apthapiñax janiw atikaskiti.",
     "searching": "Thaqhañaskiwa...",
     "connectionHint": "Mä conexión uk uñakipasa ukat mayamp yant’añama.",
+    "rateLimitHint": "Jilpacha mayiwinakawa. Mä minuto qhipat mayamp yantʼañama.",
     "retrySearch": "Thaqhañamp yant’aña",
     "retry": "Mä kutikiw yant’aña",
     "noResults": "Janiw kunasa jikxataskiti \"{query}\" ukatakix",
@@ -225,7 +226,9 @@
   "HeroPlayer": {
     "playWithSound": "Jichhax uñch’ukiña",
     "tapToUnmute": "Arsuwi jist’ariñatakix táctil ukar llamkt’aña",
-    "nextEpisode": "Jutiri episodio"
+    "nextEpisode": "Jutiri episodio",
+    "audioTranslationCount": "{count, plural, one {# aru} other {# arunaka}}",
+    "subtitleCount": "Subtítulos: {count, plural, one {# aru} other {# arunaka}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Yatiyawi apthapiñaskiwa",
@@ -538,16 +541,16 @@
     "retryFailed": "Mayamp yant’añax janiw atikaskiti"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Aka aru versiónax janiw utjkiti",
+    "eyebrow": "Aka aru versiónax janiw utjkiti",
+    "title": "<contentTitle>{title}</contentTitle> ukax <languageName>{language}</languageName> arun janiw utjkiti",
+    "actionsLabel": "Uñjañatak utjki uka ajllitanaka",
+    "browseInLanguage": "{language} arun videonaka uñakipaña",
+    "backToSearch": "Thaqhañaru kuttʼaña",
+    "audioVersionsTitle": "Yaqha audio versionanaka",
+    "audioVersionsDescription": "Aka video uñchʼukiñatakix mä audio aru ajlliñama.",
+    "languageVersionLabel": "Audio aru",
+    "selectLanguageVersion": "Mä aru versión ajlliña",
+    "watchSelectedVersion": "Ajllita versión uñchʼukiña"
   }
 }

@@ -273,7 +273,7 @@ const pilatePageChapterSlugs = [
 ]
 
 describe("SiblingCarousel — happy path", () => {
-  it("keeps a one-option standalone collection selector visible", () => {
+  it("renders a one-option standalone collection title as fixed text", () => {
     const block = makeSelectableBlock()
     block.selectableParents = block.selectableParents?.slice(0, 1)
 
@@ -281,17 +281,30 @@ describe("SiblingCarousel — happy path", () => {
       root.render(<SiblingCarousel block={block} languageSlug="english" />)
     })
 
-    const selector = container.querySelector(
-      "[data-testid='sibling-carousel-parent-selector']",
-    ) as HTMLSelectElement | null
-    expect(selector).not.toBeNull()
-    expect(selector?.getAttribute("aria-label")).toBe("Collection")
-    expect(selector?.options).toHaveLength(1)
-    expect(selector?.options[0]?.textContent).toBe("First Collection")
-    expect(selector?.className).toContain("min-h-11")
-    expect(selector?.className).toContain("w-full")
-    expect(selector?.className).toContain("md:max-w-xs")
-    expect(selector?.className).toContain("focus-visible:ring-2")
+    const header = container.querySelector("header")
+    const title = header?.querySelector(
+      "[data-testid='sibling-carousel-parent-title']",
+    )
+    expect(title?.tagName).toBe("SPAN")
+    expect(title?.textContent).toBe("First Collection")
+    expect(title?.getAttribute("role")).toBeNull()
+    expect(title?.getAttribute("tabindex")).toBeNull()
+    expect(title?.getAttribute("aria-busy")).toBeNull()
+    expect(header?.querySelector("select, a, button")).toBeNull()
+    expect(
+      header?.querySelector(
+        "[data-testid='sibling-carousel-selection-announcement']",
+      ),
+    ).toBeNull()
+    expect(
+      header?.querySelector("[data-testid='sibling-carousel-label']")
+        ?.textContent,
+    ).toContain("1 of 3")
+    expect(
+      container
+        .querySelector("[data-block-type='SiblingCarousel']")
+        ?.getAttribute("aria-label"),
+    ).toContain("First Collection")
   })
 
   it("switches collections, rekeys the rail, and updates hrefs, current mark, and announcement", () => {
@@ -355,6 +368,70 @@ describe("SiblingCarousel — happy path", () => {
         ?.getAttribute("aria-label"),
     ).toContain(
       "A deliberately long second collection title that must stay bounded",
+    )
+  })
+
+  it("renders a fixed 49-Chapter film rail with no selector or false active card", () => {
+    const filmChildren = Array.from({ length: 49 }, (_, index) => {
+      const position = index + 1
+      return {
+        ...makeChild(position),
+        documentId: `film-chapter-${position}`,
+        slug:
+          index === 29
+            ? "triumphal-entry-and-results"
+            : `film-chapter-${position}`,
+        title:
+          index === 29
+            ? "Triumphal Entry and Results"
+            : `Film Chapter ${position}`,
+      }
+    })
+    const block = {
+      kind: "SiblingCarousel",
+      canonicalParent: {
+        documentId: "film-parent",
+        slug: "life-of-jesus-gospel-of-john",
+        title: "Life of Jesus (Gospel of John)",
+        children: filmChildren,
+      },
+      currentVideoDocumentId: "film-parent",
+    } as WatchSiblingCarouselBlock
+
+    act(() => {
+      root.render(<SiblingCarousel block={block} languageSlug="english" />)
+    })
+
+    const rail = container.querySelector("[data-block-type='SiblingCarousel']")
+    const items = Array.from(
+      container.querySelectorAll("[data-testid='sibling-carousel-item']"),
+    )
+    expect(rail?.getAttribute("data-mode")).toBe("parent")
+    expect(items).toHaveLength(49)
+    expect(items[29]?.getAttribute("data-href")).toBe(
+      "/life-of-jesus-gospel-of-john.html/triumphal-entry-and-results.html",
+    )
+    expect(
+      container.querySelector(
+        "[data-testid='sibling-carousel-item'][data-active='true']",
+      ),
+    ).toBeNull()
+    expect(
+      container.querySelector("[data-testid='sibling-carousel-label']")
+        ?.textContent,
+    ).toBe("49 chapters")
+    expect(
+      container.querySelector(
+        "[data-testid='sibling-carousel-selection-announcement']",
+      )?.textContent,
+    ).toBeUndefined()
+    expect(
+      container.querySelector(
+        "[data-testid='sibling-carousel-parent-selector']",
+      ),
+    ).toBeNull()
+    expect(container.querySelector("header p a span")?.textContent).toBe(
+      "Life of Jesus (Gospel of John)",
     )
   })
 

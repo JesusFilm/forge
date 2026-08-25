@@ -17,6 +17,13 @@ export class NotFoundError extends Error {
   }
 }
 
+export class ExperienceDuplicationError extends Error {
+  constructor() {
+    super("Experience cannot be duplicated from its current saved state")
+    this.name = "ExperienceDuplicationError"
+  }
+}
+
 /**
  * Thrown when an optimistic-concurrency guard detects that a row was
  * modified by another writer between read and write (the conditional

@@ -191,6 +191,7 @@
     "loadMoreFailed": "E karewe te bukinaki ni results i muri.",
     "searching": "E kimotaki...",
     "connectionHint": "Kae karaoi te connection ao temanna naba.",
+    "rateLimitHint": "A rangi n te bubuti. Taiaoka katoka rimwi n te miniti ao kataia riki.",
     "retrySearch": "Temanna naba te kimotaki",
     "retry": "Temanna naba",
     "noResults": "Karewe ni results ma \"{query}\"",
@@ -225,7 +226,9 @@
   "HeroPlayer": {
     "playWithSound": "Karaoaki iou",
     "tapToUnmute": "Tapa n taora te reo",
-    "nextEpisode": "Episode n muri"
+    "nextEpisode": "Episode n muri",
+    "audioTranslationCount": "{count, plural, one {# i-ki} other {# i-kiia}}",
+    "subtitleCount": "Taeka n te subtitle: {count, plural, one {# i-ki} other {# i-kiia}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "E bukinaki te kaonga",
@@ -538,16 +541,16 @@
     "retryFailed": "Katai riki aika a aki kona"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "E aki kona te rairai n te taetae",
+    "eyebrow": "E aki kona te rairai n te taetae",
+    "title": "<contentTitle>{title}</contentTitle> e aki kona n te <languageName>{language}</languageName>",
+    "actionsLabel": "Aro ni mataku aika a kona",
+    "browseInLanguage": "Nora taian video n te {language}",
+    "backToSearch": "Oki nakon te ukera",
+    "audioVersionsTitle": "Rairai n te bwana aika tabeman",
+    "audioVersionsDescription": "Rinea te taetae n te bwana bwa ko na kona n nora te video aio.",
+    "languageVersionLabel": "Taetae n te bwana",
+    "selectLanguageVersion": "Rinea te rairai n te taetae",
+    "watchSelectedVersion": "Nora te rairai are ko rinea"
   }
 }

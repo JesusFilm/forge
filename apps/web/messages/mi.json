@@ -191,6 +191,7 @@
     "loadMoreFailed": "I rahua te uta i ētahi atu hua.",
     "searching": "E rapu ana...",
     "connectionHint": "Tēnā tirohia tō hononga, ā, ngana anō.",
+    "rateLimitHint": "He nui rawa ngā tono. Me ngana anō ā te meneti.",
     "retrySearch": "Ngana anō ki te rapu",
     "retry": "Ngana anō",
     "noResults": "Kāore he hua mō \"{query}\"",
@@ -225,7 +226,9 @@
   "HeroPlayer": {
     "playWithSound": "Mātakitaki ināianei",
     "tapToUnmute": "Pāwhiria kia whakakā te oro",
-    "nextEpisode": "Wāhanga Panuku"
+    "nextEpisode": "Wāhanga Panuku",
+    "audioTranslationCount": "{count, plural, one {# reo} other {# reo}}",
+    "subtitleCount": "Ngā Taitararoto: {count, plural, one {# reo} other {# reo}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "E uta ana i te ihirangi",
@@ -538,16 +541,16 @@
     "retryFailed": "I rahua te ngana anō"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Kāore te putanga reo i te wātea",
+    "eyebrow": "Kāore te putanga reo i te wātea",
+    "title": "Kāore a <contentTitle>{title}</contentTitle> i te wātea i te reo <languageName>{language}</languageName>",
+    "actionsLabel": "Ngā kōwhiringa mātakitaki e wātea ana",
+    "browseInLanguage": "Tirotiro ataata i te reo {language}",
+    "backToSearch": "Hoki ki te rapu",
+    "audioVersionsTitle": "Ētahi atu putanga ororongo",
+    "audioVersionsDescription": "Kōwhiria he reo ororongo kia mātakitaki tonu i tēnei ataata.",
+    "languageVersionLabel": "Reo ororongo",
+    "selectLanguageVersion": "Kōwhiria he putanga reo",
+    "watchSelectedVersion": "Mātakitakihia te putanga kua kōwhiria"
   }
 }

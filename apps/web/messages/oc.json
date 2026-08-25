@@ -191,6 +191,7 @@
     "loadMoreFailed": "Impossible de cargar mai de resultats.",
     "searching": "Recèrca en cors...",
     "connectionHint": "Verificatz vòstra connexion e tornatz ensajar.",
+    "rateLimitHint": "Tròp de requèstas. Tornatz ensajar dins una minuta.",
     "retrySearch": "Tornar ensajar la recèrca",
     "retry": "Tornar ensajar",
     "noResults": "Pas cap de resultat per \"{query}\"",
@@ -225,7 +226,9 @@
   "HeroPlayer": {
     "playWithSound": "Veire ara",
     "tapToUnmute": "Picatz per tornar activar lo son",
-    "nextEpisode": "Episòdi seguent"
+    "nextEpisode": "Episòdi seguent",
+    "audioTranslationCount": "{count, plural, one {# lenga} other {# lengas}}",
+    "subtitleCount": "Sostítols: {count, plural, one {# lenga} other {# lengas}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Cargament del contengut",
@@ -538,16 +541,16 @@
     "retryFailed": "Tornar ensajar los telecargaments fracassats"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Version lingüistica indisponibla",
+    "eyebrow": "Version lingüistica indisponibla",
+    "title": "<contentTitle>{title}</contentTitle> es pas disponible en <languageName>{language}</languageName>",
+    "actionsLabel": "Opcions de visionatge disponiblas",
+    "browseInLanguage": "Percórrer las vidèos en {language}",
+    "backToSearch": "Tornar a la recèrca",
+    "audioVersionsTitle": "Autras versions àudio",
+    "audioVersionsDescription": "Causissètz una lenga àudio per contunhar de veire aquesta vidèo.",
+    "languageVersionLabel": "Lenga àudio",
+    "selectLanguageVersion": "Seleccionar una version lingüistica",
+    "watchSelectedVersion": "Veire la version seleccionada"
   }
 }

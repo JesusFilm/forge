@@ -191,6 +191,7 @@
     "loadMoreFailed": "Gagal memuatkan lebih banyak hasil.",
     "searching": "Mencari...",
     "connectionHint": "Sila semak sambungan anda dan cuba lagi.",
+    "rateLimitHint": "ترلالو باڽق ڤرمينتاٴن. سيلا چوبا لاݢي دالم سمينيت.",
     "retrySearch": "Cuba semula carian",
     "retry": "Cuba semula",
     "noResults": "Tiada hasil untuk \"{query}\"",
@@ -225,7 +226,9 @@
   "HeroPlayer": {
     "playWithSound": "Tonton sekarang",
     "tapToUnmute": "Ketik untuk nyahbisu",
-    "nextEpisode": "Episod seterusnya"
+    "nextEpisode": "Episod seterusnya",
+    "audioTranslationCount": "{count, plural, one {# bahasa} other {# bahasa}}",
+    "subtitleCount": "Sarikata: {count, plural, one {# bahasa} other {# bahasa}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Memuatkan kandungan",
@@ -538,16 +541,16 @@
     "retryFailed": "چوبا سمولا موات تورون يڠ ݢاݢل"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "ۏرسي بهاس تيدق ترسديا",
+    "eyebrow": "ۏرسي بهاس تيدق ترسديا",
+    "title": "<contentTitle>{title}</contentTitle> تيدق ترسديا دالم <languageName>{language}</languageName>",
+    "actionsLabel": "ڤيليهن تونتونن يڠ ترسديا",
+    "browseInLanguage": "لاياري ۏيديو دالم {language}",
+    "backToSearch": "کمبالي کڤد چارين",
+    "audioVersionsTitle": "ۏرسي اوديو لاين",
+    "audioVersionsDescription": "ڤيليه بهاس اوديو اونتوق منروسکن منونتون ۏيديو اين.",
+    "languageVersionLabel": "بهاس اوديو",
+    "selectLanguageVersion": "ڤيليه ۏرسي بهاس",
+    "watchSelectedVersion": "تونتون ۏرسي يڠ دڤيليه"
   }
 }

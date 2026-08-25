@@ -191,6 +191,7 @@
     "loadMoreFailed": "Tsy nahomby ny fampidirana valiny fanampiny.",
     "searching": "Mikaroka...",
     "connectionHint": "Hamarino ny fifandraisanao ary andramo indray.",
+    "rateLimitHint": "Be loatra ny fangatahana. Andramo indray afaka iray minitra.",
     "retrySearch": "Andramo indray ny fikarohana",
     "retry": "Andramo indray",
     "noResults": "Tsy nisy valiny ho an'ny \"{query}\"",
@@ -225,7 +226,9 @@
   "HeroPlayer": {
     "playWithSound": "Jereo izao",
     "tapToUnmute": "Tsindrio mba hampandeha ny feo",
-    "nextEpisode": "Fizarana manaraka"
+    "nextEpisode": "Fizarana manaraka",
+    "audioTranslationCount": "{count, plural, one {# fiteny} other {# fiteny}}",
+    "subtitleCount": "Dikanteny: {count, plural, one {# fiteny} other {# fiteny}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Mampiditra votoaty",
@@ -538,16 +541,16 @@
     "retryFailed": "Andramo indray ireo tsy nahomby"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Tsy misy ity dikan-teny ity",
+    "eyebrow": "Tsy misy ity dikan-teny ity",
+    "title": "Tsy misy amin'ny teny <languageName>{language}</languageName> ny <contentTitle>{title}</contentTitle>",
+    "actionsLabel": "Safidy fijerena misy",
+    "browseInLanguage": "Hijery horonan-tsary amin'ny teny {language}",
+    "backToSearch": "Hiverina amin'ny fikarohana",
+    "audioVersionsTitle": "Dikan-peo hafa",
+    "audioVersionsDescription": "Misafidiana fiteny ho an'ny feo hanohizana ny fijerena ity horonan-tsary ity.",
+    "languageVersionLabel": "Fitenin'ny feo",
+    "selectLanguageVersion": "Misafidiana dikan-teny",
+    "watchSelectedVersion": "Hijery ny dikan-teny voafidy"
   }
 }

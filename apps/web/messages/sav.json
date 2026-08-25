@@ -191,6 +191,7 @@
     "loadMoreFailed": "Mënul jariñoo gëna bare njariñ yi.",
     "searching": "Di seet...",
     "connectionHint": "Woyofal sa connect ak jàngalataat.",
+    "rateLimitHint": "Laaj yi bare nañu. Jéemaatal ci lu tollu ci benn simili.",
     "retrySearch": "Faraat seet bi",
     "retry": "Faraat",
     "noResults": "Amul njariñ bu \"{query}\"",
@@ -225,7 +226,9 @@
   "HeroPlayer": {
     "playWithSound": "Xool léegi",
     "tapToUnmute": "Tàppal ngir jàppal wóol bi",
-    "nextEpisode": "Episode bi ci topp"
+    "nextEpisode": "Episode bi ci topp",
+    "audioTranslationCount": "{count, plural, one {# làkk} other {# làkk yi}}",
+    "subtitleCount": "Subtitles yi: {count, plural, one {# làkk} other {# làkk yi}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Di tënku content bi",
@@ -538,16 +541,16 @@
     "retryFailed": "Faraat yi ammul"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Sumbub làkk bi jëfandikuwul",
+    "eyebrow": "Sumbub làkk bi jëfandikuwul",
+    "title": "<contentTitle>{title}</contentTitle> jëfandikuwul ci <languageName>{language}</languageName>",
+    "actionsLabel": "Tànneefi xool yu jëfandikoo",
+    "browseInLanguage": "Xoolal vidéo yi ci {language}",
+    "backToSearch": "Dellu ci seet bi",
+    "audioVersionsTitle": "Yeneen sumbi baat",
+    "audioVersionsDescription": "Tànnal làkku baat ngir wéyal di xool vidéo bii.",
+    "languageVersionLabel": "Làkku baat",
+    "selectLanguageVersion": "Tànnal sumbub làkk",
+    "watchSelectedVersion": "Xool sumb bi nga tànn"
   }
 }

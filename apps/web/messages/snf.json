@@ -191,6 +191,7 @@
     "loadMoreFailed": "Échec du chargement de résultats supplémentaires.",
     "searching": "Recherche en cours...",
     "connectionHint": "Veuillez vérifier votre connexion et réessayer.",
+    "rateLimitHint": "Kíimci yal. Kiꞌaaw ga minit yen.",
     "retrySearch": "Réessayer la recherche",
     "retry": "Réessayer",
     "noResults": "Aucun résultat pour « {query} »",
@@ -225,7 +226,9 @@
   "HeroPlayer": {
     "playWithSound": "Regarder maintenant",
     "tapToUnmute": "Touchez pour réactiver le son",
-    "nextEpisode": "Épisode suivant"
+    "nextEpisode": "Épisode suivant",
+    "audioTranslationCount": "{count, plural, one {# lak} other {# lakci}}",
+    "subtitleCount": "Bíncii ga widewo: {count, plural, one {# lak} other {# lakci}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Chargement du contenu",
@@ -538,16 +541,16 @@
     "retryFailed": "Réessayer les téléchargements échoués"
   },
   "WatchUnavailableLanguage": {
-    "metadataTitle": "Language version unavailable",
-    "eyebrow": "Language version unavailable",
-    "title": "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
-    "actionsLabel": "Available viewing options",
-    "browseInLanguage": "Browse videos in {language}",
-    "backToSearch": "Back to search",
-    "audioVersionsTitle": "Other audio versions",
-    "audioVersionsDescription": "Choose an audio language to continue watching this video.",
-    "languageVersionLabel": "Audio language",
-    "selectLanguageVersion": "Select a language version",
-    "watchSelectedVersion": "Watch selected version"
+    "metadataTitle": "Kisúpít lak laakkii",
+    "eyebrow": "Kisúpít lak laakkii",
+    "title": "<contentTitle>{title}</contentTitle> laakkii ga <languageName>{language}</languageName>",
+    "actionsLabel": "Pulaal ki hot",
+    "browseInLanguage": "Kihot widewo ga {language}",
+    "backToSearch": "Kiwutaat ga wut",
+    "audioVersionsTitle": "Kisúpít ɗaahci",
+    "audioVersionsDescription": "Kitën lak ɗaah te kihot widewo ino.",
+    "languageVersionLabel": "Lak ɗaah",
+    "selectLanguageVersion": "Kitën kisúpít lak",
+    "watchSelectedVersion": "Kihot kisúpít kitënka"
   }
 }
