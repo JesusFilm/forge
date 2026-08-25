@@ -33,6 +33,364 @@ const MODEL = "gpt-5.4-mini-2026-03-17"
 const temporaryDirectories = []
 
 describe("Watch search contextual translation contract", () => {
+  it("supplies each message with its UI surface and copy role", () => {
+    const prompt = JSON.parse(
+      buildUserPrompt({
+        locale: "zh-Hans",
+        inventoryEntry: { countries: [{ name: "China" }] },
+        messages: {
+          "WatchUnavailableLanguage.title":
+            "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
+          "DownloadModal.signInToDownload": "Sign in to download",
+        },
+        references: {},
+      }),
+    )
+
+    expect(prompt.messageContexts).toEqual({
+      "WatchUnavailableLanguage.title": expect.objectContaining({
+        surface: expect.stringContaining("recovery page"),
+        role: "page heading",
+      }),
+      "DownloadModal.signInToDownload": expect.objectContaining({
+        surface: expect.stringContaining("download dialog"),
+        role: "action label",
+      }),
+    })
+  })
+
+  it("identifies accessibility-only copy that cannot be inferred from its key", () => {
+    const prompt = JSON.parse(
+      buildUserPrompt({
+        locale: "zh-Hans",
+        inventoryEntry: { countries: [{ name: "China" }] },
+        messages: {
+          "BibleQuotes.previousQuote": "Previous Bible quote",
+          "WatchUnavailableLanguage.languageVersionLabel": "Audio language",
+        },
+        references: {},
+      }),
+    )
+
+    expect(prompt.messageContexts).toEqual({
+      "BibleQuotes.previousQuote": expect.objectContaining({
+        role: "carousel navigation accessibility label",
+        visibility: "assistive technology only",
+      }),
+      "WatchUnavailableLanguage.languageVersionLabel": expect.objectContaining({
+        role: "audio-language selector accessibility label",
+        visibility: "assistive technology only",
+      }),
+    })
+  })
+
+  it("distinguishes status and error copy from similarly named actions", () => {
+    const prompt = JSON.parse(
+      buildUserPrompt({
+        locale: "zh-Hans",
+        inventoryEntry: { countries: [{ name: "China" }] },
+        messages: {
+          "BetaTesterModal.loading": "Loading...",
+          "SearchOverlay.loadMoreFailed": "Failed to load more results.",
+          "CollectionDownloadModal.signInTitle": "Sign in to download",
+          "ShareModal.shareOnXUnavailable":
+            "Share on X (unavailable on this build)",
+        },
+        references: {},
+      }),
+    )
+
+    expect(prompt.messageContexts).toEqual({
+      "BetaTesterModal.loading": expect.objectContaining({
+        role: "status message",
+      }),
+      "SearchOverlay.loadMoreFailed": expect.objectContaining({
+        role: "error or unavailable-state message",
+      }),
+      "CollectionDownloadModal.signInTitle": expect.objectContaining({
+        role: "download authentication heading",
+      }),
+      "ShareModal.shareOnXUnavailable": expect.objectContaining({
+        role: "disabled action label",
+      }),
+    })
+  })
+
+  it("uses authoritative roles for controls, alt text, and section headings", () => {
+    const prompt = JSON.parse(
+      buildUserPrompt({
+        locale: "zh-Hans",
+        inventoryEntry: { countries: [{ name: "China" }] },
+        messages: {
+          "WatchUnavailableLanguage.audioVersionsTitle": "Other audio versions",
+          "WatchHome.mutePreview": "Mute preview",
+          "DownloadModal.posterAlt": "Video poster",
+          "LanguagePickerModal.translateWithAi": "Translate with AI",
+        },
+        references: {},
+      }),
+    )
+
+    expect(prompt.messageContexts).toEqual({
+      "WatchUnavailableLanguage.audioVersionsTitle": expect.objectContaining({
+        role: "section heading",
+      }),
+      "WatchHome.mutePreview": expect.objectContaining({
+        role: "video-preview accessibility action label",
+        visibility: "assistive technology only",
+      }),
+      "DownloadModal.posterAlt": expect.objectContaining({
+        role: "image alternative text",
+      }),
+      "LanguagePickerModal.translateWithAi": expect.objectContaining({
+        role: "action label",
+      }),
+    })
+  })
+
+  it("describes strings that components compose with runtime values", () => {
+    const prompt = JSON.parse(
+      buildUserPrompt({
+        locale: "zh-Hans",
+        inventoryEntry: { countries: [{ name: "China" }] },
+        messages: {
+          "LanguagePickerModal.noSubtitles": "No subtitles",
+          "LanguagePickerModal.toggleOn": "On",
+          "HeroPlayerControls.changeAudioLanguage": "Change audio language",
+          "SubtitleTranscript.aiSuffix": " · AI",
+        },
+        references: {},
+      }),
+    )
+
+    expect(prompt.messageContexts).toEqual({
+      "LanguagePickerModal.noSubtitles": expect.objectContaining({
+        role: "subtitle unavailable-state message",
+        composition: expect.stringContaining("languageName"),
+      }),
+      "LanguagePickerModal.toggleOn": expect.objectContaining({
+        role: "toggle state label",
+        composition: expect.stringContaining("language code"),
+      }),
+      "HeroPlayerControls.changeAudioLanguage": expect.objectContaining({
+        role: "player-control accessibility action label",
+        composition: expect.stringContaining("languageCode"),
+      }),
+      "SubtitleTranscript.aiSuffix": expect.objectContaining({
+        role: "AI-generated subtitle marker",
+        composition: expect.stringContaining("subtitle language name"),
+      }),
+    })
+  })
+
+  it("identifies player slider copy as assistive-only labels and values", () => {
+    const prompt = JSON.parse(
+      buildUserPrompt({
+        locale: "zh-Hans",
+        inventoryEntry: { countries: [{ name: "China" }] },
+        messages: {
+          "HeroPlayerControls.seek": "Seek",
+          "HeroPlayerControls.seekValue": "{current} of {total}",
+          "HeroPlayerControls.volume": "Volume",
+          "HeroPlayerControls.volumeValue": "{percent} percent",
+        },
+        references: {},
+      }),
+    )
+
+    expect(prompt.messageContexts).toEqual({
+      "HeroPlayerControls.seek": expect.objectContaining({
+        role: "timeline slider accessibility label",
+        visibility: "assistive technology only",
+      }),
+      "HeroPlayerControls.seekValue": expect.objectContaining({
+        role: "timeline slider accessibility value",
+        visibility: "assistive technology only",
+      }),
+      "HeroPlayerControls.volume": expect.objectContaining({
+        role: "volume slider accessibility label",
+        visibility: "assistive technology only",
+      }),
+      "HeroPlayerControls.volumeValue": expect.objectContaining({
+        role: "volume slider accessibility value",
+        visibility: "assistive technology only",
+      }),
+    })
+  })
+
+  it("tells the translator to judge composed messages after rendering", () => {
+    const prompt = JSON.parse(
+      buildUserPrompt({
+        locale: "zh-Hans",
+        inventoryEntry: { countries: [{ name: "China" }] },
+        messages: {
+          "WatchUnavailableLanguage.title":
+            "<contentTitle>{title}</contentTitle> is not available in <languageName>{language}</languageName>",
+        },
+        references: {},
+      }),
+    )
+
+    expect(
+      prompt.messageContexts["WatchUnavailableLanguage.title"].composition,
+    ).toContain("complete rendered message")
+    expect(prompt.targetLanguageWritingInstructions).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining("mentally render representative values"),
+        expect.stringContaining("screen reader"),
+      ]),
+    )
+  })
+
+  it("supplies omitted neighboring source messages from the same UI namespace", () => {
+    const prompt = JSON.parse(
+      buildUserPrompt({
+        locale: "zh-Hans",
+        inventoryEntry: { countries: [{ name: "China" }] },
+        messages: {
+          "BibleQuotes.joinBibleStudy": "Join our Bible study",
+        },
+        references: {},
+        sourceMessages: {
+          "BibleQuotes.promoHeading":
+            "Want to understand the Bible more deeply?",
+          "BibleQuotes.joinBibleStudy": "Join our Bible study",
+          "SearchOverlay.noResults": "No results found",
+        },
+      }),
+    )
+
+    expect(prompt.surroundingSourceMessages).toEqual({
+      "BibleQuotes.promoHeading": "Want to understand the Bible more deeply?",
+    })
+  })
+
+  it("does not duplicate source messages already being translated", () => {
+    const messages = {
+      "BibleQuotes.promoHeading": "Want to understand the Bible more deeply?",
+      "BibleQuotes.joinBibleStudy": "Join our Bible study",
+    }
+    const prompt = JSON.parse(
+      buildUserPrompt({
+        locale: "zh-Hans",
+        inventoryEntry: { countries: [{ name: "China" }] },
+        messages,
+        references: {},
+        sourceMessages: messages,
+      }),
+    )
+
+    expect(prompt.surroundingSourceMessages).toEqual({})
+  })
+
+  it("has explicit surface context for every current catalog namespace", () => {
+    const source = JSON.parse(
+      readFileSync(join(process.cwd(), "messages/en.json"), "utf8"),
+    )
+    const messages = flattenCatalog(source)
+    const prompt = JSON.parse(
+      buildUserPrompt({
+        locale: "zh-Hans",
+        inventoryEntry: { countries: [{ name: "China" }] },
+        messages,
+        references: {},
+      }),
+    )
+
+    expect(Object.keys(prompt.messageContexts)).toEqual(Object.keys(messages))
+    expect(
+      Object.values(prompt.messageContexts).filter(({ surface }) =>
+        surface.endsWith("area of the Watch experience"),
+      ),
+    ).toEqual([])
+  })
+
+  it("adds universal localization guidance and keeps Chinese-specific guidance scoped", () => {
+    const chinesePrompt = JSON.parse(
+      buildUserPrompt({
+        locale: "zh-Hans",
+        inventoryEntry: { countries: [{ name: "China" }] },
+        messages: { "ExperienceError.pageLoadFailed": "Something went wrong." },
+        references: {},
+      }),
+    )
+    const russianPrompt = JSON.parse(
+      buildUserPrompt({
+        locale: "ru",
+        inventoryEntry: { countries: [{ name: "Russia" }] },
+        messages: { "ExperienceError.pageLoadFailed": "Something went wrong." },
+        references: {},
+      }),
+    )
+
+    expect(chinesePrompt.targetLanguageWritingInstructions).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining("native product writer in the target language"),
+        expect.stringContaining("established Christian terminology"),
+        expect.stringContaining("reference materials"),
+        expect.stringContaining("English sentence structure"),
+        expect.stringContaining("verb to verb"),
+        expect.stringContaining("X后Y or X并Y"),
+        expect.stringContaining("biblical metaphor"),
+        expect.stringContaining("word for word"),
+        expect.stringContaining("exact failure category"),
+        expect.stringContaining("original-language source"),
+        expect.stringContaining("self-contained"),
+        expect.stringContaining("equivalent target-catalog copy"),
+        expect.stringContaining("Traditional Chinese vocabulary"),
+        expect.stringContaining("Do not add product claims"),
+      ]),
+    )
+    expect(russianPrompt.targetLanguageWritingInstructions).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining("native product writer in the target language"),
+        expect.stringContaining("established Christian terminology"),
+        expect.stringContaining("reference materials"),
+        expect.stringContaining("biblical metaphor"),
+        expect.stringContaining("Do not add product claims"),
+      ]),
+    )
+    expect(russianPrompt.targetLanguageWritingInstructions).not.toEqual(
+      expect.arrayContaining([
+        expect.stringContaining("originally written in Chinese"),
+        expect.stringContaining("Traditional Chinese vocabulary"),
+      ]),
+    )
+  })
+
+  it("adds authoritative context for Chinese error, scripture, and sign-in copy", () => {
+    const prompt = JSON.parse(
+      buildUserPrompt({
+        locale: "zh-Hans",
+        inventoryEntry: { countries: [{ name: "China" }] },
+        messages: {
+          "ExperienceError.authFailed":
+            "Unable to authenticate with the content service. Please contact support if this persists.",
+          "WatchHomePromo.buildingNext": "What we are building next",
+          "WatchHomeSections.scriptureAsWrittenTitle":
+            "Scripture, Spoken Exactly as Written",
+          "CollectionDownloadModal.signIn": "Sign in to download",
+        },
+        references: {},
+      }),
+    )
+
+    expect(prompt.messageContexts).toEqual({
+      "ExperienceError.authFailed": expect.objectContaining({
+        role: "authentication failure message",
+      }),
+      "WatchHomePromo.buildingNext": expect.objectContaining({
+        role: "heading introducing the following feature cards",
+      }),
+      "WatchHomeSections.scriptureAsWrittenTitle": expect.objectContaining({
+        composition: expect.stringContaining("does not refer"),
+      }),
+      "CollectionDownloadModal.signIn": expect.objectContaining({
+        composition: expect.stringContaining("returns them to the dialog"),
+      }),
+    })
+  })
+
   it("supplies the model with action, status, heading, and language-chip context", () => {
     const prompt = JSON.parse(
       buildUserPrompt({
@@ -399,6 +757,18 @@ describe("translate UI catalogs", () => {
     expect(
       promptFromRequest(fetchMock.mock.calls[0][1])
         .existingReferenceTranslations,
+    ).not.toHaveProperty("other.unrelated")
+    expect(
+      Object.keys(
+        promptFromRequest(fetchMock.mock.calls[0][1]).surroundingSourceMessages,
+      ),
+    ).toEqual(
+      Object.keys(source.common)
+        .filter((key) => key !== "message19")
+        .map((key) => `common.${key}`),
+    )
+    expect(
+      promptFromRequest(fetchMock.mock.calls[0][1]).surroundingSourceMessages,
     ).not.toHaveProperty("other.unrelated")
   })
 
