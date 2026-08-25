@@ -12,6 +12,7 @@ const input = (overrides: Partial<CastMediaInput> = {}): CastMediaInput => ({
   title: "The Birth of Jesus",
   posterUrl: "https://images.example.org/poster.jpg",
   startPositionSeconds: 30,
+  playbackRate: 1.5,
   ...overrides,
 })
 
@@ -23,6 +24,7 @@ describe("resolveCastMedia", () => {
       title: "The Birth of Jesus",
       posterUrl: "https://images.example.org/poster.jpg",
       startPositionSeconds: 30,
+      playbackRate: 1.5,
     })
   })
 
@@ -121,6 +123,26 @@ describe("resolveCastMedia", () => {
     expect(resolveCastMedia(input())?.contentType).toBe(CAST_CONTENT_TYPE)
     expect(CAST_CONTENT_TYPE).toBe("application/x-mpegURL")
   })
+
+  it("carries the session speed onto the media (R15/AE9)", () => {
+    expect(resolveCastMedia(input({ playbackRate: 1.5 }))?.playbackRate).toBe(
+      1.5,
+    )
+    expect(resolveCastMedia(input({ playbackRate: 1 }))?.playbackRate).toBe(1)
+  })
+
+  it("defaults null, non-finite, and out-of-range rates to 1", () => {
+    expect(resolveCastMedia(input({ playbackRate: null }))?.playbackRate).toBe(
+      1,
+    )
+    expect(
+      resolveCastMedia(input({ playbackRate: Number.NaN }))?.playbackRate,
+    ).toBe(1)
+    expect(resolveCastMedia(input({ playbackRate: 2.5 }))?.playbackRate).toBe(1)
+    expect(resolveCastMedia(input({ playbackRate: 0.25 }))?.playbackRate).toBe(
+      1,
+    )
+  })
 })
 
 describe("toMediaLoadRequest (castAdapter mapping)", () => {
@@ -130,12 +152,14 @@ describe("toMediaLoadRequest (castAdapter mapping)", () => {
     title: "The Birth of Jesus",
     posterUrl: "https://images.example.org/poster.jpg",
     startPositionSeconds: 30,
+    playbackRate: 1.5,
   } as const
 
-  it("maps the resolved media onto the SDK load request", () => {
+  it("maps the resolved media onto the SDK load request (AE9)", () => {
     expect(toMediaLoadRequest(media)).toEqual({
       autoplay: true,
       startTime: 30,
+      playbackRate: 1.5,
       mediaInfo: {
         contentUrl: "https://stream.mux.com/variant.m3u8",
         contentType: "application/x-mpegURL",
@@ -147,6 +171,12 @@ describe("toMediaLoadRequest (castAdapter mapping)", () => {
         },
       },
     })
+  })
+
+  it("carries a rate of 1 explicitly (pinned: carry, never omit)", () => {
+    expect(toMediaLoadRequest({ ...media, playbackRate: 1 }).playbackRate).toBe(
+      1,
+    )
   })
 
   it("omits title and images when metadata is absent", () => {

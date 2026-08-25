@@ -49,6 +49,10 @@ import {
 } from "../../src/lib/cast/castMediaResolver"
 import type { ProgressFeed } from "../../src/lib/miniPlayer/playbackRequest"
 import {
+  effectivePlayerSettings,
+  getPlayerSettingsStore,
+} from "../../src/lib/miniPlayer/playerSettings"
+import {
   isRemoteCastPhase,
   isRemotePlayingState,
   releaseTriggersSwap,
@@ -346,11 +350,24 @@ export default function WatchVideoPage() {
         title: displayTitle,
         posterUrl: displayPoster,
         startPositionSeconds,
+        // R15: read at call time — keyed on decodedSlug, the videoSlug this
+        // route's session descriptor hands the host as its videoKey.
+        playbackRate: effectivePlayerSettings(
+          getPlayerSettingsStore().getSnapshot(),
+          decodedSlug,
+        ).speed,
       })
       if (media != null) castLoadStartRef.current = media.startPositionSeconds
       return media
     },
-    [activeVariant, video, seedStreamingUrl, displayTitle, displayPoster],
+    [
+      activeVariant,
+      video,
+      seedStreamingUrl,
+      displayTitle,
+      displayPoster,
+      decodedSlug,
+    ],
   )
 
   const handleCastPress = useCallback(() => {

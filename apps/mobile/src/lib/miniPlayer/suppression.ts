@@ -2,7 +2,7 @@
  * R11 suppression: the floating window hides while an in-app sheet is
  * presented, and returns to its corner when that sheet closes. Two mechanisms
  * live here because the app presents sheets two ways — six real sheet ROUTES
- * in the watch and series groups, and two sheets that are component state.
+ * in the watch and series groups, and the sheets that are component state.
  *
  * React-native-free by construction: routes arrive as expo-router segments and
  * the non-route sheets arrive as a count.
@@ -40,11 +40,16 @@ export function isInAppSheetRoute(segments: readonly string[]): boolean {
 }
 
 /**
- * The two sheets that are component state rather than routes: the Library
- * delete confirmation (`src/components/library/DeleteConfirmSheet.tsx`, hosted
- * by `app/(tabs)/library.tsx`) and the SDUI quiz modal.
+ * The sheets that are component state rather than routes: the Library delete
+ * confirmation (`src/components/library/DeleteConfirmSheet.tsx`, hosted by
+ * `app/(tabs)/library.tsx`), the SDUI quiz modal, and the player settings
+ * sheet (`src/components/watch/PlayerSettingsSheet.tsx`, hosted by
+ * `VideoPlayer.tsx` — a routed form sheet cannot cover the fullscreen player).
  */
-export type NonRouteSheetId = "libraryDeleteConfirm" | "sduiQuiz"
+export type NonRouteSheetId =
+  | "libraryDeleteConfirm"
+  | "sduiQuiz"
+  | "playerSettings"
 
 export type NonRouteSheetCounter = {
   /** Presented count — zero means nothing is suppressing the window. */

@@ -4,6 +4,7 @@ import { useEvent } from "expo"
 import { useVideoPlayer, type VideoPlayer } from "expo-video"
 
 import { extractMuxPlaybackId, isSameMuxAsset } from "../lib/muxThumbnail"
+import { sameQualityConstraint } from "../lib/streamQuality"
 import { datadogLog } from "../lib/datadog"
 import { getMiniPlayerStore } from "../lib/miniPlayer/store"
 import {
@@ -264,9 +265,16 @@ export function useManagedVideoPlayer(
     // Compare by Mux playback ID, not raw URL: two URL strings can name one
     // asset (seed URL vs resolved variant); reloading it would needlessly
     // restart playback.
-    const sameAsset = isSameMuxAsset(loadedUrlRef.current, sourceUrl)
+    const previousUrl = loadedUrlRef.current
+    const sameAsset = isSameMuxAsset(previousUrl, sourceUrl)
+    // KTD2: one asset under a NEW quality constraint must still reload — the
+    // tier rides the URL, so coalescing here would silently drop the pick.
+    const constraintSwap =
+      sameAsset &&
+      previousUrl != null &&
+      !sameQualityConstraint(previousUrl, sourceUrl)
     loadedUrlRef.current = sourceUrl
-    if (sameAsset) {
+    if (sameAsset && !constraintSwap) {
       // Same asset behind a new string: the player already holds it.
       onSourceAppliedRef.current?.(sourceUrl)
       return
@@ -275,15 +283,18 @@ export function useManagedVideoPlayer(
     const nextId = extractMuxPlaybackId(sourceUrl)
 
     // A genuine cross-asset swap ends this QoE session and opens a new one so
-    // watched_ms/rebuffers/source attribute to the right asset (R36/R38). The
-    // source moved without the progress identity, so nothing flushes here.
-    endSession("abandoned")
-    startQoeSession(sourceUrl)
+    // watched_ms/rebuffers/source attribute to the right asset (R36/R38). A
+    // constraint swap is the SAME asset, so its session continues (R14).
+    if (!constraintSwap) {
+      endSession("abandoned")
+      startQoeSession(sourceUrl)
+    }
     isSwappingRef.current = true
 
-    // Preserve playback across the swap: replace() drops the playing state, so
-    // a mid-play swap would strand a paused frame. Resume after load.
-    const wasPlaying = player.playing
+    // Preserve playback across a cross-asset swap: replace() drops the playing
+    // state. A constraint swap suppresses this — the host's sourceLoad latch
+    // owns resume there (seek first), so a play here would restart at zero.
+    const wasPlaying = !constraintSwap && player.playing
     const resume = () => {
       // Bail if the app backgrounded while replaceAsync was in flight — the
       // AppState 'active' handler re-resumes on foreground via wasPlayingRef.

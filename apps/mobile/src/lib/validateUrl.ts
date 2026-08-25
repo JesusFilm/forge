@@ -1,4 +1,7 @@
-const ALLOWED_STREAMING_HOSTS = new Set(["stream.mux.com"])
+/** The one allowed Mux streaming host — shared with streamQuality.ts. */
+export const MUX_STREAM_HOST = "stream.mux.com"
+
+const ALLOWED_STREAMING_HOSTS = new Set([MUX_STREAM_HOST])
 
 const BLOCKED_SCHEMES = new Set([
   "javascript:",

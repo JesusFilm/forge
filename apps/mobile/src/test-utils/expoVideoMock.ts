@@ -29,6 +29,7 @@ export type FakePlayer = {
   loop: boolean
   volume: number
   playing: boolean
+  playbackRate: number
   currentTime: number
   duration: number
   status: VideoPlayerStatus
@@ -93,6 +94,7 @@ export function makeFakePlayer(): FakePlayer {
     loop: false,
     volume: 1,
     playing: false,
+    playbackRate: 1,
     currentTime: 0,
     duration: 0,
     status: "idle",
@@ -174,6 +176,7 @@ export function makeFakePlayer(): FakePlayer {
       player.loop = false
       player.volume = 1
       player.playing = false
+      player.playbackRate = 1
       player.currentTime = 0
       player.duration = 0
       player.status = "idle"

@@ -28,6 +28,7 @@ import {
 } from "react"
 import {
   Animated,
+  AppState,
   BackHandler,
   Platform,
   StyleSheet,
@@ -41,6 +42,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { useManagedVideoPlayer } from "../../hooks/useManagedVideoPlayer"
 import { getAuthSession } from "../../lib/authSession"
 import { BLACK } from "../../lib/color"
+import { datadogLog } from "../../lib/datadog"
 import {
   DEFAULT_CORNER,
   defaultCornerFrame,
@@ -51,6 +53,12 @@ import {
   type MiniPlayerFrame,
   type MiniPlayerLayoutConfig,
 } from "../../lib/miniPlayer/layout"
+import {
+  DEFAULT_PLAYBACK_SPEED,
+  DEFAULT_QUALITY_TIER,
+  effectivePlayerSettings,
+  getPlayerSettingsStore,
+} from "../../lib/miniPlayer/playerSettings"
 import {
   getPlaybackRequestStore,
   sameSessionContent,
@@ -72,8 +80,15 @@ import {
   getNonRouteSheetCounter,
   routePattern,
 } from "../../lib/miniPlayer/suppression"
+import { isSameMuxAsset } from "../../lib/muxThumbnail"
 import { BACK_BUTTON_PROPS } from "../../lib/playerLayout"
+import {
+  applyQualityConstraint,
+  sameQualityConstraint,
+  type QualityTier,
+} from "../../lib/streamQuality"
 import type { ProgressIdentity } from "../../lib/watchProgress/recorder"
+import { resumePositionSeconds } from "../../lib/watchProgress/thresholds"
 import { FloatingBackButton } from "../ui/FloatingBackButton"
 import { MiniPlayerWindow } from "./MiniPlayerWindow"
 import { VideoPlayer } from "./VideoPlayer"
@@ -109,6 +124,10 @@ const CHROME_RELEASE_SLACK_MS = 250
 /** The exit's unconditional release — a dismissed window must clear its session
  *  even when the animation never reports back. */
 const EXIT_RELEASE_SLACK_MS = 250
+
+/** A tier-change swap that neither loads nor errors within this budget
+ *  releases its pending resume and reverts the tier (R8's failure path). */
+export const QUALITY_SWAP_TIMEOUT_MS = 8000
 
 /** Chrome heights the window may not cover (R7), read from `app/_layout.tsx`
  *  and `app/(tabs)/_layout.tsx`. Both exclude the safe-area inset, which the
@@ -322,6 +341,37 @@ function ActivePlaybackHost({
     }
   }
 
+  // Keyed on the SLUG, which is required on the descriptor and stable across
+  // the record load — the seed path flips videoId null -> documentId
+  // MID-playback. Shared by the settings seam and the started/ended latch.
+  const videoKey = request.session
+    ? request.session.videoSlug
+    : (request.streamingUrl ?? "")
+
+  const settingsStore = getPlayerSettingsStore()
+  const settingsSnapshot = useSyncExternalStore(
+    settingsStore.subscribe,
+    settingsStore.getSnapshot,
+  )
+  const effectiveSettings = effectivePlayerSettings(settingsSnapshot, videoKey)
+  // KTD1: the ONE constraint seam. Host bookkeeping above stays on RAW urls;
+  // only the adapter sees the constrained one, so every swap (dub change
+  // included) inherits the active tier.
+  const constrainedSourceUrl = useMemo(
+    () =>
+      sourceUrl == null
+        ? null
+        : applyQualityConstraint(sourceUrl, effectiveSettings.qualityTier),
+    [sourceUrl, effectiveSettings.qualityTier],
+  )
+
+  // R13's takeover reset and the key's activation in ONE call: an equal key
+  // preserves the settings (minimize/restore, remount — AE6); a different one
+  // clears them (AE5). An empty key (a sourceless gap) names nothing: skip it.
+  useEffect(() => {
+    if (videoKey !== "") settingsStore.resetFor(videoKey)
+  }, [settingsStore, videoKey])
+
   // What the player verifiably HOLDS (applied, not merely requested): the
   // admission fallback below may only trust `player.playing` for this source.
   const appliedSourceUrlRef = useRef<string | null>(null)
@@ -329,9 +379,13 @@ function ActivePlaybackHost({
   // departed screen carries a session that screen's unmount already ended.
   const slotOwned = snapshot.slotId != null
   const castActive = slotOwned && request.castActive
+  // Read at sourceLoad time, not effect-capture time: a cast session can
+  // start inside the swap window the resume latch spans (KTD4).
+  const castActiveRef = useRef(castActive)
+  castActiveRef.current = castActive
   const { player, isPlaying, progressFeed, getHealthyPosition } =
     useManagedVideoPlayer(
-      sourceUrl,
+      constrainedSourceUrl,
       (p) => {
         // Favor a fast first frame over deep prebuffer — JFP audience skews to
         // low-bandwidth networks. (Android-only fields are ignored on iOS.)
@@ -360,6 +414,185 @@ function ActivePlaybackHost({
   if (slotOwned && request.progressFeedRef != null)
     request.progressFeedRef.current = progressFeed
 
+  // R8's one-shot resume latch, armed only by a tier change and consumed by
+  // the next sourceLoad. `revertTier` is the pre-pick tier a failed swap
+  // writes back; null on the revert leg, so a failing revert cannot oscillate.
+  const pendingQualityResumeRef = useRef<{
+    positionSeconds: number
+    durationSeconds: number
+    wasPlaying: boolean
+    revertTier: QualityTier | null
+  } | null>(null)
+  // Capture BEFORE the swap applies (R8): render runs ahead of the adapter's
+  // swap effect, while the player still reports the outgoing item's clock.
+  const appliedConstraintRef = useRef({
+    url: constrainedSourceUrl,
+    tier: effectiveSettings.qualityTier,
+  })
+  {
+    const previous = appliedConstraintRef.current
+    if (
+      previous.url !== constrainedSourceUrl ||
+      previous.tier !== effectiveSettings.qualityTier
+    ) {
+      if (!isSameMuxAsset(previous.url, constrainedSourceUrl)) {
+        // A different asset (new video, dub change): a pending quality
+        // resume is stale and must not seek the arriving stream.
+        pendingQualityResumeRef.current = null
+      } else if (
+        previous.tier !== effectiveSettings.qualityTier &&
+        previous.url != null &&
+        constrainedSourceUrl != null &&
+        !sameQualityConstraint(previous.url, constrainedSourceUrl) &&
+        pendingQualityResumeRef.current == null
+      ) {
+        // A re-pick mid-swap keeps the first capture: nothing played in
+        // between, and the superseded swap may already report zero.
+        let positionSeconds = 0
+        let durationSeconds = 0
+        let wasPlaying = false
+        try {
+          positionSeconds = player.currentTime
+          durationSeconds = player.duration
+          wasPlaying = player.playing
+        } catch {
+          // Released mid-read; the resume then lands at zero, not never.
+        }
+        pendingQualityResumeRef.current = {
+          positionSeconds,
+          durationSeconds,
+          wasPlaying,
+          revertTier: previous.tier,
+        }
+      }
+      appliedConstraintRef.current = {
+        url: constrainedSourceUrl,
+        tier: effectiveSettings.qualityTier,
+      }
+    }
+  }
+
+  // The failure/timeout release: a tier swap that errors or hangs must not
+  // strand the viewer. Clear the latch, swap the URL seam back, say so once.
+  const releaseQualityResume = useCallback(
+    (releaseReason: "load_error" | "timeout") => {
+      const pending = pendingQualityResumeRef.current
+      if (pending == null) return
+      pendingQualityResumeRef.current = null
+      datadogLog.warn("player_settings.quality_swap_released", {
+        release_reason: releaseReason,
+        reverted_tier: pending.revertTier,
+      })
+      if (pending.revertTier == null) return
+      // A viewer already re-picked the revert tier: the write would no-op, no
+      // swap re-keys the timer, and a re-armed latch would go stale. Stay clear.
+      if (
+        getPlayerSettingsStore().getSnapshot().qualityTier ===
+        pending.revertTier
+      )
+        return
+      // Re-arm for the revert swap so the old stream resumes in place. The
+      // null revertTier bounds this to one revert per pick.
+      pendingQualityResumeRef.current = { ...pending, revertTier: null }
+      getPlayerSettingsStore().setQualityTier(pending.revertTier)
+    },
+    [],
+  )
+
+  // The bounded wait: a swap that never reports back (no sourceLoad, no
+  // error) still releases. Identity-checked, so a timer from a superseded
+  // pick cannot cut a live swap's budget short.
+  useEffect(() => {
+    const pending = pendingQualityResumeRef.current
+    if (pending == null) return
+    const timer = setTimeout(() => {
+      if (pendingQualityResumeRef.current !== pending) return
+      releaseQualityResume("timeout")
+    }, QUALITY_SWAP_TIMEOUT_MS)
+    return () => clearTimeout(timer)
+  }, [constrainedSourceUrl, releaseQualityResume])
+
+  useEffect(() => {
+    const sub = player.addListener(
+      "statusChange",
+      ({ status }: { status: VideoPlayerStatus }) => {
+        if (status === "error") releaseQualityResume("load_error")
+      },
+    )
+    return () => {
+      try {
+        sub.remove()
+      } catch {
+        // Player already released
+      }
+    }
+  }, [player, releaseQualityResume])
+
+  // KTD3: the rate rides EVERY load (dub and constraint swaps alike); the
+  // seek latch is one-shot. Seek before play — the replaceAsync promise
+  // resolves before the item applies, so a seek there is silently dropped.
+  const effectiveSpeedRef = useRef(effectiveSettings.speed)
+  effectiveSpeedRef.current = effectiveSettings.speed
+  const constrainedSourceUrlRef = useRef(constrainedSourceUrl)
+  constrainedSourceUrlRef.current = constrainedSourceUrl
+  useEffect(() => {
+    const sub = player.addListener("sourceLoad", (payload?: unknown) => {
+      // Queued swaps load per item: a superseded item's load must not spend
+      // the one-shot latch, or the final item lands at 0:00. Same fail-open
+      // payload rule as recoverPlayback: an unidentifiable load counts as ours.
+      const loaded =
+        typeof payload === "object" && payload !== null
+          ? (payload as { videoSource?: unknown }).videoSource
+          : undefined
+      const isCurrentSource =
+        typeof loaded !== "string" || loaded === constrainedSourceUrlRef.current
+      const pending = isCurrentSource ? pendingQualityResumeRef.current : null
+      if (isCurrentSource) pendingQualityResumeRef.current = null
+      try {
+        if (pending != null) {
+          const durationSeconds =
+            player.duration > 0 ? player.duration : pending.durationSeconds
+          // An unknown duration skips the end guard: clamping against zero
+          // would send the resume to 0:00, R8's forbidden outcome.
+          player.currentTime =
+            durationSeconds > 0
+              ? resumePositionSeconds(pending.positionSeconds, durationSeconds)
+              : Math.max(0, pending.positionSeconds)
+        }
+        player.playbackRate = effectiveSpeedRef.current
+        // The latch's resume takes the same vetoes as every local resume path:
+        // never over an active cast session (KTD4), never audio the viewer
+        // cannot see — the adapter's 'active' handler re-resumes on return.
+        if (
+          pending?.wasPlaying &&
+          !castActiveRef.current &&
+          AppState.currentState === "active"
+        )
+          player.play()
+      } catch {
+        // Native player already released
+      }
+    })
+    return () => {
+      try {
+        sub.remove()
+      } catch {
+        // Player already released
+      }
+    }
+  }, [player])
+
+  // R5: a speed pick lands on the live rate at once — no pause, no seek, no
+  // source change — and on mount, so an adopted player picks up the session
+  // rate. Deliberately not cast-gated: the local player is paused while casting.
+  useEffect(() => {
+    try {
+      player.playbackRate = effectiveSettings.speed
+    } catch {
+      // Native player already released
+    }
+  }, [player, effectiveSettings.speed])
+
   const openSheetCount = useSyncExternalStore(
     sheetCounter.subscribe,
     sheetCounter.count,
@@ -386,13 +619,9 @@ function ActivePlaybackHost({
   // the same key, and cleared whenever playback runs again — a viewer who seeks
   // back from the end and plays on is watching, not finished.
   const endedRef = useRef(false)
-  // Keyed on the SLUG, which is required on the descriptor and stable across
-  // the record load. The mainline seed path flips videoId null -> documentId
-  // MID-playback, and a reset there wipes the started fact with no playing-
-  // change edge left to re-latch it — play, pause, back then owes no window.
-  const videoKey = request.session
-    ? request.session.videoSlug
-    : (request.streamingUrl ?? "")
+  // Keyed on the slug-stable videoKey above: a reset on the seed path's
+  // videoId flip would wipe the started fact with no playing-change edge left
+  // to re-latch it — play, pause, back then owes no window.
   useEffect(() => {
     startedRef.current = false
     endedRef.current = false
@@ -444,17 +673,32 @@ function ActivePlaybackHost({
     return () => store.setPlaybackFactsSource(null)
   }, [store, player])
 
-  // R25 stops playback on a subject change, R6 on a dismissal. Neither is
-  // covered by the teardown — an expanded screen keeps this host mounted, and a
-  // dismissed window is exactly the case where nothing unmounts.
+  // R25 stops playback on a subject change, R6 on a dismissal — neither is
+  // covered by the teardown (an expanded screen keeps this host mounted). Every
+  // real ending also resets the playback-session settings (R13).
   useEffect(() => {
     return getMiniPlayerStore().onEnd((event) => {
-      if (event.reason !== "abandoned" && event.reason !== "dismissed") return
-      try {
-        player.pause()
-      } catch {
-        // Native player already released
+      if (
+        event.reason !== "abandoned" &&
+        event.reason !== "dismissed" &&
+        event.reason !== "replaced"
+      )
+        return
+      // A replacement's player is being taken over — pausing it would stall
+      // the arriving video's start.
+      if (event.reason !== "replaced") {
+        try {
+          player.pause()
+        } catch {
+          // Native player already released
+        }
       }
+      // R13: the session is over. Key first, so the reset is ONE effective
+      // transition; the next video's resetFor re-keys.
+      const settings = getPlayerSettingsStore()
+      settings.setContentKey(null)
+      settings.setSpeed(DEFAULT_PLAYBACK_SPEED)
+      settings.setQualityTier(DEFAULT_QUALITY_TIER)
     })
   }, [player])
 

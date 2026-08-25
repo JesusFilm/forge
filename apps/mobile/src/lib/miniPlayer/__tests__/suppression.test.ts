@@ -93,6 +93,32 @@ describe("non-route sheet counter", () => {
     expect(counter.count()).toBe(1)
   })
 
+  it("suppresses while the player settings sheet is open and restores at zero", () => {
+    const counter = createNonRouteSheetCounter()
+    counter.open("playerSettings")
+    expect(counter.count()).toBe(1)
+    expect(isSuppressedBySheet(["watch", "[slug]"], counter.count())).toBe(true)
+
+    counter.close("playerSettings")
+    expect(counter.count()).toBe(0)
+    expect(isSuppressedBySheet(["watch", "[slug]"], counter.count())).toBe(
+      false,
+    )
+  })
+
+  it("cannot underflow on a double close of the settings sheet", () => {
+    const counter = createNonRouteSheetCounter()
+    counter.open("playerSettings")
+    counter.close("playerSettings")
+    counter.close("playerSettings")
+    expect(counter.count()).toBe(0)
+
+    counter.open("sduiQuiz")
+    expect(counter.isPresented()).toBe(true)
+    counter.close("sduiQuiz")
+    expect(counter.isPresented()).toBe(false)
+  })
+
   it("notifies subscribers on a real change only", () => {
     const counter = createNonRouteSheetCounter()
     const listener = jest.fn()
