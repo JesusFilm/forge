@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from "node:fs"
+import { readFileSync } from "node:fs"
 import { join } from "node:path"
 
 import { z } from "zod"
@@ -36,8 +36,14 @@ export function loadEnvironmentFiles(
   const loaded = { ...injected }
   for (const filename of [".env.local", ".env"]) {
     const filePath = join(packageDirectory, filename)
-    if (!existsSync(filePath)) continue
-    const values = parseEnvironmentFile(readFileSync(filePath, "utf8"))
+    let text: string
+    try {
+      text = readFileSync(filePath, "utf8")
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === "ENOENT") continue
+      throw error
+    }
+    const values = parseEnvironmentFile(text)
     for (const [key, value] of Object.entries(values)) {
       if (loaded[key] === undefined) loaded[key] = value
     }
@@ -167,17 +173,20 @@ export function parseSmokeEnv(input: EnvironmentInput): SmokeEnv {
   return smokeEnvSchema.parse(input)
 }
 
-export type EnvironmentTarget =
-  | "local"
-  | "ci"
-  | "railway"
-  | "firecrawl"
-  | "language-sweep"
-  | "eval"
-  | "smoke"
-  | "dashboard"
-  | "production-read"
-  | "production-write"
+export const ENVIRONMENT_TARGETS = [
+  "local",
+  "ci",
+  "railway",
+  "firecrawl",
+  "language-sweep",
+  "eval",
+  "smoke",
+  "dashboard",
+  "production-read",
+  "production-write",
+] as const
+
+export type EnvironmentTarget = (typeof ENVIRONMENT_TARGETS)[number]
 
 export function assertEnvironmentForTarget(
   input: EnvironmentInput,

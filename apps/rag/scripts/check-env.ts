@@ -2,26 +2,16 @@ import { fileURLToPath } from "node:url"
 
 import {
   assertEnvironmentForTarget,
+  ENVIRONMENT_TARGETS,
   type EnvironmentTarget,
   loadEnvironmentFiles,
 } from "../src/config/env.js"
 
-const targets = new Set<EnvironmentTarget>([
-  "local",
-  "ci",
-  "railway",
-  "firecrawl",
-  "language-sweep",
-  "eval",
-  "smoke",
-  "dashboard",
-  "production-read",
-  "production-write",
-])
+const targets = new Set<string>(ENVIRONMENT_TARGETS)
 
 const target = process.argv[2] as EnvironmentTarget | undefined
 if (!target || !targets.has(target)) {
-  console.error(`usage: pnpm env:check <${[...targets].join("|")}>`)
+  console.error(`usage: pnpm env:check <${ENVIRONMENT_TARGETS.join("|")}>`)
   process.exit(2)
 }
 
