@@ -45,12 +45,15 @@ function DialogContent({
   children,
   showCloseButton = true,
   overlayClassName,
+  portalLayer,
   portalContainer,
   viewportClassName,
   ...props
 }: DialogPrimitive.Popup.Props & {
   showCloseButton?: boolean
   overlayClassName?: string
+  /** Render a sibling layer between the backdrop and popup viewport. */
+  portalLayer?: React.ReactNode
   /**
    * Opt into Base UI's positioning viewport so the parent can own scrolling
    * while the popup stays width-constrained inside it.
@@ -101,6 +104,7 @@ function DialogContent({
   return (
     <DialogPortal container={portalContainer ?? undefined}>
       <DialogOverlay className={overlayClassName} />
+      {portalLayer}
       {viewportClassName !== undefined ? (
         <DialogPrimitive.Viewport
           data-slot="dialog-viewport"

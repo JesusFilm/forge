@@ -5,6 +5,7 @@ import {
   Languages,
   MonitorSmartphone,
   Search,
+  Triangle,
   type LucideIcon,
 } from "lucide-react"
 import { useTranslations } from "next-intl"
@@ -16,7 +17,6 @@ import {
   type CSSProperties,
   type RefObject,
 } from "react"
-import { createPortal } from "react-dom"
 
 import {
   Dialog,
@@ -249,162 +249,160 @@ export function WatchIntroductionTour({
   const descriptionId = "watch-introduction-tour-description"
 
   return (
-    <>
-      {activeTargetLayout && typeof document !== "undefined"
-        ? createPortal(
+    <Dialog
+      open={open}
+      onOpenChange={(nextOpen) => {
+        if (!nextOpen) requestSkip()
+      }}
+    >
+      <DialogContent
+        aria-labelledby={titleId}
+        aria-describedby={descriptionId}
+        data-testid="watch-introduction-tour"
+        data-watch-tour-layout={targeted ? "targeted" : "centered"}
+        data-forced-colors={String(forcedColors)}
+        initialFocus={closeButtonRef}
+        finalFocus={finalFocus}
+        showCloseButton={false}
+        overlayClassName={`${targeted ? "bg-transparent backdrop-blur-none supports-backdrop-filter:backdrop-blur-none" : "bg-black/82 backdrop-blur-[2px]"} motion-reduce:transition-none forced-colors:bg-black`}
+        portalLayer={
+          activeTargetLayout ? (
             <div
               aria-hidden="true"
               data-testid="watch-introduction-target-outline"
-              className="pointer-events-none fixed z-[1060] rounded-xl border-2 border-red-500 bg-white/8 shadow-[0_0_0_4px_rgba(239,68,68,0.18),0_0_32px_rgba(239,68,68,0.32)] motion-reduce:transition-none"
+              className="pointer-events-none fixed z-[900] rounded-xl border-2 border-red-500 bg-transparent shadow-[0_0_0_4px_rgba(239,68,68,0.2),0_0_32px_rgba(239,68,68,0.36),0_0_0_9999px_rgba(0,0,0,0.82)] motion-reduce:transition-none"
               style={activeTargetLayout.outline}
-            />,
-            document.body,
-          )
-        : null}
-      <Dialog
-        open={open}
-        onOpenChange={(nextOpen) => {
-          if (!nextOpen) requestSkip()
-        }}
-      >
-        <DialogContent
-          aria-labelledby={titleId}
-          aria-describedby={descriptionId}
-          data-testid="watch-introduction-tour"
-          data-watch-tour-layout={targeted ? "targeted" : "centered"}
-          data-forced-colors={String(forcedColors)}
-          initialFocus={closeButtonRef}
-          finalFocus={finalFocus}
-          showCloseButton={false}
-          overlayClassName="bg-black/82 backdrop-blur-[2px] motion-reduce:transition-none forced-colors:bg-black"
-          viewportClassName={`pointer-events-none fixed inset-0 z-[1000] overflow-hidden p-4 pt-[max(1rem,env(safe-area-inset-top,0px))] pb-[max(1rem,env(safe-area-inset-bottom,0px))] ${targeted ? "" : "grid place-items-center"}`}
-          className={`pointer-events-auto z-[1070] max-h-[calc(100dvh-2rem)] max-w-[608px] gap-0 overflow-y-auto rounded-2xl border border-white/10 bg-stone-950 p-0 text-start text-stone-100 shadow-[0_28px_90px_rgba(0,0,0,0.72)] ring-1 ring-white/10 motion-reduce:transition-none forced-colors:border forced-colors:border-white forced-colors:bg-black ${targeted ? "fixed" : "relative w-[min(608px,calc(100vw-2rem))]"}`}
-          style={activeTargetLayout?.card}
-        >
-          {activeTargetLayout ? (
-            <span
-              aria-hidden="true"
-              data-testid="watch-introduction-arrow"
-              className={`absolute size-5 rotate-45 border-white/10 bg-stone-950 ${
-                activeTargetLayout.placement === "below"
-                  ? "-top-2.5 border-t border-l"
-                  : "-bottom-2.5 border-r border-b"
-              }`}
-              style={{
-                left: `${Math.round(activeTargetLayout.arrowLeft - 10)}px`,
-              }}
             />
-          ) : null}
-
-          <WatchModalViewportCloseButton
-            open={open}
-            onClose={requestSkip}
-            testId="watch-introduction-tour-close"
-            buttonRef={closeButtonRef}
-            ariaLabel={t("close")}
-            renderInline
+          ) : null
+        }
+        viewportClassName={`pointer-events-none fixed inset-0 z-[1000] overflow-hidden p-4 pt-[max(1rem,env(safe-area-inset-top,0px))] pb-[max(1rem,env(safe-area-inset-bottom,0px))] ${targeted ? "" : "grid place-items-center"}`}
+        className={`pointer-events-auto z-[1070] max-h-[calc(100dvh-2rem)] max-w-[608px] gap-0 overflow-visible rounded-2xl border border-white/10 bg-stone-950 p-0 text-start text-stone-100 shadow-[0_28px_90px_rgba(0,0,0,0.72)] ring-1 ring-white/10 motion-reduce:transition-none forced-colors:border forced-colors:border-white forced-colors:bg-black ${targeted ? "fixed" : "relative w-[min(608px,calc(100vw-2rem))]"}`}
+        style={activeTargetLayout?.card}
+      >
+        {activeTargetLayout ? (
+          <Triangle
+            aria-hidden="true"
+            data-testid="watch-introduction-arrow"
+            className={`pointer-events-none absolute z-10 size-8 fill-stone-950 stroke-white/20 ${
+              activeTargetLayout.placement === "below"
+                ? "-top-5"
+                : "-bottom-5 rotate-180"
+            }`}
+            strokeWidth={1.5}
+            style={{
+              left: `${Math.round(activeTargetLayout.arrowLeft - 16)}px`,
+            }}
           />
+        ) : null}
 
-          <div className="flex min-h-0 flex-col gap-6 px-6 pt-8 pb-6 sm:gap-8 sm:px-10 sm:pt-10 sm:pb-8">
-            <div className="flex items-center justify-between gap-4 pe-12">
-              <span className="inline-flex size-12 shrink-0 items-center justify-center rounded-2xl bg-red-600/15 text-red-400 ring-1 ring-red-500/30 forced-colors:border">
-                <Icon aria-hidden className="size-6" />
-              </span>
-              <span
-                aria-live="polite"
-                aria-atomic="true"
-                className="text-sm font-medium text-stone-400"
-              >
-                {t("progress", {
-                  current: stepIndex + 1,
-                  total: STEP_COUNT,
-                })}
-              </span>
-            </div>
+        <WatchModalViewportCloseButton
+          open={open}
+          onClose={requestSkip}
+          testId="watch-introduction-tour-close"
+          buttonRef={closeButtonRef}
+          ariaLabel={t("close")}
+          renderInline
+        />
 
-            <div className="min-w-0 space-y-3">
-              <p className="text-xs font-bold tracking-[0.16em] text-red-400 uppercase">
-                {t(`steps.${step.key}.eyebrow`)}
-              </p>
-              <DialogTitle
-                id={titleId}
-                className="text-pretty text-3xl leading-tight font-bold text-white sm:text-4xl"
-              >
-                {t(`steps.${step.key}.title`)}
-              </DialogTitle>
-              <DialogDescription
-                id={descriptionId}
-                className="max-w-[54ch] text-base leading-relaxed text-stone-300 sm:text-lg"
-              >
-                {t(`steps.${step.key}.description`)}
-              </DialogDescription>
-              {isFinalStep && signupUnavailable ? (
-                <p
-                  role="status"
-                  aria-live="polite"
-                  className="text-sm font-medium text-amber-300"
-                >
-                  {t("signupUnavailable")}
-                </p>
-              ) : null}
-            </div>
-
-            <div
-              data-testid="watch-introduction-actions"
-              className="flex flex-col gap-3 sm:flex-row sm:items-center"
+        <div className="flex max-h-[inherit] min-h-0 flex-col gap-6 overflow-y-auto rounded-[inherit] px-6 pt-8 pb-6 sm:gap-8 sm:px-10 sm:pt-10 sm:pb-8">
+          <div className="flex items-center justify-between gap-4 pe-12">
+            <span className="inline-flex size-12 shrink-0 items-center justify-center rounded-2xl bg-red-600/15 text-red-400 ring-1 ring-red-500/30 forced-colors:border">
+              <Icon aria-hidden className="size-6" />
+            </span>
+            <span
+              aria-live="polite"
+              aria-atomic="true"
+              className="text-sm font-medium text-stone-400"
             >
-              {!isFinalStep ? (
-                <button
-                  type="button"
-                  onClick={requestSkip}
-                  className="min-h-11 rounded-full px-5 py-3 text-sm font-semibold text-stone-300 transition hover:bg-white/8 hover:text-white focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:outline-none motion-reduce:transition-none sm:me-auto"
-                >
-                  {t("skip")}
-                </button>
-              ) : null}
-              {stepIndex > 0 ? (
-                <button
-                  type="button"
-                  onClick={() =>
-                    setStepIndex((current) => {
-                      setSignupUnavailable(false)
-                      return Math.max(0, current - 1)
-                    })
-                  }
-                  className="min-h-11 rounded-full bg-white/10 px-6 py-3 text-sm font-semibold text-white transition hover:bg-white/16 focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:outline-none motion-reduce:transition-none"
-                >
-                  {t("back")}
-                </button>
-              ) : null}
-              {isFinalStep ? (
-                <button
-                  type="button"
-                  data-variant="secondary"
-                  onClick={requestComplete}
-                  className="min-h-11 rounded-full bg-white/10 px-6 py-3 text-sm font-semibold text-white transition hover:bg-white/16 focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:outline-none motion-reduce:transition-none"
-                >
-                  {t("done")}
-                </button>
-              ) : null}
+              {t("progress", {
+                current: stepIndex + 1,
+                total: STEP_COUNT,
+              })}
+            </span>
+          </div>
+
+          <div className="min-w-0 space-y-3">
+            <p className="text-xs font-bold tracking-[0.16em] text-red-400 uppercase">
+              {t(`steps.${step.key}.eyebrow`)}
+            </p>
+            <DialogTitle
+              id={titleId}
+              className="text-pretty text-3xl leading-tight font-bold text-white sm:text-4xl"
+            >
+              {t(`steps.${step.key}.title`)}
+            </DialogTitle>
+            <DialogDescription
+              id={descriptionId}
+              className="max-w-[54ch] text-base leading-relaxed text-stone-300 sm:text-lg"
+            >
+              {t(`steps.${step.key}.description`)}
+            </DialogDescription>
+            {isFinalStep && signupUnavailable ? (
+              <p
+                role="status"
+                aria-live="polite"
+                className="text-sm font-medium text-amber-300"
+              >
+                {t("signupUnavailable")}
+              </p>
+            ) : null}
+          </div>
+
+          <div
+            data-testid="watch-introduction-actions"
+            className="flex flex-col gap-3 sm:flex-row sm:items-center"
+          >
+            {!isFinalStep ? (
               <button
                 type="button"
-                data-variant="primary"
-                onClick={
-                  isFinalStep
-                    ? requestSignup
-                    : () =>
-                        setStepIndex((current) =>
-                          Math.min(STEP_COUNT - 1, current + 1),
-                        )
-                }
-                className="min-h-11 rounded-full bg-white px-7 py-3 text-sm font-bold text-stone-950 transition hover:bg-red-500 hover:text-white focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-stone-950 focus-visible:outline-none motion-reduce:transition-none sm:min-w-36"
+                onClick={requestSkip}
+                className="min-h-11 rounded-full px-5 py-3 text-sm font-semibold text-stone-300 transition hover:bg-white/8 hover:text-white focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:outline-none motion-reduce:transition-none sm:me-auto"
               >
-                {isFinalStep ? t("signup") : t("next")}
+                {t("skip")}
               </button>
-            </div>
+            ) : null}
+            {stepIndex > 0 ? (
+              <button
+                type="button"
+                onClick={() =>
+                  setStepIndex((current) => {
+                    setSignupUnavailable(false)
+                    return Math.max(0, current - 1)
+                  })
+                }
+                className="min-h-11 rounded-full bg-white/10 px-6 py-3 text-sm font-semibold text-white transition hover:bg-white/16 focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:outline-none motion-reduce:transition-none"
+              >
+                {t("back")}
+              </button>
+            ) : null}
+            {isFinalStep ? (
+              <button
+                type="button"
+                data-variant="secondary"
+                onClick={requestComplete}
+                className="min-h-11 rounded-full bg-white/10 px-6 py-3 text-sm font-semibold text-white transition hover:bg-white/16 focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:outline-none motion-reduce:transition-none"
+              >
+                {t("done")}
+              </button>
+            ) : null}
+            <button
+              type="button"
+              data-variant="primary"
+              onClick={
+                isFinalStep
+                  ? requestSignup
+                  : () =>
+                      setStepIndex((current) =>
+                        Math.min(STEP_COUNT - 1, current + 1),
+                      )
+              }
+              className="min-h-11 rounded-full bg-white px-7 py-3 text-sm font-bold text-stone-950 transition hover:bg-red-500 hover:text-white focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-stone-950 focus-visible:outline-none motion-reduce:transition-none sm:min-w-36"
+            >
+              {isFinalStep ? t("signup") : t("next")}
+            </button>
           </div>
-        </DialogContent>
-      </Dialog>
-    </>
+        </div>
+      </DialogContent>
+    </Dialog>
   )
 }

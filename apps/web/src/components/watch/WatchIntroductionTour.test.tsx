@@ -198,7 +198,7 @@ describe("WatchIntroductionTour", () => {
     )
   })
 
-  it("outlines the live search target without making it interactive and cleans listeners", async () => {
+  it("moves an unclipped pointer and spotlight from Search to Language while keeping targets inert", async () => {
     const search = document.createElement("button")
     search.dataset.testid = "floating-search-desktop-button"
     search.getBoundingClientRect = () =>
@@ -214,6 +214,21 @@ describe("WatchIntroductionTour", () => {
         toJSON() {},
       }) as DOMRect
     document.body.appendChild(search)
+    const language = document.createElement("button")
+    language.dataset.testid = "floating-header-language-button"
+    language.getBoundingClientRect = () =>
+      ({
+        left: 1120,
+        right: 1176,
+        top: 24,
+        bottom: 76,
+        width: 56,
+        height: 52,
+        x: 1120,
+        y: 24,
+        toJSON() {},
+      }) as DOMRect
+    document.body.appendChild(language)
     const addSpy = vi.spyOn(window, "addEventListener")
     const removeSpy = vi.spyOn(window, "removeEventListener")
 
@@ -227,10 +242,28 @@ describe("WatchIntroductionTour", () => {
     ) as HTMLElement
     expect(outline.getAttribute("aria-hidden")).toBe("true")
     expect(outline.style.left).toBe("312px")
+    expect(outline.className).toContain("9999px")
     expect(search.inert).toBe(true)
+    expect(language.inert).not.toBe(true)
     expect(
       document.querySelector("[data-watch-tour-layout='targeted']"),
     ).not.toBeNull()
+    const dialog = document.querySelector(
+      "[data-testid='watch-introduction-tour']",
+    ) as HTMLElement
+    const arrow = document.querySelector(
+      "[data-testid='watch-introduction-arrow']",
+    ) as SVGElement
+    expect(dialog.className).toContain("overflow-visible")
+    expect(
+      outline.compareDocumentPosition(dialog) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
+    expect(dialog.style.left).toBe("296px")
+    expect(dialog.style.top).toContain("max(100px")
+    expect(arrow.tagName.toLowerCase()).toBe("svg")
+    expect(arrow.style.left).toBe("288px")
+    expect(arrow.className.baseVal).toContain("-top-5")
     expect(addSpy).toHaveBeenCalledWith("resize", expect.any(Function), {
       passive: true,
     })
@@ -240,9 +273,26 @@ describe("WatchIntroductionTour", () => {
     })
 
     act(() => button("Next").click())
+    await flushDialogEffects()
     expect(search.inert).toBe(false)
+    expect(language.inert).toBe(true)
+    const languageOutline = document.querySelector(
+      "[data-testid='watch-introduction-target-outline']",
+    ) as HTMLElement
+    const languageDialog = document.querySelector(
+      "[data-testid='watch-introduction-tour']",
+    ) as HTMLElement
+    const languageArrow = document.querySelector(
+      "[data-testid='watch-introduction-arrow']",
+    ) as SVGElement
+    expect(languageOutline.style.left).toBe("1112px")
+    expect(languageDialog.style.left).toBe("656px")
+    expect(languageArrow.style.left).toBe("476px")
     expect(removeSpy).toHaveBeenCalledWith("resize", expect.any(Function))
     expect(removeSpy).toHaveBeenCalledWith("scroll", expect.any(Function), true)
+
+    act(() => button("Next").click())
+    expect(language.inert).toBe(false)
   })
 
   it("falls back to a centered card when a target is missing or forced colors are active", async () => {
