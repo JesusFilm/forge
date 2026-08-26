@@ -210,6 +210,23 @@ jobs:
       - name: Check pnpm patch keys match installed versions
         run: node scripts/check-patched-deps.mjs
 
+  hidden-roadmap-lanes:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Verify docs-only roadmap lanes stay hidden
+        run: pnpm exec tsx scripts/check-hidden-roadmap-lanes.ts
+
   experiment-ledger:
     runs-on: ubuntu-latest
     steps:
@@ -371,6 +388,7 @@ jobs:
       - admin-schema-drift
       - format
       - patched-deps-guard
+      - hidden-roadmap-lanes
       - experiment-ledger
       - lint
       - test

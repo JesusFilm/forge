@@ -55,6 +55,15 @@ export default defineConfig(
     },
   },
   {
+    files: ["apps/rag/**/*.ts", "apps/rag/**/*.tsx"],
+    rules: {
+      "max-lines": [
+        "error",
+        { max: 300, skipBlankLines: true, skipComments: true },
+      ],
+    },
+  },
+  {
     rules: {
       "@typescript-eslint/no-unused-vars": [
         "error",

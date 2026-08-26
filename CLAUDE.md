@@ -28,7 +28,9 @@ This is a pnpm + Turborepo monorepo.
 - `apps/tv/` — React Native TV app; reads from admin via `packages/admin-graphql`
 - `apps/roadmap/` — Next.js roadmap dashboard (reads from `docs/roadmap/`)
 - `apps/chat/` — Next.js chat UI for the `apps/mastra` Seeker agent; replies stream from Seeker behind the `SEEKER_CHAT_ENABLED` kill switch composed with the per-user seeker dogfood email allowlist (`SEEKER_ALLOWED_EMAILS` env CSV, feat-233/feat-239), stub otherwise
+- `apps/rag/` — bounded RAG service home; owns acquisition, indexing, retrieval, serving, adapters, and its separate Postgres database
 - `packages/admin-graphql/` — gql.tada typed GraphQL client (generated from admin's `schema.graphql`); consumed by web
+- `packages/rag-contracts/` — runtime-neutral shared HTTP contracts for RAG consumers
 - `CONCEPTS.md` (repo root) — shared domain vocabulary (entities like Video, Dub, Video Edition); relevant when orienting to the codebase or discussing domain concepts
 
 ## Package-Specific Instructions
@@ -42,6 +44,7 @@ When working in a specific package, also read that package's `CLAUDE.md`:
 - Working in `packages/admin-graphql/`? Also read `packages/admin-graphql/CLAUDE.md`
 - Working in `apps/roadmap/`? Also read `apps/roadmap/CLAUDE.md`
 - Working in `apps/chat/`? Also read `apps/chat/CLAUDE.md`
+- Working in `apps/rag/`? Also read `apps/rag/CLAUDE.md`
 
 Package CLAUDE.md files contain conventions that override or extend global ones.
 
@@ -134,9 +137,12 @@ docs/roadmap/
 ├── media-generation/feat-*.md         # Audio/video AI features
 ├── platform/feat-*.md                 # Infrastructure and tooling
 └── ai-chat/feat-*.md                  # Jesus Film AI Chat — docs-only lane, NOT rendered by the viewer
+└── rag/feat-*.md                      # RAG migration — docs-only lane, NOT rendered by the viewer
 ```
 
 > **`ai-chat` is a docs-only lane.** Unlike the others it is intentionally **not** registered in the viewer app (`apps/roadmap`) and its tickets are **not** counted in the generated root `README.md`. If you are adding or modifying a ticket in the `ai-chat` lane, read `docs/roadmap/ai-chat/CLAUDE.md` first — it carries that lane's own conventions (README upkeep, ID allocation, status handling).
+
+> **`rag` is also a docs-only lane.** It tracks the migration from `JesusFilm/jesusfilm-rag` and is intentionally excluded from the viewer and generated root totals. Read `docs/roadmap/rag/CLAUDE.md` before changing it.
 
 ### Feature File Format
 

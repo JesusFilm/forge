@@ -1,0 +1,12 @@
+{
+  "name": "@forge/rag",
+  "private": true,
+  "version": "0.0.1",
+  "type": "module",
+  "scripts": {
+    "depcruise": "depcruise src tests --config .dependency-cruiser.cjs",
+    "lint": "eslint .",
+    "test": "pnpm depcruise && tsx --test tests/*.test.mjs",
+    "typecheck": "tsc --noEmit"
+  }
+}
