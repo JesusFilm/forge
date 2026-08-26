@@ -7,6 +7,7 @@ import {
   WATCH_COLLECTION_FEED_CACHE_SIGNATURE_PATTERN,
   WATCH_COLLECTION_FEED_PROFILES,
   normalizeDynamicCollectionFeedInput,
+  type DynamicCollectionFeedCacheScope,
   type DynamicCollectionFeedCacheSignatures,
   type NormalizedDynamicCollectionFeedInput,
 } from "@/lib/dynamic-collection-contract"
@@ -58,22 +59,20 @@ export function isDynamicCollectionFeedCacheSignatureValid(
 export function createInitialDynamicCollectionFeedCacheSignatures(input: {
   locale: string
   languageSlug: string
-  cacheScope: "live" | "preview"
+  cacheScope: DynamicCollectionFeedCacheScope
   excludedIds: readonly string[]
   excludedSlugs: readonly string[]
 }): DynamicCollectionFeedCacheSignatures {
+  const mobileInput = normalizeDynamicCollectionFeedInput({
+    ...input,
+    ...WATCH_COLLECTION_FEED_PROFILES.mobile,
+  })
+
   return {
-    mobile: createDynamicCollectionFeedCacheSignature(
-      normalizeDynamicCollectionFeedInput({
-        ...input,
-        ...WATCH_COLLECTION_FEED_PROFILES.mobile,
-      }),
-    ),
-    desktop: createDynamicCollectionFeedCacheSignature(
-      normalizeDynamicCollectionFeedInput({
-        ...input,
-        ...WATCH_COLLECTION_FEED_PROFILES.desktop,
-      }),
-    ),
+    mobile: createDynamicCollectionFeedCacheSignature(mobileInput),
+    desktop: createDynamicCollectionFeedCacheSignature({
+      ...mobileInput,
+      ...WATCH_COLLECTION_FEED_PROFILES.desktop,
+    }),
   }
 }

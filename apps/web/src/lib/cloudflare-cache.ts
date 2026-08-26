@@ -9,9 +9,9 @@ const LIVE_EDGE_CACHE_CONTROL =
   "public, max-age=21600, stale-while-revalidate=86400"
 const CLOUDFLARE_PURGE_TIMEOUT_MS = 3_000
 
-export type CloudflareCachePurgeOutcome = "skipped" | "purged" | "failed"
+type CloudflareCachePurgeOutcome = "skipped" | "purged" | "failed"
 
-export function isCloudflareCachePurgeConfigured(): boolean {
+function isCloudflareCachePurgeConfigured(): boolean {
   return Boolean(env.CLOUDFLARE_ZONE_ID && env.CLOUDFLARE_CACHE_PURGE_TOKEN)
 }
 

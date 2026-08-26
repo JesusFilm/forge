@@ -93,9 +93,7 @@ function parseRequest(request: Request) {
 
   return {
     input,
-    canonical:
-      url.search.slice(1) ===
-      dynamicCollectionFeedSearchParams(input).toString(),
+    rawSearch: url.search.slice(1),
   }
 }
 
@@ -146,6 +144,9 @@ export async function GET(request: Request): Promise<NextResponse> {
     signatureInput,
     cacheSignature,
   )
+  const canonicalSignedVariant =
+    sharedCache &&
+    parsed.rawSearch === dynamicCollectionFeedSearchParams(input).toString()
 
   try {
     const page = parseDynamicCollectionFeedPage(
@@ -164,7 +165,7 @@ export async function GET(request: Request): Promise<NextResponse> {
         ...NO_STORE_HEADERS,
         ...dynamicCollectionEdgeCacheHeaders(
           input.cacheScope,
-          sharedCache && parsed.canonical,
+          canonicalSignedVariant,
         ),
         ...(nextCacheSignature
           ? { "X-Watch-Collection-Next-Signature": nextCacheSignature }

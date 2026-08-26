@@ -143,30 +143,31 @@ type AnyBlock = {
   readonly __typename?: AdminBlockTypename | string | null
 } & Record<string, unknown>
 
+type DynamicCollectionsRenderContext = {
+  featuredCollections?: FeaturedCollectionReferences
+  cacheScope: DynamicCollectionFeedCacheScope
+  cacheSignatures?: DynamicCollectionFeedCacheSignatures
+}
+
 function renderAdminBlock(
   block: AnyBlock,
   routeVideo: RouteVideo | null | undefined,
   languageSlug: string | null | undefined,
   locale: string | null | undefined,
-  featuredCollections: FeaturedCollectionReferences | undefined,
-  allowDynamicCollections: boolean,
-  dynamicCollectionCacheScope: DynamicCollectionFeedCacheScope,
-  dynamicCollectionCacheSignatures:
-    | DynamicCollectionFeedCacheSignatures
-    | undefined,
+  dynamicCollections: DynamicCollectionsRenderContext | undefined,
 ): ReactNode {
   switch (block.__typename) {
     case "MediaCollectionBlock":
       if (block.itemsSource === "dynamicCollections") {
-        if (!allowDynamicCollections) return null
+        if (!dynamicCollections) return null
         return (
           <DynamicMediaCollection
             data={block as Parameters<typeof DynamicMediaCollection>[0]["data"]}
             locale={locale ?? "en"}
             languageSlug={languageSlug ?? "english"}
-            featuredCollections={featuredCollections}
-            cacheScope={dynamicCollectionCacheScope}
-            cacheSignatures={dynamicCollectionCacheSignatures}
+            featuredCollections={dynamicCollections.featuredCollections}
+            cacheScope={dynamicCollections.cacheScope}
+            cacheSignatures={dynamicCollections.cacheSignatures}
           />
         )
       }
@@ -344,19 +345,13 @@ export function ExperienceSectionRenderer({
   routeVideo,
   languageSlug,
   locale,
-  featuredCollections,
-  allowDynamicCollections = false,
-  dynamicCollectionCacheScope = "live",
-  dynamicCollectionCacheSignatures,
+  dynamicCollections,
 }: {
   section: Section
   routeVideo?: RouteVideo | null
   languageSlug?: string | null
   locale?: string | null
-  featuredCollections?: FeaturedCollectionReferences
-  allowDynamicCollections?: boolean
-  dynamicCollectionCacheScope?: DynamicCollectionFeedCacheScope
-  dynamicCollectionCacheSignatures?: DynamicCollectionFeedCacheSignatures
+  dynamicCollections?: DynamicCollectionsRenderContext
 }) {
   // Admin-shape dispatch — content.ts reads from admin now, so every
   // block reaching this renderer carries an admin `*Block` __typename.
@@ -368,10 +363,7 @@ export function ExperienceSectionRenderer({
       routeVideo,
       languageSlug,
       locale,
-      featuredCollections,
-      allowDynamicCollections,
-      dynamicCollectionCacheScope,
-      dynamicCollectionCacheSignatures,
+      dynamicCollections,
     )
   }
 
