@@ -4,9 +4,15 @@ import { useEvent } from "expo"
 import { useVideoPlayer, type VideoPlayer } from "expo-video"
 
 import { extractMuxPlaybackId, isSameMuxAsset } from "../lib/muxThumbnail"
+import { sameQualityConstraint } from "../lib/streamQuality"
 import { datadogLog } from "../lib/datadog"
 import { getMiniPlayerStore } from "../lib/miniPlayer/store"
-import { appStateBranchDecision } from "../lib/pipPolicy"
+import {
+  PIP_EXPAND_GRACE_MS,
+  appStateBranchDecision,
+  pipHoldTransitionDecision,
+  type PipHoldTransition,
+} from "../lib/pipPolicy"
 import {
   createProgressRecorder,
   type FlushTrigger,
@@ -87,6 +93,17 @@ export function useManagedVideoPlayer(
      *  the local recorder tick and the stall watchdog are suppressed; the
      *  background flush and the QoE time read stay on. */
     castActive?: boolean
+    /**
+     * This consumer's view is armed for automatic entry into the operating
+     * system's window, so a playing video moves there when the app leaves.
+     * Only the root host arms it; both SDUI routes pass `automatic: false` to
+     * `pictureInPictureViewProps`.
+     *
+     * The background event lands BEFORE the window opens, so the ordinary
+     * pause always runs first. This flag is what permits undoing it once the
+     * window confirms it took the video (reported 2026-08-24).
+     */
+    armsPictureInPicture?: boolean
   },
 ) {
   const ownsSession = options?.ownsSession === true
@@ -117,6 +134,11 @@ export function useManagedVideoPlayer(
   // plain option in its closure would be stale by the time a session starts.
   const castActiveRef = useRef(options?.castActive === true)
   castActiveRef.current = options?.castActive === true
+
+  // Same ref-mirroring reason as castActive: the AppState effect registers once
+  // per player, so a plain option in its closure would be stale.
+  const armsPipRef = useRef(options?.armsPictureInPicture === true)
+  armsPipRef.current = options?.armsPictureInPicture === true
 
   // Whether the app is foregrounded right now. A swap's replaceAsync can outlive
   // a background transition; resume() reads this so it never force-plays into
@@ -243,9 +265,16 @@ export function useManagedVideoPlayer(
     // Compare by Mux playback ID, not raw URL: two URL strings can name one
     // asset (seed URL vs resolved variant); reloading it would needlessly
     // restart playback.
-    const sameAsset = isSameMuxAsset(loadedUrlRef.current, sourceUrl)
+    const previousUrl = loadedUrlRef.current
+    const sameAsset = isSameMuxAsset(previousUrl, sourceUrl)
+    // KTD2: one asset under a NEW quality constraint must still reload — the
+    // tier rides the URL, so coalescing here would silently drop the pick.
+    const constraintSwap =
+      sameAsset &&
+      previousUrl != null &&
+      !sameQualityConstraint(previousUrl, sourceUrl)
     loadedUrlRef.current = sourceUrl
-    if (sameAsset) {
+    if (sameAsset && !constraintSwap) {
       // Same asset behind a new string: the player already holds it.
       onSourceAppliedRef.current?.(sourceUrl)
       return
@@ -254,15 +283,18 @@ export function useManagedVideoPlayer(
     const nextId = extractMuxPlaybackId(sourceUrl)
 
     // A genuine cross-asset swap ends this QoE session and opens a new one so
-    // watched_ms/rebuffers/source attribute to the right asset (R36/R38). The
-    // source moved without the progress identity, so nothing flushes here.
-    endSession("abandoned")
-    startQoeSession(sourceUrl)
+    // watched_ms/rebuffers/source attribute to the right asset (R36/R38). A
+    // constraint swap is the SAME asset, so its session continues (R14).
+    if (!constraintSwap) {
+      endSession("abandoned")
+      startQoeSession(sourceUrl)
+    }
     isSwappingRef.current = true
 
-    // Preserve playback across the swap: replace() drops the playing state, so
-    // a mid-play swap would strand a paused frame. Resume after load.
-    const wasPlaying = player.playing
+    // Preserve playback across a cross-asset swap: replace() drops the playing
+    // state. A constraint swap suppresses this — the host's sourceLoad latch
+    // owns resume there (seek first), so a play here would restart at zero.
+    const wasPlaying = !constraintSwap && player.playing
     const resume = () => {
       // Bail if the app backgrounded while replaceAsync was in flight — the
       // AppState 'active' handler re-resumes on foreground via wasPlayingRef.
@@ -332,6 +364,9 @@ export function useManagedVideoPlayer(
   // the video then, so `wasPlayingRef` holds a stale snapshot from an earlier
   // background and would force-resume a video paused inside the window.
   const leftUnderPipRef = useRef(false)
+  // When the picture-in-picture release pause fired, or null. Read by the
+  // foreground branch to tell an expand from a close.
+  const pausedOnPipReleaseAtRef = useRef<number | null>(null)
   useEffect(() => {
     const subscription = AppState.addEventListener("change", (nextState) => {
       const pipActive = getMiniPlayerStore().getSnapshot().pipHold
@@ -341,6 +376,15 @@ export function useManagedVideoPlayer(
         isForegroundRef.current = true
         const resumeFromPip = leftUnderPipRef.current
         leftUnderPipRef.current = false
+        // Closing the window and expanding it back both stop it, and only what
+        // follows tells them apart: an expand foregrounds the app immediately
+        // after. Undo the release pause when the app returns inside that
+        // window, so the viewer who tapped the video keeps watching.
+        const pausedAt = pausedOnPipReleaseAtRef.current
+        pausedOnPipReleaseAtRef.current = null
+        const expandedBack =
+          pausedAt != null && Date.now() - pausedAt < PIP_EXPAND_GRACE_MS
+
         let shouldResume = wasPlayingRef.current
         if (resumeFromPip) {
           try {
@@ -349,6 +393,7 @@ export function useManagedVideoPlayer(
             shouldResume = false // Already released
           }
         }
+        if (expandedBack) shouldResume = true
         // A session on the TV owns playback: neither resume source may start
         // local audio over it (KTD4).
         if (shouldResume && !castActiveRef.current) {
@@ -393,6 +438,87 @@ export function useManagedVideoPlayer(
     return () => subscription.remove()
   }, [player])
 
+  // R13 keeps playback alive under the operating system's window by suspending
+  // the background pause. Releasing that latch fires no AppState event, so
+  // until now nothing ever ran the pause the latch had suspended: closing the
+  // window left audio playing with no surface to stop it, and reopening the app
+  // found the video still running (reported 2026-08-24).
+  useEffect(() => {
+    const store = getMiniPlayerStore()
+    let held = store.getSnapshot().pipHold
+    const unsubscribe = store.subscribe(() => {
+      const next = store.getSnapshot().pipHold
+      const transition: PipHoldTransition = held
+        ? next
+          ? "none"
+          : "released"
+        : next
+          ? "started"
+          : "none"
+      held = next
+
+      // Deliberately NOT handled by suppressing the pause on arming: a viewer
+      // who has picture-in-picture switched off would then keep playing audio
+      // in the background forever, which is worse than a brief gap.
+      const decision = pipHoldTransitionDecision({
+        transition,
+        armsPip: armsPipRef.current,
+        foreground: isForegroundRef.current,
+        castActive: castActiveRef.current,
+        wasPlaying: wasPlayingRef.current,
+      })
+
+      if (decision.armLeftUnderPip) leftUnderPipRef.current = true
+
+      if (decision.resume) {
+        try {
+          player.play()
+        } catch {
+          // The window is up but carries a released player: it shows a frozen
+          // frame and no audio, with nothing else to report it.
+          datadogLog.warn("video.resume_failed", {
+            content_id: extractMuxPlaybackId(loadedUrlRef.current),
+            surface: "pip_start",
+          })
+        }
+      }
+
+      if (!decision.pause) return
+
+      // Only a release that actually STOPS playback may be undone by an expand.
+      // Read that before pausing, or a video the viewer paused inside the
+      // window starts itself when they expand it back into the app.
+      let stoppedPlayback = false
+      try {
+        stoppedPlayback = player.playing
+      } catch {
+        // Already released; nothing was playing to undo.
+      }
+      // Pause SYNCHRONOUSLY. Deferring this behind a timer was the first
+      // attempt and it failed on the device: once the activity is stopped the
+      // callback does not run for many seconds, so the viewer kept hearing
+      // audio after closing the window.
+      try {
+        player.pause()
+      } catch {
+        // The audio the viewer just dismissed may still be playing, which is
+        // the complaint this whole branch exists to answer.
+        datadogLog.warn("video.pause_failed", {
+          content_id: extractMuxPlaybackId(loadedUrlRef.current),
+          surface: "pip_release",
+        })
+      }
+      recorderRef.current?.flush("background")
+      // Expanding the window back into the app raises the SAME stop event, and
+      // its foreground transition arrives after this. A timestamp, not a timer,
+      // lets that path undo the pause — it stays correct even while the JS
+      // thread is suspended.
+      pausedOnPipReleaseAtRef.current = stoppedPlayback ? Date.now() : null
+    })
+
+    return unsubscribe
+  }, [player])
+
   useEffect(() => {
     return () => {
       try {
@@ -432,6 +558,14 @@ export function useManagedVideoPlayer(
   // R39 playhead watchdog: while playing and NOT buffering (a real rebuffer
   // flips status to 'loading', excluded), a frozen currentTime past the
   // threshold is the stuck-at-0:00 bug. Emit once, re-arm on recovery.
+  // Fed by the 1s poll below and read by error recovery. Cleared per source, so
+  // a swap cannot resume the incoming video at the outgoing one's position.
+  const healthyPositionRef = useRef(0)
+  useEffect(() => {
+    healthyPositionRef.current = 0
+  }, [sourceUrl])
+  const getHealthyPosition = useCallback(() => healthyPositionRef.current, [])
+
   const lastPollPositionRef = useRef(0)
   const lastAdvanceAtRef = useRef(0)
   const stallEmittedRef = useRef(false)
@@ -454,6 +588,11 @@ export function useManagedVideoPlayer(
       }
       // Same poll feeds watched_ms, so no native timeUpdate event is needed.
       qoeRef.current?.onTimeUpdate(position)
+      // The last position seen while healthy, for error recovery. An errored
+      // player reports 0 on a device, so reading it after the failure resumes
+      // from the start — this is the only place a trustworthy value exists.
+      if (status === "readyToPlay" && Number.isFinite(position) && position > 0)
+        healthyPositionRef.current = position
       // The recorder samples this same 1s signal at 2s granularity (KTD5).
       // Under a cast session the feed owns the recorder — skipping the local
       // tick makes double-write prevention structural (KTD6).
@@ -505,5 +644,5 @@ export function useManagedVideoPlayer(
     return () => emitQoeSummary("abandoned")
   }, [emitQoeSummary])
 
-  return { player, isPlaying, progressFeed }
+  return { player, isPlaying, progressFeed, getHealthyPosition }
 }

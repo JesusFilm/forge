@@ -5,6 +5,7 @@ import {
   WATCH_COLLECTION_FEED_MAX_URL_LENGTH,
   normalizeDynamicCollectionFeedInput,
   parseDynamicCollectionFeedPage,
+  type DynamicCollectionFeedCacheScope,
 } from "@/lib/dynamic-collection-contract"
 import { getDynamicCollectionFeedPage } from "@/lib/dynamic-collection-feed"
 
@@ -17,11 +18,13 @@ const NO_STORE_HEADERS = {
 const ALLOWED_PARAMETERS = new Set([
   "locale",
   "languageSlug",
+  "scope",
   "first",
   "cardsPerParent",
   "after",
   "excludedIds",
   "excludedSlugs",
+  "cacheSignature",
 ])
 
 class DynamicCollectionFeedRouteInputError extends Error {
@@ -46,6 +49,25 @@ function optionalParameter(
   return values[0] ?? null
 }
 
+function cacheScopeParameter(
+  params: URLSearchParams,
+): DynamicCollectionFeedCacheScope {
+  const value = optionalParameter(params, "scope") ?? "live"
+  if (value !== "live" && value !== "preview") {
+    throw new DynamicCollectionFeedRouteInputError()
+  }
+  return value
+}
+
+function validateForwardCompatibleCacheSignature(
+  params: URLSearchParams,
+): void {
+  const signature = optionalParameter(params, "cacheSignature")
+  if (signature !== null && !/^[A-Za-z0-9_-]{43}$/.test(signature)) {
+    throw new DynamicCollectionFeedRouteInputError()
+  }
+}
+
 function parseRequest(request: Request) {
   const url = new URL(request.url)
   if (
@@ -59,10 +81,12 @@ function parseRequest(request: Request) {
   ) {
     throw new DynamicCollectionFeedRouteInputError()
   }
+  validateForwardCompatibleCacheSignature(url.searchParams)
 
   return normalizeDynamicCollectionFeedInput({
     locale: oneParameter(url.searchParams, "locale"),
     languageSlug: oneParameter(url.searchParams, "languageSlug"),
+    cacheScope: cacheScopeParameter(url.searchParams),
     first: Number(oneParameter(url.searchParams, "first")),
     cardsPerParent: Number(oneParameter(url.searchParams, "cardsPerParent")),
     after: optionalParameter(url.searchParams, "after"),

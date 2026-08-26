@@ -416,8 +416,25 @@
     },
     "success": {
       "title": "Thank you",
-      "description": "Your feedback is with our team. It will help us decide what to improve next.",
-      "done": "Done"
+      "description": "Your feedback is with our team.",
+      "done": "Done",
+      "followUp": {
+        "addEmail": "Add email",
+        "adding": "Adding…",
+        "emailPlaceholder": "you@example.com",
+        "idea": {
+          "confirmation": "We’ll email you once we implement your idea.",
+          "invitation": "Want to know if your idea ships? Add your email and we’ll let you know."
+        },
+        "other": {
+          "confirmation": "If our team needs anything else, we’ll email you.",
+          "invitation": "Add your email if you’d like our team to follow up about your feedback."
+        },
+        "problem": {
+          "confirmation": "We’ll email you when the problem is resolved.",
+          "invitation": "Want to know when this is fixed? Add your email and we’ll let you know."
+        }
+      }
     },
     "footer": {
       "reviewed": "Your feedback is reviewed by our team."
@@ -426,7 +443,10 @@
       "invalid": "Please check the form and try again.",
       "rateLimited": "Too many feedback requests. Please try again later.",
       "sendFailed": "We could not send your feedback. Please try again.",
-      "timeout": "This is taking longer than expected. Your feedback may have been received; please wait before trying again."
+      "timeout": "This is taking longer than expected. Your feedback may have been received; please wait before trying again.",
+      "followUpExpired": "This follow-up link has expired. Please use the support form to contact us.",
+      "followUpFailed": "We could not add your email. Please use the support form to contact us.",
+      "openSupportForm": "Open support form"
     }
   },
   "LanguageInventory": {
@@ -600,6 +620,7 @@
     "screenReaderPrefix": "找不到頁面：",
     "title": "這一幕不在這裡。",
     "description": "頁面也許已移動，但故事仍在繼續。",
+    "languageDescription": "We couldn't find the page you're looking for, but the story continues in films and videos from languages around the world.",
     "actionsLabel": "找不到頁面動作",
     "backToWatch": "回到觀看頁面",
     "browseVideos": "瀏覽影片"

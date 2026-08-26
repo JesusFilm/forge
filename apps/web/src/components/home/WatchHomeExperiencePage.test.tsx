@@ -254,6 +254,7 @@ describe("WatchHomeExperiencePage", () => {
       makeBlock("SectionBlock", "section"),
       makeBlock("VideoBlock", "invitation"),
       makeBlock("MediaCollectionBlock", "collection"),
+      makeBlock("LanguageGlobeBlock", "language-globe"),
     ]
 
     await act(async () => {
@@ -299,6 +300,7 @@ describe("WatchHomeExperiencePage", () => {
       "VideoHeroBlock",
       "SectionBlock",
       "MediaCollectionBlock",
+      "LanguageGlobeBlock",
     ]) {
       const section = container.querySelector<HTMLElement>(
         `[data-section-type="${sectionType}"]`,
@@ -316,6 +318,7 @@ describe("WatchHomeExperiencePage", () => {
       "SectionBlock",
       "VideoBlock",
       "MediaCollectionBlock",
+      "LanguageGlobeBlock",
     ])
     expect(
       Array.from(
@@ -328,6 +331,7 @@ describe("WatchHomeExperiencePage", () => {
       "SectionBlock",
       "VideoBlock",
       "MediaCollectionBlock",
+      "LanguageGlobeBlock",
     ])
     expect(
       renderedSections.every(
@@ -340,6 +344,13 @@ describe("WatchHomeExperiencePage", () => {
     expect(
       container.querySelector('[data-testid="watch-home-footer"]'),
     ).not.toBeNull()
+    const authoredGlobe = container.querySelector(
+      '[data-section-type="LanguageGlobeBlock"]',
+    )
+    expect(authoredGlobe).not.toBeNull()
+    expect(authoredGlobe?.nextElementSibling?.getAttribute("data-testid")).toBe(
+      "watch-home-footer",
+    )
   })
 
   it("keeps the canonical footer as the final element after the dynamic discovery feed", async () => {
@@ -373,5 +384,39 @@ describe("WatchHomeExperiencePage", () => {
       Node.DOCUMENT_POSITION_FOLLOWING,
     )
     expect(footer?.parentElement?.lastElementChild).toBe(footer)
+  })
+
+  it("preserves the editor-authored globe position around the dynamic feed", async () => {
+    const blocks = [
+      {
+        __typename: "MediaCollectionBlock",
+        sectionKey: "dynamic-collection-feed",
+        itemsSource: "dynamicCollections",
+      } as unknown as Section,
+      makeBlock("LanguageGlobeBlock", "language-globe"),
+    ]
+
+    await act(async () => {
+      root.render(
+        <WatchHomeExperiencePage
+          heroModel={heroModel}
+          blocks={blocks}
+          languageSlug="english"
+        />,
+      )
+    })
+
+    const dynamicFeed = container.querySelector(
+      '[data-items-source="dynamicCollections"]',
+    )
+    const globe = container.querySelector(
+      '[data-section-type="LanguageGlobeBlock"]',
+    )
+
+    expect(dynamicFeed).not.toBeNull()
+    expect(globe).not.toBeNull()
+    expect(dynamicFeed?.compareDocumentPosition(globe as Node) ?? 0).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    )
   })
 })

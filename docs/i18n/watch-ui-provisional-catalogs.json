@@ -1,6 +1,6 @@
 {
   "metadata": {
-    "generatedOn": "2026-08-13",
+    "generatedOn": "2026-08-25",
     "sourceInventory": "docs/i18n/watch-ui-official-language-inventory.json",
     "sourceCatalog": "apps/web/messages/en.json",
     "policy": "Missing inventory locales are provisional UI catalogs seeded from the English source catalog. Existing authored catalogs are preserved and are not marked provisional. Before authoring a listed provisional locale, remove it from provisionalLocales and run the generator without --refresh-provisional to promote its ownership; --refresh-provisional overwrites every locale that remains listed.",
@@ -9,10 +9,14 @@
     "translation": {
       "method": "OpenAI contextual machine translation with localized phrase reuse",
       "model": "gpt-5.4-mini-2026-03-17",
+      "fallbackModels": {
+        "codex-local-agent": ["zh", "zh-Hans", "zh-Hant"],
+        "gpt-5.6": ["ru"]
+      },
       "sourceCatalog": "apps/web/messages/en.json",
       "approvedByUser": true,
       "preservedExistingTranslations": true,
-      "generatedOn": "2026-08-24",
+      "generatedOn": "2026-08-25",
       "reviewStatus": "machine-translated; native-speaker review recommended",
       "sourceExtensions": [
         {
@@ -8563,10 +8567,10 @@
           ]
         },
         "zh": {
-          "model": "gpt-5.4-mini-2026-03-17",
+          "model": "codex-local-agent",
           "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
-          "catalogDigest": "6a3ad37a86a0feb64e06fd205f69cbea101cc38901f1716ce782787d12ebdf8a",
-          "generatedOn": "2026-08-24",
+          "catalogDigest": "88b8532dcb6655f93a57cb8c8c6f1cd9ff2adcac473013b5e93af0a8af1cbc19",
+          "generatedOn": "2026-08-25",
           "scopedRevisions": [
             {
               "model": "gpt-5.6",
@@ -8598,14 +8602,39 @@
                 "WatchUnavailableLanguage.watchSelectedVersion"
               ],
               "generatedOn": "2026-08-24"
+            },
+            {
+              "model": "codex-local-agent",
+              "messagePaths": [
+                "CollectionDownloadModal.signIn",
+                "CollectionDownloadModal.signInTitle",
+                "ExperienceError.authFailed",
+                "HeroPlayerControls.seek",
+                "WatchFooter.aiAttributionBody",
+                "WatchHomePromo.buildingNext",
+                "WatchHomeSections.scriptureAsWrittenTitle"
+              ],
+              "generatedOn": "2026-08-25"
+            },
+            {
+              "model": "codex-local-agent",
+              "messagePaths": [
+                "LanguageInventory.newlyAdded",
+                "WatchHomeSections.adventDescription",
+                "WatchHomeSections.adventEyebrow",
+                "WatchHomeSections.adventTitle",
+                "WatchHomeSections.daysUntilChristmas",
+                "WatchHomeSections.gospelRailTitle"
+              ],
+              "generatedOn": "2026-08-25"
             }
           ]
         },
         "zh-Hans": {
-          "model": "gpt-5.4-mini-2026-03-17",
+          "model": "codex-local-agent",
           "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
-          "catalogDigest": "e18ca0b56c1e622750157e55790e8f8a7c52ed908b616bd333b5f1faf7d986f1",
-          "generatedOn": "2026-08-24",
+          "catalogDigest": "88b8532dcb6655f93a57cb8c8c6f1cd9ff2adcac473013b5e93af0a8af1cbc19",
+          "generatedOn": "2026-08-25",
           "scopedRevisions": [
             {
               "model": "gpt-5.6",
@@ -8637,14 +8666,39 @@
                 "WatchUnavailableLanguage.watchSelectedVersion"
               ],
               "generatedOn": "2026-08-24"
+            },
+            {
+              "model": "codex-local-agent",
+              "messagePaths": [
+                "CollectionDownloadModal.signIn",
+                "CollectionDownloadModal.signInTitle",
+                "ExperienceError.authFailed",
+                "HeroPlayerControls.seek",
+                "WatchFooter.aiAttributionBody",
+                "WatchHomePromo.buildingNext",
+                "WatchHomeSections.scriptureAsWrittenTitle"
+              ],
+              "generatedOn": "2026-08-25"
+            },
+            {
+              "model": "codex-local-agent",
+              "messagePaths": [
+                "LanguageInventory.newlyAdded",
+                "WatchHomeSections.adventDescription",
+                "WatchHomeSections.adventEyebrow",
+                "WatchHomeSections.adventTitle",
+                "WatchHomeSections.daysUntilChristmas",
+                "WatchHomeSections.gospelRailTitle"
+              ],
+              "generatedOn": "2026-08-25"
             }
           ]
         },
         "zh-Hant": {
-          "model": "gpt-5.4-mini-2026-03-17",
+          "model": "codex-local-agent",
           "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
-          "catalogDigest": "7dddfdb2197f5e99a8c4f115e85dbf0415905a3f31d5b9bb293886f62a7efe61",
-          "generatedOn": "2026-08-24",
+          "catalogDigest": "f130397802abfeeee3021d9670fdb368ba6ac005d9a9fe9d007dfa0137bad379",
+          "generatedOn": "2026-08-25",
           "scopedRevisions": [
             {
               "model": "gpt-5.6",
@@ -8676,6 +8730,27 @@
                 "WatchUnavailableLanguage.watchSelectedVersion"
               ],
               "generatedOn": "2026-08-24"
+            },
+            {
+              "model": "codex-local-agent",
+              "messagePaths": [
+                "CollectionDownloadModal.signIn",
+                "CollectionDownloadModal.signInTitle",
+                "ExperienceError.authFailed",
+                "LanguageInventory.dubbedVideosDescription",
+                "WatchHomePromo.buildingNext",
+                "WatchHomeSections.scriptureAsWrittenTitle"
+              ],
+              "generatedOn": "2026-08-25"
+            },
+            {
+              "model": "codex-local-agent",
+              "messagePaths": [
+                "WatchHomeSections.adventDescription",
+                "WatchHomeSections.adventEyebrow",
+                "WatchHomeSections.adventTitle"
+              ],
+              "generatedOn": "2026-08-25"
             }
           ]
         },

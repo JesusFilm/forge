@@ -1,6 +1,7 @@
 "use client"
 
 import {
+  ArrowUpRight,
   Check,
   CheckCircle2,
   ChevronDown,
@@ -55,7 +56,7 @@ import {
   type FeedbackSelectedElement,
   type FeedbackSubmission,
 } from "@/lib/feedback"
-import { submitFeedback } from "@/lib/feedback-action"
+import { addFeedbackFollowUpEmail, submitFeedback } from "@/lib/feedback-action"
 import { publicWatchAudioLanguageSlugForLocale } from "@/lib/locale"
 import { loadGlobalWatchLanguageOptions } from "@/lib/watch-interaction-loader"
 import {
@@ -65,11 +66,24 @@ import {
 
 const FEEDBACK_STEP_COUNT = 5
 const FEEDBACK_SUBMISSION_TIMEOUT_MS = 15_000
+const SUPPORT_FORM_URL = "https://www.jesusfilm.org/contact/"
+
+// Typed failure reasons from the server actions (derived from the action
+// return types so the switches below stay exhaustive-checkable), plus the
+// client-local timeout the submission race can synthesize.
+type FeedbackSubmitFailureReason =
+  | Extract<Awaited<ReturnType<typeof submitFeedback>>, { ok: false }>["reason"]
+  | "client_timeout"
+
+type FeedbackFollowUpFailureReason = Extract<
+  Awaited<ReturnType<typeof addFeedbackFollowUpEmail>>,
+  { ok: false }
+>["reason"]
 
 // Client-side translation keys for submission failures, keyed by the typed
 // `reason` on FeedbackActionResult (the server has no locale context, so its
 // English `message` is never rendered). Unknown reasons get the generic copy.
-function submissionErrorKey(reason: string): string {
+function submissionErrorKey(reason: FeedbackSubmitFailureReason): string {
   switch (reason) {
     case "invalid":
       return "errors.invalid"
@@ -77,13 +91,47 @@ function submissionErrorKey(reason: string): string {
       return "errors.rateLimited"
     case "client_timeout":
       return "errors.timeout"
-    default:
+    case "delivery_failed":
       return "errors.sendFailed"
+    default: {
+      // Out-of-contract runtime values still fall back to the generic copy;
+      // the never-assignment keeps the switch exhaustive at compile time.
+      const exhausted: never = reason
+      void exhausted
+      return "errors.sendFailed"
+    }
+  }
+}
+
+// Same pattern for the follow-up email action. The client validates the email
+// format before calling the action, so a server-side `invalid` in practice
+// means the opaque receipt expired.
+function followUpErrorKey(reason: FeedbackFollowUpFailureReason): string {
+  switch (reason) {
+    case "invalid":
+      return "errors.followUpExpired"
+    case "delivery_failed":
+      return "errors.followUpFailed"
+    default: {
+      const exhausted: never = reason
+      void exhausted
+      return "errors.followUpFailed"
+    }
   }
 }
 
 // Message-key names under the Feedback.steps namespace, one per wizard step.
-const STEP_KEYS = ["type", "context", "point", "describe", "about"] as const
+const STEP_KEYS = ["type", "describe", "context", "point", "about"] as const
+
+// The success screen's follow-up copy is keyed by the persisted category
+// value; problem and confusing share the "problem" copy group.
+function followUpCopyKey(
+  category: FeedbackCategory | null,
+): "idea" | "problem" | "other" {
+  if (category === "idea") return "idea"
+  if (category === "problem" || category === "confusing") return "problem"
+  return "other"
+}
 
 type FeedbackModalProps = {
   open: boolean
@@ -431,6 +479,12 @@ export function FeedbackModal({
     useState<FeedbackSelectedElement | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [submitted, setSubmitted] = useState(false)
+  const [submittedWithEmail, setSubmittedWithEmail] = useState(false)
+  const [submissionReceipt, setSubmissionReceipt] = useState("")
+  const [followUpEmail, setFollowUpEmail] = useState("")
+  const [followUpSubmitting, setFollowUpSubmitting] = useState(false)
+  const [followUpAdded, setFollowUpAdded] = useState(false)
+  const [followUpError, setFollowUpError] = useState("")
   const [error, setError] = useState("")
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
   const formRef = useRef<HTMLFormElement>(null)
@@ -442,17 +496,20 @@ export function FeedbackModal({
       CATEGORY_OPTIONS[0],
     [category],
   )
-  const stepKey = STEP_KEYS[step - 1] ?? "type"
-  const currentStepCopy =
-    step === 4
-      ? {
-          title: t(`categories.${categoryOption.value}.prompt`),
-          helper: t(`categories.${categoryOption.value}.helper`),
-        }
-      : {
-          title: t(`steps.${stepKey}.title`),
-          helper: t(`steps.${stepKey}.helper`),
-        }
+  // Memoized so per-keystroke re-renders don't re-run the t() lookups.
+  const currentStepCopy = useMemo(() => {
+    if (step === 2) {
+      return {
+        title: t(`categories.${categoryOption.value}.prompt`),
+        helper: t(`categories.${categoryOption.value}.helper`),
+      }
+    }
+    const stepKey = STEP_KEYS[step - 1] ?? "type"
+    return {
+      title: t(`steps.${stepKey}.title`),
+      helper: t(`steps.${stepKey}.helper`),
+    }
+  }, [categoryOption.value, step, t])
   const languageAreaOptions = useMemo(
     () =>
       LANGUAGE_AREA_OPTIONS.map((option) => ({
@@ -597,7 +654,7 @@ export function FeedbackModal({
     if (targetStep === 1 && !category) {
       next.category = t("validation.category")
     }
-    if (targetStep === 4 && message.trim().length < 10) {
+    if (targetStep === 2 && message.trim().length < 10) {
       next.message = t("validation.message")
     }
     if (targetStep === 5 && !name.trim()) next.name = t("validation.name")
@@ -616,7 +673,7 @@ export function FeedbackModal({
     event.preventDefault()
     if (step < FEEDBACK_STEP_COUNT) {
       if (validateStep(step)) setStep((current) => current + 1)
-      else if (step === 4) {
+      else if (step === 2) {
         document.getElementById("feedback-message")?.focus()
       }
       return
@@ -682,17 +739,18 @@ export function FeedbackModal({
     try {
       const result = await Promise.race([
         submitFeedback(payload),
-        new Promise<{
-          ok: false
-          reason: "client_timeout"
-        }>((resolve) => {
+        new Promise<{ ok: false; reason: "client_timeout" }>((resolve) => {
           timeoutId = window.setTimeout(
             () => resolve({ ok: false, reason: "client_timeout" }),
             FEEDBACK_SUBMISSION_TIMEOUT_MS,
           )
         }),
       ])
-      if (result.ok) setSubmitted(true)
+      if (result.ok) {
+        setSubmittedWithEmail(Boolean(email.trim()))
+        setSubmissionReceipt(result.receipt ?? "")
+        setSubmitted(true)
+      }
       // Render locale-aware copy keyed by the typed reason; the server's
       // `message` string is English-only and is deliberately not rendered.
       else setError(t(submissionErrorKey(result.reason)))
@@ -704,8 +762,38 @@ export function FeedbackModal({
     }
   }
 
+  async function handleFollowUpEmail(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    const normalizedEmail = followUpEmail.trim()
+    if (!/^\S+@\S+\.\S+$/.test(normalizedEmail)) {
+      setFollowUpError(t("validation.email"))
+      return
+    }
+    if (!submissionReceipt) {
+      setFollowUpError(t("errors.followUpFailed"))
+      return
+    }
+
+    setFollowUpSubmitting(true)
+    setFollowUpError("")
+    try {
+      const result = await addFeedbackFollowUpEmail({
+        email: normalizedEmail,
+        receipt: submissionReceipt,
+      })
+      if (result.ok) setFollowUpAdded(true)
+      // Reason-keyed translation; the server's English `message` string is
+      // deliberately never rendered.
+      else setFollowUpError(t(followUpErrorKey(result.reason)))
+    } catch {
+      setFollowUpError(t("errors.followUpFailed"))
+    } finally {
+      setFollowUpSubmitting(false)
+    }
+  }
+
   function close() {
-    if (submitting) return
+    if (submitting || followUpSubmitting) return
     onOpenChange(false)
   }
 
@@ -727,7 +815,7 @@ export function FeedbackModal({
     <Dialog
       open={open}
       onOpenChange={(nextOpen) => {
-        if (!nextOpen && submitting) return
+        if (!nextOpen && (submitting || followUpSubmitting)) return
         onOpenChange(nextOpen)
       }}
     >
@@ -735,24 +823,24 @@ export function FeedbackModal({
         data-feedback-ignore
         data-testid="feedback-modal"
         overlayClassName="z-[70] bg-black/85 supports-backdrop-filter:backdrop-blur-md"
-        viewportClassName="fixed inset-0 z-[71] grid place-items-center overflow-hidden"
+        viewportClassName="fixed inset-0 z-[71] flex overflow-x-hidden overflow-y-auto px-3 py-16 sm:py-24"
         showCloseButton={false}
-        className="relative flex h-dvh w-dvw max-w-none flex-col gap-0 overflow-hidden rounded-none border-0 bg-stone-950 p-0 text-stone-100 ring-0 sm:h-auto sm:max-h-[94dvh] sm:w-[min(94vw,800px)] sm:max-w-[800px] sm:rounded-2xl sm:ring-1 sm:ring-white/15"
+        className="m-auto w-full max-w-[800px] shrink-0 overflow-visible rounded-none border-0 bg-transparent p-0 text-stone-100 ring-0"
       >
         <button
           type="button"
           aria-label={t("closeForm")}
           data-testid="feedback-modal-close"
           onClick={close}
-          disabled={submitting}
-          className="absolute top-[max(0.75rem,env(safe-area-inset-top,0px))] right-[max(0.75rem,env(safe-area-inset-right,0px))] z-10 grid size-11 cursor-pointer place-items-center rounded-full text-stone-400 transition hover:bg-white/[0.07] hover:text-white focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:outline-none sm:top-5 sm:right-5"
+          disabled={submitting || followUpSubmitting}
+          className="fixed top-[max(0.75rem,env(safe-area-inset-top,0px))] right-[max(0.75rem,env(safe-area-inset-right,0px))] z-50 grid size-11 cursor-pointer place-items-center rounded-full text-stone-400 transition hover:bg-white/[0.07] hover:text-white focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:outline-none sm:top-5 sm:right-5"
         >
           <X aria-hidden className="size-5" />
         </button>
 
         {submitted ? (
-          <div className="grid min-h-[430px] place-items-center px-6 py-16 text-center sm:min-h-[500px] sm:px-12">
-            <div className="max-w-md">
+          <div className="grid w-full place-items-center px-3 py-10 text-center sm:px-12 sm:py-16">
+            <div className="w-full max-w-md">
               <span className="mx-auto grid size-16 place-items-center rounded-full bg-emerald-500/12 text-emerald-400 ring-1 ring-emerald-400/25">
                 <CheckCircle2 aria-hidden className="size-8" />
               </span>
@@ -760,12 +848,82 @@ export function FeedbackModal({
                 {t("success.title")}
               </DialogTitle>
               <DialogDescription className="mt-3 text-base leading-relaxed text-stone-300">
-                {t("success.description")}
+                {t("success.description")}{" "}
+                {submittedWithEmail || followUpAdded
+                  ? t(
+                      `success.followUp.${followUpCopyKey(category)}.confirmation`,
+                    )
+                  : t(
+                      `success.followUp.${followUpCopyKey(category)}.invitation`,
+                    )}
               </DialogDescription>
+              {!submittedWithEmail && !followUpAdded ? (
+                <form
+                  data-testid="feedback-follow-up-email-form"
+                  noValidate
+                  onSubmit={handleFollowUpEmail}
+                  className="mt-7 text-left"
+                >
+                  <label
+                    htmlFor="feedback-follow-up-email"
+                    className="mb-2 block text-sm font-semibold text-stone-100"
+                  >
+                    {t("fields.email.label")}{" "}
+                    <span className="font-normal text-stone-500">
+                      {t("fields.optional")}
+                    </span>
+                  </label>
+                  <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
+                    <input
+                      id="feedback-follow-up-email"
+                      type="email"
+                      inputMode="email"
+                      autoComplete="email"
+                      value={followUpEmail}
+                      maxLength={254}
+                      aria-invalid={Boolean(followUpError)}
+                      onChange={(event) => {
+                        setFollowUpEmail(event.target.value)
+                        if (followUpError) setFollowUpError("")
+                      }}
+                      placeholder={t("success.followUp.emailPlaceholder")}
+                      className={inputClassName(Boolean(followUpError))}
+                    />
+                    <button
+                      type="submit"
+                      disabled={followUpSubmitting}
+                      className="inline-flex h-11 cursor-pointer items-center justify-center gap-2 rounded-full bg-brand-red px-6 text-sm font-semibold text-white transition hover:bg-brand-red/90 focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-55"
+                    >
+                      {followUpSubmitting ? (
+                        <Loader2 aria-hidden className="size-4 animate-spin" />
+                      ) : null}
+                      {followUpSubmitting
+                        ? t("success.followUp.adding")
+                        : t("success.followUp.addEmail")}
+                    </button>
+                  </div>
+                  {followUpError ? (
+                    <p
+                      role="alert"
+                      className="mt-2 text-xs leading-relaxed text-red-200"
+                    >
+                      {followUpError}{" "}
+                      <a
+                        href={SUPPORT_FORM_URL}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="font-semibold underline underline-offset-4 hover:text-white"
+                      >
+                        {t("errors.openSupportForm")}
+                      </a>
+                    </p>
+                  ) : null}
+                </form>
+              ) : null}
               <button
                 type="button"
                 onClick={close}
-                className="mt-8 h-11 cursor-pointer rounded-full bg-brand-red px-7 text-sm font-semibold text-white shadow-lg transition hover:bg-brand-red/90 focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:outline-none"
+                className="mt-7 h-11 cursor-pointer rounded-full border border-white/15 px-7 text-sm font-semibold text-stone-200 transition hover:border-white/30 hover:bg-white/[0.05] hover:text-white focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:outline-none"
               >
                 {t("success.done")}
               </button>
@@ -776,7 +934,7 @@ export function FeedbackModal({
             ref={formRef}
             noValidate
             onSubmit={handleSubmit}
-            className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pt-[calc(1.25rem+env(safe-area-inset-top,0px))] pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))] sm:px-10 sm:pt-6 sm:pb-6"
+            className="w-full overflow-visible px-2 py-2 sm:px-10 sm:py-4"
           >
             <header className="pr-12 sm:pr-14">
               <DialogTitle className="text-3xl leading-tight font-semibold text-white sm:text-[2rem]">
@@ -860,8 +1018,8 @@ export function FeedbackModal({
               </fieldset>
             ) : null}
 
-            {step === 4 ? (
-              <div className="mt-6" data-testid="feedback-step-4">
+            {step === 2 ? (
+              <div className="mt-6" data-testid="feedback-step-2">
                 <label htmlFor="feedback-message">
                   <FieldLabel>
                     {t("fields.details.label")}{" "}
@@ -907,10 +1065,10 @@ export function FeedbackModal({
               </div>
             ) : null}
 
-            {step === 2 ? (
+            {step === 3 ? (
               <div
                 className="mt-5 grid gap-4 sm:grid-cols-2"
-                data-testid="feedback-step-2"
+                data-testid="feedback-step-3"
               >
                 <div>
                   <label htmlFor="feedback-language-area">
@@ -1212,8 +1370,8 @@ export function FeedbackModal({
               />
             </label>
 
-            {step === 3 ? (
-              <div data-testid="feedback-step-3">
+            {step === 4 ? (
+              <div data-testid="feedback-step-4">
                 {page ? (
                   <div
                     data-testid="feedback-page-context"
@@ -1279,7 +1437,7 @@ export function FeedbackModal({
               </div>
             ) : null}
 
-            {step === 4 ? (
+            {step === 2 ? (
               <div className="mt-4 rounded-xl border border-transparent px-1">
                 <div className="flex items-start gap-3">
                   <label className="flex min-w-0 flex-1 cursor-pointer items-start gap-3 rounded-xl p-1 focus-within:ring-2 focus-within:ring-brand-red/40">
@@ -1344,11 +1502,21 @@ export function FeedbackModal({
                 role="alert"
                 className="mt-5 rounded-xl border border-brand-red/30 bg-brand-red/[0.08] px-4 py-3 text-sm text-red-100"
               >
-                {error}
+                <p>{error}</p>
+                <a
+                  data-testid="feedback-support-form-link"
+                  href={SUPPORT_FORM_URL}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="mt-3 inline-flex min-h-10 items-center gap-2 rounded-full border border-red-200/25 px-4 font-semibold text-white transition hover:border-red-100/45 hover:bg-white/[0.06] focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:outline-none"
+                >
+                  {t("errors.openSupportForm")}
+                  <ArrowUpRight aria-hidden className="size-4" />
+                </a>
               </div>
             ) : null}
 
-            <footer className="sticky bottom-0 z-30 -mx-5 mt-6 border-t border-white/10 bg-stone-950/95 px-5 pt-4 pb-1 backdrop-blur-md sm:static sm:mx-0 sm:bg-stone-950 sm:px-0 sm:pt-5 sm:backdrop-blur-none">
+            <footer className="mt-6">
               <div
                 className={`grid gap-3 ${step > 1 ? "grid-cols-[minmax(0,0.45fr)_minmax(0,1fr)]" : "grid-cols-1"}`}
               >
@@ -1377,7 +1545,7 @@ export function FeedbackModal({
                     ? t("nav.sending")
                     : step === FEEDBACK_STEP_COUNT
                       ? t("nav.send")
-                      : step === 3 && !selectedElement
+                      : step === 4 && !selectedElement
                         ? t("nav.skip")
                         : t("nav.continue")}
                 </button>

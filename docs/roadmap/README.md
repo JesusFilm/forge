@@ -4,13 +4,13 @@
 
 Build trusted, scalable AI capabilities that help people discover gospel content, engage meaningfully with Scripture, and take faithful next steps.
 
-## Status (August 23, 2026)
+## Status (August 24, 2026)
 
-- **Total tickets:** 585
-- **Complete:** 427
+- **Total tickets:** 589
+- **Complete:** 433
 - **In progress:** 40
 - **Not started:** 37
-- **Blocked:** 81
+- **Blocked:** 79
 - **Overdue and not complete:** 106
 
 ## Feature Index
@@ -146,6 +146,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-363](content-discovery/feat-363-watch-localized-topic-search-query.md)                                   | Submit localized Watch topic search queries                                                     | codex      | P1       | 2026-08-14 | 1    | 2026-08-14 | complete    |
 | [feat-403](content-discovery/feat-403-watch-language-inventory-subtitle-intent.md)                             | Watch language inventory subtitle intent                                                        | vlad       | P1       | 2026-08-20 | 1    | 2026-08-20 | complete    |
 | [feat-412](content-discovery/feat-412-watch-search-suggestion-multi-token-recall.md)                           | Recover Watch suggestions for near-miss multi-word queries                                      | vlad       | P1       | 2026-08-22 | 1    | 2026-08-22 | complete    |
+| [feat-420](content-discovery/feat-420-watch-suggestion-backspace-shorten-recovery.md)                          | Recover Watch suggestions after Backspace-shortened queries                                     | vlad       | P1       | 2026-08-23 | 1    | 2026-08-23 | complete    |
 | [feat-394](content-discovery/feat-394-bounded-recommendation-exploration.md)                                   | Bounded recommendation exploration                                                              | nisal      | P2       | —          | 6    | —          | blocked     |
 | [feat-395](content-discovery/feat-395-learned-multi-outcome-reranker.md)                                       | Learned multi-outcome re-ranker                                                                 | nisal      | P2       | —          | 10   | —          | blocked     |
 | [feat-396](content-discovery/feat-396-recommendation-privacy-capacity-graduation.md)                           | Recommendation privacy and capacity graduation                                                  | nisal      | P2       | —          | 5    | —          | blocked     |
@@ -164,6 +165,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-351](content-discovery/feat-351-finish-admin-search-language-field-migration.md)                         | Finish Admin search comparison language field migration                                         | codex      | P2       | 2026-08-12 | 2    | 2026-08-13 | not-started |
 | [feat-404](content-discovery/feat-404-watch-language-inventory-subtitle-watchability.md)                       | Watch language inventory subtitle watchability                                                  | vlad       | P2       | 2026-08-20 | 2    | 2026-08-21 | complete    |
 | [feat-413](content-discovery/feat-413-watch-suggestion-canonical-group-representative-recall.md)               | Recover valid Watch suggestions hidden by canonical grouping                                    | vlad       | P2       | 2026-08-23 | 1    | 2026-08-23 | not-started |
+| [feat-420](content-discovery/feat-420-watch-search-rate-limit-feedback.md)                                     | Watch search rate-limit feedback                                                                | codex      | P2       | 2026-08-24 | 1    | 2026-08-24 | complete    |
 | [feat-331](content-discovery/feat-331-devotional-video-matcher-dead-endpoint.md)                               | Devotional video matcher calls a deleted admin search endpoint                                  | unassigned | P2       | 2026-09-01 | 2    | 2026-09-02 | not-started |
 | [feat-333](content-discovery/feat-333-stale-search-api-docs-supersession.md)                                   | Stale docs: /api/search + Query.search documented as live after #1622 removal                   | unassigned | P2       | 2026-09-01 | 1    | 2026-09-01 | not-started |
 | [feat-332](content-discovery/feat-332-consolidate-transcript-chunk-retrievers.md)                              | Consolidate the two video_transcript_chunk semantic retrievers                                  | unassigned | P2       | 2026-09-08 | 3    | 2026-09-10 | not-started |
@@ -274,8 +276,8 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-327](platform/feat-327-admin-prisma-adapter-pool-config.md)                      | Admin Prisma adapter pool config                                                 | codex      | P0       | 2026-08-03 | 1    | 2026-08-03 | complete    |
 | [feat-352](platform/feat-352-mastra-seo-live-proposal-digest.md)                       | Align live SEO proposal digest with Admin persistence                            | codex      | P0       | 2026-08-11 | 1    | 2026-08-11 | complete    |
 | [feat-356](platform/feat-356-preserve-iso-dates-in-seo-report-redaction.md)            | Preserve ISO dates in SEO report redaction                                       | codex      | P0       | 2026-08-11 | 1    | 2026-08-11 | complete    |
-| [feat-399](platform/feat-399-changelog-first-party-auth.md)                            | Register Changelog with first-party Auth grants                                  | edmonday   | P0       | 2026-08-19 | 3    | 2026-08-21 | blocked     |
-| [feat-401](platform/feat-401-better-auth-native-resource-upgrade.md)                   | Upgrade Better Auth for native resource binding                                  | edmonday   | P0       | 2026-08-20 | 4    | 2026-08-23 | blocked     |
+| [feat-399](platform/feat-399-changelog-first-party-auth.md)                            | Register Changelog with first-party Auth grants                                  | edmonday   | P0       | 2026-08-19 | 3    | 2026-08-21 | complete    |
+| [feat-401](platform/feat-401-better-auth-native-resource-upgrade.md)                   | Upgrade Better Auth for native resource binding                                  | edmonday   | P0       | 2026-08-20 | 4    | 2026-08-23 | complete    |
 | [feat-402](platform/feat-402-mobile-expo-sdk57-patch-alignment.md)                     | Mobile Expo SDK 57 patch alignment                                               | edmonday   | P0       | 2026-08-21 | 1    | 2026-08-21 | complete    |
 | [feat-278](platform/feat-278-watch-russian-authored-content-localization.md)           | Watch Russian authored content localization                                      | unassigned | P1       | —          | 2    | —          | not-started |
 | [feat-036](platform/feat-036-cms-local-postgres-io-concurrency-compatibility.md)       | CMS local PostgreSQL I/O concurrency compatibility                               | tataihono  | P1       | 2026-04-01 | 1    | 2026-04-01 | complete    |
@@ -490,6 +492,8 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-408](platform/feat-408-manager-dark-legacy-foreground-aliases.md)                | Manager dark legacy foreground aliases                                           | vlad       | P1       | 2026-08-21 | 1    | 2026-08-21 | complete    |
 | [feat-409](platform/feat-409-manager-dark-sidebar-depth.md)                            | Manager dark sidebar depth                                                       | vlad       | P1       | 2026-08-21 | 1    | 2026-08-21 | complete    |
 | [feat-410](platform/feat-410-manager-dark-contrast-audit.md)                           | Manager dark contrast audit                                                      | vlad       | P1       | 2026-08-21 | 1    | 2026-08-21 | complete    |
+| [feat-411](platform/feat-411-watch-feedback-completion-recovery.md)                    | Watch feedback completion and delivery recovery                                  | codex      | P1       | 2026-08-21 | 1    | 2026-08-21 | complete    |
+| [feat-416](platform/feat-416-watch-life-of-jesus-chapter-context.md)                   | Watch carousel context priority                                                  | codex      | P1       | 2026-08-22 | 2    | 2026-08-23 | complete    |
 | [feat-418](platform/feat-418-watch-subtitle-discoverability-hydration.md)              | Watch subtitle discoverability and hydration                                     | codex      | P1       | 2026-08-22 | 2    | 2026-08-23 | complete    |
 | [feat-419](platform/feat-419-watch-player-tooltip-consistency.md)                      | Watch player tooltip consistency                                                 | urim       | P1       | 2026-08-22 | 1    | 2026-08-22 | complete    |
 | [feat-247](platform/feat-247-watch-nested-series-language-availability.md)             | Watch nested-series language availability                                        | vlad       | P2       | —          | —    | —          | complete    |

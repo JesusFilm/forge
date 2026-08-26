@@ -17,6 +17,7 @@ export function WatchModalViewportCloseButton({
   buttonRef,
   ariaLabel,
   portalContainer,
+  renderInline = false,
 }: {
   open: boolean
   onClose: () => void
@@ -24,11 +25,13 @@ export function WatchModalViewportCloseButton({
   buttonRef?: Ref<HTMLButtonElement>
   ariaLabel?: string
   portalContainer?: HTMLElement | null
+  /** Keep the button in its caller's DOM subtree so modal isolation does not hide it. */
+  renderInline?: boolean
 }) {
   const t = useTranslations("WatchModal")
   if (!open || typeof document === "undefined") return null
 
-  return createPortal(
+  const button = (
     <button
       ref={buttonRef}
       type="button"
@@ -39,7 +42,10 @@ export function WatchModalViewportCloseButton({
       className="fixed z-[1100] flex h-[52px] w-12 cursor-pointer items-center justify-center rounded-full bg-transparent text-stone-300 transition hover:text-white focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white/50 focus-visible:outline-none"
     >
       <X aria-hidden className="h-6 w-6" />
-    </button>,
-    portalContainer ?? document.body,
+    </button>
   )
+
+  return renderInline
+    ? button
+    : createPortal(button, portalContainer ?? document.body)
 }

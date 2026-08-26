@@ -425,8 +425,25 @@
     },
     "success": {
       "title": "Thank you",
-      "description": "Your feedback is with our team. It will help us decide what to improve next.",
-      "done": "Done"
+      "description": "Your feedback is with our team.",
+      "done": "Done",
+      "followUp": {
+        "idea": {
+          "confirmation": "We’ll email you once we implement your idea.",
+          "invitation": "Want to know if your idea ships? Add your email and we’ll let you know."
+        },
+        "problem": {
+          "confirmation": "We’ll email you when the problem is resolved.",
+          "invitation": "Want to know when this is fixed? Add your email and we’ll let you know."
+        },
+        "other": {
+          "confirmation": "If our team needs anything else, we’ll email you.",
+          "invitation": "Add your email if you’d like our team to follow up about your feedback."
+        },
+        "emailPlaceholder": "you@example.com",
+        "adding": "Adding…",
+        "addEmail": "Add email"
+      }
     },
     "footer": {
       "reviewed": "Your feedback is reviewed by our team."
@@ -435,7 +452,10 @@
       "invalid": "Please check the form and try again.",
       "rateLimited": "Too many feedback requests. Please try again later.",
       "sendFailed": "We could not send your feedback. Please try again.",
-      "timeout": "This is taking longer than expected. Your feedback may have been received; please wait before trying again."
+      "timeout": "This is taking longer than expected. Your feedback may have been received; please wait before trying again.",
+      "openSupportForm": "Open support form",
+      "followUpExpired": "This follow-up link has expired. Please use the support form to contact us.",
+      "followUpFailed": "We could not add your email. Please use the support form to contact us."
     }
   },
   "LanguageInventory": {
@@ -651,6 +671,7 @@
     "screenReaderPrefix": "Page not found:",
     "title": "This scene isn't here.",
     "description": "The page may have moved, but the story continues.",
+    "languageDescription": "We couldn't find the page you're looking for, but the story continues in films and videos from languages around the world.",
     "actionsLabel": "Page not found actions",
     "backToWatch": "Back to Watch",
     "browseVideos": "Browse videos"

@@ -38,8 +38,15 @@ deadline, last-good reuse on failure) and assembles the model via
 `assembleWatchHomeModel` — the config model (client-owned hero) is built from the
 config videos ONLY (so a top-up short film can't leak into the hero, feat-172)
 while Experience cards hydrate off the merged index. Body-from-Experience-else-
-config resolves via `resolveWatchHomeModel` (fallback emits one structured
-`[WatchHome] fallback reason=…` log — never silent, incl. `topup-error`); the v3
+config resolves via `resolveWatchHomeModel`, a PURE resolver that logs nothing;
+the signal lives in `useWatchHome`'s reconcile ladder, which routes every config
+fallback AND every dropped top-up through `logWatchHomeFallback`
+(`src/lib/watchHome/logWatchHomeFallback.ts`) as
+`datadogLog.warn("watch_home_fallback", { reason, body_source })` — never silent,
+incl. `topup-error`. Both stay context attributes, never interpolated into the
+message, or Datadog loses the facet. A failed required-videos fetch is a
+different signal (`watch_home.videos_failed`), and the empty-videos-over-snapshot
+guard and the outer catch only set the retry error; the v3
 snapshot persists config + `hydrationVideos` separately for instant cold launch. `buildWatchHomeModelFromVideos` → `HomeScreen`
 (three-layer hero pager / shelves / overlay); hero streams resolve lazily per
 slide via `useHeroStream`. Experiences still render via the SDUI pipeline below,
@@ -52,7 +59,7 @@ Admin GraphQL → gql.tada typed query → dispatcher → renderers
 ```
 
 - **Query**: Defined in `src/lib/queries.ts` using `adminGraphql()` from `@forge/admin-graphql`
-- **Fragments**: Shared `AdminWatchExperienceFragment` from `@forge/admin-graphql/fragments` composes all block fragments
+- **Fragments**: `import { adminWatchExperienceFragment } from "@forge/admin-graphql/fragments"` — the shared root composition over all block fragments. The exported symbol is lowercase; the GraphQL fragment it declares is named `AdminWatchExperience` (no `Fragment` suffix), so a query spreads it as `...AdminWatchExperience`.
 - **Dispatcher**: `src/components/sections/SectionDispatcher.tsx` — switch on `__typename`
 - **Renderers**: `src/components/sections/*Renderer.tsx` — one per block type
 
@@ -261,9 +268,12 @@ Client-side RUM + Logs via `@datadog/mobile-react-native`; helpers in
 - `contentParagraphs` is `string[]` (JSON field) — validate with `Array.isArray()`.
 - `Math.round()` all scaled font sizes on Android (sub-pixel = blurry).
 - Admin blocks use flat `videoId` — no nested `video { slug, images }` join. Use block-level `imageUrl`/`mediaUrl` for thumbnails, `deriveMuxThumbnailUrl()` for VideoHero poster.
+- **`replaceAsync` settles when the source is SET, not LOADED** (on Android it is aliased to `replace`), so anything written in its `.then()` runs while the player still holds the OUTGOING item. A `currentTime` write there is silently discarded; a `play()` is the mild form. Resume and seek on `sourceLoad`, and scope the listener to the source that requested it — the app shares ONE player, so another surface's load will otherwise take your seek. Codified in `src/hooks/useAutostartPlayback.ts` and `src/lib/recoverPlayback.ts`; the tvOS route to the same premise is `docs/solutions/integration-issues/expo-video-replaceasync-seek-silently-dropped-tvos.md`. The shared jest double reproduces the real settle-before-load order, so this is testable.
 - Gating chrome — or any recovery affordance — behind a load: enumerate every path that fails to release the gate. "Playback started OR the player errored" misses "neither": backgrounding mid-load, and a source that wedges without ever erroring. Both leave the viewer with no controls and no way out, and neither logs anything. Always pair such a gate with an unconditional time-based release, and gate the tap target with the same predicate as the chrome it hides. See `docs/solutions/logic-errors/mobile-watch-autostart-veil-gate-missing-release-path.md`.
 - iOS 26 makes the stack back-swipe FULL-WIDTH by default (react-native-screens turns it on when `fullScreenSwipeEnabled` is unset), and a JS PanResponder can never outrace it: the native recognizer claims the touch at delivery, before JS runs. So a rightward scrub on the seek bar IS the pop gesture. **Split the screen instead of racing it.** The watch/series routes confine the pop to a 24pt left strip via `gestureResponseDistance`, and the Scrubber DECLINES touches that start inside that strip (`mayStartScrub` in `src/lib/scrubber.ts`, on BOTH responder gates). One constant feeds both halves (`src/lib/backSwipe.ts`) so they cannot disagree. `fullScreenGestureEnabled: false` is the wrong tool — it kills ALL back-swipe on iOS 26, because no legacy edge recognizer fires.
 - **Do not gate the back-swipe on chrome visibility.** An earlier fix held `gestureEnabled` false while the player chrome was mounted. `shouldArmHideTimer` never arms while paused or ended, so the chrome never auto-hides in those states and the hold never released: pausing a video killed the edge back-swipe for the screen's whole life. Only fullscreen may disable the gesture. Every `gestureEnabled` write must still land on BOTH the screen and its parent stack — the pop that dismisses a nested route belongs to the ROOT stack, which consults only its own top screen. `app/__tests__/backSwipeGesture.guard.test.js` pins the layout options AND the edge width; `useFullscreenPresentation.test.tsx` pins that the gesture stays enabled outside fullscreen.
+- **Never set a react-native-screens `orientation` screen option.** `expo-screen-orientation`'s `ScreenOrientationViewController` answers UIKit from its OWN registry mask — what `lockAsync` writes — only while no screen carries an orientation. The moment one does, it defers to the react-native-screens view-controller chain instead, and a **dev client** has `expo-dev-launcher`'s `DevLauncherViewController` sitting in that chain: the resolved mask loses landscape, UIKit refuses the geometry request (`UIWindowScene.interfaceOrientationsNotSupported`, readable via `xcrun simctl spawn <udid> log stream`), fullscreen stays portrait, and leaving fullscreen strands the details page in landscape until the route pops. The option was always redundant — `src/lib/orientation.ts`'s lock already names the orientation on both platforms — so `useFullscreenPresentation` sets only the lock, and the dev client now rotates exactly like a Release build. Verified 2026-08-26 on the iPhone 17 Pro Max simulator in BOTH build types. `app/__tests__/screenOrientationOption.guard.test.js` blocks the one-line revert across every `.ts`/`.tsx` file under `app/` and `src/`, with a >100-file floor so the scan cannot silently go empty. It has TWO rules, and both are live: Rule 1 matches the key next to a quoted orientation value anywhere in the file (this catches the ternary across line breaks); Rule 2 matches a bare `orientation` KEY of any value shape — named constant, shorthand property — but only inside a brace-matched `screenOptions`/`options` object, so `src/lib/watchHome/`'s unrelated `orientation` key does not trip it. See `docs/solutions/integration-issues/expo-screen-orientation-rnscreens-deferral-blocks-fullscreen-rotate.md`.
+- **`PlayerSlot` must never depend on getting exactly one good `onLayout`.** `measureInWindow` SILENTLY drops its callback when the native node is not attached yet, and the host (`PlaybackHost`) returns null while the slot's rect is null — so one unlucky cold open leaves an opaque black box with no poster, no chrome, and no recovery except leaving the screen. Measured on the iPhone 17 Pro Max simulator over 10 cold deep-link opens: 2/10 on unmodified main, 0/10 after the bounded `requestAnimationFrame` re-measure. Three parts, and all three matter: retry until a rect lands, refuse a zero-size measure, and gate `isDrawn` on the RECT rather than on the attachment so the slot keeps its own poster while the host has nothing to draw. `src/components/watch/__tests__/PlayerSlot.test.tsx` drives a real `measureInWindow` callback and pins all three parts: a zero-size measure publishes nothing, a valid one publishes exactly the measured rect, and the pump stops asking once a rect lands. Exhaustion logs `player_slot.measure_exhausted` once, so an unmeasurable slot is visible in production instead of silent. The instrumentation that separates the cases is a `console.log` in `measureIntoStore` plus one inside the `measureInWindow` callback — `onLayout` fires in BOTH the good and the black run; only the callback differs. See `docs/solutions/integration-issues/expo-screen-orientation-rnscreens-deferral-blocks-fullscreen-rotate.md`.
 - Search requires `EXPO_PUBLIC_ADMIN_GRAPHQL_TOKEN` (mobile's OWN dedicated fleet key — its own entry in admin's `FLEET_ADMIN_API_KEYS` CSV, NOT `WEB_ADMIN_API_KEYS`, and never the same value as TV's; provision in EAS Environments per profile, `.env.local` for dev). `watchSearch` is a PUBLIC resolver, so the bearer buys a per-device rate-limit bucket, not access; a missing/rotated key degrades to the shared `public:<ip>` bucket rather than an `UNAUTHENTICATED` error. The bearer rides ONLY on the `WatchSearch` operation — never attach it to public queries, or every public query also spends the fleet key's rate-limit budget. Admin buckets a fleet key per device (`consumer:<key>:v:<viewer_id>` from the `x-viewer-id` header, else `consumer:<key>:<ip>`), so the fleet doesn't collapse into one bucket. See `src/lib/authHeaders.ts`.
 
 ## Auth + watch progress (feat: mobile login & continue watching)
@@ -372,7 +382,7 @@ The window hides while an in-app sheet is presented and returns to its corner
 when the sheet closes. Two mechanisms, because the app presents sheets two
 ways — six real sheet ROUTES (`IN_APP_SHEET_ROUTE_PATTERNS` in
 `src/lib/miniPlayer/suppression.ts`, read from `app/watch/_layout.tsx` and
-`app/series/_layout.tsx`) and two sheets that are component state, counted by
+`app/series/_layout.tsx`) and three sheets that are component state, counted by
 `getNonRouteSheetCounter()` and keyed by id so an unbalanced call is
 attributable. Keep both in step with those layouts. The rule runs on both
 platforms even though only Android paints through a sheet, so behaviour does
@@ -429,6 +439,203 @@ need the shared predicate and `/watch/[slug]` does not. Before copying a gate
 between player surfaces, check which side of that line you are on. The general
 rule: every layer that can hide the recovery affordance must clear on every path
 that releases the gate.
+
+## Cast SDK sheet theming
+
+**Every cast sheet is drawn by the Cast SDK, not by us, and the only lever is
+native.** `react-native-google-cast` exposes no styling API (its one
+styling-adjacent prop is `CastButton`'s `tintColor`, which tints the glyph
+only). `ios/` and `android/` are gitignored prebuild output, so both halves
+ship as config plugins, and a change to either needs a **new native build** —
+it moves the fingerprint runtime version, so an OTA update cannot deliver it.
+
+- **iOS — `plugins/withCastUIStyle.js`.** Injects a `GCKUIStyle` block into
+  `AppDelegate.swift`. Three facts, each of which cost a build to learn:
+  - The block MUST sit **after** the vendor's
+    `GCKCastContext.setSharedInstanceWith(options)`.
+    `GCKUIStyle.sharedInstance()`'s `dispatch_once` reads
+    `GCKCastContext.sharedInstance()`, which raises an uncatchable ObjC
+    exception when the context is unset. The plugin is therefore listed
+    **before** `react-native-google-cast` in `app.json` — AppDelegate mods run
+    in reverse array order.
+  - The block's begin marker carries a **content hash** of the emitted Swift, and
+    a mismatch excises the old block before inserting. `expo prebuild` REUSES an
+    existing `ios/` rather than recreating it, so a name-only sentinel made an
+    edited block look already-applied and kept building the previous palette.
+  - The trailing call is **`apply()`**, not the header's `applyStyle` — Swift
+    renames the selector. Only a real compile catches this; the unit tests
+    pinned the header spelling and stayed green while the build failed.
+  - Colours only. `-[GCKUIStyle contentSizeDidChange:]` re-runs
+    `initDefaultFonts`, so a custom font is wiped the first time the reader
+    changes text size.
+- **The `deviceChooser` subtree does NOT own the chooser's title or Cancel
+  button.** `_styleAttributesForNavigation` is captured once in `viewDidLoad`
+  from `connectionController` and `syncWithCastState` never reassigns it, so
+  both sheets' nav bars come from
+  `deviceControl.connectionController.navigation`.
+- **A base pass sets every node, so any per-surface difference needs an
+  explicit override after it.** The connected sheet's play/pause shipped at
+  `TEXT_SECONDARY` — the same muted grey as a decorative row glyph — because
+  only the base pass had touched it. Verified by sampling pixels, not by eye.
+- **Not every cast surface is a sheet.** The expanded controls are a
+  full-screen player (`BLACK`); the mini controller is a bar docked over
+  content (`SURFACE_COLOR`); only the dialogs take `BG_COLOR`.
+- **Android has no `GCKUIStyle`** — `plugins/withAndroidCastTheme.js` writes
+  `mediaRouteTheme` + `cast*Style` items onto `AppTheme`, because every cast
+  dialog resolves its theme from the **Activity**, not from the cast button's
+  `ContextThemeWrapper`. Each new style MUST inherit its SDK parent
+  (`Theme.MediaRouter*`, `CastExpandedController`, …); a bare parent drops
+  every SDK default and nothing at runtime says so. `aapt2` is the authority —
+  it fails on an unresolvable parent or a nonexistent attribute.
+- **Every `react-native-google-cast` import stays under `src/lib/cast/`, with
+  one allowlisted exception: `src/hooks/useCastPlayback.ts`.**
+  `castImports.guard.test.js` fails the suite otherwise, and it carries TWO
+  allowlists — `ALLOWED_PREFIX` for the directory and an `ALLOWED_FILES` set for
+  that one file, pinned by its own positive control. The hook sits outside the
+  directory because `useCastSession`, `useCastState`, `useMediaStatus` and
+  `useStreamPosition` are React hooks, while `src/lib/cast/` holds pure logic.
+  Add a file to `ALLOWED_FILES` only when the SDK hands you a React hook. The
+  same rule is why `src/lib/cast/NativeCastButton.tsx` is a wrapper in that
+  directory rather than a component folder.
+- **The cast CONTROL differs by platform, and that is deliberate.**
+  `showCastDialog()` is implemented differently on each side, so one shared
+  affordance cannot serve both:
+  - iOS calls `[GCKCastContext.sharedInstance presentCastDialog]` directly
+    (`RNGCCastContext.m:78`), so the app-drawn `MaterialIcons "cast"` glyph in
+    `PlayerControls` works, and keeps its `cast-connected` variant and its
+    state-aware label ("Casting to <device>").
+  - Android calls `RNGoogleCastButtonManager.getCurrent()` then
+    `performClick()` (`RNGCCastContext.java:128`) — it can only click a native
+    `MediaRouteButton` that is already attached, and that registry is filled
+    only by `ColorableMediaRouteButton.onAttachedToWindow`. Android therefore
+    renders the SDK's own button as the real control
+    (`src/lib/cast/NativeCastButton.tsx`), inside the same `Frosted` backplate
+    the AirPlay picker already uses.
+    **Do not reintroduce a hidden button to feed that registry.** An earlier
+    version mounted an invisible 1pt `<CastButton>` beside the visible glyph. It
+    worked, but it left a gap between "a glyph is visible" and "a button is
+    registered" — and that gap WAS the original Android bug: the glyph appeared
+    whenever a receiver was discovered and did nothing at all, because nothing
+    had ever mounted a native button. Using the native button as the control
+    closes the gap by construction.
+- **Android must NOT gate the control on `castUi.available`; iOS must.**
+  What was MEASURED on a Galaxy Tab S8 (Android 16, 2026-08-24): both Chromecasts
+  sat in the app's own `MediaRouter` route list for minutes while
+  `getCastState()` still answered `noDevicesAvailable`; it read `notConnected`
+  seconds after the chooser dialog was opened. That is enough to show the signal
+  is not trustworthy on Android, which is all the fix needs.
+  **The CAUSE is not established.** No counterfactual was run — a button
+  attached but never tapped was never observed, so "attaching and using a button
+  is what flips it" remains one hypothesis among several (discovery latency,
+  foreground state, and a GMS-side cache all fit the same observation). Do not
+  cite this as an SDK contract. iOS keeps the gate — its `presentCastDialog`
+  needs no attached button, so its state is trustworthy there.
+- **The SDK button never self-hides**, so the always-visible Android glyph is
+  correct, not a leak. In mediarouter 1.8.0-beta01 `MediaRouteButton` has no
+  visibility logic at all and `setAlwaysVisible(boolean)` is a no-op stub
+  (`0: return` in its bytecode) — the old auto-hide behaviour is gone.
+- **`tintColor` is the only styling lever on the SDK button.** The connected
+  artwork is the SDK's, not `cast-connected`. Its accessibility label does reach
+  the native view (`content-desc="Cast"`, verified 2026-08-21); whether the
+  state-aware variant survives a live session is unverified.
+- **These sheets follow the SYSTEM appearance, not the app's.** `app.json` sets
+  `userInterfaceStyle: "automatic"` while every RN surface is hard-coded dark,
+  so an unstyled sheet renders light on a light-mode phone. Setting every
+  colour explicitly is what pins them dark; re-check in light mode after any
+  change. **iOS verified 2026-08-21** (sheet band held at luminance 25/255 with
+  the system in light appearance, iPhone 17 Pro Max simulator). **Android is NOT
+  verified in light mode** — that half still rests on an argument, not a
+  measurement: `values-night/` carries no cast resources, so the explicit hex
+  wins in either mode.
+- **The CLASSIC Android chooser is VERIFIED on hardware (Galaxy Tab S8,
+  Android 16, 2026-08-24)** against two real Chromecasts, by sampling pixels:
+  ground `#1c1917` (441,041 pixels MATCHED that value inside the panel), title
+  and both route labels `#f5f5f4`, and **zero** pixels of stock `#303030`
+  (`background_material_dark`), `#424242` (`background_floating_material_dark`)
+  or `#d0021b` (the stock cast red). **The DYNAMIC chooser is still unverified
+  and probably still unthemed** — see the text-appearance bullet below. The SDK
+  `<CastButton>` does mount under RN 0.86 Fabric interop — `content-desc="Cast"`,
+  `clickable=true` in `uiautomator dump`.
+- **The dialog's GROUND is `android:windowBackground`, not
+  `android:colorBackground`.** `ThemeOverlay.AppCompat.Dark` sets BOTH to
+  `@color/background_material_dark` (`#303030`); the first version set only
+  `colorBackground` and the measured ground stayed stock while our text colours
+  landed. Overriding `windowBackground` costs no dialog inset or corner radius
+  because the stock value is a flat colour, not `abc_dialog_material_background`.
+- **An emulator cannot verify any of this** — multicast is mangled
+  (`AOSP-MdnsDiscoveryManag: Error while decoding multicast packet`), so no
+  receiver is ever discovered. Use a physical device on a real LAN.
+- **`MediaRouter: onRestoreRoute()` in logcat is NOT evidence a button
+  attached** — the lines repeat on a ~25s cadence (70 in one session), so they
+  are `CastContext`'s own route loop, not a one-shot `onAttachedToWindow`. Prove
+  attachment with `uiautomator dump` and look for `content-desc="Cast"`.
+- **Discovery itself was never the problem.** GMS registers its own
+  `MediaRouter` callback with `flags=4` and the provider binds without help:
+  `MediaRouteProviderProxy … CastMediaRoute2ProviderService_Persistent` delivers
+  the routes into the app's process. So `MediaTransferReceiver` and a custom
+  discovery module are both unnecessary, and the `media transfer = false` line
+  from `MediaRouterProxy` is a red herring. Enable
+  `setprop log.tag.AxMediaRouter DEBUG` BEFORE process start (the tag is read in
+  a static initializer) and read the `Route added:` lines.
+- **Two Android theme levers are probably inert — confirmed from the AAR, not
+  guessed.** `Theme.MediaRouter` has parent `ThemeOverlay.AppCompat.Dark`, so the
+  dark parent choice is right. But it sets `mediaRouteBodyTextAppearance` and
+  `mediaRouteHeaderTextAppearance` to `TextAppearance.MediaRouter.Dynamic.*`,
+  which hardcode `android:textColor` to `#FFFFFF` (route rows) and `#BDC1C6`
+  (header). A text appearance's own `textColor` beats the theme-level
+  `android:textColorPrimary` / `android:textColorSecondary` this plugin sets, so
+  on the dynamic dialog those two items do nothing. The result is still
+  light-on-dark, just not through our tokens. To actually own it, override those
+  two text-appearance attributes with styles carrying our colours. Which dialog
+  variant appears (dynamic vs classic) depends on whether the receiver advertises
+  dynamic groups — device-only. **Observed 2026-08-24: two ordinary Chromecasts
+  produce the CLASSIC chooser** (`mr_chooser_dialog` — "Cast to" plus a
+  `ListView`), where `android:textColorPrimary` DOES land: the labels measured
+  `#f5f5f4`, our token, not the `#FFFFFF` the dynamic text appearance forces. So
+  the inertness above is real but scoped to a variant we have not yet seen.
+- **Verify by sampling pixels.** The stock cast red `#D0021B` and our `#CB333B`
+  pass a glance and fail the design system. On iOS: `xcrun simctl io … screenshot`
+  → `ffmpeg -pix_fmt rgb24` → read the bytes. The Android equivalent is
+  `adb exec-out screencap -p` into the same ffmpeg step; it was exercised on the
+  classic chooser on 2026-08-24. Note that iOS lifts button labels
+  inside the nav pill and toolbar by a uniform ~+13 per channel (`#a8a29e`
+  renders `#b6afaa`, `#e96067` renders `#f76d73`), so compare the _delta_
+  across two differently-coloured buttons rather than expecting an exact hex.
+- Cast discovery **does** work from the iOS simulator, but only after a few
+  seconds — an absent cast glyph early in a session means "not discovered yet",
+  not "unsupported".
+
+## Android system navigation bar
+
+**`AppTheme` now has TWO writers**, and both go through the shared helpers in
+`plugins/androidStyleXml.js` (`setItem`, `findStyle`, `getRequiredStyle`).
+That module is the single place item-mutation semantics may live — two copies
+can drift and then disagree about how items land on the one style React Native
+reads, which no per-plugin suite would catch. Add a third writer the same way.
+
+`plugins/withAndroidNavigationBar.js` makes the system navigation bar render
+the app's own `#1c1917` instead of the platform contrast scrim.
+
+- **You cannot set a colour.** RN forces `navigationBarColor` to transparent at
+  every React Activity creation (`WindowUtil.kt`, `enableEdgeToEdge`). The only
+  lever RN reads and obeys is `android:enforceNavigationBarContrast`. Setting it
+  `false` stops the platform scrim AND stops RN overwriting the icon appearance
+  from the SYSTEM dark-mode setting — which is why the paired
+  `android:windowLightNavigationBar=false` survives. The two ship together.
+- **Both `AppTheme` and `Theme.App.SplashScreen` are written.** MainActivity's
+  manifest theme is the splash one, and it does not inherit `AppTheme`.
+- **This plugin MUST stay before `expo-splash-screen` in `app.json`.** That
+  plugin REPLACES `Theme.App.SplashScreen` rather than merging, and Expo runs
+  mods last-registered-first. Reversed, the two items are wiped with the suite
+  still green. A test pins the order against the real vendor mod.
+- **Measured, not argued** (`adb exec-out screencap -p` -> ffmpeg -> read bytes):
+  before, the bar was `#e9e8e8` in LIGHT system appearance on a Galaxy S20
+  (API 33) — a near-white bar under a near-black app. After: `#1c1917` in both
+  appearances, and `#1c1917` on the splash window too. API 31-32 unmeasured.
+- **The scrim was doing a job.** It guaranteed button contrast over arbitrary
+  content. That guarantee is now gone app-wide, so any surface drawing light
+  pixels behind the bar (a bright fullscreen video frame) can hide the buttons.
+  No replacement scrim ships yet.
 
 ## Component render tests
 
