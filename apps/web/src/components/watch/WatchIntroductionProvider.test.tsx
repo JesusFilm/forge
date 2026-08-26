@@ -2,9 +2,11 @@
 
 import { act, useEffect, useRef, type ReactNode } from "react"
 import { createRoot, type Root } from "react-dom/client"
+import { renderToString } from "react-dom/server"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 const route = vi.hoisted(() => ({
+  locale: "en",
   pathname: "/watch",
   surface: "language-home" as
     | "language-home"
@@ -12,13 +14,32 @@ const route = vi.hoisted(() => ({
     | "english-video"
     | null,
 }))
-const lazyTour = vi.hoisted(() => ({ renders: 0 }))
+const lazyTour = vi.hoisted(() => ({
+  finalFocus: undefined as false | object | undefined,
+  mode: "loaded" as "failed" | "loaded" | "loading" | "render-failed",
+  renders: 0,
+  retry: vi.fn(),
+}))
 const betaModal = vi.hoisted(() => ({
   openModal: vi.fn<(trigger?: HTMLElement | null) => boolean>(() => true),
 }))
 
 vi.mock("next/navigation", () => ({
   usePathname: () => route.pathname,
+}))
+
+vi.mock("next-intl", () => ({
+  useLocale: () => route.locale,
+  useTranslations: () => (key: string) =>
+    (
+      ({
+        close: "Close introduction",
+        loadFailed: "The introduction could not be loaded.",
+        loading: "Loading the introduction...",
+        retry: "Try again",
+        "steps.discover.title": "Discover free films and stories",
+      }) as Record<string, string>
+    )[key] ?? key,
 }))
 
 vi.mock("@/components/FloatingSearchContext", async (importOriginal) => {
@@ -35,19 +56,39 @@ vi.mock("@/components/watch/BetaTesterModalProvider", () => ({
 }))
 
 vi.mock("next/dynamic", () => ({
-  default: () =>
-    function MockWatchIntroductionTour({
+  default: (
+    _loader: unknown,
+    options: {
+      loading: (props: { error: Error | null; retry: () => void }) => ReactNode
+    },
+  ) => {
+    return function MockWatchIntroductionTour({
+      finalFocus,
       open,
       onSkip,
       onComplete,
       onSignup,
     }: {
+      finalFocus: false | object
       open: boolean
       onSkip: () => void
       onComplete: () => void
       onSignup: () => boolean
     }) {
       lazyTour.renders += 1
+      lazyTour.finalFocus = finalFocus
+      if (lazyTour.mode === "render-failed") {
+        throw new Error("introduction render failed")
+      }
+      if (lazyTour.mode !== "loaded") {
+        return options.loading({
+          error:
+            lazyTour.mode === "failed"
+              ? new Error("introduction chunk failed")
+              : null,
+          retry: lazyTour.retry,
+        })
+      }
       return open ? (
         <div role="dialog" data-testid="watch-introduction-tour">
           <button type="button" onClick={onSkip}>
@@ -61,11 +102,13 @@ vi.mock("next/dynamic", () => ({
           </button>
         </div>
       ) : null
-    },
+    }
+  },
 }))
 
 import {
   WatchIntroductionProvider,
+  WatchIntroductionContextError,
   useWatchIntroduction,
 } from "@/components/watch/WatchIntroductionProvider"
 import {
@@ -82,8 +125,12 @@ let root: Root
 beforeEach(() => {
   vi.useFakeTimers()
   route.pathname = "/watch"
+  route.locale = "en"
   route.surface = "language-home"
+  lazyTour.mode = "loaded"
+  lazyTour.finalFocus = undefined
   lazyTour.renders = 0
+  lazyTour.retry.mockReset()
   betaModal.openModal.mockReset()
   betaModal.openModal.mockReturnValue(true)
   const values = new Map<string, string>()
@@ -176,6 +223,14 @@ function finishAutomaticDelay() {
   })
 }
 
+async function flushDialogEffects() {
+  await act(async () => {
+    await Promise.resolve()
+    vi.advanceTimersByTime(50)
+    await Promise.resolve()
+  })
+}
+
 describe("WatchIntroductionProvider", () => {
   it("waits until load and the idle delay before opening on an unmarked home", () => {
     render()
@@ -190,11 +245,109 @@ describe("WatchIntroductionProvider", () => {
     expect(lazyTour.renders).toBe(1)
   })
 
-  it("returns focus to the stable replay action after an automatic tour closes", () => {
-    render()
-    const replay = document.querySelector(
-      "[data-testid='replay']",
+  it("owns focus while the tour chunk loads and closes without completing", async () => {
+    lazyTour.mode = "loading"
+    const media = makeMedia()
+    render(
+      <>
+        <a href="#watch" data-testid="floating-header-logo">
+          Watch home
+        </a>
+        <MediaOwner media={media} />
+      </>,
+    )
+
+    finishAutomaticDelay()
+    await flushDialogEffects()
+
+    const dialog = document.querySelector(
+      "[data-testid='watch-introduction-tour-loading']",
+    ) as HTMLElement
+    const close = document.querySelector(
+      "[data-testid='watch-introduction-loading-close']",
     ) as HTMLButtonElement
+    expect(dialog.contains(close)).toBe(true)
+    expect(document.activeElement).toBe(close)
+
+    act(() => close.click())
+    expect(
+      window.localStorage.getItem(WATCH_INTRODUCTION_STORAGE_KEY),
+    ).toBeNull()
+    expect(media.play).not.toHaveBeenCalled()
+    act(() => vi.advanceTimersByTime(WATCH_MODAL_CLOSE_DELAY_MS))
+    expect(media.play).toHaveBeenCalledOnce()
+  })
+
+  it("offers retry when the tour chunk fails", async () => {
+    lazyTour.mode = "failed"
+    render()
+
+    finishAutomaticDelay()
+    await flushDialogEffects()
+
+    const retry = [...document.querySelectorAll("button")].find(
+      (candidate) => candidate.textContent === "Try again",
+    ) as HTMLButtonElement
+    expect(document.body.textContent).toContain(
+      "The introduction could not be loaded.",
+    )
+    expect(document.activeElement).toBe(retry)
+
+    act(() => retry.click())
+    expect(lazyTour.retry).toHaveBeenCalledOnce()
+  })
+
+  it("recovers from a render-time tour failure without completing it", async () => {
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {})
+    lazyTour.mode = "render-failed"
+    render()
+
+    finishAutomaticDelay()
+    await flushDialogEffects()
+
+    expect(document.body.textContent).toContain(
+      "The introduction could not be loaded.",
+    )
+    const retry = [...document.querySelectorAll("button")].find(
+      (candidate) => candidate.textContent === "Try again",
+    ) as HTMLButtonElement
+    expect(document.activeElement).toBe(retry)
+    expect(
+      window.localStorage.getItem(WATCH_INTRODUCTION_STORAGE_KEY),
+    ).toBeNull()
+
+    lazyTour.mode = "loaded"
+    act(() => retry.click())
+    expect(
+      document.querySelector("[data-testid='watch-introduction-tour']"),
+    ).not.toBeNull()
+    consoleError.mockRestore()
+  })
+
+  it("throws a typed error when the required context is absent", () => {
+    function Consumer() {
+      useWatchIntroduction()
+      return null
+    }
+
+    expect(() => renderToString(<Consumer />)).toThrow(
+      WatchIntroductionContextError,
+    )
+  })
+
+  it("returns automatic-tour focus to fixed Watch chrome without scrolling", () => {
+    render(
+      <>
+        <a href="#watch" data-testid="floating-header-logo">
+          Watch home
+        </a>
+        <ReplayButton />
+      </>,
+    )
+    const logo = document.querySelector(
+      "[data-testid='floating-header-logo']",
+    ) as HTMLAnchorElement
+    const focus = vi.spyOn(logo, "focus")
 
     finishAutomaticDelay()
     const skip = [...document.querySelectorAll("[role='dialog'] button")].find(
@@ -202,11 +355,22 @@ describe("WatchIntroductionProvider", () => {
     ) as HTMLButtonElement
     act(() => skip.click())
 
-    expect(document.activeElement).toBe(replay)
+    expect(document.activeElement).toBe(logo)
+    expect(focus).toHaveBeenCalledWith({ preventScroll: true })
   })
 
   it("does not schedule automatic opening on an excluded route surface", () => {
     route.surface = "english-video"
+    render()
+
+    finishAutomaticDelay()
+
+    expect(document.querySelector("[role='dialog']")).toBeNull()
+    expect(lazyTour.renders).toBe(0)
+  })
+
+  it("does not automatically open in a catalog whose tour copy is pending", () => {
+    route.locale = "fr"
     render()
 
     finishAutomaticDelay()
@@ -321,11 +485,18 @@ describe("WatchIntroductionProvider", () => {
     expect(media.play).toHaveBeenCalledOnce()
   })
 
-  it("completes only after the beta signup request is accepted and uses the stable replay trigger", () => {
-    render()
-    const replay = document.querySelector(
-      "[data-testid='replay']",
-    ) as HTMLButtonElement
+  it("completes only after the beta signup request is accepted and preserves the automatic focus origin", () => {
+    render(
+      <>
+        <a href="#watch" data-testid="floating-header-logo">
+          Watch home
+        </a>
+        <ReplayButton />
+      </>,
+    )
+    const logo = document.querySelector(
+      "[data-testid='floating-header-logo']",
+    ) as HTMLAnchorElement
 
     finishAutomaticDelay()
     const signup = [
@@ -335,7 +506,8 @@ describe("WatchIntroductionProvider", () => {
     ) as HTMLButtonElement
     act(() => signup.click())
 
-    expect(betaModal.openModal).toHaveBeenCalledWith(replay)
+    expect(betaModal.openModal).toHaveBeenCalledWith(logo)
+    expect(lazyTour.finalFocus).toBe(false)
     expect(window.localStorage.getItem(WATCH_INTRODUCTION_STORAGE_KEY)).toBe(
       "completed",
     )

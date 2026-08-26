@@ -26,7 +26,6 @@ import {
 } from "@/components/ui/dialog"
 import { WatchModalViewportCloseButton } from "@/components/watch/WatchModalViewportCloseButton"
 
-const STEP_COUNT = 4
 const VIEWPORT_MARGIN = 16
 const TARGET_PADDING = 8
 const CARD_GAP = 24
@@ -54,6 +53,8 @@ const STEPS: readonly StepDefinition[] = [
   { key: "apps", icon: MonitorSmartphone },
 ]
 
+const STEP_COUNT = STEPS.length
+
 type TargetLayout = {
   card: CSSProperties
   outline: CSSProperties
@@ -68,19 +69,19 @@ export type WatchIntroductionTourProps = {
   onSkip: () => void
   onComplete: () => void
   onSignup: () => boolean
-  finalFocus: RefObject<HTMLElement | null>
+  finalFocus: false | RefObject<HTMLElement | null>
 }
 
-function useMediaPreference(query: string) {
+function useForcedColors() {
   const [matches, setMatches] = useState(false)
 
   useEffect(() => {
-    const media = window.matchMedia(query)
+    const media = window.matchMedia("(forced-colors: active)")
     const update = () => setMatches(media.matches)
     update()
     media.addEventListener("change", update)
     return () => media.removeEventListener("change", update)
-  }, [query])
+  }, [])
 
   return matches
 }
@@ -171,8 +172,7 @@ export function WatchIntroductionTour({
   const [signupUnavailable, setSignupUnavailable] = useState(false)
   const closeButtonRef = useRef<HTMLButtonElement>(null)
   const completedActionRef = useRef(false)
-  const forcedColors = useMediaPreference("(forced-colors: active)")
-  const reducedMotion = useMediaPreference("(prefers-reduced-motion: reduce)")
+  const forcedColors = useForcedColors()
   const step = STEPS[stepIndex] ?? STEPS[0]
   const isFinalStep = stepIndex === STEP_COUNT - 1
 
@@ -202,11 +202,8 @@ export function WatchIntroductionTour({
       setSignupUnavailable(true)
       return
     }
-    completedActionRef.current = true
-    setSignupUnavailable(false)
-    setStepIndex(0)
-    setTargetLayout(null)
-  }, [onSignup])
+    finishOnce(() => undefined)
+  }, [finishOnce, onSignup])
 
   useEffect(() => {
     if (!open || forcedColors || step.target == null) return
@@ -276,7 +273,6 @@ export function WatchIntroductionTour({
           data-testid="watch-introduction-tour"
           data-watch-tour-layout={targeted ? "targeted" : "centered"}
           data-forced-colors={String(forcedColors)}
-          data-reduced-motion={String(reducedMotion)}
           initialFocus={closeButtonRef}
           finalFocus={finalFocus}
           showCloseButton={false}
@@ -306,6 +302,7 @@ export function WatchIntroductionTour({
             testId="watch-introduction-tour-close"
             buttonRef={closeButtonRef}
             ariaLabel={t("close")}
+            renderInline
           />
 
           <div className="flex min-h-0 flex-col gap-6 px-6 pt-8 pb-6 sm:gap-8 sm:px-10 sm:pt-10 sm:pb-8">

@@ -7,6 +7,7 @@ import {
   GLOBAL_CLIENT_MESSAGE_NAMESPACES,
   LANGUAGE_INVENTORY_CLIENT_MESSAGE_NAMESPACES,
   WATCH_CONTENT_CLIENT_MESSAGE_NAMESPACES,
+  WATCH_HOME_CLIENT_MESSAGE_NAMESPACES,
   pickClientMessages,
 } from "./client-messages"
 
@@ -40,6 +41,21 @@ describe("route-scoped client messages", () => {
       expect(messages.LanguagePickerModal?.notAvailable).toBe(expected)
     },
   )
+
+  it("keeps the introduction tour translated on every surface that can mount it", () => {
+    for (const namespaces of [
+      GLOBAL_CLIENT_MESSAGE_NAMESPACES,
+      WATCH_HOME_CLIENT_MESSAGE_NAMESPACES,
+      WATCH_CONTENT_CLIENT_MESSAGE_NAMESPACES,
+    ]) {
+      const messages = pickClientMessages(englishMessages, namespaces)
+
+      expect(namespaces).toContain("WatchIntroductionTour")
+      expect(messages.WatchIntroductionTour?.steps.apps.title).toBe(
+        "Watch on mobile and TV",
+      )
+    }
+  })
 
   it("keeps the language inventory collection switcher translated", () => {
     const messages = pickClientMessages(

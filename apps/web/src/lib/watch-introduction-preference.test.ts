@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it } from "vitest"
 
 import {
   WATCH_INTRODUCTION_STORAGE_KEY,
+  isWatchIntroductionLocaleEligible,
   markWatchIntroductionCompleted,
   readWatchIntroductionCompletion,
 } from "@/lib/watch-introduction-preference"
@@ -54,9 +55,31 @@ describe("watch introduction preference", () => {
     expect(markWatchIntroductionCompleted()).toBe(false)
   })
 
+  it("fails closed when reads work but writes are unavailable", () => {
+    Object.defineProperty(window, "localStorage", {
+      configurable: true,
+      value: {
+        getItem: () => null,
+        removeItem: () => undefined,
+        setItem: () => {
+          throw new DOMException("denied")
+        },
+      },
+    })
+
+    expect(readWatchIntroductionCompletion()).toBe("unavailable")
+  })
+
   it("does not mistake an unknown marker value for this version", () => {
     window.localStorage.setItem(WATCH_INTRODUCTION_STORAGE_KEY, "legacy")
 
     expect(readWatchIntroductionCompletion()).toBe("incomplete")
+  })
+
+  it("limits the tour to catalogs with authored release copy", () => {
+    expect(isWatchIntroductionLocaleEligible("en")).toBe(true)
+    expect(isWatchIntroductionLocaleEligible("ar")).toBe(true)
+    expect(isWatchIntroductionLocaleEligible("zh")).toBe(true)
+    expect(isWatchIntroductionLocaleEligible("fr")).toBe(false)
   })
 })

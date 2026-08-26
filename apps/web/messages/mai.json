@@ -553,5 +553,41 @@
     "languageVersionLabel": "ऑडियो भाषा",
     "selectLanguageVersion": "भाषा संस्करण चुनू",
     "watchSelectedVersion": "चुनल संस्करण देखू"
+  },
+  "WatchIntroductionTour": {
+    "close": "Close introduction",
+    "progress": "Step {current} of {total}",
+    "skip": "Skip",
+    "back": "Back",
+    "next": "Next",
+    "done": "Done",
+    "signup": "Join the beta group",
+    "replay": "Take the Watch tour",
+    "signupUnavailable": "Sign-up is unavailable right now. Please try again.",
+    "loading": "Loading the introduction...",
+    "loadFailed": "The introduction could not be loaded.",
+    "retry": "Try again",
+    "steps": {
+      "discover": {
+        "eyebrow": "Start watching",
+        "title": "Discover free films and stories",
+        "description": "Explore films, series, and real stories about Jesus and the hope he offers—all available to watch for free."
+      },
+      "search": {
+        "eyebrow": "Find your next watch",
+        "title": "Search for what matters to you",
+        "description": "Use Search to find a title, explore a topic, or ask a question and discover something meaningful."
+      },
+      "language": {
+        "eyebrow": "Watch in your language",
+        "title": "Choose your viewing language",
+        "description": "Open the language picker to find films and stories in the language that feels most natural to you."
+      },
+      "apps": {
+        "eyebrow": "Coming soon",
+        "title": "Watch on mobile and TV",
+        "description": "Mobile and TV apps are on the way. Join our beta testing group to be among the first to try them and hear when access is ready."
+      }
+    }
   }
 }

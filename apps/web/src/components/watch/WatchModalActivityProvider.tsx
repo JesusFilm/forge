@@ -32,7 +32,6 @@ type WatchModalRegistryActions = {
 export type WatchModalReservation = {
   tryAcquire: () => boolean
   release: () => void
-  isAcquired: () => boolean
 }
 
 const WatchModalRegistryContext =
@@ -71,11 +70,10 @@ export function WatchModalActivityProvider({
     (token: symbol) => {
       if (tokens.has(token)) return true
       if (tokens.size > 0) return false
-      tokens.add(token)
-      setActive(true)
+      acquire(token)
       return true
     },
-    [tokens],
+    [acquire, tokens],
   )
 
   const registry = useMemo<WatchModalRegistryActions>(
@@ -115,14 +113,9 @@ export function useWatchModalReservation(): WatchModalReservation {
     registry?.release(token)
   }, [registry, token])
 
-  const isAcquired = useCallback(() => acquiredRef.current, [])
-
   useLayoutEffect(() => release, [release])
 
-  return useMemo(
-    () => ({ tryAcquire, release, isAcquired }),
-    [isAcquired, release, tryAcquire],
-  )
+  return useMemo(() => ({ tryAcquire, release }), [release, tryAcquire])
 }
 
 /**

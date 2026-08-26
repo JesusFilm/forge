@@ -99,6 +99,11 @@ describe("WatchIntroductionTour", () => {
     expect(document.activeElement).toBe(
       document.querySelector("[data-testid='watch-introduction-tour-close']"),
     )
+    expect(
+      dialog.contains(
+        document.querySelector("[data-testid='watch-introduction-tour-close']"),
+      ),
+    ).toBe(true)
 
     act(() => button("Next").click())
     expect(document.body.textContent).toContain("Step 2 of 4")
@@ -148,7 +153,7 @@ describe("WatchIntroductionTour", () => {
     act(() => button("Next").click())
 
     expect(button("Skip")).toBeUndefined()
-    expect(button("Sign up for updates").dataset.variant).toBe("primary")
+    expect(button("Join the beta group").dataset.variant).toBe("primary")
     expect(button("Done").dataset.variant).toBe("secondary")
     expect(
       [
@@ -156,7 +161,7 @@ describe("WatchIntroductionTour", () => {
           "[data-testid='watch-introduction-actions'] button",
         ),
       ].map((item) => item.textContent?.trim()),
-    ).toEqual(["Back", "Done", "Sign up for updates"])
+    ).toEqual(["Back", "Done", "Join the beta group"])
 
     act(() => button("Done").click())
     await flushDialogEffects()
@@ -171,7 +176,7 @@ describe("WatchIntroductionTour", () => {
     act(() => button("Next").click())
     act(() => button("Next").click())
     act(() => button("Next").click())
-    act(() => button("Sign up for updates").click())
+    act(() => button("Join the beta group").click())
     await flushDialogEffects()
 
     expect(onSignup).toHaveBeenCalledOnce()
@@ -184,7 +189,7 @@ describe("WatchIntroductionTour", () => {
     act(() => button("Next").click())
     act(() => button("Next").click())
     act(() => button("Next").click())
-    act(() => button("Sign up for updates").click())
+    act(() => button("Join the beta group").click())
 
     expect(onSignup).toHaveBeenCalledOnce()
     expect(document.querySelector("[role='dialog']")).not.toBeNull()
@@ -261,11 +266,7 @@ describe("WatchIntroductionTour", () => {
         "[data-testid='watch-introduction-target-outline']",
       ),
     ).toBeNull()
-    expect(
-      document.querySelector(
-        "[data-forced-colors='true'][data-reduced-motion='false']",
-      ),
-    ).not.toBeNull()
+    expect(document.querySelector("[data-forced-colors='true']")).not.toBeNull()
   })
 
   it("keeps narrow actions stacked in logical DOM order for RTL and disables motion when requested", async () => {
@@ -278,7 +279,7 @@ describe("WatchIntroductionTour", () => {
       value: 390,
     })
     vi.stubGlobal("matchMedia", (query: string) => ({
-      matches: query === "(prefers-reduced-motion: reduce)",
+      matches: false,
       media: query,
       addEventListener: vi.fn(),
       removeEventListener: vi.fn(),
@@ -296,7 +297,8 @@ describe("WatchIntroductionTour", () => {
       ),
     ).toEqual(["Skip", "Next"])
     expect(
-      document.querySelector("[data-reduced-motion='true']"),
-    ).not.toBeNull()
+      document.querySelector("[data-testid='watch-introduction-tour']")
+        ?.className,
+    ).toContain("motion-reduce:transition-none")
   })
 })

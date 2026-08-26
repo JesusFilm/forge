@@ -119,9 +119,12 @@
     "back": "Back",
     "next": "Next",
     "done": "Done",
-    "signup": "Sign up for updates",
+    "signup": "Join the beta group",
     "replay": "Take the Watch tour",
     "signupUnavailable": "Sign-up is unavailable right now. Please try again.",
+    "loading": "Loading the introduction...",
+    "loadFailed": "The introduction could not be loaded.",
+    "retry": "Try again",
     "steps": {
       "discover": {
         "eyebrow": "Start watching",
@@ -141,7 +144,7 @@
       "apps": {
         "eyebrow": "Coming soon",
         "title": "Watch on mobile and TV",
-        "description": "Mobile and TV apps are on the way. Sign up to hear about beta opportunities and be notified when they are released."
+        "description": "Mobile and TV apps are on the way. Join our beta testing group to be among the first to try them and hear when access is ready."
       }
     }
   },
