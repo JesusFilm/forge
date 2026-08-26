@@ -137,13 +137,6 @@ describe("Auth route wrapper", () => {
       },
     },
     {
-      name: "an explicit native client",
-      body: {
-        application_type: "native",
-        redirect_uris: ["http://localhost:3118/callback"],
-      },
-    },
-    {
       name: "an explicit confidential client",
       body: {
         redirect_uris: ["http://localhost:3118/callback"],
@@ -167,10 +160,10 @@ describe("Auth route wrapper", () => {
       name: "an empty redirect list",
       body: { redirect_uris: [] },
     },
-  ])("does not normalize $name", async ({ body }) => {
+  ])("rejects $name before registration", async ({ body }) => {
     authPost.mockResolvedValueOnce(Response.json({ client_id: "dynamic" }))
     const { POST } = await import("./route")
-    await POST(
+    const response = await POST(
       new Request("http://localhost:3004/api/auth/oauth2/register", {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -179,8 +172,134 @@ describe("Auth route wrapper", () => {
       { params: Promise.resolve({ all: ["oauth2", "register"] }) },
     )
 
+    expect(response.status).toBe(400)
+    expect(authPost).not.toHaveBeenCalled()
+  })
+
+  it("leaves authenticated registration policy to the provider", async () => {
+    getSession.mockResolvedValueOnce({ user: { id: "user_123" } })
+    authPost.mockResolvedValueOnce(Response.json({ client_id: "managed" }))
+    const body = {
+      application_type: "web",
+      redirect_uris: ["https://client.example/callback"],
+      token_endpoint_auth_method: "client_secret_basic",
+    }
+    const { POST } = await import("./route")
+    const response = await POST(
+      new Request("http://localhost:3004/api/auth/oauth2/register", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(body),
+      }),
+      { params: Promise.resolve({ all: ["oauth2", "register"] }) },
+    )
+
+    expect(response.status).toBe(200)
     const forwarded = authPost.mock.calls[0]?.[0] as Request
     await expect(forwarded.json()).resolves.toEqual(body)
+  })
+
+  it("accepts an explicit native public client and requires PKCE", async () => {
+    authPost.mockResolvedValueOnce(Response.json({ client_id: "dynamic" }))
+    const { POST } = await import("./route")
+    const response = await POST(
+      new Request("http://localhost:3004/api/auth/oauth2/register", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          application_type: "native",
+          redirect_uris: ["http://localhost:3118/callback"],
+          token_endpoint_auth_method: "none",
+          grant_types: ["authorization_code", "refresh_token"],
+          response_types: ["code"],
+        }),
+      }),
+      { params: Promise.resolve({ all: ["oauth2", "register"] }) },
+    )
+
+    expect(response.status).toBe(200)
+    const forwarded = authPost.mock.calls[0]?.[0] as Request
+    await expect(forwarded.json()).resolves.toMatchObject({
+      application_type: "native",
+      require_pkce: true,
+      token_endpoint_auth_method: "none",
+    })
+  })
+
+  it.each([
+    {
+      name: "a non-JSON body",
+      headers: { "content-type": "text/plain" },
+      body: JSON.stringify({
+        redirect_uris: ["http://localhost:3118/callback"],
+      }),
+    },
+    {
+      name: "malformed JSON",
+      headers: { "content-type": "application/json" },
+      body: "{",
+    },
+    {
+      name: "PKCE explicitly disabled",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        redirect_uris: ["http://localhost:3118/callback"],
+        require_pkce: false,
+      }),
+    },
+    {
+      name: "a private-use redirect",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ redirect_uris: ["forge://oauth/callback"] }),
+    },
+    {
+      name: "an HTTPS loopback redirect",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        application_type: "native",
+        redirect_uris: ["https://localhost:3118/callback"],
+      }),
+    },
+    {
+      name: "an internal resource",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        redirect_uris: ["http://localhost:3118/callback"],
+        resources: ["https://admin.jesusfilm.org/api/manager/session"],
+      }),
+    },
+    {
+      name: "an unknown resource",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        redirect_uris: ["http://localhost:3118/callback"],
+        resources: ["https://unknown.example/mcp"],
+      }),
+    },
+    {
+      name: "a non-public scope",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        redirect_uris: ["http://localhost:3118/callback"],
+        scope: "openid tokens:manage",
+      }),
+    },
+  ])("rejects $name without invoking the provider", async (testCase) => {
+    const { POST } = await import("./route")
+    const response = await POST(
+      new Request("http://localhost:3004/api/auth/oauth2/register", {
+        method: "POST",
+        headers: testCase.headers,
+        body: testCase.body,
+      }),
+      { params: Promise.resolve({ all: ["oauth2", "register"] }) },
+    )
+
+    expect(response.status).toBe(400)
+    expect(authPost).not.toHaveBeenCalled()
+    await expect(response.json()).resolves.toMatchObject({
+      error: "invalid_client_metadata",
+    })
   })
 
   it.each(["http://127.0.0.1:49173/callback", "http://[::1]:49173/callback"])(
@@ -200,7 +319,10 @@ describe("Auth route wrapper", () => {
       const forwarded = authPost.mock.calls[0]?.[0] as Request
       await expect(forwarded.json()).resolves.toEqual({
         application_type: "native",
+        grant_types: ["authorization_code", "refresh_token"],
         redirect_uris: [redirectUri],
+        require_pkce: true,
+        response_types: ["code"],
         token_endpoint_auth_method: "none",
       })
     },
@@ -219,26 +341,6 @@ describe("Auth route wrapper", () => {
 
     expect(response.status).toBe(413)
     expect(authPost).not.toHaveBeenCalled()
-  })
-
-  it("preserves malformed DCR JSON for the provider", async () => {
-    authPost.mockResolvedValueOnce(Response.json({ error: "invalid_request" }))
-    const { POST } = await import("./route")
-    await POST(
-      new Request("http://localhost:3004/api/auth/oauth2/register", {
-        method: "POST",
-        headers: {
-          "content-length": "1",
-          "content-type": "application/json",
-        },
-        body: "{",
-      }),
-      { params: Promise.resolve({ all: ["oauth2", "register"] }) },
-    )
-
-    const forwarded = authPost.mock.calls[0]?.[0] as Request
-    expect(forwarded.headers.has("content-length")).toBe(false)
-    await expect(forwarded.text()).resolves.toBe("{")
   })
 
   it("downscopes an authenticated Changelog authorize request before the provider sees it", async () => {
@@ -271,6 +373,80 @@ describe("Auth route wrapper", () => {
       "http://localhost:3000/mcp",
     ])
   })
+
+  it("routes an explicit Admin resource before inspecting Changelog scopes", async () => {
+    getSession.mockResolvedValueOnce({
+      user: { id: "user_123", membershipStatus: "ACTIVE" },
+    })
+    authGet.mockResolvedValueOnce(Response.json({ ok: true }))
+    const { GET } = await import("./route")
+    const response = await GET(
+      new Request(
+        "http://localhost:3004/api/auth/oauth2/authorize?client_id=codex_dynamic&scope=openid+experience%3Aread+changelog%3Aadmin&resource=https%3A%2F%2Fadmin.jesusfilm.org%2Fmcp",
+      ),
+      { params: Promise.resolve({ all: ["oauth2", "authorize"] }) },
+    )
+
+    expect(response.status).toBe(200)
+    expect(decideChangelogGrant).not.toHaveBeenCalled()
+    const forwarded = authGet.mock.calls[0]?.[0] as Request
+    expect(new URL(forwarded.url).searchParams.getAll("resource")).toEqual([
+      "https://admin.jesusfilm.org/mcp",
+    ])
+  })
+
+  it.each([
+    {
+      name: "no resource with global scopes",
+      query:
+        "scope=openid+admin%3Aaccess+manager%3Aaccess+tokens%3Amanage+changelog%3Aread",
+      dynamic: true,
+    },
+    {
+      name: "multiple resources",
+      query:
+        "resource=https%3A%2F%2Fadmin.jesusfilm.org%2Fmcp&resource=https%3A%2F%2Fchangelog.jesusfilm.org%2Fmcp",
+      dynamic: false,
+    },
+    {
+      name: "an internal resource",
+      query:
+        "resource=https%3A%2F%2Fadmin.jesusfilm.org%2Fapi%2Fmanager%2Fsession",
+      dynamic: false,
+    },
+    {
+      name: "an unknown resource",
+      query: "resource=https%3A%2F%2Funknown.example%2Fmcp",
+      dynamic: false,
+    },
+  ])(
+    "rejects $name without an authorization continuation",
+    async (testCase) => {
+      getSession.mockResolvedValueOnce({
+        user: { id: "user_123", membershipStatus: "ACTIVE" },
+      })
+      if (testCase.dynamic) {
+        findOAuthClient.mockResolvedValueOnce({
+          clientId: "codex_dynamic",
+          disabled: false,
+        })
+      }
+      const { GET } = await import("./route")
+      const response = await GET(
+        new Request(
+          `http://localhost:3004/api/auth/oauth2/authorize?client_id=codex_dynamic&${testCase.query}`,
+        ),
+        { params: Promise.resolve({ all: ["oauth2", "authorize"] }) },
+      )
+
+      expect(response.status).toBe(403)
+      await expect(response.json()).resolves.toMatchObject({
+        error: "invalid_target",
+      })
+      expect(authGet).not.toHaveBeenCalled()
+      expect(decideChangelogGrant).not.toHaveBeenCalled()
+    },
+  )
 
   it("adds the canonical native resource for a seeded Changelog client", async () => {
     getSession.mockResolvedValueOnce({
@@ -385,7 +561,7 @@ describe("Auth route wrapper", () => {
     expect(response.status).toBe(403)
     await expect(response.json()).resolves.toEqual({
       error: "invalid_target",
-      error_description: "The requested Changelog resource is invalid.",
+      error_description: "The requested resource is invalid.",
     })
     expect(response.headers.get("cache-control")).toBe("no-store")
     expect(authGet).not.toHaveBeenCalled()
@@ -448,7 +624,7 @@ describe("Auth route wrapper", () => {
     const location = new URL(response.headers.get("location") ?? "")
     expect(location.searchParams.get("error")).toBe("invalid_target")
     expect(location.searchParams.get("error_description")).toBe(
-      "The requested Changelog resource is invalid.",
+      "The requested resource is invalid.",
     )
     expect(location.searchParams.get("state")).toBe("opaque-state")
     expect(authGet).not.toHaveBeenCalled()

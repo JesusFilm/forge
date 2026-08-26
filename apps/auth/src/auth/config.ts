@@ -24,11 +24,9 @@ import {
   createOAuthResourceCatalog,
   getPublicDcrAllowedScopes,
   getPublicDcrResources,
+  resolveOAuthResource,
 } from "@/domain/oauth-resources"
-import {
-  CHANGELOG_OAUTH_RESOURCES,
-  CHANGELOG_OAUTH_SCOPES,
-} from "@/services/oauth-policy.service"
+import { CHANGELOG_OAUTH_SCOPES } from "@/services/oauth-policy.service"
 import { createChangelogOAuthGrantDecision } from "@/services/changelog-oauth-grant.service"
 import { buildAccountDeletionHooks } from "@/services/account-deletion.service"
 import {
@@ -50,10 +48,6 @@ const protectedResources = createOAuthResourceCatalog({
 })
 const publicDcrResources = getPublicDcrResources(protectedResources)
 const publicDcrAllowedScopes = getPublicDcrAllowedScopes(protectedResources)
-const changelogResources: readonly string[] = Object.values(
-  CHANGELOG_OAUTH_RESOURCES,
-)
-
 const accountDeletionHooks = buildAccountDeletionHooks({
   findAppleAccount: (userId) =>
     prisma.account.findFirst({
@@ -350,15 +344,25 @@ export const auth = betterAuth({
         resources,
         metadata,
       }) => {
+        const target =
+          resources?.length === 1
+            ? resolveOAuthResource(protectedResources, resources[0])
+            : undefined
+        if (target?.resourceClass === "admin-mcp") {
+          return {
+            "https://jesusfilm.org/claims/environment":
+              target.trustedEnvironment,
+            "https://jesusfilm.org/claims/app": target.trustedApp,
+          }
+        }
         const changelogAware =
-          resources?.some((resource) =>
-            changelogResources.includes(resource),
-          ) ||
-          scopes.some((scope) =>
-            CHANGELOG_OAUTH_SCOPES.includes(
-              scope as (typeof CHANGELOG_OAUTH_SCOPES)[number],
-            ),
-          )
+          target?.resourceClass === "changelog-mcp" ||
+          (resources?.length !== 1 &&
+            scopes.some((scope) =>
+              CHANGELOG_OAUTH_SCOPES.includes(
+                scope as (typeof CHANGELOG_OAUTH_SCOPES)[number],
+              ),
+            ))
         if (!changelogAware) {
           return {
             ...(typeof metadata?.environmentKind === "string"

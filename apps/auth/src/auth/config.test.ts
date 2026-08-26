@@ -333,6 +333,23 @@ describe("auth provider configuration", () => {
     })
   })
 
+  it("derives Admin claims from the exact resource instead of dynamic metadata", async () => {
+    const options = await captureOAuthProviderOptions()
+
+    await expect(
+      options.customAccessTokenClaims({
+        user: { id: "user_123", membershipStatus: "ACTIVE" },
+        scopes: ["openid", "experience:read", "changelog:admin"],
+        resources: ["https://admin.jesusfilm.org/mcp"],
+        metadata: { environmentKind: "staging", appKey: "changelog" },
+      }),
+    ).resolves.toEqual({
+      "https://jesusfilm.org/claims/environment": "production",
+      "https://jesusfilm.org/claims/app": "admin-mcp",
+    })
+    expect(authConfigCapture.decideChangelogGrant).not.toHaveBeenCalled()
+  })
+
   it("fails closed when an issuance-time Changelog grant changes", async () => {
     authConfigCapture.decideChangelogGrant.mockResolvedValue({
       allowed: false,

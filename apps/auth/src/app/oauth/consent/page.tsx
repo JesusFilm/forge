@@ -4,19 +4,35 @@ import {
   toOAuthQuery,
   type LoginSearchParams,
 } from "@/app/login/login-page-data"
-import { describeScopes, isKnownScope } from "@/domain/scopes"
+import { getAuthBaseUrl, getAuthCustomAudiences, env } from "@/config/env"
 import { prisma } from "@/db/client"
+import { FIRST_PARTY_APP_SEEDS } from "@/domain/apps"
 import {
-  CHANGELOG_LOCAL_CLIENT_ID,
-  CHANGELOG_PRODUCTION_CLIENT_ID,
-} from "@/domain/apps"
-import { resolveChangelogOAuthTarget } from "@/services/oauth-policy.service"
+  createOAuthResourceCatalog,
+  resolveOAuthResource,
+} from "@/domain/oauth-resources"
+import { describeScopes, isKnownScope } from "@/domain/scopes"
 
 import { OAuthConsentPageClient } from "./consent-page-client"
 
 type OAuthConsentPageProps = {
   searchParams?: Promise<LoginSearchParams>
 }
+
+const oauthResourceCatalog = createOAuthResourceCatalog({
+  authIssuer: getAuthBaseUrl(),
+  customAudiences: getAuthCustomAudiences(),
+})
+const firstPartyClientIds = new Set(
+  FIRST_PARTY_APP_SEEDS.flatMap((app) =>
+    app.environments.flatMap((environment) => [
+      environment.clientId,
+      ...(environment.managerSessionServiceClientId
+        ? [environment.managerSessionServiceClientId]
+        : []),
+    ]),
+  ),
+)
 
 export default async function OAuthConsentPage({
   searchParams,
@@ -32,11 +48,9 @@ export default async function OAuthConsentPage({
     (scope) => !describedScopeKeys.has(scope),
   )
   const clientId = firstParam(params.client_id)
-  const target = resolveChangelogTarget(params.resource)
+  const target = resolveConsentTarget(params.resource)
   const unverifiedDynamicClient =
-    target != null &&
-    clientId !== CHANGELOG_LOCAL_CLIENT_ID &&
-    clientId !== CHANGELOG_PRODUCTION_CLIENT_ID
+    target != null && clientId != null && !firstPartyClientIds.has(clientId)
   const requestingAppName =
     (unverifiedDynamicClient
       ? await resolveDynamicClientName(clientId)
@@ -64,21 +78,30 @@ function parseRequestedScopes(value: string | undefined) {
   return [...new Set(value?.split(/\s+/).filter(Boolean) ?? [])]
 }
 
-function resolveChangelogTarget(value: string | string[] | undefined) {
+function resolveConsentTarget(value: string | string[] | undefined) {
   const resources = Array.isArray(value) ? value : value ? [value] : []
-  const target = resolveChangelogOAuthTarget({
-    seededEnvironmentKind: null,
-    resources,
-  })
-  if (!target.allowed || target.resource == null) return undefined
+  if (resources.length !== 1) return undefined
+  const target = resolveOAuthResource(oauthResourceCatalog, resources[0])
+  if (
+    !target ||
+    (target.resourceClass !== "admin-mcp" &&
+      target.resourceClass !== "changelog-mcp") ||
+    target.trustedEnvironment == null
+  ) {
+    return undefined
+  }
   return {
-    environment: target.environmentKind === "local" ? "Local" : "Production",
-    resource: target.resource,
+    environment:
+      target.trustedEnvironment[0].toUpperCase() +
+      target.trustedEnvironment.slice(1),
+    product:
+      target.resourceClass === "admin-mcp" ? "Forge Admin MCP" : "Changelog",
+    resource: target.identifier,
   }
 }
 
 async function resolveDynamicClientName(clientId: string | undefined) {
-  if (!clientId || !process.env.DATABASE_URL) return null
+  if (!clientId || !env.DATABASE_URL) return null
   try {
     return (
       (
