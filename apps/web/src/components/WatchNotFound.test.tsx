@@ -82,8 +82,11 @@ describe("WatchNotFound", () => {
     expect(links[1]?.textContent?.trim()).toBe("Browse videos")
   })
 
-  it("reuses the embedded language globe without poster artwork", () => {
+  it("reuses the embedded language globe without poster artwork", async () => {
     renderPage()
+    await act(async () => {
+      await Promise.resolve()
+    })
 
     expect(container.querySelectorAll("img")).toHaveLength(0)
     expect(

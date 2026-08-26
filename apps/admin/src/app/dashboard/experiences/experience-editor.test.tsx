@@ -383,6 +383,46 @@ describe("ExperienceEditor", () => {
     }
   })
 
+  it("adds the language globe with editable copy from the block library", () => {
+    const view = renderEditorDom([])
+
+    try {
+      act(() => {
+        findButtonByText(view.container, "Browse All Blocks").click()
+      })
+
+      expect(view.container.textContent).toContain("Language Globe")
+      expect(view.container.textContent).toContain(
+        "Animated scripture globe with editable language copy and action.",
+      )
+
+      act(() => {
+        findButtonByText(view.container, "Language Globe").click()
+      })
+
+      const blocksInput = view.container.querySelector<HTMLInputElement>(
+        'input[name="blocks"]',
+      )
+      expect(JSON.parse(blocksInput?.value ?? "[]")).toEqual([
+        {
+          t: "languageGlobe",
+          sectionKey: "language-globe-0",
+          eyebrow: "Watch languages",
+          title: "Choose a language",
+          description: "Explore languages by region or browse the full list.",
+          ctaEnabled: true,
+          ctaLabel: "Select language",
+          ctaLink: "/languages",
+        },
+      ])
+      expect(
+        view.container.querySelector('input[value="Choose a language"]'),
+      ).not.toBeNull()
+    } finally {
+      view.cleanup()
+    }
+  })
+
   it("scopes bottom editor chrome to the canvas instead of the shell sidebar", () => {
     const html = renderEditor([{ t: "text", heading: "Filled" }])
 

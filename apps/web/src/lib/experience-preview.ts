@@ -8,6 +8,7 @@ import {
   adminCtaFragment,
   adminEasterDatesFragment,
   adminInfoBlocksFragment,
+  adminLanguageGlobeFragment,
   adminMediaCollectionFragment,
   adminNavigationCarouselFragment,
   adminPromoBannerFragment,
@@ -56,6 +57,9 @@ const EXPERIENCE_PREVIEW = adminGraphql(
           ... on InfoBlocksBlock {
             ...AdminInfoBlocks
           }
+          ... on LanguageGlobeBlock {
+            ...AdminLanguageGlobe
+          }
           ... on MediaCollectionBlock {
             ...AdminMediaCollection
           }
@@ -101,6 +105,7 @@ const EXPERIENCE_PREVIEW = adminGraphql(
     adminCtaFragment,
     adminEasterDatesFragment,
     adminInfoBlocksFragment,
+    adminLanguageGlobeFragment,
     adminMediaCollectionFragment,
     adminNavigationCarouselFragment,
     adminPromoBannerFragment,

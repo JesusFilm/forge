@@ -1,7 +1,5 @@
 import type { Metadata } from "next"
-import { Languages } from "lucide-react"
-import { LanguageGlobeSection } from "@/components/sections/LanguageGlobeSection"
-import { languagesIndexPath } from "@/lib/routes"
+import { LanguageGlobeExperience } from "@/components/sections/LanguageGlobeExperience"
 
 export const metadata: Metadata = {
   title: "Matthew 24:14 Globe Preview | Watch",
@@ -16,19 +14,17 @@ export const metadata: Metadata = {
 export default function LanguageGlobePreviewPage() {
   return (
     <main>
-      <LanguageGlobeSection
-        actions={[
-          {
-            href: languagesIndexPath(),
-            icon: <Languages aria-hidden="true" className="h-5 w-5" />,
-            label: "Select your language",
-          },
-        ]}
-        actionsLabel="Language selection"
-        description="Explore films and videos in languages from around the world."
-        eyebrow="Watch languages"
-        headingId="language-globe-preview-heading"
-        title="Choose a language"
+      <LanguageGlobeExperience
+        data={{
+          sectionKey: "language-globe-preview",
+          eyebrow: "Watch languages",
+          title: "Choose a language",
+          description:
+            "Explore films and videos in languages from around the world.",
+          ctaEnabled: true,
+          ctaLabel: "Select your language",
+          ctaLink: "/languages",
+        }}
       />
     </main>
   )

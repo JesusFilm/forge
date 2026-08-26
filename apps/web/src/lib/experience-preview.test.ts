@@ -13,6 +13,7 @@ vi.mock("@forge/admin-graphql/fragments", () => ({
   adminCtaFragment: {},
   adminEasterDatesFragment: {},
   adminInfoBlocksFragment: {},
+  adminLanguageGlobeFragment: {},
   adminMediaCollectionFragment: {},
   adminNavigationCarouselFragment: {},
   adminPromoBannerFragment: {},
