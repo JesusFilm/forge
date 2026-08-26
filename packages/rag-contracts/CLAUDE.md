@@ -1,5 +1,3 @@
 # CLAUDE.md — RAG contracts
 
-This package owns shared HTTP contract definitions for `apps/rag` consumers.
-It does not own retrieval implementation, environment parsing, database types,
-or consumer policy. Keep exports runtime-neutral and preserve `/v1` compatibility.
+Read and follow [`AGENTS.md`](./AGENTS.md). It is the canonical, provider-agnostic guide for this package.
