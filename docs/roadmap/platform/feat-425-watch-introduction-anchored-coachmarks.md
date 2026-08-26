@@ -89,3 +89,5 @@ the next.
 - Refined the anchored cards to a compact 440-pixel maximum width, removed
   decorative icon and eyebrow chrome from targeted steps, reduced spacing and
   action sizes, and blended the pointer into the card surface.
+- Lifted the card and pointer surface to charcoal `#242424` so the compact
+  coachmark stays distinct from the black Watch backdrop.

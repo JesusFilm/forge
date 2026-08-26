@@ -276,14 +276,14 @@ export function WatchIntroductionTour({
           ) : null
         }
         viewportClassName={`pointer-events-none fixed inset-0 z-[1000] overflow-hidden p-4 pt-[max(1rem,env(safe-area-inset-top,0px))] pb-[max(1rem,env(safe-area-inset-bottom,0px))] ${targeted ? "" : "grid place-items-center"}`}
-        className={`pointer-events-auto z-[1070] max-h-[calc(100dvh-2rem)] max-w-[520px] gap-0 overflow-visible rounded-xl border border-white/10 bg-stone-950 p-0 text-start text-stone-100 shadow-[0_20px_60px_rgba(0,0,0,0.64)] ring-1 ring-white/8 motion-reduce:transition-none forced-colors:border forced-colors:border-white forced-colors:bg-black ${targeted ? "fixed" : "relative w-[min(520px,calc(100vw-2rem))]"}`}
+        className={`pointer-events-auto z-[1070] max-h-[calc(100dvh-2rem)] max-w-[520px] gap-0 overflow-visible rounded-xl border border-white/12 bg-[#242424] p-0 text-start text-stone-100 shadow-[0_20px_60px_rgba(0,0,0,0.64)] ring-1 ring-white/8 motion-reduce:transition-none forced-colors:border forced-colors:border-white forced-colors:bg-black ${targeted ? "fixed" : "relative w-[min(520px,calc(100vw-2rem))]"}`}
         style={activeTargetLayout?.card}
       >
         {activeTargetLayout ? (
           <Triangle
             aria-hidden="true"
             data-testid="watch-introduction-arrow"
-            className={`pointer-events-none absolute z-10 size-5 fill-stone-950 stroke-stone-950 ${
+            className={`pointer-events-none absolute z-10 size-5 fill-[#242424] stroke-[#242424] ${
               activeTargetLayout.placement === "below"
                 ? "-top-3.5"
                 : "-bottom-3.5 rotate-180"

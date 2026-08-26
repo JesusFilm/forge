@@ -54,6 +54,34 @@ final result: passed
 
 ---
 
+# Design QA: Charcoal Watch coachmark surface
+
+## Selected target
+
+- User direction: keep the compact coachmark but make its surface gray enough to remain visible against the black Watch backdrop.
+- Before capture: `/tmp/watch-tour-search-minimal-final.png`.
+- Refined Search capture: `/tmp/watch-tour-search-gray-v1.png`.
+- Refined Language capture: `/tmp/watch-tour-language-gray-v1.png`.
+- Combined same-state, same-viewport comparison: `/tmp/watch-tour-gray-comparison.png` at 1280 × 800 per panel.
+
+## Comparison findings
+
+- The coachmark surface moves from near-black to charcoal `#242424`, creating clear separation from the black overlay without becoming visually heavy.
+- The pointer uses the identical charcoal fill and stroke, preserving the seamless connection to the card.
+- White text, secondary actions, border, and shadow remain legible and restrained on the lighter surface.
+- Search and Language targeting, compact dimensions, and spotlight treatment are unchanged.
+
+## Verification
+
+- Both targeted desktop states are free of clipping, overlap, and viewport overflow.
+- Dialog-scoped accessibility scan: 0 violations, 0 incomplete checks, 19 passes.
+
+## Result
+
+final result: passed
+
+---
+
 # Design QA: Minimal Watch coachmark refinement
 
 ## Selected target
