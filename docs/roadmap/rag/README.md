@@ -12,8 +12,8 @@ database into Admin.
 
 - **Total tickets:** 13
 - **Complete:** 1
-- **In progress:** 0
-- **Not started:** 12
+- **In progress:** 1
+- **Not started:** 11
 - **Blocked:** 0
 
 ## Feature Index
@@ -21,7 +21,7 @@ database into Admin.
 | Forge ID                                           | Historical issue                                              | Feature                                          | Status      | Forge PR                                              |
 | -------------------------------------------------- | ------------------------------------------------------------- | ------------------------------------------------ | ----------- | ----------------------------------------------------- |
 | [feat-423](feat-423-rag-scaffold-and-roadmap.md)   | [#156](https://github.com/JesusFilm/jesusfilm-rag/issues/156) | Scaffold RAG space and durable roadmap           | complete    | [#2033](https://github.com/JesusFilm/forge/pull/2033) |
-| [feat-424](feat-424-rag-environment-contracts.md)  | [#157](https://github.com/JesusFilm/jesusfilm-rag/issues/157) | Port environment contracts and secrets procedure | not-started | —                                                     |
+| [feat-424](feat-424-rag-environment-contracts.md)  | [#157](https://github.com/JesusFilm/jesusfilm-rag/issues/157) | Port environment contracts and secrets procedure | in-progress | —                                                     |
 | [feat-425](feat-425-rag-schema-empty-postgres.md)  | [#158](https://github.com/JesusFilm/jesusfilm-rag/issues/158) | Port schema and empty Railway Postgres           | not-started | —                                                     |
 | [feat-426](feat-426-rag-shared-contracts-cores.md) | [#159](https://github.com/JesusFilm/jesusfilm-rag/issues/159) | Port shared contracts and pure cores             | not-started | —                                                     |
 | [feat-427](feat-427-rag-adapters-retrieval.md)     | [#160](https://github.com/JesusFilm/jesusfilm-rag/issues/160) | Port database adapters and retrieval tooling     | not-started | —                                                     |

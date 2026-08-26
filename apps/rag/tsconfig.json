@@ -5,10 +5,11 @@
     "strict": true,
     "module": "ESNext",
     "moduleResolution": "Bundler",
+    "types": ["node"],
     "noEmit": true,
     "skipLibCheck": true,
     "isolatedModules": true
   },
-  "include": ["src/**/*.ts"],
+  "include": ["src/**/*.ts", "scripts/**/*.ts"],
   "exclude": ["node_modules"]
 }

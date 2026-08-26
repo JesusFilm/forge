@@ -25,7 +25,10 @@ module.exports = {
       name: "rag-does-not-import-other-apps",
       severity: "error",
       from: { path: "^src/" },
-      to: { path: "^\\.\\./(?!\\.\\./packages/rag-contracts/)" },
+      to: {
+        path: "^\\.\\./(?!\\.\\./packages/rag-contracts/)",
+        pathNot: "node_modules",
+      },
     },
     {
       name: "not-to-unresolvable",

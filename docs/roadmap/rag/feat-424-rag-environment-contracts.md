@@ -3,7 +3,7 @@ id: "feat-424"
 title: "Port RAG environment contracts and secret procedures"
 owner: "jaco"
 priority: "P0"
-status: "not-started"
+status: "in-progress"
 start_date: "2026-08-27"
 duration: 2
 depends_on: ["feat-423"]

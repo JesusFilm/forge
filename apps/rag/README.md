@@ -4,6 +4,9 @@ The governed home for the RAG service migrating from
 [`JesusFilm/jesusfilm-rag`](https://github.com/JesusFilm/jesusfilm-rag/issues/130).
 It remains a separate bounded context, Railway service, and Postgres database.
 
+Environment names, validation commands, and receiver-first secret procedures
+live in [`docs/ops/environment-and-secrets.md`](docs/ops/environment-and-secrets.md).
+
 This scaffold intentionally contains no runtime behavior. Migration work is
 tracked in `docs/roadmap/rag/`; public `/v1` behavior remains in the standalone
 service until the relevant roadmap tickets land through normal PRs.
