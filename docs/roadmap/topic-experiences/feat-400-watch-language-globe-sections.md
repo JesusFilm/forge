@@ -98,6 +98,6 @@ not-found page without duplicating its canvas renderer.
   formatting checks pass; the canvas renderer and its measured performance
   profile are unchanged.
 - Follow-up visual feedback reduces the globe, atmosphere, and nearby star halo
-  to 80% of their previous scale while preserving the existing canvas height and
+  to 65% of their initial scale while preserving the existing canvas height and
   top-only crop. The focused 14-test suite, web lint, typecheck, formatting, and
   local 404 composition check pass.

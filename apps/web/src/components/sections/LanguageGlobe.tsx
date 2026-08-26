@@ -68,7 +68,7 @@ type LanguageGlobeRenderProfile = {
 
 const TAU = Math.PI * 2
 const DEGREES_TO_RADIANS = Math.PI / 180
-const GLOBE_VISUAL_SCALE = 0.8
+const GLOBE_VISUAL_SCALE = 0.65
 const LAND_GRID_RADIANS = 1.5 * DEGREES_TO_RADIANS
 const MAX_CANVAS_DENSITY = 1.5
 const MONOSPACE_FONT =
