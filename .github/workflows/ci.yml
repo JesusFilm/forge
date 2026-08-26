@@ -334,8 +334,20 @@ jobs:
           cache: pnpm
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-      - name: Run Expo Doctor
+      - name: Check Expo package versions
         working-directory: apps/mobile
+        run: npx expo install --check
+      - name: Create isolated mobile dependency tree
+        run: |
+          pnpm --filter @forge/mobile deploy --prod "$RUNNER_TEMP/mobile-doctor"
+          touch "$RUNNER_TEMP/mobile-doctor/pnpm-lock.yaml"
+      - name: Run Expo Doctor
+        working-directory: ${{ runner.temp }}/mobile-doctor
+        env:
+          # Version compatibility is checked above. Isolation prevents Expo
+          # Doctor from treating the auth server's optional Expo peers as
+          # duplicate native modules in the mobile application.
+          EXPO_DOCTOR_SKIP_DEPENDENCY_VERSION_CHECK: "1"
         run: npx expo-doctor@1.20.1
 
   build:

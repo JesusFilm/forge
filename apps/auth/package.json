@@ -21,6 +21,7 @@
     "mint:apple-client-secret": "node scripts/mint-apple-client-secret.mjs"
   },
   "dependencies": {
+    "@better-auth/expo": "1.7.1",
     "@better-auth/oauth-provider": "1.7.1",
     "@better-auth/prisma-adapter": "1.7.1",
     "@forge/watch-url-policy": "workspace:*",
