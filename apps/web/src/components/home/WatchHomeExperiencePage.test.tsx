@@ -15,6 +15,9 @@ vi.mock("next/image", () => ({
 }))
 
 vi.mock("next-intl", () => ({
+  // `useLocale` is consumed by the shared Carousel (text direction), which
+  // reaches this tree through the category rail under the hero.
+  useLocale: () => "en",
   useTranslations: () => (key: string) =>
     key === "pageTitle" ? "Jesus Film Project Watch" : key,
 }))
@@ -223,9 +226,13 @@ describe("WatchHomeExperiencePage", () => {
     expect(serverContainer.querySelector("h1")?.textContent).toBe(
       "Primary page heading",
     )
-    expect(serverContainer.querySelector("h2")?.textContent).toBe(
-      "Secondary page heading",
-    )
+    // `toContain`, not "first h2": non-authored sections (the category rail)
+    // carry their own h2 above the authored body.
+    expect(
+      Array.from(serverContainer.querySelectorAll("h2")).map(
+        (heading) => heading.textContent,
+      ),
+    ).toContain("Secondary page heading")
 
     await act(async () => {
       root.render(
@@ -241,9 +248,11 @@ describe("WatchHomeExperiencePage", () => {
     expect(container.querySelector("h1")?.textContent).toBe(
       "Primary page heading",
     )
-    expect(container.querySelector("h2")?.textContent).toBe(
-      "Secondary page heading",
-    )
+    expect(
+      Array.from(container.querySelectorAll("h2")).map(
+        (heading) => heading.textContent,
+      ),
+    ).toContain("Secondary page heading")
   })
 
   it("contains only top-level standalone video blocks on the Watch rail", async () => {
@@ -419,4 +428,31 @@ describe("WatchHomeExperiencePage", () => {
       Node.DOCUMENT_POSITION_FOLLOWING,
     )
   })
+
+  it.each([
+    ["an authored hero block", [makeBlock("WatchHomeHeroBlock", "hero")]],
+    ["the fallback hero carousel", [] as Section[]],
+  ])(
+    "renders the category rail exactly once, directly after %s",
+    async (_label, blocks) => {
+      await act(async () => {
+        root.render(
+          <WatchHomeExperiencePage
+            heroModel={heroModel}
+            blocks={blocks}
+            languageSlug="english"
+          />,
+        )
+      })
+
+      const rails = container.querySelectorAll(
+        '[data-testid="watch-home-category-rail"]',
+      )
+      expect(rails).toHaveLength(1)
+      expect(
+        container.querySelector('[data-testid="watch-home-hero"]')
+          ?.nextElementSibling,
+      ).toBe(rails[0])
+    },
+  )
 })
