@@ -1055,9 +1055,11 @@ describe("FeedbackLauncher", () => {
     // The vitest next-intl mock renders `Feedback.<key>` for any missing key,
     // so this guard fails when a t() call points at a key absent from en.json.
     // No \b anchor: textContent concatenates nodes without separators, so the
-    // fallback can be glued to the preceding word.
+    // fallback can be glued to the preceding word. innerHTML (not textContent)
+    // so keys leaked into attributes (aria-label, placeholder, title) are
+    // caught too — textContent excludes attribute values.
     const assertNoRawKeys = () =>
-      expect(document.body.textContent).not.toMatch(/Feedback\.[A-Za-z]/)
+      expect(document.body.innerHTML).not.toMatch(/Feedback\.[A-Za-z]/)
 
     feedbackAction.submit.mockResolvedValueOnce({
       ok: true,
