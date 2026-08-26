@@ -28,6 +28,30 @@ export function generateMetadata(): Metadata {
     title: WHATS_NEW_METADATA.title,
     description: WHATS_NEW_METADATA.description,
     alternates: { canonical: CANONICAL_URL },
+    /* Deliberately outside search. Same block the preview surface uses, so
+       the codebase has one shape for "keep this out of the index".
+
+       NOT paired with a robots.txt Disallow, and that is the point: a
+       disallowed URL is never fetched, so the noindex below is never read,
+       and the address can still be listed from an inbound link with no
+       description. Excluding it from crawling and excluding it from the
+       index are opposite instructions — this page has to stay crawlable
+       for the instruction to land.
+
+       Open Graph and Twitter stay: they are what renders the card when
+       somebody pastes the link into Slack or a message, which is how this
+       page is meant to travel. */
+    robots: {
+      index: false,
+      follow: false,
+      nocache: true,
+      googleBot: {
+        index: false,
+        follow: false,
+        noarchive: true,
+        noimageindex: true,
+      },
+    },
     openGraph: {
       type: "article",
       title: WHATS_NEW_METADATA.title,
