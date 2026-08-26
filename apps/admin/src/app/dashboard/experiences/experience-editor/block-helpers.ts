@@ -1,4 +1,5 @@
 import { type Blocks } from "@/domain/blocks"
+import { WATCH_HOME_CATEGORY_CATALOG } from "@forge/watch-url-policy/watch-home-categories"
 
 export type BlockTone = "hero" | "quote" | "grid" | "standard"
 
@@ -32,6 +33,7 @@ export type BlockTemplateKey =
   | "videoCarousel"
   | "videoHero"
   | "watchHomeHero"
+  | "watchHomeCategoryRail"
   | "routeVideo"
   | "routeVideoCarousel"
   | "routeVideoHero"
@@ -41,6 +43,7 @@ export const BLOCK_TEMPLATE_KEYS: BlockTemplateKey[] = [
   "video",
   "videoCarousel",
   "watchHomeHero",
+  "watchHomeCategoryRail",
   "languageGlobe",
   "routeVideoHero",
   "routeVideo",
@@ -400,6 +403,18 @@ export function summarizeBlock(
     }
   }
 
+  if (type === "watchHomeCategoryRail") {
+    const selectedCount = asArray(value.categoryIds).length
+    return {
+      key: summaryKey,
+      typeLabel: "Watch Category Rail",
+      title: "Browse by category",
+      body: `${selectedCount} ${selectedCount === 1 ? "category" : "categories"} selected`,
+      tone: "standard",
+      badges: ["WATCH_HOME"],
+    }
+  }
+
   if (type === "languageGlobe") {
     return {
       key: summaryKey,
@@ -707,6 +722,14 @@ export function createTemplateBlock(
     return {
       t: "watchHomeHero",
       sectionKey: `watch-home-hero-${index}`,
+    }
+  }
+
+  if (template === "watchHomeCategoryRail") {
+    return {
+      t: "watchHomeCategoryRail",
+      sectionKey: `watch-home-category-rail-${index}`,
+      categoryIds: WATCH_HOME_CATEGORY_CATALOG.map(({ id }) => id),
     }
   }
 

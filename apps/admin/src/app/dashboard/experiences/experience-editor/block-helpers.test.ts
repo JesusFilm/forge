@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest"
+import { WATCH_HOME_CATEGORY_CATALOG } from "@forge/watch-url-policy/watch-home-categories"
 import { BlockSchema, BlocksSchema } from "@/domain/blocks"
 import {
   BLOCK_TEMPLATE_KEYS,
@@ -47,7 +48,7 @@ describe("experience editor block helpers", () => {
   )
 
   it("creates schema-valid starter payloads for every block template", () => {
-    expect(BLOCK_TEMPLATE_KEYS).toHaveLength(23)
+    expect(BLOCK_TEMPLATE_KEYS).toHaveLength(24)
 
     for (const [index, key] of BLOCK_TEMPLATE_KEYS.entries()) {
       const result = BlockSchema.safeParse(createTemplateBlock(key, index))
@@ -491,6 +492,23 @@ describe("experience editor block helpers", () => {
       title: "Watch Home Hero",
       body: "Renders the static Watch homepage hero.",
       tone: "hero",
+      badges: ["WATCH_HOME"],
+    })
+  })
+
+  it("creates and summarizes the Watch Home category rail", () => {
+    const block = createTemplateBlock("watchHomeCategoryRail", 3)
+
+    expect(block).toEqual({
+      t: "watchHomeCategoryRail",
+      sectionKey: "watch-home-category-rail-3",
+      categoryIds: WATCH_HOME_CATEGORY_CATALOG.map(({ id }) => id),
+    })
+    expect(BlocksSchema.safeParse([block]).success).toBe(true)
+    expect(summarizeBlock(block, 3, [])).toMatchObject({
+      typeLabel: "Watch Category Rail",
+      title: "Browse by category",
+      body: "13 categories selected",
       badges: ["WATCH_HOME"],
     })
   })
