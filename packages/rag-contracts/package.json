@@ -1,0 +1,15 @@
+{
+  "name": "@forge/rag-contracts",
+  "private": true,
+  "version": "0.0.1",
+  "type": "module",
+  "exports": {},
+  "scripts": {
+    "depcruise": "depcruise src tests --config .dependency-cruiser.cjs",
+    "lint": "eslint .",
+    "test": "pnpm depcruise && node --test tests/*.test.mjs"
+  },
+  "devDependencies": {
+    "dependency-cruiser": "^17.4.0"
+  }
+}
