@@ -244,6 +244,24 @@ already correct and already reviewed. A dashboard-typed URL runs zod on the
 device — a scheme-less host or stray whitespace would throw at module scope and
 hard-fail startup for every beta tester.
 
+## iOS build numbers (TestFlight)
+
+**EAS owns the build number** (`cli.appVersionSource: "remote"` +
+`production.autoIncrement: true`, the same shape `apps/tv` uses), so `app.json`
+carries no `ios.buildNumber` and every `production` build takes the next
+number without a commit. The version string (`expo.version`, `1.0.0`) stays
+in `app.json`; bump it by hand when testers should see a new marketing
+version. Read the counter with
+`eas build:version:get --platform ios --profile production`; set it with
+`eas build:version:set` only to seed or repair it.
+
+Why it is remote: before this, a `production` build resolved to `1.0.0 (1)`
+every time, and App Store Connect already held iOS build 1 from 2026-07-16,
+so the next upload would have been rejected as a duplicate. The record
+(`ascAppId` 6791428415, "Jesus Film Watch") is shared with `apps/tv`; App
+Store Connect keeps one build list per platform, so the tvOS numbers do not
+constrain iOS.
+
 ## Observability (Datadog)
 
 Client-side RUM + Logs via `@datadog/mobile-react-native`; helpers in
