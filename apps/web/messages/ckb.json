@@ -214,6 +214,7 @@
     "searchSuggestionWithLanguage": "بە {language} بۆ «{suggestion}» بگەڕێ",
     "inLanguage": "بە {language}",
     "browseByRegion": "گەڕان بە پێی ناوچە",
+    "allVideosOnSinglePage": "All videos on single page",
     "clearLanguages": "پاککردنەوە",
     "queryLanguageDetected": "{language} دۆزرایەوە",
     "searchInLanguage": "بە {language} بگەڕێ",

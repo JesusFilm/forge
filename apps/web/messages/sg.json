@@ -214,6 +214,7 @@
     "searchSuggestionWithLanguage": "Gi «{suggestion}» na yanga: {language}",
     "inLanguage": "na {language}",
     "browseByRegion": "Tala na etuka",
+    "allVideosOnSinglePage": "All videos on single page",
     "clearLanguages": "Longola",
     "queryLanguageDetected": "{language} ezwami",
     "searchInLanguage": "Gi na yanga: {language}",

@@ -214,6 +214,7 @@
     "searchSuggestionWithLanguage": "چاري “{suggestion}” دالم {language}",
     "inLanguage": "dalam {language}",
     "browseByRegion": "Semak mengikut wilayah",
+    "allVideosOnSinglePage": "All videos on single page",
     "clearLanguages": "Kosongkan",
     "queryLanguageDetected": "{language} dikesan",
     "searchInLanguage": "چاري دالم {language}",

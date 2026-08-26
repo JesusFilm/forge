@@ -214,6 +214,7 @@
     "searchSuggestionWithLanguage": "«{suggestion}» boýunça {language} dilinde gözle",
     "inLanguage": "{language} dilinde",
     "browseByRegion": "Sebit boýunça gözden geçir",
+    "allVideosOnSinglePage": "All videos on single page",
     "clearLanguages": "Arassala",
     "queryLanguageDetected": "{language} tapyldy",
     "searchInLanguage": "{language} dilinde gözle",

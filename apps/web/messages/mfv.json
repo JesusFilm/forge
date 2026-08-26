@@ -214,6 +214,7 @@
     "searchSuggestionWithLanguage": "Buska \"{suggestion}\" na {language}",
     "inLanguage": "na {language}",
     "browseByRegion": "Navega pa região",
+    "allVideosOnSinglePage": "All videos on single page",
     "clearLanguages": "Limpa",
     "queryLanguageDetected": "{language} detetadu",
     "searchInLanguage": "Buska na {language}",

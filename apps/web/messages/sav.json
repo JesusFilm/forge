@@ -214,6 +214,7 @@
     "searchSuggestionWithLanguage": "Seet « {suggestion} » ci {language}",
     "inLanguage": "ci {language}",
     "browseByRegion": "Dëkkuwaay ci réew",
+    "allVideosOnSinglePage": "All videos on single page",
     "clearLanguages": "Fey",
     "queryLanguageDetected": "{language} lañu dawall",
     "searchInLanguage": "Seet ci {language}",

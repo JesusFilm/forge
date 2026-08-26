@@ -214,6 +214,7 @@
     "searchSuggestionWithLanguage": "Hanapin sa {language} ang “{suggestion}”",
     "inLanguage": "sa {language}",
     "browseByRegion": "Mag-browse ayon sa rehiyon",
+    "allVideosOnSinglePage": "All videos on single page",
     "clearLanguages": "I-clear",
     "queryLanguageDetected": "May natukoy na {language}",
     "searchInLanguage": "Maghanap sa {language}",

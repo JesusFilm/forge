@@ -214,6 +214,7 @@
     "searchSuggestionWithLanguage": "Seet «{suggestion}» ci {language}",
     "inLanguage": "ci {language}",
     "browseByRegion": "Gëstu ci reew",
+    "allVideosOnSinglePage": "All videos on single page",
     "clearLanguages": "Far",
     "queryLanguageDetected": "{language} ñaaw na",
     "searchInLanguage": "Seet ci {language}",

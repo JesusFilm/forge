@@ -214,6 +214,7 @@
     "searchSuggestionWithLanguage": "Pangita so “{suggestion}” sa {language}",
     "inLanguage": "sa {language}",
     "browseByRegion": "Browse ayon sa rehiyon",
+    "allVideosOnSinglePage": "All videos on single page",
     "clearLanguages": "Linisi",
     "queryLanguageDetected": "Nadetekta so {language}",
     "searchInLanguage": "Pangita sa {language}",

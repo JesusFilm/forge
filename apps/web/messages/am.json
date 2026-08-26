@@ -214,6 +214,7 @@
     "searchSuggestionWithLanguage": "በ{language} «{suggestion}»ን ፈልግ",
     "inLanguage": "በ{language}",
     "browseByRegion": "በክልል አስስ",
+    "allVideosOnSinglePage": "All videos on single page",
     "clearLanguages": "አጥፋ",
     "queryLanguageDetected": "{language} ተገኝቷል",
     "searchInLanguage": "በ{language} ፈልግ",

@@ -214,6 +214,7 @@
     "searchSuggestionWithLanguage": "Rapua “{suggestion}” mā te reo {language}",
     "inLanguage": "i roto i {language}",
     "browseByRegion": "Tirotiro mā te rohe",
+    "allVideosOnSinglePage": "All videos on single page",
     "clearLanguages": "Ūkui",
     "queryLanguageDetected": "Kua kitea {language}",
     "searchInLanguage": "Rapu mā te reo {language}",

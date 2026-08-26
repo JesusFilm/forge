@@ -214,6 +214,7 @@
     "searchSuggestionWithLanguage": "Batla “{suggestion}” ka {language}",
     "inLanguage": "ka {language}",
     "browseByRegion": "Phetla ka selete",
+    "allVideosOnSinglePage": "All videos on single page",
     "clearLanguages": "Phumula",
     "queryLanguageDetected": "{language} e lemogilwe",
     "searchInLanguage": "Batla ka {language}",

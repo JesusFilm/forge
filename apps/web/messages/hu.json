@@ -214,6 +214,7 @@
     "searchSuggestionWithLanguage": "Keresés {language} nyelven erre: „{suggestion}”",
     "inLanguage": "nyelven: {language}",
     "browseByRegion": "Böngészés régió szerint",
+    "allVideosOnSinglePage": "All videos on single page",
     "clearLanguages": "Törlés",
     "queryLanguageDetected": "{language} felismerve",
     "searchInLanguage": "Keresés {language} nyelven",

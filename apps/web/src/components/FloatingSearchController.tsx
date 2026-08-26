@@ -9,6 +9,7 @@ import {
   type ReactNode,
 } from "react"
 import { createPortal } from "react-dom"
+import type { Route } from "next"
 import { usePathname } from "next/navigation"
 import { useLocale, useTranslations } from "next-intl"
 
@@ -93,6 +94,7 @@ export type FloatingSearchControllerProps = {
   headerLanguageSwitcherVisible?: boolean
   headerLanguageCode?: string | null
   headerPinned?: boolean
+  languageVideosHref?: Route | null
   resetToken?: number
   pendingSubmitIntent?: PendingSearchSubmitIntent | null
   onReady?: () => void
@@ -108,6 +110,7 @@ export function FloatingSearchController({
   headerLanguageSwitcherVisible = false,
   headerLanguageCode = null,
   headerPinned = false,
+  languageVideosHref = null,
   resetToken = 0,
   pendingSubmitIntent = null,
   onReady,
@@ -749,6 +752,7 @@ export function FloatingSearchController({
       headerLanguageSwitcherVisible,
       headerLanguageCode,
       headerPinned,
+      languageVideosHref,
       setOpen,
       setQuery,
       search,
@@ -790,6 +794,7 @@ export function FloatingSearchController({
       headerLanguageSwitcherVisible,
       headerLanguageCode,
       headerPinned,
+      languageVideosHref,
       setOpen,
       setQuery,
       search,

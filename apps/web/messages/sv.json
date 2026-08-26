@@ -214,6 +214,7 @@
     "searchSuggestionWithLanguage": "Sök efter ”{suggestion}” på {language}",
     "inLanguage": "på {language}",
     "browseByRegion": "Bläddra efter region",
+    "allVideosOnSinglePage": "All videos on single page",
     "clearLanguages": "Rensa",
     "queryLanguageDetected": "{language} identifierat",
     "searchInLanguage": "Sök på {language}",

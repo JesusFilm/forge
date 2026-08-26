@@ -214,6 +214,7 @@
     "searchSuggestionWithLanguage": "Leita að „{suggestion}“ á völdu tungumáli: {language}",
     "inLanguage": "á {language}",
     "browseByRegion": "Fletta eftir svæði",
+    "allVideosOnSinglePage": "All videos on single page",
     "clearLanguages": "Hreinsa",
     "queryLanguageDetected": "{language} greint",
     "searchInLanguage": "Leita á völdu tungumáli: {language}",

@@ -214,6 +214,7 @@
     "searchSuggestionWithLanguage": "Wut « {suggestion} » ci {language}",
     "inLanguage": "en {language}",
     "browseByRegion": "Parcourir par région",
+    "allVideosOnSinglePage": "All videos on single page",
     "clearLanguages": "Effacer",
     "queryLanguageDetected": "{language} détectée",
     "searchInLanguage": "Wut ci {language}",

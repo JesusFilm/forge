@@ -214,6 +214,7 @@
     "searchSuggestionWithLanguage": "ค้นหา “{suggestion}” ในภาษา {language}",
     "inLanguage": "ใน {language}",
     "browseByRegion": "เลือกดูตามภูมิภาค",
+    "allVideosOnSinglePage": "All videos on single page",
     "clearLanguages": "ล้าง",
     "queryLanguageDetected": "ตรวจพบ {language}",
     "searchInLanguage": "ค้นหาในภาษา {language}",

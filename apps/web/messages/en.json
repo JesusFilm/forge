@@ -226,6 +226,7 @@
     "searchSuggestionWithLanguage": "Search in {language} for \"{suggestion}\"",
     "inLanguage": "in {language}",
     "browseByRegion": "Browse by region",
+    "allVideosOnSinglePage": "All videos on single page",
     "clearLanguages": "Clear",
     "queryLanguageDetected": "{language} detected",
     "searchInLanguage": "Search in {language}",

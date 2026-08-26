@@ -214,6 +214,7 @@
     "searchSuggestionWithLanguage": "Wad ia \"{suggestion}\" ha {language}",
     "inLanguage": "ha {language}",
     "browseByRegion": "Peit katkum ka thaiñ",
+    "allVideosOnSinglePage": "All videos on single page",
     "clearLanguages": "Pynlait",
     "queryLanguageDetected": "La shem {language}",
     "searchInLanguage": "Wad ha {language}",

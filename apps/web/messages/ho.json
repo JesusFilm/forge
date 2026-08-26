@@ -214,6 +214,7 @@
     "searchSuggestionWithLanguage": "{language} dekenai “{suggestion}” tahua",
     "inLanguage": "long {language}",
     "browseByRegion": "Brosim long hap",
+    "allVideosOnSinglePage": "All videos on single page",
     "clearLanguages": "Rausim",
     "queryLanguageDetected": "I painim {language}",
     "searchInLanguage": "{language} dekenai tahua",

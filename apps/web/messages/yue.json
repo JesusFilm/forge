@@ -214,6 +214,7 @@
     "searchSuggestionWithLanguage": "以 {language} 搜尋「{suggestion}」",
     "inLanguage": "以 {language}",
     "browseByRegion": "按地區瀏覽",
+    "allVideosOnSinglePage": "All videos on single page",
     "clearLanguages": "清除",
     "queryLanguageDetected": "偵測到 {language}",
     "searchInLanguage": "以 {language} 搜尋",

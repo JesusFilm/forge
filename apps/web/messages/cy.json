@@ -214,6 +214,7 @@
     "searchSuggestionWithLanguage": "Chwilio am “{suggestion}” yn {language}",
     "inLanguage": "yn {language}",
     "browseByRegion": "Pori yn ôl rhanbarth",
+    "allVideosOnSinglePage": "All videos on single page",
     "clearLanguages": "Clirio",
     "queryLanguageDetected": "Wedi canfod {language}",
     "searchInLanguage": "Chwilio yn {language}",

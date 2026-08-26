@@ -214,6 +214,7 @@
     "searchSuggestionWithLanguage": "{language}로 “{suggestion}” 검색",
     "inLanguage": "{language}로",
     "browseByRegion": "지역별 둘러보기",
+    "allVideosOnSinglePage": "All videos on single page",
     "clearLanguages": "지우기",
     "queryLanguageDetected": "{language} 감지됨",
     "searchInLanguage": "{language}로 검색",

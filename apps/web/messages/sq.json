@@ -214,6 +214,7 @@
     "searchSuggestionWithLanguage": "Kërko “{suggestion}” në {language}",
     "inLanguage": "në {language}",
     "browseByRegion": "Shfleto sipas rajonit",
+    "allVideosOnSinglePage": "All videos on single page",
     "clearLanguages": "Pastro",
     "queryLanguageDetected": "U zbulua {language}",
     "searchInLanguage": "Kërko në {language}",

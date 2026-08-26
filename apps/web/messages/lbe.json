@@ -214,6 +214,7 @@
     "searchSuggestionWithLanguage": "{language} мазрай «{suggestion}» лахъин",
     "inLanguage": "{language} кылын",
     "browseByRegion": "Регион пыр кара",
+    "allVideosOnSinglePage": "All videos on single page",
     "clearLanguages": "Кышт",
     "queryLanguageDetected": "{language} тодэм",
     "searchInLanguage": "{language} мазрай лахъин",

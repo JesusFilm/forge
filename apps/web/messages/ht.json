@@ -214,6 +214,7 @@
     "searchSuggestionWithLanguage": "Chèche « {suggestion} » an {language}",
     "inLanguage": "an {language}",
     "browseByRegion": "Browse pa rejyon",
+    "allVideosOnSinglePage": "All videos on single page",
     "clearLanguages": "Efase",
     "queryLanguageDetected": "Yo detekte {language}",
     "searchInLanguage": "Chèche an {language}",

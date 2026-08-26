@@ -214,6 +214,7 @@
     "searchSuggestionWithLanguage": "{language} тилде «{suggestion}» изле",
     "inLanguage": "{language} тилинде",
     "browseByRegion": "Аймак боюнча карап чыгуу",
+    "allVideosOnSinglePage": "All videos on single page",
     "clearLanguages": "Тазалоо",
     "queryLanguageDetected": "{language} аныкталды",
     "searchInLanguage": "{language} тилде излеу",

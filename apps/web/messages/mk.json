@@ -214,6 +214,7 @@
     "searchSuggestionWithLanguage": "Пребарај на {language}: „{suggestion}“",
     "inLanguage": "на {language}",
     "browseByRegion": "Прелистувај по регион",
+    "allVideosOnSinglePage": "All videos on single page",
     "clearLanguages": "Исчисти",
     "queryLanguageDetected": "Детектиран е {language}",
     "searchInLanguage": "Пребарувај на {language}",

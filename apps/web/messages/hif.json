@@ -214,6 +214,7 @@
     "searchSuggestionWithLanguage": "{language} me “{suggestion}” khojiye",
     "inLanguage": "{language} me",
     "browseByRegion": "Ilaaka ke hisaab se browse kariye",
+    "allVideosOnSinglePage": "All videos on single page",
     "clearLanguages": "Saaf kariye",
     "queryLanguageDetected": "{language} pahchana gaya",
     "searchInLanguage": "{language} me khojiye",

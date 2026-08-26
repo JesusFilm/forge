@@ -214,6 +214,7 @@
     "searchSuggestionWithLanguage": "Ndaw {language} raeuz “{suggestion}”",
     "inLanguage": "ndaw {language}",
     "browseByRegion": "Browse aeu region",
+    "allVideosOnSinglePage": "All videos on single page",
     "clearLanguages": "Dawz",
     "queryLanguageDetected": "{language} gyaeuq daeuj",
     "searchInLanguage": "Ndaw {language} raeuz",

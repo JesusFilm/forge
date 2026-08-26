@@ -214,6 +214,7 @@
     "searchSuggestionWithLanguage": "Pangitaa sa {language} ang “{suggestion}”",
     "inLanguage": "sa {language}",
     "browseByRegion": "Mag-browse paagi sa rehiyon",
+    "allVideosOnSinglePage": "All videos on single page",
     "clearLanguages": "Halinon",
     "queryLanguageDetected": "Nadetect ang {language}",
     "searchInLanguage": "Mag-search sa {language}",

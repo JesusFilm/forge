@@ -214,6 +214,7 @@
     "searchSuggestionWithLanguage": "Lava “{suggestion}” hi {language}",
     "inLanguage": "hi {language}",
     "browseByRegion": "Languta hi xifundzha",
+    "allVideosOnSinglePage": "All videos on single page",
     "clearLanguages": "Sula",
     "queryLanguageDetected": "{language} yi kumekile",
     "searchInLanguage": "Lava hi {language}",

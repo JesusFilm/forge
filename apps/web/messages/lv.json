@@ -214,6 +214,7 @@
     "searchSuggestionWithLanguage": "Meklēt “{suggestion}” valodā {language}",
     "inLanguage": "valodā {language}",
     "browseByRegion": "Pārlūkot pēc reģiona",
+    "allVideosOnSinglePage": "All videos on single page",
     "clearLanguages": "Notīrīt",
     "queryLanguageDetected": "Atpazīta valoda: {language}",
     "searchInLanguage": "Meklēt valodā {language}",

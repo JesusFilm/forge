@@ -214,6 +214,7 @@
     "searchSuggestionWithLanguage": "{language} मे “{suggestion}” खोजू",
     "inLanguage": "{language} मे",
     "browseByRegion": "क्षेत्र अनुसार ब्राउज़ करू",
+    "allVideosOnSinglePage": "All videos on single page",
     "clearLanguages": "साफ करू",
     "queryLanguageDetected": "{language} पेल गेल",
     "searchInLanguage": "{language} मे खोजू",

@@ -214,6 +214,7 @@
     "searchSuggestionWithLanguage": "Saka “{suggestion}” mu {language}",
     "inLanguage": "mu {language}",
     "browseByRegion": "Selebula na ekanda",
+    "allVideosOnSinglePage": "All videos on single page",
     "clearLanguages": "Katula",
     "queryLanguageDetected": "{language} yimanye",
     "searchInLanguage": "Saka mu {language}",

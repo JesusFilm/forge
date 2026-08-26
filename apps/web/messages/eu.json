@@ -214,6 +214,7 @@
     "searchSuggestionWithLanguage": "Bilatu «{suggestion}» {language} hizkuntzan",
     "inLanguage": "{language} hizkuntzan",
     "browseByRegion": "Arakatu eskualdearen arabera",
+    "allVideosOnSinglePage": "All videos on single page",
     "clearLanguages": "Garbitu",
     "queryLanguageDetected": "{language} detektatu da",
     "searchInLanguage": "Bilatu {language} hizkuntzan",

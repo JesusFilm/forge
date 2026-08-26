@@ -214,6 +214,7 @@
     "searchSuggestionWithLanguage": "ស្វែងរក «{suggestion}» ជាភាសា {language}",
     "inLanguage": "ជា {language}",
     "browseByRegion": "រុករកតាមតំបន់",
+    "allVideosOnSinglePage": "All videos on single page",
     "clearLanguages": "លុប",
     "queryLanguageDetected": "រកឃើញ {language}",
     "searchInLanguage": "ស្វែងរកជាភាសា {language}",

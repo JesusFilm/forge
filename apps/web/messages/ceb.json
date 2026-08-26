@@ -214,6 +214,7 @@
     "searchSuggestionWithLanguage": "Pangitaa ang “{suggestion}” sa {language}",
     "inLanguage": "sa {language}",
     "browseByRegion": "I-browse sumala sa rehiyon",
+    "allVideosOnSinglePage": "All videos on single page",
     "clearLanguages": "Panghinlo",
     "queryLanguageDetected": "Nadetect ang {language}",
     "searchInLanguage": "Pangitaa sa {language}",

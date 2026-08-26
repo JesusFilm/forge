@@ -214,6 +214,7 @@
     "searchSuggestionWithLanguage": "{language}で「{suggestion}」を検索",
     "inLanguage": "{language}で",
     "browseByRegion": "地域別に見る",
+    "allVideosOnSinglePage": "All videos on single page",
     "clearLanguages": "クリア",
     "queryLanguageDetected": "{language}を検出しました",
     "searchInLanguage": "{language}で検索",
