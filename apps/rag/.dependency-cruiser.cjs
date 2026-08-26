@@ -27,7 +27,7 @@ module.exports = {
       from: { path: "^src/" },
       to: {
         path: "^\\.\\./(?!\\.\\./packages/rag-contracts/)",
-        pathNot: "node_modules",
+        pathNot: "^\\.\\./\\.\\./node_modules/",
       },
     },
     {

@@ -16,7 +16,10 @@ if (!target || !targets.has(target)) {
 }
 
 const packageDirectory = fileURLToPath(new URL("..", import.meta.url))
-const environment = loadEnvironmentFiles(packageDirectory)
+const fileBackedTargets = new Set<EnvironmentTarget>(["local", "smoke"])
+const environment = fileBackedTargets.has(target)
+  ? loadEnvironmentFiles(packageDirectory)
+  : { ...process.env }
 
 try {
   assertEnvironmentForTarget(environment, target)

@@ -59,11 +59,13 @@ const emptyAsUnset = <Schema extends z.ZodType>(schema: Schema) =>
   )
 
 const positiveInteger = (name: string, fallback: number) =>
-  z.coerce
-    .number({ error: `${name} must be a positive integer` })
-    .int(`${name} must be a positive integer`)
-    .positive(`${name} must be a positive integer`)
-    .default(fallback)
+  emptyAsUnset(
+    z.coerce
+      .number({ error: `${name} must be a positive integer` })
+      .int(`${name} must be a positive integer`)
+      .positive(`${name} must be a positive integer`)
+      .default(fallback),
+  )
 
 const postgresUrl = z
   .string()
@@ -102,9 +104,9 @@ const runtimeEnvSchema = z
     EMBED_API_KEY: emptyAsUnset(z.string().trim().min(1).optional()),
     EMBED_WIRE_MODEL_ID: emptyAsUnset(z.string().trim().min(1).optional()),
     EMBED_QUERY_INSTRUCTION: emptyAsUnset(z.string().trim().min(1).optional()),
-    EMBED_TRUNCATE_DIMENSIONS: emptyAsUnset(z.string().optional()).transform(
-      (value) => value === "true" || value === "1",
-    ),
+    EMBED_TRUNCATE_DIMENSIONS: emptyAsUnset(
+      z.enum(["true", "false", "1", "0"]).optional(),
+    ).transform((value) => value === "true" || value === "1"),
     LANG_DETECT_MODEL_ID: z
       .string()
       .trim()
@@ -147,9 +149,7 @@ export type RuntimeEnv = z.infer<typeof runtimeEnvSchema>
  * the plain name. Production DB, model, and bearer values never fall through
  * here; production-intent callers must opt in via resolveProductionEnv().
  */
-export function applyNamespacedEnvFallbacks(
-  env: EnvironmentInput = process.env,
-): void {
+export function applyNamespacedEnvFallbacks(env: EnvironmentInput): void {
   if (!env.OPENROUTER_API_KEY?.trim() && env.JFRAG_OPENROUTER_API_KEY?.trim()) {
     env.OPENROUTER_API_KEY = env.JFRAG_OPENROUTER_API_KEY
   }
@@ -194,9 +194,14 @@ export function assertEnvironmentForTarget(
 ): RuntimeEnv | SmokeEnv | ProductionEnv | DashboardDatabase {
   if (target === "smoke") return parseSmokeEnv(input)
   if (target === "dashboard") return resolveDashboardDatabase(input)
-  if (target === "production-read") return resolveProductionEnv(input)
+  if (target === "production-read" || target === "eval") {
+    return resolveProductionEnv(input)
+  }
   if (target === "production-write") {
-    return resolveProductionEnv(input, { write: true })
+    return resolveProductionEnv(input, {
+      write: true,
+      expectHost: input.JFRAG_EXPECTED_POSTGRES_HOST,
+    })
   }
 
   const env = parseRuntimeEnv(input)
@@ -207,6 +212,9 @@ export function assertEnvironmentForTarget(
     throw new Error(
       "FIRECRAWL_API_KEY is required when acquiring a Firecrawl-backed source",
     )
+  }
+  if (target === "language-sweep" && !env.LANGUAGE_SWEEP_OUT_DIR) {
+    throw new Error("LANGUAGE_SWEEP_OUT_DIR is required for a language sweep")
   }
   return env
 }
@@ -232,28 +240,30 @@ export function resolveProductionEnv(
       "production write refused: set JFRAG_ALLOW_PROD_WRITE=1 as the second deliberate signal",
     )
   }
+  if (options.write && !options.expectHost?.trim()) {
+    throw new Error(
+      "production write refused: JFRAG_EXPECTED_POSTGRES_HOST is required as the target-host guard",
+    )
+  }
 
-  const databaseUrl = firstPresent(
-    input.DATABASE_URL,
-    input.JFRAG_POSTGRESQL_DB_URL,
-  )
-  const openrouterKey = firstPresent(
-    input.OPENROUTER_API_KEY,
-    input.JFRAG_OPENROUTER_API_KEY,
-  )
+  const databaseUrl = input.JFRAG_POSTGRESQL_DB_URL?.trim()
+  const openrouterKey = input.JFRAG_OPENROUTER_API_KEY?.trim()
   const embedModel =
-    firstPresent(input.EMBED_MODEL_ID, input.JFRAG_OPENROUTER_EMBED_MODEL_ID) ??
+    firstPresent(input.JFRAG_OPENROUTER_EMBED_MODEL_ID) ??
     DEFAULT_EMBED_MODEL_ID
 
-  if (!databaseUrl) throw new Error("DATABASE_URL is required for production")
+  if (!databaseUrl) {
+    throw new Error("JFRAG_POSTGRESQL_DB_URL is required for production")
+  }
   const parsedDatabaseUrl = postgresUrl.parse(databaseUrl)
   if (!openrouterKey) {
-    throw new Error("OPENROUTER_API_KEY is required for production")
+    throw new Error("JFRAG_OPENROUTER_API_KEY is required for production")
   }
 
   if (
     options.expectHost &&
-    !new URL(parsedDatabaseUrl).hostname.includes(options.expectHost)
+    new URL(parsedDatabaseUrl).hostname !==
+      options.expectHost.trim().toLowerCase()
   ) {
     throw new Error(
       `expected database host does not match the resolved host; aborting before connection`,

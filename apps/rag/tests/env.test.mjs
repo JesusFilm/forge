@@ -37,6 +37,14 @@ test("runtime env applies defaults and treats optional empty strings as unset", 
   assert.equal(env.PORT, 8080)
   assert.equal(env.EMBED_BASE_URL, undefined)
   assert.equal(env.EMBED_API_KEY, undefined)
+  assert.equal(
+    parseRuntimeEnv({ ...runtimeEnv, EMBED_TIMEOUT_MS: " " }).EMBED_TIMEOUT_MS,
+    120_000,
+  )
+  assert.throws(
+    () => parseRuntimeEnv({ ...runtimeEnv, EMBED_TRUNCATE_DIMENSIONS: "TRUE" }),
+    /EMBED_TRUNCATE_DIMENSIONS/,
+  )
 })
 
 test("runtime env rejects missing, malformed, and non-positive values", () => {
@@ -144,6 +152,23 @@ test("Firecrawl is required only for the firecrawl acquisition target", () => {
   )
 })
 
+test("eval and language-sweep enforce their operation-specific inputs", () => {
+  assert.throws(
+    () => assertEnvironmentForTarget(runtimeEnv, "eval"),
+    /JFRAG_POSTGRESQL_DB_URL/,
+  )
+  assert.throws(
+    () => assertEnvironmentForTarget(runtimeEnv, "language-sweep"),
+    /LANGUAGE_SWEEP_OUT_DIR/,
+  )
+  assert.doesNotThrow(() =>
+    assertEnvironmentForTarget(
+      { ...runtimeEnv, LANGUAGE_SWEEP_OUT_DIR: "/tmp/rag-language-sweep" },
+      "language-sweep",
+    ),
+  )
+})
+
 test("smoke configuration validates URL, token, and hang ceiling", () => {
   const smoke = parseSmokeEnv({ SMOKE_TOKEN: "test-smoke-token" })
   assert.equal(smoke.SMOKE_BASE_URL, "http://localhost:8080")
@@ -173,6 +198,82 @@ test("production resolution is explicit and write operations need a second signa
     () => resolveProductionEnv(source, { expectHost: "wrong.example.test" }),
     /does not match/,
   )
+})
+
+test("production resolution rejects generic database and model fallbacks", () => {
+  assert.throws(
+    () =>
+      resolveProductionEnv({
+        DATABASE_URL: runtimeEnv.DATABASE_URL,
+        OPENROUTER_API_KEY: "generic-key",
+        EMBED_MODEL_ID: "generic-model",
+      }),
+    /JFRAG_POSTGRESQL_DB_URL/,
+  )
+
+  const resolved = resolveProductionEnv({
+    DATABASE_URL: runtimeEnv.DATABASE_URL,
+    JFRAG_POSTGRESQL_DB_URL:
+      "postgresql://prod:password@prod.example.test:5432/rag",
+    OPENROUTER_API_KEY: "generic-key",
+    JFRAG_OPENROUTER_API_KEY: "namespaced-key",
+    EMBED_MODEL_ID: "generic-model",
+    JFRAG_OPENROUTER_EMBED_MODEL_ID: "namespaced-model",
+  })
+
+  assert.equal(
+    resolved.DATABASE_URL,
+    "postgresql://prod:password@prod.example.test:5432/rag",
+  )
+  assert.equal(resolved.EMBED_MODEL_ID, "namespaced-model")
+  assert.equal(resolved.OPENROUTER_API_KEY, "namespaced-key")
+})
+
+test("production-write requires an exact expected database hostname", () => {
+  const source = {
+    JFRAG_POSTGRESQL_DB_URL:
+      "postgresql://prod:password@prod.example.test:5432/rag",
+    JFRAG_OPENROUTER_API_KEY: "prod-openrouter-key",
+    JFRAG_ALLOW_PROD_WRITE: "1",
+  }
+
+  assert.throws(
+    () => assertEnvironmentForTarget(source, "production-write"),
+    /JFRAG_EXPECTED_POSTGRES_HOST/,
+  )
+  for (const optIn of ["true", "01"]) {
+    assert.throws(
+      () =>
+        assertEnvironmentForTarget(
+          {
+            ...source,
+            JFRAG_ALLOW_PROD_WRITE: optIn,
+            JFRAG_EXPECTED_POSTGRES_HOST: "prod.example.test",
+          },
+          "production-write",
+        ),
+      /JFRAG_ALLOW_PROD_WRITE=1/,
+    )
+  }
+  assert.doesNotThrow(() =>
+    assertEnvironmentForTarget(
+      {
+        ...source,
+        JFRAG_EXPECTED_POSTGRES_HOST: "PROD.EXAMPLE.TEST",
+      },
+      "production-write",
+    ),
+  )
+  for (const host of ["wrong.example.test", "prod.example.test.evil.test"]) {
+    assert.throws(
+      () =>
+        assertEnvironmentForTarget(
+          { ...source, JFRAG_EXPECTED_POSTGRES_HOST: host },
+          "production-write",
+        ),
+      /does not match/,
+    )
+  }
 })
 
 test("dashboard production reads fail closed on generic database fallbacks", () => {
