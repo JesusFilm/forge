@@ -75,8 +75,8 @@
       "localeProvenance": {
         "ab": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "afa21844d9f3c469e214bc3ff9cc606ac9c01ba95042ffc1121fcdd0c4b17f28",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "f656c5b71d94a77a0b121080e2ced59f1ca4068081d607dc27db08e4771dbbcb",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -114,8 +114,8 @@
         },
         "ady": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "4fb28f425824d3993648e03da2a6c26422b8e7276659411575648ff0db9e2545",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "7a4d7ed0b5e201b9331803b4ec34c14a56125d89a006a73b3d706a10af17dfff",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -153,8 +153,8 @@
         },
         "af": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "360d59f13424271501df2f9a7b615f98044f5579db9aecc4a45df2508eb18cbd",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "0909790b9986bbdf1640011ca7c199bb8ad49d13b0762425d30afcf6a4c693dd",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -192,8 +192,8 @@
         },
         "ak": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "5928b15a4b847de03228a99a35ad731e735f6ff3b4d749f13051cc7c6ea538fe",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "f728b4a3c6c67dc02d57609fe5d83ef7a4c3055b7610ff01833b3f30ac562124",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -231,8 +231,8 @@
         },
         "am": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "5c2edd9bb579d9ef06e8cb1feef90dcda12488c3155efea4be3dc9b3bcf3cdaa",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "45f9109c8403c78fcdf3e8bb670c8be197c102b19dbe13bd53e9d6ee9577b4bd",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -270,8 +270,8 @@
         },
         "ar": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "d3ac0d3cad0f5cf14ba11cb77e230c2e16fae907d14d38237fd4b84b2e6a42dd",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "81cce6b5452ae698e3b36dd4d67fb8eda2c4758bb55ef2987cb1bed511592a07",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -309,8 +309,8 @@
         },
         "as": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "21e07cd7f962c94fb40a1792cad01ef3b08950291774659b3377666a2bdbc7f1",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "7bada2eb34ee21a30f2e43204d1c0d4e0c1ee33e3da6aaef17b05314c1a88226",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -348,8 +348,8 @@
         },
         "ast": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "c5364c53ca4d447dae29243a3bf66c60818fc7e87f05ede1a7db089f5e4019e3",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "511cac13c806e0bbb3ad56df31bfbbae631c2fef941f72da690a644464442a6f",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -387,8 +387,8 @@
         },
         "av": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "25d50338bf7a8fc4fae6776cae09e21dcb8f2793c359f0cc8a5c57eaa7d30dda",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "3a291c04edacecfdfa3ad007d0b812f359c0f2f74fdbcde22a28db6fc9ae71e1",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -426,8 +426,8 @@
         },
         "ay": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "ca2197e1b1deef6d44260460f25b9b19a9e5b6c6661652e35f7984fcc95a38d6",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "1bb14a819ef0dd68a86e7653fc117a63f38a6db81ea528fc51d463575a06c2c5",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -465,8 +465,8 @@
         },
         "az": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "47283c80659211d285b001a3045b1b744ca04498345832b899ccccdaaa46fcb3",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "bcc7434d9d541399d274253c053897ab0c2c8a017c2b01cc26fcc5f75745d950",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -504,8 +504,8 @@
         },
         "az-Arab": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "1d8a48df7c6b0db48b68b0ae29c87e50c1b43542a6f4bf104560307a5747957a",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "e7071dc2e509416aad3fb69dbcf0e38033f030fd6a4d5904d05630f9b8b79842",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -543,8 +543,8 @@
         },
         "az-Cyrl": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "c14651d3de25da265bdb537d7d9bb74563b225943aadf1221bb215915111824d",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "a3b0c249d55aa42a580a0d63ac67f772cf53610af9f31b972a3fd54e2c74d8bd",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -582,8 +582,8 @@
         },
         "ba": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "6054b9879e5acb370e1e9bd2f0011fa0c48ab88d40d322a602813ea9e0349329",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "f7b9d2ec605e8a4effdf3f83f4bfcd3f2814f86744e7952f9d2456913e15e64d",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -621,8 +621,8 @@
         },
         "be": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "d9144bed1ef3c59519018ce9dc7c76d5b72842da9353cbb74415ebb72df14325",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "f062730dbeae2f2d3cb8a4b3718b2f0869799e4443dc8243aeed489e0c852dd1",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -660,8 +660,8 @@
         },
         "bg": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "43a4c8883fc13e2c6c50224b98da3307757730f51ee1e25366754c806df51c34",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "977cde0af84800950463287482f966b52907cd7336f381cd4a064dac2a5a0caa",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -699,8 +699,8 @@
         },
         "bi": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "af149ab9db2d569ad17dbb68a22f36639f72dfb582e23370827082789f03b93c",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "b0797e22a7ae16a1ab5e468b9e14af88eb23434a801ce9abf77e200717f14bad",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -738,8 +738,8 @@
         },
         "bjt": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "db8940a3937248223ee2b814c9327dfc802ad3eb7468b9c14f229cd35c156acc",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "6cd0aafca1c72df6e7a46a5281e55c507c45f647ebd199f3a0a084c3cf6cbc75",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -777,8 +777,8 @@
         },
         "bn": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "d9957b66f127ebf365097eac138ae8c6bc50712b1ed7e4ed6452dcd432f178a2",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "082798d0102d787558bd6b0b8a8f80a29c342d6bceb7ed559b5a86973dfcb666",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -816,8 +816,8 @@
         },
         "bo": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "47ff3af5370803bbc007810cdc002e16bc2afe0f11b8e1563a647590ee5f78f3",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "46481db2af84a1393b108391abd02316ef7e6d7d78971fd4a20358995656eac4",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -855,8 +855,8 @@
         },
         "bs": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "3ffa602ca1f9508251436400c9c58b2ec9d00bd5b8c943cd5fd839177214b104",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "997e56b63edfd699ef2c7d57c6149fd91a06a72375dca50a54ac5b531e960d8d",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -894,8 +894,8 @@
         },
         "bs-Cyrl": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "3ce315c275c0dbee9abd56ba5def20b3d5c92ea5e9182b4be5628ea1b4334baa",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "8443207f2985b36ce1aedf4d0deb406dfbb470748b8348ab264874b98d96e355",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -933,8 +933,8 @@
         },
         "bsc": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "cd6a20f3b4a073ff24b9abc0b18c4f3cd63c6c5fc321da9def8c71dd4c448e1b",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "62bd259b242e950387db34536d1942586b6b21c5299ec0c5397184caad43b482",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -972,8 +972,8 @@
         },
         "bua": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "3ae76e14cfb5fe51f3d99ea1b76cfb01a200f28ac2673671ca5c52cc74e3e9e9",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "cc1a4ace525273b09b9e105768f3f734aca13ab0e831f48366926b22b354dcfa",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -1011,8 +1011,8 @@
         },
         "ca": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "876391c676003c605d642c0a048902edacf9b69798ed1744ba3b76d58f36472b",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "528af89ee26b9dc3404fc6ebaca5c9ca23db259e7b283b4a052631882e3cc331",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -1050,8 +1050,8 @@
         },
         "caa": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "84137e4a4895141ac36ef17aeb15f7f7602710767983bdecdbb249974ca839dd",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "6a9167e7edc2e44369c1a1749cb318fa205e7558e1932087a6965db5f55d66e9",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -1089,8 +1089,8 @@
         },
         "cak": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "fdddba0a8f2fdbbd816eead32342f97118fdbca5bb0f620d2da6417cbc81667e",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "902b9d1a9a83cb36ca08d29f394d114d3a61bd186bb8bfe18461d3ed05b0f90c",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -1128,8 +1128,8 @@
         },
         "ce": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "5911cfe916cd71b10369ba6d6898ce9546ae4b36639a1ba5f299846304d530fb",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "8578a17e5fb1bb2a653da43365dc52f0317a1d08cdc2bd3fcc0f2d935549def3",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -1167,8 +1167,8 @@
         },
         "ceb": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "c8d608a61bcdea4fb558ebca5b721052556f01995dc8347451181790e5ca598c",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "17d64f254f5bcac59b55feb18c016b998c9e5500c1277feecfd0a2410f92c1dd",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -1206,8 +1206,8 @@
         },
         "ch": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "815e3f08d338cb0298bdbb8b35457c8d277b403947cda39417d36e957aad1732",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "c5460e20eec3fdd8c2f1a06a6ee604596826debe96b73ebdfa7691a23bed7ad3",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -1245,8 +1245,8 @@
         },
         "chp": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "809821b17728544574df58314da7b94b3aa32a3b91b020ed38b1977ce5987abe",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "83ba362729903455366e6e2f6159dd4b902745f386eed9e17e80334df63a684d",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -1284,8 +1284,8 @@
         },
         "ckb": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "14317b354b66a479c1d5504472af898c4aade9bff78147f199344d8eb8ec8c5e",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "3afd4de2d9853513bd7e3304bb7a3ea92cf3667506088e132e409e0bea3039d1",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -1323,8 +1323,8 @@
         },
         "cs": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "582bcae08a9eef266b580a25d57f4e4b6e6e0191539a94c9c162b23b09bad252",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "3536845b0d2a09c8959b4aea27a3f367bbf30672108b9b3b0171bb67767a3955",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -1362,8 +1362,8 @@
         },
         "csb": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "cd61eca34df6cfaa5fa22516fd42be852c18a83c128882a3d3f8cec48c8493e9",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "e2fdc178d86e8da5400598aff4a2192ef5bb520e1064d905bd748ffc00e84eed",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -1401,8 +1401,8 @@
         },
         "cy": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "0b6c51feb278115ee071fa7ffa1cda819ae89135d83e108426c47072a72829c7",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "381ca04131a7cfa0f9f53c90cebec4b92dcabe104c8ac66ff3383f104c9e91fd",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -1440,8 +1440,8 @@
         },
         "da": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "56e9b0adb8b432e6c84e1bb7d0382b51c25459059f0d52ff722b65741b113a22",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "373660ff06bc86e766939e1ccb953b676189fd24b9cb866cc80e4f96e690f4c6",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -1479,8 +1479,8 @@
         },
         "de": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "9ec591712efad6e36d2094fb6bfc957561be2e025b419d1e333d5c0cd201a916",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "af0b37eb365d7182f76c5accaed724d73c11d1ddacce4db4ad07916a42550ed6",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -1518,8 +1518,8 @@
         },
         "den": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "d67e6fb8d2ab23df5a4a7c56584e94731bc4f55e663c31c6ad12c130406f0060",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "5aa4e2c949242855b98e5515ae49eaf1f13722de2ff0abf1fd4c07a410f9b31f",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -1557,8 +1557,8 @@
         },
         "dgr": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "753672f54eaa96ac8cbe26c5413867b35ad334809cf30e415a29ba1cf60021d0",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "7e0352379644a9afb0d9b840a9987e1142dcd0ef993ce03e24b880c2d0b6a3fa",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -1596,8 +1596,8 @@
         },
         "dv": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "dff9009a0cffd8ef49c508a693d507c1e886b14af539cbceb21d22b9f343b5ac",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "1bfcf1afe16dbd626a44de101e4a70715e299fc33f8dae2201e8652f632f321c",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -1635,8 +1635,8 @@
         },
         "dyo": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "c3b68742433cae39cfaa3be03e0a60cfe3c493745acfc86617d73391324f451a",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "bf1cfe82f474c4397e2a448b0b5bfcd9f400373d72f16109530c191dc3c838db",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -1674,8 +1674,8 @@
         },
         "dz": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "ffdbd291ba012b12a7fed19ed2957333ca90555a7e963bec833762cc3a95bbc4",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "d87a16fa194af8e4446c495b99c216d50d2fe0f37f5e876d0ea00eb855771e04",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -1713,8 +1713,8 @@
         },
         "ee": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "a0a6cfb98b5383f4c14437f3529df1a9f12575da3d051d919107e8064df21882",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "df0b4c49e10571f9185eb43a751648df2098218e050af08f848b17a5a8f4fe34",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -1752,8 +1752,8 @@
         },
         "el": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "33d6028aaa672d7f379379f438c08194444c3935204af93d9bb8d97ac3ea282f",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "ca340866f88197c6814c700298901cda32ffd19089e6ff5bbc37809586d509cf",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -1791,8 +1791,8 @@
         },
         "es": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "47f46d8a2e72c1093926509bd78336e74724c3dfce50dae7b2c7429dcf9f8e7d",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "5403f94e2662147641b8a8b42e8a2df81bb56a3ad028e3588f602c0f2d2f8f91",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -1830,8 +1830,8 @@
         },
         "et": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "cb5a99cdb3d77e0975bf2ea432c3b0cc576ef0b6dbfc5b5876eb262ba037cb5b",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "901cdac87fddfcca76c2c8df865baf21ccff3f312d19bdb49092ad6ae501d09e",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -1869,8 +1869,8 @@
         },
         "eu": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "e39de8f1c680304194b7b2f140959be77c8fc2b06f784c88d19dbba2dbff1a94",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "522f1f894900e1b32cfcc6660afae9aa9eebe6af30beeb19949311f5b9a9f299",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -1908,8 +1908,8 @@
         },
         "fa": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "ac55a034f2884f0c8ca151525d27b58bd6e3df47485e40f0e6bf08947951d75e",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "8e728357b6ca2ac4aa400fb943e938b878512ab85354dc4c110be6f959b89b52",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -1947,8 +1947,8 @@
         },
         "ff": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "2049b2eda1f99389c09c9639a6c6c66e1033bd137f14b0911e068906f22e5341",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "7dd6022299103afb49527b3b77a2ef930a6511aa64d4a87c1353f3e4c336d11a",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -1986,8 +1986,8 @@
         },
         "fi": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "7e302488854eb346d62636ba713c9bb764d88ea2edd0e603ee1a177b1643a3ce",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "b63b4c695dcd0c4d87be8a4c99f3dcf6bd00cabf19b14932331958a82cdf98ba",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -2025,8 +2025,8 @@
         },
         "fil": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "2ab729c9317c5d61416ae4dea5f85707ad801ed8d9c2630c4af9ef031991652d",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "92969d444f8296a4cc65c3077311d6b9463909e81b760c71572464fad55bf6e2",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -2064,8 +2064,8 @@
         },
         "fj": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "56b08c0cbfb07a3d8f9bfcc5f357228a93eada02b16e28931b5bf275b7eec24b",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "485fdaaf949dc77cae59e9b160717ccb6cc1a472309f089575005ebea249afd5",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -2103,8 +2103,8 @@
         },
         "fo": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "e30ef00c39d5efc7e2e5fda3b2d9f483d0cbbb26d0ea3a137ee0d4fdcf2372fb",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "29902e52c340d75143d45c65e0253dab356698839fef77d6c371969bb12fc33e",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -2142,8 +2142,8 @@
         },
         "fr": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "be09a0015bacf931934eed9d6c1175332a9f32669401eebabb86e3bdd98437ac",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "b241a87f092d4b5f3994a077a54dc0c35460db98488e5b1774868b8b1a5ede28",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -2181,8 +2181,8 @@
         },
         "frr": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "c1ff10f6c901e7ab498cb03b6cf185856c9afcf84ea8e269988146b1a32a203b",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "1d3ef156a703eca638ba9dd4d9a9a223060cb353060fa32b6f0c4d1420c4b6ea",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -2220,8 +2220,8 @@
         },
         "fy": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "eb1d943fd500a187e5c415461e21aa78f14f9e2291468262b7654b72efe1c886",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "933e31ea7aa3acdbfae699a8d23515e9380d82dc0ee9eb2b5b1abaf09536759e",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -2259,8 +2259,8 @@
         },
         "ga": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "8f59056039e7cc35b3120095345083a5bbfb38039b5948ddf33e3770357c636c",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "920b083b1059191d7fb51ab68cbf4bda15a784470378aa9445a9fa19c38d072e",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -2298,8 +2298,8 @@
         },
         "gaa": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "1abb08d3f0894ed45d8f502a31759f92f477158f2a9bed3455cf0a35ac11a85b",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "dfa8066152f4dcf70635d33a239510fdab5b902eb70ff7e34a60d9390dcd7d2e",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -2337,8 +2337,8 @@
         },
         "gd": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "233ab39501f4ee2771837bb2a81c8be4a862e001d9a7f15ae8fe8e21ea7e6154",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "e5e52c912c2399dd36ef8c7a5502dfd877b3e650b1d4b4d50fa9c39c14c60bb8",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -2376,8 +2376,8 @@
         },
         "gil": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "d321700a0d1faa050df7bd3280f1a26c82638ad2171e21bf9e770adb3838f29b",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "db08a01111341161045a3942d503bb392baee3aaed56cc412569e1bf25769579",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -2415,8 +2415,8 @@
         },
         "gl": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "55a9fcffbf3a18b7596115d27c6cce9ea7d5d29e93863deb7c23020599a41b94",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "a9ac05ee54c0baa717a0e33bc6107a123d72c483b376d2e30a0d80c6c0d7c51e",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -2454,8 +2454,8 @@
         },
         "gn": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "199e540b1e35b654bc45d32e3e063374a7fa49594eabef68f38ebb307550b2ca",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "8c55fa16fd77526b2cc42c7fcb05e760bbcbcc28e1afca83fa8f41c481a936be",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -2493,8 +2493,8 @@
         },
         "gsw": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "bb2eac8a0ac461d4e768349376f75c7102c9e0b97587c8bd1cc818c8545ea949",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "843c3f01a18cf9ae69b1ef3d2d5686e7db25123605123092959b88d9e8f90f6b",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -2532,8 +2532,8 @@
         },
         "gu": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "a6569c546484d75cdde29cad33e32e983318533f6a4afeaf768a051dfdf61e09",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "d7ecaf63efdcb6ab48b7daa706fa441281ede7f8d0ccd16c15f63a35d51e039a",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -2571,8 +2571,8 @@
         },
         "gv": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "fc7b5f1f7d0bf6490f777f44c4b93aa2596692ec77b8ec6005d25911d001ec64",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "a28c81cba7952d43bdfadb78b74c777aa75f63f30bc9c6c8f241aca71773c59e",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -2610,8 +2610,8 @@
         },
         "gwi": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "91823086ec68d658bf1bce0215a08a0a6946eac46395287c82230202354a9c30",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "faead9ea2f7defb29d58339c0e946a313d8c4043b7a3cc89f9260073251ae202",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -2649,8 +2649,8 @@
         },
         "hak-Hant": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "4d9a4402810280ddaabd3332fb2f74f43e5e3dbca1556173e0cb8a91f59f44f4",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "ebf6e9b6879e735bebfcf76991ed10a1a9e9972f52fbac37fce8d7310d963a56",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -2688,8 +2688,8 @@
         },
         "haw": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "925130a7846f91af1bb176310b5c7b8c2e0a9ce3599236e88e6a70855568f056",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "48173efdd8f16c7bb3415ac9de008a8328f95e4362b5c5d6c9cce1436f2b6d0c",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -2727,8 +2727,8 @@
         },
         "he": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "a7227ae8020af5c70f0f3a6b0621de0fa8e35d9bb10e789dce8bec139305a3f2",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "d5ad2836a1b40876134dc9866718ad035d3b24316a515d3cdda78e4e9b84ac20",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -2766,8 +2766,8 @@
         },
         "hi": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "71f9add20c03b9cfa7da13ca0e0e527ec29d413d9df74fbb62eeeb76c0f31395",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "14e589ab42502d4be026bb31bd8ce419d726bcfc67d4a9598604842af03ad825",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -2805,8 +2805,8 @@
         },
         "hif": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "e69ed1efa6ff493144116ddc44fb010144deb0ae786f66081f745f20d1e718fe",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "77429da5cd205253e4d8377e06887b8a515ebe164ac95403ad633ad8517f91d6",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -2844,8 +2844,8 @@
         },
         "hil": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "a469742cb01b5b0895ecfb3726b6a65a1d5dfa7d412e8a43c4111a98bb40aea1",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "487d8b48a9d1af35cf4db5fef2ab28114c9dd693523b08e3f233bc6962a55781",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -2883,8 +2883,8 @@
         },
         "ho": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "ca47104d9f115a2f85b1ea46ad0f077b692f7b5345e319c838ae81966f1bba6d",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "c99d29b9727354d1feb3e63d2e6fb2755a8486fdddda57fd98c1712e38beeeac",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -2922,8 +2922,8 @@
         },
         "hr": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "0b1fcecdcf1099bf4c316babeede378e4f873ea3d9ec13cb8f55d01dfef90adc",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "d516eb8d5b84247f6c693151b45f083d3c0f79f5a9728204f6c9fb6dd6dd8c96",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -2961,8 +2961,8 @@
         },
         "ht": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "d08d18f5324a9ea10b62d78faf70feb42e3d6c8c52fee6c47d853813daf8ab35",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "c37eb37676c255deb0407ba07b42f2b7d89efa6583001e57cced4dce800212a4",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -3000,8 +3000,8 @@
         },
         "hu": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "f860bf12d9eef1b6ff3a64f4049347e884750eefbf096d89af49c619231a985a",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "6ba6584e81a63ccdb6556d03150aabe74e98d2dd7c0744be94f502882f75dea0",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -3039,8 +3039,8 @@
         },
         "hy": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "e7c46d184a416db4dc65b1fbc461a121bbdbc7417ed6c559222b36665ade7f4e",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "b580bf96a1f0b74619a3d3172e371dc1886594ab1db077b23e8c95376324369d",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -3078,8 +3078,8 @@
         },
         "id": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "2a2a8fd56f03b18230a03ace5bb2916e111b633638af541eb49ffd40d1b8d060",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "21e44f1d272ed5f0f296a25ff38c058e0fb307ae94d0f2ea17435006a97a0613",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -3117,8 +3117,8 @@
         },
         "ilo": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "c66a456b5483bb982d1521a1426f21e1e45575dc60abdd6f01d761093bbfb7af",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "4712fe78c3dee6e0e4d3a0e334284d78ec47cb416181d2840e40ff3836cf4310",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -3156,8 +3156,8 @@
         },
         "inh": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "db174cf69dd49d411c9e18a24551ebc7609fe35fcca44806fb85acc015467d9e",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "e6b137ade3ef8d19ce8881c2649bce468d291575243a9ba9fdbdd9435c92a6b8",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -3195,8 +3195,8 @@
         },
         "is": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "420ff8f46bcf7ad125d845f1d514e264f7d26f3b085469e429f81f32619ca92e",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "5ea7a93836b5bc43a8acd2c93964f2fa1f8b6b5e20e4a0941acf2ae0acfb062d",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -3234,8 +3234,8 @@
         },
         "it": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "1e78e4964ed6d891a604217e9da54cd62eca8a9f0fd73a1cc747cee181561e07",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "6bae9a216fa340502f021a06b8f237cdc5245535d919876f2a69b5a9a2597165",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -3273,8 +3273,8 @@
         },
         "iu": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "98b6aad1502eb6a4221944bce64bb8cf3974530913f91cf5c2380c9a12dc11b2",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "515ad97cd8b4caec8812a42290f7bf017ad42b6757b272736f8f14e16d779939",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -3312,8 +3312,8 @@
         },
         "iu-Latn": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "c7b21ec3d46a15d74669339d223a96977c55ed175bb575ff80e50135f0cbc39b",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "abff8ac080ce85e427f7a531372346e1c96d615aad30632dccb6017dbbf15c31",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -3351,8 +3351,8 @@
         },
         "ixl": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "df67b910e937867f782759ef665babaed4bce6b740143c69c2ec9128173b6a8c",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "a6874a278f7ca6b25e8a2bd3a5b343f5a185bbfdf0ec0da83b7643e7f6da76b4",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -3390,8 +3390,8 @@
         },
         "ja": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "cc99bd00591565da8dadbafd987df6a9da699e155011ff4e86cf5e336abeb3d2",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "a421526f7ee6eb8dd10ab02487c621887bef25752cd72833386b201f8aac61f6",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -3429,8 +3429,8 @@
         },
         "ka": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "125a28081dc186e115f780bead5b1011253fa9595399181430ebaf397db92168",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "a9b1ee21a6d5b7f7ac8991298eebc8dd6cb55725535a2f4e5e55898cda07dcb8",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -3468,8 +3468,8 @@
         },
         "kbd": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "8ea0708adb7abdb90f4fc6ba6a28f88a1b34195d1c663f9c9a8ce872cfec3853",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "0f55d2635c04814ef24bdad524d7d201626e17d3f2904ee40839fff8f3177fb1",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -3507,8 +3507,8 @@
         },
         "kg": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "4a66ac44e06b8b17aa927d130653c68a4fe1ea142e8ea7fb241d3ef79e29625b",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "99ee947e6625b51d882f4e9b83ad632ef06225bf767d27aef5dcec5dbe1561b0",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -3546,8 +3546,8 @@
         },
         "kha": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "04777c4586868418415fdfff8f4dc59c88b13b1cb208ab02843d10ac235e7c6b",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "4945fd17e3f925c815b86147d14acb165f6642bac9d88f758d792c005594992f",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -3585,8 +3585,8 @@
         },
         "kk": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "574383f263ffeb150da01db712bbf004c314257fd043b4a120dd96f4dcdcc669",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "80dd899f806e1ee328cbe931546030517c5473f1f0bd6ac30235b9e66911e7ea",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -3624,8 +3624,8 @@
         },
         "kl": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "a5192d9ccbf4b401e9d7d07fd9505e85e976158b1fed862ba07bfaa3808a75f3",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "de5b3ae0b57258d9e773df1c26b6a9ae5e0bec7671a03112213a188466b0f2de",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -3663,8 +3663,8 @@
         },
         "km": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "4322b55896cc4008535a342037388e7ef6347a923230f8b6f6dcb5a3cc756e04",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "daff6b58347241b08c30675780549838d5da171dc6b0f1b9bf0c1cb32a27dc48",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -3702,8 +3702,8 @@
         },
         "kn": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "58d190f27fddb9261a8fb184a2a135cb7eb58e46a7489ca466759049308aca76",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "335d911edd0763682ab91b10fcde38885827b3f6b5ac6bd8c679b12005de081c",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -3741,8 +3741,8 @@
         },
         "knf": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "c174da36581768e5ab5407d86ecd5df049bda6c3c58e3ad82f684a8afc5d9670",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "c078bba0cf414968d3669daa53d21d86ed23aa70f02ab375d3eeb84302b13ef4",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -3780,8 +3780,8 @@
         },
         "ko": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "3a303b8c33454ec4823c213f59ce10b3070551c4dba63c5c833e641844eb115f",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "d42e68c247c1ed2ecf81739bed1eb5db7794b7bb922b88441c3489da3507e77c",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -3819,8 +3819,8 @@
         },
         "koi": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "0a9477b7a2f4db971c6c4cf7bc72a5a32c8313cdeaa4ec56f790ebe8acae6220",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "6b962051edfda16a24541f2063e2df6525714da54d33d7d07a56e82ec41f319c",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -3858,8 +3858,8 @@
         },
         "kok": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "7119b495886e67dd4b3fe933570aaa89bf663d42a665e800cf8848ea688530e4",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "388f4b6babcf329da9adf22c097deb866160ca7585a813626de67e47b3658bd4",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -3897,8 +3897,8 @@
         },
         "krc": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "641a9a1b91a407a13fbc5ff3020f97a0676457a37a44db8e62aeda1a6c71a4e4",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "333aad5837fd2a74386706523c4c2d3dbc81d5ac00f315add50d7cce510bff41",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -3936,8 +3936,8 @@
         },
         "ks": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "466db3d06b36b36b30ccfa75b92ba535e03398e94b8cd85c388e73ff5980abaa",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "6c2e511e43a701c02d05b449585054e0e52032ade8c2652de8262a1f486365bb",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -3975,8 +3975,8 @@
         },
         "kum": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "45f63b9bde5a5d0338ffd52a0978d090ea7def3751795f0a1d48baa1258e601e",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "197f499daa34506a772d8e4794c61ae3eb23829b5e40d0a354441b58f5b3b470",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -4014,8 +4014,8 @@
         },
         "kv": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "f6925bce17ed45fd1bb711cb72b9e584494d4b3a5d9ab3247b8b9035a994823b",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "74368ef46f736b87a6bab3ed78c853748afb09171321f9fc3b8397792e75729d",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -4053,8 +4053,8 @@
         },
         "ky": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "b9fceef08b5ffd86c42f2ed47b90b5d04fb190d1e4e74157d34c5edc2bd4cf7c",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "a5047839e0f77b00b4406f7e5e7509989be84a2486cb5e84e1eae16b9d0051b9",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -4092,8 +4092,8 @@
         },
         "lb": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "ff013aa7cba106198b888a31519dc7e451e6156ea819b4a01a241d9d0fb14575",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "6490f120524fe5099c2886e025eb71c83cc7bbf5d22b62d3c3b89529f8994340",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -4131,8 +4131,8 @@
         },
         "lbe": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "3425d61617023056f6688ca8b6744b8991b8b4ba3c28adb3267e3d73cdddf9c4",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "dd31cc6398458a3aba165271f2a061efeb908daba21c9ee48e772d5551cf3ba9",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -4170,8 +4170,8 @@
         },
         "lez": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "2c219af24bdc7fc29c3053cfa6816f604143f887576981c11aa265ba655eee0b",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "bb524b6604de5b9853da693fb2fba1c96dffb6ebbb77ce6efbe7337a268f3ace",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -4209,8 +4209,8 @@
         },
         "ln": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "80117e8d8458c987e0dbe50afee8890e899b80b09b94a28c2697dcf8b249e2c6",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "7a8729fc0c57f02fbe5060ef77823fe930e409fe8b5c97c2d28d8f27468d6307",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -4248,8 +4248,8 @@
         },
         "lo": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "82f4ca261397160225d63615f83bd7d58e294cc86b9f043bad6dfd6ec7376abc",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "b8dbb539bc1b502c93a09874a9fa0f942ceb0567bae4c67698bacfafbd201ddc",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -4287,8 +4287,8 @@
         },
         "lt": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "cbc21fafd38c4cecee15b86e1ce74cb34e6bc00860d2d8c87484ae1152ee54d4",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "be49820785bb42d91d185cc9c7d28b1b5ad7734aea77fc5bcb1e939eb6ad1c1f",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -4326,8 +4326,8 @@
         },
         "lua": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "e4f1428fe4597209573c1a18f774cf78c56cbdf3fb35f8cdcfa2ef5bc0702526",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "864a7e9a630a35385771ee5170548e60d35befae7590898e2092e0b26e11baa1",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -4365,8 +4365,8 @@
         },
         "lv": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "5df0eb45ad9a0e69cc94bf569c604689ac3146a21bcbe9214875f3b2dc205e12",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "632bdbfc96862a619a12af449ab0c807d31d525ffdc3ba673234fc12343973ef",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -4404,8 +4404,8 @@
         },
         "mai": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "e3868d92e540c1ab6401afd9f175c82f0366b92d4b238629b2cd1cadfc741bc2",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "2d37a7c7ad0827300fb6dcef7c3085e0bf3c4a77c090cb84d436374e76c5841d",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -4443,8 +4443,8 @@
         },
         "mdf": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "81ea7de72ef2224672e8a5031060ff9174c610b2748f511eaca6fe6b39cc127a",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "2ecd5bc6d510fafd4c93730caa5a34d49c8b200e1ae3ecaa00d7bb8fd8d47709",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -4482,8 +4482,8 @@
         },
         "mdh": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "80769ced8deba1eaa9ea996e0e73421b16e31a57f325c8c5e4c9264137e52aa2",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "98692fff5ea59053dca5431911b08d0520ec08a5b4e4d2d481ae5badbc23a427",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -4521,8 +4521,8 @@
         },
         "mfv": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "7ba8287d0fd3b5a740ea0b0c792f1326e0a6336ec4f36a19e6c3ef20ba2c9bf6",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "5cce285d7238ccc4a26ea9d07f932a06b4b8705f58b60edf9f0e24e067678d40",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -4560,8 +4560,8 @@
         },
         "mg": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "780716f86c6d21792878bf634bc2f91818ed9ecc2e0544ebebf5f88c6ddfd62f",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "c82ee8bd7d96a05df7cf1a5b1cffbae2db006ce211474c5d68ff307c316f4b8a",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -4599,8 +4599,8 @@
         },
         "mh": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "fdce5f79f78421c69a402ba396a07ca7f2de1cbc7ed2bd03ccc807f7fc97dc09",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "3bcea69aa7cffd1dca49daf899a40fab254fb4122a3d0f6d8e22098c8474903d",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -4638,8 +4638,8 @@
         },
         "mi": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "16103b7a04bfd8dfd9f2b1e4ac0070c66d00902c0d478a1f8725ec6556b09445",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "18b7d9409e63a6191399ce0ba5086843cf209660f04dec9e279cfeaa8e7948a4",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -4677,8 +4677,8 @@
         },
         "mk": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "f6249463fc9dcda1bf303887ac5265b380dfbcbf02ed066410be55f004cb6f73",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "9c35480e52641776d6e5147453f564688081536c5beb499a9684e94084957c1a",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -4716,8 +4716,8 @@
         },
         "ml": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "021e5c1dae30e1b79d228a03b59131d90210ab5f867c3a06cdc7d594db671ba0",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "7e2c6852a4fe024edb3fe9f994b221158b6f900bf36cb4f9b0c0423cf380723a",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -4755,8 +4755,8 @@
         },
         "mn": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "beece82c8c33cbb7eca75441bdcccefad5d21e7a41f69db7893c37cc17e0612c",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "60d1d22f5d802aa6a57bc18fb699b22c120793361db74b0fdf0b16e2d5df5b8e",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -4794,8 +4794,8 @@
         },
         "mn-Mong": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "d310f400e11c39248d3effb9fc6511309f150cf8b19ef08b8a09357bd79c70b4",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "f199e18ba01572f05264d480e38932c37d5ace13825a3722e9cd38765be51f8a",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -4833,8 +4833,8 @@
         },
         "mr": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "6e997ebd4c6dff8a68dbd40b9bb63d14cbe335c998be207fc508ff3e41bd1781",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "33b41b0785f1d6eb623d0ca6bf8ad4a523e77ce15b9e48ac6359ce7dedc659f7",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -4872,8 +4872,8 @@
         },
         "ms": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "594e7deacf784c2edeed2cf3813b42e57c524589fd414b68c59952b7200213cf",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "9b8442d864fbfad34a7c2a3ea2522e7b557c9ec4d7f59ad6fb5ac5a116767eb1",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -4911,8 +4911,8 @@
         },
         "ms-Arab": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "e3fffa0fe97819105721629dc3dfbb15f4b7830eda593255db503cc2c569b646",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "8b92d13147165fa691b42f4a860fd1f108c98dcde8977276f3c6cb9c4de74260",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -4950,8 +4950,8 @@
         },
         "mt": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "9bf3f598d306a673f00950b1ba754a1b938f309c3510ae175c350a4362c053f9",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "fb985b4752cd1eecf5d1d51119bde88ebe0047f2a00cc59b30fda0993dc88334",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -4989,8 +4989,8 @@
         },
         "my": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "e18677b14219c887948fd6affae8134dc8695a0afc0bd2618942839618c40059",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "d8751713fe4292a6f0e3cabe74fff25bb2f438b24a9405726ef07f20cab7d54c",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -5028,8 +5028,8 @@
         },
         "myv": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "5feba8b235ad426f270ab9c00d80739e531786ebe36cce554394cc50a357c63c",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "75f3938d51d4740d6f89496e06a940f0022586c1237f240a5e4b5b60b8360adf",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -5067,8 +5067,8 @@
         },
         "na": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "dabeb7e297141d0fb56f6b53feaabc48651a3a75c2a64922a42b375448afbb09",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "014ef27f05a4f6a4d1f71ad99293d632a877f41bd67dee80f5cd12ba100a60bf",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -5106,8 +5106,8 @@
         },
         "nan-Hant": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "1b85d52e1157f6737960b931ee6a4a73794cb3fc84bbdaf9d7a6f90e46017e44",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "c67e6f5bb3ed6a65d50bf98499c1d508be718783713a26cf7e1908b55db81032",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -5145,8 +5145,8 @@
         },
         "nb": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "e1944284194d86c2fe75ea824b31243519f34338cf9756486527784735640935",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "4f4cf5603e2adbd6cb885edc11d1be4cb22ed636fb2e33f4ae4a58477dfe5ab7",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -5184,8 +5184,8 @@
         },
         "nd": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "3b4fa4b0c13a9590e3b78f268402376d28e8407f25240ac9ddd7c8fdca6edaba",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "58a81cc0f6117d9d92472876844c835f9efedf51f78677e906f48058052002eb",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -5223,8 +5223,8 @@
         },
         "ne": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "9fe109284205f3c827f1cfbeaeb3e7f161ba9c9d8777eac478f782d49818a106",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "663a36c75b5cbd4ce10a66925cf77f8f5fd69284c48755e7718fa594dd907ccc",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -5262,8 +5262,8 @@
         },
         "nl": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "abc6082de535f2a3b20b2ca697f2cca70045ffb98d7a85b776a2e6f724e55c54",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "6ecd96788dcdad01ada29650dc6b52c4afcadf6dc64dd351d1b48a7db4d8890a",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -5301,8 +5301,8 @@
         },
         "nn": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "12c64f3480f19b49d52bcd085bd2de110c581ebf03e93282ba1f7702a3ca1819",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "2084366cf1e4efdac99e47e1fc2f9ae30197db305f079f28c9437d04ec4ef05c",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -5340,8 +5340,8 @@
         },
         "no": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "23d6c1172de82527467c6851319344cd010e676ec4643470585c1228393f52eb",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "d64e05276fb8d4694d86d3bcbc09f6f27e46287afa2fd36b63c8e51d5e5606f4",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -5379,8 +5379,8 @@
         },
         "nr": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "bd13cde77157dc788b6ba674e6718eec3a5f7e76157b5b146a2a1d1d4ad70f42",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "6f26f5b62a98e46fcb6fc444a9af990ebc99e2cd07ce5b69cefe15170137166c",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -5418,8 +5418,8 @@
         },
         "nso": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "287d007cbb5c62eb22bee544b9156d44bcf8ac731dbfcb6b0d69690ab3ef5fb3",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "ff3d2742ba2776f932afaf355912331b5c52fa03677688a4e32ba4e2f71801eb",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -5457,8 +5457,8 @@
         },
         "ny": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "2ac03bad2541555f7b3083fb75cb3e63e6b6aec2acab061f924100db9a234692",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "da15eef8e84dbbb919ddec995e81fc6d09f86b897ff7a3d1b3c5b59f43b18d62",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -5496,8 +5496,8 @@
         },
         "oc": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "3cef74b14e9a8b011ad312de34cfcdf0b33b05d24977e46538e6a3f29527139f",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "e467023f56b9f2652482379b678321e889c2e0f20308d6e48a0b008d67dc411a",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -5535,8 +5535,8 @@
         },
         "or": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "a0358bc00ddff56b8f2fd25b50c4d27a6cff3afbc59031349a29ee3c3e7de9f8",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "dfc09f5d1811a0fa78c8264c2e8f9aa1de4a6cfa309f259acb4c1bdd880429a6",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -5574,8 +5574,8 @@
         },
         "os": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "be3dfc21519ee4a2aad2eaab871e9776d59509ff34e8a406bcd6621a1596e989",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "5afc885558793443e60955ce95cd6030f200e1339adec792f56b2b92824a9472",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -5613,8 +5613,8 @@
         },
         "pa": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "41bedfc3613f2f043a0f3ee50f0f36381c941c1f9b1da4ccf5ae94eb750a1c3a",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "6869f8556728303e38acfa279d328156c9394520369b1d08e1d09198c36daf3c",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -5652,8 +5652,8 @@
         },
         "pag": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "c65a470fc1190561c91aed5b9f86c16020d04de328f7cbb80973df90dc341259",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "ed43edba0953a75ca2f45604a9c05817f3bab596bf0978e4a3f7eac1187ddd4c",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -5691,8 +5691,8 @@
         },
         "pap": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "052ccbc55ad20e5ee22dea06030d2b35165497da3c3cbadb919a422dee05adce",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "40835e31427fb6760e5c201fec216e2a106764fc021c2d8e4d67df3fe43a30f8",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -5730,8 +5730,8 @@
         },
         "pau": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "1a7f99cf222a4e8b3a39f73fededf03381cb82f6c1ea8f3c995d44a83577ba4a",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "d7bf999a00018c48785a80cef58cf4f9a6567e17bf6587153a05825cf1c9db4e",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -5769,8 +5769,8 @@
         },
         "pl": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "6801f1dd645dfc9e8ed614a2b80599d7ee1f886b6dd67c37c46dcb60b057e14b",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "73a6b3581bbd0609371143d2454b81b3a6e66bd26c7299e88b86e8c9b1e1ca9e",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -5808,8 +5808,8 @@
         },
         "ps": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "d96a42e75679df914f272955e035a0fe580a963610c6b9518c84c8fe119cb7be",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "46618120284dc1d7c9c48db7b768836c16c2dcc006c66a14783e8879591f8141",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -5847,8 +5847,8 @@
         },
         "pt": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "a58463e6ad2966b0060b0a3a0bfad1396b1db138c8822a78955d5ff86d7dd434",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "c7245a68e523370b908add24898a7e671fdb6a39f250bd10e26cd603225509be",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -5886,8 +5886,8 @@
         },
         "qu": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "ce41abf96c1bcc63265e6e91f0ba448e02bb601513affeb9692d9ceaf955de89",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "6bf1809aea07de83da4df5897ec407c6bdc2bd77db80d40167ba75efc6a1fcf5",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -5925,8 +5925,8 @@
         },
         "quc": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "28f4d4b3b9c1bf636761944c286ca965c11da3f6bd2350b4fb08f9e8852af40f",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "df5a2dc9c4824d4d62478a3f59631d1e20e0f47b3d9a10f4032a778a4481e46a",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -5964,8 +5964,8 @@
         },
         "quv": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "9198fcb70693932deade0e4c7f6f9da3c1f8d57680303036706a75cac8195fce",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "65ae8e0f1a34b6bb1a6e09cade71ba7be23a119f8f534fb32154301ec364b6c6",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -6003,8 +6003,8 @@
         },
         "rm": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "ea43fe125dbdc66e9297ca04a1a358210f075036f20dfcbff419984b10a8133b",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "3fb1d5bee18b6255940c687a7e1a34f4d3c1aa50ec749769496e67c90962683a",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -6042,8 +6042,8 @@
         },
         "rn": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "07c6bac097c5cc308f8a50c4106770e9106a36e03f51c54392f5a9cec822704b",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "8973a85f78caedc2d9d3d4dc46792061a05712e62e3f1f22c09209aa6ecc7961",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -6081,8 +6081,8 @@
         },
         "ro": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "9747a08a3f0fb139746ec420e711683bbe27d57f3f8865cf4efe3772c1065749",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "390a07f9a128c9a8dceec8eea5c1d1c362b16c7e4551a9b83801d904f9bb0884",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -6120,8 +6120,8 @@
         },
         "ru": {
           "model": "gpt-5.6",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "f2879c5b13b7f262b1c472aef8131d1c8812f0e0ae9d0c3c07bfdbda33607f54",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "353abd2e117ef92ca9902c9ed1f5d12b55f67ff71118cfcb72a32af6bbbd51b3",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -6146,8 +6146,8 @@
         },
         "rw": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "b22a2961ebfca064882cbbec69799c835569da2774949b912f131426fe00810b",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "f974276099322807cc9355bfa66aee9c2cf8973b3b7fe73f01a0badda59212b6",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -6185,8 +6185,8 @@
         },
         "sa": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "000527b0a4b931cb8ee22324c5730cf1aa32a82ef6e627f781e77daec0c95bab",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "8d500187df834dcdf3f9b315e67288c61fde2ea46d8a3bf127647ab40ad3f07f",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -6224,8 +6224,8 @@
         },
         "sah": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "5caddb8a6986f5227af28ac3e0e13258daf0d4b9d80fb0ad8fcad0e057ff9aa8",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "17b69b6b0f045ed709ab24f6060db31aea9e1987ed6a145fd77f9b3dedbd1751",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -6263,8 +6263,8 @@
         },
         "sat": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "be50a14f0f6232e629b232bc4b62eb2e47417c54b0bd5d39691a442b41d895f6",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "7827fde12077e681ded6ad34f0e75c2131ba3b4b66991c5670ea1c954d55475b",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -6302,8 +6302,8 @@
         },
         "sav": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "5d8f4e2ee2d177dc9fbcc8cb1558be2194cb20ad681c7fae03b379a63dd2c2d0",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "dff8c67abe0418f4dc406cc5415f58ed3976f133d879076703d0ff1f212124c1",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -6341,8 +6341,8 @@
         },
         "sd": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "2d4e93a51262697bcc50e1cc1be96e5f79911cd688a8e534a4b9d5dfcb61cf05",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "ea7eaceb275efa2953ac3d59d6896f6bcc6b58bded67c50d03e6b315541a7211",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -6380,8 +6380,8 @@
         },
         "sd-Deva": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "2c1eec6ec0f754e18017dbfc26db24191535159e96433d711506fd45887f587e",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "de093fdcebe939fae10dd071fc97a1ed2ff4817c565f95ee29c4159279d5fa18",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -6419,8 +6419,8 @@
         },
         "se": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "0ef23f5e3eb588715495df508b495189f7f7d25da7695d8b56a7dc3614c69057",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "8e8afeebd3fdefd7569c2e6b8b9b5cc3e1e5e27d89c031d9f87b1fa3b24405d7",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -6458,8 +6458,8 @@
         },
         "sg": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "8652957414fb7f5a89280e96fefe369cebbf9c1522b7268503392d011ac23fbf",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "8aafd34ad6e471c01a12d8172a0c68ca6f3ff751a4084d67f10edb9936a9d43d",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -6497,8 +6497,8 @@
         },
         "si": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "8f41ca50d75593e7207f060fbb85244aff2883181e04f8d4f3d731a126bdbe30",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "1247bf13d5f7c10847aa28042cbf7064916671bb59e37eef0eb84eee53367fed",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -6536,8 +6536,8 @@
         },
         "sk": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "5b67fcbfee4f1c7ed87193730bb28e8c4f83a956b7e2dda4d2a38b18e723f828",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "cbb12d1750ed98340cc347dbb74e8904c766a1a3ecc41af2475629071a8323e3",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -6575,8 +6575,8 @@
         },
         "sl": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "30535b178f82bd1348c8080f63667c02dc2d826c14c65f17398b9bd7ab5c0184",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "36c77a693c41dda002fdca09cba75c0e0f593bbf27fec4f65c5299cda1cc8389",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -6614,8 +6614,8 @@
         },
         "sm": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "87869d2e658e1776d32ab3cdd847c5502567406bad20f51cdc52b558c56bd37c",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "10db09e72dddefcd84f5fea064e516379d51bfa6db6ce62a37573c2d6a4c875e",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -6653,8 +6653,8 @@
         },
         "sms": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "bb4b672943c621635a38f94b9fc0f1c809340784548a9d8996d0b2614cf22fb4",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "15f2f7f59d0a0852017a0d8e2bd790f4a82866d9bea6e5afe17480f672fe66d4",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -6692,8 +6692,8 @@
         },
         "sn": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "15838b4c09e7f2b4286b8f57f4395357bb22bf013da1eedbb14e0a60df231e48",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "f69ce1661eb54fd7594b4b166b87001bf079e1b99faa76f7cd71080720c0c48a",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -6731,8 +6731,8 @@
         },
         "snf": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "3383c835fd5f5d8800d28090b76092ff48873b1538f135321072b673385eccb8",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "acf20d9348533c61e7bf3c6031c8b0a3f7dbe566e9ff08900eb328779d8667de",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -6770,8 +6770,8 @@
         },
         "so": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "da93022293459a8feb4f01783122e35fb18e8fbbd4575d105b99f66a6fa28546",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "6d45ff86ab8b4774c72c69265bf12e408cdcca04dbbd966306b04f1e43bb065d",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -6809,8 +6809,8 @@
         },
         "sq": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "600da589c7a0c445935543e34a5d5e64a1134a7fff6f2abcc1e9891ed6b9177d",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "86b639422ae2a7a187dbb494506d5eeb96aa076823d703ccd9574b33c8a745c0",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -6848,8 +6848,8 @@
         },
         "sr": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "6012a5e7b4f91fa753f86426781db52d78aaeac290c285808be5611dbfe397ba",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "f9e41b2c127bd866bfab6bed2370d7dbbba883c8db85e924eeeaf25e8abd9a2d",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -6887,8 +6887,8 @@
         },
         "sr-Latn": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "cc949e34b09cae8e5c9ff7e7b261d96afd669db966d62d4a66c5ce58a362c4e4",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "3e724cc071e6dff9c184acbacab03b1f4c10e03ef3a383431e19d77d233db82c",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -6926,8 +6926,8 @@
         },
         "srr": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "c8a931c49b69b1b7d0b49dbddf1d5960aad53b0f6e405205ad20b68a4d0ab746",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "a28fa3628373686a8413bc7a19798b7a7bed2c93103a824c2047731c9ce7d33a",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -6965,8 +6965,8 @@
         },
         "ss": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "6fc8f0680703fa3a972964596509d2e37e50280430974c0493dd494b6b628251",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "53d0bd066c3635d5a17d65499eecfb80d3d6576c9d02d117af0368f5f4ef8e86",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -7004,8 +7004,8 @@
         },
         "st": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "df6db3d08e05b564da67efb2a4db0221a99e90d9ad434b9e93165138edae694d",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "74ea11b6c66a630db7467c0261e880301f777b5874e1ee884230a98647789c25",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -7043,8 +7043,8 @@
         },
         "sv": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "8e9e138d235de46d3d8f924218016c87814c12c9972cc4e40f2a3b90b8905174",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "7156b257a05f71201a770bb80a1fa2102386c6db5d84a7701a503080326be2aa",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -7082,8 +7082,8 @@
         },
         "sw": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "af6a371958a5ca95777ab32632dca6f261f316b7ad12076f35d067c041550e65",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "7378b523779df6b2ff6a2c7682d4ed27c7c36cb6e51c6973a30f7150f9968684",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -7121,8 +7121,8 @@
         },
         "ta": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "b1efe78ccc4c0d8041674541ca0543193fec6ad421ade272ac3973bcdf757778",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "57c73e2edab027507a4b7605647e91593b3f2ed84ead9eab6018e686c39c92a7",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -7160,8 +7160,8 @@
         },
         "te": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "6fe87cd33238ea1084a90a70c542a3c80f7200db8c3897521a12e44cf00e053b",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "b406bf3a05f56693088da693445de188424b70d0fc61e117a29893b0c257160e",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -7199,8 +7199,8 @@
         },
         "tet": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "2a2394bdfe4f9a5ae32979f12989e5db805d304a7f24a6b09746eb393cc1b035",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "49afe4c03fef621ead8bf8939a9ae4e3de77d3f8cd7da8473114885bafd0a35e",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -7238,8 +7238,8 @@
         },
         "tg": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "73464376c3be33c2b8643c271251ef41730f6f3f4d74f239ae66299c8b5eaec4",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "78c8bb9eac8c981bfb2e6ee93e1cbda281a68cceba68ec36a8240238363fed13",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -7277,8 +7277,8 @@
         },
         "th": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "ca2276b872f695014c032b4fb89d62e1d71755f5ab1bd1b514fa90220a285543",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "05ef1ed3e52438e49b5a1d4f0b5af4671eb993d1f0f23962e25054d1d081285a",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -7316,8 +7316,8 @@
         },
         "tk": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "fc2a363db0f7321f21586e53cf3f1636a7d602f41c9495aa8e21e26e0f535c71",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "cc3eb7d1d2465b5be702f1ff9aef50543238788794bdad7d8ca19eef21bc7d93",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -7355,8 +7355,8 @@
         },
         "tl": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "121b730d6fa690dd28fe41c647ec44dbd30fad68bf43b9eac7db0552f86da82b",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "950d009705b1a5cb38e7f54bd3f0bddefb9aef592c16386f756324345e4ddc74",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -7394,8 +7394,8 @@
         },
         "tn": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "f7df87ccf6d7e59e8da47e31cc79b2e5c86a916b16e60505de71927ef42dc923",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "84e42e42cc970fc42115f65629060926bf0a59ce57c3ab0cd9f255ad47a75e6f",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -7433,8 +7433,8 @@
         },
         "tnr": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "7a071c496435df8f438bd04cccbaeaa4b9ffc2336597230cb49e9fbced8cb352",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "4f985d664805147095e92c26e6aeece80ba045c62fcbe33b1cd2b2b2d6480694",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -7472,8 +7472,8 @@
         },
         "to": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "4b169fcb4a1f2e6cf489d018209806f842957ba34b13f9b87f38e0c5523f92e6",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "37a5ea65a9b66f06352ea1aa8c95602083d3b7919dbb8fc6311aa8bc7a4f04f6",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -7511,8 +7511,8 @@
         },
         "tpi": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "9c080aa8e7e530a605eb02105e11fc7cfc6ef002803ecc3a5241fe3f4dda8dc3",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "5452eef4e3cadadc3e90afcd06bf7b84d4b5f1d48f27779b1f577a2367156d41",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -7550,8 +7550,8 @@
         },
         "tr": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "fcaabf21771a6fa95cfa11f8010332a3db9a19eede923b64a7cebc24b63a3ba9",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "79537cc22b31249bc176b15e4eecd8ddba103a2a839d297838afd9144e29b26a",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -7589,8 +7589,8 @@
         },
         "ts": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "b9e8838c03b8bced6a94a4bb6d9b575a904307433011336093067c542a343e4f",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "bf8ea8bc55c9c90ecb996f93c5c9c680b25bf2c1af3b1d7f624eaa80c58a09d2",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -7628,8 +7628,8 @@
         },
         "tsg": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "04d6d71e3c00d52b91178df9fe5962031c256b32b7f8066992b4b894e6e535e1",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "7f8e0138a52b45ce617823db0c217565c7dff20096a0aeb4f597b10f8c0e7d8f",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -7667,8 +7667,8 @@
         },
         "tt": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "4b6e81e795aa10a57a64ac0aa00081bb2238def40972d56a5f7ea0bfc1a30c01",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "deb7df24095626c56c4e3816ee4e35b2f074a87d412a1e669383a19a980c7f6c",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -7706,8 +7706,8 @@
         },
         "tvl": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "54a1fbc1107ae2616e4540cbfb2bb013ab267dbbb149630db7340295a52eb55a",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "49218a0cbf667dcfec9c0d4f513d453ccfc7dab221f65a7d9706afac0b4296d0",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -7745,8 +7745,8 @@
         },
         "ty": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "2279aa97dbb7d40b2e89da1ea5ad69daa3b4721fecea2886877c7eda8d95ff26",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "f70eec46cb1e4014fcc350b5b17af9274f438a4529d76abf6436c5ca9b2c3d05",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -7784,8 +7784,8 @@
         },
         "tyv": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "5bcc3ee26fc2255f1c2e3c43e8aaceb962ea06591ebf61ccc215f0aaad9c2051",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "4688e6e30164f75fa0bd4f5aa29dd0dfb2f4ff9ecf113d18abbeeab7258c7ce9",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -7823,8 +7823,8 @@
         },
         "tzm": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "66dc39979c205b445b2749d8406412d8088b8deebd17dc6609374fc5225dfab7",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "587200c2aff234077af92c97b9d15551478aacc21b71e5687b1ac9fa52cdc788",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -7862,8 +7862,8 @@
         },
         "udm": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "a12c267a792f4c9fa3d1c4db2e147fb7b7feea08af1ea420ccfb3b7c3c1ce041",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "365db24515e4430b63e2d1b9249a52ffcbf71bb8ef4bb8d15fdfa7e90f49e303",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -7901,8 +7901,8 @@
         },
         "ug": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "aae4d4210d27f7868a7e58b1acabcdaa46fe5af1e3e4e027350ab2015414086f",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "66316b30bc7e1d7e8044383f16e2ba14b326d7d5fc1c119f88977597a4281e52",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -7940,8 +7940,8 @@
         },
         "uk": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "251f00c53829aa36fa963e3bb9f3380ac9a70a3452d21d91343fec96700dc41e",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "ac7d82befdd6fd0abc8b00224166897943559f88574f542c1595bcc58a85a24b",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -7979,8 +7979,8 @@
         },
         "ur": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "2d3423ef29cb561232b797b44a6b6bdf2eeb50bc219ebe07d28528e8efc06e05",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "b07dc7eea2f6e3dec7b2ebc97096b89f99968cc15903ba18d19887ad5ff18331",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -8018,8 +8018,8 @@
         },
         "usp": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "26907ab093a61b8ba6ace8281a08f0d5a5fd8e2775ce1a8c51bbb3ce9957468c",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "307709420767fb3d6ea3c5d0f93adf0462ac0481356b83909f602cbfec0f6dd8",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -8057,8 +8057,8 @@
         },
         "uz": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "3ac61d3101c993a3f932a375839bd7dad14b1511467ed4c5ad5302008b0e4d33",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "5bc6110541ca80efa02fe310c970da04a9a52fda26254c5e635a689f5a3e2c9b",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -8096,8 +8096,8 @@
         },
         "uz-Arab": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "e62ad4dddd1561670eca86c57ef4679e8fbfc029455837649c8b1dbbefca23f9",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "c96fc8d3c932d1b4248b5db56792cb1bf9813cb5b54baee552dd1f6ab4c1a561",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -8135,8 +8135,8 @@
         },
         "uz-Cyrl": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "b97901dff6ed68725c6c70245c257634651998e7ccad24ff87d0472e8b5216c8",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "b577c630b4783ccc0543c25557bd6377ef46e380f78f48d4a6a4d8c32d82427f",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -8174,8 +8174,8 @@
         },
         "ve": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "394329181842662798c790b5c49b75f65a4b72f1068881f546760f75dc3bbd9f",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "5b46c2434a89dfd7a3b48dfc655944ca6bb4d84789163839e6de7d958a3aa49a",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -8213,8 +8213,8 @@
         },
         "vec": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "427af2c55a9221aa5eed8ff7dbac2c86f72b33f88dc03693d8fbbe815de91e06",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "a3d7ae8c26390610c9306f20d59bf5b6c37aaf68dd3dfb04d334822bc9218e21",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -8252,8 +8252,8 @@
         },
         "vi": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "101153ef65edf9438f3694b2ced3ba0663d267a5865fcb13e904b6f5ceaac645",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "cb229b12208d086ebec9d7ce81da9b9b2929a0fc42a7238302432d54cdd3998d",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -8291,8 +8291,8 @@
         },
         "war": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "c242cf7588d151e25738e2e246e30a25bb15492c98a646a6edf67d2df95afc4c",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "13717500eac5ef696d8b77bd9d45f4ef05a562ae9e247f993c9662dcf8de5c38",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -8330,8 +8330,8 @@
         },
         "wo": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "e3aa31504518f921c6b10552250f54827eb5087fdffd34800562e8a3b7b09b86",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "f37d6c83f35be3424c7afe45e9a2473301b904ca5167b3bcfd429336b52a8ba5",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -8369,8 +8369,8 @@
         },
         "xh": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "41a9ab71b877e446087e9062bc9865529e6c2722bea956f9af9ce168b67db611",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "05f309a94a1302810c236ee8850a4a1d809298ebc3ff36ad19f9ce5e2ef1201e",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -8408,8 +8408,8 @@
         },
         "xin": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "105cdaa229368778ed0ce15cbe456692fe038421651dedde368d8648c41b1cd7",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "f7638ba0700c333d63f0456270db80962d9733a1743d629a9751e47b51bc4241",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -8447,8 +8447,8 @@
         },
         "yo": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "32c62a1d1bb700906c32da6c1fc4e9b986080de3c68bc6d502ff3d8d1f2cda5f",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "b5289960967336d3ae7e610bc11c831c43e281db2038f13df737bea28d673662",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -8486,8 +8486,8 @@
         },
         "yue": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "f8fd9e57d5cb38a1c601b2962e11866e81d3901aa90795742d3a0d1e63c60d95",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "84391740bae410ad5dae82d2439639d083654d746bc61d9492d98fca3ebc19b9",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -8525,8 +8525,8 @@
         },
         "za": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "f84a82a67b5b9eae64c5db0a4088899829d314eb153a659ef47b77b00a0f9c44",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "d9e481938467c91d72eee37d3f2a0a92cac53e461e0ef81bbfac2cf95fb50ebc",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -8564,8 +8564,8 @@
         },
         "zh": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "36d38d920365c01ea68b38e39bfa70a4caaaf933ed962bf951dbf27e68fd4003",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "6a3ad37a86a0feb64e06fd205f69cbea101cc38901f1716ce782787d12ebdf8a",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -8603,8 +8603,8 @@
         },
         "zh-Hans": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "619ff5eb615a8b1e7ea7802e0237c3ceb98799305c5136aaa5346c867963ecb0",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "e18ca0b56c1e622750157e55790e8f8a7c52ed908b616bd333b5f1faf7d986f1",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -8642,8 +8642,8 @@
         },
         "zh-Hant": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "2bc67303ec3fb89716e5d026d433678f6d2286a801221898ce8d5d6401ec1550",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "7dddfdb2197f5e99a8c4f115e85dbf0415905a3f31d5b9bb293886f62a7efe61",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
@@ -8681,8 +8681,8 @@
         },
         "zu": {
           "model": "gpt-5.4-mini-2026-03-17",
-          "sourceDigest": "7c8a91228289503c8bae3561757494a02b819855c08c06c5dc7d5630039d1260",
-          "catalogDigest": "2da0e90a156e9c9c30786d7abc0a43840e1057d87f5c78b177b0e4046c55e25d",
+          "sourceDigest": "43f348758ece39533579f03744666f6facc12cf480aa70a56bbb5062eca7eff6",
+          "catalogDigest": "a1892ae812b77ffbe29149f701d1534ab1ebeee6d90a748bdd59162e2bd71894",
           "generatedOn": "2026-08-24",
           "scopedRevisions": [
             {
