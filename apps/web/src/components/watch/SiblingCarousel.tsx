@@ -33,6 +33,7 @@ import { WatchProgressBar } from "@/components/watch/WatchProgressBar"
 import { CAROUSEL_END_SPACER } from "@/lib/content-width"
 import { cn } from "@/lib/utils"
 import type { WatchSiblingCarouselBlock } from "@/lib/content"
+import { videoLabelMessageKey } from "@/lib/video-labels"
 import {
   tryAsContentSlug,
   tryAsLocaleSlug,
@@ -118,6 +119,7 @@ export function SiblingCarousel({
 }) {
   const t = useTranslations("SiblingCarousel")
   const videoLabels = useTranslations("VideoLabels")
+  const searchResultLabels = useTranslations("SearchResultCard")
   const { canonicalParent, currentVideoDocumentId } = block
   const selectableParents =
     block.selectableParents != null && block.selectableParents.length > 0
@@ -145,11 +147,18 @@ export function SiblingCarousel({
   // re-checked per child via the route builders below (a malformed slug still
   // renders, just not as a <Link>).
   const children = getRoutableCarouselChildren(selectedParent)
+  const isEpisodeRail = children.every(
+    (child) => videoLabelMessageKey(child.label) === "episode",
+  )
+  const railLabel = videoLabels(isEpisodeRail ? "episode" : "chapter")
 
   const activeIndex = children.findIndex(
     (child) => child.documentId === currentVideoDocumentId,
   )
-  const clipTotal = children.length
+  const itemTotal = children.length
+  const itemCountLabel = isEpisodeRail
+    ? searchResultLabels("episodeCount", { count: itemTotal })
+    : t("chapterCount", { count: itemTotal })
   const parentTitle = selectedParent.title ?? videoLabels("collection")
   const parentSlug =
     typeof selectedParent.slug === "string"
@@ -217,7 +226,7 @@ export function SiblingCarousel({
   const visualActiveIndex =
     pendingActiveIndex >= 0 ? pendingActiveIndex : activeIndex
   const isParentMode = visualActiveIndex < 0
-  const clipIndex = visualActiveIndex >= 0 ? visualActiveIndex + 1 : 1
+  const itemIndex = visualActiveIndex >= 0 ? visualActiveIndex + 1 : 1
   const [initialCarouselState] = useState(() => {
     const preservedIndex = consumePreservedCarouselIndex({
       children,
@@ -270,30 +279,25 @@ export function SiblingCarousel({
 
   if (children.length < 2) return null
 
-  // Parent-page mode (current video IS the parent / collection): suppress
-  // the "Clip N of M" position counter. There's no active position to
-  // count from, and rendering "Clip 1 of N" would be misleading. Show a
-  // simple "{N} chapters" total instead, mirroring the change in
-  // aria-label below.
+  // Parent-page mode (current video IS the parent / collection): suppress the
+  // position counter. There's no active position to count from, and rendering
+  // "Chapter 1 of N" or "Episode 1 of N" would be misleading. Show a simple
+  // item total instead, mirroring the change in aria-label below.
   const ariaLabel = isParentMode
-    ? t("chaptersAriaLabel", { title: parentTitle, count: clipTotal })
-    : t("clipAriaLabel", {
-        title: parentTitle,
-        current: clipIndex,
-        total: clipTotal,
-      })
+    ? `${parentTitle} · ${itemCountLabel}`
+    : `${parentTitle} · ${railLabel} ${t("position", {
+        current: itemIndex,
+        total: itemTotal,
+      })}`
   const positionLabel = isParentMode ? (
-    t("chapterCount", { count: clipTotal })
+    itemCountLabel
   ) : (
     <>
       <span className="md:hidden">
-        {t("position", { current: clipIndex, total: clipTotal })}
+        {t("position", { current: itemIndex, total: itemTotal })}
       </span>
       <span className="hidden md:inline">
-        {t("clipPosition", {
-          current: clipIndex,
-          total: clipTotal,
-        })}
+        {railLabel} {t("position", { current: itemIndex, total: itemTotal })}
       </span>
     </>
   )
@@ -375,7 +379,7 @@ export function SiblingCarousel({
                 data-testid="sibling-carousel-selection-announcement"
                 className="sr-only"
               >
-                {parentTitle} · {t("chapterCount", { count: clipTotal })}
+                {parentTitle} · {itemCountLabel}
               </span>
             </div>
           )
@@ -552,7 +556,7 @@ export function SiblingCarousel({
                   className="z-20 bg-gradient-to-t from-black/68 via-black/35 to-transparent"
                 >
                   <VideoThumbnailEyebrow size="compact-sm">
-                    {t("chapter")}
+                    {railLabel}
                   </VideoThumbnailEyebrow>
                   {/* Card title rendered as <span>, not <h3>: the cards are
                       sibling-navigation Link items and don't anchor their
