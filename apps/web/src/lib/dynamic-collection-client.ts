@@ -24,9 +24,16 @@ export async function loadDynamicCollectionFeedPage(
   options: { signal?: AbortSignal } = {},
 ): Promise<LoadedDynamicCollectionFeedPage> {
   const normalized = normalizeDynamicCollectionFeedInput(input)
-  const params = dynamicCollectionFeedSearchParams(normalized)
-
-  const href = `${watchPath("/api/dynamic-collections")}?${params}`
+  const endpoint = watchPath("/api/dynamic-collections")
+  let requestInput = normalized
+  let href = `${endpoint}?${dynamicCollectionFeedSearchParams(requestInput)}`
+  if (
+    href.length >= WATCH_COLLECTION_FEED_MAX_URL_LENGTH &&
+    requestInput.cacheSignature
+  ) {
+    requestInput = { ...requestInput, cacheSignature: null }
+    href = `${endpoint}?${dynamicCollectionFeedSearchParams(requestInput)}`
+  }
   if (href.length >= WATCH_COLLECTION_FEED_MAX_URL_LENGTH) {
     throw new DynamicCollectionFeedValidationError(
       "request",
@@ -48,7 +55,6 @@ export async function loadDynamicCollectionFeedPage(
   let response: Response
   try {
     response = await fetch(href, {
-      cache: "no-store",
       headers: { accept: "application/json" },
       method: "GET",
       signal: controller.signal,

@@ -17,10 +17,10 @@ export type DynamicCollectionFeedProfile =
 
 export type DynamicCollectionFeedCacheScope = "live" | "preview"
 
-export type DynamicCollectionFeedCacheSignatures = {
-  mobile: string
-  desktop: string
-}
+export type DynamicCollectionFeedCacheSignatures = Record<
+  keyof typeof WATCH_COLLECTION_FEED_PROFILES,
+  string
+>
 
 export type DynamicCollectionFeedItem = {
   id: string
@@ -208,10 +208,16 @@ export function mergeDynamicCollectionFeedExcludedIds(
   blockIds: readonly string[] | null | undefined,
   featuredIds: readonly string[],
 ): string[] {
-  return [...new Set([...(blockIds ?? []), ...featuredIds])].slice(
-    0,
-    WATCH_COLLECTION_FEED_MAX_EXCLUSIONS,
-  )
+  return boundDynamicCollectionFeedReferences([
+    ...(blockIds ?? []),
+    ...featuredIds,
+  ])
+}
+
+export function boundDynamicCollectionFeedReferences(
+  references: readonly string[],
+): string[] {
+  return [...new Set(references)].slice(0, WATCH_COLLECTION_FEED_MAX_EXCLUSIONS)
 }
 
 export function dynamicCollectionFeedSearchParams(

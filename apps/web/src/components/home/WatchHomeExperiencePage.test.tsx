@@ -8,6 +8,7 @@ import { renderToStaticMarkup } from "react-dom/server"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import type { Section } from "@/components/sections"
 import { WATCH_PAGE_CONTENT_CLASSES } from "@/lib/content-width"
+import type { DynamicCollectionFeedCacheSignatures } from "@/lib/dynamic-collection-contract"
 import type { WatchHomeModel } from "@/lib/watch-home"
 
 const createCacheSignatures = vi.hoisted(() => vi.fn())
@@ -45,7 +46,7 @@ vi.mock("@/components/sections", () => ({
   ExperienceSectionRenderer: ({
     section,
     languageSlug,
-    dynamicCollectionCacheSignatures,
+    dynamicCollections,
   }: {
     section: {
       __typename?: string | null
@@ -56,9 +57,9 @@ vi.mock("@/components/sections", () => ({
       sectionContent?: Array<Record<string, unknown> | null> | null
     }
     languageSlug: string
-    dynamicCollectionCacheSignatures?: {
-      mobile: string
-      desktop: string
+    dynamicCollections?: {
+      cacheSignatures?: DynamicCollectionFeedCacheSignatures
+      featuredCollections?: { ids: string[]; slugs: string[] }
     }
   }) => {
     const headings = (
@@ -96,7 +97,12 @@ vi.mock("@/components/sections", () => ({
         data-language-slug={languageSlug}
         data-block-marker={section.__typename ?? "unknown"}
         data-items-source={section.itemsSource ?? undefined}
-        data-desktop-cache-signature={dynamicCollectionCacheSignatures?.desktop}
+        data-desktop-cache-signature={
+          dynamicCollections?.cacheSignatures?.desktop
+        }
+        data-excluded-slug-count={
+          dynamicCollections?.featuredCollections?.slugs.length
+        }
       >
         {headings(section).map(({ heading, level }) =>
           level === "h1" ? (
@@ -482,4 +488,47 @@ describe("WatchHomeExperiencePage", () => {
       ).toBe(rails[0])
     },
   )
+
+  it("bounds large authored parent-slug sets before signing and rendering", () => {
+    const authoredCollections = Array.from({ length: 201 }, (_, index) => ({
+      __typename: "MediaCollectionBlock",
+      sectionKey: `authored-${index}`,
+      mediaDefaultCollectionSlug: `collection-${index}`,
+      items: [],
+    })) as unknown as Section[]
+    const dynamicFeed = {
+      __typename: "MediaCollectionBlock",
+      sectionKey: "dynamic-collection-feed",
+      itemsSource: "dynamicCollections",
+    } as unknown as Section
+
+    const html = renderToStaticMarkup(
+      <WatchHomeExperiencePage
+        heroModel={heroModel}
+        blocks={[...authoredCollections, dynamicFeed]}
+        languageSlug="english"
+      />,
+    )
+
+    expect(createCacheSignatures).toHaveBeenCalledWith(
+      expect.objectContaining({
+        excludedSlugs: expect.arrayContaining([
+          "collection-0",
+          "collection-199",
+        ]),
+      }),
+    )
+    const signatureInput = createCacheSignatures.mock.calls[0]?.[0] as {
+      excludedSlugs: string[]
+    }
+    expect(signatureInput.excludedSlugs).toHaveLength(200)
+
+    const serverContainer = document.createElement("div")
+    serverContainer.innerHTML = html
+    expect(
+      serverContainer
+        .querySelector('[data-items-source="dynamicCollections"]')
+        ?.getAttribute("data-excluded-slug-count"),
+    ).toBe("200")
+  })
 })

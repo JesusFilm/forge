@@ -8,6 +8,7 @@ import { WatchHomeTvCarousel } from "@/components/home/WatchHomeTvCarousel"
 import { WATCH_PAGE_CONTENT_CLASSES } from "@/lib/content-width"
 import { createInitialDynamicCollectionFeedCacheSignatures } from "@/lib/dynamic-collection-cache-signature"
 import {
+  boundDynamicCollectionFeedReferences,
   mergeDynamicCollectionFeedExcludedIds,
   type DynamicCollectionFeedCacheScope,
 } from "@/lib/dynamic-collection-contract"
@@ -137,6 +138,10 @@ export function WatchHomeExperiencePage({
   const dynamicCollectionBlock = normalized.blocks.find(
     isDynamicMediaCollectionBlock,
   )
+  const boundedFeaturedCollections = {
+    ids: featuredCollections.ids,
+    slugs: boundDynamicCollectionFeedReferences(featuredCollections.slugs),
+  }
   const dynamicCollectionCacheSignatures = dynamicCollectionBlock
     ? createInitialDynamicCollectionFeedCacheSignatures({
         locale,
@@ -148,14 +153,16 @@ export function WatchHomeExperiencePage({
               excludedVideoIds?: readonly string[] | null
             }
           ).excludedVideoIds,
-          featuredCollections.ids,
+          boundedFeaturedCollections.ids,
         ),
-        excludedSlugs: featuredCollections.slugs,
+        excludedSlugs: boundedFeaturedCollections.slugs,
       })
     : undefined
-  const authoredBlocks = dynamicCollectionBlock
-    ? normalized.blocks.filter((block) => block !== dynamicCollectionBlock)
-    : normalized.blocks
+  const dynamicCollections = {
+    featuredCollections: boundedFeaturedCollections,
+    cacheScope: dynamicCollectionCacheScope,
+    cacheSignatures: dynamicCollectionCacheSignatures,
+  }
 
   const renderBlock = (block: Section, index: number) => {
     const blockKey =
@@ -179,10 +186,7 @@ export function WatchHomeExperiencePage({
         section={block}
         locale={locale}
         languageSlug={languageSlug}
-        featuredCollections={featuredCollections}
-        allowDynamicCollections
-        dynamicCollectionCacheScope={dynamicCollectionCacheScope}
-        dynamicCollectionCacheSignatures={dynamicCollectionCacheSignatures}
+        dynamicCollections={dynamicCollections}
       />
     )
 
@@ -242,13 +246,7 @@ export function WatchHomeExperiencePage({
               <WatchHomeCategoryRail languageSlug={languageSlug} />
             </>
           )}
-          {authoredBlocks.map(renderBlock)}
-          {dynamicCollectionBlock
-            ? renderBlock(
-                dynamicCollectionBlock,
-                normalized.blocks.indexOf(dynamicCollectionBlock),
-              )
-            : null}
+          {normalized.blocks.map(renderBlock)}
           <WatchHomeFooter />
         </div>
       </div>
