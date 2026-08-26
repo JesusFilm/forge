@@ -29,6 +29,7 @@ export async function loadDynamicCollectionFeedPage(
     first: String(normalized.first),
     cardsPerParent: String(normalized.cardsPerParent),
   })
+  if (normalized.cacheScope === "preview") params.set("scope", "preview")
   if (normalized.after) params.set("after", normalized.after)
   for (const id of normalized.excludedIds) params.append("excludedIds", id)
   for (const slug of normalized.excludedSlugs) {
