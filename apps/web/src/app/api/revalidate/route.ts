@@ -15,6 +15,7 @@ import {
   resolveWatchLocaleIdentity,
 } from "@/lib/locale"
 import { appendHtmlSuffix } from "@/lib/url-shape"
+import { purgeWatchDynamicCollectionsCache } from "@/lib/cloudflare-cache"
 import {
   WATCH_CACHE_TAG_GROUPS,
   type WatchCacheTag,
@@ -304,6 +305,16 @@ export async function POST(request: Request) {
     ...extra,
   })
 
+  const purgeDynamicCollectionEdgeCache = async () => {
+    try {
+      await purgeWatchDynamicCollectionsCache()
+    } catch {
+      console.warn(
+        "[revalidate] event=watch_revalidate.edge_cache.purge.failed",
+      )
+    }
+  }
+
   if (model === "watch-route-manifest") {
     pushTags(WATCH_CACHE_TAG_GROUPS.watchRouteManifest)
     clearWatchRouteManifestCache()
@@ -330,6 +341,7 @@ export async function POST(request: Request) {
     pushTags(WATCH_CACHE_TAG_GROUPS.watchSetting)
     revalidateAllWatchPages()
     revalidateHomepagePaths()
+    await purgeDynamicCollectionEdgeCache()
     return NextResponse.json(responsePayload())
   }
 
@@ -350,6 +362,8 @@ export async function POST(request: Request) {
     revalidateAllWatchPages()
     revalidateHomepagePaths()
   }
+
+  await purgeDynamicCollectionEdgeCache()
 
   return NextResponse.json(responsePayload())
 }

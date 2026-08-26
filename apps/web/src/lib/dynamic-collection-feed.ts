@@ -124,15 +124,42 @@ const getCachedDynamicCollectionFeedPage = unstable_cache(
   fetchDynamicCollectionFeedPage,
   ["watch-dynamic-collection-feed-v1"],
   {
-    revalidate: 60,
+    revalidate: 86_400,
+    tags: [WATCH_CACHE_TAGS.home, WATCH_CACHE_TAGS.video],
+  },
+)
+
+const getCachedPreviewDynamicCollectionFeedPage = unstable_cache(
+  fetchDynamicCollectionFeedPage,
+  ["watch-dynamic-collection-feed-preview-v1"],
+  {
+    revalidate: 900,
     tags: [WATCH_CACHE_TAGS.home, WATCH_CACHE_TAGS.video],
   },
 )
 
 export function getDynamicCollectionFeedPage(
   input: NormalizedDynamicCollectionFeedInput,
+  options: { sharedCache: boolean } = { sharedCache: false },
 ): Promise<DynamicCollectionFeedPage> {
-  return getCachedDynamicCollectionFeedPage(
+  if (!options.sharedCache) {
+    return fetchDynamicCollectionFeedPage(
+      input.locale,
+      input.languageSlug,
+      input.after,
+      input.excludedIds,
+      input.excludedSlugs,
+      input.first,
+      input.cardsPerParent,
+    )
+  }
+
+  const getCachedPage =
+    input.cacheScope === "preview"
+      ? getCachedPreviewDynamicCollectionFeedPage
+      : getCachedDynamicCollectionFeedPage
+
+  return getCachedPage(
     input.locale,
     input.languageSlug,
     input.after,

@@ -10,6 +10,8 @@ import type { Section } from "@/components/sections"
 import { WATCH_PAGE_CONTENT_CLASSES } from "@/lib/content-width"
 import type { WatchHomeModel } from "@/lib/watch-home"
 
+const createCacheSignatures = vi.hoisted(() => vi.fn())
+
 vi.mock("next/image", () => ({
   default: () => null,
 }))
@@ -20,6 +22,10 @@ vi.mock("next-intl", () => ({
   useLocale: () => "en",
   useTranslations: () => (key: string) =>
     key === "pageTitle" ? "Jesus Film Project Watch" : key,
+}))
+
+vi.mock("@/lib/dynamic-collection-cache-signature", () => ({
+  createInitialDynamicCollectionFeedCacheSignatures: createCacheSignatures,
 }))
 
 vi.mock("@/components/home/WatchHomeFooter", () => ({
@@ -39,6 +45,7 @@ vi.mock("@/components/sections", () => ({
   ExperienceSectionRenderer: ({
     section,
     languageSlug,
+    dynamicCollectionCacheSignatures,
   }: {
     section: {
       __typename?: string | null
@@ -49,6 +56,10 @@ vi.mock("@/components/sections", () => ({
       sectionContent?: Array<Record<string, unknown> | null> | null
     }
     languageSlug: string
+    dynamicCollectionCacheSignatures?: {
+      mobile: string
+      desktop: string
+    }
   }) => {
     const headings = (
       block: typeof section | Record<string, unknown> | null,
@@ -85,6 +96,7 @@ vi.mock("@/components/sections", () => ({
         data-language-slug={languageSlug}
         data-block-marker={section.__typename ?? "unknown"}
         data-items-source={section.itemsSource ?? undefined}
+        data-desktop-cache-signature={dynamicCollectionCacheSignatures?.desktop}
       >
         {headings(section).map(({ heading, level }) =>
           level === "h1" ? (
@@ -144,6 +156,11 @@ let container: HTMLDivElement
 let root: Root
 
 beforeEach(() => {
+  createCacheSignatures.mockReset()
+  createCacheSignatures.mockReturnValue({
+    mobile: "m".repeat(43),
+    desktop: "d".repeat(43),
+  })
   container = document.createElement("div")
   document.body.appendChild(container)
   root = createRoot(container)
@@ -389,6 +406,16 @@ describe("WatchHomeExperiencePage", () => {
 
     expect(footer).not.toBeNull()
     expect(dynamicFeed).not.toBeNull()
+    expect(dynamicFeed?.getAttribute("data-desktop-cache-signature")).toBe(
+      "d".repeat(43),
+    )
+    expect(createCacheSignatures).toHaveBeenCalledWith(
+      expect.objectContaining({
+        cacheScope: "live",
+        locale: "en",
+        languageSlug: "english",
+      }),
+    )
     expect(dynamicFeed?.compareDocumentPosition(footer as Node) ?? 0).toBe(
       Node.DOCUMENT_POSITION_FOLLOWING,
     )

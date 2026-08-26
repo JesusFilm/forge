@@ -9,6 +9,10 @@ import type { RouteVideo, Section } from "@/lib/content"
 import type { MediaCollection as MediaCollectionType } from "./MediaCollection"
 import type { DynamicMediaCollection as DynamicMediaCollectionType } from "./DynamicMediaCollection"
 import type { FeaturedCollectionReferences } from "@/lib/featured-collection-references"
+import type {
+  DynamicCollectionFeedCacheScope,
+  DynamicCollectionFeedCacheSignatures,
+} from "@/lib/dynamic-collection-contract"
 import type { PromoBanner as PromoBannerType } from "./PromoBanner"
 import type { InfoBlocks as InfoBlocksType } from "./InfoBlocks"
 import type { CTASection as CTASectionType } from "./CTASection"
@@ -146,6 +150,10 @@ function renderAdminBlock(
   locale: string | null | undefined,
   featuredCollections: FeaturedCollectionReferences | undefined,
   allowDynamicCollections: boolean,
+  dynamicCollectionCacheScope: DynamicCollectionFeedCacheScope,
+  dynamicCollectionCacheSignatures:
+    | DynamicCollectionFeedCacheSignatures
+    | undefined,
 ): ReactNode {
   switch (block.__typename) {
     case "MediaCollectionBlock":
@@ -157,6 +165,8 @@ function renderAdminBlock(
             locale={locale ?? "en"}
             languageSlug={languageSlug ?? "english"}
             featuredCollections={featuredCollections}
+            cacheScope={dynamicCollectionCacheScope}
+            cacheSignatures={dynamicCollectionCacheSignatures}
           />
         )
       }
@@ -336,6 +346,8 @@ export function ExperienceSectionRenderer({
   locale,
   featuredCollections,
   allowDynamicCollections = false,
+  dynamicCollectionCacheScope = "live",
+  dynamicCollectionCacheSignatures,
 }: {
   section: Section
   routeVideo?: RouteVideo | null
@@ -343,6 +355,8 @@ export function ExperienceSectionRenderer({
   locale?: string | null
   featuredCollections?: FeaturedCollectionReferences
   allowDynamicCollections?: boolean
+  dynamicCollectionCacheScope?: DynamicCollectionFeedCacheScope
+  dynamicCollectionCacheSignatures?: DynamicCollectionFeedCacheSignatures
 }) {
   // Admin-shape dispatch — content.ts reads from admin now, so every
   // block reaching this renderer carries an admin `*Block` __typename.
@@ -356,6 +370,8 @@ export function ExperienceSectionRenderer({
       locale,
       featuredCollections,
       allowDynamicCollections,
+      dynamicCollectionCacheScope,
+      dynamicCollectionCacheSignatures,
     )
   }
 

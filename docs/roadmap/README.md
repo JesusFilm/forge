@@ -6,8 +6,8 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 
 ## Status (August 26, 2026)
 
-- **Total tickets:** 595
-- **Complete:** 439
+- **Total tickets:** 602
+- **Complete:** 446
 - **In progress:** 40
 - **Not started:** 37
 - **Blocked:** 79
@@ -148,6 +148,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-412](content-discovery/feat-412-watch-search-suggestion-multi-token-recall.md)                           | Recover Watch suggestions for near-miss multi-word queries                                      | vlad       | P1       | 2026-08-22 | 1    | 2026-08-22 | complete    |
 | [feat-421](content-discovery/feat-421-watch-search-unavailable-card-presentation.md)                           | Present unavailable Watch search results as recovery cards                                      | urim       | P1       | 2026-08-22 | 2    | 2026-08-23 | complete    |
 | [feat-420](content-discovery/feat-420-watch-suggestion-backspace-shorten-recovery.md)                          | Recover Watch suggestions after Backspace-shortened queries                                     | vlad       | P1       | 2026-08-23 | 1    | 2026-08-23 | complete    |
+| [feat-426](content-discovery/feat-426-watch-home-category-rail.md)                                             | Watch homepage browse-by-category rail                                                          | vlad       | P1       | 2026-08-25 | 1    | 2026-08-25 | complete    |
 | [feat-394](content-discovery/feat-394-bounded-recommendation-exploration.md)                                   | Bounded recommendation exploration                                                              | nisal      | P2       | —          | 6    | —          | blocked     |
 | [feat-395](content-discovery/feat-395-learned-multi-outcome-reranker.md)                                       | Learned multi-outcome re-ranker                                                                 | nisal      | P2       | —          | 10   | —          | blocked     |
 | [feat-396](content-discovery/feat-396-recommendation-privacy-capacity-graduation.md)                           | Recommendation privacy and capacity graduation                                                  | nisal      | P2       | —          | 5    | —          | blocked     |
@@ -499,7 +500,9 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-419](platform/feat-419-watch-player-tooltip-consistency.md)                      | Watch player tooltip consistency                                                 | urim       | P1       | 2026-08-22 | 1    | 2026-08-22 | complete    |
 | [feat-421](platform/feat-421-watch-home-language-modal-parity.md)                      | Watch home language modal parity                                                 | vlad       | P1       | 2026-08-24 | 1    | 2026-08-24 | complete    |
 | [feat-422](platform/feat-422-watch-ui-native-context-translation-prompts.md)           | Watch UI native-context translation prompts and Chinese catalog review           | vlad       | P1       | 2026-08-25 | 1    | 2026-08-25 | complete    |
+| [feat-428](platform/feat-428-watch-infinite-feed-shared-cache.md)                      | Watch infinite feed shared cache                                                 | codex      | P1       | 2026-08-25 | 1    | 2026-08-25 | complete    |
 | [feat-423](platform/feat-423-devcontainer-host-accessible-dev-ports.md)                | Expose devcontainer development servers to the host                              | nisal      | P1       | 2026-08-26 | 1    | 2026-08-26 | complete    |
+| [feat-424](platform/feat-424-watch-series-footer-parity.md)                            | Watch series footer parity                                                       | codex      | P1       | 2026-08-26 | 1    | 2026-08-26 | complete    |
 | [feat-247](platform/feat-247-watch-nested-series-language-availability.md)             | Watch nested-series language availability                                        | vlad       | P2       | —          | —    | —          | complete    |
 | [feat-336](platform/feat-336-watch-homepage-seed-schema-drift.md)                      | Repair Watch homepage Experience seed schema drift                               | unassigned | P2       | —          | 1    | —          | not-started |
 | [feat-088](platform/feat-088-internal-tools-branding.md)                               | Internal Tools Branding                                                          | vlad       | P2       | 2026-03-30 | 14   | 2026-04-12 | complete    |
@@ -562,6 +565,9 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-322](platform/feat-322-watch-series-background-parity.md)                        | Watch series background parity                                                   | codex      | P2       | 2026-07-31 | 1    | 2026-07-31 | complete    |
 | [feat-411](platform/feat-411-watch-favicon-discoverability.md)                         | Watch favicon discoverability                                                    | vlad       | P2       | 2026-08-21 | 1    | 2026-08-21 | complete    |
 | [feat-411](platform/feat-411-watch-single-collection-header.md)                        | Watch single collection header                                                   | codex      | P2       | 2026-08-21 | 1    | 2026-08-21 | complete    |
+| [feat-425](platform/feat-425-admin-ai-chat-collapsible-rail.md)                        | Admin AI Chat Collapsible Rail                                                   | vlad       | P2       | 2026-08-26 | 1    | 2026-08-26 | complete    |
+| [feat-425](platform/feat-425-watch-single-collection-parent-link.md)                   | Watch single collection parent link                                              | codex      | P2       | 2026-08-26 | 1    | 2026-08-26 | complete    |
+| [feat-427](platform/feat-427-watch-carousel-content-labels.md)                         | Watch carousel content labels                                                    | codex      | P2       | 2026-08-26 | 1    | 2026-08-26 | complete    |
 | [feat-342](platform/feat-342-tv-device-grant-scaffold-teardown.md)                     | TV device-grant scaffold teardown                                                | ekkasit    | P2       | 2026-09-15 | 2    | 2026-09-16 | not-started |
 | [feat-068](platform/feat-068-partner-publishing-and-user-accounts.md)                  | Partner Publishing and User Accounts                                             | tataihono  | P2       | 2026-10-01 | 61   | 2026-11-30 | blocked     |
 | [feat-066](platform/feat-066-llm-steering-system-rag-and-guardrails.md)                | LLM Steering System (RAG + Guardrails)                                           | tataihono  | P2       | 2026-10-15 | 78   | 2026-12-31 | blocked     |
@@ -622,6 +628,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-399](topic-experiences/feat-399-watch-language-globe-preview.md)                      | Watch animated language globe preview                                            | urim       | P1       | 2026-08-20 | 1    | 2026-08-20 | complete    |
 | [feat-400](topic-experiences/feat-400-watch-language-globe-sections.md)                     | Reuse the Watch language globe on home and not-found pages                       | urim       | P1       | 2026-08-21 | 1    | 2026-08-21 | complete    |
 | [feat-405](topic-experiences/feat-405-experience-duplication-admin-api-mcp.md)              | Experience duplication across Admin, GraphQL, and MCP                            | codex      | P1       | 2026-08-21 | 1    | 2026-08-21 | complete    |
+| [feat-423](topic-experiences/feat-423-watch-language-globe-experience-block.md)             | Author the Watch language globe in Experience Editor                             | urim       | P1       | 2026-08-25 | 1    | 2026-08-25 | complete    |
 | [feat-020](topic-experiences/feat-020-ai-topic-content-generation.md)                       | AI Topic Content Generation Service                                              | vlad       | P2       | 2026-04-28 | 28   | 2026-05-25 | blocked     |
 | [feat-021](topic-experiences/feat-021-generation-quality-monitoring.md)                     | Generation Quality & Monitoring Dashboard                                        | ekkasit    | P2       | 2026-05-05 | 21   | 2026-05-25 | blocked     |
 | [feat-146](topic-experiences/feat-146-watch-bible-quotes-promo-cta-wrap.md)                 | Watch Bible Quotes Promo CTA Wrap                                                | urim       | P2       | 2026-06-13 | 1    | 2026-06-13 | complete    |
