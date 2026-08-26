@@ -50,7 +50,7 @@ const {
       locale: string
       audioLanguageCountLabel?: string | null
       subtitleLanguageCountLabel?: string | null
-    }) => null,
+    }) => <div data-testid="series-page-client-mock" />,
   ),
   watchPageClientMock: vi.fn((_props: unknown) => (
     <div data-testid="watch-page-client-mock" />
@@ -1009,8 +1009,13 @@ describe("Catch-all routing — series branch (2-seg)", () => {
     expect(seriesPageClientMock).toHaveBeenCalledTimes(1)
     expect(watchPageClientMock).not.toHaveBeenCalled()
     expect(
-      container.querySelector('[data-testid="watch-home-footer"]'),
-    ).toBeNull()
+      Array.from(
+        container.querySelectorAll(
+          '[data-testid="series-page-client-mock"], [data-testid="watch-home-footer"]',
+        ),
+        (element) => element.getAttribute("data-testid"),
+      ),
+    ).toEqual(["series-page-client-mock", "watch-home-footer"])
   })
 
   it("renders SeriesPageClient when label is 'series' (defensive OR)", async () => {
@@ -1018,6 +1023,14 @@ describe("Catch-all routing — series branch (2-seg)", () => {
     await render2Seg("any-series", "english")
     expect(seriesPageClientMock).toHaveBeenCalledTimes(1)
     expect(watchPageClientMock).not.toHaveBeenCalled()
+    expect(
+      Array.from(
+        container.querySelectorAll(
+          '[data-testid="series-page-client-mock"], [data-testid="watch-home-footer"]',
+        ),
+        (element) => element.getAttribute("data-testid"),
+      ),
+    ).toEqual(["series-page-client-mock", "watch-home-footer"])
   })
 
   it("emits an indexable series CollectionPage with standalone child entities", async () => {
@@ -1073,6 +1086,9 @@ describe("Catch-all routing — series branch (2-seg)", () => {
       "NEXT_NOT_FOUND",
     )
     expect(seriesPageClientMock).not.toHaveBeenCalled()
+    expect(
+      container.querySelector('[data-testid="watch-home-footer"]'),
+    ).toBeNull()
   })
 
   it("hides nested containers that are not admitted in the selected language", async () => {
