@@ -214,6 +214,7 @@
     "searchSuggestionWithLanguage": "{language} кылын «{suggestion}» утчалы",
     "inLanguage": "{language} кылын",
     "browseByRegion": "Регион пыр выжыты",
+    "allVideosOnSinglePage": "All videos on single page",
     "clearLanguages": "Вань",
     "queryLanguageDetected": "{language} табыны",
     "searchInLanguage": "{language} кылын утчалы",

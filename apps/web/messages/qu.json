@@ -214,6 +214,7 @@
     "searchSuggestionWithLanguage": "{language}-pi “{suggestion}” nisqata maskay",
     "inLanguage": "{language}-pi",
     "browseByRegion": "Suyuyninman qhaway",
+    "allVideosOnSinglePage": "All videos on single page",
     "clearLanguages": "Pichay",
     "queryLanguageDetected": "{language} tarisqa",
     "searchInLanguage": "{language}-pi maskay",

@@ -214,6 +214,7 @@
     "searchSuggestionWithLanguage": "Pamilnga ha {language} an “{suggestion}”",
     "inLanguage": "ha {language}",
     "browseByRegion": "Usisa sumala han rehiyon",
+    "allVideosOnSinglePage": "All videos on single page",
     "clearLanguages": "Pura",
     "queryLanguageDetected": "Nadiskubre an {language}",
     "searchInLanguage": "Pamilnga ha {language}",

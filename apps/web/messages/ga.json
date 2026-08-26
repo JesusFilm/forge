@@ -214,6 +214,7 @@
     "searchSuggestionWithLanguage": "Cuardaigh “{suggestion}” i {language}",
     "inLanguage": "i {language}",
     "browseByRegion": "Brabhsáil de réir réigiúin",
+    "allVideosOnSinglePage": "All videos on single page",
     "clearLanguages": "Glan",
     "queryLanguageDetected": "Aimsíodh {language}",
     "searchInLanguage": "Cuardaigh i {language}",

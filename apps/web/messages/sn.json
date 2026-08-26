@@ -214,6 +214,7 @@
     "searchSuggestionWithLanguage": "Tsvaga “{suggestion}” mumutauro uyu: {language}",
     "inLanguage": "mu {language}",
     "browseByRegion": "Browse nenzvimbo",
+    "allVideosOnSinglePage": "All videos on single page",
     "clearLanguages": "Bvisa",
     "queryLanguageDetected": "{language} yawanikwa",
     "searchInLanguage": "Tsvaga mumutauro uyu: {language}",

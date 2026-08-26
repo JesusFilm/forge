@@ -214,6 +214,7 @@
     "searchSuggestionWithLanguage": "Seetal «{suggestion}» ci {language}",
     "inLanguage": "ci {language}",
     "browseByRegion": "Xool ci dëkku",
+    "allVideosOnSinglePage": "All videos on single page",
     "clearLanguages": "Far",
     "queryLanguageDetected": "{language} gis na",
     "searchInLanguage": "Seet ci {language}",

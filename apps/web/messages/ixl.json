@@ -214,6 +214,7 @@
     "searchSuggestionWithLanguage": "\"{suggestion}\" chi ch'aw {language} chi",
     "inLanguage": "{language} chi",
     "browseByRegion": "Region chi browse",
+    "allVideosOnSinglePage": "All videos on single page",
     "clearLanguages": "K'uch",
     "queryLanguageDetected": "{language} xk'ulb'ej",
     "searchInLanguage": "Search {language} chi",

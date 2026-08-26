@@ -214,6 +214,7 @@
     "searchSuggestionWithLanguage": "Saliksiken ed {language} so “{suggestion}”",
     "inLanguage": "ed {language}",
     "browseByRegion": "Liboten alinsunod ed rehiyon",
+    "allVideosOnSinglePage": "All videos on single page",
     "clearLanguages": "I-clear",
     "queryLanguageDetected": "Natukduman so {language}",
     "searchInLanguage": "Saliksiken ed {language}",

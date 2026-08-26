@@ -214,6 +214,7 @@
     "searchSuggestionWithLanguage": "{language} хэлээр «{suggestion}» гэжэ бэдэрхэ",
     "inLanguage": "{language}-ээр",
     "browseByRegion": "Бүс нутгаар үзэх",
+    "allVideosOnSinglePage": "All videos on single page",
     "clearLanguages": "Арилгах",
     "queryLanguageDetected": "{language} илэрлээ",
     "searchInLanguage": "{language} хэлээр бэдэрхэ",

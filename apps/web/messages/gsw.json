@@ -214,6 +214,7 @@
     "searchSuggestionWithLanguage": "Uf {language} nach «{suggestion}» sueche",
     "inLanguage": "uf {language}",
     "browseByRegion": "Nach Region durstöbere",
+    "allVideosOnSinglePage": "All videos on single page",
     "clearLanguages": "Lösche",
     "queryLanguageDetected": "{language} erkannt",
     "searchInLanguage": "Uf {language} sueche",

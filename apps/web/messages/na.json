@@ -214,6 +214,7 @@
     "searchSuggestionWithLanguage": "{language} ne “{suggestion}” ae bika",
     "inLanguage": "{language} ne",
     "browseByRegion": "Region ne bika",
+    "allVideosOnSinglePage": "All videos on single page",
     "clearLanguages": "E kar",
     "queryLanguageDetected": "{language} e detected",
     "searchInLanguage": "{language} ne bika",

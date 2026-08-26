@@ -214,6 +214,7 @@
     "searchSuggestionWithLanguage": "Søg efter »{suggestion}« på {language}",
     "inLanguage": "på {language}",
     "browseByRegion": "Browse efter region",
+    "allVideosOnSinglePage": "All videos on single page",
     "clearLanguages": "Ryd",
     "queryLanguageDetected": "{language} registreret",
     "searchInLanguage": "Søg på {language}",

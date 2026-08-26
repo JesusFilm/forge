@@ -214,6 +214,7 @@
     "searchSuggestionWithLanguage": "Sakani “{suggestion}” mu {language}",
     "inLanguage": "mu {language}",
     "browseByRegion": "Fufuzani ndi dera",
+    "allVideosOnSinglePage": "All videos on single page",
     "clearLanguages": "Chotsani",
     "queryLanguageDetected": "{language} yadziwika",
     "searchInLanguage": "Sakani mu {language}",

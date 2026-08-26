@@ -214,6 +214,7 @@
     "searchSuggestionWithLanguage": "Tikanöx \"{suggestion}\" pa {language}",
     "inLanguage": "pa {language}",
     "browseByRegion": "Tik'ut pa región",
+    "allVideosOnSinglePage": "All videos on single page",
     "clearLanguages": "Tijach",
     "queryLanguageDetected": "{language} xrik'äx",
     "searchInLanguage": "Tikanöx pa {language}",

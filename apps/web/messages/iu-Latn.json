@@ -214,6 +214,7 @@
     "searchSuggestionWithLanguage": "{language}-mi “{suggestion}” ujaruk",
     "inLanguage": "{language}-mi",
     "browseByRegion": "Nunarsuup immikkoortortai naapertorlugit alakkarit",
+    "allVideosOnSinglePage": "All videos on single page",
     "clearLanguages": "Piiuk",
     "queryLanguageDetected": "{language} paasineqarpoq",
     "searchInLanguage": "{language}-mi ujaruk",

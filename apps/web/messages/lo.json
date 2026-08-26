@@ -214,6 +214,7 @@
     "searchSuggestionWithLanguage": "ຄົ້ນຫາ “{suggestion}” ໃນ {language}",
     "inLanguage": "ໃນ {language}",
     "browseByRegion": "ຊອກຫາຕາມພາກພື້ນ",
+    "allVideosOnSinglePage": "All videos on single page",
     "clearLanguages": "ລ້າງ",
     "queryLanguageDetected": "ພົບ {language}",
     "searchInLanguage": "ຄົ້ນຫາໃນ {language}",

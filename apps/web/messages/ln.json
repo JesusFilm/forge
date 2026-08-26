@@ -214,6 +214,7 @@
     "searchSuggestionWithLanguage": "Sosa «{suggestion}» na {language}",
     "inLanguage": "na {language}",
     "browseByRegion": "Tala na etúká",
+    "allVideosOnSinglePage": "All videos on single page",
     "clearLanguages": "Longola",
     "queryLanguageDetected": "{language} emonanaki",
     "searchInLanguage": "Sosa na {language}",

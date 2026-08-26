@@ -214,6 +214,7 @@
     "searchSuggestionWithLanguage": "Otsi keeles {language}: „{suggestion}”",
     "inLanguage": "keeles {language}",
     "browseByRegion": "Sirvi piirkonna järgi",
+    "allVideosOnSinglePage": "All videos on single page",
     "clearLanguages": "Tühjenda",
     "queryLanguageDetected": "Tuvastatud keel: {language}",
     "searchInLanguage": "Otsi keeles {language}",

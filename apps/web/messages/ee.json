@@ -214,6 +214,7 @@
     "searchSuggestionWithLanguage": "Se “{suggestion}” le {language} me",
     "inLanguage": "le {language} me",
     "browseByRegion": "Kpɔ ɖe region me",
+    "allVideosOnSinglePage": "All videos on single page",
     "clearLanguages": "Tso",
     "queryLanguageDetected": "{language} la kɔtɔ",
     "searchInLanguage": "Se le {language} me",

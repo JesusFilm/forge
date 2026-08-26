@@ -214,6 +214,7 @@
     "searchSuggestionWithLanguage": "Ekka \"{suggestion}\" gi {language}",
     "inLanguage": "gi {language}",
     "browseByRegion": "Guiya segun i region",
+    "allVideosOnSinglePage": "All videos on single page",
     "clearLanguages": "Na'guaha",
     "queryLanguageDetected": "Ma'angok {language}",
     "searchInLanguage": "Ekka gi {language}",

@@ -214,6 +214,7 @@
     "searchSuggestionWithLanguage": "Sesha “{suggestion}” ngesi-{language}",
     "inLanguage": "ngesi-{language}",
     "browseByRegion": "Phequlula ngokwesifunda",
+    "allVideosOnSinglePage": "All videos on single page",
     "clearLanguages": "Sula",
     "queryLanguageDetected": "Kutholakele isi-{language}",
     "searchInLanguage": "Sesha ngesi-{language}",

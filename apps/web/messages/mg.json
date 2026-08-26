@@ -214,6 +214,7 @@
     "searchSuggestionWithLanguage": "Karohy amin'ny {language} ny “{suggestion}”",
     "inLanguage": "amin'ny {language}",
     "browseByRegion": "Zaha araka ny faritra",
+    "allVideosOnSinglePage": "All videos on single page",
     "clearLanguages": "Fafao",
     "queryLanguageDetected": "Hita fa {language}",
     "searchInLanguage": "Karohy amin'ny {language}",

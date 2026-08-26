@@ -214,6 +214,7 @@
     "searchSuggestionWithLanguage": "Buscar «{suggestion}» en {language}",
     "inLanguage": "en {language}",
     "browseByRegion": "Explorar por región",
+    "allVideosOnSinglePage": "All videos on single page",
     "clearLanguages": "Borrar",
     "queryLanguageDetected": "Detectado: {language}",
     "searchInLanguage": "Buscar en {language}",

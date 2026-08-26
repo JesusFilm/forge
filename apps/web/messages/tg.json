@@ -214,6 +214,7 @@
     "searchSuggestionWithLanguage": "«{suggestion}»-ро ба забони {language} ҷустуҷӯ кунед",
     "inLanguage": "ба забони {language}",
     "browseByRegion": "Аз рӯйи минтақа паймоиш кунед",
+    "allVideosOnSinglePage": "All videos on single page",
     "clearLanguages": "Тоза кардан",
     "queryLanguageDetected": "{language} муайян шуд",
     "searchInLanguage": "Ба забони {language} ҷустуҷӯ кунед",

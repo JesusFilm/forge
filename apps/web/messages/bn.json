@@ -214,6 +214,7 @@
     "searchSuggestionWithLanguage": "{language} ভাষায় “{suggestion}” সার্চ করুন",
     "inLanguage": "{language} ভাষায়",
     "browseByRegion": "অঞ্চল অনুযায়ী ব্রাউজ করুন",
+    "allVideosOnSinglePage": "All videos on single page",
     "clearLanguages": "মুছুন",
     "queryLanguageDetected": "{language} শনাক্ত করা হয়েছে",
     "searchInLanguage": "{language} ভাষায় সার্চ করুন",

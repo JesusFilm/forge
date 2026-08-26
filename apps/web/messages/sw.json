@@ -214,6 +214,7 @@
     "searchSuggestionWithLanguage": "Tafuta “{suggestion}” katika {language}",
     "inLanguage": "katika {language}",
     "browseByRegion": "Vinjari kwa eneo",
+    "allVideosOnSinglePage": "All videos on single page",
     "clearLanguages": "Futa",
     "queryLanguageDetected": "{language} imetambuliwa",
     "searchInLanguage": "Tafuta katika {language}",

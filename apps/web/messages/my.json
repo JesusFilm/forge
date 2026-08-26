@@ -214,6 +214,7 @@
     "searchSuggestionWithLanguage": "“{suggestion}” ကို {language} ဖြင့် ရှာဖွေပါ",
     "inLanguage": "{language} တွင်",
     "browseByRegion": "ဒေသအလိုက် လေ့လာပါ",
+    "allVideosOnSinglePage": "All videos on single page",
     "clearLanguages": "ရှင်းလင်းပါ",
     "queryLanguageDetected": "{language} တွေ့ရှိထားသည်",
     "searchInLanguage": "{language} ဖြင့် ရှာဖွေပါ",

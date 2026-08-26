@@ -214,6 +214,7 @@
     "searchSuggestionWithLanguage": "Søk etter «{suggestion}» på {language}",
     "inLanguage": "på {language}",
     "browseByRegion": "Bla etter region",
+    "allVideosOnSinglePage": "All videos on single page",
     "clearLanguages": "Tøm",
     "queryLanguageDetected": "Oppdaget {language}",
     "searchInLanguage": "Søk på {language}",

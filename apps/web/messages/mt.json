@@ -214,6 +214,7 @@
     "searchSuggestionWithLanguage": "Fittex “{suggestion}” bil-{language}",
     "inLanguage": "bil-{language}",
     "browseByRegion": "Ibrawżja skont ir-reġjun",
+    "allVideosOnSinglePage": "All videos on single page",
     "clearLanguages": "Naddaf",
     "queryLanguageDetected": "Instabet {language}",
     "searchInLanguage": "Fittex bil-{language}",

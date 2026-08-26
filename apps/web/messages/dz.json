@@ -214,6 +214,7 @@
     "searchSuggestionWithLanguage": "“{suggestion}” འདི་ {language} ནང་འཚོལ།",
     "inLanguage": "{language} ནང",
     "browseByRegion": "ལུང་ཕྱོགས་ལྟར་ལྟ་སྐོར།",
+    "allVideosOnSinglePage": "All videos on single page",
     "clearLanguages": "བསལ།",
     "queryLanguageDetected": "{language} བརྡ་འཛིན་འབད་ཡོད།",
     "searchInLanguage": "{language} ནང་འཚོལ།",

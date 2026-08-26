@@ -14,6 +14,11 @@ import { useCallback, type ComponentProps, type ReactNode } from "react"
 import { Button } from "@/components/ui/button"
 import { SpinnerIcon } from "@/components/ui/spinner"
 
+// Re-exported so existing picker call sites keep importing the isolate
+// helper from here; the definition lives in the pure lib module that the
+// header chrome can import without this bundle.
+export { isolateLanguageName } from "@/lib/language-display"
+
 type LinkHref = ComponentProps<typeof Link>["href"]
 
 export const LANGUAGE_PICKER_FOCUS_RING_CLASS =
@@ -24,13 +29,6 @@ export const LANGUAGE_PICKER_VIEWPORT_CLASS =
 
 export const LANGUAGE_PICKER_MODAL_CLASS =
   "m-auto w-full max-w-[608px] shrink-0 border-0 bg-transparent p-0 text-stone-100 ring-0"
-
-const FIRST_STRONG_ISOLATE = "\u2068"
-const POP_DIRECTIONAL_ISOLATE = "\u2069"
-
-export function isolateLanguageName(value: string): string {
-  return `${FIRST_STRONG_ISOLATE}${value}${POP_DIRECTIONAL_ISOLATE}`
-}
 
 const TOOLTIP_LANGUAGES = [
   { key: "english", dir: "ltr" },

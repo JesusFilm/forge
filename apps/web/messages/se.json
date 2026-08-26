@@ -214,6 +214,7 @@
     "searchSuggestionWithLanguage": "Oza «{suggestion}» dán gillii: {language}",
     "inLanguage": "{language}:s",
     "browseByRegion": "Geahččal guovllu mielde",
+    "allVideosOnSinglePage": "All videos on single page",
     "clearLanguages": "Sihko",
     "queryLanguageDetected": "{language} gávdnon",
     "searchInLanguage": "Oza dán gillii: {language}",

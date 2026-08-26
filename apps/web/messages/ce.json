@@ -214,6 +214,7 @@
     "searchSuggestionWithLanguage": "«{suggestion}» лар — мотт: {language}",
     "inLanguage": "{language} тӀехь",
     "browseByRegion": "Регион тӀехь лар",
+    "allVideosOnSinglePage": "All videos on single page",
     "clearLanguages": "ДӀахьа",
     "queryLanguageDetected": "{language} кхийтина",
     "searchInLanguage": "Ларчаран мотт: {language}",

@@ -214,6 +214,7 @@
     "searchSuggestionWithLanguage": "Buska \"{suggestion}\" den {language}",
     "inLanguage": "den {language}",
     "browseByRegion": "Eksplora segun region",
+    "allVideosOnSinglePage": "All videos on single page",
     "clearLanguages": "Kita",
     "queryLanguageDetected": "{language} a worde detektá",
     "searchInLanguage": "Buska den {language}",

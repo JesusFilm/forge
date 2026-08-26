@@ -214,6 +214,7 @@
     "searchSuggestionWithLanguage": "Khangela “{suggestion}” ngolwimi: {language}",
     "inLanguage": "ku {language}",
     "browseByRegion": "Bhrawuza ngokwengingqi",
+    "allVideosOnSinglePage": "All videos on single page",
     "clearLanguages": "Cima",
     "queryLanguageDetected": "Kufunyenwe {language}",
     "searchInLanguage": "Khangela ngolwimi: {language}",

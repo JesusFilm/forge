@@ -214,6 +214,7 @@
     "searchSuggestionWithLanguage": "Etsi kielessä {language}: ”{suggestion}”",
     "inLanguage": "kielessä {language}",
     "browseByRegion": "Selaa alueen perusteella",
+    "allVideosOnSinglePage": "All videos on single page",
     "clearLanguages": "Tyhjennä",
     "queryLanguageDetected": "{language} havaittu",
     "searchInLanguage": "Etsi kielessä {language}",

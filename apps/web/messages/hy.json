@@ -214,6 +214,7 @@
     "searchSuggestionWithLanguage": "{language}-ով որոնել «{suggestion}»",
     "inLanguage": "{language}-ով",
     "browseByRegion": "Դիտել ըստ տարածաշրջանի",
+    "allVideosOnSinglePage": "All videos on single page",
     "clearLanguages": "Մաքրել",
     "queryLanguageDetected": "Հայտնաբերվել է {language}",
     "searchInLanguage": "Որոնել {language}-ով",

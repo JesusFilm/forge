@@ -214,6 +214,7 @@
     "searchSuggestionWithLanguage": "«{suggestion}» вешендомс кяльса: {language}",
     "inLanguage": "на {language}",
     "browseByRegion": "Просмотр по региону",
+    "allVideosOnSinglePage": "All videos on single page",
     "clearLanguages": "Очистить",
     "queryLanguageDetected": "Обнаружен язык: {language}",
     "searchInLanguage": "Вешендомс кяльса: {language}",

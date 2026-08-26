@@ -214,6 +214,7 @@
     "searchSuggestionWithLanguage": "Шукати «{suggestion}» — мова: {language}",
     "inLanguage": "мовою {language}",
     "browseByRegion": "Переглянути за регіоном",
+    "allVideosOnSinglePage": "All videos on single page",
     "clearLanguages": "Очистити",
     "queryLanguageDetected": "Виявлено {language}",
     "searchInLanguage": "Мова пошуку: {language}",

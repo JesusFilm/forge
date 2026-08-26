@@ -214,6 +214,7 @@
     "searchSuggestionWithLanguage": "Sykje yn {language} nei \"{suggestion}\"",
     "inLanguage": "yn {language}",
     "browseByRegion": "Blêdzje op regio",
+    "allVideosOnSinglePage": "All videos on single page",
     "clearLanguages": "Wiskje",
     "queryLanguageDetected": "{language} ûntdutsen",
     "searchInLanguage": "Sykje yn {language}",

@@ -214,6 +214,7 @@
     "searchSuggestionWithLanguage": "Pretraži „{suggestion}“ na sledećem jeziku: {language}",
     "inLanguage": "na jeziku {language}",
     "browseByRegion": "Pregledaj po regionu",
+    "allVideosOnSinglePage": "All videos on single page",
     "clearLanguages": "Obriši",
     "queryLanguageDetected": "Detektovan jezik {language}",
     "searchInLanguage": "Pretraži na sledećem jeziku: {language}",
