@@ -17,8 +17,9 @@ The production copy needs a resumable local rehearsal proving existing embedding
 
 ## Entry Points — Read These First
 
-1. Source and target schema/migration histories.
-2. Existing retrieval eval and corpus provenance tools.
+1. `JesusFilm/jesusfilm-rag/src/db/schema.ts`, `JesusFilm/jesusfilm-rag/migrations/`, and the Forge schema/migration paths delivered by `feat-425` — source and target database contracts.
+2. `JesusFilm/jesusfilm-rag/scripts/copy-raws.sh`, `JesusFilm/jesusfilm-rag/scripts/eval.ts`, `JesusFilm/jesusfilm-rag/eval/qa-golden.yaml`, and `JesusFilm/jesusfilm-rag/src/retrieval/retrieve.ts` — existing copy, reconciliation, and retrieval-equivalence inputs.
+3. `docs/roadmap/rag/evidence/feat-429/local-copy-reconciliation.json` — planned redacted machine-readable rehearsal receipt produced by this ticket.
 
 ## Grep These
 

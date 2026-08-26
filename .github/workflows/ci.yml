@@ -225,7 +225,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
       - name: Verify docs-only roadmap lanes stay hidden
-        run: pnpm exec tsx scripts/check-hidden-roadmap-lanes.ts
+        run: |
+          pnpm exec tsx --test scripts/check-hidden-roadmap-lanes.test.ts
+          pnpm exec tsx scripts/check-hidden-roadmap-lanes.ts
 
   experiment-ledger:
     runs-on: ubuntu-latest

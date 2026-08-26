@@ -8,5 +8,8 @@
     "lint": "eslint .",
     "test": "pnpm depcruise && tsx --test tests/*.test.mjs",
     "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "dependency-cruiser": "^17.4.0"
   }
 }

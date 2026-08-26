@@ -17,8 +17,9 @@ The verified production corpus and vectors must be copied without disturbing jfr
 
 ## Entry Points — Read These First
 
-1. `feat-429` rehearsal receipts and copy runbook.
-2. Source snapshot/cutoff and recovery procedure approved by operators.
+1. `docs/roadmap/rag/evidence/feat-429/local-copy-reconciliation.json` and the Forge copy command delivered by `feat-429` — approved rehearsal receipt and exact resumable command.
+2. `JesusFilm/jesusfilm-rag/docs/decisions/0014-bulk-copy-raw-documents-to-prod.md` and `JesusFilm/jesusfilm-rag/docs/ops/copy-raws.md` — source snapshot, cutoff, copy, and recovery constraints.
+3. `docs/roadmap/rag/evidence/feat-430/production-copy-reconciliation.json` — planned redacted production copy receipt produced by this ticket.
 
 ## Grep These
 

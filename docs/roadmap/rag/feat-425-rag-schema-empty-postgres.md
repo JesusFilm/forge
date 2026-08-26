@@ -17,8 +17,9 @@ Forge RAG needs a schema-compatible empty database before code or corpus can mov
 
 ## Entry Points — Read These First
 
-1. jfrag schema, migrations, migration checker, and Railway database docs at the fresh source tip.
-2. `apps/rag/CLAUDE.md` — database separation and production rules.
+1. `JesusFilm/jesusfilm-rag/src/db/schema.ts`, `JesusFilm/jesusfilm-rag/migrations/`, and `JesusFilm/jesusfilm-rag/scripts/check-migrations.ts` — source Drizzle schema, migration history, and drift checker at the pinned migration commit.
+2. `JesusFilm/jesusfilm-rag/railway.toml`, `JesusFilm/jesusfilm-rag/Dockerfile`, and `JesusFilm/jesusfilm-rag/docker-compose.yml` — deployed and local database/runtime configuration to translate into Forge-owned equivalents.
+3. `apps/rag/AGENTS.md` — database separation and production rules.
 
 ## Grep These
 

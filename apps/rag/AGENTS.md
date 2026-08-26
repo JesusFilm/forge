@@ -1,6 +1,6 @@
 # RAG Agent Guide
 
-Scope: `apps/rag` only. Read `CLAUDE.md` before making changes.
+Scope: `apps/rag` only. This is the canonical, provider-agnostic package guide; `CLAUDE.md` redirects here.
 
 - Preserve the RAG as a separate bounded context, Railway service, and database.
 - Keep acquisition, indexing, retrieval, serving, and adapters behind the import law enforced by `pnpm --filter @forge/rag depcruise`.

@@ -17,8 +17,9 @@ VM and NanoClaw tasks must support both services during cutover without ambiguou
 
 ## Entry Points — Read These First
 
-1. Current jfrag VM/NanoClaw task definitions and owners.
-2. Forge RAG operator commands and rollback runbooks.
+1. `JesusFilm/jesusfilm-rag/scripts/acquire-production.ts`, `JesusFilm/jesusfilm-rag/scripts/index-production.ts`, `JesusFilm/jesusfilm-rag/scripts/retrieve-production.ts`, `JesusFilm/jesusfilm-rag/scripts/eval-production.ts`, and `JesusFilm/jesusfilm-rag/scripts/source-status.ts` — operations that require explicit `:jfrag` and `:forge` task variants.
+2. `docs/roadmap/rag/evidence/feat-433/task-inventory.md` — planned owner-approved VM/NanoClaw task inventory, including the external task-definition repository and exact paths discovered during implementation.
+3. `apps/rag/AGENTS.md` and Forge operator commands delivered by `feat-431`/`feat-432` — target safety and rollback rules.
 
 ## Grep These
 

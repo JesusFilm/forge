@@ -19,7 +19,25 @@ module.exports = {
       name: "adapters-import-only-contracts",
       severity: "error",
       from: { path: "^src/adapters/" },
-      to: { path: "^src/(acquisition|indexing|retrieval|serving)/" },
+      to: { path: "^src/", pathNot: "^src/contracts/" },
+    },
+    {
+      name: "rag-does-not-import-other-apps",
+      severity: "error",
+      from: { path: "^src/" },
+      to: { path: "^\\.\\./(?!\\.\\./packages/rag-contracts/)" },
+    },
+    {
+      name: "not-to-unresolvable",
+      severity: "error",
+      from: { path: "^src/" },
+      to: { couldNotResolve: true },
+    },
+    {
+      name: "no-circular",
+      severity: "error",
+      from: { path: "^src/" },
+      to: { circular: true },
     },
     {
       name: "only-main-is-the-composition-root",

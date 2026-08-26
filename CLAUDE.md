@@ -45,6 +45,7 @@ When working in a specific package, also read that package's `CLAUDE.md`:
 - Working in `apps/roadmap/`? Also read `apps/roadmap/CLAUDE.md`
 - Working in `apps/chat/`? Also read `apps/chat/CLAUDE.md`
 - Working in `apps/rag/`? Also read `apps/rag/CLAUDE.md`
+- Working in `packages/rag-contracts/`? Also read `packages/rag-contracts/CLAUDE.md`
 
 Package CLAUDE.md files contain conventions that override or extend global ones.
 

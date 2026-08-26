@@ -5,7 +5,11 @@
   "type": "module",
   "exports": {},
   "scripts": {
+    "depcruise": "depcruise src tests --config .dependency-cruiser.cjs",
     "lint": "eslint .",
-    "test": "node --test tests/*.test.mjs"
+    "test": "pnpm depcruise && node --test tests/*.test.mjs"
+  },
+  "devDependencies": {
+    "dependency-cruiser": "^17.4.0"
   }
 }

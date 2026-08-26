@@ -18,7 +18,9 @@ Seeker must switch atomically to Forge RAG while the old endpoint remains recove
 ## Entry Points — Read These First
 
 1. `apps/mastra/src/services/jesusfilm-rag-client.ts` and its package guide.
-2. Production reconciliation/eval receipts and approved rollback values.
+2. `apps/mastra/src/config/env.ts`, `apps/mastra/.env.example`, and `apps/mastra/src/config/env.test.ts` — `JESUSFILM_RAG_BASE_URL` / `JESUSFILM_RAG_ALLOWED_HOSTS` contract and production host guard.
+3. `docs/roadmap/rag/evidence/feat-430/production-copy-reconciliation.json` and the eval receipt delivered by `feat-432` — production equivalence evidence required before cutover.
+4. `docs/roadmap/rag/evidence/feat-434/seeker-cutover.md` — planned redacted cutover, smoke, monitoring, and exact rollback-value receipt.
 
 ## Grep These
 

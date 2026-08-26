@@ -17,8 +17,10 @@ Forge needs the durable operational and quality surfaces that make the corpus ma
 
 ## Entry Points — Read These First
 
-1. jfrag source registry, skills, dashboard compiler/verifier, and eval harness.
-2. Forge skill/plugin conventions before relocating agent workflows.
+1. `JesusFilm/jesusfilm-rag/docs/source-status.yaml`, `JesusFilm/jesusfilm-rag/src/registry/`, and `JesusFilm/jesusfilm-rag/scripts/source-status.ts` — source inventory and status inputs.
+2. `JesusFilm/jesusfilm-rag/scripts/dashboard-compile.ts`, `JesusFilm/jesusfilm-rag/scripts/dashboard-verify.ts`, `JesusFilm/jesusfilm-rag/dashboard/`, and `JesusFilm/jesusfilm-rag/docs/ops/dashboard.md` — dashboard compiler, verifier, generated surface, and runbook.
+3. `JesusFilm/jesusfilm-rag/scripts/eval.ts`, `JesusFilm/jesusfilm-rag/scripts/eval-production.ts`, `JesusFilm/jesusfilm-rag/scripts/eval-metrics.ts`, and `JesusFilm/jesusfilm-rag/eval/qa-golden.yaml` — retrieval evaluation harness and golden cases.
+4. `.agents/skills/`, `.claude/skills/`, and the Forge plugin/skill conventions loaded by the implementing agent — target locations and provider-neutral workflow rules.
 
 ## Grep These
 

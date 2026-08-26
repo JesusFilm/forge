@@ -17,8 +17,9 @@ After preserving the corpus, Forge must own the mechanisms that maintain it. His
 
 ## Entry Points — Read These First
 
-1. jfrag acquisition, ingestion, registry, source-status, and production wrappers.
-2. `apps/rag/CLAUDE.md` lane rules.
+1. `JesusFilm/jesusfilm-rag/src/acquisition/`, `JesusFilm/jesusfilm-rag/src/ingestion/`, and `JesusFilm/jesusfilm-rag/src/registry/` — source discovery, extraction, normalization, chunking, and registry implementations.
+2. `JesusFilm/jesusfilm-rag/scripts/acquire-production.ts`, `JesusFilm/jesusfilm-rag/scripts/index-production.ts`, `JesusFilm/jesusfilm-rag/scripts/language-sweep-production.ts`, and `JesusFilm/jesusfilm-rag/scripts/source-status.ts` — production maintenance entry points to port.
+3. `apps/rag/AGENTS.md` — lane ownership, write boundaries, and production rules.
 
 ## Grep These
 

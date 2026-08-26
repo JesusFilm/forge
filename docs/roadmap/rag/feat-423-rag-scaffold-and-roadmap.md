@@ -17,6 +17,8 @@ tags: ["rag", "infrastructure", "migration"]
 
 **What landed.** Forge now has CI-recognized empty RAG and shared-contract workspaces, fail-closed import and file-size boundaries, explicit ownership and repository guidance, and a hidden 13-ticket migration lane mapped to jfrag #130 and #156-168. No runtime, database, secret, corpus, or production behavior moved.
 
+**Review hardening.** The import law now rejects adapter-to-non-contract, cross-app, unresolved, circular, and contract-to-app edges with behavioral fixtures. The hidden-roadmap guard tests generated link shapes and shares its renderer with the README generator. Provider-specific guides continue to redirect to canonical `AGENTS.md` files.
+
 **Unblocked.** `feat-424`.
 
 ## Problem

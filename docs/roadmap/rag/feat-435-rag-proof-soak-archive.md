@@ -17,8 +17,9 @@ Forge ownership is not proven until a new small source completes the full pipeli
 
 ## Entry Points — Read These First
 
-1. Forge acquisition/indexing/retrieval/dashboard/eval runbooks.
-2. Cutover soak criteria, consumer inventory, snapshot retention, and archival approval.
+1. Forge acquisition/indexing commands delivered by `feat-431`, dashboard/eval commands delivered by `feat-432`, and `apps/rag/AGENTS.md` — end-to-end operating path and safety constraints.
+2. `docs/roadmap/rag/evidence/feat-434/seeker-cutover.md` and `docs/roadmap/rag/evidence/feat-435/consumer-inventory.md` — cutover baseline and planned public/private consumer inventory.
+3. `docs/roadmap/rag/evidence/feat-435/proof-soak-archive.md` — planned small-source deltas, soak criteria, rollback exercise, snapshot retention, archival approval, and jfrag redirect receipt.
 
 ## Grep These
 
