@@ -23,4 +23,7 @@ export { adminVideoHeroFragment } from "./blocks/video-hero"
 export { adminVideoRecommendationsFragment } from "./blocks/video-recommendations"
 export { adminWatchHomeCategoryRailFragment } from "./blocks/watch-home-category-rail"
 export { adminWatchHomeHeroFragment } from "./blocks/watch-home-hero"
-export { adminWatchExperienceFragment } from "./watch-experience"
+export {
+  adminLegacyWatchExperienceFragment,
+  adminWatchExperienceFragment,
+} from "./watch-experience"

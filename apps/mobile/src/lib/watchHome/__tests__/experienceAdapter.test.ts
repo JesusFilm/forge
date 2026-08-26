@@ -159,6 +159,22 @@ describe("buildWatchHomeSectionsFromExperience", () => {
     warn.mockRestore()
   })
 
+  it("silently skips the Web-only category rail without changing surrounding shelf order (AE6)", () => {
+    const warn = jest.spyOn(console, "warn").mockImplementation(() => {})
+    const sections = buildWatchHomeSectionsFromExperience([
+      mediaCollection({ sectionKey: "before", title: "Before" }),
+      { __typename: "WatchHomeCategoryRailBlock" },
+      mediaCollection({ sectionKey: "after", title: "After" }),
+    ])
+
+    expect(sections.map(({ id, title }) => ({ id, title }))).toEqual([
+      { id: "before", title: "Before" },
+      { id: "after", title: "After" },
+    ])
+    expect(warn).not.toHaveBeenCalled()
+    warn.mockRestore()
+  })
+
   it("skips an empty collection and renders a sparse one as-is (R2)", () => {
     const empty = buildWatchHomeSectionsFromExperience([
       mediaCollection({ items: [] }),
