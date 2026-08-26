@@ -59,3 +59,17 @@ The Watch homepage category rail is inserted directly after the hero by Web code
 - Browser QA covers Admin add/select/keyboard-reorder/save/draft-preview and Web desktop/mobile rendering with no console errors or horizontal overflow.
 - Page-load verification confirms the block uses the existing Experience request, adds no homepage fetch, and does not regress initial Watch-home JavaScript, request count, or loading behavior.
 - Staging verifies Web-first and Admin-first rollout paths plus the Web-first rollback sequence; the compatibility path is removed in a follow-up after old Admin versions cannot serve traffic.
+
+## Implementation Evidence
+
+- The Watch homepage seed now assembles one schema-valid
+  `watchHomeCategoryRail` block immediately after `watchHomeHero`, with its
+  default `categoryIds` derived from the shared 13-entry catalog.
+- `apps/admin/src/scripts/seed-watch-homepage-experience.test.ts` proves exact
+  singleton placement and catalog order without requiring a database.
+- `docs/runbooks/watch-home-category-rail-rollout.md` documents either-order
+  forward deployment, migration checks, old-schema compatibility behavior, and
+  the Web-first/data-cleanup/Admin-last rollback sequence.
+- Focused seed verification passed locally. Full touched-package, browser,
+  performance, staging, pull-request, and merge-readiness gates remain pending;
+  keep this ticket `in-progress` until those gates complete.
