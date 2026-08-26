@@ -76,7 +76,7 @@ not the whole story: the app was ARMING the broken path itself, and could stop.
 ## Root Cause
 
 `expo-screen-orientation`'s `ScreenOrientationViewController` has a branch
-(`ios/ScreenOrientationViewController.swift`):
+(`apps/mobile/node_modules/expo-screen-orientation/ios/ScreenOrientationViewController.swift`):
 
 ```swift
 override var supportedInterfaceOrientations: UIInterfaceOrientationMask {
@@ -111,7 +111,8 @@ exactly this, and it is present in the installed source — but the resolved mas
 still comes back without landscape, so UIKit refuses both geometry requests.
 
 So the deferral branch is the switch. The app was throwing it by setting the
-screen option, and the screen option bought nothing: `src/lib/orientation.ts`'s
+screen option, and the screen option bought nothing:
+`apps/mobile/src/lib/orientation.ts`'s
 `lockAsync` already names the orientation, on both platforms.
 
 ## Solution
@@ -134,20 +135,40 @@ answers from `screenOrientationRegistry.requiredOrientationMask()`. That value
 is whatever `lockAsync` last wrote; resolving it touches no view controller
 below the window root, so the dev client's extra link cannot break it.
 
-Two tests pin the invariant, and each was falsified by re-inserting the removed
-line:
+Two tests pin the orientation invariant, and each was falsified by re-inserting
+the removed line. A third suite,
+`apps/mobile/src/components/watch/__tests__/PlayerSlot.test.tsx`, pins the
+measure: it
+drives a real `measureInWindow` callback through the `View` mock's prototype,
+then asserts that a zero-size measure publishes nothing, that a valid one
+publishes exactly the measured rect, that the pump stops once a rect lands, and
+that exhaustion reports once.
 
-- `src/hooks/__tests__/useFullscreenPresentation.test.tsx` asserts no
-  `setOptions` call — on the screen or its parent — ever carries an
+- `apps/mobile/src/hooks/__tests__/useFullscreenPresentation.test.tsx` asserts
+  no `setOptions` call — on the screen or its parent — ever carries an
   `orientation` key, in either fullscreen state.
-- `app/__tests__/screenOrientationOption.guard.test.js` reads every source file
-  under `app/` and `src/hooks/` and fails on a screen-orientation option
-  anywhere. Its first version matched only `orientation: "literal"` and missed
-  the TERNARY the reverted code actually used
-  (`orientation: isFullscreen ? "landscape_right" : "portrait"`) — it passed
-  against a real regression. The shipped pattern tolerates a gap between key and
-  value, across line breaks, stopping at `=` or `;` so a TypeScript annotation
-  near a string literal stays clear.
+- `apps/mobile/app/__tests__/screenOrientationOption.guard.test.js` reads every
+  source file under `apps/mobile/app/` and `apps/mobile/src/` and fails on a
+  screen-orientation option anywhere.
+  It took three attempts, and the first two each passed against a revert:
+  - v1 matched `orientation: "literal"` only. It missed the TERNARY the
+    reverted code actually used
+    (`orientation: isFullscreen ? "landscape_right" : "portrait"`).
+  - v2 widened the gap between key and value, so a ternary across line breaks
+    matched, stopping at `=` or `;` to spare a TypeScript annotation. It still
+    missed a named constant and an ES6 shorthand property, because neither
+    carries a literal to match.
+  - v3 shipped. It keeps that value rule and adds a second rule for the
+    `orientation` KEY of any value shape, confined to a brace-matched
+    screen-options object. The confinement is what lets the scan cover all of
+    `apps/mobile/src/` without flagging the shelf-layout code in
+    `apps/mobile/src/lib/watchHome/`, which uses the same key name for a
+    different purpose.
+
+  The generalized lesson is recorded as rule 4 of "Source-text pins" in
+  `docs/solutions/best-practices/mocked-shape-vs-real-contract-discipline-20260506.md`:
+  the invariant here names a KEY, so matching the value's spelling only ever
+  catches one spelling of the defect.
 
 ## What the removal exposed: the slot's one-shot measure
 
@@ -188,6 +209,12 @@ of how many times its screen happens to render: a bounded
 is refused, and `isDrawn` now requires the rect rather than the attachment, so
 the slot keeps its own poster up instead of clearing to black while the host has
 nothing to draw.
+
+The pump is bounded, so it can still give up. Exhausting the budget without a
+rect reports `player_slot.measure_exhausted` once, with the frame count and
+whether a poster was available to stand in. Without that line the give-up path
+is the same silent dead end the retry exists to remove, only rarer — a gate
+release that stops trying and says nothing.
 
 ## Verification
 
