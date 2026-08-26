@@ -63,6 +63,7 @@ describe("getDynamicCollectionFeedPage", () => {
     const result = await getDynamicCollectionFeedPage({
       locale: "en",
       languageSlug: "english",
+      cacheScope: "live",
       after: null,
       excludedIds: ["featured-id"],
       excludedSlugs: ["featured-slug"],
@@ -117,6 +118,7 @@ describe("getDynamicCollectionFeedPage", () => {
     const input = {
       locale: "en",
       languageSlug: "english",
+      cacheScope: "live" as const,
       after: null,
       excludedIds: ["a"],
       excludedSlugs: ["b"],
