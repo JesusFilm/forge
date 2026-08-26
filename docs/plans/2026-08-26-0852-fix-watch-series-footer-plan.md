@@ -104,7 +104,7 @@ Create and start the roadmap ticket before production code changes. Add a failin
 - **Requirements:** R3, R4, R5, R6.
 - **Dependencies:** U1.
 - **Files:**
-  - `docs/roadmap/platform/feat-397-watch-series-footer-parity.md`
+  - `docs/roadmap/platform/feat-424-watch-series-footer-parity.md`
 - **Approach:** Run focused tests first, then package lint and type checking. Inspect server-rendered output for one series surface followed by one footer. Compare client-side initialization and media-loading signals with the unchanged baseline, accounting for the expected lazy footer-logo asset. Mark the roadmap ticket complete only after all required evidence passes.
 - **Patterns to follow:** Use the repository's frontend performance verification requirement and the existing Watch route smoke conventions.
 - **Test scenarios:** Test expectation: none -- this unit validates U1 and updates tracking without introducing behavior.
