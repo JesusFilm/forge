@@ -73,6 +73,13 @@ export class ExperienceDynamicCollectionPlacementError extends Error {
   }
 }
 
+export class ExperienceWatchHomeCategoryRailPlacementError extends Error {
+  constructor() {
+    super("The Watch category rail can only appear once on a homepage.")
+    this.name = "ExperienceWatchHomeCategoryRailPlacementError"
+  }
+}
+
 function isDynamicCollectionBlock(value: unknown): boolean {
   if (!value || typeof value !== "object" || Array.isArray(value)) return false
   const record = value as Record<string, unknown>
@@ -111,6 +118,30 @@ function assertDynamicCollectionPlacement(
   ) {
     throw new ExperienceDynamicCollectionPlacementError()
   }
+}
+
+function assertWatchHomeCategoryRailPlacement(
+  blocks: readonly unknown[],
+  isHomepage: boolean,
+): void {
+  const hasCategoryRail = blocks.some(
+    (block) =>
+      block != null &&
+      typeof block === "object" &&
+      !Array.isArray(block) &&
+      (block as Record<string, unknown>).t === "watchHomeCategoryRail",
+  )
+  if (hasCategoryRail && !isHomepage) {
+    throw new ExperienceWatchHomeCategoryRailPlacementError()
+  }
+}
+
+function assertHomepageBlockPlacement(
+  blocks: readonly unknown[],
+  isHomepage: boolean,
+): void {
+  assertDynamicCollectionPlacement(blocks, isHomepage)
+  assertWatchHomeCategoryRailPlacement(blocks, isHomepage)
 }
 
 function snapshotEnvelope(
@@ -262,7 +293,7 @@ export class ExperienceService {
           ...base,
           ...patch,
         })
-        assertDynamicCollectionPlacement(data.blocks, data.isHomepage)
+        assertHomepageBlockPlacement(data.blocks, data.isHomepage)
         const snapshot = snapshotEnvelope(
           data as unknown as Prisma.InputJsonObject,
         )
@@ -399,7 +430,7 @@ export class ExperienceService {
       throw new ForbiddenError()
     }
 
-    assertDynamicCollectionPlacement(input.blocks, false)
+    assertHomepageBlockPlacement(input.blocks, false)
 
     const blocks = await backfillExperienceVideoLanguageIds({
       prisma: this.prisma,
@@ -542,6 +573,7 @@ export class ExperienceService {
       if (!blocks.success) {
         throw new ExperienceDuplicationError()
       }
+      assertWatchHomeCategoryRailPlacement(blocks.data, false)
       return locale
     })
 
@@ -614,7 +646,7 @@ export class ExperienceService {
       throw new ForbiddenError()
     }
 
-    assertDynamicCollectionPlacement(input.blocks, input.isHomepage ?? false)
+    assertHomepageBlockPlacement(input.blocks, input.isHomepage ?? false)
 
     const { experienceId, ...data } = input
     const blocks = await backfillExperienceVideoLanguageIds({
@@ -868,7 +900,7 @@ export class ExperienceService {
           throw new NotFoundError("Active ExperienceLocale draft", input.id)
         }
         const draftData = effectiveDraftData(canonical, draft.snapshot)
-        assertDynamicCollectionPlacement(draftData.blocks, draftData.isHomepage)
+        assertHomepageBlockPlacement(draftData.blocks, draftData.isHomepage)
         const appliedAt = new Date()
 
         await tx.contentRevision.create({
