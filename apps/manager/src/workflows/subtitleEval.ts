@@ -101,8 +101,10 @@ export type SubtitleEvalCellExecutionDeps = {
   canonicalJson(value: unknown): string
   parseLeaseDigest(value: string | null | undefined): {
     generation: number
+    executionAttempt: number
     token: string
   } | null
+  waitForRetry?(milliseconds: number): Promise<void>
 }
 
 export async function executeSubtitleEvalCell(
@@ -110,7 +112,8 @@ export async function executeSubtitleEvalCell(
   cell: SubtitleEvalWorkflowCell,
   deps: SubtitleEvalCellExecutionDeps,
 ) {
-  for (let attempt = 0; attempt < run.maxAttempts; attempt++) {
+  const maximumLeaseCycles = run.maxAttempts + 4
+  for (let leaseCycle = 0; leaseCycle < maximumLeaseCycles; leaseCycle++) {
     const claim = await deps.claimCell(cell.runCellId, run.timeoutSeconds + 30)
     if (
       claim.replayed &&
@@ -137,6 +140,8 @@ export async function executeSubtitleEvalCell(
         model: run.requestedModel,
         promptPolicyId: run.promptPolicyId,
         workflowPolicyDigest: run.workflowPolicyDigest,
+        codeRevision: run.codeRevision,
+        executionAttempt: lease.executionAttempt,
         timeoutMs: run.timeoutSeconds * 1_000,
         concurrency: 1,
         source: {
@@ -173,6 +178,9 @@ export async function executeSubtitleEvalCell(
             runCellId: cell.runCellId,
             status: failed.status ?? "FAILED",
           }
+        }
+        if (result.reason === "execution_in_progress") {
+          await (deps.waitForRetry ?? defaultWaitForRetry)(1_000)
         }
         continue
       }
@@ -256,7 +264,13 @@ export async function executeSubtitleEvalCell(
       return { runCellId: cell.runCellId, status: failed.status ?? "FAILED" }
     }
   }
-  return { runCellId: cell.runCellId, status: "FAILED" }
+  throw new Error(
+    "Subtitle evaluation execution remained pending reconciliation.",
+  )
+}
+
+function defaultWaitForRetry(milliseconds: number) {
+  return new Promise<void>((resolve) => setTimeout(resolve, milliseconds))
 }
 
 function adminProviderCall(

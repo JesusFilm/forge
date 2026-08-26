@@ -155,6 +155,12 @@ export async function runCloudSubtitleEvalCell(
       message: "Deployment build identity is unavailable.",
     })
   }
+  if (input.codeRevision !== buildIdentity.codeRevision) {
+    return failure("identity_mismatch", input.cellId, {
+      failureClass: "deterministic",
+      message: "Deployment build identity did not match the requested run.",
+    })
+  }
   const apiKey = deps.apiKey ?? getOpenRouterApiKey()
   if (!deps.executeCell && !apiKey) {
     return failure("provider_config_missing", input.cellId, {

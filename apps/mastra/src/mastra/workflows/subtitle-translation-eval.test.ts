@@ -5,6 +5,7 @@ import {
   launchSubtitleTranslationEvalWorkflow,
   readBoundedSubtitleTranslationEvalJson,
   runSubtitleTranslationEvalWorkflow,
+  subtitleEvalExecutionRunId,
 } from "./subtitle-translation-eval"
 
 describe("subtitle translation eval workflow route", () => {
@@ -184,7 +185,111 @@ describe("subtitle translation eval workflow route", () => {
     })
     expect(JSON.stringify(result)).not.toContain("private createRun")
   })
+
+  it("replays a completed execution after the first response is lost", async () => {
+    const request = schemaValidRequest()
+    const result = workflowFailure()
+    let stored: {
+      status: "success"
+      result: typeof result
+    } | null = null
+    const createRun = vi.fn(async () => ({
+      start: vi.fn(async () => {
+        stored = { status: "success", result }
+        return { status: "success" as const, result }
+      }),
+    }))
+    const options = {
+      createRun: createRun as never,
+      getRun: vi.fn(async () => stored) as never,
+      withExecutionLock: passThroughExecutionLock,
+    }
+
+    await expect(
+      launchSubtitleTranslationEvalWorkflow(request, options),
+    ).resolves.toEqual(result)
+    await expect(
+      launchSubtitleTranslationEvalWorkflow(request, options),
+    ).resolves.toEqual(result)
+
+    expect(createRun).toHaveBeenCalledOnce()
+    expect(createRun).toHaveBeenCalledWith({
+      runId: subtitleEvalExecutionRunId(request),
+    })
+  })
+
+  it("coalesces concurrent requests for the same frozen cell", async () => {
+    const request = schemaValidRequest()
+    const result = workflowFailure()
+    let complete: ((value: unknown) => void) | undefined
+    const started = new Promise((resolve) => {
+      complete = resolve
+    })
+    const createRun = vi.fn(async () => ({
+      start: vi.fn(async () => {
+        await started
+        return { status: "success" as const, result }
+      }),
+    }))
+    const options = {
+      createRun: createRun as never,
+      getRun: vi.fn(async () => null) as never,
+      withExecutionLock: passThroughExecutionLock,
+    }
+
+    const first = launchSubtitleTranslationEvalWorkflow(request, options)
+    const second = launchSubtitleTranslationEvalWorkflow(request, options)
+    complete?.(undefined)
+
+    await expect(Promise.all([first, second])).resolves.toEqual([
+      result,
+      result,
+    ])
+    expect(createRun).toHaveBeenCalledOnce()
+  })
+
+  it("uses a fresh execution key only for an authorized provider retry", () => {
+    const request = schemaValidRequest()
+    expect(
+      subtitleEvalExecutionRunId({ ...request, executionAttempt: 2 }),
+    ).not.toBe(subtitleEvalExecutionRunId(request))
+  })
+
+  it("does not restart a durable execution awaiting reconciliation", async () => {
+    const createRun = vi.fn()
+    await expect(
+      launchSubtitleTranslationEvalWorkflow(schemaValidRequest(), {
+        createRun: createRun as never,
+        getRun: vi.fn(async () => ({ status: "running" })) as never,
+        withExecutionLock: passThroughExecutionLock,
+      }),
+    ).resolves.toMatchObject({
+      ok: false,
+      cellId: "cell-1",
+      reason: "execution_in_progress",
+      retryable: true,
+      providerCalls: [],
+    })
+    expect(createRun).not.toHaveBeenCalled()
+  })
 })
+
+const passThroughExecutionLock = async <T>(
+  _executionKey: string,
+  execute: () => Promise<T>,
+) => execute()
+
+function workflowFailure() {
+  return {
+    ok: false as const,
+    cellId: "cell-1",
+    reason: "provider_failed" as const,
+    failureClass: "retryable" as const,
+    retryable: true,
+    message: "Subtitle provider execution failed.",
+    providerCalls: [],
+  }
+}
 
 function schemaValidRequest() {
   const digest = "a".repeat(64)
@@ -217,6 +322,8 @@ function schemaValidRequest() {
     model: "fixture/model",
     promptPolicyId: "subtitle-enrichment-production-v1",
     workflowPolicyDigest: digest,
+    codeRevision: "local-development",
+    executionAttempt: 1,
     timeoutMs: 60_000,
     concurrency: 1 as const,
     source: track("source", "en"),

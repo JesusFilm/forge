@@ -72,6 +72,7 @@ describe("subtitle evaluation fenced cell workflow", () => {
       canonicalDigest,
       canonicalJson,
       parseLeaseDigest,
+      waitForRetry: vi.fn(async () => undefined),
     }
   })
 
@@ -81,6 +82,9 @@ describe("subtitle evaluation fenced cell workflow", () => {
       status: "COMPLETED",
     })
     expect(deps.writeArtifact).toHaveBeenCalledTimes(3)
+    expect(deps.runMastra).toHaveBeenCalledWith(
+      expect.objectContaining({ codeRevision: run.codeRevision }),
+    )
     expect(finalizeCell).toHaveBeenCalledWith(
       expect.objectContaining({
         runCellId: "cell-1",
@@ -100,12 +104,12 @@ describe("subtitle evaluation fenced cell workflow", () => {
     vi.mocked(deps.claimCell)
       .mockResolvedValueOnce({
         status: "RUNNING",
-        digest: "1:first:2026-08-20T12:00:00.000Z",
+        digest: "1:first:2026-08-20T12:00:00.000Z#1",
         replayed: false,
       })
       .mockResolvedValueOnce({
         status: "RUNNING",
-        digest: "2:second:2026-08-20T12:01:00.000Z",
+        digest: "2:second:2026-08-20T12:01:00.000Z#2",
         replayed: false,
       })
     vi.mocked(deps.runMastra)
@@ -116,7 +120,7 @@ describe("subtitle evaluation fenced cell workflow", () => {
         failureClass: "retryable",
         retryable: true,
         message: "retry",
-        providerCalls: [],
+        providerCalls: [providerCall],
       })
       .mockResolvedValueOnce(successResult() as never)
     failCell.mockResolvedValueOnce({ status: "QUEUED" })
@@ -135,6 +139,53 @@ describe("subtitle evaluation fenced cell workflow", () => {
     expect(finalizeCell).toHaveBeenCalledWith(
       expect.objectContaining({ leaseGeneration: 2, leaseToken: "second" }),
     )
+    expect(deps.runMastra).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({ executionAttempt: 1 }),
+    )
+    expect(deps.runMastra).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({ executionAttempt: 2 }),
+    )
+  })
+
+  it("keeps the execution key stable across an ambiguous transport retry", async () => {
+    vi.mocked(deps.claimCell)
+      .mockResolvedValueOnce({
+        status: "RUNNING",
+        digest: "1:first:2026-08-20T12:00:00.000Z#1",
+        replayed: false,
+      })
+      .mockResolvedValueOnce({
+        status: "RUNNING",
+        digest: "2:second:2026-08-20T12:01:00.000Z#1",
+        replayed: false,
+      })
+    vi.mocked(deps.runMastra)
+      .mockResolvedValueOnce({
+        ok: false,
+        cellId: "cell-1",
+        reason: "execution_in_progress",
+        failureClass: "retryable",
+        retryable: true,
+        message: "response unavailable",
+        providerCalls: [],
+      })
+      .mockResolvedValueOnce(successResult() as never)
+    failCell.mockResolvedValueOnce({ status: "QUEUED" })
+
+    await expect(
+      executeSubtitleEvalCell(run, cell, deps),
+    ).resolves.toMatchObject({ status: "COMPLETED" })
+    expect(deps.runMastra).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({ executionAttempt: 1 }),
+    )
+    expect(deps.runMastra).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({ executionAttempt: 1 }),
+    )
+    expect(deps.waitForRetry).toHaveBeenCalledWith(1_000)
   })
 
   it("terminalizes artifact failures instead of leaving a running cell", async () => {

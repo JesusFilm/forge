@@ -19,4 +19,4 @@ export const SUBTITLE_EVAL_WORKFLOW_POLICY_FILES = [
 
 // Update only after the byte-pin test confirms this exact ordered file set.
 export const SUBTITLE_EVAL_WORKFLOW_POLICY_DIGEST =
-  "52e1ed3fea0be2fb9165c2bb6f4fc1fb58f107f6fe1692dd828ffb95e3e7a601"
+  "12ed5350c47fee269ba8a8bdaec70b635e177691238f9749071cb4b50412a22d"

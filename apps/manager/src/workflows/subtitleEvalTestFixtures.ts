@@ -14,7 +14,7 @@ export function runFixture() {
     requestedModel: "google/gemini-2.5-flash",
     promptPolicyId: "subtitle-enrichment-production-v1",
     workflowPolicyDigest:
-      "52e1ed3fea0be2fb9165c2bb6f4fc1fb58f107f6fe1692dd828ffb95e3e7a601",
+      "12ed5350c47fee269ba8a8bdaec70b635e177691238f9749071cb4b50412a22d",
     codeRevision: "revision-1",
     concurrency: 1,
     timeoutSeconds: 60,

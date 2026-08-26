@@ -1333,13 +1333,21 @@ async function readBoundedJson(response: Response, maximumBytes: number) {
 
 export function parseLeaseDigest(digest: string | null | undefined) {
   if (!digest) return null
-  const [generation, token, ...expires] = digest.split(":")
+  const [leaseDigest, executionAttempt] = digest.split("#")
+  if (!leaseDigest) return null
+  const [generation, token, ...expires] = leaseDigest.split(":")
   const parsed = z
     .object({
       generation: z.coerce.number().int().positive(),
+      executionAttempt: z.coerce.number().int().positive(),
       token: z.string().min(1).max(191),
       expiresAt: z.string().datetime(),
     })
-    .safeParse({ generation, token, expiresAt: expires.join(":") })
+    .safeParse({
+      generation,
+      executionAttempt: executionAttempt ?? generation,
+      token,
+      expiresAt: expires.join(":"),
+    })
   return parsed.success ? parsed.data : null
 }

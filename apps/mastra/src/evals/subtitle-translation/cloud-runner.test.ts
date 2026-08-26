@@ -91,14 +91,17 @@ describe("cloud subtitle eval cell runner", () => {
 
   it("verifies all frozen identity before invoking the paid execution seam", async () => {
     const executeCell = vi.fn(async () => executedCell())
-    const result = await runCloudSubtitleEvalCell(request(), {
-      policy: fixturePolicy(),
-      executeCell,
-      buildIdentity: {
-        codeRevision: "1".repeat(40),
-        buildId: "deployment-fixture",
+    const result = await runCloudSubtitleEvalCell(
+      { ...request(), codeRevision: "1".repeat(40) },
+      {
+        policy: fixturePolicy(),
+        executeCell,
+        buildIdentity: {
+          codeRevision: "1".repeat(40),
+          buildId: "deployment-fixture",
+        },
       },
-    })
+    )
 
     expect(result.ok).toBe(true)
     expect(executeCell).toHaveBeenCalledTimes(1)
@@ -141,6 +144,43 @@ describe("cloud subtitle eval cell runner", () => {
       result.artifacts.reviewEvidence.sha256,
     )
     expect(JSON.stringify(result)).not.toContain("openrouter-secret")
+  })
+
+  it("rejects deployment skew before invoking the paid execution seam", async () => {
+    const executeCell = vi.fn(async () => executedCell())
+    const result = await runCloudSubtitleEvalCell(
+      { ...request(), codeRevision: "different-revision" },
+      {
+        policy: fixturePolicy(),
+        executeCell,
+        buildIdentity: {
+          codeRevision: "1".repeat(40),
+          buildId: "deployment-fixture",
+        },
+      },
+    )
+
+    expect(result).toMatchObject({
+      ok: false,
+      reason: "identity_mismatch",
+      retryable: false,
+    })
+    expect(executeCell).not.toHaveBeenCalled()
+  })
+
+  it("fails permanently before paid work when provider configuration is missing", async () => {
+    const result = await runCloudSubtitleEvalCell(request(), {
+      policy: fixturePolicy(),
+      apiKey: "",
+    })
+
+    expect(result).toMatchObject({
+      ok: false,
+      reason: "provider_config_missing",
+      failureClass: "permanent",
+      retryable: false,
+    })
+    expect(result).not.toHaveProperty("artifacts")
   })
 
   it.each([
@@ -276,6 +316,8 @@ function request() {
     model: "fixture/model",
     promptPolicyId: SUBTITLE_EVAL_PROMPT_POLICY_ID,
     workflowPolicyDigest: SUBTITLE_EVAL_WORKFLOW_POLICY_DIGEST,
+    codeRevision: "local-development",
+    executionAttempt: 1,
     timeoutMs: 60_000,
     concurrency: 1 as const,
     source: snapshot("source", "en", "529", "source-subtitle", sourceVtt),

@@ -131,4 +131,13 @@ describe("subtitle evaluation raw-database immutability contract", () => {
     )
     expect(migration).toContain(`"questionable_track" IN ('A', 'B')`)
   })
+
+  it("lets separate cells reference the same content-addressed object", () => {
+    expect(migration).toContain(
+      'CREATE INDEX "subtitle_eval_artifact_object_key_idx" ON "subtitle_eval_artifact"("object_key")',
+    )
+    expect(migration).not.toContain(
+      'CREATE UNIQUE INDEX "subtitle_eval_artifact_object_key_key"',
+    )
+  })
 })

@@ -1496,7 +1496,7 @@ builder.mutationFields((t) => ({
         id: result.cell.id,
         status: result.cell.status,
         digest: result.executionClaim
-          ? `${result.executionClaim.generation}:${result.executionClaim.token}:${result.executionClaim.expiresAt}`
+          ? `${result.executionClaim.generation}:${result.executionClaim.token}:${result.executionClaim.expiresAt}#${result.executionClaim.executionAttempt}`
           : null,
         replayed: result.replayed,
       }

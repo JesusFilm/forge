@@ -50,6 +50,8 @@ export const mastraSubtitleEvalRequestSchema = z
     model: z.string().min(1).max(160),
     promptPolicyId: z.string().regex(/^[a-z0-9][a-z0-9-]*$/),
     workflowPolicyDigest: SHA256,
+    codeRevision: boundedId,
+    executionAttempt: z.number().int().positive().max(10),
     timeoutMs: z.number().int().min(60_000).max(600_000),
     concurrency: z.literal(1),
     source: snapshotSchema,
@@ -327,6 +329,7 @@ const failureSchema = z
       "provider_invalid_output",
       "scoring_failed",
       "serialization_failed",
+      "execution_in_progress",
       "execution_failed",
     ]),
     failureClass: z.enum(["deterministic", "retryable", "permanent"]),
@@ -397,6 +400,9 @@ export async function launchMastraSubtitleEvalCell(
     .strict()
     .safeParse(raw)
   if (!parsed.success) {
+    return fixedFailure("execution_failed", "retryable", true, payload.cellId)
+  }
+  if (!parsed.data.result.ok && parsed.data.result.cellId !== payload.cellId) {
     return fixedFailure("execution_failed", "retryable", true, payload.cellId)
   }
   if (!response.ok && parsed.data.result.ok) {

@@ -428,7 +428,7 @@ CREATE UNIQUE INDEX "subtitle_eval_run_cell_idempotency_key_key" ON "subtitle_ev
 CREATE UNIQUE INDEX "subtitle_eval_run_cell_run_id_corpus_cell_id_key" ON "subtitle_eval_run_cell"("run_id", "corpus_cell_id");
 CREATE INDEX "subtitle_eval_run_cell_run_id_status_idx" ON "subtitle_eval_run_cell"("run_id", "status");
 CREATE INDEX "subtitle_eval_run_cell_target_language_id_status_idx" ON "subtitle_eval_run_cell"("target_language_id", "status");
-CREATE UNIQUE INDEX "subtitle_eval_artifact_object_key_key" ON "subtitle_eval_artifact"("object_key");
+CREATE INDEX "subtitle_eval_artifact_object_key_idx" ON "subtitle_eval_artifact"("object_key");
 CREATE UNIQUE INDEX "subtitle_eval_artifact_run_cell_id_kind_key" ON "subtitle_eval_artifact"("run_cell_id", "kind");
 CREATE INDEX "subtitle_eval_artifact_kind_sha256_idx" ON "subtitle_eval_artifact"("kind", "sha256");
 CREATE UNIQUE INDEX "subtitle_eval_machine_assessment_run_cell_id_key" ON "subtitle_eval_machine_assessment"("run_cell_id");

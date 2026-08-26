@@ -474,6 +474,8 @@ export const SubtitleEvalCloudCellRequestSchema = z
     model: z.string().min(1).max(160),
     promptPolicyId: z.string().regex(SAFE_ID_PATTERN),
     workflowPolicyDigest: z.string().regex(SHA256_PATTERN),
+    codeRevision: z.string().min(1).max(128),
+    executionAttempt: z.number().int().positive().max(10),
     timeoutMs: z.number().int().min(60_000).max(600_000),
     concurrency: z.literal(1),
     source: SubtitleEvalCloudSnapshotSchema,
@@ -585,6 +587,7 @@ export const SubtitleEvalCloudFailureReasonSchema = z.enum([
   "provider_invalid_output",
   "scoring_failed",
   "serialization_failed",
+  "execution_in_progress",
   "execution_failed",
 ])
 

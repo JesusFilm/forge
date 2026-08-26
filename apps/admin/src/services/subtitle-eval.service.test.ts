@@ -163,6 +163,7 @@ function reviewTx(overrides: Record<string, unknown> = {}) {
     subtitleEvalAssignment: {
       findFirst: vi.fn().mockResolvedValue(activeAssignment()),
       update: vi.fn().mockResolvedValue({}),
+      updateMany: vi.fn().mockResolvedValue({ count: 0 }),
       findUniqueOrThrow: vi.fn().mockResolvedValue({
         runCell: { corpusCellId: "corpus-cell-1" },
       }),
@@ -791,16 +792,25 @@ describe("subtitle evaluation ledger policy", () => {
         subtitleEvalRun: {
           updateMany: vi.fn().mockResolvedValue({ count: 1 }),
         },
+        subtitleEvalProviderCall: {
+          findMany: vi.fn().mockResolvedValue([]),
+        },
       }
 
-      await withTransaction(tx).claimRunCell({
+      const claimed = await withTransaction(tx).claimRunCell({
         runCellId: "cell-1",
         leaseSeconds: 60,
       })
 
+      expect(claimed.executionClaim).toMatchObject({ executionAttempt: 1 })
       expect(tx.subtitleEvalRun.updateMany).toHaveBeenCalledWith({
         where: { id: "run-1", status: "QUEUED" },
         data: { status: "RUNNING", startedAt: now, updatedAt: now },
+      })
+      expect(tx.subtitleEvalProviderCall.findMany).toHaveBeenCalledWith({
+        where: { runCellId: "cell-1" },
+        distinct: ["leaseGeneration"],
+        select: { leaseGeneration: true },
       })
     } finally {
       vi.useRealTimers()
@@ -1268,6 +1278,87 @@ describe("subtitle evaluation ledger policy", () => {
         data: expect.objectContaining({ errorRetryable: false }),
       }),
     )
+  })
+
+  it("requeues reconciliation without consuming a paid attempt", async () => {
+    const tx = {
+      subtitleEvalRunCell: {
+        findUnique: vi.fn().mockResolvedValue({
+          id: "cell-1",
+          status: "RUNNING",
+          attemptCount: 2,
+          leaseGeneration: 2,
+          run: { maxAttempts: 2 },
+        }),
+        updateMany: vi.fn().mockResolvedValue({ count: 1 }),
+        findUniqueOrThrow: vi.fn().mockResolvedValue({
+          id: "cell-1",
+          status: "QUEUED",
+        }),
+      },
+      subtitleEvalProviderCall: {
+        findMany: vi.fn().mockResolvedValue([]),
+      },
+    }
+    await withTransaction(tx).failRunCell({
+      runCellId: "cell-1",
+      leaseGeneration: 2,
+      leaseToken: "worker-token",
+      errorCode: "execution_in_progress",
+      retryable: true,
+      providerCalls: [],
+    })
+    expect(tx.subtitleEvalRunCell.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          status: "QUEUED",
+          errorRetryable: true,
+          attemptCount: { decrement: 1 },
+        }),
+      }),
+    )
+  })
+
+  it("terminalizes reconciliation after the durable lease budget", async () => {
+    const tx = {
+      subtitleEvalRunCell: {
+        findUnique: vi.fn().mockResolvedValue({
+          id: "cell-1",
+          status: "RUNNING",
+          attemptCount: 1,
+          leaseGeneration: 6,
+          run: { maxAttempts: 2 },
+        }),
+        updateMany: vi.fn().mockResolvedValue({ count: 1 }),
+        findUniqueOrThrow: vi.fn().mockResolvedValue({
+          id: "cell-1",
+          status: "FAILED",
+        }),
+      },
+      subtitleEvalProviderCall: {
+        findMany: vi.fn().mockResolvedValue([]),
+      },
+    }
+    await withTransaction(tx).failRunCell({
+      runCellId: "cell-1",
+      leaseGeneration: 6,
+      leaseToken: "worker-token",
+      errorCode: "execution_in_progress",
+      retryable: true,
+      providerCalls: [],
+    })
+    expect(tx.subtitleEvalRunCell.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          status: "FAILED",
+          errorCode: "ambiguous_execution_unresolved",
+          errorRetryable: false,
+        }),
+      }),
+    )
+    expect(
+      tx.subtitleEvalRunCell.updateMany.mock.calls[0]![0].data,
+    ).not.toHaveProperty("attemptCount")
   })
 
   it("rejects a non-terminal report status even though the run enum is shared", async () => {
@@ -2748,6 +2839,51 @@ describe("subtitle evaluation ledger policy", () => {
     expect(
       (tx.subtitleEvalHumanReview as Record<string, unknown>).update,
     ).toBeUndefined()
+    expect(tx.subtitleEvalAssignment.updateMany).toHaveBeenCalledWith({
+      where: {
+        escalatedFromReviewId: "review-previous",
+        kind: "SPECIALIST",
+        status: "BLOCKED",
+        reviewerMembershipId: null,
+      },
+      data: {
+        status: "CANCELLED",
+        blockedReason: "Superseded by a newer source review.",
+      },
+    })
+  })
+
+  it("replaces a superseded specialist escalation with one linked to the new review", async () => {
+    const tx = reviewTx()
+    ;(
+      tx.subtitleEvalAssignment.findFirst as ReturnType<typeof vi.fn>
+    ).mockResolvedValue(activeAssignment("SUBMITTED"))
+    const input = reviewInput({
+      idempotencyKey: "review-request-2",
+      supersedesReviewId: "review-previous",
+      verdict: "SPECIALIST_REVIEW",
+    })
+    await withTransaction(tx).submitReview({
+      assertion: {
+        actorId: "user-1",
+        assignmentId: "assignment-1",
+        method: "POST",
+        bodyDigest: input.bodyDigest as string,
+        nonceHash: "f".repeat(64),
+        requestId: "request-1",
+        expiresAt: new Date(Date.now() + 60_000),
+      },
+      input: input as never,
+    })
+    expect(tx.subtitleEvalAssignment.updateMany).toHaveBeenCalledOnce()
+    expect(tx.subtitleEvalAssignment.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          status: "BLOCKED",
+          escalatedFromReviewId: "review-1",
+        }),
+      }),
+    )
   })
 
   it("creates reference issues and unassigned specialist rounds as separate effects", async () => {

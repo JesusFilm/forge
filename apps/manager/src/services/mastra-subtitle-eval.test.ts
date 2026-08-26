@@ -17,6 +17,8 @@ const request = {
   model: "google/gemini-2.5-flash",
   promptPolicyId: "subtitle-enrichment-production-v1",
   workflowPolicyDigest: "c".repeat(64),
+  codeRevision: "revision-1",
+  executionAttempt: 1,
   timeoutMs: 60_000,
   concurrency: 1 as const,
   source: snapshot("source" as const, "en", "source-id", "d"),
@@ -71,6 +73,24 @@ describe("Mastra subtitle evaluation client", () => {
     ).resolves.toMatchObject({ reason: "execution_failed", retryable: true })
   })
 
+  it("classifies Mastra service authentication failures as permanent", async () => {
+    await expect(
+      launchMastraSubtitleEvalCell(request, {
+        baseUrl: "https://mastra.example",
+        bearer: "service-secret",
+        fetchImpl: vi.fn(
+          async () => new Response(null, { status: 401 }),
+        ) as typeof fetch,
+      }),
+    ).resolves.toMatchObject({
+      ok: false,
+      cellId: "cell-1",
+      reason: "provider_auth_failed",
+      failureClass: "permanent",
+      retryable: false,
+    })
+  })
+
   it("rejects a provider envelope that omits the required call ledger", async () => {
     const success = completeSuccess()
     const { providerCalls: _providerCalls, ...withoutProviderCalls } = success
@@ -84,6 +104,54 @@ describe("Mastra subtitle evaluation client", () => {
         ) as typeof fetch,
       }),
     ).resolves.toMatchObject({ ok: false, reason: "execution_failed" })
+  })
+
+  it("rejects a failure ledger attributed to another cell", async () => {
+    const providerCalls = [
+      {
+        callSequence: 1,
+        operation: "TRANSLATION",
+        chunkIndex: 0,
+        operationAttempt: 0,
+        status: "FAILED",
+        requestDigest: "d".repeat(64),
+        providerRequestId: "request-1",
+        providerResponseId: null,
+        requestedModel: "google/gemini-2.5-flash",
+        resolvedModel: null,
+        usage: null,
+      },
+    ]
+    await expect(
+      launchMastraSubtitleEvalCell(request, {
+        baseUrl: "https://mastra.example",
+        bearer: "service-secret",
+        fetchImpl: vi.fn(async () =>
+          Response.json(
+            {
+              result: {
+                ok: false,
+                cellId: "another-cell",
+                reason: "provider_failed",
+                failureClass: "retryable",
+                retryable: true,
+                message: "Provider temporarily unavailable.",
+                providerCalls,
+              },
+            },
+            { status: 502 },
+          ),
+        ) as typeof fetch,
+      }),
+    ).resolves.toEqual({
+      ok: false,
+      cellId: "cell-1",
+      reason: "execution_failed",
+      failureClass: "retryable",
+      retryable: true,
+      message: "Subtitle evaluation execution is unavailable.",
+      providerCalls: [],
+    })
   })
 
   it("rejects a 65th provider call in both success and failure envelopes", () => {

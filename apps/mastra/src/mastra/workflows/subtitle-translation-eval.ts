@@ -1,7 +1,9 @@
-import { randomUUID } from "node:crypto"
+import { createHash } from "node:crypto"
 
 import { createStep, createWorkflow } from "@mastra/core/workflows"
+import { Pool } from "pg"
 
+import { env, getMastraDatabaseUrl } from "../../config/env"
 import {
   runCloudSubtitleEvalCell,
   type SubtitleEvalCloudRunnerDeps,
@@ -23,6 +25,21 @@ type ExecuteCloudCell = (
 type WorkflowOptions = {
   execute?: ExecuteCloudCell
   executeDeps?: SubtitleEvalCloudRunnerDeps
+}
+
+type StoredWorkflowRun = Awaited<
+  ReturnType<typeof subtitleTranslationEvalWorkflow.getWorkflowRunById>
+>
+
+type WithExecutionLock = <T>(
+  executionKey: string,
+  execute: () => Promise<T>,
+) => Promise<T>
+
+type WorkflowLaunchOptions = {
+  createRun?: typeof subtitleTranslationEvalWorkflow.createRun
+  getRun?: (runId: string) => Promise<StoredWorkflowRun>
+  withExecutionLock?: WithExecutionLock
 }
 
 type RouteHandlerInput = {
@@ -66,31 +83,131 @@ export const subtitleTranslationEvalWorkflow = createWorkflow({
   .then(subtitleTranslationEvalStep)
   .commit()
 
+const activeSubtitleEvalLaunches = new Map<
+  string,
+  Promise<SubtitleEvalCloudResult>
+>()
+let subtitleEvalExecutionLockPool: Pool | undefined
+
 export async function launchSubtitleTranslationEvalWorkflow(
   rawInput: unknown,
-  options: {
-    createRun?: typeof subtitleTranslationEvalWorkflow.createRun
-  } = {},
+  options: WorkflowLaunchOptions = {},
 ): Promise<SubtitleEvalCloudResult> {
   const parsed = SubtitleEvalCloudCellRequestSchema.safeParse(rawInput)
   if (!parsed.success) return invalidInputFailure()
 
-  try {
-    const createRun =
-      options.createRun ??
-      subtitleTranslationEvalWorkflow.createRun.bind(
-        subtitleTranslationEvalWorkflow,
-      )
-    const run = await createRun({ runId: randomUUID() })
-    const result = await run.start({ inputData: parsed.data })
-    if (result.status === "success") {
-      return SubtitleEvalCloudResultSchema.parse(result.result)
-    }
-  } catch {
-    // The route exposes only the fixed failure vocabulary below. Mastra keeps
-    // the underlying workflow exception in its own protected diagnostics.
+  const runId = subtitleEvalExecutionRunId(parsed.data)
+  const active = activeSubtitleEvalLaunches.get(runId)
+  if (active) return active
+
+  const launch = (options.withExecutionLock ?? withSubtitleEvalExecutionLock)(
+    runId,
+    async () => {
+      const getRun =
+        options.getRun ??
+        subtitleTranslationEvalWorkflow.getWorkflowRunById.bind(
+          subtitleTranslationEvalWorkflow,
+        )
+      const stored = await getRun(runId)
+      if (stored) return replayStoredWorkflowResult(stored, parsed.data.cellId)
+
+      try {
+        const createRun =
+          options.createRun ??
+          subtitleTranslationEvalWorkflow.createRun.bind(
+            subtitleTranslationEvalWorkflow,
+          )
+        const run = await createRun({ runId })
+        const result = await run.start({ inputData: parsed.data })
+        if (result.status === "success") {
+          return SubtitleEvalCloudResultSchema.parse(result.result)
+        }
+      } catch {
+        // The route exposes only the fixed failure vocabulary below. Mastra
+        // keeps the underlying workflow exception in protected diagnostics.
+      }
+      return workflowExecutionFailure(parsed.data.cellId)
+    },
+  ).finally(() => {
+    activeSubtitleEvalLaunches.delete(runId)
+  })
+  activeSubtitleEvalLaunches.set(runId, launch)
+  return launch
+}
+
+export function subtitleEvalExecutionRunId(
+  input: Parameters<typeof SubtitleEvalCloudCellRequestSchema.parse>[0],
+): string {
+  const parsed = SubtitleEvalCloudCellRequestSchema.parse(input)
+  const digest = createHash("sha256")
+    .update(canonicalJson(parsed))
+    .digest("hex")
+  return `subtitle-eval-${digest}`
+}
+
+function replayStoredWorkflowResult(
+  stored: NonNullable<StoredWorkflowRun>,
+  cellId: string,
+): SubtitleEvalCloudResult {
+  if (stored.status === "success") {
+    const parsed = SubtitleEvalCloudResultSchema.safeParse(stored.result)
+    if (parsed.success) return parsed.data
   }
-  return workflowExecutionFailure(parsed.data.cellId)
+  if (
+    stored.status === "pending" ||
+    stored.status === "running" ||
+    stored.status === "waiting" ||
+    stored.status === "suspended"
+  ) {
+    return workflowInProgressFailure(cellId)
+  }
+  // A durable execution key is never restarted. A running snapshot may be a
+  // live request whose caller lost its response or the remnant of a crashed
+  // worker after provider spend; both are safer to reconcile than to rebill.
+  return workflowExecutionFailure(cellId)
+}
+
+async function withSubtitleEvalExecutionLock<T>(
+  executionKey: string,
+  execute: () => Promise<T>,
+): Promise<T> {
+  if (env.NODE_ENV === "test" || env.MASTRA_STORAGE_BACKEND === "memory") {
+    return execute()
+  }
+  subtitleEvalExecutionLockPool ??= new Pool({
+    connectionString: getMastraDatabaseUrl(),
+    max: 4,
+    application_name: "forge-mastra-subtitle-eval-lock",
+  })
+  const client = await subtitleEvalExecutionLockPool.connect()
+  try {
+    await client.query(
+      "select pg_advisory_lock(hashtextextended($1::text, 0))",
+      [executionKey],
+    )
+    return await execute()
+  } finally {
+    await client
+      .query("select pg_advisory_unlock(hashtextextended($1::text, 0))", [
+        executionKey,
+      ])
+      .catch(() => undefined)
+    client.release()
+  }
+}
+
+function canonicalJson(value: unknown): string {
+  return JSON.stringify(sortJson(value))
+}
+
+function sortJson(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(sortJson)
+  if (value == null || typeof value !== "object") return value
+  return Object.fromEntries(
+    Object.entries(value as Record<string, unknown>)
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([key, nested]) => [key, sortJson(nested)]),
+  )
 }
 
 export async function handleSubtitleTranslationEvalRouteRequest({
@@ -195,6 +312,18 @@ function workflowExecutionFailure(cellId?: string): SubtitleEvalCloudResult {
     failureClass: "retryable",
     retryable: true,
     message: "Subtitle evaluation workflow execution failed.",
+    providerCalls: [],
+  })
+}
+
+function workflowInProgressFailure(cellId: string): SubtitleEvalCloudResult {
+  return SubtitleEvalCloudResultSchema.parse({
+    ok: false,
+    cellId,
+    reason: "execution_in_progress",
+    failureClass: "retryable",
+    retryable: true,
+    message: "Subtitle evaluation execution is awaiting reconciliation.",
     providerCalls: [],
   })
 }

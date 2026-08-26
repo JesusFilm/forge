@@ -109,9 +109,13 @@ describe("Subtitle Lab Admin client", () => {
   it("parses fenced lease digests without truncating ISO timestamps", () => {
     expect(parseLeaseDigest("3:lease-token:2026-08-20T12:34:56.000Z")).toEqual({
       generation: 3,
+      executionAttempt: 3,
       token: "lease-token",
       expiresAt: "2026-08-20T12:34:56.000Z",
     })
+    expect(
+      parseLeaseDigest("4:lease-token:2026-08-20T12:34:56.000Z#2"),
+    ).toMatchObject({ generation: 4, executionAttempt: 2 })
     expect(parseLeaseDigest("invalid")).toBeNull()
   })
 

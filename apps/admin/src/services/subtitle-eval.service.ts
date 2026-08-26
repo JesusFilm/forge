@@ -1449,10 +1449,16 @@ export class SubtitleEvalService {
       const current = await tx.subtitleEvalRunCell.findUniqueOrThrow({
         where: { id: cell.id },
       })
+      const providerExecutions = await tx.subtitleEvalProviderCall.findMany({
+        where: { runCellId: cell.id },
+        distinct: ["leaseGeneration"],
+        select: { leaseGeneration: true },
+      })
       return {
         cell: current,
         executionClaim: {
           generation: current.leaseGeneration,
+          executionAttempt: providerExecutions.length + 1,
           token,
           expiresAt: expiresAt.toISOString(),
         },
@@ -1591,12 +1597,30 @@ export class SubtitleEvalService {
         include: { run: { select: { maxAttempts: true } } },
       })
       if (!cell) throw new NotFoundError("SubtitleEvalRunCell", runCellId)
+      if (errorCode === "execution_in_progress" && providerCalls.length > 0) {
+        throw new SubtitleEvalConflictError(
+          "reconciliation_provider_calls_forbidden",
+        )
+      }
+      const reconciliationLimitReached =
+        errorCode === "execution_in_progress" &&
+        cell.leaseGeneration >= cell.run.maxAttempts + 4
+      const reconciliationPending =
+        input.retryable &&
+        errorCode === "execution_in_progress" &&
+        !reconciliationLimitReached &&
+        providerCalls.length === 0
+      const effectiveErrorCode = reconciliationLimitReached
+        ? "ambiguous_execution_unresolved"
+        : errorCode
       const retryable =
-        input.retryable && cell.attemptCount < cell.run.maxAttempts
+        !reconciliationLimitReached &&
+        (reconciliationPending ||
+          (input.retryable && cell.attemptCount < cell.run.maxAttempts))
       if (
         cell.leaseGeneration === leaseGeneration &&
         (cell.status === "QUEUED" || cell.status === "FAILED") &&
-        cell.errorCode === errorCode &&
+        cell.errorCode === effectiveErrorCode &&
         cell.errorRetryable === retryable
       ) {
         await assertProviderCallReplay(
@@ -1616,8 +1640,9 @@ export class SubtitleEvalService {
         },
         data: {
           status: retryable ? "QUEUED" : "FAILED",
-          errorCode,
+          errorCode: effectiveErrorCode,
           errorRetryable: retryable,
+          ...(reconciliationPending ? { attemptCount: { decrement: 1 } } : {}),
           leaseTokenHash: null,
           leaseExpiresAt: null,
           completedAt: retryable ? null : new Date(),
@@ -3131,6 +3156,20 @@ export class SubtitleEvalService {
             supersedesReviewId: parsed.supersedesReviewId ?? null,
           },
         })
+        if (parsed.supersedesReviewId) {
+          await tx.subtitleEvalAssignment.updateMany({
+            where: {
+              escalatedFromReviewId: parsed.supersedesReviewId,
+              kind: "SPECIALIST",
+              status: "BLOCKED",
+              reviewerMembershipId: null,
+            },
+            data: {
+              status: "CANCELLED",
+              blockedReason: "Superseded by a newer source review.",
+            },
+          })
+        }
         await tx.subtitleEvalAssignment.update({
           where: { id: parsed.assignmentId },
           data: { status: "SUBMITTED", submittedAt: new Date() },

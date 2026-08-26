@@ -103,7 +103,7 @@ async function seedFirstPartyOauthResources() {
         resources.push({
           identifier: environment.managerSessionServiceAudience,
           name: `${appSeed.displayName} (${environment.key} session validation)`,
-          allowedScopes: [MANAGER_SESSION_SCOPE],
+          allowedScopes: [MANAGER_SESSION_SCOPE, MANAGER_BACKEND_SCOPE],
           clientId: environment.managerSessionServiceClientId,
         })
       }
@@ -371,7 +371,10 @@ async function seedFirstPartyApp(appSeed: RegisteredAppSeed) {
           requirePKCE: false,
           tokenEndpointAuthMethod: "client_secret_basic",
           applicationType: "web",
-          clientCredentialsScopes: [MANAGER_SESSION_SCOPE],
+          clientCredentialsScopes: [
+            MANAGER_SESSION_SCOPE,
+            MANAGER_BACKEND_SCOPE,
+          ],
           grantTypes: ["client_credentials"],
           responseTypes: [],
           ...(storedClientSecret ? { clientSecret: storedClientSecret } : {}),
@@ -396,7 +399,10 @@ async function seedFirstPartyApp(appSeed: RegisteredAppSeed) {
           requirePKCE: false,
           tokenEndpointAuthMethod: "client_secret_basic",
           applicationType: "web",
-          clientCredentialsScopes: [MANAGER_SESSION_SCOPE],
+          clientCredentialsScopes: [
+            MANAGER_SESSION_SCOPE,
+            MANAGER_BACKEND_SCOPE,
+          ],
           grantTypes: ["client_credentials"],
           responseTypes: [],
           clientSecret: storedClientSecret,

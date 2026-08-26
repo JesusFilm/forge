@@ -693,12 +693,13 @@ model SubtitleEvalArtifact {
   runCell    SubtitleEvalRunCell      @relation(fields: [runCellId], references: [id], onDelete: Restrict)
   kind       SubtitleEvalArtifactKind
   sha256     String
-  objectKey  String                   @unique @map("object_key")
+  objectKey  String                   @map("object_key")
   byteLength BigInt                   @map("byte_length")
   mediaType  String                   @map("media_type")
   createdAt  DateTime                 @default(now()) @map("created_at")
 
   @@unique([runCellId, kind])
+  @@index([objectKey])
   @@index([kind, sha256])
   @@map("subtitle_eval_artifact")
 }
