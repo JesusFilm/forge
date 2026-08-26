@@ -13,7 +13,7 @@ tags: ["rag", "infrastructure", "migration"]
 
 ## Resolution
 
-**Shipped:** 2026-08-26 via the Forge PR opened from `feat/rag-scaffold` (link added after PR creation).
+**Shipped:** 2026-08-26 via [PR #2033](https://github.com/JesusFilm/forge/pull/2033) (`feat(rag): scaffold migration workspace and roadmap`).
 
 **What landed.** Forge now has CI-recognized empty RAG and shared-contract workspaces, fail-closed import and file-size boundaries, explicit ownership and repository guidance, and a hidden 13-ticket migration lane mapped to jfrag #130 and #156-168. No runtime, database, secret, corpus, or production behavior moved.
 
