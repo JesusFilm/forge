@@ -20,6 +20,7 @@ services:
       - .:/workspace/.devcontainer:ro
     environment:
       HOST: "0.0.0.0"
+      MASTRA_HOST: "0.0.0.0"
       MASTRA_AUTO_DETECT_URL: "true"
     ports:
       - "127.0.0.1:3000:3000"

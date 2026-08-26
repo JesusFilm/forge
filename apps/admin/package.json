@@ -6,7 +6,7 @@
     "./domain/blocks": "./src/domain/blocks.ts"
   },
   "scripts": {
-    "dev": "next dev --hostname 0.0.0.0 --port 3003",
+    "dev": "next dev --port 3003",
     "build": "prisma generate && next build",
     "start": "next start",
     "datadog:sourcemaps": "node ../../scripts/upload-datadog-sourcemaps.mjs --service forge-admin --minified-path-prefix /_next/static/",
@@ -54,7 +54,7 @@
     "benchmark:watch-search-candidate": "tsx src/scripts/benchmark-watch-search-candidate.ts",
     "qualify:typesense-watch-search-candidate": "tsx src/scripts/qualify-typesense-watch-search-candidate.ts record",
     "pin:typesense-watch-search-candidate": "tsx src/scripts/qualify-typesense-watch-search-candidate.ts pin",
-    "mastra:dev": "PORT=4111 mastra dev --dir src/mastra-playground",
+    "mastra:dev": "mastra dev --dir src/mastra-playground",
     "smoke:draft-workflow": "tsx --env-file=.env src/scripts/smoke-mastra-draft-workflow.ts",
     "smoke:watch-progress-write": "tsx src/scripts/smoke-watch-progress-write.ts",
     "smoke:mastra-chat": "tsx --env-file=.env src/scripts/smoke-mastra-chat.ts",
