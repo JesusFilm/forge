@@ -442,6 +442,27 @@
     "merryChristmas": "Chúc mừng Giáng Sinh!",
     "daysUntilChristmas": "{count, plural, other {Còn # ngày nữa đến Giáng Sinh}}"
   },
+  "WatchHomeCategories": {
+    "eyebrow": "Browse the library",
+    "title": "Browse by category",
+    "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
+    "seeAll": "See all video collections",
+    "categories": {
+      "jesus": "The JESUS Film",
+      "gospels": "Gospels",
+      "shortVideos": "Short videos",
+      "family": "Family",
+      "relationships": "Relationships",
+      "women": "For Women",
+      "students": "For Students",
+      "sports": "Sports",
+      "goodNews": "Good News",
+      "hope": "Hope",
+      "training": "Training",
+      "easter": "Easter",
+      "christmas": "Christmas"
+    }
+  },
   "Feedback": {
     "openForm": "Mở biểu mẫu phản hồi",
     "label": "Phản hồi",

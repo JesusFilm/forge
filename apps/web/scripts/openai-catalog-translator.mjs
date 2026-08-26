@@ -45,6 +45,8 @@ const UI_SURFACE_CONTEXTS = {
   WatchFooter: "the Watch site footer",
   WatchHistory: "the user's Watch history page",
   WatchHome: "the Watch homepage",
+  WatchHomeCategories:
+    "the browse-by-category rail on the Watch homepage, whose cards open a collection of videos",
   WatchHomeMuxInserts: "promotional video inserts on the Watch homepage",
   WatchHomePromo: "a promotional section on the Watch homepage",
   WatchHomeSections: "content sections on the Watch homepage",

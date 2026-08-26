@@ -1,6 +1,8 @@
+import { Fragment } from "react"
 import Image from "next/image"
 import { useTranslations } from "next-intl"
 import { ExperienceSectionRenderer, type Section } from "@/components/sections"
+import { WatchHomeCategoryRail } from "@/components/home/WatchHomeCategoryRail"
 import { WatchHomeFooter } from "@/components/home/WatchHomeFooter"
 import { WatchHomeTvCarousel } from "@/components/home/WatchHomeTvCarousel"
 import { WATCH_PAGE_CONTENT_CLASSES } from "@/lib/content-width"
@@ -119,11 +121,13 @@ export function WatchHomeExperiencePage({
 
     if (isWatchHomeHeroBlock(block)) {
       return (
-        <WatchHomeTvCarousel
-          key={blockKey}
-          slides={heroModel.heroSlides}
-          sequence={heroModel.carousel}
-        />
+        <Fragment key={blockKey}>
+          <WatchHomeTvCarousel
+            slides={heroModel.heroSlides}
+            sequence={heroModel.carousel}
+          />
+          <WatchHomeCategoryRail languageSlug={languageSlug} />
+        </Fragment>
       )
     }
 
@@ -186,10 +190,13 @@ export function WatchHomeExperiencePage({
             <h1 className="sr-only">{t("pageTitle")}</h1>
           )}
           {hasHeroBlock ? null : (
-            <WatchHomeTvCarousel
-              slides={heroModel.heroSlides}
-              sequence={heroModel.carousel}
-            />
+            <>
+              <WatchHomeTvCarousel
+                slides={heroModel.heroSlides}
+                sequence={heroModel.carousel}
+              />
+              <WatchHomeCategoryRail languageSlug={languageSlug} />
+            </>
           )}
           {normalized.blocks.map(renderBlock)}
           <WatchHomeFooter />
