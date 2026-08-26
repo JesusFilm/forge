@@ -3,13 +3,18 @@ import { createHash } from "node:crypto"
 import {
   ADMIN_MCP_CODEX_CLIENT_ID,
   ADMIN_MCP_DEFAULT_SCOPES,
-  CHANGELOG_DEFAULT_SCOPES,
   FIRST_PARTY_APP_SEEDS,
   TV_DEVICE_CLIENT_IDS,
   type RegisteredAppSeed,
 } from "@/domain/apps"
 import { CHANGELOG_OAUTH_RESOURCES } from "@/domain/changelog-oauth-resources"
+import {
+  createOAuthResourceCatalog,
+  getPublicDcrResources,
+  resolveOAuthResource,
+} from "@/domain/oauth-resources"
 import { AUTH_SCOPES, type AuthScopeKey } from "@/domain/scopes"
+import { getAuthBaseUrl, getAuthCustomAudiences } from "@/config/env"
 import { prisma } from "@/db/client"
 // Imported, never re-declared. This seeder is the ONLY writer of the device
 // grant type and `resolveDeviceClient` is its only reader, so a second copy of
@@ -21,6 +26,16 @@ import { finalizeBetterAuth17Schema } from "./finalize-better-auth-17-schema"
 const MANAGER_SESSION_SCOPE = "admin:manager-session:validate"
 const BROWSER_GRANT_TYPES = ["authorization_code", "refresh_token"]
 const TV_DEVICE_CLIENT_ID_SET = new Set<string>(TV_DEVICE_CLIENT_IDS)
+const FIRST_PARTY_CLIENT_ID_SET = new Set(
+  FIRST_PARTY_APP_SEEDS.flatMap((app) =>
+    app.environments.flatMap((environment) => [
+      environment.clientId,
+      ...(environment.managerSessionServiceClientId
+        ? [environment.managerSessionServiceClientId]
+        : []),
+    ]),
+  ),
+)
 const OFFLINE_ACCESS_SCOPE = "offline_access" satisfies AuthScopeKey
 // Markers identify PRE-EXISTING dynamically-registered Admin MCP clients so
 // later-added default scopes can be appended. They must exclude every scope
@@ -62,9 +77,14 @@ export async function seedFirstPartyApps() {
     await seedFirstPartyApp(appSeed)
   }
 
-  await seedFirstPartyOauthResources()
-
-  await migrateExistingDynamicAdminMcpClients()
+  const publicResourcePolicies = getPublicResourcePolicies()
+  await seedFirstPartyOauthResources(publicResourcePolicies)
+  await assertPublicDcrResourcesSeeded(publicResourcePolicies)
+  const resourceRepair = await repairExistingPublicLoopbackMcpClients(
+    publicResourcePolicies.map(({ identifier }) => identifier),
+  )
+  const offlineAccessUpdatedClients =
+    await migrateExistingDynamicAdminMcpClients()
 
   return {
     apps: FIRST_PARTY_APP_SEEDS.length,
@@ -82,10 +102,25 @@ export async function seedFirstPartyApps() {
       0,
     ),
     scopes: AUTH_SCOPES.length,
+    resourceRepair: {
+      ...resourceRepair,
+      offlineAccessUpdatedClients,
+    },
   }
 }
 
-async function seedFirstPartyOauthResources() {
+function getPublicResourcePolicies() {
+  const catalogue = createOAuthResourceCatalog({
+    authIssuer: getAuthBaseUrl(),
+    customAudiences: getAuthCustomAudiences(),
+  })
+  const publicResourceIds = new Set(getPublicDcrResources(catalogue))
+  return catalogue.filter(({ identifier }) => publicResourceIds.has(identifier))
+}
+
+async function seedFirstPartyOauthResources(
+  publicResourcePolicies: ReturnType<typeof getPublicResourcePolicies>,
+) {
   for (const appSeed of FIRST_PARTY_APP_SEEDS) {
     for (const environment of appSeed.environments) {
       const resources: Array<{
@@ -113,10 +148,15 @@ async function seedFirstPartyOauthResources() {
             environment.key as keyof typeof ADMIN_MCP_RESOURCE_BY_ENVIRONMENT
           ]
         if (identifier) {
+          const policy = resolveOAuthResource(
+            publicResourcePolicies,
+            identifier,
+          )
+          if (!policy) throw new Error("Missing public OAuth resource policy")
           resources.push({
             identifier,
             name: `${appSeed.displayName} (${environment.key})`,
-            allowedScopes: [...ADMIN_MCP_DEFAULT_SCOPES],
+            allowedScopes: [...policy.allowedScopes],
             clientId: environment.clientId,
           })
         }
@@ -128,10 +168,15 @@ async function seedFirstPartyOauthResources() {
             environment.kind as keyof typeof CHANGELOG_OAUTH_RESOURCES
           ]
         if (identifier) {
+          const policy = resolveOAuthResource(
+            publicResourcePolicies,
+            identifier,
+          )
+          if (!policy) throw new Error("Missing public OAuth resource policy")
           resources.push({
             identifier,
             name: `${appSeed.displayName} (${environment.key})`,
-            allowedScopes: [...CHANGELOG_DEFAULT_SCOPES],
+            allowedScopes: [...policy.allowedScopes],
             clientId: environment.clientId,
           })
         }
@@ -170,6 +215,121 @@ async function seedFirstPartyOauthResources() {
   }
 }
 
+async function assertPublicDcrResourcesSeeded(
+  policies: ReturnType<typeof getPublicResourcePolicies>,
+) {
+  const rows = await prisma.oauthResource.findMany({
+    where: { identifier: { in: policies.map(({ identifier }) => identifier) } },
+    select: { allowedScopes: true, disabled: true, identifier: true },
+  })
+  const rowsByIdentifier = new Map(rows.map((row) => [row.identifier, row]))
+  const matchingRows = policies.filter((policy) => {
+    const row = rowsByIdentifier.get(policy.identifier)
+    return (
+      row != null &&
+      !row.disabled &&
+      sameStringSet(row.allowedScopes, policy.allowedScopes)
+    )
+  }).length
+
+  if (matchingRows !== policies.length || rows.length !== policies.length) {
+    throw new Error(
+      `Public OAuth resource seed invariant failed (${matchingRows}/${policies.length} scope-compatible rows)`,
+    )
+  }
+}
+
+function sameStringSet(left: readonly string[], right: readonly string[]) {
+  return (
+    left.length === right.length && left.every((value) => right.includes(value))
+  )
+}
+
+async function repairExistingPublicLoopbackMcpClients(
+  publicResourceIds: string[],
+) {
+  const clients = await prisma.oauthClient.findMany({
+    where: {
+      applicationType: "native",
+      clientId: { notIn: [...FIRST_PARTY_CLIENT_ID_SET] },
+      disabled: false,
+      grantTypes: { hasEvery: [...BROWSER_GRANT_TYPES] },
+      public: true,
+      tokenEndpointAuthMethod: "none",
+    },
+    select: {
+      applicationType: true,
+      clientId: true,
+      disabled: true,
+      grantTypes: true,
+      public: true,
+      redirectUris: true,
+      requirePKCE: true,
+      resourceLinks: {
+        where: { resourceId: { in: publicResourceIds } },
+        select: { resourceId: true },
+      },
+      tokenEndpointAuthMethod: true,
+    },
+  })
+
+  let eligibleClients = 0
+  let repairedClients = 0
+  let createdLinks = 0
+  for (const client of clients) {
+    if (!isEligiblePublicLoopbackClient(client)) continue
+    eligibleClients += 1
+    const linkedResourceIds = new Set(
+      client.resourceLinks.map(({ resourceId }) => resourceId),
+    )
+    const missingResourceIds = publicResourceIds.filter(
+      (resourceId) => !linkedResourceIds.has(resourceId),
+    )
+    if (missingResourceIds.length === 0) continue
+
+    await prisma.$transaction(async (tx) => {
+      for (const resourceId of missingResourceIds) {
+        await tx.oauthClientResource.upsert({
+          where: {
+            clientId_resourceId: { clientId: client.clientId, resourceId },
+          },
+          update: {},
+          create: { clientId: client.clientId, resourceId },
+        })
+      }
+    })
+    repairedClients += 1
+    createdLinks += missingResourceIds.length
+  }
+
+  return { eligibleClients, repairedClients, createdLinks }
+}
+
+function isEligiblePublicLoopbackClient(client: {
+  applicationType: string | null
+  clientId: string
+  disabled: boolean
+  grantTypes: string[]
+  public: boolean | null
+  redirectUris: string[]
+  requirePKCE: boolean | null
+  tokenEndpointAuthMethod: string | null
+}) {
+  return (
+    !FIRST_PARTY_CLIENT_ID_SET.has(client.clientId) &&
+    client.applicationType === "native" &&
+    client.public === true &&
+    !client.disabled &&
+    client.tokenEndpointAuthMethod === "none" &&
+    client.requirePKCE !== false &&
+    BROWSER_GRANT_TYPES.every((grantType) =>
+      client.grantTypes.includes(grantType),
+    ) &&
+    client.redirectUris.length > 0 &&
+    client.redirectUris.every(isCodexLoopbackMcpCallback)
+  )
+}
+
 async function migrateExistingDynamicAdminMcpClients() {
   const candidates = await prisma.oauthClient.findMany({
     where: {
@@ -188,6 +348,7 @@ async function migrateExistingDynamicAdminMcpClients() {
     },
   })
 
+  let updatedClients = 0
   for (const client of candidates) {
     if (!isExistingDynamicAdminMcpClientMissingOfflineAccess(client)) continue
 
@@ -197,7 +358,9 @@ async function migrateExistingDynamicAdminMcpClients() {
         scopes: [...client.scopes, OFFLINE_ACCESS_SCOPE],
       },
     })
+    updatedClients += 1
   }
+  return updatedClients
 }
 
 function isExistingDynamicAdminMcpClientMissingOfflineAccess(client: {
@@ -436,7 +599,7 @@ if (process.argv[1]?.endsWith("seed-first-party-apps.ts")) {
   seedFirstPartyApps()
     .then((result) => {
       console.log(
-        `Seeded ${result.apps} first-party apps, ${result.environments} environments, ${result.oauthClients} OAuth clients, and ${result.scopes} scopes.`,
+        `Seeded ${result.apps} first-party apps, ${result.environments} environments, ${result.oauthClients} OAuth clients, and ${result.scopes} scopes. Public MCP repair: ${result.resourceRepair.eligibleClients} eligible clients, ${result.resourceRepair.repairedClients} repaired clients, ${result.resourceRepair.createdLinks} links added, ${result.resourceRepair.offlineAccessUpdatedClients} legacy clients updated for offline access.`,
       )
     })
     .finally(async () => {
