@@ -15,6 +15,7 @@ import {
   getWatchVideoDubDetailOperation,
   getWatchVideoLocalizedCopyBySlugOperation,
   getWatchVideoRouteSnapshotBySlugOperation,
+  legacyWatchExperienceFragment,
   watchExperienceFragment,
   watchVideoDubDetailFragment,
   watchVideoLocalizedCopyFragment,
@@ -53,6 +54,17 @@ const GET_WATCH_EXPERIENCE = adminGraphql(
   [watchExperienceFragment],
 )
 
+const GET_LEGACY_WATCH_EXPERIENCE = adminGraphql(
+  `
+    query GetLegacyWatchExperience($locale: String!, $slug: String!) {
+      experienceBySlug(locale: $locale, slug: $slug) {
+        ...LegacyWatchExperience
+      }
+    }
+  `,
+  [legacyWatchExperienceFragment],
+)
+
 const GET_WATCH_SETTINGS = adminGraphql(
   `
     query GetWatchSettings($locale: String!) {
@@ -68,6 +80,23 @@ const GET_WATCH_SETTINGS = adminGraphql(
     }
   `,
   [watchExperienceFragment],
+)
+
+const GET_LEGACY_WATCH_SETTINGS = adminGraphql(
+  `
+    query GetLegacyWatchSettings($locale: String!) {
+      watchSetting(locale: $locale) {
+        documentId
+        homepageExperience {
+          ...LegacyWatchExperience
+        }
+        defaultTemplateExperience {
+          ...LegacyWatchExperience
+        }
+      }
+    }
+  `,
+  [legacyWatchExperienceFragment],
 )
 
 type WatchSettingsData = AdminResultOf<typeof GET_WATCH_SETTINGS>
@@ -335,7 +364,11 @@ export type RouteVideo = {
 }
 
 export type ResolvedWatchPage =
-  | { kind: "experience"; experience: NonNullable<WatchExperience> }
+  | {
+      kind: "experience"
+      experience: NonNullable<WatchExperience>
+      watchHomeCategoryRailCompatibility: "supported" | "legacy-schema"
+    }
   | {
       kind: "video-template"
       template: NonNullable<WatchExperience>
@@ -438,38 +471,151 @@ function graphqlError(result: {
   return message ? result.error : new Error("An unexpected error occurred.")
 }
 
+type GraphqlErrorCandidate = {
+  readonly message?: unknown
+  readonly path?: unknown
+  readonly extensions?: unknown
+}
+
+function graphqlErrorsFromResult(result: {
+  error?: ErrorLike | null
+  errors?: unknown[] | undefined
+}): GraphqlErrorCandidate[] {
+  const direct = Array.isArray(result.errors) ? result.errors : []
+  const nested =
+    typeof result.error === "object" &&
+    result.error !== null &&
+    "errors" in result.error &&
+    Array.isArray(result.error.errors)
+      ? result.error.errors
+      : []
+
+  return [...direct, ...nested].filter(
+    (entry): entry is GraphqlErrorCandidate =>
+      typeof entry === "object" && entry !== null,
+  )
+}
+
+function isUnknownCategoryRailTypenameValidation(result: {
+  error?: ErrorLike | null
+  errors?: unknown[] | undefined
+}): boolean {
+  return graphqlErrorsFromResult(result).some((entry) => {
+    if (
+      typeof entry.message !== "string" ||
+      !/^Unknown type "WatchHomeCategoryRailBlock"\./.test(entry.message) ||
+      entry.path != null
+    ) {
+      return false
+    }
+
+    const code =
+      typeof entry.extensions === "object" &&
+      entry.extensions !== null &&
+      "code" in entry.extensions
+        ? entry.extensions.code
+        : undefined
+    return code === undefined || code === "GRAPHQL_VALIDATION_FAILED"
+  })
+}
+
 async function getExperienceBySlug(
   locale: string,
   slug: string,
 ): Promise<NonNullable<WatchExperience> | null> {
-  const result = await client.query({
-    query: GET_WATCH_EXPERIENCE,
-    variables: { locale, slug },
-    fetchPolicy: "no-cache",
-  })
+  const result = await client
+    .query({
+      query: GET_WATCH_EXPERIENCE,
+      variables: { locale, slug },
+      fetchPolicy: "no-cache",
+    })
+    .catch((error: unknown) => {
+      if (
+        isUnknownCategoryRailTypenameValidation({ error: error as ErrorLike })
+      ) {
+        return null
+      }
+      throw error
+    })
 
-  const error = graphqlError(
-    result as { error?: ErrorLike; errors?: unknown[] },
-  )
+  const resultWithErrors = (result ?? {}) as {
+    error?: ErrorLike
+    errors?: unknown[]
+  }
+  if (
+    result === null ||
+    isUnknownCategoryRailTypenameValidation(resultWithErrors)
+  ) {
+    const legacyResult = await client.query({
+      query: GET_LEGACY_WATCH_EXPERIENCE,
+      variables: { locale, slug },
+      fetchPolicy: "no-cache",
+    })
+    const legacyError = graphqlError(
+      legacyResult as { error?: ErrorLike; errors?: unknown[] },
+    )
+    if (legacyError) throw legacyError
+    return (legacyResult.data?.experienceBySlug ??
+      null) as NonNullable<WatchExperience> | null
+  }
+
+  const error = graphqlError(resultWithErrors)
   if (error) throw error
 
   return (result.data?.experienceBySlug ??
     null) as NonNullable<WatchExperience> | null
 }
 
-async function getWatchSettings(locale: string): Promise<WatchSetting | null> {
-  const result = await client.query({
-    query: GET_WATCH_SETTINGS,
-    variables: { locale },
-    fetchPolicy: "no-cache",
-  })
+async function getWatchSettings(locale: string): Promise<{
+  setting: WatchSetting | null
+  categoryRailCompatibility: "supported" | "legacy-schema"
+}> {
+  const result = await client
+    .query({
+      query: GET_WATCH_SETTINGS,
+      variables: { locale },
+      fetchPolicy: "no-cache",
+    })
+    .catch((error: unknown) => {
+      if (
+        isUnknownCategoryRailTypenameValidation({ error: error as ErrorLike })
+      ) {
+        return null
+      }
+      throw error
+    })
 
-  const error = graphqlError(
-    result as { error?: ErrorLike; errors?: unknown[] },
-  )
+  const resultWithErrors = (result ?? {}) as {
+    error?: ErrorLike
+    errors?: unknown[]
+  }
+  if (
+    result === null ||
+    isUnknownCategoryRailTypenameValidation(resultWithErrors)
+  ) {
+    const legacyResult = await client.query({
+      query: GET_LEGACY_WATCH_SETTINGS,
+      variables: { locale },
+      fetchPolicy: "no-cache",
+    })
+    const legacyError = graphqlError(
+      legacyResult as { error?: ErrorLike; errors?: unknown[] },
+    )
+    if (legacyError) throw legacyError
+
+    return {
+      setting: (legacyResult.data?.watchSetting ?? null) as WatchSetting | null,
+      categoryRailCompatibility: "legacy-schema",
+    }
+  }
+
+  const error = graphqlError(resultWithErrors)
   if (error) throw error
 
-  return result.data?.watchSetting ?? null
+  return {
+    setting: result.data?.watchSetting ?? null,
+    categoryRailCompatibility: "supported",
+  }
 }
 
 // Admin-shape → flat-shape transform. Single normalisation surface
@@ -1156,7 +1302,8 @@ function normalizeRouteVideo(video: WatchVideoRecord): RouteVideo | null {
 async function resolveHomepage(
   locale: string,
 ): Promise<ResolvedWatchPage | null> {
-  const settings = await getWatchSettings(locale)
+  const { setting: settings, categoryRailCompatibility } =
+    await getWatchSettings(locale)
   const homepageExperience = settings?.homepageExperience ?? null
   if (!homepageExperience) return null
   // Admin's PUBLIC contract guarantees `homepageExperience` is the
@@ -1165,6 +1312,7 @@ async function resolveHomepage(
   return {
     kind: "experience",
     experience: homepageExperience,
+    watchHomeCategoryRailCompatibility: categoryRailCompatibility,
   }
 }
 
@@ -1172,7 +1320,7 @@ async function resolveSlugPage(
   locale: string,
   slug: string,
 ): Promise<ResolvedWatchPage | null> {
-  const settings = await getWatchSettings(locale)
+  const { setting: settings } = await getWatchSettings(locale)
   // Lowercase both sides of the template-slug comparison. Editors can save
   // `defaultTemplateExperience.slug` as `Single-Video` while users hit
   // `/single-video`; byte-equality would silently mis-route the request.
@@ -1200,7 +1348,11 @@ async function resolveSlugPage(
   if (slug.toLowerCase() !== templateSlug) {
     const experience = await getExperienceBySlug(locale, slug)
     if (experience) {
-      return { kind: "experience", experience }
+      return {
+        kind: "experience",
+        experience,
+        watchHomeCategoryRailCompatibility: "supported",
+      }
     }
   }
 
@@ -1233,7 +1385,7 @@ const fetchResolvedWatchPage = unstable_cache(
       }
     }
   },
-  ["watch-page", "v4-serializable-errors"],
+  ["watch-page", "v5-category-rail-compatibility"],
   {
     revalidate: 60,
     tags: [
@@ -1262,7 +1414,11 @@ const fetchResolvedWatchExperiencePage = unstable_cache(
 
       return {
         data: JSON.parse(
-          JSON.stringify({ kind: "experience", experience }),
+          JSON.stringify({
+            kind: "experience",
+            experience,
+            watchHomeCategoryRailCompatibility: "supported",
+          }),
         ) as ResolvedWatchPage,
         error: null,
       }
@@ -1273,7 +1429,7 @@ const fetchResolvedWatchExperiencePage = unstable_cache(
       }
     }
   },
-  ["watch-experience-page"],
+  ["watch-experience-page", "v2-category-rail-compatibility"],
   { revalidate: 60, tags: [WATCH_CACHE_TAGS.experience] },
 )
 

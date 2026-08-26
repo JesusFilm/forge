@@ -6,7 +6,10 @@ import {
   adminWatchExperienceFragment,
 } from "@forge/admin-graphql/fragments"
 
-import { watchExperienceFragment } from "@/lib/fragments/watch-experience"
+import {
+  legacyWatchExperienceFragment,
+  watchExperienceFragment,
+} from "@/lib/fragments/watch-experience"
 import { watchMediaCollectionTitlesFragment } from "@/lib/fragments/watch-media-collection-titles"
 
 function collectResolvedTitlePaths(
@@ -116,5 +119,13 @@ describe("Web Watch Experience media collection titles", () => {
       "...WatchMediaCollectionTitles",
     )
     expect(print(adminWatchExperienceFragment)).not.toContain("resolvedTitle")
+  })
+
+  it("keeps resolved titles in Web's old-schema compatibility projection", () => {
+    const source = print(legacyWatchExperienceFragment)
+
+    expect(source).toContain("...AdminLegacyWatchExperience")
+    expect(source).toContain("...WatchMediaCollectionTitles")
+    expect(source).not.toContain("WatchHomeCategoryRailBlock")
   })
 })

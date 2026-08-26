@@ -31,9 +31,12 @@ vi.mock("@/components/ui/carousel", () => ({
 const { WatchHomeCategoryRail } =
   await import("@/components/home/WatchHomeCategoryRail")
 
-function render(languageSlug: string) {
+function render(languageSlug: string, categoryIds?: readonly string[] | null) {
   const markup = renderToStaticMarkup(
-    <WatchHomeCategoryRail languageSlug={languageSlug} />,
+    <WatchHomeCategoryRail
+      languageSlug={languageSlug}
+      categoryIds={categoryIds}
+    />,
   )
   const container = document.createElement("div")
   container.innerHTML = markup
@@ -47,6 +50,34 @@ describe("WatchHomeCategoryRail", () => {
       '[data-testid^="watch-home-category-card-"]',
     )
     expect(cards).toHaveLength(WATCH_HOME_CATEGORIES.length)
+  })
+
+  it("renders an authored subset once in its authored order", () => {
+    const container = render("english", [
+      "family",
+      "jesus",
+      "family",
+      "not-a-category",
+      "easter",
+    ])
+
+    expect(
+      Array.from(
+        container.querySelectorAll(
+          '[data-testid^="watch-home-category-card-"]',
+        ),
+      ).map((card) => card.getAttribute("data-testid")),
+    ).toEqual([
+      "watch-home-category-card-family",
+      "watch-home-category-card-jesus",
+      "watch-home-category-card-easter",
+    ])
+  })
+
+  it("renders no section when an authored selection has no valid ids", () => {
+    expect(render("english", ["unknown", "still-unknown"]).innerHTML).toBe("")
+    expect(render("english", []).innerHTML).toBe("")
+    expect(render("english", null).innerHTML).toBe("")
   })
 
   it("links each card to its collection page on the language-less English route", () => {

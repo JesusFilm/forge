@@ -1,8 +1,8 @@
 import { Fragment } from "react"
 import Image from "next/image"
 import { useTranslations } from "next-intl"
+import { WATCH_HOME_CATEGORY_CATALOG } from "@forge/watch-url-policy/watch-home-categories"
 import { ExperienceSectionRenderer, type Section } from "@/components/sections"
-import { WatchHomeCategoryRail } from "@/components/home/WatchHomeCategoryRail"
 import { WatchHomeFooter } from "@/components/home/WatchHomeFooter"
 import { WatchHomeTvCarousel } from "@/components/home/WatchHomeTvCarousel"
 import { WATCH_PAGE_CONTENT_CLASSES } from "@/lib/content-width"
@@ -14,7 +14,13 @@ type WatchHomeExperiencePageProps = {
   blocks: readonly Section[]
   locale?: string
   languageSlug: string
+  legacyCategoryRailCompatibility?: boolean
 }
+
+const LEGACY_CATEGORY_RAIL_SECTION = {
+  __typename: "WatchHomeCategoryRailBlock",
+  categoryIds: WATCH_HOME_CATEGORY_CATALOG.map(({ id }) => id),
+} as unknown as Section
 
 function findBackdropImage(model: WatchHomeModel): {
   url: string
@@ -107,6 +113,7 @@ export function WatchHomeExperiencePage({
   blocks,
   locale = "en",
   languageSlug,
+  legacyCategoryRailCompatibility = false,
 }: WatchHomeExperiencePageProps) {
   const t = useTranslations("WatchHome")
   const backdrop = findBackdropImage(heroModel)
@@ -115,6 +122,15 @@ export function WatchHomeExperiencePage({
   const featuredCollections = collectFeaturedCollectionReferences(
     normalized.blocks,
   )
+  const compatibilityCategoryRail = legacyCategoryRailCompatibility ? (
+    <ExperienceSectionRenderer
+      section={LEGACY_CATEGORY_RAIL_SECTION}
+      locale={locale}
+      languageSlug={languageSlug}
+      featuredCollections={featuredCollections}
+      allowDynamicCollections
+    />
+  ) : null
   const renderBlock = (block: Section, index: number) => {
     const blockKey =
       (block as { sectionKey?: string | null }).sectionKey ?? index
@@ -126,7 +142,7 @@ export function WatchHomeExperiencePage({
             slides={heroModel.heroSlides}
             sequence={heroModel.carousel}
           />
-          <WatchHomeCategoryRail languageSlug={languageSlug} />
+          {compatibilityCategoryRail}
         </Fragment>
       )
     }
@@ -195,7 +211,7 @@ export function WatchHomeExperiencePage({
                 slides={heroModel.heroSlides}
                 sequence={heroModel.carousel}
               />
-              <WatchHomeCategoryRail languageSlug={languageSlug} />
+              {compatibilityCategoryRail}
             </>
           )}
           {normalized.blocks.map(renderBlock)}

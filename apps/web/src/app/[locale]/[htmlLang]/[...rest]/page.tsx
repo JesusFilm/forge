@@ -732,6 +732,11 @@ async function renderOneSegment(shape: {
           heroModel={heroResult.data}
           blocks={visibleContent.blocks}
           languageSlug={slug}
+          legacyCategoryRailCompatibility={
+            pageResult.data?.kind === "experience" &&
+            pageResult.data.watchHomeCategoryRailCompatibility ===
+              "legacy-schema"
+          }
         />
       </>
     )
