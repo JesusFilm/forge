@@ -214,7 +214,7 @@
     "searchSuggestionWithLanguage": "用{language}搜索“{suggestion}”",
     "inLanguage": "{language}版",
     "browseByRegion": "按地区浏览",
-    "allVideosOnSinglePage": "All videos on single page",
+    "allVideosOnSinglePage": "全部视频集中一页",
     "clearLanguages": "清除",
     "queryLanguageDetected": "检测到{language}",
     "searchInLanguage": "用{language}搜索",

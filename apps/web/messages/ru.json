@@ -223,7 +223,7 @@
     "searchSuggestionWithLanguage": "Поиск на {language} по запросу «{suggestion}»",
     "inLanguage": "Язык: {language}",
     "browseByRegion": "Просмотр по регионам",
-    "allVideosOnSinglePage": "All videos on single page",
+    "allVideosOnSinglePage": "Все видео на одной странице",
     "clearLanguages": "Очистить",
     "queryLanguageDetected": "Определен язык: {language}",
     "searchInLanguage": "Язык поиска: {language}",
