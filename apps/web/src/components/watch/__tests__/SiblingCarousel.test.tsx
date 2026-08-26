@@ -93,16 +93,13 @@ vi.mock("next/link", () => ({
 vi.mock("next-intl", () => ({
   useLocale: () => "en",
   useTranslations:
-    (namespace: "SiblingCarousel" | "VideoLabels") =>
+    (namespace: "SearchResultCard" | "SiblingCarousel" | "VideoLabels") =>
     (key: string, values?: Record<string, unknown>) => {
       const catalogs = {
         SiblingCarousel: {
-          clipPosition: `Clip ${values?.current} of ${values?.total}`,
           position: `${values?.current} of ${values?.total}`,
           chapterCount: `${values?.count} chapters`,
-          clipAriaLabel: `${values?.title} · Clip ${values?.current} of ${values?.total}`,
           chaptersAriaLabel: `${values?.title} · ${values?.count} chapters`,
-          chapter: "Chapter",
           noImage: "No image",
           playingNow: "Playing now",
           previousChapter: "Previous chapter",
@@ -110,8 +107,13 @@ vi.mock("next-intl", () => ({
           thumbnailAlt: `${values?.title} thumbnail`,
           relatedVideoThumbnail: "Related video thumbnail",
         },
+        SearchResultCard: {
+          episodeCount: `${values?.count} episodes`,
+        },
         VideoLabels: {
           video: "Video",
+          chapter: "Chapter",
+          episode: "Episode",
           collection: "Collection",
         },
       }
@@ -157,6 +159,7 @@ function makeChild(
     muxPlaybackId?: string | null
     muxThumbnailBlurDataUrl?: string | null
     muxHeroPosterBlurDataUrl?: string | null
+    label?: string | null
   } = {},
 ) {
   // When `opts.image` is supplied, use it verbatim — lets tests assert on
@@ -174,7 +177,7 @@ function makeChild(
     documentId: `child-${i}`,
     slug: `child-${i}-slug`,
     title: `Child ${i}`,
-    label: i % 2 === 0 ? `Label ${i}` : null,
+    label: opts.label === undefined ? "SEGMENT" : opts.label,
     images,
     durationSeconds: null,
     muxPlaybackId: opts.muxPlaybackId ?? null,
@@ -273,6 +276,79 @@ const pilatePageChapterSlugs = [
 ]
 
 describe("SiblingCarousel — happy path", () => {
+  it("uses episode terminology throughout an episode rail", () => {
+    const block = makeBlock(3, 0)
+    block.canonicalParent.children = block.canonicalParent.children.map(
+      (child) => ({ ...child, label: "EPISODE" }),
+    )
+
+    act(() => {
+      root.render(<SiblingCarousel block={block} languageSlug="english" />)
+    })
+
+    const label = container.querySelector(
+      "[data-testid='sibling-carousel-label']",
+    )
+    expect(label?.querySelector(".hidden.md\\:inline")?.textContent).toBe(
+      "Episode 1 of 3",
+    )
+    expect(
+      container
+        .querySelector("[data-block-type='SiblingCarousel']")
+        ?.getAttribute("aria-label"),
+    ).toBe("Jesus Collection · Episode 1 of 3")
+    expect(
+      Array.from(
+        container.querySelectorAll(
+          "[data-testid='sibling-carousel-caption'] span:first-child",
+        ),
+      ).map((eyebrow) => eyebrow.textContent),
+    ).toEqual(["Episode", "Episode", "Episode"])
+  })
+
+  it("uses an episode count when viewing an episode collection parent", () => {
+    const block = makeBlock(3, 0)
+    block.canonicalParent.children = block.canonicalParent.children.map(
+      (child) => ({ ...child, label: "EPISODE" }),
+    )
+    block.currentVideoDocumentId = block.canonicalParent.documentId
+
+    act(() => {
+      root.render(<SiblingCarousel block={block} languageSlug="english" />)
+    })
+
+    expect(
+      container.querySelector("[data-testid='sibling-carousel-label']")
+        ?.textContent,
+    ).toBe("3 episodes")
+    expect(
+      container
+        .querySelector("[data-block-type='SiblingCarousel']")
+        ?.getAttribute("aria-label"),
+    ).toBe("Jesus Collection · 3 episodes")
+  })
+
+  it("keeps chapter terminology when an episode rail contains an unlabeled child", () => {
+    const block = makeBlock(3, 0)
+    block.canonicalParent.children = block.canonicalParent.children.map(
+      (child, index) => ({
+        ...child,
+        label: index === 1 ? null : "EPISODE",
+      }),
+    )
+
+    act(() => {
+      root.render(<SiblingCarousel block={block} languageSlug="english" />)
+    })
+
+    const label = container.querySelector(
+      "[data-testid='sibling-carousel-label']",
+    )
+    expect(label?.querySelector(".hidden.md\\:inline")?.textContent).toBe(
+      "Chapter 1 of 3",
+    )
+  })
+
   it("links a one-option standalone collection title beside its position", () => {
     const block = makeSelectableBlock()
     block.selectableParents = block.selectableParents?.slice(0, 1)
@@ -757,7 +833,7 @@ describe("SiblingCarousel — happy path", () => {
     const mobileLabel = label?.querySelector(".md\\:hidden")
     const desktopLabel = label?.querySelector(".hidden.md\\:inline")
     expect(mobileLabel?.textContent).toBe("3 of 10")
-    expect(desktopLabel?.textContent).toBe("Clip 3 of 10")
+    expect(desktopLabel?.textContent).toBe("Chapter 3 of 10")
   })
 
   it("routes a child through the contextual collection shape", () => {
@@ -937,7 +1013,7 @@ describe("SiblingCarousel — happy path", () => {
     const mobileLabel = label?.querySelector(".md\\:hidden")
     const desktopLabel = label?.querySelector(".hidden.md\\:inline")
     expect(mobileLabel?.textContent).toBe("2 of 4")
-    expect(desktopLabel?.textContent).toBe("Clip 2 of 4")
+    expect(desktopLabel?.textContent).toBe("Chapter 2 of 4")
   })
 
   it("emits full pending chapter metadata for a normal inactive click", () => {
@@ -976,7 +1052,7 @@ describe("SiblingCarousel — happy path", () => {
       targetVideoDocumentId: "child-2",
       title: "Child 2",
       slug: "child-2-slug",
-      label: "Label 2",
+      label: "SEGMENT",
       posterUrl: "https://cdn.test/2.jpg",
       posterBlurDataUrl: null,
       sourceCarouselIndex: expect.any(Number),
@@ -1077,7 +1153,7 @@ describe("SiblingCarousel — happy path", () => {
       "[data-testid='sibling-carousel-label']",
     )
     expect(label?.textContent).toContain("3 of 4")
-    expect(label?.textContent).toContain("Clip 3 of 4")
+    expect(label?.textContent).toContain("Chapter 3 of 4")
   })
 
   it("does not show pending feedback for modified chapter clicks", () => {
@@ -1321,7 +1397,7 @@ describe("SiblingCarousel — edge cases", () => {
     const mobileLabel = label?.querySelector(".md\\:hidden")
     const desktopLabel = label?.querySelector(".hidden.md\\:inline")
     expect(mobileLabel?.textContent).toBe("12 of 15")
-    expect(desktopLabel?.textContent).toBe("Clip 12 of 15")
+    expect(desktopLabel?.textContent).toBe("Chapter 12 of 15")
   })
 
   it("consumes preserved chapter-navigation carousel state on the target page", async () => {
