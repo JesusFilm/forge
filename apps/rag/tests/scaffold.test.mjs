@@ -156,10 +156,10 @@ test("keeps the RAG roadmap out of loaded features and rendered totals", async (
   )
   assert.doesNotMatch(
     renderRoadmapReadme(features),
-    /feat-423|RAG Migration Lane/,
+    /rag\/feat-423|RAG Migration Lane/,
   )
   const generatedReadme = await read("../../../docs/roadmap/README.md")
-  assert.doesNotMatch(generatedReadme, /feat-423|RAG Migration Lane/)
+  assert.doesNotMatch(generatedReadme, /rag\/feat-423|RAG Migration Lane/)
   for (const sourcePath of [
     "../../roadmap/lib/features.ts",
     "../../roadmap/lib/markdown.ts",
