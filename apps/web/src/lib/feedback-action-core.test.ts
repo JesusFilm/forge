@@ -2,15 +2,27 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
-const linear = vi.hoisted(() => ({ createIssue: vi.fn() }))
+const linear = vi.hoisted(() => ({
+  createIssue: vi.fn(),
+  createReceipt: vi.fn(),
+  openReceipt: vi.fn(),
+  addEmail: vi.fn(),
+}))
 
 vi.mock("@/lib/feedback-linear", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/feedback-linear")>()
-  return { ...actual, createLinearFeedbackIssue: linear.createIssue }
+  return {
+    ...actual,
+    createLinearFeedbackIssue: linear.createIssue,
+    createFeedbackReceipt: linear.createReceipt,
+    openFeedbackReceipt: linear.openReceipt,
+    addLinearFeedbackFollowUpEmail: linear.addEmail,
+  }
 })
 
 import {
   FEEDBACK_RATE_LIMIT_MAX_BUCKETS,
+  addFeedbackFollowUpEmail,
   feedbackRateLimitBucketCountForTests,
   resetFeedbackRateLimitForTests,
   submitFeedbackWithHeaders,
@@ -52,13 +64,19 @@ describe("submitFeedbackWithHeaders", () => {
   beforeEach(() => {
     resetFeedbackRateLimitForTests()
     linear.createIssue.mockReset()
-    linear.createIssue.mockResolvedValue({ ok: true })
+    linear.createIssue.mockResolvedValue({ ok: true, issueId: "issue-1" })
+    linear.createReceipt.mockReset()
+    linear.createReceipt.mockReturnValue("opaque-receipt")
+    linear.openReceipt.mockReset()
+    linear.openReceipt.mockReturnValue("issue-1")
+    linear.addEmail.mockReset()
+    linear.addEmail.mockResolvedValue({ ok: true, issueId: "issue-1" })
   })
 
   it("validates and forwards a bounded feedback payload", async () => {
     await expect(
       submitFeedbackWithHeaders(validPayload, requestHeaders()),
-    ).resolves.toEqual({ ok: true })
+    ).resolves.toEqual({ ok: true, receipt: "opaque-receipt" })
     expect(linear.createIssue).toHaveBeenCalledWith(validPayload)
   })
 
@@ -69,7 +87,7 @@ describe("submitFeedbackWithHeaders", () => {
 
     await expect(
       submitFeedbackWithHeaders(minimalPayload, requestHeaders()),
-    ).resolves.toEqual({ ok: true })
+    ).resolves.toEqual({ ok: true, receipt: "opaque-receipt" })
     expect(linear.createIssue).toHaveBeenCalledWith(minimalPayload)
   })
 
@@ -100,7 +118,7 @@ describe("submitFeedbackWithHeaders", () => {
     for (let index = 0; index < 5; index += 1) {
       await expect(
         submitFeedbackWithHeaders(validPayload, requestHeaders()),
-      ).resolves.toEqual({ ok: true })
+      ).resolves.toEqual({ ok: true, receipt: "opaque-receipt" })
     }
 
     await expect(
@@ -133,6 +151,37 @@ describe("submitFeedbackWithHeaders", () => {
       reason: "delivery_failed",
       message: "We could not send your feedback. Please try again.",
     })
+  })
+
+  it("attaches a validated follow-up email through an opaque receipt", async () => {
+    await expect(
+      addFeedbackFollowUpEmail({
+        email: "alex@example.com",
+        receipt: "opaque-receipt-that-is-long-enough",
+      }),
+    ).resolves.toEqual({ ok: true })
+    expect(linear.openReceipt).toHaveBeenCalledWith(
+      "opaque-receipt-that-is-long-enough",
+    )
+    expect(linear.addEmail).toHaveBeenCalledWith("issue-1", "alex@example.com")
+  })
+
+  it("rejects invalid or expired follow-up receipts without reaching Linear", async () => {
+    linear.openReceipt.mockReturnValueOnce(null)
+
+    await expect(
+      addFeedbackFollowUpEmail({
+        email: "alex@example.com",
+        receipt: "opaque-receipt-that-is-long-enough",
+      }),
+    ).resolves.toMatchObject({ ok: false, reason: "invalid" })
+    await expect(
+      addFeedbackFollowUpEmail({
+        email: "not-an-email",
+        receipt: "opaque-receipt-that-is-long-enough",
+      }),
+    ).resolves.toMatchObject({ ok: false, reason: "invalid" })
+    expect(linear.addEmail).not.toHaveBeenCalled()
   })
 
   it("caps high-cardinality rate-limit state", async () => {
