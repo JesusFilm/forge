@@ -41,7 +41,9 @@ describe("LanguageGlobeSection", () => {
     expect(markup.match(/data-testid="language-globe-surface"/g)).toHaveLength(
       1,
     )
-    expect(markup.match(/data-testid="language-globe-canvas"/g)).toHaveLength(1)
+    expect(markup.match(/data-testid="deferred-language-globe"/g)).toHaveLength(
+      1,
+    )
   })
 
   it("supports a not-found h1 and decorative watermark", () => {

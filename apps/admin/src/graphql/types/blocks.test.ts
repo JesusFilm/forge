@@ -2,7 +2,7 @@
 // surface. Each test constructs a fixture POJO matching the Zod schema for
 // one block kind, runs the GraphQL union's `resolveType` callback, and
 // asserts the returned typename matches `T_TO_TYPENAME[t]`. The exhaustive
-// 20-kind sweep proves Pothos's union dispatch contract for every block we
+// 21-kind sweep proves Pothos's union dispatch contract for every block we
 // can persist; the union-dispatch happy path mixes kinds in one array to
 // catch any cross-block side effects in resolveType; edge cases cover the
 // "no blocks" and "unknown discriminator" boundaries.
@@ -134,6 +134,10 @@ const fixtures: Readonly<Record<BlockKind, object>> = {
   infoBlocks: {
     t: "infoBlocks",
     blocks: [{ icon: "info", title: "Hello", description: "World" }],
+  },
+  languageGlobe: {
+    t: "languageGlobe",
+    title: "Choose a language",
   },
   mediaCollection: {
     t: "mediaCollection",

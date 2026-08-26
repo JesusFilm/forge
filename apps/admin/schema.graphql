@@ -300,7 +300,7 @@ type Experience {
 """
 Discriminated union of every block kind admin's editor can place at the top level of ExperienceLocale.blocks. Wire-discriminate via __typename or the explicit `t` field — both project from the Zod discriminator.
 """
-union ExperienceBlock = AdventCountdownBlock | BibleQuotesCarouselBlock | CardBlock | ContainerBlock | CtaBlock | EasterDatesBlock | InfoBlocksBlock | MediaCollectionBlock | NavigationCarouselBlock | PromoBannerBlock | RelatedQuestionsBlock | SectionBlock | TextBlock | VideoBlock | VideoCarouselBlock | VideoHeroBlock | VideoRecommendationsBlock | WatchHomeHeroBlock
+union ExperienceBlock = AdventCountdownBlock | BibleQuotesCarouselBlock | CardBlock | ContainerBlock | CtaBlock | EasterDatesBlock | InfoBlocksBlock | LanguageGlobeBlock | MediaCollectionBlock | NavigationCarouselBlock | PromoBannerBlock | RelatedQuestionsBlock | SectionBlock | TextBlock | VideoBlock | VideoCarouselBlock | VideoHeroBlock | VideoRecommendationsBlock | WatchHomeHeroBlock
 
 """
 Per-locale content for an Experience — slug, blocks, title, publish state. Editors publish locales independently.
@@ -447,6 +447,20 @@ type Language {
   name: JSON
   slug: String
   updatedAt: String
+}
+
+"""
+Animated language globe with locale-authored promotional copy and action.
+"""
+type LanguageGlobeBlock {
+  ctaEnabled: Boolean
+  ctaLabel: String
+  ctaLink: String
+  description: String
+  eyebrow: String
+  sectionKey: String
+  t: String
+  title: String
 }
 
 """A localized display name for a Core language."""

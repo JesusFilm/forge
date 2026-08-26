@@ -23,6 +23,7 @@ import type { Section as SectionBlockType } from "./Section"
 import type { RelatedQuestions as RelatedQuestionsType } from "./RelatedQuestions"
 import type { CarouselVideo as CarouselVideoType } from "./CarouselVideo"
 import type { NavigationCarousel as NavigationCarouselType } from "./NavigationCarousel"
+import type { LanguageGlobeExperience as LanguageGlobeExperienceType } from "./LanguageGlobeExperience"
 const MediaCollection = dynamic(() =>
   import("./MediaCollection").then((m) => ({ default: m.MediaCollection })),
 ) as typeof MediaCollectionType
@@ -77,6 +78,11 @@ const NavigationCarousel = dynamic(() =>
     default: m.NavigationCarousel,
   })),
 ) as typeof NavigationCarouselType
+const LanguageGlobeExperience = dynamic(() =>
+  import("./LanguageGlobeExperience").then((m) => ({
+    default: m.LanguageGlobeExperience,
+  })),
+) as typeof LanguageGlobeExperienceType
 export type { Section } from "@/lib/content"
 
 /**
@@ -107,6 +113,7 @@ const ADMIN_BLOCK_TYPENAMES_LIST = [
   "MediaCollectionBlock",
   "PromoBannerBlock",
   "InfoBlocksBlock",
+  "LanguageGlobeBlock",
   "CtaBlock",
   "VideoHeroBlock",
   "VideoBlock",
@@ -172,6 +179,12 @@ function renderAdminBlock(
       return (
         <InfoBlocks
           data={block as unknown as Parameters<typeof InfoBlocks>[0]["data"]}
+        />
+      )
+    case "LanguageGlobeBlock":
+      return (
+        <LanguageGlobeExperience
+          data={block as Parameters<typeof LanguageGlobeExperience>[0]["data"]}
         />
       )
     case "CtaBlock":

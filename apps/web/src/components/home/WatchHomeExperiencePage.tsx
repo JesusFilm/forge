@@ -3,7 +3,6 @@ import { useTranslations } from "next-intl"
 import { ExperienceSectionRenderer, type Section } from "@/components/sections"
 import { WatchHomeFooter } from "@/components/home/WatchHomeFooter"
 import { WatchHomeTvCarousel } from "@/components/home/WatchHomeTvCarousel"
-import { WatchLanguageGlobeSection } from "@/components/home/WatchLanguageGlobeSection"
 import { WATCH_PAGE_CONTENT_CLASSES } from "@/lib/content-width"
 import type { WatchHomeModel } from "@/lib/watch-home"
 import { collectFeaturedCollectionReferences } from "@/lib/featured-collection-references"
@@ -101,18 +100,6 @@ function isStandaloneMediaBlock(block: Section) {
   return typename === "VideoBlock" || typename === "VideoCarouselBlock"
 }
 
-function isDynamicMediaCollectionBlock(block: Section) {
-  const candidate = block as {
-    readonly __typename?: string | null
-    readonly itemsSource?: string | null
-  }
-
-  return (
-    candidate.__typename === "MediaCollectionBlock" &&
-    candidate.itemsSource === "dynamicCollections"
-  )
-}
-
 export function WatchHomeExperiencePage({
   heroModel,
   blocks,
@@ -126,13 +113,6 @@ export function WatchHomeExperiencePage({
   const featuredCollections = collectFeaturedCollectionReferences(
     normalized.blocks,
   )
-  const dynamicCollectionBlock = normalized.blocks.find(
-    isDynamicMediaCollectionBlock,
-  )
-  const authoredBlocks = dynamicCollectionBlock
-    ? normalized.blocks.filter((block) => block !== dynamicCollectionBlock)
-    : normalized.blocks
-
   const renderBlock = (block: Section, index: number) => {
     const blockKey =
       (block as { sectionKey?: string | null }).sectionKey ?? index
@@ -211,14 +191,7 @@ export function WatchHomeExperiencePage({
               sequence={heroModel.carousel}
             />
           )}
-          {authoredBlocks.map(renderBlock)}
-          {dynamicCollectionBlock
-            ? renderBlock(
-                dynamicCollectionBlock,
-                normalized.blocks.indexOf(dynamicCollectionBlock),
-              )
-            : null}
-          <WatchLanguageGlobeSection />
+          {normalized.blocks.map(renderBlock)}
           <WatchHomeFooter />
         </div>
       </div>
