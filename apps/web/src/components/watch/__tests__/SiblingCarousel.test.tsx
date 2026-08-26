@@ -273,7 +273,7 @@ const pilatePageChapterSlugs = [
 ]
 
 describe("SiblingCarousel — happy path", () => {
-  it("renders a one-option standalone collection title as fixed text", () => {
+  it("links a one-option standalone collection title beside its position", () => {
     const block = makeSelectableBlock()
     block.selectableParents = block.selectableParents?.slice(0, 1)
 
@@ -285,12 +285,37 @@ describe("SiblingCarousel — happy path", () => {
     const title = header?.querySelector(
       "[data-testid='sibling-carousel-parent-title']",
     )
-    expect(title?.tagName).toBe("SPAN")
+    expect(title?.tagName).toBe("A")
     expect(title?.textContent).toBe("First Collection")
+    expect(title?.getAttribute("href")).toBe("/first-collection.html")
+    expect(title?.className).toContain("text-stone-50")
+    expect(title?.className).toContain("inline-flex")
+    expect(title?.className).toContain("font-bold")
+    expect(title?.className).toContain("hover:underline")
+    const parentIcon = title?.querySelector(
+      "[data-testid='sibling-carousel-parent-icon']",
+    )
+    expect(parentIcon).not.toBeNull()
+    expect(parentIcon?.getAttribute("aria-hidden")).toBe("true")
+    expect(parentIcon?.classList.contains("text-white")).toBe(true)
+    expect(parentIcon?.classList.contains("lucide-arrow-left")).toBe(true)
     expect(title?.getAttribute("role")).toBeNull()
     expect(title?.getAttribute("tabindex")).toBeNull()
     expect(title?.getAttribute("aria-busy")).toBeNull()
-    expect(header?.querySelector("select, a, button")).toBeNull()
+    expect(header?.querySelector("select, button")).toBeNull()
+    expect(header?.querySelectorAll("a")).toHaveLength(1)
+    expect(header?.querySelector("p")?.className).toContain("flex")
+    expect(header?.querySelector("p")?.className).toContain("items-center")
+    expect(header?.querySelector("p")?.className).toContain("gap-2")
+    const headerElements = title?.parentElement?.children
+    expect(
+      (headerElements?.item(1) as HTMLElement | null)?.dataset.testid,
+    ).toBe("sibling-carousel-separator-icon")
+    expect(headerElements?.item(1)?.classList.contains("size-1")).toBe(true)
+    expect(headerElements?.item(1)?.classList.contains("opacity-60")).toBe(true)
+    expect(
+      (headerElements?.item(2) as HTMLElement | null)?.dataset.testid,
+    ).toBe("sibling-carousel-label")
     expect(
       header?.querySelector(
         "[data-testid='sibling-carousel-selection-announcement']",
@@ -430,9 +455,11 @@ describe("SiblingCarousel — happy path", () => {
         "[data-testid='sibling-carousel-parent-selector']",
       ),
     ).toBeNull()
-    expect(container.querySelector("header p a span")?.textContent).toBe(
-      "Life of Jesus (Gospel of John)",
-    )
+    expect(
+      container.querySelector(
+        "header [data-testid='sibling-carousel-parent-title']",
+      )?.textContent,
+    ).toBe("Life of Jesus (Gospel of John)")
   })
 
   it("keeps an unmodified active-card click on the standalone route", () => {
@@ -542,6 +569,26 @@ describe("SiblingCarousel — happy path", () => {
     const headerLink = container.querySelector("header a")
     expect(headerLink?.textContent).toBe("Jesus Collection")
     expect(headerLink?.getAttribute("href")).toBe("/jesus-collection.html")
+    expect(headerLink?.className).toContain("text-stone-50")
+    expect(headerLink?.className).toContain("font-bold")
+    expect(headerLink?.className).toContain("hover:underline")
+    const contextualParentIcon = headerLink?.querySelector(
+      "[data-testid='sibling-carousel-parent-icon']",
+    )
+    expect(contextualParentIcon).not.toBeNull()
+    expect(contextualParentIcon?.classList.contains("text-white")).toBe(true)
+    expect(contextualParentIcon?.classList.contains("lucide-arrow-left")).toBe(
+      true,
+    )
+    expect(headerLink?.parentElement?.className).toContain("items-center")
+    const contextualHeaderElements = headerLink?.parentElement?.children
+    expect(
+      (contextualHeaderElements?.item(1) as HTMLElement | null)?.dataset.testid,
+    ).toBe("sibling-carousel-separator-icon")
+    expect(
+      (contextualHeaderElements?.item(2) as HTMLElement | null)?.dataset.testid,
+    ).toBe("sibling-carousel-label")
+    expect(headerLink?.parentElement?.textContent).not.toContain("·")
   })
 
   it("renders one thumbnail per child with the current item highlighted", () => {
@@ -572,9 +619,10 @@ describe("SiblingCarousel — happy path", () => {
     const headerLine = header?.querySelector("p")
     expect(headerLine?.className).toContain("font-normal")
     expect(headerLine?.className).not.toContain("font-medium")
-    expect(headerLine?.querySelector("span")?.className).toContain(
-      "font-medium",
-    )
+    expect(
+      headerLine?.querySelector("[data-testid='sibling-carousel-parent-title']")
+        ?.className,
+    ).toContain("font-bold")
     const carousel = container.querySelector("[data-slot='carousel']")
     expect(carousel?.className).toContain("pl-5")
     expect(carousel?.className).toContain("md:pl-0")
