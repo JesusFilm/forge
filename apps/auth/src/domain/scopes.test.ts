@@ -9,6 +9,7 @@ describe("Auth scopes", () => {
     expect(isKnownScope("admin:access")).toBe(true)
     expect(isKnownScope("manager:access")).toBe(true)
     expect(isKnownScope("mastra-studio:access")).toBe(true)
+    expect(isKnownScope("storefront:homepage:stage")).toBe(true)
     expect(isKnownScope("experience:publish")).toBe(true)
     expect(isKnownScope("experience:create")).toBe(true)
     expect(isKnownScope("experience:generate")).toBe(true)
@@ -119,5 +120,19 @@ describe("Auth scopes", () => {
         description: "Generate new Experience page drafts with AI.",
       }),
     ])
+  })
+
+  it("describes the storefront stage scope without implying publish access", () => {
+    expect(describeScopes(["storefront:homepage:stage"])).toEqual([
+      expect.objectContaining({
+        key: "storefront:homepage:stage",
+        label: "Stage storefront homepage drafts",
+        description:
+          "Stage guarded storefront homepage drafts for human editorial review.",
+      }),
+    ])
+    expect(assertKnownScopes(["storefront:homepage:stage"])).not.toContain(
+      "experience:publish",
+    )
   })
 })

@@ -11,6 +11,7 @@ import { ADMIN_MCP_TOOLS, findAdminMcpTool } from "@/mcp/admin-mcp-tools"
 import { ExperienceLocaleMcpService } from "@/services/experience-locale-mcp.service"
 import { ExperienceMcpService } from "@/services/experience-mcp.service"
 import {
+  ConcurrentModificationError,
   ExperienceDuplicationError,
   ForbiddenError,
   NotFoundError,
@@ -158,6 +159,12 @@ async function callAdminMcpTool(
   if (name === "experience.locale.missing") {
     return service.findMissingLocales(args)
   }
+  if (name === "storefront.homepage.context") {
+    return service.getStorefrontHomepageContext(args)
+  }
+  if (name === "storefront.homepage.stage") {
+    return service.stageStorefrontHomepage(args)
+  }
   if (name === "experience.locale.validate") {
     return service.validateLocaleDraft({ input: args.input })
   }
@@ -241,6 +248,13 @@ function toolError(id: unknown, error: unknown) {
   }
   if (error instanceof ExperienceDuplicationError) {
     return jsonRpcError(id, -32000, error.message)
+  }
+  if (error instanceof ConcurrentModificationError) {
+    return jsonRpcError(
+      id,
+      -32009,
+      "Homepage changed or gained an active draft; reload before staging.",
+    )
   }
   if (error instanceof Error && error.message === "not_implemented") {
     return jsonRpcError(id, -32601, "Admin MCP tool is not implemented yet.")

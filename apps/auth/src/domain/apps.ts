@@ -130,6 +130,7 @@ export const ADMIN_MCP_DEFAULT_SCOPES = [
   "experience:read",
   "experience:locale:create",
   "experience:locale:update",
+  "storefront:homepage:stage",
   "experience:locale:validate",
   "media:read",
   "video:read",

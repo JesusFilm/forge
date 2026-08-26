@@ -17,6 +17,7 @@ import {
 } from "@/auth/permissions"
 import { start } from "workflow/api"
 import {
+  ConcurrentModificationError,
   ExperienceDuplicationError,
   ForbiddenError,
   NotFoundError,
@@ -223,12 +224,18 @@ export class ExperienceService {
     user,
     revisedByKind,
     reason,
+    guard,
   }: {
     id: string
     patch: Partial<ExperienceLocaleDraftData>
     user: Principal | null
     revisedByKind: "USER" | "AI"
     reason: string
+    guard?: {
+      expectedCanonicalUpdatedAt: string
+      requireNoActiveDraft: boolean
+      requireUniquePublishedHomepage?: boolean
+    }
   }) {
     return this.prisma.$transaction(
       async (tx) => {
@@ -247,6 +254,27 @@ export class ExperienceService {
           throw new ForbiddenError()
         }
 
+        if (guard?.requireUniquePublishedHomepage) {
+          const homepageCount =
+            canonical.isHomepage &&
+            canonical.status === "PUBLISHED" &&
+            canonical.experience.archivedAt === null
+              ? await tx.experienceLocale.count({
+                  where: {
+                    locale: canonical.locale,
+                    isHomepage: true,
+                    status: "PUBLISHED",
+                    experience: { archivedAt: null },
+                  },
+                })
+              : 0
+          if (homepageCount !== 1) {
+            throw new ForbiddenError(
+              "Storefront staging target must be the unique published homepage",
+            )
+          }
+        }
+
         const activeDraft = await tx.contentRevision.findFirst({
           where: {
             entityType: "ExperienceLocale",
@@ -255,6 +283,14 @@ export class ExperienceService {
           },
           orderBy: { revisedAt: "desc" },
         })
+        if (
+          guard &&
+          (canonical.updatedAt.toISOString() !==
+            guard.expectedCanonicalUpdatedAt ||
+            (guard.requireNoActiveDraft && activeDraft !== null))
+        ) {
+          throw new ConcurrentModificationError("ExperienceLocale", id)
+        }
         const base = activeDraft
           ? effectiveDraftData(canonical, activeDraft.snapshot)
           : draftDataFromLocale(canonical)
@@ -733,12 +769,22 @@ export class ExperienceService {
     return this.prisma.experienceLocale.findFirst({ ...query, where })
   }
 
-  async updateLocale({
+  private async updateLocaleDraft({
     input: raw,
     user,
+    draftAttribution,
+    draftGuard,
+    preserveBlocksExactly = false,
   }: {
     input: unknown
     user: Principal | null
+    draftAttribution?: { revisedByKind: "USER" | "AI"; reason: string }
+    draftGuard?: {
+      expectedCanonicalUpdatedAt: string
+      requireNoActiveDraft: boolean
+      requireUniquePublishedHomepage?: boolean
+    }
+    preserveBlocksExactly?: boolean
   }) {
     const input = UpdateExperienceLocaleInput.parse(raw)
 
@@ -772,7 +818,7 @@ export class ExperienceService {
     }
 
     const { id, ...data } = input
-    if (input.blocks !== undefined) {
+    if (input.blocks !== undefined && !preserveBlocksExactly) {
       const blocks = await backfillExperienceVideoLanguageIds({
         prisma: this.prisma,
         blocks: input.blocks,
@@ -785,10 +831,24 @@ export class ExperienceService {
       id,
       patch: data,
       user,
-      revisedByKind: "USER",
-      reason: "Locale draft saved from admin editor",
+      revisedByKind: draftAttribution?.revisedByKind ?? "USER",
+      reason:
+        draftAttribution?.reason ?? "Locale draft saved from admin editor",
+      guard: draftGuard,
     })
-    return staged.effective
+    return staged
+  }
+
+  async updateLocale(
+    args: Parameters<ExperienceService["updateLocaleDraft"]>[0],
+  ) {
+    return (await this.updateLocaleDraft(args)).effective
+  }
+
+  async updateLocaleWithDraft(
+    args: Parameters<ExperienceService["updateLocaleDraft"]>[0],
+  ) {
+    return this.updateLocaleDraft(args)
   }
 
   async publishLocale({

@@ -74,6 +74,12 @@ export const AUTH_SCOPES = [
     description: "Update localized Experience drafts you can edit.",
   },
   {
+    key: "storefront:homepage:stage",
+    label: "Stage storefront homepage drafts",
+    description:
+      "Stage guarded storefront homepage drafts for human editorial review.",
+  },
+  {
     key: "experience:locale:validate",
     label: "Validate experience locales",
     description: "Validate localized Experience drafts before writing.",

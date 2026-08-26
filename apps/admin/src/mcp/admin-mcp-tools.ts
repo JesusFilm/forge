@@ -70,6 +70,45 @@ export const ADMIN_MCP_TOOLS = [
     },
   },
   {
+    name: "storefront.homepage.context",
+    description:
+      "Read one locale's published homepage, active shared draft state, bounded recent Watch inventory, and recent audio/subtitle translation evidence for storefront curation. Read-only; never writes or publishes.",
+    requiredScopes: ["experience:read", "video:read"],
+    inputSchema: {
+      type: "object",
+      properties: {
+        locale: { type: "string" },
+        recentLimit: { type: "integer", minimum: 1, maximum: 25 },
+      },
+      required: ["locale"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "storefront.homepage.stage",
+    description:
+      "Atomically stage curator-owned homepage blocks only when canonical content is unchanged and no shared draft exists. Never publishes.",
+    requiredScopes: ["storefront:homepage:stage"],
+    inputSchema: {
+      type: "object",
+      properties: {
+        localeId: { type: "string" },
+        expectedCanonicalUpdatedAt: { type: "string", format: "date-time" },
+        blocks: { type: "array", maxItems: 200 },
+        operationId: { type: "string", format: "uuid" },
+        candidateDigest: { type: "string", pattern: "^[a-f0-9]{64}$" },
+      },
+      required: [
+        "localeId",
+        "expectedCanonicalUpdatedAt",
+        "blocks",
+        "operationId",
+        "candidateDigest",
+      ],
+      additionalProperties: false,
+    },
+  },
+  {
     name: "experience.locale.validate",
     description: "Validate a proposed ExperienceLocale draft.",
     requiredScopes: ["experience:locale:validate"],

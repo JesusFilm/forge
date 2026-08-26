@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto"
+
 import { z } from "zod"
 import { Prisma, type PrismaClient } from "@prisma/client"
 
@@ -5,13 +7,18 @@ import type { Principal } from "@/auth/principal"
 import { hasPermission } from "@/auth/permissions"
 import { env } from "@/config/env"
 import { BlocksSchema } from "@/domain/blocks"
-import { ForbiddenError, NotFoundError } from "@/services/errors"
+import {
+  ForbiddenError,
+  NotFoundError,
+  StorefrontStageAttributionMismatchError,
+} from "@/services/errors"
 import {
   CreateExperienceLocaleInput,
   ExperienceLocaleDraftSnapshotSchema,
   UpdateExperienceLocaleInput,
 } from "@/services/experience.schemas"
 import { ExperienceService } from "@/services/experience.service"
+import { VideoService } from "@/services/video.service"
 
 const ListExperiencesInput = z.object({
   q: z.string().trim().min(1).max(200).optional(),
@@ -81,6 +88,27 @@ const BibleLookupInput = z.object({
   query: z.string().trim().min(1).max(120),
   locale: z.string().min(1).max(35).optional(),
 })
+
+const StorefrontHomepageContextInput = z.object({
+  locale: z.string().trim().min(1).max(35),
+  recentLimit: z.number().int().min(1).max(25).optional().default(12),
+})
+
+const StorefrontHomepageStageInput = z.object({
+  localeId: z.string().min(1),
+  expectedCanonicalUpdatedAt: z
+    .string()
+    .datetime({ offset: true })
+    .transform((value) => new Date(value).toISOString()),
+  blocks: z.array(z.unknown()).max(200),
+  operationId: z
+    .string()
+    .transform((value) => value.toLowerCase())
+    .pipe(z.string().uuid()),
+  candidateDigest: z.string().regex(/^[a-f0-9]{64}$/),
+})
+
+const STOREFRONT_ATTRIBUTION_PREFIX = "storefront-curator"
 
 /**
  * Exported for the sibling experience-level MCP service
@@ -383,6 +411,278 @@ export class ExperienceLocaleMcpService {
           }
         })
         .filter((row) => row.missingLocales.length > 0),
+    }
+  }
+
+  async getStorefrontHomepageContext({
+    input: raw,
+    user,
+  }: {
+    input: unknown
+    user: Principal | null
+  }) {
+    this.assertCanRead(user)
+    const input = StorefrontHomepageContextInput.parse(raw)
+    const translationFetchLimit = input.recentLimit * 3
+
+    const [homepageMatches, targetLanguage, recentDubs, recentSubtitles] =
+      await Promise.all([
+        this.prisma.experienceLocale.findMany({
+          where: {
+            locale: input.locale,
+            isHomepage: true,
+            status: "PUBLISHED",
+            experience: { archivedAt: null },
+          },
+          orderBy: { updatedAt: "desc" },
+          take: 2,
+          select: { id: true, experienceId: true },
+        }),
+        this.prisma.language.findFirst({
+          where: {
+            deletedAt: null,
+            OR: [
+              { bcp47: input.locale },
+              { iso3: input.locale },
+              { slug: input.locale },
+            ],
+          },
+          select: { id: true, bcp47: true, iso3: true, slug: true, name: true },
+        }),
+        this.prisma.videoDub.findMany({
+          where: {
+            deletedAt: null,
+            published: true,
+            languageId: { not: null },
+            video: {
+              deletedAt: null,
+              noIndex: false,
+              NOT: { restrictViewPlatforms: { has: "watch" } },
+              locales: {
+                some: { deletedAt: null, status: "PUBLISHED" },
+              },
+            },
+            AND: [{ hls: { not: null } }, { NOT: { hls: "" } }],
+          },
+          orderBy: [{ updatedAt: "desc" }, { id: "asc" }],
+          take: translationFetchLimit,
+          select: {
+            updatedAt: true,
+            aiGenerated: true,
+            language: {
+              select: { id: true, bcp47: true, slug: true, name: true },
+            },
+            video: {
+              select: {
+                id: true,
+                coreId: true,
+                slug: true,
+                label: true,
+                locales: {
+                  where: {
+                    deletedAt: null,
+                    status: "PUBLISHED",
+                    OR: [{ locale: input.locale }, { locale: "en" }],
+                  },
+                  orderBy: { updatedAt: "desc" },
+                  take: 2,
+                  select: { locale: true, title: true },
+                },
+              },
+            },
+          },
+        }),
+        this.prisma.videoSubtitle.findMany({
+          where: {
+            deletedAt: null,
+            languageId: { not: null },
+            videoId: { not: null },
+            video: {
+              deletedAt: null,
+              noIndex: false,
+              NOT: { restrictViewPlatforms: { has: "watch" } },
+              locales: {
+                some: { deletedAt: null, status: "PUBLISHED" },
+              },
+            },
+            AND: [{ vttSrc: { not: null } }, { NOT: { vttSrc: "" } }],
+          },
+          orderBy: [{ updatedAt: "desc" }, { id: "asc" }],
+          take: translationFetchLimit,
+          select: {
+            updatedAt: true,
+            aiGenerated: true,
+            language: {
+              select: { id: true, bcp47: true, slug: true, name: true },
+            },
+            video: {
+              select: {
+                id: true,
+                coreId: true,
+                slug: true,
+                label: true,
+                locales: {
+                  where: {
+                    deletedAt: null,
+                    status: "PUBLISHED",
+                    OR: [{ locale: input.locale }, { locale: "en" }],
+                  },
+                  orderBy: { updatedAt: "desc" },
+                  take: 2,
+                  select: { locale: true, title: true },
+                },
+              },
+            },
+          },
+        }),
+      ])
+
+    const homepageMatch = homepageMatches[0] ?? null
+    const [homepage, inventory] = await Promise.all([
+      homepageMatch
+        ? Promise.all([
+            this.prisma.experienceLocale.findUniqueOrThrow({
+              where: { id: homepageMatch.id },
+              select: {
+                id: true,
+                experienceId: true,
+                locale: true,
+                slug: true,
+                isHomepage: true,
+                pathSegment: true,
+                title: true,
+                metaDescription: true,
+                ogTitle: true,
+                ogDescription: true,
+                ogImageUrl: true,
+                blocks: true,
+                status: true,
+                publishedAt: true,
+                updatedAt: true,
+              },
+            }),
+            this.prisma.contentRevision.findFirst({
+              where: {
+                entityType: "ExperienceLocale",
+                entityId: homepageMatch.id,
+                status: "DRAFT",
+              },
+              orderBy: { revisedAt: "desc" },
+              select: {
+                id: true,
+                revisedAt: true,
+                revisedBy: true,
+                revisedByKind: true,
+                reason: true,
+              },
+            }),
+          ]).then(([canonical, activeDraft]) => ({
+            experienceId: homepageMatch.experienceId,
+            canonical: serializeLocale(canonical),
+            canonicalDigest: storefrontContentDigest(canonical.blocks),
+            hasDraft: activeDraft !== null,
+            activeDraft: activeDraft
+              ? serializeStorefrontDraftAttribution(activeDraft)
+              : null,
+          }))
+        : Promise.resolve(null),
+      new VideoService(this.prisma).getWatchLanguageInventory({
+        languageSlug: targetLanguage?.slug ?? "",
+        limit: input.recentLimit,
+      }),
+    ])
+
+    return {
+      locale: input.locale,
+      generatedAt: new Date().toISOString(),
+      homepage,
+      homepageMatchCount: homepageMatches.length,
+      targetLanguage: targetLanguage
+        ? {
+            id: targetLanguage.id,
+            bcp47: targetLanguage.bcp47,
+            iso3: targetLanguage.iso3,
+            slug: targetLanguage.slug,
+            name: targetLanguage.name,
+          }
+        : null,
+      inventory,
+      recentTranslations: recentTranslationEvidence({
+        dubs: recentDubs,
+        subtitles: recentSubtitles,
+        limit: input.recentLimit,
+        preferredLocale: input.locale,
+      }),
+    }
+  }
+
+  async stageStorefrontHomepage({
+    input: raw,
+    user,
+  }: {
+    input: unknown
+    user: Principal | null
+  }) {
+    const input = StorefrontHomepageStageInput.parse(raw)
+    const normalizedBlocks = BlocksSchema.parse(input.blocks)
+    const candidateDigest = storefrontContentDigest(
+      normalizedBlocks as Prisma.JsonValue,
+    )
+    if (candidateDigest !== input.candidateDigest) {
+      throw new z.ZodError([
+        {
+          code: "custom",
+          path: ["candidateDigest"],
+          message: "candidate digest does not match normalized blocks",
+        },
+      ])
+    }
+    const reason = serializeStorefrontAttribution({
+      operationId: input.operationId,
+      candidateDigest,
+    })
+    const result = await new ExperienceService(
+      this.prisma,
+    ).updateLocaleWithDraft({
+      input: { id: input.localeId, blocks: normalizedBlocks },
+      user,
+      draftAttribution: {
+        revisedByKind: "AI",
+        reason,
+      },
+      draftGuard: {
+        expectedCanonicalUpdatedAt: input.expectedCanonicalUpdatedAt,
+        requireNoActiveDraft: true,
+        requireUniquePublishedHomepage: true,
+      },
+      // The workflow hashes the complete candidate and owns only its prefixed
+      // sections. Editor backfill would change unrelated human blocks after
+      // attribution, so this guarded path persists the validated bytes exactly.
+      preserveBlocksExactly: true,
+    })
+    const draftAttribution = parseStorefrontAttribution(
+      result.activeDraft.reason,
+    )
+    if (
+      !draftAttribution ||
+      result.activeDraft.revisedByKind !== "AI" ||
+      draftAttribution.operationId !== input.operationId ||
+      draftAttribution.candidateDigest !== candidateDigest
+    ) {
+      throw new StorefrontStageAttributionMismatchError()
+    }
+    return {
+      locale: serializeLocale(result.effective),
+      draftAttribution: {
+        id: result.activeDraft.id,
+        revisedAt: result.activeDraft.revisedAt.toISOString(),
+        revisedBy: result.activeDraft.revisedBy,
+        revisedByKind: result.activeDraft.revisedByKind,
+        ...draftAttribution,
+      },
+      previewUrl: result.activeDraft.previewToken
+        ? previewUrlFor(result.activeDraft.previewToken)
+        : null,
     }
   }
 
@@ -964,6 +1264,50 @@ function serializeActiveDraft(draft: {
   }
 }
 
+function serializeStorefrontDraftAttribution(draft: {
+  id: string
+  revisedAt: Date
+  revisedBy: string | null
+  revisedByKind: string
+  reason: string | null
+}) {
+  const attribution = parseStorefrontAttribution(draft.reason)
+  return {
+    id: draft.id,
+    revisedAt: draft.revisedAt.toISOString(),
+    revisedBy: draft.revisedBy,
+    revisedByKind: draft.revisedByKind,
+    reason: draft.reason,
+    operationId: attribution?.operationId ?? null,
+    candidateDigest: attribution?.candidateDigest ?? null,
+  }
+}
+
+function serializeStorefrontAttribution({
+  operationId,
+  candidateDigest,
+}: {
+  operationId: string
+  candidateDigest: string
+}) {
+  return `${STOREFRONT_ATTRIBUTION_PREFIX}:${operationId}:${candidateDigest}`
+}
+
+function parseStorefrontAttribution(reason: string | null) {
+  if (!reason) return null
+  const match = new RegExp(
+    `^${STOREFRONT_ATTRIBUTION_PREFIX}:([0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}):([0-9a-f]{64})$`,
+    "i",
+  ).exec(reason)
+  return match
+    ? { operationId: match[1].toLowerCase(), candidateDigest: match[2] }
+    : null
+}
+
+function storefrontContentDigest(blocks: Prisma.JsonValue) {
+  return createHash("sha256").update(JSON.stringify(blocks)).digest("hex")
+}
+
 function serializeDraftState(state: {
   canonical: LocaleRow
   effective: LocaleRow
@@ -986,6 +1330,95 @@ function serializeDraftState(state: {
       ? serializeActiveDraft(state.activeDraft)
       : null,
   }
+}
+
+type TranslationEvidenceRow = {
+  updatedAt: Date
+  aiGenerated: boolean
+  language: {
+    id: string
+    bcp47: string | null
+    slug: string | null
+    name: Prisma.JsonValue
+  } | null
+  video: {
+    id: string
+    coreId: string
+    slug: string
+    label: string | null
+    locales: Array<{ locale: string | null; title: string | null }>
+  } | null
+}
+
+function recentTranslationEvidence({
+  dubs,
+  subtitles,
+  limit,
+  preferredLocale,
+}: {
+  dubs: TranslationEvidenceRow[]
+  subtitles: TranslationEvidenceRow[]
+  limit: number
+  preferredLocale: string
+}) {
+  type Evidence = {
+    videoId: string
+    coreId: string
+    videoSlug: string
+    title: string
+    label: string | null
+    language: NonNullable<TranslationEvidenceRow["language"]>
+    availability: Array<"audio" | "subtitles">
+    aiGenerated: boolean
+    updatedAt: string
+  }
+  const byVideoLanguage = new Map<string, Evidence>()
+
+  const add = (
+    row: TranslationEvidenceRow,
+    availability: "audio" | "subtitles",
+  ) => {
+    if (!row.language || !row.video) return
+    const key = `${row.video.id}:${row.language.id}`
+    const existing = byVideoLanguage.get(key)
+    const title =
+      row.video.locales.find((locale) => locale.locale === preferredLocale)
+        ?.title ??
+      row.video.locales.find((locale) => locale.locale === "en")?.title ??
+      row.video.slug
+    if (existing) {
+      if (!existing.availability.includes(availability)) {
+        existing.availability.push(availability)
+      }
+      existing.aiGenerated ||= row.aiGenerated
+      if (Date.parse(existing.updatedAt) < row.updatedAt.getTime()) {
+        existing.updatedAt = row.updatedAt.toISOString()
+      }
+      return
+    }
+    byVideoLanguage.set(key, {
+      videoId: row.video.id,
+      coreId: row.video.coreId,
+      videoSlug: row.video.slug,
+      title,
+      label: row.video.label,
+      language: row.language,
+      availability: [availability],
+      aiGenerated: row.aiGenerated,
+      updatedAt: row.updatedAt.toISOString(),
+    })
+  }
+
+  dubs.forEach((row) => add(row, "audio"))
+  subtitles.forEach((row) => add(row, "subtitles"))
+
+  return [...byVideoLanguage.values()]
+    .sort(
+      (left, right) =>
+        Date.parse(right.updatedAt) - Date.parse(left.updatedAt) ||
+        left.title.localeCompare(right.title),
+    )
+    .slice(0, limit)
 }
 
 function issuesFromResult(

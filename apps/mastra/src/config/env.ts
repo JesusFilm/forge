@@ -103,6 +103,11 @@ const DEFAULT_JESUSFILM_RAG_MAX_RESPONSE_BYTES = 2_097_152
 //
 // Override via ADMIN_AGENT_TOOLS_MAX_RESPONSE_BYTES; never required at boot.
 const DEFAULT_ADMIN_AGENT_TOOLS_MAX_RESPONSE_BYTES = 2_097_152
+const DEFAULT_STOREFRONT_CURATOR_MODEL = "openai/gpt-5.4-mini"
+const DEFAULT_STOREFRONT_CURATOR_MCP_TIMEOUT_MS = 30_000
+const DEFAULT_STOREFRONT_CURATOR_MCP_MAX_RESPONSE_BYTES = 2_097_152
+const DEFAULT_STOREFRONT_CURATOR_MCP_USER_AGENT =
+  "forge-mastra-storefront-curator/1.0"
 const DEFAULT_LANGFUSE_USER_AGENT = "forge-mastra-langfuse/1.0"
 const DEFAULT_LANGFUSE_TIMEOUT_MS = 3_000
 // Separate budget for the feat-336 trace-retention sweep: its caller is a
@@ -231,6 +236,53 @@ const envSchema = z.object({
     .positive()
     .max(16_777_216)
     .optional(),
+  // Homepage storefront curator. Off by default. `dry_run` computes and
+  // validates a proposal; `stage` writes only a shared Admin draft for review.
+  // Publication is deliberately not a supported mode.
+  STOREFRONT_CURATOR_MODE: z.enum(["off", "dry_run", "stage"]).default("off"),
+  STOREFRONT_CURATOR_MODEL: z
+    .string()
+    .min(1)
+    .default(DEFAULT_STOREFRONT_CURATOR_MODEL),
+  // Locale rollout is an explicit allowlist. English is the only locale in
+  // the first editorial pilot; adding a language is an operator decision.
+  STOREFRONT_CURATOR_ENABLED_LOCALES: z.string().min(1).default("en"),
+  // Independent from dry-run/stage mode so provisioning write credentials
+  // cannot silently create a timer-driven execution path.
+  STOREFRONT_CURATOR_SCHEDULE_ENABLED: z
+    .enum(["true", "false"])
+    .default("false"),
+  STOREFRONT_CURATOR_RECENT_LIMIT: z.coerce
+    .number()
+    .int()
+    .min(1)
+    .max(25)
+    .default(12),
+  STOREFRONT_CURATOR_MCP_URL: z.string().url().optional(),
+  STOREFRONT_CURATOR_MCP_ALLOWED_HOSTS: z.string().min(1).optional(),
+  STOREFRONT_CURATOR_MCP_ACCESS_TOKEN: z.string().min(1).optional(),
+  // A public PKCE Admin MCP client may provide its offline_access refresh
+  // token. The Mastra process exchanges it in memory and never logs either
+  // token. A static access token remains available for local/manual dry runs.
+  STOREFRONT_CURATOR_MCP_AUTH_ISSUER_URL: z.string().url().optional(),
+  STOREFRONT_CURATOR_MCP_CLIENT_ID: z.string().min(1).optional(),
+  STOREFRONT_CURATOR_MCP_REFRESH_TOKEN: z.string().min(1).optional(),
+  STOREFRONT_CURATOR_MCP_TIMEOUT_MS: z.coerce
+    .number()
+    .int()
+    .positive()
+    .max(120_000)
+    .default(DEFAULT_STOREFRONT_CURATOR_MCP_TIMEOUT_MS),
+  STOREFRONT_CURATOR_MCP_MAX_RESPONSE_BYTES: z.coerce
+    .number()
+    .int()
+    .positive()
+    .max(16_777_216)
+    .default(DEFAULT_STOREFRONT_CURATOR_MCP_MAX_RESPONSE_BYTES),
+  STOREFRONT_CURATOR_MCP_USER_AGENT: z
+    .string()
+    .min(1)
+    .default(DEFAULT_STOREFRONT_CURATOR_MCP_USER_AGENT),
   AI_GATEWAY_EMBEDDINGS_ALLOWED_HOSTS: z
     .string()
     .min(1)
@@ -304,6 +356,9 @@ const envSchema = z.object({
     .default("development"),
   NEXT_PHASE: z.string().optional(),
   MASTRA_SERVICE_API_KEYS: z.string().min(1).optional(),
+  // Dedicated operator lane for the credentialed storefront workflow. The
+  // shared service pool is deliberately not accepted; unset means fail closed.
+  STOREFRONT_CURATOR_SERVICE_API_KEYS: z.string().min(1).optional(),
   // Human devotional approval lane. Must be disjoint from the shared service
   // pool; unset keeps resume fail-closed until mastra-gateway is provisioned.
   DEVOTIONAL_APPROVAL_API_KEYS: z.string().min(1).optional(),
@@ -877,6 +932,48 @@ export const env = envSchema.parse({
   ADMIN_AGENT_TOOLS_MAX_RESPONSE_BYTES: emptyToUndefined(
     process.env.ADMIN_AGENT_TOOLS_MAX_RESPONSE_BYTES,
   ),
+  STOREFRONT_CURATOR_MODE: emptyToUndefined(
+    process.env.STOREFRONT_CURATOR_MODE,
+  ),
+  STOREFRONT_CURATOR_MODEL: emptyToUndefined(
+    process.env.STOREFRONT_CURATOR_MODEL,
+  ),
+  STOREFRONT_CURATOR_ENABLED_LOCALES: emptyToUndefined(
+    process.env.STOREFRONT_CURATOR_ENABLED_LOCALES,
+  ),
+  STOREFRONT_CURATOR_SCHEDULE_ENABLED: emptyToUndefined(
+    process.env.STOREFRONT_CURATOR_SCHEDULE_ENABLED,
+  ),
+  STOREFRONT_CURATOR_RECENT_LIMIT: emptyToUndefined(
+    process.env.STOREFRONT_CURATOR_RECENT_LIMIT,
+  ),
+  STOREFRONT_CURATOR_MCP_URL: emptyToUndefined(
+    process.env.STOREFRONT_CURATOR_MCP_URL,
+  ),
+  STOREFRONT_CURATOR_MCP_ALLOWED_HOSTS: emptyToUndefined(
+    process.env.STOREFRONT_CURATOR_MCP_ALLOWED_HOSTS,
+  ),
+  STOREFRONT_CURATOR_MCP_ACCESS_TOKEN: emptyToUndefined(
+    process.env.STOREFRONT_CURATOR_MCP_ACCESS_TOKEN,
+  ),
+  STOREFRONT_CURATOR_MCP_AUTH_ISSUER_URL: emptyToUndefined(
+    process.env.STOREFRONT_CURATOR_MCP_AUTH_ISSUER_URL,
+  ),
+  STOREFRONT_CURATOR_MCP_CLIENT_ID: emptyToUndefined(
+    process.env.STOREFRONT_CURATOR_MCP_CLIENT_ID,
+  ),
+  STOREFRONT_CURATOR_MCP_REFRESH_TOKEN: emptyToUndefined(
+    process.env.STOREFRONT_CURATOR_MCP_REFRESH_TOKEN,
+  ),
+  STOREFRONT_CURATOR_MCP_TIMEOUT_MS: emptyToUndefined(
+    process.env.STOREFRONT_CURATOR_MCP_TIMEOUT_MS,
+  ),
+  STOREFRONT_CURATOR_MCP_MAX_RESPONSE_BYTES: emptyToUndefined(
+    process.env.STOREFRONT_CURATOR_MCP_MAX_RESPONSE_BYTES,
+  ),
+  STOREFRONT_CURATOR_MCP_USER_AGENT: emptyToUndefined(
+    process.env.STOREFRONT_CURATOR_MCP_USER_AGENT,
+  ),
   AI_GATEWAY_EMBEDDINGS_ALLOWED_HOSTS: emptyToUndefined(
     process.env.AI_GATEWAY_EMBEDDINGS_ALLOWED_HOSTS,
   ),
@@ -930,6 +1027,9 @@ export const env = envSchema.parse({
   NEXT_PHASE: process.env.NEXT_PHASE,
   MASTRA_SERVICE_API_KEYS: emptyToUndefined(
     process.env.MASTRA_SERVICE_API_KEYS,
+  ),
+  STOREFRONT_CURATOR_SERVICE_API_KEYS: emptyToUndefined(
+    process.env.STOREFRONT_CURATOR_SERVICE_API_KEYS,
   ),
   DEVOTIONAL_APPROVAL_API_KEYS: emptyToUndefined(
     process.env.DEVOTIONAL_APPROVAL_API_KEYS,
@@ -1407,6 +1507,27 @@ function assertAdminAgentToolsBaseUrlAllowedForProduction() {
   }
 }
 
+function assertStorefrontCuratorUrlsAllowedForProduction() {
+  const configuredUrls = [
+    env.STOREFRONT_CURATOR_MCP_URL,
+    env.STOREFRONT_CURATOR_MCP_AUTH_ISSUER_URL,
+  ].filter((value): value is string => Boolean(value))
+  if (configuredUrls.length === 0) return
+  const allowedHosts = env.STOREFRONT_CURATOR_MCP_ALLOWED_HOSTS
+    ? csvSet(env.STOREFRONT_CURATOR_MCP_ALLOWED_HOSTS)
+    : new Set<string>()
+  if (
+    configuredUrls.some((value) => {
+      const url = new URL(value)
+      return url.protocol !== "https:" || !allowedHosts.has(url.hostname)
+    })
+  ) {
+    throw new Error(
+      "STOREFRONT_CURATOR_MCP_URL and STOREFRONT_CURATOR_MCP_AUTH_ISSUER_URL must use https and hosts listed in STOREFRONT_CURATOR_MCP_ALLOWED_HOSTS for Mastra production",
+    )
+  }
+}
+
 function assertLangfuseBaseUrlAllowedForProduction() {
   // Conditional on the base URL being set: unconfigured Langfuse is valid by
   // design (the prompt helper degrades to the caller-supplied fallback). When
@@ -1490,11 +1611,25 @@ export function assertDevotionalApprovalKeysDisjoint(
   }
 }
 
+export function assertStorefrontCuratorServiceKeysDisjoint(
+  poolCsv: string | undefined = env.MASTRA_SERVICE_API_KEYS,
+  curatorCsv: string | undefined = env.STOREFRONT_CURATOR_SERVICE_API_KEYS,
+): void {
+  const pool = new Set(parseServiceApiKeys(poolCsv))
+  if (parseServiceApiKeys(curatorCsv).some((key) => pool.has(key))) {
+    // Variable names only. Never expose the overlapping bearer value.
+    throw new Error(
+      "STOREFRONT_CURATOR_SERVICE_API_KEYS and MASTRA_SERVICE_API_KEYS must not share key values",
+    )
+  }
+}
+
 export function assertMastraRuntimeEnv() {
   // Every-environment invariant (feat-241, KTD2): an overlapping pool/lane
   // bearer is a misconfiguration everywhere, not just in production.
   assertAiChatServiceKeysDisjoint()
   assertDevotionalApprovalKeysDisjoint()
+  assertStorefrontCuratorServiceKeysDisjoint()
 
   if (
     env.NODE_ENV === "production" &&
@@ -1530,6 +1665,7 @@ export function assertMastraRuntimeEnv() {
   // honoring the ticket's "never a boot failure" rule.
   assertJesusfilmRagBaseUrlAllowedForProduction()
   assertAdminAgentToolsBaseUrlAllowedForProduction()
+  assertStorefrontCuratorUrlsAllowedForProduction()
   // Same posture for Langfuse (U1, R9): the host guard is the only
   // Langfuse-driven boot throw. Missing keys are deliberately NOT in `missing`
   // above — an unconfigured helper degrades to the caller-supplied fallback
@@ -1890,6 +2026,7 @@ function modelCredentialPresent(model: string): boolean {
   const provider = model.split("/")[0]?.toLowerCase()
   if (provider === "openai") return Boolean(env.OPENAI_API_KEY)
   if (provider === "openrouter") return Boolean(getOpenRouterApiKey())
+  if (provider === "google") return Boolean(env.GOOGLE_GENERATIVE_AI_API_KEY)
   return true
 }
 
@@ -2319,6 +2456,49 @@ export function getAdminAgentToolsConfig(): AdminAgentToolsConfig {
     maxResponseBytes:
       env.ADMIN_AGENT_TOOLS_MAX_RESPONSE_BYTES ??
       DEFAULT_ADMIN_AGENT_TOOLS_MAX_RESPONSE_BYTES,
+  }
+}
+
+export type StorefrontCuratorConfig = {
+  mode: "off" | "dry_run" | "stage"
+  model: string
+  modelApiKeyPresent: boolean
+  enabledLocales: string[]
+  scheduleEnabled: boolean
+  recentLimit: number
+  mcpUrl?: string
+  allowedHosts?: string
+  accessToken?: string
+  authIssuerUrl?: string
+  clientId?: string
+  refreshToken?: string
+  timeoutMs: number
+  maxResponseBytes: number
+  userAgent: string
+}
+
+/**
+ * Default-off scheduled storefront curation. Credential completeness is
+ * evaluated inside the workflow so an unprovisioned Mastra environment still
+ * boots and exposes a typed disabled/unavailable result in Studio.
+ */
+export function getStorefrontCuratorConfig(): StorefrontCuratorConfig {
+  return {
+    mode: env.STOREFRONT_CURATOR_MODE,
+    model: env.STOREFRONT_CURATOR_MODEL,
+    modelApiKeyPresent: modelCredentialPresent(env.STOREFRONT_CURATOR_MODEL),
+    enabledLocales: Array.from(csvSet(env.STOREFRONT_CURATOR_ENABLED_LOCALES)),
+    scheduleEnabled: env.STOREFRONT_CURATOR_SCHEDULE_ENABLED === "true",
+    recentLimit: env.STOREFRONT_CURATOR_RECENT_LIMIT,
+    mcpUrl: env.STOREFRONT_CURATOR_MCP_URL,
+    allowedHosts: env.STOREFRONT_CURATOR_MCP_ALLOWED_HOSTS,
+    accessToken: env.STOREFRONT_CURATOR_MCP_ACCESS_TOKEN,
+    authIssuerUrl: env.STOREFRONT_CURATOR_MCP_AUTH_ISSUER_URL,
+    clientId: env.STOREFRONT_CURATOR_MCP_CLIENT_ID,
+    refreshToken: env.STOREFRONT_CURATOR_MCP_REFRESH_TOKEN,
+    timeoutMs: env.STOREFRONT_CURATOR_MCP_TIMEOUT_MS,
+    maxResponseBytes: env.STOREFRONT_CURATOR_MCP_MAX_RESPONSE_BYTES,
+    userAgent: env.STOREFRONT_CURATOR_MCP_USER_AGENT,
   }
 }
 

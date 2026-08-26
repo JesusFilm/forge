@@ -159,6 +159,8 @@ import {
   transcriptScriptureCorrectionWorkflow,
 } from "./workflows/transcript-scripture-correction"
 import { seoDailyAuditWorkflow } from "./workflows/seo-daily-audit"
+import { storefrontHomepageCurationWorkflow } from "./workflows/storefront-homepage-curation"
+import { createStorefrontHomepageCurationApiRoutes } from "./workflows/storefront-homepage-curation-route"
 import { seoExperimentEvaluationWorkflow } from "./workflows/seo-experiment-evaluation"
 import { seoTicketDispatchWorkflow } from "./workflows/seo-ticket-dispatch"
 import {
@@ -173,7 +175,7 @@ import {
 import { startAiChatRetentionPurge } from "./ai-chat-retention"
 import { startSeekerPromptHealthMonitor } from "../services/seeker-prompt-health"
 import { startLangfuseTraceRetention } from "./langfuse-trace-retention"
-import { isBlockedDevotionalNativeMutation } from "./devotional-native-route-guard"
+import { getProtectedNativeWorkflowRouteResponse } from "./devotional-native-route-guard"
 import { createDevotionalWorkspaceRuntime } from "../services/devotional/workspace/config"
 import { runWithWorkspaceMutationContext } from "../services/devotional/workspace/audited-filesystem"
 import { createDevotionalDataPlaneRuntime } from "../services/devotional/workspace/runtime"
@@ -324,13 +326,10 @@ export const mastra = new Mastra({
     subtitleEnrichmentWorkflow,
     transcriptScriptureCorrectionWorkflow,
     seoDailyAuditWorkflow,
+    storefrontHomepageCurationWorkflow,
     seoExperimentEvaluationWorkflow,
     seoTicketDispatchWorkflow,
-    // Ported draft-authoring workflows (consolidation U4). Registered by their
-    // workflow id so the U5 route can drive them via
-    // `mastra.getWorkflowById("multi-step-draft" | "quick-draft")` — which
-    // injects this Mastra instance so each step's `getAgentById(...)` resolves
-    // the planner/skeleton/fill/critic/reviser agents registered above.
+    // Keyed by ID so draft workflow steps resolve the registered agents above.
     "multi-step-draft": multiStepDraftWorkflow,
     "quick-draft": quickDraftWorkflow,
   },
@@ -390,20 +389,12 @@ export const mastra = new Mastra({
       {
         path: "/api/workflows/*",
         handler: async (c, next) => {
-          if (
-            isBlockedDevotionalNativeMutation(
-              c.req.method,
-              new URL(c.req.url).pathname,
-            )
-          ) {
-            return c.json(
-              {
-                error: "devotional_lifecycle_route_required",
-                message:
-                  "Use the authenticated /forge-daily-devotional lifecycle routes.",
-              },
-              403,
-            )
+          const response = getProtectedNativeWorkflowRouteResponse(
+            c.req.method,
+            new URL(c.req.url).pathname,
+          )
+          if (response) {
+            return c.json(response.body, response.status)
           }
           await next()
         },
@@ -429,6 +420,9 @@ export const mastra = new Mastra({
           return c.json(createSmokeResponse(String(body.input ?? "smoke")))
         },
       }),
+      ...createStorefrontHomepageCurationApiRoutes(
+        env.STOREFRONT_CURATOR_SERVICE_API_KEYS,
+      ),
       registerApiRoute("/forge-transcript-embeddings", {
         method: "POST",
         handler: async (c) => {

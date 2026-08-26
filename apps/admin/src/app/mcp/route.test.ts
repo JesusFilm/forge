@@ -107,6 +107,7 @@ describe("Admin MCP route", () => {
         },
         seoProposalMaterialization: { updateMany: vi.fn() },
         experienceLocale: {
+          count: vi.fn().mockResolvedValue(1),
           findUniqueOrThrow: (...args: unknown[]) =>
             experienceLocaleFindUniqueOrThrow(...args),
           update: vi.fn(),
@@ -127,6 +128,7 @@ describe("Admin MCP route", () => {
         "experience:read",
         "experience:locale:create",
         "experience:locale:update",
+        "storefront:homepage:stage",
         "experience:locale:validate",
         "media:read",
         "video:read",
@@ -219,6 +221,12 @@ describe("Admin MCP route", () => {
             name: "video.search_replacements",
           }),
           expect.objectContaining({
+            name: "storefront.homepage.context",
+          }),
+          expect.objectContaining({
+            name: "storefront.homepage.stage",
+          }),
+          expect.objectContaining({
             name: "experience.create",
           }),
           expect.objectContaining({
@@ -251,6 +259,65 @@ describe("Admin MCP route", () => {
       required: ["experienceId"],
       additionalProperties: false,
     })
+  })
+
+  it("keeps the curator stage scope isolated from generic mutations", async () => {
+    const curatorScopes = new Set(["storefront:homepage:stage"])
+    resolvePrincipalMock.mockImplementation(
+      ({ requiredScopes }: { requiredScopes: readonly string[] }) => {
+        const missing = requiredScopes.filter(
+          (scope) => !curatorScopes.has(scope),
+        )
+        if (missing.length > 0) {
+          return Promise.reject(
+            new AdminMcpAuthError(
+              "insufficient_scope",
+              `Missing ${missing.join(", ")}`,
+              requiredScopes,
+            ),
+          )
+        }
+        return Promise.resolve({
+          principal: { id: "user_1", role: "EDITOR" },
+          token: { subject: "user_1", scopes: [...curatorScopes] },
+        })
+      },
+    )
+
+    const stage = await POST(
+      post({
+        jsonrpc: "2.0",
+        id: 20,
+        method: "tools/call",
+        params: { name: "storefront.homepage.stage", arguments: {} },
+      }),
+    )
+    expect(stage.status).toBe(200)
+    expect(resolvePrincipalMock).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        requiredScopes: ["storefront:homepage:stage"],
+      }),
+    )
+
+    for (const [name, requiredScope] of [
+      ["experience.locale.update", "experience:locale:update"],
+      ["experience.locale.discard", "experience:locale:update"],
+      ["experience.locale.publish", "experience:publish"],
+    ] as const) {
+      const response = await POST(
+        post({
+          jsonrpc: "2.0",
+          id: 21,
+          method: "tools/call",
+          params: { name, arguments: {} },
+        }),
+      )
+      expect(response.status).toBe(403)
+      await expect(response.json()).resolves.toMatchObject({
+        error: "insufficient_scope",
+        required_scopes: [requiredScope],
+      })
+    }
   })
 
   it("requires publish scope before dispatching the publish tool", async () => {

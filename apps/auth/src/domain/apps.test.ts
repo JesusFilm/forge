@@ -212,6 +212,7 @@ describe("first-party app seeds", () => {
             "experience:read",
             "experience:locale:create",
             "experience:locale:update",
+            "storefront:homepage:stage",
             "experience:locale:validate",
             "media:read",
             "video:read",
@@ -262,6 +263,7 @@ describe("first-party app seeds", () => {
         expect.arrayContaining([
           "experience:read",
           "experience:locale:update",
+          "storefront:homepage:stage",
           "experience:publish",
         ]),
       )
@@ -345,6 +347,7 @@ describe("first-party app seeds", () => {
             "experience:read",
             "experience:locale:create",
             "experience:locale:update",
+            "storefront:homepage:stage",
             "experience:locale:validate",
             "media:read",
             "video:read",
@@ -374,6 +377,18 @@ describe("first-party app seeds", () => {
     expect(
       assertKnownScopes(["experience:create", "experience:generate"]),
     ).toEqual(["experience:create", "experience:generate"])
+  })
+
+  it("keeps storefront staging distinct from generic update and publish", () => {
+    expect(assertKnownScopes(["storefront:homepage:stage"])).toEqual([
+      "storefront:homepage:stage",
+    ])
+    expect(assertKnownScopes(["storefront:homepage:stage"])).not.toContain(
+      "experience:locale:update",
+    )
+    expect(assertKnownScopes(["storefront:homepage:stage"])).not.toContain(
+      "experience:publish",
+    )
   })
 
   it("registers Mastra Studio OAuth clients for the gateway", () => {

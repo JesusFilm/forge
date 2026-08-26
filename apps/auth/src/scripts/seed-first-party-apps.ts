@@ -25,12 +25,14 @@ const OFFLINE_ACCESS_SCOPE = "offline_access" satisfies AuthScopeKey
 // Markers identify PRE-EXISTING dynamically-registered Admin MCP clients so
 // later-added default scopes can be appended. They must exclude every scope
 // added AFTER those clients were registered — offline_access itself and the
-// feat-320 experience-level pair — because a legacy client cannot carry them
-// (the pair reaches clients via re-authentication, not this migration).
+// feat-320 experience-level pair and feat-406 storefront stage scope — because
+// a legacy client cannot carry them (they reach clients via re-authentication,
+// not this migration).
 const POST_REGISTRATION_SCOPES: readonly AuthScopeKey[] = [
   OFFLINE_ACCESS_SCOPE,
   "experience:create",
   "experience:generate",
+  "storefront:homepage:stage",
 ]
 const ADMIN_MCP_DYNAMIC_SCOPE_MARKERS = ADMIN_MCP_DEFAULT_SCOPES.filter(
   (scope) => !POST_REGISTRATION_SCOPES.includes(scope),

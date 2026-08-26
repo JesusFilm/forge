@@ -2635,15 +2635,33 @@ Codex) operating on Experiences. Onboarding UI at `/dashboard/mcp`; protected-
 resource metadata at `/.well-known/oauth-protected-resource` (its
 `scopes_supported` derives automatically from the tool registry).
 
-- **Registry:** `src/mcp/admin-mcp-tools.ts` (`ADMIN_MCP_TOOLS`, 15 tools).
+- **Registry:** `src/mcp/admin-mcp-tools.ts` (`ADMIN_MCP_TOOLS`, 19 tools).
   New-tool registration is a three-edit change with no framework glue: registry
   entry → `callAdminMcpTool` dispatch branch in `src/app/mcp/route.ts` →
   service method. The route test's registry-dispatch parity loop fails if a
   declared tool has no branch.
-- **Services:** `src/services/experience-locale-mcp.service.ts` (the 12
+- **Services:** `src/services/experience-locale-mcp.service.ts` (the 16
   locale-level tools) and `src/services/experience-mcp.service.ts` (the three
   experience-level tools). Writes delegate to `ExperienceService`; ABAC stays
   in the service layer.
+- **Storefront curator tools (feat-406):**
+  `storefront.homepage.context` is a minimal read-only projection: one canonical
+  published locale, its digest, bounded Watch-language inventory, recent
+  audio/subtitle evidence, and limited active-draft attribution. It must not
+  call draft-effective-state helpers, mint preview access, or return draft
+  blocks, preview tokens, or preview URLs. `storefront.homepage.stage` takes the
+  canonical `updatedAt` pre-image, UUID `operationId`, and SHA-256 candidate
+  digest. It normalizes blocks, recomputes/refuses a mismatched digest, acquires
+  the locale row lock, and refuses changed canonical content or any active
+  shared draft; accepted writes store the operation/digest in AI draft
+  attribution for exact ambiguous-response reconciliation and return that
+  attribution with an optional preview URL. Neither tool can publish or
+  discard. The stage tool requires the dedicated
+  `storefront:homepage:stage` OAuth scope, not the generic
+  `experience:locale:update` scope, and the locked service path verifies the
+  target is the unique published, non-archived homepage for its locale. Keep
+  the race check inside `ExperienceService.stageLocaleDraft` so a
+  read-then-write race cannot overwrite a human edit.
 - **Auth:** bearer JWT verified against apps/auth JWKS
   (`src/auth/admin-mcp-oauth.ts`); per-tool `requiredScopes` are enforced
   BEFORE dispatch. Insufficient scope is an HTTP **403** with

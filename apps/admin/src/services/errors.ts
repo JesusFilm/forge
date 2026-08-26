@@ -41,3 +41,15 @@ export class ConcurrentModificationError extends Error {
     this.name = "ConcurrentModificationError"
   }
 }
+
+/**
+ * Thrown when a storefront draft write commits but its returned revision no
+ * longer carries the operation attribution the caller supplied. Callers must
+ * treat this as an ambiguous write outcome and reconcile before retrying.
+ */
+export class StorefrontStageAttributionMismatchError extends Error {
+  constructor() {
+    super("Storefront stage attribution did not match the committed draft")
+    this.name = "StorefrontStageAttributionMismatchError"
+  }
+}

@@ -67,7 +67,7 @@ describe("seedFirstPartyApps", () => {
       apps: 9,
       environments: 31,
       oauthClients: 35,
-      scopes: 24,
+      scopes: 25,
     })
 
     expect(finalizeBetterAuth17Schema).toHaveBeenCalledOnce()
@@ -156,6 +156,7 @@ describe("seedFirstPartyApps", () => {
             "experience:read",
             "experience:locale:create",
             "experience:locale:update",
+            "storefront:homepage:stage",
             "experience:locale:validate",
             "media:read",
             "video:read",
@@ -262,6 +263,7 @@ describe("seedFirstPartyApps", () => {
             "experience:read",
             "experience:locale:create",
             "experience:locale:update",
+            "storefront:homepage:stage",
             "experience:locale:validate",
             "media:read",
             "video:read",
