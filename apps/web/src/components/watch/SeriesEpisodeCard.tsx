@@ -17,7 +17,7 @@ import {
 import { MuxHoverPreview } from "@/components/watch/MuxHoverPreview"
 import { WatchProgressBar } from "@/components/watch/WatchProgressBar"
 import type { ResolvedSeriesBySlug } from "@/lib/content"
-import { resolveEpisodeImageUrl } from "@/lib/episode-image"
+import { resolveEpisodeThumbnail } from "@/lib/episode-image"
 import { resolveMuxAnimatedPreviewUrl } from "@/lib/url"
 import { isSeriesRecord } from "@/lib/watch-content-kind"
 import {
@@ -68,7 +68,7 @@ export function SeriesEpisodeCard({
       href = watchEpisodePath(parent, slug, lang)
     }
   }
-  const thumbnailUrl = resolveEpisodeImageUrl(episode)
+  const { url: thumbnailUrl, blurDataUrl } = resolveEpisodeThumbnail(episode)
   const muxPreviewUrl = resolveMuxAnimatedPreviewUrl(episode.muxPlaybackId)
   const isContainer = isSeriesRecord(episode)
   const containerLabel =
@@ -100,6 +100,9 @@ export function SeriesEpisodeCard({
           fill
           sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, (max-width: 1280px) 33vw, 20vw"
           className="object-cover object-left-top"
+          {...(blurDataUrl
+            ? { placeholder: "blur" as const, blurDataURL: blurDataUrl }
+            : {})}
         />
       ) : (
         <div className="absolute inset-0 bg-stone-800" aria-hidden="true" />

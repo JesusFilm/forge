@@ -252,6 +252,7 @@ describe("GraphQL schema — Unit 4 content types", () => {
         "description",
         "imageUrl",
         "imageAlt",
+        "muxPlaybackId",
         "label",
         "availability",
         "watchLanguageSlug",
