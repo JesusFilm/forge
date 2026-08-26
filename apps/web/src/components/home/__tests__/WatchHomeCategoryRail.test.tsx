@@ -5,6 +5,7 @@
 import type { ReactNode } from "react"
 import { renderToStaticMarkup } from "react-dom/server"
 import { describe, expect, it, vi } from "vitest"
+import { WATCH_HOME_CATEGORY_CATALOG } from "@forge/watch-url-policy/watch-home-categories"
 
 import enMessages from "../../../../messages/en.json"
 import { WATCH_HOME_CATEGORIES } from "@/lib/watch-home-categories"
@@ -150,6 +151,12 @@ describe("WatchHomeCategoryRail", () => {
 })
 
 describe("WATCH_HOME_CATEGORIES config", () => {
+  it("covers the shared catalog exactly once in its shared order", () => {
+    expect(WATCH_HOME_CATEGORIES.map(({ id }) => id)).toEqual(
+      WATCH_HOME_CATEGORY_CATALOG.map(({ id }) => id),
+    )
+  })
+
   it("uses unique ids and unique collection slugs", () => {
     const ids = WATCH_HOME_CATEGORIES.map((category) => category.id)
     const slugs = WATCH_HOME_CATEGORIES.map((category) => category.slug)
