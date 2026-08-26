@@ -1,5 +1,12 @@
 import "server-only"
 
+import {
+  createCipheriv,
+  createDecipheriv,
+  hkdfSync,
+  randomBytes,
+} from "node:crypto"
+
 import { z } from "zod"
 
 import { env } from "@/env"
@@ -78,12 +85,31 @@ export const feedbackSubmissionSchema = z
   })
   .strict()
 
+export const feedbackFollowUpEmailSchema = z
+  .object({
+    email: z.email().max(254),
+    receipt: z.string().min(32).max(1024),
+  })
+  .strict()
+
 const linearResponseSchema = z.object({
   data: z
     .object({
       issueCreate: z.object({
         success: z.boolean(),
         issue: z.object({ id: z.string().min(1) }).nullable(),
+      }),
+    })
+    .optional(),
+  errors: z.array(z.object({ message: z.string().optional() })).optional(),
+})
+
+const linearCommentResponseSchema = z.object({
+  data: z
+    .object({
+      commentCreate: z.object({
+        success: z.boolean(),
+        comment: z.object({ id: z.string().min(1) }).nullable(),
       }),
     })
     .optional(),
@@ -99,12 +125,16 @@ export type FeedbackLinearFailureReason =
   | "invalid_response"
 
 export type FeedbackLinearResult =
-  | { ok: true }
+  | { ok: true; issueId: string }
   | { ok: false; reason: FeedbackLinearFailureReason; retryable: boolean }
 
 const LINEAR_ENDPOINT = "https://api.linear.app/graphql"
 const LINEAR_TIMEOUT_MS = 6000
 const LINEAR_RESPONSE_MAX_BYTES = 64 * 1024
+const FEEDBACK_RECEIPT_LIFETIME_MS = 30 * 60 * 1000
+const FEEDBACK_RECEIPT_AAD = Buffer.from("watch-feedback-receipt:v1")
+const FEEDBACK_RECEIPT_KDF_SALT = Buffer.from("jesusfilm-watch-feedback")
+const FEEDBACK_RECEIPT_KDF_INFO = Buffer.from("linear-issue-receipt:v1")
 
 function escapeMarkdown(value: string): string {
   return value
@@ -116,6 +146,85 @@ function escapeMarkdown(value: string): string {
 
 function firstLine(value: string): string {
   return value.split(/\r?\n/, 1)[0]?.trim() || "Feedback"
+}
+
+function receiptKey(): Buffer | null {
+  const apiKey = env.WEB_FEEDBACK_LINEAR_API_KEY
+  if (!apiKey) return null
+  return Buffer.from(
+    hkdfSync(
+      "sha256",
+      apiKey,
+      FEEDBACK_RECEIPT_KDF_SALT,
+      FEEDBACK_RECEIPT_KDF_INFO,
+      32,
+    ),
+  )
+}
+
+export function createFeedbackReceipt(
+  issueId: string,
+  now = Date.now(),
+): string | null {
+  const key = receiptKey()
+  if (!key) return null
+
+  try {
+    const iv = randomBytes(12)
+    const cipher = createCipheriv("aes-256-gcm", key, iv)
+    cipher.setAAD(FEEDBACK_RECEIPT_AAD)
+    const payload = Buffer.from(
+      JSON.stringify({
+        issueId,
+        expiresAt: now + FEEDBACK_RECEIPT_LIFETIME_MS,
+      }),
+    )
+    const encrypted = Buffer.concat([cipher.update(payload), cipher.final()])
+    return [iv, cipher.getAuthTag(), encrypted]
+      .map((part) => part.toString("base64url"))
+      .join(".")
+  } catch {
+    return null
+  }
+}
+
+export function openFeedbackReceipt(
+  receipt: string,
+  now = Date.now(),
+): string | null {
+  const key = receiptKey()
+  if (!key) return null
+
+  try {
+    const parts = receipt.split(".")
+    if (parts.length !== 3) return null
+    const [ivPart, tagPart, encryptedPart] = parts
+    if (!ivPart || !tagPart || !encryptedPart) return null
+    const decipher = createDecipheriv(
+      "aes-256-gcm",
+      key,
+      Buffer.from(ivPart, "base64url"),
+    )
+    decipher.setAAD(FEEDBACK_RECEIPT_AAD)
+    decipher.setAuthTag(Buffer.from(tagPart, "base64url"))
+    const payload = JSON.parse(
+      Buffer.concat([
+        decipher.update(Buffer.from(encryptedPart, "base64url")),
+        decipher.final(),
+      ]).toString("utf8"),
+    ) as { issueId?: unknown; expiresAt?: unknown }
+    if (
+      typeof payload.issueId !== "string" ||
+      !payload.issueId ||
+      typeof payload.expiresAt !== "number" ||
+      payload.expiresAt < now
+    ) {
+      return null
+    }
+    return payload.issueId
+  } catch {
+    return null
+  }
 }
 
 function issueTitle(submission: FeedbackSubmission): string {
@@ -300,7 +409,78 @@ export async function createLinearFeedbackIssue(
     ) {
       return { ok: false, reason: "invalid_response", retryable: false }
     }
-    return { ok: true }
+    return { ok: true, issueId: parsed.data.data.issueCreate.issue.id }
+  } catch (error) {
+    const name = (error as { name?: string } | undefined)?.name
+    return {
+      ok: false,
+      reason:
+        name === "TimeoutError" || name === "AbortError"
+          ? "timeout"
+          : "network_error",
+      retryable: true,
+    }
+  }
+}
+
+export async function addLinearFeedbackFollowUpEmail(
+  issueId: string,
+  email: string,
+  fetchImpl: typeof fetch = fetch,
+): Promise<FeedbackLinearResult> {
+  const apiKey = env.WEB_FEEDBACK_LINEAR_API_KEY
+  if (!apiKey) {
+    return { ok: false, reason: "config_missing", retryable: false }
+  }
+
+  try {
+    const response = await fetchImpl(LINEAR_ENDPOINT, {
+      method: "POST",
+      headers: {
+        authorization: apiKey,
+        accept: "application/json",
+        "content-type": "application/json",
+        "user-agent": "forge-web-feedback/1.0",
+      },
+      redirect: "error",
+      signal: AbortSignal.timeout(LINEAR_TIMEOUT_MS),
+      body: JSON.stringify({
+        query: `mutation AddWatchFeedbackEmail($input: CommentCreateInput!) {
+          commentCreate(input: $input) {
+            success
+            comment { id }
+          }
+        }`,
+        variables: {
+          input: {
+            issueId,
+            body: `Reporter added a follow-up email after submission: ${escapeMarkdown(email)}`,
+          },
+        },
+      }),
+    })
+
+    if (!response.ok) {
+      await response.body?.cancel()
+      return {
+        ok: false,
+        reason: response.status === 429 ? "rate_limited" : "rejected",
+        retryable: response.status === 429 || response.status >= 500,
+      }
+    }
+
+    const parsed = linearCommentResponseSchema.safeParse(
+      await readJsonCapped(response),
+    )
+    if (
+      !parsed.success ||
+      parsed.data.errors?.length ||
+      !parsed.data.data?.commentCreate.success ||
+      !parsed.data.data.commentCreate.comment
+    ) {
+      return { ok: false, reason: "invalid_response", retryable: false }
+    }
+    return { ok: true, issueId }
   } catch (error) {
     const name = (error as { name?: string } | undefined)?.name
     return {
