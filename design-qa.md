@@ -54,6 +54,33 @@ final result: passed
 
 ---
 
+# Design QA: Outline-free Watch coachmark target
+
+## Selected target
+
+- User direction: remove the red outline from highlighted Watch controls.
+- Before capture: `/tmp/watch-tour-search-gray-v1.png`.
+- Refined Search capture: `/tmp/watch-tour-search-no-outline-v1.png`.
+- Refined Language capture: `/tmp/watch-tour-language-no-outline-v1.png`.
+- Combined same-state, same-viewport comparison: `/tmp/watch-tour-no-outline-comparison.png` at 1280 × 800 per panel.
+
+## Comparison findings
+
+- The red border, outer ring, and red glow are removed completely.
+- The dark page mask still cuts cleanly around the active Search or Language control, so the target remains visually clear without added decoration.
+- The charcoal coachmark, seamless pointer, positioning, and interaction remain unchanged.
+
+## Verification
+
+- Search and Language target states are free of clipping, overlap, and viewport overflow.
+- Dialog-scoped accessibility scan: 0 violations, 0 incomplete checks, 19 passes.
+
+## Result
+
+final result: passed
+
+---
+
 # Design QA: Charcoal Watch coachmark surface
 
 ## Selected target

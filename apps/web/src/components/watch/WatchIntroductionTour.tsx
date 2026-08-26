@@ -270,7 +270,7 @@ export function WatchIntroductionTour({
             <div
               aria-hidden="true"
               data-testid="watch-introduction-target-outline"
-              className="pointer-events-none fixed z-[900] rounded-xl border border-red-500/80 bg-transparent shadow-[0_0_0_2px_rgba(239,68,68,0.14),0_0_18px_rgba(239,68,68,0.24),0_0_0_9999px_rgba(0,0,0,0.82)] motion-reduce:transition-none"
+              className="pointer-events-none fixed z-[900] rounded-xl bg-transparent shadow-[0_0_0_9999px_rgba(0,0,0,0.82)] motion-reduce:transition-none"
               style={activeTargetLayout.outline}
             />
           ) : null

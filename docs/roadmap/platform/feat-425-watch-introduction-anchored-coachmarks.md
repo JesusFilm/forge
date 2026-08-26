@@ -91,3 +91,5 @@ the next.
   action sizes, and blended the pointer into the card surface.
 - Lifted the card and pointer surface to charcoal `#242424` so the compact
   coachmark stays distinct from the black Watch backdrop.
+- Removed the red target border and glow, leaving the active control visible
+  through the spotlight cutout alone.
