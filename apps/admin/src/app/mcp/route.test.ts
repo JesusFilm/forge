@@ -232,6 +232,38 @@ describe("Admin MCP route", () => {
     })
   })
 
+  it("advertises the category rail rules on existing Experience write tools", async () => {
+    const res = await POST(
+      post({ jsonrpc: "2.0", id: 21, method: "tools/list" }),
+    )
+    const body = (await res.json()) as {
+      result: { tools: typeof ADMIN_MCP_TOOLS }
+    }
+    const createExperience = body.result.tools.find(
+      (tool) => tool.name === "experience.create",
+    )
+    const createLocale = body.result.tools.find(
+      (tool) => tool.name === "experience.locale.create",
+    )
+    const updateLocale = body.result.tools.find(
+      (tool) => tool.name === "experience.locale.update",
+    )
+
+    expect(createExperience?.description).toContain(
+      "cannot include watchHomeCategoryRail",
+    )
+    for (const tool of [createLocale, updateLocale]) {
+      expect(tool?.description).toContain("watchHomeCategoryRail")
+      expect(tool?.description).toContain("homepage-only")
+      expect(tool?.description).toContain("top-level singleton")
+      expect(tool?.description).toContain("categoryIds")
+      expect(tool?.description).toContain("order")
+      expect(tool?.description).toContain("preserve unrelated blocks")
+      expect(tool?.description).toContain("short-videos")
+      expect(tool?.description).toContain("christmas")
+    }
+  })
+
   it("advertises a non-empty experience id for duplication", async () => {
     const res = await POST(
       post({ jsonrpc: "2.0", id: 3, method: "tools/list" }),
