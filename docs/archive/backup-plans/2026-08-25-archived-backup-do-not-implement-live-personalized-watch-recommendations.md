@@ -175,6 +175,7 @@ flowchart LR
 ---
 
 <!-- ce-section: work-relationships -->
+
 ## How This Work Fits Together
 
 - **Would have owned:** the Web below-player recommendation experience, anonymous recommendation identity, account-backed continuity, watch-matrix feedback, pseudonymized peer inputs, live-agent curation contract, and safe fallback.
