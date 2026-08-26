@@ -38,8 +38,15 @@ deadline, last-good reuse on failure) and assembles the model via
 `assembleWatchHomeModel` — the config model (client-owned hero) is built from the
 config videos ONLY (so a top-up short film can't leak into the hero, feat-172)
 while Experience cards hydrate off the merged index. Body-from-Experience-else-
-config resolves via `resolveWatchHomeModel` (fallback emits one structured
-`[WatchHome] fallback reason=…` log — never silent, incl. `topup-error`); the v3
+config resolves via `resolveWatchHomeModel`, a PURE resolver that logs nothing;
+the signal lives in `useWatchHome`'s reconcile ladder, which routes every config
+fallback AND every dropped top-up through `logWatchHomeFallback`
+(`src/lib/watchHome/logWatchHomeFallback.ts`) as
+`datadogLog.warn("watch_home_fallback", { reason, body_source })` — never silent,
+incl. `topup-error`. Both stay context attributes, never interpolated into the
+message, or Datadog loses the facet. A failed required-videos fetch is a
+different signal (`watch_home.videos_failed`), and the empty-videos-over-snapshot
+guard and the outer catch only set the retry error; the v3
 snapshot persists config + `hydrationVideos` separately for instant cold launch. `buildWatchHomeModelFromVideos` → `HomeScreen`
 (three-layer hero pager / shelves / overlay); hero streams resolve lazily per
 slide via `useHeroStream`. Experiences still render via the SDUI pipeline below,
@@ -52,7 +59,7 @@ Admin GraphQL → gql.tada typed query → dispatcher → renderers
 ```
 
 - **Query**: Defined in `src/lib/queries.ts` using `adminGraphql()` from `@forge/admin-graphql`
-- **Fragments**: Shared `AdminWatchExperienceFragment` from `@forge/admin-graphql/fragments` composes all block fragments
+- **Fragments**: `import { adminWatchExperienceFragment } from "@forge/admin-graphql/fragments"` — the shared root composition over all block fragments. The exported symbol is lowercase; the GraphQL fragment it declares is named `AdminWatchExperience` (no `Fragment` suffix), so a query spreads it as `...AdminWatchExperience`.
 - **Dispatcher**: `src/components/sections/SectionDispatcher.tsx` — switch on `__typename`
 - **Renderers**: `src/components/sections/*Renderer.tsx` — one per block type
 
@@ -480,9 +487,16 @@ it moves the fingerprint runtime version, so an OTA update cannot deliver it.
   (`Theme.MediaRouter*`, `CastExpandedController`, …); a bare parent drops
   every SDK default and nothing at runtime says so. `aapt2` is the authority —
   it fails on an unresolvable parent or a nonexistent attribute.
-- **Every `react-native-google-cast` import stays under `src/lib/cast/`** —
-  `castImports.guard.test.js` fails the suite otherwise. That is why the hidden
-  button below is a wrapper in that directory rather than a component folder.
+- **Every `react-native-google-cast` import stays under `src/lib/cast/`, with
+  one allowlisted exception: `src/hooks/useCastPlayback.ts`.**
+  `castImports.guard.test.js` fails the suite otherwise, and it carries TWO
+  allowlists — `ALLOWED_PREFIX` for the directory and an `ALLOWED_FILES` set for
+  that one file, pinned by its own positive control. The hook sits outside the
+  directory because `useCastSession`, `useCastState`, `useMediaStatus` and
+  `useStreamPosition` are React hooks, while `src/lib/cast/` holds pure logic.
+  Add a file to `ALLOWED_FILES` only when the SDK hands you a React hook. The
+  same rule is why `src/lib/cast/NativeCastButton.tsx` is a wrapper in that
+  directory rather than a component folder.
 - **The cast CONTROL differs by platform, and that is deliberate.**
   `showCastDialog()` is implemented differently on each side, so one shared
   affordance cannot serve both:
