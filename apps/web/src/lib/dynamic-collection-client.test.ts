@@ -51,6 +51,9 @@ describe("loadDynamicCollectionFeedPage", () => {
         ["excludedSlugs", "featured"],
       ]),
     )
+    expect(
+      new URL(String(href), "https://example.test").searchParams.has("scope"),
+    ).toBe(false)
     expect(init).toEqual(
       expect.objectContaining({
         cache: "no-store",
@@ -58,6 +61,26 @@ describe("loadDynamicCollectionFeedPage", () => {
         method: "GET",
       }),
     )
+  })
+
+  it("serializes preview scope without changing the live request shape", async () => {
+    const fetchMock = vi.fn<typeof fetch>(async () => Response.json(validPage))
+    vi.stubGlobal("fetch", fetchMock)
+
+    await loadDynamicCollectionFeedPage({
+      locale: "en",
+      languageSlug: "english",
+      cacheScope: "preview",
+      first: 3,
+      cardsPerParent: 12,
+    })
+
+    const [href] = fetchMock.mock.calls[0] ?? []
+    expect(
+      new URL(String(href), "https://example.test").searchParams.getAll(
+        "scope",
+      ),
+    ).toEqual(["preview"])
   })
 
   it("rejects invalid input before fetch and enforces the URL budget", async () => {
@@ -174,6 +197,16 @@ describe("loadDynamicCollectionFeedPage", () => {
       loadDynamicCollectionFeedPage({
         locale: "invalid",
         languageSlug: "english",
+        first: 2,
+        cardsPerParent: 8,
+      }),
+    ).rejects.toBeInstanceOf(DynamicCollectionFeedValidationError)
+
+    await expect(
+      loadDynamicCollectionFeedPage({
+        locale: "en",
+        languageSlug: "english",
+        cacheScope: "private" as "live",
         first: 2,
         cardsPerParent: 8,
       }),

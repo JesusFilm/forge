@@ -229,6 +229,16 @@ jobs:
           pnpm exec tsx --test scripts/check-hidden-roadmap-lanes.test.ts
           pnpm exec tsx scripts/check-hidden-roadmap-lanes.ts
 
+  dev-port-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+      - name: Validate resolved devcontainer Compose contract
+        run: >-
+          docker compose -f .devcontainer/docker-compose.yml config --format json |
+          node scripts/check-dev-port-contract.mjs
+
   experiment-ledger:
     runs-on: ubuntu-latest
     steps:
@@ -403,6 +413,7 @@ jobs:
       - format
       - patched-deps-guard
       - hidden-roadmap-lanes
+      - dev-port-contract
       - experiment-ledger
       - lint
       - test

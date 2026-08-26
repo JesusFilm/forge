@@ -68,6 +68,7 @@ type LanguageGlobeRenderProfile = {
 
 const TAU = Math.PI * 2
 const DEGREES_TO_RADIANS = Math.PI / 180
+const GLOBE_VISUAL_SCALE = 0.65
 const LAND_GRID_RADIANS = 1.5 * DEGREES_TO_RADIANS
 const MAX_CANVAS_DENSITY = 1.5
 const MONOSPACE_FONT =
@@ -449,7 +450,8 @@ function drawGlobe(
   context.fillStyle = "#09090b"
   context.fillRect(0, 0, width, height)
 
-  const radius = Math.min(Math.max(width * 0.62, height * 0.72), 720)
+  const radius =
+    Math.min(Math.max(width * 0.62, height * 0.72), 720) * GLOBE_VISUAL_SCALE
   const horizontalRadius = radius * 1.08
   const centerX = width * 0.515
   const centerY = height * 0.98

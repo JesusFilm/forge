@@ -24,12 +24,12 @@ function request(query: string) {
 
 describe("GET /watch/api/dynamic-collections", () => {
   beforeEach(() => {
+    vi.restoreAllMocks()
     getPage.mockReset()
     getPage.mockResolvedValue(emptyPage)
-    vi.restoreAllMocks()
   })
 
-  it("normalizes a bounded GET and returns a private no-store DTO", async () => {
+  it("normalizes a bounded live GET and returns a private no-store DTO", async () => {
     getPage.mockResolvedValue({
       sections: [
         {
@@ -56,6 +56,7 @@ describe("GET /watch/api/dynamic-collections", () => {
     expect(getPage).toHaveBeenCalledWith({
       locale: "en",
       languageSlug: "english",
+      cacheScope: "live",
       first: 3,
       cardsPerParent: 12,
       after: null,
@@ -64,6 +65,27 @@ describe("GET /watch/api/dynamic-collections", () => {
     })
     await expect(response.json()).resolves.toEqual(
       expect.objectContaining({ endCursor: "collection-1", hasNextPage: true }),
+    )
+  })
+
+  it.each([
+    ["explicit live", "scope=live", "live"],
+    ["preview", "scope=preview", "preview"],
+    [
+      "forward-compatible cache signature",
+      `cacheSignature=${"a".repeat(43)}`,
+      "live",
+    ],
+  ])("accepts %s transport input", async (_name, transport, scope) => {
+    const response = await GET(
+      request(
+        `locale=en&languageSlug=english&first=3&cardsPerParent=12&${transport}`,
+      ),
+    )
+
+    expect(response.status).toBe(200)
+    expect(getPage).toHaveBeenCalledWith(
+      expect.objectContaining({ cacheScope: scope }),
     )
   })
 
@@ -88,6 +110,22 @@ describe("GET /watch/api/dynamic-collections", () => {
     [
       "unknown parameter",
       "locale=en&languageSlug=english&first=3&cardsPerParent=12&extra=1",
+    ],
+    [
+      "unknown cache scope",
+      "locale=en&languageSlug=english&scope=private&first=3&cardsPerParent=12",
+    ],
+    [
+      "repeated cache scope",
+      "locale=en&languageSlug=english&scope=live&scope=preview&first=3&cardsPerParent=12",
+    ],
+    [
+      "malformed cache signature",
+      "locale=en&languageSlug=english&first=3&cardsPerParent=12&cacheSignature=short",
+    ],
+    [
+      "repeated cache signature",
+      `locale=en&languageSlug=english&first=3&cardsPerParent=12&cacheSignature=${"a".repeat(43)}&cacheSignature=${"a".repeat(43)}`,
     ],
   ])("rejects %s without calling Admin", async (_name, query) => {
     const response = await GET(request(query))

@@ -15,6 +15,7 @@
 
 import {
   Archive,
+  ChevronLeft,
   ChevronRight,
   Clapperboard,
   MessageSquarePlus,
@@ -26,6 +27,7 @@ import {
 import {
   useCallback,
   useEffect,
+  useId,
   useMemo,
   useRef,
   useState,
@@ -166,6 +168,14 @@ export type ExperienceChatPanelProps = {
   /** Reports Experience-mutating chat/generation work to sibling controls. */
   onBusyChange?: (busy: boolean) => void
   /**
+   * Whether the rail starts collapsed to its narrow strip. Defaults to
+   * `true` so the editor canvas owns the full viewport until someone
+   * asks for the AI. Collapsing never unmounts the panel body — an
+   * in-flight stream keeps running and its tokens are still there on
+   * re-expand.
+   */
+  defaultCollapsed?: boolean
+  /**
    * Test seam — defaults to the real `openChatStream`. Tests inject a
    * deterministic async iterable.
    */
@@ -226,7 +236,10 @@ export function ExperienceChatPanel({
   utilitySlot,
   onBusyChange,
   streamFactory = openChatStream,
+  defaultCollapsed = true,
 }: ExperienceChatPanelProps) {
+  const [collapsed, setCollapsed] = useState(defaultCollapsed)
+  const chatPanelBodyId = useId()
   const [draftWorkflowStatus, setDraftWorkflowStatus] = useState<
     "idle" | "generating" | "error"
   >("idle")
@@ -262,6 +275,16 @@ export function ExperienceChatPanel({
 
   const messageListRef = useRef<HTMLDivElement | null>(null)
   const stagedDraftRef = useRef<HTMLLIElement | null>(null)
+  const expandButtonRef = useRef<HTMLButtonElement | null>(null)
+  const collapseButtonRef = useRef<HTMLButtonElement | null>(null)
+  /**
+   * Latch set by the collapse / expand toggles. Each toggle hides the
+   * subtree that contains itself, which drops focus to `<body>` and sends
+   * the next Tab back to the top of the document — so the post-toggle
+   * effect hands focus to the counterpart control. Only a real toggle arms
+   * it, so first paint never steals focus.
+   */
+  const focusAfterToggleRef = useRef(false)
   /** The AbortController for the in-flight stream, so unmount can abort it. */
   const activeStreamAbortRef = useRef<AbortController | null>(null)
   /**
@@ -362,18 +385,36 @@ export function ExperienceChatPanel({
     }
   }, [activeThreadId, actions])
 
-  // Auto-scroll to bottom when messages change.
+  // Auto-scroll to bottom when messages change. `collapsed` is a dependency
+  // because a hidden list has `scrollHeight === 0` — messages that arrived
+  // while the rail was shut would otherwise re-open scrolled to the top.
   useEffect(() => {
+    if (collapsed) return
     const el = messageListRef.current
     if (el) el.scrollTop = el.scrollHeight
-  }, [messages, stream])
+  }, [collapsed, messages, stream])
 
   useEffect(() => {
+    if (collapsed) return
     if (!stagedDraft) return
     if (typeof stagedDraftRef.current?.scrollIntoView === "function") {
       stagedDraftRef.current.scrollIntoView({ block: "start" })
     }
-  }, [stagedDraft])
+  }, [collapsed, stagedDraft])
+
+  const toggleCollapsed = useCallback((next: boolean) => {
+    focusAfterToggleRef.current = true
+    setCollapsed(next)
+  }, [])
+
+  useEffect(() => {
+    if (!focusAfterToggleRef.current) return
+    focusAfterToggleRef.current = false
+    const target = collapsed
+      ? expandButtonRef.current
+      : collapseButtonRef.current
+    target?.focus()
+  }, [collapsed])
 
   // Abort the in-flight stream on unmount so a backgrounded fetch can't
   // keep running after the panel is gone.
@@ -853,412 +894,476 @@ export function ExperienceChatPanel({
 
   return (
     <aside
-      className="sticky top-12 flex h-[calc(100vh-3rem)] min-h-0 w-[380px] shrink-0 flex-col overflow-hidden border-r border-[var(--color-hairline)] bg-[var(--color-surface)]"
+      className={
+        "sticky top-12 flex h-[calc(100vh-3rem)] min-h-0 shrink-0 flex-col overflow-hidden border-r border-[var(--color-hairline)] bg-[var(--color-surface)] transition-[width] duration-150 ease-out " +
+        (collapsed ? "w-11" : "w-[380px]")
+      }
       data-testid="experience-chat-panel"
+      data-collapsed={collapsed ? "true" : "false"}
       aria-label="Experience editor AI chat"
     >
-      {/* Header */}
-      <div className="flex shrink-0 items-center justify-between gap-2 border-b border-[var(--color-hairline)] px-4 py-3">
-        <div className="flex items-center gap-2">
-          <div className="flex h-7 w-7 items-center justify-center rounded-sm border border-[color:color-mix(in_oklab,var(--color-brand)_30%,var(--color-hairline))] bg-[color:color-mix(in_oklab,var(--color-brand)_14%,var(--color-surface-inset))] text-[var(--color-brand)]">
-            <Sparkles className="h-3.5 w-3.5" strokeWidth={1.5} />
+      {/* Collapsed rail — the only affordance while the panel is shut. */}
+      <button
+        type="button"
+        ref={expandButtonRef}
+        hidden={!collapsed}
+        onClick={() => toggleCollapsed(false)}
+        aria-expanded={false}
+        aria-controls={chatPanelBodyId}
+        aria-label="Open AI chat"
+        title="Open AI chat"
+        data-testid="experience-chat-expand"
+        className={
+          collapsed
+            ? "flex flex-1 cursor-pointer flex-col items-center gap-3 py-3 text-[var(--color-text-secondary)] transition-all duration-[120ms] ease-out hover:bg-[var(--color-surface-raised)]"
+            : "hidden"
+        }
+      >
+        <span className="flex h-7 w-7 items-center justify-center rounded-sm border border-[color:color-mix(in_oklab,var(--color-brand)_30%,var(--color-hairline))] bg-[color:color-mix(in_oklab,var(--color-brand)_14%,var(--color-surface-inset))] text-[var(--color-brand)]">
+          <Sparkles className="h-3.5 w-3.5" strokeWidth={1.5} />
+        </span>
+        {isMutationPending ? (
+          <span
+            className="h-1.5 w-1.5 animate-pulse rounded-full bg-[var(--color-brand)]"
+            data-testid="experience-chat-collapsed-busy"
+          />
+        ) : null}
+        <span className="font-mono text-[11px] uppercase tracking-[0.12em] [writing-mode:vertical-rl]">
+          AI Chat
+        </span>
+        <ChevronRight className="h-3.5 w-3.5" strokeWidth={1.5} />
+      </button>
+
+      {/*
+        Panel body. Kept mounted while collapsed — `hidden` takes it out of
+        the a11y tree and tab order without discarding thread state or
+        interrupting an in-flight stream.
+      */}
+      <div
+        id={chatPanelBodyId}
+        hidden={collapsed}
+        className={
+          collapsed ? "hidden" : "flex min-h-0 flex-1 flex-col overflow-hidden"
+        }
+      >
+        {/* Header */}
+        <div className="flex shrink-0 items-center justify-between gap-2 border-b border-[var(--color-hairline)] px-4 py-3">
+          <div className="flex items-center gap-2">
+            <div className="flex h-7 w-7 items-center justify-center rounded-sm border border-[color:color-mix(in_oklab,var(--color-brand)_30%,var(--color-hairline))] bg-[color:color-mix(in_oklab,var(--color-brand)_14%,var(--color-surface-inset))] text-[var(--color-brand)]">
+              <Sparkles className="h-3.5 w-3.5" strokeWidth={1.5} />
+            </div>
+            <div>
+              <div className="font-mono text-[11px] uppercase tracking-[0.12em] text-[var(--color-text-muted)]">
+                AI Chat · {locale}
+              </div>
+              <div className="text-[13px] font-medium tracking-[-0.01em] text-[var(--color-text-primary)]">
+                Iterate this experience
+              </div>
+            </div>
           </div>
-          <div>
-            <div className="font-mono text-[11px] uppercase tracking-[0.12em] text-[var(--color-text-muted)]">
-              AI Chat · {locale}
-            </div>
-            <div className="text-[13px] font-medium tracking-[-0.01em] text-[var(--color-text-primary)]">
-              Iterate this experience
-            </div>
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={handleNewThread}
+              className="inline-flex h-8 items-center gap-1 rounded-sm border border-[var(--color-hairline)] px-2 text-[12px] font-medium text-[var(--color-text-secondary)] transition-all duration-[120ms] ease-out hover:bg-[var(--color-surface-raised)]"
+              aria-label="Start new conversation"
+            >
+              <MessageSquarePlus className="h-3.5 w-3.5" strokeWidth={1.5} />
+              New
+            </button>
+            <button
+              type="button"
+              ref={collapseButtonRef}
+              onClick={() => toggleCollapsed(true)}
+              aria-expanded={true}
+              aria-controls={chatPanelBodyId}
+              aria-label="Collapse AI chat panel"
+              title="Collapse AI chat panel"
+              data-testid="experience-chat-collapse"
+              className="inline-flex h-8 w-8 items-center justify-center rounded-sm border border-transparent text-[var(--color-text-muted)] transition-all duration-[120ms] ease-out hover:border-[var(--color-hairline)] hover:bg-[var(--color-surface-raised)] hover:text-[var(--color-text-secondary)]"
+            >
+              <ChevronLeft className="h-4 w-4" strokeWidth={1.5} />
+            </button>
           </div>
         </div>
-        <button
-          type="button"
-          onClick={handleNewThread}
-          className="inline-flex h-8 items-center gap-1 rounded-sm border border-[var(--color-hairline)] px-2 text-[12px] font-medium text-[var(--color-text-secondary)] transition-all duration-[120ms] ease-out hover:bg-[var(--color-surface-raised)]"
-          aria-label="Start new conversation"
-        >
-          <MessageSquarePlus className="h-3.5 w-3.5" strokeWidth={1.5} />
-          New
-        </button>
-      </div>
 
-      {utilitySlot ? (
-        <div className="shrink-0 border-b border-[var(--color-hairline)] px-3 py-3">
-          {utilitySlot}
-        </div>
-      ) : null}
+        {utilitySlot ? (
+          <div className="shrink-0 border-b border-[var(--color-hairline)] px-3 py-3">
+            {utilitySlot}
+          </div>
+        ) : null}
 
-      {/* Thread list */}
-      {threads.length > 0 ? (
+        {/* Thread list */}
+        {threads.length > 0 ? (
+          <div
+            className="max-h-44 shrink-0 overflow-y-auto border-b border-[var(--color-hairline)] px-2 py-2"
+            data-testid="experience-chat-thread-list"
+          >
+            <ul className="space-y-1">
+              {threads.map((t) => {
+                const isActive = t.id === activeThreadId
+                return (
+                  <li key={t.id}>
+                    <div
+                      className={
+                        "group flex items-center justify-between gap-1 rounded-sm px-2 py-1.5 transition-colors " +
+                        (isActive
+                          ? "bg-[color:color-mix(in_oklab,var(--color-brand)_12%,var(--color-surface-inset))]"
+                          : "hover:bg-[var(--color-surface-raised)]")
+                      }
+                    >
+                      <button
+                        type="button"
+                        onClick={() => setActiveThreadId(t.id)}
+                        className="flex min-w-0 flex-1 items-center gap-2 text-left"
+                        data-testid={`experience-chat-thread-${t.id}`}
+                      >
+                        <ChevronRight
+                          className={
+                            "h-3.5 w-3.5 shrink-0 " +
+                            (isActive
+                              ? "text-[var(--color-brand)]"
+                              : "text-[var(--color-text-muted)]")
+                          }
+                          strokeWidth={1.5}
+                        />
+                        <span className="truncate text-[13px] text-[var(--color-text-primary)]">
+                          {t.title}
+                        </span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleArchive(t.id)}
+                        className="invisible inline-flex h-6 w-6 items-center justify-center rounded-sm text-[var(--color-text-muted)] hover:bg-[var(--color-surface-inset)] group-hover:visible"
+                        aria-label={`Archive thread ${t.title}`}
+                      >
+                        <Archive className="h-3.5 w-3.5" strokeWidth={1.5} />
+                      </button>
+                    </div>
+                  </li>
+                )
+              })}
+            </ul>
+          </div>
+        ) : null}
+
+        {/* Body — messages + suggestions */}
         <div
-          className="max-h-44 shrink-0 overflow-y-auto border-b border-[var(--color-hairline)] px-2 py-2"
-          data-testid="experience-chat-thread-list"
+          ref={messageListRef}
+          className="min-h-0 flex-1 overflow-y-auto px-4 py-4"
+          data-testid="experience-chat-message-list"
         >
-          <ul className="space-y-1">
-            {threads.map((t) => {
-              const isActive = t.id === activeThreadId
-              return (
-                <li key={t.id}>
-                  <div
-                    className={
-                      "group flex items-center justify-between gap-1 rounded-sm px-2 py-1.5 transition-colors " +
-                      (isActive
-                        ? "bg-[color:color-mix(in_oklab,var(--color-brand)_12%,var(--color-surface-inset))]"
-                        : "hover:bg-[var(--color-surface-raised)]")
-                    }
-                  >
-                    <button
-                      type="button"
-                      onClick={() => setActiveThreadId(t.id)}
-                      className="flex min-w-0 flex-1 items-center gap-2 text-left"
-                      data-testid={`experience-chat-thread-${t.id}`}
-                    >
-                      <ChevronRight
-                        className={
-                          "h-3.5 w-3.5 shrink-0 " +
-                          (isActive
-                            ? "text-[var(--color-brand)]"
-                            : "text-[var(--color-text-muted)]")
-                        }
-                        strokeWidth={1.5}
-                      />
-                      <span className="truncate text-[13px] text-[var(--color-text-primary)]">
-                        {t.title}
-                      </span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleArchive(t.id)}
-                      className="invisible inline-flex h-6 w-6 items-center justify-center rounded-sm text-[var(--color-text-muted)] hover:bg-[var(--color-surface-inset)] group-hover:visible"
-                      aria-label={`Archive thread ${t.title}`}
-                    >
-                      <Archive className="h-3.5 w-3.5" strokeWidth={1.5} />
-                    </button>
-                  </div>
-                </li>
-              )
-            })}
+          {bootError ? (
+            <div className="rounded-sm border border-[color:color-mix(in_oklab,var(--color-danger)_30%,var(--color-hairline))] bg-[color:color-mix(in_oklab,var(--color-danger)_8%,var(--color-surface))] px-3 py-2 text-[12px] text-[var(--color-danger)]">
+              {bootError}
+            </div>
+          ) : null}
+
+          {showSuggestions ? (
+            <EmptyState suggestedPrompts={suggestedPrompts} onPick={setDraft} />
+          ) : null}
+
+          <ul className="space-y-3">
+            {messages.map((m) => (
+              <MessageBubble
+                key={m.id}
+                message={m}
+                onUndo={handleUndo}
+                rating={ratings[m.id] ?? null}
+              />
+            ))}
+
+            {stream.kind === "streaming" ||
+            stream.kind === "creating_thread" ||
+            stream.kind === "error" ? (
+              <li
+                className="flex justify-start"
+                data-testid="experience-chat-inflight"
+              >
+                <div className="max-w-[85%] rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-inset)] px-3 py-2 text-[13px] leading-6 text-[var(--color-text-primary)]">
+                  {inFlightAssistantTokens || (
+                    <span className="text-[var(--color-text-muted)]">
+                      Thinking…
+                    </span>
+                  )}
+                  {stream.kind === "streaming" ||
+                  stream.kind === "creating_thread" ? (
+                    <span className="ml-1 inline-block h-3 w-1.5 animate-pulse bg-[var(--color-brand)] align-middle" />
+                  ) : null}
+                  {stream.kind === "error" ? (
+                    <ChatErrorBlock code={stream.code} onRetry={handleRetry} />
+                  ) : null}
+                </div>
+              </li>
+            ) : null}
+
+            {stagedDraft ? (
+              <li ref={stagedDraftRef} className="flex justify-start">
+                <StagedDraftCard
+                  draft={stagedDraft}
+                  onChange={setStagedDraft}
+                  onApply={handleApplyStagedDraft}
+                  onDiscard={() => setStagedDraft(null)}
+                />
+              </li>
+            ) : null}
           </ul>
         </div>
-      ) : null}
 
-      {/* Body — messages + suggestions */}
-      <div
-        ref={messageListRef}
-        className="min-h-0 flex-1 overflow-y-auto px-4 py-4"
-        data-testid="experience-chat-message-list"
-      >
-        {bootError ? (
-          <div className="rounded-sm border border-[color:color-mix(in_oklab,var(--color-danger)_30%,var(--color-hairline))] bg-[color:color-mix(in_oklab,var(--color-danger)_8%,var(--color-surface))] px-3 py-2 text-[12px] text-[var(--color-danger)]">
-            {bootError}
-          </div>
-        ) : null}
-
-        {showSuggestions ? (
-          <EmptyState suggestedPrompts={suggestedPrompts} onPick={setDraft} />
-        ) : null}
-
-        <ul className="space-y-3">
-          {messages.map((m) => (
-            <MessageBubble
-              key={m.id}
-              message={m}
-              onUndo={handleUndo}
-              rating={ratings[m.id] ?? null}
-            />
-          ))}
-
-          {stream.kind === "streaming" ||
-          stream.kind === "creating_thread" ||
-          stream.kind === "error" ? (
-            <li
-              className="flex justify-start"
-              data-testid="experience-chat-inflight"
-            >
-              <div className="max-w-[85%] rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-inset)] px-3 py-2 text-[13px] leading-6 text-[var(--color-text-primary)]">
-                {inFlightAssistantTokens || (
-                  <span className="text-[var(--color-text-muted)]">
-                    Thinking…
-                  </span>
-                )}
-                {stream.kind === "streaming" ||
-                stream.kind === "creating_thread" ? (
-                  <span className="ml-1 inline-block h-3 w-1.5 animate-pulse bg-[var(--color-brand)] align-middle" />
-                ) : null}
-                {stream.kind === "error" ? (
-                  <ChatErrorBlock code={stream.code} onRetry={handleRetry} />
-                ) : null}
-              </div>
-            </li>
-          ) : null}
-
-          {stagedDraft ? (
-            <li ref={stagedDraftRef} className="flex justify-start">
-              <StagedDraftCard
-                draft={stagedDraft}
-                onChange={setStagedDraft}
-                onApply={handleApplyStagedDraft}
-                onDiscard={() => setStagedDraft(null)}
+        {/* Composer */}
+        <div
+          className="relative z-10 shrink-0 border-t border-[var(--color-hairline-strong)] bg-[var(--color-surface)] px-3 py-3"
+          data-testid="experience-chat-composer"
+        >
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 pb-2">
+            <label className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.12em] text-[var(--color-text-muted)]">
+              <input
+                type="checkbox"
+                checked={confirmAcrossLocales}
+                onChange={(e) => setConfirmAcrossLocales(e.target.checked)}
+                data-testid="experience-chat-cross-locale-toggle"
+                className="h-3 w-3 rounded-sm border-[var(--color-hairline-strong)]"
               />
-            </li>
-          ) : null}
-        </ul>
-      </div>
-
-      {/* Composer */}
-      <div
-        className="relative z-10 shrink-0 border-t border-[var(--color-hairline-strong)] bg-[var(--color-surface)] px-3 py-3"
-        data-testid="experience-chat-composer"
-      >
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 pb-2">
-          <label className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.12em] text-[var(--color-text-muted)]">
-            <input
-              type="checkbox"
-              checked={confirmAcrossLocales}
-              onChange={(e) => setConfirmAcrossLocales(e.target.checked)}
-              data-testid="experience-chat-cross-locale-toggle"
-              className="h-3 w-3 rounded-sm border-[var(--color-hairline-strong)]"
-            />
-            Apply across locales
-          </label>
-        </div>
-
-        <div className="flex items-end gap-2">
-          <textarea
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault()
-                void handleSend()
-              }
-            }}
-            placeholder="Ask the AI to refine the title, blocks, or description…"
-            rows={3}
-            data-testid="experience-chat-input"
-            className="block w-full resize-y rounded-sm border border-[var(--color-hairline-strong)] bg-[var(--color-surface-inset)] px-3 py-2 text-[13px] leading-6 text-[var(--color-text-primary)] outline-none transition-all duration-[120ms] ease-out placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-hairline-strong)] focus:bg-[var(--color-bg)]"
-            disabled={
-              stream.kind === "streaming" || stream.kind === "creating_thread"
-            }
-          />
-        </div>
-
-        {draftWorkflowError ? (
-          <div
-            className="mt-2 text-[12px] leading-5 text-[var(--color-text-danger,#c44)]"
-            role="alert"
-            data-testid="experience-chat-draft-workflow-error"
-          >
-            {draftWorkflowError}
+              Apply across locales
+            </label>
           </div>
-        ) : null}
 
-        {generateSectionAction ? (
-          <div
-            className="mt-2 flex flex-col gap-2"
-            data-testid="experience-chat-section-row"
-          >
-            {anchorVideo ? (
-              <div
-                className="flex min-w-0 items-center gap-2 rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface)] px-2 py-1.5"
-                data-testid="experience-chat-anchor-chosen"
-              >
+          <div className="flex items-end gap-2">
+            <textarea
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault()
+                  void handleSend()
+                }
+              }}
+              placeholder="Ask the AI to refine the title, blocks, or description…"
+              rows={3}
+              data-testid="experience-chat-input"
+              className="block w-full resize-y rounded-sm border border-[var(--color-hairline-strong)] bg-[var(--color-surface-inset)] px-3 py-2 text-[13px] leading-6 text-[var(--color-text-primary)] outline-none transition-all duration-[120ms] ease-out placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-hairline-strong)] focus:bg-[var(--color-bg)]"
+              disabled={
+                stream.kind === "streaming" || stream.kind === "creating_thread"
+              }
+            />
+          </div>
+
+          {draftWorkflowError ? (
+            <div
+              className="mt-2 text-[12px] leading-5 text-[var(--color-text-danger,#c44)]"
+              role="alert"
+              data-testid="experience-chat-draft-workflow-error"
+            >
+              {draftWorkflowError}
+            </div>
+          ) : null}
+
+          {generateSectionAction ? (
+            <div
+              className="mt-2 flex flex-col gap-2"
+              data-testid="experience-chat-section-row"
+            >
+              {anchorVideo ? (
                 <div
-                  className="h-8 w-12 shrink-0 overflow-hidden rounded-sm border border-[var(--color-hairline)] bg-[linear-gradient(180deg,#1c2027,#121419)] bg-cover bg-center"
-                  style={
-                    anchorVideo.previewImageUrl
-                      ? {
-                          backgroundImage: `url("${anchorVideo.previewImageUrl}")`,
-                        }
-                      : undefined
-                  }
-                />
-                <div className="min-w-0 flex-1 truncate text-[12px] font-medium text-[var(--color-text-primary)]">
-                  {anchorVideo.title}
+                  className="flex min-w-0 items-center gap-2 rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface)] px-2 py-1.5"
+                  data-testid="experience-chat-anchor-chosen"
+                >
+                  <div
+                    className="h-8 w-12 shrink-0 overflow-hidden rounded-sm border border-[var(--color-hairline)] bg-[linear-gradient(180deg,#1c2027,#121419)] bg-cover bg-center"
+                    style={
+                      anchorVideo.previewImageUrl
+                        ? {
+                            backgroundImage: `url("${anchorVideo.previewImageUrl}")`,
+                          }
+                        : undefined
+                    }
+                  />
+                  <div className="min-w-0 flex-1 truncate text-[12px] font-medium text-[var(--color-text-primary)]">
+                    {anchorVideo.title}
+                  </div>
+                  <button
+                    type="button"
+                    data-testid="experience-chat-choose-video"
+                    onClick={() => setAnchorPickerOpen(true)}
+                    className="shrink-0 rounded-sm px-1.5 py-0.5 text-[11px] font-medium text-[var(--color-text-secondary)] underline-offset-2 transition-all duration-[120ms] ease-out hover:underline"
+                  >
+                    Change
+                  </button>
                 </div>
+              ) : (
                 <button
                   type="button"
                   data-testid="experience-chat-choose-video"
                   onClick={() => setAnchorPickerOpen(true)}
-                  className="shrink-0 rounded-sm px-1.5 py-0.5 text-[11px] font-medium text-[var(--color-text-secondary)] underline-offset-2 transition-all duration-[120ms] ease-out hover:underline"
+                  className="inline-flex h-9 items-center justify-center gap-1.5 rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface)] px-3 text-[12px] font-medium text-[var(--color-text-primary)] transition-all duration-[120ms] ease-out hover:bg-[var(--color-surface-inset)]"
                 >
-                  Change
+                  <Clapperboard className="h-3.5 w-3.5" strokeWidth={1.5} />
+                  Choose a video
                 </button>
-              </div>
+              )}
+              <button
+                type="button"
+                data-testid="experience-chat-generate-section"
+                disabled={draftWorkflowStatus === "generating" || !anchorVideo}
+                onClick={() => void handleGenerateSection()}
+                title="Generate one grounded section from this video (its study questions + scripture). Staged to append; verse text resolves at render."
+                className="inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-sm border border-[var(--color-hairline-strong)] bg-[var(--color-surface)] px-3 text-[12px] font-medium text-[var(--color-text-primary)] transition-all duration-[120ms] ease-out hover:bg-[var(--color-surface-inset)] disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {draftWorkflowStatus === "generating"
+                  ? "Working…"
+                  : "Generate section from video"}
+              </button>
+            </div>
+          ) : null}
+          <div className="mt-2 flex items-center justify-end gap-2">
+            {generateDraftAction
+              ? (() => {
+                  const runDraft = async (mode: "full" | "quick") => {
+                    const prompt = draft.trim()
+                    if (!prompt) return
+                    setDraftWorkflowStatus("generating")
+                    setDraftWorkflowError(null)
+                    try {
+                      // Ensure a thread exists so the persisted workflow
+                      // output (and its 👍/👎 rating) attaches somewhere
+                      // visible in the chat history. Mirrors handleSend's
+                      // create-thread-on-first-use logic.
+                      let workflowThreadId = activeThreadId
+                      if (!workflowThreadId) {
+                        try {
+                          const created = await actions.createThread({
+                            firstPrompt: prompt,
+                          })
+                          setThreads((prev) => [created, ...prev])
+                          setActiveThreadId(created.id)
+                          workflowThreadId = created.id
+                        } catch {
+                          workflowThreadId = null
+                        }
+                      }
+
+                      const beforeState = canvasController.getState()
+                      const result = await generateDraftAction({
+                        prompt,
+                        currentTitle: beforeState.title || undefined,
+                        currentMetaDescription:
+                          beforeState.metaDescription || undefined,
+                        threadId: workflowThreadId ?? undefined,
+                        mode,
+                      })
+                      if (!result.ok) {
+                        setDraftWorkflowStatus("error")
+                        setDraftWorkflowError(result.error)
+                        return
+                      }
+                      canvasController.applyDiff({
+                        scalars: {
+                          title: {
+                            before: beforeState.title,
+                            after: result.draft.title,
+                          },
+                          metaDescription: {
+                            before: beforeState.metaDescription,
+                            after: result.draft.metaDescription,
+                          },
+                        },
+                        blocks: result.draft.blocks,
+                      })
+                      if (result.messageId && result.producedBy) {
+                        const persistedMessageId = result.messageId
+                        const persistedProducedBy = result.producedBy
+                        const label =
+                          mode === "quick"
+                            ? "Quick draft"
+                            : "Generated full page draft"
+                        setMessages((prev) => [
+                          ...prev,
+                          {
+                            id: persistedMessageId,
+                            role: "ASSISTANT",
+                            content: `${label}: ${result.draft.title || "(untitled)"}`,
+                            createdAt: new Date().toISOString(),
+                            snapshotDiff: null,
+                            mutationsApplied: null,
+                            producedBy: persistedProducedBy,
+                          },
+                        ])
+                      }
+                      setDraftWorkflowStatus("idle")
+                      setDraft("")
+                    } catch (err) {
+                      setDraftWorkflowStatus("error")
+                      setDraftWorkflowError(
+                        err instanceof Error
+                          ? err.message
+                          : "Unable to generate a draft right now.",
+                      )
+                    }
+                  }
+
+                  const sharedDisabled =
+                    draftWorkflowStatus === "generating" ||
+                    stream.kind === "streaming" ||
+                    stream.kind === "creating_thread" ||
+                    draft.trim().length === 0
+
+                  return (
+                    <>
+                      <button
+                        type="button"
+                        data-testid="experience-chat-quick-draft"
+                        disabled={sharedDisabled}
+                        onClick={() => void runDraft("quick")}
+                        title="Plan → draft only. Faster but skips critique + revise pass."
+                        className="inline-flex h-9 items-center gap-1.5 rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface)] px-3 text-[12px] font-medium text-[var(--color-text-secondary)] transition-all duration-[120ms] ease-out hover:bg-[var(--color-surface-inset)] disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {draftWorkflowStatus === "generating"
+                          ? "Working…"
+                          : "Quick draft"}
+                      </button>
+                      <button
+                        type="button"
+                        data-testid="experience-chat-generate-full-page"
+                        disabled={sharedDisabled}
+                        onClick={() => void runDraft("full")}
+                        title="Plan → draft → critique → revise. Replaces canvas content; ~50–90s."
+                        className="inline-flex h-9 items-center gap-1.5 rounded-sm border border-[var(--color-hairline-strong)] bg-[var(--color-surface)] px-3 text-[12px] font-medium text-[var(--color-text-primary)] transition-all duration-[120ms] ease-out hover:bg-[var(--color-surface-inset)] disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {draftWorkflowStatus === "generating"
+                          ? "Generating… (~60s)"
+                          : "Generate full page"}
+                      </button>
+                    </>
+                  )
+                })()
+              : null}
+            {stream.kind === "streaming" ? (
+              <button
+                type="button"
+                onClick={handleStop}
+                data-testid="experience-chat-stop"
+                className="inline-flex h-9 items-center gap-1.5 rounded-sm border border-[var(--color-hairline)] px-3 text-[12px] font-medium text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-raised)]"
+              >
+                <Square className="h-3.5 w-3.5" strokeWidth={1.5} />
+                Stop
+              </button>
             ) : (
               <button
                 type="button"
-                data-testid="experience-chat-choose-video"
-                onClick={() => setAnchorPickerOpen(true)}
-                className="inline-flex h-9 items-center justify-center gap-1.5 rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface)] px-3 text-[12px] font-medium text-[var(--color-text-primary)] transition-all duration-[120ms] ease-out hover:bg-[var(--color-surface-inset)]"
+                onClick={() => void handleSend()}
+                disabled={
+                  draft.trim().length === 0 ||
+                  draftWorkflowStatus === "generating" ||
+                  stream.kind === "creating_thread"
+                }
+                data-testid="experience-chat-send"
+                className="inline-flex h-9 items-center gap-1.5 rounded-sm border border-transparent bg-[var(--color-brand)] px-3 text-[12px] font-medium text-white transition-all duration-[120ms] ease-out hover:bg-[var(--color-brand-pressed)] disabled:cursor-not-allowed disabled:border-[var(--color-hairline)] disabled:bg-[var(--color-surface-raised)] disabled:text-[var(--color-text-disabled)] disabled:hover:bg-[var(--color-surface-raised)]"
               >
-                <Clapperboard className="h-3.5 w-3.5" strokeWidth={1.5} />
-                Choose a video
+                <Send className="h-3.5 w-3.5" strokeWidth={1.5} />
+                Send
               </button>
             )}
-            <button
-              type="button"
-              data-testid="experience-chat-generate-section"
-              disabled={draftWorkflowStatus === "generating" || !anchorVideo}
-              onClick={() => void handleGenerateSection()}
-              title="Generate one grounded section from this video (its study questions + scripture). Staged to append; verse text resolves at render."
-              className="inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-sm border border-[var(--color-hairline-strong)] bg-[var(--color-surface)] px-3 text-[12px] font-medium text-[var(--color-text-primary)] transition-all duration-[120ms] ease-out hover:bg-[var(--color-surface-inset)] disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {draftWorkflowStatus === "generating"
-                ? "Working…"
-                : "Generate section from video"}
-            </button>
           </div>
-        ) : null}
-        <div className="mt-2 flex items-center justify-end gap-2">
-          {generateDraftAction
-            ? (() => {
-                const runDraft = async (mode: "full" | "quick") => {
-                  const prompt = draft.trim()
-                  if (!prompt) return
-                  setDraftWorkflowStatus("generating")
-                  setDraftWorkflowError(null)
-                  try {
-                    // Ensure a thread exists so the persisted workflow
-                    // output (and its 👍/👎 rating) attaches somewhere
-                    // visible in the chat history. Mirrors handleSend's
-                    // create-thread-on-first-use logic.
-                    let workflowThreadId = activeThreadId
-                    if (!workflowThreadId) {
-                      try {
-                        const created = await actions.createThread({
-                          firstPrompt: prompt,
-                        })
-                        setThreads((prev) => [created, ...prev])
-                        setActiveThreadId(created.id)
-                        workflowThreadId = created.id
-                      } catch {
-                        workflowThreadId = null
-                      }
-                    }
-
-                    const beforeState = canvasController.getState()
-                    const result = await generateDraftAction({
-                      prompt,
-                      currentTitle: beforeState.title || undefined,
-                      currentMetaDescription:
-                        beforeState.metaDescription || undefined,
-                      threadId: workflowThreadId ?? undefined,
-                      mode,
-                    })
-                    if (!result.ok) {
-                      setDraftWorkflowStatus("error")
-                      setDraftWorkflowError(result.error)
-                      return
-                    }
-                    canvasController.applyDiff({
-                      scalars: {
-                        title: {
-                          before: beforeState.title,
-                          after: result.draft.title,
-                        },
-                        metaDescription: {
-                          before: beforeState.metaDescription,
-                          after: result.draft.metaDescription,
-                        },
-                      },
-                      blocks: result.draft.blocks,
-                    })
-                    if (result.messageId && result.producedBy) {
-                      const persistedMessageId = result.messageId
-                      const persistedProducedBy = result.producedBy
-                      const label =
-                        mode === "quick"
-                          ? "Quick draft"
-                          : "Generated full page draft"
-                      setMessages((prev) => [
-                        ...prev,
-                        {
-                          id: persistedMessageId,
-                          role: "ASSISTANT",
-                          content: `${label}: ${result.draft.title || "(untitled)"}`,
-                          createdAt: new Date().toISOString(),
-                          snapshotDiff: null,
-                          mutationsApplied: null,
-                          producedBy: persistedProducedBy,
-                        },
-                      ])
-                    }
-                    setDraftWorkflowStatus("idle")
-                    setDraft("")
-                  } catch (err) {
-                    setDraftWorkflowStatus("error")
-                    setDraftWorkflowError(
-                      err instanceof Error
-                        ? err.message
-                        : "Unable to generate a draft right now.",
-                    )
-                  }
-                }
-
-                const sharedDisabled =
-                  draftWorkflowStatus === "generating" ||
-                  stream.kind === "streaming" ||
-                  stream.kind === "creating_thread" ||
-                  draft.trim().length === 0
-
-                return (
-                  <>
-                    <button
-                      type="button"
-                      data-testid="experience-chat-quick-draft"
-                      disabled={sharedDisabled}
-                      onClick={() => void runDraft("quick")}
-                      title="Plan → draft only. Faster but skips critique + revise pass."
-                      className="inline-flex h-9 items-center gap-1.5 rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface)] px-3 text-[12px] font-medium text-[var(--color-text-secondary)] transition-all duration-[120ms] ease-out hover:bg-[var(--color-surface-inset)] disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      {draftWorkflowStatus === "generating"
-                        ? "Working…"
-                        : "Quick draft"}
-                    </button>
-                    <button
-                      type="button"
-                      data-testid="experience-chat-generate-full-page"
-                      disabled={sharedDisabled}
-                      onClick={() => void runDraft("full")}
-                      title="Plan → draft → critique → revise. Replaces canvas content; ~50–90s."
-                      className="inline-flex h-9 items-center gap-1.5 rounded-sm border border-[var(--color-hairline-strong)] bg-[var(--color-surface)] px-3 text-[12px] font-medium text-[var(--color-text-primary)] transition-all duration-[120ms] ease-out hover:bg-[var(--color-surface-inset)] disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      {draftWorkflowStatus === "generating"
-                        ? "Generating… (~60s)"
-                        : "Generate full page"}
-                    </button>
-                  </>
-                )
-              })()
-            : null}
-          {stream.kind === "streaming" ? (
-            <button
-              type="button"
-              onClick={handleStop}
-              data-testid="experience-chat-stop"
-              className="inline-flex h-9 items-center gap-1.5 rounded-sm border border-[var(--color-hairline)] px-3 text-[12px] font-medium text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-raised)]"
-            >
-              <Square className="h-3.5 w-3.5" strokeWidth={1.5} />
-              Stop
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={() => void handleSend()}
-              disabled={
-                draft.trim().length === 0 ||
-                draftWorkflowStatus === "generating" ||
-                stream.kind === "creating_thread"
-              }
-              data-testid="experience-chat-send"
-              className="inline-flex h-9 items-center gap-1.5 rounded-sm border border-transparent bg-[var(--color-brand)] px-3 text-[12px] font-medium text-white transition-all duration-[120ms] ease-out hover:bg-[var(--color-brand-pressed)] disabled:cursor-not-allowed disabled:border-[var(--color-hairline)] disabled:bg-[var(--color-surface-raised)] disabled:text-[var(--color-text-disabled)] disabled:hover:bg-[var(--color-surface-raised)]"
-            >
-              <Send className="h-3.5 w-3.5" strokeWidth={1.5} />
-              Send
-            </button>
-          )}
         </div>
       </div>
 

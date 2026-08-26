@@ -1098,6 +1098,11 @@ WatchLanguageInventoryItemRef.implement({
     description: t.exposeString("description", { nullable: true }),
     imageUrl: t.exposeString("imageUrl", { nullable: true }),
     imageAlt: t.exposeString("imageAlt", { nullable: true }),
+    muxPlaybackId: t.exposeString("muxPlaybackId", {
+      nullable: true,
+      description:
+        "Mux playback id of the row's best published dub. Lets consumers synthesize a frame thumbnail when `imageUrl` is null because the video carries no authored artwork.",
+    }),
     label: t.exposeString("label", {
       nullable: true,
       description:

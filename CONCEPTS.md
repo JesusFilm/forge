@@ -1097,6 +1097,16 @@ The app's one video player and the single view that draws it, owned above the na
 
 Because there is only ever one, moving video between presentations is a matter of resizing and repositioning that view — never handing playback to a second player, which would restart it and blank the picture. This is what lets a video survive leaving the screen it started on, and why the Mini Player and a Picture-in-Picture Handoff are presentations of the same playback rather than copies of it. A screen that wants video reserves the space it should occupy and publishes a request; the owner draws into that space.
 
+That space is measured rather than declared, and a measurement taken before the reserving screen is really on screen returns nothing at all rather than a wrong answer. So a reservation keeps measuring until it gets an answer instead of trusting a single attempt; until it does, the owner has nowhere to draw and the viewer sees only whatever the reservation itself puts up in the meantime. A reservation that gives up has to say so, because a silent give-up leaves the viewer facing an empty rectangle with nothing to act on and nothing to explain it.
+
+### Fullscreen
+
+The watch player's expanded presentation, in which the video fills the screen in landscape and the surrounding page is hidden. It is the same live playback surface as the inline player, expanded in place rather than handed to a second player, and the page-dismiss swipe is disabled for as long as it is up because a route cannot be popped out from under it.
+
+Entering rotates the app rather than waiting for the viewer to turn the device, so orientation is something the app asserts, not something it observes. That assertion names one specific landscape rather than "either landscape": a permissive choice only _allows_ rotation and then defers to the physical sensor, so a device held upright stays upright and the viewer sees a portrait fullscreen. The accepted cost is that turning the device end-for-end while already in fullscreen does not flip the picture.
+
+Exactly one layer may own orientation. A second writer does not merely duplicate the first — it silently disables it, because the platform asks only one of them and the answer it gets no longer reflects what the app asked for. The lock is also app-wide and lasts until something changes it, rather than belonging to the screen that set it: leaving fullscreen is what restores upright, and a screen that is covered and later uncovered does not re-assert its own orientation on the way back.
+
 ### Mini Player
 
 The small floating video window that keeps a video playing after the viewer leaves the screen it was playing on, so playback survives navigation instead of ending with the route. Distinct from the operating system's picture-in-picture window, which is the platform's own window outside the app — the Mini Player is drawn by the app and lives above its navigation.

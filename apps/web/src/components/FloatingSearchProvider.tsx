@@ -15,7 +15,7 @@ import Image from "next/image"
 import Link from "next/link"
 import type { Route } from "next"
 import { usePathname } from "next/navigation"
-import { Globe, X } from "lucide-react"
+import { Globe, ListVideo, X } from "lucide-react"
 import { useTranslations } from "next-intl"
 
 import type {
@@ -57,8 +57,13 @@ import {
   WATCH_PAGE_RIGHT_EDGE_CLASSES,
 } from "@/lib/content-width"
 import { languageCodeFor } from "@/lib/language-code"
+import {
+  deriveLanguageDisplay,
+  isolateLanguageName,
+} from "@/lib/language-display"
 import { isPublicWatchHomeLanguageSlug } from "@/lib/locale"
 import {
+  languageVideosIndexPath,
   localizedHomePath,
   parseWatchPath,
   tryAsLocaleSlug,
@@ -177,6 +182,7 @@ export function FloatingSearchProvider({
 }) {
   const t = useTranslations("FloatingSearch")
   const searchT = useTranslations("SearchOverlay")
+  const languageT = useTranslations("LanguagePickerModal")
   const pathname = usePathname()
   const routeIdentity = useMemo<RouteIdentity>(() => ({ pathname }), [pathname])
   const parsedPath = useMemo(() => parseWatchPath(pathname), [pathname])
@@ -243,10 +249,28 @@ export function FloatingSearchProvider({
     routeSurface,
     defaultLanguageSlug,
   )
+  const headerLanguageSlug = resolveHeaderLanguageSlug(
+    parsedPath,
+    currentLanguageSlug,
+  )
   const currentLanguageCode =
-    languageCodeFor({
-      slug: resolveHeaderLanguageSlug(parsedPath, currentLanguageSlug),
-    }) ?? languageCodeFor({ slug: currentLanguageSlug })
+    languageCodeFor({ slug: headerLanguageSlug }) ??
+    languageCodeFor({ slug: currentLanguageSlug })
+  // The inventory route 404s for anything outside the public watch language
+  // set, and linking to it from the page it already renders is noise — so the
+  // control is absent rather than dead in both cases.
+  const headerLanguageLocaleSlug = tryAsLocaleSlug(headerLanguageSlug)
+  const languageVideosHref =
+    parsedPath.kind !== "language-videos" &&
+    headerLanguageLocaleSlug != null &&
+    isPublicWatchHomeLanguageSlug(headerLanguageLocaleSlug)
+      ? languageVideosIndexPath(headerLanguageLocaleSlug)
+      : null
+  const languageVideosLabel = languageT("seeAllVideosInLanguage", {
+    language: isolateLanguageName(
+      deriveLanguageDisplay(headerLanguageSlug, null).name,
+    ),
+  })
   const isWatchHome =
     routeSurface === "language-home" || routeSurface === "experience"
   const currentLocaleSlug = tryAsLocaleSlug(currentLanguageSlug)
@@ -879,6 +903,30 @@ export function FloatingSearchProvider({
                 : `pointer-events-auto ${FLOATING_HEADER_TRAILING_GROUP_CLASS}`
             }
           >
+            {!modalChromeHidden && languageVideosHref ? (
+              <Link
+                href={languageVideosHref}
+                prefetch={false}
+                data-testid="floating-header-language-videos-link"
+                aria-label={languageVideosLabel}
+                title={languageVideosLabel}
+                // Hidden below `md`: the header's trailing grid column is
+                // `minmax(80px,1fr)` at mobile widths, so a third 44px control
+                // pushes the language globe past the viewport edge (clipped by
+                // `overflow-x-clip`). Widening that column is a header-wide
+                // layout change, not a same-PR call.
+                //
+                // Absent entirely while the search modal is open at every
+                // width: the overlay renders its own full-width row above the
+                // category tiles instead, so the two never compete.
+                className={`pointer-events-auto hidden ${FLOATING_HEADER_LANGUAGE_SLOT_CLASS} cursor-pointer items-center justify-center rounded-full text-stone-100 transition-[color,transform] duration-300 ease-out hover:text-white focus-visible:ring-2 focus-visible:ring-stone-300 focus-visible:outline-none md:inline-flex`}
+              >
+                <ListVideo
+                  aria-hidden
+                  className="h-6 w-6 drop-shadow-[0_1px_1.5px_rgba(0,0,0,0.35)]"
+                />
+              </Link>
+            ) : null}
             {headerLanguageControlVisible ? (
               <button
                 type="button"
@@ -950,6 +998,7 @@ export function FloatingSearchProvider({
             headerLanguageSwitcherVisible={headerLanguageControlVisible}
             headerLanguageCode={headerLanguageCode}
             headerPinned={pinned}
+            languageVideosHref={languageVideosHref}
             resetToken={searchResetToken}
             pendingSubmitIntent={pendingSearchSubmitIntent}
             onReady={markSearchControllerReady}

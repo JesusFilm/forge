@@ -15,6 +15,9 @@ vi.mock("next/image", () => ({
 }))
 
 vi.mock("next-intl", () => ({
+  // `useLocale` is consumed by the shared Carousel (text direction), which
+  // reaches this tree through the category rail under the hero.
+  useLocale: () => "en",
   useTranslations: () => (key: string) =>
     key === "pageTitle" ? "Jesus Film Project Watch" : key,
 }))
@@ -29,12 +32,6 @@ vi.mock("@/components/home/WatchHomeTvCarousel", () => ({
       data-testid="watch-home-hero"
       data-block-marker="WatchHomeHeroBlock"
     />
-  ),
-}))
-
-vi.mock("@/components/home/WatchLanguageGlobeSection", () => ({
-  WatchLanguageGlobeSection: () => (
-    <section data-testid="watch-language-globe-section" />
   ),
 }))
 
@@ -229,9 +226,13 @@ describe("WatchHomeExperiencePage", () => {
     expect(serverContainer.querySelector("h1")?.textContent).toBe(
       "Primary page heading",
     )
-    expect(serverContainer.querySelector("h2")?.textContent).toBe(
-      "Secondary page heading",
-    )
+    // `toContain`, not "first h2": non-authored sections (the category rail)
+    // carry their own h2 above the authored body.
+    expect(
+      Array.from(serverContainer.querySelectorAll("h2")).map(
+        (heading) => heading.textContent,
+      ),
+    ).toContain("Secondary page heading")
 
     await act(async () => {
       root.render(
@@ -247,9 +248,11 @@ describe("WatchHomeExperiencePage", () => {
     expect(container.querySelector("h1")?.textContent).toBe(
       "Primary page heading",
     )
-    expect(container.querySelector("h2")?.textContent).toBe(
-      "Secondary page heading",
-    )
+    expect(
+      Array.from(container.querySelectorAll("h2")).map(
+        (heading) => heading.textContent,
+      ),
+    ).toContain("Secondary page heading")
   })
 
   it("contains only top-level standalone video blocks on the Watch rail", async () => {
@@ -260,6 +263,7 @@ describe("WatchHomeExperiencePage", () => {
       makeBlock("SectionBlock", "section"),
       makeBlock("VideoBlock", "invitation"),
       makeBlock("MediaCollectionBlock", "collection"),
+      makeBlock("LanguageGlobeBlock", "language-globe"),
     ]
 
     await act(async () => {
@@ -305,6 +309,7 @@ describe("WatchHomeExperiencePage", () => {
       "VideoHeroBlock",
       "SectionBlock",
       "MediaCollectionBlock",
+      "LanguageGlobeBlock",
     ]) {
       const section = container.querySelector<HTMLElement>(
         `[data-section-type="${sectionType}"]`,
@@ -322,6 +327,7 @@ describe("WatchHomeExperiencePage", () => {
       "SectionBlock",
       "VideoBlock",
       "MediaCollectionBlock",
+      "LanguageGlobeBlock",
     ])
     expect(
       Array.from(
@@ -334,6 +340,7 @@ describe("WatchHomeExperiencePage", () => {
       "SectionBlock",
       "VideoBlock",
       "MediaCollectionBlock",
+      "LanguageGlobeBlock",
     ])
     expect(
       renderedSections.every(
@@ -346,16 +353,13 @@ describe("WatchHomeExperiencePage", () => {
     expect(
       container.querySelector('[data-testid="watch-home-footer"]'),
     ).not.toBeNull()
-    expect(
-      container.querySelectorAll(
-        '[data-testid="watch-language-globe-section"]',
-      ),
-    ).toHaveLength(1)
-    expect(
-      container
-        .querySelector('[data-testid="watch-language-globe-section"]')
-        ?.nextElementSibling?.getAttribute("data-testid"),
-    ).toBe("watch-home-footer")
+    const authoredGlobe = container.querySelector(
+      '[data-section-type="LanguageGlobeBlock"]',
+    )
+    expect(authoredGlobe).not.toBeNull()
+    expect(authoredGlobe?.nextElementSibling?.getAttribute("data-testid")).toBe(
+      "watch-home-footer",
+    )
   })
 
   it("keeps the canonical footer as the final element after the dynamic discovery feed", async () => {
@@ -390,4 +394,65 @@ describe("WatchHomeExperiencePage", () => {
     )
     expect(footer?.parentElement?.lastElementChild).toBe(footer)
   })
+
+  it("preserves the editor-authored globe position around the dynamic feed", async () => {
+    const blocks = [
+      {
+        __typename: "MediaCollectionBlock",
+        sectionKey: "dynamic-collection-feed",
+        itemsSource: "dynamicCollections",
+      } as unknown as Section,
+      makeBlock("LanguageGlobeBlock", "language-globe"),
+    ]
+
+    await act(async () => {
+      root.render(
+        <WatchHomeExperiencePage
+          heroModel={heroModel}
+          blocks={blocks}
+          languageSlug="english"
+        />,
+      )
+    })
+
+    const dynamicFeed = container.querySelector(
+      '[data-items-source="dynamicCollections"]',
+    )
+    const globe = container.querySelector(
+      '[data-section-type="LanguageGlobeBlock"]',
+    )
+
+    expect(dynamicFeed).not.toBeNull()
+    expect(globe).not.toBeNull()
+    expect(dynamicFeed?.compareDocumentPosition(globe as Node) ?? 0).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    )
+  })
+
+  it.each([
+    ["an authored hero block", [makeBlock("WatchHomeHeroBlock", "hero")]],
+    ["the fallback hero carousel", [] as Section[]],
+  ])(
+    "renders the category rail exactly once, directly after %s",
+    async (_label, blocks) => {
+      await act(async () => {
+        root.render(
+          <WatchHomeExperiencePage
+            heroModel={heroModel}
+            blocks={blocks}
+            languageSlug="english"
+          />,
+        )
+      })
+
+      const rails = container.querySelectorAll(
+        '[data-testid="watch-home-category-rail"]',
+      )
+      expect(rails).toHaveLength(1)
+      expect(
+        container.querySelector('[data-testid="watch-home-hero"]')
+          ?.nextElementSibling,
+      ).toBe(rails[0])
+    },
+  )
 })

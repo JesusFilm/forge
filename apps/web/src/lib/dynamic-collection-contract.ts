@@ -13,6 +13,8 @@ export const WATCH_COLLECTION_FEED_PROFILES = {
 export type DynamicCollectionFeedProfile =
   (typeof WATCH_COLLECTION_FEED_PROFILES)[keyof typeof WATCH_COLLECTION_FEED_PROFILES]
 
+export type DynamicCollectionFeedCacheScope = "live" | "preview"
+
 export type DynamicCollectionFeedItem = {
   id: string
   coreId: string
@@ -43,6 +45,7 @@ export type DynamicCollectionFeedPage = {
 export type DynamicCollectionFeedInput = DynamicCollectionFeedProfile & {
   locale: string
   languageSlug: string
+  cacheScope?: DynamicCollectionFeedCacheScope
   after?: string | null
   excludedIds?: readonly string[]
   excludedSlugs?: readonly string[]
@@ -51,6 +54,7 @@ export type DynamicCollectionFeedInput = DynamicCollectionFeedProfile & {
 export type NormalizedDynamicCollectionFeedInput = {
   locale: string
   languageSlug: string
+  cacheScope: DynamicCollectionFeedCacheScope
   after: string | null
   excludedIds: string[]
   excludedSlugs: string[]
@@ -152,12 +156,14 @@ export function normalizeDynamicCollectionFeedInput(
 ): NormalizedDynamicCollectionFeedInput {
   const locale = input.locale.trim()
   const languageSlug = input.languageSlug.trim().toLowerCase()
+  const cacheScope = input.cacheScope ?? "live"
   const after = input.after?.trim() || null
 
   if (
     !hasUiLocale(locale) ||
     !LANGUAGE_SLUG_PATTERN.test(languageSlug) ||
     !PUBLIC_WATCH_LANGUAGE_SLUGS.has(languageSlug) ||
+    (cacheScope !== "live" && cacheScope !== "preview") ||
     (after !== null && !CURSOR_PATTERN.test(after)) ||
     !Number.isInteger(input.first) ||
     !Number.isInteger(input.cardsPerParent) ||
@@ -172,6 +178,7 @@ export function normalizeDynamicCollectionFeedInput(
   return {
     locale,
     languageSlug,
+    cacheScope,
     after,
     excludedIds: normalizeReferences(input.excludedIds),
     excludedSlugs: normalizeReferences(input.excludedSlugs),

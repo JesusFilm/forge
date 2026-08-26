@@ -1,25 +1,31 @@
 "use client"
 
-import { lazy, Suspense, useEffect, useRef, useState } from "react"
+import { useEffect, useRef, useState, type ComponentType } from "react"
 
 import { cn } from "@/lib/utils"
 
-const LazyLanguageGlobe = lazy(async () => {
-  const { LanguageGlobe } = await import("./LanguageGlobe")
-  return { default: LanguageGlobe }
-})
-
 type DeferredLanguageGlobeProps = {
   className?: string
+  loadImmediately?: boolean
 }
 
 export function DeferredLanguageGlobe({
   className,
+  loadImmediately = false,
 }: DeferredLanguageGlobeProps) {
   const viewportRef = useRef<HTMLDivElement>(null)
-  const [shouldLoad, setShouldLoad] = useState(false)
+  const [shouldLoad, setShouldLoad] = useState(loadImmediately)
+  const [GlobeComponent, setGlobeComponent] = useState<ComponentType<{
+    className?: string
+    layout?: "standalone" | "embedded"
+  }> | null>(null)
 
   useEffect(() => {
+    if (loadImmediately) {
+      setShouldLoad(true)
+      return
+    }
+
     const target = viewportRef.current
     if (!target || typeof IntersectionObserver === "undefined") {
       const fallbackTimer = window.setTimeout(() => setShouldLoad(true), 0)
@@ -37,7 +43,20 @@ export function DeferredLanguageGlobe({
     observer.observe(target)
 
     return () => observer.disconnect()
-  }, [])
+  }, [loadImmediately])
+
+  useEffect(() => {
+    if (!shouldLoad || GlobeComponent) return
+    let active = true
+
+    void import("./LanguageGlobe").then(({ LanguageGlobe }) => {
+      if (active) setGlobeComponent(() => LanguageGlobe)
+    })
+
+    return () => {
+      active = false
+    }
+  }, [GlobeComponent, shouldLoad])
 
   return (
     <div
@@ -49,10 +68,8 @@ export function DeferredLanguageGlobe({
       )}
       data-testid="deferred-language-globe"
     >
-      {shouldLoad ? (
-        <Suspense fallback={null}>
-          <LazyLanguageGlobe className="h-full" layout="embedded" />
-        </Suspense>
+      {GlobeComponent ? (
+        <GlobeComponent className="h-full" layout="embedded" />
       ) : null}
     </div>
   )

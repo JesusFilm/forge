@@ -84,3 +84,19 @@ export function deriveLanguageDisplay(
   }
   return { slug, name: english, nativeName: trimmed }
 }
+
+const FIRST_STRONG_ISOLATE = "\u2068"
+const POP_DIRECTIONAL_ISOLATE = "\u2069"
+
+/**
+ * Wrap a language name in Unicode isolate marks before interpolating it into
+ * a translated sentence. Without the isolate, an RTL name inside an LTR
+ * message (or the reverse) reorders the surrounding words.
+ *
+ * Lives here rather than in the language-picker presentation module so the
+ * always-loaded header chrome can label its inventory link without pulling
+ * the picker bundle into the initial chunk.
+ */
+export function isolateLanguageName(value: string): string {
+  return `${FIRST_STRONG_ISOLATE}${value}${POP_DIRECTIONAL_ISOLATE}`
+}

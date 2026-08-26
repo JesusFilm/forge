@@ -6,6 +6,7 @@ import { adminContainerFragment } from "./blocks/container"
 import { adminCtaFragment } from "./blocks/cta"
 import { adminEasterDatesFragment } from "./blocks/easter-dates"
 import { adminInfoBlocksFragment } from "./blocks/info-blocks"
+import { adminLanguageGlobeFragment } from "./blocks/language-globe"
 import { adminMediaCollectionFragment } from "./blocks/media-collection"
 import { adminNavigationCarouselFragment } from "./blocks/navigation-carousel"
 import { adminPromoBannerFragment } from "./blocks/promo-banner"
@@ -56,6 +57,9 @@ export const adminWatchExperienceFragment = adminGraphql(
         ... on InfoBlocksBlock {
           ...AdminInfoBlocks
         }
+        ... on LanguageGlobeBlock {
+          ...AdminLanguageGlobe
+        }
         ... on MediaCollectionBlock {
           ...AdminMediaCollection
         }
@@ -100,6 +104,7 @@ export const adminWatchExperienceFragment = adminGraphql(
     adminCtaFragment,
     adminEasterDatesFragment,
     adminInfoBlocksFragment,
+    adminLanguageGlobeFragment,
     adminMediaCollectionFragment,
     adminNavigationCarouselFragment,
     adminPromoBannerFragment,

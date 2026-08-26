@@ -47,7 +47,7 @@ describe("experience editor block helpers", () => {
   )
 
   it("creates schema-valid starter payloads for every block template", () => {
-    expect(BLOCK_TEMPLATE_KEYS).toHaveLength(22)
+    expect(BLOCK_TEMPLATE_KEYS).toHaveLength(23)
 
     for (const [index, key] of BLOCK_TEMPLATE_KEYS.entries()) {
       const result = BlockSchema.safeParse(createTemplateBlock(key, index))
@@ -492,6 +492,28 @@ describe("experience editor block helpers", () => {
       body: "Renders the static Watch homepage hero.",
       tone: "hero",
       badges: ["WATCH_HOME"],
+    })
+  })
+
+  it("creates and summarizes an authored language globe", () => {
+    expect(createTemplateBlock("languageGlobe", 2)).toEqual({
+      t: "languageGlobe",
+      sectionKey: "language-globe-2",
+      eyebrow: "Watch languages",
+      title: "Choose a language",
+      description: "Explore languages by region or browse the full list.",
+      ctaEnabled: true,
+      ctaLabel: "Select language",
+      ctaLink: "/languages",
+    })
+
+    expect(
+      summarizeBlock(createTemplateBlock("languageGlobe", 2), 2, []),
+    ).toMatchObject({
+      typeLabel: "Language Globe",
+      title: "Choose a language",
+      body: "Explore languages by region or browse the full list.",
+      badges: ["LANGUAGES"],
     })
   })
 

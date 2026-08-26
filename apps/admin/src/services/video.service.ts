@@ -166,6 +166,7 @@ export type WatchLanguageInventoryItem = {
   description: string | null
   imageUrl: string | null
   imageAlt: string | null
+  muxPlaybackId: string | null
   label: string | null
   availability: WatchLanguageInventoryAvailability
   watchLanguageSlug: string
@@ -2550,10 +2551,14 @@ export class VideoService {
       playable_audio AS MATERIALIZED (
         SELECT DISTINCT ON (dub.video_id)
           dub.video_id AS "videoId",
-          dub.duration AS "durationSeconds"
+          dub.duration AS "durationSeconds",
+          NULLIF(BTRIM(mux_video.playback_id), '') AS "muxPlaybackId"
         FROM video_dub dub
         JOIN inventory_language
           ON inventory_language.id = dub.language_id
+        LEFT JOIN mux_video
+          ON mux_video.id = dub.mux_video_id
+         AND mux_video.deleted_at IS NULL
         LEFT JOIN video_edition edition
           ON edition.id = dub.video_edition_id
         WHERE dub.deleted_at IS NULL
@@ -2586,7 +2591,8 @@ export class VideoService {
         SELECT DISTINCT ON (edition_dub.video_id)
           edition_dub.video_id AS "videoId",
           edition_dub_language.slug AS "languageSlug",
-          edition_dub.duration AS "durationSeconds"
+          edition_dub.duration AS "durationSeconds",
+          NULLIF(BTRIM(subtitle_mux_video.playback_id), '') AS "muxPlaybackId"
         FROM usable_subtitle subtitle
         JOIN video_dub edition_dub
           ON edition_dub.video_edition_id = subtitle."videoEditionId"
@@ -2599,6 +2605,9 @@ export class VideoService {
          AND edition_dub_language.slug ~ '^[a-z0-9-]+$'
         JOIN video subtitle_video
           ON subtitle_video.id = edition_dub.video_id
+        LEFT JOIN mux_video subtitle_mux_video
+          ON subtitle_mux_video.id = edition_dub.mux_video_id
+         AND subtitle_mux_video.deleted_at IS NULL
         WHERE subtitle."directVideoId" IS NULL
           OR subtitle."directVideoId" = edition_dub.video_id
         ORDER BY
@@ -2900,6 +2909,14 @@ export class VideoService {
         candidate.description,
         selected_image.image_url AS "imageUrl",
         candidate."imageAlt",
+        -- Mux playback id of the very dub this row's duration came from, so a
+        -- consumer can synthesize a frame thumbnail when the video carries no
+        -- authored video_image row (the common shape for the newer vertical
+        -- series, whose episodes ship without curated artwork).
+        CASE
+          WHEN candidate.bucket = 'subtitle_video' THEN fallback_dub."muxPlaybackId"
+          ELSE audio_playback."muxPlaybackId"
+        END AS "muxPlaybackId",
         candidate.label,
         CASE
           WHEN candidate.bucket = 'subtitle_video' THEN 'SUBTITLE_ONLY'
@@ -3036,6 +3053,9 @@ export class VideoService {
       LEFT JOIN usable_subtitle_video fallback_dub
         ON candidate.bucket = 'subtitle_video'
        AND fallback_dub."videoId" = candidate.id
+      LEFT JOIN playable_audio audio_playback
+        ON candidate.bucket <> 'subtitle_video'
+       AND audio_playback."videoId" = candidate.id
       ORDER BY
         CASE
           WHEN candidate.bucket = 'audio_collection' THEN 0

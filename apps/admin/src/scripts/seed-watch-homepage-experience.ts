@@ -443,6 +443,16 @@ async function main(): Promise<void> {
           }),
       })),
       WATCH_HOME_PROMO_SECTION,
+      {
+        t: "languageGlobe",
+        sectionKey: "watch-language-globe",
+        eyebrow: "Watch languages",
+        title: "Choose a language",
+        description: "Explore languages by region or browse the full list.",
+        ctaEnabled: true,
+        ctaLabel: "Select language",
+        ctaLink: "/languages",
+      },
     ])
 
     const existingLocales = await prisma.experienceLocale.findMany({

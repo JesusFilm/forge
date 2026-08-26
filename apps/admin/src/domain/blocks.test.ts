@@ -10,6 +10,7 @@ import {
   SectionContentBlockSchema,
   TextBlockSchema,
   ContainerContentBlockSchema,
+  LanguageGlobeBlockSchema,
   VideoBlockSchema,
   VideoCarouselBlockSchema,
   VideoHeroBlockSchema,
@@ -51,6 +52,10 @@ describe("BlockSchema — all top-level types validate", () => {
       },
     },
     { name: "infoBlocks", value: { t: "infoBlocks" } },
+    {
+      name: "languageGlobe",
+      value: { t: "languageGlobe", title: "Choose a language" },
+    },
     {
       name: "mediaCollection",
       value: { t: "mediaCollection", variant: "grid" },
@@ -105,11 +110,28 @@ describe("BlockSchema — all top-level types validate", () => {
     })
   }
 
-  it("covers all 18 top-level block types listed in the experience schema", () => {
+  it("covers all 19 top-level block types listed in the experience schema", () => {
     // 16 legacy cms-sourced blocks + R5's forward-looking
     // videoRecommendations variant (schema only; no cms precedent) +
     // watchHomeHero's homepage-only placeholder.
-    expect(samples.length).toBe(18)
+    expect(samples.length).toBe(19)
+  })
+
+  it("accepts authored language globe copy and keeps it top-level only", () => {
+    const block = {
+      t: "languageGlobe" as const,
+      sectionKey: "watch-language-globe",
+      eyebrow: "Watch languages",
+      title: "Choose a language",
+      description: "Explore languages by region or browse the full list.",
+      ctaEnabled: true,
+      ctaLabel: "Select language",
+      ctaLink: "/languages",
+    }
+
+    expect(LanguageGlobeBlockSchema.safeParse(block).success).toBe(true)
+    expect(SectionContentBlockSchema.safeParse(block).success).toBe(false)
+    expect(ContainerContentBlockSchema.safeParse(block).success).toBe(false)
   })
 
   it("accepts watchHomeHero as a placement-only placeholder", () => {

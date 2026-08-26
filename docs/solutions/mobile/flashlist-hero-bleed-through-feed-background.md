@@ -133,4 +133,3 @@ Three issues caught during review and fixed immediately:
 - [Full-bleed video hero with scroll-over content](full-bleed-video-hero-with-scroll-over-content.md) -- Foundational pattern doc (references deprecated `apps/mobile/`)
 - [LinearGradient dark banding with transparent keyword](linear-gradient-dark-banding-transparent-keyword.md) -- Why `hexToRgba(color, 0)` is used instead of `"transparent"`
 - [Translucent section backgrounds with React Context](translucent-section-backgrounds-with-react-context.md) -- Earlier approach using Context (deprecated `apps/mobile/`)
-- [Media collection overlay carousel pipeline](media-collection-overlay-carousel-pipeline.md) -- Origin of `hexToRgba` helper convention

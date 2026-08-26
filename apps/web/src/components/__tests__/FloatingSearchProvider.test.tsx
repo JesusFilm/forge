@@ -2557,6 +2557,250 @@ describe("FloatingSearchProvider — language switcher chrome", () => {
   })
 })
 
+describe("FloatingSearchProvider — language videos link", () => {
+  const ISOLATE_START = "\u2068"
+  const ISOLATE_END = "\u2069"
+
+  function languageVideosLink(): HTMLAnchorElement | null {
+    return document.querySelector(
+      '[data-testid="floating-header-language-videos-link"]',
+    )
+  }
+
+  it.each([
+    ["root home", "/", "english", "/english.html/videos", "English"],
+    [
+      "localized home",
+      "/spanish-castilian.html",
+      "english",
+      "/spanish-castilian.html/videos",
+      "Spanish Castilian",
+    ],
+    // The route language wins over the provider default — a Russian video
+    // page must link to the Russian inventory, not the visitor's home one.
+    [
+      "video route",
+      "/jesus.html/russian.html",
+      "english",
+      "/russian.html/videos",
+      "Russian",
+    ],
+    [
+      "localized languages",
+      "/aari.html/languages",
+      "english",
+      "/aari.html/videos",
+      "Aari",
+    ],
+    [
+      "localized history",
+      "/aari.html/history",
+      "english",
+      "/aari.html/videos",
+      "Aari",
+    ],
+  ])(
+    "links to the header language inventory on %s",
+    (_label, pathname, defaultLanguageSlug, expectedHref, expectedLanguage) => {
+      navigationMocks.pathname = pathname
+      act(() => {
+        root.render(
+          <FloatingSearchProvider defaultLanguageSlug={defaultLanguageSlug}>
+            <main>Page</main>
+          </FloatingSearchProvider>,
+        )
+      })
+
+      const link = languageVideosLink()
+      expect(link).not.toBeNull()
+      expect(link?.getAttribute("href")).toBe(expectedHref)
+      // Bidi isolation keeps an RTL language name from reordering the
+      // surrounding words of the translated sentence.
+      expect(link?.getAttribute("aria-label")).toBe(
+        `See all videos in ${ISOLATE_START}${expectedLanguage}${ISOLATE_END}`,
+      )
+      expect(link?.getAttribute("title")).toBe(link?.getAttribute("aria-label"))
+    },
+  )
+
+  it("renders no link on the language inventory page itself", () => {
+    navigationMocks.pathname = "/aari.html/videos"
+    act(() => {
+      root.render(
+        <FloatingSearchProvider defaultLanguageSlug="english">
+          <main>Page</main>
+        </FloatingSearchProvider>,
+      )
+    })
+
+    expect(languageVideosLink()).toBeNull()
+    // The language globe still resolves the route language, so the absent
+    // link is the inventory-route rule and not a slug-resolution failure.
+    expect(
+      document
+        .querySelector('[data-testid="floating-header-language-button"]')
+        ?.querySelector('[data-testid="floating-header-language-code"]')
+        ?.textContent,
+    ).toBe("AIW")
+  })
+
+  it("renders no link when the header language segment is not a public watch language", () => {
+    // `/{anything}.html/history` parses as a localized-utility route with an
+    // unvalidated language segment, so an authored-collection slug reaches
+    // the header. The inventory route 404s for it — link must be absent.
+    navigationMocks.pathname = "/easter.html/history"
+    act(() => {
+      root.render(
+        <FloatingSearchProvider defaultLanguageSlug="english">
+          <main>Page</main>
+        </FloatingSearchProvider>,
+      )
+    })
+
+    expect(languageVideosLink()).toBeNull()
+  })
+
+  it("renders the link immediately before the language button", () => {
+    navigationMocks.pathname = "/spanish-castilian.html"
+    act(() => {
+      root.render(
+        <FloatingSearchProvider defaultLanguageSlug="english">
+          <main>Page</main>
+        </FloatingSearchProvider>,
+      )
+    })
+
+    const trailingControls = document.querySelector(
+      '[data-testid="floating-header-trailing-controls"]',
+    )
+    const slots = Array.from(trailingControls?.children ?? []).map((child) =>
+      child.getAttribute("data-testid"),
+    )
+    expect(slots.slice(0, 2)).toEqual([
+      "floating-header-language-videos-link",
+      "floating-header-language-button",
+    ])
+  })
+
+  it("reveals the link from the md breakpoint up", () => {
+    // jsdom cannot evaluate media queries, so the class tokens are the pin.
+    // Measured at 375px against `next start`: a third 44px trailing control
+    // overflows the mobile `minmax(80px,1fr)` column and clips the language
+    // globe, so the link stays hidden until the md header layout.
+    navigationMocks.pathname = "/spanish-castilian.html"
+    act(() => {
+      root.render(
+        <FloatingSearchProvider defaultLanguageSlug="english">
+          <main>Page</main>
+        </FloatingSearchProvider>,
+      )
+    })
+
+    const className = languageVideosLink()?.className ?? ""
+    expect(className).toContain("hidden")
+    expect(className).toContain("md:inline-flex")
+    expect(className).not.toMatch(/(^|\s)inline-flex(\s|$)/)
+  })
+
+  it("drops the link from the search-open header at every width", async () => {
+    // The overlay renders its own full-width row above the category tiles
+    // while the modal is open, so the header control stands down entirely
+    // rather than competing with it.
+    navigationMocks.pathname = "/spanish-castilian.html"
+    await openSearchOverlay()
+
+    const trailingControls = document.querySelector(
+      '[data-testid="floating-header-trailing-controls"]',
+    )
+    const slots = Array.from(trailingControls?.children ?? []).map((child) =>
+      child.getAttribute("data-testid"),
+    )
+    expect(slots).toEqual([
+      "floating-header-language-button",
+      "floating-header-search-close",
+    ])
+    expect(languageVideosLink()).toBeNull()
+  })
+})
+
+describe("FloatingSearchProvider — search overlay language videos row", () => {
+  function overlayRow(): HTMLAnchorElement | null {
+    return document.querySelector(
+      '[data-testid="search-overlay-language-videos-link"]',
+    )
+  }
+
+  it("renders the row above the category tiles for the header language", async () => {
+    navigationMocks.pathname = "/spanish-castilian.html"
+    await openSearchOverlay()
+
+    const row = overlayRow()
+    expect(row).not.toBeNull()
+    expect(row?.getAttribute("href")).toBe("/spanish-castilian.html/videos")
+    expect(row?.textContent).toContain(
+      englishMessages.SearchOverlay.allVideosOnSinglePage,
+    )
+
+    const tile = document.querySelector(
+      '[data-testid="search-overlay-category-bible-stories"]',
+    )
+    expect(tile).not.toBeNull()
+    expect(row).not.toBeNull()
+    const tilesFollowRow =
+      (row as HTMLAnchorElement).compareDocumentPosition(tile as Node) &
+      Node.DOCUMENT_POSITION_FOLLOWING
+    expect(tilesFollowRow).toBeTruthy()
+  })
+
+  it("shows the row at every width, with no header control competing", async () => {
+    // jsdom cannot evaluate media queries, so the absent breakpoint token is
+    // the pin: this row carries no `md:` visibility variant, and the header
+    // control is not rendered at all while the modal is open.
+    navigationMocks.pathname = "/spanish-castilian.html"
+    await openSearchOverlay()
+
+    const rowClass = overlayRow()?.className ?? ""
+    expect(rowClass).not.toContain("md:hidden")
+    expect(rowClass).not.toMatch(/(^|\s)hidden(\s|$)/)
+    expect(
+      document.querySelector(
+        '[data-testid="floating-header-language-videos-link"]',
+      ),
+    ).toBeNull()
+  })
+
+  it("drops the row once results replace the category tiles", async () => {
+    mockedRunSearch.mockResolvedValueOnce(searchResult("watch-search"))
+    navigationMocks.pathname = "/spanish-castilian.html"
+    const input = await openSearchOverlay()
+    expect(overlayRow()).not.toBeNull()
+
+    await submitSearch(input, "jesus")
+    await flushResolvedSearch()
+
+    expect(
+      document.querySelector(
+        '[data-testid="search-overlay-category-bible-stories"]',
+      ),
+    ).toBeNull()
+    expect(overlayRow()).toBeNull()
+  })
+
+  it("renders no row when the header language has no public inventory route", async () => {
+    // `/{anything}.html/history` parses as a localized-utility route with an
+    // unvalidated language segment; the inventory route 404s for it.
+    navigationMocks.pathname = "/easter.html/history"
+    await openSearchOverlay()
+
+    expect(
+      document.querySelector(
+        '[data-testid="search-overlay-category-bible-stories"]',
+      ),
+    ).not.toBeNull()
+    expect(overlayRow()).toBeNull()
+  })
+})
+
 describe("FloatingSearchProvider — search overlay chrome", () => {
   it.each([
     { locale: "ar", label: "قصص الكتاب المقدس" },

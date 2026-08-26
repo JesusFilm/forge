@@ -1155,6 +1155,7 @@ async function renderVideo(
             formatAvailabilityCounts.subtitles,
           )}
         />
+        <WatchHomeFooter />
       </>
     )
   }

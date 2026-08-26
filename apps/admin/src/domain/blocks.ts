@@ -231,6 +231,23 @@ export const InfoBlocksBlockSchema = z
   })
   .strict()
 
+/**
+ * Web-owned animated language globe with locale-authored promotional copy.
+ * Top-level only because the visual is a full-width Experience surface.
+ */
+export const LanguageGlobeBlockSchema = z
+  .object({
+    t: z.literal("languageGlobe"),
+    sectionKey,
+    eyebrow: z.string().optional(),
+    title: z.string().min(1),
+    description: z.string().optional(),
+    ctaEnabled: z.boolean().optional(),
+    ctaLabel: z.string().optional(),
+    ctaLink: z.string().optional(),
+  })
+  .strict()
+
 export const MediaCollectionBlockSchema = z
   .object({
     t: z.literal("mediaCollection"),
@@ -541,7 +558,7 @@ export type SectionBlock = z.infer<typeof SectionBlockSchema>
 // -----------------------------------------------------------------------------
 
 /**
- * Discriminated union of the 16 top-level block types for
+ * Discriminated union of the top-level block types for
  * `ExperienceLocale.blocks`. `quizButton` is deliberately excluded here — it
  * only appears inside `section.content`.
  */
@@ -559,6 +576,7 @@ export const BlockSchema = z.discriminatedUnion("t", [
   CardBlockSchema,
   EasterDatesBlockSchema,
   AdventCountdownBlockSchema,
+  LanguageGlobeBlockSchema,
   VideoBlockSchema,
   VideoCarouselBlockSchema,
   VideoRecommendationsBlockSchema,

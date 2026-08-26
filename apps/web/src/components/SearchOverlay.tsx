@@ -13,14 +13,17 @@ import {
   type KeyboardEvent as ReactKeyboardEvent,
 } from "react"
 import { createPortal } from "react-dom"
+import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { useLocale, useTranslations } from "next-intl"
 import {
+  ArrowRight,
   BookOpen,
   ChevronDown,
   CornerDownLeft,
   Folder,
   Languages,
+  ListVideo,
   PlaySquare,
   Search,
 } from "lucide-react"
@@ -239,6 +242,7 @@ export function SearchOverlay() {
     headerLanguageSwitcherVisible,
     headerLanguageCode,
     headerPinned,
+    languageVideosHref,
     setOpen,
     setQuery,
     search,
@@ -1396,6 +1400,26 @@ export function SearchOverlay() {
           onClick={(e) => e.stopPropagation()}
           className="mx-auto max-w-[1400px]"
         >
+          {showCategoryGrid && languageVideosHref ? (
+            // The search-open surface's own language-inventory entry point,
+            // at every width: the header control is suppressed while the modal
+            // is open, so this row is the only one in the browse state.
+            <Link
+              href={languageVideosHref}
+              prefetch={false}
+              data-testid="search-overlay-language-videos-link"
+              className="mb-4 flex items-center justify-between gap-3 rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-stone-100 transition-colors duration-200 hover:bg-white/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/80"
+            >
+              <span className="flex min-w-0 items-center gap-2.5">
+                <ListVideo aria-hidden className="size-5 shrink-0" />
+                <span className="truncate text-base font-semibold">
+                  {t("allVideosOnSinglePage")}
+                </span>
+              </span>
+              <ArrowRight aria-hidden className="size-4 shrink-0" />
+            </Link>
+          ) : null}
+
           {showCategoryGrid && (
             <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-4">
               {CATEGORIES.map((cat) => {

@@ -38,9 +38,7 @@ export function collectFeaturedCollectionReferences(
         const id =
           nonEmptyString(itemRecord.videoId) ??
           nonEmptyString(itemRecord.coreId)
-        const slug = nonEmptyString(itemRecord.videoSlug)
         if (id) ids.add(id)
-        if (slug) slugs.add(slug)
       }
     }
 

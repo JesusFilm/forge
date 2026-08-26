@@ -32,6 +32,7 @@ export const WATCH_HOME_CLIENT_MESSAGE_NAMESPACES = [
   "VideoRecommendations",
   "WatchFooter",
   "WatchHome",
+  "WatchHomeCategories",
   "WatchHomeMuxInserts",
   "WatchHomePromo",
   "WatchHomeSections",

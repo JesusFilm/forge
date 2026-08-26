@@ -30,6 +30,7 @@ import type {
   EasterDatesBlockSchema,
   InfoBlockItemSchema,
   InfoBlocksBlockSchema,
+  LanguageGlobeBlockSchema,
   MediaCollectionBlockSchema,
   MediaCollectionItemSchema,
   NavigationCarouselBlockSchema,
@@ -67,6 +68,7 @@ type CtaBlock = z.infer<typeof CtaBlockSchema>
 type EasterDatesBlock = z.infer<typeof EasterDatesBlockSchema>
 type InfoBlockItem = z.infer<typeof InfoBlockItemSchema>
 type InfoBlocksBlock = z.infer<typeof InfoBlocksBlockSchema>
+type LanguageGlobeBlock = z.infer<typeof LanguageGlobeBlockSchema>
 type MediaCollectionBlock = z.infer<typeof MediaCollectionBlockSchema>
 type MediaCollectionItem = z.infer<typeof MediaCollectionItemSchema>
 type NavigationCarouselBlock = z.infer<typeof NavigationCarouselBlockSchema>
@@ -1168,6 +1170,23 @@ WatchHomeHeroBlockRef.implement({
   }),
 })
 
+const LanguageGlobeBlockRef =
+  builder.objectRef<LanguageGlobeBlock>("LanguageGlobeBlock")
+LanguageGlobeBlockRef.implement({
+  description:
+    "Animated language globe with locale-authored promotional copy and action.",
+  fields: (t) => ({
+    t: t.exposeString("t"),
+    sectionKey: t.exposeString("sectionKey", { nullable: true }),
+    eyebrow: t.exposeString("eyebrow", { nullable: true }),
+    title: t.exposeString("title"),
+    description: t.exposeString("description", { nullable: true }),
+    ctaEnabled: t.exposeBoolean("ctaEnabled", { nullable: true }),
+    ctaLabel: t.exposeString("ctaLabel", { nullable: true }),
+    ctaLink: t.exposeString("ctaLink", { nullable: true }),
+  }),
+})
+
 const ContainerSlotBlockRef =
   builder.objectRef<ContainerSlotBlock>("ContainerSlotBlock")
 ContainerSlotBlockRef.implement({
@@ -1269,6 +1288,7 @@ export const T_TO_TYPENAME = {
   cta: "CtaBlock",
   easterDates: "EasterDatesBlock",
   infoBlocks: "InfoBlocksBlock",
+  languageGlobe: "LanguageGlobeBlock",
   mediaCollection: "MediaCollectionBlock",
   navigationCarousel: "NavigationCarouselBlock",
   promoBanner: "PromoBannerBlock",
@@ -1307,7 +1327,7 @@ function resolveBlockTypename(value: { t: string }): BlockTypename {
   return typename
 }
 
-// Unions — 17 top-level members. Excludes `quizButton` (section-only) and
+// Unions — top-level members. Excludes `quizButton` (section-only) and
 // `containerSlot` (container-only).
 export const ExperienceBlock = builder.unionType("ExperienceBlock", {
   description:
@@ -1320,6 +1340,7 @@ export const ExperienceBlock = builder.unionType("ExperienceBlock", {
     CtaBlockRef,
     EasterDatesBlockRef,
     InfoBlocksBlockRef,
+    LanguageGlobeBlockRef,
     MediaCollectionBlockRef,
     NavigationCarouselBlockRef,
     PromoBannerBlockRef,

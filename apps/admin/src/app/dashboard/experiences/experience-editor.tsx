@@ -390,6 +390,14 @@ const BLOCK_LIBRARY: BlockTemplateDefinition[] = [
     icon: MonitorPlay,
   },
   {
+    key: "languageGlobe",
+    label: "Language Globe",
+    description:
+      "Animated scripture globe with editable language copy and action.",
+    category: "Experience",
+    icon: Globe2,
+  },
+  {
     key: "routeVideoHero",
     label: "Route Video Hero",
     description: "Hero bound to the current video route.",
@@ -540,6 +548,7 @@ const SECTION_VISUAL_IDENTITY_BLOCK_TYPES = new Set([
 ])
 
 const TOGGLEABLE_CTA_BLOCK_TYPES = new Set([
+  "languageGlobe",
   "mediaCollection",
   "promoBanner",
   "relatedQuestions",
@@ -5611,6 +5620,7 @@ export function ExperienceEditor({
   }
 
   function inlineTitlePlaceholder(type: string) {
+    if (type === "languageGlobe") return "Invite viewers to choose a language"
     if (type === "infoBlocks") return "Add a details heading"
     if (type === "mediaCollection") return "Name this collection"
     if (type === "videoCarousel") return "Name this video collection"
@@ -5626,6 +5636,8 @@ export function ExperienceEditor({
   }
 
   function inlineDescriptionPlaceholder(type: string) {
+    if (type === "languageGlobe")
+      return "Explain how viewers can explore languages"
     if (type === "infoBlocks") return "Explain what these details help clarify"
     if (type === "mediaCollection")
       return "Describe what this collection offers"
@@ -8331,7 +8343,56 @@ export function ExperienceEditor({
           </span>
         </div>
 
-        {block.tone === "hero" ? (
+        {type === "languageGlobe" ? (
+          <div className="relative min-h-[300px] overflow-hidden rounded-sm bg-[#09090b] p-6 text-left text-white">
+            <div
+              aria-hidden="true"
+              className="absolute -right-12 top-10 h-64 w-64 rounded-full border border-white/12 bg-[radial-gradient(circle_at_35%_30%,rgba(255,255,255,0.14),rgba(255,255,255,0.02)_42%,transparent_70%)]"
+            >
+              <Globe2
+                className="absolute inset-8 h-48 w-48 text-white/12"
+                strokeWidth={0.7}
+              />
+            </div>
+            <div className="relative z-10 max-w-xl">
+              <div className="max-w-xs">
+                <input
+                  value={asString(blockRecord?.eyebrow)}
+                  onClick={(event) => {
+                    event.stopPropagation()
+                    activateBlock(index)
+                  }}
+                  onFocus={() => activateBlock(index)}
+                  onChange={(event) =>
+                    updateBlockStringField(index, "eyebrow", event.target.value)
+                  }
+                  className="w-full border-0 bg-transparent px-0 font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--color-brand)] outline-none placeholder:text-white/42"
+                  placeholder="Add a short language label"
+                />
+              </div>
+              <div className="mt-4">
+                {renderInlineMediaTextInput(
+                  index,
+                  "title",
+                  asString(blockRecord?.title),
+                  inlineTitlePlaceholder(type),
+                  "title",
+                )}
+              </div>
+              <div className="mt-3 max-w-lg">
+                {renderInlineMediaTextarea(
+                  index,
+                  "description",
+                  asString(blockRecord?.description),
+                  inlineDescriptionPlaceholder(type),
+                  2,
+                  true,
+                )}
+              </div>
+              {renderInlineBlockCta(index, blockRecord)}
+            </div>
+          </div>
+        ) : block.tone === "hero" ? (
           <div className="overflow-hidden rounded-sm bg-[linear-gradient(160deg,#141110_0%,#221d1b_48%,#100e0d_100%)] p-1">
             <div className="relative rounded-sm border border-[var(--color-hairline-soft)] p-5 text-left">
               <div className="absolute inset-0 overflow-hidden rounded-sm">
