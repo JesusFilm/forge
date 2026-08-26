@@ -8,7 +8,8 @@ start_date: "2026-08-20"
 duration: 12
 depends_on:
   - "feat-049"
-blocks: []
+blocks:
+  - "feat-438"
 tags:
   - "manager"
   - "mastra"
