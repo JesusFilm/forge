@@ -210,7 +210,7 @@ This repo uses the compound engineering workflow. After completing work:
 
 1. Check `docs/roadmap/` for a relevant feature ticket. If one exists, use Compound Engineering to brainstorm against that ticket before implementation.
 2. Run `ce:plan` with explicit scope: "Add X, affecting `apps/web` and `packages/admin-graphql`"
-3. Reference `docs/solutions/` for past patterns relevant to the task.
+3. Reference `docs/solutions/` for past patterns relevant to the task. It is organized by category, and each write-up carries YAML frontmatter (`module`, `tags`, `problem_type`, `component`) you can filter on.
 4. Check `todos/` for related outstanding findings.
 5. Set the roadmap feature to `status: "in-progress"` if applicable.
 

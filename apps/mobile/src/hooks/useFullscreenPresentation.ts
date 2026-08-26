@@ -14,16 +14,13 @@ export function useFullscreenPresentation() {
   const [isFullscreen, setIsFullscreen] = useState(false)
   const toggleFullscreen = useCallback(() => setIsFullscreen((v) => !v), [])
 
-  // MUST name the same single orientation as enterFullscreenLandscape's
-  // LANDSCAPE_RIGHT lock: when the two layers disagree, each geometry request
-  // falls outside the other's mask and iOS rejects the rotation.
+  // The expo-screen-orientation lock is the ONLY orientation writer here. A
+  // react-native-screens `orientation` screen option makes expo defer to a VC
+  // chain the dev-client launcher breaks, and UIKit then refuses the rotation.
   useEffect(() => {
-    navigation.setOptions({
-      orientation: isFullscreen ? "landscape_right" : "portrait",
-    })
     if (isFullscreen) void enterFullscreenLandscape()
     else void exitToPortrait()
-  }, [isFullscreen, navigation])
+  }, [isFullscreen])
 
   // Back-swipe off while fullscreen — the route cannot pop mid-fullscreen.
   // Inline it stays ON: the scrubber yields the edge strip instead of racing
