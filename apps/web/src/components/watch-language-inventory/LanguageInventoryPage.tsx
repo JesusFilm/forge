@@ -16,6 +16,7 @@ import {
   VIDEO_THUMBNAIL_FOCUS_TARGET_CLASS,
   VideoThumbnailInteractionFrame,
 } from "@/components/ui/video-thumbnail-interaction-frame"
+import { resolveMuxFrameThumbnailUrl } from "@/lib/url"
 import { cn } from "@/lib/utils"
 import { videoLabelMessageKey } from "@/lib/video-labels"
 import {
@@ -32,6 +33,43 @@ type IconComponent = ComponentType<{ className?: string }>
 
 type LanguageInventoryPageProps = {
   inventory: WatchLanguageInventoryModel
+}
+
+// Inventory rows fall back to a frame from the video when it carries no
+// authored artwork — the common shape for newer vertical series, whose
+// episodes previously rendered as an empty gradient tile.
+//
+// Every surface here requests the single 448x252 recipe admin pre-generates
+// (see `resolveMuxFrameThumbnailUrl`). The page hero would prefer a wider
+// source for its `sizes="100vw"` box, but a bespoke width is an on-demand Mux
+// render — a multi-second cold TTFB on a `priority` above-the-fold image — so
+// the hero takes a softer upscale instead. It renders at `opacity-35` behind
+// two stacked gradients, where sharpness is not load-bearing.
+type InventoryCardImage = Pick<
+  WatchLanguageInventoryCard,
+  "imageUrl" | "muxPlaybackId"
+>
+
+function cardImageUrl(item: InventoryCardImage): string | null {
+  return item.imageUrl ?? resolveMuxFrameThumbnailUrl(item.muxPlaybackId)
+}
+
+// Authored artwork from ANY candidate outranks a synthesized frame from any
+// other. Without the two-pass split, a candidate that only has a playback id
+// would preempt real artwork sitting later in the list.
+function preferAuthoredImageUrl(
+  candidates: readonly (InventoryCardImage | null | undefined)[],
+): string | null {
+  const present = candidates.filter((item): item is InventoryCardImage =>
+    Boolean(item),
+  )
+  return (
+    present.find((item) => item.imageUrl)?.imageUrl ??
+    present
+      .map((item) => resolveMuxFrameThumbnailUrl(item.muxPlaybackId))
+      .find((url) => url != null) ??
+    null
+  )
 }
 
 function formatRuntime(seconds: number | null): string | null {
@@ -226,6 +264,7 @@ function InventoryCard({
   const availability =
     item.availability === "AUDIO" ? t("dubbed") : t("subtitles")
   const isInteractive = Boolean(item.href)
+  const thumbnailUrl = cardImageUrl(item)
   const frameClassName = cn(
     "relative block h-full overflow-hidden rounded-lg bg-stone-900 text-left text-inherit shadow-xl shadow-black/35 ring-1 ring-white/10 transition duration-300",
     isInteractive && "group hover:-translate-y-1",
@@ -240,9 +279,9 @@ function InventoryCard({
       className={frameClassName}
     >
       <div className="relative aspect-video w-full overflow-hidden bg-stone-800">
-        {item.imageUrl ? (
+        {thumbnailUrl ? (
           <Image
-            src={item.imageUrl}
+            src={thumbnailUrl}
             alt={item.imageAlt}
             fill
             sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 360px"
@@ -372,6 +411,7 @@ function CompactVideoRow({
 }) {
   const videoLabels = useTranslations("VideoLabels")
   const runtime = formatRuntime(item.durationSeconds)
+  const thumbnailUrl = cardImageUrl(item)
   const metadata = [videoLabels(videoLabelMessageKey(item.label)), runtime]
     .filter((value): value is string => Boolean(value))
     .join(" / ")
@@ -381,9 +421,9 @@ function CompactVideoRow({
         {index + 1}
       </span>
       <span className="relative h-12 w-20 shrink-0 overflow-hidden rounded bg-stone-800 ring-1 ring-white/10 sm:h-14 sm:w-24">
-        {item.imageUrl ? (
+        {thumbnailUrl ? (
           <Image
-            src={item.imageUrl}
+            src={thumbnailUrl}
             alt=""
             fill
             sizes="(max-width: 640px) 80px, 96px"
@@ -442,7 +482,8 @@ function CollectionGroupOverview({ group }: { group: GroupedInventoryVideos }) {
   const t = useTranslations("LanguageInventory")
   const videoLabels = useTranslations("VideoLabels")
   const collection = group.collection
-  const heroImage = collection?.imageUrl ?? group.items[0]?.imageUrl ?? null
+  const firstItem = group.items[0]
+  const heroImage = preferAuthoredImageUrl([collection, firstItem])
   const imageAlt =
     collection?.imageAlt ?? group.items[0]?.imageAlt ?? group.title
   const label = collection
@@ -672,12 +713,14 @@ export function LanguageInventoryPage({
     inventory.audioCollections,
     t("standaloneVideos"),
   )
-  const heroImage =
-    inventory.promoted.find((item) => item.imageUrl)?.imageUrl ??
-    inventory.audioCollections.find((item) => item.imageUrl)?.imageUrl ??
-    inventory.audioVideos.find((item) => item.imageUrl)?.imageUrl ??
-    inventory.subtitleOnlyVideos.find((item) => item.imageUrl)?.imageUrl ??
-    null
+  // The full-bleed hero prefers authored artwork across every bucket before
+  // settling for a video frame.
+  const heroImage = preferAuthoredImageUrl([
+    ...inventory.promoted,
+    ...inventory.audioCollections,
+    ...inventory.audioVideos,
+    ...inventory.subtitleOnlyVideos,
+  ])
 
   return (
     <main

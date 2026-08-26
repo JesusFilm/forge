@@ -61,6 +61,20 @@ export function resolvePosterUrl(
   return resolveMuxFrameThumbnailUrl(muxPlaybackId)
 }
 
+/**
+ * Frame thumbnail from a Mux playback id, cropped to a 16:9 card box.
+ *
+ * `fit_mode=smartcrop` is load-bearing for vertical (9:16) sources: Mux's
+ * default `preserve` pads the frame into the requested box, so a 9:16 episode
+ * comes back 142x252 and renders as a letterboxed sliver under `object-cover`.
+ * Smartcrop returns a filled landscape crop instead.
+ *
+ * These params are byte-identical to admin's `WATCH_CHAPTER_CAROUSEL_RECIPE`
+ * source (`mux-image-derivative.service.ts`), which is the ONLY 16:9 recipe
+ * admin pre-generates. Keep them in sync: Mux derivatives are cached per exact
+ * URL, so a bespoke width here would miss the warm derivative AND forfeit the
+ * matching LQIP that admin exposes as `muxThumbnailBlurDataUrl`.
+ */
 export function resolveMuxFrameThumbnailUrl(
   muxPlaybackId: string | null | undefined,
 ): string | null {

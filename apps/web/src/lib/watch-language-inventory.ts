@@ -29,6 +29,7 @@ const watchLanguageInventoryItemFragment = adminGraphql(`
     description
     imageUrl
     imageAlt
+    muxPlaybackId
     label
     availability
     watchLanguageSlug
@@ -110,6 +111,12 @@ export type WatchLanguageInventoryCard = {
   description: string | null
   imageUrl: string | null
   imageAlt: string
+  /**
+   * Frame source for videos with no authored artwork. Kept separate from
+   * `imageUrl` so surfaces that need a specific resolution (or that pick a
+   * hero by "first item with real artwork") can decide for themselves.
+   */
+  muxPlaybackId: string | null
   label: string | null
   availability: WatchLanguageInventoryAvailability
   href: Route | null
@@ -393,6 +400,7 @@ function normalizeCard(
     description: item.description ?? null,
     imageUrl: item.imageUrl ?? null,
     imageAlt: item.imageAlt ?? item.title,
+    muxPlaybackId: item.muxPlaybackId ?? null,
     label: item.label ?? null,
     availability: item.availability,
     href: buildInventoryHref(item, inventoryLanguageSlug),

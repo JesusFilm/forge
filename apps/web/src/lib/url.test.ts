@@ -54,3 +54,32 @@ describe("resolveDownloadPosterUrl", () => {
     )
   })
 })
+
+describe("resolveMuxFrameThumbnailUrl", () => {
+  // Vertical (9:16) sources are the reason `fit_mode=smartcrop` is pinned:
+  // Mux's default `preserve` pads the frame into the requested box, so a
+  // 9:16 episode comes back 142x252 and renders as a letterboxed sliver
+  // inside a 16:9 card.
+  it("always requests a filled crop rather than a padded fit", () => {
+    const url = new URL(resolveMuxFrameThumbnailUrl("playback-id")!)
+    expect(url.searchParams.get("fit_mode")).toBe("smartcrop")
+    expect(url.searchParams.get("width")).toBe("448")
+    expect(url.searchParams.get("height")).toBe("252")
+  })
+
+  // Mux caches derivatives per exact URL and admin pre-generates exactly one
+  // 16:9 recipe (WATCH_CHAPTER_CAROUSEL_RECIPE). A width/format drift here
+  // silently moves every card onto a cold on-demand render and orphans the
+  // matching muxThumbnailBlurDataUrl LQIP.
+  it("stays byte-identical to admin's pre-generated carousel recipe", () => {
+    expect(resolveMuxFrameThumbnailUrl("playback-id")).toBe(
+      "https://image.mux.com/playback-id/thumbnail.jpg?width=448&height=252&fit_mode=smartcrop&time=2",
+    )
+  })
+
+  it("returns null for a blank or missing playback id", () => {
+    expect(resolveMuxFrameThumbnailUrl(null)).toBeNull()
+    expect(resolveMuxFrameThumbnailUrl(undefined)).toBeNull()
+    expect(resolveMuxFrameThumbnailUrl("   ")).toBeNull()
+  })
+})

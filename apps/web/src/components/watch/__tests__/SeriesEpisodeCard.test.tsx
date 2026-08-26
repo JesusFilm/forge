@@ -273,8 +273,21 @@ describe("SeriesEpisodeCard — resolveThumbnailUrl image priority", () => {
     expect(img?.getAttribute("src")).toContain("url.jpg")
   })
 
-  it("renders the stone-800 fallback div when no images are provided", () => {
-    renderCard({ episode: makeEpisode({ images: [] }) })
+  // The production shape for the newer vertical series: episodes ship with no
+  // video_image row at all, so before the Mux tier every card in the grid was
+  // an empty stone tile despite the episode being playable.
+  it("renders a Mux frame when the episode has no images but is playable", () => {
+    renderCard({
+      episode: makeEpisode({ images: [], muxPlaybackId: "mux-vertical-1" }),
+    })
+    const img = container.querySelector("img")
+    expect(img?.getAttribute("src")).toBe(
+      "https://image.mux.com/mux-vertical-1/thumbnail.jpg?width=448&height=252&fit_mode=smartcrop&time=2",
+    )
+  })
+
+  it("renders the stone-800 fallback div with neither images nor playback", () => {
+    renderCard({ episode: makeEpisode({ images: [], muxPlaybackId: null }) })
     expect(container.querySelector("img")).toBeNull()
     const fallback = container.querySelector(".bg-stone-800")
     expect(fallback).not.toBeNull()
