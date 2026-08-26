@@ -888,4 +888,36 @@ describe("FeedbackLauncher", () => {
         ?.getAttribute("aria-label"),
     ).toBe("Закрыть форму обратной связи")
   })
+
+  it("never leaks raw Feedback.* keys across a full walk-through and submission", async () => {
+    // The vitest next-intl mock renders `Feedback.<key>` for any missing key,
+    // so this guard fails when a t() call points at a key absent from en.json.
+    // No \b anchor: textContent concatenates nodes without separators, so the
+    // fallback can be glued to the preceding word.
+    const assertNoRawKeys = () =>
+      expect(document.body.textContent).not.toMatch(/Feedback\.[A-Za-z]/)
+
+    await openFeedback()
+    assertNoRawKeys()
+    selectFeedbackCategory("problem")
+    submitCurrentStep()
+    assertNoRawKeys()
+    submitCurrentStep()
+    assertNoRawKeys()
+    submitCurrentStep()
+    assertNoRawKeys()
+    setValue(
+      document.querySelector("textarea") as HTMLTextAreaElement,
+      "Playback failed after I pressed Watch.",
+    )
+    submitCurrentStep()
+    assertNoRawKeys()
+    setValue(
+      document.querySelector('input[autocomplete="name"]') as HTMLInputElement,
+      "Alex Morgan",
+    )
+    await sendFeedback()
+    expect(document.body.textContent).toContain("Thank you")
+    assertNoRawKeys()
+  })
 })
