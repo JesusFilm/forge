@@ -11,6 +11,7 @@ Scope: `apps/*` only.
 - `apps/admin/CLAUDE.md`
 - `apps/mobile/CLAUDE.md`
 - `apps/tv/CLAUDE.md`
+- `apps/rag/AGENTS.md`
 
 ## Rules
 
@@ -25,3 +26,4 @@ Scope: `apps/*` only.
 - `apps/admin`: admin GraphQL surface (Pothos + Prisma), editorial lifecycle, emits ISR revalidate webhooks to web.
 - `apps/mobile`: mobile app rendering and device-specific UX.
 - `apps/tv`: TV app rendering and TV-specific UX.
+- `apps/rag`: bounded RAG acquisition, indexing, retrieval, serving, and adapters; separate from every other app context.

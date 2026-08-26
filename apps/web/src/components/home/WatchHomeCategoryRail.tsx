@@ -112,8 +112,13 @@ export function WatchHomeCategoryRail({
       )}
     >
       <div className={cn("relative z-[3] pb-6", WATCH_PAGE_CONTENT_CLASSES)}>
-        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-4 gap-y-1">
-          <p className={cn("col-start-1", WATCH_SECTION_EYEBROW_CLASS)}>
+        <div className="grid grid-cols-1 items-start gap-x-4 gap-y-1 md:grid-cols-[minmax(0,1fr)_auto]">
+          <p
+            className={cn(
+              "col-start-1 row-start-1",
+              WATCH_SECTION_EYEBROW_CLASS,
+            )}
+          >
             {t("eyebrow")}
           </p>
           <h2
@@ -122,18 +127,18 @@ export function WatchHomeCategoryRail({
           >
             {t("title")}
           </h2>
+          <p className="col-start-1 row-start-3 max-w-3xl pt-1 text-base leading-snug font-normal text-stone-100/80 xl:text-lg">
+            {t("description")}
+          </p>
           <Link
             href={languageInventoryPath(locale)}
             prefetch={false}
             data-testid="watch-home-category-see-all"
-            className="col-start-2 row-start-1 row-end-3 inline-flex w-fit shrink-0 items-center gap-1 self-center rounded-full bg-white px-4 py-2 text-xs font-bold tracking-wider text-black uppercase transition-colors hover:bg-red-500 hover:text-white focus-visible:ring-2 focus-visible:ring-white focus-visible:outline-none"
+            className="col-start-1 row-start-4 mt-4 inline-flex w-fit max-w-full shrink-0 items-center gap-1 self-start rounded-full bg-white px-4 py-2 text-xs font-bold tracking-wider text-black uppercase transition-colors hover:bg-red-500 hover:text-white focus-visible:ring-2 focus-visible:ring-white focus-visible:outline-none md:col-start-2 md:row-start-1 md:row-end-3 md:mt-0 md:self-center"
           >
             {t("seeAll")}
             <ChevronRight aria-hidden className="size-4" />
           </Link>
-          <p className="col-start-1 row-start-3 max-w-3xl pt-1 text-base leading-snug font-normal text-stone-100/80 xl:text-lg">
-            {t("description")}
-          </p>
         </div>
       </div>
 

@@ -8,6 +8,7 @@ Scope: `packages/*`.
 
 - root `CLAUDE.md`
 - `packages/admin-graphql/CLAUDE.md`
+- `packages/rag-contracts/AGENTS.md`
 
 ## Rules
 
@@ -15,3 +16,4 @@ Scope: `packages/*`.
 - No handwritten edits inside generated client outputs.
 - `packages/admin-graphql` is consumed by `apps/web`; changes are a cross-app impact for web.
 - `packages/admin-graphql` is consumed by web, mobile, and TV; changes are a cross-app impact.
+- `packages/rag-contracts` is runtime-neutral and must not import from any application context.
