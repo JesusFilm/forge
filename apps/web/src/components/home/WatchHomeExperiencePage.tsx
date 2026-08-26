@@ -192,7 +192,7 @@ export function WatchHomeExperiencePage({
             />
           )}
           {normalized.blocks.map(renderBlock)}
-          <WatchHomeFooter />
+          <WatchHomeFooter showIntroductionReplay />
         </div>
       </div>
     </main>

@@ -20,7 +20,16 @@ vi.mock("next-intl", () => ({
 }))
 
 vi.mock("@/components/home/WatchHomeFooter", () => ({
-  WatchHomeFooter: () => <footer data-testid="watch-home-footer" />,
+  WatchHomeFooter: ({
+    showIntroductionReplay,
+  }: {
+    showIntroductionReplay?: boolean
+  }) => (
+    <footer
+      data-testid="watch-home-footer"
+      data-introduction-replay={String(showIntroductionReplay === true)}
+    />
+  ),
 }))
 
 vi.mock("@/components/home/WatchHomeTvCarousel", () => ({
@@ -169,6 +178,11 @@ describe("WatchHomeExperiencePage", () => {
     expect(serverContainer.querySelector("h1")?.textContent).toBe(
       "Jesus Film Project Watch",
     )
+    expect(
+      serverContainer
+        .querySelector("[data-testid='watch-home-footer']")
+        ?.getAttribute("data-introduction-replay"),
+    ).toBe("true")
   })
 
   it("renders the authored page topic as the only hydrated h1", async () => {

@@ -9,6 +9,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import { WatchHomeFooter } from "@/components/home/WatchHomeFooter"
 
+vi.mock("@/components/watch/WatchIntroductionReplayButton", () => ({
+  WatchIntroductionReplayButton: () => (
+    <button type="button" data-testid="watch-introduction-replay">
+      Take the Watch tour
+    </button>
+  ),
+}))
+
 vi.mock("next/image", () => ({
   default: ({
     alt,
@@ -40,13 +48,26 @@ afterEach(() => {
   container.remove()
 })
 
-function renderFooter() {
+function renderFooter(showIntroductionReplay = false) {
   act(() => {
-    root.render(<WatchHomeFooter />)
+    root.render(
+      <WatchHomeFooter showIntroductionReplay={showIntroductionReplay} />,
+    )
   })
 }
 
 describe("WatchHomeFooter", () => {
+  it("renders the introduction replay only when the home surface opts in", () => {
+    renderFooter()
+    expect(
+      container.querySelector("[data-testid='watch-introduction-replay']"),
+    ).toBeNull()
+
+    renderFooter(true)
+    expect(
+      container.querySelector("[data-testid='watch-introduction-replay']"),
+    ).not.toBeNull()
+  })
   it("places the AI use attribution notice immediately after the footer", () => {
     renderFooter()
 

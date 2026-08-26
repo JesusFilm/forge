@@ -4,6 +4,7 @@ import { FeedbackLauncher } from "@/components/FeedbackLauncher"
 import { FloatingSearchProvider } from "@/components/FloatingSearchProvider"
 import type { WatchRouteSurface } from "@/components/FloatingSearchContext"
 import { BetaTesterModalProvider } from "@/components/watch/BetaTesterModalProvider"
+import { WatchIntroductionProvider } from "@/components/watch/WatchIntroductionProvider"
 import {
   publicWatchHomeLanguageSlugForLocale,
   resolveWatchLocaleIdentity,
@@ -28,7 +29,9 @@ export function WatchChromeShell({
       initialRouteSurface={initialRouteSurface}
     >
       <FeedbackLauncher />
-      <BetaTesterModalProvider>{children}</BetaTesterModalProvider>
+      <BetaTesterModalProvider>
+        <WatchIntroductionProvider>{children}</WatchIntroductionProvider>
+      </BetaTesterModalProvider>
     </FloatingSearchProvider>
   )
 }

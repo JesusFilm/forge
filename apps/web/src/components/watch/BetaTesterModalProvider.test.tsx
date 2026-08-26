@@ -1,6 +1,6 @@
 /** @vitest-environment jsdom */
 
-import { act, useState, type ReactNode } from "react"
+import { act, useRef, useState, type ReactNode } from "react"
 import { createRoot, type Root } from "react-dom/client"
 import { setRequestLocale } from "next-intl/server"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
@@ -41,7 +41,7 @@ vi.mock("next/dynamic", () => ({
     }) {
       if (lazyModal.stalled) return options?.loading?.({ error: null }) ?? null
       return open ? (
-        <div role="dialog" data-testid="lazy-beta-tester-modal">
+        <div role="dialog" data-open data-testid="lazy-beta-tester-modal">
           <button type="button" onClick={onClose}>
             Close
           </button>
@@ -59,6 +59,7 @@ import {
   WATCH_MODAL_CLOSE_DELAY_MS,
   WatchModalActivityProvider,
   usePauseForWatchModal,
+  useWatchModalActivity,
 } from "@/components/watch/WatchModalActivityProvider"
 import { BETA_TESTER_URL } from "@/lib/beta-tester"
 
@@ -122,6 +123,42 @@ function makeMedia({ paused = false, rejectPlay = false } = {}) {
 function MediaOwner({ media }: { media: ReturnType<typeof makeMedia> | null }) {
   usePauseForWatchModal(media)
   return null
+}
+
+function HandoffOwner({ media }: { media: ReturnType<typeof makeMedia> }) {
+  const modal = useBetaTesterModal()
+  const [tourOpen, setTourOpen] = useState(false)
+  const replayRef = useRef<HTMLButtonElement>(null)
+  useWatchModalActivity(tourOpen)
+  usePauseForWatchModal(media)
+
+  return (
+    <>
+      <button
+        type="button"
+        data-testid="start-tour"
+        onClick={() => setTourOpen(true)}
+      >
+        Start tour
+      </button>
+      <button
+        ref={replayRef}
+        type="button"
+        data-testid="watch-introduction-replay"
+      >
+        Take the Watch tour
+      </button>
+      <button
+        type="button"
+        data-testid="handoff-trigger"
+        onClick={() => {
+          if (modal?.openModal(replayRef.current)) setTourOpen(false)
+        }}
+      >
+        Sign up
+      </button>
+    </>
+  )
 }
 
 describe("BetaTesterModalProvider", () => {
@@ -395,6 +432,92 @@ describe("BetaTesterModalProvider", () => {
     expect(globalTrigger.disabled).toBe(true)
     click("button:not([data-testid='global-beta-tester-cta'])")
     expect(document.querySelector("[role='dialog']")).toBeNull()
+  })
+
+  it("acknowledges accepted and rejected open requests synchronously", async () => {
+    const outcomes: boolean[] = []
+
+    function Probe() {
+      const modal = useBetaTesterModal()
+      return (
+        <button
+          type="button"
+          data-testid="probe"
+          onClick={(event) =>
+            outcomes.push(modal?.openModal(event.currentTarget) ?? false)
+          }
+        >
+          Open
+        </button>
+      )
+    }
+
+    search.searchOpen = true
+    await renderProvider(<Probe />)
+    click("[data-testid='probe']")
+    expect(outcomes).toEqual([false])
+    expect(document.querySelector("[role='dialog']")).toBeNull()
+
+    search.searchOpen = false
+    await renderProvider(<Probe />)
+    click("[data-testid='probe']")
+    expect(outcomes).toEqual([false, true])
+    expect(document.querySelectorAll("[role='dialog']")).toHaveLength(1)
+  })
+
+  it("rejects a same-tick question-panel race before enabling the modal chunk", async () => {
+    const outcomes: boolean[] = []
+
+    function QuestionRaceProbe() {
+      const modal = useBetaTesterModal()
+      return (
+        <button
+          type="button"
+          data-testid="question-race"
+          onClick={(event) => {
+            modal?.setQuestionPanelOpen(true)
+            outcomes.push(modal?.openModal(event.currentTarget) ?? false)
+          }}
+        >
+          Open question and beta
+        </button>
+      )
+    }
+
+    await renderProvider(<QuestionRaceProbe />)
+    click("[data-testid='question-race']")
+
+    expect(outcomes).toEqual([false])
+    expect(document.querySelector("[role='dialog']")).toBeNull()
+    expect(lazyModal.stalled).toBe(false)
+  })
+
+  it("keeps media paused continuously while ownership hands from the tour to beta", async () => {
+    vi.useFakeTimers()
+    const media = makeMedia()
+    await renderProvider(<HandoffOwner media={media} />)
+    click("[data-testid='start-tour']")
+    expect(media.pause).toHaveBeenCalledOnce()
+
+    click("[data-testid='handoff-trigger']")
+    expect(
+      document.querySelectorAll("[role='dialog'][data-open]"),
+    ).toHaveLength(1)
+    act(() => vi.advanceTimersByTime(WATCH_MODAL_CLOSE_DELAY_MS))
+    expect(media.play).not.toHaveBeenCalled()
+
+    click("[role='dialog'] button")
+    act(() => vi.advanceTimersByTime(WATCH_MODAL_CLOSE_DELAY_MS - 1))
+    expect(media.play).not.toHaveBeenCalled()
+    await act(async () => {
+      vi.advanceTimersByTime(1)
+      await Promise.resolve()
+    })
+    expect(media.play).toHaveBeenCalledOnce()
+    expect(document.activeElement).toBe(
+      document.querySelector("[data-testid='watch-introduction-replay']"),
+    )
+    vi.useRealTimers()
   })
 
   it("keeps a hidden global trigger out of keyboard and activation paths", async () => {

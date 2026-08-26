@@ -553,5 +553,41 @@
     "languageVersionLabel": "Audiosprache",
     "selectLanguageVersion": "Sprachversion auswählen",
     "watchSelectedVersion": "Ausgewählte Version ansehen"
+  },
+  "WatchIntroductionTour": {
+    "close": "Einführung schließen",
+    "progress": "Schritt {current} von {total}",
+    "skip": "Überspringen",
+    "back": "Zurück",
+    "next": "Weiter",
+    "done": "Fertig",
+    "signup": "Der Beta-Gruppe beitreten",
+    "replay": "Watch-Tour starten",
+    "signupUnavailable": "Die Anmeldung ist derzeit nicht verfügbar. Bitte versuche es erneut.",
+    "loading": "Einführung wird geladen...",
+    "loadFailed": "Die Einführung konnte nicht geladen werden.",
+    "retry": "Erneut versuchen",
+    "steps": {
+      "discover": {
+        "eyebrow": "Jetzt ansehen",
+        "title": "Kostenlose Filme und Geschichten entdecken",
+        "description": "Entdecke Filme, Serien und wahre Geschichten über Jesus und die Hoffnung, die er schenkt—alles kostenlos verfügbar."
+      },
+      "search": {
+        "eyebrow": "Finde, was du als Nächstes ansehen möchtest",
+        "title": "Suche nach dem, was dir wichtig ist",
+        "description": "Nutze die Suche, um einen Titel zu finden, ein Thema zu erkunden oder eine Frage zu stellen und etwas Bedeutsames zu entdecken."
+      },
+      "language": {
+        "eyebrow": "In deiner Sprache ansehen",
+        "title": "Wähle deine Wiedergabesprache",
+        "description": "Öffne die Sprachauswahl, um Filme und Geschichten in der Sprache zu finden, die sich für dich am natürlichsten anfühlt."
+      },
+      "apps": {
+        "eyebrow": "Demnächst verfügbar",
+        "title": "Auf Mobilgeräten und dem Fernseher ansehen",
+        "description": "Apps für Mobilgeräte und Fernseher sind in Arbeit. Tritt unserer Beta-Gruppe bei, um sie früh auszuprobieren und zu erfahren, wann der Zugang bereitsteht."
+      }
+    }
   }
 }

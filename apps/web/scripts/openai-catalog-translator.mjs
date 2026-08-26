@@ -48,6 +48,7 @@ const UI_SURFACE_CONTEXTS = {
   WatchHomeMuxInserts: "promotional video inserts on the Watch homepage",
   WatchHomePromo: "a promotional section on the Watch homepage",
   WatchHomeSections: "content sections on the Watch homepage",
+  WatchIntroductionTour: "the first-visit introduction tour on Watch",
   WatchLanguageIndex: "the all-languages index for Watch",
   WatchModal: "a shared Watch dialog",
   WatchNotFound: "the localized Watch 404 page",

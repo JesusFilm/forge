@@ -31,6 +31,14 @@ vi.mock("next/image", () => ({
   ),
 }))
 
+vi.mock("@/components/watch/WatchIntroductionReplayButton", () => ({
+  WatchIntroductionReplayButton: () => (
+    <button type="button" data-testid="watch-introduction-replay">
+      Take the Watch tour
+    </button>
+  ),
+}))
+
 vi.mock("@forge/video-player/mux-video", async () => {
   const React = await vi.importActual<typeof import("react")>("react")
   return {
@@ -271,6 +279,11 @@ describe("WatchHomePage", () => {
     expect(serverContainer.querySelector("h1")?.textContent).toBe(
       "Jesus Film Project Watch",
     )
+    expect(
+      serverContainer.querySelector(
+        "[data-testid='watch-introduction-replay']",
+      ),
+    ).not.toBeNull()
   })
 
   it("localizes semantic carousel, card, and promo copy in Russian", async () => {

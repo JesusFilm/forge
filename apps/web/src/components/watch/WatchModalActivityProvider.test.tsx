@@ -1,6 +1,6 @@
 /** @vitest-environment jsdom */
 
-import { act, StrictMode, type ReactNode } from "react"
+import { act, StrictMode, useLayoutEffect, type ReactNode } from "react"
 import { createRoot, type Root } from "react-dom/client"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
@@ -9,6 +9,7 @@ import {
   WatchModalActivityProvider,
   usePauseForWatchModal,
   useWatchModalActivity,
+  useWatchModalReservation,
   type WatchPausableMedia,
 } from "./WatchModalActivityProvider"
 
@@ -76,6 +77,21 @@ function MediaOwner({
   return null
 }
 
+function ReservationOwner({
+  name,
+  onResult,
+}: {
+  name: string
+  onResult: (name: string, acquired: boolean) => void
+}) {
+  const reservation = useWatchModalReservation()
+  useLayoutEffect(() => {
+    onResult(name, reservation.tryAcquire())
+    return reservation.release
+  }, [name, onResult, reservation])
+  return null
+}
+
 function render(children: ReactNode) {
   act(() => {
     root.render(
@@ -85,6 +101,24 @@ function render(children: ReactNode) {
 }
 
 describe("WatchModalActivityProvider", () => {
+  it("grants only one exclusive reservation in the same commit", () => {
+    const results: Array<[string, boolean]> = []
+    const onResult = (name: string, acquired: boolean) => {
+      results.push([name, acquired])
+    }
+
+    render(
+      <>
+        <ReservationOwner name="introduction-a" onResult={onResult} />
+        <ReservationOwner name="introduction-b" onResult={onResult} />
+      </>,
+    )
+
+    expect(results).toEqual([
+      ["introduction-a", true],
+      ["introduction-b", false],
+    ])
+  })
   it("pauses playing media and resumes only after the final owner releases", async () => {
     const media = makeMedia()
     render(

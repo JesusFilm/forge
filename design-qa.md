@@ -51,3 +51,142 @@
 ## Result
 
 final result: passed
+
+---
+
+# Design QA: Outline-free Watch coachmark target
+
+## Selected target
+
+- User direction: remove the red outline from highlighted Watch controls.
+- Before capture: `/tmp/watch-tour-search-gray-v1.png`.
+- Refined Search capture: `/tmp/watch-tour-search-no-outline-v1.png`.
+- Refined Language capture: `/tmp/watch-tour-language-no-outline-v1.png`.
+- Combined same-state, same-viewport comparison: `/tmp/watch-tour-no-outline-comparison.png` at 1280 × 800 per panel.
+
+## Comparison findings
+
+- The red border, outer ring, and red glow are removed completely.
+- The dark page mask still cuts cleanly around the active Search or Language control, so the target remains visually clear without added decoration.
+- The charcoal coachmark, seamless pointer, positioning, and interaction remain unchanged.
+
+## Verification
+
+- Search and Language target states are free of clipping, overlap, and viewport overflow.
+- Dialog-scoped accessibility scan: 0 violations, 0 incomplete checks, 19 passes.
+
+## Result
+
+final result: passed
+
+---
+
+# Design QA: Charcoal Watch coachmark surface
+
+## Selected target
+
+- User direction: keep the compact coachmark but make its surface gray enough to remain visible against the black Watch backdrop.
+- Before capture: `/tmp/watch-tour-search-minimal-final.png`.
+- Refined Search capture: `/tmp/watch-tour-search-gray-v1.png`.
+- Refined Language capture: `/tmp/watch-tour-language-gray-v1.png`.
+- Combined same-state, same-viewport comparison: `/tmp/watch-tour-gray-comparison.png` at 1280 × 800 per panel.
+
+## Comparison findings
+
+- The coachmark surface moves from near-black to charcoal `#242424`, creating clear separation from the black overlay without becoming visually heavy.
+- The pointer uses the identical charcoal fill and stroke, preserving the seamless connection to the card.
+- White text, secondary actions, border, and shadow remain legible and restrained on the lighter surface.
+- Search and Language targeting, compact dimensions, and spotlight treatment are unchanged.
+
+## Verification
+
+- Both targeted desktop states are free of clipping, overlap, and viewport overflow.
+- Dialog-scoped accessibility scan: 0 violations, 0 incomplete checks, 19 passes.
+
+## Result
+
+final result: passed
+
+---
+
+# Design QA: Minimal Watch coachmark refinement
+
+## Selected target
+
+- User direction: the anchored coachmark should be much smaller and less bulky, and its triangle should not read as a visible outlined shape on top of the modal.
+- Before capture: `/tmp/watch-tour-search-final.png`.
+- Refined Search capture: `/tmp/watch-tour-search-minimal-final.png`.
+- Refined Language capture: `/tmp/watch-tour-language-minimal-final.png`.
+- Combined same-state, same-viewport comparison: `/tmp/watch-tour-minimal-comparison.png` at 1280 × 800 per panel.
+
+## Comparison findings
+
+- The targeted card maximum width is reduced from 608 to 440 pixels and its estimated height from 390 to 260 pixels.
+- Targeted steps now omit the decorative icon and eyebrow, leaving only progress, title, description, and actions.
+- Padding, gaps, typography, button height, corner radius, and shadow are reduced while preserving readable hierarchy.
+- The pointer is reduced from 32 to 20 pixels and its fill and stroke now match the card, making it read as a seamless directional nib instead of an outlined triangle icon.
+- The Search and Language targets remain clearly spotlighted, and the compact card remains aligned to each target.
+
+## Verification
+
+- Search and Language captures are free of clipping, overlap, and viewport overflow.
+- Focused component suite: 10/10 tests passed.
+- Dialog-scoped accessibility scan: 0 violations, 0 incomplete checks, 19 passes after correcting progress-label contrast.
+
+## Result
+
+final result: passed
+
+---
+
+# Design QA: Watch introduction anchored coachmarks
+
+## Verdict
+
+Passed. No remaining P0, P1, or P2 visual fidelity issues were found in the corrected Search and Language coachmark states.
+
+## Source and implementation evidence
+
+- Source references: `/tmp/codex-clipboard-328c0505-8694-43e6-9b8a-13814b88da92.png` and `/tmp/codex-clipboard-2de87fa8-0b6b-4efc-a4f9-fd8d942222e0.png`
+- Implementation captures: `/tmp/watch-tour-search-final.png` and `/tmp/watch-tour-language-final.png`
+- Combined comparison inputs: `/tmp/watch-tour-search-comparison.png` and `/tmp/watch-tour-language-comparison.png`
+- Browser viewport: 1280 × 800. The supplied references were normalized onto a 1280 × 800 canvas before comparison because their original viewport sizes differ.
+
+## Fidelity findings
+
+### Search tip
+
+- The Search control is isolated by a dark spotlight and a bright red outline.
+- The dialog is positioned immediately below the Search control.
+- A visible triangle connects the dialog to the center of the highlighted control.
+- The surrounding page is dimmed while the target and dialog remain sharp and readable.
+
+### Language tip
+
+- Advancing moves the spotlight, outline, connector, and dialog to the Language control.
+- The target is not blurred or obscured by the shared dialog backdrop.
+- The dialog remains fully inside the viewport and preserves the product's existing Watch styling.
+
+## Issues found and resolved
+
+- P1: The original connector was clipped by the popup's scroll container. Resolved by allowing popup overflow and moving scrolling to the inner content region.
+- P1: The target outline did not create the strong spotlight effect shown in the references. Resolved with a full-viewport shadow cutout around the active target.
+- P1: The spotlight could dim the dialog because it was mounted in a separate document-body portal. Resolved by adding a shared dialog portal layer between the backdrop and popup viewport.
+- P2: The shared backdrop blur softened the highlighted Language target. Resolved by disabling backdrop blur only for anchored coachmark steps.
+
+## Functional and accessibility checks
+
+- Search and Language targets remain inert while highlighted.
+- Back and Next move the active target and clean up the previous target state.
+- Dialog-scoped automated accessibility scan: 0 violations, 0 incomplete checks, 19 passes.
+- Focused component suite: 10/10 tests passed.
+- Type check and touched-file lint passed.
+- Browser console contained development-only informational logs; no runtime errors were reported for the tour.
+
+## Intentional differences from the reference
+
+The implementation uses the Jesus Film Project Watch design system, copy, controls, and target locations rather than cloning Netflix branding. The matched behavior is the requested interaction pattern: successive anchored tips that visibly point to live interface controls.
+
+## Result
+
+final result: passed

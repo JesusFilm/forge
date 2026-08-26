@@ -1,6 +1,7 @@
 import Image from "next/image"
 import { useTranslations } from "next-intl"
 import { WATCH_PAGE_CONTENT_CLASSES } from "@/lib/content-width"
+import { WatchIntroductionReplayButton } from "@/components/watch/WatchIntroductionReplayButton"
 
 const navLinks = [
   { key: "share", href: "https://www.jesusfilm.org/partners/share/" },
@@ -18,7 +19,11 @@ const navLinks = [
 const giveNowHref =
   "https://www.jesusfilm.org/how-to-help/ways-to-donate/give-now/?amount=&frequency=single&campaign-code=NXWJPO&designation-number=2592320&thankYouRedirect=/dev/special/thank-you-refer/social-share/"
 
-export function WatchHomeFooter() {
+export function WatchHomeFooter({
+  showIntroductionReplay = false,
+}: {
+  showIntroductionReplay?: boolean
+}) {
   const t = useTranslations("WatchFooter")
 
   return [
@@ -96,6 +101,11 @@ export function WatchHomeFooter() {
             </a>
           </p>
         </div>
+        {showIntroductionReplay ? (
+          <div className="flex justify-start border-t border-[#dedbd7] pt-6">
+            <WatchIntroductionReplayButton />
+          </div>
+        ) : null}
       </div>
     </footer>,
     <aside
