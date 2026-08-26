@@ -73,6 +73,7 @@ describe("first-party app seeds", () => {
         key: "local",
         kind: "local",
         clientId: "jfp_changelog_local",
+        mcpResourceAudience: "http://localhost:3000/mcp",
         redirectUris: ["http://localhost:3000/api/auth/callback"],
         postLogoutRedirectUris: ["http://localhost:3000/api/auth/login"],
         allowedOrigins: ["http://localhost:3000"],
@@ -83,6 +84,7 @@ describe("first-party app seeds", () => {
         key: "production",
         kind: "production",
         clientId: "jfp_changelog_production",
+        mcpResourceAudience: "https://changelog.jesusfilm.org/mcp",
         redirectUris: ["https://changelog.jesusfilm.org/api/auth/callback"],
         postLogoutRedirectUris: [
           "https://changelog.jesusfilm.org/api/auth/login",

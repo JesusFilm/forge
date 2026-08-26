@@ -1,4 +1,5 @@
 import { CHANGELOG_OAUTH_SCOPES, type AuthScopeKey } from "./scopes"
+import { CHANGELOG_OAUTH_RESOURCES } from "./changelog-oauth-resources"
 
 export const FIRST_PARTY_OWNER = {
   ownerType: "jesus_film",
@@ -27,6 +28,7 @@ export type AppEnvironmentSeed = {
   clientId: string
   managerSessionServiceClientId?: string
   managerSessionServiceAudience?: string
+  mcpResourceAudience?: string
   redirectUris: string[]
   postLogoutRedirectUris: string[]
   allowedOrigins: string[]
@@ -414,6 +416,7 @@ export const CHANGELOG_APP_SEED: RegisteredAppSeed = {
       key: "local",
       kind: "local",
       clientId: CHANGELOG_LOCAL_CLIENT_ID,
+      mcpResourceAudience: CHANGELOG_OAUTH_RESOURCES.local,
       redirectUris: ["http://localhost:3000/api/auth/callback"],
       postLogoutRedirectUris: ["http://localhost:3000/api/auth/login"],
       allowedOrigins: ["http://localhost:3000"],
@@ -424,6 +427,7 @@ export const CHANGELOG_APP_SEED: RegisteredAppSeed = {
       key: "production",
       kind: "production",
       clientId: CHANGELOG_PRODUCTION_CLIENT_ID,
+      mcpResourceAudience: CHANGELOG_OAUTH_RESOURCES.production,
       redirectUris: ["https://changelog.jesusfilm.org/api/auth/callback"],
       postLogoutRedirectUris: [
         "https://changelog.jesusfilm.org/api/auth/login",
@@ -446,6 +450,7 @@ export const ADMIN_MCP_APP_SEED: RegisteredAppSeed = {
       key: "local",
       kind: "local",
       clientId: "jfp_admin_mcp_local",
+      mcpResourceAudience: "http://localhost:3003/mcp",
       redirectUris: ["http://localhost:3003/mcp/oauth/callback"],
       postLogoutRedirectUris: ["http://localhost:3003/dashboard/experiences"],
       allowedOrigins: ["http://localhost:3003"],
@@ -456,6 +461,7 @@ export const ADMIN_MCP_APP_SEED: RegisteredAppSeed = {
       key: "preview",
       kind: "preview",
       clientId: "jfp_admin_mcp_preview",
+      mcpResourceAudience: "https://admin-preview.jesusfilm.org/mcp",
       redirectUris: ["https://admin-preview.jesusfilm.org/mcp/oauth/callback"],
       postLogoutRedirectUris: [
         "https://admin-preview.jesusfilm.org/dashboard/experiences",
@@ -468,6 +474,7 @@ export const ADMIN_MCP_APP_SEED: RegisteredAppSeed = {
       key: "staging",
       kind: "staging",
       clientId: "jfp_admin_mcp_staging",
+      mcpResourceAudience: "https://admin-stage.jesusfilm.org/mcp",
       redirectUris: ["https://admin-stage.jesusfilm.org/mcp/oauth/callback"],
       postLogoutRedirectUris: [
         "https://admin-stage.jesusfilm.org/dashboard/experiences",
@@ -480,6 +487,7 @@ export const ADMIN_MCP_APP_SEED: RegisteredAppSeed = {
       key: "production",
       kind: "production",
       clientId: "jfp_admin_mcp_production",
+      mcpResourceAudience: "https://admin.jesusfilm.org/mcp",
       redirectUris: ["https://admin.jesusfilm.org/mcp/oauth/callback"],
       postLogoutRedirectUris: [
         "https://admin.jesusfilm.org/dashboard/experiences",

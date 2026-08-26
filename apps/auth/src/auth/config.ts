@@ -21,6 +21,11 @@ import {
 } from "@/domain/apps"
 import { AUTH_SCOPES } from "@/domain/scopes"
 import {
+  createOAuthResourceCatalog,
+  getPublicDcrAllowedScopes,
+  getPublicDcrResources,
+} from "@/domain/oauth-resources"
+import {
   CHANGELOG_OAUTH_RESOURCES,
   CHANGELOG_OAUTH_SCOPES,
 } from "@/services/oauth-policy.service"
@@ -32,14 +37,19 @@ import {
   getAdminWatchProgressErasureConfig,
   getAppleNativeClientConfig,
   getAuthBaseUrl,
+  getAuthCustomAudiences,
   getAuthTrustedOrigins,
-  getAuthValidAudiences,
 } from "@/config/env"
 import { prisma } from "@/db/client"
 
 assertProductionAuthSecrets()
 
-const protectedResources = getAuthValidAudiences()
+const protectedResources = createOAuthResourceCatalog({
+  authIssuer: getAuthBaseUrl(),
+  customAudiences: getAuthCustomAudiences(),
+})
+const publicDcrResources = getPublicDcrResources(protectedResources)
+const publicDcrAllowedScopes = getPublicDcrAllowedScopes(protectedResources)
 const changelogResources: readonly string[] = Object.values(
   CHANGELOG_OAUTH_RESOURCES,
 )
@@ -290,12 +300,12 @@ export const auth = betterAuth({
       // to server startup after migrations, not static route collection.
       resources: isNextBuild
         ? []
-        : protectedResources.map((identifier) => ({
+        : protectedResources.map(({ identifier, allowedScopes }) => ({
             identifier,
-            allowedScopes: AUTH_SCOPES.map((scope) => scope.key),
+            allowedScopes: [...allowedScopes],
           })),
-      clientRegistrationAllowedResources: isNextBuild ? [] : protectedResources,
-      clientRegistrationDefaultResources: isNextBuild ? [] : changelogResources,
+      clientRegistrationAllowedResources: isNextBuild ? [] : publicDcrResources,
+      clientRegistrationDefaultResources: isNextBuild ? [] : publicDcrResources,
       advertisedMetadata: {
         scopes_supported: AUTH_SCOPES.map((scope) => scope.key),
         claims_supported: [
@@ -318,7 +328,7 @@ export const auth = betterAuth({
         ],
       },
       clientRegistrationDefaultScopes: ["openid", "profile:read", "email:read"],
-      clientRegistrationAllowedScopes: AUTH_SCOPES.map((scope) => scope.key),
+      clientRegistrationAllowedScopes: publicDcrAllowedScopes,
       clientCredentialGrantDefaultScopes: ["openid"],
       accessTokenExpiresIn: 60 * 60,
       m2mAccessTokenExpiresIn: 60 * 30,
