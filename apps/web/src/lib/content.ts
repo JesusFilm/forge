@@ -519,10 +519,32 @@ function isUnknownCategoryRailTypenameValidation(result: {
   })
 }
 
-async function getExperienceBySlug(
+async function getLegacyExperienceBySlug(
   locale: string,
   slug: string,
 ): Promise<NonNullable<WatchExperience> | null> {
+  const result = await client.query({
+    query: GET_LEGACY_WATCH_EXPERIENCE,
+    variables: { locale, slug },
+    fetchPolicy: "no-cache",
+  })
+  const error = graphqlError(
+    result as { error?: ErrorLike; errors?: unknown[] },
+  )
+  if (error) throw error
+  return (result.data?.experienceBySlug ??
+    null) as NonNullable<WatchExperience> | null
+}
+
+async function getExperienceBySlug(
+  locale: string,
+  slug: string,
+  categoryRailCompatibility?: "supported" | "legacy-schema",
+): Promise<NonNullable<WatchExperience> | null> {
+  if (categoryRailCompatibility === "legacy-schema") {
+    return getLegacyExperienceBySlug(locale, slug)
+  }
+
   const result = await client
     .query({
       query: GET_WATCH_EXPERIENCE,
@@ -546,17 +568,7 @@ async function getExperienceBySlug(
     result === null ||
     isUnknownCategoryRailTypenameValidation(resultWithErrors)
   ) {
-    const legacyResult = await client.query({
-      query: GET_LEGACY_WATCH_EXPERIENCE,
-      variables: { locale, slug },
-      fetchPolicy: "no-cache",
-    })
-    const legacyError = graphqlError(
-      legacyResult as { error?: ErrorLike; errors?: unknown[] },
-    )
-    if (legacyError) throw legacyError
-    return (legacyResult.data?.experienceBySlug ??
-      null) as NonNullable<WatchExperience> | null
+    return getLegacyExperienceBySlug(locale, slug)
   }
 
   const error = graphqlError(resultWithErrors)
@@ -1320,7 +1332,8 @@ async function resolveSlugPage(
   locale: string,
   slug: string,
 ): Promise<ResolvedWatchPage | null> {
-  const { setting: settings } = await getWatchSettings(locale)
+  const { setting: settings, categoryRailCompatibility } =
+    await getWatchSettings(locale)
   // Lowercase both sides of the template-slug comparison. Editors can save
   // `defaultTemplateExperience.slug` as `Single-Video` while users hit
   // `/single-video`; byte-equality would silently mis-route the request.
@@ -1346,7 +1359,11 @@ async function resolveSlugPage(
   // rendering, not a public Experience page. Any non-template slug can still
   // fall back to a curated Experience when no route video exists.
   if (slug.toLowerCase() !== templateSlug) {
-    const experience = await getExperienceBySlug(locale, slug)
+    const experience = await getExperienceBySlug(
+      locale,
+      slug,
+      categoryRailCompatibility,
+    )
     if (experience) {
       return {
         kind: "experience",
