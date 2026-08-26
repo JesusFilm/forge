@@ -677,7 +677,12 @@ function WatchHomeMediaCollection({
           className={cn(
             "relative z-[3]",
             usesMobileCarousel
-              ? `${CONTENT_WIDTH_ALIGN_CLASSES} snap-x snap-mandatory overflow-x-auto overscroll-x-contain scroll-smooth [scrollbar-width:none] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white/80 md:snap-none md:overflow-visible [&::-webkit-scrollbar]:hidden`
+              ? // scroll-pl-5 mirrors the inner grid's px-5: without it, mandatory
+                // snapping aligns the first card's snap-start edge to the bare
+                // scrollport on load, pulling scrollLeft past the content inset so
+                // the first card sits flush with the viewport edge. Snapping is
+                // mobile-only (md:snap-none), so only the px-5 tier needs a mirror.
+                `${CONTENT_WIDTH_ALIGN_CLASSES} snap-x snap-mandatory scroll-pl-5 overflow-x-auto overscroll-x-contain scroll-smooth [scrollbar-width:none] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white/80 md:snap-none md:overflow-visible [&::-webkit-scrollbar]:hidden`
               : WATCH_PAGE_CONTENT_CLASSES,
           )}
         >

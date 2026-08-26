@@ -7,16 +7,20 @@ services:
         TZ: ${TZ:-UTC}
         GIT_DELTA_VERSION: "0.18.2"
         ZSH_IN_DOCKER_VERSION: "1.2.1"
+        T3_VERSION: "0.0.33"
     volumes:
       - ..:/workspace:cached
       - claude-code-bashhistory:/commandhistory
       - claude-code-config:/home/vscode/.claude
       - codex-config:/home/vscode/.codex
       - claude-code-gh:/home/vscode/.config/gh
+      - devcontainer-ssh:/home/vscode/.ssh
+      - devcontainer-ssh-host-keys:/etc/ssh/host_keys
       - ${HOME}/.gitconfig:/home/vscode/.gitconfig:ro
       - .:/workspace/.devcontainer:ro
     ports:
       - "127.0.0.1:3000:3000"
+      - "127.0.0.1:2222:22"
     cap_add:
       - NET_ADMIN
       - NET_RAW
@@ -27,7 +31,15 @@ services:
       redis:
         condition: service_healthy
     # Keep the container alive for VS Code to attach
-    command: sleep infinity
+    command: >
+      bash -lc "sudo install -d -m 0700 /etc/ssh/host_keys &&
+      (sudo test -f /etc/ssh/host_keys/ssh_host_ed25519_key ||
+      sudo ssh-keygen -q -t ed25519 -N '' -f /etc/ssh/host_keys/ssh_host_ed25519_key) &&
+      sudo install -d -m 0755 /run/sshd &&
+      sudo install -d -o vscode -g vscode -m 0700 /home/vscode/.ssh &&
+      sync-github-authorized-keys &&
+      sudo /usr/sbin/sshd &&
+      sleep infinity"
 
   db:
     image: pgvector/pgvector:pg18
@@ -66,3 +78,5 @@ volumes:
   claude-code-config:
   codex-config:
   claude-code-gh:
+  devcontainer-ssh:
+  devcontainer-ssh-host-keys:
