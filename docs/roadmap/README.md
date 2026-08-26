@@ -4,10 +4,10 @@
 
 Build trusted, scalable AI capabilities that help people discover gospel content, engage meaningfully with Scripture, and take faithful next steps.
 
-## Status (August 24, 2026)
+## Status (August 26, 2026)
 
-- **Total tickets:** 588
-- **Complete:** 432
+- **Total tickets:** 594
+- **Complete:** 438
 - **In progress:** 40
 - **Not started:** 37
 - **Blocked:** 79
@@ -146,6 +146,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-363](content-discovery/feat-363-watch-localized-topic-search-query.md)                                   | Submit localized Watch topic search queries                                                     | codex      | P1       | 2026-08-14 | 1    | 2026-08-14 | complete    |
 | [feat-403](content-discovery/feat-403-watch-language-inventory-subtitle-intent.md)                             | Watch language inventory subtitle intent                                                        | vlad       | P1       | 2026-08-20 | 1    | 2026-08-20 | complete    |
 | [feat-412](content-discovery/feat-412-watch-search-suggestion-multi-token-recall.md)                           | Recover Watch suggestions for near-miss multi-word queries                                      | vlad       | P1       | 2026-08-22 | 1    | 2026-08-22 | complete    |
+| [feat-421](content-discovery/feat-421-watch-search-unavailable-card-presentation.md)                           | Present unavailable Watch search results as recovery cards                                      | urim       | P1       | 2026-08-22 | 2    | 2026-08-23 | complete    |
 | [feat-420](content-discovery/feat-420-watch-suggestion-backspace-shorten-recovery.md)                          | Recover Watch suggestions after Backspace-shortened queries                                     | vlad       | P1       | 2026-08-23 | 1    | 2026-08-23 | complete    |
 | [feat-394](content-discovery/feat-394-bounded-recommendation-exploration.md)                                   | Bounded recommendation exploration                                                              | nisal      | P2       | —          | 6    | —          | blocked     |
 | [feat-395](content-discovery/feat-395-learned-multi-outcome-reranker.md)                                       | Learned multi-outcome re-ranker                                                                 | nisal      | P2       | —          | 10   | —          | blocked     |
@@ -495,6 +496,9 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-416](platform/feat-416-watch-life-of-jesus-chapter-context.md)                   | Watch carousel context priority                                                  | codex      | P1       | 2026-08-22 | 2    | 2026-08-23 | complete    |
 | [feat-418](platform/feat-418-watch-subtitle-discoverability-hydration.md)              | Watch subtitle discoverability and hydration                                     | codex      | P1       | 2026-08-22 | 2    | 2026-08-23 | complete    |
 | [feat-419](platform/feat-419-watch-player-tooltip-consistency.md)                      | Watch player tooltip consistency                                                 | urim       | P1       | 2026-08-22 | 1    | 2026-08-22 | complete    |
+| [feat-421](platform/feat-421-watch-home-language-modal-parity.md)                      | Watch home language modal parity                                                 | vlad       | P1       | 2026-08-24 | 1    | 2026-08-24 | complete    |
+| [feat-422](platform/feat-422-watch-ui-native-context-translation-prompts.md)           | Watch UI native-context translation prompts and Chinese catalog review           | vlad       | P1       | 2026-08-25 | 1    | 2026-08-25 | complete    |
+| [feat-423](platform/feat-423-devcontainer-host-accessible-dev-ports.md)                | Expose devcontainer development servers to the host                              | nisal      | P1       | 2026-08-26 | 1    | 2026-08-26 | complete    |
 | [feat-247](platform/feat-247-watch-nested-series-language-availability.md)             | Watch nested-series language availability                                        | vlad       | P2       | —          | —    | —          | complete    |
 | [feat-336](platform/feat-336-watch-homepage-seed-schema-drift.md)                      | Repair Watch homepage Experience seed schema drift                               | unassigned | P2       | —          | 1    | —          | not-started |
 | [feat-088](platform/feat-088-internal-tools-branding.md)                               | Internal Tools Branding                                                          | vlad       | P2       | 2026-03-30 | 14   | 2026-04-12 | complete    |
@@ -614,6 +618,8 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-338](topic-experiences/feat-338-watch-download-sequence-prefixes.md)                  | Watch download sequence prefixes                                                 | vlad       | P1       | 2026-08-06 | 1    | 2026-08-06 | complete    |
 | [feat-276](topic-experiences/feat-276-bulk-locale-factory-mcp.md)                           | Bulk Locale Factory MCP and Codex skill                                          | tataihono  | P1       | 2026-08-15 | 21   | 2026-09-04 | complete    |
 | [feat-397](topic-experiences/feat-397-experience-draft-staging.md)                          | Experience Draft Staging and Public Preview                                      | unassigned | P1       | 2026-08-20 | 5    | 2026-08-24 | complete    |
+| [feat-399](topic-experiences/feat-399-watch-language-globe-preview.md)                      | Watch animated language globe preview                                            | urim       | P1       | 2026-08-20 | 1    | 2026-08-20 | complete    |
+| [feat-400](topic-experiences/feat-400-watch-language-globe-sections.md)                     | Reuse the Watch language globe on home and not-found pages                       | urim       | P1       | 2026-08-21 | 1    | 2026-08-21 | complete    |
 | [feat-405](topic-experiences/feat-405-experience-duplication-admin-api-mcp.md)              | Experience duplication across Admin, GraphQL, and MCP                            | codex      | P1       | 2026-08-21 | 1    | 2026-08-21 | complete    |
 | [feat-020](topic-experiences/feat-020-ai-topic-content-generation.md)                       | AI Topic Content Generation Service                                              | vlad       | P2       | 2026-04-28 | 28   | 2026-05-25 | blocked     |
 | [feat-021](topic-experiences/feat-021-generation-quality-monitoring.md)                     | Generation Quality & Monitoring Dashboard                                        | ekkasit    | P2       | 2026-05-05 | 21   | 2026-05-25 | blocked     |

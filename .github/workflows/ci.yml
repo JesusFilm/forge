@@ -210,6 +210,24 @@ jobs:
       - name: Check pnpm patch keys match installed versions
         run: node scripts/check-patched-deps.mjs
 
+  dev-port-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+      - name: Test the development-port contract guard logic
+        run: node scripts/check-dev-port-contract.test.mjs
+      - name: Check development-port contract
+        run: node scripts/check-dev-port-contract.mjs
+      - name: Validate resolved devcontainer Compose contract
+        run: >-
+          docker compose -f .devcontainer/docker-compose.yml config --format json |
+          node scripts/check-dev-port-contract.mjs --resolved-compose-stdin
+
   experiment-ledger:
     runs-on: ubuntu-latest
     steps:
@@ -371,6 +389,7 @@ jobs:
       - admin-schema-drift
       - format
       - patched-deps-guard
+      - dev-port-contract
       - experiment-ledger
       - lint
       - test

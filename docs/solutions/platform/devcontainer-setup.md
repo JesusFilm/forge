@@ -1,3 +1,37 @@
+---
+title: "Devcontainer setup for pnpm and Turborepo monorepos"
+date: 2026-05-18
+last_updated: 2026-08-26
+category: platform
+module: devcontainer
+problem_type: developer_experience
+component: development_environment
+severity: medium
+applies_when:
+  - "Running Forge development servers inside the Compose devcontainer while browsing them from the Docker host"
+  - "Adding or changing a stable application port, dev command listener, or Mastra Studio endpoint"
+  - "Preventing development services from being published on host LAN interfaces"
+  - "Keeping Docker Compose as the single host-publication mechanism instead of editor port forwarding"
+  - "Guarding both authored and normalized Compose configuration against networking drift"
+symptoms:
+  - "A development server is reachable inside the devcontainer but localhost on the Docker host refuses or times out"
+  - "Host access works only while an editor-specific port-forwarding feature is active"
+  - "Mastra Studio loads from the host but derives an API address that is not browser-reachable"
+root_cause: incomplete_setup
+resolution_type: environment_setup
+tags:
+  - devcontainer
+  - docker-compose
+  - host-port-publishing
+  - loopback-binding
+  - local-dev
+  - mastra
+  - nextjs
+  - contract-testing
+related_features:
+  - feat-423
+---
+
 # Devcontainer Setup for pnpm + Turborepo Monorepos
 
 ## Pattern
@@ -70,6 +104,144 @@ docker compose -f .devcontainer/docker-compose.yml exec db \
   psql -U forge -d forge -Atqc \
   "select current_setting('server_version'), extversion from pg_extension where extname = 'vector';"
 ```
+
+## Host access to development servers
+
+The `app` service publishes every stable application port on the Docker host's
+IPv4 loopback interface. Use these URLs from a browser or HTTP client on the
+host machine after starting the corresponding process inside the devcontainer:
+
+| Service               | Port | Host URL                |
+| --------------------- | ---: | ----------------------- |
+| Web                   | 3000 | `http://localhost:3000` |
+| Manager               | 3002 | `http://localhost:3002` |
+| Admin                 | 3003 | `http://localhost:3003` |
+| Auth                  | 3004 | `http://localhost:3004` |
+| Mastra Gateway        | 3005 | `http://localhost:3005` |
+| YouTube Mapper        | 3010 | `http://localhost:3010` |
+| Crop Worker           | 3011 | `http://localhost:3011` |
+| Shorts Worker         | 3012 | `http://localhost:3012` |
+| Roadmap               | 3100 | `http://localhost:3100` |
+| Chat                  | 3200 | `http://localhost:3200` |
+| Mastra Studio and API | 4111 | `http://localhost:4111` |
+
+Three separate network boundaries make this work:
+
+1. The process must listen on a container-reachable address, not container
+   loopback. Each Next.js command pins `0.0.0.0`; the worker HTTP servers keep
+   Node's omitted-host, all-interface default; Compose sets `HOST=0.0.0.0` for
+   Mastra.
+2. Compose publishes the same-number container ports only on host
+   `127.0.0.1`, for example `127.0.0.1:3003:3003`. This makes them reachable
+   from the Docker host without intentionally exposing them on the host LAN.
+3. The host browser connects to `localhost:<port>`. Mastra also receives
+   `MASTRA_AUTO_DETECT_URL=true`, so Studio derives API requests from the same
+   browser origin instead of advertising a container-only address.
+
+The existing SSH publication on `127.0.0.1:2222` established the same
+loopback-only host-access pattern. These boundaries need separate checks: a
+running container and an open host port do not prove the service can complete a
+request. Treat container state, published bindings, process listeners, and an
+application-level host request as separate verification layers.
+
+Port publication does not start an application. Run the required `pnpm dev`,
+worker dev command, or `pnpm mastra:dev` inside the devcontainer first. Rebuild
+or recreate the devcontainer after changing `.devcontainer/docker-compose.yml`;
+restarting only the application process does not apply new Docker port
+bindings.
+
+Compose is the only repository-configured and supported publication mechanism
+for these stable ports. The devcontainer deliberately omits `forwardPorts` and
+matching `portsAttributes`, so the supported path does not depend on VS Code or
+another editor's forwarding service. The repository contract check rejects
+explicit contracted-port `forwardPorts` or `portsAttributes`, host networking,
+Compose merge/extends/include indirection, a different devcontainer Compose
+target, or any extra `app` port mapping. CI also feeds the normalized Compose
+JSON model into the checker so effective publications cannot drift from the
+reviewed source contract:
+
+```bash
+docker compose -f .devcontainer/docker-compose.yml config --format json \
+  | node scripts/check-dev-port-contract.mjs --resolved-compose-stdin
+```
+
+The host ports are intentionally fixed. Only one local Compose project can own
+them at a time, so a second Forge worktree or devcontainer will fail with an
+address-in-use error while the first is running. Stop the first project before
+starting the second. Because the bindings use IPv4 `127.0.0.1`, diagnose with
+that address even on hosts where `localhost` also resolves to IPv6. With a
+remote Docker context, `127.0.0.1` is loopback on the Docker daemon host, not
+the developer workstation; use SSH tunnelling or an equivalent secure path
+instead of widening the shared bindings.
+
+Use Docker Engine 28.0.0 or newer—including Docker Desktop with a bundled Engine
+28.0.0 or newer—when relying on these loopback publications for same-L2 network
+isolation. Older Docker Engine releases can allow another machine on the same
+layer-2 network to reach ports published to localhost, so the Compose address
+alone is not the same security boundary on those versions.
+
+### Raw `docker run` usage
+
+Compose owns the published-port contract. If an image has been tagged
+`forge-dev:local`, starting it directly requires the equivalent environment and
+explicit loopback mappings (plus the volumes and other options needed by the
+development image):
+
+```bash
+docker run \
+  -e HOST=0.0.0.0 \
+  -e MASTRA_AUTO_DETECT_URL=true \
+  -p 127.0.0.1:3000:3000 \
+  -p 127.0.0.1:3002:3002 \
+  -p 127.0.0.1:3003:3003 \
+  -p 127.0.0.1:3004:3004 \
+  -p 127.0.0.1:3005:3005 \
+  -p 127.0.0.1:3010:3010 \
+  -p 127.0.0.1:3011:3011 \
+  -p 127.0.0.1:3012:3012 \
+  -p 127.0.0.1:3100:3100 \
+  -p 127.0.0.1:3200:3200 \
+  -p 127.0.0.1:4111:4111 \
+  forge-dev:local
+```
+
+Do not omit `127.0.0.1` from these `-p` arguments: Docker otherwise publishes
+the port on every host interface by default.
+
+### Verification
+
+Run the dependency-free contract checks and resolve the Compose model from the
+repository root:
+
+```bash
+node scripts/check-dev-port-contract.test.mjs
+node scripts/check-dev-port-contract.mjs
+docker compose -f .devcontainer/docker-compose.yml config --format json \
+  | node scripts/check-dev-port-contract.mjs --resolved-compose-stdin
+```
+
+With the devcontainer and representative servers running, confirm Docker's
+host bindings, the in-container listeners, and end-to-end host access:
+
+```bash
+docker compose -f .devcontainer/docker-compose.yml port app 3000
+docker compose -f .devcontainer/docker-compose.yml port app 4111
+
+# Run inside the devcontainer.
+ss -ltnp | rg ':(3000|3002|3003|3004|3005|3010|3011|3012|3100|3200|4111)\b'
+
+# Run on the Docker host after the corresponding processes have started.
+curl --fail http://127.0.0.1:3010/health
+curl --fail http://127.0.0.1:3011/health
+curl --fail http://127.0.0.1:3012/health
+```
+
+The `docker compose port` output should start with `127.0.0.1:`. If Dev
+Containers started Compose with an explicit project name, find it with
+`docker compose ls` and add `--project-name <name>` to both commands. Finally,
+open representative browser surfaces such as `http://localhost:3000`,
+`http://localhost:3003`, and `http://localhost:4111`; Mastra Studio and its API
+requests should remain on the `http://localhost:4111` origin.
 
 ## Local SSH access
 
