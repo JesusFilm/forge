@@ -1,7 +1,7 @@
 ---
 title: "Bound Watch infinite feeds at both the server and DOM layers"
 date: "2026-08-21"
-last_updated: "2026-08-25"
+last_updated: "2026-08-26"
 category: "performance-issues"
 module: "apps/web Watch homepage and apps/admin collection feed"
 problem_type: "performance_issue"
@@ -92,6 +92,13 @@ contains focus. Mobile requests two parents with up to eight cards each;
 desktop requests three parents with up to twelve. These values are validated at
 both the browser route and Admin boundary.
 
+The dynamic feed remains an editor-authored `MediaCollectionBlock` in the
+Experience block sequence. Web may locate that block to derive bounded
+exclusions and initial cache signatures, but it renders `normalized.blocks` in
+their authored order. The editor hint can recommend placing the feed last;
+runtime code must not extract and reappend it, because doing so silently
+overrides the Experience's ordering contract.
+
 Only parent collection slugs and child or explicitly configured Video IDs
 belong in the initial exclusion identity. Child Video IDs remain useful for
 excluding cards, but child Video slugs must not be serialized as parent
@@ -156,6 +163,8 @@ is both faster to ship and safer for production writes.
 - Build shared cache keys only from normalized content inputs. Separate draft
   and live namespaces, and test publication-time invalidation before extending
   retention.
+- Treat dynamic feed placement as authored Experience data. Test its order
+  against neighboring blocks instead of moving it to satisfy a layout hint.
 - A public cache endpoint needs an admission proof as well as input bounds.
   Bind every long-lived variant to a server-issued signature and require an
   exact canonical URL before CDN admission; a maximum URL length alone still

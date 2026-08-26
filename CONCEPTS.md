@@ -878,6 +878,14 @@ An ordered, schema-validated content unit within an Experience. Blocks carry a d
 
 An Experience Block that groups ordered watch content beneath independently authored category, title, supporting-title, description, call-to-action, and footer semantics; its presentation variant may change the media layout but not the authored content hierarchy.
 
+### Dynamic Collection Feed
+
+A Media Collection Block whose `itemsSource` is `dynamicCollections`, causing
+Web to fill bounded carousel pages from the shared Watch collection feed as the
+viewer approaches it. It is still an editor-authored Experience Block: its
+position comes from the Experience block sequence, while its generated page
+identity is shared across viewers and excludes account or device identity.
+
 ### Homepage Experience
 
 The single Experience designated as the watch home for a given locale, resolved per-locale as one curated Experience rather than by listing every Experience. Designation is not rendering: web, mobile, and (as of 2026-07) TV all now render this Experience's rows as their home body, each hydrating a curated item by the item's Core ID through the client's bulk video fetch — supplemented by an on-demand fetch for curated items the client's code-defined pool does not already cover, since an editor can reference content outside that pool. A supplementary hydration record feeds only the Experience rows, never the code-defined featured hero. The featured hero stays code-defined per client — see Home Curation.
