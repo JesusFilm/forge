@@ -8,16 +8,12 @@
  * one video view (plus the chrome) into the rect measured here.
  */
 
-import { useEffect, useRef, useSyncExternalStore } from "react"
-import {
-  StyleSheet,
-  View,
-  useWindowDimensions,
-  type LayoutChangeEvent,
-} from "react-native"
+import { useCallback, useEffect, useRef, useSyncExternalStore } from "react"
+import { StyleSheet, View, useWindowDimensions } from "react-native"
 import { Image } from "expo-image"
 
 import { BLACK } from "../../lib/color"
+import { datadogLog } from "../../lib/datadog"
 import {
   getPlaybackRequestStore,
   type PlaybackRequest,
@@ -29,6 +25,10 @@ import { PLAYER_HEIGHT_RATIO } from "../../lib/playerLayout"
 import { resolveImageUrl } from "../../lib/resolveImageUrl"
 import type { ProgressIdentity } from "../../lib/watchProgress/recorder"
 import { PlayerPoster } from "./PlayerPoster"
+
+// ~2s at 60fps. Long enough for a slow cold open to attach the native node,
+// short enough that a genuinely unmeasurable slot stops asking.
+export const MEASURE_RETRY_FRAMES = 120
 
 type PlayerSlotProps = {
   /** Null while the surface has no stream yet, which is a state it OWNS rather
@@ -85,6 +85,7 @@ export function PlayerSlot({
   const { width: screenWidth, height: screenHeight } = useWindowDimensions()
   const viewRef = useRef<View | null>(null)
   const slotIdRef = useRef<number | null>(null)
+  const rectPublishedRef = useRef(false)
 
   const request: PlaybackRequest = {
     streamingUrl,
@@ -124,20 +125,57 @@ export function PlayerSlot({
   })
 
   const snapshot = useSyncExternalStore(store.subscribe, store.getSnapshot)
+  // The RECT, not just the attachment: the host draws nothing until it has one,
+  // so treating "attached" as drawn would drop this poster over a black box.
   const isDrawn =
-    snapshot.slotId != null && snapshot.slotId === slotIdRef.current
+    snapshot.slotId != null &&
+    snapshot.slotId === slotIdRef.current &&
+    snapshot.rect != null
 
-  const handleLayout = (_event: LayoutChangeEvent) => {
+  const measureIntoStore = useCallback(() => {
     const id = slotIdRef.current
     const node = viewRef.current
     if (id == null || node == null) return
     // Window coordinates, not the layout event's parent-relative ones: the host
     // draws into a container that fills the window.
     node.measureInWindow((x, y, width, height) => {
-      if (slotIdRef.current !== id) return
+      if (slotIdRef.current !== id || width <= 0 || height <= 0) return
+      rectPublishedRef.current = true
       store.setSlotRect(id, { x, y, width, height })
     })
-  }
+  }, [store])
+
+  // `measureInWindow` SILENTLY drops its callback when the native node is not
+  // attached yet, and `onLayout` fires once — so one unlucky cold open leaves
+  // the host with no rect, drawing nothing, forever. Retry on later frames.
+  useEffect(() => {
+    let attempts = 0
+    let live = true
+    let frame: number | null = requestAnimationFrame(function pump() {
+      frame = null
+      if (!live || rectPublishedRef.current || slotIdRef.current == null) return
+      measureIntoStore()
+      if (++attempts >= MEASURE_RETRY_FRAMES) {
+        // The end of every recovery path: the host draws nothing, and the
+        // viewer keeps this slot's poster — or its black ground with no poster.
+        datadogLog.warn("player_slot.measure_exhausted", {
+          "player_slot.frames": MEASURE_RETRY_FRAMES,
+          "player_slot.has_poster": requestRef.current.posterUrl != null,
+          "player_slot.fullscreen": requestRef.current.fullscreen,
+        })
+        return
+      }
+      frame = requestAnimationFrame(pump)
+    })
+    return () => {
+      // Belt to the cancel's braces, and it must not be the attempt counter:
+      // a frame already in flight would then read exhaustion and log a failure
+      // that teardown caused.
+      live = false
+      if (frame != null) cancelAnimationFrame(frame)
+      frame = null
+    }
+  }, [measureIntoStore])
 
   const playerHeight = Math.round(
     (screenWidth - horizontalInset * 2) * PLAYER_HEIGHT_RATIO,
@@ -150,7 +188,7 @@ export function PlayerSlot({
       // Android collapses a childless View out of the hierarchy, and a
       // collapsed view measures nothing.
       collapsable={false}
-      onLayout={handleLayout}
+      onLayout={measureIntoStore}
       style={[
         styles.slot,
         fullscreen
