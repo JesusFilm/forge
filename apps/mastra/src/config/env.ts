@@ -341,6 +341,9 @@ const envSchema = z.object({
   OPENAI_API_KEY: z.string().min(1).optional(),
   OPENROUTER_API_PAID_KEY: z.string().min(1).optional(),
   OPENROUTER_API_KEY: z.string().min(1).optional(),
+  RAILWAY_GIT_COMMIT_SHA: z.string().min(1).optional(),
+  GIT_COMMIT_SHA: z.string().min(1).optional(),
+  RAILWAY_DEPLOYMENT_ID: z.string().min(1).optional(),
   OPENROUTER_EMBEDDINGS_BASE_URL: z
     .string()
     .url()
@@ -966,6 +969,9 @@ export const env = envSchema.parse({
     process.env.OPENROUTER_API_PAID_KEY,
   ),
   OPENROUTER_API_KEY: emptyToUndefined(process.env.OPENROUTER_API_KEY),
+  RAILWAY_GIT_COMMIT_SHA: emptyToUndefined(process.env.RAILWAY_GIT_COMMIT_SHA),
+  GIT_COMMIT_SHA: emptyToUndefined(process.env.GIT_COMMIT_SHA),
+  RAILWAY_DEPLOYMENT_ID: emptyToUndefined(process.env.RAILWAY_DEPLOYMENT_ID),
   OPENROUTER_EMBEDDINGS_BASE_URL: emptyToUndefined(
     process.env.OPENROUTER_EMBEDDINGS_BASE_URL,
   ),

@@ -19,6 +19,7 @@ import { DEVICE_GRANT_TYPE } from "@/services/device-client.service"
 import { finalizeBetterAuth17Schema } from "./finalize-better-auth-17-schema"
 
 const MANAGER_SESSION_SCOPE = "admin:manager-session:validate"
+const MANAGER_BACKEND_SCOPE = "admin:manager-backend"
 const BROWSER_GRANT_TYPES = ["authorization_code", "refresh_token"]
 const TV_DEVICE_CLIENT_ID_SET = new Set<string>(TV_DEVICE_CLIENT_IDS)
 const OFFLINE_ACCESS_SCOPE = "offline_access" satisfies AuthScopeKey
@@ -362,7 +363,7 @@ async function seedFirstPartyApp(appSeed: RegisteredAppSeed) {
           name: `${appSeed.displayName} (${environment.key} session validation)`,
           redirectUris: [],
           postLogoutRedirectUris: [],
-          scopes: [MANAGER_SESSION_SCOPE],
+          scopes: [MANAGER_SESSION_SCOPE, MANAGER_BACKEND_SCOPE],
           skipConsent: true,
           enableEndSession: false,
           disabled: !storedClientSecret,
@@ -387,7 +388,7 @@ async function seedFirstPartyApp(appSeed: RegisteredAppSeed) {
           name: `${appSeed.displayName} (${environment.key} session validation)`,
           redirectUris: [],
           postLogoutRedirectUris: [],
-          scopes: [MANAGER_SESSION_SCOPE],
+          scopes: [MANAGER_SESSION_SCOPE, MANAGER_BACKEND_SCOPE],
           skipConsent: true,
           enableEndSession: false,
           disabled: !storedClientSecret,

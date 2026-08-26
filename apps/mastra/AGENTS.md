@@ -37,6 +37,10 @@ Full context lives in `apps/mastra/CLAUDE.md`. Keep both files aligned.
 - Owns subtitle enrichment execution through `/forge-subtitle-enrichment`:
   reads Manager transcript artifacts, translates and retimes subtitles, and
   writes Manager-compatible subtitle/translation artifacts to shared storage.
+- Owns the subtitle translation gold-standard evaluator. The offline adapter
+  resolves exact human Core VTT references from a committed manifest and lock;
+  the protected cloud cell route accepts only already-frozen verified bytes,
+  never refetches Core, and runs the same production subtitle runtime.
 - Owns RAG retrieval for the seeker agent through the `retrieveAnswer` tool and
   `jesusfilm-rag-client` (outbound-only bearer to the JesusFilm RAG service;
   the tool returns cited passages, the agent generates the answer). Fully
@@ -145,6 +149,9 @@ Full context lives in `apps/mastra/CLAUDE.md`. Keep both files aligned.
 - Subtitle translation and retiming belongs in this runtime. Manager may call
   the service route and handle job state/Mux sync, but should not reintroduce
   provider-heavy subtitle execution.
+- Subtitle gold-standard evaluation is restricted to the offline CLI and the
+  service-bearer-protected one-cell Lab route. It must not publish subtitles,
+  commit raw human VTT bodies, or treat automatic scores as human approval.
 - Gospel-aware subtitle translation prompt steering belongs in this runtime.
   Manager may send optional title, label, and Bible-reference context, but
   Mastra owns scripture-context detection, translation prompt guidance, and

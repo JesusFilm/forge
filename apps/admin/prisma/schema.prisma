@@ -170,6 +170,119 @@ enum UserRole {
 /// Manager-specific product access grant consumed by apps/manager.
 enum ManagerRole {
   OPERATOR @map("OPERATOR")
+  REVIEWER @map("REVIEWER")
+}
+
+/// Versioned dimensions a language-qualified reviewer may judge. Keep these
+/// separate from specialist capability flags: a rubric grant cannot by itself
+/// confer scripture or theology authority.
+enum SubtitleReviewRubricDimension {
+  MEANING_ACCURACY   @map("meaning_accuracy")
+  NATURALNESS        @map("naturalness")
+  TIMING_READABILITY @map("timing_readability")
+  SCRIPTURE_THEOLOGY @map("scripture_theology")
+}
+
+enum SubtitleEvalCorpusStatus {
+  PROVISIONAL @map("provisional")
+  APPROVED    @map("approved")
+  SUPERSEDED  @map("superseded")
+}
+
+enum SubtitleEvalSnapshotKind {
+  SOURCE    @map("source")
+  REFERENCE @map("reference")
+}
+
+enum SubtitleEvalRunStatus {
+  QUEUED    @map("queued")
+  RUNNING   @map("running")
+  COMPLETED @map("completed")
+  PARTIAL   @map("partial")
+  FAILED    @map("failed")
+}
+
+enum SubtitleEvalCellStatus {
+  QUEUED    @map("queued")
+  RUNNING   @map("running")
+  COMPLETED @map("completed")
+  FAILED    @map("failed")
+}
+
+enum SubtitleEvalArtifactKind {
+  CANDIDATE_VTT   @map("candidate_vtt")
+  REVIEW_EVIDENCE @map("review_evidence")
+  CELL_REPORT     @map("cell_report")
+}
+
+enum SubtitleEvalProviderOperation {
+  SCRIPTURE_DETECTION  @map("scripture_detection")
+  TRANSLATION          @map("translation")
+  RETIMING             @map("retiming")
+  SCRIPTURE_VALIDATION @map("scripture_validation")
+}
+
+enum SubtitleEvalProviderCallStatus {
+  SUCCEEDED      @map("succeeded")
+  FAILED         @map("failed")
+  INVALID_OUTPUT @map("invalid_output")
+}
+
+enum SubtitleEvalAssignmentKind {
+  STANDARD   @map("standard")
+  SPECIALIST @map("specialist")
+}
+
+enum SubtitleEvalAssignmentStatus {
+  ASSIGNED  @map("assigned")
+  IN_REVIEW @map("in_review")
+  SUBMITTED @map("submitted")
+  BLOCKED   @map("blocked")
+  CANCELLED @map("cancelled")
+}
+
+enum SubtitleEvalReviewVerdict {
+  PASS                   @map("pass")
+  NEEDS_CHANGES          @map("needs_changes")
+  REFERENCE_QUESTIONABLE @map("reference_questionable")
+  SPECIALIST_REVIEW      @map("specialist_review")
+}
+
+enum SubtitleEvalIssueCode {
+  MISTRANSLATION  @map("mistranslation")
+  OMISSION        @map("omission")
+  ADDITION        @map("addition")
+  TERMINOLOGY     @map("terminology")
+  GRAMMAR         @map("grammar")
+  NATURALNESS     @map("naturalness")
+  TONE_REGISTER   @map("tone_register")
+  TIMING          @map("timing")
+  LINE_BREAK      @map("line_break")
+  READING_SPEED   @map("reading_speed")
+  SCRIPTURE       @map("scripture")
+  THEOLOGY        @map("theology")
+  REFERENCE_ERROR @map("reference_error")
+  OTHER           @map("other")
+}
+
+enum SubtitleEvalReferenceIssueStatus {
+  OPEN       @map("open")
+  ACCEPTED   @map("accepted")
+  REJECTED   @map("rejected")
+  SUPERSEDED @map("superseded")
+}
+
+enum SubtitleEvalChangedAxis {
+  MODEL           @map("model")
+  PROMPT_POLICY   @map("prompt_policy")
+  WORKFLOW_POLICY @map("workflow_policy")
+  CODE_REVISION   @map("code_revision")
+  RUNTIME         @map("runtime")
+}
+
+enum SubtitleEvalCoverageLabel {
+  SUFFICIENT            @map("sufficient")
+  INSUFFICIENT_EVIDENCE @map("insufficient_evidence")
 }
 
 /// Video classification (mirrors Core schema enum).
@@ -366,17 +479,481 @@ model User {
 }
 
 model ManagerMembership {
-  id        String      @id @default(cuid())
-  userId    String      @unique @map("user_id")
-  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  role      ManagerRole @default(OPERATOR)
-  revokedAt DateTime?   @map("revoked_at")
-  createdAt DateTime    @default(now()) @map("created_at")
-  updatedAt DateTime    @updatedAt @map("updated_at")
+  id                      String                         @id @default(cuid())
+  userId                  String                         @unique @map("user_id")
+  user                    User                           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role                    ManagerRole                    @default(OPERATOR)
+  revokedAt               DateTime?                      @map("revoked_at")
+  createdAt               DateTime                       @default(now()) @map("created_at")
+  updatedAt               DateTime                       @updatedAt @map("updated_at")
+  reviewerLanguageGrants  ManagerReviewerLanguageGrant[]
+  subtitleEvalAssignments SubtitleEvalAssignment[]
+  subtitleEvalReviews     SubtitleEvalHumanReview[]
 
   @@index([role])
   @@index([revokedAt])
   @@map("manager_membership")
+}
+
+/// Exact-language authorization for limited Manager subtitle reviewers.
+/// Authorization always matches `languageId` plus the current stable slug;
+/// `Language.bcp47` is display/runtime metadata only.
+model ManagerReviewerLanguageGrant {
+  id                        String                          @id @default(cuid())
+  managerMembershipId       String                          @map("manager_membership_id")
+  managerMembership         ManagerMembership               @relation(fields: [managerMembershipId], references: [id], onDelete: Cascade)
+  languageId                String                          @map("language_id")
+  language                  Language                        @relation(fields: [languageId], references: [id], onDelete: Restrict)
+  targetProficiencyEvidence String                          @map("target_proficiency_evidence")
+  sourceProficiencyEvidence String?                         @map("source_proficiency_evidence")
+  permittedRubricDimensions SubtitleReviewRubricDimension[] @default([]) @map("permitted_rubric_dimensions")
+  scriptureSpecialist       Boolean                         @default(false) @map("scripture_specialist")
+  theologySpecialist        Boolean                         @default(false) @map("theology_specialist")
+  qualificationVersion      Int                             @default(1) @map("qualification_version")
+  grantedById               String                          @map("granted_by_id")
+  grantReason               String                          @map("grant_reason")
+  revokedById               String?                         @map("revoked_by_id")
+  revocationReason          String?                         @map("revocation_reason")
+  revokedAt                 DateTime?                       @map("revoked_at")
+  createdAt                 DateTime                        @default(now()) @map("created_at")
+  updatedAt                 DateTime                        @updatedAt @map("updated_at")
+
+  @@unique([managerMembershipId, languageId])
+  @@index([languageId, revokedAt])
+  @@index([managerMembershipId, revokedAt])
+  @@map("manager_reviewer_language_grant")
+}
+
+/// Append-only security-boundary audit trail. It deliberately stores stable
+/// actor/subject identifiers instead of cascading relations so evidence
+/// survives later account or grant lifecycle changes.
+model ManagerAccessAuditEvent {
+  id                  String   @id @default(cuid())
+  eventType           String   @map("event_type")
+  actorId             String   @map("actor_id")
+  targetUserId        String   @map("target_user_id")
+  managerMembershipId String?  @map("manager_membership_id")
+  languageId          String?  @map("language_id")
+  requestId           String?  @map("request_id")
+  reason              String
+  metadata            Json     @default("{}")
+  createdAt           DateTime @default(now()) @map("created_at")
+
+  @@index([targetUserId, createdAt])
+  @@index([managerMembershipId, createdAt])
+  @@index([languageId, createdAt])
+  @@index([eventType, createdAt])
+  @@map("manager_access_audit_event")
+}
+
+/// Immutable, content-addressed identity for one frozen subtitle VTT object.
+/// The bytes live in Manager-owned object storage; Admin stores enough identity
+/// to re-verify the exact object before any paid evaluation call.
+model SubtitleEvalCorpusSnapshot {
+  id             String                   @id @default(cuid())
+  kind           SubtitleEvalSnapshotKind
+  sha256         String
+  rawSha256      String                   @map("raw_sha256")
+  clippedSha256  String?                  @map("clipped_sha256")
+  objectKey      String                   @unique @map("object_key")
+  byteLength     BigInt                   @map("byte_length")
+  mediaType      String                   @default("text/vtt") @map("media_type")
+  createdAt      DateTime                 @default(now()) @map("created_at")
+  sourceCells    SubtitleEvalCorpusCell[] @relation("SubtitleEvalSourceSnapshot")
+  referenceCells SubtitleEvalCorpusCell[] @relation("SubtitleEvalReferenceSnapshot")
+
+  @@unique([kind, sha256])
+  @@map("subtitle_eval_corpus_snapshot")
+}
+
+model SubtitleEvalCorpusVersion {
+  id                       String                       @id @default(cuid())
+  identityDigest           String                       @unique @map("identity_digest")
+  manifestDigest           String                       @map("manifest_digest")
+  lockDigest               String                       @map("lock_digest")
+  authority                String
+  status                   SubtitleEvalCorpusStatus     @default(PROVISIONAL)
+  certification            Json                         @default("{}")
+  approvalDigest           String?                      @map("approval_digest")
+  approvedById             String?                      @map("approved_by_id")
+  approvedAt               DateTime?                    @map("approved_at")
+  supersedesVersionId      String?                      @map("supersedes_version_id")
+  supersedesVersion        SubtitleEvalCorpusVersion?   @relation("SubtitleEvalCorpusSupersession", fields: [supersedesVersionId], references: [id], onDelete: Restrict)
+  supersededVersions       SubtitleEvalCorpusVersion[]  @relation("SubtitleEvalCorpusSupersession")
+  createdAt                DateTime                     @default(now()) @map("created_at")
+  cells                    SubtitleEvalCorpusCell[]
+  runs                     SubtitleEvalRun[]
+  correctedReferenceIssues SubtitleEvalReferenceIssue[] @relation("SubtitleEvalCorrectedCorpusVersion")
+
+  @@index([status, createdAt])
+  @@map("subtitle_eval_corpus_version")
+}
+
+model SubtitleEvalCorpusCell {
+  id                     String                       @id @default(cuid())
+  corpusVersionId        String                       @map("corpus_version_id")
+  corpusVersion          SubtitleEvalCorpusVersion    @relation(fields: [corpusVersionId], references: [id], onDelete: Restrict)
+  caseId                 String                       @map("case_id")
+  collectionKey          String                       @map("collection_key")
+  videoId                String                       @map("video_id")
+  editionIdentity        String                       @map("edition_identity")
+  sourceLanguageId       String                       @map("source_language_id")
+  sourceLanguageSlug     String                       @map("source_language_slug")
+  sourceLanguage         Language                     @relation("SubtitleEvalCorpusSourceLanguage", fields: [sourceLanguageId], references: [id], onDelete: Restrict)
+  sourceTrackIdentity    String                       @map("source_track_identity")
+  targetLanguageId       String                       @map("target_language_id")
+  targetLanguageSlug     String                       @map("target_language_slug")
+  targetLanguage         Language                     @relation("SubtitleEvalCorpusTargetLanguage", fields: [targetLanguageId], references: [id], onDelete: Restrict)
+  referenceTrackIdentity String                       @map("reference_track_identity")
+  sourceSnapshotId       String                       @map("source_snapshot_id")
+  sourceSnapshot         SubtitleEvalCorpusSnapshot   @relation("SubtitleEvalSourceSnapshot", fields: [sourceSnapshotId], references: [id], onDelete: Restrict)
+  referenceSnapshotId    String                       @map("reference_snapshot_id")
+  referenceSnapshot      SubtitleEvalCorpusSnapshot   @relation("SubtitleEvalReferenceSnapshot", fields: [referenceSnapshotId], references: [id], onDelete: Restrict)
+  metadata               Json                         @default("{}")
+  createdAt              DateTime                     @default(now()) @map("created_at")
+  runCells               SubtitleEvalRunCell[]
+  referenceIssues        SubtitleEvalReferenceIssue[]
+
+  @@unique([corpusVersionId, caseId, targetLanguageId])
+  @@index([targetLanguageId, collectionKey])
+  @@map("subtitle_eval_corpus_cell")
+}
+
+/// Mutable execution record. Terminal evidence is written separately to
+/// SubtitleEvalTerminalReport and cannot be changed after insertion.
+model SubtitleEvalRun {
+  id                   String                      @id @default(cuid())
+  idempotencyKey       String                      @unique @map("idempotency_key")
+  requestDigest        String                      @map("request_digest")
+  operatorId           String                      @map("operator_id")
+  corpusVersionId      String                      @map("corpus_version_id")
+  corpusVersion        SubtitleEvalCorpusVersion   @relation(fields: [corpusVersionId], references: [id], onDelete: Restrict)
+  status               SubtitleEvalRunStatus       @default(QUEUED)
+  requestedProvider    String                      @map("requested_provider")
+  requestedModel       String                      @map("requested_model")
+  promptPolicyId       String                      @map("prompt_policy_id")
+  workflowPolicyDigest String                      @map("workflow_policy_digest")
+  codeRevision         String                      @map("code_revision")
+  determinism          Json                        @default("{}")
+  concurrency          Int
+  timeoutSeconds       Int                         @map("timeout_seconds")
+  maxAttempts          Int                         @map("max_attempts")
+  estimatedSpendMicros BigInt                      @map("estimated_spend_micros")
+  leaseGeneration      Int                         @default(0) @map("lease_generation")
+  leaseTokenHash       String?                     @map("lease_token_hash")
+  leaseExpiresAt       DateTime?                   @map("lease_expires_at")
+  startedAt            DateTime?                   @map("started_at")
+  terminalAt           DateTime?                   @map("terminal_at")
+  createdAt            DateTime                    @default(now()) @map("created_at")
+  updatedAt            DateTime                    @updatedAt @map("updated_at")
+  cells                SubtitleEvalRunCell[]
+  terminalReport       SubtitleEvalTerminalReport?
+
+  @@index([status, createdAt])
+  @@index([operatorId, status, createdAt])
+  @@map("subtitle_eval_run")
+}
+
+model SubtitleEvalRunCell {
+  id                 String                         @id @default(cuid())
+  runId              String                         @map("run_id")
+  run                SubtitleEvalRun                @relation(fields: [runId], references: [id], onDelete: Restrict)
+  corpusCellId       String                         @map("corpus_cell_id")
+  corpusCell         SubtitleEvalCorpusCell         @relation(fields: [corpusCellId], references: [id], onDelete: Restrict)
+  idempotencyKey     String                         @unique @map("idempotency_key")
+  targetLanguageId   String                         @map("target_language_id")
+  targetLanguageSlug String                         @map("target_language_slug")
+  targetLanguage     Language                       @relation("SubtitleEvalRunCellTargetLanguage", fields: [targetLanguageId], references: [id], onDelete: Restrict)
+  status             SubtitleEvalCellStatus         @default(QUEUED)
+  attemptCount       Int                            @default(0) @map("attempt_count")
+  leaseGeneration    Int                            @default(0) @map("lease_generation")
+  leaseTokenHash     String?                        @map("lease_token_hash")
+  leaseExpiresAt     DateTime?                      @map("lease_expires_at")
+  resultDigest       String?                        @map("result_digest")
+  errorCode          String?                        @map("error_code")
+  errorRetryable     Boolean?                       @map("error_retryable")
+  startedAt          DateTime?                      @map("started_at")
+  completedAt        DateTime?                      @map("completed_at")
+  createdAt          DateTime                       @default(now()) @map("created_at")
+  updatedAt          DateTime                       @updatedAt @map("updated_at")
+  artifacts          SubtitleEvalArtifact[]
+  machineAssessment  SubtitleEvalMachineAssessment?
+  providerCalls      SubtitleEvalProviderCall[]
+  assignments        SubtitleEvalAssignment[]
+
+  @@unique([runId, corpusCellId])
+  @@index([runId, status])
+  @@index([targetLanguageId, status])
+  @@map("subtitle_eval_run_cell")
+}
+
+model SubtitleEvalArtifact {
+  id         String                   @id @default(cuid())
+  runCellId  String                   @map("run_cell_id")
+  runCell    SubtitleEvalRunCell      @relation(fields: [runCellId], references: [id], onDelete: Restrict)
+  kind       SubtitleEvalArtifactKind
+  sha256     String
+  objectKey  String                   @unique @map("object_key")
+  byteLength BigInt                   @map("byte_length")
+  mediaType  String                   @map("media_type")
+  createdAt  DateTime                 @default(now()) @map("created_at")
+
+  @@unique([runCellId, kind])
+  @@index([kind, sha256])
+  @@map("subtitle_eval_artifact")
+}
+
+model SubtitleEvalMachineAssessment {
+  id                    String              @id @default(cuid())
+  runCellId             String              @unique @map("run_cell_id")
+  runCell               SubtitleEvalRunCell @relation(fields: [runCellId], references: [id], onDelete: Restrict)
+  schemaVersion         Int                 @map("schema_version")
+  metrics               Json
+  advisoryRiskFlags     Json                @default("[]") @map("advisory_risk_flags")
+  usage                 Json                @default("{}")
+  reproducibilityLimits String[]            @default([]) @map("reproducibility_limits")
+  providerRequestId     String?             @map("provider_request_id")
+  providerResponseId    String?             @map("provider_response_id")
+  resolvedModel         String?             @map("resolved_model")
+  assessmentDigest      String              @map("assessment_digest")
+  createdAt             DateTime            @default(now()) @map("created_at")
+
+  @@map("subtitle_eval_machine_assessment")
+}
+
+model SubtitleEvalProviderCall {
+  id                 String                         @id @default(cuid())
+  runCellId          String                         @map("run_cell_id")
+  runCell            SubtitleEvalRunCell            @relation(fields: [runCellId], references: [id], onDelete: Restrict)
+  leaseGeneration    Int                            @map("lease_generation")
+  callSequence       Int                            @map("call_sequence")
+  operation          SubtitleEvalProviderOperation
+  chunkIndex         Int?                           @map("chunk_index")
+  operationAttempt   Int                            @map("operation_attempt")
+  status             SubtitleEvalProviderCallStatus
+  requestDigest      String                         @map("request_digest")
+  providerRequestId  String?                        @map("provider_request_id")
+  providerResponseId String?                        @map("provider_response_id")
+  requestedModel     String                         @map("requested_model")
+  resolvedModel      String?                        @map("resolved_model")
+  usage              Json?
+  createdAt          DateTime                       @default(now()) @map("created_at")
+
+  @@unique([runCellId, leaseGeneration, callSequence])
+  @@index([runCellId, leaseGeneration])
+  @@map("subtitle_eval_provider_call")
+}
+
+model SubtitleEvalTerminalReport {
+  id                     String                   @id @default(cuid())
+  runId                  String                   @unique @map("run_id")
+  run                    SubtitleEvalRun          @relation(fields: [runId], references: [id], onDelete: Restrict)
+  status                 SubtitleEvalRunStatus
+  reportDigest           String                   @map("report_digest")
+  reportArtifactDigest   String?                  @map("report_artifact_digest")
+  corpusIdentityDigest   String                   @map("corpus_identity_digest")
+  sourceReferenceDigests Json                     @map("source_reference_digests")
+  providerIdentities     Json                     @map("provider_identities")
+  runtimeIdentity        Json                     @map("runtime_identity")
+  usage                  Json                     @default("{}")
+  languageMetrics        Json                     @default("[]") @map("language_metrics")
+  collectionMetrics      Json                     @default("[]") @map("collection_metrics")
+  artifactInventory      Json                     @default("[]") @map("artifact_inventory")
+  reproducibilityLimits  String[]                 @default([]) @map("reproducibility_limits")
+  partialFailures        Json                     @default("[]") @map("partial_failures")
+  completedAt            DateTime                 @map("completed_at")
+  createdAt              DateTime                 @default(now()) @map("created_at")
+  baselineComparisons    SubtitleEvalComparison[] @relation("SubtitleEvalBaselineReport")
+  candidateComparisons   SubtitleEvalComparison[] @relation("SubtitleEvalCandidateReport")
+
+  @@index([status, completedAt])
+  @@map("subtitle_eval_terminal_report")
+}
+
+model SubtitleEvalRubricVersion {
+  id           String                    @id @default(cuid())
+  version      Int                       @unique
+  schemaDigest String                    @unique @map("schema_digest")
+  definition   Json
+  createdById  String                    @map("created_by_id")
+  createdAt    DateTime                  @default(now()) @map("created_at")
+  reviews      SubtitleEvalHumanReview[]
+
+  @@map("subtitle_eval_rubric_version")
+}
+
+model SubtitleEvalAssignment {
+  id                    String                       @id @default(cuid())
+  idempotencyKey        String?                      @unique @map("idempotency_key")
+  requestDigest         String?                      @map("request_digest")
+  runCellId             String                       @map("run_cell_id")
+  runCell               SubtitleEvalRunCell          @relation(fields: [runCellId], references: [id], onDelete: Restrict)
+  reviewerMembershipId  String?                      @map("reviewer_membership_id")
+  reviewerMembership    ManagerMembership?           @relation(fields: [reviewerMembershipId], references: [id], onDelete: Restrict)
+  targetLanguageId      String                       @map("target_language_id")
+  targetLanguageSlug    String                       @map("target_language_slug")
+  targetLanguage        Language                     @relation("SubtitleEvalAssignmentTargetLanguage", fields: [targetLanguageId], references: [id], onDelete: Restrict)
+  round                 Int
+  kind                  SubtitleEvalAssignmentKind   @default(STANDARD)
+  status                SubtitleEvalAssignmentStatus @default(ASSIGNED)
+  specialistDimension   String?                      @map("specialist_dimension")
+  presentationSeed      String?                      @map("presentation_seed")
+  qualificationVersion  Int?                         @map("qualification_version")
+  assignedById          String                       @map("assigned_by_id")
+  blockedReason         String?                      @map("blocked_reason")
+  assignedAt            DateTime                     @default(now()) @map("assigned_at")
+  submittedAt           DateTime?                    @map("submitted_at")
+  escalatedFromReviewId String?                      @unique @map("escalated_from_review_id")
+  escalatedFromReview   SubtitleEvalHumanReview?     @relation("SubtitleEvalSpecialistEscalation", fields: [escalatedFromReviewId], references: [id], onDelete: Restrict)
+  reviews               SubtitleEvalHumanReview[]
+
+  @@unique([runCellId, reviewerMembershipId, round])
+  @@index([reviewerMembershipId, status, assignedAt])
+  @@index([targetLanguageId, status])
+  @@map("subtitle_eval_assignment")
+}
+
+/// Append-only human evidence. A correction references the prior row through
+/// supersedesReviewId; neither the prior row nor the assignment evidence is
+/// rewritten.
+model SubtitleEvalHumanReview {
+  id                     String                      @id @default(cuid())
+  idempotencyKey         String                      @unique @map("idempotency_key")
+  assignmentId           String                      @map("assignment_id")
+  assignment             SubtitleEvalAssignment      @relation(fields: [assignmentId], references: [id], onDelete: Restrict)
+  reviewerMembershipId   String                      @map("reviewer_membership_id")
+  reviewerMembership     ManagerMembership           @relation(fields: [reviewerMembershipId], references: [id], onDelete: Restrict)
+  targetLanguageId       String                      @map("target_language_id")
+  targetLanguageSlug     String                      @map("target_language_slug")
+  targetLanguage         Language                    @relation("SubtitleEvalReviewTargetLanguage", fields: [targetLanguageId], references: [id], onDelete: Restrict)
+  rubricVersionId        String                      @map("rubric_version_id")
+  rubricVersion          SubtitleEvalRubricVersion   @relation(fields: [rubricVersionId], references: [id], onDelete: Restrict)
+  meaningAccuracyScore   Int                         @map("meaning_accuracy_score")
+  naturalnessScore       Int                         @map("naturalness_score")
+  timingReadabilityScore Int                         @map("timing_readability_score")
+  scriptureTheologyScore Int?                        @map("scripture_theology_score")
+  verdict                SubtitleEvalReviewVerdict
+  issueCodes             SubtitleEvalIssueCode[]     @default([]) @map("issue_codes")
+  criticalMeaningLoss    Boolean                     @default(false) @map("critical_meaning_loss")
+  criticalHarmful        Boolean                     @default(false) @map("critical_harmful")
+  criticalScriptureRisk  Boolean                     @default(false) @map("critical_scripture_risk")
+  trackAssessments       Json                        @map("track_assessments")
+  questionableTrack      String?                     @map("questionable_track")
+  notes                  String?
+  corrections            Json                        @default("[]")
+  bodyDigest             String                      @map("body_digest")
+  assertionNonceHash     String                      @unique @map("assertion_nonce_hash")
+  supersedesReviewId     String?                     @unique @map("supersedes_review_id")
+  supersedesReview       SubtitleEvalHumanReview?    @relation("SubtitleEvalReviewSupersession", fields: [supersedesReviewId], references: [id], onDelete: Restrict)
+  supersededBy           SubtitleEvalHumanReview?    @relation("SubtitleEvalReviewSupersession")
+  submittedAt            DateTime                    @default(now()) @map("submitted_at")
+  referenceIssue         SubtitleEvalReferenceIssue?
+  specialistAssignment   SubtitleEvalAssignment?     @relation("SubtitleEvalSpecialistEscalation")
+
+  @@index([assignmentId, submittedAt])
+  @@index([reviewerMembershipId, submittedAt])
+  @@map("subtitle_eval_human_review")
+}
+
+model SubtitleEvalReferenceIssue {
+  id                       String                           @id @default(cuid())
+  reviewId                 String                           @unique @map("review_id")
+  review                   SubtitleEvalHumanReview          @relation(fields: [reviewId], references: [id], onDelete: Restrict)
+  corpusCellId             String                           @map("corpus_cell_id")
+  corpusCell               SubtitleEvalCorpusCell           @relation(fields: [corpusCellId], references: [id], onDelete: Restrict)
+  status                   SubtitleEvalReferenceIssueStatus @default(OPEN)
+  dispositionReason        String?                          @map("disposition_reason")
+  dispositionById          String?                          @map("disposition_by_id")
+  dispositionAt            DateTime?                        @map("disposition_at")
+  correctedCorpusVersionId String?                          @map("corrected_corpus_version_id")
+  correctedCorpusVersion   SubtitleEvalCorpusVersion?       @relation("SubtitleEvalCorrectedCorpusVersion", fields: [correctedCorpusVersionId], references: [id], onDelete: Restrict)
+  createdAt                DateTime                         @default(now()) @map("created_at")
+
+  @@index([status, createdAt])
+  @@index([corpusCellId, status])
+  @@map("subtitle_eval_reference_issue")
+}
+
+model SubtitleEvalComparison {
+  id                     String                            @id @default(cuid())
+  idempotencyKey         String                            @unique @map("idempotency_key")
+  requestDigest          String                            @map("request_digest")
+  baselineReportId       String                            @map("baseline_report_id")
+  baselineReport         SubtitleEvalTerminalReport        @relation("SubtitleEvalBaselineReport", fields: [baselineReportId], references: [id], onDelete: Restrict)
+  candidateReportId      String                            @map("candidate_report_id")
+  candidateReport        SubtitleEvalTerminalReport        @relation("SubtitleEvalCandidateReport", fields: [candidateReportId], references: [id], onDelete: Restrict)
+  changedAxis            SubtitleEvalChangedAxis           @map("changed_axis")
+  identityDifferences    Json                              @map("identity_differences")
+  descriptiveDeltas      Json                              @map("descriptive_deltas")
+  unmatchedCells         Json                              @map("unmatched_cells")
+  matchedCellCount       Int                               @map("matched_cell_count")
+  matchedCollectionCount Int                               @map("matched_collection_count")
+  coverageLabel          SubtitleEvalCoverageLabel         @map("coverage_label")
+  createdById            String                            @map("created_by_id")
+  createdAt              DateTime                          @default(now()) @map("created_at")
+  narratives             SubtitleEvalExperimentNarrative[]
+
+  @@index([baselineReportId, candidateReportId])
+  @@map("subtitle_eval_comparison")
+}
+
+model SubtitleEvalExperimentNarrative {
+  id             String                 @id @default(cuid())
+  comparisonId   String                 @map("comparison_id")
+  comparison     SubtitleEvalComparison @relation(fields: [comparisonId], references: [id], onDelete: Restrict)
+  version        Int
+  hypothesis     String
+  conclusion     String?
+  rationale      String?
+  followUpAction String?                @map("follow_up_action")
+  createdById    String                 @map("created_by_id")
+  createdAt      DateTime               @default(now()) @map("created_at")
+
+  @@unique([comparisonId, version])
+  @@map("subtitle_eval_experiment_narrative")
+}
+
+/// One-time reviewer-proof replay ledger. Manager session-proof nonces are
+/// consumed while minting an Admin assertion; Admin assertion nonces are
+/// consumed in the same transaction as their human review.
+model SubtitleEvalAssertionNonce {
+  nonceHash    String   @id @map("nonce_hash")
+  assignmentId String   @map("assignment_id")
+  actorId      String   @map("actor_id")
+  expiresAt    DateTime @map("expires_at")
+  consumedAt   DateTime @default(now()) @map("consumed_at")
+
+  @@index([expiresAt])
+  @@map("subtitle_eval_assertion_nonce")
+}
+
+/// One-time operator/reviewer queue delegation replay ledger. Assertions are
+/// consumed transactionally with the bound operation.
+model SubtitleEvalDelegationNonce {
+  nonceHash  String   @id @map("nonce_hash")
+  actorId    String   @map("actor_id")
+  operation  String
+  expiresAt  DateTime @map("expires_at")
+  consumedAt DateTime @default(now()) @map("consumed_at")
+
+  @@index([expiresAt])
+  @@map("subtitle_eval_delegation_nonce")
+}
+
+model SubtitleEvalAuditEvent {
+  id         String   @id @default(cuid())
+  eventType  String   @map("event_type")
+  actorId    String   @map("actor_id")
+  entityType String   @map("entity_type")
+  entityId   String   @map("entity_id")
+  requestId  String   @map("request_id")
+  reason     String
+  metadata   Json     @default("{}")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@index([entityType, entityId, createdAt])
+  @@index([actorId, createdAt])
+  @@map("subtitle_eval_audit_event")
 }
 
 // -----------------------------------------------------------------------------
@@ -1339,17 +1916,23 @@ model Language {
   updatedAt            DateTime   @updatedAt @map("updated_at")
 
   // Reverse relations
-  keywords          Keyword[]
-  locales           LanguageLocale[]
-  videoDubs         VideoDub[]
-  videoLocales      VideoLocale[]
-  watchEvents       WatchEvent[]
-  videoSubtitles    VideoSubtitle[]
-  studyQuestions    VideoStudyQuestion[]
-  countryLanguages  CountryLanguage[]
-  videosAsPrimary   Video[]              @relation("VideoPrimaryLanguage")
-  fallbackLanguages LanguageFallback[]   @relation("LanguageFallbackSource")
-  fallbackFor       LanguageFallback[]   @relation("LanguageFallbackTarget")
+  keywords                      Keyword[]
+  locales                       LanguageLocale[]
+  videoDubs                     VideoDub[]
+  videoLocales                  VideoLocale[]
+  watchEvents                   WatchEvent[]
+  videoSubtitles                VideoSubtitle[]
+  studyQuestions                VideoStudyQuestion[]
+  countryLanguages              CountryLanguage[]
+  videosAsPrimary               Video[]                        @relation("VideoPrimaryLanguage")
+  fallbackLanguages             LanguageFallback[]             @relation("LanguageFallbackSource")
+  fallbackFor                   LanguageFallback[]             @relation("LanguageFallbackTarget")
+  reviewerGrants                ManagerReviewerLanguageGrant[]
+  subtitleEvalCorpusSourceCells SubtitleEvalCorpusCell[]       @relation("SubtitleEvalCorpusSourceLanguage")
+  subtitleEvalCorpusTargetCells SubtitleEvalCorpusCell[]       @relation("SubtitleEvalCorpusTargetLanguage")
+  subtitleEvalRunCells          SubtitleEvalRunCell[]          @relation("SubtitleEvalRunCellTargetLanguage")
+  subtitleEvalAssignments       SubtitleEvalAssignment[]       @relation("SubtitleEvalAssignmentTargetLanguage")
+  subtitleEvalReviews           SubtitleEvalHumanReview[]      @relation("SubtitleEvalReviewTargetLanguage")
 
   @@index([deletedAt])
   @@map("language")

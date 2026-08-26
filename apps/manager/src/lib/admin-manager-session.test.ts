@@ -46,6 +46,7 @@ describe("validateAdminManagerSession", () => {
     ).resolves.toEqual({
       user: { id: "admin-user-123", email: "manager@example.com" },
       managerRole: "OPERATOR",
+      reviewerLanguageGrants: [],
     })
 
     expect(fetchMock).toHaveBeenNthCalledWith(
@@ -55,7 +56,7 @@ describe("validateAdminManagerSession", () => {
         method: "POST",
         body: new URLSearchParams({
           grant_type: "client_credentials",
-          scope: "admin:manager-session:validate",
+          scope: "admin:manager-session:validate admin:manager-backend",
           resource: "https://admin.example/api/manager/session",
         }),
       }),
@@ -99,6 +100,88 @@ describe("validateAdminManagerSession", () => {
         }),
       }),
     )
+  })
+
+  it("reuses an OAuth service token until its expiry safety window", async () => {
+    stubEnv()
+    vi.stubEnv("AUTH_MANAGER_SERVICE_CLIENT_ID", "jfp_manager_local_service")
+    vi.stubEnv("AUTH_MANAGER_SERVICE_CLIENT_SECRET", "service-secret")
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      Response.json({
+        access_token: "cached-service-token",
+        token_type: "Bearer",
+        expires_in: 1800,
+      }),
+    )
+    const { getAdminManagerOAuthBearer, getAdminManagerServiceBearer } =
+      await import("./admin-manager-session")
+    await expect(getAdminManagerOAuthBearer()).resolves.toBe(
+      "cached-service-token",
+    )
+    await expect(getAdminManagerServiceBearer()).resolves.toBe(
+      "cached-service-token",
+    )
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
+
+  it("projects reviewer grants by exact Admin language identity", async () => {
+    stubEnv()
+    vi.stubEnv("ADMIN_MANAGER_API_KEY", "admin-manager-key")
+
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          allowed: true,
+          user: { id: "admin-reviewer-1", email: "reviewer@example.com" },
+          managerRole: "REVIEWER",
+          reviewerLanguageGrants: [
+            {
+              id: "grant-es",
+              languageId: "language-es",
+              languageSlug: "spanish-latin-america",
+              languageBcp47: "es-419",
+              permittedRubricDimensions: [
+                "MEANING_ACCURACY",
+                "NATURALNESS",
+                "TIMING_READABILITY",
+              ],
+              specialistCapabilities: {
+                scripture: false,
+                theology: false,
+              },
+            },
+          ],
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      ),
+    )
+
+    const { validateAdminManagerSession } =
+      await import("./admin-manager-session")
+
+    await expect(
+      validateAdminManagerSession({ subject: "auth-reviewer-1" }),
+    ).resolves.toEqual({
+      user: { id: "admin-reviewer-1", email: "reviewer@example.com" },
+      managerRole: "REVIEWER",
+      reviewerLanguageGrants: [
+        {
+          id: "grant-es",
+          languageId: "language-es",
+          languageSlug: "spanish-latin-america",
+          languageBcp47: "es-419",
+          permittedRubricDimensions: [
+            "MEANING_ACCURACY",
+            "NATURALNESS",
+            "TIMING_READABILITY",
+          ],
+          specialistCapabilities: {
+            scripture: false,
+            theology: false,
+          },
+        },
+      ],
+    })
   })
 })
 

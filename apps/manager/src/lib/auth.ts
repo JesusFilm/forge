@@ -13,6 +13,10 @@ import {
   readManagerSessionCookie,
   type ManagerSessionPrincipal,
 } from "@/lib/manager-session-cookie"
+import {
+  hasReviewerLanguageGrant as hasExactReviewerLanguageGrant,
+  type ReviewerLanguageGrant,
+} from "@/lib/reviewer-session"
 
 export type ManagerAuthenticatedUser = {
   id: string
@@ -37,6 +41,16 @@ export type ManagerInteractiveActor = Extract<
   { kind: "session" }
 >
 
+export type ManagerReviewerSession = ManagerSessionPrincipal & {
+  managerRole: "REVIEWER"
+  reviewerLanguageGrants: ReviewerLanguageGrant[]
+}
+
+export type ManagerReviewerActor = {
+  kind: "reviewer_session"
+  session: ManagerReviewerSession
+}
+
 function isValidManagerApiKey(token: string): boolean {
   const apiKey = env.MANAGER_API_KEY
   if (!apiKey) {
@@ -52,11 +66,64 @@ export async function verifyManagerSession(
   token: string,
 ): Promise<ManagerAuthenticatedUser | null> {
   const session = await readValidatedManagerSessionCookie(token)
-  if (!session) {
+  if (!session || session.managerRole !== "OPERATOR") {
     return null
   }
 
   return toManagerUser(session)
+}
+
+export async function verifyReviewerSession(
+  token: string,
+): Promise<ManagerReviewerSession | null> {
+  const session = await readValidatedManagerSessionCookie(token)
+  return session?.managerRole === "REVIEWER"
+    ? (session as ManagerReviewerSession)
+    : null
+}
+
+export async function resolveManagerLandingPathForSession(
+  token: string,
+): Promise<"/dashboard/coverage" | "/subtitle-review" | null> {
+  const session = await readValidatedManagerSessionCookie(token)
+  if (!session) return null
+  return session.managerRole === "REVIEWER"
+    ? "/subtitle-review"
+    : "/dashboard/coverage"
+}
+
+/**
+ * Reviewer-only interactive guard. It never accepts MANAGER_API_KEY and uses
+ * a non-disclosing 404 for every denial so future assignment/artifact routes
+ * do not reveal reviewer or language-bound resource existence.
+ */
+export async function authenticateInteractiveReviewerRequest(
+  request: Request,
+): Promise<ManagerReviewerActor | NextResponse> {
+  const session = await readAnySessionFromCookieHeader(
+    request.headers.get("cookie"),
+  )
+  if (session?.managerRole !== "REVIEWER") {
+    return NextResponse.json({ error: "Not found" }, { status: 404 })
+  }
+
+  return {
+    kind: "reviewer_session",
+    session: session as ManagerReviewerSession,
+  }
+}
+
+/** Exact Admin Language.id + Language.slug authorization; never BCP-47. */
+export function hasReviewerLanguageGrant(
+  session: Pick<ManagerReviewerSession, "reviewerLanguageGrants">,
+  languageId: string,
+  languageSlug: string,
+): boolean {
+  return hasExactReviewerLanguageGrant(
+    session.reviewerLanguageGrants,
+    languageId,
+    languageSlug,
+  )
 }
 
 export async function authenticateRequest(
@@ -179,6 +246,13 @@ export function managerActorIdentity(actor: ManagerOverrideActor): string {
 async function readSessionFromCookieHeader(
   cookieHeader: string | null,
 ): Promise<ManagerSessionPrincipal | null> {
+  const session = await readAnySessionFromCookieHeader(cookieHeader)
+  return session?.managerRole === "OPERATOR" ? session : null
+}
+
+async function readAnySessionFromCookieHeader(
+  cookieHeader: string | null,
+): Promise<ManagerSessionPrincipal | null> {
   const token = readCookie(cookieHeader, MANAGER_SESSION_COOKIE)
   return readValidatedManagerSessionCookie(token)
 }
@@ -212,6 +286,7 @@ async function readValidatedManagerSessionCookie(
       email: adminSession.user.email,
       name: adminSession.user.name ?? session.name,
       managerRole: adminSession.managerRole,
+      reviewerLanguageGrants: adminSession.reviewerLanguageGrants,
     }
   } catch (error) {
     console.warn("manager.auth.session_validation_failed", {
@@ -223,7 +298,7 @@ async function readValidatedManagerSessionCookie(
 }
 
 function isMockManagerMode() {
-  return env.MANAGER_DATA_MODE === "mock"
+  return (env.MANAGER_BACKEND_MODE ?? env.MANAGER_DATA_MODE) === "mock"
 }
 
 function readCookie(cookieHeader: string | null, name: string) {

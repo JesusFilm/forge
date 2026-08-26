@@ -1,7 +1,11 @@
 import React from "react"
 import { renderToStaticMarkup } from "react-dom/server"
 import { describe, expect, it, vi } from "vitest"
-import { StudioThemeSwitch, StudioUserMenuPanel } from "./manager-shell"
+import {
+  getManagerShellNavigation,
+  StudioThemeSwitch,
+  StudioUserMenuPanel,
+} from "./manager-shell"
 
 describe("StudioThemeSwitch", () => {
   it("renders an accessible unchecked switch before hydration", () => {
@@ -43,5 +47,16 @@ describe("StudioUserMenuPanel", () => {
     expect(markup).not.toContain("design-system-user-menu-panel")
     expect(markup).not.toContain("design-system-user-menu-group")
     expect(markup).not.toContain("design-system-user-menu-card")
+  })
+
+  it("exposes the operator-only Subtitle Quality Lab in Studio navigation", () => {
+    expect(getManagerShellNavigation()).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          href: "/dashboard/subtitle-lab",
+          label: "Subtitle Lab",
+        }),
+      ]),
+    )
   })
 })

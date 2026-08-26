@@ -1,4 +1,8 @@
-import { requestOpenRouterChat } from "./openrouter"
+import {
+  requestOpenRouterChat,
+  type OpenRouterProviderCall,
+  type OpenRouterUsage,
+} from "./openrouter"
 import {
   SubtitleScriptureContextJsonSchema,
   SubtitleScriptureContextSchema,
@@ -20,7 +24,11 @@ export type DetectSubtitleScriptureContextInput = {
   model: string
   apiKey?: string
   timeoutMs: number
+  deadlineAtMs?: number
   fetchImpl?: typeof fetch
+  onUsage?: (usage: OpenRouterUsage) => void
+  onUsageUnavailable?: () => void
+  onProviderCall?: (call: OpenRouterProviderCall) => void
 }
 
 function clean(value: string | null | undefined): string | undefined {
@@ -186,7 +194,11 @@ export async function detectSubtitleScriptureContext(
     apiKey: input.apiKey,
     model: input.model,
     timeoutMs: input.timeoutMs,
+    deadlineAtMs: input.deadlineAtMs,
     fetchImpl: input.fetchImpl,
+    onUsage: input.onUsage,
+    onUsageUnavailable: input.onUsageUnavailable,
+    onProviderCall: input.onProviderCall,
     messages: [
       { role: "system", content: prompt.system },
       { role: "user", content: prompt.user },

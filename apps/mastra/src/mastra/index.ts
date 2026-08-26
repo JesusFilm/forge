@@ -155,6 +155,11 @@ import {
   subtitleEnrichmentWorkflow,
 } from "./workflows/subtitle-enrichment"
 import {
+  handleSubtitleTranslationEvalRouteRequest,
+  readBoundedSubtitleTranslationEvalJson,
+  subtitleTranslationEvalWorkflow,
+} from "./workflows/subtitle-translation-eval"
+import {
   handleTranscriptScriptureCorrectionRouteRequest,
   transcriptScriptureCorrectionWorkflow,
 } from "./workflows/transcript-scripture-correction"
@@ -322,6 +327,7 @@ export const mastra = new Mastra({
     datadogMobileTriageWorkflow,
     pinterestAiChristianDiscoveryWorkflow,
     subtitleEnrichmentWorkflow,
+    subtitleTranslationEvalWorkflow,
     transcriptScriptureCorrectionWorkflow,
     seoDailyAuditWorkflow,
     seoExperimentEvaluationWorkflow,
@@ -915,6 +921,21 @@ export const mastra = new Mastra({
             authHeader: c.req.header("authorization"),
             serviceKeys,
             readJson: () => c.req.json(),
+          })
+
+          return new Response(JSON.stringify(outcome.body), {
+            status: outcome.status,
+            headers: { "content-type": "application/json" },
+          })
+        },
+      }),
+      registerApiRoute("/forge-subtitle-translation-eval", {
+        method: "POST",
+        handler: async (c) => {
+          const outcome = await handleSubtitleTranslationEvalRouteRequest({
+            authHeader: c.req.header("authorization"),
+            serviceKeys,
+            readJson: () => readBoundedSubtitleTranslationEvalJson(c.req.raw),
           })
 
           return new Response(JSON.stringify(outcome.body), {

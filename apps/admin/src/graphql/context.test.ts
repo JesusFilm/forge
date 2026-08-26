@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 const resolvePrincipalFromRequest = vi.fn()
 const isValidWorkflowBearer = vi.fn()
 const isValidManagerBearer = vi.fn()
+const isValidManagerServiceToken = vi.fn()
 const isValidVideoMapperBearer = vi.fn()
 const isValidConsumerBearer = vi.fn()
 const resolveWebUserPrincipalFromToken = vi.fn()
@@ -18,6 +19,10 @@ vi.mock("@/auth/workflow-bearer", () => ({
 
 vi.mock("@/auth/manager-bearer", () => ({
   isValidManagerBearer,
+}))
+
+vi.mock("@/auth/manager-service-token", () => ({
+  isValidManagerServiceToken,
 }))
 
 vi.mock("@/auth/video-mapper-bearer", () => ({
@@ -41,12 +46,14 @@ describe("createContext", () => {
     resolvePrincipalFromRequest.mockReset()
     isValidWorkflowBearer.mockReset()
     isValidManagerBearer.mockReset()
+    isValidManagerServiceToken.mockReset()
     isValidVideoMapperBearer.mockReset()
     isValidConsumerBearer.mockReset()
     resolveWebUserPrincipalFromToken.mockReset()
     resolveMobileUserPrincipalFromToken.mockReset()
     isValidWorkflowBearer.mockReturnValue(false)
     isValidManagerBearer.mockReturnValue(false)
+    isValidManagerServiceToken.mockResolvedValue(false)
     isValidVideoMapperBearer.mockReturnValue(false)
     isValidConsumerBearer.mockReturnValue({ valid: false, bucketKey: null })
     resolveWebUserPrincipalFromToken.mockResolvedValue(null)
@@ -199,7 +206,61 @@ describe("createContext", () => {
 
     expect(ctx.user).toEqual({ id: null, role: "MANAGER_BACKEND" })
     expect(isValidManagerBearer).toHaveBeenCalledWith("Bearer manager-key")
+    expect(isValidManagerServiceToken).not.toHaveBeenCalled()
     expect(isValidConsumerBearer).not.toHaveBeenCalled()
+  })
+
+  it("mints MANAGER_BACKEND from OAuth only with the backend scope", async () => {
+    resolvePrincipalFromRequest.mockResolvedValueOnce(null)
+    isValidManagerServiceToken.mockResolvedValueOnce(true)
+    const { createContext } = await import("@/graphql/context")
+
+    const ctx = await createContext({
+      request: new Request("http://localhost/api/graphql", {
+        headers: { authorization: "Bearer manager-oauth-token" },
+      }),
+    })
+
+    expect(ctx.user).toEqual({ id: null, role: "MANAGER_BACKEND" })
+    expect(isValidManagerServiceToken).toHaveBeenCalledWith(
+      "Bearer manager-oauth-token",
+      "admin:manager-backend",
+    )
+  })
+
+  it("keeps session and workflow precedence over Manager OAuth", async () => {
+    const { createContext } = await import("@/graphql/context")
+    resolvePrincipalFromRequest.mockResolvedValueOnce({
+      id: "admin-1",
+      role: "ADMIN",
+    })
+    await createContext({
+      request: new Request("http://localhost/api/graphql", {
+        headers: { authorization: "Bearer manager-oauth-token" },
+      }),
+    })
+    expect(isValidManagerServiceToken).not.toHaveBeenCalled()
+
+    resolvePrincipalFromRequest.mockResolvedValueOnce(null)
+    isValidWorkflowBearer.mockReturnValueOnce(true)
+    await createContext({
+      request: new Request("http://localhost/api/graphql", {
+        headers: { authorization: "Bearer shared-token" },
+      }),
+    })
+    expect(isValidManagerServiceToken).not.toHaveBeenCalled()
+  })
+
+  it("falls through safely when the Manager OAuth token is rejected", async () => {
+    resolvePrincipalFromRequest.mockResolvedValueOnce(null)
+    isValidManagerServiceToken.mockResolvedValueOnce(false)
+    const { createContext } = await import("@/graphql/context")
+    const ctx = await createContext({
+      request: new Request("http://localhost/api/graphql", {
+        headers: { authorization: "Bearer rejected-oauth-token" },
+      }),
+    })
+    expect(ctx.user).toBeNull()
   })
 
   it("mints VIDEO_MAPPER when no session and mapper bearer is valid", async () => {
@@ -217,6 +278,7 @@ describe("createContext", () => {
 
     expect(ctx.user).toEqual({ id: null, role: "VIDEO_MAPPER" })
     expect(isValidVideoMapperBearer).toHaveBeenCalledWith("Bearer mapper-key")
+    expect(isValidManagerServiceToken).not.toHaveBeenCalled()
     expect(isValidConsumerBearer).not.toHaveBeenCalled()
   })
 

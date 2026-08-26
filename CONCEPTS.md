@@ -278,6 +278,38 @@ implicitly.
 
 A diagnostic label identifying which retrieval lane recalled a canonical Watch search result before ranking and playback-member selection. One result can have several retrieval sources; the labels explain candidate recall and do not themselves determine the winning rank.
 
+## Subtitle quality evaluation
+
+### Subtitle Evaluation Corpus Version
+
+An immutable snapshot of source subtitles and human-authored reference tracks used as the shared baseline for one or more Subtitle Evaluation Runs.
+
+Approval authorizes the exact snapshot rather than a mutable collection. Rejecting a reported reference issue can restore eligibility; accepting the defect permanently disqualifies that version, so evaluation continues only through a separately approved corrected version that directly supersedes it.
+
+### Subtitle Evaluation Run
+
+A reproducible experiment binding one Subtitle Evaluation Corpus Version to exact provider, model, prompt, workflow, code, determinism, and runtime identities across a set of Subtitle Evaluation Cells.
+
+Execution state may advance, retry, or recover, but the run's request identity does not change. A run becomes historical evidence only through a Terminal Evaluation Report derived from its durable cells.
+
+### Subtitle Evaluation Cell
+
+One corpus case and exact Language within a Subtitle Evaluation Run, carrying fenced execution state and the evidence for its candidate subtitle result.
+
+A successful cell freezes a candidate subtitle track, review evidence, a cell report, machine assessment, and ordered Provider Call Evidence as one content-addressed bundle. Replaying a completed cell asserts exact equality; it cannot append or replace evidence.
+
+### Provider Call Evidence
+
+An append-only, ordered account of the external model calls observed during one execution attempt, preserving operation, model, usage, outcome, and any provider-issued identifiers that were actually available.
+
+Missing provider identifiers remain missing rather than being replaced with local lookalikes. Provider Call Evidence becomes immutable with the run's Terminal Evaluation Report and remains separate from human review evidence.
+
+### Terminal Evaluation Report
+
+The immutable, canonical summary of a terminal Subtitle Evaluation Run, derived from durable cell, artifact, assessment, failure, and Provider Call Evidence rather than supplied as caller-authored truth.
+
+Terminalization is a cutover point: included evidence is deterministically ordered, existing evidence rows are immutable, and later Provider Call Evidence inserts are rejected.
+
 ## Video source mapper
 
 ### Video Source Mapper

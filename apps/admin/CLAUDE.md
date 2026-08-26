@@ -2699,6 +2699,144 @@ seed:first-party-apps` (updates the `scope` table + stored client scopes),
   `resource_documentation` target). Fan-out (many topics/languages) stays in
   the client agent loop; there are no bulk server operations.
 
+## Subtitle Quality Lab ledger and access operations
+
+Admin owns the durable Subtitle Quality Lab ledger: frozen corpus identities,
+mutable leased runs/cells, immutable terminal reports and provider-call rows,
+assignments, append-only human reviews, reference issues, comparisons,
+experiment narratives, and access audit events. Manager owns the artifact
+bytes and orchestration; Mastra owns provider execution. None of the Lab
+mutations writes `VideoSubtitle`, changes a production prompt/model, publishes
+content, deploys code, or changes git state.
+
+### Reviewer provisioning and revocation
+
+Reviewer identity is an existing Auth identity represented by an Admin `User`.
+Invitation and account creation are deliberately outside this feature. The
+current provisioning boundary is the Admin-only
+`grantReviewerLanguageAccess` service in
+`src/services/user-access.service.ts`; there is no contributor self-service or
+in-product grant UI yet. An authorized administrator must record:
+
+- the exact active Admin `Language.id` (Admin resolves and records its current
+  non-empty `Language.slug`; BCP-47 is display/runtime metadata, not authority);
+- bounded target-language proficiency evidence and, when relevant,
+  source-language proficiency evidence;
+- a grant reason and the permitted rubric dimensions; a standard assignment
+  requires `MEANING_ACCURACY`, `NATURALNESS`, and `TIMING_READABILITY`;
+- `SCRIPTURE_THEOLOGY` only together with an explicit scripture or theology
+  specialist capability. Specialist assignments additionally require the
+  matching capability/dimension at assignment time.
+
+Granting the first language creates or reactivates a
+`ManagerRole.REVIEWER` membership. An active operator cannot be silently
+converted to a reviewer. Updating a grant increments its qualification
+version, and every grant/revocation writes an immutable
+`ManagerAccessAuditEvent`. Revoke one language with
+`revokeReviewerLanguageAccess`; revoke the whole membership with
+`revokeManagerAccess`. Existing assignment/review evidence remains in the
+ledger, but the next session, queue, detail, video, artifact, or submission
+request revalidates membership plus exact language grant and becomes
+inaccessible. Never delete ledger rows to simulate revocation.
+
+Manager-to-Admin service calls should use the Auth client-credentials grant
+with both `admin:manager-session:validate` and `admin:manager-backend` against
+the fixed Admin session audience. Human submissions require more than that
+service credential: Manager signs a 90-second Ed25519 session proof bound to
+the interactive actor, assignment or operation, HTTP method, canonical body
+digest, nonce, environment, and audience; Admin revalidates the live
+membership/grant/assignment and consumes the proof once. Configure the same
+`SUBTITLE_REVIEW_ASSERTION_ENVIRONMENT` in both services. Manager holds
+`SUBTITLE_REVIEW_SESSION_KEY_ID` plus the PKCS8 private key; Admin holds only a
+JSON `SUBTITLE_REVIEW_SESSION_PUBLIC_KEYS` keyring mapping the key ID to the
+SPKI public key. Rotate receiver-first: add the new Admin public key, switch
+Manager's signer, wait longer than the 120-second maximum accepted proof
+lifetime, then remove the retired public key.
+
+### Corpus certification and run admission
+
+Manager's corpus activation path accepts only the packaged manifest and lock,
+requires exact Core-to-Admin language mappings, rejects redirects or byte/hash
+drift, clips each VTT to the pinned cut, and writes content-addressed immutable
+source/reference bytes before importing the Admin version as `PROVISIONAL`.
+The committed five-case corpus remains provisional until a human curator
+confirms human authorship, exact edition/cut and synchronization, target
+language identity, reference quality, and benchmark reuse authority.
+
+Approval is a compare-and-set operation over the exact version. Certification
+schema v1 requires the stored authority, source/reference verified counts equal
+to the cell count, `humanAuthorshipConfirmed=true`,
+`languageIdentityConfirmed=true`, a curator-supplied timestamp, and optional
+bounded notes. Any open reference issue blocks effective approval. An accepted
+reference correction must create a new frozen version whose
+`supersedesVersionId` points to the affected version; it never edits a snapshot
+or prior review.
+
+Only an effectively approved corpus can admit a run. Source-controlled ceilings
+are 20 cells, at most 80 cues/64 provider calls per cell, concurrency 1-3, one
+absolute 60-600 second deadline per cell, two attempts, two active runs per
+operator, four active runs globally, 64,000,000 spend micros per run, and
+256,000,000 spend micros per rolling 24 hours. Production must
+set all five `SUBTITLE_EVAL_*` admission variables. Deployment values may lower
+spend/active-run ceilings but cannot raise the source ceilings; the reservation
+per cell-attempt is raised to at least 1,600,000 spend micros (64 calls at a
+source-controlled 25,000-micro reservation). Admin derives the
+reservation as `cells * maxAttempts * reservationPerCellAttemptMicros`; the
+browser never supplies trusted spend. Missing or non-positive production
+configuration rejects admission before paid dispatch.
+
+Every accepted run exists in Admin before Manager dispatch. Lease generation
+and token hashes fence cell completion and recovery. Terminalization derives
+`COMPLETED`, `PARTIAL`, or `FAILED` from all cells and inserts exactly one
+immutable report with corpus/runtime identities, metrics, usage, artifact
+inventory, partial failures, reproducibility limits, and the ordered
+OpenRouter call vector. A replay must match the original report identity.
+
+### Contributor data and retention gate
+
+The current schema deliberately makes human reviews, audit events, provider
+calls, reports, and corpus evidence append-only/immutable, and there is no
+Subtitle Quality Lab TTL, purge job, pseudonymization job, or reviewer-erasure
+workflow. Therefore current effective retention is indefinite for Admin rows
+and Manager content-addressed objects. Identifiable data includes the Auth/Admin
+user and membership link, proficiency evidence, grant/revocation reasons,
+assignment and submission timestamps, scores, issue/critical flags, notes, and
+corrections. Review notes must not contain contact details or unrelated personal
+information. Reviewer-written evidence is not sent to OpenRouter or API.Bible;
+provider work occurs before human review.
+
+Before production contributor onboarding, the product/privacy owner must choose
+and document retention periods for identity/qualification evidence, free-text
+review content, audit/experiment evidence, and VTT artifacts; decide whether
+reports should retain a stable pseudonym instead of a live membership link;
+define contributor notice/consent and access/export/correction/erasure handling;
+and reconcile erasure with immutable benchmark evidence. Until that policy and
+its enforcement job exist, treat the Lab as a non-production developmental
+benchmark and do not promise deletion behavior the code cannot perform.
+
+### Admin validation and release boundary
+
+From the repository root, validate the Admin-owned contract with:
+
+```bash
+pnpm --filter @forge/admin db:generate
+pnpm --filter @forge/admin schema:print
+pnpm --filter @forge/admin test
+pnpm --filter @forge/admin lint
+pnpm --filter @forge/admin typecheck
+pnpm --filter @forge/admin-graphql generate
+pnpm --filter @forge/admin-graphql test
+pnpm --filter @forge/admin-graphql lint
+pnpm --filter @forge/admin-graphql typecheck
+```
+
+Generation is local validation, not migration authority. Do not run
+`db:migrate:deploy`, apply migration `0052_subtitle_quality_lab`, deploy,
+provision production reviewers, or publish/promote anything without explicit
+owner approval. Never hand-edit `apps/admin/schema.graphql` or
+`packages/admin-graphql/src/admin-graphql-env.d.ts`; regenerate both after an
+Admin Pothos schema change.
+
 ## Common pitfalls (grows with each unit)
 
 - **Per-service `railway.toml` files are ignored until Config-as-code Path is set.** For Admin, set it to `apps/admin/railway.toml` before assuming code-owned config applies. Trap surfaced 2026-04-29 after silently skipping 5 PRs of migrations; see `docs/solutions/deployment/railway-dashboard-override-shadows-railway-toml-20260429.md`.

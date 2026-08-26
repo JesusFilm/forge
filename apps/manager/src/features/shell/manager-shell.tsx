@@ -19,6 +19,7 @@ import {
 import type { LucideIcon } from "lucide-react"
 import {
   BarChart2,
+  Beaker,
   Bell,
   Bot,
   Building2,
@@ -265,6 +266,12 @@ const navItems: Array<{
     icon: ListChecks,
   },
   {
+    key: "subtitle-lab",
+    href: "/dashboard/subtitle-lab" as Route,
+    label: "Subtitle Lab",
+    icon: Beaker,
+  },
+  {
     key: "smart-crop",
     href: "/dashboard/smart-crop",
     label: "Smart Crop",
@@ -289,6 +296,10 @@ const navItems: Array<{
     icon: Bot,
   },
 ]
+
+export function getManagerShellNavigation() {
+  return navItems
+}
 
 function readStoredReportType(): ManagerShellReportType {
   if (typeof window === "undefined") {
@@ -340,6 +351,22 @@ function getBreadcrumbs(pathname: string): string[] {
 
   if (pathname.startsWith("/dashboard/seo")) {
     return ["Studio", "SEO"]
+  }
+
+  if (pathname.startsWith("/dashboard/subtitle-lab/assignments/")) {
+    return ["Studio", "Subtitle Lab", "Assignment evidence"]
+  }
+
+  if (pathname.startsWith("/dashboard/subtitle-lab/comparisons/")) {
+    return ["Studio", "Subtitle Lab", "Comparison"]
+  }
+
+  if (pathname.startsWith("/dashboard/subtitle-lab/runs/")) {
+    return ["Studio", "Subtitle Lab", "Run report"]
+  }
+
+  if (pathname.startsWith("/dashboard/subtitle-lab")) {
+    return ["Studio", "Subtitle Lab"]
   }
 
   if (pathname.startsWith("/dashboard/smart-crop")) {

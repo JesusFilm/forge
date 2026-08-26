@@ -103,6 +103,13 @@ Origin documents:
   artifacts, translates and retimes subtitles, writes
   `{assetId}/subtitles-{lang}.vtt` and `{assetId}/translation-{lang}.json` to
   shared artifact storage, and returns per-language results to Manager.
+- Subtitle translation evaluation is Mastra-owned under
+  `src/evals/subtitle-translation/` and `evals/subtitle-translation/`. The
+  offline adapter uses exact Core video/edition/language identities plus a
+  checksum lock and local artifact I/O. The protected one-cell Lab workflow
+  accepts only frozen inline source/reference bytes, verifies them against the
+  packaged identities before provider work, and never refetches Core. Neither
+  path publishes subtitles or substitutes automatic scores for human review.
 - Gospel-aware subtitle translation prompt steering also belongs in this
   runtime. Manager may send optional title, label, and Bible-reference context,
   but Mastra owns scripture-context detection, prompt guidance for Christian
@@ -225,6 +232,9 @@ of the defaults and validation contract.
 | `AI_CHAT_MEMORY_BACKEND`                     | Optional per-surface override for the ai-chat lane's Memory backend (feat-208). Unset → follows `MASTRA_STORAGE_BACKEND`. Unlike the runtime backend, `memory` here IS allowed in production — it is the documented kill-switch to revert seeker persistence without a code deploy. Kill-switch scope: it stops WRITES only — the retention purge keeps running over rows already stored in `ai_chat` (gated on `canAiChatDataPersist`, not this switch). Never required at boot. Setting `postgres` while `MASTRA_STORAGE_BACKEND=memory` locally makes the seeker's first turn hit an unreachable Postgres — set both or neither.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
 | `OPENROUTER_API_PAID_KEY`                    | Preferred OpenRouter key for eval generation, offline judging, and legacy embedding mode.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
 | `OPENROUTER_API_KEY`                         | Legacy OpenRouter fallback for those paths when `OPENROUTER_API_PAID_KEY` is absent.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| `RAILWAY_GIT_COMMIT_SHA`                     | Railway-provided immutable code revision for Subtitle Quality Lab cloud reports; production evaluation fails closed if this and `GIT_COMMIT_SHA` are absent/`unknown`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| `GIT_COMMIT_SHA`                             | Explicit immutable code-revision fallback for non-Railway deployments.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| `RAILWAY_DEPLOYMENT_ID`                      | Deployment identity recorded alongside the code revision in Subtitle Quality Lab evidence.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | `OPENROUTER_EMBEDDINGS_BASE_URL`             | Optional OpenRouter-compatible embedding base URL. Defaults to OpenRouter's `/api/v1` endpoint.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
 | `OPENAI_API_KEY`                             | Fallback model provider key for smoke agent/model-routed calls and transcript embeddings when OpenRouter is unavailable.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | `OPENAI_EMBEDDINGS_BASE_URL`                 | Optional OpenAI-compatible embedding provider base URL. Defaults to OpenAI's `/v1` endpoint.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
@@ -345,6 +355,99 @@ candidates as staged Admin rows with source, locale, provenance, source
 anchors, advisory judge summary, generation model/provider, Mastra run id, and
 promotion status. Trace-derived candidates keep Admin's raw trace expiry so the
 retention job can remove them before the 30-day ceiling.
+
+## Offline subtitle translation eval
+
+`evals/subtitle-translation/manifest.json` defines the provisional five-video
+human-reference corpus and shared `de`, `es`, `fr`, and `ru` target matrix.
+`corpus.lock.json` contains public Core row identity and checksums only. Raw
+reference VTTs and generated attempts stay below
+`.mastra/subtitle-translation-eval/` and must never be committed.
+
+Run `pnpm --filter @forge/mastra eval:subtitles:prepare` to verify/download the
+locked corpus. Use `-- --refresh-lock` only after reviewing an intentional Core
+identity or byte change. Run a paid single-cell comparison with
+`eval:subtitles:run -- --case=<id> --language=<bcp47>`, or score an existing VTT
+without a model call with `eval:subtitles:score`. Automatic metrics are
+diagnostic; publication authority requires the versioned native-speaker rubric.
+LUMO stays outside the reference-backed corpus until human LUMO VTTs exist.
+
+The cloud-compatible Lab surface is `POST /forge-subtitle-translation-eval`,
+protected by `MASTRA_SERVICE_API_KEYS`. It executes exactly one case-language
+cell with concurrency 1, accepts only the source-controlled model, prompt, and
+workflow policy allowlists, and enforces a 60-600 second provider timeout plus
+bounded snapshot/result bytes. Callers supply frozen VTT bytes with the exact
+manifest, lock, raw-track, clipped-track, and Admin language identities. Mastra
+verifies all identities before reading provider credentials or executing the
+production enrichment seam and never calls Core from this path. Results contain
+content-addressed candidate VTT and canonical review-evidence bytes; provider
+failures use a fixed deterministic/retryable/permanent vocabulary without raw
+provider errors or credentials.
+
+Subtitle eval provider resolution prefers `OPENROUTER_API_PAID_KEY`, then
+falls back to `OPENROUTER_API_KEY`. Configure the key in the process that starts
+Mastra or the offline CLI; do not put the value in `.env.example`, a prompt, a
+report, or chat. For a local shell/Codex session, export it in the same terminal
+before launching the command:
+
+```bash
+export OPENROUTER_API_PAID_KEY='<secret from the approved secret manager>'
+pnpm --filter @forge/mastra eval:subtitles:run -- \
+  --case=where-you-belong \
+  --language=es
+```
+
+Do not paste the secret into an issue or ask a contributor to provide it. A
+missing key returns `provider_config_missing` before provider work. The cloud
+route additionally requires Manager's bearer to match one entry in
+`MASTRA_SERVICE_API_KEYS`; these are independent secrets. Prefer a dedicated
+spend-limited OpenRouter key for evaluation, and rely on Admin's run admission
+budgets as a second control. Never run the 20-cell paid matrix merely as a
+deployment health check.
+
+Every OpenRouter attempt reports a bounded provider-call record through the
+evaluation seam, including call sequence, operation, chunk/operation attempt,
+success/failure/invalid-output status, canonical request digest,
+provider-response/generation identity when exposed, requested and resolved
+model when exposed, and token usage when complete. Manager persists these rows
+under the cell lease generation; Admin includes the ordered call vector in the
+immutable terminal report. `providerRequestId` remains null when OpenRouter does
+not supply a distinct provider-issued request ID. Raw prompts, headers,
+credentials, provider bodies, and provider error text do not enter the ledger.
+
+API.Bible is different: it is optional external evidence retrieval for
+scripture validation, not an OpenRouter model call, and its request/response
+identity is not in the provider-call ledger. Every successful result therefore
+declares that limitation in `reproducibilityLimits`. The sanitized scripture evidence
+may name the Bible/provider metadata already returned by the production
+subtitle pipeline, but it is not a reproducible byte snapshot of the API.Bible
+response. Do not interpret an OpenRouter-complete call vector as complete
+identity for API.Bible lookups.
+
+The provider receives source subtitle text, target language, and the packaged
+translation context needed by production enrichment; it never receives a
+reviewer's identity, scores, notes, or corrections. Mastra does not retain
+cloud Lab artifacts: it returns bounded bytes to Manager, which stores them in
+content-addressed Railway S3, while Admin owns the ledger. Offline CLI corpus
+bytes and outputs remain local under the gitignored
+`.mastra/subtitle-translation-eval/`; there is no automatic cleanup, so remove
+local copies according to the owner-approved retention policy. Cloud
+contributor-data retention and erasure are an unresolved production gate in the
+Admin/Manager runbooks.
+
+Validate this slice without Core, paid provider, or other network calls:
+
+```bash
+pnpm --filter @forge/mastra test
+pnpm --filter @forge/mastra lint
+pnpm --filter @forge/mastra typecheck
+```
+
+Use `eval:subtitles:score` for a no-model-call candidate check. Corpus
+preparation calls Core and `eval:subtitles:run` calls OpenRouter, so neither is
+part of the offline validation gate. The Lab route creates no publication or
+promotion path; changing an allowlisted model, prompt-policy ID, workflow digest,
+manifest, or lock requires a reviewed source change and a new frozen identity.
 
 ## Offline search eval
 

@@ -10,6 +10,8 @@ export const env = createEnv({
       .default("development"),
     MANAGER_DATA_MODE: z.enum(["admin", "mock"]).default("admin"),
     MANAGER_BACKEND_MODE: z.enum(["admin", "mock"]).optional(),
+    RAILWAY_GIT_COMMIT_SHA: z.string().trim().min(1).max(128).optional(),
+    GIT_COMMIT_SHA: z.string().trim().min(1).max(128).optional(),
 
     // Mux
     MUX_TOKEN_ID: z.string().min(1),
@@ -52,6 +54,11 @@ export const env = createEnv({
     AUTH_MANAGER_SERVICE_CLIENT_SECRET: z.string().min(1).optional(),
     ADMIN_MANAGER_API_KEY: z.string().min(1).optional(),
     ADMIN_MANAGER_SESSION_URL: z.string().url().optional(),
+    SUBTITLE_REVIEW_ASSERTION_ENVIRONMENT: z
+      .enum(["local", "preview", "staging", "production"])
+      .default("local"),
+    SUBTITLE_REVIEW_SESSION_KEY_ID: z.string().min(1).optional(),
+    SUBTITLE_REVIEW_SESSION_PRIVATE_KEY: z.string().min(1).optional(),
 
     // SEO delegated approval proof (plan 2026-08-01-001). Optional at boot:
     // the workspace remains read-only when no active private key is present.
@@ -139,6 +146,8 @@ export const env = createEnv({
     NODE_ENV: process.env.NODE_ENV,
     MANAGER_DATA_MODE: process.env.MANAGER_DATA_MODE ?? "admin",
     MANAGER_BACKEND_MODE: process.env.MANAGER_BACKEND_MODE,
+    RAILWAY_GIT_COMMIT_SHA: process.env.RAILWAY_GIT_COMMIT_SHA,
+    GIT_COMMIT_SHA: process.env.GIT_COMMIT_SHA,
     MUX_TOKEN_ID: process.env.MUX_TOKEN_ID,
     MUX_TOKEN_SECRET: process.env.MUX_TOKEN_SECRET,
     MUX_SIGNING_KEY: process.env.MUX_SIGNING_KEY,
@@ -168,6 +177,11 @@ export const env = createEnv({
       process.env.AUTH_MANAGER_SERVICE_CLIENT_SECRET,
     ADMIN_MANAGER_API_KEY: process.env.ADMIN_MANAGER_API_KEY,
     ADMIN_MANAGER_SESSION_URL: process.env.ADMIN_MANAGER_SESSION_URL,
+    SUBTITLE_REVIEW_ASSERTION_ENVIRONMENT:
+      process.env.SUBTITLE_REVIEW_ASSERTION_ENVIRONMENT ?? "local",
+    SUBTITLE_REVIEW_SESSION_KEY_ID: process.env.SUBTITLE_REVIEW_SESSION_KEY_ID,
+    SUBTITLE_REVIEW_SESSION_PRIVATE_KEY:
+      process.env.SUBTITLE_REVIEW_SESSION_PRIVATE_KEY,
     SEO_ASSERTION_ENVIRONMENT: process.env.SEO_ASSERTION_ENVIRONMENT ?? "local",
     SEO_APPROVAL_KEY_ID: process.env.SEO_APPROVAL_KEY_ID,
     SEO_APPROVAL_PRIVATE_KEY: process.env.SEO_APPROVAL_PRIVATE_KEY,

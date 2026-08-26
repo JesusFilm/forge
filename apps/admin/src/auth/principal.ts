@@ -80,7 +80,7 @@ export type Principal = {
   fleet?: boolean
 }
 
-export type ManagerRole = "OPERATOR"
+export type ManagerRole = "OPERATOR" | "REVIEWER"
 
 /**
  * The workflow-tier principal. Used by every useworkflow job that

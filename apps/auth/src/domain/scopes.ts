@@ -54,6 +54,12 @@ export const AUTH_SCOPES = [
       "Allow Manager to validate operator access against the Admin app.",
   },
   {
+    key: "admin:manager-backend",
+    label: "Use the Manager backend",
+    description:
+      "Allow the Manager service to call its Admin-owned backend contracts.",
+  },
+  {
     key: "tokens:manage",
     label: "Manage tokens",
     description: "Create, inspect, and revoke scoped Auth tokens.",

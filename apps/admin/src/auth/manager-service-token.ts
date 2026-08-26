@@ -1,7 +1,10 @@
 import { env } from "@/config/env"
 
-const MANAGER_SESSION_SCOPE = "admin:manager-session:validate"
 const ENVIRONMENT_CLAIM = "https://jesusfilm.org/claims/environment"
+
+export type ManagerServiceScope =
+  | "admin:manager-session:validate"
+  | "admin:manager-backend"
 
 type IntrospectionResponse = {
   active?: boolean
@@ -15,9 +18,10 @@ type IntrospectionResponse = {
 
 export async function isValidManagerServiceToken(
   authHeader: string | null,
-  expectedAudience = getManagerSessionAudience(),
+  requiredScope: ManagerServiceScope,
 ): Promise<boolean> {
   const token = parseBearerToken(authHeader)
+  const expectedAudience = getManagerServiceAudience()
   if (
     !token ||
     !env.AUTH_MANAGER_SERVICE_CLIENT_ID ||
@@ -51,13 +55,18 @@ export async function isValidManagerServiceToken(
     return false
   }
 
-  const payload = (await response.json()) as IntrospectionResponse
-  return isUsableManagerSessionToken(payload, expectedAudience)
+  try {
+    const payload = (await response.json()) as IntrospectionResponse
+    return isUsableManagerServiceToken(payload, expectedAudience, requiredScope)
+  } catch {
+    return false
+  }
 }
 
-function isUsableManagerSessionToken(
+function isUsableManagerServiceToken(
   payload: IntrospectionResponse,
   expectedAudience: string,
+  requiredScope: ManagerServiceScope,
 ) {
   if (payload.active !== true) return false
   if (payload.iss !== env.AUTH_ISSUER_URL.replace(/\/$/, "")) return false
@@ -69,7 +78,7 @@ function isUsableManagerSessionToken(
   ) {
     return false
   }
-  if (!hasScope(payload.scope, MANAGER_SESSION_SCOPE)) return false
+  if (!hasScope(payload.scope, requiredScope)) return false
   if (typeof payload.exp !== "number") return false
   return payload.exp > Math.floor(Date.now() / 1000)
 }
@@ -88,7 +97,7 @@ function getIntrospectionUrl() {
   return new URL("/api/auth/oauth2/introspect", env.AUTH_ISSUER_URL).toString()
 }
 
-function getManagerSessionAudience() {
+function getManagerServiceAudience() {
   return (
     env.AUTH_MANAGER_SERVICE_AUDIENCE ??
     new URL(
