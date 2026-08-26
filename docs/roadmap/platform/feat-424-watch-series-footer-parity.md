@@ -3,7 +3,7 @@ id: "feat-424"
 title: "Watch series footer parity"
 owner: "codex"
 priority: "P1"
-status: "in-progress"
+status: "complete"
 start_date: "2026-08-26"
 duration: 1
 depends_on: []
