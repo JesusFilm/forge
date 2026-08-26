@@ -11,7 +11,12 @@ const testEnv = vi.hoisted(() => ({
 
 vi.mock("@/env", () => ({ env: testEnv }))
 
-import { createLinearFeedbackIssue } from "./feedback-linear"
+import {
+  addLinearFeedbackFollowUpEmail,
+  createFeedbackReceipt,
+  createLinearFeedbackIssue,
+  openFeedbackReceipt,
+} from "./feedback-linear"
 
 const submission = {
   category: "problem" as const,
@@ -69,7 +74,7 @@ describe("createLinearFeedbackIssue", () => {
 
     await expect(
       createLinearFeedbackIssue(submission, fetchMock),
-    ).resolves.toEqual({ ok: true })
+    ).resolves.toEqual({ ok: true, issueId: "issue-1" })
 
     const [url, init] = fetchMock.mock.calls[0]
     expect(url).toBe("https://api.linear.app/graphql")
@@ -105,6 +110,43 @@ describe("createLinearFeedbackIssue", () => {
       retryable: false,
     })
     expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it("seals short-lived issue receipts and rejects tampering or expiry", () => {
+    const receipt = createFeedbackReceipt("issue-1", 1_000)
+    expect(receipt).toBeTruthy()
+    expect(receipt).not.toContain("issue-1")
+    expect(openFeedbackReceipt(String(receipt), 2_000)).toBe("issue-1")
+    expect(openFeedbackReceipt(`${receipt}tampered`, 2_000)).toBeNull()
+    expect(openFeedbackReceipt(String(receipt), 1_802_000)).toBeNull()
+
+    testEnv.WEB_FEEDBACK_LINEAR_API_KEY = "different-linear-secret"
+    expect(openFeedbackReceipt(String(receipt), 2_000)).toBeNull()
+  })
+
+  it("adds a sanitized follow-up email as a comment on the existing issue", async () => {
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          data: {
+            commentCreate: { success: true, comment: { id: "comment-1" } },
+          },
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      ),
+    )
+
+    await expect(
+      addLinearFeedbackFollowUpEmail("issue-1", "alex@example.com", fetchMock),
+    ).resolves.toEqual({ ok: true, issueId: "issue-1" })
+
+    const body = JSON.parse(String(fetchMock.mock.calls[0][1]?.body)) as {
+      query: string
+      variables: { input: { issueId: string; body: string } }
+    }
+    expect(body.query).toContain("commentCreate")
+    expect(body.variables.input.issueId).toBe("issue-1")
+    expect(body.variables.input.body).toContain("alex@​example\\.com")
   })
 
   it("classifies an over-sized or malformed Linear response without leaking it", async () => {

@@ -3,8 +3,12 @@ import "server-only"
 import { createHash } from "node:crypto"
 
 import {
+  addLinearFeedbackFollowUpEmail,
+  createFeedbackReceipt,
   createLinearFeedbackIssue,
+  feedbackFollowUpEmailSchema,
   feedbackSubmissionSchema,
+  openFeedbackReceipt,
 } from "@/lib/feedback-linear"
 
 const RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000
@@ -16,10 +20,18 @@ const rateLimitBuckets = new Map<string, number[]>()
 let rateLimitChecks = 0
 
 export type FeedbackActionResult =
-  | { ok: true }
+  | { ok: true; receipt?: string }
   | {
       ok: false
       reason: "invalid" | "rate_limited" | "delivery_failed"
+      message: string
+    }
+
+export type FeedbackFollowUpEmailResult =
+  | { ok: true }
+  | {
+      ok: false
+      reason: "invalid" | "delivery_failed"
       message: string
     }
 
@@ -125,5 +137,48 @@ export async function submitFeedbackWithHeaders(
   console.info(
     `[feedback] event=linear_issue_created category=${parsed.data.category} language=${Boolean(parsed.data.languageIssue)} content=${Boolean(parsed.data.content)} diagnostics=${Boolean(parsed.data.diagnostics)} element=${Boolean(parsed.data.selectedElement)}`,
   )
+  const receipt = createFeedbackReceipt(result.issueId)
+  return receipt ? { ok: true, receipt } : { ok: true }
+}
+
+export async function addFeedbackFollowUpEmail(
+  input: unknown,
+): Promise<FeedbackFollowUpEmailResult> {
+  const parsed = feedbackFollowUpEmailSchema.safeParse(input)
+  if (!parsed.success) {
+    return {
+      ok: false,
+      reason: "invalid",
+      message: "Enter a valid email address.",
+    }
+  }
+
+  const issueId = openFeedbackReceipt(parsed.data.receipt)
+  if (!issueId) {
+    return {
+      ok: false,
+      reason: "invalid",
+      message:
+        "This follow-up link has expired. Please use the support form to contact us.",
+    }
+  }
+
+  const result = await addLinearFeedbackFollowUpEmail(
+    issueId,
+    parsed.data.email,
+  )
+  if (!result.ok) {
+    console.warn(
+      `[feedback] event=linear_follow_up_failed reason=${result.reason} retryable=${result.retryable}`,
+    )
+    return {
+      ok: false,
+      reason: "delivery_failed",
+      message:
+        "We could not add your email. Please use the support form to contact us.",
+    }
+  }
+
+  console.info("[feedback] event=linear_follow_up_email_added")
   return { ok: true }
 }

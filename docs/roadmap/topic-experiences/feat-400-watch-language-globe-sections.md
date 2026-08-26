@@ -8,7 +8,8 @@ start_date: "2026-08-21"
 duration: 1
 depends_on:
   - "feat-399"
-blocks: []
+blocks:
+  - "feat-423"
 tags:
   - "web"
   - "watch"
@@ -97,3 +98,7 @@ not-found page without duplicating its canvas renderer.
   collapsing those values. The focused 18-test suite, web lint, typecheck, and
   formatting checks pass; the canvas renderer and its measured performance
   profile are unchanged.
+- Follow-up visual feedback reduces the globe, atmosphere, and nearby star halo
+  to 65% of their initial scale while preserving the existing canvas height and
+  top-only crop. The focused 14-test suite, web lint, typecheck, formatting, and
+  local 404 composition check pass.

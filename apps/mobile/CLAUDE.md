@@ -38,8 +38,15 @@ deadline, last-good reuse on failure) and assembles the model via
 `assembleWatchHomeModel` — the config model (client-owned hero) is built from the
 config videos ONLY (so a top-up short film can't leak into the hero, feat-172)
 while Experience cards hydrate off the merged index. Body-from-Experience-else-
-config resolves via `resolveWatchHomeModel` (fallback emits one structured
-`[WatchHome] fallback reason=…` log — never silent, incl. `topup-error`); the v3
+config resolves via `resolveWatchHomeModel`, a PURE resolver that logs nothing;
+the signal lives in `useWatchHome`'s reconcile ladder, which routes every config
+fallback AND every dropped top-up through `logWatchHomeFallback`
+(`src/lib/watchHome/logWatchHomeFallback.ts`) as
+`datadogLog.warn("watch_home_fallback", { reason, body_source })` — never silent,
+incl. `topup-error`. Both stay context attributes, never interpolated into the
+message, or Datadog loses the facet. A failed required-videos fetch is a
+different signal (`watch_home.videos_failed`), and the empty-videos-over-snapshot
+guard and the outer catch only set the retry error; the v3
 snapshot persists config + `hydrationVideos` separately for instant cold launch. `buildWatchHomeModelFromVideos` → `HomeScreen`
 (three-layer hero pager / shelves / overlay); hero streams resolve lazily per
 slide via `useHeroStream`. Experiences still render via the SDUI pipeline below,
@@ -52,7 +59,7 @@ Admin GraphQL → gql.tada typed query → dispatcher → renderers
 ```
 
 - **Query**: Defined in `src/lib/queries.ts` using `adminGraphql()` from `@forge/admin-graphql`
-- **Fragments**: Shared `AdminWatchExperienceFragment` from `@forge/admin-graphql/fragments` composes all block fragments
+- **Fragments**: `import { adminWatchExperienceFragment } from "@forge/admin-graphql/fragments"` — the shared root composition over all block fragments. The exported symbol is lowercase; the GraphQL fragment it declares is named `AdminWatchExperience` (no `Fragment` suffix), so a query spreads it as `...AdminWatchExperience`.
 - **Dispatcher**: `src/components/sections/SectionDispatcher.tsx` — switch on `__typename`
 - **Renderers**: `src/components/sections/*Renderer.tsx` — one per block type
 
@@ -265,6 +272,8 @@ Client-side RUM + Logs via `@datadog/mobile-react-native`; helpers in
 - Gating chrome — or any recovery affordance — behind a load: enumerate every path that fails to release the gate. "Playback started OR the player errored" misses "neither": backgrounding mid-load, and a source that wedges without ever erroring. Both leave the viewer with no controls and no way out, and neither logs anything. Always pair such a gate with an unconditional time-based release, and gate the tap target with the same predicate as the chrome it hides. See `docs/solutions/logic-errors/mobile-watch-autostart-veil-gate-missing-release-path.md`.
 - iOS 26 makes the stack back-swipe FULL-WIDTH by default (react-native-screens turns it on when `fullScreenSwipeEnabled` is unset), and a JS PanResponder can never outrace it: the native recognizer claims the touch at delivery, before JS runs. So a rightward scrub on the seek bar IS the pop gesture. **Split the screen instead of racing it.** The watch/series routes confine the pop to a 24pt left strip via `gestureResponseDistance`, and the Scrubber DECLINES touches that start inside that strip (`mayStartScrub` in `src/lib/scrubber.ts`, on BOTH responder gates). One constant feeds both halves (`src/lib/backSwipe.ts`) so they cannot disagree. `fullScreenGestureEnabled: false` is the wrong tool — it kills ALL back-swipe on iOS 26, because no legacy edge recognizer fires.
 - **Do not gate the back-swipe on chrome visibility.** An earlier fix held `gestureEnabled` false while the player chrome was mounted. `shouldArmHideTimer` never arms while paused or ended, so the chrome never auto-hides in those states and the hold never released: pausing a video killed the edge back-swipe for the screen's whole life. Only fullscreen may disable the gesture. Every `gestureEnabled` write must still land on BOTH the screen and its parent stack — the pop that dismisses a nested route belongs to the ROOT stack, which consults only its own top screen. `app/__tests__/backSwipeGesture.guard.test.js` pins the layout options AND the edge width; `useFullscreenPresentation.test.tsx` pins that the gesture stays enabled outside fullscreen.
+- **Never set a react-native-screens `orientation` screen option.** `expo-screen-orientation`'s `ScreenOrientationViewController` answers UIKit from its OWN registry mask — what `lockAsync` writes — only while no screen carries an orientation. The moment one does, it defers to the react-native-screens view-controller chain instead, and a **dev client** has `expo-dev-launcher`'s `DevLauncherViewController` sitting in that chain: the resolved mask loses landscape, UIKit refuses the geometry request (`UIWindowScene.interfaceOrientationsNotSupported`, readable via `xcrun simctl spawn <udid> log stream`), fullscreen stays portrait, and leaving fullscreen strands the details page in landscape until the route pops. The option was always redundant — `src/lib/orientation.ts`'s lock already names the orientation on both platforms — so `useFullscreenPresentation` sets only the lock, and the dev client now rotates exactly like a Release build. Verified 2026-08-26 on the iPhone 17 Pro Max simulator in BOTH build types. `app/__tests__/screenOrientationOption.guard.test.js` blocks the one-line revert across every `.ts`/`.tsx` file under `app/` and `src/`, with a >100-file floor so the scan cannot silently go empty. It has TWO rules, and both are live: Rule 1 matches the key next to a quoted orientation value anywhere in the file (this catches the ternary across line breaks); Rule 2 matches a bare `orientation` KEY of any value shape — named constant, shorthand property — but only inside a brace-matched `screenOptions`/`options` object, so `src/lib/watchHome/`'s unrelated `orientation` key does not trip it. See `docs/solutions/integration-issues/expo-screen-orientation-rnscreens-deferral-blocks-fullscreen-rotate.md`.
+- **`PlayerSlot` must never depend on getting exactly one good `onLayout`.** `measureInWindow` SILENTLY drops its callback when the native node is not attached yet, and the host (`PlaybackHost`) returns null while the slot's rect is null — so one unlucky cold open leaves an opaque black box with no poster, no chrome, and no recovery except leaving the screen. Measured on the iPhone 17 Pro Max simulator over 10 cold deep-link opens: 2/10 on unmodified main, 0/10 after the bounded `requestAnimationFrame` re-measure. Three parts, and all three matter: retry until a rect lands, refuse a zero-size measure, and gate `isDrawn` on the RECT rather than on the attachment so the slot keeps its own poster while the host has nothing to draw. `src/components/watch/__tests__/PlayerSlot.test.tsx` drives a real `measureInWindow` callback and pins all three parts: a zero-size measure publishes nothing, a valid one publishes exactly the measured rect, and the pump stops asking once a rect lands. Exhaustion logs `player_slot.measure_exhausted` once, so an unmeasurable slot is visible in production instead of silent. The instrumentation that separates the cases is a `console.log` in `measureIntoStore` plus one inside the `measureInWindow` callback — `onLayout` fires in BOTH the good and the black run; only the callback differs. See `docs/solutions/integration-issues/expo-screen-orientation-rnscreens-deferral-blocks-fullscreen-rotate.md`.
 - Search requires `EXPO_PUBLIC_ADMIN_GRAPHQL_TOKEN` (mobile's OWN dedicated fleet key — its own entry in admin's `FLEET_ADMIN_API_KEYS` CSV, NOT `WEB_ADMIN_API_KEYS`, and never the same value as TV's; provision in EAS Environments per profile, `.env.local` for dev). `watchSearch` is a PUBLIC resolver, so the bearer buys a per-device rate-limit bucket, not access; a missing/rotated key degrades to the shared `public:<ip>` bucket rather than an `UNAUTHENTICATED` error. The bearer rides ONLY on the `WatchSearch` operation — never attach it to public queries, or every public query also spends the fleet key's rate-limit budget. Admin buckets a fleet key per device (`consumer:<key>:v:<viewer_id>` from the `x-viewer-id` header, else `consumer:<key>:<ip>`), so the fleet doesn't collapse into one bucket. See `src/lib/authHeaders.ts`.
 
 ## Auth + watch progress (feat: mobile login & continue watching)
@@ -478,9 +487,16 @@ it moves the fingerprint runtime version, so an OTA update cannot deliver it.
   (`Theme.MediaRouter*`, `CastExpandedController`, …); a bare parent drops
   every SDK default and nothing at runtime says so. `aapt2` is the authority —
   it fails on an unresolvable parent or a nonexistent attribute.
-- **Every `react-native-google-cast` import stays under `src/lib/cast/`** —
-  `castImports.guard.test.js` fails the suite otherwise. That is why the hidden
-  button below is a wrapper in that directory rather than a component folder.
+- **Every `react-native-google-cast` import stays under `src/lib/cast/`, with
+  one allowlisted exception: `src/hooks/useCastPlayback.ts`.**
+  `castImports.guard.test.js` fails the suite otherwise, and it carries TWO
+  allowlists — `ALLOWED_PREFIX` for the directory and an `ALLOWED_FILES` set for
+  that one file, pinned by its own positive control. The hook sits outside the
+  directory because `useCastSession`, `useCastState`, `useMediaStatus` and
+  `useStreamPosition` are React hooks, while `src/lib/cast/` holds pure logic.
+  Add a file to `ALLOWED_FILES` only when the SDK hands you a React hook. The
+  same rule is why `src/lib/cast/NativeCastButton.tsx` is a wrapper in that
+  directory rather than a component folder.
 - **The cast CONTROL differs by platform, and that is deliberate.**
   `showCastDialog()` is implemented differently on each side, so one shared
   affordance cannot serve both:

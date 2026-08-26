@@ -1,108 +1,52 @@
-# Design QA: Native Watch feedback
+# Design QA: Watch share-feedback redesign
 
 ## Source and implementation
 
-- Source visual truth: `/home/lado/.codex/generated_images/01a02171-67a8-7dd1-8c6d-05784ddc3532/exec-570ed5ec-8ffa-4b79-881c-5c8e772763e2.png`
-- Final desktop implementation: `/tmp/watch-feedback-desktop-final.png`
-- Final mobile implementation: `/tmp/watch-feedback-mobile.png`
-- Normalized full-view comparison: `/tmp/watch-feedback-comparison.png`
-- Desktop CSS viewport: 1440 by 1058 at device pixel ratio 1. The in-app
-  browser capture contains the visible 1250 by 1058 pixel region.
-- Source pixels: 1487 by 1058. The source was center-cropped to the intended
-  1440-pixel CSS viewport, then cropped to the browser's same visible 1250 by
-  1058 region without scaling.
-- Mobile CSS viewport and saved screenshot: 390 by 844 pixels at device pixel
-  ratio 1.
-- State: dark Watch page; Problem category; Blocking me impact; required name
-  and email filled; technical details included but collapsed.
+- Full-screen language reference: `/tmp/codex-clipboard-f814af74-4a8d-4478-8864-f6406506c920.png` (2598 × 2534).
+- Cropped legacy feedback reference: `/tmp/codex-clipboard-51f5cd21-0179-4957-97b1-3e55c32b9d89.png` (2152 × 1884).
+- Success-state reference: `/tmp/codex-clipboard-d7a656bf-d0f8-4bac-bdc7-b01272d913e4.png` (1824 × 1420).
+- Implementation: `apps/web/src/components/FeedbackModal.tsx` and its server actions in `apps/web/src/lib/feedback-action.ts`.
+- Desktop evidence: `feedback-native-desktop-initial.png`, `feedback-native-desktop-dropdown.png`, `feedback-native-success-no-email.png`, `feedback-native-success-email-added.png`, and `feedback-native-delivery-failure.png` (1280 × 720 CSS pixels at DPR 1).
+- Mobile evidence: `feedback-native-mobile-success.png` (390 × 844 CSS pixels at DPR 1).
+- Combined visual inputs: `design-qa-comparison.png` and `design-qa-dropdown-comparison.png`. ImageMagick proportionally scaled each source and implementation capture into equal cells without stretching; the comparison is for visible structure and treatment rather than exact cross-viewport pixel alignment.
+- State coverage: initial form, open language menu, successful submission without email, late-email attachment, successful submission with follow-up copy, and failed Linear delivery.
 
-## Full-view comparison evidence
+## Full-view comparison
 
-- The normalized side-by-side comparison shows the same centered dark composer,
-  a five-step flow with four large icon tabs, contextual message field, the
-  shared searchable language picker, direct media/collection title search,
-  non-blocking manual language and content fallbacks,
-  two-column identity row, page context, element marker, diagnostic consent,
-  trust note, and paired actions.
-- The implementation preserves the source hierarchy while using the existing
-  Watch Montserrat typography, brand-red token, shared dialog overlay, Lucide
-  icons, and real page context.
-- The final desktop form measures 800 pixels wide and 995 pixels tall. Its full
-  content and actions fit without internal scrolling at the comparison height.
-- The mobile capture correctly becomes a full-screen composer, changes category
-  tabs to a two-column grid, stacks optional context fields, and keeps one
-  vertical scroll surface with no horizontal overflow.
+- The implementation now uses the language selector's full-viewport pattern: the Watch page remains visible through one dark blurred overlay, the content sits directly on that surface, and the close control is fixed to the viewport corner.
+- The separate rounded feedback parent panel, internal panel scrollbar, and panel border shown in the legacy feedback references are absent by design, matching the user's explicit direction.
+- The 800-pixel desktop content column preserves the native five-step hierarchy while leaving the surrounding overlay visually open. At mobile width, the same surface reflows into a single-column full-height flow without horizontal overflow.
+- The success state keeps the reference's centered checkmark, heading, restrained body copy, and primary action hierarchy. Its former bordered parent card is intentionally removed so it remains consistent with the language overlay.
+
+## Focused dropdown comparison
+
+- In `design-qa-dropdown-comparison.png`, the legacy menu is visibly constrained by the modal's rounded scrolling box. The new menu opens into the viewport over the shared overlay.
+- Browser measurement for the open menu was `top: 344`, `bottom: 622`, `height: 278` in a 720-pixel viewport, confirming the complete list is visible and not clipped by a parent overflow boundary.
+- The form content wrapper uses visible overflow, while the viewport owns vertical scrolling for genuinely short screens. This removes the nested scroll surface that caused the original crop.
 
 ## Required fidelity surfaces
 
-- Fonts and typography: Watch's Montserrat family, existing optical weights,
-  line heights, and stone hierarchy are used. Heading, field labels, helper
-  text, values, and compact metadata remain clearly differentiated without
-  unintended wrapping on desktop.
-- Spacing and layout rhythm: modal centering, 800-pixel frame, 24-pixel desktop
-  vertical padding, four-column tab grid, section gaps, 12-pixel radii, and
-  footer alignment closely follow the target. Mobile uses safe full-height
-  bounds and expected stacked spacing.
-- Colors and visual tokens: the implementation uses Watch black/stone surfaces,
-  white opacity borders, and `brand-red` for selection, validation, checkbox,
-  and submit states. Contrast and semantic emphasis match the target.
-- Image quality and asset fidelity: this form has no raster product imagery.
-  All visible icons use the project's Lucide icon library; no placeholder,
-  emoji, CSS drawing, or handcrafted SVG replaces a target asset.
-- Copy and content: the selected concept's heading, helper, category labels,
-  language/content context, required identity fields, page context, optional element
-  marking, diagnostics disclosure, trust note, and submit copy are present.
-  The implementation intentionally leaves diagnostics unchecked until explicit
-  consent and keeps public submissions separate from Linear priority.
-
-## Focused comparison evidence
-
-- No additional crop was needed: the 2500 by 1058 normalized comparison keeps
-  tab icons, small helper copy, input values, metadata, consent disclosure, and
-  footer controls readable at native height.
-- Browser interaction separately verified category and context selection,
-  required identity fields, diagnostic opt-in, semantic element selection, and
-  mobile reflow.
+- Typography: existing Watch Montserrat typography, optical weights, line heights, and stone text hierarchy are preserved across headings, labels, helpers, values, and receipt copy.
+- Spacing and layout: the centered 800-pixel column, full-screen overlay, fixed close control, five-step progress rhythm, responsive card grid, and compact footer align with the language-selector composition.
+- Color and effects: Watch black/stone surfaces, brand red, subtle white borders, and the existing backdrop blur are reused from the product design system. No additional outer blurred panel was introduced.
+- Assets and icons: all visible symbols use the existing Lucide icon dependency. The flow contains no raster product imagery and introduces no placeholder, emoji, handcrafted SVG, or CSS-drawn asset.
+- Copy and content: success copy changes by feedback category when an email was supplied; when email was omitted, the receipt offers one final optional email field. A delivery failure retains the completed form and exposes the official Jesus Film Project support form.
 
 ## Interaction and runtime verification
 
-- Category and context controls update their state and contextual copy.
-- Required name, email, and message validation are covered without sending a
-  real report during browser QA.
-- Diagnostic values remain hidden until consent and can be previewed.
-- Page marking temporarily dismisses the dialog. Selecting the visible Search
-  control reopens it with `Search videos` recorded as a `button`, without
-  activating the underlying search action or capturing form contents.
-- The only browser-console errors came from the Codex browser extension's frame
-  manager; no application error was recorded.
-- The visible `N` control in the mobile development capture is Next.js tooling
-  and is not part of the production interface.
+- Browser QA completed the five-step desktop journey using synthetic values and a no-side-effect local Linear stub.
+- Browser QA verified the open language selector, late-email validation and attachment, email-aware success copy, the 390 × 844 mobile success layout, and the failed-delivery support fallback.
+- The existing dynamic-import boundary in `FeedbackLauncher` remains intact; the modal is still loaded only after launcher intent, so the redesign does not add feedback-form work to initial Watch rendering or hydration.
+- Focused component/server tests cover full-screen layout, receipt copy, opaque receipt creation, tamper and expiry rejection, sanitized comment creation, and the support URL.
+- No application console error was observed. The only console noise was the known Codex browser-extension frame manager and Next.js development-mode cache warning.
+- The small Next.js development badge visible in captures is development tooling and is not part of the production interface.
 
 ## Comparison history
 
-- First pass finding (P2): `/tmp/watch-feedback-matched-v2.png` required a short
-  internal desktop scroll to reach the persistent actions, and its close action
-  followed the global Watch viewport pattern instead of the selected composer's
-  inset placement.
-- Fix: the composer now uses the target's 94-dvh desktop bound, tighter message
-  field and vertical rhythm, and an inset dialog close button.
-- Post-fix evidence: `/tmp/watch-feedback-desktop-final.png` reports equal
-  `clientHeight` and `scrollHeight` of 995 pixels with `scrollTop` 0, and shows
-  all actions and the close control in the intended frame.
-- Browser QA also exposed a semantic selection issue where a nested element
-  could be recorded as a generic `div`. The picker now resolves nested targets
-  to the nearest meaningful control or content landmark; the browser verified
-  `Search videos` as a `button`, and the component test covers nested spans.
-
-## Findings
-
-- No remaining P0, P1, or P2 visual or interaction findings.
-
-## Follow-up polish
-
-- P3: translate the new form body copy across Watch's full locale catalog in a
-  dedicated localization scope. The replaced Google form was English-only;
-  existing launcher and close labels remain localized in this change.
+- Initial supplied state: a bounded rounded feedback panel differed from the language overlay and clipped suggestion menus within its scrolling parent.
+- Rebuild: moved the native form directly onto the full-screen overlay, removed the panel surface and internal overflow boundary, and fixed the close action to the viewport.
+- Completion pass: added category-aware email follow-up copy, a secure late-email path that comments on the existing Linear issue through a short-lived opaque receipt, and the official support fallback on delivery failure.
+- Final combined comparison found no remaining P0, P1, or P2 visual, responsive, or interaction issue.
 
 ## Result
 

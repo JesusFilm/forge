@@ -14,7 +14,10 @@ const interaction = vi.hoisted(() => ({
 const watchSearch = vi.hoisted(() => ({
   fetchWatchSearchSuggestions: vi.fn(),
 }))
-const feedbackAction = vi.hoisted(() => ({ submit: vi.fn() }))
+const feedbackAction = vi.hoisted(() => ({
+  submit: vi.fn(),
+  addEmail: vi.fn(),
+}))
 
 vi.mock("@/components/FloatingSearchProvider", () => ({
   useFloatingSearchPinned: () => ({
@@ -36,6 +39,7 @@ vi.mock("@/lib/watch-search-client", () => ({
 
 vi.mock("@/lib/feedback-action", () => ({
   submitFeedback: feedbackAction.submit,
+  addFeedbackFollowUpEmail: feedbackAction.addEmail,
 }))
 
 const languageOptions = [
@@ -140,16 +144,18 @@ function selectFeedbackCategory(
   })
 }
 
-async function fillMinimalFeedback() {
+async function fillMinimalFeedback(
+  category: "problem" | "confusing" | "idea" | "praise" = "problem",
+) {
   await openFeedback()
-  selectFeedbackCategory("problem")
-  submitCurrentStep()
-  submitCurrentStep()
+  selectFeedbackCategory(category)
   submitCurrentStep()
   setValue(
     document.querySelector("textarea") as HTMLTextAreaElement,
     "Playback failed after I pressed Watch.",
   )
+  submitCurrentStep()
+  submitCurrentStep()
   submitCurrentStep()
   setValue(
     document.querySelector('input[autocomplete="name"]') as HTMLInputElement,
@@ -198,6 +204,8 @@ beforeEach(() => {
   window.history.replaceState({}, "", "/watch/jesus.html")
   feedbackAction.submit.mockReset()
   feedbackAction.submit.mockResolvedValue({ ok: true })
+  feedbackAction.addEmail.mockReset()
+  feedbackAction.addEmail.mockResolvedValue({ ok: true })
   container = document.createElement("div")
   document.body.appendChild(container)
   root = createRoot(container)
@@ -231,6 +239,21 @@ describe("FeedbackLauncher", () => {
     expect(document.querySelector("iframe")).toBeNull()
     expect(document.querySelector('a[href*="forms.gle"]')).toBeNull()
     expect(document.body.textContent).toContain("Share feedback")
+    const modal = document.querySelector(
+      '[data-testid="feedback-modal"]',
+    ) as HTMLElement
+    expect(modal.className).toContain("m-auto")
+    expect(modal.className).toContain("max-w-[800px]")
+    expect(modal.className).toContain("overflow-visible")
+    expect(modal.className).toContain("bg-transparent")
+    expect(modal.className).not.toContain("sm:rounded-2xl")
+    expect(modal.className).not.toContain("h-dvh")
+    expect(modal.className).not.toContain("w-dvw")
+    expect(modal.parentElement?.className).toContain("overflow-y-auto")
+    expect(modal.parentElement?.className).toContain("sm:py-24")
+    expect(modal.querySelector("form")?.className).toContain("overflow-visible")
+    const footer = modal.querySelector("footer") as HTMLElement
+    expect(footer.className).toBe("mt-6")
   })
 
   it("renders large icon categories with contextual copy", async () => {
@@ -256,12 +279,17 @@ describe("FeedbackLauncher", () => {
     expect(idea.getAttribute("aria-pressed")).toBe("true")
     expect(idea.querySelector(".lucide-lightbulb")).not.toBeNull()
     submitCurrentStep()
+    expect(document.body.textContent).toContain("What would make Watch better?")
+    setValue(
+      document.querySelector("textarea") as HTMLTextAreaElement,
+      "A clearer playback status would help.",
+    )
+    submitCurrentStep()
     submitCurrentStep()
     expect(
       document.querySelector('button[type="submit"]')?.textContent,
     ).toContain("Skip for now")
     submitCurrentStep()
-    expect(document.body.textContent).toContain("What would make Watch better?")
 
     expect(document.body.textContent).not.toContain("How urgent is this?")
   })
@@ -272,8 +300,6 @@ describe("FeedbackLauncher", () => {
     selectFeedbackCategory("problem")
     submitCurrentStep()
     submitCurrentStep()
-    submitCurrentStep()
-    submitCurrentStep()
 
     expect(document.body.textContent).toContain(
       "Please share at least 10 characters.",
@@ -282,6 +308,8 @@ describe("FeedbackLauncher", () => {
       document.querySelector("textarea") as HTMLTextAreaElement,
       "Playback failed after I pressed Watch.",
     )
+    submitCurrentStep()
+    submitCurrentStep()
     submitCurrentStep()
     submitCurrentStep()
     expect(document.body.textContent).toContain("Name is required.")
@@ -305,6 +333,24 @@ describe("FeedbackLauncher", () => {
     await openFeedback()
 
     selectFeedbackCategory("problem")
+    submitCurrentStep()
+    setValue(
+      document.querySelector("textarea") as HTMLTextAreaElement,
+      "Playback failed after I pressed Watch.",
+    )
+    const diagnostics = document.querySelector(
+      'input[type="checkbox"]',
+    ) as HTMLInputElement
+    expect(diagnostics.checked).toBe(false)
+    act(() => diagnostics.click())
+
+    const details = Array.from(document.querySelectorAll("button")).find(
+      (button) => button.textContent?.includes("View details"),
+    ) as HTMLButtonElement
+    expect(details.disabled).toBe(false)
+    act(() => details.click())
+    expect(document.body.textContent).toContain("browser")
+    expect(document.body.textContent).toContain("time Zone")
     submitCurrentStep()
     selectThemed("feedback-language-area", "subtitles")
     await act(async () => {
@@ -350,24 +396,6 @@ describe("FeedbackLauncher", () => {
     submitCurrentStep()
     submitCurrentStep()
     setValue(
-      document.querySelector("textarea") as HTMLTextAreaElement,
-      "Playback failed after I pressed Watch.",
-    )
-    const diagnostics = document.querySelector(
-      'input[type="checkbox"]',
-    ) as HTMLInputElement
-    expect(diagnostics.checked).toBe(false)
-    act(() => diagnostics.click())
-
-    const details = Array.from(document.querySelectorAll("button")).find(
-      (button) => button.textContent?.includes("View details"),
-    ) as HTMLButtonElement
-    expect(details.disabled).toBe(false)
-    act(() => details.click())
-    expect(document.body.textContent).toContain("browser")
-    expect(document.body.textContent).toContain("time Zone")
-    submitCurrentStep()
-    setValue(
       document.querySelector('input[autocomplete="name"]') as HTMLInputElement,
       "Alex Morgan",
     )
@@ -405,6 +433,65 @@ describe("FeedbackLauncher", () => {
     expect(payload.diagnostics).toBeTruthy()
     expect(payload.page).toMatchObject({ title: "The Life of Jesus" })
     expect(document.body.textContent).toContain("Thank you")
+    expect(document.body.textContent).toContain(
+      "We’ll email you when the problem is resolved.",
+    )
+  })
+
+  it("uses idea-aware receipt copy when an email was supplied", async () => {
+    await fillMinimalFeedback("idea")
+    setValue(
+      document.querySelector('input[autocomplete="email"]') as HTMLInputElement,
+      "alex@example.com",
+    )
+
+    await sendFeedback()
+
+    expect(document.body.textContent).toContain(
+      "We’ll email you once we implement your idea.",
+    )
+    expect(
+      document.querySelector('[data-testid="feedback-follow-up-email-form"]'),
+    ).toBeNull()
+  })
+
+  it("gives people one final chance to attach an email to the same issue", async () => {
+    feedbackAction.submit.mockResolvedValueOnce({
+      ok: true,
+      receipt: "opaque-feedback-receipt",
+    })
+    await fillMinimalFeedback()
+    await sendFeedback()
+
+    expect(document.body.textContent).toContain(
+      "Want to know when this is fixed?",
+    )
+    const form = document.querySelector(
+      '[data-testid="feedback-follow-up-email-form"]',
+    ) as HTMLFormElement
+    const input = form.querySelector("input") as HTMLInputElement
+    setValue(input, "not-an-email")
+    act(() => form.requestSubmit())
+    expect(document.body.textContent).toContain("Enter a valid email address.")
+    expect(feedbackAction.addEmail).not.toHaveBeenCalled()
+
+    setValue(input, "alex@example.com")
+    await act(async () => {
+      form.requestSubmit()
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(feedbackAction.addEmail).toHaveBeenCalledWith({
+      email: "alex@example.com",
+      receipt: "opaque-feedback-receipt",
+    })
+    expect(document.body.textContent).toContain(
+      "We’ll email you when the problem is resolved.",
+    )
+    expect(
+      document.querySelector('[data-testid="feedback-follow-up-email-form"]'),
+    ).toBeNull()
   })
 
   it("accepts typed language and content when lookup services fail", async () => {
@@ -417,6 +504,11 @@ describe("FeedbackLauncher", () => {
     await openFeedback()
 
     selectFeedbackCategory("problem")
+    submitCurrentStep()
+    setValue(
+      document.querySelector("textarea") as HTMLTextAreaElement,
+      "The language and content could not be found.",
+    )
     submitCurrentStep()
     selectThemed("feedback-language-area", "audio")
     await act(async () => {
@@ -443,14 +535,9 @@ describe("FeedbackLauncher", () => {
     )
     submitCurrentStep()
     expect(
-      document.querySelector('[data-testid="feedback-step-3"]'),
+      document.querySelector('[data-testid="feedback-step-4"]'),
     ).not.toBeNull()
 
-    submitCurrentStep()
-    setValue(
-      document.querySelector("textarea") as HTMLTextAreaElement,
-      "The language and content could not be found.",
-    )
     submitCurrentStep()
     setValue(
       document.querySelector('input[autocomplete="name"]') as HTMLInputElement,
@@ -480,6 +567,11 @@ describe("FeedbackLauncher", () => {
     await openFeedback()
     selectFeedbackCategory("problem")
     submitCurrentStep()
+    setValue(
+      document.querySelector("textarea") as HTMLTextAreaElement,
+      "The screening page does not start playback.",
+    )
+    submitCurrentStep()
     selectThemed("feedback-content-scope", "other")
     setValue(
       document.querySelector("#feedback-content-title") as HTMLInputElement,
@@ -493,11 +585,6 @@ describe("FeedbackLauncher", () => {
       "No direct match. Your typed title will still be submitted.",
     )
     submitCurrentStep()
-    submitCurrentStep()
-    setValue(
-      document.querySelector("textarea") as HTMLTextAreaElement,
-      "The screening page does not start playback.",
-    )
     submitCurrentStep()
     setValue(
       document.querySelector('input[autocomplete="name"]') as HTMLInputElement,
@@ -527,6 +614,11 @@ describe("FeedbackLauncher", () => {
     expect(document.body.textContent).toContain(
       "We could not send your feedback. Please try again.",
     )
+    const supportLink = document.querySelector(
+      '[data-testid="feedback-support-form-link"]',
+    ) as HTMLAnchorElement
+    expect(supportLink.href).toBe("https://www.jesusfilm.org/contact/")
+    expect(supportLink.target).toBe("_blank")
     await sendFeedback()
     expect(feedbackAction.submit).toHaveBeenCalledTimes(2)
     expect(document.body.textContent).toContain("Thank you")
@@ -611,6 +703,11 @@ describe("FeedbackLauncher", () => {
     await openFeedback()
 
     selectFeedbackCategory("problem")
+    submitCurrentStep()
+    setValue(
+      document.querySelector("textarea") as HTMLTextAreaElement,
+      "Playback failed after I pressed Watch.",
+    )
     submitCurrentStep()
     submitCurrentStep()
 

@@ -19,6 +19,7 @@ export type BlockTemplateKey =
   | "cta"
   | "easterDates"
   | "infoBlocks"
+  | "languageGlobe"
   | "mediaCollection"
   | "dynamicMediaCollection"
   | "navigationCarousel"
@@ -40,6 +41,7 @@ export const BLOCK_TEMPLATE_KEYS: BlockTemplateKey[] = [
   "video",
   "videoCarousel",
   "watchHomeHero",
+  "languageGlobe",
   "routeVideoHero",
   "routeVideo",
   "routeVideoCarousel",
@@ -398,6 +400,19 @@ export function summarizeBlock(
     }
   }
 
+  if (type === "languageGlobe") {
+    return {
+      key: summaryKey,
+      typeLabel: "Language Globe",
+      title: asString(value.title) || "Choose a language",
+      body:
+        asString(value.description) ||
+        "Animated scripture globe and language action.",
+      tone: "standard",
+      badges: ["LANGUAGES"],
+    }
+  }
+
   if (type === "bibleQuotesCarousel") {
     const quotes = asArray(value.quotes)
     const firstQuote = asRecord(quotes[0])
@@ -692,6 +707,19 @@ export function createTemplateBlock(
     return {
       t: "watchHomeHero",
       sectionKey: `watch-home-hero-${index}`,
+    }
+  }
+
+  if (template === "languageGlobe") {
+    return {
+      t: "languageGlobe",
+      sectionKey: `language-globe-${index}`,
+      eyebrow: "Watch languages",
+      title: "Choose a language",
+      description: "Explore languages by region or browse the full list.",
+      ctaEnabled: true,
+      ctaLabel: "Select language",
+      ctaLink: "/languages",
     }
   }
 
