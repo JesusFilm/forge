@@ -151,7 +151,7 @@ jest.mock("../../../lib/authSession", () => {
 })
 
 import { StrictMode, act } from "react"
-import { Animated, Dimensions, StyleSheet } from "react-native"
+import { Animated, AppState, Dimensions, StyleSheet } from "react-native"
 
 import { ENDED_FADE_DURATION_MS } from "../MiniPlayerWindow"
 import {
@@ -159,11 +159,14 @@ import {
   EXPAND_DURATION_MS,
   EXPAND_HOLD_TIMEOUT_MS,
   PlaybackHost,
+  QUALITY_SWAP_TIMEOUT_MS,
   REPOSITION_DURATION_MS,
   SHRINK_DURATION_MS,
   TAB_BAR_CONTENT_HEIGHT,
   shouldDrawSurface,
 } from "../PlaybackHost"
+import { getPlayerSettingsStore } from "../../../lib/miniPlayer/playerSettings"
+import { resetPlayerSettings } from "../../../test-utils/resetPlayerSettings"
 import {
   frameGeometry,
   miniPlayerCornerFrame,
@@ -456,6 +459,7 @@ beforeEach(() => {
   requestStore.reset()
   sessionStore.setPipHold(false)
   sessionStore.end("abandoned")
+  resetPlayerSettings()
   mockRouterPush.mockClear()
   mockSegments = []
   mockInsets = { top: 0, bottom: 0, left: 0, right: 0 }
@@ -2386,5 +2390,692 @@ describe("replacement (R12)", () => {
     for (const call of video.useVideoPlayer.mock.calls)
       expect(call[0]).toBe(URL_A)
     unsubscribe()
+  })
+
+  it("never pauses the taken-over player: a pause would stall the arriving video", async () => {
+    const first = attachSlot()
+    await renderHost()
+    await startPlayback()
+    video.__player.currentTime = 90
+    await detach(first)
+    expect(sessionStore.getSnapshot().session?.videoId).toBe("video-a")
+
+    const endings: MiniPlayerEndEvent[] = []
+    const unsubscribe = sessionStore.onEnd((event) => endings.push(event))
+    video.__player.pause.mockClear()
+    await attachSlotInAct({
+      streamingUrl: URL_B,
+      progressVideoId: "video-b",
+      session: {
+        ...SESSION_A,
+        videoId: "video-b",
+        videoSlug: "video-b-slug",
+        title: "Video B",
+      },
+    })
+    await act(async () => {
+      video.__settleReplace()
+    })
+
+    // The "replaced" ending really fired — the no-pause claim is about it.
+    expect(endings.map((e) => e.reason)).toEqual(["replaced"])
+    expect(video.__player.pause).not.toHaveBeenCalled()
+    unsubscribe()
+  })
+})
+
+/**
+ * U2: a quality-tier pick swaps the stream under the Mux constraint and
+ * resumes in place (R7/R8), the seek riding `sourceLoad` — never the
+ * `replaceAsync` promise, which resolves before the item applies. All requests
+ * run `autostart: false` so VideoPlayer's own sourceLoad autostart listener
+ * cannot confound the latch's play/seek assertions.
+ */
+describe("quality tier swaps (U2)", () => {
+  // R7's wire shape, pinned as literals rather than recomputed through
+  // applyQualityConstraint — a tautology would miss a broken mapping.
+  const CAPPED_HIGH_A =
+    "https://stream.mux.com/assetAAA111.m3u8?max_resolution=720p"
+  const CAPPED_LOW_A =
+    "https://stream.mux.com/assetAAA111.m3u8?max_resolution=480p"
+  const FLOORED_HIGHEST_A =
+    "https://stream.mux.com/assetAAA111.m3u8?min_resolution=1080p"
+  const CAPPED_HIGH_B =
+    "https://stream.mux.com/assetBBB222.m3u8?max_resolution=720p"
+  // The key the host itself establishes at mount for SESSION_A requests (U3's
+  // resetFor wiring); only the pre-mount case below still sets it by hand.
+  const CONTENT_KEY = "video-a-slug"
+
+  function settings() {
+    return getPlayerSettingsStore()
+  }
+
+  function releaseLogs() {
+    return datadog.datadogLog.warn.mock.calls.filter(
+      ([event]) => event === "player_settings.quality_swap_released",
+    )
+  }
+
+  // The background veto's axis. Jest's default is null, not "active", so a
+  // foreground is stood up — else every case passes the veto for the wrong
+  // reason and the cast case discriminates nothing. Restored against leaks.
+  const realAppState = AppState.currentState
+  beforeEach(() => {
+    ;(AppState as { currentState: string }).currentState = "active"
+  })
+  afterEach(() => {
+    ;(AppState as { currentState: string }).currentState = realAppState
+  })
+
+  it("AE1: a tier pick mid-play reloads capped, then resumes at the captured position and speed", async () => {
+    attachSlot({ autostart: false })
+    const renderer = await renderHost()
+    await startPlayback()
+    await act(async () => {
+      settings().setSpeed(1.5)
+    })
+    video.__player.currentTime = 754
+    video.__player.duration = 1800
+
+    await act(async () => {
+      settings().setQualityTier("high")
+    })
+
+    expect(video.__player.replaceAsync).toHaveBeenCalledTimes(1)
+    expect(video.__player.replaceAsync).toHaveBeenCalledWith(CAPPED_HIGH_A)
+
+    // Seek-before-play ordering probe: the position playback resumes AT.
+    const positionsAtPlay: number[] = []
+    video.__player.addListener("playingChange", (payload) => {
+      if ((payload as { isPlaying: boolean }).isPlaying)
+        positionsAtPlay.push(video.__player.currentTime)
+    })
+
+    // Settling loads the incoming item, which emits sourceLoad — the resume
+    // point. A seek at promise time would land on the outgoing item.
+    await act(async () => {
+      video.__settleReplace()
+    })
+
+    expect(video.__player.currentTime).toBe(754)
+    expect(video.__player.playbackRate).toBe(1.5)
+    expect(video.__player.play).toHaveBeenCalledTimes(2)
+    expect(positionsAtPlay).toEqual([754])
+    expect(video.__player.playing).toBe(true)
+
+    // One-shot: a later load of the same source must not re-seek.
+    video.__player.currentTime = 900
+    await act(async () => {
+      video.__player.__emit("sourceLoad", { videoSource: CAPPED_HIGH_A })
+    })
+    expect(video.__player.currentTime).toBe(900)
+    expect(renderer.root).toBeTruthy()
+  })
+
+  it("AE2: a pick while paused reloads capped and remains paused at the captured position", async () => {
+    attachSlot({ autostart: false })
+    await renderHost()
+    await startPlayback()
+    await act(async () => {
+      video.__player.pause()
+    })
+    video.__player.currentTime = 300
+    video.__player.duration = 600
+
+    await act(async () => {
+      settings().setQualityTier("low")
+    })
+
+    expect(video.__player.replaceAsync).toHaveBeenCalledWith(CAPPED_LOW_A)
+    await act(async () => {
+      video.__settleReplace()
+    })
+    await act(async () => {
+      video.__player.__emit("sourceLoad")
+    })
+
+    expect(video.__player.currentTime).toBe(300)
+    expect(video.__player.playing).toBe(false)
+    // Only the test's own initial play — the latch restored "paused".
+    expect(video.__player.play).toHaveBeenCalledTimes(1)
+  })
+
+  it("constrains every swap: a dub change under an active tier loads the new dub capped", async () => {
+    // Pre-mount keying models a key a PREVIOUS mount of this video
+    // established; the mount's resetFor preserves an equal key (U3).
+    settings().setContentKey(CONTENT_KEY)
+    settings().setQualityTier("high")
+    const id = attachSlot({ autostart: false })
+    await renderHost()
+    // The seam sits ahead of the player: the creation source is already capped.
+    expect(video.useVideoPlayer.mock.calls[0][0]).toBe(CAPPED_HIGH_A)
+
+    await act(async () => {
+      requestStore.updateSlot(
+        id,
+        makeRequest({
+          autostart: false,
+          streamingUrl: URL_B,
+          progressLanguageSlug: "french",
+          session: { ...SESSION_A, languageSlug: "french" },
+        }),
+      )
+    })
+
+    expect(video.__player.replaceAsync).toHaveBeenCalledTimes(1)
+    expect(video.__player.replaceAsync).toHaveBeenCalledWith(CAPPED_HIGH_B)
+  })
+
+  it("a re-pick mid-swap wins: the last tier's URL loads and exactly one seek lands", async () => {
+    attachSlot({ autostart: false })
+    await renderHost()
+    await startPlayback()
+    video.__player.currentTime = 500
+    video.__player.duration = 1800
+    await act(async () => {
+      settings().setQualityTier("high")
+    })
+    await act(async () => {
+      settings().setQualityTier("highest")
+    })
+
+    expect(video.__player.replaceAsync).toHaveBeenCalledTimes(2)
+    expect(video.__player.replaceAsync).toHaveBeenLastCalledWith(
+      FLOORED_HIGHEST_A,
+    )
+
+    await act(async () => {
+      video.__settleReplace()
+    })
+    await act(async () => {
+      video.__settleReplace()
+    })
+    await act(async () => {
+      video.__player.__emit("sourceLoad")
+    })
+    expect(video.__player.currentTime).toBe(500)
+    expect(video.__player.play).toHaveBeenCalledTimes(2)
+
+    // One-shot: a second load event must not re-seek the consumed latch.
+    video.__player.currentTime = 42
+    await act(async () => {
+      video.__player.__emit("sourceLoad")
+    })
+    expect(video.__player.currentTime).toBe(42)
+  })
+
+  it("a cross-asset swap mid-pick invalidates the latch: no seek to the stale capture", async () => {
+    const id = attachSlot({ autostart: false })
+    await renderHost()
+    await startPlayback()
+    await act(async () => {
+      settings().setSpeed(1.5)
+    })
+    video.__player.currentTime = 500
+    video.__player.duration = 1800
+    await act(async () => {
+      settings().setQualityTier("high")
+    })
+    expect(video.__player.replaceAsync).toHaveBeenCalledWith(CAPPED_HIGH_A)
+
+    // A dub change lands mid-swap: a DIFFERENT asset, same slug. The capture
+    // belongs to the old stream and must not seek the arriving one.
+    await act(async () => {
+      requestStore.updateSlot(
+        id,
+        makeRequest({
+          autostart: false,
+          streamingUrl: URL_B,
+          progressLanguageSlug: "french",
+          session: { ...SESSION_A, languageSlug: "french" },
+        }),
+      )
+    })
+    expect(video.__player.replaceAsync).toHaveBeenLastCalledWith(CAPPED_HIGH_B)
+
+    await act(async () => {
+      video.__settleReplace()
+    })
+    await act(async () => {
+      video.__settleReplace()
+    })
+    // SYNTHETIC: the fresh item's rate-1 state, stood up by hand (see U3).
+    video.__player.playbackRate = 1
+    await act(async () => {
+      video.__player.__emit("sourceLoad")
+    })
+
+    // No seek to 500 — the new dub starts at zero. The rate still rides.
+    expect(video.__player.currentTime).toBe(0)
+    expect(video.__player.playbackRate).toBe(1.5)
+  })
+
+  it("the latch defers to a cast session that starts mid-swap: seek and rate land, play does not", async () => {
+    const id = attachSlot({ autostart: false })
+    await renderHost()
+    await startPlayback()
+    await act(async () => {
+      settings().setSpeed(1.5)
+    })
+    video.__player.currentTime = 400
+    video.__player.duration = 900
+    await act(async () => {
+      settings().setQualityTier("high")
+    })
+    expect(video.__player.replaceAsync).toHaveBeenCalledWith(CAPPED_HIGH_A)
+
+    // The swap window spans seconds on-device; a receiver takes over inside it.
+    await act(async () => {
+      requestStore.updateSlot(
+        id,
+        makeRequest({ autostart: false, castActive: true }),
+      )
+    })
+    await act(async () => {
+      video.__settleReplace()
+    })
+    await act(async () => {
+      video.__player.__emit("sourceLoad")
+    })
+
+    // KTD4: never local audio over the receiver. Only the test's own play.
+    expect(video.__player.play).toHaveBeenCalledTimes(1)
+    expect(video.__player.currentTime).toBe(400)
+    expect(video.__player.playbackRate).toBe(1.5)
+  })
+
+  it("the latch never starts audio in the background: seek and rate land, play does not", async () => {
+    attachSlot({ autostart: false })
+    await renderHost()
+    await startPlayback()
+    await act(async () => {
+      settings().setSpeed(1.5)
+    })
+    video.__player.currentTime = 400
+    video.__player.duration = 900
+    await act(async () => {
+      settings().setQualityTier("high")
+    })
+    expect(video.__player.replaceAsync).toHaveBeenCalledWith(CAPPED_HIGH_A)
+
+    // The app backgrounds inside the swap window; the adapter's 'active'
+    // handler owns the eventual resume, not this latch.
+    ;(AppState as { currentState: string }).currentState = "background"
+    await act(async () => {
+      video.__settleReplace()
+    })
+    await act(async () => {
+      video.__player.__emit("sourceLoad")
+    })
+
+    expect(video.__player.play).toHaveBeenCalledTimes(1)
+    expect(video.__player.currentTime).toBe(400)
+    expect(video.__player.playbackRate).toBe(1.5)
+  })
+
+  it("releases on a load error: tier reverted, one log, and the revert leg resumes in place", async () => {
+    datadog.datadogLog.warn.mockClear()
+    attachSlot({ autostart: false })
+    await renderHost()
+    await startPlayback()
+    video.__player.currentTime = 400
+    video.__player.duration = 900
+    await act(async () => {
+      settings().setQualityTier("high")
+    })
+    expect(video.__player.replaceAsync).toHaveBeenCalledTimes(1)
+
+    await act(async () => {
+      video.__player.__emit("statusChange", { status: "error" })
+    })
+
+    // The store revert swings the URL seam back to the unconstrained stream.
+    expect(settings().getSnapshot().qualityTier).toBe("auto")
+    expect(video.__player.replaceAsync).toHaveBeenCalledTimes(2)
+    expect(video.__player.replaceAsync).toHaveBeenLastCalledWith(URL_A)
+    expect(releaseLogs()).toHaveLength(1)
+    expect(releaseLogs()[0][1]).toMatchObject({
+      release_reason: "load_error",
+      reverted_tier: "auto",
+    })
+
+    // The revert leg still resumes in place — the capture survives the release.
+    await act(async () => {
+      video.__settleReplace()
+    })
+    await act(async () => {
+      video.__settleReplace()
+    })
+    await act(async () => {
+      video.__player.__emit("sourceLoad")
+    })
+    expect(video.__player.currentTime).toBe(400)
+    expect(video.__player.playing).toBe(true)
+  })
+
+  it("a failing revert releases once more and stops: no oscillation", async () => {
+    datadog.datadogLog.warn.mockClear()
+    attachSlot({ autostart: false })
+    await renderHost()
+    await startPlayback()
+    video.__player.currentTime = 400
+    video.__player.duration = 900
+    await act(async () => {
+      settings().setQualityTier("high")
+    })
+    await act(async () => {
+      video.__player.__emit("statusChange", { status: "error" })
+    })
+    expect(video.__player.replaceAsync).toHaveBeenCalledTimes(2)
+
+    await act(async () => {
+      video.__player.__emit("statusChange", { status: "error" })
+    })
+
+    // The revert leg carries no further revert: no third swap, no ping-pong.
+    expect(settings().getSnapshot().qualityTier).toBe("auto")
+    expect(video.__player.replaceAsync).toHaveBeenCalledTimes(2)
+    expect(releaseLogs()).toHaveLength(2)
+
+    // And the latch is gone: a later load event seeks nothing.
+    video.__player.currentTime = 7
+    await act(async () => {
+      video.__player.__emit("sourceLoad")
+    })
+    expect(video.__player.currentTime).toBe(7)
+  })
+
+  it("a no-op revert (the viewer already re-picked the revert tier) clears the latch outright", async () => {
+    datadog.datadogLog.warn.mockClear()
+    attachSlot({ autostart: false })
+    await renderHost()
+    await startPlayback()
+    video.__player.currentTime = 400
+    video.__player.duration = 900
+    await act(async () => {
+      settings().setQualityTier("high")
+    })
+    // The viewer re-picks the original tier mid-swap: the effective URL is
+    // already back where the revert would put it.
+    await act(async () => {
+      settings().setQualityTier("auto")
+    })
+    expect(video.__player.replaceAsync).toHaveBeenCalledTimes(2)
+    expect(video.__player.replaceAsync).toHaveBeenLastCalledWith(URL_A)
+
+    await act(async () => {
+      video.__player.__emit("statusChange", { status: "error" })
+    })
+    expect(releaseLogs()).toHaveLength(1)
+    expect(settings().getSnapshot().qualityTier).toBe("auto")
+    // The revert write no-ops, so no swap re-keys the timer: a re-armed latch
+    // here would be timer-less and stale. It must clear instead.
+    expect(video.__player.replaceAsync).toHaveBeenCalledTimes(2)
+
+    await act(async () => {
+      video.__settleReplace()
+    })
+    await act(async () => {
+      video.__settleReplace()
+    })
+    video.__player.currentTime = 7
+    await act(async () => {
+      video.__player.__emit("sourceLoad")
+    })
+    expect(video.__player.currentTime).toBe(7)
+  })
+
+  it("releases on timeout when no sourceLoad ever arrives, respecting the budget", async () => {
+    jest.useFakeTimers()
+    datadog.datadogLog.warn.mockClear()
+    attachSlot({ autostart: false })
+    await renderHost()
+    await startPlayback()
+    video.__player.currentTime = 400
+    video.__player.duration = 900
+    await act(async () => {
+      settings().setQualityTier("high")
+    })
+    expect(video.__player.replaceAsync).toHaveBeenCalledTimes(1)
+
+    await act(async () => {
+      jest.advanceTimersByTime(QUALITY_SWAP_TIMEOUT_MS - 1)
+    })
+    expect(settings().getSnapshot().qualityTier).toBe("high")
+    expect(releaseLogs()).toHaveLength(0)
+
+    await act(async () => {
+      jest.advanceTimersByTime(1)
+    })
+    expect(settings().getSnapshot().qualityTier).toBe("auto")
+    expect(video.__player.replaceAsync).toHaveBeenCalledTimes(2)
+    expect(video.__player.replaceAsync).toHaveBeenLastCalledWith(URL_A)
+    expect(releaseLogs()).toHaveLength(1)
+    expect(releaseLogs()[0][1]).toMatchObject({ release_reason: "timeout" })
+  })
+})
+
+/**
+ * U3: a speed pick lands on the live player at once (R5), and both settings
+ * are session-scoped (R13): the host keys the store to its slug-stable
+ * videoKey at mount, preserves across minimize/restore and dub changes, and
+ * resets on takeover ("replaced") and on the real session endings.
+ */
+describe("playback speed (U3)", () => {
+  const CAPPED_HIGH_A =
+    "https://stream.mux.com/assetAAA111.m3u8?max_resolution=720p"
+  const SESSION_B: PlaybackSessionDescriptor = {
+    ...SESSION_A,
+    videoId: "video-b",
+    videoSlug: "video-b-slug",
+    title: "Video B",
+  }
+
+  function settings() {
+    return getPlayerSettingsStore()
+  }
+
+  it("R5: a speed pick writes the live rate — no pause, no seek, no reload", async () => {
+    attachSlot({ autostart: false })
+    await renderHost()
+    await startPlayback()
+    video.__player.currentTime = 200
+
+    await act(async () => {
+      settings().setSpeed(1.5)
+    })
+
+    expect(video.__player.playbackRate).toBe(1.5)
+    expect(video.__player.pause).not.toHaveBeenCalled()
+    expect(video.__player.currentTime).toBe(200)
+    expect(video.__player.replaceAsync).not.toHaveBeenCalled()
+    expect(video.__player.playing).toBe(true)
+  })
+
+  it("keys the store to the mounted video, so a pick needs no explicit keying", async () => {
+    attachSlot({ autostart: false })
+    await renderHost()
+    await startPlayback()
+
+    expect(settings().getSnapshot().contentKey).toBe("video-a-slug")
+
+    // The mount-established key is what activates U2's constraint seam.
+    await act(async () => {
+      settings().setQualityTier("high")
+    })
+    expect(video.__player.replaceAsync).toHaveBeenCalledWith(CAPPED_HIGH_A)
+  })
+
+  it("AE5: a different video taking the player resets to defaults and rate 1", async () => {
+    const first = attachSlot({ autostart: false })
+    await renderHost()
+    await startPlayback()
+    await act(async () => {
+      settings().setSpeed(2)
+    })
+    await act(async () => {
+      settings().setQualityTier("high")
+    })
+    await act(async () => {
+      video.__settleReplace()
+    })
+    await act(async () => {
+      video.__player.__emit("sourceLoad")
+    })
+    expect(video.__player.playbackRate).toBe(2)
+
+    video.__player.currentTime = 90
+    await detach(first)
+    expect(sessionStore.getSnapshot().session?.videoId).toBe("video-a")
+
+    await attachSlotInAct({
+      autostart: false,
+      streamingUrl: URL_B,
+      progressVideoId: "video-b",
+      session: SESSION_B,
+    })
+
+    expect(settings().getSnapshot()).toEqual({
+      speed: 1,
+      qualityTier: "auto",
+      contentKey: "video-b-slug",
+    })
+    expect(video.__player.playbackRate).toBe(1)
+    // The takeover load is unconstrained: the old tier died with its video.
+    expect(video.__player.replaceAsync).toHaveBeenLastCalledWith(URL_B)
+  })
+
+  it("AE6: minimize and restore keeps the picked speed — no reset on the same video", async () => {
+    const first = attachSlot({ autostart: false })
+    await renderHost()
+    await startPlayback()
+    await act(async () => {
+      settings().setSpeed(1.25)
+    })
+    expect(video.__player.playbackRate).toBe(1.25)
+
+    video.__player.currentTime = 30
+    await detach(first)
+    expect(sessionStore.getSnapshot().session?.videoId).toBe("video-a")
+    expect(settings().getSnapshot().speed).toBe(1.25)
+    expect(video.__player.playbackRate).toBe(1.25)
+
+    // Restore: the expanded screen names the same video and adopts the player.
+    await attachSlotInAct({ autostart: false })
+
+    expect(settings().getSnapshot()).toMatchObject({
+      speed: 1.25,
+      contentKey: "video-a-slug",
+    })
+    expect(video.__player.playbackRate).toBe(1.25)
+    expect(video.__player.replaceAsync).not.toHaveBeenCalled()
+  })
+
+  it("a dub change (same slug) keeps the speed and reapplies it on the new load", async () => {
+    const id = attachSlot({ autostart: false })
+    await renderHost()
+    await startPlayback()
+    await act(async () => {
+      settings().setSpeed(1.5)
+    })
+
+    await act(async () => {
+      requestStore.updateSlot(
+        id,
+        makeRequest({
+          autostart: false,
+          streamingUrl: URL_B,
+          progressLanguageSlug: "french",
+          session: { ...SESSION_A, languageSlug: "french" },
+        }),
+      )
+    })
+
+    expect(settings().getSnapshot()).toMatchObject({
+      speed: 1.5,
+      contentKey: "video-a-slug",
+    })
+    expect(video.__player.replaceAsync).toHaveBeenLastCalledWith(URL_B)
+    await act(async () => {
+      video.__settleReplace()
+    })
+    // SYNTHETIC: expo-video loads a fresh item at rate 1; the shared mock
+    // keeps the property, so the pre-load native reset is stood up by hand.
+    video.__player.playbackRate = 1
+    await act(async () => {
+      video.__player.__emit("sourceLoad")
+    })
+    expect(video.__player.playbackRate).toBe(1.5)
+  })
+
+  it("the picked rate rides a quality swap's reload (U2's shared scenario, store side)", async () => {
+    attachSlot({ autostart: false })
+    await renderHost()
+    await startPlayback()
+    video.__player.currentTime = 500
+    video.__player.duration = 900
+    await act(async () => {
+      settings().setSpeed(1.5)
+    })
+    await act(async () => {
+      settings().setQualityTier("high")
+    })
+    expect(video.__player.replaceAsync).toHaveBeenCalledWith(CAPPED_HIGH_A)
+
+    await act(async () => {
+      video.__settleReplace()
+    })
+    // SYNTHETIC: the same by-hand stand-in for the fresh item's rate-1 state.
+    video.__player.playbackRate = 1
+    await act(async () => {
+      video.__player.__emit("sourceLoad")
+    })
+
+    expect(video.__player.playbackRate).toBe(1.5)
+    expect(video.__player.currentTime).toBe(500)
+  })
+
+  it("a dismissal resets the settings to defaults with no key", async () => {
+    const id = attachSlot({ autostart: false })
+    await renderHost()
+    await startPlayback()
+    await act(async () => {
+      settings().setSpeed(1.75)
+    })
+    video.__player.currentTime = 60
+    await detach(id)
+    expect(sessionStore.getSnapshot().session).not.toBeNull()
+
+    await act(async () => {
+      sessionStore.requestDismiss()
+    })
+
+    expect(settings().getSnapshot()).toEqual({
+      speed: 1,
+      qualityTier: "auto",
+      contentKey: null,
+    })
+    expect(video.__player.playbackRate).toBe(1)
+  })
+
+  it("a subject change (abandoned) resets the settings too", async () => {
+    const id = attachSlot({ autostart: false })
+    await renderHost()
+    await startPlayback()
+    await act(async () => {
+      settings().setSpeed(1.75)
+    })
+    video.__player.currentTime = 60
+    await detach(id)
+
+    await act(async () => {
+      auth.__setSnapshot({ status: "signedOut" })
+    })
+
+    expect(settings().getSnapshot()).toEqual({
+      speed: 1,
+      qualityTier: "auto",
+      contentKey: null,
+    })
   })
 })

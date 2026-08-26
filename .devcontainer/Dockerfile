@@ -23,6 +23,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   socat \
   # Modern CLI tools
   fd-find \
+  openssh-server \
   ripgrep \
   tmux \
   zsh \
@@ -73,6 +74,86 @@ RUN mkdir -p /commandhistory /workspace /home/vscode/.claude /home/vscode/.codex
   touch /commandhistory/.zsh_history && \
   chown -R vscode:vscode /commandhistory /workspace /home/vscode/.claude /home/vscode/.codex /opt
 
+# SSH uses the account shell from /etc/passwd; align it with the VS Code terminal.
+RUN usermod --shell /bin/zsh vscode
+
+RUN rm -f /etc/ssh/ssh_host_* && \
+  mkdir -p /run/sshd /etc/ssh/sshd_config.d && \
+  printf '%s\n' \
+    'HostKey /etc/ssh/host_keys/ssh_host_ed25519_key' \
+    'PasswordAuthentication no' \
+    'KbdInteractiveAuthentication no' \
+    'PermitRootLogin no' \
+    'PubkeyAuthentication yes' \
+    'AllowUsers vscode' \
+    > /etc/ssh/sshd_config.d/forge-devcontainer.conf
+
+RUN cat > /usr/local/bin/sync-github-authorized-keys <<'EOF' && \
+  chmod 0755 /usr/local/bin/sync-github-authorized-keys
+#!/usr/bin/env bash
+set -euo pipefail
+
+authorized_keys="${HOME}/.ssh/authorized_keys"
+managed_begin="# BEGIN github.com public keys"
+managed_end="# END github.com public keys"
+
+if ! install -d -m 0700 "${HOME}/.ssh" 2>/dev/null; then
+  sudo install -d -o "$(id -u)" -g "$(id -g)" -m 0700 "${HOME}/.ssh"
+fi
+
+if ! touch "$authorized_keys" 2>/dev/null; then
+  sudo touch "$authorized_keys"
+  sudo chown "$(id -u):$(id -g)" "$authorized_keys"
+fi
+
+chmod 0600 "$authorized_keys"
+
+if ! command -v gh >/dev/null 2>&1; then
+  echo "GitHub CLI is not available; skipping automatic SSH authorized_keys setup." >&2
+  exit 0
+fi
+
+github_user="$(
+  gh auth status --hostname github.com 2>&1 |
+    sed -nE 's/.*Logged in to github\.com account ([^ ]+).*/\1/p' |
+    head -n 1
+)"
+
+if [ -z "$github_user" ]; then
+  echo "GitHub CLI is not authenticated; run 'gh auth login' inside the devcontainer to enable automatic SSH access." >&2
+  exit 0
+fi
+
+github_keys="$(
+  curl -fsSL "https://github.com/${github_user}.keys" |
+    grep -E '^(ssh-rsa|ssh-ed25519|ecdsa-sha2-nistp[0-9]+|sk-ssh-ed25519@openssh.com|sk-ecdsa-sha2-nistp256@openssh.com) ' || true
+)"
+
+if [ -z "$github_keys" ]; then
+  echo "No SSH public keys found at https://github.com/${github_user}.keys." >&2
+  echo "Add an SSH key to GitHub, then restart the devcontainer to enable local SSH access." >&2
+  echo "GitHub SSH key settings: https://github.com/settings/keys" >&2
+  exit 0
+fi
+
+tmp="$(mktemp)"
+awk -v begin="$managed_begin" -v end="$managed_end" '
+  $0 == begin { skip = 1; next }
+  $0 == end { skip = 0; next }
+  !skip { print }
+' "$authorized_keys" > "$tmp"
+
+{
+  cat "$tmp"
+  printf '%s\n' "$managed_begin"
+  printf '%s\n' "$github_keys"
+  printf '%s\n' "$managed_end"
+} > "$authorized_keys"
+
+rm -f "$tmp"
+chmod 0600 "$authorized_keys"
+EOF
+
 # Set environment variables
 ENV DEVCONTAINER=true
 ENV SHELL=/bin/zsh
@@ -84,8 +165,9 @@ WORKDIR /workspace
 # Switch to non-root user for remaining setup
 USER vscode
 
-# Set PATH early so claude and other user-installed binaries are available
-ENV PATH="/home/vscode/.local/bin:$PATH"
+# Keep fnm and its default Node version available to interactive shells and
+# non-interactive SSH commands such as `ssh forge node --version`.
+ENV PATH="/home/vscode/.fnm:/home/vscode/.fnm/aliases/default/bin:/home/vscode/.local/bin:$PATH"
 
 # Install Claude Code natively with marketplace plugins
 RUN curl -fsSL https://claude.ai/install.sh | bash && \
@@ -99,8 +181,9 @@ RUN uv python install 3.13 --default
 # Install ast-grep (AST-based code search)
 RUN uv tool install ast-grep-cli
 
-# Install fnm (Fast Node Manager), Node 24, pnpm, and Codex CLI
+# Install fnm (Fast Node Manager), Node 24, pnpm, Codex CLI, and T3 CLI
 ARG NODE_VERSION=24
+ARG T3_VERSION=0.0.33
 ENV FNM_DIR="/home/vscode/.fnm"
 RUN curl -fsSL https://fnm.vercel.app/install | bash -s -- --install-dir "$FNM_DIR" --skip-shell && \
   export PATH="$FNM_DIR:$PATH" && \
@@ -109,7 +192,8 @@ RUN curl -fsSL https://fnm.vercel.app/install | bash -s -- --install-dir "$FNM_D
   fnm default ${NODE_VERSION} && \
   corepack enable && \
   corepack prepare pnpm@9.12.3 --activate && \
-  npm install -g @openai/codex@latest
+  npm install -g @openai/codex@latest && \
+  npm install -g --allow-scripts=node-pty,msgpackr-extract "t3@${T3_VERSION}"
 
 # Install Oh My Zsh
 ARG ZSH_IN_DOCKER_VERSION=1.2.1
@@ -118,6 +202,7 @@ RUN sh -c "$(curl -fsSL https://github.com/deluan/zsh-in-docker/releases/downloa
   -x
 
 # Copy zsh configuration
+COPY --chown=vscode:vscode .zshenv /home/vscode/.zshenv
 COPY --chown=vscode:vscode .zshrc /home/vscode/.zshrc.custom
 
 # Append custom zshrc to the main one

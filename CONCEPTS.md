@@ -1073,6 +1073,24 @@ The app-wide, persisted audio- and subtitle-language choice that carries across 
 
 Identity always keys on the Language slug; the cached name paints labels instantly on a cold load but is never used for matching. Toggling subtitles on or off changes visibility only — it never rewrites the stored language, which only an explicit pick changes.
 
+### Player Settings
+
+The viewer's playback speed and Quality Tier for the current playback of one video, offered from the Chrome's settings sheet and applied to whatever the Playback Surface is playing.
+
+They belong to the playing content, not the viewer: they survive presentation changes (fullscreen, backgrounding, the Mini Player) but reset when a different video takes the player over or the viewer's playback ends by dismissal or abandonment — a video that merely plays to its end keeps them, so a replay resumes with the same choices. A stored choice applies only to the content it was chosen for, so a leftover setting can never shape the next video's first load. While a cast receiver drives playback, speed picks go to the receiver and quality is unavailable; a cast session that starts mid-video inherits the current speed.
+
+### Quality Tier
+
+One of the settings sheet's quality choices — an adaptive default plus tiers that constrain which renditions the stream may use, with the top tier a minimum floor rather than a cap so it refuses low renditions instead of duplicating the default.
+
+A tier rides the stream's address rather than a player API, so changing quality reloads the same stream under the new constraint, and within any tier the stream still adapts among the allowed renditions. Only streams whose host supports address-level constraining offer tiers; any other source shows the adaptive default alone or hides the choice.
+
+### Constraint Swap
+
+A reload of the same video admitted because only its Quality Tier changed — the same content under a different constraint, never a change of what is playing.
+
+It is not a session boundary: continue-watching progress and the playback-quality session continue across it, and the Autostart Veil does not re-arm. Playback resumes at the position captured when the tier was picked, restored when the new stream reports loaded rather than when the swap call returns; a swap that neither loads nor errors within a bounded wait releases the resume and reverts the tier.
+
 ### Playback Surface
 
 The app's one video player and the single view that draws it, owned above the navigation rather than by any screen, so every screen that shows video borrows it instead of creating its own.
