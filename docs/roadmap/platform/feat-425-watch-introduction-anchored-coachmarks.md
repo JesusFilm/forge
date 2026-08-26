@@ -47,8 +47,8 @@ the next.
 
 1. Position desktop steps 2 and 3 directly below the visible Search and
    Language controls when viewport space permits.
-2. Render a clearly visible triangular pointer whose tip aligns with the
-   current target's horizontal center.
+2. Render a small, seamless pointer whose tip aligns with the current target's
+   horizontal center without reading as a separate outlined icon.
 3. Keep the active target visually above the dimmed context and move both the
    highlight and pointer when advancing between Search and Language.
 4. Preserve a centered, pointer-free fallback when the target is absent,
@@ -86,3 +86,6 @@ the next.
   source/implementation comparisons.
 - Passed 10 focused component tests, type checking, touched-file lint, and a
   dialog-scoped accessibility scan with zero violations.
+- Refined the anchored cards to a compact 440-pixel maximum width, removed
+  decorative icon and eyebrow chrome from targeted steps, reduced spacing and
+  action sizes, and blended the pointer into the card surface.

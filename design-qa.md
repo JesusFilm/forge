@@ -54,6 +54,36 @@ final result: passed
 
 ---
 
+# Design QA: Minimal Watch coachmark refinement
+
+## Selected target
+
+- User direction: the anchored coachmark should be much smaller and less bulky, and its triangle should not read as a visible outlined shape on top of the modal.
+- Before capture: `/tmp/watch-tour-search-final.png`.
+- Refined Search capture: `/tmp/watch-tour-search-minimal-final.png`.
+- Refined Language capture: `/tmp/watch-tour-language-minimal-final.png`.
+- Combined same-state, same-viewport comparison: `/tmp/watch-tour-minimal-comparison.png` at 1280 × 800 per panel.
+
+## Comparison findings
+
+- The targeted card maximum width is reduced from 608 to 440 pixels and its estimated height from 390 to 260 pixels.
+- Targeted steps now omit the decorative icon and eyebrow, leaving only progress, title, description, and actions.
+- Padding, gaps, typography, button height, corner radius, and shadow are reduced while preserving readable hierarchy.
+- The pointer is reduced from 32 to 20 pixels and its fill and stroke now match the card, making it read as a seamless directional nib instead of an outlined triangle icon.
+- The Search and Language targets remain clearly spotlighted, and the compact card remains aligned to each target.
+
+## Verification
+
+- Search and Language captures are free of clipping, overlap, and viewport overflow.
+- Focused component suite: 10/10 tests passed.
+- Dialog-scoped accessibility scan: 0 violations, 0 incomplete checks, 19 passes after correcting progress-label contrast.
+
+## Result
+
+final result: passed
+
+---
+
 # Design QA: Watch introduction anchored coachmarks
 
 ## Verdict

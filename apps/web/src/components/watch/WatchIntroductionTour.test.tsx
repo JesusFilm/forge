@@ -259,11 +259,11 @@ describe("WatchIntroductionTour", () => {
       outline.compareDocumentPosition(dialog) &
         Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy()
-    expect(dialog.style.left).toBe("296px")
-    expect(dialog.style.top).toContain("max(100px")
+    expect(dialog.style.left).toBe("380px")
+    expect(dialog.style.top).toContain("max(92px")
     expect(arrow.tagName.toLowerCase()).toBe("svg")
-    expect(arrow.style.left).toBe("288px")
-    expect(arrow.className.baseVal).toContain("-top-5")
+    expect(arrow.style.left).toBe("210px")
+    expect(arrow.className.baseVal).toContain("-top-3.5")
     expect(addSpy).toHaveBeenCalledWith("resize", expect.any(Function), {
       passive: true,
     })
@@ -286,8 +286,8 @@ describe("WatchIntroductionTour", () => {
       "[data-testid='watch-introduction-arrow']",
     ) as SVGElement
     expect(languageOutline.style.left).toBe("1112px")
-    expect(languageDialog.style.left).toBe("656px")
-    expect(languageArrow.style.left).toBe("476px")
+    expect(languageDialog.style.left).toBe("824px")
+    expect(languageArrow.style.left).toBe("314px")
     expect(removeSpy).toHaveBeenCalledWith("resize", expect.any(Function))
     expect(removeSpy).toHaveBeenCalledWith("scroll", expect.any(Function), true)
 

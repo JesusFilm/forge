@@ -28,9 +28,9 @@ import { WatchModalViewportCloseButton } from "@/components/watch/WatchModalView
 
 const VIEWPORT_MARGIN = 16
 const TARGET_PADDING = 8
-const CARD_GAP = 24
-const MAX_CARD_WIDTH = 608
-const ESTIMATED_CARD_HEIGHT = 390
+const CARD_GAP = 16
+const MAX_CARD_WIDTH = 440
+const ESTIMATED_CARD_HEIGHT = 260
 
 const TARGET_SELECTORS = {
   search: '[data-testid="floating-search-desktop-button"]',
@@ -270,27 +270,27 @@ export function WatchIntroductionTour({
             <div
               aria-hidden="true"
               data-testid="watch-introduction-target-outline"
-              className="pointer-events-none fixed z-[900] rounded-xl border-2 border-red-500 bg-transparent shadow-[0_0_0_4px_rgba(239,68,68,0.2),0_0_32px_rgba(239,68,68,0.36),0_0_0_9999px_rgba(0,0,0,0.82)] motion-reduce:transition-none"
+              className="pointer-events-none fixed z-[900] rounded-xl border border-red-500/80 bg-transparent shadow-[0_0_0_2px_rgba(239,68,68,0.14),0_0_18px_rgba(239,68,68,0.24),0_0_0_9999px_rgba(0,0,0,0.82)] motion-reduce:transition-none"
               style={activeTargetLayout.outline}
             />
           ) : null
         }
         viewportClassName={`pointer-events-none fixed inset-0 z-[1000] overflow-hidden p-4 pt-[max(1rem,env(safe-area-inset-top,0px))] pb-[max(1rem,env(safe-area-inset-bottom,0px))] ${targeted ? "" : "grid place-items-center"}`}
-        className={`pointer-events-auto z-[1070] max-h-[calc(100dvh-2rem)] max-w-[608px] gap-0 overflow-visible rounded-2xl border border-white/10 bg-stone-950 p-0 text-start text-stone-100 shadow-[0_28px_90px_rgba(0,0,0,0.72)] ring-1 ring-white/10 motion-reduce:transition-none forced-colors:border forced-colors:border-white forced-colors:bg-black ${targeted ? "fixed" : "relative w-[min(608px,calc(100vw-2rem))]"}`}
+        className={`pointer-events-auto z-[1070] max-h-[calc(100dvh-2rem)] max-w-[520px] gap-0 overflow-visible rounded-xl border border-white/10 bg-stone-950 p-0 text-start text-stone-100 shadow-[0_20px_60px_rgba(0,0,0,0.64)] ring-1 ring-white/8 motion-reduce:transition-none forced-colors:border forced-colors:border-white forced-colors:bg-black ${targeted ? "fixed" : "relative w-[min(520px,calc(100vw-2rem))]"}`}
         style={activeTargetLayout?.card}
       >
         {activeTargetLayout ? (
           <Triangle
             aria-hidden="true"
             data-testid="watch-introduction-arrow"
-            className={`pointer-events-none absolute z-10 size-8 fill-stone-950 stroke-white/20 ${
+            className={`pointer-events-none absolute z-10 size-5 fill-stone-950 stroke-stone-950 ${
               activeTargetLayout.placement === "below"
-                ? "-top-5"
-                : "-bottom-5 rotate-180"
+                ? "-top-3.5"
+                : "-bottom-3.5 rotate-180"
             }`}
-            strokeWidth={1.5}
+            strokeWidth={2}
             style={{
-              left: `${Math.round(activeTargetLayout.arrowLeft - 16)}px`,
+              left: `${Math.round(activeTargetLayout.arrowLeft - 10)}px`,
             }}
           />
         ) : null}
@@ -304,15 +304,19 @@ export function WatchIntroductionTour({
           renderInline
         />
 
-        <div className="flex max-h-[inherit] min-h-0 flex-col gap-6 overflow-y-auto rounded-[inherit] px-6 pt-8 pb-6 sm:gap-8 sm:px-10 sm:pt-10 sm:pb-8">
-          <div className="flex items-center justify-between gap-4 pe-12">
-            <span className="inline-flex size-12 shrink-0 items-center justify-center rounded-2xl bg-red-600/15 text-red-400 ring-1 ring-red-500/30 forced-colors:border">
-              <Icon aria-hidden className="size-6" />
-            </span>
+        <div className="flex max-h-[inherit] min-h-0 flex-col gap-4 overflow-y-auto rounded-[inherit] px-5 py-5 sm:px-6 sm:py-6">
+          <div
+            className={`flex items-center gap-3 pe-10 ${targeted ? "justify-end" : "justify-between"}`}
+          >
+            {!targeted ? (
+              <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-xl bg-red-600/12 text-red-400 ring-1 ring-red-500/25 forced-colors:border">
+                <Icon aria-hidden className="size-5" />
+              </span>
+            ) : null}
             <span
               aria-live="polite"
               aria-atomic="true"
-              className="text-sm font-medium text-stone-400"
+              className="text-xs font-medium text-stone-400"
             >
               {t("progress", {
                 current: stepIndex + 1,
@@ -321,19 +325,21 @@ export function WatchIntroductionTour({
             </span>
           </div>
 
-          <div className="min-w-0 space-y-3">
-            <p className="text-xs font-bold tracking-[0.16em] text-red-400 uppercase">
-              {t(`steps.${step.key}.eyebrow`)}
-            </p>
+          <div className="min-w-0 space-y-2">
+            {!targeted ? (
+              <p className="text-[10px] font-bold tracking-[0.15em] text-red-400 uppercase">
+                {t(`steps.${step.key}.eyebrow`)}
+              </p>
+            ) : null}
             <DialogTitle
               id={titleId}
-              className="text-pretty text-3xl leading-tight font-bold text-white sm:text-4xl"
+              className="text-pretty text-2xl leading-tight font-bold text-white sm:text-[28px]"
             >
               {t(`steps.${step.key}.title`)}
             </DialogTitle>
             <DialogDescription
               id={descriptionId}
-              className="max-w-[54ch] text-base leading-relaxed text-stone-300 sm:text-lg"
+              className="max-w-[54ch] text-sm leading-relaxed text-stone-300 sm:text-[15px]"
             >
               {t(`steps.${step.key}.description`)}
             </DialogDescription>
@@ -350,13 +356,13 @@ export function WatchIntroductionTour({
 
           <div
             data-testid="watch-introduction-actions"
-            className="flex flex-col gap-3 sm:flex-row sm:items-center"
+            className="flex flex-col gap-2 sm:flex-row sm:items-center"
           >
             {!isFinalStep ? (
               <button
                 type="button"
                 onClick={requestSkip}
-                className="min-h-11 rounded-full px-5 py-3 text-sm font-semibold text-stone-300 transition hover:bg-white/8 hover:text-white focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:outline-none motion-reduce:transition-none sm:me-auto"
+                className="min-h-10 rounded-full px-4 py-2 text-sm font-semibold text-stone-400 transition hover:bg-white/8 hover:text-white focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:outline-none motion-reduce:transition-none sm:me-auto"
               >
                 {t("skip")}
               </button>
@@ -370,7 +376,7 @@ export function WatchIntroductionTour({
                     return Math.max(0, current - 1)
                   })
                 }
-                className="min-h-11 rounded-full bg-white/10 px-6 py-3 text-sm font-semibold text-white transition hover:bg-white/16 focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:outline-none motion-reduce:transition-none"
+                className="min-h-10 rounded-full bg-white/8 px-5 py-2 text-sm font-semibold text-white transition hover:bg-white/14 focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:outline-none motion-reduce:transition-none"
               >
                 {t("back")}
               </button>
@@ -380,7 +386,7 @@ export function WatchIntroductionTour({
                 type="button"
                 data-variant="secondary"
                 onClick={requestComplete}
-                className="min-h-11 rounded-full bg-white/10 px-6 py-3 text-sm font-semibold text-white transition hover:bg-white/16 focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:outline-none motion-reduce:transition-none"
+                className="min-h-10 rounded-full bg-white/8 px-5 py-2 text-sm font-semibold text-white transition hover:bg-white/14 focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:outline-none motion-reduce:transition-none"
               >
                 {t("done")}
               </button>
@@ -396,7 +402,7 @@ export function WatchIntroductionTour({
                         Math.min(STEP_COUNT - 1, current + 1),
                       )
               }
-              className="min-h-11 rounded-full bg-white px-7 py-3 text-sm font-bold text-stone-950 transition hover:bg-red-500 hover:text-white focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-stone-950 focus-visible:outline-none motion-reduce:transition-none sm:min-w-36"
+              className="min-h-10 rounded-full bg-white px-6 py-2 text-sm font-bold text-stone-950 transition hover:bg-red-500 hover:text-white focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-stone-950 focus-visible:outline-none motion-reduce:transition-none sm:min-w-28"
             >
               {isFinalStep ? t("signup") : t("next")}
             </button>
