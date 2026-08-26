@@ -10,7 +10,7 @@ import {
 import Image from "next/image"
 import Link from "next/link"
 import { useTranslations } from "next-intl"
-import { LoaderCircle, Play } from "lucide-react"
+import { ArrowLeft, Circle, LoaderCircle, Play } from "lucide-react"
 
 import {
   Carousel,
@@ -307,15 +307,40 @@ export function SiblingCarousel({
     >
       <header className="mb-4 px-5 md:px-0">
         {selectableParents != null ? (
-          <div className="flex min-w-0 flex-col gap-2 md:flex-row md:items-center md:gap-3">
-            {selectableParents.length === 1 ? (
-              <span
-                data-testid="sibling-carousel-parent-title"
-                className="min-w-0 max-w-full truncate text-sm font-medium text-stone-100 md:max-w-xs md:flex-1"
-              >
-                {parentTitle}
+          selectableParents.length === 1 ? (
+            <p className="flex min-w-0 items-center gap-2 overflow-hidden text-sm font-normal text-stone-200">
+              {parentHref != null ? (
+                <Link
+                  href={parentHref}
+                  data-testid="sibling-carousel-parent-title"
+                  className="inline-flex min-w-0 items-center gap-1.5 font-bold text-stone-50 hover:text-white hover:underline focus-visible:text-white focus-visible:underline focus-visible:outline-none"
+                >
+                  <ArrowLeft
+                    aria-hidden="true"
+                    data-testid="sibling-carousel-parent-icon"
+                    className="size-4 shrink-0 text-white"
+                  />
+                  <span className="truncate">{parentTitle}</span>
+                </Link>
+              ) : (
+                <span
+                  data-testid="sibling-carousel-parent-title"
+                  className="truncate font-medium text-stone-50"
+                >
+                  {parentTitle}
+                </span>
+              )}
+              <Circle
+                aria-hidden="true"
+                data-testid="sibling-carousel-separator-icon"
+                className="size-1 shrink-0 fill-current text-stone-400 opacity-60"
+              />
+              <span data-testid="sibling-carousel-label" className="shrink-0">
+                {positionLabel}
               </span>
-            ) : (
+            </p>
+          ) : (
+            <div className="flex min-w-0 flex-col gap-2 md:flex-row md:items-center md:gap-3">
               <select
                 aria-label={videoLabels("collection")}
                 aria-busy={validPendingNavigation != null ? "true" : undefined}
@@ -338,14 +363,12 @@ export function SiblingCarousel({
                   </option>
                 ))}
               </select>
-            )}
-            <span
-              data-testid="sibling-carousel-label"
-              className="shrink-0 text-sm font-normal text-stone-300"
-            >
-              {positionLabel}
-            </span>
-            {selectableParents.length > 1 ? (
+              <span
+                data-testid="sibling-carousel-label"
+                className="shrink-0 text-sm font-normal text-stone-300"
+              >
+                {positionLabel}
+              </span>
               <span
                 aria-live="polite"
                 aria-atomic="true"
@@ -354,22 +377,39 @@ export function SiblingCarousel({
               >
                 {parentTitle} · {t("chapterCount", { count: clipTotal })}
               </span>
-            ) : null}
-          </div>
+            </div>
+          )
         ) : (
-          <p className="text-sm font-normal text-stone-300">
+          <p className="flex min-w-0 items-center gap-2 overflow-hidden text-sm font-normal text-stone-200">
             {parentHref != null ? (
               <Link
                 href={parentHref}
-                className="text-stone-100 hover:underline"
+                data-testid="sibling-carousel-parent-title"
+                className="inline-flex min-w-0 items-center gap-1.5 font-bold text-stone-50 hover:text-white hover:underline focus-visible:text-white focus-visible:underline focus-visible:outline-none"
               >
-                <span className="font-medium">{parentTitle}</span>
+                <ArrowLeft
+                  aria-hidden="true"
+                  data-testid="sibling-carousel-parent-icon"
+                  className="size-4 shrink-0 text-white"
+                />
+                <span className="truncate">{parentTitle}</span>
               </Link>
             ) : (
-              <span className="font-medium text-stone-100">{parentTitle}</span>
+              <span
+                data-testid="sibling-carousel-parent-title"
+                className="truncate font-medium text-stone-50"
+              >
+                {parentTitle}
+              </span>
             )}
-            <span className="px-2 text-stone-500">·</span>
-            <span data-testid="sibling-carousel-label">{positionLabel}</span>
+            <Circle
+              aria-hidden="true"
+              data-testid="sibling-carousel-separator-icon"
+              className="size-1 shrink-0 fill-current text-stone-400 opacity-60"
+            />
+            <span data-testid="sibling-carousel-label" className="shrink-0">
+              {positionLabel}
+            </span>
           </p>
         )}
       </header>
