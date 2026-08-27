@@ -3,7 +3,7 @@ id: "feat-425"
 title: "Port the RAG schema and provision empty Postgres"
 owner: "jaco"
 priority: "P0"
-status: "not-started"
+status: "in-progress"
 start_date: "2026-08-29"
 duration: 3
 depends_on: ["feat-424"]
