@@ -102,7 +102,7 @@ BEGIN
     INNER JOIN experience_locale AS locale
       ON locale.id = revision.entity_id
     WHERE revision.entity_type = 'ExperienceLocale'
-      AND revision.status = 'DRAFT'
+      AND revision.status = 'draft'
       AND jsonb_typeof(revision.snapshot) = 'object'
       AND jsonb_typeof(revision.snapshot -> 'data') = 'object'
       AND jsonb_typeof(revision.snapshot #> '{data,blocks}') = 'array'
