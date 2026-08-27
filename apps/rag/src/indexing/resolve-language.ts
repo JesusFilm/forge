@@ -46,7 +46,7 @@
  * depending on tinyld's exact scores. The sweep script owns DB reads, the
  * transaction, the change log and the report; this module only decides.
  */
-import { decideLanguage } from "./decide-language.js"
+import { decideLanguageFromDetection } from "./decide-language.js"
 import type { LanguageDecision } from "./decide-language.js"
 import { detectLanguage } from "./detect-language.js"
 import { DETECTION_FLOOR_CHARS } from "./decide-language.js"
@@ -264,7 +264,7 @@ export function resolveLanguage(
   opts: { declared: readonly string[] },
 ): LanguageResolution {
   const raw = detectLanguage(content)
-  const decision = decideLanguage(content, { declared: opts.declared })
+  const decision = decideLanguageFromDetection(content.length, raw, opts)
   return resolveFromSignals({
     decision,
     detected: raw.language,

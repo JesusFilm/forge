@@ -36,8 +36,8 @@ export function buildOpenApiDocument(): JsonObject {
   const searchRequest = jsonSchema(searchRequestSchema)
   propertiesOf(searchRequest).policy = ref("RetrievalPolicy")
   const searchResponse = jsonSchema(searchResponseSchema)
-  ;(propertiesOf(searchResponse).results as JsonObject).items =
-    ref("RankedResult")
+  const resultsSchema = propertiesOf(searchResponse).results as JsonObject
+  resultsSchema.items = ref("RankedResult")
 
   return {
     openapi: "3.0.3",

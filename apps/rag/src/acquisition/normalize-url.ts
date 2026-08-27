@@ -19,8 +19,6 @@ const TRACKING_PARAMS = new Set([
 export function normalizeUrl(input: string): string {
   const u = new URL(input)
   u.hash = ""
-  u.host = u.host.toLowerCase() // URL already lowercases host; explicit for intent
-  u.protocol = u.protocol.toLowerCase()
 
   for (const key of [...u.searchParams.keys()]) {
     const k = key.toLowerCase()

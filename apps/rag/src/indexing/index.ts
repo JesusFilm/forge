@@ -5,7 +5,11 @@ export {
   type ChunkOptions,
   type ChunkSpan,
 } from "./chunk.js"
-export { decideLanguage, type LanguageDecision } from "./decide-language.js"
+export {
+  decideLanguage,
+  decideLanguageFromDetection,
+  type LanguageDecision,
+} from "./decide-language.js"
 export { detectLanguage, type LanguageDetection } from "./detect-language.js"
 export {
   cleanText,

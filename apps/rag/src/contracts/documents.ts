@@ -59,11 +59,3 @@ export interface EmbeddedChunk {
   embedding: number[]
   embeddingModel: string
 }
-
-/** Source attribution attached to every retrieval result. */
-export interface Citation {
-  sourceKey: string
-  sourceName: string
-  title: string | null
-  url: string // canonicalUrl
-}

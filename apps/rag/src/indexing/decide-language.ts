@@ -20,7 +20,7 @@
  * stays fully retrievable unfiltered, is simply excluded from `language:<code>`
  * filters, and forms #73's worklist (`WHERE language IS NULL`).
  */
-import { detectLanguage } from "./detect-language.js"
+import { detectLanguage, type LanguageDetection } from "./detect-language.js"
 
 /**
  * Detection floor: below this many chars of cleaned content there is too little
@@ -44,19 +44,14 @@ export interface LanguageDecision {
   warning?: string
 }
 
-/**
- * Decide the `documents.language` label for one document's CLEANED content
- * (detect on what a future re-ingest would produce, per ADR-0006 — never the
- * raw snapshot). `declared` is the source's declared/expected language set,
- * used only for the out-of-set warning — it never overrides the content.
- */
-export function decideLanguage(
-  content: string,
+export function decideLanguageFromDetection(
+  contentLength: number,
+  detection: LanguageDetection,
   opts: { declared: readonly string[] },
 ): LanguageDecision {
-  if (content.length < DETECTION_FLOOR_CHARS) return { language: null }
+  if (contentLength < DETECTION_FLOOR_CHARS) return { language: null }
 
-  const { language, confidence } = detectLanguage(content)
+  const { language, confidence } = detection
   if (!language || confidence < CONFIDENCE_GATE) return { language: null }
 
   if (!opts.declared.includes(language)) {
@@ -69,4 +64,22 @@ export function decideLanguage(
     }
   }
   return { language }
+}
+
+/**
+ * Decide the `documents.language` label for one document's CLEANED content
+ * (detect on what a future re-ingest would produce, per ADR-0006 — never the
+ * raw snapshot). `declared` is the source's declared/expected language set,
+ * used only for the out-of-set warning — it never overrides the content.
+ */
+export function decideLanguage(
+  content: string,
+  opts: { declared: readonly string[] },
+): LanguageDecision {
+  if (content.length < DETECTION_FLOOR_CHARS) return { language: null }
+  return decideLanguageFromDetection(
+    content.length,
+    detectLanguage(content),
+    opts,
+  )
 }
