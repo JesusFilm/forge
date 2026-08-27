@@ -119,6 +119,16 @@ export function fitPassageCardRegions(
   // the credit: scripture must never render uncredited, and the reference-only
   // card is a presentation this surface already supports.
   regions.verseLines = 0
+  if (fits()) return regions
+
+  // With no verse on the card, R5 no longer binds — it governs a RENDERED
+  // verse. Shed the credit rather than let the overflow clip the reference,
+  // which is the one region every card must keep.
+  if (regions.copyright) {
+    regions.copyright = false
+    if (fits()) return regions
+  }
+  regions.translation = false
   return regions
 }
 

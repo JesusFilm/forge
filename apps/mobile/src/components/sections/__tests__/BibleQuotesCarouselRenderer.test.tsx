@@ -14,6 +14,7 @@ jest.mock("../../../lib/openPassageSheet", () => ({
 
 import { act } from "react"
 import type React from "react"
+import { Dimensions } from "react-native"
 
 import {
   CARD_CONTENT_PADDING,
@@ -65,6 +66,35 @@ const EXPERIENCE_QUOTE: Quote = {
   backgroundColor: "#123456",
   ctaLabel: null,
   ctaLink: null,
+}
+
+/**
+ * Render at a specific screen width and reader text size. `useWindowDimensions`
+ * reads `Dimensions.get("window")`, so overriding that is what lets a test reach
+ * the cramped end of the fit, where the drop order actually fires.
+ */
+function renderAtSize(
+  quotes: Quote[],
+  size: { width: number; fontScale: number },
+): TestInstance {
+  const real = Dimensions.get
+  const spy = jest
+    .spyOn(Dimensions, "get")
+    .mockImplementation((dim: Parameters<typeof real>[0]) =>
+      dim === "window"
+        ? {
+            width: size.width,
+            height: 800,
+            scale: 3,
+            fontScale: size.fontScale,
+          }
+        : real(dim),
+    )
+  try {
+    return render(quotes)
+  } finally {
+    spy.mockRestore()
+  }
 }
 
 function render(quotes: Quote[]): TestInstance {
@@ -292,6 +322,29 @@ describe("BibleQuotesCarouselRenderer — Experience cards are unchanged", () =>
     expect(findText(renderer, "JOHN 3:16")).toBeDefined()
   })
 
+  // React Native maps numberOfLines={0} to UNSET, i.e. NO limit. So the fit's
+  // "drop the verse" outcome must be honoured by the render gate, not passed
+  // through as a line count — otherwise the one state that exists to prevent
+  // overflow is the state that causes it. Falsified by hand: dropping the
+  // `regions.verseLines > 0` gate renders the verse with numberOfLines={0}.
+  it("renders no verse at all when the fit drops it", () => {
+    const renderer = renderAtSize([PASSAGE_QUOTE], { width: 300, fontScale: 3 })
+
+    const verse = findText(renderer, "Let’s make man in our image")
+    expect(verse).toBeUndefined()
+    expect(findText(renderer, "GENESIS 1:26-27")).toBeDefined()
+  })
+
+  it("never renders a verse with an unlimited line count", () => {
+    for (const fontScale of [1, 1.35, 2, 2.6, 3, 3.5]) {
+      const renderer = renderAtSize([PASSAGE_QUOTE], { width: 300, fontScale })
+      const verse = findText(renderer, "Let’s make man in our image")
+      if (verse) {
+        expect(verse.props.numberOfLines).toBeGreaterThan(0)
+      }
+    }
+  })
+
   // The four-line clamp belongs to the passage card, which has credit lines
   // below the verse to protect. An Experience card has none, so clamping it
   // would be a silent change to a surface this work does not own.
@@ -349,7 +402,7 @@ describe("fitPassageCardRegions", () => {
   it("drops the verse rather than its credit when nothing else fits", () => {
     const cramped = fitPassageCardRegions({
       ...full,
-      contentHeight: 90,
+      contentHeight: 230,
       fontScale: 2,
     })
 
@@ -357,6 +410,21 @@ describe("fitPassageCardRegions", () => {
     expect(cramped.verseLines).toBe(0)
     expect(cramped.translation).toBe(true)
     expect(cramped.copyright).toBe(true)
+  })
+
+  // Past that point R5 no longer binds — it governs a RENDERED verse, and there
+  // is none. The reference is what the remaining space must protect.
+  it("sheds the credit too once there is no verse left to credit", () => {
+    const tiny = fitPassageCardRegions({
+      ...full,
+      contentHeight: 90,
+      fontScale: 2,
+    })
+
+    expect(tiny.verseLines).toBe(0)
+    expect(tiny.link).toBe(false)
+    expect(tiny.copyright).toBe(false)
+    expect(tiny.translation).toBe(false)
   })
 
   // Sweep: no combination may publish verse text with either credit line

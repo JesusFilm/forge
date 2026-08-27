@@ -198,7 +198,12 @@ function QuoteCard({
           {quote.reference.toUpperCase()}
         </Text>
         {loading && <VerseLoading typography={typography} />}
-        {showVerse && (
+        {/* `verseLines === 0` is the fit's "drop the verse" outcome. It must be
+            honoured HERE: React Native maps numberOfLines={0} to UNSET, so
+            passing it through would render the verse with NO limit — the exact
+            overflow the drop order exists to prevent. The Experience path never
+            consults it, so that surface is unchanged. */}
+        {showVerse && (!hasPassage || regions.verseLines > 0) && (
           <Text
             style={[styles.quoteText, typography.body]}
             numberOfLines={hasPassage ? regions.verseLines : undefined}
