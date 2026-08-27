@@ -29,6 +29,32 @@ export const VERSE_MIN_LINES = 1
 export const TRANSLATION_MAX_LINES = 2
 export const COPYRIGHT_MAX_LINES = 2
 
+/** Scripture reads larger than the surrounding body copy. */
+export const VERSE_FONT_SIZE_INCREASE = 6
+
+// The ratio `typography.body` itself uses (16/24). Keeping it means the extra
+// size buys taller lines too, rather than crowding them together.
+const VERSE_LINE_HEIGHT_RATIO = 1.5
+
+/**
+ * The verse's own type scale. The fit budgets the verse by THIS line height and
+ * the renderer draws the verse with THIS font size, from one definition — a
+ * verse drawn larger than the budget reserves overflows the fixed square, and
+ * the clip lands on the reference.
+ *
+ * Rounded: Android renders sub-pixel font sizes blurry.
+ */
+export function verseTypography(typography: TypographyScale): {
+  fontSize: number
+  lineHeight: number
+} {
+  const fontSize = typography.body.fontSize + VERSE_FONT_SIZE_INCREASE
+  return {
+    fontSize,
+    lineHeight: Math.round(fontSize * VERSE_LINE_HEIGHT_RATIO),
+  }
+}
+
 // Consumed directly by BibleQuotesCarouselRenderer's StyleSheet, so the fit
 // arithmetic and the rendered layout cannot drift apart. A margin is a fixed
 // layout value and does not scale with the reader's text size.
@@ -71,7 +97,7 @@ function stackHeight(
     REFERENCE_MARGIN
 
   if (regions.verseLines > 0) {
-    height += line(typography.body.lineHeight) * regions.verseLines
+    height += line(verseTypography(typography).lineHeight) * regions.verseLines
     height += VERSE_MARGIN
   }
   if (regions.translation) {

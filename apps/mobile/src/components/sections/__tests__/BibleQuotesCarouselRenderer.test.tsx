@@ -25,10 +25,12 @@ import {
   REFERENCE_MAX_LINES,
   TRANSLATION_MARGIN,
   TRANSLATION_MAX_LINES,
+  VERSE_FONT_SIZE_INCREASE,
   VERSE_MARGIN,
   VERSE_MAX_LINES,
   composeCardLabel,
   fitPassageCardRegions,
+  verseTypography,
 } from "../../../lib/bibleCardFit"
 import { computeTypographyScale } from "../../../hooks/useTypography"
 import { BibleQuotesCarouselRenderer } from "../BibleQuotesCarouselRenderer"
@@ -135,6 +137,17 @@ function cardLabels(renderer: TestInstance): string[] {
     .map((node) => String(node.props.accessibilityLabel))
 }
 
+/** A Pressable's `style` is a function of its press state, not an array. */
+function flatStyle(node: RenderedNode | undefined): Record<string, number> {
+  const raw = node?.props.style
+  const style =
+    typeof raw === "function"
+      ? (raw as (s: { pressed: boolean }) => unknown)({ pressed: false })
+      : raw
+  const parts = Array.isArray(style) ? style.flat(3) : [style]
+  return Object.assign({}, ...parts.filter(Boolean)) as Record<string, number>
+}
+
 function passageLinks(renderer: TestInstance): RenderedNode[] {
   return renderer.root.findAll(
     (node) =>
@@ -202,6 +215,48 @@ describe("BibleQuotesCarouselRenderer — passage cards", () => {
       findText(renderer, "World English Bible British Edition")?.props
         .numberOfLines,
     ).toBe(TRANSLATION_MAX_LINES)
+  })
+
+  it("renders scripture upright and larger than the body copy", () => {
+    const renderer = render([PASSAGE_QUOTE])
+    const verse = findText(renderer, "Let’s make man in our image")
+    const style = flatStyle(verse)
+    const typography = computeTypographyScale(
+      Dimensions.get("window").width as number,
+    )
+
+    expect(style.fontStyle).not.toBe("italic")
+    expect(style.fontSize).toBe(
+      typography.body.fontSize + VERSE_FONT_SIZE_INCREASE,
+    )
+    expect(style.fontSize).toBe(verseTypography(typography).fontSize)
+    expect(style.lineHeight).toBe(verseTypography(typography).lineHeight)
+  })
+
+  // The fit budgets the verse by its line height. If the rendered line height
+  // ever stops matching what `verseTypography` returns, every fit decision is
+  // wrong and the card overflows with no test to catch it.
+  it("draws the verse at exactly the line height the fit reserves for it", () => {
+    for (const width of [375, 393, 430]) {
+      const renderer = renderAtSize([PASSAGE_QUOTE], { width, fontScale: 1 })
+      const style = flatStyle(findText(renderer, "Let’s make man in our image"))
+      const expected = verseTypography(computeTypographyScale(width))
+
+      expect(style.fontSize).toBe(expected.fontSize)
+      expect(style.lineHeight).toBe(expected.lineHeight)
+    }
+  })
+
+  // Covers R14: the Experience path keeps today's presentation.
+  it("leaves the Experience verse italic at body size", () => {
+    const renderer = render([EXPERIENCE_QUOTE])
+    const style = flatStyle(findText(renderer, "For God so loved the world"))
+    const typography = computeTypographyScale(
+      Dimensions.get("window").width as number,
+    )
+
+    expect(style.fontStyle).toBe("italic")
+    expect(style.fontSize).toBe(typography.body.fontSize)
   })
 
   // Covers AE3.
@@ -471,16 +526,6 @@ describe("fitPassageCardRegions", () => {
 // fit suite stays green — so read the numbers off the REAL rendered nodes.
 describe("fit constants match the rendered styles", () => {
   // A Pressable's `style` is a function of its press state, not an array.
-  function flatStyle(node: RenderedNode | undefined): Record<string, number> {
-    const raw = node?.props.style
-    const style =
-      typeof raw === "function"
-        ? (raw as (s: { pressed: boolean }) => unknown)({ pressed: false })
-        : raw
-    const parts = Array.isArray(style) ? style.flat(3) : [style]
-    return Object.assign({}, ...parts.filter(Boolean)) as Record<string, number>
-  }
-
   it("reserves the margins the card actually renders", () => {
     const renderer = render([PASSAGE_QUOTE])
 

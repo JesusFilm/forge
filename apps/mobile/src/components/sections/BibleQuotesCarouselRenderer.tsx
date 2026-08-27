@@ -30,6 +30,7 @@ import {
   VERSE_MARGIN,
   composeCardLabel,
   fitPassageCardRegions,
+  verseTypography,
 } from "../../lib/bibleCardFit"
 import { openPassageSheet } from "../../lib/openPassageSheet"
 import { resolveImageUrl } from "../../lib/resolveImageUrl"
@@ -205,7 +206,15 @@ function QuoteCard({
             consults it, so that surface is unchanged. */}
         {showVerse && (!hasPassage || regions.verseLines > 0) && (
           <Text
-            style={[styles.quoteText, typography.body]}
+            style={[
+              styles.quoteText,
+              // Scoped to passage cards. The Experience path has no fit
+              // arithmetic behind it, so enlarging its text there would
+              // overflow with nothing to catch it (R14 keeps it as it is).
+              hasPassage
+                ? [styles.passageVerse, verseTypography(typography)]
+                : [styles.authoredVerse, typography.body],
+            ]}
             numberOfLines={hasPassage ? regions.verseLines : undefined}
           >
             {verseText}
@@ -499,10 +508,18 @@ const styles = StyleSheet.create({
     marginBottom: REFERENCE_MARGIN,
   },
   quoteText: {
-    fontStyle: "italic",
     color: TEXT_ON_OVERLAY,
     fontFamily: "System",
     marginBottom: VERSE_MARGIN,
+  },
+  // Scripture reads upright, not italic, and larger than the body copy around
+  // it. Its size comes from `verseTypography` so the fit budget cannot drift.
+  passageVerse: {
+    fontStyle: "normal",
+  },
+  // The Experience carousel's authored quotes keep today's presentation.
+  authoredVerse: {
+    fontStyle: "italic",
   },
   // NOT routed through `attribution` above: that field renders as an uppercase
   // heavy eyebrow, which is wrong for a translation name and a copyright line.
