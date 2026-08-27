@@ -3,7 +3,7 @@ id: "feat-436"
 title: "Author the Watch category rail in Experience Editor"
 owner: "vlad"
 priority: "P1"
-status: "complete"
+status: "in-progress"
 start_date: "2026-08-26"
 duration: 1
 depends_on:

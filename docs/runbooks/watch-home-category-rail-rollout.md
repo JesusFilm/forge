@@ -145,7 +145,7 @@ SELECT revision.id, revision.entity_id,
 FROM content_revision AS revision
 INNER JOIN experience_locale AS locale ON locale.id = revision.entity_id
 WHERE revision.entity_type = 'ExperienceLocale'
-  AND revision.status = 'DRAFT'
+  AND revision.status = 'draft'
   AND COALESCE(
     CASE
       WHEN jsonb_typeof(revision.snapshot #> '{data,isHomepage}') = 'boolean'
@@ -224,7 +224,7 @@ WITH expected AS (
   )
     WITH ORDINALITY AS item(value, ordinality) ON true
   WHERE revision.entity_type = 'ExperienceLocale'
-    AND revision.status = 'DRAFT'
+    AND revision.status = 'draft'
     AND jsonb_typeof(revision.snapshot #> '{data,blocks}') = 'array'
     AND COALESCE(
       CASE
