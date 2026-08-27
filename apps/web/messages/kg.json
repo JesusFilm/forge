@@ -647,44 +647,6 @@
     "backToWatch": "Zonga na Watch",
     "browseVideos": "Talá ba vidéo"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Talá film mokuse",
-    "actions": {
-      "joinUs": "Bóyá elongo na biso",
-      "shareMission": "Kabola na mosala na biso"
-    },
-    "welcomeStart": {
-      "label": "Kondima & Makomami",
-      "title": "Piké ya vidéo ya lelo",
-      "description": "Contenu ya vidéo oyo etongami na kondima uta na bibliothèque na biso mpo na kopesa bokasi, kotinda na mokano, mpe kolamusa makanisi."
-    },
-    "welcomeMorning": {
-      "label": "Kolamuka ya tongo",
-      "title": "Tongo malamu! Ba moments ya Biblia ya lelo ezali kozela yo.",
-      "description": "Bandá mokolo na yo na ba moments ya Biblia oyo elendisaka mpe ekotombola molimo na yo."
-    },
-    "welcomeAfternoon": {
-      "label": "Kolamuka ya midi",
-      "title": "Midi malamu! Ba moments ya Biblia mpo na mokolo na yo.",
-      "description": "Contenu ya Biblia oyo elendisaka, malamu mpenza mpo na pause na yo ya midi to mpo na kopesa yo bokasi lisusu."
-    },
-    "welcomeEvening": {
-      "label": "Kolamuka ya mpokwa",
-      "title": "Mpokwa malamu! Pema na ba moments ya Biblia.",
-      "description": "Ba moments ya Biblia ya kimya mpo na kosalisa yo okanisa mpe omona kobondisama ntango mokolo na yo ezali kokóma na nsuka."
-    },
-    "joinUs": {
-      "label": "Bóyá elongo na biso",
-      "title": "Bamiliare ezali koluka",
-      "description": "Mbuma ezali awa. Bóyá elongo na biso mpo na kokabola Nsango Malamu na mokili na nzela ya média numérique."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Tókende elongo",
-      "title": "Koyebisa lisolo ya Yesu, elongo",
-      "description": "Mpo bázwa mpe bamona bolingo ya Yesu na monoko na bango moko, epai bazali."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}% ya kufwanana",
     "none": "Ata nsonga mosi ve me monana sambu na video yayi na ndinga yayi."

@@ -647,44 +647,6 @@
     "backToWatch": "Maira ki Watch",
     "browseVideos": "Browse te videos"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Mataku te short film",
-    "actions": {
-      "joinUs": "Kairaki mai",
-      "shareMission": "Baikaki n ara mission"
-    },
-    "welcomeStart": {
-      "label": "Te akaraki ao te Baibara",
-      "title": "Te video aei ni kamauna",
-      "description": "Te video ni taetaeaki n te baibara mai nanon ara library n te kairaki, te kamawaki, ao te kamwakaiaki naba te iango."
-    },
-    "welcomeMorning": {
-      "label": "Te kamwakai n te matu",
-      "title": "Tai! Te moments n te Baibara n te bong aei e karaoaki.",
-      "description": "Moan te bong ma te moments n te Baibara e kairakiaki n te iango, e tarao, ao e kamwakaiaki te yamo."
-    },
-    "welcomeAfternoon": {
-      "label": "Te kamwakai n te aobiti",
-      "title": "Tai! Te moments n te Baibara maam naei.",
-      "description": "Te content n te Baibara e kairakiaki, e tau n te aobiti yakoa ao te kamwakai naba."
-    },
-    "welcomeEvening": {
-      "label": "Te kamwakai n te bong",
-      "title": "Tai! Runga ma te moments n te Baibara.",
-      "description": "Te moments ni mauri n te Baibara e buokaki ni iango ao ni kunea te kamano ngkana e otina te bong aei."
-    },
-    "joinUs": {
-      "label": "Kairaki mai",
-      "title": "E nanokaki te billions",
-      "description": "E iai te harvest aei. Kairaki mai ao ana taetaeaki te gospel ma te ao n te media digital."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Rengarei maira",
-      "title": "Te taekaki n te story n Jesus, maira",
-      "description": "Ao e na rongorongo ao na rangi te aroa n Jesus n te taetae niomata, i nanona te tai e kona aei."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}% e tau",
     "none": "Karewe ni video aika a kaungaaki ibukin te video aei n te i-ki aei."

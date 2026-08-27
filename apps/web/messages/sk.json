@@ -647,44 +647,6 @@
     "backToWatch": "Späť na Sledovať",
     "browseVideos": "Prehliadať videá"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Pozrieť krátky film",
-    "actions": {
-      "joinUs": "Pridajte sa k nám",
-      "shareMission": "Podieľajte sa na našom poslaní"
-    },
-    "welcomeStart": {
-      "label": "Viera a Písmo",
-      "title": "Dnešný výber videí",
-      "description": "Videá z našej knižnice zamerané na vieru, ktoré majú inšpirovať, vyzvať a podnietiť zamyslenie."
-    },
-    "welcomeMorning": {
-      "label": "Ranná inšpirácia",
-      "title": "Dobré ráno! Čakajú vás dnešné biblické chvíle.",
-      "description": "Začnite deň povzbudivými biblickými momentmi, ktoré majú inšpirovať a povzbudiť vášho ducha."
-    },
-    "welcomeAfternoon": {
-      "label": "Popoludňajšia inšpirácia",
-      "title": "Dobrý deň! Biblické chvíle pre váš deň.",
-      "description": "Povzbudivé biblické obsahy ideálne na popoludňajšiu prestávku alebo ďalšiu dávku inšpirácie."
-    },
-    "welcomeEvening": {
-      "label": "Večerná inšpirácia",
-      "title": "Dobrý večer! Oddýchnite si s biblickými chvíľami.",
-      "description": "Pokojné biblické chvíle, ktoré vám pomôžu premýšľať a nájsť útechu na konci dňa."
-    },
-    "joinUs": {
-      "label": "Pridajte sa k nám",
-      "title": "Miliardy ľudí hľadajú",
-      "description": "Žatva je tu. Pridajte sa k nám, keď zdieľame evanjelium so svetom prostredníctvom digitálnych médií."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Poďme spolu",
-      "title": "Rozprávajme príbeh Ježiša spolu",
-      "description": "Aby mohli počuť a vidieť Ježišovu lásku vo svojom vlastnom jazyku tam, kde práve sú."
-    }
-  },
   "VideoRecommendations": {
     "match": "Zhoda na {percent} %",
     "none": "Pre toto video sa v danom jazyku nenašli žiadne odporúčania."

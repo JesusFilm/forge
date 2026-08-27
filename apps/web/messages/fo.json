@@ -647,44 +647,6 @@
     "backToWatch": "Aftur til Watch",
     "browseVideos": "Blaða í videobrotum"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Hygg at stuttfilmi",
-    "actions": {
-      "joinUs": "Ver við",
-      "shareMission": "Deil okkara missión"
-    },
-    "welcomeStart": {
-      "label": "Trúgv og Skrift",
-      "title": "Dagsins videoval",
-      "description": "Videoinnihald við trúgv í miðdeplinum úr savninum, sum kann inspirera, avbjóða og kveikja til hugleiðing."
-    },
-    "welcomeMorning": {
-      "label": "Morguninspiratión",
-      "title": "Góðan morgun! Dagsins bíbliustundir bíða.",
-      "description": "Byrja dagin við eggjandi bíbliustundum, ætlaðum at inspirera og lyfta andan."
-    },
-    "welcomeAfternoon": {
-      "label": "Eftirmiðdagsinspiratión",
-      "title": "Góðan dag! Bíbliustundir til tín dag.",
-      "description": "Eggjandi bíbliutilfar, væl egnað til tína eftirmiðdagssteðg ella sum framhaldandi íblástur."
-    },
-    "welcomeEvening": {
-      "label": "Kvøldsinspiratión",
-      "title": "Góða kvøld! Slapp av við bíbliustundum.",
-      "description": "Friðsæl bíbliustundir, sum hjálpa tær at hugleiða og finna troyst, tá ið dagurin fer at enda."
-    },
-    "joinUs": {
-      "label": "Ver við",
-      "title": "Milliardir leita",
-      "description": "Heystið er her. Ver við okkum, meðan vit deila evangeliið við heimin gjøgnum talgild miðlar."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Lata okkum fara saman",
-      "title": "At siga søguna um Jesus, saman",
-      "description": "So tey kunnu hoyra og síggja kærleikan hjá Jesusi á sínum egna máli júst har, sum tey eru."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}% samsvar",
     "none": "Eingi viðmæli til hetta videobrotið á hesum máli funnin."

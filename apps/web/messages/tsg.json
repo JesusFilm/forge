@@ -647,44 +647,6 @@
     "backToWatch": "Balik ha Watch",
     "browseVideos": "Browse hin mga video"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Kitaa an Mubo nga Pelikula",
-    "actions": {
-      "joinUs": "Upod kamo ha amon",
-      "shareMission": "Ipaambit an amon misyon"
-    },
-    "welcomeStart": {
-      "label": "Pagtuo ngan Kasuratan",
-      "title": "Mga Pili nga Video Para Yana nga Adlaw",
-      "description": "Mga video nga nakasentro ha pagtuo tikang ha amon librarya basi makagdasig, makapahimo hin paghunahuna, ngan makapukaw hin pamalandong."
-    },
-    "welcomeMorning": {
-      "label": "Buntag nga Inspirasyon",
-      "title": "Maupay nga Buntag! Aada An Mga Himo han Biblia Para Yana nga Adlaw.",
-      "description": "Sugdi an imo adlaw pinaagi ha makapadasig nga mga takna han Biblia nga ginhimo basi makadasig ngan makapagbuhi han imo espiritu."
-    },
-    "welcomeAfternoon": {
-      "label": "Hapon nga Inspirasyon",
-      "title": "Maupay nga Hapon! Mga Takna han Biblia Para ha Imo Adlaw.",
-      "description": "Makapadasig nga mga sulod han Biblia nga angay para ha imo hapon nga pahuway o padayon nga inspirasyon."
-    },
-    "welcomeEvening": {
-      "label": "Gab-i nga Inspirasyon",
-      "title": "Maupay nga Gab-i! Magpahuway pinaagi ha Mga Takna han Biblia.",
-      "description": "Malinawon nga mga takna han Biblia nga mabulig ha imo magpamalandong ngan makakita hin kahupayan samtang natatapos an imo adlaw."
-    },
-    "joinUs": {
-      "label": "Upod kamo ha amon",
-      "title": "Bilyones an nagbibiling",
-      "description": "Aada na an anihon. Upod kamo ha amon ha pagpaambit han ebanghelyo ha kalibutan pinaagi ha digital media."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Magkaupod kita",
-      "title": "Pagsumat han Istorya ni Jesus, Magkaupod kita",
-      "description": "Basi mabatian ngan makita nira an gugma ni Jesus ha ira kalugaringon nga yinaknan mismo didto ha ira kalugaringon nga lugar."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}% kaparis",
     "none": "Waray nakit-an nga rekomendasyon para hini nga video ha hini nga yinaknan."

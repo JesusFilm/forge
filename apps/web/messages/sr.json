@@ -647,44 +647,6 @@
     "backToWatch": "Nazad na Gledaj",
     "browseVideos": "Pregledaj video zapise"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Gledaj kratki film",
-    "actions": {
-      "joinUs": "Pridružite nam se",
-      "shareMission": "Učestvujte u našoj misiji"
-    },
-    "welcomeStart": {
-      "label": "Vera i Pismo",
-      "title": "Današnji video predlozi",
-      "description": "Video sadržaj iz naše biblioteke usredsređen na veru, da nadahne, izazove i podstakne na razmišljanje."
-    },
-    "welcomeMorning": {
-      "label": "Jutarnje nadahnuće",
-      "title": "Dobro jutro! Današnji biblijski trenuci vas čekaju.",
-      "description": "Započnite dan ohrabrujućim biblijskim trenucima osmišljenim da nadahnu i podignu vaš duh."
-    },
-    "welcomeAfternoon": {
-      "label": "Popodnevno nadahnuće",
-      "title": "Dobar dan! Biblijski trenuci za vaš dan.",
-      "description": "Ohrabrujući biblijski sadržaj savršen za popodnevnu pauzu ili dodatno nadahnuće."
-    },
-    "welcomeEvening": {
-      "label": "Večernje nadahnuće",
-      "title": "Dobro veče! Opustite se uz biblijske trenutke.",
-      "description": "Mirni biblijski trenuci koji će vam pomoći da razmislite i pronađete utehu dok se dan završava."
-    },
-    "joinUs": {
-      "label": "Pridružite nam se",
-      "title": "Milijarde tragaju",
-      "description": "Žetva je ovde. Pridružite nam se dok delimo evanđelje sa svetom putem digitalnih medija."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Krenimo zajedno",
-      "title": "Pričamo priču o Isusu zajedno",
-      "description": "Da bi mogli da čuju i vide Isusovu ljubav na svom jeziku, tamo gde jesu."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}% podudaranja",
     "none": "Nema preporuka za ovaj video na ovom jeziku."

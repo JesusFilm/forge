@@ -647,44 +647,6 @@
       "openSupportForm": "Open support form"
     }
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Oglądaj film krótkometrażowy",
-    "actions": {
-      "joinUs": "Dołącz do nas",
-      "shareMission": "Weź udział w naszej misji"
-    },
-    "welcomeStart": {
-      "label": "Wiara i Pismo Święte",
-      "title": "Dzisiejsze propozycje filmowe",
-      "description": "Filmy z naszej biblioteki oparte na wierze, które inspirują, stawiają wyzwania i skłaniają do refleksji."
-    },
-    "welcomeMorning": {
-      "label": "Poranna inspiracja",
-      "title": "Dzień dobry! Czekają dzisiejsze biblijne chwile.",
-      "description": "Rozpocznij dzień od budujących biblijnych momentów, które mają inspirować i podnosić na duchu."
-    },
-    "welcomeAfternoon": {
-      "label": "Popołudniowa inspiracja",
-      "title": "Dzień dobry! Biblijne chwile na Twój dzień.",
-      "description": "Budujące treści biblijne idealne na popołudniową przerwę albo jako dalsza inspiracja."
-    },
-    "welcomeEvening": {
-      "label": "Wieczorna inspiracja",
-      "title": "Dobry wieczór! Zrelaksuj się przy biblijnych chwilach.",
-      "description": "Spokojne biblijne chwile, które pomogą Ci się zatrzymać, pomyśleć i znaleźć pocieszenie na koniec dnia."
-    },
-    "joinUs": {
-      "label": "Dołącz do nas",
-      "title": "Miliardy ludzi szukają",
-      "description": "Żniwo jest już gotowe. Dołącz do nas, gdy dzielimy się ewangelią ze światem za pomocą mediów cyfrowych."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Idźmy razem",
-      "title": "Opowiadając razem historię Jezusa",
-      "description": "Aby mogli słyszeć i widzieć miłość Jezusa we własnym języku, tam, gdzie są."
-    }
-  },
   "VideoRecommendations": {
     "match": "Dopasowanie: {percent}%",
     "none": "Nie znaleziono polecanych filmów w tym języku."

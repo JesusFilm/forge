@@ -647,44 +647,6 @@
       "openSupportForm": "Open support form"
     }
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Kısa filmi izle",
-    "actions": {
-      "joinUs": "Bize katılın",
-      "shareMission": "Misyonumuza ortak olun"
-    },
-    "welcomeStart": {
-      "label": "İman ve Kutsal Yazı",
-      "title": "Bugünün video seçimleri",
-      "description": "Sizi teşvik etmek, düşündürmek ve yüreklendirmek için kütüphanemizden iman merkezli videolar."
-    },
-    "welcomeMorning": {
-      "label": "Sabah ilhamı",
-      "title": "Günaydın! Bugünün Kutsal Kitap anları sizi bekliyor.",
-      "description": "Güne, sizi yüreklendirmek ve ruhunuzu yükseltmek için hazırlanmış teşvik edici Kutsal Kitap anlarıyla başlayın."
-    },
-    "welcomeAfternoon": {
-      "label": "Öğleden sonra ilhamı",
-      "title": "Tünaydın! Gününüz için Kutsal Kitap anları.",
-      "description": "Öğleden sonraki molanız için ya da ilhamınızı sürdürmek için ideal teşvik edici Kutsal Kitap içerikleri."
-    },
-    "welcomeEvening": {
-      "label": "Akşam ilhamı",
-      "title": "İyi akşamlar! Kutsal Kitap anlarıyla dinlenin.",
-      "description": "Gününüz sona ererken düşünmenize ve teselli bulmanıza yardımcı olacak huzurlu Kutsal Kitap anları."
-    },
-    "joinUs": {
-      "label": "Bize katılın",
-      "title": "Milyarlarca insan arayışta",
-      "description": "Hasat zamanı geldi. Dijital medya kullanarak Müjde’yi dünyayla paylaşırken bize katılın."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Birlikte ilerleyelim",
-      "title": "İsa’nın Hikâyesini Birlikte Anlatalım",
-      "description": "Böylece, oldukları yerde, İsa’nın sevgisini kendi dillerinde duyup görebilsinler."
-    }
-  },
   "VideoRecommendations": {
     "match": "%{percent} eşleşme",
     "none": "Bu video için bu dilde öneri bulunamadı."

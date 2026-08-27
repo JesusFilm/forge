@@ -647,44 +647,6 @@
     "backToWatch": "Bumalik sa Watch",
     "browseVideos": "Mag-browse ng mga video"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Panoorin ang Maikling Pelikula",
-    "actions": {
-      "joinUs": "Sumama sa Amin",
-      "shareMission": "Makibahagi sa Aming Misyon"
-    },
-    "welcomeStart": {
-      "label": "Pananampalataya at Kasulatan",
-      "title": "Mga Napiling Video Ngayon",
-      "description": "Nilalaman ng video mula sa aming library na nakasentro sa pananampalataya upang magbigay-inspirasyon, hamunin, at magpasiklab ng pagninilay."
-    },
-    "welcomeMorning": {
-      "label": "Inspirasyon sa Umaga",
-      "title": "Magandang umaga! Naghihintay ang mga sandali ng Biblia ngayon.",
-      "description": "Simulan ang araw mo sa mga nakapagpapalakas na sandali mula sa Biblia na nilalayong magbigay-inspirasyon at magpasigla ng iyong espiritu."
-    },
-    "welcomeAfternoon": {
-      "label": "Inspirasyon sa Hapon",
-      "title": "Magandang hapon! Mga sandali mula sa Biblia para sa iyong araw.",
-      "description": "Mga nakapagpapalakas na nilalaman mula sa Biblia na angkop sa iyong pahinga sa hapon o sa patuloy na inspirasyon."
-    },
-    "welcomeEvening": {
-      "label": "Inspirasyon sa Gabi",
-      "title": "Magandang gabi! Magpahinga kasama ang mga sandali mula sa Biblia.",
-      "description": "Mga payapang sandali mula sa Biblia upang tulungan kang magnilay at makatagpo ng ginhawa habang nagtatapos ang iyong araw."
-    },
-    "joinUs": {
-      "label": "Sumama sa Amin",
-      "title": "Bilyon-bilyon ang naghahanap",
-      "description": "Nandito na ang ani. Sumama sa amin habang ibinabahagi natin ang ebanghelyo sa buong mundo gamit ang digital media."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Magkasama tayo",
-      "title": "Isinasalaysay ang Kuwento ni Jesus, Nang Magkasama",
-      "description": "Upang marinig at makita nila ang pag-ibig ni Jesus sa sarili nilang wika, kung nasaan man sila."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}% tugma",
     "none": "Walang nakitang rekomendasyon para sa video na ito sa wikang ito."

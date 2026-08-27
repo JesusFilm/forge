@@ -647,44 +647,6 @@
     "backToWatch": "Mekilel er a Watch",
     "browseVideos": "Browse a videos"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Mesei a short film",
-    "actions": {
-      "joinUs": "Onger kemam",
-      "shareMission": "Mekiis er a mission kemam"
-    },
-    "welcomeStart": {
-      "label": "Faith me a Scripture",
-      "title": "A video picks er a silse tia",
-      "description": "Video content el ngii a faith-centered er a library kemam el mo omeked a reng, omesik, mar a omekedong."
-    },
-    "welcomeMorning": {
-      "label": "Omeked a reng er a tutau",
-      "title": "Ungil beluu! Bible moments er a silse tia a ngar ngii.",
-      "description": "Onged a beluu er a silse kemiu me a Bible moments el mo omeked a reng mar a omeked a spirit kemiu."
-    },
-    "welcomeAfternoon": {
-      "label": "Omeked a reng er a chelsel a sils",
-      "title": "Ungil diak? Bible moments er a silse kemiu.",
-      "description": "Bible content el omeked a reng el ta er a afternoon break kemiu ke omekid a inspiration el dmoel."
-    },
-    "welcomeEvening": {
-      "label": "Omeked a reng er a kebesengei",
-      "title": "Ungil beluu! Mekebeng a reng kemiu er a Bible moments.",
-      "description": "Bible moments el ngel a omeked a reng el mo omekedong me omekid a comfort er a silse kemiu a mo teloi."
-    },
-    "joinUs": {
-      "label": "Onger kemam",
-      "title": "Billions a merengel er a chad el omesik",
-      "description": "A harvest a mlo ngii. Onger kemam el mo omes a gospel er a beluu rokui me a digital media."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Mong kemam ke mo mo er a ngii",
-      "title": "Metelei a story er a Jesus, kemam rokui",
-      "description": "Ng mo mengodei ke omes a love er a Jesus er a language kemiu, er a ngii a ngar a ngii."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}% el osisiu",
     "none": "Diak a video el omesik el ngar ngii er a video tia er a language tia."

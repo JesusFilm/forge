@@ -647,44 +647,6 @@
       "openSupportForm": "Open support form"
     }
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Urmărește scurtmetrajul",
-    "actions": {
-      "joinUs": "Alătură-te nouă",
-      "shareMission": "Ia parte la misiunea noastră"
-    },
-    "welcomeStart": {
-      "label": "Credință și Scriptură",
-      "title": "Selecția video de astăzi",
-      "description": "Conținut video centrat pe credință din biblioteca noastră, pentru a inspira, a provoca și a stârni reflecția."
-    },
-    "welcomeMorning": {
-      "label": "Inspirație de dimineață",
-      "title": "Bună dimineața! Te așteaptă momente biblice pentru astăzi.",
-      "description": "Începe-ți ziua cu momente biblice încurajatoare, gândite să inspire și să-ți înalțe sufletul."
-    },
-    "welcomeAfternoon": {
-      "label": "Inspirație de după-amiază",
-      "title": "Bună după-amiaza! Momente biblice pentru ziua ta.",
-      "description": "Conținut biblic încurajator, perfect pentru pauza de după-amiază sau pentru inspirație în continuare."
-    },
-    "welcomeEvening": {
-      "label": "Inspirație de seară",
-      "title": "Bună seara! Încheie ziua cu momente biblice.",
-      "description": "Momente biblice liniștitoare, care te ajută să reflectezi și să găsești mângâiere pe măsură ce ziua se apropie de sfârșit."
-    },
-    "joinUs": {
-      "label": "Alătură-te nouă",
-      "title": "Miliarde de oameni caută răspunsuri",
-      "description": "Secerișul este aici. Alătură-te nouă în timp ce împărtășim Evanghelia cu lumea prin media digitală."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Să mergem împreună",
-      "title": "Spunem împreună povestea lui Isus",
-      "description": "Ca să poată auzi și vedea dragostea lui Isus în limba lor, chiar acolo unde se află."
-    }
-  },
   "VideoRecommendations": {
     "match": "Potrivire de {percent}%",
     "none": "Nu s-au găsit recomandări pentru acest videoclip în această limbă."

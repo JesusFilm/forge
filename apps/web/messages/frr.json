@@ -647,44 +647,6 @@
     "backToWatch": "Torük na Watch",
     "browseVideos": "Video's blaad"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Koortfilm kieken",
-    "actions": {
-      "joinUs": "Doon mit",
-      "shareMission": "Deel in us Missie"
-    },
-    "welcomeStart": {
-      "label": "Glaube & Skrift",
-      "title": "Vandaag s Video-uutwalen",
-      "description": "Glaubenscentreerde Video's ut us Bibliotheek, de inspirier, uutfoordern un to Nadenken anreeg."
-    },
-    "welcomeMorning": {
-      "label": "Morgeninspiratie",
-      "title": "Morgen! Vandaags Bibel-momenten wachte.",
-      "description": "Begjin din Daag mit ermutigende Bibel-momenten, de inspirier un din Geest opkerre sollen."
-    },
-    "welcomeAfternoon": {
-      "label": "Middag-inspiratie",
-      "title": "Guten middag! Bibel-momenten foar din Daag.",
-      "description": "Ermutigende Bibel-inhoald, perfect foar din middag-pause of foar weider Inspiratioun."
-    },
-    "welcomeEvening": {
-      "label": "Abend-inspiratie",
-      "title": "Guten Abend! Entspanne mit Bibel-momenten.",
-      "description": "Friddege Bibel-momenten, de di helpen, to nadenken un Troost to vinden, as din Daag to Enn geit."
-    },
-    "joinUs": {
-      "label": "Doon mit",
-      "title": "Milliarden soken",
-      "description": "De Ernte is hier. Doon mit, as wi de Evangelium mit de Wält dör digitale Media deelen."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Latt us tosam go",
-      "title": "De Geschichte fan Jesus tosam vertellen",
-      "description": "Dat se de Leevde fan Jesus in jür egen Språk hören un sehn könn, genau dor, wo se sünd."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}% Öwereenkomst",
     "none": "Foar dit Video sünd in dizze Sprak keene Anbefelingen funden."

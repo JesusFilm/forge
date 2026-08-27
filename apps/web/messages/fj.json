@@ -647,44 +647,6 @@
     "backToWatch": "Lesu tale ki na Watch",
     "browseVideos": "Vakadikeva na vidio"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Raica na Vidio Lailai",
-    "actions": {
-      "joinUs": "Mai vata kei keitou",
-      "shareMission": "Veitokoni ena neitou misioni"
-    },
-    "welcomeStart": {
-      "label": "Vakabauta kei na iVola Tabu",
-      "title": "Na Vidio Digitaki Nikua",
-      "description": "Na itukutuku ni vidio e vakatokai ena vakabauta mai na neitou veikau me vakauqeti, vakatovolei, ka vakavurea na vakasama."
-    },
-    "welcomeMorning": {
-      "label": "Veivakauqeti ena mataka",
-      "title": "Ni sa mataka vinaka! Sa waraki iko na veika ni iVolatabu ni siga nikua.",
-      "description": "Tekivu na nomu siga ena veika ni iVolatabu era vakauqeti ka vakaukauwataki iko."
-    },
-    "welcomeAfternoon": {
-      "label": "Veivakauqeti ena yakavi",
-      "title": "Ni sa yalovinaka na yakavi! Veika ni iVolatabu me baleta na nomu siga.",
-      "description": "Na itukutuku ni iVolatabu e vakauqeti, e ganita vinaka na nomu vakacegu ena yakavi se me tomani kina na veivakauqeti."
-    },
-    "welcomeEvening": {
-      "label": "Veivakauqeti ena bogi",
-      "title": "Ni sa bogi vinaka! Vakacegu vata kei na veika ni iVolatabu.",
-      "description": "Na veika ni iVolatabu e malua ka vakacegu me vukei iko mo vakasamataka ka kunea na vakacegu ni sa cava na siga."
-    },
-    "joinUs": {
-      "label": "Mai vata kei keitou",
-      "title": "Era vakasaqarai tiko na veimama bilioni",
-      "description": "Sa yaco mai na tatamusuki. Mai vata kei keitou ena noda wasea na kosipeli kei na vuravura ena mekasini vakalivaliva."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Me da lako vata",
-      "title": "Talanoa ni bula nei Jisu, vata",
-      "description": "Me ra rogoca ka raica kina na loloma nei Jisu ena nodra vosa ga, ena vanua era tiko kina."
-    }
-  },
   "VideoRecommendations": {
     "match": "Veiganiti ena {percent}%",
     "none": "E sega ni kunei e dua na vidio e vakaturi me baleta na vidio oqo ena vosa oqo."

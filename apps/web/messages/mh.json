@@ -647,44 +647,6 @@
     "backToWatch": "Rool ñan Watch",
     "browseVideos": "Etale video ko"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Lale Short Film",
-    "actions": {
-      "joinUs": "Join kōm",
-      "shareMission": "Koba ijo an mission"
-    },
-    "welcomeStart": {
-      "label": "Bwid im Scripture",
-      "title": "Video ko an raan in",
-      "description": "Video content eo jān library eo kōm, ej tōl jān bwid im Scripture n̄an jipan, kōjbarok, im kōmmane juon kōmman in lōmṇak."
-    },
-    "welcomeMorning": {
-      "label": "Morning inspiration",
-      "title": "Mōjn̄i! Bible moments ko an raan in rej kōllik.",
-      "description": "Jibed raan eo am im Bible moments ko rej kōjbarok n̄an jipan im kōllik joor eo am."
-    },
-    "welcomeAfternoon": {
-      "label": "Afternoon inspiration",
-      "title": "Iien jọulọk! Bible moments ko an raan eo am.",
-      "description": "Bible content eo ej kōjbarok, emman n̄an jọulọk eo am ak jipan tōlke jot in kōjbarok."
-    },
-    "welcomeEvening": {
-      "label": "Evening inspiration",
-      "title": "Iien rowa! Kakkije ippān Bible moments.",
-      "description": "Bible moments ko rej kalimij n̄an jipan kwe n̄an lōmṇak im bōk kōkāāl iien eo raan eo am ej boktak."
-    },
-    "joinUs": {
-      "label": "Join kōm",
-      "title": "Billions rej bukot",
-      "description": "Harvest eo ejet. Join kōm melele jān Gospel eo n̄an ajiri ro aolep ilo world kōn digital media."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Jibed ippān juon",
-      "title": "Kōnono kōn Bwebwenato an Jesus, ippān juon",
-      "description": "Bwe ren maron ron im lom̄ak ijo eo rej pād ie, eo an Jesus lōkkin ilo kajin eo ra."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}% an ekkar",
     "none": "Ejellok video kar lo ñan rōjañ kōn video in ilo kajin in."

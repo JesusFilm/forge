@@ -647,44 +647,6 @@
       "openSupportForm": "Open support form"
     }
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Kurzfilm ansehen",
-    "actions": {
-      "joinUs": "Mach mit",
-      "shareMission": "Teile unsere Mission"
-    },
-    "welcomeStart": {
-      "label": "Glaube & Schrift",
-      "title": "Die heutigen Video-Empfehlungen",
-      "description": "Glaubenszentrierte Videoinhalte aus unserer Bibliothek, die inspirieren, herausfordern und zum Nachdenken anregen."
-    },
-    "welcomeMorning": {
-      "label": "Morgendliche Inspiration",
-      "title": "Guten Morgen! Die heutigen Bibelmomente warten.",
-      "description": "Beginnen Sie Ihren Tag mit ermutigenden Bibelmomenten, die Ihren Geist inspirieren und erheben sollen."
-    },
-    "welcomeAfternoon": {
-      "label": "Nachmittags-Inspiration",
-      "title": "Guten Nachmittag! Bibelmomente für Ihren Tag.",
-      "description": "Ermutigende Bibelinhalte, perfekt für Ihre Nachmittagsauszeit oder zur weiteren Inspiration."
-    },
-    "welcomeEvening": {
-      "label": "Abendliche Inspiration",
-      "title": "Guten Abend! Lassen Sie den Tag mit Bibelmomenten ausklingen.",
-      "description": "Friedliche Bibelmomente, die Ihnen helfen, nachzudenken und Trost zu finden, wenn Ihr Tag zu Ende geht."
-    },
-    "joinUs": {
-      "label": "Mach mit",
-      "title": "Milliarden suchen",
-      "description": "Die Ernte ist da. Machen Sie mit, wenn wir das Evangelium mit digitalen Medien in die Welt tragen."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Gehen wir gemeinsam",
-      "title": "Gemeinsam die Geschichte von Jesus erzählen",
-      "description": "Damit sie die Liebe Jesu in ihrer eigenen Sprache direkt dort hören und sehen können, wo sie sind."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent} % Übereinstimmung",
     "none": "Für dieses Video wurden in dieser Sprache keine Empfehlungen gefunden."

@@ -109,7 +109,7 @@ describe("Experience draft preview page", () => {
     const heroModel = {
       heroSlides: [],
       sections: [],
-      carousel: { pools: [], muxInserts: [] },
+      carousel: { pools: [] },
       missingData: [],
     }
     resolveWatchHomePreviewMock.mockResolvedValue({

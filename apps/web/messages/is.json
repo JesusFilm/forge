@@ -647,44 +647,6 @@
     "backToWatch": "Til baka í horf",
     "browseVideos": "Fletta í myndböndum"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Horfa á stuttmynd",
-    "actions": {
-      "joinUs": "Vertu með",
-      "shareMission": "Deildu í þjónustu okkar"
-    },
-    "welcomeStart": {
-      "label": "Trú og Ritning",
-      "title": "Myndbandaval dagsins",
-      "description": "Trúarmiðað myndbandsefni úr safninu okkar til að hvetja, ögra og vekja til umhugsunar."
-    },
-    "welcomeMorning": {
-      "label": "Hvatning að morgni",
-      "title": "Góðan daginn! Biblíustundir dagsins bíða.",
-      "description": "Byrjaðu daginn með uppörvandi Biblíustundum sem ætlaðar eru til að hvetja þig og lyfta anda þínum."
-    },
-    "welcomeAfternoon": {
-      "label": "Hvatning eftir hádegi",
-      "title": "Góðan daginn! Biblíustundir fyrir daginn þinn.",
-      "description": "Uppörvandi Biblíuinnihald sem hentar vel í hádegishléinu eða til áframhaldandi hvatningar."
-    },
-    "welcomeEvening": {
-      "label": "Hvatning að kvöldi",
-      "title": "Gott kvöld! Slakaðu á með Biblíustundum.",
-      "description": "Rólegar Biblíustundir sem hjálpa þér að hugleiða og finna huggun þegar dagurinn líður undir lok."
-    },
-    "joinUs": {
-      "label": "Vertu með",
-      "title": "Milljarðar eru að leita",
-      "description": "Höfin er komin. Vertu með okkur að deila fagnaðarboðskapnum með heiminum með stafrænum miðlum."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Förum saman",
-      "title": "Að segja sögu Jesú, saman",
-      "description": "Svo þau geti heyrt og séð kærleika Jesú á sínu eigin tungumáli, þar sem þau eru."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}% samsvörun",
     "none": "Engar tillögur fundust fyrir þetta myndband á þessu tungumáli."

@@ -647,44 +647,6 @@
     "backToWatch": "Maŋŋá geahččamii",
     "browseVideos": "Geahččal videoaid"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Geahččal oanehis filmma",
-    "actions": {
-      "joinUs": "Oasseváldde min",
-      "shareMission": "Juoge min missiijii"
-    },
-    "welcomeStart": {
-      "label": "Osko ja Skrifta",
-      "title": "Dálá videočoakkáldat",
-      "description": "Oskojulggašuvvon videosisdoallu min buvttas mii deaivvada, hástala ja movttiidahttá jurddašit."
-    },
-    "welcomeMorning": {
-      "label": "Iđitmovttiidahttin",
-      "title": "Bures boahtin! Dálá Biibbalmuitalusat várrejit dutnje.",
-      "description": "Álggaše beaivvi buorit Biibbalmuitalusain, mat leat hábmejuvvon movttiidahttit ja bajidit du oaiviliid."
-    },
-    "welcomeAfternoon": {
-      "label": "Iđitmovttiidahttin",
-      "title": "Bures boahtin! Biibbalmuitalusat du beivvi várás.",
-      "description": "Buorit Biibbalmuitalusat, heivvolaččat iežat beaivegaskkamii dahje jotkkolaš movttiidahttimii."
-    },
-    "welcomeEvening": {
-      "label": "Eahketmovttiidahttin",
-      "title": "Bures boahtin! Háliidatgo hávdadit Biibbalmuitalusain?",
-      "description": "Roahkkadit Biibbalmuitalusat, mat veahkehit dutnje jurddašit ja gávdnat roahtu go beaivi nohká."
-    },
-    "joinUs": {
-      "label": "Oasseváldde min",
-      "title": "Miljjáhtat ohcet",
-      "description": "Sáddu lea das. Oasseváldde min go juohkit evangeliuma máilmái digitála media bokte."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Vázzet oktan",
-      "title": "Jesus muitalusa čuovvut oktanaga",
-      "description": "Vai sii ožžot guldalit ja oaidnit Jesus ráhkisvuođa iežaset gielas, dan sadjái gos sii orrot."
-    }
-  },
   "VideoRecommendations": {
     "match": "Heiveheapmi: {percent} %",
     "none": "Dán video várás eai gávdnon ávžžuhusat dán gillii."

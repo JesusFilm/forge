@@ -647,44 +647,6 @@
     "backToWatch": "Lura għall-Watch",
     "browseVideos": "Ibrawżja videos"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Ara film qasir",
-    "actions": {
-      "joinUs": "Ingħaqad magħna",
-      "shareMission": "Aqsam fil-missjoni tagħna"
-    },
-    "welcomeStart": {
-      "label": "Fidi u Skrittura",
-      "title": "L-aqwa videos għal-lum",
-      "description": "Kontenut tal-video iċċentrat fuq il-fidi mil-librerija tagħna biex jispira, jisfida, u jqajjem ir-riflessjoni."
-    },
-    "welcomeMorning": {
-      "label": "Ispirazzjoni ta’ filgħodu",
-      "title": "L-isbaħ filgħodu! Il-mumenti tal-Bibbja għal-lum qed jistennuk.",
-      "description": "Ibda l-ġurnata tiegħek b’mumenti tal-Bibbja li jinkoraġġuk u jispirawk."
-    },
-    "welcomeAfternoon": {
-      "label": "Ispirazzjoni ta’ wara nofsinhar",
-      "title": "Wara nofsinhar it-tajjeb! Mumenti tal-Bibbja għal jumek.",
-      "description": "Kontenut tal-Bibbja li jinkoraġġik, perfett għall-mistrieħ ta’ wara nofsinhar jew għal aktar ispirazzjoni."
-    },
-    "welcomeEvening": {
-      "label": "Ispirazzjoni ta’ filgħaxija",
-      "title": "Il-lejla t-tajba! Irtira bil-mumenti tal-Bibbja.",
-      "description": "Mumenti paċifiċi tal-Bibbja biex jgħinuk tirrifletti u ssib il-kumdità hekk kif il-ġurnata tasal fi tmiemha."
-    },
-    "joinUs": {
-      "label": "Ingħaqad magħna",
-      "title": "Miliards qed ifittxu",
-      "description": "Il-ħsad wasal. Ingħaqad magħna hekk kif naqsmu l-evanġelju mad-dinja permezz tal-media diġitali."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Ejjew flimkien",
-      "title": "Nirrakkontaw l-Istorja ta’ Ġesù, flimkien",
-      "description": "Sabiex jisimgħu u jaraw l-imħabba ta’ Ġesù bil-lingwa tagħhom stess, fejn jinsabu."
-    }
-  },
   "VideoRecommendations": {
     "match": "Jaqbel {percent}%",
     "none": "Ma nstabet l-ebda rakkomandazzjoni għal dan il-vidjo b’din il-lingwa."

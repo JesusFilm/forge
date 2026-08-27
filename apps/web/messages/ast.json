@@ -647,44 +647,6 @@
     "backToWatch": "Volver a Watch",
     "browseVideos": "Navegar per vídeos"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Ver cortometraxe",
-    "actions": {
-      "joinUs": "Únete",
-      "shareMission": "Comparte la nuesa misión"
-    },
-    "welcomeStart": {
-      "label": "Fe y Escritura",
-      "title": "Los vídeos escoyíos d'anguaño",
-      "description": "Conteníu en videu centráu na fe de la nuesa biblioteca, pa inspirar, retar y espabilar la reflexón."
-    },
-    "welcomeMorning": {
-      "label": "Inspiración de la mañana",
-      "title": "¡Bon día! Espérente los momentos bíblios d'anguaño.",
-      "description": "Empieza'l día con momentos bíblios animosos, preparaos pa inspirate y alegrate l'ánimu."
-    },
-    "welcomeAfternoon": {
-      "label": "Inspiración de la tarde",
-      "title": "¡Bones tardes! Momentos bíblios pa güei.",
-      "description": "Conteníu bíblicu animoso, perfectu pal descansu de la tarde o pa siguir inspirándote."
-    },
-    "welcomeEvening": {
-      "label": "Inspiración de la nueche",
-      "title": "¡Bones nueches! Reláxate con momentos bíblios.",
-      "description": "Momentos bíblios tranquilos pa ayudate a reflexonar y atopar consuelu al rematar el día."
-    },
-    "joinUs": {
-      "label": "Únete",
-      "title": "Miles de millones tan buscando",
-      "description": "La güerta ta equí. Únete a nós mientres compartimos l'evanxeliu col mundu usando medios dixitales."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Vamos xuntos",
-      "title": "Contando xuntos la historia de Jesús",
-      "description": "Pa que puedan sentir y ver l'amor de Jesús na so propia llingua y allí onde tán."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}% de coincidencia",
     "none": "Nun s'atoparon recomendaciones pa esti videu nesta llingua."

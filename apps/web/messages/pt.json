@@ -647,44 +647,6 @@
       "openSupportForm": "Open support form"
     }
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Ver curta-metragem",
-    "actions": {
-      "joinUs": "Junte-se a nós",
-      "shareMission": "Partilhe a nossa missão"
-    },
-    "welcomeStart": {
-      "label": "Fé e Escrituras",
-      "title": "As escolhas de vídeo de hoje",
-      "description": "Conteúdo de vídeo centrado na fé, da nossa biblioteca, para inspirar, desafiar e despertar reflexão."
-    },
-    "welcomeMorning": {
-      "label": "Inspiração da manhã",
-      "title": "Bom dia! Os momentos bíblicos de hoje esperam por si.",
-      "description": "Comece o seu dia com momentos bíblicos encorajadores, pensados para inspirar e elevar o seu espírito."
-    },
-    "welcomeAfternoon": {
-      "label": "Inspiração da tarde",
-      "title": "Boa tarde! Momentos bíblicos para o seu dia.",
-      "description": "Conteúdo bíblico encorajador, perfeito para a sua pausa da tarde ou para continuar a inspirar-se."
-    },
-    "welcomeEvening": {
-      "label": "Inspiração da noite",
-      "title": "Boa noite! Descontraia com momentos bíblicos.",
-      "description": "Momentos bíblicos de paz para o ajudar a refletir e encontrar conforto ao terminar o dia."
-    },
-    "joinUs": {
-      "label": "Junte-se a nós",
-      "title": "Mil milhões procuram",
-      "description": "A colheita está aqui. Junte-se a nós enquanto partilhamos o evangelho com o mundo através dos media digitais."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Vamos juntos",
-      "title": "Contar a história de Jesus, juntos",
-      "description": "Para que possam ouvir e ver o amor de Jesus na sua própria língua, exatamente onde estão."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}% de correspondência",
     "none": "Não foram encontradas recomendações para este vídeo neste idioma."

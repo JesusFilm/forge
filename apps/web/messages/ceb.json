@@ -647,44 +647,6 @@
     "backToWatch": "Balik sa Watch",
     "browseVideos": "I-browse ang mga video"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Tan-awa ang Mubo nga Pelikula",
-    "actions": {
-      "joinUs": "Apil Kanamo",
-      "shareMission": "Ipaambit ang Among Misyon"
-    },
-    "welcomeStart": {
-      "label": "Pagtuo ug Kasulatan",
-      "title": "Mga Gipilian nga Video Karon",
-      "description": "Mga video gikan sa among librarya nga nakasentro sa pagtuo aron makadasig, makapahagit, ug makapukaw sa pagpamalandong."
-    },
-    "welcomeMorning": {
-      "label": "Kadasig sa Kabuntagon",
-      "title": "Maayong buntag! Anaa na ang mga momen sa Biblia karon.",
-      "description": "Sugdi ang imong adlaw uban sa makapadasig nga mga momen sa Biblia nga gidesinyo aron makadasig ug makapalagsik sa imong espiritu."
-    },
-    "welcomeAfternoon": {
-      "label": "Kadasig sa Hapon",
-      "title": "Maayong hapon! Mga momen sa Biblia para sa imong adlaw.",
-      "description": "Makapadasig nga sulod sa Biblia nga angay sa imong pahulay sa hapon o sa padayon nga kadasig."
-    },
-    "welcomeEvening": {
-      "label": "Kadasig sa Gabii",
-      "title": "Maayong gabii! Pahuway uban sa mga momen sa Biblia.",
-      "description": "Makalinaw nga mga momen sa Biblia aron matabangan ka sa pagpamalandong ug pagpangita og kahupayan samtang modangat ang pagtapos sa imong adlaw."
-    },
-    "joinUs": {
-      "label": "Apil Kanamo",
-      "title": "Bilyon-bilyon ang nangita",
-      "description": "Ania na ang ani. Apil kanamo sa pagpaambit sa ebanghelyo sa kalibotan gamit ang digital media."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Moadto kita nga magkauban",
-      "title": "Pagsaysay sa Sugilanon ni Jesus, Magkauban",
-      "description": "Aron madungog ug makita nila ang gugma ni Jesus sa ilang kaugalingong pinulongan, bisan asa sila."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}% nga katugma",
     "none": "Walay nakit-an nga girekomendar nga mga video para niini nga video sa maong pinulongan."

@@ -647,44 +647,6 @@
     "backToWatch": "Watch k’e nàke gòɂǫ",
     "browseVideos": "Video łè weghàda"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Short Film eghàeda",
-    "actions": {
-      "joinUs": "Nàke nàgı̨ı̨t’į",
-      "shareMission": "Dèè t’àa mission ełàa gòɂǫ"
-    },
-    "welcomeStart": {
-      "label": "Yek’eè̀dı eyits’ǫ Bible yatıı̀",
-      "title": "Dı̀ı̀ dzàa video t’àa gı̀lı̨",
-      "description": "Library gots’ǫ̀ faith-centered video łè, inspire ha, challenge ha, eyits’ǫ nàowo hı̨la ha."
-    },
-    "welcomeMorning": {
-      "label": "Sahdèè nàowo hı̨la",
-      "title": "Good Morning! Dı̀ı̀ dzàa Bible moments gı̀lı̨.",
-      "description": "Dzàa nàtsǫǫ̀ k’e Bible moments łè, nàowo hı̨la eyits’ǫ spirit t’àa hòɂǫ ha."
-    },
-    "welcomeAfternoon": {
-      "label": "Dzàa edzàa k’e nàowo hı̨la",
-      "title": "Good Afternoon! Dı̀ı̀ dzàa Bible moments łè.",
-      "description": "Bible content łè nàowo hı̨la ha, afternoon break ghà ełexèè, kǫ inspire ha."
-    },
-    "welcomeEvening": {
-      "label": "Xèhts’ǫ̀ nàowo hı̨la",
-      "title": "Good Evening! Bible moments k’e eghàeda.",
-      "description": "Bible moments łè, nàowo hı̨la eyits’ǫ comfort nàke ha, dzàa gots’ǫ̀ end k’e."
-    },
-    "joinUs": {
-      "label": "Nàke nàgı̨ı̨t’į",
-      "title": "Billions search adlè",
-      "description": "Harvest nàt’è. Digital media k’e gospel nàts’ǫ̀, nàke nàgı̨ı̨t’į."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Ełexèè hòɂǫ",
-      "title": "Jesus t’àa story ełàa gòɂǫ",
-      "description": "Dǫ wɔnàhts’ǫ̀ Jesus weghà love, nı̨ yatıı̀ k’e, nı̨ hı̨t’è gots’ǫ̀, eghǫ gòɂǫ ha."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}% ełàa gı̀lı̨",
     "none": "Dı̀ı̀ yatıı̀ k’e dı̀ı̀ video ghà video wèghà gı̨ı̨dè sı̀ı̀ nàgı̨ı̨t’į."

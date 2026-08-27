@@ -647,44 +647,6 @@
     "backToWatch": "Zurück zu Watch",
     "browseVideos": "Videos durstöbere"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Kurze Film luege",
-    "actions": {
-      "joinUs": "Mach mit",
-      "shareMission": "Teile an unserer Mission"
-    },
-    "welcomeStart": {
-      "label": "Glaube & Schrift",
-      "title": "Heutigi Video-Empfehlig",
-      "description": "Glaube-zentrierte Videoinhalte us ourere Bibliothek, wo inspiriert, herausforderet und zum Nachdenke aaregt."
-    },
-    "welcomeMorning": {
-      "label": "Morge-Inspiration",
-      "title": "Guete Morge! Heutigi Bibelmomänt warted uf dich.",
-      "description": "Starte dini Tag mit ermuetigende Bibelmomänt, wo inspiriere und dini Geischt uftriebe."
-    },
-    "welcomeAfternoon": {
-      "label": "Nachmittags-Inspiration",
-      "title": "Guete Namittag! Bibelmomänt für din Tag.",
-      "description": "Ermuetigendi Bibelinhalte für dini Nachmittags-Pause oder zum Witerinspirierig."
-    },
-    "welcomeEvening": {
-      "label": "Abig-Inspiration",
-      "title": "Guete Abig! Chumm mit Bibelmomänt zrugg zur Ru.",
-      "description": "Ruhigi Bibelmomänt, wo dir helfed z'reflektiere und Trost z'finge, wenn dini Tag z'End goht."
-    },
-    "joinUs": {
-      "label": "Mach mit",
-      "title": "Milliarde sueched",
-      "description": "D'Ernt isch da. Mach mit, wenn mir s'Evangelium mit digitale Medie i d'Wält träge."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Lah uns zäme go",
-      "title": "D'Gschicht vo Jesus zäme erzähle",
-      "description": "Damit sie d'Liebi vo Jesus i ihrer eigene Sprach chönd ghöre und gseh, grad dort wo sie sind."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent} % Übereinstimmig",
     "none": "Für das Video sind i däre Sprach kei Empfehligä gfunde worde."

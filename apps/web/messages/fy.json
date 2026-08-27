@@ -647,44 +647,6 @@
     "backToWatch": "Werom nei Sjen",
     "browseVideos": "Blêdzje troch fideo's"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Koarte film besjen",
-    "actions": {
-      "joinUs": "Doch mei",
-      "shareMission": "Diel mei yn ús missy"
-    },
-    "welcomeStart": {
-      "label": "Leauwe & Skrift",
-      "title": "Fideokar fan hjoed",
-      "description": "Leauwe-rjochte fideo-ynhâld út ús bibleteek om te ynspirearjen, út te daagjen en ta neitinken oan te setten."
-    },
-    "welcomeMorning": {
-      "label": "Moarnsyntspanning",
-      "title": "Goeie moarn! De bibeleminten fan hjoed wachtsje.",
-      "description": "Begjin jo dei mei bemoedigjende bibelmominten dy't ûntwurpen binne om jo te ynspirearjen en jo geast te ferheffen."
-    },
-    "welcomeAfternoon": {
-      "label": "Midsmidde-yntspanning",
-      "title": "Goeie middei! Bibelmominten foar jo dei.",
-      "description": "Bemoedigjende bibelynhâld, perfekt foar jo middeipauze of foar trochgeande ynspiraasje."
-    },
-    "welcomeEvening": {
-      "label": "Jûnsynspiraasje",
-      "title": "Goedejûn! Kom ta rêst mei bibelmominten.",
-      "description": "Fredefolle bibelmominten om te helpen neitinke en treast te finen as jo dei ta ein rint."
-    },
-    "joinUs": {
-      "label": "Doch mei",
-      "title": "Miljarden sykje",
-      "description": "De rispinge is der. Doch mei as wy it evangeelje mei de wrâld diele fia digitale media."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Litte wy tegearre gean",
-      "title": "Tegearre it ferhaal fan Jezus fertelle",
-      "description": "Sadat se de leafde fan Jezus yn har eigen taal hearre en sjen kinne, krekt wêr't se binne."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}% oerienkomst",
     "none": "Gjin oanbefellings foar dizze fideo yn dizze taal fûn."

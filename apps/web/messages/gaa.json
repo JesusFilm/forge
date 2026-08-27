@@ -647,44 +647,6 @@
     "backToWatch": "San kɔ Watch no so",
     "browseVideos": "Kpɛlɛ videoi"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Hwɛ fim ketewa no",
-    "actions": {
-      "joinUs": "Bra bɛka yɛn ho",
-      "shareMission": "Ka yɛn asɔre adwuma no kyɛ"
-    },
-    "welcomeStart": {
-      "label": "Gyidi & Kyerɛwsɛm",
-      "title": "Video a yɛayi no ma ɛnnɛ",
-      "description": "Video a egyina gyidi so fi yɛn library mu a ɛbɛkanyan wo, ama wo asusuw ho, na woadwene asɔre so."
-    },
-    "welcomeMorning": {
-      "label": "Anɔpa nkuranhyɛ",
-      "title": "Mema wo maraba! Bible mu nsɛm a ɛbɛka wo no retwɛn wo.",
-      "description": "Fi wo da no ase denam Bible mu nsɛm a ɛhyɛ nkuran, a wɔayɛ no sɛ ɛnkanyan wo na ɛma w’ahonim so no so."
-    },
-    "welcomeAfternoon": {
-      "label": "Awia nkuranhyɛ",
-      "title": "Mema wo awia! Bible mu nsɛm ma wo da no.",
-      "description": "Bible mu nsɛm a ɛhyɛ nkuran a ɛfata wo awia home anaa sɛ wowɔ nkuranhyɛ a ɛkɔ so."
-    },
-    "welcomeEvening": {
-      "label": "Anadwo nkuranhyɛ",
-      "title": "Mema wo anwummere pa! Dwo wo ho ne Bible mu nsɛm.",
-      "description": "Bible mu nsɛm a ɛyɛ komm a ɛbɛboa wo ma woasusuw ho na woanya awerɛkyekye bere a wo da no rebɛsa awiei no."
-    },
-    "joinUs": {
-      "label": "Bra bɛka yɛn ho",
-      "title": "Miliɔn pii rehwɛ asɛm no",
-      "description": "Otwa bere no ni. Bra bɛka yɛn ho ma yɛne wiase nka asɛmpa no denam dijital media so."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Momma yɛnkɔ bom",
-      "title": "Yɛreka Yesu asɛm no, bom",
-      "description": "Na wɔate na wɔahu Yesu dɔ no wɔ wɔn ankasa kasa mu wɔ baabi a wɔwɔ."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}% ni sa",
     "none": "Yená video krokomɛ ni sa kɛ video nɛɛ yɛ kasa nɛɛ mli."

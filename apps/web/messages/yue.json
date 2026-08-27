@@ -647,44 +647,6 @@
     "backToWatch": "返回收看頁面",
     "browseVideos": "瀏覽影片"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}：{title}",
-    "watchShortFilm": "睇短片",
-    "actions": {
-      "joinUs": "加入我哋",
-      "shareMission": "一齊參與我哋嘅使命"
-    },
-    "welcomeStart": {
-      "label": "信仰與聖經",
-      "title": "今日精選影片",
-      "description": "來自我哋資料庫、以信仰為中心嘅影片內容，鼓勵你、挑戰你，並激發你反思。"
-    },
-    "welcomeMorning": {
-      "label": "晨間靈感",
-      "title": "早晨好！今日聖經時刻等緊你。",
-      "description": "用充滿鼓勵嘅聖經時刻開始你嘅一日，帶嚟靈感同提振。"
-    },
-    "welcomeAfternoon": {
-      "label": "下午靈感",
-      "title": "下午好！今日聖經時刻陪你過日子。",
-      "description": "適合你下午休息時間、又或者繼續獲得靈感嘅聖經內容。"
-    },
-    "welcomeEvening": {
-      "label": "晚間靈感",
-      "title": "晚安！用聖經時刻放鬆一下。",
-      "description": "平靜嘅聖經時刻，幫你反思，亦喺一日完結時搵到安慰。"
-    },
-    "joinUs": {
-      "label": "加入我哋",
-      "title": "十億人正喺度尋求答案",
-      "description": "收割已經嚟到。加入我哋，一齊用數碼媒體向世界傳講福音。"
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "一齊同行",
-      "title": "一齊講述耶穌嘅故事",
-      "description": "等佢哋可以喺自己嘅語言、喺自己所處嘅地方，聽見同看見耶穌嘅愛。"
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}% 匹配",
     "none": "搵唔到呢段影片以呢種語言提供嘅推薦內容。"

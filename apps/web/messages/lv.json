@@ -647,44 +647,6 @@
     "backToWatch": "Atpakaļ uz skatīšanos",
     "browseVideos": "Pārlūkot video"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Skatīties īsfilmu",
-    "actions": {
-      "joinUs": "Pievienojieties mums",
-      "shareMission": "Dalieties mūsu misijā"
-    },
-    "welcomeStart": {
-      "label": "Ticība un Raksti",
-      "title": "Šodienas video ieteikumi",
-      "description": "No ticības iedvesmots video saturs no mūsu bibliotēkas, lai iedvesmotu, izaicinātu un rosinātu pārdomas."
-    },
-    "welcomeMorning": {
-      "label": "Rīta iedvesma",
-      "title": "Labrīt! Šodienas Bībeles mirkļi jūs gaida.",
-      "description": "Sāciet dienu ar iedvesmojošiem Bībeles mirkļiem, kas stiprinās un uzmundrinās jūsu garu."
-    },
-    "welcomeAfternoon": {
-      "label": "Pēcpusdienas iedvesma",
-      "title": "Labu pēcpusdienu! Bībeles mirkļi jūsu dienai.",
-      "description": "Iedvesmojošs Bībeles saturs, kas lieliski piemērots jūsu pēcpusdienas pauzei vai turpmākai iedvesmai."
-    },
-    "welcomeEvening": {
-      "label": "Vakara iedvesma",
-      "title": "Labvakar! Atpūtieties ar Bībeles mirkļiem.",
-      "description": "Mierpilni Bībeles mirkļi, kas palīdzēs pārdomāt dienu un rast mierinājumu dienas noslēgumā."
-    },
-    "joinUs": {
-      "label": "Pievienojieties mums",
-      "title": "Miljardi meklē",
-      "description": "Raža ir klāt. Pievienojieties mums, daloties evaņģēlijā ar pasauli, izmantojot digitālos medijus."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Iesim kopā",
-      "title": "Stāstām Jēzus stāstu kopā",
-      "description": "Lai viņi varētu dzirdēt un redzēt Jēzus mīlestību savā valodā turpat, kur viņi ir."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}% atbilstība",
     "none": "Šim video šajā valodā ieteikumi nav atrasti."
