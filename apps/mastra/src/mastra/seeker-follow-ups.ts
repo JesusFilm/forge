@@ -9,8 +9,14 @@
  *   - `seeker-follow-ups-generate.ts` (the post-hoc generator call);
  *   - `agents/seeker-turn-projection.ts` (live + replay re-validation — the
  *     projection is the single re-validation point for BOTH paths, KTD3);
- *   - `apps/chat`'s `toFollowUps` mirror (U2) — a mastra-side drift test reads
- *     the chat source, per the video-gates precedent.
+ *
+ * NOT mirrored client-side. U2 originally planned a byte-identical
+ * `toFollowUps` mirror in `apps/chat` plus a cross-source drift test;
+ * superseded 2026-08-27 (see the plan's KTD4 supersession note). Chat now
+ * applies only a payload BOUND (max 3, <=120 units, non-empty string) and
+ * makes no claim to reproduce the rules below. THIS module is the sole
+ * content filter for follow-up questions on both the live and replay paths —
+ * loosening anything here is not caught downstream.
  *
  * PURE AND TOTAL — no I/O, no logging, no env reads. Every shape mismatch
  * degrades to "no questions", never a throw (R5: generation can never damage
@@ -25,7 +31,8 @@ export const FOLLOW_UPS_MAX_QUESTIONS = 3
 /**
  * Per-question length cap in UTF-16 code units (KTD4). Denominated in UTF-16
  * units because every downstream bound is: the replay byte budget counts
- * 3 B/unit (KTD12) and chat's mirror re-checks `String.length`. Over-cap
+ * 3 B/unit (KTD12) and chat's payload bound re-checks `String.length` at its
+ * own, deliberately unsynced, 120 (superseded 2026-08-27). Over-cap
  * items DROP, never truncate — a click sends the text verbatim as a user
  * message, so `followUps` is the one wire field that becomes an INPUT.
  */
@@ -156,8 +163,8 @@ const CONTROL_CHAR_PATTERN = /[\u0000-\u001F\u007F-\u009F]/
  * and turns it into a plain space. The item therefore still survives in
  * collapsed form, exactly as before. Order is the whole contract here \u2014 move
  * this check above the collapse and BOM-bearing items start dropping. Pinned
- * in `seeker-follow-ups.test.ts`; U2's mirror must apply the rungs in the
- * same order.
+ * in `seeker-follow-ups.test.ts`. No client-side counterpart applies these
+ * rungs (superseded 2026-08-27), so this order is enforced here alone.
  *
  * ACCEPTED FALSE-POSITIVE CLASS (decision, security review 2026-08-20 \u2014 do
  * not silently re-derive this). `Cf` is broader than "invisible smuggling
@@ -173,9 +180,10 @@ const CONTROL_CHAR_PATTERN = /[\u0000-\u001F\u007F-\u009F]/
  * or empties \u2014 no chip is ever rendered or SENT wrongly); the generator writes
  * short questions in the seeker's own voice, so emission of ayah numbering is
  * rare; and a script-specific carve-out would widen the predicate on the one
- * wire field that becomes user INPUT, and would have to be mirrored exactly in
- * U2. A smaller silent gap beats a larger open one while the audience is the
- * default-off dogfood roster.
+ * wire field that becomes user INPUT — with no client-side backstop behind it
+ * (chat bounds length and type only, superseded 2026-08-27), so widening here
+ * widens the whole system. A smaller silent gap beats a larger open one while
+ * the audience is the default-off dogfood roster.
  *
  * REVISIT TRIGGER: audience widening past dogfood (the feat-339 public-release
  * register), or any dogfood report of chips silently missing on Arabic-script
@@ -222,18 +230,18 @@ const CONTROL_CHAR_PATTERN = /[\u0000-\u001F\u007F-\u009F]/
  * the FEFF ordering below becomes load-bearing for a second reason, since
  * FEFF is itself `Default_Ignorable`.
  *
- * U2's chat mirror (`toFollowUps`) must copy this predicate WITH both
- * carve-outs AND this accepted-gap decision \u2014 a mirror that merely matches
- * `\p{Cf}` would drop legitimate Persian, Indic, and emoji-sequence questions
- * the server kept, and a mirror that quietly carves out more than the server
- * would render chips the server would have dropped.
+ * NO client-side counterpart (superseded 2026-08-27 \u2014 see the module header).
+ * This predicate is the only thing standing between a bidi override or an
+ * invisible-payload character and a chip whose text a person sends verbatim
+ * as their own message: chat's bound checks length and type only.
  */
 const FORMAT_CHAR_PATTERN = /[^\P{Cf}\u200C\u200D]|[\u{E0100}-\u{E01EF}]/u
 
 /**
  * The shared drop-never-repair projection (KTD4) — the single re-validation
  * every read path applies (live generation output, stored metadata on
- * replay; chat mirrors it client-side in U2 as `toFollowUps`).
+ * replay). Chat does NOT mirror it (superseded 2026-08-27); this is the only
+ * place follow-up question CONTENT is validated.
  *
  * Rungs, in order, per item: non-string drops; whitespace collapses to
  * single spaces then trims (so a newline-bearing item SURVIVES); empty

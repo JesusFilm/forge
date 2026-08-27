@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useSyncExternalStore } from "react"
 
-import { streamReply } from "./chat-stub"
+import { streamReply, type SendPromptSource } from "./chat-stub"
 import {
   createConversationSession,
   type ConversationSessionSnapshot,
@@ -22,7 +22,9 @@ export type UseConversations = {
   streamingMessageId: string | null
   history: ConversationSessionSnapshot["history"]
   setDraft: (value: string) => void
-  send: (text: string) => void
+  /** feat-366 (KTD11): `promptSource` marks a follow-up-chip send; a typed
+   * send omits it and the wire key never appears. */
+  send: (text: string, promptSource?: SendPromptSource) => void
   stopReply: () => void
   newConversation: () => void
   selectConversation: (id: string) => void

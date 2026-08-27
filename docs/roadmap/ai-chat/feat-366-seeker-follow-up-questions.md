@@ -13,7 +13,7 @@ tags:
   - "ai-pipeline"
 ---
 
-## Resolution (partial — U1 / PR 1 of the arc; feature NOT complete)
+## Resolution (partial — U1 + U2 of the arc; feature NOT complete)
 
 **U1 shipped:** 2026-08-21 via [#1987](https://github.com/JesusFilm/forge/pull/1987). The
 `apps/mastra` half of the feature landed behind `SEEKER_FOLLOWUPS_ENABLED`
@@ -37,10 +37,42 @@ the projection.
 `docs/solutions/best-practices/mastra-model-entry-timeout-retry-and-stream-abort-pattern.md`
 (amended — caller-signal scope limit).
 
-**Remaining:** U2 (apps/chat chips UI + the client mirror of the projection,
-including the format-char rung and its ZWNJ/ZWJ carve-outs) and U3 (managed-prompt
-closing-question softening via the experiments ledger). The full `## Resolution`
-replaces this section when the arc's final PR flips status to complete.
+**U2 shipped:** 2026-08-27 via [#2078](https://github.com/JesusFilm/forge/pull/2078).
+The `apps/chat` half: up to three tappable chips under a finished Seeker
+answer, on the conversation's LAST turn only and finalized turns only, as a
+sibling block after the sources disclosure (never through the markdown
+allowlist). A tap sends the question verbatim as the person's own next message
+(KD4) and tags the send `promptSource: "follow_up"` across all four hops, with
+the proxy guard forwarding only the exact literal and dropping anything else
+without a 400. Both wire paths carry the questions — the live terminal frame
+and the replay wire — so a reopened thread shows the same chips. Focus is a
+two-moment handoff: the log region at the tap (the composer textarea is
+`disabled` while pending), the composer at finalize.
+
+**U2 deviation from the plan — KTD4's client mirror was superseded**
+(2026-08-27, owner-directed). The plan specified a byte-identical client mirror
+of `projectFollowUps` plus a cross-source drift test; `toFollowUps` ships
+instead as a payload BOUND (non-string, empty-after-trim, >120 UTF-16 units,
+cap 3). Mastra applies the full projection on BOTH the live and replay paths
+unconditionally, so the client copy only covered "mastra is itself wrong" while
+costing two implementations that could silently drift — and its drift test sat
+in a package CI does not build for a mastra-only PR. The mirror was also
+already asymmetric: the composer's typed-send path applies only `.trim()`.
+Accepted residual: during a deploy window (mastra ships first, KTD13) or a
+mastra regression, nothing client-side catches a bidi override in text a person
+then sends as their own message; revisit trigger is audience widening past
+dogfood. A cap-inequality pin (mastra's caps ≤ chat's) now lives mastra-side,
+where the breaking change actually runs. Dated supersession notes are in the
+plan's KTD4, both CLAUDE.mds, this ticket, and the mastra source.
+
+**U2 scope note:** the PR touches four `apps/mastra` files — comment
+corrections plus that cap pin. One correction was load-bearing: the
+accepted-`Cf`-false-positive decision cited the (now absent) U2 mirror as one
+of its grounds. No mastra runtime behaviour changed.
+
+**Remaining:** U3 (managed-prompt closing-question softening via the
+experiments ledger). The full `## Resolution` replaces this section when the
+arc's final PR flips status to complete.
 
 ## Problem
 
@@ -73,7 +105,7 @@ After a grounded Seeker answer, the conversation stalls: the person composes eve
 The plan's three units, in order — full detail lives in the plan; do not re-derive it here:
 
 - **U1** (`apps/mastra`, PR 1, deploys first): `SEEKER_FOLLOWUPS_ENABLED` flag; the pure core `seeker-follow-ups.ts` (projection up-to-3 × 120 UTF-16 units, drop-never-repair incl. control-char and lone-surrogate rungs; suppression gate grounded + ≥200 chars; tail-only prompt builder with the question capped to its own tail; parser); the out-of-registry generator on `buildSeekerModelList()` with a one-time Mastra registration (zero-tool/zero-processor, test-pinned); route wiring — generation before the terminal frame under a `min(2.5 s, remaining budget)` deadline + `Promise.race`, persist AFTER the frame gated on the emitted flag, enum outcomes `skipped | persisted | no_carrier | store_failed | timeout | undelivered`, client-side ownership re-check before `Memory.updateMessages`; the replay adapter (last-turn-only wire); the Langfuse ladder (no-spans → sibling → same-trace) with the `userId`-listing assertion as a ship-blocker; token counts + `prompt_source` on the `[seeker-follow-ups]` log line; the measured byte budget; the real-Postgres smoke `src/scripts/followups-pg-smoke.ts`; the opt-in trace smoke with its in-suite egress pin.
-- **U2** (`apps/chat`, PR 2): the `FollowUps` chip component (last-turn-only, verbatim send, two-moment focus handoff), the `toFollowUps` mirror + drift test, replay reads, `promptSource: "follow_up"` across all four hops, browser verification (reload loop, on-arrival visibility, mobile wrap) plus page-load performance evidence.
+- **U2** (`apps/chat`, PR 2): the `FollowUps` chip component (last-turn-only, verbatim send, two-moment focus handoff), the `toFollowUps` payload bound, replay reads, `promptSource: "follow_up"` across all four hops, browser verification (reload loop, on-arrival visibility, mobile wrap) plus page-load performance evidence. NOTE: the plan's KTD4 originally specified a byte-identical client MIRROR of mastra's projection plus a cross-source drift test; superseded 2026-08-27 (owner-directed) in favour of a bound — see the KTD4 supersession note in the plan.
 - **U3** (managed prompt, two PRs by process): soften the answer's closing engagement question via the experiments ledger — step 0 first (is the closing question even an instruction in the pinned managed revision, or emergent?); a refused verdict closes the requirement as not-achievable-this-way per the plan's DoD branch.
 
 Wire shape: optional `followUps: string[]` on the terminal `result` frame — omitted, never null. Storage: `content.metadata.seekerFollowUps` via `Memory.updateMessages` — NEVER a synthetic tool-invocation part (falsified live: the gateway 400'd on the replayed fabricated call and broke every later turn in the thread).
