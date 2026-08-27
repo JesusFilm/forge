@@ -9,7 +9,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import { WatchWhatsNewPage } from "@/components/whats-new/WatchWhatsNewPage"
 import {
+  WHATS_NEW_ASSISTANTS,
   WHATS_NEW_AUDIENCES,
+  WHATS_NEW_CONTENTS,
   WHATS_NEW_FORMATS,
   WHATS_NEW_DELIVERY,
   WHATS_NEW_DIRECTIONS,
@@ -1797,5 +1799,190 @@ describe("WatchWhatsNewPage", () => {
 
     window.removeEventListener(WATCH_FEEDBACK_OPEN_EVENT, opens)
     expect(opens).toHaveBeenCalledTimes(2)
+  })
+
+  describe("the AI-assistant section", () => {
+    it("gives every on-this-page entry a section that actually exists", () => {
+      // The nav is generated from WHATS_NEW_CONTENTS, so adding a label
+      // without its section ships a dead anchor that nothing else catches.
+      for (const entry of WHATS_NEW_CONTENTS) {
+        expect(container.querySelector(`#${entry.id}`)).not.toBeNull()
+      }
+    })
+
+    it("renders one card per reason", () => {
+      expect(
+        container.querySelectorAll(
+          '[data-testid="whats-new-assistant-reason"]',
+        ),
+      ).toHaveLength(WHATS_NEW_ASSISTANTS.reasons.length)
+    })
+
+    it("illustrates the reasons with a phone showing the whole exchange", () => {
+      const phone = container.querySelector(
+        '[data-testid="whats-new-assistant-phone"]',
+      )
+      const messages = [
+        ...container.querySelectorAll<HTMLElement>(
+          '[data-testid="whats-new-phone-message"]',
+        ),
+      ]
+
+      expect(phone).not.toBeNull()
+      expect(messages).toHaveLength(WHATS_NEW_ASSISTANTS.phone.messages.length)
+      expect(messages.map((node) => node.dataset.from)).toEqual(
+        WHATS_NEW_ASSISTANTS.phone.messages.map((message) => message.from),
+      )
+      // The cited result is the point of the mockup — our content named
+      // inside someone else's answer. A mock without it illustrates
+      // nothing this section is arguing.
+      expect(
+        container.querySelector('[data-testid="whats-new-phone-citation"]'),
+      ).not.toBeNull()
+    })
+
+    it("labels the transcript as abridged and links to the original", () => {
+      // LOAD-BEARING, and it is the whole licence for the two decisions
+      // above it: reproducing a real exchange, inside a named vendor's
+      // chrome. Abridged means the reader is not seeing every word, and
+      // the link is what lets them check the words they are seeing.
+      // Without both, this stops being evidence and becomes an advert.
+      const phone = container.querySelector(
+        '[data-testid="whats-new-assistant-phone"]',
+      )
+      const link = phone?.querySelector<HTMLAnchorElement>(
+        `a[href="${WHATS_NEW_ASSISTANTS.phone.sourceHref}"]`,
+      )
+
+      expect(textContent()).toContain(WHATS_NEW_ASSISTANTS.phone.disclaimer)
+      expect(link).not.toBeNull()
+      expect(link?.textContent).toBe(WHATS_NEW_ASSISTANTS.phone.sourceLabel)
+      expect(link?.getAttribute("target")).toBe("_blank")
+      expect(WHATS_NEW_ASSISTANTS.phone.sourceHref).toMatch(
+        /^https:\/\/chatgpt\.com\/share\//,
+      )
+    })
+
+    it("hands the reader our catalogue inside the assistant's answer", () => {
+      // The point of showing this exchange at all. An answer that never
+      // names or links jesusfilm.org illustrates nothing the section is
+      // arguing.
+      const citation = container.querySelector(
+        '[data-testid="whats-new-phone-citation"]',
+      )
+
+      expect(citation).not.toBeNull()
+      expect(citation?.textContent).toContain("jesusfilm.org")
+      expect(
+        container.querySelectorAll(
+          '[data-testid="whats-new-phone-source-chip"]',
+        ).length,
+      ).toBeGreaterThan(0)
+    })
+
+    it("leaves the phone screen itself inert", () => {
+      // The device is a drawing: a real input or button inside it would
+      // take focus and offer a composer that cannot do anything. Scoped to
+      // the screen, NOT the whole figure — the caption's link to the
+      // original transcript is deliberately focusable, and asserting over
+      // the figure would forbid the very thing the test above requires.
+      const device = container.querySelector(
+        '[data-testid="whats-new-phone-device"]',
+      )
+
+      expect(device).not.toBeNull()
+      expect(
+        device?.querySelectorAll("input, button, a, textarea, [tabindex]"),
+      ).toHaveLength(0)
+    })
+
+    it("shows every study's quote alongside our own reading of it", () => {
+      const text = textContent()
+      for (const source of WHATS_NEW_ASSISTANTS.sources) {
+        expect(text).toContain(source.quote)
+        expect(text).toContain(source.finding)
+        expect(text).toContain(source.quoteNote)
+      }
+    })
+
+    it("makes every study checkable — one off-site link per source", () => {
+      const cards = [
+        ...container.querySelectorAll(
+          '[data-testid="whats-new-assistant-source"]',
+        ),
+      ]
+      expect(cards).toHaveLength(WHATS_NEW_ASSISTANTS.sources.length)
+
+      for (const [index, card] of cards.entries()) {
+        const source = WHATS_NEW_ASSISTANTS.sources[index]
+        const link = card.querySelector<HTMLAnchorElement>("a")
+
+        // A statistic a reader cannot check is worth less than no
+        // statistic — the citation is the whole point of these cards.
+        expect(link?.getAttribute("href")).toBe(source.href)
+        expect(link?.getAttribute("target")).toBe("_blank")
+        expect(link?.getAttribute("rel")).toContain("noreferrer")
+        expect(source.href.startsWith("https://")).toBe(true)
+      }
+    })
+
+    it("describes the chart for a reader who cannot see it", () => {
+      const chart = container.querySelector(
+        '[data-testid="whats-new-ai-traffic-chart"] svg',
+      )
+
+      expect(chart?.getAttribute("role")).toBe("img")
+      expect(chart?.getAttribute("aria-label")).toBe(
+        WHATS_NEW_ASSISTANTS.chart.alt,
+      )
+    })
+
+    it("ends the trend line at its own highest point", () => {
+      // LOAD-BEARING. The alt text and the surrounding copy both say the
+      // line peaks at the right-hand edge. Re-tracing the screenshot could
+      // break that without breaking anything else, leaving the page
+      // describing a chart it is not drawing.
+      const line = container.querySelector(
+        '[data-testid="whats-new-trend-line"]',
+      )
+      const ys = [
+        ...(line?.getAttribute("d") ?? "").matchAll(/[ML][\d.]+ ([\d.]+)/g),
+      ].map((match) => Number(match[1]))
+
+      expect(ys.length).toBeGreaterThan(20)
+      // SVG y grows downward, so the peak is the minimum.
+      expect(Math.min(...ys)).toBe(ys[ys.length - 1])
+    })
+
+    it("keeps the chart figure out of being a scroll container", () => {
+      // LOAD-BEARING, and the failure is silent. Any `overflow` value
+      // other than `visible` makes the figure a scroll container, and the
+      // `animation-timeline: view()` reveal on the line inside then
+      // resolves against a box that never scrolls: the draw freezes at
+      // whatever progress it first computed. No error, no failing render,
+      // and a screenshot still shows a plausible fully-drawn chart — so
+      // nothing but this assertion catches it.
+      const figure = container.querySelector(
+        '[data-testid="whats-new-ai-traffic-chart"]',
+      )
+
+      expect(figure).not.toBeNull()
+      expect(figure?.className ?? "").not.toMatch(/(^|\s|:)overflow-/)
+    })
+
+    it("prints no number anywhere in the figure", () => {
+      const figure = container.querySelector(
+        '[data-testid="whats-new-ai-traffic-chart"]',
+      )
+
+      // A bare digit check rather than a "looks like a number" pattern:
+      // textContent concatenates the axis labels with no separator
+      // (`2024Now`), so anything anchored on a word boundary silently
+      // never matches and the assertion passes for the wrong reason.
+      // Anti-vacuous — the figure carries plenty of text, so this holds
+      // only because none of that text is a value.
+      expect((figure?.textContent ?? "").length).toBeGreaterThan(40)
+      expect(figure?.textContent ?? "").not.toMatch(/[0-9]/)
+    })
   })
 })

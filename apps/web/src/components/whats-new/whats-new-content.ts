@@ -34,6 +34,7 @@ export const WHATS_NEW_LANGUAGE_SWITCHER = {
 
 export const WHATS_NEW_CONTENTS = [
   { id: "formats", label: "Every format" },
+  { id: "assistants", label: "The AI shift" },
   { id: "why", label: "Why it matters" },
   { id: "partners", label: "For partners" },
   { id: "improving", label: "What is improving" },
@@ -227,6 +228,204 @@ export const WHATS_NEW_FORMATS = [
   label: string
   era: string
 }[]
+
+/**
+ * The AI-assistant section: the traffic chart, the argument for why that
+ * traffic is worth chasing, and the published research behind it.
+ *
+ * Everything in `SOURCES` is a real, checkable claim on a public page.
+ * Rules for editing it:
+ *
+ * - `quote` is verbatim from the linked source, or from that source's own
+ *   published summary. If you cannot find the sentence at the URL, do not
+ *   paraphrase it into quotation marks — move it into `finding` instead.
+ * - `finding` is our own one-line reading of the study, in our words.
+ * - Re-check the whole block before any major re-publication of this
+ *   page. Three of the four studies are annual or repeated, so the
+ *   headline numbers move.
+ */
+export const WHATS_NEW_ASSISTANTS = {
+  eyebrow: "The shift already underway",
+  heading: "The fastest-growing way people reach Watch is a conversation",
+  intro: [
+    "The chart below is referrals to our site from AI assistants — people who asked ChatGPT, Gemini, Copilot, or Perplexity a question and arrived here from the answer. For most of the period it is a flat, noisy line. Then it is not.",
+    "Nothing about our catalog changed to produce the right-hand side of that curve. What changed is where people go first when they have a question.",
+  ],
+  /**
+   * NEEDS-CONFIRMATION before launch: the metric label and the period.
+   *
+   * The chart carries NO axes at all — no vertical scale, no time labels.
+   * The shape is the claim, not the magnitude, so no number on this page
+   * depends on the series being exact. `metric` and `period` are the only
+   * statements of fact the figure makes; confirm both against the
+   * analytics export. If real figures ever land in the component's
+   * `SERIES`, label the axis then.
+   */
+  chart: {
+    metric: "Visits to our site referred by AI assistants",
+    period: "Internal analytics",
+    /** Screen-reader description; the chart carries no readable numbers. */
+    alt: "A line chart of visits referred to our site by AI assistants. The line holds a low, noisy, roughly flat level across the first two thirds of the period, then climbs steeply and repeatedly to its highest point at the right-hand edge.",
+  },
+  valueEyebrow: "Why this traffic matters",
+  valueHeading:
+    "It is small today, and it is the most qualified traffic we have",
+  /**
+   * Three reasons, deliberately ordered weakest-claim-first: volume is the
+   * least interesting thing about this traffic.
+   */
+  reasons: [
+    {
+      icon: "compass",
+      tint: "#7c5cf0",
+      title: "The question is already formed",
+      body: "Nobody arrives from an assistant by accident. They described a situation in their own words, in their own language, and something we published was judged relevant enough to hand them. That is a warmer start than any search ranking.",
+    },
+    {
+      icon: "conversation",
+      tint: "#f0567c",
+      title: "They are mid-conversation, not mid-browse",
+      body: "A search result competes with nine other links. An answer arrives inside a conversation someone is already having about their own life — which is why what we publish has to be quotable in that answer, not just findable.",
+    },
+    {
+      icon: "globe",
+      tint: "#e0a24c",
+      title: "It routes around the language wall",
+      body: "Assistants answer in the language they are asked in. Someone can put a question in Tagalog or Amharic and be handed a film in that language — if the library is described well enough for the assistant to know it exists.",
+    },
+  ],
+  /**
+   * The phone that sits beside the three reasons: the moment they are all
+   * describing, shown once instead of asserted three times.
+   *
+   * This is a REAL exchange, captured from a public ChatGPT share link
+   * (`sourceHref`) — someone asks which Jesus film is most accurate, and
+   * the assistant answers with our catalogue, cited by name and linked.
+   * It replaced an invented mock-up, which is a meaningful upgrade: the
+   * section's whole claim is that this already happens, and an invented
+   * transcript could not evidence that.
+   *
+   * Rules for editing it:
+   *
+   * - It is abridged, not paraphrased. Every line here appears verbatim
+   *   in the source. Trim whole sentences; never reword one, or the quote
+   *   marks on the page start lying.
+   * - `disclaimer` and `sourceLabel` stay. Showing a branded, real-looking
+   *   transcript without saying it is abridged and without a link to the
+   *   original is the difference between evidence and an advert.
+   * - If the share link dies, this block has to go or be re-captured. An
+   *   unverifiable transcript in a vendor's chrome is worse than no
+   *   illustration at all.
+   *
+   * Captured 2026-08-26.
+   */
+  phone: {
+    appLabel: "ChatGPT",
+    messages: [
+      {
+        from: "person",
+        text: "What is the most accurate movie about Jesus that I can watch online for free?",
+      },
+      {
+        from: "assistant",
+        text: "If by \u201Caccurate\u201D you mean closest to the biblical text rather than the most entertaining adaptation, I\u2019d recommend LUMO\u2019s Gospel films, especially The Gospel of Luke.",
+        /** Rendered as ChatGPT's inline source chips. */
+        sources: ["LUMO", "Jesus Film Project"],
+      },
+      {
+        from: "assistant",
+        text: "You can watch the LUMO Gospel films free through Jesus Film Project, including Matthew, Mark, Luke, and John.",
+        citation: {
+          title: "Watch LUMO Gospel films free on Jesus Film Project",
+          source: "jesusfilm.org",
+          /**
+           * The production thumbnail for the exact film the answer
+           * recommends — LUMO's Gospel of Luke — pulled from our own
+           * Cloudflare Images delivery, the same asset
+           * `/watch/lumo-the-gospel-of-luke.html` renders. Not a stand-in:
+           * pairing a real title with someone else's still would
+           * misrepresent what the card previews.
+           *
+           * `imagedelivery.net` is already allowlisted in
+           * `next.config.mjs`, so `next/image` optimises it server-side
+           * rather than the browser hot-linking it.
+           */
+          thumbnail: {
+            src: "https://imagedelivery.net/tMY86qEHFACTO8_0kAeRFA/6_GOLuke2601.mobileCinematicHigh.jpg/f=jpg,w=640,h=300,q=95",
+            alt: "",
+            width: 640,
+            height: 300,
+          },
+        },
+      },
+    ],
+    /** Placeholder in the mocked composer; never a real input. */
+    composer: "Ask ChatGPT",
+    disclaimer: "A real ChatGPT conversation, abridged to fit.",
+    sourcesLabel: "Sources",
+    sourceLabel: "See the full exchange",
+    sourceHref:
+      "https://chatgpt.com/share/6a8eed41-73d4-83ea-8c51-9876a0bb00bd",
+    /**
+     * Screen-reader description. The device is one image to assistive
+     * tech; a reader who cannot see it should still get the point it is
+     * making rather than a bare "image".
+     */
+    alt: "A phone showing a ChatGPT conversation. Someone asks which film about Jesus is the most accurate one they can watch online for free. ChatGPT recommends the LUMO Gospel films, cites Jesus Film Project as a source, and links to watch them free on jesusfilm.org.",
+  },
+  researchEyebrow: "What people actually talk about",
+  researchHeading:
+    "The published research says these conversations are personal",
+  researchIntro: [
+    "The reason this matters for a ministry is not the traffic number. It is the subject matter. Study after study now finds that the single largest thing people bring to an AI assistant is not code, or email, or homework — it is themselves.",
+  ],
+  sources: [
+    {
+      id: "hbr",
+      finding:
+        "“Therapy/companionship” was the number-one use of generative AI for the second year running, roughly doubling its share of the dataset.",
+      quote: "Therapy/companionship",
+      quoteNote: "the study's own label for its top-ranked use case",
+      attribution: "Marc Zao-Sanders, “How People Are Really Using AI in 2026”",
+      publication: "Harvard Business Review",
+      date: "June 2026",
+      href: "https://hbr.org/2026/06/how-people-are-really-using-ai-in-2026",
+    },
+    {
+      id: "nber",
+      finding:
+        "Across a representative sample of ChatGPT conversations, the great majority of messages had nothing to do with work.",
+      quote: "More than 70% of all usage",
+      quoteNote: "is non-work-related",
+      attribution:
+        "Chatterji, Cunningham, Deming, Hitzig, Ong, Shan & Wadman, “How People Use ChatGPT”",
+      publication: "NBER Working Paper 34255",
+      date: "September 2025",
+      href: "https://www.nber.org/papers/w34255",
+    },
+    {
+      id: "common-sense",
+      finding:
+        "Seventy-two percent of US teenagers had used an AI companion, and about one in three of those users had taken something serious to it rather than to a person.",
+      quote:
+        "Have chosen to discuss important or serious matters with AI companions instead of real people.",
+      quoteNote: "about one in three teen AI-companion users",
+      attribution: "“Talk, Trust, and Trade-offs”",
+      publication: "Common Sense Media",
+      date: "July 2025",
+      href: "https://www.commonsensemedia.org/press-releases/nearly-3-in-4-teens-have-used-ai-companions-new-national-survey-finds",
+    },
+  ],
+  /** The turn: from what the research says to what we owe it. */
+  closingEyebrow: "What we owe it",
+  closingHeading:
+    "People are already having the conversation. We should be findable inside it.",
+  closing: [
+    "Put those findings next to each other and the picture is hard to miss. Millions of people are describing loneliness, grief, guilt, fear, and the search for meaning to a machine, at three in the morning, because it is available and it does not judge them. Some of them are asking directly about Jesus. Many more are circling the questions the story of Jesus answers, without ever using a word that would have matched a search query.",
+    "We are not going to be the therapist in that conversation, and we should not try to be. But when someone asks what forgiveness means, or why they cannot stop feeling ashamed, or who Jesus actually was, there is a two-hour film, and thousands of scenes inside it, in thousands of languages — and an assistant can only offer any of that if it can find it, understand it, and cite it.",
+    "That is the whole reason for the work described on this page. Search that understands intent rather than titles. Scenes small enough to be handed to one person at one moment. Language treated as a first-class part of the library rather than a setting inside a player. Metadata and transcripts written so a machine can tell what a video is actually about. None of it is chasing a trend. It is the same instinct that put a projector in a field: go where people already are, in the language they already speak.",
+  ],
+} as const
 
 export const WHATS_NEW_IMPROVEMENTS = [
   {
