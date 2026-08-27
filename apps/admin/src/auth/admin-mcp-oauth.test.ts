@@ -45,6 +45,7 @@ describe("admin MCP OAuth", () => {
         client_id: "jfp_admin_mcp_production",
         scope: "openid experience:read experience:locale:update",
         "https://jesusfilm.org/claims/environment": "production",
+        "https://jesusfilm.org/claims/app": "admin-mcp",
       },
     })
 
@@ -144,6 +145,7 @@ describe("admin MCP OAuth", () => {
         client_id: "dynamic_mcp_client",
         scope: "openid experience:read",
         "https://jesusfilm.org/claims/environment": "production",
+        "https://jesusfilm.org/claims/app": "admin-mcp",
       },
     })
 
@@ -159,6 +161,26 @@ describe("admin MCP OAuth", () => {
     })
   })
 
+  it("rejects a non-Admin app claim at the Admin resource", async () => {
+    jwtVerify.mockResolvedValueOnce({
+      payload: {
+        sub: "user_123",
+        client_id: "dynamic_mcp_client",
+        scope: "openid experience:read",
+        "https://jesusfilm.org/claims/environment": "production",
+        "https://jesusfilm.org/claims/app": "changelog",
+      },
+    })
+
+    await expect(
+      verifyAdminMcpBearerToken({
+        authHeader: "Bearer access-token",
+        requiredScopes: ["experience:read"],
+        config: { ...config, allowedClientIds: undefined },
+      }),
+    ).rejects.toMatchObject({ code: "invalid_token" })
+  })
+
   it("rejects tokens from the wrong environment", async () => {
     jwtVerify.mockResolvedValueOnce({
       payload: {
@@ -166,6 +188,7 @@ describe("admin MCP OAuth", () => {
         client_id: "jfp_admin_mcp_production",
         scope: "openid experience:read",
         "https://jesusfilm.org/claims/environment": "staging",
+        "https://jesusfilm.org/claims/app": "admin-mcp",
       },
     })
 

@@ -285,6 +285,31 @@ describe("Admin MCP route", () => {
     })
   })
 
+  it("requires explicit compare-and-set revisions for draft mutation tools", async () => {
+    const res = await POST(
+      post({ jsonrpc: "2.0", id: 4, method: "tools/list" }),
+    )
+    const body = (await res.json()) as {
+      result: { tools: typeof ADMIN_MCP_TOOLS }
+    }
+    const update = body.result.tools.find(
+      (tool) => tool.name === "experience.locale.update",
+    )
+    const discard = body.result.tools.find(
+      (tool) => tool.name === "experience.locale.discard",
+    )
+
+    expect(update?.inputSchema.required).toEqual([
+      "localeId",
+      "expectedDraftRevision",
+      "draft",
+    ])
+    expect(discard?.inputSchema.required).toEqual([
+      "localeId",
+      "expectedDraftRevision",
+    ])
+  })
+
   it("requires publish scope before dispatching the publish tool", async () => {
     const canonical = {
       id: "loc_1",

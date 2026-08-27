@@ -429,6 +429,7 @@ describe("ExperienceLocaleMcpService", () => {
       service.updateLocale({
         input: {
           localeId: "loc-es",
+          expectedDraftRevision: null,
           draft: { title: "Esperanza viva" },
         },
         user: ADMIN,
@@ -458,6 +459,7 @@ describe("ExperienceLocaleMcpService", () => {
       service.updateLocale({
         input: {
           localeId: "loc-es",
+          expectedDraftRevision: null,
           draft: {
             blocks: [
               {
@@ -538,11 +540,56 @@ describe("ExperienceLocaleMcpService", () => {
       service.updateLocale({
         input: {
           localeId: "loc-es",
+          expectedDraftRevision: null,
           draft: { blocks },
         },
         user: ADMIN,
       }),
     ).rejects.toThrow()
+    expect(prisma.contentRevision.create).not.toHaveBeenCalled()
+  })
+
+  it("requires an explicit nullable draft revision for MCP updates", async () => {
+    await expect(
+      service.updateLocale({
+        input: { localeId: "loc-es", draft: { title: "Esperanza viva" } },
+        user: ADMIN,
+      }),
+    ).rejects.toThrow()
+    expect(prisma.$transaction).not.toHaveBeenCalled()
+  })
+
+  it("rejects a stale draft revision after acquiring the locale lock", async () => {
+    const canonical = {
+      ...LOCALE_ROW,
+      experience: {
+        ownerId: "admin-1",
+        archivedAt: null,
+        isTemplate: false,
+      },
+      createdAt: new Date("2026-07-21T11:00:00.000Z"),
+    }
+    prisma.experienceLocale.findUniqueOrThrow.mockResolvedValue(canonical)
+    prisma.contentRevision.findFirst.mockResolvedValueOnce({
+      id: "draft-newer",
+      snapshot: { v: 1, data: { title: "Newer edit" } },
+      previewToken: "preview-token",
+      revisedAt: updatedAt,
+      revisedBy: "another-editor",
+      revisedByKind: "USER",
+      reason: "newer edit",
+    })
+
+    await expect(
+      service.updateLocale({
+        input: {
+          localeId: "loc-es",
+          expectedDraftRevision: "stale-revision",
+          draft: { title: "Overwrite" },
+        },
+        user: ADMIN,
+      }),
+    ).rejects.toThrow("modified concurrently")
     expect(prisma.contentRevision.create).not.toHaveBeenCalled()
   })
 

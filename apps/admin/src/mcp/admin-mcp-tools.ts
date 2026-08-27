@@ -127,9 +127,14 @@ export const ADMIN_MCP_TOOLS = [
       type: "object",
       properties: {
         localeId: { type: "string" },
+        expectedDraftRevision: {
+          type: ["string", "null"],
+          description:
+            "Opaque revision returned by experience.locale.read, or null to assert that no active draft exists.",
+        },
         draft: { type: "object" },
       },
-      required: ["localeId", "draft"],
+      required: ["localeId", "expectedDraftRevision", "draft"],
       additionalProperties: false,
     },
   },
@@ -151,14 +156,15 @@ export const ADMIN_MCP_TOOLS = [
   {
     name: "experience.locale.discard",
     description:
-      "Discard the active shared draft for an ExperienceLocale without changing canonical public content.",
+      "Conditionally discard a newly created active draft without overwriting a later editor change. Restore an existing draft by calling experience.locale.update with the produced revision and the private pre-write payload.",
     requiredScopes: ["experience:locale:update"],
     inputSchema: {
       type: "object",
       properties: {
         localeId: { type: "string" },
+        expectedDraftRevision: { type: "string" },
       },
-      required: ["localeId"],
+      required: ["localeId", "expectedDraftRevision"],
       additionalProperties: false,
     },
   },
