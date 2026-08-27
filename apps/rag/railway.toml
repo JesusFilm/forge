@@ -1,4 +1,4 @@
-# Railway reads this only when forge/production/forge-rag has Config-as-code
+# Railway reads this only when forge/production/@forge/rag has Config-as-code
 # Path set exactly to apps/rag/railway.toml. The database is a separate Railway
 # PostgreSQL service and DATABASE_URL must be a reference to that service.
 

@@ -20,21 +20,28 @@ instead of skipping when no real database is configured.
 ## Railway production provisioning
 
 Fixed targets are Railway project `forge`, environment `production`, database
-service `forge-rag-postgres`, and application service `forge-rag`. Stop if the
-selected targets differ.
+service `@forge/rag-postgres`, and application service `@forge/rag`. Stop if
+the selected targets differ.
 
-1. Create a dedicated PostgreSQL service named `forge-rag-postgres`.
-2. Add `DATABASE_URL` to `forge-rag` as a Railway reference to the database
+1. Create a dedicated PostgreSQL service named `@forge/rag-postgres`.
+2. Add `DATABASE_URL` to `@forge/rag` as a Railway reference to the database
    service. Never copy the connection string into a transcript.
 3. Set the application service Config-as-code Path exactly to
    `apps/rag/railway.toml`. Confirm the resulting deployment metadata names that
    config file; `configFile: null` means Railway ignored it.
 4. Merge through the normal PR-to-main path. Never run `railway up`.
-5. Confirm the pre-deploy command ran
-   `pnpm --filter @forge/rag db:migrate:deploy` successfully.
-6. Run `pnpm --filter @forge/rag db:migrate:status` with variables injected for
-   the fixed service, then run the metadata-only SQL below through an approved
-   database console.
+5. For the initial schema-only deployment, run the checked-in migration from a
+   clean checkout of merged `main` with Railway production variables and an
+   approved connection to `@forge/rag-postgres`. The application service has no
+   start command until feat-428, so Railway cannot yet reach its configured
+   pre-deploy phase. Do not add a placeholder runtime to bypass that boundary.
+6. Run `pnpm --filter @forge/rag db:migrate:status` and
+   `pnpm --filter @forge/rag db:drift:check` against the same target, then run
+   the metadata-only SQL below through the approved database connection.
+7. During feat-428, confirm the first runnable service deployment executes the
+   already configured `pnpm --filter @forge/rag db:migrate:deploy` pre-deploy
+   command successfully. That proves deployment automation; it is not a
+   prerequisite for provisioning the empty schema in this ticket.
 
 ```sql
 SELECT extname, extversion FROM pg_extension WHERE extname = 'vector';
@@ -53,7 +60,9 @@ SELECT
   (SELECT count(*) FROM documents) AS documents,
   (SELECT count(*) FROM chunks) AS chunks,
   (SELECT count(*) FROM chunk_embeddings) AS chunk_embeddings,
-  (SELECT count(*) FROM raw_documents) AS raw_documents;
+  (SELECT count(*) FROM raw_documents) AS raw_documents,
+  (SELECT count(*) FROM http_cache) AS http_cache,
+  (SELECT count(*) FROM robots_cache) AS robots_cache;
 SELECT 1 AS readable;
 ```
 
@@ -64,6 +73,6 @@ simple read succeeds. Record target identifiers, deployment ID, and pass/fail
 only. Do not record credentials, URLs, migration checksums, or corpus content.
 
 Rollback before corpus copy is destructive only to the new empty target: retain
-the failed deployment evidence, delete/recreate only `forge-rag-postgres`, and
+the failed deployment evidence, delete/recreate only `@forge/rag-postgres`, and
 rerun the normal deploy after fixing the migration. The legacy jfrag database
 remains untouched.
