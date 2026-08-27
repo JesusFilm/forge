@@ -254,11 +254,24 @@ function graphqlErrorsFrom(value: unknown): GraphqlErrorCandidate[] {
   )
 }
 
+// Two distinct pre-feature Admin schemas produce two distinct validation
+// errors on the SAME selection, and both mean "fall back to the legacy
+// query": an Admin without the block type at all ("Unknown type"), and an
+// Admin that has the block but predates authored tiles ("Cannot query
+// field"). Matching only the first would have made the tiles selection a
+// hard failure during the deploy window rather than a graceful degrade.
+const CATEGORY_RAIL_SCHEMA_LAG_MESSAGES = [
+  /^Unknown type "WatchHomeCategoryRailBlock"\./,
+  /^Cannot query field "tiles" on type "WatchHomeCategoryRailBlock"\./,
+]
+
 function isUnknownCategoryRailTypenameValidation(value: unknown): boolean {
   return graphqlErrorsFrom(value).some((entry) => {
     if (
       typeof entry.message !== "string" ||
-      !/^Unknown type "WatchHomeCategoryRailBlock"\./.test(entry.message) ||
+      !CATEGORY_RAIL_SCHEMA_LAG_MESSAGES.some((pattern) =>
+        pattern.test(entry.message as string),
+      ) ||
       entry.path != null
     ) {
       return false

@@ -404,12 +404,22 @@ export function summarizeBlock(
   }
 
   if (type === "watchHomeCategoryRail") {
-    const selectedCount = asArray(value.categoryIds).length
+    // `tiles` is authoritative when present; `categoryIds` is what blocks
+    // stored before tile authoring carry (and the mirror kept for old readers).
+    const tiles = asArray(value.tiles)
+    const tileCount =
+      tiles.length > 0 ? tiles.length : asArray(value.categoryIds).length
+    const customCount = tiles.filter(
+      (tile) => asString(asRecord(tile)?.categoryId).length === 0,
+    ).length
     return {
       key: summaryKey,
       typeLabel: "Watch Category Rail",
       title: "Browse by category",
-      body: `${selectedCount} ${selectedCount === 1 ? "category" : "categories"} selected`,
+      body:
+        customCount > 0
+          ? `${tileCount} ${tileCount === 1 ? "tile" : "tiles"} · ${customCount} custom`
+          : `${tileCount} ${tileCount === 1 ? "tile" : "tiles"}`,
       tone: "standard",
       badges: ["WATCH_HOME"],
     }

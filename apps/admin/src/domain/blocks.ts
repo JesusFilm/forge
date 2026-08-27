@@ -30,6 +30,12 @@ import {
   WATCH_HOME_CATEGORY_CATALOG,
   type WatchHomeCategoryId,
 } from "@forge/watch-url-policy/watch-home-categories"
+import {
+  MAX_WATCH_HOME_TILE_TITLE_LENGTH,
+  WATCH_HOME_TILE_ICON_KEYS,
+  WATCH_HOME_TILE_STYLE_KEYS,
+  isSafeWatchHomeTileHref,
+} from "@forge/watch-url-policy/watch-home-tiles"
 
 // -----------------------------------------------------------------------------
 // Shared primitives
@@ -454,8 +460,73 @@ const WatchHomeCategoryIdSchema = z.enum(
 )
 
 /**
- * Web-owned Watch homepage category carousel. The ordered category IDs are
- * persisted while localized copy and presentation remain consumer-owned.
+ * One tile in the Watch homepage carousel.
+ *
+ * A tile with a `categoryId` is a PREDEFINED tile: the catalog supplies its
+ * destination, and apps/web supplies the localized title plus the default
+ * icon and gradient. Any of `title` / `href` / `icon` / `style` present on
+ * the tile overrides that default, so authoring an override is additive and
+ * clearing the field restores the default. Authoring a `title` also opts that
+ * tile OUT of localization — the literal renders in every locale, which is
+ * the deliberate trade for letting staff name a tile at all.
+ *
+ * A tile WITHOUT a `categoryId` is fully custom and has no defaults to fall
+ * back on, so it must carry both a title and a destination.
+ */
+export const WatchHomeCategoryRailTileSchema = z
+  .object({
+    /**
+     * Stable per-tile identity. Load-bearing beyond a React key: reordering
+     * and per-field edits address a tile by id, and two custom tiles can
+     * legitimately share every other field.
+     */
+    id: z.string().min(1).max(200),
+    categoryId: WatchHomeCategoryIdSchema.optional(),
+    title: z.string().min(1).max(MAX_WATCH_HOME_TILE_TITLE_LENGTH).optional(),
+    href: z
+      .string()
+      .refine(isSafeWatchHomeTileHref, {
+        message:
+          "Destination must be a site path starting with / or an https:// URL",
+      })
+      .optional(),
+    icon: z.enum(WATCH_HOME_TILE_ICON_KEYS as [string, ...string[]]).optional(),
+    style: z
+      .enum(WATCH_HOME_TILE_STYLE_KEYS as [string, ...string[]])
+      .optional(),
+  })
+  .strict()
+  .superRefine((tile, ctx) => {
+    if (tile.categoryId != null) return
+    if (tile.title == null) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["title"],
+        message: "A custom tile needs a title",
+      })
+    }
+    if (tile.href == null) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["href"],
+        message: "A custom tile needs a destination",
+      })
+    }
+  })
+
+export type WatchHomeCategoryRailTile = z.infer<
+  typeof WatchHomeCategoryRailTileSchema
+>
+
+/**
+ * Web-owned Watch homepage category carousel.
+ *
+ * `categoryIds` is the ORIGINAL shape and stays required: it is what a web
+ * deploy that predates authored tiles reads, so the editor keeps it in sync
+ * with the predefined tiles in `tiles` and an old renderer degrades to the
+ * predefined subset in the authored order rather than to an empty rail.
+ * `tiles` is the richer successor — when present it is authoritative.
+ *
  * Top-level only because the section is a full-width homepage surface.
  */
 export const WatchHomeCategoryRailBlockSchema = z
@@ -476,6 +547,38 @@ export const WatchHomeCategoryRailBlockSchema = z
             })
           } else {
             firstIndexById.set(id, index)
+          }
+        }
+      }),
+    tiles: z
+      .array(WatchHomeCategoryRailTileSchema)
+      .min(1, "Add at least one tile")
+      .max(48, "A carousel of more than 48 tiles is not browsable")
+      .optional()
+      .superRefine((tiles, ctx) => {
+        if (tiles == null) return
+        const firstIndexById = new Map<string, number>()
+        const firstIndexByCategoryId = new Map<string, number>()
+        for (const [index, tile] of tiles.entries()) {
+          if (firstIndexById.has(tile.id)) {
+            ctx.addIssue({
+              code: "custom",
+              path: [index, "id"],
+              message: `Duplicate tile id: ${tile.id}`,
+            })
+          } else {
+            firstIndexById.set(tile.id, index)
+          }
+
+          if (tile.categoryId == null) continue
+          if (firstIndexByCategoryId.has(tile.categoryId)) {
+            ctx.addIssue({
+              code: "custom",
+              path: [index, "categoryId"],
+              message: `Duplicate Watch category id: ${tile.categoryId}`,
+            })
+          } else {
+            firstIndexByCategoryId.set(tile.categoryId, index)
           }
         }
       }),

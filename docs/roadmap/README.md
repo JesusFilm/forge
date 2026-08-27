@@ -6,12 +6,12 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 
 ## Status (August 27, 2026)
 
-- **Total tickets:** 606
-- **Complete:** 450
-- **In progress:** 40
+- **Total tickets:** 608
+- **Complete:** 451
+- **In progress:** 41
 - **Not started:** 37
 - **Blocked:** 79
-- **Overdue and not complete:** 106
+- **Overdue and not complete:** 107
 
 ## Feature Index
 
@@ -632,6 +632,8 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-400](topic-experiences/feat-400-watch-language-globe-sections.md)                     | Reuse the Watch language globe on home and not-found pages                       | urim       | P1       | 2026-08-21 | 1    | 2026-08-21 | complete    |
 | [feat-405](topic-experiences/feat-405-experience-duplication-admin-api-mcp.md)              | Experience duplication across Admin, GraphQL, and MCP                            | codex      | P1       | 2026-08-21 | 1    | 2026-08-21 | complete    |
 | [feat-423](topic-experiences/feat-423-watch-language-globe-experience-block.md)             | Author the Watch language globe in Experience Editor                             | urim       | P1       | 2026-08-25 | 1    | 2026-08-25 | complete    |
+| [feat-436](topic-experiences/feat-436-watch-home-category-rail-experience-block.md)         | Author the Watch category rail in Experience Editor                              | vlad       | P1       | 2026-08-26 | 1    | 2026-08-26 | in-progress |
+| [feat-439](topic-experiences/feat-439-watch-category-rail-custom-tiles.md)                  | Custom tiles in the Watch category rail block                                    | vlad       | P1       | 2026-08-27 | 1    | 2026-08-27 | complete    |
 | [feat-020](topic-experiences/feat-020-ai-topic-content-generation.md)                       | AI Topic Content Generation Service                                              | vlad       | P2       | 2026-04-28 | 28   | 2026-05-25 | blocked     |
 | [feat-021](topic-experiences/feat-021-generation-quality-monitoring.md)                     | Generation Quality & Monitoring Dashboard                                        | ekkasit    | P2       | 2026-05-05 | 21   | 2026-05-25 | blocked     |
 | [feat-146](topic-experiences/feat-146-watch-bible-quotes-promo-cta-wrap.md)                 | Watch Bible Quotes Promo CTA Wrap                                                | urim       | P2       | 2026-06-13 | 1    | 2026-06-13 | complete    |
