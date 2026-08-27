@@ -9,6 +9,10 @@ import type { RouteVideo, Section } from "@/lib/content"
 import type { MediaCollection as MediaCollectionType } from "./MediaCollection"
 import type { DynamicMediaCollection as DynamicMediaCollectionType } from "./DynamicMediaCollection"
 import type { FeaturedCollectionReferences } from "@/lib/featured-collection-references"
+import type {
+  DynamicCollectionFeedCacheScope,
+  DynamicCollectionFeedCacheSignatures,
+} from "@/lib/dynamic-collection-contract"
 import type { PromoBanner as PromoBannerType } from "./PromoBanner"
 import type { InfoBlocks as InfoBlocksType } from "./InfoBlocks"
 import type { CTASection as CTASectionType } from "./CTASection"
@@ -139,24 +143,31 @@ type AnyBlock = {
   readonly __typename?: AdminBlockTypename | string | null
 } & Record<string, unknown>
 
+type DynamicCollectionsRenderContext = {
+  featuredCollections?: FeaturedCollectionReferences
+  cacheScope: DynamicCollectionFeedCacheScope
+  cacheSignatures?: DynamicCollectionFeedCacheSignatures
+}
+
 function renderAdminBlock(
   block: AnyBlock,
   routeVideo: RouteVideo | null | undefined,
   languageSlug: string | null | undefined,
   locale: string | null | undefined,
-  featuredCollections: FeaturedCollectionReferences | undefined,
-  allowDynamicCollections: boolean,
+  dynamicCollections: DynamicCollectionsRenderContext | undefined,
 ): ReactNode {
   switch (block.__typename) {
     case "MediaCollectionBlock":
       if (block.itemsSource === "dynamicCollections") {
-        if (!allowDynamicCollections) return null
+        if (!dynamicCollections) return null
         return (
           <DynamicMediaCollection
             data={block as Parameters<typeof DynamicMediaCollection>[0]["data"]}
             locale={locale ?? "en"}
             languageSlug={languageSlug ?? "english"}
-            featuredCollections={featuredCollections}
+            featuredCollections={dynamicCollections.featuredCollections}
+            cacheScope={dynamicCollections.cacheScope}
+            cacheSignatures={dynamicCollections.cacheSignatures}
           />
         )
       }
@@ -334,15 +345,13 @@ export function ExperienceSectionRenderer({
   routeVideo,
   languageSlug,
   locale,
-  featuredCollections,
-  allowDynamicCollections = false,
+  dynamicCollections,
 }: {
   section: Section
   routeVideo?: RouteVideo | null
   languageSlug?: string | null
   locale?: string | null
-  featuredCollections?: FeaturedCollectionReferences
-  allowDynamicCollections?: boolean
+  dynamicCollections?: DynamicCollectionsRenderContext
 }) {
   // Admin-shape dispatch — content.ts reads from admin now, so every
   // block reaching this renderer carries an admin `*Block` __typename.
@@ -354,8 +363,7 @@ export function ExperienceSectionRenderer({
       routeVideo,
       languageSlug,
       locale,
-      featuredCollections,
-      allowDynamicCollections,
+      dynamicCollections,
     )
   }
 

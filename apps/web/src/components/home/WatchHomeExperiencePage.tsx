@@ -6,6 +6,12 @@ import { WatchHomeCategoryRail } from "@/components/home/WatchHomeCategoryRail"
 import { WatchHomeFooter } from "@/components/home/WatchHomeFooter"
 import { WatchHomeTvCarousel } from "@/components/home/WatchHomeTvCarousel"
 import { WATCH_PAGE_CONTENT_CLASSES } from "@/lib/content-width"
+import { createInitialDynamicCollectionFeedCacheSignatures } from "@/lib/dynamic-collection-cache-signature"
+import {
+  boundDynamicCollectionFeedReferences,
+  mergeDynamicCollectionFeedExcludedIds,
+  type DynamicCollectionFeedCacheScope,
+} from "@/lib/dynamic-collection-contract"
 import type { WatchHomeModel } from "@/lib/watch-home"
 import { collectFeaturedCollectionReferences } from "@/lib/featured-collection-references"
 
@@ -14,6 +20,7 @@ type WatchHomeExperiencePageProps = {
   blocks: readonly Section[]
   locale?: string
   languageSlug: string
+  dynamicCollectionCacheScope?: DynamicCollectionFeedCacheScope
 }
 
 function findBackdropImage(model: WatchHomeModel): {
@@ -102,11 +109,24 @@ function isStandaloneMediaBlock(block: Section) {
   return typename === "VideoBlock" || typename === "VideoCarouselBlock"
 }
 
+function isDynamicMediaCollectionBlock(block: Section) {
+  const candidate = block as {
+    readonly __typename?: string | null
+    readonly itemsSource?: string | null
+  }
+
+  return (
+    candidate.__typename === "MediaCollectionBlock" &&
+    candidate.itemsSource === "dynamicCollections"
+  )
+}
+
 export function WatchHomeExperiencePage({
   heroModel,
   blocks,
   locale = "en",
   languageSlug,
+  dynamicCollectionCacheScope = "live",
 }: WatchHomeExperiencePageProps) {
   const t = useTranslations("WatchHome")
   const backdrop = findBackdropImage(heroModel)
@@ -115,6 +135,35 @@ export function WatchHomeExperiencePage({
   const featuredCollections = collectFeaturedCollectionReferences(
     normalized.blocks,
   )
+  const dynamicCollectionBlock = normalized.blocks.find(
+    isDynamicMediaCollectionBlock,
+  )
+  const boundedFeaturedCollections = {
+    ids: featuredCollections.ids,
+    slugs: boundDynamicCollectionFeedReferences(featuredCollections.slugs),
+  }
+  const dynamicCollectionCacheSignatures = dynamicCollectionBlock
+    ? createInitialDynamicCollectionFeedCacheSignatures({
+        locale,
+        languageSlug,
+        cacheScope: dynamicCollectionCacheScope,
+        excludedIds: mergeDynamicCollectionFeedExcludedIds(
+          (
+            dynamicCollectionBlock as unknown as {
+              excludedVideoIds?: readonly string[] | null
+            }
+          ).excludedVideoIds,
+          boundedFeaturedCollections.ids,
+        ),
+        excludedSlugs: boundedFeaturedCollections.slugs,
+      })
+    : undefined
+  const dynamicCollections = {
+    featuredCollections: boundedFeaturedCollections,
+    cacheScope: dynamicCollectionCacheScope,
+    cacheSignatures: dynamicCollectionCacheSignatures,
+  }
+
   const renderBlock = (block: Section, index: number) => {
     const blockKey =
       (block as { sectionKey?: string | null }).sectionKey ?? index
@@ -137,8 +186,7 @@ export function WatchHomeExperiencePage({
         section={block}
         locale={locale}
         languageSlug={languageSlug}
-        featuredCollections={featuredCollections}
-        allowDynamicCollections
+        dynamicCollections={dynamicCollections}
       />
     )
 

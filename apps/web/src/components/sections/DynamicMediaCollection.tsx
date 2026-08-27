@@ -15,8 +15,10 @@ import { WATCH_PAGE_CONTENT_CLASSES } from "@/lib/content-width"
 import { loadDynamicCollectionFeedPage } from "@/lib/dynamic-collection-client"
 import {
   DynamicCollectionFeedRequestError,
-  WATCH_COLLECTION_FEED_MAX_EXCLUSIONS,
   WATCH_COLLECTION_FEED_PROFILES,
+  mergeDynamicCollectionFeedExcludedIds,
+  type DynamicCollectionFeedCacheSignatures,
+  type DynamicCollectionFeedCacheScope,
   type DynamicCollectionFeedProfile,
   type DynamicCollectionFeedSection,
 } from "@/lib/dynamic-collection-contract"
@@ -40,6 +42,8 @@ type DynamicMediaCollectionProps = {
   locale: string
   languageSlug: string
   featuredCollections?: FeaturedCollectionReferences
+  cacheScope?: DynamicCollectionFeedCacheScope
+  cacheSignatures?: DynamicCollectionFeedCacheSignatures
 }
 
 const MAX_DUPLICATE_ONLY_PAGES_PER_ATTEMPT = 3
@@ -131,15 +135,15 @@ export function DynamicMediaCollection({
   locale,
   languageSlug,
   featuredCollections = { ids: [], slugs: [] },
+  cacheScope = "live",
+  cacheSignatures,
 }: DynamicMediaCollectionProps) {
   const excludedIds = useMemo(
     () =>
-      [
-        ...new Set([
-          ...(data.excludedVideoIds ?? []),
-          ...featuredCollections.ids,
-        ]),
-      ].slice(0, WATCH_COLLECTION_FEED_MAX_EXCLUSIONS),
+      mergeDynamicCollectionFeedExcludedIds(
+        data.excludedVideoIds,
+        featuredCollections.ids,
+      ),
     [data.excludedVideoIds, featuredCollections.ids],
   )
   const sentinelRef = useRef<HTMLDivElement | null>(null)
@@ -153,6 +157,7 @@ export function DynamicMediaCollection({
   const seenIdsRef = useRef(new Set(excludedIds))
   const seenSlugsRef = useRef(new Set(featuredCollections.slugs))
   const profileRef = useRef<DynamicCollectionFeedProfile>(feedProfile())
+  const cacheSignatureRef = useRef<string | null>(null)
   const loadNextPageRef = useRef<(manualRetry?: boolean) => Promise<void>>(
     async () => undefined,
   )
@@ -188,9 +193,9 @@ export function DynamicMediaCollection({
   )
   const [retrySeconds, setRetrySeconds] = useState(0)
   const windowingActive = sections.length > WINDOWING_THRESHOLD
-  const feedIdentity = `${locale}\0${languageSlug}\0${excludedIds.join(
+  const feedIdentity = `${locale}\0${languageSlug}\0${cacheScope}\0${excludedIds.join(
     "\0",
-  )}\0${featuredCollections.slugs.join("\0")}`
+  )}\0${featuredCollections.slugs.join("\0")}\0${cacheSignatures?.mobile ?? ""}\0${cacheSignatures?.desktop ?? ""}`
 
   const setFeedStatus = useCallback((next: "idle" | "loading" | "error") => {
     statusRef.current = next
@@ -309,6 +314,10 @@ export function DynamicMediaCollection({
     seenIdsRef.current = new Set(excludedIds)
     seenSlugsRef.current = new Set(featuredCollections.slugs)
     profileRef.current = feedProfile()
+    cacheSignatureRef.current =
+      profileRef.current.first === WATCH_COLLECTION_FEED_PROFILES.mobile.first
+        ? (cacheSignatures?.mobile ?? null)
+        : (cacheSignatures?.desktop ?? null)
     rowVisibilityRef.current.clear()
     rowHeightsRef.current.clear()
     provisionalHeightIdsRef.current.clear()
@@ -542,6 +551,8 @@ export function DynamicMediaCollection({
             {
               locale,
               languageSlug,
+              cacheScope,
+              cacheSignature: cacheSignatureRef.current,
               after: requestCursor,
               excludedIds,
               excludedSlugs: featuredCollections.slugs,
@@ -553,6 +564,7 @@ export function DynamicMediaCollection({
             return
           }
           requests += 1
+          cacheSignatureRef.current = page.nextCacheSignature ?? null
 
           const uniqueSections = page.sections.filter((section) => {
             if (
@@ -634,6 +646,7 @@ export function DynamicMediaCollection({
     },
     [
       excludedIds,
+      cacheScope,
       featuredCollections.slugs,
       languageSlug,
       locale,
