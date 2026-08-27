@@ -83,19 +83,6 @@ function isHttpLoopbackRedirect(uri: string): boolean {
 async function normalizeLoopbackDcrRequest(
   request: Request,
 ): Promise<Request | Response> {
-  if (request.headers.has("authorization")) return request
-  const session = await auth.api.getSession({ headers: request.headers })
-  if (session?.user?.id) return request
-
-  if (
-    !request.headers
-      .get("content-type")
-      ?.toLowerCase()
-      .includes("application/json")
-  ) {
-    return invalidDcrRequest()
-  }
-
   const bodyBytes = await readBoundedBody(request, MAX_DCR_BODY_BYTES)
   if (!bodyBytes) {
     return Response.json(
@@ -105,6 +92,28 @@ async function normalizeLoopbackDcrRequest(
   }
   const headers = new Headers(request.headers)
   headers.delete("content-length")
+  const boundedRequest = new Request(request.url, {
+    body: bodyBytes,
+    headers,
+    method: request.method,
+    signal: request.signal,
+  })
+
+  const authorization = request.headers.get("authorization")
+  if (authorization && /^Bearer\s+\S+/i.test(authorization)) {
+    return boundedRequest
+  }
+  const session = await auth.api.getSession({ headers: request.headers })
+  if (session?.user?.id) return boundedRequest
+
+  if (
+    !request.headers
+      .get("content-type")
+      ?.toLowerCase()
+      .includes("application/json")
+  ) {
+    return invalidDcrRequest()
+  }
 
   let parsed: unknown
   try {

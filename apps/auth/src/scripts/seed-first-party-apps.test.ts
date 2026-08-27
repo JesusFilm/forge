@@ -87,6 +87,7 @@ function eligibleLoopbackClient(
   overrides: Partial<{
     applicationType: string | null
     clientId: string
+    clientSecret: string | null
     disabled: boolean
     grantTypes: string[]
     public: boolean | null
@@ -100,6 +101,7 @@ function eligibleLoopbackClient(
   return {
     applicationType: "native",
     clientId: "dynamic_loopback",
+    clientSecret: null,
     disabled: false,
     grantTypes: ["authorization_code", "refresh_token"],
     public: true,
@@ -681,7 +683,10 @@ describe("seedFirstPartyApps", () => {
 
   it("repairs every public MCP link for an eligible existing loopback client transactionally", async () => {
     findManyOAuthClients.mockResolvedValue([
-      eligibleLoopbackClient({ clientId: "dynamic_loopback_1" }),
+      eligibleLoopbackClient({
+        clientId: "dynamic_loopback_1",
+        public: null,
+      }),
     ])
 
     const { seedFirstPartyApps } = await import("./seed-first-party-apps")
@@ -704,11 +709,12 @@ describe("seedFirstPartyApps", () => {
       expect.objectContaining({
         where: expect.objectContaining({
           applicationType: "native",
+          clientSecret: null,
           disabled: false,
           grantTypes: {
             hasEvery: ["authorization_code", "refresh_token"],
           },
-          public: true,
+          OR: [{ public: true }, { public: null }],
           tokenEndpointAuthMethod: "none",
         }),
       }),

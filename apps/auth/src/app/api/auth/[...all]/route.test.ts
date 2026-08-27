@@ -343,6 +343,58 @@ describe("Auth route wrapper", () => {
     expect(authPost).not.toHaveBeenCalled()
   })
 
+  it.each([
+    {
+      name: "a Bearer initial access token",
+      headers: new Headers({
+        authorization: "Bearer initial-access-token",
+        "content-type": "application/json",
+      }),
+      session: null,
+    },
+    {
+      name: "an authenticated session",
+      headers: new Headers({ "content-type": "application/json" }),
+      session: { user: { id: "user_123" } },
+    },
+  ])("rejects oversized DCR bodies for $name", async ({ headers, session }) => {
+    getSession.mockResolvedValue(session)
+    const { POST } = await import("./route")
+    const response = await POST(
+      new Request("http://localhost:3004/api/auth/oauth2/register", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ padding: "x".repeat(64 * 1024) }),
+      }),
+      { params: Promise.resolve({ all: ["oauth2", "register"] }) },
+    )
+
+    expect(response.status).toBe(413)
+    expect(authPost).not.toHaveBeenCalled()
+  })
+
+  it("does not treat a non-Bearer Authorization header as an initial access token", async () => {
+    const { POST } = await import("./route")
+    const response = await POST(
+      new Request("http://localhost:3004/api/auth/oauth2/register", {
+        method: "POST",
+        headers: {
+          authorization: "Basic ignored",
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          application_type: "web",
+          redirect_uris: ["https://client.example/callback"],
+          token_endpoint_auth_method: "client_secret_basic",
+        }),
+      }),
+      { params: Promise.resolve({ all: ["oauth2", "register"] }) },
+    )
+
+    expect(response.status).toBe(400)
+    expect(authPost).not.toHaveBeenCalled()
+  })
+
   it("downscopes an authenticated Changelog authorize request before the provider sees it", async () => {
     getSession.mockResolvedValueOnce({
       user: { id: "user_123", membershipStatus: "ACTIVE" },

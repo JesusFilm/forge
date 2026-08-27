@@ -188,6 +188,7 @@ describeIntegration("Better Auth PostgreSQL compatibility contract", () => {
   let buildAuthorizationCode: typeof import("./oauth-authorization-code.service").buildAuthorizationCode
   let routeGet: typeof import("@/app/api/auth/[...all]/route").GET
   let routePost: typeof import("@/app/api/auth/[...all]/route").POST
+  let seedFirstPartyApps: typeof import("@/scripts/seed-first-party-apps").seedFirstPartyApps
   let userId: string
   let sessionId: string
   const dynamicClientIds: string[] = []
@@ -195,8 +196,7 @@ describeIntegration("Better Auth PostgreSQL compatibility contract", () => {
   beforeAll(async () => {
     stubSelfDiscovery()
     ;({ prisma } = await import("@/db/client"))
-    const { seedFirstPartyApps } =
-      await import("@/scripts/seed-first-party-apps")
+    ;({ seedFirstPartyApps } = await import("@/scripts/seed-first-party-apps"))
     await seedFirstPartyApps()
     ;({ auth } = await import("@/auth/config"))
     ;({ GET: routeGet, POST: routePost } =
@@ -674,6 +674,24 @@ describeIntegration("Better Auth PostgreSQL compatibility contract", () => {
         customAudiences: [MANAGER_AUDIENCE, RESOURCE_B],
       }),
     ).sort()
+    await expect(
+      prisma.oauthClientResource.findMany({
+        where: { clientId },
+        select: { resourceId: true },
+        orderBy: { resourceId: "asc" },
+      }),
+    ).resolves.toEqual(publicResources.map((resourceId) => ({ resourceId })))
+    await prisma.oauthClientResource.deleteMany({ where: { clientId } })
+    const repair = await seedFirstPartyApps()
+    expect(repair.resourceRepair).toMatchObject({
+      eligibleClients: expect.any(Number),
+      repairedClients: expect.any(Number),
+      createdLinks: expect.any(Number),
+    })
+    expect(repair.resourceRepair.repairedClients).toBeGreaterThanOrEqual(1)
+    expect(repair.resourceRepair.createdLinks).toBeGreaterThanOrEqual(
+      publicResources.length,
+    )
     await expect(
       prisma.oauthClientResource.findMany({
         where: { clientId },

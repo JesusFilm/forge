@@ -212,14 +212,16 @@ async function repairExistingPublicLoopbackMcpClients(
     where: {
       applicationType: "native",
       clientId: { notIn: FIRST_PARTY_OAUTH_CLIENT_IDS },
+      clientSecret: null,
       disabled: false,
       grantTypes: { hasEvery: [...BROWSER_GRANT_TYPES] },
-      public: true,
+      OR: [{ public: true }, { public: null }],
       tokenEndpointAuthMethod: "none",
     },
     select: {
       applicationType: true,
       clientId: true,
+      clientSecret: true,
       disabled: true,
       grantTypes: true,
       public: true,
@@ -268,6 +270,7 @@ async function repairExistingPublicLoopbackMcpClients(
 function isEligiblePublicLoopbackClient(client: {
   applicationType: string | null
   clientId: string
+  clientSecret: string | null
   disabled: boolean
   grantTypes: string[]
   public: boolean | null
@@ -278,7 +281,8 @@ function isEligiblePublicLoopbackClient(client: {
   return (
     !isFirstPartyOAuthClientId(client.clientId) &&
     client.applicationType === "native" &&
-    client.public === true &&
+    client.public !== false &&
+    client.clientSecret == null &&
     !client.disabled &&
     client.tokenEndpointAuthMethod === "none" &&
     client.requirePKCE !== false &&
