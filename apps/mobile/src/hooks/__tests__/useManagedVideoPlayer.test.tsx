@@ -1144,3 +1144,60 @@ describe("useManagedVideoPlayer — play state published to the request store", 
     expect(requestStore.getSnapshot().playing).toBe(false)
   })
 })
+
+/**
+ * A mid-playback rebuffer drops `isPlaying` on both platforms — Android mirrors
+ * ExoPlayer's STATE_BUFFERING, iOS reports waitingToPlayAtSpecifiedRate — so
+ * publishing it raw made every network hiccup read as a pause and pulse the
+ * ambient wash. The published flag means "the viewer is watching", which a stall
+ * does not interrupt.
+ */
+describe("useManagedVideoPlayer — a stall is not a pause", () => {
+  it("keeps the flag up while a started video rebuffers", async () => {
+    const renderer = await renderPlayer()
+    await act(async () => {
+      video.__player.play()
+    })
+    expect(requestStore.getSnapshot().playing).toBe(true)
+
+    // The transport drops playing and the status goes to loading together.
+    await act(async () => {
+      video.__player.pause()
+      video.__player.__emit("statusChange", { status: "loading" })
+    })
+
+    expect(requestStore.getSnapshot().playing).toBe(true)
+    await unmountPlayer(renderer)
+  })
+
+  it("drops the flag on a real pause, where the status stays ready", async () => {
+    // Anti-vacuous companion: without this the case above would pass on a flag
+    // that simply never falls.
+    const renderer = await renderPlayer()
+    await act(async () => {
+      video.__player.play()
+      video.__player.__emit("statusChange", { status: "readyToPlay" })
+    })
+    expect(requestStore.getSnapshot().playing).toBe(true)
+
+    await act(async () => {
+      video.__player.pause()
+    })
+
+    expect(requestStore.getSnapshot().playing).toBe(false)
+    await unmountPlayer(renderer)
+  })
+
+  it("treats a loading source that never played as not playing", async () => {
+    // An INITIAL load is also "loading". Counting it would fade the wash out
+    // under a poster the viewer has not started.
+    const renderer = await renderPlayer()
+
+    await act(async () => {
+      video.__player.__emit("statusChange", { status: "loading" })
+    })
+
+    expect(requestStore.getSnapshot().playing).toBe(false)
+    await unmountPlayer(renderer)
+  })
+})

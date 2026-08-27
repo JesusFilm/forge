@@ -111,12 +111,17 @@ describe("WatchAmbient", () => {
   it("seeds the fade from the CURRENT play state, never from a literal", () => {
     // A screen can mount while the video is already playing — leaving fullscreen
     // drops this layer and remounts it, and the mini player expands into a fresh
-    // route. Seeding at 1 made those mounts re-present the wash and fade it out
-    // again over the full PLAY_FADE_MS, which is the glitch the slow ramp exists
-    // to avoid. useRef keeps only the first render's value, so the paused case
-    // still starts presented.
-    expect(SOURCE).toMatch(/new Animated\.Value\(\s*playing \?/)
-    expect(SOURCE).not.toMatch(/new Animated\.Value\(1\)/)
+    // route. Seeding at a constant made those mounts re-present the wash and
+    // fade it out again over the full PLAY_FADE_MS, which is the glitch the slow
+    // ramp exists to avoid.
+    //
+    // Reads the seed EXPRESSION rather than a fixed spelling, so extracting it
+    // to a named value stays green while a literal still fails.
+    const seeded = SOURCE.match(/new Animated\.Value\(([^)]*)\)/)
+    expect(seeded).not.toBeNull()
+    const arg = seeded![1].trim()
+    expect(arg).not.toMatch(/^[0-9.]+$/)
+    expect(SOURCE).toMatch(new RegExp(`const ${arg}\\s*=\\s*playing \\?`))
   })
 
   it("ramps that fade slowly enough to read as deliberate", () => {

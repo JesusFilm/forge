@@ -19,9 +19,9 @@ export function usePlaybackFrameVisible(): boolean {
 /**
  * Whether the one root player is playing, for layers outside the host's tree.
  *
- * The primitive is derived INSIDE the selector on purpose: the raw snapshot
- * takes a new identity on every position tick, so returning it would re-render
- * every subscriber once a second.
+ * The primitive is derived INSIDE the selector on purpose: every commit() gives
+ * the cached snapshot a new identity, so returning the snapshot would re-render
+ * this subscriber on unrelated changes (a rect update, a loadFailed flip).
  */
 export function usePlaybackPlaying(): boolean {
   const store = getPlaybackRequestStore()

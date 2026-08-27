@@ -25,16 +25,9 @@ const AMBIENT_BLEED = 160
 // the TopicCard precedent uses rather than equalising the numbers.
 const AMBIENT_BLUR = Platform.OS === "ios" ? 50 : 16
 
-// The wash is derived from the POSTER, so once playback moves past that frame
-// it no longer describes what is on screen; on a video with baked-in black bars
-// it also frames them. So it retires while the video plays and returns on pause.
-//
-// It hands over to BLACK rather than to BG_COLOR, because pure black is what
-// a letterboxed video's baked-in bars are: matching it makes them vanish
-// instead of merely quietening them (BG_COLOR still differs by ~28 levels).
-//
-// THE KNOB: 0 hands over completely during playback, 1 disables the behaviour
-// and leaves the wash up as before. Anything between is a partial retreat.
+// THE KNOB: 0 hands the wash fully over to black during playback, 1 disables
+// the behaviour. Why black rather than BG_COLOR, and why at all: see
+// apps/mobile/CLAUDE.md, "Common Pitfalls".
 const PLAYING_OPACITY_MULTIPLIER = 0
 // Deliberately slow: a quick dip reads as a glitch next to the video, where a
 // long ramp reads as the room settling. Applies to BOTH directions.
@@ -47,10 +40,8 @@ const FADE_COLORS = [
 ] as const
 const FADE_LOCATIONS = [0, 0.55, 1] as const
 
-// The black settle holds solid to the player's bottom edge, then dissolves into
-// BG_COLOR across the bleed — the same trick the wash uses, for the same reason:
-// ending an opaque band ON the clipped edge is what produced the seam this layer
-// was already fixed for once.
+// Dissolves into BG_COLOR rather than ending opaque on the clipped edge, which
+// is the seam this layer was already fixed for once.
 const BLACK_FADE_COLORS = [BLACK, BLACK, BG_COLOR] as const
 
 type WatchAmbientProps = {
@@ -67,16 +58,20 @@ type WatchAmbientProps = {
 export function WatchAmbient({ posterUrl, topInset }: WatchAmbientProps) {
   const { width } = useWindowDimensions()
   const playing = usePlaybackPlaying()
-  // Seeded from the CURRENT state, not a literal: a screen that mounts while
-  // the video already plays (fullscreen exit, mini-player expand) would
-  // otherwise re-present the wash and fade it out again over PLAY_FADE_MS.
-  const playFade = useRef(
-    new Animated.Value(playing ? PLAYING_OPACITY_MULTIPLIER : 1),
-  ).current
+  // Seeded from the CURRENT state, not a literal: a screen mounting while the
+  // video already plays would otherwise re-present the wash and fade it out
+  // again over the full ramp.
+  const initialTarget = playing ? PLAYING_OPACITY_MULTIPLIER : 1
+  const playFade = useRef(new Animated.Value(initialTarget)).current
+  const targetRef = useRef(initialTarget)
 
   useEffect(() => {
+    const target = playing ? PLAYING_OPACITY_MULTIPLIER : 1
+    // Mount already sits on its target, so animating there is a 3s no-op.
+    if (targetRef.current === target) return
+    targetRef.current = target
     Animated.timing(playFade, {
-      toValue: playing ? PLAYING_OPACITY_MULTIPLIER : 1,
+      toValue: target,
       duration: PLAY_FADE_MS,
       easing: Easing.inOut(Easing.quad),
       useNativeDriver: true,

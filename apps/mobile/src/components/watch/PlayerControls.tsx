@@ -86,19 +86,31 @@ const BAR_PADDING_H = 12
 // Gap between the pill/exit row and the seek bar below it.
 const TIME_ROW_GAP = 6
 
+// Drives both the chrome buttons and the caption offset below, so the row's
+// height and the clearance computed from it cannot drift apart.
+const ICON_BUTTON_SIZE = 44
+
 /**
  * How far above the player's bottom edge a fullscreen caption must sit to clear
- * the seek bar — its grab area plus the row gap, on top of the safe-area
- * padding the bar itself uses.
+ * the ENTIRE bottom bar: the seek bar's grab area, the row gap, and the
+ * pill/exit row above it, on top of the bar's own safe-area padding.
  *
  * Exported and derived rather than eyeballed: the caption lives in VideoPlayer
  * while the bar lives here, so a hard-coded number on that side silently rots
- * whenever this layout changes (it already did once, when the exit control moved
- * above the bar and left the caption floating). The pill and the exit button
- * share the caption's band and are cleared HORIZONTALLY, not vertically.
+ * whenever this layout changes. It has rotted twice — once when the exit control
+ * moved above the bar and left the caption floating, and once when the
+ * replacement cleared only the seek bar and dropped the caption INTO the row the
+ * same change had just created. Horizontal separation is not a substitute: the
+ * caption is centred and shrink-to-fit, so a wide cue reaches the pill and the
+ * exit button, and a tall one grows up through their band.
  */
 export function fullscreenCaptionOffset(bottomInset: number): number {
-  return Math.max(bottomInset, 8) + SCRUBBER_HIT_HEIGHT + TIME_ROW_GAP
+  return (
+    Math.max(bottomInset, 8) +
+    SCRUBBER_HIT_HEIGHT +
+    TIME_ROW_GAP +
+    ICON_BUTTON_SIZE
+  )
 }
 
 function formatTime(seconds: number): string {
@@ -779,9 +791,9 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   iconButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: ICON_BUTTON_SIZE,
+    height: ICON_BUTTON_SIZE,
+    borderRadius: ICON_BUTTON_SIZE / 2,
     justifyContent: "center",
     alignItems: "center",
     overflow: "hidden",
