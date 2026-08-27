@@ -10,9 +10,12 @@ Fresh database migration, local pgvector, Railway config-as-code, and
 metadata-only production verification live in
 [`docs/ops/postgres-and-schema.md`](docs/ops/postgres-and-schema.md).
 
-The database schema is now Forge-owned; public `/v1` runtime behavior remains in
-the standalone service until the relevant roadmap tickets land through normal
-PRs.
+HTTP deployment, public/private reachability, bearer scope, and smoke procedures
+live in [`docs/ops/http-service.md`](docs/ops/http-service.md).
+
+The database schema and public `/v1` runtime are Forge-owned. The legacy service
+remains available as rollback until the migration programme's cutover and soak
+gates complete.
 
 ## Target layout
 

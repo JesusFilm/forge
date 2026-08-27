@@ -459,15 +459,13 @@ describe("ExperienceEditor", () => {
     }
   })
 
-  it("saves category membership and order through the normal hidden block payload", async () => {
+  it("saves tile membership and order through the normal hidden block payload", async () => {
+    // The assertion lives OUTSIDE the mock: a throw inside an async action
+    // mock becomes an unhandled rejection and the call-count wait still
+    // passes, so an in-mock expect would go green on the wrong payload.
+    const savedBlocks: unknown[] = []
     const saveAction = vi.fn(async (formData: FormData) => {
-      expect(JSON.parse(String(formData.get("blocks")))).toEqual([
-        {
-          t: "watchHomeCategoryRail",
-          sectionKey: "categories",
-          categoryIds: ["family", "jesus"],
-        },
-      ])
+      savedBlocks.push(JSON.parse(String(formData.get("blocks"))))
       return { ok: true }
     })
     const view = renderEditorDom(
@@ -492,12 +490,78 @@ describe("ExperienceEditor", () => {
       })
 
       await vi.waitFor(() => expect(saveAction).toHaveBeenCalledTimes(1))
+      // `tiles` is the authored truth; `categoryIds` mirrors its predefined
+      // members so a web deploy that predates tiles still renders the same
+      // rail in the same order.
+      expect(savedBlocks[0]).toEqual([
+        {
+          t: "watchHomeCategoryRail",
+          sectionKey: "categories",
+          categoryIds: ["family", "jesus"],
+          tiles: [
+            { id: "category:family", categoryId: "family" },
+            { id: "category:jesus", categoryId: "jesus" },
+          ],
+        },
+      ])
     } finally {
       view.cleanup()
     }
   })
 
-  it("reopens and discards category selections through the shared editor state", async () => {
+  it("saves an authored custom tile alongside the predefined ones", async () => {
+    const savedBlocks: unknown[] = []
+    const saveAction = vi.fn(async (formData: FormData) => {
+      savedBlocks.push(JSON.parse(String(formData.get("blocks"))))
+      return { ok: true }
+    })
+    const view = renderEditorDom(
+      [
+        {
+          t: "watchHomeCategoryRail",
+          sectionKey: "categories",
+          categoryIds: ["jesus"],
+        },
+      ],
+      { isHomepage: true, saveAction },
+    )
+
+    try {
+      const addCustom = Array.from(
+        view.container.querySelectorAll("button"),
+      ).find((element) => element.textContent?.includes("Custom tile"))
+      if (!addCustom) throw new Error("Add custom tile button not found")
+      act(() => addCustom.click())
+
+      await act(async () => {
+        findButtonByText(view.container, "Save Draft").click()
+        await Promise.resolve()
+      })
+
+      await vi.waitFor(() => expect(saveAction).toHaveBeenCalledTimes(1))
+      expect(savedBlocks[0]).toEqual([
+        {
+          t: "watchHomeCategoryRail",
+          sectionKey: "categories",
+          categoryIds: ["jesus"],
+          tiles: [
+            { id: "category:jesus", categoryId: "jesus" },
+            {
+              id: "custom-1",
+              title: "New tile",
+              href: "/watch",
+              icon: "sparkles",
+              style: "slate",
+            },
+          ],
+        },
+      ])
+    } finally {
+      view.cleanup()
+    }
+  })
+
+  it("reopens and discards tile selections through the shared editor state", async () => {
     const publishedBlocks = [
       {
         t: "watchHomeCategoryRail",
@@ -532,10 +596,10 @@ describe("ExperienceEditor", () => {
 
     try {
       expect(
-        Array.from(
-          view.container.querySelectorAll("[data-selected-category]"),
-        ).map((element) => element.getAttribute("data-selected-category")),
-      ).toEqual(["jesus", "gospels"])
+        Array.from(view.container.querySelectorAll("[data-rail-tile]")).map(
+          (element) => element.getAttribute("data-rail-tile"),
+        ),
+      ).toEqual(["category:jesus", "category:gospels"])
 
       act(() => findButtonByText(view.container, "Discard draft").click())
       const discardDialog = Array.from(
@@ -554,10 +618,10 @@ describe("ExperienceEditor", () => {
 
       expect(discardAction).toHaveBeenCalledWith("locale-1")
       expect(
-        Array.from(
-          view.container.querySelectorAll("[data-selected-category]"),
-        ).map((element) => element.getAttribute("data-selected-category")),
-      ).toEqual(["family", "jesus"])
+        Array.from(view.container.querySelectorAll("[data-rail-tile]")).map(
+          (element) => element.getAttribute("data-rail-tile"),
+        ),
+      ).toEqual(["category:family", "category:jesus"])
     } finally {
       view.cleanup()
     }

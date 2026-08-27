@@ -86,6 +86,7 @@ export function buildOpenApiDocument(): JsonObject {
               "Malformed JSON or request failing the contract.",
             ),
             "401": errorResponse("Missing or unknown bearer token."),
+            "413": errorResponse("Request body exceeds the service limit."),
             "500": errorResponse(
               "Internal error — e.g. a retrieval or embedding-provider failure.",
             ),

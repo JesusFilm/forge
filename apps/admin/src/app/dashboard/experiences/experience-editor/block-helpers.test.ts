@@ -508,9 +508,43 @@ describe("experience editor block helpers", () => {
     expect(summarizeBlock(block, 3, [])).toMatchObject({
       typeLabel: "Watch Category Rail",
       title: "Browse by category",
-      body: "13 categories selected",
+      body: "13 tiles",
       badges: ["WATCH_HOME"],
     })
+  })
+
+  it("summarizes an authored rail from tiles, calling out the custom ones", () => {
+    const block = {
+      t: "watchHomeCategoryRail",
+      sectionKey: "watch-home-category-rail-3",
+      // The mirror deliberately disagrees with the tile count: it carries
+      // only the predefined members. The summary must read `tiles`.
+      categoryIds: ["jesus"],
+      tiles: [
+        { id: "category:jesus", categoryId: "jesus" },
+        { id: "custom-1", title: "Partner", href: "/partners" },
+        { id: "custom-2", title: "Give", href: "https://example.org/give" },
+      ],
+    }
+
+    expect(BlocksSchema.safeParse([block]).success).toBe(true)
+    expect(summarizeBlock(block, 3, [])).toMatchObject({
+      body: "3 tiles · 2 custom",
+    })
+  })
+
+  it("summarizes a single-tile rail without pluralizing", () => {
+    expect(
+      summarizeBlock(
+        {
+          t: "watchHomeCategoryRail",
+          categoryIds: ["jesus"],
+          tiles: [{ id: "category:jesus", categoryId: "jesus" }],
+        },
+        3,
+        [],
+      ),
+    ).toMatchObject({ body: "1 tile" })
   })
 
   it("creates and summarizes an authored language globe", () => {

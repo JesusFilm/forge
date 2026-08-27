@@ -1,21 +1,31 @@
 "use client"
 
 import Link from "next/link"
+import type { Route } from "next"
 import { useTranslations } from "next-intl"
 import type { LucideIcon } from "lucide-react"
 import {
   Anchor,
   BookOpen,
+  CalendarDays,
   ChevronRight,
+  CirclePlay,
+  Clock,
   Compass,
+  Download,
   Film,
   Flower2,
   Gift,
+  Globe,
   GraduationCap,
   Heart,
+  MapPin,
   Megaphone,
+  MessageCircle,
+  Music,
+  Sparkles,
+  Star,
   Sunrise,
-  Timer,
   Trophy,
   Users,
 } from "lucide-react"
@@ -35,40 +45,56 @@ import {
   CONTENT_WIDTH_ALIGN_CLASSES,
   WATCH_PAGE_CONTENT_CLASSES,
 } from "@/lib/content-width"
-import {
-  languageInventoryPath,
-  tryAsContentSlug,
-  tryAsLocaleSlug,
-  watchVideoPath,
-} from "@/lib/routes"
+import { languageInventoryPath, tryAsLocaleSlug } from "@/lib/routes"
 import { cn } from "@/lib/utils"
+import { WATCH_HOME_CATEGORIES } from "@/lib/watch-home-categories"
 import {
-  WATCH_HOME_CATEGORIES,
-  type WatchHomeCategoryId,
-} from "@/lib/watch-home-categories"
+  resolveWatchHomeTiles,
+  type WatchHomeRailTileInput,
+} from "@/lib/watch-home-tiles"
+import {
+  DEFAULT_WATCH_HOME_TILE_ICON,
+  type WatchHomeTileIconKey,
+} from "@forge/watch-url-policy/watch-home-tiles"
 
 type WatchHomeCategoryRailProps = {
   languageSlug: string
   categoryIds?: readonly string[] | null
+  /**
+   * Authored tiles. Authoritative when non-empty; `categoryIds` is the
+   * pre-tile-authoring shape and the compatibility mirror admin keeps in sync.
+   */
+  tiles?: readonly WatchHomeRailTileInput[] | null
 }
 
-// Keyed by category `id` and constrained to the literal union so adding a
-// category to WATCH_HOME_CATEGORIES without an icon is a compile error —
-// same contract as CATEGORY_ICON_BY_SEARCH_TERM in SearchCategoryIcons.
-const CATEGORY_ICON_BY_ID: Record<WatchHomeCategoryId, LucideIcon> = {
-  jesus: Film,
-  gospels: BookOpen,
-  "short-videos": Timer,
-  family: Users,
-  relationships: Heart,
-  women: Flower2,
-  students: GraduationCap,
-  sports: Trophy,
-  "good-news": Megaphone,
-  hope: Anchor,
-  training: Compass,
-  easter: Sunrise,
-  christmas: Gift,
+// Keyed by the SHARED icon vocabulary (not by category) since a tile can now
+// override its glyph. Exhaustive over the literal union, so adding a key to
+// the catalog without a glyph is a compile error — same contract as
+// CATEGORY_ICON_BY_SEARCH_TERM in SearchCategoryIcons, and the admin editor
+// maps the same keys so its preview cannot drift from this render.
+const ICON_BY_KEY: Record<WatchHomeTileIconKey, LucideIcon> = {
+  film: Film,
+  book: BookOpen,
+  clock: Clock,
+  users: Users,
+  heart: Heart,
+  flower: Flower2,
+  graduation: GraduationCap,
+  trophy: Trophy,
+  megaphone: Megaphone,
+  anchor: Anchor,
+  compass: Compass,
+  sunrise: Sunrise,
+  gift: Gift,
+  play: CirclePlay,
+  globe: Globe,
+  music: Music,
+  sparkles: Sparkles,
+  star: Star,
+  "map-pin": MapPin,
+  calendar: CalendarDays,
+  "message-circle": MessageCircle,
+  download: Download,
 }
 
 // Outline icons, but the stroke must read as ONE solid line. A per-stroke
@@ -84,14 +110,12 @@ const ICON_STROKE_CLASSES =
 const TILE_GRAIN_CLASSES =
   "pointer-events-none absolute inset-0 bg-[url(/watch/images/overlay.svg)] bg-repeat opacity-60 mix-blend-multiply"
 
-const CATEGORY_BY_ID = new Map(
-  WATCH_HOME_CATEGORIES.map((category) => [category.id, category]),
-)
 const DEFAULT_CATEGORY_IDS = WATCH_HOME_CATEGORIES.map(({ id }) => id)
 
 export function WatchHomeCategoryRail({
   languageSlug,
   categoryIds = DEFAULT_CATEGORY_IDS,
+  tiles,
 }: WatchHomeCategoryRailProps) {
   const t = useTranslations("WatchHomeCategories")
   // A slug that fails the LocaleSlug shape can only arrive through a
@@ -100,25 +124,9 @@ export function WatchHomeCategoryRail({
   const locale = tryAsLocaleSlug(languageSlug)
   if (locale === null) return null
 
-  // Admin rejects malformed selections, but the public renderer stays
-  // defensive around historical JSON. Resolve authored order in one pass,
-  // dropping duplicates, unknown ids, and invalid configured destinations.
-  const cards: Array<
-    (typeof WATCH_HOME_CATEGORIES)[number] & {
-      href: ReturnType<typeof watchVideoPath>
-    }
-  > = []
-  const seen = new Set<string>()
-  for (const id of categoryIds ?? []) {
-    if (seen.has(id)) continue
-    seen.add(id)
-
-    const category = CATEGORY_BY_ID.get(id as WatchHomeCategoryId)
-    if (!category) continue
-    const slug = tryAsContentSlug(category.slug)
-    if (!slug) continue
-    cards.push({ ...category, href: watchVideoPath(slug, locale) })
-  }
+  // Resolution (defaults, overrides, dropping unrenderable tiles) lives in
+  // `resolveWatchHomeTiles` so the rules are testable without a renderer.
+  const cards = resolveWatchHomeTiles({ tiles, categoryIds, locale })
 
   if (cards.length === 0) return null
 
@@ -178,37 +186,75 @@ export function WatchHomeCategoryRail({
           data-testid="watch-home-category-carousel"
         >
           <CarouselContent className="-ml-4 pl-5 md:pl-16 xl:pl-24">
-            {cards.map((category) => {
-              const Icon = CATEGORY_ICON_BY_ID[category.id]
+            {cards.map((card) => {
+              const Icon =
+                ICON_BY_KEY[card.iconKey] ??
+                ICON_BY_KEY[DEFAULT_WATCH_HOME_TILE_ICON]
+              // An authored title is a literal and renders as-is in every
+              // locale; only a tile that kept its catalog default is
+              // translated.
+              const label =
+                card.titleKey != null
+                  ? t(`categories.${card.titleKey}`)
+                  : (card.title ?? "")
+              const cardClassName =
+                "beveled group relative flex h-[130px] w-[190px] flex-col justify-end overflow-hidden rounded-lg p-4 transition duration-300 hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-white/70"
+              const cardChildren = (
+                <>
+                  <span
+                    aria-hidden
+                    data-testid="watch-home-category-grain"
+                    className={TILE_GRAIN_CLASSES}
+                  />
+                  <Icon
+                    aria-hidden
+                    className={cn(
+                      "absolute top-3 right-3 size-10",
+                      ICON_STROKE_CLASSES,
+                    )}
+                  />
+                  <span className="relative text-lg leading-tight font-bold text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.45)]">
+                    {label}
+                  </span>
+                </>
+              )
+
               return (
                 <CarouselItem
-                  key={category.id}
+                  key={card.key}
                   className="basis-auto py-1 pl-4"
-                  data-testid={`watch-home-category-slide-${category.id}`}
+                  data-testid={`watch-home-category-slide-${card.key}`}
                 >
-                  <Link
-                    href={category.href}
-                    prefetch={false}
-                    data-testid={`watch-home-category-card-${category.id}`}
-                    className="beveled group relative flex h-[130px] w-[190px] flex-col justify-end overflow-hidden rounded-lg p-4 transition duration-300 hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-white/70"
-                    style={{ backgroundImage: category.gradient }}
-                  >
-                    <span
-                      aria-hidden
-                      data-testid="watch-home-category-grain"
-                      className={TILE_GRAIN_CLASSES}
-                    />
-                    <Icon
-                      aria-hidden
-                      className={cn(
-                        "absolute top-3 right-3 size-10",
-                        ICON_STROKE_CLASSES,
-                      )}
-                    />
-                    <span className="relative text-lg leading-tight font-bold text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.45)]">
-                      {t(`categories.${category.titleKey}`)}
-                    </span>
-                  </Link>
+                  {/* An external destination leaves the app entirely, so it
+                      gets a plain anchor with `noopener noreferrer` rather
+                      than a client-routed `next/link`. */}
+                  {card.external ? (
+                    <a
+                      href={card.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      data-testid={`watch-home-category-card-${card.key}`}
+                      className={cardClassName}
+                      style={{ backgroundImage: card.gradient }}
+                    >
+                      {cardChildren}
+                    </a>
+                  ) : (
+                    <Link
+                      // Authored destinations are typed by admins at runtime,
+                      // so they cannot satisfy typedRoutes statically. The
+                      // shape guarantee comes from `isSafeWatchHomeTileHref`
+                      // instead — same trade `WatchHomeHero` makes for its
+                      // authored slide hrefs.
+                      href={card.href as Route}
+                      prefetch={false}
+                      data-testid={`watch-home-category-card-${card.key}`}
+                      className={cardClassName}
+                      style={{ backgroundImage: card.gradient }}
+                    >
+                      {cardChildren}
+                    </Link>
+                  )}
                 </CarouselItem>
               )
             })}

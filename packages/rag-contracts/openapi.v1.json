@@ -79,6 +79,16 @@
               }
             }
           },
+          "413": {
+            "description": "Request body exceeds the service limit.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
           "500": {
             "description": "Internal error — e.g. a retrieval or embedding-provider failure.",
             "content": {

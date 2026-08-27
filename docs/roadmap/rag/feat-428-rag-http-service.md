@@ -3,7 +3,7 @@ id: "feat-428"
 title: "Port and deploy the RAG HTTP retrieval service"
 owner: "jaco"
 priority: "P0"
-status: "not-started"
+status: "in-progress"
 start_date: "2026-09-09"
 duration: 3
 depends_on: ["feat-427"]

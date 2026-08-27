@@ -16,7 +16,8 @@ watchPatterns = [
 
 [deploy]
 preDeployCommand = "pnpm --filter @forge/rag db:migrate:deploy"
-# The HTTP start command and /v1/health gate land together in feat-428. Adding
-# either here would make this schema-only deployment permanently unhealthy.
+startCommand = "pnpm --filter @forge/rag start"
+healthcheckPath = "/v1/health"
+healthcheckTimeout = 60
 restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 3
