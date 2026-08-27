@@ -51,3 +51,5 @@ citations, and selective HNSW scans. The OpenRouter-compatible embedder also
 preserves gateway truncation and hosted-provider failover behavior.
 
 Historical scope: [jfrag #160](https://github.com/JesusFilm/jesusfilm-rag/issues/160).
+
+Forge PR: [#2076](https://github.com/JesusFilm/forge/pull/2076).
