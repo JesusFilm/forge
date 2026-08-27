@@ -610,8 +610,27 @@ type ManagerLanguageGeo {
   languages: [ManagerLanguage!]
 }
 
+"""
+Active subtitle-review authorization bound to one Admin language identity.
+"""
+type ManagerReviewerLanguageGrant {
+  id: ID
+  languageBcp47: String
+  languageId: ID
+  languageSlug: String
+  permittedRubricDimensions: [String!]
+  specialistCapabilities: ManagerReviewerSpecialistCapabilities
+}
+
+"""Specialist review capabilities attached to one exact language grant."""
+type ManagerReviewerSpecialistCapabilities {
+  scripture: Boolean
+  theology: Boolean
+}
+
 enum ManagerRole {
   OPERATOR
+  REVIEWER
 }
 
 input ManagerSeoApproveInput {
@@ -960,6 +979,603 @@ type ManagerSeoWorkspace {
   ticketReconciliations: [ManagerSeoTicketReconciliation!]
 }
 
+input ManagerSubtitleEvalAppendNarrativeInput {
+  assertion: String!
+  comparisonId: ID!
+  conclusion: String
+  followUpAction: String
+  hypothesis: String!
+  rationale: String
+}
+
+input ManagerSubtitleEvalApproveCorpusInput {
+  assertion: String!
+  certification: JSON!
+  corpusVersionId: ID!
+  reason: String!
+}
+
+input ManagerSubtitleEvalArtifactInput {
+  byteLength: String!
+  kind: ManagerSubtitleEvalArtifactKind!
+  mediaType: String!
+  objectKey: String!
+  sha256: String!
+}
+
+enum ManagerSubtitleEvalArtifactKind {
+  CANDIDATE_VTT
+  CELL_REPORT
+  REVIEW_EVIDENCE
+}
+
+input ManagerSubtitleEvalAssignSpecialistInput {
+  assertion: String!
+  assignmentId: ID!
+  reviewerMembershipId: ID!
+}
+
+enum ManagerSubtitleEvalAssignmentKind {
+  SPECIALIST
+  STANDARD
+}
+
+enum ManagerSubtitleEvalBlindTrack {
+  A
+  B
+}
+
+input ManagerSubtitleEvalBlindTrackAssessmentInput {
+  criticalHarmful: Boolean!
+  criticalMeaningLoss: Boolean!
+  criticalScriptureRisk: Boolean!
+  issueCodes: [ManagerSubtitleEvalIssueCode!]!
+  meaningAccuracyScore: Int!
+  naturalnessScore: Int!
+  scriptureTheologyScore: Int
+  timingReadabilityScore: Int!
+}
+
+input ManagerSubtitleEvalBlindTrackAssessmentsInput {
+  trackA: ManagerSubtitleEvalBlindTrackAssessmentInput!
+  trackB: ManagerSubtitleEvalBlindTrackAssessmentInput!
+}
+
+enum ManagerSubtitleEvalChangedAxis {
+  CODE_REVISION
+  MODEL
+  PROMPT_POLICY
+  RUNTIME
+  WORKFLOW_POLICY
+}
+
+type ManagerSubtitleEvalComparison {
+  baselineReportId: ID
+  candidateReportId: ID
+  changedAxis: String
+  coverageLabel: String
+  descriptiveDeltas: JSON
+  """
+  Live latest non-superseded human review evidence, kept distinct from frozen machine metrics.
+  """
+  humanEvidence: JSON
+  id: ID
+  identityDifferences: JSON
+  matchedCellCount: Int
+  matchedCollectionCount: Int
+  narratives: [ManagerSubtitleEvalNarrative!]
+  unmatchedCells: JSON
+}
+
+type ManagerSubtitleEvalCorpusCell {
+  caseId: String
+  clipEndSeconds: Float
+  clipStartSeconds: Float
+  collectionKey: String
+  editionIdentity: String
+  id: ID
+  metadata: JSON
+  referenceSnapshotClippedDigest: String
+  referenceSnapshotDigest: String
+  referenceSnapshotRawDigest: String
+  referenceTrackIdentity: String
+  sourceLanguageId: ID
+  sourceLanguageSlug: String
+  sourceSnapshotClippedDigest: String
+  sourceSnapshotDigest: String
+  sourceSnapshotRawDigest: String
+  sourceTrackIdentity: String
+  targetLanguageId: ID
+  targetLanguageSlug: String
+  videoId: String
+}
+
+input ManagerSubtitleEvalCorpusCellInput {
+  caseId: ID!
+  collectionKey: String!
+  editionIdentity: String!
+  metadata: JSON
+  referenceSnapshot: ManagerSubtitleEvalCorpusSnapshotInput!
+  referenceTrackIdentity: String!
+  sourceLanguageId: ID!
+  sourceLanguageSlug: String!
+  sourceSnapshot: ManagerSubtitleEvalCorpusSnapshotInput!
+  sourceTrackIdentity: String!
+  targetLanguageId: ID!
+  targetLanguageSlug: String!
+  videoId: ID!
+}
+
+input ManagerSubtitleEvalCorpusSnapshotInput {
+  byteLength: String!
+  clippedSha256: String
+  objectKey: String!
+  rawSha256: String!
+  sha256: String!
+}
+
+type ManagerSubtitleEvalCorpusVersion {
+  approvedAt: String
+  approvedById: ID
+  authority: String
+  cells: [ManagerSubtitleEvalCorpusCell!]
+  certification: JSON
+  createdAt: String
+  id: ID
+  identityDigest: String
+  lockDigest: String
+  manifestDigest: String
+  status: String
+  supersedesVersionId: ID
+}
+
+input ManagerSubtitleEvalCorrectionInput {
+  segmentId: ID!
+  text: String!
+  track: String!
+}
+
+input ManagerSubtitleEvalCreateAssignmentInput {
+  assertion: String!
+  idempotencyKey: String!
+  kind: ManagerSubtitleEvalAssignmentKind!
+  reviewerMembershipId: ID!
+  runCellId: ID!
+  specialistDimension: String
+}
+
+input ManagerSubtitleEvalCreateComparisonInput {
+  assertion: String!
+  baselineReportId: ID!
+  candidateReportId: ID!
+  changedAxis: ManagerSubtitleEvalChangedAxis!
+  idempotencyKey: String!
+}
+
+input ManagerSubtitleEvalCreateRunInput {
+  assertion: String!
+  codeRevision: String!
+  concurrency: Int!
+  corpusCellIds: [ID!]!
+  corpusVersionId: ID!
+  determinism: JSON
+  idempotencyKey: String!
+  maxAttempts: Int!
+  promptPolicyId: String!
+  requestedModel: String!
+  requestedProvider: String!
+  timeoutSeconds: Int!
+  workflowPolicyDigest: String!
+}
+
+input ManagerSubtitleEvalDispositionReferenceIssueInput {
+  assertion: String!
+  correctedCorpusVersionId: ID
+  disposition: String!
+  issueId: ID!
+  reason: String!
+}
+
+input ManagerSubtitleEvalFailCellInput {
+  errorCode: String!
+  leaseGeneration: Int!
+  leaseToken: String!
+  providerCalls: [ManagerSubtitleEvalProviderCallInput!]!
+  retryable: Boolean!
+  runCellId: ID!
+}
+
+input ManagerSubtitleEvalFinalizeCellInput {
+  artifacts: [ManagerSubtitleEvalArtifactInput!]!
+  leaseGeneration: Int!
+  leaseToken: String!
+  machineAssessment: ManagerSubtitleEvalMachineAssessmentInput!
+  providerCalls: [ManagerSubtitleEvalProviderCallInput!]!
+  resultDigest: String!
+  runCellId: ID!
+}
+
+input ManagerSubtitleEvalFinalizeRunInput {
+  expectedCorpusIdentityDigest: String!
+  expectedSourceReferenceDigest: String!
+  expectedStatus: ManagerSubtitleEvalTerminalStatus!
+  reproducibilityLimits: [String!]
+  runId: ID!
+}
+
+input ManagerSubtitleEvalImportCorpusInput {
+  assertion: String!
+  authority: String!
+  cells: [ManagerSubtitleEvalCorpusCellInput!]!
+  certification: JSON
+  lockDigest: String!
+  manifestDigest: String!
+  supersedesVersionId: ID
+}
+
+enum ManagerSubtitleEvalIssueCode {
+  ADDITION
+  GRAMMAR
+  LINE_BREAK
+  MISTRANSLATION
+  NATURALNESS
+  OMISSION
+  OTHER
+  READING_SPEED
+  REFERENCE_ERROR
+  SCRIPTURE
+  TERMINOLOGY
+  THEOLOGY
+  TIMING
+  TONE_REGISTER
+}
+
+input ManagerSubtitleEvalMachineAssessmentInput {
+  advisoryRiskFlags: [String!]
+  assessmentDigest: String!
+  metrics: JSON!
+  providerRequestId: String
+  providerResponseId: String
+  reproducibilityLimits: [String!]!
+  resolvedModel: String
+  schemaVersion: Int!
+  usage: JSON
+}
+
+input ManagerSubtitleEvalMachineRecoverRunInput {
+  dispatchFailed: Boolean
+  leaseGeneration: Int!
+  leaseToken: String!
+  runId: ID!
+}
+
+type ManagerSubtitleEvalNarrative {
+  conclusion: String
+  createdAt: String
+  createdById: ID
+  followUpAction: String
+  hypothesis: String
+  id: ID
+  rationale: String
+  version: Int
+}
+
+type ManagerSubtitleEvalOperationResult {
+  digest: String
+  id: ID
+  replayed: Boolean
+  status: String
+}
+
+"""
+Read-only operator evidence with named provenance, bounded human verdicts, notes, and suggested corrections.
+"""
+type ManagerSubtitleEvalOperatorAssignment {
+  candidateTrack: ManagerSubtitleEvalReviewerTrack
+  candidateTrackLabel: String
+  caseId: String
+  clipEndSeconds: Float
+  clipStartSeconds: Float
+  collectionKey: String
+  editionIdentity: String
+  id: ID
+  kind: String
+  machineAssessment: JSON
+  referenceTrack: ManagerSubtitleEvalReviewerTrack
+  referenceTrackLabel: String
+  reviewerDisplayName: String
+  reviewerEmail: String
+  reviewerMembershipId: ID
+  reviews: JSON
+  round: Int
+  sourceTrack: ManagerSubtitleEvalReviewerTrack
+  specialistDimension: String
+  status: String
+  targetLanguageId: ID
+  targetLanguageSlug: String
+  videoId: String
+}
+
+type ManagerSubtitleEvalOperatorAssignmentPage {
+  nextCursor: String
+  nodes: [ManagerSubtitleEvalOperatorAssignmentSummary!]
+}
+
+type ManagerSubtitleEvalOperatorAssignmentSummary {
+  assignedAt: String
+  id: ID
+  kind: String
+  latestVerdict: String
+  reviewerDisplayName: String
+  reviewerEmail: String
+  reviewerMembershipId: ID
+  round: Int
+  runCellId: ID
+  specialistDimension: String
+  status: String
+  submittedAt: String
+}
+
+type ManagerSubtitleEvalOperatorReviewerCandidate {
+  activeAssignmentCount: Int
+  displayName: String
+  email: String
+  membershipId: ID
+  qualificationVersion: Int
+  rubricDimensions: [String!]
+  specialistCapabilities: [String!]
+  targetLanguageId: ID
+  targetLanguageSlug: String
+}
+
+type ManagerSubtitleEvalOperatorReviewerCandidatePage {
+  nextCursor: String
+  nodes: [ManagerSubtitleEvalOperatorReviewerCandidate!]
+}
+
+"""
+Provenance unlocked by stored human evidence. Machine fields remain advisory and separate from the human verdict.
+"""
+type ManagerSubtitleEvalPostSubmitReceipt {
+  assessmentDigest: String!
+  candidateTrackLabel: String!
+  machineAdvisoryRiskFlags: [String!]!
+  referenceTrackLabel: String!
+  resolvedModel: String
+  reviewId: ID!
+  submittedAt: String!
+}
+
+input ManagerSubtitleEvalProviderCallInput {
+  callSequence: Int!
+  chunkIndex: Int
+  operation: ManagerSubtitleEvalProviderOperation!
+  operationAttempt: Int!
+  providerRequestId: String
+  providerResponseId: String
+  requestDigest: String!
+  requestedModel: String!
+  resolvedModel: String
+  status: ManagerSubtitleEvalProviderCallStatus!
+  usage: JSON
+}
+
+enum ManagerSubtitleEvalProviderCallStatus {
+  FAILED
+  INVALID_OUTPUT
+  SUCCEEDED
+}
+
+enum ManagerSubtitleEvalProviderOperation {
+  RETIMING
+  SCRIPTURE_DETECTION
+  SCRIPTURE_VALIDATION
+  TRANSLATION
+}
+
+input ManagerSubtitleEvalRecoverRunInput {
+  assertion: String!
+  dispatchFailed: Boolean
+  leaseGeneration: Int!
+  leaseToken: String!
+  runId: ID!
+}
+
+type ManagerSubtitleEvalReferenceIssue {
+  caseId: String
+  collectionKey: String
+  corpusCellId: ID
+  correctedCorpusVersionId: ID
+  createdAt: String
+  dispositionReason: String
+  id: ID
+  reviewId: ID
+  status: String
+  targetLanguageId: ID
+  targetLanguageSlug: String
+}
+
+type ManagerSubtitleEvalReferenceIssuePage {
+  nextCursor: String
+  nodes: [ManagerSubtitleEvalReferenceIssue!]
+}
+
+enum ManagerSubtitleEvalReviewVerdict {
+  NEEDS_CHANGES
+  PASS
+  REFERENCE_QUESTIONABLE
+  SPECIALIST_REVIEW
+}
+
+type ManagerSubtitleEvalReviewerAssignment {
+  caseId: String
+  clipEndSeconds: Float
+  clipStartSeconds: Float
+  collectionKey: String
+  editionIdentity: String!
+  id: ID
+  kind: String
+  postSubmitReceipt: ManagerSubtitleEvalPostSubmitReceipt
+  round: Int
+  sourceTrack: ManagerSubtitleEvalReviewerTrack
+  status: String
+  submitted: Boolean
+  targetLanguageId: ID
+  targetLanguageSlug: String
+  trackA: ManagerSubtitleEvalReviewerTrack
+  trackB: ManagerSubtitleEvalReviewerTrack
+  videoId: String
+}
+
+type ManagerSubtitleEvalReviewerAssignmentPage {
+  nextCursor: String
+  nodes: [ManagerSubtitleEvalReviewerAssignmentSummary!]
+}
+
+type ManagerSubtitleEvalReviewerAssignmentSummary {
+  assignedAt: String
+  caseId: String
+  collectionKey: String
+  id: ID
+  kind: String
+  round: Int
+  status: String
+  submittedAt: String
+  targetLanguageId: ID
+  targetLanguageSlug: String
+  videoId: String
+}
+
+"""
+Neutral assignment-scoped subtitle identity. Directional provenance and storage keys are intentionally omitted.
+"""
+type ManagerSubtitleEvalReviewerTrack {
+  contentId: ID
+  label: String
+  mediaType: String
+}
+
+type ManagerSubtitleEvalRun {
+  cells: [ManagerSubtitleEvalRunCell!]
+  codeRevision: String
+  concurrency: Int
+  corpusVersionId: ID
+  createdAt: String
+  estimatedSpendMicros: String
+  id: ID
+  maxAttempts: Int
+  promptPolicyId: String
+  requestedModel: String
+  requestedProvider: String
+  status: String
+  terminalAt: String
+  terminalReport: ManagerSubtitleEvalTerminalReport
+  timeoutSeconds: Int
+  workflowPolicyDigest: String
+}
+
+type ManagerSubtitleEvalRunCell {
+  artifactDigests: [String!]
+  assessmentDigest: String
+  assignmentCount: Int
+  attemptCount: Int
+  caseId: String
+  collectionKey: String
+  errorCode: String
+  errorRetryable: Boolean
+  id: ID
+  leaseGeneration: Int
+  machineMetrics: JSON
+  providerRequestId: String
+  providerResponseId: String
+  reproducibilityLimits: [String!]
+  resolvedModel: String
+  resultDigest: String
+  status: String
+  targetLanguageId: ID
+  targetLanguageSlug: String
+  videoId: String
+}
+
+type ManagerSubtitleEvalRunPage {
+  nextCursor: String
+  nodes: [ManagerSubtitleEvalRunSummary!]
+}
+
+"""Bounded scalar projection for one subtitle evaluation run."""
+type ManagerSubtitleEvalRunSummary {
+  cellCount: Int
+  codeRevision: String
+  createdAt: String
+  id: ID
+  promptPolicyId: String
+  requestedModel: String
+  requestedProvider: String
+  status: String
+  terminalAt: String
+}
+
+type ManagerSubtitleEvalStaleRun {
+  cellCount: Int
+  id: ID
+  leaseExpiresAt: String
+  leaseGeneration: Int
+  status: String
+  updatedAt: String
+}
+
+type ManagerSubtitleEvalStaleRunPage {
+  nextCursor: String
+  nodes: [ManagerSubtitleEvalStaleRun!]
+}
+
+input ManagerSubtitleEvalSubmitReviewInput {
+  assertion: String!
+  assignmentId: ID!
+  bodyDigest: String!
+  corrections: [ManagerSubtitleEvalCorrectionInput!]!
+  idempotencyKey: String!
+  notes: String
+  questionableTrack: ManagerSubtitleEvalBlindTrack
+  rubricVersion: Int!
+  supersedesReviewId: ID
+  trackAssessments: ManagerSubtitleEvalBlindTrackAssessmentsInput!
+  verdict: ManagerSubtitleEvalReviewVerdict!
+}
+
+type ManagerSubtitleEvalTerminalReport {
+  artifactInventory: JSON
+  collectionMetrics: JSON
+  completedAt: String
+  corpusIdentityDigest: String
+  id: ID
+  languageMetrics: JSON
+  partialFailures: JSON
+  providerIdentities: JSON
+  reportArtifactDigest: String
+  reportDigest: String
+  reproducibilityLimits: [String!]
+  runtimeIdentity: JSON
+  sourceReferenceDigests: JSON
+  status: String
+  usage: JSON
+}
+
+enum ManagerSubtitleEvalTerminalStatus {
+  COMPLETED
+  FAILED
+  PARTIAL
+}
+
+"""
+Manager-BFF-only playback candidate for one frozen corpus video edition. The BFF must recheck Mux public policy by asset id.
+"""
+type ManagerSubtitleEvalVideoContext {
+  durationSeconds: Float
+  muxAssetId: String!
+  playbackId: String!
+}
+
 type ManagerVideoCoverage {
   aiMetadata: Boolean
   coreId: String
@@ -1000,6 +1616,7 @@ type ManagerViewer {
   id: ID
   managerRole: ManagerRole
   permission: String
+  reviewerLanguageGrants: [ManagerReviewerLanguageGrant!]
   username: String
 }
 
@@ -1214,15 +1831,24 @@ enum MediaImageEnrichmentStatus {
 }
 
 type Mutation {
+  appendManagerSubtitleEvalNarrative(input: ManagerSubtitleEvalAppendNarrativeInput!): ManagerSubtitleEvalOperationResult
   approveManagerSeoProposal(input: ManagerSeoApproveInput!): ManagerSeoDecisionResult!
+  approveManagerSubtitleEvalCorpus(input: ManagerSubtitleEvalApproveCorpusInput!): ManagerSubtitleEvalOperationResult
   """Archive an Experience. Owner or ADMIN."""
   archiveExperience(id: ID!): Experience
+  assignManagerSubtitleEvalSpecialist(input: ManagerSubtitleEvalAssignSpecialistInput!): ManagerSubtitleEvalOperationResult
+  claimManagerSubtitleEvalCell(leaseSeconds: Int!, runCellId: ID!): ManagerSubtitleEvalOperationResult
+  claimManagerSubtitleEvalMachineRecovery(leaseSeconds: Int!, runId: ID!): ManagerSubtitleEvalOperationResult
+  claimManagerSubtitleEvalRecovery(assertion: String!, leaseSeconds: Int!, runId: ID!): ManagerSubtitleEvalOperationResult
   clearMyWatchProgress(videoId: ID!): Boolean
   """
   Create a new Experience with an unpublished canonical locale and an initial shared draft. Caller becomes owner.
   """
   createExperience(blocks: JSON, isTemplate: Boolean, locale: String!, slug: String!, title: String): Experience
   createManagerJob(artifacts: JSON, errors: JSON, languages: [String!], muxAssetId: String!, muxPlaybackId: String, options: JSON, primaryRequestedTargetLanguageCode: String, requestedLanguageAbbreviations: [String!], resolvedTargetLanguageCodes: [String!], sourceCollectionTitle: String, sourceLanguageCode: String, sourceLanguageId: String, sourceMediaTitle: String, sourceSelectionReason: String, steps: [ManagerJobStepInput!], videoDocumentId: String): ManagerJob
+  createManagerSubtitleEvalAssignment(input: ManagerSubtitleEvalCreateAssignmentInput!): ManagerSubtitleEvalOperationResult
+  createManagerSubtitleEvalComparison(input: ManagerSubtitleEvalCreateComparisonInput!): ManagerSubtitleEvalOperationResult
+  createManagerSubtitleEvalRun(input: ManagerSubtitleEvalCreateRunInput!): ManagerSubtitleEvalOperationResult
   """Create a media folder at the root or inside another folder."""
   createMediaFolder(name: String!, parentId: ID): MediaFolder
   """
@@ -1237,10 +1863,15 @@ type Mutation {
   Retire the locale's shared active draft without changing canonical content. Idempotent when no draft exists.
   """
   discardExperienceLocaleDraft(id: ID!): ExperienceLocale
+  dispositionManagerSubtitleEvalReferenceIssue(input: ManagerSubtitleEvalDispositionReferenceIssueInput!): ManagerSubtitleEvalOperationResult
   """
   Duplicate every locale of an Experience into a new unpublished draft owned by the caller.
   """
   duplicateExperience(id: ID!): Experience!
+  failManagerSubtitleEvalCell(input: ManagerSubtitleEvalFailCellInput!): ManagerSubtitleEvalOperationResult
+  finalizeManagerSubtitleEvalCell(input: ManagerSubtitleEvalFinalizeCellInput!): ManagerSubtitleEvalOperationResult
+  finalizeManagerSubtitleEvalRun(input: ManagerSubtitleEvalFinalizeRunInput!): ManagerSubtitleEvalOperationResult
+  importManagerSubtitleEvalCorpus(input: ManagerSubtitleEvalImportCorpusInput!): ManagerSubtitleEvalOperationResult
   """
   Atomically promote the locale's active draft to canonical published content and retire the draft. Owner or ADMIN.
   """
@@ -1248,6 +1879,8 @@ type Mutation {
   reconcileManagerSeoTicket(input: ManagerSeoTicketReconcileInput!): ManagerSeoTicketReconciliation!
   recordWatchEvent(durationSeconds: Int, eventType: WatchEventType!, languageId: ID, occurredAt: String, positionSeconds: Int, progress: Float, requestSessionId: String, videoDubId: ID, videoId: ID!): WatchEvent
   recordWatchSearchEvent(client: WatchSearchEventClient!, eventType: WatchSearchEventType!, occurredAt: String, position: Int, requestId: String!, resultId: ID, resultType: WatchSearchEventResultType, routeLanguageSlug: String, searchLanguageSlug: String, visibleResultIds: [String!]): WatchSearchEvent
+  recoverManagerSubtitleEvalMachineRun(input: ManagerSubtitleEvalMachineRecoverRunInput!): ManagerSubtitleEvalOperationResult
+  recoverManagerSubtitleEvalRun(input: ManagerSubtitleEvalRecoverRunInput!): ManagerSubtitleEvalOperationResult
   """
   Register an uploaded file in the media library after its bytes are stored.
   """
@@ -1258,6 +1891,7 @@ type Mutation {
   """
   restoreExperienceLocaleRevisionToDraft(revisionId: ID!): ExperienceLocale
   reviewManagerSeoLesson(input: ManagerSeoLessonReviewInput!): ManagerSeoLesson!
+  submitManagerSubtitleEvalReview(input: ManagerSubtitleEvalSubmitReviewInput!): ManagerSubtitleEvalOperationResult
   """
   Generate and persist a semantic embedding for an ExperienceLocale. Owner or ADMIN.
   """
@@ -1443,6 +2077,18 @@ type Query {
   managerSeoRun(id: ID!): ManagerSeoRunDetail
   managerSeoRuns(after: String, limit: Int = 25): ManagerSeoRunPage!
   managerSeoWorkspace(limit: Int = 50): ManagerSeoWorkspace!
+  managerSubtitleEvalComparison(id: ID!): ManagerSubtitleEvalComparison
+  managerSubtitleEvalCorpusVersion(id: ID!): ManagerSubtitleEvalCorpusVersion
+  managerSubtitleEvalOperatorAssignment(assignmentId: ID!): ManagerSubtitleEvalOperatorAssignment
+  managerSubtitleEvalOperatorAssignments(after: String, limit: Int = 50, runCellId: ID, runId: ID!): ManagerSubtitleEvalOperatorAssignmentPage
+  managerSubtitleEvalOperatorReviewerCandidates(after: String, limit: Int = 25, specialistDimension: String, targetLanguageId: ID!, targetLanguageSlug: String!): ManagerSubtitleEvalOperatorReviewerCandidatePage
+  managerSubtitleEvalReferenceIssues(after: String, limit: Int = 25, status: String): ManagerSubtitleEvalReferenceIssuePage
+  managerSubtitleEvalReviewerAssignment(assertion: String!, assignmentId: ID!): ManagerSubtitleEvalReviewerAssignment
+  managerSubtitleEvalReviewerAssignments(after: String, assertion: String!, limit: Int = 25): ManagerSubtitleEvalReviewerAssignmentPage
+  managerSubtitleEvalRun(id: ID!): ManagerSubtitleEvalRun
+  managerSubtitleEvalRuns(after: String, limit: Int = 25): ManagerSubtitleEvalRunPage
+  managerSubtitleEvalStaleRuns(after: String, limit: Int = 25): ManagerSubtitleEvalStaleRunPage
+  managerSubtitleEvalVideoContext(editionIdentity: String!, videoId: ID!): ManagerSubtitleEvalVideoContext
   managerVideoCoverage(languageIds: [String!]): [ManagerVideoCoverage!]
   managerVideosForEnrichment(ids: [String!]!): [ManagerVideoForEnrichment!]
   """

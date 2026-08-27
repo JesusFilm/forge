@@ -67,7 +67,7 @@ describe("seedFirstPartyApps", () => {
       apps: 9,
       environments: 31,
       oauthClients: 35,
-      scopes: 24,
+      scopes: 25,
     })
 
     expect(finalizeBetterAuth17Schema).toHaveBeenCalledOnce()
@@ -290,12 +290,15 @@ describe("seedFirstPartyApps", () => {
         where: { clientId: "jfp_manager_local_session_service" },
         create: expect.objectContaining({
           clientId: "jfp_manager_local_session_service",
-          scopes: ["admin:manager-session:validate"],
+          scopes: ["admin:manager-session:validate", "admin:manager-backend"],
           public: false,
           requirePKCE: false,
           tokenEndpointAuthMethod: "client_secret_basic",
           applicationType: "web",
-          clientCredentialsScopes: ["admin:manager-session:validate"],
+          clientCredentialsScopes: [
+            "admin:manager-session:validate",
+            "admin:manager-backend",
+          ],
           grantTypes: ["client_credentials"],
           disabled: true,
           metadata: expect.objectContaining({
@@ -312,6 +315,23 @@ describe("seedFirstPartyApps", () => {
     await seedFirstPartyApps()
     await seedFirstPartyApps()
 
+    expect(upsertOAuthResource).toHaveBeenCalledWith({
+      where: { identifier: "http://localhost:3003/api/manager/session" },
+      update: expect.objectContaining({
+        allowedScopes: [
+          "admin:manager-session:validate",
+          "admin:manager-backend",
+        ],
+        disabled: false,
+      }),
+      create: expect.objectContaining({
+        identifier: "http://localhost:3003/api/manager/session",
+        allowedScopes: [
+          "admin:manager-session:validate",
+          "admin:manager-backend",
+        ],
+      }),
+    })
     expect(upsertOAuthResource).toHaveBeenCalledWith({
       where: { identifier: "https://admin.jesusfilm.org/mcp" },
       update: expect.objectContaining({ disabled: false }),

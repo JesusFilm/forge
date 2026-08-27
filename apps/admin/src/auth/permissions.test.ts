@@ -32,6 +32,11 @@ const MANAGER_OPERATOR_ADMIN: Principal = {
   role: "ADMIN",
   managerRole: "OPERATOR",
 }
+const MANAGER_REVIEWER_VIEWER: Principal = {
+  id: "reviewer-1",
+  role: "VIEWER",
+  managerRole: "REVIEWER",
+}
 const SYSTEM: Principal = { id: null, role: "SYSTEM" }
 
 /**
@@ -49,6 +54,7 @@ const ALL_PERMISSION_KEYS: PermissionKey[] = [
   "read:media-assets",
   "access:manager",
   "read:manager-read-models",
+  "read:manager-subtitle-eval",
   "write:experiences",
   "write:videos",
   "write:media-assets",
@@ -60,6 +66,7 @@ const ALL_PERMISSION_KEYS: PermissionKey[] = [
   "delete:watch-progress:own",
   "write:manager-enrichment-trigger",
   "write:manager-jobs",
+  "write:manager-subtitle-eval",
   "delete:media-assets",
   "publish:experiences",
   "archive:experiences",
@@ -207,6 +214,10 @@ describe("hasPermission — Manager membership gate", () => {
     expect(hasPermission(ADMIN, "access:manager")).toBe(false)
     expect(hasPermission(MANAGER_OPERATOR_ADMIN, "access:manager")).toBe(true)
   })
+
+  it("does not grant operator panel access to reviewer memberships", () => {
+    expect(hasPermission(MANAGER_REVIEWER_VIEWER, "access:manager")).toBe(false)
+  })
 })
 
 describe("hasPermission — Manager backend bearer gate", () => {
@@ -217,6 +228,12 @@ describe("hasPermission — Manager backend bearer gate", () => {
     expect(hasPermission(MANAGER_BACKEND_PRINCIPAL, "write:manager-jobs")).toBe(
       true,
     )
+    expect(
+      hasPermission(MANAGER_BACKEND_PRINCIPAL, "read:manager-subtitle-eval"),
+    ).toBe(true)
+    expect(
+      hasPermission(MANAGER_BACKEND_PRINCIPAL, "write:manager-subtitle-eval"),
+    ).toBe(true)
     expect(hasPermission(MANAGER_BACKEND_PRINCIPAL, "access:manager")).toBe(
       false,
     )
@@ -658,6 +675,7 @@ describe("permission matrix completeness", () => {
         "read:manager-read-models": true,
         "read:manager-seo": true,
         "read:manager-seo-audit-detail": true,
+        "read:manager-subtitle-eval": true,
         "write:experiences": true,
         "write:videos": true,
         "write:media-assets": true,
@@ -669,6 +687,7 @@ describe("permission matrix completeness", () => {
         "delete:watch-progress:own": true,
         "write:manager-enrichment-trigger": true,
         "write:manager-jobs": true,
+        "write:manager-subtitle-eval": true,
         "delete:media-assets": true,
         "publish:experiences": true,
         "archive:experiences": true,
@@ -689,7 +708,9 @@ describe("permission matrix completeness", () => {
         "read:manager-read-models",
         "read:manager-seo",
         "read:manager-seo-audit-detail",
+        "read:manager-subtitle-eval",
         "write:manager-jobs",
+        "write:manager-subtitle-eval",
       ])
       const allKeys: Record<PermissionKey, true> = {
         "read:experiences": true,
@@ -702,6 +723,7 @@ describe("permission matrix completeness", () => {
         "read:manager-read-models": true,
         "read:manager-seo": true,
         "read:manager-seo-audit-detail": true,
+        "read:manager-subtitle-eval": true,
         "write:experiences": true,
         "write:videos": true,
         "write:media-assets": true,
@@ -713,6 +735,7 @@ describe("permission matrix completeness", () => {
         "delete:watch-progress:own": true,
         "write:manager-enrichment-trigger": true,
         "write:manager-jobs": true,
+        "write:manager-subtitle-eval": true,
         "delete:media-assets": true,
         "publish:experiences": true,
         "archive:experiences": true,
@@ -748,6 +771,7 @@ describe("permission matrix completeness", () => {
         "read:manager-read-models": true,
         "read:manager-seo": true,
         "read:manager-seo-audit-detail": true,
+        "read:manager-subtitle-eval": true,
         "write:experiences": true,
         "write:videos": true,
         "write:media-assets": true,
@@ -759,6 +783,7 @@ describe("permission matrix completeness", () => {
         "delete:watch-progress:own": true,
         "write:manager-enrichment-trigger": true,
         "write:manager-jobs": true,
+        "write:manager-subtitle-eval": true,
         "delete:media-assets": true,
         "publish:experiences": true,
         "archive:experiences": true,
@@ -802,6 +827,7 @@ describe("permission matrix completeness", () => {
         "read:manager-read-models": true,
         "read:manager-seo": true,
         "read:manager-seo-audit-detail": true,
+        "read:manager-subtitle-eval": true,
         "write:experiences": true,
         "write:videos": true,
         "write:media-assets": true,
@@ -813,6 +839,7 @@ describe("permission matrix completeness", () => {
         "delete:watch-progress:own": true,
         "write:manager-enrichment-trigger": true,
         "write:manager-jobs": true,
+        "write:manager-subtitle-eval": true,
         "delete:media-assets": true,
         "publish:experiences": true,
         "archive:experiences": true,

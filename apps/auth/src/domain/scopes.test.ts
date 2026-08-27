@@ -7,6 +7,7 @@ describe("Auth scopes", () => {
     expect(isKnownScope("openid")).toBe(true)
     expect(isKnownScope("offline_access")).toBe(true)
     expect(isKnownScope("admin:access")).toBe(true)
+    expect(isKnownScope("admin:manager-backend")).toBe(true)
     expect(isKnownScope("manager:access")).toBe(true)
     expect(isKnownScope("mastra-studio:access")).toBe(true)
     expect(isKnownScope("experience:publish")).toBe(true)

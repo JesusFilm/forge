@@ -62,6 +62,34 @@ describe("GET /api/auth/mock-login", () => {
     )
   })
 
+  it("creates a reviewer session only for the separate reviewer lane", async () => {
+    const { GET } = await import("./route")
+    const { readManagerSessionCookie } =
+      await import("@/lib/manager-session-cookie")
+
+    const response = await GET(
+      new Request(
+        "http://localhost:3002/api/auth/mock-login?role=reviewer&returnTo=/dashboard/jobs",
+      ),
+    )
+
+    expect(response.headers.get("location")).toBe(
+      "http://localhost:3002/subtitle-review",
+    )
+    const token = (response.headers.get("set-cookie") ?? "").match(
+      /manager-session=([^;]+)/,
+    )?.[1]
+    await expect(readManagerSessionCookie(token)).resolves.toMatchObject({
+      managerRole: "REVIEWER",
+      reviewerLanguageGrants: [
+        expect.objectContaining({
+          languageId: "mock-language-es",
+          languageSlug: "spanish-latin-america",
+        }),
+      ],
+    })
+  })
+
   it("is unavailable outside local mock Manager mode", async () => {
     vi.stubEnv("MANAGER_DATA_MODE", "admin")
     vi.stubEnv("MANAGER_BACKEND_MODE", "admin")

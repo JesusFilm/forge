@@ -20,7 +20,8 @@
 // introspection. Mobile signed-in progress ops mint `MOBILE_USER` after local
 // JWKS verification of the Auth-issued user JWT. The bearer-resolution chain is:
 //   session -> workflow-bearer -> manager-bearer -> video-mapper-bearer ->
-//   mobile-user-token -> web-user-token -> consumer-bearer -> PUBLIC
+//   manager-service-token -> mobile-user-token -> web-user-token ->
+//   consumer-bearer -> PUBLIC
 // in that order; the first match wins. The internal bearer CSVs are
 // contractually disjoint per `config/env.ts`; precedence here is the safety
 // net if that invariant ever drifts.
@@ -41,6 +42,7 @@ import {
 } from "@/auth/principal"
 import { isValidConsumerBearer } from "@/auth/consumer-bearer"
 import { isValidManagerBearer } from "@/auth/manager-bearer"
+import { isValidManagerServiceToken } from "@/auth/manager-service-token"
 import { resolveMobileUserPrincipalFromToken } from "@/auth/mobile-user-token"
 import { isValidVideoMapperBearer } from "@/auth/video-mapper-bearer"
 import { resolveWebUserPrincipalFromToken } from "@/auth/web-user-token"
@@ -58,7 +60,8 @@ export async function createContext({
   // Session wins. A user with an admin session who happens to also send
   // a (valid or stray) bearer header is treated as that session, not
   // demoted to a narrower bearer principal. Otherwise the chain is
-  // workflow -> manager -> mapper -> web-user -> consumer -> PUBLIC. The
+  // workflow -> manager -> mapper -> OAuth Manager -> web-user -> consumer ->
+  // PUBLIC. The
   // bearer CSVs are contractually disjoint per `config/env.ts`; precedence here
   // is the safety net if that invariant ever drifts.
   let user = sessionUser
@@ -70,7 +73,17 @@ export async function createContext({
       user = MANAGER_BACKEND_PRINCIPAL
     } else if (isValidVideoMapperBearer(authHeader)) {
       user = VIDEO_MAPPER_PRINCIPAL
+    } else if (
+      await isValidManagerServiceToken(authHeader, "admin:manager-backend")
+    ) {
+      user = MANAGER_BACKEND_PRINCIPAL
     } else {
+      // Manager service and web-user access tokens are both opaque Auth
+      // tokens, so they cannot be classified locally. An unrecognized web
+      // token can therefore incur the bounded Manager introspection timeout
+      // before its web introspection. Keep every locally verifiable/static
+      // principal above this network boundary; consolidate the two remote
+      // lookups only when Auth offers one least-privilege shared introspector.
       // Mobile runs BEFORE web-user: mobile JWTs verify locally against
       // Auth's JWKS, while the web branch introspects every unrecognized
       // bearer over the network (a wasted 3s budget per mobile request).

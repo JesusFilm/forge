@@ -66,6 +66,7 @@ export type DashboardStatusTone =
 type UserProductAccessRoleValue =
   | "NO_ACCESS"
   | "OPERATOR"
+  | "REVIEWER"
   | "STUDIO_ACCESS"
   | UserRole
 
@@ -99,6 +100,7 @@ const ADMIN_ROLE_OPTIONS = [
 const MANAGER_ROLE_OPTIONS = [
   { value: "NO_ACCESS", label: "No access" },
   { value: "OPERATOR", label: "Operator" },
+  { value: "REVIEWER", label: "Reviewer" },
 ] satisfies UserProductAccessRoleOption[]
 
 const MASTRA_STUDIO_ROLE_OPTIONS = [
@@ -113,7 +115,7 @@ export type UserAccessSourceRow = {
   emailVerified: boolean
   updatedAt: Date
   managerMembership: {
-    role: "OPERATOR"
+    role: "OPERATOR" | "REVIEWER"
     revokedAt: Date | null
   } | null
   mastraStudioAccess?: {
@@ -127,7 +129,7 @@ type UserAccessBaseRow = Omit<UserAccessSourceRow, "managerMembership">
 
 type UserAccessMembershipRow = {
   userId: string
-  role: "OPERATOR"
+  role: "OPERATOR" | "REVIEWER"
   revokedAt: Date | null
 }
 
@@ -2256,6 +2258,8 @@ export function buildUserTableRow(row: UserAccessSourceRow): UserTableRow {
   }
   const hasMastraStudioAccess =
     mastraStudioAccess.selectedRole === "STUDIO_ACCESS"
+  const isManagedReviewer =
+    hasManagerAccess && row.managerMembership?.role === "REVIEWER"
 
   return {
     key: row.id,
@@ -2280,12 +2284,14 @@ export function buildUserTableRow(row: UserAccessSourceRow): UserTableRow {
       {
         key: "manager",
         label: "Manager",
-        selectedRole: hasManagerAccess ? "OPERATOR" : "NO_ACCESS",
+        selectedRole: hasManagerAccess
+          ? row.managerMembership!.role
+          : "NO_ACCESS",
         roleOptions: MANAGER_ROLE_OPTIONS,
         statusTone: hasManagerAccess ? "success" : "muted",
-        disabled: false,
+        disabled: isManagedReviewer,
         backed: true,
-        helperText: "Backed",
+        helperText: isManagedReviewer ? "Subtitle Lab" : "Backed",
       },
       {
         key: "mastra-studio",
