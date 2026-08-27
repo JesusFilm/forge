@@ -11,8 +11,8 @@ database into Admin.
 ## Status (August 28, 2026)
 
 - **Total tickets:** 14
-- **Complete:** 5
-- **In progress:** 1
+- **Complete:** 6
+- **In progress:** 0
 - **Not started:** 8
 - **Blocked:** 0
 
@@ -25,7 +25,7 @@ database into Admin.
 | [feat-425](feat-425-rag-schema-empty-postgres.md)          | [#158](https://github.com/JesusFilm/jesusfilm-rag/issues/158) | Port schema and empty Railway Postgres                      | complete    | [#2064](https://github.com/JesusFilm/forge/pull/2064) |
 | [feat-426](feat-426-rag-shared-contracts-cores.md)         | [#159](https://github.com/JesusFilm/jesusfilm-rag/issues/159) | Port shared contracts and pure cores                        | complete    | —                                                     |
 | [feat-427](feat-427-rag-adapters-retrieval.md)             | [#160](https://github.com/JesusFilm/jesusfilm-rag/issues/160) | Port database adapters and retrieval tooling                | complete    | [#2076](https://github.com/JesusFilm/forge/pull/2076) |
-| [feat-428](feat-428-rag-http-service.md)                   | [#161](https://github.com/JesusFilm/jesusfilm-rag/issues/161) | Port and deploy HTTP retrieval service                      | in-progress | —                                                     |
+| [feat-428](feat-428-rag-http-service.md)                   | [#161](https://github.com/JesusFilm/jesusfilm-rag/issues/161) | Port and deploy HTTP retrieval service                      | complete    | [#2079](https://github.com/JesusFilm/forge/pull/2079) |
 | [feat-429](feat-429-rag-local-corpus-copy.md)              | [#162](https://github.com/JesusFilm/jesusfilm-rag/issues/162) | Rehearse corpus copy locally                                | not-started | —                                                     |
 | [feat-430](feat-430-rag-production-corpus-copy.md)         | [#163](https://github.com/JesusFilm/jesusfilm-rag/issues/163) | Copy production corpus into Forge Railway                   | not-started | —                                                     |
 | [feat-431](feat-431-rag-corpus-maintenance.md)             | [#164](https://github.com/JesusFilm/jesusfilm-rag/issues/164) | Port acquisition, ingestion, and maintenance                | not-started | —                                                     |
