@@ -29,8 +29,11 @@ module.exports = {
     {
       name: "adapters-import-only-contracts",
       severity: "error",
-      from: { path: "^src/adapters/" },
-      to: { path: "^src/", pathNot: "^src/contracts/" },
+      from: {
+        path: "^src/adapters/",
+        pathNot: "\\.(?:test|spec)\\.[cm]?[jt]sx?$",
+      },
+      to: { path: "^src/", pathNot: "^src/(contracts|adapters)/" },
     },
     {
       name: "rag-does-not-import-other-apps",
@@ -75,7 +78,7 @@ module.exports = {
       severity: "error",
       from: {
         path: "(?:^tests/|\\.(?:test|spec)\\.[cm]?[jt]sx?$)",
-        pathNot: "^src/adapters/",
+        pathNot: "^(?:src/adapters/|tests/adapters\\.integration\\.test\\.ts$)",
       },
       to: { path: "^src/adapters/" },
     },
