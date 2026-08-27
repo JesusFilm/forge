@@ -3,7 +3,7 @@ id: "feat-426"
 title: "Port shared RAG contracts and pure cores"
 owner: "jaco"
 priority: "P0"
-status: "not-started"
+status: "in-progress"
 start_date: "2026-09-01"
 duration: 4
 depends_on: ["feat-425"]
