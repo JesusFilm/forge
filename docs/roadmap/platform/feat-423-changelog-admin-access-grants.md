@@ -44,7 +44,7 @@ Local Changelog uses hosted Jesus Film Auth by default and requires an explicit 
 3. Make the operation idempotent and preserve existing Local Contributor or Admin access.
 4. Serialize concurrent attempts, then create the approved Reader grant and Auth audit event atomically while preserving historical rows.
 5. Add no environment or role option that could grant Production or broader access.
-6. Document a read-only Railway target preflight and `railway run` path for hosted Auth without copying or printing `DATABASE_URL`.
+6. Document a read-only, explicit Railway target preflight, required human confirmation, and `railway run` path for hosted Auth without inspecting, copying, or printing environment variables or `DATABASE_URL`.
 7. Verify that reconnecting produces `changelog:read` for `http://localhost:3000/mcp` without Production, submit, or admin scopes.
 
 ## Constraints
@@ -63,5 +63,5 @@ Local Changelog uses hosted Jesus Film Auth by default and requires an explicit 
 - Service tests prove verified ACTIVE HUMAN eligibility, exact Local Reader persistence, idempotency, higher-role preservation, atomic audit, and Production isolation.
 - Command tests prove prompted one-email input, redacted output/errors, and no environment or role selection path.
 - Full Auth tests, typecheck, lint, touched-scope format checks, and `git diff --check` pass.
-- A dedicated user reconnects through hosted Auth and can call the local Changelog MCP with `changelog:read` only.
+- After merge and deployment, a dedicated user reconnects through hosted Auth and can call the local Changelog MCP with `changelog:read` only. This manual hosted smoke is still required; this ticket does not claim it has already run.
 - Production issuance remains disabled.
