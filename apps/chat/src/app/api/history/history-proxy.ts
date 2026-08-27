@@ -70,8 +70,10 @@ export function composeHistoryTimeoutMs(sendPathTimeoutMs: number): number {
 /** Byte caps on the buffered upstream JSON (OOM-guard law). Sized from the
  * replay contract's honest worst case at ≤3 UTF-8 bytes per UTF-16 code unit:
  * 200 messages × (8,192 text + 5 capped sources + a capped video + JSON
- * envelope) ≈ 7.96 MB — so 8 MiB clears a legitimate non-Latin transcript
- * carrying feat-329 attachments while still bounding a misbehaving upstream.
+ * envelope), plus feat-366's ONE-message followUps term (the replay wire
+ * carries them on the last text-bearing assistant message only) ≈ 7.96 MB —
+ * so 8 MiB clears a legitimate non-Latin transcript carrying feat-329 and
+ * feat-366 attachments while still bounding a misbehaving upstream.
  * Mastra derives that budget from its own named constants
  * (`AI_CHAT_HISTORY_WORST_CASE_THREAD_BYTES`), measures a maximal SERIALIZED
  * thread against it, and reads THIS FILE to pin its mirror of the 8 MiB value —

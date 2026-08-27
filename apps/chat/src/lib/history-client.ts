@@ -15,7 +15,12 @@
  * body (R5 — the proxy resolves it from the session).
  */
 
-import { toSources, toVideo, type VideoRejectReason } from "./chat-stub"
+import {
+  toFollowUps,
+  toSources,
+  toVideo,
+  type VideoRejectReason,
+} from "./chat-stub"
 import type { SeekerSource, VideoAttachment } from "./conversations"
 
 /** One sidebar row from the server listing. `title` may be `""` — the
@@ -40,6 +45,9 @@ export type HistoryMessage = {
   createdAt: string
   sources?: SeekerSource[]
   video?: VideoAttachment
+  /** feat-366: the suggested questions this turn offered. The server puts
+   * them on the thread's LAST text-bearing assistant message only. */
+  followUps?: string[]
 }
 
 /** The closed client-side failure vocabulary (see module JSDoc). */
@@ -134,6 +142,7 @@ function projectMessage(
     createdAt?: unknown
     sources?: unknown
     video?: unknown
+    followUps?: unknown
   }
   if (typeof m.id !== "string" || m.id.length === 0) return null
   if (m.role !== "user" && m.role !== "assistant") return null
@@ -147,6 +156,10 @@ function projectMessage(
   // transcript is the point; a turn that loses its player still reads.
   const sources = toSources(m.sources)
   const video = toVideo(m.video, onVideoRejected)
+  // feat-366: stored questions go through the SAME bound the live frame uses
+  // — an over-cap or junk set just leaves the turn without chips (AE6). No
+  // rejection diagnostic: unlike video there is no per-field vocabulary.
+  const followUps = toFollowUps(m.followUps)
   return {
     id: m.id,
     role: m.role,
@@ -154,6 +167,7 @@ function projectMessage(
     createdAt: typeof m.createdAt === "string" ? m.createdAt : "",
     ...(sources.length > 0 ? { sources } : {}),
     ...(video ? { video } : {}),
+    ...(followUps.length > 0 ? { followUps } : {}),
   }
 }
 

@@ -37,8 +37,9 @@ the projection.
 `docs/solutions/best-practices/mastra-model-entry-timeout-retry-and-stream-abort-pattern.md`
 (amended — caller-signal scope limit).
 
-**Remaining:** U2 (apps/chat chips UI + the client mirror of the projection,
-including the format-char rung and its ZWNJ/ZWJ carve-outs) and U3 (managed-prompt
+**Remaining:** U2 (apps/chat chips UI + a client payload bound — the planned
+byte-identical mirror of the projection was superseded 2026-08-27; mastra stays
+the sole content filter) and U3 (managed-prompt
 closing-question softening via the experiments ledger). The full `## Resolution`
 replaces this section when the arc's final PR flips status to complete.
 
@@ -73,7 +74,7 @@ After a grounded Seeker answer, the conversation stalls: the person composes eve
 The plan's three units, in order — full detail lives in the plan; do not re-derive it here:
 
 - **U1** (`apps/mastra`, PR 1, deploys first): `SEEKER_FOLLOWUPS_ENABLED` flag; the pure core `seeker-follow-ups.ts` (projection up-to-3 × 120 UTF-16 units, drop-never-repair incl. control-char and lone-surrogate rungs; suppression gate grounded + ≥200 chars; tail-only prompt builder with the question capped to its own tail; parser); the out-of-registry generator on `buildSeekerModelList()` with a one-time Mastra registration (zero-tool/zero-processor, test-pinned); route wiring — generation before the terminal frame under a `min(2.5 s, remaining budget)` deadline + `Promise.race`, persist AFTER the frame gated on the emitted flag, enum outcomes `skipped | persisted | no_carrier | store_failed | timeout | undelivered`, client-side ownership re-check before `Memory.updateMessages`; the replay adapter (last-turn-only wire); the Langfuse ladder (no-spans → sibling → same-trace) with the `userId`-listing assertion as a ship-blocker; token counts + `prompt_source` on the `[seeker-follow-ups]` log line; the measured byte budget; the real-Postgres smoke `src/scripts/followups-pg-smoke.ts`; the opt-in trace smoke with its in-suite egress pin.
-- **U2** (`apps/chat`, PR 2): the `FollowUps` chip component (last-turn-only, verbatim send, two-moment focus handoff), the `toFollowUps` mirror + drift test, replay reads, `promptSource: "follow_up"` across all four hops, browser verification (reload loop, on-arrival visibility, mobile wrap) plus page-load performance evidence.
+- **U2** (`apps/chat`, PR 2): the `FollowUps` chip component (last-turn-only, verbatim send, two-moment focus handoff), the `toFollowUps` payload bound, replay reads, `promptSource: "follow_up"` across all four hops, browser verification (reload loop, on-arrival visibility, mobile wrap) plus page-load performance evidence. NOTE: the plan's KTD4 originally specified a byte-identical client MIRROR of mastra's projection plus a cross-source drift test; superseded 2026-08-27 (owner-directed) in favour of a bound — see the KTD4 supersession note in the plan.
 - **U3** (managed prompt, two PRs by process): soften the answer's closing engagement question via the experiments ledger — step 0 first (is the closing question even an instruction in the pinned managed revision, or emergent?); a refused verdict closes the requirement as not-achievable-this-way per the plan's DoD branch.
 
 Wire shape: optional `followUps: string[]` on the terminal `result` frame — omitted, never null. Storage: `content.metadata.seekerFollowUps` via `Memory.updateMessages` — NEVER a synthetic tool-invocation part (falsified live: the gateway 400'd on the replayed fabricated call and broke every later turn in the thread).
