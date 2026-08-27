@@ -11,6 +11,8 @@ import {
   CHANGELOG_APP_SEED,
   CHANGELOG_DEFAULT_SCOPES,
   FIRST_PARTY_APP_SEEDS,
+  FIRST_PARTY_OAUTH_CLIENT_IDS,
+  isFirstPartyOAuthClientId,
   MASTRA_STUDIO_APP_KEY,
   MASTRA_STUDIO_APP_SEED,
   MANAGER_APP_KEY,
@@ -177,6 +179,11 @@ describe("first-party app seeds", () => {
       ]),
     )
     expect(new Set(clientIds).size).toBe(clientIds.length)
+    expect(FIRST_PARTY_OAUTH_CLIENT_IDS).toEqual(clientIds)
+    expect(isFirstPartyOAuthClientId("jfp_manager_local_session_service")).toBe(
+      true,
+    )
+    expect(isFirstPartyOAuthClientId("dynamic_loopback_client")).toBe(false)
   })
 
   it("registers Admin MCP OAuth clients with trusted locale factory scopes", () => {
@@ -335,6 +342,7 @@ describe("first-party app seeds", () => {
           key: "codex",
           kind: "production",
           clientId: "jfp_admin_mcp_codex",
+          mcpResourceAudience: "https://admin.jesusfilm.org/mcp",
           redirectUris: [],
           postLogoutRedirectUris: [],
           allowedOrigins: [],

@@ -6,7 +6,7 @@ import {
 } from "@/app/login/login-page-data"
 import { getAuthBaseUrl, getAuthCustomAudiences, env } from "@/config/env"
 import { prisma } from "@/db/client"
-import { FIRST_PARTY_APP_SEEDS } from "@/domain/apps"
+import { isFirstPartyOAuthClientId } from "@/domain/apps"
 import {
   createOAuthResourceCatalog,
   resolveOAuthResource,
@@ -23,17 +23,6 @@ const oauthResourceCatalog = createOAuthResourceCatalog({
   authIssuer: getAuthBaseUrl(),
   customAudiences: getAuthCustomAudiences(),
 })
-const firstPartyClientIds = new Set(
-  FIRST_PARTY_APP_SEEDS.flatMap((app) =>
-    app.environments.flatMap((environment) => [
-      environment.clientId,
-      ...(environment.managerSessionServiceClientId
-        ? [environment.managerSessionServiceClientId]
-        : []),
-    ]),
-  ),
-)
-
 export default async function OAuthConsentPage({
   searchParams,
 }: OAuthConsentPageProps = {}) {
@@ -50,7 +39,7 @@ export default async function OAuthConsentPage({
   const clientId = firstParam(params.client_id)
   const target = resolveConsentTarget(params.resource)
   const unverifiedDynamicClient =
-    target != null && clientId != null && !firstPartyClientIds.has(clientId)
+    target != null && clientId != null && !isFirstPartyOAuthClientId(clientId)
   const requestingAppName =
     (unverifiedDynamicClient
       ? await resolveDynamicClientName(clientId)

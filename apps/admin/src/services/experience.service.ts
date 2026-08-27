@@ -224,7 +224,7 @@ type LocaleSnapshotSource = {
   updatedAt?: Date
 }
 
-function draftDataFromLocale(
+export function draftDataFromLocale(
   locale: LocaleSnapshotSource,
 ): ExperienceLocaleDraftData {
   return ExperienceLocaleDraftDataSchema.parse({

@@ -502,6 +502,7 @@ export const ADMIN_MCP_APP_SEED: RegisteredAppSeed = {
       key: "codex",
       kind: "production",
       clientId: ADMIN_MCP_CODEX_CLIENT_ID,
+      mcpResourceAudience: "https://admin.jesusfilm.org/mcp",
       redirectUris: [],
       postLogoutRedirectUris: [],
       allowedOrigins: [],
@@ -638,3 +639,19 @@ export const FIRST_PARTY_APP_SEEDS = [
   MOBILE_APP_SEED,
   TV_APP_SEED,
 ] satisfies RegisteredAppSeed[]
+
+export const FIRST_PARTY_OAUTH_CLIENT_IDS = FIRST_PARTY_APP_SEEDS.flatMap(
+  (app) =>
+    app.environments.flatMap((environment) => [
+      environment.clientId,
+      ...(environment.managerSessionServiceClientId
+        ? [environment.managerSessionServiceClientId]
+        : []),
+    ]),
+)
+
+const FIRST_PARTY_OAUTH_CLIENT_ID_SET = new Set(FIRST_PARTY_OAUTH_CLIENT_IDS)
+
+export function isFirstPartyOAuthClientId(clientId: string): boolean {
+  return FIRST_PARTY_OAUTH_CLIENT_ID_SET.has(clientId)
+}

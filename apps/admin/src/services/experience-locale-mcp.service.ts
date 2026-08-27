@@ -8,11 +8,11 @@ import { BlocksSchema } from "@/domain/blocks"
 import { ForbiddenError, NotFoundError } from "@/services/errors"
 import {
   CreateExperienceLocaleInput,
-  ExperienceLocaleDraftDataSchema,
   ExperienceLocaleDraftSnapshotSchema,
   UpdateExperienceLocaleInput,
 } from "@/services/experience.schemas"
 import {
+  draftDataFromLocale,
   ExperienceService,
   localeDraftRevision,
 } from "@/services/experience.service"
@@ -454,15 +454,16 @@ export class ExperienceLocaleMcpService {
       expectedDraftRevision: input.expectedDraftRevision,
     })
 
+    const activeDraft = serializeActiveDraft(result.activeDraft)
     return {
       locale: serializeLocale(result.effective),
-      activeDraft: serializeActiveDraft(result.activeDraft),
+      activeDraft,
       rollback: {
-        expectedDraftRevision: localeDraftRevision(result.activeDraft),
+        expectedDraftRevision: activeDraft.revision,
         restoreDraft:
           input.expectedDraftRevision === null
             ? null
-            : draftDataForRollback(result.beforeEffective),
+            : draftDataFromLocale(result.beforeEffective),
       },
     }
   }
@@ -992,20 +993,6 @@ function serializeActiveDraft(draft: {
     reason: draft.reason,
     previewUrl: draft.previewToken ? previewUrlFor(draft.previewToken) : null,
   }
-}
-
-function draftDataForRollback(locale: LocaleRow) {
-  return ExperienceLocaleDraftDataSchema.parse({
-    slug: locale.slug,
-    isHomepage: locale.isHomepage,
-    pathSegment: locale.pathSegment,
-    title: locale.title,
-    metaDescription: locale.metaDescription,
-    ogTitle: locale.ogTitle,
-    ogDescription: locale.ogDescription,
-    ogImageUrl: locale.ogImageUrl,
-    blocks: locale.blocks,
-  })
 }
 
 function serializeDraftState(state: {

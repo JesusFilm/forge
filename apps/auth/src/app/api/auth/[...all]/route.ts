@@ -16,7 +16,7 @@ import {
   CHANGELOG_DEFAULT_SCOPES,
   CHANGELOG_LOCAL_CLIENT_ID,
   CHANGELOG_PRODUCTION_CLIENT_ID,
-  FIRST_PARTY_APP_SEEDS,
+  isFirstPartyOAuthClientId,
 } from "@/domain/apps"
 import {
   createOAuthResourceCatalog,
@@ -52,17 +52,6 @@ const publicDcrResources = new Set(getPublicDcrResources(oauthResourceCatalog))
 const publicDcrAllowedScopes = new Set<string>(
   getPublicDcrAllowedScopes(oauthResourceCatalog),
 )
-const firstPartyClientIds = new Set(
-  FIRST_PARTY_APP_SEEDS.flatMap((app) =>
-    app.environments.flatMap((environment) => [
-      environment.clientId,
-      ...(environment.managerSessionServiceClientId
-        ? [environment.managerSessionServiceClientId]
-        : []),
-    ]),
-  ),
-)
-
 type LastLoginMethod = "apple" | "email" | "facebook" | "google" | "okta"
 const providerPriority = ["google", "facebook", "apple", "okta"] as const
 
@@ -728,7 +717,7 @@ async function classifyAuthorizeRequest(
 
   const clientId = params.get("client_id")
   if (clientId && changelogClientIds.has(clientId)) return "changelog"
-  if (!clientId || firstPartyClientIds.has(clientId)) return "provider"
+  if (!clientId || isFirstPartyOAuthClientId(clientId)) return "provider"
 
   const client = await prisma.oauthClient.findUnique({
     where: { clientId },

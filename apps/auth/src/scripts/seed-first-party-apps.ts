@@ -4,10 +4,11 @@ import {
   ADMIN_MCP_CODEX_CLIENT_ID,
   ADMIN_MCP_DEFAULT_SCOPES,
   FIRST_PARTY_APP_SEEDS,
+  FIRST_PARTY_OAUTH_CLIENT_IDS,
+  isFirstPartyOAuthClientId,
   TV_DEVICE_CLIENT_IDS,
   type RegisteredAppSeed,
 } from "@/domain/apps"
-import { CHANGELOG_OAUTH_RESOURCES } from "@/domain/changelog-oauth-resources"
 import {
   createOAuthResourceCatalog,
   getPublicDcrResources,
@@ -26,16 +27,6 @@ import { finalizeBetterAuth17Schema } from "./finalize-better-auth-17-schema"
 const MANAGER_SESSION_SCOPE = "admin:manager-session:validate"
 const BROWSER_GRANT_TYPES = ["authorization_code", "refresh_token"]
 const TV_DEVICE_CLIENT_ID_SET = new Set<string>(TV_DEVICE_CLIENT_IDS)
-const FIRST_PARTY_CLIENT_ID_SET = new Set(
-  FIRST_PARTY_APP_SEEDS.flatMap((app) =>
-    app.environments.flatMap((environment) => [
-      environment.clientId,
-      ...(environment.managerSessionServiceClientId
-        ? [environment.managerSessionServiceClientId]
-        : []),
-    ]),
-  ),
-)
 const OFFLINE_ACCESS_SCOPE = "offline_access" satisfies AuthScopeKey
 // Markers identify PRE-EXISTING dynamically-registered Admin MCP clients so
 // later-added default scopes can be appended. They must exclude every scope
@@ -50,14 +41,6 @@ const POST_REGISTRATION_SCOPES: readonly AuthScopeKey[] = [
 const ADMIN_MCP_DYNAMIC_SCOPE_MARKERS = ADMIN_MCP_DEFAULT_SCOPES.filter(
   (scope) => !POST_REGISTRATION_SCOPES.includes(scope),
 )
-
-const ADMIN_MCP_RESOURCE_BY_ENVIRONMENT = {
-  local: "http://localhost:3003/mcp",
-  preview: "https://admin-preview.jesusfilm.org/mcp",
-  staging: "https://admin-stage.jesusfilm.org/mcp",
-  production: "https://admin.jesusfilm.org/mcp",
-  codex: "https://admin.jesusfilm.org/mcp",
-} as const
 
 export async function seedFirstPartyApps() {
   await finalizeBetterAuth17Schema()
@@ -142,44 +125,16 @@ async function seedFirstPartyOauthResources(
         })
       }
 
-      if (appSeed.key === "admin-mcp") {
-        const identifier =
-          ADMIN_MCP_RESOURCE_BY_ENVIRONMENT[
-            environment.key as keyof typeof ADMIN_MCP_RESOURCE_BY_ENVIRONMENT
-          ]
-        if (identifier) {
-          const policy = resolveOAuthResource(
-            publicResourcePolicies,
-            identifier,
-          )
-          if (!policy) throw new Error("Missing public OAuth resource policy")
-          resources.push({
-            identifier,
-            name: `${appSeed.displayName} (${environment.key})`,
-            allowedScopes: [...policy.allowedScopes],
-            clientId: environment.clientId,
-          })
-        }
-      }
-
-      if (appSeed.key === "changelog") {
-        const identifier =
-          CHANGELOG_OAUTH_RESOURCES[
-            environment.kind as keyof typeof CHANGELOG_OAUTH_RESOURCES
-          ]
-        if (identifier) {
-          const policy = resolveOAuthResource(
-            publicResourcePolicies,
-            identifier,
-          )
-          if (!policy) throw new Error("Missing public OAuth resource policy")
-          resources.push({
-            identifier,
-            name: `${appSeed.displayName} (${environment.key})`,
-            allowedScopes: [...policy.allowedScopes],
-            clientId: environment.clientId,
-          })
-        }
+      if (environment.mcpResourceAudience) {
+        const identifier = environment.mcpResourceAudience
+        const policy = resolveOAuthResource(publicResourcePolicies, identifier)
+        if (!policy) throw new Error("Missing public OAuth resource policy")
+        resources.push({
+          identifier,
+          name: `${appSeed.displayName} (${environment.key})`,
+          allowedScopes: [...policy.allowedScopes],
+          clientId: environment.clientId,
+        })
       }
 
       for (const resource of resources) {
@@ -240,8 +195,13 @@ async function assertPublicDcrResourcesSeeded(
 }
 
 function sameStringSet(left: readonly string[], right: readonly string[]) {
+  const leftSet = new Set(left)
+  const rightSet = new Set(right)
   return (
-    left.length === right.length && left.every((value) => right.includes(value))
+    leftSet.size === left.length &&
+    rightSet.size === right.length &&
+    leftSet.size === rightSet.size &&
+    [...leftSet].every((value) => rightSet.has(value))
   )
 }
 
@@ -251,7 +211,7 @@ async function repairExistingPublicLoopbackMcpClients(
   const clients = await prisma.oauthClient.findMany({
     where: {
       applicationType: "native",
-      clientId: { notIn: [...FIRST_PARTY_CLIENT_ID_SET] },
+      clientId: { notIn: FIRST_PARTY_OAUTH_CLIENT_IDS },
       disabled: false,
       grantTypes: { hasEvery: [...BROWSER_GRANT_TYPES] },
       public: true,
@@ -316,7 +276,7 @@ function isEligiblePublicLoopbackClient(client: {
   tokenEndpointAuthMethod: string | null
 }) {
   return (
-    !FIRST_PARTY_CLIENT_ID_SET.has(client.clientId) &&
+    !isFirstPartyOAuthClientId(client.clientId) &&
     client.applicationType === "native" &&
     client.public === true &&
     !client.disabled &&

@@ -871,4 +871,23 @@ describe("seedFirstPartyApps", () => {
     expect(findManyOAuthClients).not.toHaveBeenCalled()
     expect(transaction).not.toHaveBeenCalled()
   })
+
+  it("rejects duplicate scopes even when the resource row length still matches", async () => {
+    const first = PUBLIC_RESOURCE_ROWS[0]
+    if (!first) throw new Error("Expected a public OAuth resource fixture")
+    const duplicatedScopes = [...first.allowedScopes]
+    duplicatedScopes[duplicatedScopes.length - 1] = duplicatedScopes[0]!
+    findManyOAuthResources.mockResolvedValue([
+      { ...first, allowedScopes: duplicatedScopes },
+      ...PUBLIC_RESOURCE_ROWS.slice(1),
+    ])
+
+    const { seedFirstPartyApps } = await import("./seed-first-party-apps")
+    await expect(seedFirstPartyApps()).rejects.toThrow(
+      "Public OAuth resource seed invariant failed (5/6 scope-compatible rows)",
+    )
+
+    expect(findManyOAuthClients).not.toHaveBeenCalled()
+    expect(transaction).not.toHaveBeenCalled()
+  })
 })
