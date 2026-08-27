@@ -205,6 +205,7 @@ import { AppState } from "react-native"
 import { PlaybackHost } from "../../components/watch/PlaybackHost"
 import { datadogLog } from "../../lib/datadog"
 import { resetPlayerSettings } from "../../test-utils/resetPlayerSettings"
+import { getPlayerSettingsStore } from "../../lib/miniPlayer/playerSettings"
 import { getMiniPlayerStore } from "../../lib/miniPlayer/store"
 import { PIP_EXPAND_GRACE_MS } from "../../lib/pipPolicy"
 import { useManagedVideoPlayer } from "../useManagedVideoPlayer"
@@ -1065,5 +1066,36 @@ describe("useManagedVideoPlayer — healthy position for error recovery", () => 
     await act(async () => {
       renderer.unmount()
     })
+  })
+})
+
+/**
+ * Audio pitch must not ride the playback rate. expo-video's TS types document
+ * `preservesPitch` as `@default true`, but the ANDROID native default is
+ * `false` (`expo-video/android/.../player/VideoPlayer.kt`: `var preservesPitch
+ * = false`), and its `applyPitchCorrection` then sets `pitch = speed`. So a
+ * speed pick on Android also shifts the voice up or down. iOS is unaffected —
+ * AVPlayer corrects pitch on its own — which is why this can only be caught by
+ * asserting the property is set EXPLICITLY, never by trusting the default.
+ *
+ * The fake player defaults `preservesPitch` to false for that reason, so these
+ * assertions fail unless the adapter sets it.
+ */
+describe("useManagedVideoPlayer — audio pitch across speed changes", () => {
+  it("asks the player to preserve pitch when it creates it", async () => {
+    await renderPlayer()
+
+    expect(video.__player.preservesPitch).toBe(true)
+  })
+
+  it("still preserves pitch after a speed pick lands on the player", async () => {
+    await renderPlayer()
+
+    await act(async () => {
+      getPlayerSettingsStore().setSpeed(1.5)
+    })
+
+    expect(video.__player.playbackRate).toBe(1.5)
+    expect(video.__player.preservesPitch).toBe(true)
   })
 })
