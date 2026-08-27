@@ -3,7 +3,7 @@ id: "feat-401"
 title: "Sidebar: no placeholder row for an unstarted conversation"
 owner: "jian wei"
 priority: "P3"
-status: "in-progress"
+status: "complete"
 start_date: "2026-09-01"
 duration: 1
 depends_on:
@@ -12,6 +12,14 @@ blocks: []
 tags:
   - "web"
 ---
+
+## Resolution
+
+**Shipped:** 2026-08-27 via [PR #2068](https://github.com/JesusFilm/forge/pull/2068) (`feat(chat): drop the sidebar placeholder row for an unstarted conversation`).
+
+**What landed.** The row removal shipped exactly as specified — one clause dropped from `listConversations`, with `origin === "server"` retained so feat-209's adopted deep-link rows survive, pinned by a new ACTIVE-empty-SERVER fixture. The draft-clear this ticket also prescribed was built, browser-tested and **reverted**: Claude and Gemini both keep a typed draft across a New press, so a dead button is correct and discarding typed text is the worse failure (see the dated DECIDED note in What To Build; `newConversationFocused` is unchanged from `main` apart from a comment). Both open questions were decided and recorded in `sidebar-conversation-list.tsx`'s docstring — the empty-state pane is sufficient indication that nothing is selected, and the newly reachable fully-empty rail stays bare, across all three paths that can now empty it. `orderConversations` was left alone per the Constraints; its fresh-empty-LOCAL pin is now unobservable through this projection, which its docstring records so the dead branch is not mistaken for live policy.
+
+**Residual risk / follow-ups.** [feat-405](feat-405-sidebar-untitled-thread-shows-date-label.md) shipped as docs in the same PR — a pre-existing defect where a thread whose title generation failed shows a date label until opened. Unrelated to this change, and its fix is deliberately not in this PR.
 
 ## Problem
 
