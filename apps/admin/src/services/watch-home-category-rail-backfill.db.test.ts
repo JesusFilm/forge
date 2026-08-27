@@ -4,6 +4,8 @@ import { Client } from "pg"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import { WATCH_HOME_CATEGORY_CATALOG } from "@forge/watch-url-policy/watch-home-categories"
 
+import adminPackage from "../../package.json"
+
 const RUN_REAL_DB_TEST =
   process.env.WATCH_HOME_CATEGORY_RAIL_BACKFILL_DB_TEST === "1"
 const backfillSql = readFileSync(
@@ -38,7 +40,7 @@ describe("Watch homepage category rail post-deploy backfill contract", () => {
   it("targets canonical and effective-draft homepages only", () => {
     expect(backfillSql).toContain("locale.is_homepage = true")
     expect(backfillSql).toContain("revision.entity_type = 'ExperienceLocale'")
-    expect(backfillSql).toContain("revision.status = 'DRAFT'")
+    expect(backfillSql).toContain("revision.status = 'draft'")
     expect(backfillSql).toMatch(/jsonb_typeof\(locale\.blocks\) = 'array'/)
     expect(backfillSql).toMatch(
       /jsonb_typeof\(revision\.snapshot #> '\{data,blocks\}'\) = 'array'/,
@@ -51,6 +53,12 @@ describe("Watch homepage category rail post-deploy backfill contract", () => {
     expect(draftTargetsSql).toMatch(
       /COALESCE\([\s\S]*revision\.snapshot #>> '\{data,isHomepage\}'[\s\S]*locale\.is_homepage[\s\S]*\) = true/,
     )
+  })
+
+  it("executes with the committed Prisma schema", () => {
+    expect(
+      adminPackage.scripts["db:backfill:watch-home-category-rail"],
+    ).toContain("--schema prisma/schema.prisma")
   })
 
   it("serializes activation and gates every write on marker absence", () => {
@@ -90,12 +98,13 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
           is_homepage boolean NOT NULL,
           blocks jsonb NOT NULL
         );
+        CREATE TYPE "RevisionStatus" AS ENUM ('draft', 'historical', 'discarded');
         CREATE TABLE content_revision (
           id text PRIMARY KEY,
           entity_type text NOT NULL,
           entity_id text NOT NULL,
           snapshot jsonb NOT NULL,
-          status text NOT NULL
+          status "RevisionStatus" NOT NULL
         );
         CREATE TABLE sync_state (
           phase text PRIMARY KEY,
@@ -141,35 +150,35 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
           "ExperienceLocale",
           "home-hero",
           { data: { isHomepage: true, blocks: [{ t: "watchHomeHero" }] } },
-          "DRAFT",
+          "draft",
         ],
         [
           "historical-home",
           "ExperienceLocale",
           "home-hero",
           { data: { isHomepage: true, blocks: [{ t: "watchHomeHero" }] } },
-          "HISTORICAL",
+          "historical",
         ],
         [
           "draft-non-home",
           "ExperienceLocale",
           "non-home",
           { data: { isHomepage: false, blocks: [{ t: "text" }] } },
-          "DRAFT",
+          "draft",
         ],
         [
           "draft-promoted-home",
           "ExperienceLocale",
           "promoted-home",
           { data: { isHomepage: true, blocks: [{ t: "text" }] } },
-          "DRAFT",
+          "draft",
         ],
         [
           "draft-malformed",
           "ExperienceLocale",
           "home-malformed",
           { data: { isHomepage: true, blocks: { t: "text" } } },
-          "DRAFT",
+          "draft",
         ],
         [
           "draft-existing",
@@ -181,7 +190,7 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
               blocks: [{ t: "watchHomeCategoryRail", categoryIds: ["family"] }],
             },
           },
-          "DRAFT",
+          "draft",
         ],
       ] as const
       for (const [id, entityType, entityId, snapshot, status] of revisions) {
