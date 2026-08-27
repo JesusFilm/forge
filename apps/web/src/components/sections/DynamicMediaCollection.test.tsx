@@ -262,6 +262,8 @@ describe("DynamicMediaCollection", () => {
         after: null,
         excludedIds: ["blocked", "already-featured"],
         excludedSlugs: ["featured-slug"],
+        cacheScope: "live",
+        cacheSignature: null,
         first: 3,
         cardsPerParent: 12,
       },
@@ -276,6 +278,82 @@ describe("DynamicMediaCollection", () => {
     expect(container.textContent).not.toContain("Introductory feed copy")
     expect(container.textContent).toContain(
       "You’ve reached the end of the collection library.",
+    )
+  })
+
+  it("marks draft feed requests as preview cache variants", async () => {
+    loadPage.mockResolvedValue({
+      sections: [],
+      endCursor: null,
+      hasNextPage: false,
+    } satisfies DynamicCollectionFeedPage)
+
+    await act(async () => {
+      root.render(
+        <DynamicMediaCollection
+          data={{ title: "Explore" }}
+          locale="en"
+          languageSlug="english"
+          cacheScope="preview"
+          cacheSignatures={{
+            mobile: "m".repeat(43),
+            desktop: "d".repeat(43),
+          }}
+        />,
+      )
+    })
+    await intersect()
+
+    expect(loadPage.mock.calls[0]?.[0]).toEqual(
+      expect.objectContaining({
+        cacheScope: "preview",
+        cacheSignature: "d".repeat(43),
+      }),
+    )
+  })
+
+  it("uses only server-issued signatures while advancing duplicate pages", async () => {
+    loadPage
+      .mockResolvedValueOnce({
+        sections: [],
+        endCursor: "cursor-1",
+        hasNextPage: true,
+        nextCacheSignature: "n".repeat(43),
+      })
+      .mockResolvedValueOnce({
+        sections: [section("new", "New")],
+        endCursor: "cursor-2",
+        hasNextPage: false,
+        nextCacheSignature: null,
+      })
+
+    await act(async () => {
+      root.render(
+        <DynamicMediaCollection
+          data={{ title: "Explore" }}
+          locale="en"
+          languageSlug="english"
+          cacheSignatures={{
+            mobile: "m".repeat(43),
+            desktop: "d".repeat(43),
+          }}
+        />,
+      )
+    })
+    await intersect()
+
+    expect(loadPage).toHaveBeenCalledTimes(2)
+    expect(loadPage.mock.calls[0]?.[0]).toEqual(
+      expect.objectContaining({
+        after: null,
+        cacheSignature: "d".repeat(43),
+      }),
+    )
+    expect(loadPage.mock.calls[1]?.[0]).toEqual(
+      expect.objectContaining({
+        after: "cursor-1",
+        cacheSignature: "n".repeat(43),
+      }),
     )
   })
 
@@ -506,6 +584,44 @@ describe("DynamicMediaCollection", () => {
     expect(container.textContent).toContain(
       "More collections load as you scroll.",
     )
+  })
+
+  it("resets and aborts the feed when its cache scope changes", async () => {
+    const oldRequest = deferred<DynamicCollectionFeedPage>()
+    loadPage.mockReturnValueOnce(oldRequest.promise)
+    await act(async () => {
+      root.render(
+        <DynamicMediaCollection
+          data={{ title: "Explore" }}
+          locale="en"
+          languageSlug="english"
+          cacheScope="live"
+        />,
+      )
+    })
+    await intersect()
+    const signal = loadPage.mock.calls[0]?.[1]?.signal as AbortSignal
+
+    await act(async () => {
+      root.render(
+        <DynamicMediaCollection
+          data={{ title: "Explore" }}
+          locale="en"
+          languageSlug="english"
+          cacheScope="preview"
+        />,
+      )
+    })
+
+    expect(signal.aborted).toBe(true)
+    oldRequest.resolve({
+      sections: [section("stale", "Stale")],
+      endCursor: "stale",
+      hasNextPage: false,
+    })
+    await act(async () => oldRequest.promise)
+
+    expect(container.querySelector('[data-title="Stale"]')).toBeNull()
   })
 
   it("aborts and ignores an in-flight response after unmount", async () => {

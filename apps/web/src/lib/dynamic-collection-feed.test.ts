@@ -3,16 +3,18 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 const mocks = vi.hoisted(() => ({
   cache: new Map<string, Promise<unknown>>(),
   query: vi.fn(),
-  unstableCache: vi.fn((fn: (...args: never[]) => unknown) => {
-    return (...args: never[]) => {
-      const key = JSON.stringify(args)
-      const existing = mocks.cache.get(key)
-      if (existing) return existing
-      const pending = Promise.resolve(fn(...args))
-      mocks.cache.set(key, pending)
-      return pending
-    }
-  }),
+  unstableCache: vi.fn(
+    (fn: (...args: never[]) => unknown, keyParts: string[]) => {
+      return (...args: never[]) => {
+        const key = JSON.stringify([keyParts, args])
+        const existing = mocks.cache.get(key)
+        if (existing) return existing
+        const pending = Promise.resolve(fn(...args))
+        mocks.cache.set(key, pending)
+        return pending
+      }
+    },
+  ),
 }))
 
 vi.mock("next/cache", () => ({ unstable_cache: mocks.unstableCache }))
@@ -29,7 +31,7 @@ describe("getDynamicCollectionFeedPage", () => {
     mocks.query.mockReset()
   })
 
-  it("uses a 60-second tagged cache and maps the flat Admin DTO", async () => {
+  it("uses long-lived live and bounded preview caches and maps the flat Admin DTO", async () => {
     mocks.query.mockResolvedValue({
       data: {
         watchCollectionFeed: {
@@ -60,22 +62,34 @@ describe("getDynamicCollectionFeedPage", () => {
       },
     })
 
-    const result = await getDynamicCollectionFeedPage({
-      locale: "en",
-      languageSlug: "english",
-      cacheScope: "live",
-      after: null,
-      excludedIds: ["featured-id"],
-      excludedSlugs: ["featured-slug"],
-      first: 3,
-      cardsPerParent: 12,
-    })
+    const result = await getDynamicCollectionFeedPage(
+      {
+        locale: "en",
+        languageSlug: "english",
+        cacheScope: "live",
+        cacheSignature: null,
+        after: null,
+        excludedIds: ["featured-id"],
+        excludedSlugs: ["featured-slug"],
+        first: 3,
+        cardsPerParent: 12,
+      },
+      { sharedCache: true },
+    )
 
     expect(mocks.unstableCache).toHaveBeenCalledWith(
       expect.any(Function),
       ["watch-dynamic-collection-feed-v1"],
       {
-        revalidate: 60,
+        revalidate: 86_400,
+        tags: [WATCH_CACHE_TAGS.home, WATCH_CACHE_TAGS.video],
+      },
+    )
+    expect(mocks.unstableCache).toHaveBeenCalledWith(
+      expect.any(Function),
+      ["watch-dynamic-collection-feed-preview-v1"],
+      {
+        revalidate: 900,
         tags: [WATCH_CACHE_TAGS.home, WATCH_CACHE_TAGS.video],
       },
     )
@@ -119,6 +133,7 @@ describe("getDynamicCollectionFeedPage", () => {
       locale: "en",
       languageSlug: "english",
       cacheScope: "live" as const,
+      cacheSignature: null,
       after: null,
       excludedIds: ["a"],
       excludedSlugs: ["b"],
@@ -126,19 +141,63 @@ describe("getDynamicCollectionFeedPage", () => {
       cardsPerParent: 12 as const,
     }
 
-    await getDynamicCollectionFeedPage(input)
-    await getDynamicCollectionFeedPage(input)
-    await getDynamicCollectionFeedPage({ ...input, after: "cursor-1" })
-    await getDynamicCollectionFeedPage({ ...input, locale: "fr" })
-    await getDynamicCollectionFeedPage({ ...input, languageSlug: "french" })
-    await getDynamicCollectionFeedPage({ ...input, excludedIds: ["other"] })
-    await getDynamicCollectionFeedPage({ ...input, excludedSlugs: ["other"] })
-    await getDynamicCollectionFeedPage({
-      ...input,
-      first: 2,
-      cardsPerParent: 8,
-    })
+    const shared = { sharedCache: true }
+    await getDynamicCollectionFeedPage(input, shared)
+    await getDynamicCollectionFeedPage(input, shared)
+    await getDynamicCollectionFeedPage(
+      { ...input, cacheScope: "preview" },
+      shared,
+    )
+    await getDynamicCollectionFeedPage({ ...input, after: "cursor-1" }, shared)
+    await getDynamicCollectionFeedPage({ ...input, locale: "fr" }, shared)
+    await getDynamicCollectionFeedPage(
+      { ...input, languageSlug: "french" },
+      shared,
+    )
+    await getDynamicCollectionFeedPage(
+      { ...input, excludedIds: ["other"] },
+      shared,
+    )
+    await getDynamicCollectionFeedPage(
+      { ...input, excludedSlugs: ["other"] },
+      shared,
+    )
+    await getDynamicCollectionFeedPage(
+      {
+        ...input,
+        first: 2,
+        cardsPerParent: 8,
+      },
+      shared,
+    )
 
-    expect(mocks.query).toHaveBeenCalledTimes(7)
+    expect(mocks.query).toHaveBeenCalledTimes(8)
+  })
+
+  it("bypasses long-lived caches for unadmitted public variants", async () => {
+    mocks.query.mockResolvedValue({
+      data: {
+        watchCollectionFeed: {
+          nodes: [],
+          pageInfo: { endCursor: null, hasNextPage: false },
+        },
+      },
+    })
+    const input = {
+      locale: "en",
+      languageSlug: "english",
+      cacheScope: "live" as const,
+      cacheSignature: null,
+      after: null,
+      excludedIds: ["attacker-controlled"],
+      excludedSlugs: [],
+      first: 3 as const,
+      cardsPerParent: 12 as const,
+    }
+
+    await getDynamicCollectionFeedPage(input, { sharedCache: false })
+    await getDynamicCollectionFeedPage(input, { sharedCache: false })
+
+    expect(mocks.query).toHaveBeenCalledTimes(2)
   })
 })

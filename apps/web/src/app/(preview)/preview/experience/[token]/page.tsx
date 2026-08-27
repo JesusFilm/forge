@@ -129,6 +129,7 @@ export default async function ExperiencePreviewPage({
           heroModel={home.data}
           blocks={blocks}
           languageSlug={languageSlug}
+          dynamicCollectionCacheScope="preview"
         />
       )
     }
