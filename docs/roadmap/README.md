@@ -4,10 +4,10 @@
 
 Build trusted, scalable AI capabilities that help people discover gospel content, engage meaningfully with Scripture, and take faithful next steps.
 
-## Status (August 26, 2026)
+## Status (August 27, 2026)
 
-- **Total tickets:** 603
-- **Complete:** 447
+- **Total tickets:** 605
+- **Complete:** 449
 - **In progress:** 40
 - **Not started:** 37
 - **Blocked:** 79
@@ -282,6 +282,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-399](platform/feat-399-changelog-first-party-auth.md)                            | Register Changelog with first-party Auth grants                                  | edmonday   | P0       | 2026-08-19 | 3    | 2026-08-21 | complete    |
 | [feat-401](platform/feat-401-better-auth-native-resource-upgrade.md)                   | Upgrade Better Auth for native resource binding                                  | edmonday   | P0       | 2026-08-20 | 4    | 2026-08-23 | complete    |
 | [feat-402](platform/feat-402-mobile-expo-sdk57-patch-alignment.md)                     | Mobile Expo SDK 57 patch alignment                                               | edmonday   | P0       | 2026-08-21 | 1    | 2026-08-21 | complete    |
+| [feat-423](platform/feat-423-changelog-admin-access-grants.md)                         | Grant local Changelog Reader access by command                                   | edmonday   | P0       | 2026-08-27 | 1    | 2026-08-27 | complete    |
 | [feat-278](platform/feat-278-watch-russian-authored-content-localization.md)           | Watch Russian authored content localization                                      | unassigned | P1       | —          | 2    | —          | not-started |
 | [feat-036](platform/feat-036-cms-local-postgres-io-concurrency-compatibility.md)       | CMS local PostgreSQL I/O concurrency compatibility                               | tataihono  | P1       | 2026-04-01 | 1    | 2026-04-01 | complete    |
 | [feat-019](platform/feat-019-scaffolding-support-urim.md)                              | Scaffolding Support for Urim                                                     | tataihono  | P1       | 2026-04-07 | 21   | 2026-04-27 | blocked     |
@@ -635,5 +636,6 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-146](topic-experiences/feat-146-watch-bible-quotes-promo-cta-wrap.md)                 | Watch Bible Quotes Promo CTA Wrap                                                | urim       | P2       | 2026-06-13 | 1    | 2026-06-13 | complete    |
 | [feat-255](topic-experiences/feat-255-mobile-poster-rail-signal.md)                         | Mobile Home poster rails — give the card-shape decision its own signal           | urim       | P2       | 2026-07-16 | 2    | 2026-07-17 | not-started |
 | [feat-292](topic-experiences/feat-292-watch-promotional-text-decoration-removal.md)         | Refine Watch promotional text styling                                            | urim       | P2       | 2026-07-21 | 1    | 2026-07-21 | complete    |
+| [feat-438](topic-experiences/feat-438-watch-immersive-section-background-saturation.md)     | Watch immersive section background saturation                                    | vlad       | P2       | 2026-08-26 | 1    | 2026-08-26 | complete    |
 | [feat-263](topic-experiences/feat-263-ai-assembled-showcase-reel.md)                        | AI-assembled Showcase reel                                                       | urim       | P2       | 2026-09-01 | 14   | 2026-09-14 | not-started |
 | [feat-069](topic-experiences/feat-069-validated-topic-pages.md)                             | Validated Topic Pages                                                            | tataihono  | P2       | 2026-11-01 | 61   | 2026-12-31 | blocked     |
