@@ -5,5 +5,13 @@ export const adminWatchHomeCategoryRailFragment = adminGraphql(`
     t
     sectionKey
     categoryIds
+    tiles {
+      id
+      categoryId
+      title
+      href
+      icon
+      style
+    }
   }
 `)

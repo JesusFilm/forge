@@ -262,6 +262,74 @@ describe("resolveWatchPage", () => {
     })
   })
 
+  it("also falls back for an Admin that has the block type but predates the tiles field", async () => {
+    // Web and Admin deploy from the same merge but not atomically. The
+    // tiles selection must degrade the same way the block type itself did,
+    // or the deploy window becomes a hard failure on every homepage.
+    const validationError = Object.assign(
+      new Error(
+        'Cannot query field "tiles" on type "WatchHomeCategoryRailBlock".',
+      ),
+      {
+        errors: [
+          {
+            message:
+              'Cannot query field "tiles" on type "WatchHomeCategoryRailBlock".',
+            extensions: { code: "GRAPHQL_VALIDATION_FAILED" },
+          },
+        ],
+      },
+    )
+    queryMock.mockRejectedValueOnce(validationError).mockResolvedValueOnce({
+      data: {
+        watchSetting: {
+          documentId: "watch-settings-1",
+          homepageExperience: {
+            __typename: "ExperienceLocale",
+            id: "exp-home-1",
+            slug: "home",
+            title: "Home",
+            blocks: [],
+          },
+          defaultTemplateExperience: null,
+        },
+      },
+    })
+
+    const { resolveWatchPage } = await import("./content")
+    const result = await resolveWatchPage("en")
+
+    expect(queryMock).toHaveBeenCalledTimes(2)
+    expect(result).toMatchObject({
+      error: null,
+      data: {
+        kind: "experience",
+        watchHomeCategoryRailCompatibility: "legacy-schema",
+      },
+    })
+  })
+
+  it("does not treat an unrelated field validation error as category-rail schema lag", async () => {
+    const unrelated = Object.assign(
+      new Error('Cannot query field "tiles" on type "PromoBannerBlock".'),
+      {
+        errors: [
+          {
+            message: 'Cannot query field "tiles" on type "PromoBannerBlock".',
+            extensions: { code: "GRAPHQL_VALIDATION_FAILED" },
+          },
+        ],
+      },
+    )
+    queryMock.mockRejectedValueOnce(unrelated)
+
+    const { resolveWatchPage } = await import("./content")
+    const result = await resolveWatchPage("en")
+
+    expect(queryMock).toHaveBeenCalledTimes(1)
+    expect(result.error).not.toBeNull()
+  })
+
   it("never retries the legacy query more than once", async () => {
     const unknownTypeError = {
       errors: [

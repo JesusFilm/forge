@@ -140,6 +140,10 @@ import { CanvasBlockList } from "./experience-editor/canvas-block-list"
 import { ContainerWorkspace } from "./experience-editor/container-workspace"
 import { WatchHomeCategoryRailEditor } from "./experience-editor/watch-home-category-rail-editor"
 import {
+  railBlockPatch,
+  readRailTiles,
+} from "./experience-editor/watch-home-category-rail-tiles"
+import {
   DuplicateExperienceControl,
   type DuplicateActionResult,
 } from "./experience-editor/duplicate-experience-control"
@@ -8367,14 +8371,11 @@ export function ExperienceEditor({
 
         {type === "watchHomeCategoryRail" ? (
           <WatchHomeCategoryRailEditor
-            categoryIds={asArray(blockRecord?.categoryIds)
-              .map(asString)
-              .filter(Boolean)}
-            onChange={(categoryIds) =>
-              updateBlockAt(index, (currentBlock) => ({
-                ...currentBlock,
-                categoryIds,
-              }))
+            tiles={readRailTiles(blockRecord)}
+            onChange={(tiles) =>
+              updateBlockAt(index, (currentBlock) =>
+                railBlockPatch(currentBlock, tiles),
+              )
             }
           />
         ) : type === "languageGlobe" ? (
