@@ -43,29 +43,44 @@ export async function runGrantChangelogLocalReaderCommand({
     return 1
   }
 
+  let email: string
   try {
-    const email = await readEmail()
+    email = await readEmail()
     if (!EMAIL_PATTERN.test(email.trim().toLowerCase())) {
       writeError(
         "Could not grant Local Changelog Reader access: enter a valid email address.\n",
       )
       return 1
     }
-
-    const result = await grantChangelogLocalReader(email)
-    const recipient = redactEmail(email)
-    writeOutput(
-      result.changed
-        ? `Granted Local Changelog Reader access to ${recipient}.\n`
-        : `No change: ${recipient} already has Local Changelog Reader-or-higher access.\n`,
-    )
-    return 0
   } catch {
     writeError(
       "Could not grant Local Changelog Reader access. Verify the recipient and Auth environment, then retry.\n",
     )
     return 1
   }
+
+  let result: { changed: boolean }
+  try {
+    result = await grantChangelogLocalReader(email)
+  } catch {
+    writeError(
+      "Could not grant Local Changelog Reader access. Verify the recipient and Auth environment, then retry.\n",
+    )
+    return 1
+  }
+
+  const recipient = redactEmail(email)
+  try {
+    writeOutput(
+      result.changed
+        ? `Granted Local Changelog Reader access to ${recipient}.\n`
+        : `No change: ${recipient} already has Local Changelog Reader-or-higher access.\n`,
+    )
+  } catch {
+    // The grant is already committed. A closed output stream must not report it
+    // as a failed authorization change.
+  }
+  return 0
 }
 
 if (process.argv[1]?.endsWith("grant-changelog-local-reader.ts")) {

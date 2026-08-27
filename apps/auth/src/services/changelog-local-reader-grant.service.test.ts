@@ -1,6 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
-import { grantChangelogLocalReader } from "./changelog-local-reader-grant.service"
+import {
+  ChangelogLocalReaderGrantError,
+  grantChangelogLocalReader,
+  type ChangelogLocalReaderGrantErrorCode,
+} from "./changelog-local-reader-grant.service"
 
 const mocks = vi.hoisted(() => {
   const tx = {
@@ -117,22 +121,47 @@ describe("grantChangelogLocalReader", () => {
     expect(mocks.tx.authAuditEvent.create).not.toHaveBeenCalled()
   })
 
-  it.each([
-    ["missing", null, "Auth user was not found."],
-    ["unverified", { ...user, emailVerified: false }, "not verified"],
-    ["agent", { ...user, actorType: "AGENT" }, "human"],
-    ["invited", { ...user, membershipStatus: "INVITED" }, "not active"],
-    ["suspended", { ...user, membershipStatus: "SUSPENDED" }, "not active"],
-    ["disabled", { ...user, membershipStatus: "DISABLED" }, "not active"],
-  ])("rejects an %s identity without writes", async (_name, found, message) => {
-    mocks.tx.user.findUnique.mockResolvedValue(found)
+  it.each<
+    [string, typeof user | null, ChangelogLocalReaderGrantErrorCode, string]
+  >([
+    ["missing", null, "user_not_found", "Auth user was not found."],
+    [
+      "unverified",
+      { ...user, emailVerified: false },
+      "user_email_unverified",
+      "not verified",
+    ],
+    ["agent", { ...user, actorType: "AGENT" }, "user_not_human", "human"],
+    [
+      "invited",
+      { ...user, membershipStatus: "INVITED" },
+      "user_inactive",
+      "not active",
+    ],
+    [
+      "suspended",
+      { ...user, membershipStatus: "SUSPENDED" },
+      "user_inactive",
+      "not active",
+    ],
+    [
+      "disabled",
+      { ...user, membershipStatus: "DISABLED" },
+      "user_inactive",
+      "not active",
+    ],
+  ])(
+    "rejects an %s identity without writes",
+    async (_name, found, code, message) => {
+      mocks.tx.user.findUnique.mockResolvedValue(found)
 
-    await expect(
-      grantChangelogLocalReader("developer@example.com"),
-    ).rejects.toThrow(message as string)
-    expect(mocks.tx.appGrant.create).not.toHaveBeenCalled()
-    expect(mocks.tx.authAuditEvent.create).not.toHaveBeenCalled()
-  })
+      const grant = grantChangelogLocalReader("developer@example.com")
+      await expect(grant).rejects.toThrow(message)
+      await expect(grant).rejects.toMatchObject({ code })
+      expect(mocks.tx.appGrant.create).not.toHaveBeenCalled()
+      expect(mocks.tx.authAuditEvent.create).not.toHaveBeenCalled()
+    },
+  )
 
   it.each([
     ["missing environment", null],
@@ -162,7 +191,7 @@ describe("grantChangelogLocalReader", () => {
 
     await expect(
       grantChangelogLocalReader("developer@example.com"),
-    ).rejects.toThrow("Changelog Reader scope is not registered.")
+    ).rejects.toMatchObject({ code: "scope_unavailable" })
     expect(mocks.tx.appGrant.create).not.toHaveBeenCalled()
     expect(mocks.tx.authAuditEvent.create).not.toHaveBeenCalled()
   })
@@ -196,10 +225,27 @@ describe("grantChangelogLocalReader", () => {
     })
   })
 
+  it.each([
+    ["missing", []],
+    ["duplicated", [{ id: environment.id }, { id: "environment_duplicate" }]],
+  ])(
+    "fails closed when the Local environment lock is %s",
+    async (_name, rows) => {
+      mocks.tx.$queryRaw.mockResolvedValue(rows)
+
+      await expect(
+        grantChangelogLocalReader("developer@example.com"),
+      ).rejects.toMatchObject({ code: "environment_unavailable" })
+      expect(mocks.tx.user.findUnique).not.toHaveBeenCalled()
+      expect(mocks.tx.appGrant.create).not.toHaveBeenCalled()
+      expect(mocks.tx.authAuditEvent.create).not.toHaveBeenCalled()
+    },
+  )
+
   it("rejects malformed email before starting a transaction", async () => {
-    await expect(grantChangelogLocalReader("not-an-email")).rejects.toThrow(
-      "Enter a valid email address.",
-    )
+    const grant = grantChangelogLocalReader("not-an-email")
+    await expect(grant).rejects.toBeInstanceOf(ChangelogLocalReaderGrantError)
+    await expect(grant).rejects.toMatchObject({ code: "email_invalid" })
     expect(mocks.transaction).not.toHaveBeenCalled()
   })
 })

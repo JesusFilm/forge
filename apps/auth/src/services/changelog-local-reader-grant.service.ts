@@ -5,12 +5,34 @@ import { buildAuditEvent } from "./audit.service"
 
 const CHANGELOG_READ_SCOPE = "changelog:read"
 
+export type ChangelogLocalReaderGrantErrorCode =
+  | "email_invalid"
+  | "environment_unavailable"
+  | "scope_unavailable"
+  | "user_email_unverified"
+  | "user_inactive"
+  | "user_not_found"
+  | "user_not_human"
+
+export class ChangelogLocalReaderGrantError extends Error {
+  constructor(
+    public readonly code: ChangelogLocalReaderGrantErrorCode,
+    message: string,
+  ) {
+    super(message)
+    this.name = "ChangelogLocalReaderGrantError"
+  }
+}
+
 export async function grantChangelogLocalReader(
   email: string,
 ): Promise<{ changed: boolean }> {
   const normalizedEmail = email.trim().toLowerCase()
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
-    throw new Error("Enter a valid email address.")
+    throw new ChangelogLocalReaderGrantError(
+      "email_invalid",
+      "Enter a valid email address.",
+    )
   }
 
   return prisma.$transaction(async (tx) => {
@@ -21,7 +43,10 @@ export async function grantChangelogLocalReader(
       FOR UPDATE
     `
     if (lockedEnvironments.length !== 1) {
-      throw new Error("Local Changelog environment is not active and approved.")
+      throw new ChangelogLocalReaderGrantError(
+        "environment_unavailable",
+        "Local Changelog environment is not active and approved.",
+      )
     }
 
     const environment = await tx.appEnvironment.findUnique({
@@ -45,7 +70,10 @@ export async function grantChangelogLocalReader(
       environment.app.key !== CHANGELOG_APP_KEY ||
       environment.app.status !== "ACTIVE"
     ) {
-      throw new Error("Local Changelog environment is not active and approved.")
+      throw new ChangelogLocalReaderGrantError(
+        "environment_unavailable",
+        "Local Changelog environment is not active and approved.",
+      )
     }
 
     const user = await tx.user.findUnique({
@@ -57,13 +85,29 @@ export async function grantChangelogLocalReader(
         membershipStatus: true,
       },
     })
-    if (!user) throw new Error("Auth user was not found.")
-    if (!user.emailVerified) throw new Error("Auth user email is not verified.")
+    if (!user) {
+      throw new ChangelogLocalReaderGrantError(
+        "user_not_found",
+        "Auth user was not found.",
+      )
+    }
+    if (!user.emailVerified) {
+      throw new ChangelogLocalReaderGrantError(
+        "user_email_unverified",
+        "Auth user email is not verified.",
+      )
+    }
     if (user.actorType !== "HUMAN") {
-      throw new Error("Only human Auth users can receive this grant.")
+      throw new ChangelogLocalReaderGrantError(
+        "user_not_human",
+        "Only human Auth users can receive this grant.",
+      )
     }
     if (user.membershipStatus !== "ACTIVE") {
-      throw new Error("Auth user membership is not active.")
+      throw new ChangelogLocalReaderGrantError(
+        "user_inactive",
+        "Auth user membership is not active.",
+      )
     }
 
     const scope = await tx.scope.findUnique({
@@ -71,7 +115,10 @@ export async function grantChangelogLocalReader(
       select: { id: true, key: true },
     })
     if (!scope || scope.key !== CHANGELOG_READ_SCOPE) {
-      throw new Error("Changelog Reader scope is not registered.")
+      throw new ChangelogLocalReaderGrantError(
+        "scope_unavailable",
+        "Changelog Reader scope is not registered.",
+      )
     }
 
     const existingGrant = await tx.appGrant.findFirst({

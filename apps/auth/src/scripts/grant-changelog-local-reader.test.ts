@@ -92,6 +92,23 @@ describe("runGrantChangelogLocalReaderCommand", () => {
     expect(stderr).not.toHaveBeenCalled()
   })
 
+  it("does not report a committed grant as failed when stdout closes", async () => {
+    mocks.grant.mockResolvedValue({ changed: true })
+    const writeError = vi.fn()
+
+    await expect(
+      runGrantChangelogLocalReaderCommand({
+        argv: [],
+        readEmail: vi.fn().mockResolvedValue("developer@example.com"),
+        writeOutput: vi.fn(() => {
+          throw new Error("EPIPE")
+        }),
+        writeError,
+      }),
+    ).resolves.toBe(0)
+    expect(writeError).not.toHaveBeenCalled()
+  })
+
   it("hides identity, connection details, IDs, and database errors", async () => {
     const databaseUrl = "postgresql://operator:secret@db.internal/auth"
     mocks.grant.mockRejectedValue(
