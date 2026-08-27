@@ -30,11 +30,18 @@ the selected targets differ.
    `apps/rag/railway.toml`. Confirm the resulting deployment metadata names that
    config file; `configFile: null` means Railway ignored it.
 4. Merge through the normal PR-to-main path. Never run `railway up`.
-5. Confirm the pre-deploy command ran
-   `pnpm --filter @forge/rag db:migrate:deploy` successfully.
-6. Run `pnpm --filter @forge/rag db:migrate:status` with variables injected for
-   the fixed service, then run the metadata-only SQL below through an approved
-   database console.
+5. For the initial schema-only deployment, run the checked-in migration from a
+   clean checkout of merged `main` with Railway production variables and an
+   approved connection to `@forge/rag-postgres`. The application service has no
+   start command until feat-428, so Railway cannot yet reach its configured
+   pre-deploy phase. Do not add a placeholder runtime to bypass that boundary.
+6. Run `pnpm --filter @forge/rag db:migrate:status` and
+   `pnpm --filter @forge/rag db:drift:check` against the same target, then run
+   the metadata-only SQL below through the approved database connection.
+7. During feat-428, confirm the first runnable service deployment executes the
+   already configured `pnpm --filter @forge/rag db:migrate:deploy` pre-deploy
+   command successfully. That proves deployment automation; it is not a
+   prerequisite for provisioning the empty schema in this ticket.
 
 ```sql
 SELECT extname, extversion FROM pg_extension WHERE extname = 'vector';
@@ -53,7 +60,9 @@ SELECT
   (SELECT count(*) FROM documents) AS documents,
   (SELECT count(*) FROM chunks) AS chunks,
   (SELECT count(*) FROM chunk_embeddings) AS chunk_embeddings,
-  (SELECT count(*) FROM raw_documents) AS raw_documents;
+  (SELECT count(*) FROM raw_documents) AS raw_documents,
+  (SELECT count(*) FROM http_cache) AS http_cache,
+  (SELECT count(*) FROM robots_cache) AS robots_cache;
 SELECT 1 AS readable;
 ```
 

@@ -11,8 +11,8 @@ database into Admin.
 ## Status (August 27, 2026)
 
 - **Total tickets:** 13
-- **Complete:** 2
-- **In progress:** 1
+- **Complete:** 3
+- **In progress:** 0
 - **Not started:** 10
 - **Blocked:** 0
 
@@ -22,7 +22,7 @@ database into Admin.
 | -------------------------------------------------- | ------------------------------------------------------------- | ------------------------------------------------ | ----------- | ----------------------------------------------------- |
 | [feat-423](feat-423-rag-scaffold-and-roadmap.md)   | [#156](https://github.com/JesusFilm/jesusfilm-rag/issues/156) | Scaffold RAG space and durable roadmap           | complete    | [#2033](https://github.com/JesusFilm/forge/pull/2033) |
 | [feat-424](feat-424-rag-environment-contracts.md)  | [#157](https://github.com/JesusFilm/jesusfilm-rag/issues/157) | Port environment contracts and secrets procedure | complete    | [#2061](https://github.com/JesusFilm/forge/pull/2061) |
-| [feat-425](feat-425-rag-schema-empty-postgres.md)  | [#158](https://github.com/JesusFilm/jesusfilm-rag/issues/158) | Port schema and empty Railway Postgres           | in-progress | —                                                     |
+| [feat-425](feat-425-rag-schema-empty-postgres.md)  | [#158](https://github.com/JesusFilm/jesusfilm-rag/issues/158) | Port schema and empty Railway Postgres           | complete    | [#2064](https://github.com/JesusFilm/forge/pull/2064) |
 | [feat-426](feat-426-rag-shared-contracts-cores.md) | [#159](https://github.com/JesusFilm/jesusfilm-rag/issues/159) | Port shared contracts and pure cores             | not-started | —                                                     |
 | [feat-427](feat-427-rag-adapters-retrieval.md)     | [#160](https://github.com/JesusFilm/jesusfilm-rag/issues/160) | Port database adapters and retrieval tooling     | not-started | —                                                     |
 | [feat-428](feat-428-rag-http-service.md)           | [#161](https://github.com/JesusFilm/jesusfilm-rag/issues/161) | Port and deploy HTTP retrieval service           | not-started | —                                                     |
