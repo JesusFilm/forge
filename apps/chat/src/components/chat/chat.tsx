@@ -1,7 +1,14 @@
 "use client"
 
-import { useEffect, useLayoutEffect, useRef, type RefObject } from "react"
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  type RefObject,
+} from "react"
 
+import { type SendPromptSource } from "@/lib/chat-stub"
 import { type Conversation, type ReplayState } from "@/lib/conversations"
 
 import { Composer } from "./composer"
@@ -41,7 +48,9 @@ type ChatProps = {
   /** feat-270: forwarded to the composer so the shell can focus it. */
   composerTextareaRef?: RefObject<HTMLTextAreaElement | null>
   onDraftChange: (value: string) => void
-  onSend: (text: string) => void
+  /** feat-366: the composer sends untagged; a follow-up chip tags its send
+   * `follow_up` so mastra can tell suggested questions from typed ones. */
+  onSend: (text: string, promptSource?: SendPromptSource) => void
   onStop?: () => void
   onRetryReplay?: () => void
   onStartNew?: () => void
@@ -132,6 +141,7 @@ export function Chat({
   onStartNew = () => {},
 }: ChatProps) {
   const logRef = useRef<HTMLDivElement>(null)
+  const logRegionRef = useRef<HTMLDivElement>(null)
   const bandRef = useRef<HTMLDivElement>(null)
   // Last observed in-flight assistant id, so the scroll effect can tell a
   // finalize (non-null → null) apart from ordinary transcript growth.
@@ -197,6 +207,17 @@ export function Chat({
     return () => observer.disconnect()
   }, [])
 
+  // feat-366 focus handoff, moment ONE: the chip unmounts and the textarea
+  // goes `disabled` on the pending send, so neither can hold focus — park it
+  // on the log. Moment TWO is the composer's own not-pending effect.
+  const handleSelectFollowUp = useCallback(
+    (question: string) => {
+      onSend(question, "follow_up")
+      logRegionRef.current?.focus()
+    },
+    [onSend],
+  )
+
   const sendBlockedReason =
     replayState === "loading"
       ? ("loading" as const)
@@ -222,10 +243,14 @@ export function Chat({
             bottom even when the transcript is shorter than the viewport. */}
         <div className="flex min-h-full flex-col">
           <div className="flex-1 px-8 pt-12">
+            {/* tabIndex -1 makes the region a programmatic focus target for
+                the feat-366 chip handoff; it stays out of the tab order. */}
             <div
+              ref={logRegionRef}
               role="log"
+              tabIndex={-1}
               aria-label="Conversation"
-              className="mx-auto w-full max-w-[680px] pb-6"
+              className="mx-auto w-full max-w-[680px] pb-6 outline-none"
             >
               {replayState === "failed" ? (
                 <ReplayFailed onRetry={onRetryReplay} />
@@ -239,6 +264,8 @@ export function Chat({
                 <MessageList
                   messages={conversation.messages}
                   streamingMessageId={streamingMessageId}
+                  onSelectFollowUp={handleSelectFollowUp}
+                  followUpsDisabled={pending || sendBlockedReason !== null}
                 />
               )}
             </div>

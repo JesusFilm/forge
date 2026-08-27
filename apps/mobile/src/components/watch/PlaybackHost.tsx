@@ -318,6 +318,14 @@ function ActivePlaybackHost({
 
   // R4: what the player already holds, so a screen remounting onto the video it
   // is playing adopts it rather than reloading it from zero.
+  // Status mirrored from the listener below so the published play flag can
+  // tell a rebuffer from a pause; the latch separates a rebuffer from an
+  // initial load, which never played.
+  const [playerStatus, setPlayerStatus] = useState<VideoPlayerStatus | null>(
+    null,
+  )
+  const hasPlayedRef = useRef(false)
+
   const loadedSourceRef = useRef<LoadedSource | null>(null)
   const requestLanguage =
     request.session?.languageSlug ?? request.progressLanguageSlug ?? null
@@ -730,6 +738,7 @@ function ActivePlaybackHost({
       "statusChange",
       ({ status }: { status: VideoPlayerStatus }) => {
         store.setLoadFailed(status === "error")
+        setPlayerStatus(status)
       },
     )
     return () => {
@@ -752,6 +761,10 @@ function ActivePlaybackHost({
       // Player already released
     }
     store.setLoadFailed(current === "error")
+    setPlayerStatus(current)
+    // A new source has not played yet, so its "loading" is an initial load and
+    // must not read as playback.
+    hasPlayedRef.current = false
   }, [store, player, request.streamingUrl])
 
   // ── The floating window (U7) ──────────────────────────────────────────────
@@ -1321,6 +1334,28 @@ function ActivePlaybackHost({
       ],
     }
   }, [shrink, motion])
+
+  // A mid-playback rebuffer drops `isPlaying` on both platforms (Android
+  // mirrors ExoPlayer's STATE_BUFFERING, iOS reports waitingToPlayAtSpecified-
+  // Rate), so publishing it raw makes every network hiccup read as a pause.
+  if (isPlaying) hasPlayedRef.current = true
+  const watching =
+    isPlaying || (hasPlayedRef.current && playerStatus === "loading")
+
+  // Publish playback for layers the host cannot reach by prop (the route's
+  // ambient wash). Mirrors the `setLoadFailed` bridge; the store ignores a
+  // repeat value, so this costs nothing on a re-render.
+  useEffect(() => {
+    store.setPlaying(watching)
+  }, [store, watching])
+
+  // A host that unmounts mid-playback would otherwise leave the flag stuck true
+  // and the wash faded out on a screen with no player at all.
+  useEffect(() => {
+    return () => {
+      store.setPlaying(false)
+    }
+  }, [store])
 
   // Armed only while this video actually runs, so pressing Home over a paused
   // video opens no window — and kept armed through the hold, because expo-video
