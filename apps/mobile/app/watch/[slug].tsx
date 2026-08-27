@@ -224,7 +224,13 @@ export default function WatchVideoPage() {
     }
   }, [decodedSlug, video, normalized, setVideo])
 
-  const bibleQuotes = useBibleVerses(video?.bibleCitations ?? EMPTY_CITATIONS)
+  // Keyed on the ROUTE slug, not the session video id: the session trails
+  // navigation by a commit, and the companion query's variable must match the
+  // player-gating query's for the cache write to normalize onto it (KTD2).
+  const bibleQuotes = useBibleVerses(
+    decodedSlug,
+    video?.bibleCitations ?? EMPTY_CITATIONS,
+  )
 
   // Captions on (possibly carried over a language switch) → make sure the
   // active dub's subtitles are fetched so the player has a track to show.
@@ -621,7 +627,7 @@ export default function WatchVideoPage() {
       ? {
           __typename: "BibleQuotesCarouselBlock",
           heading: "Bible Quotes",
-          quotes: bibleQuotes,
+          quotes: bibleQuotes.cards,
         }
       : null
 
