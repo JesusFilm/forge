@@ -84,11 +84,82 @@ describe("WatchAmbient", () => {
     expect(ios).toBeGreaterThan(android)
   })
 
-  it("cross-fades natively rather than with Animated", () => {
+  it("cross-fades the POSTER natively rather than with Animated", () => {
     // A looped Animated.sequence freezes after one pass on Fabric; expo-image's
     // own transition sidesteps that whole class.
+    //
+    // This assertion used to be a blanket `not.toContain("Animated")`. That was
+    // too wide once the layer gained the play/pause fade, which is a single
+    // Animated.timing — the SAFE form the repo rule explicitly allows. Narrowed
+    // to the actual hazard so the Fabric trap stays covered: the poster's own
+    // cross-fade must remain expo-image's, and no LOOPED sequence may appear.
     expect(SOURCE).toContain("transition={AMBIENT_FADE_MS}")
-    expect(SOURCE).not.toContain("Animated")
+    expect(SOURCE).not.toContain("Animated.loop")
+    expect(SOURCE).not.toContain("Animated.sequence")
+  })
+
+  it("retires the wash while the video plays, and brings it back on pause", () => {
+    // The wash is POSTER-derived, so once playback moves past that frame it
+    // stops describing what is on screen — and on a video with baked-in black
+    // bars it frames them. It reads the one root player's state through the
+    // module-scope store because the host is a `<Stack>` SIBLING: no context or
+    // prop path reaches this layer.
+    expect(SOURCE).toContain("usePlaybackPlaying")
+    expect(SOURCE).toContain("PLAYING_OPACITY_MULTIPLIER")
+  })
+
+  it("ramps that fade slowly enough to read as deliberate", () => {
+    // A quick dip beside a moving video reads as a glitch. Pinned as a FLOOR,
+    // not an exact value, so the duration stays tunable without churning this.
+    const m = SOURCE.match(/PLAY_FADE_MS = (\d+)/)
+    expect(m).not.toBeNull()
+    expect(Number(m![1])).toBeGreaterThanOrEqual(2000)
+  })
+
+  it("animates its own node, never the one carrying the contrast ceiling", () => {
+    // The killer regression: a second `opacity` in the SAME style array as
+    // `opacity: AMBIENT_MAX_OPACITY` wins, silently discarding the status-bar
+    // contrast ceiling while the ceiling's own guard above stays green — the
+    // constant is still present, just overridden.
+    //
+    // Positive half first, so the negative below cannot pass vacuously by the
+    // fade having been deleted outright.
+    expect(SOURCE).toMatch(/StyleSheet\.absoluteFill, \{ opacity: playFade \}/)
+    expect(SOURCE).not.toMatch(/styles\.root[^\]]*opacity: playFade/)
+    // ...and the ceiling must still sit on the group, which is also the node
+    // that needs Android's offscreen compositing for its two children.
+    expect(SOURCE).toMatch(/root: \{[\s\S]*?opacity: AMBIENT_MAX_OPACITY/)
+    expect(SOURCE).toMatch(
+      /needsOffscreenAlphaCompositing[\s\S]{0,120}style=\{styles\.root\}/,
+    )
+  })
+
+  it("hands over to BLACK, so letterbox bars sit on their own colour", () => {
+    // Handing over to BG_COLOR instead would leave the bars ~28 levels darker
+    // than their surround — quieter than the poster wash, but still a visible
+    // sandwich on a 2.39:1 video. Pure black is what the bars actually are.
+    expect(SOURCE).toContain("BLACK_FADE_COLORS")
+    expect(SOURCE).toMatch(/BLACK_FADE_COLORS = \[BLACK, BLACK, BG_COLOR\]/)
+  })
+
+  it("dissolves that black into BG_COLOR instead of ending it on the edge", () => {
+    // An opaque band that stops ON the clipped bottom edge is exactly the seam
+    // this layer was already fixed for once (the Android per-child alpha bug).
+    // The black therefore holds to the player's bottom and ramps across the
+    // bleed — and that midpoint is DERIVED, because the inset and the screen
+    // width both move it. A hard-coded fraction would be wrong on most devices.
+    expect(SOURCE).toMatch(
+      /blackLocations = \[[\s\S]*?topInset \+ playerHeight/,
+    )
+    expect(SOURCE).toMatch(/locations=\{blackLocations\}/)
+  })
+
+  it("drives both layers from ONE value, so they cannot both be up", () => {
+    // Two independent animations would let a slow device show the wash and the
+    // black together (too dark) or neither (a flash of the page behind).
+    expect(SOURCE).toMatch(
+      /opacity: playFade\.interpolate\(\{[\s\S]*?outputRange: \[1, 0\]/,
+    )
   })
 
   it("mounts as a SIBLING of the player dock, not inside it", () => {

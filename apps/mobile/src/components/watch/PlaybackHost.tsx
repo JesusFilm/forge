@@ -1325,6 +1325,21 @@ function ActivePlaybackHost({
   // Armed only while this video actually runs, so pressing Home over a paused
   // video opens no window — and kept armed through the hold, because expo-video
   // re-elects on every params change and only the elected view is re-parented.
+  // Publish playback for layers the host cannot reach by prop (the route's
+  // ambient wash). Mirrors the `setLoadFailed` bridge; the store ignores a
+  // repeat value, so this costs nothing on a re-render.
+  useEffect(() => {
+    store.setPlaying(isPlaying)
+  }, [store, isPlaying])
+
+  // A host that unmounts mid-playback would otherwise leave the flag stuck true
+  // and the wash faded out on a screen with no player at all.
+  useEffect(() => {
+    return () => {
+      store.setPlaying(false)
+    }
+  }, [store])
+
   const automaticPip = isPlaying || pipHeld
   const pipViewProps = useMemo(
     () => pictureInPictureViewProps({ automatic: automaticPip }),
