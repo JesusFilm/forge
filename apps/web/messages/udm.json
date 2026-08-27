@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Аудио кылез воштӥл",
     "home": "JesusFilm шӧр",
     "closeSearch": "Утчалонез пыдӥл",
-    "submitSearch": "Утчалы"
+    "submitSearch": "Утчалы",
+    "library": "Library"
   },
   "SearchOverlay": {
     "dialogLabel": "Видеоос утчалы но выжыты",
@@ -467,6 +468,7 @@
     "sports": "Спорт",
     "collections": "Сборникъёс",
     "subtitlesOnly": "Только субтитръёс",
+    "backToTop": "Back to top",
     "newlyAdded": "Нырыз пыдӥсез",
     "newVideosTitle": "{language} кылын тӥ христиан видеоос",
     "newestFirst": "Нырыз тӥ ӧтӥсько",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Кузьы видеоос",
     "videosFromCollection": "{collection} вылысь видеоос.",
     "standaloneDescription": "Та кылын кузьы видеоос.",
-    "openCollection": "Сборникез ӧтӥл"
+    "openCollection": "Сборникез ӧтӥл",
+    "filters": "Filters",
+    "filterLength": "Length",
+    "filterLength_under5": "Under 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "30+ min",
+    "filterType": "Type",
+    "clearFilters": "Clear filters",
+    "filterResults": "{count} of {total} shown",
+    "noFilterResults": "No videos match these filters. Try clearing one.",
+    "filterAdded": "Added",
+    "filterAdded_60d": "Last 60 days",
+    "filterAdded_6m": "Last 6 months",
+    "filterAdded_12m": "Last 12 months"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project — ваньтон",

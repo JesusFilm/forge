@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Sukatan ti pagsasao ti audio",
     "home": "Balay ti JesusFilm",
     "closeSearch": "Isarda ti panagsapul",
-    "submitSearch": "Sapulen"
+    "submitSearch": "Sapulen",
+    "library": "Library"
   },
   "SearchOverlay": {
     "dialogLabel": "Sapulen ken agsukisok kadagiti video",
@@ -467,6 +468,7 @@
     "sports": "Aramat",
     "collections": "Dagiti kalap",
     "subtitlesOnly": "Subtitles laeng",
+    "backToTop": "Back to top",
     "newlyAdded": "Bag-o a naisarakan",
     "newVideosTitle": "Baro a Kristiano a video iti {language}",
     "newestFirst": "Pinakabaro immuna",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Kabesad a video",
     "videosFromCollection": "Dagiti video manipud iti {collection}.",
     "standaloneDescription": "Dagiti kabesad a video iti daytoy a pagsasao.",
-    "openCollection": "Ilukat ti kalap"
+    "openCollection": "Ilukat ti kalap",
+    "filters": "Filters",
+    "filterLength": "Length",
+    "filterLength_under5": "Under 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "30+ min",
+    "filterType": "Type",
+    "clearFilters": "Clear filters",
+    "filterResults": "{count} of {total} shown",
+    "noFilterResults": "No videos match these filters. Try clearing one.",
+    "filterAdded": "Added",
+    "filterAdded_60d": "Last 60 days",
+    "filterAdded_6m": "Last 6 months",
+    "filterAdded_12m": "Last 12 months"
   },
   "WatchHome": {
     "pageTitle": "Pagbuyaan ti Jesus Film Project",

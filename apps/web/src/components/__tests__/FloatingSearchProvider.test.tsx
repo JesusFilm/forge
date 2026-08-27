@@ -2614,12 +2614,24 @@ describe("FloatingSearchProvider — language videos link", () => {
       const link = languageVideosLink()
       expect(link).not.toBeNull()
       expect(link?.getAttribute("href")).toBe(expectedHref)
-      // Bidi isolation keeps an RTL language name from reordering the
-      // surrounding words of the translated sentence.
-      expect(link?.getAttribute("aria-label")).toBe(
+      // The control now carries a visible "Library" label, so that text — not
+      // an `aria-label` — is its accessible name. An `aria-label` of "See all
+      // videos in X" would not contain the visible label, breaking WCAG 2.5.3
+      // Label in Name.
+      expect(link?.textContent?.trim()).toBe("Library")
+      expect(link?.hasAttribute("aria-label")).toBe(false)
+      // The language-specific phrasing survives as the hover tooltip. Bidi
+      // isolation keeps an RTL language name from reordering the surrounding
+      // words of the translated sentence.
+      expect(link?.getAttribute("title")).toBe(
         `See all videos in ${ISOLATE_START}${expectedLanguage}${ISOLATE_END}`,
       )
-      expect(link?.getAttribute("title")).toBe(link?.getAttribute("aria-label"))
+      // Glyph still present alongside the label, and it is the shared video-
+      // library glyph — the watch-home "See all video collections" CTA renders
+      // the same one via `WatchLibraryIcon`.
+      expect(link?.querySelector("svg")?.getAttribute("class")).toContain(
+        "lucide-list-video",
+      )
     },
   )
 

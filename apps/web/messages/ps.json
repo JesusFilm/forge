@@ -180,7 +180,8 @@
     "changeAudioLanguage": "د غږ ژبه بدله کړئ",
     "home": "د JesusFilm کورپاڼه",
     "closeSearch": "لټون وتړئ",
-    "submitSearch": "ولټوئ"
+    "submitSearch": "ولټوئ",
+    "library": "Library"
   },
   "SearchOverlay": {
     "dialogLabel": "ویډیوګانې ولټوئ او وپلټئ",
@@ -467,6 +468,7 @@
     "sports": "ورزش",
     "collections": "ټولګې",
     "subtitlesOnly": "یوازې سرلیکونه",
+    "backToTop": "Back to top",
     "newlyAdded": "تازه زیات شوي",
     "newVideosTitle": "په {language} کې نوې مسيحي ویډیوګانې",
     "newestFirst": "تر ټولو نوي لومړی",
@@ -497,7 +499,21 @@
     "standaloneVideos": "جلا ویډیوګانې",
     "videosFromCollection": "له {collection} څخه ویډیوګانې.",
     "standaloneDescription": "په دې ژبه کې جلا ویډیوګانې.",
-    "openCollection": "ټولګه پرانیزئ"
+    "openCollection": "ټولګه پرانیزئ",
+    "filters": "Filters",
+    "filterLength": "Length",
+    "filterLength_under5": "Under 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "30+ min",
+    "filterType": "Type",
+    "clearFilters": "Clear filters",
+    "filterResults": "{count} of {total} shown",
+    "noFilterResults": "No videos match these filters. Try clearing one.",
+    "filterAdded": "Added",
+    "filterAdded_60d": "Last 60 days",
+    "filterAdded_6m": "Last 6 months",
+    "filterAdded_12m": "Last 12 months"
   },
   "WatchHome": {
     "pageTitle": "د Jesus Film Project Watch",

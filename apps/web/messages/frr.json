@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Audiosprak ännern",
     "home": "JesusFilm-hooftside",
     "closeSearch": "Sook sluten",
-    "submitSearch": "Soken"
+    "submitSearch": "Soken",
+    "library": "Library"
   },
   "SearchOverlay": {
     "dialogLabel": "Video's soken un bruken",
@@ -467,6 +468,7 @@
     "sports": "Sport",
     "collections": "Sammlingen",
     "subtitlesOnly": "Nuur Ündertitel",
+    "backToTop": "Back to top",
     "newlyAdded": "Nij tafoegd",
     "newVideosTitle": "Nije kristelike Video's in {language}",
     "newestFirst": "Nijst foaranan",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Onafhängige Video's",
     "videosFromCollection": "Video's ut {collection}.",
     "standaloneDescription": "Onafhängige Video's in dizze Sprak.",
-    "openCollection": "Sammlung oopen"
+    "openCollection": "Sammlung oopen",
+    "filters": "Filters",
+    "filterLength": "Length",
+    "filterLength_under5": "Under 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "30+ min",
+    "filterType": "Type",
+    "clearFilters": "Clear filters",
+    "filterResults": "{count} of {total} shown",
+    "noFilterResults": "No videos match these filters. Try clearing one.",
+    "filterAdded": "Added",
+    "filterAdded_60d": "Last 60 days",
+    "filterAdded_6m": "Last 6 months",
+    "filterAdded_12m": "Last 12 months"
   },
   "WatchHome": {
     "pageTitle": "Kieken | Jesus Film Project",

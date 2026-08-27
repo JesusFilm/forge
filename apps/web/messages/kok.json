@@ -180,7 +180,8 @@
     "changeAudioLanguage": "ऑडिओ भास बदला",
     "home": "JesusFilm मुखपान",
     "closeSearch": "शोध बंद करात",
-    "submitSearch": "सोदात"
+    "submitSearch": "सोदात",
+    "library": "Library"
   },
   "SearchOverlay": {
     "dialogLabel": "व्हिडिओ सोदात आनी ब्राऊझ करात",
@@ -467,6 +468,7 @@
     "sports": "क्रीडा",
     "collections": "संग्रह",
     "subtitlesOnly": "फकत उपशीर्षकां",
+    "backToTop": "Back to top",
     "newlyAdded": "नव्येन जोडिल्लो",
     "newVideosTitle": "{language} त नवे ख्रिस्ती व्हिडिओ",
     "newestFirst": "सर्वांत नवें प्रथम",
@@ -497,7 +499,21 @@
     "standaloneVideos": "स्वतंत्र व्हिडिओ",
     "videosFromCollection": "{collection} तले व्हिडिओ.",
     "standaloneDescription": "ह्या भाशेंतले स्वतंत्र व्हिडिओ.",
-    "openCollection": "संग्रह उगडात"
+    "openCollection": "संग्रह उगडात",
+    "filters": "Filters",
+    "filterLength": "Length",
+    "filterLength_under5": "Under 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "30+ min",
+    "filterType": "Type",
+    "clearFilters": "Clear filters",
+    "filterResults": "{count} of {total} shown",
+    "noFilterResults": "No videos match these filters. Try clearing one.",
+    "filterAdded": "Added",
+    "filterAdded_60d": "Last 60 days",
+    "filterAdded_6m": "Last 6 months",
+    "filterAdded_12m": "Last 12 months"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project पळोवपाचें पान",

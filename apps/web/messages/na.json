@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Audio language bu",
     "home": "JesusFilm home eo",
     "closeSearch": "Search e kar",
-    "submitSearch": "Bika"
+    "submitSearch": "Bika",
+    "library": "Library"
   },
   "SearchOverlay": {
     "dialogLabel": "Video ae buata me bika",
@@ -467,6 +468,7 @@
     "sports": "Sports re",
     "collections": "Collections re",
     "subtitlesOnly": "Subtitles degen",
+    "backToTop": "Back to top",
     "newlyAdded": "Bwe e karen",
     "newVideosTitle": "Christian videos bwe {language} ne",
     "newestFirst": "Bwe first",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Standalone videos re",
     "videosFromCollection": "Videos {collection} ne.",
     "standaloneDescription": "Language eo re standalone videos.",
-    "openCollection": "Collection e open"
+    "openCollection": "Collection e open",
+    "filters": "Filters",
+    "filterLength": "Length",
+    "filterLength_under5": "Under 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "30+ min",
+    "filterType": "Type",
+    "clearFilters": "Clear filters",
+    "filterResults": "{count} of {total} shown",
+    "noFilterResults": "No videos match these filters. Try clearing one.",
+    "filterAdded": "Added",
+    "filterAdded_60d": "Last 60 days",
+    "filterAdded_6m": "Last 6 months",
+    "filterAdded_12m": "Last 12 months"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project Watch eo",

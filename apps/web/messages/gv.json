@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Caghlaa çhengey yn chlashtyn",
     "home": "Cheead JesusFilm",
     "closeSearch": "Doo shirrey",
-    "submitSearch": "Shirrey"
+    "submitSearch": "Shirrey",
+    "library": "Library"
   },
   "SearchOverlay": {
     "dialogLabel": "Shirrey as scrutaghey videoyn",
@@ -467,6 +468,7 @@
     "sports": "Spoyrt",
     "collections": "Co-chruinaghtyn",
     "subtitlesOnly": "Focklyn-foyshe ny lomarcan",
+    "backToTop": "Back to top",
     "newlyAdded": "Airhoyn noa",
     "newVideosTitle": "Videoyn Creestee noa ayns {language}",
     "newestFirst": "Nys noa toshiaght",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Videoyn hene shaynt",
     "videosFromCollection": "Videoyn ass {collection}.",
     "standaloneDescription": "Videoyn hene shaynt ayns y çhengey shoh.",
-    "openCollection": "Foashley co-chruinnaght"
+    "openCollection": "Foashley co-chruinnaght",
+    "filters": "Filters",
+    "filterLength": "Length",
+    "filterLength_under5": "Under 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "30+ min",
+    "filterType": "Type",
+    "clearFilters": "Clear filters",
+    "filterResults": "{count} of {total} shown",
+    "noFilterResults": "No videos match these filters. Try clearing one.",
+    "filterAdded": "Added",
+    "filterAdded_60d": "Last 60 days",
+    "filterAdded_6m": "Last 6 months",
+    "filterAdded_12m": "Last 12 months"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project — Jeeaghyn",

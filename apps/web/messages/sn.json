@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Chinja mutauro wekuteerera",
     "home": "Peji guru reJesusFilm",
     "closeSearch": "Vhara kutsvaga",
-    "submitSearch": "Tsvaga"
+    "submitSearch": "Tsvaga",
+    "library": "Library"
   },
   "SearchOverlay": {
     "dialogLabel": "Tsvaga uye browse mavhidhiyo",
@@ -467,6 +468,7 @@
     "sports": "Mitambo",
     "collections": "Muunganidzwa",
     "subtitlesOnly": "Zvidhindo chete",
+    "backToTop": "Back to top",
     "newlyAdded": "Zvichangobva kuwedzerwa",
     "newVideosTitle": "Mavhidhiyo echiKristu matsva mu {language}",
     "newestFirst": "Zvitsva kutanga",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Mavhidhiyo akazvimirira",
     "videosFromCollection": "Mavhidhiyo kubva mu {collection}.",
     "standaloneDescription": "Mavhidhiyo akazvimirira mumutauro uyu.",
-    "openCollection": "Vhura muunganidzwa"
+    "openCollection": "Vhura muunganidzwa",
+    "filters": "Filters",
+    "filterLength": "Length",
+    "filterLength_under5": "Under 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "30+ min",
+    "filterType": "Type",
+    "clearFilters": "Clear filters",
+    "filterResults": "{count} of {total} shown",
+    "noFilterResults": "No videos match these filters. Try clearing one.",
+    "filterAdded": "Added",
+    "filterAdded_60d": "Last 60 days",
+    "filterAdded_6m": "Last 6 months",
+    "filterAdded_12m": "Last 12 months"
   },
   "WatchHome": {
     "pageTitle": "Tarisa paJesus Film Project",

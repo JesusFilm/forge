@@ -180,7 +180,8 @@
     "changeAudioLanguage": "ऑडियो भाषा बदलें",
     "home": "JesusFilm होम",
     "closeSearch": "खोज बंद करें",
-    "submitSearch": "खोजें"
+    "submitSearch": "खोजें",
+    "library": "Library"
   },
   "SearchOverlay": {
     "dialogLabel": "वीडियो खोजें और ब्राउज़ करें",
@@ -467,6 +468,7 @@
     "sports": "खेल",
     "collections": "संग्रह",
     "subtitlesOnly": "केवल उपशीर्षक",
+    "backToTop": "Back to top",
     "newlyAdded": "नया जोड़ा गया",
     "newVideosTitle": "{language} में नए ईसाई वीडियो",
     "newestFirst": "नवीनतम पहले",
@@ -497,7 +499,21 @@
     "standaloneVideos": "स्वतंत्र वीडियो",
     "videosFromCollection": "{collection} के वीडियो।",
     "standaloneDescription": "इस भाषा में स्वतंत्र वीडियो।",
-    "openCollection": "संग्रह खोलें"
+    "openCollection": "संग्रह खोलें",
+    "filters": "Filters",
+    "filterLength": "Length",
+    "filterLength_under5": "Under 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "30+ min",
+    "filterType": "Type",
+    "clearFilters": "Clear filters",
+    "filterResults": "{count} of {total} shown",
+    "noFilterResults": "No videos match these filters. Try clearing one.",
+    "filterAdded": "Added",
+    "filterAdded_60d": "Last 60 days",
+    "filterAdded_6m": "Last 6 months",
+    "filterAdded_12m": "Last 12 months"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project वॉच",

@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Zmieni jãzëk audio",
     "home": "Strona domô JesusFilm",
     "closeSearch": "Zatrzëmôj szëkbã",
-    "submitSearch": "Szëkôj"
+    "submitSearch": "Szëkôj",
+    "library": "Library"
   },
   "SearchOverlay": {
     "dialogLabel": "Szëkôj i przerëcëwôj wideo",
@@ -467,6 +468,7 @@
     "sports": "Sport",
     "collections": "Kolekcje",
     "subtitlesOnly": "Tylko titrë",
+    "backToTop": "Back to top",
     "newlyAdded": "Nowò dodóne",
     "newVideosTitle": "Nowé chrzéścijańsczé wideo pò {language}",
     "newestFirst": "Nônówsze nôprzéd",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Samòstójné wideo",
     "videosFromCollection": "Wideo z {collection}.",
     "standaloneDescription": "Samòstójné wideo w tim jãzëku.",
-    "openCollection": "Òtemkni kolekcjã"
+    "openCollection": "Òtemkni kolekcjã",
+    "filters": "Filters",
+    "filterLength": "Length",
+    "filterLength_under5": "Under 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "30+ min",
+    "filterType": "Type",
+    "clearFilters": "Clear filters",
+    "filterResults": "{count} of {total} shown",
+    "noFilterResults": "No videos match these filters. Try clearing one.",
+    "filterAdded": "Added",
+    "filterAdded_60d": "Last 60 days",
+    "filterAdded_6m": "Last 6 months",
+    "filterAdded_12m": "Last 12 months"
   },
   "WatchHome": {
     "pageTitle": "Òglądôj | Jesus Film Project",

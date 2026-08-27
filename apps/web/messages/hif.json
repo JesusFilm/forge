@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Audio bhasha badliye",
     "home": "JesusFilm ka home page",
     "closeSearch": "Search band kariye",
-    "submitSearch": "Khojiye"
+    "submitSearch": "Khojiye",
+    "library": "Library"
   },
   "SearchOverlay": {
     "dialogLabel": "Video khojiye aur browse kariye",
@@ -467,6 +468,7 @@
     "sports": "Khel",
     "collections": "Sab collections",
     "subtitlesOnly": "Sirf subtitles",
+    "backToTop": "Back to top",
     "newlyAdded": "Abhi joda gaya",
     "newVideosTitle": "{language} me naye Christian videos",
     "newestFirst": "Sab se naye pehle",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Alag videos",
     "videosFromCollection": "{collection} se videos.",
     "standaloneDescription": "Is bhasha me alag videos.",
-    "openCollection": "Collection kholiye"
+    "openCollection": "Collection kholiye",
+    "filters": "Filters",
+    "filterLength": "Length",
+    "filterLength_under5": "Under 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "30+ min",
+    "filterType": "Type",
+    "clearFilters": "Clear filters",
+    "filterResults": "{count} of {total} shown",
+    "noFilterResults": "No videos match these filters. Try clearing one.",
+    "filterAdded": "Added",
+    "filterAdded_60d": "Last 60 days",
+    "filterAdded_6m": "Last 6 months",
+    "filterAdded_12m": "Last 12 months"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project par dekhiye",

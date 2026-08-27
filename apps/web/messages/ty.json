@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Taui i te reo oro",
     "home": "Te fare JésusFilm",
     "closeSearch": "A tapiri i te imiraa",
-    "submitSearch": "A imi"
+    "submitSearch": "A imi",
+    "library": "Library"
   },
   "SearchOverlay": {
     "dialogLabel": "A imi e a hi'o i te mau video",
@@ -467,6 +468,7 @@
     "sports": "Te mau hākinakina",
     "collections": "Te mau ha'aputuhia",
     "subtitlesOnly": "Te mau subtitles ana'e",
+    "backToTop": "Back to top",
     "newlyAdded": "Ua tāpiri-apî-hia",
     "newVideosTitle": "Te mau video Kerisetiano apî i roto i te {language}",
     "newestFirst": "Te apî roa na mua",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Te mau video ta'ahiraa",
     "videosFromCollection": "Te mau video mai roto mai i te {collection}.",
     "standaloneDescription": "Te mau video ta'ahiraa i roto i teie reo.",
-    "openCollection": "A iriti i te ha'aputuhia"
+    "openCollection": "A iriti i te ha'aputuhia",
+    "filters": "Filters",
+    "filterLength": "Length",
+    "filterLength_under5": "Under 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "30+ min",
+    "filterType": "Type",
+    "clearFilters": "Clear filters",
+    "filterResults": "{count} of {total} shown",
+    "noFilterResults": "No videos match these filters. Try clearing one.",
+    "filterAdded": "Added",
+    "filterAdded_60d": "Last 60 days",
+    "filterAdded_6m": "Last 6 months",
+    "filterAdded_12m": "Last 12 months"
   },
   "WatchHome": {
     "pageTitle": "Mata'ita'i — Jesus Film Project",

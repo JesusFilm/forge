@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Audiotaal wijzigen",
     "home": "JesusFilm-startpagina",
     "closeSearch": "Zoeken sluiten",
-    "submitSearch": "Zoeken"
+    "submitSearch": "Zoeken",
+    "library": "Library"
   },
   "SearchOverlay": {
     "dialogLabel": "Video's zoeken en doorbladeren",
@@ -283,6 +284,7 @@
     "sports": "Sport",
     "collections": "Collecties",
     "subtitlesOnly": "Alleen ondertiteling",
+    "backToTop": "Back to top",
     "newlyAdded": "Nieuw toegevoegd",
     "newVideosTitle": "Nieuwe christelijke video's in {language}",
     "newestFirst": "Nieuwste eerst",
@@ -313,7 +315,21 @@
     "standaloneVideos": "Losstaande video's",
     "videosFromCollection": "Video's uit {collection}.",
     "standaloneDescription": "Losstaande video's in deze taal.",
-    "openCollection": "Collectie openen"
+    "openCollection": "Collectie openen",
+    "filters": "Filters",
+    "filterLength": "Length",
+    "filterLength_under5": "Under 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "30+ min",
+    "filterType": "Type",
+    "clearFilters": "Clear filters",
+    "filterResults": "{count} of {total} shown",
+    "noFilterResults": "No videos match these filters. Try clearing one.",
+    "filterAdded": "Added",
+    "filterAdded_60d": "Last 60 days",
+    "filterAdded_6m": "Last 6 months",
+    "filterAdded_12m": "Last 12 months"
   },
   "WatchHome": {
     "pageTitle": "Kijken bij Jesus Film Project",

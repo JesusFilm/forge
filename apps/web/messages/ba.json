@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Аудио телен үҙгәртеү",
     "home": "JesusFilm баш бите",
     "closeSearch": "Эҙләүҙе ябыу",
-    "submitSearch": "Эҙләү"
+    "submitSearch": "Эҙләү",
+    "library": "Library"
   },
   "SearchOverlay": {
     "dialogLabel": "Видеоларҙы эҙләү һәм ҡарау",
@@ -467,6 +468,7 @@
     "sports": "Спорт",
     "collections": "Йыйынтыҡтар",
     "subtitlesOnly": "Тик субтитрҙар",
+    "backToTop": "Back to top",
     "newlyAdded": "Яңыраҡ өҫтәлгән",
     "newVideosTitle": "{language} телендәге яңы христиан видеолары",
     "newestFirst": "Иң яңылары өҫтә",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Айырым видеолар",
     "videosFromCollection": "{collection} йыйынтығынан видеолар.",
     "standaloneDescription": "Был телдәге айырым видеолар.",
-    "openCollection": "Йыйынтыҡты асыу"
+    "openCollection": "Йыйынтыҡты асыу",
+    "filters": "Filters",
+    "filterLength": "Length",
+    "filterLength_under5": "Under 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "30+ min",
+    "filterType": "Type",
+    "clearFilters": "Clear filters",
+    "filterResults": "{count} of {total} shown",
+    "noFilterResults": "No videos match these filters. Try clearing one.",
+    "filterAdded": "Added",
+    "filterAdded_60d": "Last 60 days",
+    "filterAdded_6m": "Last 6 months",
+    "filterAdded_12m": "Last 12 months"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project ҡарау",

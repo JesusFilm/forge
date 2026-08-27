@@ -180,7 +180,8 @@
     "changeAudioLanguage": "آڊيو ٻولي تبديل ڪريو",
     "home": "JesusFilm هوم",
     "closeSearch": "ڳولا بند ڪريو",
-    "submitSearch": "ڳوليو"
+    "submitSearch": "ڳوليو",
+    "library": "Library"
   },
   "SearchOverlay": {
     "dialogLabel": "وڊيوز ڳوليو ۽ براؤز ڪريو",
@@ -467,6 +468,7 @@
     "sports": "راندين",
     "collections": "مجموعا",
     "subtitlesOnly": "صرف سب ٽائيٽلز",
+    "backToTop": "Back to top",
     "newlyAdded": "نئون شامل ٿيل",
     "newVideosTitle": "{language} ۾ نيون مسيحي وڊيوز",
     "newestFirst": "سڀ کان نئون پهريان",
@@ -497,7 +499,21 @@
     "standaloneVideos": "الڳ وڊيوز",
     "videosFromCollection": "{collection} مان وڊيوز.",
     "standaloneDescription": "هن ٻولي ۾ الڳ وڊيوز.",
-    "openCollection": "مجموعو کوليو"
+    "openCollection": "مجموعو کوليو",
+    "filters": "Filters",
+    "filterLength": "Length",
+    "filterLength_under5": "Under 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "30+ min",
+    "filterType": "Type",
+    "clearFilters": "Clear filters",
+    "filterResults": "{count} of {total} shown",
+    "noFilterResults": "No videos match these filters. Try clearing one.",
+    "filterAdded": "Added",
+    "filterAdded_60d": "Last 60 days",
+    "filterAdded_6m": "Last 6 months",
+    "filterAdded_12m": "Last 12 months"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project واچ",

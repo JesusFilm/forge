@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Аудио æвзаг æрхæсс",
     "home": "JesusFilm æрмæст",
     "closeSearch": "Æрхæссын сæйгæ",
-    "submitSearch": "Æрхæсс"
+    "submitSearch": "Æрхæсс",
+    "library": "Library"
   },
   "SearchOverlay": {
     "dialogLabel": "Видео æрхæсс æмæ куыд æрхæсс",
@@ -467,6 +468,7 @@
     "sports": "Спорт",
     "collections": "Æмбырдтæ",
     "subtitlesOnly": "Æрмæст субтитртæ",
+    "backToTop": "Back to top",
     "newlyAdded": "Нæуæгæй æрхæсст",
     "newVideosTitle": "{language} æвзагмæ нæуæг христианон видеотæ",
     "newestFirst": "Æппæт нæуæгæй фæстæмæ",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Æрмæст видеотæ",
     "videosFromCollection": "{collection}-æй видеотæ.",
     "standaloneDescription": "Ацы æвзагмæ æрмæст видеотæ.",
-    "openCollection": "Æмбырд æрхæсс"
+    "openCollection": "Æмбырд æрхæсс",
+    "filters": "Filters",
+    "filterLength": "Length",
+    "filterLength_under5": "Under 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "30+ min",
+    "filterType": "Type",
+    "clearFilters": "Clear filters",
+    "filterResults": "{count} of {total} shown",
+    "noFilterResults": "No videos match these filters. Try clearing one.",
+    "filterAdded": "Added",
+    "filterAdded_60d": "Last 60 days",
+    "filterAdded_6m": "Last 6 months",
+    "filterAdded_12m": "Last 12 months"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project — кæсын",

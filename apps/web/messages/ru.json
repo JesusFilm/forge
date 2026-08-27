@@ -189,7 +189,8 @@
     "changeAudioLanguage": "Изменить язык аудио",
     "closeSearch": "Закрыть поиск",
     "home": "Главная JesusFilm",
-    "submitSearch": "Найти"
+    "submitSearch": "Найти",
+    "library": "Library"
   },
   "SearchOverlay": {
     "dialogLabel": "Поиск и просмотр видео",
@@ -476,6 +477,7 @@
     "sports": "Спорт",
     "collections": "Коллекции",
     "subtitlesOnly": "Только субтитры",
+    "backToTop": "Back to top",
     "newlyAdded": "Недавно добавлено",
     "newVideosTitle": "Новые христианские видео. Язык: {language}",
     "newestFirst": "Сначала новые",
@@ -506,7 +508,21 @@
     "standaloneVideos": "Отдельные видео",
     "videosFromCollection": "Видео из коллекции «{collection}».",
     "standaloneDescription": "Отдельные видео на этом языке.",
-    "openCollection": "Открыть коллекцию"
+    "openCollection": "Открыть коллекцию",
+    "filters": "Filters",
+    "filterLength": "Length",
+    "filterLength_under5": "Under 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "30+ min",
+    "filterType": "Type",
+    "clearFilters": "Clear filters",
+    "filterResults": "{count} of {total} shown",
+    "noFilterResults": "No videos match these filters. Try clearing one.",
+    "filterAdded": "Added",
+    "filterAdded_60d": "Last 60 days",
+    "filterAdded_6m": "Last 6 months",
+    "filterAdded_12m": "Last 12 months"
   },
   "WatchHome": {
     "pageTitle": "Видео Jesus Film Project",

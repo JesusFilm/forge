@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Hindura ururimi rw’amajwi",
     "home": "Urugo rwa JesusFilm",
     "closeSearch": "Funga ubushakashatsi",
-    "submitSearch": "Rondera"
+    "submitSearch": "Rondera",
+    "library": "Library"
   },
   "SearchOverlay": {
     "dialogLabel": "Rondera kandi ucukure muri videwo",
@@ -467,6 +468,7 @@
     "sports": "Imikino",
     "collections": "Ibigwi",
     "subtitlesOnly": "Ivyandikishijwe gusa",
+    "backToTop": "Back to top",
     "newlyAdded": "Vyongerewe vuba",
     "newVideosTitle": "Amavidewo mashasha ya gikirisu mu {language}",
     "newestFirst": "Ivy’ubu mbere",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Videwo zigenga",
     "videosFromCollection": "Amavidewo ava kuri {collection}.",
     "standaloneDescription": "Videwo zigenga muri uru rurimi.",
-    "openCollection": "Fungura ihuriro"
+    "openCollection": "Fungura ihuriro",
+    "filters": "Filters",
+    "filterLength": "Length",
+    "filterLength_under5": "Under 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "30+ min",
+    "filterType": "Type",
+    "clearFilters": "Clear filters",
+    "filterResults": "{count} of {total} shown",
+    "noFilterResults": "No videos match these filters. Try clearing one.",
+    "filterAdded": "Added",
+    "filterAdded_60d": "Last 60 days",
+    "filterAdded_6m": "Last 6 months",
+    "filterAdded_12m": "Last 12 months"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project Raba",

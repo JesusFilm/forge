@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Дууны хэлийг солих",
     "home": "JesusFilm нүүр хуудас",
     "closeSearch": "Хайлт хаах",
-    "submitSearch": "Бэдэрхэ"
+    "submitSearch": "Бэдэрхэ",
+    "library": "Library"
   },
   "SearchOverlay": {
     "dialogLabel": "Видео хайж үзэх",
@@ -467,6 +468,7 @@
     "sports": "Спорт",
     "collections": "Цуглуулгууд",
     "subtitlesOnly": "Зөвхөн хадмал",
+    "backToTop": "Back to top",
     "newlyAdded": "Шинээр нэмэгдсэн",
     "newVideosTitle": "{language}-д байгаа шинэ Христийн видеонууд",
     "newestFirst": "Шинэ нь эхэнд",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Бие даасан видеонууд",
     "videosFromCollection": "{collection}-ын видеонууд.",
     "standaloneDescription": "Энэ хэл дээрх бие даасан видеонууд.",
-    "openCollection": "Цуглуулга нээх"
+    "openCollection": "Цуглуулга нээх",
+    "filters": "Filters",
+    "filterLength": "Length",
+    "filterLength_under5": "Under 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "30+ min",
+    "filterType": "Type",
+    "clearFilters": "Clear filters",
+    "filterResults": "{count} of {total} shown",
+    "noFilterResults": "No videos match these filters. Try clearing one.",
+    "filterAdded": "Added",
+    "filterAdded_60d": "Last 60 days",
+    "filterAdded_6m": "Last 6 months",
+    "filterAdded_12m": "Last 12 months"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project — хараха",

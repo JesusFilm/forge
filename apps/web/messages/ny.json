@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Sinthani chinenero cha mawu",
     "home": "Tsamba loyambira la JesusFilm",
     "closeSearch": "Tsekani kusaka",
-    "submitSearch": "Sakani"
+    "submitSearch": "Sakani",
+    "library": "Library"
   },
   "SearchOverlay": {
     "dialogLabel": "Sakani ndi kufufuza mavidiyo",
@@ -467,6 +468,7 @@
     "sports": "Masewera",
     "collections": "Magulu",
     "subtitlesOnly": "Malembalo okha",
+    "backToTop": "Back to top",
     "newlyAdded": "Zangowonjezedwa",
     "newVideosTitle": "Mavidiyo achikhristu atsopano mu {language}",
     "newestFirst": "Zatsopano kaye",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Mavidiyo odziyimira okha",
     "videosFromCollection": "Mavidiyo kuchokera ku {collection}.",
     "standaloneDescription": "Mavidiyo odziyimira okha mu chinenerochi.",
-    "openCollection": "Tsegulani gulu"
+    "openCollection": "Tsegulani gulu",
+    "filters": "Filters",
+    "filterLength": "Length",
+    "filterLength_under5": "Under 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "30+ min",
+    "filterType": "Type",
+    "clearFilters": "Clear filters",
+    "filterResults": "{count} of {total} shown",
+    "noFilterResults": "No videos match these filters. Try clearing one.",
+    "filterAdded": "Added",
+    "filterAdded_60d": "Last 60 days",
+    "filterAdded_6m": "Last 6 months",
+    "filterAdded_12m": "Last 12 months"
   },
   "WatchHome": {
     "pageTitle": "Onerani pa Jesus Film Project",

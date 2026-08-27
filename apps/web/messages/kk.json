@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Дыбыс тілін өзгерту",
     "home": "JesusFilm басты беті",
     "closeSearch": "Іздеуді жабу",
-    "submitSearch": "Іздеу"
+    "submitSearch": "Іздеу",
+    "library": "Library"
   },
   "SearchOverlay": {
     "dialogLabel": "Видеоларды іздеу және шолу",
@@ -467,6 +468,7 @@
     "sports": "Спорт",
     "collections": "Жинақтар",
     "subtitlesOnly": "Тек субтитрлер",
+    "backToTop": "Back to top",
     "newlyAdded": "Жаңа қосылған",
     "newVideosTitle": "{language} тіліндегі жаңа христиан видеолары",
     "newestFirst": "Алдымен ең жаңасы",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Жеке видеолар",
     "videosFromCollection": "{collection} жинағындағы видеолар.",
     "standaloneDescription": "Осы тілдегі жеке видеолар.",
-    "openCollection": "Жинақты ашу"
+    "openCollection": "Жинақты ашу",
+    "filters": "Filters",
+    "filterLength": "Length",
+    "filterLength_under5": "Under 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "30+ min",
+    "filterType": "Type",
+    "clearFilters": "Clear filters",
+    "filterResults": "{count} of {total} shown",
+    "noFilterResults": "No videos match these filters. Try clearing one.",
+    "filterAdded": "Added",
+    "filterAdded_60d": "Last 60 days",
+    "filterAdded_6m": "Last 6 months",
+    "filterAdded_12m": "Last 12 months"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project видеоларын көру",

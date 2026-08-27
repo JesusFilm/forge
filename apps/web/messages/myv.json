@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Audio language-ть вастомс",
     "home": "JesusFilm прявт лопа",
     "closeSearch": "Вешемась питнемс",
-    "submitSearch": "Вешемс"
+    "submitSearch": "Вешемс",
+    "library": "Library"
   },
   "SearchOverlay": {
     "dialogLabel": "Video-ть вешемс и вановтомс",
@@ -467,6 +468,7 @@
     "sports": "Спорт",
     "collections": "Коллекцият",
     "subtitlesOnly": "Ансяк subtitles",
+    "backToTop": "Back to top",
     "newlyAdded": "Неень шкань поладозь",
     "newVideosTitle": "Од христианонь видеот — {language}",
     "newestFirst": "Васня седе одтне",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Башка видеот",
     "videosFromCollection": "Collection: {collection}.",
     "standaloneDescription": "Те кельсэ башка видеот.",
-    "openCollection": "Collection-ть аштямс"
+    "openCollection": "Collection-ть аштямс",
+    "filters": "Filters",
+    "filterLength": "Length",
+    "filterLength_under5": "Under 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "30+ min",
+    "filterType": "Type",
+    "clearFilters": "Clear filters",
+    "filterResults": "{count} of {total} shown",
+    "noFilterResults": "No videos match these filters. Try clearing one.",
+    "filterAdded": "Added",
+    "filterAdded_60d": "Last 60 days",
+    "filterAdded_6m": "Last 6 months",
+    "filterAdded_12m": "Last 12 months"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project — вановтома",

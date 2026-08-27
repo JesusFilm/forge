@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Jenisem lanwis blong audio",
     "home": "JesusFilm hom",
     "closeSearch": "Satem search",
-    "submitSearch": "Sokem"
+    "submitSearch": "Sokem",
+    "library": "Library"
   },
   "SearchOverlay": {
     "dialogLabel": "Sokem mo browse ol video",
@@ -467,6 +468,7 @@
     "sports": "Ol Spot",
     "collections": "Ol kolosen",
     "subtitlesOnly": "Ol subtitle nomo",
+    "backToTop": "Back to top",
     "newlyAdded": "Niu i joenem",
     "newVideosTitle": "Ol niu Kristin video long {language}",
     "newestFirst": "Niu fastaem",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Ol video we i stanap olsem",
     "videosFromCollection": "Ol video from {collection}.",
     "standaloneDescription": "Ol video we i stanap olsem long lanwis ia.",
-    "openCollection": "Openem collection"
+    "openCollection": "Openem collection",
+    "filters": "Filters",
+    "filterLength": "Length",
+    "filterLength_under5": "Under 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "30+ min",
+    "filterType": "Type",
+    "clearFilters": "Clear filters",
+    "filterResults": "{count} of {total} shown",
+    "noFilterResults": "No videos match these filters. Try clearing one.",
+    "filterAdded": "Added",
+    "filterAdded_60d": "Last 60 days",
+    "filterAdded_6m": "Last 6 months",
+    "filterAdded_12m": "Last 12 months"
   },
   "WatchHome": {
     "pageTitle": "Lukluk long Jesus Film Project",

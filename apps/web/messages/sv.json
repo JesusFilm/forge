@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Byt ljudspråk",
     "home": "JesusFilm startsida",
     "closeSearch": "Stäng sökning",
-    "submitSearch": "Sök"
+    "submitSearch": "Sök",
+    "library": "Library"
   },
   "SearchOverlay": {
     "dialogLabel": "Sök och bläddra bland videor",
@@ -467,6 +468,7 @@
     "sports": "Sport",
     "collections": "Samlingar",
     "subtitlesOnly": "Endast undertexter",
+    "backToTop": "Back to top",
     "newlyAdded": "Nyligen tillagt",
     "newVideosTitle": "Nya kristna videor på {language}",
     "newestFirst": "Nyast först",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Fristående videor",
     "videosFromCollection": "Videor från {collection}.",
     "standaloneDescription": "Fristående videor på det här språket.",
-    "openCollection": "Öppna samling"
+    "openCollection": "Öppna samling",
+    "filters": "Filters",
+    "filterLength": "Length",
+    "filterLength_under5": "Under 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "30+ min",
+    "filterType": "Type",
+    "clearFilters": "Clear filters",
+    "filterResults": "{count} of {total} shown",
+    "noFilterResults": "No videos match these filters. Try clearing one.",
+    "filterAdded": "Added",
+    "filterAdded_60d": "Last 60 days",
+    "filterAdded_6m": "Last 6 months",
+    "filterAdded_12m": "Last 12 months"
   },
   "WatchHome": {
     "pageTitle": "Titta | Jesus Film Project",

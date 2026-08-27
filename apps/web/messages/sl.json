@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Spremeni jezik zvoka",
     "home": "Domača stran JesusFilm",
     "closeSearch": "Zapri iskanje",
-    "submitSearch": "Išči"
+    "submitSearch": "Išči",
+    "library": "Library"
   },
   "SearchOverlay": {
     "dialogLabel": "Iskanje in brskanje po videoposnetkih",
@@ -467,6 +468,7 @@
     "sports": "Šport",
     "collections": "Zbirke",
     "subtitlesOnly": "Samo podnapisi",
+    "backToTop": "Back to top",
     "newlyAdded": "Nedavno dodano",
     "newVideosTitle": "Novi krščanski videoposnetki v jeziku {language}",
     "newestFirst": "Najnovejše najprej",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Samostojni videoposnetki",
     "videosFromCollection": "Videoposnetki iz {collection}.",
     "standaloneDescription": "Samostojni videoposnetki v tem jeziku.",
-    "openCollection": "Odpri zbirko"
+    "openCollection": "Odpri zbirko",
+    "filters": "Filters",
+    "filterLength": "Length",
+    "filterLength_under5": "Under 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "30+ min",
+    "filterType": "Type",
+    "clearFilters": "Clear filters",
+    "filterResults": "{count} of {total} shown",
+    "noFilterResults": "No videos match these filters. Try clearing one.",
+    "filterAdded": "Added",
+    "filterAdded_60d": "Last 60 days",
+    "filterAdded_6m": "Last 6 months",
+    "filterAdded_12m": "Last 12 months"
   },
   "WatchHome": {
     "pageTitle": "Ogled | Jesus Film Project",

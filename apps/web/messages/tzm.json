@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Snifel tutlayt n uslaw",
     "home": "Tazwara n JesusFilm",
     "closeSearch": "Mdel anadi",
-    "submitSearch": "Nadi"
+    "submitSearch": "Nadi",
+    "library": "Library"
   },
   "SearchOverlay": {
     "dialogLabel": "Nadi akked brows tividyo",
@@ -467,6 +468,7 @@
     "sports": "Idablan",
     "collections": "Igrumen",
     "subtitlesOnly": "Maɣar ijerriden kan",
+    "backToTop": "Back to top",
     "newlyAdded": "Yettwakkes tura",
     "newVideosTitle": "Tividyo n tazrant n Taqbaylit deg {language}",
     "newestFirst": "Tebḍiḍ tikkelt tamezwarut",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Tividyo yellan s yiman-nsen",
     "videosFromCollection": "Tividyo seg {collection}.",
     "standaloneDescription": "Tividyo yellan s yiman-nsen deg tutlayt-agi.",
-    "openCollection": "Ldi amas"
+    "openCollection": "Ldi amas",
+    "filters": "Filters",
+    "filterLength": "Length",
+    "filterLength_under5": "Under 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "30+ min",
+    "filterType": "Type",
+    "clearFilters": "Clear filters",
+    "filterResults": "{count} of {total} shown",
+    "noFilterResults": "No videos match these filters. Try clearing one.",
+    "filterAdded": "Added",
+    "filterAdded_60d": "Last 60 days",
+    "filterAdded_6m": "Last 6 months",
+    "filterAdded_12m": "Last 12 months"
   },
   "WatchHome": {
     "pageTitle": "Watch n Jesus Film Project",

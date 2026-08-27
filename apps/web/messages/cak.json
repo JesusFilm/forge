@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Tijäl ruk'ux ri ch'ab'äl audio",
     "home": "JesusFilm ruxaq alaxik",
     "closeSearch": "Titz'apïx kanöxik",
-    "submitSearch": "Tikanöx"
+    "submitSearch": "Tikanöx",
+    "library": "Library"
   },
   "SearchOverlay": {
     "dialogLabel": "Tikanöx chuqa' tapeq videos",
@@ -467,6 +468,7 @@
     "sports": "Ki'kotem",
     "collections": "K'amonel",
     "subtitlesOnly": "Xaq xe' subtitles",
+    "backToTop": "Back to top",
     "newlyAdded": "K'ak'a' xtz'aqatisäx",
     "newVideosTitle": "K'ak'a' Christian taq video pa {language}",
     "newestFirst": "Ri k'ak'a' nab'ey",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Ta video ri k'aq",
     "videosFromCollection": "Taq video pa {collection}.",
     "standaloneDescription": "Ta video ri k'aq pa re ch'ab'äl re'.",
-    "openCollection": "Tijaq k'amonel"
+    "openCollection": "Tijaq k'amonel",
+    "filters": "Filters",
+    "filterLength": "Length",
+    "filterLength_under5": "Under 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "30+ min",
+    "filterType": "Type",
+    "clearFilters": "Clear filters",
+    "filterResults": "{count} of {total} shown",
+    "noFilterResults": "No videos match these filters. Try clearing one.",
+    "filterAdded": "Added",
+    "filterAdded_60d": "Last 60 days",
+    "filterAdded_6m": "Last 6 months",
+    "filterAdded_12m": "Last 12 months"
   },
   "WatchHome": {
     "pageTitle": "Tatz'eta' pa Jesus Film Project",

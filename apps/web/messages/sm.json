@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Suia le gagana o le leo",
     "home": "Itulau autū o JesusFilm",
     "closeSearch": "Tapuni le su'esu'ega",
-    "submitSearch": "Su'e"
+    "submitSearch": "Su'e",
+    "library": "Library"
   },
   "SearchOverlay": {
     "dialogLabel": "Su'e ma su'esu'e vitio",
@@ -467,6 +468,7 @@
     "sports": "Ta'aloga",
     "collections": "Aoina",
     "subtitlesOnly": "Na'o tusitusiga o le leo",
+    "backToTop": "Back to top",
     "newlyAdded": "Fa'aopoopo talu ai nei",
     "newVideosTitle": "Vitio fa'a-Kerisiano fou i le {language}",
     "newestFirst": "Muamua mea fou",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Vitio e tu'ufua",
     "videosFromCollection": "Vitio mai le {collection}.",
     "standaloneDescription": "Vitio e tu'ufua i lenei gagana.",
-    "openCollection": "Tatala le aoina"
+    "openCollection": "Tatala le aoina",
+    "filters": "Filters",
+    "filterLength": "Length",
+    "filterLength_under5": "Under 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "30+ min",
+    "filterType": "Type",
+    "clearFilters": "Clear filters",
+    "filterResults": "{count} of {total} shown",
+    "noFilterResults": "No videos match these filters. Try clearing one.",
+    "filterAdded": "Added",
+    "filterAdded_60d": "Last 60 days",
+    "filterAdded_6m": "Last 6 months",
+    "filterAdded_12m": "Last 12 months"
   },
   "WatchHome": {
     "pageTitle": "Matamata i le Jesus Film Project",

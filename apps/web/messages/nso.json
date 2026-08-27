@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Fetola polelo ya modumo",
     "home": "Legae la JesusFilm",
     "closeSearch": "Tswalela nyakišišo",
-    "submitSearch": "Nyaka"
+    "submitSearch": "Nyaka",
+    "library": "Library"
   },
   "SearchOverlay": {
     "dialogLabel": "Nyaka le go phetla divideo",
@@ -467,6 +468,7 @@
     "sports": "Dipapadi",
     "collections": "Dikgoboketšo",
     "subtitlesOnly": "Dikapotši feela",
+    "backToTop": "Back to top",
     "newlyAdded": "E sa tšwago go oketšwa",
     "newVideosTitle": "Divideo tše mpsha tša Bokriste ka {language}",
     "newestFirst": "Tša moragorago pele",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Divideo tše di ikemetšego",
     "videosFromCollection": "Divideo go tšwa go {collection}.",
     "standaloneDescription": "Divideo tše di ikemetšego ka polelong ye.",
-    "openCollection": "Bula kgoboketšo"
+    "openCollection": "Bula kgoboketšo",
+    "filters": "Filters",
+    "filterLength": "Length",
+    "filterLength_under5": "Under 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "30+ min",
+    "filterType": "Type",
+    "clearFilters": "Clear filters",
+    "filterResults": "{count} of {total} shown",
+    "noFilterResults": "No videos match these filters. Try clearing one.",
+    "filterAdded": "Added",
+    "filterAdded_60d": "Last 60 days",
+    "filterAdded_6m": "Last 6 months",
+    "filterAdded_12m": "Last 12 months"
   },
   "WatchHome": {
     "pageTitle": "Bogela go Jesus Film Project",

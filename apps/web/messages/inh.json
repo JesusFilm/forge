@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Аудио мотт хулашха",
     "home": "JesusFilm хана",
     "closeSearch": "Къахьа хьаяккха",
-    "submitSearch": "Къахьа"
+    "submitSearch": "Къахьа",
+    "library": "Library"
   },
   "SearchOverlay": {
     "dialogLabel": "Видео къахьа я browse хийла",
@@ -467,6 +468,7 @@
     "sports": "Спорт",
     "collections": "Коллекцияш",
     "subtitlesOnly": "Субтитраш гана",
+    "backToTop": "Back to top",
     "newlyAdded": "Къахьа т1ехьа",
     "newVideosTitle": "{language} т1а къахьа христианский видеол",
     "newestFirst": "Къахьа хьалха",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Цхьаарий видео",
     "videosFromCollection": "{collection} т1а видеол.",
     "standaloneDescription": "Цу мотт т1а цхьаарий видео.",
-    "openCollection": "Коллекц арадалийта"
+    "openCollection": "Коллекц арадалийта",
+    "filters": "Filters",
+    "filterLength": "Length",
+    "filterLength_under5": "Under 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "30+ min",
+    "filterType": "Type",
+    "clearFilters": "Clear filters",
+    "filterResults": "{count} of {total} shown",
+    "noFilterResults": "No videos match these filters. Try clearing one.",
+    "filterAdded": "Added",
+    "filterAdded_60d": "Last 60 days",
+    "filterAdded_6m": "Last 6 months",
+    "filterAdded_12m": "Last 12 months"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project: хьажа",

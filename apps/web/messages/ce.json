@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Аудио мотт къобалдолла",
     "home": "JesusFilm коьрта",
     "closeSearch": "Ларх дӀакхахьа",
-    "submitSearch": "Лар"
+    "submitSearch": "Лар",
+    "library": "Library"
   },
   "SearchOverlay": {
     "dialogLabel": "Видео лар а хьажар а",
@@ -467,6 +468,7 @@
     "sports": "Спорт",
     "collections": "Коллекцеш",
     "subtitlesOnly": "Субтитраш гана",
+    "backToTop": "Back to top",
     "newlyAdded": "Ийна дӀаяздина",
     "newVideosTitle": "{language} мотте цӀийча христиански видеолаш",
     "newestFirst": "Деррига халха",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Къастийна видеолаш",
     "videosFromCollection": "{collection} чохь видеолаш.",
     "standaloneDescription": "Цу моттехь къастийна видеолаш.",
-    "openCollection": "Коллекци ачуьлла"
+    "openCollection": "Коллекци ачуьлла",
+    "filters": "Filters",
+    "filterLength": "Length",
+    "filterLength_under5": "Under 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "30+ min",
+    "filterType": "Type",
+    "clearFilters": "Clear filters",
+    "filterResults": "{count} of {total} shown",
+    "noFilterResults": "No videos match these filters. Try clearing one.",
+    "filterAdded": "Added",
+    "filterAdded_60d": "Last 60 days",
+    "filterAdded_6m": "Last 6 months",
+    "filterAdded_12m": "Last 12 months"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project — хьажар",

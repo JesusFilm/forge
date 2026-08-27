@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Na'halom i lenguahe gi audio",
     "home": "Home gi JesusFilm",
     "closeSearch": "Serrá search",
-    "submitSearch": "Ekka"
+    "submitSearch": "Ekka",
+    "library": "Library"
   },
   "SearchOverlay": {
     "dialogLabel": "Ekka yan guiya video siha",
@@ -467,6 +468,7 @@
     "sports": "Deportes",
     "collections": "Koleksión siha",
     "subtitlesOnly": "Subtítulos lang",
+    "backToTop": "Back to top",
     "newlyAdded": "Ma'añadi' nuebu",
     "newVideosTitle": "Bago na Christian videos gi {language}",
     "newestFirst": "I pinakanuebu sa'ot",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Video siha na ha'ågu",
     "videosFromCollection": "Video siha ginen {collection}.",
     "standaloneDescription": "Video siha na ha'ågu gi este na lenguahe.",
-    "openCollection": "Abri koleksión"
+    "openCollection": "Abri koleksión",
+    "filters": "Filters",
+    "filterLength": "Length",
+    "filterLength_under5": "Under 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "30+ min",
+    "filterType": "Type",
+    "clearFilters": "Clear filters",
+    "filterResults": "{count} of {total} shown",
+    "noFilterResults": "No videos match these filters. Try clearing one.",
+    "filterAdded": "Added",
+    "filterAdded_60d": "Last 60 days",
+    "filterAdded_6m": "Last 6 months",
+    "filterAdded_12m": "Last 12 months"
   },
   "WatchHome": {
     "pageTitle": "Atan gi Jesus Film Project",

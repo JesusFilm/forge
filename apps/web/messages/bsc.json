@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Audio language sɛ change",
     "home": "JesusFilm paj akɛ home",
     "closeSearch": "Search lɛɛ",
-    "submitSearch": "Search kɛ"
+    "submitSearch": "Search kɛ",
+    "library": "Library"
   },
   "SearchOverlay": {
     "dialogLabel": "Video mɛ search kɛ browse kɛ",
@@ -467,6 +468,7 @@
     "sports": "Sports mɛ",
     "collections": "Collection mɛ",
     "subtitlesOnly": "Subtitles lɛɛn",
+    "backToTop": "Back to top",
     "newlyAdded": "Mɛ kɛŋ add kɛ",
     "newVideosTitle": "Video Christian mɛ kɛŋ in {language}",
     "newestFirst": "Mɛ kɛŋ nɛ kɛrɛ",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Standalone video mɛ",
     "videosFromCollection": "Video mɛ {collection} mɛ.",
     "standaloneDescription": "Standalone videos in language a.",
-    "openCollection": "Collection bɔ"
+    "openCollection": "Collection bɔ",
+    "filters": "Filters",
+    "filterLength": "Length",
+    "filterLength_under5": "Under 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "30+ min",
+    "filterType": "Type",
+    "clearFilters": "Clear filters",
+    "filterResults": "{count} of {total} shown",
+    "noFilterResults": "No videos match these filters. Try clearing one.",
+    "filterAdded": "Added",
+    "filterAdded_60d": "Last 60 days",
+    "filterAdded_6m": "Last 6 months",
+    "filterAdded_12m": "Last 12 months"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project Watch paj",

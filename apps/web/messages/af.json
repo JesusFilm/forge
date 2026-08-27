@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Verander oudiotaal",
     "home": "JesusFilm-tuis",
     "closeSearch": "Sluit soektog",
-    "submitSearch": "Soek"
+    "submitSearch": "Soek",
+    "library": "Library"
   },
   "SearchOverlay": {
     "dialogLabel": "Soek en blaai deur video’s",
@@ -467,6 +468,7 @@
     "sports": "Sport",
     "collections": "Versamelings",
     "subtitlesOnly": "Slegs onderskrifte",
+    "backToTop": "Back to top",
     "newlyAdded": "Nuut bygevoeg",
     "newVideosTitle": "Nuwe Christelike video’s in {language}",
     "newestFirst": "Nuutste eerste",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Afsonderlike video’s",
     "videosFromCollection": "Video’s uit {collection}.",
     "standaloneDescription": "Afsonderlike video’s in hierdie taal.",
-    "openCollection": "Open versameling"
+    "openCollection": "Open versameling",
+    "filters": "Filters",
+    "filterLength": "Length",
+    "filterLength_under5": "Under 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "30+ min",
+    "filterType": "Type",
+    "clearFilters": "Clear filters",
+    "filterResults": "{count} of {total} shown",
+    "noFilterResults": "No videos match these filters. Try clearing one.",
+    "filterAdded": "Added",
+    "filterAdded_60d": "Last 60 days",
+    "filterAdded_6m": "Last 6 months",
+    "filterAdded_12m": "Last 12 months"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project Kyk",

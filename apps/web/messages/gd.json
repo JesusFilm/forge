@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Atharraich cànan na fuaime",
     "home": "Duilleag-dhachaigh JesusFilm",
     "closeSearch": "Dùin an rannsachadh",
-    "submitSearch": "Lorg"
+    "submitSearch": "Lorg",
+    "library": "Library"
   },
   "SearchOverlay": {
     "dialogLabel": "Lorg is brobhs bhideothan",
@@ -467,6 +468,7 @@
     "sports": "Spòrs",
     "collections": "Cruinneachaidhean",
     "subtitlesOnly": "Fo-thiotalan a-mhàin",
+    "backToTop": "Back to top",
     "newlyAdded": "Air ùr chur ris",
     "newVideosTitle": "Bhideothan Crìosdail ùra ann an {language}",
     "newestFirst": "As ùire an toiseach",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Bhideothan fa-leth",
     "videosFromCollection": "Bhideothan bho {collection}.",
     "standaloneDescription": "Bhideothan fa-leth sa chànan seo.",
-    "openCollection": "Fosgail a’ chruinneachadh"
+    "openCollection": "Fosgail a’ chruinneachadh",
+    "filters": "Filters",
+    "filterLength": "Length",
+    "filterLength_under5": "Under 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "30+ min",
+    "filterType": "Type",
+    "clearFilters": "Clear filters",
+    "filterResults": "{count} of {total} shown",
+    "noFilterResults": "No videos match these filters. Try clearing one.",
+    "filterAdded": "Added",
+    "filterAdded_60d": "Last 60 days",
+    "filterAdded_6m": "Last 6 months",
+    "filterAdded_12m": "Last 12 months"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project – Coimhead",

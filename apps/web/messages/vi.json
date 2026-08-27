@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Đổi ngôn ngữ âm thanh",
     "home": "Trang chủ JesusFilm",
     "closeSearch": "Đóng tìm kiếm",
-    "submitSearch": "Tìm kiếm"
+    "submitSearch": "Tìm kiếm",
+    "library": "Library"
   },
   "SearchOverlay": {
     "dialogLabel": "Tìm kiếm và xem video",
@@ -283,6 +284,7 @@
     "sports": "Thể thao",
     "collections": "Bộ sưu tập",
     "subtitlesOnly": "Chỉ phụ đề",
+    "backToTop": "Back to top",
     "newlyAdded": "Mới thêm",
     "newVideosTitle": "Video Cơ Đốc mới bằng {language}",
     "newestFirst": "Mới nhất trước",
@@ -313,7 +315,21 @@
     "standaloneVideos": "Video độc lập",
     "videosFromCollection": "Video từ {collection}.",
     "standaloneDescription": "Các video độc lập bằng ngôn ngữ này.",
-    "openCollection": "Mở bộ sưu tập"
+    "openCollection": "Mở bộ sưu tập",
+    "filters": "Filters",
+    "filterLength": "Length",
+    "filterLength_under5": "Under 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "30+ min",
+    "filterType": "Type",
+    "clearFilters": "Clear filters",
+    "filterResults": "{count} of {total} shown",
+    "noFilterResults": "No videos match these filters. Try clearing one.",
+    "filterAdded": "Added",
+    "filterAdded_60d": "Last 60 days",
+    "filterAdded_6m": "Last 6 months",
+    "filterAdded_12m": "Last 12 months"
   },
   "WatchHome": {
     "pageTitle": "Xem | Jesus Film Project",

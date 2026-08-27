@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Pynkylla ka ktien sur",
     "home": "Ka home JesusFilm",
     "closeSearch": "Pynkhap ia ka search",
-    "submitSearch": "Wad"
+    "submitSearch": "Wad",
+    "library": "Library"
   },
   "SearchOverlay": {
     "dialogLabel": "Wad bad peit ia ki video",
@@ -467,6 +468,7 @@
     "sports": "Ki jingïalehkai",
     "collections": "Ki Collection",
     "subtitlesOnly": "Subtitle tang",
+    "backToTop": "Back to top",
     "newlyAdded": "La bynrap thymmai",
     "newVideosTitle": "Ki video Khristan thymmai ha {language}",
     "newestFirst": "Ki ba thymmai shwa",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Ki video marwei",
     "videosFromCollection": "Ki video na {collection}.",
     "standaloneDescription": "Ki video marwei ha kane ka ktien.",
-    "openCollection": "Plie collection"
+    "openCollection": "Plie collection",
+    "filters": "Filters",
+    "filterLength": "Length",
+    "filterLength_under5": "Under 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "30+ min",
+    "filterType": "Type",
+    "clearFilters": "Clear filters",
+    "filterResults": "{count} of {total} shown",
+    "noFilterResults": "No videos match these filters. Try clearing one.",
+    "filterAdded": "Added",
+    "filterAdded_60d": "Last 60 days",
+    "filterAdded_6m": "Last 6 months",
+    "filterAdded_12m": "Last 12 months"
   },
   "WatchHome": {
     "pageTitle": "Peit ha Jesus Film Project",

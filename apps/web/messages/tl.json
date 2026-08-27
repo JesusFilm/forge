@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Palitan ang wika ng audio",
     "home": "Tahanan ng JesusFilm",
     "closeSearch": "Isara ang paghahanap",
-    "submitSearch": "Maghanap"
+    "submitSearch": "Maghanap",
+    "library": "Library"
   },
   "SearchOverlay": {
     "dialogLabel": "Maghanap at mag-browse ng mga video",
@@ -283,6 +284,7 @@
     "sports": "Palakasan",
     "collections": "Mga koleksyon",
     "subtitlesOnly": "Subtitle lang",
+    "backToTop": "Back to top",
     "newlyAdded": "Bagong dagdag",
     "newVideosTitle": "Mga bagong Kristiyanong video sa {language}",
     "newestFirst": "Pinakabago muna",
@@ -313,7 +315,21 @@
     "standaloneVideos": "Mga standalone na video",
     "videosFromCollection": "Mga video mula sa {collection}.",
     "standaloneDescription": "Mga standalone na video sa wikang ito.",
-    "openCollection": "Buksan ang koleksyon"
+    "openCollection": "Buksan ang koleksyon",
+    "filters": "Filters",
+    "filterLength": "Length",
+    "filterLength_under5": "Under 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "30+ min",
+    "filterType": "Type",
+    "clearFilters": "Clear filters",
+    "filterResults": "{count} of {total} shown",
+    "noFilterResults": "No videos match these filters. Try clearing one.",
+    "filterAdded": "Added",
+    "filterAdded_60d": "Last 60 days",
+    "filterAdded_6m": "Last 6 months",
+    "filterAdded_12m": "Last 12 months"
   },
   "WatchHome": {
     "pageTitle": "Manood sa Jesus Film Project",

@@ -180,7 +180,8 @@
     "changeAudioLanguage": "अडियो भाषा परिवर्तन गर्नुहोस्",
     "home": "JesusFilm गृहपृष्ठ",
     "closeSearch": "खोज बन्द गर्नुहोस्",
-    "submitSearch": "खोज्नुहोस्"
+    "submitSearch": "खोज्नुहोस्",
+    "library": "Library"
   },
   "SearchOverlay": {
     "dialogLabel": "भिडियो खोज्नुहोस् र हेर्नुहोस्",
@@ -283,6 +284,7 @@
     "sports": "खेलकुद",
     "collections": "संग्रहहरू",
     "subtitlesOnly": "उपशीर्षक मात्र",
+    "backToTop": "Back to top",
     "newlyAdded": "नयाँ थपिएको",
     "newVideosTitle": "{language} मा नयाँ ख्रिस्टियन भिडियोहरू",
     "newestFirst": "सबैभन्दा नयाँ पहिले",
@@ -313,7 +315,21 @@
     "standaloneVideos": "स्वतन्त्र भिडियोहरू",
     "videosFromCollection": "{collection} बाट भिडियोहरू।",
     "standaloneDescription": "यस भाषाका स्वतन्त्र भिडियोहरू।",
-    "openCollection": "संग्रह खोल्नुहोस्"
+    "openCollection": "संग्रह खोल्नुहोस्",
+    "filters": "Filters",
+    "filterLength": "Length",
+    "filterLength_under5": "Under 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "30+ min",
+    "filterType": "Type",
+    "clearFilters": "Clear filters",
+    "filterResults": "{count} of {total} shown",
+    "noFilterResults": "No videos match these filters. Try clearing one.",
+    "filterAdded": "Added",
+    "filterAdded_60d": "Last 60 days",
+    "filterAdded_6m": "Last 6 months",
+    "filterAdded_12m": "Last 12 months"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project हेर्नुहोस्",

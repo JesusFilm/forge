@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Iliso so wika sa audio",
     "home": "Homepage sa JesusFilm",
     "closeSearch": "Sara search",
-    "submitSearch": "Pangita"
+    "submitSearch": "Pangita",
+    "library": "Library"
   },
   "SearchOverlay": {
     "dialogLabel": "Pangita ago browse video",
@@ -467,6 +468,7 @@
     "sports": "Isports",
     "collections": "Mga koleksyon",
     "subtitlesOnly": "Subtitles lang",
+    "backToTop": "Back to top",
     "newlyAdded": "Bag-o a naidugang",
     "newVideosTitle": "Bag-o a Christian videos sa {language}",
     "newestFirst": "Pinakabago una",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Mga standalone video",
     "videosFromCollection": "Mga video gika sa {collection}.",
     "standaloneDescription": "Mga standalone video sa ini a wika.",
-    "openCollection": "Abrihi so collection"
+    "openCollection": "Abrihi so collection",
+    "filters": "Filters",
+    "filterLength": "Length",
+    "filterLength_under5": "Under 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "30+ min",
+    "filterType": "Type",
+    "clearFilters": "Clear filters",
+    "filterResults": "{count} of {total} shown",
+    "noFilterResults": "No videos match these filters. Try clearing one.",
+    "filterAdded": "Added",
+    "filterAdded_60d": "Last 60 days",
+    "filterAdded_6m": "Last 6 months",
+    "filterAdded_12m": "Last 12 months"
   },
   "WatchHome": {
     "pageTitle": "Panonood sa Jesus Film Project",

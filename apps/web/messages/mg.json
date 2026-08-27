@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Ovay ny fitenin'ny feo",
     "home": "Pejy fandraisana JesusFilm",
     "closeSearch": "Hidio ny fikarohana",
-    "submitSearch": "Karohy"
+    "submitSearch": "Karohy",
+    "library": "Library"
   },
   "SearchOverlay": {
     "dialogLabel": "Karohy sy zaha lahatsary",
@@ -467,6 +468,7 @@
     "sports": "Fanatanjahantena",
     "collections": "Fitambarana",
     "subtitlesOnly": "Dikanteny fotsiny",
+    "backToTop": "Back to top",
     "newlyAdded": "Nampidirina vao haingana",
     "newVideosTitle": "Lahatsary kristianina vaovao amin'ny {language}",
     "newestFirst": "Vaovao indrindra aloha",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Lahatsary misaraka",
     "videosFromCollection": "Lahatsary avy amin'ny {collection}.",
     "standaloneDescription": "Lahatsary misaraka amin'ity fiteny ity.",
-    "openCollection": "Sokafy ny fitambarana"
+    "openCollection": "Sokafy ny fitambarana",
+    "filters": "Filters",
+    "filterLength": "Length",
+    "filterLength_under5": "Under 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "30+ min",
+    "filterType": "Type",
+    "clearFilters": "Clear filters",
+    "filterResults": "{count} of {total} shown",
+    "noFilterResults": "No videos match these filters. Try clearing one.",
+    "filterAdded": "Added",
+    "filterAdded_60d": "Last 60 days",
+    "filterAdded_6m": "Last 6 months",
+    "filterAdded_12m": "Last 12 months"
   },
   "WatchHome": {
     "pageTitle": "Fijerena Jesus Film Project",

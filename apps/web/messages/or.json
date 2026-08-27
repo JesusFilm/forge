@@ -180,7 +180,8 @@
     "changeAudioLanguage": "ଅଡିଓ ଭାଷା ବଦଳାନ୍ତୁ",
     "home": "JesusFilm ହୋମ୍",
     "closeSearch": "ସନ୍ଧାନ ବନ୍ଦ କରନ୍ତୁ",
-    "submitSearch": "ଖୋଜନ୍ତୁ"
+    "submitSearch": "ଖୋଜନ୍ତୁ",
+    "library": "Library"
   },
   "SearchOverlay": {
     "dialogLabel": "ଭିଡିଓଗୁଡ଼ିକୁ ଖୋଜନ୍ତୁ ଓ ବ୍ରାଉଜ୍ କରନ୍ତୁ",
@@ -467,6 +468,7 @@
     "sports": "ଖେଳ",
     "collections": "ସଙ୍ଗ୍ରହଗୁଡ଼ିକ",
     "subtitlesOnly": "କେବଳ ସବ୍‌ଟାଇଟଲ୍",
+    "backToTop": "Back to top",
     "newlyAdded": "ନୂଆ ଯୋଡ଼ାଯାଇଛି",
     "newVideosTitle": "{language}ରେ ନୂଆ ଖ୍ରୀଷ୍ଟିୟ ଭିଡିଓ",
     "newestFirst": "ସବୁଠାରୁ ନୂଆ ପ୍ରଥମେ",
@@ -497,7 +499,21 @@
     "standaloneVideos": "ସ୍ୱତନ୍ତ୍ର ଭିଡିଓ",
     "videosFromCollection": "{collection}ରୁ ଭିଡିଓ।",
     "standaloneDescription": "ଏହି ଭାଷାରେ ସ୍ୱତନ୍ତ୍ର ଭିଡିଓଗୁଡ଼ିକ।",
-    "openCollection": "ସଙ୍ଗ୍ରହ ଖୋଲନ୍ତୁ"
+    "openCollection": "ସଙ୍ଗ୍ରହ ଖୋଲନ୍ତୁ",
+    "filters": "Filters",
+    "filterLength": "Length",
+    "filterLength_under5": "Under 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "30+ min",
+    "filterType": "Type",
+    "clearFilters": "Clear filters",
+    "filterResults": "{count} of {total} shown",
+    "noFilterResults": "No videos match these filters. Try clearing one.",
+    "filterAdded": "Added",
+    "filterAdded_60d": "Last 60 days",
+    "filterAdded_6m": "Last 6 months",
+    "filterAdded_12m": "Last 12 months"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project ଓଚ୍",

@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Tɔ audio ƒe gbegblẽ",
     "home": "JesusFilm ƒe home",
     "closeSearch": "Tso se la ŋu",
-    "submitSearch": "Se"
+    "submitSearch": "Se",
+    "library": "Library"
   },
   "SearchOverlay": {
     "dialogLabel": "Se eye kpɔ video",
@@ -467,6 +468,7 @@
     "sports": "Fefe",
     "collections": "Nuƒuƒoƒowo",
     "subtitlesOnly": "Subtitles ko",
+    "backToTop": "Back to top",
     "newlyAdded": "Wɔe yeyeye",
     "newVideosTitle": "Christian video yeye le {language} me",
     "newestFirst": "Yeyetɔ teti",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Video siwo li ɖeka",
     "videosFromCollection": "Video tso {collection} me.",
     "standaloneDescription": "Video siwo li ɖeka le gbegblẽ sia me.",
-    "openCollection": "Vae collection la ŋu"
+    "openCollection": "Vae collection la ŋu",
+    "filters": "Filters",
+    "filterLength": "Length",
+    "filterLength_under5": "Under 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "30+ min",
+    "filterType": "Type",
+    "clearFilters": "Clear filters",
+    "filterResults": "{count} of {total} shown",
+    "noFilterResults": "No videos match these filters. Try clearing one.",
+    "filterAdded": "Added",
+    "filterAdded_60d": "Last 60 days",
+    "filterAdded_6m": "Last 6 months",
+    "filterAdded_12m": "Last 12 months"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project Kpɔƒe",

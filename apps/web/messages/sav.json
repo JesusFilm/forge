@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Soppi làkk bu audio bi",
     "home": "JesúsFilm home",
     "closeSearch": "Tëj seet bi",
-    "submitSearch": "Seet"
+    "submitSearch": "Seet",
+    "library": "Library"
   },
   "SearchOverlay": {
     "dialogLabel": "Seet ak dëkkuwaay vidéos",
@@ -467,6 +468,7 @@
     "sports": "Sports yi",
     "collections": "Collections yi",
     "subtitlesOnly": "Subtitles rekk",
+    "backToTop": "Back to top",
     "newlyAdded": "Yeesu ci dëgg",
     "newVideosTitle": "Vídeos yu bees ci {language}",
     "newestFirst": "Boo gaaw gaawe",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Vídeos bu sikk",
     "videosFromCollection": "Vídeos ci {collection}.",
     "standaloneDescription": "Vídeos bu sikk ci làkk bii.",
-    "openCollection": "Ubbi collection bi"
+    "openCollection": "Ubbi collection bi",
+    "filters": "Filters",
+    "filterLength": "Length",
+    "filterLength_under5": "Under 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "30+ min",
+    "filterType": "Type",
+    "clearFilters": "Clear filters",
+    "filterResults": "{count} of {total} shown",
+    "noFilterResults": "No videos match these filters. Try clearing one.",
+    "filterAdded": "Added",
+    "filterAdded_60d": "Last 60 days",
+    "filterAdded_6m": "Last 6 months",
+    "filterAdded_12m": "Last 12 months"
   },
   "WatchHome": {
     "pageTitle": "Xool ci Jesus Film Project",

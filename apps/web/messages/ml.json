@@ -180,7 +180,8 @@
     "changeAudioLanguage": "ഓഡിയോ ഭാഷ മാറ്റുക",
     "home": "JesusFilm ഹോം",
     "closeSearch": "തിരച്ചിൽ അടയ്ക്കുക",
-    "submitSearch": "തിരയുക"
+    "submitSearch": "തിരയുക",
+    "library": "Library"
   },
   "SearchOverlay": {
     "dialogLabel": "വീഡിയോകൾ തിരയുകയും ബ്രൗസ് ചെയ്യുകയും ചെയ്യുക",
@@ -467,6 +468,7 @@
     "sports": "കായികം",
     "collections": "ശേഖരങ്ങൾ",
     "subtitlesOnly": "സബ്ടൈറ്റിലുകൾ മാത്രം",
+    "backToTop": "Back to top",
     "newlyAdded": "പുതുതായി ചേർത്തത്",
     "newVideosTitle": "{language}-ൽ പുതിയ ക്രിസ്തീയ വീഡിയോകൾ",
     "newestFirst": "പുതിയതു മുതൽ",
@@ -497,7 +499,21 @@
     "standaloneVideos": "സ്വതന്ത്ര വീഡിയോകൾ",
     "videosFromCollection": "{collection} ലെ വീഡിയോകൾ.",
     "standaloneDescription": "ഈ ഭാഷയിലെ സ്വതന്ത്ര വീഡിയോകൾ.",
-    "openCollection": "ശേഖരം തുറക്കുക"
+    "openCollection": "ശേഖരം തുറക്കുക",
+    "filters": "Filters",
+    "filterLength": "Length",
+    "filterLength_under5": "Under 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "30+ min",
+    "filterType": "Type",
+    "clearFilters": "Clear filters",
+    "filterResults": "{count} of {total} shown",
+    "noFilterResults": "No videos match these filters. Try clearing one.",
+    "filterAdded": "Added",
+    "filterAdded_60d": "Last 60 days",
+    "filterAdded_6m": "Last 6 months",
+    "filterAdded_12m": "Last 12 months"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project വാച്ച്",

@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Panoni i te reo oro",
     "home": "Kainga JesusFilm",
     "closeSearch": "Katia te rapu",
-    "submitSearch": "Rapu"
+    "submitSearch": "Rapu",
+    "library": "Library"
   },
   "SearchOverlay": {
     "dialogLabel": "Rapu me te tirotiro ataata",
@@ -467,6 +468,7 @@
     "sports": "Hākinakina",
     "collections": "Ngā kohinga",
     "subtitlesOnly": "Ngā taitararoto anake",
+    "backToTop": "Back to top",
     "newlyAdded": "Kua tāpiritia hōu",
     "newVideosTitle": "Ngā ataata Karaitiana hōu i roto i {language}",
     "newestFirst": "Tō muri rawa ki mua",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Ngā ataata tū takitahi",
     "videosFromCollection": "Ngā ataata mai i {collection}.",
     "standaloneDescription": "Ngā ataata tū takitahi i tēnei reo.",
-    "openCollection": "Whakatuwhera kohinga"
+    "openCollection": "Whakatuwhera kohinga",
+    "filters": "Filters",
+    "filterLength": "Length",
+    "filterLength_under5": "Under 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "30+ min",
+    "filterType": "Type",
+    "clearFilters": "Clear filters",
+    "filterResults": "{count} of {total} shown",
+    "noFilterResults": "No videos match these filters. Try clearing one.",
+    "filterAdded": "Added",
+    "filterAdded_60d": "Last 60 days",
+    "filterAdded_6m": "Last 6 months",
+    "filterAdded_12m": "Last 12 months"
   },
   "WatchHome": {
     "pageTitle": "Mātakitaki | Jesus Film Project",

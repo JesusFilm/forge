@@ -180,7 +180,8 @@
     "changeAudioLanguage": "更改音频语言",
     "home": "JesusFilm 主页",
     "closeSearch": "关闭搜索",
-    "submitSearch": "搜索"
+    "submitSearch": "搜索",
+    "library": "Library"
   },
   "SearchOverlay": {
     "dialogLabel": "搜索并浏览视频",
@@ -283,6 +284,7 @@
     "sports": "体育",
     "collections": "合集",
     "subtitlesOnly": "仅字幕",
+    "backToTop": "Back to top",
     "newlyAdded": "最新上架",
     "newVideosTitle": "{language}的新基督教视频",
     "newestFirst": "按最新排序",
@@ -313,7 +315,21 @@
     "standaloneVideos": "独立视频",
     "videosFromCollection": "来自{collection}的视频。",
     "standaloneDescription": "该语言的独立视频。",
-    "openCollection": "查看合集"
+    "openCollection": "查看合集",
+    "filters": "Filters",
+    "filterLength": "Length",
+    "filterLength_under5": "Under 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "30+ min",
+    "filterType": "Type",
+    "clearFilters": "Clear filters",
+    "filterResults": "{count} of {total} shown",
+    "noFilterResults": "No videos match these filters. Try clearing one.",
+    "filterAdded": "Added",
+    "filterAdded_60d": "Last 60 days",
+    "filterAdded_6m": "Last 6 months",
+    "filterAdded_12m": "Last 12 months"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project 观看页",

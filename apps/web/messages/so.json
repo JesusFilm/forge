@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Beddel luqadda codka",
     "home": "Bogga hore ee JesusFilm",
     "closeSearch": "Xir raadinta",
-    "submitSearch": "Raadi"
+    "submitSearch": "Raadi",
+    "library": "Library"
   },
   "SearchOverlay": {
     "dialogLabel": "Raadi oo dhex-dhaqaaq fiidiyowyo",
@@ -467,6 +468,7 @@
     "sports": "Ciyaaraha",
     "collections": "Uruurino",
     "subtitlesOnly": "Kaliya qoraal-hoosaadyo",
+    "backToTop": "Back to top",
     "newlyAdded": "Cusub lagu daray",
     "newVideosTitle": "Fiidiyowyo Masiixi ah oo cusub gudaha {language}",
     "newestFirst": "Kuwa ugu cusub marka hore",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Fiidiyowyo kaligood ah",
     "videosFromCollection": "Fiidiyowyo ka yimid {collection}.",
     "standaloneDescription": "Fiidiyowyo kaligood ah oo luqaddan ku jira.",
-    "openCollection": "Fur ururinta"
+    "openCollection": "Fur ururinta",
+    "filters": "Filters",
+    "filterLength": "Length",
+    "filterLength_under5": "Under 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "30+ min",
+    "filterType": "Type",
+    "clearFilters": "Clear filters",
+    "filterResults": "{count} of {total} shown",
+    "noFilterResults": "No videos match these filters. Try clearing one.",
+    "filterAdded": "Added",
+    "filterAdded_60d": "Last 60 days",
+    "filterAdded_6m": "Last 6 months",
+    "filterAdded_12m": "Last 12 months"
   },
   "WatchHome": {
     "pageTitle": "Daawashada Jesus Film Project",

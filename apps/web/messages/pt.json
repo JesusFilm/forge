@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Alterar idioma do áudio",
     "home": "Início do JesusFilm",
     "closeSearch": "Fechar pesquisa",
-    "submitSearch": "Pesquisar"
+    "submitSearch": "Pesquisar",
+    "library": "Library"
   },
   "SearchOverlay": {
     "dialogLabel": "Pesquisar e explorar vídeos",
@@ -283,6 +284,7 @@
     "sports": "Desporto",
     "collections": "Coleções",
     "subtitlesOnly": "Apenas legendas",
+    "backToTop": "Back to top",
     "newlyAdded": "Adicionados recentemente",
     "newVideosTitle": "Novos vídeos cristãos em {language}",
     "newestFirst": "Mais recentes primeiro",
@@ -313,7 +315,21 @@
     "standaloneVideos": "Vídeos individuais",
     "videosFromCollection": "Vídeos de {collection}.",
     "standaloneDescription": "Vídeos individuais neste idioma.",
-    "openCollection": "Abrir coleção"
+    "openCollection": "Abrir coleção",
+    "filters": "Filters",
+    "filterLength": "Length",
+    "filterLength_under5": "Under 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "30+ min",
+    "filterType": "Type",
+    "clearFilters": "Clear filters",
+    "filterResults": "{count} of {total} shown",
+    "noFilterResults": "No videos match these filters. Try clearing one.",
+    "filterAdded": "Added",
+    "filterAdded_60d": "Last 60 days",
+    "filterAdded_6m": "Last 6 months",
+    "filterAdded_12m": "Last 12 months"
   },
   "WatchHome": {
     "pageTitle": "Assistir | Jesus Film Project",

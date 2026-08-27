@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Oqaatsit allanngortikkit",
     "home": "JesusFilm-imi angerlarsimaffik",
     "closeSearch": "Ujarlerneq matuuk",
-    "submitSearch": "Ujarlerit"
+    "submitSearch": "Ujarlerit",
+    "library": "Library"
   },
   "SearchOverlay": {
     "dialogLabel": "Video-t ujarlerlugillu tamanut takuguk",
@@ -467,6 +468,7 @@
     "sports": "Timersorneq",
     "collections": "Katersukkat",
     "subtitlesOnly": "Ilanngunneqartut kisimik",
+    "backToTop": "Back to top",
     "newlyAdded": "Nutaanik ilanngunneqartut",
     "newVideosTitle": "{language}-imi kristumiut video-t nutaat",
     "newestFirst": "Nutaanerit siulliullugit",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Video-t nammineertut",
     "videosFromCollection": "Video-t {collection}-imit.",
     "standaloneDescription": "Oqaatsit taakku iluani video-t nammineertut.",
-    "openCollection": "Katersugaasivik ammaruk"
+    "openCollection": "Katersugaasivik ammaruk",
+    "filters": "Filters",
+    "filterLength": "Length",
+    "filterLength_under5": "Under 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "30+ min",
+    "filterType": "Type",
+    "clearFilters": "Clear filters",
+    "filterResults": "{count} of {total} shown",
+    "noFilterResults": "No videos match these filters. Try clearing one.",
+    "filterAdded": "Added",
+    "filterAdded_60d": "Last 60 days",
+    "filterAdded_6m": "Last 6 months",
+    "filterAdded_12m": "Last 12 months"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project-imi isiginnaarit",

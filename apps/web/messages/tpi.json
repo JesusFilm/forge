@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Senisim tokples bilong audio",
     "home": "JesusFilm hom pes",
     "closeSearch": "Pasim painim",
-    "submitSearch": "Painim"
+    "submitSearch": "Painim",
+    "library": "Library"
   },
   "SearchOverlay": {
     "dialogLabel": "Painim na browseim ol video",
@@ -467,6 +468,7 @@
     "sports": "Sapot",
     "collections": "Ol collection",
     "subtitlesOnly": "Subtitles tasol",
+    "backToTop": "Back to top",
     "newlyAdded": "Nupela i go pinis",
     "newVideosTitle": "Nupela Christian video long {language}",
     "newestFirst": "Nupela pastaim",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Ol video wanpis",
     "videosFromCollection": "Ol video long {collection}.",
     "standaloneDescription": "Ol video wanpis long dispela tokples.",
-    "openCollection": "Openim collection"
+    "openCollection": "Openim collection",
+    "filters": "Filters",
+    "filterLength": "Length",
+    "filterLength_under5": "Under 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "30+ min",
+    "filterType": "Type",
+    "clearFilters": "Clear filters",
+    "filterResults": "{count} of {total} shown",
+    "noFilterResults": "No videos match these filters. Try clearing one.",
+    "filterAdded": "Added",
+    "filterAdded_60d": "Last 60 days",
+    "filterAdded_6m": "Last 6 months",
+    "filterAdded_12m": "Last 12 months"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project Lukluk",

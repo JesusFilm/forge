@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Arsuwin arup mayjt’ayaña",
     "home": "JesusFilm uta",
     "closeSearch": "Thaqhaña llawuña",
-    "submitSearch": "Thaqhaña"
+    "submitSearch": "Thaqhaña",
+    "library": "Library"
   },
   "SearchOverlay": {
     "dialogLabel": "Video-naka thaqhaña ukhamaraki uñakipaña",
@@ -467,6 +468,7 @@
     "sports": "Deporte-naka",
     "collections": "Tantachäwinaka",
     "subtitlesOnly": "Subtítulos ukiki",
+    "backToTop": "Back to top",
     "newlyAdded": "Machaq uñt’atatäxi",
     "newVideosTitle": "{language} arun machaq cristiano video-naka",
     "newestFirst": "Machaqanak nayraqata",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Sapak videos",
     "videosFromCollection": "{collection} ukan video-naka.",
     "standaloneDescription": "Aka arun sapak video-naka.",
-    "openCollection": "Tantachäwi jist’arña"
+    "openCollection": "Tantachäwi jist’arña",
+    "filters": "Filters",
+    "filterLength": "Length",
+    "filterLength_under5": "Under 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "30+ min",
+    "filterType": "Type",
+    "clearFilters": "Clear filters",
+    "filterResults": "{count} of {total} shown",
+    "noFilterResults": "No videos match these filters. Try clearing one.",
+    "filterAdded": "Added",
+    "filterAdded_60d": "Last 60 days",
+    "filterAdded_6m": "Last 6 months",
+    "filterAdded_12m": "Last 12 months"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project Uñch’ukiña",

@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Bobongola monoko ya mongongo",
     "home": "Ndako ya JesusFilm",
     "closeSearch": "Kanga boluki",
-    "submitSearch": "Sosa"
+    "submitSearch": "Sosa",
+    "library": "Library"
   },
   "SearchOverlay": {
     "dialogLabel": "Sosa mpe tala ba video",
@@ -467,6 +468,7 @@
     "sports": "Masano",
     "collections": "Ba collections",
     "subtitlesOnly": "Kaka ba sous-titres",
+    "backToTop": "Back to top",
     "newlyAdded": "Ebakisami sika",
     "newVideosTitle": "Ba video ya boklisto ya sika na {language}",
     "newestFirst": "Ya sika liboso",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Ba video oyo etɛlɛmaka yango moko",
     "videosFromCollection": "Ba video oyo euti na {collection}.",
     "standaloneDescription": "Ba video oyo etɛlɛmaka yango moko na monoko oyo.",
-    "openCollection": "Fungola collection"
+    "openCollection": "Fungola collection",
+    "filters": "Filters",
+    "filterLength": "Length",
+    "filterLength_under5": "Under 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "30+ min",
+    "filterType": "Type",
+    "clearFilters": "Clear filters",
+    "filterResults": "{count} of {total} shown",
+    "noFilterResults": "No videos match these filters. Try clearing one.",
+    "filterAdded": "Added",
+    "filterAdded_60d": "Last 60 days",
+    "filterAdded_6m": "Last 6 months",
+    "filterAdded_12m": "Last 12 months"
   },
   "WatchHome": {
     "pageTitle": "Kotala ya Jesus Film Project",

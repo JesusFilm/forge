@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Audio tilini o‘zgartirish",
     "home": "JesusFilm bosh sahifasi",
     "closeSearch": "Qidiruvni yopish",
-    "submitSearch": "Qidirish"
+    "submitSearch": "Qidirish",
+    "library": "Library"
   },
   "SearchOverlay": {
     "dialogLabel": "Videolarni qidirish va ko‘rish",
@@ -467,6 +468,7 @@
     "sports": "Sport",
     "collections": "To‘plamlar",
     "subtitlesOnly": "Faqat subtitrlar",
+    "backToTop": "Back to top",
     "newlyAdded": "Yangi qo‘shilgan",
     "newVideosTitle": "{language} tilidagi yangi xristian videolari",
     "newestFirst": "Eng yangisi avval",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Mustaqil videolar",
     "videosFromCollection": "{collection}dan videolar.",
     "standaloneDescription": "Bu tildagi mustaqil videolar.",
-    "openCollection": "To‘plamni ochish"
+    "openCollection": "To‘plamni ochish",
+    "filters": "Filters",
+    "filterLength": "Length",
+    "filterLength_under5": "Under 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "30+ min",
+    "filterType": "Type",
+    "clearFilters": "Clear filters",
+    "filterResults": "{count} of {total} shown",
+    "noFilterResults": "No videos match these filters. Try clearing one.",
+    "filterAdded": "Added",
+    "filterAdded_60d": "Last 60 days",
+    "filterAdded_6m": "Last 6 months",
+    "filterAdded_12m": "Last 12 months"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project Ko‘rish",

@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Pabalian so lengguahe na audio",
     "home": "Home na JesusFilm",
     "closeSearch": "Isara so saliksik",
-    "submitSearch": "Saliksiken"
+    "submitSearch": "Saliksiken",
+    "library": "Library"
   },
   "SearchOverlay": {
     "dialogLabel": "Saliksiken tan liboten so mga video",
@@ -467,6 +468,7 @@
     "sports": "Isports",
     "collections": "Mga Koleksyon",
     "subtitlesOnly": "Subtitle laeng",
+    "backToTop": "Back to top",
     "newlyAdded": "Kakabalo a naidugang",
     "newVideosTitle": "Balo a Kristiyanong video ed {language}",
     "newestFirst": "Pinakabalo anay",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Mga video a nag-iisa",
     "videosFromCollection": "Mga video gapo ed {collection}.",
     "standaloneDescription": "Mga video a nag-iisa ed sayan a lengguahe.",
-    "openCollection": "I-abri so koleksyon"
+    "openCollection": "I-abri so koleksyon",
+    "filters": "Filters",
+    "filterLength": "Length",
+    "filterLength_under5": "Under 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "30+ min",
+    "filterType": "Type",
+    "clearFilters": "Clear filters",
+    "filterResults": "{count} of {total} shown",
+    "noFilterResults": "No videos match these filters. Try clearing one.",
+    "filterAdded": "Added",
+    "filterAdded_60d": "Last 60 days",
+    "filterAdded_6m": "Last 6 months",
+    "filterAdded_12m": "Last 12 months"
   },
   "WatchHome": {
     "pageTitle": "Panonood ed Jesus Film Project",

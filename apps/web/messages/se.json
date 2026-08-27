@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Rievdat jietna gielat",
     "home": "JesusFilm ruovttusiidu",
     "closeSearch": "Gidde ohcan",
-    "submitSearch": "Oza"
+    "submitSearch": "Oza",
+    "library": "Library"
   },
   "SearchOverlay": {
     "dialogLabel": "Oza ja geahččal videoaid",
@@ -467,6 +468,7 @@
     "sports": "Spábbaileamit",
     "collections": "Čoakkáldagat",
     "subtitlesOnly": "Dušše lávlagat",
+    "backToTop": "Back to top",
     "newlyAdded": "Ođđa lasihuvvon",
     "newVideosTitle": "Ođđa kristtalaš videoat {language}:s",
     "newestFirst": "Ođđemus álggos",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Oktasoavttadit videoat",
     "videosFromCollection": "Videoat {collection}:s.",
     "standaloneDescription": "Oktasoavttadit videoat dán gillii.",
-    "openCollection": "Raba čoakkáldaga"
+    "openCollection": "Raba čoakkáldaga",
+    "filters": "Filters",
+    "filterLength": "Length",
+    "filterLength_under5": "Under 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "30+ min",
+    "filterType": "Type",
+    "clearFilters": "Clear filters",
+    "filterResults": "{count} of {total} shown",
+    "noFilterResults": "No videos match these filters. Try clearing one.",
+    "filterAdded": "Added",
+    "filterAdded_60d": "Last 60 days",
+    "filterAdded_6m": "Last 6 months",
+    "filterAdded_12m": "Last 12 months"
   },
   "WatchHome": {
     "pageTitle": "Geahččal | Jesus Film Project",

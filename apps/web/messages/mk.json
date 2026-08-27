@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Промени јазик на аудио",
     "home": "Почетна страница на JesusFilm",
     "closeSearch": "Затвори пребарување",
-    "submitSearch": "Пребарај"
+    "submitSearch": "Пребарај",
+    "library": "Library"
   },
   "SearchOverlay": {
     "dialogLabel": "Пребарувај и прелистувај видеа",
@@ -467,6 +468,7 @@
     "sports": "Спорт",
     "collections": "Колекции",
     "subtitlesOnly": "Само преводи",
+    "backToTop": "Back to top",
     "newlyAdded": "Ново додадено",
     "newVideosTitle": "Нови христијански видеа на {language}",
     "newestFirst": "Најновите први",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Самостојни видеа",
     "videosFromCollection": "Видеа од {collection}.",
     "standaloneDescription": "Самостојни видеа на овој јазик.",
-    "openCollection": "Отвори колекција"
+    "openCollection": "Отвори колекција",
+    "filters": "Filters",
+    "filterLength": "Length",
+    "filterLength_under5": "Under 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "30+ min",
+    "filterType": "Type",
+    "clearFilters": "Clear filters",
+    "filterResults": "{count} of {total} shown",
+    "noFilterResults": "No videos match these filters. Try clearing one.",
+    "filterAdded": "Added",
+    "filterAdded_60d": "Last 60 days",
+    "filterAdded_6m": "Last 6 months",
+    "filterAdded_12m": "Last 12 months"
   },
   "WatchHome": {
     "pageTitle": "Гледање на Jesus Film Project",

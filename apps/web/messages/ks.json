@@ -180,7 +180,8 @@
     "changeAudioLanguage": "آڈیو زبان بدلیو",
     "home": "JesusFilm ہوم",
     "closeSearch": "تلاش بند کرو",
-    "submitSearch": "تلاش کرو"
+    "submitSearch": "تلاش کرو",
+    "library": "Library"
   },
   "SearchOverlay": {
     "dialogLabel": "ویڈیو تلاش کرو اَور براؤز کرو",
@@ -467,6 +468,7 @@
     "sports": "کھیل",
     "collections": "مجموعہ",
     "subtitlesOnly": "صرف سب ٹائٹلز",
+    "backToTop": "Back to top",
     "newlyAdded": "ہنٛز شامل",
     "newVideosTitle": "{language} منز نَو مسیحی ویڈیو",
     "newestFirst": "سبن منٛز نَو پہلے",
@@ -497,7 +499,21 @@
     "standaloneVideos": "الگ ویڈیو",
     "videosFromCollection": "{collection} سۭتۍ ویڈیو۔",
     "standaloneDescription": "اس زبان منز الگ ویڈیو۔",
-    "openCollection": "مجموعہ کھولیو"
+    "openCollection": "مجموعہ کھولیو",
+    "filters": "Filters",
+    "filterLength": "Length",
+    "filterLength_under5": "Under 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "30+ min",
+    "filterType": "Type",
+    "clearFilters": "Clear filters",
+    "filterResults": "{count} of {total} shown",
+    "noFilterResults": "No videos match these filters. Try clearing one.",
+    "filterAdded": "Added",
+    "filterAdded_60d": "Last 60 days",
+    "filterAdded_6m": "Last 6 months",
+    "filterAdded_12m": "Last 12 months"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project واچ",

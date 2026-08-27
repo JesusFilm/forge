@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Tijalk'atisäx ruq'axanem q'axb'äl",
     "home": "JesusFilm takya'j",
     "closeSearch": "Titz'apïx k'utunem",
-    "submitSearch": "Tikanöx"
+    "submitSearch": "Tikanöx",
+    "library": "Library"
   },
   "SearchOverlay": {
     "dialogLabel": "Tikanöx yanïk videos",
@@ -467,6 +468,7 @@
     "sports": "Deportes",
     "collections": "Taq colección",
     "subtitlesOnly": "Solo subtítulos",
+    "backToTop": "Back to top",
     "newlyAdded": "K'ak'a' tz'aqat",
     "newVideosTitle": "Videos cristianos k'ak'a' pa {language}",
     "newestFirst": "K'ak'a' nab'e",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Videos junam",
     "videosFromCollection": "Videos pa {collection}.",
     "standaloneDescription": "Videos junam pa re ch'ab'äl re'.",
-    "openCollection": "Tija' colección"
+    "openCollection": "Tija' colección",
+    "filters": "Filters",
+    "filterLength": "Length",
+    "filterLength_under5": "Under 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "30+ min",
+    "filterType": "Type",
+    "clearFilters": "Clear filters",
+    "filterResults": "{count} of {total} shown",
+    "noFilterResults": "No videos match these filters. Try clearing one.",
+    "filterAdded": "Added",
+    "filterAdded_60d": "Last 60 days",
+    "filterAdded_6m": "Last 6 months",
+    "filterAdded_12m": "Last 12 months"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project — Titz'et",

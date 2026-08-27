@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Аудио бызэм къэщIэн",
     "home": "JesusFilm IэIэ",
     "closeSearch": "КъыщIэн къэгъэпщыкIын",
-    "submitSearch": "КъыщIэн"
+    "submitSearch": "КъыщIэн",
+    "library": "Library"
   },
   "SearchOverlay": {
     "dialogLabel": "Видео къыщIэн да зэбгъэзэхъуэжь",
@@ -467,6 +468,7 @@
     "sports": "Спорт",
     "collections": "Коллекцияхэр",
     "subtitlesOnly": "Субтитрэхэр только",
+    "backToTop": "Back to top",
     "newlyAdded": "Ичыхь къыщIауэ",
     "newVideosTitle": "{language}-м къыщIэ шинэ христиан видео",
     "newestFirst": "Ичыхь хъун",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Тхыгъэхэу видео",
     "videosFromCollection": "{collection}-мкIэ видео.",
     "standaloneDescription": "А бызэм къыщIэ тхыгъэхэу видео.",
-    "openCollection": "Коллекция къыдэкIын"
+    "openCollection": "Коллекция къыдэкIын",
+    "filters": "Filters",
+    "filterLength": "Length",
+    "filterLength_under5": "Under 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "30+ min",
+    "filterType": "Type",
+    "clearFilters": "Clear filters",
+    "filterResults": "{count} of {total} shown",
+    "noFilterResults": "No videos match these filters. Try clearing one.",
+    "filterAdded": "Added",
+    "filterAdded_60d": "Last 60 days",
+    "filterAdded_6m": "Last 6 months",
+    "filterAdded_12m": "Last 12 months"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project — Еплъэн",

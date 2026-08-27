@@ -180,7 +180,8 @@
     "changeAudioLanguage": "ध्वनि-भाषां परिवर्तयतु",
     "home": "JesusFilm गृहपृष्ठम्",
     "closeSearch": "अन्वेषणं पिधाय",
-    "submitSearch": "अन्वेषयतु"
+    "submitSearch": "अन्वेषयतु",
+    "library": "Library"
   },
   "SearchOverlay": {
     "dialogLabel": "वीडियोनि अन्वेषयतु ब्राउज़् च कुर्वन्तु",
@@ -467,6 +468,7 @@
     "sports": "क्रीडाः",
     "collections": "सङ्ग्रहाः",
     "subtitlesOnly": "उपशीर्षक-मात्रम्",
+    "backToTop": "Back to top",
     "newlyAdded": "नूतनतया योजितम्",
     "newVideosTitle": "{language} भाषायां नूतनानि ख्रीष्टीय-वीडियोनि",
     "newestFirst": "नवतमानि प्रथमतः",
@@ -497,7 +499,21 @@
     "standaloneVideos": "स्वतन्त्र-वीडियोनि",
     "videosFromCollection": "{collection} इत्यस्मात् वीडियोनि।",
     "standaloneDescription": "अस्मिन् भाषायां स्वतन्त्र-वीडियोनि।",
-    "openCollection": "सङ्ग्रहं उद्घाटयतु"
+    "openCollection": "सङ्ग्रहं उद्घाटयतु",
+    "filters": "Filters",
+    "filterLength": "Length",
+    "filterLength_under5": "Under 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "30+ min",
+    "filterType": "Type",
+    "clearFilters": "Clear filters",
+    "filterResults": "{count} of {total} shown",
+    "noFilterResults": "No videos match these filters. Try clearing one.",
+    "filterAdded": "Added",
+    "filterAdded_60d": "Last 60 days",
+    "filterAdded_6m": "Last 6 months",
+    "filterAdded_12m": "Last 12 months"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project पश्यन्तु",

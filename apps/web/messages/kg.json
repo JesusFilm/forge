@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Bongola monoko ya mongongo",
     "home": "Ndako ya JesusFilm",
     "closeSearch": "Kokanga boluki",
-    "submitSearch": "Luka"
+    "submitSearch": "Luka",
+    "library": "Library"
   },
   "SearchOverlay": {
     "dialogLabel": "Luka mpe tala ba vidéo",
@@ -467,6 +468,7 @@
     "sports": "Masano",
     "collections": "Masangani",
     "subtitlesOnly": "Kaka mibenga ya nse",
+    "backToTop": "Back to top",
     "newlyAdded": "Ebakisami sika",
     "newVideosTitle": "Ba vidéo ya boklisto ya sika na {language}",
     "newestFirst": "Ya sika liboso",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Ba vidéo ya sekele",
     "videosFromCollection": "Ba vidéo uta na {collection}.",
     "standaloneDescription": "Ba vidéo ya sekele na monoko oyo.",
-    "openCollection": "Fungola lisangá"
+    "openCollection": "Fungola lisangá",
+    "filters": "Filters",
+    "filterLength": "Length",
+    "filterLength_under5": "Under 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "30+ min",
+    "filterType": "Type",
+    "clearFilters": "Clear filters",
+    "filterResults": "{count} of {total} shown",
+    "noFilterResults": "No videos match these filters. Try clearing one.",
+    "filterAdded": "Added",
+    "filterAdded_60d": "Last 60 days",
+    "filterAdded_6m": "Last 6 months",
+    "filterAdded_12m": "Last 12 months"
   },
   "WatchHome": {
     "pageTitle": "Kotala ya Jesus Film Project",

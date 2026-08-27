@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Cinza ririmi ra mpfumawulo",
     "home": "Tluka ra le kaya ra JesusFilm",
     "closeSearch": "Pfala ku lava",
-    "submitSearch": "Lava"
+    "submitSearch": "Lava",
+    "library": "Library"
   },
   "SearchOverlay": {
     "dialogLabel": "Lava ni ku languta tivhidiyo",
@@ -467,6 +468,7 @@
     "sports": "Midlalo",
     "collections": "Miqoqo",
     "subtitlesOnly": "Switsalwana ntsena",
+    "backToTop": "Back to top",
     "newlyAdded": "Swa ha ku engeteriwa",
     "newVideosTitle": "Tivhidiyo ta Vukreste letintshwa hi {language}",
     "newestFirst": "Leswintshwa ku sungula",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Tivhidiyo leti yimaka toxe",
     "videosFromCollection": "Tivhidiyo ku suka eka {collection}.",
     "standaloneDescription": "Tivhidiyo leti yimaka toxe eka ririmi leri.",
-    "openCollection": "Pfula muqoqo"
+    "openCollection": "Pfula muqoqo",
+    "filters": "Filters",
+    "filterLength": "Length",
+    "filterLength_under5": "Under 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "30+ min",
+    "filterType": "Type",
+    "clearFilters": "Clear filters",
+    "filterResults": "{count} of {total} shown",
+    "noFilterResults": "No videos match these filters. Try clearing one.",
+    "filterAdded": "Added",
+    "filterAdded_60d": "Last 60 days",
+    "filterAdded_6m": "Last 6 months",
+    "filterAdded_12m": "Last 12 months"
   },
   "WatchHome": {
     "pageTitle": "Ku Languta ka Jesus Film Project",

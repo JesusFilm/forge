@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Shandukisani luambo lwa mudumo",
     "home": "Muhuri wa JesusFilm",
     "closeSearch": "Valani ṱhoḓisiso",
-    "submitSearch": "Ṱolani"
+    "submitSearch": "Ṱolani",
+    "library": "Library"
   },
   "SearchOverlay": {
     "dialogLabel": "Ṱolani na u browse video",
@@ -467,6 +468,7 @@
     "sports": "Mitambo",
     "collections": "Miṱaṱisano",
     "subtitlesOnly": "Zwibulo fhedzi",
+    "backToTop": "Back to top",
     "newlyAdded": "Zwo engedzwa zwenezwino",
     "newVideosTitle": "Vidio dza Vhukriste dza zwenezwino nga {language}",
     "newestFirst": "Zwine zwa vha zwiswa nga phanda",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Vidio dzi imelelaho",
     "videosFromCollection": "Vidio u bva kha {collection}.",
     "standaloneDescription": "Vidio dzi imelelaho kha heḽi luambo.",
-    "openCollection": "Vulani muṱaṱisano"
+    "openCollection": "Vulani muṱaṱisano",
+    "filters": "Filters",
+    "filterLength": "Length",
+    "filterLength_under5": "Under 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "30+ min",
+    "filterType": "Type",
+    "clearFilters": "Clear filters",
+    "filterResults": "{count} of {total} shown",
+    "noFilterResults": "No videos match these filters. Try clearing one.",
+    "filterAdded": "Added",
+    "filterAdded_60d": "Last 60 days",
+    "filterAdded_6m": "Last 6 months",
+    "filterAdded_12m": "Last 12 months"
   },
   "WatchHome": {
     "pageTitle": "U Lavhelesa ha Jesus Film Project",

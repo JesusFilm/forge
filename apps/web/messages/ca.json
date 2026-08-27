@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Canvia l’idioma de l’àudio",
     "home": "Inici de JesusFilm",
     "closeSearch": "Tanca la cerca",
-    "submitSearch": "Cerca"
+    "submitSearch": "Cerca",
+    "library": "Library"
   },
   "SearchOverlay": {
     "dialogLabel": "Cerca i navega pels vídeos",
@@ -467,6 +468,7 @@
     "sports": "Esports",
     "collections": "Col·leccions",
     "subtitlesOnly": "Només subtítols",
+    "backToTop": "Back to top",
     "newlyAdded": "Afegits recentment",
     "newVideosTitle": "Nous vídeos cristians en {language}",
     "newestFirst": "Més recents primer",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Vídeos independents",
     "videosFromCollection": "Vídeos de {collection}.",
     "standaloneDescription": "Vídeos independents en aquest idioma.",
-    "openCollection": "Obre la col·lecció"
+    "openCollection": "Obre la col·lecció",
+    "filters": "Filters",
+    "filterLength": "Length",
+    "filterLength_under5": "Under 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "30+ min",
+    "filterType": "Type",
+    "clearFilters": "Clear filters",
+    "filterResults": "{count} of {total} shown",
+    "noFilterResults": "No videos match these filters. Try clearing one.",
+    "filterAdded": "Added",
+    "filterAdded_60d": "Last 60 days",
+    "filterAdded_6m": "Last 6 months",
+    "filterAdded_12m": "Last 12 months"
   },
   "WatchHome": {
     "pageTitle": "Mira Jesus Film Project",
