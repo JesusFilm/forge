@@ -57,6 +57,7 @@ const LIVE_ISSUE_ROW = {
 
 const WINDOW = {
   service: "forge-mobile",
+  track: "rum" as const,
   from: new Date("2026-08-18T10:00:00Z"),
   to: new Date("2026-08-18T11:00:00Z"),
 }
@@ -359,8 +360,10 @@ describe("DatadogTriageClient issue search", () => {
 
     const [url, init] = (fetchImpl as unknown as ReturnType<typeof vi.fn>).mock
       .calls[0] as [URL, RequestInit]
+    // `include=issue` and `track` were both verified REQUIRED on the live
+    // API 2026-08-27: without them detail rows are absent / the call 400s.
     expect(url.toString()).toBe(
-      "https://api.datadoghq.com/api/v2/error-tracking/issues/search",
+      "https://api.datadoghq.com/api/v2/error-tracking/issues/search?include=issue",
     )
     expect(init.redirect).toBe("error")
     expect(init.headers).toMatchObject({
@@ -372,6 +375,7 @@ describe("DatadogTriageClient issue search", () => {
         type: "search_request",
         attributes: {
           query: "service:forge-mobile",
+          track: "rum",
           from: WINDOW.from.getTime(),
           to: WINDOW.to.getTime(),
           page: { limit: 100 },
