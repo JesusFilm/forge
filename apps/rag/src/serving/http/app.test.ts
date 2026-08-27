@@ -38,14 +38,19 @@ const tokens = parseTokenRegistry(
   }),
 )
 
-function searchRequest(body: unknown, token?: string): Request {
-  const headers: Record<string, string> = {
+function searchRequest(
+  body: unknown,
+  token?: string,
+  headers: Record<string, string> = {},
+): Request {
+  const requestHeaders: Record<string, string> = {
     "content-type": "application/json",
+    ...headers,
   }
-  if (token) headers.authorization = `Bearer ${token}`
+  if (token) requestHeaders.authorization = `Bearer ${token}`
   return new Request("http://local/v1/search", {
     method: "POST",
-    headers,
+    headers: requestHeaders,
     body: typeof body === "string" ? body : JSON.stringify(body),
   })
 }
@@ -112,6 +117,19 @@ describe("POST /v1/search", () => {
     log.mockRestore()
   })
 
+  it("rejects a declared oversized body before reading it", async () => {
+    const { retriever, calls } = spyRetriever()
+    const response = await createApp({ retriever, tokens }).request(
+      searchRequest({ query: "hope" }, "token-all", {
+        "content-length": "20000",
+      }),
+    )
+
+    expect(response.status).toBe(413)
+    expect(await response.json()).toEqual({ error: "payload_too_large" })
+    expect(calls).toHaveLength(0)
+  })
+
   it("passes a scoped token's source restriction to retrieval", async () => {
     const { retriever, calls } = spyRetriever()
     const response = await createApp({ retriever, tokens }).request(
@@ -137,6 +155,19 @@ describe("POST /v1/search", () => {
     expect(calls).toHaveLength(0)
   })
 
+  it("allows a wildcard token to narrow to requested sources", async () => {
+    const { retriever, calls } = spyRetriever()
+    const response = await createApp({ retriever, tokens }).request(
+      searchRequest(
+        { query: "hope", policy: { allowedSourceKeys: ["jesusfilm-org"] } },
+        "token-all",
+      ),
+    )
+
+    expect(response.status).toBe(200)
+    expect(calls[0]?.policy?.allowedSourceKeys).toEqual(["jesusfilm-org"])
+  })
+
   it("returns a valid empty result for an empty corpus", async () => {
     const response = await createApp({
       retriever: spyRetriever([]).retriever,
@@ -151,7 +182,7 @@ describe("POST /v1/search", () => {
     const log = vi.spyOn(console, "error").mockImplementation(() => undefined)
     const retriever: Retriever = {
       search: async () => {
-        throw new Error("database connection contains sensitive details")
+        throw new Error("sentinel-sensitive-database-detail")
       },
     }
 
@@ -162,6 +193,13 @@ describe("POST /v1/search", () => {
     expect(response.status).toBe(500)
     expect(await response.json()).toEqual({ error: "internal" })
     expect(log).toHaveBeenCalledOnce()
+    expect(log.mock.calls.flat()).not.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          message: "sentinel-sensitive-database-detail",
+        }),
+      ]),
+    )
     log.mockRestore()
   })
 })

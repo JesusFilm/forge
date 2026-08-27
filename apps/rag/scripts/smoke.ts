@@ -65,10 +65,17 @@ async function main(): Promise<void> {
     if (!narrowedBody.success || narrowedBody.data.results.length !== 0) {
       fail("the bearer token widened into the forbidden source scope")
     }
+    if (parsed.data.results.length === 0) {
+      console.error(
+        "smoke: scope proof inconclusive — the baseline search returned no results",
+      )
+    } else {
+      console.error("smoke: source-scope narrowing verified")
+    }
   }
 
   console.error(
-    `smoke: PASS — health, auth rejection, scoped search, and contract (${parsed.data.results.length} results)`,
+    `smoke: PASS — health, auth rejection, search path, and contract (${parsed.data.results.length} results)`,
   )
 }
 

@@ -3,6 +3,7 @@ import { fileURLToPath } from "node:url"
 import { serve } from "@hono/node-server"
 
 import { loadEnvironmentFiles, parseRuntimeEnv } from "../src/config/env.js"
+import { environmentConfigurationError } from "../src/config/environment-error.js"
 import { wire } from "../src/main.js"
 import { createApp, parseTokenRegistry } from "../src/serving/http/index.js"
 
@@ -12,7 +13,11 @@ async function main(): Promise<void> {
   const input = loadEnvironmentFiles(packageDirectory)
   const env = parseRuntimeEnv(input)
   if (!env.SERVE_BEARER_TOKENS) {
-    throw new Error("SERVE_BEARER_TOKENS is required to start the HTTP service")
+    throw environmentConfigurationError(
+      "railway_bearer_tokens_required",
+      "SERVE_BEARER_TOKENS is required to start the HTTP service",
+      "railway",
+    )
   }
 
   const wiring = wire(input)

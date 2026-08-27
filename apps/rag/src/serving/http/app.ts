@@ -19,7 +19,7 @@ export function createApp(deps: AppDeps): Hono {
     if (error.name === "BodyLimitError") {
       return context.json({ error: "payload_too_large" }, 413)
     }
-    console.error("serve: request failed; returning 500", error)
+    console.error(`[rag] event=request_failed error_name=${error.name}`)
     return context.json({ error: "internal" }, 500)
   })
 

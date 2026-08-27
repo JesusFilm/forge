@@ -47,9 +47,13 @@ SMOKE_BASE_URL=http://forge-rag.railway.internal:8080 pnpm --filter @forge/rag s
 ```
 
 For a source-scoped token, set `SMOKE_FORBIDDEN_SOURCE_KEY` to a real source the
-token is not permitted to access. The probe then proves that request scope
-cannot widen token scope. On the empty feat-425 corpus, the authenticated search
-must return a contract-valid empty `results` array.
+token is not permitted to access. Once the baseline query returns at least one
+in-scope result, the probe proves that request scope cannot widen token scope.
+On the empty feat-425 corpus, both searches return a contract-valid empty
+`results` array, so the probe exercises the scoped path but reports the scope
+proof as inconclusive. The application tests provide the empty-corpus scope
+guarantee; repeat the smoke after the corpus copy with a positive baseline to
+collect deployment evidence.
 
 Record only statuses, timestamps, deployment identifiers, and result counts.
 Never record URLs containing credentials, bearer values, authorization headers,
