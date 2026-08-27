@@ -1235,6 +1235,12 @@ The standing activity a covered service already had when triage began watching i
 
 That first run deliberately files nothing: it exists so pre-existing errors read as pre-existing instead of as a sudden flood of new ones. A read the sweep could not complete refuses to seed a baseline at all, because a partial view recorded as "everything that existed" would make the unseen remainder look new forever.
 
+### Release-Session Filter
+
+The gate deciding whether a Triage Signal's activity came from a real release build or from a developer's own session, so development noise never becomes a triage ticket. The version the activity carries is the primary discriminator; textual development markers are secondary, used only when no version is present.
+
+It fails open toward coverage: activity spanning both a development session and a release build stays in, and an unusable filter configuration refuses to run rather than silently excluding everything. Loosening the filter makes previously excluded noise look new, so a filter change requires re-seeding the affected Service Baseline.
+
 ### Epoch
 
 The dedup generation of a Triage Signal — the counter that decides whether an already-ticketed problem may be ticketed again.
