@@ -7,7 +7,7 @@ status: "in-progress"
 start_date: "2026-09-09"
 duration: 3
 depends_on: ["feat-427"]
-blocks: ["feat-429"]
+blocks: ["feat-429", "feat-439"]
 tags: ["rag", "railway", "http"]
 ---
 
