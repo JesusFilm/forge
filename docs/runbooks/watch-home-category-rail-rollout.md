@@ -8,13 +8,18 @@ service redeploy from a local checkout.
 
 ## Release invariants
 
-- Admin's `0053_watch_home_category_rail_block` data migration must finish
-  before the new Admin revision is considered healthy. It inserts one
-  all-category block immediately after the first `watchHomeHero`, or first when
-  no hero exists, for every valid canonical homepage and active homepage draft
-  that does not already contain the block.
-- The migration is idempotent and leaves non-homepages, historical revisions,
-  malformed JSON, and already-authored category rails unchanged.
+- Prisma's automatic pre-deploy path performs no category-rail data write. New
+  Admin code must be healthy and all old Admin instances must drain before the
+  reviewed post-deploy backfill is invoked.
+- Until that backfill commits its durable `sync_state` marker, new Admin read
+  surfaces synthesize one all-category block immediately after the first
+  `watchHomeHero`, or first when no hero exists, for effective homepages that
+  lack it. This preserves the old rail without mutating storage.
+- The post-deploy backfill is idempotent and atomically updates valid canonical
+  and active-draft homepages plus the completion marker. It leaves
+  non-homepages, historical revisions, malformed JSON, and already-authored
+  category rails unchanged. After the marker exists, authored absence is
+  authoritative and read-time synthesis stops.
 - Old Web always renders its fixed rail and ignores the authored union member.
 - New Web treats a successful new-schema response as authoritative. It renders
   the rail only where `watchHomeCategoryRail` appears in the authored block
@@ -25,28 +30,38 @@ service redeploy from a local checkout.
   one fixed rail immediately after the hero. Network, authorization, resolver,
   timeout, and unrelated validation failures neither retry nor enable the
   fixed rail.
+- Draft preview applies the same exact unknown-type gate and retries its legacy
+  operation once; unrelated failures remain redacted and fail closed.
+- Mobile and TV keep using the legacy Watch Experience fragment throughout the
+  rollback window. They still receive the new block's `__typename` from a new
+  Admin and silently skip it, without naming the type in requests to an old
+  Admin schema.
 
 ## Preflight
 
 1. Confirm the release commit contains the Admin schema, generated
-   `apps/admin/schema.graphql` and gql.tada output, migration `0053`, Web's new
-   and legacy Watch fragments, and this runbook.
-2. Run the migration contract test against a disposable PostgreSQL database,
+   `apps/admin/schema.graphql` and gql.tada output, the reviewed
+   `apps/admin/prisma/backfills/watch-home-category-rail-block.sql` artifact,
+   Web's new and legacy Watch fragments, and this runbook. Confirm no
+   category-rail migration exists under `apps/admin/prisma/migrations/`.
+2. Run the backfill contract test against a disposable PostgreSQL database,
    never production:
 
    ```sh
-   WATCH_HOME_CATEGORY_RAIL_MIGRATION_DB_TEST=1 \
+   WATCH_HOME_CATEGORY_RAIL_BACKFILL_DB_TEST=1 \
      DATABASE_URL='<disposable-postgres-url>' \
      pnpm --filter @forge/admin exec vitest run \
-       src/services/watch-home-category-rail-migration.db.test.ts
+       src/services/watch-home-category-rail-backfill.db.test.ts
    ```
 
 3. Record current Admin and Web deployment revisions, homepage response status,
    and a desktop/mobile screenshot. Confirm the current page shows exactly one
    category rail.
-4. Keep Experience editing disabled for the short interval between migration
-   completion and the verification queries below. This makes the expected
-   all-category order an unambiguous migration check.
+4. Prepare to disable Experience editing immediately before deploying the new
+   Admin revision and keep it disabled through post-deploy backfill
+   verification. Before activation, missing rails are compatibility state, not
+   authored absence; the freeze prevents an editor from deleting a synthesized
+   rail or replacing a draft while the backfill is converging storage.
 
 ## Forward deployment
 
@@ -61,37 +76,62 @@ normal Railway integration.
 2. Verify two Admin GraphQL requests only on that compatibility request (one
    failed validation and one successful legacy retry), one visible rail, and no
    client console error or horizontal overflow.
-3. Deploy Admin. Require migration `0053` to complete before accepting the
-   revision as healthy.
-4. New Web's first operation now succeeds, so it stops retrying, stops inserting
-   the fixed rail, and renders the migrated authored block in its stored
-   position.
+3. Disable Experience editing, then deploy Admin. Its automatic Prisma
+   pre-deploy remains data-neutral. Wait for the new revision to pass health
+   checks and prove every old Admin instance has drained. New Admin synthesizes
+   the equivalent rail on reads in this window.
+4. Run the post-deploy backfill command in **Post-deploy activation** below,
+   verify it, and re-enable editing. New Web now reads the persisted authored
+   block in its stored position.
 
 ### Admin first
 
-1. Deploy Admin and require migration `0053` to complete before accepting the
-   revision as healthy.
-2. Old Web continues to render exactly one fixed rail; it does not render the
-   new union member.
-3. Run the migration verification below, then deploy Web.
-4. New Web receives the authored block on its first request and renders exactly
-   one rail with no compatibility retry.
+1. Disable Experience editing, then deploy Admin. Its automatic Prisma
+   pre-deploy remains data-neutral. Wait for the new revision to pass health
+   checks and prove every old Admin instance has drained. New Admin synthesizes
+   the equivalent rail on reads in this window.
+2. Old Web continues to render exactly one fixed rail and ignores the
+   synthesized union member.
+3. Run and verify the post-deploy activation below, then re-enable editing and
+   deploy Web.
+4. New Web receives the persisted authored block on its first request and
+   renders exactly one rail with no compatibility retry.
 
-## Migration verification
+## Post-deploy activation
 
-First verify Prisma recorded the migration successfully:
+Only after the new Admin revision is healthy, every old Admin instance has
+drained, and Experience editing is disabled, invoke the committed artifact from
+a one-off process created from the **exact healthy Admin deployment image**.
+Before starting it, record and verify the Railway project, environment, Admin
+service, deployment ID, source SHA, and immutable image digest. The one-off must
+show those same identifiers and run this command inside that deployed image:
 
-```sql
-SELECT migration_name, started_at, finished_at, rolled_back_at
-FROM _prisma_migrations
-WHERE migration_name = '0053_watch_home_category_rail_block';
+```sh
+pnpm --filter @forge/admin db:backfill:watch-home-category-rail
 ```
 
-Require exactly one row with non-null `finished_at` and null `rolled_back_at`.
-Do not manually rerun the production migration to test idempotence; the
-disposable-PostgreSQL preflight test owns that proof.
+Use the platform/operations-approved release-bound one-off facility with the
+project, environment, and service selected explicitly; repository conventions
+do not define a safe generic CLI for creating that job. If the facility cannot
+prove the deployment/image pin, stop. In particular, do not use `railway run`:
+it executes code from the local checkout with remotely injected variables.
+This is a reviewed deployment step, not permission to paste SQL into a
+production console or point local code at production. Capture the one-off job
+ID, exit status, deployment ID, source SHA, and image digest as rollout
+evidence. The SQL updates content and records
+`watch-home-category-rail-backfill-v1` in `sync_state` in one transaction.
+Verify exactly one completion marker before inspecting content:
 
-Inspect rows the migration intentionally cannot rewrite. Both queries should
+```sql
+SELECT phase, last_synced_at, stats
+FROM sync_state
+WHERE phase = 'watch-home-category-rail-backfill-v1';
+```
+
+Do not rerun production merely to demonstrate idempotence; the disposable
+PostgreSQL preflight test owns that proof.
+
+Inspect rows the backfill intentionally cannot rewrite. Both queries should
 return zero rows; stop and review any result before enabling editing:
 
 ```sql
@@ -106,9 +146,20 @@ FROM content_revision AS revision
 INNER JOIN experience_locale AS locale ON locale.id = revision.entity_id
 WHERE revision.entity_type = 'ExperienceLocale'
   AND revision.status = 'DRAFT'
-  AND locale.is_homepage = true
-  AND jsonb_typeof(revision.snapshot #> '{data,blocks}')
-      IS DISTINCT FROM 'array';
+  AND COALESCE(
+    CASE
+      WHEN jsonb_typeof(revision.snapshot #> '{data,isHomepage}') = 'boolean'
+        THEN (revision.snapshot #>> '{data,isHomepage}')::boolean
+      ELSE NULL
+    END,
+    locale.is_homepage
+  ) = true
+  AND (
+    jsonb_typeof(revision.snapshot) IS DISTINCT FROM 'object'
+    OR jsonb_typeof(revision.snapshot -> 'data') IS DISTINCT FROM 'object'
+    OR jsonb_typeof(revision.snapshot #> '{data,blocks}')
+        IS DISTINCT FROM 'array'
+  );
 ```
 
 The following canonical query must return zero rows. During the editing freeze,
@@ -129,13 +180,13 @@ WITH expected AS (
     (jsonb_agg(item.value -> 'categoryIds' ORDER BY item.ordinality)
       FILTER (WHERE item.value ->> 't' = 'watchHomeCategoryRail')) -> 0 AS category_ids
   FROM experience_locale AS locale
-  CROSS JOIN LATERAL jsonb_array_elements(
+  LEFT JOIN LATERAL jsonb_array_elements(
     CASE
       WHEN jsonb_typeof(locale.blocks) = 'array' THEN locale.blocks
       ELSE '[]'::jsonb
     END
   )
-    WITH ORDINALITY AS item(value, ordinality)
+    WITH ORDINALITY AS item(value, ordinality) ON true
   WHERE locale.is_homepage = true
     AND jsonb_typeof(locale.blocks) = 'array'
   GROUP BY locale.id, locale.slug
@@ -164,17 +215,16 @@ WITH expected AS (
       FILTER (WHERE item.value ->> 't' = 'watchHomeCategoryRail')) -> 0 AS category_ids
   FROM content_revision AS revision
   INNER JOIN experience_locale AS locale ON locale.id = revision.entity_id
-  CROSS JOIN LATERAL jsonb_array_elements(
+  LEFT JOIN LATERAL jsonb_array_elements(
     CASE
       WHEN jsonb_typeof(revision.snapshot #> '{data,blocks}') = 'array'
         THEN revision.snapshot #> '{data,blocks}'
       ELSE '[]'::jsonb
     END
   )
-    WITH ORDINALITY AS item(value, ordinality)
+    WITH ORDINALITY AS item(value, ordinality) ON true
   WHERE revision.entity_type = 'ExperienceLocale'
     AND revision.status = 'DRAFT'
-    AND locale.is_homepage = true
     AND jsonb_typeof(revision.snapshot #> '{data,blocks}') = 'array'
     AND COALESCE(
       CASE
@@ -194,11 +244,29 @@ WHERE rail_count <> 1
    OR category_ids IS DISTINCT FROM expected.category_ids;
 ```
 
-After both return zero rows, query the homepage through Admin GraphQL and
-confirm `blocks` includes one `WatchHomeCategoryRailBlock` with all 13 IDs.
-Then load Web and confirm one successful Experience request, one visible rail,
-and no compatibility retry. Re-enable editing and verify an admin can reorder
-the block, curate tile membership/order, save, reopen, and preview the result.
+After the diagnostics return zero rows, explicitly invalidate Web's shared ISR
+and resolver caches before the final request/browser checks. From an approved
+secret-capable operations environment, use the deployed Admin service's
+`WEB_REVALIDATE_URL` and `WEB_REVALIDATE_TOKEN`; do not print the token:
+
+```sh
+curl --fail-with-body --silent --show-error \
+  --request POST "$WEB_REVALIDATE_URL" \
+  --header "Authorization: Bearer $WEB_REVALIDATE_TOKEN" \
+  --header "Content-Type: application/json" \
+  --data '{"model":"watch-setting","entry":{}}'
+```
+
+Expect HTTP 200 with `revalidated: true`, no `tagErrors`, and `tags` containing
+`watch:home`, `watch:settings`, `watch:experience`, `watch:video`,
+`watch:series`, and `watch:child-dub-languages`. A non-2xx response or missing
+success fields is a stop condition; do not rely on the normal cache TTL.
+
+Then query the homepage through Admin GraphQL and confirm `blocks` includes one
+`WatchHomeCategoryRailBlock` with all 13 IDs. Load Web and confirm one
+successful Experience request, one visible rail, and no compatibility retry.
+Re-enable editing and verify an admin can reorder the block, curate tile
+membership/order, save, reopen, and preview the result.
 
 ## Rollback
 
@@ -210,9 +278,11 @@ discriminator.
    live.
 2. While new Admin can still read `watchHomeCategoryRail`, ship a reviewed
    rollback data migration that removes the discriminator from canonical
-   homepages and active homepage drafts. The migration should use the following
-   scoped transformation; do not run it as an unreviewed production console
-   command:
+   homepages and **all** `ExperienceLocale` revisions, including `HISTORICAL`.
+   Old Admin cannot parse the new discriminator when an editor reads or restores
+   revision history, so cleaning active drafts alone is not rollback-safe. The
+   migration should use the following scoped transformation; do not run it as
+   an unreviewed production console command:
 
    ```sql
    WITH cleaned AS (
@@ -260,7 +330,6 @@ discriminator.
          '[]'::jsonb
        ) AS blocks
      FROM content_revision AS revision
-     INNER JOIN experience_locale AS locale ON locale.id = revision.entity_id
      CROSS JOIN LATERAL jsonb_array_elements(
        CASE
          WHEN jsonb_typeof(revision.snapshot #> '{data,blocks}') = 'array'
@@ -270,17 +339,7 @@ discriminator.
      )
        WITH ORDINALITY AS item(value, ordinality)
      WHERE revision.entity_type = 'ExperienceLocale'
-       AND revision.status = 'DRAFT'
-       AND locale.is_homepage = true
        AND jsonb_typeof(revision.snapshot #> '{data,blocks}') = 'array'
-       AND COALESCE(
-         CASE
-           WHEN jsonb_typeof(revision.snapshot #> '{data,isHomepage}') = 'boolean'
-             THEN (revision.snapshot #>> '{data,isHomepage}')::boolean
-           ELSE NULL
-         END,
-         locale.is_homepage
-       ) = true
        AND EXISTS (
          SELECT 1
          FROM jsonb_array_elements(
@@ -303,9 +362,17 @@ discriminator.
    )
    FROM cleaned
    WHERE revision.id = cleaned.id;
+
+   DELETE FROM sync_state
+   WHERE phase = 'watch-home-category-rail-backfill-v1';
    ```
 
-3. Require both of these read-only checks to return `0`:
+   Old Web is already restored before this cleanup and continues rendering its
+   one fixed rail. Existing new Admin processes may have cached marker
+   completion, which is harmless in this order; old Admin remains safe because
+   both stored discriminators and the marker are gone before it is restored.
+
+3. Require all three read-only checks to return `0`:
 
    ```sql
    SELECT count(*)
@@ -325,10 +392,7 @@ discriminator.
 
    SELECT count(*)
    FROM content_revision AS revision
-   INNER JOIN experience_locale AS locale ON locale.id = revision.entity_id
    WHERE revision.entity_type = 'ExperienceLocale'
-     AND revision.status = 'DRAFT'
-     AND locale.is_homepage = true
      AND jsonb_typeof(revision.snapshot #> '{data,blocks}') = 'array'
      AND EXISTS (
        SELECT 1
@@ -341,6 +405,10 @@ discriminator.
        ) AS item(value)
        WHERE item.value ->> 't' = 'watchHomeCategoryRail'
      );
+
+   SELECT count(*)
+   FROM sync_state
+   WHERE phase = 'watch-home-category-rail-backfill-v1';
    ```
 
 4. Verify old Web's homepage query succeeds against new Admin and the fixed rail
@@ -351,7 +419,10 @@ discriminator.
 ## Remove the temporary compatibility path
 
 Create a follow-up roadmap ticket after deployment history proves no old Admin
-revision can serve Web traffic. In that follow-up, delete the legacy Watch
-Experience fragment and operations, the unknown-typename retry detector, the
-`watchHomeCategoryRailCompatibility` result flag, and the fixed compatibility
-section. Keep supported-schema absent-block behavior authoritative throughout.
+revision can serve Web, Mobile, TV, or preview traffic. In that follow-up,
+delete the legacy Watch Experience fragment and operations, switch native
+queries back to the canonical fragment, delete both unknown-typename retry
+paths, the `watchHomeCategoryRailCompatibility` result flag, and the fixed
+compatibility section. Also delete the temporary Admin read fallback and its
+`sync_state` marker after confirming the backfill is complete everywhere. Keep
+supported-schema absent-block behavior authoritative throughout.

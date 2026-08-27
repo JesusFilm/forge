@@ -17,7 +17,7 @@ execution: code
 - **Means:** Replace the fixed homepage insertion with a top-level `watchHomeCategoryRail` block that stores ordered stable category IDs and renders through the normal Experience dispatcher (KTD2, KTD4).
 - **Authority:** The user request owns product behavior. `AGENTS.md`, package-local guides, and generated-contract rules own repository constraints. Requirements in this plan own product behavior; Key Technical Decisions own implementation mechanisms.
 - **Execution profile:** Cross-cutting code change across shared policy, Admin, GraphQL, Web, Mobile, and TV. Use focused tests before full touched-package checks, then browser and performance evidence.
-- **Stop conditions:** Stop if the compatibility query cannot preserve the old rail against the old Admin schema, if the data migration cannot update every homepage locale and active draft safely, or if selected IDs require a new homepage request.
+- **Stop conditions:** Stop if the compatibility query cannot preserve the old rail against the old Admin schema, if the post-deploy backfill cannot update every homepage locale and active draft safely, or if selected IDs require a new homepage request.
 - **Tail ownership:** The implementation owner carries the change through roadmap completion, generated artifacts, browser QA, performance evidence, commit, PR, and merge-readiness.
 
 ---
@@ -55,7 +55,7 @@ Web currently inserts the category rail directly after the homepage hero. That p
 - R11. The block is available through Admin's validated JSON contract, Pothos union, committed SDL, generated gql.tada introspection, shared Watch Experience fragment, and draft preview query.
 - R12. Live Admin AI chat and existing MCP create/update paths can preserve, select, and reorder this block under the same validation rules as manual editing.
 - R13. Autonomous Experience generation does not invent this homepage-only block in this change.
-- R14. The local seed and an idempotent deployment migration insert the all-category block immediately after `watchHomeHero` for every homepage locale and active draft that lacks it.
+- R14. The local seed and an idempotent reviewed post-deploy backfill insert the all-category block immediately after `watchHomeHero` for every homepage locale and active draft that lacks it; temporary Admin read synthesis preserves the rail until activation completes.
 - R15. New Web falls back to the fixed rail only when the old Admin schema rejects the new block typename; once the schema supports the block, stored Experience content is authoritative and an absent block renders no rail.
 - R16. Steady-state authored rendering adds no homepage fetch, increases initial transferred JavaScript by no more than 5 KiB gzip, keeps five-run median LCP within the larger of 100 ms or 5%, and keeps initial-window long-task time within the larger of 50 ms or 10%.
 
@@ -64,7 +64,7 @@ Web currently inserts the category rail directly after the homepage hero. That p
 - A1. **Experience admin:** Adds, removes, reorders, and edits the category rail.
 - A2. **AI-assisted admin:** Uses live Experience chat or MCP create/update operations against the same block contract.
 - A3. **Watch viewer:** Sees the selected category links in the authored section position.
-- A4. **Release operator:** Verifies the automatic content migration, compatibility mode, and rollback sequence during rollout.
+- A4. **Release operator:** Verifies new Admin health/drain, explicit backfill activation, compatibility mode, and rollback sequence during rollout.
 
 ### Key Flows
 
@@ -80,7 +80,7 @@ Web currently inserts the category rail directly after the homepage hero. That p
   - **Covered by:** R2, R4, R5, R12, R13
 - F3. **Race-safe production cutover**
   - **Trigger:** The merged change is prepared for deployment.
-  - **Steps:** Admin's pre-deploy migration inserts missing blocks, new Web uses the authored contract when supported, and new Web retries the legacy query plus fixed rail only while the old Admin schema rejects the typename.
+  - **Steps:** Admin expands its read contract without an automatic data write, temporary read synthesis preserves missing legacy rows, the reviewed backfill runs after new Admin health/drain, and new Web retries the legacy query plus fixed rail only while the old Admin schema rejects the typename.
   - **Outcome:** Either Railway deployment order preserves exactly one rail, and the fixed compatibility path stops automatically when Admin supports authored control.
   - **Covered by:** R8, R11, R14-R16
 
@@ -92,7 +92,7 @@ Web currently inserts the category rail directly after the homepage hero. That p
 - AE4. **Covers R8, R15.** Given Admin supports the new typename and a homepage Experience has no category block, when Web renders it, then no category rail appears.
 - AE5. **Covers R9.** Given malformed legacy consumer data with duplicate and unknown IDs, when the Web adapter resolves the selection, then it renders each known ID at most once and renders nothing when none are valid.
 - AE6. **Covers R10.** Given the shared fragment returns this typename to Mobile or TV, when either adapter builds its homepage model, then it emits no rail and no unknown-block warning.
-- AE7. **Covers R14, R15.** Given a homepage locale or active draft without the block, when the Admin migration runs, then it inserts exactly one all-category block after the hero and a second run makes no change.
+- AE7. **Covers R14, R15.** Given a homepage locale or active draft without the block, new Admin reads synthesize the equivalent block before activation; when the reviewed post-deploy backfill runs after health/drain, it inserts exactly one all-category block after the hero, records completion atomically, and a second run makes no content change.
 - AE8. **Covers R15.** Given new Web reaches old Admin, when the new typename is rejected during GraphQL validation, then Web retries the legacy operation and renders the fixed rail; unrelated GraphQL failures do not trigger compatibility mode.
 
 ### Success Criteria
@@ -105,7 +105,7 @@ Web currently inserts the category rail directly after the homepage hero. That p
 
 **In scope**
 
-- Homepage-only singleton authoring, ordered tile selection, shared catalog, GraphQL propagation, Web rendering, draft preview, explicit AI/MCP editing parity, native-client silent compatibility, seed update, idempotent content migration, schema compatibility, and rollback documentation.
+- Homepage-only singleton authoring, ordered tile selection, shared catalog, GraphQL propagation, Web rendering, draft preview, explicit AI/MCP editing parity, native-client silent compatibility, seed update, idempotent post-deploy backfill, schema compatibility, and rollback documentation.
 
 **Outside this change**
 
@@ -127,7 +127,7 @@ Web currently inserts the category rail directly after the homepage hero. That p
 - KTD2. **Persist only `categoryIds` plus an optional section key.** The ordered array is the authored contract; Web owns all presentation and localized content per `docs/solutions/architecture-patterns/admin-authored-web-owned-experience-block-contract-20260826.md`.
 - KTD3. **Validate the authoring boundary strictly and defend the renderer leniently.** Admin rejects empty, duplicate, or unknown IDs. Web de-duplicates and filters malformed payloads so historical JSON cannot render broken cards.
 - KTD4. **Use normal top-level block dispatch.** Add the block only to `BlockSchema`, not nested unions, and let the existing block map preserve editor order instead of handling it as another homepage special case.
-- KTD5. **Make one-PR rollout order-independent.** An idempotent data migration inserts the block into every homepage locale and active draft. Web retries a legacy query and renders the fixed rail only when GraphQL reports that the old Admin schema does not know the new typename; it never uses compatibility mode for a supported-schema absent block or an unrelated failure.
+- KTD5. **Make one-PR rollout order-independent.** Admin first expands the read contract and synthesizes missing legacy homepage rails without storage mutation. After new Admin health and old-instance drain, an idempotent reviewed backfill inserts the block into every homepage locale and active draft and atomically records activation. Web retries a legacy query and renders the fixed rail only when GraphQL reports that the old Admin schema does not know the new typename; it never uses compatibility mode for an activated supported-schema absent block or an unrelated failure.
 - KTD6. **Support explicit AI editing but defer autonomous generation.** Update the live chat contract and existing MCP tool descriptions/tests. Do not add the block to the duplicated Mastra draft-generation schemas and prompts in this change.
 - KTD7. **Treat Mobile and TV as known non-rendering consumers.** Extend their silent-skip sets because the shared fragment union reaches both clients, without expanding the request into native UI work.
 - KTD8. **Make rollback reverse the data dependency.** Roll Web back first so the fixed rail is restored. While new Admin is still live, remove the authored block from every canonical homepage locale and active draft, verify old Web and the homepage query, and only then roll Admin back.
@@ -139,7 +139,7 @@ Web currently inserts the category rail directly after the homepage hero. That p
 - “Standalone” means a top-level Experience block, and the block library should expose it only for homepage Experiences because its content and CTA are Watch-home-specific.
 - At least one tile must be selected. Admins hide the entire section by removing its block.
 - The current 13 tile IDs and their existing order are the initial supported catalog and default selection.
-- The authorized change includes code, an ordinary idempotent deployment migration, local seed data, and rollout documentation, but not an ad hoc production command or direct deployment.
+- The authorized change includes code, a committed idempotent post-deploy backfill artifact and command, local seed data, and rollout documentation, but not pasted production SQL or a direct deployment.
 
 ### High-Level Technical Design
 
@@ -182,7 +182,7 @@ sequenceDiagram
 
 ### System-Wide Impact
 
-- **Data lifecycle:** A new JSON discriminator flows through canonical Experience locales and active drafts. A one-time idempotent migration establishes the equivalent starting state; later save, discard, publish, and revision behavior remains authoritative.
+- **Data lifecycle:** A new JSON discriminator flows through canonical Experience locales and active drafts. Temporary read synthesis preserves legacy behavior until a one-time idempotent post-deploy backfill establishes the equivalent stored state and atomically records activation; later save, discard, publish, and revision behavior remains authoritative.
 - **API contract:** The `ExperienceBlock` GraphQL union gains one member and the shared Watch fragment selects it, requiring regenerated SDL and gql.tada introspection.
 - **Consumer behavior:** Web renders the block. Mobile and TV receive the typename through the shared fragment but intentionally omit it.
 - **Agent/tool parity:** Live AI chat and MCP create/update flows must understand the legal ID set. Autonomous draft generation remains intentionally unchanged.
@@ -191,7 +191,7 @@ sequenceDiagram
 
 ### Risks and Mitigations
 
-- **Missing rail during cutover:** New Web may reach old Admin, or new Admin may serve unmigrated content. Limit compatibility fallback to the specific unknown-typename validation error and make the Admin pre-deploy migration atomic and idempotent across canonical rows and active drafts.
+- **Missing rail during cutover:** New Web may reach old Admin, or new Admin may serve pre-backfill content. Limit Web compatibility fallback to the specific unknown-typename validation error, synthesize the equivalent rail on new Admin reads until activation, and make the post-deploy backfill plus completion marker atomic and idempotent across canonical rows and active drafts.
 - **Duplicate rail during cutover:** Old Web continues its fixed insertion while ignoring the new union member. New Web disables fixed insertion whenever the new schema answers successfully, so it renders only stored content.
 - **Catalog drift:** Parallel hard-coded ID lists could make Admin accept tiles Web cannot render. Put IDs and destinations in one shared module and test Web presentation coverage in both directions.
 - **Generated contract drift:** Hand edits to SDL or gql.tada output can mask missing schema wiring. Generate both artifacts and rerun generation until the diff is clean.
@@ -250,7 +250,8 @@ sequenceDiagram
   - `apps/admin/src/graphql/types/blocks.ts`
   - `apps/admin/src/graphql/types/blocks.test.ts`
   - `apps/admin/src/graphql/types/blocks.drift.test.ts`
-  - `apps/admin/prisma/migrations/0053_watch_home_category_rail_block/migration.sql`
+  - `apps/admin/prisma/backfills/watch-home-category-rail-block.sql`
+  - `apps/admin/src/services/watch-home-category-rail-rollout.ts`
   - `apps/admin/schema.graphql`
   - `packages/admin-graphql/src/fragments/blocks/watch-home-category-rail.ts`
   - `packages/admin-graphql/src/fragments/index.ts`
@@ -260,8 +261,9 @@ sequenceDiagram
   1. Add the strict ordered-ID schema only to the top-level block union per KTD2-KTD4.
   2. Make the full block-array schema reject more than one category rail.
   3. Add the Pothos object, discriminator mapping, union member, and shared fragment dependency.
-  4. Add an idempotent data migration that inserts the default block after the first hero, or first when no hero exists, in every homepage locale and active draft that lacks it.
-  5. Generate the committed SDL and gql.tada introspection from their owning schemas.
+  4. Add an idempotent reviewed post-deploy backfill that inserts the default block after the first hero, or first when no hero exists, in every homepage locale and active draft that lacks it, then atomically records the completion marker.
+  5. Until that marker exists, synthesize the same block at Admin's canonical, effective-draft, and preview GraphQL read boundaries without mutating storage.
+  6. Generate the committed SDL and gql.tada introspection from their owning schemas.
 - **Execution note:** Start with failing domain and GraphQL mapping tests, then regenerate artifacts only after the schema is complete.
 - **Patterns to follow:** `WatchHomeHeroBlockSchema`; `LanguageGlobeBlockRef`; `packages/admin-graphql/src/fragments/blocks/language-globe.ts`.
 - **Test scenarios:**
@@ -270,7 +272,7 @@ sequenceDiagram
   - The block parses at the top level and fails inside section and container content unions.
   - A block array with two category rails fails validation.
   - Canonical homepage JSON and active draft envelopes gain one correctly placed block; non-homepage, already-migrated, malformed non-array, historical, and discarded data remain unchanged.
-  - Running the migration transformation twice produces the same JSON as running it once.
+  - Running the backfill transformation twice produces the same JSON as running it once.
   - The Zod discriminator set, Pothos mapping, object fixture set, SDL, and generated introspection remain in sync.
 - **Verification:** Focused Admin domain/GraphQL tests pass, schema generation succeeds, gql.tada generation succeeds, and a second generation run produces no diff.
 
@@ -402,7 +404,7 @@ sequenceDiagram
   - `docs/roadmap/topic-experiences/feat-436-watch-home-category-rail-experience-block.md`
 - **Approach:**
   1. Insert the all-category block immediately after `watchHomeHero` in the local homepage seed.
-  2. Record browser, performance, migration, compatibility, and rollback evidence in the roadmap completion notes.
+  2. Record browser, performance, backfill, compatibility, and rollback evidence in the roadmap completion notes.
   3. Mark `feat-436` complete after implementation verification and PR readiness; live deployment remains governed by the rollout gate rather than blocking code completion.
 - **Patterns to follow:** The seeded `languageGlobe` block; `docs/solutions/conventions/frontend-change-page-load-performance-verification.md`; prior roadmap completion notes.
 - **Test scenarios:**
@@ -418,20 +420,20 @@ sequenceDiagram
 
 ## Verification Contract
 
-| Gate | Scope | Done signal |
-|---|---|---|
-| Focused Admin contract | Admin domain, Pothos, drift, helpers, editor, chat, MCP | All targeted Vitest suites pass and invalid selections fail atomically. |
-| Generated GraphQL | Admin SDL and Admin GraphQL introspection | `pnpm --filter @forge/admin schema:print` and `pnpm --filter @forge/admin-graphql generate` succeed; rerunning both leaves no diff. |
-| Focused consumer behavior | Web rail, dispatcher, homepage, fragment, preview; Mobile/TV adapters | Targeted Vitest/Jest suites prove AE1-AE6 and AE8. |
-| Package quality | `@forge/watch-url-policy`, `@forge/admin`, `@forge/admin-graphql`, `@forge/web`, `@forge/mobile`, `@forge/tv` | Tests, lint, and typecheck pass for every touched package. |
-| Web locale policy | Existing category copy | `check:ui-locales` and `check:provisional-ui-catalogs` pass with no catalog changes required. |
-| Formatting and diff hygiene | Entire touched scope | Prettier check and `git diff --check` pass; no unrelated or abandoned-attempt code remains. |
-| Browser authoring | Admin at 1440px and 390px | Add, select, keyboard-reorder tiles, reorder the block, save, discard, and draft preview work with no console error or overflow. |
-| Browser presentation | Web at 1440px and 390px | Authored order and subset are exact; CTA, focus, controls, and routes work; no duplicate rail or horizontal page overflow appears. |
-| Loading performance | Watch homepage before and after production build/start | No steady-state request increase; initial JavaScript is within +5 KiB gzip, five-run median LCP is within max(100 ms, 5%), and initial-window long-task time is within max(50 ms, 10%). |
-| Forward rollout | Old/new Admin crossed with old/new Web in staging | Web-first uses one legacy retry and fixed rail; Admin-first exposes one migrated authored rail; both converge on authored mode with no duplicate or missing section. |
-| Rollback readiness | New Admin with stored block, then old Web and old Admin | Web reverts first, stored discriminators are removed while new Admin is live, old Web and the query are verified, then Admin rollback is permitted (KTD8). |
-| Final behavioral evaluation | LFG browser-test stage | `compound-engineering:ce-test-browser` passes against affected Admin and Web flows before commit and PR. |
+| Gate                        | Scope                                                                                                         | Done signal                                                                                                                                                                             |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Focused Admin contract      | Admin domain, Pothos, drift, helpers, editor, chat, MCP                                                       | All targeted Vitest suites pass and invalid selections fail atomically.                                                                                                                 |
+| Generated GraphQL           | Admin SDL and Admin GraphQL introspection                                                                     | `pnpm --filter @forge/admin schema:print` and `pnpm --filter @forge/admin-graphql generate` succeed; rerunning both leaves no diff.                                                     |
+| Focused consumer behavior   | Web rail, dispatcher, homepage, fragment, preview; Mobile/TV adapters                                         | Targeted Vitest/Jest suites prove AE1-AE6 and AE8.                                                                                                                                      |
+| Package quality             | `@forge/watch-url-policy`, `@forge/admin`, `@forge/admin-graphql`, `@forge/web`, `@forge/mobile`, `@forge/tv` | Tests, lint, and typecheck pass for every touched package.                                                                                                                              |
+| Web locale policy           | Existing category copy                                                                                        | `check:ui-locales` and `check:provisional-ui-catalogs` pass with no catalog changes required.                                                                                           |
+| Formatting and diff hygiene | Entire touched scope                                                                                          | Prettier check and `git diff --check` pass; no unrelated or abandoned-attempt code remains.                                                                                             |
+| Browser authoring           | Admin at 1440px and 390px                                                                                     | Add, select, keyboard-reorder tiles, reorder the block, save, discard, and draft preview work with no console error or overflow.                                                        |
+| Browser presentation        | Web at 1440px and 390px                                                                                       | Authored order and subset are exact; CTA, focus, controls, and routes work; no duplicate rail or horizontal page overflow appears.                                                      |
+| Loading performance         | Watch homepage before and after production build/start                                                        | No steady-state request increase; initial JavaScript is within +5 KiB gzip, five-run median LCP is within max(100 ms, 5%), and initial-window long-task time is within max(50 ms, 10%). |
+| Forward rollout             | Old/new Admin crossed with old/new Web in staging                                                             | Web-first uses one legacy retry and fixed rail; Admin-first exposes one migrated authored rail; both converge on authored mode with no duplicate or missing section.                    |
+| Rollback readiness          | New Admin with stored block, then old Web and old Admin                                                       | Web reverts first, stored discriminators are removed while new Admin is live, old Web and the query are verified, then Admin rollback is permitted (KTD8).                              |
+| Final behavioral evaluation | LFG browser-test stage                                                                                        | `compound-engineering:ce-test-browser` passes against affected Admin and Web flows before commit and PR.                                                                                |
 
 ---
 
@@ -443,7 +445,7 @@ sequenceDiagram
 - Admin can author a valid ordered subset without direct JSON editing, and both manual and explicit AI/MCP paths obey the same contract.
 - Admin SDL and gql.tada outputs are generated, committed, and stable on rerun.
 - Mobile and TV treat the typename as an intentional silent skip.
-- The seed and idempotent migration preserve the existing all-category section across every homepage locale and active draft.
+- The seed, temporary read synthesis, and idempotent post-deploy backfill preserve the existing all-category section across every homepage locale and active draft.
 - Focused and full touched-package checks, browser QA, and loading-performance verification pass.
 - The roadmap ticket is complete with implementation evidence and the release notes carry the forward and rollback gates; no dead-end, experimental, generated-by-hand, or unrelated code remains in the diff.
 - The change is committed, pushed, opened as a PR, reviewed, and merge-ready with required CI green.

@@ -89,6 +89,70 @@ describe("getExperiencePreview", () => {
     )
   })
 
+  it("retries once with an old-schema-safe operation for the exact unknown type error", async () => {
+    const validationError = Object.assign(
+      new Error('Unknown type "WatchHomeCategoryRailBlock".'),
+      {
+        errors: [
+          {
+            message: 'Unknown type "WatchHomeCategoryRailBlock".',
+            extensions: { code: "GRAPHQL_VALIDATION_FAILED" },
+          },
+        ],
+      },
+    )
+    const preview = {
+      experienceId: "experience-1",
+      localeId: "locale-1",
+      locale: "en",
+      slug: "home",
+      isHomepage: true,
+      title: "Home",
+      blocks: [],
+    }
+    queryMock
+      .mockRejectedValueOnce(validationError)
+      .mockResolvedValueOnce({ data: { experiencePreview: preview } })
+
+    await expect(getExperiencePreview("capability-token")).resolves.toBe(
+      preview,
+    )
+    expect(queryMock).toHaveBeenCalledTimes(2)
+    expect(adminGraphqlMock.mock.calls[1][0]).not.toContain(
+      "WatchHomeCategoryRailBlock",
+    )
+  })
+
+  it("does not retry for unrelated preview failures", async () => {
+    queryMock.mockRejectedValue(new Error("request timed out"))
+
+    await expect(getExperiencePreview("capability-token")).rejects.toThrow(
+      "Experience preview query failed",
+    )
+    expect(queryMock).toHaveBeenCalledTimes(1)
+  })
+
+  it("never retries the legacy preview operation more than once", async () => {
+    const unknownType = Object.assign(
+      new Error('Unknown type "WatchHomeCategoryRailBlock".'),
+      {
+        errors: [
+          {
+            message: 'Unknown type "WatchHomeCategoryRailBlock".',
+            extensions: { code: "GRAPHQL_VALIDATION_FAILED" },
+          },
+        ],
+      },
+    )
+    queryMock.mockResolvedValueOnce({ errors: unknownType.errors })
+    queryMock.mockRejectedValueOnce(unknownType)
+
+    await expect(getExperiencePreview("capability-token")).rejects.toThrow(
+      "Experience preview query failed",
+    )
+    expect(queryMock).toHaveBeenCalledTimes(2)
+  })
+
   it("returns null without falling back when the capability is invalid", async () => {
     queryMock.mockResolvedValue({ data: { experiencePreview: null } })
 

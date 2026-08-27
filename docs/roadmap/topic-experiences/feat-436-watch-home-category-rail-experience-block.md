@@ -36,7 +36,7 @@ The Watch homepage category rail is inserted directly after the hero by Web code
 2. Add an Admin block-library entry whose valid starter selects every current category, and controls that add, remove, and reorder the selected tiles.
 3. Expose the block through Pothos, the committed Admin SDL, and the shared `@forge/admin-graphql` Watch Experience fragment.
 4. Render the selected tiles through the existing category rail at the block's authored position and remove the fixed Web insertion.
-5. Preserve the existing homepage appearance with the local seed and an idempotent deployment migration that inserts the block for every homepage locale and active draft that lacks it.
+5. Preserve the existing homepage appearance with the local seed, temporary new-Admin read synthesis, and an idempotent reviewed post-deploy backfill that runs only after new Admin health/drain and inserts the block for every homepage locale and active draft that lacks it.
 6. Make either Admin/Web deployment order safe by retrying a legacy query and rendering the fixed rail only while Web is talking to an Admin schema that does not know the new typename.
 7. Teach live Admin AI editing and MCP validation/documentation about the closed category-ID contract without enabling autonomous draft generation for this homepage-only block.
 
@@ -44,7 +44,7 @@ The Watch homepage category rail is inserted directly after the hero by Web code
 
 - Persist only stable category IDs and their authored order. Web continues to own labels, icons, gradients, links, responsive geometry, and carousel behavior.
 - Keep the block top-level-only, homepage-only, and singleton across manual, AI, and MCP writes.
-- Do not add a steady-state homepage data request or a Prisma schema migration; an idempotent JSON data migration is required for rollout safety.
+- Do not add a steady-state homepage data request or a Prisma schema migration; use temporary Admin read synthesis plus an idempotent reviewed post-deploy JSON backfill for rollout safety.
 - Do not retain an absent-block fallback when Admin supports the type because it would prevent admins from removing the section.
 - Do not render the Web-only visual in the Mobile or TV homepage adapters; treat the typename as a known silent skip.
 - Never hand-edit generated GraphQL SDL or gql.tada introspection outputs.
@@ -68,7 +68,7 @@ The Watch homepage category rail is inserted directly after the hero by Web code
 - `apps/admin/src/scripts/seed-watch-homepage-experience.test.ts` proves exact
   singleton placement and catalog order without requiring a database.
 - `docs/runbooks/watch-home-category-rail-rollout.md` documents either-order
-  forward deployment, migration checks, old-schema compatibility behavior, and
+  forward deployment, post-deploy backfill checks, old-schema compatibility behavior, and
   the Web-first/data-cleanup/Admin-last rollback sequence.
 - Focused seed verification passed locally. Full touched-package, browser,
   performance, staging, pull-request, and merge-readiness gates remain pending;

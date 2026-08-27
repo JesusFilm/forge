@@ -5,10 +5,10 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import { WATCH_HOME_CATEGORY_CATALOG } from "@forge/watch-url-policy/watch-home-categories"
 
 const RUN_REAL_DB_TEST =
-  process.env.WATCH_HOME_CATEGORY_RAIL_MIGRATION_DB_TEST === "1"
-const migrationSql = readFileSync(
+  process.env.WATCH_HOME_CATEGORY_RAIL_BACKFILL_DB_TEST === "1"
+const backfillSql = readFileSync(
   new URL(
-    "../../prisma/migrations/0053_watch_home_category_rail_block/migration.sql",
+    "../../prisma/backfills/watch-home-category-rail-block.sql",
     import.meta.url,
   ),
   "utf8",
@@ -25,29 +25,47 @@ function blockTypes(value: unknown): Array<string | undefined> | null {
   )
 }
 
-describe("Watch homepage category rail migration contract", () => {
+describe("Watch homepage category rail post-deploy backfill contract", () => {
   it("contains the complete default catalog in shared order", () => {
     let previousIndex = -1
     for (const id of expectedCategoryIds) {
-      const index = migrationSql.indexOf(`'${id}'`)
+      const index = backfillSql.indexOf(`'${id}'`)
       expect(index).toBeGreaterThan(previousIndex)
       previousIndex = index
     }
   })
 
-  it("targets canonical homepages and active ExperienceLocale drafts only", () => {
-    expect(migrationSql).toContain("locale.is_homepage = true")
-    expect(migrationSql).toContain("revision.entity_type = 'ExperienceLocale'")
-    expect(migrationSql).toContain("revision.status = 'DRAFT'")
-    expect(migrationSql).toMatch(/jsonb_typeof\(locale\.blocks\) = 'array'/)
-    expect(migrationSql).toMatch(
+  it("targets canonical and effective-draft homepages only", () => {
+    expect(backfillSql).toContain("locale.is_homepage = true")
+    expect(backfillSql).toContain("revision.entity_type = 'ExperienceLocale'")
+    expect(backfillSql).toContain("revision.status = 'DRAFT'")
+    expect(backfillSql).toMatch(/jsonb_typeof\(locale\.blocks\) = 'array'/)
+    expect(backfillSql).toMatch(
       /jsonb_typeof\(revision\.snapshot #> '\{data,blocks\}'\) = 'array'/,
     )
+
+    const draftTargetsStart = backfillSql.indexOf("WITH draft_targets AS (")
+    expect(draftTargetsStart).toBeGreaterThan(-1)
+    const draftTargetsSql = backfillSql.slice(draftTargetsStart)
+    expect(draftTargetsSql).not.toContain("AND locale.is_homepage = true")
+    expect(draftTargetsSql).toMatch(
+      /COALESCE\([\s\S]*revision\.snapshot #>> '\{data,isHomepage\}'[\s\S]*locale\.is_homepage[\s\S]*\) = true/,
+    )
+  })
+
+  it("serializes activation and gates every write on marker absence", () => {
+    expect(backfillSql).toContain("pg_advisory_xact_lock")
+    expect(backfillSql).toMatch(
+      /IF EXISTS \([\s\S]*FROM sync_state[\s\S]*watch-home-category-rail-backfill-v1[\s\S]*\) THEN[\s\S]*RETURN;/,
+    )
+    expect(backfillSql).toContain("INSERT INTO sync_state")
+    expect(backfillSql).toContain("'watch-home-category-rail-backfill-v1'")
+    expect(backfillSql).toContain("ON CONFLICT (phase) DO NOTHING")
   })
 })
 
 describe.skipIf(!RUN_REAL_DB_TEST)(
-  "Watch homepage category rail migration against real PostgreSQL",
+  "Watch homepage category rail post-deploy backfill against real PostgreSQL",
   () => {
     const schemaName = `watch_category_rail_${Date.now()}_${Math.random()
       .toString(36)
@@ -58,7 +76,7 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
       const connectionString = process.env.DATABASE_URL
       if (connectionString == null || connectionString.length === 0) {
         throw new Error(
-          "DATABASE_URL is required when WATCH_HOME_CATEGORY_RAIL_MIGRATION_DB_TEST=1",
+          "DATABASE_URL is required when WATCH_HOME_CATEGORY_RAIL_BACKFILL_DB_TEST=1",
         )
       }
 
@@ -79,6 +97,12 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
           snapshot jsonb NOT NULL,
           status text NOT NULL
         );
+        CREATE TABLE sync_state (
+          phase text PRIMARY KEY,
+          last_synced_at timestamp(3) NOT NULL,
+          stats jsonb NOT NULL DEFAULT '{}',
+          updated_at timestamp(3) NOT NULL
+        );
       `)
 
       const locales = [
@@ -93,6 +117,7 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
         ],
         ["home-no-hero", true, [{ t: "text" }]],
         ["non-home", false, [{ t: "watchHomeHero" }]],
+        ["promoted-home", false, [{ t: "text" }]],
         [
           "home-existing",
           true,
@@ -133,6 +158,13 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
           "DRAFT",
         ],
         [
+          "draft-promoted-home",
+          "ExperienceLocale",
+          "promoted-home",
+          { data: { isHomepage: true, blocks: [{ t: "text" }] } },
+          "DRAFT",
+        ],
+        [
           "draft-malformed",
           "ExperienceLocale",
           "home-malformed",
@@ -168,7 +200,7 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
     })
 
     it("inserts after the first hero or first, skips invalid rows, and is idempotent", async () => {
-      await client.query(migrationSql)
+      await client.query(backfillSql)
 
       const firstRun = await client.query<{
         id: string
@@ -197,6 +229,7 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
         "text",
       ])
       expect(blockTypes(locale("non-home"))).toEqual(["watchHomeHero"])
+      expect(blockTypes(locale("promoted-home"))).toEqual(["text"])
       expect(blockTypes(locale("home-existing"))).toHaveLength(2)
       expect(locale("home-malformed")).toEqual({ t: "text" })
       expect(blockTypes(draft("draft-home"))).toEqual([
@@ -205,10 +238,26 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
       ])
       expect(blockTypes(draft("historical-home"))).toEqual(["watchHomeHero"])
       expect(blockTypes(draft("draft-non-home"))).toEqual(["text"])
+      expect(blockTypes(draft("draft-promoted-home"))).toEqual([
+        "watchHomeCategoryRail",
+        "text",
+      ])
       expect(draft("draft-malformed")).toEqual({ t: "text" })
       expect(blockTypes(draft("draft-existing"))).toHaveLength(1)
 
-      await client.query(migrationSql)
+      const marker = await client.query(
+        "SELECT phase, last_synced_at, stats, updated_at FROM sync_state WHERE phase = 'watch-home-category-rail-backfill-v1'",
+      )
+      expect(marker.rows).toHaveLength(1)
+      expect(marker.rows[0]).toMatchObject({
+        phase: "watch-home-category-rail-backfill-v1",
+        stats: {
+          completed: true,
+          artifact: "watch-home-category-rail-block.sql",
+        },
+      })
+
+      await client.query(backfillSql)
       const secondRun = await client.query(`
         SELECT id, blocks, NULL::jsonb AS snapshot FROM experience_locale
         UNION ALL
@@ -216,6 +265,27 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
         ORDER BY id
       `)
       expect(secondRun.rows).toEqual(firstRun.rows)
+      const secondMarker = await client.query(
+        "SELECT phase, last_synced_at, stats, updated_at FROM sync_state WHERE phase = 'watch-home-category-rail-backfill-v1'",
+      )
+      expect(secondMarker.rows).toEqual(marker.rows)
+
+      await client.query(
+        `UPDATE experience_locale
+         SET blocks = '[{"t":"text","authored":"after-activation"}]'::jsonb
+         WHERE id = 'home-no-hero'`,
+      )
+      await client.query(backfillSql)
+      const authoredAbsence = await client.query(
+        "SELECT blocks FROM experience_locale WHERE id = 'home-no-hero'",
+      )
+      expect(authoredAbsence.rows[0]?.blocks).toEqual([
+        { t: "text", authored: "after-activation" },
+      ])
+      const thirdMarker = await client.query(
+        "SELECT phase, last_synced_at, stats, updated_at FROM sync_state WHERE phase = 'watch-home-category-rail-backfill-v1'",
+      )
+      expect(thirdMarker.rows).toEqual(marker.rows)
     })
   },
 )

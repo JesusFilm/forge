@@ -59,7 +59,7 @@ Admin GraphQL → gql.tada typed query → dispatcher → renderers
 ```
 
 - **Query**: Defined in `src/lib/queries.ts` using `adminGraphql()` from `@forge/admin-graphql`
-- **Fragments**: `import { adminWatchExperienceFragment } from "@forge/admin-graphql/fragments"` — the shared root composition over all block fragments. The exported symbol is lowercase; the GraphQL fragment it declares is named `AdminWatchExperience` (no `Fragment` suffix), so a query spreads it as `...AdminWatchExperience`.
+- **Fragments**: while the Watch category-rail rollout can still roll Admin back to a pre-rail schema, import `adminLegacyWatchExperienceFragment` from `@forge/admin-graphql/fragments` and spread `...AdminLegacyWatchExperience`. Mobile does not render the Web-only rail, so naming its new GraphQL type would only make released native bundles incompatible with an old or rolled-back Admin. Return to the canonical fragment only after the compatibility window closes.
 - **Dispatcher**: `src/components/sections/SectionDispatcher.tsx` — switch on `__typename`
 - **Renderers**: `src/components/sections/*Renderer.tsx` — one per block type
 

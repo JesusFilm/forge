@@ -1,6 +1,7 @@
--- Preserve the existing Watch homepage category rail while moving its
--- placement and tile order into Experience content. Both updates are
--- idempotent and intentionally leave malformed JSON untouched.
+-- Reviewed post-deploy activation for the Watch homepage category rail.
+-- Run only after the new Admin schema is healthy and every old Admin instance
+-- has drained. The row updates and durable completion marker are atomic,
+-- idempotent, and intentionally leave malformed JSON untouched.
 DO $$
 DECLARE
   category_block jsonb := jsonb_build_object(
@@ -23,6 +24,21 @@ DECLARE
     )
   );
 BEGIN
+  -- Serialize activation attempts and make the durable marker the one-shot
+  -- boundary. A later rerun must not recreate a rail an admin intentionally
+  -- removed after activation.
+  PERFORM pg_advisory_xact_lock(
+    hashtextextended('watch-home-category-rail-backfill-v1', 0)
+  );
+
+  IF EXISTS (
+    SELECT 1
+    FROM sync_state
+    WHERE phase = 'watch-home-category-rail-backfill-v1'
+  ) THEN
+    RETURN;
+  END IF;
+
   WITH canonical_targets AS (
     SELECT
       locale.id,
@@ -87,7 +103,6 @@ BEGIN
       ON locale.id = revision.entity_id
     WHERE revision.entity_type = 'ExperienceLocale'
       AND revision.status = 'DRAFT'
-      AND locale.is_homepage = true
       AND jsonb_typeof(revision.snapshot) = 'object'
       AND jsonb_typeof(revision.snapshot -> 'data') = 'object'
       AND jsonb_typeof(revision.snapshot #> '{data,blocks}') = 'array'
@@ -130,4 +145,13 @@ BEGIN
   )
   FROM draft_targets AS target
   WHERE revision.id = target.id;
+
+  INSERT INTO sync_state (phase, last_synced_at, stats, updated_at)
+  VALUES (
+    'watch-home-category-rail-backfill-v1',
+    CURRENT_TIMESTAMP,
+    '{"completed":true,"artifact":"watch-home-category-rail-block.sql"}'::jsonb,
+    CURRENT_TIMESTAMP
+  )
+  ON CONFLICT (phase) DO NOTHING;
 END $$;

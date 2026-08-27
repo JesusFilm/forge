@@ -124,11 +124,11 @@ export const adminWatchExperienceFragment = adminGraphql(
   ],
 )
 
-// Temporary rollout-only projection for Web instances that can reach an Admin
-// schema deployed before WatchHomeCategoryRailBlock existed. Keep this document
-// identical to AdminWatchExperience except for that one type and dependency;
-// once old Admin schemas cannot serve Web traffic, delete this compatibility
-// fragment together with Web's retry path.
+// Temporary rollout-only projection for Web and native consumers that can reach
+// an Admin schema deployed before WatchHomeCategoryRailBlock existed. Keep this
+// document identical to AdminWatchExperience except for that one type and
+// dependency; once old Admin schemas cannot serve any consumer traffic, delete
+// this compatibility fragment together with Web's retry paths.
 export const adminLegacyWatchExperienceFragment = adminGraphql(
   `
     fragment AdminLegacyWatchExperience on ExperienceLocale @_unmask {
