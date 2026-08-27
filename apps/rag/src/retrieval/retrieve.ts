@@ -24,6 +24,7 @@ export interface RetrieveDeps {
 
 const DEFAULT_TOP_K = 5
 const DEFAULT_MIN_SCORE = 0.37 // re-derived from the SWG eval baseline (FOLLOW-UP A).
+const MODEL_GUARD_TTL_MS = 60_000
 // Principle: as LOW as possible to admit weak-but-genuine answers across a broad
 // topic range, but above the ~0.35 noise floor (off-topic starts scoring there).
 // 0.35 is the hard floor we won't drop below; expect to re-derive per slice.
@@ -56,11 +57,15 @@ export function candidateTopK(topK: number): number {
  * hard visibility scope; `preferSourceKey` is a soft preference (a tiebreak after
  * ranking, never a filter) so it is deliberately absent here.
  */
-export function policyToFilter(policy: RetrievalPolicy): SearchFilter {
+export function policyToFilter(
+  policy: RetrievalPolicy,
+  embeddingModel?: string,
+): SearchFilter {
   return {
     allowedSourceKeys: policy.allowedSourceKeys,
     language: policy.language,
     category: policy.category,
+    embeddingModel,
   }
 }
 
@@ -146,10 +151,10 @@ function toRankedResult(row: ScoredRow): RankedResult {
  * serves the rows that match. Skipped when the store can't report models or the
  * corpus is empty. See docs/ops/prod-reembed.md, ADR-0005.
  */
-async function assertModelMatch(deps: RetrieveDeps): Promise<void> {
-  if (!deps.search.embeddingModels) return // store can't report — skip
+async function assertModelMatch(deps: RetrieveDeps): Promise<boolean> {
+  if (!deps.search.embeddingModels) return true // store can't report — skip
   const models = await deps.search.embeddingModels()
-  if (models.length === 0) return // empty corpus — nothing to mismatch yet
+  if (models.length === 0) return false // empty corpus — recheck after indexing
   if (!models.includes(deps.embedder.model)) {
     throw new Error(
       `retrieval model mismatch: query embedder is "${deps.embedder.model}" but the corpus ` +
@@ -158,29 +163,43 @@ async function assertModelMatch(deps: RetrieveDeps): Promise<void> {
         `the corpus (see docs/ops/prod-reembed.md).`,
     )
   }
+  return true
 }
 
 /**
  * Build a Retriever over the injected ports. The pipeline order is invariant 5:
  * embedQuery → vectorSearch(candidateTopK) → minScore cutoff → preference →
- * 3-key dedup → slice to topK → cite. The model-match guard runs once (memoized)
- * on the first search; a failure is not cached, so it re-checks and keeps
- * throwing until the misconfiguration is fixed.
+ * 3-key dedup → slice to topK → cite. The model-match guard is cached briefly,
+ * then refreshed so a live corpus/model cutover cannot leave it stale. Empty
+ * corpus checks are never cached because indexing can populate the store later.
  */
 export function createRetriever(deps: RetrieveDeps): Retriever {
-  let modelGuard: Promise<void> | null = null
-  const ensureModelMatch = (): Promise<void> => {
-    modelGuard ??= assertModelMatch(deps).catch((err: unknown) => {
-      modelGuard = null
-      throw err
-    })
-    return modelGuard
+  let modelGuard: Promise<boolean> | null = null
+  let modelCheckedAt = 0
+  const ensureModelMatch = async (): Promise<void> => {
+    const now = Date.now()
+    if (modelGuard && now - modelCheckedAt < MODEL_GUARD_TTL_MS) {
+      await modelGuard
+      return
+    }
+
+    const pending = assertModelMatch(deps)
+    modelGuard = pending
+    modelCheckedAt = now
+    try {
+      const cacheable = await pending
+      if (!cacheable && modelGuard === pending) modelGuard = null
+    } catch (error: unknown) {
+      if (modelGuard === pending) modelGuard = null
+      throw error
+    }
   }
   return {
     async search(
       query: string,
       policy: RetrievalPolicy = {},
     ): Promise<RankedResult[]> {
+      if (policy.allowedSourceKeys?.length === 0) return []
       await ensureModelMatch()
       const topK = policy.topK ?? DEFAULT_TOP_K
       const minScore = policy.minScore ?? DEFAULT_MIN_SCORE
@@ -188,7 +207,7 @@ export function createRetriever(deps: RetrieveDeps): Retriever {
       const queryVec = await deps.embedder.embedQuery(query)
       const candidates = await deps.search.vectorSearch(
         queryVec,
-        policyToFilter(policy),
+        policyToFilter(policy, deps.embedder.model),
         candidateTopK(topK),
       )
 

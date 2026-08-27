@@ -222,7 +222,10 @@
             "type": "string"
           },
           "issues": {
-            "type": "array"
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
           }
         },
         "required": ["error"]

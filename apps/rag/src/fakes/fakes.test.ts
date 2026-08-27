@@ -5,18 +5,47 @@
  * ranking, and the filter semantics that mirror the real pgvector store).
  */
 import { describe, it, expect } from "vitest"
-import type { EmbeddedChunk, NormalizedDocument } from "../contracts/index.js"
+import type {
+  EmbeddedChunk,
+  NormalizedDocument,
+  PendingRawDocument,
+} from "../contracts/index.js"
 import {
   FakeCorpusSearchStore,
   FakeCorpusWriteStore,
   FakeEmbedder,
   FakeFetcher,
   FakeFetchStateStore,
+  FakeRawDocumentReader,
+  FakeRawDocumentStore,
   type FakeIndexedChunk,
   cosineSimilarity,
 } from "../fakes/index.js"
 
 const DIMS = 16
+
+function pending(
+  id: string,
+  sourceKey: string,
+  canonicalUrl: string,
+): PendingRawDocument {
+  return {
+    id,
+    sourceKey,
+    url: canonicalUrl,
+    canonicalUrl,
+    title: null,
+    rawContent: "content",
+    fetch: {
+      status: 200,
+      bodyHash: `body-${id}`,
+      etag: null,
+      lastModified: null,
+      fetchedAt: "2026-08-27T00:00:00.000Z",
+      notModified: false,
+    },
+  }
+}
 
 function doc(overrides: Partial<NormalizedDocument> = {}): NormalizedDocument {
   return {
@@ -64,6 +93,12 @@ describe("FakeEmbedder", () => {
     expect(cosineSimilarity(vec as number[], query)).toBeCloseTo(1, 6)
     expect(embedder.dimensions).toBe(DIMS)
     expect(embedder.model).toContain("fake")
+  })
+
+  it("rejects vector widths that pgvector cannot compare", () => {
+    expect(() => cosineSimilarity([1, 0], [1, 0, 0])).toThrow(
+      /vector dimension mismatch/,
+    )
   })
 })
 
@@ -202,5 +237,41 @@ describe("FakeFetcher + FakeFetchStateStore", () => {
       fetchedAt: "2026-05-22T00:00:00.000Z",
     })
     expect((await store.getRobots("https://x/robots.txt"))?.status).toBe(200)
+  })
+})
+
+describe("raw-document fakes", () => {
+  it("models the pending, ingested, source, and limit views", async () => {
+    const reader = new FakeRawDocumentReader([
+      pending("1", "alpha", "https://alpha.test/1"),
+      pending("2", "alpha", "https://alpha.test/2"),
+      pending("3", "beta", "https://beta.test/1"),
+    ])
+
+    await reader.markIngested(["1"])
+    expect((await reader.listPending()).map(({ id }) => id)).toEqual(["2", "3"])
+    expect(
+      (await reader.listPending({ includeIngested: true })).map(({ id }) => id),
+    ).toEqual(["1", "2", "3"])
+    expect(
+      (await reader.listPending({ sourceKey: "alpha", limit: 1 })).map(
+        ({ id }) => id,
+      ),
+    ).toEqual(["2"])
+  })
+
+  it("replaces staged identities and keeps source URL lists scoped", async () => {
+    const store = new FakeRawDocumentStore()
+    const original = pending("1", "alpha", "https://alpha.test/1")
+    const replacement = { ...original, title: "Updated" }
+    await store.putRawDocument(original)
+    await store.putRawDocument(replacement)
+    await store.putRawDocument(pending("2", "beta", "https://beta.test/1"))
+
+    expect(store.count()).toBe(2)
+    expect(store.get("alpha", original.canonicalUrl)?.title).toBe("Updated")
+    expect(await store.listStagedCanonicalUrls("alpha")).toEqual([
+      "https://alpha.test/1",
+    ])
   })
 })

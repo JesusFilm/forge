@@ -15,6 +15,7 @@ export interface SearchFilter {
   urlPrefix?: string
   language?: string
   category?: string
+  embeddingModel?: string
 }
 
 /** A raw scored row from the search store, pre dedup + citation assembly. */

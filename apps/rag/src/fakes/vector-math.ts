@@ -11,10 +11,13 @@ export function cosineSimilarity(
   a: readonly number[],
   b: readonly number[],
 ): number {
+  if (a.length !== b.length) {
+    throw new Error(`vector dimension mismatch: ${a.length} vs ${b.length}`)
+  }
   let dot = 0
   let magA = 0
   let magB = 0
-  const n = Math.min(a.length, b.length)
+  const n = a.length
   for (let i = 0; i < n; i++) {
     dot += a[i] * b[i]
     magA += a[i] * a[i]

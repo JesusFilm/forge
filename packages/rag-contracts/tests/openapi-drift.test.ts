@@ -10,5 +10,8 @@ describe("published /v1 OpenAPI artifact", () => {
       await readFile(new URL("../openapi.v1.json", import.meta.url), "utf8"),
     )
     expect(committed).toEqual(buildOpenApiDocument())
+    expect(committed.components.schemas.Error.properties.issues.items).toEqual({
+      type: "object",
+    })
   })
 })

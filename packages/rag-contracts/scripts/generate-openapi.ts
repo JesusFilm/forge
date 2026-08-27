@@ -103,7 +103,10 @@ export function buildOpenApiDocument(): JsonObject {
         SearchResponse: searchResponse,
         Error: {
           type: "object",
-          properties: { error: { type: "string" }, issues: { type: "array" } },
+          properties: {
+            error: { type: "string" },
+            issues: { type: "array", items: { type: "object" } },
+          },
           required: ["error"],
         },
       },

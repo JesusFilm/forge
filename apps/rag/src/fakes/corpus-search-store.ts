@@ -37,6 +37,13 @@ function matchesFilter(chunk: FakeIndexedChunk, filter: SearchFilter): boolean {
   }
   if (filter.language && chunk.language !== filter.language) return false
   if (filter.category && chunk.category !== filter.category) return false
+  if (
+    filter.embeddingModel &&
+    chunk.embeddingModel !== undefined &&
+    chunk.embeddingModel !== filter.embeddingModel
+  ) {
+    return false
+  }
   return true
 }
 

@@ -6,7 +6,7 @@
  * fan-out, the minScore cutoff, each of the 3 dedup keys, the soft source
  * preference, source-scope filtering, and citation assembly.
  */
-import { describe, expect, it } from "vitest"
+import { describe, expect, it, vi } from "vitest"
 import type {
   CorpusSearchStore,
   Embedder,
@@ -444,7 +444,7 @@ describe("query/corpus model-match guard", () => {
         embeddingModel: "legacy/model",
       }),
     ]).search("q")
-    expect(out.map((r) => r.chunkId)).toContain("new")
+    expect(out.map((r) => r.chunkId)).toEqual(["new"])
   })
 
   it("skips the guard when the corpus reports no models (empty / model not tracked)", async () => {
@@ -453,9 +453,53 @@ describe("query/corpus model-match guard", () => {
     ]).search("q")
     expect(out.map((r) => r.chunkId)).toEqual(["a"])
   })
+
+  it("does not cache an empty-corpus guard result", async () => {
+    let checks = 0
+    const store = new FakeCorpusSearchStore()
+    store.embeddingModels = async () => (++checks === 1 ? [] : ["legacy/model"])
+    const r = createRetriever({ embedder: new VecEmbedder(Q), search: store })
+
+    await expect(r.search("q")).resolves.toEqual([])
+    await expect(r.search("q")).rejects.toThrow(/model mismatch/i)
+  })
+
+  it("refreshes the model guard after its cache window", async () => {
+    let now = 1_000
+    const nowSpy = vi.spyOn(Date, "now").mockImplementation(() => now)
+    const base = new FakeCorpusSearchStore([
+      chunk({ chunkId: "a", embedding: Q, embeddingModel: "test/vec" }),
+    ])
+    let models = ["test/vec"]
+    base.embeddingModels = async () => models
+    const r = createRetriever({ embedder: new VecEmbedder(Q), search: base })
+
+    try {
+      await expect(r.search("q")).resolves.toHaveLength(1)
+      models = ["legacy/model"]
+      now += 60_001
+      await expect(r.search("q")).rejects.toThrow(/model mismatch/i)
+    } finally {
+      nowSpy.mockRestore()
+    }
+  })
 })
 
 describe("source scope + preference", () => {
+  it("treats an empty allowedSourceKeys scope as deny-all", async () => {
+    const embedder = new VecEmbedder(Q)
+    const embedSpy = vi.spyOn(embedder, "embedQuery")
+    const r = createRetriever({
+      embedder,
+      search: new FakeCorpusSearchStore([
+        chunk({ chunkId: "private", embedding: Q }),
+      ]),
+    })
+
+    await expect(r.search("q", { allowedSourceKeys: [] })).resolves.toEqual([])
+    expect(embedSpy).not.toHaveBeenCalled()
+  })
+
   it("hard-scopes to allowedSourceKeys", async () => {
     const out = await retriever([
       chunk({
