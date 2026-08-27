@@ -22,10 +22,21 @@ export type HistoryListUi = {
 }
 
 /**
- * The sidebar-visible projection (feat-270): ordered per orderConversations,
- * minus never-used empty local conversations that are not active — the New
- * action reuses those, so an inactive empty is pure clutter under the
- * identically-labeled action button. The active fresh row stays pinned.
+ * The sidebar-visible projection (feat-270, extended by feat-401): ordered per
+ * orderConversations, minus every never-used empty local conversation — the
+ * New action reuses those, so an empty local row is pure clutter under the
+ * identically-labeled action button. feat-401 extends that reasoning to the
+ * ACTIVE one: an unstarted conversation gets NO row at all, so pressing New no
+ * longer grows the list with a second "New conversation" control that vanishes
+ * again on the next click. The row appears at the first send, when
+ * `messages.length > 0` starts holding.
+ *
+ * The `origin === "server"` clause is load-bearing (its PRESENCE, not its
+ * position — the `||` is side-effect-free): an adopted deep-link row
+ * (feat-209) is server-origin with zero messages until its replay lands, and
+ * must stay visible while active. Dropping the clause hides every deep link;
+ * `sidebar-projection.test.ts` pins it with an ACTIVE fixture.
+ *
  * Pure — exported for direct unit coverage.
  */
 export function listConversations(
@@ -33,6 +44,6 @@ export function listConversations(
   activeId: string,
 ): Conversation[] {
   return orderConversations(conversations, activeId).filter(
-    (c) => c.id === activeId || c.origin === "server" || c.messages.length > 0,
+    (c) => c.origin === "server" || c.messages.length > 0,
   )
 }
