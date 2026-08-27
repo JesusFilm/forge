@@ -1,5 +1,6 @@
 import { useCallback, useRef, useState } from "react"
 import {
+  Animated,
   FlatList,
   Linking,
   type NativeScrollEvent,
@@ -17,13 +18,23 @@ import Ionicons from "@expo/vector-icons/Ionicons"
 
 import { ACCENT, TEXT_ON_OVERLAY, hexToRgba } from "../../lib/color"
 import { layout, text, button, card, carousel } from "../../styles/shared"
+import {
+  COPYRIGHT_MAX_LINES,
+  composeCardLabel,
+  fitPassageCardRegions,
+} from "../../lib/bibleCardFit"
 import { resolveImageUrl } from "../../lib/resolveImageUrl"
 import { validateActionUrl } from "../../lib/validateUrl"
+import { useShimmerOpacity } from "../../hooks/useShimmerOpacity"
 import { useTypography, type TypographyScale } from "../../hooks/useTypography"
 import type { AdminBlock } from "../../lib/queries"
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
+// The passage-only fields are OPTIONAL on purpose: this renderer also serves
+// the Experience and SDUI content paths, whose quote items carry none of them.
+// Rendering each region only when its value is present is what keeps those two
+// surfaces byte-identical to today.
 type QuoteItem = {
   reference: string
   text: string
@@ -32,6 +43,10 @@ type QuoteItem = {
   backgroundColor?: string | null
   ctaLabel?: string | null
   ctaLink?: string | null
+  translation?: string | null
+  copyright?: string | null
+  passageUrl?: string | null
+  loading?: boolean
 }
 
 export interface BibleQuotesCarouselRendererProps {
@@ -43,21 +58,81 @@ export interface BibleQuotesCarouselRendererProps {
 const HORIZONTAL_PADDING = 16
 const CARD_GAP = 12
 const FALLBACK_BG = "#292524"
+// Keep in step with `cardContent`'s padding — the fit arithmetic subtracts it.
+const CARD_CONTENT_PADDING = 20
+const READ_PASSAGE_LABEL = "Read full passage"
 
 // ── QuoteCard ───────────────────────────────────────────────────────────────
+
+/** Reserved-height stand-in for the verse while the passage read is in flight. */
+function VerseLoading({ typography }: { typography: TypographyScale }) {
+  const opacity = useShimmerOpacity()
+  return (
+    <Animated.View
+      style={[styles.verseLoading, { opacity }]}
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+    >
+      {[0.95, 0.85, 0.6].map((widthFraction) => (
+        <View
+          key={widthFraction}
+          style={[
+            styles.verseLoadingBar,
+            {
+              height: Math.round(typography.body.lineHeight * 0.6),
+              width: `${widthFraction * 100}%`,
+            },
+          ]}
+        />
+      ))}
+    </Animated.View>
+  )
+}
 
 function QuoteCard({
   quote,
   cardWidth,
   typography,
+  fontScale,
+  onOpenPassage,
 }: {
   quote: QuoteItem
   cardWidth: number
   typography: TypographyScale
+  fontScale: number
+  onOpenPassage?: (url: string) => void
 }) {
   const bgColor = quote.backgroundColor ?? FALLBACK_BG
   const bgTransparent = hexToRgba(bgColor, 0)
   const imageUrl = resolveImageUrl(quote.imageUrl ?? null)
+  const loading = quote.loading === true
+
+  const passageUrl =
+    quote.passageUrl != null && validateActionUrl(quote.passageUrl)
+      ? quote.passageUrl
+      : null
+
+  // R14: only a passage-fed card has credit to protect, so only it takes the
+  // clamp and the drop order. The Experience and SDUI cards carry none of
+  // these fields and keep today's unclamped verse.
+  const hasPassage =
+    quote.translation != null ||
+    quote.copyright != null ||
+    quote.passageUrl != null
+
+  const showVerse = !loading && quote.text.length > 0
+
+  // The card is a fixed square and its content is bottom-aligned, so the drop
+  // order has to be decided here rather than left to overflow.
+  const regions = fitPassageCardRegions({
+    contentHeight: cardWidth - CARD_CONTENT_PADDING * 2,
+    typography,
+    fontScale,
+    hasVerse: showVerse,
+    hasTranslation: !loading && quote.translation != null,
+    hasCopyright: !loading && quote.copyright != null,
+    hasLink: !loading && passageUrl != null,
+  })
 
   return (
     <View
@@ -67,7 +142,11 @@ function QuoteCard({
         { width: cardWidth, backgroundColor: bgColor },
       ]}
       accessible
-      accessibilityLabel={`${quote.reference}: ${quote.text}`}
+      accessibilityLabel={
+        loading
+          ? `${quote.reference}, loading`
+          : composeCardLabel(quote.reference, quote.text)
+      }
     >
       {imageUrl != null && (
         <Image
@@ -93,7 +172,48 @@ function QuoteCard({
         <Text style={[styles.reference, typography.bodySmall]}>
           {quote.reference.toUpperCase()}
         </Text>
-        <Text style={[styles.quoteText, typography.body]}>{quote.text}</Text>
+        {loading && <VerseLoading typography={typography} />}
+        {showVerse && (
+          <Text
+            style={[styles.quoteText, typography.body]}
+            numberOfLines={hasPassage ? regions.verseLines : undefined}
+          >
+            {quote.text}
+          </Text>
+        )}
+        {regions.translation && quote.translation != null && (
+          <Text style={[styles.translation, typography.caption]}>
+            {quote.translation}
+          </Text>
+        )}
+        {regions.copyright && quote.copyright != null && (
+          <Text
+            style={[styles.copyright, typography.caption]}
+            numberOfLines={COPYRIGHT_MAX_LINES}
+          >
+            {quote.copyright}
+          </Text>
+        )}
+        {regions.link && passageUrl != null && (
+          <Pressable
+            style={({ pressed }) => [
+              styles.passageLink,
+              onOpenPassage == null && styles.passageLinkDisabled,
+              pressed && styles.passageLinkPressed,
+            ]}
+            // U6 supplies the handler. A link with no handler must never be
+            // tappable, so the affordance disables itself rather than
+            // depending on landing order.
+            disabled={onOpenPassage == null}
+            onPress={() => onOpenPassage?.(passageUrl)}
+            accessibilityRole="link"
+            accessibilityLabel={READ_PASSAGE_LABEL}
+          >
+            <Text style={[styles.passageLinkText, typography.bodySmall]}>
+              {READ_PASSAGE_LABEL}
+            </Text>
+          </Pressable>
+        )}
         {(() => {
           const ctaLink = quote.ctaLink
           const ctaLabel = quote.ctaLabel
@@ -156,7 +276,7 @@ export function BibleQuotesCarouselRenderer({
   section,
 }: BibleQuotesCarouselRendererProps) {
   const typography = useTypography()
-  const { width: screenWidth } = useWindowDimensions()
+  const { width: screenWidth, fontScale } = useWindowDimensions()
   const flatListRef = useRef<FlatList<QuoteItem>>(null)
   const [activeIndex, setActiveIndex] = useState(0)
 
@@ -186,9 +306,10 @@ export function BibleQuotesCarouselRenderer({
         quote={item}
         cardWidth={cardWidth}
         typography={typography}
+        fontScale={fontScale}
       />
     ),
-    [cardWidth, typography],
+    [cardWidth, typography, fontScale],
   )
 
   const keyExtractor = useCallback(
@@ -336,7 +457,45 @@ const styles = StyleSheet.create({
     fontStyle: "italic",
     color: TEXT_ON_OVERLAY,
     fontFamily: "System",
-    marginBottom: 4,
+    marginBottom: 6,
+  },
+  // NOT routed through `attribution` above: that field renders as an uppercase
+  // heavy eyebrow, which is wrong for a translation name and a copyright line.
+  translation: {
+    fontWeight: "600",
+    color: "rgba(255, 255, 255, 0.65)",
+    fontFamily: "System",
+    marginBottom: 2,
+  },
+  copyright: {
+    color: "rgba(255, 255, 255, 0.55)",
+    fontFamily: "System",
+  },
+  passageLink: {
+    marginTop: 8,
+    alignSelf: "flex-start",
+    minHeight: 44,
+    justifyContent: "center",
+  },
+  passageLinkDisabled: {
+    opacity: 0.5,
+  },
+  passageLinkPressed: {
+    opacity: 0.7,
+  },
+  passageLinkText: {
+    fontWeight: "600",
+    color: TEXT_ON_OVERLAY,
+    fontFamily: "System",
+    textDecorationLine: "underline",
+  },
+  verseLoading: {
+    marginBottom: 6,
+    gap: 6,
+  },
+  verseLoadingBar: {
+    borderRadius: 4,
+    backgroundColor: "rgba(255, 255, 255, 0.22)",
   },
   ctaButton: {
     marginTop: 8,
