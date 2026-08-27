@@ -3,11 +3,11 @@ id: "feat-428"
 title: "Port and deploy the RAG HTTP retrieval service"
 owner: "jaco"
 priority: "P0"
-status: "in-progress"
+status: "complete"
 start_date: "2026-09-09"
 duration: 3
 depends_on: ["feat-427"]
-blocks: ["feat-429"]
+blocks: ["feat-429", "feat-439"]
 tags: ["rag", "railway", "http"]
 ---
 
@@ -49,3 +49,10 @@ of schema creation.
 - Deployment metadata names `/apps/rag/railway.toml`, and logs prove the
   configured Prisma pre-deploy migration completed before service startup.
 - Production service is healthy before corpus copy begins.
+
+## Resolution
+
+Implemented in [Forge PR #2079](https://github.com/JesusFilm/forge/pull/2079).
+The production deployment, migration ordering, public/private reachability,
+authentication, contract, and empty-result evidence is recorded in
+[`evidence/feat-428/deployment.md`](evidence/feat-428/deployment.md).
