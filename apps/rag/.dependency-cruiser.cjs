@@ -6,15 +6,17 @@ module.exports = {
       from: { path: "^src/contracts/" },
       to: { path: "^src/(?!contracts/)" },
     },
-    ...["acquisition", "indexing", "retrieval", "serving"].map((lane) => ({
-      name: `${lane}-stays-in-lane`,
-      severity: "error",
-      from: { path: `^src/${lane}/` },
-      to: {
-        path: "^src/",
-        pathNot: `^src/(contracts|${lane})/`,
-      },
-    })),
+    ...["acquisition", "config", "indexing", "retrieval", "serving"].map(
+      (lane) => ({
+        name: `${lane}-stays-in-lane`,
+        severity: "error",
+        from: { path: `^src/${lane}/` },
+        to: {
+          path: "^src/",
+          pathNot: `^src/(contracts|${lane})/`,
+        },
+      }),
+    ),
     {
       name: "adapters-import-only-contracts",
       severity: "error",
@@ -25,7 +27,10 @@ module.exports = {
       name: "rag-does-not-import-other-apps",
       severity: "error",
       from: { path: "^src/" },
-      to: { path: "^\\.\\./(?!\\.\\./packages/rag-contracts/)" },
+      to: {
+        path: "^\\.\\./(?!\\.\\./packages/rag-contracts/)",
+        pathNot: "^\\.\\./\\.\\./node_modules/",
+      },
     },
     {
       name: "not-to-unresolvable",
@@ -49,7 +54,7 @@ module.exports = {
       name: "unclassified-modules-cannot-wire-internals",
       severity: "error",
       from: {
-        path: "^src/(?!(contracts|acquisition|indexing|retrieval|serving|adapters)/|main\\.ts$)",
+        path: "^src/(?!(contracts|acquisition|config|indexing|retrieval|serving|adapters)/|main\\.ts$)",
       },
       to: { path: "^src/" },
     },

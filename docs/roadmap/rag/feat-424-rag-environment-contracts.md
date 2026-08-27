@@ -3,7 +3,7 @@ id: "feat-424"
 title: "Port RAG environment contracts and secret procedures"
 owner: "jaco"
 priority: "P0"
-status: "not-started"
+status: "in-progress"
 start_date: "2026-08-27"
 duration: 2
 depends_on: ["feat-423"]
@@ -14,6 +14,8 @@ tags: ["rag", "infrastructure", "security"]
 ## Problem
 
 RAG configuration and secret provisioning must move without exposing values or weakening fail-fast validation. Historical scope: [jfrag #157](https://github.com/JesusFilm/jesusfilm-rag/issues/157).
+
+Implementation PR: [JesusFilm/forge#2061](https://github.com/JesusFilm/forge/pull/2061). The ticket remains in progress until operator provisioning and redacted validation evidence are complete.
 
 ## Entry Points — Read These First
 

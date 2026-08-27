@@ -4,9 +4,10 @@ import { createRequire } from "node:module"
 import { mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import test from "node:test"
 import { fileURLToPath, URL } from "node:url"
 import { promisify } from "node:util"
+
+import { test } from "vitest"
 
 const read = (path) => readFile(new URL(path, import.meta.url), "utf8")
 const require = createRequire(import.meta.url)
