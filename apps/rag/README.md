@@ -6,10 +6,13 @@ It remains a separate bounded context, Railway service, and Postgres database.
 
 Environment names, validation commands, and receiver-first secret procedures
 live in [`docs/ops/environment-and-secrets.md`](docs/ops/environment-and-secrets.md).
+Fresh database migration, local pgvector, Railway config-as-code, and
+metadata-only production verification live in
+[`docs/ops/postgres-and-schema.md`](docs/ops/postgres-and-schema.md).
 
-This scaffold intentionally contains no runtime behavior. Migration work is
-tracked in `docs/roadmap/rag/`; public `/v1` behavior remains in the standalone
-service until the relevant roadmap tickets land through normal PRs.
+The database schema is now Forge-owned; public `/v1` runtime behavior remains in
+the standalone service until the relevant roadmap tickets land through normal
+PRs.
 
 ## Target layout
 

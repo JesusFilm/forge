@@ -1,0 +1,21 @@
+# Railway reads this only when forge/production/forge-rag has Config-as-code
+# Path set exactly to apps/rag/railway.toml. The database is a separate Railway
+# PostgreSQL service and DATABASE_URL must be a reference to that service.
+
+[build]
+builder = "RAILPACK"
+buildCommand = "pnpm install --frozen-lockfile && pnpm --filter @forge/rag db:generate"
+watchPatterns = [
+  "/apps/rag/**",
+  "/package.json",
+  "/pnpm-lock.yaml",
+  "/pnpm-workspace.yaml",
+  "/turbo.json",
+]
+
+[deploy]
+preDeployCommand = "pnpm --filter @forge/rag db:migrate:deploy"
+# The HTTP start command and /v1/health gate land together in feat-428. Adding
+# either here would make this schema-only deployment permanently unhealthy.
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 3
