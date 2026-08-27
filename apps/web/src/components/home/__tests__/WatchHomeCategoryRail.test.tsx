@@ -138,6 +138,28 @@ describe("WatchHomeCategoryRail", () => {
     ).toBe("/spanish-latin-american.html/videos")
   })
 
+  it("stacks the header copy and CTA on mobile without changing the desktop arrangement", () => {
+    const container = render("english")
+    const heading = container.querySelector("#watch-home-category-rail-title")
+    const header = heading?.parentElement
+    const description = Array.from(header?.querySelectorAll("p") ?? []).find(
+      (paragraph) =>
+        paragraph.textContent === enMessages.WatchHomeCategories.description,
+    )
+    const cta = container.querySelector(
+      '[data-testid="watch-home-category-see-all"]',
+    )
+
+    expect(header?.className).toContain("grid-cols-1")
+    expect(header?.className).toContain("md:grid-cols-[minmax(0,1fr)_auto]")
+    expect(description?.className).toContain("row-start-3")
+    expect(cta?.className).toContain("col-start-1")
+    expect(cta?.className).toContain("row-start-4")
+    expect(cta?.className).toContain("md:col-start-2")
+    expect(cta?.className).toContain("md:row-start-1")
+    expect(cta?.className).toContain("md:row-end-3")
+  })
+
   it("fades every card icon as one layer so crossing strokes stay solid", () => {
     const container = render("english")
     for (const category of WATCH_HOME_CATEGORIES) {

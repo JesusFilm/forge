@@ -214,7 +214,7 @@
     "searchSuggestionWithLanguage": "{language} – hae ”{suggestion}”",
     "inLanguage": "kielellä {language}",
     "browseByRegion": "Selaa alueen mukaan",
-    "allVideosOnSinglePage": "All videos on single page",
+    "allVideosOnSinglePage": "Kaikki videot yhdellä sivulla",
     "clearLanguages": "Tyhjennä",
     "queryLanguageDetected": "Havaittu kieli: {language}",
     "searchInLanguage": "Hakukieli: {language}",

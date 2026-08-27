@@ -4,12 +4,32 @@
   "version": "0.0.1",
   "type": "module",
   "scripts": {
+    "db:generate": "DATABASE_URL=${DATABASE_URL:-postgresql://forge:forge@localhost:5435/forge_rag} prisma generate",
+    "db:drift:check": "tsx scripts/check-schema-drift.ts",
+    "db:migrate:deploy": "prisma migrate deploy",
+    "db:migrate:status": "prisma migrate status",
+    "db:schema:check": "DATABASE_URL=${DATABASE_URL:-postgresql://forge:forge@localhost:5435/forge_rag} prisma validate && vitest run tests/schema.test.mjs tests/schema-drift.test.ts",
+    "db:verify": "vitest run tests/database.integration.test.ts",
     "depcruise": "depcruise src tests --config .dependency-cruiser.cjs",
+    "env:check": "tsx scripts/check-env.ts",
+    "env:check:ci": "DATABASE_URL=postgresql://ci:ci@localhost:5432/rag OPENROUTER_API_KEY=ci-placeholder tsx scripts/check-env.ts ci",
     "lint": "eslint .",
-    "test": "pnpm depcruise && tsx --test tests/*.test.mjs",
+    "test": "pnpm depcruise && vitest run --exclude tests/database.integration.test.ts",
+    "test:core": "vitest run src/acquisition/core.test.ts src/indexing src/retrieval src/fakes",
     "typecheck": "tsc --noEmit"
   },
+  "dependencies": {
+    "@forge/rag-contracts": "workspace:*",
+    "@prisma/client": "^6",
+    "node-html-parser": "^7.0.1",
+    "tinyld": "^1.3.4",
+    "zod": "^4.3.6"
+  },
   "devDependencies": {
-    "dependency-cruiser": "^17.4.0"
+    "@types/node": "^22.0.0",
+    "dependency-cruiser": "^17.4.0",
+    "prisma": "^6",
+    "typescript": "~5.9.3",
+    "vitest": "3.2.4"
   }
 }

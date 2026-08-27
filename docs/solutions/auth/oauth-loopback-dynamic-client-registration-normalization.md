@@ -51,8 +51,8 @@ companion Changelog implementation in
 [PR #79](https://github.com/JesusFilm/jfp-changelog/pull/79) separately validates
 the resulting bearer token and `changelog:read` capability at `/mcp`.
 
-The implementation is pending merge in
-[Forge PR #2021](https://github.com/JesusFilm/forge/pull/2021).
+The implementation merged in
+[Forge PR #2021](https://github.com/JesusFilm/forge/pull/2021) on 2026-08-25.
 
 ## Symptoms
 
@@ -198,8 +198,9 @@ header semantics (`route.ts:72-100,135-160`).
 
 ## Related Issues
 
-- [Forge PR #2021](https://github.com/JesusFilm/forge/pull/2021) — implementation pending merge
+- [Forge PR #2021](https://github.com/JesusFilm/forge/pull/2021) — merged implementation
 - [Changelog issue #71](https://github.com/JesusFilm/jfp-changelog/issues/71) — primary integration contract
+- [Verify Local Changelog grants with eligibility, fresh OAuth, and an authorized read](./verify-local-changelog-grants-with-fresh-oauth-token.md) — separate user-grant and post-grant verification workflow
 - [Better Auth authorization resource binding upgrade](./better-auth-authorization-resource-binding-upgrade.md) — prerequisite provider safety
 - [OAuth-protected MCP tool parity pattern](../architecture-patterns/oauth-protected-mcp-tool-parity-pattern-20260721.md) — downstream resource-server boundary
 - [Buffered HTTP response byte-cap guard](../best-practices/buffered-http-response-byte-cap-oom-guard-20260629.md) — related stream-limiting pattern

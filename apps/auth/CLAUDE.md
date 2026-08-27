@@ -56,6 +56,32 @@ Paste the printed handle into the normal Auth email field and click Continue.
 The raw `AGENT_LOGIN_MINTING_KEY` and printed handles are bearer credentials; do
 not commit them, pipe them into durable logs, or paste them into issue/PR text.
 
+## Local Changelog Reader access
+
+Local Changelog normally uses hosted Jesus Film Auth, so a developer who sees
+an insufficient-scope error at `http://localhost:3000/mcp` needs an approved
+Local `changelog:read` grant in that hosted Auth database. The recipient must
+already have signed in to Auth once and be a verified, ACTIVE HUMAN user.
+Google sign-in is supported: the command uses the prompted email only to find
+the user's stable Auth ID, and the grant is stored against that ID.
+
+```bash
+pnpm --filter @forge/auth changelog:grant-local-reader
+```
+
+The command prompts for the email. Never pass it as a command-line argument.
+Running the command against a local Auth database affects only local Auth; use
+the explicit, guarded hosted procedure in
+`apps/auth/docs/railway-deployment.md` when Local Changelog is using hosted
+Auth. The command can create Local Reader access only. It cannot grant
+Production, Contributor, or Admin access, and Production Changelog token
+issuance remains disabled.
+
+After a grant, reconnect the Changelog MCP so the OAuth flow issues a fresh
+token for `http://localhost:3000/mcp`. Changelog-side documentation remains a
+separate follow-up in
+[JesusFilm/jfp-changelog#81](https://github.com/JesusFilm/jfp-changelog/issues/81).
+
 ## Deployment
 
 Auth deploys as its own Railway service. `auth.jesusfilm.org` should point to
