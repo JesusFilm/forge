@@ -22,7 +22,7 @@ describe("wire", () => {
           authorization: headers.authorization,
           model: body.model,
         })
-        if (url.startsWith("https://gateway.test")) {
+        if (url === "https://gateway.test/v1/embeddings") {
           return new Response(null, { status: 503, statusText: "Unavailable" })
         }
         return new Response(
