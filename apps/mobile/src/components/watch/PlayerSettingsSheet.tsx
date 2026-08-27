@@ -107,6 +107,7 @@ export function PlayerSettingsSheet({
   // BEFORE that call. The timer — not the animation callback — is what fires
   // it: a native-driver completion never arrives under jest, and an animation
   // interrupted on-device would otherwise strand the sheet open forever.
+  const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const close = useCallback(() => {
     if (closingRef.current) return
     closingRef.current = true
@@ -116,8 +117,17 @@ export function PlayerSettingsSheet({
       easing: Easing.in(Easing.cubic),
       useNativeDriver: true,
     }).start()
-    setTimeout(onClose, EXIT_MS)
+    closeTimerRef.current = setTimeout(onClose, EXIT_MS)
   }, [onClose, progress])
+
+  // An unmount from any OTHER path (route pop, player handover) would leave the
+  // timer above pending and fire onClose into a torn-down tree.
+  useEffect(
+    () => () => {
+      if (closeTimerRef.current != null) clearTimeout(closeTimerRef.current)
+    },
+    [],
+  )
 
   const qualityAvailable =
     !castActive && supportsQualityConstraint(streamingUrl)

@@ -67,10 +67,12 @@ type WatchAmbientProps = {
 export function WatchAmbient({ posterUrl, topInset }: WatchAmbientProps) {
   const { width } = useWindowDimensions()
   const playing = usePlaybackPlaying()
-  // Starts presented: a screen opened while paused must not fade IN from
-  // nothing. Every hook stays above the null return below — that early exit
-  // would otherwise make them conditional.
-  const playFade = useRef(new Animated.Value(1)).current
+  // Seeded from the CURRENT state, not a literal: a screen that mounts while
+  // the video already plays (fullscreen exit, mini-player expand) would
+  // otherwise re-present the wash and fade it out again over PLAY_FADE_MS.
+  const playFade = useRef(
+    new Animated.Value(playing ? PLAYING_OPACITY_MULTIPLIER : 1),
+  ).current
 
   useEffect(() => {
     Animated.timing(playFade, {

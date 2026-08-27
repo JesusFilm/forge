@@ -1099,3 +1099,48 @@ describe("useManagedVideoPlayer — audio pitch across speed changes", () => {
     expect(video.__player.preservesPitch).toBe(true)
   })
 })
+
+/**
+ * The play-state bridge the ambient wash reads (`usePlaybackPlaying`). The host
+ * is a `<Stack>` SIBLING, so this boolean is the only path from the one player
+ * to a route's layers — and nothing else in the suite observes it. Before these
+ * cases, deleting either `setPlaying` effect kept the whole suite green.
+ *
+ * Asserted against the real store through the real host, not a spy: the defect
+ * being guarded is a missing effect, which a spy on the store would still see.
+ */
+describe("useManagedVideoPlayer — play state published to the request store", () => {
+  it("publishes playback onto the store, and back to false on pause", async () => {
+    const renderer = await renderPlayer()
+    // Anti-vacuous: false here is the default, so the assertion after play()
+    // cannot pass on a store that was never written.
+    expect(requestStore.getSnapshot().playing).toBe(false)
+
+    await act(async () => {
+      video.__player.play()
+    })
+
+    expect(requestStore.getSnapshot().playing).toBe(true)
+
+    await act(async () => {
+      video.__player.pause()
+    })
+
+    expect(requestStore.getSnapshot().playing).toBe(false)
+    await unmountPlayer(renderer)
+  })
+
+  it("clears the flag when the host unmounts mid-playback", async () => {
+    // Without the teardown effect the flag stays true on a screen with no
+    // player at all, and the wash stays faded out for the rest of the session.
+    const renderer = await renderPlayer()
+    await act(async () => {
+      video.__player.play()
+    })
+    expect(requestStore.getSnapshot().playing).toBe(true)
+
+    await unmountPlayer(renderer)
+
+    expect(requestStore.getSnapshot().playing).toBe(false)
+  })
+})

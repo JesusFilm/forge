@@ -37,6 +37,7 @@ jest.mock("../../../lib/cast/castAdapter", () => ({
 }))
 
 import { act } from "react"
+import { Animated } from "react-native"
 
 import { PlayerSettingsSheet } from "../PlayerSettingsSheet"
 import { getPlayerSettingsStore } from "../../../lib/miniPlayer/playerSettings"
@@ -484,5 +485,120 @@ describe("VideoPlayer hosts the sheet as component state (KTD5)", () => {
       HOST_SOURCE.indexOf(")}", veilStart),
     )
     expect(veil).not.toContain("onOpenSettings")
+  })
+})
+
+/**
+ * The enter animation is gated on a measured panel height, and jest-expo's
+ * renderer never fires native `onLayout` — so before these cases `panelHeight`
+ * stayed 0, the effect always hit its early return, and the presentation tests
+ * above passed identically whether the animation existed or not.
+ *
+ * These drive the measurement by hand and assert the panel's OFFSET, which is
+ * the thing the gate controls. The offset is read rather than the animation's
+ * progress because the ramp runs on the native driver, whose JS value never
+ * advances under jest.
+ */
+describe("enter animation (reachable only once the panel is measured)", () => {
+  function panelTranslateY(renderer: TestInstance): {
+    node: { props: Record<string, unknown> }
+    value: () => number
+  } {
+    const flat = (style: unknown): Record<string, unknown> => {
+      const out: Record<string, unknown> = {}
+      const walk = (s: unknown) => {
+        if (Array.isArray(s)) return s.forEach(walk)
+        if (s && typeof s === "object") Object.assign(out, s)
+      }
+      walk(style)
+      return out
+    }
+    const nodes = renderer.root.findAll((n) => {
+      const t = flat(n.props.style).transform as
+        | Array<Record<string, unknown>>
+        | undefined
+      return (
+        Array.isArray(t) &&
+        t.some(
+          (e) =>
+            typeof (e.translateY as { __getValue?: unknown })?.__getValue ===
+            "function",
+        )
+      )
+    })
+    expect(nodes.length).toBeGreaterThan(0)
+    const node = nodes[0]
+    const t = flat(node.props.style).transform as Array<Record<string, unknown>>
+    const entry = t.find(
+      (e) =>
+        typeof (e.translateY as { __getValue?: unknown })?.__getValue ===
+        "function",
+    ) as { translateY: { __getValue: () => number } }
+    return { node, value: () => entry.translateY.__getValue() }
+  }
+
+  it("parks the panel offscreen until it has been measured", async () => {
+    // The unmeasured park is what keeps the first frame off the screen. If this
+    // ever equalled the measured height, the panel would flash in place.
+    const renderer = await render()
+
+    expect(panelTranslateY(renderer).value()).toBeGreaterThan(1000)
+
+    await unmount(renderer)
+  })
+
+  it("starts the enter animation once onLayout lands", async () => {
+    // Asserted on the timing CALL, not on the panel's offset: the offset tracks
+    // panelHeight, which onLayout's setState writes on its own, so an
+    // offset-only assertion stays green even with the effect's gate forced
+    // permanently closed (verified by falsifying it exactly that way).
+    const timing = jest.spyOn(Animated, "timing")
+    const renderer = await render()
+    const before = panelTranslateY(renderer)
+    const enterCalls = () =>
+      timing.mock.calls.filter(
+        (c) => (c[1] as { toValue?: number } | undefined)?.toValue === 1,
+      ).length
+    expect(enterCalls()).toBe(0)
+
+    await act(async () => {
+      ;(
+        before.node.props.onLayout as (e: {
+          nativeEvent: { layout: { height: number } }
+        }) => void
+      )({ nativeEvent: { layout: { height: 320 } } })
+    })
+
+    expect(enterCalls()).toBe(1)
+    // ...and the panel is now positioned from the measured height, not the park.
+    expect(panelTranslateY(renderer).value()).toBe(320)
+    timing.mockRestore()
+    await unmount(renderer)
+  })
+})
+
+describe("exit timer lifetime", () => {
+  beforeEach(() => {
+    jest.useFakeTimers()
+  })
+  afterEach(() => {
+    jest.useRealTimers()
+  })
+
+  it("does not call onClose when the sheet unmounts before the timer fires", async () => {
+    // The host unmounts this sheet from its own onClose, but a route pop or a
+    // player handover can unmount it mid-exit. A timer left pending would then
+    // fire into a torn-down tree.
+    const onClose = jest.fn()
+    const renderer = await render({ onClose })
+    await press(pressableByLabel(renderer, "Close"))
+    expect(onClose).not.toHaveBeenCalled()
+
+    await unmount(renderer)
+    await act(async () => {
+      jest.advanceTimersByTime(400)
+    })
+
+    expect(onClose).not.toHaveBeenCalled()
   })
 })

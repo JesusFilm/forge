@@ -108,6 +108,17 @@ describe("WatchAmbient", () => {
     expect(SOURCE).toContain("PLAYING_OPACITY_MULTIPLIER")
   })
 
+  it("seeds the fade from the CURRENT play state, never from a literal", () => {
+    // A screen can mount while the video is already playing — leaving fullscreen
+    // drops this layer and remounts it, and the mini player expands into a fresh
+    // route. Seeding at 1 made those mounts re-present the wash and fade it out
+    // again over the full PLAY_FADE_MS, which is the glitch the slow ramp exists
+    // to avoid. useRef keeps only the first render's value, so the paused case
+    // still starts presented.
+    expect(SOURCE).toMatch(/new Animated\.Value\(\s*playing \?/)
+    expect(SOURCE).not.toMatch(/new Animated\.Value\(1\)/)
+  })
+
   it("ramps that fade slowly enough to read as deliberate", () => {
     // A quick dip beside a moving video reads as a glitch. Pinned as a FLOOR,
     // not an exact value, so the duration stays tunable without churning this.
