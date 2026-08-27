@@ -214,7 +214,7 @@
     "searchSuggestionWithLanguage": "په {language} کې د «{suggestion}» لټون وکړئ",
     "inLanguage": "په {language} کې",
     "browseByRegion": "د سیمې له مخې وپلټئ",
-    "allVideosOnSinglePage": "All videos on single page",
+    "allVideosOnSinglePage": "ټول ویډیوګانې په یوه پاڼه کې",
     "clearLanguages": "پاک کړئ",
     "queryLanguageDetected": "{language} وموندل شو",
     "searchInLanguage": "په {language} کې ولټوئ",

@@ -21,9 +21,12 @@ import {
 } from "@/domain/apps"
 import { AUTH_SCOPES } from "@/domain/scopes"
 import {
-  CHANGELOG_OAUTH_RESOURCES,
-  CHANGELOG_OAUTH_SCOPES,
-} from "@/services/oauth-policy.service"
+  createOAuthResourceCatalog,
+  getPublicDcrAllowedScopes,
+  getPublicDcrResources,
+  resolveOAuthResource,
+} from "@/domain/oauth-resources"
+import { CHANGELOG_OAUTH_SCOPES } from "@/services/oauth-policy.service"
 import { createChangelogOAuthGrantDecision } from "@/services/changelog-oauth-grant.service"
 import { buildAccountDeletionHooks } from "@/services/account-deletion.service"
 import {
@@ -32,18 +35,19 @@ import {
   getAdminWatchProgressErasureConfig,
   getAppleNativeClientConfig,
   getAuthBaseUrl,
+  getAuthCustomAudiences,
   getAuthTrustedOrigins,
-  getAuthValidAudiences,
 } from "@/config/env"
 import { prisma } from "@/db/client"
 
 assertProductionAuthSecrets()
 
-const protectedResources = getAuthValidAudiences()
-const changelogResources: readonly string[] = Object.values(
-  CHANGELOG_OAUTH_RESOURCES,
-)
-
+const protectedResources = createOAuthResourceCatalog({
+  authIssuer: getAuthBaseUrl(),
+  customAudiences: getAuthCustomAudiences(),
+})
+const publicDcrResources = getPublicDcrResources(protectedResources)
+const publicDcrAllowedScopes = getPublicDcrAllowedScopes(protectedResources)
 const accountDeletionHooks = buildAccountDeletionHooks({
   findAppleAccount: (userId) =>
     prisma.account.findFirst({
@@ -290,12 +294,12 @@ export const auth = betterAuth({
       // to server startup after migrations, not static route collection.
       resources: isNextBuild
         ? []
-        : protectedResources.map((identifier) => ({
+        : protectedResources.map(({ identifier, allowedScopes }) => ({
             identifier,
-            allowedScopes: AUTH_SCOPES.map((scope) => scope.key),
+            allowedScopes: [...allowedScopes],
           })),
-      clientRegistrationAllowedResources: isNextBuild ? [] : protectedResources,
-      clientRegistrationDefaultResources: isNextBuild ? [] : changelogResources,
+      clientRegistrationAllowedResources: isNextBuild ? [] : publicDcrResources,
+      clientRegistrationDefaultResources: isNextBuild ? [] : publicDcrResources,
       advertisedMetadata: {
         scopes_supported: AUTH_SCOPES.map((scope) => scope.key),
         claims_supported: [
@@ -318,7 +322,7 @@ export const auth = betterAuth({
         ],
       },
       clientRegistrationDefaultScopes: ["openid", "profile:read", "email:read"],
-      clientRegistrationAllowedScopes: AUTH_SCOPES.map((scope) => scope.key),
+      clientRegistrationAllowedScopes: publicDcrAllowedScopes,
       clientCredentialGrantDefaultScopes: ["openid"],
       accessTokenExpiresIn: 60 * 60,
       m2mAccessTokenExpiresIn: 60 * 30,
@@ -340,15 +344,25 @@ export const auth = betterAuth({
         resources,
         metadata,
       }) => {
+        const target =
+          resources?.length === 1
+            ? resolveOAuthResource(protectedResources, resources[0])
+            : undefined
+        if (target?.resourceClass === "admin-mcp") {
+          return {
+            "https://jesusfilm.org/claims/environment":
+              target.trustedEnvironment,
+            "https://jesusfilm.org/claims/app": target.trustedApp,
+          }
+        }
         const changelogAware =
-          resources?.some((resource) =>
-            changelogResources.includes(resource),
-          ) ||
-          scopes.some((scope) =>
-            CHANGELOG_OAUTH_SCOPES.includes(
-              scope as (typeof CHANGELOG_OAUTH_SCOPES)[number],
-            ),
-          )
+          target?.resourceClass === "changelog-mcp" ||
+          (resources?.length !== 1 &&
+            scopes.some((scope) =>
+              CHANGELOG_OAUTH_SCOPES.includes(
+                scope as (typeof CHANGELOG_OAUTH_SCOPES)[number],
+              ),
+            ))
         if (!changelogAware) {
           return {
             ...(typeof metadata?.environmentKind === "string"

@@ -132,6 +132,7 @@ describe("Experience draft preview page", () => {
       heroModel,
       blocks: draft.blocks,
       languageSlug: "russian",
+      dynamicCollectionCacheScope: "preview",
     })
   })
 

@@ -26,6 +26,10 @@
 // handling in the dashboard. No Prisma migration required.
 
 import { z } from "zod"
+import {
+  WATCH_HOME_CATEGORY_CATALOG,
+  type WatchHomeCategoryId,
+} from "@forge/watch-url-policy/watch-home-categories"
 
 // -----------------------------------------------------------------------------
 // Shared primitives
@@ -442,6 +446,42 @@ export const WatchHomeHeroBlockSchema = z
   })
   .strict()
 
+const WatchHomeCategoryIdSchema = z.enum(
+  WATCH_HOME_CATEGORY_CATALOG.map(({ id }) => id) as [
+    WatchHomeCategoryId,
+    ...WatchHomeCategoryId[],
+  ],
+)
+
+/**
+ * Web-owned Watch homepage category carousel. The ordered category IDs are
+ * persisted while localized copy and presentation remain consumer-owned.
+ * Top-level only because the section is a full-width homepage surface.
+ */
+export const WatchHomeCategoryRailBlockSchema = z
+  .object({
+    t: z.literal("watchHomeCategoryRail"),
+    sectionKey,
+    categoryIds: z
+      .array(WatchHomeCategoryIdSchema)
+      .min(1, "Select at least one Watch category")
+      .superRefine((categoryIds, ctx) => {
+        const firstIndexById = new Map<WatchHomeCategoryId, number>()
+        for (const [index, id] of categoryIds.entries()) {
+          if (firstIndexById.has(id)) {
+            ctx.addIssue({
+              code: "custom",
+              path: [index],
+              message: `Duplicate Watch category id: ${id}`,
+            })
+          } else {
+            firstIndexById.set(id, index)
+          }
+        }
+      }),
+  })
+  .strict()
+
 // -----------------------------------------------------------------------------
 // Container composition (no recursion — slot content is a narrower set).
 // -----------------------------------------------------------------------------
@@ -581,6 +621,7 @@ export const BlockSchema = z.discriminatedUnion("t", [
   VideoCarouselBlockSchema,
   VideoRecommendationsBlockSchema,
   NavigationCarouselBlockSchema,
+  WatchHomeCategoryRailBlockSchema,
   WatchHomeHeroBlockSchema,
 ])
 
@@ -599,6 +640,19 @@ export type Block = z.infer<typeof BlockSchema>
  * `experience-ai-normalize.ts`). Adding a minimum here would reject valid
  * hand-authored 1-block content.
  */
-export const BlocksSchema = z.array(BlockSchema)
+export const BlocksSchema = z.array(BlockSchema).superRefine((blocks, ctx) => {
+  let categoryRailSeen = false
+  for (const [index, block] of blocks.entries()) {
+    if (block.t !== "watchHomeCategoryRail") continue
+    if (categoryRailSeen) {
+      ctx.addIssue({
+        code: "custom",
+        path: [index],
+        message: "Only one Watch homepage category rail block is allowed",
+      })
+    }
+    categoryRailSeen = true
+  }
+})
 
 export type Blocks = z.infer<typeof BlocksSchema>

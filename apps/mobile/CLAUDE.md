@@ -59,7 +59,7 @@ Admin GraphQL → gql.tada typed query → dispatcher → renderers
 ```
 
 - **Query**: Defined in `src/lib/queries.ts` using `adminGraphql()` from `@forge/admin-graphql`
-- **Fragments**: `import { adminWatchExperienceFragment } from "@forge/admin-graphql/fragments"` — the shared root composition over all block fragments. The exported symbol is lowercase; the GraphQL fragment it declares is named `AdminWatchExperience` (no `Fragment` suffix), so a query spreads it as `...AdminWatchExperience`.
+- **Fragments**: while the Watch category-rail rollout can still roll Admin back to a pre-rail schema, import `adminLegacyWatchExperienceFragment` from `@forge/admin-graphql/fragments` and spread `...AdminLegacyWatchExperience`. Mobile does not render the Web-only rail, so naming its new GraphQL type would only make released native bundles incompatible with an old or rolled-back Admin. Return to the canonical fragment only after the compatibility window closes.
 - **Dispatcher**: `src/components/sections/SectionDispatcher.tsx` — switch on `__typename`
 - **Renderers**: `src/components/sections/*Renderer.tsx` — one per block type
 
@@ -243,6 +243,24 @@ disabled, resolution falls through to the in-code production default, which is
 already correct and already reviewed. A dashboard-typed URL runs zod on the
 device — a scheme-less host or stray whitespace would throw at module scope and
 hard-fail startup for every beta tester.
+
+## iOS build numbers (TestFlight)
+
+**EAS owns the build number** (`cli.appVersionSource: "remote"` +
+`production.autoIncrement: true`, the same shape `apps/tv` uses), so `app.json`
+carries no `ios.buildNumber` and every `production` build takes the next
+number without a commit. The version string (`expo.version`, `1.0.0`) stays
+in `app.json`; bump it by hand when testers should see a new marketing
+version. Read the counter with
+`eas build:version:get --platform ios --profile production`; set it with
+`eas build:version:set` only to seed or repair it.
+
+Why it is remote: before this, a `production` build resolved to `1.0.0 (1)`
+every time, and App Store Connect already held iOS build 1 from 2026-07-16,
+so the next upload would have been rejected as a duplicate. The record
+(`ascAppId` 6791428415, "Jesus Film Watch") is shared with `apps/tv`; App
+Store Connect keeps one build list per platform, so the tvOS numbers do not
+constrain iOS.
 
 ## Observability (Datadog)
 

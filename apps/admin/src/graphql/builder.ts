@@ -37,6 +37,12 @@ export type ContextShape = {
   /** Stable prisma client reference (Unit 2 singleton). */
   prisma: typeof prisma
   /**
+   * Request-start snapshot of the category-rail activation marker. Captured
+   * before GraphQL row reads so a request never combines a stale row with a
+   * newer marker observation.
+   */
+  watchHomeCategoryRailRolloutCompleted: boolean
+  /**
    * Per-request DataLoader instances. Used by services that need to
    * hydrate by id outside the Pothos `...query` happy path (e.g. the
    * vector-search hydration pattern returning IDs from raw SQL).

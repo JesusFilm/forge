@@ -617,6 +617,7 @@ describe("Catch-all routing — one-segment collection/home branch", () => {
     resolveWatchPageMock.mockResolvedValue({
       data: {
         kind: "experience",
+        watchHomeCategoryRailCompatibility: "legacy-schema",
         experience: {
           id: "exp-home-es",
           slug: "watch-home",
@@ -640,6 +641,7 @@ describe("Catch-all routing — one-segment collection/home branch", () => {
           missingData: [],
         },
         blocks: [],
+        legacyCategoryRailCompatibility: true,
       }),
       undefined,
     )

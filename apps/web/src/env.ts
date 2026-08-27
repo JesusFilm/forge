@@ -159,6 +159,14 @@ export const env = createEnv({
     // a separate future unit.
     STRAPI_PREVIEW_SECRET: z.string().optional(),
     REVALIDATION_SECRET: z.string(),
+    // Optional Cloudflare cache-tag purge credentials. The dynamic collection
+    // route emits shared edge-cache headers only when both are configured, so
+    // a long-lived edge object can always be purged after content publication.
+    CLOUDFLARE_ZONE_ID: z
+      .string()
+      .regex(/^[A-Fa-f0-9]{32}$/)
+      .optional(),
+    CLOUDFLARE_CACHE_PURGE_TOKEN: z.string().min(1).optional(),
     // Optional: used only by the /demo-search AI experience generator.
     // Absent in most preview environments; the server action surfaces a
     // graceful "not configured" state when unset.
@@ -325,6 +333,10 @@ export const env = createEnv({
   runtimeEnv: {
     STRAPI_PREVIEW_SECRET: process.env.STRAPI_PREVIEW_SECRET,
     REVALIDATION_SECRET: process.env.REVALIDATION_SECRET,
+    CLOUDFLARE_ZONE_ID: emptyToUndefined(process.env.CLOUDFLARE_ZONE_ID),
+    CLOUDFLARE_CACHE_PURGE_TOKEN: emptyToUndefined(
+      process.env.CLOUDFLARE_CACHE_PURGE_TOKEN,
+    ),
     OPENROUTER_API_KEY: process.env.OPENROUTER_API_KEY,
     LAUNCHDARKLY_SDK_KEY: process.env.LAUNCHDARKLY_SDK_KEY,
     FORGE_WATCH_PLAYER_MIGRATION_DEFAULT:

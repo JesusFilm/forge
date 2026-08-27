@@ -21,9 +21,16 @@
  * client module graph along (same rule as `search-categories.ts`).
  */
 
+import {
+  WATCH_HOME_CATEGORY_CATALOG,
+  type WatchHomeCategoryId,
+} from "@forge/watch-url-policy/watch-home-categories"
+
+export type { WatchHomeCategoryId }
+
 export type WatchHomeCategory = {
   /** Stable structural identifier. React key, icon key, and test id. */
-  id: string
+  id: WatchHomeCategoryId
   /** Collection parent content slug — the `/watch/<slug>.html` destination. */
   slug: string
   /** Key inside the `WatchHomeCategories` message namespace. */
@@ -32,85 +39,69 @@ export type WatchHomeCategory = {
   gradient: string
 }
 
-export const WATCH_HOME_CATEGORIES = [
-  {
-    id: "jesus",
-    slug: "jesus",
+type WatchHomeCategoryPresentation = Pick<
+  WatchHomeCategory,
+  "titleKey" | "gradient"
+>
+
+const WATCH_HOME_CATEGORY_PRESENTATION_BY_ID = {
+  jesus: {
     titleKey: "jesus",
     gradient: "linear-gradient(135deg, #b91c1c 0%, #7f1d1d 100%)",
   },
-  {
-    id: "gospels",
-    slug: "lumo",
+  gospels: {
     titleKey: "gospels",
     gradient: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
   },
-  {
-    id: "short-videos",
-    slug: "conversation-starters",
+  "short-videos": {
     titleKey: "shortVideos",
     gradient: "linear-gradient(135deg, #f97316 0%, #c2410c 100%)",
   },
-  {
-    id: "family",
-    slug: "family",
+  family: {
     titleKey: "family",
     gradient: "linear-gradient(135deg, #fa709a 0%, #fee140 100%)",
   },
-  {
-    id: "relationships",
-    slug: "relationships",
+  relationships: {
     titleKey: "relationships",
     gradient: "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)",
   },
-  {
-    id: "women",
-    slug: "women-resources",
+  women: {
     titleKey: "women",
     gradient: "linear-gradient(135deg, #a855f7 0%, #6d28d9 100%)",
   },
-  {
-    id: "students",
-    slug: "student-resources",
+  students: {
     titleKey: "students",
     gradient: "linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)",
   },
-  {
-    id: "sports",
-    slug: "sports",
+  sports: {
     titleKey: "sports",
     gradient: "linear-gradient(135deg, #0ea5e9 0%, #1d4ed8 100%)",
   },
-  {
-    id: "good-news",
-    slug: "evangelism",
+  "good-news": {
     titleKey: "goodNews",
     gradient: "linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)",
   },
-  {
-    id: "hope",
-    slug: "hope-collection",
+  hope: {
     titleKey: "hope",
     gradient: "linear-gradient(135deg, #14b8a6 0%, #0f766e 100%)",
   },
-  {
-    id: "training",
-    slug: "training",
+  training: {
     titleKey: "training",
     gradient: "linear-gradient(135deg, #64748b 0%, #334155 100%)",
   },
-  {
-    id: "easter",
-    slug: "easter",
+  easter: {
     titleKey: "easter",
     gradient: "linear-gradient(135deg, #f59e0b 0%, #b45309 100%)",
   },
-  {
-    id: "christmas",
-    slug: "christmas",
+  christmas: {
     titleKey: "christmas",
     gradient: "linear-gradient(135deg, #dc2626 0%, #991b1b 100%)",
   },
-] as const satisfies readonly WatchHomeCategory[]
+} as const satisfies Record<WatchHomeCategoryId, WatchHomeCategoryPresentation>
 
-export type WatchHomeCategoryId = (typeof WATCH_HOME_CATEGORIES)[number]["id"]
+export const WATCH_HOME_CATEGORIES = WATCH_HOME_CATEGORY_CATALOG.map(
+  (category) => ({
+    ...category,
+    ...WATCH_HOME_CATEGORY_PRESENTATION_BY_ID[category.id],
+  }),
+) satisfies readonly WatchHomeCategory[]

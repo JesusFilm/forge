@@ -18,6 +18,7 @@ describe("buildChatPrompt", () => {
     const prompt = buildChatPrompt({
       state: {
         locale: "en",
+        isHomepage: false,
         title: "",
         metaDescription: null,
         ogImageUrl: null,
@@ -39,6 +40,7 @@ describe("buildChatPrompt", () => {
     const prompt = buildChatPrompt({
       state: {
         locale: "en",
+        isHomepage: false,
         title: "Existing",
         metaDescription: "Existing description",
         ogImageUrl: null,
@@ -57,6 +59,7 @@ describe("buildChatPrompt", () => {
     const prompt = buildChatPrompt({
       state: {
         locale: "en",
+        isHomepage: false,
         title: "Existing",
         metaDescription: "Existing description",
         ogImageUrl: null,
@@ -81,6 +84,7 @@ describe("buildChatPrompt", () => {
     const prompt = buildChatPrompt({
       state: {
         locale: "en",
+        isHomepage: false,
         title: "Existing",
         metaDescription: "Existing description",
         ogImageUrl: null,
@@ -105,6 +109,7 @@ describe("buildChatPrompt", () => {
     const prompt = buildChatPrompt({
       state: {
         locale: "en",
+        isHomepage: false,
         title: "Existing",
         metaDescription: "Existing description",
         ogImageUrl: null,
@@ -133,5 +138,61 @@ describe("buildChatPrompt", () => {
     expect(prompt).not.toContain('"t":"quizButton","label"')
     expect(prompt).not.toContain("use their refs verbatim")
     expect(prompt).not.toContain('candidate\'s "id" field')
+  })
+
+  it("documents the homepage category rail contract from effective locale state", () => {
+    const prompt = buildChatPrompt({
+      state: {
+        locale: "en",
+        isHomepage: true,
+        title: "Watch",
+        metaDescription: null,
+        ogImageUrl: null,
+        blocksPreview: [
+          {
+            t: "watchHomeCategoryRail",
+            categoryIds: ["family", "gospels", "jesus"],
+          },
+        ],
+      },
+      history: [],
+      candidates: [],
+      userPrompt: "Tighten the page title",
+    })
+
+    expect(prompt).toContain('"isHomepage": true')
+    expect(prompt).toContain('"t":"watchHomeCategoryRail"')
+    expect(prompt).toContain(
+      '"jesus", "gospels", "short-videos", "family", "relationships", "women", "students", "sports", "good-news", "hope", "training", "easter", "christmas"',
+    )
+    expect(prompt).toContain("top-level only")
+    expect(prompt).toContain("homepage-only")
+    expect(prompt).toContain("at most once")
+    expect(prompt).toContain("non-empty, duplicate-free")
+    expect(prompt).toContain("categoryIds order is the rendered tile order")
+    expect(prompt).toContain(
+      "preserve that block and its categoryIds order during unrelated edits",
+    )
+  })
+
+  it("forbids proposing the category rail when effective homepage state is false", () => {
+    const prompt = buildChatPrompt({
+      state: {
+        locale: "en",
+        isHomepage: false,
+        title: "Hope",
+        metaDescription: null,
+        ogImageUrl: null,
+        blocksPreview: [{ t: "text", contentParagraphs: ["Hope"] }],
+      },
+      history: [],
+      candidates: [],
+      userPrompt: "Add the Watch category rail",
+    })
+
+    expect(prompt).toContain('"isHomepage": false')
+    expect(prompt).toContain(
+      "Do not propose this block when effective isHomepage is false",
+    )
   })
 })

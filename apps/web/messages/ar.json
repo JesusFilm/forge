@@ -214,7 +214,7 @@
     "searchSuggestionWithLanguage": "ابحث عن «{suggestion}» ب{language}",
     "inLanguage": "ب{language}",
     "browseByRegion": "تصفح حسب المنطقة",
-    "allVideosOnSinglePage": "All videos on single page",
+    "allVideosOnSinglePage": "كل الفيديوهات في صفحة واحدة",
     "clearLanguages": "مسح",
     "queryLanguageDetected": "تم اكتشاف {language}",
     "searchInLanguage": "البحث ب{language}",

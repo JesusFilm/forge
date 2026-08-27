@@ -15,6 +15,7 @@ import {
   VideoCarouselBlockSchema,
   VideoHeroBlockSchema,
   VideoRecommendationsBlockSchema,
+  WatchHomeCategoryRailBlockSchema,
   WatchHomeHeroBlockSchema,
   type Blocks,
 } from "@/domain/blocks"
@@ -80,6 +81,10 @@ describe("BlockSchema — all top-level types validate", () => {
       value: { t: "videoRecommendations" },
     },
     {
+      name: "watchHomeCategoryRail",
+      value: { t: "watchHomeCategoryRail", categoryIds: ["family", "jesus"] },
+    },
+    {
       name: "watchHomeHero",
       value: { t: "watchHomeHero" },
     },
@@ -110,11 +115,41 @@ describe("BlockSchema — all top-level types validate", () => {
     })
   }
 
-  it("covers all 19 top-level block types listed in the experience schema", () => {
+  it("covers all 20 top-level block types listed in the experience schema", () => {
     // 16 legacy cms-sourced blocks + R5's forward-looking
     // videoRecommendations variant (schema only; no cms precedent) +
     // watchHomeHero's homepage-only placeholder.
-    expect(samples.length).toBe(19)
+    expect(samples.length).toBe(20)
+  })
+
+  it("accepts an ordered category subset and keeps the rail top-level only", () => {
+    const block = {
+      t: "watchHomeCategoryRail" as const,
+      sectionKey: "browse-categories",
+      categoryIds: ["family", "gospels", "jesus"],
+    }
+
+    expect(WatchHomeCategoryRailBlockSchema.parse(block).categoryIds).toEqual([
+      "family",
+      "gospels",
+      "jesus",
+    ])
+    expect(BlockSchema.safeParse(block).success).toBe(true)
+    expect(SectionContentBlockSchema.safeParse(block).success).toBe(false)
+    expect(ContainerContentBlockSchema.safeParse(block).success).toBe(false)
+  })
+
+  it.each([
+    { name: "empty", categoryIds: [] },
+    { name: "duplicate", categoryIds: ["family", "family"] },
+    { name: "unknown", categoryIds: ["family", "unknown-category"] },
+  ])("rejects $name category selections", ({ categoryIds }) => {
+    expect(
+      WatchHomeCategoryRailBlockSchema.safeParse({
+        t: "watchHomeCategoryRail",
+        categoryIds,
+      }).success,
+    ).toBe(false)
   })
 
   it("accepts authored language globe copy and keeps it top-level only", () => {
@@ -613,6 +648,27 @@ describe("BlocksSchema", () => {
       },
     ]
     expect(BlocksSchema.safeParse(input).success).toBe(true)
+  })
+
+  it("rejects more than one watch home category rail", () => {
+    const rail = {
+      t: "watchHomeCategoryRail" as const,
+      categoryIds: ["jesus"],
+    }
+
+    const result = BlocksSchema.safeParse([rail, { ...rail }])
+
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.error.issues).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            path: [1],
+            message: expect.stringMatching(/only one/i),
+          }),
+        ]),
+      )
+    }
   })
 
   it("accepts canonical media asset ids for media collection imagery", () => {

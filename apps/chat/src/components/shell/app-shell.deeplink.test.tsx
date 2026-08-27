@@ -229,8 +229,10 @@ describe("Denial shells (feat-209, KTD5/KTD6/KTD8)", () => {
     })
     await act(async () => {})
     expect(fetchMock).not.toHaveBeenCalled()
-    // The rail holds only the fresh local row — the denied id was not adopted.
-    expect(navRowTitles()).toEqual(["New conversation"])
+    // The rail is EMPTY — the denied id was not adopted, and since feat-401
+    // the fresh local conversation contributes no row either. Any row at all
+    // here would mean an adoption happened.
+    expect(navRowTitles()).toEqual([])
   })
 
   it("a FLAG-ON denial shell keeps the URL-sync layer and hydration inert", async () => {
@@ -295,8 +297,8 @@ describe("Granted malformed deep link (feat-399)", () => {
     )
 
     // A real BUTTON here, not the denial shell's anchor — this shell is
-    // granted, so session mutation is allowed. getNewConversationAction() is
-    // the RAIL action; a fresh ROW carries the same accessible name.
+    // granted, so session mutation is allowed. Since feat-401 the name
+    // belongs to the rail ACTION alone (the unstarted row is gone).
     expect(screen.queryByRole("link", { name: "New conversation" })).toBeNull()
     expect(getNewConversationAction()).toBeInTheDocument()
 
@@ -354,10 +356,10 @@ describe("Granted malformed deep link (feat-399)", () => {
     await waitFor(() => expect(composer).toHaveFocus())
   })
 
-  it("RELEASES the pane from the ACTIVE landing row — the natural escape", async () => {
-    // The path no other case reaches: the landing row is already active, so
-    // selectConversation early-returns and moves NO id — selectFromRail's
-    // dismiss is the sole release. The Alpha-thread click moves activeId too.
+  // Was "RELEASES the pane from the ACTIVE landing row"; feat-401 removed
+  // that row, asserted below. Re-cut onto the New ACTION, also a full no-op
+  // here (newConversation reuses the active fresh one), so no id moves.
+  it("RELEASES the pane with NO id moving — and the rail offers no landing row to click", async () => {
     window.history.replaceState(null, "", "/c/not-a-uuid")
     renderSeeker(() => [], {
       listFor: () => ({ threads: [A] }),
@@ -368,8 +370,12 @@ describe("Granted malformed deep link (feat-399)", () => {
         container.querySelector('[data-denial="unavailable"]'),
       ).not.toBeNull(),
     )
+    await waitFor(() => expect(navRowTitles()).toContain("Alpha thread"))
+    // The feat-401 contract on this shell: server history only. "New
+    // conversation" now names exactly ONE control — the rail action.
+    expect(navRowTitles()).toEqual(["Alpha thread"])
 
-    await selectRow("New conversation")
+    await user.click(getNewConversationAction())
 
     expect(container.querySelector("[data-denial]")).toBeNull()
     expect(screen.getByRole("textbox", { name: "Message" })).toBeInTheDocument()
@@ -506,7 +512,10 @@ describe("Popstate shell behaviors (drawer + announcement)", () => {
     renderSeeker(() => [], {
       threadFor: () => ({ messages: [] }),
     })
-    await waitFor(() => expect(navRowTitles()).toContain("New conversation"))
+    // feat-401: the landing conversation has no rail row to wait on, so let
+    // the mount effects settle and assert the fresh pane instead.
+    await act(async () => {})
+    expect(container).toHaveTextContent("What would you like to ask?")
 
     await traverseTo(`/c/${UNKNOWN}`)
     await waitFor(() =>

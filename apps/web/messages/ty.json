@@ -214,7 +214,7 @@
     "searchSuggestionWithLanguage": "A imi i «{suggestion}» na roto i te reo {language}",
     "inLanguage": "i roto i te {language}",
     "browseByRegion": "A hi'o na te tuhaa fenua",
-    "allVideosOnSinglePage": "All videos on single page",
+    "allVideosOnSinglePage": "Te mau video ato’a i te api hoê",
     "clearLanguages": "Tamâ",
     "queryLanguageDetected": "Ua ite-hia te reo {language}",
     "searchInLanguage": "A imi na roto i te reo {language}",

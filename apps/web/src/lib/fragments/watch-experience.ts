@@ -1,5 +1,8 @@
 import { adminGraphql } from "@forge/admin-graphql"
-import { adminWatchExperienceFragment } from "@forge/admin-graphql/fragments"
+import {
+  adminLegacyWatchExperienceFragment,
+  adminWatchExperienceFragment,
+} from "@forge/admin-graphql/fragments"
 
 import { watchMediaCollectionTitlesFragment } from "./watch-media-collection-titles"
 
@@ -14,4 +17,17 @@ export const watchExperienceFragment = adminGraphql(
     }
   `,
   [adminWatchExperienceFragment, watchMediaCollectionTitlesFragment],
+)
+
+// Rollout-only equivalent that composes the old-schema-safe canonical
+// fragment. Keep the Web-local title extension so a compatibility retry loses
+// only the category block selection, not existing media collection copy.
+export const legacyWatchExperienceFragment = adminGraphql(
+  `
+    fragment LegacyWatchExperience on ExperienceLocale @_unmask {
+      ...AdminLegacyWatchExperience
+      ...WatchMediaCollectionTitles
+    }
+  `,
+  [adminLegacyWatchExperienceFragment, watchMediaCollectionTitlesFragment],
 )
