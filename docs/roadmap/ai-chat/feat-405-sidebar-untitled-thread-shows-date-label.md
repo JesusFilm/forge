@@ -3,9 +3,9 @@ id: "feat-405"
 title: "Sidebar: untitled threads show a date label until you open them"
 owner: "jian wei"
 priority: "P2"
-status: "not-started"
+status: "in-progress"
 start_date: "2026-09-01"
-duration: 1
+duration: 2
 depends_on: []
 blocks: []
 tags:
@@ -64,92 +64,79 @@ lands. That self-heals; this ticket is about the threads that never do.
 titles; its only `title`-touching lines are in test files. Confirmed present
 in production, which does not carry that branch.
 
-## Entry Points — Read These First
-
-1. `apps/chat/src/components/shell/sidebar-conversation-list.tsx:68` — the
-   `fallbackTitle` render. The symptom's surface, almost certainly NOT the
-   place to fix.
-2. `apps/mastra/src/mastra/ai-chat-memory.ts:107` — `AI_CHAT_TITLE_MODEL`,
-   the `:free` pin. Read `buildAiChatMemory`'s docstring directly above it:
-   it already documents the empty-title sentinel, the fire-and-forget
-   semantics, the next-turn retry rule, and the standing note to revisit
-   first-party gateway titling when feat-237's flag is on.
-3. `apps/mastra/src/mastra/ai-chat-history-route.ts:373` — the list
-   projection, `title: typeof row.title === "string" ? row.title : ""`.
-   The natural home for option B below.
-4. `apps/chat/src/lib/conversation-session.ts:640` — the `titleFromFirstUser`
-   call in the replay path, the client backfill that currently papers over
-   this, and `:151` — `mergeServerThreads`, where a
-   non-empty server title beats a client snippet and an empty one does not
-   clobber.
-
-## Grep These
-
-- `fallbackTitle` — render sites (sidebar rail + the app-shell live-region
-  announcement at `app-shell.tsx:160`; both must stay consistent).
-- `titleFromFirstUser` — the two backfill sites (`conversation-session.ts`
-  `:440` first-send, `:640` replay).
-- `AI_CHAT_TITLE_MODEL` / `generateTitle` in `apps/mastra/src/mastra/` —
-  the wiring plus its `generateTitle: false` override for non-`user:`
-  resources in `aiChatMemoryConfigFor`.
-- `"untitled"` and `title: ""` in `ai-chat-history-route.ts` — the wire
-  contract prose that calls `""` the untitled sentinel. Any fix that stops
-  emitting `""` must correct that prose in the same PR.
-
 ## What To Build
 
-Pick one; A and B compose well and are not exclusive.
+Two parts, both in `apps/mastra` only. The detailed authority is the plan:
+`docs/plans/2026-08-27-2221-feat-ai-chat-title-reliability-plan.md` — its
+Key Technical Decisions, gates, budgets, and per-unit test scenarios bind;
+this ticket does not restate them.
 
-**A — get titling off the shared free pool (treats the cause).** Point
-`AI_CHAT_TITLE_MODEL` at a paid/BYOK route, or add a provider key so the
-account is not on `upstream_provider_shared_pool`. Cheapest real cure. Note
-the docstring's trust posture: titles send conversation-derived content to a
-third-party model, which is why the free tier was chosen; changing route
-means re-reading that paragraph, not just the string.
+1. **Reliable per-turn titling.** Thread the seeker's gateway-first model
+   fallback chain into `buildAiChatMemory`'s `titleModel` seam as a
+   function-valued default (extracting the model list into a leaf module
+   first to avoid an ESM cycle). Gateway-first when `AI_GATEWAY_SEEKER_ENABLED`
+   is on (confirmed set in production, 2026-08-27); the free Gemma chain stays
+   as failover — even flag-off is an upgrade over today's single un-retried
+   model.
+2. **Daily title-repair sweep.** A new Mastra workflow on a declarative
+   `0 6 * * *` UTC schedule that finds `user:` threads stored with `title = ''`
+   and titles them via the gateway model only — bounded per run, default-off
+   behind `AI_CHAT_TITLE_REPAIR_ENABLED`, counts-only logging, `updatedAt`
+   preserved so repairs never reorder the rail or reset retention.
 
-**B — durable server-side fallback (removes the class, no model call).** In
-the list projection, when the stored title is empty, derive a label from the
-thread's first user message instead of emitting `""`. Deterministic, costs no
-tokens, and yields the same string the client already backfills — so the rail
-stops changing under the user. This makes the date label near-unreachable,
-which is the point; it also RETIRES the `""` untitled sentinel, so update the
-wire-contract prose and the client's `fallbackTitle` path deliberately rather
-than leaving dead code.
+Plus a title clamp at the list projection (bounds both writers) and the docs
+updates the plan's U5 enumerates.
 
-**Considered and not preferred:** persisting the client's backfill (adds a
-write path from the browser for something the server can do alone), and
-retrying titling at list time (a read path that makes model calls — surprising
-and unbounded).
+## Considered and rejected
+
+- **Option B — deriving a fallback label from the first user message at list
+  time** (this ticket's original alternative): rejected as KD1 in the plan.
+  Dogfood audience; old untitled threads may keep the date label until healed
+  by the sweep or purged by the 25-day retention window. The `""` untitled
+  wire sentinel therefore SURVIVES — it is now repairable, not permanent.
+- **Persisting the client's backfill** (a browser write path for something the
+  server can do alone) and **retrying titling at list or replay time** (model
+  calls on read paths): rejected — see the plan's Key Decisions and the
+  feat-405 planning discussion.
+
+## Entry Points — Read These First
+
+1. `docs/plans/2026-08-27-2221-feat-ai-chat-title-reliability-plan.md` — the
+   implementation authority. Read Goal Capsule, then work units in dependency
+   order.
+2. `apps/mastra/src/mastra/ai-chat-memory.ts` — the `titleModel` seam, the
+   `""` sentinel docstring, and `aiChatMemoryConfigFor`'s
+   `generateTitle: false` override for non-`user:` resources.
+3. `apps/mastra/src/mastra/agents/seeker-agent.ts` — `buildSeekerModelList`
+   and the gateway-entry construction the leaf module extracts.
+4. `apps/mastra/src/mastra/ai-chat-retention.ts` and
+   `workflows/datadog-mobile-triage.ts` — the bounded-sweep and
+   scheduled-workflow patterns the sweep copies.
 
 ## Constraints
 
-- Do NOT fix this at the render layer by hiding the date label. The label is
-  the honest display of an empty title; suppressing it hides the real defect
-  and breaks the genuinely-untitled case.
-- Do NOT make listing a model-calling path.
-- Do NOT title anonymous/dogfood resources: `aiChatMemoryConfigFor` passes
-  `generateTitle: false` for non-`user:` resources on purpose (they are
-  unlistable under R2, so titling burns a call per junk POST). Option B is
-  free of this concern; option A must preserve the override.
-- Keep `generateTitle` on the TOP-LEVEL options key. The deprecated
-  `threads.generateTitle` nesting throws mid-turn at the first merged-config
-  read, not at construction.
-- Titling must stay fire-and-forget: it must never delay or fail the turn it
+- Do NOT fix this at the render layer by hiding the date label — it is the
+  honest display of an empty title, and a genuinely empty thread (no user
+  turn) still renders it.
+- Do NOT make listing or replay a model-calling path. The sweep is the only
+  read-side titler, and it runs on a schedule, not on requests.
+- Titling must stay fire-and-forget: it never delays or fails the turn it
   rides on.
+- Preserve `aiChatMemoryConfigFor`'s `generateTitle: false` for non-`user:`
+  resources, and keep `generateTitle` on the TOP-LEVEL options key (the
+  deprecated `threads.generateTitle` nesting throws mid-turn).
+- The full constraint set (sweep gates, budgets, privacy posture, logging)
+  lives in the plan's KTDs — do not re-derive it from this ticket.
 
 ## Verification
 
 - Signed in, gate-granted: send ONE message into a new conversation, wait for
-  the reply, refresh. The rail row shows a real title, not
-  `Conversation — <date>`. Repeat while the title model is failing (option B
-  must hold even then — force it by pointing the title model at a bad route).
-- The masking check that makes this bug hard to see: open conversation A,
-  refresh, and read the label on conversation B WITHOUT clicking it. B must
-  be titled. Pre-fix, B shows the date while A looks fine purely because A is
-  replayed on load.
-- A genuinely empty thread (no user turn) still renders the date label —
-  `fallbackTitle` keeps a reason to exist, or is deliberately removed along
-  with its tests.
-- `pnpm --filter @forge/chat test && pnpm --filter @forge/mastra test`
-- For option A only: confirm no 429 from the title route in the Mastra log
-  across several fresh single-turn threads.
+  the reply, refresh. The rail row shows a real title. The masking check:
+  open conversation A, refresh, and read conversation B's label WITHOUT
+  clicking it — B must be titled.
+- One sweep run against a store seeded with stranded threads reports
+  `titled=N remaining=0`; a second run reports `scanned=0`.
+- `pnpm --filter @forge/mastra test && pnpm --filter @forge/mastra typecheck
+&& pnpm --filter @forge/mastra build` — `build` is the only gate that
+  catches the `@ai-sdk/*` bundler trap.
+- Full verification contract: the plan's Verification Contract table.
