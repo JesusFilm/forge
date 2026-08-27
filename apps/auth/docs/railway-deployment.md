@@ -165,7 +165,10 @@ Local Changelog normally authorizes through hosted Jesus Film Auth. Before
 granting access, the recipient must have signed in to Auth at least once and
 must be a verified, ACTIVE HUMAN user. Google sign-in is supported: the
 operator enters the account email only so Auth can resolve the stable user ID;
-the grant itself is stored against that ID.
+the grant itself is stored against that ID. A linked Google account does not
+prove ACTIVE membership. If the command rejects an otherwise verified user,
+resolve an unexpected INVITED membership through the approved membership
+process; this command intentionally does not activate users.
 
 The command prompts for the email and must not receive it through command-line
 arguments:
@@ -214,6 +217,11 @@ environment only. It cannot grant Production, Contributor, or Admin access,
 and `AUTH_CHANGELOG_PRODUCTION_ENABLED` must remain disabled. After the grant,
 reconnect the Changelog MCP so the OAuth flow issues a fresh token for
 `http://localhost:3000/mcp`.
+
+Verify the new token by calling the MCP `list_entries` tool. A successful
+response with an empty entries array is valid when the developer's local
+Changelog PostgreSQL database has no entries; an authorization or
+insufficient-scope error is the failure signal.
 
 Changelog repository wording and policy documentation are tracked separately
 in [JesusFilm/jfp-changelog#81](https://github.com/JesusFilm/jfp-changelog/issues/81).

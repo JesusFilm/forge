@@ -3,7 +3,7 @@ id: "feat-423"
 title: "Grant local Changelog Reader access by command"
 owner: "edmonday"
 priority: "P0"
-status: "in-progress"
+status: "complete"
 start_date: "2026-08-27"
 duration: 1
 depends_on: []
@@ -63,5 +63,6 @@ Local Changelog uses hosted Jesus Film Auth by default and requires an explicit 
 - Service tests prove verified ACTIVE HUMAN eligibility, exact Local Reader persistence, idempotency, higher-role preservation, atomic audit, and Production isolation.
 - Command tests prove prompted one-email input, redacted output/errors, and no environment or role selection path.
 - Full Auth tests, typecheck, lint, touched-scope format checks, and `git diff --check` pass.
-- After merge and deployment, a dedicated user reconnects through hosted Auth and can call the local Changelog MCP with `changelog:read` only. This manual hosted smoke is still required; this ticket does not claim it has already run.
+- Post-deploy hosted smoke completed on 2026-08-27: after the recipient was confirmed as a verified ACTIVE HUMAN, the command created the Local Reader grant and a fresh OAuth login successfully called the local Changelog MCP `list_entries` tool. The empty local PostgreSQL database correctly returned no entries.
+- The command remains structurally limited to Local Reader, and its tests prove that submit, admin, and Production scopes are not granted.
 - Production issuance remains disabled.
