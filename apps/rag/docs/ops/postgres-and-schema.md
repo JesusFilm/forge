@@ -20,11 +20,11 @@ instead of skipping when no real database is configured.
 ## Railway production provisioning
 
 Fixed targets are Railway project `forge`, environment `production`, database
-service `forge-rag-postgres`, and application service `forge-rag`. Stop if the
-selected targets differ.
+service `@forge/rag-postgres`, and application service `@forge/rag`. Stop if
+the selected targets differ.
 
-1. Create a dedicated PostgreSQL service named `forge-rag-postgres`.
-2. Add `DATABASE_URL` to `forge-rag` as a Railway reference to the database
+1. Create a dedicated PostgreSQL service named `@forge/rag-postgres`.
+2. Add `DATABASE_URL` to `@forge/rag` as a Railway reference to the database
    service. Never copy the connection string into a transcript.
 3. Set the application service Config-as-code Path exactly to
    `apps/rag/railway.toml`. Confirm the resulting deployment metadata names that
@@ -64,6 +64,6 @@ simple read succeeds. Record target identifiers, deployment ID, and pass/fail
 only. Do not record credentials, URLs, migration checksums, or corpus content.
 
 Rollback before corpus copy is destructive only to the new empty target: retain
-the failed deployment evidence, delete/recreate only `forge-rag-postgres`, and
+the failed deployment evidence, delete/recreate only `@forge/rag-postgres`, and
 rerun the normal deploy after fixing the migration. The legacy jfrag database
 remains untouched.
