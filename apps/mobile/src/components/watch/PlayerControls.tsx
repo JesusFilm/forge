@@ -86,31 +86,26 @@ const BAR_PADDING_H = 12
 // Gap between the pill/exit row and the seek bar below it.
 const TIME_ROW_GAP = 6
 
-// Drives both the chrome buttons and the caption offset below, so the row's
-// height and the clearance computed from it cannot drift apart.
+// Shared by every round chrome button, so the row's height stays one number.
 const ICON_BUTTON_SIZE = 44
 
 /**
  * How far above the player's bottom edge a fullscreen caption must sit to clear
- * the ENTIRE bottom bar: the seek bar's grab area, the row gap, and the
- * pill/exit row above it, on top of the bar's own safe-area padding.
+ * the SEEK BAR: its 44pt grab area and the row gap, on top of the bar's own
+ * safe-area padding.
  *
  * Exported and derived rather than eyeballed: the caption lives in VideoPlayer
  * while the bar lives here, so a hard-coded number on that side silently rots
- * whenever this layout changes. It has rotted twice — once when the exit control
- * moved above the bar and left the caption floating, and once when the
- * replacement cleared only the seek bar and dropped the caption INTO the row the
- * same change had just created. Horizontal separation is not a substitute: the
- * caption is centred and shrink-to-fit, so a wide cue reaches the pill and the
- * exit button, and a tall one grows up through their band.
+ * whenever this layout changes.
+ *
+ * It deliberately does NOT also clear the pill/exit row. A version that did was
+ * reviewed on the shipped build and rejected as too high — the caption belongs
+ * near the bar it reads against. The row it can now reach costs nothing
+ * functional: the overlay is `pointerEvents="none"`, so a wide cue draws over
+ * the pill and the exit button without ever swallowing a tap on either.
  */
 export function fullscreenCaptionOffset(bottomInset: number): number {
-  return (
-    Math.max(bottomInset, 8) +
-    SCRUBBER_HIT_HEIGHT +
-    TIME_ROW_GAP +
-    ICON_BUTTON_SIZE
-  )
+  return Math.max(bottomInset, 8) + SCRUBBER_HIT_HEIGHT + TIME_ROW_GAP
 }
 
 function formatTime(seconds: number): string {

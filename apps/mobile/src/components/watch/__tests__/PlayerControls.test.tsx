@@ -649,37 +649,40 @@ describe("fullscreenCaptionOffset", () => {
     expect(fullscreenCaptionOffset(0)).toBeGreaterThanOrEqual(44)
   })
 
-  it("clears every element of the bottom bar, not just the seek bar", () => {
+  it("clears the seek bar and its row gap, and nothing above them", () => {
     // The bar stacks (from the bottom): its safe-area padding, the seek bar's
-    // 44pt grab area, a 6pt gap, then the 44pt row holding the time pill and
-    // the exit control. A caption that clears only part of that lands ON the
-    // rest of it -- which is what the first version of this helper did.
+    // 44pt grab area, a 6pt gap, then the 44pt pill/exit row. The caption
+    // clears the first three ONLY -- clearing the row too was rejected on the
+    // shipped build as too high, and it is safe to sit in that row because the
+    // overlay is pointerEvents="none".
     const PADDING_FLOOR = 8
     const SEEK_GRAB = 44
     const ROW_GAP = 6
-    const PILL_AND_EXIT_ROW = 44
-    const wholeBar = PADDING_FLOOR + SEEK_GRAB + ROW_GAP + PILL_AND_EXIT_ROW
+    const throughSeekBar = PADDING_FLOOR + SEEK_GRAB + ROW_GAP
 
-    expect(fullscreenCaptionOffset(0)).toBe(wholeBar)
-    expect(fullscreenCaptionOffset(8)).toBe(wholeBar)
+    expect(fullscreenCaptionOffset(0)).toBe(throughSeekBar)
+    expect(fullscreenCaptionOffset(8)).toBe(throughSeekBar)
   })
 
   it("keeps that clearance on a device with a home indicator", () => {
     // A landscape iPhone reports ~21 here. The clearance above the bar must not
     // shrink just because the bar's own padding grew.
-    const CLEARANCE = 44 + 6 + 44
+    const CLEARANCE = 44 + 6
     expect(fullscreenCaptionOffset(21)).toBe(21 + CLEARANCE)
     expect(fullscreenCaptionOffset(34)).toBe(34 + CLEARANCE)
     expect(fullscreenCaptionOffset(34) - fullscreenCaptionOffset(21)).toBe(13)
   })
 
-  it("leaves room for the pill and exit row above the seek bar", () => {
-    // Guards the specific regression: clearing the seek bar alone put the
-    // caption's bottom edge exactly at that row's bottom edge, so a wide cue
-    // rendered behind the time pill and the exit control. Horizontal separation
-    // is not a substitute -- the caption is centred and shrink-to-fit.
-    const seekBarOnly = Math.max(21, 8) + 44 + 6
-    expect(fullscreenCaptionOffset(21)).toBeGreaterThan(seekBarOnly)
-    expect(fullscreenCaptionOffset(21) - seekBarOnly).toBeGreaterThanOrEqual(44)
+  it("does NOT lift the caption over the pill and exit row", () => {
+    // The inverse of the guard this file used to carry. It is pinned, not just
+    // dropped, because the reviewed-and-rejected version is the tempting one:
+    // without this a future 'fix' silently re-raises the caption by a row.
+    const ROW_ABOVE_SEEK_BAR = 44
+    const throughSeekBar = Math.max(21, 8) + 44 + 6
+
+    expect(fullscreenCaptionOffset(21)).toBe(throughSeekBar)
+    expect(fullscreenCaptionOffset(21)).toBeLessThan(
+      throughSeekBar + ROW_ABOVE_SEEK_BAR,
+    )
   })
 })
