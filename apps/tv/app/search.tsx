@@ -1,5 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { BackHandler, Platform, StyleSheet, Text, View } from "react-native"
+import {
+  BackHandler,
+  Platform,
+  StyleSheet,
+  Text,
+  // @ts-expect-error TVEventControl is provided by react-native-tvos but not in the base RN types that CI type-checks against.
+  TVEventControl,
+  View,
+} from "react-native"
 import type { View as ViewType } from "react-native"
 import { useLocalSearchParams, useRouter } from "expo-router"
 import {
@@ -19,6 +27,7 @@ import { VoiceSearchButton } from "../src/components/search/VoiceSearchButton"
 import { WATCH_THEME } from "../src/components/watch/watchDetailTheme"
 import { SearchBrowse } from "../src/components/search/SearchBrowse"
 import { resolveSearchMeta } from "../src/components/search/searchDisplay"
+import { navigateBackFromSearch } from "../src/components/search/searchBack"
 import { SearchKeyboard } from "../src/components/search/SearchKeyboard"
 import { SearchKeyboardLinear } from "../src/components/search/SearchKeyboardLinear"
 import { SearchResultsGrid } from "../src/components/search/SearchResultsGrid"
@@ -45,6 +54,7 @@ import { useSearchHistory } from "../src/lib/searchHistory"
  * module; see docs/superpowers/specs/2026-06-22-tv-apple-linear-search-keyboard-design.md.)
  */
 export default function SearchScreen() {
+  const router = useRouter()
   const [query, setQuery] = useState("")
   const {
     state,
@@ -127,6 +137,33 @@ export default function SearchScreen() {
     )
     return () => subscription.remove()
   }, [])
+
+  useEffect(() => {
+    if (Platform.OS !== "ios") return
+
+    const handler = () => navigateBackFromSearch(router)
+    const subscription = BackHandler.addEventListener(
+      "hardwareBackPress",
+      handler,
+    )
+    let menuKeyEnabled = false
+    try {
+      TVEventControl.enableTVMenuKey()
+      menuKeyEnabled = true
+    } catch (error) {
+      console.error("[Search] enableTVMenuKey failed:", error)
+    }
+
+    return () => {
+      subscription.remove()
+      if (!menuKeyEnabled) return
+      try {
+        TVEventControl.disableTVMenuKey()
+      } catch (error) {
+        console.error("[Search] disableTVMenuKey failed:", error)
+      }
+    }
+  }, [router])
 
   // Recent / Category click runs a fresh search immediately, bypassing the 900ms
   // debounce. Thread the sanitized value through runQuery directly: submit() closes
@@ -276,6 +313,14 @@ function SearchBodyNativeTvos({
     [results, router],
   )
 
+  const reclaimMenuKeyAfterNativeFocus = useCallback(() => {
+    try {
+      TVEventControl.enableTVMenuKey()
+    } catch (error) {
+      console.error("[Search] native focus Menu reclaim failed:", error)
+    }
+  }, [])
+
   return (
     <View style={styles.nativeScreen}>
       <TvosSearchView
@@ -283,6 +328,7 @@ function SearchBodyNativeTvos({
         results={nativeResults}
         onSearch={handleSearch}
         onSelectItem={handleSelectItem}
+        onSearchFieldFocused={reclaimMenuKeyAfterNativeFocus}
         isLoading={state === "loading"}
         placeholder="Search"
         colorScheme="dark"

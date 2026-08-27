@@ -1,0 +1,18 @@
+diff --git a/ios/ExpoTvosSearchView.swift b/ios/ExpoTvosSearchView.swift
+index 560a9b8f8fb3e46ee4849aca8147c5b3b3bcaede..5a537736fe7d71178eadb4ef497600559573d8f3 100644
+--- a/ios/ExpoTvosSearchView.swift
++++ b/ios/ExpoTvosSearchView.swift
+@@ -515,6 +515,13 @@ class ExpoTvosSearchView: ExpoView {
+         var currentView: UIView? = self.superview
+         while let view = currentView {
+             for recognizer in view.gestureRecognizers ?? [] {
++                if let tapRecognizer = recognizer as? UITapGestureRecognizer {
++                    let menuPress = NSNumber(value: UIPress.PressType.menu.rawValue)
++                    if tapRecognizer.allowedPressTypes.contains(menuPress) {
++                        continue
++                    }
++                }
++
+                 // Only disable tap and long press recognizers
+                 let isTapOrPress = recognizer is UITapGestureRecognizer ||
+                                    recognizer is UILongPressGestureRecognizer

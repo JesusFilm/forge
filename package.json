@@ -89,7 +89,8 @@
     },
     "patchedDependencies": {
       "react-native-tvos@0.81.5-2": "patches/react-native-tvos@0.81.5-2.patch",
-      "@datadog/mobile-react-native@3.5.2": "patches/@datadog__mobile-react-native@3.5.2.patch"
+      "@datadog/mobile-react-native@3.5.2": "patches/@datadog__mobile-react-native@3.5.2.patch",
+      "expo-tvos-search@2.1.1": "patches/expo-tvos-search@2.1.1.patch"
     }
   },
   "devDependencies": {
