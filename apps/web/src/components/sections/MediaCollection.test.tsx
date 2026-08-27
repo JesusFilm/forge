@@ -1439,7 +1439,7 @@ describe("MediaCollection VideoCard href", () => {
     },
   )
 
-  it("uses the authored background color as the media collection tint", () => {
+  it("uses a dark warm-neutral background instead of the authored color", () => {
     act(() => {
       root.render(
         <MediaCollection
@@ -1465,10 +1465,67 @@ describe("MediaCollection VideoCard href", () => {
     const section = container.querySelector<HTMLElement>(
       '[data-testid="media-collection-section"]',
     )
-    expect(section?.style.backgroundColor).toBe("rgb(18, 52, 86)")
+    const tint = container.querySelector<HTMLElement>(
+      '[data-testid="media-collection-tint"]',
+    )
+    expect(section?.style.backgroundColor).toBe("rgb(26, 24, 21)")
+    expect(tint?.style.background).toContain("rgba(26, 24, 21, 0.92)")
+    expect(tint?.style.background).not.toContain("rgb(18, 52, 86)")
     expect(section?.className).toContain("py-10")
     expect(section?.className).toContain("md:py-16")
   })
+
+  it.each(["carousel", "grid"])(
+    "restrains the decorative %s background without desaturating cards",
+    (mediaCollectionVariant) => {
+      act(() => {
+        root.render(
+          <MediaCollection
+            data={makeData({
+              mediaCollectionVariant,
+              itemsSource: "manual",
+              items: [
+                makeManualItem({
+                  imageAsset: {
+                    previewUrl: "https://example.com/episode-one.jpg",
+                  },
+                }),
+              ],
+            })}
+          />,
+        )
+      })
+
+      const defaultBackdrop = container.querySelector<HTMLElement>(
+        '[data-testid="media-collection-default-backdrop"]',
+      )
+      const tint = container.querySelector<HTMLElement>(
+        '[data-testid="media-collection-tint"]',
+      )
+      const card = container.querySelector<HTMLElement>(
+        '[data-testid="VideoCard"]',
+      )
+
+      expect(defaultBackdrop?.className).toContain("saturate-75")
+      expect(defaultBackdrop?.className).toContain("brightness-50")
+      expect(defaultBackdrop?.className).not.toMatch(/saturate-(110|125)/)
+      expect(tint?.className).toContain("saturate-75")
+      expect(tint?.className).toContain("brightness-50")
+      expect(card?.className).not.toContain("saturate-75")
+      expect(card?.className).not.toContain("brightness-50")
+
+      act(() => {
+        card?.focus()
+      })
+
+      const hoverBackdrop = container.querySelector<HTMLElement>(
+        '[data-testid="media-collection-hover-backdrop"]',
+      )
+      expect(hoverBackdrop?.className).toContain("saturate-75")
+      expect(hoverBackdrop?.className).toContain("brightness-50")
+      expect(hoverBackdrop?.className).not.toMatch(/saturate-(110|125)/)
+    },
+  )
 
   it("uses dominant color for the vertical card text scrim, not the whole card", () => {
     act(() => {
