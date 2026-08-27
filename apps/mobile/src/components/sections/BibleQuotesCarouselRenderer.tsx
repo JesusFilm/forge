@@ -23,6 +23,7 @@ import {
   composeCardLabel,
   fitPassageCardRegions,
 } from "../../lib/bibleCardFit"
+import { openPassageSheet } from "../../lib/openPassageSheet"
 import { resolveImageUrl } from "../../lib/resolveImageUrl"
 import { validateActionUrl } from "../../lib/validateUrl"
 import { useShimmerOpacity } from "../../hooks/useShimmerOpacity"
@@ -299,6 +300,15 @@ export function BibleQuotesCarouselRenderer({
     flatListRef.current?.scrollToIndex({ index, animated: true })
   }, [])
 
+  // KTD9: deliberately NOT registered as a non-route sheet id. The floating
+  // window cannot be present on the watch route — `miniPlayerPresentation`
+  // returns the full-player presentation there before it consults sheet
+  // suppression — and a passage-fed card exists only on that route. Registering
+  // an id would be dead code whose device check passed vacuously.
+  const handleOpenPassage = useCallback((url: string) => {
+    void openPassageSheet(url)
+  }, [])
+
   const renderQuoteItem = useCallback(
     ({ item, index }: { item: QuoteItem; index: number }) => (
       <QuoteCard
@@ -307,9 +317,10 @@ export function BibleQuotesCarouselRenderer({
         cardWidth={cardWidth}
         typography={typography}
         fontScale={fontScale}
+        onOpenPassage={handleOpenPassage}
       />
     ),
-    [cardWidth, typography, fontScale],
+    [cardWidth, typography, fontScale, handleOpenPassage],
   )
 
   const keyExtractor = useCallback(

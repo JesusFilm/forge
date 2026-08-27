@@ -89,6 +89,7 @@ import {
 } from "../../lib/streamQuality"
 import type { ProgressIdentity } from "../../lib/watchProgress/recorder"
 import { resumePositionSeconds } from "../../lib/watchProgress/thresholds"
+import { setPlaybackTransport } from "../../lib/playbackInterruption"
 import { FloatingBackButton } from "../ui/FloatingBackButton"
 import { MiniPlayerWindow } from "./MiniPlayerWindow"
 import { VideoPlayer } from "./VideoPlayer"
@@ -672,6 +673,19 @@ function ActivePlaybackHost({
     })
     return () => store.setPlaybackFactsSource(null)
   }, [store, player])
+
+  // Lends the one player to a surface presented OVER the app (the Bible passage
+  // sheet). Registered beside the facts source because both are the same shape:
+  // the host owns the player, and a route-tree component cannot reach a sibling
+  // of the stack.
+  useEffect(() => {
+    setPlaybackTransport({
+      isPlaying: () => player.playing,
+      pause: () => player.pause(),
+      play: () => player.play(),
+    })
+    return () => setPlaybackTransport(null)
+  }, [player])
 
   // R25 stops playback on a subject change, R6 on a dismissal — neither is
   // covered by the teardown (an expanded screen keeps this host mounted). Every

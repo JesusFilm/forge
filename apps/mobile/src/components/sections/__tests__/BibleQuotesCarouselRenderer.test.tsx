@@ -7,6 +7,11 @@
  * regions left the other two byte-identical.
  */
 
+const mockOpenPassageSheet = jest.fn()
+jest.mock("../../../lib/openPassageSheet", () => ({
+  openPassageSheet: (...args: unknown[]) => mockOpenPassageSheet(...args),
+}))
+
 import { act } from "react"
 import type React from "react"
 
@@ -20,6 +25,7 @@ import { computeTypographyScale } from "../../../hooks/useTypography"
 import { BibleQuotesCarouselRenderer } from "../BibleQuotesCarouselRenderer"
 import {
   TestRenderer,
+  press,
   type RenderedNode,
   type TestInstance,
 } from "../../../test-utils/rnTestRenderer"
@@ -188,14 +194,24 @@ describe("BibleQuotesCarouselRenderer — passage cards", () => {
     expect(cardLabels(renderer)).toContain("Genesis 1:26-27, loading")
   })
 
-  it("never renders a tappable link before a handler exists", () => {
+  // The affordance disables itself when no handler is wired, so a link with no
+  // behaviour can never reach a viewer through a landing-order mistake.
+  it("renders a tappable link now that a handler is wired", () => {
     const renderer = render([PASSAGE_QUOTE])
 
     const links = passageLinks(renderer)
     expect(links.length).toBeGreaterThan(0)
     for (const link of links) {
-      expect(link.props.disabled).toBe(true)
+      expect(link.props.disabled).toBe(false)
     }
+  })
+
+  it("opens the passage when the link is pressed", async () => {
+    const renderer = render([PASSAGE_QUOTE])
+
+    await press(passageLinks(renderer)[0]!)
+
+    expect(mockOpenPassageSheet).toHaveBeenCalledWith(PASSAGE_QUOTE.passageUrl)
   })
 
   it("renders no link for a passage URL that fails validation", () => {
