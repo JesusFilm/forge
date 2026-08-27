@@ -674,13 +674,13 @@ describeIntegration("Better Auth PostgreSQL compatibility contract", () => {
         customAudiences: [MANAGER_AUDIENCE, RESOURCE_B],
       }),
     ).sort()
-    await expect(
-      prisma.oauthClientResource.findMany({
+    const registeredResourceIds = await prisma.oauthClientResource
+      .findMany({
         where: { clientId },
         select: { resourceId: true },
-        orderBy: { resourceId: "asc" },
-      }),
-    ).resolves.toEqual(publicResources.map((resourceId) => ({ resourceId })))
+      })
+      .then((rows) => rows.map(({ resourceId }) => resourceId).sort())
+    expect(registeredResourceIds).toEqual(publicResources)
     await prisma.oauthClientResource.deleteMany({ where: { clientId } })
     const repair = await seedFirstPartyApps()
     expect(repair.resourceRepair).toMatchObject({
@@ -692,13 +692,13 @@ describeIntegration("Better Auth PostgreSQL compatibility contract", () => {
     expect(repair.resourceRepair.createdLinks).toBeGreaterThanOrEqual(
       publicResources.length,
     )
-    await expect(
-      prisma.oauthClientResource.findMany({
+    const repairedResourceIds = await prisma.oauthClientResource
+      .findMany({
         where: { clientId },
         select: { resourceId: true },
-        orderBy: { resourceId: "asc" },
-      }),
-    ).resolves.toEqual(publicResources.map((resourceId) => ({ resourceId })))
+      })
+      .then((rows) => rows.map(({ resourceId }) => resourceId).sort())
+    expect(repairedResourceIds).toEqual(publicResources)
     await prisma.oauthClient.update({
       where: { clientId },
       data: { skipConsent: true },

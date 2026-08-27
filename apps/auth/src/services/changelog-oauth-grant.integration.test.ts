@@ -136,15 +136,13 @@ describeIntegration("Changelog OAuth grants against native Better Auth", () => {
       client_id: string
     }
     clientId = registered.client_id
-    await expect(
-      prisma.oauthClientResource.findMany({
+    const registeredResourceIds = await prisma.oauthClientResource
+      .findMany({
         where: { clientId },
         select: { resourceId: true },
-        orderBy: { resourceId: "asc" },
-      }),
-    ).resolves.toEqual(
-      PUBLIC_MCP_RESOURCES.map((resourceId) => ({ resourceId })),
-    )
+      })
+      .then((rows) => rows.map(({ resourceId }) => resourceId).sort())
+    expect(registeredResourceIds).toEqual(PUBLIC_MCP_RESOURCES)
 
     const environment = await prisma.appEnvironment.findFirstOrThrow({
       where: { kind: "LOCAL", app: { key: "changelog" } },
