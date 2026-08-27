@@ -259,18 +259,19 @@ describe("scroll-driven timeline choreography", () => {
     expect(frames).toMatch(/to\s*\{[\s\S]*rgb\(0 0 0 \/ 0\)/)
   })
 
-  it("sizes the opening photograph from the viewport, capped at the card", () => {
-    // The card is far wider than the screen while it fills it, so a
-    // card-filling box pushes ~40% of the picture off both sides. The box is
-    // the VIEWPORT width instead, divided back out by the zoom — and capped
-    // at the card's own footprint so the landed frame is unchanged. Drop the
-    // cap and the landed card shows a crop it never used to.
+  it("covers the screen from the picture's top-right corner", () => {
+    // The two edges that must never crop are pinned, because the projection
+    // screen — the subject of the frame — sits in the picture's top-right.
+    // Everything else travels; see the keyframes.
     const guard = blockBody(css, "@supports (animation-timeline: view())")
     const rule = blockBody(guard, ".watch-scroll-intro-photo {")
 
-    expect(rule).toMatch(
-      /width:\s*min\(\s*calc\(100vw \/ var\(--era-zoom\)\)\s*,\s*100%\s*\)/,
-    )
+    expect(rule).toMatch(/top:\s*0;/)
+    expect(rule).toMatch(/left:\s*auto;/)
+    expect(rule).toMatch(/translate:\s*none;/)
+    // Anchoring to the card's top means covering has to reach this much
+    // further down than the viewport is tall.
+    expect(rule).toMatch(/--intro-overhang:\s*\d+px;/)
   })
 
   it("lands the opening photograph on its card, not on the screen", () => {
@@ -284,19 +285,40 @@ describe("scroll-driven timeline choreography", () => {
     const from = frames.slice(0, frames.indexOf("to {"))
     const to = frames.slice(frames.indexOf("to {"))
 
-    // Opening: top edge flush with the top of the screen, at the picture's
-    // own aspect — read from the picture, never hard-coded here. The centre
-    // is half a rendered height below the card's top edge, which is the
-    // `39px + 50vw / aspect`. Centred on the screen instead (`50svh`), the
-    // letterbox splits and its upper half stacks under the page's own dark
-    // band, which reads as a gap above the picture.
-    expect(from).toMatch(
-      /top:\s*calc\(\(39px \+ 50vw \/ var\(--photo-aspect\)\)/,
+    // Opening: top edge flush with the top of the CARD, at the picture's own
+    // aspect — read from the picture, never hard-coded here. The centre is
+    // exactly half a rendered height down, so `50vw / aspect` with nothing
+    // added to it.
+    //
+    // Neither of the two things tried before it: `50svh` centred the picture
+    // on the screen, which split the letterbox and stacked its upper half
+    // under the page's own dark band. Adding `39px` made it flush with the
+    // SCREEN instead, which left those same 39px — the distance the scaled
+    // card reaches above the viewport — showing as a band of card background
+    // and grain for the whole approach, while the card's top edge was still
+    // on screen.
+    // Comments stripped first: they name the rejected values and even
+    // contain the words "top: 0", so matching over the raw block text hits
+    // the prose explaining the fix rather than the fix itself.
+    const opening = from.replace(/\/\*[\s\S]*?\*\//g, "")
+
+    // Sized by `max()` on both axes so it COVERS rather than fits, and
+    // offset from the right so the crop falls on the left. Fitting the width
+    // instead left the picture short of the height on anything wider than the
+    // photograph, and letterboxed it on anything narrower.
+    expect(opening).toMatch(/width:\s*calc\(\s*max\(100vw,/)
+    expect(opening).toMatch(
+      /height:\s*calc\(\s*max\(100vw \/ var\(--photo-aspect\)/,
     )
-    expect(from).not.toContain("50svh")
-    expect(from).toMatch(/height:\s*calc\(100vw \/ var\(--photo-aspect\)/)
+    expect(opening).toMatch(
+      /right:\s*calc\(50% - 50vw \/ var\(--intro-scale\)\)/,
+    )
+    // Not screen-centred, and not left-anchored: both were tried and both
+    // cropped or banded the picture in a way that hid the projection screen.
+    expect(opening).not.toMatch(/left:\s*50%/)
     // Landed: the card's own box, exactly.
-    expect(to).toMatch(/top:\s*50%\s*;/)
+    expect(to).toMatch(/right:\s*0\s*;/)
+    expect(to).toMatch(/width:\s*100%\s*;/)
     expect(to).toMatch(/height:\s*100%\s*;/)
 
     // …and it is actually wired to the zoom's range, or neither end applies.
@@ -305,6 +327,38 @@ describe("scroll-driven timeline choreography", () => {
 
     expect(rule).toContain("animation: watch-scroll-intro-photo")
     expect(rule).toContain("animation-range: var(--intro-range)")
+  })
+
+  it("fades the lead card's outline in to the colour the card already uses", () => {
+    // The outline is real chrome — it separates the cards once they stack —
+    // so every card keeps it. Only the lead card holds its own back, because
+    // while it is scaled wider than the screen its top edge draws a hairline
+    // clear across the viewport above the photograph.
+    //
+    // The keyframe's `to` colour is duplicated from the card's Tailwind class
+    // and the fill holds it for the rest of the page, so the two are tied
+    // here across files. Changing the class alone would leave the lead card a
+    // different shade from its siblings for good.
+    const component = readFileSync(
+      join(__dirname, "../components/whats-new/WatchWhatsNewPage.tsx"),
+      "utf-8",
+    )
+    // Scoped to the era card's own expression: a bare `border-white/\d+`
+    // match takes the first one anywhere in the file, which is a different
+    // element's border and a different alpha.
+    const classAlpha = component.match(
+      /border-red-100\/\d+"\s*:\s*"border-white\/(\d+)/,
+    )?.[1]
+    const frames = blockBody(css, "@keyframes watch-scroll-intro-edge")
+    const toAlpha = frames
+      .slice(frames.indexOf("to {"))
+      .match(/rgb\(255 255 255 \/ ([\d.]+)\)/)?.[1]
+
+    expect(classAlpha).toBeDefined()
+    expect(toAlpha).toBeDefined()
+    expect(Number(toAlpha)).toBeCloseTo(Number(classAlpha) / 100, 4)
+    // …and it starts invisible, which is the whole point.
+    expect(frames.slice(0, frames.indexOf("to {"))).toContain("transparent")
   })
 
   it("keeps the opening zoom inside the pinned breakpoint", () => {

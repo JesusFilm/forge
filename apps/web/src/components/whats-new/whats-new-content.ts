@@ -16,8 +16,8 @@
  */
 
 export const WHATS_NEW_HERO = {
-  eyebrow: "Watch · Product update",
-  title: "Watch is changing. Here's why.",
+  eyebrow: "Jesus Film Watch · Product update",
+  title: "Jesus Film Watch is changing. Here's why.",
   deck: "A better way to find, watch, and share the story of Jesus — in the language and format that fits the moment.",
   feedbackCta: "Share feedback",
 } as const
@@ -30,13 +30,6 @@ export const WHATS_NEW_HERO = {
  */
 export const WHATS_NEW_LANGUAGE_SWITCHER = {
   label: "Read this page in your language",
-  /**
-   * Always-present escape hatch to the browse-by-region index. Useful in
-   * its own right, and it is the working path on the degraded render — if
-   * Admin is unreachable when this static page is generated the combobox
-   * falls back to the current language alone.
-   */
-  allLanguages: "Browse all languages",
 } as const
 
 export const WHATS_NEW_CONTENTS = [
@@ -53,7 +46,7 @@ export const WHATS_NEW_CONTENTS = [
 export const WHATS_NEW_LEDE = {
   eyebrow: "A history of changing formats",
   heading:
-    "From a projector in a field, to page one of Google, to answers inside a conversation",
+    "From a projector in a field, to page one of Google, to answers inside AI chats",
   /**
    * Closing line, rendered AFTER the stage. Every other paragraph of the
    * argument is a `beat` sitting above the era card it introduces, so the
@@ -61,7 +54,7 @@ export const WHATS_NEW_LEDE = {
    * directly beneath it.
    */
   closing:
-    "So Watch adapts again, the way it always has. A catalog that ranks well is not the same thing as a library an assistant can understand, cite, and hand to someone in the language they actually speak. That is what this redesign is for.",
+    "So Jesus Film Watch adapts again, the way it always has. A catalog that ranks well is not the same thing as a library an assistant can understand, cite, and hand to someone in the language they actually speak. That is what this redesign is for.",
 } as const
 
 /** Icon keys resolved to Lucide components in the page component. */
@@ -145,7 +138,7 @@ export const WHATS_NEW_ERAS = [
       width: 768,
       height: 512,
     },
-    beat: "Then the internet arrived, and Watch became one of the first video websites anywhere to put free Christian gospel media online in many languages — before YouTube existed. Google rewarded that: Watch has ranked on the first page for searches as significant as “Jesus,” and the audience stopped being only our partners.",
+    beat: "Then the internet arrived, and Jesus Film Watch became one of the first video websites anywhere to put free Christian gospel media online in many languages — before YouTube existed. Google rewarded that: Jesus Film Watch has ranked on the first page for searches as significant as “Jesus,” and the audience stopped being only our partners.",
     current: false,
   },
   {
@@ -155,8 +148,14 @@ export const WHATS_NEW_ERAS = [
     year: "Today",
     kicker: "What is next",
     title: "Answers in conversation",
-    body: "People increasingly ask an assistant instead of searching. Watch is being rebuilt so the right story, scene, and language can be found, cited, and shared inside that conversation.",
-    beat: "Now the medium is changing again. A growing share of people no longer search — they ask. They put their question to ChatGPT and other AI assistants and receive an answer rather than a page of links. The moment of discovery is moving off the results page and into a conversation.",
+    body: "People increasingly ask an assistant instead of searching. Jesus Film Watch is being rebuilt so the right story, scene, and language can be found, cited, and shared inside that conversation.",
+    /**
+     * Split out of `beat` so it can be rendered bold: this is the sentence
+     * the whole section turns on, and the eras before it are setup for it.
+     * The renderer emits it as a `<strong>` ahead of the rest of the beat.
+     */
+    beatLead: "Now the medium is changing again.",
+    beat: "A growing share of people no longer search — they ask. They put their question to ChatGPT and other AI assistants and receive an answer rather than a page of links. The moment of discovery is moving off the results page and into a conversation.",
     current: true,
   },
 ] as const satisfies readonly {
@@ -181,6 +180,13 @@ export const WHATS_NEW_ERAS = [
   body: string
   /** Narrative paragraph rendered AFTER this era's card. */
   beat: string
+  /**
+   * Opening sentence split out of `beat` so the renderer can bold it.
+   * Optional, and deliberately used once: the emphasis marks the pivot the
+   * earlier eras build to, and it stops meaning anything if they all have
+   * one.
+   */
+  beatLead?: string
   image?: { src: string; alt: string; width: number; height: number }
   current: boolean
 }[]
@@ -226,7 +232,7 @@ export const WHATS_NEW_IMPROVEMENTS = [
   {
     shot: {
       src: "/watch/images/whats-new/home.webp",
-      alt: "The Watch home page: a cinematic featured story with the search bar above it and curated rows below.",
+      alt: "The Jesus Film Watch home page: a cinematic featured story with the search bar above it and curated rows below.",
     },
     clip: {
       webm: "/watch/assets/whats-new/home.webm",
@@ -235,7 +241,7 @@ export const WHATS_NEW_IMPROVEMENTS = [
     tint: { from: "#4f46e5", to: "#a855f7" },
     title: "A more useful place to begin",
     paragraphs: [
-      "The Watch home page now provides a clearer and more visual way to discover content, with cinematic featured stories, curated collections, improved layouts, and more opportunities to continue exploring.",
+      "The Jesus Film Watch home page now provides a clearer and more visual way to discover content, with cinematic featured stories, curated collections, improved layouts, and more opportunities to continue exploring.",
       "The goal is not simply to show more videos. It is to help each person find something relevant more quickly.",
     ],
     points: [],
@@ -244,7 +250,7 @@ export const WHATS_NEW_IMPROVEMENTS = [
   {
     shot: {
       src: "/watch/images/whats-new/player.webp",
-      alt: "A Watch video page with the rebuilt player and its playback, audio, and subtitle controls.",
+      alt: "A Jesus Film Watch video page with the rebuilt player and its playback, audio, and subtitle controls.",
     },
     clip: {
       webm: "/watch/assets/whats-new/player.webm",
@@ -264,13 +270,13 @@ export const WHATS_NEW_IMPROVEMENTS = [
       "Faster loading and more resilient delivery",
     ],
     closing:
-      "These improvements required substantial engineering work that may not always be visible, but they make Watch faster, clearer, and more dependable around the world.",
+      "These improvements required substantial engineering work that may not always be visible, but they make Jesus Film Watch faster, clearer, and more dependable around the world.",
     featured: false,
   },
   {
     shot: {
       src: "/watch/images/whats-new/language.webp",
-      alt: "The Watch language index, listing available languages grouped by region.",
+      alt: "The Jesus Film Watch language index, listing available languages grouped by region.",
     },
     clip: {
       webm: "/watch/assets/whats-new/language.webm",
@@ -279,7 +285,7 @@ export const WHATS_NEW_IMPROVEMENTS = [
     tint: { from: "#db2777", to: "#fb923c" },
     title: "Language is becoming central to the experience",
     paragraphs: [
-      "Jesus Film Project has content in thousands of languages. That is one of the most important things Watch can offer, so language should not feel like an option hidden inside the player.",
+      "Jesus Film Project has content in thousands of languages. That is one of the most important things Jesus Film Watch can offer, so language should not feel like an option hidden inside the player.",
       "We are improving how people:",
     ],
     points: [
@@ -296,7 +302,7 @@ export const WHATS_NEW_IMPROVEMENTS = [
   {
     shot: {
       src: "/watch/images/whats-new/search.webp",
-      alt: "Watch search open on the word “hope”, showing suggestions and matching videos.",
+      alt: "Jesus Film Watch search open on the word “hope”, showing suggestions and matching videos.",
     },
     clip: {
       webm: "/watch/assets/whats-new/search.webm",
@@ -306,7 +312,7 @@ export const WHATS_NEW_IMPROVEMENTS = [
     title: "Search that understands more than titles",
     paragraphs: [
       "People do not always know the name of the film they need. They may search for hope, anxiety, forgiveness, a Bible passage, or a question about Jesus.",
-      "Watch search is being developed to understand this kind of intent across languages — not only exact film titles. Over time, search results will also become easier to share, revisit, and use as a starting point for ministry.",
+      "Jesus Film Watch search is being developed to understand this kind of intent across languages — not only exact film titles. Over time, search results will also become easier to share, revisit, and use as a starting point for ministry.",
     ],
     points: [],
     featured: false,
@@ -314,7 +320,7 @@ export const WHATS_NEW_IMPROVEMENTS = [
   {
     shot: {
       src: "/watch/images/whats-new/share.webp",
-      alt: "A Watch video page scrolled to its share and download controls.",
+      alt: "A Jesus Film Watch video page scrolled to its share and download controls.",
     },
     clip: {
       webm: "/watch/assets/whats-new/share.webm",
@@ -323,7 +329,7 @@ export const WHATS_NEW_IMPROVEMENTS = [
     tint: { from: "#b45309", to: "#fbbf24" },
     title: "Easier sharing and ministry use",
     paragraphs: [
-      "Watch should serve the person watching and the person helping someone else watch. We are strengthening Watch as a dependable place for believers and ministry partners to:",
+      "Jesus Film Watch should serve the person watching and the person helping someone else watch. We are strengthening Jesus Film Watch as a dependable place for believers and ministry partners to:",
     ],
     points: [
       "Share a trusted link with someone",
@@ -392,7 +398,7 @@ export const WHATS_NEW_DELIVERY = {
   icon: "videotape",
   heading: "Every video now streams from Mux",
   paragraphs: [
-    "Watch used to serve its video from Brightcove. Stalled playback, videos that would not start until something warmed up a cache, and downloads that failed in the places our partners actually work were mostly not ours to fix — they lived on the other side of that platform. So we moved the whole library to Mux.",
+    "Jesus Film Watch used to serve its video from Brightcove. Stalled playback, videos that would not start until something warmed up a cache, and downloads that failed in the places our partners actually work were mostly not ours to fix — they lived on the other side of that platform. So we moved the whole library to Mux.",
     "Mux is a next-generation video platform. It encodes every film into a ladder of qualities and chooses between them per viewer, so the same video plays as well as a given place and connection allow — a fibre line in a city, a shared mobile connection at the end of a long road, and everything in between.",
   ],
   points: [
@@ -437,7 +443,7 @@ export const WHATS_NEW_DELIVERY = {
 
 export const WHATS_NEW_AUDIENCES = {
   eyebrow: "Why these changes matter",
-  heading: "Watch serves three overlapping audiences",
+  heading: "Jesus Film Watch Library serves three overlapping audiences",
   /**
    * `tint` drives each card's border, icon ring, and inner wash. Three
    * distinct hues so the audiences read as three different people rather
@@ -450,19 +456,19 @@ export const WHATS_NEW_AUDIENCES = {
       icon: "compass",
       tint: "#7c5cf0",
       title: "For someone seeking answers",
-      body: "Watch should help a person move from a question to a relevant story, teaching, or passage — and then offer a clear, appropriate next step.",
+      body: "Jesus Film Watch should help a person move from a question to a relevant story, teaching, or passage — and then offer a clear, appropriate next step.",
     },
     {
       icon: "share",
       tint: "#f0567c",
       title: "For someone sharing their faith",
-      body: "Watch should make it simple to find and share a focused piece of trusted content with a friend, family member, or online community.",
+      body: "Jesus Film Watch should make it simple to find and share a focused piece of trusted content with a friend, family member, or online community.",
     },
     {
       icon: "handshake",
       tint: "#e0a24c",
       title: "For ministry partners",
-      body: "Watch should provide dependable language, playback, sharing, and download tools for ministry in both everyday and challenging contexts.",
+      body: "Jesus Film Watch should provide dependable language, playback, sharing, and download tools for ministry in both everyday and challenging contexts.",
     },
   ] as const satisfies readonly {
     icon: WhatsNewIconKey
@@ -485,9 +491,9 @@ export const WHATS_NEW_AUDIENCES = {
 export const WHATS_NEW_QUIZ = {
   eyebrow: "Before you read on",
   question:
-    "What share of Watch visitors do you think are professional missionaries?",
+    "What share of Jesus Film Watch visitors do you think are professional missionaries?",
   helper: "Drag to your best guess, then lock it in.",
-  sliderLabel: "Your guess, as a percentage of Watch visitors",
+  sliderLabel: "Your guess, as a percentage of Jesus Film Watch visitors",
   submit: "Lock in my guess",
   /** Dismisses the reveal and returns the reader to the slider. */
   dismiss: "Close",
@@ -497,9 +503,9 @@ export const WHATS_NEW_QUIZ = {
   restLabel: "Seekers and believers",
   revealHeading: "About 2%.",
   revealBody:
-    "Ninety-eight out of every hundred people who arrive at Watch are seekers and believers — most of them looking for something, not for us. That is why the experience has to serve them well.",
+    "Ninety-eight out of every hundred people who arrive at Jesus Film Watch are seekers and believers — most of them looking for something, not for us. That is why the experience has to serve them well.",
   revealPartners:
-    "And it is why the other 2% matters just as much: missionaries and ministry partners depend on Watch for their work, and none of this is built at their expense.",
+    "And it is why the other 2% matters just as much: missionaries and ministry partners depend on Jesus Film Watch for their work, and none of this is built at their expense.",
   overGuess: "That is {factor}× the real number.",
   closeGuess: "Closer than most people get.",
   underGuess: "Lower than the real figure — but the point still stands.",
@@ -549,7 +555,7 @@ export const WHATS_NEW_SELF_ID = {
       id: "partner",
       icon: "handshake",
       tint: "#e0a24c",
-      label: "I use Watch for ministry work",
+      label: "I use Jesus Film Watch for ministry work",
       // Interpolated, not retyped: this line only lands because the quiz
       // above just showed the reader that same number.
       response: `You are the ${WHATS_NEW_QUIZ.actualPercent}% from the question above, and none of this is built at your expense. Language coverage, dependable playback, downloads, and embedding stay first-class as the rest of the experience grows around them.`,
@@ -560,7 +566,7 @@ export const WHATS_NEW_SELF_ID = {
       tint: "#e8eaf0",
       label: "Honestly, all three",
       response:
-        "That is the usual answer here, and it is why Watch stays one platform underneath. The three doors are different ways in, not three separate products — nothing you rely on in one of them is traded away for another.",
+        "That is the usual answer here, and it is why Jesus Film Watch stays one platform underneath. The three doors are different ways in, not three separate products — nothing you rely on in one of them is traded away for another.",
     },
   ] as const satisfies readonly {
     id: string
@@ -647,7 +653,7 @@ export const WHATS_NEW_PARTNER_LETTER = {
 } as const
 
 export const WHATS_NEW_DIRECTIONS = {
-  eyebrow: "Where Watch is going next",
+  eyebrow: "Where Jesus Film Watch is going next",
   heading: "The foundation being built now makes these possible",
   intro: "The work underway provides a foundation for capabilities such as:",
   items: [
@@ -658,7 +664,7 @@ export const WHATS_NEW_DIRECTIONS = {
     "Optional accounts that can preserve progress across web, mobile, and TV",
     "More relevant recommendations grounded in trusted content",
     "Expanded metadata, subtitles, and translations",
-    "Connected experiences across Watch, mobile, and television",
+    "Connected experiences across Jesus Film Watch, mobile, and television",
     "New pages and journeys that can be assembled for particular audiences and ministry needs",
   ],
   noteTitle: "Directions, not release dates",
@@ -699,7 +705,7 @@ export const WHATS_NEW_VOTES = {
    * `body` below is what names the stickers and the mechanic, so the two have
    * to keep travelling together.
    */
-  heading: "Pick the three that would change how you use Watch",
+  heading: "Pick the three that would change how you use Jesus Film Watch",
   body: "Grab a sticker and drop it anywhere on a feature. All three on one, or spread them out.",
   budget: 3,
   remainingLabel: "Stickers left",
@@ -787,7 +793,7 @@ export const WHATS_NEW_VOTES = {
       id: "connected-devices",
       icon: "device",
       title: "Connected across devices",
-      body: "One experience that carries between Watch, mobile, and television.",
+      body: "One experience that carries between Jesus Film Watch, mobile, and television.",
     },
     {
       id: "assembled-journeys",
@@ -831,7 +837,7 @@ export const WHATS_NEW_TEAM = {
   heading: "The visible changes represent only part of the work",
   paragraphs: [
     "Developers, designers, product teams, video specialists, translators, content teams, data teams, and ministry partners have contributed to the new foundation.",
-    "We want to recognize that work and continue building Watch together.",
+    "We want to recognize that work and continue building Jesus Film Watch together.",
   ],
   contributionsLabel: "Contributions include",
   contributions: [
@@ -844,7 +850,7 @@ export const WHATS_NEW_TEAM = {
     "Metadata",
     "Downloads",
     "Feedback systems",
-    "Watch authoring tools",
+    "Jesus Film Watch authoring tools",
   ],
 } as const
 
@@ -869,7 +875,7 @@ export const WHATS_NEW_FAQ = {
   items: [
     {
       id: "removal",
-      question: "Is anything being removed from Watch?",
+      question: "Is anything being removed from Jesus Film Watch?",
       answer:
         "No. Everything you can do today — find a film, choose a language, play it, share it, download what is available — you can still do. The changes add ways in; they do not close the ones you already use.",
     },
@@ -906,7 +912,7 @@ export const WHATS_NEW_FAQ = {
     },
     {
       id: "cost",
-      question: "Is Watch still free?",
+      question: "Is Jesus Film Watch still free?",
       answer:
         "Yes. Nothing described on this page introduces a cost to watch, share, or download.",
     },
@@ -914,24 +920,24 @@ export const WHATS_NEW_FAQ = {
       id: "feedback",
       question: "How do I report a problem or ask for something?",
       answer:
-        "Use the feedback control on any Watch page, or the Share feedback button on this one. Requests and bug reports both land with the team that works on Watch.",
+        "Use the feedback control on any Jesus Film Watch page, or the Share feedback button on this one. Requests and bug reports both land with the team that works on Jesus Film Watch.",
     },
   ],
 } as const
 
 export const WHATS_NEW_CLOSING = {
-  eyebrow: "Help us improve Watch",
+  eyebrow: "Help us improve Jesus Film Watch",
   heading: "If something is unclear, tell us",
   paragraphs: [
     "We know that significant changes need explanation, and we do not want to wait until confusion becomes a problem.",
-    "If something is unclear, difficult to use, or missing, please tell us. Your feedback helps us understand what people need and where Watch should improve next.",
+    "If something is unclear, difficult to use, or missing, please tell us. Your feedback helps us understand what people need and where Jesus Film Watch should improve next.",
   ],
 } as const
 
 export const WHATS_NEW_METADATA = {
-  title: "Watch is changing. Here's why. | Jesus Film Project",
+  title: "Jesus Film Watch is changing. Here's why. | Jesus Film Project",
   description:
-    "Why the Jesus Film Project Watch experience is changing: from projectors and VHS, to one of the first free gospel video sites online, to page one of Google, to a library people can find through AI assistants — in their own language.",
+    "Why the Jesus Film Project Jesus Film Watch experience is changing: from projectors and VHS, to one of the first free gospel video sites online, to page one of Google, to a library people can find through AI assistants — in their own language.",
 } as const
 
 /**
@@ -966,7 +972,7 @@ export const WHATS_NEW_BOARD = {
   heading: "Grab a pen. Put something on the board.",
   body: "Three boards, one pad of paper. Write a note, pick your colour, and stick it wherever you like — drag it around until it sits right.",
   provenance:
-    "The notes already up are real messages people sent our support inbox about the Watch site, shortened. Names are stand-ins — the words and the country are theirs.",
+    "The notes already up are real messages people sent our support inbox about the Jesus Film Watch site, shortened. Names are stand-ins — the words and the country are theirs.",
   localOnlyNote:
     "Your notes stay in this browser for now — nothing is sent to us yet. The collector that makes them public is what we are building next.",
   boardsLabel: "Pin boards",
@@ -994,7 +1000,7 @@ export const WHATS_NEW_BOARD = {
       id: "praise",
       tab: "Praise",
       title: "What is working",
-      prompt: "What has Watch done well for you?",
+      prompt: "What has Jesus Film Watch done well for you?",
       notes: [
         {
           id: "praise-1",
@@ -1200,9 +1206,9 @@ export const WHATS_NEW_BOARD = {
     },
     {
       id: "ministry",
-      tab: "How I use Watch",
+      tab: "How I use Jesus Film Watch",
       title: "Out in the field",
-      prompt: "How do you use Watch in your ministry?",
+      prompt: "How do you use Jesus Film Watch in your ministry?",
       notes: [
         {
           id: "ministry-1",

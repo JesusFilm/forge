@@ -1,24 +1,18 @@
 "use client"
 
 import { useMemo } from "react"
-import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { ArrowUpRight, Languages } from "lucide-react"
+import { ChevronDown, Languages } from "lucide-react"
 
 import {
   LanguageCombobox,
   type LanguageComboboxOption,
 } from "@/components/watch/LanguageCombobox"
-import {
-  languageInventoryPath,
-  languagesIndexPath,
-  tryAsLocaleSlug,
-} from "@/lib/routes"
+import { languageInventoryPath, tryAsLocaleSlug } from "@/lib/routes"
 import { cn } from "@/lib/utils"
 import type { WatchLanguageInventorySwitcherLanguage } from "@/lib/watch-language-inventory"
 
 type WhatsNewLanguageSwitcherProps = {
-  allLanguagesLabel: string
   className?: string
   currentSlug: string
   label: string
@@ -34,15 +28,31 @@ type WhatsNewLanguageSwitcherProps = {
  * the item-count badge is dropped (this page is not a collection, so
  * there is no count to state), and re-selecting the current language is
  * NOT a no-op — from here even `english` is a real destination.
+ *
+ * Renders as a bare label plus the control: no frame, and no link to the
+ * browse-all-languages index. Both were removed on request.
+ *
+ * KNOWN GAP that removing the link opened, recorded because nothing in the
+ * happy path shows it: `resolveWatchLanguageSwitcherOptions` degrades to the
+ * current language alone when Admin is unreachable, and this page is static
+ * with a one-hour revalidate — so a bad build bakes a one-option combobox
+ * for an hour, and the index link was the only exit from it. Restoring an
+ * escape for that case alone would be `languages.length <= 1 && <Link …>`.
  */
 export function WhatsNewLanguageSwitcher({
-  allLanguagesLabel,
   className,
   currentSlug,
   label,
   languages,
 }: WhatsNewLanguageSwitcherProps) {
   const router = useRouter()
+
+  const currentLanguageName = useMemo(
+    () =>
+      languages.find((language) => language.slug === currentSlug)
+        ?.languageName ?? null,
+    [currentSlug, languages],
+  )
 
   const options = useMemo<LanguageComboboxOption[]>(
     () =>
@@ -63,36 +73,51 @@ export function WhatsNewLanguageSwitcher({
 
   return (
     <div
-      className={cn(
-        "w-full max-w-md rounded-2xl border border-white/10 bg-stone-950/45 p-4 text-left text-stone-100 shadow-2xl shadow-black/25 backdrop-blur",
-        className,
-      )}
+      className={cn("w-full max-w-md text-left text-stone-100", className)}
       data-testid="whats-new-language-switcher"
     >
-      <div className="mb-3 flex items-center gap-2.5">
-        <span className="grid size-8 shrink-0 place-items-center rounded-full bg-white/10 text-amber-100">
-          <Languages className="h-4 w-4" aria-hidden />
-        </span>
-        <span className="min-w-0 text-xs font-bold tracking-[0.18em] text-stone-300 uppercase">
-          {label}
-        </span>
-      </div>
+      <span className="mb-3 block text-xs font-bold tracking-[0.18em] text-stone-300 uppercase">
+        {label}
+      </span>
 
       <LanguageCombobox
         options={options}
         value={currentSlug}
         onChange={handleLanguageChange}
         placeholder={label}
-      />
+        /* Pill of the same height as the feedback button beside it, so the
+           two line up when the row aligns to its baseline. The shared
+           trigger is `h-16 rounded-2xl`, sized for the collection pages
+           where it stands alone.
 
-      <Link
-        href={languagesIndexPath()}
-        data-testid="whats-new-all-languages-link"
-        className="mt-4 inline-flex items-center gap-1.5 text-xs font-semibold text-stone-300 underline decoration-white/25 underline-offset-4 transition-colors hover:text-white hover:decoration-white/70 focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-white focus-visible:outline-offset-4"
-      >
-        {allLanguagesLabel}
-        <ArrowUpRight aria-hidden className="size-3.5" />
-      </Link>
+           Important modifiers because `LanguageCombobox` CONCATENATES this
+           onto its own class string rather than merging it through `cn`, so
+           a plain `h-12` just ties with the base `h-16` on specificity and
+           loses on stylesheet order. `FeedbackModal` works around the same
+           thing the same way. */
+        triggerClassName="h-12! min-h-12! rounded-full! px-5!"
+        /* Replaces the two-letter code disc. A code badge answers "which
+           language is this" for a reader scanning a list of them; here
+           there is one, already named in words beside it, so the disc was
+           restating the word next to it inside a heavier circle. */
+        triggerContent={
+          <>
+            <span className="flex min-w-0 items-center gap-3">
+              <Languages
+                aria-hidden
+                className="h-5 w-5 shrink-0 text-white/55"
+              />
+              <span className="block truncate leading-tight">
+                {currentLanguageName ?? label}
+              </span>
+            </span>
+            <ChevronDown
+              aria-hidden
+              className="h-5 w-5 shrink-0 text-white/55"
+            />
+          </>
+        }
+      />
     </div>
   )
 }

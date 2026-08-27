@@ -30,7 +30,6 @@ import { WhatsNewSelfId } from "@/components/whats-new/WhatsNewSelfId"
 import {
   WHATS_NEW_AUDIENCES,
   WHATS_NEW_CLOSING,
-  WHATS_NEW_CONTENTS,
   WHATS_NEW_DELIVERY,
   WHATS_NEW_DIRECTIONS,
   WHATS_NEW_ERAS,
@@ -72,6 +71,12 @@ const CARD_BODY_CLASS =
   "text-sm leading-7 text-white/76 sm:text-base sm:leading-8"
 const CARD_LIST_CLASS =
   "grid list-none gap-2.5 text-sm leading-6 text-white/78 sm:text-base sm:leading-7 [&>li]:relative [&>li]:pl-5 [&>li]:before:absolute [&>li]:before:top-[0.78em] [&>li]:before:left-0 [&>li]:before:h-px [&>li]:before:w-2.5 [&>li]:before:bg-red-100/60"
+/* Solid brand fill, matching the Watch footer's own primary button
+   (`bg-[#d33a43]` / `hover:bg-[#b62d35]`) rather than inventing a red. Used
+   where feedback is the action being asked for; the outlined variant below
+   stays for the places where it sits beside other links. */
+const PRIMARY_CTA_CLASS =
+  "inline-flex h-12 cursor-pointer items-center justify-center gap-2 rounded-full bg-[#d33a43] px-7 text-sm font-bold tracking-wider text-white uppercase transition-colors duration-200 hover:bg-[#b62d35] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white sm:px-9"
 const SECONDARY_CTA_CLASS =
   "inline-flex h-12 cursor-pointer items-center justify-center gap-2 rounded-full border border-white/25 bg-white/5 px-7 text-sm font-bold tracking-wider text-white uppercase backdrop-blur-sm transition-colors duration-200 hover:border-white/50 hover:bg-white/12 focus-visible:outline-2 focus-visible:outline-white focus-visible:outline-offset-4 sm:px-9"
 const HERO_GRADIENT_CLASS =
@@ -232,7 +237,6 @@ export function WatchWhatsNewPage({
 }) {
   const languageSwitcher = (
     <WhatsNewLanguageSwitcher
-      allLanguagesLabel={WHATS_NEW_LANGUAGE_SWITCHER.allLanguages}
       currentSlug={languageSlug}
       label={WHATS_NEW_LANGUAGE_SWITCHER.label}
       languages={languages}
@@ -277,30 +281,18 @@ export function WatchWhatsNewPage({
             <p className="mt-6 max-w-[54ch] text-lg leading-8 text-white/82 sm:text-xl sm:leading-9">
               {WHATS_NEW_HERO.deck}
             </p>
-            <div className="mt-10 flex flex-col items-start gap-6 sm:flex-row sm:items-center sm:gap-8">
+            {/* `items-end`, not `items-center`: the switcher carries a label
+                above its control, so centring the row puts the button
+                halfway up that stack. Aligned to the bottom, and with the
+                control set to the button's own height, the two read as one
+                row. */}
+            <div className="mt-10 flex flex-col items-start gap-6 sm:flex-row sm:items-end sm:gap-8">
               {languageSwitcher}
               <WhatsNewFeedbackButton
                 label={WHATS_NEW_HERO.feedbackCta}
-                className={SECONDARY_CTA_CLASS}
+                className={PRIMARY_CTA_CLASS}
               />
             </div>
-            <nav
-              aria-label="On this page"
-              className="mt-12 border-t border-white/12 pt-6"
-            >
-              <ul className="flex flex-wrap gap-x-6 gap-y-3">
-                {WHATS_NEW_CONTENTS.map((entry) => (
-                  <li key={entry.id}>
-                    <a
-                      href={`#${entry.id}`}
-                      className="text-xs font-semibold tracking-[0.16em] text-white/60 uppercase underline decoration-white/20 underline-offset-[6px] transition-colors hover:text-white hover:decoration-white/70 focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white"
-                    >
-                      {entry.label}
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            </nav>
           </div>
         </section>
 
@@ -382,6 +374,9 @@ export function WatchWhatsNewPage({
                 {WHATS_NEW_ERAS.map((era, index) => {
                   const Icon = ICONS[era.icon]
                   const image = "image" in era ? era.image : undefined
+                  // Only one era carries a bolded opening sentence, so the
+                  // field is read the same guarded way `image` is.
+                  const beatLead = "beatLead" in era ? era.beatLead : undefined
                   const ranges = eraRanges(index)
                   // The first era opens the section full-screen and zooms
                   // back into its card, so it skips the slide-in and owns
@@ -430,6 +425,12 @@ export function WatchWhatsNewPage({
                             : ""
                         }`}
                       >
+                        {beatLead ? (
+                          <strong className="font-semibold text-white">
+                            {beatLead}
+                          </strong>
+                        ) : null}
+                        {beatLead ? " " : null}
                         {era.beat}
                       </p>
 
@@ -469,11 +470,21 @@ export function WatchWhatsNewPage({
                             data-testid="whats-new-era-card"
                             data-current={era.current ? "" : undefined}
                             style={ranges.card}
+                            /* The outline is what separates one card from the
+                               next once they stack, so every card keeps it.
+
+                               The lead card fades its own in over the opening
+                               zoom instead: while the card is scaled wider
+                               than the screen, its top edge draws a hairline
+                               straight across the viewport above the
+                               photograph. That is the only frame where the
+                               border is wrong, so it is the only frame that
+                               loses it. */
                             className={`absolute inset-0 overflow-hidden rounded-3xl border bg-stone-950 ${
                               era.current
                                 ? "border-red-100/25"
                                 : "border-white/12"
-                            } ${lead ? "" : "watch-scroll-era-in"}`}
+                            } ${lead ? "watch-scroll-intro-edge" : "watch-scroll-era-in"}`}
                           >
                             {image ? (
                               <Image
@@ -1122,7 +1133,7 @@ export function WatchWhatsNewPage({
               <div className="w-full max-w-md">{languageSwitcher}</div>
               <WhatsNewFeedbackButton
                 label={WHATS_NEW_HERO.feedbackCta}
-                className={SECONDARY_CTA_CLASS}
+                className={PRIMARY_CTA_CLASS}
               />
             </div>
           </div>

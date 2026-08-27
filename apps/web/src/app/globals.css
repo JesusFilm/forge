@@ -475,18 +475,51 @@
    change with a failing test in between. One source of truth instead. */
 @keyframes watch-scroll-intro-photo {
   from {
-    /* Top edge flush with the top of the screen, not centred on it. The card
-       sits 39px above the viewport top, so the picture's CENTRE — which is
-       what `top` positions, given the -50% translate — belongs half its own
-       rendered height below that. Centred instead, the letterbox split in
-       two and the upper half stacked under the page's own dark band, which
-       read as a gap above the picture rather than as a frame around it. */
-    top: calc((39px + 50vw / var(--photo-aspect)) / var(--intro-scale));
-    height: calc(100vw / var(--photo-aspect) / var(--intro-scale));
+    /* COVERS the screen rather than fitting inside it: `max()` on each axis
+       takes whichever dimension the viewport demands, so the picture always
+       fills both and crops on the axis it has to. Fitting the width instead
+       left the picture short of the height on anything wider than 3:2 and
+       letterboxed it on anything narrower.
+
+       Anchored to the RIGHT, not centred, because the crop has to fall on
+       the left: the projection screen — the whole subject of the frame — is
+       in the picture's top-right corner. `50% - 50vw/scale` is the card's
+       own half-width less the viewport's, which lands the picture's right
+       edge on the screen's right edge whatever the scale.
+
+       And to the TOP for the same reason on the other axis: with the screen
+       high in the frame, a vertical crop has to come off the bottom. */
+    right: calc(50% - 50vw / var(--intro-scale));
+    width: calc(
+      max(100vw, (100svh + var(--intro-overhang)) * var(--photo-aspect)) /
+        var(--intro-scale)
+    );
+    height: calc(
+      max(100vw / var(--photo-aspect), 100svh + var(--intro-overhang)) /
+        var(--intro-scale)
+    );
   }
   to {
-    top: 50%;
+    right: 0;
+    width: 100%;
     height: 100%;
+  }
+}
+
+/* The lead card's outline, held back while the card is scaled wider than the
+   screen. It is real chrome once the cards stack — it is what separates one
+   from the next — but at the opening frame the card's top edge runs clear
+   across the viewport above the photograph, as a hairline that reads as a
+   stray rule rather than a card edge.
+
+   The `to` colour has to match the card's own `border-white/12`, since the
+   fill holds this value for the rest of the page; a test ties the two. */
+@keyframes watch-scroll-intro-edge {
+  from {
+    border-color: transparent;
+  }
+  to {
+    border-color: rgb(255 255 255 / 0.12);
   }
 }
 
@@ -1135,15 +1168,28 @@
          5:4 window. */
       .watch-scroll-intro-photo {
         inset: auto;
-        /* Vertical centre travels from the screen's to the card's — see the
-           keyframes. Horizontally the card is already screen-centred, since
-           the zoom's origin is its own 50%, so one value serves both ends. */
-        left: 50%;
-        translate: -50% -50%;
+        /* Positioned from its top-right corner, so the two edges that must
+           never crop — the top and the right, where the projection screen
+           sits — are the two that are pinned. Width, height and the right
+           offset all travel; see the keyframes. */
+        top: 0;
+        left: auto;
+        translate: none;
+        /* How far the scaled card reaches ABOVE the viewport top. The picture
+           is anchored to the card's top, so covering the screen means
+           reaching this much further down than the viewport is tall —
+           without it the picture stopped 39px short of the bottom on any
+           window narrower than the photograph. */
+        --intro-overhang: 39px;
         animation: watch-scroll-intro-photo linear both;
         animation-timeline: --watch-era-stage;
         animation-range: var(--intro-range);
-        width: min(calc(100vw / var(--era-zoom)), 100%);
+      }
+
+      .watch-scroll-intro-edge {
+        animation: watch-scroll-intro-edge linear both;
+        animation-timeline: --watch-era-stage;
+        animation-range: var(--intro-range);
       }
 
       .watch-scroll-intro-veil {

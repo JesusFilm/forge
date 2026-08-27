@@ -6,7 +6,13 @@ import { act, type ReactNode } from "react"
 import { createRoot, type Root } from "react-dom/client"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
-const { routerPushMock } = vi.hoisted(() => ({ routerPushMock: vi.fn() }))
+const { routerPushMock, comboboxSpy } = vi.hoisted(() => ({
+  routerPushMock: vi.fn(),
+  // Records the props the switcher hands the shared combobox, so the sizing
+  // override and the custom trigger content can be asserted without
+  // reproducing the real component's markup.
+  comboboxSpy: vi.fn(),
+}))
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: routerPushMock }),
@@ -28,34 +34,39 @@ vi.mock("next/link", () => ({
 }))
 
 vi.mock("@/components/watch/LanguageCombobox", () => ({
-  LanguageCombobox: ({
-    options,
-    value,
-    onChange,
-    triggerWrapper,
-  }: {
-    options: Array<{ slug: string; nativeName?: string | null }>
-    value: string
-    onChange: (slug: string) => void
-    triggerWrapper?: (trigger: ReactNode) => ReactNode
-  }) => {
-    const trigger = (
-      <div>
-        {options.map((option) => (
-          <button
-            key={option.slug}
-            type="button"
-            data-testid={`pick-${option.slug}`}
-            data-native={option.nativeName ?? ""}
-            data-selected={String(option.slug === value)}
-            onClick={() => onChange(option.slug)}
-          />
-        ))}
-      </div>
-    )
-    return triggerWrapper ? triggerWrapper(trigger) : trigger
+  LanguageCombobox: (props: Record<string, unknown>) => {
+    comboboxSpy(props)
+    return renderCombobox(props as never)
   },
 }))
+
+const renderCombobox = ({
+  options,
+  value,
+  onChange,
+  triggerWrapper,
+}: {
+  options: Array<{ slug: string; nativeName?: string | null }>
+  value: string
+  onChange: (slug: string) => void
+  triggerWrapper?: (trigger: ReactNode) => ReactNode
+}) => {
+  const trigger = (
+    <div>
+      {options.map((option) => (
+        <button
+          key={option.slug}
+          type="button"
+          data-testid={`pick-${option.slug}`}
+          data-native={option.nativeName ?? ""}
+          data-selected={String(option.slug === value)}
+          onClick={() => onChange(option.slug)}
+        />
+      ))}
+    </div>
+  )
+  return triggerWrapper ? triggerWrapper(trigger) : trigger
+}
 
 import { WhatsNewLanguageSwitcher } from "@/components/whats-new/WhatsNewLanguageSwitcher"
 
@@ -81,7 +92,6 @@ function render(currentSlug = "english") {
   act(() => {
     root.render(
       <WhatsNewLanguageSwitcher
-        allLanguagesLabel="Browse all languages"
         currentSlug={currentSlug}
         label="Watch in your language"
         languages={LANGUAGES}
@@ -100,6 +110,7 @@ function pick(slug: string) {
 
 beforeEach(() => {
   routerPushMock.mockReset()
+  comboboxSpy.mockClear()
   container = document.createElement("div")
   document.body.appendChild(container)
   root = createRoot(container)
@@ -140,7 +151,6 @@ describe("WhatsNewLanguageSwitcher", () => {
     act(() => {
       root.render(
         <WhatsNewLanguageSwitcher
-          allLanguagesLabel="Browse all languages"
           currentSlug="english"
           label="Watch in your language"
           languages={[
@@ -160,25 +170,57 @@ describe("WhatsNewLanguageSwitcher", () => {
     expect(routerPushMock).not.toHaveBeenCalled()
   })
 
-  it("keeps a working exit when the option list degrades to one entry", () => {
-    // Admin unreachable at build time bakes a single-option combobox for
-    // the route's whole revalidate window. The index link is the path that
-    // still works, so it must not be conditional on a healthy list.
-    act(() => {
-      root.render(
-        <WhatsNewLanguageSwitcher
-          allLanguagesLabel="Browse all languages"
-          currentSlug="english"
-          label="Watch in your language"
-          languages={[LANGUAGES[0]]}
-        />,
-      )
-    })
+  it("sizes the control to the button beside it, and drops the code disc", () => {
+    // Measured in a browser at 48px against the feedback button's 48px, with
+    // both edges within 1px. Two separate things have to hold for that:
+    //
+    // …the height override must carry important modifiers, because
+    // `LanguageCombobox` concatenates `triggerClassName` onto its own class
+    // string instead of merging it through `cn`. A plain `h-12` ties with the
+    // base `h-16` on specificity and loses on stylesheet order — it measured
+    // 64px against the button's 48px until these were added.
+    render()
 
-    const link = container.querySelector<HTMLAnchorElement>(
-      '[data-testid="whats-new-all-languages-link"]',
+    const props = comboboxSpy.mock.calls.at(-1)?.[0] as {
+      triggerClassName?: string
+      triggerContent?: unknown
+    }
+    expect(props.triggerClassName ?? "").toMatch(/\bh-12!/)
+    expect(props.triggerClassName ?? "").toMatch(/\bmin-h-12!/)
+
+    // …and the trigger draws its own content, so the two-letter code disc
+    // never renders. It restated the language already named beside it.
+    expect(props.triggerContent).toBeTruthy()
+  })
+
+  it("is a label and a combobox, with no frame around them", () => {
+    // Asked for directly: the bordered, blurred card and the browse-all
+    // index link are both gone, leaving the prompt and the control.
+    //
+    // KNOWN CONSEQUENCE, recorded here because the test that used to guard
+    // it is what this replaced: Admin unreachable at build time bakes a
+    // single-option combobox for the route's whole revalidate window, and
+    // the index link was the path that still worked. There is now no exit
+    // from that state — see the switcher's own comment.
+    render()
+
+    const switcher = container.querySelector<HTMLElement>(
+      '[data-testid="whats-new-language-switcher"]',
     )
-    expect(link?.getAttribute("href")).toBe("/languages")
+
+    expect(switcher).not.toBeNull()
+    expect(switcher?.className ?? "").not.toMatch(
+      /\bborder\b|\bshadow-|backdrop-blur/,
+    )
+    expect(
+      container.querySelector('[data-testid="whats-new-all-languages-link"]'),
+    ).toBeNull()
+    // …and the two things asked for are still there.
+    expect(switcher?.textContent).toContain("Watch in your language")
+    // This suite's combobox mock renders one `pick-<slug>` per option.
+    expect(
+      container.querySelector('[data-testid="pick-english"]'),
+    ).not.toBeNull()
   })
 
   it("carries native names through so a reader can self-identify", () => {

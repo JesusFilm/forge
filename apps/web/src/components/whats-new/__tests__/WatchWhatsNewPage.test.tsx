@@ -131,6 +131,16 @@ afterEach(() => {
   container.remove()
 })
 
+/**
+ * What a beat should read as once rendered. One era splits a bolded opening
+ * sentence out of its `beat`, so the rendered text is that sentence, a space,
+ * then the rest — comparing against `beat` alone silently stops checking that
+ * the bolded half renders at all.
+ */
+function renderedBeat(era: (typeof WHATS_NEW_ERAS)[number]): string {
+  return "beatLead" in era ? `${era.beatLead} ${era.beat}` : era.beat
+}
+
 function textContent() {
   return container.textContent ?? ""
 }
@@ -304,13 +314,39 @@ describe("WatchWhatsNewPage", () => {
     }
   })
 
+  it("bolds the sentence the section turns on, and only that one", () => {
+    // "Now the medium is changing again." is the pivot the four eras build
+    // to, so it is split out of its beat and rendered as a `<strong>`. The
+    // text-equality checks elsewhere pass either way once they use the same
+    // helper, so this is what actually holds the emphasis in place.
+    const beats = [
+      ...container.querySelectorAll<HTMLElement>(
+        '[data-testid="whats-new-era-beat"]',
+      ),
+    ]
+    const strongs = beats.map((beat) => beat.querySelector("strong"))
+    const expected = WHATS_NEW_ERAS.map((era) => "beatLead" in era)
+
+    expect(expected.filter(Boolean)).toHaveLength(1)
+    expect(strongs.map(Boolean)).toEqual(expected)
+
+    const bolded = strongs.find(Boolean)
+    expect(bolded?.textContent).toBe(
+      WHATS_NEW_ERAS.flatMap((era) =>
+        "beatLead" in era ? [era.beatLead] : [],
+      )[0],
+    )
+    // …and it reads heavier than the light body it sits in.
+    expect(bolded?.className).toMatch(/font-semibold/)
+  })
+
   it("threads a narrative beat for every era card", () => {
     // "Mix text and cards": the text under the stack swaps with the card
     // above it. A beat that stops rendering silently drops a third of the
     // section's prose.
     expect(beats()).toHaveLength(WHATS_NEW_ERAS.length)
     for (const [index, beat] of beats().entries()) {
-      expect(beat.textContent).toBe(WHATS_NEW_ERAS[index].beat)
+      expect(beat.textContent).toBe(renderedBeat(WHATS_NEW_ERAS[index]))
     }
   })
 
@@ -580,18 +616,43 @@ describe("WatchWhatsNewPage", () => {
   it("keeps every piece of card chrome on the card, not the clip box", () => {
     // An outline on the stationary clip box turns the effect inside out:
     // the frame stays put and the picture appears to slide around inside
-    // it, instead of a whole card travelling. The border is the tell.
+    // it, instead of a whole card travelling.
+    //
+    // Neither carries a border any more — the card's own was removed because
+    // at the opening frame the card is wider than the screen, so its top edge
+    // drew a hairline straight across the viewport above the photograph. What
+    // still has to hold is that the card is OPAQUE, or the card underneath
+    // shows through mid-travel, and that the clip box stays unstyled.
     const clips = [
       ...container.querySelectorAll('[data-testid="whats-new-era-clip"]'),
     ]
 
+    // The token has to be matched STANDALONE. `\bborder\b` also matches
+    // inside `border-white/12`, so it stayed green when the `border` utility
+    // that actually sets the width was deleted and only the colour was left —
+    // which is the exact regression this is here for.
+    const standaloneBorder = /(?:^|\s)border(?:\s|$)/
+
+    expect(clips.length).toBeGreaterThan(0)
     for (const clip of clips) {
-      expect(clip.className).not.toMatch(/\bborder\b/)
+      expect(clip.className).not.toMatch(standaloneBorder)
       const card = clip.querySelector('[data-testid="whats-new-era-card"]')
-      expect(card?.className).toMatch(/\bborder\b/)
-      // Opaque, so the card underneath never shows through mid-travel.
+      expect(card?.className).toMatch(standaloneBorder)
       expect(card?.className).toMatch(/\bbg-/)
     }
+
+    // Only the lead card holds its outline back, and only for the zoom: it is
+    // the one that gets scaled wider than the screen. Removing the border
+    // from every card instead — which is what happened first — takes the
+    // separation out of the stacked pile to fix one frame.
+    const cards = [
+      ...container.querySelectorAll<HTMLElement>(
+        '[data-testid="whats-new-era-card"]',
+      ),
+    ]
+    expect(
+      cards.map((card) => card.className.includes("watch-scroll-intro-edge")),
+    ).toEqual(WHATS_NEW_ERAS.map((_, index) => index === 0))
   })
 
   it("nests each beat inside its own era layer", () => {
@@ -610,7 +671,7 @@ describe("WatchWhatsNewPage", () => {
       ).toHaveLength(1)
       const beat = layer.querySelector('[data-testid="whats-new-era-beat"]')
       expect(beat?.textContent, WHATS_NEW_ERAS[index].title).toBe(
-        WHATS_NEW_ERAS[index].beat,
+        renderedBeat(WHATS_NEW_ERAS[index]),
       )
     }
   })
@@ -691,7 +752,7 @@ describe("WatchWhatsNewPage", () => {
 
     expect(beats).toHaveLength(WHATS_NEW_ERAS.length)
     for (const [index, beat] of beats.entries()) {
-      expect(beat.textContent).toBe(WHATS_NEW_ERAS[index].beat)
+      expect(beat.textContent).toBe(renderedBeat(WHATS_NEW_ERAS[index]))
     }
   })
 
@@ -1274,16 +1335,12 @@ describe("WatchWhatsNewPage", () => {
     expect(textContent()).not.toMatch(/@jesusfilm\.org/i)
   })
 
-  it("offers the partner letter in the table of contents", () => {
-    // The literal id, not one mapped out of WHATS_NEW_CONTENTS: the nav is
-    // rendered FROM that list, so comparing the two only proves they were
-    // built from the same array. Deleting the entry has to fail here.
-    const linked = [
-      ...container.querySelectorAll<HTMLAnchorElement>('nav a[href^="#"]'),
-    ].map((link) => link.getAttribute("href")!.slice(1))
-
-    expect(linked).toContain("partners")
+  it("reaches the partner letter without a table of contents", () => {
+    // The on-page nav was removed on request, so the anchor list that used
+    // to prove this is gone. The section itself is what has to survive —
+    // deleting it should still fail here.
     expect(container.querySelector('section[id="partners"]')).not.toBeNull()
+    expect(container.querySelector('nav[aria-label="On this page"]')).toBeNull()
   })
 
   it("illustrates the team section with a labelled iceberg", () => {
@@ -1614,18 +1671,21 @@ describe("WatchWhatsNewPage", () => {
     )
   })
 
-  it("anchors every on-page nav link to a section that exists", () => {
-    const anchors = [
-      ...container.querySelectorAll<HTMLAnchorElement>(
-        'nav[aria-label="On this page"] a[href^="#"]',
-      ),
-    ]
-    expect(anchors.length).toBeGreaterThan(0)
+  it("keeps every section id an anchor could still target", () => {
+    // The on-page nav that used to walk these was removed on request. The ids
+    // stay, because the sections are still linkable from outside the page and
+    // `scroll-mt` is tuned for landing on them — but nothing on the page
+    // enumerates them now, so this checks they exist rather than that a link
+    // resolves.
+    const sections = [
+      ...container.querySelectorAll<HTMLElement>("section[id]"),
+    ].map((section) => section.id)
 
-    for (const anchor of anchors) {
-      const id = anchor.getAttribute("href")?.slice(1) ?? ""
-      expect(container.querySelector(`section#${id}`), id).not.toBeNull()
-    }
+    expect(sections.length).toBeGreaterThan(3)
+    expect(new Set(sections).size, "duplicate section ids").toBe(
+      sections.length,
+    )
+    expect(container.querySelector('nav[aria-label="On this page"]')).toBeNull()
   })
 
   it("offers the language switcher at the top and the bottom of the page", () => {
@@ -1641,16 +1701,56 @@ describe("WatchWhatsNewPage", () => {
     }
   })
 
-  it("offers the browse-all-languages index from both switchers", () => {
-    const links = [
-      ...container.querySelectorAll<HTMLAnchorElement>(
-        '[data-testid="whats-new-all-languages-link"]',
-      ),
-    ]
+  it("aligns the hero row on its bottom edge, not its middle", () => {
+    // The switcher carries a label above its control, so a centred row puts
+    // the feedback button halfway up that stack instead of level with the
+    // control. Measured in a browser: with `items-end` and the control set
+    // to the button's height, both edges land within 1px; with `items-center`
+    // the button sat 16px high.
+    const switcher = container.querySelector(
+      '[data-testid="whats-new-language-switcher"]',
+    )
+    const row = switcher?.parentElement
 
-    expect(links).toHaveLength(2)
-    for (const link of links) {
-      expect(link.getAttribute("href")).toBe("/languages")
+    expect(row?.className).toContain("sm:items-end")
+    expect(row?.className).not.toContain("sm:items-center")
+    // Anti-vacuous: this is the row that holds both, not some outer wrapper.
+    expect(
+      [...(row?.querySelectorAll("button") ?? [])].some((button) =>
+        button.className.includes("bg-[#d33a43]"),
+      ),
+    ).toBe(true)
+  })
+
+  it("asks for feedback in solid brand fill beside each switcher", () => {
+    // The two buttons that sit next to a language switcher are the page's
+    // primary ask and are filled; the one in the partner letter stays
+    // outlined, because there it is a footnote rather than the point.
+    // Counted across the WHOLE page, not filtered by the hero's label
+    // first: the partner letter's button carries different copy, so a
+    // label-filtered count cannot see it gaining the fill.
+    // Scanned across every BUTTON on the page rather than filtered by the
+    // hero's label first: the partner letter's button carries different copy,
+    // so a label-filtered count could not see it gaining the fill. Scoped to
+    // buttons because the footer's "Give Now" link wears the same brand red —
+    // it is where this fill was taken from.
+    //
+    // Filtered in JS, not by selector: the class contains brackets, which a
+    // `[class*=...]` selector cannot carry.
+    const filled = [
+      ...container.querySelectorAll<HTMLButtonElement>("button"),
+    ].filter((node) => node.className.includes("bg-[#d33a43]"))
+    const heroLabelled = [
+      ...container.querySelectorAll<HTMLButtonElement>("button"),
+    ].filter((button) =>
+      button.textContent?.includes(WHATS_NEW_HERO.feedbackCta),
+    )
+
+    expect(heroLabelled.length).toBeGreaterThanOrEqual(2)
+    expect(filled).toHaveLength(2)
+    // Anti-vacuous: filled means filled, not merely outlined-and-hovered.
+    for (const button of filled) {
+      expect(button.className).not.toContain("bg-white/5")
     }
   })
 
