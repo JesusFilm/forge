@@ -25,6 +25,10 @@ import {
   WATCH_HOME_CATEGORY_CATALOG,
   type WatchHomeCategoryId,
 } from "@forge/watch-url-policy/watch-home-categories"
+import {
+  WATCH_HOME_CATEGORY_TILE_DEFAULTS,
+  watchHomeTileGradient,
+} from "@forge/watch-url-policy/watch-home-tiles"
 
 export type { WatchHomeCategoryId }
 
@@ -39,69 +43,38 @@ export type WatchHomeCategory = {
   gradient: string
 }
 
-type WatchHomeCategoryPresentation = Pick<
-  WatchHomeCategory,
-  "titleKey" | "gradient"
->
+type WatchHomeCategoryTitleKeys = Record<WatchHomeCategoryId, string>
 
-const WATCH_HOME_CATEGORY_PRESENTATION_BY_ID = {
-  jesus: {
-    titleKey: "jesus",
-    gradient: "linear-gradient(135deg, #b91c1c 0%, #7f1d1d 100%)",
-  },
-  gospels: {
-    titleKey: "gospels",
-    gradient: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-  },
-  "short-videos": {
-    titleKey: "shortVideos",
-    gradient: "linear-gradient(135deg, #f97316 0%, #c2410c 100%)",
-  },
-  family: {
-    titleKey: "family",
-    gradient: "linear-gradient(135deg, #fa709a 0%, #fee140 100%)",
-  },
-  relationships: {
-    titleKey: "relationships",
-    gradient: "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)",
-  },
-  women: {
-    titleKey: "women",
-    gradient: "linear-gradient(135deg, #a855f7 0%, #6d28d9 100%)",
-  },
-  students: {
-    titleKey: "students",
-    gradient: "linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)",
-  },
-  sports: {
-    titleKey: "sports",
-    gradient: "linear-gradient(135deg, #0ea5e9 0%, #1d4ed8 100%)",
-  },
-  "good-news": {
-    titleKey: "goodNews",
-    gradient: "linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)",
-  },
-  hope: {
-    titleKey: "hope",
-    gradient: "linear-gradient(135deg, #14b8a6 0%, #0f766e 100%)",
-  },
-  training: {
-    titleKey: "training",
-    gradient: "linear-gradient(135deg, #64748b 0%, #334155 100%)",
-  },
-  easter: {
-    titleKey: "easter",
-    gradient: "linear-gradient(135deg, #f59e0b 0%, #b45309 100%)",
-  },
-  christmas: {
-    titleKey: "christmas",
-    gradient: "linear-gradient(135deg, #dc2626 0%, #991b1b 100%)",
-  },
-} as const satisfies Record<WatchHomeCategoryId, WatchHomeCategoryPresentation>
+/**
+ * Localized-copy keys stay here; the gradient does NOT. Since admins can pick
+ * a tile's visual style in the experience editor, the gradient VALUES live in
+ * the shared `WATCH_HOME_TILE_STYLES` catalog and each category names one of
+ * them through `WATCH_HOME_CATEGORY_TILE_DEFAULTS`. Sourcing the default from
+ * there is what keeps the editor's swatch and this renderer showing the same
+ * colour (pinned by `watch-home-categories.test.ts`).
+ */
+const WATCH_HOME_CATEGORY_TITLE_KEY_BY_ID = {
+  jesus: "jesus",
+  gospels: "gospels",
+  "short-videos": "shortVideos",
+  family: "family",
+  relationships: "relationships",
+  women: "women",
+  students: "students",
+  sports: "sports",
+  "good-news": "goodNews",
+  hope: "hope",
+  training: "training",
+  easter: "easter",
+  christmas: "christmas",
+} as const satisfies WatchHomeCategoryTitleKeys
 
 export const WATCH_HOME_CATEGORIES = WATCH_HOME_CATEGORY_CATALOG.map(
   (category) => ({
     ...category,
-    ...WATCH_HOME_CATEGORY_PRESENTATION_BY_ID[category.id],
+    titleKey: WATCH_HOME_CATEGORY_TITLE_KEY_BY_ID[category.id],
+    gradient: watchHomeTileGradient(
+      WATCH_HOME_CATEGORY_TILE_DEFAULTS[category.id].style,
+    ),
   }),
 ) satisfies readonly WatchHomeCategory[]

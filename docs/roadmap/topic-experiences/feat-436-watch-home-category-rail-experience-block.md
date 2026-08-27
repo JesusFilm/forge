@@ -8,7 +8,8 @@ start_date: "2026-08-26"
 duration: 1
 depends_on:
   - "feat-426"
-blocks: []
+blocks:
+  - "feat-439"
 tags:
   - "admin"
   - "web"

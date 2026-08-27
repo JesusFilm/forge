@@ -1,4 +1,8 @@
 import { WATCH_HOME_CATEGORY_CATALOG } from "@forge/watch-url-policy/watch-home-categories"
+import {
+  WATCH_HOME_TILE_ICON_KEYS,
+  WATCH_HOME_TILE_STYLE_KEYS,
+} from "@forge/watch-url-policy/watch-home-tiles"
 
 export type AdminMcpToolDefinition = {
   name: string
@@ -13,8 +17,12 @@ export type AdminMcpToolDefinition = {
 }
 
 const WATCH_HOME_CATEGORY_RAIL_MCP_GUIDANCE =
-  `The watchHomeCategoryRail block is a homepage-only top-level singleton with shape {t:"watchHomeCategoryRail",categoryIds:[...]}. ` +
-  `categoryIds must be a non-empty unique subset of ${WATCH_HOME_CATEGORY_CATALOG.map(({ id }) => id).join(", ")}; array order is rendered tile order. ` +
+  `The watchHomeCategoryRail block is a homepage-only top-level singleton with shape {t:"watchHomeCategoryRail",categoryIds:[...],tiles?:[...]}. ` +
+  `categoryIds must be a non-empty unique subset of ${WATCH_HOME_CATEGORY_CATALOG.map(({ id }) => id).join(", ")}. ` +
+  `tiles is the authoritative ordered tile list when present; each tile is {id, categoryId?, title?, href?, icon?, style?} with a unique id, at most one tile per categoryId, and title/href/icon/style overriding that category's defaults. ` +
+  `A tile without categoryId is fully custom and requires both title and href; href must be a site path starting with / or an https:// URL. ` +
+  `icon must be one of ${WATCH_HOME_TILE_ICON_KEYS.join(", ")}; style must be one of ${WATCH_HOME_TILE_STYLE_KEYS.join(", ")}. ` +
+  "When tiles is present keep categoryIds as the ordered list of its predefined members so older renderers stay correct. " +
   "When changing it, send the complete blocks array and preserve unrelated blocks and their order."
 
 export const ADMIN_MCP_TOOLS = [
