@@ -199,7 +199,7 @@ export function useBibleVerses(
       const rows = outcome.value?.data?.videoBySlug?.bibleCitations ?? []
       setRead({
         status: "settled",
-        passages: collectPassages(rows as RawCitationRow[], slug),
+        passages: collectPassages(rows, slug),
       })
     })()
 
