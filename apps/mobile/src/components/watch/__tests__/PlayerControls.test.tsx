@@ -55,7 +55,11 @@ jest.mock("react-native-safe-area-context", () => ({
 import { act } from "react"
 import { Platform } from "react-native"
 
-import { PlayerControls, type PlayerControlsCastUi } from "../PlayerControls"
+import {
+  PlayerControls,
+  type PlayerControlsCastUi,
+  fullscreenCaptionOffset,
+} from "../PlayerControls"
 import type { PlaybackTarget } from "../../../lib/playbackTarget"
 import {
   TestRenderer,
@@ -629,5 +633,39 @@ describe("Cast remote mode (KTD4)", () => {
     expect(castTarget.seekTo).not.toHaveBeenCalled()
     expect(player.play).not.toHaveBeenCalled()
     await unmount(renderer)
+  })
+})
+
+/**
+ * The caption lives in VideoPlayer while the bar it must clear lives in
+ * PlayerControls, so the offset is DERIVED here rather than eyeballed there. It
+ * had been a hard-coded 92, which silently assumed one device's home-indicator
+ * inset and then rotted outright when the exit control moved above the bar.
+ */
+describe("fullscreenCaptionOffset", () => {
+  it("clears the seek bar's GRAB area, not just its visible track", () => {
+    // The track is 3pt but the touch target is 44pt. Clearing only the track
+    // would put the caption inside the area a scrub starts from.
+    expect(fullscreenCaptionOffset(0)).toBeGreaterThanOrEqual(44)
+  })
+
+  it("sits above the bar's own safe-area padding", () => {
+    // The bar pads itself by max(inset, 8), so the caption has to start from
+    // the same floor or it lands on the bar on a device with an indicator.
+    expect(fullscreenCaptionOffset(0)).toBe(8 + 44 + 6)
+    expect(fullscreenCaptionOffset(8)).toBe(8 + 44 + 6)
+  })
+
+  it("follows a larger inset point for point", () => {
+    // A landscape iPhone reports ~21 here; a device with no indicator, 0. The
+    // gap above the bar must not shrink on the former.
+    expect(fullscreenCaptionOffset(21)).toBe(21 + 44 + 6)
+    expect(fullscreenCaptionOffset(34) - fullscreenCaptionOffset(21)).toBe(13)
+  })
+
+  it("sits LOWER than the fixed offset it replaced", () => {
+    // The whole point of the change: 92 left the caption floating well clear of
+    // a bar that had already moved down. Guards a silent revert to a constant.
+    expect(fullscreenCaptionOffset(21)).toBeLessThan(92)
   })
 })

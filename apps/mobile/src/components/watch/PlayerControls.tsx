@@ -36,7 +36,7 @@ import {
 import { playerCenterControl } from "../../lib/playerCenterControl"
 import { SKIP_SECONDS } from "../../lib/tapSeek"
 import { PlatformBlur } from "../ui/PlatformBlur"
-import { Scrubber } from "./Scrubber"
+import { Scrubber, SCRUBBER_HIT_HEIGHT } from "./Scrubber"
 
 /** Cast button state (R1/R2) — derived by VideoPlayer, rendered here. */
 export type PlayerControlsCastUi = {
@@ -82,6 +82,24 @@ type PlayerControlsProps = {
 // Side inset for the bar's text and icons. The inline seek bar cancels it so
 // the track reaches the player's edges.
 const BAR_PADDING_H = 12
+
+// Gap between the pill/exit row and the seek bar below it.
+const TIME_ROW_GAP = 6
+
+/**
+ * How far above the player's bottom edge a fullscreen caption must sit to clear
+ * the seek bar — its grab area plus the row gap, on top of the safe-area
+ * padding the bar itself uses.
+ *
+ * Exported and derived rather than eyeballed: the caption lives in VideoPlayer
+ * while the bar lives here, so a hard-coded number on that side silently rots
+ * whenever this layout changes (it already did once, when the exit control moved
+ * above the bar and left the caption floating). The pill and the exit button
+ * share the caption's band and are cleared HORIZONTALLY, not vertically.
+ */
+export function fullscreenCaptionOffset(bottomInset: number): number {
+  return Math.max(bottomInset, 8) + SCRUBBER_HIT_HEIGHT + TIME_ROW_GAP
+}
 
 function formatTime(seconds: number): string {
   const mins = Math.floor(seconds / 60)
@@ -748,7 +766,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: 6,
+    marginBottom: TIME_ROW_GAP,
   },
   timeText: {
     color: TEXT_ON_OVERLAY,
