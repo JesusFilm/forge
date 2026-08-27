@@ -208,9 +208,9 @@ const issueSearchEnvelopeSchema = z
   .object({
     data: z.array(issueRowSchema),
     included: z.array(issueRowSchema).optional(),
-    // Two spellings because the envelope is UNVERIFIED (module header). Both
-    // optional: an unknown third spelling stops paging and still reports
-    // `truncated`, degrading to the old behaviour rather than to silence.
+    // Verified 2026-08-27: the live envelope sends NEITHER spelling — meta is
+    // null and no cursor exists. Both stay optional so a future cursor still
+    // gets followed, and a full page without one reports `truncated`.
     meta: z
       .object({
         status: z.unknown(),
