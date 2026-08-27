@@ -3,7 +3,7 @@ id: "feat-436"
 title: "Author the Watch category rail in Experience Editor"
 owner: "vlad"
 priority: "P1"
-status: "in-progress"
+status: "complete"
 start_date: "2026-08-26"
 duration: 1
 depends_on:
@@ -62,14 +62,28 @@ The Watch homepage category rail is inserted directly after the hero by Web code
 
 ## Implementation Evidence
 
-- The Watch homepage seed now assembles one schema-valid
-  `watchHomeCategoryRail` block immediately after `watchHomeHero`, with its
-  default `categoryIds` derived from the shared 13-entry catalog.
-- `apps/admin/src/scripts/seed-watch-homepage-experience.test.ts` proves exact
-  singleton placement and catalog order without requiring a database.
+- Admin now exposes a homepage-only singleton block with ordered, non-empty,
+  unique category IDs. The editor supports tile selection and keyboard-accessible
+  tile and block reordering while preserving Web-owned presentation.
+- Admin GraphQL, shared consumer fragments, Web rendering, preview, Mobile, and
+  TV all understand the rollout contract. Web retries only the exact old-schema
+  unknown-type response; Mobile and TV silently skip the Web-only block.
+- The Watch homepage seed uses the shared 13-entry catalog. New Admin reads
+  synthesize the legacy-equivalent rail only before activation, and the reviewed
+  post-deploy backfill makes authored presence or absence authoritative.
 - `docs/runbooks/watch-home-category-rail-rollout.md` documents either-order
-  forward deployment, post-deploy backfill checks, old-schema compatibility behavior, and
-  the Web-first/data-cleanup/Admin-last rollback sequence.
-- Focused seed verification passed locally. Full touched-package, browser,
-  performance, staging, pull-request, and merge-readiness gates remain pending;
-  keep this ticket `in-progress` until those gates complete.
+  deployment, exact-image post-deploy activation, verification, cache
+  revalidation, and data cleanup before an old-Admin rollback.
+- Focused Admin verification passed (422 tests, 1 skipped), focused Web
+  verification passed (173 tests), Watch URL Policy passed (19 tests), full TV
+  passed (1,835 tests), all six touched TypeScript packages passed typecheck,
+  and changed-file lint and generated-artifact drift checks passed.
+- Full Admin verification reached 5,296 passing tests with four unrelated local
+  runner failures (`run-embeds` pnpm exit behavior). Full Web and Mobile runs
+  likewise exposed existing worktree runtime failures; all feature-focused suites
+  passed. Browser and route-bundle measurement could not start because this
+  worktree has no reachable PostgreSQL service, Docker access is denied, and its
+  dependency symlinks point outside Turbopack's project root. The source-level
+  gzip proxy for the four affected client modules is +739 bytes and the block
+  reuses the existing Experience request. Staging remains the rollout gate in
+  the runbook for real-service screenshots, request counts, and both deploy orders.
