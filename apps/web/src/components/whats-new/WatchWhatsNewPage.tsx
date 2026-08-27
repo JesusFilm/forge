@@ -17,6 +17,8 @@ import {
 } from "lucide-react"
 
 import { WatchHomeFooter } from "@/components/home/WatchHomeFooter"
+import { WhatsNewAiTrafficChart } from "@/components/whats-new/WhatsNewAiTrafficChart"
+import { WhatsNewAssistantPhone } from "@/components/whats-new/WhatsNewAssistantPhone"
 import { WhatsNewFeedbackButton } from "@/components/whats-new/WhatsNewFeedbackButton"
 import { WhatsNewFaq } from "@/components/whats-new/WhatsNewFaq"
 import { WhatsNewFeatureVote } from "@/components/whats-new/WhatsNewFeatureVote"
@@ -25,6 +27,7 @@ import { WhatsNewAudienceQuiz } from "@/components/whats-new/WhatsNewAudienceQui
 import { WhatsNewIceberg } from "@/components/whats-new/WhatsNewIceberg"
 import { WhatsNewLanguageSwitcher } from "@/components/whats-new/WhatsNewLanguageSwitcher"
 import {
+  WHATS_NEW_ASSISTANTS,
   WHATS_NEW_AUDIENCES,
   WHATS_NEW_CLOSING,
   WHATS_NEW_CONTENTS,
@@ -457,6 +460,181 @@ export function WatchWhatsNewPage({
           bodyClass={BODY_CLASS}
           contentClass={WATCH_PAGE_CONTENT_CLASSES}
         />
+
+        {/* The AI shift — the chart, the argument, the research */}
+        <section
+          id="assistants"
+          aria-labelledby="whats-new-assistants-heading"
+          className="relative border-t border-white/10 bg-stone-950 scroll-mt-24 md:scroll-mt-32"
+        >
+          <div
+            className={`${WATCH_PAGE_CONTENT_CLASSES} py-16 sm:py-20 lg:py-24`}
+          >
+            <header className="max-w-3xl">
+              <p className={EYEBROW_CLASS}>{WHATS_NEW_ASSISTANTS.eyebrow}</p>
+              <h2
+                id="whats-new-assistants-heading"
+                className={`mt-4 ${SECTION_HEADING_CLASS}`}
+              >
+                {WHATS_NEW_ASSISTANTS.heading}
+              </h2>
+              <div className="mt-6 space-y-5">
+                {WHATS_NEW_ASSISTANTS.intro.map((paragraph) => (
+                  <p key={paragraph} className={BODY_CLASS}>
+                    {paragraph}
+                  </p>
+                ))}
+              </div>
+            </header>
+
+            <WhatsNewAiTrafficChart />
+
+            {/* Why the traffic is worth having */}
+            <div className="mt-20 max-w-3xl lg:mt-28">
+              <p className={EYEBROW_CLASS}>
+                {WHATS_NEW_ASSISTANTS.valueEyebrow}
+              </p>
+              <h3 className={`mt-4 ${SECTION_HEADING_CLASS}`}>
+                {WHATS_NEW_ASSISTANTS.valueHeading}
+              </h3>
+            </div>
+
+            {/* The three reasons stack in a column beside a mocked-up
+                phone: they each describe one facet of the same moment, so
+                the illustration shows that moment once rather than having
+                the reader assemble it from three abstractions.
+
+                The phone column is `auto` — sized by the device, not by a
+                fraction of the row — so the cards take whatever is left
+                and the mockup never stretches. It sticks, because the
+                cards are the taller column. Below `lg` the phone drops
+                underneath the cards it illustrates. */}
+            <div className="watch-scroll-chat-stage mt-10 grid items-start gap-10 lg:mt-14 lg:grid-cols-[minmax(0,1fr)_auto] lg:gap-16">
+              <ul className="grid gap-6 lg:gap-8">
+                {WHATS_NEW_ASSISTANTS.reasons.map((reason) => {
+                  const Icon = ICONS[reason.icon]
+
+                  return (
+                    <li
+                      key={reason.title}
+                      data-testid="whats-new-assistant-reason"
+                      style={{ "--tint": reason.tint } as CSSProperties}
+                      className="relative isolate overflow-hidden rounded-3xl border border-[color-mix(in_srgb,var(--tint)_38%,transparent)] bg-[color-mix(in_srgb,var(--tint)_7%,transparent)] p-7 sm:p-8"
+                    >
+                      <span
+                        aria-hidden
+                        className="pointer-events-none absolute -top-24 -left-16 -z-10 h-56 w-56 rounded-full bg-[radial-gradient(closest-side,color-mix(in_srgb,var(--tint)_34%,transparent),transparent_72%)] blur-2xl"
+                      />
+                      {/* Full-opacity colour on the icon itself: a
+                          fractional `text-*` alpha would light up every
+                          stroke crossing inside the glyph (see the
+                          icon-alpha rule above). */}
+                      <span className="grid size-12 place-items-center rounded-full border border-[color-mix(in_srgb,var(--tint)_55%,transparent)] bg-stone-950 text-[var(--tint)]">
+                        <Icon
+                          aria-hidden
+                          className="size-5"
+                          strokeWidth={1.75}
+                        />
+                      </span>
+                      <h4 className="mt-6 text-lg font-semibold text-balance text-white sm:text-xl">
+                        {reason.title}
+                      </h4>
+                      <p className="mt-3 text-base leading-7 text-white/76">
+                        {reason.body}
+                      </p>
+                    </li>
+                  )
+                })}
+              </ul>
+
+              <div className="justify-self-center lg:sticky lg:top-28">
+                <WhatsNewAssistantPhone />
+              </div>
+            </div>
+
+            {/* The research */}
+            <div className="mt-20 max-w-3xl lg:mt-28">
+              <p className={EYEBROW_CLASS}>
+                {WHATS_NEW_ASSISTANTS.researchEyebrow}
+              </p>
+              <h3 className={`mt-4 ${SECTION_HEADING_CLASS}`}>
+                {WHATS_NEW_ASSISTANTS.researchHeading}
+              </h3>
+              <div className="mt-6 space-y-5">
+                {WHATS_NEW_ASSISTANTS.researchIntro.map((paragraph) => (
+                  <p key={paragraph} className={BODY_CLASS}>
+                    {paragraph}
+                  </p>
+                ))}
+              </div>
+            </div>
+
+            {/* The argument and its evidence sit side by side: the closing
+                copy opens with "put those findings next to each other",
+                and on a wide screen they literally are. The copy sticks
+                while the studies scroll past it.
+
+                DOM order is studies-then-copy so the single-column phone
+                layout still reads in argument order — the grid only swaps
+                them once there are two columns to swap. */}
+            <div className="mt-20 grid items-start gap-12 lg:mt-28 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1fr)] lg:gap-16">
+              {/* Every claim is a link. A statistic on a public page that a
+                  reader cannot check is worth less than no statistic. */}
+              <ol className="grid gap-px overflow-hidden rounded-3xl border border-white/12 bg-white/12 lg:order-2">
+                {WHATS_NEW_ASSISTANTS.sources.map((source) => (
+                  <li
+                    key={source.id}
+                    data-testid="whats-new-assistant-source"
+                    className="flex flex-col gap-4 bg-stone-950 p-7 sm:p-8"
+                  >
+                    <blockquote className="border-l-2 border-red-100/50 pl-5 text-base leading-7 font-medium text-balance text-white sm:text-lg sm:leading-8">
+                      <p>&ldquo;{source.quote}&rdquo;</p>
+                      <footer className="mt-2 text-sm leading-6 font-normal text-white/50">
+                        — {source.quoteNote}
+                      </footer>
+                    </blockquote>
+
+                    <p className="text-base leading-7 text-white/76">
+                      {source.finding}
+                    </p>
+
+                    <p className="mt-auto text-sm leading-6 text-white/50">
+                      <a
+                        href={source.href}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="font-semibold text-white underline decoration-white/30 underline-offset-4 transition-colors hover:decoration-white focus-visible:outline-2 focus-visible:outline-white focus-visible:outline-offset-4"
+                      >
+                        {source.publication}
+                      </a>
+                      <span className="mx-2 text-white/25">·</span>
+                      {source.attribution}
+                      <span className="mx-2 text-white/25">·</span>
+                      <span className="tabular-nums">{source.date}</span>
+                    </p>
+                  </li>
+                ))}
+              </ol>
+
+              {/* The turn: what the research obliges us to do. */}
+              <div className="lg:sticky lg:top-28 lg:order-1">
+                <p className={EYEBROW_CLASS}>
+                  {WHATS_NEW_ASSISTANTS.closingEyebrow}
+                </p>
+                <h3 className={`mt-4 ${SECTION_HEADING_CLASS}`}>
+                  {WHATS_NEW_ASSISTANTS.closingHeading}
+                </h3>
+                <div className="mt-6 space-y-5">
+                  {WHATS_NEW_ASSISTANTS.closing.map((paragraph) => (
+                    <p key={paragraph} className={BODY_CLASS}>
+                      {paragraph}
+                    </p>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
 
         {/* What is improving */}
         <section

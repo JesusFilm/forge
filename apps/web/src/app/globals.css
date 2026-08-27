@@ -572,6 +572,72 @@
   }
 }
 
+/* --- AI-traffic trend line -------------------------------------------
+   The chart's argument is the SHAPE over time, so it is revealed left to
+   right as the section scrolls: the reader watches the flat years pass
+   before the climb arrives, which is the point the section is making.
+   Clipping the whole group (line plus area fill) rather than animating a
+   stroke dash keeps the two in step for free. */
+
+@keyframes watch-scroll-trend {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+/* --- Scroll-linked chat reel -----------------------------------------
+   The phone beside the three "why this traffic matters" cards plays its
+   conversation as the reader scrolls those cards: question, answer, then
+   the cited film. The phone column is sticky, so the cards move past a
+   held device and the transcript advances with them.
+
+   Travel is the reel's own height less one screenful, which lands the
+   last message flush with the bottom of the viewport rather than
+   scrolling past into blank space. `--chat-viewport` is set by the
+   component; the two halves of that arithmetic must move together. */
+
+/* Driven through an animated custom property rather than a named view
+   timeline. `view-timeline-name` + `animation-timeline: --name` DOES
+   resolve here — the reel gets a real ViewTimeline object — but that
+   timeline never advances: its currentTime sat at -354% at the top of the
+   page and was still -354% with the stage centred in the viewport.
+   Anonymous `view()` on the same page tracks correctly, so the progress
+   is measured on the stage with `view()` and inherited down to the reel,
+   which cannot use `view()` itself (its own subject is a sticky column
+   inside an `overflow-hidden` screen, where its progress is meaningless).
+
+   `inherits: true` is the whole mechanism; without the `@property`
+   registration the value is an unanimatable token and the reel never
+   moves. Initial value 0 means every fallback path — no scroll-driven
+   animation, reduced motion, no `@property` support — parks the
+   transcript at the top on the question rather than mid-conversation. */
+@property --watch-chat-progress {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 0;
+}
+
+@keyframes watch-scroll-chat-progress {
+  from {
+    --watch-chat-progress: 0;
+  }
+  to {
+    --watch-chat-progress: 1;
+  }
+}
+
+/* Not named `watch-scroll-*`: this is a static declaration that must apply
+   everywhere, and the guard test requires every `.watch-scroll-` rule to
+   live inside the scroll-driven block. At progress 0 it is a no-op. */
+.watch-chat-reel {
+  transform: translateY(
+    calc(var(--watch-chat-progress, 0) * (-100% + var(--chat-viewport)))
+  );
+}
+
 .watch-berg-bob {
   transform-box: view-box;
   transform-origin: 160px 200px;
@@ -910,6 +976,48 @@
         animation-timeline: view();
         animation-range: entry 18% cover 42%;
         will-change: clip-path;
+      }
+
+      /* One wipe over the whole plot box — the SVG and the endpoint marker
+         together — rather than an animation each.
+
+         Two animations cannot be kept in step here. `view()` resolves per
+         element, and the marker is a 16px dot near the top of the plot
+         while the line's subject is the full-height plot: different boxes,
+         different clocks, and the dot fades in long before the line has
+         drawn far enough to reach it. Hand-tuning a second `animation-
+         range` only hides that at one viewport size.
+
+         Wiping their shared parent instead makes the sync structural: the
+         marker sits at the right-hand edge, so the same left-to-right
+         sweep that draws the line uncovers the dot at the exact moment the
+         line arrives under it, at every width, for free.
+
+         Same "start state lives inside the guard" rule as the berg — a
+         browser without scroll-driven animation must get the finished
+         chart, never a permanently clipped one. */
+      .watch-scroll-trend {
+        animation: watch-scroll-trend linear both;
+        animation-timeline: view();
+        animation-range: entry 30% cover 55%;
+        will-change: clip-path;
+      }
+
+      /* The reasons/phone grid names the timeline; the reel inside the
+         phone reads it. A named timeline rather than `view()` because the
+         subject has to be the STAGE the reader is scrolling past, not the
+         reel itself — the reel is inside a sticky column and inside an
+         `overflow-hidden` screen, so its own view() progress is close to
+         meaningless.
+
+         Start state is `translateY(0)`, which is also the no-animation
+         default, so a browser without scroll-driven animation and a reader
+         with reduced motion both get the transcript parked at the top on
+         the question. Nothing is hidden that the reveal has to give back. */
+      .watch-scroll-chat-stage {
+        animation: watch-scroll-chat-progress linear both;
+        animation-timeline: view();
+        animation-range: cover 25% cover 80%;
       }
 
       .watch-scroll-fan {
