@@ -627,9 +627,15 @@ export function PlayerControls({
             },
           ]}
         >
-          <View style={styles.timeRow}>{timePill}</View>
+          {/* Exit sits ABOVE the seek bar. Below it, its 44pt row pushed the
+              bar up off the bottom edge — the whole point of landscape is that
+              the bar hugs the screen's bottom. `timeRow` is already
+              space-between, so the pill keeps the left and exit takes the right. */}
+          <View style={styles.timeRow}>
+            {timePill}
+            <View style={styles.iconRow}>{fullscreenButton}</View>
+          </View>
           {scrubber}
-          <View style={styles.iconRow}>{fullscreenButton}</View>
         </View>
       ) : (
         <View style={styles.bottomBar} pointerEvents="box-none">

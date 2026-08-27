@@ -212,6 +212,29 @@ describe("PlayerControls chrome", () => {
     expect(labelCount(renderer, "Fullscreen")).toBe(0)
     await unmount(renderer)
   })
+
+  it("puts the exit control ABOVE the seek bar in fullscreen", async () => {
+    // Below the bar, the exit control's 44pt row pushes the seek bar up off the
+    // bottom edge in landscape — the one place the bar should hug it.
+    //
+    // Asserted by tree ORDER, not by style: the fullscreen bottom bar is a
+    // plain flex column, so "renders earlier" IS "sits higher". A style
+    // assertion would keep passing with the two rows simply swapped back.
+    // `findAll` walks depth-first, so one query over both nodes preserves their
+    // relative position without needing to reconstruct the tree.
+    const renderer = await render(true)
+    const ordered = renderer.root.findAll(
+      (n) =>
+        n.props.accessibilityLabel === "Exit fullscreen" ||
+        n.props.accessibilityRole === "adjustable",
+    )
+    expect(ordered.length).toBeGreaterThanOrEqual(2)
+    expect(ordered[0].props.accessibilityLabel).toBe("Exit fullscreen")
+    expect(
+      ordered.some((n) => n.props.accessibilityRole === "adjustable"),
+    ).toBe(true)
+    await unmount(renderer)
+  })
 })
 
 describe("AirPlay button (U1)", () => {
