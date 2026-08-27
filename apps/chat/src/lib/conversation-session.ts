@@ -221,6 +221,16 @@ function seedAdoptedConversation(id: string): Conversation {
  * hydration stamp; deselected it falls to last naturally, its key is 0) —
  * then everything else activity-descending: local conversations by the
  * `lastActivityAt` stamped on send, server rows by their listed `updatedAt`.
+ *
+ * feat-401 note — the fresh-empty-LOCAL pin below is now UNOBSERVABLE through
+ * `listConversations`: it pins rows matching `origin !== "server" &&
+ * messages.length === 0`, and that projection now keeps only
+ * `origin === "server" || messages.length > 0`, which no row can satisfy at
+ * the same time. It is dead policy through the sidebar, kept because the
+ * function is the general ordering primitive and its SECOND pin — feat-209
+ * R3's ACTIVE adopted server row awaiting its hydration stamp — still governs
+ * a visible row. Do not read the first branch as live sidebar policy.
+ *
  * Pure — exported for direct unit coverage.
  */
 export function orderConversations(
@@ -501,8 +511,8 @@ export function createConversationSession(
         : c
     if (activeConversation !== undefined && isRemovable(activeConversation)) {
       // The active pane is a disappearing server row — land on the existing
-      // fresh local conversation when one is left, else mint one (never both:
-      // a duplicate "New conversation" row would linger in the rail).
+      // fresh local conversation when one is left, else mint one. Never both:
+      // post-feat-401 a second one is invisible, so it strands unreachable.
       const fallback = conversations.find(
         (c) =>
           !isRemovable(c) && c.origin !== "server" && c.messages.length === 0,

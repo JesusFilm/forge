@@ -107,9 +107,9 @@ export function AppShell({
   // most natural escapes move no conversation id (see dismissUnresolvable).
   const [unresolvableActive, setUnresolvableActive] =
     useState(deepLinkUnresolvable)
-  // Explicit because activeId cannot detect the release: the landing row IS
-  // the fresh empty one, so New no-ops and clicking that active rail row
-  // early-returns. Setting false when already false skips the re-render.
+  // Explicit because activeId cannot detect the release: the landing
+  // conversation IS the fresh empty one, so New no-ops and moves no id
+  // (and since feat-401 it has no rail row to click either).
   const dismissUnresolvable = useCallback(
     () => setUnresolvableActive(false),
     [],

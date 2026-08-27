@@ -115,6 +115,9 @@ export function isPending(): boolean {
   return getLog().querySelector("[data-pending]") !== null
 }
 
+// The rail's New ACTION, told apart from a same-named ROW by excluding <nav>.
+// Still not vacuous after feat-401: a row titled from a first message of the
+// literal text "New conversation" collides again (no test sends it today).
 export function getNewConversationAction(): HTMLButtonElement {
   const nav = getConversationNav()
   const action = screen

@@ -3,7 +3,7 @@ id: "feat-401"
 title: "Sidebar: no placeholder row for an unstarted conversation"
 owner: "jian wei"
 priority: "P3"
-status: "not-started"
+status: "in-progress"
 start_date: "2026-09-01"
 duration: 1
 depends_on:
@@ -140,6 +140,19 @@ focused — no perceptible feedback at all. Clearing the draft in
 touching `newConversation`'s protected reuse semantics; add a verification case
 for "draft present + press New while already unstarted". Do not add a row back
 to solve any of this.
+
+**DECIDED 2026-08-21 — do NOT clear the draft. This paragraph's prescription is
+superseded; the rest of the ticket stands.** The draft clear was built, tried in
+the browser, and rejected by the owner. The paragraph's premise is what failed:
+it treats "no perceptible feedback" as a gap, but pressing New on an already
+unstarted conversation SHOULD be a dead button, and silence is the correct
+answer rather than a defect. Checked against prior art — Claude and Gemini both
+KEEP a typed draft across a New press. Discarding text the user typed is the
+worse failure by a wide margin: the feedback it buys is not worth it, and there
+is no undo. `newConversationFocused` therefore does not call `setDraft("")`, and
+`app-shell.test.tsx` keeps the feat-270 case "keeps the draft when New lands on
+the already-empty active pane" unchanged. The row-removal half of this ticket is
+unaffected — it was implemented as specified.
 
 ## Constraints
 
