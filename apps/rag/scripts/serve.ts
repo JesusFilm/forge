@@ -1,0 +1,39 @@
+import { fileURLToPath } from "node:url"
+
+import { serve } from "@hono/node-server"
+
+import { loadEnvironmentFiles, parseRuntimeEnv } from "../src/config/env.js"
+import { wire } from "../src/main.js"
+import { createApp, parseTokenRegistry } from "../src/serving/http/index.js"
+
+const packageDirectory = fileURLToPath(new URL("..", import.meta.url))
+
+async function main(): Promise<void> {
+  const input = loadEnvironmentFiles(packageDirectory)
+  const env = parseRuntimeEnv(input)
+  if (!env.SERVE_BEARER_TOKENS) {
+    throw new Error("SERVE_BEARER_TOKENS is required to start the HTTP service")
+  }
+
+  const wiring = wire(input)
+  const app = createApp({
+    retriever: wiring.retriever,
+    tokens: parseTokenRegistry(env.SERVE_BEARER_TOKENS),
+  })
+  const server = serve({ fetch: app.fetch, port: env.PORT }, ({ port }) => {
+    console.error(`serve: /v1 listening on :${port}`)
+  })
+
+  const close = (): void => {
+    server.close(() => {
+      void wiring.shutdown().finally(() => process.exit(0))
+    })
+  }
+  process.on("SIGINT", close)
+  process.on("SIGTERM", close)
+}
+
+main().catch((error: unknown) => {
+  console.error("serve failed", error)
+  process.exit(1)
+})
