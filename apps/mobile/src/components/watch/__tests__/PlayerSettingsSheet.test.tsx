@@ -280,19 +280,58 @@ describe("cast-state snap (decision 5)", () => {
   })
 })
 
+/**
+ * The sheet owns BOTH of its animations now (the Modal is `animationType="none"`,
+ * because RN's own "slide" translates the scrim along with the panel). The host
+ * unmounts this component on `onClose`, so the exit has to run BEFORE that call
+ * lands — which makes dismissal deferred by one EXIT_MS timer rather than
+ * synchronous. Each case asserts BOTH halves: nothing fires on the press, and
+ * it does fire once the timer runs. Asserting only the second half would stay
+ * green if the exit animation were dropped entirely.
+ */
 describe("dismissal", () => {
-  it("closes from the close affordance", async () => {
+  beforeEach(() => {
+    jest.useFakeTimers()
+  })
+  afterEach(() => {
+    jest.useRealTimers()
+  })
+
+  // Comfortably past EXIT_MS; the exact duration is the component's business.
+  async function runExitAnimation() {
+    await act(async () => {
+      jest.advanceTimersByTime(400)
+    })
+  }
+
+  it("closes from the close affordance, after the exit animation", async () => {
     const onClose = jest.fn()
     const renderer = await render({ onClose })
     await press(pressableByLabel(renderer, "Close"))
+    expect(onClose).not.toHaveBeenCalled()
+    await runExitAnimation()
     expect(onClose).toHaveBeenCalledTimes(1)
     await unmount(renderer)
   })
 
-  it("closes on a backdrop tap", async () => {
+  it("closes on a backdrop tap, after the exit animation", async () => {
     const onClose = jest.fn()
     const renderer = await render({ onClose })
     await press(pressableByLabel(renderer, "Dismiss settings"))
+    expect(onClose).not.toHaveBeenCalled()
+    await runExitAnimation()
+    expect(onClose).toHaveBeenCalledTimes(1)
+    await unmount(renderer)
+  })
+
+  it("collapses a double dismiss into ONE close", async () => {
+    // Both affordances stay mounted through the exit, so a second tap must not
+    // schedule a second onClose against a host that has already been told once.
+    const onClose = jest.fn()
+    const renderer = await render({ onClose })
+    await press(pressableByLabel(renderer, "Dismiss settings"))
+    await press(pressableByLabel(renderer, "Close"))
+    await runExitAnimation()
     expect(onClose).toHaveBeenCalledTimes(1)
     await unmount(renderer)
   })
@@ -315,7 +354,68 @@ describe("dismissal", () => {
     await act(async () => {
       ;(modals[0].props.onRequestClose as () => void)()
     })
+    await runExitAnimation()
     expect(onClose).toHaveBeenCalledTimes(1)
+    await unmount(renderer)
+  })
+
+  it("lets the Modal animate nothing, so the scrim and panel can differ", async () => {
+    // RN's `animationType="slide"` translates the modal's WHOLE subtree, scrim
+    // included — which is the bug: the dimming arrives as a dark rectangle
+    // dragged up the screen with a hard moving edge, instead of the room
+    // fading. Anything but "none" hands both animations back to RN.
+    const renderer = await render()
+    const modal = renderer.root.findAll((n) => n.props.transparent === true)[0]
+    expect(modal.props.animationType).toBe("none")
+    await unmount(renderer)
+  })
+})
+
+describe("presentation (scrim fades, panel slides)", () => {
+  /** An Animated node exposes __getValue; a plain number does not. */
+  function isAnimated(v: unknown): boolean {
+    return (
+      typeof v === "object" &&
+      v !== null &&
+      typeof (v as { __getValue?: unknown }).__getValue === "function"
+    )
+  }
+
+  function flatten(style: unknown): Record<string, unknown> {
+    const out: Record<string, unknown> = {}
+    const walk = (s: unknown) => {
+      if (Array.isArray(s)) return s.forEach(walk)
+      if (s && typeof s === "object") Object.assign(out, s)
+    }
+    walk(style)
+    return out
+  }
+
+  it("fades the scrim by animating OPACITY, never by moving it", async () => {
+    const renderer = await render()
+    const scrims = renderer.root.findAll((n) => {
+      const st = flatten(n.props.style)
+      return (
+        typeof st.backgroundColor === "string" &&
+        st.backgroundColor.startsWith("rgba(") &&
+        st.position === "absolute" &&
+        isAnimated(st.opacity)
+      )
+    })
+    expect(scrims.length).toBeGreaterThan(0)
+    // A scrim that also carried a transform would be sliding again.
+    expect(flatten(scrims[0].props.style).transform).toBeUndefined()
+    await unmount(renderer)
+  })
+
+  it("slides the panel by animating its OFFSET", async () => {
+    const renderer = await render()
+    const panels = renderer.root.findAll((n) => {
+      const st = flatten(n.props.style)
+      const t = st.transform as Array<Record<string, unknown>> | undefined
+      return Array.isArray(t) && t.some((e) => isAnimated(e.translateY))
+    })
+    expect(panels.length).toBeGreaterThan(0)
     await unmount(renderer)
   })
 })
