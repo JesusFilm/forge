@@ -3,6 +3,14 @@ import { join } from "node:path"
 
 import { z } from "zod"
 
+import {
+  environmentConfigurationError,
+  ENVIRONMENT_TARGETS,
+  type EnvironmentTarget,
+} from "./environment-error.js"
+
+export { ENVIRONMENT_TARGETS, type EnvironmentTarget }
+
 export const DEFAULT_EMBED_MODEL_ID = "qwen/qwen3-embedding-8b"
 export const DEFAULT_LANG_DETECT_MODEL_ID = "google/gemini-2.5-flash-lite"
 
@@ -143,12 +151,7 @@ const runtimeEnvSchema = z
 
 export type RuntimeEnv = z.infer<typeof runtimeEnvSchema>
 
-/**
- * Preserve the source repository's deliberate safety boundary. The OpenRouter
- * spend key is environment-agnostic, so its namespaced Doppler value may fill
- * the plain name. Production DB, model, and bearer values never fall through
- * here; production-intent callers must opt in via resolveProductionEnv().
- */
+/** Only the environment-agnostic OpenRouter key may use a namespaced fallback. */
 export function applyNamespacedEnvFallbacks(env: EnvironmentInput): void {
   if (!env.OPENROUTER_API_KEY?.trim() && env.JFRAG_OPENROUTER_API_KEY?.trim()) {
     env.OPENROUTER_API_KEY = env.JFRAG_OPENROUTER_API_KEY
@@ -173,21 +176,6 @@ export function parseSmokeEnv(input: EnvironmentInput): SmokeEnv {
   return smokeEnvSchema.parse(input)
 }
 
-export const ENVIRONMENT_TARGETS = [
-  "local",
-  "ci",
-  "railway",
-  "firecrawl",
-  "language-sweep",
-  "eval",
-  "smoke",
-  "dashboard",
-  "production-read",
-  "production-write",
-] as const
-
-export type EnvironmentTarget = (typeof ENVIRONMENT_TARGETS)[number]
-
 export function assertEnvironmentForTarget(
   input: EnvironmentInput,
   target: EnvironmentTarget,
@@ -206,15 +194,25 @@ export function assertEnvironmentForTarget(
 
   const env = parseRuntimeEnv(input)
   if (target === "railway" && !env.SERVE_BEARER_TOKENS) {
-    throw new Error("SERVE_BEARER_TOKENS is required for the Railway service")
+    throw environmentConfigurationError(
+      "railway_bearer_tokens_required",
+      "SERVE_BEARER_TOKENS is required for the Railway service",
+      target,
+    )
   }
   if (target === "firecrawl" && !env.FIRECRAWL_API_KEY) {
-    throw new Error(
+    throw environmentConfigurationError(
+      "firecrawl_api_key_required",
       "FIRECRAWL_API_KEY is required when acquiring a Firecrawl-backed source",
+      target,
     )
   }
   if (target === "language-sweep" && !env.LANGUAGE_SWEEP_OUT_DIR) {
-    throw new Error("LANGUAGE_SWEEP_OUT_DIR is required for a language sweep")
+    throw environmentConfigurationError(
+      "language_sweep_output_required",
+      "LANGUAGE_SWEEP_OUT_DIR is required for a language sweep",
+      target,
+    )
   }
   return env
 }
@@ -225,39 +223,44 @@ export type ProductionEnv = {
   EMBED_MODEL_ID: string
 }
 
-function firstPresent(
-  ...values: Array<string | undefined>
-): string | undefined {
-  return values.find((value) => value?.trim())?.trim()
-}
-
 export function resolveProductionEnv(
   input: EnvironmentInput,
   options: { write?: boolean; expectHost?: string } = {},
 ): ProductionEnv {
   if (options.write && input.JFRAG_ALLOW_PROD_WRITE !== "1") {
-    throw new Error(
+    throw environmentConfigurationError(
+      "production_write_opt_in_required",
       "production write refused: set JFRAG_ALLOW_PROD_WRITE=1 as the second deliberate signal",
+      "production-write",
     )
   }
   if (options.write && !options.expectHost?.trim()) {
-    throw new Error(
+    throw environmentConfigurationError(
+      "production_write_host_required",
       "production write refused: JFRAG_EXPECTED_POSTGRES_HOST is required as the target-host guard",
+      "production-write",
     )
   }
 
   const databaseUrl = input.JFRAG_POSTGRESQL_DB_URL?.trim()
   const openrouterKey = input.JFRAG_OPENROUTER_API_KEY?.trim()
   const embedModel =
-    firstPresent(input.JFRAG_OPENROUTER_EMBED_MODEL_ID) ??
-    DEFAULT_EMBED_MODEL_ID
+    input.JFRAG_OPENROUTER_EMBED_MODEL_ID?.trim() || DEFAULT_EMBED_MODEL_ID
 
   if (!databaseUrl) {
-    throw new Error("JFRAG_POSTGRESQL_DB_URL is required for production")
+    throw environmentConfigurationError(
+      "production_database_required",
+      "JFRAG_POSTGRESQL_DB_URL is required for production",
+      options.write ? "production-write" : "production-read",
+    )
   }
   const parsedDatabaseUrl = postgresUrl.parse(databaseUrl)
   if (!openrouterKey) {
-    throw new Error("JFRAG_OPENROUTER_API_KEY is required for production")
+    throw environmentConfigurationError(
+      "production_openrouter_key_required",
+      "JFRAG_OPENROUTER_API_KEY is required for production",
+      options.write ? "production-write" : "production-read",
+    )
   }
 
   if (
@@ -265,8 +268,10 @@ export function resolveProductionEnv(
     new URL(parsedDatabaseUrl).hostname !==
       options.expectHost.trim().toLowerCase()
   ) {
-    throw new Error(
+    throw environmentConfigurationError(
+      "production_database_host_mismatch",
       `expected database host does not match the resolved host; aborting before connection`,
+      options.write ? "production-write" : "production-read",
     )
   }
 
@@ -296,11 +301,17 @@ export function resolveDashboardDatabase(
 
   const generic = input.DATABASE_URL?.trim()
   if (!generic) {
-    throw new Error("JFRAG_POSTGRESQL_DB_URL is required for a dashboard read")
+    throw environmentConfigurationError(
+      "dashboard_database_required",
+      "JFRAG_POSTGRESQL_DB_URL is required for a dashboard read",
+      "dashboard",
+    )
   }
   if (!options.allowDev) {
-    throw new Error(
+    throw environmentConfigurationError(
+      "dashboard_generic_database_refused",
       "Refusing a production dashboard snapshot from DATABASE_URL; use the explicit namespaced production credential",
+      "dashboard",
     )
   }
   return { url: postgresUrl.parse(generic), source: "DATABASE_URL" }

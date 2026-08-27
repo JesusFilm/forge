@@ -8,12 +8,13 @@
     "env:check": "tsx scripts/check-env.ts",
     "env:check:ci": "DATABASE_URL=postgresql://ci:ci@localhost:5432/rag OPENROUTER_API_KEY=ci-placeholder tsx scripts/check-env.ts ci",
     "lint": "eslint .",
-    "test": "pnpm depcruise && tsx --test tests/*.test.mjs",
+    "test": "pnpm depcruise && vitest run",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
-    "dependency-cruiser": "^17.4.0"
+    "dependency-cruiser": "^17.4.0",
+    "vitest": "3.2.4"
   },
   "dependencies": {
     "zod": "^4.3.6"

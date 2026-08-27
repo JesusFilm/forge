@@ -1,9 +1,12 @@
 import assert from "node:assert/strict"
+import { execFile } from "node:child_process"
 import { mkdtemp, readFile, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import test from "node:test"
+import { promisify } from "node:util"
 import { URL } from "node:url"
+
+import { test } from "vitest"
 
 import {
   applyNamespacedEnvFallbacks,
@@ -16,6 +19,9 @@ import {
   resolveDashboardDatabase,
   resolveProductionEnv,
 } from "../src/config/env.ts"
+import { EnvironmentConfigurationError } from "../src/config/environment-error.ts"
+
+const execFileAsync = promisify(execFile)
 
 const runtimeEnv = {
   DATABASE_URL: "postgresql://local:password@localhost:5434/jesusfilm_rag",
@@ -124,10 +130,15 @@ test("the committed example is a valid local environment", async () => {
 })
 
 test("railway validation requires and validates scoped bearer JSON", () => {
-  assert.throws(
-    () => assertEnvironmentForTarget(runtimeEnv, "railway"),
-    /SERVE_BEARER_TOKENS/,
-  )
+  let error
+  try {
+    assertEnvironmentForTarget(runtimeEnv, "railway")
+  } catch (caught) {
+    error = caught
+  }
+  assert.ok(error instanceof EnvironmentConfigurationError)
+  assert.equal(error.code, "railway_bearer_tokens_required")
+  assert.equal(error.target, "railway")
   assert.throws(
     () =>
       assertEnvironmentForTarget(
@@ -201,6 +212,16 @@ test("production resolution is explicit and write operations need a second signa
 })
 
 test("production resolution rejects generic database and model fallbacks", () => {
+  assert.throws(
+    () =>
+      resolveProductionEnv({
+        JFRAG_POSTGRESQL_DB_URL:
+          "postgresql://prod:password@prod.example.test:5432/rag",
+        OPENROUTER_API_KEY: "generic-key",
+      }),
+    /JFRAG_OPENROUTER_API_KEY/,
+  )
+
   assert.throws(
     () =>
       resolveProductionEnv({
@@ -302,4 +323,37 @@ test("database diagnostics redact credentials", () => {
 
   assert.equal(redacted, "postgresql://rag:***@prod.example.test:5432/rag")
   assert.equal(redacted.includes(secret), false)
+})
+
+test("environment CLI failures do not print injected secrets", async () => {
+  const secret = "distinctive-cli-secret"
+
+  await assert.rejects(
+    execFileAsync("pnpm", ["exec", "tsx", "scripts/check-env.ts", "railway"], {
+      cwd: new URL("..", import.meta.url),
+      env: {
+        DATABASE_URL: `postgresql://rag:${secret}@localhost:5434/rag`,
+        OPENROUTER_API_KEY: secret,
+        PATH: process.env.PATH,
+      },
+    }),
+    (error) => {
+      assert.equal(error.code, 1)
+      assert.match(error.stderr, /target=railway status=invalid/)
+      assert.equal(`${error.stdout}${error.stderr}`.includes(secret), false)
+      return true
+    },
+  )
+
+  await assert.rejects(
+    execFileAsync("pnpm", ["exec", "tsx", "scripts/check-env.ts", "unknown"], {
+      cwd: new URL("..", import.meta.url),
+      env: { PATH: process.env.PATH },
+    }),
+    (error) => {
+      assert.equal(error.code, 2)
+      assert.match(error.stderr, /usage:/)
+      return true
+    },
+  )
 })
