@@ -246,7 +246,8 @@ export const WHATS_NEW_FORMATS = [
  */
 export const WHATS_NEW_ASSISTANTS = {
   eyebrow: "The shift already underway",
-  heading: "The fastest-growing way people reach Watch is a conversation",
+  heading:
+    "The fastest-growing way people reach Jesus Film Watch is a conversation",
   intro: [
     "The chart below is referrals to our site from AI assistants — people who asked ChatGPT, Gemini, Copilot, or Perplexity a question and arrived here from the answer. For most of the period it is a flat, noisy line. Then it is not.",
     "Nothing about our catalog changed to produce the right-hand side of that curve. What changed is where people go first when they have a question.",

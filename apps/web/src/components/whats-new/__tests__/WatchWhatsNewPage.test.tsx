@@ -1803,8 +1803,10 @@ describe("WatchWhatsNewPage", () => {
 
   describe("the AI-assistant section", () => {
     it("gives every on-this-page entry a section that actually exists", () => {
-      // The nav is generated from WHATS_NEW_CONTENTS, so adding a label
-      // without its section ships a dead anchor that nothing else catches.
+      // The on-page nav that rendered these entries is gone, so
+      // WHATS_NEW_CONTENTS is now purely the registry of the page's
+      // fragment anchors. Each entry still has to name a real section:
+      // the ids remain URL targets, and a nav may return.
       for (const entry of WHATS_NEW_CONTENTS) {
         expect(container.querySelector(`#${entry.id}`)).not.toBeNull()
       }
