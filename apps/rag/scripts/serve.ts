@@ -24,7 +24,10 @@ async function main(): Promise<void> {
     console.error(`serve: /v1 listening on :${port}`)
   })
 
+  let closing = false
   const close = (): void => {
+    if (closing) return
+    closing = true
     server.close(() => {
       void wiring.shutdown().finally(() => process.exit(0))
     })

@@ -1,4 +1,4 @@
-import { z } from "zod"
+import { bearerTokenConfigSchema } from "../../contracts/index.js"
 
 export type TokenScope = {
   allowedSourceKeys: string[] | "all"
@@ -6,13 +6,8 @@ export type TokenScope = {
 
 export type TokenRegistry = ReadonlyMap<string, TokenScope>
 
-export const tokenConfigSchema = z.record(
-  z.string().min(1),
-  z.array(z.string().min(1)).min(1),
-)
-
 export function parseTokenRegistry(json: string): TokenRegistry {
-  const parsed = tokenConfigSchema.parse(JSON.parse(json))
+  const parsed = bearerTokenConfigSchema.parse(JSON.parse(json))
   return new Map(
     Object.entries(parsed).map(([token, sourceKeys]) => [
       token,

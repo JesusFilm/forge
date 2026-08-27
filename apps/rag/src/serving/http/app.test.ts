@@ -100,6 +100,7 @@ describe("POST /v1/search", () => {
 
   it("rejects an oversized body before retrieval", async () => {
     const { retriever, calls } = spyRetriever()
+    const log = vi.spyOn(console, "error").mockImplementation(() => undefined)
     const response = await createApp({ retriever, tokens }).request(
       searchRequest({ query: "x".repeat(20_000) }, "token-all"),
     )
@@ -107,6 +108,8 @@ describe("POST /v1/search", () => {
     expect(response.status).toBe(413)
     expect(await response.json()).toEqual({ error: "payload_too_large" })
     expect(calls).toHaveLength(0)
+    expect(log).not.toHaveBeenCalled()
+    log.mockRestore()
   })
 
   it("passes a scoped token's source restriction to retrieval", async () => {
