@@ -159,6 +159,73 @@ This boundary depends on the completed Better Auth 1.7 native-resource rollout
 (`feat-401`). Do not replace it with authorization-code record rewrites, a
 side-channel resource binding, or another issuer.
 
+### Grant Local Reader access
+
+Local Changelog normally authorizes through hosted Jesus Film Auth. Before
+granting access, the recipient must have signed in to Auth at least once and
+must be a verified, ACTIVE HUMAN user. Google sign-in is supported: the
+operator enters the account email only so Auth can resolve the stable user ID;
+the grant itself is stored against that ID. A linked Google account does not
+prove ACTIVE membership. If the command rejects an otherwise verified user,
+resolve an unexpected INVITED membership through the approved membership
+process; this command intentionally does not activate users.
+
+The command prompts for the email and must not receive it through command-line
+arguments:
+
+```bash
+pnpm --filter @forge/auth changelog:grant-local-reader
+```
+
+Running this command normally uses the Auth database configured in the current
+shell. Against a local Auth database, it changes local Auth only and will not
+help a Local Changelog instance that is using hosted Auth.
+
+For hosted Auth, use the following procedure only after this command has been
+merged, deployed, and checked out from a clean `main` branch:
+
+1. Inspect the target without reading environment variables:
+
+   ```bash
+   railway status \
+     --project 98952497-a4d9-4714-8fe8-0cdbff3147c9 \
+     --environment production \
+     --json
+   ```
+
+2. Verify that the output identifies project `forge`, environment
+   `production`, and lists the `@forge/auth` service with ID
+   `28b7c7be-3a22-4a95-885a-bc302e3d16a2`.
+3. Pause and obtain human confirmation of that exact target.
+4. Run the prompt-driven command with the service's injected configuration:
+
+   ```bash
+   railway run \
+     --project 98952497-a4d9-4714-8fe8-0cdbff3147c9 \
+     --environment production \
+     --service 28b7c7be-3a22-4a95-885a-bc302e3d16a2 \
+     --no-local \
+     -- pnpm --filter @forge/auth changelog:grant-local-reader
+   ```
+
+Do not run `railway variables`, `railway run env`, or
+`railway run printenv`. Do not print, copy, or paste `DATABASE_URL`, and do not
+use `railway up` for this workflow.
+
+The command can create an approved Reader grant for the Changelog Local
+environment only. It cannot grant Production, Contributor, or Admin access,
+and `AUTH_CHANGELOG_PRODUCTION_ENABLED` must remain disabled. After the grant,
+reconnect the Changelog MCP so the OAuth flow issues a fresh token for
+`http://localhost:3000/mcp`.
+
+Verify the new token by calling the MCP `list_entries` tool. A successful
+response with an empty entries array is valid when the developer's local
+Changelog PostgreSQL database has no entries; an authorization or
+insufficient-scope error is the failure signal.
+
+Changelog repository wording and policy documentation are tracked separately
+in [JesusFilm/jfp-changelog#81](https://github.com/JesusFilm/jfp-changelog/issues/81).
+
 ## 2026-05-12 Provisioning Status
 
 - Created Railway service `@forge/auth`.
