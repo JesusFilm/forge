@@ -50,7 +50,7 @@ module.exports = {
       from: { path: "^src/" },
       to: {
         couldNotResolve: true,
-        pathNot: "^(?:@forge/rag-contracts|tinyld)$",
+        pathNot: "^(?:@forge/rag-contracts|hono|hono/body-limit|tinyld)$",
       },
     },
     {

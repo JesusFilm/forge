@@ -8,6 +8,7 @@ import {
   ENVIRONMENT_TARGETS,
   type EnvironmentTarget,
 } from "./environment-error.js"
+import { bearerTokenConfigSchema } from "../contracts/index.js"
 
 export { ENVIRONMENT_TARGETS, type EnvironmentTarget }
 
@@ -86,14 +87,9 @@ const postgresUrl = z
     { message: "must be a Postgres URL" },
   )
 
-const bearerTokenConfig = z.record(
-  z.string().min(1),
-  z.array(z.string().min(1)).min(1),
-)
-
 function validBearerTokenConfig(value: string): boolean {
   try {
-    return bearerTokenConfig.safeParse(JSON.parse(value)).success
+    return bearerTokenConfigSchema.safeParse(JSON.parse(value)).success
   } catch {
     return false
   }
