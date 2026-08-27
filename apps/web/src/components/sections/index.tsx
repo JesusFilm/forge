@@ -28,6 +28,7 @@ import type { RelatedQuestions as RelatedQuestionsType } from "./RelatedQuestion
 import type { CarouselVideo as CarouselVideoType } from "./CarouselVideo"
 import type { NavigationCarousel as NavigationCarouselType } from "./NavigationCarousel"
 import type { LanguageGlobeExperience as LanguageGlobeExperienceType } from "./LanguageGlobeExperience"
+import type { WatchHomeCategoryRailExperience as WatchHomeCategoryRailExperienceType } from "./WatchHomeCategoryRailExperience"
 const MediaCollection = dynamic(() =>
   import("./MediaCollection").then((m) => ({ default: m.MediaCollection })),
 ) as typeof MediaCollectionType
@@ -87,6 +88,11 @@ const LanguageGlobeExperience = dynamic(() =>
     default: m.LanguageGlobeExperience,
   })),
 ) as typeof LanguageGlobeExperienceType
+const WatchHomeCategoryRailExperience = dynamic(() =>
+  import("./WatchHomeCategoryRailExperience").then((m) => ({
+    default: m.WatchHomeCategoryRailExperience,
+  })),
+) as typeof WatchHomeCategoryRailExperienceType
 export type { Section } from "@/lib/content"
 
 /**
@@ -133,6 +139,7 @@ const ADMIN_BLOCK_TYPENAMES_LIST = [
   "CardBlock",
   "VideoRecommendationsBlock",
   "WatchHomeHeroBlock",
+  "WatchHomeCategoryRailBlock",
 ] as const
 type AdminBlockTypename = (typeof ADMIN_BLOCK_TYPENAMES_LIST)[number]
 const ADMIN_BLOCK_TYPENAMES: ReadonlySet<string> = new Set(
@@ -319,6 +326,18 @@ function renderAdminBlock(
       // The Watch homepage route renders this placeholder with the static
       // hero model it already resolved. Other routes deliberately ignore it.
       return null
+    case "WatchHomeCategoryRailBlock":
+      if (!languageSlug) return null
+      return (
+        <WatchHomeCategoryRailExperience
+          data={
+            block as Parameters<
+              typeof WatchHomeCategoryRailExperience
+            >[0]["data"]
+          }
+          languageSlug={languageSlug}
+        />
+      )
     default: {
       // F6 (ce-code-review): if this branch fires for a typename in
       // ADMIN_BLOCK_TYPENAMES_LIST, the dispatch set and the switch have

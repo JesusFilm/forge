@@ -441,6 +441,111 @@ describe("ExperienceLocaleMcpService", () => {
     })
   })
 
+  it("round-trips an ordered category subset when updating a homepage", async () => {
+    const canonical = {
+      ...LOCALE_ROW,
+      isHomepage: true,
+      experience: {
+        ownerId: "admin-1",
+        archivedAt: null,
+        isTemplate: false,
+      },
+      createdAt: new Date("2026-07-21T11:00:00.000Z"),
+    }
+    prisma.experienceLocale.findUniqueOrThrow.mockResolvedValue(canonical)
+
+    await expect(
+      service.updateLocale({
+        input: {
+          localeId: "loc-es",
+          draft: {
+            blocks: [
+              {
+                t: "watchHomeCategoryRail",
+                categoryIds: ["family", "gospels", "jesus"],
+              },
+            ],
+          },
+        },
+        user: ADMIN,
+      }),
+    ).resolves.toMatchObject({
+      locale: {
+        blocks: [
+          {
+            t: "watchHomeCategoryRail",
+            categoryIds: ["family", "gospels", "jesus"],
+          },
+        ],
+      },
+    })
+    expect(prisma.contentRevision.create).toHaveBeenCalledTimes(1)
+  })
+
+  it.each([
+    [
+      "a duplicate category id",
+      true,
+      [
+        {
+          t: "watchHomeCategoryRail",
+          categoryIds: ["family", "family"],
+        },
+      ],
+    ],
+    [
+      "an unknown category id",
+      true,
+      [
+        {
+          t: "watchHomeCategoryRail",
+          categoryIds: ["family", "unknown-category"],
+        },
+      ],
+    ],
+    [
+      "a non-homepage placement",
+      false,
+      [
+        {
+          t: "watchHomeCategoryRail",
+          categoryIds: ["family", "jesus"],
+        },
+      ],
+    ],
+    [
+      "a second category rail",
+      true,
+      [
+        { t: "watchHomeCategoryRail", categoryIds: ["family"] },
+        { t: "watchHomeCategoryRail", categoryIds: ["jesus"] },
+      ],
+    ],
+  ])("rejects %s atomically", async (_label, isHomepage, blocks) => {
+    const canonical = {
+      ...LOCALE_ROW,
+      isHomepage,
+      experience: {
+        ownerId: "admin-1",
+        archivedAt: null,
+        isTemplate: false,
+      },
+      createdAt: new Date("2026-07-21T11:00:00.000Z"),
+    }
+    prisma.experienceLocale.findUniqueOrThrow.mockResolvedValue(canonical)
+
+    await expect(
+      service.updateLocale({
+        input: {
+          localeId: "loc-es",
+          draft: { blocks },
+        },
+        user: ADMIN,
+      }),
+    ).rejects.toThrow()
+    expect(prisma.contentRevision.create).not.toHaveBeenCalled()
+  })
+
   it("rejects parent-scoped isTemplate in locale draft updates", async () => {
     await expect(
       service.updateLocale({

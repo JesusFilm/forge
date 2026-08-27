@@ -47,6 +47,7 @@ import type {
   VideoCarouselItemSchema,
   VideoHeroBlockSchema,
   VideoRecommendationsBlockSchema,
+  WatchHomeCategoryRailBlockSchema,
   WatchHomeHeroBlockSchema,
 } from "@/domain/blocks"
 import type { z } from "zod"
@@ -84,6 +85,9 @@ type VideoCarouselBlock = z.infer<typeof VideoCarouselBlockSchema>
 type VideoCarouselItem = z.infer<typeof VideoCarouselItemSchema>
 type VideoHeroBlock = z.infer<typeof VideoHeroBlockSchema>
 type VideoRecommendationsBlock = z.infer<typeof VideoRecommendationsBlockSchema>
+type WatchHomeCategoryRailBlock = z.infer<
+  typeof WatchHomeCategoryRailBlockSchema
+>
 type WatchHomeHeroBlock = z.infer<typeof WatchHomeHeroBlockSchema>
 
 type MediaPreviewContext = {
@@ -1170,6 +1174,22 @@ WatchHomeHeroBlockRef.implement({
   }),
 })
 
+const WatchHomeCategoryRailBlockRef =
+  builder.objectRef<WatchHomeCategoryRailBlock>("WatchHomeCategoryRailBlock")
+WatchHomeCategoryRailBlockRef.implement({
+  description:
+    "Top-level Watch homepage category carousel with an authored tile subset and order.",
+  fields: (t) => ({
+    t: t.exposeString("t"),
+    sectionKey: t.exposeString("sectionKey", { nullable: true }),
+    categoryIds: t.field({
+      type: ["String"],
+      nullable: false,
+      resolve: (row) => row.categoryIds,
+    }),
+  }),
+})
+
 const LanguageGlobeBlockRef =
   builder.objectRef<LanguageGlobeBlock>("LanguageGlobeBlock")
 LanguageGlobeBlockRef.implement({
@@ -1300,6 +1320,7 @@ export const T_TO_TYPENAME = {
   videoCarousel: "VideoCarouselBlock",
   videoHero: "VideoHeroBlock",
   videoRecommendations: "VideoRecommendationsBlock",
+  watchHomeCategoryRail: "WatchHomeCategoryRailBlock",
   watchHomeHero: "WatchHomeHeroBlock",
 } as const satisfies Record<
   Block["t"] | SectionContentBlockValue["t"] | ContainerContentBlockValue["t"],
@@ -1351,6 +1372,7 @@ export const ExperienceBlock = builder.unionType("ExperienceBlock", {
     VideoCarouselBlockRef,
     VideoHeroBlockRef,
     VideoRecommendationsBlockRef,
+    WatchHomeCategoryRailBlockRef,
     WatchHomeHeroBlockRef,
   ],
   resolveType: (value: Block) => resolveBlockTypename(value),

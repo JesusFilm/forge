@@ -428,6 +428,7 @@ describe("buildWatchHomeSectionsFromExperience (R2, R3, R5, R6)", () => {
           { __typename: "SectionBlock" },
           { __typename: "PromoBannerBlock" },
           { __typename: "CtaBlock" },
+          { __typename: "WatchHomeCategoryRailBlock" },
           { __typename: "MysteryBlock" },
         ],
         HYDRATED,
@@ -435,6 +436,28 @@ describe("buildWatchHomeSectionsFromExperience (R2, R3, R5, R6)", () => {
       expect(sections).toHaveLength(0)
       expect(warn).toHaveBeenCalledTimes(1)
       expect(warn.mock.calls[0][0]).toContain("MysteryBlock")
+    } finally {
+      warn.mockRestore()
+    }
+  })
+
+  it("silently skips the Web-only category rail without changing surrounding rail order (AE6)", () => {
+    const warn = jest.spyOn(console, "warn").mockImplementation(() => {})
+    try {
+      const sections = buildWatchHomeSectionsFromExperience(
+        [
+          mediaBlock({ sectionKey: "before", title: "Before" }),
+          { __typename: "WatchHomeCategoryRailBlock" },
+          mediaBlock({ sectionKey: "after", title: "After" }),
+        ],
+        HYDRATED,
+      )
+
+      expect(sections.map(({ id, title }) => ({ id, title }))).toEqual([
+        { id: "before", title: "Before" },
+        { id: "after", title: "After" },
+      ])
+      expect(warn).not.toHaveBeenCalled()
     } finally {
       warn.mockRestore()
     }

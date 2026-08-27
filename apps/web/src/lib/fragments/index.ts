@@ -1,4 +1,7 @@
-export { watchExperienceFragment } from "./watch-experience"
+export {
+  legacyWatchExperienceFragment,
+  watchExperienceFragment,
+} from "./watch-experience"
 export {
   getWatchHomeVideosOperation,
   watchHomeVideoFragment,

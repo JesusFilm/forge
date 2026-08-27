@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
+import { print } from "graphql"
 
 const { queryMock, unstableCacheCalls } = vi.hoisted(() => ({
   queryMock: vi.fn(),
@@ -141,7 +142,7 @@ describe("resolveWatchPage", () => {
     expect(unstableCacheCalls).toEqual(
       expect.arrayContaining([
         {
-          keyParts: ["watch-page", "v4-serializable-errors"],
+          keyParts: ["watch-page", "v5-category-rail-compatibility"],
           options: {
             revalidate: 60,
             tags: [
@@ -153,7 +154,7 @@ describe("resolveWatchPage", () => {
           },
         },
         {
-          keyParts: ["watch-experience-page"],
+          keyParts: ["watch-experience-page", "v2-category-rail-compatibility"],
           options: { revalidate: 60, tags: ["watch:experience"] },
         },
         {
@@ -206,11 +207,130 @@ describe("resolveWatchPage", () => {
     expect(result.error).toBeNull()
     expect(result.data).toMatchObject({
       kind: "experience",
+      watchHomeCategoryRailCompatibility: "supported",
       experience: {
         slug: "home",
       },
     })
   })
+
+  it("retries once with the legacy fragment only for the category typename validation error", async () => {
+    const validationError = Object.assign(
+      new Error('Unknown type "WatchHomeCategoryRailBlock".'),
+      {
+        errors: [
+          {
+            message:
+              'Unknown type "WatchHomeCategoryRailBlock". Did you mean "WatchHomeHeroBlock"?',
+            extensions: { code: "GRAPHQL_VALIDATION_FAILED" },
+          },
+        ],
+      },
+    )
+    queryMock.mockRejectedValueOnce(validationError).mockResolvedValueOnce({
+      data: {
+        watchSetting: {
+          documentId: "watch-settings-1",
+          homepageExperience: {
+            __typename: "ExperienceLocale",
+            id: "exp-home-1",
+            slug: "home",
+            title: "Home",
+            blocks: [],
+          },
+          defaultTemplateExperience: null,
+        },
+      },
+    })
+
+    const { resolveWatchPage } = await import("./content")
+    const result = await resolveWatchPage("en")
+
+    expect(queryMock).toHaveBeenCalledTimes(2)
+    expect(print(queryMock.mock.calls[0][0].query)).toContain(
+      "WatchHomeCategoryRailBlock",
+    )
+    expect(print(queryMock.mock.calls[1][0].query)).not.toContain(
+      "WatchHomeCategoryRailBlock",
+    )
+    expect(result).toMatchObject({
+      error: null,
+      data: {
+        kind: "experience",
+        watchHomeCategoryRailCompatibility: "legacy-schema",
+      },
+    })
+  })
+
+  it("never retries the legacy query more than once", async () => {
+    const unknownTypeError = {
+      errors: [
+        {
+          message: 'Unknown type "WatchHomeCategoryRailBlock".',
+          extensions: { code: "GRAPHQL_VALIDATION_FAILED" },
+        },
+      ],
+    }
+    queryMock.mockResolvedValueOnce(unknownTypeError).mockResolvedValueOnce({
+      errors: [
+        {
+          message: "Legacy query also failed",
+          extensions: { code: "GRAPHQL_VALIDATION_FAILED" },
+        },
+      ],
+    })
+
+    const { resolveWatchPage } = await import("./content")
+    const result = await resolveWatchPage("en")
+
+    expect(queryMock).toHaveBeenCalledTimes(2)
+    expect(result.data).toBeNull()
+    expect(result.error?.message).toBe("Legacy query also failed")
+  })
+
+  it.each([
+    ["network", "reject", new Error("fetch failed")],
+    ["timeout", "reject", new Error("request timed out")],
+    ["authorization", "resolve", { error: new Error("Unauthorized") }],
+    [
+      "resolver",
+      "resolve",
+      {
+        errors: [
+          {
+            message: "Watch setting resolver failed",
+            path: ["watchSetting"],
+            extensions: { code: "INTERNAL_SERVER_ERROR" },
+          },
+        ],
+      },
+    ],
+    [
+      "unrelated validation",
+      "resolve",
+      {
+        errors: [
+          {
+            message: 'Unknown type "SomeOtherBlock".',
+            extensions: { code: "GRAPHQL_VALIDATION_FAILED" },
+          },
+        ],
+      },
+    ],
+  ])(
+    "does not enable compatibility or retry for a %s failure",
+    async (_label, behavior, failure) => {
+      if (behavior === "reject") queryMock.mockRejectedValueOnce(failure)
+      else queryMock.mockResolvedValueOnce(failure)
+
+      const { resolveWatchPage } = await import("./content")
+      const result = await resolveWatchPage("en")
+
+      expect(queryMock).toHaveBeenCalledTimes(1)
+      expect(result.data).toBeNull()
+      expect(result.error).not.toBeNull()
+    },
+  )
 
   it("returns a missing-experience error when watchSetting has no homepageExperience", async () => {
     queryMock.mockResolvedValueOnce({
@@ -281,6 +401,57 @@ describe("resolveWatchPage", () => {
       kind: "experience",
       experience: {
         slug: "christmas",
+      },
+    })
+  })
+
+  it("reuses a proven legacy schema for the explicit experience lookup", async () => {
+    const validationError = Object.assign(
+      new Error('Unknown type "WatchHomeCategoryRailBlock".'),
+      {
+        errors: [
+          {
+            message: 'Unknown type "WatchHomeCategoryRailBlock".',
+            extensions: { code: "GRAPHQL_VALIDATION_FAILED" },
+          },
+        ],
+      },
+    )
+    queryMock
+      .mockRejectedValueOnce(validationError)
+      .mockResolvedValueOnce({
+        data: {
+          watchSetting: {
+            documentId: "watch-settings-1",
+            homepageExperience: null,
+            defaultTemplateExperience: null,
+          },
+        },
+      })
+      .mockResolvedValueOnce({ data: { videoBySlug: null } })
+      .mockResolvedValueOnce({
+        data: {
+          experienceBySlug: {
+            __typename: "ExperienceLocale",
+            id: "exp-1",
+            slug: "christmas",
+            title: "Christmas",
+          },
+        },
+      })
+
+    const { resolveWatchPage } = await import("./content")
+    const result = await resolveWatchPage("en", "christmas")
+
+    expect(queryMock).toHaveBeenCalledTimes(4)
+    expect(print(queryMock.mock.calls[3][0].query)).not.toContain(
+      "WatchHomeCategoryRailBlock",
+    )
+    expect(result).toMatchObject({
+      error: null,
+      data: {
+        kind: "experience",
+        experience: { slug: "christmas" },
       },
     })
   })

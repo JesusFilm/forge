@@ -1,13 +1,15 @@
 /**
  * Admin GraphQL operations for Experience blocks and search, via adminGraphql()
- * with the shared AdminWatchExperience fragment composing all block fragments.
+ * with the rollout-safe AdminLegacyWatchExperience fragment. Mobile does not
+ * render the Web-only category rail, so its operation stays valid across an
+ * Admin rollback while that compatibility window remains open.
  */
 import {
   adminGraphql,
   type AdminFragmentOf,
   type AdminResultOf,
 } from "@forge/admin-graphql"
-import { adminWatchExperienceFragment } from "@forge/admin-graphql/fragments"
+import { adminLegacyWatchExperienceFragment } from "@forge/admin-graphql/fragments"
 
 // ── Experience queries ──────────────────────────────────────────────
 
@@ -15,11 +17,11 @@ export const GET_EXPERIENCE_BY_SLUG = adminGraphql(
   `
     query GetExperienceBySlug($locale: String!, $slug: String!) {
       experienceBySlug(locale: $locale, slug: $slug) {
-        ...AdminWatchExperience
+        ...AdminLegacyWatchExperience
       }
     }
   `,
-  [adminWatchExperienceFragment],
+  [adminLegacyWatchExperienceFragment],
 )
 
 export const GET_WATCH_SETTING = adminGraphql(
@@ -28,12 +30,12 @@ export const GET_WATCH_SETTING = adminGraphql(
       watchSetting(locale: $locale) {
         documentId
         homepageExperience {
-          ...AdminWatchExperience
+          ...AdminLegacyWatchExperience
         }
       }
     }
   `,
-  [adminWatchExperienceFragment],
+  [adminLegacyWatchExperienceFragment],
 )
 
 // ── Watch search query ──────────────────────────────────────────────
@@ -117,7 +119,7 @@ export const RECORD_WATCH_SEARCH_EVENT = adminGraphql(`
 // ── Derived types ───────────────────────────────────────────────────
 
 export type WatchExperience = NonNullable<
-  AdminFragmentOf<typeof adminWatchExperienceFragment>
+  AdminFragmentOf<typeof adminLegacyWatchExperienceFragment>
 >
 
 // Blocks appear at multiple nesting levels (top-level, SectionBlock.sectionContent,

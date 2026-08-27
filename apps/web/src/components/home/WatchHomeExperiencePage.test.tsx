@@ -90,6 +90,16 @@ vi.mock("@/components/sections", () => ({
       return Array.isArray(children) ? children.flatMap(headings) : []
     }
 
+    if (section.__typename === "WatchHomeCategoryRailBlock") {
+      return (
+        <section
+          data-testid="watch-home-category-rail"
+          data-block-marker="WatchHomeCategoryRailBlock"
+          data-language-slug={languageSlug}
+        />
+      )
+    }
+
     return (
       <section
         data-testid="experience-section"
@@ -249,8 +259,6 @@ describe("WatchHomeExperiencePage", () => {
     expect(serverContainer.querySelector("h1")?.textContent).toBe(
       "Primary page heading",
     )
-    // `toContain`, not "first h2": non-authored sections (the category rail)
-    // carry their own h2 above the authored body.
     expect(
       Array.from(serverContainer.querySelectorAll("h2")).map(
         (heading) => heading.textContent,
@@ -466,7 +474,7 @@ describe("WatchHomeExperiencePage", () => {
     ["an authored hero block", [makeBlock("WatchHomeHeroBlock", "hero")]],
     ["the fallback hero carousel", [] as Section[]],
   ])(
-    "renders the category rail exactly once, directly after %s",
+    "does not synthesize a category rail after %s on a supported schema",
     async (_label, blocks) => {
       await act(async () => {
         root.render(
@@ -481,11 +489,89 @@ describe("WatchHomeExperiencePage", () => {
       const rails = container.querySelectorAll(
         '[data-testid="watch-home-category-rail"]',
       )
+      expect(rails).toHaveLength(0)
+    },
+  )
+
+  it.each([
+    ["an authored hero block", [makeBlock("WatchHomeHeroBlock", "hero")]],
+    ["the fallback hero carousel", [] as Section[]],
+  ])(
+    "renders one fixed compatibility rail directly after %s",
+    async (_label, blocks) => {
+      await act(async () => {
+        root.render(
+          <WatchHomeExperiencePage
+            heroModel={heroModel}
+            blocks={blocks}
+            languageSlug="english"
+            legacyCategoryRailCompatibility
+          />,
+        )
+      })
+
+      const rails = container.querySelectorAll(
+        '[data-testid="watch-home-category-rail"]',
+      )
       expect(rails).toHaveLength(1)
       expect(
         container.querySelector('[data-testid="watch-home-hero"]')
           ?.nextElementSibling,
       ).toBe(rails[0])
+    },
+  )
+
+  it.each([
+    [
+      "before",
+      [
+        makeBlock("WatchHomeCategoryRailBlock", "categories"),
+        makeBlock("MediaCollectionBlock", "collection"),
+      ],
+      ["WatchHomeCategoryRailBlock", "MediaCollectionBlock"],
+    ],
+    [
+      "between",
+      [
+        makeBlock("MediaCollectionBlock", "first"),
+        makeBlock("WatchHomeCategoryRailBlock", "categories"),
+        makeBlock("LanguageGlobeBlock", "last"),
+      ],
+      [
+        "MediaCollectionBlock",
+        "WatchHomeCategoryRailBlock",
+        "LanguageGlobeBlock",
+      ],
+    ],
+    [
+      "after",
+      [
+        makeBlock("MediaCollectionBlock", "collection"),
+        makeBlock("WatchHomeCategoryRailBlock", "categories"),
+      ],
+      ["MediaCollectionBlock", "WatchHomeCategoryRailBlock"],
+    ],
+  ])(
+    "renders the authored category rail %s surrounding blocks",
+    async (_label, blocks, order) => {
+      await act(async () => {
+        root.render(
+          <WatchHomeExperiencePage
+            heroModel={heroModel}
+            blocks={blocks as Section[]}
+            languageSlug="english"
+          />,
+        )
+      })
+
+      expect(
+        Array.from(
+          container.querySelectorAll<HTMLElement>("[data-block-marker]"),
+        ).map((block) => block.dataset.blockMarker),
+      ).toEqual(["WatchHomeHeroBlock", ...order])
+      expect(
+        container.querySelectorAll('[data-testid="watch-home-category-rail"]'),
+      ).toHaveLength(1)
     },
   )
 

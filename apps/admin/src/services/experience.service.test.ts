@@ -4,6 +4,7 @@ import type { Principal } from "@/auth/principal"
 import {
   ExperienceDynamicCollectionPlacementError,
   ExperienceService,
+  ExperienceWatchHomeCategoryRailPlacementError,
 } from "./experience.service"
 import { refreshWatchRouteManifest } from "./watch-route-manifest-refresh.service"
 
@@ -104,6 +105,14 @@ function dynamicCollectionBlock(sectionKey: string) {
     itemsSource: "dynamicCollections" as const,
     showItemNumbers: false,
     items: [],
+  }
+}
+
+function watchHomeCategoryRailBlock(categoryIds = ["jesus", "family"]) {
+  return {
+    t: "watchHomeCategoryRail" as const,
+    sectionKey: "browse-categories",
+    categoryIds,
   }
 }
 
@@ -326,6 +335,20 @@ describe("ExperienceService", () => {
           user: ADMIN,
         }),
       ).rejects.toThrow()
+    })
+
+    it("rejects the Watch category rail because new experiences are not homepages", async () => {
+      await expect(
+        service.create({
+          input: {
+            locale: "en",
+            slug: "category-rail",
+            blocks: [watchHomeCategoryRailBlock()],
+          },
+          user: ADMIN,
+        }),
+      ).rejects.toBeInstanceOf(ExperienceWatchHomeCategoryRailPlacementError)
+      expect(prisma.experience.create).not.toHaveBeenCalled()
     })
   })
 
@@ -771,6 +794,24 @@ describe("ExperienceService", () => {
         }),
       ).rejects.toThrow("Forbidden")
     })
+
+    it("rejects the Watch category rail for a non-homepage locale", async () => {
+      prisma.experience.findUniqueOrThrow.mockResolvedValueOnce({
+        ownerId: "alice",
+        archivedAt: null,
+      })
+
+      await expect(
+        service.createLocale({
+          input: {
+            ...input,
+            blocks: [watchHomeCategoryRailBlock()],
+          },
+          user: EDITOR_ALICE,
+        }),
+      ).rejects.toBeInstanceOf(ExperienceWatchHomeCategoryRailPlacementError)
+      expect(prisma.experienceLocale.create).not.toHaveBeenCalled()
+    })
   })
 
   // ---------------------------------------------------------------------------
@@ -1006,6 +1047,44 @@ describe("ExperienceService", () => {
           user: EDITOR_ALICE,
         }),
       ).resolves.toMatchObject({ isHomepage: true })
+    })
+
+    it("rejects the Watch category rail when the effective draft is not a homepage", async () => {
+      prisma.experienceLocale.findUniqueOrThrow.mockResolvedValueOnce(localeRow)
+
+      await expect(
+        service.updateLocale({
+          input: {
+            id: "loc-1",
+            blocks: [watchHomeCategoryRailBlock(["family", "jesus"])],
+          },
+          user: EDITOR_ALICE,
+        }),
+      ).rejects.toBeInstanceOf(ExperienceWatchHomeCategoryRailPlacementError)
+      expect(prisma.contentRevision.create).not.toHaveBeenCalled()
+    })
+
+    it("accepts the Watch category rail on a homepage and preserves its order", async () => {
+      prisma.experienceLocale.findUniqueOrThrow.mockResolvedValueOnce(localeRow)
+
+      const result = await service.updateLocale({
+        input: {
+          id: "loc-1",
+          isHomepage: true,
+          blocks: [watchHomeCategoryRailBlock(["family", "gospels", "jesus"])],
+        },
+        user: EDITOR_ALICE,
+      })
+
+      expect(result).toMatchObject({
+        isHomepage: true,
+        blocks: [
+          {
+            t: "watchHomeCategoryRail",
+            categoryIds: ["family", "gospels", "jesus"],
+          },
+        ],
+      })
     })
 
     it("EDITOR cannot update another editor's locale", async () => {
@@ -1547,6 +1626,54 @@ describe("ExperienceService", () => {
           user: VIEWER,
         }),
       ).rejects.toThrow("Forbidden")
+    })
+
+    it("rejects publishing a non-homepage draft containing the Watch category rail", async () => {
+      const localeRow = {
+        id: "loc-1",
+        experienceId: "exp-1",
+        locale: "en",
+        slug: "invalid-category-rail",
+        isHomepage: false,
+        pathSegment: null,
+        status: "PUBLISHED",
+        title: "Live",
+        metaDescription: null,
+        ogTitle: null,
+        ogDescription: null,
+        ogImageUrl: null,
+        blocks: [],
+        publishedAt: new Date("2026-04-15T12:00:00.000Z"),
+        createdAt: new Date("2026-04-15T12:00:00.000Z"),
+        updatedAt: new Date("2026-04-15T12:00:00.000Z"),
+        experience: { ownerId: "alice", archivedAt: null },
+      }
+      prisma.experienceLocale.findUniqueOrThrow.mockResolvedValueOnce(localeRow)
+      prisma.contentRevision.findFirst.mockResolvedValueOnce({
+        id: "draft-1",
+        snapshot: {
+          v: 1,
+          data: {
+            slug: localeRow.slug,
+            isHomepage: false,
+            pathSegment: null,
+            title: "Draft",
+            metaDescription: null,
+            ogTitle: null,
+            ogDescription: null,
+            ogImageUrl: null,
+            blocks: [watchHomeCategoryRailBlock()],
+          },
+        },
+      })
+
+      await expect(
+        service.publishLocale({
+          input: { id: "loc-1" },
+          user: EDITOR_ALICE,
+        }),
+      ).rejects.toBeInstanceOf(ExperienceWatchHomeCategoryRailPlacementError)
+      expect(prisma.experienceLocale.update).not.toHaveBeenCalled()
     })
   })
 

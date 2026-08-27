@@ -60,6 +60,11 @@ describe("GET_WATCH_SETTING — public home Experience query + doc guard (AE12)"
     expect(printedSetting).toContain("homepageExperience")
   })
 
+  it("stays valid against the pre-category-rail Admin schema", () => {
+    expect(printedSetting).toContain("fragment AdminLegacyWatchExperience")
+    expect(printedSetting).not.toContain("WatchHomeCategoryRailBlock")
+  })
+
   // R13: TV Home uses only public admin queries. The editor-gated `experiences`
   // list field must never appear, or the home query fails auth in prod.
   it("does NOT reference the editor-gated experiences list field", () => {
@@ -72,7 +77,7 @@ describe("GET_WATCH_SETTING — public home Experience query + doc guard (AE12)"
     expect(printedSetting).toMatch(/items\s*\{[^}]*\bcoreId\b/)
   })
 
-  // Same 9.5MB-payload trap as GET_WATCH_HOME_VIDEOS: the shared AdminWatchExperience
+  // Same 9.5MB-payload trap as GET_WATCH_HOME_VIDEOS: the shared legacy Experience
   // fragment tree is edited by other consumers, so a heavy nested field (dubs/variants)
   // could enter TV's Home query via any block fragment. Guard against it here too.
   it("stays lean — never projects dubs/variants/downloads/subtitles", () => {
