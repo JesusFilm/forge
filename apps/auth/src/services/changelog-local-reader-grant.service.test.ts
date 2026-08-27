@@ -7,7 +7,7 @@ const mocks = vi.hoisted(() => {
     appEnvironment: { findUnique: vi.fn() },
     user: { findUnique: vi.fn() },
     scope: { findUnique: vi.fn() },
-    appGrant: { findMany: vi.fn(), create: vi.fn() },
+    appGrant: { findFirst: vi.fn(), create: vi.fn() },
     authAuditEvent: { create: vi.fn() },
     $queryRaw: vi.fn(),
   }
@@ -45,7 +45,7 @@ describe("grantChangelogLocalReader", () => {
     mocks.tx.$queryRaw.mockResolvedValue([{ id: environment.id }])
     mocks.tx.user.findUnique.mockResolvedValue(user)
     mocks.tx.scope.findUnique.mockResolvedValue(scope)
-    mocks.tx.appGrant.findMany.mockResolvedValue([])
+    mocks.tx.appGrant.findFirst.mockResolvedValue(null)
     mocks.tx.appGrant.create.mockResolvedValue({ id: "grant_reader" })
     mocks.tx.authAuditEvent.create.mockResolvedValue({ id: "audit_grant" })
   })
@@ -107,20 +107,15 @@ describe("grantChangelogLocalReader", () => {
     ).not.toContain("developer@example.com")
   })
 
-  it.each(["changelog:read", "changelog:submit", "changelog:admin"])(
-    "returns no change when an approved Local %s grant already satisfies Reader",
-    async (grantedScope) => {
-      mocks.tx.appGrant.findMany.mockResolvedValue([
-        { scopes: [{ scope: { key: grantedScope } }] },
-      ])
+  it("returns no change when an approved Local Reader-or-higher grant exists", async () => {
+    mocks.tx.appGrant.findFirst.mockResolvedValue({ id: "grant_existing" })
 
-      await expect(
-        grantChangelogLocalReader("developer@example.com"),
-      ).resolves.toEqual({ changed: false })
-      expect(mocks.tx.appGrant.create).not.toHaveBeenCalled()
-      expect(mocks.tx.authAuditEvent.create).not.toHaveBeenCalled()
-    },
-  )
+    await expect(
+      grantChangelogLocalReader("developer@example.com"),
+    ).resolves.toEqual({ changed: false })
+    expect(mocks.tx.appGrant.create).not.toHaveBeenCalled()
+    expect(mocks.tx.authAuditEvent.create).not.toHaveBeenCalled()
+  })
 
   it.each([
     ["missing", null, "Auth user was not found."],
@@ -177,9 +172,9 @@ describe("grantChangelogLocalReader", () => {
 
     expect(mocks.tx.$queryRaw).toHaveBeenCalledOnce()
     expect(mocks.tx.$queryRaw.mock.invocationCallOrder[0]).toBeLessThan(
-      mocks.tx.appGrant.findMany.mock.invocationCallOrder[0]!,
+      mocks.tx.appGrant.findFirst.mock.invocationCallOrder[0]!,
     )
-    expect(mocks.tx.appGrant.findMany).toHaveBeenCalledWith({
+    expect(mocks.tx.appGrant.findFirst).toHaveBeenCalledWith({
       where: {
         appId: "app_changelog",
         environmentId: "environment_local",
@@ -187,10 +182,17 @@ describe("grantChangelogLocalReader", () => {
         userId: "user_google",
         status: "APPROVED",
         revokedAt: null,
+        scopes: {
+          some: {
+            scope: {
+              key: {
+                in: ["changelog:read", "changelog:submit", "changelog:admin"],
+              },
+            },
+          },
+        },
       },
-      select: {
-        scopes: { select: { scope: { select: { key: true } } } },
-      },
+      select: { id: true },
     })
   })
 

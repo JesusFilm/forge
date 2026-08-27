@@ -1,6 +1,7 @@
-import { createHash, randomUUID } from "node:crypto"
+import { randomUUID } from "node:crypto"
 
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
+import { hashAuditSubject } from "./audit.service"
 
 /**
  * Opt-in PostgreSQL proof for the transaction and row lock.
@@ -95,7 +96,7 @@ describeIntegration("Changelog Local Reader grant transaction", () => {
 
   afterAll(async () => {
     if (!databaseUrl || !prisma) return
-    const subjectHash = createHash("sha256").update(userId).digest("hex")
+    const subjectHash = hashAuditSubject(userId)
     await prisma.authAuditEvent.deleteMany({
       where: {
         eventType: "changelog_local_reader_granted",
@@ -133,7 +134,7 @@ describeIntegration("Changelog Local Reader grant transaction", () => {
       scopes: [{ scope: { key: "changelog:read" } }],
     })
 
-    const subjectHash = createHash("sha256").update(userId).digest("hex")
+    const subjectHash = hashAuditSubject(userId)
     const audits = await prisma.authAuditEvent.findMany({
       where: {
         eventType: "changelog_local_reader_granted",

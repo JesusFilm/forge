@@ -1,13 +1,9 @@
 import { prisma } from "@/db/client"
 import { CHANGELOG_APP_KEY, CHANGELOG_LOCAL_CLIENT_ID } from "@/domain/apps"
+import { CHANGELOG_OAUTH_SCOPES } from "@/domain/scopes"
 import { buildAuditEvent } from "./audit.service"
 
 const CHANGELOG_READ_SCOPE = "changelog:read"
-const READER_OR_HIGHER_SCOPES = new Set([
-  CHANGELOG_READ_SCOPE,
-  "changelog:submit",
-  "changelog:admin",
-])
 
 export async function grantChangelogLocalReader(
   email: string,
@@ -78,7 +74,7 @@ export async function grantChangelogLocalReader(
       throw new Error("Changelog Reader scope is not registered.")
     }
 
-    const grants = await tx.appGrant.findMany({
+    const existingGrant = await tx.appGrant.findFirst({
       where: {
         appId: environment.appId,
         environmentId: environment.id,
@@ -86,17 +82,13 @@ export async function grantChangelogLocalReader(
         userId: user.id,
         status: "APPROVED",
         revokedAt: null,
+        scopes: {
+          some: { scope: { key: { in: [...CHANGELOG_OAUTH_SCOPES] } } },
+        },
       },
-      select: {
-        scopes: { select: { scope: { select: { key: true } } } },
-      },
+      select: { id: true },
     })
-    const alreadyReader = grants.some((grant) =>
-      grant.scopes.some(({ scope: grantedScope }) =>
-        READER_OR_HIGHER_SCOPES.has(grantedScope.key),
-      ),
-    )
-    if (alreadyReader) return { changed: false }
+    if (existingGrant) return { changed: false }
 
     await tx.appGrant.create({
       data: {
