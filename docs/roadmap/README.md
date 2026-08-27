@@ -6,8 +6,8 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 
 ## Status (August 27, 2026)
 
-- **Total tickets:** 605
-- **Complete:** 449
+- **Total tickets:** 606
+- **Complete:** 450
 - **In progress:** 40
 - **Not started:** 37
 - **Blocked:** 79
@@ -282,6 +282,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-399](platform/feat-399-changelog-first-party-auth.md)                            | Register Changelog with first-party Auth grants                                  | edmonday   | P0       | 2026-08-19 | 3    | 2026-08-21 | complete    |
 | [feat-401](platform/feat-401-better-auth-native-resource-upgrade.md)                   | Upgrade Better Auth for native resource binding                                  | edmonday   | P0       | 2026-08-20 | 4    | 2026-08-23 | complete    |
 | [feat-402](platform/feat-402-mobile-expo-sdk57-patch-alignment.md)                     | Mobile Expo SDK 57 patch alignment                                               | edmonday   | P0       | 2026-08-21 | 1    | 2026-08-21 | complete    |
+| [feat-426](platform/feat-426-admin-mcp-oauth-resource-binding.md)                      | Repair Admin MCP OAuth resource binding                                          | codex      | P0       | 2026-08-26 | 2    | 2026-08-27 | complete    |
 | [feat-423](platform/feat-423-changelog-admin-access-grants.md)                         | Grant local Changelog Reader access by command                                   | edmonday   | P0       | 2026-08-27 | 1    | 2026-08-27 | complete    |
 | [feat-278](platform/feat-278-watch-russian-authored-content-localization.md)           | Watch Russian authored content localization                                      | unassigned | P1       | —          | 2    | —          | not-started |
 | [feat-036](platform/feat-036-cms-local-postgres-io-concurrency-compatibility.md)       | CMS local PostgreSQL I/O concurrency compatibility                               | tataihono  | P1       | 2026-04-01 | 1    | 2026-04-01 | complete    |

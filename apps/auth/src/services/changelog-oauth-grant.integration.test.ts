@@ -2,6 +2,11 @@ import { createHash, randomBytes, randomUUID } from "node:crypto"
 
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest"
 
+import {
+  createOAuthResourceCatalog,
+  getPublicDcrResources,
+} from "@/domain/oauth-resources"
+
 /**
  * Opt-in native-provider proof. The target must be a disposable PostgreSQL
  * database with Auth migrations applied; this suite seeds the normal
@@ -26,6 +31,12 @@ const PRODUCTION_RESOURCE = "https://changelog.jesusfilm.org/mcp"
 const REDIRECT_URI = "http://127.0.0.1:49191/callback"
 const SEEDED_REDIRECT_URI = "http://localhost:3000/api/auth/callback"
 const nativeFetch = globalThis.fetch
+const PUBLIC_MCP_RESOURCES = getPublicDcrResources(
+  createOAuthResourceCatalog({
+    authIssuer: process.env.AUTH_BASE_URL!,
+    customAudiences: [],
+  }),
+).sort()
 
 function stubSelfDiscovery() {
   vi.stubGlobal(
@@ -108,27 +119,30 @@ describeIntegration("Changelog OAuth grants against native Better Auth", () => {
       data: { membershipStatus: "ACTIVE" },
     })
 
-    const registered = (await auth.api.registerOAuthClient({
-      body: {
-        client_name: "Changelog integration dynamic client",
-        redirect_uris: [REDIRECT_URI],
-        token_endpoint_auth_method: "none",
-        grant_types: ["authorization_code", "refresh_token"],
-        response_types: ["code"],
-        application_type: "native",
-      },
-    })) as unknown as { client_id: string }
+    const registrationResponse = await routePost(
+      new Request("http://localhost:3004/api/auth/oauth2/register", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          client_name: "Changelog integration dynamic client",
+          redirect_uris: [REDIRECT_URI],
+        }),
+      }),
+      { params: Promise.resolve({ all: ["oauth2", "register"] }) },
+    )
+    expect(registrationResponse.status).toBeGreaterThanOrEqual(200)
+    expect(registrationResponse.status).toBeLessThan(300)
+    const registered = (await registrationResponse.json()) as {
+      client_id: string
+    }
     clientId = registered.client_id
-    await expect(
-      prisma.oauthClientResource.findMany({
+    const registeredResourceIds = await prisma.oauthClientResource
+      .findMany({
         where: { clientId },
         select: { resourceId: true },
-        orderBy: { resourceId: "asc" },
-      }),
-    ).resolves.toEqual([
-      { resourceId: LOCAL_RESOURCE },
-      { resourceId: PRODUCTION_RESOURCE },
-    ])
+      })
+      .then((rows) => rows.map(({ resourceId }) => resourceId).sort())
+    expect(registeredResourceIds).toEqual(PUBLIC_MCP_RESOURCES)
 
     const environment = await prisma.appEnvironment.findFirstOrThrow({
       where: { kind: "LOCAL", app: { key: "changelog" } },

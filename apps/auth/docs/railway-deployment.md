@@ -99,6 +99,51 @@ then finalizes `Account.issuer` before the server starts:
    column non-null.
 4. Seed native OAuth resources and client-resource links idempotently.
 
+### Public MCP client-resource repair
+
+The same startup seed repairs compatible dynamic loopback clients after all
+resource rows and first-party links have been seeded. Before inspecting any
+client, the seed verifies that every public DCR default has one enabled
+`OauthResource` row whose allowed scopes exactly match the Auth resource
+catalogue. Auth must not start when this invariant or a client repair
+transaction fails.
+
+The repair is additive and registration-posture based. It adds every missing
+public MCP link, in one transaction per client, only for an unseeded, enabled,
+public native client that uses token authentication `none`, Authorization Code
+plus Refresh Token, PKCE that is not disabled, and exact ephemeral HTTP
+loopback callbacks at `/auth/callback` or `/callback`. It does not change
+seeded, confidential, remote, disabled, PKCE-disabled, web, or incomplete-grant
+clients. It does not create AppGrants or consents and does not rewrite
+authorization codes, access tokens, or refresh tokens. The older
+`offline_access` append remains a separate, narrower migration for clients
+carrying the established legacy Admin MCP scope markers.
+
+Startup reports counts only: eligible clients, repaired clients, links added,
+and legacy clients updated for offline access. Do not add client IDs, redirect
+URIs, user identifiers, authorization codes, tokens, or secrets to this output.
+Before deployment, record equally redacted counts for public resource rows,
+links grouped by public resource, eligible loopback clients, and eligible
+clients missing at least one public link. Stop for duplicate resource
+identifiers, duplicate `(client_id, resource_id)` pairs, or unexpected seeded
+client gaps. After deployment, require zero eligible clients missing a public
+link and confirm a second seed adds zero repair links.
+
+Use a clean isolated MCP client profile for the rollout gate: perform discovery
+and registration without cached metadata, authorize the canonical production
+Admin MCP resource, exchange the code, verify the signed production Admin
+claims, initialize MCP, and list tools and Experiences. Then reconnect one
+accessible eligible pre-deploy client to exercise the repaired-client path. If
+none is accessible, record that smoke as not applicable and retain the
+post-seed invariant plus real-database backfill evidence. Remove the isolated
+profile and its credentials after the smoke.
+
+Application rollback is non-destructive. The added resource links are
+capability ceilings, not user grants, so do not delete them during rollback.
+Roll back through the normal PR-to-main deployment path only after the
+old-code/new-data compatibility check shows the previous Auth policy can read
+the additive links without widening authority or failing startup.
+
 If finalization fails, do not bypass it or start Better Auth 1.7. The additive
 schema can remain in place while the previous deployment continues; correct
 the trusted configuration or identity collision through a reviewed PR and

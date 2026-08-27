@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 
 import type { Principal } from "@/auth/principal"
 import { ExperienceLocaleMcpService } from "./experience-locale-mcp.service"
+import { localeDraftRevision } from "./experience.service"
 
 const { mockEnv } = vi.hoisted(() => ({
   mockEnv: {
@@ -429,6 +430,7 @@ describe("ExperienceLocaleMcpService", () => {
       service.updateLocale({
         input: {
           localeId: "loc-es",
+          expectedDraftRevision: null,
           draft: { title: "Esperanza viva" },
         },
         user: ADMIN,
@@ -437,6 +439,92 @@ describe("ExperienceLocaleMcpService", () => {
       locale: {
         id: "loc-es",
         title: "Esperanza viva",
+      },
+    })
+  })
+
+  it("round-trips a nullable rollback payload through a guarded update", async () => {
+    const canonical = {
+      ...LOCALE_ROW,
+      id: "loc-es",
+      experience: {
+        ownerId: "admin-1",
+        archivedAt: null,
+        isTemplate: false,
+      },
+      createdAt: new Date("2026-07-21T11:00:00.000Z"),
+    }
+    prisma.experienceLocale.findUniqueOrThrow.mockResolvedValue(canonical)
+    let activeDraft = {
+      id: "draft-existing",
+      snapshot: {
+        v: 1,
+        data: {
+          slug: canonical.slug,
+          isHomepage: canonical.isHomepage,
+          pathSegment: null,
+          title: canonical.title,
+          metaDescription: null,
+          ogTitle: null,
+          ogDescription: null,
+          ogImageUrl: null,
+          blocks: canonical.blocks,
+        },
+      },
+      previewToken: "preview-token",
+      revisedAt: new Date("2026-07-21T12:00:00.000Z"),
+      revisedBy: "admin-1",
+      revisedByKind: "USER",
+      reason: "existing draft",
+    }
+    prisma.$transaction.mockImplementation(
+      async (callback: (tx: unknown) => unknown) =>
+        callback({
+          $queryRaw: vi.fn().mockResolvedValue([]),
+          contentRevision: {
+            findFirst: vi.fn(async () => activeDraft),
+            update: vi.fn(async ({ data }) => {
+              activeDraft = { ...activeDraft, ...data }
+              return activeDraft
+            }),
+          },
+          seoProposalMaterialization: { updateMany: vi.fn() },
+          experienceLocale: {
+            findUniqueOrThrow: vi.fn().mockResolvedValue(canonical),
+          },
+        }),
+    )
+
+    const first = await service.updateLocale({
+      input: {
+        localeId: canonical.id,
+        expectedDraftRevision: localeDraftRevision(activeDraft),
+        draft: { title: "Temporary edit" },
+      },
+      user: ADMIN,
+    })
+    expect(first.rollback.restoreDraft).toMatchObject({
+      title: canonical.title,
+      metaDescription: null,
+      ogTitle: null,
+      ogDescription: null,
+    })
+
+    await expect(
+      service.updateLocale({
+        input: {
+          localeId: canonical.id,
+          expectedDraftRevision: first.rollback.expectedDraftRevision,
+          draft: first.rollback.restoreDraft,
+        },
+        user: ADMIN,
+      }),
+    ).resolves.toMatchObject({
+      locale: {
+        title: canonical.title,
+        metaDescription: null,
+        ogTitle: null,
+        ogDescription: null,
       },
     })
   })
@@ -458,6 +546,7 @@ describe("ExperienceLocaleMcpService", () => {
       service.updateLocale({
         input: {
           localeId: "loc-es",
+          expectedDraftRevision: null,
           draft: {
             blocks: [
               {
@@ -486,12 +575,7 @@ describe("ExperienceLocaleMcpService", () => {
     [
       "a duplicate category id",
       true,
-      [
-        {
-          t: "watchHomeCategoryRail",
-          categoryIds: ["family", "family"],
-        },
-      ],
+      [{ t: "watchHomeCategoryRail", categoryIds: ["family", "family"] }],
     ],
     [
       "an unknown category id",
@@ -506,12 +590,7 @@ describe("ExperienceLocaleMcpService", () => {
     [
       "a non-homepage placement",
       false,
-      [
-        {
-          t: "watchHomeCategoryRail",
-          categoryIds: ["family", "jesus"],
-        },
-      ],
+      [{ t: "watchHomeCategoryRail", categoryIds: ["family", "jesus"] }],
     ],
     [
       "a second category rail",
@@ -538,11 +617,56 @@ describe("ExperienceLocaleMcpService", () => {
       service.updateLocale({
         input: {
           localeId: "loc-es",
+          expectedDraftRevision: null,
           draft: { blocks },
         },
         user: ADMIN,
       }),
     ).rejects.toThrow()
+    expect(prisma.contentRevision.create).not.toHaveBeenCalled()
+  })
+
+  it("requires an explicit nullable draft revision for MCP updates", async () => {
+    await expect(
+      service.updateLocale({
+        input: { localeId: "loc-es", draft: { title: "Esperanza viva" } },
+        user: ADMIN,
+      }),
+    ).rejects.toThrow()
+    expect(prisma.$transaction).not.toHaveBeenCalled()
+  })
+
+  it("rejects a stale draft revision after acquiring the locale lock", async () => {
+    const canonical = {
+      ...LOCALE_ROW,
+      experience: {
+        ownerId: "admin-1",
+        archivedAt: null,
+        isTemplate: false,
+      },
+      createdAt: new Date("2026-07-21T11:00:00.000Z"),
+    }
+    prisma.experienceLocale.findUniqueOrThrow.mockResolvedValue(canonical)
+    prisma.contentRevision.findFirst.mockResolvedValueOnce({
+      id: "draft-newer",
+      snapshot: { v: 1, data: { title: "Newer edit" } },
+      previewToken: "preview-token",
+      revisedAt: updatedAt,
+      revisedBy: "another-editor",
+      revisedByKind: "USER",
+      reason: "newer edit",
+    })
+
+    await expect(
+      service.updateLocale({
+        input: {
+          localeId: "loc-es",
+          expectedDraftRevision: "stale-revision",
+          draft: { title: "Overwrite" },
+        },
+        user: ADMIN,
+      }),
+    ).rejects.toThrow("modified concurrently")
     expect(prisma.contentRevision.create).not.toHaveBeenCalled()
   })
 

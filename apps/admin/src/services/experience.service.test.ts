@@ -5,6 +5,7 @@ import {
   ExperienceDynamicCollectionPlacementError,
   ExperienceService,
   ExperienceWatchHomeCategoryRailPlacementError,
+  localeDraftRevision,
 } from "./experience.service"
 import { refreshWatchRouteManifest } from "./watch-route-manifest-refresh.service"
 
@@ -992,6 +993,73 @@ describe("ExperienceService", () => {
       )
     })
 
+    it("rejects a stale expected draft revision inside the locale lock", async () => {
+      prisma.experienceLocale.findUniqueOrThrow.mockResolvedValueOnce(localeRow)
+      prisma.contentRevision.findFirst.mockResolvedValueOnce({
+        id: "draft-newer",
+        snapshot: { v: 1, data: { title: "Newer" } },
+        previewToken: "preview-token",
+        revisedAt: new Date("2026-08-26T15:00:00.000Z"),
+        revisedBy: "bob",
+        revisedByKind: "USER",
+        reason: "newer edit",
+      })
+
+      await expect(
+        service.updateLocale({
+          input: { id: "loc-1", title: "Stale overwrite" },
+          user: EDITOR_ALICE,
+          expectedDraftRevision: "stale-revision",
+        }),
+      ).rejects.toThrow("modified concurrently")
+      expect(prisma.contentRevision.update).not.toHaveBeenCalled()
+      expect(prisma.contentRevision.create).not.toHaveBeenCalled()
+    })
+
+    it("rejects a second first-draft writer that still expects no draft", async () => {
+      prisma.experienceLocale.findUniqueOrThrow.mockResolvedValueOnce(localeRow)
+      prisma.contentRevision.findFirst.mockResolvedValueOnce({
+        id: "draft-first-writer",
+        snapshot: { v: 1, data: { title: "First writer" } },
+        previewToken: "preview-token",
+        revisedAt: new Date("2026-08-26T15:00:00.000Z"),
+        revisedBy: "bob",
+        revisedByKind: "USER",
+        reason: "first writer",
+      })
+
+      await expect(
+        service.updateLocale({
+          input: { id: "loc-1", title: "Second writer" },
+          user: EDITOR_ALICE,
+          expectedDraftRevision: null,
+        }),
+      ).rejects.toThrow("modified concurrently")
+      expect(prisma.contentRevision.update).not.toHaveBeenCalled()
+      expect(prisma.contentRevision.create).not.toHaveBeenCalled()
+    })
+
+    it("keeps the Admin UI no-precondition path last-save-wins", async () => {
+      prisma.experienceLocale.findUniqueOrThrow.mockResolvedValueOnce(localeRow)
+      prisma.contentRevision.findFirst.mockResolvedValueOnce({
+        id: "draft-current",
+        snapshot: { v: 1, data: { title: "Current" } },
+        previewToken: "preview-token",
+        revisedAt: new Date("2026-08-26T15:00:00.000Z"),
+        revisedBy: "bob",
+        revisedByKind: "USER",
+        reason: "current edit",
+      })
+
+      await expect(
+        service.updateLocale({
+          input: { id: "loc-1", title: "UI overwrite" },
+          user: EDITOR_ALICE,
+        }),
+      ).resolves.toMatchObject({ title: "UI overwrite" })
+      expect(prisma.contentRevision.update).toHaveBeenCalled()
+    })
+
     it.each([
       {
         name: "a non-homepage feed",
@@ -1738,6 +1806,58 @@ describe("ExperienceService", () => {
         }),
       ).resolves.toEqual(locale)
       expect(prisma.contentRevision.update).not.toHaveBeenCalled()
+    })
+
+    it("refuses conditional rollback after another editor changes the draft", async () => {
+      prisma.experienceLocale.findUniqueOrThrow.mockResolvedValueOnce(locale)
+      prisma.contentRevision.findFirst.mockResolvedValueOnce({
+        id: "draft-later",
+        snapshot: { v: 1, data: { title: "Later edit" } },
+        previewToken: "preview-token",
+        revisedAt: new Date("2026-08-26T15:30:00.000Z"),
+        revisedBy: "bob",
+        revisedByKind: "USER",
+        reason: "later edit",
+      })
+
+      await expect(
+        service.rollbackLocaleDraft({
+          input: {
+            id: "loc-discard",
+            expectedDraftRevision: "carousel-revision",
+          },
+          user: EDITOR_ALICE,
+        }),
+      ).rejects.toThrow("modified concurrently")
+      expect(prisma.contentRevision.update).not.toHaveBeenCalled()
+    })
+
+    it("conditionally discards the exact draft revision it was given", async () => {
+      const draft = {
+        id: "draft-carousel",
+        snapshot: { v: 1, data: { title: "Carousel edit" } },
+        previewToken: "preview-token",
+        revisedAt: new Date("2026-08-26T15:30:00.000Z"),
+        revisedBy: "alice",
+        revisedByKind: "USER",
+        reason: "carousel edit",
+      }
+      prisma.experienceLocale.findUniqueOrThrow.mockResolvedValueOnce(locale)
+      prisma.contentRevision.findFirst.mockResolvedValueOnce(draft)
+
+      await expect(
+        service.rollbackLocaleDraft({
+          input: {
+            id: "loc-discard",
+            expectedDraftRevision: localeDraftRevision(draft),
+          },
+          user: EDITOR_ALICE,
+        }),
+      ).resolves.toMatchObject({ effective: locale, activeDraft: null })
+      expect(prisma.contentRevision.update).toHaveBeenCalledWith({
+        where: { id: "draft-carousel" },
+        data: { status: "DISCARDED" },
+      })
     })
   })
 
