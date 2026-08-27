@@ -13,7 +13,7 @@ tags:
   - "ai-pipeline"
 ---
 
-## Resolution (partial — U1 / PR 1 of the arc; feature NOT complete)
+## Resolution (partial — U1 + U2 of the arc; feature NOT complete)
 
 **U1 shipped:** 2026-08-21 via [#1987](https://github.com/JesusFilm/forge/pull/1987). The
 `apps/mastra` half of the feature landed behind `SEEKER_FOLLOWUPS_ENABLED`
@@ -37,11 +37,42 @@ the projection.
 `docs/solutions/best-practices/mastra-model-entry-timeout-retry-and-stream-abort-pattern.md`
 (amended — caller-signal scope limit).
 
-**Remaining:** U2 (apps/chat chips UI + a client payload bound — the planned
-byte-identical mirror of the projection was superseded 2026-08-27; mastra stays
-the sole content filter) and U3 (managed-prompt
-closing-question softening via the experiments ledger). The full `## Resolution`
-replaces this section when the arc's final PR flips status to complete.
+**U2 shipped:** 2026-08-27 via [#2078](https://github.com/JesusFilm/forge/pull/2078).
+The `apps/chat` half: up to three tappable chips under a finished Seeker
+answer, on the conversation's LAST turn only and finalized turns only, as a
+sibling block after the sources disclosure (never through the markdown
+allowlist). A tap sends the question verbatim as the person's own next message
+(KD4) and tags the send `promptSource: "follow_up"` across all four hops, with
+the proxy guard forwarding only the exact literal and dropping anything else
+without a 400. Both wire paths carry the questions — the live terminal frame
+and the replay wire — so a reopened thread shows the same chips. Focus is a
+two-moment handoff: the log region at the tap (the composer textarea is
+`disabled` while pending), the composer at finalize.
+
+**U2 deviation from the plan — KTD4's client mirror was superseded**
+(2026-08-27, owner-directed). The plan specified a byte-identical client mirror
+of `projectFollowUps` plus a cross-source drift test; `toFollowUps` ships
+instead as a payload BOUND (non-string, empty-after-trim, >120 UTF-16 units,
+cap 3). Mastra applies the full projection on BOTH the live and replay paths
+unconditionally, so the client copy only covered "mastra is itself wrong" while
+costing two implementations that could silently drift — and its drift test sat
+in a package CI does not build for a mastra-only PR. The mirror was also
+already asymmetric: the composer's typed-send path applies only `.trim()`.
+Accepted residual: during a deploy window (mastra ships first, KTD13) or a
+mastra regression, nothing client-side catches a bidi override in text a person
+then sends as their own message; revisit trigger is audience widening past
+dogfood. A cap-inequality pin (mastra's caps ≤ chat's) now lives mastra-side,
+where the breaking change actually runs. Dated supersession notes are in the
+plan's KTD4, both CLAUDE.mds, this ticket, and the mastra source.
+
+**U2 scope note:** the PR touches four `apps/mastra` files — comment
+corrections plus that cap pin. One correction was load-bearing: the
+accepted-`Cf`-false-positive decision cited the (now absent) U2 mirror as one
+of its grounds. No mastra runtime behaviour changed.
+
+**Remaining:** U3 (managed-prompt closing-question softening via the
+experiments ledger). The full `## Resolution` replaces this section when the
+arc's final PR flips status to complete.
 
 ## Problem
 
