@@ -9,17 +9,20 @@ import {
 } from "../biblePassages"
 import { GET_VIDEO_BIBLE_PASSAGES, GET_VIDEO_BY_SLUG } from "../queries"
 
-// A production-shaped passage: every value copied from what admin returns for
-// Genesis 1:26-27 on `the-beginning`, which resolves in production today.
+// Every value read off deployed admin for Genesis 1:26-27 on `the-beginning`
+// on 2026-08-27, `content` abridged. Re-read it if the version admin resolves
+// changes — a fixture that claims to be production-shaped and is not sends
+// every reviewer to the wrong contract.
 const COMPLETE: Required<RawBiblePassage> = {
-  content: "God said, “Let’s make man in our image, after our likeness.”",
+  content:
+    "Then God said, “Let Us make man in Our image, after Our likeness…” So God created man in His own image.",
   copyright: "Public Domain",
   humanReference: "Genesis 1:26-27",
   provider: "youversion",
-  reference: "GEN.1.26-GEN.1.27",
-  versionAbbreviation: "WEBBE",
-  versionId: 206,
-  versionTitle: "World English Bible British Edition",
+  reference: "GEN.1.26-27",
+  versionAbbreviation: "BSB",
+  versionId: 3034,
+  versionTitle: "Berean Standard Bible",
 }
 
 describe("projectBiblePassage", () => {
@@ -32,9 +35,9 @@ describe("projectBiblePassage", () => {
         reference: "Genesis 1:26-27",
         content: COMPLETE.content,
         copyright: "Public Domain",
-        versionTitle: "World English Bible British Edition",
-        versionAbbreviation: "WEBBE",
-        passageUrl: "https://www.bible.com/bible/206/GEN.1.26-GEN.1.27.WEBBE",
+        versionTitle: "Berean Standard Bible",
+        versionAbbreviation: "BSB",
+        passageUrl: "https://www.bible.com/bible/3034/GEN.1.26-27.BSB",
       },
     })
   })
@@ -64,10 +67,10 @@ describe("projectBiblePassage", () => {
           copyright: "Public Domain",
           humanReference: "Genesis 1:26-27",
           provider: "youversion",
-          reference: "GEN.1.26-GEN.1.27",
-          versionAbbreviation: "WEBBE",
-          versionId: 206,
-          versionTitle: "World English Bible British Edition",
+          reference: "GEN.1.26-27",
+          versionAbbreviation: "BSB",
+          versionId: 3034,
+          versionTitle: "Berean Standard Bible",
         },
       },
       {
@@ -81,10 +84,10 @@ describe("projectBiblePassage", () => {
           copyright: null,
           humanReference: "Genesis 1:26-27",
           provider: "youversion",
-          reference: "GEN.1.26-GEN.1.27",
-          versionAbbreviation: "WEBBE",
-          versionId: 206,
-          versionTitle: "World English Bible British Edition",
+          reference: "GEN.1.26-27",
+          versionAbbreviation: "BSB",
+          versionId: 3034,
+          versionTitle: "Berean Standard Bible",
         },
       },
       {
@@ -98,10 +101,10 @@ describe("projectBiblePassage", () => {
           copyright: "Public Domain",
           humanReference: null,
           provider: "youversion",
-          reference: "GEN.1.26-GEN.1.27",
-          versionAbbreviation: "WEBBE",
-          versionId: 206,
-          versionTitle: "World English Bible British Edition",
+          reference: "GEN.1.26-27",
+          versionAbbreviation: "BSB",
+          versionId: 3034,
+          versionTitle: "Berean Standard Bible",
         },
       },
       {
@@ -115,10 +118,10 @@ describe("projectBiblePassage", () => {
           copyright: "Public Domain",
           humanReference: "Genesis 1:26-27",
           provider: null,
-          reference: "GEN.1.26-GEN.1.27",
-          versionAbbreviation: "WEBBE",
-          versionId: 206,
-          versionTitle: "World English Bible British Edition",
+          reference: "GEN.1.26-27",
+          versionAbbreviation: "BSB",
+          versionId: 3034,
+          versionTitle: "Berean Standard Bible",
         },
       },
       {
@@ -132,9 +135,9 @@ describe("projectBiblePassage", () => {
           humanReference: "Genesis 1:26-27",
           provider: "youversion",
           reference: null,
-          versionAbbreviation: "WEBBE",
-          versionId: 206,
-          versionTitle: "World English Bible British Edition",
+          versionAbbreviation: "BSB",
+          versionId: 3034,
+          versionTitle: "Berean Standard Bible",
         },
       },
       {
@@ -148,10 +151,10 @@ describe("projectBiblePassage", () => {
           copyright: "Public Domain",
           humanReference: "Genesis 1:26-27",
           provider: "youversion",
-          reference: "GEN.1.26-GEN.1.27",
-          versionAbbreviation: "WEBBE",
+          reference: "GEN.1.26-27",
+          versionAbbreviation: "BSB",
           versionId: null,
-          versionTitle: "World English Bible British Edition",
+          versionTitle: "Berean Standard Bible",
         },
       },
       {
@@ -164,10 +167,10 @@ describe("projectBiblePassage", () => {
           copyright: "Public Domain",
           humanReference: "Genesis 1:26-27",
           provider: "youversion",
-          reference: "GEN.1.26-GEN.1.27",
+          reference: "GEN.1.26-27",
           versionAbbreviation: null,
-          versionId: 206,
-          versionTitle: "World English Bible British Edition",
+          versionId: 3034,
+          versionTitle: "Berean Standard Bible",
         },
       },
       {
@@ -179,9 +182,9 @@ describe("projectBiblePassage", () => {
           copyright: "Public Domain",
           humanReference: "Genesis 1:26-27",
           provider: "youversion",
-          reference: "GEN.1.26-GEN.1.27",
-          versionAbbreviation: "WEBBE",
-          versionId: 206,
+          reference: "GEN.1.26-27",
+          versionAbbreviation: "BSB",
+          versionId: 3034,
           versionTitle: null,
         },
       },
@@ -238,7 +241,7 @@ describe("projectBiblePassage", () => {
   it("derives the same link web derives", () => {
     expect(projectBiblePassage(COMPLETE)).toMatchObject({
       passage: {
-        passageUrl: "https://www.bible.com/bible/206/GEN.1.26-GEN.1.27.WEBBE",
+        passageUrl: "https://www.bible.com/bible/3034/GEN.1.26-27.BSB",
       },
     })
   })
@@ -255,7 +258,7 @@ describe("projectBiblePassage", () => {
       }),
     ).toMatchObject({
       passage: {
-        passageUrl: "https://www.bible.com/bible/206/GEN.1.26%2026.WEB%20BE",
+        passageUrl: "https://www.bible.com/bible/3034/GEN.1.26%2026.WEB%20BE",
       },
     })
   })
