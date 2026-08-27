@@ -81,18 +81,45 @@ useEffect(() => {
   loadedUrlRef.current = streamingUrl
   // Preserve playback: replace does not carry the play state to the new source.
   const wasPlaying = player.playing
-  void player
-    .replaceAsync(streamingUrl)
-    .then(() => {
-      if (wasPlaying) player.play()
-    })
-    .catch(() => {
-      try {
-        player.replace(streamingUrl, true)
-      } catch {}
-    })
+
+  // Resume on the LOAD, not on the promise. See the note below.
+  const sub = player.addListener("sourceLoad", () => {
+    sub.remove()
+    if (wasPlaying) player.play()
+  })
+
+  void player.replaceAsync(streamingUrl).catch(() => {
+    try {
+      // The synchronous path lands the item immediately, so the listener above
+      // has already fired or will fire from this call.
+      player.replace(streamingUrl, true)
+    } catch {
+      sub.remove()
+    }
+  })
 }, [streamingUrl, player])
 ```
+
+**Do not resume in the `replaceAsync` continuation.** The promise settles when
+the source has been SET, not when it has LOADED — on Android `replaceAsync` is
+aliased to `replace` — so work written in `.then()` runs while the player still
+holds the OUTGOING item. A bare `play()` there is the mild form; a
+`player.currentTime = X` written there is silently discarded, which is the
+tvOS-side failure recorded in
+`docs/solutions/integration-issues/expo-video-replaceasync-seek-silently-dropped-tvos.md`
+(same root premise — the promise resolves before the incoming item is usable —
+reached by a different route). Ride `sourceLoad` and scope the listener to the
+source that asked for it, since one player is shared app-wide.
+
+The app now codifies this in two places:
+`apps/mobile/src/hooks/useAutostartPlayback.ts` ("Start on `sourceLoad`, never
+on the `replaceAsync` promise — that resolves before the source is applied")
+and `apps/mobile/src/lib/recoverPlayback.ts`.
+
+**Keep the resume on the fallback path too.** The earlier version of this
+snippet captured `wasPlaying`, honoured it on the success path, and dropped it
+inside `.catch()` — so a swap that fell back to the synchronous `replace()`
+left a playing video stopped with no signal.
 
 Also make play/pause controls read the **live** `player.playing`, not a cached React snapshot: a source swap can leave the player paused without emitting a `playingChange`, so a stale snapshot wedges the toggle (it calls `pause()` on an already-paused player forever, and the user can't resume without leaving the screen).
 

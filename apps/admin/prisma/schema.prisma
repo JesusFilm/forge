@@ -2464,3 +2464,38 @@ model ExperienceChatMessage {
   @@index([threadId, createdAt(sort: Asc)], map: "experience_chat_message_thread_created_idx")
   @@map("experience_chat_message")
 }
+
+/// One sticker a reader placed on a /watch/whats-new feature card.
+///
+/// Anonymous by construction: `ballotId` is a random id the browser mints
+/// and keeps in localStorage, so it identifies a BALLOT, not a person, and
+/// clearing storage mints a new one. That is the accepted trade for letting
+/// a public announcement page collect signal without a login — the budget
+/// below bounds one ballot, not one human.
+///
+/// `placementId` is minted per placement by the client and unique per
+/// ballot, which makes the cast mutation idempotent: a retried request (a
+/// dropped response, a queued offline send) lands on the same row instead
+/// of inflating the tally.
+///
+/// Retraction is a soft delete. A reader peeling a sticker off should stop
+/// counting immediately, but "placed then took it back" is signal too.
+model WhatsNewFeatureVote {
+  id          String    @id @default(cuid())
+  ballotId    String    @map("ballot_id") @db.VarChar(80)
+  placementId String    @map("placement_id") @db.VarChar(80)
+  /// Content-defined feature id (e.g. `shareable-search`). A free-form
+  /// bounded string, not an enum: the feature list is authored in web's
+  /// whats-new-content.ts and adding a card must not need a migration.
+  featureId   String    @map("feature_id") @db.VarChar(64)
+  /// Which sticker was used. Rendered as a total today; kept per-kind
+  /// because the sticker is the REASON, not just a tally.
+  stickerId   String    @map("sticker_id") @db.VarChar(32)
+  createdAt   DateTime  @default(now()) @map("created_at")
+  retractedAt DateTime? @map("retracted_at")
+
+  @@unique([ballotId, placementId], map: "whats_new_feature_vote_ballot_placement_key")
+  @@index([featureId, retractedAt], map: "whats_new_feature_vote_feature_idx")
+  @@index([ballotId, retractedAt], map: "whats_new_feature_vote_ballot_idx")
+  @@map("whats_new_feature_vote")
+}

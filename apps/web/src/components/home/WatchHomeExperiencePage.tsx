@@ -3,6 +3,7 @@ import { useTranslations } from "next-intl"
 import { ExperienceSectionRenderer, type Section } from "@/components/sections"
 import { WatchHomeFooter } from "@/components/home/WatchHomeFooter"
 import { WatchHomeTvCarousel } from "@/components/home/WatchHomeTvCarousel"
+import { WatchLanguageGlobeSection } from "@/components/home/WatchLanguageGlobeSection"
 import { WATCH_PAGE_CONTENT_CLASSES } from "@/lib/content-width"
 import type { WatchHomeModel } from "@/lib/watch-home"
 import { collectFeaturedCollectionReferences } from "@/lib/featured-collection-references"
@@ -217,6 +218,7 @@ export function WatchHomeExperiencePage({
                 normalized.blocks.indexOf(dynamicCollectionBlock),
               )
             : null}
+          <WatchLanguageGlobeSection />
           <WatchHomeFooter />
         </div>
       </div>

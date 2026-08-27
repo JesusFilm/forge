@@ -372,6 +372,7 @@
     "screenReaderPrefix": "Seite nicht gefunden:",
     "title": "Diese Szene ist hier nicht.",
     "description": "Die Seite wurde vielleicht verschoben, aber die Geschichte geht weiter.",
+    "languageDescription": "We couldn't find the page you're looking for, but the story continues in films and videos from languages around the world.",
     "actionsLabel": "Aktionen bei nicht gefundener Seite",
     "backToWatch": "Zurück zu Watch",
     "browseVideos": "Videos durchsuchen"

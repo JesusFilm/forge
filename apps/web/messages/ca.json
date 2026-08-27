@@ -451,6 +451,7 @@
     "screenReaderPrefix": "Pàgina no trobada:",
     "title": "Aquesta escena no és aquí.",
     "description": "És possible que la pàgina s’hagi mogut, però la història continua.",
+    "languageDescription": "We couldn't find the page you're looking for, but the story continues in films and videos from languages around the world.",
     "actionsLabel": "Accions de pàgina no trobada",
     "backToWatch": "Torna a Watch",
     "browseVideos": "Navega pels vídeos"

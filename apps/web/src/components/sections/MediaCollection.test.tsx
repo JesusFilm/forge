@@ -431,6 +431,10 @@ describe("MediaCollection VideoCard href", () => {
       expect(mobileCarousel?.getAttribute("tabindex")).toBeNull()
       expect(mobileCarousel?.getAttribute("class")).toContain("overflow-x-auto")
       expect(mobileCarousel?.getAttribute("class")).toContain("snap-mandatory")
+      // Snap inset must mirror the grid's px-5: without scroll-pl-5 the
+      // mandatory snap fires on load and pulls the first card flush with the
+      // viewport edge instead of the content column.
+      expect(mobileCarousel?.getAttribute("class")).toContain("scroll-pl-5")
       expect(mobileCarousel?.getAttribute("class")).toContain(
         "md:overflow-visible",
       )

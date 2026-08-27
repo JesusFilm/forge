@@ -13,6 +13,7 @@ import { createRoot, type Root } from "react-dom/client"
 import { renderToString } from "react-dom/server"
 import { setRequestLocale } from "next-intl/server"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+import englishMessages from "../../../messages/en.json"
 
 import {
   FloatingSearchController,
@@ -2190,6 +2191,9 @@ describe("FloatingSearchProvider — language switcher chrome", () => {
       await Promise.resolve()
     })
     expect(globalLanguageLoader).toHaveBeenCalledTimes(1)
+    expect(
+      document.querySelector('[data-testid="global-language-picker-modal"]'),
+    ).toBeNull()
     for (const loader of Object.values(unrelatedInteractionLoaders)) {
       expect(loader).not.toHaveBeenCalled()
     }
@@ -4612,7 +4616,7 @@ describe("FloatingSearchProvider — search language selection", () => {
     expect(document.body.textContent).toContain("Japanese Result")
   })
 
-  it("keeps an unavailable result bound to the completed target language", async () => {
+  it("keeps an unavailable recovery card in the completed mixed result window", async () => {
     vi.useFakeTimers()
     mockedGetSearchLanguageOptions.mockResolvedValue({
       ok: true,
@@ -4630,9 +4634,20 @@ describe("FloatingSearchProvider — search language selection", () => {
       ...makeSearchResponse(
         [
           {
+            ...makeSearchResult("playable-before", "Playable Before"),
+            availabilityKind: "target_audio",
+            languageSlug: "spanish-castilian",
+          },
+          {
             ...makeSearchResult("unavailable-result", "Unavailable Result"),
             availabilityKind: "unavailable",
             languageSlug: null,
+          },
+          {
+            ...makeSearchResult("playable-after", "Playable After"),
+            availabilityKind: "target_subtitle",
+            languageSlug: "english",
+            subtitleLanguageSlug: "spanish-castilian",
           },
         ],
         false,
@@ -4643,11 +4658,48 @@ describe("FloatingSearchProvider — search language selection", () => {
     const input = await openSearchOverlay()
     await submitSearch(input, "jesus")
 
-    const resultLink = Array.from(document.querySelectorAll("a")).find(
-      (anchor) => anchor.textContent?.includes("Unavailable Result") ?? false,
-    ) as HTMLAnchorElement
+    const resultLinks = Array.from(document.querySelectorAll("a")).filter(
+      (anchor) =>
+        ["Playable Before", "Unavailable Result", "Playable After"].some(
+          (title) => anchor.textContent?.includes(title) ?? false,
+        ),
+    ) as HTMLAnchorElement[]
+    const visibleResultIds = [
+      "playable-before",
+      "unavailable-result",
+      "playable-after",
+    ]
+    expect(resultLinks.map((anchor) => anchor.textContent)).toEqual([
+      expect.stringContaining("Playable Before"),
+      expect.stringContaining("Unavailable Result"),
+      expect.stringContaining("Playable After"),
+    ])
+
+    const resultLink = resultLinks[1]
+    expect(resultLink).toBeDefined()
     expect(resultLink.getAttribute("href")).toBe(
       "/unavailable-result-slug.html/spanish-castilian.html",
+    )
+    expect(
+      resultLink.querySelector('[data-testid="search-card-availability-badge"]')
+        ?.textContent,
+    ).toBe(
+      `${englishMessages.LanguagePickerModal.notAvailable} · European Spanish`,
+    )
+    expect(
+      resultLinks[0]?.querySelector(
+        '[data-testid="search-card-availability-badge"]',
+      ),
+    ).toBeNull()
+    expect(
+      resultLinks[2]?.querySelector(
+        '[data-testid="search-card-availability-badge"]',
+      ),
+    ).toBeNull()
+    expect(recordWatchSearchResultsViewed).toHaveBeenCalledWith(
+      expect.objectContaining({
+        visibleResultIds,
+      }),
     )
 
     const languageTrigger = document.querySelector(
@@ -4668,16 +4720,24 @@ describe("FloatingSearchProvider — search language selection", () => {
     expect(resultLink.getAttribute("href")).toBe(
       "/unavailable-result-slug.html/spanish-castilian.html",
     )
-    act(() => {
+    await act(async () => {
       resultLink.dispatchEvent(
         new MouseEvent("click", { bubbles: true, cancelable: true }),
       )
+      await Promise.resolve()
     })
     const stored = JSON.parse(
       window.sessionStorage.getItem(WATCH_UNAVAILABLE_RECOVERY_STORAGE_KEY) ??
         "null",
     ) as { target?: { requestedLanguageSlug?: string } } | null
     expect(stored?.target?.requestedLanguageSlug).toBe("spanish-castilian")
+    expect(recordWatchSearchResultClick).toHaveBeenCalledWith(
+      expect.objectContaining({
+        resultId: "unavailable-result",
+        position: 2,
+        visibleResultIds,
+      }),
+    )
   })
 
   it("keeps language changes draft-only until explicit submit", async () => {

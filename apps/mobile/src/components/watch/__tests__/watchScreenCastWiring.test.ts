@@ -63,6 +63,19 @@ describe("watch screen cast wiring (U4)", () => {
     expect(call).not.toContain("offlineSource")
   })
 
+  it("supplies the session speed to the cast load, read at call time (R15/AE9)", () => {
+    // Keyed on the host's videoKey for this route (decodedSlug), read via
+    // getSnapshot() at call time — never a subscription — so a speed change
+    // cannot re-render the route or retrigger the load effect.
+    const resolver = at("const resolveCastMediaAt = useCallback(")
+    const body = ROUTE.slice(resolver, at("return media", resolver))
+    expect(body).toContain("playbackRate: effectivePlayerSettings(")
+    expect(body).toContain("getPlayerSettingsStore().getSnapshot()")
+    expect(body).toContain("decodedSlug")
+    expect(body).toContain(").speed")
+    expect(ROUTE).not.toContain("useSyncExternalStore")
+  })
+
   it("opens the SDK dialog through the cast adapter (KTD3)", () => {
     expect(ROUTE).toContain('from "../../src/lib/cast/castAdapter"')
     expect(ROUTE).toContain("void showCastDialog().catch(() => {})")

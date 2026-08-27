@@ -55,6 +55,20 @@ describe("scroll-driven timeline choreography", () => {
     expect(slide).not.toContain("opacity")
   })
 
+  it("never transforms a grid tile, only fades it", () => {
+    // A cell's side rules are drawn by its NEIGHBOUR, so a cell that
+    // translates or scales slides out from under a rule that has not
+    // moved and opens a visible strip. Pointing this back at
+    // `watch-scroll-rise` — the obvious thing to reach for, and what it
+    // used to use — reopens a 6.47px gap.
+    const tile = blockBody(guard, ".watch-scroll-card {")
+    expect(tile).toContain("watch-scroll-tile-in")
+    expect(tile).not.toContain("watch-scroll-rise")
+    expect(blockBody(css, "@keyframes watch-scroll-tile-in")).not.toContain(
+      "transform",
+    )
+  })
+
   it("attaches every choreographed class to the view timeline", () => {
     // Anti-vacuous companion: a class sitting inside the guard with no
     // `animation-timeline` would satisfy the check above while animating
@@ -111,6 +125,351 @@ describe("scroll-driven timeline choreography", () => {
     expect(override).toBeGreaterThan(base)
   })
 
+  it("grows the fanned hand about its own centre, past its laid-out size", () => {
+    // The growth is on the LIST, not on the cards: per-card growth costs
+    // copy clearance proportional to card width (measured 16px -> -12px at
+    // 1920), and scaling the list multiplies the gaps along with the cards.
+    // Its origin is the list's centre, because the fan's pivot sits 190%
+    // below each card and would lift the whole group out of its slot.
+    const fan = blockBody(guard, ".watch-scroll-fan {")
+    const hand = blockBody(guard, ".watch-scroll-fan-hand {")
+    const lift = blockBody(css, "@keyframes watch-fan-lift")
+
+    expect(fan).toContain("transform-origin: 50% 190%")
+    expect(hand).toContain("transform-origin: 50% 50%")
+    expect(hand).toContain("animation-timeline: view()")
+    // Both halves of one motion must finish together.
+    const range = /animation-range:([^;]+);/
+    expect(hand.match(range)?.[1]).toBe(fan.match(range)?.[1])
+    // The hand ends LARGER than it starts — that is the whole effect.
+    const from = Number(lift.match(/from\s*\{\s*scale:\s*([\d.]+)/)?.[1])
+    const to = Number(
+      lift.match(/to\s*\{\s*scale:\s*var\(--fan-scale-end,\s*([\d.]+)/)?.[1],
+    )
+    expect(from).toBe(1)
+    expect(to).toBeGreaterThan(1)
+    // Measured ceiling: at 1.15 the grown hand reaches -2px at a 1920
+    // viewport, i.e. the outer card is clipped by the page's `overflow-x`.
+    expect(to).toBeLessThanOrEqual(1.12)
+  })
+
+  it("keeps the sticker pile larger than a stuck sticker", () => {
+    // The pile is what you pick FROM, so it has to read as bigger than the
+    // same sticker already spent on a card. Both ends derive from these two
+    // numbers (see WhatsNewFeatureVote); a scale of 1 or less makes the pile
+    // vanish into the board it feeds, and the class-level test in that
+    // component's suite cannot see the value.
+    const root = blockBody(css, ":root {")
+    const stuck = root.match(/--watch-sticker-stuck:\s*([\d.]+)rem/)?.[1]
+    const scale = Number(
+      root.match(/--watch-sticker-pile-scale:\s*([\d.]+)/)?.[1],
+    )
+
+    expect(stuck).toBeDefined()
+    expect(scale).toBeGreaterThan(1)
+    // And not so far above it that the pile stops being a pile: at 6x it
+    // was competing with the cards it sits under.
+    expect(scale).toBeLessThanOrEqual(1.5)
+  })
+
+  it("never clips the stage, which would shear the full-bleed card", () => {
+    // Measured, not reasoned: the stage's box sits inside the content rail,
+    // so any overflow on it cuts 96px off each side of the opening card and
+    // leaves black strips down both edges of an effect whose whole point is
+    // to reach the viewport edges. `hidden` is worse still — it makes the
+    // stage a scroll container and the pin's sticky never engages. The card
+    // is bounded by the stage's top margin instead.
+    const guard = blockBody(css, "@supports (animation-timeline: view())")
+    const rule = blockBody(guard, ".watch-scroll-stage {")
+
+    expect(rule).not.toContain("overflow")
+  })
+
+  it("drops the lifted lead layer back to its own depth", () => {
+    // The lead layer is raised over its siblings for the length of the zoom
+    // so their clip-box shadows cannot draw a seam across the full-screen
+    // photograph. It has to come back down: the pile is built bottom-up, so
+    // a lead layer left on top would sit over every card that lands on it.
+    const frames = blockBody(css, "@keyframes watch-scroll-intro-front")
+
+    expect(frames).toContain("z-index: 30")
+    expect(frames).toMatch(/100%\s*\{\s*z-index:\s*var\(--layer\)/)
+  })
+
+  it("opens the lead beat at full opacity, not faded out", () => {
+    // Every other beat fades up as its card arrives. The lead beat is part
+    // of the opening frame instead — it sits over the full-screen
+    // photograph from the first pixel — so its keyframes must START opaque.
+    // Reusing the cycle here leaves the opening composition wordless.
+    const lead = blockBody(css, "@keyframes watch-scroll-beat-lead")
+    const cycle = blockBody(css, "@keyframes watch-scroll-beat-cycle")
+
+    expect(lead).toMatch(/0%,\s*\d+%\s*\{\s*opacity:\s*1/)
+    expect(cycle).toMatch(/0%\s*\{\s*opacity:\s*0/)
+    // …and it still gets out of the way for the card that comes for it.
+    expect(lead).toMatch(/100%\s*\{\s*opacity:\s*0/)
+
+    // The wiring, not just the shape. Asserting only on the keyframes lets
+    // the rule be repointed at the cycle — which is the production defect,
+    // and left this test green when it was tried.
+    const guard = blockBody(css, "@supports (animation-timeline: view())")
+    const rule = blockBody(guard, ".watch-scroll-beatbox-lead {")
+
+    expect(rule).toContain("watch-scroll-beat-lead")
+    expect(rule).not.toContain("watch-scroll-beat-cycle")
+  })
+
+  it("runs the lead beat's weight over the zoom, not over its own slice", () => {
+    // The beat carries two tracks on different ranges: hold-then-fade
+    // belongs to the era's slice, weight and shadow to the opening zoom.
+    // Collapsed onto one range, the paragraph would still be at its heavy
+    // opening weight long after the photograph it was heavy FOR has gone.
+    const guard = blockBody(css, "@supports (animation-timeline: view())")
+    const rule = blockBody(guard, ".watch-scroll-beatbox-lead {")
+
+    expect(rule).toContain("watch-scroll-beat-weight")
+    expect(rule).toContain(
+      "animation-range: var(--beat-range), var(--intro-range)",
+    )
+    // Both tracks need a timeline; one entry drives only the first.
+    expect(rule).toContain(
+      "animation-timeline: --watch-era-stage, --watch-era-stage",
+    )
+  })
+
+  it("eases the lead beat from a heavier weight that cannot re-wrap it", () => {
+    // Measured: the paragraph re-wraps at weight 600 on every viewport at
+    // or below 1024px, and gains a line at 700. Because this interpolates
+    // during a scroll, a weight that re-wraps makes the lines jump under
+    // the reader mid-zoom — so the opening weight is capped at 500.
+    const frames = blockBody(css, "@keyframes watch-scroll-beat-weight")
+    const opening = Number(
+      frames.match(/from\s*\{[^}]*font-weight:\s*(\d+)/)?.[1],
+    )
+    const resting = Number(
+      frames.match(/to\s*\{[^}]*font-weight:\s*(\d+)/)?.[1],
+    )
+
+    expect(opening).toBeGreaterThan(resting)
+    expect(opening).toBeLessThanOrEqual(500)
+    // `font-light` is the resting design; landing anywhere else leaves the
+    // beat permanently off-weight, since the fill holds the last frame.
+    expect(resting).toBe(300)
+    // And the halo goes with it: over the black page it only muddies.
+    expect(frames).toMatch(/to\s*\{[\s\S]*rgb\(0 0 0 \/ 0\)/)
+  })
+
+  it("sizes the opening photograph from the viewport, capped at the card", () => {
+    // The card is far wider than the screen while it fills it, so a
+    // card-filling box pushes ~40% of the picture off both sides. The box is
+    // the VIEWPORT width instead, divided back out by the zoom — and capped
+    // at the card's own footprint so the landed frame is unchanged. Drop the
+    // cap and the landed card shows a crop it never used to.
+    const guard = blockBody(css, "@supports (animation-timeline: view())")
+    const rule = blockBody(guard, ".watch-scroll-intro-photo {")
+
+    expect(rule).toMatch(
+      /width:\s*min\(\s*calc\(100vw \/ var\(--era-zoom\)\)\s*,\s*100%\s*\)/,
+    )
+  })
+
+  it("lands the opening photograph on its card, not on the screen", () => {
+    // Height and vertical centre have DIFFERENT right answers at the two
+    // ends, so both are animated between them rather than computed once.
+    // A single value correct at the opening frame is wrong at the landed one:
+    // reading the screen's centre there pushed the picture 239px down inside
+    // its own card, and taking the height from the viewport left it 96px
+    // short of the card top and bottom on a tall window. Both shipped.
+    const frames = blockBody(css, "@keyframes watch-scroll-intro-photo")
+    const from = frames.slice(0, frames.indexOf("to {"))
+    const to = frames.slice(frames.indexOf("to {"))
+
+    // Opening: top edge flush with the top of the screen, at the picture's
+    // own aspect — read from the picture, never hard-coded here. The centre
+    // is half a rendered height below the card's top edge, which is the
+    // `39px + 50vw / aspect`. Centred on the screen instead (`50svh`), the
+    // letterbox splits and its upper half stacks under the page's own dark
+    // band, which reads as a gap above the picture.
+    expect(from).toMatch(
+      /top:\s*calc\(\(39px \+ 50vw \/ var\(--photo-aspect\)\)/,
+    )
+    expect(from).not.toContain("50svh")
+    expect(from).toMatch(/height:\s*calc\(100vw \/ var\(--photo-aspect\)/)
+    // Landed: the card's own box, exactly.
+    expect(to).toMatch(/top:\s*50%\s*;/)
+    expect(to).toMatch(/height:\s*100%\s*;/)
+
+    // …and it is actually wired to the zoom's range, or neither end applies.
+    const guard = blockBody(css, "@supports (animation-timeline: view())")
+    const rule = blockBody(guard, ".watch-scroll-intro-photo {")
+
+    expect(rule).toContain("animation: watch-scroll-intro-photo")
+    expect(rule).toContain("animation-range: var(--intro-range)")
+  })
+
+  it("keeps the opening zoom inside the pinned breakpoint", () => {
+    // The veil and the caption fade start at `opacity: 0`. Below the
+    // pinned breakpoint the stage declares no `--watch-era-stage`
+    // timeline, so these would be animations with nothing to drive them —
+    // the year rail and the lead card's caption riding on whether an
+    // inactive timeline suppresses its own effect. Scope them instead.
+    const guard = blockBody(css, "@supports (animation-timeline: view())")
+    const pinned = blockBody(guard, "@media (width >= 48rem)")
+
+    expect(pinned).not.toBe("")
+    for (const name of [
+      "watch-scroll-intro",
+      "watch-scroll-intro-front",
+      "watch-scroll-intro-veil",
+      "watch-scroll-intro-caption",
+    ]) {
+      const rule = blockBody(pinned, `.${name} {`)
+      expect(rule, name).toContain("animation-timeline: --watch-era-stage")
+      expect(rule, name).toContain("animation-range: var(--intro-range)")
+    }
+  })
+
+  it("scales the opening zoom from the viewport, not from a guessed number", () => {
+    // A hard-coded scale is right at one viewport height and wrong at
+    // every other: too small leaves a strip of page showing around the
+    // photograph, too large crops it to nothing. The trig pair is CSS
+    // dividing two lengths into a bare number.
+    const guard = blockBody(css, "@supports (animation-timeline: view())")
+    const rule = blockBody(guard, ".watch-scroll-intro {")
+
+    expect(rule).toContain("100svh")
+    expect(rule).toContain("atan2(")
+    // Both axes: short viewports are bound by height, ultrawide ones by
+    // the fixed content rail.
+    expect(rule).toContain("100vw")
+  })
+
+  it("draws every grain tile at the size its noise was authored for", () => {
+    // MEASURED. `baseFrequency` is per user unit, so rendering an N-unit
+    // noise field into a box that is not N pixels scales the grain with the
+    // box. A 512-unit field drawn at 148px comes out as 0.3px blobs and
+    // averages to flat grey — a layer that costs paint and shows nothing.
+    //
+    // Scanned over EVERY rule that references a grain field, not the two
+    // this started with. A merge added a third consumer at a size that
+    // matched the field it was written against, and enlarging the shared
+    // field silently broke it; a guard naming only the rules it knew about
+    // could not have noticed.
+    const authored = (suffix: string) =>
+      Number(
+        css.match(
+          new RegExp(`--watch-grain-image${suffix}:[^;]*width='(\\d+)'`),
+        )?.[1],
+      )
+
+    const consumers = [
+      ...css.matchAll(
+        /\.([\w-]+)\s*\{([^}]*background-image:\s*var\(--watch-grain-image(-fine)?\)[^}]*)\}/g,
+      ),
+    ].map((m) => ({
+      name: m[1],
+      drawn: Number(m[2].match(/background-size:\s*(\d+)px/)?.[1]),
+      suffix: m[3] ?? "",
+    }))
+
+    // The scan itself has to be load-bearing: if it stops matching, every
+    // assertion below passes vacuously.
+    expect(consumers.length).toBeGreaterThanOrEqual(3)
+
+    for (const { name, drawn, suffix } of consumers) {
+      expect(drawn, `.${name} background-size`).toBe(authored(suffix))
+    }
+
+    // …and the two fields are genuinely different, not one size twice.
+    expect(authored("")).not.toBe(authored("-fine"))
+  })
+
+  it("keeps the two grain tiles from repeating in step", () => {
+    // Two layers only hide each other's repeat if their periods do not line
+    // up. The old pair was 150 and 74 — within 1.5% of 2:1 — so they
+    // reinforced every other tile and the pattern read as one 150px block.
+    const coarse = Number(
+      blockBody(css, ".watch-grain {").match(/background-size:\s*(\d+)px/)?.[1],
+    )
+    const fine = Number(
+      blockBody(css, ".watch-grain-fine {").match(
+        /background-size:\s*(\d+)px/,
+      )?.[1],
+    )
+    const ratio = coarse / fine
+
+    // Far from every simple ratio up to 3:1, in either direction.
+    for (const simple of [1, 1.25, 1.333, 1.5, 2, 2.5, 3]) {
+      expect(
+        Math.abs(ratio - simple),
+        `ratio ${ratio} vs ${simple}`,
+      ).toBeGreaterThan(0.08)
+    }
+    // …and big enough that a screen holds only a couple of copies.
+    expect(Math.min(coarse, fine)).toBeGreaterThan(300)
+  })
+
+  it("does not divide the grain tile by the zoom", () => {
+    // MEASURED, and a reversal: the grain is rastered in the card's own
+    // coordinate space and then GPU-scaled with it, so dividing the tile down
+    // only asks for sub-pixel noise that averages to mush BEFORE the upscale.
+    // It measured 3px soft blobs at the opening frame against 1px crisp
+    // landed, and doubled the repeats across the screen at the same time.
+    for (const selector of [".watch-grain {", ".watch-grain-fine {"]) {
+      const rule = blockBody(css, selector)
+      expect(rule, selector).not.toContain("--era-zoom")
+    }
+  })
+
+  it("registers the zoom mirror so it can interpolate and be inherited", () => {
+    // Unregistered, a custom property animates in discrete jumps — the tile
+    // would snap between two sizes instead of holding one. And the grain
+    // reads it from an ancestor, so it has to inherit. The 1 default is what
+    // keeps every layer outside a zooming card dividing by nothing.
+    const rule = blockBody(css, "@property --era-zoom")
+
+    expect(rule).toContain('syntax: "<number>"')
+    expect(rule).toContain("inherits: true")
+    expect(rule).toContain("initial-value: 1")
+  })
+
+  it("keeps the zoom mirror tracking the scale it mirrors", () => {
+    // `scale` and `--era-zoom` are animated as separate declarations, so
+    // nothing but this stops them drifting apart — and a mirror that lags
+    // the real scale mis-sizes the tile by exactly that difference.
+    const frames = blockBody(css, "@keyframes watch-scroll-intro")
+    const from = frames.slice(0, frames.indexOf("to {"))
+    const to = frames.slice(frames.indexOf("to {"))
+
+    expect(from).toMatch(/scale:\s*var\(--intro-scale[^)]*\)/)
+    expect(from).toMatch(/--era-zoom:\s*var\(--intro-scale[^)]*\)/)
+    // Anchored on the terminator: an unanchored `1` also matches `1.4`,
+    // which is exactly the drift this is here to catch.
+    expect(to).toMatch(/scale:\s*1\s*;/)
+    expect(to).toMatch(/--era-zoom:\s*1\s*;/)
+  })
+
+  it("gives a reduced-motion reader the same grain strength as everyone else", () => {
+    // The flicker animates the coarse layer's opacity, and reduced motion
+    // switches it off — so the static value is what those readers actually
+    // see. It has to sit at the flicker's MEAN. It used to be 0.72 against a
+    // flicker that never exceeded 0.68, which handed the readers who asked
+    // for less the strongest grain on the page.
+    const flicker = blockBody(css, "@keyframes watch-grain-flicker")
+    const frames = [...flicker.matchAll(/opacity:\s*([\d.]+)/g)].map((m) =>
+      Number(m[1]),
+    )
+    // The last keyframe repeats the first; counting it would skew the mean.
+    const cycle = frames.slice(0, -1)
+    const mean = cycle.reduce((a, b) => a + b, 0) / cycle.length
+    const still = Number(
+      blockBody(css, ".watch-grain {").match(/opacity:\s*([\d.]+)/)?.[1],
+    )
+
+    expect(cycle.length).toBeGreaterThan(4)
+    expect(still).toBeCloseTo(mean, 2)
+  })
+
   it("keeps the grain loops from realigning into a visible pattern", () => {
     // Drift and density run as two animations with non-harmonic periods.
     // Equal or multiple durations would resync every cycle and the grain
@@ -123,5 +482,44 @@ describe("scroll-driven timeline choreography", () => {
     expect(a % b === 0 || b % a === 0).toBe(false)
     // …and slow enough to read as grain, not static.
     for (const period of periods) expect(period).toBeGreaterThan(1200)
+  })
+})
+
+describe("improvement colour band", () => {
+  const band = blockBody(css, ".whats-new-tint-band")
+
+  it("layers radials over a base so no corner is left bald", () => {
+    expect(band).not.toBe("")
+    const radials = band.match(/radial-gradient\(/g) ?? []
+    expect(radials.length).toBeGreaterThanOrEqual(3)
+    // The base is what the radials sit on; without it their falloff leaves
+    // the cell corners transparent and the band reads as three blobs.
+    expect(band).toContain("linear-gradient(")
+  })
+
+  it("ends on a slanted fade, prefixed for older Safari", () => {
+    // A level fade is what anyone would reach for by default; the slant is
+    // the point. `to bottom`, or a bare 180deg, means the tilt was lost.
+    const angle = band.match(/[^-]mask-image:\s*linear-gradient\(\s*(\d+)deg/)
+    expect(angle).not.toBeNull()
+    const deg = Number(angle![1])
+    expect(deg).not.toBe(180)
+    // Past 180deg tilts the fade so the RIGHT side ends lower; under 180
+    // mirrors it, which is the direction this was deliberately moved away
+    // from and is otherwise a silent one-character flip.
+    expect(deg).toBeGreaterThan(180)
+    expect(deg).toBeLessThanOrEqual(200)
+    // Both spellings, or Safari < 15.4 drops the mask and shows a hard cut.
+    expect(band).toContain("-webkit-mask-image:")
+  })
+
+  it("drives every layer from the per-cell tint properties", () => {
+    // Hard-coding a colour here would paint all five cells identically
+    // while the cells still carry five different tints.
+    expect(band).toContain("var(--tint-from)")
+    expect(band).toContain("var(--tint-to)")
+    // #0c0a09 is the page base the mixes fall back to; any OTHER literal
+    // hex is a colour that ignores the cell's tint.
+    expect(band).not.toMatch(/#(?!0c0a09\b)[0-9a-f]{6}/i)
   })
 })

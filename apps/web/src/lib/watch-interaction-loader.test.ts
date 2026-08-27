@@ -214,6 +214,24 @@ describe("watch interaction loader", () => {
     cleanup()
   })
 
+  it("can warm the global picker module without warming its catalog", async () => {
+    const loadGlobalModule = vi.fn(async () => ({}))
+    const loadGlobalOptions = vi.fn(async () => globalLanguageOptions)
+    __setWatchInteractionLoadersForTests({
+      "global-language": loadGlobalModule,
+    })
+    __setGlobalWatchLanguageOptionsLoaderForTests(loadGlobalOptions)
+
+    await warmWatchInteractionsNow({
+      globalLanguage: true,
+      globalLanguageOptions: false,
+      interactionKeys: [],
+    })
+
+    expect(loadGlobalModule).toHaveBeenCalledTimes(1)
+    expect(loadGlobalOptions).not.toHaveBeenCalled()
+  })
+
   it("reuses an intent-started load when the idle warmup reaches that interaction", async () => {
     const order: string[] = []
     __setWatchInteractionLoadersForTests({

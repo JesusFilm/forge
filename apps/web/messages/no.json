@@ -451,6 +451,7 @@
     "screenReaderPrefix": "Siden ble ikke funnet:",
     "title": "Denne scenen er ikke her.",
     "description": "Siden kan ha blitt flyttet, men historien fortsetter.",
+    "languageDescription": "We couldn't find the page you're looking for, but the story continues in films and videos from languages around the world.",
     "actionsLabel": "Handlinger for siden ble ikke funnet",
     "backToWatch": "Tilbake til Se",
     "browseVideos": "Bla gjennom videoer"

@@ -114,6 +114,10 @@ async function render(
     externalPlaybackActive?: boolean
     castUi?: PlayerControlsCastUi | null
     castTarget?: PlaybackTarget | null
+    onOpenSettings?: () => void
+    onInteract?: () => void
+    onRecover?: () => void
+    isOnline?: boolean
   } = {},
   player: ReturnType<typeof makePlayer> = makePlayer(),
 ): Promise<TestInstance> {
@@ -319,6 +323,140 @@ describe("Cast button (U4)", () => {
   })
 })
 
+// Android cannot open its cast dialog from JS: showCastDialog() can only click a
+// native MediaRouteButton that is already attached (RNGCCastContext.java:128).
+// So Android renders the SDK's own button as the real control, while iOS keeps
+// the app-drawn glyph because it presents the dialog from the context directly.
+describe("cast control differs by platform", () => {
+  // The SDK button is the only host node carrying tintColor.
+  function nativeButtonCount(renderer: TestInstance): number {
+    return renderer.root.findAll(
+      (node) => typeof node.type === "string" && node.props.tintColor != null,
+    ).length
+  }
+
+  it("Android renders the SDK button, not a Pressable glyph", async () => {
+    setPlatform("android")
+    const renderer = await render(false, { castUi: makeCastUi() })
+    expect(nativeButtonCount(renderer)).toBe(1)
+    // The native button owns its own press, so no JS handler may compete for
+    // the tap — that competition is what the hidden-button design created.
+    const jsPressHandlers = renderer.root.findAll(
+      (n) =>
+        n.props.accessibilityLabel === "Cast" &&
+        typeof n.props.onPress === "function",
+    )
+    expect(jsPressHandlers).toHaveLength(0)
+    await unmount(renderer)
+  })
+
+  it("iOS renders the app-drawn glyph and routes the press through JS", async () => {
+    setPlatform("ios")
+    const castUi = makeCastUi()
+    const renderer = await render(false, { castUi })
+    expect(nativeButtonCount(renderer)).toBe(0)
+    await press(pressableByLabel(renderer, "Cast"))
+    expect(castUi.onPress).toHaveBeenCalledTimes(1)
+    await unmount(renderer)
+  })
+
+  // iOS keeps the R2 gate: presentCastDialog needs no attached button, so
+  // getCastState() is trustworthy there and hiding the glyph is honest.
+  it("iOS hides the control while no device is reachable (R2)", async () => {
+    setPlatform("ios")
+    const renderer = await render(false, {
+      castUi: makeCastUi({ available: false }),
+    })
+    expect(labelCount(renderer, "Cast")).toBe(0)
+    expect(nativeButtonCount(renderer)).toBe(0)
+    await unmount(renderer)
+  })
+
+  // Galaxy Tab S8, 2026-08-24: getCastState() answered noDevicesAvailable for
+  // minutes with two Chromecasts already in the app's route list. The cause is
+  // unestablished; the untrustworthiness is what makes the gate wrong here.
+  it("Android renders the SDK button even while `available` is false", async () => {
+    setPlatform("android")
+    const renderer = await render(false, {
+      castUi: makeCastUi({ available: false }),
+    })
+    expect(nativeButtonCount(renderer)).toBe(1)
+    expect(hasLabel(renderer, "Cast")).toBe(true)
+    await unmount(renderer)
+  })
+
+  it("renders nothing on a surface with no cast wiring", async () => {
+    setPlatform("android")
+    const renderer = await render(false)
+    expect(nativeButtonCount(renderer)).toBe(0)
+    await unmount(renderer)
+  })
+
+  // The SDK owns the glyph on Android, so its connected artwork is the SDK's,
+  // not `cast-connected`. iOS keeps the swap and the state-aware label.
+  it("iOS swaps to the connected glyph and label", async () => {
+    setPlatform("ios")
+    const renderer = await render(false, {
+      castUi: makeCastUi({
+        connected: true,
+        label: "Casting to Living Room TV",
+      }),
+    })
+    expect(hasLabel(renderer, "Casting to Living Room TV")).toBe(true)
+    expect(labelCount(renderer, "Cast")).toBe(0)
+    await unmount(renderer)
+  })
+})
+
+describe("Settings gear (U4)", () => {
+  it.each([
+    ["inline", false],
+    ["fullscreen", true],
+  ])(
+    "renders the gear in the route row on iOS (%s)",
+    async (_n, fullscreen) => {
+      const renderer = await render(fullscreen as boolean, {
+        onOpenSettings: () => {},
+      })
+      expect(hasLabel(renderer, "Video settings")).toBe(true)
+      await unmount(renderer)
+    },
+  )
+
+  it.each([
+    ["inline", false],
+    ["fullscreen", true],
+  ])(
+    "renders the gear in the route row on Android (%s)",
+    async (_n, fullscreen) => {
+      setPlatform("android")
+      const renderer = await render(fullscreen as boolean, {
+        onOpenSettings: () => {},
+      })
+      expect(hasLabel(renderer, "Video settings")).toBe(true)
+      await unmount(renderer)
+    },
+  )
+
+  it("opens the sheet and resets the auto-hide timer on press", async () => {
+    const onOpenSettings = jest.fn()
+    const onInteract = jest.fn()
+    const renderer = await render(false, { onOpenSettings, onInteract })
+    await press(pressableByLabel(renderer, "Video settings"))
+    expect(onOpenSettings).toHaveBeenCalledTimes(1)
+    expect(onInteract).toHaveBeenCalledTimes(1)
+    await unmount(renderer)
+  })
+
+  // R12 is structural: only the watch chrome threads the callback, so a
+  // surface that does not (the veil route row) renders no gear.
+  it("renders no gear when the host does not thread onOpenSettings", async () => {
+    const renderer = await render(false)
+    expect(labelCount(renderer, "Video settings")).toBe(0)
+    await unmount(renderer)
+  })
+})
+
 describe("Cast remote mode (KTD4)", () => {
   it("routes pause to the cast target and never the local player", async () => {
     const player = makePlayer()
@@ -327,6 +465,93 @@ describe("Cast remote mode (KTD4)", () => {
     await press(pressableByLabel(renderer, "Pause"))
     expect(castTarget.pause).toHaveBeenCalledTimes(1)
     expect(player.pause).not.toHaveBeenCalled()
+    expect(player.play).not.toHaveBeenCalled()
+    await unmount(renderer)
+  })
+
+  // A stopped video looked identical whatever stopped it. Offline plus a failed
+  // source is the one case we can name, so it gets its own indicator — and no
+  // play button, because a retry cannot succeed with no connection.
+  it("shows a no-connection indicator, not a play button, when offline and errored", async () => {
+    const player = { ...makePlayer(), status: "error" }
+    const renderer = await render(false, { isOnline: false }, player)
+
+    const offline = renderer.root.findAll(
+      (n) =>
+        n.props.accessibilityLabel === "No connection. The video cannot play.",
+    )
+    expect(offline.length).toBeGreaterThan(0)
+
+    const play = renderer.root.findAll(
+      (n) =>
+        n.props.accessibilityLabel === "Play" &&
+        typeof n.props.onPress === "function",
+    )
+    expect(play).toHaveLength(0)
+    await unmount(renderer)
+  })
+
+  // The indicator must not outlive the outage, or the viewer is stranded
+  // looking at it with no way to resume.
+  it("returns the play button once the connection is back, still errored", async () => {
+    const player = { ...makePlayer(), status: "error" }
+    const renderer = await render(false, { isOnline: true }, player)
+    expect(pressableByLabel(renderer, "Play")).toBeTruthy()
+    await unmount(renderer)
+  })
+
+  // A released player throws on every read. The chrome has no error boundary,
+  // so an exception escaping the render unmounts the whole player surface.
+  //
+  // The throw is installed AFTER construction on purpose: Babel lowers object
+  // spread to Object.assign, which reads a getter declared in the same literal
+  // and would fire the throw in the fixture instead of in the component.
+  function releaseProperty(target: object, key: string) {
+    Object.defineProperty(target, key, {
+      get() {
+        throw new Error("released")
+      },
+      configurable: true,
+    })
+  }
+
+  it("renders the ordinary control when the status cannot be read", async () => {
+    const player = makePlayer()
+    releaseProperty(player, "status")
+
+    // Offline: a READABLE error status here shows the no-connection glyph, so
+    // the ordinary control is only correct because the status is unreadable.
+    const renderer = await render(false, { isOnline: false }, player)
+
+    expect(pressableByLabel(renderer, "Play")).toBeTruthy()
+    expect(hasLabel(renderer, "No connection. The video cannot play.")).toBe(
+      false,
+    )
+    await unmount(renderer)
+  })
+
+  it("does nothing when the press finds the player released", async () => {
+    const onRecover = jest.fn()
+    const player = { ...makePlayer(), status: "error" }
+    releaseProperty(player, "playing")
+    const renderer = await render(false, { onRecover }, player)
+
+    await press(pressableByLabel(renderer, "Play"))
+
+    expect(onRecover).not.toHaveBeenCalled()
+    expect(player.play).not.toHaveBeenCalled()
+    expect(player.pause).not.toHaveBeenCalled()
+    await unmount(renderer)
+  })
+
+  // todos/024: after a dropout ExoPlayer sits in `error`, where play() is a
+  // no-op — so the button silently did nothing. Recovery re-applies the source.
+  it("recovers instead of calling play when the source has errored", async () => {
+    const player = { ...makePlayer(), status: "error" }
+    const onRecover = jest.fn()
+    const renderer = await render(false, { onRecover }, player)
+    await press(pressableByLabel(renderer, "Play"))
+    expect(onRecover).toHaveBeenCalledTimes(1)
     expect(player.play).not.toHaveBeenCalled()
     await unmount(renderer)
   })

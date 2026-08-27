@@ -42,10 +42,12 @@ export const WHATS_NEW_LANGUAGE_SWITCHER = {
 export const WHATS_NEW_CONTENTS = [
   { id: "formats", label: "Every format" },
   { id: "assistants", label: "The AI shift" },
-  { id: "improving", label: "What is improving" },
   { id: "why", label: "Why it matters" },
+  { id: "partners", label: "For partners" },
+  { id: "improving", label: "What is improving" },
   { id: "next", label: "What's next" },
   { id: "team", label: "The team" },
+  { id: "board", label: "The board" },
   { id: "faq", label: "Questions" },
 ] as const
 
@@ -87,8 +89,12 @@ export type WhatsNewIconKey =
 export const WHATS_NEW_ERAS = [
   {
     icon: "projector",
-    /** Ambient-glow colour — dusk sky over the screening field. */
-    glow: "#4ca2f0",
+    /**
+     * Ambient-glow colour. Sampled from the photograph's lit ground and
+     * saturated to a usable glow: the frame is a night screening, so its
+     * only colour is tungsten projector light on sand.
+     */
+    glow: "#c8a552",
     year: "1979",
     kicker: "Where it started",
     title: "A projector and a screen",
@@ -101,10 +107,10 @@ export const WHATS_NEW_ERAS = [
      * browser hot-linking it directly.
      */
     image: {
-      src: "https://www.jesusfilm.org/wp-content/uploads/2023/07/The-JESUS-Film-Why-Is-This-Film-Historically-Significant-.jpg",
-      alt: "A large crowd seated on the ground at dusk, watching the JESUS film on a portable screen raised in a rural clearing.",
-      width: 2048,
-      height: 1152,
+      src: "https://www.jesusfilm.org/wp-content/uploads/2026/08/Exposures-1-hi-res.png",
+      alt: "A night screening: hundreds of children and adults seated on sand in front of a raised screen showing Jesus among a crowd, with a film projector on a tripod among them.",
+      width: 1536,
+      height: 1024,
     },
     beat: "The JESUS film did not begin as a website. It began as a screening. Missionaries carried projectors, screens, and generators into villages and towns and showed the life of Jesus in the local language — a visual, media-rich way to tell the story in a form anyone could follow, to any people group, anywhere.",
     current: false,
@@ -417,11 +423,15 @@ export const WHATS_NEW_ASSISTANTS = {
 
 export const WHATS_NEW_IMPROVEMENTS = [
   {
-    icon: "home",
     shot: {
       src: "/watch/images/whats-new/home.webp",
       alt: "The Watch home page: a cinematic featured story with the search bar above it and curated rows below.",
     },
+    clip: {
+      webm: "/watch/assets/whats-new/home.webm",
+      mp4: "/watch/assets/whats-new/home.mp4",
+    },
+    tint: { from: "#4f46e5", to: "#a855f7" },
     title: "A more useful place to begin",
     paragraphs: [
       "The Watch home page now provides a clearer and more visual way to discover content, with cinematic featured stories, curated collections, improved layouts, and more opportunities to continue exploring.",
@@ -431,11 +441,15 @@ export const WHATS_NEW_IMPROVEMENTS = [
     featured: false,
   },
   {
-    icon: "play",
     shot: {
       src: "/watch/images/whats-new/player.webp",
       alt: "A Watch video page with the rebuilt player and its playback, audio, and subtitle controls.",
     },
+    clip: {
+      webm: "/watch/assets/whats-new/player.webm",
+      mp4: "/watch/assets/whats-new/player.mp4",
+    },
+    tint: { from: "#0e7490", to: "#38bdf8" },
     title: "Better playback on more devices",
     paragraphs: [
       "The video experience has been rebuilt around a modern streaming platform. Improvements include:",
@@ -453,11 +467,15 @@ export const WHATS_NEW_IMPROVEMENTS = [
     featured: false,
   },
   {
-    icon: "globe",
     shot: {
       src: "/watch/images/whats-new/language.webp",
       alt: "The Watch language index, listing available languages grouped by region.",
     },
+    clip: {
+      webm: "/watch/assets/whats-new/language.webm",
+      mp4: "/watch/assets/whats-new/language.mp4",
+    },
+    tint: { from: "#db2777", to: "#fb923c" },
     title: "Language is becoming central to the experience",
     paragraphs: [
       "Jesus Film Project has content in thousands of languages. That is one of the most important things Watch can offer, so language should not feel like an option hidden inside the player.",
@@ -475,11 +493,15 @@ export const WHATS_NEW_IMPROVEMENTS = [
     featured: true,
   },
   {
-    icon: "search",
     shot: {
       src: "/watch/images/whats-new/search.webp",
       alt: "Watch search open on the word “hope”, showing suggestions and matching videos.",
     },
+    clip: {
+      webm: "/watch/assets/whats-new/search.webm",
+      mp4: "/watch/assets/whats-new/search.mp4",
+    },
+    tint: { from: "#047857", to: "#34d399" },
     title: "Search that understands more than titles",
     paragraphs: [
       "People do not always know the name of the film they need. They may search for hope, anxiety, forgiveness, a Bible passage, or a question about Jesus.",
@@ -489,11 +511,15 @@ export const WHATS_NEW_IMPROVEMENTS = [
     featured: false,
   },
   {
-    icon: "send",
     shot: {
       src: "/watch/images/whats-new/share.webp",
       alt: "A Watch video page scrolled to its share and download controls.",
     },
+    clip: {
+      webm: "/watch/assets/whats-new/share.webm",
+      mp4: "/watch/assets/whats-new/share.mp4",
+    },
+    tint: { from: "#b45309", to: "#fbbf24" },
     title: "Easier sharing and ministry use",
     paragraphs: [
       "Watch should serve the person watching and the person helping someone else watch. We are strengthening Watch as a dependable place for believers and ministry partners to:",
@@ -510,7 +536,6 @@ export const WHATS_NEW_IMPROVEMENTS = [
     featured: false,
   },
 ] as const satisfies readonly {
-  icon: WhatsNewIconKey
   /**
    * Screenshot of the live Watch surface this improvement is about.
    * Captured by `scripts/capture-whats-new-shots.mjs` — re-run it after a
@@ -518,12 +543,96 @@ export const WHATS_NEW_IMPROVEMENTS = [
    * of step with the product they are describing.
    */
   shot: { src: string; alt: string }
+  /**
+   * Looping screencast of the same surface being used, recorded by
+   * `scripts/capture-whats-new-clips.mjs`. The still above is its poster,
+   * so a card is never blank while the clip loads — and stays the whole
+   * story under reduced motion, where the clip is never fetched.
+   */
+  clip: { webm: string; mp4: string }
+  /**
+   * The two stops of the gradient mat the clip sits on. Five distinct hue
+   * pairs so the grid has a rhythm as you scroll rather than five identical
+   * dark rectangles; adjacent cells never share a family (the two-up rows
+   * are indigo/cyan and emerald/amber, the full-width language cell takes
+   * the warmest pair). Same `tint`-in-content convention as
+   * WHATS_NEW_AUDIENCES — the hex lives here, the mixing lives in the
+   * component.
+   */
+  tint: { from: string; to: string }
   title: string
   paragraphs: readonly string[]
   points: readonly string[]
   closing?: string
   featured: boolean
 }[]
+
+/**
+ * The Brightcove → Mux migration, told for the people who feel it most:
+ * partners working where connections are slow and languages are small.
+ *
+ * Every number here is a checkable claim on a public page, and the two
+ * halves rest on DIFFERENT evidence — keep them apart when editing:
+ *
+ * - `stats` are playback complaints counted BY HAND from support tickets
+ *   (a keyword count was close but missed one and admitted five false
+ *   positives), windowed on the June 2026 update: 5 complaints in the five
+ *   months before it, 0 in the 881 tickets of the twelve weeks after, and
+ *   11 in the 21 months before. That update shipped the platform move AND
+ *   the redesign, so the copy credits the WINDOW, not the migration alone.
+ * - the download story is field and support experience, not that same
+ *   ticket pass, so it is stated without a rate.
+ *
+ * Re-confirm both against current tickets before launch, and move the
+ * window wording in `stats` and `note` when the numbers move.
+ */
+export const WHATS_NEW_DELIVERY = {
+  eyebrow: "Under the hood",
+  icon: "videotape",
+  heading: "Every video now streams from Mux",
+  paragraphs: [
+    "Watch used to serve its video from Brightcove. Stalled playback, videos that would not start until something warmed up a cache, and downloads that failed in the places our partners actually work were mostly not ours to fix — they lived on the other side of that platform. So we moved the whole library to Mux.",
+    "Mux is a next-generation video platform. It encodes every film into a ladder of qualities and chooses between them per viewer, so the same video plays as well as a given place and connection allow — a fibre line in a city, a shared mobile connection at the end of a long road, and everything in between.",
+  ],
+  points: [
+    "Quality now adapts to each viewer's location and connection instead of one setting for everyone",
+    "The caching problems that made videos stall, or refuse to start at all, are gone",
+    "Every language in the catalog is delivered and downloaded the same way",
+  ],
+  downloads: {
+    heading: "Downloads, especially in smaller languages",
+    paragraphs: [
+      "Before the move we heard a couple of complaints a week that videos would not download in remote parts of Africa and Asia — almost always for one of our smaller languages.",
+      "Those languages are no longer a second class of file: every language is treated the same and downloads the same. Since the migration we have not had a single complaint about download performance.",
+    ],
+  },
+  /**
+   * A KPI pair, not a chart — two numbers whose job is one comparison.
+   * The five-month window is the fair one to put beside twelve weeks; the
+   * 21-month rate lives in `note` so the shorter window cannot be read as
+   * cherry-picking.
+   */
+  statsHeading: "Playback complaints in support tickets",
+  stats: [
+    {
+      value: "5",
+      label: "In the five months before the June 2026 update",
+      detail: "3.6 per 1,000 support tickets",
+    },
+    {
+      value: "0",
+      label: "In the twelve weeks since",
+      detail: "Across 881 support tickets",
+    },
+  ] as const satisfies readonly {
+    value: string
+    label: string
+    detail: string
+  }[],
+  note: "Counted by hand rather than by keyword, and measured against the June 2026 update, which shipped the platform move together with the redesign. Across the 21 months before it the rate was 2.0 per 1,000 tickets. One subtitle-display problem was reported in the twelve weeks after and fixed; it was not a playback failure.",
+  closing:
+    "None of this shows up in the interface, which is the point. For a partner in the field it shows up as a video that starts, plays, and downloads.",
+} as const
 
 export const WHATS_NEW_AUDIENCES = {
   eyebrow: "Why these changes matter",
@@ -595,6 +704,147 @@ export const WHATS_NEW_QUIZ = {
   underGuess: "Lower than the real figure — but the point still stands.",
 } as const
 
+/**
+ * Self-identification question that closes the audiences section.
+ *
+ * The quiz above tells the reader how the audiences are weighted; this
+ * asks which one the reader is, so the section ends on their own
+ * situation rather than on our numbers. Each option mirrors one of
+ * `WHATS_NEW_AUDIENCES.cards` — same order, same icon, same `tint` — so
+ * the choice reads as picking a card, not as answering a survey. Keep
+ * those three in step when a card changes.
+ *
+ * The fourth option is the honest answer for most staff and partners, and
+ * it takes the neutral wash rather than a fourth hue on purpose: a new
+ * colour would imply a fourth audience instead of the blend of three.
+ *
+ * Answers are held in component state only. Nothing is persisted or sent,
+ * which is what `note` promises the reader — if that ever changes, that
+ * line has to change with it.
+ */
+export const WHATS_NEW_SELF_ID = {
+  eyebrow: "Now your turn",
+  question: "Which of these is you today?",
+  helper:
+    "Pick the one that fits best. Nothing is submitted, and “more than one” is a real answer.",
+  options: [
+    {
+      id: "seeker",
+      icon: "compass",
+      tint: "#7c5cf0",
+      label: "I'm looking for something myself",
+      response:
+        "Then the changes you will notice first are search that follows a question rather than a title, shorter pieces you can watch in a minute, and a clearer next step when a film raises more questions than it answers.",
+    },
+    {
+      id: "sharing",
+      icon: "share",
+      tint: "#f0567c",
+      label: "I share content with other people",
+      response:
+        "The sharing path is where most of this work lands for you: a trusted link, the right language, and — increasingly — the single scene or passage that fits the conversation instead of a two-hour film.",
+    },
+    {
+      id: "partner",
+      icon: "handshake",
+      tint: "#e0a24c",
+      label: "I use Watch for ministry work",
+      // Interpolated, not retyped: this line only lands because the quiz
+      // above just showed the reader that same number.
+      response: `You are the ${WHATS_NEW_QUIZ.actualPercent}% from the question above, and none of this is built at your expense. Language coverage, dependable playback, downloads, and embedding stay first-class as the rest of the experience grows around them.`,
+    },
+    {
+      id: "all",
+      icon: "globe",
+      tint: "#e8eaf0",
+      label: "Honestly, all three",
+      response:
+        "That is the usual answer here, and it is why Watch stays one platform underneath. The three doors are different ways in, not three separate products — nothing you rely on in one of them is traded away for another.",
+    },
+  ] as const satisfies readonly {
+    id: string
+    icon: WhatsNewIconKey
+    tint: string
+    label: string
+    response: string
+  }[],
+  answerLabel: "What that means for you",
+  note: "Your answer stays in this browser tab — it is not stored or sent anywhere.",
+} as const
+
+/**
+ * A signed letter to missionaries and field partners.
+ *
+ * The letter exists to land ONE fact: they are about 2% of Watch's
+ * visitors, and almost none of them know it. It gets there through the
+ * video-store parable rather than by argument, because the belief being
+ * corrected is not a mistake of reasoning — it is what Watch honestly
+ * looks like from inside their circle. The store is what makes the
+ * arithmetic feel obvious instead of insulting: a shop built for the
+ * people who know which box they came for is a bewildering place for
+ * whoever just wandered in.
+ *
+ * Do not soften the figure into "you are our main focus". That was an
+ * early draft and it is the belief the letter is meant to correct — a
+ * partner who keeps it reads every layout decision as a betrayal instead
+ * of as arithmetic.
+ *
+ * The letter carries no proof of its own. The Brightcove → Mux work that
+ * shows we take their side seriously is `WHATS_NEW_DELIVERY`, and as of
+ * the 2026-08-25 reorder that band sits BELOW this letter — so the letter
+ * asks a partner to accept an unflattering number before it has shown
+ * them anything. That is a deliberate placement, not an oversight: if the
+ * letter ever reads as unearned, move the band up rather than moving the
+ * letter down, because the letter answers the self-identification
+ * question directly above it.
+ *
+ * First person singular on purpose: the rest of the page speaks as "we",
+ * and this one place does not, because a sentence like "you are 2%" is
+ * only worth printing if someone is standing behind it. `signature.name`
+ * is a real person on a public page — if the signer changes, change the
+ * voice with it.
+ *
+ * Deliberately NOT printing a reply address: the closing action is the
+ * shared feedback composer, so reports land where the team already reads
+ * them and no inbox gets scraped off a public page.
+ *
+ * The share of visitors is interpolated from the quiz above, never
+ * retyped: two different numbers on one page would discredit both.
+ */
+export const WHATS_NEW_PARTNER_LETTER = {
+  eyebrow: "A note to missionaries and field partners",
+  heading: "Tell me if this sounds about right.",
+  greeting: "Hey there —",
+  beforeFigure: [
+    "If you use Jesus Film videos for ministry work, there is a good chance I know why you opened this page: something changed, some of the way you work broke, and you are wondering why we had to change anything at all. Why not leave it the way it was?",
+    "To answer that, let me ask you to picture a Christian video store in a busy city centre. It was opened for people like you — partners and missionaries who use media to serve God. You came in and got what you needed: VHS tapes, DVDs, a projector, video files to take with you on a mission trip.",
+    "Then, slowly, other people started coming through the door. Ordinary believers, and people who were not believers at all, wandering in to see what was on the shelves and watch a film about Jesus. Especially people whose language has almost nothing else online — for them, this shop is very nearly the only one. Google noticed that the people it sent here found what they came for, and started sending more of them. Then more again.",
+    "Today, if you stood by the door and counted:",
+  ],
+  /**
+   * The pull-quote. It is the whole reason the letter exists, so it is set
+   * as a figure rather than buried in a paragraph — and `value` comes from
+   * the quiz, so the page can never print two different shares.
+   */
+  figure: {
+    value: `${WHATS_NEW_QUIZ.actualPercent}%`,
+    claim:
+      "of the people in the shop are professionals doing ministry work. The other ninety-eight in every hundred walked in off the street.",
+  },
+  afterFigure: [
+    "To serve the people now filling the store, we have to change how the store is laid out: what goes in the window, what sits at the front, how the shelves are grouped, which films we put on display and how we describe them. A shop arranged for someone who knows exactly which box they came for is a bewildering place for someone who wandered in because a film about Jesus came up in a Google search.",
+    "You see the Jesus Film library the way you use it — as ministry equipment — and so does everyone you talk to about it. From inside that circle it looks like a tool for people like you, with some visitors passing through. It is the other way around.",
+    "It changes what the front door has to do. When we have to choose between an interface that assumes you know what you are looking for and one that assumes you do not, we have to build the second one, because ninety-eight times out of a hundred that is the person standing there. Language, downloads, sharing, embedding — none of it goes away. It stops being the first thing every visitor sees.",
+  ],
+  ask: "So — tell me if this sounds about right. If it does not, or if something we shipped made your work harder, say so plainly. That is the report we act on fastest.",
+  signature: {
+    name: "Vlad Mitkovsky",
+    /** Printed under the name; a title change is a one-line edit here. */
+    role: "Watch Project Lead, Jesus Film Project",
+  },
+  feedbackCta: "Tell me how it is going",
+} as const
+
 export const WHATS_NEW_DIRECTIONS = {
   eyebrow: "Where Watch is going next",
   heading: "The foundation being built now makes these possible",
@@ -621,6 +871,7 @@ export const WHATS_NEW_DIRECTIONS = {
 export type WhatsNewVoteIcon =
   | "search"
   | "language"
+  | "subtitles"
   | "passage"
   | "scene"
   | "playlist"
@@ -641,7 +892,13 @@ export type WhatsNewVoteIcon =
  */
 export const WHATS_NEW_VOTES = {
   eyebrow: "Help us prioritise",
-  heading: "You have three stickers. Put them on what we should build first.",
+  /**
+   * Frames the ask around the reader's own use of Watch, not around our
+   * backlog. "The three" is the only place the budget appears in the heading —
+   * `body` below is what names the stickers and the mechanic, so the two have
+   * to keep travelling together.
+   */
+  heading: "Pick the three that would change how you use Watch",
   body: "Grab a sticker and drop it anywhere on a feature. All three on one, or spread them out.",
   budget: 3,
   remainingLabel: "Stickers left",
@@ -652,12 +909,18 @@ export const WHATS_NEW_VOTES = {
   removeLabel: "Peel",
   fromLabel: "off",
   clear: "Take my stickers back",
+  /**
+   * The only way back once a sticker is in hand: a held sticker leaves the
+   * pile entirely, so there is no slot left to click a second time.
+   */
+  putBack: "Put it back",
   ideaLabel: "Not listed? Tell us your idea",
   previous: "Previous features",
   next: "More features",
   carouselLabel: "Upcoming features",
-  localOnlyNote:
-    "Votes stay in this browser for now — nothing is sent to us yet. We are building the collector next.",
+  voteLabel: "vote",
+  votesLabel: "votes",
+  noVotesLabel: "No votes yet",
   /** Three ways to say it — the sticker carries the reason, not just a tally. */
   stickers: [
     { id: "love", emoji: "\u2764\uFE0F", label: "Love this" },
@@ -676,6 +939,12 @@ export const WHATS_NEW_VOTES = {
       icon: "language",
       title: "Dedicated language experiences",
       body: "A real home for each language, not a filter buried inside the player.",
+    },
+    {
+      id: "dual-subtitles",
+      icon: "subtitles",
+      title: "Two subtitle languages at once",
+      body: "Follow along in your own language and a second one together — for learning, for teaching, and for rooms where people do not share a language.",
     },
     {
       id: "bible-passages",
@@ -739,11 +1008,14 @@ export const WHATS_NEW_VOTES = {
   removeLabel: string
   fromLabel: string
   clear: string
+  putBack: string
   ideaLabel: string
   previous: string
   next: string
   carouselLabel: string
-  localOnlyNote: string
+  voteLabel: string
+  votesLabel: string
+  noVotesLabel: string
   stickers: readonly { id: string; emoji: string; label: string }[]
   features: readonly {
     id: string
@@ -860,3 +1132,381 @@ export const WHATS_NEW_METADATA = {
   description:
     "Why the Jesus Film Project Watch experience is changing: from projectors and VHS, to one of the first free gospel video sites online, to page one of Google, to a library people can find through AI assistants — in their own language.",
 } as const
+
+/**
+ * The pin board — three cork boards behind file tabs, each holding notes
+ * the reader can write, colour, and drag anywhere.
+ *
+ * The starter notes are REAL messages sent to the JF Information support
+ * inbox, pulled from Help Scout and condensed. Four rules govern them:
+ *
+ * 1. Watch WEBSITE feedback only. Nothing about the mobile app — those
+ *    arrive through the app's own feedback form and are a different
+ *    product. Grep the source for "App version:" / "OS version:" /
+ *    "the app" and drop every hit before selecting.
+ * 2. First name and country ONLY. No surname, organisation, address,
+ *    email, phone, or date. A country is used only where the writer
+ *    stated their OWN location ("I am from...", "greetings from...") —
+ *    never a destination they mentioned travelling to, which named the
+ *    wrong country for most of the corpus. Anything harvested fresh goes
+ *    through `sanitizeSupportConversation` in apps/mastra AND a human
+ *    pass: the sanitiser redacts contact details but leaves names intact.
+ * 3. Condensed, never invented. Each note compresses what someone
+ *    actually wrote; none of it is authored to sound good.
+ * 4. Keep every `text` at or under 95 characters. A note is a fixed
+ *    square with hidden overflow and now also carries a credit line, so
+ *    what decides the fit is how a sentence WRAPS, not its raw length.
+ *    The bound in `WhatsNewNoteBoard.test.tsx` is a coarse guard; the
+ *    real check is rendering every starter at a 320px viewport and
+ *    asserting its text does not overflow.
+ */
+export const WHATS_NEW_BOARD = {
+  eyebrow: "The wall",
+  heading: "Grab a pen. Put something on the board.",
+  body: "Three boards, one pad of paper. Write a note, pick your colour, and stick it wherever you like — drag it around until it sits right.",
+  provenance:
+    "The notes already up are real messages people sent our support inbox about the Watch site, shortened. Names are stand-ins — the words and the country are theirs.",
+  localOnlyNote:
+    "Your notes stay in this browser for now — nothing is sent to us yet. The collector that makes them public is what we are building next.",
+  boardsLabel: "Pin boards",
+  writeLabel: "Write a note",
+  paperLabel: "Paper",
+  pinLabel: "Pin it up",
+  fullLabel: "Board full — take one down first",
+  unpinLabel: "Take this note down",
+  moveHint: "Drag it anywhere. Arrow keys nudge, Delete takes it down.",
+  moveLabel: "Note",
+  countLabel: "pinned by you",
+  clearLabel: "Clear my notes",
+  sendLabel: "Send this to the team",
+  emptyLabel: "Nothing pinned here yet. Be first.",
+  /** Sticky-note paper. Ids resolve to Tailwind classes in the component. */
+  papers: [
+    { id: "butter", label: "Butter yellow" },
+    { id: "rose", label: "Rose pink" },
+    { id: "sky", label: "Sky blue" },
+    { id: "mint", label: "Mint green" },
+    { id: "peach", label: "Peach orange" },
+  ],
+  boards: [
+    {
+      id: "praise",
+      tab: "Praise",
+      title: "What is working",
+      prompt: "What has Watch done well for you?",
+      notes: [
+        {
+          id: "praise-1",
+          p: "butter",
+          name: "Yousaf",
+          country: "Pakistan",
+          text: "It is a great privilege to explore your work on your website.",
+        },
+        {
+          id: "praise-2",
+          p: "sky",
+          name: "Thabo",
+          country: "Botswana",
+          text: "I am pleased to come across this resourceful website, especially for outreaches.",
+        },
+        {
+          id: "praise-3",
+          p: "rose",
+          name: "Mateo",
+          text: "I was blessed hearing the testimonies of lives changed from watching the film.",
+        },
+        {
+          id: "praise-4",
+          p: "mint",
+          name: "Elias",
+          text: "You have helped a lot of churches and communities. People change when they watch.",
+        },
+        {
+          id: "praise-5",
+          p: "peach",
+          name: "Anselmo",
+          country: "Portugal",
+          text: "I have followed your work for over 40 years. It has been a blessing to many lives.",
+        },
+        {
+          id: "praise-6",
+          p: "rose",
+          name: "Efraín",
+          country: "Venezuela",
+          text: "On your website we can download these videos for free. Thank you very much.",
+        },
+        {
+          id: "praise-7",
+          p: "butter",
+          name: "Marika",
+          text: "Your website was recommended to me, and it had the specifications I needed.",
+        },
+        {
+          id: "praise-8",
+          p: "peach",
+          name: "Devan",
+          text: "I was confused about how to watch the film. Now I can watch it — thank you.",
+        },
+        {
+          id: "praise-9",
+          p: "sky",
+          name: "Colin",
+          text: "I volunteer with an online ministry. We recommend seekers to your website.",
+        },
+        {
+          id: "praise-10",
+          p: "butter",
+          name: "Mwangi",
+          country: "Kenya",
+          text: "Thank you for sharing with us. We ask your prayers for God's work here.",
+        },
+        {
+          id: "praise-11",
+          p: "mint",
+          name: "Marilou",
+          country: "Philippines",
+          text: "I find all your videos helpful.",
+        },
+        {
+          id: "praise-12",
+          p: "rose",
+          name: "Maureen",
+          text: "I found the information I needed. Thank you.",
+        },
+        {
+          id: "praise-13",
+          p: "sky",
+          name: "Emmett",
+          country: "Liberia",
+          text: "I learned on your website of your vision and your global impact.",
+        },
+        {
+          id: "praise-14",
+          p: "peach",
+          name: "Bishal",
+          country: "Nepal",
+          text: "I got your email from your website, and I am doing church ministry here.",
+        },
+        {
+          id: "praise-15",
+          p: "mint",
+          name: "Charlene",
+          text: "Thank you for the work you do.",
+        },
+      ],
+    },
+    {
+      id: "requests",
+      tab: "Feature requests",
+      title: "What we should build",
+      prompt: "What is missing? What would you build next?",
+      notes: [
+        {
+          id: "requests-1",
+          p: "butter",
+          name: "Rosalind",
+          text: "I can't find it anywhere online. Can you please help me find it?",
+        },
+        {
+          id: "requests-2",
+          p: "sky",
+          name: "Gordon",
+          text: "Where can I find the sign language film? The old link no longer works.",
+        },
+        {
+          id: "requests-3",
+          p: "rose",
+          name: "Marjorie",
+          text: "I'm looking through your website and can't find where I select the language.",
+        },
+        {
+          id: "requests-4",
+          p: "mint",
+          name: "Nuwan",
+          text: "I am not able to search for the Sinhala videos on your current or classic site.",
+        },
+        {
+          id: "requests-5",
+          p: "peach",
+          name: "Marlene",
+          text: "I have been all over your site and cannot find a list of the films.",
+        },
+        {
+          id: "requests-6",
+          p: "rose",
+          name: "Colin",
+          text: "Your FAQ invites me to search for languages, but the search does not get me there.",
+        },
+        {
+          id: "requests-7",
+          p: "butter",
+          name: "Marilou",
+          country: "Philippines",
+          text: "I am waiting for a Tagalog translation of the page, for people with less English.",
+        },
+        {
+          id: "requests-8",
+          p: "peach",
+          name: "Willem",
+          text: "To find the language is more difficult now, and when I pick one it changes back.",
+        },
+        {
+          id: "requests-9",
+          p: "sky",
+          name: "Ochanya",
+          country: "Nigeria",
+          text: "The video could not be downloaded, and it is too long to be watched online.",
+        },
+        {
+          id: "requests-10",
+          p: "butter",
+          name: "Trevor",
+          country: "Australia",
+          text: "The YouTube version is much clearer than the site version.",
+        },
+        {
+          id: "requests-11",
+          p: "mint",
+          name: "Minho",
+          text: "AI-translated subtitles would be useful, even if they are not in my language.",
+        },
+        {
+          id: "requests-12",
+          p: "rose",
+          name: "Gareth",
+          country: "Thailand",
+          text: "Do you have a transcript I could use to make the subtitles?",
+        },
+        {
+          id: "requests-13",
+          p: "sky",
+          name: "Lidia",
+          text: "The site is confusing. Several places to look, and I only see the English ones.",
+        },
+        {
+          id: "requests-14",
+          p: "peach",
+          name: "Roseanne",
+          text: "Please have a link to buy the DVDs on your website.",
+        },
+        {
+          id: "requests-15",
+          p: "mint",
+          name: "Douglas",
+          text: "Add a message that says the video will load after a moment.",
+        },
+      ],
+    },
+    {
+      id: "ministry",
+      tab: "How I use Watch",
+      title: "Out in the field",
+      prompt: "How do you use Watch in your ministry?",
+      notes: [
+        {
+          id: "ministry-1",
+          p: "butter",
+          name: "Marcus",
+          country: "Togo",
+          text: "Our radio station reaches the villages, and that leads to a showing of the film.",
+        },
+        {
+          id: "ministry-2",
+          p: "sky",
+          name: "Serene",
+          country: "Singapore",
+          text: "We built a prayer house here, and run an online church across several countries.",
+        },
+        {
+          id: "ministry-3",
+          p: "rose",
+          name: "Bishal",
+          country: "Nepal",
+          text: "I got your email from the website. I have been doing church ministry two years.",
+        },
+        {
+          id: "ministry-4",
+          p: "mint",
+          name: "Paola",
+          country: "Colombia",
+          text: "We started three years ago with virtual Bible studies.",
+        },
+        {
+          id: "ministry-5",
+          p: "peach",
+          name: "Renata",
+          text: "I wanted to show one of your films at my church, free, to the children.",
+        },
+        {
+          id: "ministry-6",
+          p: "rose",
+          name: "Wes",
+          country: "Canada",
+          text: "We are building a resource site for Plautdietsch speakers, featuring your film.",
+        },
+        {
+          id: "ministry-7",
+          p: "butter",
+          name: "Paulette",
+          country: "United Kingdom",
+          text: "We are currently compiling a video for our churches here.",
+        },
+        {
+          id: "ministry-8",
+          p: "peach",
+          name: "Malcolm",
+          country: "Canada",
+          text: "I teach English as a second language for a Christian nonprofit.",
+        },
+        {
+          id: "ministry-9",
+          p: "sky",
+          name: "Anca",
+          country: "Romania",
+          text: "We publish links to Scripture resources for our Bible translation work.",
+        },
+        {
+          id: "ministry-10",
+          p: "butter",
+          name: "Fidele",
+          country: "Rwanda",
+          text: "I direct a youth ministry, and we use the films in our work.",
+        },
+        {
+          id: "ministry-11",
+          p: "mint",
+          name: "Efraín",
+          country: "Venezuela",
+          text: "We work with the church to teach it to evangelise, and we disciple with video.",
+        },
+        {
+          id: "ministry-12",
+          p: "rose",
+          name: "Tuan",
+          text: "I use your download option to get the clip onto my laptop for the showing.",
+        },
+        {
+          id: "ministry-13",
+          p: "sky",
+          name: "Bryce",
+          text: "We are planting a church, and needed the films to portray who we are.",
+        },
+        {
+          id: "ministry-14",
+          p: "peach",
+          name: "Marika",
+          text: "I am looking for a travel projector with the film in the local language.",
+        },
+        {
+          id: "ministry-15",
+          p: "mint",
+          name: "Ezra",
+          text: "We are an agency creating media in our languages, and showing to students.",
+        },
+      ],
+    },
+  ],
+} as const
+
+export type WhatsNewBoardId = (typeof WHATS_NEW_BOARD)["boards"][number]["id"]
+export type WhatsNewPaperId = (typeof WHATS_NEW_BOARD)["papers"][number]["id"]

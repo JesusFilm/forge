@@ -451,6 +451,7 @@
     "screenReaderPrefix": "Az oldal nem található:",
     "title": "Ez a jelenet itt nincs.",
     "description": "Lehet, hogy az oldal elköltözött, de a történet folytatódik.",
+    "languageDescription": "We couldn't find the page you're looking for, but the story continues in films and videos from languages around the world.",
     "actionsLabel": "Az oldal nem található műveletek",
     "backToWatch": "Vissza a megtekintéshez",
     "browseVideos": "Videók böngészése"
