@@ -113,6 +113,11 @@ document the dashboard as canonical.
   console becomes an OAuth relying client.
 - Token issuance must be scoped, audience-bound, environment-bound, expiring,
   revocable, and audited.
+- `storefront:homepage:stage` is the dedicated Admin MCP scope for guarded
+  storefront draft staging. Keep it distinct from generic
+  `experience:locale:update` and `experience:publish`; the seeded Admin MCP
+  clients advertise all supported capabilities, while the scheduled curator
+  grant requests only its narrow runtime set.
 - Stdout logs must not include raw credentials, bearer tokens, refresh tokens,
   client secrets, or unnecessary PII.
 

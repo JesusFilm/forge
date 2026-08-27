@@ -1966,6 +1966,115 @@ describe("Mastra env", () => {
   })
 })
 
+describe("storefront curator env", () => {
+  beforeEach(() => {
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("FIRECRAWL_API_KEY", "firecrawl-key")
+    vi.stubEnv("STOREFRONT_CURATOR_ENABLED_LOCALES", "")
+    vi.stubEnv("STOREFRONT_CURATOR_SCHEDULE_ENABLED", "")
+    vi.stubEnv("STOREFRONT_CURATOR_MODEL", "")
+    vi.stubEnv("STOREFRONT_CURATOR_SERVICE_API_KEYS", "")
+    vi.stubEnv("OPENAI_API_KEY", "")
+    vi.stubEnv("OPENROUTER_API_KEY", "")
+    vi.stubEnv("OPENROUTER_API_PAID_KEY", "")
+    vi.stubEnv("GOOGLE_GENERATIVE_AI_API_KEY", "")
+  })
+
+  afterEach(() => {
+    vi.unstubAllEnvs()
+    vi.resetModules()
+  })
+
+  it("defaults to an English-only pilot with scheduling independently off", async () => {
+    const { getStorefrontCuratorConfig } = await import("./env")
+
+    expect(getStorefrontCuratorConfig()).toMatchObject({
+      enabledLocales: ["en"],
+      scheduleEnabled: false,
+      modelApiKeyPresent: false,
+    })
+  })
+
+  it("keeps the dedicated operator bearer allowlist empty by default", async () => {
+    const { env } = await import("./env")
+
+    expect(env.STOREFRONT_CURATOR_SERVICE_API_KEYS).toBeUndefined()
+  })
+
+  it("refuses boot when the curator operator pool overlaps the shared service pool without exposing the key", async () => {
+    vi.stubEnv("MASTRA_SERVICE_API_KEYS", "shared-key,pool-only")
+    vi.stubEnv("STOREFRONT_CURATOR_SERVICE_API_KEYS", "curator-only,shared-key")
+
+    const { assertMastraRuntimeEnv } = await import("./env")
+    let message = ""
+    try {
+      assertMastraRuntimeEnv()
+    } catch (error) {
+      message = error instanceof Error ? error.message : String(error)
+    }
+
+    expect(message).toContain("STOREFRONT_CURATOR_SERVICE_API_KEYS")
+    expect(message).toContain("MASTRA_SERVICE_API_KEYS")
+    expect(message).not.toContain("shared-key")
+  })
+
+  it("boots with disjoint curator and shared service bearer pools", async () => {
+    vi.stubEnv("MASTRA_SERVICE_API_KEYS", "pool-only")
+    vi.stubEnv("STOREFRONT_CURATOR_SERVICE_API_KEYS", "curator-only")
+
+    const { assertMastraRuntimeEnv } = await import("./env")
+
+    expect(() => assertMastraRuntimeEnv()).not.toThrow()
+  })
+
+  it("normalizes the enabled locale CSV and recognizes an OpenAI credential", async () => {
+    vi.stubEnv("STOREFRONT_CURATOR_ENABLED_LOCALES", " en, ES ,fr ")
+    vi.stubEnv("STOREFRONT_CURATOR_SCHEDULE_ENABLED", "true")
+    vi.stubEnv("OPENAI_API_KEY", "openai-key")
+
+    const { getStorefrontCuratorConfig } = await import("./env")
+
+    expect(getStorefrontCuratorConfig()).toMatchObject({
+      enabledLocales: ["en", "es", "fr"],
+      scheduleEnabled: true,
+      modelApiKeyPresent: true,
+    })
+  })
+
+  it("uses OpenRouter credentials only for an explicit OpenRouter route", async () => {
+    vi.stubEnv("STOREFRONT_CURATOR_MODEL", "openrouter/openai/gpt-5.4-mini")
+    vi.stubEnv("OPENROUTER_API_KEY", "openrouter-key")
+
+    const { getStorefrontCuratorConfig } = await import("./env")
+
+    expect(getStorefrontCuratorConfig().modelApiKeyPresent).toBe(true)
+  })
+
+  it("does not accept an OpenRouter key for the default OpenAI route", async () => {
+    vi.stubEnv("OPENROUTER_API_KEY", "openrouter-key")
+
+    const { getStorefrontCuratorConfig } = await import("./env")
+
+    expect(getStorefrontCuratorConfig().modelApiKeyPresent).toBe(false)
+  })
+
+  it("requires a Google credential for an explicit Google curator model", async () => {
+    vi.stubEnv("STOREFRONT_CURATOR_MODEL", "google/gemini-2.5-flash")
+
+    const { getStorefrontCuratorConfig } = await import("./env")
+
+    expect(getStorefrontCuratorConfig().modelApiKeyPresent).toBe(false)
+  })
+
+  it("defers readiness for an unknown custom provider", async () => {
+    vi.stubEnv("STOREFRONT_CURATOR_MODEL", "custom-gateway/curator-v1")
+
+    const { getStorefrontCuratorConfig } = await import("./env")
+
+    expect(getStorefrontCuratorConfig().modelApiKeyPresent).toBe(true)
+  })
+})
+
 /**
  * Datadog mobile triage env surface (feat-datadog-mobile-triage U1).
  *
