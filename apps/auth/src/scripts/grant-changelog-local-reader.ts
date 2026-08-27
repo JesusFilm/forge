@@ -30,6 +30,10 @@ function redactEmail(email: string) {
   return `${localPart[0]}***@${domain[0]}***${domain.slice(suffixStart)}`
 }
 
+export function handleOutputError(error: NodeJS.ErrnoException) {
+  if (error.code !== "EPIPE") throw error
+}
+
 export async function runGrantChangelogLocalReaderCommand({
   argv = process.argv.slice(2),
   readEmail = promptForEmail,
@@ -84,6 +88,7 @@ export async function runGrantChangelogLocalReaderCommand({
 }
 
 if (process.argv[1]?.endsWith("grant-changelog-local-reader.ts")) {
+  process.stdout.on("error", handleOutputError)
   runGrantChangelogLocalReaderCommand()
     .then((exitCode) => {
       process.exitCode = exitCode

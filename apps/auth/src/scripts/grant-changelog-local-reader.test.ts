@@ -1,6 +1,11 @@
+import { PassThrough } from "node:stream"
+
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
-import { runGrantChangelogLocalReaderCommand } from "./grant-changelog-local-reader"
+import {
+  handleOutputError,
+  runGrantChangelogLocalReaderCommand,
+} from "./grant-changelog-local-reader"
 
 const mocks = vi.hoisted(() => ({
   grant: vi.fn(),
@@ -92,21 +97,24 @@ describe("runGrantChangelogLocalReaderCommand", () => {
     expect(stderr).not.toHaveBeenCalled()
   })
 
-  it("does not report a committed grant as failed when stdout closes", async () => {
-    mocks.grant.mockResolvedValue({ changed: true })
-    const writeError = vi.fn()
+  it("ignores EPIPE emitted by an output stream", () => {
+    const output = new PassThrough()
+    output.on("error", handleOutputError)
 
-    await expect(
-      runGrantChangelogLocalReaderCommand({
-        argv: [],
-        readEmail: vi.fn().mockResolvedValue("developer@example.com"),
-        writeOutput: vi.fn(() => {
-          throw new Error("EPIPE")
-        }),
-        writeError,
-      }),
-    ).resolves.toBe(0)
-    expect(writeError).not.toHaveBeenCalled()
+    expect(() =>
+      output.emit(
+        "error",
+        Object.assign(new Error("EPIPE"), { code: "EPIPE" }),
+      ),
+    ).not.toThrow()
+  })
+
+  it("does not swallow other output stream errors", () => {
+    const output = new PassThrough()
+    const error = Object.assign(new Error("output failed"), { code: "EIO" })
+    output.on("error", handleOutputError)
+
+    expect(() => output.emit("error", error)).toThrow(error)
   })
 
   it("hides identity, connection details, IDs, and database errors", async () => {
