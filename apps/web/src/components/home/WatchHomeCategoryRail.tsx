@@ -104,7 +104,9 @@ export function WatchHomeCategoryRail({
   // defensive around historical JSON. Resolve authored order in one pass,
   // dropping duplicates, unknown ids, and invalid configured destinations.
   const cards: Array<
-    (typeof WATCH_HOME_CATEGORIES)[number] & { href: string }
+    (typeof WATCH_HOME_CATEGORIES)[number] & {
+      href: ReturnType<typeof watchVideoPath>
+    }
   > = []
   const seen = new Set<string>()
   for (const id of categoryIds ?? []) {
