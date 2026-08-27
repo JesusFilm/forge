@@ -10,6 +10,7 @@ afterEach(() => {
 describe("wire", () => {
   it("falls back to OpenRouter after transient gateway attempts are exhausted", async () => {
     vi.useFakeTimers()
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined)
     const seen: Array<{ url: string; authorization: string; model: string }> =
       []
     vi.stubGlobal(
@@ -66,6 +67,10 @@ describe("wire", () => {
         model: "canonical-model",
       },
     ])
+    expect(warn).toHaveBeenCalledOnce()
+    expect(warn).toHaveBeenCalledWith(
+      "query embed: gateway failed (embeddings failed: 503 Unavailable); falling back to hosted OpenRouter",
+    )
     await wiring.shutdown()
   })
 })

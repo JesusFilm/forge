@@ -47,8 +47,9 @@ Forge now owns Prisma-backed corpus, raw-document, fetch-state, vector-search,
 and full-text adapters plus a read-only local query CLI. Deterministic pgvector
 fixtures cover transactional replacement, resume semantics, language
 preservation, model compatibility, vector width, source/language filters,
-citations, and selective HNSW scans. The OpenRouter-compatible embedder also
-preserves gateway truncation and hosted-provider failover behavior.
+citations, and selective HNSW scans. The OpenAI-compatible embedder also
+preserves gateway truncation and observable hosted-provider failover behavior
+without coupling the adapter to either provider.
 
 Historical scope: [jfrag #160](https://github.com/JesusFilm/jesusfilm-rag/issues/160).
 

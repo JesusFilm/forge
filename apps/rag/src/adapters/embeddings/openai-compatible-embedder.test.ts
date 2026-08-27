@@ -1,10 +1,10 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
 
-import { OpenRouterEmbedder } from "./embedder.js"
+import { OpenAICompatibleEmbedder } from "./openai-compatible-embedder.js"
 
 afterEach(() => vi.unstubAllGlobals())
 
-describe("OpenRouterEmbedder", () => {
+describe("OpenAICompatibleEmbedder", () => {
   it("keeps blank inputs null and aligns out-of-order provider rows", async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       new Response(
@@ -18,7 +18,7 @@ describe("OpenRouterEmbedder", () => {
       ),
     )
     vi.stubGlobal("fetch", fetchMock)
-    const embedder = new OpenRouterEmbedder({
+    const embedder = new OpenAICompatibleEmbedder({
       apiKey: "test",
       model: "test/model",
       dimensions: 2,
@@ -41,10 +41,11 @@ describe("OpenRouterEmbedder", () => {
       }),
     )
     vi.stubGlobal("fetch", fetchMock)
-    const embedder = new OpenRouterEmbedder({
+    const embedder = new OpenAICompatibleEmbedder({
       apiKey: "test",
       model: "test/model",
       dimensions: 2,
+      baseUrl: "https://embed.test/v1",
       queryInstruction: "retrieve passages",
     })
 
@@ -65,10 +66,11 @@ describe("OpenRouterEmbedder", () => {
         ),
       ),
     )
-    const embedder = new OpenRouterEmbedder({
+    const embedder = new OpenAICompatibleEmbedder({
       apiKey: "test",
       model: "test/model",
       dimensions: 2,
+      baseUrl: "https://embed.test/v1",
       truncateToDimensions: true,
     })
 

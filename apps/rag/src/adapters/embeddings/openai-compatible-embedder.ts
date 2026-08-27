@@ -1,11 +1,11 @@
 import type { Embedder } from "../../contracts/index.js"
 
-export type OpenRouterEmbedderOptions = {
+export type OpenAICompatibleEmbedderOptions = {
   apiKey: string
   model: string
   dimensions?: number
   truncateToDimensions?: boolean
-  baseUrl?: string
+  baseUrl: string
   wireModel?: string
   queryInstruction?: string
   timeoutMs?: number
@@ -16,13 +16,13 @@ type EmbeddingResponse = {
   data?: Array<{ embedding: number[]; index: number }>
 }
 
-export class OpenRouterEmbedder implements Embedder {
+export class OpenAICompatibleEmbedder implements Embedder {
   readonly model: string
   readonly dimensions: number
 
-  constructor(private readonly options: OpenRouterEmbedderOptions) {
+  constructor(private readonly options: OpenAICompatibleEmbedderOptions) {
     if (!options.apiKey)
-      throw new Error("OpenRouterEmbedder: apiKey is required")
+      throw new Error("OpenAICompatibleEmbedder: apiKey is required")
     this.model = options.model
     this.dimensions = options.dimensions ?? 1536
   }
@@ -71,7 +71,7 @@ export class OpenRouterEmbedder implements Embedder {
     )
     try {
       const response = await fetch(
-        `${(this.options.baseUrl ?? "https://openrouter.ai/api/v1").replace(/\/+$/, "")}/embeddings`,
+        `${this.options.baseUrl.replace(/\/+$/, "")}/embeddings`,
         {
           method: "POST",
           headers: {

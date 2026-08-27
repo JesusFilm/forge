@@ -10,8 +10,8 @@ import {
 } from "./adapters/postgres/index.js"
 import {
   FallbackEmbedder,
-  OpenRouterEmbedder,
-} from "./adapters/openrouter/index.js"
+  OpenAICompatibleEmbedder,
+} from "./adapters/embeddings/index.js"
 import { parseRuntimeEnv } from "./config/env.js"
 import type {
   CorpusSearchStore,
@@ -47,21 +47,29 @@ export function wire(input = process.env): Wiring {
     timeoutMs: env.QUERY_EMBED_TIMEOUT_MS,
     maxAttempts: env.QUERY_EMBED_MAX_ATTEMPTS,
   }
-  const openRouterEmbedder = new OpenRouterEmbedder({
+  const hostedOpenRouterEmbedder = new OpenAICompatibleEmbedder({
     ...sharedEmbedderOptions,
     apiKey: env.OPENROUTER_API_KEY,
+    baseUrl: "https://openrouter.ai/api/v1",
   })
   const queryEmbedder = env.EMBED_BASE_URL
     ? new FallbackEmbedder({
-        primary: new OpenRouterEmbedder({
+        primary: new OpenAICompatibleEmbedder({
           ...sharedEmbedderOptions,
           apiKey: env.EMBED_API_KEY as string,
           baseUrl: env.EMBED_BASE_URL,
           wireModel: env.EMBED_WIRE_MODEL_ID,
         }),
-        fallback: openRouterEmbedder,
+        fallback: hostedOpenRouterEmbedder,
+        onFallback: (error) => {
+          const reason =
+            error instanceof Error ? error.message : "unknown error"
+          console.warn(
+            `query embed: gateway failed (${reason}); falling back to hosted OpenRouter`,
+          )
+        },
       })
-    : openRouterEmbedder
+    : hostedOpenRouterEmbedder
   return {
     corpusWriteStore: new PostgresCorpusWriteStore(prisma),
     corpusSearchStore,

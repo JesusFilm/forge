@@ -3,9 +3,10 @@ import type { Embedder } from "../../contracts/index.js"
 export type FallbackEmbedderOptions = {
   primary: Embedder
   fallback: Embedder
+  onFallback?: (error: unknown) => void
 }
 
-/** Keeps the gateway primary while preserving OpenRouter as provider failover. */
+/** Decorates an embedder with a compatible provider failover. */
 export class FallbackEmbedder implements Embedder {
   readonly model: string
   readonly dimensions: number
@@ -24,7 +25,8 @@ export class FallbackEmbedder implements Embedder {
   async embed(texts: string[]): Promise<(number[] | null)[]> {
     try {
       return await this.options.primary.embed(texts)
-    } catch {
+    } catch (error) {
+      this.options.onFallback?.(error)
       return this.options.fallback.embed(texts)
     }
   }
@@ -32,7 +34,8 @@ export class FallbackEmbedder implements Embedder {
   async embedQuery(text: string): Promise<number[]> {
     try {
       return await this.options.primary.embedQuery(text)
-    } catch {
+    } catch (error) {
+      this.options.onFallback?.(error)
       return this.options.fallback.embedQuery(text)
     }
   }
