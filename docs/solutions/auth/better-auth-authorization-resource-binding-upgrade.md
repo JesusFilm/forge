@@ -1,7 +1,7 @@
 ---
 title: Upgrade Better Auth when authorization drops the OAuth resource binding
 date: 2026-08-21
-last_updated: 2026-08-24
+last_updated: 2026-08-27
 category: auth
 module: apps/auth
 problem_type: security_issue
@@ -112,6 +112,18 @@ applications, environments, OAuth clients, resources, and client-resource
 bindings that the native flows resolve. Serial file execution prevents the
 three suites from racing while they mutate and clean up that shared inventory.
 
+Provider-created public clients need a compatibility-aware repair predicate.
+Better Auth can persist an unauthenticated dynamic client with `public: null`
+even when its effective posture is unambiguously public: no client secret,
+`tokenEndpointAuthMethod: "none"`, a native application type, PKCE-compatible
+browser grants, and loopback redirect URIs. A seed-time repair that filters only
+on `public: true` silently misses those real clients. Forge therefore admits
+both `true` and `null` for that nullable hint, then requires the complete public
+client posture before adding missing protected-resource links
+(`apps/auth/src/scripts/seed-first-party-apps.ts`). The real-PostgreSQL provider
+test creates the exact `public: null` row shape and replays the repair
+(`apps/auth/src/services/better-auth-upgrade.integration.test.ts`).
+
 [GitHub Actions run 32685302674](https://github.com/JesusFilm/forge/actions/runs/32685302674)
 verified the workflow on PR #1973: six migrations applied, the first-party seed
 completed, and all 18 native tests passed across the Better Auth upgrade (7),
@@ -154,6 +166,11 @@ or their clients disabled before restoring 1.6.2.
 - Treat provider-owned authorization-code and refresh-token state as a security
   boundary. Do not repair missing resource lineage by rewriting private provider
   records.
+- Do not use a nullable provider hint such as `public` as the sole repair
+  classifier. Require the independently persisted public-client posture
+  (`clientSecret: null`, `tokenEndpointAuthMethod: "none"`, native application
+  type, PKCE/browser grants, and exact loopback redirects) and prove the
+  provider-created `null` representation in a real-database test.
 - Upgrade `better-auth` and coordinated `@better-auth/*` packages as one tested
   set.
 - Keep a real-PostgreSQL compatibility contract for every private-provider seam:
