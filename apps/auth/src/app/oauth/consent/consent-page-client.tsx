@@ -21,7 +21,7 @@ export function OAuthConsentPageClient({
   oauthQuery: string
   requestingAppName: string
   scopes: ConsentScope[]
-  target?: { environment: string; resource: string }
+  target?: { environment: string; product: string; resource: string }
   unverifiedDynamicClient?: boolean
 }) {
   const [isSubmitting, setIsSubmitting] = useState<"accept" | "deny" | null>(
@@ -103,7 +103,7 @@ export function OAuthConsentPageClient({
             {target ? (
               <div className="mt-5 rounded border border-white/10 bg-white/[0.03] px-3.5 py-3">
                 <strong className="block text-[13px] leading-[1.35] text-[#f5f5f4]">
-                  {target.environment} Changelog
+                  {target.environment} {target.product}
                 </strong>
                 <p className="font-noto-serif mb-0 mt-1 break-all text-xs leading-[1.55] text-[#d6d3d1]">
                   {target.resource}

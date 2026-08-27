@@ -12,6 +12,7 @@
  */
 
 import type { VideoCandidate } from "@forge/experience-schema"
+import { WATCH_HOME_CATEGORY_CATALOG } from "@forge/watch-url-policy/watch-home-categories"
 
 export type ChatHistoryTurn = {
   role: "user" | "assistant" | "system"
@@ -20,6 +21,8 @@ export type ChatHistoryTurn = {
 
 export type EditableLocaleSummary = {
   locale: string
+  /** Effective draft value, not only the canonical locale row. */
+  isHomepage: boolean
   title: string
   metaDescription: string | null
   ogImageUrl: string | null
@@ -68,7 +71,7 @@ const ENVELOPE_SHAPE_HINT = `Envelope shape (illustrative — values vary):
 
 const BLOCK_KIND_REFERENCE = `Block kinds (the "t" discriminator on each block must be one of these literals — anything else triggers schema_violation). Every block schema is STRICT: only the listed fields are allowed. Only omit optional/defaulted fields; required fields in the examples must be present. Never add a field not shown.
 
-Top-level: "videoHero" | "text" | "video" | "card" | "cta" | "infoBlocks" | "mediaCollection" | "navigationCarousel" | "videoCarousel" | "videoRecommendations" | "promoBanner" | "bibleQuotesCarousel" | "adventCountdown" | "easterDates" | "relatedQuestions" | "section" | "container"
+Top-level: "videoHero" | "watchHomeCategoryRail" | "text" | "video" | "card" | "cta" | "infoBlocks" | "mediaCollection" | "navigationCarousel" | "videoCarousel" | "videoRecommendations" | "promoBanner" | "bibleQuotesCarousel" | "adventCountdown" | "easterDates" | "relatedQuestions" | "section" | "container"
 Inside section.content: "mediaCollection" | "text" | "promoBanner" | "infoBlocks" | "cta" | "container" | "relatedQuestions" | "bibleQuotesCarousel" | "card" | "video" | "quizButton" | "videoCarousel" | "navigationCarousel". Do not put "videoHero", "videoRecommendations", or another "section" inside section.content.
 "sectionKey" is an OPTIONAL string identifier on every block — use it when you need to anchor a navigationCarousel item to a section. Otherwise omit.
 
@@ -126,6 +129,14 @@ navigationCarousel:
   {"t":"navigationCarousel","items":[{"contentId":"s02","title":"Forgiveness"}]}
   - "contentId" must match the target block/section "sectionKey". DO NOT use "label", "href", or "sectionRef".
 
+watchHomeCategoryRail (homepage-only and top-level only):
+  {"t":"watchHomeCategoryRail","categoryIds":["jesus","family","hope"]}
+  - This block is allowed only when the current editable state's effective "isHomepage" is true. Do not propose this block when effective isHomepage is false.
+  - It is a top-level singleton: it may appear at most once and must never be placed inside section.content or container children.
+  - "categoryIds" must be a non-empty, duplicate-free subset of these exact IDs: ${WATCH_HOME_CATEGORY_CATALOG.map(({ id }) => `"${id}"`).join(", ")}.
+  - categoryIds order is the rendered tile order. When the editor requests a tile change, keep all unmentioned selections and apply the requested order exactly.
+  - If this block already exists, preserve that block and its categoryIds order during unrelated edits. Preserve every unrelated top-level block and its order whenever returning mutations.blocks.
+
 quizButton (only inside section.content):
   {"t":"quizButton","buttonText":"Take the quiz","iframeSrc":"https://demo.nextstep.is/quiz"}
   - REQUIRED: "buttonText" and a valid "https://*.nextstep.is/..." iframeSrc. If no valid Next Step URL is available, use a "cta" block instead.
@@ -182,6 +193,7 @@ function formatLocaleState(state: EditableLocaleSummary): string {
   return JSON.stringify(
     {
       locale: state.locale,
+      isHomepage: state.isHomepage,
       title: state.title,
       metaDescription: state.metaDescription,
       ogImageUrl: state.ogImageUrl,

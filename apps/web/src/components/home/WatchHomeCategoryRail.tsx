@@ -49,6 +49,7 @@ import {
 
 type WatchHomeCategoryRailProps = {
   languageSlug: string
+  categoryIds?: readonly string[] | null
 }
 
 // Keyed by category `id` and constrained to the literal union so adding a
@@ -83,8 +84,14 @@ const ICON_STROKE_CLASSES =
 const TILE_GRAIN_CLASSES =
   "pointer-events-none absolute inset-0 bg-[url(/watch/images/overlay.svg)] bg-repeat opacity-60 mix-blend-multiply"
 
+const CATEGORY_BY_ID = new Map(
+  WATCH_HOME_CATEGORIES.map((category) => [category.id, category]),
+)
+const DEFAULT_CATEGORY_IDS = WATCH_HOME_CATEGORIES.map(({ id }) => id)
+
 export function WatchHomeCategoryRail({
   languageSlug,
+  categoryIds = DEFAULT_CATEGORY_IDS,
 }: WatchHomeCategoryRailProps) {
   const t = useTranslations("WatchHomeCategories")
   // A slug that fails the LocaleSlug shape can only arrive through a
@@ -93,12 +100,25 @@ export function WatchHomeCategoryRail({
   const locale = tryAsLocaleSlug(languageSlug)
   if (locale === null) return null
 
-  // Every configured slug is a constant that passes the content-slug shape,
-  // so this only drops entries if the config is edited to an invalid value.
-  const cards = WATCH_HOME_CATEGORIES.flatMap((category) => {
+  // Admin rejects malformed selections, but the public renderer stays
+  // defensive around historical JSON. Resolve authored order in one pass,
+  // dropping duplicates, unknown ids, and invalid configured destinations.
+  const cards: Array<
+    (typeof WATCH_HOME_CATEGORIES)[number] & {
+      href: ReturnType<typeof watchVideoPath>
+    }
+  > = []
+  const seen = new Set<string>()
+  for (const id of categoryIds ?? []) {
+    if (seen.has(id)) continue
+    seen.add(id)
+
+    const category = CATEGORY_BY_ID.get(id as WatchHomeCategoryId)
+    if (!category) continue
     const slug = tryAsContentSlug(category.slug)
-    return slug ? [{ ...category, href: watchVideoPath(slug, locale) }] : []
-  })
+    if (!slug) continue
+    cards.push({ ...category, href: watchVideoPath(slug, locale) })
+  }
 
   if (cards.length === 0) return null
 

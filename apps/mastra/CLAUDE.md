@@ -834,7 +834,10 @@ mastra half; chat renders the chips in U2).
   `suggestFollowUps` chunk from the stored metadata so
   `resolveTurnAttachments` re-validates on every read through the shared
   drop-never-repair projection (`projectFollowUps`: ≤3 × ≤120 UTF-16 units,
-  control-char/lone-surrogate/dupe drops — chat mirrors it in U2). The wire
+  control-char/lone-surrogate/dupe drops). This is the SOLE content filter:
+  chat does NOT mirror it (superseded 2026-08-27) and applies only a payload
+  bound (max 3, ≤120 units, non-empty string), so loosening anything here is
+  not caught downstream. The wire
   is LAST-TURN-ONLY: only the thread's final text-bearing assistant message
   carries `followUps`; older turns' stored sets stay stored, off the wire.
 - **Byte budget (KTD12): measured, not computed.** The followUps term in
@@ -845,7 +848,9 @@ mastra half; chat renders the chips in U2).
   per-message replay field must re-derive that budget — and re-measure —
   BEFORE it ships**; never raise the consumer cap (over-cap = 502 → replay
   `failed` → R22 blocks every send). Tighten the stored caps instead (first
-  candidate: 2 × 80 — a coordinated edit with chat's mirror).
+  candidate: 2 × 80 — mastra-only; chat's bound is deliberately unsynced, so
+  TIGHTENING needs no chat edit. Only LOOSENING past chat's 120 would matter,
+  and would silently drop long chips client-side).
 - **Click-source tag (KTD11):** the body accepts an optional closed-vocabulary
   `promptSource` (`follow_up`; anything else reads as absent → `typed`).
   Logged as `prompt_source=` on the flag-on `[seeker-follow-ups]

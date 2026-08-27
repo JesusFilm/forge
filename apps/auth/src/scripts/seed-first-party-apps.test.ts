@@ -1,5 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
+import {
+  ADMIN_MCP_DEFAULT_SCOPES,
+  CHANGELOG_DEFAULT_SCOPES,
+} from "@/domain/apps"
+
 const upsertScope = vi.fn()
 const upsertRegisteredApp = vi.fn()
 const upsertAppEnvironment = vi.fn()
@@ -7,7 +12,11 @@ const upsertOAuthClient = vi.fn()
 const findManyOAuthClients = vi.fn()
 const updateOAuthClient = vi.fn()
 const upsertOAuthResource = vi.fn()
+const findManyOAuthResources = vi.fn()
 const upsertOAuthClientResource = vi.fn()
+const transaction = vi.fn(async (callback) =>
+  callback({ oauthClientResource: { upsert: upsertOAuthClientResource } }),
+)
 const finalizeBetterAuth17Schema = vi.fn()
 
 vi.mock("./finalize-better-auth-17-schema", () => ({
@@ -24,8 +33,12 @@ vi.mock("@/db/client", () => ({
       update: updateOAuthClient,
       upsert: upsertOAuthClient,
     },
-    oauthResource: { upsert: upsertOAuthResource },
+    oauthResource: {
+      findMany: findManyOAuthResources,
+      upsert: upsertOAuthResource,
+    },
     oauthClientResource: { upsert: upsertOAuthClientResource },
+    $transaction: transaction,
   },
 }))
 
@@ -40,11 +53,65 @@ const TV_CLIENT_IDS = [
   "jfp_tv_staging",
   "jfp_tv_production",
 ]
+const PUBLIC_RESOURCE_ROWS: Array<{
+  allowedScopes: string[]
+  disabled: boolean
+  identifier: string
+}> = [
+  ...[
+    "http://localhost:3003/mcp",
+    "https://admin-preview.jesusfilm.org/mcp",
+    "https://admin-stage.jesusfilm.org/mcp",
+    "https://admin.jesusfilm.org/mcp",
+  ].map((identifier) => ({
+    allowedScopes: [...ADMIN_MCP_DEFAULT_SCOPES],
+    disabled: false,
+    identifier,
+  })),
+  ...["http://localhost:3000/mcp", "https://changelog.jesusfilm.org/mcp"].map(
+    (identifier) => ({
+      allowedScopes: [...CHANGELOG_DEFAULT_SCOPES],
+      disabled: false,
+      identifier,
+    }),
+  ),
+]
 
 type OAuthClientUpsertCall = {
   where: { clientId: string }
   create: { grantTypes: string[] }
   update: { grantTypes: string[] }
+}
+
+function eligibleLoopbackClient(
+  overrides: Partial<{
+    applicationType: string | null
+    clientId: string
+    clientSecret: string | null
+    disabled: boolean
+    grantTypes: string[]
+    public: boolean | null
+    redirectUris: string[]
+    requirePKCE: boolean | null
+    resourceLinks: Array<{ resourceId: string }>
+    scopes: string[]
+    tokenEndpointAuthMethod: string | null
+  }> = {},
+) {
+  return {
+    applicationType: "native",
+    clientId: "dynamic_loopback",
+    clientSecret: null,
+    disabled: false,
+    grantTypes: ["authorization_code", "refresh_token"],
+    public: true,
+    redirectUris: ["http://localhost:52123/auth/callback"],
+    requirePKCE: true,
+    resourceLinks: [],
+    scopes: ["openid"],
+    tokenEndpointAuthMethod: "none",
+    ...overrides,
+  }
 }
 
 describe("seedFirstPartyApps", () => {
@@ -54,6 +121,7 @@ describe("seedFirstPartyApps", () => {
       id: `app_${where.key}`,
     }))
     findManyOAuthClients.mockResolvedValue([])
+    findManyOAuthResources.mockResolvedValue(PUBLIC_RESOURCE_ROWS)
     finalizeBetterAuth17Schema.mockResolvedValue(undefined)
   })
 
@@ -68,6 +136,12 @@ describe("seedFirstPartyApps", () => {
       environments: 31,
       oauthClients: 35,
       scopes: 24,
+      resourceRepair: {
+        createdLinks: 0,
+        eligibleClients: 0,
+        offlineAccessUpdatedClients: 0,
+        repairedClients: 0,
+      },
     })
 
     expect(finalizeBetterAuth17Schema).toHaveBeenCalledOnce()
@@ -605,5 +679,221 @@ describe("seedFirstPartyApps", () => {
         ],
       },
     })
+  })
+
+  it("repairs every public MCP link for an eligible existing loopback client transactionally", async () => {
+    findManyOAuthClients.mockResolvedValue([
+      eligibleLoopbackClient({
+        clientId: "dynamic_loopback_1",
+        public: null,
+      }),
+    ])
+
+    const { seedFirstPartyApps } = await import("./seed-first-party-apps")
+    const result = await seedFirstPartyApps()
+
+    expect(findManyOAuthResources).toHaveBeenCalledWith({
+      where: {
+        identifier: {
+          in: expect.arrayContaining(
+            PUBLIC_RESOURCE_ROWS.map(({ identifier }) => identifier),
+          ),
+        },
+      },
+      select: { allowedScopes: true, disabled: true, identifier: true },
+    })
+    expect(findManyOAuthResources.mock.invocationCallOrder[0]).toBeLessThan(
+      findManyOAuthClients.mock.invocationCallOrder[0],
+    )
+    expect(findManyOAuthClients).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          applicationType: "native",
+          clientSecret: null,
+          disabled: false,
+          grantTypes: {
+            hasEvery: ["authorization_code", "refresh_token"],
+          },
+          OR: [{ public: true }, { public: null }],
+          tokenEndpointAuthMethod: "none",
+        }),
+      }),
+    )
+    expect(transaction).toHaveBeenCalledOnce()
+    expect(result.resourceRepair).toEqual({
+      createdLinks: PUBLIC_RESOURCE_ROWS.length,
+      eligibleClients: 1,
+      offlineAccessUpdatedClients: 0,
+      repairedClients: 1,
+    })
+    expect(upsertOAuthClientResource).toHaveBeenCalledWith({
+      where: {
+        clientId_resourceId: {
+          clientId: "dynamic_loopback_1",
+          resourceId: "https://admin.jesusfilm.org/mcp",
+        },
+      },
+      update: {},
+      create: {
+        clientId: "dynamic_loopback_1",
+        resourceId: "https://admin.jesusfilm.org/mcp",
+      },
+    })
+    expect(upsertOAuthClientResource).toHaveBeenCalledWith({
+      where: {
+        clientId_resourceId: {
+          clientId: "dynamic_loopback_1",
+          resourceId: "https://changelog.jesusfilm.org/mcp",
+        },
+      },
+      update: {},
+      create: {
+        clientId: "dynamic_loopback_1",
+        resourceId: "https://changelog.jesusfilm.org/mcp",
+      },
+    })
+  })
+
+  it("excludes seeded, confidential, non-loopback, disabled, PKCE-disabled, web, and incomplete clients", async () => {
+    findManyOAuthClients.mockResolvedValue([
+      eligibleLoopbackClient({ clientId: "jfp_admin_mcp_codex" }),
+      eligibleLoopbackClient({ clientId: "confidential", public: false }),
+      eligibleLoopbackClient({
+        clientId: "remote",
+        redirectUris: ["https://example.com/callback"],
+      }),
+      eligibleLoopbackClient({ clientId: "disabled", disabled: true }),
+      eligibleLoopbackClient({ clientId: "no_pkce", requirePKCE: false }),
+      eligibleLoopbackClient({
+        clientId: "web_client",
+        applicationType: "web",
+      }),
+      eligibleLoopbackClient({
+        clientId: "missing_refresh",
+        grantTypes: ["authorization_code"],
+      }),
+      eligibleLoopbackClient({
+        clientId: "changelog_only",
+        redirectUris: ["http://127.0.0.1:61234/callback"],
+        scopes: [...CHANGELOG_DEFAULT_SCOPES],
+      }),
+    ])
+
+    const { seedFirstPartyApps } = await import("./seed-first-party-apps")
+    const result = await seedFirstPartyApps()
+
+    expect(result.resourceRepair).toEqual({
+      createdLinks: PUBLIC_RESOURCE_ROWS.length,
+      eligibleClients: 1,
+      offlineAccessUpdatedClients: 0,
+      repairedClients: 1,
+    })
+    expect(transaction).toHaveBeenCalledOnce()
+    const repairedClientIds = upsertOAuthClientResource.mock.calls
+      .map(([call]) => call.create.clientId)
+      .filter((clientId) => !clientId.startsWith("jfp_"))
+    expect(new Set(repairedClientIds)).toEqual(new Set(["changelog_only"]))
+    expect(updateOAuthClient).not.toHaveBeenCalled()
+  })
+
+  it("adds only missing links and is a no-op when repeated against repaired state", async () => {
+    let resourceLinks = [{ resourceId: "https://admin.jesusfilm.org/mcp" }]
+    findManyOAuthClients.mockImplementation(async ({ where }) =>
+      where.scopes
+        ? []
+        : [
+            eligibleLoopbackClient({
+              clientId: "dynamic_partial",
+              resourceLinks,
+            }),
+          ],
+    )
+
+    const { seedFirstPartyApps } = await import("./seed-first-party-apps")
+    const first = await seedFirstPartyApps()
+    resourceLinks = PUBLIC_RESOURCE_ROWS.map(({ identifier: resourceId }) => ({
+      resourceId,
+    }))
+    const second = await seedFirstPartyApps()
+
+    expect(first.resourceRepair).toEqual({
+      createdLinks: PUBLIC_RESOURCE_ROWS.length - 1,
+      eligibleClients: 1,
+      offlineAccessUpdatedClients: 0,
+      repairedClients: 1,
+    })
+    expect(second.resourceRepair).toEqual({
+      createdLinks: 0,
+      eligibleClients: 1,
+      offlineAccessUpdatedClients: 0,
+      repairedClients: 0,
+    })
+    expect(transaction).toHaveBeenCalledOnce()
+    expect(upsertOAuthClientResource).not.toHaveBeenCalledWith(
+      expect.objectContaining({
+        create: {
+          clientId: "dynamic_partial",
+          resourceId: "https://admin.jesusfilm.org/mcp",
+        },
+      }),
+    )
+  })
+
+  it("aborts startup from the per-client transaction when a link write fails", async () => {
+    findManyOAuthClients.mockResolvedValue([
+      eligibleLoopbackClient({ clientId: "dynamic_failure" }),
+    ])
+    const transactionalUpsert = vi
+      .fn()
+      .mockResolvedValueOnce(undefined)
+      .mockRejectedValueOnce(new Error("simulated link failure"))
+    transaction.mockImplementationOnce(async (callback) =>
+      callback({ oauthClientResource: { upsert: transactionalUpsert } }),
+    )
+
+    const { seedFirstPartyApps } = await import("./seed-first-party-apps")
+    await expect(seedFirstPartyApps()).rejects.toThrow("simulated link failure")
+
+    expect(transaction).toHaveBeenCalledOnce()
+    expect(transactionalUpsert).toHaveBeenCalledTimes(2)
+    expect(updateOAuthClient).not.toHaveBeenCalled()
+  })
+
+  it("stops before client repair when a public resource row is missing or has stale scopes", async () => {
+    findManyOAuthResources.mockResolvedValue([
+      ...PUBLIC_RESOURCE_ROWS.slice(0, -1),
+      {
+        ...PUBLIC_RESOURCE_ROWS.at(-1),
+        allowedScopes: ["openid"],
+      },
+    ])
+    findManyOAuthClients.mockResolvedValue([eligibleLoopbackClient()])
+
+    const { seedFirstPartyApps } = await import("./seed-first-party-apps")
+    await expect(seedFirstPartyApps()).rejects.toThrow(
+      "Public OAuth resource seed invariant failed (5/6 scope-compatible rows)",
+    )
+
+    expect(findManyOAuthClients).not.toHaveBeenCalled()
+    expect(transaction).not.toHaveBeenCalled()
+  })
+
+  it("rejects duplicate scopes even when the resource row length still matches", async () => {
+    const first = PUBLIC_RESOURCE_ROWS[0]
+    if (!first) throw new Error("Expected a public OAuth resource fixture")
+    const duplicatedScopes = [...first.allowedScopes]
+    duplicatedScopes[duplicatedScopes.length - 1] = duplicatedScopes[0]!
+    findManyOAuthResources.mockResolvedValue([
+      { ...first, allowedScopes: duplicatedScopes },
+      ...PUBLIC_RESOURCE_ROWS.slice(1),
+    ])
+
+    const { seedFirstPartyApps } = await import("./seed-first-party-apps")
+    await expect(seedFirstPartyApps()).rejects.toThrow(
+      "Public OAuth resource seed invariant failed (5/6 scope-compatible rows)",
+    )
+
+    expect(findManyOAuthClients).not.toHaveBeenCalled()
+    expect(transaction).not.toHaveBeenCalled()
   })
 })

@@ -4,10 +4,11 @@ import {
   DynamicCollectionFeedRequestError,
   DynamicCollectionFeedValidationError,
   WATCH_COLLECTION_FEED_MAX_URL_LENGTH,
+  dynamicCollectionFeedSearchParams,
   normalizeDynamicCollectionFeedInput,
   parseDynamicCollectionFeedPage,
   type DynamicCollectionFeedInput,
-  type DynamicCollectionFeedPage,
+  type LoadedDynamicCollectionFeedPage,
 } from "@/lib/dynamic-collection-contract"
 import { watchPath } from "@/lib/watch-paths"
 
@@ -21,22 +22,18 @@ function boundedRetryAfterSeconds(value: string | null): number {
 export async function loadDynamicCollectionFeedPage(
   input: DynamicCollectionFeedInput,
   options: { signal?: AbortSignal } = {},
-): Promise<DynamicCollectionFeedPage> {
+): Promise<LoadedDynamicCollectionFeedPage> {
   const normalized = normalizeDynamicCollectionFeedInput(input)
-  const params = new URLSearchParams({
-    locale: normalized.locale,
-    languageSlug: normalized.languageSlug,
-    first: String(normalized.first),
-    cardsPerParent: String(normalized.cardsPerParent),
-  })
-  if (normalized.cacheScope === "preview") params.set("scope", "preview")
-  if (normalized.after) params.set("after", normalized.after)
-  for (const id of normalized.excludedIds) params.append("excludedIds", id)
-  for (const slug of normalized.excludedSlugs) {
-    params.append("excludedSlugs", slug)
+  const endpoint = watchPath("/api/dynamic-collections")
+  let requestInput = normalized
+  let href = `${endpoint}?${dynamicCollectionFeedSearchParams(requestInput)}`
+  if (
+    href.length >= WATCH_COLLECTION_FEED_MAX_URL_LENGTH &&
+    requestInput.cacheSignature
+  ) {
+    requestInput = { ...requestInput, cacheSignature: null }
+    href = `${endpoint}?${dynamicCollectionFeedSearchParams(requestInput)}`
   }
-
-  const href = `${watchPath("/api/dynamic-collections")}?${params}`
   if (href.length >= WATCH_COLLECTION_FEED_MAX_URL_LENGTH) {
     throw new DynamicCollectionFeedValidationError(
       "request",
@@ -58,7 +55,6 @@ export async function loadDynamicCollectionFeedPage(
   let response: Response
   try {
     response = await fetch(href, {
-      cache: "no-store",
       headers: { accept: "application/json" },
       method: "GET",
       signal: controller.signal,
@@ -90,5 +86,10 @@ export async function loadDynamicCollectionFeedPage(
       "Invalid collection feed response",
     )
   }
-  return parseDynamicCollectionFeedPage(payload, normalized)
+  return {
+    ...parseDynamicCollectionFeedPage(payload, normalized),
+    nextCacheSignature: response.headers.get(
+      "x-watch-collection-next-signature",
+    ),
+  }
 }

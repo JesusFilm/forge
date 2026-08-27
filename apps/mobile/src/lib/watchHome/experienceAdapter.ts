@@ -1,7 +1,8 @@
 /**
  * Maps the `watch-home` Experience's flat MediaCollectionBlock items into the
  * existing WatchHomeSection[] shape (lean cards, matching web) so HomeShelf
- * renders unchanged. Non-collection blocks are skipped (hero is a silent placeholder).
+ * renders unchanged. Non-collection blocks are skipped (the client-owned hero and
+ * Web-only category rail are silent placeholders).
  */
 import { muxThumbnailFromPlaybackId } from "../muxThumbnail"
 import {
@@ -211,8 +212,12 @@ export function buildWatchHomeSectionsFromExperience(
         sections.push(section)
         takenSectionIds.add(section.id)
       }
-    } else if (typename === "WatchHomeHeroBlock") {
-      // Expected placeholder — the hero stays client-owned; render nothing.
+    } else if (
+      typename === "WatchHomeHeroBlock" ||
+      typename === "WatchHomeCategoryRailBlock"
+    ) {
+      // Expected placeholders — the hero stays client-owned and the category
+      // rail stays Web-only; render nothing and do not emit an unknown warning.
     } else if (__DEV__) {
       console.warn(`[WatchHomeAdapter] skipped block type: ${typename}`)
     }

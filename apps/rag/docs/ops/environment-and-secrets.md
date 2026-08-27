@@ -6,10 +6,10 @@ value into a command, transcript, issue, PR, log, or committed env file.
 
 ## Fixed targets
 
-| System  | Project     | Environment/config | Service     |
-| ------- | ----------- | ------------------ | ----------- |
-| Railway | `forge`     | `production`       | `forge-rag` |
-| Doppler | `forge-rag` | `prd`              | n/a         |
+| System  | Project     | Environment/config | Service      |
+| ------- | ----------- | ------------------ | ------------ |
+| Railway | `forge`     | `production`       | `@forge/rag` |
+| Doppler | `forge-rag` | `prd`              | n/a          |
 
 If an operator sees a different target, stop. Creating the Railway service and
 confirming these names is part of feat-425/feat-428; this ticket does not deploy
@@ -38,7 +38,7 @@ Validate without printing values:
 ```sh
 pnpm --filter @forge/rag env:check:ci
 pnpm --filter @forge/rag env:check local
-railway run --project <forge-project-id> --environment production --service forge-rag --no-local -- pnpm --filter @forge/rag env:check railway
+railway run --project <forge-project-id> --environment production --service @forge/rag --no-local -- pnpm --filter @forge/rag env:check railway
 doppler run --project forge-rag --config prd -- pnpm --filter @forge/rag env:check production-read
 ```
 
@@ -60,7 +60,7 @@ preflight. A valid check prints only target and status.
 3. Add namespaced values to Doppler `forge-rag/prd`. Keep gateway values under
    their plain names because they are environment-agnostic. Never add plain
    `DATABASE_URL` or `EMBED_MODEL_ID` to this Doppler config.
-4. Provision Railway `forge/production/forge-rag` as the receiver with its
+4. Provision Railway `forge/production/@forge/rag` as the receiver with its
    database, provider, gateway (if enabled), Firecrawl (if needed), and bearer
    registry names. Do not trigger a deployment from the local checkout.
 5. After the Forge service code has merged and Railway autodeploy is healthy,

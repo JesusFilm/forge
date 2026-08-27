@@ -5,7 +5,7 @@ import {
   adminGraphql as graphql,
   type AdminResultOf as ResultOf,
 } from "@forge/admin-graphql"
-import { adminWatchExperienceFragment } from "@forge/admin-graphql/fragments"
+import { adminLegacyWatchExperienceFragment } from "@forge/admin-graphql/fragments"
 
 export const watchHomeVideoFragment = graphql(`
   fragment WatchHomeVideo on Video @_unmask {
@@ -76,8 +76,9 @@ export const GET_WATCH_HOME_VIDEOS = graphql(
 export type WatchHomeVideosData = ResultOf<typeof GET_WATCH_HOME_VIDEOS>
 
 // Public home-setting query — the single admin `watch-home` Experience web and
-// mobile already render (R1). Consumes the SHARED AdminWatchExperience fragment
-// (now carrying item `coreId`, R17). Uses only `watchSetting` (public); never the
+// mobile already render (R1). Uses the rollout-safe legacy fragment because TV
+// does not render the Web-only category rail and released native bundles must
+// survive an Admin rollback. Uses only `watchSetting` (public); never the
 // editor-gated `experiences` list (R13/AE12 — guarded in homeQueries.test.ts).
 export const GET_WATCH_SETTING = graphql(
   `
@@ -85,12 +86,12 @@ export const GET_WATCH_SETTING = graphql(
       watchSetting(locale: $locale) {
         documentId
         homepageExperience {
-          ...AdminWatchExperience
+          ...AdminLegacyWatchExperience
         }
       }
     }
   `,
-  [adminWatchExperienceFragment],
+  [adminLegacyWatchExperienceFragment],
 )
 
 export type WatchSettingData = ResultOf<typeof GET_WATCH_SETTING>

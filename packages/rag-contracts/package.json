@@ -3,13 +3,26 @@
   "private": true,
   "version": "0.0.1",
   "type": "module",
-  "exports": {},
+  "exports": {
+    ".": "./src/index.ts",
+    "./openapi.v1.json": "./openapi.v1.json"
+  },
   "scripts": {
+    "contract:generate": "tsx scripts/generate-openapi.ts",
     "depcruise": "depcruise src tests --config .dependency-cruiser.cjs",
     "lint": "eslint .",
-    "test": "pnpm depcruise && node --test tests/*.test.mjs"
+    "test": "pnpm depcruise && vitest run tests/*.test.ts && node --test tests/*.test.mjs",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "zod": "3.25.76"
   },
   "devDependencies": {
-    "dependency-cruiser": "^17.4.0"
+    "@types/node": "^22.0.0",
+    "dependency-cruiser": "^17.4.0",
+    "tsx": "^4.21.0",
+    "typescript": "~5.9.3",
+    "vitest": "3.2.4",
+    "zod-to-json-schema": "^3.25.2"
   }
 }

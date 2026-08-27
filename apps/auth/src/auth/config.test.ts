@@ -52,11 +52,8 @@ vi.mock("@/config/env", () => ({
   getAdminWatchProgressErasureConfig: vi.fn(() => null),
   getAppleNativeClientConfig: vi.fn(() => null),
   getAuthBaseUrl: vi.fn(() => "http://localhost:3004"),
+  getAuthCustomAudiences: vi.fn(() => ["https://custom.example.test"]),
   getAuthTrustedOrigins: vi.fn(() => []),
-  getAuthValidAudiences: vi.fn(() => [
-    "http://localhost:3004",
-    "http://localhost:3003/mcp",
-  ]),
 }))
 
 vi.mock("@/db/client", () => ({
@@ -244,27 +241,59 @@ describe("auth provider configuration", () => {
     )
   })
 
-  it("uses native protected resources without weakening per-client registration", async () => {
+  it("uses resource-specific policy without exposing protected audiences to DCR", async () => {
     const options = await captureOAuthProviderOptions()
 
     expect(options.allowDynamicClientRegistration).toBe(true)
     expect(options.allowUnauthenticatedClientRegistration).toBe(true)
     expect(options).not.toHaveProperty("enforcePerClientResources")
     expect(options.clientRegistrationAllowedResources).toEqual([
-      "http://localhost:3004",
       "http://localhost:3003/mcp",
+      "https://admin-preview.jesusfilm.org/mcp",
+      "https://admin-stage.jesusfilm.org/mcp",
+      "https://admin.jesusfilm.org/mcp",
+      "http://localhost:3000/mcp",
+      "https://changelog.jesusfilm.org/mcp",
     ])
     expect(options.resources.map(({ identifier }) => identifier)).toEqual(
-      options.clientRegistrationAllowedResources,
+      expect.arrayContaining([
+        ...options.clientRegistrationAllowedResources,
+        "http://localhost:3004",
+        "https://custom.example.test",
+        "https://admin.jesusfilm.org/api/manager/session",
+      ]),
     )
-    expect(options.resources[1]?.allowedScopes).toContain("experience:read")
+    expect(
+      options.resources.find(
+        ({ identifier }) => identifier === "https://admin.jesusfilm.org/mcp",
+      )?.allowedScopes,
+    ).toContain("experience:read")
+    expect(
+      options.resources.find(
+        ({ identifier }) =>
+          identifier === "https://changelog.jesusfilm.org/mcp",
+      )?.allowedScopes,
+    ).not.toContain("experience:read")
+    expect(
+      options.resources.find(
+        ({ identifier }) =>
+          identifier === "https://admin.jesusfilm.org/api/manager/session",
+      )?.allowedScopes,
+    ).toEqual(["admin:manager-session:validate"])
+    expect(options.clientRegistrationAllowedScopes).not.toContain(
+      "admin:manager-session:validate",
+    )
     expect(options).not.toHaveProperty("validAudiences")
   })
 
-  it("links dynamic registrations to both Changelog resources by default", async () => {
+  it("links dynamic registrations to every public MCP resource by default", async () => {
     const options = await captureOAuthProviderOptions()
 
     expect(options.clientRegistrationDefaultResources).toEqual([
+      "http://localhost:3003/mcp",
+      "https://admin-preview.jesusfilm.org/mcp",
+      "https://admin-stage.jesusfilm.org/mcp",
+      "https://admin.jesusfilm.org/mcp",
       "http://localhost:3000/mcp",
       "https://changelog.jesusfilm.org/mcp",
     ])
@@ -302,6 +331,23 @@ describe("auth provider configuration", () => {
       resources: ["http://localhost:3000/mcp"],
       scopeCeiling: ["openid", "changelog:read"],
     })
+  })
+
+  it("derives Admin claims from the exact resource instead of dynamic metadata", async () => {
+    const options = await captureOAuthProviderOptions()
+
+    await expect(
+      options.customAccessTokenClaims({
+        user: { id: "user_123", membershipStatus: "ACTIVE" },
+        scopes: ["openid", "experience:read", "changelog:admin"],
+        resources: ["https://admin.jesusfilm.org/mcp"],
+        metadata: { environmentKind: "staging", appKey: "changelog" },
+      }),
+    ).resolves.toEqual({
+      "https://jesusfilm.org/claims/environment": "production",
+      "https://jesusfilm.org/claims/app": "admin-mcp",
+    })
+    expect(authConfigCapture.decideChangelogGrant).not.toHaveBeenCalled()
   })
 
   it("fails closed when an issuance-time Changelog grant changes", async () => {
@@ -355,6 +401,7 @@ describe("auth provider configuration", () => {
       const options = await captureOAuthProviderOptions()
       expect(options.resources).toEqual([])
       expect(options.clientRegistrationAllowedResources).toEqual([])
+      expect(options.clientRegistrationDefaultResources).toEqual([])
     } finally {
       vi.unstubAllEnvs()
     }
