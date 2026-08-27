@@ -1,5 +1,5 @@
 /* eslint-disable max-lines -- colocates the five implementations sharing one Prisma transaction/query vocabulary */
-import { Prisma, type PrismaClient } from "@prisma/client"
+import { Prisma, type PrismaClient } from "../../generated/prisma/index.js"
 
 import type {
   CorpusSearchStore,

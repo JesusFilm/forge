@@ -33,7 +33,7 @@ module.exports = {
         path: "^src/adapters/",
         pathNot: "\\.(?:test|spec)\\.[cm]?[jt]sx?$",
       },
-      to: { path: "^src/", pathNot: "^src/(contracts|adapters)/" },
+      to: { path: "^src/", pathNot: "^src/(contracts|adapters|generated)/" },
     },
     {
       name: "rag-does-not-import-other-apps",
@@ -86,6 +86,6 @@ module.exports = {
   options: {
     tsPreCompilationDeps: true,
     tsConfig: { fileName: "tsconfig.json" },
-    doNotFollow: { path: "node_modules" },
+    doNotFollow: { path: "(?:node_modules|^src/generated/)" },
   },
 }
