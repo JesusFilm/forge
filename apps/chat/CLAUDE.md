@@ -80,10 +80,11 @@ src/
       icons.tsx          Inline line-icon components (panel/compose/menu/close/chevron/…) — currentColor, no icon dependency, no emoji
     chat/
       chat.tsx           Conversation pane — the centered 680px reading "room" (presentational); a ResizeObserver on the composer band re-pins a bottom-pinned reader on auto-grow (never a scrolled-up one) and keeps the scroller's scroll-padding sized to the band (feat-270)
-      message-list.tsx   Renders turns (Embersoot user bubble = React-escaped plain text / assistant turns via assistant-markdown) + streaming pulse (aria-live), grounded badge (3 states, plain-language title tooltips — feat-270), stub-only visible engine marker (the machine data-engine tag stays on finalized turns that carry an engine; replayed and user-stopped turns deliberately carry none), role="alert" failure notice, and the feat-328 VideoCard sibling block (streaming + finalized branches, after the markdown content — never through the markdown allowlist). feat-329: the sources disclosure renders when a turn is a seeker turn OR carries sources, so a replayed turn (no engine tag, by R21) still shows them; the grounded badge stays gated on the engine tag alone
+      message-list.tsx   Renders turns (Embersoot user bubble = React-escaped plain text / assistant turns via assistant-markdown) + streaming pulse (aria-live), grounded badge (3 states, plain-language title tooltips — feat-270), stub-only visible engine marker (the machine data-engine tag stays on finalized turns that carry an engine; replayed and user-stopped turns deliberately carry none), role="alert" failure notice, and the feat-328 VideoCard sibling block (streaming + finalized branches, after the markdown content — never through the markdown allowlist). feat-329: the sources disclosure renders when a turn is a seeker turn OR carries sources, so a replayed turn (no engine tag, by R21) still shows them; the grounded badge stays gated on the engine tag alone. feat-366: the FollowUps sibling block after the sources disclosure, on the conversation's LAST turn only and never on the streaming or failed branch — the list derives that id once and hands every other turn a shared empty array (memo-stable)
       assistant-markdown.tsx  feat-268: hardened markdown for ASSISTANT turns only — react-markdown + remark-breaks, element allowlist (p/strong/em/ul/ol/li/blockquote/code/a/br), raw HTML → inert text (no rehype-raw, skipHtml stays false), https-only links via untrusted-link, Vigil-token styling (blockquote = font-scripture), streaming cursor slot, THREE pathological-input controls that each degrade one turn to plain pre-wrap text (chat has no app-level error boundary): prefix guard (short deep-nesting crash) + length cap at the 8192-unit per-message ceiling (shape-agnostic freeze bound, catches emphasis nesting the prefix regex misses) + MarkdownRenderBoundary (any throw the guards miss)
       untrusted-link.tsx feat-268: the ONE hardened anchor for untrusted URLs (isHttpsUrl gate + target=_blank + rel="noopener noreferrer" + sr-only suffix); shared by sources-list + assistant-markdown so the surfaces cannot drift
       video-card.tsx     feat-328: the featured video as an inline Mux player — lazy `next/dynamic(() => import("@forge/video-player/mux-video"), {ssr:false})` so hls.js stays out of the initial load, derived image.mux.com poster, title+duration caption whose link goes through untrusted-link. Mux gets ONLY the pattern-gated playbackId + this origin: disableTracking/disableCookies are passed EXPLICITLY (never inherited from the package defaults) and no metadata/viewer-id prop exists. Carries its OWN per-message VideoRenderBoundary (the MarkdownRenderBoundary pattern) — the card renders OUTSIDE the markdown boundary and chat has no app-level one, so a MuxVideo/hls.js throw degrades that ONE turn to a plain line, never the tree. Its `children` is a render callback so the two failure CLASSES converge on that one fallback: a render-phase throw (caught by getDerivedStateFromError) AND an async playback `error` event (which no React boundary can catch — MuxVideo's onError calls `fail`). Scope caveat worth keeping straight: a CHUNK-load failure is NOT per-turn and is NOT retryable at the import layer — the rejection is cached by BOTH Turbopack's emitted runtime and React.lazy's module-scoped payload, so every video turn degrades together until a page reload (see "Featured video" below for the mechanism and its bundler scope)
+      follow-ups.tsx     feat-366: the suggested follow-up chips — a <nav aria-label="Suggested follow-up questions"> of real buttons rendering React-escaped PLAIN text (a tap sends it verbatim as the person's own message, KD4). Empty renders nothing; the `disabled` prop is defensive only (R3 — no production state reaches it). Placement is message-list's call
       sources-list.tsx   Collapsed "Sources · N" disclosure of cited passages (feat-269: deduped by URL, snippets line-clamped behind per-source disclosures) or explicit always-visible "No sources cited" state; untrusted RAG sources → https-only links via untrusted-link, text never HTML (feat-205)
       composer.tsx       Auto-growing textarea; the 44px send slot is a Vesper up-arrow when a draft is ready, a dim dot otherwise, and a stop control while pending (feat-270 — R22 blocked states keep the plain disabled send)
       empty-state.tsx    "What would you like to ask?" heading + starter questions
@@ -91,7 +92,7 @@ src/
     brand/
       brand-lockup.tsx   Inlined JFP flag mark + "jesusfilm.ai" wordmark
   lib/
-    chat-stub.ts         Reply seam (still the single swap point): streamReply() — stub path (buildStubReply) OR Seeker path (POST /api/seeker, parse SSE, first-terminal-wins). Honest since feat-281 (Ruling 3): every error frame — gate_denied included — returns { ok: false, reason, partialText } truthfully; the session owns stub-vs-failure. Also owns the two defensive wire projections: toSources and the feat-328 toVideo (see "Featured video" below)
+    chat-stub.ts         Reply seam (still the single swap point): streamReply() — stub path (buildStubReply) OR Seeker path (POST /api/seeker, parse SSE, first-terminal-wins). Honest since feat-281 (Ruling 3): every error frame — gate_denied included — returns { ok: false, reason, partialText } truthfully; the session owns stub-vs-failure. Also owns the defensive wire projections: toSources, the feat-328 toVideo (see "Featured video" below), and the feat-366 toFollowUps payload bound (see "Suggested follow-up questions"). Carries the optional feat-366 promptSource tag onto the proxy body — set only for a chip-originated send
     sse.ts               Chat-local SSE parser (readSseStream + encodeSseFrame), forked from admin's reference; used by the proxy AND the client seam
     cn.ts                Tiny conditional-className joiner (no clsx/tailwind-merge dependency)
     is-https-url.ts      The https-only link gate for untrusted content, shared by sources-list + assistant-markdown (feat-268)
@@ -99,8 +100,8 @@ src/
     seeker-gate.ts       feat-233: resolveSeekerGate — kill switch + verified email + SEEKER_ALLOWED_EMAILS membership → {seekerEnabled, outcome} + the [seeker-gate] R15 log line (grants and denials, sub not email)
     deep-link-entry.ts   feat-209: pure KTD5 entry resolver for /c/<id> — unavailable / sign_in / granted precedence (malformed id and unconfigured auth deny before the identity branch; gate-denied denies after it) + feat-399's granted_unresolvable kind (malformed id + FULL grant) and deepLinkShell, the one kind → AppShell-props mapping. The grant is ONE expression both granted kinds read, and only those two carry seekerEnabled — the route holds no conditional of its own
     conversation-id.ts   feat-209: one home for the conversation-id (UUID) shape + lowercase canonicalization (isConversationId / toConversationId); tighten-only covenant — isValidAnonId (the anon-cookie trust gate) is a security-critical consumer of UUID_PATTERN
-    conversations.ts     Message (+ optional sources/grounded/engine/error/video) + SeekerSource + VideoAttachment (feat-328) + ReplyFailureReason + Conversation types (feat-241 additive: origin, serverPersisted, lastActivityAt, replay state) + createConversation / deriveTitle / fallbackTitle
-    history-client.ts    feat-241: never-throw typed client for /api/history/* — fetchHistoryPage / fetchHistoryThread with the closed access | not_available | unavailable reason set. feat-329: re-validates the replay wire's optional per-message sources/video through toSources/toVideo (malformed → absent, never a failed replay) and aggregates the [chat-video] rejection diagnostic into ONE line per thread open
+    conversations.ts     Message (+ optional sources/grounded/engine/error/video/followUps) + SeekerSource + VideoAttachment (feat-328) + ReplyFailureReason + Conversation types (feat-241 additive: origin, serverPersisted, lastActivityAt, replay state) + createConversation / deriveTitle / fallbackTitle
+    history-client.ts    feat-241: never-throw typed client for /api/history/* — fetchHistoryPage / fetchHistoryThread with the closed access | not_available | unavailable reason set. feat-329: re-validates the replay wire's optional per-message sources/video through toSources/toVideo (malformed → absent, never a failed replay) and aggregates the [chat-video] rejection diagnostic into ONE line per thread open. feat-366: applies the same toFollowUps payload bound to the replay wire that the live frame uses (mastra owns content validation)
     conversation-session.ts feat-281: the framework-agnostic conversation session (no React imports) — createConversationSession(deps) owns EVERY conversation machine behind a subscribe/getSnapshot store: send + async streaming lifecycle (empty assistant turn → token append → terminal finalize/error), per-conversation AbortController slots (pending + double-send guard, released in finally), stopReply's quiet finalize (feat-270), new/select with draft semantics, history hydration/paging/merge (feat-241), lazy single-flight replay, R22 send blocking, and ALL of KTD10 (the three markServerPersisted branches + mergeServerThreads' hydration stamp + the stub-vs-failure decision: captured at send START from serverPersisted, gate_denied on a never-persisted conversation rebuilds the immediate inline stub in the finalize — buildStubReply directly, never streamStubReply's 800ms delay). getSnapshot is cached — new identity only on commit; snapshot.conversations is the FULL list (the sidebar projects it — Ruling 4b). Construction is side-effect-free; activate() arms hydration/replay, deactivate() aborts in-flight fetches AND rolls their pending states back so re-activating the SAME instance re-arms (the StrictMode setup→cleanup→setup contract). Deps (streamReply + the two history fetchers + seekerEnabled) are injected — the direct unit suite drives the machines with no DOM. Pure merge/order helpers exported for tests
     use-conversations.ts Thin 'use client' adapter over the session (feat-281): one session per hook lifetime (useState initializer), useSyncExternalStore for the snapshot, a mount effect driving activate/deactivate. Returns the same 16-field UseConversations shape as before the extraction (conversations = the full unprojected list since PR 2)
     use-conversation-url.ts feat-209: the URL-sync hook — shallow pushState/replaceState via Next's patched history API, popstate adopt-or-refuse, pageshow bfcache reload guard (R9); inert unless the shell is gate-granted and not a denial shell
@@ -416,6 +417,81 @@ languageSlug)` from `@forge/watch-url-policy/routes`; a `watchUrl` on the
   rejection SINK, which the replay caller overrides to aggregate (below).
   Badge stripping is unchanged — a replayed turn shows its player and sources
   and no engine/grounded badge.
+
+## Suggested follow-up questions (feat-366)
+
+Up to three tappable questions under a finished Seeker answer. Plan:
+`docs/plans/2026-08-18-0406-feat-seeker-follow-up-questions-plan.md` (unit U2);
+mastra owns the producer side (U1) behind its default-off
+`SEEKER_FOLLOWUPS_ENABLED` flag, so nothing renders until that flips.
+
+- **Terminal-frame only, like the video.** The optional `followUps: string[]`
+  rides the same `result` frame — omitted, never null or empty. Generation is
+  post-hoc, so the frame is DELAYED by the generation budget (~270ms typical,
+  2.5s worst case) and the turn keeps its streaming presentation, and its
+  `aria-live` "Replying", through that window. Accepted for v1; dogfood
+  feedback is the revisit trigger.
+- **`toFollowUps` in `lib/chat-stub.ts` is a payload BOUND, deliberately NOT a
+  mirror** — unlike `toVideo` and `toSources` beside it. Four checks: non-string
+  drops, empty-after-trim drops (a blank chip would send an empty message),
+  over-120-UTF-16-units drops (never truncates — a tap sends the text verbatim
+  as the person's own message, KD4), list caps at 3. It makes no claim to
+  reproduce `projectFollowUps` in `apps/mastra`; 120 is the value mastra's
+  stored cap held when this was written and is not kept in sync. No rejection
+  diagnostic — the questions may never reach a console line.
+- **Mastra is the sole CONTENT filter** (plan KTD4, superseded 2026-08-27).
+  It applies the drop-never-repair projection — control characters, `Cf`
+  format characters, bidi overrides, lone surrogates, dedupe — on both the
+  live and replay paths, so chat re-implementing it only covered the case
+  where mastra is itself wrong, at the cost of two copies that could silently
+  drift. The mirror was also ASYMMETRIC: the composer's typed-send path
+  applies only `.trim()` (`conversation-session.ts` `send`), so the same
+  character classes were already reachable in a user message — the mirror held
+  model-suggested text to a stricter standard than the person's own typing.
+  Accepted residual: during a deploy window (mastra ships first, KTD13) or a
+  mastra regression, nothing client-side would catch a bidi override in a
+  question a person sends as their own message. The deception vector does
+  differ from typing — chip text is model-authored and seen only as rendered —
+  so this is a real, if narrow, residual. Background on the character class:
+  `docs/solutions/security-issues/invisible-character-class-gap-defeats-url-redaction.md`.
+  Revisit if the audience widens past dogfood.
+- **Both wire paths still apply the bound.** The live terminal frame in
+  `chat-stub.ts`, the replay payload in `history-client.ts` — replay reads
+  rows written under an older contract, and a malformed set simply leaves the
+  turn without chips (AE6), never a failed replay.
+- **Last turn only (R3), finalized turns only.** `message-list.tsx` derives
+  the last message id once and hands every other turn a shared empty array, so
+  the block is self-clearing: a tap appends turns and the answer that carried
+  the chips stops being last. Replayed turns qualify — the gate is the message
+  id, not the engine tag a replayed turn deliberately lacks (R21). The
+  `FollowUps` component's `disabled` prop is DEFENSIVE only: no production
+  state renders chips while a send is blocked, and its tests say so in place.
+- **`promptSource` is one optional closed-vocabulary field across four hops**
+  (plan KTD11): the chip's `onSend(question, "follow_up")` -> the session's
+  `send` -> the seam's body -> the `/api/seeker` guard, which FORWARDS a valid
+  `"follow_up"` and drops anything else as absent — never a 400, because a junk
+  tag must not cost the person their answer. A typed send omits the key at
+  every hop. Mastra records an absent value as `typed`.
+- **Two-moment focus handoff.** At the tap the composer textarea is about to
+  go `disabled` (pending) and the chip itself unmounts, so `chat.tsx` parks
+  focus on the `role="log"` region (`tabIndex={-1}`); the composer's existing
+  not-pending effect takes it back at finalize. Both moments are asserted, in
+  the unit suite and end to end. Side effect of making that region focusable,
+  browser-verified 2026-08-21 (Chromium 1228, production build): clicking
+  transcript text now moves focus to the log region rather than `<body>` —
+  no focus ring (`:focus-visible` false, `outline-none`), the region stays out
+  of the tab order, and text selection is unaffected (`user-select: auto`;
+  double-click word selection works).
+- **Replay is deliberately NOT flag-gated (KD1).** Mastra's default-off
+  `SEEKER_FOLLOWUPS_ENABLED` gates GENERATION only, so flipping it off stops
+  new chip sets but leaves already-stored ones rendering on thread reopen —
+  the same ruling `SEEKER_VIDEO_ENABLED` got. The escalation levers, in order:
+  flag off → `SEEKER_ROUTE_ENABLED=false` → purge the threads. Revisit on
+  audience widening or an incident class needing visual retraction.
+- **On-arrival visibility (accepted).** The feat-269 finalize scroll leaves the
+  reader at the TOP of the answer, so for a long answer the chips sit below the
+  fold when they appear. Kept deliberately — the reading path ends at the
+  chips; dogfood feedback is the revisit trigger for the scroll target.
 
 ## Server-side conversation history (feat-241)
 

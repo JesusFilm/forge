@@ -1,4 +1,5 @@
 import { render } from "@testing-library/react"
+import userEvent from "@testing-library/user-event"
 import { describe, expect, it } from "vitest"
 
 import { type Conversation, type Message } from "@/lib/conversations"
@@ -231,5 +232,153 @@ describe("shouldRepin (feat-270) — pre-resize distance decision", () => {
     expect(shouldRepin(0, -156, T)).toBe(false)
     // …small ones redundantly re-pin — a no-op on an at-bottom scroller.
     expect(shouldRepin(0, -40, T)).toBe(true)
+  })
+})
+
+// ===========================================================================
+// feat-366 U2: the chip send funnel and the two-moment focus handoff.
+// ===========================================================================
+
+const QUESTIONS = ["Why pray?", "Who wrote the gospels?"]
+
+function answeredConversation(): Conversation {
+  return conversationWith("c1", [
+    userTurn("u1"),
+    { ...assistantTurn("a1", "A grounded answer."), followUps: QUESTIONS },
+  ])
+}
+
+function chip(container: HTMLElement, index = 0): HTMLButtonElement {
+  const chips = container.querySelectorAll<HTMLButtonElement>(
+    '[data-follow-ups="section"] button',
+  )
+  const found = chips[index]
+  if (!found) throw new Error("chip not found")
+  return found
+}
+
+describe("Chat follow-up chips (feat-366)", () => {
+  it("routes a chip click through the SAME onSend the composer uses", async () => {
+    const sends: Array<[string, string | undefined]> = []
+    const user = userEvent.setup()
+    const { container } = render(
+      <Chat
+        {...baseProps()}
+        conversation={answeredConversation()}
+        pending={false}
+        streamingMessageId={null}
+        onSend={(text, promptSource) => sends.push([text, promptSource])}
+      />,
+    )
+    await user.click(chip(container, 1))
+    expect(sends).toEqual([["Who wrote the gospels?", "follow_up"]])
+  })
+
+  it("sends the question text VERBATIM — no composer pre-fill (KD4)", async () => {
+    const drafts: string[] = []
+    const user = userEvent.setup()
+    const { container } = render(
+      <Chat
+        {...baseProps()}
+        conversation={answeredConversation()}
+        pending={false}
+        streamingMessageId={null}
+        onDraftChange={(value) => drafts.push(value)}
+        onSend={() => {}}
+      />,
+    )
+    await user.click(chip(container))
+    expect(drafts).toEqual([])
+    expect(
+      container.querySelector<HTMLTextAreaElement>("textarea")?.value,
+    ).toBe("")
+  })
+
+  it("MOMENT ONE: focus lands on the conversation log region at click", async () => {
+    // The composer textarea is `disabled` the instant the send goes pending,
+    // so it cannot take focus — the log region is the destination.
+    const user = userEvent.setup()
+    const { container } = render(
+      <Chat
+        {...baseProps()}
+        conversation={answeredConversation()}
+        pending={false}
+        streamingMessageId={null}
+        onSend={() => {}}
+      />,
+    )
+    await user.click(chip(container))
+    const log = container.querySelector('[role="log"]')
+    expect(log).toHaveAttribute("tabindex", "-1")
+    expect(document.activeElement).toBe(log)
+  })
+
+  it("MOMENT TWO: focus returns to the composer when the reply finalizes", async () => {
+    const user = userEvent.setup()
+    const view = render(
+      <Chat
+        {...baseProps()}
+        conversation={answeredConversation()}
+        pending={false}
+        streamingMessageId={null}
+        onSend={() => {}}
+      />,
+    )
+    await user.click(chip(view.container))
+    // The send goes pending: chips are gone with the new turns, the textarea
+    // is disabled, and focus is parked on the log.
+    const pendingConversation = conversationWith("c1", [
+      ...answeredConversation().messages,
+      userTurn("u2"),
+      { id: "a2", role: "assistant" as const, content: "" },
+    ])
+    view.rerender(
+      <Chat
+        {...baseProps()}
+        conversation={pendingConversation}
+        pending
+        streamingMessageId="a2"
+        onSend={() => {}}
+      />,
+    )
+    expect(view.container.querySelector('[role="log"]')).toBe(
+      document.activeElement,
+    )
+    // Finalize: the composer's not-pending effect takes focus back.
+    view.rerender(
+      <Chat
+        {...baseProps()}
+        conversation={pendingConversation}
+        pending={false}
+        streamingMessageId={null}
+        onSend={() => {}}
+      />,
+    )
+    expect(document.activeElement).toBe(
+      view.container.querySelector("textarea"),
+    )
+  })
+
+  it("R22: a replay-blocked conversation renders no chips at all", async () => {
+    // The pane shows the replay state instead of the transcript, so there are
+    // no hydrated turns to hang chips on. This is the production state the
+    // synthetic `disabled` fixture in follow-ups.test.tsx must not be
+    // mistaken for.
+    for (const replayState of ["loading", "failed", "not_available"] as const) {
+      const view = render(
+        <Chat
+          {...baseProps()}
+          conversation={answeredConversation()}
+          pending={false}
+          streamingMessageId={null}
+          replayState={replayState}
+          onSend={() => {}}
+        />,
+      )
+      expect(
+        view.container.querySelector('[data-follow-ups="section"]'),
+      ).toBeNull()
+      view.unmount()
+    }
   })
 })
