@@ -89,7 +89,10 @@ import {
 } from "../../lib/streamQuality"
 import type { ProgressIdentity } from "../../lib/watchProgress/recorder"
 import { resumePositionSeconds } from "../../lib/watchProgress/thresholds"
-import { setPlaybackTransport } from "../../lib/playbackInterruption"
+import {
+  clearPlaybackTransport,
+  setPlaybackTransport,
+} from "../../lib/playbackInterruption"
 import { FloatingBackButton } from "../ui/FloatingBackButton"
 import { MiniPlayerWindow } from "./MiniPlayerWindow"
 import { VideoPlayer } from "./VideoPlayer"
@@ -679,12 +682,15 @@ function ActivePlaybackHost({
   // the host owns the player, and a route-tree component cannot reach a sibling
   // of the stack.
   useEffect(() => {
-    setPlaybackTransport({
+    const transport = {
       isPlaying: () => player.playing,
       pause: () => player.pause(),
       play: () => player.play(),
-    })
-    return () => setPlaybackTransport(null)
+    }
+    setPlaybackTransport(transport)
+    // Identity-checked: an unconditional null would let a torn-down host clear
+    // a live registration if the two ever overlap.
+    return () => clearPlaybackTransport(transport)
   }, [player])
 
   // R25 stops playback on a subject change, R6 on a dismissal — neither is

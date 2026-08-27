@@ -19,7 +19,15 @@ import Ionicons from "@expo/vector-icons/Ionicons"
 import { ACCENT, TEXT_ON_OVERLAY, hexToRgba } from "../../lib/color"
 import { layout, text, button, card, carousel } from "../../styles/shared"
 import {
+  CARD_CONTENT_PADDING,
   COPYRIGHT_MAX_LINES,
+  LINK_MARGIN_TOP,
+  LINK_MIN_TAP_HEIGHT,
+  REFERENCE_MARGIN,
+  REFERENCE_MAX_LINES,
+  TRANSLATION_MARGIN,
+  TRANSLATION_MAX_LINES,
+  VERSE_MARGIN,
   composeCardLabel,
   fitPassageCardRegions,
 } from "../../lib/bibleCardFit"
@@ -28,6 +36,7 @@ import { resolveImageUrl } from "../../lib/resolveImageUrl"
 import { validateActionUrl } from "../../lib/validateUrl"
 import { useShimmerOpacity } from "../../hooks/useShimmerOpacity"
 import { useTypography, type TypographyScale } from "../../hooks/useTypography"
+import type { BibleQuoteBlock } from "../../hooks/useBibleVerses"
 import type { AdminBlock } from "../../lib/queries"
 
 // ── Types ───────────────────────────────────────────────────────────────────
@@ -36,19 +45,23 @@ import type { AdminBlock } from "../../lib/queries"
 // the Experience and SDUI content paths, whose quote items carry none of them.
 // Rendering each region only when its value is present is what keeps those two
 // surfaces byte-identical to today.
+//
+// They are DERIVED from the hook's card type rather than re-declared, because
+// the two meet through `AdminBlock`'s `Record<string, unknown>` index signature
+// — a rename on either side would typecheck clean and silently stop rendering
+// the credit. `text` is widened because admin's Experience quote type declares
+// it nullable.
 type QuoteItem = {
   reference: string
-  text: string
+  text: string | null
   attribution?: string | null
   imageUrl?: string | null
   backgroundColor?: string | null
   ctaLabel?: string | null
   ctaLink?: string | null
-  translation?: string | null
-  copyright?: string | null
-  passageUrl?: string | null
-  loading?: boolean
-}
+} & Partial<
+  Pick<BibleQuoteBlock, "translation" | "copyright" | "passageUrl" | "loading">
+>
 
 export interface BibleQuotesCarouselRendererProps {
   section: AdminBlock
@@ -59,8 +72,6 @@ export interface BibleQuotesCarouselRendererProps {
 const HORIZONTAL_PADDING = 16
 const CARD_GAP = 12
 const FALLBACK_BG = "#292524"
-// Keep in step with `cardContent`'s padding — the fit arithmetic subtracts it.
-const CARD_CONTENT_PADDING = 20
 const READ_PASSAGE_LABEL = "Read full passage"
 
 // ── QuoteCard ───────────────────────────────────────────────────────────────
@@ -121,7 +132,13 @@ function QuoteCard({
     quote.copyright != null ||
     quote.passageUrl != null
 
-  const showVerse = !loading && quote.text.length > 0
+  // `BibleQuoteItem.text` is nullable in admin's schema and the shared
+  // Experience fragment selects it raw, so this card really can be handed null.
+  // The code this replaced passed it straight to `<Text>` and a template
+  // literal, both of which accept null; `.length` and `.trim()` do not.
+  const verseText = typeof quote.text === "string" ? quote.text : ""
+
+  const showVerse = !loading && verseText.length > 0
 
   // The card is a fixed square and its content is bottom-aligned, so the drop
   // order has to be decided here rather than left to overflow.
@@ -146,7 +163,7 @@ function QuoteCard({
       accessibilityLabel={
         loading
           ? `${quote.reference}, loading`
-          : composeCardLabel(quote.reference, quote.text)
+          : composeCardLabel(quote.reference, verseText)
       }
     >
       {imageUrl != null && (
@@ -170,7 +187,14 @@ function QuoteCard({
             {quote.attribution.toUpperCase()}
           </Text>
         )}
-        <Text style={[styles.reference, typography.bodySmall]}>
+        <Text
+          style={[styles.reference, typography.bodySmall]}
+          // The fit arithmetic budgets exactly REFERENCE_MAX_LINES for this
+          // region. Without the clamp a long reference wraps past its budget,
+          // the bottom-aligned stack overflows, and the clip takes the
+          // reference off the TOP — the one region the drop order protects.
+          numberOfLines={hasPassage ? REFERENCE_MAX_LINES : undefined}
+        >
           {quote.reference.toUpperCase()}
         </Text>
         {loading && <VerseLoading typography={typography} />}
@@ -179,11 +203,14 @@ function QuoteCard({
             style={[styles.quoteText, typography.body]}
             numberOfLines={hasPassage ? regions.verseLines : undefined}
           >
-            {quote.text}
+            {verseText}
           </Text>
         )}
         {regions.translation && quote.translation != null && (
-          <Text style={[styles.translation, typography.caption]}>
+          <Text
+            style={[styles.translation, typography.caption]}
+            numberOfLines={TRANSLATION_MAX_LINES}
+          >
             {quote.translation}
           </Text>
         )}
@@ -448,7 +475,9 @@ const styles = StyleSheet.create({
   cardContent: {
     flex: 1,
     justifyContent: "flex-end",
-    padding: 20,
+    // Every value the fit arithmetic reserves height for is imported from
+    // bibleCardFit, so a style edit cannot silently invalidate its decisions.
+    padding: CARD_CONTENT_PADDING,
   },
   attribution: {
     fontWeight: "800",
@@ -462,13 +491,13 @@ const styles = StyleSheet.create({
     color: TEXT_ON_OVERLAY,
     fontFamily: "System",
     letterSpacing: 1.5,
-    marginBottom: 4,
+    marginBottom: REFERENCE_MARGIN,
   },
   quoteText: {
     fontStyle: "italic",
     color: TEXT_ON_OVERLAY,
     fontFamily: "System",
-    marginBottom: 6,
+    marginBottom: VERSE_MARGIN,
   },
   // NOT routed through `attribution` above: that field renders as an uppercase
   // heavy eyebrow, which is wrong for a translation name and a copyright line.
@@ -476,16 +505,16 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: "rgba(255, 255, 255, 0.65)",
     fontFamily: "System",
-    marginBottom: 2,
+    marginBottom: TRANSLATION_MARGIN,
   },
   copyright: {
     color: "rgba(255, 255, 255, 0.55)",
     fontFamily: "System",
   },
   passageLink: {
-    marginTop: 8,
+    marginTop: LINK_MARGIN_TOP,
     alignSelf: "flex-start",
-    minHeight: 44,
+    minHeight: LINK_MIN_TAP_HEIGHT,
     justifyContent: "center",
   },
   passageLinkDisabled: {

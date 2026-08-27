@@ -16,7 +16,15 @@ import { act } from "react"
 import type React from "react"
 
 import {
+  CARD_CONTENT_PADDING,
   COPYRIGHT_MAX_LINES,
+  LINK_MARGIN_TOP,
+  LINK_MIN_TAP_HEIGHT,
+  REFERENCE_MARGIN,
+  REFERENCE_MAX_LINES,
+  TRANSLATION_MARGIN,
+  TRANSLATION_MAX_LINES,
+  VERSE_MARGIN,
   VERSE_MAX_LINES,
   composeCardLabel,
   fitPassageCardRegions,
@@ -144,6 +152,28 @@ describe("BibleQuotesCarouselRenderer — passage cards", () => {
     expect(copyright?.props.numberOfLines).toBe(COPYRIGHT_MAX_LINES)
   })
 
+  // The fit arithmetic reserves a fixed line count for EVERY region. A region
+  // the renderer leaves unclamped can wrap past its budget, overflow the fixed
+  // square, and — because content is bottom-aligned — get clipped off the TOP,
+  // taking the reference with it. Each budget needs its matching clamp.
+  it("clamps every budgeted region to the line count the fit reserves", () => {
+    const renderer = render([
+      {
+        ...PASSAGE_QUOTE,
+        reference: "1 Thessalonians 4:13-5:11",
+        translation: "World English Bible British Edition",
+      },
+    ])
+
+    expect(
+      findText(renderer, "1 THESSALONIANS 4:13-5:11")?.props.numberOfLines,
+    ).toBe(REFERENCE_MAX_LINES)
+    expect(
+      findText(renderer, "World English Bible British Edition")?.props
+        .numberOfLines,
+    ).toBe(TRANSLATION_MAX_LINES)
+  })
+
   // Covers AE3.
   it("renders a reference alone when the card has no passage", () => {
     const renderer = render([
@@ -243,6 +273,25 @@ describe("BibleQuotesCarouselRenderer — Experience cards are unchanged", () =>
     expect(passageLinks(renderer)).toHaveLength(0)
   })
 
+  // `BibleQuoteItem.text` is nullable in admin's schema and the shared
+  // Experience fragment selects it raw, so this is the production shape — not a
+  // defensive hypothetical. A render throw here replaces the WHOLE app with the
+  // root error screen. Falsified by hand: `quote.text.length` throws on this.
+  it("renders a card whose authored text is absent", () => {
+    const renderer = render([{ ...EXPERIENCE_QUOTE, text: null }])
+
+    expect(findText(renderer, "JOHN 3:16")).toBeDefined()
+    expect(cardLabels(renderer)).toContain("John 3:16")
+  })
+
+  it("renders a card whose authored text key is missing entirely", () => {
+    const withoutText: Quote = { ...EXPERIENCE_QUOTE }
+    delete withoutText.text
+    const renderer = render([withoutText])
+
+    expect(findText(renderer, "JOHN 3:16")).toBeDefined()
+  })
+
   // The four-line clamp belongs to the passage card, which has credit lines
   // below the verse to protect. An Experience card has none, so clamping it
   // would be a silent change to a surface this work does not own.
@@ -294,7 +343,10 @@ describe("fitPassageCardRegions", () => {
     expect(scaled.copyright).toBe(true)
   })
 
-  it("sheds the credit lines only when even a one-line verse will not fit", () => {
+  // R5: scripture never renders uncredited. When a one-line verse plus its
+  // credit still will not fit, the VERSE goes and the card degrades to the
+  // reference-only presentation an unresolved passage already produces.
+  it("drops the verse rather than its credit when nothing else fits", () => {
     const cramped = fitPassageCardRegions({
       ...full,
       contentHeight: 90,
@@ -302,8 +354,28 @@ describe("fitPassageCardRegions", () => {
     })
 
     expect(cramped.link).toBe(false)
-    expect(cramped.verseLines).toBe(1)
-    expect(cramped.copyright).toBe(false)
+    expect(cramped.verseLines).toBe(0)
+    expect(cramped.translation).toBe(true)
+    expect(cramped.copyright).toBe(true)
+  })
+
+  // Sweep: no combination may publish verse text with either credit line
+  // missing. This is the invariant, asserted over the whole reachable space
+  // rather than at one sampled height.
+  it("never renders a verse without both credit lines", () => {
+    for (let contentHeight = 40; contentHeight <= 600; contentHeight += 10) {
+      for (const fontScale of [1, 1.35, 2, 2.5, 3, 3.5]) {
+        const regions = fitPassageCardRegions({
+          ...full,
+          contentHeight,
+          fontScale,
+        })
+        if (regions.verseLines > 0) {
+          expect(regions.translation).toBe(true)
+          expect(regions.copyright).toBe(true)
+        }
+      }
+    }
   })
 
   it("requests no region the card does not carry", () => {
@@ -323,6 +395,51 @@ describe("fitPassageCardRegions", () => {
       copyright: false,
       link: false,
     })
+  })
+})
+
+// The fit arithmetic reserves height using these constants. If the rendered
+// styles ever stop matching them, every fit decision is wrong while the whole
+// fit suite stays green — so read the numbers off the REAL rendered nodes.
+describe("fit constants match the rendered styles", () => {
+  // A Pressable's `style` is a function of its press state, not an array.
+  function flatStyle(node: RenderedNode | undefined): Record<string, number> {
+    const raw = node?.props.style
+    const style =
+      typeof raw === "function"
+        ? (raw as (s: { pressed: boolean }) => unknown)({ pressed: false })
+        : raw
+    const parts = Array.isArray(style) ? style.flat(3) : [style]
+    return Object.assign({}, ...parts.filter(Boolean)) as Record<string, number>
+  }
+
+  it("reserves the margins the card actually renders", () => {
+    const renderer = render([PASSAGE_QUOTE])
+
+    expect(flatStyle(findText(renderer, "GENESIS 1:26-27")).marginBottom).toBe(
+      REFERENCE_MARGIN,
+    )
+    expect(
+      flatStyle(findText(renderer, "Let’s make man in our image")).marginBottom,
+    ).toBe(VERSE_MARGIN)
+    expect(
+      flatStyle(findText(renderer, "World English Bible British Edition"))
+        .marginBottom,
+    ).toBe(TRANSLATION_MARGIN)
+  })
+
+  it("reserves the link's tap target and the card's own padding", () => {
+    const renderer = render([PASSAGE_QUOTE])
+    const link = passageLinks(renderer)[0]
+    const linkStyle = flatStyle(link)
+
+    expect(linkStyle.marginTop).toBe(LINK_MARGIN_TOP)
+    expect(linkStyle.minHeight).toBe(LINK_MIN_TAP_HEIGHT)
+
+    const content = renderer.root.findAll(
+      (node) => flatStyle(node).padding === CARD_CONTENT_PADDING,
+    )
+    expect(content.length).toBeGreaterThan(0)
   })
 })
 

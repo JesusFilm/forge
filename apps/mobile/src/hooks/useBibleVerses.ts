@@ -13,7 +13,10 @@ import {
 import { formatCitationLabel } from "../lib/citationFormat"
 import { datadogLog } from "../lib/datadog"
 import type { WatchBibleCitation } from "../lib/normalizeVideo"
-import { GET_VIDEO_BIBLE_PASSAGES } from "../lib/queries"
+import {
+  GET_VIDEO_BIBLE_PASSAGES,
+  type VideoBiblePassagesData,
+} from "../lib/queries"
 import { withTimeout } from "../lib/withTimeout"
 
 const JOIN_BIBLE_STUDY_URL =
@@ -76,10 +79,11 @@ const IDLE: ReadState = { status: "idle" }
 const UNSETTLED: ReadState = { status: "unsettled" }
 const SETTLED_EMPTY: ReadState = { status: "settled", passages: NO_PASSAGES }
 
-type RawCitationRow = {
-  documentId?: string | null
-  passage?: Parameters<typeof projectBiblePassage>[0]
-}
+type PassageQueryResult = { data?: VideoBiblePassagesData | null }
+
+type RawCitationRow = NonNullable<
+  NonNullable<VideoBiblePassagesData["videoBySlug"]>["bibleCitations"]
+>[number]
 
 /**
  * Project the response into a passage map, logging each degraded path under its
@@ -123,6 +127,26 @@ function collectPassages(rows: readonly RawCitationRow[], slug: string) {
 }
 
 /**
+ * Read whatever this slug's passages are already in the cache, without touching
+ * the network. Used while the failure cooldown is open: the cooldown guards
+ * against repeating a stall, and a cache read cannot stall.
+ */
+function readCachedPassages(slug: string): ReadState {
+  try {
+    const cached = getApolloClient().readQuery({
+      query: GET_VIDEO_BIBLE_PASSAGES,
+      variables: { slug },
+    })
+    const rows = cached?.videoBySlug?.bibleCitations
+    if (rows == null) return SETTLED_EMPTY
+    return { status: "settled", passages: collectPassages(rows, slug) }
+  } catch {
+    // A cache miss on an incomplete entry reads as no passages, never a throw.
+    return SETTLED_EMPTY
+  }
+}
+
+/**
  * Resolve admin's Bible passages for a video's citations and compose the
  * carousel's cards.
  *
@@ -149,10 +173,17 @@ export function useBibleVerses(
       return
     }
 
-    // A failed read is not cached, so without this every re-entry repeats it
-    // under the same stall. Settle immediately into reference-only cards.
+    // Suppress the NETWORK, never the cache. `withTimeout` only abandons the
+    // wait — it cannot cancel the Apollo request, so a read that overruns the
+    // deadline still lands under the client's own ceiling and normalizes into
+    // the cache. Skipping the whole read would then withhold a passage that is
+    // already in memory, for up to the full backoff window.
     if (isPassageReadSuppressed(slug, Date.now())) {
-      setRead(SETTLED_EMPTY)
+      datadogLog.info("bible_passages.degraded", {
+        reason: "cooldown_suppressed",
+        slug,
+      })
+      setRead(readCachedPassages(slug))
       return
     }
 
@@ -163,38 +194,51 @@ export function useBibleVerses(
     // cooldown window.
     const controller = new AbortController()
 
-    void (async () => {
-      // allSettled + withTimeout: a rejection or an overrun degrades the
-      // carousel, and neither can reach the caller as an unhandled rejection.
-      const [outcome] = await Promise.allSettled([
-        withTimeout(
-          getApolloClient().query({
-            query: GET_VIDEO_BIBLE_PASSAGES,
-            variables: { slug },
-            fetchPolicy: "cache-first",
-          }),
-          PASSAGE_FETCH_DEADLINE_MS,
-          controller.signal,
-        ),
-      ])
-
-      if (controller.signal.aborted) return
-
-      // Cooldown bookkeeping is module-global: run it even for a superseded
-      // response, which the guard below only stops from reaching state.
-      if (outcome?.status === "fulfilled") clearPassageReadCooldown(slug)
-      else registerPassageReadFailure(slug, Date.now())
-
+    const degrade = () => {
+      registerPassageReadFailure(slug, Date.now())
       if (requestIdRef.current !== thisRequest) return
+      datadogLog.warn("bible_passages.degraded", {
+        reason: "read_failed",
+        slug,
+      })
+      setRead(SETTLED_EMPTY)
+    }
 
-      if (outcome?.status !== "fulfilled") {
-        datadogLog.warn("bible_passages.degraded", {
-          reason: "read_failed",
-          slug,
-        })
-        setRead(SETTLED_EMPTY)
+    void (async () => {
+      let outcome: PromiseSettledResult<PassageQueryResult> | undefined
+      try {
+        // allSettled + withTimeout: a rejection or an overrun degrades the
+        // carousel, and neither can reach the caller as an unhandled rejection.
+        // The try/catch is for a SYNCHRONOUS throw out of `query()` — it would
+        // skip withTimeout entirely and leave the carousel shimmering forever.
+        ;[outcome] = await Promise.allSettled([
+          withTimeout(
+            getApolloClient().query({
+              query: GET_VIDEO_BIBLE_PASSAGES,
+              variables: { slug },
+              fetchPolicy: "cache-first",
+            }),
+            PASSAGE_FETCH_DEADLINE_MS,
+            controller.signal,
+          ),
+        ])
+      } catch {
+        if (!controller.signal.aborted) degrade()
         return
       }
+
+      // An abort is this hook leaving, not a failed read: it must not open a
+      // cooldown window. Every supersession path aborts, so no superseded
+      // response reaches the bookkeeping below.
+      if (controller.signal.aborted) return
+
+      if (outcome?.status !== "fulfilled") {
+        degrade()
+        return
+      }
+
+      clearPassageReadCooldown(slug)
+      if (requestIdRef.current !== thisRequest) return
 
       const rows = outcome.value?.data?.videoBySlug?.bibleCitations ?? []
       setRead({

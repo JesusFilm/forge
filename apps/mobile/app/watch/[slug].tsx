@@ -227,10 +227,14 @@ export default function WatchVideoPage() {
   // Keyed on the ROUTE slug, not the session video id: the session trails
   // navigation by a commit, and the companion query's variable must match the
   // player-gating query's for the cache write to normalize onto it (KTD2).
-  const bibleQuotes = useBibleVerses(
-    decodedSlug,
-    video?.bibleCitations ?? EMPTY_CITATIONS,
-  )
+  //
+  // The citations are gated on the same route the drop effect above uses. The
+  // session still holds the PREVIOUS video for one commit after a push, so
+  // without this a video with no citations of its own would fire a passage
+  // request for the last one's — and paint its references for a frame.
+  const routeCitations =
+    video?.slug === decodedSlug ? video.bibleCitations : EMPTY_CITATIONS
+  const bibleQuotes = useBibleVerses(decodedSlug, routeCitations)
 
   // Captions on (possibly carried over a language switch) → make sure the
   // active dub's subtitles are fetched so the player has a track to show.
@@ -623,7 +627,7 @@ export default function WatchVideoPage() {
       : null
 
   const bibleCitationsBlock: AdminBlock | null =
-    hasVideo && video.bibleCitations.length > 0
+    hasVideo && routeCitations.length > 0
       ? {
           __typename: "BibleQuotesCarouselBlock",
           heading: "Bible Quotes",

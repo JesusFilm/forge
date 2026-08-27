@@ -19,7 +19,7 @@ jest.mock("expo-web-browser", () => ({
   openBrowserAsync: (...args: unknown[]) => mockOpenBrowserAsync(...args),
 }))
 
-import { AppState } from "react-native"
+import { AppState, Platform } from "react-native"
 
 import { openPassageSheet } from "../openPassageSheet"
 import {
@@ -74,11 +74,27 @@ const flush = async () => {
   await Promise.resolve()
 }
 
+/**
+ * The two platforms report "the sheet is gone" in different places, so every
+ * lifecycle case has to name which one it is running as. jest-expo defaults to
+ * ios; without this the Android-only AppState path would never be exercised.
+ */
+function runningOn(os: "ios" | "android") {
+  Object.defineProperty(Platform, "OS", { value: os, configurable: true })
+}
+
+const realPlatformOS = Platform.OS
+
 beforeEach(() => {
   jest.clearAllMocks()
   mockAppStateListeners.length = 0
   resetPlaybackTransportForTests()
   mockOpenBrowserAsync.mockResolvedValue({ type: "opened" })
+  runningOn("android")
+})
+
+afterEach(() => {
+  runningOn(realPlatformOS as "ios" | "android")
 })
 
 describe("openPassageSheet", () => {
@@ -139,8 +155,10 @@ describe("openPassageSheet", () => {
     expect(state.playing).toBe(false)
   })
 
-  // iOS resolves on dismissal, and reports `inactive` rather than backgrounding.
+  // iOS resolves on dismissal, and that promise is the ONLY dismissal signal
+  // there — SFSafariViewController is presented inside the app.
   it("resumes on an iOS dismissal result", async () => {
+    runningOn("ios")
     const state = fakeTransport(true)
     mockOpenBrowserAsync.mockResolvedValue({ type: "dismiss" })
 
@@ -149,6 +167,37 @@ describe("openPassageSheet", () => {
 
     expect(state.plays).toBe(1)
     expect(state.playing).toBe(true)
+  })
+
+  // The bug this platform gate exists to prevent: on iOS the sheet is IN-APP,
+  // so switching to another app and returning brings the viewer back WITH the
+  // sheet still up. Resuming there starts the video behind what they are
+  // reading. Falsified by hand: without the gate, `plays` is 1.
+  it("does not resume on an iOS foreground round trip with the sheet up", async () => {
+    runningOn("ios")
+    const state = fakeTransport(true)
+    mockOpenBrowserAsync.mockReturnValue(new Promise(() => {}))
+
+    void openPassageSheet(PASSAGE_URL)
+    await flush()
+    expect(state.playing).toBe(false)
+
+    emitAppState("background")
+    emitAppState("active")
+    await flush()
+
+    expect(state.plays).toBe(0)
+    expect(state.playing).toBe(false)
+  })
+
+  it("registers no lifecycle listener at all on iOS", async () => {
+    runningOn("ios")
+    fakeTransport(true)
+
+    void openPassageSheet(PASSAGE_URL)
+    await flush()
+
+    expect(mockAppStateListeners).toHaveLength(0)
   })
 
   it("resumes once, not once per foreground", async () => {

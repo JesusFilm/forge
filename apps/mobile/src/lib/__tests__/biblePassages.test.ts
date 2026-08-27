@@ -215,6 +215,19 @@ describe("projectBiblePassage", () => {
     })
   })
 
+  // `versionId` is the one non-string required value, so truthiness is not the
+  // right gate for it: 0 and fractions are finite numbers that build a
+  // syntactically valid bible.com URL pointing at no version.
+  it.each([0, -3034, 3034.5, Number.NaN, Number.POSITIVE_INFINITY])(
+    "rejects a versionId of %p",
+    (versionId) => {
+      expect(projectBiblePassage({ ...COMPLETE, versionId })).toEqual({
+        status: "rejected",
+        missingField: "versionId",
+      })
+    },
+  )
+
   // Admin passes provider columns through raw, so a blank string is a real
   // shape the `!= null` form would let through.
   it("treats a blank required value as missing", () => {

@@ -10,11 +10,11 @@
  * MEASURED, 2026-08-27, Android 15 emulator, expo-video 57.0.3 +
  * expo-web-browser 57.0.2: launching a browser over a PLAYING video drops the
  * app into a picture-in-picture window (`mLastReportedPictureInPictureMode`
- * false → true) and playback keeps running there. expo-web-browser sets
- * FLAG_ACTIVITY_NEW_TASK / EXCLUDE_FROM_RECENTS / NO_HISTORY and NOT
- * FLAG_ACTIVITY_NO_USER_ACTION, so the launch is a user-leave, and expo-video
- * passes `setAutoEnterEnabled` straight through. So the pause below is
- * load-bearing on Android, not a mirror of the iOS one.
+ * false → true) and playback keeps running there. The mechanism is that
+ * expo-web-browser never sets `FLAG_ACTIVITY_NO_USER_ACTION`, so the launch
+ * reads as a user-leave, and expo-video passes `setAutoEnterEnabled` straight
+ * through to the OS. So the pause below is load-bearing on Android, not a
+ * mirror of the iOS one — pausing first is what disarms auto-enter.
  *
  * Pausing BEFORE presenting is also what keeps ONE owner of the resume: the
  * app's AppState handler records `wasPlaying` on departure, reads false because
@@ -42,6 +42,14 @@ let transport: PlaybackTransport | null = null
 /** The host registers on mount and clears on teardown. */
 export function setPlaybackTransport(next: PlaybackTransport | null): void {
   transport = next
+}
+
+/**
+ * Clear only the registration this caller made. An unconditional null would let
+ * a torn-down host wipe a live one if their lifecycles ever overlap.
+ */
+export function clearPlaybackTransport(owned: PlaybackTransport): void {
+  if (transport === owned) transport = null
 }
 
 export function beginPlaybackInterruption(): PlaybackInterruption {

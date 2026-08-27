@@ -29,7 +29,7 @@ jest.mock("../../lib/apolloClient", () => ({
   getApolloClient: jest.fn(),
 }))
 
-import { act } from "react"
+import { StrictMode, act } from "react"
 import type React from "react"
 
 import { REQUEST_TIMEOUT_MS, getApolloClient } from "../../lib/apolloClient"
@@ -102,10 +102,26 @@ function response(
   }
 }
 
-function renderHook(initial: {
-  slug: string
-  citations: WatchBibleCitation[]
-}) {
+/**
+ * `strict` defaults to true so remount safety is the suite's normal posture.
+ *
+ * Pass `strict: false` for a case that counts `client.query` CALLS. StrictMode
+ * deliberately runs setup -> cleanup -> setup, so it doubles them; production
+ * runs the effect once, and that single call is what R12's "exactly one
+ * passage request" is about.
+ */
+function renderHook(
+  initial: {
+    slug: string
+    citations: WatchBibleCitation[]
+  },
+  options: { strict?: boolean } = {},
+) {
+  const strict = options.strict ?? true
+  const wrap = (element: React.ReactElement) =>
+    strict
+      ? ((<StrictMode>{element}</StrictMode>) as React.ReactElement)
+      : element
   const seen: BibleQuotesState[] = []
   function Harness({
     slug,
@@ -120,7 +136,9 @@ function renderHook(initial: {
   let renderer!: TestInstance
   act(() => {
     renderer = TestRenderer.create(
-      (<Harness {...initial} />) as unknown as React.ReactElement,
+      wrap(
+        (<Harness {...initial} />) as React.ReactElement,
+      ) as unknown as React.ReactElement,
     )
   })
   return {
@@ -128,7 +146,9 @@ function renderHook(initial: {
     rerender: (next: { slug: string; citations: WatchBibleCitation[] }) =>
       act(() => {
         renderer.update(
-          (<Harness {...next} />) as unknown as React.ReactElement,
+          wrap(
+            (<Harness {...next} />) as React.ReactElement,
+          ) as unknown as React.ReactElement,
         )
       }),
     unmount: () => act(() => renderer.unmount()),
@@ -170,10 +190,13 @@ describe("useBibleVerses", () => {
     )
     mockGetClient.mockReturnValue({ query })
 
-    renderHook({
-      slug: "the-beginning",
-      citations: ["c1", "c2", "c3", "c4", "c5"].map((id) => citation(id)),
-    })
+    renderHook(
+      {
+        slug: "the-beginning",
+        citations: ["c1", "c2", "c3", "c4", "c5"].map((id) => citation(id)),
+      },
+      { strict: false },
+    )
     await flush()
 
     expect(query).toHaveBeenCalledTimes(1)
@@ -204,10 +227,10 @@ describe("useBibleVerses", () => {
       )
     mockGetClient.mockReturnValue({ query })
 
-    const hook = renderHook({
-      slug: "the-beginning",
-      citations: [citation("c1")],
-    })
+    const hook = renderHook(
+      { slug: "the-beginning", citations: [citation("c1")] },
+      { strict: false },
+    )
     await flush()
     expect(query).toHaveBeenCalledTimes(1)
 
@@ -448,10 +471,10 @@ describe("useBibleVerses", () => {
       .mockImplementation(() => new Promise(() => {}))
     mockGetClient.mockReturnValue({ query })
 
-    const hook = renderHook({
-      slug: "the-beginning",
-      citations: [citation("c1")],
-    })
+    const hook = renderHook(
+      { slug: "the-beginning", citations: [citation("c1")] },
+      { strict: false },
+    )
     await flush()
     expect(verseCards(hook.latest())[0]?.text).toBe("first video verse")
 
@@ -471,23 +494,100 @@ describe("useBibleVerses", () => {
     const query = jest.fn().mockRejectedValue(new Error("network down"))
     mockGetClient.mockReturnValue({ query })
 
-    const first = renderHook({
-      slug: "the-beginning",
-      citations: [citation("c1")],
-    })
+    const first = renderHook(
+      { slug: "the-beginning", citations: [citation("c1")] },
+      { strict: false },
+    )
     await flush()
     expect(query).toHaveBeenCalledTimes(1)
     first.unmount()
 
-    const second = renderHook({
-      slug: "the-beginning",
-      citations: [citation("c1")],
-    })
+    const second = renderHook(
+      { slug: "the-beginning", citations: [citation("c1")] },
+      { strict: false },
+    )
     await flush()
 
     expect(query).toHaveBeenCalledTimes(1)
     expect(second.latest().loading).toBe(false)
     expect(verseCards(second.latest())[0]?.text).toBe("")
+  })
+
+  // Suppress the NETWORK, not the cache: `withTimeout` abandons the wait but
+  // cannot cancel the request, so a read that overran the deadline can still
+  // land in the cache. The cooldown must not withhold what is already there.
+  it("serves a cached passage while the cooldown window is open", async () => {
+    const query = jest.fn().mockRejectedValue(new Error("network down"))
+    const readQuery = jest.fn().mockReturnValue(
+      response([
+        {
+          documentId: "c1",
+          passage: rawPassage({ content: "cached verse" }),
+        },
+      ]).data,
+    )
+    mockGetClient.mockReturnValue({ query, readQuery })
+
+    const first = renderHook(
+      { slug: "the-beginning", citations: [citation("c1")] },
+      { strict: false },
+    )
+    await flush()
+    first.unmount()
+
+    const second = renderHook(
+      { slug: "the-beginning", citations: [citation("c1")] },
+      { strict: false },
+    )
+    await flush()
+
+    expect(query).toHaveBeenCalledTimes(1)
+    expect(readQuery).toHaveBeenCalled()
+    expect(verseCards(second.latest())[0]?.text).toBe("cached verse")
+  })
+
+  // A synchronous throw out of `query()` would skip withTimeout entirely and
+  // leave the carousel shimmering with nothing left to settle it.
+  it("degrades when the query throws synchronously", async () => {
+    const query = jest.fn(() => {
+      throw new Error("client not ready")
+    })
+    mockGetClient.mockReturnValue({ query })
+
+    const hook = renderHook(
+      { slug: "the-beginning", citations: [citation("c1")] },
+      { strict: false },
+    )
+    await flush()
+
+    expect(hook.latest().loading).toBe(false)
+    expect(verseCards(hook.latest())[0]?.text).toBe("")
+    expect(mockWarn).toHaveBeenCalledWith(
+      "bible_passages.degraded",
+      expect.objectContaining({ reason: "read_failed" }),
+    )
+  })
+
+  // StrictMode's setup -> cleanup -> setup cycle must leave the hook armed: the
+  // cleanup bumps the request id and aborts the controller, so a setup that did
+  // not mint fresh ones would discard its own response forever.
+  it("re-arms after a StrictMode remount and still settles", async () => {
+    mockGetClient.mockReturnValue({
+      query: jest
+        .fn()
+        .mockResolvedValue(
+          response([{ documentId: "c1", passage: rawPassage() }]),
+        ),
+    })
+
+    const hook = renderHook({
+      slug: "the-beginning",
+      citations: [citation("c1")],
+    })
+    await flush()
+
+    expect(hook.latest().loading).toBe(false)
+    expect(verseCards(hook.latest())[0]?.text).toContain("Let’s make man")
   })
 
   it("keeps the always-on promotional card on every path", async () => {

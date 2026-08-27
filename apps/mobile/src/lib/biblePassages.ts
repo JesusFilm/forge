@@ -47,8 +47,10 @@ function text(value: string | null | undefined): string | null {
 }
 
 // SYNC with `getBibleComUrl` in apps/web/src/components/watch/BibleQuotesSection.tsx.
-// Byte-identical output for the same passage; a divergence sends the two apps to
-// different bible.com pages for one citation.
+// Same output for the same passage; a divergence sends the two apps to
+// different bible.com pages for one citation. One deliberate difference: the
+// gate above trims every string, so a reference carrying stray whitespace is
+// encoded trimmed here and raw on web. Admin emits none today.
 function bibleComUrl(
   versionId: number,
   reference: string,
@@ -95,8 +97,14 @@ export function projectBiblePassage(
     return { status: "rejected", missingField: "versionAbbreviation" }
   }
 
+  // A positive integer, not merely a finite number: 0 and fractions build a
+  // syntactically valid bible.com URL that resolves to nothing.
   const versionId = raw.versionId
-  if (typeof versionId !== "number" || !Number.isFinite(versionId)) {
+  if (
+    typeof versionId !== "number" ||
+    !Number.isInteger(versionId) ||
+    versionId <= 0
+  ) {
     return { status: "rejected", missingField: "versionId" }
   }
 
