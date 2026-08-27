@@ -263,6 +263,7 @@ Client-side RUM + Logs via `@datadog/mobile-react-native`; helpers in
 ## Common Pitfalls
 
 - Android VideoView z-order: renders on top of all RN Views. Place video BEHIND scroll content.
+- **A group `opacity` over stacked children needs `needsOffscreenAlphaCompositing` on Android.** Android applies a ViewGroup's opacity to EACH CHILD unless the subtree is composited offscreen first, so an OPAQUE overlay stops covering what is beneath it — it blends over an already-dimmed sibling instead. `WatchAmbient` is the worked case: poster + gradient under `opacity: 0.45`, where the gradient's opaque tail could never reach `BG_COLOR`, so the wash ended in a hard seam at its clipped bottom edge instead of dissolving into the page. iOS composites correctly on its own and measured byte-identical either way, which is exactly why it shipped. Diagnose it by giving the overlay an unmistakable opaque colour and sampling pixels: leaking reads as the overlay PLUS a tint (`#8a177f`), correct reads as the overlay alone (`#810e7f` = 45% magenta over `BG_COLOR`). Suspect this whenever a fade looks right on iOS and terminates in a line on Android — `zIndex` does NOT fix it, because the defect is compositing, not draw order.
 - ScrollView gesture preemption: interactive hero elements need `pointerEvents="box-none"` pass-through.
 - Lazy Apollo Client init: never module-scope. Use `getApolloClient()` getter.
 - `contentParagraphs` is `string[]` (JSON field) — validate with `Array.isArray()`.

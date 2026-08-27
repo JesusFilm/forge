@@ -44,6 +44,10 @@ export function WatchAmbient({ posterUrl, topInset }: WatchAmbientProps) {
   return (
     <View
       pointerEvents="none"
+      // Android applies a group's `opacity` PER CHILD without this, so the
+      // gradient's opaque tail blends over a dimmed poster instead of covering
+      // it — the wash never reaches BG_COLOR and seams. No-op on iOS.
+      needsOffscreenAlphaCompositing
       accessibilityElementsHidden
       importantForAccessibility="no-hide-descendants"
       style={[styles.root, { height }]}

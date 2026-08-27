@@ -58,6 +58,23 @@ describe("WatchAmbient", () => {
     expect(SOURCE).toMatch(/opacity: AMBIENT_MAX_OPACITY/)
   })
 
+  it("composites the group offscreen before applying that opacity", () => {
+    // ANDROID applies a ViewGroup's opacity to EACH CHILD unless the subtree is
+    // composited offscreen first. This layer is exactly the shape that exposes
+    // it — a group opacity over a poster with a gradient stacked on top — so
+    // the gradient's OPAQUE tail blended over a dimmed poster instead of
+    // covering it. The wash then never reached BG_COLOR and terminated in a
+    // hard seam at the clipped bottom edge. Measured on the Pixel 9a with an
+    // opaque magenta tail: #8a177f (poster leaking through) before, #810e7f
+    // (exactly 45% magenta over BG_COLOR, i.e. nothing leaking) after.
+    //
+    // iOS composites correctly on its own and was byte-identical either way,
+    // which is why this shipped unnoticed. Both halves are asserted: the prop
+    // is only load-bearing while the layer still carries a group opacity.
+    expect(SOURCE).toContain("needsOffscreenAlphaCompositing")
+    expect(SOURCE).toMatch(/opacity: AMBIENT_MAX_OPACITY/)
+  })
+
   it("blurs the art, and keeps iOS well above Android", () => {
     // expo-image halves the iOS value internally, so equal numbers render as
     // a much weaker blur on iOS. Equalising them is the tempting wrong fix.
