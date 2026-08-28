@@ -1217,6 +1217,10 @@ type Mutation {
   approveManagerSeoProposal(input: ManagerSeoApproveInput!): ManagerSeoDecisionResult!
   """Archive an Experience. Owner or ADMIN."""
   archiveExperience(id: ID!): Experience
+  """
+  Place one sticker. Idempotent per (ballotId, placementId) so a retried send cannot double-count.
+  """
+  castWhatsNewFeatureVote(ballotId: String!, featureId: String!, placementId: String!, sticker: WhatsNewSticker!): WhatsNewFeatureVoteResult!
   clearMyWatchProgress(videoId: ID!): Boolean
   """
   Create a new Experience with an unpublished canonical locale and an initial shared draft. Caller becomes owner.
@@ -1257,6 +1261,10 @@ type Mutation {
   Copy a historical Experience locale revision into the shared active draft without changing canonical content.
   """
   restoreExperienceLocaleRevisionToDraft(revisionId: ID!): ExperienceLocale
+  """
+  Peel one sticker off. The row is kept and stops counting; omit placementId to take a whole ballot back.
+  """
+  retractWhatsNewFeatureVote(ballotId: String!, placementId: String): WhatsNewFeatureVoteResult!
   reviewManagerSeoLesson(input: ManagerSeoLessonReviewInput!): ManagerSeoLesson!
   """
   Generate and persist a semantic embedding for an ExperienceLocale. Owner or ADMIN.
@@ -1539,6 +1547,10 @@ type Query {
   Fetch the public Watch single-video route snapshot by slug as a bounded, route-shaped DTO instead of a nested Video relation graph.
   """
   watchVideoRouteSnapshotBySlug(languageSlug: String, locale: String!, slug: String!, subtitleLanguageSlug: String): WatchRouteSnapshot
+  """
+  Totals per feature, retracted stickers excluded. Features with no votes are absent rather than zero.
+  """
+  whatsNewFeatureVoteTallies: [WhatsNewFeatureVoteTally!]!
 }
 
 """Quiz launcher button. Only valid inside SectionContent."""
@@ -2713,4 +2725,34 @@ type WatchSetting {
   Published ExperienceLocale flagged isHomepage for the requested locale.
   """
   homepageExperience: ExperienceLocale
+}
+
+enum WhatsNewFeatureVoteRefusal {
+  budget_exhausted
+  invalid_input
+}
+
+"""
+Outcome of a vote write. `accepted: false` with a refusal is an expected answer, not an error.
+"""
+type WhatsNewFeatureVoteResult {
+  accepted: Boolean!
+  """Null when accepted. Never retry a refused write."""
+  refusal: WhatsNewFeatureVoteRefusal
+  """
+  Totals after the write — present on refusals too, so a client that guessed optimistically can correct itself.
+  """
+  tallies: [WhatsNewFeatureVoteTally!]!
+}
+
+"""Live sticker count for one /watch/whats-new feature card."""
+type WhatsNewFeatureVoteTally {
+  featureId: String!
+  votes: Int!
+}
+
+enum WhatsNewSticker {
+  love
+  need
+  yes
 }

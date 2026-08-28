@@ -272,7 +272,11 @@ function classifyRewrite(pathname: string): RewriteDecision {
   const segments = splitPath(pathname)
   if (segments.length === 1) {
     const [segment] = segments
-    if (segment === "history" || segment === "languages") {
+    if (
+      segment === "history" ||
+      segment === "languages" ||
+      segment === "whats-new"
+    ) {
       return {
         kind: "rewrite",
         locale: DEFAULT_LOCALE,

@@ -15,6 +15,7 @@ import {
 import { useFloatingSearchPinned } from "@/components/FloatingSearchProvider"
 import { useWatchModalActivity } from "@/components/watch/WatchModalActivityProvider"
 import { WatchModalViewportCloseButton } from "@/components/watch/WatchModalViewportCloseButton"
+import { WATCH_FEEDBACK_OPEN_EVENT } from "@/lib/watch-feedback-events"
 
 const FeedbackLoadingCancelContext = createContext<() => void>(() => {})
 
@@ -114,10 +115,19 @@ export function FeedbackLauncher() {
     return () => window.cancelAnimationFrame(frame)
   }, [searchOpen])
 
-  function openFeedback() {
+  const openFeedback = useCallback(() => {
     if (searchOpen) return
     setOpen(true)
-  }
+  }, [searchOpen])
+
+  // Page-level CTAs (e.g. the /whats-new feedback invitation) open the same
+  // composer without duplicating the modal. Re-registered whenever
+  // `openFeedback` changes so the search-open precedence stays current.
+  useEffect(() => {
+    window.addEventListener(WATCH_FEEDBACK_OPEN_EVENT, openFeedback)
+    return () =>
+      window.removeEventListener(WATCH_FEEDBACK_OPEN_EVENT, openFeedback)
+  }, [openFeedback])
 
   return (
     <>

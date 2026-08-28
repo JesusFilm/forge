@@ -123,3 +123,50 @@ if (typeof globalThis !== "undefined" && !globalThis.ResizeObserver) {
   ;(globalThis as { ResizeObserver?: unknown }).ResizeObserver =
     MockResizeObserver as unknown as typeof ResizeObserver
 }
+
+/**
+ * Web Storage for DOM tests.
+ *
+ * Node 24+ defines an experimental `localStorage` global that stays
+ * `undefined` unless the process was started with `--localstorage-file`.
+ * The key existing on `globalThis` is enough to stop vitest's jsdom
+ * environment installing jsdom's own Storage over it, so every DOM test sees
+ * `window.localStorage === undefined` — a shape no browser has, and one that
+ * sends storage-backed components down their "storage unavailable" branch
+ * before a single assertion runs. Only installed when the DOM is present and
+ * nothing real is there, so `environment: "node"` suites are untouched.
+ */
+if (typeof window !== "undefined" && !globalThis.localStorage) {
+  class MemoryStorage implements Storage {
+    #entries = new Map<string, string>()
+
+    get length(): number {
+      return this.#entries.size
+    }
+    key(index: number): string | null {
+      return [...this.#entries.keys()][index] ?? null
+    }
+    getItem(key: string): string | null {
+      return this.#entries.get(String(key)) ?? null
+    }
+    setItem(key: string, value: string): void {
+      this.#entries.set(String(key), String(value))
+    }
+    removeItem(key: string): void {
+      this.#entries.delete(String(key))
+    }
+    clear(): void {
+      this.#entries.clear()
+    }
+  }
+
+  for (const name of ["localStorage", "sessionStorage"] as const) {
+    // `defineProperty`, not assignment: the Node global is a getter-only
+    // accessor and assigning to it is a silent no-op.
+    Object.defineProperty(globalThis, name, {
+      configurable: true,
+      writable: true,
+      value: new MemoryStorage(),
+    })
+  }
+}

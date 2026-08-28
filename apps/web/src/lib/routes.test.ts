@@ -17,6 +17,7 @@ import {
   tryAsContentSlug,
   tryAsLocaleSlug,
   videosIndexPath,
+  whatsNewPath,
   watchEpisodeAbsolute,
   watchEpisodeExplicitLanguagePath,
   watchEpisodePath,
@@ -281,6 +282,12 @@ describe("localized utility paths", () => {
   })
 })
 
+describe("whatsNewPath", () => {
+  it("returns /whats-new (no .html, no language segment)", () => {
+    expect(whatsNewPath()).toBe("/whats-new")
+  })
+})
+
 describe("languageVideosIndexPath", () => {
   it("returns /lang.html/videos", () => {
     expect(languageVideosIndexPath(portugueseBrazil)).toBe(
@@ -377,6 +384,20 @@ describe("parseWatchPath", () => {
     expect(parseWatchPath("/spanish-latin-american.html/history")).toEqual({
       kind: "localized-history",
       lang: "spanish-latin-american",
+    })
+  })
+
+  it("parses /whats-new as the product-update page, not a localized home", () => {
+    expect(parseWatchPath("/whats-new")).toEqual({ kind: "whats-new" })
+  })
+
+  it("still parses a neighbouring one-segment slug as a localized home", () => {
+    // Falsifies the case above: without the explicit `whats-new` branch the
+    // route would fall through to this shape and the floating header would
+    // treat the page as an English video surface.
+    expect(parseWatchPath("/whats-old")).toEqual({
+      kind: "localized-home",
+      lang: "whats-old",
     })
   })
 
