@@ -263,6 +263,24 @@ so the next upload would have been rejected as a duplicate. The record
 Store Connect keeps one build list per platform, so the tvOS numbers do not
 constrain iOS.
 
+## EAS builder toolchain pins
+
+`eas.json` pins `node` and `pnpm` in a `base` profile that every build
+profile extends. Keep them equal to the repo's own pins: `pnpm` to
+`packageManager` in the root `package.json`, `node` to `.nvmrc`. Bump all
+three together.
+
+Why: EAS picks its toolchain from the current default VM image, not from
+`packageManager`. On 2026-08-28 the default moved to macOS Tahoe / Xcode
+26.6 / Node 22 / pnpm 11.9.0, and the first mobile build on it failed in
+`Install dependencies`: pnpm 11 ignores the root `package.json` `pnpm`
+field (`packageExtensions`, `overrides`, `patchedDependencies`), and
+`sharp@0.34.5` (an `apps/admin` dependency the icon script borrows) lost
+its prebuilt binary, fell back to node-gyp, and died. The last good builds
+(mobile 2026-07-16, TV 2026-08-19) ran on the older image with pnpm
+10.16.1. `apps/tv` carries no pin yet and will hit the same failure on its
+next build.
+
 ## Observability (Datadog)
 
 Client-side RUM + Logs via `@datadog/mobile-react-native`; helpers in
