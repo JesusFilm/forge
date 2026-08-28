@@ -92,11 +92,11 @@ const IMMERSIVE_BACKGROUND_COLOR = WATCH_IMMERSIVE_BACKGROUND_COLOR
 const MOBILE_CAROUSEL_LAYOUT = {
   horizontal: {
     columns: "auto-cols-[72%] gap-4 sm:auto-cols-[42%] md:gap-5",
-    imageSizes: "(max-width: 639px) 72vw, (max-width: 767px) 42vw, 360px",
+    imageSizes: "(max-width: 639.98px) 72vw, (max-width: 767px) 42vw, 360px",
   },
   vertical: {
     columns: "auto-cols-[46%] gap-3 sm:auto-cols-[26%] md:gap-4",
-    imageSizes: "(max-width: 639px) 46vw, (max-width: 767px) 26vw, 220px",
+    imageSizes: "(max-width: 639.98px) 46vw, (max-width: 767px) 26vw, 220px",
   },
 } as const
 

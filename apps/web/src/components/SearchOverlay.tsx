@@ -898,7 +898,7 @@ export function SearchOverlay() {
       ? "top-56 md:top-44"
       : "top-44 md:top-32"
   const semanticLanguageTriggerClassName =
-    "!h-auto !min-h-8 !w-auto !justify-start !rounded-lg !border !border-white/20 !bg-transparent !px-1.5 !py-0.5 !text-base sm:text-sm !font-semibold !text-stone-100 !shadow-none hover:!border-white/40 hover:!bg-transparent focus-visible:!ring-white/45"
+    "!h-auto !min-h-8 !w-auto !justify-start !rounded-lg !border !border-white/20 !bg-transparent !px-1.5 !py-0.5 !text-base sm:!text-sm !font-semibold !text-stone-100 !shadow-none hover:!border-white/40 hover:!bg-transparent focus-visible:!ring-white/45"
   const semanticLanguageComboboxOptions = useMemo<LanguageComboboxOption[]>(
     () =>
       languageOptions.flatMap((language) =>

@@ -484,7 +484,7 @@ export function SiblingCarousel({
                     src={thumb}
                     alt={thumbnailAlt}
                     fill
-                    sizes="(max-width: 640px) 70vw, (max-width: 768px) 36vw, (max-width: 1024px) 33vw, (max-width: 1280px) 25vw, (max-width: 1536px) 20vw, 16vw"
+                    sizes="(max-width: 639.98px) 70vw, (max-width: 768px) 36vw, (max-width: 1024px) 33vw, (max-width: 1280px) 25vw, (max-width: 1536px) 20vw, 16vw"
                     className="object-cover transition-transform duration-300 group-hover:scale-105"
                     {...(blurDataURL
                       ? {
@@ -510,7 +510,7 @@ export function SiblingCarousel({
                 )}
                 <MuxHoverPreview
                   previewUrl={href ? muxPreview : null}
-                  sizes="(max-width: 640px) 70vw, (max-width: 768px) 36vw, (max-width: 1024px) 33vw, (max-width: 1280px) 25vw, (max-width: 1536px) 20vw, 16vw"
+                  sizes="(max-width: 639.98px) 70vw, (max-width: 768px) 36vw, (max-width: 1024px) 33vw, (max-width: 1280px) 25vw, (max-width: 1536px) 20vw, 16vw"
                 />
 
                 {/* Soften the image into the lower caption zone. */}

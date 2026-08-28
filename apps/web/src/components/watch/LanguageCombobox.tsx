@@ -733,6 +733,11 @@ export function LanguageCombobox({
                             data-disabled={optionDisabled ? "true" : "false"}
                             onMouseEnter={() => setActiveIndex(index)}
                             onClick={() => handleSelect(option.slug)}
+                            // The virtualizer's spacers and scroll math assume
+                            // every row is exactly OPTION_ROW_HEIGHT_PX. Pin it
+                            // here rather than letting it emerge from the type
+                            // scale, so a typography change cannot desync them.
+                            style={{ height: OPTION_ROW_HEIGHT_PX }}
                             className={`flex w-full items-center justify-between gap-4 px-5 py-4 text-left transition disabled:cursor-not-allowed disabled:opacity-100 ${
                               optionDisabled
                                 ? active
@@ -748,13 +753,13 @@ export function LanguageCombobox({
                             <span className="flex min-w-0 items-center gap-4">
                               <LanguageCodeMarker option={option} />
                               <span className="min-w-0">
-                                <span className="block truncate text-base sm:text-sm font-semibold">
+                                <span className="block truncate text-base leading-5 sm:text-sm font-semibold">
                                   {option.name}
                                 </span>
                                 {nativeName ? (
                                   <span
                                     data-testid="language-combobox-option-native"
-                                    className="block truncate text-sm sm:text-xs text-stone-400"
+                                    className="block truncate text-sm leading-4 sm:text-xs text-stone-400"
                                   >
                                     {nativeName}
                                   </span>
