@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Аудиоялъе миллат бади",
     "home": "JesusFilm хона",
     "closeSearch": "Кӏалъан бекьизе",
-    "submitSearch": "Кӏалъе"
+    "submitSearch": "Кӏалъе",
+    "library": "Библиотека"
   },
   "SearchOverlay": {
     "dialogLabel": "Видео кӏалъе ва къадалъан бие",
@@ -467,6 +468,7 @@
     "sports": "Спорт",
     "collections": "Коллекциял",
     "subtitlesOnly": "Субтитрал ган",
+    "backToTop": "Тӏадегӏан",
     "newlyAdded": "Цӏидаса кьабул гьабураб",
     "newVideosTitle": "{language}-да цӏияб христианский видеол",
     "newestFirst": "Бищун цӏияб аввал",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Тӏатӏа видеол",
     "videosFromCollection": "{collection}-дан видеол.",
     "standaloneDescription": "Гьаб тилалда тӏатӏа видеол.",
-    "openCollection": "Коллекция къоларух"
+    "openCollection": "Коллекция къоларух",
+    "filters": "Тӏасалъиял",
+    "filterLength": "Халалъи",
+    "filterLength_under5": "5 минуталдаса дагьаб",
+    "filterLength_5to10": "5-10 минут",
+    "filterLength_10to30": "10-30 минут",
+    "filterLength_over30": "30 минуталдаса цӏикӏкӏун",
+    "filterType": "Тайпа",
+    "clearFilters": "Тӏасалъиял цӏунизе",
+    "filterResults": "{total}-даса {count} бихьизабуна",
+    "noFilterResults": "Гьал тӏасалъиялде рекъараб видео гьечӏо. Цо бахъизе гьабе.",
+    "filterAdded": "Жубараб",
+    "filterAdded_60d": "Ахирисел 60 къо",
+    "filterAdded_6m": "Ахирисел 6 моцӏ",
+    "filterAdded_12m": "Ахирисел 12 моцӏ"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project: Смотре",

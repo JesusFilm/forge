@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Na'halom i lenguahe gi audio",
     "home": "Home gi JesusFilm",
     "closeSearch": "Serrá search",
-    "submitSearch": "Ekka"
+    "submitSearch": "Ekka",
+    "library": "Bibliotekan"
   },
   "SearchOverlay": {
     "dialogLabel": "Ekka yan guiya video siha",
@@ -467,6 +468,7 @@
     "sports": "Deportes",
     "collections": "Koleksión siha",
     "subtitlesOnly": "Subtítulos lang",
+    "backToTop": "Hånao tåtte gi hilo'",
     "newlyAdded": "Ma'añadi' nuebu",
     "newVideosTitle": "Bago na Christian videos gi {language}",
     "newestFirst": "I pinakanuebu sa'ot",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Video siha na ha'ågu",
     "videosFromCollection": "Video siha ginen {collection}.",
     "standaloneDescription": "Video siha na ha'ågu gi este na lenguahe.",
-    "openCollection": "Abri koleksión"
+    "openCollection": "Abri koleksión",
+    "filters": "Fifiltro",
+    "filterLength": "Anaku",
+    "filterLength_under5": "Menos ki 5 na minutu",
+    "filterLength_5to10": "5-10 na minutu",
+    "filterLength_10to30": "10-30 na minutu",
+    "filterLength_over30": "Mås ki 30 na minutu",
+    "filterType": "Klasi",
+    "clearFilters": "Na'suha i fifiltro",
+    "filterResults": "Manafanhanao {count} gi {total}",
+    "noFilterResults": "Taya' video ni parehu yan este siha na fifiltro. Prueba na un na'suha unu.",
+    "filterAdded": "Manaña'i",
+    "filterAdded_60d": "Ultimo 60 dias",
+    "filterAdded_6m": "Ultimo 6 mes",
+    "filterAdded_12m": "Ultimo 12 mes"
   },
   "WatchHome": {
     "pageTitle": "Atan gi Jesus Film Project",

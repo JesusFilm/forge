@@ -180,7 +180,8 @@
     "changeAudioLanguage": "የድምጽ ቋንቋ ቀይር",
     "home": "JesusFilm መነሻ",
     "closeSearch": "ፍለጋ ዝጋ",
-    "submitSearch": "ፈልግ"
+    "submitSearch": "ፈልግ",
+    "library": "ቤተ መጻሕፍት"
   },
   "SearchOverlay": {
     "dialogLabel": "ቪዲዮዎችን ፈልግ እና አስስ",
@@ -467,6 +468,7 @@
     "sports": "ስፖርት",
     "collections": "ስብስቦች",
     "subtitlesOnly": "ንዑስ ጽሑፎች ብቻ",
+    "backToTop": "ወደ ላይ ተመለስ",
     "newlyAdded": "አዲስ የተጨመሩ",
     "newVideosTitle": "በ{language} አዲስ ክርስቲያናዊ ቪዲዮዎች",
     "newestFirst": "አዲሱ መጀመሪያ",
@@ -497,7 +499,21 @@
     "standaloneVideos": "ብቻውን ያሉ ቪዲዮዎች",
     "videosFromCollection": "ከ{collection} የተወሰዱ ቪዲዮዎች።",
     "standaloneDescription": "በዚህ ቋንቋ ብቻውን ያሉ ቪዲዮዎች።",
-    "openCollection": "ስብስብ ክፈት"
+    "openCollection": "ስብስብ ክፈት",
+    "filters": "አጣሪዎች",
+    "filterLength": "ርዝመት",
+    "filterLength_under5": "ከ5 ደቂቃ በታች",
+    "filterLength_5to10": "5-10 ደቂቃ",
+    "filterLength_10to30": "10-30 ደቂቃ",
+    "filterLength_over30": "ከ30 ደቂቃ በላይ",
+    "filterType": "ዓይነት",
+    "clearFilters": "አጣሪዎችን አጽዳ",
+    "filterResults": "ከ{total} ውስጥ {count} ይታያል",
+    "noFilterResults": "ከእነዚህ አጣሪዎች ጋር የሚዛመድ ቪዲዮ የለም። አንዱን ያስወግዱ።",
+    "filterAdded": "ተጨምሯል",
+    "filterAdded_60d": "ያለፉ 60 ቀናት",
+    "filterAdded_6m": "ያለፉ 6 ወራት",
+    "filterAdded_12m": "ያለፉ 12 ወራት"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project ዋች",

@@ -180,7 +180,8 @@
     "changeAudioLanguage": "အသံဘာသာစကား ပြောင်းပါ",
     "home": "JesusFilm မူလစာမျက်နှာ",
     "closeSearch": "ရှာဖွေမှု ပိတ်ပါ",
-    "submitSearch": "ရှာဖွေပါ"
+    "submitSearch": "ရှာဖွေပါ",
+    "library": "စာကြည့်တိုက်"
   },
   "SearchOverlay": {
     "dialogLabel": "ဗီဒီယိုများကို ရှာဖွေပြီး လေ့လာပါ",
@@ -467,6 +468,7 @@
     "sports": "အားကစား",
     "collections": "စုစည်းမှုများ",
     "subtitlesOnly": "စာတန်းထိုးသာ",
+    "backToTop": "အပေါ်ပြန်တက်",
     "newlyAdded": "အသစ် ထည့်ထားသည်",
     "newVideosTitle": "{language} ဘာသာဖြင့် အသစ်ထွက် ခရစ်ယာန်ဗီဒီယိုများ",
     "newestFirst": "အသစ်ဆုံးက စ",
@@ -497,7 +499,21 @@
     "standaloneVideos": "သီးခြားဗီဒီယိုများ",
     "videosFromCollection": "{collection} မှ ဗီဒီယိုများ။",
     "standaloneDescription": "ဤဘာသာစကားရှိ သီးခြားဗီဒီယိုများ။",
-    "openCollection": "စုစည်းမှု ဖွင့်ပါ"
+    "openCollection": "စုစည်းမှု ဖွင့်ပါ",
+    "filters": "စစ်ထုတ်မှုများ",
+    "filterLength": "အရှည်",
+    "filterLength_under5": "၅ မိနစ်အောက်",
+    "filterLength_5to10": "၅-၁၀ မိနစ်",
+    "filterLength_10to30": "၁၀-၃၀ မိနစ်",
+    "filterLength_over30": "၃၀ မိနစ်အထက်",
+    "filterType": "အမျိုးအစား",
+    "clearFilters": "စစ်ထုတ်မှုများ ရှင်းလင်း",
+    "filterResults": "{total} အနက် {count} ပြသထား",
+    "noFilterResults": "ဤစစ်ထုတ်မှုများနှင့် ကိုက်ညီသော ဗီဒီယိုမရှိပါ။ တစ်ခုဖယ်ရှားကြည့်ပါ။",
+    "filterAdded": "ထည့်သွင်းချိန်",
+    "filterAdded_60d": "လွန်ခဲ့သော ၆၀ ရက်",
+    "filterAdded_6m": "လွန်ခဲ့သော ၆ လ",
+    "filterAdded_12m": "လွန်ခဲ့သော ၁၂ လ"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project ကြည့်ရှု",

@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Soppi làkku audio bi",
     "home": "Kër Jesus Film Project",
     "closeSearch": "Tëj seetlu bi",
-    "submitSearch": "Seet"
+    "submitSearch": "Seet",
+    "library": "Kaŋ kayitaŋ"
   },
   "SearchOverlay": {
     "dialogLabel": "Seet te gëstu wideo yi",
@@ -467,6 +468,7 @@
     "sports": "Sport",
     "collections": "Àtte yi",
     "subtitlesOnly": "Subtitles rekk",
+    "backToTop": "Sofukoŋ jaat",
     "newlyAdded": "Añs bu bees",
     "newVideosTitle": "Wideo yu Kirist yu bees ci {language}",
     "newestFirst": "Yees bu jiitu",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Wideo yu këpp",
     "videosFromCollection": "Wideo yu ñëw ci {collection}.",
     "standaloneDescription": "Wideo yu këpp ci làkk bii.",
-    "openCollection": "Ubbi àtte"
+    "openCollection": "Ubbi àtte",
+    "filters": "Kañaŋ",
+    "filterLength": "Bujaat",
+    "filterLength_under5": "Sikanaŋ 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "Bukanaŋ 30 min",
+    "filterType": "Nabaj",
+    "clearFilters": "Buŋoŋ kañaŋ",
+    "filterResults": "{count} ka {total} bujukolaŋ",
+    "noFilterResults": "Awul widewo bumos nan kañaŋ yaayi. Buŋoŋ enoŋ.",
+    "filterAdded": "Bulaŋ",
+    "filterAdded_60d": "60 fanaŋ bujom",
+    "filterAdded_6m": "6 uroŋ bujom",
+    "filterAdded_12m": "12 uroŋ bujom"
   },
   "WatchHome": {
     "pageTitle": "Watch bu Jesus Film Project",

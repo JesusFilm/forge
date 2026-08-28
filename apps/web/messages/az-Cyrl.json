@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Səs dilini dəyişin",
     "home": "JesusFilm ana səhifəsi",
     "closeSearch": "Axtarışı bağla",
-    "submitSearch": "Ахтар"
+    "submitSearch": "Ахтар",
+    "library": "Китабхана"
   },
   "SearchOverlay": {
     "dialogLabel": "Videoları axtarın və gözdən keçirin",
@@ -467,6 +468,7 @@
     "sports": "İdman",
     "collections": "Kolleksiyalar",
     "subtitlesOnly": "Yalnız altyazılar",
+    "backToTop": "Јухарыја гајыт",
     "newlyAdded": "Yeni əlavə olunub",
     "newVideosTitle": "{language} dilində yeni xristian videolar",
     "newestFirst": "Ən yenilər əvvəl",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Müstəqil videolar",
     "videosFromCollection": "{collection} kolleksiyasından videolar.",
     "standaloneDescription": "Bu dildə müstəqil videolar.",
-    "openCollection": "Kolleksiyanı açın"
+    "openCollection": "Kolleksiyanı açın",
+    "filters": "Филтрләр",
+    "filterLength": "Узунлуг",
+    "filterLength_under5": "5 дәгигәдән аз",
+    "filterLength_5to10": "5-10 дәгигә",
+    "filterLength_10to30": "10-30 дәгигә",
+    "filterLength_over30": "30 дәгигәдән чох",
+    "filterType": "Нөв",
+    "clearFilters": "Филтрләри тәмизлә",
+    "filterResults": "{total} нәтиҹәдән {count} ҝөстәрилир",
+    "noFilterResults": "Бу филтрләрә ујғун видео јохдур. Бирини силмәјә чалышын.",
+    "filterAdded": "Әлавә едилиб",
+    "filterAdded_60d": "Сон 60 ҝүн",
+    "filterAdded_6m": "Сон 6 ај",
+    "filterAdded_12m": "Сон 12 ај"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project — Бахыш",

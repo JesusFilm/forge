@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Аудио тилди өзгөртүү",
     "home": "JesusFilm башкы барагы",
     "closeSearch": "Издөөнү жабуу",
-    "submitSearch": "Издөө"
+    "submitSearch": "Издөө",
+    "library": "Китепкана"
   },
   "SearchOverlay": {
     "dialogLabel": "Видеолорду издөө жана карап чыгуу",
@@ -467,6 +468,7 @@
     "sports": "Спорт",
     "collections": "Жыйнактар",
     "subtitlesOnly": "Субтитр гана",
+    "backToTop": "Жогорку жагына",
     "newlyAdded": "Жаңы кошулган",
     "newVideosTitle": "{language} тилиндеги жаңы христиан видеолору",
     "newestFirst": "Эң жаңылары биринчи",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Өзүнчө видеолор",
     "videosFromCollection": "{collection} жыйнагындагы видеолор.",
     "standaloneDescription": "Бул тилдеги өзүнчө видеолор.",
-    "openCollection": "Жыйнакты ачуу"
+    "openCollection": "Жыйнакты ачуу",
+    "filters": "Фильтрлер",
+    "filterLength": "Узундугу",
+    "filterLength_under5": "5 мүнөттөн аз",
+    "filterLength_5to10": "5-10 мүнөт",
+    "filterLength_10to30": "10-30 мүнөт",
+    "filterLength_over30": "30 мүнөттөн көп",
+    "filterType": "Түрү",
+    "clearFilters": "Фильтрлерди тазалоо",
+    "filterResults": "{total} ичинен {count} көрсөтүлдү",
+    "noFilterResults": "Бул фильтрлерге туура келген видео жок. Бирин алып көрүңүз.",
+    "filterAdded": "Кошулду",
+    "filterAdded_60d": "Акыркы 60 күн",
+    "filterAdded_6m": "Акыркы 6 ай",
+    "filterAdded_12m": "Акыркы 12 ай"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project көрүү",

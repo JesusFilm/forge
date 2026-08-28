@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Sakula lulaka lwa audio",
     "home": "Tshikupu tsha JesusFilm",
     "closeSearch": "Vuala kusaka",
-    "submitSearch": "Saka"
+    "submitSearch": "Saka",
+    "library": "Nzubu wa mikanda"
   },
   "SearchOverlay": {
     "dialogLabel": "Saka ne sebele mavidiyo",
@@ -467,6 +468,7 @@
     "sports": "Midlalo",
     "collections": "Mibumba",
     "subtitlesOnly": "Subtitles kaka",
+    "backToTop": "Pinganyina kuulu",
     "newlyAdded": "Bikatswa pya",
     "newVideosTitle": "Mavidiyo a Bukristu a pya mu {language}",
     "newestFirst": "Bya pya kumpala",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Mavidiyo a mueyele",
     "videosFromCollection": "Mavidiyo aku mu {collection}.",
     "standaloneDescription": "Mavidiyo a mueyele mu lulaka elu.",
-    "openCollection": "Vula kusangula"
+    "openCollection": "Vula kusangula",
+    "filters": "Bilubulukishi",
+    "filterLength": "Buule",
+    "filterLength_under5": "Muinshi wa minitshi 5",
+    "filterLength_5to10": "Minitshi 5-10",
+    "filterLength_10to30": "Minitshi 10-30",
+    "filterLength_over30": "Kupita minitshi 30",
+    "filterType": "Mushindu",
+    "clearFilters": "Umbusha bilubulukishi",
+    "filterResults": "{count} pa {total} bileja",
+    "noFilterResults": "Kakuena vidyo udi upetangana ne bilubulukishi ebi. Tshima kumbusha kimwe.",
+    "filterAdded": "Mbadikilu",
+    "filterAdded_60d": "Matuku 60 mapite",
+    "filterAdded_6m": "Ngondo 6 mipite",
+    "filterAdded_12m": "Ngondo 12 mipite"
   },
   "WatchHome": {
     "pageTitle": "Talala pa Jesus Film Project",

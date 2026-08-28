@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Аудио мотт къобалдолла",
     "home": "JesusFilm коьрта",
     "closeSearch": "Ларх дӀакхахьа",
-    "submitSearch": "Лар"
+    "submitSearch": "Лар",
+    "library": "Библиотека"
   },
   "SearchOverlay": {
     "dialogLabel": "Видео лар а хьажар а",
@@ -467,6 +468,7 @@
     "sports": "Спорт",
     "collections": "Коллекцеш",
     "subtitlesOnly": "Субтитраш гана",
+    "backToTop": "Лакхара юха",
     "newlyAdded": "Ийна дӀаяздина",
     "newVideosTitle": "{language} мотте цӀийча христиански видеолаш",
     "newestFirst": "Деррига халха",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Къастийна видеолаш",
     "videosFromCollection": "{collection} чохь видеолаш.",
     "standaloneDescription": "Цу моттехь къастийна видеолаш.",
-    "openCollection": "Коллекци ачуьлла"
+    "openCollection": "Коллекци ачуьлла",
+    "filters": "Литтарш",
+    "filterLength": "Деха",
+    "filterLength_under5": "5 минотана к1езиг",
+    "filterLength_5to10": "5-10 минот",
+    "filterLength_10to30": "10-30 минот",
+    "filterLength_over30": "30 минотана дукха",
+    "filterType": "Тайпа",
+    "clearFilters": "Литтарш цIандар",
+    "filterResults": "{total} чуьра {count} гайтина",
+    "noFilterResults": "Оцу литтаршна тайна видео дац. Цхьаъ дIаяккха гIортта.",
+    "filterAdded": "Т1етоьхна",
+    "filterAdded_60d": "Т1аьххьара 60 де",
+    "filterAdded_6m": "Т1аьххьара 6 бутт",
+    "filterAdded_12m": "Т1аьххьара 12 бутт"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project — хьажар",

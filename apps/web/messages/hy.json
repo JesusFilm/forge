@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Փոխել ձայնի լեզուն",
     "home": "JesusFilm գլխավոր էջ",
     "closeSearch": "Փակել որոնումը",
-    "submitSearch": "Որոնել"
+    "submitSearch": "Որոնել",
+    "library": "Գրադարան"
   },
   "SearchOverlay": {
     "dialogLabel": "Որոնել և դիտել տեսանյութեր",
@@ -467,6 +468,7 @@
     "sports": "Սպորտ",
     "collections": "Հավաքածուներ",
     "subtitlesOnly": "Միայն ենթագրեր",
+    "backToTop": "Վերև",
     "newlyAdded": "Նոր ավելացված",
     "newVideosTitle": "Նոր քրիստոնեական տեսանյութեր՝ {language}-ով",
     "newestFirst": "Նորերը սկզբում",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Առանձին տեսանյութեր",
     "videosFromCollection": "Տեսանյութեր {collection}-ից։",
     "standaloneDescription": "Այս լեզվով առանձին տեսանյութեր։",
-    "openCollection": "Բացել հավաքածուն"
+    "openCollection": "Բացել հավաքածուն",
+    "filters": "Զտիչներ",
+    "filterLength": "Տևողություն",
+    "filterLength_under5": "5 րոպեից պակաս",
+    "filterLength_5to10": "5-10 րոպե",
+    "filterLength_10to30": "10-30 րոպե",
+    "filterLength_over30": "30 րոպեից ավելի",
+    "filterType": "Տեսակ",
+    "clearFilters": "Մաքրել զտիչները",
+    "filterResults": "Ցուցադրված է {count}՝ {total}-ից",
+    "noFilterResults": "Այս զտիչներին համապատասխանող տեսանյութ չկա։ Փորձեք հեռացնել մեկը։",
+    "filterAdded": "Ավելացվել է",
+    "filterAdded_60d": "Վերջին 60 օրը",
+    "filterAdded_6m": "Վերջին 6 ամիսը",
+    "filterAdded_12m": "Վերջին 12 ամիսը"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project դիտում",

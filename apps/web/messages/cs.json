@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Změnit jazyk zvuku",
     "home": "Domovská stránka JesusFilm",
     "closeSearch": "Zavřít hledání",
-    "submitSearch": "Hledat"
+    "submitSearch": "Hledat",
+    "library": "Knihovna"
   },
   "SearchOverlay": {
     "dialogLabel": "Hledat a procházet videa",
@@ -467,6 +468,7 @@
     "sports": "Sport",
     "collections": "Sbírky",
     "subtitlesOnly": "Pouze titulky",
+    "backToTop": "Zpět nahoru",
     "newlyAdded": "Nově přidáno",
     "newVideosTitle": "Nová křesťanská videa v jazyce {language}",
     "newestFirst": "Nejnovější nejdřív",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Samostatná videa",
     "videosFromCollection": "Videa ze sbírky {collection}.",
     "standaloneDescription": "Samostatná videa v tomto jazyce.",
-    "openCollection": "Otevřít sbírku"
+    "openCollection": "Otevřít sbírku",
+    "filters": "Filtry",
+    "filterLength": "Délka",
+    "filterLength_under5": "Do 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "Nad 30 min",
+    "filterType": "Typ",
+    "clearFilters": "Vymazat filtry",
+    "filterResults": "Zobrazeno {count} z {total}",
+    "noFilterResults": "Žádné video neodpovídá těmto filtrům. Zkuste jeden odebrat.",
+    "filterAdded": "Přidáno",
+    "filterAdded_60d": "Posledních 60 dní",
+    "filterAdded_6m": "Posledních 6 měsíců",
+    "filterAdded_12m": "Posledních 12 měsíců"
   },
   "WatchHome": {
     "pageTitle": "Sledování Jesus Film Project",

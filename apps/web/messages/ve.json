@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Shandukisani luambo lwa mudumo",
     "home": "Muhuri wa JesusFilm",
     "closeSearch": "Valani ṱhoḓisiso",
-    "submitSearch": "Ṱolani"
+    "submitSearch": "Ṱolani",
+    "library": "Bugu ya vhutanzi"
   },
   "SearchOverlay": {
     "dialogLabel": "Ṱolani na u browse video",
@@ -467,6 +468,7 @@
     "sports": "Mitambo",
     "collections": "Miṱaṱisano",
     "subtitlesOnly": "Zwibulo fhedzi",
+    "backToTop": "Vhuya nṱha",
     "newlyAdded": "Zwo engedzwa zwenezwino",
     "newVideosTitle": "Vidio dza Vhukriste dza zwenezwino nga {language}",
     "newestFirst": "Zwine zwa vha zwiswa nga phanda",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Vidio dzi imelelaho",
     "videosFromCollection": "Vidio u bva kha {collection}.",
     "standaloneDescription": "Vidio dzi imelelaho kha heḽi luambo.",
-    "openCollection": "Vulani muṱaṱisano"
+    "openCollection": "Vulani muṱaṱisano",
+    "filters": "Zwifhaṱi",
+    "filterLength": "Vhulapfu",
+    "filterLength_under5": "Nga fhasi ha mimunithi ya 5",
+    "filterLength_5to10": "Mimunithi ya 5-10",
+    "filterLength_10to30": "Mimunithi ya 10-30",
+    "filterLength_over30": "Nga nṱha ha mimunithi ya 30",
+    "filterType": "Lushaka",
+    "clearFilters": "Phumula zwifhaṱi",
+    "filterResults": "{count} kha {total} zwo sumbedzwa",
+    "noFilterResults": "A hu na vidio ine ya tshimbidzana na zwifhaṱi hezwi. Lingedza u bvisa tshiṅwe.",
+    "filterAdded": "Yo engedzwa",
+    "filterAdded_60d": "Maḓuvha a 60 o fhelaho",
+    "filterAdded_6m": "Miṅwedzi ya 6 yo fhelaho",
+    "filterAdded_12m": "Miṅwedzi ya 12 yo fhelaho"
   },
   "WatchHome": {
     "pageTitle": "U Lavhelesa ha Jesus Film Project",

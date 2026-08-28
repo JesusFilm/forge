@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Usba an yinaknan han audio",
     "home": "Homan han JesusFilm",
     "closeSearch": "Isira an search",
-    "submitSearch": "Haapa"
+    "submitSearch": "Haapa",
+    "library": "Librari"
   },
   "SearchOverlay": {
     "dialogLabel": "Pamiling ngan mag-browse hin mga video",
@@ -467,6 +468,7 @@
     "sports": "Isports",
     "collections": "Mga Koleksyon",
     "subtitlesOnly": "Subtitle la",
+    "backToTop": "Magbalik pataas",
     "newlyAdded": "Bag-o nga nadugang",
     "newVideosTitle": "Bag-o nga Kristohanon nga mga video ha {language}",
     "newestFirst": "Bag-o anay",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Mga video nga nag-usa la",
     "videosFromCollection": "Mga video tikang ha {collection}.",
     "standaloneDescription": "Mga video nga nag-usa la ha hini nga yinaknan.",
-    "openCollection": "Abrihi an koleksyon"
+    "openCollection": "Abrihi an koleksyon",
+    "filters": "Mga filter",
+    "filterLength": "Kalugay",
+    "filterLength_under5": "Kulang dayn ha 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "Labi dayn ha 30 min",
+    "filterType": "Ginis",
+    "clearFilters": "Hukasa in mga filter",
+    "filterResults": "{count} dayn ha {total} in pinapakita",
+    "noFilterResults": "Way video sumusuuk ha manga filter ini. Kawaa in hambuuk.",
+    "filterAdded": "Naragdag",
+    "filterAdded_60d": "Nakauna 60 adlaw",
+    "filterAdded_6m": "Nakauna 6 bulan",
+    "filterAdded_12m": "Nakauna 12 bulan"
   },
   "WatchHome": {
     "pageTitle": "Pagtan-aw ha Jesus Film Project",

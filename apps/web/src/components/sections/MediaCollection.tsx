@@ -45,7 +45,12 @@ import {
   VideoThumbnailEyebrow,
   VideoThumbnailTitle,
 } from "@/components/ui/video-thumbnail-caption"
-import { WATCH_MEDIA_SECTION_VERTICAL_PADDING_CLASS } from "@/components/watch/watch-section-styles"
+import {
+  WATCH_IMMERSIVE_BACKGROUND_BRIGHTNESS_CLASS,
+  WATCH_IMMERSIVE_BACKGROUND_COLOR,
+  WATCH_IMMERSIVE_BACKGROUND_SATURATION_CLASS,
+  WATCH_MEDIA_SECTION_VERTICAL_PADDING_CLASS,
+} from "@/components/watch/watch-section-styles"
 
 // Hoisted so the throwing constructor runs once at module load, not per card.
 const DEFAULT_COLLECTION_LOCALE = asLocaleSlug("english")
@@ -70,9 +75,13 @@ type HoverBackdropLayer = {
   state: "entering" | "exiting"
 }
 
-const IMMERSIVE_BACKGROUND_SATURATION_CLASS = "saturate-75"
-const IMMERSIVE_BACKGROUND_BRIGHTNESS_CLASS = "brightness-50"
-const IMMERSIVE_BACKGROUND_COLOR = "#1A1815"
+// Values live in `watch-section-styles` so the /videos collection sidebars
+// render the same immersive backdrop as these authored sections.
+const IMMERSIVE_BACKGROUND_SATURATION_CLASS =
+  WATCH_IMMERSIVE_BACKGROUND_SATURATION_CLASS
+const IMMERSIVE_BACKGROUND_BRIGHTNESS_CLASS =
+  WATCH_IMMERSIVE_BACKGROUND_BRIGHTNESS_CLASS
+const IMMERSIVE_BACKGROUND_COLOR = WATCH_IMMERSIVE_BACKGROUND_COLOR
 
 const MOBILE_CAROUSEL_LAYOUT = {
   horizontal: {

@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Rievdat jietna gielat",
     "home": "JesusFilm ruovttusiidu",
     "closeSearch": "Gidde ohcan",
-    "submitSearch": "Oza"
+    "submitSearch": "Oza",
+    "library": "Girjerádju"
   },
   "SearchOverlay": {
     "dialogLabel": "Oza ja geahččal videoaid",
@@ -467,6 +468,7 @@
     "sports": "Spábbaileamit",
     "collections": "Čoakkáldagat",
     "subtitlesOnly": "Dušše lávlagat",
+    "backToTop": "Máhcca bajás",
     "newlyAdded": "Ođđa lasihuvvon",
     "newVideosTitle": "Ođđa kristtalaš videoat {language}:s",
     "newestFirst": "Ođđemus álggos",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Oktasoavttadit videoat",
     "videosFromCollection": "Videoat {collection}:s.",
     "standaloneDescription": "Oktasoavttadit videoat dán gillii.",
-    "openCollection": "Raba čoakkáldaga"
+    "openCollection": "Raba čoakkáldaga",
+    "filters": "Sillat",
+    "filterLength": "Guhkkodat",
+    "filterLength_under5": "Unnit go 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "Eanet go 30 min",
+    "filterType": "Šládja",
+    "clearFilters": "Sihko sillat",
+    "filterResults": "Čájehuvvo {count} / {total}",
+    "noFilterResults": "Ii oktage video heive dáid sillaide. Geahččal váldit eret ovtta.",
+    "filterAdded": "Lasihuvvon",
+    "filterAdded_60d": "Maŋimuš 60 beaivvi",
+    "filterAdded_6m": "Maŋimuš 6 mánu",
+    "filterAdded_12m": "Maŋimuš 12 mánu"
   },
   "WatchHome": {
     "pageTitle": "Geahččal | Jesus Film Project",

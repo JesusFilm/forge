@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Ibdel il-lingwa tal-awdjo",
     "home": "Dar JesusFilm",
     "closeSearch": "Agħlaq it-tfittxija",
-    "submitSearch": "Fittex"
+    "submitSearch": "Fittex",
+    "library": "Librerija"
   },
   "SearchOverlay": {
     "dialogLabel": "Fittex u ibrawżja videos",
@@ -467,6 +468,7 @@
     "sports": "Sport",
     "collections": "Kollezzjonijiet",
     "subtitlesOnly": "Sottotitli biss",
+    "backToTop": "Lura fil-quċċata",
     "newlyAdded": "Miżjud reċentement",
     "newVideosTitle": "Videos Kristjani ġodda bil-{language}",
     "newestFirst": "L-aktar ġodda l-ewwel",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Videos waħedhom",
     "videosFromCollection": "Videos minn {collection}.",
     "standaloneDescription": "Videos waħedhom f'din il-lingwa.",
-    "openCollection": "Iftaħ il-kollezzjoni"
+    "openCollection": "Iftaħ il-kollezzjoni",
+    "filters": "Filtri",
+    "filterLength": "Tul",
+    "filterLength_under5": "Taħt 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "Aktar minn 30 min",
+    "filterType": "Tip",
+    "clearFilters": "Neħħi l-filtri",
+    "filterResults": "{count} minn {total} murija",
+    "noFilterResults": "L-ebda video ma jaqbel ma' dawn il-filtri. Ipprova neħħi wieħed.",
+    "filterAdded": "Miżjud",
+    "filterAdded_60d": "L-aħħar 60 jum",
+    "filterAdded_6m": "L-aħħar 6 xhur",
+    "filterAdded_12m": "L-aħħar 12 xahar"
   },
   "WatchHome": {
     "pageTitle": "Ara fuq Jesus Film Project",

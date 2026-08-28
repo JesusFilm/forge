@@ -180,7 +180,8 @@
     "changeAudioLanguage": "སྒྲ་སྐད་བསྒྱུར།",
     "home": "JesusFilm གཙོ་ཤོག",
     "closeSearch": "འཚོལ་ཞིབ་ཁ་བསྡམ།",
-    "submitSearch": "འཚོལ།"
+    "submitSearch": "འཚོལ།",
+    "library": "དཔེ་མཛོད།"
   },
   "SearchOverlay": {
     "dialogLabel": "བརྙན་སྡེ་འཚོལ་ཡང་ན་ལྟ་སྐོར།",
@@ -467,6 +468,7 @@
     "sports": "རྩེད་རིགས།",
     "collections": "བསྡུ་ཚན།",
     "subtitlesOnly": "བརྡ་དཔེ་རྐྱང་པ།",
+    "backToTop": "ཡར་ལོག",
     "newlyAdded": "གསར་བཙུགས་བཏང་ཡོད།",
     "newVideosTitle": "{language} ནང་གསར་པ་གསོལ་བཤད་བརྙན་སྡེ།",
     "newestFirst": "གསར་ཤོས་སྔོན་ལས།",
@@ -497,7 +499,21 @@
     "standaloneVideos": "རང་རྐྱང་བརྙན་སྡེ།",
     "videosFromCollection": "{collection} ལས་བརྙན་སྡེ།",
     "standaloneDescription": "འ་ནི་སྐད་ཡིག་ནང་རང་རྐྱང་བརྙན་སྡེ།",
-    "openCollection": "བསྡུ་ཚན་ཁ་ཕྱེ།"
+    "openCollection": "བསྡུ་ཚན་ཁ་ཕྱེ།",
+    "filters": "ཚགས་མ།",
+    "filterLength": "རིང་ཚད།",
+    "filterLength_under5": "སྐར་མ ༥ ལས་ཉུང་།",
+    "filterLength_5to10": "སྐར་མ ༥-༡༠",
+    "filterLength_10to30": "སྐར་མ ༡༠-༣༠",
+    "filterLength_over30": "སྐར་མ ༣༠ ལས་ལྷག",
+    "filterType": "དབྱེ་བ།",
+    "clearFilters": "ཚགས་མ་བསལ།",
+    "filterResults": "{total} ནང་ལས {count} བཀྲམ་བཞག",
+    "noFilterResults": "ཚགས་མ་འདི་ཚུ་དང་མཐུནམ་གློག་བརྙན་མིན་འདུག། གཅིག་ཕྱིར་བཏོན་གནང་།",
+    "filterAdded": "བསྣན་ཡོདཔ།",
+    "filterAdded_60d": "ཉིནམ ༦༠ གི་ནང་།",
+    "filterAdded_6m": "ཟླཝ ༦ གི་ནང་།",
+    "filterAdded_12m": "ཟླཝ ༡༢ གི་ནང་།"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project ལྟ་སྐོར།",

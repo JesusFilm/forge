@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Arsuwin arup mayjt’ayaña",
     "home": "JesusFilm uta",
     "closeSearch": "Thaqhaña llawuña",
-    "submitSearch": "Thaqhaña"
+    "submitSearch": "Thaqhaña",
+    "library": "Panka uta"
   },
   "SearchOverlay": {
     "dialogLabel": "Video-naka thaqhaña ukhamaraki uñakipaña",
@@ -467,6 +468,7 @@
     "sports": "Deporte-naka",
     "collections": "Tantachäwinaka",
     "subtitlesOnly": "Subtítulos ukiki",
+    "backToTop": "Alayaru kutt'aña",
     "newlyAdded": "Machaq uñt’atatäxi",
     "newVideosTitle": "{language} arun machaq cristiano video-naka",
     "newestFirst": "Machaqanak nayraqata",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Sapak videos",
     "videosFromCollection": "{collection} ukan video-naka.",
     "standaloneDescription": "Aka arun sapak video-naka.",
-    "openCollection": "Tantachäwi jist’arña"
+    "openCollection": "Tantachäwi jist’arña",
+    "filters": "Chhijllawinaka",
+    "filterLength": "Jayapa",
+    "filterLength_under5": "5 minututa jukʼa",
+    "filterLength_5to10": "5-10 minutu",
+    "filterLength_10to30": "10-30 minutu",
+    "filterLength_over30": "30 minututa juk'ampi",
+    "filterType": "Kasta",
+    "clearFilters": "Chhijllawinaka qʼumachaña",
+    "filterResults": "{total} ukat {count} uñachtʼayata",
+    "noFilterResults": "Kuna videos ukanakas jani aka chhijllawinakampi chikachasiti. Mayni apsuñäni.",
+    "filterAdded": "Yapt'ata",
+    "filterAdded_60d": "Qhipa 60 uru",
+    "filterAdded_6m": "Qhipa 6 phaxsi",
+    "filterAdded_12m": "Qhipa 12 phaxsi"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project Uñch’ukiña",

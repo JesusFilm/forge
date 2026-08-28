@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Hindura ururimi rw’amajwi",
     "home": "Urugo rwa JesusFilm",
     "closeSearch": "Funga ubushakashatsi",
-    "submitSearch": "Rondera"
+    "submitSearch": "Rondera",
+    "library": "Isomero"
   },
   "SearchOverlay": {
     "dialogLabel": "Rondera kandi ucukure muri videwo",
@@ -467,6 +468,7 @@
     "sports": "Imikino",
     "collections": "Ibigwi",
     "subtitlesOnly": "Ivyandikishijwe gusa",
+    "backToTop": "Subira hejuru",
     "newlyAdded": "Vyongerewe vuba",
     "newVideosTitle": "Amavidewo mashasha ya gikirisu mu {language}",
     "newestFirst": "Ivy’ubu mbere",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Videwo zigenga",
     "videosFromCollection": "Amavidewo ava kuri {collection}.",
     "standaloneDescription": "Videwo zigenga muri uru rurimi.",
-    "openCollection": "Fungura ihuriro"
+    "openCollection": "Fungura ihuriro",
+    "filters": "Ivyungurura",
+    "filterLength": "Uburebure",
+    "filterLength_under5": "Munsi y'iminuta 5",
+    "filterLength_5to10": "Iminuta 5-10",
+    "filterLength_10to30": "Iminuta 10-30",
+    "filterLength_over30": "Hejuru y'iminuta 30",
+    "filterType": "Ubwoko",
+    "clearFilters": "Kura ivyungurura",
+    "filterResults": "{count} kuri {total} vyerekanywe",
+    "noFilterResults": "Nta videwo ihuye n'ivyungurura bino. Gerageza gukura kimwe.",
+    "filterAdded": "Vyongewemwo",
+    "filterAdded_60d": "Iminsi 60 iheze",
+    "filterAdded_6m": "Amezi 6 aheze",
+    "filterAdded_12m": "Amezi 12 aheze"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project Raba",

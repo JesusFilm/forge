@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Аудио бызшәa аԥсахра",
     "home": "JesusFilm ахатә хы",
     "closeSearch": "Аԥшаара аԥкра",
-    "submitSearch": "Аԥшаара"
+    "submitSearch": "Аԥшаара",
+    "library": "Абиблиотека"
   },
   "SearchOverlay": {
     "dialogLabel": "Авидеонқәа рыԥшаара нас рылаԥшҵара",
@@ -467,6 +468,7 @@
     "sports": "Аспорт",
     "collections": "Аколлекциақәа",
     "subtitlesOnly": "Аҭарқәа мацара",
+    "backToTop": "Хыхьара",
     "newlyAdded": "Иацаҵоу",
     "newVideosTitle": "{language} бызшәала иҿыу христиан видеоқәа",
     "newestFirst": "Иҿыуқәа раԥхьа",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Иаужьҭым авидеонқәа",
     "videosFromCollection": "{collection} аҟынтәи авидеонқәа.",
     "standaloneDescription": "Ари абызшәаҿы иаужьҭым авидеонқәа.",
-    "openCollection": "Аколлекциа аарт"
+    "openCollection": "Аколлекциа аарт",
+    "filters": "Афильтрқәа",
+    "filterLength": "Аура",
+    "filterLength_under5": "5 минуҭ рацәажәа",
+    "filterLength_5to10": "5-10 минуҭ",
+    "filterLength_10to30": "10-30 минуҭ",
+    "filterLength_over30": "30 минуҭ инарзынаԥшуа",
+    "filterType": "Аҩыза",
+    "clearFilters": "Афильтрқәа рырӡра",
+    "filterResults": "{total} аҟынтә {count} иаагоуп",
+    "noFilterResults": "Абри афильтрқәа ирықәшәо авидео ыҟаӡам. Аӡәы иашәых.",
+    "filterAdded": "Иацҵоуп",
+    "filterAdded_60d": "Аҵыхәтәантәи 60 мш",
+    "filterAdded_6m": "Аҵыхәтәантәи 6 мз",
+    "filterAdded_12m": "Аҵыхәтәантәи 12 мз"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project — Ахәаҧшра",

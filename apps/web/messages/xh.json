@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Tshintsha ulwimi lweaudio",
     "home": "Ikhaya leJesusFilm",
     "closeSearch": "Vala ukukhangela",
-    "submitSearch": "Khangela"
+    "submitSearch": "Khangela",
+    "library": "Ithala leencwadi"
   },
   "SearchOverlay": {
     "dialogLabel": "Khangela uze ubhrawuze iividiyo",
@@ -467,6 +468,7 @@
     "sports": "Imidlalo",
     "collections": "Iingqokelela",
     "subtitlesOnly": "IMibhalo engezantsi kuphela",
+    "backToTop": "Buyela phezulu",
     "newlyAdded": "Esanda kongezwa",
     "newVideosTitle": "Iividiyo zamaKristu ezintsha ngesi {language}",
     "newestFirst": "Ezintsha kuqala",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Iividiyo ezizimeleyo",
     "videosFromCollection": "Iividiyo ezivela ku {collection}.",
     "standaloneDescription": "Iividiyo ezizimeleyo kulo lwimi.",
-    "openCollection": "Vula ingqokelela"
+    "openCollection": "Vula ingqokelela",
+    "filters": "Izihluzi",
+    "filterLength": "Ubude",
+    "filterLength_under5": "Ngaphantsi kwemizuzu emi-5",
+    "filterLength_5to10": "Imizuzu emi-5-10",
+    "filterLength_10to30": "Imizuzu eli-10-30",
+    "filterLength_over30": "Ngaphezu kwemizuzu engama-30",
+    "filterType": "Uhlobo",
+    "clearFilters": "Cima izihluzi",
+    "filterResults": "{count} kwe-{total} eboniswayo",
+    "noFilterResults": "Akukho ividiyo ihambelana nezi zihluzi. Zama ukususa esinye.",
+    "filterAdded": "Kongezwe",
+    "filterAdded_60d": "Iintsuku ezingama-60 ezidlulileyo",
+    "filterAdded_6m": "Iinyanga ezi-6 ezidlulileyo",
+    "filterAdded_12m": "Iinyanga ezi-12 ezidlulileyo"
   },
   "WatchHome": {
     "pageTitle": "Ukubukela kweJesus Film Project",

@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Аудио кывсӧ вӧвны",
     "home": "JesusFilm оланнин",
     "closeSearch": "Корсьӧмӧс вӧчны",
-    "submitSearch": "Корсьны"
+    "submitSearch": "Корсьны",
+    "library": "Небöгкуд"
   },
   "SearchOverlay": {
     "dialogLabel": "Видеоӧс корсьны да лыддьыны",
@@ -467,6 +468,7 @@
     "sports": "Спорт",
     "collections": "Коллекцияяс",
     "subtitlesOnly": "Субтитръяс гӧгӧр",
+    "backToTop": "Вылö бергöдчыны",
     "newlyAdded": "Выль ӧтдӧм",
     "newVideosTitle": "{language} вылын выль христианской видео",
     "newestFirst": "Сыӧн вӧт",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Мутӧм видеоъяс",
     "videosFromCollection": "{collection} сайын видеоъяс.",
     "standaloneDescription": "Этӧ кыв вылын мутӧм видеоъяс.",
-    "openCollection": "Коллекцияӧс вӧчны"
+    "openCollection": "Коллекцияӧс вӧчны",
+    "filters": "Пыртöмъяс",
+    "filterLength": "Кузьта",
+    "filterLength_under5": "5 минутся этша",
+    "filterLength_5to10": "5-10 минут",
+    "filterLength_10to30": "10-30 минут",
+    "filterLength_over30": "30 минутся уна",
+    "filterType": "Ног",
+    "clearFilters": "Пыртöмъяс чышкыны",
+    "filterResults": "{total}-ысь {count} петкöдлöма",
+    "noFilterResults": "Тайö пыртöмъяслы лöсялана видео абу. Öтикöс босьт да видзöд.",
+    "filterAdded": "Содтöма",
+    "filterAdded_60d": "Бöръя 60 лун",
+    "filterAdded_6m": "Бöръя 6 тöлысь",
+    "filterAdded_12m": "Бöръя 12 тöлысь"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project — видзӧдны",

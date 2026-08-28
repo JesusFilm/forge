@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Yí èdè ohun padà",
     "home": "Ojú-ìbẹ̀rẹ̀ JesusFilm",
     "closeSearch": "Pàdé ìwádìí",
-    "submitSearch": "Wa"
+    "submitSearch": "Wa",
+    "library": "Ìkàwé"
   },
   "SearchOverlay": {
     "dialogLabel": "Wa kí o sì lọ kiri àwọn fídíò",
@@ -467,6 +468,7 @@
     "sports": "Eré ìdárayá",
     "collections": "Àkójọpọ̀",
     "subtitlesOnly": "Àwọn ìtúpalẹ̀ ọrọ̀ nìkan",
+    "backToTop": "Padà sí orí",
     "newlyAdded": "Tó ṣẹ̀ṣẹ̀ fi kún",
     "newVideosTitle": "Àwọn fídíò Kristẹni tuntun ní {language}",
     "newestFirst": "Tuntun jù lọ kọ́kọ́",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Àwọn fídíò aládàáyébá",
     "videosFromCollection": "Àwọn fídíò látinú {collection}.",
     "standaloneDescription": "Àwọn fídíò aládàáyébá ní èdè yìí.",
-    "openCollection": "Ṣí àkójọpọ̀"
+    "openCollection": "Ṣí àkójọpọ̀",
+    "filters": "Àwọn àṣẹ̀",
+    "filterLength": "Gígùn",
+    "filterLength_under5": "Kéré sí ìṣẹ́jú 5",
+    "filterLength_5to10": "Ìṣẹ́jú 5-10",
+    "filterLength_10to30": "Ìṣẹ́jú 10-30",
+    "filterLength_over30": "Ju ìṣẹ́jú 30",
+    "filterType": "Irú",
+    "clearFilters": "Nu àwọn àṣẹ̀ kúrò",
+    "filterResults": "{count} nínú {total} ni a fihàn",
+    "noFilterResults": "Kò sí fídíò tí ó bá àwọn àṣẹ̀ wọ̀nyí. Gbìyànjú láti mú ọ̀kan kúrò.",
+    "filterAdded": "Fikun",
+    "filterAdded_60d": "Ọjọ́ 60 tí ó kọjá",
+    "filterAdded_6m": "Oṣù 6 tí ó kọjá",
+    "filterAdded_12m": "Oṣù 12 tí ó kọjá"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project: Wo",

@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Аудио тылын уларыт",
     "home": "JesusFilm бастыҥ сирэйи",
     "closeSearch": "Көрдөһүүни сап",
-    "submitSearch": "Көрдө"
+    "submitSearch": "Көрдө",
+    "library": "Библиотека"
   },
   "SearchOverlay": {
     "dialogLabel": "Видеолары көрдө уонна көр",
@@ -467,6 +468,7 @@
     "sports": "Спорт",
     "collections": "Коллекциялар",
     "subtitlesOnly": "Субтитр эрэ",
+    "backToTop": "Үөһээ төннүү",
     "newlyAdded": "Саҥа эбиллибит",
     "newVideosTitle": "{language}-та саҥа христиан видеолар",
     "newestFirst": "Илдьэ суохтан",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Бэйэ эрэ видеолар",
     "videosFromCollection": "{collection}-тан видеолар.",
     "standaloneDescription": "Бу тылга бэйэ эрэ видеолар.",
-    "openCollection": "Коллекцияны арый"
+    "openCollection": "Коллекцияны арый",
+    "filters": "Фильтрдар",
+    "filterLength": "Уһуна",
+    "filterLength_under5": "5 мүнүүтэттэн аҕыйах",
+    "filterLength_5to10": "5-10 мүнүүтэ",
+    "filterLength_10to30": "10-30 мүнүүтэ",
+    "filterLength_over30": "30 мүнүүтэттэн элбэх",
+    "filterType": "Көрүҥэ",
+    "clearFilters": "Фильтрдары сотуу",
+    "filterResults": "{total} иһиттэн {count} көрдөрүлүннэ",
+    "noFilterResults": "Бу фильтрдарга сөп түбэһэр видео суох. Биирдэрин сотон көрүҥ.",
+    "filterAdded": "Эбилиннэ",
+    "filterAdded_60d": "Бүтэһик 60 күн",
+    "filterAdded_6m": "Бүтэһик 6 ый",
+    "filterAdded_12m": "Бүтэһик 12 ый"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project көрүү",

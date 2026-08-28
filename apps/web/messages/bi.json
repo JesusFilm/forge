@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Jenisem lanwis blong audio",
     "home": "JesusFilm hom",
     "closeSearch": "Satem search",
-    "submitSearch": "Sokem"
+    "submitSearch": "Sokem",
+    "library": "Laebri"
   },
   "SearchOverlay": {
     "dialogLabel": "Sokem mo browse ol video",
@@ -467,6 +468,7 @@
     "sports": "Ol Spot",
     "collections": "Ol kolosen",
     "subtitlesOnly": "Ol subtitle nomo",
+    "backToTop": "Go bak antap",
     "newlyAdded": "Niu i joenem",
     "newVideosTitle": "Ol niu Kristin video long {language}",
     "newestFirst": "Niu fastaem",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Ol video we i stanap olsem",
     "videosFromCollection": "Ol video from {collection}.",
     "standaloneDescription": "Ol video we i stanap olsem long lanwis ia.",
-    "openCollection": "Openem collection"
+    "openCollection": "Openem collection",
+    "filters": "Filta",
+    "filterLength": "Longfala",
+    "filterLength_under5": "Andanit long 5 minit",
+    "filterLength_5to10": "5-10 minit",
+    "filterLength_10to30": "10-30 minit",
+    "filterLength_over30": "Antap long 30 minit",
+    "filterType": "Kaen",
+    "clearFilters": "Rimuvum ol filta",
+    "filterResults": "Soem {count} long {total}",
+    "noFilterResults": "I no gat video we i stret wetem ol filta ia. Traem rimuvum wan.",
+    "filterAdded": "Ademap",
+    "filterAdded_60d": "Las 60 dei",
+    "filterAdded_6m": "Las 6 manis",
+    "filterAdded_12m": "Las 12 manis"
   },
   "WatchHome": {
     "pageTitle": "Lukluk long Jesus Film Project",

@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Sesa audio kasa no",
     "home": "JesusFilm fie",
     "closeSearch": "To search no mu",
-    "submitSearch": "Kpɛ"
+    "submitSearch": "Kpɛ",
+    "library": "Wolo he"
   },
   "SearchOverlay": {
     "dialogLabel": "Hwehwɛ na browse videos",
@@ -467,6 +468,7 @@
     "sports": "Agumadi",
     "collections": "Nhyiam",
     "subtitlesOnly": "Subtitles nko ara",
+    "backToTop": "Ku sɛɛ kɛya hiɛ",
     "newlyAdded": "Wɔde aka ho foforo ara",
     "newVideosTitle": "Christian videos foforo wɔ {language} mu",
     "newestFirst": "Nea aba foforo no kan",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Videos a ɛgyina hɔ ankasa",
     "videosFromCollection": "Videos fi {collection} mu.",
     "standaloneDescription": "Videos a ɛgyina hɔ ankasa wɔ kasa yi mu.",
-    "openCollection": "Bue collection no"
+    "openCollection": "Bue collection no",
+    "filters": "Kpaŋaanii",
+    "filterLength": "Kɛkɛ",
+    "filterLength_under5": "Ni be shi minitsi 5",
+    "filterLength_5to10": "Minitsi 5-10",
+    "filterLength_10to30": "Minitsi 10-30",
+    "filterLength_over30": "Ni fe minitsi 30",
+    "filterType": "Sui",
+    "clearFilters": "Jie kpaŋaanii",
+    "filterResults": "{count} yɛ {total} amli ni atsɔɔ",
+    "noFilterResults": "Video ko bɛ ni kɛ kpaŋaanii nɛɛ kpaa gbee. Bɔ mɔdɛŋ ni ojie ekome.",
+    "filterAdded": "Akɛfata he",
+    "filterAdded_60d": "Gbii 60 ni eho",
+    "filterAdded_6m": "Nyɔji 6 ni eho",
+    "filterAdded_12m": "Nyɔji 12 ni eho"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project Hwɛ",

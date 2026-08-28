@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Aldatu audio-hizkuntza",
     "home": "JesusFilm hasiera",
     "closeSearch": "Itxi bilaketa",
-    "submitSearch": "Bilatu"
+    "submitSearch": "Bilatu",
+    "library": "Liburutegia"
   },
   "SearchOverlay": {
     "dialogLabel": "Bilatu eta arakatu bideoak",
@@ -467,6 +468,7 @@
     "sports": "Kirolak",
     "collections": "Bildumak",
     "subtitlesOnly": "Azpitituluak soilik",
+    "backToTop": "Itzuli gora",
     "newlyAdded": "Berriki gehitua",
     "newVideosTitle": "Kristau-bideo berriak {language} hizkuntzan",
     "newestFirst": "Berrienak lehenik",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Bakarkako bideoak",
     "videosFromCollection": "{collection} bildumako bideoak.",
     "standaloneDescription": "Hizkuntza honetako bakarkako bideoak.",
-    "openCollection": "Ireki bilduma"
+    "openCollection": "Ireki bilduma",
+    "filters": "Iragazkiak",
+    "filterLength": "Iraupena",
+    "filterLength_under5": "5 min baino gutxiago",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "30 min baino gehiago",
+    "filterType": "Mota",
+    "clearFilters": "Garbitu iragazkiak",
+    "filterResults": "{total}(e)tik {count} erakutsita",
+    "noFilterResults": "Ez dago iragazki hauekin bat datorren bideorik. Saiatu bat kentzen.",
+    "filterAdded": "Gehituta",
+    "filterAdded_60d": "Azken 60 egunak",
+    "filterAdded_6m": "Azken 6 hilabeteak",
+    "filterAdded_12m": "Azken 12 hilabeteak"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project Ikusi",

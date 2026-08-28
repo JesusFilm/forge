@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Tijaläx ri ch'ab'äl richin q'ojom",
     "home": "JesusFilm rupalaj q'ij",
     "closeSearch": "Titz'apïx kanoxïk",
-    "submitSearch": "Tikanöx"
+    "submitSearch": "Tikanöx",
+    "library": "Wuja ja"
   },
   "SearchOverlay": {
     "dialogLabel": "Tikanöx y tatz'eta' videos",
@@ -467,6 +468,7 @@
     "sports": "Deportes",
     "collections": "Taq kolección",
     "subtitlesOnly": "Subtítulos alone",
+    "backToTop": "Katzalij chikaj",
     "newlyAdded": "K'ak'a' tz'aqat",
     "newVideosTitle": "K'ak'a' taq video cristianos pa {language}",
     "newestFirst": "Ri k'ak'a' nab'ey",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Taq video ch'utch'uj",
     "videosFromCollection": "Taq video pa {collection}.",
     "standaloneDescription": "Taq video ch'utch'uj pa re ch'ab'äl re'.",
-    "openCollection": "Tijaq colección"
+    "openCollection": "Tijaq colección",
+    "filters": "Chaꞌoj",
+    "filterLength": "Raqan",
+    "filterLength_under5": "Nim ta chuwach 5 minutos",
+    "filterLength_5to10": "5-10 minutos",
+    "filterLength_10to30": "10-30 minutos",
+    "filterLength_over30": "Nim chuwach 30 minutos",
+    "filterType": "Uwach",
+    "clearFilters": "Chachupij ri chaꞌoj",
+    "filterResults": "{count} chike {total} kakꞌut",
+    "noFilterResults": "Man kꞌo ta jun video kajunamataj rukꞌ we chaꞌoj riꞌ. Chawesaj jun.",
+    "filterAdded": "Xkoj chi",
+    "filterAdded_60d": "Kꞌisbꞌal 60 qꞌij",
+    "filterAdded_6m": "Kꞌisbꞌal 6 ikꞌ",
+    "filterAdded_12m": "Kꞌisbꞌal 12 ikꞌ"
   },
   "WatchHome": {
     "pageTitle": "Tatz'eta' pa Jesus Film Project",

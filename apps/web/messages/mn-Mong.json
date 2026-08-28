@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Дууны хэлийг өөрчлөх",
     "home": "JesusFilm нүүр хуудас",
     "closeSearch": "Хайлтыг хаах",
-    "submitSearch": "ᠬᠠᠢᠬᠤ"
+    "submitSearch": "ᠬᠠᠢᠬᠤ",
+    "library": "ᠨᠣᠮ ᠤᠨ ᠰᠠᠩ"
   },
   "SearchOverlay": {
     "dialogLabel": "Видео хайх, үзэх",
@@ -467,6 +468,7 @@
     "sports": "Спорт",
     "collections": "Цуглуулгууд",
     "subtitlesOnly": "Зөвхөн хадмал",
+    "backToTop": "ᠳᠡᠭᠡᠷ᠎ᠡ ᠪᠤᠴᠠᠬᠤ",
     "newlyAdded": "Шинээр нэмэгдсэн",
     "newVideosTitle": "{language}-д шинэ Христийн видеонууд",
     "newestFirst": "Шинэ эхлээд",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Бие даасан видеонууд",
     "videosFromCollection": "{collection}-оос авсан видеонууд.",
     "standaloneDescription": "Энэ хэл дээрх бие даасан видеонууд.",
-    "openCollection": "Цуглуулга нээх"
+    "openCollection": "Цуглуулга нээх",
+    "filters": "ᠰᠢᠭᠦᠭᠦᠷ",
+    "filterLength": "ᠤᠷᠲᠤ",
+    "filterLength_under5": "5 ᠮᠢᠨᠦ᠋ᠲ᠎ᠠᠴᠠ ᠪᠠᠭ᠎ᠠ",
+    "filterLength_5to10": "5-10 ᠮᠢᠨᠦ᠋ᠲ",
+    "filterLength_10to30": "10-30 ᠮᠢᠨᠦ᠋ᠲ",
+    "filterLength_over30": "30 ᠮᠢᠨᠦ᠋ᠲ᠎ᠠᠴᠠ ᠶᠡᠬᠡ",
+    "filterType": "ᠲᠥᠷᠥᠯ",
+    "clearFilters": "ᠰᠢᠭᠦᠭᠦᠷ ᠢ ᠠᠷᠢᠯᠭᠠᠬᠤ",
+    "filterResults": "{total}᠎ᠠᠴᠠ {count} ᠬᠠᠷᠠᠭᠤᠯᠵᠤ ᠪᠠᠢᠨ᠎ᠠ",
+    "noFilterResults": "ᠡᠳᠡᠭᠡᠷ ᠰᠢᠭᠦᠭᠦᠷ ᠲᠦ ᠲᠣᠬᠢᠷᠠᠬᠤ ᠪᠢᠴᠢᠯᠭᠡ ᠦᠭᠡᠢ᠃ ᠨᠢᠭᠡ ᠶᠢ ᠬᠠᠰᠤᠵᠤ ᠦᠵᠡᠭᠡᠷᠡᠢ᠃",
+    "filterAdded": "ᠨᠡᠮᠡᠭᠳᠡᠭᠰᠡᠨ",
+    "filterAdded_60d": "ᠰᠡᠭᠦᠯ ᠦᠨ 60 ᠬᠣᠨᠣᠭ",
+    "filterAdded_6m": "ᠰᠡᠭᠦᠯ ᠦᠨ 6 ᠰᠠᠷ᠎ᠠ",
+    "filterAdded_12m": "ᠰᠡᠭᠦᠯ ᠦᠨ 12 ᠰᠠᠷ᠎ᠠ"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project үзэх",

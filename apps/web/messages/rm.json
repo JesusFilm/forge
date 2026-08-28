@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Midar la lingua d'audio",
     "home": "Pagina principala da JesusFilm",
     "closeSearch": "Serrar la tschertga",
-    "submitSearch": "Tschertgar"
+    "submitSearch": "Tschertgar",
+    "library": "Biblioteca"
   },
   "SearchOverlay": {
     "dialogLabel": "Tschertgar e navigar tras videos",
@@ -467,6 +468,7 @@
     "sports": "Sport",
     "collections": "Collecziuns",
     "subtitlesOnly": "Be suttitels",
+    "backToTop": "Turnar si",
     "newlyAdded": "Agiuntà dacurt",
     "newVideosTitle": "Novs videos cristians en {language}",
     "newestFirst": "Ils pli novs l'emprim",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Videos independents",
     "videosFromCollection": "Videos da {collection}.",
     "standaloneDescription": "Videos independents en questa lingua.",
-    "openCollection": "Avrir collecziun"
+    "openCollection": "Avrir collecziun",
+    "filters": "Filtrar",
+    "filterLength": "Durada",
+    "filterLength_under5": "Main che 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "Dapli che 30 min",
+    "filterType": "Tip",
+    "clearFilters": "Stizzar ils filters",
+    "filterResults": "{count} da {total} mussads",
+    "noFilterResults": "Nagin video correspunda a quests filters. Empruvai da allontanar in.",
+    "filterAdded": "Agiuntà",
+    "filterAdded_60d": "Ultims 60 dis",
+    "filterAdded_6m": "Ultims 6 mais",
+    "filterAdded_12m": "Ultims 12 mais"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project – Guardar",

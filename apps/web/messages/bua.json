@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Дууны хэлийг солих",
     "home": "JesusFilm нүүр хуудас",
     "closeSearch": "Хайлт хаах",
-    "submitSearch": "Бэдэрхэ"
+    "submitSearch": "Бэдэрхэ",
+    "library": "Номой сан"
   },
   "SearchOverlay": {
     "dialogLabel": "Видео хайж үзэх",
@@ -467,6 +468,7 @@
     "sports": "Спорт",
     "collections": "Цуглуулгууд",
     "subtitlesOnly": "Зөвхөн хадмал",
+    "backToTop": "Дээшээ бусаха",
     "newlyAdded": "Шинээр нэмэгдсэн",
     "newVideosTitle": "{language}-д байгаа шинэ Христийн видеонууд",
     "newestFirst": "Шинэ нь эхэнд",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Бие даасан видеонууд",
     "videosFromCollection": "{collection}-ын видеонууд.",
     "standaloneDescription": "Энэ хэл дээрх бие даасан видеонууд.",
-    "openCollection": "Цуглуулга нээх"
+    "openCollection": "Цуглуулга нээх",
+    "filters": "Шүүлтүүрнүүд",
+    "filterLength": "Утань",
+    "filterLength_under5": "5 минутаһаа багаар",
+    "filterLength_5to10": "5-10 минута",
+    "filterLength_10to30": "10-30 минута",
+    "filterLength_over30": "30 минутаһаа ехээр",
+    "filterType": "Түхэл",
+    "clearFilters": "Шүүлтүүрнүүдые арилгаха",
+    "filterResults": "{total}-һаа {count} харуулагдана",
+    "noFilterResults": "Эдэ шүүлтүүрнүүдтэ таарамжатай видео үгы. Нэгыень абажа хараад үзэгты.",
+    "filterAdded": "Нэмэгдэбэ",
+    "filterAdded_60d": "Һүүлшын 60 үдэр",
+    "filterAdded_6m": "Һүүлшын 6 һара",
+    "filterAdded_12m": "Һүүлшын 12 һара"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project — хараха",

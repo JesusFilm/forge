@@ -180,7 +180,8 @@
     "changeAudioLanguage": "ઓડિયો ભાષા બદલો",
     "home": "JesusFilm હોમ",
     "closeSearch": "શોધ બંધ કરો",
-    "submitSearch": "શોધો"
+    "submitSearch": "શોધો",
+    "library": "લાઇબ્રેરી"
   },
   "SearchOverlay": {
     "dialogLabel": "વીડિયો શોધો અને બ્રાઉઝ કરો",
@@ -467,6 +468,7 @@
     "sports": "રમતગમત",
     "collections": "સંગ્રહો",
     "subtitlesOnly": "માત્ર ઉપશીર્ષકો",
+    "backToTop": "ઉપર પરત",
     "newlyAdded": "નવતર ઉમેરાયેલ",
     "newVideosTitle": "{language} માં નવા ખ્રિસ્તી વીડિયો",
     "newestFirst": "સૌથી નવા પહેલા",
@@ -497,7 +499,21 @@
     "standaloneVideos": "સ્વતંત્ર વીડિયો",
     "videosFromCollection": "{collection}માંથી વીડિયો.",
     "standaloneDescription": "આ ભાષામાં સ્વતંત્ર વીડિયો.",
-    "openCollection": "સંગ્રહ ખોલો"
+    "openCollection": "સંગ્રહ ખોલો",
+    "filters": "ફિલ્ટર",
+    "filterLength": "લંબાઈ",
+    "filterLength_under5": "5 મિનિટથી ઓછું",
+    "filterLength_5to10": "5-10 મિનિટ",
+    "filterLength_10to30": "10-30 મિનિટ",
+    "filterLength_over30": "30 મિનિટથી વધુ",
+    "filterType": "પ્રકાર",
+    "clearFilters": "ફિલ્ટર સાફ કરો",
+    "filterResults": "{total} માંથી {count} બતાવ્યા",
+    "noFilterResults": "આ ફિલ્ટર સાથે કોઈ વિડિયો મેળ ખાતો નથી. એક દૂર કરી જુઓ.",
+    "filterAdded": "ઉમેરાયું",
+    "filterAdded_60d": "છેલ્લા 60 દિવસ",
+    "filterAdded_6m": "છેલ્લા 6 મહિના",
+    "filterAdded_12m": "છેલ્લા 12 મહિના"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project જુઓ",

@@ -180,7 +180,8 @@
     "changeAudioLanguage": "ऑडियो ञेरेन बदल मे",
     "home": "JesusFilm होम",
     "closeSearch": "खोज बोंद मे",
-    "submitSearch": "खोज मे"
+    "submitSearch": "खोज मे",
+    "library": "ᱞᱟᱭᱵᱨᱮᱨᱤ"
   },
   "SearchOverlay": {
     "dialogLabel": "वीडियो खोज आर ब्राउज़ मे",
@@ -467,6 +468,7 @@
     "sports": "खेल",
     "collections": "संग्रह",
     "subtitlesOnly": "सिर्फ उपशीर्षक",
+    "backToTop": "ᱛᱩᱭᱩᱡ ᱨᱮ ᱨᱩᱲᱟᱹ",
     "newlyAdded": "नावा जोड़ल",
     "newVideosTitle": "{language} रे नावा मसीही वीडियो",
     "newestFirst": "सबसे नावा पहिले",
@@ -497,7 +499,21 @@
     "standaloneVideos": "अकेला वीडियो",
     "videosFromCollection": "{collection} खोन वीडियो।",
     "standaloneDescription": "ए भाषा रे अकेला वीडियो।",
-    "openCollection": "संग्रह खोल मे"
+    "openCollection": "संग्रह खोल मे",
+    "filters": "ᱯᱷᱤᱞᱴᱟᱨ",
+    "filterLength": "ᱡᱷᱟᱞ",
+    "filterLength_under5": "5 ᱴᱤᱯᱤᱡ ᱠᱷᱚᱱ ᱠᱟᱹᱴᱤᱡ",
+    "filterLength_5to10": "5-10 ᱴᱤᱯᱤᱡ",
+    "filterLength_10to30": "10-30 ᱴᱤᱯᱤᱡ",
+    "filterLength_over30": "30 ᱴᱤᱯᱤᱡ ᱠᱷᱚᱱ ᱟᱰᱤ",
+    "filterType": "ᱨᱚᱠᱚᱢ",
+    "clearFilters": "ᱯᱷᱤᱞᱴᱟᱨ ᱥᱟᱯᱷᱟ ᱢᱮ",
+    "filterResults": "{total} ᱠᱷᱚᱱ {count} ᱩᱫᱩᱜ",
+    "noFilterResults": "ᱱᱚᱶᱟ ᱯᱷᱤᱞᱴᱟᱨ ᱥᱟᱶ ᱡᱟᱦᱟᱸ ᱣᱤᱰᱤᱭᱳ ᱵᱟᱝ ᱢᱮᱞᱟᱣ ᱠᱟᱱᱟ᱾ ᱢᱤᱫ ᱚᱠᱚᱭ ᱢᱮ᱾",
+    "filterAdded": "ᱥᱮᱞᱮᱫ ᱦᱩᱭᱮᱱᱟ",
+    "filterAdded_60d": "ᱢᱩᱬᱩᱛ 60 ᱢᱟᱦᱟᱸ",
+    "filterAdded_6m": "ᱢᱩᱬᱩᱛ 6 ᱢᱟᱦᱤᱸᱱᱟ",
+    "filterAdded_12m": "ᱢᱩᱬᱩᱛ 12 ᱢᱟᱦᱤᱸᱱᱟ"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project वाच",

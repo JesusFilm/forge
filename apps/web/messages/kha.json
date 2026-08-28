@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Pynkylla ka ktien sur",
     "home": "Ka home JesusFilm",
     "closeSearch": "Pynkhap ia ka search",
-    "submitSearch": "Wad"
+    "submitSearch": "Wad",
+    "library": "Ïing kot"
   },
   "SearchOverlay": {
     "dialogLabel": "Wad bad peit ia ki video",
@@ -467,6 +468,7 @@
     "sports": "Ki jingïalehkai",
     "collections": "Ki Collection",
     "subtitlesOnly": "Subtitle tang",
+    "backToTop": "Phai sha shatei",
     "newlyAdded": "La bynrap thymmai",
     "newVideosTitle": "Ki video Khristan thymmai ha {language}",
     "newestFirst": "Ki ba thymmai shwa",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Ki video marwei",
     "videosFromCollection": "Ki video na {collection}.",
     "standaloneDescription": "Ki video marwei ha kane ka ktien.",
-    "openCollection": "Plie collection"
+    "openCollection": "Plie collection",
+    "filters": "Ki jingpyllait",
+    "filterLength": "Jrong",
+    "filterLength_under5": "Khyndiat ban 5 minit",
+    "filterLength_5to10": "5-10 minit",
+    "filterLength_10to30": "10-30 minit",
+    "filterLength_over30": "Khraw ban 30 minit",
+    "filterType": "Rukom",
+    "clearFilters": "Sait ki jingpyllait",
+    "filterResults": "La pyni {count} na {total}",
+    "noFilterResults": "Ym don video ba iaid lang bad kine ki jingpyllait. Peit sait wei.",
+    "filterAdded": "La buh noh",
+    "filterAdded_60d": "60 sngi ba mynta",
+    "filterAdded_6m": "6 bnai ba mynta",
+    "filterAdded_12m": "12 bnai ba mynta"
   },
   "WatchHome": {
     "pageTitle": "Peit ha Jesus Film Project",

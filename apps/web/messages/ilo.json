@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Sukatan ti pagsasao ti audio",
     "home": "Balay ti JesusFilm",
     "closeSearch": "Isarda ti panagsapul",
-    "submitSearch": "Sapulen"
+    "submitSearch": "Sapulen",
+    "library": "Librarya"
   },
   "SearchOverlay": {
     "dialogLabel": "Sapulen ken agsukisok kadagiti video",
@@ -467,6 +468,7 @@
     "sports": "Aramat",
     "collections": "Dagiti kalap",
     "subtitlesOnly": "Subtitles laeng",
+    "backToTop": "Agsubli iti ngato",
     "newlyAdded": "Bag-o a naisarakan",
     "newVideosTitle": "Baro a Kristiano a video iti {language}",
     "newestFirst": "Pinakabaro immuna",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Kabesad a video",
     "videosFromCollection": "Dagiti video manipud iti {collection}.",
     "standaloneDescription": "Dagiti kabesad a video iti daytoy a pagsasao.",
-    "openCollection": "Ilukat ti kalap"
+    "openCollection": "Ilukat ti kalap",
+    "filters": "Dagiti filter",
+    "filterLength": "Kaatiddog",
+    "filterLength_under5": "Nababbaba ngem 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "Nasursurok ngem 30 min",
+    "filterType": "Kita",
+    "clearFilters": "Ikkaten dagiti filter",
+    "filterResults": "{count} iti {total} ti maipapakita",
+    "noFilterResults": "Awan ti video a maitunos kadagitoy a filter. Padasem nga ikkaten ti maysa.",
+    "filterAdded": "Nainayon",
+    "filterAdded_60d": "Naudi a 60 nga aldaw",
+    "filterAdded_6m": "Naudi a 6 a bulan",
+    "filterAdded_12m": "Naudi a 12 a bulan"
   },
   "WatchHome": {
     "pageTitle": "Pagbuyaan ti Jesus Film Project",

@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Changer la langue audio",
     "home": "Accueil de JesusFilm",
     "closeSearch": "Fermer la recherche",
-    "submitSearch": "Wut"
+    "submitSearch": "Wut",
+    "library": "Kaŋ kayitaa"
   },
   "SearchOverlay": {
     "dialogLabel": "Rechercher et parcourir des vidéos",
@@ -467,6 +468,7 @@
     "sports": "Po ak tàggat-yaram",
     "collections": "Dencukaay yi",
     "subtitlesOnly": "Sous-titres seulement",
+    "backToTop": "Fandiŋ kajeeg",
     "newlyAdded": "Ajouté récemment",
     "newVideosTitle": "Nouvelles vidéos chrétiennes en {language}",
     "newestFirst": "Les plus récentes d'abord",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Vidéos autonomes",
     "videosFromCollection": "Vidéos de {collection}.",
     "standaloneDescription": "Vidéos autonomes dans cette langue.",
-    "openCollection": "Ouvrir la collection"
+    "openCollection": "Ouvrir la collection",
+    "filters": "Ñoolaaŋ",
+    "filterLength": "Ndoolaa",
+    "filterLength_under5": "Rekan 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "Fopan 30 min",
+    "filterType": "Kaŋaam",
+    "clearFilters": "Feesaŋ ñoolaaŋ",
+    "filterResults": "{count} ca {total} a wonaa",
+    "noFilterResults": "Amul widewo ba mos ak ñoolaaŋ yii. Feesaŋ kenn.",
+    "filterAdded": "A yokkul",
+    "filterAdded_60d": "Baax 60 fanaan",
+    "filterAdded_6m": "Baax 6 weer",
+    "filterAdded_12m": "Baax 12 weer"
   },
   "WatchHome": {
     "pageTitle": "Visionnage Jesus Film Project",

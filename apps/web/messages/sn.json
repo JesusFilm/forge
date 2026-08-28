@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Chinja mutauro wekuteerera",
     "home": "Peji guru reJesusFilm",
     "closeSearch": "Vhara kutsvaga",
-    "submitSearch": "Tsvaga"
+    "submitSearch": "Tsvaga",
+    "library": "Raibhurari"
   },
   "SearchOverlay": {
     "dialogLabel": "Tsvaga uye browse mavhidhiyo",
@@ -467,6 +468,7 @@
     "sports": "Mitambo",
     "collections": "Muunganidzwa",
     "subtitlesOnly": "Zvidhindo chete",
+    "backToTop": "Dzokera kumusoro",
     "newlyAdded": "Zvichangobva kuwedzerwa",
     "newVideosTitle": "Mavhidhiyo echiKristu matsva mu {language}",
     "newestFirst": "Zvitsva kutanga",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Mavhidhiyo akazvimirira",
     "videosFromCollection": "Mavhidhiyo kubva mu {collection}.",
     "standaloneDescription": "Mavhidhiyo akazvimirira mumutauro uyu.",
-    "openCollection": "Vhura muunganidzwa"
+    "openCollection": "Vhura muunganidzwa",
+    "filters": "Zvisefo",
+    "filterLength": "Kureba",
+    "filterLength_under5": "Pasi pemaminitsi 5",
+    "filterLength_5to10": "Maminitsi 5-10",
+    "filterLength_10to30": "Maminitsi 10-30",
+    "filterLength_over30": "Anopfuura maminitsi 30",
+    "filterType": "Rudzi",
+    "clearFilters": "Bvisa zvisefo",
+    "filterResults": "{count} pa{total} zvinoratidzwa",
+    "noFilterResults": "Hapana vhidhiyo inoenderana nezvisefo izvi. Edza kubvisa chimwe.",
+    "filterAdded": "Kwawedzerwa",
+    "filterAdded_60d": "Mazuva 60 apfuura",
+    "filterAdded_6m": "Mwedzi 6 yapfuura",
+    "filterAdded_12m": "Mwedzi 12 yapfuura"
   },
   "WatchHome": {
     "pageTitle": "Tarisa paJesus Film Project",

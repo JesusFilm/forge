@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Cambia lengua de l’audio",
     "home": "Pagina principal de JesusFilm",
     "closeSearch": "Sara ricerca",
-    "submitSearch": "Serca"
+    "submitSearch": "Serca",
+    "library": "Biblioteca"
   },
   "SearchOverlay": {
     "dialogLabel": "Serca e navega video",
@@ -467,6 +468,7 @@
     "sports": "Sport",
     "collections": "Colessioni",
     "subtitlesOnly": "Solo sottotitoli",
+    "backToTop": "Torna sù",
     "newlyAdded": "Zonta de recente",
     "newVideosTitle": "Video cristiani novi in {language}",
     "newestFirst": "Prima i più novì",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Video indipendenti",
     "videosFromCollection": "Video da {collection}.",
     "standaloneDescription": "Video indipendenti in sta lengua.",
-    "openCollection": "Vara colession"
+    "openCollection": "Vara colession",
+    "filters": "Filtri",
+    "filterLength": "Durata",
+    "filterLength_under5": "Manco de 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "Pì de 30 min",
+    "filterType": "Tipo",
+    "clearFilters": "Scancela i filtri",
+    "filterResults": "{count} de {total} mostrà",
+    "noFilterResults": "Nissun video coresponde a sti filtri. Prova a levarghene uno.",
+    "filterAdded": "Zontà",
+    "filterAdded_60d": "Ultimi 60 dì",
+    "filterAdded_6m": "Ultimi 6 mesi",
+    "filterAdded_12m": "Ultimi 12 mesi"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project Guardàr",

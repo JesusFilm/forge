@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Soppi ɗemngal ngal",
     "home": "JesusFilm keɓe",
     "closeSearch": "Uddu ceɗɗitugol",
-    "submitSearch": "Yiylo"
+    "submitSearch": "Yiylo",
+    "library": "Deftol"
   },
   "SearchOverlay": {
     "dialogLabel": "Yiylo e naatnu videeji",
@@ -467,6 +468,7 @@
     "sports": "Pijirɗe sport",
     "collections": "Jokkondiral",
     "subtitlesOnly": "Subtitles tan",
+    "backToTop": "Rutto dow",
     "newlyAdded": "Wujjondii ko hesi",
     "newVideosTitle": "Videeji Kiristaani hesi e {language}",
     "newestFirst": "Hesiiɗe ɗow",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Videeji kala",
     "videosFromCollection": "Videeji e {collection}.",
     "standaloneDescription": "Videeji kala e ndee ɗemngal.",
-    "openCollection": "Uddit jokkondiral"
+    "openCollection": "Uddit jokkondiral",
+    "filters": "Cuɓe",
+    "filterLength": "Njuuteendi",
+    "filterLength_under5": "Les hojomaaji 5",
+    "filterLength_5to10": "Hojomaaji 5-10",
+    "filterLength_10to30": "Hojomaaji 10-30",
+    "filterLength_over30": "Dow hojomaaji 30",
+    "filterType": "Sifaa",
+    "clearFilters": "Momtu cuɓe",
+    "filterResults": "{count} e {total} hollirama",
+    "noFilterResults": "Alaa widewo jaaɓoowo e cuɓe ɗiin. Eto momtude gooto.",
+    "filterAdded": "Ɓeydaama",
+    "filterAdded_60d": "Balɗe 60 ɓennuɗe",
+    "filterAdded_6m": "Lebbi 6 ɓennuɗi",
+    "filterAdded_12m": "Lebbi 12 ɓennuɗi"
   },
   "WatchHome": {
     "pageTitle": "Jeeɓto Jesus Film Project",

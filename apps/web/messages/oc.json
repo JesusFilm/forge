@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Cambiar la lenga de l'àudio",
     "home": "Pagina d'acuèlh JesusFilm",
     "closeSearch": "Tampar la recèrca",
-    "submitSearch": "Recercar"
+    "submitSearch": "Recercar",
+    "library": "Bibliotèca"
   },
   "SearchOverlay": {
     "dialogLabel": "Recercar e explorar de vidèos",
@@ -467,6 +468,7 @@
     "sports": "Espòrt",
     "collections": "Colleccions",
     "subtitlesOnly": "Solament sostítols",
+    "backToTop": "Tornar amont",
     "newlyAdded": "Ajustat recentament",
     "newVideosTitle": "Vidèos crestianas novèlas en {language}",
     "newestFirst": "Los mai recents primièr",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Vidèos independentas",
     "videosFromCollection": "Vidèos de {collection}.",
     "standaloneDescription": "Vidèos independentas dins aquesta lenga.",
-    "openCollection": "Dobrir la colleccion"
+    "openCollection": "Dobrir la colleccion",
+    "filters": "Filtres",
+    "filterLength": "Durada",
+    "filterLength_under5": "Mens de 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "Mai de 30 min",
+    "filterType": "Tipe",
+    "clearFilters": "Escafar los filtres",
+    "filterResults": "{count} sus {total} afichats",
+    "noFilterResults": "Cap de vidèo correspond pas a aquestes filtres. Ensajatz d'ne levar un.",
+    "filterAdded": "Ajustat",
+    "filterAdded_60d": "Darrièrs 60 jorns",
+    "filterAdded_6m": "Darrièrs 6 meses",
+    "filterAdded_12m": "Darrièrs 12 meses"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project Visionament",

@@ -180,7 +180,8 @@
     "changeAudioLanguage": "آڈیو زبان بدلیو",
     "home": "JesusFilm ہوم",
     "closeSearch": "تلاش بند کرو",
-    "submitSearch": "تلاش کرو"
+    "submitSearch": "تلاش کرو",
+    "library": "لائبریری"
   },
   "SearchOverlay": {
     "dialogLabel": "ویڈیو تلاش کرو اَور براؤز کرو",
@@ -467,6 +468,7 @@
     "sports": "کھیل",
     "collections": "مجموعہ",
     "subtitlesOnly": "صرف سب ٹائٹلز",
+    "backToTop": "بۆنہٕ پؠٹھ",
     "newlyAdded": "ہنٛز شامل",
     "newVideosTitle": "{language} منز نَو مسیحی ویڈیو",
     "newestFirst": "سبن منٛز نَو پہلے",
@@ -497,7 +499,21 @@
     "standaloneVideos": "الگ ویڈیو",
     "videosFromCollection": "{collection} سۭتۍ ویڈیو۔",
     "standaloneDescription": "اس زبان منز الگ ویڈیو۔",
-    "openCollection": "مجموعہ کھولیو"
+    "openCollection": "مجموعہ کھولیو",
+    "filters": "فلٹر",
+    "filterLength": "ڈؠنگر",
+    "filterLength_under5": "5 مِنٹھ کھۄتہ کم",
+    "filterLength_5to10": "5-10 مِنٹھ",
+    "filterLength_10to30": "10-30 مِنٹھ",
+    "filterLength_over30": "30 مِنٹھ کھۄتہ زیادٕ",
+    "filterType": "قِسم",
+    "clearFilters": "فلٹر صاف کریو",
+    "filterResults": "{total} منٛز {count} ہاوان",
+    "noFilterResults": "یِمَو فلٹرَو سٟتؠ کانٛہہ ویڈیو نہٕ چھُ میلان۔ اکھ ہٹاویو۔",
+    "filterAdded": "شٲمِل کرنہٕ آو",
+    "filterAdded_60d": "پؠٹھِم 60 دۄہ",
+    "filterAdded_6m": "پؠٹھِم 6 ریتھ",
+    "filterAdded_12m": "پؠٹھِم 12 ریتھ"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project واچ",

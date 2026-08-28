@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Pabalian so lengguahe na audio",
     "home": "Home na JesusFilm",
     "closeSearch": "Isara so saliksik",
-    "submitSearch": "Saliksiken"
+    "submitSearch": "Saliksiken",
+    "library": "Librarya"
   },
   "SearchOverlay": {
     "dialogLabel": "Saliksiken tan liboten so mga video",
@@ -467,6 +468,7 @@
     "sports": "Isports",
     "collections": "Mga Koleksyon",
     "subtitlesOnly": "Subtitle laeng",
+    "backToTop": "Ompawil ed tagey",
     "newlyAdded": "Kakabalo a naidugang",
     "newVideosTitle": "Balo a Kristiyanong video ed {language}",
     "newestFirst": "Pinakabalo anay",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Mga video a nag-iisa",
     "videosFromCollection": "Mga video gapo ed {collection}.",
     "standaloneDescription": "Mga video a nag-iisa ed sayan a lengguahe.",
-    "openCollection": "I-abri so koleksyon"
+    "openCollection": "I-abri so koleksyon",
+    "filters": "Filter",
+    "filterLength": "Kaabigan",
+    "filterLength_under5": "Kulang ed 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "Masulok ed 30 min",
+    "filterType": "Klase",
+    "clearFilters": "Ekalen so filter",
+    "filterResults": "{count} ed {total} so nipanengneng",
+    "noFilterResults": "Anggapoy video ya mitunosan ed sarayan filter. Salien mo ekalen so sakey.",
+    "filterAdded": "Niyarum",
+    "filterAdded_60d": "Sampot ya 60 agew",
+    "filterAdded_6m": "Sampot ya 6 bulan",
+    "filterAdded_12m": "Sampot ya 12 bulan"
   },
   "WatchHome": {
     "pageTitle": "Panonood ed Jesus Film Project",

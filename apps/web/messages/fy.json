@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Audio-taal feroarje",
     "home": "JesusFilm-startside",
     "closeSearch": "Sykjen slute",
-    "submitSearch": "Sykje"
+    "submitSearch": "Sykje",
+    "library": "Bibleteek"
   },
   "SearchOverlay": {
     "dialogLabel": "Fideo's sykje en blêdzje",
@@ -467,6 +468,7 @@
     "sports": "Sport",
     "collections": "Kolleksjes",
     "subtitlesOnly": "Allinnich ûndertiteling",
+    "backToTop": "Werom nei boppen",
     "newlyAdded": "Koartlyn tafoege",
     "newVideosTitle": "Nije kristlike fideo's yn {language}",
     "newestFirst": "Nijste earst",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Aparte fideo's",
     "videosFromCollection": "Fideo's út {collection}.",
     "standaloneDescription": "Aparte fideo's yn dizze taal.",
-    "openCollection": "Kolleksje iepenje"
+    "openCollection": "Kolleksje iepenje",
+    "filters": "Filterkarren",
+    "filterLength": "Lingte",
+    "filterLength_under5": "Minder as 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "Mear as 30 min",
+    "filterType": "Soarte",
+    "clearFilters": "Filters wiskje",
+    "filterResults": "{count} fan {total} toand",
+    "noFilterResults": "Gjin fideo's passe by dizze filters. Probearje ien fuort te heljen.",
+    "filterAdded": "Tafoege",
+    "filterAdded_60d": "Lêste 60 dagen",
+    "filterAdded_6m": "Lêste 6 moannen",
+    "filterAdded_12m": "Lêste 12 moannen"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project Sjen",

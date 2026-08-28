@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Аудио кылсэ воштӥ",
     "home": "JesusFilm шоры",
     "closeSearch": "Уттонэз пыдаты",
-    "submitSearch": "Лахъин"
+    "submitSearch": "Лахъин",
+    "library": "Библиотека"
   },
   "SearchOverlay": {
     "dialogLabel": "Видеоосэз утт да кара",
@@ -467,6 +468,7 @@
     "sports": "Спорт",
     "collections": "Калекцыяос",
     "subtitlesOnly": "Тикъе субтитръёс",
+    "backToTop": "Ялун зana",
     "newlyAdded": "Выль ӵемытэм",
     "newVideosTitle": "{language} кылын выль христиан видеоос",
     "newestFirst": "Выльдыз бӧрсьынан",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Тӥндэн видеоос",
     "videosFromCollection": "{collection} кытчысь видеоос.",
     "standaloneDescription": "Тазі кылын тӥндэн видеоос.",
-    "openCollection": "Коллекцияны вуо"
+    "openCollection": "Коллекцияны вуо",
+    "filters": "Ккаккан бансса",
+    "filterLength": "Ттуршуку",
+    "filterLength_under5": "5 минутрая чансса",
+    "filterLength_5to10": "5-10 минут",
+    "filterLength_10to30": "10-30 минут",
+    "filterLength_over30": "30 минутрая гьарта",
+    "filterType": "Жура",
+    "clearFilters": "Ккаккан бансса марцӏ бан",
+    "filterResults": "{total}-рая {count} ккаккан бунни",
+    "noFilterResults": "Ва ккаккан бансса видео дакъар. Ца дуккан бува.",
+    "filterAdded": "Хъирив бувну",
+    "filterAdded_60d": "Ахъирисса 60 кьини",
+    "filterAdded_6m": "Ахъирисса 6 барз",
+    "filterAdded_12m": "Ахъирисса 12 барз"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project — кара",

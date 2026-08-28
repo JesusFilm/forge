@@ -180,7 +180,8 @@
     "changeAudioLanguage": "ប្ដូរភាសាសំឡេង",
     "home": "ទំព័រដើម JesusFilm",
     "closeSearch": "បិទការស្វែងរក",
-    "submitSearch": "ស្វែងរក"
+    "submitSearch": "ស្វែងរក",
+    "library": "បណ្ណាល័យ"
   },
   "SearchOverlay": {
     "dialogLabel": "ស្វែងរក និងរុករកវីដេអូ",
@@ -467,6 +468,7 @@
     "sports": "កីឡា",
     "collections": "កម្រង",
     "subtitlesOnly": "មានតែចំណងជើងរង",
+    "backToTop": "ត្រឡប់ទៅលើ",
     "newlyAdded": "បានបន្ថែមថ្មីៗ",
     "newVideosTitle": "វីដេអូគ្រីស្ទានថ្មីជា {language}",
     "newestFirst": "ថ្មីបំផុតមុន",
@@ -497,7 +499,21 @@
     "standaloneVideos": "វីដេអូឯករាជ្យ",
     "videosFromCollection": "វីដេអូពី {collection}។",
     "standaloneDescription": "វីដេអូឯករាជ្យក្នុងភាសានេះ។",
-    "openCollection": "បើកកម្រង"
+    "openCollection": "បើកកម្រង",
+    "filters": "តម្រង",
+    "filterLength": "រយៈពេល",
+    "filterLength_under5": "តិចជាង ៥ នាទី",
+    "filterLength_5to10": "៥-១០ នាទី",
+    "filterLength_10to30": "១០-៣០ នាទី",
+    "filterLength_over30": "លើស ៣០ នាទី",
+    "filterType": "ប្រភេទ",
+    "clearFilters": "សម្អាតតម្រង",
+    "filterResults": "បង្ហាញ {count} ក្នុង {total}",
+    "noFilterResults": "គ្មានវីដេអូត្រូវនឹងតម្រងទាំងនេះទេ។ សូមព្យាយាមដកមួយចេញ។",
+    "filterAdded": "បានបញ្ចូល",
+    "filterAdded_60d": "៦០ ថ្ងៃចុងក្រោយ",
+    "filterAdded_6m": "៦ ខែចុងក្រោយ",
+    "filterAdded_12m": "១២ ខែចុងក្រោយ"
   },
   "WatchHome": {
     "pageTitle": "ទស្សនា Jesus Film Project",

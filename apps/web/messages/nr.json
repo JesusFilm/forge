@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Shintsha ulimi lomsindo",
     "home": "Ikhasi lasekhaya le-JesusFilm",
     "closeSearch": "Vala usesho",
-    "submitSearch": "Sesha"
+    "submitSearch": "Sesha",
+    "library": "Ilayibrari"
   },
   "SearchOverlay": {
     "dialogLabel": "Sesha futhi uphequlule amavidiyo",
@@ -467,6 +468,7 @@
     "sports": "Ezemidlalo",
     "collections": "Amaqoqo",
     "subtitlesOnly": "Izihlokwana kuphela",
+    "backToTop": "Buyela phezulu",
     "newlyAdded": "Okusanda kufakwa",
     "newVideosTitle": "Amavidiyo amasha amaKristu ngesi-{language}",
     "newestFirst": "Okusha kuqala",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Amavidiyo azimele",
     "videosFromCollection": "Amavidiyo avela ku-{collection}.",
     "standaloneDescription": "Amavidiyo azimele ngalolu limi.",
-    "openCollection": "Vula iqoqo"
+    "openCollection": "Vula iqoqo",
+    "filters": "Iinhlungi",
+    "filterLength": "Ubude",
+    "filterLength_under5": "Ngaphasi kwemizuzu emi-5",
+    "filterLength_5to10": "Imizuzu emi-5-10",
+    "filterLength_10to30": "Imizuzu eli-10-30",
+    "filterLength_over30": "Ngaphezu kwemizuzu engama-30",
+    "filterType": "Uhlobo",
+    "clearFilters": "Sula iinhlungi",
+    "filterResults": "{count} kwe-{total} ekutjengiswako",
+    "noFilterResults": "Akunamavidiyo ahambisana neenhlungi lezi. Zama ukususa esinye.",
+    "filterAdded": "Kwengezwe",
+    "filterAdded_60d": "Amalanga angama-60 adluleko",
+    "filterAdded_6m": "Iinyanga eziyisi-6 ezidluleko",
+    "filterAdded_12m": "Iinyanga eziyi-12 ezidluleko"
   },
   "WatchHome": {
     "pageTitle": "Ukubuka kwe-Jesus Film Project",

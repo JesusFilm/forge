@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Vaihâta äänen kiel",
     "home": "JesusFilm-etusivu",
     "closeSearch": "Peitt haku",
-    "submitSearch": "Etsi"
+    "submitSearch": "Etsi",
+    "library": "Ǩiiržrââʹjj"
   },
   "SearchOverlay": {
     "dialogLabel": "Etsi ja selaa videoid",
@@ -467,6 +468,7 @@
     "sports": "Urheilu",
     "collections": "Kokoelmat",
     "subtitlesOnly": "Vain tekstitykõk",
+    "backToTop": "Maacc pââʹjjel",
     "newlyAdded": "Uusid lisätty",
     "newVideosTitle": "Uusit kristtillâš videoid kielessä {language}",
     "newestFirst": "Uusimmat ensin",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Itsenäiset videot",
     "videosFromCollection": "Videot kokoelmasta {collection}.",
     "standaloneDescription": "Itsenäiset videot tällä kielellä.",
-    "openCollection": "Lääʹdd kokoelma"
+    "openCollection": "Lääʹdd kokoelma",
+    "filters": "Sillâ",
+    "filterLength": "Kookkadvuõtt",
+    "filterLength_under5": "Occanj ko 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "Jäänab ko 30 min",
+    "filterType": "Sorttâ",
+    "clearFilters": "Ciõlkkâd sillâ",
+    "filterResults": "Čuäʹjtet {count} / {total}",
+    "noFilterResults": "Ni õhtt video ij šiõtt tän sillid. Ǩiõčč väʹldded õõut jåura.",
+    "filterAdded": "Lââʹzztum",
+    "filterAdded_60d": "Mââimõs 60 peeiʹv",
+    "filterAdded_6m": "Mââimõs 6 mannu",
+    "filterAdded_12m": "Mââimõs 12 mannu"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project -katselu",

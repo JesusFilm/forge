@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Kangae te i-ki n te reo",
     "home": "Moan iteran JesusFilm",
     "closeSearch": "Taiaki te kimotaki",
-    "submitSearch": "Kimotaki"
+    "submitSearch": "Kimotaki",
+    "library": "Auti n boki"
   },
   "SearchOverlay": {
     "dialogLabel": "Kimotaki ao browse n te videos",
@@ -467,6 +468,7 @@
     "sports": "Takakaro",
     "collections": "Collections ni video",
     "subtitlesOnly": "Subtitles nake",
+    "backToTop": "Okiri rikaaki",
     "newlyAdded": "Iou ni kabaneaki",
     "newVideosTitle": "Christian videos iou n {language}",
     "newestFirst": "Iou maira n te maira",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Videos ni matu",
     "videosFromCollection": "Videos mai {collection}.",
     "standaloneDescription": "Videos ni matu n te i-ki aei.",
-    "openCollection": "Buka te collection"
+    "openCollection": "Buka te collection",
+    "filters": "Bwaintangira",
+    "filterLength": "Abwabwaki",
+    "filterLength_under5": "Kai mangori nakon 5 miniti",
+    "filterLength_5to10": "5-10 miniti",
+    "filterLength_10to30": "10-30 miniti",
+    "filterLength_over30": "Bati riki nakon 30 miniti",
+    "filterType": "Aekaki",
+    "clearFilters": "Kaaki bwaintangira",
+    "filterResults": "E kaotaki {count} mai buakon {total}",
+    "noFilterResults": "Akea te taamnei ae boraoi ma bwaintangira aikai. Kataia n anaa temanna.",
+    "filterAdded": "E kanakoaki",
+    "filterAdded_60d": "Bong 60 aika bwaka",
+    "filterAdded_6m": "Namwakaina 6 aika bwaka",
+    "filterAdded_12m": "Namwakaina 12 aika bwaka"
   },
   "WatchHome": {
     "pageTitle": "Mataku n Jesus Film Project",

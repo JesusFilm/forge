@@ -180,7 +180,8 @@
     "changeAudioLanguage": "অডিঅ’ ভাষা সলনি কৰক",
     "home": "JesusFilm হোম",
     "closeSearch": "সন্ধান বন্ধ কৰক",
-    "submitSearch": "সন্ধান কৰক"
+    "submitSearch": "সন্ধান কৰক",
+    "library": "পুথিভঁৰাল"
   },
   "SearchOverlay": {
     "dialogLabel": "ভিডিঅ’ সন্ধান আৰু ব্ৰাউজ কৰক",
@@ -467,6 +468,7 @@
     "sports": "ক্ৰীড়া",
     "collections": "সংকলনসমূহ",
     "subtitlesOnly": "কেৱল চাবটাইটেল",
+    "backToTop": "ওপৰলৈ যাওক",
     "newlyAdded": "নতুনকৈ যোগ কৰা",
     "newVideosTitle": "{language} ভাষাত নতুন খ্ৰীষ্টীয় ভিডিঅ’",
     "newestFirst": "সৰ্বাধিক নতুন প্ৰথমে",
@@ -497,7 +499,21 @@
     "standaloneVideos": "স্বতন্ত্ৰ ভিডিঅ’",
     "videosFromCollection": "{collection}ৰ ভিডিঅ’সমূহ।",
     "standaloneDescription": "এই ভাষাত স্বতন্ত্ৰ ভিডিঅ’সমূহ।",
-    "openCollection": "সংকলন খোলক"
+    "openCollection": "সংকলন খোলক",
+    "filters": "ফিল্টাৰ",
+    "filterLength": "দীঘলতা",
+    "filterLength_under5": "৫ মিনিটৰ কম",
+    "filterLength_5to10": "৫-১০ মিনিট",
+    "filterLength_10to30": "১০-৩০ মিনিট",
+    "filterLength_over30": "৩০ মিনিটৰ অধিক",
+    "filterType": "ধৰণ",
+    "clearFilters": "ফিল্টাৰ মচক",
+    "filterResults": "{total} ৰ {count} দেখুৱাইছে",
+    "noFilterResults": "এই ফিল্টাৰবোৰৰ সৈতে কোনো ভিডিঅ' মিলা নাই। এটা আঁতৰাই চাওক।",
+    "filterAdded": "যোগ কৰা হৈছে",
+    "filterAdded_60d": "শেষৰ ৬০ দিন",
+    "filterAdded_6m": "শেষৰ ৬ মাহ",
+    "filterAdded_12m": "শেষৰ ১২ মাহ"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project ৱাচ",

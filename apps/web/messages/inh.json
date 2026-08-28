@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Аудио мотт хулашха",
     "home": "JesusFilm хана",
     "closeSearch": "Къахьа хьаяккха",
-    "submitSearch": "Къахьа"
+    "submitSearch": "Къахьа",
+    "library": "Библиотека"
   },
   "SearchOverlay": {
     "dialogLabel": "Видео къахьа я browse хийла",
@@ -467,6 +468,7 @@
     "sports": "Спорт",
     "collections": "Коллекцияш",
     "subtitlesOnly": "Субтитраш гана",
+    "backToTop": "Лакхе юха",
     "newlyAdded": "Къахьа т1ехьа",
     "newVideosTitle": "{language} т1а къахьа христианский видеол",
     "newestFirst": "Къахьа хьалха",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Цхьаарий видео",
     "videosFromCollection": "{collection} т1а видеол.",
     "standaloneDescription": "Цу мотт т1а цхьаарий видео.",
-    "openCollection": "Коллекц арадалийта"
+    "openCollection": "Коллекц арадалийта",
+    "filters": "Литташ",
+    "filterLength": "Дехал",
+    "filterLength_under5": "5 минотага к1езига",
+    "filterLength_5to10": "5-10 минот",
+    "filterLength_10to30": "10-30 минот",
+    "filterLength_over30": "30 минотага дукха",
+    "filterType": "Тайпа",
+    "clearFilters": "Литташ цIанде",
+    "filterResults": "{total} юкъера {count} хьахьокха",
+    "noFilterResults": "Цу литташта тарлуш видео дац. Ца1 д1аяккха хьовза.",
+    "filterAdded": "Т1атохадаь",
+    "filterAdded_60d": "Т1еххьара 60 ди",
+    "filterAdded_6m": "Т1еххьара 6 бутт",
+    "filterAdded_12m": "Т1еххьара 12 бутт"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project: хьажа",

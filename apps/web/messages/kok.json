@@ -180,7 +180,8 @@
     "changeAudioLanguage": "ऑडिओ भास बदला",
     "home": "JesusFilm मुखपान",
     "closeSearch": "शोध बंद करात",
-    "submitSearch": "सोदात"
+    "submitSearch": "सोदात",
+    "library": "ग्रंथालय"
   },
   "SearchOverlay": {
     "dialogLabel": "व्हिडिओ सोदात आनी ब्राऊझ करात",
@@ -467,6 +468,7 @@
     "sports": "क्रीडा",
     "collections": "संग्रह",
     "subtitlesOnly": "फकत उपशीर्षकां",
+    "backToTop": "वयर परत",
     "newlyAdded": "नव्येन जोडिल्लो",
     "newVideosTitle": "{language} त नवे ख्रिस्ती व्हिडिओ",
     "newestFirst": "सर्वांत नवें प्रथम",
@@ -497,7 +499,21 @@
     "standaloneVideos": "स्वतंत्र व्हिडिओ",
     "videosFromCollection": "{collection} तले व्हिडिओ.",
     "standaloneDescription": "ह्या भाशेंतले स्वतंत्र व्हिडिओ.",
-    "openCollection": "संग्रह उगडात"
+    "openCollection": "संग्रह उगडात",
+    "filters": "चाळणी",
+    "filterLength": "लांबाय",
+    "filterLength_under5": "5 मिनटां परस उणे",
+    "filterLength_5to10": "5-10 मिनटां",
+    "filterLength_10to30": "10-30 मिनटां",
+    "filterLength_over30": "30 मिनटां परस चड",
+    "filterType": "प्रकार",
+    "clearFilters": "चाळणी काडात",
+    "filterResults": "{total} पैकी {count} दाखयल्यां",
+    "noFilterResults": "ह्या चाळणींक जुळपी खंयचोच व्हिडिओ ना. एक काडून पळयात.",
+    "filterAdded": "जोडलां",
+    "filterAdded_60d": "निमाणे 60 दीस",
+    "filterAdded_6m": "निमाणे 6 म्हयने",
+    "filterAdded_12m": "निमाणे 12 म्हयने"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project पळोवपाचें पान",

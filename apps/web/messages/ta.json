@@ -180,7 +180,8 @@
     "changeAudioLanguage": "ஒலி மொழியை மாற்றவும்",
     "home": "JesusFilm முகப்பு",
     "closeSearch": "தேடலை மூடு",
-    "submitSearch": "தேடவும்"
+    "submitSearch": "தேடவும்",
+    "library": "நூலகம்"
   },
   "SearchOverlay": {
     "dialogLabel": "வீடியோக்களைத் தேடவும் மற்றும் உலாவவும்",
@@ -467,6 +468,7 @@
     "sports": "விளையாட்டு",
     "collections": "தொகுப்புகள்",
     "subtitlesOnly": "வசனங்கள் மட்டும்",
+    "backToTop": "மேலே திரும்பு",
     "newlyAdded": "புதிதாக சேர்க்கப்பட்டது",
     "newVideosTitle": "{language}-இல் புதிய கிறிஸ்தவ வீடியோக்கள்",
     "newestFirst": "முதலில் சமீபத்தியது",
@@ -497,7 +499,21 @@
     "standaloneVideos": "தனிப்பட்ட வீடியோக்கள்",
     "videosFromCollection": "{collection}-இலிருந்து வீடியோக்கள்.",
     "standaloneDescription": "இந்த மொழியில் உள்ள தனிப்பட்ட வீடியோக்கள்.",
-    "openCollection": "தொகுப்பைத் திறக்கவும்"
+    "openCollection": "தொகுப்பைத் திறக்கவும்",
+    "filters": "வடிகட்டிகள்",
+    "filterLength": "நீளம்",
+    "filterLength_under5": "5 நிமிடத்திற்கும் குறைவு",
+    "filterLength_5to10": "5-10 நிமிடம்",
+    "filterLength_10to30": "10-30 நிமிடம்",
+    "filterLength_over30": "30 நிமிடத்திற்கும் மேல்",
+    "filterType": "வகை",
+    "clearFilters": "வடிகட்டிகளை அழி",
+    "filterResults": "{total} இல் {count} காட்டப்படுகிறது",
+    "noFilterResults": "இந்த வடிகட்டிகளுக்கு எந்த வீடியோவும் பொருந்தவில்லை. ஒன்றை நீக்கிப் பாருங்கள்.",
+    "filterAdded": "சேர்க்கப்பட்டது",
+    "filterAdded_60d": "கடந்த 60 நாட்கள்",
+    "filterAdded_6m": "கடந்த 6 மாதங்கள்",
+    "filterAdded_12m": "கடந்த 12 மாதங்கள்"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project பார்வை",

@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Snifel tutlayt n uslaw",
     "home": "Tazwara n JesusFilm",
     "closeSearch": "Mdel anadi",
-    "submitSearch": "Nadi"
+    "submitSearch": "Nadi",
+    "library": "Tasdlist"
   },
   "SearchOverlay": {
     "dialogLabel": "Nadi akked brows tividyo",
@@ -467,6 +468,7 @@
     "sports": "Idablan",
     "collections": "Igrumen",
     "subtitlesOnly": "Maɣar ijerriden kan",
+    "backToTop": "Uɣul s ufella",
     "newlyAdded": "Yettwakkes tura",
     "newVideosTitle": "Tividyo n tazrant n Taqbaylit deg {language}",
     "newestFirst": "Tebḍiḍ tikkelt tamezwarut",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Tividyo yellan s yiman-nsen",
     "videosFromCollection": "Tividyo seg {collection}.",
     "standaloneDescription": "Tividyo yellan s yiman-nsen deg tutlayt-agi.",
-    "openCollection": "Ldi amas"
+    "openCollection": "Ldi amas",
+    "filters": "Isaffaɣen",
+    "filterLength": "Tazegrart",
+    "filterLength_under5": "Drus n 5 tusdidin",
+    "filterLength_5to10": "5-10 tusdidin",
+    "filterLength_10to30": "10-30 tusdidin",
+    "filterLength_over30": "Ugar n 30 tusdidin",
+    "filterType": "Anaw",
+    "clearFilters": "Sfeḍ isaffaɣen",
+    "filterResults": "{count} seg {total} yettwasken",
+    "noFilterResults": "Ulac vidyu yemsadan d isaffaɣen-a. Ɛreḍ ad tekkseḍ yan.",
+    "filterAdded": "Yettwarnu",
+    "filterAdded_60d": "60 wussan ineggura",
+    "filterAdded_6m": "6 wayyuren ineggura",
+    "filterAdded_12m": "12 wayyuren ineggura"
   },
   "WatchHome": {
     "pageTitle": "Watch n Jesus Film Project",

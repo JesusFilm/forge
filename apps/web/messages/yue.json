@@ -180,7 +180,8 @@
     "changeAudioLanguage": "更改音訊語言",
     "home": "JesusFilm 首頁",
     "closeSearch": "關閉搜尋",
-    "submitSearch": "搜尋"
+    "submitSearch": "搜尋",
+    "library": "影片庫"
   },
   "SearchOverlay": {
     "dialogLabel": "搜尋及瀏覽影片",
@@ -467,6 +468,7 @@
     "sports": "運動",
     "collections": "合集",
     "subtitlesOnly": "只得字幕",
+    "backToTop": "返回頂部",
     "newlyAdded": "新加入",
     "newVideosTitle": "{language} 新基督教影片",
     "newestFirst": "最新優先",
@@ -497,7 +499,21 @@
     "standaloneVideos": "獨立影片",
     "videosFromCollection": "來自 {collection} 嘅影片。",
     "standaloneDescription": "本語言嘅獨立影片。",
-    "openCollection": "開啟合集"
+    "openCollection": "開啟合集",
+    "filters": "篩選",
+    "filterLength": "長度",
+    "filterLength_under5": "5 分鐘以內",
+    "filterLength_5to10": "5-10 分鐘",
+    "filterLength_10to30": "10-30 分鐘",
+    "filterLength_over30": "30 分鐘以上",
+    "filterType": "類型",
+    "clearFilters": "清除篩選",
+    "filterResults": "已顯示 {count} / {total}",
+    "noFilterResults": "冇影片符合呢啲篩選條件。試下移除一項。",
+    "filterAdded": "加入時間",
+    "filterAdded_60d": "最近 60 日",
+    "filterAdded_6m": "最近 6 個月",
+    "filterAdded_12m": "最近 12 個月"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project 收看頁面",

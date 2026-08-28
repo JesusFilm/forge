@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Bobongola monoko ya mongongo",
     "home": "Ndako ya JesusFilm",
     "closeSearch": "Kanga boluki",
-    "submitSearch": "Sosa"
+    "submitSearch": "Sosa",
+    "library": "Ebombelo ya mikanda"
   },
   "SearchOverlay": {
     "dialogLabel": "Sosa mpe tala ba video",
@@ -467,6 +468,7 @@
     "sports": "Masano",
     "collections": "Ba collections",
     "subtitlesOnly": "Kaka ba sous-titres",
+    "backToTop": "Zonga likolo",
     "newlyAdded": "Ebakisami sika",
     "newVideosTitle": "Ba video ya boklisto ya sika na {language}",
     "newestFirst": "Ya sika liboso",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Ba video oyo etɛlɛmaka yango moko",
     "videosFromCollection": "Ba video oyo euti na {collection}.",
     "standaloneDescription": "Ba video oyo etɛlɛmaka yango moko na monoko oyo.",
-    "openCollection": "Fungola collection"
+    "openCollection": "Fungola collection",
+    "filters": "Batalisi",
+    "filterLength": "Bolai",
+    "filterLength_under5": "Na nse ya miniti 5",
+    "filterLength_5to10": "Miniti 5-10",
+    "filterLength_10to30": "Miniti 10-30",
+    "filterLength_over30": "Koleka miniti 30",
+    "filterType": "Lolenge",
+    "clearFilters": "Longola batalisi",
+    "filterResults": "{count} na {total} elakisami",
+    "noFilterResults": "Vidéo moko te eyokani na batalisi oyo. Meka kolongola moko.",
+    "filterAdded": "Ebakisami",
+    "filterAdded_60d": "Mikolo 60 eleki",
+    "filterAdded_6m": "Basanza 6 eleki",
+    "filterAdded_12m": "Basanza 12 eleki"
   },
   "WatchHome": {
     "pageTitle": "Kotala ya Jesus Film Project",

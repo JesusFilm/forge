@@ -155,6 +155,37 @@ describe("WatchHomeCategoryRail", () => {
     ).toBe("/spanish-latin-american.html/videos")
   })
 
+  it("leads the CTA with the library glyph at the larger size", () => {
+    const cta = render("english").querySelector(
+      '[data-testid="watch-home-category-see-all"]',
+    )
+    const icons = Array.from(cta?.querySelectorAll("svg") ?? [])
+
+    // Library glyph first, chevron last.
+    expect(icons).toHaveLength(2)
+    expect(cta?.firstElementChild).toBe(icons[0])
+    // Must be the SAME glyph the floating header uses for the video library —
+    // both controls open the language video index. They share
+    // `WatchLibraryIcon`, so this pins the rendered result of that sharing.
+    // lucide stamps its own name into the class list.
+    expect(icons[0]?.getAttribute("class")).toContain("lucide-list-video")
+    expect(icons.every((icon) => icon.classList.contains("size-5"))).toBe(true)
+    expect(cta?.textContent?.trim()).toBe(enMessages.WatchHomeCategories.seeAll)
+
+    // Larger than the 12px / 32px-tall pill it replaced. Browser-measured
+    // 2026-08-27: 32px -> 48px tall, 12px -> 14px text at 1280px.
+    expect(cta?.className).toContain("text-sm")
+    expect(cta?.className).not.toContain("text-xs")
+    expect(cta?.className).toContain("px-5")
+    expect(cta?.className).toContain("py-3")
+    expect(cta?.className).toContain("md:px-6")
+    expect(cta?.className).toContain("md:py-3.5")
+    // Wraps rather than overflowing on a very narrow viewport; `max-w-full`
+    // caps it and `text-center` keeps a wrapped label readable.
+    expect(cta?.className).toContain("max-w-full")
+    expect(cta?.className).toContain("text-center")
+  })
+
   it("stacks the header copy and CTA on mobile without changing the desktop arrangement", () => {
     const container = render("english")
     const heading = container.querySelector("#watch-home-category-rail-title")

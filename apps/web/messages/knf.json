@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Audio language kɛ",
     "home": "JesusFilm sa",
     "closeSearch": "Search mɛ",
-    "submitSearch": "Search kɛ"
+    "submitSearch": "Search kɛ",
+    "library": "Kaz liv"
   },
   "SearchOverlay": {
     "dialogLabel": "Video search o browse kɛ",
@@ -467,6 +468,7 @@
     "sports": "Sports kɛŋ",
     "collections": "Collections kɛŋ",
     "subtitlesOnly": "Subtitles taŋ",
+    "backToTop": "Tounen anlè",
     "newlyAdded": "A add new",
     "newVideosTitle": "Christian videos dɔɔ in {language}",
     "newestFirst": "New first",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Standalone videos kɛŋ",
     "videosFromCollection": "Videos {collection} te.",
     "standaloneDescription": "Language nin te standalone videos.",
-    "openCollection": "Collection fɛmbu"
+    "openCollection": "Collection fɛmbu",
+    "filters": "Filt",
+    "filterLength": "Longè",
+    "filterLength_under5": "Mwens ki 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "Plis ki 30 min",
+    "filterType": "Kalité",
+    "clearFilters": "Efasé filt",
+    "filterResults": "{count} asou {total} montré",
+    "noFilterResults": "Pa ni videyo ki kòresponn ba filt sala. Éséyé rétiré yonn.",
+    "filterAdded": "Ajouté",
+    "filterAdded_60d": "60 dènyé jou",
+    "filterAdded_6m": "6 dènyé mwa",
+    "filterAdded_12m": "12 dènyé mwa"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project Watch sa",

@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Tukar bahasa audio",
     "home": "Laman utama JesusFilm",
     "closeSearch": "Tutup carian",
-    "submitSearch": "Cari"
+    "submitSearch": "Cari",
+    "library": "Pustaka"
   },
   "SearchOverlay": {
     "dialogLabel": "Cari dan teroka video",
@@ -283,6 +284,7 @@
     "sports": "Sukan",
     "collections": "Koleksi",
     "subtitlesOnly": "Sari kata sahaja",
+    "backToTop": "Kembali ke atas",
     "newlyAdded": "Baru ditambah",
     "newVideosTitle": "Video Kristian baharu dalam {language}",
     "newestFirst": "Terbaharu dahulu",
@@ -313,7 +315,21 @@
     "standaloneVideos": "Video kendiri",
     "videosFromCollection": "Video daripada {collection}.",
     "standaloneDescription": "Video kendiri dalam bahasa ini.",
-    "openCollection": "Buka koleksi"
+    "openCollection": "Buka koleksi",
+    "filters": "Penapis",
+    "filterLength": "Tempoh",
+    "filterLength_under5": "Kurang 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "Lebih 30 min",
+    "filterType": "Jenis",
+    "clearFilters": "Kosongkan penapis",
+    "filterResults": "{count} daripada {total} ditunjukkan",
+    "noFilterResults": "Tiada video sepadan dengan penapis ini. Cuba buang satu.",
+    "filterAdded": "Ditambah",
+    "filterAdded_60d": "60 hari lepas",
+    "filterAdded_6m": "6 bulan lepas",
+    "filterAdded_12m": "12 bulan lepas"
   },
   "WatchHome": {
     "pageTitle": "Tontonan Jesus Film Project",

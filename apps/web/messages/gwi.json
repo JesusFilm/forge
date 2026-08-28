@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Audio gwich’in tr’ahłii",
     "home": "JesusFilm ch’àn gwik’it",
     "closeSearch": "Search nąįį",
-    "submitSearch": "Nah’in"
+    "submitSearch": "Nah’in",
+    "library": "Gwiindaii ko"
   },
   "SearchOverlay": {
     "dialogLabel": "Videos search k’eejìi nah’in",
@@ -467,6 +468,7 @@
     "sports": "Sports gwandak",
     "collections": "Video collections",
     "subtitlesOnly": "Subtitles-zheh",
+    "backToTop": "Nakhwaa nihdeetak",
     "newlyAdded": "Łyaa gwiłtsaii",
     "newVideosTitle": "{language}: Christian videos łyaa",
     "newestFirst": "Łyaa t’ehk’it",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Collection kwaa videos",
     "videosFromCollection": "{collection} k’it videos.",
     "standaloneDescription": "Jii gwich’in k’it standalone videos.",
-    "openCollection": "Collection nah’in"
+    "openCollection": "Collection nah’in",
+    "filters": "Diikʼinjik",
+    "filterLength": "Nitsii",
+    "filterLength_under5": "5 minit tsʼąʼ nihkʼit",
+    "filterLength_5to10": "5-10 minit",
+    "filterLength_10to30": "10-30 minit",
+    "filterLength_over30": "30 minit tsʼąʼ nakhwaa",
+    "filterType": "Gwitrʼit",
+    "clearFilters": "Diikʼinjik nichʼit",
+    "filterResults": "{total} tsʼąʼ {count} gwitrʼit",
+    "noFilterResults": "Video kwaa diikʼinjik jiʼ gwikʼit. Chan nichʼit.",
+    "filterAdded": "Nikhwaa",
+    "filterAdded_60d": "60 dzaa gwikʼit",
+    "filterAdded_6m": "6 sahzhrii gwikʼit",
+    "filterAdded_12m": "12 sahzhrii gwikʼit"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project k’it nah’in",

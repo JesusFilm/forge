@@ -180,7 +180,8 @@
     "changeAudioLanguage": "د غږ ژبه بدله کړئ",
     "home": "د JesusFilm کورپاڼه",
     "closeSearch": "لټون وتړئ",
-    "submitSearch": "ولټوئ"
+    "submitSearch": "ولټوئ",
+    "library": "کتابتون"
   },
   "SearchOverlay": {
     "dialogLabel": "ویډیوګانې ولټوئ او وپلټئ",
@@ -467,6 +468,7 @@
     "sports": "ورزش",
     "collections": "ټولګې",
     "subtitlesOnly": "یوازې سرلیکونه",
+    "backToTop": "بېرته پورته",
     "newlyAdded": "تازه زیات شوي",
     "newVideosTitle": "په {language} کې نوې مسيحي ویډیوګانې",
     "newestFirst": "تر ټولو نوي لومړی",
@@ -497,7 +499,21 @@
     "standaloneVideos": "جلا ویډیوګانې",
     "videosFromCollection": "له {collection} څخه ویډیوګانې.",
     "standaloneDescription": "په دې ژبه کې جلا ویډیوګانې.",
-    "openCollection": "ټولګه پرانیزئ"
+    "openCollection": "ټولګه پرانیزئ",
+    "filters": "چاڼګرې",
+    "filterLength": "اوږدوالی",
+    "filterLength_under5": "له 5 دقیقو کم",
+    "filterLength_5to10": "5-10 دقیقې",
+    "filterLength_10to30": "10-30 دقیقې",
+    "filterLength_over30": "له 30 دقیقو زیات",
+    "filterType": "ډول",
+    "clearFilters": "چاڼګرې پاکې کړه",
+    "filterResults": "{count} له {total} څخه ښودل شو",
+    "noFilterResults": "هېڅ ویډیو دې چاڼګرو سره نه خوري. یوه یې لرې کړه.",
+    "filterAdded": "اضافه شو",
+    "filterAdded_60d": "تېر 60 ورځې",
+    "filterAdded_6m": "تېر 6 میاشتې",
+    "filterAdded_12m": "تېر 12 میاشتې"
   },
   "WatchHome": {
     "pageTitle": "د Jesus Film Project Watch",

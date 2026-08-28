@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Hoʻololi i ka ʻōlelo leo",
     "home": "ʻAoʻao home o JesusFilm",
     "closeSearch": "Pani i ka huli",
-    "submitSearch": "Huli"
+    "submitSearch": "Huli",
+    "library": "Waihona"
   },
   "SearchOverlay": {
     "dialogLabel": "Huli a nānā i nā wikiō",
@@ -467,6 +468,7 @@
     "sports": "Haʻuki",
     "collections": "Nā Hōʻiliʻili",
     "subtitlesOnly": "Nā wehewehe ma lalo wale nō",
+    "backToTop": "Hoʻi i luna",
     "newlyAdded": "Hoʻohui hou ʻia",
     "newVideosTitle": "Nā wikiō Kalikiano hou ma {language}",
     "newestFirst": "Nā mea hou ma mua",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Nā wikiō kūʻokoʻa",
     "videosFromCollection": "Nā wikiō mai {collection}.",
     "standaloneDescription": "Nā wikiō kūʻokoʻa ma kēia ʻōlelo.",
-    "openCollection": "Wehe i ka hōʻiliʻili"
+    "openCollection": "Wehe i ka hōʻiliʻili",
+    "filters": "Nā kānana",
+    "filterLength": "Lōʻihi",
+    "filterLength_under5": "Ma lalo o 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "Ma luna o 30 min",
+    "filterType": "ʻAno",
+    "clearFilters": "Hoʻomaʻemaʻe i nā kānana",
+    "filterResults": "Hōʻike ʻia {count} o {total}",
+    "noFilterResults": "ʻAʻohe wikiō e kūlike me kēia mau kānana. E hoʻāʻo e wehe i kekahi.",
+    "filterAdded": "Hoʻohui ʻia",
+    "filterAdded_60d": "Nā lā 60 i hala",
+    "filterAdded_6m": "Nā mahina 6 i hala",
+    "filterAdded_12m": "Nā mahina 12 i hala"
   },
   "WatchHome": {
     "pageTitle": "Nānā ʻo Jesus Film Project",

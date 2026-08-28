@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Senisim tokples bilong audio",
     "home": "JesusFilm hom",
     "closeSearch": "Pasim painim",
-    "submitSearch": "Tahua"
+    "submitSearch": "Tahua",
+    "library": "Buka haus"
   },
   "SearchOverlay": {
     "dialogLabel": "Painim na brosim ol video",
@@ -467,6 +468,7 @@
     "sports": "Spos",
     "collections": "Ol koleksen",
     "subtitlesOnly": "Sutaitol tasol",
+    "backToTop": "Lou lao guba",
     "newlyAdded": "Nau tasol i go insait",
     "newVideosTitle": "Nupela Kristen video long {language}",
     "newestFirst": "Nupela pastaim",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Ol video i stap nating",
     "videosFromCollection": "Ol video long {collection}.",
     "standaloneDescription": "Ol video i stap nating long dispela tokples.",
-    "openCollection": "Opim koleksen"
+    "openCollection": "Opim koleksen",
+    "filters": "Hahekere",
+    "filterLength": "Lababa",
+    "filterLength_under5": "5 miniti latanai",
+    "filterLength_5to10": "5-10 miniti",
+    "filterLength_10to30": "10-30 miniti",
+    "filterLength_over30": "30 miniti hereva",
+    "filterType": "Bamona",
+    "clearFilters": "Hahekere kokia",
+    "filterResults": "{total} amo {count} hahedinaraia",
+    "noFilterResults": "Video ta be inai hahekere ida hegeregere lasi. Ta kokia toho.",
+    "filterAdded": "Atoa vada",
+    "filterAdded_60d": "Dina 60 idohore",
+    "filterAdded_6m": "Hua 6 idohore",
+    "filterAdded_12m": "Hua 12 idohore"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project Lukluk",

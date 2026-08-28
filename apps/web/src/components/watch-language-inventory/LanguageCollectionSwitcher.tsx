@@ -78,7 +78,10 @@ export function LanguageCollectionSwitcher({
   return (
     <div
       className={cn(
-        "w-full max-w-md rounded-2xl border border-white/10 bg-stone-950/45 p-4 text-stone-100 shadow-2xl shadow-black/25 backdrop-blur",
+        // No outer border: the combobox inside carries its own, and the two
+        // nested outlines read as a box in a box. Background, padding, and
+        // shadow still group the header row with the picker.
+        "w-full max-w-md rounded-2xl bg-stone-950/45 p-4 text-stone-100 shadow-2xl shadow-black/25 backdrop-blur",
         className,
       )}
       data-testid="language-collection-switcher"
@@ -89,14 +92,14 @@ export function LanguageCollectionSwitcher({
             <Languages className="h-4 w-4" aria-hidden />
           </span>
           <span
-            className="min-w-0 text-xs font-bold tracking-[0.18em] text-stone-300 uppercase"
+            className="min-w-0 text-xs leading-5 font-medium tracking-media-label text-stone-300 uppercase"
             {...englishAssistAttributes("labelLanguageCollection")}
           >
             {t("languageCollection")}
           </span>
         </div>
         <span
-          className="shrink-0 rounded-full border border-white/10 px-2.5 py-1 text-xs font-bold text-stone-300"
+          className="shrink-0 rounded-full border border-white/10 px-2.5 py-1 text-xs font-medium text-stone-300"
           {...englishAssistAttributes("labelItemCount")}
         >
           {t("itemCount", { count: totalItems })}

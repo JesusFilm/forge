@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Audiosprach wechsle",
     "home": "JesusFilm-Startsyte",
     "closeSearch": "Suechi schliesse",
-    "submitSearch": "Sueche"
+    "submitSearch": "Sueche",
+    "library": "Mediathek"
   },
   "SearchOverlay": {
     "dialogLabel": "Videos sueche und durstöbere",
@@ -467,6 +468,7 @@
     "sports": "Sport",
     "collections": "Sammlige",
     "subtitlesOnly": "Nur Untertitel",
+    "backToTop": "Zrugg uf",
     "newlyAdded": "Neu hizuegfüegt",
     "newVideosTitle": "Neui christlichi Videos uf {language}",
     "newestFirst": "Neuscht zerscht",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Einzelvideos",
     "videosFromCollection": "Videos us {collection}.",
     "standaloneDescription": "Einzelvideos i däre Sprach.",
-    "openCollection": "Sammlig öppne"
+    "openCollection": "Sammlig öppne",
+    "filters": "Filter",
+    "filterLength": "Längi",
+    "filterLength_under5": "Under 5 Min.",
+    "filterLength_5to10": "5-10 Min.",
+    "filterLength_10to30": "10-30 Min.",
+    "filterLength_over30": "Über 30 Min.",
+    "filterType": "Art",
+    "clearFilters": "Filter lösche",
+    "filterResults": "{count} vo {total} zeigt",
+    "noFilterResults": "Kei Video passt zu dene Filter. Probier eine z'entfärne.",
+    "filterAdded": "Zuegfüegt",
+    "filterAdded_60d": "Letschti 60 Täg",
+    "filterAdded_6m": "Letschti 6 Mönet",
+    "filterAdded_12m": "Letschti 12 Mönet"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project – Luege",

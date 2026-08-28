@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Audio language sɛ change",
     "home": "JesusFilm paj akɛ home",
     "closeSearch": "Search lɛɛ",
-    "submitSearch": "Search kɛ"
+    "submitSearch": "Search kɛ",
+    "library": "Kaŋ kayitay"
   },
   "SearchOverlay": {
     "dialogLabel": "Video mɛ search kɛ browse kɛ",
@@ -467,6 +468,7 @@
     "sports": "Sports mɛ",
     "collections": "Collection mɛ",
     "subtitlesOnly": "Subtitles lɛɛn",
+    "backToTop": "Sofukor jeegal",
     "newlyAdded": "Mɛ kɛŋ add kɛ",
     "newVideosTitle": "Video Christian mɛ kɛŋ in {language}",
     "newestFirst": "Mɛ kɛŋ nɛ kɛrɛ",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Standalone video mɛ",
     "videosFromCollection": "Video mɛ {collection} mɛ.",
     "standaloneDescription": "Standalone videos in language a.",
-    "openCollection": "Collection bɔ"
+    "openCollection": "Collection bɔ",
+    "filters": "Ñoolaay",
+    "filterLength": "Ndoolaay",
+    "filterLength_under5": "Rekam 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "Fopam 30 min",
+    "filterType": "Kaŋaam",
+    "clearFilters": "Feesal ñoolaay",
+    "filterResults": "{count} ci {total} awonaa",
+    "noFilterResults": "Amuli widewo bumos ak ñoolaay yii. Feesal kenn.",
+    "filterAdded": "Ayokkul",
+    "filterAdded_60d": "Baax 60 fanaan",
+    "filterAdded_6m": "Baax 6 weer",
+    "filterAdded_12m": "Baax 12 weer"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project Watch paj",

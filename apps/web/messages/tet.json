@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Troka lingua audiu",
     "home": "JesusFilm uma",
     "closeSearch": "Taka peskiza",
-    "submitSearch": "Buka"
+    "submitSearch": "Buka",
+    "library": "Biblioteka"
   },
   "SearchOverlay": {
     "dialogLabel": "Buka no haree vídeo sira",
@@ -467,6 +468,7 @@
     "sports": "Desportu",
     "collections": "Koleksaun sira",
     "subtitlesOnly": "Subtítulu deit",
+    "backToTop": "Fila ba leten",
     "newlyAdded": "Tama foun",
     "newVideosTitle": "Vídeo kristaun foun iha {language}",
     "newestFirst": "Foun liu uluk",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Vídeo sira independente",
     "videosFromCollection": "Vídeo sira husi {collection}.",
     "standaloneDescription": "Vídeo sira independente iha língua ida-ne'e.",
-    "openCollection": "Buka koleksaun"
+    "openCollection": "Buka koleksaun",
+    "filters": "Filtru",
+    "filterLength": "Naruk",
+    "filterLength_under5": "Menus husi minutu 5",
+    "filterLength_5to10": "Minutu 5-10",
+    "filterLength_10to30": "Minutu 10-30",
+    "filterLength_over30": "Liu minutu 30",
+    "filterType": "Tipu",
+    "clearFilters": "Hamoos filtru",
+    "filterResults": "Hatudu {count} husi {total}",
+    "noFilterResults": "Laiha vidiu ne'ebé hanesan ho filtru sira ne'e. Koko hasai ida.",
+    "filterAdded": "Aumenta ona",
+    "filterAdded_60d": "Loron 60 ikus",
+    "filterAdded_6m": "Fulan 6 ikus",
+    "filterAdded_12m": "Fulan 12 ikus"
   },
   "WatchHome": {
     "pageTitle": "Haree iha Jesus Film Project",

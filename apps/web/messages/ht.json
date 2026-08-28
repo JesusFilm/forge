@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Chanje lang odyo a",
     "home": "Akèy JesusFilm",
     "closeSearch": "Fèmen rechèch la",
-    "submitSearch": "Chèche"
+    "submitSearch": "Chèche",
+    "library": "Bibliyotèk"
   },
   "SearchOverlay": {
     "dialogLabel": "Chèche epi browse videyo yo",
@@ -467,6 +468,7 @@
     "sports": "Espò",
     "collections": "Koleksyon",
     "subtitlesOnly": "Sèlman sous-titre",
+    "backToTop": "Retounen anwo",
     "newlyAdded": "Fèk ajoute",
     "newVideosTitle": "Nouvo videyo kretyen an {language}",
     "newestFirst": "Pi resan an premye",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Videyo endepandan",
     "videosFromCollection": "Videyo ki soti nan {collection}.",
     "standaloneDescription": "Videyo endepandan nan lang sa a.",
-    "openCollection": "Louvri koleksyon an"
+    "openCollection": "Louvri koleksyon an",
+    "filters": "Filtè",
+    "filterLength": "Longè",
+    "filterLength_under5": "Mwens pase 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "Plis pase 30 min",
+    "filterType": "Kalite",
+    "clearFilters": "Efase filtè yo",
+    "filterResults": "{count} sou {total} montre",
+    "noFilterResults": "Pa gen videyo ki matche ak filtè sa yo. Eseye retire youn.",
+    "filterAdded": "Ajoute",
+    "filterAdded_60d": "60 dènye jou",
+    "filterAdded_6m": "6 dènye mwa",
+    "filterAdded_12m": "12 dènye mwa"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project Gade",

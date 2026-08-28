@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Usba an yinaknan han audio",
     "home": "Home han JesusFilm",
     "closeSearch": "Sirad-i an search",
-    "submitSearch": "Pamilnga"
+    "submitSearch": "Pamilnga",
+    "library": "Librarya"
   },
   "SearchOverlay": {
     "dialogLabel": "Pamilnga ngan usisa an mga video",
@@ -467,6 +468,7 @@
     "sports": "Isports",
     "collections": "Mga koleksyon",
     "subtitlesOnly": "Mga subtitle la",
+    "backToTop": "Balik sa igbaw",
     "newlyAdded": "Bag-o nga nadugang",
     "newVideosTitle": "Bag-o nga Kristohanon nga mga video ha {language}",
     "newestFirst": "Pinakabag-o anay",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Mga video nga standalone",
     "videosFromCollection": "Mga video tikang ha {collection}.",
     "standaloneDescription": "Mga video nga standalone hini nga yinaknan.",
-    "openCollection": "Ablihi an koleksyon"
+    "openCollection": "Ablihi an koleksyon",
+    "filters": "Mga filter",
+    "filterLength": "Kahilaba",
+    "filterLength_under5": "Ubos sa 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "Labaw sa 30 min",
+    "filterType": "Klase",
+    "clearFilters": "Limpyohi an mga filter",
+    "filterResults": "{count} han {total} an ginpapakita",
+    "noFilterResults": "Waray video nga nauyon hini nga mga filter. Kuhaa an usa.",
+    "filterAdded": "Gindugang",
+    "filterAdded_60d": "Naglabay nga 60 ka adlaw",
+    "filterAdded_6m": "Naglabay nga 6 ka bulan",
+    "filterAdded_12m": "Naglabay nga 12 ka bulan"
   },
   "WatchHome": {
     "pageTitle": "Pagtan-aw ha Jesus Film Project",

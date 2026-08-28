@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Muda língua di áudio",
     "home": "Inisiu di JesusFilm",
     "closeSearch": "Fixa buska",
-    "submitSearch": "Buska"
+    "submitSearch": "Buska",
+    "library": "Kaŋ kayiti"
   },
   "SearchOverlay": {
     "dialogLabel": "Buska i navega vídeus",
@@ -467,6 +468,7 @@
     "sports": "Sportis",
     "collections": "Kolesons",
     "subtitlesOnly": "Só legendas",
+    "backToTop": "Fandiŋ jeegi",
     "newlyAdded": "Adisionadu resenti",
     "newVideosTitle": "Vídeus kriston novos na {language}",
     "newestFirst": "Mas novu primeru",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Vídeus independente",
     "videosFromCollection": "Vídeus di {collection}.",
     "standaloneDescription": "Vídeus independente na es língua.",
-    "openCollection": "Abri koleson"
+    "openCollection": "Abri koleson",
+    "filters": "Ñoolaani",
+    "filterLength": "Ndooli",
+    "filterLength_under5": "Reki 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "Fopi 30 min",
+    "filterType": "Kaŋami",
+    "clearFilters": "Feesi ñoolaani",
+    "filterResults": "{count} ca {total} a woni",
+    "noFilterResults": "Amul widewo ba mos ak ñoolaani yii. Feesi kenn.",
+    "filterAdded": "A yokki",
+    "filterAdded_60d": "Baax 60 fanaan",
+    "filterAdded_6m": "Baax 6 weer",
+    "filterAdded_12m": "Baax 12 weer"
   },
   "WatchHome": {
     "pageTitle": "Odja Jesus Film Project",

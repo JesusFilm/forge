@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Mainīt audio valodu",
     "home": "JesusFilm sākumlapa",
     "closeSearch": "Aizvērt meklēšanu",
-    "submitSearch": "Meklēt"
+    "submitSearch": "Meklēt",
+    "library": "Bibliotēka"
   },
   "SearchOverlay": {
     "dialogLabel": "Meklēt un pārlūkot video",
@@ -467,6 +468,7 @@
     "sports": "Sports un atlēti",
     "collections": "Kolekcijas",
     "subtitlesOnly": "Tikai subtitri",
+    "backToTop": "Atpakaļ uz augšu",
     "newlyAdded": "Nesen pievienots",
     "newVideosTitle": "Jauni kristīgi video {language} valodā",
     "newestFirst": "Vispirms jaunākie",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Atsevišķi video",
     "videosFromCollection": "Video no {collection}.",
     "standaloneDescription": "Atsevišķi video šajā valodā.",
-    "openCollection": "Atvērt kolekciju"
+    "openCollection": "Atvērt kolekciju",
+    "filters": "Filtri",
+    "filterLength": "Garums",
+    "filterLength_under5": "Mazāk par 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "Vairāk par 30 min",
+    "filterType": "Veids",
+    "clearFilters": "Notīrīt filtrus",
+    "filterResults": "Parādīts {count} no {total}",
+    "noFilterResults": "Neviens video neatbilst šiem filtriem. Mēģiniet noņemt vienu.",
+    "filterAdded": "Pievienots",
+    "filterAdded_60d": "Pēdējās 60 dienas",
+    "filterAdded_6m": "Pēdējie 6 mēneši",
+    "filterAdded_12m": "Pēdējie 12 mēneši"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project skatīšanās",

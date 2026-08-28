@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Mesecher a audio language",
     "home": "Blil a JesusFilm",
     "closeSearch": "Moes a search",
-    "submitSearch": "Meses"
+    "submitSearch": "Meses",
+    "library": "Blil a babier"
   },
   "SearchOverlay": {
     "dialogLabel": "Meses mar a browse a videos",
@@ -467,6 +468,7 @@
     "sports": "Omesulang",
     "collections": "A collections",
     "subtitlesOnly": "Subtitles el diak a dubbed audio",
+    "backToTop": "Mo er a bab",
     "newlyAdded": "Mlo new",
     "newVideosTitle": "Beches el Christian videos er a {language}",
     "newestFirst": "A beches a kot",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Videos el diak er a collection",
     "videosFromCollection": "Videos er a {collection}.",
     "standaloneDescription": "Standalone videos er a language tia.",
-    "openCollection": "Onged a collection"
+    "openCollection": "Onged a collection",
+    "filters": "Omesuub",
+    "filterLength": "Kekemanget",
+    "filterLength_under5": "Kesai er a 5 minute",
+    "filterLength_5to10": "5-10 minute",
+    "filterLength_10to30": "10-30 minute",
+    "filterLength_over30": "Ngar bab er a 30 minute",
+    "filterType": "Teletael",
+    "clearFilters": "Mesulaul a omesuub",
+    "filterResults": "Mochotii a {count} er a {total}",
+    "noFilterResults": "Ng diak a video el mo tabesul er tia el omesuub. Momdasu el nguu a ta.",
+    "filterAdded": "Mla obeu",
+    "filterAdded_60d": "Klsakl 60 sils",
+    "filterAdded_6m": "Klsakl 6 buil",
+    "filterAdded_12m": "Klsakl 12 buil"
   },
   "WatchHome": {
     "pageTitle": "Omes er a Jesus Film Project",

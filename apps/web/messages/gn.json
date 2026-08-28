@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Emoambue ñe'ẽ ayvu",
     "home": "JesusFilm óga",
     "closeSearch": "Emboty jeheka",
-    "submitSearch": "Eheka"
+    "submitSearch": "Eheka",
+    "library": "Kuatiarenda"
   },
   "SearchOverlay": {
     "dialogLabel": "Eheka ha ehora videos",
@@ -467,6 +468,7 @@
     "sports": "Deportes",
     "collections": "Colecciones",
     "subtitlesOnly": "Solo subtítulos",
+    "backToTop": "Jevy yvate",
     "newlyAdded": "Oñemoĩramo pyahu",
     "newVideosTitle": "Video cristiano pyahu {language}-pe",
     "newestFirst": "Pya'eve guive",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Video ojehechakuaa hag̃uáicha",
     "videosFromCollection": "Video {collection} guive.",
     "standaloneDescription": "Video ojehechakuaa hag̃uáicha ko ñe'ẽme.",
-    "openCollection": "Eike colección-pe"
+    "openCollection": "Eike colección-pe",
+    "filters": "Mboavykuéra",
+    "filterLength": "Puku",
+    "filterLength_under5": "5 aravo'imi mboyve",
+    "filterLength_5to10": "5-10 aravo'i",
+    "filterLength_10to30": "10-30 aravo'i",
+    "filterLength_over30": "30 aravo'i rire",
+    "filterType": "Tipo",
+    "clearFilters": "Emboguete mboavykuéra",
+    "filterResults": "{count} {total} apytégui ojechauka",
+    "noFilterResults": "Mba'evete ta'angamýi ojojoguái ko mboavykuérandi. Eñeha'ã emboguete peteĩ.",
+    "filterAdded": "Ojeikeve",
+    "filterAdded_60d": "60 ára paha",
+    "filterAdded_6m": "6 jasy paha",
+    "filterAdded_12m": "12 jasy paha"
   },
   "WatchHome": {
     "pageTitle": "Ehecha Jesus Film Project-pe",

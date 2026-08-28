@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Vaihda äänikieltä",
     "home": "JesusFilm-etusivu",
     "closeSearch": "Sulje haku",
-    "submitSearch": "Hae"
+    "submitSearch": "Hae",
+    "library": "Kirjasto"
   },
   "SearchOverlay": {
     "dialogLabel": "Hae ja selaa videoita",
@@ -467,6 +468,7 @@
     "sports": "Urheilu",
     "collections": "Kokoelmat",
     "subtitlesOnly": "Vain tekstitykset",
+    "backToTop": "Takaisin ylös",
     "newlyAdded": "Äskettäin lisätty",
     "newVideosTitle": "Uusia kristillisiä videoita kielellä {language}",
     "newestFirst": "Uusin ensin",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Itsenäiset videot",
     "videosFromCollection": "Videot kokoelmasta {collection}.",
     "standaloneDescription": "Itsenäiset videot tällä kielellä.",
-    "openCollection": "Avaa kokoelma"
+    "openCollection": "Avaa kokoelma",
+    "filters": "Suodattimet",
+    "filterLength": "Kesto",
+    "filterLength_under5": "Alle 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "Yli 30 min",
+    "filterType": "Tyyppi",
+    "clearFilters": "Tyhjennä suodattimet",
+    "filterResults": "{count} / {total} näytetään",
+    "noFilterResults": "Mikään video ei vastaa näitä suodattimia. Kokeile poistaa yksi.",
+    "filterAdded": "Lisätty",
+    "filterAdded_60d": "Viimeiset 60 päivää",
+    "filterAdded_6m": "Viimeiset 6 kuukautta",
+    "filterAdded_12m": "Viimeiset 12 kuukautta"
   },
   "WatchHome": {
     "pageTitle": "Katso | Jesus Film Project",

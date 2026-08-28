@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Promijeni jezik zvuka",
     "home": "Početna stranica JesusFilm",
     "closeSearch": "Zatvori pretraživanje",
-    "submitSearch": "Pretraži"
+    "submitSearch": "Pretraži",
+    "library": "Knjižnica"
   },
   "SearchOverlay": {
     "dialogLabel": "Pretraži i pregledaj videozapise",
@@ -467,6 +468,7 @@
     "sports": "Sport",
     "collections": "Zbirke",
     "subtitlesOnly": "Samo titlovi",
+    "backToTop": "Natrag na vrh",
     "newlyAdded": "Nedavno dodano",
     "newVideosTitle": "Novi kršćanski videozapisi na jeziku {language}",
     "newestFirst": "Najnovije prvo",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Samostalni videozapisi",
     "videosFromCollection": "Videozapisi iz zbirke {collection}.",
     "standaloneDescription": "Samostalni videozapisi na ovom jeziku.",
-    "openCollection": "Otvori zbirku"
+    "openCollection": "Otvori zbirku",
+    "filters": "Filtri",
+    "filterLength": "Trajanje",
+    "filterLength_under5": "Manje od 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "Više od 30 min",
+    "filterType": "Vrsta",
+    "clearFilters": "Očisti filtre",
+    "filterResults": "Prikazano {count} od {total}",
+    "noFilterResults": "Nijedan videozapis ne odgovara ovim filtrima. Pokušajte ukloniti jedan.",
+    "filterAdded": "Dodano",
+    "filterAdded_60d": "Zadnjih 60 dana",
+    "filterAdded_6m": "Zadnjih 6 mjeseci",
+    "filterAdded_12m": "Zadnjih 12 mjeseci"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project Gledanje",

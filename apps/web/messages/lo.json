@@ -180,7 +180,8 @@
     "changeAudioLanguage": "ປ່ຽນພາສາສຽງ",
     "home": "ໜ້າຫຼັກ JesusFilm",
     "closeSearch": "ປິດການຄົ້ນຫາ",
-    "submitSearch": "ຄົ້ນຫາ"
+    "submitSearch": "ຄົ້ນຫາ",
+    "library": "ຫ້ອງສະໝຸດ"
   },
   "SearchOverlay": {
     "dialogLabel": "ຄົ້ນຫາ ແລະ ຊອກຫາວິດີໂອ",
@@ -467,6 +468,7 @@
     "sports": "ກິລາ",
     "collections": "ຄໍເລັກຊັນ",
     "subtitlesOnly": "ມີຄຳບັນຍາຍເທົ່ານັ້ນ",
+    "backToTop": "ກັບຄືນຂຶ້ນເທິງ",
     "newlyAdded": "ເພີ່ມໃໝ່",
     "newVideosTitle": "ວິດີໂອຄຣິສຕຽນໃໝ່ໃນ {language}",
     "newestFirst": "ໃໝ່ສຸດກ່ອນ",
@@ -497,7 +499,21 @@
     "standaloneVideos": "ວິດີໂອແຍກຕ່າງຫາກ",
     "videosFromCollection": "ວິດີໂອຈາກ {collection}.",
     "standaloneDescription": "ວິດີໂອແຍກຕ່າງຫາກໃນພາສານີ້.",
-    "openCollection": "ເປີດຄໍເລັກຊັນ"
+    "openCollection": "ເປີດຄໍເລັກຊັນ",
+    "filters": "ຕົວກອງ",
+    "filterLength": "ຄວາມຍາວ",
+    "filterLength_under5": "ຕ່ຳກວ່າ 5 ນາທີ",
+    "filterLength_5to10": "5-10 ນາທີ",
+    "filterLength_10to30": "10-30 ນາທີ",
+    "filterLength_over30": "ຫຼາຍກວ່າ 30 ນາທີ",
+    "filterType": "ປະເພດ",
+    "clearFilters": "ລຶບຕົວກອງ",
+    "filterResults": "ສະແດງ {count} ຈາກ {total}",
+    "noFilterResults": "ບໍ່ມີວິດີໂອທີ່ຕົງກັບຕົວກອງນີ້. ລອງເອົາອອກໜຶ່ງອັນ.",
+    "filterAdded": "ເພີ່ມແລ້ວ",
+    "filterAdded_60d": "60 ວັນຜ່ານມາ",
+    "filterAdded_6m": "6 ເດືອນຜ່ານມາ",
+    "filterAdded_12m": "12 ເດືອນຜ່ານມາ"
   },
   "WatchHome": {
     "pageTitle": "ຮັບຊົມ Jesus Film Project",

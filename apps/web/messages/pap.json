@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Muda idioma di audio",
     "home": "Página prome di JesusFilm",
     "closeSearch": "Sera buskeda",
-    "submitSearch": "Buska"
+    "submitSearch": "Buska",
+    "library": "Biblioteka"
   },
   "SearchOverlay": {
     "dialogLabel": "Buska i eksplora video",
@@ -467,6 +468,7 @@
     "sports": "Spòrt",
     "collections": "Kolekshon",
     "subtitlesOnly": "Subtítulonan solamente",
+    "backToTop": "Bai bèk ariba",
     "newlyAdded": "Adishoná recientemente",
     "newVideosTitle": "Video Kristian nobo den {language}",
     "newestFirst": "Mas nobo prome",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Video apart",
     "videosFromCollection": "Video di {collection}.",
     "standaloneDescription": "Video apart den e idioma aki.",
-    "openCollection": "Habri kolekshon"
+    "openCollection": "Habri kolekshon",
+    "filters": "Filternan",
+    "filterLength": "Duracion",
+    "filterLength_under5": "Menos ku 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "Mas ku 30 min",
+    "filterType": "Tipo",
+    "clearFilters": "Kita filternan",
+    "filterResults": "{count} di {total} mustrá",
+    "noFilterResults": "Ningun video no ta koresponde ku e filternan aki. Purba kita un.",
+    "filterAdded": "Agregá",
+    "filterAdded_60d": "Último 60 dia",
+    "filterAdded_6m": "Último 6 luna",
+    "filterAdded_12m": "Último 12 luna"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project: Mira",

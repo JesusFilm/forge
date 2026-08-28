@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Audio-Sprooch änneren",
     "home": "JesusFilm-Startsäit",
     "closeSearch": "Sich zoumaachen",
-    "submitSearch": "Sichen"
+    "submitSearch": "Sichen",
+    "library": "Bibliothek"
   },
   "SearchOverlay": {
     "dialogLabel": "Videoen sichen a duerchkucken",
@@ -467,6 +468,7 @@
     "sports": "Sport",
     "collections": "Kollektiounen",
     "subtitlesOnly": "Nëmme Ënnertitelen",
+    "backToTop": "Zréck no uewen",
     "newlyAdded": "Nei dobäigesat",
     "newVideosTitle": "Nei chrëschtlech Videoen op {language}",
     "newestFirst": "Déi neisten éischt",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Eenzel Videoen",
     "videosFromCollection": "Videoen aus {collection}.",
     "standaloneDescription": "Eenzel Videoen op dëser Sprooch.",
-    "openCollection": "Kollektioun opmaachen"
+    "openCollection": "Kollektioun opmaachen",
+    "filters": "Filteren",
+    "filterLength": "Längt",
+    "filterLength_under5": "Ënner 5 Min.",
+    "filterLength_5to10": "5-10 Min.",
+    "filterLength_10to30": "10-30 Min.",
+    "filterLength_over30": "Iwwer 30 Min.",
+    "filterType": "Typ",
+    "clearFilters": "Filteren zurécksetzen",
+    "filterResults": "{count} vun {total} gewisen",
+    "noFilterResults": "Kee Video passt zu dëse Filteren. Probéier een ewechzehuelen.",
+    "filterAdded": "Dobäigesat",
+    "filterAdded_60d": "Lescht 60 Deeg",
+    "filterAdded_6m": "Lescht 6 Méint",
+    "filterAdded_12m": "Lescht 12 Méint"
   },
   "WatchHome": {
     "pageTitle": "Videoe kucken | Jesus Film Project",

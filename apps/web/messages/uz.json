@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Audio tilini o‘zgartirish",
     "home": "JesusFilm bosh sahifasi",
     "closeSearch": "Qidiruvni yopish",
-    "submitSearch": "Qidirish"
+    "submitSearch": "Qidirish",
+    "library": "Kutubxona"
   },
   "SearchOverlay": {
     "dialogLabel": "Videolarni qidirish va ko‘rish",
@@ -467,6 +468,7 @@
     "sports": "Sport",
     "collections": "To‘plamlar",
     "subtitlesOnly": "Faqat subtitrlar",
+    "backToTop": "Yuqoriga",
     "newlyAdded": "Yangi qo‘shilgan",
     "newVideosTitle": "{language} tilidagi yangi xristian videolari",
     "newestFirst": "Eng yangisi avval",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Mustaqil videolar",
     "videosFromCollection": "{collection}dan videolar.",
     "standaloneDescription": "Bu tildagi mustaqil videolar.",
-    "openCollection": "To‘plamni ochish"
+    "openCollection": "To‘plamni ochish",
+    "filters": "Filtrlar",
+    "filterLength": "Davomiyligi",
+    "filterLength_under5": "5 daqiqadan kam",
+    "filterLength_5to10": "5-10 daqiqa",
+    "filterLength_10to30": "10-30 daqiqa",
+    "filterLength_over30": "30 daqiqadan ko'p",
+    "filterType": "Turi",
+    "clearFilters": "Filtrlarni tozalash",
+    "filterResults": "{total} dan {count} ko'rsatildi",
+    "noFilterResults": "Bu filtrlarga mos video yo'q. Bittasini olib tashlab ko'ring.",
+    "filterAdded": "Qo'shilgan",
+    "filterAdded_60d": "Oxirgi 60 kun",
+    "filterAdded_6m": "Oxirgi 6 oy",
+    "filterAdded_12m": "Oxirgi 12 oy"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project Ko‘rish",

@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Beddel luqadda codka",
     "home": "Bogga hore ee JesusFilm",
     "closeSearch": "Xir raadinta",
-    "submitSearch": "Raadi"
+    "submitSearch": "Raadi",
+    "library": "Maktabad"
   },
   "SearchOverlay": {
     "dialogLabel": "Raadi oo dhex-dhaqaaq fiidiyowyo",
@@ -467,6 +468,7 @@
     "sports": "Ciyaaraha",
     "collections": "Uruurino",
     "subtitlesOnly": "Kaliya qoraal-hoosaadyo",
+    "backToTop": "Ku noqo kor",
     "newlyAdded": "Cusub lagu daray",
     "newVideosTitle": "Fiidiyowyo Masiixi ah oo cusub gudaha {language}",
     "newestFirst": "Kuwa ugu cusub marka hore",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Fiidiyowyo kaligood ah",
     "videosFromCollection": "Fiidiyowyo ka yimid {collection}.",
     "standaloneDescription": "Fiidiyowyo kaligood ah oo luqaddan ku jira.",
-    "openCollection": "Fur ururinta"
+    "openCollection": "Fur ururinta",
+    "filters": "Shaandhooyin",
+    "filterLength": "Dherer",
+    "filterLength_under5": "Ka yar 5 daqiiqo",
+    "filterLength_5to10": "5-10 daqiiqo",
+    "filterLength_10to30": "10-30 daqiiqo",
+    "filterLength_over30": "Ka badan 30 daqiiqo",
+    "filterType": "Nooc",
+    "clearFilters": "Tirtir shaandhooyinka",
+    "filterResults": "{count} ka mid ah {total} ayaa la muujiyay",
+    "noFilterResults": "Ma jiro fiidiyow ku habboon shaandhooyinkan. Isku day inaad mid ka saarto.",
+    "filterAdded": "Lagu daray",
+    "filterAdded_60d": "60-kii maalmood ee la soo dhaafay",
+    "filterAdded_6m": "6-dii bilood ee la soo dhaafay",
+    "filterAdded_12m": "12-kii bilood ee la soo dhaafay"
   },
   "WatchHome": {
     "pageTitle": "Daawashada Jesus Film Project",

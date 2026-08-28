@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Αλλαγή γλώσσας ήχου",
     "home": "Αρχική JesusFilm",
     "closeSearch": "Κλείσιμο αναζήτησης",
-    "submitSearch": "Αναζήτηση"
+    "submitSearch": "Αναζήτηση",
+    "library": "Βιβλιοθήκη"
   },
   "SearchOverlay": {
     "dialogLabel": "Αναζήτηση και περιήγηση σε βίντεο",
@@ -467,6 +468,7 @@
     "sports": "Αθλητισμός",
     "collections": "Συλλογές",
     "subtitlesOnly": "Μόνο υπότιτλοι",
+    "backToTop": "Επιστροφή στην αρχή",
     "newlyAdded": "Νέα προσθήκη",
     "newVideosTitle": "Νέα χριστιανικά βίντεο στα {language}",
     "newestFirst": "Τα νεότερα πρώτα",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Αυτόνομα βίντεο",
     "videosFromCollection": "Βίντεο από τη συλλογή {collection}.",
     "standaloneDescription": "Αυτόνομα βίντεο σε αυτή τη γλώσσα.",
-    "openCollection": "Άνοιγμα συλλογής"
+    "openCollection": "Άνοιγμα συλλογής",
+    "filters": "Φίλτρα",
+    "filterLength": "Διάρκεια",
+    "filterLength_under5": "Κάτω από 5 λεπτά",
+    "filterLength_5to10": "5-10 λεπτά",
+    "filterLength_10to30": "10-30 λεπτά",
+    "filterLength_over30": "Πάνω από 30 λεπτά",
+    "filterType": "Τύπος",
+    "clearFilters": "Καθαρισμός φίλτρων",
+    "filterResults": "Εμφανίζονται {count} από {total}",
+    "noFilterResults": "Κανένα βίντεο δεν ταιριάζει με αυτά τα φίλτρα. Δοκιμάστε να αφαιρέσετε ένα.",
+    "filterAdded": "Προστέθηκε",
+    "filterAdded_60d": "Τελευταίες 60 ημέρες",
+    "filterAdded_6m": "Τελευταίοι 6 μήνες",
+    "filterAdded_12m": "Τελευταίοι 12 μήνες"
   },
   "WatchHome": {
     "pageTitle": "Παρακολούθηση Jesus Film Project",

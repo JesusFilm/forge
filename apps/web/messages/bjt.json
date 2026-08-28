@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Audio language kɛlɛ",
     "home": "JesusFilm kɔnɔ",
     "closeSearch": "Sɛrɛch lɔ",
-    "submitSearch": "Sɛrɛch kɛ"
+    "submitSearch": "Sɛrɛch kɛ",
+    "library": "Kaŋ kajitin"
   },
   "SearchOverlay": {
     "dialogLabel": "Video sɛrɛch kɔ browsɛ",
@@ -467,6 +468,7 @@
     "sports": "Sports stories",
     "collections": "Collections baara",
     "subtitlesOnly": "Subtitles lɔŋ",
+    "backToTop": "Tofukor kajeeg",
     "newlyAdded": "Kaŋ bɔ add",
     "newVideosTitle": "Christian videos nɛŋ nɔŋ {language}",
     "newestFirst": "Nɛŋ sɔŋŋɛn fɔlɔ",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Videos collection bɔ ka na",
     "videosFromCollection": "Videos bɔ {collection} kɔnɔ.",
     "standaloneDescription": "Videos collection bɔ ka na nɛn language wɔ.",
-    "openCollection": "Collection lɔ"
+    "openCollection": "Collection lɔ",
+    "filters": "Ñolaal",
+    "filterLength": "Buloolo",
+    "filterLength_under5": "Rekem 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "Fopem 30 min",
+    "filterType": "Kaŋam",
+    "clearFilters": "Feesol ñolaal",
+    "filterResults": "{count} ka {total} awonwaa",
+    "noFilterResults": "Amuli widewo bamos ak ñolaal yiin. Feesol kiin.",
+    "filterAdded": "Ayokku",
+    "filterAdded_60d": "Baax 60 fanaan",
+    "filterAdded_6m": "Baax 6 uur",
+    "filterAdded_12m": "Baax 12 uur"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project Watch sɛn",

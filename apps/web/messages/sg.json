@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Bongola monoko ya mongongo",
     "home": "Ndako ya JesusFilm",
     "closeSearch": "Kanga boluki",
-    "submitSearch": "Gi"
+    "submitSearch": "Gi",
+    "library": "Da-mbeti"
   },
   "SearchOverlay": {
     "dialogLabel": "Luka mpe tala bavideo",
@@ -467,6 +468,7 @@
     "sports": "Masano",
     "collections": "Ba collections",
     "subtitlesOnly": "Kakitisi ya maloba kaka",
+    "backToTop": "Kiri na li",
     "newlyAdded": "Ebakisami sika",
     "newVideosTitle": "Bavideo ya boklisto ya sika na {language}",
     "newestFirst": "Ya sika liboso",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Bavideo ya solo",
     "videosFromCollection": "Bavideo uta na {collection}.",
     "standaloneDescription": "Bavideo ya solo na monoko oyo.",
-    "openCollection": "Fungola collection"
+    "openCollection": "Fungola collection",
+    "filters": "Akungbi",
+    "filterLength": "Yongoro",
+    "filterLength_under5": "Na gbe ti ngbonga 5",
+    "filterLength_5to10": "Ngbonga 5-10",
+    "filterLength_10to30": "Ngbonga 10-30",
+    "filterLength_over30": "Na ndo ti ngbonga 30",
+    "filterType": "Marä",
+    "clearFilters": "Zi akungbi",
+    "filterResults": "{count} na yâ ti {total} a fa",
+    "noFilterResults": "Mbeni video oko ape so alingbi na akungbi so. Tara ti zi oko.",
+    "filterAdded": "A yeke zia",
+    "filterAdded_60d": "Alango 60 so ahon",
+    "filterAdded_6m": "Anze 6 so ahon",
+    "filterAdded_12m": "Anze 12 so ahon"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project: Bâa",

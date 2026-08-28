@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Schimbă limba audio",
     "home": "Pagina principală JesusFilm",
     "closeSearch": "Închide căutarea",
-    "submitSearch": "Caută"
+    "submitSearch": "Caută",
+    "library": "Bibliotecă"
   },
   "SearchOverlay": {
     "dialogLabel": "Caută și răsfoiește videoclipuri",
@@ -283,6 +284,7 @@
     "sports": "Sport",
     "collections": "Colecții",
     "subtitlesOnly": "Doar subtitrări",
+    "backToTop": "Sus",
     "newlyAdded": "Adăugat recent",
     "newVideosTitle": "Videoclipuri creștine noi în {language}",
     "newestFirst": "Cele mai noi primele",
@@ -313,7 +315,21 @@
     "standaloneVideos": "Videoclipuri independente",
     "videosFromCollection": "Videoclipuri din {collection}.",
     "standaloneDescription": "Videoclipuri independente în această limbă.",
-    "openCollection": "Deschide colecția"
+    "openCollection": "Deschide colecția",
+    "filters": "Filtre",
+    "filterLength": "Durată",
+    "filterLength_under5": "Sub 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "Peste 30 min",
+    "filterType": "Tip",
+    "clearFilters": "Șterge filtrele",
+    "filterResults": "{count} din {total} afișate",
+    "noFilterResults": "Niciun videoclip nu corespunde acestor filtre. Încearcă să elimini unul.",
+    "filterAdded": "Adăugat",
+    "filterAdded_60d": "Ultimele 60 de zile",
+    "filterAdded_6m": "Ultimele 6 luni",
+    "filterAdded_12m": "Ultimele 12 luni"
   },
   "WatchHome": {
     "pageTitle": "Vizionare Jesus Film Project",

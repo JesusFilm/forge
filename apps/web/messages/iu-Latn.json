@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Nipilersuuteqarfiup oqaatsit allanngoruk",
     "home": "JesusFilm aallartiffia",
     "closeSearch": "Ujaasineq matooruk",
-    "submitSearch": "Ujaruk"
+    "submitSearch": "Ujaruk",
+    "library": "Uqalimaagaqarvik"
   },
   "SearchOverlay": {
     "dialogLabel": "Videoit ujarlugit alakkarlugillu",
@@ -467,6 +468,7 @@
     "sports": "Timersorneq",
     "collections": "Katersat",
     "subtitlesOnly": "Titartagassaqinnaat",
+    "backToTop": "Qulaanut utiq",
     "newlyAdded": "Nutaatut ilanngunneqartut",
     "newVideosTitle": "{language}-mi kristumiut videoit nutaat",
     "newestFirst": "Nutaanerit siulliullugit",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Videoit ataasiakkaat",
     "videosFromCollection": "Videoit {collection}-mit.",
     "standaloneDescription": "Taanna oqaatsit videoit ataasiakkaat.",
-    "openCollection": "Katersaq ammaruk"
+    "openCollection": "Katersaq ammaruk",
+    "filters": "Aviktuqsimajut",
+    "filterLength": "Takininga",
+    "filterLength_under5": "5 minitnit ikinniqsaq",
+    "filterLength_5to10": "5-10 minit",
+    "filterLength_10to30": "10-30 minit",
+    "filterLength_over30": "30 minitnit amisuniqsaq",
+    "filterType": "Ajjigiingittuq",
+    "clearFilters": "Aviktuqsimajut salummaqsaq",
+    "filterResults": "{total}-nit {count} takuksautitaujut",
+    "noFilterResults": "Tamakkununga aviktuqsimajunut ajjigijaqanngittuq. Atausiq piijarlugu.",
+    "filterAdded": "Ilagiaqsimajuq",
+    "filterAdded_60d": "Kingulliqpaat 60 ullut",
+    "filterAdded_6m": "Kingulliqpaat 6 taqqit",
+    "filterAdded_12m": "Kingulliqpaat 12 taqqit"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project-mi isiginnaarit",

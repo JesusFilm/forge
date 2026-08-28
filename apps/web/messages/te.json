@@ -180,7 +180,8 @@
     "changeAudioLanguage": "ఆడియో భాషను మార్చండి",
     "home": "JesusFilm హోమ్",
     "closeSearch": "శోధనను మూసివేయండి",
-    "submitSearch": "శోధించండి"
+    "submitSearch": "శోధించండి",
+    "library": "లైబ్రరీ"
   },
   "SearchOverlay": {
     "dialogLabel": "వీడియోలను శోధించి బ్రౌజ్ చేయండి",
@@ -467,6 +468,7 @@
     "sports": "క్రీడలు",
     "collections": "సేకరణలు",
     "subtitlesOnly": "ఉపశీర్షికలు మాత్రమే",
+    "backToTop": "పైకి తిరిగి",
     "newlyAdded": "కొత్తగా జోడించబడినవి",
     "newVideosTitle": "{language} లో కొత్త క్రైస్తవ వీడియోలు",
     "newestFirst": "కొత్తవి ముందుగా",
@@ -497,7 +499,21 @@
     "standaloneVideos": "స్వతంత్ర వీడియోలు",
     "videosFromCollection": "{collection} నుండి వీడియోలు.",
     "standaloneDescription": "ఈ భాషలో స్వతంత్ర వీడియోలు.",
-    "openCollection": "సేకరణ తెరవండి"
+    "openCollection": "సేకరణ తెరవండి",
+    "filters": "ఫిల్టర్‌లు",
+    "filterLength": "నిడివి",
+    "filterLength_under5": "5 నిమిషాల కంటే తక్కువ",
+    "filterLength_5to10": "5-10 నిమిషాలు",
+    "filterLength_10to30": "10-30 నిమిషాలు",
+    "filterLength_over30": "30 నిమిషాల కంటే ఎక్కువ",
+    "filterType": "రకం",
+    "clearFilters": "ఫిల్టర్‌లను తొలగించు",
+    "filterResults": "{total} లో {count} చూపబడుతోంది",
+    "noFilterResults": "ఈ ఫిల్టర్‌లకు ఏ వీడియో సరిపోలలేదు. ఒకటి తీసివేసి ప్రయత్నించండి.",
+    "filterAdded": "జోడించబడింది",
+    "filterAdded_60d": "గత 60 రోజులు",
+    "filterAdded_6m": "గత 6 నెలలు",
+    "filterAdded_12m": "గత 12 నెలలు"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project వాచ్",

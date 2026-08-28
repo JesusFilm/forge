@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Cambiar llingua del audiu",
     "home": "páxina d'inici de JesusFilm",
     "closeSearch": "Zarrar busca",
-    "submitSearch": "Buscar"
+    "submitSearch": "Buscar",
+    "library": "Biblioteca"
   },
   "SearchOverlay": {
     "dialogLabel": "Buscar y navegar per vídeos",
@@ -467,6 +468,7 @@
     "sports": "Deportes",
     "collections": "Colecciones",
     "subtitlesOnly": "Solo subtítulos",
+    "backToTop": "Volver arriba",
     "newlyAdded": "Amestáu recién",
     "newVideosTitle": "Vídeos cristianos nuevos en {language}",
     "newestFirst": "Más nuevos primero",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Vídeos sueltos",
     "videosFromCollection": "Vídeos de {collection}.",
     "standaloneDescription": "Vídeos sueltos nesta llingua.",
-    "openCollection": "Abrir colección"
+    "openCollection": "Abrir colección",
+    "filters": "Filtros",
+    "filterLength": "Duración",
+    "filterLength_under5": "Menos de 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "Más de 30 min",
+    "filterType": "Tipu",
+    "clearFilters": "Llimpiar filtros",
+    "filterResults": "{count} de {total} amosaos",
+    "noFilterResults": "Nengún vídeu concasa con estos filtros. Prueba a quitar unu.",
+    "filterAdded": "Amestáu",
+    "filterAdded_60d": "Últimos 60 díes",
+    "filterAdded_6m": "Últimos 6 meses",
+    "filterAdded_12m": "Últimos 12 meses"
   },
   "WatchHome": {
     "pageTitle": "Watch de Jesus Film Project",

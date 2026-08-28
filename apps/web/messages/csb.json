@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Zmieni jãzëk audio",
     "home": "Strona domô JesusFilm",
     "closeSearch": "Zatrzëmôj szëkbã",
-    "submitSearch": "Szëkôj"
+    "submitSearch": "Szëkôj",
+    "library": "Biblioteka"
   },
   "SearchOverlay": {
     "dialogLabel": "Szëkôj i przerëcëwôj wideo",
@@ -467,6 +468,7 @@
     "sports": "Sport",
     "collections": "Kolekcje",
     "subtitlesOnly": "Tylko titrë",
+    "backToTop": "Nazôd do górë",
     "newlyAdded": "Nowò dodóne",
     "newVideosTitle": "Nowé chrzéścijańsczé wideo pò {language}",
     "newestFirst": "Nônówsze nôprzéd",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Samòstójné wideo",
     "videosFromCollection": "Wideo z {collection}.",
     "standaloneDescription": "Samòstójné wideo w tim jãzëku.",
-    "openCollection": "Òtemkni kolekcjã"
+    "openCollection": "Òtemkni kolekcjã",
+    "filters": "Filtrë",
+    "filterLength": "Dłużëna",
+    "filterLength_under5": "Mni jak 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "Wicy jak 30 min",
+    "filterType": "Ôrt",
+    "clearFilters": "Wëczëszczë filtrë",
+    "filterResults": "Pokôzóné {count} z {total}",
+    "noFilterResults": "Niżódné wideo nie pasëje do tëch filtrów. Sprawdzë wëcygnąc jeden.",
+    "filterAdded": "Dodóne",
+    "filterAdded_60d": "Ostatné 60 dni",
+    "filterAdded_6m": "Ostatné 6 miesąców",
+    "filterAdded_12m": "Ostatné 12 miesąców"
   },
   "WatchHome": {
     "pageTitle": "Òglądôj | Jesus Film Project",

@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Змінити мову аудіо",
     "home": "Головна JesusFilm",
     "closeSearch": "Закрити пошук",
-    "submitSearch": "Шукати"
+    "submitSearch": "Шукати",
+    "library": "Бібліотека"
   },
   "SearchOverlay": {
     "dialogLabel": "Пошук і перегляд відео",
@@ -467,6 +468,7 @@
     "sports": "Спорт",
     "collections": "Добірки",
     "subtitlesOnly": "Лише субтитри",
+    "backToTop": "Догори",
     "newlyAdded": "Нещодавно додані",
     "newVideosTitle": "Нові християнські відео {language}",
     "newestFirst": "Спочатку новіші",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Окремі відео",
     "videosFromCollection": "Відео з {collection}.",
     "standaloneDescription": "Окремі відео цією мовою.",
-    "openCollection": "Відкрити добірку"
+    "openCollection": "Відкрити добірку",
+    "filters": "Фільтри",
+    "filterLength": "Тривалість",
+    "filterLength_under5": "Менше 5 хв",
+    "filterLength_5to10": "5-10 хв",
+    "filterLength_10to30": "10-30 хв",
+    "filterLength_over30": "Понад 30 хв",
+    "filterType": "Тип",
+    "clearFilters": "Скинути фільтри",
+    "filterResults": "Показано {count} з {total}",
+    "noFilterResults": "Немає відео, що відповідають цим фільтрам. Спробуйте зняти один.",
+    "filterAdded": "Додано",
+    "filterAdded_60d": "Останні 60 днів",
+    "filterAdded_6m": "Останні 6 місяців",
+    "filterAdded_12m": "Останні 12 місяців"
   },
   "WatchHome": {
     "pageTitle": "Перегляд Jesus Film Project",

@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Audio language laa",
     "home": "JesusFilm kɔŋ hɔn",
     "closeSearch": "Suŋ dɔŋ",
-    "submitSearch": "Suŋ kɛ"
+    "submitSearch": "Suŋ kɛ",
+    "library": "Kaŋ kayite"
   },
   "SearchOverlay": {
     "dialogLabel": "Video suŋ kɛ kɔ browse kɛ",
@@ -467,6 +468,7 @@
     "sports": "Sports ka",
     "collections": "Collections dɛmɛ",
     "subtitlesOnly": "Subtitles jɛmɛ",
+    "backToTop": "Fandiŋ jeege",
     "newlyAdded": "Bɔŋ nɛŋ add kɛ",
     "newVideosTitle": "Video Christian bɔŋ nɛŋ {language} ka",
     "newestFirst": "Bɔŋ nɛŋ bɔŋa",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Videos standalone",
     "videosFromCollection": "Videos {collection} bɔ.",
     "standaloneDescription": "Videos standalone language ɗi ka.",
-    "openCollection": "Collection ile"
+    "openCollection": "Collection ile",
+    "filters": "Ñoolaane",
+    "filterLength": "Ndoole",
+    "filterLength_under5": "Rekee 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "Fopee 30 min",
+    "filterType": "Kaŋame",
+    "clearFilters": "Feese ñoolaane",
+    "filterResults": "{count} ca {total} a wonee",
+    "noFilterResults": "Amul widewo ba mos ak ñoolaane yii. Feese kenn.",
+    "filterAdded": "A yokke",
+    "filterAdded_60d": "Baax 60 fanaan",
+    "filterAdded_6m": "Baax 6 weer",
+    "filterAdded_12m": "Baax 12 weer"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project Kɔŋ",

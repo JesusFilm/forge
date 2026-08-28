@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Ses dilini üýtget",
     "home": "JesusFilm baş sahypasy",
     "closeSearch": "Gözlegi ýap",
-    "submitSearch": "Gözle"
+    "submitSearch": "Gözle",
+    "library": "Kitaphana"
   },
   "SearchOverlay": {
     "dialogLabel": "Wideolary gözläň we gözden geçiriň",
@@ -467,6 +468,7 @@
     "sports": "Sport",
     "collections": "Toplumlar",
     "subtitlesOnly": "Diňe subtitrler",
+    "backToTop": "Ýokara dolan",
     "newlyAdded": "Täze goşuldy",
     "newVideosTitle": "{language} dilindäki täze hristian wideolary",
     "newestFirst": "Ilki iň täzeleri",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Aýratyn wideolar",
     "videosFromCollection": "{collection}-den wideolar.",
     "standaloneDescription": "Bu dilde aýratyn wideolar.",
-    "openCollection": "Toplumy aç"
+    "openCollection": "Toplumy aç",
+    "filters": "Süzgüçler",
+    "filterLength": "Dowamlylygy",
+    "filterLength_under5": "5 minutdan az",
+    "filterLength_5to10": "5-10 minut",
+    "filterLength_10to30": "10-30 minut",
+    "filterLength_over30": "30 minutdan köp",
+    "filterType": "Görnüşi",
+    "clearFilters": "Süzgüçleri arassala",
+    "filterResults": "{total} sanydan {count} görkezilýär",
+    "noFilterResults": "Bu süzgüçlere gabat gelýän wideo ýok. Birini aýryp görüň.",
+    "filterAdded": "Goşuldy",
+    "filterAdded_60d": "Soňky 60 gün",
+    "filterAdded_6m": "Soňky 6 aý",
+    "filterAdded_12m": "Soňky 12 aý"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project-de serediň",

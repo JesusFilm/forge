@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Athraigh teanga an fhuaime",
     "home": "Baile JesusFilm",
     "closeSearch": "Dún an cuardach",
-    "submitSearch": "Cuardaigh"
+    "submitSearch": "Cuardaigh",
+    "library": "Leabharlann"
   },
   "SearchOverlay": {
     "dialogLabel": "Cuardaigh agus brabhsáil físeáin",
@@ -467,6 +468,7 @@
     "sports": "Spóirt",
     "collections": "Bailiúcháin",
     "subtitlesOnly": "Fotheidil amháin",
+    "backToTop": "Ar ais go barr",
     "newlyAdded": "Nua-bhreise",
     "newVideosTitle": "Físeáin Chríostaí nua i {language}",
     "newestFirst": "Is nuaí ar dtús",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Físeáin neamhspleácha",
     "videosFromCollection": "Físeáin ó {collection}.",
     "standaloneDescription": "Físeáin neamhspleácha sa teanga seo.",
-    "openCollection": "Oscail an bailiúchán"
+    "openCollection": "Oscail an bailiúchán",
+    "filters": "Scagairí",
+    "filterLength": "Fad",
+    "filterLength_under5": "Faoi 5 nóim",
+    "filterLength_5to10": "5-10 nóim",
+    "filterLength_10to30": "10-30 nóim",
+    "filterLength_over30": "Os cionn 30 nóim",
+    "filterType": "Cineál",
+    "clearFilters": "Glan na scagairí",
+    "filterResults": "{count} as {total} ar taispeáint",
+    "noFilterResults": "Níl aon fhíseán ag teacht leis na scagairí seo. Bain ceann díobh.",
+    "filterAdded": "Curtha leis",
+    "filterAdded_60d": "60 lá anuas",
+    "filterAdded_6m": "6 mhí anuas",
+    "filterAdded_12m": "12 mhí anuas"
   },
   "WatchHome": {
     "pageTitle": "Féach ar Jesus Film Project",

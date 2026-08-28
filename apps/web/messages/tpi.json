@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Senisim tokples bilong audio",
     "home": "JesusFilm hom pes",
     "closeSearch": "Pasim painim",
-    "submitSearch": "Painim"
+    "submitSearch": "Painim",
+    "library": "Haus buk"
   },
   "SearchOverlay": {
     "dialogLabel": "Painim na browseim ol video",
@@ -467,6 +468,7 @@
     "sports": "Sapot",
     "collections": "Ol collection",
     "subtitlesOnly": "Subtitles tasol",
+    "backToTop": "Go bek antap",
     "newlyAdded": "Nupela i go pinis",
     "newVideosTitle": "Nupela Christian video long {language}",
     "newestFirst": "Nupela pastaim",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Ol video wanpis",
     "videosFromCollection": "Ol video long {collection}.",
     "standaloneDescription": "Ol video wanpis long dispela tokples.",
-    "openCollection": "Openim collection"
+    "openCollection": "Openim collection",
+    "filters": "Filta",
+    "filterLength": "Longpela",
+    "filterLength_under5": "Aninit long 5 minit",
+    "filterLength_5to10": "5-10 minit",
+    "filterLength_10to30": "10-30 minit",
+    "filterLength_over30": "Antap long 30 minit",
+    "filterType": "Kain",
+    "clearFilters": "Rausim ol filta",
+    "filterResults": "Soim {count} bilong {total}",
+    "noFilterResults": "I no gat video i wankain wantaim ol dispela filta. Traim rausim wanpela.",
+    "filterAdded": "Putim pinis",
+    "filterAdded_60d": "Las 60 de",
+    "filterAdded_6m": "Las 6 mun",
+    "filterAdded_12m": "Las 12 mun"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project Lukluk",

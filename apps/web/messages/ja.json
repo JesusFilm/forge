@@ -180,7 +180,8 @@
     "changeAudioLanguage": "音声言語を変更",
     "home": "JesusFilm ホーム",
     "closeSearch": "検索を閉じる",
-    "submitSearch": "検索"
+    "submitSearch": "検索",
+    "library": "ライブラリ"
   },
   "SearchOverlay": {
     "dialogLabel": "動画を検索・閲覧",
@@ -283,6 +284,7 @@
     "sports": "スポーツ",
     "collections": "コレクション",
     "subtitlesOnly": "字幕のみ",
+    "backToTop": "トップへ戻る",
     "newlyAdded": "新しく追加",
     "newVideosTitle": "{language}の新しいクリスチャン動画",
     "newestFirst": "新しい順",
@@ -313,7 +315,21 @@
     "standaloneVideos": "単体動画",
     "videosFromCollection": "{collection}の動画。",
     "standaloneDescription": "この言語の単体動画です。",
-    "openCollection": "コレクションを開く"
+    "openCollection": "コレクションを開く",
+    "filters": "絞り込み",
+    "filterLength": "長さ",
+    "filterLength_under5": "5分未満",
+    "filterLength_5to10": "5〜10分",
+    "filterLength_10to30": "10〜30分",
+    "filterLength_over30": "30分以上",
+    "filterType": "種類",
+    "clearFilters": "絞り込みを解除",
+    "filterResults": "{total}件中{count}件を表示",
+    "noFilterResults": "この条件に一致する動画はありません。条件を1つ外してみてください。",
+    "filterAdded": "追加日",
+    "filterAdded_60d": "過去60日",
+    "filterAdded_6m": "過去6か月",
+    "filterAdded_12m": "過去12か月"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project 動画視聴",

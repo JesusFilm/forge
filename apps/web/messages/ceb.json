@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Usba ang pinulongan sa audio",
     "home": "Panid sa balay sa JesusFilm",
     "closeSearch": "Sirad-i ang pagpangita",
-    "submitSearch": "Pangitaa"
+    "submitSearch": "Pangitaa",
+    "library": "Librarya"
   },
   "SearchOverlay": {
     "dialogLabel": "Pangitaa ug i-browse ang mga video",
@@ -467,6 +468,7 @@
     "sports": "Isports",
     "collections": "Mga koleksyon",
     "subtitlesOnly": "Subtitle lang",
+    "backToTop": "Balik sa taas",
     "newlyAdded": "Bag-ong nadugang",
     "newVideosTitle": "Bag-ong mga Kristohanong video sa {language}",
     "newestFirst": "Pinakabag-o una",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Mga video nga nag-inusara",
     "videosFromCollection": "Mga video gikan sa {collection}.",
     "standaloneDescription": "Mga video nga nag-inusara sa niini nga pinulongan.",
-    "openCollection": "Ablihi ang koleksyon"
+    "openCollection": "Ablihi ang koleksyon",
+    "filters": "Mga filter",
+    "filterLength": "Gitas-on",
+    "filterLength_under5": "Ubos sa 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "Kapin sa 30 min",
+    "filterType": "Matang",
+    "clearFilters": "Hawani ang mga filter",
+    "filterResults": "{count} sa {total} ang gipakita",
+    "noFilterResults": "Walay video nga mohaum niining mga filter. Sulayi pagtangtang ang usa.",
+    "filterAdded": "Gidugang",
+    "filterAdded_60d": "Ulahing 60 ka adlaw",
+    "filterAdded_6m": "Ulahing 6 ka bulan",
+    "filterAdded_12m": "Ulahing 12 ka bulan"
   },
   "WatchHome": {
     "pageTitle": "Tan-awa sa Jesus Film Project",

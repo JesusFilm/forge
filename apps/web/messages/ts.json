@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Cinza ririmi ra mpfumawulo",
     "home": "Tluka ra le kaya ra JesusFilm",
     "closeSearch": "Pfala ku lava",
-    "submitSearch": "Lava"
+    "submitSearch": "Lava",
+    "library": "Layiburari"
   },
   "SearchOverlay": {
     "dialogLabel": "Lava ni ku languta tivhidiyo",
@@ -467,6 +468,7 @@
     "sports": "Midlalo",
     "collections": "Miqoqo",
     "subtitlesOnly": "Switsalwana ntsena",
+    "backToTop": "Tlhelela ehenhla",
     "newlyAdded": "Swa ha ku engeteriwa",
     "newVideosTitle": "Tivhidiyo ta Vukreste letintshwa hi {language}",
     "newestFirst": "Leswintshwa ku sungula",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Tivhidiyo leti yimaka toxe",
     "videosFromCollection": "Tivhidiyo ku suka eka {collection}.",
     "standaloneDescription": "Tivhidiyo leti yimaka toxe eka ririmi leri.",
-    "openCollection": "Pfula muqoqo"
+    "openCollection": "Pfula muqoqo",
+    "filters": "Swifiltara",
+    "filterLength": "Ku leha",
+    "filterLength_under5": "Ehansi ka timinete ta 5",
+    "filterLength_5to10": "Timinete ta 5-10",
+    "filterLength_10to30": "Timinete ta 10-30",
+    "filterLength_over30": "Ehenhla ka timinete ta 30",
+    "filterType": "Muxaka",
+    "clearFilters": "Sula swifiltara",
+    "filterResults": "{count} ya {total} leyi kombisiwaka",
+    "noFilterResults": "A ku na vhidiyo leyi fambelanaka na swifiltara leswi. Ringeta ku susa xin'we.",
+    "filterAdded": "Ku engeteriwe",
+    "filterAdded_60d": "Masiku ya 60 lama hundzeke",
+    "filterAdded_6m": "Tin'hweti ta 6 leti hundzeke",
+    "filterAdded_12m": "Tin'hweti ta 12 leti hundzeke"
   },
   "WatchHome": {
     "pageTitle": "Ku Languta ka Jesus Film Project",

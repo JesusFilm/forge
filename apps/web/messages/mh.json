@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Kāāl language in audio",
     "home": "Jikin jinoin JesusFilm",
     "closeSearch": "Māake search",
-    "submitSearch": "Jibed"
+    "submitSearch": "Jibed",
+    "library": "Ṃōn bok"
   },
   "SearchOverlay": {
     "dialogLabel": "Jibed im browse videos",
@@ -467,6 +468,7 @@
     "sports": "Ikkure ko",
     "collections": "Kumi ko",
     "subtitlesOnly": "Subtitles eilōñ",
+    "backToTop": "Rọọl lōñ",
     "newlyAdded": "Kāāl ijo bōk",
     "newVideosTitle": "Christian videos kāāl in {language}",
     "newestFirst": "Newest ijo karok",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Video ko rej jutak make",
     "videosFromCollection": "Videos jān {collection}.",
     "standaloneDescription": "Standalone videos ilo language in.",
-    "openCollection": "Iak collection"
+    "openCollection": "Iak collection",
+    "filters": "Kein kālet",
+    "filterLength": "Aetok",
+    "filterLength_under5": "Dik jān 5 minit",
+    "filterLength_5to10": "5-10 minit",
+    "filterLength_10to30": "10-30 minit",
+    "filterLength_over30": "Lap jān 30 minit",
+    "filterType": "Wāween",
+    "clearFilters": "Joḷọk kein kālet",
+    "filterResults": "Kwaḷọk {count} jān {total}",
+    "noFilterResults": "Ejjeḷọk video ej ekkar ñan kein kālet kein. Kajjioñ joḷọk juon.",
+    "filterAdded": "Kobaik",
+    "filterAdded_60d": "Raan 60 ko ḷọk",
+    "filterAdded_6m": "Allōñ 6 ko ḷọk",
+    "filterAdded_12m": "Allōñ 12 ko ḷọk"
   },
   "WatchHome": {
     "pageTitle": "Lale ilo Jesus Film Project",

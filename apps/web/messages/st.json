@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Fetola puo ea molumo",
     "home": "Lehae la JesusFilm",
     "closeSearch": "Koala patlo",
-    "submitSearch": "Batla"
+    "submitSearch": "Batla",
+    "library": "Laeborari"
   },
   "SearchOverlay": {
     "dialogLabel": "Batla le ho sheba livideo",
@@ -467,6 +468,7 @@
     "sports": "Lipapali",
     "collections": "Liphutheloana",
     "subtitlesOnly": "Mengolo-tlase feela",
+    "backToTop": "Khutlela hodimo",
     "newlyAdded": "E sa tsoa eketsoa",
     "newVideosTitle": "Livideo tse ncha tsa Bokreste ka {language}",
     "newestFirst": "Tse ncha pele",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Livideo tse ikemetseng",
     "videosFromCollection": "Livideo tse tsoang ho {collection}.",
     "standaloneDescription": "Livideo tse ikemetseng ka puo ena.",
-    "openCollection": "Bula pokello"
+    "openCollection": "Bula pokello",
+    "filters": "Difilthara",
+    "filterLength": "Bolelele",
+    "filterLength_under5": "Ka tlase ho metsotso e 5",
+    "filterLength_5to10": "Metsotso e 5-10",
+    "filterLength_10to30": "Metsotso e 10-30",
+    "filterLength_over30": "Ka holimo ho metsotso e 30",
+    "filterType": "Mofuta",
+    "clearFilters": "Hlakola difilthara",
+    "filterResults": "{count} ho {total} e bontshitsoeng",
+    "noFilterResults": "Ha ho video e tsamaellanang le difilthara tsena. Leka ho tlosa e le 'ngoe.",
+    "filterAdded": "E ekelitsoe",
+    "filterAdded_60d": "Matsatsi a 60 a fetileng",
+    "filterAdded_6m": "Likhoeli tse 6 tse fetileng",
+    "filterAdded_12m": "Likhoeli tse 12 tse fetileng"
   },
   "WatchHome": {
     "pageTitle": "Watch ea Jesus Film Project",

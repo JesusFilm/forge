@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Audio bhasha badliye",
     "home": "JesusFilm ka home page",
     "closeSearch": "Search band kariye",
-    "submitSearch": "Khojiye"
+    "submitSearch": "Khojiye",
+    "library": "Bhandar"
   },
   "SearchOverlay": {
     "dialogLabel": "Video khojiye aur browse kariye",
@@ -467,6 +468,7 @@
     "sports": "Khel",
     "collections": "Sab collections",
     "subtitlesOnly": "Sirf subtitles",
+    "backToTop": "Uupar jao",
     "newlyAdded": "Abhi joda gaya",
     "newVideosTitle": "{language} me naye Christian videos",
     "newestFirst": "Sab se naye pehle",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Alag videos",
     "videosFromCollection": "{collection} se videos.",
     "standaloneDescription": "Is bhasha me alag videos.",
-    "openCollection": "Collection kholiye"
+    "openCollection": "Collection kholiye",
+    "filters": "Filter",
+    "filterLength": "Lambai",
+    "filterLength_under5": "5 minute se kam",
+    "filterLength_5to10": "5-10 minute",
+    "filterLength_10to30": "10-30 minute",
+    "filterLength_over30": "30 minute se jyada",
+    "filterType": "Prakar",
+    "clearFilters": "Filter hatao",
+    "filterResults": "{total} me se {count} dekhawa gais",
+    "noFilterResults": "Ii filter se koi video match nai kare hai. Ek hataike dekho.",
+    "filterAdded": "Joda gais",
+    "filterAdded_60d": "Pichhla 60 din",
+    "filterAdded_6m": "Pichhla 6 mahina",
+    "filterAdded_12m": "Pichhla 12 mahina"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project par dekhiye",

@@ -180,7 +180,8 @@
     "changeAudioLanguage": "Fetola polelo ya modumo",
     "home": "Legae la JesusFilm",
     "closeSearch": "Tswalela nyakišišo",
-    "submitSearch": "Nyaka"
+    "submitSearch": "Nyaka",
+    "library": "Bokgobapuku"
   },
   "SearchOverlay": {
     "dialogLabel": "Nyaka le go phetla divideo",
@@ -467,6 +468,7 @@
     "sports": "Dipapadi",
     "collections": "Dikgoboketšo",
     "subtitlesOnly": "Dikapotši feela",
+    "backToTop": "Boela godimo",
     "newlyAdded": "E sa tšwago go oketšwa",
     "newVideosTitle": "Divideo tše mpsha tša Bokriste ka {language}",
     "newestFirst": "Tša moragorago pele",
@@ -497,7 +499,21 @@
     "standaloneVideos": "Divideo tše di ikemetšego",
     "videosFromCollection": "Divideo go tšwa go {collection}.",
     "standaloneDescription": "Divideo tše di ikemetšego ka polelong ye.",
-    "openCollection": "Bula kgoboketšo"
+    "openCollection": "Bula kgoboketšo",
+    "filters": "Difiltara",
+    "filterLength": "Botelele",
+    "filterLength_under5": "Ka fase ga metsotso ye 5",
+    "filterLength_5to10": "Metsotso ye 5-10",
+    "filterLength_10to30": "Metsotso ye 10-30",
+    "filterLength_over30": "Ka godimo ga metsotso ye 30",
+    "filterType": "Mohuta",
+    "clearFilters": "Phumola difiltara",
+    "filterResults": "{count} ya {total} ye bontšhitšwego",
+    "noFilterResults": "Ga go bidio yeo e sepelelanago le difiltara tše. Leka go tloša e tee.",
+    "filterAdded": "E okeditšwe",
+    "filterAdded_60d": "Matšatši a 60 a fetileng",
+    "filterAdded_6m": "Dikgwedi tše 6 tše fetileng",
+    "filterAdded_12m": "Dikgwedi tše 12 tše fetileng"
   },
   "WatchHome": {
     "pageTitle": "Bogela go Jesus Film Project",

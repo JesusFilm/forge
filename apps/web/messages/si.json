@@ -180,7 +180,8 @@
     "changeAudioLanguage": "ශ්‍රව්‍ය භාෂාව වෙනස් කරන්න",
     "home": "JesusFilm මුල් පිටුව",
     "closeSearch": "සෙවීම වසන්න",
-    "submitSearch": "සොයන්න"
+    "submitSearch": "සොයන්න",
+    "library": "පුස්තකාලය"
   },
   "SearchOverlay": {
     "dialogLabel": "වීඩියෝ සෙවීම සහ බ්‍රවුස් කිරීම",
@@ -467,6 +468,7 @@
     "sports": "ක්‍රීඩා",
     "collections": "එකතු",
     "subtitlesOnly": "උපසිරැසි පමණි",
+    "backToTop": "ඉහළට",
     "newlyAdded": "අලුතින් එක් කළ",
     "newVideosTitle": "{language} භාෂාවේ නව ක්‍රිස්තියානි වීඩියෝ",
     "newestFirst": "අලුත්ම පළමුව",
@@ -497,7 +499,21 @@
     "standaloneVideos": "ස්වාධීන වීඩියෝ",
     "videosFromCollection": "{collection} වෙතින් වීඩියෝ.",
     "standaloneDescription": "මෙම භාෂාවේ ස්වාධීන වීඩියෝ.",
-    "openCollection": "එකතුව විවෘත කරන්න"
+    "openCollection": "එකතුව විවෘත කරන්න",
+    "filters": "පෙරහන්",
+    "filterLength": "දිග",
+    "filterLength_under5": "මිනිත්තු 5 ට අඩු",
+    "filterLength_5to10": "මිනිත්තු 5-10",
+    "filterLength_10to30": "මිනිත්තු 10-30",
+    "filterLength_over30": "මිනිත්තු 30 ට වැඩි",
+    "filterType": "වර්ගය",
+    "clearFilters": "පෙරහන් හිස් කරන්න",
+    "filterResults": "{total} කින් {count} පෙන්වයි",
+    "noFilterResults": "මෙම පෙරහන්වලට ගැළපෙන වීඩියෝ නැත. එකක් ඉවත් කර බලන්න.",
+    "filterAdded": "එකතු කළා",
+    "filterAdded_60d": "පසුගිය දින 60",
+    "filterAdded_6m": "පසුගිය මාස 6",
+    "filterAdded_12m": "පසුගිය මාස 12"
   },
   "WatchHome": {
     "pageTitle": "Jesus Film Project නැරඹීම",
