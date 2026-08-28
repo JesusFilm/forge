@@ -1874,9 +1874,9 @@ describe("container availability kind", () => {
     expect(availabilityScore(watchability("container"))).toBeGreaterThan(
       availabilityScore(watchability("related_language")),
     )
-    expect(
-      availabilityScore(watchability("container")),
-    ).toBeLessThanOrEqual(availabilityScore(watchability("target_audio")))
+    expect(availabilityScore(watchability("container"))).toBeLessThanOrEqual(
+      availabilityScore(watchability("target_audio")),
+    )
     expect(availabilityScore(watchability("unavailable"))).toBe(0)
   })
 

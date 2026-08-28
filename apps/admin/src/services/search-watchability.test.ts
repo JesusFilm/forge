@@ -72,13 +72,12 @@ function rawQueryContaining(
 ): { sql?: string; values?: unknown[] } | undefined {
   return prisma.$queryRaw.mock.calls
     .map((call: unknown[]) => call[0] as { sql?: string; values?: unknown[] })
-    .find((query) => query?.sql?.includes(anchor))
+    .find((query: { sql?: string; values?: unknown[] }) =>
+      query?.sql?.includes(anchor),
+    )
 }
 
-function rawSql(
-  prisma: ReturnType<typeof mockPrisma>,
-  anchor: string,
-): string {
+function rawSql(prisma: ReturnType<typeof mockPrisma>, anchor: string): string {
   return rawQueryContaining(prisma, anchor)?.sql ?? ""
 }
 
@@ -503,10 +502,7 @@ describe("SearchWatchabilityService", () => {
         "NOT ('watch' = ANY(container.restrict_view_platforms))",
       )
       expect(rawValues(prisma, CONTAINER_QUERY)).toEqual(
-        expect.arrayContaining([
-          ["collection", "series"],
-          "^[a-z0-9_-]+$",
-        ]),
+        expect.arrayContaining([["collection", "series"], "^[a-z0-9_-]+$"]),
       )
     })
 
@@ -520,7 +516,9 @@ describe("SearchWatchabilityService", () => {
       const sql = rawSql(prisma, CONTAINER_QUERY)
       expect(sql).toContain("child.deleted_at IS NULL")
       expect(sql).toContain("child.no_index = FALSE")
-      expect(sql).toContain("NOT ('watch' = ANY(child.restrict_view_platforms))")
+      expect(sql).toContain(
+        "NOT ('watch' = ANY(child.restrict_view_platforms))",
+      )
       expect(sql).toContain("child_locale.status = 'published'")
       expect(sql).toContain("child_dub.deleted_at IS NULL")
       expect(sql).toContain("child_dub.published = TRUE")

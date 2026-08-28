@@ -241,6 +241,352 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
       }
     }, 35_000)
 
+    // The container tier's SQL cannot import playableDubWhere() /
+    // notRestrictedFromWatchWhere(), so these cases are the enforcement point
+    // for the parity KTD5 claims. Each one isolates a single condition: a
+    // mocked Prisma double implements the recursive join by construction and
+    // can prove none of them.
+    describe("container tier", () => {
+      type ContainerFixture = {
+        containerSlug?: string
+        containerLabel?: "COLLECTION" | "SERIES" | "FEATURE_FILM"
+        containerPublished?: boolean
+        containerNoIndex?: boolean
+        containerRestrictedFromWatch?: boolean
+        containerOwnDub?: boolean
+        depth?: 1 | 2 | 3
+        childPublished?: boolean
+        childDeleted?: boolean
+        childRestrictedFromWatch?: boolean
+        dubPublished?: boolean
+        dubHls?: string | null
+        dubLanguage?: "target" | "fallback"
+        cycle?: boolean
+      }
+
+      async function resolveContainer(
+        fixture: ContainerFixture,
+      ): Promise<{ kind?: string; languageSlug?: string | null }> {
+        const suffix = `${Date.now()}-${Math.random().toString(36).slice(2)}`
+        const rollback = new RollbackFixture()
+        let resolved: { kind?: string; languageSlug?: string | null } = {}
+
+        const {
+          containerSlug = `db-container-${suffix}`,
+          containerLabel = "COLLECTION",
+          containerPublished = true,
+          containerNoIndex = false,
+          containerRestrictedFromWatch = false,
+          containerOwnDub = false,
+          depth = 1,
+          childPublished = true,
+          childDeleted = false,
+          childRestrictedFromWatch = false,
+          dubPublished = true,
+          dubHls = "https://example.test/child.m3u8",
+          dubLanguage = "target",
+          cycle = false,
+        } = fixture
+
+        try {
+          await prisma.$transaction(
+            async (tx) => {
+              const targetLanguage = await tx.language.create({
+                data: {
+                  coreId: `db-c-target-${suffix}`,
+                  slug: `db-c-target-${suffix}`,
+                  bcp47: "ru",
+                  name: { en: "Container Target" },
+                },
+              })
+              const fallbackLanguage = await tx.language.create({
+                data: {
+                  coreId: `db-c-fallback-${suffix}`,
+                  slug: `db-c-fallback-${suffix}`,
+                  bcp47: "en",
+                  name: { en: "Container Fallback" },
+                },
+              })
+              await tx.$executeRaw`
+                INSERT INTO language_fallback (id, source_language_id, fallback_language_id, priority)
+                VALUES (${`db-c-lf-${suffix}`}, ${targetLanguage.id}, ${fallbackLanguage.id}, 1)
+              `
+              const edition = await tx.videoEdition.create({
+                data: {
+                  coreId: `db-c-edition-${suffix}`,
+                  name: "Container edition",
+                },
+              })
+
+              const container = await tx.video.create({
+                data: {
+                  coreId: `db-c-video-${suffix}`,
+                  slug: containerSlug,
+                  label: containerLabel,
+                  noIndex: containerNoIndex,
+                  restrictViewPlatforms: containerRestrictedFromWatch
+                    ? ["watch"]
+                    : [],
+                },
+              })
+              if (containerPublished) {
+                await tx.videoLocale.create({
+                  data: {
+                    videoId: container.id,
+                    languageId: targetLanguage.id,
+                    languageSlug: targetLanguage.slug,
+                    locale: "ru",
+                    title: "Container",
+                    status: "PUBLISHED",
+                  },
+                })
+              }
+
+              // Build the descendant chain: container -> ... -> leaf.
+              let parentId = container.id
+              const intermediateCount = depth - 1
+              for (let level = 0; level < intermediateCount; level++) {
+                const middle = await tx.video.create({
+                  data: {
+                    coreId: `db-c-mid-${level}-${suffix}`,
+                    slug: `db-c-mid-${level}-${suffix}`,
+                    label: "SERIES",
+                  },
+                })
+                await tx.videoLocale.create({
+                  data: {
+                    videoId: middle.id,
+                    languageId: targetLanguage.id,
+                    languageSlug: targetLanguage.slug,
+                    locale: "ru",
+                    title: `Middle ${level}`,
+                    status: "PUBLISHED",
+                  },
+                })
+                await tx.videoRelation.create({
+                  data: { parentId, childId: middle.id },
+                })
+                parentId = middle.id
+              }
+
+              const leaf = await tx.video.create({
+                data: {
+                  coreId: `db-c-leaf-${suffix}`,
+                  slug: `db-c-leaf-${suffix}`,
+                  label: "EPISODE",
+                  deletedAt: childDeleted ? new Date() : null,
+                  restrictViewPlatforms: childRestrictedFromWatch
+                    ? ["watch"]
+                    : [],
+                },
+              })
+              if (childPublished) {
+                await tx.videoLocale.create({
+                  data: {
+                    videoId: leaf.id,
+                    languageId: targetLanguage.id,
+                    languageSlug: targetLanguage.slug,
+                    locale: "ru",
+                    title: "Leaf",
+                    status: "PUBLISHED",
+                  },
+                })
+              } else {
+                await tx.videoLocale.create({
+                  data: {
+                    videoId: leaf.id,
+                    languageId: targetLanguage.id,
+                    languageSlug: targetLanguage.slug,
+                    locale: "ru",
+                    title: "Leaf",
+                    status: "DRAFT",
+                  },
+                })
+              }
+              await tx.videoRelation.create({
+                data: { parentId, childId: leaf.id },
+              })
+              if (cycle) {
+                await tx.videoRelation.create({
+                  data: { parentId: leaf.id, childId: container.id },
+                })
+              }
+
+              const mux = await tx.muxVideo.create({
+                data: {
+                  coreId: `db-c-mux-${suffix}`,
+                  playbackId: `db-c-playback-${suffix}`,
+                },
+              })
+              await tx.videoDub.create({
+                data: {
+                  coreId: `db-c-dub-${suffix}`,
+                  videoId: leaf.id,
+                  videoEditionId: edition.id,
+                  languageId:
+                    dubLanguage === "target"
+                      ? targetLanguage.id
+                      : fallbackLanguage.id,
+                  muxVideoId: mux.id,
+                  duration: 120,
+                  hls: dubHls,
+                  published: dubPublished,
+                },
+              })
+              if (containerOwnDub) {
+                const ownMux = await tx.muxVideo.create({
+                  data: {
+                    coreId: `db-c-own-mux-${suffix}`,
+                    playbackId: `db-c-own-playback-${suffix}`,
+                  },
+                })
+                await tx.videoDub.create({
+                  data: {
+                    coreId: `db-c-own-dub-${suffix}`,
+                    videoId: container.id,
+                    videoEditionId: edition.id,
+                    languageId: targetLanguage.id,
+                    muxVideoId: ownMux.id,
+                    duration: 600,
+                    hls: "https://example.test/container.m3u8",
+                    published: true,
+                  },
+                })
+              }
+
+              const db = tx as unknown as PrismaClient
+              const watchability = (
+                await new SearchWatchabilityService(db).hydrate({
+                  candidates: [{ videoId: container.id }],
+                  targetLanguageSlug: targetLanguage.slug!,
+                })
+              ).get(container.id)
+              resolved = {
+                kind: watchability?.kind,
+                languageSlug: watchability?.languageSlug,
+              }
+              // Keep the expected language slugs addressable by the caller.
+              if (resolved.languageSlug === targetLanguage.slug) {
+                resolved.languageSlug = "target"
+              } else if (resolved.languageSlug === fallbackLanguage.slug) {
+                resolved.languageSlug = "fallback"
+              }
+
+              throw rollback
+            },
+            { timeout: 30_000 },
+          )
+        } catch (error) {
+          if (error !== rollback) throw error
+        }
+        return resolved
+      }
+
+      it("resolves a container from a playable target-language child", async () => {
+        expect(await resolveContainer({ depth: 1 })).toMatchObject({
+          kind: "container",
+          languageSlug: "target",
+        })
+      }, 35_000)
+
+      it("resolves a container whose playability sits on a grandchild", async () => {
+        expect(await resolveContainer({ depth: 2 })).toMatchObject({
+          kind: "container",
+          languageSlug: "target",
+        })
+      }, 35_000)
+
+      it("leaves a container unavailable when playability is three levels down", async () => {
+        expect(await resolveContainer({ depth: 3 })).toMatchObject({
+          kind: "unavailable",
+        })
+      }, 35_000)
+
+      it("terminates on a cyclic video_relation instead of hanging", async () => {
+        expect(await resolveContainer({ depth: 1, cycle: true })).toMatchObject(
+          {
+            kind: "container",
+          },
+        )
+      }, 35_000)
+
+      it("falls back to a related-language descendant", async () => {
+        expect(
+          await resolveContainer({ depth: 1, dubLanguage: "fallback" }),
+        ).toMatchObject({ kind: "container", languageSlug: "fallback" })
+      }, 35_000)
+
+      it("leaves an unpublished container unavailable", async () => {
+        expect(
+          await resolveContainer({ containerPublished: false }),
+        ).toMatchObject({ kind: "unavailable" })
+      }, 35_000)
+
+      it("leaves a noIndex container unavailable", async () => {
+        expect(
+          await resolveContainer({ containerNoIndex: true }),
+        ).toMatchObject({ kind: "unavailable" })
+      }, 35_000)
+
+      it("leaves an internal-style slug unavailable", async () => {
+        expect(
+          await resolveContainer({ containerSlug: "Nua_Know_God" }),
+        ).toMatchObject({ kind: "unavailable" })
+      }, 35_000)
+
+      it("leaves a watch-restricted container unavailable despite a visible playable child", async () => {
+        expect(
+          await resolveContainer({ containerRestrictedFromWatch: true }),
+        ).toMatchObject({ kind: "unavailable" })
+      }, 35_000)
+
+      it("does not count a watch-restricted child", async () => {
+        expect(
+          await resolveContainer({ childRestrictedFromWatch: true }),
+        ).toMatchObject({ kind: "unavailable" })
+      }, 35_000)
+
+      it("does not count a soft-deleted child", async () => {
+        expect(await resolveContainer({ childDeleted: true })).toMatchObject({
+          kind: "unavailable",
+        })
+      }, 35_000)
+
+      it("does not count a child with no published locale", async () => {
+        expect(await resolveContainer({ childPublished: false })).toMatchObject(
+          {
+            kind: "unavailable",
+          },
+        )
+      }, 35_000)
+
+      it("does not count an unpublished child Dub", async () => {
+        expect(await resolveContainer({ dubPublished: false })).toMatchObject({
+          kind: "unavailable",
+        })
+      }, 35_000)
+
+      it("does not count a child Dub with empty hls", async () => {
+        expect(await resolveContainer({ dubHls: "" })).toMatchObject({
+          kind: "unavailable",
+        })
+      }, 35_000)
+
+      it("does not admit a non-Series-Shaped parent that carries children", async () => {
+        expect(
+          await resolveContainer({ containerLabel: "FEATURE_FILM" }),
+        ).toMatchObject({ kind: "unavailable" })
+      }, 35_000)
+
+      it("keeps a container's own playable Dub ahead of its descendants", async () => {
+        expect(await resolveContainer({ containerOwnDub: true })).toMatchObject(
+          {
+            kind: "target_audio",
+          },
+        )
+      }, 35_000)
+    })
+
     it("counts only subtitle inventory cards with playable audio on the subtitle edition", async () => {
       const suffix = `${Date.now()}-${Math.random().toString(36).slice(2)}`
       const prefix = `db-test-inventory-${suffix}`
