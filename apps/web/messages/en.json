@@ -538,44 +538,6 @@
     "previousVideoPreview": "Previous video preview",
     "nextVideoPreview": "Next video preview"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Watch Short Film",
-    "actions": {
-      "joinUs": "Join Us",
-      "shareMission": "Share in Our Mission"
-    },
-    "welcomeStart": {
-      "label": "Faith & Scripture",
-      "title": "Today's Video Picks",
-      "description": "Faith-centered video content from our library to inspire, challenge, and spark reflection."
-    },
-    "welcomeMorning": {
-      "label": "Morning Inspiration",
-      "title": "Good Morning! Today's Bible Moments Await.",
-      "description": "Begin your day with encouraging Bible moments designed to inspire and uplift your spirit."
-    },
-    "welcomeAfternoon": {
-      "label": "Afternoon Inspiration",
-      "title": "Good Afternoon! Bible Moments for Your Day.",
-      "description": "Encouraging Bible content perfect for your afternoon break or continued inspiration."
-    },
-    "welcomeEvening": {
-      "label": "Evening Inspiration",
-      "title": "Good Evening! Wind Down with Bible Moments.",
-      "description": "Peaceful Bible moments to help you reflect and find comfort as your day comes to a close."
-    },
-    "joinUs": {
-      "label": "Join Us",
-      "title": "Billions are searching",
-      "description": "The harvest is here. Join us as we share the gospel with the world using digital media."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Let's go together",
-      "title": "Telling the Story of Jesus, Together",
-      "description": "So they can hear and see the love of Jesus in their own language right where they are."
-    }
-  },
   "WatchFooter": {
     "home": "Jesus Film Project home",
     "navigation": "Footer navigation",

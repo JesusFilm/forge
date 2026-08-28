@@ -18,6 +18,7 @@ import { decideTriageAction } from "../../services/datadog-triage/action-policy"
 import type {
   DatadogAggregate,
   DatadogIssuePage,
+  DatadogIssueTrack,
   DatadogMonitorPage,
   DatadogResult,
 } from "../../services/datadog-triage/datadog-client"
@@ -88,6 +89,7 @@ export type DatadogMobileTriageInput = z.infer<
 export type DatadogSourceClient = {
   searchIssues(input: {
     service: string
+    track: DatadogIssueTrack
     from: Date
     to: Date
   }): Promise<DatadogResult<DatadogIssuePage>>
@@ -717,6 +719,8 @@ async function collectSignals(input: {
       await heartbeat()
       const page = await dependencies.datadog.searchIssues({
         service,
+        // The API requires a track; the profile's telemetry home names it.
+        track: profile.spikeSource,
         from: issueWindow.from,
         to: issueWindow.to,
       })

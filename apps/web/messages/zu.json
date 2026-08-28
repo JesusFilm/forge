@@ -663,44 +663,6 @@
     "backToWatch": "Buyela ku-Watch",
     "browseVideos": "Phequlula amavidiyo"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Buka ifilimu emfushane",
-    "actions": {
-      "joinUs": "Hlanganyela nathi",
-      "shareMission": "Yabelana emsebenzini wethu"
-    },
-    "welcomeStart": {
-      "label": "Ukukholwa neMibhalo",
-      "title": "Okukhethiwe namuhla kwamavidiyo",
-      "description": "Okuqukethwe kwamavidiyo okugxile ekukholweni okuvela emtatsheni wethu ukuze kukhuthaze, kuphonsele inselele, futhi kubangele ukuzindla."
-    },
-    "welcomeMorning": {
-      "label": "Ugqozi lwasekuseni",
-      "title": "Sawubona! Izikhathi zeBhayibheli zanamuhla zilindile.",
-      "description": "Qala usuku lwakho ngezikhathi zeBhayibheli ezikhuthazayo eziklanyelwe ukukugqugquzela nokukuphakamisa emoyeni."
-    },
-    "welcomeAfternoon": {
-      "label": "Ugqozi lwantambama",
-      "title": "Ntambama enhle! Izikhathi zeBhayibheli zosuku lwakho.",
-      "description": "Okuqukethwe okukhuthazayo kweBhayibheli okulungele ikhefu lakho lantambama noma ukuqhubeka nokukhuthazeka."
-    },
-    "welcomeEvening": {
-      "label": "Ugqozi lwakusihlwa",
-      "title": "Sihlwa esihle! Yehlisa umoya ngezikhathi zeBhayibheli.",
-      "description": "Izikhathi zeBhayibheli ezithule nezikhululekile ezikusiza ukuba uzindle futhi uthole induduzo njengoba usuku luphela."
-    },
-    "joinUs": {
-      "label": "Hlanganyela nathi",
-      "title": "Izigidigidi ziyafuna",
-      "description": "Isivuno sesifikile. Hlanganyela nathi njengoba sabelana ngevangeli nomhlaba kusetshenziswa imidiya yedijithali."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Asihambe ndawonye",
-      "title": "Ukuxoxa indaba kaJesu, ndawonye",
-      "description": "Ukuze bezwe futhi babone uthando lukaJesu ngolimi lwabo endaweni abakuyo."
-    }
-  },
   "VideoRecommendations": {
     "match": "Kufana ngo-{percent}%",
     "none": "Azikho izincomo zale vidiyo ezitholakele ngalolu limi."

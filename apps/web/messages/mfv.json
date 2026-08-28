@@ -663,44 +663,6 @@
     "backToWatch": "Volta pa Watch",
     "browseVideos": "Navega vídeus"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Odja filmi kurtu",
-    "actions": {
-      "joinUs": "Junta ku nu",
-      "shareMission": "Partilha na n'sa mison"
-    },
-    "welcomeStart": {
-      "label": "Fé i Skritura",
-      "title": "N'sa skolta di vídeus pa oji",
-      "description": "Kontéudu di vídeu ku fé di n'sa biblioteka pa inspirá, desafiá i desparta meditación."
-    },
-    "welcomeMorning": {
-      "label": "Inspirason di manhan",
-      "title": "Bon dia! Momentus di Bíblia pa oji sta ta spera.",
-      "description": "Bia di dia ku momentus di Bíblia pa inspirá i levantá bu espírtu."
-    },
-    "welcomeAfternoon": {
-      "label": "Inspirason di tardi",
-      "title": "Bon tardi! Momentus di Bíblia pa bu dia.",
-      "description": "Kontéudu di Bíblia pa animá, prudu pa bu pausa di tardi ou pa kontinua ta inspirá."
-    },
-    "welcomeEvening": {
-      "label": "Inspirason di noti",
-      "title": "Bon noti! Deskança ku momentus di Bíblia.",
-      "description": "Momentus di Bíblia pa trankilidá ta ajuda-bu medita i atxa konsolu na fin di dia."
-    },
-    "joinUs": {
-      "label": "Junta ku nu",
-      "title": "Milhoris ta buska",
-      "description": "Kosecha li. Junta ku nu enkuantu nu ta partilha evangelhu ku mundu pa média dijital."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Bai juntus",
-      "title": "Ta konta istória di Jesus, juntus",
-      "description": "Pa ki elis pudi obi i odja amor di Jesus na ses propi língua li ki elis sta."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}% di korespondénsia",
     "none": "Ka atxadu rekomendasons pa es vídeu na es língua."

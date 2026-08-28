@@ -2,7 +2,11 @@ import { createHash, randomBytes, randomUUID } from "node:crypto"
 
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest"
 
-import { AUTH_SCOPES } from "@/domain/scopes"
+import {
+  createOAuthResourceCatalog,
+  getPublicDcrAllowedScopes,
+  getPublicDcrResources,
+} from "@/domain/oauth-resources"
 
 /**
  * Executable compatibility contract for the Better Auth 1.6.2 -> 1.7 upgrade.
@@ -32,6 +36,8 @@ const OTHER_CLIENT_ID = "jfp_upgrade_baseline_other"
 const MANAGER_CLIENT_ID = "jfp_upgrade_baseline_manager_service"
 const REDIRECT_URI = "http://127.0.0.1:49173/callback"
 const MANAGER_AUDIENCE = "http://localhost:3003/api/manager/session"
+const ADMIN_MCP_AUDIENCE = "http://localhost:3003/mcp"
+const CHANGELOG_MCP_AUDIENCE = "http://localhost:3000/mcp"
 const RESOURCE_B = "https://resource-b.example.test/mcp"
 const CLIENT_SECRET = "jfp_cs_upgrade-baseline-client-secret"
 const CLIENT_SECRET_BODY = CLIENT_SECRET.slice("jfp_cs_".length)
@@ -140,7 +146,7 @@ async function authorizeResource(input: {
     response_type: "code",
     client_id: input.clientId,
     redirect_uri: REDIRECT_URI,
-    scope: "offline_access admin:manager-session:validate",
+    scope: "offline_access experience:read",
     code_challenge: input.challenge,
     code_challenge_method: "S256",
     resource: input.resource,
@@ -180,6 +186,9 @@ describeIntegration("Better Auth PostgreSQL compatibility contract", () => {
   let prisma: typeof import("@/db/client").prisma
   let auth: typeof import("@/auth/config").auth
   let buildAuthorizationCode: typeof import("./oauth-authorization-code.service").buildAuthorizationCode
+  let routeGet: typeof import("@/app/api/auth/[...all]/route").GET
+  let routePost: typeof import("@/app/api/auth/[...all]/route").POST
+  let seedFirstPartyApps: typeof import("@/scripts/seed-first-party-apps").seedFirstPartyApps
   let userId: string
   let sessionId: string
   const dynamicClientIds: string[] = []
@@ -187,7 +196,11 @@ describeIntegration("Better Auth PostgreSQL compatibility contract", () => {
   beforeAll(async () => {
     stubSelfDiscovery()
     ;({ prisma } = await import("@/db/client"))
+    ;({ seedFirstPartyApps } = await import("@/scripts/seed-first-party-apps"))
+    await seedFirstPartyApps()
     ;({ auth } = await import("@/auth/config"))
+    ;({ GET: routeGet, POST: routePost } =
+      await import("@/app/api/auth/[...all]/route"))
     ;({ buildAuthorizationCode } =
       await import("./oauth-authorization-code.service"))
 
@@ -585,7 +598,12 @@ describeIntegration("Better Auth PostgreSQL compatibility contract", () => {
       response_types: ["code"],
       require_pkce: undefined,
       client_secret: undefined,
-      scope: AUTH_SCOPES.map((scope) => scope.key).join(" "),
+      scope: getPublicDcrAllowedScopes(
+        createOAuthResourceCatalog({
+          authIssuer: process.env.AUTH_BASE_URL!,
+          customAudiences: [MANAGER_AUDIENCE, RESOURCE_B],
+        }),
+      ).join(" "),
     })
     await expect(
       prisma.oauthClient.findUniqueOrThrow({
@@ -613,6 +631,166 @@ describeIntegration("Better Auth PostgreSQL compatibility contract", () => {
     ).rejects.toMatchObject({ body: { error: "invalid_redirect_uri" } })
   })
 
+  it("binds a Codex-shaped route registration to Admin through exchange and refresh", async () => {
+    const email = `admin_resource_binding_${randomUUID()}@example.test`
+    const signUp = await auth.api.signUpEmail({
+      asResponse: true,
+      headers: new Headers(),
+      body: {
+        email,
+        password: `T3st-${randomUUID()}!`,
+        name: "Admin Resource Binding User",
+      },
+    })
+    expect(signUp.status).toBe(200)
+    const cookie = signUp.headers.get("set-cookie")?.split(";")[0]
+    if (!cookie) throw new Error("Sign-up response omitted session cookie")
+    const signedUp = (await signUp.json()) as { user: { id: string } }
+    await prisma.user.update({
+      where: { id: signedUp.user.id },
+      data: { membershipStatus: "ACTIVE" },
+    })
+
+    const registration = await routePost(
+      new Request("http://localhost:3004/api/auth/oauth2/register", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          client_name: "Codex",
+          redirect_uris: [REDIRECT_URI],
+        }),
+      }),
+      { params: Promise.resolve({ all: ["oauth2", "register"] }) },
+    )
+    expect(registration.status).toBeGreaterThanOrEqual(200)
+    expect(registration.status).toBeLessThan(300)
+    const registered = (await registration.json()) as { client_id: string }
+    const clientId = registered.client_id
+    dynamicClientIds.push(clientId)
+
+    const publicResources = getPublicDcrResources(
+      createOAuthResourceCatalog({
+        authIssuer: process.env.AUTH_BASE_URL!,
+        customAudiences: [MANAGER_AUDIENCE, RESOURCE_B],
+      }),
+    ).sort()
+    const registeredResourceIds = await prisma.oauthClientResource
+      .findMany({
+        where: { clientId },
+        select: { resourceId: true },
+      })
+      .then((rows) => rows.map(({ resourceId }) => resourceId).sort())
+    expect(registeredResourceIds).toEqual(publicResources)
+    await prisma.oauthClientResource.deleteMany({ where: { clientId } })
+    const repair = await seedFirstPartyApps()
+    expect(repair.resourceRepair).toMatchObject({
+      eligibleClients: expect.any(Number),
+      repairedClients: expect.any(Number),
+      createdLinks: expect.any(Number),
+    })
+    expect(repair.resourceRepair.repairedClients).toBeGreaterThanOrEqual(1)
+    expect(repair.resourceRepair.createdLinks).toBeGreaterThanOrEqual(
+      publicResources.length,
+    )
+    const repairedResourceIds = await prisma.oauthClientResource
+      .findMany({
+        where: { clientId },
+        select: { resourceId: true },
+      })
+      .then((rows) => rows.map(({ resourceId }) => resourceId).sort())
+    expect(repairedResourceIds).toEqual(publicResources)
+    await prisma.oauthClient.update({
+      where: { clientId },
+      data: { skipConsent: true },
+    })
+
+    const pkce = pkcePair()
+    const authorize = new URL("http://localhost:3004/api/auth/oauth2/authorize")
+    authorize.search = new URLSearchParams({
+      response_type: "code",
+      client_id: clientId,
+      redirect_uri: REDIRECT_URI,
+      scope:
+        "offline_access experience:read experience:locale:update changelog:read",
+      code_challenge: pkce.challenge,
+      code_challenge_method: "S256",
+      resource: ADMIN_MCP_AUDIENCE,
+    }).toString()
+    const authorized = await routeGet(
+      new Request(authorize, { headers: { cookie }, redirect: "manual" }),
+      { params: Promise.resolve({ all: ["oauth2", "authorize"] }) },
+    )
+    expect(authorized.status).toBe(302)
+    const location = authorized.headers.get("location")
+    if (!location) throw new Error("Authorization response omitted Location")
+    const code = new URL(location).searchParams.get("code")
+    if (!code) throw new Error(`Authorization failed: ${location}`)
+
+    const exchanged = await exchangeOverHttp(
+      auth,
+      new URLSearchParams({
+        grant_type: "authorization_code",
+        client_id: clientId,
+        code,
+        code_verifier: pkce.verifier,
+        redirect_uri: REDIRECT_URI,
+        resource: ADMIN_MCP_AUDIENCE,
+      }),
+    )
+    expect(exchanged.response.status).toBe(200)
+    expect(String(exchanged.body.scope)).not.toContain("changelog:")
+    expect(decodeJwtPayload(String(exchanged.body.access_token))).toMatchObject(
+      {
+        aud: ADMIN_MCP_AUDIENCE,
+        azp: clientId,
+        "https://jesusfilm.org/claims/environment": "local",
+        "https://jesusfilm.org/claims/app": "admin-mcp",
+      },
+    )
+
+    const tokenRowsBeforeSubstitution = await Promise.all([
+      prisma.oauthAccessToken.count({ where: { clientId } }),
+      prisma.oauthRefreshToken.count({ where: { clientId } }),
+    ])
+    const substitutedRefresh = await exchangeOverHttp(
+      auth,
+      new URLSearchParams({
+        grant_type: "refresh_token",
+        client_id: clientId,
+        refresh_token: String(exchanged.body.refresh_token),
+        resource: CHANGELOG_MCP_AUDIENCE,
+      }),
+    )
+    expect(substitutedRefresh.response.status).toBe(400)
+    expect(substitutedRefresh.body).toMatchObject({ error: "invalid_target" })
+    await expect(
+      prisma.oauthAccessToken.count({ where: { clientId } }),
+    ).resolves.toBe(tokenRowsBeforeSubstitution[0])
+    await expect(
+      prisma.oauthRefreshToken.count({ where: { clientId } }),
+    ).resolves.toBe(tokenRowsBeforeSubstitution[1])
+
+    const refreshed = await exchangeOverHttp(
+      auth,
+      new URLSearchParams({
+        grant_type: "refresh_token",
+        client_id: clientId,
+        refresh_token: String(exchanged.body.refresh_token),
+      }),
+    )
+    expect(refreshed.response.status).toBe(200)
+    expect(String(refreshed.body.scope)).not.toContain("changelog:")
+    expect(decodeJwtPayload(String(refreshed.body.access_token))).toMatchObject(
+      {
+        aud: ADMIN_MCP_AUDIENCE,
+        "https://jesusfilm.org/claims/environment": "local",
+        "https://jesusfilm.org/claims/app": "admin-mcp",
+      },
+    )
+
+    await prisma.user.delete({ where: { id: signedUp.user.id } })
+  })
+
   it("binds a native DCR resource through authorization, exchange, and refresh", async () => {
     const email = `resource_binding_${randomUUID()}@example.test`
     const signUp = await auth.api.signUpEmail({
@@ -636,7 +814,7 @@ describeIntegration("Better Auth PostgreSQL compatibility contract", () => {
         grant_types: ["authorization_code", "refresh_token"],
         response_types: ["code"],
         application_type: "native",
-        resources: [MANAGER_AUDIENCE],
+        resources: [ADMIN_MCP_AUDIENCE],
       },
     })) as unknown as Record<string, unknown>
     const clientId = String(registered.client_id)
@@ -652,14 +830,14 @@ describeIntegration("Better Auth PostgreSQL compatibility contract", () => {
       clientId,
       cookie,
       challenge: rejectedPkce.challenge,
-      resource: MANAGER_AUDIENCE,
+      resource: ADMIN_MCP_AUDIENCE,
     })
     const persisted = await prisma.verification.findFirstOrThrow({
       where: { identifier: hash(rejectedCode) },
     })
     expect(JSON.parse(persisted.value)).toMatchObject({
       type: "authorization_code",
-      resource: [MANAGER_AUDIENCE],
+      resource: [ADMIN_MCP_AUDIENCE],
     })
 
     const widenedParams = new URLSearchParams({
@@ -669,17 +847,21 @@ describeIntegration("Better Auth PostgreSQL compatibility contract", () => {
       code_verifier: rejectedPkce.verifier,
       redirect_uri: REDIRECT_URI,
     })
-    widenedParams.append("resource", MANAGER_AUDIENCE)
+    widenedParams.append("resource", ADMIN_MCP_AUDIENCE)
     widenedParams.append("resource", RESOURCE_B)
-    const tokenRowsBeforeWidening = await prisma.oauthAccessToken.count({
-      where: { clientId },
-    })
+    const tokenRowsBeforeWidening = await Promise.all([
+      prisma.oauthAccessToken.count({ where: { clientId } }),
+      prisma.oauthRefreshToken.count({ where: { clientId } }),
+    ])
     const widened = await exchangeOverHttp(auth, widenedParams)
     expect(widened.response.status).toBe(400)
     expect(widened.body).toMatchObject({ error: "invalid_target" })
     await expect(
       prisma.oauthAccessToken.count({ where: { clientId } }),
-    ).resolves.toBe(tokenRowsBeforeWidening)
+    ).resolves.toBe(tokenRowsBeforeWidening[0])
+    await expect(
+      prisma.oauthRefreshToken.count({ where: { clientId } }),
+    ).resolves.toBe(tokenRowsBeforeWidening[1])
 
     const acceptedPkce = pkcePair()
     const acceptedCode = await authorizeResource({
@@ -687,7 +869,7 @@ describeIntegration("Better Auth PostgreSQL compatibility contract", () => {
       clientId,
       cookie,
       challenge: acceptedPkce.challenge,
-      resource: MANAGER_AUDIENCE,
+      resource: ADMIN_MCP_AUDIENCE,
     })
     const accepted = await exchangeOverHttp(
       auth,
@@ -697,16 +879,16 @@ describeIntegration("Better Auth PostgreSQL compatibility contract", () => {
         code: acceptedCode,
         code_verifier: acceptedPkce.verifier,
         redirect_uri: REDIRECT_URI,
-        resource: MANAGER_AUDIENCE,
+        resource: ADMIN_MCP_AUDIENCE,
       }),
     )
     expect(accepted.response.status).toBe(200)
     expect(decodeJwtPayload(String(accepted.body.access_token)).aud).toBe(
-      MANAGER_AUDIENCE,
+      ADMIN_MCP_AUDIENCE,
     )
     await expect(
       prisma.oauthRefreshToken.findFirstOrThrow({ where: { clientId } }),
-    ).resolves.toMatchObject({ resources: [MANAGER_AUDIENCE] })
+    ).resolves.toMatchObject({ resources: [ADMIN_MCP_AUDIENCE] })
 
     const inheritedPkce = pkcePair()
     const inheritedCode = await authorizeResource({
@@ -714,7 +896,7 @@ describeIntegration("Better Auth PostgreSQL compatibility contract", () => {
       clientId,
       cookie,
       challenge: inheritedPkce.challenge,
-      resource: MANAGER_AUDIENCE,
+      resource: ADMIN_MCP_AUDIENCE,
     })
     const inherited = await exchangeOverHttp(
       auth,
@@ -728,7 +910,7 @@ describeIntegration("Better Auth PostgreSQL compatibility contract", () => {
     )
     expect(inherited.response.status).toBe(200)
     expect(decodeJwtPayload(String(inherited.body.access_token)).aud).toBe(
-      MANAGER_AUDIENCE,
+      ADMIN_MCP_AUDIENCE,
     )
 
     const refreshed = await exchangeOverHttp(
@@ -737,12 +919,12 @@ describeIntegration("Better Auth PostgreSQL compatibility contract", () => {
         grant_type: "refresh_token",
         client_id: clientId,
         refresh_token: String(accepted.body.refresh_token),
-        resource: MANAGER_AUDIENCE,
+        resource: ADMIN_MCP_AUDIENCE,
       }),
     )
     expect(refreshed.response.status).toBe(200)
     expect(decodeJwtPayload(String(refreshed.body.access_token)).aud).toBe(
-      MANAGER_AUDIENCE,
+      ADMIN_MCP_AUDIENCE,
     )
 
     const widenedRefresh = await exchangeOverHttp(

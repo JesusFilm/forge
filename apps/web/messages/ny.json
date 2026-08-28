@@ -663,44 +663,6 @@
     "backToWatch": "Kubwerera ku Watch",
     "browseVideos": "Fufuzani mavidiyo"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Onerani filimu yachidule",
-    "actions": {
-      "joinUs": "Lowani nafe",
-      "shareMission": "Gawani mu utumiki wathu"
-    },
-    "welcomeStart": {
-      "label": "Chikhulupiriro ndi Malemba",
-      "title": "Mavidiyo osankhidwa lero",
-      "description": "Zamavidiyo zochokera mu laibulale yathu zokhudza chikhulupiriro, zokulimbikitsani, kukutsutsani, ndi kukupatsani nthawi yoganizira."
-    },
-    "welcomeMorning": {
-      "label": "Kulimbikitsidwa kwa m'mawa",
-      "title": "M'mawa wabwino! Mphindi za Baibulo za lero zikukudikirirani.",
-      "description": "Yambani tsiku lanu ndi mphindi zolimbikitsa za Baibulo zokonzedwa kukulimbikitsani ndi kukweza mzimu wanu."
-    },
-    "welcomeAfternoon": {
-      "label": "Kulimbikitsidwa kwa masana",
-      "title": "Masana abwino! Mphindi za Baibulo za tsiku lanu.",
-      "description": "Zamkati za Baibulo zolimbikitsa, zoyenera kupuma masana kapena kupitiriza kulimbikitsidwa."
-    },
-    "welcomeEvening": {
-      "label": "Kulimbikitsidwa kwa madzulo",
-      "title": "Madzulo abwino! Pumulani ndi mphindi za Baibulo.",
-      "description": "Mphindi za Baibulo za mtendere zokuthandizani kuganizira ndi kupeza chitonthozo pamene tsiku lanu likutha."
-    },
-    "joinUs": {
-      "label": "Lowani nafe",
-      "title": "Mabiliyoni akufufuza",
-      "description": "Nthawi yokolola yafika. Lowani nafe tikamagawana uthenga wabwino ndi dziko lonse pogwiritsa ntchito media ya digito."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Tiyeni tipite limodzi",
-      "title": "Kufotokoza Nkhani ya Yesu Pamodzi",
-      "description": "Kuti amve ndi kuwona chikondi cha Yesu m'chinenero chawo komwe ali."
-    }
-  },
   "VideoRecommendations": {
     "match": "Zikufanana ndi {percent}%",
     "none": "Palibe mavidiyo ovomerezeka omwe apezeka ogwirizana ndi vidiyoyi m'chinenerochi."

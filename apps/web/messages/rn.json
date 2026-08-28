@@ -663,44 +663,6 @@
     "backToWatch": "Subira kuri Watch",
     "browseVideos": "Rondera videwo"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Raba filime ngufi",
-    "actions": {
-      "joinUs": "Injira natwe",
-      "shareMission": "Sangiza ubutumwa bwacu"
-    },
-    "welcomeStart": {
-      "label": "Ukwizera n’Ivyanditswe",
-      "title": "Amahitamwo ya videwo y’uyu musi",
-      "description": "Ibikoresho vya videwo bishingiye ku kwizera vyo mu isomero ryacu kugira bitere inkomezi, bitume utekereza, kandi bikubure ivyiyumviro."
-    },
-    "welcomeMorning": {
-      "label": "Ikoresha ry’umutaga",
-      "title": "Mwiriwe neza! Ibintu vya Bibiliya vy’uyu musi biragutegereje.",
-      "description": "Tangura umusi wawe n’ibintu vyiza vya Bibiliya vyagenewe gutera inkomezi no gukomeza umutima wawe."
-    },
-    "welcomeAfternoon": {
-      "label": "Ikoresha ry’inyuma ya sasita",
-      "title": "Mwiriwe! Ibintu vya Bibiliya vy’umusi wawe.",
-      "description": "Ibikoresho vya Bibiliya biteye inkomezi bikwiranye neza n’akaruhuko ka sasita canke gukomeza guhabwa impwemu."
-    },
-    "welcomeEvening": {
-      "label": "Ikoresha rya mwijoro",
-      "title": "Mwiriwe neza! Ruhuka hamwe n’ibintu vya Bibiliya.",
-      "description": "Ibintu vy’amahoro vya Bibiliya kugira bigufashe gutekereza no kuronka ihumure umusi wawe uheze."
-    },
-    "joinUs": {
-      "label": "Injira natwe",
-      "title": "Abantu imiliyaridi bariko bararondera",
-      "description": "Igihe co gusoromera kirahari. Injira natwe mu kwamamaza ubutumwa bwiza ku isi dukoresheje ibikoresho vya digitale."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Tugende hamwe",
-      "title": "Kuvuga inkuru ya Yesu, hamwe",
-      "description": "Kugira ngo bumve kandi babone urukundo rwa Yesu mu rurimi rwabo aho bari."
-    }
-  },
   "VideoRecommendations": {
     "match": "Bihuye {percent}%",
     "none": "Nta zindi videwo zisabwa kuri iyi videwo zabonetse muri uru rurimi."

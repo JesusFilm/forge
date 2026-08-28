@@ -663,44 +663,6 @@
     "backToWatch": "Seretmäge dolan",
     "browseVideos": "Wideolara göz aýla"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Gysga filmi gör",
-    "actions": {
-      "joinUs": "Bize goşulyň",
-      "shareMission": "Biziň missiýamyza goşulyň"
-    },
-    "welcomeStart": {
-      "label": "Iman we Mukaddes Yazgy",
-      "title": "Şu günki wideo saýlawlarymyz",
-      "description": "Kitaphanamyzda bar bolan, imana degişli, ylham beriji, oýlanmaga iteriji wideolar."
-    },
-    "welcomeMorning": {
-      "label": "Säher ylhamy",
-      "title": "Hoş säher! Şu günüň Mukaddes Kitap pursatlary sizi garaşýar.",
-      "description": "Günüňize ruhuňyzy güýçlendirip, ylham berjek Mukaddes Kitap pursatlary bilen başlaň."
-    },
-    "welcomeAfternoon": {
-      "label": "Gündizki ylham",
-      "title": "Gowy günortan! Günüňiz üçin Mukaddes Kitap pursatlary.",
-      "description": "Günortan arakesmäňiz ýa-da dowam edýän ylham üçin laýyk, ruhlandyryjy Mukaddes Kitap mazmuny."
-    },
-    "welcomeEvening": {
-      "label": "Agşamky ylham",
-      "title": "Agşam haýyr! Mukaddes Kitap pursatlary bilen dynç alyň.",
-      "description": "Günüňiz tamamlananda oýlanmaga we teselli tapmaga kömek edýän asuda Mukaddes Kitap pursatlary."
-    },
-    "joinUs": {
-      "label": "Bize goşulyň",
-      "title": "Milliardlar gözleýär",
-      "description": "Hasyl taýýar. Sanly media arkaly Hoş Habary dünýä bilen paýlaşmakda bize goşulyň."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Geliň, bilelikde öňe ilerläliň",
-      "title": "Isa baradaky gürrüňi bilelikde aýdalyň",
-      "description": "Şonda olar Isa-nyň söýgüsini öz dillerinde, ýaşaýan ýerlerinde eşidip hem görüp bilerler."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}% gabat gelýär",
     "none": "Bu wideo üçin şu dilde hiç hili maslahat tapylmady."

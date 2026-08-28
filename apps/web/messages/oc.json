@@ -663,44 +663,6 @@
     "backToWatch": "Tornar a Visionament",
     "browseVideos": "Navegar pels vidèos"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date} : {title}",
-    "watchShortFilm": "Veire lo cort-metratge",
-    "actions": {
-      "joinUs": "Rejonhètz-nos",
-      "shareMission": "Partejar nòstra mission"
-    },
-    "welcomeStart": {
-      "label": "Fe e Escritura",
-      "title": "Las causidas vidèo d'uèi",
-      "description": "Contengut vidèo centrat sus la fe de nòstra bibliotèca per inspirar, desafiar e espotir la reflexion."
-    },
-    "welcomeMorning": {
-      "label": "Inspiracion del matin",
-      "title": "Bonjorn ! Las moments biblicas d'uèi vos espèran.",
-      "description": "Començatz la jornada amb de moments biblics encoratjants concebuts per inspirar e elevar vòstre esperit."
-    },
-    "welcomeAfternoon": {
-      "label": "Inspiracion de la tantòst",
-      "title": "Bon vèspre ! Moments biblics per vòstre jorn.",
-      "description": "Contengut biblic encoratjant, ideal per una pausa de la tantòst o per contunhar d'èsser inspirat."
-    },
-    "welcomeEvening": {
-      "label": "Inspiracion de ser",
-      "title": "Bon ser ! Relaxatz-vos amb de moments biblics.",
-      "description": "De moments biblics pacifics per vos ajudar a reflectir e trobar de consòrt a mesura que la jornada s'acaba."
-    },
-    "joinUs": {
-      "label": "Rejonhètz-nos",
-      "title": "De miliards recercan",
-      "description": "La meisson es aquí. Rejonhètz-nos per partejar l'evangèli amb lo mond per mejan dels mèdias numerics."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Anem amassa",
-      "title": "Contar l'istòria de Jèsus, amassa",
-      "description": "Per que pòscan ausir e veire l'amor de Jèsus dins lor pròpria lenga, aquí ont son."
-    }
-  },
   "VideoRecommendations": {
     "match": "Correspondéncia de {percent} %",
     "none": "Cap de recomandacion trobada per aqueste vidèo dins aquesta lenga."

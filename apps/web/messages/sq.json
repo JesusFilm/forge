@@ -663,44 +663,6 @@
     "backToWatch": "Kthehu te Shikimi",
     "browseVideos": "Shfleto videot"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Shiko filmin e shkurtër",
-    "actions": {
-      "joinUs": "Bashkohuni me ne",
-      "shareMission": "Ndani misionin tonë"
-    },
-    "welcomeStart": {
-      "label": "Besim & Shkrimi i Shenjtë",
-      "title": "Përzgjedhjet e sotme të videove",
-      "description": "Përmbajtje video me në qendër besimin nga biblioteka jonë, për të frymëzuar, sfiduar dhe nxitur reflektim."
-    },
-    "welcomeMorning": {
-      "label": "Frymëzim i mëngjesit",
-      "title": "Mirëmëngjes! Ju presin momentet e sotme biblike.",
-      "description": "Filloni ditën me momente inkurajuese biblike, të krijuara për të frymëzuar dhe ngritur shpirtin tuaj."
-    },
-    "welcomeAfternoon": {
-      "label": "Frymëzim i pasdites",
-      "title": "Mirëdita! Momente biblike për ditën tuaj.",
-      "description": "Përmbajtje inkurajuese biblike, e përsosur për pushimin e pasdites ose për frymëzim të mëtejshëm."
-    },
-    "welcomeEvening": {
-      "label": "Frymëzim i mbrëmjes",
-      "title": "Mirëmbrëma! Qetësohuni me momente biblike.",
-      "description": "Momente paqësore biblike për t’ju ndihmuar të reflektoni dhe të gjeni ngushëllim ndërsa dita po mbyllet."
-    },
-    "joinUs": {
-      "label": "Bashkohuni me ne",
-      "title": "Miliarda njerëz po kërkojnë",
-      "description": "Të korrat janë këtu. Bashkohuni me ne ndërsa ndajmë ungjillin me botën përmes mediave digjitale."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Le të shkojmë së bashku",
-      "title": "Të tregojmë historinë e Jezusit, së bashku",
-      "description": "Që ata të mund të dëgjojnë dhe të shohin dashurinë e Jezusit në gjuhën e tyre, pikërisht aty ku janë."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}% përputhje",
     "none": "Nuk u gjetën rekomandime për këtë video në këtë gjuhë."

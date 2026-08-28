@@ -663,44 +663,6 @@
     "backToWatch": "Watch-imut uterit",
     "browseVideos": "Videonik takujuk"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Film naatsuk takuguk",
-    "actions": {
-      "joinUs": "Ilanngugit",
-      "shareMission": "Suliaqarnitsinni avitseqatigit"
-    },
-    "welcomeStart": {
-      "label": "Upperneq & Allakkat Illernartut",
-      "title": "Ullumi video-t toqqagaat",
-      "description": "Katersugaanitsinni videonik uppernermik tunngaveqartunik isumassarsiavit, eqqarsaatiginnilersitsisunik, eqqarsaatinik aallartitsisunik saqqummiussivugut."
-    },
-    "welcomeMorning": {
-      "label": "Ullaakkut isumassarsiorneq",
-      "title": "Ullaaq! Ullumi Biibilimik pisoqarfiit utaqqivaat.",
-      "description": "Ullut aallartinnerani Biibilimeersut pitsaasunik nalunaarutitalinnik videonik uppernermik nukittorsaasunik aallartigit."
-    },
-    "welcomeAfternoon": {
-      "label": "Unnukkut isumassarsiorneq",
-      "title": "Unnukkut! Ullormut Biibilimeersut pisoqarfiit.",
-      "description": "Unnukkut ataatsimoorlutit imaluunniit ingerlaqqillutit eqqarsaatigiinnarsinnaasatit Biibilimeersut isumassarsiat."
-    },
-    "welcomeEvening": {
-      "label": "Unnukkut isumassarsiorneq",
-      "title": "Unnukkut pitsaasumik! Biibilimeersut pisoqarfiit atorlugit qasuersaak.",
-      "description": "Ullut naanerani eqqarsarninni imaluunniit eqqissiallannissannut iluaqutaasussanik Biibilimeersut pisoqarfiit eqqissisimanartut."
-    },
-    "joinUs": {
-      "label": "Ilanngugit",
-      "title": "Billions takunnissapput",
-      "description": "Ukiup ingerlanerani nungusaq nalunaarneqarpoq. Nunarsuarmi digitalikkut attaveqaatit atorlugit evangeliumi avitseqatigalugu peqataagitsi."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Ileqataanikkut ingerlaqatigiitta",
-      "title": "Jesusip oqaluttuaanik oqaluttuarineq, ataatsimoorluta",
-      "description": "Taamaalillutik inuup nammineq oqaatsiminik Jesusip asanninnera tusarnaarlugu takusinnaaniassammassuk."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}%-imik naleqquppoq",
     "none": "Video taanna oqaatsimi uani innersuussutissaqarfigineqanngilaq."

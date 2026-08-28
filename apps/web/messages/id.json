@@ -663,44 +663,6 @@
       "openSupportForm": "Open support form"
     }
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Tonton film pendek",
-    "actions": {
-      "joinUs": "Bergabunglah dengan kami",
-      "shareMission": "Ambil bagian dalam misi kami"
-    },
-    "welcomeStart": {
-      "label": "Iman & Kitab Suci",
-      "title": "Pilihan Video Hari Ini",
-      "description": "Konten video berpusat pada iman dari perpustakaan kami untuk menginspirasi, menantang, dan memicu perenungan."
-    },
-    "welcomeMorning": {
-      "label": "Inspirasi Pagi",
-      "title": "Selamat pagi! Momen Alkitab hari ini menanti.",
-      "description": "Awali hari Anda dengan momen Alkitab yang menguatkan, dirancang untuk menginspirasi dan mengangkat semangat Anda."
-    },
-    "welcomeAfternoon": {
-      "label": "Inspirasi Sore",
-      "title": "Selamat sore! Momen Alkitab untuk hari Anda.",
-      "description": "Konten Alkitab yang menguatkan, cocok untuk istirahat sore Anda atau sebagai inspirasi lanjutan."
-    },
-    "welcomeEvening": {
-      "label": "Inspirasi Malam",
-      "title": "Selamat malam! Tenangkan diri dengan momen Alkitab.",
-      "description": "Momen Alkitab yang damai untuk membantu Anda merenung dan menemukan penghiburan saat hari berakhir."
-    },
-    "joinUs": {
-      "label": "Bergabunglah dengan kami",
-      "title": "Miliaran orang sedang mencari",
-      "description": "Tuaian sudah siap. Bergabunglah dengan kami saat kami membagikan Injil kepada dunia melalui media digital."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Mari bersama",
-      "title": "Menceritakan Kisah Yesus, Bersama-sama",
-      "description": "Agar mereka dapat mendengar dan melihat kasih Yesus dalam bahasa mereka sendiri di tempat mereka berada."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}% cocok",
     "none": "Tidak ada rekomendasi untuk video ini dalam bahasa ini."

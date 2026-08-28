@@ -663,44 +663,6 @@
     "backToWatch": "Boela go Watch",
     "browseVideos": "Phetla dibidio"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Bogela filimi e khutšo",
-    "actions": {
-      "joinUs": "Tsenela",
-      "shareMission": "Abelana mošomo wa rena"
-    },
-    "welcomeStart": {
-      "label": "Tumelo le Lengwalo",
-      "title": "Dikgetho tša video tša lehono",
-      "description": "Dikagare tša video tša tumelo go tšwa bokgobapukung bja rena go hlohleletša, go go tlhohleletša, le go hlohleletša go gopola."
-    },
-    "welcomeMorning": {
-      "label": "Hlohleletšo ya mesong",
-      "title": "Mesong e botse! Dikanegelo tša Baebele tša lehono di a leta.",
-      "description": "Thoma letšatši la gago ka dikanegelo tša Baebele tše di kgothatšago tše di hlamilwego go go hlohleletša le go go imolla monagano."
-    },
-    "welcomeAfternoon": {
-      "label": "Hlohleletšo ya mosegare",
-      "title": "Mosegare o botse! Dikanegelo tša Baebele tša letšatši la gago.",
-      "description": "Dikagare tša Baebele tše di kgothatšago, tše di loketšego kgefutšo ya gago ya mosegare goba go tšwela pele ka hlohleletšo."
-    },
-    "welcomeEvening": {
-      "label": "Hlohleletšo ya mašego",
-      "title": "Mantsiboa a mabotse! Iphomole ka dikanegelo tša Baebele.",
-      "description": "Dikanegelo tša Baebele tše di nago le khutšo go go thuša go ipontšha le go hwetša kgothatšo ge letšatši la gago le fetša."
-    },
-    "joinUs": {
-      "label": "Tsenela rena",
-      "title": "Dimilione di a nyaka",
-      "description": "Kuno e fihlile. Tsenela rena ge re abelana efangele le lefase ka media wa dijithale."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "A re ye mmogo",
-      "title": "Go bolela kanegelo ya Jesu, mmogo",
-      "description": "Gore ba kgone go kwa le go bona lerato la Jesu ka leleme la bona ka boyona fa ba lego gona."
-    }
-  },
   "VideoRecommendations": {
     "match": "E tsamaelana ka {percent}%",
     "none": "Ga go na ditshitshinyo tse di bonweng tsa bidio eno ka puo eno."

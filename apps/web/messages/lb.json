@@ -663,44 +663,6 @@
     "backToWatch": "Zréck op Watch",
     "browseVideos": "Videoen duerchkucken"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Kuerzfilm kucken",
-    "actions": {
-      "joinUs": "Maacht mat",
-      "shareMission": "Maacht mat bei eiser Missioun"
-    },
-    "welcomeStart": {
-      "label": "Glaawen & Schrëft",
-      "title": "Déi hauteg Video-Auswiel",
-      "description": "Glaawenszentéiert Videoen aus eiser Bibliothéik, déi inspiréieren, erausfuerderen an zum Nokéieren anregen."
-    },
-    "welcomeMorning": {
-      "label": "Moiesinspiratioun",
-      "title": "Gudde Moien! Hauteg Bibelmomenter waarden op Iech.",
-      "description": "Start Ären Dag mat ermunternden Bibelmomenter, déi inspiréieren an Äre Geescht opbauen."
-    },
-    "welcomeAfternoon": {
-      "label": "Nomëttesinspiratioun",
-      "title": "Gudden Nomëtteg! Bibelmomenter fir Ären Dag.",
-      "description": "Ermuetigend Bibelinhalter, ideal fir Är Nomëttespaus oder fir weider Inspiratioun."
-    },
-    "welcomeEvening": {
-      "label": "Owensinspiratioun",
-      "title": "Gudden Owend! Entspannt Iech mat Bibelmomenter.",
-      "description": "Roueg Bibelmomenter, déi Iech hëllefen, nozedenken an Trouscht ze fannen, wann Ären Dag op en Enn geet."
-    },
-    "joinUs": {
-      "label": "Maacht mat",
-      "title": "Milliarde si am Sich",
-      "description": "D’Ernte ass do. Maacht mat a deelt d’Evangelium mat der Welt iwwer digital Medie."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Loosst eis et zesumme maachen",
-      "title": "D’Geschicht vu Jesus zesumme erzielen",
-      "description": "Sou kënne si d’Léift vu Jesus an hirer eegener Sprooch héieren a gesinn, direkt do wou si sinn."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent} % Iwwereestëmmung",
     "none": "Fir dëse Video goufe keng Recommandatiounen an dëser Sprooch fonnt."

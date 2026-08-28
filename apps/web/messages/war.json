@@ -663,44 +663,6 @@
     "backToWatch": "Balik ha Watch",
     "browseVideos": "Usisa an mga video"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Tan-awa an Mubo nga Pelikula",
-    "actions": {
-      "joinUs": "Uupod ha amon",
-      "shareMission": "Ipaambit an aton Misyon"
-    },
-    "welcomeStart": {
-      "label": "Pagtuo ngan Kasuratan",
-      "title": "Mga Pili nga Video Karuyag Mo Yana nga Adlaw",
-      "description": "Mga video nga nakasentro ha pagtuo tikang ha amon librarya nga makakapadasig, makakahagit, ngan makakapagpahinumdom."
-    },
-    "welcomeMorning": {
-      "label": "Padasig ha Aga",
-      "title": "Maayong aga! Mga Hugna han Biblia para yana nga adlaw, naghuhulat na.",
-      "description": "Umpisa an imo adlaw upod an mga mapupulsanon nga hugna han Biblia nga gindisenyo basi makapadasig ngan makapalipay ha imo espiritu."
-    },
-    "welcomeAfternoon": {
-      "label": "Padasig ha Hapon",
-      "title": "Maayong hapon! Mga Hugna han Biblia para ha imo adlaw.",
-      "description": "Mga hugna han Biblia nga makapadasig, angay para ha imo pahulay ha hapon o padayon nga padasig."
-    },
-    "welcomeEvening": {
-      "label": "Padasig ha Gab-i",
-      "title": "Maayong gab-i! Magpahuway upod an mga hugna han Biblia.",
-      "description": "Hapsay nga mga hugna han Biblia nga mabulig ha imo paghunahuna ngan pagkarawat hin kahupayan samtang nagtutunaw an imo adlaw."
-    },
-    "joinUs": {
-      "label": "Uupod ha amon",
-      "title": "Binilyon an namimiling",
-      "description": "Aada na an ani. Uupod ha amon samtang ginsusumat namon an ebanghelyo ha kalibotan gamit an digital media."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Magkaupod kita",
-      "title": "Pagsumat han Estorya ni Jesus, Magkaupod kita",
-      "description": "Basi madungog ngan makita nira an gugma ni Jesus ha ira kalugaringon nga yinaknan, dida mismo ha ira kon diin hira aada."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}% nga kapareho",
     "none": "Waray nakit-an nga girekomendar para hini nga video hini nga yinaknan."

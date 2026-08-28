@@ -663,44 +663,6 @@
     "backToWatch": "Khutlela ho Watch",
     "browseVideos": "Sheba livideo"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Shebella filimi e khutšoane",
-    "actions": {
-      "joinUs": "Kena le rona",
-      "shareMission": "Arolelana morerong oa rona"
-    },
-    "welcomeStart": {
-      "label": "Tumelo le Lengolo",
-      "title": "Likhetho tsa video tsa kajeno",
-      "description": "Likahare tsa video tse thehiloeng tumelong tse tsoang laebraring ea rona ho khothatsa, ho phephetsa, le ho tsosa ho nahanisisa."
-    },
-    "welcomeMorning": {
-      "label": "Khothatso ea hoseng",
-      "title": "Lumelang! Mehlala ea Bibele ea kajeno e letile.",
-      "description": "Qala letsatsi la hao ka mehlala e khothatsang ea Bibele e etselitsoeng ho u khothatsa le ho phahamisa moya oa hao."
-    },
-    "welcomeAfternoon": {
-      "label": "Khothatso ea thapama",
-      "title": "Lumelang! Mehlala ea Bibele ea letsatsi la hao.",
-      "description": "Likahare tse khothatsang tsa Bibele tse loketseng khefu ea hao ea thapama kapa ho tsoela pele ka khothatso."
-    },
-    "welcomeEvening": {
-      "label": "Khothatso ea mantsiboea",
-      "title": "Lumelang! Phomola ka mehlala ea Bibele.",
-      "description": "Mehlala e khutsitseng ea Bibele ho u thusa ho nahanisisa le ho fumana matšeliso ha letsatsi la hao le fela."
-    },
-    "joinUs": {
-      "label": "Kena le rona",
-      "title": "Ho na le limilione tse likete tse batlang",
-      "description": "Kotulo e se e fihlile. Kena le rona ha re arolelana evangeli le lefatše ka mecha ea litaba ea dijithale."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Ha re tsamaee hammoho",
-      "title": "Ho pheta pale ea Jesu, hammoho",
-      "description": "E le hore ba ka utloa le ho bona lerato la Jesu ka puo ea bona moo ba leng teng."
-    }
-  },
   "VideoRecommendations": {
     "match": "E lumellana ka {percent}%",
     "none": "Ha ho likhothaletso tse fumanoeng bakeng sa video ena ka puo ena."

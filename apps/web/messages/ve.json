@@ -663,44 +663,6 @@
     "backToWatch": "Vhuyelani kha Watch",
     "browseVideos": "Ṱolani vidio"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Lavhelani Filimu Pfufhi",
-    "actions": {
-      "joinUs": "Dzhianani na Rine",
-      "shareMission": "Avelani kha Mishumo Yashu"
-    },
-    "welcomeStart": {
-      "label": "Lutendo na Maṅwalo",
-      "title": "Zwaṋu zwa Vidio zwa Ṋamusi",
-      "description": "Zwi re ngomu zwa vidio zwa lutendo u bva kha layibureari yashu zwi itelaho u ṱuṱuwedza, u ṱhasela mihumbulo, na u ita uri muṅwe a elekanye."
-    },
-    "welcomeMorning": {
-      "label": "U ṱuṱuwedza ha Muṅwe Na Muṅwe",
-      "title": "Matsheloni! Zwipiḓa zwa Bivhili zwa ṋamusi zwi khou lindela.",
-      "description": "Thomani ḓuvha ḽaṋu nga zwipiḓa zwa Bivhili zwi ṱuṱuwedzaho zwo itelwaho u ṱuṱuwedza na u khwinisa muya waṋu."
-    },
-    "welcomeAfternoon": {
-      "label": "U ṱuṱuwedza ha Thafha",
-      "title": "Masikuwani! Zwipiḓa zwa Bivhili zwa ḓuvha ḽaṋu.",
-      "description": "Zwi re ngomu zwa Bivhili zwi ṱuṱuwedzaho zwi faneleaho u awela masikuwani kana u isa phanḓa na u ṱuṱuwedzwa."
-    },
-    "welcomeEvening": {
-      "label": "U ṱuṱuwedza ha Madekwana",
-      "title": "Vhusiku! Awelani nga zwipiḓa zwa Bivhili.",
-      "description": "Zwipiḓa zwa Bivhili zwine zwa fha mulalo zwi a ni thusa u elekanya na u wana khuthadzo musi ḓuvha ḽiṋu ḽi tshi khou fhela."
-    },
-    "joinUs": {
-      "label": "Dzhianani na Rine",
-      "title": "Vhabiliyoni vha khou ṱoḓa",
-      "description": "Ṱhoḓea i fhano. Dzhianani na rine musi ri tshi kovhela vhathu vhoṱhe mafhungo maḓifha nga media dza dijithala."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "A ri tshimbile roṱhe",
-      "title": "U Anḓadza Nyambo ya Yesu, Roṱhe",
-      "description": "Uri vha kone u pfa na u vhona lufuno lwa Yesu nga luambo lwavho, fhethu he vha vha vha hone."
-    }
-  },
   "VideoRecommendations": {
     "match": "Zwi fana nga {percent}%",
     "none": "A hu na vidio dzo themendelwa dzo wanalaho kha iyi video nga holu luambo."

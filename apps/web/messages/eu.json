@@ -663,44 +663,6 @@
     "backToWatch": "Itzuli ikustera",
     "browseVideos": "Arakatu bideoak"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Ikusi film laburra",
-    "actions": {
-      "joinUs": "Bat egin gurekin",
-      "shareMission": "Partekatu gure misioa"
-    },
-    "welcomeStart": {
-      "label": "Fedea eta Eskritura",
-      "title": "Gaurko bideo-hautaketak",
-      "description": "Gure bildumako fedean oinarritutako bideo-edukia, inspiratzeko, erronka jartzeko eta gogoeta pizteko."
-    },
-    "welcomeMorning": {
-      "label": "Goizeko inspirazioa",
-      "title": "Egun on! Gaurko Bibliako uneak zain dituzu.",
-      "description": "Hasi eguna animo emango dizuten Bibliako uneekin, zure espiritua inspiratu eta indartzeko diseinatuak."
-    },
-    "welcomeAfternoon": {
-      "label": "Arratsaldeko inspirazioa",
-      "title": "Arratsalde on! Gaurko Bibliako uneak zuretzat.",
-      "description": "Bibliako eduki sustatzailea, arratsaldeko atsedenalderako edo inspirazioari eusteko aproposa."
-    },
-    "welcomeEvening": {
-      "label": "Iluntzeko inspirazioa",
-      "title": "Gau on! Lasaitu Bibliako uneekin.",
-      "description": "Bibliako une baketsuak, zure eguna amaitzean gogoeta egiten eta lasaitasuna aurkitzen laguntzeko."
-    },
-    "joinUs": {
-      "label": "Bat egin gurekin",
-      "title": "Milioika pertsona bilatzen ari dira",
-      "description": "Uzta hemen dago. Bat egin gurekin ebanjelioa munduarekin hedabide digitalen bidez partekatzen dugun honetan."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Goazen elkarrekin",
-      "title": "Jesusen istorioa elkarrekin kontatuz",
-      "description": "Horrela, Jesusekiko maitasuna beren hizkuntzan entzun eta ikusi ahal izan dezaten, dauden tokian bertan."
-    }
-  },
   "VideoRecommendations": {
     "match": "%{percent}eko bat-etortzea",
     "none": "Ez da gomendiorik aurkitu bideo honetarako hizkuntza honetan."

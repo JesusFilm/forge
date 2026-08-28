@@ -29,8 +29,11 @@ module.exports = {
     {
       name: "adapters-import-only-contracts",
       severity: "error",
-      from: { path: "^src/adapters/" },
-      to: { path: "^src/", pathNot: "^src/contracts/" },
+      from: {
+        path: "^src/adapters/",
+        pathNot: "\\.(?:test|spec)\\.[cm]?[jt]sx?$",
+      },
+      to: { path: "^src/", pathNot: "^src/(contracts|adapters|generated)/" },
     },
     {
       name: "rag-does-not-import-other-apps",
@@ -47,7 +50,7 @@ module.exports = {
       from: { path: "^src/" },
       to: {
         couldNotResolve: true,
-        pathNot: "^(?:@forge/rag-contracts|tinyld)$",
+        pathNot: "^(?:@forge/rag-contracts|hono|hono/body-limit|tinyld)$",
       },
     },
     {
@@ -75,7 +78,7 @@ module.exports = {
       severity: "error",
       from: {
         path: "(?:^tests/|\\.(?:test|spec)\\.[cm]?[jt]sx?$)",
-        pathNot: "^src/adapters/",
+        pathNot: "^(?:src/adapters/|tests/adapters\\.integration\\.test\\.ts$)",
       },
       to: { path: "^src/adapters/" },
     },
@@ -83,6 +86,6 @@ module.exports = {
   options: {
     tsPreCompilationDeps: true,
     tsConfig: { fileName: "tsconfig.json" },
-    doNotFollow: { path: "node_modules" },
+    doNotFollow: { path: "(?:node_modules|^src/generated/)" },
   },
 }

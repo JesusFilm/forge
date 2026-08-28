@@ -4,6 +4,8 @@ import type { Principal } from "@/auth/principal"
 import {
   ExperienceDynamicCollectionPlacementError,
   ExperienceService,
+  ExperienceWatchHomeCategoryRailPlacementError,
+  localeDraftRevision,
 } from "./experience.service"
 import { refreshWatchRouteManifest } from "./watch-route-manifest-refresh.service"
 
@@ -104,6 +106,14 @@ function dynamicCollectionBlock(sectionKey: string) {
     itemsSource: "dynamicCollections" as const,
     showItemNumbers: false,
     items: [],
+  }
+}
+
+function watchHomeCategoryRailBlock(categoryIds = ["jesus", "family"]) {
+  return {
+    t: "watchHomeCategoryRail" as const,
+    sectionKey: "browse-categories",
+    categoryIds,
   }
 }
 
@@ -326,6 +336,20 @@ describe("ExperienceService", () => {
           user: ADMIN,
         }),
       ).rejects.toThrow()
+    })
+
+    it("rejects the Watch category rail because new experiences are not homepages", async () => {
+      await expect(
+        service.create({
+          input: {
+            locale: "en",
+            slug: "category-rail",
+            blocks: [watchHomeCategoryRailBlock()],
+          },
+          user: ADMIN,
+        }),
+      ).rejects.toBeInstanceOf(ExperienceWatchHomeCategoryRailPlacementError)
+      expect(prisma.experience.create).not.toHaveBeenCalled()
     })
   })
 
@@ -771,6 +795,24 @@ describe("ExperienceService", () => {
         }),
       ).rejects.toThrow("Forbidden")
     })
+
+    it("rejects the Watch category rail for a non-homepage locale", async () => {
+      prisma.experience.findUniqueOrThrow.mockResolvedValueOnce({
+        ownerId: "alice",
+        archivedAt: null,
+      })
+
+      await expect(
+        service.createLocale({
+          input: {
+            ...input,
+            blocks: [watchHomeCategoryRailBlock()],
+          },
+          user: EDITOR_ALICE,
+        }),
+      ).rejects.toBeInstanceOf(ExperienceWatchHomeCategoryRailPlacementError)
+      expect(prisma.experienceLocale.create).not.toHaveBeenCalled()
+    })
   })
 
   // ---------------------------------------------------------------------------
@@ -951,6 +993,73 @@ describe("ExperienceService", () => {
       )
     })
 
+    it("rejects a stale expected draft revision inside the locale lock", async () => {
+      prisma.experienceLocale.findUniqueOrThrow.mockResolvedValueOnce(localeRow)
+      prisma.contentRevision.findFirst.mockResolvedValueOnce({
+        id: "draft-newer",
+        snapshot: { v: 1, data: { title: "Newer" } },
+        previewToken: "preview-token",
+        revisedAt: new Date("2026-08-26T15:00:00.000Z"),
+        revisedBy: "bob",
+        revisedByKind: "USER",
+        reason: "newer edit",
+      })
+
+      await expect(
+        service.updateLocale({
+          input: { id: "loc-1", title: "Stale overwrite" },
+          user: EDITOR_ALICE,
+          expectedDraftRevision: "stale-revision",
+        }),
+      ).rejects.toThrow("modified concurrently")
+      expect(prisma.contentRevision.update).not.toHaveBeenCalled()
+      expect(prisma.contentRevision.create).not.toHaveBeenCalled()
+    })
+
+    it("rejects a second first-draft writer that still expects no draft", async () => {
+      prisma.experienceLocale.findUniqueOrThrow.mockResolvedValueOnce(localeRow)
+      prisma.contentRevision.findFirst.mockResolvedValueOnce({
+        id: "draft-first-writer",
+        snapshot: { v: 1, data: { title: "First writer" } },
+        previewToken: "preview-token",
+        revisedAt: new Date("2026-08-26T15:00:00.000Z"),
+        revisedBy: "bob",
+        revisedByKind: "USER",
+        reason: "first writer",
+      })
+
+      await expect(
+        service.updateLocale({
+          input: { id: "loc-1", title: "Second writer" },
+          user: EDITOR_ALICE,
+          expectedDraftRevision: null,
+        }),
+      ).rejects.toThrow("modified concurrently")
+      expect(prisma.contentRevision.update).not.toHaveBeenCalled()
+      expect(prisma.contentRevision.create).not.toHaveBeenCalled()
+    })
+
+    it("keeps the Admin UI no-precondition path last-save-wins", async () => {
+      prisma.experienceLocale.findUniqueOrThrow.mockResolvedValueOnce(localeRow)
+      prisma.contentRevision.findFirst.mockResolvedValueOnce({
+        id: "draft-current",
+        snapshot: { v: 1, data: { title: "Current" } },
+        previewToken: "preview-token",
+        revisedAt: new Date("2026-08-26T15:00:00.000Z"),
+        revisedBy: "bob",
+        revisedByKind: "USER",
+        reason: "current edit",
+      })
+
+      await expect(
+        service.updateLocale({
+          input: { id: "loc-1", title: "UI overwrite" },
+          user: EDITOR_ALICE,
+        }),
+      ).resolves.toMatchObject({ title: "UI overwrite" })
+      expect(prisma.contentRevision.update).toHaveBeenCalled()
+    })
+
     it.each([
       {
         name: "a non-homepage feed",
@@ -1006,6 +1115,44 @@ describe("ExperienceService", () => {
           user: EDITOR_ALICE,
         }),
       ).resolves.toMatchObject({ isHomepage: true })
+    })
+
+    it("rejects the Watch category rail when the effective draft is not a homepage", async () => {
+      prisma.experienceLocale.findUniqueOrThrow.mockResolvedValueOnce(localeRow)
+
+      await expect(
+        service.updateLocale({
+          input: {
+            id: "loc-1",
+            blocks: [watchHomeCategoryRailBlock(["family", "jesus"])],
+          },
+          user: EDITOR_ALICE,
+        }),
+      ).rejects.toBeInstanceOf(ExperienceWatchHomeCategoryRailPlacementError)
+      expect(prisma.contentRevision.create).not.toHaveBeenCalled()
+    })
+
+    it("accepts the Watch category rail on a homepage and preserves its order", async () => {
+      prisma.experienceLocale.findUniqueOrThrow.mockResolvedValueOnce(localeRow)
+
+      const result = await service.updateLocale({
+        input: {
+          id: "loc-1",
+          isHomepage: true,
+          blocks: [watchHomeCategoryRailBlock(["family", "gospels", "jesus"])],
+        },
+        user: EDITOR_ALICE,
+      })
+
+      expect(result).toMatchObject({
+        isHomepage: true,
+        blocks: [
+          {
+            t: "watchHomeCategoryRail",
+            categoryIds: ["family", "gospels", "jesus"],
+          },
+        ],
+      })
     })
 
     it("EDITOR cannot update another editor's locale", async () => {
@@ -1548,6 +1695,54 @@ describe("ExperienceService", () => {
         }),
       ).rejects.toThrow("Forbidden")
     })
+
+    it("rejects publishing a non-homepage draft containing the Watch category rail", async () => {
+      const localeRow = {
+        id: "loc-1",
+        experienceId: "exp-1",
+        locale: "en",
+        slug: "invalid-category-rail",
+        isHomepage: false,
+        pathSegment: null,
+        status: "PUBLISHED",
+        title: "Live",
+        metaDescription: null,
+        ogTitle: null,
+        ogDescription: null,
+        ogImageUrl: null,
+        blocks: [],
+        publishedAt: new Date("2026-04-15T12:00:00.000Z"),
+        createdAt: new Date("2026-04-15T12:00:00.000Z"),
+        updatedAt: new Date("2026-04-15T12:00:00.000Z"),
+        experience: { ownerId: "alice", archivedAt: null },
+      }
+      prisma.experienceLocale.findUniqueOrThrow.mockResolvedValueOnce(localeRow)
+      prisma.contentRevision.findFirst.mockResolvedValueOnce({
+        id: "draft-1",
+        snapshot: {
+          v: 1,
+          data: {
+            slug: localeRow.slug,
+            isHomepage: false,
+            pathSegment: null,
+            title: "Draft",
+            metaDescription: null,
+            ogTitle: null,
+            ogDescription: null,
+            ogImageUrl: null,
+            blocks: [watchHomeCategoryRailBlock()],
+          },
+        },
+      })
+
+      await expect(
+        service.publishLocale({
+          input: { id: "loc-1" },
+          user: EDITOR_ALICE,
+        }),
+      ).rejects.toBeInstanceOf(ExperienceWatchHomeCategoryRailPlacementError)
+      expect(prisma.experienceLocale.update).not.toHaveBeenCalled()
+    })
   })
 
   // ---------------------------------------------------------------------------
@@ -1611,6 +1806,58 @@ describe("ExperienceService", () => {
         }),
       ).resolves.toEqual(locale)
       expect(prisma.contentRevision.update).not.toHaveBeenCalled()
+    })
+
+    it("refuses conditional rollback after another editor changes the draft", async () => {
+      prisma.experienceLocale.findUniqueOrThrow.mockResolvedValueOnce(locale)
+      prisma.contentRevision.findFirst.mockResolvedValueOnce({
+        id: "draft-later",
+        snapshot: { v: 1, data: { title: "Later edit" } },
+        previewToken: "preview-token",
+        revisedAt: new Date("2026-08-26T15:30:00.000Z"),
+        revisedBy: "bob",
+        revisedByKind: "USER",
+        reason: "later edit",
+      })
+
+      await expect(
+        service.rollbackLocaleDraft({
+          input: {
+            id: "loc-discard",
+            expectedDraftRevision: "carousel-revision",
+          },
+          user: EDITOR_ALICE,
+        }),
+      ).rejects.toThrow("modified concurrently")
+      expect(prisma.contentRevision.update).not.toHaveBeenCalled()
+    })
+
+    it("conditionally discards the exact draft revision it was given", async () => {
+      const draft = {
+        id: "draft-carousel",
+        snapshot: { v: 1, data: { title: "Carousel edit" } },
+        previewToken: "preview-token",
+        revisedAt: new Date("2026-08-26T15:30:00.000Z"),
+        revisedBy: "alice",
+        revisedByKind: "USER",
+        reason: "carousel edit",
+      }
+      prisma.experienceLocale.findUniqueOrThrow.mockResolvedValueOnce(locale)
+      prisma.contentRevision.findFirst.mockResolvedValueOnce(draft)
+
+      await expect(
+        service.rollbackLocaleDraft({
+          input: {
+            id: "loc-discard",
+            expectedDraftRevision: localeDraftRevision(draft),
+          },
+          user: EDITOR_ALICE,
+        }),
+      ).resolves.toMatchObject({ effective: locale, activeDraft: null })
+      expect(prisma.contentRevision.update).toHaveBeenCalledWith({
+        where: { id: "draft-carousel" },
+        data: { status: "DISCARDED" },
+      })
     })
   })
 

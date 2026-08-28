@@ -663,44 +663,6 @@
     "backToWatch": "Ruttoto e Watch",
     "browseVideos": "Naatnu videeji"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Yiy Film Keetotooɗo",
-    "actions": {
-      "joinUs": "Yettu e min",
-      "shareMission": "Feccu e mission amen"
-    },
-    "welcomeStart": {
-      "label": "Iman e Kiitaaba",
-      "title": "Suɓe videeji hannde",
-      "description": "Ndee videeji e kiitaabaaji ngoodi e library amen ngam waɗde ɓeydude, heɓɓinde, kadi fuɗɗude hakkillooji."
-    },
-    "welcomeMorning": {
-      "label": "Heɓɓugol ngam subaka",
-      "title": "Jam nga subaka! Njaaɓnde Kiitaaba hannde ndee ndii no waɗi.",
-      "description": "Fuɗɗo ɗowndol maa e njiyawa Kiitaaba ɗii, nde ñiiɓnude, heɓɓinde, kadi kawtu hakkilo maa."
-    },
-    "welcomeAfternoon": {
-      "label": "Heɓɓugol ngam ñalawma",
-      "title": "Jam nga ñalawma! Njaaɓnde Kiitaaba ngam ñalawma maa.",
-      "description": "Ndee videeji Kiitaaba ngoodi ngam waawde yimɓe e jooni e ñalawma maa walla ngel heɓɓugol feewi."
-    },
-    "welcomeEvening": {
-      "label": "Heɓɓugol ngam jamma",
-      "title": "Jam nga jamma! Njaaɓ e njoɓdi e njaaɓnde Kiitaaba.",
-      "description": "Njaaɓnde Kiitaaba ndee ndii ndarii ngam waawaade, njaɓɓude kadi heɓɓude jomɗum so ñalngu maa ngoodi waɗi."
-    },
-    "joinUs": {
-      "label": "Yettu e min",
-      "title": "Milyooji ina ɗaɓɓoo",
-      "description": "Njaɓɓugol no woni ɗoo. Yettu e min ngam feccude Injiiil e duniyaru huse media dijital."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Yah njaɓɓude e min",
-      "title": "Haalisiji kisal Isa, fuu ɗum e min",
-      "description": "Ngam ngol ɓe heɓa e yiyde ndee ndiyam Isa e ɗemngal maɓɓe e ko ndeen fiyee."
-    }
-  },
   "VideoRecommendations": {
     "match": "Nanndugol {percent}%",
     "none": "Alaa wasiyaaji heɓaaɗi ngam ngoo widewoo e ndee ɗemngal."

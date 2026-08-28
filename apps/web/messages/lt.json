@@ -663,44 +663,6 @@
     "backToWatch": "Grįžti į žiūrėjimą",
     "browseVideos": "Naršyti vaizdo įrašus"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Žiūrėti trumpametražį filmą",
-    "actions": {
-      "joinUs": "Prisijunkite prie mūsų",
-      "shareMission": "Prisidėkite prie mūsų misijos"
-    },
-    "welcomeStart": {
-      "label": "Tikėjimas ir Raštas",
-      "title": "Šiandienos vaizdo įrašų pasirinkimai",
-      "description": "Tikėjimu grįstas vaizdo turinys iš mūsų bibliotekos, skirtas įkvėpti, paskatinti ir paskatinti apmąstymus."
-    },
-    "welcomeMorning": {
-      "label": "Rytinis įkvėpimas",
-      "title": "Labas rytas! Šiandienos Biblijos akimirkos jūsų laukia.",
-      "description": "Pradėkite dieną su padrąsinančiomis Biblijos akimirkomis, skirtomis įkvėpti ir pakylėti jūsų dvasią."
-    },
-    "welcomeAfternoon": {
-      "label": "Popietės įkvėpimas",
-      "title": "Labas! Biblijos akimirkos jūsų dienai.",
-      "description": "Padrąsinantis Biblijos turinys, puikiai tinkantis popietės pertraukai arba tolesniam įkvėpimui."
-    },
-    "welcomeEvening": {
-      "label": "Vakaro įkvėpimas",
-      "title": "Labas vakaras! Atsipalaiduokite su Biblijos akimirkomis.",
-      "description": "Ramybę suteikiančios Biblijos akimirkos, padedančios apmąstyti ir rasti paguodą dienai baigiantis."
-    },
-    "joinUs": {
-      "label": "Prisijunkite prie mūsų",
-      "title": "Milijardai ieško",
-      "description": "Derlius jau čia. Prisijunkite prie mūsų, kai dalijamės Evangelija su pasauliu naudodami skaitmenines medijas."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Eikime kartu",
-      "title": "Kartu pasakokime Jėzaus istoriją",
-      "description": "Kad jie galėtų girdėti ir matyti Jėzaus meilę savo kalba ten, kur yra."
-    }
-  },
   "VideoRecommendations": {
     "match": "Atitiktis: {percent} %",
     "none": "Šiam vaizdo įrašui rekomendacijų šia kalba nerasta."

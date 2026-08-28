@@ -663,44 +663,6 @@
     "backToWatch": "Tounen nan Watch",
     "browseVideos": "Browse videyo yo"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Gade fim kout",
-    "actions": {
-      "joinUs": "Vin jwenn nou",
-      "shareMission": "Pataje nan misyon nou"
-    },
-    "welcomeStart": {
-      "label": "Lafwa ak Ekriti",
-      "title": "Chwa videyo pou jodi a",
-      "description": "Kontni videyo ki santre sou lafwa nan bibliyotèk nou an pou enspire w, defi w, epi limen refleksyon."
-    },
-    "welcomeMorning": {
-      "label": "Enspirasyon maten",
-      "title": "Bonjou! Moman Labib pou jounen an ap tann ou.",
-      "description": "Kòmanse jounen w ak moman Labib ki ankourajan, fèt pou enspire w epi leve lespri w."
-    },
-    "welcomeAfternoon": {
-      "label": "Enspirasyon aprèmidi",
-      "title": "Bon aprèmidi! Moman Labib pou jounen w.",
-      "description": "Kontni Labib ki ankourajan, pafè pou poz aprèmidi w oswa pou kontinye jwenn enspirasyon."
-    },
-    "welcomeEvening": {
-      "label": "Enspirasyon aswè",
-      "title": "Bonswa! Pran yon ti moman ak moman Labib.",
-      "description": "Moman Labib ki trankil pou ede w reflechi epi jwenn konsolasyon pandan jounen w ap fini."
-    },
-    "joinUs": {
-      "label": "Vin jwenn nou",
-      "title": "Milya moun ap chèche",
-      "description": "Rekòt la la a. Vin jwenn nou pandan n ap pataje levanjil la ak mond lan atravè medya dijital."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Ann ale ansanm",
-      "title": "Rakonte Istwa Jezi a ansanm",
-      "description": "Pou yo ka tande ak wè lanmou Jezi a nan pwòp lang yo, jis kote yo ye a."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}% korespondans",
     "none": "Pa jwenn okenn rekòmandasyon pou videyo sa a nan lang sa a."

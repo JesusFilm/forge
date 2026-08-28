@@ -663,44 +663,6 @@
     "backToWatch": "Bèk na Watch",
     "browseVideos": "Eksplora videonan"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Mira pelíkula kortiku",
-    "actions": {
-      "joinUs": "Bini ku nos",
-      "shareMission": "Komparti den nos misión"
-    },
-    "welcomeStart": {
-      "label": "Fe & Skritura",
-      "title": "Selekshonnan di video pa awe",
-      "description": "Contenido di video sentrá riba fe for di nos biblioteka pa inspirá, desafia, i yama refleksyon."
-    },
-    "welcomeMorning": {
-      "label": "Inspirashon di mainta",
-      "title": "Bon dia! Momentonan bíbliko di awe ta spèra bo.",
-      "description": "Kuminsa bo dia ku momentonan bíbliko alentadó ku ta destiná pa inspirá i leventá bo espírtu."
-    },
-    "welcomeAfternoon": {
-      "label": "Inspirashon di atardi",
-      "title": "Bon tardi! Momentonan bíbliko pa bo dia.",
-      "description": "Contenido bíbliko alentadó perfekt pa bo pauza di atardi òf pa sigui resibi inspirashon."
-    },
-    "welcomeEvening": {
-      "label": "Inspirashon di anochi",
-      "title": "Bon anochi! Relaha ku momentonan bíbliko.",
-      "description": "Momentonan bíbliko trankil pa yuda bo reflektá i sentí konsuelo ora bo dia ta terminando."
-    },
-    "joinUs": {
-      "label": "Bini ku nos",
-      "title": "Milyonan ta kereando",
-      "description": "E sega ta aki. Bini ku nos mientras nos ta komparti e evangelio ku mundo bou di media digital."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Biaha hunto",
-      "title": "Tuma e historia di Jesus, huntu",
-      "description": "Pa por yega tende i mira e amor di Jesus den nan propio idioma, hemen unda nan ta."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}% koinsidensia",
     "none": "No a haña rekomendashon pa e video aki den e idioma aki."

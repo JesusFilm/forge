@@ -663,44 +663,6 @@
     "backToWatch": "Tilbake til Vis",
     "browseVideos": "Bla i videoar"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Sjå kortfilm",
-    "actions": {
-      "joinUs": "Bli med oss",
-      "shareMission": "Del i oppdraget vårt"
-    },
-    "welcomeStart": {
-      "label": "Tru og Skrift",
-      "title": "Dagens videoutval",
-      "description": "Trussentrerte videoinnhald frå biblioteket vårt som skal inspirere, utfordre og vekkje ettertanke."
-    },
-    "welcomeMorning": {
-      "label": "Morgoninspirasjon",
-      "title": "God morgon! Dagens Bibeløyeblikk ventar.",
-      "description": "Start dagen med oppmuntrande Bibeløyeblikk som skal inspirere og løfte ande."
-    },
-    "welcomeAfternoon": {
-      "label": "Ettermiddagsinspirasjon",
-      "title": "God ettermiddag! Bibeløyeblikk for dagen din.",
-      "description": "Oppmuntrande bibelinnhald som passar perfekt til ettermiddagspausen din eller vidare inspirasjon."
-    },
-    "welcomeEvening": {
-      "label": "Kveldsinspirasjon",
-      "title": "God kveld! Ro ned med Bibeløyeblikk.",
-      "description": "Fredelege Bibeløyeblikk som hjelper deg å reflektere og finne trøyst når dagen går mot slutten."
-    },
-    "joinUs": {
-      "label": "Bli med oss",
-      "title": "Milliardar er på søk",
-      "description": "Innhaustinga er her. Bli med oss når vi deler evangeliet med verda gjennom digitale medium."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Lat oss gå saman",
-      "title": "Fortelje historia om Jesus, saman",
-      "description": "Slik at dei kan høyre og sjå Jesu kjærleik på sitt eige språk akkurat der dei er."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent} % samsvar",
     "none": "Fann ingen tilrådingar for denne videoen på dette språket."

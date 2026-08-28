@@ -663,44 +663,6 @@
     "backToWatch": "Hoʻi i Nānā",
     "browseVideos": "Nānā i nā wikiō"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Nānā Kiʻiʻoniʻoni Pōkole",
-    "actions": {
-      "joinUs": "E hui pū me mākou",
-      "shareMission": "E kaʻana i kā mākou mikionali"
-    },
-    "welcomeStart": {
-      "label": "ʻO ka manaʻoʻiʻo a me ka Palapala Hemolele",
-      "title": "Nā Koho Wikiō o kēia Lā",
-      "description": "Nā wikiō ma muli o ka manaʻoʻiʻo mai kā mākou waihona e hoʻoulu, e hoʻāʻo, a e hoʻāla i ka noʻonoʻo."
-    },
-    "welcomeMorning": {
-      "label": "Hoʻoulu no ke Kakahiaka",
-      "title": "Aloha kakahiaka! E kali mai ana nā manawa Baibala o kēia lā.",
-      "description": "E hoʻomaka i kou lā me nā manawa Baibala hoʻoulu e paipai a hoʻokiʻekiʻe i kou ʻuhane."
-    },
-    "welcomeAfternoon": {
-      "label": "Hoʻoulu no ke Auinalā",
-      "title": "Aloha auinalā! Nā manawa Baibala no kou lā.",
-      "description": "Nā maʻiʻo Baibala hoʻoulu kūpono no kou wā hoʻomaha auinalā a i ʻole no ka hoʻomau ʻana i ka hoʻoikaika."
-    },
-    "welcomeEvening": {
-      "label": "Hoʻoulu no ke Ahiahi",
-      "title": "Aloha ahiahi! E hoʻomaha me nā manawa Baibala.",
-      "description": "Nā manawa Baibala mālie e kōkua iā ʻoe e noʻonoʻo a loaʻa ka hōʻoluʻolu i ka pau ʻana o kou lā."
-    },
-    "joinUs": {
-      "label": "E hui pū me mākou",
-      "title": "Ke ʻimi nei nā piliona",
-      "description": "Aia ka ʻohi. E hui pū me mākou i ko kākou kaʻana ʻana i ka ʻeuanelio i ka honua ma o nā media kikohoʻe."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "E hele pū kākou",
-      "title": "Ke haʻi pū nei i ka Moʻolelo no Iesu",
-      "description": "I lohe a ʻike lākou i ke aloha o Iesu ma kā lākou ʻōlelo iho ma kahi a lākou e noho ai."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}% kūlike",
     "none": "ʻAʻohe wikiō paipai i loaʻa no kēia wikiō ma kēia ʻōlelo."

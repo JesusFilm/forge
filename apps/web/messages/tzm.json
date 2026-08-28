@@ -663,44 +663,6 @@
     "backToWatch": "Uɣal ɣer Watch",
     "browseVideos": "Brows tividyo"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Wali tafilimt tamecṭuḥt",
-    "actions": {
-      "joinUs": "Ddu ɣur-neɣ",
-      "shareMission": "Bḍu deg tmissi-nneɣ"
-    },
-    "welcomeStart": {
-      "label": "Taɣawsa d Tazɣart",
-      "title": "Iferdisen n tvidyo n wass-a",
-      "description": "Agbur n tvidyo yettwasen ɣef lmanṭaq n tfeṣṣa i d-yettaken asnerni, asnifel, d usallen n umuɣ."
-    },
-    "welcomeMorning": {
-      "label": "Asferen n tneggura",
-      "title": "Azul! Ifrdisen n Taqbaylit n wass-a qqaren-tt.",
-      "description": "Bdu ass-inek s ifrdisen n Taqbaylit i d-yettaken asnerni akked usalli n wul-ik."
-    },
-    "welcomeAfternoon": {
-      "label": "Asferen n tmeddit",
-      "title": "Tifawt! Ifrdisen n Taqbaylit i wass-inek.",
-      "description": "Agbur n Taqbaylit i d-yettaken asnerni, i iḥeqqen i usekkir n tmeddit-ik neɣ i usenerni yellan."
-    },
-    "welcomeEvening": {
-      "label": "Asferen n tmeddit tazwara",
-      "title": "Azul! Sserḥeḍ s ifrdisen n Taqbaylit.",
-      "description": "Ifrdisen n Taqbaylit iwumi yella umenni d uxellef i wakken ad tẓerḍ, ad tafeḍ tenfust deg taggara n wass."
-    },
-    "joinUs": {
-      "label": "Ddu ɣur-neɣ",
-      "title": "Milliarden ttanadin",
-      "description": "Ameḥru yella da. Ddu ɣur-neɣ i wakken ad nessiweḍ l-bisra ɣer umaḍal s tmedya tazayit."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Ddu-d akk",
-      "title": "Amsawal n Ujesus, ddu-d akk",
-      "description": "I wakken ad slen d uẓrun ɣer tayri n Jesus s tutlayt-nsen deg umkan i llan."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}% n umṣada",
     "none": "Ur ttwafen ara yisumar i tvidyo-agi deg tutlayt-agi."

@@ -663,44 +663,6 @@
     "backToWatch": "Rudi kwenye Kutazama",
     "browseVideos": "Vinjari video"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Tazama filamu fupi",
-    "actions": {
-      "joinUs": "Jiunge nasi",
-      "shareMission": "Shiriki katika misheni yetu"
-    },
-    "welcomeStart": {
-      "label": "Imani na Maandiko",
-      "title": "Chaguo za Video za Leo",
-      "description": "Maudhui ya video yaliyojikita katika imani kutoka kwenye maktaba yetu ili kukutia moyo, kukupa changamoto, na kuchochea tafakari."
-    },
-    "welcomeMorning": {
-      "label": "Mhamasisho wa Asubuhi",
-      "title": "Habari za asubuhi! Vipindi vya Biblia vya leo vinakusubiri.",
-      "description": "Anza siku yako kwa matukio ya Biblia yenye kutia moyo yaliyoundwa kukutia moyo na kuinua roho yako."
-    },
-    "welcomeAfternoon": {
-      "label": "Mhamasisho wa Mchana",
-      "title": "Habari za mchana! Matukio ya Biblia kwa siku yako.",
-      "description": "Maudhui ya Biblia yenye kutia moyo, yanayofaa kwa mapumziko yako ya mchana au kuendelea kupata hamasa."
-    },
-    "welcomeEvening": {
-      "label": "Mhamasisho wa Jioni",
-      "title": "Habari za jioni! Tulia na matukio ya Biblia.",
-      "description": "Matukio ya Biblia yenye utulivu ili kukusaidia kutafakari na kupata faraja siku yako inapokaribia kuisha."
-    },
-    "joinUs": {
-      "label": "Jiunge nasi",
-      "title": "Mabilioni wanatafuta",
-      "description": "Mavuno yamefika. Jiunge nasi tunaposhiriki injili ulimwenguni kwa kutumia vyombo vya habari vya kidijitali."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Twendeni pamoja",
-      "title": "Tukisimulia Hadithi ya Yesu, Pamoja",
-      "description": "Ili waweze kusikia na kuona upendo wa Yesu katika lugha yao wenyewe, mahali walipo."
-    }
-  },
   "VideoRecommendations": {
     "match": "Inalingana kwa {percent}%",
     "none": "Hakuna mapendekezo yaliyopatikana kwa video hii katika lugha hii."

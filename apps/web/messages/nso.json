@@ -663,44 +663,6 @@
     "backToWatch": "Morago go Watch",
     "browseVideos": "Phetla divideo"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Bogela filimi ye kopana",
-    "actions": {
-      "joinUs": "Tsenela rena",
-      "shareMission": "Abelana ka morero wa rena"
-    },
-    "welcomeStart": {
-      "label": "Tumelo & Mangwalo",
-      "title": "Dikgetho tša Video tša Lehono",
-      "description": "Diteng tša video tše di theilwego tumelong go tšwa laeboraring ya rena tše di go hlohleletšago, di go hlohla, gomme tša tsosa ponelopele."
-    },
-    "welcomeMorning": {
-      "label": "Tlhotlheletšo ya Mesong",
-      "title": "Mesong ye Mebotse! Ditsela tša Beibele tša Lehono di a go leta.",
-      "description": "Thoma letšatši la gago ka ditsela tša Beibele tše di kgothatšago tšeo di hlametšwego go go hlohleletša le go go homotša moya wa gago."
-    },
-    "welcomeAfternoon": {
-      "label": "Tlhotlheletšo ya Thapama",
-      "title": "Thapama ye Mbotse! Ditsela tša Beibele tša Letšatši la Gago.",
-      "description": "Diteng tša Beibele tše di kgothatšago tše di swanetšego go ikhutša ga gago ga thapama goba go tšwela pele ga tlhotlheletšo."
-    },
-    "welcomeEvening": {
-      "label": "Tlhotlheletšo ya Mantšiboa",
-      "title": "Mantšiboa a Mabotse! Khutša ka Ditsela tša Beibele.",
-      "description": "Ditsela tša Beibele tša khutšo tše di go thušago go nagana le go hwetša kgomotšo ge letšatši la gago le fihla mafelelong."
-    },
-    "joinUs": {
-      "label": "Tsenela rena",
-      "title": "Dimilione tše dikete di a nyaka",
-      "description": "Kotulo e fihlile. Tsenela rena ge re abelana ebangedi le lefase ka media wa digital."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "A re ye mmogo",
-      "title": "Go Anela Kanegelo ya Jesu, Mmogo",
-      "description": "Gore ba kgone go kwa le go bona lerato la Jesu ka polelo ya bona moo ba lego gona."
-    }
-  },
   "VideoRecommendations": {
     "match": "E swana ka {percent}%",
     "none": "Ga go na ditšhišinyo tše di hweditšwego tša video ye ka polelo ye."

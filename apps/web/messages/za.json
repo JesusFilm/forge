@@ -663,44 +663,6 @@
     "backToWatch": "Daej lai daengz Watch",
     "browseVideos": "Browse gij videos"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Yawj film dinj",
-    "actions": {
-      "joinUs": "Gyaeuq raeuz",
-      "shareMission": "Sangh ndaw mission raeuz"
-    },
-    "welcomeStart": {
-      "label": "Singqyangj caeuq Sing Ging",
-      "title": "Video picks ndei ndeiz neix",
-      "description": "Aen video content aeu faith ndaw library raeuz ndeih ndei, aeu byok, challenge, rox bunh reflection."
-    },
-    "welcomeMorning": {
-      "label": "Inspiration ndeizcog",
-      "title": "Ndeiz neix! Bible moments ndei daeuj.",
-      "description": "Doengh ndeiz aeu Bible moments bunh byok, aeu inspire rox uplift spirit raeuz."
-    },
-    "welcomeAfternoon": {
-      "label": "Inspiration banngoenz",
-      "title": "Ndeiz boux lai! Bible moments aeu ndeiz neix.",
-      "description": "Aen Bible content byok ndei aeu afternoon break rox continue inspiration."
-    },
-    "welcomeEvening": {
-      "label": "Inspiration seizhaemh",
-      "title": "Moux neix! Gyaeuq ndeih daengz Bible moments.",
-      "description": "Bible moments aeu gvanj, aeu byok reflection rox comfort daengz ndeiz raeuz deih lawz."
-    },
-    "joinUs": {
-      "label": "Gyaeuq raeuz",
-      "title": "Billions gyaeuq baeuz",
-      "description": "Gij harvest ndaej lawz. Gyaeuq raeuz daengz gyaeuq gospel daengz duniya aeu digital media."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Daej raeuz ndaej baeuz",
-      "title": "Gangj story Jesus, baeuz raeuz",
-      "description": "Ndaej byaij rox yawj love Jesus ndaw language raeuz, ndaw doengh ndeih lawz gyaeuq."
-    }
-  },
   "VideoRecommendations": {
     "match": "Doengz {percent}%",
     "none": "Mienz gij video ndaej gyaeuq daengz video neix ndaw language neix."

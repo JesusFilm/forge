@@ -663,44 +663,6 @@
     "backToWatch": "Watch-м къегъазэ",
     "browseVideos": "Videos къыжьыбжь"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "КIэкI фильм къыплъэ",
-    "actions": {
-      "joinUs": "ТыкъэIэ",
-      "shareMission": "Ти миссие къыдэIэ"
-    },
-    "welcomeStart": {
-      "label": "Иман & Тхыгъэр",
-      "title": "Нобэ къыхэгъэщ видеохэр",
-      "description": "Ти library-м щыIэ, иман къыщыбзэжъо videohэр — фыкъыIуатэ, фыкъыбжьэ, е гупсысэ фэхъуэу."
-    },
-    "welcomeMorning": {
-      "label": "Пщэдджыжьым и илъэсыкI",
-      "title": "Пщэдджыжь! Нобэ Библием и momentхэр фыхуежь.",
-      "description": "Нобэ псэуныгъэм фыкъыщыбжьэн папщIэ, Библием и гупсысэхэр тыншэу фыщыбжьэ."
-    },
-    "welcomeAfternoon": {
-      "label": "Тхьаубэ и илъэсыкI",
-      "title": "Тхьаубэ! Нобэ папщIэ Библием и momentхэр.",
-      "description": "Тхьаубэжьым фыкъыхуешъоу, еплъэн хуэдэ, Библием и content"
-    },
-    "welcomeEvening": {
-      "label": "Щымэбжьым и илъэсыкI",
-      "title": "Щымэбжь! Библием и momentхэмкIэ фыжьыжьы.",
-      "description": "Тхыжьыгъэ Библием и momentхэр — гупсысэ къыфгъэщын, тхьэкIэу фыжьыжьыныгъэу, нобэ фыкъыхэкIынэу."
-    },
-    "joinUs": {
-      "label": "ТыкъэIэ",
-      "title": "Миллиардхэр къыбжьэжь",
-      "description": "Уасэ ахэр мэфэ. Digital media-мкIэ дунейм Евангелиер къыдэIэмкIэ фыкъытху."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Тыкъэу тэбжь",
-      "title": "Иисус и таурыхьыр тхьэмэдэу къыIуатэ",
-      "description": "Ащыщтхэм я бзэмкIэ Иисус и лъапIэныгъэ къагъэхъужьыр, къагъэшIым, къадэIэм."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}% зэфэдэ",
     "none": "А видеом а бзэмкIэ рекомендациехэр хэмыт."

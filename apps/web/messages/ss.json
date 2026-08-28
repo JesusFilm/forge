@@ -663,44 +663,6 @@
     "backToWatch": "Buyela ku-Watch",
     "browseVideos": "Phequlula amavidiyo"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Buka ifilimu emfushane",
-    "actions": {
-      "joinUs": "Hlangana nathi",
-      "shareMission": "Yabelana ngomsebenzi wethu"
-    },
-    "welcomeStart": {
-      "label": "Ukholo Nemibhalo",
-      "title": "Izinketho zevidiyo zanamuhla",
-      "description": "Okuqukethwe kwevidiyo okugxile okholweni okuvela emtapweni wethu ukuze kukhuthaze, kuphonsele inselelo, futhi kuvuse ukucabanga."
-    },
-    "welcomeMorning": {
-      "label": "Ugqozi Lwasekuseni",
-      "title": "Sawubona! Izikhathi zeBhayibheli zanamuhla zikulindile.",
-      "description": "Qala usuku lwakho ngezikhathi ezikhuthazayo zeBhayibheli ezenzelwe ukukugqugquzela nokuphakamisa umoya wakho."
-    },
-    "welcomeAfternoon": {
-      "label": "Ugqozi Lwantambama",
-      "title": "Sawubona ntambama! Izikhathi zeBhayibheli zosuku lwakho.",
-      "description": "Okuqukethwe okukhuthazayo kweBhayibheli okulungele ikhefu lakho lantambama noma ukuqhubeka nokuthola ugqozi."
-    },
-    "welcomeEvening": {
-      "label": "Ugqozi Lwangokuhlwa",
-      "title": "Sawubona kusihlwa! Hlalisa phansi ngezikhathi zeBhayibheli.",
-      "description": "Izikhathi zeBhayibheli ezinokuthula ezikusiza ucabange futhi uthole induduzo njengoba usuku luphela."
-    },
-    "joinUs": {
-      "label": "Hlangana nathi",
-      "title": "Izigidigidi ziyafuna",
-      "description": "Isivuno sesifikile. Hlangana nathi njengoba sabelana ngevangeli nomhlaba ngemidiya yedijithali."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Asihambe ndawonye",
-      "title": "Sitshela Indaba kaJesu, Ndawonye",
-      "description": "Ukuze bezwe futhi babone uthando lukaJesu ngolimi lwabo, khona lapho abakulo."
-    }
-  },
   "VideoRecommendations": {
     "match": "Kuhambisana nga-{percent}%",
     "none": "Kute tincomo letitfolakele talividiyo ngalolulwimi."

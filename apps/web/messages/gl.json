@@ -663,44 +663,6 @@
     "backToWatch": "Volver a Watch",
     "browseVideos": "Explorar vídeos"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Ver curtametraxe",
-    "actions": {
-      "joinUs": "Únete a nós",
-      "shareMission": "Comparte a nosa misión"
-    },
-    "welcomeStart": {
-      "label": "Fe e Escritura",
-      "title": "Seleccións de vídeo de hoxe",
-      "description": "Contido en vídeo centrado na fe da nosa biblioteca para inspirar, desafiar e espertar a reflexión."
-    },
-    "welcomeMorning": {
-      "label": "Inspíración da mañá",
-      "title": "Bos días! Agardan os momentos bíblicos de hoxe.",
-      "description": "Comeza o día con momentos bíblicos alentadores deseñados para inspirarte e elevar o teu espírito."
-    },
-    "welcomeAfternoon": {
-      "label": "Inspíración da tarde",
-      "title": "Boas tardes! Momentos bíblicos para o teu día.",
-      "description": "Contido bíblico alentador, perfecto para o teu descanso da tarde ou para seguir inspirándote."
-    },
-    "welcomeEvening": {
-      "label": "Inspíración da noite",
-      "title": "Boas noites! Relaxa con momentos bíblicos.",
-      "description": "Momentos bíblicos de paz para axudarche a reflexionar e atopar consolo ao rematar o día."
-    },
-    "joinUs": {
-      "label": "Únete a nós",
-      "title": "Miles de millóns están a buscar",
-      "description": "A colleita está aquí. Únete a nós para compartir o Evanxeo co mundo usando medios dixitais."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Imos xuntos",
-      "title": "Contar xuntos a historia de Xesús",
-      "description": "Para que poidan escoitar e ver o amor de Xesús no seu propio idioma xusto onde están."
-    }
-  },
   "VideoRecommendations": {
     "match": "Coincidencia: {percent} %",
     "none": "Non se atoparon recomendacións para este vídeo neste idioma."

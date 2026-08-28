@@ -663,44 +663,6 @@
     "backToWatch": "Uñch’ukiñaru kutt’aña",
     "browseVideos": "Video-naka uñakipaña"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Corto metraje uñch’ukiña",
-    "actions": {
-      "joinUs": "Jiwasamp mayacht’asiña",
-      "shareMission": "Misión apost’ar mayacht’asiña"
-    },
-    "welcomeStart": {
-      "label": "Iyawsäwi ukhamaraki Qillqatanaka",
-      "title": "Jichha uru video ajllitanaka",
-      "description": "Bibliasataki video yatiyawinaka, chuymacht’aña, amtasiña ukhamaraki amuyt’aña sartayañataki."
-    },
-    "welcomeMorning": {
-      "label": "Qhantati chuymacht’äwi",
-      "title": "Aski alwatäxiwa. Jichha uru Biblia yäwinakax suyt’asiwa.",
-      "description": "Uru qalltañamatakix Biblia yäwinakamp ch’amañcht’ata, chuymar aynacht’ayañataki wakichata."
-    },
-    "welcomeAfternoon": {
-      "label": "Inti jayp’u chuymacht’äwi",
-      "title": "Aski jayp’utäxiwa. Uruympi Biblia yäwinaka.",
-      "description": "Biblia yatiyawinaka chuymacht’añatakiwa, jayp’u samart’añamataki jan ukax juk’amp chuymacht’äwinakataki wali aski."
-    },
-    "welcomeEvening": {
-      "label": "Jayp’u chuymacht’äwi",
-      "title": "Aski jayp’utäxiwa. Biblia yäwinakampi samart’aña.",
-      "description": "Samarañ Biblia yäwinaka, urum tukuyki ukhaw amuyt’añataki ukhamaraki chuymachasiñataki yanapt’i."
-    },
-    "joinUs": {
-      "label": "Jiwasamp mayacht’asiña",
-      "title": "Waranqanakax thaqhapxiwa",
-      "description": "Aka yapux utjiwa. Digital media apnaqasa uraqpachar evangelio yatiyañataki jiwasamp mayacht’asiña."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Juk’amp chiqankañäni",
-      "title": "Jesus tuqit saräwi, mayacht’asisana",
-      "description": "Ukhamat kawkhankki uka chiqanxa Jesus ukan munasiwipx arupansa uñt’asa ist’asipxani."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}% chikachasiwi",
     "none": "Aka arun aka videotakix janiw kuna iwxäwinakas jikxataskiti."

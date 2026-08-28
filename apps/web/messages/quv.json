@@ -663,44 +663,6 @@
     "backToWatch": "Titzolïx pa Watch",
     "browseVideos": "Tanik'oj videos"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Titz'et corto video",
-    "actions": {
-      "joinUs": "Katxulan",
-      "shareMission": "Katzijon pa ri qamision"
-    },
-    "welcomeStart": {
-      "label": "Fe chuqa' Escritura",
-      "title": "Taq video rech wa' q'ij",
-      "description": "Taq video ruk' fe chuwe' ri qach'akulal richin nikiq'alajisaj, nikiq'ax, chuqa' nikiq'ojom na'oj."
-    },
-    "welcomeMorning": {
-      "label": "Na'ojib'äl rech aq'ab'",
-      "title": "Saqarik! Ri Biblia chuwe' wa' q'ij tajin nik'ulmataj.",
-      "description": "Tatz'aqatisaj ri aq'ab' ruk' taq Biblia ri nikiq'ojom, nikiq'alajisaj, chuqa' nikiq'uchuj ri awanim."
-    },
-    "welcomeAfternoon": {
-      "label": "Na'ojib'äl rech tz'ikin q'ij",
-      "title": "Jun utz q'ij! Taq Biblia richin wa' q'ij.",
-      "description": "Taq Biblia ri nikiq'ojom, utz richin jun relajo' pa tz'ikin q'ij o richin natz'aqatisaj na'ojib'äl."
-    },
-    "welcomeEvening": {
-      "label": "Na'ojib'äl rech q'ij",
-      "title": "Jun utz aq'ab'! Tiko'j ri awanim ruk' taq Biblia.",
-      "description": "Taq Biblia pa utzil richin nikito' achi'el natz'ët chuqa' nariq' uchuq'a' chi rij ri q'ij."
-    },
-    "joinUs": {
-      "label": "Katxulan",
-      "title": "Milyones tajin nika'n",
-      "description": "Ri qach'akulal k'o chik. Katxulan qik'in richin niqatzijoj ri evangelio pa ruwach'ulew ruk' digital media."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Qak'ulub'ej junam",
-      "title": "Niqatzijoj rutzij Jesus, junam",
-      "description": "Richin nikiqaxaj chuqa' nikiq'etz ri rutzil Jesus pa ri kich'ab'äl, pa ri lugar k'o wi."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}% nijunam",
     "none": "Man xkanöx ta taq video nik'utüx richin re video re' pa re ch'ab'äl re'."

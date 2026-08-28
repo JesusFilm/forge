@@ -663,44 +663,6 @@
     "backToWatch": "Tillbaka till Titta",
     "browseVideos": "Bläddra bland videor"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Titta på kortfilmen",
-    "actions": {
-      "joinUs": "Gå med oss",
-      "shareMission": "Dela vår mission"
-    },
-    "welcomeStart": {
-      "label": "Tro och Skrift",
-      "title": "Dagens videotips",
-      "description": "Troscentrerat videoinnehåll från vårt bibliotek som inspirerar, utmanar och väcker eftertanke."
-    },
-    "welcomeMorning": {
-      "label": "Morgoninspiration",
-      "title": "God morgon! Dagens bibelögonblick väntar.",
-      "description": "Börja dagen med uppmuntrande bibelögonblick som är skapade för att inspirera och lyfta din ande."
-    },
-    "welcomeAfternoon": {
-      "label": "Eftermiddagsinspiration",
-      "title": "God eftermiddag! Bibelögonblick för din dag.",
-      "description": "Uppmuntrande bibelinnehåll som passar perfekt för din eftermiddagspaus eller som fortsatt inspiration."
-    },
-    "welcomeEvening": {
-      "label": "Kvällsinspiration",
-      "title": "God kväll! Varva ner med bibelögonblick.",
-      "description": "Fridfulla bibelögonblick som hjälper dig att reflektera och finna tröst när dagen går mot sitt slut."
-    },
-    "joinUs": {
-      "label": "Gå med oss",
-      "title": "Miljarder söker",
-      "description": "Skörden är här. Gå med oss när vi delar evangeliet med världen genom digitala medier."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Låt oss gå tillsammans",
-      "title": "Berättelsen om Jesus, tillsammans",
-      "description": "Så att de kan höra och se Jesu kärlek på sitt eget språk, där de är."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent} % matchning",
     "none": "Inga rekommendationer hittades för den här videon på det här språket."

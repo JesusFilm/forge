@@ -663,44 +663,6 @@
     "backToWatch": "Subira kuri Watch",
     "browseVideos": "Reba video"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Reba filime ngufi",
-    "actions": {
-      "joinUs": "Twiyungeho",
-      "shareMission": "Fatanya natwe mu murimo wacu"
-    },
-    "welcomeStart": {
-      "label": "Kwizera & Ibyanditswe",
-      "title": "Video zatoranyijwe z'uyu munsi",
-      "description": "Ibirimo bya video bishingiye ku kwizera bivuye mu isomero ryacu kugira ngo bikangure, bisubize ibibazo, kandi biteze gutekereza."
-    },
-    "welcomeMorning": {
-      "label": "Icyemezo cya mu gitondo",
-      "title": "Mwaramutse! Uyu munsi hari amasaha ya Bibiliya ateguje.",
-      "description": "Tangira umunsi wawe n'ibice bya Bibiliya bihumuriza byateguwe kugira ngo bikugirire akamaro kandi bizamure umutima wawe."
-    },
-    "welcomeAfternoon": {
-      "label": "Icyemezo cya nyuma ya saa sita",
-      "title": "Mwiriwe! Amasaha ya Bibiliya y'umunsi wawe.",
-      "description": "Ibirimo bya Bibiliya bihumuriza byiza cyane ku kiruhuko cya nyuma ya saa sita cyangwa gukomeza guhumurizwa."
-    },
-    "welcomeEvening": {
-      "label": "Icyemezo cya nimugoroba",
-      "title": "Mwiriwe! Humura ukoresheje amasaha ya Bibiliya.",
-      "description": "Amasaha ya Bibiliya atuje agufasha gutekereza no kubona ihumure uko umunsi urangiye."
-    },
-    "joinUs": {
-      "label": "Twiyungeho",
-      "title": "Miliyari z'abantu barimo gushaka",
-      "description": "Igihe cyo gusarura kirahari. Twiyungeho dusangiza ubutumwa bwiza isi dukoresheje ibitangazamakuru bya digitale."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Reka tugende hamwe",
-      "title": "Kuvuga inkuru ya Yesu, turi kumwe",
-      "description": "Kugira ngo bashobore kumva no kubona urukundo rwa Yesu mu rurimi rwabo, aho bari hose."
-    }
-  },
   "VideoRecommendations": {
     "match": "Bihuye ku kigero cya {percent}%",
     "none": "Nta videwo zishobora kugushimisha zabonetse zijyanye n'iyi videwo muri uru rurimi."

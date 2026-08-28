@@ -663,44 +663,6 @@
       "openSupportForm": "Open support form"
     }
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Manood ng Maikling Pelikula",
-    "actions": {
-      "joinUs": "Sumali sa Amin",
-      "shareMission": "Makibahagi sa Aming Misyon"
-    },
-    "welcomeStart": {
-      "label": "Pananampalataya at Kasulatan",
-      "title": "Mga Napiling Video Ngayon",
-      "description": "Nilalaman ng video mula sa aming library na nakasentro sa pananampalataya upang magbigay-inspirasyon, hamunin, at magpasiklab ng pagninilay."
-    },
-    "welcomeMorning": {
-      "label": "Inspirasyon sa Umaga",
-      "title": "Magandang umaga! Hinihintay ka ng mga sandali sa Bibliya ngayong araw.",
-      "description": "Simulan ang iyong araw sa mga nakapagpapatibay na sandali sa Bibliya na idinisenyong magbigay-inspirasyon at magpasigla ng iyong espiritu."
-    },
-    "welcomeAfternoon": {
-      "label": "Inspirasyon sa Hapon",
-      "title": "Magandang hapon! Mga sandali sa Bibliya para sa iyong araw.",
-      "description": "Nakakapagpalakas ng loob na nilalaman sa Bibliya na akma para sa iyong pahinga sa hapon o para sa patuloy na inspirasyon."
-    },
-    "welcomeEvening": {
-      "label": "Inspirasyon sa Gabi",
-      "title": "Magandang gabi! Magpahinga kasama ang mga sandali sa Bibliya.",
-      "description": "Mapayapang mga sandali sa Bibliya upang tulungan kang magnilay at makatagpo ng ginhawa habang natatapos ang iyong araw."
-    },
-    "joinUs": {
-      "label": "Sumali sa Amin",
-      "title": "Bilyon-bilyon ang naghahanap",
-      "description": "Narito na ang ani. Sumali sa amin sa pagbabahagi ng ebanghelyo sa buong mundo gamit ang digital media."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Magkasama tayo",
-      "title": "Pagkukuwento ng Buhay ni Jesus, Magkasama",
-      "description": "Upang marinig at makita nila ang pag-ibig ni Jesus sa sarili nilang wika, mismo kung nasaan sila."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}% tugma",
     "none": "Walang nakitang rekomendasyon para sa video na ito sa wikang ito."

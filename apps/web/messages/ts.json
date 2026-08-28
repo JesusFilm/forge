@@ -663,44 +663,6 @@
     "backToWatch": "Tlhelela eka Watch",
     "browseVideos": "Languta tivhidiyo"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Languta filimi yo koma",
-    "actions": {
-      "joinUs": "Nghena na hina",
-      "shareMission": "Avelana na hina ntirho wa vurhumiwa"
-    },
-    "welcomeStart": {
-      "label": "Ripfumelo & Matsalwa",
-      "title": "Swihlawulekisi swa vhidiyo swa namuntlha",
-      "description": "Swilo swa vhidiyo leswi kongomisiweke eka ripfumelo leswi humaka eka layiburari ya hina ku hlohlotela, ku nyika mivangelo, ni ku pfuxeta ku anakanyisisa."
-    },
-    "welcomeMorning": {
-      "label": "Ku Hlohlotela ka Nimixo",
-      "title": "Mixo lowunene! Tinhungu ta Bibele ta namuntlha ti mi rindzerile.",
-      "description": "Sungula siku ra wena hi tinhungu ta Bibele leti hlohlotelaka leti endleriweke ku khensisa ni ku tlakusa moya wa wena."
-    },
-    "welcomeAfternoon": {
-      "label": "Ku Hlohlotela ka Nhlikanhi",
-      "title": "Nhlikanhi lowunene! Tinhungu ta Bibele ta siku ra wena.",
-      "description": "Swilo swa Bibele leswi hlohlotelaka leswi faneleke nkarhi wa wena wa nhlikanhi kumbe ku ya emahlweni ni ku hlohlotela."
-    },
-    "welcomeEvening": {
-      "label": "Ku Hlohlotela ka Nimadyambu",
-      "title": "Vusiku lebyinene! Tinyikete eka tinhungu ta Bibele.",
-      "description": "Tinhungu ta Bibele ta ku rhula ku ku pfuna ku anakanyisisa ni ku kuma nchavelelo loko siku ra wena ri ya emakumu."
-    },
-    "joinUs": {
-      "label": "Nghena na hina",
-      "title": "Timiliyoni ta lava swo karhi",
-      "description": "Ku tshovela kona. Nghena na hina loko hi avelana evhangeli ni misava hi ku tirhisa swihangalasamahungu swa xidijitali."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "A hi fambeni swin’we",
-      "title": "Ku vulavula hi mhaka ya Yesu, swin’we",
-      "description": "Leswaku va kota ku twa ni ku vona rirhandzu ra Yesu hi ririmi ra vona eka laha va nga kona."
-    }
-  },
   "VideoRecommendations": {
     "match": "Ku fambelana ka {percent}%",
     "none": "A ku kumekanga switsundzuxo swa vhidiyo leyi hi ririmi leri."

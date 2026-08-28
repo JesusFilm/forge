@@ -663,44 +663,6 @@
     "backToWatch": "Watch par wapas",
     "browseVideos": "Video browse kariye"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Chhota film dekhiye",
-    "actions": {
-      "joinUs": "Hamare saath judiye",
-      "shareMission": "Hamari mission me hissha lijiye"
-    },
-    "welcomeStart": {
-      "label": "Vishwas aur Scripture",
-      "title": "Aaj ke video chunav",
-      "description": "Hamari library se vishwas-kenit video content, jo inspire kare, challenge kare, aur soch-vichar jagaye."
-    },
-    "welcomeMorning": {
-      "label": "Subah ki prerna",
-      "title": "Suprabhat! Aaj ke Bible moments intezaar me hain.",
-      "description": "Apna din Bible ke encouraging moments ke saath shuru kariye, jo aapke mann ko uplift karein."
-    },
-    "welcomeAfternoon": {
-      "label": "Dopahar ki prerna",
-      "title": "Shubh dopahar! Aapke din ke liye Bible moments.",
-      "description": "Bible ka encouraging content, aapke dopahar ke break ya aage ki prerna ke liye ekdum theek."
-    },
-    "welcomeEvening": {
-      "label": "Shaam ki prerna",
-      "title": "Shubh sandhya! Bible moments ke saath araam kariye.",
-      "description": "Shant Bible moments jo aapko sochne aur din ke ant me sukoon paane me madad karein."
-    },
-    "joinUs": {
-      "label": "Hamare saath judiye",
-      "title": "Arabon log khoj rahe hain",
-      "description": "Katni tayaar hai. Digital media ke zariye duniya ke saath gospel baantne me hamara saath dijiye."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Chaliye saath me",
-      "title": "Jesus ki kahani saath me sunaiye",
-      "description": "Taaki log apni hi bhasha me, jahan woh hain wahin, Jesus ke pyaar ko sun aur dekh saken."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}% milta hai",
     "none": "Ee bhasha me is video ke liye koi sujhaav nai mila."

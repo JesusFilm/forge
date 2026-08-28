@@ -663,44 +663,6 @@
     "backToWatch": "Kpɔ yi Watch ŋu",
     "browseVideos": "Kpɔ videowo"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Kpɔ short film",
-    "actions": {
-      "joinUs": "Kplɔ mí",
-      "shareMission": "Kple míaƒe mission me"
-    },
-    "welcomeStart": {
-      "label": "Faith kple Scripture",
-      "title": "Egbe ƒe video siwo míatia",
-      "description": "Míaƒe library me video siwo le faith dzi, be wòafɔ dɔ, akpe ɖe ŋu, eye wòawɔ nusia."
-    },
-    "welcomeMorning": {
-      "label": "Ɣetrɔmɔ ƒe akɔm",
-      "title": "Ŋdi makɛ! Egbe ƒe Biblia ƒe nɔnɔmewo li ɖe ŋuwò.",
-      "description": "Dze wò ŋdi gɔme kple Biblia ƒe nɔnɔme siwo na bubu, fɔɖeɖe, eye woakpɔ wò gbɔgbɔ dzi."
-    },
-    "welcomeAfternoon": {
-      "label": "Ŋdi megbe ƒe akɔm",
-      "title": "Ɣetrɔmakɛ! Biblia ƒe nɔnɔmewo na wò ŋkeke.",
-      "description": "Biblia ƒe nusiwo naa akɔdzedze, sɔ gbɔ na wò ŋdi megbe break alo akɔm si gblɔ nà."
-    },
-    "welcomeEvening": {
-      "label": "Fiɛɖeƒe ƒe akɔm",
-      "title": "Fiɛɖe makɛ! Ɖi asi na Biblia ƒe nɔnɔmewo.",
-      "description": "Biblia ƒe nɔnɔme siwo le anyi le peace me be wòakpe ɖe ŋuwò eye nàkpɔ gbɔgbɔdodo ne wòŋkeke va nu."
-    },
-    "joinUs": {
-      "label": "Kplɔ mí",
-      "title": "Milliardwo le didim",
-      "description": "Harvest la va ɖo. Kplɔ mí be míakpɔm nà yina gɔme kple míaƒe gospel gbɔgblɔ dzi le digital media me."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Nyae nu kple mí",
-      "title": "Jesus ƒe nyanyui gbɔgblɔ le nuƒoƒo me, kple mí",
-      "description": "Be woate ŋu ase eye woakpɔ Jesus ƒe lɔlɔ̃ le woƒe gbegblẽ me, le afisi wonɔe ke."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}% sɔ ɖe eŋu",
     "none": "Womekpɔ video bubu si woate ŋu aɖo ɖa na video sia le gbegblẽ sia me o."

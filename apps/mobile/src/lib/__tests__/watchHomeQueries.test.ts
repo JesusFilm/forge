@@ -1,6 +1,10 @@
 import { print } from "graphql"
 
-import { GET_WATCH_SETTING, GET_WATCH_HOME_VIDEOS } from "../queries"
+import {
+  GET_EXPERIENCE_BY_SLUG,
+  GET_WATCH_SETTING,
+  GET_WATCH_HOME_VIDEOS,
+} from "../queries"
 import {
   selectHeroStreamUrl,
   type HeroStreamVariantInput,
@@ -65,6 +69,15 @@ describe("GET_WATCH_SETTING — home Experience public-query guard", () => {
     expect(printed).toContain("query GetWatchSetting")
     expect(printed).toContain("watchSetting(locale: $locale)")
     expect(printed).toContain("homepageExperience")
+  })
+
+  it("stays valid against the pre-category-rail Admin schema", () => {
+    expect(printed).toContain("fragment AdminLegacyWatchExperience")
+    expect(printed).not.toContain("WatchHomeCategoryRailBlock")
+
+    const experienceQuery = print(GET_EXPERIENCE_BY_SLUG)
+    expect(experienceQuery).toContain("fragment AdminLegacyWatchExperience")
+    expect(experienceQuery).not.toContain("WatchHomeCategoryRailBlock")
   })
 
   it("never touches the editor-gated experiences list", () => {

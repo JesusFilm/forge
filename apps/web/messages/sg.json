@@ -663,44 +663,6 @@
     "backToWatch": "Zonga na Watch",
     "browseVideos": "Tala bavideo"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Tala film mokuse",
-    "actions": {
-      "joinUs": "Kota na biso",
-      "shareMission": "Kabola na misio na biso"
-    },
-    "welcomeStart": {
-      "label": "Bondɔko & Makomi",
-      "title": "Bavideo oyo tobɛti lelo",
-      "description": "Bavideo ya kondima oyo euti na laibɛli na biso mpo na kopesa mpiko, kotya mikakatano, mpe kolamusa makanisi."
-    },
-    "welcomeMorning": {
-      "label": "Elendiseli ya tongo",
-      "title": "Mbote tongo! Makambo ya Biblia mpo na lelo ezali kozela yo.",
-      "description": "Bandá mokolo na yo na makambo ya Biblia oyo elendisaka, oyo esalemi mpo na kolendisa mpe kotombola molimo na yo."
-    },
-    "welcomeAfternoon": {
-      "label": "Elendiseli ya midi",
-      "title": "Mbote midi! Makambo ya Biblia mpo na mokolo na yo.",
-      "description": "Makambo ya Biblia oyo elendisaka mpe ekokani malamu mpo na kopema na midi to kokoba kolendisama."
-    },
-    "welcomeEvening": {
-      "label": "Elendiseli ya mpokwa",
-      "title": "Mbote mpokwa! Pema na makambo ya Biblia.",
-      "description": "Makambo ya Biblia ya kimya mpo na kosalisa yo kotya makanisi mpe kozwa kobɔndisama ntango mokolo ezali kosila."
-    },
-    "joinUs": {
-      "label": "Kota na biso",
-      "title": "Bamiliare bazali koluka",
-      "description": "Mbuma ekomi. Kota na biso na kopanza nsango malamu na mokili mobimba na nzela ya media ya dijitali."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Tókende elongo",
-      "title": "Koyebisa lisolo ya Yesu, elongo",
-      "description": "Pona ete bakoka koyoka mpe komona bolingo ya Yesu na monoko na bango moko, epai bazali."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}% alingbi",
     "none": "A wara vidéo oko pëpe ti mû na mo na pekô ti vidéo so na yângâ so."

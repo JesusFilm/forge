@@ -663,44 +663,6 @@
     "backToWatch": "Lwela ku Watch",
     "browseVideos": "Selebula mavidiyo"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Talala filme ya mukese",
-    "actions": {
-      "joinUs": "Kanga na betu",
-      "shareMission": "Kabana mu mision yetu"
-    },
-    "welcomeStart": {
-      "label": "Lukwikilu ne Maandishe a Bulemu",
-      "title": "Mavidiyo a lelo a kusankula",
-      "description": "Mavidiyo a mu mutshima wa lukwikilu a mu bufuku bwa betu, a kufwasa, a kukumina, ne a kubuulula mabanza."
-    },
-    "welcomeMorning": {
-      "label": "Bwambile bwa mu tshiambo",
-      "title": "Mpepo ya mu tshiandi! Bintu bya Biblia bya lelo bidi kulaya.",
-      "description": "Tshikala tshebe na mavidiyo a Biblia a kulonga mutshima ne kukulombola mu dikolo dia lelo."
-    },
-    "welcomeAfternoon": {
-      "label": "Bwambile bwa mu ditumba",
-      "title": "Mpepo ya mu ditumba! Bintu bya Biblia bya lelo bidi ku yebe.",
-      "description": "Mavidiyo a Biblia a kulomba mutshima, a kufwasa mu dikolo dia mu ditumba ne kuikala luishi."
-    },
-    "welcomeEvening": {
-      "label": "Bwambile bwa mu diloba",
-      "title": "Mpepo ya mu diloba! Pumuka ne bintu bya Biblia.",
-      "description": "Bintu bya Biblia bya kimpepe bi kukwasa kusambuka ne kupata lulendo luwama ne dikolo dia lelo diishi."
-    },
-    "joinUs": {
-      "label": "Kanga na betu",
-      "title": "Bilonda bidi kusaka",
-      "description": "Buvuna buleli. Kanga na betu mu kusakidila evangile pa buloba ne media ya digital."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Tenda na betu",
-      "title": "Kutenda Nsangu ya Yesu, na betu",
-      "description": "Tudi kuleta mukanda ne luse lwa Yesu mu lulaka lwabo, mu njiya yawu mene."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}% idi iwendangana",
     "none": "Katshi na mavidiyo a kuludila afwanyikile ku video eyi mu lulaka elu."

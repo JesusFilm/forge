@@ -663,44 +663,6 @@
     "backToWatch": "Watch ka kɔrɔ",
     "browseVideos": "Videos browse kɛ"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Kɔŋ film kɔŋ",
-    "actions": {
-      "joinUs": "Joina aŋa",
-      "shareMission": "Aŋa ka mission kɛŋa"
-    },
-    "welcomeStart": {
-      "label": "Faith kɔ Scripture",
-      "title": "Bi video kɔŋa aŋa",
-      "description": "Aŋa ka library bɔ video faith-centered yé, aŋa mɔŋa tɛɛ, challenge kɛ kɔ reflection bɔŋa."
-    },
-    "welcomeMorning": {
-      "label": "Morning inspiration",
-      "title": "Morning mɛ! Bible moments bi yé tɔŋ.",
-      "description": "Bi kɔŋa Bible moments encouragement ka, aŋa ka spirit lift kɛ."
-    },
-    "welcomeAfternoon": {
-      "label": "Afternoon inspiration",
-      "title": "Afternoon mɛ! Bible moments aŋa ka day ka.",
-      "description": "Bible content encouragement ka, afternoon break ka lɛŋa, o inspiration kɔŋa."
-    },
-    "welcomeEvening": {
-      "label": "Evening inspiration",
-      "title": "Evening mɛ! Bible moments kɔŋa kɛ.",
-      "description": "Bible moments peace ka, aŋa mɔŋa kɛ kɔ comfort find kɛ, day ɗi kɔŋa bɔŋa."
-    },
-    "joinUs": {
-      "label": "Joina aŋa",
-      "title": "Billions yé suŋ kɛ",
-      "description": "Harvest yé tɔŋ. Joina aŋa ka gospel duuniya dɛmɛ ka digital media ka kɛŋa."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Aŋa kɔŋa",
-      "title": "Jesus ka story kɛŋa, aŋa dɛmɛ ka",
-      "description": "Aŋa yé Jesus ka love yé wɔn kɔ see kɛ wɔn language dɛmɛ ka wɔn ka nɛŋ."
-    }
-  },
   "VideoRecommendations": {
     "match": "Yé match {percent}% ",
     "none": "Video ɗi ka recommendation yé no find language ɗi ka."

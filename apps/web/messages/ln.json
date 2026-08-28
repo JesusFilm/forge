@@ -663,44 +663,6 @@
     "backToWatch": "Zonga na Watch",
     "browseVideos": "Tala ba video"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Tala film mokuse",
-    "actions": {
-      "joinUs": "Sangana na biso",
-      "shareMission": "Kabola na misio na biso"
-    },
-    "welcomeStart": {
-      "label": "Bondimi mpe Makomi",
-      "title": "Pik ya video ya lelo",
-      "description": "Ba video ya bondimi oyo euti na librari na biso mpo na kolendisa yo, kobenga yo na makanisi, mpe kolamusa botali."
-    },
-    "welcomeMorning": {
-      "label": "Kolendisa ya tongo",
-      "title": "Tongo malamu! Ba moments ya Biblia ya lelo bazali kozela yo.",
-      "description": "Bandá mokolo na yo na ba moments ya Biblia oyo ezali kolendisa mpo na kopesa yo mpiko mpe kotombola molimo na yo."
-    },
-    "welcomeAfternoon": {
-      "label": "Kolendisa ya midi",
-      "title": "Mwa butu malamu! Ba moments ya Biblia mpo na mokolo na yo.",
-      "description": "Contenu ya Biblia oyo ezali kolendisa, ebongi mpenza mpo na pause na yo ya midi to mpo na kobakisa kolendisa."
-    },
-    "welcomeEvening": {
-      "label": "Kolendisa ya mpokwa",
-      "title": "Mpokwa malamu! Pema na ba moments ya Biblia.",
-      "description": "Ba moments ya Biblia ya kimia mpo na kosalisa yo kotya makanisi mpe kozwa libondisi ntango mokolo na yo ezali kosila."
-    },
-    "joinUs": {
-      "label": "Sangana na biso",
-      "title": "Bamiliare bazali koluka",
-      "description": "Nguba ezali awa. Sangana na biso wana tozali kokabola Nsango Malamu na mokili na nzela ya média numérique."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Tókende elongo",
-      "title": "Koyebisa lisolo ya Yesu, elongo",
-      "description": "Mpo bayoka mpe bámona bolingo ya Yesu na monoko na bango moko, wana bazali esika bazali."
-    }
-  },
   "VideoRecommendations": {
     "match": "Ekokani na {percent}%",
     "none": "Ba video oyo tokoki kopesa yo mpo na video oyo na monoko oyo ezwami te."

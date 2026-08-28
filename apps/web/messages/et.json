@@ -663,44 +663,6 @@
     "backToWatch": "Tagasi vaatama",
     "browseVideos": "Sirvi videoid"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Vaata lühifilmi",
-    "actions": {
-      "joinUs": "Liitu meiega",
-      "shareMission": "Aita meie missiooni"
-    },
-    "welcomeStart": {
-      "label": "Usk ja Pühakiri",
-      "title": "Tänased videovalikud",
-      "description": "Meie kogu usukeskne video­sisu, mis innustab, esitab väljakutseid ja ärgitab mõtisklema."
-    },
-    "welcomeMorning": {
-      "label": "Hommikune inspiratsioon",
-      "title": "Tere hommikust! Tänased Piibli hetked ootavad.",
-      "description": "Alusta päeva julgustavate Piibli hetkede ja videodega, mis innustavad ning tõstavad meelt."
-    },
-    "welcomeAfternoon": {
-      "label": "Pärastlõunane inspiratsioon",
-      "title": "Tere pärastlõunast! Piibli hetked sinu päevaks.",
-      "description": "Julgustav Piibli sisu, mis sobib hästi pärastlõunaseks puhkepausiks või jätkuvaks innustuseks."
-    },
-    "welcomeEvening": {
-      "label": "Õhtune inspiratsioon",
-      "title": "Tere õhtust! Lõõgastu Piibli hetkede saatel.",
-      "description": "Rahulikud Piibli hetked, mis aitavad sul päeva lõppedes mõtiskleda ja lohutust leida."
-    },
-    "joinUs": {
-      "label": "Liitu meiega",
-      "title": "Miljardid otsivad",
-      "description": "Saagikoristus on käes. Liitu meiega, kui jagame evangeeliumi maailmaga digimeedia abil."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Lähme koos",
-      "title": "Jutustame Jeesuse lugu koos",
-      "description": "Et nad kuuleksid ja näeksid Jeesuse armastust oma keeles just seal, kus nad parasjagu on."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}% sobivus",
     "none": "Sellele videole ei leitud selles keeles soovitusi."

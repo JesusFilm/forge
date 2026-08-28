@@ -197,11 +197,8 @@ describe("buildWatchHomeModelFromVideos", () => {
       title: "Jesus",
       src: "https://stream.example/jesus.m3u8",
     })
-    expect(model.carousel.muxInserts.map((insert) => insert.id)).toEqual([
-      "welcome-start",
-      "join-us",
-      "telling-the-story-of-jesus",
-    ])
+    // feat-440: the homepage carousel carries pooled library videos only.
+    expect(Object.keys(model.carousel)).toEqual(["pools"])
   })
 
   it("renders limited child cards with standalone discovery routes", async () => {

@@ -663,44 +663,6 @@
     "backToWatch": "Balik sa Watch",
     "browseVideos": "Browsea ang mga video"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Tan-aw sang Mubo nga Pelikula",
-    "actions": {
-      "joinUs": "Upod Ka sa Amon",
-      "shareMission": "Ipaambit ang Amon Misyon"
-    },
-    "welcomeStart": {
-      "label": "Pagtuo kag Kasulatan",
-      "title": "Mga Pinili nga Video Para Subong nga Adlaw",
-      "description": "Mga video halin sa amon library nga nakasentro sa pagtuo agud makahatag inspirasyon, pagpanuko, kag pagpamalandong."
-    },
-    "welcomeMorning": {
-      "label": "Inspirasyon sa Aga",
-      "title": "Maayong aga! May mga Bible moment para subong nga adlaw.",
-      "description": "Sugdi ang imo adlaw paagi sa makapadasig nga mga Bible moment nga ginlaragway agud makahatag inspirasyon kag makapataas sang espiritu mo."
-    },
-    "welcomeAfternoon": {
-      "label": "Inspirasyon sa Hapon",
-      "title": "Maayong hapon! Mga Bible moment para sa imo adlaw.",
-      "description": "Makapadasig nga content sang Biblia nga bagay para sa imo hapon nga pahulay ukon padayon nga inspirasyon."
-    },
-    "welcomeEvening": {
-      "label": "Inspirasyon sa Gab-i",
-      "title": "Maayong gab-i! Magpahuway upod ang mga Bible moment.",
-      "description": "Mapisan nga mga Bible moment nga bulig sa imo pagpamalandong kag pagpangita sang komportable samtang nagatapos ang imo adlaw."
-    },
-    "joinUs": {
-      "label": "Upod Ka sa Amon",
-      "title": "Bilyon-bilyon ang nagapangita",
-      "description": "Ari na ang anihon. Upod ka sa amon sa pagpaambit sang ebanghelyo sa kalibutan paagi sa digital media."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Mag-upod kita",
-      "title": "Ang Pagsugid sang Estorya ni Jesus, Mag-upod Kita",
-      "description": "Agud mabatian kag makita nila ang gugma ni Jesus sa ila kaugalingon nga lenguahe, didto mismo sa ila kinaroonan."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}% nga kaangay",
     "none": "Wala sing nakita nga rekomendasyon para sini nga video sa sini nga lenguahe."

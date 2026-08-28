@@ -663,44 +663,6 @@
     "backToWatch": "Dellusi ci Watch",
     "browseVideos": "Xool videos yi"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Seet film bu gàtt",
-    "actions": {
-      "joinUs": "Jógal ak ñu",
-      "shareMission": "Bokk ci sunu misyon"
-    },
-    "welcomeStart": {
-      "label": "Ngëm ak Mbind bu Sell bi",
-      "title": "Video yu ñu fal tey",
-      "description": "Video yu ngëm ci sunu bibliothèque ngir leeral, jegeel, ak sàkk xalaat."
-    },
-    "welcomeMorning": {
-      "label": "Xel bu jëkk ci suba",
-      "title": "Naka nga def? Xew-xew yu Biibël yu tey ñëw nañu.",
-      "description": "Tambali sa bés ak xew-xew yu Biibël yu ñu def ngir leen yokk xel ak baaxal sa xol."
-    },
-    "welcomeAfternoon": {
-      "label": "Xel bu ngoon",
-      "title": "Naka nga def ci ngoon bi? Xew-xew yu Biibël ngir sa bés.",
-      "description": "Lu tax ñu yokk sa xel ci ngoon bi walla ngeen jaar ci yeneen xew-xew yu Biibël yu rafet."
-    },
-    "welcomeEvening": {
-      "label": "Xel bu guddi",
-      "title": "Guddi jàmm! Xew-xew yu Biibël ngir aadafaal.",
-      "description": "Xew-xew yu jàmm yu Biibël ngir ñu xalaat, jàmm, te am dal bi sa bés di jeex."
-    },
-    "joinUs": {
-      "label": "Jógal ak ñu",
-      "title": "Milyaar yi dañu di seet",
-      "description": "Xarañ bi ngi fii. Jókkaal ak ñu ngir nu waare Injil bi ak àdduna bi, jëfandikoo media digitaali."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Nuy dem benn yoon",
-      "title": "Nuy wax mbaaxu Yeesu, ñu bokk ko",
-      "description": "Ngir ñu déglu te gis mbëggeel bu Yeesu ci seen làkk bi, fa ñu nekk."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}% la méngoo",
     "none": "Amul benn video bu ñu digal ngir video bii ci làkk bii."

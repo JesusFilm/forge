@@ -663,44 +663,6 @@
     "backToWatch": "İzləməyə qayıt",
     "browseVideos": "Videolara baxın"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Qısa filmi izləyin",
-    "actions": {
-      "joinUs": "Bizə qoşulun",
-      "shareMission": "Missiyamızı paylaşın"
-    },
-    "welcomeStart": {
-      "label": "İman və Müqəddəs Yazı",
-      "title": "Bu günün video seçimləri",
-      "description": "Düşünməyə, ruhlandırmağa və sual doğurmağa kömək edən iman mərkəzli video məzmunlarımız."
-    },
-    "welcomeMorning": {
-      "label": "Səhər ilhamı",
-      "title": "Günaydın! Bu günün Müqəddəs Kitab anları sizi gözləyir.",
-      "description": "Gününüzə ruhlandırmaq və ruhunuzu yüksəltmək üçün hazırlanmış ümidverici Müqəddəs Kitab anları ilə başlayın."
-    },
-    "welcomeAfternoon": {
-      "label": "Günorta ilhamı",
-      "title": "Günortanız xeyir! Gününüz üçün Müqəddəs Kitab anları.",
-      "description": "Günortadan sonra fasilə üçün və ya ilhamınızı davam etdirmək üçün uyğun ruhlandırıcı Müqəddəs Kitab məzmunu."
-    },
-    "welcomeEvening": {
-      "label": "Axşam ilhamı",
-      "title": "Axşamınız xeyir! Müqəddəs Kitab anları ilə günü yavaşladın.",
-      "description": "Gününüz başa çatarkən düşünməyə və təsəlli tapmağa kömək edən sakit Müqəddəs Kitab anları."
-    },
-    "joinUs": {
-      "label": "Bizə qoşulun",
-      "title": "Milyardlarla insan axtarışdadır",
-      "description": "Biçin hazırdır. Rəqəmsal media vasitəsilə müjdəni dünya ilə bölüşərkən bizə qoşulun."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Gəlin birlikdə yola çıxaq",
-      "title": "İsanın hekayəsini birlikdə danışmaq",
-      "description": "Beləliklə, olduqları yerdəcə, öz dillərində İsanın məhəbbətini eşidib görə bilsinlər."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}% uyğunluq",
     "none": "Bu video üçün bu dildə heç bir tövsiyə tapılmadı."

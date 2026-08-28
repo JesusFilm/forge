@@ -12,7 +12,8 @@ This runbook covers the `@forge/web` Railway service and the public Watch
 surface under `/watch`.
 
 It does not rotate secrets, enable Cloudflare HTML caching, or change the public
-Watch URL contract.
+Watch URL contract. The dynamic collection JSON route has a separate optional
+shared-edge gate below.
 
 ## Required Launch Evidence
 
@@ -51,6 +52,7 @@ disabled/defaulted:
 | Admin `YOUVERSION_PASSAGE_CACHE_TTL_SECONDS`                              | Defaults to `1209600`                                      | Confirm TTL is acceptable for provider/content update expectations                 |
 | `ALGOLIA_APP_ID`, `ALGOLIA_SEARCH_API_KEY`, `ALGOLIA_INDEX`               | Optional server-only search path                           | If Algolia flag is enabled, confirm configured; otherwise verify graceful fallback |
 | `OPENROUTER_API_KEY`                                                      | Optional demo-search generator                             | Confirm demo generator is intentionally enabled or gracefully unavailable          |
+| `CLOUDFLARE_ZONE_ID` + `CLOUDFLARE_CACHE_PURGE_TOKEN`                     | Dynamic collection edge cache disabled unless both are set | Configure both or neither; token needs only cache-purge access to the named zone   |
 
 Do not record secret values in this document. Record only presence, source, and
 environment.
@@ -117,6 +119,45 @@ Expected result:
 - The first post-webhook request renders fresh data or an expected controlled
   fallback.
 - Admin publish/editor flows are not blocked by Web revalidation failures.
+- With Cloudflare purge configured, `watch-setting`, `experience`, and `video`
+  payloads purge the `watch-dynamic-collections` cache tag; a purge failure is
+  logged but does not change the successful local invalidation response.
+
+## Dynamic Collection Edge Cache Gate
+
+Enable this only after the optional Cloudflare variables above are present:
+
+1. With the Cloudflare rule disabled, load the live Watch homepage and capture
+   its canonical dynamic-feed URL. Confirm it contains one server-issued
+   `cacheSignature`, receives `Cache-Control: no-store`, and reuses one Redis
+   Data Cache entry across separate Web requests or instances. Confirm an
+   unsigned or altered URL succeeds without shared cache admission rather than
+   creating another 24-hour Redis key.
+2. Add a Cloudflare Cache Rule for the exact GET path
+   `/watch/api/dynamic-collections`. Make it cache-eligible, respect the
+   origin's `Cloudflare-CDN-Cache-Control`, and preserve the full query string
+   in the cache key.
+3. Confirm the canonical signed live `200` response carries Cloudflare
+   freshness and the `watch-dynamic-collections` cache tag at the origin.
+   Confirm unsigned, invalid-signature, reordered-query, alternate-encoding,
+   explicit `scope=live`, `scope=preview`, `400`, `429`, and `503` responses
+   expose no shared edge policy.
+4. Request the same live URL twice and record `CF-Cache-Status: MISS` followed
+   by `HIT`. Change one legitimate variant (locale, language, profile, cursor,
+   or exclusions) and confirm it does not reuse the prior object.
+5. Publish a representative video or homepage Experience. Confirm the
+   authenticated revalidation returns success, the next feed request is no
+   longer the pre-publish `HIT`, and the refreshed payload is current.
+6. Record end-to-end revalidation latency below Admin's five-second webhook
+   budget and verify the fixed purge-failure warning is visible to production
+   operations. For rollback, disable the Cache Rule and purge
+   `watch-dynamic-collections` before reverting Web code.
+
+Do not use a rule that ignores the query string: those parameters are the
+content identity, not user personalization. Do not rotate
+`REVALIDATION_SECRET` independently: it also signs cache admission. If it must
+rotate, invalidate Watch output and purge `watch-dynamic-collections` so newly
+rendered pages immediately carry signatures from the new key.
 
 ## Observability Gate
 

@@ -663,44 +663,6 @@
     "backToWatch": "Dellu ci Watch",
     "browseVideos": "Xool videos"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Wone film bu gàtt",
-    "actions": {
-      "joinUs": "Bokk",
-      "shareMission": "Bokk ci sunu mission"
-    },
-    "welcomeStart": {
-      "label": "Ngëm ak Téere bu Sell",
-      "title": "Video yu ñu tànne teg",
-      "description": "Video yu ngëm bu nekk ci sunu bibliotèk ngir jox xel, jéemal, ak tax xalaat."
-    },
-    "welcomeMorning": {
-      "label": "Xelal bu Suba",
-      "title": "Suba jàmm! Momen yu Biibël bi ci tey ñu ngi nax.",
-      "description": "Tambali sa bés ak momen yu Biibël bu rafet ngir jox la xel ak doole."
-    },
-    "welcomeAfternoon": {
-      "label": "Xelal bu Ndegam",
-      "title": "Ndegam jàmm! Momen yu Biibël ngir sa bés.",
-      "description": "Xibaar yu Biibël yu neex ngir sa wàccu bu ndegam walla ngir yeneen xelal."
-    },
-    "welcomeEvening": {
-      "label": "Xelal bu Ngoon",
-      "title": "Ngoon jàmm! Dëppal ak momen yu Biibël.",
-      "description": "Momen yu Biibël yu jàmm ngir aajowoo te gis jàmm bu sa bés di jeex."
-    },
-    "joinUs": {
-      "label": "Bokk ak nun",
-      "title": "Milliyoŋ yi di seet",
-      "description": "Jàngaaji bi fii la. Bokk ak nun ci xamle xibaar bu baax bi ci àddina bi ak media bu dijital."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Nub nuy dem",
-      "title": "Xamle xibaaru Jesus, ñun ñépp",
-      "description": "Ngir ñu dégg te gis mbëggeelu Jesus ci seen làkk bi ci kanam ñu nekka."
-    }
-  },
   "VideoRecommendations": {
     "match": "Méngoo na {percent}% bi",
     "none": "Amul benn digal bu ñu gis ngir video bii ci làkk bii."

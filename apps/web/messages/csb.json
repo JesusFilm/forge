@@ -663,44 +663,6 @@
     "backToWatch": "Wrócë do òglądaniô",
     "browseVideos": "Przerëcëwôj wideo"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Òglądôj krótczé wideo",
-    "actions": {
-      "joinUs": "Dołączë do naju",
-      "shareMission": "Dzielë sã naju misją"
-    },
-    "welcomeStart": {
-      "label": "Wiara ë Pismã",
-      "title": "Dzysiéjszé wideo pòzycje",
-      "description": "Treścë wideo òparte na wierze z naszi biblioteki, bë natchnąc, pòdwinąc do namësłu i zrodzëc refleksjã."
-    },
-    "welcomeMorning": {
-      "label": "Ranno inspiracjô",
-      "title": "Dziéń dobri! Dzysiéjszé biblijné chwile czekają.",
-      "description": "Zacznij dzéń òd zachęcających biblijnëch chwil, co mòją natchnąc i pòdnieść twòj duch."
-    },
-    "welcomeAfternoon": {
-      "label": "Pòpòłniowô inspiracjô",
-      "title": "Dziéń dobri! Biblijné chwile na Twòj dzéń.",
-      "description": "Zachęcającé biblijné treścë, récht dlô pòpòłniowégò òdpòczniku abò dalniejszi inspiracjë."
-    },
-    "welcomeEvening": {
-      "label": "Wieczornô inspiracjô",
-      "title": "Dobrë wieczór! Òdpòczni sã z biblijnymë chwilama.",
-      "description": "Sztëlne biblijné chwile, co pòmògą Ci przëmëslëc sã i nalézc ùspòkónié, jak dzéń sã kùńczë."
-    },
-    "joinUs": {
-      "label": "Dołączë do naju",
-      "title": "Miliardy szëkają",
-      "description": "Żniwa tu są. Dołączë do naju, jak dzélëmë sã ewangjeliją z òkrãgã przez médija cyfrowé."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Chòdzą bëmë razem",
-      "title": "Òpòwiôdanié ò Jezusie razem",
-      "description": "Bë mògli słëchac i widzec mòlëwòsc Jezusë w swòjim jãzëkù, tamò gdze są."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}% dopasowaniô",
     "none": "Nie nalazłë sã żódné pòlecenia dlô tegò wideo w tim jãzëkù."

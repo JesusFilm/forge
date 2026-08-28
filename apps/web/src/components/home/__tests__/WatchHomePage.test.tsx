@@ -2,15 +2,18 @@
  * @vitest-environment jsdom
  */
 
-import { act, useEffect, type ReactNode } from "react"
+import { act, StrictMode, useEffect, type ReactNode } from "react"
 import { createRoot, type Root } from "react-dom/client"
 import { renderToStaticMarkup } from "react-dom/server"
 import { setRequestLocale } from "next-intl/server"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
-import type { WatchHomeMuxInsertConfig } from "@/lib/watch-home-config"
-import { WATCH_HOME_MUX_INSERTS } from "@/lib/watch-home-config"
 import type { WatchHomeModel } from "@/lib/watch-home"
-import type { WatchHomeTvCarouselVideoSlide } from "@/lib/watch-home-carousel-sequence"
+import {
+  buildWatchHomeVideoQueue,
+  readWatchHomeTvPlayedIds,
+  readWatchHomeVerticalVideoIds,
+  type WatchHomeTvCarouselVideoSlide,
+} from "@/lib/watch-home-carousel-sequence"
 import {
   WATCH_PLAYER_CHROME_VISIBILITY_EVENT,
   type WatchPlayerChromeVisibilityDetail,
@@ -163,7 +166,6 @@ function makeModel(overrides: Partial<WatchHomeModel> = {}): WatchHomeModel {
     heroSlides: [hero],
     carousel: {
       pools: [],
-      muxInserts: [],
     },
     sections: [
       {
@@ -204,29 +206,33 @@ function makeCarouselSlide(
   }
 }
 
-const muxInsert = {
-  id: "welcome-start",
-  copyId: "welcomeStart",
-  enabled: true,
-  playbackIds: ["mux-welcome"],
-  durationSeconds: 9,
-  action: null,
-  logo: true,
-  posterOverride: null,
-  trigger: { type: "sequence-start" },
-} satisfies WatchHomeMuxInsertConfig
-
-const ctaMuxInsert = {
-  ...muxInsert,
-  id: "join-us",
-  copyId: "joinUs",
-  playbackIds: ["mux-join"],
-  action: {
-    copyId: "joinUs",
-    url: "https://example.com/join",
-    icon: "join",
-  },
-} satisfies WatchHomeMuxInsertConfig
+function makeSequencedModel(): WatchHomeModel {
+  return makeModel({
+    carousel: {
+      pools: [
+        {
+          id: "pool-a",
+          collectionIds: ["pool-a"],
+          videos: [
+            makeCarouselSlide(),
+            makeCarouselSlide({
+              id: "queued-2",
+              title: "Queued Two",
+              href: "/queued-two.html/english.html",
+              src: "https://stream.example/queued-two.m3u8",
+            }),
+            makeCarouselSlide({
+              id: "queued-3",
+              title: "Queued Three",
+              href: "/queued-three.html/english.html",
+              src: "https://stream.example/queued-three.m3u8",
+            }),
+          ],
+        },
+      ],
+    },
+  })
+}
 
 let container: HTMLDivElement
 let root: Root
@@ -310,53 +316,6 @@ describe("WatchHomePage", () => {
     expect(container.textContent).not.toContain("Feature film")
   })
 
-  it("localizes a configured Mux insert and its actions in Russian", async () => {
-    setRequestLocale("ru")
-    const joinUsInsert = WATCH_HOME_MUX_INSERTS.find(
-      (insert) => insert.id === "join-us",
-    )
-    if (!joinUsInsert) throw new Error("Expected the Join Us Mux insert")
-
-    await act(async () => {
-      root.render(
-        <WatchHomePage
-          model={makeModel({
-            carousel: {
-              pools: [
-                {
-                  id: "pool-a",
-                  collectionIds: ["pool-a"],
-                  videos: [makeCarouselSlide()],
-                },
-              ],
-              muxInserts: [joinUsInsert],
-            },
-          })}
-        />,
-      )
-    })
-
-    const muxCard = Array.from(
-      container.querySelectorAll('[data-testid="watch-home-tv-carousel-card"]'),
-    ).find((card) => card.textContent?.includes("Миллиарды людей ищут ответы"))
-    expect(muxCard?.textContent).toContain("Присоединяйтесь к нам")
-
-    await act(async () => {
-      muxCard?.dispatchEvent(new MouseEvent("click", { bubbles: true }))
-    })
-
-    expect(container.textContent).toContain(
-      "Жатва уже созрела. Присоединяйтесь к нам, чтобы с помощью цифровых медиа делиться Евангелием со всем миром.",
-    )
-    expect(
-      container.querySelector('a[href="https://your.nextstep.is/joinus"]')
-        ?.textContent,
-    ).toContain("Присоединиться")
-    expect(container.textContent).toContain("Смотреть короткометражный фильм")
-    expect(container.textContent).not.toContain("Billions are searching")
-    expect(container.textContent).not.toContain("Watch Short Film")
-  })
-
   it("renders the hero, configured sections, promo content, and card links", async () => {
     await act(async () => {
       root.render(<WatchHomePage model={makeModel()} />)
@@ -379,22 +338,6 @@ describe("WatchHomePage", () => {
     expect(container.querySelector("h1")?.textContent).toBe(
       "Jesus Film Project Watch",
     )
-    const railTitles =
-      carousel?.querySelectorAll('[data-slot="video-thumbnail-title"]') ?? []
-    expect(railTitles).toHaveLength(1)
-    expect(
-      Array.from(railTitles).every(({ tagName }) => tagName === "SPAN"),
-    ).toBe(true)
-    expect(
-      carousel
-        ?.querySelector('[data-testid="watch-home-tv-carousel-card"]')
-        ?.getAttribute("aria-label"),
-    ).toBe("Show Jesus")
-    expect(
-      carousel
-        ?.querySelector('[data-testid="watch-home-tv-carousel-card"]')
-        ?.getAttribute("aria-pressed"),
-    ).toBe("true")
     expect(
       container
         .querySelector('[data-testid="watch-home-tv-carousel"]')
@@ -422,11 +365,6 @@ describe("WatchHomePage", () => {
     ).not.toContain("--watch-home-rail-height")
     expect(
       container
-        .querySelector('[data-testid="watch-home-tv-rail"]')
-        ?.getAttribute("class"),
-    ).not.toContain("h-[var")
-    expect(
-      container
         .querySelector('[data-testid="watch-home-tv-carousel"] > div')
         ?.getAttribute("class"),
     ).toContain("h-[66svh]")
@@ -437,7 +375,10 @@ describe("WatchHomePage", () => {
     ).toContain("md:h-[min(100svh,56.25vw)]")
     expect(
       container.querySelector('[data-testid="watch-home-tv-rail"]'),
-    ).not.toBeNull()
+    ).toBeNull()
+    expect(
+      container.querySelectorAll('[data-testid="watch-home-tv-carousel-card"]'),
+    ).toHaveLength(0)
     expect(
       container.querySelector('[data-testid="watch-home-tv-media-frame"]'),
     ).not.toBeNull()
@@ -869,7 +810,8 @@ describe("WatchHomePage", () => {
     expect(video.querySelector("track[data-subtitle-track]")).toBeNull()
   })
 
-  it("renders the sequenced Mux and playlist slides in the rail and scrolls the active card into the lead position", async () => {
+  it("advances between pooled library videos with no branded slide in the sequence", async () => {
+    vi.spyOn(Math, "random").mockReturnValue(0)
     await act(async () => {
       root.render(
         <WatchHomePage
@@ -885,169 +827,54 @@ describe("WatchHomePage", () => {
                       id: "queued-2",
                       title: "Queued Two",
                       href: "/queued-two.html/english.html",
+                      src: "https://stream.example/queued-two.m3u8",
                     }),
                   ],
                 },
               ],
-              muxInserts: [ctaMuxInsert],
             },
           })}
         />,
       )
     })
 
-    expect(container.textContent).toContain("Join Us")
-    expect(container.textContent).toContain("Queued One")
+    // The rail is gone: the hero is the only carousel surface.
+    expect(
+      container.querySelector('[data-testid="watch-home-tv-rail"]'),
+    ).toBeNull()
     expect(
       container.querySelectorAll('[data-testid="watch-home-tv-carousel-card"]'),
-    ).toHaveLength(3)
-    expect(
-      container.querySelector('[data-testid="watch-home-tv-carousel-card"]')
-        ?.textContent,
-    ).toContain("Join Us")
-    const heroRailCards = Array.from(
-      container.querySelectorAll('[data-testid="watch-home-tv-carousel-card"]'),
-    )
-    const queuedTwoIndex = heroRailCards.findIndex((element) =>
-      element.textContent?.includes("Queued Two"),
-    )
-    const queuedTwoCard = heroRailCards[queuedTwoIndex]
-    expect(queuedTwoCard).not.toBeUndefined()
-    const primaryCta = container.querySelector(
-      'a[href="https://example.com/join"]',
-    )
-    expect(primaryCta?.textContent).toContain("Join Us")
-    expect(
-      container.querySelector('[data-testid="watch-home-share-button"]'),
-    ).toBeNull()
-    const shortFilmButton = Array.from(
-      container.querySelectorAll("button"),
-    ).find((button) => button.textContent?.includes("Watch Short Film"))
-    expect(shortFilmButton).not.toBeUndefined()
-    const playSpy = vi
-      .spyOn(HTMLMediaElement.prototype, "play")
-      .mockResolvedValue(undefined)
-    const heroVideo = container.querySelector(
-      '[data-testid="watch-home-tv-video"]',
-    ) as HTMLVideoElement
-    expect(heroVideo.hasAttribute("controls")).toBe(false)
-    expect(
-      document.body.querySelector('[data-testid="hero-player-custom-chrome"]'),
-    ).toBeNull()
-    const chromeVisibilityEvents: WatchPlayerChromeVisibilityDetail[] = []
-    const handleChromeVisibility = (event: Event) => {
-      chromeVisibilityEvents.push(
-        (event as CustomEvent<WatchPlayerChromeVisibilityDetail>).detail,
-      )
-    }
-    window.addEventListener(
-      WATCH_PLAYER_CHROME_VISIBILITY_EVENT,
-      handleChromeVisibility,
-    )
-
-    await act(async () => {
-      shortFilmButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }))
-    })
-
-    expect(playSpy).toHaveBeenCalled()
-    expect(heroVideo.hasAttribute("controls")).toBe(false)
-    expect(heroVideo.className).toContain("watch-home-player-enter")
-    expect(
-      document.body.querySelector('[data-testid="hero-player-custom-chrome"]'),
-    ).toBeNull()
-    expect(container.textContent).toContain("Watch Short Film")
-
-    await act(async () => {
-      heroVideo.dispatchEvent(new Event("ended", { bubbles: true }))
-    })
-
-    await act(async () => {
-      await new Promise((resolve) => window.setTimeout(resolve, 380))
-    })
-
-    expect(
-      document.body.querySelector('[data-testid="hero-player-custom-chrome"]'),
-    ).not.toBeNull()
-    expect(
-      document.body.querySelector('[data-testid="hero-chrome-timeline"]'),
-    ).not.toBeNull()
-    expect(
-      container.querySelectorAll('[data-testid="watch-home-tv-visual-layer"]'),
     ).toHaveLength(0)
-    expect(chromeVisibilityEvents).toContainEqual({
-      visible: true,
-      opacity: 1,
-    })
-    expect(heroVideo.muted).toBe(false)
-    expect(heroVideo.getAttribute("src")).toBe(
-      "https://stream.mux.com/mux-join.m3u8",
-    )
     expect(
       container
         .querySelector('[data-testid="watch-home-tv-carousel"]')
         ?.getAttribute("aria-label"),
-    ).toContain("Billions are searching")
-    expect(
-      container.querySelector('[data-testid="watch-home-tv-active-title"]'),
-    ).toBeNull()
-    expect(
-      container
-        .querySelector('[data-testid="watch-home-tv-carousel"]')
-        ?.querySelectorAll("h1, h2, h3, h4, h5, h6"),
-    ).toHaveLength(0)
+    ).toBe("Queued One")
 
+    // feat-440: no branded insert reaches the sequence, so the takeover the
+    // "Watch Short Film" button opened has no entry point left either.
+    expect(container.textContent).not.toContain("Join Us")
     expect(container.textContent).not.toContain("Watch Short Film")
     expect(
-      container.querySelector('button[aria-label="Next video"]'),
-    ).toBeNull()
-    expect(
-      container.querySelector('button[aria-label="Back to carousel"]'),
-    ).toBeNull()
-    window.removeEventListener(
-      WATCH_PLAYER_CHROME_VISIBILITY_EVENT,
-      handleChromeVisibility,
-    )
-
-    const railCards = Array.from(
-      container.querySelectorAll('[data-testid="watch-home-tv-carousel-card"]'),
-    )
-    const queuedOneCard = railCards.find((element) =>
-      element.textContent?.includes("Queued One"),
-    )
-    expect(queuedOneCard).not.toBeUndefined()
-    const queuedOneIndex = queuedOneCard ? railCards.indexOf(queuedOneCard) : -1
-
-    await act(async () => {
-      queuedOneCard?.dispatchEvent(new MouseEvent("click", { bubbles: true }))
-    })
-
-    expect(carouselApi.scrollTo).toHaveBeenCalledWith(queuedOneIndex)
+      Array.from(container.querySelectorAll("a")).some((link) =>
+        link.getAttribute("href")?.includes("nextstep.is/joinus"),
+      ),
+    ).toBe(false)
     expect(
       document.body.querySelector('[data-testid="hero-player-custom-chrome"]'),
     ).toBeNull()
-    expect(
-      container.querySelectorAll('[data-testid="watch-home-tv-visual-layer"]')
-        .length,
-    ).toBeGreaterThan(0)
-    const updatedHeroVideo = container.querySelector(
+
+    const heroVideo = container.querySelector(
       '[data-testid="watch-home-tv-video"]',
     ) as HTMLVideoElement
-    expect(updatedHeroVideo.getAttribute("src")).toBe(
+    expect(heroVideo.getAttribute("src")).toBe(
       "https://stream.example/queued-one.m3u8",
     )
-    expect(
-      container.querySelector('button[aria-label="Next video"]'),
-    ).not.toBeNull()
-
-    const updatedQueuedTwoCard = Array.from(
-      container.querySelectorAll('[data-testid="watch-home-tv-carousel-card"]'),
-    ).find((element) => element.textContent?.includes("Queued Two"))
-    expect(updatedQueuedTwoCard).not.toBeUndefined()
 
     await act(async () => {
-      updatedQueuedTwoCard?.dispatchEvent(
-        new MouseEvent("click", { bubbles: true }),
-      )
+      container
+        .querySelector('button[aria-label="Next video"]')
+        ?.dispatchEvent(new MouseEvent("click", { bubbles: true }))
     })
 
     const carousel = container.querySelector(
@@ -1061,98 +888,43 @@ describe("WatchHomePage", () => {
     expect(activeTitle?.textContent).toBe("Queued Two")
     expect(carousel?.querySelectorAll("h1, h2, h3, h4, h5, h6")).toHaveLength(0)
     expect(
-      Array.from(
-        carousel?.querySelectorAll<HTMLElement>('[aria-hidden="true"]') ?? [],
-      ).some((element) => element.textContent?.includes("Queued One")),
-    ).toBe(true)
+      (
+        container.querySelector(
+          '[data-testid="watch-home-tv-video"]',
+        ) as HTMLVideoElement
+      ).getAttribute("src"),
+    ).toBe("https://stream.example/queued-two.m3u8")
+    expect(
+      container.querySelector('button[aria-label="Next video"]'),
+    ).not.toBeNull()
 
-    expect(carouselApi.scrollTo).toHaveBeenCalledWith(queuedTwoIndex)
-    expect(
-      Array.from(
-        container.querySelectorAll('[data-slot="carousel-item"]'),
-      ).some(
-        (element) =>
-          (element.getAttribute("class") ?? "").includes("md:basis-1/3") &&
-          (element.getAttribute("class") ?? "").includes("lg:basis-1/4"),
-      ),
-    ).toBe(true)
-    const heroRailCard = container.querySelector(
-      '[data-testid="watch-home-tv-carousel-card"]',
+    // The hero reveals the shell chrome on mount; it never hides it now that
+    // there is no full-player takeover.
+    const chromeVisibilityEvents: WatchPlayerChromeVisibilityDetail[] = []
+    const handleChromeVisibility = (event: Event) => {
+      chromeVisibilityEvents.push(
+        (event as CustomEvent<WatchPlayerChromeVisibilityDetail>).detail,
+      )
+    }
+    window.addEventListener(
+      WATCH_PLAYER_CHROME_VISIBILITY_EVENT,
+      handleChromeVisibility,
     )
-    expect(heroRailCard?.getAttribute("class")).toContain("md:w-full")
-    expect(heroRailCard?.getAttribute("class")).not.toContain("hover:scale")
-    expect(heroRailCard?.getAttribute("class")).toContain(
-      "focus-visible:outline-none",
+    await act(async () => {
+      root.render(<WatchHomePage model={makeSequencedModel()} />)
+    })
+    window.removeEventListener(
+      WATCH_PLAYER_CHROME_VISIBILITY_EVENT,
+      handleChromeVisibility,
     )
-    expect(heroRailCard?.getAttribute("class")).toContain(
-      "focus-visible:opacity-95",
-    )
-    expect(
-      heroRailCard?.querySelector('[data-testid="watch-home-tv-card-bevel"]'),
-    ).not.toBeNull()
-    expect(
-      heroRailCard?.querySelector(
-        '[data-testid="watch-home-tv-card-hover-outline"]',
-      ),
-    ).not.toBeNull()
-    const heroRailHoverOutline = heroRailCard?.querySelector(
-      '[data-testid="watch-home-tv-card-hover-outline"]',
-    )
-    expect(heroRailHoverOutline?.getAttribute("class")).toContain("inset-0")
-    expect(heroRailHoverOutline?.getAttribute("class")).toContain("z-[80]")
-    expect(heroRailHoverOutline?.getAttribute("class")).toContain(
-      "rounded-[inherit]",
-    )
-    expect(heroRailHoverOutline?.getAttribute("class")).toContain("border-4")
-    expect(heroRailHoverOutline?.getAttribute("class")).toContain(
-      "border-white",
-    )
-    expect(heroRailHoverOutline?.getAttribute("class")).not.toContain(
-      "watch-home-gradient-outline",
-    )
-    expect(heroRailHoverOutline?.getAttribute("class")).not.toContain(
-      "shadow-[0_-4px_22px_rgba(239,68,68,0.26)]",
-    )
-    expect(heroRailHoverOutline?.querySelector("svg")).toBeNull()
-    expect(
-      heroRailCard?.querySelectorAll(
-        '[data-testid="watch-home-tv-card-hover-outline"] span',
-      ),
-    ).toHaveLength(0)
-    const activeHeroRailCard = container.querySelector(
-      '[data-testid="watch-home-tv-carousel-card"][aria-pressed="true"]',
-    )
-    const activeHeroRailInteractionFrame = activeHeroRailCard?.querySelector(
-      '[data-testid="watch-home-tv-card-hover-outline"]',
-    )
-    expect(activeHeroRailInteractionFrame?.getAttribute("class")).toContain(
-      "opacity-0",
-    )
-    expect(activeHeroRailInteractionFrame?.getAttribute("class")).not.toContain(
-      "group-hover:opacity-100",
-    )
-    expect(activeHeroRailInteractionFrame?.getAttribute("class")).not.toContain(
-      "group-focus-visible:opacity-100",
-    )
-    expect(
-      activeHeroRailCard
-        ?.querySelector('[data-testid="watch-home-tv-card-active-outline"]')
-        ?.getAttribute("class"),
-    ).toContain("opacity-100")
-    expect(
-      heroRailCard?.querySelector('[role="img"]')?.getAttribute("class"),
-    ).toContain("group-hover:scale-105")
+    expect(chromeVisibilityEvents.every((detail) => detail.visible)).toBe(true)
+
     const standardCard = container
       .querySelector('[data-testid="watch-home-card-bevel"]')
       ?.closest("a")
     expect(standardCard?.getAttribute("class")).not.toContain("hover:scale")
     expect(
       standardCard?.querySelector('[data-testid="watch-home-card-bevel"]'),
-    ).not.toBeNull()
-    expect(
-      standardCard?.querySelector(
-        '[data-testid="watch-home-card-hover-outline"]',
-      ),
     ).not.toBeNull()
     const standardCardHoverOutline = standardCard?.querySelector(
       '[data-testid="watch-home-card-hover-outline"]',
@@ -1200,45 +972,345 @@ describe("WatchHomePage", () => {
         .map((element) => element.getAttribute("class") ?? "")
         .some((className) => className.includes("px-4 sm:px-6 lg:px-8")),
     ).toBe(false)
-    expect(
-      container.querySelector('[data-slot="carousel"]')?.getAttribute("class"),
-    ).toContain("-mx-5")
-    expect(
-      container
-        .querySelector('[data-slot="carousel"]')
-        ?.getAttribute("data-loop"),
-    ).toBe("true")
-    expect(
-      container
-        .querySelector('[data-slot="carousel-content"]')
-        ?.getAttribute("class"),
-    ).toContain("overflow-x-visible md:overflow-x-clip")
-    expect(
-      container.querySelector('button[aria-label="Previous video preview"]'),
-    ).not.toBeNull()
-    expect(
-      container.querySelector('button[aria-label="Next video preview"]'),
-    ).not.toBeNull()
+  })
+  it("keeps the server-rendered opening slide independent of the random draw", () => {
+    const model = makeSequencedModel()
+    const markup = [0, 0.99].map((value) => {
+      vi.spyOn(Math, "random").mockReturnValue(value)
+      const serverContainer = document.createElement("div")
+      serverContainer.innerHTML = renderToStaticMarkup(
+        <WatchHomePage model={model} />,
+      )
+      vi.restoreAllMocks()
+      return serverContainer.innerHTML
+    })
+
+    // Static HTML is shared by every visitor; a render-time draw would both
+    // break hydration and make this page uncacheable.
+    expect(markup[0]).toBe(markup[1])
+    expect(markup[0]).toContain("Queued One")
+    expect(markup[0]).not.toContain("Billions are searching")
   })
 
-  it("keeps configured Mux inserts when the video queue is empty", async () => {
+  it("opens a different library video per visit", async () => {
+    const model = makeSequencedModel()
+    const opened: Array<string | null> = []
+
+    for (const value of [0, 0.5, 0.99]) {
+      const visitContainer = document.createElement("div")
+      document.body.appendChild(visitContainer)
+      const visitRoot = createRoot(visitContainer)
+      window.localStorage.clear()
+      window.sessionStorage.clear()
+      vi.spyOn(Math, "random").mockReturnValue(value)
+
+      await act(async () => {
+        visitRoot.render(<WatchHomePage model={model} />)
+      })
+
+      opened.push(
+        visitContainer
+          .querySelector('[data-testid="watch-home-tv-carousel"]')
+          ?.getAttribute("aria-label") ?? null,
+      )
+
+      await act(async () => {
+        visitRoot.unmount()
+      })
+      visitContainer.remove()
+      vi.restoreAllMocks()
+    }
+
+    expect(opened).toEqual(["Queued One", "Queued Two", "Queued Three"])
+  })
+
+  it("re-arms the per-visit draw under StrictMode double mounting", async () => {
+    vi.spyOn(Math, "random").mockReturnValue(0.99)
+
+    await act(async () => {
+      root.render(
+        <StrictMode>
+          <WatchHomePage model={makeSequencedModel()} />
+        </StrictMode>,
+      )
+    })
+
+    expect(
+      container
+        .querySelector('[data-testid="watch-home-tv-carousel"]')
+        ?.getAttribute("aria-label"),
+    ).toBe("Queued Three")
+  })
+
+  it("only records the video the visitor actually opened as played", async () => {
+    const model = makeSequencedModel()
+    const poolIds = model.carousel.pools[0].videos.map((entry) => entry.id)
+    const bootstrap = buildWatchHomeVideoQueue({
+      pools: model.carousel.pools,
+      targetVideoCount: 7,
+      useStoredProgress: false,
+    }).videos[0]
+    const bootstrapId = bootstrap?.id
+    const bootstrapTitle = bootstrap?.title
+    // Anti-vacuous: the guard only does work while the deterministic bootstrap
+    // slide differs from the drawn hero, so the draw is aimed away from it.
+    expect(poolIds).toContain(bootstrapId)
+
+    const heroId = poolIds.find((id) => id !== bootstrapId)
+    vi.spyOn(Math, "random").mockReturnValue(
+      (poolIds.indexOf(heroId ?? "") + 0.5) / poolIds.length,
+    )
+    await act(async () => {
+      root.render(<WatchHomePage model={model} />)
+    })
+
+    expect(
+      container
+        .querySelector('[data-testid="watch-home-tv-carousel"]')
+        ?.getAttribute("aria-label"),
+    ).not.toBe(bootstrapTitle)
+    expect(readWatchHomeTvPlayedIds()).toEqual([heroId])
+  })
+
+  function defineVideoSize(
+    element: HTMLVideoElement,
+    width: number,
+    height: number,
+  ) {
+    // jsdom has no decoder, so the decoded size is the one thing a component
+    // test has to stand in for. Labelled here because it is the exact signal
+    // the guard reads in production.
+    Object.defineProperty(element, "videoWidth", {
+      configurable: true,
+      value: width,
+    })
+    Object.defineProperty(element, "videoHeight", {
+      configurable: true,
+      value: height,
+    })
+  }
+
+  function verticalPoolModel() {
+    return makeModel({
+      carousel: {
+        pools: [
+          {
+            id: "pool-a",
+            collectionIds: ["pool-a"],
+            videos: [
+              makeCarouselSlide({ id: "portrait-1", title: "Portrait One" }),
+              makeCarouselSlide({
+                id: "landscape-1",
+                title: "Landscape One",
+                src: "https://stream.example/landscape-one.m3u8",
+              }),
+            ],
+          },
+        ],
+      },
+    })
+  }
+
+  it("skips a video the browser reports as portrait and never draws it again", async () => {
+    vi.spyOn(Math, "random").mockReturnValue(0)
+    await act(async () => {
+      root.render(<WatchHomePage model={verticalPoolModel()} />)
+    })
+
+    expect(
+      container
+        .querySelector('[data-testid="watch-home-tv-carousel"]')
+        ?.getAttribute("aria-label"),
+    ).toBe("Portrait One")
+
+    const video = container.querySelector(
+      '[data-testid="watch-home-tv-video"]',
+    ) as HTMLVideoElement
+    defineVideoSize(video, 1080, 1920)
+
+    await act(async () => {
+      video.dispatchEvent(new Event("loadedmetadata"))
+    })
+
+    expect(
+      container
+        .querySelector('[data-testid="watch-home-tv-carousel"]')
+        ?.getAttribute("aria-label"),
+    ).toBe("Landscape One")
+    expect(readWatchHomeVerticalVideoIds()).toEqual(["portrait-1"])
+
+    // A later visit draws from the same pool and must not land on it again.
+    await act(async () => {
+      root.render(<WatchHomePage model={verticalPoolModel()} />)
+    })
+    const secondContainer = document.createElement("div")
+    document.body.appendChild(secondContainer)
+    const secondRoot = createRoot(secondContainer)
+    await act(async () => {
+      secondRoot.render(<WatchHomePage model={verticalPoolModel()} />)
+    })
+    expect(
+      secondContainer
+        .querySelector('[data-testid="watch-home-tv-carousel"]')
+        ?.getAttribute("aria-label"),
+    ).toBe("Landscape One")
+    await act(async () => {
+      secondRoot.unmount()
+    })
+    secondContainer.remove()
+  })
+
+  it("resumes after a mid-sequence portrait video instead of jumping backwards", async () => {
+    vi.spyOn(Math, "random").mockReturnValue(0)
     await act(async () => {
       root.render(
         <WatchHomePage
           model={makeModel({
             carousel: {
-              pools: [],
-              muxInserts: [muxInsert],
+              pools: [
+                {
+                  id: "pool-a",
+                  collectionIds: ["pool-a"],
+                  videos: [
+                    makeCarouselSlide({
+                      id: "landscape-1",
+                      title: "Landscape One",
+                    }),
+                    makeCarouselSlide({
+                      id: "portrait-2",
+                      title: "Portrait Two",
+                      src: "https://stream.example/portrait-two.m3u8",
+                    }),
+                    makeCarouselSlide({
+                      id: "landscape-3",
+                      title: "Landscape Three",
+                      src: "https://stream.example/landscape-three.m3u8",
+                    }),
+                  ],
+                },
+              ],
             },
           })}
         />,
       )
     })
 
-    expect(container.textContent).toContain("Today's Video Picks")
+    const label = () =>
+      container
+        .querySelector('[data-testid="watch-home-tv-carousel"]')
+        ?.getAttribute("aria-label")
+
+    expect(label()).toBe("Landscape One")
+
+    await act(async () => {
+      container
+        .querySelector('button[aria-label="Next video"]')
+        ?.dispatchEvent(new MouseEvent("click", { bubbles: true }))
+    })
+    expect(label()).toBe("Portrait Two")
+
+    const video = container.querySelector(
+      '[data-testid="watch-home-tv-video"]',
+    ) as HTMLVideoElement
+    defineVideoSize(video, 1080, 1920)
+    await act(async () => {
+      video.dispatchEvent(new Event("loadedmetadata"))
+    })
+
+    // Dropping the slide from the queue is not enough on its own: the active
+    // id stops resolving and the hero would fall back to the first slide,
+    // replaying something the visitor already saw.
+    expect(label()).toBe("Landscape Three")
+  })
+
+  it("keeps a landscape video and records nothing", async () => {
+    vi.spyOn(Math, "random").mockReturnValue(0)
+    await act(async () => {
+      root.render(<WatchHomePage model={verticalPoolModel()} />)
+    })
+
+    const video = container.querySelector(
+      '[data-testid="watch-home-tv-video"]',
+    ) as HTMLVideoElement
+    defineVideoSize(video, 1920, 1080)
+
+    await act(async () => {
+      video.dispatchEvent(new Event("loadedmetadata"))
+    })
+
+    expect(
+      container
+        .querySelector('[data-testid="watch-home-tv-carousel"]')
+        ?.getAttribute("aria-label"),
+    ).toBe("Portrait One")
+    expect(readWatchHomeVerticalVideoIds()).toEqual([])
+  })
+
+  it("stops skipping when every video in the pool measures portrait", async () => {
+    vi.spyOn(Math, "random").mockReturnValue(0)
+    await act(async () => {
+      root.render(
+        <WatchHomePage
+          model={makeModel({
+            carousel: {
+              pools: [
+                {
+                  id: "pool-a",
+                  collectionIds: ["pool-a"],
+                  videos: [
+                    makeCarouselSlide({ id: "portrait-1", title: "P1" }),
+                    makeCarouselSlide({ id: "portrait-2", title: "P2" }),
+                  ],
+                },
+              ],
+            },
+          })}
+        />,
+      )
+    })
+
+    for (let attempt = 0; attempt < 6; attempt++) {
+      const video = container.querySelector(
+        '[data-testid="watch-home-tv-video"]',
+      ) as HTMLVideoElement | null
+      if (!video) break
+      defineVideoSize(video, 1080, 1920)
+      await act(async () => {
+        video.dispatchEvent(new Event("loadedmetadata"))
+      })
+    }
+
+    // The hero still renders something rather than emptying or looping.
+    expect(
+      container.querySelector('[data-testid="watch-home-tv-carousel"]'),
+    ).not.toBeNull()
+    expect(
+      container.querySelector('[data-testid="watch-home-tv-video"]'),
+    ).not.toBeNull()
+  })
+
+  it("falls back to the hero slides when the video pools are empty", async () => {
+    await act(async () => {
+      root.render(
+        <WatchHomePage
+          model={makeModel({
+            carousel: {
+              pools: [],
+            },
+          })}
+        />,
+      )
+    })
+
+    expect(
+      container
+        .querySelector('[data-testid="watch-home-tv-carousel"]')
+        ?.getAttribute("aria-label"),
+    ).toBe("Jesus")
+    expect(container.textContent).not.toContain("Today's Video Picks")
     expect(container.textContent).not.toContain("Watch Short Film")
     expect(
-      container.querySelectorAll('[data-testid="watch-home-tv-carousel-card"]'),
-    ).toHaveLength(1)
+      container.querySelector('[data-testid="watch-home-tv-rail"]'),
+    ).toBeNull()
   })
 })

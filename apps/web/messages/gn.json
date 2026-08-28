@@ -663,44 +663,6 @@
     "backToWatch": "Evytajejy Watch-pe",
     "browseVideos": "Ehesa'ỹijo videos"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Ehecha película mbykymíva",
-    "actions": {
-      "joinUs": "Eike ore ndive",
-      "shareMission": "Emboja'o ore misión ndive"
-    },
-    "welcomeStart": {
-      "label": "Fe ha Escritura",
-      "title": "Video ñeporavo ko árape g̃uarã",
-      "description": "Oĩ video ore biblioteca-gui oñemopyenda hag̃ua fe rehe, oipytyvõ hag̃ua, ha omoakã hag̃ua reflexión."
-    },
-    "welcomeMorning": {
-      "label": "Ñepyrũ porã ko ãra",
-      "title": "Mba'éichapa! Ko árape Biblia moménto oha'arõ ndéve.",
-      "description": "Eñepyrũ hag̃ua nde ára umi moménto bíblico oipytyvõva, ohechauka hag̃uáicha ha omopu'ã hag̃ua ne ánga."
-    },
-    "welcomeAfternoon": {
-      "label": "Yvápe ñemoingove",
-      "title": "Mba'éichapa! Biblia moménto nde ára pehẽnguépe.",
-      "description": "Contenido bíblico oipytyvõva, iporãite hag̃ua ne descanso ka'aru térã ne ñemokyre'ỹrã."
-    },
-    "welcomeEvening": {
-      "label": "Ka'aru porã ñemoingove",
-      "title": "Mba'éichapa! Ehasa hag̃uáicha nde ára Biblia moménto reheve.",
-      "description": "Moménto bíblico py'aguapýva oipytyvõ hag̃ua reñemomombyry hag̃ua, reñemomandu'a hag̃ua ha revy'a hag̃ua nde ára opakuévo."
-    },
-    "joinUs": {
-      "label": "Eike ore ndive",
-      "title": "Hetaite tapicha ohekáva",
-      "description": "Oguahẽma trigo jeikutu. Eike ore ndive jaikuaauka hag̃ua evangelio ko yvy ape ári medios digitales rupive."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Jaha hag̃ua oñondive",
-      "title": "Jesús rembiasakue oñemombe'u hag̃ua oñondive",
-      "description": "Upéicha ohendu ha ohecha hag̃ua Jesús mborayhu iñe'ẽ tee hag̃uáicha, oĩ hag̃uáicha oñeime hag̃uáicha."
-    }
-  },
   "VideoRecommendations": {
     "match": "Ojoaju {percent}%",
     "none": "Ndojejuhúi video oñembojeroviáva ko ñe'ẽme."

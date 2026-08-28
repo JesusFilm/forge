@@ -663,44 +663,6 @@
     "backToWatch": "Ar ais go Watch",
     "browseVideos": "Brabhsáil físeáin"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Féach ar ghearrscannán",
-    "actions": {
-      "joinUs": "Bígí Linn",
-      "shareMission": "Comhroinn inár Misean"
-    },
-    "welcomeStart": {
-      "label": "Creideamh & an Scrioptúr",
-      "title": "Roghanna Físeáin an Lae Inniu",
-      "description": "Ábhar físe atá dírithe ar an gcreideamh ónár leabharlann chun spreagadh, dúshlán, agus machnamh a mhúscailt."
-    },
-    "welcomeMorning": {
-      "label": "Spreagadh na Maidine",
-      "title": "Maidin mhaith! Tá Nóiméid an Bhíobla inniu ag fanacht leat.",
-      "description": "Tosaigh do lá le nóiméid spreagúla ón mBíobla atá deartha chun do spiorad a spreagadh agus a ardú."
-    },
-    "welcomeAfternoon": {
-      "label": "Spreagadh na hIarnóna",
-      "title": "Tráthnóna maith! Nóiméid ón mBíobla do do lá.",
-      "description": "Ábhar spreagúil ón mBíobla, foirfe do do shos tráthnóna nó mar spreagadh breise."
-    },
-    "welcomeEvening": {
-      "label": "Spreagadh na Tráthnóna",
-      "title": "Oíche mhaith! Lig do scíth le Nóiméid ón mBíobla.",
-      "description": "Nóiméid shíochánta ón mBíobla chun cabhrú leat machnamh a dhéanamh agus sólás a fháil agus do lá ag teacht chun deiridh."
-    },
-    "joinUs": {
-      "label": "Bígí Linn",
-      "title": "Tá billiúin ag cuardach",
-      "description": "Tá an fómhar anseo. Bí linn agus sinn ag roinnt an tsoiscéil leis an domhan trí mheán digiteach."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Téimis le chéile",
-      "title": "Scéal Íosa a insint, le chéile",
-      "description": "Go gcloisfidís agus go bhfeicfidís grá Íosa ina dteanga féin, díreach san áit a bhfuil siad."
-    }
-  },
   "VideoRecommendations": {
     "match": "Meaitseáil {percent}%",
     "none": "Níor aimsíodh aon mholtaí don fhíseán seo sa teanga seo."

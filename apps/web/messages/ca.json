@@ -663,44 +663,6 @@
     "backToWatch": "Torna a Watch",
     "browseVideos": "Navega pels vídeos"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Mira el curtmetratge",
-    "actions": {
-      "joinUs": "Uneix-te a nosaltres",
-      "shareMission": "Comparteix la nostra missió"
-    },
-    "welcomeStart": {
-      "label": "Fe i Escriptura",
-      "title": "Selecció de vídeos d’avui",
-      "description": "Vídeos de la nostra biblioteca centrats en la fe per inspirar, provocar i convidar a la reflexió."
-    },
-    "welcomeMorning": {
-      "label": "Inspiració matinal",
-      "title": "Bon dia! T’esperen els moments bíblics d’avui.",
-      "description": "Comença el dia amb moments bíblics encoratjadors pensats per inspirar-te i aixecar-te l’ànim."
-    },
-    "welcomeAfternoon": {
-      "label": "Inspiració de la tarda",
-      "title": "Bona tarda! Moments bíblics per al teu dia.",
-      "description": "Contingut bíblic encoratjador, perfecte per a la pausa de la tarda o per continuar inspirant-te."
-    },
-    "welcomeEvening": {
-      "label": "Inspiració del vespre",
-      "title": "Bona nit! Desconnecta amb moments bíblics.",
-      "description": "Moments bíblics de pau per ajudar-te a reflexionar i trobar consol mentre s’acaba el dia."
-    },
-    "joinUs": {
-      "label": "Uneix-te a nosaltres",
-      "title": "Milers de milions de persones busquen respostes",
-      "description": "La collita ja és aquí. Uneix-te a nosaltres per compartir l’evangeli amb el món mitjançant els mitjans digitals."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Anem junts",
-      "title": "Explicant junts la història de Jesús",
-      "description": "Perquè puguin sentir i veure l’amor de Jesús en la seva pròpia llengua, allà on siguin."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent} % de coincidència",
     "none": "No s’han trobat recomanacions per a aquest vídeo en aquest idioma."

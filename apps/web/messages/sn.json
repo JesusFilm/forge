@@ -663,44 +663,6 @@
     "backToWatch": "Dzokera kuWatch",
     "browseVideos": "Browse mavhidhiyo"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Tarisa Firimu Pfupi",
-    "actions": {
-      "joinUs": "Joina nesu",
-      "shareMission": "Goverana muBasa redu"
-    },
-    "welcomeStart": {
-      "label": "Kutenda neMagwaro",
-      "title": "Sarudzo dzeVhidhiyo dzeNhasi",
-      "description": "Zviri muvhidhiyo zvine chekuita nekutenda kubva muraibhurari yedu, kuti zvikukurudzire, zvikupikise, uye zvikupesvedzere kufungisisa."
-    },
-    "welcomeMorning": {
-      "label": "Kukurudzirwa kweMangwanani",
-      "title": "Mangwanani akanaka! Zvinhu zveBhaibheri zvenhasi zviri kukumirira.",
-      "description": "Tanga zuva rako nezvinokukurudzira zveBhaibheri zvakagadzirirwa kukupembedza uye kusimudzira mweya wako."
-    },
-    "welcomeAfternoon": {
-      "label": "Kukurudzirwa kweMasikati",
-      "title": "Masikati akanaka! Zvinhu zveBhaibheri zvemazuva enyu.",
-      "description": "Zviri muBhaibheri zvinokurudzira, zvakakodzera kuzororo rako remasikati kana kuramba uchikurudzirwa."
-    },
-    "welcomeEvening": {
-      "label": "Kukurudzirwa kweManheru",
-      "title": "Manheru akanaka! Zororai nezvinhu zveBhaibheri.",
-      "description": "Zvinhu zveBhaibheri zvine rugare zvinokubatsira kufungisisa uye kuwana nyaradzo zuva rako richipera."
-    },
-    "joinUs": {
-      "label": "Joina nesu",
-      "title": "Mabhiriyoni ari kutsvaga",
-      "description": "Nguva yekukohwa yasvika. Joinai nesu patinogovera evhangeri nenyika tichishandisa midhiya yedhijitari."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Ngatiendei pamwe chete",
-      "title": "Kutaura Nyaya yaJesu, pamwe chete",
-      "description": "Kuti vanzwe vaone rudo rwaJesu mumutauro wavo pachavo, ipapo pavanenge vari."
-    }
-  },
   "VideoRecommendations": {
     "match": "Zvinoenderana ne{percent}%",
     "none": "Hapana mavhidhiyo akakurudzirwa awanikwa anoenderana nevhidhiyo iyi mumutauro uyu."

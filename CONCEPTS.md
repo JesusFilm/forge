@@ -878,6 +878,14 @@ An ordered, schema-validated content unit within an Experience. Blocks carry a d
 
 An Experience Block that groups ordered watch content beneath independently authored category, title, supporting-title, description, call-to-action, and footer semantics; its presentation variant may change the media layout but not the authored content hierarchy.
 
+### Dynamic Collection Feed
+
+A Media Collection Block whose `itemsSource` is `dynamicCollections`, causing
+Web to fill bounded carousel pages from the shared Watch collection feed as the
+viewer approaches it. It is still an editor-authored Experience Block: its
+position comes from the Experience block sequence, while its generated page
+identity is shared across viewers and excludes account or device identity.
+
 ### Homepage Experience
 
 The single Experience designated as the watch home for a given locale, resolved per-locale as one curated Experience rather than by listing every Experience. Designation is not rendering: web, mobile, and (as of 2026-07) TV all now render this Experience's rows as their home body, each hydrating a curated item by the item's Core ID through the client's bulk video fetch — supplemented by an on-demand fetch for curated items the client's code-defined pool does not already cover, since an editor can reference content outside that pool. A supplementary hydration record feeds only the Experience rows, never the code-defined featured hero. The featured hero stays code-defined per client — see Home Curation.
@@ -1033,7 +1041,7 @@ Activity begins when the first owner opens and ends only after the final owner r
 
 ### Chrome
 
-The auto-hiding controls overlay on the watch video player — the play/pause, scrubber, skip, mute, and fullscreen affordances layered over the footage. Distinct from the captions, which are a separate, always-visible layer that does not hide with it — captions instead reposition to stay clear of the Chrome while it is visible and return when it hides.
+The auto-hiding controls overlay on the watch video player — the play/pause, scrubber, skip, mute, and fullscreen affordances layered over the footage. Distinct from the captions, which are a separate, always-visible layer that does not hide with it — captions instead lift while it is visible and return when it hides. How far they lift is a judgement about appearance, not about input: captions take no touches, so where a wide cue overlaps a control the cost is how it looks and never a swallowed press, and clearance bought beyond that is paid for on every cue.
 
 The Chrome is visible when playback starts, auto-hides after a few idle seconds while playing, stays up while paused or buffering, and toggles on a tap of the video body. It fades rather than cutting, and is unmounted only after the fade-out completes so a fully-hidden Chrome stops intercepting touches. The home hero's controls are also Chrome; they fade with scroll position rather than idle time, but follow the same rule that hidden Chrome must stop intercepting touches.
 
@@ -1226,6 +1234,12 @@ One unit of detected activity a triage sweep may act on: a grouped error issue, 
 The standing activity a covered service already had when triage began watching it, recorded on that service's first covered run.
 
 That first run deliberately files nothing: it exists so pre-existing errors read as pre-existing instead of as a sudden flood of new ones. A read the sweep could not complete refuses to seed a baseline at all, because a partial view recorded as "everything that existed" would make the unseen remainder look new forever.
+
+### Release-Session Filter
+
+The gate deciding whether a Triage Signal's activity came from a real release build or from a developer's own session, so development noise never becomes a triage ticket. The version the activity carries is the primary discriminator; textual development markers are secondary, used only when no version is present.
+
+It fails open toward coverage: activity spanning both a development session and a release build stays in, and an unusable filter configuration refuses to run rather than silently excluding everything. Loosening the filter makes previously excluded noise look new, so a filter change requires re-seeding the affected Service Baseline.
 
 ### Epoch
 

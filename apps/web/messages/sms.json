@@ -663,44 +663,6 @@
     "backToWatch": "Takaisin katseluun",
     "browseVideos": "Selaa videoid"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Katso lyhytelokuva",
-    "actions": {
-      "joinUs": "Liity mukaan",
-      "shareMission": "Jaa lähetystehtävässämme"
-    },
-    "welcomeStart": {
-      "label": "Usko ja Raamattu",
-      "title": "Tämän päivän videovalinnat",
-      "description": "Uskoon keskittyviä videoita kirjastostamme inspiroimaan, haastamaan ja herättämään pohdintaa."
-    },
-    "welcomeMorning": {
-      "label": "Aamun inspiraatio",
-      "title": "Hyvää huomenta! Tämän päivän Raamattu-hetket odottavat.",
-      "description": "Aloita päiväsi rohkaisevilla Raamattu-hetkillä, jotka on suunniteltu inspiroimaan ja kohottamaan mieltäsi."
-    },
-    "welcomeAfternoon": {
-      "label": "Iltapäivän inspiraatio",
-      "title": "Hyvää iltapäivää! Raamattu-hetkiä päivääsi.",
-      "description": "Rohkaisevaa Raamattu-sisältöä juuri iltapäivän tauollesi tai jatkamaan inspiraatiota."
-    },
-    "welcomeEvening": {
-      "label": "Illan inspiraatio",
-      "title": "Hyvää iltaa! Rauhoitu Raamattu-hetkien parissa.",
-      "description": "Rauhallisia Raamattu-hetkiä, jotka auttavat sinua hiljentymään ja löytämään lohtua päivän päättyessä."
-    },
-    "joinUs": {
-      "label": "Liity mukaan",
-      "title": "Miljardit etsivät",
-      "description": "Sato on täällä. Liity mukaan, kun jaamme evankeliumia maailmalle digitaalisen median avulla."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Kuljetaan yhdessä",
-      "title": "Kerrotaan Jeesuksen tarina yhdessä",
-      "description": "Jotta he voivat kuulla ja nähdä Jeesuksen rakkauden omalla kielellään juuri siellä missä ovat."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent} % såppâmvuõtt",
     "none": "Tän videose tän ǩiõlâst ij kaunnu ni õhtt suåvtõõzz."

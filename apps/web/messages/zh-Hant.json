@@ -676,44 +676,6 @@
       "name": "Name is required."
     }
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}：{title}",
-    "watchShortFilm": "觀看短片",
-    "actions": {
-      "joinUs": "加入我們",
-      "shareMission": "與我們一起參與使命"
-    },
-    "welcomeStart": {
-      "label": "信仰與聖經",
-      "title": "今日精選影片",
-      "description": "從影片庫精選以信仰為主題的內容，帶給你啟發、挑戰與反思。"
-    },
-    "welcomeMorning": {
-      "label": "晨間啟發",
-      "title": "早安！從今天的聖經內容開始吧。",
-      "description": "用鼓舞人心的聖經內容展開新的一天，獲得啟發與力量。"
-    },
-    "welcomeAfternoon": {
-      "label": "午後鼓勵",
-      "title": "午安！來看今天的聖經內容。",
-      "description": "午後休息時，花一點時間從聖經內容中獲得鼓勵。"
-    },
-    "welcomeEvening": {
-      "label": "晚間安靜",
-      "title": "晚安！在聖經內容中安靜片刻。",
-      "description": "在一天結束時，透過平靜的聖經內容默想並得著安慰。"
-    },
-    "joinUs": {
-      "label": "加入我們",
-      "title": "數十億人正在尋找答案",
-      "description": "現在正是傳揚福音的時候。加入我們，透過數位媒體，讓世界各地的人都能聽見福音。"
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "一起前行",
-      "title": "一起述說耶穌的故事",
-      "description": "讓世界各地的人都能用自己的語言聽見並看見耶穌的愛。"
-    }
-  },
   "VideoRecommendations": {
     "match": "相符度 {percent}%",
     "none": "找不到此語言版本的相關影片。"

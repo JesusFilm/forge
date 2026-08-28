@@ -663,44 +663,6 @@
       "openSupportForm": "Open support form"
     }
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Korte film bekijken",
-    "actions": {
-      "joinUs": "Doe mee",
-      "shareMission": "Deel onze missie"
-    },
-    "welcomeStart": {
-      "label": "Geloof en Schrift",
-      "title": "Videokeuzes van vandaag",
-      "description": "Videocontent uit onze bibliotheek rond geloof om te inspireren, uit te dagen en tot nadenken aan te zetten."
-    },
-    "welcomeMorning": {
-      "label": "Ochtedinspiratie",
-      "title": "Goedemorgen! De Bijbelmomenten van vandaag wachten op je.",
-      "description": "Begin je dag met bemoedigende Bijbelmomenten die zijn bedoeld om je te inspireren en je geest op te bouwen."
-    },
-    "welcomeAfternoon": {
-      "label": "Middaginspiratie",
-      "title": "Goedemiddag! Bijbelmomenten voor jouw dag.",
-      "description": "Bemoedigende Bijbelcontent, perfect voor je middagpauze of als extra inspiratie."
-    },
-    "welcomeEvening": {
-      "label": "Avonddinspiratie",
-      "title": "Goedenavond! Kom tot rust met Bijbelmomenten.",
-      "description": "Rustige Bijbelmomenten om je te helpen nadenken en troost te vinden aan het einde van je dag."
-    },
-    "joinUs": {
-      "label": "Doe mee",
-      "title": "Miljarden zijn op zoek",
-      "description": "De oogst is er. Sluit je aan en help ons het evangelie met de wereld te delen via digitale media."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Laten we samen op weg gaan",
-      "title": "Samen het verhaal van Jezus vertellen",
-      "description": "Zodat mensen de liefde van Jezus in hun eigen taal kunnen horen en zien, precies waar ze zijn."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}% overeenkomst",
     "none": "Geen aanbevelingen voor deze video gevonden in deze taal."

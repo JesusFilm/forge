@@ -663,44 +663,6 @@
     "backToWatch": "Watchman kutiy",
     "browseVideos": "Video-kunata qhaway"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Pisi filmta qhaway",
-    "actions": {
-      "joinUs": "Ñoqanchikwan huñunakuy",
-      "shareMission": "Misiónnchikwan t’aqachiy"
-    },
-    "welcomeStart": {
-      "label": "Yuyay & Escritura",
-      "title": "Kunan p’unchawpa video akllayninkuna",
-      "description": "Hamutayta, kuyuchiyta, yuyayta rikch’ariyta yanapakuq, biblioteca-ykuqmanta fe centrado video contenido."
-    },
-    "welcomeMorning": {
-      "label": "Tutamanta yuyaychay",
-      "title": "Allin qhawa! Kunan p’unchawpa Biblia kutikuna suyasachkan.",
-      "description": "P’unchaykita qallariy Biblia kutikunawan, yuyaychaypaq y allichaypaq ruwasqa."
-    },
-    "welcomeAfternoon": {
-      "label": "K’anchaymanta yuyaychay",
-      "title": "Allin k’anchay! Kunan p’unchawpaq Biblia kutikuna.",
-      "description": "Yanapakuq Biblia contenido, k’anchaymanta samayniki utaq ashka yuyaychaypaq allin."
-    },
-    "welcomeEvening": {
-      "label": "Tuta yuyaychay",
-      "title": "Allin tuta! Biblia kutikunawan samaykachiy.",
-      "description": "Samaykuchiq Biblia kutikuna, p’unchay tukukuyta yuyayta, sonqochayta yanapanapaq."
-    },
-    "joinUs": {
-      "label": "Ñoqanchikwan huñunakuy",
-      "title": "Waranqakuna maskachkan",
-      "description": "Mink’aqa chaypim. Mundo kaqman evangeliota digital mediawan willachispa, ñoqanchikwan huñunakuy."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Hamunanchik",
-      "title": "Jesuspa willakuyninta willaspa, huñusqa",
-      "description": "Jesuspa munayninta paykuna kikinkupaq simipi, kashanpi, uyariyta, qhawayta atinanpaq."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}% tupan",
     "none": "Kay videopaq kay simipi mana ima yuyaychasqa videopas tarisqachu."

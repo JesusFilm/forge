@@ -663,44 +663,6 @@
     "backToWatch": "Ku noqo Daawashada",
     "browseVideos": "Dhex-dhaqaaq fiidiyowyada"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Daawo filim gaaban",
-    "actions": {
-      "joinUs": "Nagu soo biir",
-      "shareMission": "La wadaag howlteenna"
-    },
-    "welcomeStart": {
-      "label": "Iimaan & Qorniin",
-      "title": "Xulashada fiidiyowyada maanta",
-      "description": "Waxyaabo fiidiyow ah oo ku salaysan iimaan, kana yimid maktabaddeenna, si ay kuu dhiirrigeliyaan, kuu xujeeyaan, oo ay kuu kiciyaan fikir."
-    },
-    "welcomeMorning": {
-      "label": "Dhiirrigelinta subaxnimo",
-      "title": "Subax wanaagsan! Qaybaha Baybalka ee maanta ayaa ku sugaya.",
-      "description": "Ku bilow maalintaada qaybaha Baybalka ee dhiirrigeliya, kuwaas oo loo sameeyay inay ku xoojiyaan oo ay ruuxaaga kiciyaan."
-    },
-    "welcomeAfternoon": {
-      "label": "Dhiirrigelinta galabnimo",
-      "title": "Galab wanaagsan! Qaybaha Baybalka ee maalintaada.",
-      "description": "Waxyaabo Baybal ah oo dhiirrigelin leh, ku habboon nasashadaada galabta ama dhiirrigelin sii socota."
-    },
-    "welcomeEvening": {
-      "label": "Dhiirrigelinta fiidnimo",
-      "title": "Habeen wanaagsan! Ku naso qaybaha Baybalka.",
-      "description": "Qaybaha Baybalka ee deggan si ay kaaga caawiyaan inaad milicsato oo aad hesho qalbi qabow marka maalintaadu dhammaanayso."
-    },
-    "joinUs": {
-      "label": "Nagu soo biir",
-      "title": "Bilyanno ayaa raadinaya",
-      "description": "Goosashadu waa timid. Nagu soo biir anagoo dunida ula wadaageyna injiilka warbaahin dijitaal ah."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Aan wada soconno",
-      "title": "Sheekada Jesus waan wada sheegaynaa",
-      "description": "Si ay meesha ay joogaan uga maqlaan uguna arkaan jacaylka Jesus oo ku jira afkooda."
-    }
-  },
   "VideoRecommendations": {
     "match": "{percent}% waafaqid",
     "none": "Fiidiyowgan wax talooyin ah loogama helin luqaddan."

@@ -663,44 +663,6 @@
     "backToWatch": "Buyela ekubukeni",
     "browseVideos": "Phequlula amavidiyo"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Buka ifilimu emfushane",
-    "actions": {
-      "joinUs": "Joyina thina",
-      "shareMission": "Yabelana emsebenzini wethu"
-    },
-    "welcomeStart": {
-      "label": "Ukholo & Umbhalo Ongcwele",
-      "title": "Izincomo zevidiyo zanamuhla",
-      "description": "Okuqukethwe kwamavidiyo okugxile ekukholweni okuvela emtatsheni wethu ukuze kukhuthaze, kuphonsela inselelo, futhi kuvuse ukucabanga."
-    },
-    "welcomeMorning": {
-      "label": "Ugqozi lwasekuseni",
-      "title": "Sawubona! Imizuzu yeBhayibheli yanamuhla ilindile.",
-      "description": "Qala usuku lwakho ngemizuzu yeBhayibheli ekhuthazayo eyenzelwe ukukhuthaza futhi iphakamise umoya wakho."
-    },
-    "welcomeAfternoon": {
-      "label": "Ugqozi lwantambama",
-      "title": "Ntambama enhle! Imizuzu yeBhayibheli yosuku lwakho.",
-      "description": "Okuqukethwe kweBhayibheli okukhuthazayo okulungele ikhefu lakho lantambama noma ukuqhubeka nogqozi."
-    },
-    "welcomeEvening": {
-      "label": "Ugqozi lwakusihlwa",
-      "title": "Kusihlwa okuhle! Phola ngemizuzu yeBhayibheli.",
-      "description": "Imizuzu yeBhayibheli enokuthula ukukusiza ucabange futhi uthole induduzo njengoba usuku luphela."
-    },
-    "joinUs": {
-      "label": "Joyina thina",
-      "title": "Izigidigidi ziyafuna",
-      "description": "Isivuno sesifikile. Joyina thina njengoba sabelana ngevangeli nomhlaba sisebenzisa imidiya yedijithali."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Asihambe ndawonye",
-      "title": "Ukuxoxa Indaba KaJesu, Ndawonye",
-      "description": "Ukuze bezwe futhi babone uthando lukaJesu ngolimi lwabo lapho bekhona khona."
-    }
-  },
   "VideoRecommendations": {
     "match": "Kufana ngo-{percent}%",
     "none": "Azikho izincomo ezitholakele zale vidiyo ngalolu limi."

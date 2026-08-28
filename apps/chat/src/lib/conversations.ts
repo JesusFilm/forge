@@ -74,6 +74,10 @@ export type Message = {
   // feat-328: the one video the Seeker featured on this turn. Terminal-frame
   // only (plan D3) — set at finalize, never mid-stream.
   video?: VideoAttachment
+  // feat-366: suggested follow-up questions, bounded by toFollowUps (shape and
+  // size only — mastra owns content) on BOTH wire paths. Absent, never [].
+  // The one wire field that becomes an INPUT: a click sends it verbatim (KD4).
+  followUps?: string[]
   // Set on a failed assistant turn so the UI renders a visible failure notice
   // (R14/R16/R17). Partial streamed text stays in `content`.
   error?: ReplyFailureReason

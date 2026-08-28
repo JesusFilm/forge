@@ -663,44 +663,6 @@
     "backToWatch": "Fila ba Watch",
     "browseVideos": "Haree vídeo sira"
   },
-  "WatchHomeMuxInserts": {
-    "datedTitle": "{date}: {title}",
-    "watchShortFilm": "Haree Filme Curtu",
-    "actions": {
-      "joinUs": "Tama hamutuk ho ami",
-      "shareMission": "Partilla iha ami nia misan"
-    },
-    "welcomeStart": {
-      "label": "Fiar & Escritura",
-      "title": "Hili vídeo ohin nia",
-      "description": "Kontentu vídeo sentra ba fiar hosi ita nia biblioteka atu inspira, desafia, no hasa'e hanoin."
-    },
-    "welcomeMorning": {
-      "label": "Inspirasaun iha manhã",
-      "title": "Bom dia! Moméntu Biblika ohin hein ita.",
-      "description": "Hahu ita nia loron ho moméntu Biblika ne'ebé fó coragem, diseñadu atu inspira no hasa'e ita nia espíritu."
-    },
-    "welcomeAfternoon": {
-      "label": "Inspirasaun iha tarde",
-      "title": "Boa tarde! Moméntu Biblika ba ita nia loron.",
-      "description": "Kontentu Biblika ne'ebé fó coragem, di'ak ba ita nia tempu liu iha tarde ka atu kontinua inspira."
-    },
-    "welcomeEvening": {
-      "label": "Inspirasaun iha kalan",
-      "title": "Boa noite! Relasaun malu ho moméntu Biblika.",
-      "description": "Moméntu Biblika ne'ebé hakmatek atu ajuda ita reflete no hetan konsolo bainhira ita nia loron taka ona."
-    },
-    "joinUs": {
-      "label": "Tama hamutuk ho ami",
-      "title": "Miliaun sira hela buka",
-      "description": "Moris iha ne'e. Tama hamutuk ho ami atu partilla evangelu ho mundu liu husi média digital."
-    },
-    "tellingTheStoryOfJesus": {
-      "label": "Bá hamutuk",
-      "title": "Kontadu Istória Jesus, Hamutuk",
-      "description": "Hodi sira bele rona no haree Jesus nia koleinu iha sira nia língua rasik iha ne'ebé sira hela."
-    }
-  },
   "VideoRecommendations": {
     "match": "Kompatibilidade {percent}%",
     "none": "La hetan rekomendasaun ba vídeo ida-ne'e iha língua ida-ne'e."
