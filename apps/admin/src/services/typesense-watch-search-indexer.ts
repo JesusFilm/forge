@@ -1,6 +1,12 @@
 import { createHash } from "node:crypto"
 import { Prisma, type PrismaClient } from "@prisma/client"
-import { notRestrictedFromWatchWhere } from "./search-watchability"
+import {
+  CONTAINER_DESCENDANT_MAX_DEPTH,
+  notRestrictedFromWatchWhere,
+  PUBLIC_CONTENT_SLUG_SQL_PATTERN,
+  SERIES_SHAPED_LABELS,
+  VISIBLE_DESCENDANT_SQL,
+} from "./search-watchability"
 import { TypesenseClient } from "./typesense-client"
 import { canonicalTypesenseVideoId } from "./typesense-watch-search-identifiers"
 import {
@@ -24,6 +30,7 @@ import {
   type TypesenseWatchAudioOption,
   type TypesenseWatchAvailabilityDocument,
   type TypesenseWatchCatalogDocument,
+  type TypesenseWatchContainerLanguage,
   type TypesenseWatchLocale,
   type TypesenseWatchSubtitleOption,
   type TypesenseWatchTranscriptDocument,
@@ -188,6 +195,119 @@ function subtitleOptionsByVideo(rows: readonly SubtitleIndexRow[]) {
   return result
 }
 
+type ContainerLanguageRow = {
+  videoId: string
+  languageSlug: string
+  languageName: unknown
+}
+
+/**
+ * Languages in which a Series-Shaped Video has a visible playable descendant,
+ * computed once for the whole catalog at index time.
+ *
+ * This is the index-time mirror of `SearchWatchabilityService`'s container
+ * tier (`containersForCandidates` in search-watchability.ts). The Postgres tier
+ * runs per request and filters descendants to the caller's accepted languages;
+ * this loader has no target language, so it drops that filter and returns the
+ * complete language SET per container. Query time then picks target-first,
+ * then fallback-by-priority — which emits the same language the Postgres tier's
+ * `DISTINCT ON` picks, because that ORDER BY leads with `array_position` over
+ * the accepted list and every lower key breaks ties inside one language.
+ *
+ * Two differences from the per-request tier are deliberate and load-bearing:
+ *
+ * 1. The root is excluded from its own descendant set. `video_relation` has no
+ *    self-reference or cycle constraint. The per-request tier is gated to ids
+ *    no self-scoped tier resolved, so a container with its own Dub never
+ *    reaches it; this loader has no such gate, and without the exclusion a
+ *    self-loop would let a container admit itself from its own Dub.
+ * 2. The root gate is restated here in full rather than inherited. The label
+ *    comparison MUST stay in SQL against the stored column: SERIES_SHAPED_LABELS
+ *    holds the VideoLabel `@map` values (`collection`, `series`), while Prisma
+ *    reads `label` as the enum identifier (`COLLECTION`, `SERIES`). Comparing
+ *    the projected document's label to those constants in TypeScript matches
+ *    nothing and admits zero containers in production.
+ *
+ * The db-suite cases in search-watchability.db.test.ts are the enforcement
+ * point for parity with the per-request tier — raw SQL cannot import a Prisma
+ * where-helper, and the indexer's mocked suite cannot discriminate the label
+ * gate at all.
+ */
+async function loadContainerLanguageRows(
+  prisma: PrismaClient,
+): Promise<ContainerLanguageRow[]> {
+  return prisma.$queryRaw<ContainerLanguageRow[]>(Prisma.sql`
+    WITH RECURSIVE root AS (
+      SELECT container.id
+      FROM video container
+      WHERE container.deleted_at IS NULL
+        AND container.no_index = FALSE
+        AND container.label::text = ANY(${[...SERIES_SHAPED_LABELS]}::text[])
+        AND container.slug ~ ${PUBLIC_CONTENT_SLUG_SQL_PATTERN}
+        AND NOT ('watch' = ANY(container.restrict_view_platforms))
+        AND EXISTS (
+          SELECT 1
+          FROM video_locale root_locale
+          WHERE root_locale.video_id = container.id
+            AND root_locale.deleted_at IS NULL
+            AND root_locale.status = 'published'
+        )
+    ),
+    descendant(root_id, video_id, depth) AS (
+      SELECT root.id, descendant_video.id, 1
+      FROM root
+      JOIN video_relation relation ON relation.parent_id = root.id
+      JOIN video descendant_video
+        ON descendant_video.id = relation.child_id
+       AND descendant_video.id <> root.id
+       AND ${VISIBLE_DESCENDANT_SQL}
+      UNION ALL
+      SELECT descendant.root_id, descendant_video.id, descendant.depth + 1
+      FROM descendant
+      JOIN video_relation relation ON relation.parent_id = descendant.video_id
+      JOIN video descendant_video
+        ON descendant_video.id = relation.child_id
+       AND descendant_video.id <> descendant.root_id
+       AND ${VISIBLE_DESCENDANT_SQL}
+      WHERE descendant.depth < ${CONTAINER_DESCENDANT_MAX_DEPTH}
+    )
+    SELECT DISTINCT
+      descendant.root_id AS "videoId",
+      dub_language.slug AS "languageSlug",
+      dub_language.name AS "languageName"
+    FROM descendant
+    JOIN video_dub child_dub
+      ON child_dub.video_id = descendant.video_id
+     AND child_dub.deleted_at IS NULL
+     AND child_dub.published = TRUE
+     AND NULLIF(BTRIM(child_dub.hls), '') IS NOT NULL
+    LEFT JOIN video_edition child_edition
+      ON child_edition.id = child_dub.video_edition_id
+    JOIN language dub_language
+      ON dub_language.id = child_dub.language_id
+     AND dub_language.deleted_at IS NULL
+     AND dub_language.slug IS NOT NULL
+     AND dub_language.slug ~ '^[a-z0-9-]+$'
+    WHERE (child_dub.video_edition_id IS NULL OR child_edition.deleted_at IS NULL)
+    ORDER BY descendant.root_id, dub_language.slug
+  `)
+}
+
+function containerLanguagesByVideo(
+  rows: readonly ContainerLanguageRow[],
+): Map<string, TypesenseWatchContainerLanguage[]> {
+  const result = new Map<string, TypesenseWatchContainerLanguage[]>()
+  for (const row of rows) {
+    const languages = result.get(row.videoId) ?? []
+    languages.push({
+      languageSlug: row.languageSlug,
+      languageEnglishName: englishName(row.languageName),
+    })
+    result.set(row.videoId, languages)
+  }
+  return result
+}
+
 async function loadSubtitleRows(
   prisma: PrismaClient,
 ): Promise<SubtitleIndexRow[]> {
@@ -282,7 +402,7 @@ async function loadSubtitleRows(
 export async function buildCatalogDocuments(
   prisma: PrismaClient,
 ): Promise<TypesenseWatchCatalogDocument[]> {
-  const [videos, subtitleRows] = await Promise.all([
+  const [videos, subtitleRows, containerLanguageRows] = await Promise.all([
     prisma.video.findMany({
       where: {
         deletedAt: null,
@@ -350,8 +470,12 @@ export async function buildCatalogDocuments(
       },
     }),
     loadSubtitleRows(prisma),
+    loadContainerLanguageRows(prisma),
   ])
   const subtitlesByVideo = subtitleOptionsByVideo(subtitleRows)
+  const containerLanguagesByVideoId = containerLanguagesByVideo(
+    containerLanguageRows,
+  )
 
   return videos.flatMap((video) => {
     const locales: TypesenseWatchLocale[] = video.locales.flatMap((locale) =>
@@ -411,6 +535,12 @@ export async function buildCatalogDocuments(
         ],
         audioOptionsJson: JSON.stringify(audioOptions),
         subtitleOptionsJson: JSON.stringify(subtitleOptions),
+        // Emitted on EVERY document, containers and leaves alike, so "absent"
+        // and "admitted to nothing" are the same shape at query time. A leaf
+        // carries "[]".
+        containerLanguagesJson: JSON.stringify(
+          containerLanguagesByVideoId.get(video.id) ?? [],
+        ),
       },
     ]
   })

@@ -42,6 +42,7 @@ const snapshot: TypesenseWatchCandidateProjectionSnapshot = {
       subtitleLanguageSlugs: [],
       audioOptionsJson: "[]",
       subtitleOptionsJson: "[]",
+      containerLanguagesJson: "[]",
     },
   ],
   availability: [],

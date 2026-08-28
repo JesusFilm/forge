@@ -75,6 +75,7 @@ function catalogDocument(): TypesenseWatchCatalogDocument {
     subtitleLanguageSlugs: [],
     audioOptionsJson: "[]",
     subtitleOptionsJson: "[]",
+    containerLanguagesJson: "[]",
   }
 }
 

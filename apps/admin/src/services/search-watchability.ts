@@ -94,7 +94,7 @@ const PUBLIC_LANGUAGE_SLUG_PATTERN = /^[a-z0-9-]+$/
  * carrying one must stay unavailable rather than gain a link that bounces to
  * /watch.
  */
-const PUBLIC_CONTENT_SLUG_SQL_PATTERN = "^[a-z0-9_-]+$"
+export const PUBLIC_CONTENT_SLUG_SQL_PATTERN = "^[a-z0-9_-]+$"
 
 /**
  * Series-Shaped labels, as stored (the VideoLabel enum's @map values). Per
@@ -102,7 +102,7 @@ const PUBLIC_CONTENT_SLUG_SQL_PATTERN = "^[a-z0-9_-]+$"
  * it, because a feature film may carry Chapters while remaining one playable
  * item.
  */
-const SERIES_SHAPED_LABELS = ["collection", "series"] as const
+export const SERIES_SHAPED_LABELS = ["collection", "series"] as const
 
 /**
  * How many `video_relation` levels the container tier walks. Two covers every
@@ -112,7 +112,7 @@ const SERIES_SHAPED_LABELS = ["collection", "series"] as const
  * `video_relation` has no cycle constraint — an unbounded walk on a cyclic row
  * does not terminate.
  */
-const CONTAINER_DESCENDANT_MAX_DEPTH = 2
+export const CONTAINER_DESCENDANT_MAX_DEPTH = 2
 
 /**
  * Public-Watch visibility for one node of the descendant walk, written once and
@@ -125,7 +125,7 @@ const CONTAINER_DESCENDANT_MAX_DEPTH = 2
  * Mirrors `playableDubWhere()`'s nested `video` clause. Raw SQL cannot import
  * that Prisma helper; the db-suite cases are the enforcement point for parity.
  */
-const VISIBLE_DESCENDANT_SQL = Prisma.sql`
+export const VISIBLE_DESCENDANT_SQL = Prisma.sql`
            descendant_video.deleted_at IS NULL
        AND descendant_video.no_index = FALSE
        AND NOT ('watch' = ANY(descendant_video.restrict_view_platforms))

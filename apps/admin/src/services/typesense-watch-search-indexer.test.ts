@@ -268,6 +268,7 @@ describe("Typesense Watch Search indexer", () => {
             actionPriority: 1,
           },
         ]),
+        containerLanguagesJson: "[]",
       },
     ])
 
@@ -384,10 +385,17 @@ describe("Typesense Watch Search indexer", () => {
     const embeddingText = `[${new Array(TYPESENSE_WATCH_EMBEDDING_DIMENSIONS)
       .fill("0")
       .join(",")}]`
-    const queryRaw = vi
-      .fn()
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([
+    // Dispatched on SQL content, not call order: buildCatalogDocuments issues
+    // several raw queries before the transcript batch, so an order-keyed mock
+    // silently feeds transcript rows to whichever query happens to land second.
+    let transcriptBatchesServed = 0
+    const queryRaw = vi.fn(async (query: unknown) => {
+      const sql = (query as { strings?: string[] }).strings?.join(" ") ?? ""
+      if (!sql.includes('AS "publiclyVisible"')) return []
+      // Serve the corpus once; the transcript loader pages until a short batch.
+      if (transcriptBatchesServed > 0) return []
+      transcriptBatchesServed += 1
+      return [
         {
           id: "chunk-private",
           videoId: "video-private",
@@ -410,8 +418,8 @@ describe("Typesense Watch Search indexer", () => {
           embeddingText,
           publiclyVisible: true,
         },
-      ])
-      .mockResolvedValueOnce([])
+      ]
+    })
     const prisma = {
       video: {
         findMany: vi.fn(async () => [
@@ -449,9 +457,16 @@ describe("Typesense Watch Search indexer", () => {
       buildId: "broad-corpus-test",
     })
 
-    const transcriptSql = (
-      queryRaw.mock.calls[1]?.[0] as unknown as { strings: string[] }
-    ).strings.join(" ")
+    // Matched by content, not call index: buildCatalogDocuments issues several
+    // raw queries (subtitle rows, container descendant languages) before the
+    // transcript batch, and their order is not this assertion's contract.
+    const rawSql = queryRaw.mock.calls.map((call) =>
+      (call[0] as unknown as { strings: string[] }).strings.join(" "),
+    )
+    const transcriptSql = rawSql.find((sql) =>
+      sql.includes('AS "publiclyVisible"'),
+    )
+    expect(transcriptSql).toBeDefined()
     expect(transcriptSql).toContain('AS "publiclyVisible"')
     expect(transcriptSql).not.toMatch(
       /JOIN video v\s+ON v\.id = vt\.video_id\s+AND v\.deleted_at/,
@@ -584,7 +599,19 @@ describe("Typesense Watch Search indexer", () => {
     expect(typesense.deleteCollection).not.toHaveBeenCalledWith(
       "unrelated_collection",
     )
-    expect(prisma.$queryRaw).toHaveBeenCalledTimes(1)
+    // A reuse rebuild reads the catalog's own raw sources — subtitle rows and
+    // container descendant languages — and no transcript batch. The point of
+    // this assertion is that the transcript corpus was NOT re-read, so it
+    // matches on content rather than pinning a call count that grows whenever
+    // the catalog projection gains a source.
+    const reuseSql = vi
+      .mocked(prisma.$queryRaw)
+      .mock.calls.map((call) =>
+        (call[0] as unknown as { strings: string[] }).strings.join(" "),
+      )
+    expect(reuseSql.some((sql) => sql.includes('AS "publiclyVisible"'))).toBe(
+      false,
+    )
   })
 
   it("requires an explicit rebuild when reused transcripts lack edition IDs", async () => {

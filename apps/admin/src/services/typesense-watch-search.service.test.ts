@@ -92,6 +92,7 @@ const catalogDocument: TypesenseWatchCatalogDocument = {
     },
   ]),
   subtitleOptionsJson: "[]",
+  containerLanguagesJson: "[]",
 }
 
 const jesusChineseCatalogDocument: TypesenseWatchCatalogDocument = {
@@ -138,6 +139,7 @@ const jesusChineseCatalogDocument: TypesenseWatchCatalogDocument = {
     },
   ]),
   subtitleOptionsJson: "[]",
+  containerLanguagesJson: "[]",
 }
 
 const japaneseCatalogDocument: TypesenseWatchCatalogDocument = {
@@ -172,6 +174,7 @@ const japaneseCatalogDocument: TypesenseWatchCatalogDocument = {
     },
   ]),
   subtitleOptionsJson: "[]",
+  containerLanguagesJson: "[]",
 }
 
 const candidateFieldManifests = {
@@ -795,6 +798,7 @@ describe("TypesenseWatchSearchService", () => {
       subtitleLanguageSlugs: [],
       audioOptionsJson: "[]",
       subtitleOptionsJson: "[]",
+      containerLanguagesJson: "[]",
     }
     const playableSibling: TypesenseWatchCatalogDocument = {
       ...catalogDocument,
@@ -3156,6 +3160,7 @@ describe("TypesenseWatchSearchService", () => {
       subtitleLanguageSlugs: [],
       audioOptionsJson: "[]",
       subtitleOptionsJson: "[]",
+      containerLanguagesJson: "[]",
     }
     const playable: TypesenseWatchCatalogDocument = {
       ...catalogDocument,
@@ -3384,6 +3389,7 @@ describe("TypesenseWatchSearchService", () => {
       audioOptionsJson: "[]",
       subtitleLanguageSlugs: ["french"],
       subtitleOptionsJson: "[]",
+      containerLanguagesJson: "[]",
     }
     const typesense = typesenseFixture({
       lexical: [],
@@ -3453,6 +3459,7 @@ describe("TypesenseWatchSearchService", () => {
       audioOptionsJson: "[]",
       subtitleLanguageSlugs: ["french"],
       subtitleOptionsJson: "[]",
+      containerLanguagesJson: "[]",
     }
     const typesense = typesenseFixture({
       lexical: [],
