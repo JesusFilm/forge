@@ -23,6 +23,7 @@ export type SearchWatchabilityKind =
   | "target_audio"
   | "target_subtitle"
   | "related_language"
+  | "container"
   | "unavailable"
 
 export type SearchWatchabilityCandidate = {
@@ -74,7 +75,67 @@ type FallbackLanguageRow = {
   priority: number
 }
 
+/**
+ * A Series-Shaped candidate resolved from a playable descendant rather than a
+ * Dub of its own. `videoId` is the container; the language columns describe the
+ * descendant Dub that made it browsable.
+ */
+type DescendantRow = {
+  videoId: string
+  language: LanguageRow | null
+}
+
 const PUBLIC_LANGUAGE_SLUG_PATTERN = /^[a-z0-9-]+$/
+
+/**
+ * Public Watch content-slug shape, matching web's `ContentSlug` pattern in
+ * apps/web/src/lib/routes.ts. Lowercase is load-bearing: internal-style Core
+ * slugs (`Nua_Know_God`) have no public Watch route at all, so a container
+ * carrying one must stay unavailable rather than gain a link that bounces to
+ * /watch.
+ */
+const PUBLIC_CONTENT_SLUG_SQL_PATTERN = "^[a-z0-9_-]+$"
+
+/**
+ * Series-Shaped labels, as stored (the VideoLabel enum's @map values). Per
+ * CONCEPTS.md the test is label-only — children are deliberately not part of
+ * it, because a feature film may carry Chapters while remaining one playable
+ * item.
+ */
+const SERIES_SHAPED_LABELS = ["collection", "series"] as const
+
+/**
+ * How many `video_relation` levels the container tier walks. Two covers every
+ * container in the catalog today, including the collection-of-series nests
+ * (the-bibleproject-collection, life-of-jesus-series, days-with-jesus) whose
+ * playability lives on grandchildren. The cap is explicit because
+ * `video_relation` has no cycle constraint — an unbounded walk on a cyclic row
+ * does not terminate.
+ */
+const CONTAINER_DESCENDANT_MAX_DEPTH = 2
+
+/**
+ * Public-Watch visibility for one node of the descendant walk, written once and
+ * interpolated into both terms of the recursive CTE. It gates TRAVERSAL, not
+ * just evaluation: a hidden intermediate must not carry a visible grandchild
+ * into the result, or a collection whose only playable descendant sits behind a
+ * watch-restricted series reads as browsable while its series page renders that
+ * intermediate out and shows nothing.
+ *
+ * Mirrors `playableDubWhere()`'s nested `video` clause. Raw SQL cannot import
+ * that Prisma helper; the db-suite cases are the enforcement point for parity.
+ */
+const VISIBLE_DESCENDANT_SQL = Prisma.sql`
+           descendant_video.deleted_at IS NULL
+       AND descendant_video.no_index = FALSE
+       AND NOT ('watch' = ANY(descendant_video.restrict_view_platforms))
+       AND EXISTS (
+         SELECT 1
+         FROM video_locale descendant_locale
+         WHERE descendant_locale.video_id = descendant_video.id
+           AND descendant_locale.deleted_at IS NULL
+           AND descendant_locale.status = 'published'
+       )`
 
 const EMPTY_WATCHABILITY: Omit<SearchWatchability, "videoId"> = {
   kind: "unavailable",
@@ -219,6 +280,30 @@ function watchabilityFromSubtitle(row: SubtitleRow): SearchWatchability {
   }
 }
 
+/**
+ * Build the watchability record for a container resolved from a descendant.
+ * There is no Dub of the container's own, so playback identity stays null and
+ * only the browse language is carried.
+ */
+function watchabilityFromDescendant(row: DescendantRow): SearchWatchability {
+  const languageSlug = publicLanguageSlug(row.language?.slug)
+  if (!languageSlug) return { videoId: row.videoId, ...EMPTY_WATCHABILITY }
+
+  return {
+    videoId: row.videoId,
+    kind: "container",
+    languageSlug,
+    languageEnglishName: englishNameFromLanguageName(row.language?.name),
+    audio: false,
+    subtitles: false,
+    playbackId: null,
+    videoDubId: null,
+    videoSubtitleId: null,
+    durationSeconds: null,
+    hrefLanguageSlug: languageSlug,
+  }
+}
+
 export class SearchWatchabilityService {
   constructor(private readonly prisma: PrismaClient) {}
 
@@ -348,6 +433,96 @@ export class SearchWatchabilityService {
     `)
   }
 
+  /**
+   * Resolve Series-Shaped candidates from their playable descendants.
+   *
+   * The three preceding tiers all join through a Dub the candidate owns, which
+   * is where they inherit `playableDubWhere()`'s visibility conditions — that
+   * helper's nested `video` clause carries `notRestrictedFromWatchWhere()` for
+   * the candidate itself. This tier has no such join, so the root's own
+   * conditions are restated here: publication, no_index, a public slug, and the
+   * `watch` platform restriction. Dropping any of them turns a hidden
+   * collection into an available card.
+   *
+   * Descendant conditions mirror `playableDubWhere()` field for field. The
+   * db-suite cases in search-watchability.db.test.ts are the enforcement point
+   * for that parity — raw SQL cannot import the Prisma helper.
+   */
+  private async containersForCandidates(
+    videoIds: readonly string[],
+    targetLanguageId: string,
+    fallbackLanguageIds: readonly string[],
+  ): Promise<DescendantRow[]> {
+    if (videoIds.length === 0) return []
+
+    const acceptedLanguageIds = [targetLanguageId, ...fallbackLanguageIds]
+
+    return this.prisma.$queryRaw<DescendantRow[]>(Prisma.sql`
+      WITH RECURSIVE root AS (
+        SELECT container.id
+        FROM video container
+        WHERE container.id IN (${Prisma.join([...videoIds])})
+          AND container.deleted_at IS NULL
+          AND container.no_index = FALSE
+          AND container.label::text = ANY(${[...SERIES_SHAPED_LABELS]}::text[])
+          AND container.slug ~ ${PUBLIC_CONTENT_SLUG_SQL_PATTERN}
+          AND NOT ('watch' = ANY(container.restrict_view_platforms))
+          AND EXISTS (
+            SELECT 1
+            FROM video_locale root_locale
+            WHERE root_locale.video_id = container.id
+              AND root_locale.deleted_at IS NULL
+              AND root_locale.status = 'published'
+          )
+      ),
+      descendant(root_id, video_id, depth) AS (
+        SELECT root.id, descendant_video.id, 1
+        FROM root
+        JOIN video_relation relation ON relation.parent_id = root.id
+        JOIN video descendant_video
+          ON descendant_video.id = relation.child_id
+         AND ${VISIBLE_DESCENDANT_SQL}
+        UNION ALL
+        SELECT descendant.root_id, descendant_video.id, descendant.depth + 1
+        FROM descendant
+        JOIN video_relation relation ON relation.parent_id = descendant.video_id
+        JOIN video descendant_video
+          ON descendant_video.id = relation.child_id
+         AND ${VISIBLE_DESCENDANT_SQL}
+        WHERE descendant.depth < ${CONTAINER_DESCENDANT_MAX_DEPTH}
+      )
+      SELECT DISTINCT ON (descendant.root_id)
+        descendant.root_id AS "videoId",
+        jsonb_build_object(
+          'id', dub_language.id,
+          'slug', dub_language.slug,
+          'name', dub_language.name
+        ) AS language
+      FROM descendant
+      JOIN video_dub child_dub
+        ON child_dub.video_id = descendant.video_id
+       AND child_dub.deleted_at IS NULL
+       AND child_dub.published = TRUE
+       AND NULLIF(BTRIM(child_dub.hls), '') IS NOT NULL
+       AND child_dub.language_id = ANY(${[...acceptedLanguageIds]}::text[])
+      LEFT JOIN video_edition child_edition
+        ON child_edition.id = child_dub.video_edition_id
+      JOIN language dub_language
+        ON dub_language.id = child_dub.language_id
+       AND dub_language.deleted_at IS NULL
+       AND dub_language.slug IS NOT NULL
+       AND dub_language.slug ~ '^[a-z0-9-]+$'
+      WHERE (child_dub.video_edition_id IS NULL OR child_edition.deleted_at IS NULL)
+      ORDER BY
+        descendant.root_id,
+        array_position(${[...acceptedLanguageIds]}::text[], child_dub.language_id) ASC,
+        descendant.depth ASC,
+        child_dub.duration DESC NULLS LAST,
+        dub_language.slug ASC,
+        child_dub.id ASC
+    `)
+  }
+
   async hydrate({
     candidates,
     targetLanguageSlug,
@@ -410,37 +585,59 @@ export class SearchWatchabilityService {
     const unresolvedVideoIds = videoIds.filter(
       (videoId) => result.get(videoId)?.kind === "unavailable",
     )
-    if (includeOtherLanguageFallback && unresolvedVideoIds.length > 0) {
-      const fallbackLanguages = await this.relatedFallbackLanguages(
-        targetLanguage.id,
+    // Resolved once and shared with the container tier below, so a run that
+    // needs both does not read language_fallback twice.
+    const fallbackLanguages =
+      includeOtherLanguageFallback && unresolvedVideoIds.length > 0
+        ? await this.relatedFallbackLanguages(targetLanguage.id)
+        : []
+    const fallbackLanguageIds = fallbackLanguages.map((row) => row.id)
+    if (fallbackLanguageIds.length > 0) {
+      const priorityByLanguageId = new Map(
+        fallbackLanguages.map((row) => [row.id, row.priority]),
       )
-      const fallbackLanguageIds = fallbackLanguages.map((row) => row.id)
-      if (fallbackLanguageIds.length > 0) {
-        const priorityByLanguageId = new Map(
-          fallbackLanguages.map((row) => [row.id, row.priority]),
-        )
-        const fallbackDubs = await this.prisma.videoDub.findMany({
-          where: {
-            ...playableDubWhere(unresolvedVideoIds),
-            languageId: { in: fallbackLanguageIds },
-            language: { deletedAt: null, slug: { not: null } },
-          },
-          orderBy: [{ videoId: "asc" }, { duration: "desc" }, { id: "asc" }],
-          select: {
-            id: true,
-            videoId: true,
-            duration: true,
-            language: { select: { id: true, slug: true, name: true } },
-            muxVideo: { select: { playbackId: true } },
-          },
-        })
+      const fallbackDubs = await this.prisma.videoDub.findMany({
+        where: {
+          ...playableDubWhere(unresolvedVideoIds),
+          languageId: { in: fallbackLanguageIds },
+          language: { deletedAt: null, slug: { not: null } },
+        },
+        orderBy: [{ videoId: "asc" }, { duration: "desc" }, { id: "asc" }],
+        select: {
+          id: true,
+          videoId: true,
+          duration: true,
+          language: { select: { id: true, slug: true, name: true } },
+          muxVideo: { select: { playbackId: true } },
+        },
+      })
 
-        for (const [videoId, row] of firstFallbackByVideoId(
-          fallbackDubs as TargetDubRow[],
-          priorityByLanguageId,
-        )) {
-          result.set(videoId, watchabilityFromDub(row, "related_language"))
-        }
+      for (const [videoId, row] of firstFallbackByVideoId(
+        fallbackDubs as TargetDubRow[],
+        priorityByLanguageId,
+      )) {
+        result.set(videoId, watchabilityFromDub(row, "related_language"))
+      }
+    }
+
+    // Container tier. Runs last and only over candidates no self-scoped tier
+    // resolved, so a Series-Shaped Video carrying its own playable Dub keeps
+    // the state that Dub earned it — descendants never override direct
+    // playback — and a leaf-only result set issues no extra query.
+    const unresolvedAfterFallback = videoIds.filter(
+      (videoId) => result.get(videoId)?.kind === "unavailable",
+    )
+    if (unresolvedAfterFallback.length > 0) {
+      const containers = await this.containersForCandidates(
+        unresolvedAfterFallback,
+        targetLanguage.id,
+        fallbackLanguageIds,
+      )
+      for (const row of containers) {
+        if (result.get(row.videoId)?.kind !== "unavailable") continue
+        const watchability = watchabilityFromDescendant(row)
+        if (watchability.kind !== "container") continue
+        result.set(row.videoId, watchability)
       }
     }
 

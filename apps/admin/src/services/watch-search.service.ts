@@ -23,6 +23,7 @@ import {
   resolveSearchLanguageSignals,
   type SearchLanguageSignalSource,
 } from "./search-language-resolution"
+import { availabilityScoreForKind } from "./watch-search-availability-score"
 import {
   SearchWatchabilityService,
   type SearchWatchability,
@@ -60,6 +61,7 @@ export type WatchSearchAvailabilityKind =
   | "target_audio"
   | "target_subtitle"
   | "related_language"
+  | "container"
   | "unavailable"
 export type WatchSearchEvidenceKind =
   | "exact_title"
@@ -1361,13 +1363,11 @@ function resultCandidateScore(entry: RankedWatchCandidate): number {
   return 1
 }
 
-function availabilityScore(
+/** Exported for unit testing — see watch-search.service.test.ts. */
+export function availabilityScore(
   watchability: SearchWatchability | undefined,
 ): number {
-  if (watchability?.kind === "target_audio") return 0.25
-  if (watchability?.kind === "target_subtitle") return 0.18
-  if (watchability?.kind === "related_language") return 0.08
-  return 0
+  return availabilityScoreForKind(watchability?.kind)
 }
 
 function matchScore(entry: RankedWatchCandidate, query: string): number {
@@ -1469,21 +1469,26 @@ function toWholeStartSeconds(value: number | null): number | null {
   return Math.max(0, Math.floor(value))
 }
 
-function watchabilityRank(
+/** Exported for unit testing — see watch-search.service.test.ts. */
+export function watchabilityRank(
   watchability: SearchWatchability | undefined,
 ): number {
   if (watchability?.kind === "target_audio") return 0
   if (watchability?.kind === "target_subtitle") return 1
-  if (watchability?.kind === "related_language") return 2
-  return 3
+  if (watchability?.kind === "container") return 2
+  if (watchability?.kind === "related_language") return 3
+  return 4
 }
 
-function fallbackKindForWatchability(
+/** Exported for unit testing — see watch-search.service.test.ts. */
+export function fallbackKindForWatchability(
   watchability: SearchWatchability | undefined,
 ): WatchSearchFallbackKind {
   if (!watchability || watchability.kind === "unavailable") return "unavailable"
   if (watchability.kind === "target_subtitle") return "subtitle"
   if (watchability.kind === "related_language") return "related_language"
+  // A container is not a playback fallback — it is browsable content in the
+  // requested language — so it takes "none" rather than a new fallback kind.
   return "none"
 }
 
