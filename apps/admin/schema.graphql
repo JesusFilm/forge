@@ -2537,6 +2537,7 @@ type WatchSearchAvailability {
 }
 
 enum WatchSearchAvailabilityKind {
+  CONTAINER
   RELATED_LANGUAGE
   TARGET_AUDIO
   TARGET_SUBTITLE

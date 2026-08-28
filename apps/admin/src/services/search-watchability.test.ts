@@ -62,19 +62,35 @@ function mockPrisma() {
   } as any
 }
 
-function latestRawSql(prisma: ReturnType<typeof mockPrisma>): string {
-  const query = prisma.$queryRaw.mock.calls.at(-1)?.[0] as
-    | { sql?: string }
-    | undefined
-  return query?.sql ?? ""
+// `hydrate` issues up to three raw queries (target subtitles, related fallback
+// languages, containers), so a test must name the one it means rather than
+// taking the last call — adding a tier would silently retarget every
+// assertion.
+function rawQueryContaining(
+  prisma: ReturnType<typeof mockPrisma>,
+  anchor: string,
+): { sql?: string; values?: unknown[] } | undefined {
+  return prisma.$queryRaw.mock.calls
+    .map((call: unknown[]) => call[0] as { sql?: string; values?: unknown[] })
+    .find((query) => query?.sql?.includes(anchor))
 }
 
-function latestRawValues(prisma: ReturnType<typeof mockPrisma>): unknown[] {
-  const query = prisma.$queryRaw.mock.calls.at(-1)?.[0] as
-    | { values?: unknown[] }
-    | undefined
-  return query?.values ?? []
+function rawSql(
+  prisma: ReturnType<typeof mockPrisma>,
+  anchor: string,
+): string {
+  return rawQueryContaining(prisma, anchor)?.sql ?? ""
 }
+
+function rawValues(
+  prisma: ReturnType<typeof mockPrisma>,
+  anchor: string,
+): unknown[] {
+  return rawQueryContaining(prisma, anchor)?.values ?? []
+}
+
+const SUBTITLE_QUERY = "WITH candidate(video_id, video_edition_id) AS"
+const CONTAINER_QUERY = "WITH RECURSIVE root AS"
 
 const russianLanguage = {
   id: "lang-ru",
@@ -202,10 +218,10 @@ describe("SearchWatchabilityService", () => {
     })
 
     expect(result.get("video-1")?.kind).toBe("unavailable")
-    expect(latestRawValues(prisma)).toEqual(
+    expect(rawValues(prisma, SUBTITLE_QUERY)).toEqual(
       expect.arrayContaining(["video-1", "edition-winning", "lang-ru"]),
     )
-    const sql = latestRawSql(prisma)
+    const sql = rawSql(prisma, SUBTITLE_QUERY)
     expect(sql).toContain("WITH candidate(video_id, video_edition_id) AS")
     expect(sql).toContain("vs.video_edition_id = candidate.video_edition_id")
     expect(sql).toContain(
@@ -224,7 +240,7 @@ describe("SearchWatchabilityService", () => {
       includeOtherLanguageFallback: false,
     })
 
-    const sql = latestRawSql(prisma)
+    const sql = rawSql(prisma, SUBTITLE_QUERY)
     expect(sql).toContain("video.deleted_at IS NULL")
     expect(sql).toContain("video.no_index = FALSE")
     expect(sql).toContain("published_locale.status = 'published'")
@@ -374,5 +390,180 @@ describe("SearchWatchabilityService", () => {
       subtitles: false,
     })
     expect(prisma.videoDub.findMany).not.toHaveBeenCalled()
+  })
+
+  describe("container tier", () => {
+    it("resolves a Series-Shaped candidate from a playable descendant", async () => {
+      prisma.$queryRaw
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([
+          { videoId: "collection-1", language: russianLanguage },
+        ])
+
+      const result = await service.hydrate({
+        candidates: [{ videoId: "collection-1" }],
+        targetLanguageSlug: "russian",
+      })
+
+      expect(result.get("collection-1")).toMatchObject({
+        kind: "container",
+        languageSlug: "russian",
+        languageEnglishName: "Russian",
+        hrefLanguageSlug: "russian",
+        audio: false,
+        subtitles: false,
+        playbackId: null,
+        videoDubId: null,
+        videoSubtitleId: null,
+        durationSeconds: null,
+      })
+    })
+
+    it("never overrides a candidate that an earlier tier already resolved", async () => {
+      prisma.videoDub.findMany.mockResolvedValueOnce([
+        {
+          id: "dub-ru",
+          videoId: "collection-1",
+          duration: 7200,
+          language: russianLanguage,
+          muxVideo: { playbackId: "mux-ru" },
+        },
+      ])
+      prisma.$queryRaw.mockResolvedValue([
+        { videoId: "collection-1", language: russianLanguage },
+      ])
+
+      const result = await service.hydrate({
+        candidates: [{ videoId: "collection-1" }],
+        targetLanguageSlug: "russian",
+      })
+
+      expect(result.get("collection-1")).toMatchObject({
+        kind: "target_audio",
+        playbackId: "mux-ru",
+      })
+    })
+
+    it("issues no container query when every candidate resolved earlier", async () => {
+      prisma.videoDub.findMany.mockResolvedValueOnce([
+        {
+          id: "dub-ru",
+          videoId: "video-1",
+          duration: 7200,
+          language: russianLanguage,
+          muxVideo: { playbackId: "mux-ru" },
+        },
+      ])
+
+      await service.hydrate({
+        candidates: [{ videoId: "video-1" }],
+        targetLanguageSlug: "russian",
+      })
+
+      expect(prisma.$queryRaw).not.toHaveBeenCalled()
+    })
+
+    it("stays unavailable when the descendant language slug is not public", async () => {
+      prisma.$queryRaw
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([
+          {
+            videoId: "collection-1",
+            language: { id: "lang-x", slug: "Not_Public", name: { en: "X" } },
+          },
+        ])
+
+      const result = await service.hydrate({
+        candidates: [{ videoId: "collection-1" }],
+        targetLanguageSlug: "russian",
+      })
+
+      expect(result.get("collection-1")?.kind).toBe("unavailable")
+    })
+
+    it("gates the container root on its own visibility, label, and public slug", async () => {
+      await service.hydrate({
+        candidates: [{ videoId: "collection-1" }],
+        targetLanguageSlug: "russian",
+        includeOtherLanguageFallback: false,
+      })
+
+      const sql = rawSql(prisma, CONTAINER_QUERY)
+      expect(sql).toContain("container.deleted_at IS NULL")
+      expect(sql).toContain("container.no_index = FALSE")
+      expect(sql).toContain("root_locale.status = 'published'")
+      expect(sql).toContain("container.label::text = ANY(")
+      expect(sql).toContain("container.slug ~ ")
+      // The root's own watch restriction has no other enforcement point: this
+      // tier does not join through a candidate-owned Dub, so it cannot inherit
+      // playableDubWhere()'s nested video clause.
+      expect(sql).toContain(
+        "NOT ('watch' = ANY(container.restrict_view_platforms))",
+      )
+      expect(rawValues(prisma, CONTAINER_QUERY)).toEqual(
+        expect.arrayContaining([
+          ["collection", "series"],
+          "^[a-z0-9_-]+$",
+        ]),
+      )
+    })
+
+    it("applies the descendant visibility conditions playableDubWhere carries", async () => {
+      await service.hydrate({
+        candidates: [{ videoId: "collection-1" }],
+        targetLanguageSlug: "russian",
+        includeOtherLanguageFallback: false,
+      })
+
+      const sql = rawSql(prisma, CONTAINER_QUERY)
+      expect(sql).toContain("child.deleted_at IS NULL")
+      expect(sql).toContain("child.no_index = FALSE")
+      expect(sql).toContain("NOT ('watch' = ANY(child.restrict_view_platforms))")
+      expect(sql).toContain("child_locale.status = 'published'")
+      expect(sql).toContain("child_dub.deleted_at IS NULL")
+      expect(sql).toContain("child_dub.published = TRUE")
+      expect(sql).toContain("NULLIF(BTRIM(child_dub.hls), '') IS NOT NULL")
+      expect(sql).toContain("child_edition.deleted_at IS NULL")
+      expect(sql).toContain("dub_language.slug ~ '^[a-z0-9-]+$'")
+    })
+
+    it("bounds the descendant walk to two relation levels", async () => {
+      await service.hydrate({
+        candidates: [{ videoId: "collection-1" }],
+        targetLanguageSlug: "russian",
+        includeOtherLanguageFallback: false,
+      })
+
+      const sql = rawSql(prisma, CONTAINER_QUERY)
+      expect(sql).toContain("WITH RECURSIVE root AS")
+      expect(sql).toContain("relation.parent_id = root.id")
+      expect(sql).toContain("relation.parent_id = descendant.video_id")
+      expect(sql).toContain("WHERE descendant.depth <")
+      // video_relation has no cycle constraint, so the bound is the only thing
+      // that makes this walk terminate.
+      expect(rawValues(prisma, CONTAINER_QUERY)).toEqual(
+        expect.arrayContaining([2]),
+      )
+    })
+
+    it("prefers a target-language descendant over a fallback-language one", async () => {
+      prisma.$queryRaw
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([{ id: "lang-en", priority: 1 }])
+        .mockResolvedValueOnce([])
+
+      await service.hydrate({
+        candidates: [{ videoId: "collection-1" }],
+        targetLanguageSlug: "russian",
+      })
+
+      const sql = rawSql(prisma, CONTAINER_QUERY)
+      expect(sql).toContain("array_position(")
+      expect(rawValues(prisma, CONTAINER_QUERY)).toEqual(
+        expect.arrayContaining([["lang-ru", "lang-en"]]),
+      )
+    })
   })
 })

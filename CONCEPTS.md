@@ -663,9 +663,11 @@ language is appropriate for that result's display or target context.
 
 ### Search Watchability
 
-The target-language playback state attached to a Watch search candidate, distinguishing playable target audio, target subtitles, related-language audio, and no qualifying playback option. Search Watchability describes what the viewer can play and where the result should link; it refines ordering only after textual match and relevance.
+The target-language playback state attached to a Watch search candidate, distinguishing playable target audio, target subtitles, related-language audio, browsable container, and no qualifying playback option. Search Watchability describes what the viewer can play and where the result should link; it refines ordering only after textual match and relevance.
 
 Target-audio and related-language states carry a playable Dub directly. A target-subtitle state keeps the requested subtitle language as availability truth while carrying a deterministic playable Dub action on the compatible Video Edition; the public route uses that action language and passes the subtitle language as explicit intent. A no-option state carries no playable action, so its Search Language remains request context and must not be promoted into a playback identity.
+
+A container state belongs to a Series-Shaped record that owns no Dub of its own but has a playable descendant. It is derived rather than direct: the language it carries describes the descendant that made the record browsable, and it carries no playback identity, so it must never be treated as a play action. Its route is the record's own series page. The state resolves only after every self-scoped state has been ruled out, so a Series-Shaped record with its own playable Dub keeps that stronger state; a record whose own public route does not resolve stays in the no-option state however playable its descendants are.
 
 The no-option state also governs presentation: catalog evidence may remain
 visible for recognition and recovery, but playback-derived controls, progress,
