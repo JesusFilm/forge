@@ -140,7 +140,7 @@ export function WatchQuestionPanel({
           >
             <h2
               id="watch-question-panel-intent-heading"
-              className="text-xs font-semibold tracking-[0.18em] text-white/55 uppercase"
+              className="text-sm sm:text-xs font-semibold tracking-[0.18em] text-white/55 uppercase"
             >
               {t("messageType")}
             </h2>
@@ -181,7 +181,7 @@ export function WatchQuestionPanel({
                           {label}
                         </span>
                         <span
-                          className={`mt-0.5 block text-xs leading-[1.1] font-light ${
+                          className={`mt-0.5 block text-sm sm:text-xs leading-[1.1] font-light ${
                             selected ? "text-white" : "text-white/42"
                           }`}
                         >

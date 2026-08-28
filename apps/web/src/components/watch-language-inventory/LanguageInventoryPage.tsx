@@ -292,7 +292,7 @@ function InventoryCard({
           <VideoThumbnailInteractionFrame data-testid="language-inventory-thumbnail-frame" />
         ) : null}
         <div
-          className="absolute top-3 left-3 inline-flex items-center gap-1 rounded bg-black/45 px-2.5 py-1 text-xs font-medium text-white backdrop-blur"
+          className="absolute top-3 left-3 inline-flex items-center gap-1 rounded bg-black/45 px-2.5 py-1 text-sm sm:text-xs font-medium text-white backdrop-blur"
           {...englishAssistAttributes(
             item.availability === "AUDIO" ? "stateAudio" : "stateSubtitlesOnly",
           )}
@@ -304,7 +304,7 @@ function InventoryCard({
           )}
           {availability}
         </div>
-        <div className="absolute right-3 bottom-3 inline-flex items-center gap-1 rounded bg-black/45 px-2.5 py-1 text-xs font-medium text-white backdrop-blur">
+        <div className="absolute right-3 bottom-3 inline-flex items-center gap-1 rounded bg-black/45 px-2.5 py-1 text-sm sm:text-xs font-medium text-white backdrop-blur">
           {item.childCount === 0 && item.href ? (
             <Play className="h-3.5 w-3.5 fill-current" aria-hidden />
           ) : null}
@@ -312,26 +312,26 @@ function InventoryCard({
         </div>
       </div>
       <div className="space-y-2 p-4">
-        <div className="flex items-center gap-2 text-xs leading-5 font-medium tracking-media-label text-stone-300/80 uppercase">
+        <div className="flex items-center gap-2 text-sm sm:text-xs leading-5 font-medium tracking-media-label text-stone-300/80 uppercase">
           <span>{videoLabels(videoLabelMessageKey(item.label))}</span>
         </div>
         <h3 className="line-clamp-2 text-lg leading-tight font-media-card-title break-words text-white">
           {item.title}
         </h3>
         {item.description ? (
-          <p className="line-clamp-2 text-sm leading-relaxed font-normal break-words text-stone-300">
+          <p className="line-clamp-2 text-base sm:text-sm leading-relaxed font-normal break-words text-stone-300">
             {item.description}
           </p>
         ) : null}
         {item.parentTitle ? (
-          <p className="line-clamp-1 text-xs font-medium text-stone-400">
+          <p className="line-clamp-1 text-sm sm:text-xs font-medium text-stone-400">
             {t("fromCollection", { collection: item.parentTitle })}
           </p>
         ) : null}
       </div>
       <span
         aria-hidden="true"
-        className="absolute top-3 right-3 rounded bg-white/10 px-2 py-1 text-xs font-medium text-white/70 tabular-nums"
+        className="absolute top-3 right-3 rounded bg-white/10 px-2 py-1 text-sm sm:text-xs font-medium text-white/70 tabular-nums"
       >
         {index + 1}
       </span>
@@ -497,11 +497,14 @@ function CompactVideoRow({
         ) : null}
       </span>
       <span className="min-w-0 flex-1">
-        <span className="line-clamp-1 text-sm leading-tight font-media-card-title text-white">
+        {/* Two lines on phones: the row is `min-h-20`, so the 16px phone tier
+            gets its second line for free rather than clamping a title that
+            fitted on one line at 14px. */}
+        <span className="line-clamp-2 text-base sm:line-clamp-1 sm:text-sm leading-tight font-media-card-title text-white">
           {item.title}
         </span>
         {metadata ? (
-          <span className="mt-0.5 block truncate text-xs leading-5 font-medium tracking-media-label text-stone-400 uppercase">
+          <span className="mt-0.5 block truncate text-sm sm:text-xs leading-5 font-medium tracking-media-label text-stone-400 uppercase">
             {metadata}
           </span>
         ) : null}
@@ -593,7 +596,7 @@ function NewReleaseBadge() {
   return (
     <span
       data-testid="language-inventory-new-release-badge"
-      className="inline-flex shrink-0 items-center rounded-full bg-brand-red px-2 py-0.5 text-[10px] leading-4 font-medium tracking-media-label text-white uppercase"
+      className="inline-flex shrink-0 items-center rounded-full bg-brand-red px-2 py-0.5 text-xs leading-4 font-medium tracking-media-label text-white uppercase sm:text-[10px]"
       {...englishAssistAttributes("stateNew")}
     >
       {t("new")}
@@ -646,13 +649,13 @@ function CollectionGroupOverview({
           <div className="absolute inset-0 bg-[linear-gradient(135deg,#171717,#3f3f46_48%,#134e4a)]" />
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/10 to-transparent" />
-        <span className="absolute right-3 bottom-3 rounded bg-black/55 px-2.5 py-1 text-xs font-medium text-white backdrop-blur">
+        <span className="absolute right-3 bottom-3 rounded bg-black/55 px-2.5 py-1 text-sm sm:text-xs font-medium text-white backdrop-blur">
           {t("videoCount", { count: group.items.length })}
         </span>
       </div>
       <div className="mt-4 flex flex-1 flex-col space-y-2">
         <div className="flex w-full items-center gap-2">
-          <span className="min-w-0 truncate text-xs leading-5 font-medium tracking-media-label text-stone-300/80 uppercase">
+          <span className="min-w-0 truncate text-sm sm:text-xs leading-5 font-medium tracking-media-label text-stone-300/80 uppercase">
             {label}
           </span>
           {isNew ? <NewReleaseBadge /> : null}
@@ -689,7 +692,7 @@ function CollectionGroupOverview({
           <CollectionLanguageAvailability counts={languageCounts} />
         ) : null}
         {description ? (
-          <p className="line-clamp-4 pt-1 text-sm leading-relaxed font-normal break-words text-stone-300">
+          <p className="line-clamp-4 pt-1 text-base sm:text-sm leading-relaxed font-normal break-words text-stone-300">
             {description}
           </p>
         ) : null}
@@ -753,7 +756,7 @@ function GroupedVideoListSection({
             </p>
           </div>
           <div
-            className="text-sm font-medium text-stone-400"
+            className="text-base sm:text-sm font-medium text-stone-400"
             {...englishAssistAttributes("labelItemCount")}
           >
             {t("videosInGroups", {
@@ -884,7 +887,7 @@ function InventorySection({
             </p>
           </div>
           <div
-            className="text-sm font-medium text-stone-400"
+            className="text-base sm:text-sm font-medium text-stone-400"
             {...englishAssistAttributes("labelItemCount")}
           >
             {t("itemCount", { count: items.length })}

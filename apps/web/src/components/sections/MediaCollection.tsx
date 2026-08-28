@@ -83,14 +83,20 @@ const IMMERSIVE_BACKGROUND_BRIGHTNESS_CLASS =
   WATCH_IMMERSIVE_BACKGROUND_BRIGHTNESS_CLASS
 const IMMERSIVE_BACKGROUND_COLOR = WATCH_IMMERSIVE_BACKGROUND_COLOR
 
+// Phone column widths are set by what the card's TEXT needs, not by how many
+// cards fit: at the previous 56%/34% a 390px viewport rendered 185px and 113px
+// cards, and 7 of 8 poster titles were already clamped away at 14px. The wider
+// phone columns below are what let `video-thumbnail-caption` raise its phone
+// tier without trading a too-small title for a truncated one. `imageSizes` must
+// move with `columns` — it is the `sizes` attribute behind these same cards.
 const MOBILE_CAROUSEL_LAYOUT = {
   horizontal: {
-    columns: "auto-cols-[56%] gap-4 sm:auto-cols-[42%] md:gap-5",
-    imageSizes: "(max-width: 639px) 56vw, (max-width: 767px) 42vw, 360px",
+    columns: "auto-cols-[72%] gap-4 sm:auto-cols-[42%] md:gap-5",
+    imageSizes: "(max-width: 639.98px) 72vw, (max-width: 767px) 42vw, 360px",
   },
   vertical: {
-    columns: "auto-cols-[34%] gap-3 sm:auto-cols-[26%] md:gap-4",
-    imageSizes: "(max-width: 639px) 34vw, (max-width: 767px) 26vw, 220px",
+    columns: "auto-cols-[46%] gap-3 sm:auto-cols-[26%] md:gap-4",
+    imageSizes: "(max-width: 639.98px) 46vw, (max-width: 767px) 26vw, 220px",
   },
 } as const
 
@@ -339,7 +345,7 @@ function WatchHomeMediaCollection({
       href={watchHref}
       data-testid="media-collection-cta"
       className={cn(
-        "inline-flex w-fit shrink-0 items-center gap-2 rounded-full bg-white px-4 py-2 text-xs font-bold tracking-wider text-black uppercase transition-colors hover:bg-red-500 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white",
+        "inline-flex w-fit shrink-0 items-center gap-2 rounded-full bg-white px-4 py-2 text-sm sm:text-xs font-bold tracking-wider text-black uppercase transition-colors hover:bg-red-500 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white",
         title && `col-start-2 ${titleRowStart}`,
       )}
     >
@@ -348,7 +354,7 @@ function WatchHomeMediaCollection({
     </a>
   )
   const categoryEyebrow = categoryLabel ? (
-    <p className="text-xs font-semibold tracking-eyebrow text-red-100/60 uppercase xl:text-sm 2xl:text-base">
+    <p className="text-sm font-semibold tracking-eyebrow text-red-100/60 uppercase sm:text-xs xl:text-sm 2xl:text-base">
       {categoryLabel}
     </p>
   ) : null
@@ -368,7 +374,7 @@ function WatchHomeMediaCollection({
       {description ? (
         <p
           data-testid="media-collection-description"
-          className="w-full pt-2 text-sm leading-relaxed font-normal text-stone-200/80 xl:text-base"
+          className="w-full pt-2 text-base leading-relaxed font-normal text-stone-200/80 sm:text-sm xl:text-base"
         >
           {description}
         </p>
@@ -698,7 +704,7 @@ function WatchHomeMediaCollection({
         <div className={cn("relative z-[3]", WATCH_PAGE_CONTENT_CLASSES)}>
           <p
             data-testid="media-collection-footer"
-            className="mt-8 max-w-5xl text-xs leading-relaxed font-normal text-stone-200/80 xl:text-sm"
+            className="mt-8 max-w-5xl text-sm leading-relaxed font-normal text-stone-200/80 sm:text-xs xl:text-sm"
           >
             {footerText}
           </p>
@@ -855,7 +861,7 @@ function VideoCard({
               "absolute top-2 right-2 z-10 flex items-center gap-1 rounded bg-black/35 font-semibold text-white backdrop-blur-sm",
               compactOnMobile
                 ? "px-1.5 py-0.5 text-xs md:px-2 md:py-1 md:text-sm"
-                : "px-2 py-1 text-sm",
+                : "px-2 py-1 text-base sm:text-sm",
             )}
           >
             {item.collectionSize}

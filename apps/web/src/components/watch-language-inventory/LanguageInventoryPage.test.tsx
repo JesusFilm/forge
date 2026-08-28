@@ -336,9 +336,13 @@ describe("LanguageInventoryPage typography roles", () => {
     }
 
     const compactTitle = container.querySelector<HTMLElement>(
-      '[href="/episode.html"] .line-clamp-1',
+      '[href="/episode.html"] [class*="line-clamp-"]',
     )
     expect(compactTitle?.className).toContain("font-media-card-title")
+    // The compact row gets two lines on phones so the 16px phone tier does not
+    // clamp a title that fitted on one line at 14px; one line from `sm:` up.
+    expect(compactTitle?.className).toContain("line-clamp-2")
+    expect(compactTitle?.className).toContain("sm:line-clamp-1")
 
     const labels = Array.from(
       container.querySelectorAll<HTMLElement>(

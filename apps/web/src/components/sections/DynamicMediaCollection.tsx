@@ -732,7 +732,7 @@ export function DynamicMediaCollection({
                 }
               />
             ) : (
-              <span className="absolute top-4 left-1/2 -translate-x-1/2 rounded-full border border-white/20 bg-black/45 px-4 py-2 text-xs font-semibold text-white/80">
+              <span className="absolute top-4 left-1/2 -translate-x-1/2 rounded-full border border-white/20 bg-black/45 px-4 py-2 text-sm sm:text-xs font-semibold text-white/80">
                 {section.title} · {index + 1} of {sections.length}
               </span>
             )}
@@ -750,20 +750,22 @@ export function DynamicMediaCollection({
             type="button"
             onClick={() => void loadNextPage(true)}
             disabled={retrySeconds > 0}
-            className="rounded-full border border-white/35 px-5 py-2 text-sm font-semibold text-white transition-colors hover:bg-white hover:text-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+            className="rounded-full border border-white/35 px-5 py-2 text-base sm:text-sm font-semibold text-white transition-colors hover:bg-white hover:text-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
           >
             {retrySeconds > 0
               ? `Try loading more collections again in ${retrySeconds}s`
               : "Try loading more collections again"}
           </button>
         ) : !hasNextPage ? (
-          <p className="text-sm text-stone-400">
+          <p className="text-base sm:text-sm text-stone-400">
             You’ve reached the end of the collection library.
           </p>
         ) : (
           <p
             className={
-              status === "loading" ? "text-sm text-stone-300" : "sr-only"
+              status === "loading"
+                ? "text-base sm:text-sm text-stone-300"
+                : "sr-only"
             }
           >
             {liveMessage}

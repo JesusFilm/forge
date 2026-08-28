@@ -314,7 +314,7 @@ export function DownloadModal({
           {durationLabel ? (
             <div
               data-testid="watch-download-modal-duration"
-              className="absolute right-2 bottom-2 flex items-center gap-1 rounded-md bg-black/70 px-2 py-1 text-xs font-semibold text-stone-100"
+              className="absolute right-2 bottom-2 flex items-center gap-1 rounded-md bg-black/70 px-2 py-1 text-sm sm:text-xs font-semibold text-stone-100"
             >
               <Play size={12} fill="currentColor" />
               <span>{durationLabel}</span>
@@ -338,7 +338,7 @@ export function DownloadModal({
           {languageName ? (
             <span
               data-testid="watch-download-modal-language"
-              className="inline-flex w-fit items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-sm font-semibold text-stone-100"
+              className="inline-flex w-fit items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-base sm:text-sm font-semibold text-stone-100"
             >
               <Globe2 size={14} />
               <span>{languageName}</span>
@@ -392,7 +392,7 @@ export function DownloadModal({
                   variant="ghost"
                   onClick={() => handleOpenChange(false)}
                   data-testid="watch-download-modal-keep-watching"
-                  className="h-auto w-full cursor-pointer rounded-full border border-transparent px-7 py-4 text-sm font-bold tracking-wider text-stone-400 uppercase transition-colors duration-200 hover:border-white/30 hover:bg-transparent hover:text-stone-100 focus-visible:border-white/50 sm:w-auto"
+                  className="h-auto w-full cursor-pointer rounded-full border border-transparent px-7 py-4 text-base sm:text-sm font-bold tracking-wider text-stone-400 uppercase transition-colors duration-200 hover:border-white/30 hover:bg-transparent hover:text-stone-100 focus-visible:border-white/50 sm:w-auto"
                 >
                   {t("keepWatching")}
                 </Button>
@@ -401,7 +401,7 @@ export function DownloadModal({
               <h3 className="text-lg font-semibold text-stone-50">
                 {t("authRequiredTitle")}
               </h3>
-              <p className="text-sm leading-6 text-stone-400">
+              <p className="text-base sm:text-sm leading-6 text-stone-400">
                 {t("authRequiredBody")}
               </p>
             </div>
@@ -435,7 +435,7 @@ export function DownloadModal({
             {tiers.length === 0 ? (
               <p
                 data-testid="watch-download-modal-empty"
-                className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold text-stone-400"
+                className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-base sm:text-sm font-semibold text-stone-400"
               >
                 {t("noDownloads")}
               </p>
@@ -529,7 +529,7 @@ export function DownloadModal({
                                     closeDropdown()
                                   }}
                                   className={cn(
-                                    "flex w-full cursor-pointer items-center gap-3 px-5 py-4 text-left text-sm transition",
+                                    "flex w-full cursor-pointer items-center gap-3 px-5 py-4 text-left text-base sm:text-sm transition",
                                     isSelected
                                       ? "bg-brand-red text-white"
                                       : "text-stone-100 hover:bg-white/10",
@@ -561,7 +561,7 @@ export function DownloadModal({
             <p
               data-testid="watch-download-modal-error"
               role="alert"
-              className="text-sm font-semibold text-brand-red"
+              className="text-base sm:text-sm font-semibold text-brand-red"
             >
               {error}
             </p>
@@ -571,7 +571,7 @@ export function DownloadModal({
             data-testid="watch-download-modal-confirmation-row"
             className="flex flex-col gap-4 rounded-2xl border border-white/10 bg-white/5 p-4 sm:flex-row sm:items-center sm:justify-between"
           >
-            <label className="flex cursor-pointer items-start gap-3 text-sm font-normal text-stone-100">
+            <label className="flex cursor-pointer items-start gap-3 text-base sm:text-sm font-normal text-stone-100">
               <span className="relative mt-0.5 inline-flex shrink-0 items-center justify-center">
                 <input
                   type="checkbox"
@@ -610,7 +610,7 @@ export function DownloadModal({
               <Button
                 variant="ghost"
                 onClick={() => handleOpenChange(false)}
-                className="cursor-pointer rounded-full px-5 py-3.5 text-sm font-bold tracking-wider text-stone-400 uppercase transition-colors duration-200 hover:bg-transparent hover:text-stone-100"
+                className="cursor-pointer rounded-full px-5 py-3.5 text-base sm:text-sm font-bold tracking-wider text-stone-400 uppercase transition-colors duration-200 hover:bg-transparent hover:text-stone-100"
               >
                 {t("close")}
               </Button>
@@ -620,7 +620,7 @@ export function DownloadModal({
                 disabled={!canDownload}
                 aria-label={t("download")}
                 data-testid="watch-download-modal-confirm"
-                className="px-7 py-4 text-sm"
+                className="px-7 py-4 text-base sm:text-sm"
               >
                 <DownloadIcon size={16} />
                 <span>{authChecking ? t("checking") : t("download")}</span>
@@ -719,7 +719,7 @@ function TermsOfUseDialog({ open, onCancel, onAccept }: TermsOfUseDialogProps) {
 
         <div
           data-testid="watch-download-modal-terms-body"
-          className="flex-1 space-y-4 overflow-y-auto pr-6 pb-6 pl-8 text-sm leading-relaxed text-stone-200 [scrollbar-color:theme(colors.stone.700)_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-stone-700 [&::-webkit-scrollbar-track]:bg-transparent hover:[&::-webkit-scrollbar-thumb]:bg-stone-600"
+          className="flex-1 space-y-4 overflow-y-auto pr-6 pb-6 pl-8 text-base sm:text-sm leading-relaxed text-stone-200 [scrollbar-color:theme(colors.stone.700)_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-stone-700 [&::-webkit-scrollbar-track]:bg-transparent hover:[&::-webkit-scrollbar-thumb]:bg-stone-600"
         >
           {TERMS_OF_USE_PARAGRAPHS.map((paragraph, index) => (
             <p key={index}>{paragraph}</p>
@@ -732,7 +732,7 @@ function TermsOfUseDialog({ open, onCancel, onAccept }: TermsOfUseDialogProps) {
         >
           <p
             data-testid="watch-download-modal-terms-canonical-notice"
-            className="max-w-lg text-xs leading-relaxed text-stone-400"
+            className="max-w-lg text-sm sm:text-xs leading-relaxed text-stone-400"
           >
             We include these terms here to make them easy to review. You can
             always find the most current version at{" "}
@@ -751,7 +751,7 @@ function TermsOfUseDialog({ open, onCancel, onAccept }: TermsOfUseDialogProps) {
               type="button"
               onClick={onCancel}
               data-testid="watch-download-modal-terms-cancel"
-              className="cursor-pointer rounded-full bg-stone-700/60 px-5 py-2.5 text-sm font-medium text-stone-100 transition-colors hover:bg-stone-600 focus-visible:ring-2 focus-visible:ring-stone-400/50 focus-visible:outline-none"
+              className="cursor-pointer rounded-full bg-stone-700/60 px-5 py-2.5 text-base sm:text-sm font-medium text-stone-100 transition-colors hover:bg-stone-600 focus-visible:ring-2 focus-visible:ring-stone-400/50 focus-visible:outline-none"
             >
               {t("cancel")}
             </button>

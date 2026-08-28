@@ -665,6 +665,48 @@ describe("LanguageCombobox", () => {
     expect($('[data-testid="language-combobox-popover"]')).toBeNull()
   })
 
+  // The virtualizer sizes its spacers and all scroll math from a single
+  // OPTION_ROW_HEIGHT_PX constant while the row's own height is set inline from
+  // that same constant. Before that pin, row height was EMERGENT from the type
+  // scale: raising the phone tier grew a native-subtitle row to 76px against a
+  // 72px model, which desynced spacer heights and active-option scrolling.
+  // jsdom cannot measure layout, so this asserts the structural pin instead —
+  // it goes red the moment a row stops declaring the virtualized height.
+  it("pins every option row to the height the virtualizer assumes", () => {
+    act(() => {
+      root.render(
+        <LanguageCombobox
+          options={[
+            {
+              slug: "russian",
+              name: "Russian",
+              nativeName: "\u0440\u0443\u0441\u0441\u043a\u0438\u0439",
+            },
+            { slug: "english", name: "English", nativeName: null },
+          ]}
+          value="english"
+          onChange={vi.fn()}
+        />,
+      )
+    })
+    act(() => {
+      $('[data-testid="language-combobox-trigger"]')?.click()
+    })
+
+    const rows = $$('[data-testid="language-combobox-option"]')
+    expect(rows.length).toBe(2)
+    // Both shapes matter: the plain row and the taller native-subtitle row that
+    // is what actually broke the 72px model.
+    expect(
+      rows.some((r) =>
+        r.textContent?.includes("\u0440\u0443\u0441\u0441\u043a\u0438\u0439"),
+      ),
+    ).toBe(true)
+    for (const row of rows) {
+      expect((row as HTMLElement).style.height).toBe("72px")
+    }
+  })
+
   it("windows large option sets on open so the popover appears immediately", () => {
     act(() => {
       root.render(
